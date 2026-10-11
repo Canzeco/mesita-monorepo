@@ -146,19 +146,17 @@ Deno.test("Locations come back on Word alone — Places everywhere, Socials wher
   assertEquals(modeReturnsEntity("map", "social"), false);
 });
 
-Deno.test("three nested place types: Map picks the ring, Feed and Scroll need enrichment", () => {
-  // The band IS `Google Places ⊃ Mesita Enriched Places ⊃ Mesita Partner
-  // Places` from nearby-places.ts, in that order. `listed` retired at
-  // MESITA-1856: a row existing is not a gate any mode runs.
+Deno.test("two nested place types: Map picks the ring, Feed and Scroll need enrichment", () => {
+  // The band IS `Google Places ⊃ Mesita Enriched Places` from
+  // nearby-places.ts, in that order. `listed` retired at MESITA-1856: a row
+  // existing is not a gate any mode runs.
   assertEquals(DISCOVERY_POOLS.map((p) => p.key), [
     "google",
     "enriched",
-    "partner",
   ]);
   assertEquals(DISCOVERY_POOLS.map((p) => p.label), [
     "Google Places",
     "Mesita Enriched Places",
-    "Mesita Partnered Places",
   ]);
   assertEquals(
     (DISCOVERY_POOLS as readonly { key: string }[]).some((p) =>
@@ -167,24 +165,20 @@ Deno.test("three nested place types: Map picks the ring, Feed and Scroll need en
     false,
   );
   // Map is the one mode whose GUEST picks the ring — PlacesScope is exactly
-  // these three — and keepListedForScope refuses an unenriched row before it
-  // reads the scope at all.
+  // these two — and isEnrichedListedRow refuses an unenriched row in either
+  // scope.
   assertEquals(modeRequiresPool("map", "google"), true);
   assertEquals(modeRequiresPool("map", "enriched"), true);
-  assertEquals(modeRequiresPool("map", "partner"), true);
   // requireReady defaults true and Scroll hardcodes it, and requireReady IS
-  // the enrichment gate. Neither mode reaches for partners only.
+  // the enrichment gate.
   assertEquals(modeRequiresPool("catalog", "google"), true);
   assertEquals(modeRequiresPool("catalog", "enriched"), true);
-  assertEquals(modeRequiresPool("catalog", "partner"), false);
   assertEquals(modeRequiresPool("swipe", "google"), true);
   assertEquals(modeRequiresPool("swipe", "enriched"), true);
-  assertEquals(modeRequiresPool("swipe", "partner"), false);
   // A bookmark is always a Google-sourced place, and it is NOT gated on
   // enrichment: Create stubs get bookmarked too.
   assertEquals(modeRequiresPool("favorites", "google"), true);
   assertEquals(modeRequiresPool("favorites", "enriched"), false);
-  assertEquals(modeRequiresPool("favorites", "partner"), false);
   // Word and Chat answer from whatever came back; no ring gate at all.
   for (const pool of DISCOVERY_POOLS) {
     assertEquals(modeRequiresPool("word", pool.key), false, pool.key);
@@ -204,24 +198,16 @@ Deno.test("Mesita Places Search signals match the admin matrix", () => {
   assertEquals(modeSignalState("word", "name"), "on");
   assertEquals(modeSignalState("word", "summary"), "off");
   assertEquals(modeSignalState("word", "enriched"), "off");
-  assertEquals(modeSignalState("word", "partnered"), "off");
   assertEquals(modeSignalState("chat", "summary"), "on");
   assertEquals(modeSignalState("chat", "randomness"), "off");
   assertEquals(modeSignalState("map", "proximity"), "on");
   assertEquals(modeSignalState("map", "randomness"), "zero");
   assertEquals(modeSignalState("swipe", "randomness"), "on");
-  // Splitting one on-signal into two on-signals is the identity transform:
-  // every mode Level was on for gets both halves, and no mode gains one.
+  // Every mode Mesita Level was on for reads Enriched.
   assertEquals(modeSignalState("catalog", "enriched"), "on");
   assertEquals(modeSignalState("map", "enriched"), "on");
   assertEquals(modeSignalState("swipe", "enriched"), "on");
   assertEquals(modeSignalState("chat", "enriched"), "on");
-  assertEquals(modeSignalState("catalog", "partnered"), "on");
-  // Map prices partnership by splitting lanes, not by an exponent — see the
-  // DISCOVERY_MODE_SIGNAL_ZERO entry. Its own test is below.
-  assertEquals(modeSignalState("map", "partnered"), "zero");
-  assertEquals(modeSignalState("swipe", "partnered"), "on");
-  assertEquals(modeSignalState("chat", "partnered"), "on");
   assertEquals(
     SIGNAL_KEYS.every((key) => modeSignalState("favorites", key) === "off"),
     true,
@@ -235,7 +221,6 @@ Deno.test("weightsForMode zeros off and Map randomness against defaults", () => 
   assertEquals(map.summary, 0);
   assertEquals(map.proximity, DISCOVERY_DEFAULTS.weights.proximity);
   assertEquals(map.enriched, DISCOVERY_DEFAULTS.weights.enriched);
-  assertEquals(map.partnered, 0);
   const word = weightsForMode("word", DISCOVERY_DEFAULTS.weights);
   assertEquals(word.name, DISCOVERY_DEFAULTS.weights.name);
   for (const key of SIGNAL_KEYS) {
@@ -315,31 +300,6 @@ Deno.test(
       );
     }
     assertEquals(DISCOVERY_MODE_SIGNALS.word.length, 1);
-  },
-);
-
-Deno.test(
-  "Map prices partnership by splitting lanes, not by an exponent — so Partnered is zero there",
-  () => {
-    // `reorderListedLanes` (nearby-lineup.ts) splits the listed rows with
-    // `isMesitaPartnerRow` BEFORE it blends, and blends each lane on its own.
-    // On those rows the predicate reduces to `isPaidPlan(row.plan)` —
-    // PLACE_CARD_COLUMNS has no `partner` key — and `partnered()` is 1 on any
-    // non-free plan, 0.2 otherwise. A constant factor inside a lane, and s^w
-    // over a constant is a constant: the exponent cannot move a row. Same
-    // argument that denies Word a column, applied per signal.
-    assertEquals(modeSignalState("map", "partnered"), "zero");
-    for (const w of [0, 0.5, 1, 2]) {
-      assertEquals(
-        weightsForMode("map", DISCOVERY_DEFAULTS.weights, {
-          map: { partnered: w },
-        }).partnered,
-        0,
-        `a stored ${w} must not reach the engine`,
-      );
-    }
-    // Scroll ranks one deck with no lane split, so there the exponent is real.
-    assertEquals(modeSignalState("swipe", "partnered"), "on");
   },
 );
 

@@ -10,7 +10,8 @@
 // reservation_target endpoint), else 403. cancelled_by = business — and
 // the guest is then CALLED: cancelTicket owes notice_kind='guest_cancel' and
 // the engine (intent cancel_notice) puts a2 on the line with call_context
-// "cancelled_by_venue" (Docs › Reservations §B leg 6).
+// "cancelled_by_venue" (Docs › Reservations §B leg 6). The guest's
+// Me › Notifications row is written here too (outcome place_cancelled).
 // Auth: anon bearer + x-agent-secret.
 //
 // Deploy: supabase functions deploy eleven-a4-cancel-reservation
@@ -26,6 +27,7 @@ import {
   ticketByCode,
   fireCancelNotice,
 } from "../_shared/agent-tools.ts";
+import { notifyReservationOutcome } from "../_shared/reservation-notification.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -49,11 +51,13 @@ Deno.serve(async (req) => {
 
   const { data: placeRow } = await admin
     .from("place_profiles")
-    .select("id, phone, reservation_target")
+    .select("id, name, photos, phone, reservation_target")
     .eq("id", ticket.project_id)
     .maybeSingle();
   const place = (placeRow ?? null) as {
     id: string;
+    name: string | null;
+    photos: unknown;
     phone: string | null;
     reservation_target: string | null;
   } | null;
@@ -76,6 +80,14 @@ Deno.serve(async (req) => {
   const err = await cancelTicket(admin, ticket.id, "business", cleanNote(body.reason), "guest_cancel");
   if (err) return json({ ok: false, error: err }, 500);
 
+  await notifyReservationOutcome(admin, {
+    consumerId: ticket.consumer_id,
+    reservationId: ticket.id,
+    referenceCode: ticket.reference_code,
+    outcome: "place_cancelled",
+    placeName: place?.name ?? null,
+    placePhotos: place?.photos ?? null,
+  });
   await fireCancelNotice(envRes.env, "eleven-a4-cancel-reservation", ticket.id);
 
   return json({

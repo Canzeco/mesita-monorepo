@@ -197,7 +197,6 @@ export function admitMapCatalog<T extends ListedMapRow>(
 
 /**
  * Swipe pool: listed Mesita rows that clear Map types + popularity.
- * Partners and listed (web) both stay — `listing_type` is not a gate.
  * Never takes Google hits; Swipe does not fill.
  */
 export type SwipeListedRow = ListedMapRow & {

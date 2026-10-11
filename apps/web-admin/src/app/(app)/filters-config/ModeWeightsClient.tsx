@@ -29,9 +29,9 @@
 // Never a disabled `0` — `DISCOVERY_MODE_SIGNAL_ZERO` exists precisely so Map's
 // Randomness reads as off rather than as a printed zero.
 //
-// ONE SAVE PER COLUMN, ON ITS OWN SLICE. `weights`, `params` and `slotting`
-// all ride the single `signals` slice, so a per-column save of that slice
-// would silently wipe the other column and the params with it — the same
+// ONE SAVE PER COLUMN, ON ITS OWN SLICE. `weights` and `params` both ride
+// the single `signals` slice, so a per-column save of that slice would
+// silently wipe the other column and the params with it — the same
 // incident as the three Sources boxes that shared `map` and became
 // mapSupers / mapFloors / mapPull. Each column writes `weightsMap` or
 // `weightsScroll`, and nothing else.

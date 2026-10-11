@@ -23,8 +23,6 @@ const COLUMNS: readonly string[] = [
   // Mesita display label. Seeded at create from the first Google label;
   // operator-editable. NULL/empty ⇒ generated name follows google_name.
   "mesita_name",
-  // `description_es` exists in DB (dormant) for a future Spanish TMS —
-  // not selected until that ships (MESITA-939).
   "category",
   // Human-friendly category copy (emoji + natural-language label),
   // derived from category via place_categories.
@@ -34,15 +32,11 @@ const COLUMNS: readonly string[] = [
   "vibe",
   "price_level",
   // ISO 4217 code (default MXN). Every monetary amount on a place —
-  // price ranges shown on the consumer detail page, reward caps,
-  // future cover charges — is denominated in this currency so the
-  // client can render the right prefix ("MX$", "$", "€") without
-  // hard-coding it.
+  // price ranges shown on the consumer detail page, future cover
+  // charges — is denominated in this currency so the client can render
+  // the right prefix ("MX$", "$", "€") without hard-coding it.
   "currency",
-  "listing_type",
   "state",
-  "fiscal_type",
-  "plan",
   "lat",
   "lng",
   "address",
@@ -56,25 +50,13 @@ const COLUMNS: readonly string[] = [
   "pitch",
   "story",
   "description",
-  // Four per-tier promo rates (free / premium). Welcome variants fire on a
-  // guest's first visit at the place; the unprefixed variants apply on every
-  // visit afterwards. Legal values: 10, 20, 30, 40, 50 (nullable).
-  "welcome_free_rate",
-  "welcome_premium_rate",
-  "free_rate",
-  "premium_rate",
-  // Per-visit discount cap (independent of strategy), in the place's
-  // currency. One of 200, 500, 1000 or null (Zero / no promo).
-  "monthly_promo_cap",
   "photos",
   "menu_pdf_url",
   // Optional display name for menu_pdf_url, e.g. "Dinner menu" /
   // "Wine list". Null = consumer falls back to "Full menu" copy.
   "menu_pdf_name",
   "tags",
-  // Channel URLs — primary, secondary, and PR. The Place page hides
-  // secondary + PR for now but the values still round-trip through every
-  // read and write, so they stay in the projection.
+  // Channel URLs.
   "website_url",
   "instagram_url",
   "facebook_url",
@@ -87,20 +69,11 @@ const COLUMNS: readonly string[] = [
   "reddit_url",
   "didi_food_url",
   "google_maps_url",
-  "google_business_url",
   // Read-only signal columns — populated by enrichment, never by the
   // business. Shown on the Place page's Signals section and on consumer
   // surfaces that compare place_profiles.
   "google_stars_overall",
   "google_review_count",
-  "google_visitor_count",
-  "mesita_stars_overall",
-  "mesita_stars_food",
-  "mesita_stars_service",
-  "mesita_stars_ambience",
-  "mesita_stars_value",
-  "mesita_review_count",
-  "mesita_visitor_count",
   "instagram_followers_count",
   "facebook_rating",
   "facebook_followers",
@@ -111,7 +84,6 @@ const COLUMNS: readonly string[] = [
   "city",
   "established_year",
   "executive_chef",
-  "discount_cap_cents",
   "details",
   // Generic product payload. Menus live under products.menu.
   "products",
@@ -127,32 +99,10 @@ const COLUMNS: readonly string[] = [
   // Consumer Requests count. Progress toward Crenup atlasRequestThreshold.
   // Requested is derived (count > 0 and content_state <> ready).
   "request_count",
-  // Description/Actions (Enricher step 7) — guest Order / Reserve CTAs.
-  "orders_enabled",
+  // Description/Actions (Enricher step 7) — the guest Reserve CTA.
   "reservations_enabled",
-  // The place's Mesita Pay capability bit (place_profiles.mesita_pay_enabled,
-  // surfaced by the `profiles` view). It stands alone since MESITA-1892; it
-  // used to be ANDed with the organization's. It is the guest's filter for
-  // Pay > QR: a place Mesita cannot take a payment at is not a place to pay
-  // at, so it never reaches the list.
-  "mesita_pay_enabled",
-  // Promos page section toggles. Boolean, business-controlled, persisted
-  // so the on/off state survives page reloads.
-  "segmentation_basic_enabled",
-  "segmentation_advanced_enabled",
   "email",
   "created_at",
-  // Promos v4 membership / strikes (MESITA-542) — places columns exposed via
-  // profiles. Readers that hit `place_profiles` directly simply won't see them.
-  "first_ticket_honored_at",
-  "plan_live_at",
-  "strike_count",
-  "last_strike_at",
-  "promo_paused_until",
-  "plan_forfeited_at",
-  // Ghost-partner hold (MESITA-1311) — a lane input like the strike columns,
-  // stripped for guests by BUSINESS_PRIVATE_PLACE_KEYS at the wire.
-  "reward_lane_pending_review_at",
 ];
 
 // Consumer reads — used by every public/consumer-facing EF. No `updated_at`
@@ -182,7 +132,7 @@ export const PLACE_CARD_COLUMNS_ARRAY: readonly string[] = COLUMNS.filter(
 );
 export const PLACE_CARD_COLUMNS = PLACE_CARD_COLUMNS_ARRAY.join(", ");
 
-// Order + reservation routing — which contact each rail reaches the place on
+// Reservation routing — which contact the rail reaches the place on
 // (MESITA-1208; typed columns since routing left the products jsonb).
 // BUSINESS-ONLY on purpose: a consumer never dials the place itself, so the
 // selected endpoint stays out of the public payload even though it is usually
@@ -190,8 +140,6 @@ export const PLACE_CARD_COLUMNS = PLACE_CARD_COLUMNS_ARRAY.join(", ");
 const ROUTING_COLUMNS: readonly string[] = [
   "reservation_channel",
   "reservation_target",
-  "order_channel",
-  "order_target",
 ];
 
 // Operating (MESITA-1239) — what Google says about the business itself.
@@ -207,8 +155,8 @@ const OPERATING_COLUMNS: readonly string[] = [
 ];
 
 // Business reads — includes `updated_at` so the business UI can show
-// "saved · 2 min ago" style affordances, plus the routing columns the
-// Settings rails edit and the Operating fact the State box renders.
+// "saved · 2 min ago" style affordances, plus the routing columns Single
+// Place edits and the Operating fact the State box renders.
 export const PLACE_BUSINESS_COLUMNS = [
   ...COLUMNS,
   ...ROUTING_COLUMNS,

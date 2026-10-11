@@ -9,7 +9,6 @@ import {
   classifyPredictionKind,
   deepModuleFlags,
   laneDedupeKeys,
-  listedNotPartner,
   locationTypeOf,
   mergeNameDeepQueries,
   orderDeepLineup,
@@ -30,7 +29,6 @@ function item(over: Partial<LaneItem> & Pick<LaneItem, "placeId" | "mainText">):
   return {
     secondaryText: over.secondaryText ?? "",
     state: over.state ?? "not_in_mesita",
-    partner: over.partner ?? false,
     ...over,
   };
 }
@@ -82,7 +80,7 @@ Deno.test("applyResolvedMesitaName keeps Mesita places.name, not the Google labe
       mainText: "Mesita override",
       secondaryText: "Mesita address",
       state: "web_listed",
-      partner: true,
+      enriched: true,
       mesitaId: "m-1",
       mesitaSlug: "mesita-override",
     }),
@@ -90,28 +88,25 @@ Deno.test("applyResolvedMesitaName keeps Mesita places.name, not the Google labe
   assertEquals(out.mainText, "Mesita override");
   assertEquals(out.secondaryText, "Mesita address");
   assertEquals(out.mesitaId, "m-1");
-  assertEquals(out.partner, true);
+  assertEquals(out.enriched, true);
 });
 
 Deno.test("splitResolvedNameHits buckets after resolve, before merge", () => {
   const out = splitResolvedNameHits([
-    item({ placeId: "p1", mainText: "Partner", partner: true, mesitaId: "m-p" }),
     item({ placeId: "m1", mainText: "Listed", mesitaId: "m-1" }),
     item({ placeId: "g1", mainText: "Google" }),
   ]);
-  assertEquals(out.partners.map((p) => p.mainText), ["Partner"]);
   assertEquals(out.mesita.map((p) => p.mainText), ["Listed"]);
   assertEquals(out.google.map((p) => p.mainText), ["Google"]);
 });
 
-Deno.test("mergeNameDeepQueries: Autocomplete then Text then Mesita then Partners", () => {
+Deno.test("mergeNameDeepQueries: Autocomplete then Text then Mesita", () => {
   const out = mergeNameDeepQueries({
     autocomplete: [item({ placeId: "a1", mainText: "Auto" })],
     text: [item({ placeId: "t1", mainText: "Text" })],
     mesita: [item({ placeId: "m1", mainText: "Mesita", mesitaId: "m-1" })],
-    partners: [item({ placeId: "p1", mainText: "Partner", partner: true, mesitaId: "m-p" })],
   });
-  assertEquals(out.map((p) => p.mainText), ["Auto", "Text", "Mesita", "Partner"]);
+  assertEquals(out.map((p) => p.mainText), ["Auto", "Text", "Mesita"]);
 });
 
 Deno.test("mergeNameDeepQueries: first query keeps overlaps; union is not sliced", () => {
@@ -128,10 +123,6 @@ Deno.test("mergeNameDeepQueries: first query keeps overlaps; union is not sliced
       item({ placeId: "m1", mainText: "M1", mesitaId: "m-1" }),
       item({ placeId: "m2", mainText: "M2", mesitaId: "m-2" }),
     ],
-    partners: [
-      item({ placeId: "p1", mainText: "P1", partner: true, mesitaId: "m-p1" }),
-      item({ placeId: "p2", mainText: "P2", partner: true, mesitaId: "m-p2" }),
-    ],
   });
   assertEquals(out.map((p) => p.mainText), [
     "A1",
@@ -140,41 +131,7 @@ Deno.test("mergeNameDeepQueries: first query keeps overlaps; union is not sliced
     "T2",
     "M1",
     "M2",
-    "P1",
-    "P2",
   ]);
-});
-
-Deno.test("mergeNameDeepQueries: partner already in Mesita query appears once", () => {
-  const out = mergeNameDeepQueries({
-    autocomplete: [],
-    text: [],
-    mesita: [
-      item({
-        placeId: "ChIJ1",
-        mainText: "Strana again",
-        partner: true,
-        mesitaId: "mesita-1",
-        state: "web_listed",
-      }),
-      item({
-        placeId: "ChIJ2",
-        mainText: "Listed cafe",
-        mesitaId: "mesita-2",
-        state: "web_listed",
-      }),
-    ],
-    partners: [
-      item({
-        placeId: "ChIJ1",
-        mainText: "Strana",
-        partner: true,
-        mesitaId: "mesita-1",
-        state: "web_listed",
-      }),
-    ],
-  });
-  assertEquals(out.map((p) => p.mainText), ["Strana again", "Listed cafe"]);
 });
 
 Deno.test("mergeNameDeepQueries: Google-resolved Mesita stays in Autocomplete/Text", () => {
@@ -209,28 +166,11 @@ Deno.test("mergeNameDeepQueries: Google-resolved Mesita stays in Autocomplete/Te
         state: "web_listed",
       }),
     ],
-    partners: [
-      item({
-        placeId: "ChIJ2",
-        mainText: "Dup Partner",
-        mesitaId: "m-2",
-        partner: true,
-        state: "web_listed",
-      }),
-      item({
-        placeId: "ChIJ4",
-        mainText: "Only Partner",
-        mesitaId: "m-4",
-        partner: true,
-        state: "web_listed",
-      }),
-    ],
   });
   assertEquals(out.map((p) => p.mainText), [
     "Resolved Autocomplete",
     "Resolved Text",
     "Only Mesita",
-    "Only Partner",
   ]);
 });
 
@@ -243,7 +183,6 @@ Deno.test("mergeNameDeepQueries: Text Search keeps its own order", () => {
       item({ placeId: "g2", mainText: "Second-best text" }),
     ],
     mesita: [],
-    partners: [],
   });
   assertEquals(out.map((p) => p.mainText), [
     "Third-best text",
@@ -257,21 +196,10 @@ Deno.test("stripPlacesPrefix drops the Places API resource prefix", () => {
   assertEquals(stripPlacesPrefix("ChIJ123"), "ChIJ123");
 });
 
-Deno.test("listedNotPartner drops paid-plan rows from the Mesita Lineup lane", () => {
-  const out = listedNotPartner([
-    { plan: "premium" },
-    { plan: "partner" },
-    { plan: "free" },
-    { plan: null },
-  ]);
-  assertEquals(out.map((r) => r.plan), ["free", null]);
-});
-
 Deno.test("deepModuleFlags: types off skip Autocomplete and Text Search", () => {
   assertEquals(
     deepModuleFlags({
       autoCount: 3,
-      partnerCount: 3,
       mesitaCount: 3,
       googleCount: 3,
       typesOn: false,
@@ -285,7 +213,6 @@ Deno.test("deepModuleFlags: googleCount 0 keeps Autocomplete, skips Text Search"
   assertEquals(
     deepModuleFlags({
       autoCount: 3,
-      partnerCount: 3,
       mesitaCount: 3,
       googleCount: 0,
       typesOn: true,
@@ -299,7 +226,6 @@ Deno.test("deepModuleFlags: autoCount 0 skips Autocomplete, keeps Text Search", 
   assertEquals(
     deepModuleFlags({
       autoCount: 0,
-      partnerCount: 3,
       mesitaCount: 3,
       googleCount: 3,
       typesOn: true,
@@ -313,7 +239,6 @@ Deno.test("deepModuleFlags: no OpenAI skips Lineup", () => {
   assertEquals(
     deepModuleFlags({
       autoCount: 3,
-      partnerCount: 3,
       mesitaCount: 3,
       googleCount: 3,
       typesOn: true,
@@ -327,7 +252,6 @@ Deno.test("deepModuleFlags: all lanes on fire all three modules", () => {
   assertEquals(
     deepModuleFlags({
       autoCount: 3,
-      partnerCount: 3,
       mesitaCount: 3,
       googleCount: 3,
       typesOn: true,
@@ -341,7 +265,6 @@ function listed(
   id: string,
   name: string,
   embedding: number[],
-  plan: string | null = "free",
   content_state: string | null = "ready",
 ): ListedRow {
   return {
@@ -352,7 +275,6 @@ function listed(
     address: "",
     lat: 19.4,
     lng: -99.1,
-    plan,
     content_state,
     enriched_at: null,
     business_state: "OPERATIONAL",
@@ -402,13 +324,13 @@ Deno.test("orderDeepLineup: the enrichment gradient reorders two rows the pool A
   // across the MESITA-1858 split, and comes back to high-water for the reason
   // that split's review found: this pool is already `.eq("content_state",
   // "ready")`, so every row Deep ranks satisfies the enrichment BOOLEAN and it
-  // ties across the whole lane. Same name-embedding and same plan (so Name and
-  // Partnered tie too) — only high-water differs, which is the only part of
-  // Enriched that can still reorder an admitted pool.
-  const hi = withHighWater(listed("hi", "Hi", QUERY, "pro", "ready"), CRENUP_TOTAL);
-  const lo = withHighWater(listed("lo", "Lo", QUERY, "pro", "ready"), 2);
+  // ties across the whole lane. Same name-embedding (so Name ties too) — only
+  // high-water differs, which is the only part of Enriched that can still
+  // reorder an admitted pool.
+  const hi = withHighWater(listed("hi", "Hi", QUERY, "ready"), CRENUP_TOTAL);
+  const lo = withHighWater(listed("lo", "Lo", QUERY, "ready"), 2);
   // A row that never got admitted anywhere still floors below both.
-  const un = listed("un", "Un", QUERY, "pro", "queued");
+  const un = listed("un", "Un", QUERY, "queued");
   const enrichedOnly = weights(0);
   enrichedOnly.enriched = 2;
   assertEquals(
@@ -442,7 +364,6 @@ Deno.test("Deep source never calls searchNearbyPlaces", async () => {
   assertEquals(src.includes("applyPlacesCallerRegion"), false);
   assertEquals(src.includes("includedRegionCodes"), false);
   assertEquals(src.includes("rankByBlend"), true);
-  assertEquals(src.includes("discoveryRank"), false);
   assertEquals(src.includes("queryNameVector"), true);
   assertEquals(src.includes("queryVector:"), false);
   assertEquals(src.includes("queryVector,"), false);
@@ -469,7 +390,6 @@ Deno.test("mergeNameDeepQueries: overflow Mesita in Text stays; later Mesita ski
         state: "web_listed",
       }),
     ],
-    partners: [],
   });
   assertEquals(out.map((p) => p.placeId), ["overflow", "fresh", "top"]);
 });
@@ -583,19 +503,15 @@ Deno.test("Locations dedupe on g:<placeId> like any Google row", () => {
 });
 
 Deno.test("Pay has no Google fallback, so its lane cap never collapses", () => {
-  // An operator zeroing both Deep counts would otherwise leave Pay's
+  // An operator zeroing the Deep Mesita count would otherwise leave Pay's
   // search permanently empty — Search would still have Autocomplete.
-  assertEquals(mesitaNameCap({ partnerCount: 0, mesitaCount: 0 }), MESITA_NAME_MIN_CAP);
-  assertEquals(mesitaNameCap({ partnerCount: 3, mesitaCount: 3 }), MESITA_NAME_MIN_CAP);
+  assertEquals(mesitaNameCap({ mesitaCount: 0 }), MESITA_NAME_MIN_CAP);
+  assertEquals(mesitaNameCap({ mesitaCount: 3 }), MESITA_NAME_MIN_CAP);
   // Above the floor the operator's number wins, so Pay and Search agree.
-  assertEquals(mesitaNameCap({ partnerCount: 40, mesitaCount: 20 }), 60);
+  assertEquals(mesitaNameCap({ mesitaCount: 20 }), 20);
   assertEquals(
     mesitaNameCap(DISCOVERY_DEFAULTS.name.deep),
-    Math.max(
-      DISCOVERY_DEFAULTS.name.deep.partnerCount +
-        DISCOVERY_DEFAULTS.name.deep.mesitaCount,
-      MESITA_NAME_MIN_CAP,
-    ),
+    Math.max(DISCOVERY_DEFAULTS.name.deep.mesitaCount, MESITA_NAME_MIN_CAP),
   );
 });
 

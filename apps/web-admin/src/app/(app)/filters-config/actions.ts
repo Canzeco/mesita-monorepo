@@ -47,11 +47,11 @@ export type DiscoverySlice =
   | "mapFloors"
   | "mapPull"
   // Narrow weight slices (MESITA-1859). The weights table on Discovery Modes
-  // has ONE SAVE PER COLUMN, and `weights`, `params` and `slotting` all ride
-  // the single `signals` slice below — so a per-column save of the whole
-  // slice would be the mapSupers/mapFloors/mapPull incident again, one floor
-  // up: saving Map would silently revert Scroll, the signal params, and the
-  // slotting config. Each column writes only its own mode key.
+  // has ONE SAVE PER COLUMN, and `weights` and `params` both ride the single
+  // `signals` slice below — so a per-column save of the whole slice would be
+  // the mapSupers/mapFloors/mapPull incident again, one floor up: saving Map
+  // would silently revert Scroll and the signal params. Each column writes
+  // only its own mode key.
   | "weightsMap"
   | "weightsScroll"
   | "nameFast"
@@ -120,7 +120,6 @@ export async function updateDiscoveryConfig(
     // must not drop it.
     weights: keys.has("signals") ? config.weights : live.config.weights,
     params: keys.has("signals") ? config.params : live.config.params,
-    slotting: keys.has("signals") ? config.slotting : live.config.slotting,
   };
   const r = await efInvoke<{ config: unknown; updatedAt: string | null }>(
     "admin-web-update-config",

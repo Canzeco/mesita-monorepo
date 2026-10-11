@@ -8,20 +8,15 @@
 // never leaves the function. That is the whole contract, and it is what lets
 // every engine reach the same library instead of each one inventing a scale.
 //
-// THERE ARE NINE: Name · Summary · Proximity · Timing · Category ·
-// Enriched · Partnered · Popularity · Randomness. Slotting still runs AFTER
-// the blend (discovery-blend.ts) and still buys a POSITION, not an exponent.
+// THERE ARE EIGHT: Name · Summary · Proximity · Timing · Category ·
+// Enriched · Popularity · Randomness. Every one reads a fact about the place
+// or about the caller. None reads money: no plan, rate, strategy or live
+// discount reaches this library, and nothing after the blend reorders on one.
 //
-// MESITA LEVEL SPLIT INTO TWO BINARIES (MESITA-1858): `enriched` — did
-// Mesita do the work on this place — and `partnered` — does this place pay.
-// This is NOT a reversal of the MESITA-1408 merge. That merge killed
-// Partnership × Promotion, two exponents over THE SAME money fact, which let
-// an operator double-count money by accident. These two read disjoint facts:
-// one the enrichment state, the other `plan`. No double-count is possible.
-//
-// PROMOTION LEFT THE EXPONENT ENTIRELY. `promoting` is no longer read by any
-// signal. Since MESITA-1855 lane 2 is wired, so promotion buys a POSITION —
-// which is what discovery-blend.ts's header always said money must do.
+// MESITA LEVEL IS `enriched` NOW. The retired `mesita_level` exponent folded
+// where a place sits with us into one number; `enriched` — did Mesita do the
+// work on this place — is the half a catalog with nothing for sale can read,
+// and an old blob's `mesita_level` folds onto it (discovery-config.ts).
 //
 // THE ENRICHMENT GRADIENT SURVIVES THE SPLIT. MESITA-1858 first wrote
 // `enriched` as a pure binary and deferred the `crenup_high_water` gradient
@@ -31,12 +26,9 @@
 // gradient is therefore kept, off `crenupHighWater` and
 // `attachCrenupHighWater` at their three call sites. Details at `enriched`.
 //
-// The keys are `enriched` and `partnered`, never bare `level`, `partner` or
-// `partnership`. `places.price_level` is Google's field and
-// create-door-profile.ts already writes "Price level:" into a signal-shaped
-// line; a bare Level would collide exactly there. `partner` is the consumer
-// wire boolean (place-family-keys.ts) and `partnership` was a retired signal
-// key — the past participle keeps the signal distinct from both.
+// The key is `enriched`, never bare `level`. `places.price_level` is Google's
+// field and create-door-profile.ts already writes "Price level:" into a
+// signal-shaped line; a bare Level would collide exactly there.
 //
 // Semantic died. It split into Name (`places.name_embedding`) and Summary
 // (`places.embedding` — the Summary blurb, never Presentation). Social left
@@ -70,14 +62,13 @@ import { haversineKm } from "./geo.ts";
 import { isOpenAt } from "./local-time-open.ts";
 import { localClock } from "./local-time.ts";
 import { cosineSim, parseVector } from "./embeddings-vector.ts";
-import { isPaidPlan } from "./membership-enforcement-helpers.ts";
 import { CRENUP_TOTAL } from "./crenup-ladder.ts";
 
 /**
- * The nine earned signals, in Notion Docs > Discovery section 8.3 order:
+ * The eight earned signals, in Notion Docs > Discovery section 8.3 order:
  * what the caller ASKED FOR first (name, summary, category), then what the
  * world is (proximity, timing), then where the place sits with us
- * (enriched, partnered, popularity), then the tie-breaker.
+ * (enriched, popularity), then the tie-breaker.
  *
  * ORDER IS PRESENTATION ONLY. The blend is a product of `s^w`, so it is
  * commutative; nothing downstream may read a signal by index.
@@ -89,7 +80,6 @@ export const SIGNAL_KEYS = [
   "proximity",
   "timing",
   "enriched",
-  "partnered",
   "popularity",
   "randomness",
 ] as const;
@@ -123,8 +113,7 @@ function pnum(params: SignalParamBag | undefined, key: string, fallback: number)
 /**
  * The facts a signal is allowed to see. This is a projection of `places`, not
  * the row — narrowing it here is what stops a signal from quietly reaching for
- * rates. Partnered may read `plan`; nothing else may. Still absent:
- * strategy, pause columns, and rates.
+ * a column nobody decided it may score on.
  */
 export type SignalPlace = {
   lat: number | null;
@@ -148,15 +137,6 @@ export type SignalPlace = {
    * credit: an unstated enrichment is not an enriched place.
    */
   enriched?: boolean;
-  /** Membership plan. Partnered may read `plan`; nothing else may. */
-  plan?: string | null;
-  /**
-   * Live discount right now. NO SIGNAL READS THIS ANY MORE (MESITA-1858):
-   * promotion buys a lane-2 POSITION (MESITA-1855), not an exponent. Kept on
-   * the projection because the debug payload and the slotting pass both
-   * still travel with it.
-   */
-  promoting?: boolean;
   /**
    * How far the Crenup queue got, 0..CRENUP_TOTAL (`crenupOf`,
    * crenup-ladder.ts). `enriched` reads this; nothing else may. It is the
@@ -466,9 +446,8 @@ export function summary(
  * PREDICATE THE RANKED LANES ADMIT ON, so on every surface that can score it
  * the answer is a constant 1:
  *
- *   - Map filters every listed row through `keepListedForScope` →
- *     `isEnrichedListedRow`, a copy of `isEnrichedPlace`, BEFORE
- *     `reorderListedLanes` ranks anything.
+ *   - Map filters every listed row through `isEnrichedListedRow`, a copy
+ *     of `isEnrichedPlace`, BEFORE `reorderListedLanes` ranks anything.
  *   - Scroll's pool query is `.eq("content_state", "ready")`.
  *   - Word masks this signal to 0 and never scores it at all.
  *
@@ -476,9 +455,9 @@ export function summary(
  * rendering an operator a dial that does nothing. Worse, it is a REGRESSION:
  * the retired `mesita_level` folded `crenup_high_water` (0..CRENUP_TOTAL), a
  * fact that is NOT the admission predicate, so it did discriminate among
- * admitted rows — two ready partner rows at one point on the Map, high-water
- * 10 and 2, ranked 3.1x apart and would now tie, handing the order to
- * whatever Postgres returned.
+ * admitted rows — two ready rows at one point on the Map, high-water 10 and
+ * 2, ranked 3.1x apart and would now tie, handing the order to whatever
+ * Postgres returned.
  *
  * So the gradient is restored here, verbatim: `ENRICHED_OFF + (1 -
  * ENRICHED_OFF) * hw / CRENUP_TOTAL`, which is MESITA-1598's own
@@ -524,44 +503,7 @@ export function enriched(
   return clamp01(place.enriched === true ? 1 : ENRICHED_OFF);
 }
 
-// ── 8. Partnered ─────────────────────────────────────────────────────────────
-
-/**
- * Does this place pay Mesita.
- *
- * ONE FACT, READ AND NOTHING ELSE: `plan`, through `isPaidPlan`
- * (membership-enforcement-helpers.ts) — the same predicate the consumer wire's
- * `partner` boolean uses, never a second copy. Never rates, never strategy,
- * never the pause columns, and no longer `promoting`: a live discount buys a
- * lane-2 position (MESITA-1855), not an exponent.
- *
- * THE EMPTY STRING IS NORMALIZED BEFORE THE CALL, and that is load-bearing.
- * `isPaidPlan` is `(plan ?? "free").toLowerCase() !== "free"`, so it answers
- * TRUE for `""` — the coalesce only catches null and undefined. `places.plan`
- * is a NOT NULL enum defaulting to `'free'`, so an empty string can only reach
- * here from a synthesized Google row or a fixture, which is exactly where a
- * free place silently scoring as a partner would go unnoticed.
- */
-
-/**
- * The off value. NEVER 0 — see ENRICHED_OFF.
- *
- * 0.2 is `LEVEL_LISTED / LEVEL_PARTNER`, the 5x partner-over-listed spacing
- * the old ladder had, carried over so the order no guest sees change.
- */
-export const PARTNERED_OFF = 0.2;
-
-export function partnered(
-  place: SignalPlace,
-  _intent?: SignalIntent,
-  _params?: SignalParamBag,
-): number {
-  const plan = (place.plan ?? "").trim();
-  if (plan === "") return clamp01(PARTNERED_OFF);
-  return clamp01(isPaidPlan(plan) ? 1 : PARTNERED_OFF);
-}
-
-// ── 9. Randomness ────────────────────────────────────────────────────────────
+// ── 8. Randomness ────────────────────────────────────────────────────────────
 
 /**
  * The only signal that reads nothing about the place.
@@ -598,7 +540,6 @@ export const SIGNALS: Record<SignalKey, SignalFn> = {
   category,
   popularity,
   enriched,
-  partnered,
   randomness,
 };
 
@@ -611,7 +552,6 @@ export const SIGNAL_LABELS: Record<SignalKey, string> = {
   category: "Category",
   popularity: "Popularity",
   enriched: "Enriched",
-  partnered: "Partnered",
   randomness: "Randomness",
 };
 
@@ -624,6 +564,5 @@ export const SIGNAL_BLURBS: Record<SignalKey, string> = {
   category: "Does the type answer what the guest asked for.",
   popularity: "Rating shrunk toward the catalog mean by review volume.",
   enriched: "Did Mesita do the work on this place — a written profile, not a raw Google row.",
-  partnered: "Does this place pay Mesita. Demotes a free place, never hides it.",
   randomness: "Reads nothing about the place. Keeps the deck from freezing.",
 };

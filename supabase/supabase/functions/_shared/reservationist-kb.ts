@@ -16,7 +16,7 @@
 import type { FleetAgentKey } from "./reservationist-fleet.ts";
 
 /** Content version — rides in every doc name (a1-kb-v1 → bump → a1-kb-v2). */
-export const RESERVATIONIST_KB_VERSION = 4;
+export const RESERVATIONIST_KB_VERSION = 5;
 
 /** Per-agent ElevenLabs KB doc name — sync finds/creates/renames by this. */
 export function reservationistKbDocName(key: FleetAgentKey): string {
@@ -37,11 +37,9 @@ export const RESERVATIONIST_KB_TEXT = [
   `Fuente: Notion Main + Reservations. No inventes datos de una reservación concreta: esos llegan por variables de la llamada y por herramientas.`,
   ``,
   `## Qué es Mesita`,
-  `Mesita es una app de IA para restaurantes, cafés y nightlife en la ciudad. Ayuda a comensales a descubrir dónde salir, reserva la mesa con un agente de IA, y en lugares Verificados ofrece descuentos en la cuenta (el comensal paga al lugar; Mesita nunca toca el dinero).`,
+  `Mesita es una app de IA para restaurantes, cafés y nightlife en la ciudad. Ayuda a comensales a descubrir dónde salir y reserva la mesa con un agente de IA. Mesita nunca toca el dinero: el comensal paga directo al lugar.`,
   ``,
-  `- Diamante: el comensal es Diamante o no lo es, sin nada intermedio. Es solo por invitación (Mesita invita directamente, o el comensal ingresa un PIN de 10 dígitos que alguien le dio) y nunca se compra; Instagram no da acceso. Todo comensal recibe el descuento base; quien es Diamante recibe más.`,
-  `- Aparte va el plan: Free o Premium (MX$50/mes). Premium da ventajas (más reservaciones al mes); no cambia el descuento ni hace Diamante a nadie.`,
-  `- Lugares Listed = en el catálogo, reservables. Lugares Verified = asociación + programa de recompensas + consola.`,
+  `- Los lugares del catálogo son reservables por Mesita.`,
   `- Memo recomienda; el Reservationist reserva. Atlas y el Enricher alimentan el catálogo.`,
   ``,
   `## Regla dura de enrutamiento`,

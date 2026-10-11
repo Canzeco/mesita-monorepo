@@ -92,9 +92,6 @@ type UpdateBody = {
   // Mexico. Kept as text so the EF doesn't hard-code an enum.
   currency?: string | null;
   state?: "active" | "paused" | "archived";
-  fiscal_type?: "formal" | "informal";
-  // NOTE: `plan` is deliberately NOT editable here, so a profile save can
-  // never move a place's plan.
   // NOTE: `address` is native (Google/Enricher-sourced) and deliberately NOT
   // editable here — kept in the type only so stale clients get the reject.
   address?: string | null;
@@ -121,12 +118,10 @@ type UpdateBody = {
   google_place_id?: string | null;
   // Plain contact (not URL-shaped)
   email?: string | null;
-  // Routing: which contact each rail reaches the place on (MESITA-1208).
-  // 'phone' is the only served channel; null clears the rail.
+  // Routing: which contact the Reservations rail reaches the place on
+  // (MESITA-1208). Null clears the rail.
   reservation_channel?: string | null;
   reservation_target?: string | null;
-  order_channel?: string | null;
-  order_target?: string | null;
   // Place-redesign editable surface (Business-E=YES on the Components spec).
   description?: string | null;
   menu_pdf_url?: string | null;
@@ -210,7 +205,7 @@ Deno.serve(async (req) => {
   if ("vibe" in body) update.vibe = optString(body.vibe, 80);
   if ("price_level" in body) {
     // Price is enrich-only (Google Places). Reject so stale clients learn
-    // the contract — same posture as `plan` via billing.
+    // the contract.
     return json(
       {
         ok: false,
@@ -238,32 +233,10 @@ Deno.serve(async (req) => {
     }
     update.state = s;
   }
-  if ("fiscal_type" in body) {
-    const f = body.fiscal_type;
-    if (f !== "formal" && f !== "informal") {
-      return json(
-        { ok: false, error: "fiscal_type must be 'formal' or 'informal'" },
-        400,
-      );
-    }
-    update.fiscal_type = f;
-  }
-  if ("plan" in body) {
-    // Plan is not profile: reject instead of silently ignoring so a stale
-    // client learns the contract.
-    return json(
-      {
-        ok: false,
-        code: "plan_via_billing",
-        error: "plan is not a profile field and cannot be updated here.",
-      },
-      400,
-    );
-  }
   if ("address" in body) {
     // Address is native — seeded from Google Places and refined by the
     // Enricher, which writes public.place_profiles directly. Reject so stale clients
-    // learn the contract — same posture as `price_level` and `plan`.
+    // learn the contract — same posture as `price_level`.
     return json(
       {
         ok: false,
@@ -386,48 +359,38 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Order + reservation ROUTING — which door each rail uses (MESITA-1208).
+  // Reservation ROUTING — which door the rail uses (MESITA-1208).
   // Five picks: phone · whatsapp · instagram · web · none (Pato 2026-08-25).
   // The Reservationist still only DIALS phone. Null / empty clears the rail.
-  for (
-    const [key, channelCol, targetCol] of [
-      ["reservation", "reservation_channel", "reservation_target"],
-      ["orders", "order_channel", "order_target"],
-    ] as const
-  ) {
-    if (!(channelCol in body)) continue;
-    const raw = (body as Record<string, unknown>)[channelCol];
+  if ("reservation_channel" in body) {
+    const raw = body.reservation_channel;
     if (raw == null || (typeof raw === "string" && raw.trim() === "")) {
-      update[channelCol] = null;
-      update[targetCol] = null;
-      continue;
-    }
-    if (!isServingChannel(raw)) {
+      update.reservation_channel = null;
+      update.reservation_target = null;
+    } else if (!isServingChannel(raw)) {
       return json(
         {
           ok: false,
           code: "channel_not_served",
-          error:
-            `${key} routing accepts phone, whatsapp, instagram, web, or none.`,
+          error: "reservation routing accepts phone, whatsapp, instagram, web, or none.",
         },
         400,
       );
+    } else if (raw === "none") {
+      update.reservation_channel = "none";
+      update.reservation_target = null;
+    } else {
+      const target = body.reservation_target;
+      const value = typeof target === "string" ? target.trim().slice(0, 500) : "";
+      if (!value) {
+        return json(
+          { ok: false, error: `reservation_target is required when reservation_channel is ${raw}` },
+          400,
+        );
+      }
+      update.reservation_channel = raw;
+      update.reservation_target = value;
     }
-    if (raw === "none") {
-      update[channelCol] = "none";
-      update[targetCol] = null;
-      continue;
-    }
-    const target = (body as Record<string, unknown>)[targetCol];
-    const value = typeof target === "string" ? target.trim().slice(0, 500) : "";
-    if (!value) {
-      return json(
-        { ok: false, error: `${targetCol} is required when ${channelCol} is ${raw}` },
-        400,
-      );
-    }
-    update[channelCol] = raw;
-    update[targetCol] = value;
   }
 
   if (Object.keys(update).length === 0) {

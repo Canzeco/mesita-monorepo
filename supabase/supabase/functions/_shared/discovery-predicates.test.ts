@@ -24,15 +24,6 @@ function place(over: Record<string, unknown> = {}): Record<string, unknown> {
     lat: 19.4326,
     lng: -99.1332,
     hours: OPEN_ALWAYS,
-    plan: null,
-    welcome_free_rate: null,
-    welcome_premium_rate: null,
-    free_rate: null,
-    premium_rate: null,
-    strike_count: 0,
-    last_strike_at: null,
-    promo_paused_until: null,
-    plan_forfeited_at: null,
     ...over,
   };
 }
@@ -196,28 +187,15 @@ Deno.test("when=now drops rows we cannot confirm are open", () => {
   assertEquals(applyDeckPredicates(rows, now, null).map((r) => r.id), ["always"]);
 });
 
-Deno.test("context: visit keeps live rewards, order narrows nothing", () => {
-  const rows = [
-    place({
-      id: "promoting",
-      plan: "pro",
-      welcome_free_rate: 40,
-      welcome_premium_rate: 50,
-      free_rate: 20,
-      premium_rate: 30,
-    }),
-    place({ id: "zero" }),
-  ];
-  assertEquals(
-    applyDeckPredicates(rows, readDeckPredicates({ context: "visit" }), null).map(
-      (r) => r.id,
-    ),
-    ["promoting"],
-  );
-  // `order` is parked end-to-end: it must not invent a remote catalog.
-  const parked = readDeckPredicates({ context: "order" });
-  assertEquals(hasDeckPredicates(parked), false);
-  assertEquals(applyDeckPredicates(rows, parked, null).length, 2);
+Deno.test("a stale `context` from an old binary narrows nothing", () => {
+  // Deployed binaries still post `context: "visit"`. No place offers a
+  // reward to filter on, so the key is read as nothing at all.
+  const rows = [place({ id: "a" }), place({ id: "b" })];
+  for (const context of ["visit", "order", "any"]) {
+    const p = readDeckPredicates({ context });
+    assertEquals(hasDeckPredicates(p), false, context);
+    assertEquals(applyDeckPredicates(rows, p, null), rows, context);
+  }
 });
 
 Deno.test("the cut is what makes a narrow filter searchable, not thinning", () => {
@@ -245,20 +223,15 @@ Deno.test("the cut is what makes a narrow filter searchable, not thinning", () =
   );
 });
 
-Deno.test("Places scope partners keeps only paying places", () => {
-  const rows = [
-    place({ id: "partner", partner: true, plan: "pro" }),
-    place({ id: "listed", partner: false, plan: "free" }),
-  ];
-  assertEquals(
-    applyDeckPredicates(
-      rows,
-      readDeckPredicates({ placesScope: "partners" }),
-      null,
-    ).map((r) => r.id),
-    ["partner"],
-  );
-  assertEquals(hasDeckPredicates(readDeckPredicates({ placesScope: "mesita" })), false);
+Deno.test("Places scope cuts nothing server-side — every pooled row is Mesita's", () => {
+  // A Mesita row sits in both rings, so no scope can drop one here; the
+  // browser, which also holds Google stubs, is where the scope narrows.
+  const rows = [place({ id: "a" }), place({ id: "b" })];
+  for (const placesScope of ["mesita", "google", "partners"]) {
+    const p = readDeckPredicates({ placesScope });
+    assertEquals(hasDeckPredicates(p), false, placesScope);
+    assertEquals(applyDeckPredicates(rows, p, null), rows, placesScope);
+  }
 });
 
 Deno.test("Google review floor drops places below the stop and places with no count", () => {

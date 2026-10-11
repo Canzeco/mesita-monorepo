@@ -7,26 +7,17 @@
 // real rows:
 //   • place_profiles   — the profile (Google identity, geo, channels, signals, photos)
 //   • places — the owned Mesita entity (shared PK with the place), landing
-//     state='active', listing_type from Verification Config
-//     (verification_config.createPlacesAsVerified → 'partner', else 'web'),
-//     and a caller-supplied content_state (the async create path passes
-//     'generating').
+//     state='active' and a caller-supplied content_state (the async create
+//     path passes 'generating').
 //
 // Idempotent on google_place_id (place_already_exists). Slug is made unique
 // against the live catalog. Inserts are sequenced place_profiles→places (shared id);
 // a places failure compensates by deleting the just-written place so we
 // never leave an orphan profile. Media is NOT handled here.
-//
-// Ownership (place_members) is intentionally NOT created here — ownership
-// landed only when admin-web-decide-verification approved a claim, and that
-// door was retired in MESITA-2090. Listing
-// type 'partner' here is the consumer Mesita Partner badge only — it does
-// not grant plan, ownership, or a promo strategy.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { type PlaceProfilePatch, type PlaceRow, writePlace } from "./place-doc.ts";
 import { ensureUniqueSlug, slugify } from "./place-slug.ts";
-import { normalizeVerificationConfig } from "./verification-config.ts";
 
 // The place_profiles-shaped profile from fetchGoogleBasics. Required spine:
 // google_place_id + google_name (the same fields fetchGoogleBasics guarantees).
@@ -83,39 +74,19 @@ export async function savePlaceData(
   // ── Idempotency: already onboarded? (read the joined view) ──
   const { data: existing } = await admin
     .from("profiles")
-    .select("id, slug, name, state, listing_type")
+    .select("id, slug, name, state")
     .eq("google_place_id", googlePlaceId)
     .maybeSingle();
   if (existing) {
     return fail(409, {
       code: "place_already_exists",
-      error: "This place is already on Mesita. If you manage it, contact support to claim ownership.",
+      error: "This place is already on Mesita.",
       existing,
     });
   }
 
   // ── Unique slug against the live catalog ──
   const slug = await ensureUniqueSlug(admin, slugify(name));
-
-  // ── Verification Config: create as Mesita Partner? ──
-  // decision: Pato (live, 2026-08-05) — admin Verification Config toggle
-  // createPlacesAsVerified (verification_config jsonb, MESITA-1248 fold of
-  // the old create_places_as_verified column). When on, new place_profiles land as
-  // listing_type='partner' (consumer "Mesita Partner" badge) even without
-  // phone OTP ownership proof. Default off → 'web' / "Not Verified". Does
-  // not grant plan, ownership, or promo strategy (those stay on their own
-  // paths).
-  const { data: settingsRow } = await admin
-    .from("app_config")
-    .select("verification_config")
-    .eq("id", 1)
-    .maybeSingle();
-  const listingType =
-    normalizeVerificationConfig(
-      (settingsRow as { verification_config?: unknown } | null)?.verification_config,
-    ).createPlacesAsVerified
-      ? "partner"
-      : "web";
 
   // ── 1) place_profiles (profile). Strip caller-supplied id/timestamps so the DB owns
   // them; the category-label trigger fills category_label from category. ──
@@ -147,12 +118,12 @@ export async function savePlaceData(
     if (profileRes.ok === false && profileRes.code === "23505" && /google_place_id/.test(profileRes.error)) {
       const after = await admin
         .from("profiles")
-        .select("id, slug, name, state, listing_type")
+        .select("id, slug, name, state")
         .eq("google_place_id", googlePlaceId)
         .maybeSingle();
       return fail(409, {
         code: "place_already_exists",
-        error: "This place is already on Mesita. If you manage it, contact support to claim ownership.",
+        error: "This place is already on Mesita.",
         existing: after.data ?? null,
       });
     }
@@ -171,7 +142,6 @@ export async function savePlaceData(
     patch: {
       slug,
       state: "active",
-      listing_type: listingType,
       content_state: state as PlaceRow["content_state"],
     },
     select: "id, slug, state",

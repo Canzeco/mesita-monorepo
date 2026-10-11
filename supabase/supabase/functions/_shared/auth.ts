@@ -1,14 +1,13 @@
-// Auth helpers shared by product Edge Functions (admin/business/consumer/
-// check/staff) — env, JWT user, and service-role client setup.
+// Auth helpers shared by product Edge Functions (admin/consumer/staff) —
+// env, JWT user, and service-role client setup.
 //
 // The three EF entry-points always look the same:
 //
 //   1. Read SUPABASE_URL / ANON_KEY / SERVICE_ROLE_KEY → 500 if missing
 //   2. Verify Bearer JWT → resolve auth.user → 401 if missing/invalid
-//   3. (Optionally) confirm the user is a member of a place, possibly
-//      with role ≥ X, with super_admins as a bypass — 403 otherwise
+//   3. (Admin EFs) confirm the user is in super_admins — 403 otherwise
 //
-// Membership helpers (step 3) live in auth-membership.ts and are
+// The super-admin guard (step 3) lives in auth-super-admin.ts and is
 // re-exported below so callers keep importing from this module.
 
 import {
@@ -161,13 +160,6 @@ export function anonClient(env: AnonEnv): SupabaseClient {
   return createClient(env.url, env.anonKey);
 }
 
-// ─── Membership (re-export — implementation in auth-membership.ts) ──
+// ─── Super-admin (re-export — implementation in auth-super-admin.ts) ─
 
-export {
-  checkMembership,
-  checkSuperAdmin,
-  requireSuperAdmin,
-  requireMembership,
-  requireEditor,
-  requireOwner,
-} from "./auth-membership.ts";
+export { checkSuperAdmin, requireSuperAdmin } from "./auth-super-admin.ts";

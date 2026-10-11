@@ -14,11 +14,10 @@
 //               reach, beyond reach (nearest first), unplaced. A catalog of
 //               one place that is shut tonight still serves that place.
 //   3. RANK   — Places Lineup Π s^w inside each band: proximity, timing,
-//               category, popularity, enriched, partnered, randomness.
-//               Name / Summary / Social stay off. Then the bought slots,
-//               also inside each band.
+//               category, popularity, enriched, randomness.
+//               Name / Summary / Social stay off.
 //
-// Partner bias cannot live inside the spatial index. Fetch the admitted pool
+// The blend cannot live inside the spatial index. Fetch the admitted pool
 // first, then rank. Do not pre-order by distance and cut.
 //
 // THE RADIUS IS STILL THE FIRST QUERY'S BOX. A located guest whose radius
@@ -247,9 +246,6 @@ Deno.serve(async (req) => {
           ),
           guestGeo,
           swipeLineupWeights(cfg),
-          // The bought lane, live since MESITA-1855. `ranked: false` already
-          // bypasses this whole branch, so slotting never runs on pool order.
-          cfg.slotting,
           cfg.params,
           {
             categories: predicates.categories,

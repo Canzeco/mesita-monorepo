@@ -65,10 +65,14 @@ export default async function ConsumerShellLayout({
   // cookies can be saved. No session here means that failed (sign-ins off, or
   // rate-limited). Sending the guest to /web would bounce straight back to
   // Home and loop forever, so the shell says so instead (Bugbot, PR #1995).
+  //
+  // It keeps the phone menu below md like every other /web screen
+  // (MESITA-2130): a screen with no menu at phone width is a dead end.
   if (!user && surface === "web") {
     return (
       <WebFrame>
         <DownloadAppScreen />
+        <BottomNav className="md:hidden" />
       </WebFrame>
     );
   }

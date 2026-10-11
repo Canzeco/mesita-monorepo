@@ -115,7 +115,7 @@ const DELETE_VERB = /\.delete\s*\(/;
 // ── PLACE (place_profiles, profiles) — bootstrapped from a real findWriters() run ──
 const PLACE_PROFILE_UPDATE_ALLOWLIST = [
   "_shared/place-doc.ts", // THE place door (writePlace, MESITA-1279/#1164) — not actually caught by this scan (table is a parameterized arg, not a literal .from("place_profiles")), listed for a future reader's clarity
-  "_shared/field-correction-writer.ts", // enrichment field pins + proposal queue (MESITA-2029)
+  "_shared/field-correction-writer.ts", // enrichment field pins (MESITA-2029)
   "_shared/place-embeddings.ts",
   "_shared/save-place.ts",
   "_shared/social-followers.ts",
@@ -143,20 +143,9 @@ Deno.test("PLACE: no new writer of place_profiles/profiles outside the allowlist
 // dispatch (`admin.from(args.table)`), which this literal-string scan cannot
 // and should not match.
 //
-// MESITA-1892 PUT REAL WRITERS ON IT: the organization layer's columns
-// landed on `places` when the tenant boundary moved. MESITA-2090 deleted the
-// partnership switch, the Stripe webhook and the legal-identity writer with
-// the business console, which leaves one. A raw `.from("places")` write is
-// allowed only where the door would cost a guarantee, and each entry says
-// which one.
-const PLACE_ROW_UPDATE_ALLOWLIST: string[] = [
-  // REAL WRITER of places.stripe_billing_customer_id, compare-and-set
-  // (`.is(col, null)`), which is the whole race guard: two concurrent
-  // checkouts must not mint two Stripe Customers for one place. An
-  // unconditional door write would let the loser overwrite the winner's
-  // anchor, and billing history would fork silently.
-  "_shared/stripe-billing.ts",
-];
+// It is empty again. A raw `.from("places")` write is allowed only where the
+// door would cost a guarantee, and an entry here has to say which one.
+const PLACE_ROW_UPDATE_ALLOWLIST: string[] = [];
 
 Deno.test("PLACE ROW: no new writer of places outside the allowlist", async () => {
   const found = await findWriters("places", WRITE_VERBS);
@@ -174,20 +163,6 @@ Deno.test("CONSUMER: no new writer of consumers outside the allowlist", async ()
   const found = await findWriters("consumers", WRITE_VERBS);
   const extra = found.filter((f) => !CONSUMER_ALLOWLIST.includes(f));
   assertEquals(extra, [], `new direct writer(s) of consumers: ${extra.join(", ")}`);
-});
-
-// ── TICKET (visit_tickets) — ratchet only ─────────────────────────────
-// Every writer — the ticket door (`_shared/ticket-doc.ts`), Ojo, the
-// validate/consumer/business ticket functions — went with the ticket flow
-// in MESITA-2090 (MVP First Stage). The table stays until the Second Stage
-// schema drop, so the ratchet stays at zero: any new writer is a new
-// decision.
-const TICKET_ALLOWLIST: string[] = [];
-
-Deno.test("TICKET: no new writer of visit_tickets outside the allowlist", async () => {
-  const found = await findWriters("visit_tickets", WRITE_VERBS);
-  const extra = found.filter((f) => !TICKET_ALLOWLIST.includes(f));
-  assertEquals(extra, [], `new direct writer(s) of visit_tickets: ${extra.join(", ")}`);
 });
 
 // ── RESERVATION (reservation_tickets) ───────────────────────────────────
@@ -237,31 +212,23 @@ Deno.test("CONFIG: no new writer of app_config outside the allowlist", async () 
 
 // ── Guard test 4, refusal half ──────────────────────────────────────────
 //
-// Scope: hard DELETE on one of the six aggregates' OWN row — place_profiles,
-// profiles, consumers, visit_tickets, reservation_tickets, places
-// (MESITA-1284 — this table was missing from both ratchets below). Deliberately NOT
-// in scope: satellite/audit tables (place_creation_attempts,
-// nearby_google_attempts,
-// place_verifications, place_members, place_invites,
-// consumer_review_claims) whose own insert/delete is normal operation, not
-// a deletion-law question.
+// Scope: hard DELETE on one of the five aggregates' OWN row — place_profiles,
+// profiles, consumers, reservation_tickets, places (MESITA-1284 — this table
+// was missing from both ratchets below). Deliberately NOT in scope:
+// satellite/audit tables (place_creation_attempts, nearby_google_attempts)
+// whose own insert/delete is normal operation, not a deletion-law question.
 //
-// Two of the four entries below are windowing false positives, VERIFIED by
-// reading the actual source rather than trusting the scan (per this PR's
-// own instructions not to trust an unverified claim): the window's 2000-char
-// forward reach from a `place_profiles`/`profiles`/`visit_tickets` .from() match
-// catches a genuinely unrelated .delete() a few lines later that targets a
-// satellite table, not the aggregate row itself. Left in the allowlist
-// (rather than "fixing" the scan to be chain-precise, which the spec this
-// PR follows explicitly says to leave as-is) with a comment naming the real
-// target, so a future reader is not misled and the scan technique can be
-// tightened later without this file silently going stale.
+// The window's 2000-char forward reach from an aggregate's .from() match can
+// catch a genuinely unrelated .delete() a few lines later that targets a
+// satellite table, not the aggregate row itself. An entry that is only that
+// says so in its comment, naming the real target, so a future reader is not
+// misled and the scan can be tightened later without this file going stale.
 const HARD_DELETE_ALLOWLIST = [
   "_shared/save-place.ts", // real: deletes the place_profiles row it just inserted, on a failed downstream step (compensating-write pattern)
 ];
 
-Deno.test("DELETION LAW (refusal half): no new hard DELETE on a place/consumer/ticket/reservation row", async () => {
-  const tables = ["place_profiles", "profiles", "consumers", "visit_tickets", "reservation_tickets", "places"];
+Deno.test("DELETION LAW (refusal half): no new hard DELETE on a place/consumer/reservation row", async () => {
+  const tables = ["place_profiles", "profiles", "consumers", "reservation_tickets", "places"];
   const found = new Set<string>();
   for (const t of tables) for (const f of await findWriters(t, DELETE_VERB)) found.add(f);
   const extra = [...found].filter((f) => !HARD_DELETE_ALLOWLIST.includes(f));

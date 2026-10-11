@@ -39,14 +39,12 @@ const asIs = (raw: unknown): unknown => raw ?? null;
 
 export const CONFIG_SECTIONS: Record<string, ConfigSection> = {
   // ── Uniform: read the column, write the whole blob back ──────────────────
-  // The ranking model: one exponent per earned signal, plus the bought slot
-  // lane. The signal vocabulary is code-defined; this serves numbers, never
-  // the list.
+  // The ranking model: one exponent per earned signal. The signal vocabulary
+  // is code-defined; this serves numbers, never the list.
   discovery: { column: "discovery_config", normalize: normalizeDiscoveryConfig },
   //
   // controls · ojo · orders · visits · rewards left with the admin pages that
-  // reached them (MESITA-2088, the MVP First Stage). Their columns stay on
-  // app_config until the schema PR (MESITA-2091); the engines still read them.
+  // reached them (MESITA-2088, the MVP First Stage).
 
   // ── Own write: the validation the generic path cannot express ────────────
   // Flat body, per-key merge, ranged knobs and the image-funnel lock.

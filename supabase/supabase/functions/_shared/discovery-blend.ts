@@ -1,49 +1,10 @@
-// DISCOVERY BLEND — how the nine earned signals compose, and where the bought
-// lane attaches (Docs › Discovery §A, MESITA-1196).
+// DISCOVERY BLEND — how the eight earned signals compose (Docs › Discovery
+// §A, MESITA-1196).
 //
-// TWO LANES, AND THEY NEVER MIX.
-//
-//   Lane 1 · EARNED    blend() — the product of `s^w` across the nine
-//                      signals in discovery-signals.ts. It cannot read a rate
-//                      or strategy. Partnered may read `plan`; nothing else
-//                      may. No signal reads `promoting` any more
-//                      (MESITA-1858) — that fact is lane 2's entirely.
-//   Lane 2 · BOUGHT    slotPromoted() — a pass over the ALREADY-RANKED list
-//                      that moves promoting places forward into fixed slot
-//                      positions. It cannot read a score, because it does not
-//                      take one.
-//
-// That separation is the answer to the open question Docs §A left standing
-// ("how they stay separable is not settled, and picking an exponent is not an
-// answer"). Money still buys a POSITION via slotting, never an extra
-// exponent. Promotion is a separate earned fact (live discount now), not
-// the slotting pass. With slotting on or off, the relative order of every
-// place that did not buy a slot stays identical.
-//
-// LANE 2 ONLY STARTED RUNNING AT MESITA-1855, and this comment described it
-// as live for three weeks before that. `slotPromoted` and `discoveryRank` had
-// zero production callers: Word, Map and Scroll all called `rankByBlend`
-// directly, and three tests ASSERTED the absence as though it were an
-// invariant. So the only live path from what a place pays to where it ranked
-// was the `mesita_level` exponent — precisely the thing this file says money
-// must not buy. Read that as a warning about this file rather than about that
-// bug: a header can describe an architecture nobody wired, and stay true-
-// looking for as long as nobody greps for the caller. `nearby-lineup.test.ts`
-// now asserts `discoveryRank` HAS a non-test caller, which is the assertion
-// that would have caught it.
-//
-// AND THE PROMOTING EXPONENT IS GONE (MESITA-1858). With lane 2 actually
-// running, `mesita_level` split into `enriched` and `partnered`, and the
-// promoting rung left the exponent entirely. Paying still moves one — a
-// deliberate, capped `partnered` — but a live DISCOUNT now buys only a
-// position, which is what this header always claimed it did.
-//
-// WHERE IT ATTACHES. Scroll slots over its single ranked deck, which is what
-// slotPromoted takes. Map slots INSIDE each of its listed lanes, never over
-// the concatenation: the partner/non-partner lane split is already a bought
-// mechanism, and promoting is a subset of partner (`isPlacePromoting` is
-// false on any unpaid plan), so a pass over the joined list would price the
-// same money twice and could move a place past a partner.
+// ONE PASS. blend() is the product of `s^w` across the eight signals in
+// discovery-signals.ts, and rankByBlend() sorts a pool by it. Nothing runs
+// after the sort and nothing reorders on money: the order a guest is served
+// is the order the signals earned, ties broken by incoming order.
 //
 // WEIGHTS ARE EXPONENTS, NOT MULTIPLIERS. Each signal enters as `s^w`. Since
 // s ∈ [0,1]:
@@ -67,7 +28,7 @@
 // the library returns a hard 0 except Proximity past its maximum — see the
 // deletion-vs-demotion note in discovery-signals.ts.
 //
-// THE PRODUCT IS NOT NORMALIZED and does not need to be. Nine signals near 0.8
+// THE PRODUCT IS NOT NORMALIZED and does not need to be. Eight signals near 0.8
 // multiply to ~0.17, which looks alarming and means nothing: only the ORDER is
 // consumed. Taking a geometric mean (the nth root) would rescale every score
 // identically and change no comparison, at the cost of a pow() per place. The
@@ -84,7 +45,6 @@ import {
   type SignalParamBag,
   type SignalPlace,
 } from "./discovery-signals.ts";
-import { placePromotingLevel, type PromotingFields } from "./place-promoting.ts";
 
 /** One exponent per signal. */
 export type SignalWeights = Record<SignalKey, number>;
@@ -98,7 +58,7 @@ export type SignalParamsByKey = Partial<Record<SignalKey, SignalParamBag>>;
  * `parts` records what each signal CONTRIBUTED, which for a disabled signal is
  * NEUTRAL — not what it would have said if it were on. That distinction is
  * load-bearing in both directions: a disabled signal is never CALLED (so a
- * pool of a thousand places does not pay for nine signals when the operator
+ * pool of a thousand places does not pay for eight signals when the operator
  * switched four off, and Randomness cannot spend a `Math.random()` whose value
  * is thrown away), and the debug payload therefore reports the blend that
  * actually ran rather than a hypothetical one. A part that reads 1 means "this
@@ -142,7 +102,7 @@ export function blend(
   return { score: Number.isFinite(score) ? score : 0, parts };
 }
 
-// ── Lane 1 · the earned ranking ──────────────────────────────────────────────
+// ── The ranking ──────────────────────────────────────────────────────────────
 
 export type Ranked<T> = {
   row: T;
@@ -172,115 +132,6 @@ export function rankByBlend<T>(
     })
     .sort((a, b) => b.score - a.score || a.i - b.i)
     .map(({ row, score, parts }) => ({ row, score, parts }));
-}
-
-// ── Lane 2 · the bought slots ────────────────────────────────────────────────
-
-/**
- * How the bought lane is priced: every Nth position in the output is a slot a
- * promoting place may be MOVED FORWARD into. Not inserted — moved. A place
- * appears exactly once either way; buying a strategy changes where it sits,
- * never whether it exists and never what it scored.
- */
-export type SlottingConfig = {
-  enabled: boolean;
-  /** 1-based: everyNth = 5 makes positions 5, 10, 15… bought slots. */
-  everyNth: number;
-};
-
-/**
- * Which promoting place fills a slot: highest strategy tier first (dominant 3
- * › aggressive 2 › conservative 1), and inside a tier the one that already
- * ranked best on merit. So a Strategy buys PRIORITY IN THE QUEUE FOR SLOTS,
- * and among places that bought the same thing, the earned ranking still
- * decides. Money never reorders places against each other on merit; it only
- * decides who gets the next bought position.
- */
-function promotedQueue<T>(
-  ranked: Ranked<T>[],
-  promoting: (row: T) => PromotingFields | null | undefined,
-  now: Date,
-): { index: number; tier: number }[] {
-  return ranked
-    .map((r, index) => ({ index, tier: placePromotingLevel(promoting(r.row), now) }))
-    .filter((x) => x.tier > 0)
-    .sort((a, b) => b.tier - a.tier || a.index - b.index);
-}
-
-/**
- * The bought lane. Takes the earned order in, returns the served order out.
- *
- * INVARIANT (asserted in discovery-blend.test.ts): removing every promoted row
- * from the output leaves the earned order untouched. This function may only
- * ever pull a row FORWARD out of the earned sequence; everything it does not
- * touch keeps its relative position. That is the machine-checkable form of
- * "rank is never for sale".
- */
-export function slotPromoted<T>(
-  ranked: Ranked<T>[],
-  promoting: (row: T) => PromotingFields | null | undefined,
-  cfg: SlottingConfig,
-  now: Date = new Date(),
-): Ranked<T>[] {
-  if (!cfg.enabled) return ranked;
-  const everyNth = Math.max(2, Math.floor(cfg.everyNth));
-  if (!Number.isFinite(everyNth) || ranked.length === 0) return ranked;
-
-  const queue = promotedQueue(ranked, promoting, now);
-  if (queue.length === 0) return ranked;
-
-  const taken = new Set<number>();
-  const out: Ranked<T>[] = [];
-  let queueAt = 0;
-  let earnedAt = 0;
-
-  const nextEarned = (): Ranked<T> | null => {
-    while (earnedAt < ranked.length && taken.has(earnedAt)) earnedAt += 1;
-    if (earnedAt >= ranked.length) return null;
-    const pick = ranked[earnedAt];
-    taken.add(earnedAt);
-    return pick;
-  };
-
-  const nextPromoted = (): Ranked<T> | null => {
-    while (queueAt < queue.length && taken.has(queue[queueAt].index)) queueAt += 1;
-    if (queueAt >= queue.length) return null;
-    const { index } = queue[queueAt];
-    taken.add(index);
-    return ranked[index];
-  };
-
-  for (let position = 1; position <= ranked.length; position += 1) {
-    const isSlot = position % everyNth === 0;
-    // A slot with nobody left to fill it falls back to merit rather than
-    // holding a gap — an empty card is worse for everyone than an earned one.
-    const pick = (isSlot ? nextPromoted() ?? nextEarned() : nextEarned());
-    if (!pick) break;
-    out.push(pick);
-  }
-
-  return out;
-}
-
-// ── The whole pipeline ───────────────────────────────────────────────────────
-
-/**
- * Earned blend, then bought slots. The one entry point an engine calls, so no
- * surface can accidentally run the lanes in the other order — slotting before
- * scoring would let a bought position survive a re-sort, which is the failure
- * this whole shape exists to prevent.
- */
-export function discoveryRank<T>(
-  rows: T[],
-  project: (row: T) => SignalPlace,
-  promoting: (row: T) => PromotingFields | null | undefined,
-  intent: SignalIntent,
-  weights: SignalWeights,
-  slotting: SlottingConfig,
-  params?: SignalParamsByKey,
-): Ranked<T>[] {
-  const earned = rankByBlend(rows, project, intent, weights, params);
-  return slotPromoted(earned, promoting, slotting, intent.now ?? new Date());
 }
 
 /** Re-exported so an engine imports one module, not three. */

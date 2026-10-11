@@ -76,11 +76,11 @@ The singleton rule is the one that silently breaks. Check it first.
 1.5 **`admin_reset_database` / `admin_reset_preserve` coverage.** Survivors are DATA in
     `public.admin_reset_preserve` (read at run time — not an inlined array). Check:
     (a) live function body still `SELECT`s from `admin_reset_preserve` and still asserts the
-    required core (`app_config`, `super_admins`, vocabularies, and the two plan
-    catalogs `consumer_plans` / `project_plans`) before
+    required core (`app_config`, `super_admins`, `place_categories`, `place_families`,
+    `place_tags`, `consumer_code_counter`) before
     truncate; (b) every row in `admin_reset_preserve` names a real `public` base table;
     (c) required admin-config survivors are present in the registry (`app_config`,
-    `super_admins`, `consumer_plans`, `project_plans` at minimum); (d) every *other* public base table is in
+    `super_admins` at minimum); (d) every *other* public base table is in
     the wipe set (new operational tables must NOT land in the registry by accident). A
     CREATE OR REPLACE that re-inlines a stale keep-list is a P0 — the function must read
     the registry. (The old `preserved_media_assets:true` return flag is gone — do not
@@ -165,11 +165,9 @@ The business-truth layer. These are the "and shit" checks — pairs of facts tha
     consumers, members. Reservations/rewards/events pointing at nothing.
 3.3 **Taxonomy congruence.** Every `category` ∈ the canonical 100 · every tag ∈ the canonical
     200 · all snake_case · no free-text leakage.
-3.4 **Nomenclature lock.** Business `plan` ∈ {free, pro, ultra} · consumer `class_key`
-    is a metal ∈ {bronze, silver, gold, diamond} · consumer `plan` ∈ {free, premium}.
-    Leftover keys (`standard`/`premium`/`influencer`/`aura`) must already be mapped
-    by `identityForClassKey`; a live row still holding one is a finding. Retired
-    `magnetic` / legacy 2-class rows still findings.
+3.4 **Nomenclature lock.** `places.state` ∈ `place_state`, `places.content_state` ∈
+    `content_state`, `reservation_tickets.state` ∈ `reservation_state`; a value outside
+    its enum or a stray text column re-introducing plan/class/partner is a finding.
 3.5 **Reservations shape.** `products.reservations` = primary `{channel, value}` + `fallbacks[]`;
     shape is load-bearing. Channels must be members of the order in
     `app_config.reservations_config`. Malformed blobs, empty primaries, unknown channels.
@@ -213,20 +211,13 @@ exactly this reason (MESITA-1225).
 
 Never copy the list here. Not config pages: any route whose body is a
 `permanentRedirect` (grep, do not list). Known shims: `/adea-config`, `/db-config`,
-`/models-config`, `/verification-config`, `/ojo-config`. `/aura-*` is retired (stale
+`/models-config`. `/aura-*` is retired (stale
 doc, not a missing page). `agents_config` is EF-managed with no page yet.
 `scoring_config` was Lineup (MESITA-1048) — no reader is a 4.3 finding, not a page.
 
-**Ojo is the one that must not be skipped**, and it no longer has a rail row —
-its knobs render inside **Visits** (`/visits-config`; blob still `ojo_config`),
-so auditing the rail alone misses it. The engine (`_shared/ojo-engine.ts`,
-MESITA-1034) reads them; `enabled` defaults off. A silently un-staged knob
-reads to an operator as a control that does something.
-
 4.1 **Blob exists and parses** in `app_config`, and validates against the TS schema the
-    admin page and the consuming EFs expect (e.g. `promos_config` carries the **v11**
-    additive bill engine; the page is Rewards on the matching
-    `/rewards-config` route, but the COLUMN keeps the older name).
+    admin page and the consuming EFs expect (e.g. `discovery_config` is read through
+    `normalizeDiscoveryConfig`; the admin Discovery page and the EFs must agree on its shape).
 4.2 **Shape skew.** Stored blob shape older/newer than its reader → the reader is silently
     falling back to defaults. This is the single most common invisible bug class here.
 4.3 **Dead knobs.** Every field in the blob: grep for a reader in EFs/apps. No reader = dead knob.
@@ -245,7 +236,8 @@ reads to an operator as a control that does something.
 5.2 **Direction rule.** Natural callers may invoke artificial callers, never the reverse.
 5.3 **Clients never touch the DB.** Grep app code for direct `supabase.from(` / `.rpc(`
     outside sanctioned layers. Include stale-table names (`businesses` / `units` / `venues` →
-    `managers` / `projects` / `places`; no compat views, so a stale `.from()` 500s in prod).
+    `projects` / `places`; no compat views, so a stale `.from()` 500s in prod). `managers`
+    is dropped too (MESITA-2091).
 5.4 **Dead & missing EFs.** Deployed EF with no caller anywhere in the repo · EF invoked by
     app code that does not exist or is not deployed (includes half-renamed slugs where the
     deployed app still calls the old name — do not report those as deletable).
@@ -340,8 +332,7 @@ grep count is not a finding. Example: `_shared/pulse-pieces.ts` vs Intake §A is
     Apps `apps/*/src/app` · Atlas `_shared/create-place.ts`, `_shared/categories*.ts`, `atlas-*` ·
     Intake `*enrich*`, `_shared/enrich-*.ts`, `_shared/channels*.ts` ·
     Discovery `*discover*`, `*filter*`, `_shared/embeddings*.ts` ·
-    Passport `_shared/class-doors.ts`, `_shared/consumer-*.ts`, `admin-web-grant-class` ·
-    Rewards `_shared/promo-strategy.ts`, `_shared/promo-rates.ts`, `_shared/discount-cap.ts`, `_shared/place-promoting.ts` ·
+    Passport `_shared/consumer-*.ts` · Rewards — no code; a page claiming shipped machinery IS the finding ·
     Visits `*visit*`, `_shared/business-ticket-billing.ts` ·
     Orders `*order*` (expect DESIGNED NOT BUILT) · Reservations `*reserv*` ·
     Checkout `*stripe*` · Credits — no code; a page claiming shipped machinery IS the finding ·

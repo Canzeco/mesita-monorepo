@@ -1,27 +1,15 @@
-// MESITA-1410 — money may not buy the whole deck, carried to MESITA-1858.
+// MESITA-1858 — an exponent that turns a signal into a filter is capped by
+// name.
 //
-// At decision time the money axis was one signal, `mesita_level`, and it was
-// entirely bought: `plan` is money and `promoting` is only true if the place
-// pays. It floored at LEVEL_LISTED = 0.04, so the promoting-over-listed ratio
-// was 25^w and Pato capped the exponent at 2 (a 625x span) rather than let an
-// operator reach the uniform 4 (390,625x), where money stops being a signal
-// and becomes a sort key.
+// `enriched` floors at ENRICHED_OFF = 0.15, so its span is ~6.67^w: 44x at
+// the ceiling of 2, ~1,975x at the uniform WEIGHT_MAX of 4 — a catalog
+// filtered to enriched-only wearing a weight's clothing.
 //
-// MESITA-1858 SPLIT THAT AXIS IN TWO and the cap had to be carried BY NAME.
-// This map is keyed on the literal signal key: had `mesita_level` simply left
-// it, `partnered` would have inherited the general ceiling of 4 and money's
-// exponent ceiling would have DOUBLED on merge day, with nothing failing.
-//
-// AND THE TEST THAT GUARDED IT WOULD HAVE GONE VACUOUS, NOT RED. The mirror
-// test below used to iterate `Object.entries(SIGNAL_WEIGHT_MAX)` — empty the
-// map and the loop body never runs and the test passes green with zero
-// coverage. It now asserts the map is NON-EMPTY and pins `partnered` by name,
-// in both packages.
-//
-// The arithmetic moved under the 2: `partnered` floors at PARTNERED_OFF = 0.2,
-// so its span is 5^w — 25x at the ceiling, 625x at the uniform max. These
-// tests pin the ceiling, not the reasoning; the numbers are written by hand
-// here on purpose, never derived from the function under test.
+// THE MIRROR TEST WOULD GO VACUOUS, NOT RED. Iterating
+// `Object.entries(SIGNAL_WEIGHT_MAX)` alone asserts nothing once the map is
+// empty, so these tests assert the map is NON-EMPTY and pin `enriched` by
+// name, in both packages. The numbers are written by hand here on purpose,
+// never derived from the function under test.
 
 import {
   assert,
@@ -40,7 +28,6 @@ import {
 } from "./discovery-config.ts";
 import {
   ENRICHED_OFF,
-  PARTNERED_OFF,
   SIGNAL_BLURBS,
   SIGNAL_KEYS,
   SIGNAL_LABELS,
@@ -67,30 +54,20 @@ Deno.test("the per-signal ceiling map is NOT empty — the vacuity guard", () =>
   );
 });
 
-Deno.test("Partnered's ceiling is 2, pinned by name, distinct from its default weight of 1", () => {
-  // The default weight (1, the value-preserving split) and the ceiling (2,
-  // Pato's MESITA-1410 decision carried forward at MESITA-1858) are two
+Deno.test("Enriched's ceiling is 2, pinned by name, distinct from its default weight of 1", () => {
+  // The default weight (1, value-preserving) and the ceiling (2) are two
   // different numbers on purpose: the default changes nothing on landing, and
   // the ceiling is how far an operator may turn the dial from the console.
-  assertEquals(weightMaxFor("partnered"), 2);
-  assertNotEquals(weightMaxFor("partnered"), DISCOVERY_DEFAULTS.weights.partnered);
-});
-
-Deno.test("Enriched's ceiling is 2 as well — recorded, not inherited", () => {
-  // MESITA-1858 asked for this to be decided and written down. Enriched floors
-  // at 0.15, so the uniform 4 would demote an unenriched place ~1,975x — a
-  // catalog filtered to enriched-only wearing a weight's clothing.
   assertEquals(weightMaxFor("enriched"), 2);
+  assertNotEquals(weightMaxFor("enriched"), DISCOVERY_DEFAULTS.weights.enriched);
   assertNotEquals(weightMaxFor("enriched"), WEIGHT_MAX);
 });
 
-Deno.test("only the two binaries are capped — the other seven keep the uniform ceiling", () => {
+Deno.test("only Enriched is capped — every other signal keeps the uniform ceiling", () => {
   for (const key of SIGNAL_KEYS) {
-    if (key === "partnered" || key === "enriched") continue;
+    if (key === "enriched") continue;
     assertEquals(weightMaxFor(key), WEIGHT_MAX, `${key} should keep WEIGHT_MAX`);
   }
-  // A cap equal to WEIGHT_MAX would be a no-op dressed as a guard.
-  assertNotEquals(weightMaxFor("partnered"), WEIGHT_MAX);
 });
 
 Deno.test("the retired mesita_level key carries no ceiling of its own", () => {
@@ -103,31 +80,23 @@ Deno.test("the retired mesita_level key carries no ceiling of its own", () => {
   assert(!(SIGNAL_KEYS as readonly string[]).includes("mesita_level"));
 });
 
-Deno.test("a console write above Partnered's ceiling is clamped, not accepted", () => {
+Deno.test("a console write above Enriched's ceiling is clamped, not accepted", () => {
   const cfg = normalizeDiscoveryConfig({
-    weights: { partnered: 4, enriched: 4, proximity: 4 },
+    weights: { enriched: 4, proximity: 4 },
   });
-  // The bought axis is held at its ceiling...
-  assertEquals(cfg.weights.partnered, 2);
   assertEquals(cfg.weights.enriched, 2);
-  // ...while an earned one is still free to reach the uniform max, so this is
-  // a targeted guard and not a global de-tuning.
+  // ...while every other signal is still free to reach the uniform max, so
+  // this is a targeted guard and not a global de-tuning.
   assertEquals(cfg.weights.proximity, 4);
 });
 
-Deno.test("the ceiling keeps the bought span an order of magnitude below the uniform max", () => {
-  // The arithmetic the ceiling exists for, written by hand. At the cap, a
-  // partner beats a free place by 25x — large, deliberately so, but a span
-  // the other eight signals can still argue with. At the uniform max (625x)
-  // far less so.
-  const span = (w: number) => (1 / PARTNERED_OFF) ** w;
-  assertEquals(span(weightMaxFor("partnered")), 25);
-  assertEquals(span(WEIGHT_MAX), 625);
-  // And Enriched's, which floors lower and so spans wider at the same w.
-  const enrichedSpan = (w: number) => (1 / ENRICHED_OFF) ** w;
-  assert(enrichedSpan(2) > 44 && enrichedSpan(2) < 45, "expected ~44.4x at w=2");
+Deno.test("the ceiling keeps Enriched's span well below the uniform max", () => {
+  // The arithmetic the ceiling exists for, written by hand.
+  const span = (w: number) => (1 / ENRICHED_OFF) ** w;
+  const atCap = span(weightMaxFor("enriched"));
+  assert(atCap > 44 && atCap < 45, "expected ~44.4x at w=2");
   assert(
-    enrichedSpan(WEIGHT_MAX) > 1_950 && enrichedSpan(WEIGHT_MAX) < 2_000,
+    span(WEIGHT_MAX) > 1_950 && span(WEIGHT_MAX) < 2_000,
     "expected ~1,975x at the uniform max",
   );
 });
@@ -138,7 +107,7 @@ Deno.test("the admin console mirrors the ceiling it renders — non-empty, and b
   // correctness bug — it is a console that offers a number the backend then
   // silently refuses, which is worse to debug than a rejected write.
   //
-  // THREE ASSERTIONS, NOT ONE LOOP. The loop alone was the vacuous test: with
+  // TWO ASSERTIONS, NOT ONE LOOP. The loop alone was the vacuous test: with
   // an empty map it asserted nothing at all.
   const twinKeys = CATALOG_SRC.match(
     /SIGNAL_WEIGHT_MAX: Partial<Record<SignalKey, number>> = \{([^}]*)\}/,
@@ -148,12 +117,8 @@ Deno.test("the admin console mirrors the ceiling it renders — non-empty, and b
     /\w+:\s*\d/.test(twinKeys[1]),
     "catalog.ts SIGNAL_WEIGHT_MAX is empty — the console just offered a 4",
   );
-  // By name, both halves, so neither can quietly drop the money cap.
-  assertEquals(weightMaxFor("partnered"), 2);
-  assert(
-    /partnered:\s*2\s*,/.test(CATALOG_SRC),
-    "catalog.ts must mirror SIGNAL_WEIGHT_MAX.partnered = 2",
-  );
+  // By name, so the cap cannot quietly drop out of either package.
+  assertEquals(weightMaxFor("enriched"), 2);
   assert(
     /enriched:\s*2\s*,/.test(CATALOG_SRC),
     "catalog.ts must mirror SIGNAL_WEIGHT_MAX.enriched = 2",
@@ -189,7 +154,7 @@ Deno.test("both packages agree on the wired-mode column set", () => {
   );
 });
 
-Deno.test("both packages agree on the nine signal keys", () => {
+Deno.test("both packages agree on the eight signal keys", () => {
   // Mode keys and signal keys are PERSISTED. A rename on one side alone does
   // not fail a type check — it silently resets live config to defaults.
   const listed = CATALOG_SRC.match(/export const SIGNAL_KEYS = \[([^\]]*)\]/);
@@ -238,9 +203,9 @@ Deno.test("normalize survives a config with no weights at all", () => {
 // ── The deploy window (MESITA-1858) ─────────────────────────────────────────
 //
 // web-admin auto-deploys on merge; Edge Functions deploy by hand. Between the
-// two, one side knows nine signal keys and the other knows eight. A normalizer
-// that rebuilds `weights` from its own SIGNAL_KEYS evicts whatever the other
-// side needs, and the operator's number is gone with nothing in any log.
+// two, each side can know a different signal key list. A normalizer that
+// rebuilds `weights` from its own SIGNAL_KEYS evicts whatever the other side
+// needs, and the operator's number is gone with nothing in any log.
 
 Deno.test("a pre-migration blob survives a normalize round-trip", () => {
   const before = {
@@ -274,23 +239,71 @@ Deno.test("an unrelated Save does not lose the legacy key — the actual failure
   assertEquals(afterSave.chat.prompt, "after");
 });
 
-Deno.test("the legacy key is READ as a deprecated alias, onto both halves", () => {
+Deno.test("the legacy key is READ as a deprecated alias, onto Enriched", () => {
   resetLegacySignalWarnings();
   const cfg = normalizeDiscoveryConfig({ weights: { mesita_level: 2 } });
-  // Folded onto both, because Level was both facts at once: dropping the
-  // operator's number back to the default 1 on either half is a silent
-  // re-tune, not a migration.
+  // Dropping the operator's number back to the default 1 is a silent re-tune,
+  // not a migration.
   assertEquals(cfg.weights.enriched, 2);
-  assertEquals(cfg.weights.partnered, 2);
 });
 
 Deno.test("an explicitly-set new key wins over the legacy alias", () => {
   resetLegacySignalWarnings();
   const cfg = normalizeDiscoveryConfig({
-    weights: { mesita_level: 2, partnered: 0.5, enriched: 1.25 },
+    weights: { mesita_level: 2, enriched: 1.25 },
   });
-  assertEquals(cfg.weights.partnered, 0.5);
   assertEquals(cfg.weights.enriched, 1.25);
+});
+
+Deno.test("the live blob, mesita_level and partnered included, still loads and still ranks", () => {
+  // The shape a blob saved before this signal list carries: the retired
+  // `mesita_level` alias, a stored `partnered` exponent on the global vector
+  // and on both columns, its empty param bag, the retired `slotting` box and
+  // the retired Deep `partnerCount`. None of it may throw — a throw here is
+  // swallowed by loadDiscoveryConfig into DISCOVERY_DEFAULTS for the whole
+  // config, on every request, silently.
+  resetLegacySignalWarnings();
+  const original = console.warn;
+  console.warn = () => {};
+  let cfg: ReturnType<typeof normalizeDiscoveryConfig>;
+  try {
+    cfg = normalizeDiscoveryConfig({
+      weights: { mesita_level: 2, partnered: 1.5, proximity: 1.25 },
+      weightsByMode: {
+        map: { partnered: 2, proximity: 0.5 },
+        swipe: { partnered: 1, timing: 1.5 },
+      },
+      params: { partnered: {}, proximity: { maxKm: 30 } },
+      slotting: { enabled: true, everyNth: 5 },
+      name: { deep: { partnerCount: 3, mesitaCount: 4 } },
+    });
+  } finally {
+    console.warn = original;
+  }
+  assert(!(SIGNAL_KEYS as readonly string[]).includes("partnered"));
+  // `mesita_level` lands on Enriched, and the operator's other numbers stand.
+  assertEquals(cfg.weights.enriched, 2);
+  assertEquals(cfg.weights.proximity, 1.25);
+  assertEquals(cfg.weightsByMode.map.proximity, 0.5);
+  assertEquals(cfg.weightsByMode.swipe.timing, 1.5);
+  assertEquals(cfg.params.proximity.maxKm, 30);
+  assertEquals(cfg.name.deep.mesitaCount, 4);
+  // The retired keys are gone from every rebuilt branch...
+  for (const mode of WEIGHTED_MODE_KEYS) {
+    assertEquals(Object.keys(cfg.weightsByMode[mode]).sort(), [...SIGNAL_KEYS].sort());
+  }
+  assertEquals(Object.keys(cfg.params).sort(), [...SIGNAL_KEYS].sort());
+  assertEquals("slotting" in cfg, false);
+  assertEquals("partnerCount" in cfg.name.deep, false);
+  // ...while the global vector keeps the stored number as inert storage (the
+  // deploy window above), which no engine can read: every ranking vector is
+  // built from SIGNAL_KEYS.
+  assertEquals((cfg.weights as unknown as Record<string, number>).partnered, 1.5);
+  for (const mode of ["word", "map", "catalog", "swipe", "chat", "favorites"] as const) {
+    const w = weightsForMode(mode, cfg.weights, cfg.weightsByMode);
+    assertEquals(Object.keys(w).sort(), [...SIGNAL_KEYS].sort(), mode);
+  }
+  assertEquals(weightsForMode("swipe", cfg.weights, cfg.weightsByMode).enriched, 2);
 });
 
 Deno.test("dropping a legacy key logs ONCE, structured", () => {
@@ -314,7 +327,7 @@ Deno.test("dropping a legacy key logs ONCE, structured", () => {
   const payload = lines[0][1] as Record<string, unknown>;
   assertEquals(payload.key, "mesita_level");
   assertEquals(payload.value, 2);
-  assertEquals(payload.foldedTo, ["enriched", "partnered"]);
+  assertEquals(payload.foldedTo, ["enriched"]);
   // Structured, not interpolated: a grep-able object, not a sentence.
   assertEquals(typeof payload, "object");
 });
@@ -328,12 +341,12 @@ Deno.test("dropping a legacy key logs ONCE, structured", () => {
 
 Deno.test("a per-mode exponent round-trips, clamped to that signal's ceiling", () => {
   const cfg = normalizeDiscoveryConfig({
-    weightsByMode: { map: { proximity: 2, partnered: 4 } },
+    weightsByMode: { map: { proximity: 2, enriched: 4 } },
   });
   assertEquals(cfg.weightsByMode.map.proximity, 2);
-  // Partnered's ceiling is 2, not the uniform 4 — money may not become a sort
-  // key from the console, on any mode.
-  assertEquals(cfg.weightsByMode.map.partnered, 2);
+  // Enriched's ceiling is 2, not the uniform 4 — enrichment may not become a
+  // filter from the console, on any mode.
+  assertEquals(cfg.weightsByMode.map.enriched, 2);
   // Scroll is untouched by a Map-only blob.
   assertEquals(
     cfg.weightsByMode.swipe,

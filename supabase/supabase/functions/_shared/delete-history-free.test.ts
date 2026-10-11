@@ -16,7 +16,6 @@ Deno.test("validateConsumerPatch: accepts deleted_at ISO or null", () => {
 });
 
 function fakeHistoryAdmin(opts: {
-  visit: number;
   reservations: number;
   updateError?: string;
   deleteUserError?: string;
@@ -33,11 +32,10 @@ function fakeHistoryAdmin(opts: {
   };
   return {
     from(table: string) {
-      if (table === "visit_tickets" || table === "reservation_tickets") {
-        const n = table === "visit_tickets" ? opts.visit : opts.reservations;
+      if (table === "reservation_tickets") {
         return {
           select: () => ({
-            eq: () => Promise.resolve({ count: n, error: null }),
+            eq: () => Promise.resolve({ count: opts.reservations, error: null }),
           }),
         };
       }
@@ -58,18 +56,9 @@ function fakeHistoryAdmin(opts: {
   } as unknown as SupabaseClient;
 }
 
-Deno.test("consumerHasTransactionHistory: visits count as history", async () => {
-  const res = await consumerHasTransactionHistory(
-    fakeHistoryAdmin({ visit: 2, reservations: 0 }),
-    "c1",
-  );
-  assert(res.ok);
-  assertEquals(res.hasHistory, true);
-});
-
 Deno.test("consumerHasTransactionHistory: reservations count as history", async () => {
   const res = await consumerHasTransactionHistory(
-    fakeHistoryAdmin({ visit: 0, reservations: 1 }),
+    fakeHistoryAdmin({ reservations: 1 }),
     "c1",
   );
   assert(res.ok);
@@ -78,7 +67,7 @@ Deno.test("consumerHasTransactionHistory: reservations count as history", async 
 
 Deno.test("consumerHasTransactionHistory: empty tickets is history-free", async () => {
   const res = await consumerHasTransactionHistory(
-    fakeHistoryAdmin({ visit: 0, reservations: 0 }),
+    fakeHistoryAdmin({ reservations: 0 }),
     "c1",
   );
   assert(res.ok);
@@ -87,7 +76,7 @@ Deno.test("consumerHasTransactionHistory: empty tickets is history-free", async 
 
 Deno.test("deleteConsumerAccount: history-free hard-deletes auth", async () => {
   const res = await deleteConsumerAccount(
-    fakeHistoryAdmin({ visit: 0, reservations: 0 }),
+    fakeHistoryAdmin({ reservations: 0 }),
     "c1",
   );
   assert(res.ok);
@@ -96,7 +85,7 @@ Deno.test("deleteConsumerAccount: history-free hard-deletes auth", async () => {
 
 Deno.test("deleteConsumerAccount: history soft-deletes and never calls auth.deleteUser", async () => {
   let deleted = false;
-  const admin = fakeHistoryAdmin({ visit: 1, reservations: 0 });
+  const admin = fakeHistoryAdmin({ reservations: 1 });
   (admin as unknown as { auth: { admin: { deleteUser: () => Promise<unknown> } } })
     .auth.admin.deleteUser =
     () => {

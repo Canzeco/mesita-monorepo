@@ -11,9 +11,6 @@
 //               here: `crenupHighWater` in crenup-ladder.ts owns it, beside the
 //               ladder it counts. This file kept a rival 0-3 stage level until
 //               MESITA-1218; two numbers for one fact disagreed on every row.
-//   verified    an approved project_verifications row (ownership proof).
-//   partner     plan != free — the place pays Mesita.
-//   promoting   a live discount right now (place-promoting.ts).
 //
 // Seeded and listed live here because two surfaces read them — admin-web-search-
 // places (the Single Place table) and admin-web-get-overview (the State box
@@ -45,10 +42,9 @@ export function isPlaceSeeded(googlePlaceId: unknown): boolean {
  * exclude rows that `state` alone still calls listed. If you add one, either
  * add it to the policy or check content_state here.
  *
- * Not to be confused with `listing_type`, which is a commercial tier, nor with
- * the discovery pool: _shared/place-pool.ts is stricter still (state='active'
- * only), so a `lead` place is reachable by link and search but never pooled for
- * Memo's RAG leg.
+ * Not to be confused with the discovery pool: _shared/place-pool.ts is
+ * stricter still (state='active' only), so a `lead` place is reachable by link
+ * and search but never pooled for Memo's RAG leg.
  */
 export const LISTED_STATES: readonly string[] = ["active", "lead"];
 

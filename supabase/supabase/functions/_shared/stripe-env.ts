@@ -27,9 +27,7 @@
 //     A missing STRIPE_SECRET_KEY_TEST means "no test key" — it does not mean
 //     "use the live one".
 //
-// This module only says WHICH Stripe account is addressed. Whether it may be
-// charged is still liveChargesBlocked() / STRIPE_ALLOW_LIVE in
-// stripe-billing.ts (MESITA-37), untouched by the mode switch.
+// This module only says WHICH Stripe account is addressed.
 
 export type StripeMode = "test" | "live";
 
@@ -158,7 +156,7 @@ export function stripeSecretKey(
 /** Does the resolved key address the universe STRIPE_MODE claims? A false
  *  here is the MESITA-1422 cell: an sk_live_ key under an env that believes
  *  it is testing. Nothing in this module refuses it — the health probe
- *  reports it and liveChargesBlocked() still guards every charge. */
+ *  reports it. */
 export function stripeKeyMatchesMode(key: string, mode: StripeMode): boolean {
   return key.startsWith("sk_live_") === (mode === "live");
 }

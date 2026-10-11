@@ -19,10 +19,9 @@ import { EmptyState, SkeletonRow } from "@/components/shared";
 // Notifications is YOUR activity and nothing else (Pato, 2026-08-17): an
 // inbox of things that happened to YOU, with no switcher.
 //
-// ONLY RESERVATION ROWS RENDER. `consumer_notifications` holds other kinds
-// too and the list EF returns every row; this screen shows the ones a
-// booking wrote (`RESERVATION_KINDS`), because those are the only ones that
-// name something the guest can act on here.
+// ONLY RESERVATION ROWS RENDER. The list EF already returns only the kinds a
+// booking writes; filtering on `RESERVATION_KINDS` here keeps a row this
+// screen cannot render off the list.
 export function NotificationsClient() {
   const supabase = useBrowserSupabase();
   const [rows, setRows] = useState<ConsumerNotification[]>([]);

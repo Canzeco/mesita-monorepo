@@ -46,7 +46,6 @@ describe("Discovery function APIs", () => {
         ["proximity", []],
         ["timing", []],
         ["enriched", []],
-        ["partnered", []],
         ["popularity", []],
         ["randomness", []],
       ].sort(),
@@ -67,7 +66,6 @@ describe("Discovery function APIs", () => {
       "proximity",
       "timing",
       "enriched",
-      "partnered",
       "popularity",
       "randomness",
     ]);
@@ -76,14 +74,13 @@ describe("Discovery function APIs", () => {
     expect(SIGNAL_KEYS).not.toContain("promoting");
     expect(SIGNAL_KEYS).not.toContain("semantic");
     expect(SIGNAL_KEYS).toContain("enriched");
-    expect(SIGNAL_KEYS).toContain("partnered");
-    // Split into the two binaries (MESITA-1858). The key is PERSISTED, so
+    // No signal reads money.
+    expect(SIGNAL_KEYS).not.toContain("partnered");
+    // Mesita Level became Enriched (MESITA-1858). The key is PERSISTED, so
     // this is what says the rename completed on the console side too.
     expect(SIGNAL_KEYS).not.toContain("mesita_level");
     // Never bare `level` — `places.price_level` owns that word on a place.
     expect(SIGNAL_KEYS).not.toContain("level");
-    // Never bare `partner` — that is the consumer wire boolean.
-    expect(SIGNAL_KEYS).not.toContain("partner");
     expect(SIGNAL_KEYS).toContain("randomness");
     expect(SIGNAL_KEYS).toContain("name");
     expect(SIGNAL_KEYS).toContain("summary");
@@ -101,7 +98,6 @@ describe("Discovery function APIs", () => {
     expect(cfg.weights.summary).toBe(2);
     expect(cfg.weights.name).toBe(1);
     expect(cfg.weights.enriched).toBe(1);
-    expect(cfg.weights.partnered).toBe(1);
     expect(cfg.params.summary.unembedded).toBe(0.2);
     // The legacy key itself is PRESERVED now (MESITA-1858, the additive
     // window) — it is the fold that matters, not the deletion.
@@ -124,11 +120,11 @@ describe("Discovery function APIs", () => {
 
   it("a per-mode column round-trips, clamps, and seeds from the blob's own vector", () => {
     const tuned = coerceConfig({
-      weightsByMode: { map: { proximity: 2, partnered: 4 } },
+      weightsByMode: { map: { proximity: 2, enriched: 4 } },
     });
     expect(tuned.weightsByMode.map.proximity).toBe(2);
-    // Partnered caps at 2, not the uniform 4, on every mode.
-    expect(tuned.weightsByMode.map.partnered).toBe(2);
+    // Enriched caps at 2, not the uniform 4, on every mode.
+    expect(tuned.weightsByMode.map.enriched).toBe(2);
     expect(tuned.weightsByMode.swipe).toEqual(DEFAULT_CONFIG.weights);
 
     // THE MIGRATION. The live blob has hand-tuned GLOBAL exponents and no
@@ -281,19 +277,14 @@ describe("Discovery function APIs", () => {
     expect(modeReturnsEntity("map", "social")).toBe(false);
   });
 
-  it("three nested place types: Map picks the ring, Feed and Scroll need enrichment", () => {
-    // The band IS `Google Places ⊃ Mesita Enriched Places ⊃ Mesita Partner
-    // Places` from nearby-places.ts, in that order. `listed` retired at
-    // MESITA-1856: a row existing is not a gate any mode runs.
-    expect(DISCOVERY_POOLS.map((p) => p.key)).toEqual([
-      "google",
-      "enriched",
-      "partner",
-    ]);
+  it("two nested place types: Map picks the ring, Feed and Scroll need enrichment", () => {
+    // The band IS `Google Places ⊃ Mesita Enriched Places` from
+    // nearby-places.ts, in that order. `listed` retired at MESITA-1856: a row
+    // existing is not a gate any mode runs.
+    expect(DISCOVERY_POOLS.map((p) => p.key)).toEqual(["google", "enriched"]);
     expect(DISCOVERY_POOLS.map((p) => p.label)).toEqual([
       "Google Places",
       "Mesita Enriched Places",
-      "Mesita Partnered Places",
     ]);
     expect(
       (DISCOVERY_POOLS as readonly { key: string }[]).some(
@@ -301,24 +292,20 @@ describe("Discovery function APIs", () => {
       ),
     ).toBe(false);
     // Map is the one mode whose GUEST picks the ring — PlacesScope is
-    // exactly these three — and keepListedForScope refuses an unenriched row
-    // before it reads the scope at all.
+    // exactly these two — and isEnrichedListedRow refuses an unenriched row
+    // in either scope.
     expect(modeRequiresPool("map", "google")).toBe(true);
     expect(modeRequiresPool("map", "enriched")).toBe(true);
-    expect(modeRequiresPool("map", "partner")).toBe(true);
     // requireReady defaults true and Scroll hardcodes it, and requireReady
-    // IS the enrichment gate. Neither mode reaches for partners only.
+    // IS the enrichment gate.
     expect(modeRequiresPool("catalog", "google")).toBe(true);
     expect(modeRequiresPool("catalog", "enriched")).toBe(true);
-    expect(modeRequiresPool("catalog", "partner")).toBe(false);
     expect(modeRequiresPool("swipe", "google")).toBe(true);
     expect(modeRequiresPool("swipe", "enriched")).toBe(true);
-    expect(modeRequiresPool("swipe", "partner")).toBe(false);
     // A bookmark is always a Google-sourced place, and it is NOT gated on
     // enrichment: Create stubs get bookmarked too.
     expect(modeRequiresPool("favorites", "google")).toBe(true);
     expect(modeRequiresPool("favorites", "enriched")).toBe(false);
-    expect(modeRequiresPool("favorites", "partner")).toBe(false);
     // Word and Chat answer from whatever came back; no ring gate at all.
     for (const pool of DISCOVERY_POOLS) {
       expect(modeRequiresPool("word", pool.key), pool.key).toBe(false);
@@ -341,32 +328,16 @@ describe("Discovery function APIs", () => {
     expect(modeSignalState("map", "proximity")).toBe("on");
     expect(modeSignalState("map", "randomness")).toBe("zero");
     expect(modeSignalState("swipe", "randomness")).toBe("on");
-    // Splitting one on-signal into two is the identity transform: every mode
-    // Level was on for gets both halves, and no mode gains one.
+    // Every mode Level was on for reads Enriched, and no mode gains it.
     expect(modeSignalState("catalog", "enriched")).toBe("on");
     expect(modeSignalState("map", "enriched")).toBe("on");
     expect(modeSignalState("swipe", "enriched")).toBe("on");
     expect(modeSignalState("chat", "enriched")).toBe("on");
     expect(modeSignalState("word", "enriched")).toBe("off");
-    expect(modeSignalState("catalog", "partnered")).toBe("on");
-    expect(modeSignalState("swipe", "partnered")).toBe("on");
-    expect(modeSignalState("chat", "partnered")).toBe("on");
-    expect(modeSignalState("word", "partnered")).toBe("off");
     expect(modeSignalState("favorites", "proximity")).toBe("off");
     expect(
       SIGNAL_KEYS.every((key) => modeSignalState("favorites", key) === "off"),
     ).toBe(true);
-  });
-
-  it("Map prices partnership by splitting lanes, not by an exponent", () => {
-    // The EF's `reorderListedLanes` splits listed rows on `isMesitaPartnerRow`
-    // BEFORE it blends, and blends each lane independently — so `partnered()`
-    // is a constant factor inside a lane and `s^w` over a constant cannot move
-    // a row. The cell is the labelled em-dash, not an input an operator can
-    // save and watch change nothing.
-    expect(modeSignalState("map", "partnered")).toBe("zero");
-    // Scroll ranks one deck with no lane split: there the exponent is real.
-    expect(modeSignalState("swipe", "partnered")).toBe("on");
   });
 
   it("map() is closest N of the selected Places set", () => {
@@ -374,12 +345,12 @@ describe("Discovery function APIs", () => {
     expect(map?.state).toBe("LIVE");
     expect(map?.apis).toEqual(["Google Places Nearby Search"]);
     expect(map?.input).toMatch(/guest pin/i);
-    // The three rings, and the gate that makes the chain a containment
+    // The two rings, and the gate that makes the chain a containment
     // rather than a drawing (Pato, 2026-09-05).
-    expect(map?.process).toMatch(/Mesita Partner Places/);
+    expect(map?.process).not.toMatch(/Mesita Partner Places/);
     expect(map?.process).toMatch(/Mesita Enriched Places/);
     expect(map?.process).toMatch(/Google Places/);
-    expect(map?.process).toMatch(/ENRICHMENT GATES EVERY MESITA RING/);
+    expect(map?.process).toMatch(/ENRICHMENT GATES THE MESITA RING/);
     expect(map?.process).toMatch(/paints/);
     expect(map?.process).toMatch(/reload pair/);
     expect(map?.process).not.toMatch(/Concat/);
@@ -477,7 +448,7 @@ describe("Discovery function APIs", () => {
     expect(name?.process).toMatch(/places\.name/);
     expect(name?.process).toMatch(/not `google_name`/);
     expect(name?.process).toMatch(/resolves/);
-    expect(name?.process).toMatch(/Partners/);
+    expect(name?.process).not.toMatch(/Partners/);
     expect(name?.process).toMatch(/Deep never calls Nearby Search/);
     expect(name?.process).toMatch(/first query keeps the slot/);
     expect(name?.apis).not.toContain("Google Places Nearby Search");
@@ -616,14 +587,13 @@ describe("Discovery function APIs", () => {
     expect(pull("lots")).toBe(20);
   });
 
-  it("coerceConfig defaults name Fast 5 and Deep 3+3+3+3", () => {
+  it("coerceConfig defaults name Fast 5 and Deep 3+3+3", () => {
     expect(coerceConfig({ weights: {}, slotting: {} }).name).toEqual(DEFAULT_NAME);
-    expect(coerceConfig({ name: { fast: { count: 99 }, deep: { partnerCount: -1 } } }).name)
+    expect(coerceConfig({ name: { fast: { count: 99 }, deep: { mesitaCount: -1 } } }).name)
       .toMatchObject({
         fast: { googleCount: 20, count: 20 },
         deep: {
-          partnerCount: 0,
-          mesitaCount: 3,
+          mesitaCount: 0,
           autoCount: 3,
           googleCount: 3,
           count: 9,
@@ -640,11 +610,12 @@ describe("Discovery function APIs", () => {
           },
         },
       }).name.deep,
-    ).toMatchObject({
+    ).toEqual({
       autoCount: 5,
       googleCount: 1,
       mesitaCount: 10,
-      partnerCount: 8,
+      count: 9,
+      supers: DEFAULT_NAME.deep.supers,
     });
   });
 
@@ -791,7 +762,7 @@ describe("Discovery page box order", () => {
     expect(name).toContain("patchFast({ googleCount, count: googleCount })");
     expect(name).toContain("patchFast({ count, googleCount: count })");
     expect(name).toContain("name.deep.autoCount");
-    expect(name).toContain("name.deep.partnerCount");
+    expect(name).not.toContain("name.deep.partnerCount");
     expect(name).toContain("name.deep.mesitaCount");
     expect(name).toContain("name.deep.googleCount");
     expect(name).not.toContain("name.deep.count");
@@ -803,13 +774,12 @@ describe("Discovery page box order", () => {
     const deepAuto = deepKnobs.indexOf('label: "Google Autocomplete"');
     const deepText = deepKnobs.indexOf('label: "Google Text Search"');
     const deepPlaces = deepKnobs.indexOf('label: "Mesita places"');
-    const deepPartners = deepKnobs.indexOf('label: "Mesita partners"');
     expect(deepAuto).toBeLessThan(deepText);
     expect(deepText).toBeLessThan(deepPlaces);
-    expect(deepPlaces).toBeLessThan(deepPartners);
+    expect(deepKnobs).not.toContain('label: "Mesita partners"');
     expect(deepKnobs).not.toContain('label: "Max results"');
     expect(name).toContain(
-      "Then concat. Autocomplete → Text Search → Mesita Places → Mesita Partners.",
+      "Then concat. Autocomplete → Text Search → Mesita Places.",
     );
     expect(name).toContain("QueryConcatCaps");
     expect(name).not.toContain("cascadeLaneCounts");
@@ -824,8 +794,8 @@ describe("Discovery page box order", () => {
     // The Nearby pull is a different number with a different owner, and it
     // lives on Search Sources, not here.
     expect(map).not.toContain("googlePull");
-    expect(map).toContain("Three nested sets");
-    expect(map).toContain("Enrichment gates every Mesita ring");
+    expect(map).toContain("Two nested sets");
+    expect(map).toContain("Enrichment gates the Mesita ring");
     expect(map).not.toContain("LaneMergeFunnel");
     expect(map).not.toContain("cascadeLaneCounts");
     expect(map).toContain("Closest N of the selected set");
@@ -888,7 +858,7 @@ describe("Discovery page box order", () => {
     expect(signals).not.toContain("Promoting");
     expect(signals).toContain("randomness");
     expect(signals).toContain("enriched");
-    expect(signals).toContain("partnered");
+    expect(signals).not.toContain("partnered");
     // The per-card mode dot strip is gone (MESITA-1856): the Matrix table on
     // this same page draws that grid with column headers, and six unlabelled
     // circles under a card repeated it without them.
@@ -1045,23 +1015,18 @@ describe("Discovery page box order", () => {
   });
 });
 
-// ── MESITA-1858: the split, the cap, and the deploy window ─────────────────
+// ── MESITA-1858: the cap and the deploy window ─────────────────────────────
 
-describe("Mesita Level splits into Enriched and Partnered", () => {
-  it("carries the money cap BY NAME — this map is keyed on the deleted string", () => {
-    // Had `mesita_level` simply left this map, `partnered` would have
-    // inherited the uniform 4 and money's exponent ceiling would have
-    // DOUBLED on merge day, with nothing failing anywhere.
+describe("Mesita Level is Enriched", () => {
+  it("carries the Enriched cap BY NAME, in a map that is never empty", () => {
+    // A loop over an empty map asserts nothing, so the cap is pinned by name.
     expect(Object.keys(SIGNAL_WEIGHT_MAX).length).toBeGreaterThan(0);
-    expect(weightMaxFor("partnered")).toBe(2);
     expect(weightMaxFor("enriched")).toBe(2);
     expect(weightMaxFor("proximity")).toBe(WEIGHT_MAX);
-    expect(weightMaxFor("partnered")).not.toBe(WEIGHT_MAX);
   });
 
   it("clamps a console write above the cap instead of accepting it", () => {
-    const cfg = coerceConfig({ weights: { partnered: 4, enriched: 4, proximity: 4 } });
-    expect(cfg.weights.partnered).toBe(2);
+    const cfg = coerceConfig({ weights: { enriched: 4, proximity: 4 } });
     expect(cfg.weights.enriched).toBe(2);
     expect(cfg.weights.proximity).toBe(4);
   });
@@ -1085,20 +1050,47 @@ describe("Mesita Level splits into Enriched and Partnered", () => {
     }
   });
 
-  it("reads mesita_level as a deprecated alias, onto both halves", () => {
+  it("reads mesita_level as a deprecated alias, onto Enriched", () => {
     resetLegacySignalWarnings();
     const cfg = coerceConfig({ weights: { mesita_level: 2 } });
     expect(cfg.weights.enriched).toBe(2);
-    expect(cfg.weights.partnered).toBe(2);
   });
 
   it("lets an explicitly-set new key win over the alias", () => {
     resetLegacySignalWarnings();
     const cfg = coerceConfig({
-      weights: { mesita_level: 2, partnered: 0.5, enriched: 1.25 },
+      weights: { mesita_level: 2, enriched: 1.25 },
     });
-    expect(cfg.weights.partnered).toBe(0.5);
     expect(cfg.weights.enriched).toBe(1.25);
+  });
+
+  it("loads a blob that still carries partnered, slotting and partnerCount", () => {
+    // The shape a blob saved before this signal list carries. The stored
+    // `partnered` exponent stays on the global vector as inert storage (the
+    // deploy window below); no rebuilt branch keeps it.
+    resetLegacySignalWarnings();
+    const original = console.warn;
+    console.warn = () => {};
+    let cfg: ReturnType<typeof coerceConfig>;
+    try {
+      cfg = coerceConfig({
+        weights: { mesita_level: 2, partnered: 1.5, proximity: 1.25 },
+        weightsByMode: { map: { partnered: 2, proximity: 0.5 } },
+        params: { partnered: {} },
+        slotting: { enabled: true, everyNth: 5 },
+        name: { deep: { partnerCount: 3, mesitaCount: 4 } },
+      });
+    } finally {
+      console.warn = original;
+    }
+    expect(cfg.weights.enriched).toBe(2);
+    expect(cfg.weights).toHaveProperty("partnered", 1.5);
+    expect(cfg.weightsByMode.map.proximity).toBe(0.5);
+    expect(Object.keys(cfg.weightsByMode.map).sort()).toEqual([...SIGNAL_KEYS].sort());
+    expect(Object.keys(cfg.params).sort()).toEqual([...SIGNAL_KEYS].sort());
+    expect(cfg).not.toHaveProperty("slotting");
+    expect(cfg.name.deep).not.toHaveProperty("partnerCount");
+    expect(cfg.name.deep.mesitaCount).toBe(4);
   });
 
   it("PRESERVES an unknown weight key — the deploy-window mitigation", () => {
@@ -1144,7 +1136,7 @@ describe("Mesita Level splits into Enriched and Partnered", () => {
     expect(seen[0][1]).toMatchObject({
       key: "mesita_level",
       value: 2,
-      foldedTo: ["enriched", "partnered"],
+      foldedTo: ["enriched"],
     });
   });
 

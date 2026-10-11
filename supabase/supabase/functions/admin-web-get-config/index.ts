@@ -14,8 +14,7 @@
 //
 // The payload carried autoVerifyAiCall / autoVerifyAiEmail until MESITA-2106:
 // the MVP has no business app, so no one proves ownership and the Creation
-// page lost its Verification card. verification_config stays in the row
-// until the schema PR (MESITA-2091); save-place and otp still read it.
+// page lost its Verification card.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 

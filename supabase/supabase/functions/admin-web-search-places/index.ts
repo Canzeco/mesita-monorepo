@@ -4,8 +4,7 @@
 // place picker. Takes a free-text query and returns matching Mesita places
 // (by display name / cached Google name / slug, or an exact id paste). The operator
 // picks one, and the admin console then drives that place through the
-// existing business-* EFs (super-admin bypass in _shared/auth.ts grants
-// access regardless of place_members).
+// admin-web-* place EFs.
 //
 // Four read modes, checked in this order: `all` (the WHOLE catalog, for
 // Mesita Search's All places button), `googlePlaceIds` (a paste), an empty
@@ -16,8 +15,8 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
-// The two id-scoped side reads below are walked in chunks: an ALL run can
-// carry far more ids than a 250-id paste, and an `in` list rides in the URL.
+// The id-scoped side read below is walked in chunks: an ALL run can carry
+// far more ids than a 250-id paste, and an `in` list rides in the URL.
 import { chunked, ID_CHUNK } from "../_shared/postgrest.ts";
 import {
   adminClient,
@@ -25,13 +24,7 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
-import { isPaidPlan } from "../_shared/membership-enforcement-helpers.ts";
-import {
-  isPlacePromoting,
-  placePromotingLevel,
-} from "../_shared/place-promoting.ts";
 import { isPlaceListed, isPlaceRequested, isPlaceSeeded } from "../_shared/place-state.ts";
-import { promotionScore } from "../_shared/promotion-score.ts";
 import { CRENUP_LABELS_IN_ORDER, CRENUP_TOTAL } from "../_shared/crenup-ladder.ts";
 import {
   operatorFunctionStates,
@@ -98,16 +91,13 @@ Deno.serve(async (req) => {
       : 25;
 
   // The catalog table is the PIPELINE in one row — seeded → active → listed →
-  // enriching → enriched → verified → partner → promoting — plus two TRAILING
-  // acceptance intent bits (mesita_pay · credits) that are not pipeline rungs.
-  // Everything except the two id-scoped reads below lives on profiles, so no
-  // join is required here.
+  // enriching → enriched. Everything except the id-scoped enrichment read
+  // below lives on profiles, so no join is required here.
   // google_place_id is the seeded spine; business_state is Google's
-  // OPERATIONAL fact (Active); plan + the four rate columns + the
-  // strike/pause fields are what isPlacePromoting weighs.
+  // OPERATIONAL fact (Active).
   // Keep as a single string literal so supabase-js can type the select.
   const cols =
-    "id, slug, name, google_name, google_place_id, category, category_label, state, address, photos, zone, google_stars_overall, google_review_count, content_state, request_count, listing_type, plan, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, promo_paused_until, plan_forfeited_at, strike_count, last_strike_at, reward_lane_pending_review_at, business_state, business_state_at, updated_at";
+    "id, slug, name, google_name, google_place_id, category, category_label, state, address, photos, zone, google_stars_overall, google_review_count, content_state, request_count, business_state, business_state_at, updated_at";
   let rows: Record<string, unknown>[] = [];
   // Only ALL mode reports it: elsewhere the count of a filtered read is the
   // number of rows already returned, and a second query would say nothing.
@@ -222,7 +212,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  // ── Two id-scoped reads for the flags that are NOT on profiles. ──
+  // ── One id-scoped read for the flag that is NOT on profiles. ──
   //
   // ENRICHED is the CRENUP high-water, 0-8, folded from place_enrichment_events
   // by crenupHighWater. There used to be a SECOND enriched number here — a 0-3
@@ -230,13 +220,8 @@ Deno.serve(async (req) => {
   // chip read one, the detail prose read the other (MESITA-1218). One fact,
   // one table, one number. The place_research read went with it: computing
   // that level was its only purpose here.
-  //
-  // VERIFIED is ownership proof — an approved place_verifications row. It
-  // used to read `listing_type === "partner"`, which is the partner badge and
-  // a different fact entirely (MESITA-1152).
   const ids = rows.map((v) => String(v.id)).filter(Boolean);
 
-  const verified = new Set<string>();
   // MESITA-1249: enrichment is READ, not folded — crenupHighWater/
   // crenupBlockedAt already ran once, at write time, in crenup-report.ts.
   // `places`, not `profiles`: this jsonb blob is deliberately NOT in the
@@ -245,57 +230,23 @@ Deno.serve(async (req) => {
   // it there means rebuilding the view + its two INSTEAD OF triggers, a
   // documented recurring pain point, for a field only two admin EFs need.
   const enrichment = new Map<string, EnrichmentMap>();
-  const acceptance = new Map<
-    string,
-    { mesitaPay: boolean; credits: boolean; pickup: boolean; delivery: boolean }
-  >();
   for (const idPart of chunked(ids, ID_CHUNK)) {
-    const [verificationRes, enrichmentRes] = await Promise.all([
-      admin
-        .from("place_verifications")
-        .select("place_id")
-        .eq("state", "approved")
-        .in("place_id", idPart),
-      // The four acceptance intent bits ride the same places-direct read:
-      // admin-only columns, deliberately NEVER added to the profiles view
-      // (the view is SELECT-granted to the anon key, so a view column is
-      // publicly enumerable — and rebuilding it + its INSTEAD OF triggers
-      // is the documented pain this side-read exists to avoid).
-      admin.from("place_profiles").select(
-        "id, enrichment, mesita_pay_enabled, credits_enabled, pickup_orders_enabled, delivery_orders_enabled",
-      ).in(
-        "id",
-        idPart,
-      ),
-    ]);
-    // Best-effort: a flag lookup must never 500 the catalog. A failed read
-    // degrades to 0 / not-verified, which reads as "less done than it is" —
-    // the safe direction for a state column.
-    if (verificationRes.error) {
-      console.error("[search-places] place_verifications:", verificationRes.error.message);
-    }
-    for (const v of (verificationRes.data ?? []) as Record<string, unknown>[]) {
-      verified.add(String(v.place_id));
-    }
-    // Same best-effort posture: a missing/null row simply falls back to the
-    // CREATED-floor default below.
+    const enrichmentRes = await admin
+      .from("place_profiles")
+      .select("id, enrichment")
+      .in("id", idPart);
+    // Best-effort: this lookup must never 500 the catalog. A failed read
+    // or a missing/null row falls back to the CREATED-floor default below,
+    // which reads as "less done than it is" — the safe direction for a state
+    // column.
     if (enrichmentRes.error) {
       console.error("[search-places] places.enrichment:", enrichmentRes.error.message);
     }
     for (const r of (enrichmentRes.data ?? []) as Record<string, unknown>[]) {
       if (r.enrichment) enrichment.set(String(r.id), r.enrichment as EnrichmentMap);
-      // Missing row / failed read → the map stays empty and the shaped row
-      // falls back to false below — the safe direction for an acceptance bit.
-      acceptance.set(String(r.id), {
-        mesitaPay: r.mesita_pay_enabled === true,
-        credits: r.credits_enabled === true,
-        pickup: r.pickup_orders_enabled === true,
-        delivery: r.delivery_orders_enabled === true,
-      });
     }
   }
   const EMPTY_ENRICHMENT: EnrichmentMap = { functions: {}, highWater: 0, blockedAt: null };
-  const NO_ACCEPTANCE = { mesitaPay: false, credits: false, pickup: false, delivery: false };
 
   // Trim photos to the first thumbnail to keep the payload small.
   // `name` is the generated display column (mesita_name → google_name); the
@@ -303,7 +254,6 @@ Deno.serve(async (req) => {
   const places = rows.map((v) => {
     const id = String(v.id);
     const contentState = (v.content_state as string | null) ?? null;
-    const listingType = (v.listing_type as string | null) ?? null;
     const label = String(v.name ?? "");
     return {
       id: v.id,
@@ -322,8 +272,7 @@ Deno.serve(async (req) => {
         typeof v.google_review_count === "number" ? v.google_review_count : null,
       content_state: contentState,
       request_count: Number(v.request_count) || 0,
-      listing_type: listingType,
-      // The ten state facts, in table order (plus promoting_level below).
+      // The state facts, in table order.
       seeded: isPlaceSeeded(v.google_place_id),
       // Google's OPERATIONAL fact — a FLAG, never a visibility gate.
       // NULL is silence, not "not operational".
@@ -367,35 +316,6 @@ Deno.serve(async (req) => {
           ? operatorFunctionStates(fnMap as Partial<Record<string, FunctionState>>)
           : undefined;
       })(),
-      verified: verified.has(id),
-      partner: isPaidPlan((v.plan as string | null) ?? null),
-      promoting: isPlacePromoting(v as Parameters<typeof isPlacePromoting>[0]),
-      // HOW HARD, 0-3 (zero · conservative · aggressive · dominant). Agrees
-      // with the boolean above by construction: 0 exactly when it is false.
-      promoting_level: placePromotingLevel(
-        v as Parameters<typeof placePromotingLevel>[0],
-      ),
-      // Acceptance INTENT BITS (places.*_enabled) — operator toggles on the
-      // Partner tab (admin-web-set-place-rails, both retired in MESITA-2090,
-      // so nothing writes them today). Engines still gate each
-      // rail; the bits say what the place OFFERS (Pato gates 2026-08-29).
-      mesita_pay: (acceptance.get(id) ?? NO_ACCEPTANCE).mesitaPay,
-      credits: (acceptance.get(id) ?? NO_ACCEPTANCE).credits,
-      pickup: (acceptance.get(id) ?? NO_ACCEPTANCE).pickup,
-      delivery: (acceptance.get(id) ?? NO_ACCEPTANCE).delivery,
-      // The Promotion score — offering completeness as ONE number, 0–7.
-      // Derived here so the catalog column and the Partner tab's Promos bar
-      // agree by construction. Display-only: NEVER a discovery input.
-      promotion: promotionScore({
-        partner: isPaidPlan((v.plan as string | null) ?? null),
-        visitRewardsLevel: placePromotingLevel(
-          v as Parameters<typeof placePromotingLevel>[0],
-        ),
-        mesitaPay: (acceptance.get(id) ?? NO_ACCEPTANCE).mesitaPay,
-        credits: (acceptance.get(id) ?? NO_ACCEPTANCE).credits,
-        pickup: (acceptance.get(id) ?? NO_ACCEPTANCE).pickup,
-        delivery: (acceptance.get(id) ?? NO_ACCEPTANCE).delivery,
-      }),
       photo: Array.isArray(v.photos) && v.photos.length > 0 ? v.photos[0] : null,
     };
   });

@@ -1,8 +1,11 @@
 // Supabase Edge Function — consumer-web-list-pay-notifications
 //
-// Authenticated. Returns pay inbox notifications for the caller's consumer
-// account, plus joined ticket metadata and place promo caps used by Pay →
-// Tickets. Optional ticketId scopes to one ticket (detail route).
+// Authenticated. Returns the caller's Me › Notifications rows, newest first:
+// the reservation updates _shared/reservation-notification.ts writes (kind
+// 'reservation' | 'booking', payload place_name / place_photo_url). The EF's
+// name predates the screen.
+//
+// Body: { limit?: number }  // 1..100, default 100
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
@@ -11,22 +14,10 @@ import {
   getAuthedUser,
   readEFEnv,
 } from "../_shared/auth.ts";
+import { RESERVATION_NOTIFICATION_KINDS } from "../_shared/reservation-notification.ts";
 
 type Body = {
-  ticketId?: string;
   limit?: number;
-  pendingCountOnly?: boolean;
-};
-
-type TicketMeta = {
-  state?: string;
-  story_state?: string;
-  story_submitted_at?: string | null;
-  first_scanned_at?: string | null;
-  total_cents?: number | null;
-  discount_percent?: number | null;
-  capMxn?: number | null;
-  created_at?: string | null;
 };
 
 Deno.serve(async (req) => {
@@ -44,113 +35,20 @@ Deno.serve(async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
 
-  const admin = adminClient(envRes.env);
-
-  if (body.pendingCountOnly) {
-    const { count, error } = await admin
-      .from("consumer_notifications")
-      .select("id", { count: "exact", head: true })
-      .eq("consumer_id", consumerId)
-      .eq("state", "pending");
-    if (error) {
-      return json({ ok: false, error: error.message }, 500);
-    }
-    return json({ ok: true, pendingCount: count ?? 0 });
-  }
-
   const limit = typeof body.limit === "number" && body.limit > 0
     ? Math.min(body.limit, 100)
     : 100;
 
-  let notifQuery = admin
+  const { data, error } = await adminClient(envRes.env)
     .from("consumer_notifications")
-    .select("*")
+    .select("id, consumer_id, kind, state, payload, created_at, resolved_at")
     .eq("consumer_id", consumerId)
+    .in("kind", [...RESERVATION_NOTIFICATION_KINDS])
     .order("created_at", { ascending: false })
     .limit(limit);
-
-  if (typeof body.ticketId === "string" && body.ticketId.trim()) {
-    notifQuery = notifQuery.eq("ticket_id", body.ticketId.trim());
+  if (error) {
+    return json({ ok: false, error: error.message }, 500);
   }
 
-  const notifRes = await notifQuery;
-  if (notifRes.error) {
-    return json({ ok: false, error: notifRes.error.message }, 500);
-  }
-  const notifications = notifRes.data ?? [];
-
-  const ticketIds = [
-    ...new Set(notifications.map((n) => n.ticket_id).filter(Boolean)),
-  ];
-
-  const tickets: Record<string, TicketMeta> = {};
-  let placeInstagramUrl: string | null = null;
-
-  if (ticketIds.length > 0) {
-    const ticketRes = await admin
-      .from("visit_tickets")
-      .select(
-        "id, state, story_state, story_submitted_at, first_scanned_at, discount_percent, place_id, total_cents, created_at",
-      )
-      .in("id", ticketIds);
-
-    if (ticketRes.error) {
-      return json({ ok: false, error: ticketRes.error.message }, 500);
-    }
-
-    const placeIds = [
-      ...new Set(
-        (ticketRes.data ?? [])
-          .map((t) => t.place_id)
-          .filter((id): id is string => Boolean(id)),
-      ),
-    ];
-
-    const placeCapById = new Map<string, number>();
-    const placeInstagramById = new Map<string, string | null>();
-
-    if (placeIds.length > 0) {
-      // monthly_promo_cap lives on projects, not places — read the profiles
-      // view, which exposes the project columns alongside the place ones.
-      const placeRes = await admin
-        .from("profiles")
-        .select("id, monthly_promo_cap, instagram_url")
-        .in("id", placeIds);
-
-      for (const place of placeRes.data ?? []) {
-        if (place.monthly_promo_cap != null && place.monthly_promo_cap > 0) {
-          placeCapById.set(place.id, place.monthly_promo_cap);
-        }
-        placeInstagramById.set(place.id, place.instagram_url ?? null);
-      }
-    }
-
-    for (const t of ticketRes.data ?? []) {
-      tickets[t.id] = {
-        state: t.state,
-        story_state: t.story_state,
-        story_submitted_at: t.story_submitted_at,
-        first_scanned_at: t.first_scanned_at,
-        total_cents: t.total_cents,
-        discount_percent: t.discount_percent,
-        capMxn: t.place_id ? (placeCapById.get(t.place_id) ?? null) : null,
-        created_at: t.created_at,
-      };
-    }
-
-    if (typeof body.ticketId === "string" && body.ticketId.trim()) {
-      const ticketId = body.ticketId.trim();
-      const ticketRow = ticketRes.data?.find((t) => t.id === ticketId);
-      if (ticketRow?.place_id) {
-        placeInstagramUrl = placeInstagramById.get(ticketRow.place_id) ?? null;
-      }
-    }
-  }
-
-  return json({
-    ok: true,
-    notifications,
-    tickets,
-    placeInstagramUrl,
-  });
+  return json({ ok: true, notifications: data ?? [] });
 });

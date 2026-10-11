@@ -34,8 +34,8 @@ import { MX_OFFSET, placeDateTime } from "@/lib/place-time";
 const DEFAULT_PARTY = 2;
 
 // consumer-web-create-reservation refuses a booking past the guest's monthly
-// cap with this code. Its own `error` string pitches a plan this app does not
-// sell, so the sheet says the fact in its own words instead.
+// cap with this code and this message (_shared/reservation-cap.ts); change the
+// two together.
 const RESERVATION_LIMIT_CODE = "reservation_limit_reached";
 const RESERVATION_LIMIT_MESSAGE =
   "You've reached this month's reservation limit.";

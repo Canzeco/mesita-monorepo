@@ -15,7 +15,7 @@
 // The columns the data EFs may SELECT. Kept beside the card so the projection
 // and the query can never drift apart.
 export const MEMO_PLACE_PUBLIC_SELECT =
-  "id, slug, name, google_name, address, category, listing_type, google_place_id, google_stars_overall";
+  "id, slug, name, google_name, address, category, google_place_id, google_stars_overall";
 
 export type MemoPlaceCard = {
   id: string;
@@ -23,7 +23,6 @@ export type MemoPlaceCard = {
   name: string;
   address: string | null;
   category: string | null;
-  listingType: string | null;
   googlePlaceId: string | null;
   rating: number | null;
 };
@@ -46,7 +45,6 @@ export function rowToMemoPlaceCard(row: Record<string, unknown>): MemoPlaceCard 
     name: String(row.name ?? ""),
     address: str(row.address),
     category: str(row.category),
-    listingType: str(row.listing_type),
     googlePlaceId: str(row.google_place_id),
     rating: num(row.google_stars_overall),
   };
@@ -69,7 +67,6 @@ export function parseMemoPlaceCards(raw: unknown): MemoPlaceCard[] {
       name,
       address: str(r.address),
       category: str(r.category),
-      listingType: str(r.listingType),
       googlePlaceId: str(r.googlePlaceId),
       rating: num(r.rating),
     });
