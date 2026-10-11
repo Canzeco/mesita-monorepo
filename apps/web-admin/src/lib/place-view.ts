@@ -7,18 +7,10 @@
 //
 // `getPlaceView` and `visibleTabs` are gone (MESITA-2090): they read the
 // business console's get-place, which 404s a place to a non-member, and the
-// admin layout had stopped calling either. The tab matrix is
-// `adminPlaceTabs()` in manage-single/[id]/access.ts.
+// admin layout had stopped calling either. The tab set is
+// `FIRST_STAGE_TABS` in manage-single/[id]/access.ts.
 
 import { cache } from "react";
-// Re-exported so server callers keep one import site; the vocabulary itself
-// lives in a client-safe module (see place-tabs.ts).
-export {
-  PLACE_TAB_LABEL,
-  PLACE_TABS,
-  placeTabHref,
-  type PlaceTab,
-} from "@/lib/place-tabs";
 import { getPlaceAndRole } from "@/components/place-manage/actions";
 import type { AdminPlace } from "@/components/place-manage/actions";
 

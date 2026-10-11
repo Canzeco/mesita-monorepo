@@ -10,7 +10,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useRouter } from "next/navigation";
 import { updatePlace, type AdminPlace } from "./actions";
 import {
   dirtyDialogNavBody,
@@ -28,7 +27,7 @@ import { ConfirmDialog } from "@/components/admin-ui/manage";
 /** Something that would throw away unsaved edits if it ran right now. */
 type GuardedIntent = {
   /** Picks the confirm copy. */
-  kind: "nav" | "reenrich" | "back";
+  kind: "reenrich" | "back";
   /** Runs only after the operator confirms the discard. */
   run: () => void;
 };
@@ -42,10 +41,10 @@ type GuardedIntent = {
  * card you last touched. Pato, 2026-08-22: make it one.
  *
  * All-or-nothing was his call over per-box partial success, and the code makes
- * that honest rather than aspirational: PlaceSection, MenusSection, OrdersCard
- * and ReservationsCard all write through the SAME Edge Function
- * (`updatePlace` → admin-web-update-place) with a patch keyed by `id`, and
- * their patch fragments touch disjoint columns. So the whole page's edits merge
+ * that honest rather than aspirational: PlaceSection and MenusSection both
+ * write through the SAME Edge Function (`updatePlace` →
+ * admin-web-update-place) with a patch keyed by `id`, and their patch
+ * fragments touch disjoint columns. So the whole page's edits merge
  * into ONE object and go over ONE call — one row write, which either lands or
  * does not. There is no compensating-write fiction here and no window where
  * half the page is saved.
@@ -70,10 +69,8 @@ type SectionSaver = {
 };
 
 type PlaceContextValue = {
-  placeId: string;
   place: AdminPlace;
   setPlace: (place: AdminPlace) => void;
-  reload: () => void;
   /** Any registered section has unsaved drafts. */
   isDirty: boolean;
   setSectionDirty: (section: string, dirty: boolean) => void;
@@ -96,13 +93,8 @@ type PlaceContextValue = {
    * Intercept an action that would discard unsaved edits. Returns true when it
    * was intercepted (a confirm dialog is now open) and false when the caller
    * should just proceed.
-   *
-   * Lives on the context, not in PlaceEditChrome, so every exit path can reach
-   * it — including CrossTabLink and completeness chips.
    */
   guardIntent: (intent: GuardedIntent) => boolean;
-  /** guardIntent for the common case: following a link. */
-  guardNav: (href: string, e?: { preventDefault: () => void }) => boolean;
 };
 
 const PlaceContext = createContext<PlaceContextValue | null>(null);
@@ -117,13 +109,11 @@ export function PlaceProvider({
   placeId,
   place,
   setPlace,
-  reload,
   children,
 }: {
   placeId: string;
   place: AdminPlace;
   setPlace: (place: AdminPlace) => void;
-  reload: () => void;
   children: ReactNode;
 }) {
   const [dirtyMap, setDirtyMap] = useState<Record<string, boolean>>({});
@@ -229,7 +219,6 @@ export function PlaceProvider({
     [dirtyMap],
   );
 
-  const router = useRouter();
   const [pending, setPending] = useState<GuardedIntent | null>(null);
 
   const applyHistory = useCallback((event: Parameters<typeof reduceHistoryGuard>[1]) => {
@@ -238,8 +227,6 @@ export function PlaceProvider({
     for (const effect of effects) {
       if (effect === "push-sentinel" || effect === "reassert") {
         pushSentinel();
-      } else if (effect === "back") {
-        window.history.back();
       }
     }
     return state;
@@ -282,16 +269,6 @@ export function PlaceProvider({
     [isDirty],
   );
 
-  const guardNav = useCallback(
-    (href: string, e?: { preventDefault: () => void }) => {
-      if (!isDirty) return false;
-      e?.preventDefault();
-      setPending({ kind: "nav", run: () => router.push(href) });
-      return true;
-    },
-    [isDirty, router],
-  );
-
   const confirmDiscard = useCallback(() => {
     if (!pending) return;
     const intent = pending;
@@ -309,10 +286,8 @@ export function PlaceProvider({
 
   const value = useMemo(
     () => ({
-      placeId,
       place,
       setPlace,
-      reload,
       isDirty,
       setSectionDirty,
       registerDiscardHandler,
@@ -324,13 +299,10 @@ export function PlaceProvider({
       saveOk,
       saveAll,
       guardIntent,
-      guardNav,
     }),
     [
-      placeId,
       place,
       setPlace,
-      reload,
       isDirty,
       setSectionDirty,
       registerDiscardHandler,
@@ -342,7 +314,6 @@ export function PlaceProvider({
       saveOk,
       saveAll,
       guardIntent,
-      guardNav,
     ],
   );
 
@@ -360,11 +331,7 @@ export function PlaceProvider({
         title={title}
         body={<p>{bodyText}</p>}
         confirmLabel={
-          pending?.kind === "reenrich"
-            ? "Discard & re-enrich"
-            : pending?.kind === "back"
-              ? "Discard changes"
-              : "Discard & leave"
+          pending?.kind === "reenrich" ? "Discard & re-enrich" : "Discard changes"
         }
         danger
         onConfirm={confirmDiscard}

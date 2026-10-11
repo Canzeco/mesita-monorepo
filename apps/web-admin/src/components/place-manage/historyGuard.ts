@@ -12,23 +12,19 @@ export type HistoryGuardState = {
   trapping: boolean;
   /** Discard dialog opened from a Back attempt. */
   dialogOpen: boolean;
-  /** Next popstate is the intentional leave after Confirm. */
-  allowNextPop: boolean;
 };
 
 export type HistoryGuardEvent =
   | { type: "dirty-on" }
   | { type: "dirty-off" }
   | { type: "popstate" }
-  | { type: "confirm-leave" }
   | { type: "cancel-leave" };
 
-export type HistoryGuardEffect = "push-sentinel" | "reassert" | "back";
+export type HistoryGuardEffect = "push-sentinel" | "reassert";
 
 export const INITIAL_HISTORY_GUARD: HistoryGuardState = {
   trapping: false,
   dialogOpen: false,
-  allowNextPop: false,
 };
 
 export function reduceHistoryGuard(
@@ -44,18 +40,12 @@ export function reduceHistoryGuard(
       };
     }
     case "dirty-off": {
-      if (!state.trapping && !state.dialogOpen && !state.allowNextPop) {
+      if (!state.trapping && !state.dialogOpen) {
         return { state, effects: [] };
       }
       return { state: INITIAL_HISTORY_GUARD, effects: [] };
     }
     case "popstate": {
-      if (state.allowNextPop) {
-        return {
-          state: INITIAL_HISTORY_GUARD,
-          effects: [],
-        };
-      }
       if (state.trapping) {
         return {
           state: { ...state, dialogOpen: true },
@@ -63,16 +53,6 @@ export function reduceHistoryGuard(
         };
       }
       return { state, effects: [] };
-    }
-    case "confirm-leave": {
-      return {
-        state: {
-          trapping: false,
-          dialogOpen: false,
-          allowNextPop: true,
-        },
-        effects: ["back"],
-      };
     }
     case "cancel-leave": {
       return {

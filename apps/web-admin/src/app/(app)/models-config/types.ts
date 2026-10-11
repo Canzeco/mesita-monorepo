@@ -5,7 +5,7 @@
 // picker. Same footgun the Memo types file documents.
 //
 // The page edits two stores (MESITA-2126 remake):
-//   app_config.models_config      memo.model · memo.perplexity (Discovery chat).
+//   app_config.models_config      memo.model (Discovery chat).
 //                                 Read by supabase-edgefunc-get-memo-config.
 //   app_config.enrichment_config  atlasSynthesisQuality · atlasVisionQuality ·
 //                                 atlasPerplexityPreset (the Enricher). Saved as a
@@ -15,9 +15,10 @@
 // tier runs — enricher-cron-enrich-place-analysis swaps it in for economy).
 // Not shown and DEAD in First Stage: supabase.model, ojo.model and
 // enricher.perplexity. models_config is still saved WHOLE, so they are written
-// back as their coerced values; coercion also drops unknown keys and resets a
-// Perplexity value outside PERPLEXITY_OPTIONS to its default. MESITA-2091 owns
-// deleting the dead keys.
+// back as their coerced values; coercion also drops unknown keys (a stored
+// memo.perplexity among them — Memo has no Perplexity leg, MESITA-2136) and
+// resets a Perplexity value outside PERPLEXITY_OPTIONS to its default.
+// MESITA-2091 owns deleting the dead keys.
 
 import type { PerplexityPreset } from "../enricher-config/actions";
 import { COST_RATES } from "../enricher-config/cost-model";
@@ -51,7 +52,7 @@ export type ModelsConfig = {
   supabase: { model: string };
   enricher: { model: string; perplexity: string };
   embeddings: { model: string };
-  memo: { model: string; perplexity: string };
+  memo: { model: string };
   ojo: { model: string };
 };
 
@@ -70,23 +71,14 @@ export const OPENAI_CHAT_MODELS = [
   "gpt-5.6-sol",
 ] as const;
 
-// Perplexity values accepted in the blob's enricher/memo legs ("off" = none).
-export const PERPLEXITY_OPTIONS = [
+// Perplexity values accepted in the blob's enricher leg ("off" = none).
+const PERPLEXITY_OPTIONS = [
   "off",
   "sonar",
   "sonar-pro",
   "sonar-reasoning",
   "sonar-reasoning-pro",
 ] as const;
-
-/** Discovery chat web answers, labelled in plain words. */
-export const MEMO_PERPLEXITY_LABELS: Record<(typeof PERPLEXITY_OPTIONS)[number], string> = {
-  off: "Off",
-  sonar: "sonar · fast",
-  "sonar-pro": "sonar-pro · better",
-  "sonar-reasoning": "sonar-reasoning · slower",
-  "sonar-reasoning-pro": "sonar-reasoning-pro · slowest",
-};
 
 // Defaults — mirror the migration's app_config.models_config seed. The server
 // coerces a null/partial blob to them; the page never SHOWS them as live.
@@ -95,16 +87,13 @@ export const DEFAULT_MODELS_CONFIG: ModelsConfig = {
   supabase: { model: "gpt-4o-mini" },
   enricher: { model: "gpt-4o-mini", perplexity: "sonar-pro" },
   embeddings: { model: "text-embedding-3-small" },
-  memo: { model: "gpt-4o-mini", perplexity: "sonar-pro" },
+  memo: { model: "gpt-4o-mini" },
   ojo: { model: "gpt-4o" },
 };
 
 /** Merge a null / partial / untrusted blob into a complete, valid config. */
 export function coerceModelsConfig(raw: unknown): ModelsConfig {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
-  // Keyed by string, not a closed key union: the coercer also has to reach the
-  // LEGACY `lineup` key, which is deliberately not a subsystem any more
-  // (MESITA-1216) but still appears in blobs written before the rename.
   const obj = (k: string): Record<string, unknown> =>
     (r[k] && typeof r[k] === "object" ? r[k] : {}) as Record<string, unknown>;
   const str = (v: unknown, fb: string): string =>
@@ -121,24 +110,13 @@ export function coerceModelsConfig(raw: unknown): ModelsConfig {
       model: str(obj("enricher").model, d.enricher.model),
       perplexity: perp(obj("enricher").perplexity, d.enricher.perplexity),
     },
-    // Both spellings — a blob written before MESITA-1216 still says `lineup`,
-    // and dropping it here would show the operator the default model rather
-    // than what is actually stored.
-    embeddings: {
-      model: str(
-        obj("embeddings").model ?? obj("lineup").model,
-        d.embeddings.model,
-      ),
-    },
-    memo: {
-      model: str(obj("memo").model, d.memo.model),
-      perplexity: perp(obj("memo").perplexity, d.memo.perplexity),
-    },
+    embeddings: { model: str(obj("embeddings").model, d.embeddings.model) },
+    memo: { model: str(obj("memo").model, d.memo.model) },
     ojo: { model: str(obj("ojo").model, d.ojo.model) },
   };
 }
 
-/** The only edit this page makes to models_config: Memo's two picks. Every other key stays byte-equal. */
+/** The only edit this page makes to models_config: Memo's model. Every other key stays byte-equal. */
 export function withMemo(
   cfg: ModelsConfig,
   patch: Partial<ModelsConfig["memo"]>,
@@ -147,10 +125,7 @@ export function withMemo(
 }
 
 export function memoDirty(saved: ModelsConfig, next: ModelsConfig): boolean {
-  return (
-    saved.memo.model !== next.memo.model ||
-    saved.memo.perplexity !== next.memo.perplexity
-  );
+  return saved.memo.model !== next.memo.model;
 }
 
 /** The enricher fields that changed — the PATCH this page sends, nothing else. */
@@ -248,7 +223,7 @@ export type SaveOutcome = {
 };
 
 /**
- * Save what changed, in two independent halves: Memo's picks (models_config,
+ * Save what changed, in two independent halves: Memo's model (models_config,
  * whole blob) then the Enricher's (enrichment_config, PATCH of changed fields).
  * A failure in one half never stops the other, and a half that saved keeps its
  * new baseline either way.

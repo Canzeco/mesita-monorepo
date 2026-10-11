@@ -8,7 +8,7 @@ import { CheckCircle2, ChevronRight, Loader2 } from "lucide-react";
 // import from here.
 
 /** The bordered well every labelled config field sits in. */
-export const FIELD_WELL = "border-border bg-background flex flex-col gap-2 rounded-xl border p-4";
+const FIELD_WELL = "border-border bg-background flex flex-col gap-2 rounded-xl border p-4";
 
 // Per-knob enforcement state (MESITA-738). The console is the operator's model
 // of the product, so a control that persists but changes nothing has to SAY so

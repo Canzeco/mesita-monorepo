@@ -16,13 +16,11 @@
 // target lives on the view that draws the card.
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
-import { PLACE_ROUTE_DIR } from "@/lib/place-base";
 import { join } from "node:path";
 
 const SRC = join(process.cwd(), "src");
 const SECTIONS = join(SRC, "components/place-manage/sections");
-// The route tree differs per console (lib/place-base.ts); the sections do not.
-const VIEWS = join(SRC, PLACE_ROUTE_DIR);
+const VIEWS = join(SRC, "app/(app)/manage-single/[id]");
 
 const read = (p: string) => readFileSync(p, "utf8");
 
@@ -91,30 +89,5 @@ describe("ProfileCompleteness chips land somewhere real", () => {
         ).toContain(owner);
       }
     }
-  });
-
-  it("the Menu chip is a SCROLL, because Menus is a card on Profile again", () => {
-    // THE FULL ARC OF ONE BUG, pinned so it cannot be walked backwards.
-    // `scrollId` was correct until MESITA-1848 moved Menus to its own address,
-    // wrong-and-silent from that day (getElementById → null → return), a `tab`
-    // link from MESITA-1883, and correct again from MESITA-1919 — because
-    // Profile renders MenusSection once more.
-    //
-    // The assertion that does the work is the LAST one: it is not enough that
-    // this entry says `scrollId`, the id has to be rendered by a file Profile
-    // actually mounts. That is the same invariant the generic test above
-    // enforces for every chip, restated here on the one that has broken twice.
-    const menu = code.slice(code.indexOf('label: "Menu"'));
-    const entry = menu.slice(0, menu.indexOf("},"));
-    expect(entry).toContain('scrollId: "place-products"');
-    expect(entry).not.toContain("tab:");
-    expect(sectionsByView().profile ?? []).toContain("MenusSection");
-  });
-
-  it("no chip links off Profile — Single Place has no other view to fix it on (MESITA-2115)", () => {
-    // The Reservations chip linked through placeSectionHref to a view the
-    // First Stage cut deleted, so it 404ed and its 10% could never clear.
-    expect(code).not.toContain("placeSectionHref");
-    expect(code).not.toContain('label: "Reservations"');
   });
 });

@@ -54,7 +54,7 @@ import {
 import {
   DEFAULT_WEIGHTS_BY_MODE,
   DISCOVERY_MODE_LABELS,
-  LIBRARY_SIGNALS,
+  SIGNAL_KEYS,
   SIGNALS,
   WEIGHT_MIN,
   WEIGHTED_MODE_KEYS,
@@ -94,7 +94,7 @@ const SLICE: Record<WeightedModeKey, DiscoverySlice> = {
 };
 
 function columnOf(cfg: DiscoveryConfig, mode: WeightedModeKey) {
-  return cfg.weightsByMode?.[mode] ?? DEFAULT_WEIGHTS_BY_MODE[mode];
+  return cfg.weightsByMode[mode];
 }
 
 function sameColumn(
@@ -271,19 +271,19 @@ export function ModeWeightsClient({
               </tr>
             </thead>
             <tbody>
-              {LIBRARY_SIGNALS.map((row) => {
+              {SIGNAL_KEYS.map((key) => {
                 const label =
-                  SIGNALS.find((s) => s.key === row.key)?.label ?? row.key;
-                const max = weightMaxFor(row.key);
+                  SIGNALS.find((s) => s.key === key)?.label ?? key;
+                const max = weightMaxFor(key);
                 return (
                   <tr
-                    key={row.key}
+                    key={key}
                     className="border-border/60 border-b last:border-0"
                   >
                     <th className="type-label py-2 pr-3 font-medium">{label}</th>
                     {WEIGHTED_MODE_KEYS.map((mode) => {
                       const modeLabel = DISCOVERY_MODE_LABELS[mode];
-                      const state = modeSignalState(mode, row.key);
+                      const state = modeSignalState(mode, key);
                       if (state !== "on") {
                         // A LABELLED EM-DASH, never a disabled 0. Map's
                         // Randomness is off, not zero-and-editable, and a
@@ -312,7 +312,7 @@ export function ModeWeightsClient({
                               // "Weight" — the row header is not the
                               // accessible name of a cell's control.
                               aria-label={`${label} weight · ${modeLabel}`}
-                              value={columnOf(cfg, mode)[row.key]}
+                              value={columnOf(cfg, mode)[key]}
                               disabled={pending || loadBlocked}
                               onChange={(e) => {
                                 const raw = Number(e.target.value);
@@ -320,7 +320,7 @@ export function ModeWeightsClient({
                                 const n = Math.round(raw * 100) / 100;
                                 patch(
                                   mode,
-                                  row.key,
+                                  key,
                                   Math.max(WEIGHT_MIN, Math.min(max, n)),
                                 );
                               }}

@@ -50,8 +50,6 @@ import { ENRICHMENT_PARENT } from "./nav";
 /** The Create box on Multiple Places — where Create actually runs. */
 const CREATE_BOX_HREF = "/manage-multiple#create";
 
-export type { CrenupSettings };
-
 // THE CRENUP PAGES (MESITA-2083: two rail rows, two pages, one client).
 //   Creation    Models (a link to /models-config) · Create
 //   Enrichment  Enrich · Functions

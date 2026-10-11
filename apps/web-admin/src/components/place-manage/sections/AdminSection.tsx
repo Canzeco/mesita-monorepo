@@ -148,7 +148,7 @@ function parseEmbeddingVector(raw: AdminPlace["embedding"]): number[] | null {
 // Written on create + on profile update. Open by default; collapsible like
 // Metadata.
 // Hard ceiling for the Semantic Summary — must stay in lockstep with
-// ENRICH_FIELD_LIMITS.embeddingSourceText (Atlas Config → Field limits).
+// ENRICH_FIELD_LIMITS.embeddingSourceText (supabase `_shared/enrich-field-limits.ts`).
 const EMBEDDING_SOURCE_TEXT_MAX_WORDS = 60;
 
 function EmbeddingCard({ place }: { place: AdminPlace }) {

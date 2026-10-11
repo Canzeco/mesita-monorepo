@@ -22,21 +22,14 @@ describe("coerceModelsConfig", () => {
     expect(coerceModelsConfig(null)).toEqual(DEFAULT_MODELS_CONFIG);
   });
 
-  it("reads the legacy `lineup` key as the embeddings model", () => {
-    expect(coerceModelsConfig({ lineup: { model: "x" } }).embeddings.model).toBe("x");
-  });
-
-  it("prefers `embeddings` over the legacy `lineup` when both are present", () => {
-    const cfg = coerceModelsConfig({
-      embeddings: { model: "new" },
-      lineup: { model: "old" },
-    });
-    expect(cfg.embeddings.model).toBe("new");
-  });
-
   it("falls back to the default for an unknown enricher.perplexity", () => {
     const cfg = coerceModelsConfig({ enricher: { perplexity: "not-a-model" } });
     expect(cfg.enricher.perplexity).toBe(DEFAULT_MODELS_CONFIG.enricher.perplexity);
+  });
+
+  it("drops a stored memo.perplexity — Memo has no Perplexity leg", () => {
+    const cfg = coerceModelsConfig({ memo: { model: "gpt-4o", perplexity: "sonar" } });
+    expect(cfg.memo).toEqual({ model: "gpt-4o" });
   });
 
   it("is idempotent, so a save never drifts a value it did not touch", () => {
@@ -47,7 +40,7 @@ describe("coerceModelsConfig", () => {
 });
 
 describe("withMemo", () => {
-  it("changes Memo's picks and leaves every other key byte-equal", () => {
+  it("changes Memo's model and leaves every other key byte-equal", () => {
     const cfg = coerceModelsConfig({
       supabase: { model: "gpt-4.1" },
       ojo: { model: "gpt-4o" },

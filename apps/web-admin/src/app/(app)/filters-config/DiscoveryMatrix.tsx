@@ -7,7 +7,7 @@ import {
   DISCOVERY_MODE_LABELS,
   DISCOVERY_SOURCES,
   DISCOVERY_POOLS,
-  LIBRARY_SIGNALS,
+  SIGNAL_KEYS,
   SIGNALS,
   modeCallsSource,
   modeRequiresPool,
@@ -144,14 +144,14 @@ export function DiscoveryMatrix() {
             ))}
             <BandRule />
             <BandTitle title="Mesita Places Search Signals" />
-            {LIBRARY_SIGNALS.map((row) => {
+            {SIGNAL_KEYS.map((key) => {
               const label =
-                SIGNALS.find((s) => s.key === row.key)?.label ?? row.key;
+                SIGNALS.find((s) => s.key === key)?.label ?? key;
               return (
-                <tr key={row.key} className="border-border/60 border-b last:border-0">
+                <tr key={key} className="border-border/60 border-b last:border-0">
                   <th className="type-label font-medium pr-3 py-2">{label}</th>
                   {DISCOVERY_MODE_KEYS.map((mode) => {
-                    const state = modeSignalState(mode, row.key);
+                    const state = modeSignalState(mode, key);
                     return (
                       <td key={mode} className="px-1.5 py-2 text-center">
                         <Mark

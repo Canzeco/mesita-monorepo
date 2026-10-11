@@ -2,7 +2,7 @@
 
 // Server actions for Discovery. Thin wrappers over the admin-web-* Edge
 // Functions via the Result-style efInvoke (never throws) — same contract as
-// the Sourcing / Memo / Atlas config actions.
+// the other config pages' actions.
 //
 // Backed by the `discovery` section of admin-web-get-config /
 // admin-web-update-config, which read and write the discovery_config jsonb on
@@ -34,9 +34,6 @@ type UpdateDiscoveryConfigResult = ActionResult<{
 export type DiscoverySlice =
   | "general"
   | "filters"
-  | "catalog"
-  | "social"
-  | "chat"
   | "map"
   // Narrow map slices (MESITA-1681, widened by MESITA-1695). Search Sources
   // holds THREE boxes that write `map`: the Families strip, Google
@@ -61,27 +58,11 @@ export type DiscoverySlice =
 
 export async function updateDiscoveryConfig(
   config: DiscoveryConfig,
-  slices?: DiscoverySlice[],
+  slices: DiscoverySlice[],
 ): Promise<UpdateDiscoveryConfigResult> {
   const live = await getDiscoveryConfig();
   if (!live.ok) return live;
-  const keys = new Set(
-    slices ??
-      ([
-        "general",
-        "filters",
-        "catalog",
-        "social",
-        "chat",
-        "map",
-        "weightsMap",
-        "weightsScroll",
-        "nameFast",
-        "nameDeep",
-        "swipe",
-        "signals",
-      ] as const),
-  );
+  const keys = new Set(slices);
   const next: DiscoveryConfig = {
     ...live.config,
     general: keys.has("general") ? config.general : live.config.general,
@@ -90,7 +71,6 @@ export async function updateDiscoveryConfig(
     // rode through every save on `...live.config` and no console could reach
     // it while `applyDiscoveryFilters` enforced it on every one of those lanes.
     filters: keys.has("filters") ? config.filters : live.config.filters,
-    catalog: keys.has("catalog") ? config.catalog : live.config.catalog,
     map: {
       ...(keys.has("map") ? config.map : live.config.map),
       ...(keys.has("mapSupers") ? { supers: config.map.supers } : null),
@@ -103,8 +83,6 @@ export async function updateDiscoveryConfig(
       fast: keys.has("nameFast") ? config.name.fast : live.config.name.fast,
       deep: keys.has("nameDeep") ? config.name.deep : live.config.name.deep,
     },
-    social: keys.has("social") ? config.social : live.config.social,
-    chat: keys.has("chat") ? config.chat : live.config.chat,
     swipe: keys.has("swipe")
       ? { ...config.swipe, savedAt: new Date().toISOString() }
       : live.config.swipe,

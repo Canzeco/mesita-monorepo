@@ -1,14 +1,5 @@
 /** Stable keys registered via PlaceContext.setSectionDirty. */
-const DIRTY_SECTION_ORDER = [
-  "place",
-  "products",
-  // One key per rail box on Controls, in box order (MESITA-1148).
-  "visits",
-  "orders",
-  "reservations",
-  // Admin tab.
-  "enrichment",
-] as const;
+const DIRTY_SECTION_ORDER = ["place", "products"] as const;
 
 export type DirtySectionKey = (typeof DIRTY_SECTION_ORDER)[number];
 
@@ -20,10 +11,6 @@ export type DirtySectionKey = (typeof DIRTY_SECTION_ORDER)[number];
 const DIRTY_SECTION_LABELS: Record<DirtySectionKey, string> = {
   place: "Place",
   products: "Menus",
-  visits: "Visits",
-  orders: "Orders",
-  reservations: "Reservations",
-  enrichment: "Enrichment",
 };
 
 /** Human labels for currently-dirty sections, in UI order. */

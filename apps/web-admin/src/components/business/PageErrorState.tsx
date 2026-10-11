@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { cn } from "@/lib/utils";
 import { CTA_BUTTON_CLASS } from "@/lib/ui-classes";
 
 export function PageErrorState({
@@ -7,8 +6,6 @@ export function PageErrorState({
   message,
   retryHref,
 }: {
-  title?: string;
-  subtitle?: string;
   heading: string;
   message: string;
   retryHref: string;
@@ -23,7 +20,7 @@ export function PageErrorState({
           <p className="text-muted-foreground mx-auto mt-2 max-w-md text-sm">
             {message}
           </p>
-          <Link href={retryHref} className={cn(CTA_BUTTON_CLASS, "mt-5")}>
+          <Link href={retryHref} className={`${CTA_BUTTON_CLASS} mt-5`}>
             Try again
           </Link>
         </div>

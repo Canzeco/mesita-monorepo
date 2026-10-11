@@ -1,5 +1,3 @@
-import type { CrenupAction } from "./crenup-batch";
-
 // Multiple Places — five boxes, one per job. Two read, three write.
 // The sticky rail and the cards both read from here so a surface cannot
 // appear on one and vanish from the other.
@@ -21,6 +19,10 @@ export const PIPELINE_STEPS = [
 ] as const;
 
 export type PipelineStepId = (typeof PIPELINE_STEPS)[number]["id"];
+
+/** The five write actions. Create fans out one call per Google Place ID;
+ *  Enrich only seeds place_research, and pg_cron claims one row at a time. */
+export type CrenupAction = "create" | "delete" | "list" | "unlist" | "enrich";
 
 /** The buttons each write box carries, in order. */
 export const WRITE_BOX_ACTIONS = {

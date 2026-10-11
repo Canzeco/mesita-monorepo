@@ -8,9 +8,7 @@ import type { SynthesisQuality } from "@/lib/synthesis-quality";
 import { updateEnricherModelSettings, updateModelsConfig } from "./actions";
 import {
   ENRICHER_PERPLEXITY_PRESETS,
-  MEMO_PERPLEXITY_LABELS,
   OPENAI_CHAT_MODELS,
-  PERPLEXITY_OPTIONS,
   changedEnricherFields,
   memoDirty,
   nextRadioIndex,
@@ -23,7 +21,7 @@ import {
 
 // Models (MESITA-2126): one card, one row per AI job that actually runs, each
 // named by the job and the model behind it. Two stores behind one Save —
-// Memo's picks on models_config, the Enricher's on enrichment_config — saved
+// Memo's model on models_config, the Enricher's on enrichment_config — saved
 // as independent halves by runSave (types.ts). The dead knobs (Edge Functions,
 // Ojo) are not shown; see the types.ts header for what still rides the blob.
 
@@ -274,33 +272,10 @@ export function ModelsConfigClient({
               <Unavailable />
             )}
           </JobRow>
-          <JobRow
-            id={id("memo-web")}
-            label="Discovery chat web answers"
-            usedBy="Memo, when a question needs the web. Off skips it."
-          >
-            {cfg ? (
-              <select
-                id={id("memo-web")}
-                value={cfg.memo.perplexity}
-                disabled={busy}
-                onChange={(e) => setMemo({ perplexity: e.target.value })}
-                className={SELECT}
-              >
-                {PERPLEXITY_OPTIONS.map((p) => (
-                  <option key={p} value={p}>
-                    {MEMO_PERPLEXITY_LABELS[p]}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <Unavailable />
-            )}
-          </JobRow>
         </div>
         {modelsError && (
           <ErrorNote
-            message={`Couldn't save Discovery chat or its web answers: ${modelsError}.${
+            message={`Couldn't save Discovery chat: ${modelsError}.${
               savedNote.enricher ? " Enricher changes were saved." : ""
             }`}
           />

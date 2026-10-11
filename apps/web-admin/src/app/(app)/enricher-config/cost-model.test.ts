@@ -21,7 +21,6 @@ const base = {
     opentable: 3,
     ubereats: 0,
   },
-  places: 1,
 };
 
 describe("computeEnrichmentCost", () => {
@@ -31,10 +30,8 @@ describe("computeEnrichmentCost", () => {
     expect(standard.perPlace).toBeGreaterThan(economy.perPlace);
     for (const n of [
       economy.perPlace,
-      economy.total,
       economy.perPlaceSecs,
       standard.perPlace,
-      standard.total,
     ]) {
       expect(Number.isFinite(n)).toBe(true);
     }
@@ -104,7 +101,6 @@ describe("instance estimates", () => {
     // §8.4 v3: the door Description (one batched prompt) runs at create when
     // no full Enrich is queued, so the estimate bills its synthesis too.
     const c = computeCreateCost(settings);
-    expect(c.places).toBe(1);
     expect(c.active.map((l) => l.label)).toEqual([
       "Google profile",
       "Google photos",
@@ -117,8 +113,6 @@ describe("instance estimates", () => {
 
   it("Enrich is live knobs for one place", () => {
     const e = computeEnrichTickCost(settings);
-    expect(e.places).toBe(1);
-    expect(e.total).toBeCloseTo(e.perPlace);
     expect(e.perPlace).toBeGreaterThan(computeCreateCost(settings).perPlace);
   });
 

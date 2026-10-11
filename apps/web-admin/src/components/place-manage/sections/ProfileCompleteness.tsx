@@ -10,9 +10,6 @@ import type { AdminPlace } from "../actions";
 // place flows through PlaceContext, the banner re-derives live as each
 // section saves.
 
-const cx = (...c: (string | false | null | undefined)[]) =>
-  c.filter(Boolean).join(" ");
-
 const CHIP_CLASS =
   "rounded-full bg-muted px-2 py-0.5 type-meta font-semibold text-foreground transition hover:bg-muted";
 
@@ -130,25 +127,11 @@ export function ProfileCompleteness({ place }: { place: AdminPlace }) {
   const enriching =
     place.content_state === "generating" || place.content_state === "queued";
 
-  // Chip hue tracks the band so the banner reads at a glance.
-  const chip = complete
-    ? "bg-muted text-muted-foreground"
-    : pct >= 70
-      ? "bg-muted text-muted-foreground"
-      : pct >= 40
-        ? "bg-muted text-muted-foreground"
-        : "bg-muted text-muted-foreground";
-
   return (
     <section className="border-border bg-card shadow-card mb-4 rounded-2xl border p-5 sm:p-6 lg:mb-5">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
         <div className="flex items-center gap-3">
-          <span
-            className={cx(
-              "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
-              chip,
-            )}
-          >
+          <span className="bg-muted text-muted-foreground inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
             {complete ? (
               <CheckCircle2 className="h-4 w-4" />
             ) : (

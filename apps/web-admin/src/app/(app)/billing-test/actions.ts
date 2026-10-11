@@ -14,15 +14,13 @@ import { coerceResults, type ProbeResult } from "./catalog";
 
 type RunProbesResult =
   | { ok: true; checkedAt: string; results: ProbeResult[] }
-  | { ok: false; error: string; notDeployed: boolean };
+  | { ok: false; error: string };
 
 /**
  * Run health probes.
  *
  * @param providers Explicit provider ids. The page always names them — one
- *   card's id, or every id behind the single Run button — so the sweep is
- *   identical whether or not the EF has shipped its own "no list = all"
- *   default yet.
+ *   card's id, or every id behind the single Run button.
  */
 export async function runApiHealthProbes(
   providers: string[],
@@ -32,12 +30,7 @@ export async function runApiHealthProbes(
     { providers },
   );
 
-  if (!r.ok) {
-    // 404 means the function isn't in the project yet — a materially different
-    // situation from a probe failing, and the page says so explicitly rather
-    // than showing a generic error the operator would have to decode.
-    return { ok: false, error: r.error, notDeployed: r.status === 404 };
-  }
+  if (!r.ok) return { ok: false, error: r.error };
 
   return {
     ok: true,

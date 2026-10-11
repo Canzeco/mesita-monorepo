@@ -112,40 +112,4 @@ describe("per-column weight saves cannot reach each other", () => {
     expect(sent.config?.params.proximity.maxKm).toBe(3);
     expect(sent.config?.weightsByMode).toEqual(live.weightsByMode);
   });
-
-  it("an unrelated slice — the Chat prompt — moves nothing", async () => {
-    const live = liveConfig();
-    const sent = armed(live);
-    const edited: DiscoveryConfig = {
-      ...live,
-      chat: { prompt: "after" },
-      weightsByMode: {
-        map: { ...live.weightsByMode.map, proximity: 2 },
-        swipe: { ...live.weightsByMode.swipe, proximity: 0.1 },
-      },
-    };
-
-    await updateDiscoveryConfig(edited, ["chat"]);
-
-    expect(sent.config?.chat.prompt).toBe("after");
-    expect(sent.config?.weightsByMode).toEqual(live.weightsByMode);
-    expect(sent.config?.weights).toEqual(live.weights);
-  });
-
-  it("a whole-config save (no slices named) still carries both columns", async () => {
-    const live = liveConfig();
-    const sent = armed(live);
-    const edited: DiscoveryConfig = {
-      ...live,
-      weightsByMode: {
-        map: { ...live.weightsByMode.map, proximity: 2 },
-        swipe: { ...live.weightsByMode.swipe, proximity: 0.1 },
-      },
-    };
-
-    await updateDiscoveryConfig(edited);
-
-    expect(sent.config?.weightsByMode.map.proximity).toBe(2);
-    expect(sent.config?.weightsByMode.swipe.proximity).toBe(0.1);
-  });
 });

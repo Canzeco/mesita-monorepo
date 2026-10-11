@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { placeHref } from "@/lib/console-routes";
+import { placeTabHref } from "@/lib/place-tabs";
 import {
   GENERAL_STATE_FACTS,
   STATE_FACT_FALSE_TONE,
@@ -46,7 +46,7 @@ export function MesitaSearchResults({ rows }: { rows: Row[] }) {
                       // The name is the door to Single Place (MESITA-2086):
                       // the place surface, not a second facts card.
                       <Link
-                        href={placeHref(hit.id)}
+                        href={placeTabHref(hit.id, "profile")}
                         className="block truncate font-medium underline-offset-4 hover:underline"
                       >
                         {hit.google_name || hit.name}

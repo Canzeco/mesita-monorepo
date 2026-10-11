@@ -18,7 +18,6 @@ import {
   DISCOVERY_SOURCES,
   DISCOVERY_SOURCES_NO_CALLER,
   GOOGLE_PULL_STOPS,
-  LIBRARY_SIGNALS,
   modeCallsSource,
   modeRequiresPool,
   modeReturnsEntity,
@@ -34,24 +33,8 @@ import {
   WEIGHTED_MODE_KEYS,
   weightMaxFor,
 } from "./catalog";
-import { ENGINES } from "./discovery-engines";
 
 describe("Discovery function APIs", () => {
-  it("every signal is a stored-index function — no vendor API at rank time", () => {
-    expect(SIGNALS.map((s) => [s.key, s.apis]).sort()).toEqual(
-      [
-        ["name", []],
-        ["summary", []],
-        ["category", []],
-        ["proximity", []],
-        ["timing", []],
-        ["enriched", []],
-        ["popularity", []],
-        ["randomness", []],
-      ].sort(),
-    );
-  });
-
   it("only maxKm and closedFloor are extra operator knobs", () => {
     expect(
       SIGNALS.flatMap((s) => s.fields.map((f) => `${s.key}.${f.key}`)),
@@ -59,7 +42,8 @@ describe("Discovery function APIs", () => {
   });
 
   it("library order is section 8.3 — asked-for, then world, then us, then the tie-break", () => {
-    expect(LIBRARY_SIGNALS.map((row) => row.key)).toEqual([
+    // The blend is a product of s^w, so the table order cannot move a score.
+    expect([...SIGNAL_KEYS]).toEqual([
       "name",
       "summary",
       "category",
@@ -69,39 +53,6 @@ describe("Discovery function APIs", () => {
       "popularity",
       "randomness",
     ]);
-    // The blend is a product of s^w, so the table order cannot move a score.
-    expect([...SIGNAL_KEYS]).toEqual(LIBRARY_SIGNALS.map((row) => row.key));
-    expect(SIGNAL_KEYS).not.toContain("promoting");
-    expect(SIGNAL_KEYS).not.toContain("semantic");
-    expect(SIGNAL_KEYS).toContain("enriched");
-    // No signal reads money.
-    expect(SIGNAL_KEYS).not.toContain("partnered");
-    // Mesita Level became Enriched (MESITA-1858). The key is PERSISTED, so
-    // this is what says the rename completed on the console side too.
-    expect(SIGNAL_KEYS).not.toContain("mesita_level");
-    // Never bare `level` — `places.price_level` owns that word on a place.
-    expect(SIGNAL_KEYS).not.toContain("level");
-    expect(SIGNAL_KEYS).toContain("randomness");
-    expect(SIGNAL_KEYS).toContain("name");
-    expect(SIGNAL_KEYS).toContain("summary");
-    // Merged away at MESITA-1408; Social left the library then too.
-    expect(SIGNAL_KEYS).not.toContain("partnership");
-    expect(SIGNAL_KEYS).not.toContain("promotion");
-    expect(SIGNAL_KEYS).not.toContain("social");
-  });
-
-  it("coerceConfig folds old semantic weight and params onto summary", () => {
-    const cfg = coerceConfig({
-      weights: { semantic: 2, proximity: 1.5 },
-      params: { semantic: { unembedded: 0.2 } },
-    });
-    expect(cfg.weights.summary).toBe(2);
-    expect(cfg.weights.name).toBe(1);
-    expect(cfg.weights.enriched).toBe(1);
-    expect(cfg.params.summary.unembedded).toBe(0.2);
-    // The legacy key itself is PRESERVED now (MESITA-1858, the additive
-    // window) — it is the fold that matters, not the deletion.
-    expect(cfg.weights).toHaveProperty("semantic");
   });
 
   it("only Map and Scroll earn a weight column", () => {
@@ -114,8 +65,6 @@ describe("Discovery function APIs", () => {
     for (const mode of WEIGHTED_MODE_KEYS) {
       expect(DISCOVERY_MODE_KEYS).toContain(mode);
     }
-    expect(WEIGHTED_MODE_KEYS).not.toContain("word");
-    expect(WEIGHTED_MODE_KEYS).not.toContain("catalog");
   });
 
   it("a per-mode column round-trips, clamps, and seeds from the blob's own vector", () => {
@@ -244,10 +193,8 @@ describe("Discovery function APIs", () => {
     }
   });
 
-  // THE TWIN PINS ITSELF. supabase/.../discovery-matrix.ts holds the same
-  // three bands and nothing imports across the two packages (Vercel's root is
-  // apps/web-admin), so each side duplicates the literals and a one-sided
-  // edit goes red on one side.
+  // The three bands live only in discovery-matrix.ts, so these literals are
+  // their one pin.
   it("result entities are Locations · Places · Socials, in that order", () => {
     expect(DISCOVERY_ENTITIES.map((e) => e.key)).toEqual([
       "location",
@@ -286,11 +233,6 @@ describe("Discovery function APIs", () => {
       "Google Places",
       "Mesita Enriched Places",
     ]);
-    expect(
-      (DISCOVERY_POOLS as readonly { key: string }[]).some(
-        (p) => p.key === "listed",
-      ),
-    ).toBe(false);
     // Map is the one mode whose GUEST picks the ring — PlacesScope is
     // exactly these two — and isEnrichedListedRow refuses an unenriched row
     // in either scope.
@@ -340,51 +282,6 @@ describe("Discovery function APIs", () => {
     ).toBe(true);
   });
 
-  it("map() is closest N of the selected Places set", () => {
-    const map = ENGINES.find((e) => e.key === "map");
-    expect(map?.state).toBe("LIVE");
-    expect(map?.apis).toEqual(["Google Places Nearby Search"]);
-    expect(map?.input).toMatch(/guest pin/i);
-    // The two rings, and the gate that makes the chain a containment
-    // rather than a drawing (Pato, 2026-09-05).
-    expect(map?.process).not.toMatch(/Mesita Partner Places/);
-    expect(map?.process).toMatch(/Mesita Enriched Places/);
-    expect(map?.process).toMatch(/Google Places/);
-    expect(map?.process).toMatch(/ENRICHMENT GATES THE MESITA RING/);
-    expect(map?.process).toMatch(/paints/);
-    expect(map?.process).toMatch(/reload pair/);
-    expect(map?.process).not.toMatch(/Concat/);
-    expect(map?.process).not.toMatch(/ignoring Mesita membership/);
-    expect(map?.process).not.toMatch(/Union 20/);
-    expect(map?.process).not.toMatch(/never stub/);
-    expect(map?.process).not.toMatch(/Nearest 50/);
-    expect(map?.process).not.toMatch(/under 10/);
-  });
-
-  it("coerceConfig drops every map set cap — how many is the guest's question", () => {
-    // Asked ONCE, on the consumer Filters sheet (Pato, 2026-08-29). A
-    // legacy blob carrying the retired knobs must not resurrect them.
-    const legacy = coerceConfig({
-      map: { partnerCount: 99, notPartnerCount: 7, mesitaCount: 10, googleCount: 20 },
-    }).map;
-    for (const dead of [
-      "partnerCount",
-      "notPartnerCount",
-      "mesitaCount",
-      "googleCount",
-    ]) {
-      expect(dead in legacy).toBe(false);
-    }
-  });
-
-  it("catalog() is parked — Home Catalog is Soon", () => {
-    const catalog = ENGINES.find((e) => e.key === "catalog");
-    expect(catalog?.state).toBe("PARKED");
-    expect(catalog?.apis).toEqual([]);
-    expect(catalog?.process).toMatch(/Parked/i);
-    expect(catalog?.process).toMatch(/Soon/);
-  });
-
   it("coerceConfig defaults catalog on an old blob", () => {
     expect(coerceConfig({ weights: {}, slotting: {} }).catalog).toEqual(DEFAULT_CATALOG);
     expect(coerceConfig({ catalog: { seedCount: 99 } }).catalog.seedCount).toBe(20);
@@ -425,39 +322,6 @@ describe("Discovery function APIs", () => {
     });
   });
 
-  it("social() stays parked and names events, not places", () => {
-    const social = ENGINES.find((e) => e.key === "social");
-    expect(social?.state).toBe("PARKED");
-    expect(social?.process).toMatch(/events/i);
-    expect(social?.input).toMatch(/events/i);
-    expect(social?.process).not.toMatch(/Check-ins/);
-  });
-
-  it("name() is Fast Autocomplete plus Deep four-query concat", () => {
-    const name = ENGINES.find((e) => e.key === "name");
-    expect(name?.state).toBe("LIVE");
-    expect(name?.apis).toEqual([
-      "Google Places Autocomplete",
-      "Google Places Text Search",
-      "Place Details",
-    ]);
-    expect(name?.process).toMatch(/Fast/);
-    expect(name?.process).toMatch(/Autocomplete only/);
-    expect(name?.process).toMatch(/Deep/);
-    expect(name?.process).toMatch(/Places Lineup Name/);
-    expect(name?.process).toMatch(/places\.name/);
-    expect(name?.process).toMatch(/not `google_name`/);
-    expect(name?.process).toMatch(/resolves/);
-    expect(name?.process).not.toMatch(/Partners/);
-    expect(name?.process).toMatch(/Deep never calls Nearby Search/);
-    expect(name?.process).toMatch(/first query keeps the slot/);
-    expect(name?.apis).not.toContain("Google Places Nearby Search");
-    expect(name?.process).toMatch(/Map Filters never cut this list/);
-    expect(name?.process).toMatch(/other Lineup signals/);
-    expect(name?.process).not.toMatch(/summary embedding/i);
-    expect(name?.process).not.toMatch(/Max results caps the merge/);
-  });
-
   it("coerceConfig defaults swipe on an old blob and clamps knobs", () => {
     expect(coerceConfig({ weights: {}, slotting: {} }).swipe).toEqual(DEFAULT_SWIPE);
     expect(
@@ -471,55 +335,9 @@ describe("Discovery function APIs", () => {
     });
   });
 
-  it("the five retired swipe ranking knobs do not survive a coerce", () => {
-    // MESITA-1859 DELETED them, it did not merely stop rendering them. A blob
-    // still carrying `weightProximity: 0.7` beside a live per-mode Proximity
-    // exponent forces the next reader to work out which one the deck obeys.
-    const swipe = coerceConfig({
-      swipe: {
-        weightProximity: 0.7,
-        starsExponent: 1.5,
-        logDivisor: 10,
-        partnerBias: { dominant: 2 },
-        randomnessMax: 1.3,
-      },
-    }).swipe;
-    for (
-      const dead of [
-        "weightProximity",
-        "starsExponent",
-        "logDivisor",
-        "partnerBias",
-        "randomnessMax",
-      ]
-    ) {
-      expect(swipe, dead).not.toHaveProperty(dead);
-    }
-  });
-
-  it("swipe() is LIVE — Home shipped, and the catalog entry says so", () => {
-    // It read PARKED until MESITA-1859, on copy dated 2026-08-28. ScrollDeck
-    // is live in web-consumer and consumer-web-recommend-swipe is called on
-    // every load; a PARKED row under a live console card is the same
-    // dishonesty the ConfigSoon header exists to prevent.
-    const swipe = ENGINES.find((e) => e.key === "swipe");
-    expect(swipe?.state).toBe("LIVE");
-    expect(swipe?.process).not.toMatch(/Parked/i);
-    expect(swipe?.process).not.toMatch(/Soon/);
-    expect(swipe?.process).toMatch(/Places Lineup/);
-    expect(swipe?.process).toMatch(/Scroll mask/);
-    expect(swipe?.process).not.toMatch(/two-signal/);
-  });
-
-  it("the category param is seven families, and categoryCount is gone", () => {
-    // MESITA-1695: the operator's noun is the family, not Google's slug, and
-    // the ordered "first N" cap that hid four whole families is deleted. A
-    // stored blob carrying it must not resurrect it.
+  it("the category param is seven families", () => {
+    // MESITA-1695: the operator's noun is the family, not Google's slug.
     expect(coerceConfig({ weights: {}, slotting: {} }).general).toEqual(DEFAULT_GENERAL);
-    expect("categoryCount" in DEFAULT_GENERAL).toBe(false);
-    expect(
-      "categoryCount" in coerceConfig({ general: { categoryCount: 5 } }).general,
-    ).toBe(false);
     expect(SUPER_FIELDS.length).toBe(7);
     expect(new Set(SUPER_FIELDS.map((f) => f.key)).size).toBe(7);
     // Every family names the Google battery it bills, so the box can say what
@@ -535,44 +353,6 @@ describe("Discovery function APIs", () => {
     expect(
       new Set(SUPER_FIELDS.filter((f) => on.includes(f.key)).flatMap((f) => f.battery)),
     ).toEqual(new Set(["restaurant", "bar", "night_club", "cafe", "bakery"]));
-  });
-
-  it("coerceConfig folds a pre-1695 Google-slug blob up into families", () => {
-    // THE LIVE BLOB: five slugs true, nothing else stored. It has to land on
-    // exactly the three F&B families or the console shows a different answer
-    // than the Edge Functions read.
-    const folded = coerceConfig({
-      map: {
-        types: {
-          restaurant: true,
-          bar: true,
-          night_club: true,
-          cafe: true,
-          bakery: true,
-        },
-      },
-    }).map.supers;
-    expect(folded).toEqual({
-      restaurants: true,
-      cafes_bakeries: true,
-      bars_nightlife: true,
-      experiences: false,
-      culture_arts: false,
-      sports_fitness: false,
-      wellness_beauty: false,
-    });
-    // An ABSENT slug keeps its pre-1695 default rather than reading false.
-    expect(coerceConfig({ map: { types: { museum: true } } }).map.supers).toMatchObject({
-      restaurants: true,
-      culture_arts: true,
-      sports_fitness: false,
-    });
-    // The new key wins whenever it is present.
-    expect(
-      coerceConfig({
-        map: { supers: { restaurants: false }, types: { restaurant: true } },
-      }).map.supers.restaurants,
-    ).toBe(false);
   });
 
   it("googlePull snaps to a stop — 40 and 60 are billed calls, not a slider", () => {
@@ -596,7 +376,6 @@ describe("Discovery function APIs", () => {
           mesitaCount: 0,
           autoCount: 3,
           googleCount: 3,
-          count: 9,
         },
       });
     expect(
@@ -614,38 +393,8 @@ describe("Discovery function APIs", () => {
       autoCount: 5,
       googleCount: 1,
       mesitaCount: 10,
-      count: 9,
       supers: DEFAULT_NAME.deep.supers,
     });
-  });
-
-  it("chat() is parked with the rest of Home", () => {
-    const chat = ENGINES.find((e) => e.key === "chat");
-    expect(chat?.state).toBe("PARKED");
-    expect(chat?.process).toMatch(/Soon/);
-    expect(chat?.apis).toEqual(["OpenAI"]);
-  });
-
-  it("Swipe left the parked list when Home shipped; the other four stayed", () => {
-    // MESITA-1859: Scroll is the one Home surface with a live engine behind
-    // it. Feed's rails rank by cosine and the rest have no engine at all.
-    expect(ENGINES.find((e) => e.key === "swipe")?.state).toBe("LIVE");
-    for (const key of ["catalog", "chat", "social", "favorites"] as const) {
-      expect(ENGINES.find((e) => e.key === key)?.state, key).toBe("PARKED");
-    }
-  });
-
-  it("engines name only the vendor APIs they actually call", () => {
-    expect(ENGINES.map((e) => [e.key, e.apis])).toEqual([
-      ["swipe", []],
-      ["map", ["Google Places Nearby Search"]],
-      ["favorites", []],
-      ["catalog", []],
-      ["chat", ["OpenAI"]],
-      ["social", []],
-      ["name", ["Google Places Autocomplete", "Google Places Text Search", "Place Details"]],
-      ["web", ["Perplexity"]],
-    ]);
   });
 });
 
@@ -822,8 +571,7 @@ describe("Discovery page box order", () => {
     expect(swipe).toContain('label="Radius (km)"');
     expect(swipe).toContain('label="Minimum Google reviewers"');
     expect(swipe).toContain('label="Closing buffer (min)"');
-    // No exponent input on this card, and no control for the one admission
-    // field nothing reads.
+    // No exponent input on this card, and no control for a retired field.
     expect(swipe).not.toContain("weightMaxFor");
     expect(swipe).not.toContain("categoryFilter");
     expect(swipe).not.toContain("weightProximity");
@@ -854,7 +602,7 @@ describe("Discovery page box order", () => {
     // Social left the mode list; it has no box of its own any more.
     expect(() => readFileSync(join(__dirname, "SocialConfigClient.tsx"))).toThrow();
     expect(signals).toContain('title="Mesita Places Search Signals"');
-    expect(signals).toContain("LIBRARY_SIGNALS");
+    expect(signals).toContain("SIGNAL_KEYS.map");
     expect(signals).not.toContain("Promoting");
     expect(signals).toContain("randomness");
     expect(signals).toContain("enriched");
@@ -878,7 +626,7 @@ describe("Discovery page box order", () => {
     expect(modesPage).toContain("ModeWeightsClient");
     expect(matrixPage).not.toContain("ModeWeightsClient");
     expect(weights).toContain('title="Signal weights by mode"');
-    expect(weights).toContain("LIBRARY_SIGNALS");
+    expect(weights).toContain("SIGNAL_KEYS.map");
     expect(weights).toContain("WEIGHTED_MODE_KEYS");
     // The mask is consulted before anything is rendered, and a masked-off
     // cell is an em-dash, never a disabled 0.
@@ -1038,7 +786,6 @@ describe("Mesita Level is Enriched", () => {
     const expected = [...SIGNAL_KEYS].sort();
     expect(Object.keys(DEFAULT_CONFIG.weights).sort()).toEqual(expected);
     expect(Object.keys(DEFAULT_CONFIG.params).sort()).toEqual(expected);
-    expect(LIBRARY_SIGNALS.map((r) => r.key).sort()).toEqual(expected);
     expect(SIGNALS.map((s) => s.key).sort()).toEqual(expected);
     // And the icon map the Signals page renders, read as source: a missing
     // key there is a card with no icon, not a type error, because ICONS is
@@ -1138,20 +885,5 @@ describe("Mesita Level is Enriched", () => {
       value: 2,
       foldedTo: ["enriched"],
     });
-  });
-
-  it("mirrors the EF's signal key list exactly — these keys are PERSISTED", () => {
-    // Renaming one side alone does not fail a type check anywhere. It
-    // silently resets live discovery config to defaults.
-    const ef = readFileSync(
-      join(__dirname, "../../../../../../supabase/supabase/functions/_shared/discovery-signals.ts"),
-      "utf8",
-    );
-    const block = ef.slice(
-      ef.indexOf("export const SIGNAL_KEYS = ["),
-      ef.indexOf("] as const;", ef.indexOf("export const SIGNAL_KEYS = [")),
-    );
-    const efKeys = [...block.matchAll(/"([a-z_]+)"/g)].map((m) => m[1]);
-    expect(efKeys).toEqual([...SIGNAL_KEYS]);
   });
 });

@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Clock,
-  ExternalLink,
   Globe,
   ImagePlus,
   Images,
@@ -20,7 +19,6 @@ import {
   listPlaceTagCatalog,
   type AdminPlace,
   type PlaceFieldLimits,
-  type PlaceMediaMeta,
 } from "../actions";
 import { PlaceTagsPicker } from "../PlaceTagsPicker";
 import { PlaceCategorySelect } from "../PlaceCategorySelect";
@@ -36,7 +34,6 @@ import {
 import { usePlaceContext } from "../PlaceContext";
 import { useSectionSaver } from "../useSectionDirty";
 import { ErrorNote } from "@/components/ErrorNote";
-import { formatAbsoluteUtc } from "@/lib/format";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
 import {
   formatPlacePriceRange,
@@ -144,7 +141,7 @@ function PriceDisplay({
 
 type DayHours = { closed: boolean; open: string; close: string };
 // Address is deliberately absent: it is native (Google/Enricher-sourced) and
-// admin-web-update-place rejects manual writes — Location renders read-only.
+// admin-web-update-place does not accept it — Location renders read-only.
 type Form = {
   /** Operator override → places.mesita_name. Blank ⇒ the place follows Google. */
   mesitaName: string;
@@ -253,7 +250,7 @@ export function PlaceSection({
   const [limits, setLimits] = useState<PlaceFieldLimits>(FALLBACK_LIMITS);
   const [form, setForm] = useState<Form>(() => placeToForm(place));
   const [saved, setSaved] = useState<Form>(form);
-  const [errors, setErrors] = useState<Partial<Record<PlaceBox, string>>>({});
+  const [errors, setErrors] = useState<{ photos?: string }>({});
 
   const dirtyBasics = useMemo(
     () =>
@@ -428,7 +425,7 @@ export function PlaceSection({
 
   useEffect(() => {
     let alive = true;
-    // Field limits come from the same catalog Atlas Config uses — never hardcode.
+    // Field limits come from admin-web-get-atlas-fields — never hardcode.
     listPlaceTagCatalog().then((r) => {
       if (!alive || !r.ok) return;
       setLimits(r.data.fieldLimits);
@@ -523,7 +520,6 @@ export function PlaceSection({
             disabled={anyPending}
           />
         </div>
-        {errors.basics ? <ErrorNote message={errors.basics} /> : null}
       </SectionCard>
 
       {/* Location is native — Google Places seed + Enricher synthesis.
@@ -656,7 +652,6 @@ export function PlaceSection({
             );
           })}
         </div>
-        {errors.time ? <ErrorNote message={errors.time} /> : null}
       </SectionCard>
 
       <SectionCard
@@ -734,7 +729,6 @@ export function PlaceSection({
             disabled={anyPending}
           />
         </div>
-        {errors.channels ? <ErrorNote message={errors.channels} /> : null}
       </SectionCard>
 
       <SectionCard
@@ -788,7 +782,6 @@ export function PlaceSection({
       {metaFor !== null && (
         <MediaMetaDialog
           url={metaFor}
-          meta={null}
           position={form.photos.indexOf(metaFor) + 1}
           total={form.photos.length}
           onClose={() => setMetaFor(null)}
@@ -936,103 +929,16 @@ function PhotosEditor({
   );
 }
 
-const SOURCE_LABEL: Record<string, string> = {
-  google: "Google",
-  website: "Website",
-  instagram: "Instagram",
-};
-
-const SOURCE_CHIP: Record<string, string> = {
-  google: "bg-muted text-muted-foreground",
-  website: "bg-muted text-muted-foreground",
-  instagram: "bg-muted text-muted-foreground",
-};
-
-// Light markdown-ish renderer: preserves newlines and bolds **…** segments.
-// The enricher analysis_text looks like "**Category:** … \n\n**Description:** …".
-function AnalysisText({ text }: { text: string }) {
-  return (
-    <div className="text-foreground/90 text-sm leading-relaxed whitespace-pre-wrap">
-      {text
-        .split(/\*\*/)
-        .map((seg, i) =>
-          i % 2 === 1 ? (
-            <strong key={i}>{seg}</strong>
-          ) : (
-            <span key={i}>{seg}</span>
-          ),
-        )}
-    </div>
-  );
-}
-
-const STATE_CHIP: Record<string, string> = {
-  saved: "bg-muted text-muted-foreground",
-  pending: "border border-dashed border-border text-muted-foreground",
-  failed: "bg-destructive/10 text-destructive",
-};
-
-// Turn the raw per-source `source_metadata` blob into labelled rows for display.
-// Shapes: Instagram → { comments_count, timestamp, is_video, shortcode };
-// website → { alt, page, width, height }. Everything is defensive — the blob is
-// gathered upstream and may be partial.
-function sourceMetaRows(
-  source: string | null,
-  meta: Record<string, unknown> | null,
-): { label: string; value: string }[] {
-  if (!meta) return [];
-  const rows: { label: string; value: string }[] = [];
-  const num = (v: unknown) =>
-    typeof v === "number" && Number.isFinite(v) ? v : null;
-  const strVal = (v: unknown) =>
-    typeof v === "string" && v.trim() ? v.trim() : null;
-
-  if (source === "instagram") {
-    const comments = num(meta.comments_count);
-    if (comments != null)
-      rows.push({ label: "Comments", value: comments.toLocaleString() });
-    if (meta.is_video === true)
-      rows.push({ label: "Media type", value: "Video" });
-    else if (meta.is_video === false)
-      rows.push({ label: "Media type", value: "Photo" });
-    const ts = meta.timestamp;
-    let posted: string | null = null;
-    if (typeof ts === "number" && Number.isFinite(ts)) {
-      posted = formatAbsoluteUtc(new Date(ts * 1000).toISOString());
-    } else if (typeof ts === "string" && ts.trim()) {
-      const d = new Date(ts);
-      posted = Number.isNaN(d.getTime())
-        ? ts
-        : formatAbsoluteUtc(d.toISOString());
-    }
-    if (posted) rows.push({ label: "Posted", value: posted });
-    const shortcode = strVal(meta.shortcode);
-    if (shortcode) rows.push({ label: "Shortcode", value: shortcode });
-  } else if (source === "website") {
-    const w = num(meta.width);
-    const h = num(meta.height);
-    if (w != null && h != null)
-      rows.push({ label: "Dimensions", value: `${w}×${h}` });
-    const page = strVal(meta.page);
-    if (page) rows.push({ label: "Found on page", value: page });
-    const alt = strVal(meta.alt);
-    if (alt) rows.push({ label: "Alt text", value: alt });
-  }
-  return rows;
-}
-
 // Gallery order for the tile you are curating. Enricher analysis text
 // lives on the Admin tab — a restaurant reading vision copy as if it
 // were theirs is the bug MESITA-1740 named.
 function MediaMetaDialog({
   url,
-  meta,
   position,
   total,
   onClose,
 }: {
   url: string;
-  meta: PlaceMediaMeta | null;
   position: number;
   total: number;
   onClose: () => void;
@@ -1044,18 +950,6 @@ function MediaMetaDialog({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
-
-  const source = meta?.source ?? null;
-  const sourceLabel = source
-    ? (SOURCE_LABEL[source] ?? source)
-    : "Unknown source";
-  const chip =
-    (source && SOURCE_CHIP[source]) || "bg-muted text-muted-foreground";
-  const analysis = meta?.analysis_text?.trim() || null;
-  const state = meta?.state ?? null;
-  const stateChip =
-    (state && STATE_CHIP[state]) || "bg-muted text-muted-foreground";
-  const metaRows = sourceMetaRows(source, meta?.source_metadata ?? null);
 
   return (
     <div
@@ -1103,100 +997,12 @@ function MediaMetaDialog({
                 not in gallery
               </span>
             )}
-            {state && (
-              <span
-                className={
-                  "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold " +
-                  stateChip
-                }
-              >
-                {state}
-              </span>
-            )}
           </div>
 
-          {!meta ? (
-            <p className="text-muted-foreground text-sm italic">
-              No information for this image yet — it hasn’t been analyzed by the
-              Enricher.
-            </p>
-          ) : (
-            <>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-muted-foreground text-xs font-medium">
-                  Source
-                </span>
-                <span
-                  className={
-                    "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold " +
-                    chip
-                  }
-                >
-                  {sourceLabel}
-                </span>
-                {typeof meta?.likes_count === "number" && (
-                  <span className="text-muted-foreground text-xs tabular-nums">
-                    ♥ {meta.likes_count.toLocaleString()}
-                  </span>
-                )}
-              </div>
-
-              {meta?.caption && (
-                <div>
-                  <p className="text-muted-foreground mb-1 text-xs font-medium">
-                    Caption
-                  </p>
-                  <p className="text-foreground/90 text-sm italic">
-                    “{meta.caption}”
-                  </p>
-                </div>
-              )}
-
-              {metaRows.length > 0 && (
-                <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-                  {metaRows.map((row) => (
-                    <div
-                      key={row.label}
-                      className="col-span-2 grid grid-cols-subgrid"
-                    >
-                      <dt className="text-muted-foreground text-xs font-medium">
-                        {row.label}
-                      </dt>
-                      <dd className="text-foreground/90 min-w-0 break-words">
-                        {row.value}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              )}
-
-              <div>
-                <p className="text-muted-foreground mb-1 text-xs font-medium">
-                  Analysis
-                </p>
-                {analysis ? (
-                  <AnalysisText text={analysis} />
-                ) : (
-                  <p className="text-muted-foreground text-sm italic">
-                    Not analyzed — this image was saved but not
-                    vision-described.
-                  </p>
-                )}
-              </div>
-            </>
-          )}
-
-          {meta?.source_url && (
-            <a
-              href={meta.source_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-xs font-medium"
-            >
-              <ExternalLink className="h-3.5 w-3.5" />
-              View original source
-            </a>
-          )}
+          <p className="text-muted-foreground text-sm italic">
+            No information for this image yet — it hasn’t been analyzed by the
+            Enricher.
+          </p>
         </div>
       </div>
     </div>

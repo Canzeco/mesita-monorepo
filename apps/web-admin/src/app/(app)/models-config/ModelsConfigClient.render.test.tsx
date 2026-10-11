@@ -29,10 +29,9 @@ describe("Models page (MESITA-2126)", () => {
     loadError: null,
   });
 
-  it("asks five questions, each named by its job", () => {
+  it("asks four questions, each named by its job", () => {
     for (const label of [
       "Discovery chat",
-      "Discovery chat web answers",
       "Enricher writing",
       "Enricher photos",
       "Enricher web search",
@@ -61,6 +60,7 @@ describe("Models page (MESITA-2126)", () => {
     expect(html).not.toContain("Ojo");
     expect(html).not.toContain("Visits");
     expect(html).not.toContain("high (=std)");
+    expect(html).not.toContain("web answers");
   });
 
   it("shows a stored model that is off the list as current", () => {

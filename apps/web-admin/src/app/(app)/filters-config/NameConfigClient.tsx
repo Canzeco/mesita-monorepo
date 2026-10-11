@@ -27,7 +27,6 @@ import {
 } from "@/components/admin-ui/config";
 import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
 import {
-  DEFAULT_CONFIG,
   DISCOVERY_MODE_SOURCES,
   NAME_LANE_COUNT_MAX,
   type DiscoveryConfig,
@@ -112,7 +111,7 @@ export function NameConfigClient({
     });
   };
 
-  const name = cfg.name ?? DEFAULT_CONFIG.name;
+  const name = cfg.name;
 
   return (
     <div className="flex flex-col gap-10">

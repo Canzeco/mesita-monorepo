@@ -35,7 +35,7 @@ import { formatShortDate } from "@/lib/format";
 import { KnobState, SaveRow, SectionCard } from "@/components/admin-ui/config";
 import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
 import {
-  LIBRARY_SIGNALS,
+  SIGNAL_KEYS,
   SIGNALS,
   type DiscoveryConfig,
   type SignalKey,
@@ -151,8 +151,8 @@ export function SignalsConfigClient({
         }
       >
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          {LIBRARY_SIGNALS.map((row) => {
-            const spec = SIGNALS.find((s) => s.key === row.key);
+          {SIGNAL_KEYS.map((key) => {
+            const spec = SIGNALS.find((s) => s.key === key);
             if (!spec) return null;
             const Icon = ICONS[spec.key];
             return (

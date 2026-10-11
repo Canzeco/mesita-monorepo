@@ -32,7 +32,6 @@ import {
 } from "@/components/admin-ui/config";
 import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
 import {
-  DEFAULT_CONFIG,
   DISCOVERY_MODE_SOURCES,
   SWIPE_CLOSING_BUFFER_MAX,
   SWIPE_RADIUS_KM_MAX,
@@ -118,7 +117,7 @@ export function SwipeConfigClient({
     });
   };
 
-  const swipe = cfg.swipe ?? DEFAULT_CONFIG.swipe;
+  const swipe = cfg.swipe;
 
   return (
     <div id="s-swipe" className="scroll-mt-16 flex flex-col gap-4">

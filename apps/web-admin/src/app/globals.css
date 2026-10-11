@@ -52,8 +52,6 @@
   --foreground: oklch(0.16 0.035 15);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.18 0.06 15);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.06 15);
 
   /* Hot pink-red primary (buttons, brand) */
   --primary: var(--brand-pink);
@@ -67,43 +65,13 @@
   /* Darker than the old 0.48 — this is the workhorse for 11–12px labels and
      hints, so it must clear WCAG-ish contrast on white cards. */
   --muted-foreground: oklch(0.42 0.035 15);
-  --accent: oklch(0.75 0.2 355);
-  --accent-foreground: oklch(0.18 0.06 15);
   --destructive: oklch(0.58 0.24 28);
   --destructive-foreground: oklch(0.99 0.005 10);
   --border: oklch(0.875 0.012 15);
-  /* The business console's tokens the place surface paints with
-     (MESITA-2086). Light values, verbatim from web-business's globals.css
+  /* The business console's paper token the place surface paints with
+     (MESITA-2086). Light value, verbatim from web-business's globals.css
      before MESITA-2089 deleted it; admin has no dark theme. */
   --paper: oklch(1 0 0);
-  --page: oklch(0.952 0 0);
-  --ink-hover: oklch(0.371 0 0);
-  --tier-gold: oklch(0.84 0.16 88);
-  --tier-gold-ink: oklch(0.42 0.11 78);
-  --family-presence: #e23d69;
-  --family-presence-ink: #d12a5c;
-  --family-presence-tint: color-mix(in srgb, var(--family-presence) 11%, var(--card));
-  --family-presence-tint-strong: color-mix(in srgb, var(--family-presence) 16%, var(--card));
-  --family-operations: #2f6feb;
-  --family-operations-ink: #2968e4;
-  --family-operations-tint: color-mix(in srgb, var(--family-operations) 11%, var(--card));
-  --family-operations-tint-strong: color-mix(in srgb, var(--family-operations) 16%, var(--card));
-  --family-money: #22a559;
-  --family-money-ink: #008138;
-  --family-money-tint: color-mix(in srgb, var(--family-money) 11%, var(--card));
-  --family-money-tint-strong: color-mix(in srgb, var(--family-money) 16%, var(--card));
-  --family-loyalty: #f08c00;
-  --family-loyalty-ink: #b35400;
-  --family-loyalty-tint: color-mix(in srgb, var(--family-loyalty) 11%, var(--card));
-  --family-loyalty-tint-strong: color-mix(in srgb, var(--family-loyalty) 16%, var(--card));
-  --family-automation: #9146e8;
-  --family-automation-ink: #9045e7;
-  --family-automation-tint: color-mix(in srgb, var(--family-automation) 11%, var(--card));
-  --family-automation-tint-strong: color-mix(in srgb, var(--family-automation) 16%, var(--card));
-  --family-insights: #0b8a92;
-  --family-insights-ink: #007b84;
-  --family-insights-tint: color-mix(in srgb, var(--family-insights) 11%, var(--card));
-  --family-insights-tint-strong: color-mix(in srgb, var(--family-insights) 16%, var(--card));
   --input: oklch(0.93 0.008 15);
   --ring: var(--brand-pink);
 
@@ -131,47 +99,15 @@
   --radius-3xl: calc(var(--radius) + 12px);
   --color-background: var(--background);
   --color-paper: var(--paper);
-  --color-page: var(--page);
-  --color-ink-hover: var(--ink-hover);
-  --color-tier-gold: var(--tier-gold);
-  --color-tier-gold-ink: var(--tier-gold-ink);
-  --color-family-presence: var(--family-presence);
-  --color-family-presence-ink: var(--family-presence-ink);
-  --color-family-presence-tint: var(--family-presence-tint);
-  --color-family-presence-tint-strong: var(--family-presence-tint-strong);
-  --color-family-operations: var(--family-operations);
-  --color-family-operations-ink: var(--family-operations-ink);
-  --color-family-operations-tint: var(--family-operations-tint);
-  --color-family-operations-tint-strong: var(--family-operations-tint-strong);
-  --color-family-money: var(--family-money);
-  --color-family-money-ink: var(--family-money-ink);
-  --color-family-money-tint: var(--family-money-tint);
-  --color-family-money-tint-strong: var(--family-money-tint-strong);
-  --color-family-loyalty: var(--family-loyalty);
-  --color-family-loyalty-ink: var(--family-loyalty-ink);
-  --color-family-loyalty-tint: var(--family-loyalty-tint);
-  --color-family-loyalty-tint-strong: var(--family-loyalty-tint-strong);
-  --color-family-automation: var(--family-automation);
-  --color-family-automation-ink: var(--family-automation-ink);
-  --color-family-automation-tint: var(--family-automation-tint);
-  --color-family-automation-tint-strong: var(--family-automation-tint-strong);
-  --color-family-insights: var(--family-insights);
-  --color-family-insights-ink: var(--family-insights-ink);
-  --color-family-insights-tint: var(--family-insights-tint);
-  --color-family-insights-tint-strong: var(--family-insights-tint-strong);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
