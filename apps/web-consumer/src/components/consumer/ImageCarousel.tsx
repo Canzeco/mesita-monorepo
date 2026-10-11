@@ -26,6 +26,7 @@ export function ImageCarousel({
   renderSlide,
   tapToPage = true,
   interactiveDots = false,
+  onIdxChange,
 }: {
   photos: string[];
   alt: string;
@@ -55,6 +56,12 @@ export function ImageCarousel({
    * page once the tap zones are gone.
    */
   interactiveDots?: boolean;
+  /**
+   * The photo on screen changed. Swipe and Scroll read it to give the card
+   * the chrome THAT photo needs — the gradient for a cover, none for a
+   * reflection (MESITA-2146).
+   */
+  onIdxChange?: (idx: number) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [idx, setIdx] = useState(0);
@@ -136,7 +143,10 @@ export function ImageCarousel({
         onScroll={(e) => {
           const el = e.currentTarget;
           const i = Math.round(el.scrollLeft / el.clientWidth);
-          if (i !== idx) setIdx(i);
+          if (i !== idx) {
+            setIdx(i);
+            onIdxChange?.(i);
+          }
         }}
         className="scrollbar-hide flex h-full w-full snap-x snap-mandatory overflow-x-auto"
       >

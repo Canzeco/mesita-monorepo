@@ -2,8 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import {
+  REFLECTION_MIN_PX,
+  ReflectedPhoto,
   SAMPLE_PLACE_TOAST,
   ScrollCard,
+  needsReflection,
+  reflectionBandHeight,
   scrollCardActions,
 } from "@/components/consumer/home/scroll/scroll-card";
 import { scrollMockPlaces } from "@/lib/mock/scroll-places";
@@ -38,14 +42,15 @@ function deps(over: Partial<Parameters<typeof scrollCardActions>[2]> = {}) {
 }
 
 describe("a mock card's actions", () => {
-  it("toast for Profile, Share and Reserve, and touch nothing real", () => {
-    const d = deps({ isMock: true });
+  // Profile opens the sample's own profile (MESITA-2142), answered locally by
+  // apiFetchPlaceDetail — it never reaches the EF. Share and Reserve still toast.
+  it("open the sample profile, toast for Share and Reserve, and touch nothing real", () => {
+    const d = deps({ isMock: true, profileHref: (p: Place) => `/place/${p.id}` });
     const a = scrollCardActions(mock, 3, d);
-    expect(a.profileHref).toBeNull();
-    a.onProfile();
+    expect(a.profileHref).toBe(`/place/${mock.id}`);
     a.onShare();
     a.onReserve();
-    expect(d.toast).toHaveBeenCalledTimes(3);
+    expect(d.toast).toHaveBeenCalledTimes(2);
     expect(d.toast).toHaveBeenCalledWith(SAMPLE_PLACE_TOAST);
     for (const spy of [d.track, d.share, d.openReserve, d.saveReal]) {
       expect(spy).not.toHaveBeenCalled();
@@ -167,48 +172,80 @@ describe("the card", () => {
   });
 });
 
-// THE SWIPE CARD'S SPLIT (Pato, MESITA-2141: "like in the gray part you put
-// the info mainly"). The photo on top, the place on the page's gray below —
-// never text over the photo, and no blurred mirror of it.
-describe("the split", () => {
-  const html = () =>
-    renderToStaticMarkup(
-      <ScrollCard
-        place={mock}
-        index={0}
-        total={50}
-        near
-        saved={false}
-        profileHref={null}
-        onProfile={() => {}}
-        onToggleSave={() => {}}
-        onShare={() => {}}
-        onReserve={() => {}}
-      />,
-    );
+// Square and wide photos wear the old swipe card's reflection instead of being
+// cropped to a sliver of themselves (Pato, 2026-10-10: "because squares").
+describe("the reflection", () => {
+  const phone = { width: 390, height: 671 };
 
-  it("puts the photo on top and the place in the gray panel below it", () => {
-    const out = html();
-    const photo = out.indexOf("<img");
-    const name = out.indexOf(`>${mock.name}</h2>`);
-    expect(photo).toBeGreaterThan(-1);
-    expect(name).toBeGreaterThan(photo);
-    expect(out).toMatch(/<li [^>]*class="bg-background[^"]*flex-col/);
+  it("tall photos cover the card; square and wide ones reflect", () => {
+    expect(needsReflection(9 / 16, phone)).toBe(false);
+    expect(needsReflection(3 / 4, phone)).toBe(false);
+    expect(needsReflection(1, phone)).toBe(true);
+    expect(needsReflection(3 / 2, phone)).toBe(true);
+    expect(needsReflection(16 / 9, phone)).toBe(true);
   });
 
-  it("states the old swipe card's facts as chips", () => {
-    const out = html();
-    for (const fact of [mock.category_label ?? "", mock.zone ?? "", "Open"]) {
-      expect(out, fact).toContain(fact);
+  it("a square photo shows whole, and the reflection fills the rest", () => {
+    expect(reflectionBandHeight(1, phone)).toBe(390);
+  });
+
+  // The reflection is a mirror of the band, so it can only cover as much as
+  // the band is tall. A band shorter than the space below leaves a bare strip.
+  it("the reflection is never taller than the photo it mirrors", () => {
+    for (const ratio of [0.8, 1, 4 / 3, 3 / 2, 16 / 9, 3]) {
+      const band = reflectionBandHeight(ratio, phone);
+      expect(phone.height - band).toBeLessThanOrEqual(band);
     }
-    expect(out).toMatch(/\$+<\/span>/);
+    expect(reflectionBandHeight(3 / 2, phone)).toBe(phone.height / 2);
   });
 
-  it("draws each photo once, with no mirror and no scrim", () => {
-    const out = html();
-    expect(out).not.toContain("data-reflection");
-    expect(out).not.toContain("scaleY(-1)");
-    expect(out).not.toContain("bg-media-scrim");
-    expect((out.match(/<img [^>]*>/g) ?? []).length).toBe(mock.photos.length);
+  it("the reflection never gets shorter than the name needs", () => {
+    // 4:5 at full width would be 487px tall; the floor keeps 152px below.
+    expect(reflectionBandHeight(1 / 2, phone)).toBe(phone.height - REFLECTION_MIN_PX);
+    expect(phone.height - reflectionBandHeight(0.8, phone)).toBeGreaterThanOrEqual(
+      REFLECTION_MIN_PX,
+    );
+  });
+
+  it("draws the photo once for people and once, flipped, for decoration", () => {
+    const html = renderToStaticMarkup(
+      <ReflectedPhoto src="https://images.unsplash.com/photo-1-a?w=10" alt="Lupita" bandHeight={390} />,
+    );
+    const imgs = html.match(/<img [^>]*>/g) ?? [];
+    expect(imgs).toHaveLength(2);
+    expect(imgs[0]).toContain('alt="Lupita"');
+    expect(imgs[1]).toContain('alt=""');
+    const mirror = html.slice(html.indexOf("data-reflection"));
+    expect(html).toMatch(/aria-hidden="true" data-reflection="true" class="[^"]*\[transform:scaleY\(-1\)\]/);
+    expect(mirror).toContain("top:390px;height:390px");
+  });
+});
+
+
+// THE SAMPLE PROFILE (MESITA-2142). A `mock-` id resolves locally to a full,
+// enriched profile built from the same row the card shows.
+describe("a sample place's profile", () => {
+  it("resolves without the EF, as an enriched profile of the same place", async () => {
+    const { apiFetchPlaceDetail } = await import("@/lib/api/places");
+    const client = {
+      functions: {
+        invoke: () => {
+          throw new Error("a sample profile must never call an EF");
+        },
+      },
+    } as unknown as Parameters<typeof apiFetchPlaceDetail>[0];
+    const detail = await apiFetchPlaceDetail(client, mock.id);
+    expect(detail?.name).toBe(mock.name);
+    expect(detail?.is_enriched).toBe(true);
+    expect(detail?.photos).toEqual(mock.photos);
+    expect(detail?.open_now).toBe(true);
+    // The card's rating and the profile's are the same number.
+    expect(detail?.google.rating).toBe(mock.google_rating);
+    expect(detail?.google.count).toBe(mock.google_count);
+  });
+
+  it("an unknown mock id is gone, not invented", async () => {
+    const { mockPlaceDetail } = await import("@/lib/mock/scroll-place-detail");
+    expect(mockPlaceDetail("mock-no-such-place")).toBeNull();
   });
 });

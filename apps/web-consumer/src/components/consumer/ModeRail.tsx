@@ -2,7 +2,7 @@
 
 // Home's top rail — one row of pills over /discover/*:
 //
-//   Home    Scroll · Chat · Favs                (MESITA-2140)
+//   Home    Swipe · Scroll · Chat · Favs        (MESITA-2142)
 //
 // It was DiscoverModeNav. It is drawn by app/(shell)/(discovery)/discover/
 // layout.tsx, so the four pills share one frame and one deck fetch, and
@@ -23,11 +23,12 @@
 //
 //   label    text@12   + 26px chrome
 //   -------  --------  -------------
-//   Scroll   33.0      59.0   <- widest
+//   Swipe    35.6      61.6   <- widest (MESITA-2142)
+//   Scroll   33.0      59.0
 //   Chat     27.3      53.3
 //   Favs     27.6      53.6
 //
-// Three columns: 3 x 59.0 + 8 = 185.0 of 359px. Fits, with room to spare.
+// Four columns: 4 x 61.6 + 12 = 258.4 of 359px. Fits, with room to spare.
 // The icon is 14px (chrome 26) rather than the 16px of MESITA-1697: the
 // budget was set when the row held five pills, and the label stays at 12px
 // (`text-xs`) so the pills read the same whatever the count.
@@ -37,7 +38,7 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { barePath } from "@/lib/surface";
-import { Flame, Heart, Sparkles, type LucideIcon } from "lucide-react";
+import { Flame, Heart, Layers, Sparkles, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics/track";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -49,14 +50,16 @@ type Mode = {
   Icon: LucideIcon;
 };
 
-// THE ORDER IS PATO'S (MESITA-2140: "it used to have home (scroll, chat,
-// favs)"), the rail as it was before MESITA-2081. Scroll leads and is the
-// tab's default — the tab href is CONSUMER_ROUTES.discoverDefault, which is
-// Scroll's href, so the pill a guest lands on is the first one they see.
+// THE ORDER IS PATO'S (MESITA-2142: "swipe scroll chat favs"). Swipe — the
+// card stack MESITA-1697 retired — leads and is the tab's default: the tab
+// href is CONSUMER_ROUTES.discoverDefault, which is Swipe's href, so the pill
+// a guest lands on is the first one they see. Swipe wears `Layers` (a stack of
+// cards); Scroll keeps the flame it inherited from Swipe.
 //
 // CATALOG IS OFF THE RAIL. /discover/feed is a legacy 308 to Scroll, and
 // Search is where the whole catalog is browsed.
 export const HOME_MODES: Mode[] = [
+  { href: CONSUMER_ROUTES.discoverTabs.swipe, label: "Swipe", Icon: Layers },
   { href: CONSUMER_ROUTES.discoverTabs.scroll, label: "Scroll", Icon: Flame },
   { href: CONSUMER_ROUTES.discoverTabs.chat, label: "Chat", Icon: Sparkles },
   { href: CONSUMER_ROUTES.discoverTabs.favs, label: "Favs", Icon: Heart },
