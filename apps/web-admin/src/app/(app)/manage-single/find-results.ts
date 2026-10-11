@@ -62,7 +62,7 @@ export type FindRow = {
   googleId: string | null;
   /** The Mesita place id when this page knows it. */
   mesitaId: string | null;
-  /** Mesita holds it — open, never Add. A Text Search join can say so
+  /** Mesita holds it — open, never Create. A Text Search join can say so
    *  without an id; opening then takes the identity lookup. */
   held: boolean;
   name: string;

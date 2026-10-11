@@ -214,7 +214,7 @@ export function FindResults({
   );
 }
 
-/** A row this page just added is Mesita's now, whatever the sources said. */
+/** A row this page just created is Mesita's now, whatever the sources said. */
 function withAdd(row: FindRow, added: ReadonlyMap<string, string>): FindRow {
   const id = row.googleId ? added.get(row.googleId) : undefined;
   return id ? { ...row, held: true, mesitaId: id } : row;
@@ -351,7 +351,7 @@ function ActionCell({
           type="button"
           onClick={() => onAdd(row)}
           disabled={disabled || adding}
-          aria-label={`Add ${row.name} to Mesita`}
+          aria-label={`Create ${row.name} on Mesita`}
           className={`${PILL_BUTTON_CLASS} whitespace-nowrap`}
         >
           {adding ? (
@@ -359,7 +359,7 @@ function ActionCell({
           ) : (
             <Plus className="h-3 w-3" aria-hidden="true" />
           )}
-          {adding ? "Adding…" : "Add"}
+          {adding ? "Creating…" : "Create"}
         </button>
       ) : null}
       <span aria-live="polite" className="max-w-56">
