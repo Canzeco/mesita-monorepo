@@ -2,14 +2,14 @@
 
 // Home's top rail — one row of pills over /discover/*:
 //
-//   Home    Home · Scroll · Chat · Favs         (MESITA-2081)
+//   Home    Catalog · Scroll · Chat · Favs      (MESITA-2134)
 //
 // It was DiscoverModeNav. It is drawn by app/(shell)/(discovery)/discover/
 // layout.tsx, so the four pills share one frame and one deck fetch, and
 // Search — its own bottom tab since MESITA-2055 — sits outside it with no
 // rail painting over the map (the MESITA-1616 bug cannot return).
 //
-// A LABEL IS NOT A ROUTE: Home is /discover/feed (CatalogRails at Feed's
+// A LABEL IS NOT A ROUTE: Catalog is /discover/feed (CatalogRails at Feed's
 // address) and Scroll is /discover/scroll (the deck, Swipe's segment).
 //
 // EVERY PILL IS AN EQUAL COLUMN: `grid-flow-col auto-cols-fr` on a
@@ -23,12 +23,12 @@
 //
 //   label    text@12   + 26px chrome
 //   -------  --------  -------------
-//   Home     34.2      60.2   <- widest
+//   Catalog  44.8      70.8   <- widest (MESITA-2134)
 //   Scroll   33.0      59.0
 //   Chat     27.3      53.3
 //   Favs     27.6      53.6
 //
-// Four columns: 4 x 60.2 + 12 = 252.8 of 359px. Fits, with room to spare.
+// Four columns: 4 x 70.8 + 12 = 295.2 of 359px. Fits, with room to spare.
 // The icon is 14px (chrome 26) rather than the 16px of MESITA-1697: the
 // budget was set when the row held five pills, and the label stays at 12px
 // (`text-xs`) so the pills read the same whatever the count.
@@ -38,7 +38,13 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { barePath } from "@/lib/surface";
-import { Flame, Heart, House, Sparkles, type LucideIcon } from "lucide-react";
+import {
+  Flame,
+  Heart,
+  LayoutGrid,
+  Sparkles,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics/track";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -50,19 +56,24 @@ type Mode = {
   Icon: LucideIcon;
 };
 
-// THE ORDER IS PATO'S, verbatim (MESITA-2081: "Home, Scroll, Chat, Favs").
-// Home leads and is the tab's default — the tab href is
-// CONSUMER_ROUTES.discoverDefault, which is Home's href, so the pill a guest
-// lands on is the first one they see.
+// THE ORDER IS PATO'S, verbatim (MESITA-2134: "catalog, scroll, chat,
+// favs"). Catalog leads and is the tab's default — the tab href is
+// CONSUMER_ROUTES.discoverDefault, which is Catalog's href, so the pill a
+// guest lands on is the first one they see.
 //
-// HOME IS FEED AGAIN, under a new label: CatalogRails at /discover/feed. It
-// left the rail at MESITA-2050, when "Home" was the deck's label.
+// CATALOG IS FEED under the name of what it shows: CatalogRails at
+// /discover/feed. It read "Home" from MESITA-2081 until MESITA-2134, which
+// left the bottom tab as the only Home.
 //
 // SCROLL IS THE DECK under its own name, keeping the flame that has marked it
 // since it was Swipe. Four pills fit the track with room to spare; T5b holds
 // the arithmetic.
 export const HOME_MODES: Mode[] = [
-  { href: CONSUMER_ROUTES.discoverTabs.feed, label: "Home", Icon: House },
+  {
+    href: CONSUMER_ROUTES.discoverTabs.feed,
+    label: "Catalog",
+    Icon: LayoutGrid,
+  },
   { href: CONSUMER_ROUTES.discoverTabs.scroll, label: "Scroll", Icon: Flame },
   { href: CONSUMER_ROUTES.discoverTabs.chat, label: "Chat", Icon: Sparkles },
   { href: CONSUMER_ROUTES.discoverTabs.favs, label: "Favs", Icon: Heart },

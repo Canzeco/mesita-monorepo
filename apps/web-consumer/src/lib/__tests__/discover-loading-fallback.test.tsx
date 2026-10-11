@@ -29,7 +29,7 @@ describe("Home's loading fallback", () => {
   });
 
   it.each([
-    ["Home", CONSUMER_ROUTES.discoverTabs.feed],
+    ["Catalog", CONSUMER_ROUTES.discoverTabs.feed],
     ["Chat", CONSUMER_ROUTES.discoverTabs.chat],
     ["Favs", CONSUMER_ROUTES.discoverTabs.favs],
   ])("%s keeps its rounded skeleton", (_label, path) => {

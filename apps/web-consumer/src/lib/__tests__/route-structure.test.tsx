@@ -308,7 +308,6 @@ describe("T5 — exactly one tab lights per surface", () => {
     "/qr",
     "/ticket/t1",
     "/gift/1234567890",
-    "/me/plan",
     "/me/diamond",
     "/me/visits",
     "/me/settings/metrics",
@@ -407,12 +406,12 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
 // loses its selected state. This pins ORDER, COUNT, the width budget, and
 // that every pill is a real page.
 //
-// The order is Pato's, verbatim (MESITA-2081): "Home, Scroll, Chat, Favs".
+// The order is Pato's, verbatim (MESITA-2134): "catalog, scroll, chat, favs".
 describe("T5b — Home's supporting rail", () => {
-  it("is exactly Home · Scroll · Chat · Favs", async () => {
+  it("is exactly Catalog · Scroll · Chat · Favs", async () => {
     const { HOME_MODES } = await import("@/components/consumer/ModeRail");
     expect(HOME_MODES.map((m) => m.label)).toEqual([
-      "Home",
+      "Catalog",
       "Scroll",
       "Chat",
       "Favs",
@@ -421,7 +420,7 @@ describe("T5b — Home's supporting rail", () => {
 
   // Feed came back as Home (MESITA-2081). Its segment is a live page again,
   // so nothing may redirect it — a redirect source shadows the page entirely.
-  it("Home is the Feed page, and /discover/feed is not a redirect source", async () => {
+  it("Catalog is the Feed page, and /discover/feed is not a redirect source", async () => {
     const { HOME_MODES } = await import("@/components/consumer/ModeRail");
     expect(HOME_MODES[0].href).toBe(CONSUMER_ROUTES.discoverTabs.feed);
     const hop = (await nextConfig.redirects!()).find(
@@ -445,6 +444,8 @@ describe("T5b — Home's supporting rail", () => {
     expect(navSrc).toContain('className="h-3.5 w-3.5 shrink-0"');
     const TEXT_PX: Record<string, number> = {
       Home: 34.2,
+      // Inter 600's hmtx at 12px, the same table as the rest (MESITA-2134).
+      Catalog: 44.8,
       // Measured off the live site's Inter 600 at 12px (MESITA-2081), the
       // same probe that reads Home at 34.15 and Search at 40.75.
       Scroll: 33.0,
@@ -490,7 +491,7 @@ describe("T5b — Home's supporting rail", () => {
       CONSUMER_ROUTES.discoverTabs.feed,
     );
     expect(HOME_MODES[0].href).toBe(CONSUMER_ROUTES.discoverDefault);
-    expect(HOME_MODES[0].label).toBe("Home");
+    expect(HOME_MODES[0].label).toBe("Catalog");
   });
 
   it("every Home pill's page lives under discover", () => {
@@ -550,7 +551,7 @@ describe("T6 — Activity's sections are pages on Me", () => {
 // The regression this catches is a tile for a surface that does not exist
 // — `DestTile` has no `soon` prop and its `href` is required, so such a tile
 // would ship as a live Link pointing at nothing.
-describe("T8 — Me's grid is six live cells", () => {
+describe("T8 — Me's grid is seven live cells", () => {
   const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
   /** `<DestTile … title="X">` values, in render order. */
   const gridTitles = (source: string) => {
@@ -562,13 +563,15 @@ describe("T8 — Me's grid is six live cells", () => {
       .filter((t): t is string => Boolean(t));
   };
 
-  it("renders six cells: three pairs", () => {
-    // Pato, MESITA-2080: "Its just only Profile Instagram / Notifications
-    // Reservations / Settings Support". PROFILE LEADS (Pato, 2026-09-08): the
-    // header states the identity, so the first cell is the one that edits it.
+  it("renders seven cells in Pato's order", () => {
+    // Pato, MESITA-2134: "profile and instagram and plan and notifications
+    // and reservations and settings and support". PROFILE LEADS (Pato,
+    // 2026-09-08): the header states the identity, so the first cell is the
+    // one that edits it.
     expect(gridTitles(ME)).toEqual([
       "Profile",
       "Instagram",
+      "Plan",
       "Notifications",
       "Reservations",
       "Settings",
@@ -579,7 +582,6 @@ describe("T8 — Me's grid is six live cells", () => {
   it("holds no money door and no Second Stage door", () => {
     for (const gone of [
       "Wallet",
-      "Plan",
       "Visits",
       "Orders",
       "Share",
@@ -600,12 +602,12 @@ describe("T8 — Me's grid is six live cells", () => {
     expect(gridTitles(ME).slice(-2)).toEqual(["Settings", "Support"]);
   });
 
-  it("every row is a pair; nothing spans", () => {
-    // Three `DestGrid`s of two. Counting grids and spans SEPARATELY on
-    // purpose: "cells ÷ grids === 2" was true of the old four-up too, and
-    // would go on being true of any row width.
-    expect([...ME.matchAll(/<DestGrid>/g)]).toHaveLength(3);
-    expect([...ME.matchAll(/<DestTile\b[\s\S]*?\/>/g)]).toHaveLength(6);
+  it("rows are pairs, Support alone last; nothing spans", () => {
+    // Four `DestGrid`s: three pairs and Support on its own. Counting grids
+    // and spans SEPARATELY on purpose: a cells-per-grid ratio stays true of
+    // any row width.
+    expect([...ME.matchAll(/<DestGrid>/g)]).toHaveLength(4);
+    expect([...ME.matchAll(/<DestTile\b[\s\S]*?\/>/g)]).toHaveLength(7);
     expect([...ME.matchAll(/^\s*full$/gm)]).toHaveLength(0);
     expect(ME).not.toMatch(/<DestGrid cols=/);
   });
@@ -762,7 +764,6 @@ describe("T9 — Pay is one page, and the Second Stage trees are gone", () => {
       ["(shell)", "order"],
       ["(shell)", "share"],
       ["(shell)", "me", "diamond"],
-      ["(shell)", "me", "plan"],
       ["(shell)", "me", "visits"],
       ["(shell)", "me", "settings", "metrics"],
       ["gift"],
