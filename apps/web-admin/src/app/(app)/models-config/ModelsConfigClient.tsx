@@ -1,58 +1,134 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
-import { Cpu, Sparkles } from "lucide-react";
+import { useId, useRef, useState, useTransition } from "react";
+import { Cpu } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
-import { FIELD_WELL, QualityPicker, SaveRow, SectionCard } from "@/components/admin-ui/config";
-import {
-  getEnricherModelSettings,
-  getModelsConfig,
-  updateEnricherModelSettings,
-  updateModelsConfig,
-} from "./actions";
+import { SaveRow, SectionCard } from "@/components/admin-ui/config";
+import type { SynthesisQuality } from "@/lib/synthesis-quality";
+import { updateEnricherModelSettings, updateModelsConfig } from "./actions";
 import {
   ENRICHER_PERPLEXITY_PRESETS,
+  MEMO_PERPLEXITY_LABELS,
   OPENAI_CHAT_MODELS,
   PERPLEXITY_OPTIONS,
+  changedEnricherFields,
+  memoDirty,
+  nextRadioIndex,
+  runSave,
+  tierChoice,
+  withMemo,
   type EnricherModelSettings,
   type ModelsConfig,
 } from "./types";
 
-// Models — platform-wide picks. models_config blob (supabase, memo, ojo) plus
-// Enricher atlas_* quality tiers (MESITA-1811). Failed GET blocks Save (MESITA-737).
+// Models (MESITA-2126): one card, one row per AI job that actually runs, each
+// named by the job and the model behind it. Two stores behind one Save —
+// Memo's picks on models_config, the Enricher's on enrichment_config — saved
+// as independent halves by runSave (types.ts). The dead knobs (Edge Functions,
+// Ojo) are not shown; see the types.ts header for what still rides the blob.
 
-function Select({
+const UNAVAILABLE = "unavailable";
+const CONTROL = "w-full sm:w-56";
+const SELECT =
+  "border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-2 text-sm font-medium outline-none disabled:opacity-50";
+
+function JobRow({
+  id,
+  label,
+  usedBy,
+  note,
+  children,
+}: {
+  id: string;
+  label: string;
+  usedBy: string;
+  note?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-1 gap-2 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
+      <div className="min-w-0">
+        <label htmlFor={id} id={`${id}-label`} className="text-sm font-medium">
+          {label}
+        </label>
+        <p className="text-muted-foreground type-label leading-relaxed">{usedBy}</p>
+        {note ? (
+          <p className="text-muted-foreground type-label leading-relaxed">{note}</p>
+        ) : null}
+      </div>
+      <div className={CONTROL}>{children}</div>
+    </div>
+  );
+}
+
+function GroupLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-muted-foreground type-eyebrow pt-5 pb-1">{children}</p>
+  );
+}
+
+function Unavailable() {
+  return <span className="text-muted-foreground text-sm">{UNAVAILABLE}</span>;
+}
+
+/** A two-option model choice: a radiogroup with roving focus (Left/Right). */
+function ModelChoice({
+  id,
   value,
   options,
   disabled,
   onChange,
 }: {
-  value: string;
-  options: readonly string[];
-  disabled?: boolean;
-  onChange: (v: string) => void;
+  id: string;
+  value: SynthesisQuality;
+  options: { tier: SynthesisQuality; label: string }[];
+  disabled: boolean;
+  onChange: (tier: SynthesisQuality) => void;
 }) {
-  return (
-    <select
-      value={value}
-      disabled={disabled}
-      onChange={(e) => onChange(e.target.value)}
-      className="border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-2 text-sm font-medium outline-none disabled:opacity-50"
-    >
-      {options.map((o) => (
-        <option key={o} value={o}>
-          {o}
-        </option>
-      ))}
-    </select>
+  const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  const current = Math.max(
+    0,
+    options.findIndex((o) => o.tier === value),
   );
-}
-
-function enricherDirty(a: EnricherModelSettings, b: EnricherModelSettings): boolean {
   return (
-    a.synthesisQuality !== b.synthesisQuality ||
-    a.visionQuality !== b.visionQuality ||
-    a.perplexityPreset !== b.perplexityPreset
+    <div
+      id={id}
+      role="radiogroup"
+      aria-labelledby={`${id}-label`}
+      className="flex flex-col gap-1"
+    >
+      {options.map((o, i) => {
+        const checked = o.tier === value;
+        return (
+          <button
+            key={o.tier}
+            ref={(el) => {
+              refs.current[i] = el;
+            }}
+            type="button"
+            role="radio"
+            aria-checked={checked}
+            tabIndex={i === current ? 0 : -1}
+            disabled={disabled}
+            onClick={() => onChange(o.tier)}
+            onKeyDown={(e) => {
+              const next = nextRadioIndex(e.key, i, options.length);
+              if (next === null) return;
+              e.preventDefault();
+              onChange(options[next].tier);
+              refs.current[next]?.focus();
+            }}
+            className={`focus-visible:ring-foreground/40 h-9 rounded-lg border px-3 text-left text-xs font-semibold transition outline-none focus-visible:ring-2 disabled:opacity-50 ${
+              checked
+                ? "border-foreground bg-foreground text-background"
+                : "border-border bg-card hover:border-foreground/40"
+            }`}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -60,232 +136,251 @@ export function ModelsConfigClient({
   initialConfig,
   initialEnricher,
   loadError,
-  enricherLoadError,
 }: {
-  initialConfig: ModelsConfig;
-  initialEnricher: EnricherModelSettings;
+  /** null when the load failed — the page then shows "unavailable", never defaults. */
+  initialConfig: ModelsConfig | null;
+  initialEnricher: EnricherModelSettings | null;
   loadError: string | null;
-  enricherLoadError: string | null;
 }) {
-  const [cfg, setCfg] = useState<ModelsConfig>(initialConfig);
-  const [saved, setSaved] = useState<ModelsConfig>(initialConfig);
-  const [enricher, setEnricher] = useState<EnricherModelSettings>(initialEnricher);
-  const [savedEnricher, setSavedEnricher] =
-    useState<EnricherModelSettings>(initialEnricher);
+  const ids = useId();
+  const loaded = initialConfig !== null && initialEnricher !== null;
+  const [cfg, setCfg] = useState(initialConfig);
+  const [saved, setSaved] = useState(initialConfig);
+  const [enricher, setEnricher] = useState(initialEnricher);
+  const [savedEnricher, setSavedEnricher] = useState(initialEnricher);
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(
-    loadError ?? enricherLoadError,
-  );
-  const [loadBlocked, setLoadBlocked] = useState(
-    !!loadError || !!enricherLoadError,
-  );
+  const [modelsError, setModelsError] = useState<string | null>(null);
+  const [enricherError, setEnricherError] = useState<string | null>(null);
+  const [savedNote, setSavedNote] = useState<{ models: boolean; enricher: boolean }>({
+    models: false,
+    enricher: false,
+  });
   const [ok, setOk] = useState(false);
 
-  // Re-fetch on mount so client-side nav shows the live blobs.
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const [modelsR, enricherR] = await Promise.all([
-        getModelsConfig(),
-        getEnricherModelSettings(),
-      ]);
-      if (!active) return;
-      if (modelsR.ok && enricherR.ok) {
-        setCfg(modelsR.data);
-        setSaved(modelsR.data);
-        setEnricher(enricherR.data);
-        setSavedEnricher(enricherR.data);
-        setError(null);
-        setLoadBlocked(false);
-      } else {
-        setError(
-          !modelsR.ok
-            ? modelsR.error
-            : !enricherR.ok
-              ? enricherR.error
-              : "Failed to load Models config",
-        );
-        setLoadBlocked(true);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const busy = pending || loadBlocked;
+  const busy = pending || !loaded;
   const dirty =
-    cfg.supabase.model !== saved.supabase.model ||
-    cfg.memo.model !== saved.memo.model ||
-    cfg.memo.perplexity !== saved.memo.perplexity ||
-    cfg.ojo.model !== saved.ojo.model ||
-    enricherDirty(enricher, savedEnricher);
+    !!cfg &&
+    !!saved &&
+    !!enricher &&
+    !!savedEnricher &&
+    (memoDirty(saved, cfg) ||
+      Object.keys(changedEnricherFields(savedEnricher, enricher)).length > 0);
 
-  const setSupabaseModel = (model: string) => {
+  const edited = () => {
     setOk(false);
-    setCfg((c) => ({ ...c, supabase: { model } }));
+    setSavedNote({ models: false, enricher: false });
   };
-
-  const setMemoModel = (model: string) => {
-    setOk(false);
-    setCfg((c) => ({ ...c, memo: { ...c.memo, model } }));
+  const setMemo = (patch: Partial<ModelsConfig["memo"]>) => {
+    edited();
+    setCfg((c) => (c ? withMemo(c, patch) : c));
   };
-
-  const setMemoPerplexity = (perplexity: string) => {
-    setOk(false);
-    setCfg((c) => ({ ...c, memo: { ...c.memo, perplexity } }));
-  };
-
-  const setOjoModel = (model: string) => {
-    setOk(false);
-    setCfg((c) => ({ ...c, ojo: { model } }));
-  };
-
-  const patchEnricher = (next: Partial<EnricherModelSettings>) => {
-    setOk(false);
-    setEnricher((s) => ({ ...s, ...next }));
+  const patchEnricher = (patch: Partial<EnricherModelSettings>) => {
+    edited();
+    setEnricher((s) => (s ? { ...s, ...patch } : s));
   };
 
   const save = () => {
-    if (loadBlocked) return;
-    setError(null);
+    if (!cfg || !saved || !enricher || !savedEnricher) return;
+    setModelsError(null);
+    setEnricherError(null);
     startTransition(async () => {
-      const enricherR = await updateEnricherModelSettings(enricher);
-      if (!enricherR.ok) {
-        setError(enricherR.error);
-        return;
+      const out = await runSave(
+        { savedModels: saved, nextModels: cfg, savedEnricher, nextEnricher: enricher },
+        { updateModels: updateModelsConfig, updateEnricher: updateEnricherModelSettings },
+      );
+      if (out.modelsSaved) {
+        setSaved(out.savedModels);
+        setCfg(out.savedModels);
       }
-      const modelsR = await updateModelsConfig(cfg);
-      if (!modelsR.ok) {
-        setError(modelsR.error);
-        return;
+      if (out.enricherSaved) {
+        setSavedEnricher(out.savedEnricher);
+        setEnricher(out.savedEnricher);
       }
-      setSaved(modelsR.data);
-      setCfg(modelsR.data);
-      setSavedEnricher(enricherR.data);
-      setEnricher(enricherR.data);
-      setOk(true);
+      setModelsError(out.modelsError);
+      setEnricherError(out.enricherError);
+      setSavedNote({ models: out.modelsSaved, enricher: out.enricherSaved });
+      setOk(!out.modelsError && !out.enricherError);
     });
   };
+
+  // memo.model is a free string; one off the catalog is shown as what it is.
+  const memoModels: { value: string; label: string }[] =
+    cfg && !(OPENAI_CHAT_MODELS as readonly string[]).includes(cfg.memo.model)
+      ? [
+          { value: cfg.memo.model, label: `${cfg.memo.model} (current, not in list)` },
+          ...OPENAI_CHAT_MODELS.map((m) => ({ value: m, label: m })),
+        ]
+      : OPENAI_CHAT_MODELS.map((m) => ({ value: m, label: m }));
+
+  const tierRow = (
+    row: "writing" | "photos",
+    id: string,
+    value: SynthesisQuality,
+    onChange: (t: SynthesisQuality) => void,
+  ) => {
+    if (!cfg) return <Unavailable />;
+    const choice = tierChoice(row, cfg.enricher.model);
+    if (choice.kind === "same") {
+      return (
+        <p id={id} className="text-muted-foreground text-sm">
+          Both options run {choice.model}.
+        </p>
+      );
+    }
+    return (
+      <ModelChoice
+        id={id}
+        value={value}
+        options={choice.options}
+        disabled={busy}
+        onChange={onChange}
+      />
+    );
+  };
+
+  const id = (k: string) => `${ids}-${k}`;
 
   return (
     <div className="flex flex-col gap-4">
       <SectionCard
         icon={<Cpu className="h-4 w-4" />}
-        title="Platform"
-        subtitle="Which model each subsystem thinks with. Every pick here is read at run time — changing one changes token spend."
+        title="AI jobs"
+        subtitle="Each job below runs on the model you pick. A change applies from the next run and changes what each run costs."
       >
-        {error && <ErrorNote message={error} />}
+        {loadError && <ErrorNote message={loadError} />}
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-4">
-          <label className={FIELD_WELL}>
-            <span className="text-muted-foreground type-eyebrow">
-              Edge Functions
-            </span>
-            <Select
-              value={cfg.supabase.model}
-              options={OPENAI_CHAT_MODELS}
-              disabled={busy}
-              onChange={setSupabaseModel}
-            />
-          </label>
-          <label className={FIELD_WELL}>
-            <span className="text-muted-foreground type-eyebrow">
-              Memo · OpenAI
-            </span>
-            <Select
-              value={cfg.memo.model}
-              options={OPENAI_CHAT_MODELS}
-              disabled={busy}
-              onChange={setMemoModel}
-            />
-          </label>
-          <label className={FIELD_WELL}>
-            <span className="text-muted-foreground type-eyebrow">
-              Memo · Perplexity
-            </span>
-            <Select
-              value={cfg.memo.perplexity}
-              options={PERPLEXITY_OPTIONS}
-              disabled={busy}
-              onChange={setMemoPerplexity}
-            />
-          </label>
-          <label className={FIELD_WELL}>
-            <span className="text-muted-foreground type-eyebrow">
-              Ojo · Vision
-            </span>
-            <Select
-              value={cfg.ojo.model}
-              options={OPENAI_CHAT_MODELS}
-              disabled={busy}
-              onChange={setOjoModel}
-            />
-          </label>
+        <GroupLabel>Discovery</GroupLabel>
+        <div className="divide-border divide-y">
+          <JobRow
+            id={id("memo-model")}
+            label="Discovery chat"
+            usedBy="Memo, the chat on Home › Chat."
+          >
+            {cfg ? (
+              <select
+                id={id("memo-model")}
+                value={cfg.memo.model}
+                disabled={busy}
+                onChange={(e) => setMemo({ model: e.target.value })}
+                className={SELECT}
+              >
+                {memoModels.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <Unavailable />
+            )}
+          </JobRow>
+          <JobRow
+            id={id("memo-web")}
+            label="Discovery chat web answers"
+            usedBy="Memo, when a question needs the web. Off skips it."
+          >
+            {cfg ? (
+              <select
+                id={id("memo-web")}
+                value={cfg.memo.perplexity}
+                disabled={busy}
+                onChange={(e) => setMemo({ perplexity: e.target.value })}
+                className={SELECT}
+              >
+                {PERPLEXITY_OPTIONS.map((p) => (
+                  <option key={p} value={p}>
+                    {MEMO_PERPLEXITY_LABELS[p]}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <Unavailable />
+            )}
+          </JobRow>
         </div>
+        {modelsError && (
+          <ErrorNote
+            message={`Couldn't save Discovery chat or its web answers: ${modelsError}.${
+              savedNote.enricher ? " Enricher changes were saved." : ""
+            }`}
+          />
+        )}
 
-        <p className="text-muted-foreground mt-3 type-label leading-relaxed">
-          Ojo&apos;s enabled, threshold and fail-action policy lives on Visits.
+        <GroupLabel>Enricher</GroupLabel>
+        <div className="divide-border divide-y">
+          <JobRow
+            id={id("writing")}
+            label="Enricher writing"
+            usedBy="Writes each place's description and ranks its photos."
+          >
+            {enricher
+              ? tierRow("writing", id("writing"), enricher.synthesisQuality, (t) =>
+                  patchEnricher({ synthesisQuality: t }),
+                )
+              : <Unavailable />}
+          </JobRow>
+          <JobRow
+            id={id("photos")}
+            label="Enricher photos"
+            usedBy="Reads each photo while a place is enriched."
+            note="The cheaper option uses the sorting model."
+          >
+            {enricher
+              ? tierRow("photos", id("photos"), enricher.visionQuality, (t) =>
+                  patchEnricher({ visionQuality: t }),
+                )
+              : <Unavailable />}
+          </JobRow>
+          <JobRow
+            id={id("search")}
+            label="Enricher web search"
+            usedBy="Finds a place's links and press while it is enriched."
+          >
+            {enricher ? (
+              <select
+                id={id("search")}
+                value={enricher.perplexityPreset}
+                disabled={busy}
+                onChange={(e) =>
+                  patchEnricher({
+                    perplexityPreset: e.target.value as EnricherModelSettings["perplexityPreset"],
+                  })
+                }
+                className={SELECT}
+              >
+                {ENRICHER_PERPLEXITY_PRESETS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <Unavailable />
+            )}
+          </JobRow>
+        </div>
+        {enricherError && (
+          <ErrorNote
+            message={`Couldn't save Enricher writing, photos or web search: ${enricherError}.${
+              savedNote.models ? " Discovery chat changes were saved." : ""
+            }`}
+          />
+        )}
+
+        <GroupLabel>Not editable here</GroupLabel>
+        <p className="text-muted-foreground type-label">
+          Set in code. Changing them needs a code change and a re-index.
         </p>
-      </SectionCard>
-
-      <SectionCard
-        icon={<Sparkles className="text-secondary h-4 w-4" />}
-        title="Enricher"
-        subtitle="Text, image and search quality tiers for the enrichment pipeline. Embeddings is locked."
-      >
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <label className={FIELD_WELL}>
-            <span className="text-muted-foreground type-eyebrow">Text</span>
-            <QualityPicker
-              value={enricher.synthesisQuality}
-              onChange={(v) => patchEnricher({ synthesisQuality: v })}
-            />
-            <span className="text-muted-foreground type-label">
-              9 · Description, image-rank
-            </span>
-          </label>
-          <label className={FIELD_WELL}>
-            <span className="text-muted-foreground type-eyebrow">Image</span>
-            <QualityPicker
-              value={enricher.visionQuality}
-              onChange={(v) => patchEnricher({ visionQuality: v })}
-            />
-            <span className="text-muted-foreground type-label">6 · Images</span>
-          </label>
-          <label className={FIELD_WELL}>
-            <span className="text-muted-foreground type-eyebrow">Search</span>
-            <select
-              value={enricher.perplexityPreset}
-              disabled={busy}
-              aria-label="Search model preset"
-              onChange={(e) =>
-                patchEnricher({
-                  perplexityPreset: e.target.value as EnricherModelSettings["perplexityPreset"],
-                })
-              }
-              className="border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-2 text-sm font-medium outline-none disabled:opacity-50"
-            >
-              {ENRICHER_PERPLEXITY_PRESETS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            <span className="text-muted-foreground type-label">
-              3 · Serp · 4 · Links
-            </span>
-          </label>
-          <div className={FIELD_WELL}>
-            <span className="text-muted-foreground type-eyebrow">
-              Embeddings
-            </span>
-            <span className="text-sm font-medium">text-embedding-3-small</span>
-            <span className="text-muted-foreground type-label">
-              locked · 10 · Embedding
-            </span>
+        <dl className="divide-border mt-1 divide-y">
+          <div className="flex items-center justify-between gap-4 py-2">
+            <dt className="text-sm">Place search index</dt>
+            <dd className="font-mono text-sm">{cfg ? cfg.embeddings.model : UNAVAILABLE}</dd>
           </div>
-        </div>
+          <div className="flex items-center justify-between gap-4 py-2">
+            <dt className="text-sm">Enricher sorting and tagging</dt>
+            <dd className="font-mono text-sm">{cfg ? cfg.enricher.model : UNAVAILABLE}</dd>
+          </div>
+        </dl>
       </SectionCard>
 
       <SaveRow
@@ -293,10 +388,14 @@ export function ModelsConfigClient({
         dirty={dirty}
         ok={ok}
         onClick={save}
-        loadError={
-          loadBlocked ? (error ?? "Failed to load Models config") : null
-        }
+        loadError={loaded ? null : (loadError ?? "Failed to load Models config")}
       />
+      {ok && !dirty && (
+        <p className="text-muted-foreground type-label -mt-2">
+          Saved. Discovery chat uses it from the next message; Enricher from the
+          next place enriched.
+        </p>
+      )}
     </div>
   );
 }

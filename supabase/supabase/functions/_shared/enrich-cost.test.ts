@@ -72,7 +72,7 @@ Deno.test("helpers: google spine / IG / vision / synth / discovery", () => {
   assertEquals(visionRunCost(5, "economy"), COST.visionPerImage * 5);
   assertEquals(visionRunCost(5, "standard"), COST.visionPerImageStandard * 5);
   assertEquals(synthesisRunCost("economy"), COST.synthesisEconomy);
-  assertEquals(synthesisRunCost("high"), COST.synthesisStandard);
+  assertEquals(synthesisRunCost("standard"), COST.synthesisStandard);
   assertEquals(
     discoverySearchCost({
       discoverCandidates: {

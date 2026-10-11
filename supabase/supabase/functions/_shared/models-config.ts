@@ -3,11 +3,14 @@
 // go through this helper — hardcoded model strings are a compliance bug.
 //
 // Shape (20260726010000_models_config_reshape, ojo added MESITA-1034):
-//   supabase   : { model }              OpenAI chat (general EF default)
-//   enricher   : { model, perplexity }  OpenAI main + Perplexity leg
+//   supabase   : { model }              DEAD in First Stage — read only by Second Stage EFs
+//   enricher   : { model, perplexity }  OpenAI main (live) + Perplexity leg (DEAD: atlasPerplexityPreset wins)
 //   embeddings : { model }              OpenAI embedding (see the note below)
-//   memo       : { model, perplexity }  OpenAI main + Perplexity leg
-//   ojo        : { model }              OpenAI vision (proof-verification engine)
+//   memo       : { model, perplexity }  OpenAI main + Perplexity leg (Discovery chat)
+//   ojo        : { model }              DEAD in First Stage — Ojo is Second Stage
+//
+// The admin Models page (MESITA-2126) no longer shows the dead keys but its
+// whole-blob save writes them back; MESITA-2091 owns dropping them.
 //
 // "off" on a perplexity leg means skip Perplexity for that subsystem.
 //
