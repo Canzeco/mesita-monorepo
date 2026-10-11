@@ -72,9 +72,16 @@ function NavLinks({ className }: { className?: string }) {
 }
 
 /**
- * The large consumer site. Full width, responsive.
- * A sidebar from the md breakpoint up. Below that the shell's bottom nav
- * stays, and the page uses the whole viewport — never the phone card.
+ * The large consumer site. Full width, responsive, ONE breakpoint (md):
+ *
+ *   md and up    the sidebar is the menu; the shell hides BottomNav.
+ *   below md     THE PHONE VIEW (Pato, MESITA-2130: "when not wide, use the
+ *                normal menu with phone view"). BottomNav is the menu and
+ *                nothing is added on top: the phone app has no header, so a
+ *                web-only strip here is what made narrow /web read as a
+ *                different app. The Phone emulator link lives in the sidebar.
+ *
+ * Never the phone card — that is /mob's MobileFrame.
  */
 export function WebFrame({ children }: { children: React.ReactNode }) {
   const keyboardInset = useKeyboardInset();
@@ -100,12 +107,6 @@ export function WebFrame({ children }: { children: React.ReactNode }) {
         id={APP_CARD_ID}
         className="relative flex min-h-0 min-w-0 flex-1 flex-col"
       >
-        <div className="border-border flex items-center justify-between border-b px-4 py-2 md:hidden">
-          <span className="type-body font-semibold">Mesita</span>
-          <Link href="/mob" className="type-meta text-primary font-medium">
-            Phone emulator
-          </Link>
-        </div>
         {children}
       </div>
     </div>
