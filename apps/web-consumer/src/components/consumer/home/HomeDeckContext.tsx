@@ -4,7 +4,6 @@
 // deck ONCE (HomeDeckBoundary) and provides it here; Scroll, Chat and Favs
 // read it via useHomeDeck() so switching pills is client navigation between
 // siblings under the persistent layout — no recommender re-fetch per pill.
-// Home (CatalogRails) owns its own fetch.
 
 import { createContext, useContext, type ReactNode } from "react";
 import type { Place } from "@/lib/api/places";

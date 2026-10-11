@@ -95,7 +95,7 @@ describe("one place-grid geometry, shared", () => {
     expect(read(rel)).toContain("className={PLACE_TILE_SKELETON_CLASS}");
   });
 
-  // Two surfaces show place tiles (Feed's rails, Favs' grid). A surface-only
+  // Favs' grid shows place tiles. A surface-only
   // card would drift from the other on its own schedule — the heart's hit
   // area, the opening dot.
   it.each(SURFACES)("%s reuses FavoriteTile rather than minting a card", (
@@ -105,16 +105,6 @@ describe("one place-grid geometry, shared", () => {
     const src = read(rel);
     expect(src).toContain('from "./FavoriteTile"');
     expect(src).toContain("<FavoriteTile");
-  });
-
-  // Feed's rails are deliberately NOT a caller — horizontal rails under
-  // category headings answer a different question from a vertical grid, even
-  // now that Feed is the tab wrapping them. If they ever adopt the constants
-  // this line is the deliberate edit that says so.
-  it("leaves Feed's rails alone", () => {
-    const rails = read("components/consumer/home/CatalogRails.tsx");
-    expect(rails).not.toContain("PLACE_GRID_CLASS");
-    expect(rails).toContain("overflow-x-auto");
   });
 });
 
@@ -184,7 +174,6 @@ describe("Discovery invents no places", () => {
   const favs = read("components/consumer/home/FavoritesList.tsx");
 
   it.each([
-    ["Catalog", "components/consumer/home/CatalogRails.tsx"],
     ["Favs", "components/consumer/home/FavoritesList.tsx"],
   ])("%s ships no mock deck", (_label, rel) => {
     const src = read(rel);

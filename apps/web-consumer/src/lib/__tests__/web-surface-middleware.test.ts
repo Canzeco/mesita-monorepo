@@ -48,7 +48,7 @@ describe("both surfaces sign in by phone", () => {
   );
 
   it("never mints a session for a browse page", async () => {
-    const res = await visit("/web/discover/feed");
+    const res = await visit("/web/discover/scroll");
     expect(res.headers.get("location")).toBeNull();
     expect(res.cookies.getAll()).toEqual(
       expect.not.arrayContaining([

@@ -27,20 +27,18 @@ export const CONSUMER_ROUTES = {
   // — and the two code twins pin EACH OTHER, so it would go green. Scroll is
   // Swipe's segment, renamed (MESITA-1697).
   //
-  // FEED IS CATALOG'S BODY AT FEED'S ADDRESS: the `catalog` mode key,
-  // CatalogRails, `consumer-web-list-catalog` and the admin Discovery matrix
-  // all still say catalog; only the guest-facing address is /discover/feed,
-  // and the pill reading Home sits on it (MESITA-2081).
+  // HOME'S RAIL IS SCROLL · CHAT · FAVS (Pato, MESITA-2140: "it used to
+  // have home (scroll, chat, favs)"). Catalog's /discover/feed left it, as it
+  // did at MESITA-2050, and is a legacy 308 to Scroll.
   discover: "/discover",
   discoverTabs: {
-    feed: "/discover/feed",
     scroll: "/discover/scroll",
     chat: "/discover/chat",
     favs: "/discover/favs",
   },
-  // HOME LEADS (MESITA-2081): the default is Feed's address, because the
-  // first pill reads Home. route-structure T5b pins first-pill-is-default.
-  discoverDefault: "/discover/feed",
+  // SCROLL LEADS (MESITA-2140): the default is the deck, the first pill.
+  // route-structure T5b pins first-pill-is-default.
+  discoverDefault: "/discover/scroll",
   place: {
     prefix: "/place/",
   },
@@ -125,8 +123,10 @@ export const CONSUMER_ROUTES = {
     mePassport: "/me/passport",
     subscribe: "/subscribe/premium",
     // /web's anonymous dead end, deleted with anonymous sessions
-    // (MESITA-2137). It lands on Home, behind the sign-in wall.
+    // (MESITA-2137). It lands on Home's deck, behind the sign-in wall.
     getTheApp: "/get-the-app",
+    // Catalog's address, off the rail again (MESITA-2140).
+    discoverFeed: "/discover/feed",
     notifications: "/notifications",
     inboxMine: "/inbox/my-activity",
     inboxGlobal: "/inbox/global-activity",

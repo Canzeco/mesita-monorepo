@@ -263,7 +263,6 @@ describe("T5 — exactly one tab lights per surface", () => {
   }
 
   const MATRIX: [string, string][] = [
-    ["/discover/feed", "Home"],
     ["/discover/scroll", "Home"],
     ["/discover/chat", "Home"],
     ["/discover/favs", "Home"],
@@ -407,30 +406,25 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
 // loses its selected state. This pins ORDER, COUNT, the width budget, and
 // that every pill is a real page.
 //
-// The order is Pato's, verbatim (MESITA-2134): "catalog, scroll, chat, favs".
+// The order is Pato's (MESITA-2140): "home (scroll, chat, favs)".
 describe("T5b — Home's supporting rail", () => {
-  it("is exactly Catalog · Scroll · Chat · Favs", async () => {
+  it("is exactly Scroll · Chat · Favs", async () => {
     const { HOME_MODES } = await import("@/components/consumer/ModeRail");
-    expect(HOME_MODES.map((m) => m.label)).toEqual([
-      "Catalog",
-      "Scroll",
-      "Chat",
-      "Favs",
-    ]);
+    expect(HOME_MODES.map((m) => m.label)).toEqual(["Scroll", "Chat", "Favs"]);
   });
 
-  // Feed came back as Home (MESITA-2081). Its segment is a live page again,
-  // so nothing may redirect it — a redirect source shadows the page entirely.
-  it("Catalog is the Feed page, and /discover/feed is not a redirect source", async () => {
+  // Catalog left the rail again (MESITA-2140), as at MESITA-2050: its page is
+  // gone and /discover/feed is a one-hop 308 onto Scroll, the deck.
+  it("Catalog is off the rail: /discover/feed has no page and 308s to Scroll", async () => {
     const { HOME_MODES } = await import("@/components/consumer/ModeRail");
-    expect(HOME_MODES[0].href).toBe(CONSUMER_ROUTES.discoverTabs.feed);
+    expect(HOME_MODES.map((m) => m.href)).not.toContain("/discover/feed");
     const hop = (await nextConfig.redirects!()).find(
       (r) => r.source === "/discover/feed",
     );
-    expect(hop).toBeUndefined();
+    expect(hop?.destination).toBe(CONSUMER_ROUTES.discoverTabs.scroll);
     expect(
       existsSync(join(SHELL, "(discovery)", "discover", "feed", "page.tsx")),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   // The width budget, as an assertion rather than a comment. `auto-cols-fr`
@@ -478,7 +472,7 @@ describe("T5b — Home's supporting rail", () => {
     const hrefs = HOME_MODES.map((m) => m.href);
     for (const href of hrefs) expect(pages, href).toContain(href);
     expect(new Set(HOME_MODES.map((m) => m.href)).size).toBe(HOME_MODES.length);
-    // The four /discover pills are exactly the contract's discoverTabs.
+    // The three /discover pills are exactly the contract's discoverTabs.
     expect(
       HOME_MODES.map((m) => m.href).filter((h) => h.startsWith("/discover/")),
     ).toEqual(Object.values(CONSUMER_ROUTES.discoverTabs));
@@ -489,15 +483,14 @@ describe("T5b — Home's supporting rail", () => {
   it("lands Home on its leading pill", async () => {
     const { HOME_MODES } = await import("@/components/consumer/ModeRail");
     expect(CONSUMER_ROUTES.discoverDefault).toBe(
-      CONSUMER_ROUTES.discoverTabs.feed,
+      CONSUMER_ROUTES.discoverTabs.scroll,
     );
     expect(HOME_MODES[0].href).toBe(CONSUMER_ROUTES.discoverDefault);
-    expect(HOME_MODES[0].label).toBe("Catalog");
+    expect(HOME_MODES[0].label).toBe("Scroll");
   });
 
   it("every Home pill's page lives under discover", () => {
     for (const rel of [
-      ["discover", "feed"],
       ["discover", "scroll"],
       ["discover", "chat"],
       ["discover", "favs"],

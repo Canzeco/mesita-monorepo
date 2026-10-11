@@ -323,43 +323,6 @@ export async function apiSuggestPlaces(
   return predictions;
 }
 
-export type CatalogRail = {
-  key: string;
-  label: string;
-  source: "seed" | "generated";
-  places: Place[];
-};
-
-/** Home Catalog rails — one EF, Atlas seeds + vibe-query Mesita search. */
-export async function apiListCatalog(
-  client: SupabaseClient,
-  origin?: { lat: number; lng: number } | null,
-  /**
-   * The guest's predicates (MESITA-1697). Sent so the EF cuts its POOL before
-   * planning rails — filtering the response here instead would leave 0-2 tiles
-   * under headings that still paint. See the EF's own note.
-   */
-  predicates?: DiscoveryPredicatesWire,
-): Promise<CatalogRail[]> {
-  const data = await invokeEF<{ rails: CatalogRail[] }>(
-    client,
-    "consumer-web-list-catalog",
-    {
-      ...(origin ? { lat: origin.lat, lng: origin.lng } : {}),
-      ...(predicates ? { predicates } : {}),
-    },
-  );
-  return (data.rails ?? []).map((rail) => ({
-    ...rail,
-    places: (rail.places ?? []).map((place) =>
-      stripInsecurePhotos({
-        ...place,
-        photos: Array.isArray(place.photos) ? place.photos : [],
-      }),
-    ),
-  }));
-}
-
 // Legacy rows may carry http:// photos. Next.js Image rejects them and
 // would crash the whole page; filter to https before render.
 function stripInsecurePhotos<T extends { photos: string[] }>(v: T): T {
