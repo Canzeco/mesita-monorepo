@@ -1,6 +1,14 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "./database.types";
+import {
+  isSurface,
+  prefixPath,
+  resolveSurface,
+  SURFACE_COOKIE,
+  type Surface,
+} from "@/lib/surface";
+import { WEB_HOME, webRequiresRegisteredAccount } from "@/lib/web-surface-auth";
 
 // Routing rules. Two passes:
 //
@@ -65,16 +73,53 @@ export function shouldGate(pathname: string): boolean {
 export async function updateSupabaseSession(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  const pathname = request.nextUrl.pathname;
+  const browserPath = request.nextUrl.pathname;
+  const cookieSurface = request.cookies.get(SURFACE_COOKIE)?.value;
+  const surfaceDecision = resolveSurface(
+    browserPath,
+    isSurface(cookieSurface) ? cookieSurface : null,
+  );
+
+  if (surfaceDecision.kind === "redirect") {
+    const dest = request.nextUrl.clone();
+    dest.pathname = surfaceDecision.pathname;
+    const redirected = NextResponse.redirect(dest);
+    redirected.cookies.set(SURFACE_COOKIE, surfaceDecision.surface, {
+      path: "/",
+      sameSite: "lax",
+    });
+    return redirected;
+  }
+
+  // Gate and render against the bare route. The browser keeps /mob or /web.
+  const pathname =
+    surfaceDecision.kind === "rewrite" ? surfaceDecision.bare : browserPath;
+  const surface: Surface | null =
+    surfaceDecision.kind === "rewrite" ? surfaceDecision.surface : null;
 
   function nextWithPathname(req: NextRequest = request) {
     const requestHeaders = new Headers(req.headers);
-    requestHeaders.set("x-pathname", pathname);
+    // What the guest typed, surface included, so ?next= survives sign-in.
+    requestHeaders.set("x-pathname", browserPath);
+    requestHeaders.set("x-bare-pathname", pathname);
+    if (surface) requestHeaders.set("x-surface", surface);
     // Server Components can't read the query string of their own request.
     // The (shell) layout needs it to build a `?next=` that survives sign-in
     // with its params intact (a shared /place/<id>?ref=ig link is worthless
     // if the ref dies at the auth wall).
     requestHeaders.set("x-search", request.nextUrl.search);
+    if (surfaceDecision.kind === "rewrite") {
+      const rewriteUrl = request.nextUrl.clone();
+      rewriteUrl.pathname = pathname;
+      const rewritten = NextResponse.rewrite(rewriteUrl, {
+        request: { headers: requestHeaders },
+      });
+      rewritten.cookies.set(SURFACE_COOKIE, surfaceDecision.surface, {
+        path: "/",
+        sameSite: "lax",
+      });
+      return rewritten;
+    }
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
@@ -111,21 +156,73 @@ export async function updateSupabaseSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Signed-out wall.
-  if (shouldGate(pathname) && !user) {
+  // /web is anonymous-first: no sign-in wall. Mint a Supabase anonymous
+  // session so client EFs that want a bearer still get one.
+  //
+  // THE COOKIES ARE ALREADY ON `response`. signInAnonymously() runs setAll
+  // above, which writes the new session onto both the request and `response`.
+  // This block used to replace `response` with a fresh one afterwards, which
+  // threw those cookies away: the browser never kept the session, and every
+  // /web load minted another anonymous user (Bugbot on PR #1995). Middleware
+  // is the only place the session can be persisted — a Server Component
+  // cannot set cookies — so it is minted here and nowhere else.
+  if (surface === "web" && !user) {
+    await supabase.auth.signInAnonymously();
+  }
+
+  const sessionUser = (await supabase.auth.getUser()).data.user;
+  // An anonymous /web session is a session, not an account: it must never
+  // pass the phone-OTP wall of /mob or the bare paths (Bugbot on PR #1995).
+  const registered = sessionUser !== null && !sessionUser.is_anonymous;
+
+  // Every early return below is a NEW response. Carry whatever setAll wrote
+  // (a fresh anonymous session, a refreshed token) onto it, or the redirect
+  // silently logs the guest out.
+  function redirectKeepingSession(dest: URL) {
+    const redirected = NextResponse.redirect(dest);
+    for (const cookie of response.cookies.getAll()) {
+      redirected.cookies.set(cookie);
+    }
+    return redirected;
+  }
+
+  if (
+    surface === "web" &&
+    webRequiresRegisteredAccount(pathname) &&
+    (!sessionUser || sessionUser.is_anonymous)
+  ) {
+    const app = request.nextUrl.clone();
+    app.pathname = "/web/get-the-app";
+    app.search = `?next=${encodeURIComponent(browserPath + request.nextUrl.search)}`;
+    return redirectKeepingSession(app);
+  }
+
+  // Signed-out wall (phone OTP) — mob emulator and legacy bare paths only.
+  if (surface !== "web" && shouldGate(pathname) && !registered) {
     const signInUrl = request.nextUrl.clone();
-    signInUrl.pathname = "/";
+    signInUrl.pathname = surface ? `/${surface}` : "/";
     signInUrl.search = `?next=${encodeURIComponent(
-      pathname + request.nextUrl.search,
+      browserPath + request.nextUrl.search,
     )}`;
-    return NextResponse.redirect(signInUrl);
+    return redirectKeepingSession(signInUrl);
   }
 
   // Already-signed-in bounce. We keep the user's own `?next=` intact so a
   // deep link that forced a sign-in still lands at the original target.
-  if (user && SIGNED_IN_BOUNCE.has(pathname)) {
+  // On /web any session bounces to Home (there is no sign-in page there);
+  // elsewhere only a registered account does — an anonymous one still has to
+  // sign in.
+  if (surface === "web" && sessionUser && SIGNED_IN_BOUNCE.has(pathname)) {
+    const home = request.nextUrl.clone();
+    home.pathname = prefixPath("web", WEB_HOME);
+    home.search = "";
+    return redirectKeepingSession(home);
+  }
+  if (surface !== "web" && registered && SIGNED_IN_BOUNCE.has(pathname)) {
     const bounce = request.nextUrl.clone();
-    bounce.pathname = "/auth/post-signin";
+    bounce.pathname = surface
+      ? `/${surface}/auth/post-signin`
+      : "/auth/post-signin";
     const incomingNext = request.nextUrl.searchParams.get("next");
     const safeNext =
       incomingNext &&
@@ -134,7 +231,7 @@ export async function updateSupabaseSession(request: NextRequest) {
         ? incomingNext
         : null;
     bounce.search = safeNext ? `?next=${encodeURIComponent(safeNext)}` : "";
-    return NextResponse.redirect(bounce);
+    return redirectKeepingSession(bounce);
   }
 
   return response;

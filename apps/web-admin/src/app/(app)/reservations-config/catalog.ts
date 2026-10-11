@@ -21,20 +21,12 @@
 
 type ReservationChannel = "phone";
 
-/** Four Reservationist agents. Direction is fixed; the errand is data. */
-export const FLEET = [
-  { key: "a1", arrow: "→", side: "place" },
-  { key: "a2", arrow: "→", side: "guest" },
-  { key: "a3", arrow: "←", side: "guest" },
-  { key: "a4", arrow: "←", side: "place" },
-] as const;
-
 export type ReservationsConfig = {
   /** Ordered, most preferred first. Order IS the rule. Always ranks every channel. */
   priority: ReservationChannel[];
   /** Parked channels — skipped even when they're the place's only contact. */
   disabled: ReservationChannel[];
-  /** True: a channel an operator picked by hand is never re-seeded by an enrich. */
+  /** True: a channel an operator picked by hand is never re-seeded by an enrich. No control since MESITA-2122. */
   respectAdminOverride: boolean;
   /**
    * Testing override. While enabled, EVERY reservation call dials `number`
@@ -67,6 +59,7 @@ export type ReservationsConfig = {
    * outbound place calls per place per day (booking + notices share the
    * meter), and the kill switch — a hard stop on ALL outbound reservation
    * calls, parked (not dropped) so flipping it back resumes within a minute.
+   * NO CONTROLS since MESITA-2122 — carried at the seeds, still read by the EFs.
    */
   limits: {
     reschedulesPerTicketPerDay: number;
@@ -74,8 +67,8 @@ export type ReservationsConfig = {
     killSwitch: boolean;
   };
   /**
-   * Leg 7 reminder call. Off until an operator flips it — each confirmed
-   * reservation becomes one extra a2 call (~3 h before the slot).
+   * Leg 7 reminder call. Off; no control since MESITA-2122 — each confirmed
+   * reservation would become one extra a2 call (~3 h before the slot).
    */
   reminder: { enabled: boolean };
 };

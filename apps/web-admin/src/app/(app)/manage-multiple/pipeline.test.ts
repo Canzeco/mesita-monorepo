@@ -51,8 +51,9 @@ describe("the page chrome names the five surfaces", () => {
     expect(client).toContain("WRITE_BOX_ACTIONS.update");
     expect(client).not.toContain("EditTab");
     // MESITA-1664 (decision: Pato) — "place cannot be partner from the
-    // console": Active/Verified/Partnered write from web-business now
-    // (claim → verify → own → Stripe onboarding), never from admin.
+    // console": Active/Verified/Partnered never write from this page's
+    // boxes. They wrote from web-business (claim → verify → own → Stripe
+    // onboarding) until MESITA-2089 deleted it.
     expect(box).toContain('label: "Create"');
     expect(box).toContain('label: "Delete"');
     expect(box).toContain('label: "List"');

@@ -17,7 +17,6 @@
 // @/lib/place-time. Every Mesita place is in Mexico (Monterrey and CDMX are
 // both UTC-6 year round), so place-local hours and the fixed GMT-6 reservation
 // offset describe the same wall clock.
-// Mirror: apps/mobile-consumer/src/lib/reservation-slots.ts (keep in sync).
 
 import {
   isSlotPast,

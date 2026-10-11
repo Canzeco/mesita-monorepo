@@ -106,14 +106,14 @@ Deno.test("rootTail falls back to the whole file when markers are unusable", () 
 // ── Word budgets ─────────────────────────────────────────────────────────────
 
 Deno.test("budgetsFor measures a package file whole, against the default ceiling", () => {
-  const [b] = budgetsFor(pkg("apps/web-validate"), "word ".repeat(10));
+  const [b] = budgetsFor(pkg("apps/web-admin"), "word ".repeat(10));
   assertEquals(b.words, 10);
   assertEquals(b.budget, DEFAULT_PACKAGE_WORD_BUDGET);
   assertEquals(b.over, false);
 });
 
 Deno.test("budgetsFor flags an over-budget package file", () => {
-  const [b] = budgetsFor(pkg("apps/web-validate"), "word ".repeat(DEFAULT_PACKAGE_WORD_BUDGET + 1));
+  const [b] = budgetsFor(pkg("apps/web-admin"), "word ".repeat(DEFAULT_PACKAGE_WORD_BUDGET + 1));
   assertEquals(b.over, true);
 });
 
@@ -128,7 +128,7 @@ Deno.test("an explicit ceiling overrides the default, in both directions", () =>
   assertEquals(budgetsFor(pkg("apps/web-consumer", 600), text)[0].over, false, "at its own ceiling");
   assertEquals(budgetsFor(pkg("apps/web-consumer"), text)[0].over, true, "same text, default ceiling");
   // A ceiling can also be TIGHTER than the default — nothing assumes it only relaxes.
-  assertEquals(budgetsFor(pkg("apps/web-landing", 100), "word ".repeat(150))[0].over, true);
+  assertEquals(budgetsFor(pkg("apps/web-admin", 100), "word ".repeat(150))[0].over, true);
 });
 
 Deno.test("budgetsFor measures the ROOT by its tail only, ignoring the generated block", () => {
@@ -419,7 +419,7 @@ Deno.test("findForbiddenAssets catches every vulnerable format, in any case", ()
     "assets/brand/icon.icns",
     "apps/web-consumer/public/hero.JXL",
     "assets/shot.heif",
-    "apps/mobile-consumer/assets/IMG_0042.HEIC",
+    "apps/web-admin/public/IMG_0042.HEIC",
   ];
   assertEquals(findForbiddenAssets(tracked), tracked);
 });
@@ -428,7 +428,7 @@ Deno.test("findForbiddenAssets passes the formats the repo actually ships", () =
   assertEquals(
     findForbiddenAssets([
       "assets/brand/logo.svg",
-      "apps/web-landing/public/og.png",
+      "apps/web-consumer/public/og.png",
       "assets/deck.pdf",
       // Substring, not suffix: a directory named after the format is not one.
       "assets/heic-conversions/README.png",

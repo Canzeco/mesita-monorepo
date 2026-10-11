@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { ArrowRight, Coins, Utensils } from "lucide-react";
+import { ArrowRight, Map, Sparkles, Utensils } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { NOTIFY_URL, OVERVIEW_URL } from "@/components/landing/urls";
@@ -7,9 +7,8 @@ import { NOTIFY_URL, OVERVIEW_URL } from "@/components/landing/urls";
 // Pre-launch hero. The status badge does the honesty work for the whole
 // page — every section below speaks in product voice without claiming
 // liveness. The UI chips are code overlays, never baked into the photo,
-// so page copy can never go stale inside a JPG. The three chips are three
-// of the four products: a booked table, the reward on the bill, the credit
-// bought ahead.
+// so page copy can never go stale inside a JPG. The three chips are the
+// three First Stage products: the catalog, a discovery door, a booked table.
 function Hero() {
   return (
     <section className="bg-hero relative overflow-hidden">
@@ -32,9 +31,8 @@ function Hero() {
         </h1>
 
         <p className="text-muted-foreground max-w-2xl text-lg leading-relaxed md:text-xl">
-          Every restaurant, café and bar in your city. Booked by a phone call
-          you never make. Prepaid before you sit down. Cheaper every time you
-          go.
+          Every restaurant, café and bar in your city. Found the way you like to
+          look. Booked by a phone call you never make.
         </p>
 
         <div className="mt-2 flex flex-col items-center gap-3 sm:flex-row">
@@ -61,11 +59,11 @@ function Hero() {
           </span>{" "}
           ·{" "}
           <span className="text-foreground font-medium">
-            the reservation agent
+            the discovery engines
           </span>{" "}
           ·{" "}
           <span className="text-foreground font-medium">
-            rewards at the table
+            the reservation agent
           </span>
         </p>
 
@@ -89,19 +87,20 @@ function Hero() {
             </span>
           </span>
           <span className="border-border/60 bg-background/85 absolute bottom-4 left-4 hidden items-center gap-2 rounded-2xl border px-3.5 py-2 text-left shadow-lg backdrop-blur-md sm:flex">
+            <Map className="text-primary h-4 w-4" aria-hidden />
             <span className="text-[13px] leading-tight font-semibold">
-              −30%
+              Scroll · Map · Ask
               <span className="text-muted-foreground block text-[11px] font-medium">
-                applied at the table
+                find tonight’s place
               </span>
             </span>
           </span>
           <span className="border-border/60 bg-background/85 absolute top-4 right-4 hidden items-center gap-2 rounded-2xl border px-3.5 py-2 text-left shadow-lg backdrop-blur-md md:flex">
-            <Coins className="text-secondary h-4 w-4" aria-hidden />
+            <Sparkles className="text-secondary h-4 w-4" aria-hidden />
             <span className="text-[13px] leading-tight font-semibold">
-              Credits
+              1,000 places
               <span className="text-muted-foreground block text-[11px] font-medium">
-                $110 for $100
+                built in ten minutes
               </span>
             </span>
           </span>

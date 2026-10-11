@@ -16,8 +16,12 @@ describe("Home's loading fallback", () => {
     pathname = "/discover/feed";
   });
 
-  it("Scroll waits on an ink block", () => {
-    pathname = CONSUMER_ROUTES.discoverTabs.scroll;
+  it.each([
+    CONSUMER_ROUTES.discoverTabs.scroll,
+    `/web${CONSUMER_ROUTES.discoverTabs.scroll}`,
+    `/mob${CONSUMER_ROUTES.discoverTabs.scroll}`,
+  ])("Scroll waits on an ink block (%s)", (path) => {
+    pathname = path;
     const html = renderToStaticMarkup(<DiscoverFallback />);
     expect(html).toContain("bg-foreground");
     expect(html).toContain('aria-busy="true"');

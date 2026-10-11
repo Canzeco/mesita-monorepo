@@ -25,9 +25,10 @@ set -euo pipefail
 
 PROJECT_REF="yjalywfzdelacdzccpgb"
 
-# Keep in sync with deploy.sh's WEB_REPOS.
+# Every app that keeps a committed types file. deploy.sh calls this script, so
+# this list is the only one. web-admin keeps none (MESITA-2089 deleted
+# web-business, the other holder).
 WEB_REPOS=(
-  "../apps/web-business"
   "../apps/web-consumer"
 )
 

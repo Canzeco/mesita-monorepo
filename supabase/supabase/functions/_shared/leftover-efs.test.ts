@@ -9,17 +9,13 @@
 //   1. A leftover slug that still has a folder or a config.toml block. The
 //      job deploys it and then deletes it, on every merge: a function the
 //      repo says exists and the cloud never keeps.
-//   2. The lookup is `grep -Fqw`, and a hyphen is a word boundary, so a slug
-//      also matches any LIVE slug it is a hyphen-bounded part of. Once the
-//      shorter slug is gone, the grep still matches the longer one,
-//      `functions delete` fails on the absent name, and `set -euo pipefail`
-//      aborts the step — every slug after it stays deployed. So no leftover
-//      slug may sit inside a function the repo still deploys, and inside the
-//      list the longer slug of such a pair is deleted first.
+//   2. A lookup that matches PART of a slug. `grep -Fqw` treated a hyphen as a
+//      word boundary, so a retired slug also matched any listed slug it was a
+//      hyphen-bounded part of; `functions delete` then failed on the absent
+//      name and `set -euo pipefail` aborted the step, leaving every slug after
+//      it deployed. The step now matches the whole `| slug |` cell.
 //
-// MESITA-2090 put 110 slugs on the list at once (the MVP First Stage cut);
-// business-web-create-place / business-web-create-place-api-key is the pair
-// that rule 2 orders.
+// MESITA-2090 put 109 slugs on the list at once (the MVP First Stage cut).
 
 import { assertEquals } from "jsr:@std/assert@1";
 
@@ -53,19 +49,6 @@ async function deployedFolders(): Promise<string[]> {
   return out.sort();
 }
 
-/** `grep -Fw needle` on a line holding `hay`: a fixed-string hit whose
- *  neighbours are not word characters (letters, digits, underscore). */
-function grepWordMatches(needle: string, hay: string): boolean {
-  let at = hay.indexOf(needle);
-  while (at >= 0) {
-    const before = at === 0 ? "" : hay[at - 1];
-    const after = hay[at + needle.length] ?? "";
-    if (!/\w/.test(before) && !/\w/.test(after)) return true;
-    at = hay.indexOf(needle, at + 1);
-  }
-  return false;
-}
-
 Deno.test("leftover: no retired slug is still deployable from the repo", async () => {
   const leftover = await leftoverSlugs();
   const folders = new Set(await deployedFolders());
@@ -88,32 +71,14 @@ Deno.test("leftover: no slug is listed twice", async () => {
   assertEquals(dupes, [], `listed more than once: ${dupes.join(", ")}`);
 });
 
-Deno.test("leftover: no retired slug is a hyphen-bounded part of a deployed function", async () => {
-  const leftover = await leftoverSlugs();
-  const folders = await deployedFolders();
-  const hits: string[] = [];
-  for (const slug of leftover) {
-    for (const fn of folders) {
-      if (fn !== slug && grepWordMatches(slug, fn)) hits.push(`${slug} ⊂ ${fn}`);
-    }
-  }
+Deno.test("leftover: the delete step matches the whole slug cell, never part of one", async () => {
+  const text = await Deno.readTextFile(DEPLOY_WORKFLOW);
+  // A partial match is what aborted the step: business-web-create-place
+  // inside business-web-create-place-api-key.
+  assertEquals(/grep -Fqw "\$fn"/.test(text), false, "the word-boundary grep is back");
   assertEquals(
-    hits,
-    [],
-    `grep -Fqw would match the deployed function and try to delete the absent ` +
-      `slug forever, aborting the step: ${hits.join(", ")}`,
+    text.includes('grep -Eq "\\\\|[[:space:]]*${fn}[[:space:]]*\\\\|"'),
+    true,
+    "the delete loop no longer matches the `| slug |` cell exactly",
   );
-});
-
-Deno.test("leftover: inside a prefix pair the longer slug is deleted first", async () => {
-  const leftover = await leftoverSlugs();
-  const misordered: string[] = [];
-  leftover.forEach((short, i) => {
-    leftover.forEach((long, j) => {
-      if (short !== long && grepWordMatches(short, long) && j > i) {
-        misordered.push(`${long} must come before ${short}`);
-      }
-    });
-  });
-  assertEquals(misordered, [], misordered.join("\n"));
 });

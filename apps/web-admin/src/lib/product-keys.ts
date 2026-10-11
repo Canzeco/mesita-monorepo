@@ -162,10 +162,10 @@ export const PRODUCT_LABEL: Record<ProductKey, string> = {
   // WHERE THE RENAME STOPS, AND WHY IT STOPS THERE. Two registers keep the
   // old words on purpose:
   //
-  //   the STATE FACTS   `lib/state-vocabulary.ts` — a GENERATED file, mirrored
-  //                     byte for byte into web-admin, whose labels are pinned
-  //                     word for word to Notion Main §11.2 by
-  //                     `place-capabilities-contract.test.ts`. It names a
+  //   the STATE FACTS   `lib/state-vocabulary.ts`, whose labels are pinned
+  //                     word for word to Notion Main §11.2 (the contract
+  //                     test that held them left with web-business,
+  //                     MESITA-2089). It names a
   //                     column's condition, not a thing an operator buys, so
   //                     moving it is a Docs change first.
   //   the GUEST's words  web-consumer still says "Paid with Mesita Pay" on a

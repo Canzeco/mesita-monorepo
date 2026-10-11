@@ -61,7 +61,7 @@ const NON_APP_ACTORS = new Set(["staff"]);
  * existed the day this test landed. Each is `efName:strayApp`. Fixing one
  * — reroute the caller, or rename the EF if it legitimately serves both
  * consoles — removes its line here in the same PR. The eight
- * `admin-web-*:web-business` entries left with that app (MESITA-2090).
+ * `admin-web-*:web-business` entries left with that app (MESITA-2089).
  */
 const GRANDFATHERED_VIOLATIONS = new Set([
   "admin-web-reset-database:web-consumer",

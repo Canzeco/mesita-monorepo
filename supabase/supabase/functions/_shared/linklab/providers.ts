@@ -1,16 +1,20 @@
-// linklab — provider wrappers (Firecrawl v2, Perplexity Search/Agent/Sonar, Google Places).
+// linklab — provider wrappers (Firecrawl v2, Perplexity Search/Agent/Sonar, Google Places,
+// Claude with server-side web search/fetch).
 // Best-effort: every call returns a safe empty value on failure so a strategy degrades
 // instead of throwing. Optional on-disk response cache (keyed by request) is enabled ONLY
 // when Deno.env LINKLAB_CACHE_DIR is set — the local benchmark runner sets it so that
 // iterating on strategy logic doesn't re-bill Firecrawl/Perplexity/Google. The deployed
 // EF leaves it unset and always hits the live APIs.
 
+import Anthropic from "npm:@anthropic-ai/sdk@0.133.0";
 import { safeParseJson } from "../parse-utils.ts";
 
 export type Keys = {
   firecrawl: string;
   perplexity: string;
   google: string;
+  /** MESITA-2118: only strategy G needs it; "" when unset. */
+  anthropic: string;
 };
 
 export type SearchHit = { url: string; title: string; snippet: string };
@@ -24,6 +28,11 @@ export const meter = {
   perplexitySonar: 0,
   googleText: 0,
   googleDetails: 0,
+  claudeCalls: 0,
+  claudeSearches: 0,
+  claudeFetches: 0,
+  claudeInputTokens: 0,
+  claudeOutputTokens: 0,
   cacheHits: 0,
   reset() {
     const self = this as Record<string, unknown>;
@@ -282,6 +291,129 @@ export function perplexitySonar(
       }));
     return { answer: safeJson(content), searchResults };
   });
+}
+
+// ---- Claude (Messages API + server-side web_search / web_fetch) -------------
+// MESITA-2118. Claude runs its own searches and reads pages itself (both tools execute
+// on Anthropic's side), then answers through the strict `submit_links` tool. The only
+// client-side loop is resuming `pause_turn` — the server's 10-iteration sampling cap.
+export const CLAUDE_MODEL = "claude-opus-5-5";
+const CLAUDE_MAX_CONTINUATIONS = 4;
+const SUBMIT_TOOL = "submit_links";
+
+type ClaudeCreate = (
+  params: Anthropic.Beta.Messages.MessageCreateParamsNonStreaming,
+) => Promise<Anthropic.Beta.Messages.BetaMessage>;
+
+export type ClaudeResearchOpts = {
+  effort?: "low" | "medium" | "high";
+  maxSearches?: number;
+  maxFetches?: number;
+};
+
+export type ClaudeResearch = {
+  answer: Record<string, unknown>;
+  searches: number;
+  fetches: number;
+  inputTokens: number;
+  outputTokens: number;
+  stopReason: string | null;
+  error?: string;
+};
+
+export function claudeResearch(
+  keys: Keys,
+  system: string,
+  user: string,
+  schema: Record<string, unknown>,
+  opts: ClaudeResearchOpts = {},
+): Promise<ClaudeResearch> {
+  return cached("claude", { model: CLAUDE_MODEL, system, user, schema, opts }, async () => {
+    if (!keys.anthropic) return { ...emptyResearch(), error: "no ANTHROPIC_API_KEY" };
+    meter.claudeCalls++;
+    const client = new Anthropic({ apiKey: keys.anthropic, timeout: 180_000 });
+    const out = await runClaudeResearch(
+      (p) => client.beta.messages.create(p),
+      system,
+      user,
+      schema,
+      opts,
+    );
+    meter.claudeSearches += out.searches;
+    meter.claudeFetches += out.fetches;
+    meter.claudeInputTokens += out.inputTokens;
+    meter.claudeOutputTokens += out.outputTokens;
+    return out;
+  });
+}
+
+/** The request loop, with `create` injected so tests can replay canned responses. */
+export async function runClaudeResearch(
+  create: ClaudeCreate,
+  system: string,
+  user: string,
+  schema: Record<string, unknown>,
+  opts: ClaudeResearchOpts = {},
+): Promise<ClaudeResearch> {
+  const out = emptyResearch();
+  const messages: Anthropic.Beta.Messages.BetaMessageParam[] = [{ role: "user", content: user }];
+  for (let turn = 0; turn <= CLAUDE_MAX_CONTINUATIONS; turn++) {
+    let res: Anthropic.Beta.Messages.BetaMessage;
+    try {
+      res = await create({
+        model: CLAUDE_MODEL,
+        max_tokens: 16000,
+        system,
+        output_config: { effort: opts.effort ?? "medium" },
+        betas: ["server-side-fallback-2026-07-01"],
+        fallbacks: "default",
+        tools: [
+          {
+            type: "web_search_20260209",
+            name: "web_search",
+            max_uses: opts.maxSearches ?? 6,
+            user_location: { type: "approximate", country: "MX" },
+          },
+          { type: "web_fetch_20260209", name: "web_fetch", max_uses: opts.maxFetches ?? 6 },
+          {
+            name: SUBMIT_TOOL,
+            description:
+              "Submit the final answer: the place's official website URL and Instagram profile URL, null for any you could not verify. Call exactly once, at the end.",
+            strict: true,
+            input_schema: { ...schema, type: "object", additionalProperties: false },
+          },
+        ],
+        messages,
+      });
+    } catch (e) {
+      return { ...out, error: String(e) };
+    }
+    const u = res.usage;
+    out.searches += u.server_tool_use?.web_search_requests ?? 0;
+    out.fetches += u.server_tool_use?.web_fetch_requests ?? 0;
+    out.inputTokens += u.input_tokens + (u.cache_creation_input_tokens ?? 0) +
+      (u.cache_read_input_tokens ?? 0);
+    out.outputTokens += u.output_tokens;
+    out.stopReason = res.stop_reason;
+
+    for (const b of res.content) {
+      if (b.type === "tool_use" && b.name === SUBMIT_TOOL && b.input && typeof b.input === "object") {
+        return { ...out, answer: b.input as Record<string, unknown> };
+      }
+    }
+    if (res.stop_reason !== "pause_turn") {
+      // Answered in prose instead of the tool — tolerate a JSON object in the text.
+      const text = res.content.map((b) => (b.type === "text" ? b.text : "")).join("");
+      return { ...out, answer: safeJson(text) };
+    }
+    // pause_turn: resend with the paused assistant turn; the server resumes on its own.
+    messages.push({ role: "assistant", content: res.content });
+  }
+  return { ...out, error: "pause_turn continuations exhausted" };
+}
+
+function emptyResearch(): ClaudeResearch {
+  return { answer: {}, searches: 0, fetches: 0, inputTokens: 0, outputTokens: 0, stopReason: null };
 }
 
 // ---- Google Places v1 -------------------------------------------------------

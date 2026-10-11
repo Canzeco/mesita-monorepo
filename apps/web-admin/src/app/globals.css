@@ -72,9 +72,9 @@
   --destructive: oklch(0.58 0.24 28);
   --destructive-foreground: oklch(0.99 0.005 10);
   --border: oklch(0.875 0.012 15);
-  /* The business console's tokens the shared place surface paints with
-     (shared/place-console, MESITA-2086). Light values, verbatim from
-     web-business/src/app/globals.css; admin has no dark theme. */
+  /* The business console's tokens the place surface paints with
+     (MESITA-2086). Light values, verbatim from web-business's globals.css
+     before MESITA-2089 deleted it; admin has no dark theme. */
   --paper: oklch(1 0 0);
   --page: oklch(0.952 0 0);
   --ink-hover: oklch(0.371 0 0);

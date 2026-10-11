@@ -12,10 +12,12 @@
 //   app components/brand/*   = FULLY GENERATED logo components (web TSX + RN TSX).
 //   app public/brand/*.svg   = FULLY GENERATED copies of the canonical assets.
 //   mobile tailwind.config   = generated BRAND-TOKENS block between the markers.
+//                              Dormant: `targets.mobile` is empty since
+//                              MESITA-2089 deleted both Expo apps.
 //
 // Why generate instead of sharing a package: the monorepo has NO root pnpm
-// workspace on purpose (mobile needs nodeLinker: hoisted, web apps use the
-// default isolated linker), so there is no import path every app can reach.
+// workspace on purpose (each package is its own install root), so there is no
+// import path every app can reach.
 // Generation is how this repo already keeps CLAUDE.md/AGENTS.md in lockstep —
 // see scripts/sync-rules.ts. Same idiom, same --check gate in CI.
 //
@@ -442,6 +444,8 @@ for (const app of brand.targets.web) {
 }
 
 // ── 5. mobile ──────────────────────────────────────────────────────────────
+// A no-op while `brand.targets.mobile` is [] (MESITA-2089). Kept so a native
+// app can come back by naming itself in brand.json, not by rewriting this.
 const mobileTokenBlock =
   Object.entries(brand.color.pink)
     .map(([step, s]) => `        'brand-pink-${step}': '${s.hex}',`)

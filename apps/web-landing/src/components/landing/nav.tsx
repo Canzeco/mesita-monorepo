@@ -3,13 +3,12 @@ import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NOTIFY_URL, OVERVIEW_URL } from "@/components/landing/urls";
 
-// One anchor per product, in page order. `footer.tsx` prints the same four;
-// keep them together.
+// One anchor per First Stage product, in page order. `footer.tsx` prints the
+// same three and `close.tsx` names them; keep them together.
 export const NAV_LINKS = [
+  { href: "/#catalog", label: "Catalog" },
   { href: "/#discovery", label: "Discovery" },
   { href: "/#reservations", label: "Reservations" },
-  { href: "/#prepay", label: "Prepayments" },
-  { href: "/#rewards", label: "Rewards" },
 ];
 
 function Nav() {

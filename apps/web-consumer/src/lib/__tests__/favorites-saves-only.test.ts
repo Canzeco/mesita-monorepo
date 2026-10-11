@@ -1,8 +1,8 @@
 // Favorites is the bookmark list, not a second discovery surface (MESITA-1327).
 // The "More like your saves" rail ranked unsaved deck places by category/zone
 // overlap and rendered empty-heart suggestion tiles. Pato's live screenshot
-// killed that: this tab shows only saved places. mobile-consumer has no test
-// runner, so this file reads both sources as text and pins them together.
+// killed that: this tab shows only saved places. This file reads the source as
+// text and pins it.
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -21,25 +21,17 @@ const FORBIDDEN = [
   "saved={false}",
 ];
 
-describe("Favorites is saved places only (web ↔ mobile)", () => {
+describe("Favorites is saved places only", () => {
   const web = read(
     "apps/web-consumer/src/components/consumer/home/FavoritesList.tsx",
   );
-  const mobile = read(
-    "apps/mobile-consumer/src/components/home/FavoritesTab.tsx",
-  );
 
-  it.each(FORBIDDEN)("neither surface contains %s", (needle) => {
+  it.each(FORBIDDEN)("the surface does not contain %s", (needle) => {
     expect(web).not.toContain(needle);
-    expect(mobile).not.toContain(needle);
   });
 
   it("web still names the saved grid", () => {
     expect(web).toContain('aria-label="Saved places"');
     expect(web).toContain("{savedIds.size} saved");
-  });
-
-  it("mobile still names the saved count", () => {
-    expect(mobile).toContain("{savedIds.size} saved");
   });
 });

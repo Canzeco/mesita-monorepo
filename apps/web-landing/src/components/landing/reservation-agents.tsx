@@ -1,6 +1,6 @@
 import { BadgeCheck, CalendarCheck, Phone } from "lucide-react";
 
-// Three facts under the card: the reach, the conversation, the ticket.
+// Three facts under the card: the reach, the conversation, the booking.
 const FACTS = [
   {
     label: "Any place.",
@@ -11,8 +11,8 @@ const FACTS = [
     body: "No table at nine, then eight-thirty.",
   },
   {
-    label: "Your ticket in the app.",
-    body: "Confirmation, changes, and cancellation live with the visit.",
+    label: "Your booking in the app.",
+    body: "Confirmation, changes, and cancellation all live in one place.",
   },
 ];
 
@@ -32,7 +32,7 @@ function ReservationAgents() {
               Pick the place, the time, and how many. Mesita’s AI agent phones
               the restaurant, asks for the table in a normal conversation, and
               comes back with a confirmation or the closest alternative. It
-              works at every place in the city, not just partners, because it
+              works at every place in the city, signed up or not, because it
               books the way everyone already does: by phone.
             </p>
           </div>

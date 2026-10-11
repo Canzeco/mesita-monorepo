@@ -156,16 +156,16 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(envRes.env);
 
+  // Auth: super-admins only, like every other admin-web-* door.
+  const saRes = await requireSuperAdmin(admin, authRes.user);
+  if (!saRes.ok) return saRes.response;
+
   // Parse + validate.
   const bodyRes = await readJson<UpdateBody>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
   const placeId = (body.id ?? "").toString().trim();
   if (!placeId) return json({ ok: false, error: "id is required" }, 400);
-
-  // Auth: super-admins only, like every other admin-web-* door.
-  const saRes = await requireSuperAdmin(admin, authRes.user);
-  if (!saRes.ok) return saRes.response;
 
   // Build the update payload from the whitelist. Missing keys are not
   // touched. Explicit null clears the field.
