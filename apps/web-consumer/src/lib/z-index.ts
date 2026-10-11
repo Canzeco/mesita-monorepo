@@ -4,6 +4,10 @@
 export const Z_BOTTOM_NAV = "z-40";
 export const Z_ROUTE_MODAL = "z-[120]";
 export const Z_LOCAL_OVERLAY = "z-[130]";
+
+// In-card overlays that share the bottom-nav numeric tier (Swipe's save/skip
+// badges and stamps; back with Swipe, MESITA-2142).
+export const Z_IN_FRAME_OVERLAY = "z-40";
 export const Z_TOASTER = "z-[140]";
 // The route read-out sits above everything: a modal or toast covering it
 // would hide the route exactly when you most need to know which one opened.

@@ -104,11 +104,6 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   // Swipe became; every other retired Home address forwards to Home.
   { source: "/discover/home", destination: "/discover/scroll", permanent: true },
   {
-    source: "/discover/swipe",
-    destination: "/discover/scroll",
-    permanent: true,
-  },
-  {
     source: "/discover/catalog",
     destination: "/discover/scroll",
     permanent: true,

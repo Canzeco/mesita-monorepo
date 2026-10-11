@@ -43,7 +43,10 @@ import {
 } from "@/lib/discovery-filters-wire";
 import { ScrollCard, scrollCardActions } from "./scroll-card";
 import { ScrollHint } from "./scroll-hint";
-import { readScrollPosition, writeScrollPosition } from "./scroll-position";
+import {
+  readScrollPosition,
+  writeScrollPosition,
+} from "./scroll-position";
 
 // SCROLL — Home's lead mode (MESITA-1697), a TikTok feed since MESITA-2105.
 // One place per screen, vertical. Filters match the map (MESITA-1792):
@@ -112,6 +115,11 @@ export function ScrollDeck({
     });
   // The card on screen, from the scroll listener below (eng review R3).
   const [active, setActive] = useState(0);
+  // Every card is the scrollport's size. A photo needs that box to decide
+  // whether it can cover the card or wears the reflection (ScrollCard).
+  const [cardSize, setCardSize] = useState<{ width: number; height: number } | null>(
+    null,
+  );
 
   // THE SHARED DECK ARRIVES WITHOUT COORDINATES. HomeDeckBoundary calls
   // apiRecommendDeck with `{ limit }` only, so the EF scores it at
@@ -258,9 +266,15 @@ export function ScrollDeck({
       });
     };
     el.addEventListener("scroll", onScroll, { passive: true });
+    const measure = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      if (width > 0 && height > 0) setCardSize({ width, height });
+    });
+    measure.observe(el);
     return () => {
       cancelAnimationFrame(frame);
       el.removeEventListener("scroll", onScroll);
+      measure.disconnect();
     };
     // Re-attach when the list itself comes back: a filter that empties the
     // deck unmounts the <ul>, and a listener bound to the old node would
@@ -349,9 +363,7 @@ export function ScrollDeck({
   const backToTop = () => {
     const el = scrollerRef.current;
     if (!el) return;
-    const reduce = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     el.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
   };
 
@@ -386,7 +398,10 @@ export function ScrollDeck({
             track: (event, props) => trackEvent(supabase, event, props),
             share: (p) => void sharePlace(p),
             openReserve: setReservePlace,
-            profileHref: (p) => placeHref(p.slug ?? p.id),
+            // A sample's profile is keyed by its `mock-` id, never its slug,
+            // so it resolves locally instead of asking the EF.
+            profileHref: (p) =>
+              placeHref(isMockPlace(p) ? p.id : (p.slug ?? p.id)),
           });
           return (
             <ScrollCard
@@ -397,6 +412,7 @@ export function ScrollDeck({
               index={i}
               total={deck.length}
               near={Math.abs(i - active) <= 1}
+              cardSize={cardSize}
               priority={i === 0}
               {...actions}
             />
@@ -406,7 +422,7 @@ export function ScrollDeck({
         {/* The list needs a terminal snap point, not a route-level empty
             screen — scrolling past the last card into blank space is the
             failure the stack deck answered with ExhaustedDeck. */}
-        <li className="flex h-full shrink-0 snap-start snap-always flex-col items-center justify-center gap-4 px-6 text-center">
+        <li className="flex h-full snap-start snap-always shrink-0 flex-col items-center justify-center gap-4 px-6 text-center">
           <div>
             <p className="text-foreground font-display text-base font-semibold tracking-tight">
               That&apos;s everywhere for now

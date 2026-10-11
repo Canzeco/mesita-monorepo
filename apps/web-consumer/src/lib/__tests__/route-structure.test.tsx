@@ -406,11 +406,16 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
 // loses its selected state. This pins ORDER, COUNT, the width budget, and
 // that every pill is a real page.
 //
-// The order is Pato's (MESITA-2140): "home (scroll, chat, favs)".
+// The order is Pato's (MESITA-2142): "swipe scroll chat favs".
 describe("T5b — Home's supporting rail", () => {
-  it("is exactly Scroll · Chat · Favs", async () => {
+  it("is exactly Swipe · Scroll · Chat · Favs", async () => {
     const { HOME_MODES } = await import("@/components/consumer/ModeRail");
-    expect(HOME_MODES.map((m) => m.label)).toEqual(["Scroll", "Chat", "Favs"]);
+    expect(HOME_MODES.map((m) => m.label)).toEqual([
+      "Swipe",
+      "Scroll",
+      "Chat",
+      "Favs",
+    ]);
   });
 
   // Catalog left the rail again (MESITA-2140), as at MESITA-2050: its page is
@@ -439,6 +444,8 @@ describe("T5b — Home's supporting rail", () => {
     expect(navSrc).toContain('className="h-3.5 w-3.5 shrink-0"');
     const TEXT_PX: Record<string, number> = {
       Home: 34.2,
+      // Inter 600's hmtx at 12px (MESITA-2142).
+      Swipe: 35.6,
       // Inter 600's hmtx at 12px, the same table as the rest (MESITA-2134).
       Catalog: 44.8,
       // Measured off the live site's Inter 600 at 12px (MESITA-2081), the
@@ -472,7 +479,7 @@ describe("T5b — Home's supporting rail", () => {
     const hrefs = HOME_MODES.map((m) => m.href);
     for (const href of hrefs) expect(pages, href).toContain(href);
     expect(new Set(HOME_MODES.map((m) => m.href)).size).toBe(HOME_MODES.length);
-    // The three /discover pills are exactly the contract's discoverTabs.
+    // The four /discover pills are exactly the contract's discoverTabs.
     expect(
       HOME_MODES.map((m) => m.href).filter((h) => h.startsWith("/discover/")),
     ).toEqual(Object.values(CONSUMER_ROUTES.discoverTabs));
@@ -483,14 +490,15 @@ describe("T5b — Home's supporting rail", () => {
   it("lands Home on its leading pill", async () => {
     const { HOME_MODES } = await import("@/components/consumer/ModeRail");
     expect(CONSUMER_ROUTES.discoverDefault).toBe(
-      CONSUMER_ROUTES.discoverTabs.scroll,
+      CONSUMER_ROUTES.discoverTabs.swipe,
     );
     expect(HOME_MODES[0].href).toBe(CONSUMER_ROUTES.discoverDefault);
-    expect(HOME_MODES[0].label).toBe("Scroll");
+    expect(HOME_MODES[0].label).toBe("Swipe");
   });
 
   it("every Home pill's page lives under discover", () => {
     for (const rel of [
+      ["discover", "swipe"],
       ["discover", "scroll"],
       ["discover", "chat"],
       ["discover", "favs"],
