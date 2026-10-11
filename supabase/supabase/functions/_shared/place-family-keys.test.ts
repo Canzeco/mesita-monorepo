@@ -72,9 +72,8 @@ Deno.test("withFamilyKeysList maps a list", () => {
   assertEquals(rows[1]?.family_keys, ["culture_arts"]);
 });
 
-// THE MEMBERSHIP COLOUR LAW (Pato, 2026-08-29): partner > enriched >
-// everything else. The SERVER states `enriched`, next to `partner` and
-// `promoting`, so no client re-derives it.
+// THE MEMBERSHIP COLOUR LAW (Pato, 2026-08-29): enriched > everything else.
+// The SERVER states `enriched`, so no client re-derives it.
 Deno.test("isEnrichedPlace counts ready OR a stamped enriched_at, never one alone", () => {
   assertEquals(isEnrichedPlace({ content_state: "ready" }), true);
   assertEquals(isEnrichedPlace({ enriched_at: "2026-08-01T00:00:00Z" }), true);
@@ -90,7 +89,7 @@ Deno.test("isEnrichedPlace counts ready OR a stamped enriched_at, never one alon
   assertEquals(isEnrichedPlace(null), false);
 });
 
-Deno.test("withFamilyKeys states enriched on the wire beside partner", () => {
+Deno.test("withFamilyKeys states enriched on the wire", () => {
   const ready = withFamilyKeys({
     id: "1",
     category: "gastropub",
@@ -101,7 +100,6 @@ Deno.test("withFamilyKeys states enriched on the wire beside partner", () => {
   // A Created stub: on Mesita, nothing to show. Gray, not red.
   const stub = withFamilyKeys({ id: "2", category: "gastropub" });
   assertEquals(stub.enriched, false);
-  assertEquals(stub.partner, false);
 
   // The guest never receives the raw enrichment verdict's inputs as the
   // answer — the boolean is always present, both ways.

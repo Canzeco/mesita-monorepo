@@ -1,9 +1,9 @@
 // Supabase Edge Function — consumer-web-suggest-places (product caller)
 //
-// Consumer Search name-bar. Fast = Autocomplete (default). Deep = Partners
-// · Mesita · Google after idle, one list after dropping overlaps.
+// Consumer Search name-bar. Fast = Autocomplete (default). Deep = Mesita
+// · Google after idle, one list after dropping overlaps.
 // Autocomplete and Text Search never take a country — both stay Any.
-// Membership is a boolean `partner` on each row; the client paints the
+// Membership is a boolean `enriched` on each row; the client paints the
 // point and never shows source section labels. Admin Manage Single Place
 // uses the same lane (deep). Business suggest and suggestPlaces were
 // retired in MESITA-2090.

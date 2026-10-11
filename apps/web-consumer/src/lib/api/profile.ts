@@ -64,8 +64,7 @@ export async function apiUpdateConsumerProfile(
 }
 
 // consumer-web-get-profile lazily creates the row, so a brand-new account
-// reads back successfully (just with null fields). The EF ships more than the
-// row; this app reads the row.
+// reads back successfully (just with null fields).
 export async function apiFetchConsumerProfile(
   client: SupabaseClient,
 ): Promise<{ consumer: ConsumerProfile }> {
@@ -94,8 +93,7 @@ export async function apiDeleteConsumerAccount(
 // consumer-web-claim-instagram: persists the claimed follower count and the
 // handle to the consumer row. The handle is what makes the account
 // "connected"; the count against INSTAGRAM_REACH_FOLLOWERS is what makes it
-// verified (consumer-identity.ts). The EF echoes more than this; the rest is
-// ignored.
+// verified (consumer-identity.ts).
 type InstagramClaimResult = {
   followers: number;
   handle: string | null;

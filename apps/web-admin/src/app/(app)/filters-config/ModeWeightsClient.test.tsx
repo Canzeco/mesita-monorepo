@@ -32,11 +32,10 @@ describe("Signal weights by mode", () => {
     for (const absent of ["Word", "Feed", "Chat", "Favorites"]) {
       expect(markup, absent).not.toContain(`>${absent}<`);
     }
-    // Two columns, so two inputs per on-signal and no more. Twelve, not
-    // thirteen: Map × Partnered is zeroed too, because Map prices partnership
-    // by splitting lanes rather than by an exponent.
+    // Two columns, so two inputs per on-signal and no more: five on Map
+    // (Randomness is zeroed there) and six on Scroll.
     const inputs = markup.match(/<input/g)?.length ?? 0;
-    expect(inputs).toBe(12);
+    expect(inputs).toBe(11);
   });
 
   it("labels every input with its signal AND its mode", () => {
@@ -61,21 +60,14 @@ describe("Signal weights by mode", () => {
     // Word-only signals are off on both columns.
     expect(markup).toContain("Name weight · Map · off");
     expect(markup).toContain("Name weight · Scroll · off");
-    // Map × Partnered, same reason on a different argument: the lane split
-    // in reorderListedLanes already prices the fact, so an editable box here
-    // was a knob an operator could set, Save, and watch change nothing.
-    expect(markup).toContain("Partnered weight · Map · off");
-    expect(markup).not.toContain('aria-label="Partnered weight · Map"');
-    // Scroll ranks one deck with no lane split, so its box stays real.
-    expect(markup).toContain('aria-label="Partnered weight · Scroll"');
     expect(markup).toContain("—");
     expect(markup).not.toContain(">0</span>");
   });
 
   it("prints each field's visible range, because the clamp is silent", () => {
     const markup = html();
-    // Partnered and Enriched cap at 2, not the uniform 4 — money may not
-    // become a sort key from the console.
+    // Enriched caps at 2, not the uniform 4 — past that it is a filter, not
+    // a weight.
     expect(markup).toContain("0–2");
     expect(markup).toContain("0–4");
     expect(markup).toContain('max="2"');

@@ -17,12 +17,11 @@
 //     the Mesita Places set. No Google stubs — mobile opens `/place/:id`
 //     and cannot host GooglePlaceSheet.
 //   { google: true, lat, lng } — web
-//     Search catalog. THREE NESTED SETS (Pato, 2026-09-05):
-//       Google Places ⊃ Mesita Enriched Places ⊃ Mesita Partner Places
-//       gray                   red                     yellow
-//     `placesScope` names the set — "partners" | "mesita" | "google" —
-//     and enrichment gates every Mesita ring, so a partner has to be
-//     enriched to sit inside the enriched one.
+//     Search catalog. TWO NESTED SETS:
+//       Google Places ⊃ Mesita Enriched Places
+//       gray                   red
+//     `placesScope` names the set — "mesita" | "google" — and enrichment
+//     gates the Mesita ring.
 //
 //     WEB SEARCH POSTS scope + familyKeys + minReviews (MESITA-1790).
 //     How many stays operator `map.pinCount`. `map.googleFill` still
@@ -90,7 +89,7 @@ import {
   wantsGoogleFill,
 } from "../_shared/geo.ts";
 import {
-  keepListedForScope,
+  isEnrichedListedRow,
   lanesForPlacesScope,
   mergeNearbyCatalog,
   parsePlacesScope,
@@ -124,10 +123,7 @@ function googleStub(hit: NearbyHit, distanceKm: number | null): Record<string, u
     vibe: null,
     price_level: null,
     currency: "MXN",
-    listing_type: "web",
     state: "lead",
-    fiscal_type: "informal",
-    plan: "free",
     lat: hit.lat,
     lng: hit.lng,
     address: hit.address || null,
@@ -209,8 +205,6 @@ type CardRow = {
   name?: string | null;
   google_name?: string | null;
   category?: string | null;
-  plan?: string | null;
-  partner?: boolean | null;
   content_state?: string | null;
   enriched_at?: string | null;
   lat?: number | null;
@@ -402,9 +396,7 @@ Deno.serve(async (req) => {
     const center = { lat, lng };
     const scanRows = (data ?? []) as unknown as CardRow[];
     const lanes = lanesForPlacesScope(placesScope, limit, cfg.map.googlePull);
-    let mesitaRows = scanRows.filter((row) =>
-      keepListedForScope(row, placesScope)
-    );
+    let mesitaRows = scanRows.filter((row) => isEnrichedListedRow(row));
     if (guestSupers.length > 0) {
       mesitaRows = mesitaRows.filter((row) =>
         guestSupers.some((key) => familiesForPlace(row).includes(key))
@@ -504,7 +496,7 @@ Deno.serve(async (req) => {
         const seen = new Set(mesitaRows.map((row) => row.id));
         for (const row of extra.data as CardRow[]) {
           if (seen.has(row.id)) continue;
-          if (!keepListedForScope(row, placesScope)) continue;
+          if (!isEnrichedListedRow(row)) continue;
           if (
             guestSupers.length > 0 &&
             !guestSupers.some((key) => familiesForPlace(row).includes(key))
@@ -535,7 +527,7 @@ Deno.serve(async (req) => {
     // needs `crenup_high_water` on the row, and `profiles` doesn't carry it.
     // One batched side-read merges it in before ranking, same pattern as
     // consumer-web-recommend-swipe. WITHOUT THIS every listed row scores the
-    // same 1 — `keepListedForScope` already admitted only enriched rows.
+    // same 1 — `isEnrichedListedRow` already admitted only enriched rows.
     // Skipped when the Google-fill branch below keeps distance order instead.
     const willReorder = !(wantGoogleNearby && googleForMerge.length > 0);
     const listedForCatalog = willReorder && efEnv.ok
@@ -553,14 +545,11 @@ Deno.serve(async (req) => {
     const lineupOpts = {
       center,
       weights: mapLineupWeights(cfg),
-      // The bought lane, live since MESITA-1855. Applied inside each listed
-      // lane, never over the concatenation — see reorderListedLanes.
-      slotting: cfg.slotting,
       params: cfg.params,
       ...mapLineupIntent(nearbyTypes),
     };
     // Google set stays nearest-N distance. Lineup only reorders the Mesita
-    // rings (Partner / Enriched), including the empty-Nearby fallback.
+    // ring, including the empty-Nearby fallback.
     const merged = (
       wantGoogleNearby && googleForMerge.length > 0
         ? catalog

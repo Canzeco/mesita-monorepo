@@ -79,29 +79,26 @@ export const DISCOVERY_MODE_ENTITIES: Record<
 };
 
 /**
- * THE THREE NESTED PLACE TYPES, in the code's own words: `nearby-places.ts`
- * opens with `Google Places ⊃ Mesita Enriched Places ⊃ Mesita Partner
- * Places`, and `PlacesScope = "partners" | "mesita" | "google"` IS this
- * band. `Mesita Listed` retired at MESITA-1856: listing is a row existing,
- * which no mode gates on — enrichment is the gate every mode actually runs.
+ * THE TWO NESTED PLACE TYPES, in the code's own words: `nearby-places.ts`
+ * opens with `Google Places ⊃ Mesita Enriched Places`, and
+ * `PlacesScope = "mesita" | "google"` IS this band. `Mesita Listed` retired
+ * at MESITA-1856: listing is a row existing, which no mode gates on —
+ * enrichment is the gate every mode actually runs.
  */
 export const DISCOVERY_POOLS = [
   { key: "google", label: "Google Places" },
   { key: "enriched", label: "Mesita Enriched Places" },
-  { key: "partner", label: "Mesita Partnered Places" },
 ] as const;
 
 export type DiscoveryPoolKey = (typeof DISCOVERY_POOLS)[number]["key"];
 
 /**
- * Which rings a mode demands. Relabelling alone would have left two of the
- * three rows dead for every mode, so the mapping moved with the labels
- * (MESITA-1856):
+ * Which rings a mode demands. Relabelling alone would have left rows dead for
+ * every mode, so the mapping moved with the labels (MESITA-1856):
  *
- *   Map        all three — it is the one mode whose GUEST picks the ring,
- *              and `keepListedForScope` refuses an unenriched row before it
- *              even reads the scope, so Enriched is Map's floor and
- *              Partnered its narrowest ring.
+ *   Map        both — it is the one mode whose GUEST picks the ring, and
+ *              `isEnrichedListedRow` refuses an unenriched row in either
+ *              scope, so Enriched is Map's Mesita ring.
  *   Catalog    Google + Enriched. `filters.requireReady` defaults true and
  *   Swipe      Scroll hardcodes it; requireReady IS the enrichment gate —
  *              discovery-filters turns it into `content_state = 'ready'`.
@@ -115,7 +112,7 @@ export const DISCOVERY_MODE_POOLS: Record<
   readonly DiscoveryPoolKey[]
 > = {
   word: [],
-  map: ["google", "enriched", "partner"],
+  map: ["google", "enriched"],
   catalog: ["google", "enriched"],
   swipe: ["google", "enriched"],
   chat: [],
@@ -203,13 +200,12 @@ export const DISCOVERY_MODE_SIGNALS: Record<
   readonly SignalKey[]
 > = {
   word: ["name"],
-  map: ["category", "proximity", "timing", "enriched", "partnered", "popularity"],
+  map: ["category", "proximity", "timing", "enriched", "popularity"],
   catalog: [
     "category",
     "proximity",
     "timing",
     "enriched",
-    "partnered",
     "popularity",
     "randomness",
   ],
@@ -218,7 +214,6 @@ export const DISCOVERY_MODE_SIGNALS: Record<
     "proximity",
     "timing",
     "enriched",
-    "partnered",
     "popularity",
     "randomness",
   ],
@@ -229,7 +224,6 @@ export const DISCOVERY_MODE_SIGNALS: Record<
     "proximity",
     "timing",
     "enriched",
-    "partnered",
     "popularity",
   ],
   favorites: [],
@@ -243,29 +237,11 @@ export const DISCOVERY_MODE_SIGNALS: Record<
  * is a knob that lies.
  *
  * map / randomness  Map is a pin field. A shuffled pin is a moved pin.
- *
- * map / partnered   MAP PRICES PARTNERSHIP BY SPLITTING LANES, NOT BY AN
- *                   EXPONENT. Map's only ranking path is `reorderListedLanes`
- *                   (_shared/nearby-lineup.ts): it splits the listed rows with
- *                   `isMesitaPartnerRow` into a partners lane and an extra
- *                   lane, then blends each lane INDEPENDENTLY. On those rows
- *                   the predicate reduces to `isPaidPlan(row.plan)` —
- *                   PLACE_CARD_COLUMNS carries no `partner` key and the
- *                   `profiles` view has no such column, so the `row.partner`
- *                   branches never fire — and `partnered()` returns exactly 1
- *                   for any non-free plan and 0.2 otherwise. Within a lane it
- *                   is therefore a CONSTANT factor, and `s^w` over a constant
- *                   is a constant: no value of w moves a single row. The one
- *                   escape, an empty-string plan that `isPaidPlan` calls paid
- *                   while `partnered()` floors at 0.2, is closed by the schema
- *                   — places.plan is NOT NULL DEFAULT 'free' over the enum
- *                   free|pro|ultra. The order is IDENTICAL either way, which
- *                   is why zeroing it is safe; do not "restore" it.
  */
 export const DISCOVERY_MODE_SIGNAL_ZERO: Partial<
   Record<DiscoveryModeKey, readonly SignalKey[]>
 > = {
-  map: ["randomness", "partnered"],
+  map: ["randomness"],
 };
 
 /**

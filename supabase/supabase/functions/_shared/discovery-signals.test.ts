@@ -6,8 +6,6 @@ import {
   enriched,
   ENRICHED_OFF,
   NEUTRAL,
-  partnered,
-  PARTNERED_OFF,
   popularity,
   proximity,
   PROXIMITY_MAX_KM,
@@ -71,8 +69,8 @@ Deno.test("every signal returns [0,1] for every shape of garbage", () => {
   }
 });
 
-Deno.test("the library, the labels and the blurbs name the same nine signals", () => {
-  assertEquals(SIGNAL_KEYS.length, 9);
+Deno.test("the library, the labels and the blurbs name the same eight signals", () => {
+  assertEquals(SIGNAL_KEYS.length, 8);
   // Docs > Discovery section 8.3 order. Presentation only: the blend is a
   // product of s^w, so nothing downstream may read a signal by index.
   assertEquals([...SIGNAL_KEYS], [
@@ -82,7 +80,6 @@ Deno.test("the library, the labels and the blurbs name the same nine signals", (
     "proximity",
     "timing",
     "enriched",
-    "partnered",
     "popularity",
     "randomness",
   ]);
@@ -91,25 +88,20 @@ Deno.test("the library, the labels and the blurbs name the same nine signals", (
   assertEquals(Object.keys(SIGNAL_BLURBS).sort(), [...SIGNAL_KEYS].sort());
 });
 
-Deno.test("Enriched and Partnered are the keys; the retired names are not", () => {
-  // Replaces the MESITA-1408-era "Mesita Level is the key" assertion. The
-  // naming rules it protected all still hold — only the winning name changed.
+Deno.test("Enriched is the key; no signal reads money, and the retired names are gone", () => {
+  // The naming rules the MESITA-1408-era "Mesita Level is the key" assertion
+  // protected all still hold — only the winning name changed.
   assert((SIGNAL_KEYS as readonly string[]).includes("enriched"));
-  assert((SIGNAL_KEYS as readonly string[]).includes("partnered"));
   // Never bare `level` — `places.price_level` and the door profile own that word.
   assert(!(SIGNAL_KEYS as readonly string[]).includes("level"));
-  // Split into the two binaries (MESITA-1858). The key is PERSISTED, so this
-  // is the assertion that says the rename actually completed on this side.
+  // The key is PERSISTED, so this is the assertion that says the rename
+  // actually completed on this side; an old blob's value folds onto Enriched.
   assert(!(SIGNAL_KEYS as readonly string[]).includes("mesita_level"));
-  // Never bare `partner` either — that is the consumer wire boolean
-  // (place-family-keys.ts), and two spellings of one fact is how they drift.
-  assert(!(SIGNAL_KEYS as readonly string[]).includes("partner"));
-  // Promotion buys a lane-2 POSITION, never an exponent (MESITA-1855).
-  assert(!(SIGNAL_KEYS as readonly string[]).includes("promoting"));
+  // No signal prices what a place pays or offers.
+  for (const money of ["partnered", "partner", "partnership", "promoting", "promotion"]) {
+    assert(!(SIGNAL_KEYS as readonly string[]).includes(money), money);
+  }
   assert(!(SIGNAL_KEYS as readonly string[]).includes("semantic"));
-  // Merged away at MESITA-1408 and not resurrected by the split.
-  assert(!(SIGNAL_KEYS as readonly string[]).includes("partnership"));
-  assert(!(SIGNAL_KEYS as readonly string[]).includes("promotion"));
   // Left the library — Social Lineup never wrote a place-level index.
   assert(!(SIGNAL_KEYS as readonly string[]).includes("social"));
 });
@@ -357,9 +349,8 @@ Deno.test("Enriched reorders two rows a ranked lane ACTUALLY admits", () => {
   // THE ADMISSION PREDICATE IS NOT THE SIGNAL, and this test exists because
   // the binary made them the same function. Every row a ranked lane scores
   // already satisfies `isEnrichedPlace`: Map filters each listed row through
-  // `keepListedForScope` → `isEnrichedListedRow` before `reorderListedLanes`
-  // ranks anything, and Scroll's pool query is `.eq("content_state",
-  // "ready")`. So `enriched === true` on every row this signal ever sees, and
+  // `isEnrichedListedRow` before `reorderListedLanes` ranks anything, and
+  // Scroll's pool query is `.eq("content_state", "ready")`. So `enriched === true` on every row this signal ever sees, and
   // a pure binary is a CONSTANT 1 on the whole population — an operator dial
   // that cannot move a deck. `enriched: false` here would be green by
   // construction: production never hands the signal that row.
@@ -427,82 +418,9 @@ Deno.test("a synthesized Google row scores OFF, not enriched", () => {
   assertEquals(enriched(googleRow), ENRICHED_OFF);
 });
 
-// ── Partnered ─────────────────────────────────────────────
-
-Deno.test("Partnered is binary: a paid plan, or the floor", () => {
-  assertEquals(partnered(place({ plan: "pro" })), 1);
-  assertEquals(partnered(place({ plan: "PRO" })), 1);
-  assertEquals(partnered(place({ plan: "premium" })), 1);
-  assertEquals(partnered(place({ plan: "free" })), PARTNERED_OFF);
-  assertEquals(partnered(place({ plan: "FREE" })), PARTNERED_OFF);
-});
-
-Deno.test("the empty-string plan scores OFF — the isPaidPlan('') trap", () => {
-  // `isPaidPlan` is `(plan ?? "free").toLowerCase() !== "free"`, so the
-  // coalesce catches null and undefined and NOT the empty string: calling it
-  // raw would answer TRUE for `""` and hand a free place the partner
-  // multiplier. `places.plan` is a NOT NULL enum defaulting to 'free', so an
-  // empty string only ever reaches here from a synthesized row or a fixture —
-  // exactly where it would go unnoticed.
-  assertEquals(partnered(place({ plan: "" })), PARTNERED_OFF);
-  assertEquals(partnered(place({ plan: "   " })), PARTNERED_OFF);
-});
-
-Deno.test("an absent or null plan scores OFF, never undefined", () => {
-  assertEquals(partnered(place({ plan: null })), PARTNERED_OFF);
-  const absent = partnered(place());
-  assertEquals(absent, PARTNERED_OFF);
-  assert(Number.isFinite(absent), "partnered() must never return undefined or NaN");
-});
-
-Deno.test("Partnered does not read `promoting` — a discount buys a slot, not an exponent", () => {
-  // MESITA-1855 wired lane 2, so the promoting rung left the exponent
-  // entirely (MESITA-1858). Replaces "Mesita Level climbs from catalog row to
-  // actively promoting": the climb is gone on purpose.
-  assertEquals(
-    partnered(place({ plan: "free", promoting: true })),
-    PARTNERED_OFF,
-  );
-  assertEquals(
-    partnered(place({ plan: "pro", promoting: true })),
-    partnered(place({ plan: "pro", promoting: false })),
-  );
-});
-
-// ── The two together ──────────────────────────────────────────
-
-Deno.test("no off-value is 0 — a hard zero deletes a place from a multiplicative blend", () => {
+Deno.test("Enriched's off-value is not 0 — a hard zero deletes a place from a multiplicative blend", () => {
   assert(ENRICHED_OFF > 0, "a place Mesita has not written up is demoted, not deleted");
-  assert(PARTNERED_OFF > 0, "a free place is demoted, not deleted");
-  assert(ENRICHED_OFF < 1 && PARTNERED_OFF < 1, "an off-value that is 1 is not a signal");
-});
-
-Deno.test("the four (partner x enriched) products, written by hand", () => {
-  // The before/after table published with MESITA-1858, at w = 1 for each.
-  // Hand-written on purpose: deriving them from the functions under test is
-  // how a ladder replacement passes while being a different ladder.
-  const combo = (paid: boolean, isEnriched: boolean) =>
-    partnered(place({ plan: paid ? "pro" : "free" })) *
-    enriched(place({ enriched: isEnriched }));
-  assertAlmostEquals(combo(false, false), 0.03, 1e-12); // 0.2  x 0.15
-  assertAlmostEquals(combo(false, true), 0.2, 1e-12); //  0.2  x 1
-  assertAlmostEquals(combo(true, false), 0.15, 1e-12); // 1    x 0.15
-  assertAlmostEquals(combo(true, true), 1, 1e-12); //     1    x 1
-});
-
-Deno.test("MESITA-1598's own scenario survives the split: an enriched free place outranks an unenriched partner", () => {
-  // The Crenup high-water test of the same name, carried across the split
-  // with the gradient intact: the free place has finished the whole queue,
-  // the partner has not started it. The ORDER the decision named is exactly
-  // preserved, which is what makes this a refactor and not a re-tune.
-  const enrichedFree = partnered(place({ plan: "free" })) *
-    enriched(place({ enriched: true, crenupHighWater: CRENUP_TOTAL }));
-  const thinPartner = partnered(place({ plan: "pro" })) *
-    enriched(place({ enriched: true, crenupHighWater: 0 }));
-  assert(
-    enrichedFree > thinPartner,
-    `expected enriched free (${enrichedFree}) > unenriched partner (${thinPartner})`,
-  );
+  assert(ENRICHED_OFF < 1, "an off-value that is 1 is not a signal");
 });
 
 // ── Randomness ───────────────────────────────────────────────────────────────

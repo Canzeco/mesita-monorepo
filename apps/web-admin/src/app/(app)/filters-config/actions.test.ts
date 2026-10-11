@@ -1,7 +1,7 @@
 // THE BUG THIS PR EXISTS TO PREVENT (MESITA-1859).
 //
-// The weights table has ONE SAVE PER COLUMN, and `weights`, `params` and
-// `slotting` all ride the single `signals` slice. A per-column save that wrote
+// The weights table has ONE SAVE PER COLUMN, and `weights` and `params` both
+// ride the single `signals` slice. A per-column save that wrote
 // a whole slice would therefore mean the last Save wins and the rest is gone —
 // silently, with a green "Saved" under it.
 //
@@ -31,7 +31,6 @@ function liveConfig(): DiscoveryConfig {
       swipe: { ...DEFAULT_CONFIG.weightsByMode.swipe, proximity: 3 },
     },
     params: { ...DEFAULT_CONFIG.params, proximity: { maxKm: 11, kneeKm: 2, missingGeo: 0.5 } },
-    slotting: { enabled: false, everyNth: 9 },
   });
 }
 
@@ -53,7 +52,7 @@ beforeEach(() => {
 });
 
 describe("per-column weight saves cannot reach each other", () => {
-  it("saving Map leaves Scroll, the global vector, the params and slotting untouched", async () => {
+  it("saving Map leaves Scroll, the global vector and the params untouched", async () => {
     const live = liveConfig();
     const sent = armed(live);
     // The console's in-memory config has BOTH columns edited — only the one
@@ -66,7 +65,6 @@ describe("per-column weight saves cannot reach each other", () => {
         swipe: { ...live.weightsByMode.swipe, proximity: 0.1 },
       },
       params: { ...live.params, proximity: { maxKm: 1, kneeKm: 1, missingGeo: 0 } },
-      slotting: { enabled: true, everyNth: 2 },
     };
 
     await updateDiscoveryConfig(edited, ["weightsMap"]);
@@ -75,7 +73,6 @@ describe("per-column weight saves cannot reach each other", () => {
     expect(sent.config?.weightsByMode.swipe).toEqual(live.weightsByMode.swipe);
     expect(sent.config?.weights).toEqual(live.weights);
     expect(sent.config?.params).toEqual(live.params);
-    expect(sent.config?.slotting).toEqual(live.slotting);
   });
 
   it("and the reverse — saving Scroll leaves Map exactly as it was", async () => {

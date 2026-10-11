@@ -1,9 +1,7 @@
 // Supabase Edge Function — consumer-web-create-reservation (product caller)
 //
-// Authenticated. Creates a reservation row for the caller. The reservation
-// carries NO discount surface at all, deliberately: a reward comes from
-// SHOWING UP, never from holding a booking. The rates are snapshotted onto
-// the visit ticket when the guest actually arrives.
+// Authenticated. Creates a reservation row for the caller and hands it to
+// the Reservationist, capped per guest per month (_shared/reservation-cap.ts).
 //
 // Body:
 //   { project_id: uuid, reserved_at: iso8601, party_size: int, notes?: string,
@@ -17,13 +15,17 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { getTierConfig, perkClassKey } from "../_shared/membership.ts";
 import { invokeInternalCaller } from "../_shared/internal.ts";
 import { generateReservationCode, isUniqueViolation } from "../_shared/reservation-code.ts";
 import { attachPlaces } from "../_shared/reservation-places.ts";
 import { writeReservation } from "../_shared/reservation-doc.ts";
 import { accountDeletedResponse, isDeletedConsumer } from "../_shared/delete-history-free.ts";
 import { isPlaceProfileReady } from "../_shared/place-state.ts";
+import {
+  MONTHLY_RESERVATION_CAP,
+  RESERVATION_LIMIT_CODE,
+  RESERVATION_LIMIT_MESSAGE,
+} from "../_shared/reservation-cap.ts";
 
 type Body = {
   project_id?: string;
@@ -108,13 +110,9 @@ Deno.serve(async (req) => {
     }, 409);
   }
 
-  // ── Monthly reservation cap (Premium perk: "more reservations") ─────────
-  // Free guests are limited per calendar month; Premium is unlimited (null
-  // limit). The limit lives on the plans lookup so it's tunable
-  // without a deploy. Cancelled reservations don't count against the cap.
   const { data: consumerRow, error: consumerErr } = await admin
     .from("consumers")
-    .select("class_key, plan, deleted_at, last_name")
+    .select("deleted_at, last_name")
     .eq("id", consumerId)
     .maybeSingle();
   if (consumerErr) return json({ ok: false, error: consumerErr.message }, 500);
@@ -141,8 +139,10 @@ Deno.serve(async (req) => {
     }, 409);
   }
 
-  // Admin testing switch (app_config.reservations_config.unlimitedReservations)
-  // lifts the cap for EVERY consumer so a tester isn't blocked mid-run. Defaults
+  // ── Monthly reservation cap (_shared/reservation-cap.ts) ────────────────
+  // One flat cap for every guest: each reservation is a metered call. The
+  // admin testing switch (app_config.reservations_config.unlimitedReservations)
+  // lifts it for EVERY consumer so a tester isn't blocked mid-run. Defaults
   // off; the admin Reservations Config page owns it.
   const { data: settingsRow } = await admin
     .from("app_config")
@@ -153,12 +153,7 @@ Deno.serve(async (req) => {
     (settingsRow?.reservations_config as { unlimitedReservations?: unknown } | null)
       ?.unlimitedReservations === true;
 
-  const tier = await getTierConfig(
-    admin,
-    perkClassKey(consumerRow?.class_key, consumerRow?.plan),
-  );
-  const monthlyLimit = capLifted ? null : (tier?.monthly_reservation_limit ?? null);
-  if (monthlyLimit != null) {
+  if (!capLifted) {
     const monthStart = new Date();
     monthStart.setUTCDate(1);
     monthStart.setUTCHours(0, 0, 0, 0);
@@ -170,15 +165,13 @@ Deno.serve(async (req) => {
       .gte("created_at", monthStart.toISOString())
       .neq("state", "cancelled");
     if (countErr) return json({ ok: false, error: countErr.message }, 500);
-    if ((count ?? 0) >= monthlyLimit) {
+    if ((count ?? 0) >= MONTHLY_RESERVATION_CAP) {
       return json(
         {
           ok: false,
-          code: "reservation_limit_reached",
-          error:
-            "You've reached your monthly reservation limit. Upgrade to Mesita Premium for unlimited reservations.",
-          limit: monthlyLimit,
-          tier: consumerRow?.class_key ?? "bronze",
+          code: RESERVATION_LIMIT_CODE,
+          error: RESERVATION_LIMIT_MESSAGE,
+          limit: MONTHLY_RESERVATION_CAP,
         },
         409,
       );

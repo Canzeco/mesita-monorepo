@@ -1,8 +1,8 @@
 // The consumer aggregate — validator + THE write door (MESITA-1247, "Mesita
 // as documents" §C, item 1 of 6). Picked as the FIRST aggregate to route
 // because its write surface is the smallest and most bounded of the six:
-// 7 call sites across 6 Edge Functions + 1 shared helper (class-doors.ts),
-// against reservation_tickets (10+ files, one with 15+ update sites) and
+// 7 call sites across 6 Edge Functions + 1 shared helper, against
+// reservation_tickets (10+ files, one with 15+ update sites) and
 // visit_tickets (17 files) — see the MESITA-1247 report for the full count
 // per aggregate. place/projects/profiles is bigger still (16 files, 29 write
 // sites); config and vocab are explicitly out of scope for this issue.
@@ -15,10 +15,9 @@
 //     past it (e.g. `as ConsumerPatch` on raw HTTP JSON) — which is exactly
 //     what belt 2 exists for.
 //   Belt 2 — runtime. validateConsumerPatch re-checks the same closed key
-//     set (HTTP JSON has no compiler) plus the shape and cross-field
-//     invariants below. A malformed patch never reaches Postgres — it just
-//     doesn't write, the same rule crenup-report.ts enforces for a piece a
-//     run didn't buy.
+//     set (HTTP JSON has no compiler) plus the shape invariants below. A
+//     malformed patch never reaches Postgres — it just doesn't write, the
+//     same rule crenup-report.ts enforces for a piece a run didn't buy.
 //
 // THE INVARIANTS, and why each is real (not invented):
 //   - code, if set, is "0000-0000" — the exact DB CHECK
@@ -29,18 +28,6 @@
 //   - instagram_followers_count, if set, is a non-negative integer — the
 //     exact DB CHECK (0034_consumer_membership, "consumer_instagram_
 //     followers_count >= 0").
-//   - class_origin, if set, is one of default/instagram/invitation —
-//     subscription is a PLAN, never a class origin.
-//   - plan, if set, is 'free' | 'premium'. Independent of class_key.
-//   - class_key / invitation_class_key, if set, are metals (bronze/silver/
-//     gold/diamond) — FK to public.classes.
-//   - class_expires_at, if set, must be null. The slot no longer expires
-//     with a Stripe period; plan does.
-//   - invitation_class_key and invitation_granted_at are set or cleared
-//     TOGETHER — both call sites that touched them (admin-web-grant-class,
-//     consumer-web-claim-invite-code, both retired in MESITA-2090) always
-//     wrote both in the same patch; nothing ever needed to move one without
-//     the other.
 //   - deleted_at, if set, is a timestamp string or null — MESITA-1250:
 //     deletion is a state. Only `_shared/delete-history-free.ts` writes it.
 //
@@ -67,22 +54,6 @@ export type ConsumerDoc = {
   avatar_url: string | null;
   instagram_handle: string | null;
   instagram_followers_count: number | null;
-  privacy_public: boolean;
-  privacy_show_saves: boolean;
-  privacy_show_visits: boolean;
-  privacy_show_stories: boolean;
-  class_key: string;
-  class_origin: "default" | "instagram" | "invitation";
-  class_expires_at: string | null;
-  class_granted_at: string | null;
-  invitation_class_key: string | null;
-  invitation_granted_at: string | null;
-  plan: "free" | "premium";
-  /** Stripe customer anchor for the Cards wallet + subscription checkout.
-   *  An opaque pointer: card data itself lives in Stripe and is never
-   *  mirrored here. Resolved only through _shared/stripe-billing.ts
-   *  ensureConsumerCustomer(). */
-  stripe_customer_id: string | null;
   created_at: string;
   deleted_at: string | null;
 };
@@ -102,18 +73,6 @@ export const CONSUMER_PATCH_KEYS = [
   "avatar_url",
   "instagram_handle",
   "instagram_followers_count",
-  "privacy_public",
-  "privacy_show_saves",
-  "privacy_show_visits",
-  "privacy_show_stories",
-  "class_key",
-  "class_origin",
-  "class_expires_at",
-  "class_granted_at",
-  "invitation_class_key",
-  "invitation_granted_at",
-  "plan",
-  "stripe_customer_id",
   "deleted_at",
 ] as const satisfies readonly (keyof Omit<ConsumerDoc, "id" | "created_at">)[];
 
@@ -143,38 +102,17 @@ export type ConsumerValidationResult =
   | { ok: false; error: string };
 
 const SEX_VALUES = new Set(["male", "female"]);
-const CLASS_ORIGIN_VALUES = new Set([
-  "default",
-  "instagram",
-  "invitation",
-]);
-const PLAN_VALUES = new Set(["free", "premium"]);
-// consumers.class_key IS a closed set — FK-enforced by Postgres against
-// public.classes. Live rows are the four metals. identityForClassKey still
-// maps leftover legacy keys on the way INTO pricing; this validator only
-// accepts what Postgres will store.
-const CLASS_KEY_VALUES = new Set([
-  "bronze",
-  "silver",
-  "gold",
-  "diamond",
-]);
 const CODE_RE = /^[0-9]{4}-[0-9]{4}$/;
 const INSTAGRAM_HANDLE_RE = /^[a-z0-9._]{1,30}$/;
-const STRIPE_CUSTOMER_RE = /^(mock_)?cus_[A-Za-z0-9]+$/;
 
 function isNullableString(v: unknown): v is string | null {
   return v === null || typeof v === "string";
 }
 
-function isBoolean(v: unknown): v is boolean {
-  return typeof v === "boolean";
-}
-
 /**
  * The consumer aggregate's runtime shape guard. Rejects an unknown key
  * (closed key set), a wrong-typed value, or a value that breaks one of the
- * cross-field invariants documented above. Returns the same patch back,
+ * invariants documented above. Returns the same patch back,
  * narrowed to ConsumerPatch, so a caller that passed validation never
  * re-checks what this function already confirmed.
  */
@@ -234,19 +172,6 @@ export function validateConsumerPatch(
     }
     patch.birthday = v as string | null;
   }
-  if ("stripe_customer_id" in raw) {
-    const v = raw.stripe_customer_id;
-    // `cus_…` real, `mock_cus_…` the MOCK_SUBSCRIPTION placeholder. Anything
-    // else is a bug upstream, and a malformed id here would 400 at Stripe
-    // much later, far from the write that caused it.
-    if (v !== null && (typeof v !== "string" || !STRIPE_CUSTOMER_RE.test(v))) {
-      return {
-        ok: false,
-        error: "stripe_customer_id must be a Stripe customer id or null",
-      };
-    }
-    patch.stripe_customer_id = v as string | null;
-  }
   if ("instagram_handle" in raw) {
     const v = raw.instagram_handle;
     if (v !== null && (typeof v !== "string" || !INSTAGRAM_HANDLE_RE.test(v))) {
@@ -270,102 +195,15 @@ export function validateConsumerPatch(
     }
     patch.instagram_followers_count = v as number | null;
   }
-  for (
-    const key of [
-      "privacy_public",
-      "privacy_show_saves",
-      "privacy_show_visits",
-      "privacy_show_stories",
-    ] as const
-  ) {
-    if (!(key in raw)) continue;
-    const v = raw[key];
-    if (!isBoolean(v)) return { ok: false, error: `${key} must be a boolean` };
-    patch[key] = v;
-  }
-  if ("class_key" in raw) {
-    const v = raw.class_key;
-    if (typeof v !== "string" || !CLASS_KEY_VALUES.has(v)) {
-      return {
-        ok: false,
-        error: `class_key must be one of ${[...CLASS_KEY_VALUES].join(", ")}`,
-      };
-    }
-    patch.class_key = v;
-  }
-  if ("class_origin" in raw) {
-    const v = raw.class_origin;
-    if (typeof v !== "string" || !CLASS_ORIGIN_VALUES.has(v)) {
-      return {
-        ok: false,
-        error: "class_origin must be one of default, instagram, invitation",
-      };
-    }
-    patch.class_origin = v as ConsumerDoc["class_origin"];
-  }
-  if ("plan" in raw) {
-    const v = raw.plan;
-    if (typeof v !== "string" || !PLAN_VALUES.has(v)) {
-      return { ok: false, error: "plan must be 'free' or 'premium'" };
-    }
-    patch.plan = v as ConsumerDoc["plan"];
-  }
-  for (
-    const key of [
-      "class_expires_at",
-      "class_granted_at",
-      "invitation_granted_at",
-      "deleted_at",
-    ] as const
-  ) {
-    if (!(key in raw)) continue;
-    const v = raw[key];
+  if ("deleted_at" in raw) {
+    const v = raw.deleted_at;
     if (!isNullableString(v)) {
       return {
         ok: false,
-        error: `${key} must be an ISO timestamp string or null`,
+        error: "deleted_at must be an ISO timestamp string or null",
       };
     }
-    patch[key] = v;
-  }
-  if ("invitation_class_key" in raw) {
-    const v = raw.invitation_class_key;
-    // Same FK target as class_key (consumers_invitation_class_key_fkey ->
-    // classes(key)) — closed set here too, not just non-null-vs-null.
-    if (v !== null && (typeof v !== "string" || !CLASS_KEY_VALUES.has(v))) {
-      return {
-        ok: false,
-        error: `invitation_class_key must be null or one of ${
-          [...CLASS_KEY_VALUES].join(", ")
-        }`,
-      };
-    }
-    patch.invitation_class_key = v;
-  }
-
-  // ── Cross-field invariants ────────────────────────────────────────────
-  if (patch.class_expires_at !== undefined && patch.class_expires_at !== null) {
-    return {
-      ok: false,
-      error:
-        "class_expires_at must be null (plan, not class, is what a subscription opens)",
-    };
-  }
-  if (
-    patch.invitation_class_key !== undefined &&
-    patch.invitation_granted_at !== undefined
-  ) {
-    const bothNull = patch.invitation_class_key === null &&
-      patch.invitation_granted_at === null;
-    const bothSet = patch.invitation_class_key !== null &&
-      patch.invitation_granted_at !== null;
-    if (!bothNull && !bothSet) {
-      return {
-        ok: false,
-        error:
-          "invitation_class_key and invitation_granted_at must be set or cleared together",
-      };
-    }
+    patch.deleted_at = v;
   }
 
   return { ok: true, patch };
@@ -384,8 +222,8 @@ export type ConsumerWriteArgs =
 /**
  * THE consumer write door. Every insert/update against public.consumers in
  * the codebase goes through this — it is the only place a patch is checked
- * against the aggregate's shape, closed key set, and cross-field invariants
- * before Postgres ever sees it. `select`, when given, re-reads exactly those
+ * against the aggregate's shape, closed key set, and invariants before
+ * Postgres ever sees it. `select`, when given, re-reads exactly those
  * columns after the write (matching what each call site already needed);
  * omitted, the write is fire-and-check-error, same as most existing sites.
  */

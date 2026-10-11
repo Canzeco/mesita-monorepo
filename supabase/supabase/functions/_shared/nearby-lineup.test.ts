@@ -13,8 +13,6 @@ import {
 } from "./nearby-places.ts";
 
 const CENTER = { lat: 25.67, lng: -100.3 };
-/** Merit order only. The bought lane gets its own tests at the bottom. */
-const SLOT_OFF = { enabled: false, everyNth: 0 };
 const LANES: NearbyLaneCaps = {
   mesitaCount: 2,
   googleCount: 2,
@@ -36,7 +34,6 @@ function hit(over: Partial<NearbyHit> & Pick<NearbyHit, "placeId" | "name">): Ne
 Deno.test("mergeNearbyCatalog stays distance-ordered — lineup is opt-in", () => {
   const close = {
     id: "listed-far-score",
-    plan: "free",
     google_place_id: "ChIJ-close",
     lat: 25.67005,
     lng: -100.30005,
@@ -46,7 +43,6 @@ Deno.test("mergeNearbyCatalog stays distance-ordered — lineup is opt-in", () =
   };
   const farther = {
     id: "listed-near-score",
-    plan: "free",
     google_place_id: "ChIJ-far",
     lat: 25.672,
     lng: -100.302,
@@ -63,23 +59,21 @@ Deno.test("mergeNearbyCatalog stays distance-ordered — lineup is opt-in", () =
   );
 });
 
-Deno.test("a far partner outside takeClosest never enters", () => {
-  const nearPartner = {
+Deno.test("a far place outside takeClosest never enters", () => {
+  const near = {
     id: "near-p",
-    plan: "pro",
     google_place_id: "ChIJ-np",
     lat: 25.6701,
     lng: -100.3001,
   };
-  const farPartner = {
+  const far = {
     id: "far-p",
-    plan: "pro",
     google_place_id: "ChIJ-fp",
     lat: 25.9,
     lng: -100.5,
   };
   const merged = mergeNearbyCatalog(
-    [farPartner, nearPartner],
+    [far, near],
     [],
     CENTER,
     { mesitaCount: 1, googleCount: 0 },
@@ -90,49 +84,11 @@ Deno.test("a far partner outside takeClosest never enters", () => {
   const reordered = reorderListedLanes(merged, {
     center: CENTER,
     weights: mapLineupWeights(DISCOVERY_DEFAULTS),
-    slotting: SLOT_OFF,
     params: DISCOVERY_DEFAULTS.params,
   });
   assertEquals(
     reordered.map((x) => x.kind === "listed" ? x.row.id : ""),
     ids,
-  );
-});
-
-Deno.test("a cafe never jumps a partner after Lineup", () => {
-  const partner = {
-    id: "partner",
-    plan: "pro",
-    google_place_id: "ChIJ-p",
-    lat: 25.675,
-    lng: -100.305,
-    category: "restaurant",
-    google_stars_overall: 3.2,
-    google_review_count: 8,
-  };
-  const cafe = {
-    id: "cafe",
-    plan: "free",
-    google_place_id: "ChIJ-c",
-    lat: 25.67005,
-    lng: -100.30005,
-    category: "cafe",
-    google_stars_overall: 4.9,
-    google_review_count: 900,
-  };
-  const merged = mergeNearbyCatalog([cafe, partner], [], CENTER, LANES);
-  const out = reorderListedLanes(merged, {
-    center: CENTER,
-    weights: mapLineupWeights(DISCOVERY_DEFAULTS),
-    slotting: SLOT_OFF,
-    params: DISCOVERY_DEFAULTS.params,
-    ...mapLineupIntent(["restaurant", "cafe"]),
-  });
-  assertEquals(
-    out.filter((x) => x.kind === "listed").map((x) =>
-      x.kind === "listed" ? x.row.id : ""
-    ),
-    ["partner", "cafe"],
   );
 });
 
@@ -145,7 +101,6 @@ Deno.test("reorderListedLanes: the enrichment fact reorders when Enriched is wei
   // selected by EARNED_LANE_COLUMNS), not on a side-read.
   const hi = {
     id: "hi",
-    plan: "pro",
     google_place_id: "ChIJ-hi",
     lat: 25.6701,
     lng: -100.3001,
@@ -153,7 +108,6 @@ Deno.test("reorderListedLanes: the enrichment fact reorders when Enriched is wei
   };
   const lo = {
     id: "lo",
-    plan: "pro",
     google_place_id: "ChIJ-lo",
     lat: 25.6701,
     lng: -100.3001,
@@ -168,7 +122,6 @@ Deno.test("reorderListedLanes: the enrichment fact reorders when Enriched is wei
   const out = reorderListedLanes(merged, {
     center: CENTER,
     weights: enrichedOnly,
-    slotting: SLOT_OFF,
     params: DISCOVERY_DEFAULTS.params,
   });
   assertEquals(
@@ -188,7 +141,6 @@ Deno.test("Google lane stays distance order", () => {
   const out = reorderListedLanes(merged, {
     center: CENTER,
     weights: mapLineupWeights(DISCOVERY_DEFAULTS),
-    slotting: SLOT_OFF,
     params: DISCOVERY_DEFAULTS.params,
   });
   assertEquals(
@@ -215,14 +167,12 @@ Deno.test("throw during blend returns the closest-N merge order", () => {
   const rows = [
     {
       id: "a",
-      plan: "free",
       google_place_id: "ChIJ-a",
       lat: 25.6701,
       lng: -100.3001,
     },
     {
       id: "b",
-      plan: "free",
       google_place_id: "ChIJ-b",
       lat: 25.6702,
       lng: -100.3002,
@@ -241,7 +191,6 @@ Deno.test("throw during blend returns the closest-N merge order", () => {
   const out = reorderListedLanes(poisoned, {
     center: CENTER,
     weights: mapLineupWeights(DISCOVERY_DEFAULTS),
-    slotting: SLOT_OFF,
   });
   assertEquals(out, poisoned);
 });
@@ -252,8 +201,6 @@ Deno.test("list-places googleFill reorders; lat/lng-only does not", async () => 
   );
   assertEquals(src.includes("reorderListedLanes"), true);
   assertEquals(src.includes("rankByBlend"), false);
-  assertEquals(src.includes("discoveryRank"), false);
-  assertEquals(src.includes("slotPromoted"), false);
   assertEquals(src.includes("name_embedding"), false);
   assertEquals(src.includes("embedding,"), false);
   // Guest Popularity wraps admitMapCatalog, so the google-fill binding is
@@ -274,7 +221,6 @@ Deno.test("list-places googleFill reorders; lat/lng-only does not", async () => 
   assertEquals(src.includes("lanes.googleCount > 0"), true);
   assertEquals(src.includes("searchPower >="), false);
   assertEquals(lanesForPlacesScope("mesita", 60).googleCount, 0);
-  assertEquals(lanesForPlacesScope("partners", 60).googleCount, 0);
   assertEquals(lanesForPlacesScope("google", 60).googleCount > 0, true);
   assertEquals(googleBranch.includes("dropKnownMesitaGoogleHits"), false);
   const listedOnly = src.slice(
@@ -283,147 +229,4 @@ Deno.test("list-places googleFill reorders; lat/lng-only does not", async () => 
   );
   assertEquals(listedOnly.includes("reorderListedLanes"), false);
   assertEquals(listedOnly.includes("mergeNearbyCatalog"), true);
-});
-
-// MESITA-1855 inverted this test. It used to assert nearby-lineup imports
-// rankByBlend and NOT discoveryRank — written as an invariant, and it was
-// really a record of the bought lane never having been wired. Three tests
-// like it across two files were the reason `slotPromoted` sat with no
-// production caller while the console kept storing `slotting`.
-Deno.test("nearby-lineup runs the bought lane: discoveryRank, not rankByBlend", async () => {
-  const src = await Deno.readTextFile(new URL("./nearby-lineup.ts", import.meta.url));
-  assertEquals(src.includes("discoveryRank"), true);
-  assertEquals(src.includes("rankByBlend"), false);
-});
-
-// The assertion that would have caught the original bug: lane 2 is reachable
-// from something that is not a test. Source-text, because the alternative is
-// trusting that somebody notices.
-Deno.test("slotPromoted has a non-test caller", async () => {
-  const dir = new URL("./", import.meta.url);
-  let callers: string[] = [];
-  for await (const entry of Deno.readDir(dir)) {
-    if (!entry.isFile || !entry.name.endsWith(".ts")) continue;
-    if (entry.name.endsWith(".test.ts")) continue;
-    if (entry.name === "discovery-blend.ts") continue; // where it is defined
-    const src = await Deno.readTextFile(new URL(entry.name, dir));
-    if (src.includes("discoveryRank")) callers.push(entry.name);
-  }
-  callers = callers.sort();
-  assertEquals(callers, ["discovery-swipe.ts", "nearby-lineup.ts"]);
-});
-
-
-// ── The bought lane (MESITA-1855) ────────────────────────────────────────────
-//
-// PROMOTING IS A SUBSET OF PARTNER: `isPlacePromoting` returns false on any
-// unpaid plan, so every promoting place is already in the partner lane and the
-// non-partner lane's slotting pass can never fire. That is not a gap — it is
-// why slotting per lane is safe here. The partner lane is where the question
-// has an answer: among places that all pay, which of them also promotes.
-//
-// Every test below runs with ALL WEIGHTS ZERO. Under `Π s^w` that makes every
-// place score exactly 1, so merit order is the incoming order and anything
-// that moves was moved by the slotting pass. This mattered more before
-// MESITA-1858: with the old Mesita Level on, a promoting partner outranked a
-// quiet one ON MERIT and these assertions would have passed without lane 2
-// running at all. No signal reads `promoting` any more, so that particular
-// false pass is gone — the zeroed weights stay because they make the
-// assertion say exactly one thing.
-
-const NOW = new Date("2026-08-21T18:00:00Z");
-
-const ZERO_WEIGHTS = Object.fromEntries(
-  Object.keys(DISCOVERY_DEFAULTS.weights).map((k) => [k, 0]),
-) as typeof DISCOVERY_DEFAULTS.weights;
-
-const PROMO_RATES = {
-  welcome_free_rate: 30,
-  welcome_premium_rate: 50,
-  free_rate: 10,
-  premium_rate: 30,
-  strike_count: 0,
-  last_strike_at: null,
-  promo_paused_until: null,
-  plan_forfeited_at: null,
-};
-
-function pin(id: string, over: Record<string, unknown> = {}) {
-  return {
-    id,
-    plan: "pro",
-    google_place_id: `ChIJ-${id}`,
-    lat: 25.6701,
-    lng: -100.3001,
-    category: "restaurant",
-    google_stars_overall: 4.2,
-    google_review_count: 40,
-    ...over,
-  };
-}
-
-const BIG_LANES: NearbyLaneCaps = { mesitaCount: 10, googleCount: 0 };
-
-function listedIds(out: ReturnType<typeof reorderListedLanes>): string[] {
-  return out.filter((x) => x.kind === "listed").map((x) =>
-    x.kind === "listed" ? String(x.row.id) : ""
-  );
-}
-
-Deno.test("slotting moves a promoting partner forward inside its lane", () => {
-  // Four partners at one pin, all-zero weights: merit order is a, b, c, d.
-  // `d` is the only one promoting. everyNth 2 makes position 2 a bought slot.
-  const rows = [pin("a"), pin("b"), pin("c"), pin("d", PROMO_RATES)];
-  const merged = mergeNearbyCatalog(rows, [], CENTER, BIG_LANES);
-  const out = reorderListedLanes(merged, {
-    center: CENTER,
-    weights: ZERO_WEIGHTS,
-    slotting: { enabled: true, everyNth: 2 },
-    params: DISCOVERY_DEFAULTS.params,
-    now: NOW,
-  });
-  assertEquals(listedIds(out), ["a", "d", "b", "c"]);
-});
-
-Deno.test("only `enabled: false` serves merit order — everyNth 0 still slots", () => {
-  // `enabled` is the off switch. everyNth is NOT: slotPromoted floors it at 2
-  // so bought slots can never be every card, which means a 0 there slots at
-  // every second position rather than disabling the lane. Pinned here as well
-  // as in discovery-blend.test.ts because a caller reading `everyNth: 0` as
-  // "off" is the plausible mistake, and it would quietly sell every other row.
-  const rows = [pin("a"), pin("b"), pin("c"), pin("d", PROMO_RATES)];
-  const merged = mergeNearbyCatalog(rows, [], CENTER, BIG_LANES);
-  const base = {
-    center: CENTER,
-    weights: ZERO_WEIGHTS,
-    params: DISCOVERY_DEFAULTS.params,
-    now: NOW,
-  };
-  const off = reorderListedLanes(merged, { ...base, slotting: SLOT_OFF });
-  assertEquals(listedIds(off), ["a", "b", "c", "d"]);
-
-  const zero = reorderListedLanes(merged, {
-    ...base,
-    slotting: { enabled: true, everyNth: 0 },
-  });
-  assertEquals(listedIds(zero), ["a", "d", "b", "c"]);
-});
-
-Deno.test("a cafe never jumps a partner, however aggressive the slotting", () => {
-  // The reason slotting runs per lane and not over the concatenation.
-  const rows = [
-    pin("cafe-1", { plan: "free" }),
-    pin("cafe-2", { plan: "free" }),
-    pin("partner-1"),
-    pin("partner-2", PROMO_RATES),
-  ];
-  const merged = mergeNearbyCatalog(rows, [], CENTER, BIG_LANES);
-  const out = reorderListedLanes(merged, {
-    center: CENTER,
-    weights: ZERO_WEIGHTS,
-    slotting: { enabled: true, everyNth: 1 },
-    params: DISCOVERY_DEFAULTS.params,
-    now: NOW,
-  });
-  assertEquals(listedIds(out).slice(0, 2).sort(), ["partner-1", "partner-2"]);
 });

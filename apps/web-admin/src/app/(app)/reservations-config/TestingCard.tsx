@@ -71,7 +71,7 @@ export function TestingCard({
           label="Ignore the monthly cap"
           help={
             cfg.unlimitedReservations
-              ? "Hides the paywall Premium depends on."
+              ? "Every guest can book past the monthly cap — each booking is a real call."
               : undefined
           }
           danger={cfg.unlimitedReservations}

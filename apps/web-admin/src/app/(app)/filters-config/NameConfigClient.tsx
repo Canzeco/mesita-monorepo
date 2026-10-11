@@ -4,14 +4,13 @@
 // Fast and Deep are the searchbar's two passes, not two modes, and they share
 // one blob (`discovery_config.name`, whose `fast` / `deep` slices keep their
 // stored names). Fast Search is Autocomplete only. Deep Search concatenates
-// four independent queries: Autocomplete → Text Search → Mesita Places →
-// Mesita Partners. Overlaps drop; first query keeps the slot. Word never
+// three independent queries: Autocomplete → Text Search → Mesita Places.
+// Overlaps drop; first query keeps the slot. Word never
 // calls Nearby Search — the guest pin biases the two Google calls, and a bias
 // is not a call.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
-  BadgeCheck,
   Globe,
   Layers,
   Search,
@@ -172,7 +171,7 @@ export function NameConfigClient({
         <SectionCard
           icon={<Layers className="text-primary h-4 w-4" />}
           title="Word (Deep Search)"
-          subtitle="Four independent queries, then concat. Overlaps drop; first query keeps the slot. Word never calls Nearby Search. Guest pin biases Autocomplete, Text Search, and name match. Name signal only (`places.name`, not `google_name`). Map Filters never cut this list."
+          subtitle="Three independent queries, then concat. Overlaps drop; first query keeps the slot. Word never calls Nearby Search. Guest pin biases Autocomplete, Text Search, and name match. Name signal only (`places.name`, not `google_name`). Map Filters never cut this list."
           state={
             <KnobState
               kind="enforced"
@@ -185,7 +184,7 @@ export function NameConfigClient({
             Needs a location. No pin, no bias.
           </p>
           <QueryConcatCaps
-            rule="Then concat. Autocomplete → Text Search → Mesita Places → Mesita Partners."
+            rule="Then concat. Autocomplete → Text Search → Mesita Places."
             min={0}
             max={NAME_LANE_COUNT_MAX}
             disabled={pending || loadBlocked}
@@ -210,13 +209,6 @@ export function NameConfigClient({
                 icon: <Store className="h-4 w-4 shrink-0" />,
                 value: name.deep.mesitaCount,
                 onChange: (mesitaCount) => patchDeep({ mesitaCount }),
-              },
-              {
-                key: "partners",
-                label: "Mesita partners",
-                icon: <BadgeCheck className="h-4 w-4 shrink-0" />,
-                value: name.deep.partnerCount,
-                onChange: (partnerCount) => patchDeep({ partnerCount }),
               },
             ]}
           />

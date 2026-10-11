@@ -23,8 +23,6 @@ const NOW = new Date("2026-08-21T18:00:00Z");
 const GEO = { lat: 25.67, lng: -100.31 };
 const WEIGHTS = swipeLineupWeights(DISCOVERY_DEFAULTS);
 const PARAMS = DISCOVERY_DEFAULTS.params;
-/** Merit order only. These tests are about the blend, not the bought lane. */
-const SLOT_OFF = { enabled: false, everyNth: 0 };
 
 const HOURS = {
   friday: [{ open: "18:00", close: "02:00" }],
@@ -37,7 +35,6 @@ type Row = {
   lng: number;
   google_stars_overall: number;
   google_review_count: number;
-  plan: string;
   hours: typeof HOURS;
   category: string;
 };
@@ -47,7 +44,6 @@ function row(
   kmSouth: number,
   stars: number,
   reviews: number,
-  plan = "free",
 ): Row {
   // 1° latitude ≈ 111 km. Guest at 25.67, -100.31 (Monterrey-ish).
   return {
@@ -56,7 +52,6 @@ function row(
     lng: -100.31,
     google_stars_overall: stars,
     google_review_count: reviews,
-    plan,
     hours: HOURS,
     category: "restaurant",
   };
@@ -75,7 +70,6 @@ Deno.test("swipe mask matches the locked matrix", () => {
   assertEquals(swipe.name, 0);
   assertEquals(swipe.summary, 0);
   assertEquals(swipe.enriched, DISCOVERY_DEFAULTS.weights.enriched);
-  assertEquals(swipe.partnered, DISCOVERY_DEFAULTS.weights.partnered);
   assertEquals(swipe.proximity, DISCOVERY_DEFAULTS.weights.proximity);
   assertEquals(swipe.randomness, DISCOVERY_DEFAULTS.weights.randomness);
   assertEquals(weightsForMode("map", DISCOVERY_DEFAULTS.weights).randomness, 0);
@@ -88,35 +82,32 @@ Deno.test("rank: closer beats farther when the other signals tie", () => {
     [far, near],
     GEO,
     WEIGHTS,
-    SLOT_OFF,
     PARAMS,
     { now: NOW, random: () => 0.5 },
   );
   assertEquals(ordered.map((r) => r.id), ["near", "far"]);
 });
 
-Deno.test("rank: paid plan beats free at the same pin", () => {
-  const plain = row("plain", 1, 4.2, 40);
-  const partner = row("partner", 1, 4.2, 40, "pro");
+Deno.test("rank: the better-loved place leads at the same pin", () => {
+  const plain = row("plain", 1, 3.8, 40);
+  const loved = row("loved", 1, 4.7, 900);
   const ordered = rankSwipeDeck(
-    [plain, partner],
+    [plain, loved],
     GEO,
     WEIGHTS,
-    SLOT_OFF,
     PARAMS,
     { now: NOW, random: () => 0.5 },
   );
-  assertEquals(ordered[0].id, "partner");
+  assertEquals(ordered[0].id, "loved");
 });
 
-Deno.test("rank: a partner at the radius edge is scored, not dropped", () => {
-  const edge = row("edge", 4.9, 4.8, 800, "pro");
+Deno.test("rank: a place at the radius edge is scored, not dropped", () => {
+  const edge = row("edge", 4.9, 4.8, 800);
   const mid = row("mid", 2, 3.5, 8);
   const ordered = rankSwipeDeck(
     [mid, edge],
     GEO,
     WEIGHTS,
-    SLOT_OFF,
     PARAMS,
     { now: NOW, random: () => 0.5 },
   );
@@ -128,7 +119,7 @@ Deno.test("rank: randomness can flip two close places", () => {
   const b = row("b", 1, 4.2, 40);
   let n = 0;
   const random = () => (n++ === 0 ? 0.99 : 0.01);
-  const ordered = rankSwipeDeck([a, b], GEO, WEIGHTS, SLOT_OFF, PARAMS, {
+  const ordered = rankSwipeDeck([a, b], GEO, WEIGHTS, PARAMS, {
     now: NOW,
     random,
   });
@@ -192,76 +183,6 @@ Deno.test("swipeLineupWeights reads the stored Scroll column, and Map's cannot r
   assertEquals(swipeLineupWeights(tuned).name, 0);
 });
 
-// ── The bought lane on Scroll (MESITA-1855) ──────────────────────────────────
-//
-// All weights zero, so every place scores exactly 1 under `Π s^w` and merit
-// order is the incoming order. Anything that moves was moved by slotting.
-// Before MESITA-1858 the real mask lifted a promoting place on MERIT, so
-// these assertions would have passed whether or not lane 2 ran. No signal
-// reads `promoting` now; the zeroed weights stay for legibility.
-
-const ZERO_WEIGHTS = Object.fromEntries(
-  Object.keys(DISCOVERY_DEFAULTS.weights).map((k) => [k, 0]),
-) as typeof WEIGHTS;
-
-/** Rates `strategyForRates` recognises as Aggressive. An invented tuple
- *  returns null, the place does not promote, and the queue is empty. */
-const PROMO_RATES = {
-  welcome_free_rate: 30,
-  welcome_premium_rate: 50,
-  free_rate: 10,
-  premium_rate: 30,
-  strike_count: 0,
-  last_strike_at: null,
-  promo_paused_until: null,
-  plan_forfeited_at: null,
-};
-
-Deno.test("Scroll: a promoting place is moved into the bought slot", () => {
-  const rows = [
-    row("a", 1, 4.2, 40, "pro"),
-    row("b", 1, 4.2, 40, "pro"),
-    row("c", 1, 4.2, 40, "pro"),
-    { ...row("d", 1, 4.2, 40, "pro"), ...PROMO_RATES },
-  ];
-  const ordered = rankSwipeDeck(
-    rows,
-    GEO,
-    ZERO_WEIGHTS,
-    { enabled: true, everyNth: 2 },
-    PARAMS,
-    { now: NOW, random: () => 0.5 },
-  );
-  assertEquals(ordered.map((r) => r.id), ["a", "d", "b", "c"]);
-});
-
-Deno.test("Scroll: slotting off serves merit order", () => {
-  const rows = [
-    row("a", 1, 4.2, 40, "pro"),
-    row("b", 1, 4.2, 40, "pro"),
-    row("c", 1, 4.2, 40, "pro"),
-    { ...row("d", 1, 4.2, 40, "pro"), ...PROMO_RATES },
-  ];
-  const ordered = rankSwipeDeck(
-    rows,
-    GEO,
-    ZERO_WEIGHTS,
-    SLOT_OFF,
-    PARAMS,
-    { now: NOW, random: () => 0.5 },
-  );
-  assertEquals(ordered.map((r) => r.id), ["a", "b", "c", "d"]);
-});
-
-Deno.test("recommend-swipe passes the slotting config, not a literal", async () => {
-  // The bug this file exists to prevent is a lane that is wired in the shared
-  // module and never reached from the EF.
-  const src = await Deno.readTextFile(
-    new URL("../consumer-web-recommend-swipe/index.ts", import.meta.url),
-  );
-  assertEquals(src.includes("cfg.slotting"), true);
-});
-
 // ── Tiers: open-now and the radius band the deck, never empty it (MESITA-2047)
 //
 // The live catalog on 2026-09-22 was ONE place — Dos Amores, San Luis Potosí,
@@ -286,7 +207,6 @@ type TierRow = {
   hours: unknown;
   google_stars_overall?: number;
   google_review_count?: number;
-  plan?: string;
   category?: string;
 };
 
@@ -302,7 +222,6 @@ function slp(
     hours,
     google_stars_overall: 4.7,
     google_review_count: 262,
-    plan: "free",
     category: "brunch",
   };
 }
@@ -327,10 +246,10 @@ function tiersAt<T extends TierRow>(
 
 const ids = <T extends { id: string }>(rows: T[]) => rows.map((r) => r.id);
 const SHUT = { tuesday: [{ open: "08:30", close: "15:00" }] };
-/** The real blend, the real bought lane — what the EF hands fillSwipeDeck. */
+/** The real blend — what the EF hands fillSwipeDeck. */
 const rankLive = (at: Date, geo: { lat: number; lng: number } | null) =>
 <T,>(band: T[]) =>
-  rankSwipeDeck(band, geo, WEIGHTS, DISCOVERY_DEFAULTS.slotting, PARAMS, {
+  rankSwipeDeck(band, geo, WEIGHTS, PARAMS, {
     now: at,
     random: () => 0.5,
   });
@@ -439,13 +358,13 @@ Deno.test("tiers: beyond reach is one band, nearest first, and ranking never reo
   // only honest order — and the wider-ask stop rule relies on it.
   const rows = [
     slp("far-90", 90, SHUT),
-    { ...slp("far-30-promoting", 30, SHUT), ...PROMO_RATES, plan: "pro" },
+    slp("far-30", 30, SHUT),
     slp("open-60", 60),
     slp("far-45", 45, SHUT),
     slp("open-40", 40),
   ];
   const tiers = tiersAt(rows, WED_NOON, SLP);
-  const order = ["far-30-promoting", "open-40", "far-45", "open-60", "far-90"];
+  const order = ["far-30", "open-40", "far-45", "open-60", "far-90"];
   assertEquals(ids(tiers.beyond), order);
   let rankedBeyond = false;
   const { deck } = await fillSwipeDeck(tiers, 50, (band, tier) => {
@@ -521,26 +440,29 @@ Deno.test("fill: a short strict band is topped up band by band, in band order", 
   ]);
 });
 
-Deno.test("fill: THE BAND INVARIANT — a bought slot cannot lift a closed place over an open one", async () => {
-  // Slotting every 2nd position, zero weights so merit is incoming order: in
-  // one merged ranking the promoting closed place would take slot 2, above an
-  // open one. Ranked per band, it waits below every strict row.
+Deno.test("fill: THE BAND INVARIANT — a better-loved closed place cannot lift over an open one", async () => {
+  // Popularity alone, so the closed place out-scores every open one: in one
+  // merged ranking it would lead the deck. Ranked per band, it waits below
+  // every strict row.
+  const popularityOnly = Object.fromEntries(
+    Object.keys(DISCOVERY_DEFAULTS.weights).map((k) => [k, k === "popularity" ? 1 : 0]),
+  ) as typeof WEIGHTS;
   const rows = [
-    slp("open-a", 1),
-    slp("open-b", 1),
-    slp("open-c", 1),
-    { ...slp("closed-promoting", 1, SHUT), ...PROMO_RATES, plan: "pro" },
+    { ...slp("open-a", 1), google_stars_overall: 3.4 },
+    { ...slp("open-b", 1), google_stars_overall: 3.4 },
+    { ...slp("open-c", 1), google_stars_overall: 3.4 },
+    { ...slp("closed-loved", 1, SHUT), google_stars_overall: 4.9, google_review_count: 5000 },
   ];
   const tiers = tiersAt(rows, WED_NOON, SLP);
   const rankBand = (band: TierRow[]) =>
-    rankSwipeDeck(band, SLP, ZERO_WEIGHTS, { enabled: true, everyNth: 2 }, PARAMS, {
+    rankSwipeDeck(band, SLP, popularityOnly, PARAMS, {
       now: WED_NOON,
       random: () => 0.5,
     });
   const { deck } = await fillSwipeDeck(tiers, 50, rankBand);
-  assertEquals(ids(deck), ["open-a", "open-b", "open-c", "closed-promoting"]);
-  // The control: the same rows ranked as ONE list do let money jump the band.
-  assertEquals(ids(rankBand(rows)).indexOf("closed-promoting") < 3, true);
+  assertEquals(ids(deck), ["open-a", "open-b", "open-c", "closed-loved"]);
+  // The control: the same rows ranked as ONE list do let it jump the band.
+  assertEquals(ids(rankBand(rows))[0], "closed-loved");
 });
 
 Deno.test("fill: ranking off still bands (identity rank keeps band order)", async () => {

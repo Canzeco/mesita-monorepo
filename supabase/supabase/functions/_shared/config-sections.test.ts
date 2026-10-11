@@ -36,17 +36,11 @@ type Row = Record<string, unknown>;
 
 function seedRow(): Row {
   return {
-    controls_config: null,
     discovery_config: null,
     enrichment_config: null,
     enrichment_triggers: null,
     models_config: null,
-    ojo_config: null,
-    orders_config: null,
-    promos_config: null,
     reservations_config: null,
-    verification_config: null,
-    visits_config: null,
     updated_at: STAMP,
     updated_by: null,
   };
@@ -119,14 +113,14 @@ type SectionCase = {
 
 const CASES: Record<string, SectionCase> = {
   discovery: {
-    valid: { config: { slotting: { enabled: true, everyNth: 4 } } },
+    valid: { config: { weights: { proximity: 2 } } },
     assertSaved: (saved) => {
       const c = saved.config as Row;
-      assertEquals((c.slotting as Row).everyNth, 4);
-      assert(c.weights && typeof c.weights === "object", "weights missing");
+      assertEquals((c.weights as Row).proximity, 2);
+      assert(c.params && typeof c.params === "object", "params missing");
     },
-    // NO LONGER DROPPED (MESITA-1858): the weights map is ADDITIVE for one
-    // release, so an unknown key is PRESERVED rather than deleted — that is
+    // NO LONGER DROPPED (MESITA-1858): the weights map is ADDITIVE, so an
+    // unknown key is PRESERVED rather than deleted — that is
     // the mitigation for the web-admin-ships-before-the-EFs deploy window.
     // It is still coerced, not stored as sent: 9 lands clamped at WEIGHT_MAX,
     // and an unknown key binds to no signal because `blend` iterates

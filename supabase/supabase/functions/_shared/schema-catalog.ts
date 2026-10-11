@@ -6,7 +6,7 @@
 // scattered across the codebase, so the validators that come next compose
 // them instead of re-typing them per aggregate.
 //
-// TWO of the four are aliases of ALREADY-LAW code, on purpose. The Notion
+// TWO of the three are aliases of ALREADY-LAW code, on purpose. The Notion
 // spec names ChannelSet "already law in _shared/channels.ts — the proof",
 // and the same is true of the enrichment ladder: reinventing either here
 // would be exactly the kind of duplicate-source-of-truth this catalog exists
@@ -30,15 +30,14 @@ import { enumOf, nullable, num, object, refine, str, type Schema } from "./doc-s
 //
 // The canonical in-code money value: an integer minor-unit amount plus its
 // currency, always together — the codebase has never let one travel without
-// the other (stripe-billing.ts's ResolvedPrice, every *_cents column). This
-// is the VALUE shape, not a row shape: DB columns stay their own names
-// (price_cents, bill_subtotal_cents, tip_cents, discount_cents, ...) because
-// one row can carry several money values that need distinct names; this is
-// what a function returns or a validator produces once it has picked one out.
+// the other. This is the VALUE shape, not a row shape: a DB column keeps its
+// own name, because one row can carry several money values that need distinct
+// names; this is what a function returns or a validator produces once it has
+// picked one out.
 export type Money = {
   /** Integer minor units (centavos for MXN). Never a float. */
   cents: number;
-  /** Uppercase ISO 4217, e.g. "MXN" — ResolvedPrice's convention. */
+  /** Uppercase ISO 4217, e.g. "MXN". */
   currency: string;
 };
 
@@ -53,44 +52,6 @@ export function isMoney(v: unknown): v is Money {
   );
 }
 
-// ── BillingState ─────────────────────────────────────────────────────────
-//
-// "Place billing ≡ consumer billing" (Atlas §C) is not an aspiration — it is
-// already true and unenforced. project_plans and consumer_plans are two
-// tables with the identical three-column shape, and stripe-billing.ts's
-// private `PlanRow` (price_cents, currency, stripe_price_id) already reads
-// both through it without knowing which table it is talking to. This gives
-// that shape a public name so the next file that needs it imports one type
-// instead of re-declaring PlanRow a third time.
-//
-// Deliberately NOT wired into stripe-billing.ts by this PR — that file works
-// today, touches real payment code, and swapping its private type for this
-// public one is a one-line, zero-risk follow-up, not part of the foundation.
-// KNOWN DIVERGENCE (MESITA-1247 survey, not resolved here — needs a product
-// decision): project_subscriptions carries plan_key (FK -> business_plans);
-// consumer_subscriptions has no equivalent column, though every other column
-// between the two tables matches. Does consumer billing need multi-plan
-// support, or is business's plan_key the actual outlier? Whoever answers
-// that should also decide whether BillingState should grow an optional
-// plan_key or stay as-is. Left alone on purpose.
-export type BillingState = {
-  price_cents: number;
-  currency: string;
-  stripe_price_id: string | null;
-};
-
-export function isBillingState(v: unknown): v is BillingState {
-  if (typeof v !== "object" || v === null) return false;
-  const b = v as Record<string, unknown>;
-  return (
-    typeof b.price_cents === "number" &&
-    Number.isInteger(b.price_cents) &&
-    typeof b.currency === "string" &&
-    b.currency.length > 0 &&
-    (b.stripe_price_id === null || typeof b.stripe_price_id === "string")
-  );
-}
-
 // ── ChannelSet ───────────────────────────────────────────────────────────
 //
 // A straight re-export. channels.ts's `ChannelKey` union + `Channels` record
@@ -98,17 +59,6 @@ export function isBillingState(v: unknown): v is BillingState {
 // exact shape §C asks for. Aliased here under the catalog's name so a
 // validator composing sub-schemas finds it in one place; the type itself
 // still lives, and is still maintained, in channels.ts.
-//
-// KNOWN DIVERGENCE (MESITA-1247 survey, a pure technical decision, not a
-// product one): `place_profiles` still carries three dead columns from before they
-// were retired from the channel set — tiktok_url, tripadvisor_url,
-// yelp_url (added 0003_venue_links.sql / 0007_venue_links_more.sql /
-// 20260625140000_venue_yelp_url.sql, never dropped). rappi_url and
-// youtube_url, added in the same original migrations, WERE properly dropped
-// later (20260625150000/20260625161000) — that's the precedent for cleaning
-// these three up too. Not executed here: see the migration this PR ships
-// alongside this comment (P2/stretch) — the decision is the required part
-// of this reconciliation, executing it is not.
 export type ChannelSetKey = ChannelKey;
 export type ChannelSet = Channels;
 

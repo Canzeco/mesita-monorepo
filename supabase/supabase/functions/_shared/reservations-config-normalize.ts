@@ -9,7 +9,7 @@ type ReservationsConfig = {
   respectAdminOverride: boolean;
   testCall: { enabled: boolean; number: string; consumerNumber: string };
   attempts: number;
-  /** Testing escape hatch: ignore the per-class monthly reservation cap. */
+  /** Testing escape hatch: ignore the monthly reservation cap (reservation-cap.ts). */
   unlimitedReservations: boolean;
   /** Abuse/cost guards — every unit of abuse here is a metered phone call. */
   limits: {

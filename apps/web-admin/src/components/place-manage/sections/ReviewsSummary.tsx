@@ -7,17 +7,15 @@ import { SectionCard } from "@/components/admin-ui/manage";
 // Reviews SUMMARY (Pato live 2026-09-01; list restored MESITA-1802).
 //
 // The aggregate tiles a place is judged on. Google reviews stay one click
-// away on Google and are not proxied here. The individual Mesita guest
-// reviews list is gone with Mesita reviews (MVP First Stage, MESITA-2090).
+// away on Google and are not proxied here.
 //
-// FOUR tiles (Pato live 2026-09-02): Google · Mesita · Instagram · Facebook.
-// Scores are half the reputation an operator is asked about; reach is the
-// other half, and it already sat one tab away on the Activity rail while
-// Profile — the only live tab — pretended it did not exist. The two Mesita
-// sub-score rows stay beneath, because only Mesita has a breakdown.
+// THREE tiles: Google · Instagram · Facebook. Scores are half the reputation
+// an operator is asked about; reach is the other half, and it already sat one
+// tab away on the Activity rail while Profile — the only live tab — pretended
+// it did not exist (Pato live 2026-09-02).
 //
-// Read-only and `auto` — every number is enrichment- or guest-written. There
-// is nothing to save, so the card registers no dirty section.
+// Read-only and `auto` — every number is enrichment-written. There is nothing
+// to save, so the card registers no dirty section.
 //
 // These same numbers also ride the Activity reputation rail. That is not a
 // duplicate to delete: Activity is parked behind Soon (nav.ts), so Profile is
@@ -146,40 +144,11 @@ function Reach({
   );
 }
 
-function SubScore({ label, value }: { label: string; value: number | null }) {
-  return (
-    <div className="flex min-w-0 flex-col gap-0.5">
-      <span className="text-muted-foreground type-label">{label}</span>
-      <span
-        className={
-          "text-sm font-semibold tabular-nums " +
-          (value == null ? "text-muted-foreground" : "text-foreground")
-        }
-      >
-        {value == null ? "—" : value.toFixed(1)}
-      </span>
-    </div>
-  );
-}
-
 export function ReviewsSummary({ place }: { place: AdminPlace }) {
   const googleStars = num(place.google_stars_overall);
   const googleCount = num(place.google_review_count) ?? 0;
-  const mesitaCount = num(place.mesita_review_count) ?? 0;
-  // Stars only exist once a guest has actually reviewed — an unreviewed place
-  // must never render a fabricated 5.0.
-  const mesitaStars = mesitaCount > 0 ? num(place.mesita_stars_overall) : null;
   const instagramFollowers = num(place.instagram_followers_count);
   const facebookFollowers = num(place.facebook_followers);
-
-  const subScores = mesitaCount > 0
-    ? ([
-        { label: "Food", value: num(place.mesita_stars_food) },
-        { label: "Service", value: num(place.mesita_stars_service) },
-        { label: "Ambience", value: num(place.mesita_stars_ambience) },
-        { label: "Value", value: num(place.mesita_stars_value) },
-      ] as const)
-    : null;
 
   return (
     <SectionCard
@@ -196,33 +165,20 @@ export function ReviewsSummary({ place }: { place: AdminPlace }) {
         </span>
       }
     >
-      {/* Scores first, reach second — the order the operator is asked about
-          them, and the order they carry weight. Two per row at every width
-          the masonry column takes. */}
+      {/* Score first, reach second — the order the operator is asked about
+          them, and the order they carry weight. The one score takes the full
+          row; the two reach tiles share the next. */}
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Score
-          label="Google"
-          stars={googleStars}
-          hint={googleCount > 0 ? reviewWord(googleCount) : "not scraped yet"}
-        />
-        <Score
-          label="Mesita"
-          stars={mesitaStars}
-          hint={mesitaCount > 0 ? reviewWord(mesitaCount) : "no reviews yet"}
-        />
+        <div className="sm:col-span-2">
+          <Score
+            label="Google"
+            stars={googleStars}
+            hint={googleCount > 0 ? reviewWord(googleCount) : "not scraped yet"}
+          />
+        </div>
         <Reach label="Instagram" followers={instagramFollowers} />
         <Reach label="Facebook" followers={facebookFollowers} />
       </div>
-
-      {/* The four sub-scores are Mesita's alone — Google has no breakdown —
-          so they only appear once Mesita itself has been reviewed. */}
-      {subScores ? (
-        <div className="border-border/60 mt-3 grid grid-cols-2 gap-3 rounded-xl border px-3.5 py-3 sm:grid-cols-4">
-          {subScores.map((s) => (
-            <SubScore key={s.label} label={s.label} value={s.value} />
-          ))}
-        </div>
-      ) : null}
     </SectionCard>
   );
 }

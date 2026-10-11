@@ -370,7 +370,6 @@ const MOCK_BASE = {
   vibe: null,
   currency: "MXN",
   state: "active" as const,
-  fiscal_type: "formal" as const,
   phone: null,
   story: null,
   website_url: null,

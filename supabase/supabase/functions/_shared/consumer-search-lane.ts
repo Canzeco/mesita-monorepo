@@ -12,20 +12,19 @@
 // Fast numbers are the same list; they stay locked.
 // Map Filters never cut this list. Autocomplete and Text Search never
 // take a country code — both stay Any (guest pin may still bias).
-// Deep: four independent queries, each capped, then concat. Overlaps drop;
+// Deep: three independent queries, each capped, then concat. Overlaps drop;
 // earlier query keeps the slot. Order:
 //   1. Google Autocomplete (autoCount)
 //   2. Google Text Search (googleCount)
-//   3. Mesita Places — name embedding, listed-not-partner (mesitaCount)
-//   4. Mesita Partners — name embedding, paid plan (partnerCount)
+//   3. Mesita Places — name embedding (mesitaCount)
 // Never Nearby Search. Guest pin biases Autocomplete / Text / name match.
 // Discovery > General runs LAST on both modes: whatever a Google query
 // returned, and whatever Mesita row it resolved to, has to clear Active +
 // the review floor (discovery-general-gate.ts). It cuts on-Mesita rows too --
 // an operator who switched Active off meant it.
 // A Google hit that resolves to Mesita stays in its Google query; later
-// Mesita queries skip it. Summary and the other six Lineup signals are
-// not a Deep input. Membership is a boolean `partner`.
+// Mesita queries skip it. Summary and the other Lineup signals are not a
+// Deep input. Membership is a boolean `enriched`.
 // Word answers with TWO entities (MESITA-1403): Places are places,
 // Locations are regions/cities. Autocomplete returns both in one call;
 // classification reads `types` off rows the response already carries —
@@ -81,7 +80,6 @@ import {
   cosineSim,
   parseVector,
 } from "./embeddings-vector.ts";
-import { isPaidPlan } from "./membership-enforcement-helpers.ts";
 import { isEnrichedPlace } from "./place-family-keys.ts";
 import { radiusBoundingBox } from "./geo.ts";
 
@@ -91,14 +89,11 @@ export const MESITA_NAME_MIN_CAP = 10;
 
 /**
  * How many Mesita rows Pay's search returns. Follows the operator's Deep
- * counts so Pay and Search rank alike, with a floor: zeroing both would
- * leave Pay permanently empty, while Search would still have Autocomplete.
+ * count so Pay and Search rank alike, with a floor: zeroing it would leave
+ * Pay permanently empty, while Search would still have Autocomplete.
  */
-export function mesitaNameCap(
-  deep: { partnerCount: number; mesitaCount: number },
-): number {
-  const configured = (deep.partnerCount ?? 0) + (deep.mesitaCount ?? 0);
-  return Math.max(configured, MESITA_NAME_MIN_CAP);
+export function mesitaNameCap(deep: { mesitaCount: number }): number {
+  return Math.max(deep.mesitaCount ?? 0, MESITA_NAME_MIN_CAP);
 }
 export const GOOGLE_TEXT_MAX = 20;
 
@@ -120,13 +115,12 @@ export type LaneItem = {
   mainText: string;
   secondaryText: string;
   state: PredictionState;
-  partner: boolean;
   /** Server's answer: did we write a profile for this place? */
   enriched?: boolean;
   /**
    * Absent = "place". Only Autocomplete rows are classified; the Text and
    * Mesita lanes are places by construction. A Location never carries
-   * membership, mesitaId, or coordinates — those arrive on selection.
+   * enrichment, mesitaId, or coordinates — those arrive on selection.
    */
   kind?: LaneKind;
   /** Most specific Google type on a Location row (e.g. "locality"). */
@@ -214,7 +208,6 @@ export function laneDedupeKeys(item: {
 }
 
 export type NameDeepLanes = {
-  partners: LaneItem[];
   mesita: LaneItem[];
   google: LaneItem[];
 };
@@ -223,12 +216,11 @@ export type NameDeepQueries = {
   autocomplete: LaneItem[];
   text: LaneItem[];
   mesita: LaneItem[];
-  partners: LaneItem[];
 };
 
 /**
  * Concatenate query arrays. Overlaps drop. Earlier query keeps the slot.
- * Name Deep order: Autocomplete → Text → Mesita Places → Mesita Partners.
+ * Name Deep order: Autocomplete → Text → Mesita Places.
  */
 export function concatQueryLanes(lanes: LaneItem[][]): LaneItem[] {
   const byKey = new Map<string, LaneItem>();
@@ -258,7 +250,6 @@ export function mergeNameDeepQueries(queries: NameDeepQueries): LaneItem[] {
     queries.autocomplete,
     queries.text,
     queries.mesita,
-    queries.partners,
   ]);
 }
 
@@ -309,7 +300,6 @@ export type ListedRow = {
   address: string | null;
   lat: number | null;
   lng: number | null;
-  plan: string | null;
   content_state: string | null;
   enriched_at: string | null;
   business_state: string | null;
@@ -327,7 +317,6 @@ function listedToLane(row: ListedRow): LaneItem | null {
     mainText: String(row.name ?? ""),
     secondaryText: row.address ?? "",
     state: "web_listed",
-    partner: isPaidPlan(row.plan),
     // Membership colour is the SERVER's answer on this lane too, so the
     // list dot and the map pin cannot disagree (Pato, 2026-08-29).
     enriched: isEnrichedPlace(row),
@@ -351,7 +340,6 @@ export function applyResolvedMesitaName(
   return {
     ...item,
     state: mesita.state,
-    partner: mesita.partner,
     // The entity is Mesita's now, so its enrichment fact travels with it.
     enriched: mesita.enriched,
     mesitaId: mesita.mesitaId,
@@ -591,29 +579,20 @@ async function stampAutocompleteLane(
   return weaveStampedAutocomplete(items, stamped);
 }
 
-/** After resolve: Mesita partners, Mesita listed, leftover Google stubs. */
+/** After resolve: Mesita listed, leftover Google stubs. */
 export function splitResolvedNameHits(items: LaneItem[]): NameDeepLanes {
-  const partners: LaneItem[] = [];
   const mesita: LaneItem[] = [];
   const google: LaneItem[] = [];
   for (const item of items) {
-    if (item.mesitaId && item.partner) partners.push(item);
-    else if (item.mesitaId) mesita.push(item);
-    else if (item.state === "not_in_mesita" && !item.mesitaId) google.push(item);
+    if (item.mesitaId) mesita.push(item);
+    else if (item.state === "not_in_mesita") google.push(item);
   }
-  return { partners, mesita, google };
+  return { mesita, google };
 }
 
 function takeLane(items: LaneItem[], cap: number): LaneItem[] {
   if (cap <= 0) return [];
   return items.slice(0, cap);
-}
-
-/** Listed-not-partner rows. Partners already fill their own Deep lane. */
-export function listedNotPartner<T extends { plan: string | null }>(
-  rows: T[],
-): T[] {
-  return rows.filter((row) => !isPaidPlan(row.plan));
 }
 
 // The strip lives in google-places.ts; re-exported only because
@@ -623,7 +602,6 @@ export { stripPlacesPrefix };
 /** Which Deep modules fire. Types off skip Google modules. No OpenAI skips Lineup. */
 export function deepModuleFlags(args: {
   autoCount: number;
-  partnerCount: number;
   mesitaCount: number;
   googleCount: number;
   typesOn: boolean;
@@ -632,8 +610,7 @@ export function deepModuleFlags(args: {
   return {
     wantAuto: args.autoCount > 0 && args.typesOn,
     wantText: args.googleCount > 0 && args.typesOn,
-    wantMesita: (args.partnerCount > 0 || args.mesitaCount > 0) &&
-      args.hasOpenai,
+    wantMesita: args.mesitaCount > 0 && args.hasOpenai,
   };
 }
 
@@ -656,7 +633,6 @@ async function runDeepSearch(
   const openaiKey = (Deno.env.get("OPENAI_KEY") ?? "").trim();
   const { wantAuto, wantText, wantMesita } = deepModuleFlags({
     autoCount: deep.autoCount,
-    partnerCount: deep.partnerCount,
     mesitaCount: deep.mesitaCount,
     googleCount: deep.googleCount,
     typesOn,
@@ -712,21 +688,14 @@ async function runDeepSearch(
       params,
     )
     : [];
-  const lineupPartners = deep.partnerCount > 0
-    ? takeListedLane(
-      ordered.filter((row) => isPaidPlan(row.plan)),
-      deep.partnerCount,
-    )
-    : [];
   const lineupMesita = deep.mesitaCount > 0
-    ? takeListedLane(listedNotPartner(ordered), deep.mesitaCount)
+    ? takeListedLane(ordered, deep.mesitaCount)
     : [];
 
   return mergeNameDeepQueries({
     autocomplete: takeLane(stampedAuto, deep.autoCount),
     text: takeLane(stampedText, deep.googleCount),
     mesita: lineupMesita,
-    partners: lineupPartners,
   });
 }
 
@@ -736,8 +705,8 @@ async function runDeepSearch(
  * just that one lane on its own. `fetchEmbedPool` already requires
  * `name_embedding IS NOT NULL`, so this IS the name-embedding index.
  *
- * The cap follows the operator's Deep counts so Pay and Search rank the
- * same way, with a floor: an operator zeroing both would otherwise leave
+ * The cap follows the operator's Deep count so Pay and Search rank the
+ * same way, with a floor: an operator zeroing it would otherwise leave
  * Pay's search permanently empty, and Pay has no Google lane to fall
  * back to.
  */
@@ -772,7 +741,6 @@ export function toWire(item: LaneItem) {
     mainText: item.mainText,
     secondaryText: item.secondaryText,
     state: item.state,
-    partner: item.partner,
     enriched: item.enriched === true,
     // `kind` rides Location rows only — absent reads "place", and the
     // Places path stays byte-identical for a place query.
@@ -833,7 +801,7 @@ async function embedQueryVector(
 }
 
 const EMBED_COLUMNS =
-  "id, slug, google_place_id, name, address, lat, lng, plan, content_state, enriched_at, business_state, google_review_count, name_embedding, embedding";
+  "id, slug, google_place_id, name, address, lat, lng, content_state, enriched_at, business_state, google_review_count, name_embedding, embedding";
 /** In-process cosine budget — same order as recall-places, not every vector. */
 const EMBED_POOL = 300;
 const EMBED_RADIUS_KM = 40;
@@ -933,7 +901,6 @@ async function fetchAutocomplete(
         mainText: p.structuredFormat?.mainText?.text ?? p.text?.text ?? "",
         secondaryText: p.structuredFormat?.secondaryText?.text ?? "",
         state: "not_in_mesita",
-        partner: false,
         ...(kind === "location"
           ? { kind, locationType: locationTypeOf(p.types) }
           : {}),
@@ -1016,7 +983,6 @@ async function fetchTextSearch(
       mainText: p.displayName.text,
       secondaryText: p.formattedAddress ?? "",
       state: "not_in_mesita",
-      partner: false,
       lat,
       lng,
       businessStatus: typeof p.businessStatus === "string"

@@ -41,13 +41,8 @@ const FUNCTIONS_DIR = new URL("../", import.meta.url);
 
 /** The document doors' tables, plus the `profiles` view every place read
  *  lands on. A door exists for these, which is what makes a raw read here a
- *  decision rather than the only option. `visit_tickets` is the exception:
- *  its door (`ticket-doc.ts`) went with the ticket functions in MESITA-2090,
- *  and the table stays here so no NEW reader appears before the Second Stage
- *  schema drop. `place_payment_accounts` and `place_guest_customers` left the
- *  list then too — their doors and every reader were deleted. */
+ *  decision rather than the only option. */
 const DOORED_TABLES = [
-  "visit_tickets",
   "reservation_tickets",
   "place_profiles",
   "profiles",
@@ -137,24 +132,14 @@ function assertRatchet(table: string, found: string[], allowlist: string[]) {
 // ── Belt 1: raw readers of doored tables. Bootstrapped 2026-09-12 from a
 // real findReaders() run on this branch, not hand-transcribed. ───────────
 
-const VISIT_TICKET_READ_ALLOWLIST = [
-  "_shared/membership.ts",
-  "consumer-web-get-profile/index.ts",
-  "consumer-web-list-pay-notifications/index.ts",
-];
-
-Deno.test("TICKET READ: no new raw reader of visit_tickets outside the allowlist", async () => {
-  assertRatchet("visit_tickets", await findReaders("visit_tickets"), VISIT_TICKET_READ_ALLOWLIST);
-});
-
 const RESERVATION_TICKET_READ_ALLOWLIST = [
   "_shared/agent-tools.ts", // remaps by hand (fromPlaceIdRow) — MESITA-1718 seed
   "_shared/config-section-reservations.ts",
+  "_shared/delete-history-free.ts", // head-only count by consumer_id: no place_id to remap
   "_shared/reservation-doc.ts", // THE reservation door (writeReservation)
   "consumer-web-cancel-reservation/index.ts",
   "consumer-web-confirm-reservation/index.ts",
   "consumer-web-create-reservation/index.ts",
-  "consumer-web-get-profile/index.ts",
   "consumer-web-list-reservations/index.ts",
   "consumer-web-update-reservation/index.ts",
   "eleven-agent-get-reservation/index.ts",
@@ -212,7 +197,6 @@ const PROFILES_READ_ALLOWLIST = [
   "admin-web-get-overview/index.ts",
   "consumer-web-get-place/index.ts",
   "consumer-web-list-catalog/index.ts",
-  "consumer-web-list-pay-notifications/index.ts",
   "consumer-web-list-places/index.ts",
   "consumer-web-recommend-swipe/index.ts",
   "supabase-edgefunc-discover-places/index.ts",
@@ -224,9 +208,7 @@ Deno.test("PROFILES READ: no new raw reader of profiles outside the allowlist", 
 });
 
 const PLACES_READ_ALLOWLIST = [
-  "_shared/membership-enforcement.ts",
   "_shared/reservation-places.ts",
-  "_shared/stripe-billing.ts", // the PLACE's billing-customer anchor, compare-and-set (MESITA-1892 — it was the organization's)
   "admin-web-delete-place/index.ts",
   "admin-web-get-place-enrichment/index.ts",
   "admin-web-set-place-listed/index.ts",
@@ -238,10 +220,8 @@ Deno.test("PLACE ROW READ: no new raw reader of places outside the allowlist", a
 });
 
 const CONSUMER_READ_ALLOWLIST = [
-  "_shared/class-doors.ts",
   "_shared/consumer-doc.ts", // THE consumer door
   "_shared/delete-history-free.ts",
-  "_shared/stripe-billing.ts",
   "consumer-web-create-reservation/index.ts",
   "consumer-web-get-profile/index.ts",
   "consumer-web-signin-phone/index.ts",
@@ -273,16 +253,12 @@ Deno.test("CONSUMER READ: no new raw reader of consumers outside the allowlist",
  * guessing at, and a ratchet that guesses gets muted rather than fixed.
  *
  * That gap is not free, and it is worth naming what is in it rather than
- * implying the scan is complete. `_shared/membership.ts:117` builds
- * `let query = admin.from("visit_tickets").select("id", { count: "exact" })`
- * and awaits it three lines later as `const { count } = await query` — the
- * builder shape, invisible to this scan. On any error `count` is null,
- * `(count ?? 0) === 0` is true, and the caller concludes this is the guest's
- * FIRST visit at this place, which is what grants the welcome rate. (The FILE
- * is on the list below, but for a different read at :162. Fixing that one
- * does not fix this one, and deleting its line while :117 stands would be the
- * wrong kind of green.) Reaching that shape needs a real parse, not a wider
- * window.
+ * implying the scan is complete. A builder-shaped count —
+ * `let query = admin.from(T).select("id", { count: "exact" })`, awaited lines
+ * later as `const { count } = await query` — is invisible here. On any error
+ * `count` is null, `(count ?? 0) === 0` is true, and the caller reads "none"
+ * where the truth was "could not ask". Reaching that shape needs a real
+ * parse, not a wider window.
  *
  * The window is the statement: everything back to the previous `;` or block
  * brace. That is what keeps a destructure belonging to an EARLIER query from
@@ -338,14 +314,11 @@ const SWALLOWED_TODAY = [
   "_shared/agent-tools.ts",
   "_shared/config-section-reservations.ts",
   "_shared/create-place.ts",
-  "_shared/membership.ts",
   "_shared/place-slug.ts",
   "_shared/reservation-places.ts",
   "_shared/save-place.ts",
-  "_shared/stripe-billing.ts",
   "admin-web-update-place/place-social-refresh.ts",
   "consumer-web-confirm-reservation/index.ts",
-  "consumer-web-get-profile/index.ts",
   "eleven-a1-report-outcome/index.ts",
   "eleven-a2-confirm-reservation/index.ts",
   "eleven-a3-verify-caller/index.ts",

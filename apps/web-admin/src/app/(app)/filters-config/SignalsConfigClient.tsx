@@ -1,12 +1,10 @@
 "use client";
 
-// Mesita Places Search Signals — the nine earned signals every Mesita
+// Mesita Places Search Signals — the eight earned signals every Mesita
 // Places source is ranked by (Docs > Discovery 8.3). Sources retrieve;
 // Lineup ranks; these are what it reads. Engines do not invent a second
-// scale. Mesita Level split into the two binary rows Enriched and Partnered
-// (MESITA-1858): one reads the enrichment state, the other reads `plan`.
-// Disjoint facts, so no double-count — which is the thing the MESITA-1408
-// merge existed to prevent.
+// scale. Mesita Level is the Enriched row now (MESITA-1858): it reads the
+// enrichment state and nothing about money.
 //
 // THE WEIGHTS LEFT THIS CARD (MESITA-1859). It is the SHAPE card now: what
 // each signal computes, and the numbers that bend its curve. The exponents
@@ -22,7 +20,6 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
-  BadgeCheck,
   Clock,
   Compass,
   Dices,
@@ -52,7 +49,6 @@ const ICONS: Record<SignalKey, typeof MapPin> = {
   category: Tags,
   popularity: Star,
   enriched: Sparkles,
-  partnered: BadgeCheck,
   randomness: Dices,
 };
 

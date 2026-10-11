@@ -131,7 +131,7 @@ Deno.test("no Edge Function code carries the organization layer", () => {
     [],
     `The organization layer was removed by MESITA-1892. These still carry it:\n  ${
       offenders.join("\n  ")
-    }\n\nThe place is the tenant. A record belongs to a place, membership is place_members,\nthe merchant account is place_payment_accounts, and the partner bit is places.partnered.\nIf you are reintroducing organizations deliberately, that is a schema decision and an\nissue of its own — not an edit to this list.`,
+    }\n\nThe place is the tenant: a record belongs to a place, and nothing sits above it.\nIf you are reintroducing organizations deliberately, that is a schema decision and an\nissue of its own — not an edit to this list.`,
   );
 });
 

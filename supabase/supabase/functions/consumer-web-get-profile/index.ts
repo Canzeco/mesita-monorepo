@@ -14,16 +14,12 @@ import {
   getAuthedUser,
   readEFEnv,
 } from "../_shared/auth.ts";
-import { getTierConfig, perkClassKey } from "../_shared/membership.ts";
-import { recomputeConsumerClass } from "../_shared/class-doors.ts";
 import { isCanonicalConsumerCode } from "../_shared/consumer-code.ts";
-import { diamondLabel } from "../_shared/diamond.ts";
 import { writeConsumer } from "../_shared/consumer-doc.ts";
 import {
   accountDeletedResponse,
   isDeletedConsumer,
 } from "../_shared/delete-history-free.ts";
-import { CLOSED_TICKET_STATE, TICKET_STATE } from "../_shared/ticket-state.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -39,7 +35,7 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
 
   const CONSUMER_PROFILE_SELECT =
-    "id, code, full_name, first_name, last_name, sex, birthday, country, phone, avatar_url, instagram_handle, privacy_public, privacy_show_saves, privacy_show_visits, privacy_show_stories, class_key, class_origin, plan, instagram_followers_count, class_expires_at, deleted_at";
+    "id, code, full_name, first_name, last_name, sex, birthday, country, phone, avatar_url, instagram_handle, instagram_followers_count, deleted_at";
 
   // Read once. If absent, insert with a generated code and re-read.
   const existing = await admin
@@ -100,111 +96,5 @@ Deno.serve(async (req) => {
     consumer = updated.row as typeof consumer;
   }
 
-  // ── Membership payload ─────────────────────────────────────────────────
-  // Surfaces whether the consumer is Diamond (class_key — the
-  // storage name stays, MESITA-2044), how they got there, their open DOORS
-  // (MESITA-972; `influencer` is always false now — followers open nothing),
-  // their Instagram follower count, current subscription (if any), and this
-  // month's reservation usage vs their cap.
-  //
-  // Self-healing: the effective class is recomputed from the door facts on
-  // every profile read, so a missed webhook or admin edit can never leave the
-  // Diamond on a stale slot. Everything below is best-effort: a transient
-  // recompute failure falls back to the stored slot, a missing `classes` row
-  // degrades to Free defaults — never a 500 on the user-facing Profile tab.
-  let classKey = consumer.class_key ?? "bronze";
-  let classOrigin = consumer.class_origin ?? "default";
-  let classExpiresAt = consumer.class_expires_at ?? null;
-  let plan: "free" | "premium" =
-    consumer.plan === "premium" ? "premium" : "free";
-  let doors = {
-    influencer: false,
-    premium: false,
-    aura: classOrigin === "invitation",
-  };
-  try {
-    const effective = await recomputeConsumerClass(admin, userId);
-    classKey = effective.classKey;
-    classOrigin = effective.origin;
-    classExpiresAt = effective.expiresAt;
-    plan = effective.plan;
-    doors = effective.doors;
-    // Keep the embedded consumer blob consistent with the healed slot.
-    consumer.class_key = classKey;
-    consumer.class_origin = classOrigin;
-    consumer.class_expires_at = classExpiresAt;
-    consumer.plan = plan;
-  } catch (_err) {
-    // stored slot stands
-  }
-  let tier = null;
-  try {
-    tier = await getTierConfig(admin, perkClassKey(classKey, plan));
-  } catch (_err) {
-    tier = null; // fall through to Free defaults below
-  }
-
-  // A consumer should have at most one active/past_due subscription, but a
-  // stray duplicate row must not 500 the profile — take the most recent via
-  // limit(1) instead of .maybeSingle() (which throws on >1 matching row).
-  const { data: subscriptionRows } = await admin
-    .from("consumer_subscriptions")
-    .select(
-      "state, price_cents, currency, current_period_end, cancel_at_period_end",
-    )
-    .eq("consumer_id", userId)
-    .in("state", ["active", "past_due"])
-    .order("current_period_end", { ascending: false })
-    .limit(1);
-  const subscription = subscriptionRows?.[0] ?? null;
-
-  let used = 0;
-  const monthStart = new Date();
-  monthStart.setUTCDate(1);
-  monthStart.setUTCHours(0, 0, 0, 0);
-  const { count } = await admin
-    .from("reservation_tickets")
-    .select("id", { count: "exact", head: true })
-    .eq("consumer_id", userId)
-    .eq("is_test", false)
-    .gte("created_at", monthStart.toISOString())
-    .neq("state", TICKET_STATE.cancelled);
-  used = count ?? 0;
-
-  const subscriptionClass = {
-    key: classKey,
-    origin: classOrigin,
-    plan,
-    // "Diamond" when Diamond, null when not. Never the classes row's own
-    // label (Bronze/Silver/…): Diamond is binary and a metal must not reach
-    // a person (MESITA-2044). No app screen reads this field today; it stays
-    // for the payload's shape.
-    label: diamondLabel(classKey),
-    followers: consumer.instagram_followers_count ?? null,
-    expires_at: classExpiresAt,
-    // Open doors, independent of which one currently wins the slot
-    // (MESITA-972).
-    doors,
-    subscription: subscription ?? null,
-    usage: {
-      reservations_used: used,
-      reservations_limit: tier?.monthly_reservation_limit ?? null,
-    },
-  };
-
-  // Profile stats (MESITA-888; the Passport is gone, MESITA-2043): visits = tickets the v3 close sealed
-  // ("revealed" — staff tapped done, billed or not). Best-effort like the
-  // rest of this block: a count failure degrades to 0, never a 500.
-  const { count: visitCount } = await admin
-    .from("visit_tickets")
-    .select("id", { count: "exact", head: true })
-    .eq("consumer_id", userId)
-    .eq("state", CLOSED_TICKET_STATE);
-
-  return json({
-    ok: true,
-    consumer,
-    class: subscriptionClass,
-    stats: { visits: visitCount ?? 0 },
-  });
+  return json({ ok: true, consumer });
 });

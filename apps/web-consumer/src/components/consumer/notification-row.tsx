@@ -19,9 +19,29 @@ function payloadString(payload: unknown, key: string): string | null {
   return typeof v === "string" && v.length > 0 ? v : null;
 }
 
+// What the place answered, in the guest's words. The writer
+// (_shared/reservation-notification.ts) records one of these outcomes.
+function outcomeLabel(outcome: string | null): string {
+  switch (outcome) {
+    case "confirmed":
+      return "Your table is confirmed";
+    case "declined":
+      return "The place couldn't take it";
+    case "counter_offer":
+      return "The place offered another time";
+    case "unreachable":
+      return "We couldn't reach the place";
+    case "unresolved":
+      return "We couldn't confirm it";
+    default:
+      return "Reservation update";
+  }
+}
+
 export function NotificationRow({ n }: { n: ConsumerNotification }) {
   const placeName = payloadString(n.payload, "place_name");
   const placePhoto = payloadString(n.payload, "place_photo_url");
+  const outcome = payloadString(n.payload, "outcome");
 
   return (
     <article className="border-border bg-card flex gap-3 overflow-hidden rounded-2xl border p-3">
@@ -48,7 +68,7 @@ export function NotificationRow({ n }: { n: ConsumerNotification }) {
         </div>
         <p className="text-muted-foreground mt-0.5 flex items-center gap-1.5 text-xs">
           <CalendarCheck className="h-3.5 w-3.5 shrink-0" />
-          Reservation update
+          {outcomeLabel(outcome)}
         </p>
         <p className="text-muted-foreground type-body mt-1">
           {new Date(n.created_at).toLocaleString(undefined, {

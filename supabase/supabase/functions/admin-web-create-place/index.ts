@@ -16,9 +16,9 @@
 // same gate every other admin-* EF uses).
 //
 // Difference vs the retired business-web-create-place: NO managers upsert — an
-// admin creates an UNOWNED listing (listing_type='web'). Ownership landed only
-// when a business claimed it and admin-web-decide-verification approved, and
-// both doors were retired in MESITA-2090.
+// admin creates an UNOWNED listing. Ownership landed only when a business
+// claimed it and admin-web-decide-verification approved, and both doors were
+// retired in MESITA-2090.
 //
 // Local:  supabase functions serve admin-web-create-place
 // Deploy: supabase functions deploy admin-web-create-place

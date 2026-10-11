@@ -4,7 +4,7 @@
 // issue was scoped from: place is the largest of the three remaining
 // aggregates, 29 write call sites across 16 files against THREE surfaces:
 //   • place_profiles   — the Google-observed / Enricher-owned profile
-//   • places — the owned Mesita entity: state, billing, membership
+//   • places — the owned Mesita entity: slug, state, content state, currency
 //   • profiles — a SECURITY INVOKER VIEW joining the two (`p.* JOIN u.*`,
 //     see the 20260602-era migrations), NOT a base table. It carries two
 //     INSTEAD OF triggers (profiles_insert / profiles_update) that split a
@@ -50,23 +50,20 @@
 // THE INVARIANTS below mirror LIVE Postgres CHECK constraints (pulled via
 // `pg_get_constraintdef` against the `place_profiles` / `places` tables, MESITA
 // project) and the two tables' native Postgres enum columns (`place_state`,
-// `listing_type`, `plan`, `place_fiscal_type`, `content_state`,
-// pulled via `pg_enum`) — not invented rules. Each group below names the
-// constraint it mirrors. One invariant is only PARTIALLY checkable from a
+// `content_state`, pulled via `pg_enum`) — not invented rules. Each group
+// below names the constraint it mirrors. One invariant is only PARTIALLY checkable from a
 // patch alone (place_profiles_name_source_present, see checkPlaceNameSourceInvariant)
 // — Postgres, which sees the whole row, is the final authority there.
 //
 // Deliberately NOT here: URL shape (`isUrl`), hours structure
 // (`sanitiseHours`), tag normalization, phone E.164 shape, category
-// resolution, promo-rate/listing-type derivation. None of those are DB
-// constraints — they are HTTP-input business rules business-web-
-// update-place (and friends) already own and validate before a patch
-// ever reaches this door. This validator checks the STORED SHAPE Postgres
-// itself would reject, same posture consumer-doc.ts took for birthday /
-// avatar_url.
+// resolution. None of those are DB constraints — they are HTTP-input
+// business rules admin-web-update-place (and friends) already own and
+// validate before a patch ever reaches this door. This validator checks the
+// STORED SHAPE Postgres itself would reject, same posture consumer-doc.ts
+// took for birthday / avatar_url.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { DISCOUNT_CAPS_MXN } from "./discount-cap.ts";
 import { nullable } from "./doc-schema.ts";
 import {
   GoogleReviewsSchema,
@@ -74,11 +71,10 @@ import {
   PopularTimesSchema,
 } from "./place-jsonb-schemas.ts";
 import { EnrichmentMapSchema } from "./schema-catalog.ts";
-import { isShapedRfc } from "./place-rfc.ts";
 
 // ── PlaceProfileRow — the full `place_profiles` row shape ──────────────────────────────────
 
-/** How a guest reaches the place on Reservations or Orders (Pato 2026-08-25). */
+/** How a guest reaches the place on Reservations (Pato 2026-08-25). */
 export type ServingChannel = "phone" | "whatsapp" | "instagram" | "web" | "none";
 
 export const SERVING_CHANNELS: readonly ServingChannel[] = [
@@ -140,18 +136,8 @@ export type PlaceProfileRow = {
   description: string | null;
   menu_pdf_url: string | null;
   tags: string[];
-  whatsapp_pr_urls: string[];
-  instagram_pr_urls: string[];
-  google_business_url: string | null;
   google_stars_overall: number | null;
   google_review_count: number | null;
-  google_visitor_count: number | null;
-  mesita_stars_overall: number | null;
-  mesita_stars_food: number | null;
-  mesita_stars_service: number | null;
-  mesita_stars_ambience: number | null;
-  mesita_review_count: number | null;
-  mesita_visitor_count: number | null;
   instagram_followers_count: number | null;
   menu_pdf_name: string | null;
   enriched_at: string | null;
@@ -163,7 +149,6 @@ export type PlaceProfileRow = {
   executive_chef: string | null;
   facebook_rating: number | null;
   facebook_followers: number | null;
-  mesita_stars_value: number | null;
   details: unknown | null;
   google_reviews: unknown | null;
   menus: unknown | null;
@@ -172,7 +157,6 @@ export type PlaceProfileRow = {
   category_label: string | null;
   embedding_source_text: string | null;
   google_name: string | null;
-  description_es: string | null;
   mesita_name: string | null;
   enrich_every_days: number | null;
   enrich_mode: "full" | "analysis" | "contents";
@@ -181,34 +165,10 @@ export type PlaceProfileRow = {
   enrichment: unknown;
   reservation_channel: ServingChannel | null;
   reservation_target: string | null;
-  order_channel: ServingChannel | null;
-  order_target: string | null;
   business_state: "OPERATIONAL" | "CLOSED_TEMPORARILY" | "CLOSED_PERMANENTLY" | null;
   business_state_at: string | null;
-  /** Description/Actions — guest Order CTA when menu/catalog exists. */
-  orders_enabled: boolean;
   /** Description/Actions — LLM: this kind of place likely takes reservations. */
   reservations_enabled: boolean;
-  /** Settlement acceptance INTENT BIT (Pato gates 2026-08-29): the operator's
-   *  "this place accepts Mesita Pay" toggle (admin-web-set-place-rails, the
-   *  Partner tab, both retired in MESITA-2090 — no writer today). The future gateway engine ANDs this with the global
-   *  visits_config.payCard switch and Stripe capability — never a cache of
-   *  engine state. PLACES-ONLY (see PLACE_INTENT_BIT_KEYS): the
-   *  profiles_update trigger enumerates its SET list and silently drops
-   *  columns it predates, so the profiles door refuses these instead of
-   *  no-opping them. */
-  mesita_pay_enabled: boolean;
-  /** Same contract for Mesita Credits: cleared to accept Credits when they
-   *  land. Engine ANDs with visits_config.payCredits; Credits settle as a
-   *  bill REDUCTION, never a payment method (🧾 Checkout §B / 🪙 Credits). */
-  credits_enabled: boolean;
-  /** Order-rail acceptance INTENT BITS (Pato gate 2026-08-29, Promotion
-   *  score): the operator's pickup / delivery offering toggles. Distinct from
-   *  content-derived `orders_enabled` (the guest Order CTA, menu-driven) —
-   *  these say what the place WANTS to offer once the order rail ships. Same
-   *  place_profiles-only write rule as the settlement bits above. */
-  pickup_orders_enabled: boolean;
-  delivery_orders_enabled: boolean;
 };
 
 export const PLACE_PROFILE_PATCH_KEYS = [
@@ -248,18 +208,8 @@ export const PLACE_PROFILE_PATCH_KEYS = [
   "description",
   "menu_pdf_url",
   "tags",
-  "whatsapp_pr_urls",
-  "instagram_pr_urls",
-  "google_business_url",
   "google_stars_overall",
   "google_review_count",
-  "google_visitor_count",
-  "mesita_stars_overall",
-  "mesita_stars_food",
-  "mesita_stars_service",
-  "mesita_stars_ambience",
-  "mesita_review_count",
-  "mesita_visitor_count",
   "instagram_followers_count",
   "menu_pdf_name",
   "enriched_at",
@@ -271,7 +221,6 @@ export const PLACE_PROFILE_PATCH_KEYS = [
   "executive_chef",
   "facebook_rating",
   "facebook_followers",
-  "mesita_stars_value",
   "details",
   "google_reviews",
   "menus",
@@ -280,7 +229,6 @@ export const PLACE_PROFILE_PATCH_KEYS = [
   "category_label",
   "embedding_source_text",
   "google_name",
-  "description_es",
   "mesita_name",
   "enrich_every_days",
   "enrich_mode",
@@ -288,20 +236,9 @@ export const PLACE_PROFILE_PATCH_KEYS = [
   "enrichment",
   "reservation_channel",
   "reservation_target",
-  "order_channel",
-  "order_target",
   "business_state",
   "business_state_at",
-  "orders_enabled",
   "reservations_enabled",
-  // The four acceptance intent bits, legalized for admin-web-set-place-rails
-  // (retired in MESITA-2090; Pato gate 2026-08-29, the Partner tab toggles +
-  // Promotion score). They
-  // are PLACES-ONLY patch keys — see PLACE_INTENT_BIT_KEYS below.
-  "mesita_pay_enabled",
-  "credits_enabled",
-  "pickup_orders_enabled",
-  "delivery_orders_enabled",
 ] as const satisfies readonly (keyof Omit<
   PlaceProfileRow,
   "id" | "created_at" | "updated_at" | "name"
@@ -326,92 +263,17 @@ export type PlaceRow = {
   id: string;
   created_at: string;
   updated_at: string;
-  // WHO holds this place is now the place itself: `place_members` is the
-  // only tenancy there is (MESITA-1892). `organization_id` used to sit here
-  // and pointed at the holder; claimed_by/claimed_at stayed provenance, not
-  // authorization, and still are.
-  claimed_by: string | null;
-  claimed_at: string | null;
   slug: string;
   state: "lead" | "active" | "paused" | "archived" | "pending_review" | "pending_verification";
-  listing_type: "partner" | "web" | "unclaimed";
-  plan: "free" | "pro" | "ultra";
-  fiscal_type: "formal" | "informal";
   content_state: "queued" | "generating" | "ready" | "failed";
   currency: string;
-  segmentation_basic_enabled: boolean;
-  segmentation_advanced_enabled: boolean;
-  welcome_free_rate: number | null;
-  welcome_premium_rate: number | null;
-  free_rate: number | null;
-  premium_rate: number | null;
-  monthly_promo_cap: number | null;
-  discount_cap_cents: number | null;
-  staff_channel_pinged_at: string | null;
-  first_ticket_honored_at: string | null;
-  plan_live_at: string | null;
-  strike_count: number;
-  last_strike_at: string | null;
-  promo_paused_until: string | null;
-  plan_forfeited_at: string | null;
-  check_pin: string | null;
-  reward_lane_pending_review_at: string | null;
-  // WHAT THE PLACE TOOK FROM THE ORGANIZATION (MESITA-1892). These four
-  // columns were `organizations`' until the tenant boundary moved; they are
-  // on this row now because the merchant and the venue are the same thing.
-  //   partnered  — Mesita Partner, the ENTITLEMENT. The BILLING row lives in
-  //                partner_memberships; the two are deliberately separate.
-  //   legal_name — the legal person this place trades as.
-  //   rfc        — the Mexican tax ID. One RFC is one merchant, and one
-  //                merchant is one place (`places_rfc_unique`).
-  //   stripe_billing_customer_id — the Stripe CUSTOMER this place pays Mesita
-  //                as. NOT place_payment_accounts.stripe_account_id, which is
-  //                the connected account it gets paid THROUGH.
-  partnered: boolean;
-  legal_name: string | null;
-  rfc: string | null;
-  stripe_billing_customer_id: string | null;
 };
 
 export const PLACE_PATCH_KEYS = [
-  // Claim provenance, written by business-web-{claim,release}-place — which
-  // is why they go through this door instead of touching `places` directly.
-  "claimed_by",
-  "claimed_at",
   "slug",
   "state",
-  "listing_type",
-  "plan",
-  "fiscal_type",
   "content_state",
   "currency",
-  "segmentation_basic_enabled",
-  "segmentation_advanced_enabled",
-  "welcome_free_rate",
-  "welcome_premium_rate",
-  "free_rate",
-  "premium_rate",
-  "monthly_promo_cap",
-  "discount_cap_cents",
-  "staff_channel_pinged_at",
-  "first_ticket_honored_at",
-  "plan_live_at",
-  "strike_count",
-  "last_strike_at",
-  "promo_paused_until",
-  "plan_forfeited_at",
-  "check_pin",
-  "reward_lane_pending_review_at",
-  // The four the place took from the organization (MESITA-1892). `partnered`
-  // is patchable here for completeness, but its real writers —
-  // `_shared/place-partnership.ts` and `_shared/partner-membership.ts` —
-  // flip it with a guarded `.update()` that counts what actually moved, so
-  // they can report joined/dropped honestly. A door that returns the patch
-  // cannot tell you that.
-  "partnered",
-  "legal_name",
-  "rfc",
-  "stripe_billing_customer_id",
 ] as const satisfies readonly (keyof Omit<PlaceRow, "id" | "created_at" | "updated_at">)[];
 
 type _MissingFromPlacePatchKeys = Exclude<
@@ -444,17 +306,8 @@ function isNullableNumber(v: unknown): v is number | null {
 function isNullableRange(v: unknown, min: number, max: number): boolean {
   return v === null || (typeof v === "number" && Number.isFinite(v) && v >= min && v <= max);
 }
-function isIntInRange(v: unknown, min: number, max: number): boolean {
-  return typeof v === "number" && Number.isInteger(v) && v >= min && v <= max;
-}
 function isNullableNonNegInt(v: unknown): boolean {
   return v === null || (typeof v === "number" && Number.isInteger(v) && v >= 0);
-}
-function isNullableLegalSet(v: unknown, legal: readonly number[]): boolean {
-  return v === null || (typeof v === "number" && (legal as readonly number[]).includes(v));
-}
-function isNullableRegex(v: unknown, re: RegExp): boolean {
-  return v === null || (typeof v === "string" && re.test(v));
 }
 function isStringArray(v: unknown): v is string[] {
   return Array.isArray(v) && v.every((x) => typeof x === "string");
@@ -475,27 +328,24 @@ const PLACE_PLAIN_STRING_KEYS = new Set<string>([
   "whatsapp_url", "opentable_url", "resy_url", "uber_eats_url", "x_url",
   "threads_url", "reddit_url", "google_maps_url",
   "didi_food_url", "email", "embedding_source_hash", "country", "description",
-  "menu_pdf_url", "google_business_url", "menu_pdf_name", "editorial_summary",
+  "menu_pdf_url", "menu_pdf_name", "editorial_summary",
   "zone", "city", "executive_chef", "category_label",
-  "embedding_source_text", "google_name", "description_es", "mesita_name",
-  "reservation_target", "order_target", "embedding", "name_embedding",
+  "embedding_source_text", "google_name", "mesita_name",
+  "reservation_target", "embedding", "name_embedding",
   "name_embedding_hash", "google_place_id",
   "enriched_at", "business_state_at", "enrich_next_at",
 ]);
 const PLACE_UNRANGED_NUMBER_KEYS = new Set<string>(["lat", "lng", "established_year"]);
-// place_profiles_{google,mesita}_stars_*_check / place_profiles_facebook_rating_check /
-// place_profiles_mesita_stars_value_check — 0..5 inclusive, null allowed.
+// place_profiles_google_stars_overall_check / place_profiles_facebook_rating_check
+// — 0..5 inclusive, null allowed.
 const PLACE_STAR_RATING_KEYS = new Set<string>([
-  "google_stars_overall", "mesita_stars_overall", "mesita_stars_food",
-  "mesita_stars_service", "mesita_stars_ambience", "facebook_rating",
-  "mesita_stars_value",
+  "google_stars_overall", "facebook_rating",
 ]);
-// place_profiles_{google,mesita}_*_count_check / place_profiles_instagram_followers_count_check
+// place_profiles_google_review_count_check / place_profiles_instagram_followers_count_check
 // / place_profiles_facebook_followers_check — >= 0, null allowed (a raw `col >= 0`
 // CHECK still passes NULL under Postgres 3-valued logic).
 const PLACE_NONNEG_INT_KEYS = new Set<string>([
-  "google_review_count", "google_visitor_count", "mesita_review_count",
-  "mesita_visitor_count", "instagram_followers_count", "facebook_followers",
+  "google_review_count", "instagram_followers_count", "facebook_followers",
 ]);
 // hours/enrichment_sources/menus/products stay opaque (isJsonish) — no
 // schema exists for their internal shape yet. details/google_reviews/
@@ -522,31 +372,14 @@ const PLACE_SCHEMA_JSON_KEYS: Record<string, { parse(v: unknown): { ok: boolean;
   // NOT nullable — place_profiles.enrichment is NOT NULL with a default (MESITA-1249).
   enrichment: EnrichmentMapSchema,
 };
-const PLACE_STRING_ARRAY_KEYS = new Set<string>([
-  "photos", "tags", "whatsapp_pr_urls", "instagram_pr_urls",
-]);
-// NOT NULL boolean columns. orders_enabled defaults false;
-// reservations_enabled defaults true (MESITA-1799). Both joined
-// PLACE_PROFILE_PATCH_KEYS in #1395 but never got a
-// checkPlaceProfileField branch — every patch carrying them fell through to
-// "unknown place field" and the WHOLE patch was rejected (latent until the
-// 2026-08-29 EF redeploy sweep put the door in front of the live contents
-// publish; caught and fixed the same day). The four intent bits ride the
-// same branch.
-const PLACE_PROFILE_BOOLEAN_KEYS = new Set<string>([
-  "orders_enabled", "reservations_enabled",
-  "mesita_pay_enabled", "credits_enabled",
-  "pickup_orders_enabled", "delivery_orders_enabled",
-]);
-// Acceptance intent bits are PLACES-ONLY: the profiles view's INSTEAD OF
-// trigger (profiles_update) enumerates its SET list and predates these
-// columns, so a profiles-routed patch would silently drop them — the door
-// refuses loudly instead. Their one writer (admin-web-set-place-rails,
-// retired in MESITA-2090) targeted `table: "place_profiles"`.
-const PLACE_INTENT_BIT_KEYS = new Set<string>([
-  "mesita_pay_enabled", "credits_enabled",
-  "pickup_orders_enabled", "delivery_orders_enabled",
-]);
+const PLACE_STRING_ARRAY_KEYS = new Set<string>(["photos", "tags"]);
+// NOT NULL boolean column, default true (MESITA-1799). It joined
+// PLACE_PROFILE_PATCH_KEYS in #1395 but never got a checkPlaceProfileField
+// branch — every patch carrying it fell through to "unknown place field" and
+// the WHOLE patch was rejected (latent until the 2026-08-29 EF redeploy sweep
+// put the door in front of the live contents publish; caught and fixed the
+// same day).
+const PLACE_PROFILE_BOOLEAN_KEYS = new Set<string>(["reservations_enabled"]);
 const BUSINESS_STATE_VALUES = new Set(["OPERATIONAL", "CLOSED_TEMPORARILY", "CLOSED_PERMANENTLY"]);
 const ENRICH_MODE_VALUES = new Set(["full", "analysis", "contents"]);
 
@@ -597,9 +430,8 @@ function checkPlaceProfileField(key: string, v: unknown): string | null {
     case "business_state":
       return v === null || (typeof v === "string" && BUSINESS_STATE_VALUES.has(v)) ? null
         : "business_state must be OPERATIONAL, CLOSED_TEMPORARILY, CLOSED_PERMANENTLY, or null";
-    // place_profiles_reservation_channel_check / place_profiles_order_channel_check
+    // place_profiles_reservation_channel_check
     case "reservation_channel":
-    case "order_channel":
       return v === null || isServingChannel(v) ? null
         : `${key} must be phone, whatsapp, instagram, web, none, or null`;
     default:
@@ -651,94 +483,24 @@ export function validatePlaceProfilePatch(input: unknown): PlaceProfilePatchVali
 // ── places_* field groups (mirrors the live CHECK constraints named) ───────
 
 const PLACE_NOTNULL_STRING_KEYS = new Set<string>(["slug", "currency"]);
-const PLACE_BOOLEAN_KEYS = new Set<string>([
-  "segmentation_basic_enabled", "segmentation_advanced_enabled",
-]);
-// places_promo_rate_legal_values — {10,20,30,40,50}, null allowed.
-const PLACE_RATE_KEYS = new Set<string>([
-  "welcome_free_rate", "welcome_premium_rate", "free_rate", "premium_rate",
-]);
-const PLACE_TIMESTAMP_KEYS = new Set<string>([
-  "staff_channel_pinged_at", "first_ticket_honored_at", "plan_live_at",
-  "last_strike_at", "promo_paused_until", "plan_forfeited_at",
-  "reward_lane_pending_review_at",
-]);
-const RATE_LEGAL_VALUES = [10, 20, 30, 40, 50] as const;
-const SIX_DIGIT_PIN_RE = /^[0-9]{6}$/;
 
 const STATE_VALUES = new Set([
   "lead", "active", "paused", "archived", "pending_review", "pending_verification",
 ]);
-const LISTING_TYPE_VALUES = new Set(["partner", "web", "unclaimed"]);
-const PLAN_VALUES = new Set(["free", "pro", "ultra"]);
-const FISCAL_TYPE_VALUES = new Set(["formal", "informal"]);
 const CONTENT_STATE_VALUES = new Set(["queued", "generating", "ready", "failed"]);
 
 function checkPlaceField(key: string, v: unknown): string | null {
   if (PLACE_NOTNULL_STRING_KEYS.has(key)) {
     return isNonEmptyString(v) ? null : `${key} must be a non-empty string`;
   }
-  if (PLACE_BOOLEAN_KEYS.has(key)) {
-    return isBoolean(v) ? null : `${key} must be a boolean`;
-  }
-  if (PLACE_RATE_KEYS.has(key)) {
-    return isNullableLegalSet(v, RATE_LEGAL_VALUES) ? null
-      : `${key} must be null or one of ${RATE_LEGAL_VALUES.join(", ")}`;
-  }
-  if (key === "claimed_by") {
-    return isNullableString(v) ? null : "claimed_by must be a uuid string or null";
-  }
-  if (key === "claimed_at") {
-    return isNullableString(v) ? null : "claimed_at must be an ISO timestamp string or null";
-  }
-  if (PLACE_TIMESTAMP_KEYS.has(key)) {
-    return isNullableString(v) ? null : `${key} must be an ISO timestamp string or null`;
-  }
   switch (key) {
     // Postgres enum columns — NOT NULL at the type level.
     case "state":
       return isNonNullEnum(v, STATE_VALUES) ? null
         : `state must be one of ${[...STATE_VALUES].join(", ")}`;
-    case "listing_type":
-      return isNonNullEnum(v, LISTING_TYPE_VALUES) ? null
-        : `listing_type must be one of ${[...LISTING_TYPE_VALUES].join(", ")}`;
-    case "plan":
-      return isNonNullEnum(v, PLAN_VALUES) ? null
-        : `plan must be one of ${[...PLAN_VALUES].join(", ")}`;
-    case "fiscal_type":
-      return isNonNullEnum(v, FISCAL_TYPE_VALUES) ? null
-        : `fiscal_type must be one of ${[...FISCAL_TYPE_VALUES].join(", ")}`;
     case "content_state":
       return isNonNullEnum(v, CONTENT_STATE_VALUES) ? null
         : `content_state must be one of ${[...CONTENT_STATE_VALUES].join(", ")}`;
-    // places_monthly_promo_cap_legal_values
-    case "monthly_promo_cap":
-      return isNullableLegalSet(v, DISCOUNT_CAPS_MXN) ? null
-        : `monthly_promo_cap must be null or one of ${DISCOUNT_CAPS_MXN.join(", ")}`;
-    // places_reward_cap_cents_check
-    case "discount_cap_cents":
-      return isNullableNonNegInt(v) ? null : "discount_cap_cents must be a non-negative integer, or null";
-    // places_strike_count_range — NOT NULL
-    case "strike_count":
-      return isIntInRange(v, 0, 3) ? null : "strike_count must be an integer between 0 and 3";
-    // places_check_pin_format
-    case "check_pin":
-      return isNullableRegex(v, SIX_DIGIT_PIN_RE) ? null
-        : `${key} must be exactly 6 digits, or null`;
-    // places.partnered is NOT NULL DEFAULT false — there is no "unknown".
-    case "partnered":
-      return isBoolean(v) ? null : "partnered must be a boolean";
-    case "legal_name":
-    case "stripe_billing_customer_id":
-      return isNullableString(v) ? null : `${key} must be a string or null`;
-    // places_rfc_shape. The regex is NOT restated here: `_shared/place-rfc.ts`
-    // is the one rule, and the CHECK constraint states the same shape in SQL.
-    // A patch must carry an ALREADY-normalized value — a writer that skips
-    // normalizeRfc gets a 400 here rather than a row the unique index cannot
-    // see as a twin.
-    case "rfc":
-      return v === null || (typeof v === "string" && isShapedRfc(v)) ? null
-        : "rfc must be a normalized Mexican RFC, or null";
     default:
       return `unknown place-row field: ${key}`;
   }
@@ -785,15 +547,6 @@ export function validateProfilePatch(input: unknown): ProfilePatchValidation {
   const raw = input as Record<string, unknown>;
   const patch: Record<string, unknown> = {};
   for (const key of Object.keys(raw)) {
-    // Places-only keys: the profiles_update trigger predates these columns
-    // and would silently drop them — refuse loudly (see PLACE_INTENT_BIT_KEYS).
-    if (PLACE_INTENT_BIT_KEYS.has(key)) {
-      return {
-        ok: false,
-        error: `${key} writes through table "place_profiles" only — ` +
-          `the profiles trigger would silently drop it`,
-      };
-    }
     const isPlaceProfileKey = (PLACE_PROFILE_PATCH_KEYS as readonly string[]).includes(key);
     const isPlaceRowKey = (PLACE_PATCH_KEYS as readonly string[]).includes(key);
     if (!isPlaceProfileKey && !isPlaceRowKey) {
@@ -842,16 +595,6 @@ export type PlaceWriteArgs =
     patch: PlacePatch;
     select?: string;
     selectMode?: SelectMode;
-    /** Extra guard(s) beyond `id` — an optimistic-concurrency check an
-     * existing call site already runs (e.g. `.eq("plan", planKey)` so a
-     * revoke doesn't clobber a plan that changed underneath it).
-     *
-     * A `null` value means IS NULL, not `= null`: PostgREST renders
-     * `.eq(col, null)` as `col=eq.null`, which matches no row, so a claim
-     * guarded on "this place is still unclaimed" would silently never
-     * apply. business-web-claim-place depended on this (retired,
-     * MESITA-2090). */
-    guard?: Record<string, string | null>;
   }
   | {
     table: "profiles";
@@ -923,14 +666,7 @@ export async function writePlace(
   }
 
   // mode === "update"
-  let updateBuilder = admin.from(args.table).update(validated.patch).eq("id", args.id);
-  if (args.table === "places" && args.guard) {
-    for (const [col, val] of Object.entries(args.guard)) {
-      updateBuilder = val === null
-        ? updateBuilder.is(col, null)
-        : updateBuilder.eq(col, val);
-    }
-  }
+  const updateBuilder = admin.from(args.table).update(validated.patch).eq("id", args.id);
   if (args.select) {
     const withSelect = updateBuilder.select(args.select);
     const { data, error } = selectMode === "maybeSingle"

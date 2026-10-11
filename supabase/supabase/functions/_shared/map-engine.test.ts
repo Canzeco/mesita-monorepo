@@ -194,11 +194,11 @@ Deno.test("evaluatePlaceForMap respects the Super params and floors", () => {
 
 Deno.test("admitSwipeCatalog keeps listed F&B and spas, drops hotels, never Google", () => {
   const listed = [
-    { id: "rest", category: "mexican_restaurant", listing_type: "web" as const },
-    { id: "bar", category: "bar", listing_type: "partner" as const },
-    { id: "hotel", category: "hotel", listing_type: "web" as const },
-    { id: "spa", category: "spa", listing_type: "partner" as const },
-    { id: "unk", category: "undefined", listing_type: "web" as const },
+    { id: "rest", category: "mexican_restaurant" },
+    { id: "bar", category: "bar" },
+    { id: "hotel", category: "hotel" },
+    { id: "spa", category: "spa" },
+    { id: "unk", category: "undefined" },
   ];
   const got = admitSwipeCatalog(listed, MAP);
   assertEquals(got.map((r) => r.id), ["rest", "bar", "spa", "unk"]);

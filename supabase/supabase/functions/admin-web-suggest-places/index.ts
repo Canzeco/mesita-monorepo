@@ -2,7 +2,7 @@
 //
 // Manage Single Place name bar. Same Name Deep Search engine as consumer
 // Search (`runConsumerSearchLane`, mode deep): Autocomplete + Text Search
-// + Lineup Name, then Partners → Mesita → Google after dropping overlaps.
+// + Lineup Name, then Mesita → Google after dropping overlaps.
 // Super-admin gated.
 //
 // Auth: caller's JWT email must be in public.super_admins.

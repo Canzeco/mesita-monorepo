@@ -61,7 +61,6 @@ Deno.serve(async (req) => {
     admin,
     callerName: "consumer-web-create-place",
     googlePlaceId,
-    dedupeError: "This place is already on Mesita.",
     queueEnrich: false,
   });
   if (!created.ok) return json(created.body, created.status);

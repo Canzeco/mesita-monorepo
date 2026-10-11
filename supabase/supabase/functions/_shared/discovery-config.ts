@@ -1,7 +1,7 @@
 // Discovery config — the operator's half of the ranking model (Docs ›
 // Discovery §A, MESITA-1196).
 //
-// Keys: weights · weightsByMode · params · slotting · filters · engines · general · catalog · map · name · social · chat · swipe.
+// Keys: weights · weightsByMode · params · filters · engines · general · catalog · map · name · social · chat · swipe.
 // Admin: Modes (Word, Map and Scroll live, each with its own weight column) ·
 // Sources (Google types, three Google boxes, Places Lineup, Socials Soon).
 // `params` rides with `weights` — same Lineup table, different numbers.
@@ -12,8 +12,6 @@
 //              Scroll are the two that rank, so they are the two columns.
 //   params     shape numbers. The console edits maxKm and closedFloor;
 //              the rest stay on the blob as the function's defaults.
-//   slotting   the bought lane: whether promoting places get slots at all, and
-//              how often. A position pass, not the Promotion weight.
 //   filters    what may ENTER the pool at all. The counterpart to a signal, and
 //              the distinction is the whole reason both exist: a SIGNAL
 //              DEMOTES, a FILTER EXCLUDES. A signal can only ever reorder
@@ -173,10 +171,9 @@ export type SuperParamKey = (typeof SUPER_PARAM_KEYS)[number];
 
 /**
  * Map pool policy. Closest N of the selected Places set, then paint.
- * THREE NESTED SETS (Pato, 2026-09-05):
- *   Google Places ⊃ Mesita Enriched Places ⊃ Mesita Partner Places
- * Enrichment gates every Mesita ring, so a partner has to be enriched to
- * sit inside the enriched one. N is `pinCount`, an OPERATOR number since
+ * TWO NESTED SETS:
+ *   Google Places ⊃ Mesita Enriched Places
+ * Enrichment gates the Mesita ring. N is `pinCount`, an OPERATOR number since
  * MESITA-1699 — the guest's Filters sheet is gone and its three controls
  * live here and on Search Sources. Floors still exclude; 0 = off.
  */
@@ -213,8 +210,8 @@ export type MapConfig = {
 /**
  * Name = two Search-bar boxes. Map Filters never cut this list.
  *   Fast  Autocomplete. googleCount + count (same cap — count is symmetry).
- *   Deep  Four query caps, then concat. Autocomplete → Text → Mesita Places
- *         → Mesita Partners. Overlaps drop. googleCount is Text Search.
+ *   Deep  Three query caps, then concat. Autocomplete → Text → Mesita
+ *         Places. Overlaps drop. googleCount is Text Search.
  */
 export type NameFastConfig = {
   /** Redundant with count on Fast — one source. Locked together. */
@@ -224,7 +221,6 @@ export type NameFastConfig = {
 };
 
 export type NameDeepConfig = {
-  partnerCount: number;
   mesitaCount: number;
   /** Google Autocomplete cap. Independent query. */
   autoCount: number;
@@ -300,10 +296,6 @@ export type DiscoveryConfig = {
    */
   weightsByMode: Record<WeightedModeKey, Record<SignalKey, number>>;
   params: SignalParams;
-  slotting: {
-    enabled: boolean;
-    everyNth: number;
-  };
   filters: DiscoveryFilters;
   engines: Record<WiredEngineKey, { ranked: boolean }>;
   general: GeneralConfig;
@@ -358,16 +350,8 @@ export const WEIGHT_MAX = 4;
 /**
  * Per-signal ceilings, for the signals the uniform WEIGHT_MAX is wrong for.
  *
- * The 4 above is reasoned from a signal that floors around 0.85. The two
- * binaries MESITA-1858 split `mesita_level` into floor far below that, so the
- * same exponent means something else entirely:
- *
- *   partnered  floors at PARTNERED_OFF = 0.2 → the partner-over-free ratio is
- *              (1 / 0.2)^w = 5^w.
- *
- *                w = 1        5x
- *                w = 2       25x        the ceiling carried here
- *                w = 4      625x        the uniform WEIGHT_MAX
+ * The 4 above is reasoned from a signal that floors around 0.85. `enriched`
+ * floors far below that, so the same exponent means something else entirely:
  *
  *   enriched   floors at ENRICHED_OFF = 0.15 → (1 / 0.15)^w ≈ 6.67^w.
  *
@@ -375,44 +359,26 @@ export const WEIGHT_MAX = 4;
  *                w = 2       44x         the ceiling carried here
  *                w = 4    1,975x         the uniform WEIGHT_MAX
  *
- * WHY THE CAP IS CARRIED BY NAME (MESITA-1858). This map is keyed on the exact
- * string `mesita_level` used to be. Deleting that key without adding the new
- * ones would not fail anything — money's exponent ceiling would silently
- * DOUBLE from 2 to the general 4 on merge day, and the one test guarding this
- * map iterated `Object.entries` and would have gone vacuous rather than red.
- * That test now asserts the map is non-empty and pins `partnered` by name.
- *
- * WHY 2 FOR PARTNERED (Pato, MESITA-1410, carried). The decision was that an
- * operator must not be able to turn money into a filter from the console: at
- * the uniform ceiling the floor rung is erased from ranking regardless of any
- * other signal, which is pay-to-win rather than a tunable importance weight.
- * NOTE THE ARITHMETIC MOVED UNDER IT: MESITA-1410 reasoned from a floor of
- * 0.04, where w=2 bought a 625x span. `partnered` floors at 0.2, so w=2 now
- * buys only 25x and the uniform 4 is what reproduces the 625x Pato approved.
- * Carrying the 2 is the money-CONSERVATIVE reading and is one number to
- * reverse; inferring a looser ceiling from a superseded comment is not.
- *
- * WHY 2 FOR ENRICHED (MESITA-1858, the issue asked for this to be decided and
- * recorded). By the WEIGHT_MAX comment's own test — "past that the signal is
- * not important, it is a filter" — enrichment is filter-shaped well before 4:
- * at the uniform ceiling an unenriched place is demoted ~2,000x, which is a
+ * WHY 2 (MESITA-1858, the issue asked for this to be decided and recorded).
+ * By the WEIGHT_MAX comment's own test — "past that the signal is not
+ * important, it is a filter" — enrichment is filter-shaped well before 4: at
+ * the uniform ceiling an unenriched place is demoted ~2,000x, which is a
  * catalog filtered to enriched-only wearing a weight's clothing. Raising a
  * ceiling later is a one-number change that cannot break a stored blob;
  * discovering after the fact that the catalog was filtered is not.
+ *
+ * THE TEST THAT GUARDS THIS MAP pins `enriched` by name and asserts the map
+ * is non-empty. A loop over `Object.entries` alone goes vacuous, not red, the
+ * day the map is emptied.
  */
 export const SIGNAL_WEIGHT_MAX: Partial<Record<SignalKey, number>> = {
   enriched: 2,
-  partnered: 2,
 };
 
 /** The ceiling that actually applies to one signal's exponent. */
 export function weightMaxFor(key: SignalKey): number {
   return SIGNAL_WEIGHT_MAX[key] ?? WEIGHT_MAX;
 }
-
-/** Bought slots can never be denser than every other card. */
-export const SLOT_MIN_EVERY_NTH = 2;
-export const SLOT_MAX_EVERY_NTH = 50;
 
 export const MIN_RATING_MAX = 5;
 /** A radius past this is not a filter, it is the whole catalog. */
@@ -462,7 +428,6 @@ export function snapMapReloadPair(
 
 export const NAME_LANE_COUNT_MAX = 20;
 export const NAME_FAST_COUNT_DEFAULT = 5;
-export const NAME_PARTNER_COUNT_DEFAULT = 3;
 export const NAME_MESITA_COUNT_DEFAULT = 3;
 export const NAME_GOOGLE_COUNT_DEFAULT = 3;
 export const NAME_DEEP_COUNT_DEFAULT = 9;
@@ -537,7 +502,6 @@ export const DEFAULT_NAME_FAST: NameFastConfig = {
 };
 
 export const DEFAULT_NAME_DEEP: NameDeepConfig = {
-  partnerCount: NAME_PARTNER_COUNT_DEFAULT,
   mesitaCount: NAME_MESITA_COUNT_DEFAULT,
   autoCount: NAME_GOOGLE_COUNT_DEFAULT,
   googleCount: NAME_GOOGLE_COUNT_DEFAULT,
@@ -568,16 +532,6 @@ export const DEFAULT_SWIPE: SwipeConfig = {
 };
 
 /**
- * Defaults: every earned signal at 1 — its own number, unmodified — except
- * Randomness, which ships at 0.35 so it softens into a tiebreak instead of
- * shuffling the deck. Starting flat is the honest position: nothing has been
- * measured yet, and a fabricated weighting would look like a finding.
- *
- * Slotting ships ENABLED at every 5th card. Zero would be a lie about the
- * business — places do buy strategies today — and shipping it off would make
- * the bought lane dead code nobody notices is broken.
- */
-/**
  * Default shape numbers. These are the same constants the signal functions
  * fall back to, so a blob with no `params` scores identically to yesterday.
  */
@@ -601,11 +555,10 @@ export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
   },
   name: { unembedded: NAME_UNEMBEDDED },
   summary: { unembedded: SUMMARY_UNEMBEDDED },
-  // Zero params each, exactly as `mesita_level` had — the off-values live as
-  // file-level constants in discovery-signals.ts. Promoting a constant to a
+  // Zero params, exactly as `mesita_level` had — the off-value lives as a
+  // file-level constant in discovery-signals.ts. Promoting a constant to a
   // console dial later is additive; taking a dial back is not.
   enriched: {},
-  partnered: {},
   randomness: {},
 };
 
@@ -646,10 +599,15 @@ export const SIGNAL_PARAM_BOUNDS: Record<
     unembedded: { min: 0, max: 1, decimals: 2 },
   },
   enriched: {},
-  partnered: {},
   randomness: {},
 };
 
+/**
+ * Defaults: every earned signal at 1 — its own number, unmodified — except
+ * Randomness, which ships at 0.35 so it softens into a tiebreak instead of
+ * shuffling the deck. Starting flat is the honest position: nothing has been
+ * measured yet, and a fabricated weighting would look like a finding.
+ */
 const DEFAULT_WEIGHTS: Record<SignalKey, number> = {
   proximity: 1,
   timing: 1,
@@ -658,7 +616,6 @@ const DEFAULT_WEIGHTS: Record<SignalKey, number> = {
   name: 1,
   summary: 1,
   enriched: 1,
-  partnered: 1,
   randomness: 0.35,
 };
 
@@ -679,10 +636,6 @@ export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
   weights: DEFAULT_WEIGHTS,
   weightsByMode: DEFAULT_WEIGHTS_BY_MODE,
   params: DEFAULT_SIGNAL_PARAMS,
-  slotting: {
-    enabled: true,
-    everyNth: 5,
-  },
   /**
    * `requireReady` ships ON because it is already the shipped behaviour —
    * MESITA-1228 hardcoded it into Map and Swipe. Adopting a live gate at its
@@ -882,9 +835,6 @@ export function normalizeNameConfig(raw: unknown): NameConfig {
       supers: normalizeSuperParams(fast.supers, fast.types),
     },
     deep: {
-      partnerCount: Math.round(
-        num(deep.partnerCount, DEFAULT_NAME_DEEP.partnerCount, 0, NAME_LANE_COUNT_MAX),
-      ),
       mesitaCount: Math.round(
         num(deep.mesitaCount, DEFAULT_NAME_DEEP.mesitaCount, 0, NAME_LANE_COUNT_MAX),
       ),
@@ -951,19 +901,19 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
 
 /**
  * Retired signal keys an old blob may still carry, and what each one now
- * means. Read for ONE RELEASE, then deleted.
+ * means.
  *
- *   semantic      → summary       (MESITA-1408, the Semantic split)
- *   mesita_level  → enriched AND partnered   (MESITA-1858, the binary split)
+ *   semantic      → summary    (MESITA-1408, the Semantic split)
+ *   mesita_level  → enriched   (MESITA-1858)
  *
- * Mesita Level folds onto BOTH halves because it was both facts at once: an
- * operator who turned it up meant "where the place sits with us matters more",
- * and dropping their number back to the default 1 on either half would be a
- * silent re-tune. An explicitly-set new key always wins over the alias.
+ * An operator who turned Mesita Level up meant "where the place sits with us
+ * matters more", and `enriched` is the one signal left that reads that, so
+ * their number lands there rather than falling back to the default 1. An
+ * explicitly-set new key always wins over the alias.
  */
 export const LEGACY_SIGNAL_ALIASES: Record<string, readonly SignalKey[]> = {
   semantic: ["summary"],
-  mesita_level: ["enriched", "partnered"],
+  mesita_level: ["enriched"],
 };
 
 const warnedLegacyKeys = new Set<string>();
@@ -1004,8 +954,8 @@ export function foldLegacySignalBag(
         scope,
         value,
         foldedTo,
-        // The stored blob keeps the legacy key (the normalizers are additive
-        // for this release) — this says it was READ, not that it was dropped.
+        // The stored blob keeps the legacy key (the weights map is additive)
+        // — this says it was READ, not that it was dropped.
         preserved: scope === "weights",
       });
     }
@@ -1017,15 +967,16 @@ export function foldLegacySignalBag(
  * Tolerant read: any missing or invalid key falls back to its default, and
  * every key in SIGNAL_KEYS is written.
  *
- * THE WEIGHTS MAP IS ADDITIVE FOR ONE RELEASE (MESITA-1858). It used to be
- * rebuilt from SIGNAL_KEYS alone, which dropped anything else. That is fine
- * when both halves of the system agree on the key list and catastrophic while
- * they do not: web-admin auto-deploys on merge and Edge Functions deploy by
- * hand, so between the two an operator saving ANY unrelated section (the Chat
- * prompt) would evict `mesita_level` from the blob and the still-old EF would
- * read a deliberately-set 2 back as the default 1 — money silently halving,
- * with nothing in any log. Preserving unknown weight keys costs one loop and
- * closes the window. Delete this, and LEGACY_SIGNAL_ALIASES, one release out.
+ * THE WEIGHTS MAP IS ADDITIVE (MESITA-1858). It used to be rebuilt from
+ * SIGNAL_KEYS alone, which dropped anything else. That is fine when both
+ * halves of the system agree on the key list and catastrophic while they do
+ * not: web-admin auto-deploys on merge and Edge Functions deploy by hand, so
+ * between the two an operator saving ANY unrelated section (the Chat prompt)
+ * would evict a key the still-old EF reads, and it would read a
+ * deliberately-set number back as its default with nothing in any log.
+ * Preserving unknown weight keys costs one loop and closes the window. An
+ * unknown key binds to no signal — `blend` iterates SIGNAL_KEYS — so what it
+ * keeps is inert storage, never a live weight.
  *
  * Exponents are rounded to two decimals. The admin field steps in 0.05 and a
  * float landing at 1.7000000000000002 would make the page permanently `dirty`
@@ -1035,7 +986,6 @@ export function foldLegacySignalBag(
 export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
   const r = (raw ?? {}) as Record<string, unknown>;
   const rawWeights = foldLegacySignalBag((r.weights ?? {}) as Record<string, unknown>);
-  const rawSlotting = (r.slotting ?? {}) as Record<string, unknown>;
 
   const weights: Record<string, number> = {};
   // Unknown keys first, so a known key always overwrites a stale one.
@@ -1112,17 +1062,6 @@ export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
     weights: weights as Record<SignalKey, number>,
     weightsByMode,
     params,
-    slotting: {
-      enabled: bool(rawSlotting.enabled, DISCOVERY_DEFAULTS.slotting.enabled),
-      everyNth: Math.round(
-        num(
-          rawSlotting.everyNth,
-          DISCOVERY_DEFAULTS.slotting.everyNth,
-          SLOT_MIN_EVERY_NTH,
-          SLOT_MAX_EVERY_NTH,
-        ),
-      ),
-    },
     filters: {
       requireReady: bool(rawFilters.requireReady, DISCOVERY_DEFAULTS.filters.requireReady),
       // Rounded to one decimal: Google stars are one-decimal values, and a

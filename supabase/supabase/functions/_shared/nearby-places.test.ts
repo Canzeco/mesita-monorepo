@@ -11,7 +11,6 @@ import {
   parsePlacesScope,
   dropKnownMesitaGoogleHits,
   isEnrichedListedRow,
-  keepListedForScope,
   listedGooglePlaceIds,
   lanesForPlacesScope,
   mergeNearbyCatalog,
@@ -117,12 +116,11 @@ Deno.test("mergeNearbyCatalog: drops bbox-corner rows past the 50 km circle", ()
 });
 
 Deno.test("mergeNearbyCatalog: closest-N only — the ring cut happens upstream", () => {
-  // The Places ring is applied by keepListedForScope BEFORE the merge, so
-  // this function stays a pure closest-N: the closest rows handed to it
-  // win regardless of plan.
+  // The Places ring is applied by isEnrichedListedRow BEFORE the merge, so
+  // this function stays a pure closest-N: the closest rows handed to it win.
   const mesita = [
-    { id: "np-close", plan: "free", google_place_id: "np", lat: 25.67005, lng: -100.30005 },
-    { id: "p-far", plan: "pro", google_place_id: "p", lat: 25.8, lng: -100.3 },
+    { id: "np-close", google_place_id: "np", lat: 25.67005, lng: -100.30005 },
+    { id: "p-far", google_place_id: "p", lat: 25.8, lng: -100.3 },
   ];
   const got = mergeNearbyCatalog(mesita, [], CENTER, SCOPE_MESITA);
   assertEquals(
@@ -654,16 +652,17 @@ Deno.test("searchNearbyPlaces: isolate budget skip does not call beforeFanout", 
   }
 });
 
-Deno.test("places scope: three nested sets, named on the wire, widest-Mesita default", () => {
+Deno.test("places scope: two nested sets, named on the wire, Mesita by default", () => {
   // The absent value is the one that matters most: any caller that posts no
-  // scope lands on it, so it must never be the narrowest ring. "mesita" is
-  // the widest Mesita set.
+  // scope lands on it, so it must be the Mesita set, never a paid call.
   assertEquals(parsePlacesScope(undefined), "mesita");
   assertEquals(parsePlacesScope(null), "mesita");
   assertEquals(parsePlacesScope(""), "mesita");
   assertEquals(parsePlacesScope("nope"), "mesita");
   assertEquals(parsePlacesScope({}), "mesita");
-  assertEquals(parsePlacesScope("partners"), "partners");
+  // A scope this EF does not name reads as the default, an old client's
+  // `partners` included.
+  assertEquals(parsePlacesScope("partners"), "mesita");
   assertEquals(parsePlacesScope("MESITA"), "mesita");
   assertEquals(parsePlacesScope(" google "), "google");
   // Legacy ordinals keep their OLD shipped meanings, so a client deployed
@@ -674,8 +673,7 @@ Deno.test("places scope: three nested sets, named on the wire, widest-Mesita def
   assertEquals(parsePlacesScope("2"), "google");
 
   // Lane caps are the GUEST's How many, never a console knob. Only the
-  // Google ring opens the Google lane — the two Mesita rings never do.
-  assertEquals(lanesForPlacesScope("partners", 20), { mesitaCount: 20, googleCount: 0 });
+  // Google ring opens the Google lane — the Mesita ring never does.
   assertEquals(lanesForPlacesScope("mesita", 20), { mesitaCount: 20, googleCount: 0 });
   assertEquals(lanesForPlacesScope("google", 20), { mesitaCount: 20, googleCount: 20 });
   // Google's own Nearby call tops out at 20 however large How many is.
@@ -690,62 +688,19 @@ Deno.test("places scope: three nested sets, named on the wire, widest-Mesita def
   assertEquals(isEnrichedListedRow({}), false);
 });
 
-// THE TEST THAT PROVES THE RINGS ARE REAL.
-//
-// Every live row is plan='pro' AND content_state='ready' (22/22, measured
-// 2026-09-05), so on production-shaped data all three rings hold the same
-// places and a green suite proves nothing. These two cells do not exist in
-// production and are exactly what separates the rings:
-//
-//   partner_not_enriched  pro  + queued  → in NO Mesita ring (gray)
-//   enriched_not_partner  free + ready   → in Enriched, NOT in Partner
-//
-// If either row cannot be constructed, the three rings are not three sets.
-Deno.test("places scope: the three rings return three DIFFERENT sets", () => {
-  const partnerAndEnriched = { id: "pe", plan: "pro", content_state: "ready" };
-  const enrichedNotPartner = { id: "ep", plan: "free", content_state: "ready" };
-  const partnerNotEnriched = { id: "pn", plan: "pro", content_state: "queued" };
-  const stub = { id: "st", plan: "free", content_state: "queued" };
-  const catalog = [partnerAndEnriched, enrichedNotPartner, partnerNotEnriched, stub];
-
-  const ring = (scope: "partners" | "mesita" | "google") =>
-    catalog.filter((row) => keepListedForScope(row, scope)).map((row) => row.id);
-
-  // Enrichment gates EVERY Mesita ring (Pato, 2026-09-05), so an
-  // unenriched partner is in neither — it reads gray until enriched.
-  assertEquals(ring("partners"), ["pe"]);
-  assertEquals(ring("mesita"), ["pe", "ep"]);
-  // A wider ring never shows FEWER Mesita places; Google rows arrive
-  // alongside these, never instead of them.
-  assertEquals(ring("google"), ["pe", "ep"]);
-
-  // Partner ⊂ Enriched — the containment the diagram draws, now enforced.
-  const partners = new Set(ring("partners"));
-  assertEquals(ring("mesita").filter((id) => partners.has(id)), ["pe"]);
-  assertEquals(partners.has("pn"), false);
-
-  // And the sets genuinely differ, which is the whole point of the control.
-  assertEquals(ring("partners").length < ring("mesita").length, true);
-});
-
-Deno.test("places scope: an absent scope returns today's set", () => {
-  // A caller that posts { lat, lng, limit } with no scope must see exactly
-  // the explicit "mesita" set. The deleted mobile app (MESITA-2089) was one;
-  // web's Pay picker sends "mesita" explicitly rather than lean on this.
-  const rows = [
-    { id: "pe", plan: "pro", content_state: "ready" },
-    { id: "ep", plan: "free", content_state: "ready" },
-    { id: "st", plan: "free", content_state: "queued" },
+Deno.test("places scope: every scope admits the same Mesita rows — enriched, never a stub", () => {
+  // Enrichment gates the Mesita ring (Pato, 2026-09-05): a Created stub reads
+  // gray until enriched. The Google scope never shows FEWER Mesita places;
+  // Google rows arrive alongside these, never instead of them.
+  const catalog = [
+    { id: "ready", content_state: "ready" },
+    { id: "stamped", content_state: "queued", enriched_at: "2026-09-01T00:00:00Z" },
+    { id: "stub", content_state: "queued" },
   ];
-  const absent = rows.filter((row) =>
-    keepListedForScope(row, parsePlacesScope(undefined))
-  ).map((row) => row.id);
-  const explicitMesita = rows.filter((row) => keepListedForScope(row, "mesita"))
-    .map((row) => row.id);
-  assertEquals(absent, explicitMesita);
-  assertEquals(absent, ["pe", "ep"]);
-  // The default is never the narrowest ring — that is the whole guard.
-  assertEquals(parsePlacesScope(undefined) === "partners", false);
+  assertEquals(
+    catalog.filter((row) => isEnrichedListedRow(row)).map((row) => row.id),
+    ["ready", "stamped"],
+  );
 });
 
 Deno.test("nearby helpers: known-gid drop still works", () => {

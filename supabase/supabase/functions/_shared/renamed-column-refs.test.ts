@@ -16,12 +16,12 @@
 //   dismiss returned ok:false and operator triage was simply dead.
 //
 // The sibling guard `dropped-table-refs.test.ts` cannot catch either: it
-// matches RELATION names against `.from("x")`, and `.from("visit_tickets")` is
-// perfectly live. The bug is one line lower, in the column list.
+// matches RELATION names against `.from("x")`, and both relations were live.
+// The bug was one line lower, in the column list.
 //
 // WHY THIS MATCHES QUERY SHAPES AND NOT THE BARE WORD. `project_id` is still
 // the deliberate WIRE name in three places that must never be flagged: the
-// document types (TicketDoc, ReservationDoc) and their patch-key sets, the
+// reservation document type (ReservationDoc) and its patch-key set, the
 // write-door patches that `toPlaceIdPatch` translates on the way in, and the
 // JSONB `payload` blobs on consumer_notifications that apps/web-consumer
 // reads. `_shared/place-id.ts` is the one seam where the two names meet. So
@@ -184,6 +184,6 @@ Deno.test("no Edge Function names a retired column in a query", () => {
     [],
     `These name a column the schema no longer has and will throw 42703 at runtime:\n  ${
       offenders.join("\n  ")
-    }\n\nThe live columns are place_id and check_code. Select the real column and, if the caller must keep speaking the old name on the wire, remap the row through _shared/place-id.ts's fromPlaceIdRow().`,
+    }\n\nThe live column is place_id. Select it and, if the caller must keep speaking project_id on the wire, remap the row through _shared/place-id.ts's fromPlaceIdRow().`,
   );
 });

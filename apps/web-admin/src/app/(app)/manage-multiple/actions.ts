@@ -5,8 +5,8 @@ import { createPlaceFromGooglePlaceId as createPlaceFromGooglePlaceIdImpl } from
 
 // ════════════════════════════════════════════════════════════════════════
 // Places — a super-admin drives MANY places at once through the admin-* edge
-// functions. The operator's JWT email is in super_admins, so _shared/auth.ts
-// grants access regardless of place_members.
+// functions. The operator's JWT email is in super_admins, which is the whole
+// gate _shared/auth.ts applies.
 //
 // These lived in the retired per-place admin console (`manage-single`) until
 // it was deleted (MESITA-1588); this page was their only surviving caller, so
@@ -64,15 +64,10 @@ export type PlaceHit = {
   google_stars_overall: number | null;
   google_review_count: number | null;
   content_state: string | null;
-  listing_type: string | null;
   // ── The state facts (labels: Created · Active · Listed · Requested ·
-  //    Enriching · Enriched · Partnered · Rewards ·
-  //    Mesita Pay · Mesita Credits) plus the quick-view commercial block
-  //    (promotion · pickup · delivery). Bools except Requested (0…n),
-  //    Rewards (0|1|2) and promotion (0–7). All derived (or
+  //    Enriching · Enriched). Bools except Requested (0…n). All derived (or
   //    projected) in admin-web-search-places, except Enriching which is
-  //    content_state generating/queued (MESITA-453 whole-pipeline). The
-  //    acceptance bits are stored operator toggles on places.
+  //    content_state generating/queued (MESITA-453 whole-pipeline).
   /** Google Place ID spine — used to match a Mesita Search paste. */
   google_place_id: string | null;
   /** google_place_id present — the identity spine every run starts from. */
@@ -106,24 +101,6 @@ export type PlaceHit = {
    *  the fallback, and it alone cannot show a function that completed AFTER
    *  an earlier one failed, which is exactly the gap this map closes. */
   enrich_functions?: Record<string, EnrichFunctionState> | null;
-  /** plan !== "free" — the place pays Mesita. */
-  partner: boolean;
-  /** Live: paid ∧ strategy above Zero ∧ promo lane open. */
-  promoting: boolean;
-  /** How hard. Engine 0-3; operator display is 0|1|2 (Dominant → 2). */
-  promoting_level: 0 | 1 | 2 | 3;
-  /** places.mesita_pay_enabled — the operator's "accepts Mesita Pay" toggle.
-   *  The gateway engine still gates the rail itself. */
-  mesita_pay: boolean;
-  /** places.credits_enabled — the operator's "accepts Credits" toggle. */
-  credits: boolean;
-  /** places.pickup_orders_enabled — offers pickup orders (intent bit). */
-  pickup: boolean;
-  /** places.delivery_orders_enabled — offers delivery orders (intent bit). */
-  delivery: boolean;
-  /** The Promotion score, 0–7 — offering completeness, shaped server-side
-   *  (promotion-score.ts twins) so the catalog and the Promos bar agree. */
-  promotion: number;
 };
 
 // The search EF only guarantees id/name — every other field may be absent,
@@ -132,7 +109,6 @@ type RawPlaceHit = Pick<PlaceHit, "id" | "name"> & Partial<Omit<PlaceHit, "id" |
 
 function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
   const contentState = raw.content_state ?? null;
-  const listingType = raw.listing_type ?? null;
   return {
     id: raw.id,
     slug: raw.slug ?? null,
@@ -149,11 +125,7 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     google_review_count:
       typeof raw.google_review_count === "number" ? raw.google_review_count : null,
     content_state: contentState,
-    listing_type: listingType,
     enriching: contentState === "generating" || contentState === "queued",
-    // No listing_type fallbacks here any more: it fuses paying and promoting
-    // into one stale enum, so guessing from it would put a wrong flag on
-    // screen rather than an honest "not yet" (MESITA-1152 / MESITA-1166).
     google_place_id: raw.google_place_id ?? null,
     seeded: raw.seeded ?? false,
     listed: raw.listed ?? false,
@@ -186,17 +158,6 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     // the high-water, rather than a fabricated empty map reading as "nothing
     // has run yet".
     enrich_functions: raw.enrich_functions ?? null,
-    partner: raw.partner ?? false,
-    promoting: raw.promoting ?? false,
-    promoting_level: raw.promoting_level ?? 0,
-    mesita_pay: raw.mesita_pay ?? false,
-    credits: raw.credits ?? false,
-    pickup: raw.pickup ?? false,
-    delivery: raw.delivery ?? false,
-    promotion:
-      typeof raw.promotion === "number" && Number.isFinite(raw.promotion)
-        ? raw.promotion
-        : 0,
   };
 }
 

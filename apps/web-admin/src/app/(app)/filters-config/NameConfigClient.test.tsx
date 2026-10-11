@@ -12,7 +12,7 @@ vi.mock("./actions", () => ({
 import { NameConfigClient } from "./NameConfigClient";
 
 describe("Word Search params", () => {
-  it("Fast is Google places + Max results; Deep is four independent queries", () => {
+  it("Fast is Google places + Max results; Deep is three independent queries", () => {
     const html = renderToStaticMarkup(
       <NameConfigClient
         initialConfig={DEFAULT_CONFIG}
@@ -25,13 +25,13 @@ describe("Word Search params", () => {
     expect(html).toContain("Google places");
     expect(html).toContain("Google Autocomplete");
     expect(html).toContain("Google Text Search");
-    expect(html).toContain("Mesita partners");
+    expect(html).not.toContain("Mesita partners");
     expect(html).toContain("Mesita places");
     expect(html).toContain("Word never calls Nearby Search");
     expect(html).not.toContain("Google Places Nearby Search");
     expect(html).toContain("Map Filters never cut this list");
     expect(html).toContain(
-      "Then concat. Autocomplete → Text Search → Mesita Places → Mesita Partners.",
+      "Then concat. Autocomplete → Text Search → Mesita Places.",
     );
     expect(html).toContain("Queries");
     expect(html).not.toContain("Bring");
@@ -57,9 +57,6 @@ describe("Word Search params", () => {
     );
     expect(box(deepHtml, "Google Text Search")).toBeLessThan(
       box(deepHtml, "Mesita places"),
-    );
-    expect(box(deepHtml, "Mesita places")).toBeLessThan(
-      box(deepHtml, "Mesita partners"),
     );
     expect(deepHtml).not.toContain("Max results");
     expect(deepHtml.indexOf("Queries")).toBeLessThan(
