@@ -274,9 +274,7 @@ async function createOne(googleId: string): Promise<Row> {
   return {
     state: "ok",
     name: r.name,
-    detail: r.enrichmentTriggered
-      ? "Created · enrich queued"
-      : "Created · enrich not queued",
+    detail: "Created · not enriched",
     placeId: r.placeId,
   };
 }
