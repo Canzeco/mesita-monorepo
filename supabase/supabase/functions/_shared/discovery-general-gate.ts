@@ -4,10 +4,10 @@
 // unactive places. Only active places." So this runs on what comes BACK from
 // a Google Places query — Autocomplete, Text Search, Nearby — and on the
 // Mesita rows those results resolve to. EVERY LANE THAT QUERIES GOOGLE reads
-// it: Fast, Deep, Map, and the business/admin suggest merge.
+// it: Fast, Deep, Map, and admin's suggest.
 //
 // It is not every MODE, and the difference has bitten a reader already.
-// Catalog, Swipe and the Pay / Home / bbox branch of list-places draw from
+// Catalog, Swipe and the Pay / Home branch of list-places draw from
 // the listed Mesita pool and never call Google, so there is nothing here for
 // them to wipe; `discovery_config.filters` is their floor. list-places gates
 // this behind `if (isNearby)` on purpose and says so at the call site.
@@ -47,11 +47,6 @@ export function isOperational(state: unknown): boolean {
   return typeof state === "string" && state.trim() === OPERATIONAL;
 }
 
-/** True when either knob is doing work — callers skip the fetch when not. */
-export function generalGateActive(general: GeneralConfig): boolean {
-  return general.requireActive || general.minReviews > 0;
-}
-
 /** The whole gate, for one place. */
 export function clearsGeneralGate(
   general: GeneralConfig,
@@ -67,20 +62,6 @@ export function clearsGeneralGate(
     }
   }
   return true;
-}
-
-/** A Mesita row, by its column names. Same gate, different key spelling. */
-export function rowClearsGeneralGate(
-  general: GeneralConfig,
-  row: {
-    business_state?: string | null;
-    google_review_count?: number | null;
-  },
-): boolean {
-  return clearsGeneralGate(general, {
-    businessStatus: row.business_state ?? null,
-    reviewCount: row.google_review_count ?? null,
-  });
 }
 
 /**

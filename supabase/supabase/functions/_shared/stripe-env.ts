@@ -2,14 +2,12 @@
 //
 // Both universes' secrets sit in the EF env at once —
 //   STRIPE_SECRET_KEY_{TEST,LIVE}
-//   STRIPE_WEBHOOK_SECRET_{TEST,LIVE}
-//   STRIPE_CONNECT_WEBHOOK_SECRET_{TEST,LIVE}
+//   STRIPE_PUBLISHABLE_KEY_{TEST,LIVE}
 // — and STRIPE_MODE=test|live picks the active set. Switching universes is
 // then ONE secret change: no key pasting, no window where the platform holds
 // half of one account's credentials and half of the other's. The legacy
-// unsuffixed names (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
-// STRIPE_CONNECT_WEBHOOK_SECRET) stay as a fallback, so an env that predates
-// the split keeps working untouched.
+// unsuffixed names (STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY) stay as a
+// fallback, so an env that predates the split keeps working untouched.
 //
 // Context: the Mesita Account is ONE Stripe account with two universes — its
 // built-in Test mode (acct_1UCK3i…, sk_test_…) and its live mode. There is no
@@ -23,7 +21,7 @@
 //
 //   • STRIPE_MODE defaults to TEST. An unset, misspelled or half-written
 //     value must never be the thing that starts addressing the live account.
-//   • The secret-key resolver NEVER falls through to the other mode's key.
+//   • The candidate names NEVER include the other mode's key.
 //     A missing STRIPE_SECRET_KEY_TEST means "no test key" — it does not mean
 //     "use the live one".
 //
@@ -41,10 +39,6 @@ export const STRIPE_SECRET_KEY_BASE = "STRIPE_SECRET_KEY";
  *  challenge would fail against an intent it cannot see. The server hands the
  *  key down with the client secret it belongs to, so the two can never skew. */
 export const STRIPE_PUBLISHABLE_KEY_BASE = "STRIPE_PUBLISHABLE_KEY";
-export const STRIPE_WEBHOOK_SECRET_BASES = [
-  "STRIPE_WEBHOOK_SECRET",
-  "STRIPE_CONNECT_WEBHOOK_SECRET",
-] as const;
 
 /** Every secret-key name this codebase reads, for "which env vars matter"
  *  displays (admin Controls / API health). Resolution ORDER is mode-dependent
@@ -99,107 +93,14 @@ export function stripePublishableKeyNames(mode: StripeMode): string[] {
   return stripeEnvNames(STRIPE_PUBLISHABLE_KEY_BASE, mode);
 }
 
-/**
- * The active publishable key, or undefined when neither candidate is set.
- *
- * Same no-fallthrough rule as the secret: a missing TEST key means "no test
- * publishable key", never "use the live one". A caller with no key must fail
- * the step rather than send the browser a credential for the other universe.
- */
-export function stripePublishableKey(
-  read: ReadEnv = envRead,
-  mode: StripeMode = stripeMode(read),
-): string | undefined {
-  for (const name of stripePublishableKeyNames(mode)) {
-    const key = value(read, name);
-    if (key) return key;
-  }
-  return undefined;
-}
-
-/** Does the publishable key address the universe STRIPE_MODE claims? The
- *  twin of stripeKeyMatchesMode, and the one that matters most on this key:
- *  it is the only Stripe credential that reaches a browser. */
+/** Does the publishable key address the universe STRIPE_MODE claims? It
+ *  matters most on this key: it is the only Stripe credential that reaches a
+ *  browser. */
 export function stripePublishableKeyMatchesMode(
   key: string,
   mode: StripeMode,
 ): boolean {
   return key.startsWith("pk_live_") === (mode === "live");
-}
-
-/**
- * The active secret key and the env var it came from, or null when neither
- * candidate is set. The name is worth carrying: every operator-facing message
- * about a mis-set key should name the variable actually in force, not the one
- * that used to be the only option.
- */
-export function resolveStripeSecret(
-  read: ReadEnv = envRead,
-  mode: StripeMode = stripeMode(read),
-): { name: string; key: string } | null {
-  for (const name of stripeSecretKeyNames(mode)) {
-    const key = value(read, name);
-    if (key) return { name, key };
-  }
-  return null;
-}
-
-/** The active Stripe secret key, or undefined. Drop-in for the old
- *  `Deno.env.get("STRIPE_SECRET_KEY")` — same "absent means mock" semantics. */
-export function stripeSecretKey(
-  read: ReadEnv = envRead,
-  mode?: StripeMode,
-): string | undefined {
-  return resolveStripeSecret(read, mode ?? stripeMode(read))?.key ?? undefined;
-}
-
-/** Does the resolved key address the universe STRIPE_MODE claims? A false
- *  here is the MESITA-1422 cell: an sk_live_ key under an env that believes
- *  it is testing. Nothing in this module refuses it — the health probe
- *  reports it. */
-export function stripeKeyMatchesMode(key: string, mode: StripeMode): boolean {
-  return key.startsWith("sk_live_") === (mode === "live");
-}
-
-/**
- * EVERY configured webhook signing secret — both endpoints (platform and
- * Connect), both universes, plus the legacy unsuffixed names — with the
- * active mode's first so the common delivery verifies on the first try.
- *
- * Verification is deliberately wider than the active mode: during a flip the
- * other universe's endpoint keeps delivering for a while, and a 400 there
- * buys a multi-day Stripe retry storm over an event we simply do not want.
- * Verify it, then drop it on the livemode check below with a 200.
- */
-export function stripeWebhookSecrets(
-  read: ReadEnv = envRead,
-  mode: StripeMode = stripeMode(read),
-): string[] {
-  const other: StripeMode = mode === "live" ? "test" : "live";
-  const names: string[] = [];
-  for (const modeOrder of [mode, other]) {
-    for (const base of STRIPE_WEBHOOK_SECRET_BASES) {
-      names.push(`${base}_${modeOrder.toUpperCase()}`);
-    }
-  }
-  names.push(...STRIPE_WEBHOOK_SECRET_BASES);
-
-  const secrets: string[] = [];
-  for (const name of names) {
-    const secret = value(read, name);
-    if (secret && !secrets.includes(secret)) secrets.push(secret);
-  }
-  return secrets;
-}
-
-/** Whether a verified event belongs to the active universe. Stripe stamps
- *  every event with `livemode`; an event from the other universe is a real,
- *  correctly-signed delivery that this deployment must not act on. */
-export function eventMatchesMode(
-  event: { livemode?: boolean | null },
-  mode: StripeMode,
-): boolean {
-  return (event.livemode === true) === (mode === "live");
 }
 
 /**
@@ -247,28 +148,4 @@ export function stripeSecretKeyProblem(
     return `${name} has ${Math.min(...starts)} stray character(s) before the key. The value must START with sk_test_… / sk_live_… — re-paste it with nothing in front.`;
   }
   return `${name} does not look like a Stripe secret key (expected sk_test_… or sk_live_…).`;
-}
-
-/**
- * Did Stripe reject the PLATFORM credential itself?
- *
- * `stripeSecretKeyProblem` above catches a key that is the wrong SHAPE, before
- * Stripe is called. This is its runtime twin: a key can be perfectly shaped and
- * still dead — expired, rolled, revoked, or belonging to another account — and
- * that only surfaces as Stripe's 401 on the first real call.
- *
- * The distinction that matters is WHOSE fault it is. A 401 here is never the
- * merchant's: they cannot expire our key, and they cannot fix it. Stripe's own
- * message ("Expired API Key provided: sk_test_…8QBF1y") both blames them by
- * implication and echoes our credential into their browser — the exact leak the
- * shape guard exists to prevent, arriving through the door it does not cover.
- */
-export function isStripeKeyRejection(err: unknown): boolean {
-  if (typeof err !== "object" || err === null) return false;
-  const e = err as { type?: unknown; rawType?: unknown; code?: unknown; statusCode?: unknown };
-  if (e.type === "StripeAuthenticationError") return true;
-  if (e.code === "api_key_expired") return true;
-  // Nothing else this function calls can 401: the platform key is the only
-  // credential in play on accounts.create.
-  return e.statusCode === 401;
 }

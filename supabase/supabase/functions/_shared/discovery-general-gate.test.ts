@@ -2,9 +2,7 @@ import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
   applyGeneralGateQuery,
   clearsGeneralGate,
-  generalGateActive,
   isOperational,
-  rowClearsGeneralGate,
 } from "./discovery-general-gate.ts";
 import {
   DISCOVERY_DEFAULTS,
@@ -59,7 +57,6 @@ Deno.test("normalize clamps and coerces the two knobs", () => {
 });
 
 Deno.test("both knobs off admits everything, including an unknown row", () => {
-  assert(!generalGateActive(OFF));
   assert(clearsGeneralGate(OFF, { businessStatus: null, reviewCount: null }));
   assert(
     clearsGeneralGate(OFF, {
@@ -70,7 +67,6 @@ Deno.test("both knobs off admits everything, including an unknown row", () => {
 });
 
 Deno.test("requireActive wipes closed AND unknown", () => {
-  assert(generalGateActive(ACTIVE_ONLY));
   assert(clearsGeneralGate(ACTIVE_ONLY, { businessStatus: "OPERATIONAL" }));
   assert(
     !clearsGeneralGate(ACTIVE_ONLY, { businessStatus: "CLOSED_TEMPORARILY" }),
@@ -109,21 +105,6 @@ Deno.test("the knobs are independent — either one alone excludes", () => {
     businessStatus: "CLOSED_TEMPORARILY",
     reviewCount: 900,
   }));
-});
-
-Deno.test("a Mesita row is judged on its own columns — Active off is wiped", () => {
-  // The bug Pato saw: a place the operator switched Active OFF still came
-  // back from search because on-Mesita rows were waved through.
-  assert(!rowClearsGeneralGate(ACTIVE_ONLY, {
-    business_state: "CLOSED_TEMPORARILY",
-    google_review_count: 308,
-  }));
-  assert(rowClearsGeneralGate(ACTIVE_ONLY, {
-    business_state: "OPERATIONAL",
-    google_review_count: 1,
-  }));
-  assert(!rowClearsGeneralGate(ACTIVE_ONLY, {}));
-  assert(rowClearsGeneralGate(OFF, {}));
 });
 
 Deno.test("the gate is the same question as a WHERE clause", () => {

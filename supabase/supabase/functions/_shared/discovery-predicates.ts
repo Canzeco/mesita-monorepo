@@ -4,56 +4,30 @@
 // signals RANK, and a predicate cuts FIRST. Until this module existed only
 // half of that was true. The consumer narrowed the deck in the browser
 // (`lib/discovery-filters-engine.ts`) while the engine had already ranked the
-// whole catalog and sliced the top `limit` — so the four guest predicates ran
+// whole catalog and sliced the top `limit` — so the guest's predicates ran
 // over a 50-row sample, not over the catalog. With a catalog comfortably past
-// the slice, "open now + one family + 2 km" can come back nearly empty while
+// the slice, "one family + a review floor" can come back nearly empty while
 // the catalog holds plenty of matches, and the failure looks exactly like
 // "Mesita has nothing near me". Cutting here, before the blend, is the fix:
 // the slice is then taken from places that already match.
 //
 // THE CLIENT STILL FILTERS. This is not redundancy for its own sake — the deck
 // is fetched by a server component before the guest's filters (sessionStorage)
-// are readable, and deployed Expo binaries never send `predicates` at all. So a
-// pass here must never be STRICTER than the browser's: where this module
-// cannot evaluate a predicate (no center for a radius, an unparseable value)
-// it keeps the row and lets the browser make the call. Being permissive here
-// costs a slightly larger pool; being stricter would delete a match the guest
-// asked for, and nothing downstream could put it back.
+// are readable, so it is sent with no `predicates` at all. So a
+// pass here must never be STRICTER than the browser's: an unparseable value
+// degrades to no predicate and lets the browser make the call. Being
+// permissive here costs a slightly larger pool; being stricter would delete a
+// match the guest asked for, and nothing downstream could put it back.
 //
 // NOT `_shared/discovery-filters.ts` (MESITA-1276), which sits beside this
 // one and is the other kind of cut entirely. That module is OPERATOR pool
 // policy — catalog-wide admission rules a guest never sees and cannot express,
-// pushed into the WHERE clause. This module is the GUEST's own four
-// predicates, which can only ever narrow further inside what the operator
-// already admitted. Two lanes, same "cut before you rank" rule; a knob belongs
-// to exactly one of them, and one is not a place to put the other.
-//
-// One deliberate divergence: "open now" is judged in the place's LOCAL time
-// derived from longitude (`local-time.ts`, which documents why it ignores the
-// `timezone` column) while the browser reads `places.timezone`. Both are
-// DST-aware; they can disagree only for a place whose stored timezone
-// contradicts its coordinates, and the browser's answer wins because it runs
-// last.
+// pushed into the WHERE clause. This module is the GUEST's own predicates,
+// which can only ever narrow further inside what the operator already
+// admitted. Two lanes, same "cut before you rank" rule; a knob belongs to
+// exactly one of them, and one is not a place to put the other.
 
 import { familiesForPlace } from "./place-taxonomy.ts";
-import { haversineKm } from "./geo.ts";
-import { isOpenAt, isOpenNow } from "./local-time-open.ts";
-
-/** Sunday-first, matching JS `getDay()` and the browser's `DiscoveryWhen`. */
-const DAY_KEYS = [
-  "sunday",
-  "monday",
-  "tuesday",
-  "wednesday",
-  "thursday",
-  "friday",
-  "saturday",
-] as const;
-
-export type DeckWhen =
-  | { mode: "anytime" }
-  | { mode: "now" }
-  | { mode: "at"; day: number; hour: number };
 
 export const DECK_REVIEW_STOPS = [0, 10, 100, 1000, 10000] as const;
 
@@ -75,27 +49,20 @@ function clampReviewFloor(value: unknown): number {
 /**
  * The guest's predicates on the wire. Every field is optional: a client
  * that sends none (or no `predicates` at all) gets the whole pool, which is the
- * pre-MESITA-1153 behaviour and what every deployed Expo binary does.
+ * pre-MESITA-1153 behaviour.
  *
  * Web (MESITA-1792) sends Family, Places scope, and Google review floor.
  * Places scope cuts nothing here: every row these pools hold is a Mesita row,
  * and a Mesita row sits in both rings, so only the browser — which also holds
- * Google stubs — has anything to narrow. The retired when/distance fields
- * still cut when a deployed Expo binary posts them.
+ * Google stubs — has anything to narrow.
  */
 export type DeckPredicates = {
   familyKeys: string[];
-  categories: string[];
-  maxKm: number | null;
-  when: DeckWhen;
   minReviews: number;
 };
 
 export const NO_DECK_PREDICATES: DeckPredicates = {
   familyKeys: [],
-  categories: [],
-  maxKm: null,
-  when: { mode: "anytime" },
   minReviews: 0,
 };
 
@@ -110,19 +77,6 @@ function stringList(raw: unknown): string[] {
   return out;
 }
 
-function readWhen(raw: unknown): DeckWhen {
-  if (!raw || typeof raw !== "object") return { mode: "anytime" };
-  const w = raw as Record<string, unknown>;
-  if (w.mode === "now") return { mode: "now" };
-  if (w.mode === "at" && typeof w.day === "number" && typeof w.hour === "number") {
-    if (!Number.isFinite(w.day) || !Number.isFinite(w.hour)) return { mode: "anytime" };
-    const day = ((Math.round(w.day) % 7) + 7) % 7;
-    const hour = Math.min(23, Math.max(0, Math.round(w.hour)));
-    return { mode: "at", day, hour };
-  }
-  return { mode: "anytime" };
-}
-
 /**
  * Sanitize whatever the client sent. Unknown shapes degrade to "no predicate"
  * rather than throwing: a malformed filter must widen the deck, never 400 a
@@ -131,45 +85,21 @@ function readWhen(raw: unknown): DeckWhen {
 export function readDeckPredicates(raw: unknown): DeckPredicates {
   if (!raw || typeof raw !== "object") return NO_DECK_PREDICATES;
   const f = raw as Record<string, unknown>;
-  const maxKm =
-    typeof f.maxKm === "number" && Number.isFinite(f.maxKm) && f.maxKm > 0
-      ? f.maxKm
-      : null;
   return {
     familyKeys: stringList(f.familyKeys),
-    categories: stringList(f.categories),
-    maxKm,
-    when: readWhen(f.when),
     minReviews: clampReviewFloor(f.minReviews),
   };
 }
 
 /** Does this set actually drop rows? Mirrors `hasDiscoveryPredicates`. */
 export function hasDeckPredicates(p: DeckPredicates): boolean {
-  return (
-    p.familyKeys.length > 0 ||
-    p.categories.length > 0 ||
-    p.maxKm !== null ||
-    p.when.mode !== "anytime" ||
-    p.minReviews > 0
-  );
+  return p.familyKeys.length > 0 || p.minReviews > 0;
 }
 
-/** The center distances are measured from — a searched zone or the device fix. */
-export type DeckCenter = { lat: number; lng: number } | null;
-
-function matches(
-  row: Record<string, unknown>,
-  p: DeckPredicates,
-  center: DeckCenter,
-): boolean {
-  // What — OR across the two tiers (super-family or concrete category).
-  if (p.familyKeys.length > 0 || p.categories.length > 0) {
-    const category = typeof row.category === "string" ? row.category : null;
-    const categoryHit = category != null && p.categories.includes(category);
+function matches(row: Record<string, unknown>, p: DeckPredicates): boolean {
+  if (p.familyKeys.length > 0) {
     const families = familiesForPlace(row) as string[];
-    const familyHit = p.familyKeys.some((k) => families.includes(k));
-    if (!categoryHit && !familyHit) return false;
+    if (!p.familyKeys.some((k) => families.includes(k))) return false;
   }
 
   if (p.minReviews > 0) {
@@ -179,26 +109,6 @@ function matches(
       ? row.google_count
       : null;
     if (typeof count !== "number" || count < p.minReviews) return false;
-  }
-
-  // Distance tolerance. With no center we cannot evaluate it at all, so the
-  // row survives and the browser — which always has one — decides.
-  if (p.maxKm !== null && center) {
-    const lat = typeof row.lat === "number" ? row.lat : null;
-    const lng = typeof row.lng === "number" ? row.lng : null;
-    if (lat === null || lng === null) return false;
-    if (haversineKm(center.lat, center.lng, lat, lng) > p.maxKm) return false;
-  }
-
-  // When. No usable hours = cannot confirm open = excluded, the same call the
-  // browser makes; `isOpenAt` / `isOpenNow` return null for that case.
-  if (p.when.mode !== "anytime") {
-    const lng = typeof row.lng === "number" ? row.lng : null;
-    const open =
-      p.when.mode === "at"
-        ? isOpenAt(row.hours, DAY_KEYS[p.when.day], p.when.hour * 60)
-        : isOpenNow(row.hours, lng);
-    if (open !== true) return false;
   }
 
   return true;
@@ -212,8 +122,7 @@ function matches(
 export function applyDeckPredicates<T extends Record<string, unknown>>(
   rows: T[],
   p: DeckPredicates,
-  center: DeckCenter,
 ): T[] {
   if (!hasDeckPredicates(p)) return rows;
-  return rows.filter((row) => matches(row, p, center));
+  return rows.filter((row) => matches(row, p));
 }

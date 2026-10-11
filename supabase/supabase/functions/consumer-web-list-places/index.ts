@@ -12,7 +12,7 @@
 // read here would look like it worked while enforcing nothing. A config that
 // silently falls back is not enforced, which is the house definition of a bug.
 //
-// THREE POST SHAPES:
+// TWO POST SHAPES:
 //   { lat, lng, limit? } — listed nearby (mobile Search). Closest N of
 //     the Mesita Places set. No Google stubs — mobile opens `/place/:id`
 //     and cannot host GooglePlaceSheet.
@@ -45,8 +45,6 @@
 //     name — one place to change, no literal to miss. Google set stays
 //     distance. Listed set Lineup-reorders (Map mask). Google fill is
 //     metered per connecting IP.
-//   { south, west, north, east, limit? } — listed pins inside a camera
-//     rectangle (kept for callers that still send a box).
 //   { limit? } / GET — Pay / Home: global newest-first.
 //
 // Local:  supabase functions serve consumer-web-list-places
@@ -80,7 +78,6 @@ import {
 } from "../_shared/map-engine.ts";
 import {
   applyBboxPredicate,
-  decideBbox,
   decideNearby,
   haversineKm,
   nearbyBbox,
@@ -193,10 +190,6 @@ type ListBody = {
   lat?: number;
   lng?: number;
   radiusKm?: number;
-  south?: number;
-  west?: number;
-  north?: number;
-  east?: number;
 };
 
 type CardRow = {
@@ -230,8 +223,7 @@ Deno.serve(async (req) => {
   // Limit can come from a JSON body (POST from supabase.functions.invoke) or
   // a query string (?limit=… for raw GETs). Body wins if both are present.
   // Geo is POST-only. GET / omitted lat+lng (Pay, Home) stay newest-first.
-  // Nearby (lat+lng) is Search's pool. Optional bbox stays for other callers
-  // but Search does not send it — a tight camera box is how 4 pins shipped.
+  // Nearby (lat+lng) is Search's pool.
   let limit = DEFAULT_LIMIT;
   // A caller that names its own cap keeps it; one that names none takes the
   // operator's `map.pinCount` below. Two different silences, two answers.
@@ -242,7 +234,6 @@ Deno.serve(async (req) => {
   let placesScope: PlacesScope = PLACES_SCOPE_DEFAULT;
   let guestSupers: ReturnType<typeof readGuestFamilyKeys> = [];
   let guestMinReviews = 0;
-  let bboxDecision: ReturnType<typeof decideBbox> = { mode: "none" };
   if (req.method === "POST") {
     const body = await readJsonOr<ListBody>(req, {});
     if (typeof body.limit === "number") {
@@ -259,9 +250,6 @@ Deno.serve(async (req) => {
     placesScope = parsePlacesScope(body.placesScope ?? body.searchPower);
     guestSupers = readGuestFamilyKeys(body.familyKeys);
     guestMinReviews = parseMapMinReviews(body.minReviews);
-    if (nearbyDecision.mode === "none") {
-      bboxDecision = decideBbox(body as Record<string, unknown>);
-    }
   } else {
     const q = Number(new URL(req.url).searchParams.get("limit"));
     if (Number.isFinite(q)) {
@@ -277,21 +265,11 @@ Deno.serve(async (req) => {
       code: "invalid_nearby",
     }, 400);
   }
-  if (bboxDecision.mode === "invalid") {
-    return json({
-      ok: false,
-      error: "bbox needs finite south, west, north, east (south < north)",
-      code: "invalid_bbox",
-    }, 400);
-  }
-  if (bboxDecision.mode === "overspan") {
-    return json({ ok: true, places: [], overspan: true });
-  }
 
   // Nearby pool admission: global operator filters plus Map floors
   // (`discovery_config.map`). Swipe's maxDistanceKm is never applied here —
   // Nearby uses its own large radius + closest N of the selected Places
-  // set. Pay / Home GET and bbox callers keep global filters only. Google
+  // set. Pay / Home GET callers keep global filters only. Google
   // fill is client opt-in AND operator googleFill AND at least one Super on.
   // HOW MANY PINS is `map.pinCount`; HOW MANY GOOGLE ROWS WE BUY is
   // `map.googlePull` (MESITA-1695). Two questions, two knobs. Guest
@@ -334,8 +312,6 @@ Deno.serve(async (req) => {
   // (every public column except the five enrichment-filled jsonb ones), not
   // the full single-place read. Nothing here reads those five; verified
   // against discovery-filters.ts and this file before wiring.
-  const isBbox = !isNearby && bboxDecision.mode === "ok";
-  const wantCount = isBbox;
   const selectCols = googleFill
     ? `${PLACE_CARD_COLUMNS}, google_place_id`
     : PLACE_CARD_COLUMNS;
@@ -343,17 +319,15 @@ Deno.serve(async (req) => {
   const nearbyRadiusKm = nearbyDecision.mode === "ok"
     ? (clientGoogle ? NEARBY_RADIUS_KM : nearbyDecision.radiusKm)
     : NEARBY_RADIUS_KM;
-  const base = supabase
-    .from("profiles")
-    .select(selectCols, wantCount ? { count: "exact" } : undefined);
+  const base = supabase.from("profiles").select(selectCols);
 
   let filtered = applyDiscoveryFilters(base, filters, {
     lat: null,
     lng: null,
   });
   // Discovery › General — the post-Google wipe. SEARCH ONLY, deliberately:
-  // this is the Map lane's answer to "only active places", and Pay / Home /
-  // bbox callers keep `discovery_config.filters` exactly as before
+  // this is the Map lane's answer to "only active places", and Pay / Home
+  // callers keep `discovery_config.filters` exactly as before
   // (the same line `listedMapFilters` draws two statements up).
   if (isNearby) filtered = applyGeneralGateQuery(filtered, cfg.general);
   // Guest Popularity: same SQL gte the General gate uses, so a capped
@@ -375,17 +349,15 @@ Deno.serve(async (req) => {
       filtered,
       nearbyBbox(nearbyDecision.lat, nearbyDecision.lng, nearbyRadiusKm),
     );
-  } else if (bboxDecision.mode === "ok") {
-    filtered = applyBboxPredicate(filtered, bboxDecision.bbox);
   }
 
   // Nearby must not order by created_at. Newest-N drops an old listed
   // place from its lane (and, on web, lets Google paint it as a gray stub).
-  // Pay / Home / bbox keep newest-first.
+  // Pay / Home keep newest-first.
   const page = isNearby
     ? await filtered.limit(scanLimit)
     : await filtered.order("created_at", { ascending: false }).limit(scanLimit);
-  const { data, error, count } = page;
+  const { data, error } = page;
 
   if (error) {
     return json({ ok: false, error: error.message }, 500);
@@ -601,13 +573,5 @@ Deno.serve(async (req) => {
   }
 
   const places = withFamilyKeysList((data ?? []) as unknown as CardRow[]);
-  if (isBbox) {
-    return json({
-      ok: true,
-      places,
-      overspan: false,
-      totalInBox: typeof count === "number" ? count : places.length,
-    });
-  }
   return json({ ok: true, places });
 });

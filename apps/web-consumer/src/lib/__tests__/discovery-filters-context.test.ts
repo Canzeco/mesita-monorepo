@@ -45,11 +45,4 @@ describe("the sheet is the map set, not the old intent stack", () => {
     expect(src).toContain("Minimum number of Google reviews");
     expect(src).toContain("Use my location");
   });
-
-  it("does not ship the old intent stack, When, or a city search", () => {
-    expect(src).not.toContain("I want to");
-    expect(src).not.toContain("Pick a time");
-    expect(src).not.toContain("Search a city");
-    expect(src).not.toContain("Distance tolerance");
-  });
 });

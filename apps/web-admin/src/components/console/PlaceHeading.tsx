@@ -25,22 +25,10 @@
 //
 // The Partner chip (`PartnerPill`) went with the MVP First Stage cut
 // (MESITA-2115): nothing is a partner yet.
-//
-// IT NAMES THE PAGE AS WELL AS THE VIEW (MESITA-1892). Every address under
-// `places/[id]` renders beneath this heading, and four of them are PAGES
-// rather than views — Settings, Products, Customers, Activity, which used to
-// hang off the organization and had an `h1` each. They do not any more: a page
-// body that added its own title would make this the second heading on the
-// screen, so the sub-line answers for both spaces and each page body opens
-// with its lead sentence.
 
 import { usePathname } from "next/navigation";
-import { PlaceStateBadge } from "@/components/console/badges";
+import { ListedBadge } from "@/components/console/badges";
 import { PLACE_TAB_LABEL, placeTabFromPathname } from "@/lib/place-tabs";
-import {
-  PLACE_PAGE_LABEL,
-  placePageFromPathname,
-} from "@/lib/console-routes";
 
 export function PlaceHeading({
   name,
@@ -54,17 +42,7 @@ export function PlaceHeading({
   // copy of the bare-means-Profile rule; a routing rule written twice is one
   // copy too many, and the bare URL redirects now rather than rendering.
   const tab = placeTabFromPathname(pathname);
-  const page = placePageFromPathname(pathname);
-  // EVERY PLACE ADDRESS NAMES ITSELF AGAIN (MESITA-1900). `products/terminal`
-  // was the one that could not: `placePageFromPathname` answers "products" for
-  // `products/pay` (the sub-step reads as its page) and answered null for
-  // Terminal, so the heading had to special-case it. Terminal is gone and the
-  // special case with it.
-  const viewLabel = tab
-    ? PLACE_TAB_LABEL[tab]
-    : page
-      ? PLACE_PAGE_LABEL[page]
-      : null;
+  const viewLabel = tab ? PLACE_TAB_LABEL[tab] : null;
 
   return (
     <div className="flex flex-col gap-1">
@@ -77,7 +55,7 @@ export function PlaceHeading({
         >
           {name}
         </h1>
-        {listed ? <PlaceStateBadge state="listed" /> : null}
+        {listed ? <ListedBadge /> : null}
       </div>
       {/* Which view you are in. The rail says it too, but the rail is a menu
           and this is the page — a title that does not name the page it titles

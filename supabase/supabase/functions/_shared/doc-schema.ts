@@ -51,15 +51,6 @@ export function bool(): Schema<boolean> {
   };
 }
 
-export function literal<T extends string>(want: T): Schema<T> {
-  return {
-    parse: (raw) =>
-      raw === want
-        ? { ok: true, value: want }
-        : { ok: false, error: `expected literal ${JSON.stringify(want)}` },
-  };
-}
-
 export function enumOf<T extends readonly [string, ...string[]]>(
   values: T,
 ): Schema<T[number]> {

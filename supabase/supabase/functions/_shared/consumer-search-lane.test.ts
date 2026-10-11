@@ -12,8 +12,6 @@ import {
   locationTypeOf,
   mergeNameDeepQueries,
   orderDeepLineup,
-  splitResolvedNameHits,
-  stripPlacesPrefix,
   takeFastLane,
   toWire,
   weaveStampedAutocomplete,
@@ -21,7 +19,7 @@ import {
   type ListedRow,
 } from "./consumer-search-lane.ts";
 import { DISCOVERY_DEFAULTS } from "./discovery-config.ts";
-import { weightsForMode } from "./discovery-matrix.ts";
+import { stripPlacesPrefix } from "./google-places.ts";
 import { SIGNAL_KEYS, type SignalKey } from "./discovery-signals.ts";
 import { CRENUP_TOTAL } from "./crenup-ladder.ts";
 
@@ -89,15 +87,6 @@ Deno.test("applyResolvedMesitaName keeps Mesita places.name, not the Google labe
   assertEquals(out.secondaryText, "Mesita address");
   assertEquals(out.mesitaId, "m-1");
   assertEquals(out.enriched, true);
-});
-
-Deno.test("splitResolvedNameHits buckets after resolve, before merge", () => {
-  const out = splitResolvedNameHits([
-    item({ placeId: "m1", mainText: "Listed", mesitaId: "m-1" }),
-    item({ placeId: "g1", mainText: "Google" }),
-  ]);
-  assertEquals(out.mesita.map((p) => p.mainText), ["Listed"]);
-  assertEquals(out.google.map((p) => p.mainText), ["Google"]);
 });
 
 Deno.test("mergeNameDeepQueries: Autocomplete then Text then Mesita", () => {
@@ -196,69 +185,46 @@ Deno.test("stripPlacesPrefix drops the Places API resource prefix", () => {
   assertEquals(stripPlacesPrefix("ChIJ123"), "ChIJ123");
 });
 
-Deno.test("deepModuleFlags: types off skip Autocomplete and Text Search", () => {
-  assertEquals(
-    deepModuleFlags({
-      autoCount: 3,
-      mesitaCount: 3,
-      googleCount: 3,
-      typesOn: false,
-      hasOpenai: true,
-    }),
-    { wantAuto: false, wantText: false, wantMesita: true },
-  );
-});
-
-Deno.test("deepModuleFlags: googleCount 0 keeps Autocomplete, skips Text Search", () => {
-  assertEquals(
-    deepModuleFlags({
-      autoCount: 3,
-      mesitaCount: 3,
-      googleCount: 0,
-      typesOn: true,
-      hasOpenai: true,
-    }),
-    { wantAuto: true, wantText: false, wantMesita: true },
-  );
-});
-
-Deno.test("deepModuleFlags: autoCount 0 skips Autocomplete, keeps Text Search", () => {
-  assertEquals(
-    deepModuleFlags({
-      autoCount: 0,
-      mesitaCount: 3,
-      googleCount: 3,
-      typesOn: true,
-      hasOpenai: true,
-    }),
-    { wantAuto: false, wantText: true, wantMesita: true },
-  );
-});
-
-Deno.test("deepModuleFlags: no OpenAI skips Lineup", () => {
-  assertEquals(
-    deepModuleFlags({
-      autoCount: 3,
-      mesitaCount: 3,
-      googleCount: 3,
-      typesOn: true,
-      hasOpenai: false,
-    }),
-    { wantAuto: true, wantText: true, wantMesita: false },
-  );
-});
-
-Deno.test("deepModuleFlags: all lanes on fire all three modules", () => {
-  assertEquals(
-    deepModuleFlags({
-      autoCount: 3,
-      mesitaCount: 3,
-      googleCount: 3,
-      typesOn: true,
-      hasOpenai: true,
-    }),
-    { wantAuto: true, wantText: true, wantMesita: true },
-  );
+Deno.test("deepModuleFlags: which Deep modules fire", () => {
+  const on = {
+    autoCount: 3,
+    mesitaCount: 3,
+    googleCount: 3,
+    typesOn: true,
+    hasOpenai: true,
+  };
+  const cases: Array<
+    [string, Partial<typeof on>, ReturnType<typeof deepModuleFlags>]
+  > = [
+    ["types off skip Autocomplete and Text Search", { typesOn: false }, {
+      wantAuto: false,
+      wantText: false,
+      wantMesita: true,
+    }],
+    ["googleCount 0 keeps Autocomplete, skips Text Search", { googleCount: 0 }, {
+      wantAuto: true,
+      wantText: false,
+      wantMesita: true,
+    }],
+    ["autoCount 0 skips Autocomplete, keeps Text Search", { autoCount: 0 }, {
+      wantAuto: false,
+      wantText: true,
+      wantMesita: true,
+    }],
+    ["no OpenAI skips Lineup", { hasOpenai: false }, {
+      wantAuto: true,
+      wantText: true,
+      wantMesita: false,
+    }],
+    ["all lanes on fire all three modules", {}, {
+      wantAuto: true,
+      wantText: true,
+      wantMesita: true,
+    }],
+  ];
+  for (const [label, over, want] of cases) {
+    assertEquals(deepModuleFlags({ ...on, ...over }), want, label);
+  }
 });
 
 function listed(
@@ -337,17 +303,6 @@ Deno.test("orderDeepLineup: the enrichment gradient reorders two rows the pool A
     orderDeepLineup([un, lo, hi], QUERY, enrichedOnly).map((r) => r.id),
     ["hi", "lo", "un"],
   );
-});
-
-Deno.test("Word mask never calls randomness · proximity · timing", () => {
-  const deep = weightsForMode("word", DISCOVERY_DEFAULTS.weights);
-  assertEquals(deep.name > 0, true);
-  for (const key of ["randomness", "proximity", "timing", "summary"] as const) {
-    assertEquals(deep[key], 0);
-  }
-  const threw: string[] = [];
-  orderDeepLineup([WORSE, BEST], QUERY, deep, undefined);
-  assertEquals(threw, []);
 });
 
 Deno.test("admitNameFloor uses raw cosine, not remapped name()", () => {

@@ -14,7 +14,7 @@ const LEVEL_RANGES = {
   4: [500, 800],
 } as const satisfies Record<1 | 2 | 3 | 4, readonly [number, number]>;
 
-export function currencyPrefix(code: string | null | undefined): string {
+function currencyPrefix(code: string | null | undefined): string {
   if (code === "USD") return "$";
   if (code === "EUR") return "€";
   if (code && code !== DEFAULT_CURRENCY) return `${code} `;

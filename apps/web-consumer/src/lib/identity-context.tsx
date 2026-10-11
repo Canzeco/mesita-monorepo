@@ -14,24 +14,13 @@ import {
 // instead of calling the profile EF per open — that duplicated fetch was the
 // single biggest chunk of a "tap feels frozen" delay (MESITA-1029 S1).
 //
-// Identity is the name, the photo and the one guest-facing fact: Instagram
-// (`consumer-identity.ts`). The consumer app is Catalog · Discovery ·
-// Reservations (MESITA-2087), and nothing it shows is priced by who you are.
-
-export type ConsumerIdentity = ConsumerFacts & {
-  /** auth.users id — always present under /(shell) (the layout gates). */
-  userId: string;
-  /** "First Last" > full_name > null (renders as "Mesita guest"). */
-  displayName: string | null;
-  avatarUrl: string | null;
-};
+// Identity is the one guest-facing fact: Instagram (`consumer-identity.ts`).
+// The consumer app is Catalog · Discovery · Reservations (MESITA-2087), and
+// nothing it shows is priced by who you are.
 
 // The default for a tree rendered without a provider: a guest we know nothing
 // about. Nothing is gated OPEN by it.
-const NO_IDENTITY: ConsumerIdentity = {
-  userId: "",
-  displayName: null,
-  avatarUrl: null,
+const NO_IDENTITY: ConsumerFacts = {
   igConnected: false,
   igHandle: null,
   igFollowers: 0,
@@ -41,20 +30,14 @@ const NO_IDENTITY: ConsumerIdentity = {
   unknown: false,
 };
 
-const IdentityContext = createContext<ConsumerIdentity>(NO_IDENTITY);
+const IdentityContext = createContext<ConsumerFacts>(NO_IDENTITY);
 
 export function ConsumerIdentityProvider({
-  userId,
-  displayName = null,
-  avatarUrl = null,
   instagramHandle = null,
   instagramFollowers = null,
   profileUnavailable = false,
   children,
 }: {
-  userId: string;
-  displayName?: string | null;
-  avatarUrl?: string | null;
   /** Real `consumers.instagram_handle`, normalized (no leading @). */
   instagramHandle?: string | null;
   /** Real `consumers.instagram_followers_count`. */
@@ -66,7 +49,7 @@ export function ConsumerIdentityProvider({
   profileUnavailable?: boolean;
   children: ReactNode;
 }) {
-  const value = useMemo<ConsumerIdentity>(() => {
+  const value = useMemo<ConsumerFacts>(() => {
     // INSTAGRAM IS THE HANDLE PLUS THE BAR, and the two stay separate on
     // purpose: a handle on the account is "connected"; connected AND at or
     // over `INSTAGRAM_REACH_FOLLOWERS` is "verified". A follower count with
@@ -79,29 +62,19 @@ export function ConsumerIdentityProvider({
         ? Math.trunc(instagramFollowers)
         : 0;
     return {
-      userId,
-      displayName,
-      avatarUrl,
       igConnected,
       igHandle,
       igFollowers,
       igReach: igConnected && igFollowers >= INSTAGRAM_REACH_FOLLOWERS,
       unknown: profileUnavailable,
     };
-  }, [
-    userId,
-    displayName,
-    avatarUrl,
-    instagramHandle,
-    instagramFollowers,
-    profileUnavailable,
-  ]);
+  }, [instagramHandle, instagramFollowers, profileUnavailable]);
 
   return (
     <IdentityContext.Provider value={value}>{children}</IdentityContext.Provider>
   );
 }
 
-export function useConsumerIdentity(): ConsumerIdentity {
+export function useConsumerIdentity(): ConsumerFacts {
   return useContext(IdentityContext);
 }

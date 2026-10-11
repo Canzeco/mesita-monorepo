@@ -63,7 +63,6 @@ import { placeHref } from "@/lib/place-route";
 import { toast } from "@/lib/toast";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
-import { useSearchScope } from "@/lib/use-search-scope";
 import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { mapFilterCount, placeSearchScope } from "@/lib/map-filters-engine";
@@ -190,8 +189,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // store and the nearby call. How many is operator `map.pinCount`.
   // The server is the one selector — this component never recuts the catalog.
   const filters = useMapFilters();
-  const scope = useSearchScope();
-  const location = scope.locationOptOut ? null : userLocation;
+  const location = userLocation;
   const center = location;
 
   // EVERY searchbar pick anchors the map (MESITA-1405): camera to the
@@ -893,8 +891,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
               searchError={searchError}
               predictions={predictions}
               addStates={addStates}
-              onPickMesita={handleBarPick}
-              onPickGoogle={handleBarPick}
+              onPick={handleBarPick}
               onClearSearch={() => updateQuery("")}
               onRetry={() => {
                 setSearchError(null);
@@ -918,9 +915,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           keyboard is already covering the half of the map they shared. */}
       {!searchMode && (
         <SearchRailOverlay
-          idle
           places={catalog}
-          catalogCount={nearby.length}
           catalogLoading={catalogLoading}
           railCollapsed={railCollapsed}
           railIndex={railIndex}

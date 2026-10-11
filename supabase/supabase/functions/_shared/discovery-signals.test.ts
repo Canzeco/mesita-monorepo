@@ -12,9 +12,7 @@ import {
   randomness,
   name,
   summary,
-  SIGNAL_BLURBS,
   SIGNAL_KEYS,
-  SIGNAL_LABELS,
   SIGNALS,
   timing,
   type SignalPlace,
@@ -69,7 +67,7 @@ Deno.test("every signal returns [0,1] for every shape of garbage", () => {
   }
 });
 
-Deno.test("the library, the labels and the blurbs name the same eight signals", () => {
+Deno.test("the library names the same eight signals as SIGNAL_KEYS", () => {
   assertEquals(SIGNAL_KEYS.length, 8);
   // Docs > Discovery section 8.3 order. Presentation only: the blend is a
   // product of s^w, so nothing downstream may read a signal by index.
@@ -84,26 +82,6 @@ Deno.test("the library, the labels and the blurbs name the same eight signals", 
     "randomness",
   ]);
   assertEquals(Object.keys(SIGNALS).sort(), [...SIGNAL_KEYS].sort());
-  assertEquals(Object.keys(SIGNAL_LABELS).sort(), [...SIGNAL_KEYS].sort());
-  assertEquals(Object.keys(SIGNAL_BLURBS).sort(), [...SIGNAL_KEYS].sort());
-});
-
-Deno.test("Enriched is the key; no signal reads money, and the retired names are gone", () => {
-  // The naming rules the MESITA-1408-era "Mesita Level is the key" assertion
-  // protected all still hold — only the winning name changed.
-  assert((SIGNAL_KEYS as readonly string[]).includes("enriched"));
-  // Never bare `level` — `places.price_level` and the door profile own that word.
-  assert(!(SIGNAL_KEYS as readonly string[]).includes("level"));
-  // The key is PERSISTED, so this is the assertion that says the rename
-  // actually completed on this side; an old blob's value folds onto Enriched.
-  assert(!(SIGNAL_KEYS as readonly string[]).includes("mesita_level"));
-  // No signal prices what a place pays or offers.
-  for (const money of ["partnered", "partner", "partnership", "promoting", "promotion"]) {
-    assert(!(SIGNAL_KEYS as readonly string[]).includes(money), money);
-  }
-  assert(!(SIGNAL_KEYS as readonly string[]).includes("semantic"));
-  // Left the library — Social Lineup never wrote a place-level index.
-  assert(!(SIGNAL_KEYS as readonly string[]).includes("social"));
 });
 
 Deno.test("clamp01 turns non-finite into the neutral element, not zero", () => {

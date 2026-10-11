@@ -11,25 +11,11 @@ Deno.test("normalizeMemoConfig: preserves saved greeting/instructions including 
   const out = normalizeMemoConfig({
     greeting: "Hola",
     instructions: "Be brief.",
-    openaiModel: "gpt-4o",
-    perplexityModel: "sonar",
-    provider: "openai",
-    webGrounding: true,
   });
   assertEquals(out, {
     greeting: "Hola",
     instructions: "Be brief.",
-    openaiModel: "gpt-4o",
-    perplexityModel: "sonar",
-    provider: "openai",
-    webGrounding: true,
   });
-});
-
-Deno.test("normalizeMemoConfig: webGrounding only turns on when explicitly true", () => {
-  assertEquals(normalizeMemoConfig({ webGrounding: true }).webGrounding, true);
-  assertEquals(normalizeMemoConfig({ webGrounding: false }).webGrounding, false);
-  assertEquals(normalizeMemoConfig({ webGrounding: "true" }).webGrounding, false);
 });
 
 Deno.test("normalizeMemoConfig: extra keys are dropped", () => {

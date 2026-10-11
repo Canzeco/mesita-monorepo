@@ -59,32 +59,13 @@ import { stepDone, stepFailed, reportCrenupSteps } from "./crenup-report.ts";
 import { loadDiscoveryConfig } from "./discovery-config.ts";
 import { evaluatePlaceForMap } from "./map-engine.ts";
 
-const CHANNEL_KEYS = [
-  "website_url", "instagram_url", "facebook_url", "x_url", "threads_url",
-  "reddit_url", "whatsapp_url", "opentable_url", "resy_url", "uber_eats_url",
-  "didi_food_url", "google_maps_url",
-];
-
 export type CreatedPlace = { id: string; slug: string; name: string; state: string };
 
-// The `enrichment` block every create response carries (response-contract
-// compatibility from the days enrichment was synchronous — now always async).
+// The `enrichment` block every create response carries.
 export type EnrichmentSummary = {
-  google: boolean;
-  enrichmentTriggered: boolean;
-  enrichmentAsync: true;
-  enrichmentError: string | null;
   photoCount: number;
-  photoCandidates: 0;
-  photoRanked: false;
-  firecrawl: false;
-  perplexity: false;
-  openai: false;
-  openaiError: null;
-  channelCount: number;
-  googleRating: number | null;
-  googleReviewCount: number | null;
-  instagramFollowers: number | null;
+  enrichmentTriggered: boolean;
+  enrichmentError: string | null;
 };
 
 export type CreatePlaceOutcome =
@@ -343,26 +324,13 @@ export async function createMinimalPlace(opts: {
     ? await queueOnCreateEnrichment(admin, saved.place_id, googlePlaceId, callerName)
     : { ok: false as const, error: null as string | null, skipped: true };
 
-  const channelCount = CHANNEL_KEYS.filter((k) => !!place[k]).length;
   return {
     ok: true,
     place: { id: saved.place_id, slug: saved.slug, name: saved.name, state: saved.state },
     enrichment: {
-      google: true,
-      enrichmentTriggered: trigger.ok,
-      enrichmentAsync: true,
-      enrichmentError: trigger.ok ? null : trigger.error ?? null,
       photoCount: Array.isArray(place.photos) ? place.photos.length : 0,
-      photoCandidates: 0,
-      photoRanked: false,
-      firecrawl: false,
-      perplexity: false,
-      openai: false,
-      openaiError: null,
-      channelCount,
-      googleRating: (place.google_stars_overall as number | null) ?? null,
-      googleReviewCount: (place.google_review_count as number | null) ?? null,
-      instagramFollowers: (place.instagram_followers_count as number | null) ?? null,
+      enrichmentTriggered: trigger.ok,
+      enrichmentError: trigger.ok ? null : trigger.error ?? null,
     },
   };
 }

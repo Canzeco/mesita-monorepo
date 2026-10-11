@@ -25,17 +25,13 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
-import { isEmailish } from "../_shared/input.ts";
 import { PLACE_BUSINESS_COLUMNS } from "../_shared/place-columns.ts";
-import { isServingChannel, type ProfilePatch, writePlace } from "../_shared/place-doc.ts";
+import { type ProfilePatch, writePlace } from "../_shared/place-doc.ts";
 import { ENRICH_FIELD_LIMITS } from "../_shared/enrich-field-limits.ts";
 import { sanitizePlaceTags } from "../_shared/tags.ts";
 import { type PlaceHours, sanitiseHours } from "./place-hours.ts";
 import { isUrl, URL_FIELDS, type UrlField } from "./place-urls.ts";
-import {
-  isMissingCategoryLabelColumnError,
-  optString,
-} from "./place-update-utils.ts";
+import { optString } from "./place-update-utils.ts";
 import { resolveCategoryInput } from "./category-input.ts";
 import { applyMediaUpdates } from "./place-media-update.ts";
 import {
@@ -79,27 +75,13 @@ function normalisePlaceTags(value: unknown): string[] | null {
 
 type UpdateBody = {
   id?: string;
-  name?: string | null;
+  mesita_name?: string | null;
   category?: string | null;
-  vibe?: string | null;
-  // NOTE: `price_level` is deliberately NOT editable here. It is inferred
-  // from Google Places during Enrich-Research and must not be overridden
-  // by admin, business, or any client.
-  // NOTE: `google_maps_url` / `google_place_id` are native — seeded at create
-  // from the Google Place ID spine; the EF rejects manual writes (MESITA-468).
-  // ISO 4217 code. Mesita defaults every place to MXN; the business
-  // can switch to USD/EUR/etc. only when we extend coverage outside
-  // Mexico. Kept as text so the EF doesn't hard-code an enum.
-  currency?: string | null;
-  state?: "active" | "paused" | "archived";
-  // NOTE: `address` is native (Google/Enricher-sourced) and deliberately NOT
-  // editable here — kept in the type only so stale clients get the reject.
-  address?: string | null;
-  closes_at?: string | null;
+  // Native fields (google_name, price_level, address, google_maps_url,
+  // google_place_id) are Google/Enricher-owned and not editable here: the
+  // whitelist below never reads them.
   hours?: PlaceHours | null;
   phone?: string | null;
-  pitch?: string | null;
-  story?: string | null;
   photos?: string[];
   // External + social channels
   website_url?: string | null;
@@ -107,35 +89,17 @@ type UpdateBody = {
   facebook_url?: string | null;
   whatsapp_url?: string | null;
   opentable_url?: string | null;
-  resy_url?: string | null;
   uber_eats_url?: string | null;
-  x_url?: string | null;
-  threads_url?: string | null;
-  reddit_url?: string | null;
-  didi_food_url?: string | null;
-  // Native — rejected below (kept in the type so stale clients get the reject).
-  google_maps_url?: string | null;
-  google_place_id?: string | null;
-  // Plain contact (not URL-shaped)
-  email?: string | null;
-  // Routing: which contact the Reservations rail reaches the place on
-  // (MESITA-1208). Null clears the rail.
-  reservation_channel?: string | null;
-  reservation_target?: string | null;
   // Place-redesign editable surface (Business-E=YES on the Components spec).
   description?: string | null;
   menu_pdf_url?: string | null;
   // Optional human label paired with menu_pdf_url. Null clears.
   menu_pdf_name?: string | null;
-  // Alias fields used by the products-first UI.
-  product_catalog_url?: string | null;
-  product_catalog_name?: string | null;
   // Generic products payload. Menu is one subtype under products.menu.
   products?: { menu?: unknown[] | null } | null;
   tags?: string[];
 };
 
-const EDITABLE_STATES = new Set(["active", "paused", "archived"]);
 const OPENAI_KEY = Deno.env.get("OPENAI_KEY");
 const APIFY_KEY = Deno.env.get("APIFY_KEY");
 
@@ -165,29 +129,15 @@ Deno.serve(async (req) => {
   // Build the update payload from the whitelist. Missing keys are not
   // touched. Explicit null clears the field.
   const update: Record<string, unknown> = {};
-  // Operator name override → places.mesita_name. `name` itself is a GENERATED
-  // display column (coalesce(mesita_name, google_name)) and is not writable, so
-  // a caller sending `name` is expressing "label this place", which is exactly
-  // mesita_name. Both spellings are accepted; `mesita_name` wins if both arrive.
+  // Operator name override → places.mesita_name (`name` is a GENERATED
+  // display column, coalesce(mesita_name, google_name), and is not writable).
   // Empty/whitespace CLEARS the override so the place falls back to Google.
-  if ("mesita_name" in body || "name" in body) {
-    const raw = "mesita_name" in body ? body.mesita_name : body.name;
-    const n = (raw ?? "").toString().trim();
+  if ("mesita_name" in body) {
+    const n = (body.mesita_name ?? "").toString().trim();
     if (n.length > ENRICH_FIELD_LIMITS.placeName.max) {
       return json({ ok: false, error: "name too long" }, 400);
     }
     update.mesita_name = n.length > 0 ? n : null;
-  }
-  if ("google_name" in body) {
-    return json(
-      {
-        ok: false,
-        code: "google_name_via_enrich",
-        error:
-          "google_name is the cached Google Places label, refreshed by the Enricher. Change it on the Google Business Profile, then re-enrich. To label the place inside Mesita, set mesita_name.",
-      },
-      400,
-    );
   }
   if ("category" in body) {
     const resolved = await resolveCategoryInput(
@@ -201,74 +151,6 @@ Deno.serve(async (req) => {
     update.category = resolved.slug;
     update.category_label = resolved.label;
     update.family_keys = resolved.familyKeys;
-  }
-  if ("vibe" in body) update.vibe = optString(body.vibe, 80);
-  if ("price_level" in body) {
-    // Price is enrich-only (Google Places). Reject so stale clients learn
-    // the contract.
-    return json(
-      {
-        ok: false,
-        code: "price_via_enrich",
-        error:
-          "price_level is set by Enrich-Research from Google Places and cannot be updated manually.",
-      },
-      400,
-    );
-  }
-  // currency: ISO 4217 uppercase code, 3 chars. Reject anything else
-  // — accidental empty strings or longer strings would corrupt every
-  // monetary render downstream.
-  if ("currency" in body) {
-    const c = (body.currency ?? "").toString().trim().toUpperCase();
-    if (c.length === 3 && /^[A-Z]{3}$/.test(c)) update.currency = c;
-  }
-  if ("state" in body) {
-    const s = body.state;
-    if (!s || !EDITABLE_STATES.has(s)) {
-      return json(
-        { ok: false, error: "state must be active|paused|archived" },
-        400,
-      );
-    }
-    update.state = s;
-  }
-  if ("address" in body) {
-    // Address is native — seeded from Google Places and refined by the
-    // Enricher, which writes public.place_profiles directly. Reject so stale clients
-    // learn the contract — same posture as `price_level`.
-    return json(
-      {
-        ok: false,
-        code: "address_via_enrich",
-        error:
-          "address is set from Google Places / the Enricher and cannot be updated manually.",
-      },
-      400,
-    );
-  }
-  if ("google_maps_url" in body || "google_place_id" in body) {
-    // decision: Pato (MESITA-468) — Google Maps + Place ID are native-locked.
-    // Seeded at create from the Google spine; nobody edits them afterwards.
-    return json(
-      {
-        ok: false,
-        code: "google_maps_native",
-        error:
-          "google_maps_url / google_place_id are set at create from Google Places and cannot be updated manually.",
-      },
-      400,
-    );
-  }
-  if ("closes_at" in body) {
-    const raw = optString(body.closes_at, 5);
-    if (raw != null && !/^([01]?\d|2[0-3]):[0-5]\d$/.test(raw)) {
-      return json(
-        { ok: false, error: "closes_at must be 24h HH:MM (e.g. 02:00)" },
-        400,
-      );
-    }
-    update.closes_at = raw;
   }
   if ("hours" in body) {
     const cleaned = sanitiseHours(body.hours);
@@ -300,8 +182,6 @@ Deno.serve(async (req) => {
     }
     update.phone = raw;
   }
-  if ("pitch" in body) update.pitch = optString(body.pitch, 200);
-  if ("story" in body) update.story = optString(body.story, 1500);
   const mediaError = applyMediaUpdates(body, update, MAX_PHOTOS);
   if (mediaError) return mediaError;
 
@@ -336,63 +216,6 @@ Deno.serve(async (req) => {
     }
     update.tags = tags;
   }
-  // Email: not a URL. Just trim + sanity-check the shape (has @ and a dot
-  // after it). Empty / null clears the field.
-  if ("email" in body) {
-    const raw = body.email;
-    if (raw == null || (typeof raw === "string" && raw.trim() === "")) {
-      update.email = null;
-    } else if (typeof raw !== "string") {
-      return json({ ok: false, error: "email must be a string" }, 400);
-    } else {
-      const trimmed = raw.trim();
-      if (!isEmailish(trimmed)) {
-        return json({
-          ok: false,
-          error: "email must look like name@domain.tld",
-        }, 400);
-      }
-      if (trimmed.length > 254) {
-        return json({ ok: false, error: "email too long" }, 400);
-      }
-      update.email = trimmed.toLowerCase();
-    }
-  }
-
-  // Reservation ROUTING — which door the rail uses (MESITA-1208).
-  // Five picks: phone · whatsapp · instagram · web · none (Pato 2026-08-25).
-  // The Reservationist still only DIALS phone. Null / empty clears the rail.
-  if ("reservation_channel" in body) {
-    const raw = body.reservation_channel;
-    if (raw == null || (typeof raw === "string" && raw.trim() === "")) {
-      update.reservation_channel = null;
-      update.reservation_target = null;
-    } else if (!isServingChannel(raw)) {
-      return json(
-        {
-          ok: false,
-          code: "channel_not_served",
-          error: "reservation routing accepts phone, whatsapp, instagram, web, or none.",
-        },
-        400,
-      );
-    } else if (raw === "none") {
-      update.reservation_channel = "none";
-      update.reservation_target = null;
-    } else {
-      const target = body.reservation_target;
-      const value = typeof target === "string" ? target.trim().slice(0, 500) : "";
-      if (!value) {
-        return json(
-          { ok: false, error: `reservation_target is required when reservation_channel is ${raw}` },
-          400,
-        );
-      }
-      update.reservation_channel = raw;
-      update.reservation_target = value;
-    }
-  }
-
   if (Object.keys(update).length === 0) {
     return json({ ok: false, error: "No editable fields provided" }, 400);
   }
@@ -408,7 +231,7 @@ Deno.serve(async (req) => {
     APIFY_KEY,
   );
 
-  let updRes = await writePlace(admin, {
+  const updRes = await writePlace(admin, {
     table: "profiles",
     mode: "update",
     id: placeId,
@@ -416,23 +239,6 @@ Deno.serve(async (req) => {
     select: PLACE_BUSINESS_COLUMNS,
   });
 
-  // Backward compatibility: in projects where category_label migration hasn't
-  // landed (or schema cache is stale), retry the same update without
-  // category_label so edits can still be saved.
-  if (
-    !updRes.ok && isMissingCategoryLabelColumnError({ message: updRes.error }) &&
-    "category_label" in update
-  ) {
-    const retryUpdate = { ...update };
-    delete retryUpdate.category_label;
-    updRes = await writePlace(admin, {
-      table: "profiles",
-      mode: "update",
-      id: placeId,
-      patch: retryUpdate as ProfilePatch,
-      select: PLACE_BUSINESS_COLUMNS,
-    });
-  }
   if (!updRes.ok) {
     return json(
       {

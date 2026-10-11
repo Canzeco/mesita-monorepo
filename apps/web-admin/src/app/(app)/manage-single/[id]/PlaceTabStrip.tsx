@@ -1,11 +1,8 @@
 "use client";
 
 // Every door on one place, one row (MESITA-2086). The strip draws exactly
-// the views the layout published (`adminPlaceTabs`, First Stage since
-// MESITA-2088: Profile · Admin), in `PLACE_TABS` order — so the strip and
-// the gate read the same list and an address the gate would 404 never gets
-// a pill. The business console's two PAGES (Setup, Activity) left with the
-// Second Stage.
+// the views the layout published (`FIRST_STAGE_TABS`, MESITA-2088: Profile ·
+// Admin), in `PLACE_TABS` order.
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";

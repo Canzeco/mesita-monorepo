@@ -7,10 +7,8 @@
 // published the unsaved-edits guard to the business rail, and admin's rail is
 // not a place rail.
 
-import { useCallback, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { PlaceProvider } from "@/components/place-manage/PlaceContext";
-import { PlaceUIProvider } from "@/components/place-manage/PlaceUIContext";
 import { PlaceSaveBar } from "@/components/place-manage/PlaceSaveBar";
 import type { AdminPlace } from "@/components/place-manage/actions";
 
@@ -23,13 +21,11 @@ export function PlaceManageShell({
   initialPlace: AdminPlace;
   children: React.ReactNode;
 }) {
-  const router = useRouter();
   const [place, setPlace] = useState<AdminPlace>(initialPlace);
-  const reload = useCallback(() => router.refresh(), [router]);
 
   return (
-    <PlaceProvider placeId={placeId} place={place} setPlace={setPlace} reload={reload}>
-      <PlaceUIProvider>{children}</PlaceUIProvider>
+    <PlaceProvider placeId={placeId} place={place} setPlace={setPlace}>
+      {children}
       <PlaceSaveBar />
     </PlaceProvider>
   );

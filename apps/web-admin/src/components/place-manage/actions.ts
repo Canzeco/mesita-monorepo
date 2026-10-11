@@ -239,16 +239,15 @@ export async function setPlaceActive(
       ...r.data.place,
       listed: r.data.listed ?? r.data.place.listed,
       business_state: r.data.business_state ?? r.data.place.business_state,
-      // Stamp state so mergePlace's withListedFromState sees paused after
-      // Active off, even if an older place payload omitted it.
+      // Stamp state so listedFromState sees paused after Active off, even if
+      // an older place payload omitted it.
       state: r.data.state ?? r.data.place.state,
     },
   };
 }
 
 // ── Atlas tag catalog (for Place tags picker) ────────────────────────────
-// Same catalog Atlas Config reads, through the same door
-// (admin-web-get-atlas-fields → _shared/atlas-fields.ts).
+// Read through admin-web-get-atlas-fields.
 
 export type PlaceTagOption = {
   slug: string;
@@ -306,7 +305,7 @@ const DEFAULT_PLACE_FIELD_LIMITS: PlaceFieldLimits = {
 };
 
 function readPlaceFieldLimits(
-  fieldLimits?: Record<string, { max: number; note: string }>,
+  fieldLimits?: Record<string, { max: number }>,
 ): PlaceFieldLimits {
   return {
     placeNameMax: fieldLimits?.placeName?.max ?? DEFAULT_PLACE_FIELD_LIMITS.placeNameMax,
@@ -324,7 +323,7 @@ export async function listPlaceTagCatalog(): Promise<Result<PlaceTagCatalog>> {
     facets: PlaceTagFacet[];
     categories: PlaceCategoryOption[];
     families?: PlaceFamilyOption[];
-    fieldLimits?: Record<string, { max: number; note: string }>;
+    fieldLimits?: Record<string, { max: number }>;
   }>("admin-web-get-atlas-fields", {});
   if (!r.ok) return { ok: false, error: r.error };
   const fieldLimits = readPlaceFieldLimits(r.data.fieldLimits);
@@ -342,22 +341,7 @@ export async function listPlaceTagCatalog(): Promise<Result<PlaceTagCatalog>> {
 }
 
 // ── Per-place Enricher inspector (admin-only) ────────────────────────────
-// Internal enricher output for the Place editor: per-photo metadata for the
-// ⓘ inspector (keyed by public_url, matches AdminPlace.photos[]) + the place's
-// enrichment state. Super-admin gated EF.
-
-export type PlaceMediaMeta = {
-  source: string | null;
-  state: string | null;
-  analysis_text: string | null;
-  caption: string | null;
-  likes_count: number | null;
-  source_url: string | null;
-  // Raw per-source signals captured at gather time (pre-analysis): Instagram
-  // carries comments_count / timestamp / is_video / shortcode; website carries
-  // alt / page / width / height. Shape varies by source, hence unknown values.
-  source_metadata: Record<string, unknown> | null;
-};
+// The place's enrichment state, for the Admin tab. Super-admin gated EF.
 
 export type PlaceEnrichmentState = {
   content_state: string | null;
@@ -370,27 +354,15 @@ export type PlaceEnrichmentState = {
    *  Soft context only: never a source of facts, ratings or prices. */
   serp_summary: string | null;
 };
-export type PlaceEnrichmentSchedule = {
-  everyDays: number | null;
-  mode: ReenrichMode;
-  nextAt: string | null;
-  lastEnrichedAt: string | null;
-};
 
 type PlaceEnrichment = {
-  media: Record<string, PlaceMediaMeta>;
   state: PlaceEnrichmentState | null;
-  schedule: PlaceEnrichmentSchedule | null;
 };
 
 export async function getPlaceEnrichment(
   placeId: string,
 ): Promise<Result<PlaceEnrichment>> {
-  const r = await efInvoke<{
-    media: Record<string, PlaceMediaMeta>;
-    state: PlaceEnrichmentState | null;
-    schedule: PlaceEnrichmentSchedule | null;
-  }>(
+  const r = await efInvoke<PlaceEnrichment>(
     "admin-web-get-place-enrichment",
     // Wire key stays `projectId` — this EF's MESITA-26 alias base.
     { projectId: placeId },
@@ -398,11 +370,7 @@ export async function getPlaceEnrichment(
   if (!r.ok) return { ok: false, error: r.error };
   return {
     ok: true,
-    data: {
-      media: r.data.media ?? {},
-      state: r.data.state ?? null,
-      schedule: r.data.schedule ?? null,
-    },
+    data: { state: r.data.state ?? null },
   };
 }
 // Which slice of the Enricher pipeline a manual re-enrich re-runs:

@@ -2,26 +2,17 @@
 //
 // Folds the six leftover memo_* scalar columns into one jsonb. Greeting and
 // instructions still have no live write path (admin-web-{get,update}-memo-config
-// were deleted as dead code). models_config.memo.model is SoT for the brain;
-// openaiModel remains a one-release fallback inside get-memo-config.
+// were deleted as dead code). The brain's model is models_config.memo.model.
 import { asRecord } from "./config-coerce.ts";
 
 export type MemoConfig = {
   greeting: string;
   instructions: string;
-  openaiModel: string;
-  perplexityModel: string;
-  provider: string;
-  webGrounding: boolean;
 };
 
 export const DEFAULT_MEMO_CONFIG: MemoConfig = {
   greeting: "",
   instructions: "",
-  openaiModel: "gpt-4o-mini",
-  perplexityModel: "sonar-pro",
-  provider: "openai",
-  webGrounding: false,
 };
 
 function text(v: unknown, fallback: string): string {
@@ -34,9 +25,5 @@ export function normalizeMemoConfig(raw: unknown): MemoConfig {
   return {
     greeting: text(r.greeting, d.greeting),
     instructions: text(r.instructions, d.instructions),
-    openaiModel: text(r.openaiModel, d.openaiModel).trim() || d.openaiModel,
-    perplexityModel: text(r.perplexityModel, d.perplexityModel).trim() || d.perplexityModel,
-    provider: text(r.provider, d.provider).trim() || d.provider,
-    webGrounding: r.webGrounding === true,
   };
 }

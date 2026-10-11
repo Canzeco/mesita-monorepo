@@ -88,7 +88,7 @@ export function MesitaSourceCards({ seed }: { seed: FloorSeed }) {
         <ConfigSoon
           Icon={Compass}
           title="Mesita Places Flexible Search is coming soon"
-          body="An arbitrary set of predicates in, ordered places out. Swipe hands it the guest's four filters; Chat hands it whatever the question turned into. It is the general form the other three are special cases of."
+          body="An arbitrary set of predicates in, ordered places out. Swipe hands it the guest's filters; Chat hands it whatever the question turned into. It is the general form the other three are special cases of."
           doc="Notion Docs › Discovery"
           footer={<FloorSoonNote />}
         />

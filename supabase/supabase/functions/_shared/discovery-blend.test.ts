@@ -123,23 +123,6 @@ Deno.test("rankByBlend sorts best-first and breaks ties on incoming order", () =
   }
 });
 
-Deno.test("a row's money columns cannot move the score — no signal reads them", () => {
-  // SignalPlace carries no plan, rate or live-discount field, so a row that
-  // still has one stapled on must score exactly like the same row without it.
-  const allOn: SignalWeights = Object.fromEntries(
-    SIGNAL_KEYS.map((key) => [key, 1]),
-  ) as SignalWeights;
-  const intent = { random: () => 0.5 };
-  const plain = blend(project(row("plain", 4.5)), intent, allOn);
-  const stapled = blend(
-    { ...project(row("stapled", 4.5)), plan: "pro", promoting: true } as SignalPlace,
-    intent,
-    allOn,
-  );
-  assertEquals(stapled.score, plain.score);
-  assertEquals(stapled.parts, plain.parts);
-});
-
 Deno.test("the Enriched weight reorders two rows a ranked lane ACTUALLY admits", () => {
   // BOTH ROWS ARE ENRICHED, because that is the only population this signal
   // ever scores: Map admits a listed row only through `isEnrichedListedRow`

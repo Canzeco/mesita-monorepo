@@ -15,7 +15,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, ChevronRight, ExternalLink, Loader2, Plus } from "lucide-react";
 import { StateIcon, type BatchRowState } from "@/app/(app)/manage-multiple/StateIcon";
-import { placeHref } from "@/lib/console-routes";
+import { placeTabHref } from "@/lib/place-tabs";
 import {
   FOCUS_RING_CLASS,
   PILL_BUTTON_CLASS,
@@ -234,7 +234,7 @@ function NameCell({
   const name = "block truncate font-medium underline-offset-4 hover:underline " + FOCUS_RING_CLASS;
   if (row.held && row.mesitaId) {
     return (
-      <Link id={id} href={placeHref(row.mesitaId)} className={name}>
+      <Link id={id} href={placeTabHref(row.mesitaId, "profile")} className={name}>
         {row.name}
       </Link>
     );

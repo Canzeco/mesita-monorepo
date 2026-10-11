@@ -15,20 +15,23 @@
 // always saves its full form, so partial patches would only invite drift.
 //
 // The MAIN model is always OpenAI (a chat model, or an embedding model under
-// the `embeddings` key). Perplexity is NEVER a main model — it's an optional
-// web-grounding leg, and ONLY Enricher and Memo have one ("off" disables it).
+// the `embeddings` key). Perplexity is NEVER a main model; `enricher.perplexity`
+// is the blob's only Perplexity key ("off" disables it). Memo has no
+// Perplexity leg, so the validator no longer writes `memo.perplexity`
+// (MESITA-2136): it rebuilds the blob from the keys below, so a stored one is
+// dropped on the next save and never read before that.
 //
 // `embeddings` WAS `lineup` (MESITA-1216) — the name outlived the engine
 // MESITA-1048 deleted, and the key never ordered anything: it picks the
-// place-embedding model. This validator reads BOTH spellings and writes only
-// the new one; every save is therefore its own migration for the row it
-// touches. See _shared/models-config.ts for the reader side. Model is a free
+// place-embedding model. Migration 20260823070521 rewrote every stored row, so
+// this validator reads and writes only `embeddings`. See
+// _shared/models-config.ts for the reader side. Model is a free
 // string (the web-admin catalogs evolve, so only the STRUCTURE is enforced — a
 // missing/garbage key falls back to the migration default so the blob is
 // always complete). See 20260726010000_models_config_reshape.sql.
 //
-// Live binding (MESITA-941): Enricher/Memo/embeddings/suggest-promo read this
-// blob via _shared/models-config.ts. (Until MESITA-1048 the Lineup rankers read
+// Live binding (MESITA-941): Enricher/Memo/embeddings read this blob via
+// _shared/models-config.ts. (Until MESITA-1048 the Lineup rankers read
 // it too — recommender-rank-map is deleted, so don't look for it.)
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { jsonError, jsonOk } from "./http.ts";
@@ -50,9 +53,10 @@ const DEFAULT = {
   supabase: { model: "gpt-4o-mini" },
   enricher: { model: "gpt-4o-mini", perplexity: "sonar-pro" },
   embeddings: { model: "text-embedding-3-small" },
-  memo: { model: "gpt-4o-mini", perplexity: "sonar-pro" },
-  // MESITA-1034: gpt-4o, not gpt-4o-mini — matches _shared/models-config.ts's
-  // DEFAULT_MODELS_CONFIG.ojo, the reader side of the same default.
+  memo: { model: "gpt-4o-mini" },
+  // MESITA-1034: gpt-4o, not gpt-4o-mini. Nothing reads `ojo` (or `supabase`,
+  // or `enricher.perplexity`) any more; the keys stay in the stored blob until
+  // MESITA-2091 drops them.
   ojo: { model: "gpt-4o" },
 };
 
@@ -93,21 +97,11 @@ export function validateModelsConfig(
         DEFAULT.enricher.perplexity,
       ),
     },
-    // Read both spellings, emit only `embeddings`. A console still posting
-    // `lineup` (a tab open across the deploy) keeps its value instead of
-    // silently reverting to the default model.
     embeddings: {
-      model: cleanModel(
-        obj(r.embeddings).model ?? obj(r.lineup).model,
-        DEFAULT.embeddings.model,
-      ),
+      model: cleanModel(obj(r.embeddings).model, DEFAULT.embeddings.model),
     },
     memo: {
       model: cleanModel(obj(r.memo).model, DEFAULT.memo.model),
-      perplexity: cleanPerplexity(
-        obj(r.memo).perplexity,
-        DEFAULT.memo.perplexity,
-      ),
     },
     ojo: {
       model: cleanModel(obj(r.ojo).model, DEFAULT.ojo.model),

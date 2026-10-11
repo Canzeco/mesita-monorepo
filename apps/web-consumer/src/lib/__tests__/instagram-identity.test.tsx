@@ -32,11 +32,9 @@ function identityFrom(
   instagramHandle: string | null,
   instagramFollowers: number | null = null,
   profileUnavailable = false,
-): ConsumerFacts & { userId: string; displayName: string | null } {
+): ConsumerFacts {
   const html = renderToStaticMarkup(
     <ConsumerIdentityProvider
-      userId="u1"
-      displayName="Pat"
       instagramHandle={instagramHandle}
       instagramFollowers={instagramFollowers}
       profileUnavailable={profileUnavailable}
@@ -82,12 +80,6 @@ describe("Instagram is the handle, and the bar is the bar", () => {
     const f = identityFrom("   ", 9_000);
     expect(f.igConnected).toBe(false);
     expect(f.igHandle).toBeNull();
-  });
-
-  it("carries the rest of the identity through untouched", () => {
-    const f = identityFrom("mock", 10);
-    expect(f.userId).toBe("u1");
-    expect(f.displayName).toBe("Pat");
   });
 });
 

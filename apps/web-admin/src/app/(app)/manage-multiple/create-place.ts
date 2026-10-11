@@ -1,54 +1,39 @@
 import { efInvoke } from "@/lib/supabase-ef";
 
-// Create-place helper; the Create box on this page is its only caller. It
-// runs each Google Place ID through the create pipeline:
+// Create-place helper, behind actions.ts for the Create box and Single Place.
+// It runs each Google Place ID through the create pipeline:
 // admin-web-create-place fetches Google data and persists the ugly
-// profile (ready, not Enriched). Enricher is not queued — Enrich /
-// Create+Enrich is a second call. The admin operator's session authorises
-// the call (admin allowlist). Callers invoke this once per Place ID.
+// profile (ready, not Enriched). Enricher is not queued — Enrich is a second
+// call. The admin operator's session authorises the call (admin allowlist).
+// Callers invoke this once per Place ID.
 
 type CreatePlaceOk = {
   ok: true;
   placeId: string;
   name: string;
-  slug: string | null;
-  photoCount: number;
   /** Already on Mesita — the batch continues; this row was not re-created. */
   alreadyExisted: boolean;
   /** The create call enqueued async enrichment (Enricher cron pipeline). */
   enrichmentTriggered: boolean;
-  enrichmentError: string | null;
 };
 type CreatePlaceErr = { ok: false; error: string };
 type CreatePlaceResult = CreatePlaceOk | CreatePlaceErr;
 
 type CreatedPlace = {
   id?: string;
-  slug?: string | null;
   name?: string;
-  state?: string;
 };
 
 type CreatePlaceResponse = {
   place?: CreatedPlace;
   enrichment?: {
     enrichmentTriggered?: boolean;
-    enrichmentAsync?: boolean;
-    enrichmentError?: string | null;
-    photoCount?: number;
-    channelCount?: number;
   };
 };
 
 type CreatePlaceErrorBody = {
-  existing?: { id?: string; slug?: string | null; name?: string };
+  existing?: { id?: string; name?: string };
 };
-
-// HTTP 409 with either code (place_already_exists is current, venue_already_exists legacy).
-const DUPLICATE_PLACE_CODES = new Set([
-  "place_already_exists",
-  "venue_already_exists",
-]);
 
 export async function createPlaceFromGooglePlaceId(
   placeId: string,
@@ -62,7 +47,7 @@ export async function createPlaceFromGooglePlaceId(
   if (!r.ok) {
     // Duplicate error responses carry an `existing` object.
     const body = (r.data ?? {}) as CreatePlaceErrorBody;
-    if (r.status === 409 && DUPLICATE_PLACE_CODES.has(r.code ?? "")) {
+    if (r.status === 409 && r.code === "place_already_exists") {
       const existingId = body.existing?.id;
       if (!existingId) {
         return { ok: false, error: "This place is already on Mesita." };
@@ -72,10 +57,7 @@ export async function createPlaceFromGooglePlaceId(
         alreadyExisted: true,
         placeId: existingId,
         name: body.existing?.name ?? "(already on Mesita)",
-        slug: body.existing?.slug ?? null,
-        photoCount: 0,
         enrichmentTriggered: false,
-        enrichmentError: null,
       };
     }
     return { ok: false, error: r.error };
@@ -88,9 +70,6 @@ export async function createPlaceFromGooglePlaceId(
     alreadyExisted: false,
     placeId: place.id,
     name: place.name ?? "(unnamed)",
-    slug: place.slug ?? null,
-    photoCount: r.data.enrichment?.photoCount ?? 0,
     enrichmentTriggered: r.data.enrichment?.enrichmentTriggered ?? false,
-    enrichmentError: r.data.enrichment?.enrichmentError ?? null,
   };
 }

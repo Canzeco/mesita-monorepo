@@ -1,14 +1,10 @@
 "use client";
 
-// Trimmed local variant of the discover map for the Search page.
-//
-// ConsumerDiscoverMap ships its own page chrome (counts pill + legend
-// header, geolocation banner, bottom preview card) which would collide
-// with this page's floating search bar and catalog rail — and the Search
-// page can't edit that shared component. This copy keeps only the base
-// layer: the light-styled canvas, place pins, the user dot, and pan/zoom
-// behaviour. Pin taps report up via onSelectPlace so the page can sync
-// the catalog rail instead of opening a preview card.
+// The Search page's map: base layer only — the light-styled canvas, place
+// pins, the user dot, and pan/zoom behaviour. It carries no page chrome of
+// its own, because the page's floating search bar and catalog rail sit on
+// top of it. Pin taps report up via onSelectPlace so the page can sync the
+// catalog rail instead of opening a preview card.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MapPin } from "lucide-react";
@@ -121,7 +117,6 @@ export function SearchMap({
   onSelectPlace,
   onOpenPlace,
   onSelectPin,
-  onMapClick,
   onFirstViewport,
   onUserViewport,
 }: {
@@ -143,7 +138,6 @@ export function SearchMap({
   onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
   onSelectPin?: (pin: SearchMapPin) => void;
-  onMapClick?: () => void;
   onFirstViewport?: (box: ViewportBox) => void;
   onUserViewport?: (box: ViewportBox, meta: { programmatic: boolean }) => void;
 }) {
@@ -180,7 +174,6 @@ export function SearchMap({
           onSelectPlace={onSelectPlace}
           onOpenPlace={onOpenPlace}
           onSelectPin={onSelectPin}
-          onMapClick={onMapClick}
           onReady={handleMapReady}
           onFirstViewport={onFirstViewport}
           onUserViewport={onUserViewport}
@@ -212,7 +205,7 @@ function isProgrammaticIdle() {
 
 /** Screen-fixed sight at the canvas center — the catalog fetch point.
  *  Plus + primary dot only. No ring: that read as a measured radius. */
-export function SearchMapReticle() {
+function SearchMapReticle() {
   return (
     <div
       aria-hidden
@@ -269,7 +262,6 @@ function SearchMapCanvas({
   onSelectPlace,
   onOpenPlace,
   onSelectPin,
-  onMapClick,
   onReady,
   onFirstViewport,
   onUserViewport,
@@ -284,7 +276,6 @@ function SearchMapCanvas({
   onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
   onSelectPin?: (pin: SearchMapPin) => void;
-  onMapClick?: () => void;
   onReady: () => void;
   onFirstViewport?: (box: ViewportBox) => void;
   onUserViewport?: (box: ViewportBox, meta: { programmatic: boolean }) => void;
@@ -324,9 +315,6 @@ function SearchMapCanvas({
         MAP_MINIMAL_STYLES as unknown as Parameters<typeof Map>[0]["styles"]
       }
       onTilesLoaded={onReady}
-      // Bare canvas tap toggles the name overlay. Pan/drag does not
-      // fire click — SearchClient closes the overlay from onUserViewport.
-      onClick={onMapClick ? () => onMapClick() : undefined}
     >
       {userLocation && (
         <Marker

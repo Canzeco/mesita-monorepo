@@ -1,7 +1,6 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import { Sparkles } from "lucide-react";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 
 // Reusable "coming soon" dialog for an announced-not-wired control. Callers
@@ -12,13 +11,13 @@ export function ComingSoonModal({
   onClose,
   title,
   body,
-  icon: Icon = Sparkles,
+  icon: Icon,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
-  body?: string;
-  icon?: LucideIcon;
+  body: string;
+  icon: LucideIcon;
 }) {
   return (
     <LocalDialog open={open} onClose={onClose} ariaLabel={title}>
@@ -28,8 +27,7 @@ export function ComingSoonModal({
         </span>
         <p className="mt-4 text-base font-semibold">{title}</p>
         <p className="text-muted-foreground mt-1.5 max-w-[280px] text-sm leading-relaxed">
-          {body ??
-            "We're still polishing this. It'll land here shortly — thanks for waiting."}
+          {body}
         </p>
         <button
           type="button"

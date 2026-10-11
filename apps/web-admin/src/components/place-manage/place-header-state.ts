@@ -14,20 +14,10 @@ export function isEnriching(state: PlaceEnrichmentState | null): boolean {
 
 /** Same predicate as `_shared/place-state.ts::isPlaceListed` and the
  *  consumer RLS policy: only `active` and `lead` are reachable. */
-export const LISTED_STATES = ["active", "lead"] as const;
+const LISTED_STATES = ["active", "lead"] as const;
 
 export function listedFromState(state: unknown): boolean | "unknown" {
   if (typeof state !== "string" || state === "") return "unknown";
   return (LISTED_STATES as readonly string[]).includes(state);
-}
-
-/** Stamp `listed` from `state` so a merged write payload cannot keep a
- *  stale overview flag (Unlist wrote `paused` but left `listed: true`). */
-export function withListedFromState<T extends { state?: unknown; listed?: boolean }>(
-  place: T,
-): T {
-  const listed = listedFromState(place.state);
-  if (listed === "unknown") return place;
-  return { ...place, listed };
 }
 

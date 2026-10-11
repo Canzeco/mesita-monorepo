@@ -2,54 +2,34 @@
 // Binding rule: every serving path that picks an LLM/embedding model must
 // go through this helper — hardcoded model strings are a compliance bug.
 //
-// Shape (20260726010000_models_config_reshape, ojo added MESITA-1034):
-//   supabase   : { model }              DEAD in First Stage — read only by Second Stage EFs
-//   enricher   : { model, perplexity }  OpenAI main (live) + Perplexity leg (DEAD: atlasPerplexityPreset wins)
-//   embeddings : { model }              OpenAI embedding (see the note below)
-//   memo       : { model, perplexity }  OpenAI main + Perplexity leg (Discovery chat)
-//   ojo        : { model }              DEAD in First Stage — Ojo is Second Stage
+// Keys read here (20260726010000_models_config_reshape):
+//   enricher   : { model }              OpenAI main
+//   embeddings : { model }              OpenAI embedding — the PLACE-EMBEDDING model
+//                                       (enrich function 8). Was `lineup` until
+//                                       MESITA-1216; migration 20260823070521
+//                                       rewrote every stored row.
+//   memo       : { model }              OpenAI main (Discovery chat)
 //
-// The admin Models page (MESITA-2126) no longer shows the dead keys but its
-// whole-blob save writes them back; MESITA-2091 owns dropping them.
-//
-// "off" on a perplexity leg means skip Perplexity for that subsystem.
-//
-// ojo defaults to gpt-4o, not the enricher's gpt-4o-mini — Ojo reads a
-// screenshot to decide whether a guest earns money, and needs the stronger
-// vision tier the enricher's own image funnel reserves for its "standard"
-// quality knob (COST.visionPerImageStandard in enrich-config.ts).
-//
-// THE KEY IS `embeddings`, AND `lineup` IS STILL READ (MESITA-1216). It selects
-// the PLACE-EMBEDDING model — enrich function 8 — and never had anything to do
-// with candidate ordering; the name outlived the engine MESITA-1048 deleted.
-//
-// The legacy read is NOT decoration. This is a JSONB blob, so a stored row
-// written before the rename still says `lineup`, and dropping the fallback
-// would silently fall back to the code default on every place — a model swap
-// nobody asked for, invisible until the vectors disagree. Keep reading both
-// until a migration has rewritten every row AND no rollback target remains.
+// The stored blob still carries `supabase`, `ojo` and `enricher.perplexity`
+// (the admin whole-blob save writes them back); nothing reads them, and
+// MESITA-2091 owns dropping them. A stored `memo.perplexity` is unread too, and
+// the next Models save drops it (MESITA-2136).
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 export type ModelsConfig = {
   v?: number;
-  supabase?: { model?: string };
-  enricher?: { model?: string; perplexity?: string };
+  enricher?: { model?: string };
   embeddings?: { model?: string };
-  /** Pre-MESITA-1216 spelling of `embeddings`. Read-only fallback. */
-  lineup?: { model?: string };
-  memo?: { model?: string; perplexity?: string };
-  ojo?: { model?: string };
+  memo?: { model?: string };
 };
 
 export const DEFAULT_MODELS_CONFIG: Required<
-  Pick<ModelsConfig, "supabase" | "enricher" | "embeddings" | "memo" | "ojo">
+  Pick<ModelsConfig, "enricher" | "embeddings" | "memo">
 > = {
-  supabase: { model: "gpt-4o-mini" },
-  enricher: { model: "gpt-4o-mini", perplexity: "sonar-pro" },
+  enricher: { model: "gpt-4o-mini" },
   embeddings: { model: "text-embedding-3-small" },
-  memo: { model: "gpt-4o-mini", perplexity: "sonar-pro" },
-  ojo: { model: "gpt-4o" },
+  memo: { model: "gpt-4o-mini" },
 };
 
 function nonEmpty(s: unknown, fallback: string): string {
@@ -60,15 +40,9 @@ function nonEmpty(s: unknown, fallback: string): string {
 export async function loadModelsConfig(
   admin: SupabaseClient,
 ): Promise<{
-  supabaseModel: string;
   enricherModel: string;
-  enricherPerplexity: string;
-  /** From `embeddings.model`, falling back to the legacy `lineup.model`. */
   embeddingModel: string;
   memoModel: string;
-  memoPerplexity: string;
-  ojoModel: string;
-  raw: ModelsConfig | null;
 }> {
   const { data, error } = await admin
     .from("app_config")
@@ -80,30 +54,14 @@ export async function loadModelsConfig(
   }
   const raw = (data?.models_config ?? null) as ModelsConfig | null;
   return {
-    supabaseModel: nonEmpty(
-      raw?.supabase?.model,
-      DEFAULT_MODELS_CONFIG.supabase.model!,
-    ),
     enricherModel: nonEmpty(
       raw?.enricher?.model,
       DEFAULT_MODELS_CONFIG.enricher.model!,
     ),
-    enricherPerplexity: nonEmpty(
-      raw?.enricher?.perplexity,
-      DEFAULT_MODELS_CONFIG.enricher.perplexity!,
-    ),
-    // Both spellings, new one first — a row written before MESITA-1216 still
-    // says `lineup`, and losing it would silently re-vector the catalog.
     embeddingModel: nonEmpty(
-      raw?.embeddings?.model ?? raw?.lineup?.model,
+      raw?.embeddings?.model,
       DEFAULT_MODELS_CONFIG.embeddings.model!,
     ),
     memoModel: nonEmpty(raw?.memo?.model, DEFAULT_MODELS_CONFIG.memo.model!),
-    memoPerplexity: nonEmpty(
-      raw?.memo?.perplexity,
-      DEFAULT_MODELS_CONFIG.memo.perplexity!,
-    ),
-    ojoModel: nonEmpty(raw?.ojo?.model, DEFAULT_MODELS_CONFIG.ojo.model!),
-    raw,
   };
 }

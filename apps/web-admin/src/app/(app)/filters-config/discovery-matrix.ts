@@ -1,8 +1,10 @@
 import type { SignalKey } from "./catalog";
 import { FILTERS_FLOOR_OWNER } from "./source-floor-copy";
 
-// Twin of `supabase/functions/_shared/discovery-matrix.ts`. Spec mirror,
-// not a dispatcher. Change one, change the other. Vercel root is
+// The mode × entity × pool × source spec tables the Matrix renders. Spec,
+// not a dispatcher: they live only here. The mode keys, signal masks and
+// zero pins below mirror `supabase/functions/_shared/discovery-matrix.ts`,
+// which the engines read — change one, change the other. Vercel root is
 // apps/web-admin, so this bundle cannot import the EF file.
 //
 // TWO NOUNS, AND ONLY TWO: a **Mode** is a guest Discovery surface, a

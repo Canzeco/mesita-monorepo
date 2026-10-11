@@ -1,8 +1,6 @@
 // The guest's predicates, on the wire (MESITA-1153, shape MESITA-1792).
 //
-// Web sends Family, Places scope, and Google review floor. The EF still
-// reads the retired intent/when/distance fields so a deployed Expo binary
-// that posts the old payload keeps working.
+// Web sends Family, Places scope, and Google review floor.
 
 import type { DiscoveryFilters } from "@/lib/discovery-filters-engine";
 import { hasDiscoveryPredicates } from "@/lib/discovery-filters-engine";
@@ -13,9 +11,9 @@ export type DiscoveryPredicatesWire = {
   minReviews: number;
 };
 
-export type DeckCenter = { lat: number; lng: number } | null;
+type DeckCenter = { lat: number; lng: number } | null;
 
-export type DeckRequest = {
+type DeckRequest = {
   limit: number;
   lat?: number;
   lng?: number;

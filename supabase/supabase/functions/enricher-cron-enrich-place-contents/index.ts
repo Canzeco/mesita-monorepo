@@ -120,10 +120,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
     return;
   }
   const cfg = await loadEnrichConfig(admin);
-  const ledger = createEnrichCostLedger(
-    cfg.perRunCostCapUsd,
-    costFromGathered(gathered),
-  );
+  const ledger = createEnrichCostLedger(costFromGathered(gathered));
 
   const place: Record<string, unknown> = { ...gathered.place };
   // `gathered.place` deliberately carries NO name keys: the research stage
@@ -160,7 +157,6 @@ serveEnrichStage("contents", async (admin, env, row) => {
   } else {
     const synthCost = synthesisRunCost(cfg.synthesisQuality);
     const classifyCost = COST.sort * 3;
-    ledger.assertCanAfford(synthCost + classifyCost, "synthesis_and_classify");
 
     const { parsed, diag: synthDiag } = await synthesizeProfile({
       openaiKey: OPENAI_KEY,

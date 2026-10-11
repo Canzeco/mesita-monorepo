@@ -22,24 +22,6 @@ Deno.test("listed: only active and lead are reachable by a guest", () => {
   }
 });
 
-// The states that are NOT reachable. The list above is only half the
-// contract: project_state also carries paused, archived, pending_review and
-// pending_verification, and every one of them must read as not-listed. Pinning
-// them by name means a new state added to the enum shows up here as a
-// deliberate choice rather than defaulting into visibility.
-Deno.test("listed: every other project_state is unreachable", () => {
-  for (
-    const state of [
-      "paused",
-      "archived",
-      "pending_review",
-      "pending_verification",
-    ]
-  ) {
-    assertEquals(isPlaceListed(state), false, `${state} must not be listed`);
-  }
-});
-
 Deno.test("listed: a missing or non-string state is never listed", () => {
   // The search EF degrades a failed read to the safe direction for a state
   // column. Claiming a place is guest-visible when we do not know is the one

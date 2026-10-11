@@ -25,19 +25,15 @@
 // each only while the bands no farther place could outrank hold fewer than
 // the deck (`widenSwipePool`). At 50 OPEN places inside the radius none runs.
 //
-// BUILDS OLDER THAN MESITA-2047 re-sort the deck partners-first on the
-// client, so until a device takes the update a closed partner can lead there.
+// Returns { ok, deck, summary: { candidates, embedded, backfilled } };
+// web-consumer reads `deck`. `candidates` is the strict (open, in-radius)
+// pool.
 //
-// THE SLUG AND THE RESPONSE SHAPE ARE STILL FROZEN. Deployed Expo binaries call
-// this endpoint and cannot be redeployed atomically. Keep returning
-// { ok, deck, summary: { candidates, embedded } }. `candidates` is still the
-// strict (open, in-radius) pool; `summary.backfilled` is additive.
-//
-// `lat` / `lng` feed Proximity and the radius. `radiusKm` and `randomness`
-// stay discarded — both are operator policy on discovery_config.swipe
-// (radius) and Places Lineup (randomness exponent). Optional `predicates`
+// `lat` / `lng` feed Proximity and the radius; the radius itself and the
+// randomness exponent are operator policy (discovery_config.swipe, Places
+// Lineup), never the client's. Optional `predicates`
 // still cut inside the operator's filters (MESITA-1153). A client that
-// omits them — every deployed Expo binary — gets the operator pool.
+// omits them gets the operator pool.
 //
 // Local:  supabase functions serve consumer-web-recommend-swipe
 // Deploy: supabase functions deploy consumer-web-recommend-swipe
@@ -93,11 +89,7 @@ const RING_PAGES_MAX = 3;
 type Body = {
   lat?: number;
   lng?: number;
-  /** Accepted for wire compatibility. Ignored — operator owns radius. */
-  radiusKm?: number;
   limit?: number;
-  /** Accepted for wire compatibility. Ignored — Lineup owns randomness. */
-  randomness?: number;
   predicates?: unknown;
 };
 
@@ -180,8 +172,8 @@ Deno.serve(async (req) => {
   const predicates = readDeckPredicates(body.predicates);
   // The exclusions: type batteries (listed Mesita restaurants/bars/cafes/etc.
   // — Map's floors stay Map's; reviews already ran as a query predicate), then
-  // the guest's own predicates. A guest who asked for "open now" or a max
-  // distance keeps that promise; only the operator's gates are tiered.
+  // the guest's own predicates. A guest who asked for a family or a review
+  // floor keeps that promise; only the operator's gates are tiered.
   const admit = (rows: PlaceProfileRow[]) =>
     applyDeckPredicates(
       admitSwipeCatalog(rows, {
@@ -191,7 +183,6 @@ Deno.serve(async (req) => {
         minPopularity: 0,
       }) as unknown as Record<string, unknown>[],
       predicates,
-      guestGeo,
     ) as unknown as PlaceProfileRow[];
   const reachKm = swipeReachKm(filters.maxDistanceKm, cfg.params);
   const tiersOf = (rows: PlaceProfileRow[]) =>
@@ -247,10 +238,7 @@ Deno.serve(async (req) => {
           guestGeo,
           swipeLineupWeights(cfg),
           cfg.params,
-          {
-            categories: predicates.categories,
-            families: predicates.familyKeys,
-          },
+          { families: predicates.familyKeys },
         ) as PlaceProfileRow[]
         // Ranking off still bands: admission, tiers and ordering are three
         // different questions, and "off" only answers the last one.

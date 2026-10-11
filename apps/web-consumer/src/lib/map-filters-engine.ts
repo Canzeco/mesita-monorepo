@@ -20,19 +20,12 @@
 // operator floors still bind underneath.
 //
 // The SERVER is the one selector (MESITA-1699 law kept): SearchClient
-// posts these three params and paints what comes back. applyMapFilters
-// here is the nested-set law the sheet counts against, not a second cut.
+// posts these three params and paints what comes back.
 // Distance and time stay off this surface: the camera already bounds
 // the set. Swipe keeps DiscoveryFilters.
 
 import type { Place } from "@/lib/api/places";
 import { type FamilyKey } from "@/lib/place-families";
-
-export type MapStateKey =
-  | "not_on_mesita"
-  | "created"
-  | "requested"
-  | "enriched";
 
 /** The set the guest picked. Named, never an ordinal — the wire carries
  *  this word, and two callers post no scope at all. */
@@ -40,12 +33,6 @@ export type MapPlacesScope = "mesita" | "google";
 
 /** The inner ring: the places Mesita has written up. */
 export const MAP_PLACES_SCOPE_DEFAULT: MapPlacesScope = "mesita";
-
-/** Rank inside the chain — bigger ring, bigger number. Not a wire value. */
-const SCOPE_RANK: Record<MapPlacesScope, number> = {
-  mesita: 1,
-  google: 2,
-};
 
 /**
  * The stops, narrowest first. `tick` is what the radio says; the names
@@ -130,22 +117,6 @@ export function parsePlacesScope(value: unknown): MapPlacesScope {
   return MAP_PLACES_SCOPE_DEFAULT;
 }
 
-export function placesScopeCaption(scope: MapPlacesScope): string {
-  return MAP_SEARCH_STOPS.find((stop) => stop.key === scope)?.hint ??
-    MAP_SEARCH_STOPS[0].hint;
-}
-
-/** Highest rung wins so a place has one atlas state. */
-export function placeMapState(place: Place): MapStateKey {
-  if (place.googleOnly || place.from_google) return "not_on_mesita";
-  if (place.content_state === "ready" || Boolean(place.enriched_at)) {
-    return "enriched";
-  }
-  const requests = Number(place.request_count);
-  if (Number.isFinite(requests) && requests > 0) return "requested";
-  return "created";
-}
-
 /**
  * The narrowest ring a place belongs to. Created and Requested return null
  * — the Mesita ring is enriched-only, never a thin stub, and that is what
@@ -166,25 +137,4 @@ export function mapFilterCount(f: MapFilters): number {
   const scope = f.placesScope === MAP_PLACES_SCOPE_DEFAULT ? 0 : 1;
   const popularity = f.minReviews === MAP_MIN_REVIEWS_DEFAULT ? 0 : 1;
   return scope + f.familyKeys.length + popularity;
-}
-
-function matchesMapFilters(place: Place, f: MapFilters): boolean {
-  const scope = placeSearchScope(place);
-  if (!scope) return false;
-  if (SCOPE_RANK[scope] > SCOPE_RANK[f.placesScope]) return false;
-
-  if (f.familyKeys.length > 0) {
-    const familyHit = f.familyKeys.some((key) =>
-      (place.family_keys ?? []).includes(key),
-    );
-    if (!familyHit) return false;
-  }
-
-  return true;
-}
-
-/** Nested-set + Family law. Popularity is the EF's, not this cut. */
-export function applyMapFilters(places: Place[], f: MapFilters): Place[] {
-  const next = places.filter((place) => matchesMapFilters(place, f));
-  return next.length === places.length ? places : next;
 }

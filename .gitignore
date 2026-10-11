@@ -4,6 +4,12 @@
 # safety nets — each package's own .gitignore is the real authority
 node_modules/
 .pnpm-store/
+# env files .worktreeinclude seeds outlive a deleted package's own .gitignore
+# (#2117 committed three from apps/web-business + apps/mobile-consumer)
+.env
+.env.*
+!.env.example
+!.env.*.example
 
 # local-only agent config (and the copy Redeye takes before it arms)
 .claude/settings.local.json

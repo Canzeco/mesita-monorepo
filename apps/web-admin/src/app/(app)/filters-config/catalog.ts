@@ -46,17 +46,20 @@
 //             each mode's locked sources live in discovery-matrix.ts.
 //   SIGNALS   eight earned signals: Name · Summary · Category · Proximity ·
 //             Timing · Enriched · Popularity · Randomness. None reads money.
-//             Old `semantic` folds to Summary. Partnership and Promotion
-//             merged into Mesita Level and Social left the library
-//             (MESITA-1408); Social then left the mode list too, and is now
-//             two Sources. Mesita Level is Enriched now (MESITA-1858), and
-//             an old blob's `mesita_level` folds onto it.
+//             Partnership and Promotion merged into Mesita Level and Social
+//             left the library (MESITA-1408); Social then left the mode list
+//             too, and is now two Sources. Mesita Level is Enriched now
+//             (MESITA-1858), and an old blob's `mesita_level` folds onto it.
 //
 // Operator filters still live on the blob so a whole-blob Save cannot
 // reset them. They have no knobs on this page.
 
 import { num } from "@/lib/config-coerce";
 
+// Signal order — Notion Docs > Discovery section 8.3. What the caller ASKED
+// FOR first, then what the world is, then where the place sits with us, then
+// the tie-breaker. Presentation only: the blend is a product, so order cannot
+// change a score.
 export const SIGNAL_KEYS = [
   "name",
   "summary",
@@ -86,8 +89,6 @@ export type NameDeepConfig = {
   autoCount: number;
   /** Google Text Search cap. Independent query. */
   googleCount: number;
-  /** Legacy blob field. Queries concat; the union is not sliced. */
-  count: number;
   supers: Record<SuperParamKey, boolean>;
 };
 
@@ -103,14 +104,11 @@ export type NameConfig = {
  * starsExponent, logDivisor, partnerBias and randomnessMax carried the retired
  * two-signal SUM and had sat unread since the blend replaced it. A dead
  * `weightProximity` beside a live per-mode Proximity exponent reads as a
- * second, competing dial. `categoryFilter` is the sixth unread field; it stays
- * on the blob and gets no control.
+ * second, competing dial. The unread `categoryFilter` went the same way.
  */
 export type SwipeConfig = {
   radiusKm: number;
   closingBufferMin: number;
-  /** Guest category-filter default. UNREAD — rendered nowhere. */
-  categoryFilter: boolean;
   minReviews: number;
   savedAt: string | null;
 };
@@ -176,7 +174,7 @@ export type SuperParamKey = (typeof SUPER_PARAM_KEYS)[number];
 
 /** Mirrors GOOGLE_PULL_STOPS in _shared/discovery-config.ts. */
 export const GOOGLE_PULL_STOPS = [20, 40, 60] as const;
-export const GOOGLE_PULL_DEFAULT = 20;
+const GOOGLE_PULL_DEFAULT = 20;
 /** Same ceiling as filters.minReviews — one reviewer floor reads like another. */
 export const GENERAL_MIN_REVIEWS_MAX = 100_000;
 
@@ -270,7 +268,7 @@ export type DiscoveryFilters = {
 
 /** Mirrors WIRED_ENGINE_KEYS in _shared/discovery-config.ts. */
 const WIRED_ENGINE_KEYS = ["swipe"] as const;
-export type WiredEngineKey = (typeof WIRED_ENGINE_KEYS)[number];
+type WiredEngineKey = (typeof WIRED_ENGINE_KEYS)[number];
 
 /**
  * Mirrors WEIGHTED_MODE_KEYS in _shared/discovery-matrix.ts — the modes that
@@ -361,7 +359,6 @@ export const NAME_LANE_COUNT_MAX = 20;
 const NAME_FAST_COUNT_DEFAULT = 5;
 const NAME_MESITA_COUNT_DEFAULT = 3;
 const NAME_GOOGLE_COUNT_DEFAULT = 3;
-const NAME_DEEP_COUNT_DEFAULT = 9;
 
 /** Exported since MESITA-1859 gave Scroll a live card with three fields. */
 export const SWIPE_RADIUS_KM_MIN = 1;
@@ -422,7 +419,6 @@ const DEFAULT_NAME_DEEP: NameDeepConfig = {
   mesitaCount: NAME_MESITA_COUNT_DEFAULT,
   autoCount: NAME_GOOGLE_COUNT_DEFAULT,
   googleCount: NAME_GOOGLE_COUNT_DEFAULT,
-  count: NAME_DEEP_COUNT_DEFAULT,
   supers: DEFAULT_MAP_SUPERS,
 };
 
@@ -439,7 +435,6 @@ export const DEFAULT_GENERAL: GeneralConfig = {
 export const DEFAULT_SWIPE: SwipeConfig = {
   radiusKm: 5,
   closingBufferMin: 30,
-  categoryFilter: false,
   minReviews: 1,
   savedAt: null,
 };
@@ -504,18 +499,6 @@ export const DEFAULT_CONFIG: DiscoveryConfig = {
   swipe: DEFAULT_SWIPE,
 };
 
-/**
- * One row of the weights table.
- *
- * `reads` is what the signal actually looks at, so an operator can tell WHY a
- * weight is doing nothing — Summary against an un-embedded catalog is not
- * broken, it is abstaining, and the enrichment queue's semantic `summary`
- * function is what fixes that.
- *
- * `engines` names where the exponent is felt TODAY. Map, Word, and Swipe
- * read weightsForMode. Catalog and Chat stay pending. Weights on a red
- * matrix cell are 0 for that mode.
- */
 const UNIT: ParamField[] = [];
 const ZERO_ONE = (key: string, label: string): ParamField => ({
   key,
@@ -545,23 +528,6 @@ const HIDDEN_FIELD: Record<string, Pick<ParamField, "min" | "max" | "step">> = {
   unembedded: { min: 0, max: 1, step: 0.05 },
 };
 
-/**
- * Signal order — Notion Docs > Discovery section 8.3. What the caller ASKED
- * FOR first, then what the world is, then where the place sits with us, then
- * the tie-breaker. Presentation only: the blend is a product, so order cannot
- * change a score.
- */
-export const LIBRARY_SIGNALS = [
-  { kind: "signal" as const, key: "name" as const },
-  { kind: "signal" as const, key: "summary" as const },
-  { kind: "signal" as const, key: "category" as const },
-  { kind: "signal" as const, key: "proximity" as const },
-  { kind: "signal" as const, key: "timing" as const },
-  { kind: "signal" as const, key: "enriched" as const },
-  { kind: "signal" as const, key: "popularity" as const },
-  { kind: "signal" as const, key: "randomness" as const },
-] as const;
-
 export {
   DISCOVERY_MODE_KEYS,
   DISCOVERY_MODE_LABELS,
@@ -574,100 +540,69 @@ export {
   modeRequiresPool,
   modeCallsSource,
   modeSignalState,
-  type DiscoveryModeKey,
-  type DiscoveryEntityKey,
-  type DiscoveryPoolKey,
 } from "./discovery-matrix";
 
 export const SIGNALS: {
   key: SignalKey;
   label: string;
-  fn: string;
   input: string;
-  process: string;
   output: string;
   fields: ParamField[];
-  /** Vendor APIs this function calls at rank time. Empty = none. */
-  apis: string[];
 }[] = [
   {
     key: "name",
     label: "Name",
-    fn: "name()",
     input: "Query × places.name_embedding (Mesita `places.name`, not `google_name`).",
-    process: "(cosine + 1) / 2. No name query → abstain.",
     output: "Unembedded place → unembedded, never deleted.",
-    apis: [],
     fields: UNIT,
   },
   {
     key: "summary",
     label: "Summary",
-    fn: "summary()",
     input: "Query vector × places.embedding (Summary, never Presentation).",
-    process: "(cosine + 1) / 2. No query → abstain. Old semantic weight folds here.",
     output: "Unembedded place → unembedded, never deleted.",
-    apis: [],
     fields: UNIT,
   },
   {
     key: "proximity",
     label: "Proximity",
-    fn: "proximity()",
     input: "Place geo × guest geo. No guest geo → abstains at 1.",
-    process: "Haversine km, then 1 − log1p(km / knee) / log1p(max / knee).",
     output: "1 at the guest, 0 past maxKm. Unlocated place → missingGeo.",
-    apis: [],
     fields: [{ key: "maxKm", label: "Max km", min: 1, max: 200, step: 0.5 }],
   },
   {
     key: "timing",
     label: "Timing",
-    fn: "timing()",
     input: "Weekly hours × the place's local clock.",
-    process: "openShare × openOrFloor + (1 − openShare) × daypart(hour).",
     output: "Closed is demoted to closedFloor, never hidden.",
-    apis: [],
     fields: [ZERO_ONE("closedFloor", "Closed floor")],
   },
   {
     key: "category",
     label: "Category",
-    fn: "category()",
     input: "Place category/family × guest categories. Swipe states none.",
-    process: "exact hit, else family hit, else miss. No intent → abstain.",
     output: "One of exact / family / miss.",
-    apis: [],
     fields: UNIT,
   },
   {
     key: "popularity",
     label: "Popularity",
-    fn: "popularity()",
     input: "Google rating + review count.",
-    process: "(v·r + m·prior) / (v + m), then stretch from floorRating to 5.",
     output: "Unrated place gets the prior, never an abstention.",
-    apis: [],
     fields: UNIT,
   },
   {
     key: "enriched",
     label: "Enriched",
-    fn: "enriched()",
     input: "The explicit enriched boolean the projection set, plus Crenup high-water when the surface merged it in. The signal never re-derives either.",
-    process: "Graded on high-water: 0.15 + 0.85 x hw/10. No high-water, binary: enriched → 1, otherwise 0.15. Demotes, never hides.",
     output: "Did Mesita do the work on this place — a written profile, not a raw Google row.",
-    apis: [],
     fields: UNIT,
   },
   {
     key: "randomness",
     label: "Randomness",
-    fn: "randomness()",
     input: "Nothing about the place. A uniform draw.",
-    process: "rng() in [0, 1). The exponent is the only knob.",
     output: "A number that only breaks near-ties when the exponent is soft.",
-    apis: [],
     fields: UNIT,
   },
 ];
@@ -676,13 +611,11 @@ export const SIGNALS: {
  * Retired signal keys an old blob may still carry. Mirrors
  * LEGACY_SIGNAL_ALIASES in _shared/discovery-config.ts.
  *
- *   semantic      → summary    (MESITA-1408)
  *   mesita_level  → enriched   (MESITA-1858)
  *
  * An explicitly-set new key always wins over the alias.
  */
-export const LEGACY_SIGNAL_ALIASES: Record<string, readonly SignalKey[]> = {
-  semantic: ["summary"],
+const LEGACY_SIGNAL_ALIASES: Record<string, readonly SignalKey[]> = {
   mesita_level: ["enriched"],
 };
 
@@ -860,9 +793,6 @@ function coerceSwipe(raw: unknown): SwipeConfig {
         SWIPE_CLOSING_BUFFER_MAX,
       ),
     ),
-    categoryFilter: typeof s.categoryFilter === "boolean"
-      ? s.categoryFilter
-      : DEFAULT_SWIPE.categoryFilter,
     minReviews: Math.round(num(s.minReviews, DEFAULT_SWIPE.minReviews, 0, 100_000)),
     savedAt: coerceSavedAt(s.savedAt),
   };
@@ -918,46 +848,21 @@ function coerceSocial(raw: unknown): SocialConfig {
   };
 }
 
-// The five Google slugs the pre-1695 strip defaulted ON. A tombstone: read
-// only when folding a stored blob that still keys by Google type.
-const LEGACY_TYPE_DEFAULTS = new Set<string>([
-  "restaurant",
-  "bar",
-  "night_club",
-  "cafe",
-  "bakery",
-]);
-const LEGACY_SUPER_BATTERY: Record<SuperParamKey, readonly string[]> =
-  Object.fromEntries(
-    SUPER_FIELDS.map((f) => [f.key, f.battery]),
-  ) as Record<SuperParamKey, readonly string[]>;
-
-/** Mirrors `normalizeSuperParams` in _shared/discovery-config.ts. */
-function coerceSuperParams(
-  raw: unknown,
-  legacyTypes?: unknown,
-): Record<SuperParamKey, boolean> {
+/**
+ * Mirrors `normalizeSuperParams` in _shared/discovery-config.ts. A blob with
+ * no boolean Super key reads the defaults; otherwise a missing or non-boolean
+ * key falls back to its own default.
+ */
+function coerceSuperParams(raw: unknown): Record<SuperParamKey, boolean> {
   const r = (raw ?? {}) as Record<string, unknown>;
-  const out = {} as Record<SuperParamKey, boolean>;
-  if (SUPER_PARAM_KEYS.some((key) => typeof r[key] === "boolean")) {
-    for (const key of SUPER_PARAM_KEYS) {
-      out[key] = typeof r[key] === "boolean"
-        ? (r[key] as boolean)
-        : DEFAULT_MAP_SUPERS[key];
-    }
-    return out;
+  if (!SUPER_PARAM_KEYS.some((key) => typeof r[key] === "boolean")) {
+    return { ...DEFAULT_MAP_SUPERS };
   }
-  const legacy = (legacyTypes ?? {}) as Record<string, unknown>;
-  const hasLegacy = Object.values(LEGACY_SUPER_BATTERY)
-    .flat()
-    .some((slug) => typeof legacy[slug] === "boolean");
-  if (!hasLegacy) return { ...DEFAULT_MAP_SUPERS };
+  const out = {} as Record<SuperParamKey, boolean>;
   for (const key of SUPER_PARAM_KEYS) {
-    out[key] = LEGACY_SUPER_BATTERY[key].some((slug) =>
-      typeof legacy[slug] === "boolean"
-        ? (legacy[slug] as boolean)
-        : LEGACY_TYPE_DEFAULTS.has(slug)
-    );
+    out[key] = typeof r[key] === "boolean"
+      ? (r[key] as boolean)
+      : DEFAULT_MAP_SUPERS[key];
   }
   return out;
 }
@@ -998,7 +903,7 @@ function coerceName(raw: unknown): NameConfig {
         num(fast.googleCount ?? fast.count, fastCount, 0, NAME_LANE_COUNT_MAX),
       ),
       count: fastCount,
-      supers: coerceSuperParams(fast.supers, fast.types),
+      supers: coerceSuperParams(fast.supers),
     },
     deep: {
       mesitaCount: Math.round(
@@ -1010,17 +915,14 @@ function coerceName(raw: unknown): NameConfig {
       googleCount: Math.round(
         num(deep.googleCount, DEFAULT_NAME_DEEP.googleCount, 0, NAME_LANE_COUNT_MAX),
       ),
-      count: Math.round(
-        num(deep.count, DEFAULT_NAME_DEEP.count, 0, NAME_LANE_COUNT_MAX),
-      ),
-      supers: coerceSuperParams(deep.supers, deep.types),
+      supers: coerceSuperParams(deep.supers),
     },
   };
 }
 
 function coerceMap(raw: unknown): MapConfig {
   const m = (raw ?? {}) as Record<string, unknown>;
-  const supers = coerceSuperParams(m.supers, m.types);
+  const supers = coerceSuperParams(m.supers);
   const reload = snapMapReloadPair(m.reloadMinKm, m.reloadMinSec);
   return {
     minRating: Math.round(

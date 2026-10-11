@@ -1,16 +1,12 @@
 import { json } from "../_shared/http.ts";
 
 export type UpdateProfileBody = {
-  // Legacy single-field name. Still accepted so older clients keep
-  // working. New clients send first_name + last_name; this EF joins them
-  // to repopulate full_name for downstream readers.
-  full_name?: string | null;
+  // full_name is not a request field: this EF joins first_name + last_name
+  // to repopulate it for downstream readers.
   first_name?: string | null;
   last_name?: string | null;
   sex?: string | null;
   birthday?: string | null;
-  country?: string | null;
-  phone?: string | null;
   // Public URL of a photo the caller already uploaded to consumer-avatars
   // (MESITA-953). null/"" clears. Foreign hosts are rejected.
   avatar_url?: string | null;
@@ -83,7 +79,7 @@ export type ParseNameResult =
 // leave a consumer no place can be told to expect, so an explicit blank is
 // still a 400 — as distinct from simply not sending that key, which patches
 // nothing. Patches that don't touch the name at all (avatar-only,
-// birthday-only, legacy full_name) pass straight through.
+// birthday-only) pass straight through.
 export function parseName(
   body: UpdateProfileBody,
   firstName: string | null,
@@ -183,8 +179,6 @@ export type ProfileFieldValues = {
   fullName: string | null;
   sex: string | null;
   birthday: string | null;
-  country: string | null;
-  phone: string | null;
   // undefined = not in this patch; null = clear; string = set.
   avatarUrl?: string | null;
 };
@@ -205,17 +199,11 @@ export function buildProfilePatch(
   const patch: Record<string, unknown> = {};
   if (body.first_name !== undefined) patch.first_name = fields.firstName;
   if (body.last_name !== undefined) patch.last_name = fields.lastName;
-  if (
-    body.first_name !== undefined ||
-    body.last_name !== undefined ||
-    body.full_name !== undefined
-  ) {
+  if (body.first_name !== undefined || body.last_name !== undefined) {
     patch.full_name = fields.fullName;
   }
   if (body.sex !== undefined) patch.sex = fields.sex;
   if (body.birthday !== undefined) patch.birthday = fields.birthday;
-  if (body.country !== undefined) patch.country = fields.country;
-  if (body.phone !== undefined) patch.phone = fields.phone;
   if (body.avatar_url !== undefined) patch.avatar_url = fields.avatarUrl ?? null;
 
   if (Object.keys(patch).length === 0) {

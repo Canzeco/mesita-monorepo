@@ -63,7 +63,6 @@ import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { requireInternalCaller } from "../_shared/internal.ts";
 import { runInBackground } from "../_shared/background.ts";
 import { coerceReservationsCallConfig } from "../_shared/reservations-config.ts";
-import { type AttemptEntry } from "../_shared/reservation-attempts.ts";
 import {
   consumerFromNumber,
   resolveElevenLabsKey,
@@ -101,6 +100,7 @@ import {
   placeCancelNoticePrompt,
 } from "../_shared/reservation-legs.ts";
 import {
+  type ReservationAttempt,
   type ReservationPatch,
   validateReservationPatch,
   writeReservation,
@@ -142,10 +142,6 @@ function guestName(c: ConsumerName | null): string {
     .join(" ");
   return joined || "el cliente";
 }
-
-// AttemptEntry: promoted to _shared/reservation-attempts.ts (MESITA-1247) —
-// was a local, unexported type here, read back with a bare `as` cast at its
-// hydration site below. Import only; do not re-declare it.
 
 // Watch one placed call until we can tell whether it was answered. On failed,
 // errorCode (metadata.error.code) lets the caller separate a platform kill
@@ -846,7 +842,7 @@ async function runIntents(input: {
   /** Attempts already burned by earlier runs — this run resumes after them. */
   attemptsDone: number;
   /** Log carried across runs so the ticket keeps its full history. */
-  priorAttempts: AttemptEntry[];
+  priorAttempts: ReservationAttempt[];
   /** The place's weekly hours + lng — when the next try is allowed to fire. */
   placeHours: unknown;
   placeLng: number | null;
@@ -870,7 +866,7 @@ async function runIntents(input: {
 }): Promise<void> {
   const { admin, reservationId, attemptsPlanned, legVars, notify } = input;
   // Prior runs' entries stay in the log; this run appends to them.
-  const attempts: AttemptEntry[] = [...input.priorAttempts];
+  const attempts: ReservationAttempt[] = [...input.priorAttempts];
   const record = (patch: Record<string, unknown>) =>
     guardedRecord(admin, reservationId, input.runId, patch);
   // Failed to book new terms while the place still HOLDS the old slot → the
@@ -926,7 +922,7 @@ async function runIntents(input: {
 
     // Leg 1 · consumer → business — the booking intents.
     for (let n = input.attemptsDone + 1; n <= attemptsPlanned; n++) {
-      const entry: AttemptEntry = {
+      const entry: ReservationAttempt = {
         n,
         started_at: new Date().toISOString(),
         conversation_id: null,
@@ -1691,7 +1687,7 @@ Deno.serve(async (req) => {
       reservationId,
       attemptsPlanned: cfg.attempts,
       attemptsDone: typeof r.call_attempts === "number" ? r.call_attempts : 0,
-      priorAttempts: Array.isArray(r.attempts) ? (r.attempts as AttemptEntry[]) : [],
+      priorAttempts: Array.isArray(r.attempts) ? (r.attempts as ReservationAttempt[]) : [],
       placeHours: place?.hours ?? null,
       placeLng,
       businessNumber,

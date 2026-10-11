@@ -62,16 +62,6 @@ Deno.test("defaults admit everything and fire the three billed Supers", () => {
   );
 });
 
-Deno.test("how many is not an operator gate — only googleFill and types are", () => {
-  // The retired googleCount knob used to be able to silence Nearby.
-  // The operator decides IF Google may be billed; the guest's How many
-  // decides how many come back (Pato, 2026-08-29).
-  assertEquals(mapShouldFillGoogle(true, { ...MAP }), true);
-  assertEquals("googleCount" in MAP, false);
-  // How many Google rows we BUY is the operator's, and it is a stop, not free.
-  assertEquals(MAP.googlePull, 20);
-});
-
 Deno.test("googleFill off or every Super off skips Nearby even if the client opts in", () => {
   assertEquals(mapShouldFillGoogle(true, { ...MAP, googleFill: false }), false);
   assertEquals(

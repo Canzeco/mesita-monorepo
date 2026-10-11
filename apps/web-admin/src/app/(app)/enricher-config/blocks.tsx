@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
-import { Collapsible, FIELD_WELL } from "@/components/admin-ui/config";
+import { Collapsible } from "@/components/admin-ui/config";
 import {
   fmtTime,
   money,
@@ -12,7 +12,7 @@ import {
 import type { CrenupPrompt } from "./actions";
 
 // Crenup's page-local layout kit. Structural only — controls come from
-// `@/components/admin-ui/config`. Four SectionCards own the page; these
+// `@/components/admin-ui/config`. Two SectionCards own each page; these
 // primitives live *inside* a card. A function is a disclosure row, never a
 // card of its own.
 
@@ -299,48 +299,6 @@ function PromptBlock({
 export function Fields({ children }: { children: React.ReactNode }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{children}</div>
-  );
-}
-
-/**
- * Labelled native select. Native because a custom listbox would have to
- * re-earn keyboard support, and this page has no reason to spend that.
- * The label is a real <label>, never a placeholder.
- */
-export function SelectField<T extends string>({
-  label,
-  hint,
-  value,
-  options,
-  onChange,
-  disabled,
-}: {
-  label: string;
-  hint?: string;
-  value: T;
-  options: readonly { value: T; label: string }[];
-  onChange: (v: T) => void;
-  disabled: boolean;
-}) {
-  return (
-    <label className={FIELD_WELL}>
-      <span className="text-sm leading-snug font-medium">{label}</span>
-      <select
-        value={value}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.value as T)}
-        className="border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-2 text-sm outline-none disabled:opacity-50"
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-      {hint ? (
-        <span className="text-muted-foreground type-label">{hint}</span>
-      ) : null}
-    </label>
   );
 }
 

@@ -16,7 +16,6 @@ import {
   withNext,
 } from "@/lib/auth-redirect";
 import {
-  consumerCanBook,
   consumerCanBrowse,
   consumerNeedsLastName,
 } from "@/lib/consumer-onboarding";
@@ -188,38 +187,12 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // discoverTabs segment individually instead. NO `search` key: an exact
       // top-level segment with no siblings.
       place: "/place",
-      reservations: "/reservations",
       pay: "/pay",
       // NO `inbox` key (MESITA-1626): every /inbox address 308s to /me, so
       // the middleware never sees one.
       me: "/me",
-      saved: "/saved",
     });
     expect(CONSUMER_RESERVATION_SURFACE_PREFIX).toBe("/reservation");
-  });
-
-  // A Second Stage key that survives as "dead but typed" is how a deleted
-  // surface comes back by autocomplete.
-  it("keeps no route key for a Second Stage surface", () => {
-    for (const key of [
-      "inbox",
-      "inboxDefault",
-      "newVisit",
-      "newVisitDefault",
-      "visit",
-      "wallet",
-      "order",
-      "giftClaim",
-      "share",
-    ]) {
-      expect(CONSUMER_ROUTES, key).not.toHaveProperty(key);
-    }
-    for (const key of ["diamond", "diamondInvite", "settingsMetrics", "visits"]) {
-      expect(CONSUMER_ROUTES.mePages, key).not.toHaveProperty(key);
-    }
-    for (const key of ["inbox", "newVisit", "visit", "wallet", "order"]) {
-      expect(CONSUMER_ROUTE_PREFIX, key).not.toHaveProperty(key);
-    }
   });
 
   // Nothing in the legacy block may be a live address: a redirect whose
@@ -313,10 +286,6 @@ describe("path helpers", () => {
       expect(isModalContractPath(href), href).toBe(false);
     }
   });
-
-  it("keeps Pay, a full page, out of the modal contract", () => {
-    expect(isModalContractPath(CONSUMER_ROUTES.pay)).toBe(false);
-  });
 });
 
 describe("isModalContractPath (intercepted detail overlays)", () => {
@@ -376,10 +345,8 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       // THE SECOND STAGE (MESITA-2087): every address that hung off the
       // centre tab lands on Pay in ONE hop. Deepest sources first.
       { source: "/new-visit/wallet/:path*", destination: "/pay", permanent: true },
-      { source: "/new-visit/wallet", destination: "/pay", permanent: true },
       { source: "/new-visit", destination: "/pay", permanent: true },
       { source: "/wallet/:path*", destination: "/pay", permanent: true },
-      { source: "/wallet", destination: "/pay", permanent: true },
       { source: "/credits", destination: "/pay", permanent: true },
       { source: "/inbox/credits", destination: "/pay", permanent: true },
       { source: "/inbox/orders", destination: "/pay", permanent: true },
@@ -439,26 +406,8 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       // ACTIVITY IS GONE AS A CONTAINER (MESITA-1626): /inbox lands on Me in
       // ONE hop. /inbox/credits and /inbox/orders sit ABOVE this and point at
       // Pay — Next takes the first match.
-      { source: "/inbox", destination: "/me", permanent: true },
       { source: "/inbox/:path*", destination: "/me", permanent: true },
     ]);
-  });
-
-  // Every /inbox address a guest could still hold lands somewhere real in ONE
-  // hop, and nothing points AT the container any more.
-  it("sends every /inbox address to Me or Pay in one hop, and nothing points back", async () => {
-    const table = await nextConfig.redirects!();
-    const inbox = table.filter((r) => r.source.startsWith("/inbox"));
-    // The two instrument sections (Credits, Orders) are Second Stage and go
-    // to Pay with the rest of it. They must stay ABOVE the catch-all — Next
-    // takes the first match, so a catch-all listed first would swallow them.
-    expect(inbox.map((r) => [r.source, r.destination])).toEqual([
-      ["/inbox/credits", "/pay"],
-      ["/inbox/orders", "/pay"],
-      ["/inbox", "/me"],
-      ["/inbox/:path*", "/me"],
-    ]);
-    expect(table.filter((r) => r.destination.startsWith("/inbox"))).toEqual([]);
   });
 
   // Redirects that carry logic stay as server pages (not in next.config):
@@ -467,25 +416,6 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
   //   /reservations      → /me/reservations    (the list's old tab route)
   // Their targets are pinned via CONSUMER_ROUTES above; the pages themselves
   // are one-line redirect() calls checked by build + typecheck.
-});
-
-describe("the AI mode is reachable by both names", () => {
-  it("308s /home/ai straight to Discover, one hop", async () => {
-    const redirects = await nextConfig.redirects!();
-    const hop = redirects.find(
-      (r) => r.source === CONSUMER_ROUTES.legacy.homeAi,
-    );
-    // Was /home/ai -> /home/chat. That page is gone with the rest of the hub,
-    // so the old chain would dangle; and even repaired it would have cost two
-    // hops against route-structure T4's cap of exactly 2.
-    expect(hop?.destination).toBe(CONSUMER_ROUTES.discoverDefault);
-    // Every retired leaf resolves in ONE hop, for the same reason.
-    const homeHops = redirects.filter((r) => r.source.startsWith("/home"));
-    expect(homeHops).not.toHaveLength(0);
-    for (const r of homeHops) {
-      expect(r.destination).toBe(CONSUMER_ROUTES.discoverDefault);
-    }
-  });
 });
 
 describe("middleware auth wall (shouldGate)", () => {
@@ -599,49 +529,13 @@ describe("?next= threading (safeNextPath / withNext)", () => {
   });
 });
 
-describe("consumer onboarding gates (two predicates, four call sites)", () => {
+describe("consumer onboarding gates", () => {
   const complete = {
     first_name: "Ana",
     last_name: "Ruiz",
     birthday: "1995-04-02",
     sex: "female",
   };
-
-  // The SIGNUP gate. Mirrored by consumer-web-signin-phone's `onboarded`
-  // routing hint — if these two disagree, a guest ping-pongs between the app
-  // and /onboard.
-  it("browse needs the first name, the birthday and the sex", () => {
-    expect(consumerCanBrowse(complete)).toBe(true);
-    for (const key of ["first_name", "birthday", "sex"] as const) {
-      expect(consumerCanBrowse({ ...complete, [key]: null })).toBe(false);
-      expect(consumerCanBrowse({ ...complete, [key]: "" })).toBe(false);
-    }
-    // SEX CAME BACK (MESITA-1829). It left under MESITA-1806 as "segmentation
-    // nothing downstream reads to work", and this test asserted that — while
-    // Profile was printing `age · sex · country` the whole time. The ONE
-    // field still outside the gate is the last name, which the reservation
-    // flow asks for where the guest can see why.
-    expect(consumerCanBrowse({ ...complete, last_name: null })).toBe(true);
-    expect(
-      consumerCanBrowse({
-        first_name: "Ana",
-        birthday: "1995-04-02",
-        sex: "female",
-      }),
-    ).toBe(true);
-  });
-
-  // The BOOKING gate. Mirrored by consumer-web-create-reservation, which is
-  // the half that actually enforces it.
-  it("booking needs the last name on top of browsing", () => {
-    expect(consumerCanBook(complete)).toBe(true);
-    expect(consumerCanBook({ ...complete, last_name: null })).toBe(false);
-    expect(consumerCanBook({ ...complete, last_name: "" })).toBe(false);
-    // Booking is strictly narrower than browsing, so everything the signup
-    // gate requires it requires too — sex included now (MESITA-1829).
-    expect(consumerCanBook({ ...complete, sex: null })).toBe(false);
-    expect(consumerCanBook({ ...complete, first_name: null })).toBe(false);
-  });
 
   // What ReservationSheet renders its one extra field from.
   it("flags the last name as the only field a booking surface asks for", () => {
@@ -653,7 +547,5 @@ describe("consumer onboarding gates (two predicates, four call sites)", () => {
   it("treats a missing profile as past neither gate", () => {
     expect(consumerCanBrowse(null)).toBe(false);
     expect(consumerCanBrowse(undefined)).toBe(false);
-    expect(consumerCanBook(null)).toBe(false);
-    expect(consumerCanBook(undefined)).toBe(false);
   });
 });

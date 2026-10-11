@@ -1,5 +1,5 @@
 // linklab — URL/handle normalization + scoring.
-// Pure, dependency-free so both the EF and the local benchmark runner can import it.
+// Pure and dependency-free; imported by the local runners in `scripts/linklab/`.
 
 /** Lowercase registrable host of a URL, sans scheme / `www.` / path / query / hash.
  *  Returns null for junk / non-http. Used as the website match key. */
@@ -107,7 +107,6 @@ function isReservedIgWord(h: string): boolean {
 // imported it and left both scripts importing symbols that no longer existed —
 // they have failed to load ever since, and `deno check` only sees it when run
 // from `supabase/` rather than CI's `supabase/supabase/functions` (MESITA-1140).
-// Restored verbatim so results stay comparable with `last_results.json`.
 // Delete only together with the scripts and the layout note in supabase/CLAUDE.md.
 
 export type FieldOutcome = "TP" | "TN" | "FP" | "FN" | "WRONG";

@@ -22,11 +22,6 @@ export function familiesForGoogleType(
   return [superKey];
 }
 
-/** The primary (catalog-order first) family a Google type belongs to. */
-export function familyForGoogleType(primaryType: string | null | undefined): FamilyKey | null {
-  return familiesForGoogleType(primaryType)[0] ?? null;
-}
-
 type GeoOrigin = { lat: number; lng: number };
 
 /** CLDR / ISO-3166-1 alpha-2. Empty = omit Google's optional country params. */

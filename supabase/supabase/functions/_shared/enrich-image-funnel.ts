@@ -1,5 +1,5 @@
-// Atlas place image funnel: HTML extraction, page picking, vision + text sort,
-// and the gather→analyze→sort→save orchestration (runImageFunnel).
+// Atlas place image funnel: vision + text sort and the
+// gather→analyze→sort→save orchestration (runImageFunnel).
 
 import { dedup, safeParseJson } from "./parse-utils.ts";
 import type { Img } from "./enrich-config.ts";
@@ -8,104 +8,6 @@ import { needsInlineImage } from "./enrich-image-inline-hosts.ts";
 import { selectWithDiversity } from "./enrich-image-diversity.ts";
 import { normaliseImageOrder } from "./enrich-image-order.ts";
 import { fetchAsDataUrl } from "./enrich-image-data-url.ts";
-
-export { fetchAsDataUrl, MAX_INLINE_IMAGE_BYTES } from "./enrich-image-data-url.ts";
-
-export type WebImage = {
-  url: string;
-  alt: string;
-  width?: number;
-  height?: number;
-  page: string;
-};
-
-export function extractImagesFromHtml(
-  html: string,
-  baseUrl: string,
-  page: string,
-): WebImage[] {
-  if (!html) return [];
-  const out: WebImage[] = [];
-  const seen = new Set<string>();
-  const tagRe = /<img\b[^>]*>/gi;
-  let m: RegExpExecArray | null;
-  while ((m = tagRe.exec(html)) !== null && out.length < 40) {
-    const tag = m[0];
-    const srcRaw =
-      /\bsrc\s*=\s*["']([^"']+)["']/i.exec(tag)?.[1] ??
-      /\bdata-src\s*=\s*["']([^"']+)["']/i.exec(tag)?.[1] ??
-      /\bsrcset\s*=\s*["']([^"',\s]+)/i.exec(tag)?.[1];
-    if (!srcRaw) continue;
-    let url: string;
-    try {
-      url = new URL(srcRaw.trim(), baseUrl).toString();
-    } catch {
-      continue;
-    }
-    if (!/^https?:\/\//i.test(url)) continue;
-    if (/\.svg(\?|$)/i.test(url)) continue;
-    if (seen.has(url)) continue;
-    const alt = /\balt\s*=\s*["']([^"']*)["']/i.exec(tag)?.[1]?.trim() ?? "";
-    let width = toInt(/\bwidth\s*=\s*["']?(\d+)/i.exec(tag)?.[1]);
-    let height = toInt(/\bheight\s*=\s*["']?(\d+)/i.exec(tag)?.[1]);
-    if (width == null || height == null) {
-      const dim = /(\d{2,4})x(\d{2,4})/.exec(url);
-      if (dim) {
-        width = width ?? Number(dim[1]);
-        height = height ?? Number(dim[2]);
-      }
-    }
-    if (width != null && height != null && (width < 60 || height < 60)) continue;
-    seen.add(url);
-    out.push({ url, alt, width: width ?? undefined, height: height ?? undefined, page });
-  }
-  return out;
-}
-
-function toInt(v: string | undefined): number | null {
-  if (!v) return null;
-  const n = parseInt(v, 10);
-  return Number.isFinite(n) ? n : null;
-}
-
-export function pickInternalPages(
-  links: string[],
-  baseUrl: string,
-  max: number,
-): string[] {
-  if (max <= 0) return [];
-  let baseHost: string, basePath: string;
-  try {
-    const b = new URL(baseUrl);
-    baseHost = b.hostname.replace(/^www\./, "");
-    basePath = b.pathname.replace(/\/$/, "");
-  } catch {
-    return [];
-  }
-  const PRIORITY =
-    /(galer|gallery|photo|foto|menu|carta|about|nosotros|space|salon|room|habitac|event|food|comida|drink|bar|restaurant)/i;
-  const seen = new Set<string>();
-  const scored: { url: string; score: number }[] = [];
-  for (const raw of links) {
-    let u: URL;
-    try {
-      u = new URL(raw, baseUrl);
-    } catch {
-      continue;
-    }
-    if (u.protocol !== "http:" && u.protocol !== "https:") continue;
-    if (u.hostname.replace(/^www\./, "") !== baseHost) continue;
-    const path = u.pathname.replace(/\/$/, "");
-    if (!path || path === basePath) continue;
-    if (/\.(pdf|jpe?g|png|webp|gif|svg|zip|docx?|mp4)$/i.test(path)) continue;
-    const key = path.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    scored.push({ url: `${u.origin}${path}`, score: PRIORITY.test(path) ? 1 : 0 });
-  }
-  scored.sort((a, b) => b.score - a.score);
-  return scored.slice(0, max).map((s) => s.url);
-}
 
 // Vision describes every analyzed image CONCURRENTLY. The per-source analyze
 // caps bound the pool (Google ≤10 + Instagram ≤30 = 40 max), so 40 in flight

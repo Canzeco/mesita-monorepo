@@ -1,4 +1,4 @@
-import { ENRICHER_TIER_MODELS, type SynthesisQuality } from "@/lib/synthesis-quality";
+import type { SynthesisQuality } from "@/lib/synthesis-quality";
 import type { CrenupSettings } from "./crenup-guards";
 
 // Cost estimate — the pure model behind the calculator + the inline cost card.
@@ -7,9 +7,8 @@ import type { CrenupSettings } from "./crenup-guards";
 // (verified 2026-07-07). MIRRORS the cost constants in the enricher
 // (`_shared/enrich-config.ts` `COST`). Approximate — enough to compare
 // configurations and bound spend, not for billing. Keep in sync with the
-// enricher. Each line below carries `fields` (what the call fetches / the SKU or
-// model), `pricing` (the published unit rate) and `note` (how the per-call cost
-// is derived) so the breakdown table doubles as living cost documentation.
+// enricher. Each line carries a label, a per-place cost, a duration and a
+// stage; the Estimate card lists the active lines.
 //
 // Sources:
 //   • Google Maps Platform pricing list (Places API New, first volume tier):
@@ -104,12 +103,6 @@ type Stage = "pre" | "gather" | "post";
 
 type CostLine = {
   label: string;
-  // What the call fetches + the exact SKU / model it bills as.
-  detail: string;
-  // The published unit rate this cost is derived from (documentation).
-  pricing: string;
-  // How the per-place cost is computed from the unit rate (documentation).
-  note: string;
   cost: number;
   secs: number;
   stage: Stage;
@@ -128,7 +121,6 @@ type CostParams = {
   igAnalyze: number; // Analyze Instagram (0–50, ≤ collect) → vision calls
   // Links box — per-channel Firecrawl Search candidate counts (0 disables).
   links: LinkCounts;
-  places: number;
   // Reviews box — 0 skips the Apify Google Maps scrape.
   reviews?: number;
   // Social (5) has no knobs; Create never runs it. Default on for a full enrich.
@@ -143,10 +135,7 @@ export type CostEstimate = {
   lines: CostLine[];
   active: CostLine[];
   perPlace: number;
-  total: number;
   perPlaceSecs: number;
-  totalSecs: number;
-  places: number;
 };
 
 // Build the per-function rate rows and the aggregate cost/time for one
@@ -171,7 +160,6 @@ export function computeEnrichmentCost({
   gAnalyze,
   igAnalyze,
   links,
-  places,
   reviews = 55,
   social = true,
   serp = true,
@@ -205,9 +193,6 @@ export function computeEnrichmentCost({
   const lines: CostLine[] = [
     {
       label: "Google profile",
-      detail: "Places Details — Enterprise+Atmosphere SKU",
-      pricing: "$25 / 1k calls",
-      note: "1 call · field mask pulls reviews + editorial/generative summaries → Atmosphere tier",
       cost: COST_RATES.googleDetails,
       secs: TIME_RATES.googleBasics,
       stage: "pre",
@@ -215,9 +200,6 @@ export function computeEnrichmentCost({
     },
     {
       label: "Google photos",
-      detail: "Place Photo media fetch",
-      pricing: "$7 / 1k photos",
-      note: `Google collect = ${gCollect} photo${gCollect === 1 ? "" : "s"} fetched (≤10 refs) × ${money(COST_RATES.googlePhoto)}`,
       cost: googlePhotoCost,
       secs: 0,
       stage: "pre",
@@ -225,9 +207,6 @@ export function computeEnrichmentCost({
     },
     {
       label: "Timezone",
-      detail: "Time Zone API",
-      pricing: "$5 / 1k calls",
-      note: "1 call from the place lat/lng",
       cost: COST_RATES.googleTimezone,
       secs: 0,
       stage: "pre",
@@ -235,9 +214,6 @@ export function computeEnrichmentCost({
     },
     {
       label: "SERP summary",
-      detail: "Perplexity Agent · Scout (pro-search)",
-      pricing: "$0.005 search + tokens",
-      note: "1 agent call · web search + sonar tokens",
       cost: COST_RATES.perplexityAgent,
       secs: TIME_RATES.discoveryAgent,
       stage: "gather",
@@ -245,11 +221,6 @@ export function computeEnrichmentCost({
     },
     {
       label: "Link discovery",
-      detail: "Firecrawl Search × channels",
-      pricing: "2 credits / 10 results",
-      note: discoveryActive
-        ? `${enabledChannels} of ${LINK_CHANNELS.length} channels enabled (~1–2 credits each)`
-        : "all channels disabled (Links all 0)",
       cost: discoverySearchCost,
       secs: TIME_RATES.discoverySearch,
       stage: "pre",
@@ -257,9 +228,6 @@ export function computeEnrichmentCost({
     },
     {
       label: "Agent validate + contacts",
-      detail: "Perplexity Agent · Resolver (pro-search)",
-      pricing: "$0.005 search + tokens",
-      note: "1 agent call · selects links + phone/email",
       cost: COST_RATES.perplexityAgent,
       secs: TIME_RATES.discoveryAgent,
       stage: "pre",
@@ -271,11 +239,6 @@ export function computeEnrichmentCost({
       // collected at the end, so it overlaps everything after it. The rows are
       // in SPEND order, which is wall-clock order — not queue order.
       label: "Google reviews + images",
-      detail: "Apify compass/crawler-google-places",
-      pricing: "$1.50/1k + $0.50/100 reviews",
-      note: reviewsActive
-        ? `base place + details add-on + ${reviews} review${reviews === 1 ? "" : "s"} @ $0.50/100; ~$0.65 worst case`
-        : "reviews knob is 0 — Apify Google Maps scrape skipped",
       cost: COST_RATES.apifyGoogleMaps,
       secs: TIME_RATES.apifyGoogleMaps,
       stage: "gather",
@@ -283,9 +246,6 @@ export function computeEnrichmentCost({
     },
     {
       label: "Instagram",
-      detail: "Apify IG profile + post scrapers",
-      pricing: "$2.60/1k + $2.70/1k posts",
-      note: `profile + Instagram collect = ${igCollect} post${igCollect === 1 ? "" : "s"} pulled + identity verify`,
       cost: igApifyCost,
       secs: TIME_RATES.apifyInstagram,
       stage: "gather",
@@ -293,9 +253,6 @@ export function computeEnrichmentCost({
     },
     {
       label: "Facebook",
-      detail: "Apify facebook-pages-scraper",
-      pricing: "$10 / 1k pages",
-      note: "1 page",
       cost: COST_RATES.apifyFacebook,
       secs: TIME_RATES.apifyFacebook,
       stage: "gather",
@@ -303,10 +260,6 @@ export function computeEnrichmentCost({
     },
     {
       label: "Image descriptions",
-      detail: `${ENRICHER_TIER_MODELS[imageModel]} vision`,
-      pricing:
-        imageModel === "economy" ? "~$0.001 / image" : "~$0.008 / image",
-      note: `Analyze ${gAnalyze} Google + ${igAnalyze} Instagram = ${visionImgs} image${visionImgs === 1 ? "" : "s"} × ${money(visionCostPer)}, described in parallel (${visionRounds} round${visionRounds === 1 ? "" : "s"})`,
       cost: visionImgs * visionCostPer,
       // Parallel: the whole analyze pool is described at once, so time is the
       // number of rounds (≈1) × per-image, not N × per-image.
@@ -316,9 +269,6 @@ export function computeEnrichmentCost({
     },
     {
       label: "Image ranking",
-      detail: "gpt-4o-mini text sort",
-      pricing: "~$0.001 / call",
-      note: "1 sort call over the analyzed images",
       cost: COST_RATES.sort,
       secs: TIME_RATES.sort,
       stage: "post",
@@ -326,9 +276,6 @@ export function computeEnrichmentCost({
     },
     {
       label: `Presentation synthesis — ${quality}`,
-      detail: ENRICHER_TIER_MODELS[quality],
-      pricing: quality === "economy" ? "$0.15/$0.60 per 1M" : "$2.50/$10 per 1M",
-      note: "~1000-word Presentation from gathered sources (no web)",
       cost: synthCost,
       secs: synthSecs,
       stage: "post",
@@ -336,9 +283,6 @@ export function computeEnrichmentCost({
     },
     {
       label: "Category → tags",
-      detail: "2 × gpt-4o-mini (sequential)",
-      pricing: "~$0.001 / call",
-      note: "Category then tags, both grounded on the fresh Presentation",
       cost: COST_RATES.sort * 2,
       secs: TIME_RATES.sort * 2,
       stage: "post",
@@ -346,9 +290,6 @@ export function computeEnrichmentCost({
     },
     {
       label: "Persist data + images",
-      detail: "Edge Functions + Supabase Storage",
-      pricing: "no metered cost",
-      note: "DB writes + image mirroring — not separately billed",
       cost: 0,
       secs: 5,
       stage: "post",
@@ -358,7 +299,6 @@ export function computeEnrichmentCost({
 
   const active = lines.filter((l) => l.active);
   const perPlace = active.reduce((s, l) => s + l.cost, 0);
-  const total = perPlace * Math.max(1, places);
   // Wall-clock: serial pre + the SLOWEST concurrent gather + serial post.
   const preSecs = active.filter((l) => l.stage === "pre").reduce((s, l) => s + l.secs, 0);
   const gatherSecs = active
@@ -366,9 +306,8 @@ export function computeEnrichmentCost({
     .reduce((mx, l) => Math.max(mx, l.secs), 0);
   const postSecs = active.filter((l) => l.stage === "post").reduce((s, l) => s + l.secs, 0);
   const perPlaceSecs = preSecs + gatherSecs + postSecs;
-  const totalSecs = perPlaceSecs * Math.max(1, places);
 
-  return { lines, active, perPlace, total, perPlaceSecs, totalSecs, places: Math.max(1, places) };
+  return { lines, active, perPlace, perPlaceSecs };
 }
 
 const ZERO_LINKS: LinkCounts = {
@@ -380,10 +319,7 @@ const ZERO_LINKS: LinkCounts = {
 };
 
 /** Live Crenup knobs → the cost model. Vision off zeroes analyze counts. */
-function costParamsFromSettings(
-  s: CrenupSettings,
-  places: number,
-): CostParams {
+function costParamsFromSettings(s: CrenupSettings): CostParams {
   const vision = s.imageVisionEnabled;
   return {
     quality: s.synthesisQuality,
@@ -399,7 +335,6 @@ function costParamsFromSettings(
       opentable: s.discoverOpentableN,
       ubereats: s.discoverUbereatsN,
     },
-    places,
     reviews: s.gatherReviews,
     social: true,
     serp: true,
@@ -410,12 +345,12 @@ function costParamsFromSettings(
 /**
  * One Create run: Pulse + Details + door Description (one batched prompt,
  * §8.4 v3 gate D1) + Embedding. Not functions 3–8. The door is skipped when
- * the create queues a full Enrich (business creates) — this card estimates
- * the door-running case (admin/consumer creates).
+ * the create queues a full Enrich — this card estimates the door-running
+ * case.
  */
 export function computeCreateCost(s: CrenupSettings): CostEstimate {
   return computeEnrichmentCost({
-    ...costParamsFromSettings(s, 1),
+    ...costParamsFromSettings(s),
     gCollect: 1,
     igCollect: 0,
     gAnalyze: 0,
@@ -430,6 +365,6 @@ export function computeCreateCost(s: CrenupSettings): CostEstimate {
 
 /** One Enrich of one place: live knobs. Queue cadence (5/tick) is not this card. */
 export function computeEnrichTickCost(s: CrenupSettings): CostEstimate {
-  return computeEnrichmentCost(costParamsFromSettings(s, 1));
+  return computeEnrichmentCost(costParamsFromSettings(s));
 }
 

@@ -1,5 +1,5 @@
 // Column remap for the 20260825005000 project_id → place_id cutover.
-// Document types (TicketDoc, ReservationDoc) still speak `project_id` so
+// The reservation document type (ReservationDoc) still speaks `project_id` so
 // HTTP JSON and existing call sites do not move. Postgres columns are
 // `place_id`. The write doors are the only place the two names meet.
 
@@ -8,7 +8,6 @@ export function toPlaceIdPatch(
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(patch)) {
-    if (key === "ticket_code") continue;
     out[key === "project_id" ? "place_id" : key] = value;
   }
   return out;
@@ -16,14 +15,11 @@ export function toPlaceIdPatch(
 
 export function remapPlaceIdIdent(name: string): string {
   if (name === "project_id") return "place_id";
-  if (name === "ticket_code") return "check_code";
   return name;
 }
 
 export function remapPlaceIdSelect(select: string): string {
-  return select
-    .replace(/\bproject_id\b/g, "place_id")
-    .replace(/\bticket_code\b/g, "check_code");
+  return select.replace(/\bproject_id\b/g, "place_id");
 }
 
 export function fromPlaceIdRow(

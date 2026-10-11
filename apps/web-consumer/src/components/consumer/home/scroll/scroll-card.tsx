@@ -341,7 +341,7 @@ const LABEL = "drop-shadow-media text-xs font-semibold";
  *  aspect) wears the reflection instead of covering the card. The old swipe
  *  card's number: 9:16, 3:4 and most 4:5 photos still cover a phone card;
  *  square and wider get the band. */
-export const REFLECTION_THRESHOLD = 1.32;
+const REFLECTION_THRESHOLD = 1.32;
 /** The reflection never gets shorter than this, so the name, the meta and
  *  the pitch always sit on it rather than on the photo. */
 export const REFLECTION_MIN_PX = 152;

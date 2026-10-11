@@ -21,7 +21,7 @@ import {
 import { StatePill } from "@/app/(app)/manage-multiple/PlaceFacts";
 import { StateIcon, type BatchRowState } from "@/app/(app)/manage-multiple/StateIcon";
 import { CopyIdButton, ReadField, SectionCard } from "@/components/admin-ui/manage";
-import { placeHref } from "@/lib/console-routes";
+import { placeTabHref } from "@/lib/place-tabs";
 import type { PlaceLite, SearchErrorResponse, SearchResponse } from "@/lib/places-types";
 import { mergeFindResults, type FindResult, type FindRow, type SourceResult } from "./find-results";
 import {
@@ -63,7 +63,7 @@ export function SinglePlaceClient() {
   const isBusy = busy !== null;
 
   function open(placeId: string) {
-    router.push(placeHref(placeId));
+    router.push(placeTabHref(placeId, "profile"));
   }
 
   async function find() {

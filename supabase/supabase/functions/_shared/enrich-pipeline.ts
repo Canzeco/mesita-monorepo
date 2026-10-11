@@ -32,7 +32,6 @@ import { runInBackground } from "./background.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "./http.ts";
 import { adminClient, type EFEnv, readEFEnv } from "./auth.ts";
 import { requireInternalCaller } from "./internal.ts";
-import { isEnrichCostCapError } from "./enrich-cost.ts";
 import type { SubprocessKey } from "./enrich-triggers.ts";
 import {
   advanceResearchStage,
@@ -117,8 +116,8 @@ export type GatheredPayload = {
   }>;
   locationLine: string;
   sources: Record<string, unknown>;
-  // Accumulated estimated USD for this enrichment run (MESITA-624). Carried
-  // across research → analysis → contents so the per-run cap spans stages.
+  // Accumulated estimated USD for this enrichment run. Carried across
+  // research → analysis → contents so the per-run total spans stages.
   cost?: {
     spentUsd: number;
     charges: { key: string; usd: number }[];
@@ -215,26 +214,6 @@ export function serveEnrichStage(
       run(admin, envRes.env, rowRes.row).catch(async (err) => {
         const msg = err instanceof Error ? err.message : String(err);
         console.error(`[enricher-cron-enrich-place-${stage}]`, msg);
-        // Cost-cap abort is terminal (MESITA-624) — retrying cannot unspend
-        // and would burn more budget. Everything else releases for retry.
-        if (isEnrichCostCapError(err)) {
-          await reportEnrichmentStep(admin, placeId, STAGE_CRASH_STEP[stage] ?? "S1",
-            `${stage}_cost_cap`, "failed",
-            `Enrichment aborted — per-run cost cap hit: ${msg}`.slice(0, 490));
-          // The cost cap is the one terminal that KNOWS the money and used to
-          // lose all of it: the prose was truncated into `error` and charges[]
-          // was dropped, and because the failing stage never reaches its
-          // advanceResearchStage the ledger snapshot never lands on
-          // gathered.cost either. Structured, on the run row, once.
-          await failResearchRow(admin, placeId, msg.slice(0, 500), {
-            runId: rowRes.row.run_id,
-            stage,
-            costUsd: err.spentUsd,
-            charges: err.charges,
-            meta: { kind: "cost_cap", capUsd: err.capUsd },
-          });
-          return;
-        }
         // Surface the crash in the admin feed — silent crashes hid a wedged
         // pipeline for hours (MESITA-123). Beacon first: release must run
         // even though reportEnrichmentStep is already best-effort inside.

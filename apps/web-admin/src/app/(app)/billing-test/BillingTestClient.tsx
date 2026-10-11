@@ -117,7 +117,6 @@ export function BillingTestClient() {
   const [running, setRunning] = useState<Set<string>>(new Set());
   const [sweeping, setSweeping] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notDeployed, setNotDeployed] = useState(false);
   const [checkedAt, setCheckedAt] = useState<string | null>(null);
 
   /** @param sweep true when this is the "run everything" button, not one card. */
@@ -135,10 +134,8 @@ export function BillingTestClient() {
         return next;
       });
       setCheckedAt(res.checkedAt);
-      setNotDeployed(false);
     } else {
       setError(res.error);
-      setNotDeployed(res.notDeployed);
     }
 
     setRunning((prev) => {
@@ -172,25 +169,7 @@ export function BillingTestClient() {
         </Button>
       </div>
 
-      {notDeployed ? (
-        <div className="border-amber-500/40 bg-amber-500/5 flex items-start gap-2 rounded-xl border p-3 text-xs text-amber-800">
-          <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          <p className="leading-relaxed">
-            <span className="font-semibold">
-              admin-web-check-api-health is not deployed.
-            </span>{" "}
-            Every card on this page is served by that one Edge Function, so
-            nothing here can run until it ships:{" "}
-            <code className="font-mono">
-              supabase functions deploy admin-web-check-api-health
-            </code>{" "}
-            from the repo&apos;s <code className="font-mono">supabase/</code>{" "}
-            package.
-          </p>
-        </div>
-      ) : error ? (
-        <ErrorNote message={error} />
-      ) : null}
+      {error ? <ErrorNote message={error} /> : null}
 
       <section>
         <h2 className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">

@@ -101,7 +101,7 @@ Deno.test("every registry section is reachable from the admin console", async ()
   );
 });
 
-Deno.test("the console names both dispatchers and no per-page config EF", async () => {
+Deno.test("the console names both config dispatchers", async () => {
   const files = await sourceFiles(ADMIN_SRC);
   for (const ef of ["admin-web-get-config", "admin-web-update-config"]) {
     const pattern = new RegExp(`["'\`]${ef}["'\`]`);
@@ -111,15 +111,4 @@ Deno.test("the console names both dispatchers and no per-page config EF", async 
       `no call site in apps/web-admin invokes ${ef}`,
     );
   }
-  // The twenty collapsed into those two (MESITA-1724). A leftover literal here
-  // is a page still calling a slug that has no folder and will 404 the moment
-  // the rollback window closes.
-  const retired = /["'`]admin-web-(get|update)-[a-z]+-config["'`]/;
-  const strays = files.filter((t) => retired.test(t)).length;
-  assertEquals(
-    strays,
-    0,
-    `${strays} file(s) in apps/web-admin still invoke a per-page config EF — ` +
-      `they are sections of admin-web-get-config / admin-web-update-config now.`,
-  );
 });

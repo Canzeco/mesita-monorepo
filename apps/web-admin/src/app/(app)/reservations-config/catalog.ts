@@ -99,26 +99,6 @@ const CHANNEL_KEYS: ReservationChannel[] = ["phone"];
 
 const ATTEMPTS = 2;
 
-type Channel = {
-  key: ReservationChannel;
-  label: string;
-  emoji: string;
-  /** The places column the endpoint value is read from. */
-  source: string;
-  blurb: string;
-};
-
-export const CHANNELS: Channel[] = [
-  {
-    key: "phone",
-    label: "Phone",
-    emoji: "☎️",
-    source: "places.phone",
-    blurb:
-      "A voice call to the place's line — the only channel the Reservationist books through. Nearly every place has one, and it reaches a human (or their AI receptionist) who can hold a table. WhatsApp and Instagram are not booking channels (voice fleet only).",
-  },
-];
-
 // Current testing seed (Pato, 2026-07-17): while the agent is under test it dials
 // this one number for EVERY reservation instead of any real place. Fully editable
 // from the admin page — this is only what the page (and a fresh/reset config row)

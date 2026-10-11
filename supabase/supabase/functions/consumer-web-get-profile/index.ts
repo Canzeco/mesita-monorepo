@@ -14,8 +14,7 @@ import {
   getAuthedUser,
   readEFEnv,
 } from "../_shared/auth.ts";
-import { isCanonicalConsumerCode } from "../_shared/consumer-code.ts";
-import { writeConsumer } from "../_shared/consumer-doc.ts";
+import { isCanonicalConsumerCode, writeConsumer } from "../_shared/consumer-doc.ts";
 import {
   accountDeletedResponse,
   isDeletedConsumer,

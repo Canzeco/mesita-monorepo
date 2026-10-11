@@ -8,6 +8,3 @@ export const Z_TOASTER = "z-[140]";
 // The route read-out sits above everything: a modal or toast covering it
 // would hide the route exactly when you most need to know which one opened.
 export const Z_ROUTE_BADGE = "z-[150]";
-
-// In-card overlays that share the bottom-nav numeric tier (save/skip badges).
-export const Z_IN_FRAME_OVERLAY = "z-40";

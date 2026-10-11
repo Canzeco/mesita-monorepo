@@ -33,11 +33,6 @@ export function visionModelFor(quality: string): string {
   return QUALITY_MODEL[quality] ?? VISION_MODEL;
 }
 
-// ADEA runs ALL steps S0–S6 on every enrichment. There is no admin "source step
-// ceiling" any more — each step fires whenever its real prerequisites hold (the
-// relevant API key is present AND its required input exists, e.g. a website to
-// scrape). The only remaining feature toggle is `visionEnabled` (image vision).
-
 // Hard ceiling on photos persisted to the place, regardless of per-source caps.
 // Safety bound on the candidate pool before save (the real, source-independent
 // save cap is enrichment_config.atlasSaveTotalImages, applied at the end).
@@ -143,9 +138,6 @@ export type EnrichConfig = {
   analyzeInstagramImages: number;
   imageAnalysisPrompt: string;
   imageSortingPrompt: string;
-  // Retired operator knob (MESITA-624). Blob still reads; the ledger
-  // records spend and does not abort on it.
-  perRunCostCapUsd: number;
 };
 
 // Read the Crenup admin knobs from app_config.enrichment_config (row id=1).
@@ -185,6 +177,5 @@ export async function loadEnrichConfig(admin: SupabaseClient): Promise<EnrichCon
     analyzeInstagramImages: blob.atlasAnalyzeInstagramImages,
     imageAnalysisPrompt: blob.atlasImageAnalysisPrompt,
     imageSortingPrompt: blob.atlasImageSortingPrompt,
-    perRunCostCapUsd: blob.atlasPerRunCostCapUsd,
   };
 }

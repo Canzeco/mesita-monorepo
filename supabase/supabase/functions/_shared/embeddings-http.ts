@@ -1,6 +1,7 @@
-// Low-level OpenAI embeddings HTTP — re-exported by embeddings.ts (Memo's
-// recall leg embeds the query) and used by place-embeddings.ts (On-Update
-// path) so model/dims/request shape cannot drift. No DB imports; safe for either side of the synth↔embed cycle.
+// Low-level OpenAI embeddings HTTP — used by consumer-search-lane.ts (embeds
+// the search query), consumer-web-list-catalog (embeds its rail queries) and
+// place-embeddings.ts (On-Update path) so model/dims/request shape cannot
+// drift. No DB imports; safe for either side of the synth↔embed cycle.
 // Default model string mirrors models_config.embeddings.model (MESITA-941/943,
 // key renamed off `lineup` in MESITA-1216).
 

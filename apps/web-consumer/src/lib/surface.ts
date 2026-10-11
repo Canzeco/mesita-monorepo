@@ -10,7 +10,7 @@ export const SURFACES = ["mob", "web"] as const;
 export type Surface = (typeof SURFACES)[number];
 
 export const SURFACE_COOKIE = "mesita-surface";
-export const DEFAULT_SURFACE: Surface = "web";
+const DEFAULT_SURFACE: Surface = "web";
 
 const SURFACE_RE = /^\/(mob|web)(?=\/|$)/;
 
@@ -36,18 +36,6 @@ export function prefixPath(surface: Surface, path: string): string {
   if (path.startsWith("/_next") || path.startsWith("/api")) return path;
   if (path === "/") return `/${surface}`;
   return `/${surface}${path}`;
-}
-
-export function readSurfaceCookie(
-  header: string | null | undefined,
-): Surface | null {
-  if (!header) return null;
-  for (const part of header.split(";")) {
-    const [name, ...rest] = part.trim().split("=");
-    const value = rest.join("=");
-    if (name === SURFACE_COOKIE && isSurface(value)) return value;
-  }
-  return null;
 }
 
 /**

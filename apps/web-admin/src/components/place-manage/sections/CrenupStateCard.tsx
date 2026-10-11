@@ -97,14 +97,12 @@ export function CrenupStateCard({ place }: { place: AdminPlace }) {
           name="Enriching"
           on={enriching}
           chip={stateBoolChip(enriching)}
-          tint="violet"
           detail={enrichingDetail}
         />
         <StateRow
           name="Enriched"
           on={enriched === true}
           chip={stateBoolChip(enriched)}
-          tint="violet"
           detail={enrichedDetail}
         />
       </div>
@@ -129,9 +127,7 @@ export function CrenupStateCard({ place }: { place: AdminPlace }) {
                 "inline-flex shrink-0 items-center rounded-full px-2.5 py-1 type-label font-semibold " +
                 (row.on === "unknown"
                   ? "bg-muted text-muted-foreground"
-                  : row.on
-                    ? "bg-muted text-foreground"
-                    : "bg-muted text-foreground")
+                  : "bg-muted text-foreground")
               }
               aria-label={`${row.label}: ${
                 row.on === "unknown"

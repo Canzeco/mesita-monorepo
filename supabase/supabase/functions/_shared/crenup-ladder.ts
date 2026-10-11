@@ -27,7 +27,7 @@
 // high-water never was), and Details' failure REASON distinguishes
 // "permanently closed" from "spine incomplete". MESITA-2028 renamed the
 // meter's machinery to Crenup, so `pulse` now names only that liveness
-// subprocess — and, in the event log, a RETIRED key (CRENUP_RETIRED).
+// subprocess — and, in the event log, a retired key the walk ignores.
 //
 // MENU IS GONE (MESITA-2027). It had been a stub since the website content
 // crawl was retired — it always passed with "no menu source yet", which is a
@@ -107,34 +107,8 @@ export const CRENUP_LADDER = [
   "embedding",
 ] as const;
 
-/**
- * Retired extra keys. Empty: Embedding is function 8, not an unnumbered
- * extra. Kept as an array so FUNCTION_STATE_KEYS can still spread it.
- */
-export const CRENUP_EXTRAS = [] as const;
-
 /** Pre-merge event / map keys. Folded into `embedding` on read (display). */
 export const CRENUP_EXTRA_ALIASES = ["summary", "name"] as const;
-
-/**
- * RETIRED function keys: rungs that existed on a previous ladder and are not
- * functions any more. They are NOT renames — nothing inherits their meaning —
- * so they must fall out of the walk rather than fold into a survivor.
- *
- *   pulse    the liveness gate, a rung until MESITA-2027. It is a subprocess
- *            of `details` now. Folding it into `details` would be WRONG: an
- *            old `pulse` completed proves the listing was alive, not that the
- *            Google spine persisted, and counting it would advance the queue
- *            past a function that never ran.
- *   menu     a stub rung that always passed. Folding it anywhere would import
- *            a completion that never meant anything.
- *
- * Listed rather than merely absent so the next reader knows these keys are
- * live in the event log and ignored ON PURPOSE. `latestByStep` drops any key
- * CRENUP_LADDER does not contain, so this array is documentation the compiler
- * cannot contradict — keep it honest by hand.
- */
-export const CRENUP_RETIRED = ["pulse", "menu", "semantics", "seed"] as const;
 
 /**
  * RENAMED function keys: the same function under its old name. Unlike the
@@ -236,8 +210,10 @@ function latestByStep(
     // a stored `semantic` event is function 8 under its old name.
     const key = CRENUP_RENAMES[raw] ?? raw;
     // Unknown keys are ignored on purpose: legacy stage beacons (`gather`,
-    // `publish`), retired rungs (CRENUP_RETIRED — `pulse`, `menu`,
-    // `semantics`, `seed`), and pre-merge `name`/`summary` extras (those fold
+    // `publish`), retired rungs (`pulse`, `menu`, `semantics`, `seed` — not
+    // renames, so they must not fold into a survivor: an old `pulse` completed
+    // proves the listing was alive, not that the Google spine persisted), and
+    // pre-merge `name`/`summary` extras (those fold
     // into `embedding` on the State map, not this walk — an old `name` rung
     // must not count as function 8).
     if (!INDEX.has(key)) continue;
@@ -325,19 +301,6 @@ export function crenupBlockedAt(
     };
   }
   return null;
-}
-
-/**
- * Every enrich function that has completed, in order — for a per-function
- * readout. Unlike the high-water it does NOT stop at a gap — it answers
- * "which ones landed", not "how far did the queue get". Being created is not
- * in the list: a place this is called about exists by definition.
- */
-export function completedCrenupSteps(
-  events: readonly CrenupEvent[],
-): CrenupStep[] {
-  const latest = latestByStep(events);
-  return CRENUP_LADDER.filter((p) => latest.get(p)?.state === "completed");
 }
 
 /**

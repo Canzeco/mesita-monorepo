@@ -5,12 +5,10 @@
 // ELEVENLABS_KEY never leaves EF env, so an operator (or an agent session with
 // SQL access) can wire everything without touching the console.
 //
-// Body: { mode?: "inspect" | "sync" | "fleet" | "prune" | "workflows" | "knowledge"
+// Body: { mode?: "inspect" | "fleet" | "prune" | "workflows" | "knowledge"
 //          | "phones" }
 //
 //   inspect    read-only report: donor agent, workspace agents/tools, fleet.
-//   sync       RETIRED (2026-08-01) — returns 400. get_reservation is a fleet
-//              tool now (fleetToolConfigs, attached to a3/a4).
 //   fleet      upsert the 9 fleet tools + agents; store ids in agents_config.
 //   prune      delete non-fleet agents (fleet tools are managed by fleet mode
 //              and never deleted here).
@@ -233,7 +231,6 @@ Deno.serve(async (req) => {
   const rawMode = typeof body.mode === "string" ? body.mode : "inspect";
   const allowed = new Set([
     "inspect",
-    "sync",
     "fleet",
     "prune",
     "workflows",
@@ -250,7 +247,6 @@ Deno.serve(async (req) => {
   }
   const mode = rawMode as
     | "inspect"
-    | "sync"
     | "fleet"
     | "prune"
     | "workflows"
@@ -1097,12 +1093,6 @@ Deno.serve(async (req) => {
     });
   }
 
-  // ── mode "sync" — RETIRED 2026-08-01 ───────────────────────────────────────
-  // get_reservation is a first-class fleet tool now (fleetToolConfigs, attached
-  // to a3/a4); the old single-agent path would fight fleet mode over the same
-  // workspace tool name with a divergent schema.
-  return json({
-    ok: false,
-    error: 'mode "sync" is retired — use mode "fleet" (get_reservation is a fleet tool now)',
-  }, 400);
+  // Unreachable: `allowed` above admits only the modes handled here.
+  return json({ ok: false, error: `unhandled mode ${mode}` }, 400);
 });

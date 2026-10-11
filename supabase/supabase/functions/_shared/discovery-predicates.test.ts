@@ -6,24 +6,10 @@ import {
   readDeckPredicates,
 } from "./discovery-predicates.ts";
 
-const OPEN_ALWAYS = {
-  sunday: [{ open: "00:00", close: "23:59" }],
-  monday: [{ open: "00:00", close: "23:59" }],
-  tuesday: [{ open: "00:00", close: "23:59" }],
-  wednesday: [{ open: "00:00", close: "23:59" }],
-  thursday: [{ open: "00:00", close: "23:59" }],
-  friday: [{ open: "00:00", close: "23:59" }],
-  saturday: [{ open: "00:00", close: "23:59" }],
-};
-
-/** CDMX-ish coordinates so the lng-derived local clock is Central. */
 function place(over: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     id: "p",
     category: "mexican_restaurant",
-    lat: 19.4326,
-    lng: -99.1332,
-    hours: OPEN_ALWAYS,
     ...over,
   };
 }
@@ -32,11 +18,22 @@ Deno.test("no filters means no cut, and the same array back", () => {
   const rows = [place({ id: "a" }), place({ id: "b" })];
   const p = readDeckPredicates(undefined);
   assertEquals(hasDeckPredicates(p), false);
-  assertEquals(applyDeckPredicates(rows, p, null), rows);
+  assertEquals(applyDeckPredicates(rows, p), rows);
 });
 
 Deno.test("garbage filters degrade to no predicate rather than throwing", () => {
-  for (const raw of [null, 42, "visit", [], { when: "soon" }, { maxKm: -3 }]) {
+  for (
+    const raw of [
+      null,
+      42,
+      "visit",
+      [],
+      { familyKeys: "restaurants" },
+      { familyKeys: [42, "  "] },
+      { minReviews: -3 },
+      { minReviews: "lots" },
+    ]
+  ) {
     assertEquals(readDeckPredicates(raw), NO_DECK_PREDICATES);
   }
 });
@@ -60,7 +57,6 @@ Deno.test("Family cuts Atlas slugs; a double-parent category matches both pills"
     applyDeckPredicates(
       rows,
       readDeckPredicates({ familyKeys: ["restaurants"] }),
-      null,
     ).map((r) => r.id),
     ["taco", "brunch", "shyBreakfast"],
   );
@@ -70,7 +66,6 @@ Deno.test("Family cuts Atlas slugs; a double-parent category matches both pills"
     applyDeckPredicates(
       rows,
       readDeckPredicates({ familyKeys: ["cafes_bakeries"] }),
-      null,
     ).map((r) => r.id),
     ["brunch", "shyBreakfast"],
   );
@@ -78,7 +73,6 @@ Deno.test("Family cuts Atlas slugs; a double-parent category matches both pills"
     applyDeckPredicates(
       rows,
       readDeckPredicates({ familyKeys: ["bars_nightlife"] }),
-      null,
     ).map((r) => r.id),
     ["karaoke"],
   );
@@ -87,7 +81,6 @@ Deno.test("Family cuts Atlas slugs; a double-parent category matches both pills"
     applyDeckPredicates(
       rows,
       readDeckPredicates({ familyKeys: ["experiences"] }),
-      null,
     ).map((r) => r.id),
     ["karaoke"],
   );
@@ -102,7 +95,6 @@ Deno.test("Super undefined matches Atlas leftover category", () => {
     applyDeckPredicates(
       rows,
       readDeckPredicates({ familyKeys: ["undefined"] }),
-      null,
     ).map((r) => r.id),
     ["unk"],
   );
@@ -110,92 +102,9 @@ Deno.test("Super undefined matches Atlas leftover category", () => {
     applyDeckPredicates(
       rows,
       readDeckPredicates({ familyKeys: ["restaurants"] }),
-      null,
     ).map((r) => r.id),
     ["taco"],
   );
-});
-
-Deno.test("family and category are ORed across the two tiers", () => {
-  const rows = [
-    place({ id: "taco", category: "taco_restaurant" }),
-    place({ id: "cafe", category: "coffee_shop" }),
-    place({ id: "spa", category: "spa" }),
-  ];
-  const byFamily = applyDeckPredicates(
-    rows,
-    readDeckPredicates({ familyKeys: ["cafes_bakeries"] }),
-    null,
-  );
-  assertEquals(byFamily.map((r) => r.id), ["cafe"]);
-
-  const either = applyDeckPredicates(
-    rows,
-    readDeckPredicates({ familyKeys: ["cafes_bakeries"], categories: ["spa"] }),
-    null,
-  );
-  assertEquals(either.map((r) => r.id), ["cafe", "spa"]);
-});
-
-Deno.test("distance cuts against the supplied center", () => {
-  const rows = [
-    place({ id: "near", lat: 19.4326, lng: -99.1332 }),
-    // ~0.9 degrees of latitude ≈ 100 km north.
-    place({ id: "far", lat: 20.3326, lng: -99.1332 }),
-    place({ id: "nowhere", lat: null, lng: null }),
-  ];
-  const p = readDeckPredicates({ maxKm: 5 });
-  const center = { lat: 19.4326, lng: -99.1332 };
-  assertEquals(applyDeckPredicates(rows, p, center).map((r) => r.id), ["near"]);
-});
-
-Deno.test("a radius with no center keeps everything — the browser decides", () => {
-  // The permissive rule that keeps this pass from ever being stricter than
-  // `applyDiscoveryFilters`: cutting on a radius we cannot measure would
-  // delete matches nothing downstream could restore.
-  const rows = [place({ id: "a" }), place({ id: "b", lat: null, lng: null })];
-  const kept = applyDeckPredicates(rows, readDeckPredicates({ maxKm: 1 }), null);
-  assertEquals(kept.map((r) => r.id), ["a", "b"]);
-});
-
-Deno.test("when=at judges the requested place-local weekday and hour", () => {
-  const rows = [
-    place({ id: "always" }),
-    place({
-      id: "sat-night",
-      hours: { saturday: [{ open: "20:00", close: "23:00" }] },
-    }),
-    place({ id: "no-hours", hours: null }),
-  ];
-  // Saturday (day 6) at 21:00.
-  const sat = readDeckPredicates({ when: { mode: "at", day: 6, hour: 21 } });
-  assertEquals(applyDeckPredicates(rows, sat, null).map((r) => r.id), [
-    "always",
-    "sat-night",
-  ]);
-  // Saturday at 10:00 — the night-only place is closed, and hours-less rows
-  // stay excluded exactly as the browser excludes them.
-  const morning = readDeckPredicates({ when: { mode: "at", day: 6, hour: 10 } });
-  assertEquals(applyDeckPredicates(rows, morning, null).map((r) => r.id), [
-    "always",
-  ]);
-});
-
-Deno.test("when=now drops rows we cannot confirm are open", () => {
-  const rows = [place({ id: "always" }), place({ id: "unknown", hours: {} })];
-  const now = readDeckPredicates({ when: { mode: "now" } });
-  assertEquals(applyDeckPredicates(rows, now, null).map((r) => r.id), ["always"]);
-});
-
-Deno.test("a stale `context` from an old binary narrows nothing", () => {
-  // Deployed binaries still post `context: "visit"`. No place offers a
-  // reward to filter on, so the key is read as nothing at all.
-  const rows = [place({ id: "a" }), place({ id: "b" })];
-  for (const context of ["visit", "order", "any"]) {
-    const p = readDeckPredicates({ context });
-    assertEquals(hasDeckPredicates(p), false, context);
-    assertEquals(applyDeckPredicates(rows, p, null), rows, context);
-  }
 });
 
 Deno.test("the cut is what makes a narrow filter searchable, not thinning", () => {
@@ -210,7 +119,6 @@ Deno.test("the cut is what makes a narrow filter searchable, not thinning", () =
   const kept = applyDeckPredicates(
     catalog,
     readDeckPredicates({ familyKeys: ["cafes_bakeries"] }),
-    null,
   );
   assertEquals(kept.map((r) => r.id), ["cafe-1", "cafe-2"]);
   // Slicing 50 off the UNFILTERED catalog and filtering afterwards — the old
@@ -230,7 +138,7 @@ Deno.test("Places scope cuts nothing server-side — every pooled row is Mesita'
   for (const placesScope of ["mesita", "google", "partners"]) {
     const p = readDeckPredicates({ placesScope });
     assertEquals(hasDeckPredicates(p), false, placesScope);
-    assertEquals(applyDeckPredicates(rows, p, null), rows, placesScope);
+    assertEquals(applyDeckPredicates(rows, p), rows, placesScope);
   }
 });
 
@@ -244,7 +152,6 @@ Deno.test("Google review floor drops places below the stop and places with no co
     applyDeckPredicates(
       rows,
       readDeckPredicates({ minReviews: 100 }),
-      null,
     ).map((r) => r.id),
     ["hot"],
   );

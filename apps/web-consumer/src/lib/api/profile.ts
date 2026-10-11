@@ -40,10 +40,6 @@ type ConsumerOnboardingInput = {
   // (e.g. the Edit-profile sheet) omit it — the EF patches only present keys.
   sex?: "male" | "female";
   birthday?: string; // YYYY-MM-DD
-  // Optional — phone is the auth identity and lives on auth.user.phone.
-  // Set at sign-in; consumer-update-profile mirrors it into consumers.phone
-  // on first call. Not editable from the profile sheet.
-  phone?: string;
 };
 
 // Avatar-only patch after a Storage upload (MESITA-953). null clears.

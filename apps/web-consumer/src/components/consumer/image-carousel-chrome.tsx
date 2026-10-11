@@ -1,44 +1,4 @@
-import { Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-export function CarouselMuteButton({
-  muted,
-  mutePosition,
-  multiSlide,
-  onToggle,
-}: {
-  muted: boolean;
-  mutePosition: "bottom-right" | "top-right";
-  multiSlide: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        onToggle();
-      }}
-      aria-label={muted ? "Unmute video" : "Mute video"}
-      data-no-swipe
-      className={cn(
-        "absolute z-20 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur transition hover:bg-black/80",
-        mutePosition === "top-right"
-          ? multiSlide
-            ? "top-12 right-3"
-            : "top-3 right-3"
-          : "right-3 bottom-3",
-      )}
-    >
-      {muted ? (
-        <VolumeX className="h-4 w-4" />
-      ) : (
-        <Volume2 className="h-4 w-4" />
-      )}
-    </button>
-  );
-}
 
 export function CarouselPillDots({
   count,

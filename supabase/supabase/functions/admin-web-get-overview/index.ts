@@ -56,8 +56,6 @@ const PLACE_ADMIN_STATE_COLUMNS = ", google_place_id";
 
 type Body = {
   placeId?: string;
-  /** @deprecated MESITA-26; prefer placeId (MESITA-942). */
-  activeUnitId?: string;
 };
 
 Deno.serve(async (req) => {

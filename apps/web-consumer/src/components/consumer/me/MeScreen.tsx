@@ -22,14 +22,10 @@ import { cn } from "@/lib/utils";
 export function MeScreen({
   title,
   children,
-  footer,
-  fallbackHref = CONSUMER_ROUTES.me,
   flush = false,
 }: {
   title: string;
   children: React.ReactNode;
-  footer?: React.ReactNode;
-  fallbackHref?: string;
   /** Skip body padding — Activity feeds need a flex column that can scroll. */
   flush?: boolean;
 }) {
@@ -40,8 +36,8 @@ export function MeScreen({
       router.back();
       return;
     }
-    router.replace(fallbackHref);
-  }, [router, fallbackHref]);
+    router.replace(CONSUMER_ROUTES.me);
+  }, [router]);
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
@@ -68,12 +64,6 @@ export function MeScreen({
       >
         {children}
       </div>
-
-      {footer ? (
-        <div className="border-border bg-background shrink-0 border-t px-5 py-3">
-          {footer}
-        </div>
-      ) : null}
     </div>
   );
 }

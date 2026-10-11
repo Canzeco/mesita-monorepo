@@ -14,8 +14,7 @@ import { APP_CARD_ID } from "@/components/consumer/MobileFrame";
 
 // State-driven overlays (no route change): bottom sheets and centered
 // dialogs opened by component state — Contact, Delete account, Reserve.
-// Same motion language as the route modals (SlideOverShell /
-// BottomSheetShell).
+// Same motion language as the route modal shell (SlideOverShell).
 //
 // Positioning: by default these PORTAL into the MobileFrame card
 // (APP_CARD_ID) so the backdrop covers the WHOLE app — chrome bands
@@ -26,9 +25,7 @@ import { APP_CARD_ID } from "@/components/consumer/MobileFrame";
 // and below the Toaster (z-[140]).
 //
 // Presence: the parent just flips `open`. When `open` goes false the
-// overlay plays the exit transition before unmounting (or, with
-// `keepMounted`, before going inert — use that when closed state must
-// survive across close).
+// overlay plays the exit transition before unmounting.
 
 function useLocalPresence(open: boolean) {
   // `shown` drives the CSS transition classes; `mounted` keeps the DOM alive
@@ -115,9 +112,9 @@ function CardPortal({ children }: { children: React.ReactNode }) {
 // design. Two shapes, chosen by what the surface IS, never by how long its
 // copy ran.
 //
-// Route modals share the same panel (BottomSheetShell imports this), because
-// a guest cannot tell a route modal from a state modal and should not have to.
-export const SEMI_MODAL_PANEL_CLASS =
+// Any routed sheet shell must reuse this same panel, because a guest cannot
+// tell a route modal from a state modal and should not have to.
+const SEMI_MODAL_PANEL_CLASS =
   "border-border bg-popover shadow-elev relative flex h-[80%] max-h-[80%] min-h-0 flex-col overflow-hidden rounded-t-3xl border-t";
 
 export function LocalSheet({
@@ -125,20 +122,16 @@ export function LocalSheet({
   onClose,
   children,
   ariaLabel,
-  keepMounted = false,
-  panelClassName,
 }: {
   open: boolean;
   onClose: () => void;
   children: React.ReactNode;
   ariaLabel: string;
-  keepMounted?: boolean;
-  panelClassName?: string;
 }) {
   const { mounted, shown } = useLocalPresence(open);
   useEscape(open, onClose);
 
-  if (!mounted && !keepMounted) return null;
+  if (!mounted) return null;
 
   return (
     <CardPortal>
@@ -169,7 +162,6 @@ export function LocalSheet({
             "transition-transform duration-300 motion-reduce:transition-none",
             OVERLAY_EASE,
             shown ? "translate-y-0" : "translate-y-full",
-            panelClassName,
           )}
         >
           <div className={SHEET_GRABBER_CLASS} />
@@ -185,13 +177,11 @@ export function LocalDialog({
   onClose,
   children,
   ariaLabel,
-  panelClassName,
 }: {
   open: boolean;
   onClose: () => void;
   children: React.ReactNode;
   ariaLabel: string;
-  panelClassName?: string;
 }) {
   const { mounted, shown } = useLocalPresence(open);
   useEscape(open, onClose);
@@ -225,7 +215,6 @@ export function LocalDialog({
             "transition-[opacity,transform] duration-300 motion-reduce:transition-none",
             OVERLAY_EASE,
             shown ? "scale-100 opacity-100" : "scale-95 opacity-0",
-            panelClassName,
           )}
         >
           {children}

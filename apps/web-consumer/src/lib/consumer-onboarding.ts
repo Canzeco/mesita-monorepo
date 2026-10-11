@@ -6,9 +6,11 @@
 // floor, and an age gate is only worth anything at account creation), and sex
 // (MESITA-1829).
 //
-// `consumerCanBook` adds the last name, asked at the one moment it is
-// load-bearing: placing a reservation. The place books the table under the
-// guest's full name and the host system keys on "last name + party size", and
+// The booking gate adds the last name, asked at the one moment it is
+// load-bearing: placing a reservation. consumer-web-create-reservation
+// enforces it; `consumerNeedsLastName` is how the booking form asks. The
+// place books the table under the guest's full name and the host system keys
+// on "last name + party size", and
 // when the restaurant calls back, eleven-agent-get-reservation finds the
 // booking by fuzzy first/last match. A first-name-only profile books a table
 // nobody can find — so the last name is still REQUIRED, just asked where the
@@ -37,7 +39,7 @@
 //
 // Mirrored by:
 //   • supabase/functions/consumer-web-signin-phone       (routing hint = canBrowse)
-//   • supabase/functions/consumer-web-create-reservation (canBook — the REAL gate)
+//   • supabase/functions/consumer-web-create-reservation (last name — the REAL booking gate)
 // Change one, change all three. The drift alarm for the routing hint lives in
 // __tests__/onboarding-gate.test.ts and greps the EF for the three fields.
 
@@ -89,9 +91,9 @@ export function consumerCanBrowse(
 //
 // Step 3 carries no dek on purpose. "Last one." is the whole message, and a
 // justification under a two-option choice reads as an apology for asking.
-export type OnboardStepKey = "first_name" | "birthday" | "sex";
+type OnboardStepKey = "first_name" | "birthday" | "sex";
 
-export type OnboardStep = {
+type OnboardStep = {
   readonly key: OnboardStepKey;
   readonly headline: string;
   readonly dek: string | null;
@@ -150,18 +152,12 @@ export function stepAfterSave(from: number, current: number): number {
   return current === from ? from + 1 : current;
 }
 
-/** The booking gate: enough to put a name on a table. */
-export function consumerCanBook(
-  profile: OnboardableProfile | null | undefined,
-): boolean {
-  return consumerCanBrowse(profile) && Boolean(profile?.last_name);
-}
-
 /**
- * The one field the reservation flow may still have to ask for. Distinct from
- * `!consumerCanBook` on purpose: a profile that fails canBrowse is bounced to
- * /onboard by the (shell) gate and never reaches a booking form, so the only
- * gap a booking surface has to close is this one.
+ * The one field the reservation flow may still have to ask for. Only the last
+ * name on purpose: a profile that fails canBrowse is bounced to /onboard by
+ * the (shell) gate and never reaches a booking form, so the only gap a booking
+ * surface has to close is this one. consumer-web-create-reservation is the
+ * real gate.
  */
 export function consumerNeedsLastName(
   profile: OnboardableProfile | null | undefined,

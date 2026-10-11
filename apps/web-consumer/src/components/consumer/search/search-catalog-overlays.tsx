@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import { ChevronUp, MapPin, Search, X } from "lucide-react";
+import { ChevronUp, MapPin, X } from "lucide-react";
 
 import type { Place } from "@/lib/api/places";
 import { Skeleton, Spinner } from "@/components/shared";
@@ -49,12 +49,8 @@ function CatalogRailSkeleton() {
 }
 
 export function SearchRailOverlay({
-  idle,
   places,
-  catalogCount,
   catalogLoading = false,
-  overspan = false,
-  truncated = null,
   railCollapsed,
   railIndex,
   selectedId,
@@ -66,12 +62,8 @@ export function SearchRailOverlay({
   onOpenPlace,
   setRailCardRef,
 }: {
-  idle: boolean;
   places: Place[];
-  catalogCount: number;
   catalogLoading?: boolean;
-  overspan?: boolean;
-  truncated?: string | null;
   railCollapsed: boolean;
   railIndex: number;
   selectedId: string | null;
@@ -83,24 +75,10 @@ export function SearchRailOverlay({
   onOpenPlace: (place: Place) => void;
   setRailCardRef: (placeId: string, el: HTMLElement | null) => void;
 }) {
-  if (!idle) return null;
-
   // Filters live on the top-right disc. Reset on this empty state was
   // the one-tap way out of a cut the guest made; the sheet's own Reset
   // is that now. An empty map is a fact about the catalog, pinCount, or
   // the guest's Popularity floor.
-
-  if (overspan) {
-    return (
-      <div className="absolute inset-x-0 bottom-3 z-20">
-        <div className="border-border bg-card/95 shadow-elev mx-auto flex w-max max-w-[calc(100%-1.5rem)] items-center rounded-2xl border px-4 py-3 backdrop-blur">
-          <p className="text-muted-foreground text-xs">
-            Zoom in to see this area
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   if (catalogLoading && places.length === 0) {
     return (
@@ -141,11 +119,6 @@ export function SearchRailOverlay({
           </div>
         ) : (
           <>
-            {truncated && (
-              <p className="text-muted-foreground mb-1 text-center text-xs">
-                {truncated}
-              </p>
-            )}
             <div className="mb-2 flex items-center justify-center gap-1.5">
               <span className="border-border bg-card/95 text-muted-foreground shadow-rest type-label flex items-center gap-1 rounded-full border py-0.5 pr-1 pl-2.5 font-semibold tabular-nums backdrop-blur">
                 {catalogLoading ? (
@@ -207,36 +180,12 @@ export function SearchRailOverlay({
           </>
         )
       ) : (
-        (catalogCount > 0 || !catalogLoading) && (
-          <div className="border-border bg-card/95 shadow-elev mx-auto flex w-max max-w-[calc(100%-1.5rem)] flex-col items-center gap-2 rounded-2xl border px-4 py-3 backdrop-blur">
-            <p className="text-muted-foreground text-xs">
-              No places to show here yet.
-            </p>
-          </div>
-        )
+        <div className="border-border bg-card/95 shadow-elev mx-auto flex w-max max-w-[calc(100%-1.5rem)] flex-col items-center gap-2 rounded-2xl border px-4 py-3 backdrop-blur">
+          <p className="text-muted-foreground text-xs">
+            No places to show here yet.
+          </p>
+        </div>
       )}
-    </div>
-  );
-}
-
-export function EmptySearchPrompt() {
-  // Content-sized hint that hangs under the search bar. A fixed 70% sheet
-  // here is the "tall empty panel" Design §D forbids — the map is the
-  // Search tab's dominant visual and has to stay on screen.
-  return (
-    <div className="flex flex-col items-center px-6 py-5 text-center">
-      <span
-        className="bg-primary/10 text-primary flex h-12 w-12 items-center justify-center rounded-full"
-        aria-hidden="true"
-      >
-        <Search className="h-5 w-5" strokeWidth={1.75} />
-      </span>
-      <p className="font-display mt-3 text-base font-semibold tracking-tight">
-        Where to today?
-      </p>
-      <p className="text-muted-foreground mt-1 max-w-[240px] text-sm">
-        Find a place by name or category.
-      </p>
     </div>
   );
 }

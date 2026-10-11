@@ -1,23 +1,16 @@
 // STRIPE_MODE is one secret standing between the platform and the wrong
 // Stripe account, so every rule that keeps it honest is frozen here: the
-// default is test, the other universe's key is never a fallback, and a blank
-// secret is not a secret. The resolvers take an injected reader, so these
-// assertions never touch the process env.
+// default is test and the other universe's key is never a candidate.
+// stripeMode takes an injected reader, so these assertions never touch the
+// process env.
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
-  eventMatchesMode,
-  isStripeKeyRejection,
-  resolveStripeSecret,
-  stripeKeyMatchesMode,
   stripeMode,
-  stripePublishableKey,
   stripePublishableKeyMatchesMode,
   stripePublishableKeyNames,
-  stripeSecretKey,
   stripeSecretKeyNames,
   stripeSecretKeyProblem,
-  stripeWebhookSecrets,
 } from "./stripe-env.ts";
 
 const env = (vars: Record<string, string>) => (name: string) => vars[name];
@@ -33,115 +26,15 @@ Deno.test("stripeMode: only an explicit `live` is live — everything else is te
   assertEquals(stripeMode(env({ STRIPE_MODE: " LIVE " })), "live");
 });
 
-Deno.test("secret key: the active mode's suffixed name wins", () => {
-  const vars = {
-    STRIPE_MODE: "test",
-    STRIPE_SECRET_KEY_TEST: "sk_test_new",
-    STRIPE_SECRET_KEY_LIVE: "sk_live_new",
-    STRIPE_SECRET_KEY: "sk_live_legacy",
-  };
-  assertEquals(resolveStripeSecret(env(vars)), {
-    name: "STRIPE_SECRET_KEY_TEST",
-    key: "sk_test_new",
-  });
-  assertEquals(
-    resolveStripeSecret(env({ ...vars, STRIPE_MODE: "live" })),
-    { name: "STRIPE_SECRET_KEY_LIVE", key: "sk_live_new" },
-  );
-});
-
-Deno.test("secret key: legacy unsuffixed name is the fallback", () => {
-  // The env that predates the split keeps working untouched.
-  assertEquals(
-    resolveStripeSecret(env({ STRIPE_SECRET_KEY: "sk_test_legacy" })),
-    { name: "STRIPE_SECRET_KEY", key: "sk_test_legacy" },
-  );
-});
-
-Deno.test("secret key: the OTHER mode's key is never a fallback", () => {
-  // The MESITA-1422 trap, closed: STRIPE_MODE=test with only a live key set
-  // resolves to nothing at all rather than quietly charging the live account.
-  const res = resolveStripeSecret(
-    env({ STRIPE_MODE: "test", STRIPE_SECRET_KEY_LIVE: "sk_live_x" }),
-  );
-  assertEquals(res, null);
-  assertEquals(
-    stripeSecretKey(env({ STRIPE_MODE: "test", STRIPE_SECRET_KEY_LIVE: "sk_live_x" })),
-    undefined,
-  );
+Deno.test("stripeSecretKeyNames: the OTHER mode's key is never a candidate", () => {
+  // The MESITA-1422 trap, closed: STRIPE_MODE=test never reaches for the live
+  // key, so a missing test key resolves to nothing rather than quietly
+  // charging the live account.
   assertEquals(stripeSecretKeyNames("test"), [
     "STRIPE_SECRET_KEY_TEST",
     "STRIPE_SECRET_KEY",
   ]);
 });
-
-Deno.test("secret key: a blank secret is not a secret, and whitespace is trimmed", () => {
-  assertEquals(
-    resolveStripeSecret(
-      env({ STRIPE_SECRET_KEY_TEST: "   ", STRIPE_SECRET_KEY: "sk_test_legacy" }),
-    ),
-    { name: "STRIPE_SECRET_KEY", key: "sk_test_legacy" },
-  );
-  assertEquals(
-    stripeSecretKey(env({ STRIPE_SECRET_KEY_TEST: " sk_test_padded\n" })),
-    "sk_test_padded",
-  );
-});
-
-Deno.test("webhook secrets: every configured secret, active mode first", () => {
-  const secrets = stripeWebhookSecrets(env({
-    STRIPE_MODE: "test",
-    STRIPE_WEBHOOK_SECRET_TEST: "whsec_platform_test",
-    STRIPE_CONNECT_WEBHOOK_SECRET_TEST: "whsec_connect_test",
-    STRIPE_WEBHOOK_SECRET_LIVE: "whsec_platform_live",
-    STRIPE_CONNECT_WEBHOOK_SECRET_LIVE: "whsec_connect_live",
-    STRIPE_WEBHOOK_SECRET: "whsec_platform_legacy",
-  }));
-  // Both universes verify — the flip must not cost a Stripe retry storm —
-  // but the active mode's deliveries match on the first try.
-  assertEquals(secrets, [
-    "whsec_platform_test",
-    "whsec_connect_test",
-    "whsec_platform_live",
-    "whsec_connect_live",
-    "whsec_platform_legacy",
-  ]);
-});
-
-Deno.test("webhook secrets: legacy-only env still verifies; duplicates collapse", () => {
-  assertEquals(
-    stripeWebhookSecrets(env({ STRIPE_WEBHOOK_SECRET: "whsec_legacy" })),
-    ["whsec_legacy"],
-  );
-  // Same value under both the suffixed and legacy name is one secret to try.
-  assertEquals(
-    stripeWebhookSecrets(env({
-      STRIPE_WEBHOOK_SECRET_TEST: "whsec_same",
-      STRIPE_WEBHOOK_SECRET: "whsec_same",
-    })),
-    ["whsec_same"],
-  );
-  assertEquals(stripeWebhookSecrets(env({})), []);
-});
-
-Deno.test("eventMatchesMode: an event from the other universe is not ours", () => {
-  assert(eventMatchesMode({ livemode: false }, "test"));
-  assert(eventMatchesMode({ livemode: true }, "live"));
-  assert(!eventMatchesMode({ livemode: true }, "test"));
-  assert(!eventMatchesMode({ livemode: false }, "live"));
-  // A missing livemode is treated as test — the same safe direction as the
-  // STRIPE_MODE default.
-  assert(eventMatchesMode({}, "test"));
-  assert(!eventMatchesMode({}, "live"));
-});
-
-Deno.test("stripeKeyMatchesMode: the key prefix is the universe", () => {
-  assert(stripeKeyMatchesMode("sk_test_x", "test"));
-  assert(stripeKeyMatchesMode("sk_live_x", "live"));
-  assert(!stripeKeyMatchesMode("sk_live_x", "test"));
-  assert(!stripeKeyMatchesMode("sk_test_x", "live"));
-});
-
 
 Deno.test("stripeSecretKeyProblem: a well-formed secret key has no problem", () => {
   assertEquals(stripeSecretKeyProblem("STRIPE_SECRET_KEY_TEST", "sk_test_51abc"), null);
@@ -188,126 +81,12 @@ Deno.test("stripeSecretKeyProblem: a trailing-junk key is still caught, and not 
   assertEquals(stripeSecretKeyProblem("STRIPE_SECRET_KEY", "sk_test_51abc oops"), null);
 });
 
-// ── isStripeKeyRejection ────────────────────────────────────────────────────
-//
-// The shapes below are copied from real Edge Function logs on 2026-09-05/06,
-// not invented: an expired key and a stray-prefixed key both reached Stripe
-// and both came back 401, and the merchant saw Stripe's words either way.
-
-Deno.test("isStripeKeyRejection: the expired key that actually shipped", () => {
-  // Verbatim shape from the 2026-09-05T17:41 log line.
-  assert(isStripeKeyRejection({
-    type: "StripeAuthenticationError",
-    rawType: "api_error",
-    code: "api_key_expired",
-    statusCode: 401,
-    raw: { message: "Expired API Key provided: sk_test_***8QBF1y" },
-  }));
-});
-
-Deno.test("isStripeKeyRejection: the stray-prefix key that actually shipped", () => {
-  // Verbatim shape from the 2026-09-06T08:03 log line. Shape-valid guards
-  // cannot catch this one at all, because it never reaches them — it is the
-  // stored value that is wrong, and Stripe is the one that says so.
-  assert(isStripeKeyRejection({
-    type: "StripeAuthenticationError",
-    rawType: "invalid_request_error",
-    statusCode: 401,
-    raw: { message: "Invalid API Key provided: mattsk_t***1l0b" },
-  }));
-});
-
-Deno.test("isStripeKeyRejection: a bare 401 counts — accounts.create has one credential", () => {
-  assert(isStripeKeyRejection({ statusCode: 401 }));
-});
-
-Deno.test("isStripeKeyRejection: real merchant-actionable failures still travel verbatim", () => {
-  // These are the cases the surrounding comment protects: configuration facts
-  // Stripe names precisely and an operator can act on. Misclassifying any of
-  // them as a platform key problem would swallow the only useful sentence.
-  assertEquals(
-    isStripeKeyRejection({
-      type: "StripeInvalidRequestError",
-      statusCode: 400,
-      raw: { message: "Please activate Connect in your dashboard." },
-    }),
-    false,
-  );
-  assertEquals(
-    isStripeKeyRejection({
-      type: "StripePermissionError",
-      statusCode: 403,
-      raw: { message: "Your account is not permitted to create accounts." },
-    }),
-    false,
-  );
-  assertEquals(isStripeKeyRejection({ type: "StripeRateLimitError", statusCode: 429 }), false);
-});
-
-Deno.test("isStripeKeyRejection: never throws on junk", () => {
-  for (const junk of [null, undefined, "401", 401, [], {}, new Error("boom")]) {
-    assertEquals(typeof isStripeKeyRejection(junk), "boolean");
-  }
-});
-
 // ── The publishable key (MESITA-1670) ────────────────────────────────────────
 //
 // It is the only Stripe credential that reaches a browser, and it is resolved
 // SERVER-side for one reason: a NEXT_PUBLIC_ build variable cannot follow
 // STRIPE_MODE. Bake pk_test into a deploy, flip the mode, and every 3DS
 // challenge runs against a universe that cannot see the intent.
-
-Deno.test("stripePublishableKey: follows the mode, and never falls through", () => {
-  const both = {
-    STRIPE_PUBLISHABLE_KEY_TEST: "pk_test_a",
-    STRIPE_PUBLISHABLE_KEY_LIVE: "pk_live_b",
-  };
-  assertEquals(stripePublishableKey(env(both)), "pk_test_a");
-  assertEquals(
-    stripePublishableKey(env({ ...both, STRIPE_MODE: "live" })),
-    "pk_live_b",
-  );
-  // THE INVARIANT THAT MATTERS: a missing key for the active mode means "no
-  // key", never "use the other one". Same rule as the secret — a browser must
-  // never be handed a live key by a deployment that believes it is testing.
-  assertEquals(
-    stripePublishableKey(env({ STRIPE_PUBLISHABLE_KEY_LIVE: "pk_live_b" })),
-    undefined,
-  );
-  assertEquals(
-    stripePublishableKey(
-      env({ STRIPE_MODE: "live", STRIPE_PUBLISHABLE_KEY_TEST: "pk_test_a" }),
-    ),
-    undefined,
-  );
-});
-
-Deno.test("stripePublishableKey: the legacy unsuffixed name still works", () => {
-  assertEquals(
-    stripePublishableKey(env({ STRIPE_PUBLISHABLE_KEY: "pk_test_legacy" })),
-    "pk_test_legacy",
-  );
-  // Suffixed wins when both are present — most specific first.
-  assertEquals(
-    stripePublishableKey(
-      env({
-        STRIPE_PUBLISHABLE_KEY: "pk_test_legacy",
-        STRIPE_PUBLISHABLE_KEY_TEST: "pk_test_specific",
-      }),
-    ),
-    "pk_test_specific",
-  );
-  // A blank value is not a value, and must fall through to the next name.
-  assertEquals(
-    stripePublishableKey(
-      env({
-        STRIPE_PUBLISHABLE_KEY_TEST: "   ",
-        STRIPE_PUBLISHABLE_KEY: "pk_test_legacy",
-      }),
-    ),
-    "pk_test_legacy",
-  );
-});
 
 Deno.test("stripePublishableKeyNames: the other mode's name is absent", () => {
   assertEquals(stripePublishableKeyNames("test"), [

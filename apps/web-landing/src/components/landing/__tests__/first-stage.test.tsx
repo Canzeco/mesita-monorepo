@@ -5,7 +5,6 @@ import { describe, expect, it } from "vitest";
 import PrivacyPage from "@/app/privacy/page";
 import TermsPage from "@/app/terms/page";
 import Home from "@/app/page";
-import { NAV_LINKS } from "@/components/landing/nav";
 
 // FIRST STAGE ONLY (MESITA-2092). The MVP sells Citywide Catalog · Discovery
 // Engines · Reservations Agent. Prepaying, rewards, visits and everything on
@@ -40,14 +39,6 @@ describe("mesita.ai speaks First Stage only", () => {
       expect(visible(el).match(SECOND_STAGE)?.[0] ?? null).toBeNull();
     });
   }
-
-  it("the nav names the three First Stage products, in page order", () => {
-    expect(NAV_LINKS.map((l) => l.label)).toEqual([
-      "Catalog",
-      "Discovery",
-      "Reservations",
-    ]);
-  });
 
   it("the pattern bites", () => {
     expect(SECOND_STAGE.test("Prepaid Credits")).toBe(true);

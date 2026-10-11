@@ -1,22 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import {
-  CarouselMuteButton,
   CarouselPillDots,
   CarouselSlideCounter,
   CarouselTapZones,
 } from "./image-carousel-chrome";
 
-type MediaItem =
-  | { type: "image"; src: string }
-  | { type: "video"; src: string; poster?: string };
-
-export type CarouselMediaItem = MediaItem;
-
-const TRANSFORM_PAGE_MS = 500;
+type MediaItem = { src: string };
 
 // Eager-load a small window around the active slide so paging reveals the
 // next photo instantly instead of waiting on a lazy fetch. Forward-biased
@@ -26,54 +19,18 @@ const PRELOAD_AHEAD = 2;
 
 export function ImageCarousel({
   photos,
-  media,
   alt,
   aspect = "aspect-[4/5]",
   rounded,
-  priority = false,
-  sizes = "(max-width: 768px) 100vw, 420px",
-  mutePosition = "bottom-right",
-  noNativeScroll = false,
-  objectFit = "cover",
-  onIdxChange,
-  onIdxSettled,
-  onImageNaturalSize,
-  hideSlides = false,
   className,
   renderSlide,
   tapToPage = true,
   interactiveDots = false,
 }: {
   photos: string[];
-  media?: MediaItem[];
   alt: string;
   aspect?: string;
   rounded?: string;
-  priority?: boolean;
-  sizes?: string;
-  mutePosition?: "bottom-right" | "top-right";
-  objectFit?: "cover" | "contain";
-  /**
-   * When true, the inner track uses CSS transform paging instead of
-   * native overflow-x scrolling. Required when this carousel sits inside
-   * another horizontal-gesture handler (e.g. the SwipeDeck) — otherwise
-   * the browser claims the touch for native scroll and the outer swipe
-   * never fires.
-   */
-  noNativeScroll?: boolean;
-  /**
-   * Called whenever the active slide changes. Lets a parent react to
-   * carousel position (e.g. fade out an overlay past the first photo).
-   */
-  onIdxChange?: (idx: number) => void;
-  onIdxSettled?: (idx: number) => void;
-  /** Reports natural pixel size once a slide's image finishes loading. */
-  onImageNaturalSize?: (
-    idx: number,
-    size: { width: number; height: number },
-  ) => void;
-  /** Invisible slides — keeps paging + indicators while visuals live elsewhere. */
-  hideSlides?: boolean;
   className?: string;
   /** Replaces the default full-bleed slide when the parent owns layout (e.g.
    *  Scroll's card). `inPreloadWindow` is the same eager/lazy answer the
@@ -88,7 +45,6 @@ export function ImageCarousel({
    * default — the place page depends on them. Scroll turns them off
    * (MESITA-2105): there a single tap does nothing and a double-tap saves, and
    * a zone that paged on the first tap would page twice before the save.
-   * Native mode alone does NOT remove them; they render in both modes.
    */
   tapToPage?: boolean;
   /**
@@ -101,44 +57,22 @@ export function ImageCarousel({
   interactiveDots?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const [idx, setIdx] = useState(0);
-  const [muted, setMuted] = useState(true);
 
-  const items: MediaItem[] =
-    media && media.length > 0
-      ? media
-      : photos.map((src) => ({ type: "image" as const, src }));
-
-  const hasVideo = items.some((m) => m.type === "video");
-  const fitClass = objectFit === "contain" ? "object-contain" : "object-cover";
-
-  // Surface idx immediately for indicators; defer chrome/layout reactions until
-  // the slide transform finishes so wide/tall chrome does not flip mid-transition.
-  useEffect(() => {
-    onIdxChange?.(idx);
-    if (!noNativeScroll || !onIdxSettled) return;
-    const t = window.setTimeout(() => onIdxSettled(idx), TRANSFORM_PAGE_MS);
-    return () => window.clearTimeout(t);
-  }, [idx, onIdxChange, onIdxSettled, noNativeScroll]);
+  const items: MediaItem[] = photos.map((src) => ({ src }));
 
   const goTo = (i: number) => {
-    if (noNativeScroll) {
-      setIdx(i);
-      return;
-    }
     const el = ref.current;
     if (!el) return;
     el.scrollTo({ left: i * el.clientWidth, behavior: "smooth" });
   };
 
-  // Tap-vs-drag detection for the invisible side-tap paging zones. The
-  // earlier onClick-based approach fired on near-swipes that hadn't
-  // committed (the browser's click-suppression-on-drag heuristic is
-  // unreliable on mobile), so a small horizontal flick stopped the
-  // parent swipe AND paged the photo. Now we time the gesture and only
-  // page when the pointer barely moved within a short window — every
-  // real swipe falls through to the parent SwipeDeck untouched.
+  // Tap-vs-drag detection for the invisible side-tap paging zones. An
+  // onClick-based approach fires on near-swipes that never committed (the
+  // browser's click-suppression-on-drag heuristic is unreliable on mobile),
+  // so a small horizontal flick would page the photo. Instead we time the
+  // gesture and only page when the pointer barely moved within a short
+  // window — every real swipe is left to the native scroll.
   const tapRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const handleZoneDown = (e: React.PointerEvent) => {
     tapRef.current = { x: e.clientX, y: e.clientY, t: performance.now() };
@@ -167,38 +101,10 @@ export function ImageCarousel({
     goTo(target);
   };
 
-  // In transform mode every slide must already be eager (paging can't wait
-  // on a lazy fetch); in native-scroll mode only a window around the active
-  // slide is eager so neighbours are warm before you reach them.
+  // Only a window around the active slide is eager so neighbours are warm
+  // before you reach them.
   const isInPreloadWindow = (i: number) =>
-    noNativeScroll || (i >= idx - PRELOAD_BEHIND && i <= idx + PRELOAD_AHEAD);
-
-  const toggleMute = () => {
-    const next = !muted;
-    setMuted(next);
-    // Pause non-active videos, play+unmute the active one.
-    for (const [i, vid] of videoRefs.current.entries()) {
-      if (!vid) continue;
-      vid.muted = next;
-      if (!next && i === idx) {
-        // Browsers require the play() to be tied to the same user gesture as the unmute.
-        vid.play().catch(() => {
-          // If the browser still refuses, keep the icon honest.
-          setMuted(true);
-          vid.muted = true;
-        });
-      }
-    }
-  };
-
-  // Keep videos muted when they're not the visible slide so audio doesn't overlap.
-  useEffect(() => {
-    for (const [i, vid] of videoRefs.current.entries()) {
-      if (!vid) continue;
-      const shouldHaveSound = !muted && i === idx;
-      vid.muted = !shouldHaveSound;
-    }
-  }, [idx, muted]);
+    i >= idx - PRELOAD_BEHIND && i <= idx + PRELOAD_AHEAD;
 
   return (
     <div
@@ -227,26 +133,12 @@ export function ImageCarousel({
             ? `${alt}, photo ${idx + 1} of ${items.length}`
             : undefined
         }
-        onScroll={
-          noNativeScroll
-            ? undefined
-            : (e) => {
-                const el = e.currentTarget;
-                const i = Math.round(el.scrollLeft / el.clientWidth);
-                if (i !== idx) setIdx(i);
-              }
-        }
-        className={cn(
-          "flex h-full w-full",
-          noNativeScroll
-            ? "transition-transform duration-500 ease-out"
-            : "scrollbar-hide snap-x snap-mandatory overflow-x-auto",
-        )}
-        style={
-          noNativeScroll
-            ? { transform: `translateX(${-idx * 100}%)` }
-            : undefined
-        }
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          const i = Math.round(el.scrollLeft / el.clientWidth);
+          if (i !== idx) setIdx(i);
+        }}
+        className="scrollbar-hide flex h-full w-full snap-x snap-mandatory overflow-x-auto"
       >
         {items.map((m, i) => (
           <div
@@ -255,67 +147,20 @@ export function ImageCarousel({
           >
             {renderSlide ? (
               renderSlide(i, m, { inPreloadWindow: isInPreloadWindow(i) })
-            ) : m.type === "video" ? (
-              <video
-                ref={(el) => {
-                  videoRefs.current[i] = el;
-                }}
-                src={m.src}
-                poster={m.poster}
-                autoPlay
-                muted
-                loop
-                playsInline
-                preload="metadata"
-                className={cn(
-                  "h-full w-full",
-                  fitClass,
-                  hideSlides && "opacity-0",
-                )}
-              />
             ) : (
               <Image
                 src={m.src}
                 alt={`${alt} photo ${i + 1}`}
                 fill
-                sizes={sizes}
-                priority={priority && i === 0}
-                loading={
-                  priority && i === 0
-                    ? undefined
-                    : isInPreloadWindow(i)
-                      ? "eager"
-                      : "lazy"
-                }
+                sizes="(max-width: 768px) 100vw, 420px"
+                loading={isInPreloadWindow(i) ? "eager" : "lazy"}
                 draggable={false}
-                onLoad={(event) => {
-                  const img = event.currentTarget;
-                  if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-                    onImageNaturalSize?.(i, {
-                      width: img.naturalWidth,
-                      height: img.naturalHeight,
-                    });
-                  }
-                }}
-                className={cn(
-                  fitClass,
-                  hideSlides && "opacity-0",
-                  "select-none [-webkit-user-drag:none]",
-                )}
+                className="object-cover select-none [-webkit-user-drag:none]"
               />
             )}
           </div>
         ))}
       </div>
-
-      {hasVideo && (
-        <CarouselMuteButton
-          muted={muted}
-          mutePosition={mutePosition}
-          multiSlide={items.length > 1}
-          onToggle={toggleMute}
-        />
-      )}
 
       {items.length > 1 && (
         <CarouselPillDots

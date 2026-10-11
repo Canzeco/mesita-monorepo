@@ -1,4 +1,4 @@
-// Firecrawl web search — extracted from firecrawl.ts.
+// Firecrawl web search (v1 /search), used by channel discovery.
 // Returns result URLs best-first; [] on any failure.
 
 const SEARCH_URL = "https://api.firecrawl.dev/v1/search";
@@ -44,8 +44,6 @@ export async function firecrawlSearch(
   } catch {
     return [];
   } finally {
-    // firecrawlScrape clears its timer; this one never did — the leaked
-    // timeout kept a pending abort alive after every search (lint catch).
     clearTimeout(timer);
   }
 }

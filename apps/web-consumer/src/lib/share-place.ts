@@ -25,12 +25,12 @@ import { toast } from "@/lib/toast";
 // else is the one way this helper could leak something.
 
 /** True when the platform can open a native share sheet. */
-export function canShareNatively(): boolean {
+function canShareNatively(): boolean {
   return typeof navigator !== "undefined" && typeof navigator.share === "function";
 }
 
 /** Absolute URL for a place, for handing to someone outside the app. */
-export function placeShareUrl(idOrSlug: string): string {
+function placeShareUrl(idOrSlug: string): string {
   const path = placeHref(idOrSlug);
   if (typeof window === "undefined") return path;
   return new URL(path, window.location.origin).toString();

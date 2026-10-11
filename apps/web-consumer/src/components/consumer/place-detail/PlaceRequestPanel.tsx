@@ -10,23 +10,10 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn, errMsg } from "@/lib/utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 
-/** Enrich tab: not Enriched yet. The ugly profile stays visible. */
-export function showEnrichTab(
-  place: Pick<PlaceDetail, "is_enriched">,
-): boolean {
-  return place.is_enriched !== true;
-}
-
 export function requestProgressLabel(count: number, threshold: number): string {
   const n = Math.max(0, Math.trunc(count));
   const t = Math.max(1, Math.trunc(threshold));
   return `${n} of ${t} votes`;
-}
-
-export function requestVotesRemaining(count: number, threshold: number): number {
-  const n = Math.max(0, Math.trunc(count));
-  const t = Math.max(1, Math.trunc(threshold));
-  return Math.max(0, t - n);
 }
 
 export function requestProgressMeta(count: number, threshold: number) {
@@ -171,13 +158,7 @@ export function PlaceRequestPanelView({
   );
 }
 
-export function PlaceRequestPanel({
-  place,
-  onState,
-}: {
-  place: PlaceDetail;
-  onState?: (next: Partial<PlaceDetail>) => void;
-}) {
+export function PlaceRequestPanel({ place }: { place: PlaceDetail }) {
   const supabase = useBrowserSupabase();
   const [count, setCount] = useState(place.request_count);
   const [threshold, setThreshold] = useState(place.request_threshold);
@@ -196,15 +177,6 @@ export function PlaceRequestPanel({
       setThreshold(r.request_threshold);
       setRequested(r.requested);
       if (r.enrichment_triggered) setEnriching(true);
-      onState?.({
-        request_count: r.request_count,
-        request_threshold: r.request_threshold,
-        requested: r.requested,
-        is_profile_ready: r.is_profile_ready,
-        is_enriched: r.is_enriched,
-        request_lifecycle: r.request_lifecycle,
-        is_enriching: r.enrichment_triggered || place.is_enriching,
-      });
     } catch (err) {
       setError(errMsg(err, "Could not send the vote."));
     } finally {

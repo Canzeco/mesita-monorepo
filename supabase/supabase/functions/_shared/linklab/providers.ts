@@ -3,8 +3,8 @@
 // Best-effort: every call returns a safe empty value on failure so a strategy degrades
 // instead of throwing. Optional on-disk response cache (keyed by request) is enabled ONLY
 // when Deno.env LINKLAB_CACHE_DIR is set — the local benchmark runner sets it so that
-// iterating on strategy logic doesn't re-bill Firecrawl/Perplexity/Google. The deployed
-// EF leaves it unset and always hits the live APIs.
+// iterating on strategy logic doesn't re-bill Firecrawl/Perplexity/Google. Unset, every
+// call hits the live APIs.
 
 import Anthropic from "npm:@anthropic-ai/sdk@0.133.0";
 import { safeParseJson } from "../parse-utils.ts";
@@ -27,7 +27,6 @@ export const meter = {
   perplexityAgent: 0,
   perplexitySonar: 0,
   googleText: 0,
-  googleDetails: 0,
   claudeCalls: 0,
   claudeSearches: 0,
   claudeFetches: 0,
@@ -43,8 +42,8 @@ export const meter = {
 };
 
 // ---- cache ------------------------------------------------------------------
-// Read lazily each call so import order can't strand the setting; the EF never
-// sets LINKLAB_CACHE_DIR so this stays null there and every call hits the live API.
+// Read lazily each call so import order can't strand the setting; unset, this stays
+// null and every call hits the live API.
 function cacheDir(): string | null {
   try {
     return Deno.env.get("LINKLAB_CACHE_DIR") ?? null;

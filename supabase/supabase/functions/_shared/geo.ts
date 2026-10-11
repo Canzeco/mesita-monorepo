@@ -1,4 +1,4 @@
-// Geo helpers shared by the place-pool, search, and distance EFs.
+// Geo helpers shared by the discovery, search, and distance code.
 
 // Haversine distance in km between two lat/lng pairs. Returns +Infinity if
 // either point is missing so the caller's `<= radius` filter cleanly drops it.
@@ -34,9 +34,6 @@ export function radiusBoundingBox(
   return { latDelta, lngDelta };
 }
 
-/** Viewport span clamp for the optional bbox POST. Degrees, not km. */
-export const BBOX_MAX_SPAN_DEG = 0.75;
-
 /** Search map default: big enough that a city camera never yields 4 pins. */
 export const NEARBY_DEFAULT_RADIUS_KM = 500;
 export const NEARBY_MAX_RADIUS_KM = 2000;
@@ -53,14 +50,6 @@ export type GeoBbox = {
   east: number;
 };
 
-export type BboxDecision =
-  | { mode: "none" }
-  | { mode: "invalid" }
-  | { mode: "overspan" }
-  | { mode: "ok"; bbox: GeoBbox };
-
-const BBOX_KEYS = ["south", "west", "north", "east"] as const;
-
 function finiteNumber(raw: unknown): number | null {
   if (typeof raw === "number" && Number.isFinite(raw)) return raw;
   if (typeof raw === "string" && raw.trim() !== "") {
@@ -70,38 +59,9 @@ function finiteNumber(raw: unknown): number | null {
   return null;
 }
 
-function lngSpanDeg(west: number, east: number): number {
-  if (west <= east) return east - west;
-  return 180 - west + (east + 180);
-}
-
 function wrapLng(lng: number): number {
   const x = ((((lng + 180) % 360) + 360) % 360) - 180;
   return x === -180 ? 180 : x;
-}
-
-/** POST body: all four numbers or none. GET callers never send these keys. */
-export function decideBbox(body: Record<string, unknown>): BboxDecision {
-  const present = BBOX_KEYS.filter((k) => body[k] != null).length;
-  if (present === 0) return { mode: "none" };
-  if (present !== 4) return { mode: "invalid" };
-
-  const south = finiteNumber(body.south);
-  const west = finiteNumber(body.west);
-  const north = finiteNumber(body.north);
-  const east = finiteNumber(body.east);
-  if (south == null || west == null || north == null || east == null) {
-    return { mode: "invalid" };
-  }
-  if (south >= north) return { mode: "invalid" };
-  if (south < -90 || north > 90 || west < -180 || west > 180 || east < -180 ||
-    east > 180) {
-    return { mode: "invalid" };
-  }
-
-  const span = Math.max(north - south, lngSpanDeg(west, east));
-  if (span > BBOX_MAX_SPAN_DEG) return { mode: "overspan" };
-  return { mode: "ok", bbox: { south, west, north, east } };
 }
 
 export type NearbyDecision =
@@ -109,10 +69,7 @@ export type NearbyDecision =
   | { mode: "invalid" }
   | { mode: "ok"; lat: number; lng: number; radiusKm: number };
 
-/**
- * POST nearby: both lat+lng, or neither. Partial / non-finite is invalid.
- * Nearby wins over bbox when both are present — Search sends only lat/lng.
- */
+/** POST nearby: both lat+lng, or neither. Partial / non-finite is invalid. */
 export function decideNearby(body: Record<string, unknown>): NearbyDecision {
   const latPresent = body.lat != null;
   const lngPresent = body.lng != null;

@@ -3,14 +3,12 @@
 import { useEffect, useId, useRef, useState } from "react";
 import {
   Check,
-  CheckCircle2,
   ChevronDown,
   Copy,
   ExternalLink,
   Loader2,
   Lock,
 } from "lucide-react";
-import { ErrorNote } from "@/components/ErrorNote";
 import {
   COUNTRIES,
   COUNTRY_BY_CODE,
@@ -19,7 +17,7 @@ import {
 } from "@/lib/phone-countries";
 
 // Shared admin manage/records kit — `@/components/admin-ui/manage`.
-// Tinted icon chips, Fraunces titles, filled inputs, pink-gradient SaveBar.
+// Tinted icon chips, Fraunces titles, filled inputs.
 
 /** Fixed tint palette for card icon chips — differentiated, never loud. */
 export type Tint =
@@ -96,15 +94,6 @@ export function SectionCard({
       </div>
       {children}
     </section>
-  );
-}
-
-/** Uppercase micro-heading used to split a card into labelled groups. */
-export function GroupLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-muted-foreground type-label font-semibold tracking-[0.12em] uppercase">
-      {children}
-    </p>
   );
 }
 
@@ -301,122 +290,6 @@ export function TextArea({
     </label>
   );
 }
-
-export function SelectField({
-  label,
-  value,
-  options,
-  onChange,
-  disabled,
-}: {
-  label: string;
-  value: string;
-  options: { value: string; label: string }[];
-  onChange: (v: string) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-foreground/80 type-body font-medium">{label}</span>
-      <span className="relative block">
-        <select
-          value={value}
-          disabled={disabled}
-          onChange={(e) => onChange(e.target.value)}
-          className={INPUT_BASE + " h-10 appearance-none pr-9 pl-3.5"}
-        >
-          {options.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <ChevronDown
-          className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2"
-          aria-hidden
-        />
-      </span>
-    </label>
-  );
-}
-
-export function SaveBar({
-  pending,
-  dirty,
-  ok,
-  onSave,
-  onCancel,
-  label = "Save changes",
-  cancelLabel = "Cancel",
-  dirtyLabel,
-  error,
-}: {
-  pending: boolean;
-  dirty: boolean;
-  ok: boolean;
-  onSave: () => void;
-  /** Revert this box to its last-saved values. Cancel only renders when given. */
-  onCancel?: () => void;
-  label?: string;
-  cancelLabel?: string;
-  /** e.g. "Basics · unsaved" — replaces generic copy when dirty. */
-  dirtyLabel?: string;
-  error?: string | null;
-}) {
-  const live = pending || dirty;
-
-  return (
-    <div className="border-border/60 mt-5 border-t pt-4">
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-xs" aria-live="polite">
-          {dirty && !pending ? (
-            <span className="text-muted-foreground inline-flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" aria-hidden />
-              {dirtyLabel ?? "Unsaved changes"}
-            </span>
-          ) : ok && !pending ? (
-            <span className="text-muted-foreground inline-flex items-center gap-1.5">
-              <CheckCircle2 className="h-3.5 w-3.5 text-green-600" /> Saved
-            </span>
-          ) : null}
-        </span>
-        <div className="flex shrink-0 items-center gap-2">
-          {onCancel ? (
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={pending || !dirty}
-              className="border-border/70 text-foreground/70 hover:bg-muted hover:text-foreground inline-flex h-9 items-center rounded-full border px-4 text-sm font-semibold transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
-            >
-              {cancelLabel}
-            </button>
-          ) : null}
-          <button
-            type="button"
-            onClick={onSave}
-            disabled={pending || !dirty}
-            className={
-              "inline-flex h-9 items-center gap-2 rounded-full px-5 text-sm font-semibold transition " +
-              (live
-                ? "bg-pink-gradient shadow-save text-white hover:brightness-105 active:scale-[0.98] disabled:opacity-80"
-                : "bg-muted text-muted-foreground")
-            }
-          >
-            {pending ? (
-              <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…
-              </>
-            ) : (
-              label
-            )}
-          </button>
-        </div>
-      </div>
-      {error ? <ErrorNote message={error} /> : null}
-    </div>
-  );
-}
-
 
 /** Shared confirm modal — native <dialog>: showModal() renders the page
  *  behind inert and handles Escape (fired as `cancel`, blocked while `busy`

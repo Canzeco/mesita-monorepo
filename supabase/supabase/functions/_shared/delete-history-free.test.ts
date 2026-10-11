@@ -6,7 +6,6 @@ import {
   consumerHasTransactionHistory,
   deleteConsumerAccount,
   isDeletedConsumer,
-  rejectDeletedConsumer,
 } from "./delete-history-free.ts";
 
 Deno.test("validateConsumerPatch: accepts deleted_at ISO or null", () => {
@@ -111,39 +110,6 @@ Deno.test("accountDeletedResponse: 410 with account_deleted", async () => {
   const body = await res.json();
   assertEquals(body.code, "account_deleted");
   assertEquals(body.ok, false);
-});
-
-Deno.test("rejectDeletedConsumer: 410 when deleted_at is set", async () => {
-  const admin = {
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          maybeSingle: () =>
-            Promise.resolve({
-              data: { deleted_at: "2026-08-25T02:45:00.000Z" },
-              error: null,
-            }),
-        }),
-      }),
-    }),
-  } as unknown as SupabaseClient;
-  const res = await rejectDeletedConsumer(admin, "c1");
-  assert(res);
-  assertEquals(res.status, 410);
-});
-
-Deno.test("rejectDeletedConsumer: null when the account is live", async () => {
-  const admin = {
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          maybeSingle: () =>
-            Promise.resolve({ data: { deleted_at: null }, error: null }),
-        }),
-      }),
-    }),
-  } as unknown as SupabaseClient;
-  assertEquals(await rejectDeletedConsumer(admin, "c1"), null);
 });
 
 Deno.test("consumer-web-delete-account never wipes tickets", async () => {

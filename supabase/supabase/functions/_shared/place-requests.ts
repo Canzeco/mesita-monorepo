@@ -16,8 +16,6 @@ import {
   isPlaceRequested,
 } from "./place-state.ts";
 
-export { isPlaceProfileReady };
-
 export const DEFAULT_REQUEST_THRESHOLD = 5;
 export const REQUEST_THRESHOLD_MIN = 1;
 export const REQUEST_THRESHOLD_MAX = 100;
@@ -74,17 +72,6 @@ export function shouldTriggerRequestEnrichment(input: {
   if (isPlaceEnriching(input.contentState)) return false;
   if (input.threshold < REQUEST_THRESHOLD_MIN) return false;
   return input.requestCount >= input.threshold;
-}
-
-export function requestProgressLabel(count: number, threshold: number): string {
-  const n = Math.max(0, Math.trunc(count));
-  const t = Math.max(REQUEST_THRESHOLD_MIN, Math.trunc(threshold));
-  return `${n} of ${t} votes`;
-}
-
-/** Admin create/enrich does not read request_count or the threshold. */
-export function adminMayEnrichWithoutRequests(): boolean {
-  return true;
 }
 
 export function placeRequestState(input: {

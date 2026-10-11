@@ -46,14 +46,6 @@ const ACTOR_APPS: Record<string, readonly string[]> = {
 };
 
 /**
- * `<actor>-web-*` prefixes that are real but NOT app-callable — this scan
- * cannot verify their caller by reading `apps/`, so it deliberately skips
- * them rather than mis-flagging or silently passing. Empty since MESITA-2128
- * retired the last one (`staff-web-*`).
- */
-const NON_APP_ACTORS = new Set<string>([]);
-
-/**
  * Known-as-of-MESITA-1600 violations, frozen so this test is a RATCHET
  * (catches new drift) rather than a blocker on fixing the 21 that already
  * existed the day this test landed. Each is `efName:strayApp`. Fixing one
@@ -210,16 +202,13 @@ Deno.test("ACTOR_APPS covers every actor this repo actually has *-web-* function
     if (match) seen.add(match[1]);
   }
   const known = new Set(Object.keys(ACTOR_APPS));
-  const unknown = [...seen].filter((a) =>
-    !known.has(a) && !NON_APP_ACTORS.has(a)
-  );
+  const unknown = [...seen].filter((a) => !known.has(a));
   if (unknown.length > 0) {
     throw new Error(
       `New *-web-* actor prefix(es) with no ACTOR_APPS entry: ${
         unknown.join(", ")
       }. ` +
-        `Add them to ef-caller-acl.test.ts's ACTOR_APPS (if app-callable) or ` +
-        `NON_APP_ACTORS (if not) before this can verify their callers.`,
+        `Add them to ef-caller-acl.test.ts's ACTOR_APPS before this can verify their callers.`,
     );
   }
 });

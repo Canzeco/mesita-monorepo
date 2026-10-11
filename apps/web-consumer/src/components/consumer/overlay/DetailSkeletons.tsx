@@ -2,8 +2,8 @@ import { Skeleton } from "@/components/shared";
 import { SlideOverHeader } from "@/components/consumer/overlay/SlideOverShell";
 
 // Skeleton bodies for the detail modals' loading.tsx files. These render
-// INSIDE the shell mounted by the segment's layout.tsx (SlideOverShell /
-// BottomSheetShell), so the panel slides in once and the skeleton resolves
+// INSIDE the shell mounted by the segment's layout.tsx (SlideOverShell),
+// so the panel slides in once and the skeleton resolves
 // to content in place — never a separate spinner screen. Silhouettes mirror
 // the real bodies closely so content arrival doesn't jump the layout.
 

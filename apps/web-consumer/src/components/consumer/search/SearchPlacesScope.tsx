@@ -1,6 +1,6 @@
 "use client";
 
-import type { KeyboardEvent } from "react";
+import { useId, type KeyboardEvent } from "react";
 import { TriangleAlert } from "lucide-react";
 import {
   MAP_SEARCH_STOPS,
@@ -74,12 +74,16 @@ export function SearchPlacesScope({
   scope,
   onScope,
   counts,
+  label = "Places",
 }: {
   scope: MapPlacesScope;
   onScope: (scope: MapPlacesScope) => void;
   /** Places each ring would show, from the catalog already in hand. */
   counts?: Partial<Record<MapPlacesScope, number>>;
+  /** The radiogroup's accessible name — the module label it sits under. */
+  label?: string;
 }) {
+  const chainId = useId();
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const index = MAP_SEARCH_STOPS.findIndex((stop) => stop.key === scope);
     const last = MAP_SEARCH_STOPS.length - 1;
@@ -108,13 +112,13 @@ export function SearchPlacesScope({
     <>
       <div className="flex items-center gap-2.5">
         <ScopeGlyph scope={scope} />
-        <p id="places-scope-chain" className="sr-only">
+        <p id={chainId} className="sr-only">
           Two nested sets: Google Places contains Mesita Enriched Places.
         </p>
         <div
           role="radiogroup"
-          aria-label="Places"
-          aria-describedby="places-scope-chain"
+          aria-label={label}
+          aria-describedby={chainId}
           aria-orientation="vertical"
           onKeyDown={onKeyDown}
           className="flex min-w-0 flex-1 flex-col gap-1"

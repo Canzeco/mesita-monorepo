@@ -28,20 +28,6 @@ export function accountDeletedResponse(): Response {
   }, 410);
 }
 
-export async function rejectDeletedConsumer(
-  admin: SupabaseClient,
-  userId: string,
-): Promise<Response | null> {
-  const { data, error } = await admin
-    .from("consumers")
-    .select("deleted_at")
-    .eq("id", userId)
-    .maybeSingle();
-  if (error) return json({ ok: false, error: `consumer_read: ${error.message}` }, 500);
-  if (isDeletedConsumer(data)) return accountDeletedResponse();
-  return null;
-}
-
 export type DeleteConsumerResult =
   | { ok: true; mode: "soft" | "hard" }
   | { ok: false; error: string };

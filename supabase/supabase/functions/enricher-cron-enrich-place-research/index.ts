@@ -116,19 +116,8 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // One question, one answer. It runs HERE, immediately after the spine and
   // before the cost ledger, because a gate that reports at the end of the stage
   // is not a gate — every Apify, Firecrawl and Perplexity call would already
-  // have been paid for. This is the whole reason function 1 hits Place Details
-  // separately from function 2 (MESITA-1243).
-  //
-  // ONE CALL, TWO FUNCTIONS — a deliberate deviation from the table's letter.
-  // Docs § A says functions 1 and 2 "both hit Place Details" and calls the
-  // redundant call deliberate. That clause is PERMISSION, not a requirement:
-  // it authorises paying twice so that the liveness gate can mean one thing,
-  // and forbids merging the two functions' SEMANTICS. The semantics are
-  // separate here — 1 answers "is it active", 2 owns the hours and the rest of
-  // the spine — off a single fetch, because a second Enterprise+Atmosphere call
-  // ($25/1k) would buy the same bytes twice and no extra information. Split the
-  // call the day 1 and 2 become separately purchasable; never merge what they
-  // ASK.
+  // have been paid for. Liveness reads `businessStatus` off the same
+  // `fetchGoogleBasics` call as the spine (MESITA-2027 folded pulse into it).
   //
   // CLOSED_PERMANENTLY is the only value that stops the run. The other three
   // outcomes all pass, and each for its own reason:
@@ -193,9 +182,8 @@ serveEnrichStage("research", async (admin, _env, row) => {
   }
 
   const cfg = await loadEnrichConfig(admin);
-  // MESITA-624 — accumulate estimated USD against enrichment_config.atlasPerRunCostCapUsd.
-  // Throws EnrichCostCapError → serveEnrichStage hard-fails the row (no retry).
-  const ledger = createEnrichCostLedger(cfg.perRunCostCapUsd);
+  // Records estimated USD per paid step; persisted as gathered.cost.
+  const ledger = createEnrichCostLedger();
   chargeGoogleSpine(ledger, basics.photos.length);
 
   const sources: Record<string, unknown> = {};
@@ -245,7 +233,6 @@ serveEnrichStage("research", async (admin, _env, row) => {
   })();
 
   if (PERPLEXITY_KEY && wants(buys, "serp")) {
-    ledger.assertCanAfford(COST.perplexity, "serp");
     const serp = await gatherSerpSummary({ perplexityKey: PERPLEXITY_KEY, name, locationLine, category, perplexityPreset: cfg.perplexityPreset });
     serpSummary = serp.summary;
     sources.serp = serp.diag;
@@ -271,7 +258,6 @@ serveEnrichStage("research", async (admin, _env, row) => {
   if (needsDiscovery) {
     const searchCost = FIRECRAWL_KEY ? discoverySearchCost(cfg) : 0;
     const agentCost = PERPLEXITY_KEY ? COST.perplexity : 0;
-    ledger.assertCanAfford(searchCost + agentCost, "discovery");
     // S4 gather (Firecrawl Search, per-source N) → S5 Resolver select.
     const found = await resolveChannels({
       firecrawlKey: FIRECRAWL_KEY,
@@ -431,14 +417,6 @@ serveEnrichStage("research", async (admin, _env, row) => {
   const runFacebook = runSocial && !!APIFY_KEY && !!resolvedFacebook;
   const igCost = runInstagram ? instagramRunCost(cfg.gatherInstagramDepth) : 0;
   const fbCost = runFacebook ? COST.facebook : 0;
-  // Reserve the in-flight GMaps spend so IG/FB don't start when the remaining
-  // budget can't cover them + the GMaps charge still pending. The scrape is
-  // still running, so this is the CONFIGURED size; the charge below bills what
-  // actually came back.
-  const pendingGmaps = gmapsInvoked
-    ? googleMapsRunCost(cfg.gatherReviews, cfg.gatherGoogleImages)
-    : 0;
-  ledger.assertCanAfford(igCost + fbCost + pendingGmaps, "gather_sources");
 
   let ig: InstagramResult | null = null;
   let fb: FacebookResult | null = null;
@@ -523,9 +501,9 @@ serveEnrichStage("research", async (admin, _env, row) => {
     });
 
   // ── CRENUP steps (MESITA-1243) ──────────────────────────────────────
-  // Research owns 1 pulse · 2 details · 3 serp · 4 links · 5 social · 8
-  // reviews. Each is reported from an OBSERVED effect, never from "we reached
-  // this line" — see crenup-ladder.ts.
+  // Research owns 1 details · 2 serp · 3 links · 4 social · 5 reviews. Each
+  // is reported from an OBSERVED effect, never from "we reached this line" —
+  // see crenup-ladder.ts.
   //
   // A piece this run did not BUY writes nothing at all, so an earlier run's
   // result stands. That is what lets a cheap refresh coexist with a linear

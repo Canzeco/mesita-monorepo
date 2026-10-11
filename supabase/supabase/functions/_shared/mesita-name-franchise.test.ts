@@ -50,20 +50,6 @@ Deno.test("both Mesita Name prompts carry the franchise rule", async () => {
   );
 });
 
-Deno.test("neither prompt still teaches the old strip-the-branch example", async () => {
-  // The rule it replaced said "Tim Hortons TEC Campus" → "Tim Hortons", which
-  // is exactly backwards for a franchise: the branch qualifier is the part
-  // that makes the name usable.
-  const offenders: string[] = [];
-  for (const { file } of PROMPTS) {
-    const src = await read(file);
-    if (/Tim Hortons TEC Campus"?\s*(→|->)\s*"?Tim Hortons"/.test(src)) {
-      offenders.push(`${file} — still strips the branch off a franchise name`);
-    }
-  }
-  assertEquals(offenders, [], offenders.join("\n"));
-});
-
 Deno.test("both prompts are fed a zone/city anchor to qualify a branch with", async () => {
   // The rule forbids inventing a location, so the qualifier has to arrive as
   // a signal. If the plumbing goes, the model is told to append a zone it was

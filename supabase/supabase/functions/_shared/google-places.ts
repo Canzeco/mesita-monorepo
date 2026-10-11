@@ -24,9 +24,8 @@ export const GOOGLE_PLACES_AUTOCOMPLETE_URL =
   "https://places.googleapis.com/v1/places:autocomplete";
 export const GOOGLE_PLACES_TEXT_SEARCH_URL =
   "https://places.googleapis.com/v1/places:searchText";
-export const GOOGLE_PLACES_NEARBY_SEARCH_URL =
+export const GOOGLE_PLACES_NEARBY_URL =
   "https://places.googleapis.com/v1/places:searchNearby";
-export const GOOGLE_PLACES_NEARBY_URL = GOOGLE_PLACES_NEARBY_SEARCH_URL;
 /** Legacy Nearby — the only Google surface that still paginates (20 × 3 = 60). */
 export const GOOGLE_PLACES_NEARBY_LEGACY_URL =
   "https://maps.googleapis.com/maps/api/place/nearbysearch/json";
@@ -62,12 +61,6 @@ export function readGooglePlacesKey():
     };
   }
   return { ok: true, key };
-}
-
-// % and _ are wildcards in ILIKE — escape so user input doesn't accidentally
-// match everything. Lives here because every Places fallback EF needs it.
-export function escapeIlike(s: string): string {
-  return s.replace(/[\\%_]/g, (c) => `\\${c}`);
 }
 
 // Location-shaped Place Details read (MESITA-1403): coordinates + viewport,

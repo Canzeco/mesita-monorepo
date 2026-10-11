@@ -30,7 +30,6 @@ type Body = {
   sessionToken?: string;
   lat?: number;
   lng?: number;
-  country?: string;
   mode?: string;
   /** A picked Location's Google place id — anchor resolve, not a search. */
   anchorPlaceId?: string;

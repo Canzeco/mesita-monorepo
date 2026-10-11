@@ -1,7 +1,7 @@
 // Supabase Edge Function — consumer-web-update-profile
 //
 // Authenticated. The consumer writes their own onboarding details (name, sex,
-// birthday, country, phone). Auto-creates the consumer row on first call so
+// birthday, avatar). Auto-creates the consumer row on first call so
 // onboarding works even if the user hasn't hit /qr yet to trigger
 // consumer-web-get-profile's lazy create.
 //
@@ -46,8 +46,6 @@ Deno.serve(async (req) => {
 
   const firstName = clean(body.first_name, 60);
   const lastName = clean(body.last_name, 60);
-  const country = clean(body.country, 64);
-  const phone = clean(body.phone, 32);
   const sexRaw = clean(body.sex, 16);
   const birthdayRaw = clean(body.birthday, 32);
 
@@ -105,15 +103,11 @@ Deno.serve(async (req) => {
   // last_name alone, so joining only the body would blank the other half on
   // the exact write that is supposed to complete the booking name. An absent
   // half falls back to what is already stored (null on a row created above).
-  // Legacy clients that still send full_name keep their own value.
   const storedFirst = (existing.data?.first_name as string | null) ?? null;
   const storedLast = (existing.data?.last_name as string | null) ?? null;
   const mergedFirst = body.first_name !== undefined ? firstName : storedFirst;
   const mergedLast = body.last_name !== undefined ? lastName : storedLast;
-  const fullName =
-    body.first_name !== undefined || body.last_name !== undefined
-      ? [mergedFirst, mergedLast].filter(Boolean).join(" ") || null
-      : clean(body.full_name, 120);
+  const fullName = [mergedFirst, mergedLast].filter(Boolean).join(" ") || null;
 
   const built = buildProfilePatch(body, {
     firstName,
@@ -121,8 +115,6 @@ Deno.serve(async (req) => {
     fullName,
     sex,
     birthday,
-    country,
-    phone,
     avatarUrl,
   });
   if (!built.ok) return built.response;
@@ -135,12 +127,6 @@ Deno.serve(async (req) => {
     select: CONSUMER_PROFILE_SELECT,
   });
   if (!update.ok) {
-    if (update.code === "23505") {
-      return json(
-        { ok: false, code: "phone_taken", error: "That phone is already on another account." },
-        409,
-      );
-    }
     return json({ ok: false, error: `consumer_update: ${update.error}` }, 500);
   }
 

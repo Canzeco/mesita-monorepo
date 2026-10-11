@@ -1,12 +1,10 @@
 // _shared/channels.test.ts
 //
-// Closed-key-set guard test 2, CHANNEL leg (MESITA-1247). No test file
-// existed for channels.ts's classifyLinks before this — schema-catalog.test.ts's
-// existing channel test only proves ChannelSet/Channels are the same TYPE, it
-// does not exercise classifyLinks's actual runtime behavior. "classifyLinks
-// always returns exactly 12 keys" needs no test — Channels is a hand-written
-// object literal in the function's return statement, so TypeScript already
-// guarantees completeness; test behavior instead.
+// Closed-key-set guard test 2, CHANNEL leg (MESITA-1247): classifyLinks's
+// actual runtime behavior. "classifyLinks always returns exactly 12 keys"
+// needs no test — Channels is a hand-written object literal in the function's
+// return statement, so TypeScript already guarantees completeness; test
+// behavior instead.
 import { assertEquals } from "jsr:@std/assert@1";
 import { classifyLinks, pickWebsite } from "./channels.ts";
 import type { ChannelKey } from "./channels.ts";

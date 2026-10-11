@@ -1,10 +1,10 @@
 // Consumer-scoped local data reconciliation.
 //
-// Favorites (`mesita:saved-places` + `mesita:saved-place-previews`) and draft
-// reservations (`mesita:reservations`) are stored in the browser — there is no
-// EF behind them yet (see the consumer app CLAUDE.md: "Favorites = localStorage,
-// not an EF"). Because that state lives in localStorage, it survives BOTH a
-// consumer sign-out AND a server-side `admin-web-reset-database` wipe. So a
+// Favorites (`mesita:saved-places` + `mesita:saved-place-previews`) are stored
+// in the browser — there is no EF behind them yet (see the consumer app
+// CLAUDE.md: "Favorites = localStorage, not an EF"). Because that state lives
+// in localStorage, it survives BOTH a consumer sign-out AND a server-side
+// `admin-web-reset-database` wipe. So a
 // second consumer signing in on the same browser — or the same operator
 // re-creating an account after a reset — would otherwise inherit the previous
 // consumer's saved places (stale rows from the old data).
@@ -19,7 +19,6 @@
 // toggles) are deliberately NOT cleared: those belong to the browser/device, not
 // to the account, so they should persist across sign-ins.
 
-import { clearReservationsLocal } from "./reservations";
 import { clearSavedPlacesLocal } from "./saved-places";
 
 const OWNER_KEY = "mesita:consumer-owner";
@@ -48,7 +47,6 @@ export function reconcileConsumerLocalOwner(consumerId: string | null): void {
   if (owner === consumerId) return;
 
   clearSavedPlacesLocal();
-  clearReservationsLocal();
 
   try {
     if (consumerId) window.localStorage.setItem(OWNER_KEY, consumerId);

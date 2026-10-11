@@ -1,16 +1,14 @@
 "use client";
 
-import { Z_IN_FRAME_OVERLAY } from "@/lib/z-index";
-
-// Ask AI — the Memo concierge chat. Lives as a full tab on Home (inline
-// layout); the "overlay" layout is retained for any floating-panel host.
+// Ask AI — the Memo concierge chat. Fills its container as the full Ask AI
+// tab on Home.
 //
 // Every turn calls Memo (consumer-web-ask-memo). The client resends the full
 // thread as history — no server-side memory. Place cards stay in the reply
 // shape for later tools; this pass is conversation only.
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Phone, RotateCcw, Sparkles, X } from "lucide-react";
+import { ArrowUp, Phone, RotateCcw, Sparkles } from "lucide-react";
 import { Spinner } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import type { Place } from "@/lib/api/places";
@@ -33,7 +31,6 @@ import {
 } from "./ask-ai-thread";
 
 export function AskAiPanel({
-  onClose,
   ask,
   loadGreeting,
   addStates,
@@ -41,10 +38,7 @@ export function AskAiPanel({
   onInfo,
   onAdd,
   onCall,
-  layout = "overlay",
 }: {
-  /** Only meaningful in "overlay" layout (renders the floating close button). */
-  onClose?: () => void;
   /** Real concierge call (consumer-web-ask-memo) owned by the page. */
   ask: (text: string, history: MemoTurn[]) => Promise<MemoAnswer>;
   /** Empty-query ask-memo bootstrap for the configured opener. */
@@ -56,15 +50,9 @@ export function AskAiPanel({
   /**
    * Start a voice call with Memo. When present, a Call button sits in the
    * COMPOSER, immediately left of Send — the slot a messaging app gives its
-   * voice affordance. Omit it and the composer is text-only, which is what the
-   * map's overlay usage wants.
+   * voice affordance. Omit it and the composer is text-only.
    */
   onCall?: () => void;
-  /**
-   * "overlay" — floating card pinned over the map (legacy Search usage).
-   * "inline" — fills its container as a full section (the Home Ask AI tab).
-   */
-  layout?: "overlay" | "inline";
 }) {
   // Lazy init from the session cache (populated by a previous mount this
   // session). Null on a fresh load / SSR → greeting, so hydration matches.
@@ -125,10 +113,7 @@ export function AskAiPanel({
     // Memo can follow up on the conversation.
     const history = buildMemoHistory(messages);
 
-    setMessages((m) => [
-      ...m,
-      { id: msgId(), role: "user", kind: "text", text },
-    ]);
+    setMessages((m) => [...m, { id: msgId(), role: "user", text }]);
     setThinking(true);
     void (async () => {
       let reply: MemoAnswer | null = null;
@@ -145,41 +130,15 @@ export function AskAiPanel({
   };
 
   return (
-    <div
-      className={cn(
-        "flex flex-col overflow-hidden",
-        layout === "overlay"
-          ? cn(
-              "border-primary/30 bg-paper/95 shadow-elev absolute inset-x-3 top-[68px] max-h-[88%] min-h-[72%] rounded-2xl border backdrop-blur-xl",
-              Z_IN_FRAME_OVERLAY,
-            )
-          : "h-full min-h-0",
-      )}
-    >
-      {/* Floating close — overlay only; the inline tab is dismissed via the
-          Home mode nav, so it needs no close affordance. */}
-      {layout === "overlay" && onClose && (
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close Ask AI"
-          className="border-border bg-paper/90 text-foreground hover:bg-muted shadow-rest absolute top-2 right-2 z-10 flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur-sm transition active:scale-95"
-        >
-          <X className="h-5 w-5" />
-        </button>
-      )}
-
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {/* Clear the conversation — only once there's more than the greeting.
-          Offset left of the overlay close when both are present. */}
+          The tab is dismissed via the Home mode nav, so it needs no close. */}
       {messages.length > 1 && (
         <button
           type="button"
           onClick={clearThread}
           aria-label="Clear chat"
-          className={cn(
-            "border-border bg-paper/90 text-muted-foreground hover:text-foreground hover:bg-muted shadow-rest absolute top-2 z-10 flex h-8 items-center gap-1 rounded-full border px-2.5 text-xs backdrop-blur-sm transition active:scale-95",
-            layout === "overlay" ? "right-12" : "right-2",
-          )}
+          className="border-border bg-paper/90 text-muted-foreground hover:text-foreground hover:bg-muted shadow-rest absolute top-2 right-2 z-10 flex h-8 items-center gap-1 rounded-full border px-2.5 text-xs backdrop-blur-sm transition active:scale-95"
         >
           <RotateCcw className="h-3.5 w-3.5" />
           Clear

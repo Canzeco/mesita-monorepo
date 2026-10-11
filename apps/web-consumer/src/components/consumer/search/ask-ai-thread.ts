@@ -7,7 +7,6 @@ import type { PlacePrediction } from "@/lib/api/place-search";
 export type AiMessage = {
   id: string;
   role: "user" | "ai";
-  kind: "text";
   text: string;
   predictions?: PlacePrediction[];
 };
@@ -40,7 +39,7 @@ export function setConfiguredGreeting(greeting: string | null | undefined) {
   if (trimmed.length > 0) configuredGreeting = trimmed;
 }
 
-export function greetingText(): string {
+function greetingText(): string {
   return configuredGreeting ?? FALLBACK_GREETING;
 }
 
@@ -69,7 +68,7 @@ export function clearThreadCache() {
 }
 
 export function greetingThread(): AiMessage[] {
-  return [{ id: msgId(), role: "ai", kind: "text", text: greetingText() }];
+  return [{ id: msgId(), role: "ai", text: greetingText() }];
 }
 
 /** Replace the lone opener when the server greeting arrives (fresh thread). */
@@ -81,12 +80,10 @@ export function withServerGreeting(messages: AiMessage[]): AiMessage[] {
 }
 
 export function buildMemoHistory(messages: AiMessage[]): MemoTurn[] {
-  return messages
-    .filter((m): m is Extract<AiMessage, { kind: "text" }> => m.kind === "text")
-    .map((m) => ({
-      role: m.role === "user" ? "user" : "assistant",
-      content: m.text,
-    }));
+  return messages.map((m) => ({
+    role: m.role === "user" ? "user" : "assistant",
+    content: m.text,
+  }));
 }
 
 export function buildAiReply(reply: MemoAnswer | null): {
@@ -99,7 +96,6 @@ export function buildAiReply(reply: MemoAnswer | null): {
     message: {
       id: msgId(),
       role: "ai",
-      kind: "text",
       text: reply?.answer?.trim() ? reply.answer : AI_ERROR,
       predictions: shown,
     },

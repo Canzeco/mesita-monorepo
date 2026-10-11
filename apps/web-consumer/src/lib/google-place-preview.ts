@@ -37,7 +37,7 @@ export type PlacesLibraryLike = {
   Place: new (opts: { id: string }) => PlaceLike;
 };
 
-export type PlacesLoader = () => Promise<PlacesLibraryLike | null>;
+type PlacesLoader = () => Promise<PlacesLibraryLike | null>;
 
 type LegacyPlaceResult = {
   photos?: PlacePhotoLike[];
@@ -45,7 +45,7 @@ type LegacyPlaceResult = {
   url?: string;
 };
 
-export type PlacesServiceCtor = new (attrContainer: HTMLElement) => {
+type PlacesServiceCtor = new (attrContainer: HTMLElement) => {
   getDetails: (
     request: { placeId: string; fields: string[] },
     callback: (
@@ -55,7 +55,7 @@ export type PlacesServiceCtor = new (attrContainer: HTMLElement) => {
   ) => void;
 };
 
-export type PlacesServiceLoader = () => PlacesServiceCtor | null;
+type PlacesServiceLoader = () => PlacesServiceCtor | null;
 
 type MapsGlobal = {
   google?: {

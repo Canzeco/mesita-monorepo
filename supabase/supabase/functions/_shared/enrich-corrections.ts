@@ -86,7 +86,7 @@ const CORRECTABLE_FIELDS = Object.keys(
 ) as CorrectableField[];
 
 /** How long an applied correction outranks the Enricher for that field. */
-export const CORRECTION_PIN_DAYS = 90;
+const CORRECTION_PIN_DAYS = 90;
 
 // ━━━ Pin storage ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 //
@@ -204,7 +204,7 @@ export function carryFieldPins(
  * to report.
  */
 /** ISO instant `days` from `now` when a pin expires and the Enricher owns the field again. */
-export function pinnedUntilFromNow(
+function pinnedUntilFromNow(
   now = new Date(),
   days = CORRECTION_PIN_DAYS,
 ): string {

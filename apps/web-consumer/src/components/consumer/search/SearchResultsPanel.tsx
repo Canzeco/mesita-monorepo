@@ -16,7 +16,6 @@ import type { PlacePrediction } from "@/lib/api/place-search";
 import {
   locationTypeLabel,
   pinToneColor,
-  predictionOnMesita,
   predictionPinTone,
 } from "./search-pins";
 import type { AddState } from "./add-state";
@@ -27,8 +26,7 @@ export function SearchResultsPanel({
   searchError,
   predictions,
   addStates,
-  onPickMesita,
-  onPickGoogle,
+  onPick,
   onClearSearch,
   onRetry,
 }: {
@@ -37,8 +35,7 @@ export function SearchResultsPanel({
   searchError: string | null;
   predictions: PlacePrediction[];
   addStates: Record<string, AddState>;
-  onPickMesita: (prediction: PlacePrediction) => void;
-  onPickGoogle: (prediction: PlacePrediction) => void;
+  onPick: (prediction: PlacePrediction) => void;
   /** Dismiss the query and hand the map back its catalog rail. */
   onClearSearch?: () => void;
   /** Re-run the same query after a failure. */
@@ -113,9 +110,7 @@ export function SearchResultsPanel({
                 key={p.mesitaId ?? p.placeId}
                 prediction={p}
                 addState={addStates[p.placeId]}
-                onPick={
-                  predictionOnMesita(p) ? onPickMesita : onPickGoogle
-                }
+                onPick={onPick}
               />
             ))}
           </div>

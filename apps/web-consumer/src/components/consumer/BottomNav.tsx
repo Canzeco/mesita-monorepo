@@ -93,16 +93,7 @@ const ITEMS: Item[] = [
   },
 ];
 
-export function BottomNav({
-  userId,
-  className,
-}: {
-  userId?: string;
-  className?: string;
-}) {
-  // The inbox tab (and its pending-notification badge) left the tab bar at
-  // MESITA-1609; the prop stays so the shell layout call site doesn't churn.
-  void userId;
+export function BottomNav() {
   const pathname = barePath(usePathname() ?? "/");
   const getSupabase = useLazyBrowserSupabase();
 
@@ -117,7 +108,6 @@ export function BottomNav({
       className={cn(
         "border-border bg-card/95 shrink-0 border-t px-0.5 pt-2 backdrop-blur",
         Z_BOTTOM_NAV,
-        className,
       )}
     >
       <div className="flex items-end justify-around">

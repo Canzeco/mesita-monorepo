@@ -76,20 +76,12 @@ serveEnrichStage("analysis", async (admin, _env, row) => {
   const OPENAI_KEY = Deno.env.get("OPENAI_KEY");
   const cfg = await loadEnrichConfig(admin);
   const models = await loadModelsConfig(admin);
-  const ledger = createEnrichCostLedger(cfg.perRunCostCapUsd, costFromGathered(gathered));
+  const ledger = createEnrichCostLedger(costFromGathered(gathered));
 
   const maxVisionImages = cfg.visionEnabled
     ? cfg.analyzeGoogleImages + cfg.analyzeInstagramImages
     : 0;
   const runVision = cfg.visionEnabled && !!OPENAI_KEY && maxVisionImages > 0;
-
-  // Reserve the admin analyze caps + one sort call before paying for vision.
-  if (runVision) {
-    ledger.assertCanAfford(
-      visionRunCost(maxVisionImages, cfg.visionQuality) + COST.sort,
-      "vision_and_sort",
-    );
-  }
 
   const funnel = await runImageFunnel({
     googleImages: gathered.images.google,
@@ -148,7 +140,7 @@ serveEnrichStage("analysis", async (admin, _env, row) => {
     imageAnalysisByUrl: mapToObject(funnel.imageAnalysisByUrl),
     diag: funnel.diag,
   };
-  // Persist the running ledger so contents can enforce the same per-run cap.
+  // Persist the running ledger so contents carries the per-run total forward.
   await advanceResearchStage(admin, placeId, "contents", {
     analysis,
     gathered: { ...gathered, cost: ledger.snapshot() },

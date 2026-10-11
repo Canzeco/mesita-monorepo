@@ -10,7 +10,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
-import { getOptionalAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { readEFEnv } from "../_shared/auth.ts";
 import { resolveMemoSystemPrompt } from "../_shared/memo-prompt.ts";
 import { createMemoData } from "../_shared/memo-data.ts";
 import { DEFAULT_MODELS_CONFIG } from "../_shared/models-config.ts";
@@ -19,8 +19,6 @@ import { toPlainText } from "../_shared/memo-text.ts";
 
 type MemoBody = {
   query?: string;
-  latitude?: number;
-  longitude?: number;
   history?: unknown;
 };
 
@@ -42,7 +40,6 @@ Deno.serve(async (req) => {
   const body = bodyRes.body;
 
   const query = (body.query ?? "").toString().trim();
-  const { user } = await getOptionalAuthedUser(req, env);
 
   const data = createMemoData(env, "consumer-web-ask-memo", {
     cacheMs: CONFIG_CACHE_MS,
@@ -57,8 +54,6 @@ Deno.serve(async (req) => {
       answer: "",
       predictions: [],
       related: [],
-      citations: [],
-      userId: user?.id ?? null,
     });
   }
   if (query.length < 2) {
@@ -80,7 +75,5 @@ Deno.serve(async (req) => {
     answer: toPlainText(answer && answer.length > 0 ? answer : LINE_DROPPED),
     predictions: [],
     related: [],
-    citations: [],
-    userId: user?.id ?? null,
   });
 });

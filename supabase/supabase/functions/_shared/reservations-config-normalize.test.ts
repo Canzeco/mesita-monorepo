@@ -10,7 +10,7 @@
 // That rule is deliberate — a channel silently dropped from the array would be
 // indistinguishable from one never wired — so it must NOT be loosened. It does
 // mean adding a channel to RESERVATION_CHANNELS without also adding it to the
-// admin catalog's CHANNELS breaks every save. The completeness test below fails
+// admin catalog's CHANNEL_KEYS breaks every save. The completeness test below fails
 // the moment those two lists diverge.
 
 import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
@@ -46,7 +46,7 @@ Deno.test("normalizeConfig: output round-trips — its own clean value is accept
 
 Deno.test("normalizeConfig: priority must rank EVERY channel (the drift tripwire)", () => {
   // This is what breaks if a channel is added EF-side and the admin catalog's
-  // CHANNELS list is not updated in the same change.
+  // CHANNEL_KEYS list is not updated in the same change.
   const short = canonicalBlob();
   short.priority = short.priority.slice(0, -1);
   const r = normalizeConfig(short);

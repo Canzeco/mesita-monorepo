@@ -33,7 +33,6 @@ import {
 import { useConfigEditor, type ConfigSeed } from "@/components/admin-ui/use-config-editor";
 import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
 import {
-  DEFAULT_CONFIG,
   DISCOVERY_MODE_SOURCES,
   GOOGLE_PULL_STOPS,
   MAP_RELOAD_PAIRS,
@@ -62,7 +61,7 @@ export function MapConfigClient({
 
   const save = () => saveWith((c) => updateDiscoveryConfig(c, ["map"]));
 
-  const map = cfg.map ?? DEFAULT_CONFIG.map;
+  const map = cfg.map;
 
   return (
     <div id="s-map" className="scroll-mt-16 flex flex-col gap-4">

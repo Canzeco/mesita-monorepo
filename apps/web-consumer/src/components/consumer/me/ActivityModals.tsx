@@ -56,7 +56,6 @@ export function BookingsModal() {
           orders it — what's next, then what happened — so the split survives
           as ORDER rather than as a second row of chrome. */}
       <ReservationsList
-        scope="all"
         empty={
           <EmptyState
             icon={CalendarCheck}

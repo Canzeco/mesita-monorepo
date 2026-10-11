@@ -10,7 +10,7 @@ import {
   setPlaceListed,
 } from "./actions";
 import { parseGooglePlaceIds } from "./google-place-ids";
-import type { CrenupAction } from "./crenup-batch";
+import type { CrenupAction } from "./pipeline";
 import { IdListField } from "./IdListField";
 import { StateIcon, type BatchRowState } from "./StateIcon";
 

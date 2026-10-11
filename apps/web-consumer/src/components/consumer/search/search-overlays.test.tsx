@@ -10,12 +10,8 @@ import {
   buildSearchMapPins,
   locationTypeLabel,
 } from "@/components/consumer/search/search-pins";
-import {
-  EmptySearchPrompt,
-  SearchRailOverlay,
-} from "@/components/consumer/search/search-catalog-overlays";
+import { SearchRailOverlay } from "@/components/consumer/search/search-catalog-overlays";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
-import { SearchScopeSheet } from "@/components/consumer/search/SearchScopeSheet";
 import {
   ANCHOR_DROP_KM,
   anchorPlaceFromPrediction,
@@ -52,49 +48,9 @@ describe("Search overlays never use a fixed-height empty panel", () => {
     expect(read("SearchResultsPanel.tsx")).not.toMatch(fixedHeight);
     expect(read("SearchClient.tsx")).not.toMatch(fixedHeight);
   });
-
-  it("renders the empty prompt as content, not a tall sheet", () => {
-    const html = renderToStaticMarkup(<EmptySearchPrompt />);
-    expect(html).toContain("Where to today?");
-    expect(html).not.toContain("h-[70%]");
-    expect(html).not.toContain("absolute");
-  });
 });
 
-describe("SearchBar scope affordance", () => {
-  it("hides the country + location chip when a host omits onOpenScope", () => {
-    const html = renderToStaticMarkup(
-      <SearchBar
-        query=""
-        showClear={false}
-        onQueryChange={() => {}}
-        onClear={() => {}}
-      />,
-    );
-    expect(html).not.toContain("any country");
-    expect(html).not.toContain("Filters");
-  });
-
-  it("shows the country flag and a compass when a host passes onOpenScope", () => {
-    const html = renderToStaticMarkup(
-      <SearchBar
-        query=""
-        showClear={false}
-        onQueryChange={() => {}}
-        onClear={() => {}}
-        onOpenScope={() => {}}
-        countryCode="MX"
-        locationSet
-      />,
-    );
-    expect(html).toContain("🇲🇽");
-    expect(html).toContain("MX");
-    expect(html).toContain("location set");
-    expect(html).toContain("lucide-compass");
-    expect(html).not.toContain("Filters");
-    expect(html).not.toContain("SlidersHorizontal");
-  });
-
+describe("SearchBar", () => {
   // THE MOBILE KEYBOARD, told what this field is. Rendered rather than read
   // off the source: the comment in SearchBar explaining why type=search is
   // wrong contains the string a source-level check would trip over.
@@ -114,63 +70,6 @@ describe("SearchBar scope affordance", () => {
     expect(html).toContain('spellCheck="false"');
     // WebKit draws its own X on a search input, one pill away from ours.
     expect(html).not.toContain('type="search"');
-  });
-
-  it("renders the Any globe when country is unset", () => {
-    const html = renderToStaticMarkup(
-      <SearchBar
-        query=""
-        showClear={false}
-        onQueryChange={() => {}}
-        onClear={() => {}}
-        onOpenScope={() => {}}
-        countryCode={null}
-        locationSet={false}
-      />,
-    );
-    expect(html).toContain("🌐");
-    expect(html).toContain("any country");
-    expect(html).toContain("location not set");
-  });
-});
-
-describe("SearchScopeSheet country pills", () => {
-  const sheet = (
-    <SearchScopeSheet
-      country="MX"
-      locationSet
-      locating={false}
-      onCountry={() => {}}
-      onUseLocation={() => {}}
-      onClearLocation={() => {}}
-      onClose={() => {}}
-    />
-  );
-
-  it("keeps Any as the first, unrestricted option", () => {
-    const html = renderToStaticMarkup(sheet);
-    const anyAt = html.indexOf("🌐 Any");
-    const mxAt = html.indexOf("🇲🇽 MX");
-    expect(anyAt).toBeGreaterThan(-1);
-    expect(mxAt).toBeGreaterThan(anyAt);
-    expect(html).toContain("Always Any");
-    expect(html).not.toContain("Limits Google Autocomplete");
-  });
-
-  it("shows a flag on every listed country", () => {
-    const html = renderToStaticMarkup(sheet);
-    for (const chip of [
-      "🇲🇽 MX",
-      "🇺🇸 US",
-      "🇨🇦 CA",
-      "🇪🇸 ES",
-      "🇦🇷 AR",
-      "🇨🇱 CL",
-      "🇨🇴 CO",
-      "🇵🇪 PE",
-    ]) {
-      expect(html).toContain(chip);
-    }
   });
 });
 
@@ -196,13 +95,9 @@ describe("Search map catalog auto-reloads after distance and time", () => {
     expect(read("SearchMap.tsx")).toContain("noteUserMapDrag");
     expect(read("SearchMap.tsx")).toContain('addListener("dragstart"');
     expect(read("SearchMap.tsx")).not.toContain("PROGRAMMATIC_IDLE_MS");
-    expect(read("search-catalog-overlays.tsx")).toContain(
-      "Zoom in to see this area",
-    );
     expect(read("search-catalog-overlays.tsx")).toContain("Finding nearby");
     expect(read("search-catalog-overlays.tsx")).toContain("Updating nearby");
     expect(read("search-catalog-overlays.tsx")).not.toContain("Search here");
-    expect(read("SearchClient.tsx")).not.toContain("apiFetchPlacesInBbox");
     expect(read("SearchClient.tsx")).toContain("++viewportGen.current");
     expect(read("SearchClient.tsx")).not.toContain("toFixed(3)");
     // `google: true` survives and is NOT the ring: it says this client can
@@ -279,7 +174,6 @@ describe("SearchFilterRow", () => {
     expect(on).toContain("bg-primary");
     expect(on).toContain(">3<");
     expect(read("SearchFilterRow.tsx")).not.toContain("PLACE_FAMILIES");
-    expect(read("SearchFilterRow.tsx")).not.toContain("onOpenScope");
   });
 
   // THE ANTI-DISAPPEARING PAIR. Flex resolves an overflowing row by shrinking
@@ -309,9 +203,7 @@ describe("Search map's top row is the query bar plus labelled Filters", () => {
     expect(src).toContain("flex min-w-0 items-center gap-2");
     expect(src).toContain("<SearchBar");
     // The SERVER is the one selector — SearchClient posts the three
-    // params and paints what comes back. applyMapFilters is the nested-
-    // set law the sheet counts against, not a second cut of the catalog.
-    expect(src).not.toMatch(/applyMapFilters\(/);
+    // params and paints what comes back.
     expect(src).not.toMatch(/takeMapResultLimit\(/);
     expect(src).toMatch(/from "@\/lib\/map-filters-engine"/);
     for (const present of [
@@ -355,7 +247,6 @@ describe("Search map's top row is the query bar plus labelled Filters", () => {
     expect(suggestArgs.join("\n")).toContain('"fast"');
     expect(suggestArgs.join("\n")).toContain('"deep"');
     for (const args of suggestArgs) expect(args).not.toContain("filters");
-    expect(read("SearchBar.tsx")).not.toMatch(/Search passes `onOpenScope`/);
     const loading = read("../../../app/(shell)/(discovery)/search/loading.tsx");
     expect(loading).toContain("flex min-w-0 items-center gap-2");
     expect(loading).toContain("basis-1/3");
@@ -364,7 +255,6 @@ describe("Search map's top row is the query bar plus labelled Filters", () => {
 
   it("recenters the map on the location param, not only the device", () => {
     expect(read("SearchClient.tsx")).toMatch(/viewCenter=\{center\}/);
-    expect(read("SearchClient.tsx")).toMatch(/locationOptOut/);
     expect(read("SearchMap.tsx")).toContain("viewCenter");
     expect(read("SearchMap.tsx")).toMatch(/Recentre target=\{lookAt\}/);
   });
@@ -671,8 +561,6 @@ const RAIL_PLACE = {
 } as Place;
 
 const railProps = {
-  idle: true,
-  catalogCount: 1,
   railCollapsed: false,
   railIndex: 0,
   selectedId: null as string | null,
@@ -688,12 +576,7 @@ const railProps = {
 describe("Search catalog reload UI", () => {
   it("shows a skeleton rail on first load, not a tiny pill", () => {
     const html = renderToStaticMarkup(
-      <SearchRailOverlay
-        {...railProps}
-        places={[]}
-        catalogCount={0}
-        catalogLoading
-      />,
+      <SearchRailOverlay {...railProps} places={[]} catalogLoading />,
     );
     expect(html).toContain("Finding nearby");
     expect(html).toContain("aria-busy");
@@ -711,7 +594,7 @@ describe("Search catalog reload UI", () => {
 
   it("empty nearby state has no Adjust and no Reset control", () => {
     const html = renderToStaticMarkup(
-      <SearchRailOverlay {...railProps} places={[]} catalogCount={0} />,
+      <SearchRailOverlay {...railProps} places={[]} />,
     );
     expect(html).toContain("No places to show here yet");
     expect(html).not.toContain("Adjust");
@@ -827,12 +710,7 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
 
   it("renders one 80% skeleton page with 10% side pads, not a 288px strip", () => {
     const html = renderToStaticMarkup(
-      <SearchRailOverlay
-        {...railProps}
-        places={[]}
-        catalogCount={0}
-        catalogLoading
-      />,
+      <SearchRailOverlay {...railProps} places={[]} catalogLoading />,
     );
     expect(html).toContain("Finding nearby");
     expect(html).toContain("snap-center");
@@ -851,10 +729,6 @@ describe("Name search is Fast while typing and Deep after idle", () => {
     expect(src).toContain('"fast"');
     expect(src).toContain('"deep"');
     expect(src).not.toContain("SUGGEST_DEBOUNCE_MS");
-    expect(src).not.toContain("scope.country");
-    expect(read("../../../lib/api/places.ts")).not.toMatch(
-      /\.\.\.\(country \? \{ country \} : \{\}\)/,
-    );
   });
 
   it("keeps Fast when Deep returns an empty list", () => {
@@ -928,20 +802,6 @@ describe("catalogIsStale", () => {
   });
 });
 
-describe("Search map reticle", () => {
-  it("paints a screen-fixed plus and primary center dot, not a ring", () => {
-    const src = read("SearchMap.tsx");
-    expect(src).toContain("export function SearchMapReticle");
-    expect(src).toContain("pointer-events-none");
-    expect(src).toContain("h-3.5 w-3.5");
-    expect(src).toContain("bg-primary absolute top-1/2 left-1/2 h-1.5 w-1.5");
-    expect(src).not.toContain("border-dotted");
-    expect(src).not.toContain("h-24 w-24");
-    expect(src).not.toContain("<Circle");
-    expect(src).toContain("mapReady && <SearchMapReticle");
-  });
-});
-
 describe("GooglePlaceSheet loads the first Places photo on open only", () => {
   it("uses Places (New) Details + one photo, never a map-wide prefetch", () => {
     const sheet = read("GooglePlaceSheet.tsx");
@@ -973,10 +833,8 @@ describe("GooglePlaceSheet loads the first Places photo on open only", () => {
 describe("every searchbar pick anchors the map (MESITA-1405)", () => {
   it("routes BOTH panel picks through one anchoring handler, never the modal", () => {
     const client = read("SearchClient.tsx");
-    // One handler for both entities — the panel's Mesita/Google split no
-    // longer picks a destination, only (later) a row mark.
-    expect(client).toContain("onPickMesita={handleBarPick}");
-    expect(client).toContain("onPickGoogle={handleBarPick}");
+    // One handler for both entities — Mesita and Google rows anchor alike.
+    expect(client).toContain("onPick={handleBarPick}");
     // The early return that opened the modal the moment a row carried a
     // mesitaSlug/mesitaId is the line that went.
     expect(client).not.toMatch(
@@ -1052,7 +910,6 @@ describe("every searchbar pick anchors the map (MESITA-1405)", () => {
     // The cap is the EF's now (MESITA-1699), so the memo has one job: put the
     // picked place first. It must still not re-cut what the server sent.
     expect(memo).toContain("prependAnchorPlace(nearby, anchorRow)");
-    expect(memo).not.toContain("applyMapFilters");
     expect(memo).not.toContain("takeMapResultLimit");
     // A thin operator ring still cannot hide the place the guest typed.
     expect(memo.indexOf("anchorRow")).toBeLessThan(
@@ -1087,8 +944,7 @@ describe("a Location wears the location icon, never a place tone (MESITA-1404)",
         searchError={null}
         predictions={rows}
         addStates={{}}
-        onPickMesita={() => {}}
-        onPickGoogle={() => {}}
+        onPick={() => {}}
       />,
     );
     expect(html).toContain("lucide-map-pin");

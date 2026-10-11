@@ -103,16 +103,6 @@ Deno.test("savePlaceData accepts a fetchGoogleBasics payload (no `name` key)", a
   assertEquals(res.saved.state, "active");
 });
 
-Deno.test("savePlaceData still honours the legacy `name` alias", async () => {
-  const { admin, writes } = stubClient();
-  const { google_name: _drop, ...rest } = googleBasicsPayload();
-  const res = await savePlaceData(admin, { ...rest, name: "Cuerno Calzada" }, "generating");
-
-  assert(res.ok, `legacy caller rejected: ${JSON.stringify(res.ok ? null : res.body)}`);
-  assertEquals(writes.place_profiles.google_name, "Cuerno Calzada");
-  assert(!("name" in writes.place_profiles), "the legacy alias must land in google_name");
-});
-
 Deno.test("savePlaceData rejects a payload with no Google label at all", async () => {
   const { admin } = stubClient();
   const { google_name: _drop, ...rest } = googleBasicsPayload();

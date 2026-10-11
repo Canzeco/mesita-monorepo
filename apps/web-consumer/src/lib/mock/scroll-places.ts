@@ -363,13 +363,12 @@ const ROWS: ScrollMockRow[] = [
   },
 ];
 
-// Deliberately NOT typed as `Place`: each app's `Place` requires a slightly
-// different set, and a spread is checked for what it supplies, not for what it
-// adds. Every field below is required (or optional) in BOTH apps' types.
+// Deliberately NOT typed as `Place`: the spread in scrollMockPlaces() is
+// checked against this app's `Place` for what it supplies, not for what the
+// base alone would have to satisfy.
 const MOCK_BASE = {
   vibe: null,
   currency: "MXN",
-  state: "active" as const,
   phone: null,
   story: null,
   website_url: null,
@@ -386,7 +385,6 @@ const MOCK_BASE = {
   google_maps_url: null,
   email: null,
   created_at: "2026-10-10T00:00:00.000Z",
-  promoting: false,
   is_enriching: false,
 };
 

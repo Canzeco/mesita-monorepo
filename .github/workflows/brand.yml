@@ -9,8 +9,6 @@ on:
       - "apps/*/src/app/icon.svg"
       - "apps/*/src/components/brand/**"
       - "apps/*/public/brand/**"
-      - "apps/*/src/constants/brand.ts"
-      - "apps/*/tailwind.config.js"
       - "scripts/sync-brand.ts"
       - "deno.json"
       - ".github/workflows/brand.yml"
@@ -42,8 +40,6 @@ jobs:
               - 'apps/*/src/app/icon.svg'
               - 'apps/*/src/components/brand/**'
               - 'apps/*/public/brand/**'
-              - 'apps/*/src/constants/brand.ts'
-              - 'apps/*/tailwind.config.js'
               - 'scripts/sync-brand.ts'
               - 'deno.json'
               - '.github/workflows/brand.yml'
@@ -74,7 +70,7 @@ jobs:
         with:
           deno-version: v2.9.1
 
-      # Every logo asset, token block, and brand component across the seven
+      # Every logo asset, token block, and brand component across the three
       # apps is generated from assets/brand/brand.json. This fails the build if
       # any of them was hand-edited or left stale — the same contract sync-rules
       # enforces for the instruction files.

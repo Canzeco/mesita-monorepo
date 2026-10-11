@@ -34,7 +34,6 @@ import {
   isCloudPlatform,
   leave,
   lockReason,
-  parseClaim,
   parseLock,
   parseOriginRefs,
   parseWorktreeList,
@@ -220,13 +219,11 @@ Deno.test("ids and slugs are validated before any git call, in the house error s
   }
 });
 
-Deno.test("claim line round-trips through the key=value grammar", () => {
+Deno.test("claim line is the key=value grammar", () => {
   const c = { platform: "claude-code", host: "5a4b", branch: "claude/MESITA-1566-x", worktree: ".claude/worktrees/MESITA-1566-x", footprint: "scripts/,deno.json" };
   const line = composeClaim(c);
   assertEquals(line, "claimed platform=claude-code host=5a4b branch=claude/MESITA-1566-x worktree=.claude/worktrees/MESITA-1566-x footprint=scripts/,deno.json");
-  assertEquals(parseClaim(line), c);
-  assertEquals(parseClaim("claimed: claude-code-desktop:slug · branch:claude/x"), null);
-  assertEquals(parseClaim(composeClaim({ ...c, footprint: "" }))?.footprint, "none");
+  assert(composeClaim({ ...c, footprint: "" }).endsWith(" footprint=none"));
 });
 
 Deno.test("decide keeps the shared checkout, the cwd, active, locked, unclean and unlanded workspaces", () => {

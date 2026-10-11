@@ -24,15 +24,6 @@ const QUIET_OPENS = 9;
 const QUIET_CLOSES = 22;
 const CUTOFF_BEFORE_SLOT_MS = 30 * 60_000;
 
-export type ReminderState =
-  | "idle"
-  | "scheduled"
-  | "ringing"
-  | "calling"
-  | "answered"
-  | "failed"
-  | "skipped";
-
 export type ReminderPark = Pick<ReservationPatch, "reminder_state" | "reminder_at">;
 
 /**

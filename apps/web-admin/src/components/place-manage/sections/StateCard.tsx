@@ -165,14 +165,12 @@ export function StateCard({ place }: { place: AdminPlace }) {
           name="Created"
           on={seeded === true}
           chip={stateBoolChip(seeded)}
-          tint="slate"
           detail={seededDetail}
         />
         <StateRow
           name="Active (Google pulse)"
           on={operating === true}
           chip={stateBoolChip(operating)}
-          tint="teal"
           detail={operatingDetail}
           action={<ActiveToggle place={place} operating={operating} />}
         />
@@ -180,7 +178,6 @@ export function StateCard({ place }: { place: AdminPlace }) {
           name="Listed"
           on={listed === true}
           chip={stateBoolChip(listed)}
-          tint="indigo"
           detail={listedDetail}
           action={<ListedToggle place={place} listed={listed} />}
         />
@@ -188,7 +185,6 @@ export function StateCard({ place }: { place: AdminPlace }) {
           name="Requested"
           on={requestCount !== "unknown" && requestCount > 0}
           chip={requestCountChip(place.request_count)}
-          tint="indigo"
           detail={requestedDetail}
         />
       </div>
@@ -201,45 +197,28 @@ export function StateRow({
   name,
   on,
   chip,
-  tint,
   detail,
   action,
-  children,
 }: {
   name: string;
   on: boolean;
   /** `true`/`false`/`?`/`…` for bools, `0…n` for Requested, `0`/`1`/`2` for Promoted. */
   chip: string;
-  tint: "slate" | "teal" | "indigo" | "violet" | "emerald" | "sky" | "pink" | "amber" | "orange";
   detail: string;
   /** Control under the detail. Active and Listed are the two operator writes. */
   action?: React.ReactNode;
-  children?: React.ReactNode;
 }) {
-  const chipClass = {
-    slate: "bg-muted text-foreground",
-    teal: "bg-muted text-foreground",
-    indigo: "bg-muted text-foreground",
-    violet: "bg-muted text-foreground",
-    emerald: "bg-muted text-foreground",
-    sky: "bg-muted text-foreground",
-    pink: "bg-muted text-muted-foreground",
-    amber: "bg-muted text-foreground",
-    orange: "bg-muted text-foreground",
-  }[tint];
-
   return (
     <div className="border-border/60 flex items-start justify-between gap-4 border-b py-3.5 first:pt-0 last:border-b-0 last:pb-0">
       <div className="min-w-0">
         <span className="text-foreground/90 type-body font-medium">{name}</span>
         <p className="text-foreground/70 mt-1 type-label font-medium">{detail}</p>
-        {children}
         {action ? <div className="mt-2.5">{action}</div> : null}
       </div>
       <span
         className={
           "inline-flex shrink-0 items-center rounded-full px-2.5 py-1 type-label font-semibold tabular-nums " +
-          (on ? chipClass : "bg-muted text-muted-foreground")
+          (on ? "bg-muted text-foreground" : "bg-muted text-muted-foreground")
         }
         aria-label={`${name}: ${chip}`}
       >

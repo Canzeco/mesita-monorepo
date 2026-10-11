@@ -7,13 +7,9 @@ import {
 import {
   GOOGLE_SEARCH_TYPES,
   GOOGLE_TYPE_SUPER,
-  GOOGLE_TYPES_BY_SUPER,
-  autocompleteTypesForSupers,
   nearbyTypesForSupers,
   superForGoogleType,
-  textSearchTypeForSuper,
   type GuestSuper,
-  type SuperOrOther,
 } from "./google-type-super.ts";
 
 const GUEST: GuestSuper[] = [
@@ -46,28 +42,6 @@ Deno.test("478 Google Table A types each map to exactly one Super or other", () 
     culture_arts: 18,
     other: 201,
   });
-});
-
-Deno.test("GOOGLE_TYPES_BY_SUPER is the inverse of GOOGLE_TYPE_SUPER", () => {
-  const fromMap: Record<string, string[]> = {
-    restaurants: [],
-    bars_nightlife: [],
-    cafes_bakeries: [],
-    sports_fitness: [],
-    wellness_beauty: [],
-    experiences: [],
-    culture_arts: [],
-    other: [],
-  };
-  for (const [slug, superKey] of Object.entries(GOOGLE_TYPE_SUPER)) {
-    fromMap[superKey]!.push(slug);
-  }
-  for (const key of Object.keys(fromMap) as SuperOrOther[]) {
-    assertEquals(
-      [...fromMap[key]!].sort(),
-      [...GOOGLE_TYPES_BY_SUPER[key]].slice().sort(),
-    );
-  }
 });
 
 Deno.test("Google side stays exclusive even where the category is a double", () => {
@@ -111,9 +85,6 @@ Deno.test("search batteries stay inside Google's API caps", () => {
   }
   assertEquals(GOOGLE_SEARCH_TYPES.restaurants, ["restaurant"]);
   assertEquals(GOOGLE_SEARCH_TYPES.undefined, []);
-  assertEquals(textSearchTypeForSuper("restaurants"), "restaurant");
-  assertEquals(textSearchTypeForSuper("undefined"), null);
-  assertEquals(textSearchTypeForSuper("other"), null);
   assertEquals(nearbyTypesForSupers(["undefined"]), []);
   assertEquals(
     nearbyTypesForSupers(["sports_fitness", "culture_arts"]),
@@ -121,10 +92,6 @@ Deno.test("search batteries stay inside Google's API caps", () => {
       ...GOOGLE_SEARCH_TYPES.sports_fitness,
       ...GOOGLE_SEARCH_TYPES.culture_arts,
     ],
-  );
-  assertEquals(
-    autocompleteTypesForSupers(["experiences", "culture_arts"]).length <= 5,
-    true,
   );
   assertEquals(nearbyTypesForSupers(["other", "nope"]), []);
 });
@@ -165,8 +132,7 @@ Deno.test("SUPER_PARAM_KEYS is the guest Supers, minus the empty battery", () =>
 Deno.test("the three billed Supers default on, the other four off", () => {
   const on = SUPER_PARAM_KEYS.filter((s) => DEFAULT_MAP_SUPERS[s]);
   assertEquals(new Set(on), new Set(["restaurants", "bars_nightlife", "cafes_bakeries"]));
-  // Their union is the five slugs the pre-1695 blob had true, so folding a
-  // stored blob forward changes no Google call.
+  // Their union is the five slugs the strip has always sent to Nearby.
   const flat = on.flatMap((s) => [...GOOGLE_SEARCH_TYPES[s]]);
   assertEquals(
     new Set(flat),

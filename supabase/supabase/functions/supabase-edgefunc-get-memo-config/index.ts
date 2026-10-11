@@ -1,8 +1,8 @@
 // Supabase Edge Function — supabase-edgefunc-get-memo-config (internal caller)
 //
-// Memo's own configuration, served to Memo. One of the four endpoints that make
-// up Memo's entire data surface (see _shared/memo-data.ts); Memo itself holds
-// no database client.
+// Memo's own configuration, served to Memo. The endpoint that makes up Memo's
+// entire data surface (see _shared/memo-data.ts); Memo itself holds no database
+// client.
 //
 // Slices of the `app_config` singleton in ONE read:
 //   • greeting     — memo_config.greeting, the consumer Ask AI opener. Null
@@ -10,9 +10,8 @@
 //   • instructions — discovery_config.chat.prompt (Discovery Chat box), else
 //                    leftover memo_config.instructions. Null when blank, so
 //                    the caller falls back to the in-code SYSTEM_PROMPT.
-//   • model        — models_config.memo.model (admin Models page), falling
-//                    back to legacy memo_config.openaiModel when unset.
-//   • perplexity   — models_config.memo.perplexity ("off" = skip Perplexity).
+//   • model        — models_config.memo.model (admin Models page; never blank,
+//                    loadModelsConfig defaults it).
 //
 // Read side for Memo. Greeting still has no editor (memo_config.greeting).
 // The Chat persona writes through admin-web-update-config's `discovery` section
@@ -53,7 +52,6 @@ Deno.serve(async (req) => {
     greeting: null,
     instructions: null,
     model: null,
-    perplexity: null,
     caller: callerRes.callerName,
   };
 
@@ -85,17 +83,11 @@ Deno.serve(async (req) => {
     const instructions = chatPrompt.length > 0
       ? chatPrompt
       : memo.instructions.trim();
-    // Models page is SoT; legacy memo_config.openaiModel remains a one-release fallback.
-    const legacyModel = memo.openaiModel.trim();
-    const model = models.memoModel || legacyModel;
-    const perplexity = models.memoPerplexity;
-
     return json({
       ok: true,
       greeting: greeting.length > 0 ? greeting : null,
       instructions: instructions.length > 0 ? instructions : null,
-      model: model.length > 0 ? model : null,
-      perplexity: perplexity.length > 0 && perplexity !== "off" ? perplexity : null,
+      model: models.memoModel,
       caller: callerRes.callerName,
     });
   } catch (e) {

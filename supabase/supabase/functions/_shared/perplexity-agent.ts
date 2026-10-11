@@ -1,7 +1,8 @@
 // Shared Perplexity Agent (pro-search) client. One fetch/parse contract for
-// every Atlas Perplexity call: P2's SERP summary (enrich-serp.ts) and P3's channel
-// fill + phone/email legs (enrich-channel-discovery.ts). Best-effort: any non-2xx /
-// network / parse failure returns null, so callers degrade to null.
+// every Atlas Perplexity call: the Scout's SERP summary (enrich-serp.ts) and the
+// Resolver's channel selection (enrich-channel-discovery.ts). Each caller passes
+// its own instructions. Best-effort: any non-2xx / network / parse failure
+// returns null, so callers degrade to null.
 
 import { safeParseJson } from "./parse-utils.ts";
 
@@ -10,11 +11,6 @@ const PERPLEXITY_AGENT_URL = "https://api.perplexity.ai/v1/agent";
 // default). Callers pass the admin-selected preset via opts.preset.
 const DEFAULT_PRESET = "pro-search";
 
-// Default agent instructions — URL resolution (P3's discovery + phone/email
-// legs). P2 overrides with its own editorial-context instructions.
-const DEFAULT_INSTRUCTIONS =
-  "Resolve place URLs by anchoring on the official website and trusting the links the site itself points to. Output only JSON matching the schema. Never fabricate URLs; prefer null when unsure.";
-
 // Call the managed Perplexity Agent once. Returns the schema JSON answer plus the
 // source URLs the agent actually cited (annotations) — both host-locked, so
 // callers must re-validate every URL before trusting it. null on any failure.
@@ -22,7 +18,7 @@ export async function callPerplexityAgent(
   key: string,
   input: string,
   schema: unknown,
-  opts: { instructions?: string; maxSteps?: number; preset?: string } = {},
+  opts: { instructions: string; maxSteps?: number; preset?: string },
 ): Promise<{ answer: Record<string, unknown>; hitUrls: string[] } | null> {
   try {
     const r = await fetch(PERPLEXITY_AGENT_URL, {
@@ -34,7 +30,7 @@ export async function callPerplexityAgent(
       body: JSON.stringify({
         input,
         preset: opts.preset ?? DEFAULT_PRESET,
-        instructions: opts.instructions ?? DEFAULT_INSTRUCTIONS,
+        instructions: opts.instructions,
         max_steps: opts.maxSteps ?? 8,
         response_format: { type: "json_schema", json_schema: { schema } },
       }),

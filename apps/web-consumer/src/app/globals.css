@@ -109,11 +109,6 @@
   --primary: oklch(0.205 0 0);
   --primary-foreground: var(--paper);
 
-  /* The hover step for FILLED controls. `hover:opacity-90` read instantly on
-     hot pink because it shifted CHROMA; on ink it is 1.32:1 and it fades the
-     white LABEL too, so a hovered black pill reads as greying OUT. */
-  --ink-hover: oklch(0.371 0 0);
-
   --secondary: oklch(0.371 0 0);
   --secondary-foreground: var(--paper);
 
@@ -138,24 +133,18 @@
      web-admin still renders it.
 
      This one pair of lines is most of the repaint's reach. `.bg-pink-gradient`
-     (30 call sites here), `.bg-brand` and `.text-pink-gradient` read these
-     tokens rather than a literal, so every one of them turns to ink without a
-     single component being edited. */
+     and `.bg-brand` read these tokens rather than a literal, so every one of
+     them turns to ink without a single component being edited. */
   --gradient-pink: oklch(0.205 0 0);
   --gradient-brand: oklch(0.205 0 0);
 
   /* The hero wash was two pink radials over a pink-white page. A gradient with
      no job but atmosphere is the first thing the achromatic rule takes. */
   --gradient-hero: linear-gradient(180deg, oklch(1 0 0), oklch(0.985 0 0));
-  --gradient-card: linear-gradient(
-    180deg,
-    oklch(1 0 0 / 0.95),
-    oklch(0.985 0 0 / 0.85)
-  );
   /* Elevation. Two tokens were not enough: the app had grown 13 one-off
      shadow-[...] recipes to cover cases they could not express (MESITA-1217).
      rest -> elev -> glow is the LIFT ladder (how high off the page).
-     media / sheet-* / danger are about CONTEXT, not height, so they sit
+     media / sheet-left / danger are about CONTEXT, not height, so they sit
      outside the ladder and are never ranked against it. */
   /* The ladder survives; only its TINT goes. A chroma-0 shadow at the old
      alpha reads heavier and colder than warm ink, so the two glows come down
@@ -183,34 +172,10 @@
     oklch(0 0 0 / 0.34) 38%,
     transparent 70%
   );
-  /* Sheet edges are DIRECTIONAL: a drawer entering from the right casts left,
-     a bottom sheet casts up. No single token can express both. */
-  --shadow-sheet-up: 0 -12px 32px oklch(0 0 0 / 0.25);
+  /* Sheet edges are DIRECTIONAL: a drawer entering from the right casts left. */
   --shadow-sheet-left: -16px 0 40px oklch(0 0 0 / 0.25);
   /* Destructive/ON toggle lift, tinted to the red-600 fill it sits under. */
   --shadow-danger: 0 2px 10px -2px oklch(0.58 0.245 27 / 0.5);
-  /* The swipe card's panel was a blue nobody names — decoration, so ink. */
-  --swipe-card-panel: oklch(0.205 0 0);
-  --swipe-card-panel-foreground: oklch(1 0 0);
-
-  /* Charts are a RAMP now, not five unrelated hues: a reader of a monochrome
-     app cannot be asked to hold five colour names, and a series ordered by
-     value reads off a lightness ladder without a legend. */
-  --chart-1: oklch(0.205 0 0);
-  --chart-2: oklch(0.371 0 0);
-  --chart-3: oklch(0.48 0 0);
-  --chart-4: oklch(0.63 0 0);
-  --chart-5: oklch(0.77 0 0);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.205 0 0);
-  /* LITERAL pink, not `var(--brand-pink)` — a de-pinking that chases the ramp
-     leaves these two behind with every check green. */
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.961 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.891 0 0);
-  --sidebar-ring: oklch(0.205 0 0);
 }
 
 /* No `.dark` overrides: consumer is locked to the light theme to match
@@ -243,37 +208,6 @@
   }
 }
 
-/* First-time swipe hint — a hand drifts left then right to teach the
-   gesture. Used by SwipeTutorialOverlay. Tailwind doesn't ship a
-   left-right oscillation; defining it here keeps the component lean. */
-@keyframes swipe-hint {
-  0%,
-  100% {
-    transform: translateX(0) rotate(0deg);
-    opacity: 0.85;
-  }
-  20% {
-    transform: translateX(46px) rotate(8deg);
-    opacity: 1;
-  }
-  40% {
-    transform: translateX(0) rotate(0deg);
-    opacity: 0.85;
-  }
-  60% {
-    transform: translateX(-46px) rotate(-8deg);
-    opacity: 1;
-  }
-  80% {
-    transform: translateX(0) rotate(0deg);
-    opacity: 0.85;
-  }
-}
-
-.animate-swipe-hint {
-  animation: swipe-hint 2.6s ease-in-out infinite;
-}
-
 @theme inline {
   /* Tightened radius scale — flatter, less "pill-like" corners across the
      whole app. Deltas between steps are small so even rounded-3xl stays crisp. */
@@ -295,7 +229,6 @@
      meant "the white the card is made of", and it was only ever correct while
      the page happened to be that white. They are `text-paper` now. */
   --color-paper: var(--paper);
-  --color-page: var(--page);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
@@ -317,20 +250,6 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-ink-hover: var(--ink-hover);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
   --font-sans: var(--font-body);
   --font-display: var(--font-display);
   /* drop-shadow twins of --shadow-media, for white chrome drawn ON a photo
@@ -365,74 +284,14 @@
   .bg-brand {
     background: var(--gradient-brand);
   }
-  .bg-card-soft {
-    background: var(--gradient-card);
-  }
   .bg-pink-gradient {
     background: var(--gradient-pink);
-  }
-  .bg-swipe-panel {
-    background-color: var(--swipe-card-panel);
-    color: var(--swipe-card-panel-foreground);
-  }
-  .border-whatsapp {
-    border-color: var(--whatsapp);
   }
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
   .scrollbar-hide {
     scrollbar-width: none;
-  }
-  /* Always-visible slim scrollbar (overrides the OS overlay auto-hide). */
-  .scrollbar-always {
-    scrollbar-width: thin;
-    scrollbar-color: var(--border) transparent;
-  }
-  .scrollbar-always::-webkit-scrollbar {
-    width: 8px;
-    -webkit-appearance: none;
-  }
-  .scrollbar-always::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .scrollbar-always::-webkit-scrollbar-thumb {
-    background-color: var(--border);
-    border-radius: 9999px;
-    border: 2px solid transparent;
-    background-clip: content-box;
-  }
-  .scrollbar-always::-webkit-scrollbar-thumb:hover {
-    background-color: var(--muted-foreground);
-    background-clip: content-box;
-  }
-  .surface-card {
-    @apply border-border bg-card rounded-2xl border;
-    box-shadow: var(--shadow-elev);
-  }
-  .surface-card-soft {
-    @apply border-border/80 rounded-3xl border;
-    background: var(--gradient-card);
-    box-shadow: var(--shadow-elev);
-  }
-  .btn-primary {
-    @apply w-full rounded-lg py-2.5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50;
-    background: var(--gradient-pink);
-    box-shadow: var(--shadow-glow);
-  }
-  .segment-control {
-    @apply border-border/80 bg-card/80 flex items-center gap-0.5 rounded-lg border p-1 backdrop-blur-sm;
-  }
-  .segment-tab {
-    @apply flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-2 text-xs font-medium whitespace-nowrap transition;
-  }
-  .segment-tab-active {
-    @apply rounded-md text-white;
-    background: var(--gradient-pink);
-    box-shadow: var(--shadow-glow);
-  }
-  .segment-tab-idle {
-    @apply text-muted-foreground hover:text-foreground;
   }
 }
 
@@ -489,26 +348,11 @@
 @utility bg-media-scrim {
   background-image: var(--media-scrim);
 }
-@utility shadow-sheet-up {
-  box-shadow: var(--shadow-sheet-up);
-}
 @utility shadow-sheet-left {
   box-shadow: var(--shadow-sheet-left);
 }
 @utility shadow-danger {
   box-shadow: var(--shadow-danger);
-}
-
-/* Gradient-filled text — self-contained so the background shorthand can't
-   reset background-clip out from under a separate utility. Composing
-   `bg-pink-gradient bg-clip-text text-transparent` by hand does NOT work:
-   `background:` resets background-clip to border-box, so the gradient paints
-   the whole box and the glyphs stay invisible. Mirrors web-admin. */
-@utility text-pink-gradient {
-  background: var(--gradient-pink);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
 }
 
 /* THE APP IS ALWAYS 100% OF THE VISIBLE FRAME — never zoomed, never panned

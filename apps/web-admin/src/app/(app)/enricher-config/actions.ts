@@ -39,42 +39,6 @@ export type CrenupPrompt = {
   input: string;
 };
 
-type SettingsResponse = {
-  atlasGatherGoogleImages: number;
-  atlasGatherInstagramDepth: number;
-  atlasGatherInstagramPosts: number;
-  atlasGatherReviews: number;
-  atlasImageVisionEnabled: boolean;
-  atlasAnalyzeGoogleImages: number;
-  atlasImageAnalysisPrompt: string;
-  atlasImageSortingPrompt: string;
-  atlasAnalyzeInstagramImages: number;
-  atlasSaveTotalImages: number;
-  atlasSaveImagesToStorage: boolean;
-  atlasSynthesisQuality: SynthesisQuality;
-  atlasVisionQuality: SynthesisQuality;
-  atlasPerplexityPreset: PerplexityPreset;
-  atlasPerRunCostCapUsd: number;
-  atlasDiscoverWebsiteN: number;
-  atlasDiscoverInstagramN: number;
-  atlasDiscoverFacebookN: number;
-  atlasDiscoverOpentableN: number;
-  atlasDiscoverUbereatsN: number;
-  atlasRequestThreshold: number;
-  crenupPromptsMeta: CrenupPrompt[];
-  updatedAt: string | null;
-};
-
-type GetSettingsResult = ActionResult<{ data: SettingsResponse }>;
-
-export async function getAtlasSettings(): Promise<GetSettingsResult> {
-  const r = await efInvoke<SettingsResponse>("admin-web-get-config", {});
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data };
-}
-
-// ─── Enricher pipeline config ──────────────────────────────────────────────
-
 type AtlasConfigResponse = {
   atlasGatherGoogleImages: number;
   atlasGatherInstagramDepth: number;
@@ -99,6 +63,18 @@ type AtlasConfigResponse = {
   atlasRequestThreshold: number;
   updatedAt: string | null;
 };
+
+type SettingsResponse = AtlasConfigResponse & { crenupPromptsMeta: CrenupPrompt[] };
+
+type GetSettingsResult = ActionResult<{ data: SettingsResponse }>;
+
+export async function getAtlasSettings(): Promise<GetSettingsResult> {
+  const r = await efInvoke<SettingsResponse>("admin-web-get-config", {});
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: r.data };
+}
+
+// ─── Enricher pipeline config ──────────────────────────────────────────────
 
 type UpdateAtlasConfigResult = ActionResult<{ data: AtlasConfigResponse }>;
 

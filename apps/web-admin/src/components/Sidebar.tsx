@@ -38,7 +38,7 @@ type NavItem = {
 };
 
 // Labels never repeat their section heading — the heading already says
-// "Configurations", so the item is "Atlas", not "Atlas Config" (MESITA-1073).
+// "Configurations", so no item ends in "Config" (MESITA-1073).
 // Each label lives in its route's nav.ts; the Sidebar is their only consumer.
 const PRIMARY_NAV: NavItem[] = [
   { href: "/account", label: "Account", Icon: UserRound },

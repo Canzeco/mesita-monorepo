@@ -49,16 +49,6 @@ type MenuDraft = {
   nutrition: NutritionDraft;
 };
 
-type ItemKind = "menu";
-
-const ITEM_KINDS: { id: ItemKind; label: string; hint: string }[] = [
-  {
-    id: "menu",
-    label: "Menu",
-    hint: "Upload a PDF/image, or paste a Drive link — pick one",
-  },
-];
-
 function newKey(): string {
   return crypto.randomUUID();
 }
@@ -147,7 +137,6 @@ export function MenusSection({
   // places, so initial state is always the active place's product items.
   const [items, setItems] = useState<MenuDraft[]>(() => menusFromPlace(place));
   const [saved, setSaved] = useState<MenuDraft[]>(items);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -227,11 +216,6 @@ export function MenusSection({
       ...prev,
       { key: newKey(), name: "", url: "", source: null, nutrition: { ...EMPTY_NUTRITION } },
     ]);
-    setPickerOpen(false);
-  };
-
-  const onPickKind = (kind: ItemKind) => {
-    if (kind === "menu") addMenu();
   };
 
   const startUpload = (key: string) => {
@@ -426,15 +410,7 @@ export function MenusSection({
       {items.length === 0 ? (
         <div className="mt-6 flex flex-col items-start gap-3">
           <p className="text-muted-foreground text-sm">No menus yet.</p>
-          <button
-            type="button"
-            disabled={savePending}
-            onClick={addMenu}
-            className="border-border hover:border-primary/50 hover:text-primary inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-50"
-          >
-            <Plus className="h-4 w-4" />
-            New menu
-          </button>
+          <NewMenuButton disabled={savePending} onClick={addMenu} />
         </div>
       ) : (
         <div className="mt-5 flex flex-col gap-4">
@@ -452,10 +428,8 @@ export function MenusSection({
               onUpload={() => startUpload(item.key)}
             />
           ))}
-          <AddItemsControl
-            open={pickerOpen}
-            onOpenChange={setPickerOpen}
-            onPick={onPickKind}
+          <NewMenuButton
+            onClick={addMenu}
             disabled={
               savePending ||
               uploadingKey != null ||
@@ -470,67 +444,23 @@ export function MenusSection({
   );
 }
 
-function AddItemsControl({
-  open,
-  onOpenChange,
-  onPick,
+function NewMenuButton({
+  onClick,
   disabled,
 }: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  onPick: (kind: ItemKind) => void;
+  onClick: () => void;
   disabled?: boolean;
 }) {
-  // Only one kind today — still keep the picker shell for future product types.
-  if (ITEM_KINDS.length === 1) {
-    return (
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => onPick(ITEM_KINDS[0].id)}
-        className="border-border hover:border-primary/50 hover:text-primary inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-50"
-      >
-        <Plus className="h-4 w-4" />
-        New menu
-      </button>
-    );
-  }
-
   return (
-    <div className="relative">
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => onOpenChange(!open)}
-        className="border-border hover:border-primary/50 hover:text-primary inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-50"
-      >
-        <Plus className="h-4 w-4" />
-        Add items
-      </button>
-      {open ? (
-        <>
-          <button
-            type="button"
-            aria-label="Close"
-            className="fixed inset-0 z-10 cursor-default"
-            onClick={() => onOpenChange(false)}
-          />
-          <div className="border-border bg-card absolute top-full left-0 z-20 mt-1 min-w-56 overflow-hidden rounded-xl border shadow-card">
-            {ITEM_KINDS.map((k) => (
-              <button
-                key={k.id}
-                type="button"
-                onClick={() => onPick(k.id)}
-                className="hover:bg-muted flex w-full flex-col items-start gap-0.5 px-3 py-2.5 text-left transition"
-              >
-                <span className="text-sm font-medium">{k.label}</span>
-                <span className="text-muted-foreground text-xs">{k.hint}</span>
-              </button>
-            ))}
-          </div>
-        </>
-      ) : null}
-    </div>
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="border-border hover:border-primary/50 hover:text-primary inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-50"
+    >
+      <Plus className="h-4 w-4" />
+      New menu
+    </button>
   );
 }
 

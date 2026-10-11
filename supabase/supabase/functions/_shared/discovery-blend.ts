@@ -133,6 +133,3 @@ export function rankByBlend<T>(
     .sort((a, b) => b.score - a.score || a.i - b.i)
     .map(({ row, score, parts }) => ({ row, score, parts }));
 }
-
-/** Re-exported so an engine imports one module, not three. */
-export { NEUTRAL, SIGNAL_KEYS, type SignalIntent, type SignalKey, type SignalPlace };
