@@ -256,13 +256,25 @@ jobs:
             validate-web-request-fix
             validate-web-scan-ticket
             validate-web-validate-ticket
+            staff-web-benchmark-link-strategies
           )
           listed=$(supabase functions list --project-ref yjalywfzdelacdzccpgb)
           echo "$listed"
           for fn in "${leftover[@]}"; do
             if echo "$listed" | grep -Eq "\\|[[:space:]]*${fn}[[:space:]]*\\|"; then
               echo "deleting $fn"
-              supabase functions delete "$fn" --project-ref yjalywfzdelacdzccpgb --yes
+              # The registry can list a function whose blob is already gone
+              # (a concurrent deploy, or a stale entry): delete then answers
+              # "does not exist". That is the goal state, not a failure.
+              if ! out=$(supabase functions delete "$fn" --project-ref yjalywfzdelacdzccpgb --yes 2>&1); then
+                if echo "$out" | grep -q "does not exist"; then
+                  echo "$fn already gone"
+                  continue
+                fi
+                echo "$out"
+                exit 1
+              fi
+              echo "$out"
             else
               echo "$fn already absent"
             fi

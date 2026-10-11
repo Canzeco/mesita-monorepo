@@ -19,7 +19,10 @@ export const DEFAULT_IMAGE_ANALYSIS_PROMPT =
 export const DEFAULT_IMAGE_SORTING_PROMPT =
   "Rank these place photos best to worst for a should-we-go-tonight decision. We sell EXPERIENCES: weight beautiful place / ambience / vibe shots EQUALLY with food. Favor visual quality, representativeness, and a balanced mix. Drop duplicates, blurry, dark, or text-heavy images.";
 
-const QUALITY = new Set(["economy", "standard", "high"]);
+// Two tiers since MESITA-2126. A legacy "high" (same gpt-4o as "standard") is
+// mapped explicitly: the generic fallback below is the cheap default, so an
+// unmapped "high" would silently downgrade the place to gpt-4o-mini.
+const QUALITY = new Set(["economy", "standard"]);
 const PERPLEXITY = new Set([
   "fast-search",
   "pro-search",
@@ -89,6 +92,7 @@ function money(v: unknown, fallback: number): number {
 }
 
 function quality(v: unknown, fallback: string): string {
+  if (v === "high") return "standard";
   return typeof v === "string" && QUALITY.has(v) ? v : fallback;
 }
 

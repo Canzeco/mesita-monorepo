@@ -115,7 +115,7 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # Per-function overrides. Naming rule: <caller>-<origin>-<verb>-<noun> (e.g.
 # admin-web-create-place, consumer-web-list-places). The closed caller set is
 # consumer · admin · eleven · supabase (MESITA-2090; the enricher prefix
-# arrives with MESITA-2091, and the one staff-web function is MESITA-2118's).
+# arrives with MESITA-2121).
 # All functions verify the JWT except the truly public catalog reads, which
 # rely on RLS to gate visibility instead.
 
@@ -405,9 +405,3 @@ verify_jwt = true
 # ([auth.sms.twilio] above), and voice is the Reservationist's line, whose
 # webhooks point at ElevenLabs. The `twilio-webhook` caller is retired with
 # the WhatsApp rail that was its only user.
-
-# Diagnostic-only (not client-wired): runs the 5 link-discovery strategies from
-# _shared/linklab against a place and returns each strategy's {website, instagram}.
-# Same module the offline benchmark (scripts/linklab) scores. Service-role JWT.
-[functions.staff-web-benchmark-link-strategies]
-verify_jwt = true

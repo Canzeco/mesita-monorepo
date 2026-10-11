@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,6 +15,14 @@ import { cn } from "@/lib/utils";
 //  2. It carries an ACTION. "Swipe right on a place to save it" tells you what
 //     to do without giving you a way to do it — the reader has to go find the
 //     tab themselves. An empty state without a next step is a dead end.
+//
+// NOT A CLIENT MODULE (MESITA-2129). It holds no state and no effect, and
+// its `icon` prop is a component — a function, which React cannot serialise
+// from a Server Component into a client one. With "use client" here, every
+// server caller (Pay, the /web "Get the app" screen) died with digest
+// 4172959490 and consumer.mesita.ai showed "This page couldn't load".
+// Without it, EmptyState renders on whichever side imports it.
+// `server-icon-props.test.ts` holds the rule for every component.
 //
 // No dashed decorative box: the design map's rule is "cards only when interactive", and
 // a zero state isn't. Tinted icon circle + display title + muted copy + one CTA
