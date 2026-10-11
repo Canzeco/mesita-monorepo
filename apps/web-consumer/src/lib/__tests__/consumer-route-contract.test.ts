@@ -19,6 +19,7 @@ import {
   consumerCanBrowse,
   consumerNeedsLastName,
 } from "@/lib/consumer-onboarding";
+import { LEGACY_REDIRECTS } from "@/lib/legacy-redirects";
 import nextConfig from "../../../next.config";
 
 // Routing is contract, not implementation detail: four tabs, flat /me,
@@ -245,7 +246,7 @@ describe("the legacy block and the redirect table are one set", () => {
   // can find from the route map. Sources with a `:param` are checked by their
   // prefix; the `:path*` catch-alls stand for the exact entries beside them.
   it("every redirect source is a legacy address, or a Home/Explore-era alias", async () => {
-    const table = await nextConfig.redirects!();
+    const table = LEGACY_REDIRECTS;
     const legacy = Object.values(CONSUMER_ROUTES.legacy) as string[];
     // Addresses that predate the contract's legacy block and are pinned by
     // value in the table test below rather than by key.
@@ -334,7 +335,7 @@ describe("isModalContractPath (intercepted detail overlays)", () => {
 
 describe("next.config redirects (static legacy → canonical, 308)", () => {
   it("pins the full redirect table", async () => {
-    const redirects = await nextConfig.redirects!();
+    const redirects = LEGACY_REDIRECTS;
     expect(redirects).toEqual([
       // Explore era (pre-Home). Straight to the Discover default.
       { source: "/explore", destination: "/discover/feed", permanent: true },
