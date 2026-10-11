@@ -14,12 +14,6 @@ export type UpdateProfileBody = {
   // Public URL of a photo the caller already uploaded to consumer-avatars
   // (MESITA-953). null/"" clears. Foreign hosts are rejected.
   avatar_url?: string | null;
-  // Profile visibility flags (MESITA-76 / MESITA-913). Sent alone or
-  // alongside the identity fields; only the keys present are patched.
-  privacy_public?: boolean;
-  privacy_show_saves?: boolean;
-  privacy_show_visits?: boolean;
-  privacy_show_stories?: boolean;
 };
 
 export const AVATAR_BUCKET = "consumer-avatars";
@@ -88,7 +82,7 @@ export type ParseNameResult =
 // that IS sent must carry a real value. Clearing your first name to "" would
 // leave a consumer no place can be told to expect, so an explicit blank is
 // still a 400 — as distinct from simply not sending that key, which patches
-// nothing. Patches that don't touch the name at all (visibility flags,
+// nothing. Patches that don't touch the name at all (avatar-only,
 // birthday-only, legacy full_name) pass straight through.
 export function parseName(
   body: UpdateProfileBody,
@@ -223,22 +217,6 @@ export function buildProfilePatch(
   if (body.country !== undefined) patch.country = fields.country;
   if (body.phone !== undefined) patch.phone = fields.phone;
   if (body.avatar_url !== undefined) patch.avatar_url = fields.avatarUrl ?? null;
-  for (const key of [
-    "privacy_public",
-    "privacy_show_saves",
-    "privacy_show_visits",
-    "privacy_show_stories",
-  ] as const) {
-    const value = body[key];
-    if (value === undefined) continue;
-    if (typeof value !== "boolean") {
-      return {
-        ok: false,
-        response: json({ ok: false, error: `${key} must be a boolean` }, 400),
-      };
-    }
-    patch[key] = value;
-  }
 
   if (Object.keys(patch).length === 0) {
     return {

@@ -20,7 +20,6 @@ const GAP_FIXTURE: PlaceHit = {
   google_stars_overall: null,
   google_review_count: null,
   content_state: "ready",
-  listing_type: null,
   google_place_id: "ChIJ123",
   seeded: true,
   listed: true,
@@ -43,14 +42,6 @@ const GAP_FIXTURE: PlaceHit = {
     description: { state: "pending", at: null, detail: null },
     embedding: { state: "pending", at: null, detail: null },
   },
-  partner: false,
-  promoting: false,
-  promoting_level: 0,
-  mesita_pay: false,
-  credits: false,
-  pickup: false,
-  delivery: false,
-  promotion: 0,
 };
 
 function functionByKey(key: string) {

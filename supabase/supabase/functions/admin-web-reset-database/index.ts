@@ -4,19 +4,10 @@
 // every auth.users row that isn't a super-admin, and every object in the
 // storage buckets. Survivors are DATA in public.admin_reset_preserve
 // (read at run time by admin_reset_database) — today: super_admins + their
-// auth accounts, the app_config admin-config singleton (Atlas/Enricher/
-// Memo/Sourcing/Scoring/Reservations/Promos/Models/Agents/Verification),
-// consumer_code_counter, and the re-seeded vocabularies (classes,
-// consumer_plans, project_plans, place_categories, place_families,
-// place_tags).
-//
-// RE-SEEDED MEANS IDENTITY ONLY. classes converge on label + rank, the two
-// plan catalogs on label. Tuned values — thresholds, limits, weights, prices,
-// currency, stripe_price_id — are written on INSERT only, because those tables
-// are preserved and an upsert over a live row is a rollback to whenever the
-// function's literals were last edited (MESITA-1179). So a reset does NOT
-// restore factory thresholds or prices: a drifted one is a migration, never a
-// trip through this button.
+// auth accounts, the app_config admin-config singleton (Enricher / Memo /
+// Discovery / Reservations / Models / Agents), consumer_code_counter, and the
+// three place vocabularies (place_categories, place_families, place_tags),
+// which the SQL function re-seeds after the wipe.
 //
 // Three guards before anything runs:
 //   1. Caller's JWT identity — email OR phone — must be in

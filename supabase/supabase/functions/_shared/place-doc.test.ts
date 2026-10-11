@@ -47,48 +47,16 @@ Deno.test("validateProfilePatch: rejects `name` too", () => {
   assertEquals(res.error, "unknown profile field: name");
 });
 
-// The four acceptance intent bits were legalized 2026-08-29 (Pato gate: the
-// Partner tab toggles are their writer, the Promotion score their reader).
-// They stay PLACES-ONLY: the profiles_update trigger predates the columns
-// and would silently drop them, so the profiles door refuses loudly.
-Deno.test("validatePlaceProfilePatch: accepts the four acceptance intent bits as booleans", () => {
-  const res = validatePlaceProfilePatch({
-    mesita_pay_enabled: true,
-    credits_enabled: false,
-    pickup_orders_enabled: true,
-    delivery_orders_enabled: false,
-  });
-  assert(res.ok);
-});
-
-Deno.test("validatePlaceProfilePatch: rejects a non-boolean intent bit", () => {
-  const res = validatePlaceProfilePatch({ mesita_pay_enabled: "yes" });
-  assert(!res.ok);
-  assertEquals(res.error, "mesita_pay_enabled must be a boolean");
-});
-
-Deno.test("validateProfilePatch: refuses intent bits — place_profiles-only keys", () => {
-  const pay = validateProfilePatch({ mesita_pay_enabled: true });
-  assert(!pay.ok);
-  assertEquals(
-    pay.error,
-    'mesita_pay_enabled writes through table "place_profiles" only — ' +
-      "the profiles trigger would silently drop it",
-  );
-  const pickup = validateProfilePatch({ pickup_orders_enabled: true });
-  assert(!pickup.ok);
-});
-
-// #1395 added these two to PLACE_PROFILE_PATCH_KEYS without a checkPlaceProfileField branch
-// — the door rejected every patch carrying them ("unknown place field"),
-// which would have aborted the contents publish and the create door-write
-// after the 2026-08-29 redeploy sweep. This pins the repair.
-Deno.test("validatePlaceProfilePatch: accepts orders_enabled / reservations_enabled (the #1395 regression)", () => {
-  const res = validatePlaceProfilePatch({ orders_enabled: true, reservations_enabled: false });
-  assert(res.ok);
-  const bad = validatePlaceProfilePatch({ orders_enabled: 1 });
+// #1395 added reservations_enabled to PLACE_PROFILE_PATCH_KEYS without a
+// checkPlaceProfileField branch — the door rejected every patch carrying it
+// ("unknown place field"), which would have aborted the contents publish and
+// the create door-write after the 2026-08-29 redeploy sweep. This pins the
+// repair.
+Deno.test("validatePlaceProfilePatch: accepts reservations_enabled as a boolean (the #1395 regression)", () => {
+  assert(validatePlaceProfilePatch({ reservations_enabled: false }).ok);
+  const bad = validatePlaceProfilePatch({ reservations_enabled: 1 });
   assert(!bad.ok);
-  assertEquals(bad.error, "orders_enabled must be a boolean");
+  assertEquals(bad.error, "reservations_enabled must be a boolean");
 });
 
 // ── validatePlaceProfilePatch: accept ──────────────────────────────────────────────
@@ -119,8 +87,8 @@ Deno.test("validatePlaceProfilePatch: accepts business_state = null (Google was 
 });
 
 Deno.test("validatePlaceProfilePatch: accepts star ratings at the boundaries (0 and 5) and null", () => {
-  assert(validatePlaceProfilePatch({ mesita_stars_overall: 0 }).ok);
-  assert(validatePlaceProfilePatch({ mesita_stars_overall: 5 }).ok);
+  assert(validatePlaceProfilePatch({ google_stars_overall: 0 }).ok);
+  assert(validatePlaceProfilePatch({ facebook_rating: 5 }).ok);
   assert(validatePlaceProfilePatch({ google_stars_overall: null }).ok);
 });
 
@@ -145,8 +113,7 @@ Deno.test("validatePlaceProfilePatch: accepts every serving channel or null", ()
   assert(validatePlaceProfilePatch({ reservation_channel: "instagram" }).ok);
   assert(validatePlaceProfilePatch({ reservation_channel: "web" }).ok);
   assert(validatePlaceProfilePatch({ reservation_channel: "none" }).ok);
-  assert(validatePlaceProfilePatch({ order_channel: null, order_target: null }).ok);
-  assert(validatePlaceProfilePatch({ order_channel: "web", order_target: "https://example.com" }).ok);
+  assert(validatePlaceProfilePatch({ reservation_channel: null, reservation_target: null }).ok);
 });
 
 Deno.test("validatePlaceProfilePatch: accepts string-array fields", () => {
@@ -263,7 +230,7 @@ Deno.test("validatePlaceProfilePatch: rejects a business_state outside the close
 });
 
 Deno.test("validatePlaceProfilePatch: rejects a star rating outside 0..5", () => {
-  assert(!validatePlaceProfilePatch({ mesita_stars_food: -0.1 }).ok);
+  assert(!validatePlaceProfilePatch({ google_stars_overall: -0.1 }).ok);
   assert(!validatePlaceProfilePatch({ facebook_rating: 5.1 }).ok);
 });
 
@@ -311,29 +278,8 @@ Deno.test("validatePlacePatch: accepts a state transition within the closed enum
   assert(validatePlacePatch({ state: "pending_verification" }).ok);
 });
 
-Deno.test("validatePlacePatch: accepts plan + listing_type + rate fields", () => {
-  const res = validatePlacePatch({
-    plan: "pro",
-    listing_type: "partner",
-    welcome_free_rate: 20,
-    free_rate: null,
-  });
-  assert(res.ok);
-});
-
-Deno.test("validatePlacePatch: accepts monthly_promo_cap in the legal set, and null", () => {
-  assert(validatePlacePatch({ monthly_promo_cap: 500 }).ok);
-  assert(validatePlacePatch({ monthly_promo_cap: null }).ok);
-});
-
-Deno.test("validatePlacePatch: accepts strike_count at the boundaries", () => {
-  assert(validatePlacePatch({ strike_count: 0 }).ok);
-  assert(validatePlacePatch({ strike_count: 3 }).ok);
-});
-
-Deno.test("validatePlacePatch: accepts a well-formed check_pin, and null", () => {
-  assert(validatePlacePatch({ check_pin: "123456" }).ok);
-  assert(validatePlacePatch({ check_pin: null }).ok);
+Deno.test("validatePlacePatch: accepts slug + currency together", () => {
+  assert(validatePlacePatch({ slug: "cafe-central", currency: "MXN" }).ok);
 });
 
 Deno.test("validatePlacePatch: accepts the content_state ladder", () => {
@@ -354,32 +300,14 @@ Deno.test("validatePlacePatch: rejects a state outside the closed enum", () => {
   assert(!validatePlacePatch({ state: "deleted" }).ok);
 });
 
-Deno.test("validatePlacePatch: rejects a rate outside the legal tens grid", () => {
-  assert(!validatePlacePatch({ free_rate: 25 }).ok, "not in {10,20,30,40,50}");
-  assert(!validatePlacePatch({ premium_rate: 70 }).ok, "70 was retired, MESITA-543");
+Deno.test("validatePlacePatch: rejects a content_state outside the ladder", () => {
+  assert(!validatePlacePatch({ content_state: "done" }).ok);
 });
 
-Deno.test("validatePlacePatch: rejects a monthly_promo_cap outside the legal set", () => {
-  assert(!validatePlacePatch({ monthly_promo_cap: 750 }).ok);
-});
-
-Deno.test("validatePlacePatch: rejects strike_count outside 0..3", () => {
-  assert(!validatePlacePatch({ strike_count: 4 }).ok);
-  assert(!validatePlacePatch({ strike_count: -1 }).ok);
-});
-
-Deno.test("validatePlacePatch: rejects a malformed check_pin", () => {
-  assert(!validatePlacePatch({ check_pin: "12345" }).ok, "5 digits");
-  assert(!validatePlacePatch({ check_pin: "abcdef" }).ok, "non-digits");
-});
-
-Deno.test("validatePlacePatch: rejects a discount_cap_cents that is negative", () => {
-  assert(!validatePlacePatch({ discount_cap_cents: -100 }).ok);
-});
-
-Deno.test("validatePlacePatch: rejects null on a NOT NULL boolean/enum", () => {
-  assert(!validatePlacePatch({ segmentation_basic_enabled: null }).ok);
-  assert(!validatePlacePatch({ plan: null }).ok);
+Deno.test("validatePlacePatch: rejects null or empty on a NOT NULL string/enum", () => {
+  assert(!validatePlacePatch({ slug: "" }).ok);
+  assert(!validatePlacePatch({ currency: null }).ok);
+  assert(!validatePlacePatch({ state: null }).ok);
 });
 
 // ── validateProfilePatch ────────────────────────────────────────────────────
@@ -389,7 +317,7 @@ Deno.test("validateProfilePatch: accepts a patch mixing place_profiles and place
     mesita_name: "El Nuevo Nombre",
     category: "cafe",
     state: "active",
-    welcome_free_rate: 20,
+    currency: "MXN",
   });
   assert(res.ok);
 });
@@ -428,7 +356,7 @@ Deno.test("writePlace: an invalid place_profiles patch never reaches the DB", as
 
 Deno.test("writePlace: an invalid places patch never reaches the DB", async () => {
   const admin = unreachableAdmin();
-  const invalidPatch = { strike_count: 9 } as unknown as PlacePatch;
+  const invalidPatch = { content_state: "done" } as unknown as PlacePatch;
   const res = await writePlace(admin, {
     table: "places",
     mode: "update",
@@ -436,7 +364,7 @@ Deno.test("writePlace: an invalid places patch never reaches the DB", async () =
     patch: invalidPatch,
   });
   assert(!res.ok);
-  assertEquals(res.error, "strike_count must be an integer between 0 and 3");
+  assertEquals(res.error, "content_state must be one of queued, generating, ready, failed");
 });
 
 Deno.test("writePlace: refuses to update google_place_id, before validation even runs", async () => {

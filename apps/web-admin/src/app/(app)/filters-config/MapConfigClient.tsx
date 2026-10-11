@@ -1,9 +1,9 @@
 "use client";
 
-// Map hyperparameters — live. Places scope picks one of THREE NESTED SETS
-// (Pato, 2026-09-05): Google Places ⊃ Mesita Enriched Places ⊃ Mesita
-// Partner Places. Closest N of that set; inner membership paints, it does
-// not add pins. Google types live on the Search Sources subpage.
+// Map hyperparameters — live. Places scope picks one of TWO NESTED SETS:
+// Google Places ⊃ Mesita Enriched Places. Closest N of that set; inner
+// membership paints, it does not add pins. Google types live on the Search
+// Sources subpage.
 //
 // MESITA PLACES MEANS CREATED **AND** ENRICHED (Pato, 2026-08-29) — the
 // honest name is Mesita Enriched Places, shortened on the guest's sheet.
@@ -85,19 +85,16 @@ export function MapConfigClient({
             Places sets
           </p>
           <p className="text-muted-foreground mb-1.5 type-meta">
-            Three nested sets: Google Places &sup; Mesita Enriched Places
-            &sup; Mesita Partner Places. The guest picks one on the Filters
-            sheet, by name.
+            Two nested sets: Google Places &sup; Mesita Enriched Places. The
+            guest picks one on the Filters sheet, by name.
           </p>
           <p className="text-muted-foreground type-meta">
             <span className="text-foreground font-semibold">
-              Enrichment gates every Mesita ring
+              Enrichment gates the Mesita ring
             </span>{" "}
-            — a partner has to be enriched to sit inside the enriched one, so
-            an unenriched partner is in neither ring and reads gray until it
-            is enriched. A Created or Requested stub is never a search
-            source. Absent or unknown scope resolves to Mesita Enriched
-            Places, the widest Mesita ring, never the narrowest.
+            — an unenriched place reads gray until it is enriched. A Created
+            or Requested stub is never a search source. Absent or unknown
+            scope resolves to Mesita Enriched Places.
           </p>
         </div>
         <div className="mt-5">

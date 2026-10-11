@@ -40,7 +40,7 @@
 // Callers: admin-web-create-place and consumer-web-create-place
 // (business-web-create-place and the consumer-web-schedule-place-creation
 // compat alias were retired in MESITA-2090). All create IMMEDIATELY (MESITA-127/128 dropped the staggered
-// queue); only auth, dedupe copy, and response shaping differ per EF.
+// queue); only auth and response shaping differ per EF.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
@@ -96,8 +96,6 @@ export async function createMinimalPlace(opts: {
   // The product caller's EF name — recorded as place_research.created_by.
   callerName: string;
   googlePlaceId: string;
-  // Caller-specific copy for the 409 (e.g. the business app adds claim advice).
-  dedupeError?: string;
   // true (default): seed Enricher from the on_create row. false: mint the
   // ugly profile and stop — votes (or admin Enrich) start the queue.
   queueEnrich?: boolean;
@@ -120,7 +118,7 @@ export async function createMinimalPlace(opts: {
   // guard; gating here keeps a duplicate click cheap. ──
   const { data: existing } = await admin
     .from("profiles")
-    .select("id, slug, name, state, listing_type")
+    .select("id, slug, name, state")
     .eq("google_place_id", googlePlaceId)
     .maybeSingle();
   if (existing) {
@@ -130,7 +128,7 @@ export async function createMinimalPlace(opts: {
       body: {
         ok: false,
         code: "place_already_exists",
-        error: opts.dedupeError ?? "This place is already on Mesita.",
+        error: "This place is already on Mesita.",
         existing,
       },
     };

@@ -48,7 +48,9 @@
 //
 // State transitions (reservation_state enum): pending → confirmed |
 // declined | unreachable | unresolved. Engine crashes leave state alone and
-// park attempts_state='error' with the reason in last_call_state.
+// park attempts_state='error' with the reason in last_call_state. Every
+// verdict the guest must hear about — those four, plus a counter-offer —
+// also writes a Me › Notifications row (_shared/reservation-notification.ts).
 //
 // Auth: verify_jwt = true + requireInternalCaller — internal callers only.
 //
@@ -104,6 +106,10 @@ import {
   writeReservation,
 } from "../_shared/reservation-doc.ts";
 import { rowPlaceId } from "../_shared/place-id.ts";
+import {
+  notifyReservationOutcome,
+  type ReservationOutcome,
+} from "../_shared/reservation-notification.ts";
 import { esDate, esTime } from "../_shared/es-speak.ts";
 
 // intent: "book" (default) = the two-leg booking run · "callback_retry" =
@@ -859,8 +865,10 @@ async function runIntents(input: {
   /** Old reserved_at when this run MODIFIES a confirmed booking (T3/eng-review). */
   modificationOfIso: string | null;
   guestNotify: "call" | "app";
+  /** Writes the guest's Me › Notifications row; never throws. */
+  notify: (outcome: ReservationOutcome) => Promise<void>;
 }): Promise<void> {
-  const { admin, reservationId, attemptsPlanned, legVars } = input;
+  const { admin, reservationId, attemptsPlanned, legVars, notify } = input;
   // Prior runs' entries stay in the log; this run appends to them.
   const attempts: AttemptEntry[] = [...input.priorAttempts];
   const record = (patch: Record<string, unknown>) =>
@@ -1081,6 +1089,7 @@ async function runIntents(input: {
           ...releaseOldHold,
           last_call_state: `intent ${n}: outcome unknown — not retrying`,
         });
+        await notify("unresolved");
         return;
       }
 
@@ -1121,6 +1130,7 @@ async function runIntents(input: {
               reported.note ? ` (${reported.note})` : ""
             }`.slice(0, 200),
         });
+        await notify("unresolved");
         return;
       }
 
@@ -1151,6 +1161,7 @@ async function runIntents(input: {
           ...releaseOldHold,
           last_call_state: `intent ${n}: no one who books was reached — giving up`,
         });
+        await notify("unreachable");
         return;
       }
 
@@ -1175,6 +1186,7 @@ async function runIntents(input: {
           ),
           last_call_state: `intent ${n}: place confirmed — calling the guest`,
         });
+        await notify("confirmed");
         await guestCall(key, lines.guestLineId, "confirmation", "");
         return;
       }
@@ -1191,6 +1203,7 @@ async function runIntents(input: {
           callback_at: new Date().toISOString(),
           last_call_state: `intent ${n}: place counter-offer — calling the guest`,
         });
+        await notify("counter_offer");
         await guestCall(key, lines.guestLineId, "counter_offer", reported.alternativesText);
         return;
       }
@@ -1208,6 +1221,7 @@ async function runIntents(input: {
           modification_of: null,
           last_call_state: `intent ${n}: place declined — no guest call`,
         });
+        await notify("declined");
         return;
       }
       entry.result = "unresolved";
@@ -1218,6 +1232,7 @@ async function runIntents(input: {
         callback_state: "skipped",
         last_call_state: `intent ${n}: answered, verdict unknown — no guest call`,
       });
+      await notify("unresolved");
       return;
     }
 
@@ -1231,6 +1246,7 @@ async function runIntents(input: {
         attemptsPlanned === 1 ? "" : "s"
       }`,
     });
+    await notify("unreachable");
   } catch (e) {
     if (e instanceof OrphanedRunError) return; // ticket moved on — stop quietly
     // Guarded by run_id directly: if the run was orphaned between the throw
@@ -1282,7 +1298,7 @@ Deno.serve(async (req) => {
   const { data: r, error: rErr } = await admin
     .from("reservation_tickets")
     .select(
-      "id, reference_code, reserved_at, party_size, notes, state, place_id, is_test, place_phone, consumer_phone, attempts_state, attempts, call_attempts, callback_attempts, consumer_confirmed_at, consumer_notify, alternatives, notice_kind, notice_state, notice_attempts, reminder_state, reminder_attempts, outage_retries, modification_of, consumer:consumers(full_name, first_name, last_name, phone)",
+      "id, consumer_id, reference_code, reserved_at, party_size, notes, state, place_id, is_test, place_phone, consumer_phone, attempts_state, attempts, call_attempts, callback_attempts, consumer_confirmed_at, consumer_notify, alternatives, notice_kind, notice_state, notice_attempts, reminder_state, reminder_attempts, outage_retries, modification_of, consumer:consumers(full_name, first_name, last_name, phone)",
     )
     .eq("id", reservationId)
     .maybeSingle();
@@ -1369,11 +1385,12 @@ Deno.serve(async (req) => {
 
   const { data: placeRow } = await admin
     .from("place_profiles")
-    .select("name, phone, reservation_channel, reservation_target, hours, lng")
+    .select("name, photos, phone, reservation_channel, reservation_target, hours, lng")
     .eq("id", placeId)
     .maybeSingle();
   const place = (placeRow ?? null) as {
     name?: string | null;
+    photos?: unknown;
     phone?: string | null;
     reservation_channel?: string | null;
     reservation_target?: string | null;
@@ -1690,6 +1707,15 @@ Deno.serve(async (req) => {
       placeCallCap: cfg.limits.placeCallsPerPlacePerDay,
       modificationOfIso,
       guestNotify,
+      notify: (outcome) =>
+        notifyReservationOutcome(admin, {
+          consumerId: r.consumer_id,
+          reservationId,
+          referenceCode: r.reference_code ?? null,
+          outcome,
+          placeName: place?.name ?? null,
+          placePhotos: place?.photos ?? null,
+        }),
     }),
   );
 

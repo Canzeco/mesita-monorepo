@@ -11,10 +11,6 @@
 // "Mesita has nothing near me". Cutting here, before the blend, is the fix:
 // the slice is then taken from places that already match.
 //
-// It also repairs the BOUGHT lane. Slotting moves a promoting place into every
-// Nth deck position; a client-side cut afterwards deletes those positions at
-// random. Cut first and the slot count is the count the guest actually sees.
-//
 // THE CLIENT STILL FILTERS. This is not redundancy for its own sake — the deck
 // is fetched by a server component before the guest's filters (sessionStorage)
 // are readable, and deployed Expo binaries never send `predicates` at all. So a
@@ -40,15 +36,8 @@
 // last.
 
 import { familiesForPlace } from "./place-taxonomy.ts";
-import { isPlacePromoting, type PromotingFields } from "./place-promoting.ts";
 import { haversineKm } from "./geo.ts";
 import { isOpenAt, isOpenNow } from "./local-time-open.ts";
-import {
-  isMesitaPartnerRow,
-  parsePlacesScope,
-  type MesitaNearbyRow,
-  type PlacesScope,
-} from "./nearby-places.ts";
 
 /** Sunday-first, matching JS `getDay()` and the browser's `DiscoveryWhen`. */
 const DAY_KEYS = [
@@ -60,9 +49,6 @@ const DAY_KEYS = [
   "friday",
   "saturday",
 ] as const;
-
-/** The CONTEXT axis (promos v11). `order` is parked and narrows nothing. */
-export type DeckContext = "any" | "visit" | "order";
 
 export type DeckWhen =
   | { mode: "anytime" }
@@ -92,26 +78,24 @@ function clampReviewFloor(value: unknown): number {
  * pre-MESITA-1153 behaviour and what every deployed Expo binary does.
  *
  * Web (MESITA-1792) sends Family, Places scope, and Google review floor.
- * The retired visit/when/distance fields still cut when a deployed Expo binary
- * posts them.
+ * Places scope cuts nothing here: every row these pools hold is a Mesita row,
+ * and a Mesita row sits in both rings, so only the browser — which also holds
+ * Google stubs — has anything to narrow. The retired when/distance fields
+ * still cut when a deployed Expo binary posts them.
  */
 export type DeckPredicates = {
-  context: DeckContext;
   familyKeys: string[];
   categories: string[];
   maxKm: number | null;
   when: DeckWhen;
-  placesScope: PlacesScope;
   minReviews: number;
 };
 
 export const NO_DECK_PREDICATES: DeckPredicates = {
-  context: "any",
   familyKeys: [],
   categories: [],
   maxKm: null,
   when: { mode: "anytime" },
-  placesScope: "mesita",
   minReviews: 0,
 };
 
@@ -147,19 +131,15 @@ function readWhen(raw: unknown): DeckWhen {
 export function readDeckPredicates(raw: unknown): DeckPredicates {
   if (!raw || typeof raw !== "object") return NO_DECK_PREDICATES;
   const f = raw as Record<string, unknown>;
-  const context: DeckContext =
-    f.context === "visit" || f.context === "order" ? f.context : "any";
   const maxKm =
     typeof f.maxKm === "number" && Number.isFinite(f.maxKm) && f.maxKm > 0
       ? f.maxKm
       : null;
   return {
-    context,
     familyKeys: stringList(f.familyKeys),
     categories: stringList(f.categories),
     maxKm,
     when: readWhen(f.when),
-    placesScope: parsePlacesScope(f.placesScope),
     minReviews: clampReviewFloor(f.minReviews),
   };
 }
@@ -167,12 +147,10 @@ export function readDeckPredicates(raw: unknown): DeckPredicates {
 /** Does this set actually drop rows? Mirrors `hasDiscoveryPredicates`. */
 export function hasDeckPredicates(p: DeckPredicates): boolean {
   return (
-    p.context === "visit" ||
     p.familyKeys.length > 0 ||
     p.categories.length > 0 ||
     p.maxKm !== null ||
     p.when.mode !== "anytime" ||
-    p.placesScope !== "mesita" ||
     p.minReviews > 0
   );
 }
@@ -184,15 +162,7 @@ function matches(
   row: Record<string, unknown>,
   p: DeckPredicates,
   center: DeckCenter,
-  now: Date,
 ): boolean {
-  // Context cuts first, exactly as the bill engine resolves it. `visit` keeps
-  // only places running a live reward; `order` is parked, so it narrows
-  // nothing rather than inventing a remote catalog we do not have.
-  if (p.context === "visit" && !isPlacePromoting(row as unknown as PromotingFields, now)) {
-    return false;
-  }
-
   // What — OR across the two tiers (super-family or concrete category).
   if (p.familyKeys.length > 0 || p.categories.length > 0) {
     const category = typeof row.category === "string" ? row.category : null;
@@ -200,10 +170,6 @@ function matches(
     const families = familiesForPlace(row) as string[];
     const familyHit = p.familyKeys.some((k) => families.includes(k));
     if (!categoryHit && !familyHit) return false;
-  }
-
-  if (p.placesScope === "partners" && !isMesitaPartnerRow(row as MesitaNearbyRow)) {
-    return false;
   }
 
   if (p.minReviews > 0) {
@@ -247,8 +213,7 @@ export function applyDeckPredicates<T extends Record<string, unknown>>(
   rows: T[],
   p: DeckPredicates,
   center: DeckCenter,
-  now: Date = new Date(),
 ): T[] {
   if (!hasDeckPredicates(p)) return rows;
-  return rows.filter((row) => matches(row, p, center, now));
+  return rows.filter((row) => matches(row, p, center));
 }

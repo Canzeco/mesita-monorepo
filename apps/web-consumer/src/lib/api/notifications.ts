@@ -2,8 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
 import { invokeEF } from "./_invoke";
 
-// Me › Notifications. The EF's name predates this screen, and it returns more
-// than the rows; this reader takes the rows alone.
+// Me › Notifications. The EF's name predates this screen.
 
 export type ConsumerNotification =
   Database["public"]["Tables"]["consumer_notifications"]["Row"];

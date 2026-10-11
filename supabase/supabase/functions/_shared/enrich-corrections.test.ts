@@ -1,10 +1,8 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import {
   activeFieldPins,
-  autoApplies,
   carryFieldPins,
   CORRECTABLE_FIELD_COLUMNS,
-  CORRECTION_AUTO_APPLY_FLOOR,
   CORRECTION_PIN_DAYS,
   FIELD_PINS_KEY,
   type FieldPins,
@@ -137,27 +135,7 @@ Deno.test("identity and generated prose are not correctable", () => {
   }
 });
 
-Deno.test("Ojo never auto-applies; the place's own team always does", () => {
-  const base = {
-    placeId: "p",
-    field: "hours" as const,
-    value: null,
-    evidence: "e",
-    observedAt: PAST,
-  };
-  assertEquals(
-    autoApplies({ ...base, source: "ojo", confidence: 1 }),
-    false,
-  );
-  assertEquals(
-    autoApplies({ ...base, source: "business", confidence: 0 }),
-    true,
-  );
-  assertEquals(
-    autoApplies({ ...base, source: "reservationist", confidence: 0.79 }),
-    false,
-  );
-  assertEquals(CORRECTION_AUTO_APPLY_FLOOR.reservationist, 0.8);
+Deno.test("an applied correction outranks the Enricher for 90 days", () => {
   assertEquals(CORRECTION_PIN_DAYS, 90);
 });
 

@@ -16,10 +16,7 @@ export type PlaceProfileRow = {
   category: string | null;
   vibe: string | null;
   price_level: number | null;
-  listing_type: "partner" | "web";
   state: string;
-  fiscal_type: string | null;
-  plan: string | null;
   lat: number | null;
   lng: number | null;
   address: string | null;

@@ -2,7 +2,7 @@
 //
 // Atlas §C: a place or consumer with transaction history is NEVER
 // hard-deleted. Deletion is a state; references stay valid forever (that is
-// what ON DELETE RESTRICT on visit/reservation tickets means). Hard-delete
+// what ON DELETE RESTRICT on reservation tickets means). Hard-delete
 // exists only here, for history-free aggregates, and in admin_reset_database
 // which wipes history WITH the aggregates.
 //
@@ -46,29 +46,16 @@ export type DeleteConsumerResult =
   | { ok: true; mode: "soft" | "hard" }
   | { ok: false; error: string };
 
-async function countBy(
-  admin: SupabaseClient,
-  table: "visit_tickets" | "reservation_tickets",
-  consumerId: string,
-): Promise<{ ok: true; n: number } | { ok: false; error: string }> {
-  const { error, count } = await admin
-    .from(table)
-    .select("id", { count: "exact", head: true })
-    .eq("consumer_id", consumerId);
-  if (error) return { ok: false, error: `${table}_count: ${error.message}` };
-  return { ok: true, n: count ?? 0 };
-}
-
 export async function consumerHasTransactionHistory(
   admin: SupabaseClient,
   consumerId: string,
 ): Promise<{ ok: true; hasHistory: boolean } | { ok: false; error: string }> {
-  const visits = await countBy(admin, "visit_tickets", consumerId);
-  if (!visits.ok) return visits;
-  if (visits.n > 0) return { ok: true, hasHistory: true };
-  const reservations = await countBy(admin, "reservation_tickets", consumerId);
-  if (!reservations.ok) return reservations;
-  return { ok: true, hasHistory: reservations.n > 0 };
+  const { error, count } = await admin
+    .from("reservation_tickets")
+    .select("id", { count: "exact", head: true })
+    .eq("consumer_id", consumerId);
+  if (error) return { ok: false, error: `reservation_tickets_count: ${error.message}` };
+  return { ok: true, hasHistory: (count ?? 0) > 0 };
 }
 
 /** Hide the row and free phone/email so the same person can sign up again. */
@@ -105,7 +92,7 @@ export async function tombstoneDeletedConsumer(
 /**
  * THE blessed consumer delete. History → soft (deleted_at + auth tombstone).
  * History-free → hard-delete auth.users (consumers cascades). Never deletes
- * visit_tickets or reservation_tickets.
+ * reservation_tickets.
  */
 export async function deleteConsumerAccount(
   admin: SupabaseClient,

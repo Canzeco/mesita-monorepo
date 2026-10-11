@@ -178,8 +178,7 @@ Deno.test("a blob from before this change reads back with the new sections defau
   assertEquals(cfg.weights.summary, 1);
   assertEquals(cfg.weights.name, 1);
   assertEquals(cfg.weights.enriched, 1);
-  assertEquals(cfg.weights.partnered, 1);
-  assertEquals(cfg.slotting.everyNth, 7);
+  assertEquals("slotting" in cfg, false);
   // ...and the new sections arrive at their defaults rather than undefined.
   assertEquals(cfg.filters, DISCOVERY_DEFAULTS.filters);
   assertEquals(cfg.engines, DISCOVERY_DEFAULTS.engines);
@@ -254,7 +253,6 @@ Deno.test("normalize folds semantic weight and params onto summary", () => {
   assertEquals(cfg.params.summary.unembedded, 0.15);
   assertEquals(cfg.weights.name, 1);
   assertEquals(cfg.weights.enriched, 1);
-  assertEquals(cfg.weights.partnered, 1);
   const kept = normalizeDiscoveryConfig({
     weights: { semantic: 2, summary: 0.5 },
   });
@@ -476,13 +474,12 @@ Deno.test("googlePull snaps to 20 / 40 / 60 and defaults to one request", () => 
   assertEquals(pull("nonsense"), 20);
 });
 
-Deno.test("name knobs default Fast 5 and Deep 3+3+3+3 on an old blob and clamp", () => {
+Deno.test("name knobs default Fast 5 and Deep 3+3+3 on an old blob and clamp", () => {
   const missing = normalizeDiscoveryConfig({ weights: {}, slotting: {} });
   assertEquals(missing.name, DISCOVERY_DEFAULTS.name);
   assertEquals(missing.name.fast.count, 5);
   assertEquals(missing.name.fast.googleCount, 5);
   assertEquals(missing.name.deep, {
-    partnerCount: 3,
     mesitaCount: 3,
     autoCount: 3,
     googleCount: 3,
@@ -492,13 +489,14 @@ Deno.test("name knobs default Fast 5 and Deep 3+3+3+3 on an old blob and clamp",
   const clamped = normalizeDiscoveryConfig({
     name: {
       fast: { count: 99, supers: { restaurants: false } },
-      deep: { partnerCount: -2, mesitaCount: 7.2, googleCount: 40, autoCount: 0 },
+      deep: { partnerCount: 5, mesitaCount: 7.2, googleCount: 40, autoCount: 0 },
     },
   });
   assertEquals(clamped.name.fast.count, 20);
   assertEquals(clamped.name.fast.supers.restaurants, false);
   assertEquals(clamped.name.fast.supers.cafes_bakeries, true);
-  assertEquals(clamped.name.deep.partnerCount, 0);
+  // The retired Deep partners cap does not survive a read.
+  assertEquals("partnerCount" in clamped.name.deep, false);
   assertEquals(clamped.name.deep.mesitaCount, 7);
   assertEquals(clamped.name.deep.googleCount, 20);
   assertEquals(clamped.name.deep.autoCount, 0);
@@ -516,8 +514,8 @@ Deno.test("the retired partnership/promotion/social weights bind to nothing, but
     weights: { partnership: 2, promotion: 3, social: 4, proximity: 1.5 },
     params: { partnership: {}, promotion: {}, social: {} },
   });
-  // WHAT CHANGED AT MESITA-1858: the weights map is ADDITIVE for one release,
-  // so an unknown key rides along instead of being deleted. That is the whole
+  // WHAT CHANGED AT MESITA-1858: the weights map is ADDITIVE, so an unknown
+  // key rides along instead of being deleted. That is the whole
   // mitigation for the deploy window — web-admin ships on merge, the Edge
   // Functions ship by hand, and in between a whole-blob Save from the old
   // side must not evict a key the new side is about to need.
@@ -534,6 +532,5 @@ Deno.test("the retired partnership/promotion/social weights bind to nothing, but
   assertEquals(Object.hasOwn(cfg.params, "partnership"), false);
   // The replacement axes arrive at their defaults rather than inheriting a number.
   assertEquals(cfg.weights.enriched, DISCOVERY_DEFAULTS.weights.enriched);
-  assertEquals(cfg.weights.partnered, DISCOVERY_DEFAULTS.weights.partnered);
   assertEquals(cfg.weights.proximity, 1.5);
 });

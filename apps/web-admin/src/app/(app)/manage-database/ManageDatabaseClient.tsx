@@ -124,13 +124,12 @@ function ResetCard() {
       </div>
 
       <p className="text-muted-foreground text-sm leading-relaxed">
-        Permanently empties every operational table — places, tickets,
-        reservations, consumers, accounts, invites, verifications, enrichment —
-        deletes every stored image and menu file, and removes every auth account
-        that isn&apos;t an admin.{" "}
+        Permanently empties every operational table — places, reservations,
+        consumers, enrichment — deletes every stored image and menu file, and
+        removes every auth account that isn&apos;t an admin.{" "}
         <strong>Preserved:</strong> admin allowlist, every admin console
-        config, reward payout rules, and the category / tag / class / plan
-        vocabularies. This cannot be undone.
+        config, and the category / tag / family vocabularies. This cannot be
+        undone.
       </p>
 
       <label className="flex flex-col gap-1.5">

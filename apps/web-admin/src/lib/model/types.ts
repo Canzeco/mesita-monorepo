@@ -8,10 +8,9 @@
 // hanging off it, and the note that it "deliberately diverges from the shipped
 // `places` schema — that divergence is the point of the mock era".
 //
-// The mock era ended and the divergence resolved the other way. The
-// organization is deleted: `partnered`, `legal_name`, `rfc`, the payment
-// account and the members are columns and tables on `places` now. Fourteen
-// of the sixteen exports here had no importer at all — a contract for a table
+// The mock era ended and the divergence resolved the other way: the
+// organization is deleted, and nothing it carried survives in the First
+// Stage schema. Fourteen of the sixteen exports here had no importer at all — a contract for a table
 // nobody queries is a vocabulary describing a screen that no longer exists,
 // which is the note `SoonStrips.ts` already carries about entries nobody
 // renders.
@@ -36,11 +35,7 @@ export type PlaceState = "listed";
  *  word, and only one of them is work the owner can do. They are split now:
  *  `unfinished` offers Resume, `in_review` deliberately does not — offering it
  *  reopened a form the owner had already completed, which is a loop, not a
- *  next step.
- *
- *  The account it describes is `place_payment_accounts`, one row per PLACE
- *  (MESITA-1892; it was `organization_payment_accounts`, shared by every place
- *  a holder held). The lifecycle is Stripe's either way. */
+ *  next step. */
 export type PaymentAccountState =
   | "none"
   | "unfinished"

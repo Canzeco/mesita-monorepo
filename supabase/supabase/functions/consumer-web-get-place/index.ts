@@ -4,11 +4,6 @@
 // authority info needed for the detail page (vibe / channels / etc.).
 // Anon-readable but the places RLS policy still gates which rows ship.
 //
-// Also attaches privacy-shaped Mesita review cards (`mesita_visitors`) so
-// private accounts never leak a real name/handle to other guests
-// (MESITA-913). Reviews are read via the service role because ticket_reviews
-// RLS is own-row-only.
-//
 // Caller: consumer. Verb: get. Noun: place. (Per the new <caller>-<verb>-<noun>
 // naming convention.)
 
@@ -23,14 +18,12 @@ import {
 import { PLACE_PUBLIC_COLUMNS as PLACE_PROFILE_COLUMNS } from "../_shared/place-columns.ts";
 import { withFamilyKeys } from "../_shared/place-family-keys.ts";
 import { resolvePlaceTags } from "../_shared/tags.ts";
-import { mapTicketReviewsToVisitors } from "../_shared/mesita-review-visitors.ts";
 import {
   loadRequestThreshold,
   placeRequestState,
 } from "../_shared/place-requests.ts";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const MESITA_REVIEW_LIMIT = 24;
 
 type Body = { id?: string; slug?: string };
 
@@ -39,8 +32,8 @@ Deno.serve(async (req) => {
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;
 
-  // Service role is required for the privacy-shaped review join; place browse
-  // still goes through the anon client + profiles RLS.
+  // Service role is required for the place_requests and threshold reads;
+  // place browse still goes through the anon client + profiles RLS.
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
 
@@ -79,24 +72,6 @@ Deno.serve(async (req) => {
   // direct assertion.
   const placeId = (data as unknown as { id: string }).id;
   const admin = adminClient(envRes.env);
-  const reviewsRes = await admin
-    .from("ticket_reviews")
-    .select(
-      "food, service, ambience, value, comments, created_at, " +
-        "consumer:consumers(first_name, last_name, full_name, instagram_handle, " +
-        "privacy_public, class_key, instagram_followers_count)",
-    )
-    .eq("place_id", placeId)
-    .order("created_at", { ascending: false })
-    .limit(MESITA_REVIEW_LIMIT);
-
-  // Best-effort: a reviews lookup failure must not 500 the place detail —
-  // the aggregates on the place row still render; the cards just stay empty.
-  const mesita_visitors = reviewsRes.error
-    ? []
-    : mapTicketReviewsToVisitors(
-      (reviewsRes.data ?? []) as unknown as Parameters<typeof mapTicketReviewsToVisitors>[0],
-    );
 
   // `name` is the generated display column (mesita_name → google_name); raw
   // google_name and mesita_name stay on the payload for clients that need them.
@@ -122,7 +97,6 @@ Deno.serve(async (req) => {
   });
   const place = {
     ...row,
-    mesita_visitors,
     ...request,
   };
 

@@ -34,16 +34,14 @@ describe("Discovery matrix", () => {
       expect(html).toContain(`Mesita Places Browse Search · ${mode} · off`);
       expect(html).not.toContain(`Mesita Places Browse Search · ${mode} · on`);
     }
-    // THE THREE NESTED PLACE TYPES. Mesita Listed retired: listing is a row
+    // THE TWO NESTED PLACE TYPES. Mesita Listed retired: listing is a row
     // existing, which no mode gates on — enrichment is the gate that runs.
     expect(html).not.toContain("Mesita Listed");
     expect(html).toContain("Google Places · Favorites · required");
     expect(html).toContain("Mesita Enriched Places · Favorites · not required");
-    expect(html).toContain("Mesita Partnered Places · Favorites · not required");
+    expect(html).not.toContain("Mesita Partnered Places");
     expect(html).toContain("Mesita Enriched Places · Map · required");
-    expect(html).toContain("Mesita Partnered Places · Map · required");
     expect(html).toContain("Mesita Enriched Places · Feed · required");
-    expect(html).toContain("Mesita Partnered Places · Feed · not required");
     expect(html).toContain("Mesita Enriched Places · Scroll · required");
     // ONE GRAMMAR, IN INK. Fill says on, a hollow outline says off, on every
     // band — no hue encodes a boolean anywhere in this table.

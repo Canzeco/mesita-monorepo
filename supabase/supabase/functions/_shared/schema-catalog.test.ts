@@ -9,15 +9,10 @@
 // visibility, create-quota concurrency, review->rollup math — were left to
 // the PRs that build the aggregate validators.
 //
-// Guard test 2's THREE legs — "closed-key-sets (class, function, channel)" —
-// are now all covered, split across two files. Function (FUNCTION_STATE_KEYS
-// below) and channel (ChannelSet alias test below, plus channels.test.ts's
-// tiktok/tripadvisor/yelp retirement coverage) live here. The CLASS leg
-// (MESITA-1282) lives in consumer-doc.test.ts instead, next to the
-// validator it tests — consumer-doc.ts's class_key/invitation_class_key
-// validation is now the real closed set Postgres already enforces via FK
-// (consumers_tier_key_fkey -> classes(key)), not the "any non-empty string"
-// this file used to flag as an open gap.
+// Guard test 2 names three closed key sets — "class, function, channel".
+// Function (FUNCTION_STATE_KEYS below) and channel (ChannelSet alias test
+// below, plus channels.test.ts's tiktok/tripadvisor/yelp retirement coverage)
+// live here. There is no class set left to close: a consumer carries no class.
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { CRENUP_EXTRAS, CRENUP_LADDER, type CrenupStep } from "./crenup-ladder.ts";
@@ -26,14 +21,12 @@ import {
   FUNCTION_STATE_KEYS,
   FunctionStateMapSchema,
   foldFunctionStateMap,
-  isBillingState,
   isFunctionState,
   isMoney,
   operatorFunctionStates,
   crenupBlockedAtFromMap,
   crenupHighWaterFromMap,
   toFunctionState,
-  type BillingState,
   type ChannelSet,
   type ChannelSetKey,
   type FunctionState,
@@ -110,30 +103,6 @@ Deno.test("isMoney: rejects a float, a missing currency, and a non-object", () =
   assert(!isMoney({ cents: 100000 }), "missing currency");
   assert(!isMoney(null));
   assert(!isMoney("MX$1,000"));
-});
-
-// ── BillingState — the shape stripe-billing.ts's private PlanRow already is ──
-
-Deno.test("isBillingState: accepts the project_plans / consumer_plans row shape", () => {
-  const projectPlanRow: BillingState = {
-    price_cents: 100000,
-    currency: "MXN",
-    stripe_price_id: "price_abc123",
-  };
-  assert(isBillingState(projectPlanRow));
-
-  const consumerPlanRow: BillingState = {
-    price_cents: 5000,
-    currency: "MXN",
-    stripe_price_id: null, // not yet self-provisioned
-  };
-  assert(isBillingState(consumerPlanRow));
-});
-
-Deno.test("isBillingState: rejects a wrong-typed stripe_price_id", () => {
-  assert(
-    !isBillingState({ price_cents: 100000, currency: "MXN", stripe_price_id: 123 }),
-  );
 });
 
 // ── FunctionState ────────────────────────────────────────────────────────

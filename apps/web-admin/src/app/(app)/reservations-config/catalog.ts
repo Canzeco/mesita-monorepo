@@ -47,9 +47,9 @@ export type ReservationsConfig = {
   attempts: number;
   /**
    * TESTING ONLY. While on, `consumer-web-create-reservation` skips the
-   * per-class monthly reservation cap for EVERY consumer, so a tester can keep
-   * booking past the Standard limit. Off in any real run — it hides the exact
-   * paywall the Premium upsell depends on.
+   * monthly reservation cap (_shared/reservation-cap.ts) for EVERY consumer,
+   * so a tester can keep booking past it. Off in any real run — the cap is
+   * the abuse guard on metered calls.
    */
   unlimitedReservations: boolean;
   /**

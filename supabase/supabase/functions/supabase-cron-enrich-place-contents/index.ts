@@ -70,7 +70,6 @@ import {
 } from "../_shared/place-taxonomy.ts";
 import { fetchPlaceTags, inferPlaceTags } from "../_shared/tags.ts";
 import { inferPlaceReservationsLikely } from "../_shared/infer-place-reservations.ts";
-import { placeHasOrderCatalog } from "../_shared/place-profile-actions.ts";
 import { loadModelsConfig } from "../_shared/models-config.ts";
 import {
   coerceReservationsPolicy,
@@ -292,10 +291,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
     // place that answered "Not". While the channel is NULL this is the only
     // answer there is, which is what a newly discovered place needs.
     place.reservations_enabled = reservationsLikely;
-    sources.actions = {
-      orders_enabled: placeHasOrderCatalog(place),
-      reservations_enabled: reservationsLikely,
-    };
+    sources.actions = { reservations_enabled: reservationsLikely };
 
     // §8.4 — Description owns the WORDS (function 7). Mesita Name goes
     // through the one door (gate D2: NULL / google-copy / the door's own last
@@ -335,14 +331,6 @@ serveEnrichStage("contents", async (admin, env, row) => {
         };
       }
     }
-  }
-  // Order gate follows menu/catalog — refresh even when synthesis is skipped.
-  place.orders_enabled = placeHasOrderCatalog(place);
-  if (!sources.actions) {
-    sources.actions = { orders_enabled: place.orders_enabled };
-  } else {
-    (sources.actions as Record<string, unknown>).orders_enabled =
-      place.orders_enabled;
   }
   sources.cost = ledger.snapshot();
 
@@ -610,9 +598,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
     contentPieces.description = aboutWritten
       ? stepDone(
         `Presentation written; category “${place.category ?? "n/a"}”, ${inferredTags.length} tag(s); ` +
-          `order ${place.orders_enabled ? "on" : "off"}, reserve ${
-            place.reservations_enabled ? "on" : "off"
-          }; Mesita Name + Semantic Summary inferred.`,
+          `reserve ${place.reservations_enabled ? "on" : "off"}; Mesita Name + Semantic Summary inferred.`,
       )
       : stepFailed("Synthesis ran but no Presentation was persisted.");
   }

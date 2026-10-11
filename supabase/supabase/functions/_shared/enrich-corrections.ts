@@ -6,13 +6,11 @@
 // hours from Google: the agent's knowledge is better than every source the
 // Enricher can reach, and a re-enrich would destroy it.
 //
-// So agent feedback is not a trigger. It is a PROPOSAL — a field, a value, who
-// observed it, how sure they are, and what they saw — which either applies
-// itself (high confidence, trusted source) or queues for a human in the
-// Verification Queue. Applying one PINS the field, and the persist steps must
-// skip a pinned field, or the next scheduled run silently reverts the
-// correction and every call is wrong again. That loop is the whole reason this
-// file exists.
+// So agent feedback is not a trigger. It is a CORRECTION — a field, a value,
+// who observed it and how sure they are. Applying one PINS the field, and the
+// persist steps must skip a pinned field, or the next scheduled run silently
+// reverts the correction and every call is wrong again. That loop is the whole
+// reason this file exists.
 //
 // Deliberately NOT modelled here: anything that re-fetches. That is the trigger
 // matrix in enrich-triggers.ts, and the two must not merge.
@@ -25,9 +23,8 @@
 // obeyed today.
 //
 // ━━━ WHAT IS NOT ━━━
-// The proposal TABLE and reservationist/Ojo writers land in MESITA-2029.
-// Business-console edits now write pins via `field-correction-writer.ts`.
-// Low-confidence proposals queue in `place_field_proposals` (pending admin UI).
+// Reservationist and Ojo writers. Business-console edits write pins via
+// `field-correction-writer.ts` (MESITA-2029).
 //
 // Order is on purpose. The guard ships FIRST because the alternative — a writer
 // landing while persist still clobbers — produces corrections that revert
@@ -88,39 +85,8 @@ const CORRECTABLE_FIELDS = Object.keys(
   CORRECTABLE_FIELD_COLUMNS,
 ) as CorrectableField[];
 
-export type FieldProposal = {
-  placeId: string;
-  field: CorrectableField;
-  /** Serialized so one shape carries hours-json and plain strings alike. */
-  value: unknown;
-  source: CorrectionSource;
-  /** 0–1. Below the source's threshold the proposal queues instead of applying. */
-  confidence: number;
-  /** What was actually observed — a call snippet, a ticket id, a screenshot ref. */
-  evidence: string;
-  observedAt: string;
-};
-
-/**
- * Auto-apply floor per source. A call with the place outranks a guest report on
- * hours because the place IS the authority on its own hours; Ojo reads pixels,
- * so it proposes and a human decides.
- */
-export const CORRECTION_AUTO_APPLY_FLOOR: Record<CorrectionSource, number> = {
-  business: 0.0,
-  admin: 0.0,
-  reservationist: 0.8,
-  consumer_report: 0.95,
-  ojo: 1.01, // above 1 = never auto-applies, always queues
-};
-
 /** How long an applied correction outranks the Enricher for that field. */
 export const CORRECTION_PIN_DAYS = 90;
-
-/** True when a proposal may write straight through. */
-export function autoApplies(p: FieldProposal): boolean {
-  return p.confidence >= CORRECTION_AUTO_APPLY_FLOOR[p.source];
-}
 
 // ━━━ Pin storage ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 //
@@ -146,7 +112,7 @@ export const FIELD_PINS_KEY = "pins";
 /** Per-field provenance for an applied correction. */
 export type FieldPin = {
   source: CorrectionSource;
-  /** Confidence of the proposal that won the field. */
+  /** Confidence of the correction that won the field. */
   confidence: number;
   /** ISO. After this instant the Enricher owns the field again. */
   pinnedUntil: string;

@@ -1,15 +1,12 @@
 // Map catalog = closest N of the selected Places set, then paint.
-// THREE NESTED SETS (Pato, 2026-09-05):
-//   Google Places ⊃ Mesita Enriched Places ⊃ Mesita Partner Places
-//   partners  the closest N Mesita rows that are enriched AND pay.
-//   mesita    the closest N enriched Mesita rows, partners among them.
-//             No Google Nearby.
+// TWO NESTED SETS:
+//   Google Places ⊃ Mesita Enriched Places
+//   mesita    the closest N enriched Mesita rows. No Google Nearby.
 //   google    the closest N Nearby hits too. A hit that is Mesita is
 //             painted, not added as a second pin. Max pins = N, never
 //             the sum of the lanes.
-// ENRICHMENT GATES EVERY MESITA RING, which is what makes the chain a
-// containment rather than a drawing: a partner that is not enriched is in
-// neither Mesita ring and reads gray until it is.
+// ENRICHMENT GATES THE MESITA RING: a Created or Requested stub is not in
+// it, and reads gray until it is enriched.
 // N is the GUEST's How many (Pato, 2026-08-29) — the max number is asked
 // once, on the consumer Filters sheet, never again in the console.
 // Empty Nearby (quota skip) falls back to the Mesita set. Only the Google
@@ -22,7 +19,6 @@ import {
   classifyGoogleError,
   stripPlacesPrefix,
 } from "./google-places.ts";
-import { isPaidPlan } from "./membership-enforcement-helpers.ts";
 import {
   haversineKm,
   NEARBY_RADIUS_KM,
@@ -449,8 +445,6 @@ export type MesitaNearbyRow = {
   google_place_id?: string | null;
   lat?: number | null;
   lng?: number | null;
-  plan?: string | null;
-  partner?: boolean | null;
 };
 
 export type NearbyLaneCaps = {
@@ -463,27 +457,27 @@ export type NearbyMerged<T> =
   | { kind: "google"; hit: NearbyHit };
 
 /**
- * THREE NESTED SETS (Pato, 2026-09-05):
+ * TWO NESTED SETS:
  *
- *   Google Places  ⊃  Mesita Enriched Places  ⊃  Mesita Partner Places
- *      gray                    red                     yellow
+ *   Google Places  ⊃  Mesita Enriched Places
+ *      gray                    red
  *
  * The wire carries the set by NAME, never by an ordinal. Two clients post
  * no scope at all — mobile Search and the web Pay picker — so the absent
  * value has to be safe on its own, and an ordinal whose meaning moved
  * would have narrowed both of them silently. Unknown and absent alike
- * resolve to `mesita`: the widest Mesita ring, never the narrowest.
+ * resolve to `mesita`.
  *
  * Legacy numerics keep their OLD shipped meanings (1 = Mesita, 2 = Google,
  * 3 = Google) so a client deployed before this EF still gets the set it
  * asked for. Vercel and the Edge Functions deploy on separate paths, so
  * that skew window is real, not hypothetical.
  */
-export type PlacesScope = "partners" | "mesita" | "google";
+export type PlacesScope = "mesita" | "google";
 
 export const PLACES_SCOPE_DEFAULT: PlacesScope = "mesita";
 
-const PLACES_SCOPES: readonly PlacesScope[] = ["partners", "mesita", "google"];
+const PLACES_SCOPES: readonly PlacesScope[] = ["mesita", "google"];
 
 export function parsePlacesScope(value: unknown): PlacesScope {
   if (typeof value === "string") {
@@ -531,34 +525,17 @@ export function lanesForPlacesScope(
   };
 }
 
-/** Mesita Places on Search: enriched profile, not a Created stub. */
+/**
+ * Mesita Places on Search: enriched profile, not a Created stub. EVERY scope
+ * admits exactly these Mesita rows — the Google scope keeps the same ones, so
+ * a wider ring never shows FEWER Mesita places, it only adds Google ones
+ * alongside them. "Red is EARNED by enrichment" (Pato, 2026-09-05).
+ */
 export function isEnrichedListedRow(row: {
   content_state?: string | null;
   enriched_at?: string | null;
 }): boolean {
   return row.content_state === "ready" || Boolean(row.enriched_at);
-}
-
-/**
- * ENRICHMENT GATES EVERY MESITA RING (Pato, 2026-09-05). The sets are
- * strictly nested, so a partner has to clear the enriched ring before it
- * can sit inside it — this used to keep any partner regardless, which made
- * `Partner ⊂ Enriched` false and left the diagram asserting a containment
- * the predicate refused. An unenriched partner now reads gray until it is
- * enriched, which is what "Red is EARNED by enrichment" already said.
- *
- * The Google scope keeps the same Mesita rows: a wider ring never shows
- * FEWER Mesita places, it only adds Google ones alongside them.
- */
-export function keepListedForScope(
-  row: MesitaNearbyRow & {
-    content_state?: string | null;
-    enriched_at?: string | null;
-  },
-  scope: PlacesScope = PLACES_SCOPE_DEFAULT,
-): boolean {
-  if (!isEnrichedListedRow(row)) return false;
-  return scope === "partners" ? isMesitaPartnerRow(row) : true;
 }
 
 /** Place IDs already on a listed row — paint helpers, not a second query. */
@@ -578,12 +555,6 @@ export function dropKnownMesitaGoogleHits<T extends { placeId: string }>(
 ): T[] {
   if (known.size === 0) return google;
   return google.filter((hit) => !known.has(hit.placeId));
-}
-
-export function isMesitaPartnerRow(row: MesitaNearbyRow): boolean {
-  if (row.partner === true) return true;
-  if (row.partner === false) return false;
-  return isPaidPlan(row.plan);
 }
 
 export function mergeNearbyCatalog<T extends MesitaNearbyRow>(

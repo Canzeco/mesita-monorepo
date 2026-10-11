@@ -153,10 +153,9 @@ export const PRODUCT_LABEL: Record<ProductKey, string> = {
   // makes Physical Terminal a different product rather than the same one with
   // hardware.
   //
-  // THE KEY STAYS `pay`, deliberately. `/places/<id>/pay`, `PLACE_TABS.pay`
-  // and `place_profiles.mesita_pay_enabled` are PERSISTED spellings — an
-  // address in a bookmark, a column in the database — and renaming a
-  // persisted key to match a label is how a rename costs a migration and a
+  // THE KEY STAYS `pay`, deliberately. `/places/<id>/pay` and
+  // `PLACE_TABS.pay` are PERSISTED spellings — an address in a bookmark — and
+  // renaming a persisted key to match a label is how a rename costs a
   // redirect for nothing an operator can see.
   //
   // WHERE THE RENAME STOPS, AND WHY IT STOPS THERE. Two registers keep the

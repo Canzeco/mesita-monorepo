@@ -36,81 +36,12 @@ Deno.test("validateConsumerPatch: accepts a well-formed profile patch", () => {
   assert(res.ok);
 });
 
-Deno.test("validateConsumerPatch: accepts privacy flags alone", () => {
-  const res = validateConsumerPatch({
-    privacy_public: false,
-    privacy_show_saves: true,
-  });
-  assert(res.ok);
-});
-
 Deno.test("validateConsumerPatch: accepts code in canonical 0000-0000 format, and null", () => {
   assert(validateConsumerPatch({ code: "1234-5678" }).ok);
   assert(validateConsumerPatch({ code: null }).ok);
 });
 
-Deno.test("validateConsumerPatch: accepts the class slot when origin is 'invitation' with null expiry", () => {
-  const res = validateConsumerPatch({
-    class_key: "diamond",
-    class_origin: "invitation",
-    class_expires_at: null,
-  });
-  assert(res.ok);
-});
-
-Deno.test("validateConsumerPatch: accepts the class slot when origin is default and expiry is null", () => {
-  const res = validateConsumerPatch({
-    class_key: "bronze",
-    class_origin: "default",
-    class_expires_at: null,
-    plan: "free",
-  });
-  assert(res.ok);
-});
-
-// Guard test 2's class leg (MESITA-1282, split from MESITA-1247's guard
-// test 2 "closed-key-sets: class, function, channel"). class_key is FK-
-// enforced by Postgres (consumers_tier_key_fkey -> classes(key)) against the
-// LEGACY v11 bridge keys — verified live: public.classes holds exactly
-// standard/influencer/premium/aura today. Mirrors ChannelSet/
-// FUNCTION_STATE_KEYS's accept-every-legal-reject-one-unknown pattern.
-Deno.test("validateConsumerPatch: class_key accepts every metal, rejects an unknown one", () => {
-  for (const key of ["bronze", "silver", "gold", "diamond"]) {
-    assert(validateConsumerPatch({ class_key: key }).ok, `${key} should be legal`);
-  }
-  const res = validateConsumerPatch({ class_key: "standard" });
-  assert(!res.ok, "legacy keys are no longer stored");
-});
-
-Deno.test("invitation_class_key: same closed set as class_key, plus null to clear", () => {
-  for (const key of ["bronze", "silver", "gold", "diamond"]) {
-    assert(
-      validateConsumerPatch({ invitation_class_key: key, invitation_granted_at: "2026-08-23T00:00:00Z" }).ok,
-      `${key} should be legal`,
-    );
-  }
-  assert(validateConsumerPatch({ invitation_class_key: null, invitation_granted_at: null }).ok);
-  const res = validateConsumerPatch({
-    invitation_class_key: "aura",
-    invitation_granted_at: "2026-08-23T00:00:00Z",
-  });
-  assert(!res.ok, "aura is a retired class_key");
-});
-
-Deno.test("validateConsumerPatch: accepts a matched invitation grant and a matched revoke", () => {
-  const grant = validateConsumerPatch({
-    invitation_class_key: "diamond",
-    invitation_granted_at: "2026-08-23T00:00:00Z",
-  });
-  const revoke = validateConsumerPatch({
-    invitation_class_key: null,
-    invitation_granted_at: null,
-  });
-  assert(grant.ok);
-  assert(revoke.ok);
-});
-
-Deno.test("validateConsumerPatch: accepts the Instagram door fact (handle + followers)", () => {
+Deno.test("validateConsumerPatch: accepts the Instagram fact (handle + followers)", () => {
   const res = validateConsumerPatch({
     instagram_handle: "cafe.central",
     instagram_followers_count: 5000,
@@ -166,40 +97,6 @@ Deno.test("validateConsumerPatch: rejects a negative or fractional follower coun
   assert(!validateConsumerPatch({ instagram_followers_count: 12.5 }).ok);
 });
 
-Deno.test("validateConsumerPatch: rejects a class_origin outside the closed set", () => {
-  const res = validateConsumerPatch({ class_origin: "gifted" });
-  assert(!res.ok);
-  const sub = validateConsumerPatch({ class_origin: "subscription" });
-  assert(!sub.ok, "subscription is a plan, not a class origin");
-});
-
-Deno.test("validateConsumerPatch: rejects a non-null class_expires_at", () => {
-  const res = validateConsumerPatch({
-    class_origin: "instagram",
-    class_expires_at: "2026-09-01T00:00:00Z",
-  });
-  assert(!res.ok);
-});
-
-Deno.test("validateConsumerPatch: rejects an invitation pair that's half-set", () => {
-  const halfGrant = validateConsumerPatch({
-    invitation_class_key: "diamond",
-    invitation_granted_at: null,
-  });
-  const halfRevoke = validateConsumerPatch({
-    invitation_class_key: null,
-    invitation_granted_at: "2026-08-23T00:00:00Z",
-  });
-  assert(!halfGrant.ok);
-  assert(!halfRevoke.ok);
-});
-
-Deno.test("validateConsumerPatch: accepts plan free|premium", () => {
-  assert(validateConsumerPatch({ plan: "free" }).ok);
-  assert(validateConsumerPatch({ plan: "premium" }).ok);
-  assert(!validateConsumerPatch({ plan: "pro" }).ok);
-});
-
 Deno.test("validateConsumerPatch: rejects a malformed birthday", () => {
   assert(!validateConsumerPatch({ birthday: "05/14/2000" }).ok);
   assert(!validateConsumerPatch({ birthday: "not-a-date" }).ok);
@@ -234,8 +131,7 @@ Deno.test("writeConsumer: an invalid patch never reaches the DB", async () => {
   assertEquals(res.error, "sex must be 'male', 'female', or null");
 });
 
-// Minimal Supabase mock recording the last insert/update call, matching the
-// fakeAdmin() shape stripe-billing.test.ts already uses for this codebase.
+// Minimal Supabase mock recording the last insert/update call.
 function fakeConsumerAdmin(opts: { row?: Record<string, unknown>; errorCode?: string } = {}): {
   admin: SupabaseClient;
   calls: { op: "insert" | "update"; value: Record<string, unknown> }[];

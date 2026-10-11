@@ -93,16 +93,15 @@ const DISCOVERY_MODE_ENTITIES: Record<
 };
 
 /**
- * THE THREE NESTED PLACE TYPES, in the code's own words: `nearby-places.ts`
- * opens with `Google Places ⊃ Mesita Enriched Places ⊃ Mesita Partner
- * Places`, and `PlacesScope = "partners" | "mesita" | "google"` IS this band.
- * `Mesita Listed` retired at MESITA-1856: listing is a row existing, which no
- * mode gates on — enrichment is the gate every mode actually runs.
+ * THE TWO NESTED PLACE TYPES, in the code's own words: `nearby-places.ts`
+ * opens with `Google Places ⊃ Mesita Enriched Places`, and
+ * `PlacesScope = "mesita" | "google"` IS this band. `Mesita Listed` retired
+ * at MESITA-1856: listing is a row existing, which no mode gates on —
+ * enrichment is the gate every mode actually runs.
  */
 export const DISCOVERY_POOLS = [
   { key: "google", label: "Google Places" },
   { key: "enriched", label: "Mesita Enriched Places" },
-  { key: "partner", label: "Mesita Partnered Places" },
 ] as const;
 
 export type DiscoveryPoolKey = (typeof DISCOVERY_POOLS)[number]["key"];
@@ -110,13 +109,12 @@ export type DiscoveryPoolKey = (typeof DISCOVERY_POOLS)[number]["key"];
 /**
  * Filled square = the mode requires that ring. Hollow = not a gate.
  *
- * Relabelling alone would have left two of the three rows dead for every
- * mode, so the mapping moved with the labels (MESITA-1856):
+ * Relabelling alone would have left rows dead for every mode, so the mapping
+ * moved with the labels (MESITA-1856):
  *
- *   Map        all three — it is the one mode whose GUEST picks the ring,
- *              and `keepListedForScope` refuses an unenriched row before it
- *              even reads the scope, so Enriched is Map's floor and
- *              Partnered its narrowest ring.
+ *   Map        both — it is the one mode whose GUEST picks the ring, and
+ *              `isEnrichedListedRow` refuses an unenriched row in either
+ *              scope, so Enriched is Map's Mesita ring.
  *   Catalog    Google + Enriched. `filters.requireReady` defaults true and
  *   Swipe      Scroll hardcodes it; requireReady IS the enrichment gate —
  *              discovery-filters turns it into `content_state = 'ready'`.
@@ -130,7 +128,7 @@ const DISCOVERY_MODE_POOLS: Record<
   readonly DiscoveryPoolKey[]
 > = {
   word: [],
-  map: ["google", "enriched", "partner"],
+  map: ["google", "enriched"],
   catalog: ["google", "enriched"],
   swipe: ["google", "enriched"],
   chat: [],
@@ -225,13 +223,12 @@ const DISCOVERY_MODE_SIGNALS: Record<
   readonly SignalKey[]
 > = {
   word: ["name"],
-  map: ["category", "proximity", "timing", "enriched", "partnered", "popularity"],
+  map: ["category", "proximity", "timing", "enriched", "popularity"],
   catalog: [
     "category",
     "proximity",
     "timing",
     "enriched",
-    "partnered",
     "popularity",
     "randomness",
   ],
@@ -240,7 +237,6 @@ const DISCOVERY_MODE_SIGNALS: Record<
     "proximity",
     "timing",
     "enriched",
-    "partnered",
     "popularity",
     "randomness",
   ],
@@ -251,7 +247,6 @@ const DISCOVERY_MODE_SIGNALS: Record<
     "proximity",
     "timing",
     "enriched",
-    "partnered",
     "popularity",
   ],
   favorites: [],
@@ -263,19 +258,11 @@ const DISCOVERY_MODE_SIGNALS: Record<
  * provably cannot reorder the result.
  *
  * Map / Randomness  a pin field. A shuffled pin is a moved pin.
- * Map / Partnered   Map prices partnership by SPLITTING LANES, not by an
- *                   exponent: `reorderListedLanes` (EF `_shared/
- *                   nearby-lineup.ts`) splits listed rows on
- *                   `isMesitaPartnerRow` and blends each lane independently,
- *                   so `partnered()` is a constant factor inside a lane and
- *                   `s^w` over a constant cannot move a row. The EF twin's
- *                   entry carries the full argument. Editable here, it was a
- *                   knob an operator could save and watch change nothing.
  */
 const DISCOVERY_MODE_SIGNAL_ZERO: Partial<
   Record<DiscoveryModeKey, readonly SignalKey[]>
 > = {
-  map: ["randomness", "partnered"],
+  map: ["randomness"],
 };
 
 export function modeReturnsEntity(

@@ -36,7 +36,6 @@ export const FIXTURE_HIT: PlaceHit = {
   google_stars_overall: 4.6,
   google_review_count: 2431,
   content_state: "ready",
-  listing_type: null,
   google_place_id: GID,
   seeded: true,
   listed: true,
@@ -50,14 +49,6 @@ export const FIXTURE_HIT: PlaceHit = {
   enrich_crenup_labels: CRENUP_STEPS.map((s) => s.label),
   enrich_crenup_blocked: { key: "reviews", index: 5, state: "failed" },
   enrich_functions: null,
-  partner: false,
-  promoting: false,
-  promoting_level: 0,
-  mesita_pay: false,
-  credits: false,
-  pickup: false,
-  delivery: false,
-  promotion: 2,
 };
 
 describe("Single Place", () => {

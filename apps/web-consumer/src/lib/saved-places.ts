@@ -3,11 +3,10 @@
 // useSyncExternalStore is the canonical React 18+ pattern for "subscribe
 // to a value outside React" without the setState-in-useEffect anti-pattern.
 //
-// Saving is a BOOKMARK and nothing more. The `favorites` table has no door
-// any more (its two consumer functions were retired with no caller,
-// MESITA-2090): this module is still the only thing to swap if one comes
-// back, since the public API (isSaved / toggleSaved / list) is what every
-// caller uses.
+// Saving is a BOOKMARK and nothing more, and it lives only in this browser:
+// there is no server-side store for saves. This module is the only thing to
+// swap if one arrives, since the public API (isSaved / toggleSaved / list) is
+// what every caller uses.
 
 import { useCallback, useSyncExternalStore } from "react";
 
