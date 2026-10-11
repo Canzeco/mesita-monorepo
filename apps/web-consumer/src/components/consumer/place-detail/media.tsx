@@ -1,7 +1,7 @@
 "use client";
 
 import { ImageCarousel } from "@/components/consumer/ImageCarousel";
-import type { PlaceDetail } from "@/lib/mock/place";
+import type { PlaceDetail } from "@/lib/place-detail";
 
 import { Box } from "./box";
 

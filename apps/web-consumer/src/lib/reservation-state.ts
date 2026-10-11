@@ -11,7 +11,7 @@ import {
   PhoneCall,
   X,
 } from "lucide-react";
-import type { ReservationState } from "@/lib/mock/reservations-mock";
+import type { ReservationState } from "@/lib/reservation-types";
 
 type ReservationStateMeta = {
   label: string;

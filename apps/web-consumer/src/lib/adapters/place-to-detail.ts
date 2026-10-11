@@ -7,7 +7,7 @@
 // sensible neutral defaults — distance is geolocation-dependent and computed
 // client-side later.
 
-import type { PlaceDetail } from "@/lib/mock/place";
+import type { PlaceDetail } from "@/lib/place-detail";
 import { detectMenuKind } from "@/lib/menu-url";
 import { parseMenuNutrition } from "@/lib/nutrition";
 import { resolvePlaceCategoryName } from "@/lib/place-category";

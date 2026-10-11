@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import type { PlaceDetail } from "@/lib/mock/place";
+import type { PlaceDetail } from "@/lib/place-detail";
 import { firstInitial } from "@/lib/utils";
 
 export function ProfilePhoto({ place }: { place: PlaceDetail }) {

@@ -19,7 +19,7 @@ import {
   apiCancelReservation,
   apiUpdateReservation,
 } from "@/lib/api/reservations";
-import type { ReservationItem } from "@/lib/mock/reservations-mock";
+import type { ReservationItem } from "@/lib/reservation-types";
 import { placeHref } from "@/lib/place-route";
 import { resolveSlot } from "@/lib/reservation-slots";
 import { useBrowserSupabase } from "@/lib/supabase/browser";

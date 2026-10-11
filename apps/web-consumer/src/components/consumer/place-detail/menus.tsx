@@ -6,7 +6,7 @@ import { ChevronRight, Info, Utensils } from "lucide-react";
 import { MenuViewer } from "@/components/consumer/MenuViewer";
 import { menuSubtitle } from "@/lib/menu-url";
 import { nutritionLine } from "@/lib/nutrition";
-import type { PlaceDetail } from "@/lib/mock/place";
+import type { PlaceDetail } from "@/lib/place-detail";
 
 import { Box } from "./box";
 

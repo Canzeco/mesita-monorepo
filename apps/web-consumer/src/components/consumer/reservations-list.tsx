@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import { ReservationCard } from "@/components/consumer/ReservationCard";
 import { LoadingFill } from "@/components/shared";
 import { apiListReservations } from "@/lib/api/reservations";
-import type { ReservationItem } from "@/lib/mock/reservations-mock";
+import type { ReservationItem } from "@/lib/reservation-types";
 import { toReservationItem } from "@/lib/reservations-adapter";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";

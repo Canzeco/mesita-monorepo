@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import Image from "next/image";
 import { Calendar, Users } from "lucide-react";
-import type { ReservationItem } from "@/lib/mock/reservations-mock";
+import type { ReservationItem } from "@/lib/reservation-types";
 import { stateMeta } from "@/lib/reservation-state";
 import { cn, guestNoun } from "@/lib/utils";
 import { reservationPath } from "@/lib/consumer-route-contract";

@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { AboutBox } from "@/components/consumer/AboutBox";
-import type { PlaceDetail } from "@/lib/mock/place";
+import type { PlaceDetail } from "@/lib/place-detail";
 
 import { LocationBox, HoursBox } from "./place-detail/location-hours";
 import { PopularTimesBox } from "./place-detail/popular-times";

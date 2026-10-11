@@ -20,6 +20,12 @@ import { cn } from "@/lib/utils";
 // Reserve, so the rail goes back to the one verb, wired straight to
 // ReservationSheet.
 //
+// A WALK-IN PLACE GREYS RESERVE OUT; IT DOES NOT DROP IT. `reservations_enabled:
+// false` means the place takes no bookings, so the button goes dead, as the
+// place page's bar steps aside for it (PlaceActionBar). Dead, not gone,
+// because every card shares this rail: a fifth button that vanished on some
+// cards would re-centre the row and slide Save out from under the thumb.
+//
 // COLOUR IS NOT DECORATION HERE. The first pass gave each button its own hue
 // (amber / rose / sky / pink / violet) and it read cheap for three measurable
 // reasons, all fixed below:
@@ -41,6 +47,8 @@ import { cn } from "@/lib/utils";
 // the surface copies the look while missing the logic.
 
 type Variant = "utility" | "skip" | "save";
+
+const NOOP = () => {};
 
 function SwipeActionButton({
   label,
@@ -116,7 +124,8 @@ type SwipeActionRowProps = {
   onSkip: () => void;
   onOpenInfo: () => void;
   onSave: () => void;
-  onReserve: () => void;
+  /** Null when the place takes no bookings: Reserve renders disabled. */
+  onReserve: (() => void) | null;
 };
 
 export function SwipeActionRow({
@@ -165,11 +174,12 @@ export function SwipeActionRow({
       {/* RESERVE REPLACED GO (MESITA-2142): the First Stage has one action,
           and it opens the booking sheet, so it keeps `aria-haspopup`. */}
       <SwipeActionButton
-        label="Reserve"
+        label={onReserve ? "Reserve" : "Reserve (walk-in only)"}
         Icon={CalendarCheck}
         variant="utility"
-        onClick={onReserve}
-        haspopup
+        onClick={onReserve ?? NOOP}
+        disabled={!onReserve}
+        haspopup={onReserve != null}
       />
     </div>
   );

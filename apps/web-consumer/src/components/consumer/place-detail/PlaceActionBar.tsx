@@ -4,7 +4,7 @@ import { useState } from "react";
 import { CalendarCheck } from "lucide-react";
 
 import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
-import type { PlaceDetail } from "@/lib/mock/place";
+import type { PlaceDetail } from "@/lib/place-detail";
 import { cn } from "@/lib/utils";
 import { isReserveActionEnabled } from "@/lib/place-profile-actions";
 

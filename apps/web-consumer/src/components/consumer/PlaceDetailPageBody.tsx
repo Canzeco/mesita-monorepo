@@ -3,7 +3,7 @@
 import { PlaceDetailBody } from "./PlaceDetailBody";
 import { PlaceDetailPageHeader } from "./PlaceDetailPageHeader";
 import { PlaceActionBar } from "./place-detail/PlaceActionBar";
-import type { PlaceDetail } from "@/lib/mock/place";
+import type { PlaceDetail } from "@/lib/place-detail";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // Client wrapper for the hard-nav /place/[id] page. Mirrors the modal

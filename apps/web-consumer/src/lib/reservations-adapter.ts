@@ -18,7 +18,7 @@ import type { EFReservationRow } from "@/lib/api/reservations";
 import type {
   ReservationItem,
   ReservationState,
-} from "@/lib/mock/reservations-mock";
+} from "@/lib/reservation-types";
 
 // Mexico City is UTC-6 year-round (no DST since 2022). reserved_at is stored
 // with an explicit offset; we render it back in the place's wall-clock so the

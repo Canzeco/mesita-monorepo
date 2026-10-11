@@ -4,7 +4,7 @@ import Image from "next/image";
 import { Calendar, Hash, Users } from "lucide-react";
 import { useState } from "react";
 
-import type { ReservationItem } from "@/lib/mock/reservations-mock";
+import type { ReservationItem } from "@/lib/reservation-types";
 import { cn, errMsg, guestNoun } from "@/lib/utils";
 import { RESERVATION_FLOW, stateMeta } from "@/lib/reservation-state";
 import { MetaRow } from "@/components/consumer/reservation-detail-ui";

@@ -9,7 +9,7 @@ import {
   InstagramLogo,
 } from "@/components/consumer/BrandLogos";
 import { ReviewCard } from "@/components/consumer/ReviewCard";
-import type { PlaceDetail } from "@/lib/mock/place";
+import type { PlaceDetail } from "@/lib/place-detail";
 import { formatCompactCount, formatRating } from "@/lib/utils";
 
 import { Box, BoxHScroll } from "./box";

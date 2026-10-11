@@ -63,7 +63,7 @@ import { placeHref } from "@/lib/place-route";
 import { toast } from "@/lib/toast";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
-import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
+import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { mapFilterCount, placeSearchScope } from "@/lib/map-filters-engine";
 import { useMapFilters } from "@/lib/use-map-filters";
