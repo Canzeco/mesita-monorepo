@@ -3,10 +3,11 @@
 //
 // Background: product / vendor callers authenticate end users or vendors via
 // these LIVE folder prefixes (code is SoT; Notion closed-set may lag):
-//   admin-web · consumer-web · staff-web · eleven-a1 · eleven-a2 ·
+//   admin-web · consumer-web · eleven-a1 · eleven-a2 ·
 //   eleven-a3 · eleven-a4 · eleven-agent
 // (MESITA-2090 retired business-web, validate-web, consumer-mcp, gift-web and
-// the Stripe webhook with the MVP First Stage cut.) The product agent
+// the Stripe webhook with the MVP First Stage cut, and MESITA-2128 the last
+// staff-web one.) The product agent
 // Reservationist runs as eleven-* mid-call tools — there is no
 // `reservationist-agent` folder prefix.
 // Internal endpoints (`supabase-edgefunc-*`, `supabase-cron-*`) are reusable
