@@ -23,10 +23,8 @@
 // remove its line here in the same PR that fixes it.
 //
 // OUT OF SCOPE ON PURPOSE: `supabase-*` (internal cron/edgefunc caller),
-// `eleven-*` (ElevenLabs' voice-agent tool calls), and the one-off
-// `staff-web-*` benchmark EF (invoked by an ops script, not any app in
-// `apps/`) — none of these have a caller this scan can verify by reading
-// `apps/`.
+// and `eleven-*` (ElevenLabs' voice-agent tool calls) — neither has a caller
+// this scan can verify by reading `apps/`.
 
 const FUNCTIONS_DIR = new URL("../", import.meta.url);
 const REPO_ROOT = new URL("../../../../", import.meta.url);
@@ -49,11 +47,10 @@ const ACTOR_APPS: Record<string, readonly string[]> = {
 /**
  * `<actor>-web-*` prefixes that are real but NOT app-callable — this scan
  * cannot verify their caller by reading `apps/`, so it deliberately skips
- * them rather than mis-flagging or silently passing. `staff-web-*` is one
- * EF (`staff-web-benchmark-link-strategies`) invoked by an ops script, not
- * a console.
+ * them rather than mis-flagging or silently passing. Empty since MESITA-2128
+ * retired the last one (`staff-web-*`).
  */
-const NON_APP_ACTORS = new Set(["staff"]);
+const NON_APP_ACTORS = new Set<string>([]);
 
 /**
  * Known-as-of-MESITA-1600 violations, frozen so this test is a RATCHET
