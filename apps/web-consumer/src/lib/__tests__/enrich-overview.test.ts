@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
+import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import type { Place } from "@/lib/api/places";
 
 // Pins the Enriching signal for swipe / catalog cards.

@@ -11,7 +11,7 @@ import {
   SettingsLinkRow,
   type RowTint,
 } from "@/components/consumer/me/settings-rows";
-import type { PlaceDetail } from "@/lib/mock/place";
+import type { PlaceDetail } from "@/lib/place-detail";
 
 // Contact chooser opened from the place profile's "Contact" action. Lists only
 // the mediums this place actually exposes and reuses the Me-page row chrome so

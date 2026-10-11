@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { PopularTimesBox } from "@/components/consumer/place-detail/popular-times";
-import type { PlaceDetail } from "@/lib/mock/place";
+import type { PlaceDetail } from "@/lib/place-detail";
 
 const withTimes = (popular_times: PlaceDetail["popular_times"]) =>
   ({ popular_times, timezone: "America/Monterrey" }) as unknown as PlaceDetail;

@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 
 import { Spinner } from "@/components/shared";
-import type { PlaceDetail } from "@/lib/mock/place";
+import type { PlaceDetail } from "@/lib/place-detail";
 import { formatPlacePriceChip } from "@/lib/place-price";
 import { getOpeningStateLabel } from "@/lib/place-state";
 import {

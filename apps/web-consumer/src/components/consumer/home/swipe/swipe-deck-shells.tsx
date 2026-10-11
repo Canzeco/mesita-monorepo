@@ -1,6 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import { useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Compass, RotateCcw, SlidersHorizontal } from "lucide-react";
 import { Spinner } from "@/components/shared";
 import { cn } from "@/lib/utils";
@@ -9,13 +10,11 @@ import type { Place } from "@/lib/api/places";
 export function EmptyDeck({
   title,
   body,
-  actionHref,
-  actionLabel,
+  action,
 }: {
   title: string;
   body: string;
-  actionHref?: string;
-  actionLabel?: string;
+  action?: { label: string; onClick: () => void; pending?: boolean };
 }) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 px-8 text-center">
@@ -26,15 +25,43 @@ export function EmptyDeck({
         {title}
       </h2>
       <p className="text-muted-foreground max-w-xs text-sm">{body}</p>
-      {actionHref && actionLabel && (
-        <Link
-          href={actionHref}
-          className="bg-foreground text-background mt-2 inline-flex items-center justify-center rounded-lg px-5 py-2.5 text-sm font-semibold hover:opacity-90"
+      {action && (
+        <button
+          type="button"
+          onClick={action.onClick}
+          disabled={action.pending}
+          className="bg-foreground text-background mt-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold hover:opacity-90 disabled:cursor-default disabled:opacity-70"
         >
-          {actionLabel}
-        </Link>
+          {action.pending && (
+            <Spinner size="sm" className="border-white/40 border-t-white" />
+          )}
+          {action.label}
+        </button>
       )}
     </div>
+  );
+}
+
+/**
+ * The deck request failed. "Try again" REFRESHES, it does not navigate: the
+ * deck is fetched once in the /discover layout (HomeDeckBoundary), and a link
+ * to the URL already on screen re-renders only the page segment, so it would
+ * draw this same screen again. router.refresh() re-runs the layout's server
+ * fetch (the move PlaceGoneNotice makes for the same reason).
+ */
+export function DeckFetchError({ body }: { body: string }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  return (
+    <EmptyDeck
+      title="Couldn't load places"
+      body={body}
+      action={{
+        label: pending ? "Trying again…" : "Try again",
+        onClick: () => startTransition(() => router.refresh()),
+        pending,
+      }}
+    />
   );
 }
 

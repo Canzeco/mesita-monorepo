@@ -7,7 +7,7 @@ import { ReservationDetailBody } from "@/components/consumer/ReservationDetailBo
 import { ReservationDetailModalShell } from "@/components/consumer/ReservationDetailModalShell";
 import { LoadingFill } from "@/components/shared";
 import { apiListReservations } from "@/lib/api/reservations";
-import type { ReservationItem } from "@/lib/mock/reservations-mock";
+import type { ReservationItem } from "@/lib/reservation-types";
 import { toReservationItem } from "@/lib/reservations-adapter";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";

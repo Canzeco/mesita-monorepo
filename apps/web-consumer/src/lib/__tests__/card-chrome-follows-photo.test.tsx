@@ -4,8 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { ScrollCard, needsReflection } from "@/components/consumer/home/scroll/scroll-card";
-import { scrollMockPlaces } from "@/lib/mock/scroll-places";
-import type { Place } from "@/lib/api/places";
+import { testPlace } from "./fixtures/place";
 
 // THE CARD'S CHROME FOLLOWS THE PHOTO ON SCREEN (Pato, MESITA-2146:
 // "depending on the size, the card must be a reflection or it should not be a
@@ -18,7 +17,7 @@ import type { Place } from "@/lib/api/places";
 
 const SRC = join(__dirname, "..", "..");
 const read = (p: string) => readFileSync(join(SRC, p), "utf8");
-const mock = scrollMockPlaces()[0] as Place;
+const place = testPlace();
 const phone = { width: 390, height: 671 };
 
 describe("one threshold decides cover or reflection", () => {
@@ -34,14 +33,13 @@ describe("Scroll", () => {
   it("paints the gradient while the photo's shape is unknown (it covers first)", () => {
     const html = renderToStaticMarkup(
       <ScrollCard
-        place={mock}
+        place={place}
         index={0}
         total={12}
         near
         cardSize={phone}
         saved={false}
-        profileHref={null}
-        onProfile={() => {}}
+        profileHref="/place/taqueria-test"
         onToggleSave={() => {}}
         onShare={() => {}}
         onReserve={() => {}}
@@ -84,14 +82,13 @@ describe("Scroll states a place with Swipe's boxes", () => {
   const html = () =>
     renderToStaticMarkup(
       <ScrollCard
-        place={mock}
+        place={place}
         index={0}
         total={12}
         near
         cardSize={phone}
         saved={false}
-        profileHref={null}
-        onProfile={() => {}}
+        profileHref="/place/taqueria-test"
         onToggleSave={() => {}}
         onShare={() => {}}
         onReserve={() => {}}

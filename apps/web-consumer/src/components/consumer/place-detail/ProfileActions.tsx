@@ -5,7 +5,7 @@ import { Heart, Phone, Share2 } from "lucide-react";
 
 import { sharePlace } from "@/lib/share-place";
 import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
-import type { PlaceDetail } from "@/lib/mock/place";
+import type { PlaceDetail } from "@/lib/place-detail";
 import { useSavedPlaces } from "@/lib/saved-places";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";

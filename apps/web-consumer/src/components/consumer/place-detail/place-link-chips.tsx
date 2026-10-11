@@ -2,7 +2,7 @@
 
 import { Globe, SquareArrowOutUpRight } from "lucide-react";
 
-import type { PlaceDetail } from "@/lib/mock/place";
+import type { PlaceDetail } from "@/lib/place-detail";
 import { cn } from "@/lib/utils";
 
 import {

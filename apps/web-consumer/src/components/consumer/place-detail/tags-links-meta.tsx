@@ -2,7 +2,7 @@
 
 import { Clock, Globe, Link2, Phone, Tags } from "lucide-react";
 
-import type { PlaceDetail } from "@/lib/mock/place";
+import type { PlaceDetail } from "@/lib/place-detail";
 
 import {
   CHANNEL_DEFS,

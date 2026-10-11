@@ -15,7 +15,7 @@
 // open/closed math (computeOpenState) the detail modal uses, so the card
 // mirrors the detail Overview grid with real data.
 //
-// There is no mock/seeded fallback: the demo fixture and the deterministic
+// There is no invented fallback: the demo fixture and the deterministic
 // rating/distance/IG seeds were removed. A genuinely missing cell stays
 // null and its chip simply hides — the card shows only what the place
 // actually has. The `??` chains here are real-vs-real (an already-mapped
