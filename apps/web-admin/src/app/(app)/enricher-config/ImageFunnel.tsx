@@ -1,7 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ArrowRight, Image as ImageIcon, Instagram } from "lucide-react";
+import { ArrowRight, Image as ImageIcon } from "lucide-react";
+import { Instagram } from "@/components/shared/SocialIcons";
 import { Switch } from "@/components/admin-ui/config";
 import {
   MAX_GOOGLE_COLLECT,
