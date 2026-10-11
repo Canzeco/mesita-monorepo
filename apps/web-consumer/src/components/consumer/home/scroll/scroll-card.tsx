@@ -88,6 +88,17 @@ export function ScrollCard({
   // A key, not a boolean: every double tap remounts the heart so the burst
   // replays even when the place is already saved.
   const [burst, setBurst] = useState(0);
+  // THE SCRIM FOLLOWS THE PHOTO ON SCREEN (MESITA-2146). Each slide reports
+  // its photo's shape; the dark gradient under the name belongs to a photo
+  // that covers the card, never to one sitting over its reflection — the
+  // mirror already darkens that space.
+  const [activeIdx, setActiveIdx] = useState(0);
+  const [ratios, setRatios] = useState<Record<number, number>>({});
+  const activeRatio = ratios[activeIdx];
+  const reflected =
+    activeRatio != null &&
+    cardSize != null &&
+    needsReflection(activeRatio, cardSize);
   const doubleTap = useDoubleTap(() => {
     // Double tap only ever SAVES — it never unsaves, the same as every feed
     // that taught guests the gesture.
@@ -110,7 +121,9 @@ export function ScrollCard({
   const ratingCount =
     place.google_count != null ? formatCompactCount(place.google_count) : null;
   const openState = getOpeningStateLabel(place);
-  const metaLine = [category, price, zone, distance].filter(Boolean).join(" · ");
+  const metaLine = [category, price, zone, distance]
+    .filter(Boolean)
+    .join(" · ");
   const initial = place.name.trim().charAt(0).toUpperCase() || "·";
 
   return (
@@ -133,8 +146,14 @@ export function ScrollCard({
             className="h-full"
             tapToPage={false}
             interactiveDots
+            onIdxChange={setActiveIdx}
             renderSlide={(i, item, { inPreloadWindow }) => (
               <ScrollSlide
+                onRatio={(r) =>
+                  setRatios((prev) =>
+                    prev[i] === r ? prev : { ...prev, [i]: r },
+                  )
+                }
                 cardSize={cardSize}
                 src={item.src}
                 alt={`${place.name}, photo ${i + 1} of ${place.photos.length}`}
@@ -149,7 +168,12 @@ export function ScrollCard({
         )}
       </div>
 
-      <div className="bg-media-scrim pointer-events-none absolute inset-x-0 bottom-0 h-3/5" />
+      {!reflected && (
+        <div
+          data-scrim
+          className="bg-media-scrim pointer-events-none absolute inset-x-0 bottom-0 h-3/5"
+        />
+      )}
 
       {burst > 0 && (
         <Heart
@@ -160,7 +184,7 @@ export function ScrollCard({
         />
       )}
 
-      <div className="text-on-media pointer-events-none absolute bottom-0 left-0 right-[72px] flex flex-col gap-1 p-4 pb-5">
+      <div className="text-on-media pointer-events-none absolute right-[72px] bottom-0 left-0 flex flex-col gap-1 p-4 pb-5">
         <h2 className="font-display flex min-w-0 items-center gap-1.5 text-2xl leading-tight font-semibold [text-shadow:0_2px_12px_rgba(0,0,0,0.62)]">
           <span className="truncate">{place.name}</span>
         </h2>
@@ -370,7 +394,10 @@ export function reflectionBandHeight(
   const natural = card.width / imageRatio;
   return Math.max(
     0,
-    Math.min(Math.max(natural, card.height / 2), card.height - REFLECTION_MIN_PX),
+    Math.min(
+      Math.max(natural, card.height / 2),
+      card.height - REFLECTION_MIN_PX,
+    ),
   );
 }
 
@@ -385,6 +412,7 @@ function ScrollSlide({
   priority,
   eager,
   cardSize,
+  onRatio,
 }: {
   src: string;
   alt: string;
@@ -392,6 +420,8 @@ function ScrollSlide({
   priority: boolean;
   eager: boolean;
   cardSize: { width: number; height: number } | null;
+  /** The photo's width ÷ height, once known, so the card picks its scrim. */
+  onRatio?: (ratio: number) => void;
 }) {
   const [failed, setFailed] = useState(false);
   const [ratio, setRatio] = useState<number | null>(null);
@@ -421,7 +451,9 @@ function ScrollSlide({
       onLoad={(e) => {
         const img = e.currentTarget;
         if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-          setRatio(img.naturalWidth / img.naturalHeight);
+          const r = img.naturalWidth / img.naturalHeight;
+          setRatio(r);
+          onRatio?.(r);
         }
       }}
       onError={() => setFailed(true)}
@@ -478,7 +510,7 @@ export function ReflectedPhoto({
       <div
         aria-hidden
         data-reflection
-        className="pointer-events-none absolute inset-x-0 overflow-hidden [transform:scaleY(-1)]"
+        className="pointer-events-none absolute inset-x-0 [transform:scaleY(-1)] overflow-hidden"
         style={{ top: bandHeight, height: bandHeight }}
       >
         <Image

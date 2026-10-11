@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { cn, firstInitial } from "@/lib/utils";
 import type { Place } from "@/lib/api/places";
 import { ImageCarousel } from "./ImageCarousel";
@@ -56,10 +56,12 @@ export function PlaceSwipeCardFace({
 
   const hasPhotos = place.photos.length > 0;
   const staticPhoto = place.photos[0];
-  // The card's chrome follows the FIRST photo's mode. The carousel stopped
-  // reporting its index when Scroll took it over (MESITA-2105); each slide
-  // still sizes itself.
-  const activePhoto = staticPhoto;
+  // THE CHROME FOLLOWS THE PHOTO ON SCREEN (MESITA-2146). A tall photo
+  // covers the card and its fields sit on the dark gradient; a square or wide
+  // one sits over its reflection with no gradient. Reading only the first
+  // photo left the gradient over a reflection after a page.
+  const [activePhotoIdx, setActivePhotoIdx] = useState(0);
+  const activePhoto = place.photos[activePhotoIdx] ?? staticPhoto;
   const activeMode: SwipeCardLayoutMode =
     forceLayoutMode ?? (activePhoto ? getPhotoLayoutMode(activePhoto) : "tiwc");
 
@@ -97,6 +99,7 @@ export function PlaceSwipeCardFace({
                 alt={place.name}
                 className="absolute inset-0 h-full w-full"
                 aspect="h-full"
+                onIdxChange={setActivePhotoIdx}
                 renderSlide={renderCarouselSlide}
               />
             ) : (
