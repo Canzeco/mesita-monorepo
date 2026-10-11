@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(104);
+select plan(105);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1094,6 +1094,15 @@ select is_empty(
 select is_empty(
   $$select id from storage.buckets where id = 'ticket-proofs'$$,
   'the ticket-proofs bucket is gone (MESITA-2131)'
+);
+
+-- The enrichment poller posts to the enricher-* stage functions (MESITA-2132);
+-- the supabase-cron-enrich-place-* slugs it used to call are retired.
+select ok(
+  (select prosrc like '%/functions/v1/enricher-cron-enrich-place-%'
+          and prosrc not like '%supabase-cron-enrich-place-%'
+     from pg_proc where oid = 'public.run_place_enrichment_stages()'::regprocedure),
+  'run_place_enrichment_stages calls enricher-cron-enrich-place-<stage>'
 );
 
 -- Me › Notifications (MESITA-2080) is kept; its visit-ticket coupling is not.
