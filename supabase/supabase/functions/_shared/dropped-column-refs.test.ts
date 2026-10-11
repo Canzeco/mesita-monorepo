@@ -1,6 +1,6 @@
 // MESITA-2120 — no Edge Function may name a column the First Stage cut drops.
 //
-// MESITA-2091's migration (20261011000000_first_stage_schema_cut.sql) drops
+// MESITA-2091's migration (20261011014934_first_stage_schema_cut.sql) drops
 // 66 columns off five tables and rebuilds the `profiles` view without them
 // and without its four NULL placeholders. Several of those columns go ONLY
 // because MESITA-2120 removes their last reader. Migrations apply on merge
@@ -56,7 +56,7 @@
 
 import { assertEquals } from "jsr:@std/assert@1";
 
-/** Exactly what 20261011000000_first_stage_schema_cut.sql drops, per table,
+/** Exactly what 20261011014934_first_stage_schema_cut.sql drops, per table,
  *  in the migration's order. */
 const DROPPED_COLUMNS = {
   places: [
@@ -834,7 +834,7 @@ Deno.test("no Edge Function or script names a column the First Stage or residue 
   assertEquals(
     offenders,
     [],
-    `These name a column 20261011000000_first_stage_schema_cut.sql or the MESITA-2144 residue cut drops, and will throw 42703 once it applies:\n  ${
+    `These name a column 20261011014934_first_stage_schema_cut.sql or the MESITA-2144 residue cut drops, and will throw 42703 once it applies:\n  ${
       offenders.join("\n  ")
     }\n\nRemove the column from the query, the patch and the column list together. If a column in DROPPED_COLUMNS or RESIDUE_DROPPED_COLUMNS is being kept after all, it comes out of the migration and its list in the same PR.`,
   );

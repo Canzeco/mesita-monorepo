@@ -13,38 +13,22 @@
 // WhatsApp / Instagram are not serving paths (no Twilio Messages.json; fleet
 // is voice-only).
 //
-// The channel keys are the contract shared with the Edge Functions
-// (admin-web-{get,update}-reservations-config) and with
-// supabase/functions/_shared/enrich-reservation-endpoint.ts — keep them in
-// lock-step. The testCall + attempts knobs are read by the calling
-// orchestration; they persist through the same whole-blob save.
-
-type ReservationChannel = "phone";
+// The blob is shared with the Edge Functions
+// (admin-web-{get,update}-reservations-config). The channel is phone, fixed in
+// code, and the attempts are the platform's constant: neither is a stored knob
+// any more (MESITA-2144). The testCall knob is read by the calling
+// orchestration; it persists through the same whole-blob save.
 
 export type ReservationsConfig = {
-  /** Ordered, most preferred first. Order IS the rule. Always ranks every channel. */
-  priority: ReservationChannel[];
-  /** Parked channels — skipped even when they're the place's only contact. */
-  disabled: ReservationChannel[];
   /** True: a channel an operator picked by hand is never re-seeded by an enrich. No control since MESITA-2122. */
   respectAdminOverride: boolean;
   /**
    * Testing override. While enabled, EVERY reservation call dials `number`
    * instead of the place's real line — no matter which place the guest booked —
    * so we never ring a real business during testing (reserve from the consumer
-   * app to test end-to-end). `consumerNumber` is legacy from the retired admin
-   * Playground — never read by the calling path, kept only so stored rows stay
-   * shape-stable ('' = unset).
+   * app to test end-to-end).
    */
-  testCall: { enabled: boolean; number: string; consumerNumber: string };
-  /**
-   * FIXED at 2 by protocol — not configurable. Attempt 1 always fires
-   * immediately when the guest taps Reserve (many places run a 24/7 AI
-   * receptionist); attempt 2 fires 5 minutes later if the place is open, else
-   * 30 minutes after it next opens. Coerce pins this to ATTEMPTS regardless of
-   * what the stored row says.
-   */
-  attempts: number;
+  testCall: { enabled: boolean; number: string };
   /**
    * TESTING ONLY. While on, `consumer-web-create-reservation` skips the
    * monthly reservation cap (_shared/reservation-cap.ts) for EVERY consumer,
@@ -95,31 +79,19 @@ const LIMITS_SEED = {
   killSwitch: false,
 };
 
-const CHANNEL_KEYS: ReservationChannel[] = ["phone"];
-
-const ATTEMPTS = 2;
-
 // Current testing seed (Pato, 2026-07-17): while the agent is under test it dials
 // this one number for EVERY reservation instead of any real place. Fully editable
 // from the admin page — this is only what the page (and a fresh/reset config row)
 // starts from. Ships ON so a missing config can never fall through to a real place.
-// consumerNumber is legacy (retired Playground) and stays empty.
-const TEST_CALL_SEED = { enabled: true, number: "+524445499597", consumerNumber: "" };
+const TEST_CALL_SEED = { enabled: true, number: "+524445499597" };
 
 export const DEFAULT_CONFIG: ReservationsConfig = {
-  priority: ["phone"],
-  disabled: [],
   respectAdminOverride: true,
   testCall: { ...TEST_CALL_SEED },
-  attempts: ATTEMPTS,
   unlimitedReservations: false,
   limits: { ...LIMITS_SEED },
   reminder: { enabled: false },
 };
-
-function isChannel(v: unknown): v is ReservationChannel {
-  return v === "phone";
-}
 
 /**
  * A loose E.164 check: a leading + and 8–15 digits. Good enough to stop a typo
@@ -133,23 +105,12 @@ export function looksLikePhone(v: string): boolean {
  * Coerce whatever the row holds into a renderable config. Anything malformed
  * resolves to the default — the page must always be usable, never a blank screen.
  * Mirrors normalizeConfig in the update EF (which is the strict gate on save).
- * Legacy whatsapp/instagram entries are dropped (MESITA-842).
+ * Retired keys a stored row may still carry (priority, disabled, attempts,
+ * testCall.consumerNumber) are not read.
  */
 export function coerceConfig(raw: unknown): ReservationsConfig {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return DEFAULT_CONFIG;
   const c = raw as Record<string, unknown>;
-
-  const priority: ReservationChannel[] = Array.isArray(c.priority)
-    ? c.priority.filter(isChannel).filter((ch, i, a) => a.indexOf(ch) === i)
-    : [];
-  // Append any channel the row forgot to rank so it stays reachable, last.
-  for (const ch of CHANNEL_KEYS) {
-    if (!priority.includes(ch)) priority.push(ch);
-  }
-
-  const disabled: ReservationChannel[] = Array.isArray(c.disabled)
-    ? c.disabled.filter(isChannel).filter((ch, i, a) => a.indexOf(ch) === i)
-    : [];
 
   const testRaw =
     c.testCall && typeof c.testCall === "object" && !Array.isArray(c.testCall)
@@ -157,20 +118,12 @@ export function coerceConfig(raw: unknown): ReservationsConfig {
       : {};
 
   return {
-    priority,
-    disabled,
     respectAdminOverride:
       typeof c.respectAdminOverride === "boolean" ? c.respectAdminOverride : true,
     testCall: {
       enabled: typeof testRaw.enabled === "boolean" ? testRaw.enabled : TEST_CALL_SEED.enabled,
       number: typeof testRaw.number === "string" ? testRaw.number.trim() : TEST_CALL_SEED.number,
-      consumerNumber:
-        typeof testRaw.consumerNumber === "string"
-          ? testRaw.consumerNumber.trim()
-          : TEST_CALL_SEED.consumerNumber,
     },
-    // Fixed by protocol — whatever an old row stored, the platform runs 2.
-    attempts: ATTEMPTS,
     unlimitedReservations: c.unlimitedReservations === true,
     limits: coerceLimits(c.limits),
     reminder: coerceReminder(c.reminder),

@@ -6,9 +6,9 @@
 -- EFs). Do not insert into `places`/`place_profiles` directly here — the view
 -- is the supported local-seed surface.
 
-insert into public.profiles (slug, name, category, vibe, price_level, state, closes_at)
+insert into public.profiles (slug, name, category, price_level, state, content_state, closes_at)
 select
-  'casa-luminar-seed', 'Casa Luminar (seed)', 'mediterranean', 'rooftop', 3, 'active', '02:00'
+  'casa-luminar-seed', 'Casa Luminar (seed)', 'mediterranean', 3, 'active', 'ready', '02:00'
 where not exists (
   select 1 from public.profiles where slug = 'casa-luminar-seed'
 );
