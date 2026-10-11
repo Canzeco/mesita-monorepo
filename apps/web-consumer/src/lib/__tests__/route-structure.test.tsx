@@ -7,6 +7,7 @@ import {
   CONSUMER_ROUTES,
   isModalContractPath,
 } from "@/lib/consumer-route-contract";
+import { LEGACY_REDIRECTS } from "@/lib/legacy-redirects";
 import nextConfig from "../../../next.config";
 
 // STRUCTURAL route guards (MESITA-1062 S0).
@@ -184,7 +185,7 @@ describe("T3 — every @modal intercept has a hard route to fall back to", () =>
 // follows an old link.
 describe("T4 — every redirect destination resolves", () => {
   it("catches a dangling 308 and any redirect cycle", async () => {
-    const redirects = await nextConfig.redirects!();
+    const redirects = LEGACY_REDIRECTS;
     const sources = new Set(redirects.map((r) => r.source));
 
     // A destination resolves if a real page matches it, or if it is itself a
