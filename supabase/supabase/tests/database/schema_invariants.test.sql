@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(134);
+select plan(103);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -67,9 +67,11 @@ select ok(
 -- a derived one reading a tenant table above the place — neither half of which
 -- a client role held — and the consumer app answered "permission denied for
 -- table places" in a red band over the Search map. That tenant layer is gone
--- (MESITA-1892) and `mesita_pay_enabled` is now a plain column of
--- `place_profiles`, but the lesson is about the NEXT derived column, not that
--- one, so the probe stays.
+-- (MESITA-1892), and the column that tripped it (`mesita_pay_enabled`) went
+-- with the First Stage cut (MESITA-2091), but the lesson is about the NEXT
+-- derived column, not that one, so the probe stays. It reads every column
+-- the view takes from `places` (the column-granted half) plus one generated
+-- `place_profiles` column, so a lost column grant fails here by name.
 --
 -- So: run the read. This is the only assertion in the file that proves the
 -- guest browse works rather than that a privilege bit is set.
@@ -79,7 +81,7 @@ declare verdict text;
 begin
   begin
     execute format('set local role %I', role_name);
-    perform id, mesita_pay_enabled from public.profiles limit 1;
+    perform id, slug, state, content_state, currency, name from public.profiles limit 1;
     reset role;
     verdict := 'OK';
   exception when others then
@@ -291,7 +293,7 @@ select ok(
 
 select ok(
   has_table_privilege('service_role', 'public.places', 'SELECT'),
-  'service_role keeps table SELECT on public.places (Check + set-check-pin)'
+  'service_role keeps table SELECT on public.places (every place EF reads it)'
 );
 
 select is_empty(
@@ -304,6 +306,8 @@ select is_empty(
          -- from a table no client role could reach at all. `places` is
          -- column-granted, so the same secrecy now has to be stated as the
          -- ABSENCE of a grant — which is exactly what this slot checks.
+         -- MESITA-2091 dropped every one of these columns; the slot stays so
+         -- one that comes back cannot come back client-readable.
          'check_pin', 'staff_pin', 'cfdi_rfc', 'cfdi_cp', 'cfdi_razon_social',
          'rfc', 'legal_name', 'stripe_billing_customer_id'
        )
@@ -316,14 +320,17 @@ select is_empty(
   'anon and authenticated have no SELECT on existing PIN / CFDI / legal-identity columns'
 );
 
+-- Re-pointed from places.plan, which MESITA-2091 dropped. `state` is the
+-- column RLS filters on AND the view projects, so losing its grant breaks
+-- the guest browse twice over.
 select ok(
-  has_column_privilege('anon', 'public.places', 'plan', 'SELECT'),
-  'anon keeps SELECT on places.plan (profiles invoker reads it)'
+  has_column_privilege('anon', 'public.places', 'state', 'SELECT'),
+  'anon keeps SELECT on places.state (profiles invoker reads it; RLS filters on it)'
 );
 
 -- The set IS the claim, so it is derived, not typed: every `places` column the
 -- `profiles` body references, read straight out of the view's rewrite rule. A
--- hand-listed column (`plan`, above) can only catch the loss of a column
+-- hand-listed column (`state`, above) can only catch the loss of a column
 -- someone already thought of; this catches the NEXT one added to the view,
 -- which is how MESITA-1704 happened. Failing here names the column instead of
 -- letting Postgres blame the whole table in production.
@@ -346,29 +353,9 @@ select is_empty(
   'every places column the profiles view reads is client-readable (a security_invoker view is only as readable as its body)'
 );
 
--- The other half of MESITA-1704: the repair must never become "open the table".
--- The pay bit used to be ANDed with a tenant table's copy of it, reached
--- through a security-definer function because no client role could read that
--- table. MESITA-1892 folded that half into `place_profiles`, so nothing in the
--- view's body is EF-only any more — but the tables that replaced the tenant
--- layer still are, and a future column appended to `profiles` must never be
--- answered by reaching into one of them.
-select ok(
-  not has_table_privilege('anon', 'public.place_payment_accounts', 'SELECT')
-  and not has_table_privilege('authenticated', 'public.place_payment_accounts', 'SELECT')
-  and not has_table_privilege('anon', 'public.place_guest_customers', 'SELECT')
-  and not has_table_privilege('authenticated', 'public.place_guest_customers', 'SELECT'),
-  'the place-scoped tenant tables stay closed to the client roles (nothing on public.profiles may read one)'
-);
-
 select ok(
   has_table_privilege('anon', 'public.place_profiles', 'SELECT'),
   'anon keeps table SELECT on public.place_profiles (Approach D is unimplementable)'
-);
-
-select ok(
-  not has_table_privilege('anon', 'public.consumer_plans', 'SELECT'),
-  'anon has no leftover SELECT on public.consumer_plans'
 );
 
 select ok(
@@ -388,14 +375,19 @@ select is_empty(
   'profiles_delete is gone (no DELETE trigger; it hard-deleted both rows)'
 );
 
--- ━━━ Identity — metals + consumers.plan ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ━━━ Identity — a guest is a person, not a class or a plan ━━━━━━━━━━━━━━━━━━
+--
+-- MESITA-2091 dropped classes, consumer plans and their subscriptions. What a
+-- consumer row keeps: who they are, their member number, their Instagram,
+-- and the tombstone.
 
-select ok(
-  exists (
-    select 1 from information_schema.columns
-     where table_schema = 'public' and table_name = 'consumers' and column_name = 'plan'
-  ),
-  'consumers.plan exists (class and plan are two axes)'
+select is_empty(
+  $$select column_name from information_schema.columns
+     where table_schema = 'public' and table_name = 'consumers'
+       and (column_name like 'class\_%' or column_name like 'invitation\_%'
+            or column_name like 'privacy\_%'
+            or column_name in ('plan', 'stripe_customer_id'))$$,
+  'consumers keeps no class, plan, invitation, privacy or Stripe column (First Stage has none of them)'
 );
 
 select has_column(
@@ -413,83 +405,15 @@ select ok(
   'consumers_select_self hides tombstoned rows'
 );
 
-select is_empty(
-  $$select key from public.classes
-     where key not in ('bronze', 'silver', 'gold', 'diamond')$$,
-  'classes holds only the four metals'
-);
-
-select is(
-  (select rank from public.classes where key = 'bronze'),
-  0::smallint,
-  'bronze is rank 0'
-);
-
--- MESITA-2044: Diamond is invitation-only. A follower_threshold on
--- any row would name a class the (self-declared) Instagram count can open;
--- class-doors.ts no longer reads it, and this keeps the data honest too.
-select is_empty(
-  $$select key from public.classes where follower_threshold is not null$$,
-  'no class opens from followers (Diamond is invitation-only)'
-);
-
-select is_empty(
-  $$select 1 from information_schema.columns
-     where table_schema = 'public' and table_name = 'classes'
-       and column_name = 'recommendation_weight'$$,
-  'classes.recommendation_weight is gone'
-);
-
--- MESITA-1305: Reset must reseed the live metals. A CREATE OR REPLACE that
--- forgets the cutover writes a dropped column / retired keys and the button
--- aborts. Probe the live function text, not a fixture.
+-- MESITA-1305 taught that a Reset body which still writes a retired table or
+-- column aborts the button at the worst moment, and the classes / plan
+-- reseeds it used to carry are exactly that now. Probe the live function
+-- text, not a fixture: a CREATE OR REPLACE that copied an older body back
+-- would resurrect them.
 select ok(
   pg_get_functiondef('public.admin_reset_database()'::regprocedure)
-    not like '%recommendation_weight%',
-  'admin_reset_database does not write dropped classes.recommendation_weight'
-);
-
-select ok(
-  pg_get_functiondef('public.admin_reset_database()'::regprocedure)
-    like '%''bronze''%'
-  and pg_get_functiondef('public.admin_reset_database()'::regprocedure)
-    like '%''diamond''%'
-  and pg_get_functiondef('public.admin_reset_database()'::regprocedure)
-    not like '%''Influencer''%',
-  'admin_reset_database reseeds metals, not v1 class keys'
-);
-
-select is(
-  (select label from public.place_plans where key = 'pro'),
-  'Pro'::text,
-  'place_plans.pro is labelled Pro (MESITA-2020)'
-);
-
-select is(
-  (select price_cents from public.place_plans where key = 'pro'),
-  20000,
-  'place_plans.pro is MX$200/mo in centavos'
-);
-
-select is(
-  exists (select 1 from public.place_plans where key = 'free'),
-  true,
-  'place_plans includes a free row'
-);
-
-select is(
-  (select column_default::text from information_schema.columns
-    where table_schema = 'public' and table_name = 'consumers'
-      and column_name = 'class_key'),
-  '''bronze''::text'::text,
-  'new consumers default to bronze'
-);
-
-select is_empty(
-  $$select 1 from pg_constraint
-     where conrelid = 'public.consumers'::regclass
-       and pg_get_constraintdef(oid) ilike '%subscription%'$$,
-  'class_origin no longer includes subscription'
+    !~ '\y(classes|consumer_plans|place_plans|membership_plans)\y',
+  'admin_reset_database reseeds no dropped vocabulary (classes, consumer_plans, place_plans, membership_plans)'
 );
 
 -- ━━━ Attics — twins, dead tables, dead URLs ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -510,17 +434,7 @@ select is_empty(
        and a.attname = 'ticket_code'
        and a.attnum > 0 and not a.attisdropped
        and c.relkind in ('r', 'p', 'v', 'm', 'f')$$,
-  'no public relation still has a ticket_code column (check_code stays) — schema-wide, matching its project_id twin from the same cutover'
-);
-
-select has_column(
-  'public', 'places', 'check_pin',
-  'places.check_pin stays (the twin staff_pin is what dropped)'
-);
-
-select has_column(
-  'public', 'visit_tickets', 'check_code',
-  'visit_tickets.check_code stays (the twin ticket_code is what dropped)'
+  'no public relation still has a ticket_code column — schema-wide, matching its project_id twin from the same cutover'
 );
 
 select is_empty(
@@ -530,13 +444,16 @@ select is_empty(
   'dead place URL columns are gone'
 );
 
+-- Inverted by MESITA-2091. The four NULL/false dummies existed only so EFs
+-- deployed before their columns dropped could still SELECT them; nothing
+-- reads them now, and a dummy that comes back is a column nobody can write.
 select ok(
   (
     select count(*) from information_schema.columns
      where table_schema = 'public' and table_name = 'profiles'
        and column_name in ('tiktok_url', 'tripadvisor_url', 'yelp_url', 'requires_story')
-  ) = 4,
-  'profiles still projects dummy leftover columns so pre-redeploy EFs can SELECT them'
+  ) = 0,
+  'profiles no longer projects the four dummy leftover columns'
 );
 
 select ok(
@@ -601,30 +518,17 @@ select is_empty(
   'no public function body names retired columns project_id or ticket_code (ALTER RENAME does not rewrite plpgsql; this is how the enrichment dispatcher shipped a dead wire key)'
 );
 
+-- Inverted by MESITA-2091. This pinned is_place_member (renamed from
+-- is_project_member by MESITA-1590) because nine storage policies called it.
+-- Place members are gone, those policies now ask is_super_admin() alone, and
+-- a surviving is_place_member would be a door that reads a dropped table.
 select ok(
-  exists (
-    select 1 from information_schema.columns
-     where table_schema = 'public' and table_name = 'visit_tickets'
-       and column_name = 'place_id'
-  ),
-  'visit_tickets.place_id exists'
-);
-
--- Superseded by MESITA-1590: this pinned is_project_member's NAME staying
--- put across the 20260825005000 project_id->place_id COLUMN rename, since
--- nothing in that migration's scope touched the entity itself. MESITA-1590
--- renames the entity (projects->places) and took this function's name with
--- it — verified no client calls it by name (grep across every app found only
--- generated database.types.ts, never a hand-written .rpc('is_project_member')
--- call site) — so the "RPC JSON does not move" guarantee had no live caller
--- depending on it. Pin the new name instead of deleting the assertion.
-select ok(
-  exists (
+  not exists (
     select 1 from pg_proc p
       join pg_namespace n on n.oid = p.pronamespace
      where n.nspname = 'public' and p.proname = 'is_place_member'
   ),
-  'is_place_member exists (renamed from is_project_member, MESITA-1590)'
+  'is_place_member is gone (no place members; place-bucket writes are super-admin only)'
 );
 
 -- ━━━ Ghost names + HNSW ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -675,47 +579,18 @@ select has_column(
   'app_config.memo_config holds Memo greeting/instructions/legacy model keys'
 );
 
--- ━━━ app_config.controls_config — the Wallet's Credits terms ━━━━━━━━━━━━━━━
+-- ━━━ app_config — the Second Stage blobs are gone ━━━━━━━━━━━━━━━━━━━━━━━━━━
+--
+-- MESITA-2091. controls_config (Credits terms), promos_config (the rewards
+-- grid), ojo_config, orders_config, visits_config and verification_config
+-- each configured something First Stage does not have.
 
-select has_column(
-  'public', 'app_config', 'controls_config',
-  'app_config.controls_config holds the Wallet Credits terms'
-);
-
--- Every key the EFs normalize against. A migration that rewrites this blob and
--- drops one hands every place a default nobody chose, silently, because
--- normalizeControlsConfig is deliberately tolerant of a missing key.
 select is_empty(
-  $$select k from unnest(array[
-      'defaultHoldHours', 'defaultBonusPct', 'maxHoldHours', 'minHoldHours',
-      'defaultExpiryDays', 'minExpiryDays'
-    ]) k
-    where not exists (
-      select 1 from public.app_config c
-       where c.id = 1 and c.controls_config ? k
-    )$$,
-  'controls_config carries every key the Controls page and the EFs read'
-);
-
--- EXPIRY IS IN DAYS, THE HOLD IS IN HOURS. The two knobs sit in one blob
--- wearing different units, so the failure this pins is an expiry written in the
--- hold's unit: 2160 for a quarter reads as a six-year life and nothing else
--- would notice. Ten years is the outer bound on any real term.
-select ok(
-  (select (controls_config->>'defaultExpiryDays')::numeric <= 3650
-      and (controls_config->>'minExpiryDays')::numeric <= 3650
-     from public.app_config where id = 1),
-  'controls_config expiry is a DAY count, not the hold''s hours smuggled across'
-);
-
--- The one combination of these numbers that sells a guest money they can never
--- spend: a life shorter than the longest hold a place may set. The EF clamps it
--- on write; this catches a migration writing the blob directly.
-select ok(
-  (select (controls_config->>'minExpiryDays')::numeric * 24
-        >= (controls_config->>'maxHoldHours')::numeric
-     from public.app_config where id = 1),
-  'controls_config can never expire Credits before they mature'
+  $$select column_name from information_schema.columns
+     where table_schema = 'public' and table_name = 'app_config'
+       and column_name in ('controls_config', 'promos_config', 'ojo_config',
+                           'orders_config', 'visits_config', 'verification_config')$$,
+  'app_config holds no Second Stage blob (Credits, rewards grid, Ojo, orders, visits, verification)'
 );
 
 select has_column(
@@ -938,8 +813,7 @@ select ok(
 -- forgets the other turns Reset into a hard error at the worst moment.
 select is_empty(
   $$select r from unnest(array[
-      'app_config', 'super_admins', 'classes', 'consumer_plans',
-      'place_plans', 'place_categories', 'place_families',
+      'app_config', 'super_admins', 'place_categories', 'place_families',
       'place_tags', 'consumer_code_counter'
     ]) r
     where not exists (
@@ -1069,276 +943,207 @@ select is_empty(
   'every table of the organization layer is dropped'
 );
 
--- WHAT THE ORGANIZATION TABLES WERE PROVING, re-pointed. MESITA-1550 asserted
--- organizations and organization_invites were EF-only — RLS on, zero policies,
--- no client SELECT — because a merchant's identity and a pending invite are
--- not the guest's business. The two tables that inherited that data inherit
--- the posture; their client SELECT is asserted with the profiles body, above.
-
-select has_table(
-  'public', 'place_payment_accounts',
-  'place_payment_accounts stores the Stripe Connect account a place gets paid through'
-);
-
-select ok(
-  (select relrowsecurity from pg_class
-    where oid = 'public.place_payment_accounts'::regclass)
-  and not exists (
-    select 1 from pg_policy where polrelid = 'public.place_payment_accounts'::regclass
-  ),
-  'place_payment_accounts is EF-only: RLS on with zero policies (RLS and no policy denies every non-service role)'
-);
-
-select has_table(
-  'public', 'place_guest_customers',
-  'place_guest_customers stores which Stripe customer a guest is on the place''s connected account'
-);
-
-select ok(
-  (select relrowsecurity from pg_class
-    where oid = 'public.place_guest_customers'::regclass)
-  and not exists (
-    select 1 from pg_policy where polrelid = 'public.place_guest_customers'::regclass
-  ),
-  'place_guest_customers is EF-only: RLS on with zero policies'
-);
-
-select has_table(
-  'public', 'place_api_keys',
-  'place_api_keys stores hashed place-scoped integration secrets (MESITA-2062)'
-);
-
-select ok(
-  (select relrowsecurity from pg_class
-    where oid = 'public.place_api_keys'::regclass)
-  and not exists (
-    select 1 from pg_policy where polrelid = 'public.place_api_keys'::regclass
-  ),
-  'place_api_keys is EF-only: RLS on with zero policies'
-);
-
--- ━━━ CRITERION 2 — every tenant-owned record is scoped to a place ━━━━━━━━━━
---
--- The acceptance criterion says "scoped to a place, directly or through an
--- ENFORCED relationship", and the emphasis is the whole test. Asserting that a
--- `place_id` column EXISTS proves nothing: a nullable place_id lets a tenant
--- record float free, which is precisely the state the organization layer used
--- to hold (`places.organization_id` was nullable for years), and a place_id
--- with no foreign key lets it point at a place that was deleted last month.
--- So each of these tables is asserted twice — the column cannot be null, and
--- the database itself resolves it to a real place.
---
--- These use pgTAP's own `col_not_null` / `fk_ok` / `col_is_pk` rather than a
--- hand-rolled catalog query on purpose: a `::regclass` cast naming a table
--- that got dropped RAISES 42P01 and takes the whole file down, reporting
--- nothing at all. These helpers fail one line and keep going.
-
--- Money. A prepaid balance is a debt to a guest AT A VENUE (MESITA-1892); a
--- lot that is not resolvable to one place is a balance nobody can be asked to
--- honour. `on delete restrict`, not cascade: deleting a place must not be able
--- to delete somebody's money.
-select col_not_null(
-  'public', 'credit_lots', 'place_id',
-  'credit_lots.place_id is NOT NULL (a prepaid balance with no venue is money nobody owes)'
-);
-
-select fk_ok(
-  'public', 'credit_lots', 'place_id', 'public', 'places', 'id',
-  'credit_lots.place_id is a real foreign key to places (scoping is the database''s job, not the caller''s)'
-);
-
--- Billing. The yearly Mesita Membership a place buys.
-select col_not_null(
-  'public', 'partner_memberships', 'place_id',
-  'partner_memberships.place_id is NOT NULL (a subscription that bills nobody in particular)'
-);
-
-select fk_ok(
-  'public', 'partner_memberships', 'place_id', 'public', 'places', 'id',
-  'partner_memberships.place_id is a real foreign key to places'
-);
-
--- ONE LIVE MEMBERSHIP PER PLACE, and the index has to be on the NEW column:
--- the migration dropped the org-scoped version and rebuilt it, and a rebuild
--- that kept the old predicate would let a place carry two live subscriptions
--- and be charged twice. `active` and `past_due` are both live — past_due is a
--- failed payment, not a cancellation, and Stripe will retry it.
-select ok(
-  exists (
-    select 1 from pg_index i
-      join pg_class c on c.oid = i.indexrelid
-     where c.relname = 'partner_memberships_one_live'
-       and i.indrelid = to_regclass('public.partner_memberships')
-       and i.indisunique
-       and i.indnkeyatts = 1
-       and (select a.attname from pg_attribute a
-             where a.attrelid = i.indrelid and a.attnum = i.indkey[0]) = 'place_id'
-       and pg_get_expr(i.indpred, i.indrelid) like '%active%'
-       and pg_get_expr(i.indpred, i.indrelid) like '%past_due%'
-  ),
-  'partner_memberships_one_live is a unique index on (place_id) covering active and past_due (one live membership per place, or the place gets billed twice)'
-);
-
--- The merchant account. One place, one Stripe Connect account — stated as the
--- PRIMARY KEY rather than a unique index, because "at most one" is the shape
--- of the row, not a rule bolted onto it.
-select col_is_pk(
-  'public', 'place_payment_accounts', array['place_id'],
-  'place_payment_accounts is keyed BY the place (one place, one merchant account)'
-);
-
-select fk_ok(
-  'public', 'place_payment_accounts', 'place_id', 'public', 'places', 'id',
-  'place_payment_accounts.place_id is a real foreign key to places'
-);
-
--- The other direction, and it is a money rule: two places sharing one Stripe
--- Connect account means two operators' payouts landing in one bank account.
-select col_is_unique(
-  'public', 'place_payment_accounts', array['stripe_account_id'],
-  'place_payment_accounts.stripe_account_id is unique (one connected account never serves two places)'
-);
-
--- Guest identity on the connected account. The composite key IS the scoping:
--- the same guest is a DIFFERENT Stripe customer at every place, because the
--- connected account is different, and collapsing that to one row per consumer
--- would charge the wrong merchant.
-select col_is_pk(
-  'public', 'place_guest_customers', array['place_id', 'consumer_id'],
-  'place_guest_customers is keyed by (place_id, consumer_id) — a guest is one Stripe customer PER PLACE'
-);
-
-select fk_ok(
-  'public', 'place_guest_customers', 'place_id', 'public', 'places', 'id',
-  'place_guest_customers.place_id is a real foreign key to places'
-);
-
-select fk_ok(
-  'public', 'place_guest_customers', 'consumer_id', 'public', 'consumers', 'id',
-  'place_guest_customers.consumer_id is a real foreign key to consumers'
-);
-
--- WHAT THE ORGANIZATION ROW ITSELF HELD, now columns of the place. Derived
--- from the list rather than asserted one by one, so the failure names the
--- column that went missing: losing any of these silently is the operator's
--- partnership, legal identity, tax ID or Stripe customer disappearing.
-select is_empty(
-  $$select c from unnest(array[
-      'partnered', 'legal_name', 'rfc', 'stripe_billing_customer_id'
-    ]) c
-    where not exists (
-      select 1 from information_schema.columns
-       where table_schema = 'public' and table_name = 'places'
-         and column_name = c
-    )$$,
-  'places carries every fact the organization row used to hold (partnered, legal_name, rfc, stripe_billing_customer_id)'
-);
-
--- `partnered` is an ENTITLEMENT — every Partner door reads it as a boolean.
--- Nullable, it becomes three-valued, and `not partnered` stops meaning "not a
--- partner" in exactly the readers that gate ticket creation.
-select col_not_null(
-  'public', 'places', 'partnered',
-  'places.partnered is NOT NULL (an entitlement that can be unknown is a door that opens by accident)'
-);
-
--- ━━━ org_plans became membership_plans ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
---
--- The plan catalogue was never org-owned data — only its NAME was
--- organizational, so MESITA-1892 renamed it instead of dropping it. That makes
--- it the one piece of the layer's vocabulary with a live successor, and two
--- Edge Functions call `.from("membership_plans")` by that exact string: a
--- rename that lands on one side only is a 404 at checkout, not a test failure.
-
-select has_table(
-  'public', 'membership_plans',
-  'membership_plans exists (the Membership plan vocabulary two Edge Functions read by name)'
-);
+-- WHAT THE ORGANIZATION TABLES WERE PROVING went with them. MESITA-1892
+-- re-pointed the EF-only posture, the place scoping and the one-live-
+-- membership rule onto place_payment_accounts, place_guest_customers,
+-- place_api_keys, credit_lots, partner_memberships and place_members.
+-- MESITA-2091 dropped all six (First Stage takes no money and has no place
+-- members), so those assertions went with their tables; the First Stage
+-- section below asserts the tables are gone instead. One survivor of that
+-- block still holds: the renamed plan catalogue must not come back under its
+-- organizational name.
 
 select hasnt_table(
   'public', 'org_plans',
-  'org_plans is gone (renamed, not copied — two catalogues would drift and one of them prices real subscriptions)'
+  'org_plans is gone (renamed to membership_plans by MESITA-1892, then dropped with it by MESITA-2091)'
 );
 
--- AND THE RENAME REACHED THE SURVIVOR REGISTRY. admin_reset_database TRUNCATES
--- every public table that admin_reset_preserve does not name, so a registry
--- row still saying `org_plans` does not merely go stale — it drops the plan
--- catalogue, and its Stripe price ids, on the next Reset. The sweep above
--- ("every admin_reset_preserve row names a live public table") would catch the
--- stale row; this catches the missing one, which is the half that loses data.
-select ok(
-  exists (
-    select 1 from public.admin_reset_preserve
-     where table_name = 'membership_plans'
-  ),
-  'admin_reset_preserve names membership_plans (an unregistered table is TRUNCATED by the next admin reset)'
+-- ━━━ MESITA-2091 — the First Stage cut ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+--
+-- Pato, 2026-10-10: "kill the unused supabase tables / kill the unused
+-- supabase columns". First Stage is Citywide Catalog · Discovery Engines ·
+-- Reservations Agent. These assertions write down what the cut removed, for
+-- the same reason the organization block above does: a later migration that
+-- quietly brings one back is exactly what this file exists to catch.
+--
+-- Every set below is NAMED, not derived: the claim is "these specific things
+-- are gone", and a derived set cannot name what it never saw. to_regclass /
+-- information_schema are used rather than ::regclass casts, which raise on a
+-- missing relation and take the whole file down.
+
+select is_empty(
+  $$select t from unnest(array[
+      'classes', 'consumer_connectors', 'consumer_invite_codes', 'consumer_plans',
+      'consumer_review_claims', 'consumer_subscriptions', 'credit_gift_redeem_events',
+      'credit_gifts', 'credit_ledger', 'credit_lots', 'favorites', 'managers',
+      'membership_plans', 'partner_memberships', 'place_api_keys',
+      'place_field_proposals', 'place_guest_customers', 'place_invites',
+      'place_members', 'place_payment_accounts', 'place_plans', 'place_strikes',
+      'place_subscriptions', 'place_verifications', 'stripe_events',
+      'ticket_check_events', 'ticket_reports', 'ticket_reviews',
+      'visit_ticket_payments', 'visit_tickets'
+    ]) t
+    where to_regclass('public.' || t) is not null$$,
+  'every Second Stage table is dropped (claims, members, verification, plans, memberships, tickets, Credits, Stripe, classes, favorites)'
 );
 
--- THE LAST-OWNER BACKSTOP, re-pointed rather than reinvented. MESITA-1550 put
--- a DEFERRED CONSTRAINT TRIGGER on organization_members because ≥1 owner is a
--- claim about the rows that REMAIN after a statement, which an app-level
--- count-then-act cannot make. The place side states the other direction of the
--- same fact — at most one owner per place — and a partial unique index CAN say
--- that, atomically, with no trigger. Asserting the index that exists beats
--- inventing a trigger to keep the shape of an assertion whose table is gone.
-select ok(
-  exists (
-    select 1 from pg_index i
-      join pg_class c on c.oid = i.indexrelid
-     where c.relname = 'place_members_one_owner_per_place'
-       and i.indrelid = 'public.place_members'::regclass
-       and i.indisunique
-       and i.indpred is not null
-  ),
-  'place_members_one_owner_per_place is a partial unique index (one owner per place, enforced by the database)'
+select is_empty(
+  $$select table_name || '.' || column_name from information_schema.columns
+     where table_schema = 'public'
+       and (
+         (table_name = 'places' and column_name in (
+           'listing_type', 'plan', 'fiscal_type', 'segmentation_basic_enabled',
+           'segmentation_advanced_enabled', 'welcome_free_rate', 'welcome_premium_rate',
+           'free_rate', 'premium_rate', 'monthly_promo_cap', 'discount_cap_cents',
+           'staff_channel_pinged_at', 'first_ticket_honored_at', 'plan_live_at',
+           'strike_count', 'last_strike_at', 'promo_paused_until', 'plan_forfeited_at',
+           'check_pin', 'reward_lane_pending_review_at', 'claimed_by', 'claimed_at',
+           'claim_reviewed_at', 'claim_reviewed_by', 'partnered', 'legal_name', 'rfc',
+           'stripe_billing_customer_id'))
+         or (table_name = 'place_profiles' and column_name in (
+           'whatsapp_pr_urls', 'instagram_pr_urls', 'google_business_url',
+           'google_visitor_count', 'mesita_stars_overall', 'mesita_stars_food',
+           'mesita_stars_service', 'mesita_stars_ambience', 'mesita_stars_value',
+           'mesita_review_count', 'mesita_visitor_count', 'description_es',
+           'order_channel', 'order_target', 'orders_enabled', 'mesita_pay_enabled',
+           'credits_enabled', 'pickup_orders_enabled', 'delivery_orders_enabled'))
+       )$$,
+  'places and place_profiles keep no Second Stage column (plan, listing, rates, strikes, claims, fiscal identity, Mesita reviews, orders, Pay, Credits)'
 );
 
--- THE RFC RULE, both halves, on its new table. _shared/place-rfc.ts matches
--- `places_rfc_unique` BY NAME to turn a 23505 into a sentence a merchant can
--- act on, so the index name is contract, not decoration.
-select ok(
-  exists (
-    select 1 from pg_constraint
-     where conrelid = 'public.places'::regclass
-       and conname = 'places_rfc_shape'
-       and contype = 'c'
-  ),
-  'places_rfc_shape still checks the RFC shape (a malformed tax ID must never reach a CFDI)'
+-- The view half of the same claim. `currency` is deliberately NOT here: it
+-- still formats the consumer price range.
+select is_empty(
+  $$select column_name from information_schema.columns
+     where table_schema = 'public' and table_name = 'profiles'
+       and column_name in (
+         'listing_type', 'plan', 'fiscal_type', 'segmentation_basic_enabled',
+         'segmentation_advanced_enabled', 'welcome_free_rate', 'welcome_premium_rate',
+         'free_rate', 'premium_rate', 'monthly_promo_cap', 'discount_cap_cents',
+         'staff_channel_pinged_at', 'first_ticket_honored_at', 'plan_live_at',
+         'strike_count', 'last_strike_at', 'promo_paused_until', 'plan_forfeited_at',
+         'reward_lane_pending_review_at', 'whatsapp_pr_urls', 'instagram_pr_urls',
+         'google_business_url', 'google_visitor_count', 'mesita_stars_overall',
+         'mesita_stars_food', 'mesita_stars_service', 'mesita_stars_ambience',
+         'mesita_stars_value', 'mesita_review_count', 'mesita_visitor_count',
+         'description_es', 'order_channel', 'order_target', 'orders_enabled',
+         'mesita_pay_enabled')$$,
+  'public.profiles projects no Second Stage column'
 );
 
-select ok(
-  exists (
-    select 1 from pg_index i
-      join pg_class c on c.oid = i.indexrelid
-     where c.relname = 'places_rfc_unique'
-       and i.indrelid = 'public.places'::regclass
-       and i.indisunique
-       and i.indpred is not null
-  ),
-  'places_rfc_unique is a partial unique index (one RFC is one merchant; NULL means not paid yet)'
+-- Function bodies are strings, so every one of these would have survived its
+-- tables and 42P01'd on its next call.
+select is_empty(
+  $$select p.proname from pg_proc p
+     where p.pronamespace = 'public'::regnamespace
+       and p.proname in (
+         'apply_ticket_credits', 'spend_credits', 'create_credit_lot',
+         'create_credit_gift', 'cancel_credit_gift', 'redeem_credit_gift',
+         'reverse_credit_lot', 'get_credit_liability', 'get_credit_spend_report',
+         'sweep_expired_credit_lots', 'credit_lots_place_immutable',
+         'record_visit_tenders', 'visit_tickets_enforce_tender_sum_on_reveal',
+         'refresh_place_mesita_reviews', 'tg_ticket_reviews_refresh_place',
+         'claim_place', 'release_place', 'mark_place_claim_reviewed')$$,
+  'every function that served a dropped table is dropped (a string body outlives its table and fails at call time)'
 );
 
--- THE PAY BIT IS ONE BIT NOW. It was `place AND organization`; the second half
--- was folded into place_profiles before the layer went, so the capability
--- every reader sees is unchanged and stated in exactly one column.
-select has_column(
-  'public', 'profiles', 'mesita_pay_enabled',
-  'profiles still exposes mesita_pay_enabled (every Pay door reads it here)'
+select is_empty(
+  $$select t.typname from pg_type t
+     where t.typnamespace = 'public'::regnamespace
+       and t.typname in (
+         'ticket_state', 'story_state', 'member_role', 'verification_method',
+         'verification_state', 'field_proposal_status', 'plan', 'listing_type',
+         'place_fiscal_type')$$,
+  'every Second Stage enum is dropped (content_state, place_state and reservation_state stay)'
 );
+
+-- A job pointed at a dropped function errors every hour, forever, and nothing
+-- else reads cron.job.
+select is_empty(
+  $$select jobname from cron.job where jobname = 'sweep-expired-credit-lots'$$,
+  'the Credits expiry sweep is unscheduled'
+);
+
+-- web-admin uploads gallery photos and menus to these buckets straight from
+-- the browser (lib/place-upload-utils.ts). Losing a write policy is a 403 on
+-- every upload; keeping a member path open is a door for a role that no
+-- longer exists. So: all nine exist, every one asks is_super_admin(), and
+-- none asks anything else about the caller.
+select is(
+  (select count(*)::int from pg_policy
+    where polrelid = 'storage.objects'::regclass
+      and polname in (
+        'place_images_admin_insert', 'place_images_admin_update', 'place_images_admin_delete',
+        'menu_images_admin_insert', 'menu_images_admin_update', 'menu_images_admin_delete',
+        'menu_pdfs_admin_insert', 'menu_pdfs_admin_update', 'menu_pdfs_admin_delete')
+      and (coalesce(pg_get_expr(polqual, polrelid), '')
+           || coalesce(pg_get_expr(polwithcheck, polrelid), '')) like '%is_super_admin()%'
+      and (coalesce(pg_get_expr(polqual, polrelid), '')
+           || coalesce(pg_get_expr(polwithcheck, polrelid), '')) not like '%member%'),
+  9,
+  'the nine place-bucket write policies exist and admit super admins only'
+);
+
+select is_empty(
+  $$select polname from pg_policy
+     where polrelid = 'storage.objects'::regclass
+       and (polname like '%member_or_admin%' or polname like 'ticket_proofs%')$$,
+  'no member_or_admin or ticket-proofs storage policy survives'
+);
+
+-- Me › Notifications (MESITA-2080) is kept; its visit-ticket coupling is not.
+-- The CHECK must admit exactly what notification-row.tsx RESERVATION_KINDS
+-- renders and refuse the retired ticket kinds — proved by writing rows.
+select hasnt_column(
+  'public', 'consumer_notifications', 'ticket_id',
+  'consumer_notifications.ticket_id is gone (a notification is no longer about a visit ticket)'
+);
+
+savepoint before_notification_probe;
+
+insert into auth.users (id) values ('00000000-0000-4000-8000-0000000a2091');
+insert into public.consumers (id) values ('00000000-0000-4000-8000-0000000a2091');
+
+select lives_ok(
+  $$insert into public.consumer_notifications (consumer_id, kind)
+    values ('00000000-0000-4000-8000-0000000a2091', 'reservation'),
+           ('00000000-0000-4000-8000-0000000a2091', 'booking')$$,
+  'consumer_notifications accepts the two reservation kinds Me › Notifications renders'
+);
+
+select throws_ok(
+  $$insert into public.consumer_notifications (consumer_id, kind)
+    values ('00000000-0000-4000-8000-0000000a2091', 'bill')$$,
+  '23514'::char(5), null::text,
+  'consumer_notifications refuses the retired ticket kinds (bill, review)'
+);
+
+rollback to savepoint before_notification_probe;
+
+-- The INSTEAD OF bodies were rewritten without the dropped columns. The
+-- trigger checks above prove they are BOUND; this proves they WORK, on both
+-- halves of the join — a body that still named a dropped column would
+-- compile and then 42703 here.
+savepoint before_profiles_write_probe;
+
+select lives_ok(
+  $$insert into public.profiles (slug, name, state)
+    values ('mesita-2091-probe', 'First Stage Probe', 'active')$$,
+  'an INSERT through public.profiles writes both places and place_profiles'
+);
+
+update public.profiles set currency = 'USD', pitch = 'probe'
+ where slug = 'mesita-2091-probe';
 
 select is(
-  (select count(*)::int
-     from pg_depend d
-     join pg_rewrite r
-       on r.oid = d.objid and d.classid = 'pg_rewrite'::regclass
-     join pg_attribute a
-       on a.attrelid = d.refobjid and a.attnum = d.refobjsubid
-    where r.ev_class = 'public.profiles'::regclass
-      and d.refobjid = 'public.place_profiles'::regclass
-      and a.attname = 'mesita_pay_enabled'),
-  1,
-  'profiles.mesita_pay_enabled reads place_profiles.mesita_pay_enabled and nothing else (one bit, one writer)'
+  (select u.currency || '/' || p.pitch
+     from public.places u join public.place_profiles p on p.id = u.id
+    where u.slug = 'mesita-2091-probe'),
+  'USD/probe'::text,
+  'an UPDATE through public.profiles reaches both halves of the join'
 );
+
+rollback to savepoint before_profiles_write_probe;
 
 select * from finish();
 
