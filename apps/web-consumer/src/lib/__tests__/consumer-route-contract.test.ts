@@ -166,6 +166,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         meSettingsMetrics: "/me/settings/metrics",
         mePassport: "/me/passport",
         subscribe: "/subscribe/premium",
+        getTheApp: "/get-the-app",
         notifications: "/notifications",
         inboxMine: "/inbox/my-activity",
         inboxGlobal: "/inbox/global-activity",
@@ -364,6 +365,7 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       // need an entry or they 404.
       { source: "/subscribe", destination: "/me", permanent: true },
       { source: "/subscribe/:plan", destination: "/me", permanent: true },
+      { source: "/get-the-app", destination: "/discover/feed", permanent: true },
       { source: "/me/class/invite", destination: "/me", permanent: true },
       { source: "/me/class", destination: "/me", permanent: true },
       { source: "/me/diamond/invite", destination: "/me", permanent: true },

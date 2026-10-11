@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -15,10 +15,16 @@ const read = (p: string) => readFileSync(join(SRC, p), "utf8");
 describe("/web is the phone emulator", () => {
   const shell = read("app/(shell)/layout.tsx");
 
-  it("every shell return draws the phone card with the bottom menu", () => {
-    const frames = [...shell.matchAll(/<MobileFrame surface=/g)];
-    expect(frames).toHaveLength(2);
-    expect([...shell.matchAll(/<BottomNav\b/g)]).toHaveLength(2);
+  it("the sidebar frame is gone", () => {
+    expect(existsSync(join(SRC, "components/consumer/WebFrame.tsx"))).toBe(
+      false,
+    );
+    expect(shell).not.toContain("WebFrame");
+  });
+
+  it("the shell draws the phone card with the bottom menu", () => {
+    expect([...shell.matchAll(/<MobileFrame>/g)]).toHaveLength(1);
+    expect([...shell.matchAll(/<BottomNav\b/g)]).toHaveLength(1);
   });
 
   it("no breakpoint hides the bottom menu", () => {
@@ -28,9 +34,17 @@ describe("/web is the phone emulator", () => {
     );
   });
 
-  it("the strip links to the other way in, never to itself", () => {
-    const frame = read("components/consumer/MobileFrame.tsx");
-    expect(frame).toMatch(/surface === "mob"\s*\?\s*\{ href: "\/web"/);
-    expect(frame).toMatch(/\{ href: "\/mob", label: "Sign in" \}/);
+  it("there is no anonymous-browse door left (MESITA-2137)", () => {
+    for (const gone of [
+      "components/consumer/DownloadAppScreen.tsx",
+      "components/consumer/SurfaceSwitch.tsx",
+      "lib/web-surface-auth.ts",
+      "app/(shell)/get-the-app/page.tsx",
+    ]) {
+      expect(existsSync(join(SRC, gone)), gone).toBe(false);
+    }
+    expect(read("lib/supabase/middleware.ts")).not.toContain(
+      "signInAnonymously(",
+    );
   });
 });

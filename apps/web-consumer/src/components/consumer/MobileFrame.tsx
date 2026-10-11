@@ -2,7 +2,6 @@
 
 import type { CSSProperties } from "react";
 
-import Link from "next/link";
 
 import { cn } from "@/lib/utils";
 import { useKeyboardInset } from "@/lib/use-keyboard-inset";
@@ -40,24 +39,11 @@ export const APP_CARD_ID = "mesita-app-card";
 
 export function MobileFrame({
   children,
-  surface = "mob",
-  signedIn = true,
+  className,
 }: {
   children: React.ReactNode;
-  /**
-   * Both surfaces draw this card (MESITA-2134). The strip's one link goes to
-   * the OTHER way in: /mob offers guest browsing, /web offers sign-in to a
-   * guest and nothing to an account that already has it.
-   */
-  surface?: "web" | "mob";
-  signedIn?: boolean;
+  className?: string;
 }) {
-  const switchLink =
-    surface === "mob"
-      ? { href: "/web", label: "Browse as a guest" }
-      : signedIn
-        ? null
-        : { href: "/mob", label: "Sign in" };
   // The software keyboard, as a length both breakpoints can subtract.
   //
   // The frame is the RIGHT place for this: it is `h-dvh` and BottomNav is a
@@ -90,16 +76,8 @@ export function MobileFrame({
           <p className="type-meta tracking-wide uppercase">
             Phone emulator
           </p>
-          {switchLink && (
-            <Link
-              href={switchLink.href}
-              className="type-meta text-primary font-medium"
-            >
-              {switchLink.label}
-            </Link>
-          )}
         </div>
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className={cn("flex flex-1 flex-col overflow-hidden", className)}>
           {children}
         </div>
       </div>

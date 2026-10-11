@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { CalendarCheck, Heart, MapPin, Sparkles } from "lucide-react";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
-import { SurfaceSwitch } from "@/components/consumer/SurfaceSwitch";
 
 // Two-column enterprise auth shell for the consumer subdomain.
 //
@@ -18,45 +17,53 @@ import { SurfaceSwitch } from "@/components/consumer/SurfaceSwitch";
 export function EnterpriseAuthLayout({
   title,
   subtitle,
+  chip,
   children,
   footer,
 }: {
   title: string;
   subtitle: string;
+  chip?: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
 }) {
   return (
-    <div className="bg-background min-h-dvh lg:grid lg:grid-cols-2">
-      <LandingPane />
-      <main className="bg-background relative flex flex-col">
-        <div className="flex flex-1 items-center justify-center px-6 py-12 sm:px-10">
-          <div className="w-full max-w-[440px]">
-            <header className="mb-7">
-              <h1 className="font-display text-3xl leading-tight font-semibold tracking-[-0.02em]">
-                {title}
-              </h1>
-              <p className="text-muted-foreground mt-1.5 text-sm leading-[1.55]">
-                {subtitle}
-              </p>
-              <SurfaceSwitch />
-            </header>
-            {children}
-            {footer && (
-              <p className="text-muted-foreground type-body mt-7 text-center">
-                {footer}
-              </p>
-            )}
+    // CONTAINER QUERIES, NOT VIEWPORT ONES (MESITA-2137). Sign-in renders
+    // inside the phone card on both surfaces, so `lg:` read the WINDOW and
+    // squeezed the two-column desktop layout into a 448px card. Sized by its
+    // own box, the brand pane only appears if the frame ever grows that wide.
+    <div className="@container h-full">
+      <div className="bg-background min-h-full @5xl:grid @5xl:grid-cols-2">
+        <LandingPane />
+        <main className="bg-background relative flex flex-col">
+          <div className="flex flex-1 items-center justify-center px-6 py-12 @lg:px-10">
+            <div className="w-full max-w-[440px]">
+              <header className="mb-7">
+                <h1 className="font-display text-3xl leading-tight font-semibold tracking-[-0.02em]">
+                  {title}
+                </h1>
+                <p className="text-muted-foreground mt-1.5 text-sm leading-[1.55]">
+                  {subtitle}
+                </p>
+                {chip}
+              </header>
+              {children}
+              {footer && (
+                <p className="text-muted-foreground type-body mt-7 text-center">
+                  {footer}
+                </p>
+              )}
+            </div>
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }
 
 function LandingPane() {
   return (
-    <aside className="bg-brand relative hidden flex-col justify-between overflow-hidden p-10 text-white lg:flex">
+    <aside className="bg-brand relative hidden flex-col justify-between overflow-hidden p-10 text-white @5xl:flex">
       <SoftGlow />
       <div className="relative z-10 flex items-center justify-between">
         <Link href="/" className="inline-flex items-center no-underline">
@@ -68,13 +75,13 @@ function LandingPane() {
       </div>
 
       <div className="relative z-10 flex flex-col gap-8">
-        <h2 className="font-display max-w-[18ch] text-4xl leading-[1.05] font-semibold tracking-[-0.02em] xl:text-5xl">
+        <h2 className="font-display max-w-[18ch] text-4xl leading-[1.05] font-semibold tracking-[-0.02em] @6xl:text-5xl">
           Find the table.{" "}
           <em className="not-italic underline decoration-white/40 underline-offset-[6px]">
             Mesita books it.
           </em>
         </h2>
-        <ul className="grid grid-cols-1 gap-3.5 xl:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-3.5 @6xl:grid-cols-2">
           <ValueProp
             Icon={MapPin}
             title="Every place in your city"
