@@ -33,7 +33,7 @@
 // #1572 fixed on the map.
 
 import { useEffect, useMemo, useState } from "react";
-import { Compass, SlidersHorizontal } from "lucide-react";
+import { ArrowUpDown, Compass, SlidersHorizontal } from "lucide-react";
 import { apiListCatalog, type CatalogRail, type Place } from "@/lib/api/places";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
@@ -48,6 +48,11 @@ import { EmptyState } from "@/components/shared";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { FavoriteTile } from "./FavoriteTile";
 import { cn, errMsg } from "@/lib/utils";
+import {
+  sortCatalogRails,
+  summarizeCatalog,
+  type CatalogSort,
+} from "@/lib/catalog-summary";
 import {
   resetDiscoveryFilters,
   useDiscoveryFilters,
@@ -72,6 +77,7 @@ export function CatalogRails() {
   const [rails, setRails] = useState<CatalogRail[] | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [sort, setSort] = useState<CatalogSort>("suggested");
   const filters = useDiscoveryFilters();
   const appliedCount = countAppliedDiscoveryFilters(filters);
   const filtered = hasDiscoveryPredicates(filters);
@@ -110,6 +116,12 @@ export function CatalogRails() {
     // re-run this on every GPS tick if listed.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase, requestKey]);
+
+  const summary = useMemo(() => summarizeCatalog(rails ?? []), [rails]);
+  const shownRails = useMemo(
+    () => sortCatalogRails(rails ?? [], sort),
+    [rails, sort],
+  );
 
   const placesShown = useMemo(
     () => (rails ?? []).reduce((n, rail) => n + rail.places.length, 0),
@@ -244,8 +256,27 @@ export function CatalogRails() {
 
   return shell(
     <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain px-4 pt-4 pb-6">
+      {/* THE COUNT AND THE SORT (MESITA-2135), back from the mobile app:
+          what the catalog holds tonight, and one way to reorder it. */}
+      <div className="mb-4 flex items-center justify-between gap-3 px-1">
+        <p className="type-body text-muted-foreground tabular-nums">
+          {summary.total} {summary.total === 1 ? "place" : "places"}
+          {summary.openNow > 0 ? ` · ${summary.openNow} open now` : ""}
+        </p>
+        <button
+          type="button"
+          onClick={() =>
+            setSort((s) => (s === "suggested" ? "open" : "suggested"))
+          }
+          aria-label={`Sort: ${sort === "suggested" ? "Suggested" : "Open first"}. Change sort order`}
+          className="border-border bg-card text-foreground type-meta flex shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 font-semibold transition active:scale-[0.98]"
+        >
+          <ArrowUpDown className="h-3.5 w-3.5" aria-hidden />
+          {sort === "suggested" ? "Suggested" : "Open first"}
+        </button>
+      </div>
       <div className="flex flex-col gap-8">
-        {rails.map((rail) => (
+        {shownRails.map((rail) => (
           <section key={rail.key} aria-labelledby={`${rail.key}-heading`}>
             <h2
               id={`${rail.key}-heading`}
