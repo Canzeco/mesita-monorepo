@@ -8,19 +8,20 @@
 //       gathered material — Google spine + reviews + SERP blurb + IG bio; no
 //       website/menu) + category inference + tag inference (closed
 //       vocabularies) + Selected Reservation Endpoint (phone →
-//       places.reservation_channel/_target; voice-only, MESITA-842), then the
-//       enriched profile persisted onto the places row (direct UPDATE — this
-//       EF is already the DB layer; no HTTP hop) and the images stored via
-//       enricher-edgefunc-store-place-images
-//   S8  EMBEDDING (function 8) — both vectors, persisted. Closes the queue,
-//       and only then does content_state flip to 'ready'.
+//       place_profiles.reservation_channel/_target; voice-only, MESITA-842),
+//       then the enriched profile persisted onto place_profiles (direct
+//       UPDATE — this EF is already the DB layer; no HTTP hop), and only then
+//       does content_state flip to 'ready'
+//   S8  EMBEDDING (function 8) — both vectors, persisted. Closes the queue;
+//       the images are stored via enricher-edgefunc-store-place-images after.
 //
 // PERSIST AND STORE ARE NOT STEPS (MESITA-2027). They used to be S8 and S9 —
 // stages that bought no function and reported on writes two stages from where
 // the work happened. Each function owns its own write now, which is what makes
 // crenup-report rule 2 (`completed` means THE EFFECT LANDED) honest rather than
-// aspirational. `content_state` still flips exactly ONCE, after 8, so a place
-// never goes public wearing this run's images over last run's description.
+// aspirational. `content_state` still flips exactly ONCE, right after the
+// function-7 persist and before 8, so a place never goes public wearing this
+// run's images over last run's description.
 //
 // Ends the pipeline: place_research.stage='done'. The gathered/analysis jsonb
 // stay on the row, so re-synthesis without re-scraping = reset stage to
@@ -337,11 +338,11 @@ serveEnrichStage("contents", async (admin, env, row) => {
   sources.cost = ledger.snapshot();
 
   // Selected Reservation Endpoint (Docs › Reservations §C / MESITA-597 / MESITA-842) —
-  // seed places.reservation_channel / reservation_target for the Reservationist.
+  // seed place_profiles.reservation_channel / reservation_target for the Reservationist.
   // Voice-only: phone is the sole serving channel (WhatsApp unreachable since
   // MESITA-839). The priority / parked knobs are retired (MESITA-2144); the
   // channel is phone, fixed in code. Phone is stripped from gathered.place
-  // (research-only write), so read the live places.phone. Skip when admin
+  // (research-only write), so read the live place_profiles.phone. Skip when admin
   // already picked phone — unless respectAdminOverride is off. Legacy
   // whatsapp/instagram picks are NOT overrides (hasReservationTarget).
   const { data: settingsRow } = await admin
@@ -531,7 +532,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
   // Mesita Name and Semantic Summary that Description just persisted. It
   // never synthesizes; a missing summary text stamps an honest failure.
   // Best-effort: the profile is already ready, so a failed embed leaves the
-  // place at rung 9 rather than failing the run — a stuck vector needs a
+  // place at rung 7 rather than failing the run — a stuck vector needs a
   // re-enrich, not patience (MESITA-1222).
   let embeddingWrote = false;
   if (wants(buys, "embedding")) {

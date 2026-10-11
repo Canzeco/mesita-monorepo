@@ -1,6 +1,6 @@
 // Selected Reservation Endpoint — Notion Docs › Reservations §C.
 //
-// Seeds places.reservation_channel / reservation_target for the Reservationist
+// Seeds place_profiles.reservation_channel / reservation_target for the Reservationist
 // (typed columns since MESITA-1208 — routing left the products jsonb).
 // The channel is phone, the only one (MESITA-842) — the Reservationist is
 // voice-reachable only; WhatsApp/Instagram are not serving paths (MESITA-839).

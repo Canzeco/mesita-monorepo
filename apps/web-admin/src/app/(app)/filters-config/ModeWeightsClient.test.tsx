@@ -27,9 +27,9 @@ describe("Signal weights by mode", () => {
     // WORD IS THE POINT OF THIS TEST. It calls weightsForMode twice, so a
     // caller-set rule would give it a column — but its mask is one signal,
     // and a one-factor Π s^w is a monotone transform of s, so no exponent can
-    // reorder a Word result. Feed ranks by cosine; Chat and Favorites have no
+    // reorder a Word result. Catalog ranks by cosine; Chat and Favorites have no
     // engine, and Favorites' mask is empty besides.
-    for (const absent of ["Word", "Feed", "Chat", "Favorites"]) {
+    for (const absent of ["Word", "Catalog", "Chat", "Favorites"]) {
       expect(markup, absent).not.toContain(`>${absent}<`);
     }
     // Two columns, so two inputs per on-signal and no more: five on Map

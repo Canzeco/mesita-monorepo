@@ -84,7 +84,7 @@
 // CHANNEL SHAPE: place_phone/consumer_phone are validated as flat nullable
 // strings, on purpose — reservation_tickets stores PRE-RESOLVED phone numbers
 // for this one ticket's calls, not the place's own {channel,value}+fallbacks[]
-// contact configuration (that shape lives on places.reservation_channel /
+// contact configuration (that shape lives on place_profiles.reservation_channel /
 // reservation_target, the place aggregate's concern, not this one's).
 //
 // supabase-edgefunc-reservation-call/index.ts (the live Reservationist call

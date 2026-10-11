@@ -35,8 +35,8 @@
 // Number resolution, per side:
 //   business — reservations.place_phone when pre-resolved (test tickets),
 //     else config testCall (test mode defaults ON → never rings a real place
-//     by accident), else places.reservation_target when the channel is phone (MESITA-842 —
-//     voice-only; whatsapp/instagram picks ignored → places.phone fallback).
+//     by accident), else place_profiles.reservation_target when the channel is phone (MESITA-842 —
+//     voice-only; whatsapp/instagram picks ignored → place_profiles.phone fallback).
 //   consumer — reservations.consumer_phone when pre-resolved, else the
 //     consumer's own phone; empty → leg 2 is skipped.
 //
@@ -1403,7 +1403,7 @@ Deno.serve(async (req) => {
       via = "test-mode number";
     } else {
       // Dial only when the door is Phone (or never picked — keep the
-      // places.phone fallback so existing rows still reach the place).
+      // place_profiles.phone fallback so existing rows still reach the place).
       // WhatsApp / Instagram / Web / Not are not voice endpoints.
       const channel = place?.reservation_channel ?? null;
       if (

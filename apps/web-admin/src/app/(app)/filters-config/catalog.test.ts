@@ -222,7 +222,7 @@ describe("Discovery function APIs", () => {
     expect(modeReturnsEntity("map", "social")).toBe(false);
   });
 
-  it("two nested place types: Map picks the ring, Feed and Scroll need enrichment", () => {
+  it("two nested place types: Map picks the ring, Catalog and Scroll need enrichment", () => {
     // The band IS `Google Places ⊃ Mesita Enriched Places` from
     // nearby-places.ts, in that order. `listed` retired at MESITA-1856: a row
     // existing is not a gate any mode runs.
@@ -564,7 +564,8 @@ describe("Discovery page box order", () => {
     expect(map).not.toContain("LaneMergeFunnel");
     expect(map).not.toContain("cascadeLaneCounts");
     expect(map).toContain("Closest N of the selected set");
-    expect(map).toContain("Listed pins then Lineup, not distance");
+    expect(map).toContain("Lineup ranks listed pins only when Google adds none");
+    expect(map).not.toContain("Listed pins then Lineup");
     expect(map).toContain("Map reads the Map mask");
     expect(map).toContain("Reload after");
     expect(map).toContain("MAP_RELOAD_PAIRS");

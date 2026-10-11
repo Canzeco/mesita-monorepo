@@ -27,7 +27,7 @@
 // documented and implemented as retryable (voicemail, IVR, "call back later").
 // Firing on those would burn the cooldown window on a channel that isn't
 // actually broken. Best-effort: a seeding failure here never fails the
-// caller's outcome report, the same rule create-place's on_create hookup uses.
+// caller's outcome report.
 //
 // KNOWN LIMITATION, accepted rather than fixed here: the research stage EF
 // (enricher-cron-enrich-place-research) REPLACES `place_research.gathered`

@@ -184,7 +184,9 @@ export const TRIGGER_META: Record<
     label: "On create",
     blurb:
       "A place enters Mesita. The only chance to build a profile from nothing.",
-    staged: false,
+    // STAGED: both create doors save a ready place and never seed the
+    // Enricher, so nothing reads this row.
+    staged: true,
   },
   on_update: {
     label: "On update",
@@ -237,8 +239,8 @@ export type TriggerRow = {
    * STAGED (MESITA-1184), and labelled here because an unenforced config is a
    * bug. The mechanism is real and atomic — `open_place_enrichment_run`
    * compares this against `max(started_at)` for the pair under an advisory
-   * lock — but every caller alive today passes 0 deliberately: `on_create`
-   * fires once per place and `manual` is explicit operator intent. So the
+   * lock — but every caller alive today passes 0 deliberately: `manual` is
+   * explicit operator intent and the vote threshold is its own gate. So the
    * number round-trips and reaches no enforcement site.
    *
    * It stops being staged when the first event-driven emitter lands

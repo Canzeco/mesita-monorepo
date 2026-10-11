@@ -70,7 +70,7 @@ export function MapConfigClient({
       <SectionCard
         icon={<MapIcon className="text-primary h-4 w-4" />}
         title="Map"
-        subtitle="Closest N of the selected set. Listed pins then Lineup, not distance. Google stays distance."
+        subtitle="Closest N of the selected set. Lineup ranks listed pins only when Google adds none; otherwise distance."
         state={
           <KnobState
             kind="enforced"

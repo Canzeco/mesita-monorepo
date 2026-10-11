@@ -18,9 +18,9 @@ import {
 
 /**
  * Enrichment States — the whole pipeline picture in one box (Pato, 2026-08-30):
- * the two SUMMARY facts (Enriching, Enriched) over the eleven functions,
- * 0. Seed … 10. Embedding, each a bool (called / not). Create 1–5 /
- * Enrich 1–10 stay Config sequences, not a third ladder.
+ * the two SUMMARY facts (Enriching, Enriched) over the nine functions,
+ * 0. Seed … 8. Embedding (CRENUP_STEPS), each a bool (called / not). Create
+ * runs 0, 1, 7, 8 and Enrich 1–8 of that one ladder, never a second one.
  *
  * This box OWNS the enrichment read. It moved here from StateCard with the
  * two rows that need it, so the Admin tab still issues exactly one
@@ -107,7 +107,7 @@ export function CrenupStateCard({ place }: { place: AdminPlace }) {
         />
       </div>
 
-      {/* The eleven functions the two facts above summarize. */}
+      {/* The nine functions the two facts above summarize. */}
       <div className="border-border/60 mt-4 flex flex-col border-t pt-2">
         {rows.map((row) => (
           <div
