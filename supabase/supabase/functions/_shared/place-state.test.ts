@@ -16,7 +16,7 @@ Deno.test("seeded: a blank or missing google_place_id is not seeded", () => {
 
 Deno.test("listed: only active is reachable by a guest", () => {
   assertEquals(isPlaceListed("active"), true);
-  // `lead` is a dead label (MESITA-2144): still on the enum, never listed.
+  // An unknown label (e.g. a retired one in a stale payload) is never listed.
   for (const s of ["paused", "archived", "lead", null]) {
     assertEquals(isPlaceListed(s), false);
   }
