@@ -194,7 +194,7 @@ export function AskAiPanel({
 
       {/* Follow-up chips — Memo's suggested next questions */}
       {related.length > 0 && !thinking && (
-        <div className="border-border flex flex-wrap gap-1.5 border-t px-3 pt-2">
+        <div className="flex flex-wrap gap-1.5 px-3 pt-2">
           {related.map((q) => (
             <button
               key={q}
@@ -209,7 +209,7 @@ export function AskAiPanel({
       )}
 
       {/* Composer */}
-      <div className="border-border bg-background/80 border-t p-2">
+      <div className="bg-background/80 p-2">
         <form
           onSubmit={(e) => {
             e.preventDefault();
