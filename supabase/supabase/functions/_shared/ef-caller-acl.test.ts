@@ -16,16 +16,17 @@
 // far more than the 4 MESITA-1600 named by hand — spanning a real
 // architectural question (should web-business's operator actions route
 // through web-admin instead, or do some of these EFs legitimately serve two
-// consoles and need renaming?) that is explicitly NOT this test's call to
-// make. GRANDFATHERED_VIOLATIONS freezes today's known set: this fails on
-// any NEW violation from here, and shrinks as each grandfathered one gets
-// fixed — remove its line here in the same PR that fixes it.
+// consoles and need renaming?) that was explicitly NOT this test's call to
+// make; deleting web-business (MESITA-2090) answered most of it.
+// GRANDFATHERED_VIOLATIONS freezes today's known set: this fails on any NEW
+// violation from here, and shrinks as each grandfathered one gets fixed —
+// remove its line here in the same PR that fixes it.
 //
-// OUT OF SCOPE ON PURPOSE: `stripe-*` (Stripe's own webhook delivery, not
-// an app), `supabase-*` (internal cron/edgefunc caller), `eleven-*`
-// (ElevenLabs' voice-agent tool calls), and the one-off `staff-web-*`
-// benchmark EF (invoked by an ops script, not any app in `apps/`) — none
-// of these have a caller this scan can verify by reading `apps/`.
+// OUT OF SCOPE ON PURPOSE: `supabase-*` (internal cron/edgefunc caller),
+// `eleven-*` (ElevenLabs' voice-agent tool calls), and the one-off
+// `staff-web-*` benchmark EF (invoked by an ops script, not any app in
+// `apps/`) — none of these have a caller this scan can verify by reading
+// `apps/`.
 
 const FUNCTIONS_DIR = new URL("../", import.meta.url);
 const REPO_ROOT = new URL("../../../../", import.meta.url);
@@ -35,25 +36,14 @@ const REPO_ROOT = new URL("../../../../", import.meta.url);
  */
 const ACTOR_APPS: Record<string, readonly string[]> = {
   admin: ["web-admin"],
-  // web-admin joined the business actor with MESITA-2086: Manage › Single
-  // Place renders the business console's place surface. Since MESITA-2089
-  // deleted web-business and mobile-business it is the ONLY caller. The
-  // operator's session is a super-admin, which _shared/auth-membership.ts
-  // already admits through every requireMembership/Owner/Editor gate — the
-  // EF name still names the surface that owns the call; admin hosts it.
-  business: ["web-admin"],
   consumer: ["web-consumer"],
-  // No app. web-validate was deleted (MESITA-2089) while its validate-web-*
-  // functions stay deployed until they are retired, so an EMPTY list is the
-  // honest entry: any app that starts invoking one is a new violation, not a
-  // silent pass. The key has to exist — the second test below fails on a
-  // *-web-* prefix with no entry.
-  validate: [],
-  // The public gift-landing page (MESITA-1677) — a stranger with a code, no
-  // account, lives as a top-level route in web-consumer (outside its own
-  // (shell) auth wall), not a separate app. Same actor-per-prefix rule, one
-  // owner.
-  gift: ["web-consumer"],
+  // MESITA-2090 (MVP First Stage) retired the other three actors with every
+  // function they owned: `business` (web-business, mobile-business — its two
+  // functions admin's Single Place still called were renamed admin-web-*),
+  // `validate` (web-validate) and `gift` (the public gift page). The closed
+  // caller set is consumer · admin · eleven · supabase. Re-adding an actor
+  // takes an entry here — the second test below fails on a *-web-* prefix
+  // with none.
 };
 
 /**

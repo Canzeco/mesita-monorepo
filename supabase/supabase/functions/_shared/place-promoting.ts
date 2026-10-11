@@ -5,7 +5,8 @@
 // consumer surface. Those two are not the same question and never were:
 //
 //   listing_type   stored, and derived ONLY when something writes the place
-//                  (admin-web-set-plan, buildStrikePatch). It collapses
+//                  (buildStrikePatch; admin-web-set-plan did too until
+//                  MESITA-2090 retired it). It collapses
 //                  "pays Mesita" AND "strategy ≠ zero" into one enum, so it
 //                  can answer neither separately — and a strike-2 pause,
 //                  which writes promo_paused_until and nothing else, leaves

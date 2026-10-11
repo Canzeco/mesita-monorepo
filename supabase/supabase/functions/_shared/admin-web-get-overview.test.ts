@@ -1,0 +1,59 @@
+// admin-web-get-overview is the business overview's super-admin branch and
+// NOTHING ELSE (MESITA-2090).
+//
+// It was business-web-get-overview, which served the business console's
+// sidebar, its Place screen and — through one branch — admin's Single Place.
+// The business console is deleted in the MVP First Stage cut, so the rename
+// kept the admin branch alone. What a later edit would most easily bring back
+// is exactly what went: a place_members read (the operator is a member of
+// nothing, and the EF name is the ACL), and the business-only payload — recent
+// tickets, the rewards config, the staff Check PIN.
+//
+// A SOURCE TEST, deliberately: these are shape claims about one handler, and
+// the shape is what a later reader would undo.
+import { assertEquals } from "jsr:@std/assert@1";
+
+const SRC = await Deno.readTextFile(
+  new URL("../admin-web-get-overview/index.ts", import.meta.url),
+);
+
+/** Comments name what they deleted, so a "not present" assertion must never
+ *  pass or fail on somebody explaining themselves. */
+const CODE = SRC.split("\n")
+  .filter((l) => !l.trimStart().startsWith("//") && !l.trimStart().startsWith("*") && !l.trimStart().startsWith("/*"))
+  .join("\n");
+
+Deno.test("admin-web-get-overview is super-admin only", () => {
+  assertEquals(CODE.includes("requireSuperAdmin(admin, authRes.user)"), true);
+  // The guard runs before the body is even read.
+  assertEquals(
+    CODE.indexOf("requireSuperAdmin(") < CODE.indexOf("readJsonOr<"),
+    true,
+  );
+  for (const memberGate of ["requireMembership(", "requireEditor(", "requireOwner("]) {
+    assertEquals(CODE.includes(memberGate), false, `${memberGate} is a business gate`);
+  }
+});
+
+Deno.test("no business-console read survived the rename", () => {
+  for (
+    const table of ["place_members", "visit_tickets", "app_config", "places"]
+  ) {
+    assertEquals(
+      CODE.includes(`.from("${table}")`),
+      false,
+      `${table} was read only for the business console`,
+    );
+  }
+  assertEquals(CODE.includes("check_pin"), false, "the staff PIN is not admin's");
+  assertEquals(CODE.includes("rewardsConfig"), false);
+  assertEquals(CODE.includes("recentTickets"), false);
+});
+
+Deno.test("the place row and its enrichment map are read together", () => {
+  // One round trip for both (MESITA-1249): the State box's `enriched`
+  // high-water must come from the same request as the row it sits on.
+  assertEquals(CODE.includes("await Promise.all(["), true);
+  assertEquals((CODE.match(/from\("profiles"\)/g) ?? []).length, 1);
+  assertEquals((CODE.match(/from\("place_profiles"\)/g) ?? []).length, 1);
+});

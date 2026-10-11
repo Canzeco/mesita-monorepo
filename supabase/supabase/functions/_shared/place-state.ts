@@ -16,7 +16,7 @@
 //   promoting   a live discount right now (place-promoting.ts).
 //
 // Seeded and listed live here because two surfaces read them — admin-web-search-
-// places (the Single Place table) and business-web-get-overview (the State box
+// places (the Single Place table) and admin-web-get-overview (the State box
 // in the place editor) — and a state column that disagrees with itself across
 // two screens is worse than no state column. The rest are one-liners the
 // callers already own.

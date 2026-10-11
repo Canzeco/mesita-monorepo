@@ -343,9 +343,9 @@ export function completedCrenupSteps(
 /**
  * The high-water mark straight off a `places.enrichment` jsonb value — the
  * materialized column (MESITA-1249), not a fold over the event log. THE
- * shared reader: business-web-list-places and admin-web-search-places (and,
- * for ranking, discovery-place.ts's Crenup-high-water fold, MESITA-1598)
- * all read the same column and must never each parse it slightly
+ * shared reader: admin-web-search-places (business-web-list-places too until
+ * MESITA-2090 retired it) and, for ranking, discovery-place.ts's
+ * Crenup-high-water fold (MESITA-1598) all read the same column and must never each parse it slightly
  * differently. Anything malformed reads 0 — the Seed floor — rather than
  * throwing.
  */

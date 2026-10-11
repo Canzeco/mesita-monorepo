@@ -356,7 +356,7 @@ Deno.serve(async (req) => {
       // the high-water walks, so the two cannot disagree.
       enrich_crenup_blocked: (enrichment.get(id) ?? EMPTY_ENRICHMENT).blockedAt,
       // The per-function map (MESITA-1611) — same fold web-business's
-      // Places list and business-web-get-overview already ship as
+      // Places list and admin-web-get-overview already ship as
       // enrich_functions. The high-water above stops counting at the first
       // gap by design, so it alone cannot show a function that completed
       // AFTER an earlier one failed; this map can. OPTIONAL: guarded
@@ -376,7 +376,8 @@ Deno.serve(async (req) => {
         v as Parameters<typeof placePromotingLevel>[0],
       ),
       // Acceptance INTENT BITS (places.*_enabled) — operator toggles on the
-      // Partner tab (admin-web-set-place-rails). Engines still gate each
+      // Partner tab (admin-web-set-place-rails, both retired in MESITA-2090,
+      // so nothing writes them today). Engines still gate each
       // rail; the bits say what the place OFFERS (Pato gates 2026-08-29).
       mesita_pay: (acceptance.get(id) ?? NO_ACCEPTANCE).mesitaPay,
       credits: (acceptance.get(id) ?? NO_ACCEPTANCE).credits,

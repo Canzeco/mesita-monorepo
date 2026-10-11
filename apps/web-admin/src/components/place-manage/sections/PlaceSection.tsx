@@ -144,7 +144,7 @@ function PriceDisplay({
 
 type DayHours = { closed: boolean; open: string; close: string };
 // Address is deliberately absent: it is native (Google/Enricher-sourced) and
-// business-web-update-place rejects manual writes — Location renders read-only.
+// admin-web-update-place rejects manual writes — Location renders read-only.
 type Form = {
   /** Operator override → places.mesita_name. Blank ⇒ the place follows Google. */
   mesitaName: string;
@@ -159,7 +159,7 @@ type Form = {
   hours: Record<Day, DayHours>;
 };
 
-// Fallback until business-web-get-atlas-fields returns; never the source of truth.
+// Fallback until admin-web-get-atlas-fields returns; never the source of truth.
 const FALLBACK_LIMITS: PlaceFieldLimits = {
   placeNameMax: 80,
   descriptionMax: 2000,

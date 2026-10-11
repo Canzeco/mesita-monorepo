@@ -32,7 +32,7 @@ type Membership = {
 // role='owner', so an org-derived owner counted 0 and would have made
 // ownership transfer and member removal misfire against
 // `place_members_one_owner_per_place`; and because business-web-get-overview
-// attaches the Staff Check PIN on the owner branch.
+// (retired, MESITA-2090) attached the Staff Check PIN on the owner branch.
 //
 // The removal migration turned every org grant into a real place_members row
 // AT THAT SAME EDITOR CEILING, `on conflict do nothing` so a stronger direct

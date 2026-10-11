@@ -1,8 +1,7 @@
 // The place tab vocabulary — names, labels, hrefs. Nothing else.
 //
 // This is split out of `place-view.ts` deliberately (MESITA-1558). That module
-// also holds the two `cache()`d server reads, and those reach
-// `lib/api/console` -> `lib/api/_invoke` and `place-manage/actions`
+// also holds a `cache()`d server read, and it reaches `place-manage/actions`
 // -> `lib/supabase-ef` -> `lib/supabase/server`. A "use client" tab row that
 // imports the vocabulary from there drags the whole server data layer into its
 // bundle graph. `shell-contract.test.ts` names that invariant but cannot catch
@@ -82,7 +81,7 @@ import { PLACE_BASE } from "@/lib/place-base";
 // here. It was `permanent: false`, which is the only reason deleting it is
 // enough: no browser cached the answer.
 // MENUS AND REVIEWS ARE NOT HERE (MESITA-1919). They are CARDS ON PROFILE
-// again — `MenusSection`, `ReviewsSummary` and `MesitaReviewsList` flow in its
+// again — `MenusSection` and `ReviewsSummary` flow in its
 // masonry — so there is no name for `PlaceTabGate` to admit and
 // `/places/<id>/menus` 404s like any other name off this contract. Neither
 // ever had a rail row to lose: MESITA-1900 set the rail to Pato's eight
@@ -159,8 +158,8 @@ export type ViewerAccess = {
  *  so a view that carries it is owner/editor-only too.
  *
  *  Two callers, one rule (MESITA-1779). The place layout resolves it
- *  server-side for the place you are ON (`visibleTabs` in lib/place-view.ts
- *  delegates here). The rail applies it to the place it shows, from the role
+ *  server-side for the place you are ON (admin's manage-single/[id]/access.ts
+ *  reads it). The rail applies it to the place it shows, from the role
  *  on the viewer's own row and the super-admin flag, so a place opens to its
  *  views WITHOUT being visited; the published set still wins on the place
  *  itself, where the server has the last word. */

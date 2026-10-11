@@ -5,7 +5,8 @@
 // Otherwise demote partner → web; leave unclaimed untouched.
 //
 // Also holds the membership stamp resets every plan write shares: the two
-// plan doors (admin-web-set-plan, business-web-set-partnership), the
+// plan doors (admin-web-set-plan, business-web-set-partnership — both retired
+// in MESITA-2090, so neither writes any more), the
 // Membership cascade (place-partnership.ts) and strike 3
 // (membership-strike-patch.ts).
 

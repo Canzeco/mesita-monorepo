@@ -6,7 +6,6 @@
 // place leg dials the test line instead of a real place). Invoked with
 // { reservation_id } by:
 //   · consumer-web-create-reservation  (guest tapped Reserve)
-//   · consumer-mcp                     (assistant-created reservation)
 //   · eleven-a2-confirm-reservation    (negotiation re-fire: the guest picked
 //     an alternative or proposed a new datetime → fresh Booker call)
 //
@@ -1474,7 +1473,7 @@ Deno.serve(async (req) => {
     // Routed through validateReservationPatch directly (not the writeReservation
     // door — this update's `.in("notice_state", …)` filter is a shape the door
     // doesn't model; see reservation-doc.ts's header and the same idiom in
-    // business-web-confirm-reservation / supabase-cron-reservation-retries).
+    // supabase-cron-reservation-retries).
     const noticeClaimValidated = validateReservationPatch({
       notice_state: "running",
       notice_next_at: null,
@@ -1640,7 +1639,7 @@ Deno.serve(async (req) => {
   // Routed through validateReservationPatch directly (not the writeReservation
   // door — this update's `.or(...)` filter is a shape the door doesn't model;
   // see reservation-doc.ts's header and the same idiom in
-  // business-web-confirm-reservation / supabase-cron-reservation-retries).
+  // supabase-cron-reservation-retries).
   const bookClaimValidated = validateReservationPatch({
     attempts_state: "running",
     run_id: runId,

@@ -95,14 +95,11 @@ function edgeFunctionSources(): string[] {
 /** The guards that NAME the layer on purpose. Each one has to write the dead
  *  tokens down to be able to look for them, so scanning them finds only their
  *  own subject matter: `dropped-table-refs.test.ts` lists the five tables in
- *  DROPPED_TABLES, and `org-efs-retired.test.ts` lists the nine retired EF
- *  folder names — three of which end in `-organization` / `-organizations`.
- *  Exempting a guard is not a hole: none of them is a caller, and each is
+ *  DROPPED_TABLES. Exempting a guard is not a hole: none of them is a caller, and each is
  *  itself asserted on by the suite. */
 const SELF = [
   "no-organization-layer.test.ts",
   "dropped-table-refs.test.ts",
-  "org-efs-retired.test.ts",
 ];
 
 Deno.test("no Edge Function code carries the organization layer", () => {

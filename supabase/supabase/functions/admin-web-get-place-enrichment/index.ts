@@ -16,8 +16,9 @@
 //     that column is tens of KB and shipping it wholesale is the regression
 //     MESITA-1198 already had to undo once.
 //   • schedule — the per-place cadence (MESITA-1148): places.enrich_every_days
-//     / enrich_mode / enrich_next_at, written by admin-web-set-place-enrichment
-//     and honoured by the queue_due_place_enrichments cron. NULL everyDays =
+//     / enrich_mode / enrich_next_at, honoured by the
+//     queue_due_place_enrichments cron. Its writer, admin-web-set-place-
+//     enrichment, was retired in MESITA-2090 with no caller. NULL everyDays =
 //     manual only.
 //
 // Internal enricher output — super-admin gated, admin console only. Never

@@ -6,7 +6,6 @@ import {
   normalizeRfc,
   readRfc,
 } from "./place-rfc.ts";
-import { MEXICO_RFC_RE as PREFILL_RE, rfcIfValid } from "./stripe-connect-prefill.ts";
 
 Deno.test("normalizeRfc trims, upper-cases, and calls nothing an RFC", () => {
   assertEquals(normalizeRfc("  mesita010101abc "), "MESITA010101ABC");
@@ -26,7 +25,7 @@ Deno.test("isShapedRfc accepts persona moral (12) and física (13)", () => {
 });
 
 Deno.test("isShapedRfc refuses what the old length cap let through", () => {
-  // Every one of these is <= 20 chars, so business-web-update-place's
+  // Every one of these is <= 20 chars, so admin-web-update-place's
   // previous check passed them — and prefill then silently dropped them.
   assertFalse(isShapedRfc("not-an-rfc"));
   assertFalse(isShapedRfc("ABC010101"), "too short");
@@ -49,14 +48,6 @@ Deno.test("readRfc is the two writers' shared door", () => {
 // migration carries; changing either means changing both.
 Deno.test("MEXICO_RFC_RE matches the places_rfc_shape CHECK", () => {
   assertEquals(MEXICO_RFC_RE.source, "^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$");
-});
-
-Deno.test("prefill re-exports the same rule, not a copy", () => {
-  assertEquals(PREFILL_RE, MEXICO_RFC_RE);
-  // rfcIfValid keeps its fail-open contract for rows written before the CHECK.
-  assertEquals(rfcIfValid("xaxx010101000"), "XAXX010101000");
-  assertEquals(rfcIfValid("not-an-rfc"), null);
-  assertEquals(rfcIfValid(null), null);
 });
 
 Deno.test("isDuplicateRfcError fires only on the RFC index", () => {

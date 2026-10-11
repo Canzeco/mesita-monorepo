@@ -105,7 +105,7 @@ export type MemoDataOptions = {
 };
 
 // `callerName` is the natural EF asking on Memo's behalf
-// (consumer-web-ask-memo or admin-web-ask-memo). It rides the
+// (consumer-web-ask-memo; admin-web-ask-memo was retired in MESITA-2090). It rides the
 // X-Internal-Caller header so the data EFs can attribute every read.
 export function createMemoData(
   env: EFEnv,

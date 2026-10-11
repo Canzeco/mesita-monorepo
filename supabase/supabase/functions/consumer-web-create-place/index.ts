@@ -18,7 +18,8 @@ import { createMinimalPlace } from "../_shared/create-place.ts";
 import { consumeConsumerCreateQuota } from "../_shared/create-quota.ts";
 
 // `googlePlaceId` is the canonical key; legacy `placeId` accepted until every
-// client sends the new key (same contract as business-web-create-place).
+// client sends the new key (the contract business-web-create-place shared
+// until MESITA-2090 retired it).
 type Body = { googlePlaceId?: string; placeId?: string };
 
 Deno.serve(async (req) => {

@@ -1,6 +1,6 @@
 // Shared social/web channel URL classification + canonicalisation. Used by the
-// place create path (business-web-create-place, which classifies a bag of links
-// into channel columns) and the Enricher (which picks the
+// place create path (it classified business-web-create-place's bag of links
+// into channel columns until MESITA-2090 retired it) and the Enricher (which picks the
 // canonical profile out of search results). Keeping the host table + URL
 // normalisers in one place stops the two from drifting.
 

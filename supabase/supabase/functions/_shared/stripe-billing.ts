@@ -29,7 +29,7 @@ export const STRIPE_API_VERSION = "2025-03-31.basil" as Stripe.LatestApiVersion;
 // Checkout, catalog provisioning that would create live charges (or live
 // Prices that later get charged), and Connect account creation (a live
 // connected account is something that later gets charged —
-// business-web-start-payment-onboarding) refuse an `sk_live_` secret unless
+// business-web-start-payment-onboarding, retired in MESITA-2090) refuse an `sk_live_` secret unless
 // STRIPE_ALLOW_LIVE=true. Cancels, webhooks, and the admin health probe are
 // not this gate. Flipping the env is the needs-human step; this helper never
 // does it. Orthogonal to STRIPE_MODE (stripe-env.ts): the mode says which
@@ -221,7 +221,8 @@ export async function ensureWholeCatalog(
 //
 // ONE door. Every consumer-side Stripe call resolves its customer through
 // here: the Cards wallet (consumer-web-*-card) and subscription checkout
-// (consumer-web-create-subscription). Two doors would mean two customers for
+// (consumer-web-create-subscription) did, until MESITA-2090 retired both.
+// Two doors would mean two customers for
 // one guest, and a card saved against the one nobody charges.
 //
 // The anchor lives on `consumers.stripe_customer_id` (migration
@@ -233,8 +234,8 @@ export async function ensureWholeCatalog(
 //
 // `mock_cus_*` is NOT a customer. MOCK_SUBSCRIPTION writes those, and handing
 // one to a live key 400s, so every read path treats the prefix as absent.
-// Same guard the inline code in consumer-web-create-subscription carried
-// before it moved here.
+// Same guard the inline code in consumer-web-create-subscription (retired,
+// MESITA-2090) carried before it moved here.
 //
 // Cards themselves are never stored: Stripe is the only store for PAN, brand,
 // last4, expiry and default. This id is the whole local footprint.

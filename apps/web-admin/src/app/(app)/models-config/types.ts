@@ -5,9 +5,9 @@
 // footgun the Memo types file documents.
 //
 // This page is the SoT for app_config.models_config (MESITA-941). Live readers
-// (_shared/models-config.ts → get-memo-config, Enricher stages, embeddings,
-// business-web-suggest-promo, ojo-engine) bind supabase / enricher.model /
-// embeddings / memo.* / ojo.model.
+// (_shared/models-config.ts → get-memo-config, Enricher stages, embeddings)
+// bind supabase / enricher.model / embeddings / memo.*. ojo.model has had no
+// reader since the Ojo engine went with the ticket flow (MESITA-2090).
 // Enricher Perplexity is NOT read from this blob — app_config's
 // atlas_perplexity_preset is the live search preset (enricher.perplexity here
 // is staged). Text / image quality tiers are atlas_* columns too; this page

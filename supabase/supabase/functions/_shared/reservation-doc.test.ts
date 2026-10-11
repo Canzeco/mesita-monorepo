@@ -85,8 +85,9 @@ Deno.test("validateReservationPatch: accepts the a1-report-outcome write shape (
 });
 
 Deno.test("validateReservationPatch: accepts state and reported_verdict set together", () => {
-  // The OTHER legitimate truth: business-web-confirm-reservation and
-  // eleven-a2-confirm-reservation DO set both in one patch. No invariant
+  // The OTHER legitimate truth: eleven-a2-confirm-reservation DOES set both
+  // in one patch (as business-web-confirm-reservation did until MESITA-2090
+  // retired it). No invariant
   // should forbid this combination either.
   const res = validateReservationPatch({
     state: "confirmed",
