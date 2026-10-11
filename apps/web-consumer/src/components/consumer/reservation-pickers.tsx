@@ -120,14 +120,7 @@ export function ReservationDatePicker({
                     : "border-border bg-card",
               )}
             >
-              <span
-                className={cn(
-                  "type-meta font-semibold uppercase",
-                  active && !d.disabled
-                    ? "text-muted-foreground"
-                    : "text-muted-foreground",
-                )}
-              >
+              <span className="type-meta text-muted-foreground font-semibold uppercase">
                 {d.weekday}
               </span>
               <span

@@ -5,9 +5,6 @@
 //   through an Edge Function via `supabase.functions.invoke`.
 // - Each helper here calls exactly one Edge Function and never composes
 //   multiple Edge Functions (composition belongs inside the function).
-//
-// Business-side helpers (places autocomplete, create / update / delete
-// place, enrichment) live in the business app — consumer never invokes them.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { EFError, invokeEF } from "./_invoke";
@@ -125,20 +122,12 @@ export type Place = {
 type RecommendDeckInput = {
   lat?: number;
   lng?: number;
-  radiusKm?: number;
   limit?: number;
   /** The guest's discovery predicates — see lib/discovery-filters-wire. */
   predicates?: DiscoveryPredicatesWire;
 };
 type RecommendDeckResponse = {
   deck: Place[];
-  /** `backfilled`: cards from past the open-and-near band (MESITA-2047). */
-  summary: {
-    candidates: number;
-    embedded: number;
-    backfilled?: number;
-    intent?: string;
-  };
 };
 export async function apiFetchPublicPlaces(
   client: SupabaseClient,
@@ -154,20 +143,10 @@ export async function apiFetchPublicPlaces(
 
 /** The wire word for a Places ring. Mirrors `_shared/nearby-places.ts`:
  *  a place is on Mesita or it is Google's. */
-export type PlacesScopeWire = "mesita" | "google";
+type PlacesScopeWire = "mesita" | "google";
 
-const LIST_PLACES_MAX = 200;
-export type PlacesBbox = {
-  south: number;
-  west: number;
-  north: number;
-  east: number;
-};
-
-export type ViewportPlaces = {
+type ViewportPlaces = {
   places: Place[];
-  overspan: boolean;
-  totalInBox: number | null;
   reloadMinKm?: number;
   reloadMinSec?: number;
 };
@@ -189,8 +168,6 @@ export async function apiFetchNearbyCatalog(
 ): Promise<ViewportPlaces> {
   const data = await invokeEF<{
     places: Place[];
-    overspan?: boolean;
-    totalInBox?: number;
     reloadMinKm?: number;
     reloadMinSec?: number;
   }>(client, "consumer-web-list-places", {
@@ -203,8 +180,6 @@ export async function apiFetchNearbyCatalog(
   });
   return {
     places: (data.places ?? []).map(stripInsecurePhotos),
-    overspan: data.overspan === true,
-    totalInBox: typeof data.totalInBox === "number" ? data.totalInBox : null,
     reloadMinKm:
       typeof data.reloadMinKm === "number" && Number.isFinite(data.reloadMinKm)
         ? data.reloadMinKm
@@ -213,24 +188,6 @@ export async function apiFetchNearbyCatalog(
       typeof data.reloadMinSec === "number" && Number.isFinite(data.reloadMinSec)
         ? data.reloadMinSec
         : undefined,
-  };
-}
-
-/** Optional camera rectangle. Search does not use this as the default pool. */
-export async function apiFetchPlacesInBbox(
-  client: SupabaseClient,
-  bbox: PlacesBbox,
-  limit = LIST_PLACES_MAX,
-): Promise<ViewportPlaces> {
-  const data = await invokeEF<{
-    places: Place[];
-    overspan?: boolean;
-    totalInBox?: number;
-  }>(client, "consumer-web-list-places", { limit, ...bbox });
-  return {
-    places: (data.places ?? []).map(stripInsecurePhotos),
-    overspan: data.overspan === true,
-    totalInBox: typeof data.totalInBox === "number" ? data.totalInBox : null,
   };
 }
 
@@ -262,7 +219,7 @@ export async function apiFetchPlaceDetail(
   }
 }
 
-export type PlaceRequestResult = {
+type PlaceRequestResult = {
   request_count: number;
   request_threshold: number;
   requested: boolean;
@@ -291,7 +248,7 @@ export async function apiRecommendDeck(
     "consumer-web-recommend-swipe",
     input,
   );
-  return { deck: data.deck.map(stripInsecurePhotos), summary: data.summary };
+  return { deck: data.deck.map(stripInsecurePhotos) };
 }
 
 // Per-row state mirrored from atlas-suggest-places — the server's words,
@@ -334,7 +291,7 @@ export type PlacePrediction = {
 };
 
 /** `fast` Search while typing · `deep` Search after idle. */
-export type SuggestPlacesMode = "fast" | "deep";
+type SuggestPlacesMode = "fast" | "deep";
 
 /**
  * Name search for the consumer /search bar and pickers.

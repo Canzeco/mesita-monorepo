@@ -5,33 +5,23 @@ import type { ReactNode } from "react";
 
 import { ReservationCard } from "@/components/consumer/ReservationCard";
 import { LoadingFill } from "@/components/shared";
-import {
-  apiListReservations,
-  type ReservationScope,
-} from "@/lib/api/reservations";
+import { apiListReservations } from "@/lib/api/reservations";
 import type { ReservationItem } from "@/lib/mock/reservations-mock";
 import { toReservationItem } from "@/lib/reservations-adapter";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { errMsg } from "@/lib/utils";
 
-// Live reservations list: Me › Reservations (and the standalone
-// /reservations deep link). Reads consumer-web-list-reservations for the
-// given scope and renders ReservationCard rows.
+// Live reservations list: Me › Reservations. Reads
+// consumer-web-list-reservations at scope "all" and renders ReservationCard
+// rows.
 //
-// ONE FEED (Pato, 2026-08-17): the Upcoming/History split is gone, so this
-// normally runs at scope "all". The EF orders "all" ascending, which would put
-// the oldest thing you ever booked at the top — wrong for a feed. So `all`
-// gets a client-side reorder: UPCOMING soonest-first, then PAST
-// most-recent-first, which is how a reservations list actually reads. The
-// scoped modes keep the EF's order untouched.
-export function ReservationsList({
-  scope,
-  empty,
-}: {
-  scope: ReservationScope;
-  empty: ReactNode;
-}) {
+// ONE FEED (Pato, 2026-08-17): the Upcoming/History split is gone. The EF
+// orders "all" ascending, which would put the oldest thing you ever booked at
+// the top — wrong for a feed. So it gets a client-side reorder: UPCOMING
+// soonest-first, then PAST most-recent-first, which is how a reservations list
+// actually reads.
+export function ReservationsList({ empty }: { empty: ReactNode }) {
   const supabase = useBrowserSupabase();
   const [items, setItems] = useState<ReservationItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -40,9 +30,11 @@ export function ReservationsList({
     let cancelled = false;
     (async () => {
       try {
-        const { reservations } = await apiListReservations(supabase, { scope });
+        const { reservations } = await apiListReservations(supabase, {
+          scope: "all",
+        });
         const rows = reservations.map(toReservationItem);
-        if (!cancelled) setItems(scope === "all" ? orderOneFeed(rows) : rows);
+        if (!cancelled) setItems(orderOneFeed(rows));
       } catch (e) {
         if (!cancelled) setError(errMsg(e, "Couldn't load your reservations."));
       }
@@ -50,7 +42,7 @@ export function ReservationsList({
     return () => {
       cancelled = true;
     };
-  }, [supabase, scope]);
+  }, [supabase]);
 
   if (error) {
     return (

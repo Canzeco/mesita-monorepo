@@ -91,18 +91,4 @@ describe("analytics events are paired across the package boundary", () => {
     expect(firedEvents().length).toBeGreaterThan(0);
     expect(clientEvents()).toEqual(firedEvents());
   });
-
-  it("carries no Second Stage event", () => {
-    // Wallet, THE TICKET and Plan are not in the app. A name coming back here
-    // is a surface coming back, and that is a decision, not a drift.
-    for (const gone of [
-      "wallet_open",
-      "balance_card_tap",
-      "ticket_created",
-      "plan_open",
-      "wallet_load_more_tap",
-    ]) {
-      expect(clientEvents(), gone).not.toContain(gone);
-    }
-  });
 });

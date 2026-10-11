@@ -1,93 +1,129 @@
 import type { ReactNode } from "react";
+import { SlidersHorizontal, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-// Shared presentational primitives for the discovery Filters modal (MESITA-672):
-// Pill + SectionLabel + a generic brand-filled RangeSlider driving the When
-// (hour), Distance (km) and Random (0–4 word levels) modules.
+// Shared presentational primitives for the two Filters sheets — Feed + Scroll
+// (DiscoveryFilters) and the Search map (SearchMapFilters): the sheet's header
+// and footer, the module box, and the Pill. Dense on purpose — both sheets
+// must fit without scrolling.
 
-/** Group tier ABOVE SectionLabel — INTENT (Where · When · What · That). */
-export function FilterGroupLabel({
-  children,
-  className,
+/** Sheet title row: Filters, then Reset and Close. */
+export function FiltersSheetHeader({
+  onReset,
+  onClose,
 }: {
-  children: ReactNode;
-  className?: string;
+  onReset: () => void;
+  onClose: () => void;
 }) {
   return (
-    <p
-      className={cn(
-        "text-primary/70 type-meta mb-3 font-bold tracking-[0.16em] uppercase",
-        className,
-      )}
-    >
-      {children}
-    </p>
+    <div className="flex shrink-0 items-center justify-between px-4 pt-3 pb-2">
+      <div className="flex items-center gap-2.5">
+        <span className="bg-primary/10 text-primary flex h-9 w-9 items-center justify-center rounded-xl">
+          <SlidersHorizontal className="h-4 w-4" />
+        </span>
+        <p className="font-display text-lg leading-tight font-semibold tracking-tight">
+          Filters
+        </p>
+      </div>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={onReset}
+          className="text-muted-foreground hover:text-foreground hover:bg-muted/60 flex min-h-11 items-center rounded-full px-3 text-xs font-medium transition"
+        >
+          Reset
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="text-muted-foreground hover:text-foreground hover:bg-muted/60 flex h-11 w-11 items-center justify-center rounded-full transition"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
   );
 }
 
-export function SectionLabel({
-  children,
-  className,
-  sub = false,
+/** Sheet action row: show the matches, reset a cut that emptied them, or Done. */
+export function FiltersSheetFooter({
+  count,
+  hasPredicates,
+  onReset,
+  onClose,
 }: {
-  children: ReactNode;
-  className?: string;
-  /** Sub-row label inside a module (Distance, Categories, …). */
-  sub?: boolean;
+  count: number | null;
+  hasPredicates: boolean;
+  onReset: () => void;
+  onClose: () => void;
 }) {
   return (
-    <p
-      className={cn(
-        "type-label mb-2 font-semibold tracking-wide",
-        sub ? "text-muted-foreground/70" : "text-muted-foreground",
-        className,
+    <div className="border-border/60 shrink-0 border-t px-4 py-3">
+      {count != null && count > 0 ? (
+        <Button
+          type="button"
+          size="lg"
+          onClick={onClose}
+          className="shadow-glow w-full text-sm font-semibold"
+        >
+          Show {count} {count === 1 ? "place" : "places"}
+        </Button>
+      ) : count === 0 && hasPredicates ? (
+        <button
+          type="button"
+          onClick={onReset}
+          className="bg-foreground text-paper flex h-12 w-full items-center justify-center rounded-xl text-sm font-semibold transition active:scale-[0.99]"
+        >
+          No matches — reset filters
+        </button>
+      ) : count === 0 ? (
+        <div className="bg-muted/60 text-muted-foreground flex h-12 w-full items-center justify-center rounded-xl text-sm font-medium">
+          No places to show
+        </div>
+      ) : (
+        <Button
+          type="button"
+          size="lg"
+          onClick={onClose}
+          className="shadow-glow w-full text-sm font-semibold"
+        >
+          Done
+        </Button>
       )}
-    >
-      {children}
-    </p>
+    </div>
   );
 }
 
-/** Bordered module box for Where / When / What / That / Random. */
+/** Bordered module box, one per filter group. */
 export function FilterModule({
   label,
   children,
-  className,
-  dense = false,
 }: {
   label: ReactNode;
   children: ReactNode;
-  className?: string;
-  /** Compact box — the Search map Filters sheet must fit without scrolling. */
-  dense?: boolean;
 }) {
   return (
-    <section
-      className={cn(
-        "border-border bg-card rounded-2xl border",
-        dense ? "p-3" : "p-4",
-        className,
-      )}
-    >
-      <SectionLabel>{label}</SectionLabel>
+    <section className="border-border bg-card rounded-2xl border p-3">
+      <p className="type-label text-muted-foreground mb-2 font-semibold tracking-wide">
+        {label}
+      </p>
       {children}
     </section>
   );
 }
 
-// Soft borderless pill — muted at rest, brand gradient when selected.
-// min-h-11 keeps every filter control at the 44px touch floor.
+// Soft borderless pill — muted at rest, brand gradient when selected. Compact
+// so every option stays visible in the dense sheets.
 export function Pill({
   active,
   onClick,
   children,
-  size = "md",
 }: {
   active: boolean;
   onClick: () => void;
   children: ReactNode;
-  /** "sm" packs dense sheets (Search map Filters) — every option visible, no scroll. */
-  size?: "md" | "sm";
 }) {
   return (
     <button
@@ -95,8 +131,7 @@ export function Pill({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "flex shrink-0 items-center gap-1.5 rounded-full font-medium whitespace-nowrap transition active:scale-[0.97]",
-        size === "sm" ? "type-meta min-h-8 px-3" : "type-body min-h-11 px-4",
+        "type-meta flex min-h-8 shrink-0 items-center gap-1.5 rounded-full px-3 font-medium whitespace-nowrap transition active:scale-[0.97]",
         active
           ? "bg-pink-gradient shadow-glow-sm text-white"
           : "bg-muted/60 text-foreground/70 hover:bg-muted hover:text-foreground",
@@ -104,51 +139,5 @@ export function Pill({
     >
       {children}
     </button>
-  );
-}
-
-// Slim brand-filled native range (hour / km). The fill runs to the
-// thumb; `dimmed` softens it while the module rests on a neutral default but
-// keeps it live — dragging is how the user leaves that default.
-export function RangeSlider({
-  min,
-  max,
-  step = 1,
-  value,
-  onChange,
-  ariaLabel,
-  dimmed = false,
-  className,
-}: {
-  min: number;
-  max: number;
-  step?: number;
-  value: number;
-  onChange: (n: number) => void;
-  ariaLabel: string;
-  dimmed?: boolean;
-  className?: string;
-}) {
-  const pct = max > min ? ((value - min) / (max - min)) * 100 : 0;
-  return (
-    <input
-      type="range"
-      min={min}
-      max={max}
-      step={step}
-      value={value}
-      aria-label={ariaLabel}
-      onChange={(e) => onChange(Number(e.target.value))}
-      className={cn(
-        "h-1.5 w-full cursor-pointer appearance-none rounded-full transition-opacity outline-none",
-        "[&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:shadow-[var(--shadow-rest)]",
-        "[&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:shadow-[var(--shadow-rest)]",
-        dimmed && "opacity-50",
-        className,
-      )}
-      style={{
-        background: `linear-gradient(to right, var(--color-secondary) 0%, var(--color-primary) ${pct}%, var(--color-muted) ${pct}%)`,
-      }}
-    />
   );
 }

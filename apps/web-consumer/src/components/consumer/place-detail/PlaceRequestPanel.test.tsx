@@ -5,27 +5,14 @@ import {
   PlaceRequestPanelView,
   requestProgressLabel,
   requestProgressMeta,
-  requestVotesRemaining,
-  showEnrichTab,
 } from "./PlaceRequestPanel";
 import { PlaceTabBar, placeTabs } from "./tabs";
 
 describe("vote progress copy", () => {
-  it("zero votes", () => {
+  it("labels zero, below-threshold and threshold-crossing votes", () => {
     expect(requestProgressLabel(0, 5)).toBe("0 of 5 votes");
-  });
-
-  it("below-threshold votes", () => {
     expect(requestProgressLabel(2, 5)).toBe("2 of 5 votes");
-  });
-
-  it("threshold crossing", () => {
     expect(requestProgressLabel(5, 5)).toBe("5 of 5 votes");
-  });
-
-  it("remaining helper", () => {
-    expect(requestVotesRemaining(2, 5)).toBe(3);
-    expect(requestVotesRemaining(5, 5)).toBe(0);
   });
 
   it("progress meta caps filled segments", () => {
@@ -40,11 +27,6 @@ describe("vote progress copy", () => {
 });
 
 describe("Enrich tab gate", () => {
-  it("shows only while not Enriched", () => {
-    expect(showEnrichTab({ is_enriched: false })).toBe(true);
-    expect(showEnrichTab({ is_enriched: true })).toBe(false);
-  });
-
   it("is Enrich-only until Enriched, then the three core tabs", () => {
     expect(placeTabs(false).map((t) => t.label)).toEqual(["Enrich"]);
     expect(placeTabs(true).map((t) => t.label)).toEqual([
@@ -94,8 +76,6 @@ describe("PlaceRequestPanel", () => {
     expect(html).toContain("2 of 5 votes");
     expect(html).toContain("3 more votes start Enrich");
     expect(html).toContain('role="progressbar"');
-    expect(html).not.toContain("Profile not created yet");
-    expect(html).not.toContain("Request the profile");
   });
 
   it("shows You voted after this consumer already voted", () => {

@@ -31,7 +31,6 @@ import {
 export {
   computeOpenState,
   neighborhoodFromAddress,
-  resolvePlaceDisplayName,
   resolveZoneLabel,
 } from "./place-to-detail-helpers";
 
@@ -55,7 +54,6 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
     }) ?? "Place";
   const currency = str(row.currency) ?? DEFAULT_CURRENCY;
   const priceLevel = (num(row.price_level) ?? 2) as 1 | 2 | 3 | 4;
-  const details = obj(row.details);
 
   const openState = computeOpenState(row.hours, str(row.timezone));
   // Dates box: Created from created_at; Updated from enrichment (falls back
@@ -71,7 +69,7 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
     category: categoryName,
     vibe: str(row.vibe) ?? "",
     price_level: priceLevel,
-    price_range: derivePriceRange(row, priceLevel, currency),
+    price_range: derivePriceRange(row),
     currency,
     distance_km: 0,
     open_now: openState.open_now,
@@ -207,34 +205,6 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
       range: str(p.range) ?? "",
       bars: arr<number>(p.bars),
     })),
-    popular_times_featured:
-      str(arr<Record<string, unknown>>(row.popular_times)[0]?.day) ?? "",
-
-    details: {
-      category_full: categoryName,
-      zone: str(row.zone) ?? neighborhoodFromAddress(str(row.address)) ?? "",
-      dining_style: str(details.dining_style) ?? "",
-      dress_code: str(details.dress_code) ?? "",
-      service_options: arr<string>(details.service_options),
-      reservations: str(details.reservations) ?? "",
-      payment_methods: arr<string>(details.payment_methods),
-      parking: str(details.parking) ?? "",
-      amenities: arr<string>(details.amenities),
-      accessibility: arr<string>(details.accessibility),
-      dietary_options: arr<string>(details.dietary_options),
-      good_for: arr<string>(details.good_for),
-      languages: arr<string>(details.languages),
-      kid_friendly:
-        typeof details.kid_friendly === "boolean"
-          ? details.kid_friendly
-          : undefined,
-      pet_friendly:
-        typeof details.pet_friendly === "boolean"
-          ? details.pet_friendly
-          : undefined,
-      established_year: num(row.established_year),
-      executive_chef: str(row.executive_chef),
-    },
 
     channels: {
       website_url: str(row.website_url),

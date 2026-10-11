@@ -1,13 +1,8 @@
 "use client";
 
-import { LocateFixed, SlidersHorizontal, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { LocateFixed } from "lucide-react";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
-import {
-  DISCOVERY_REVIEW_STOPS,
-  formatReviewFloor,
-  hasDiscoveryPredicates,
-} from "@/lib/discovery-filters-engine";
+import { hasDiscoveryPredicates } from "@/lib/discovery-filters-engine";
 import {
   resetDiscoveryFilters,
   setDiscoveryMinReviews,
@@ -15,13 +10,20 @@ import {
   toggleDiscoveryFamily,
   useDiscoveryFilters,
 } from "@/lib/use-discovery-filters";
-import { FilterModule, Pill } from "./discovery-filter-controls";
-import { DiscoveryPlacesScope } from "./DiscoveryPlacesScope";
+import {
+  FilterModule,
+  FiltersSheetFooter,
+  FiltersSheetHeader,
+  Pill,
+} from "./discovery-filter-controls";
+import { SearchPlacesScope } from "./search/SearchPlacesScope";
+import { SearchPopularity } from "./search/SearchPopularity";
 import { cn } from "@/lib/utils";
 
 // Feed + Scroll Filters. Same three guest params as the Search map
-// (Family, Places scope, Google review floor) plus one extra:
-// connect current location. Dense on purpose — the sheet should not scroll.
+// (Family, Places scope, Google review floor), drawn by the same controls,
+// plus one extra: connect current location. Dense on purpose — the sheet
+// should not scroll.
 
 export function DiscoveryFilters({
   onClose,
@@ -41,42 +43,15 @@ export function DiscoveryFilters({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex shrink-0 items-center justify-between px-4 pt-3 pb-2">
-        <div className="flex items-center gap-2.5">
-          <span className="bg-primary/10 text-primary flex h-9 w-9 items-center justify-center rounded-xl">
-            <SlidersHorizontal className="h-4 w-4" />
-          </span>
-          <p className="font-display text-lg leading-tight font-semibold tracking-tight">
-            Filters
-          </p>
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={resetDiscoveryFilters}
-            className="text-muted-foreground hover:text-foreground hover:bg-muted/60 flex min-h-11 items-center rounded-full px-3 text-xs font-medium transition"
-          >
-            Reset
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="text-muted-foreground hover:text-foreground hover:bg-muted/60 flex h-11 w-11 items-center justify-center rounded-full transition"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
+      <FiltersSheetHeader onReset={resetDiscoveryFilters} onClose={onClose} />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3">
         <div className="flex flex-col gap-2">
-          <FilterModule label="Family" dense>
+          <FilterModule label="Family">
             <div className="flex flex-wrap gap-1">
               {FILTERABLE_PLACE_FAMILIES.map((family) => (
                 <Pill
                   key={family.key}
-                  size="sm"
                   active={filters.familyKeys.includes(family.key)}
                   onClick={() => toggleDiscoveryFamily(family.key)}
                 >
@@ -86,50 +61,22 @@ export function DiscoveryFilters({
             </div>
           </FilterModule>
 
-          <FilterModule label="Scope" dense>
-            <DiscoveryPlacesScope
+          <FilterModule label="Scope">
+            <SearchPlacesScope
+              label="Scope"
               scope={filters.placesScope}
               onScope={setDiscoveryPlacesScope}
             />
           </FilterModule>
 
-          <FilterModule label="Minimum number of Google reviews" dense>
-            <div
-              role="radiogroup"
-              aria-label="Minimum number of Google reviews"
-              aria-orientation="horizontal"
-              className="border-border flex overflow-hidden rounded-xl border"
-            >
-              {DISCOVERY_REVIEW_STOPS.map((stop, index) => {
-                const active = filters.minReviews === stop;
-                return (
-                  <button
-                    key={stop}
-                    type="button"
-                    role="radio"
-                    aria-checked={active}
-                    aria-label={
-                      stop === 0
-                        ? "Any number of Google reviews"
-                        : `At least ${stop.toLocaleString()} Google reviews`
-                    }
-                    onClick={() => setDiscoveryMinReviews(stop)}
-                    className={cn(
-                      "inline-flex min-h-9 flex-1 items-center justify-center px-1 text-center type-meta whitespace-nowrap tabular-nums transition",
-                      index > 0 && "border-border border-l",
-                      active
-                        ? "bg-foreground text-paper font-bold"
-                        : "bg-card text-muted-foreground hover:bg-muted hover:text-foreground font-semibold",
-                    )}
-                  >
-                    {formatReviewFloor(stop)}
-                  </button>
-                );
-              })}
-            </div>
+          <FilterModule label="Minimum number of Google reviews">
+            <SearchPopularity
+              minReviews={filters.minReviews}
+              onMinReviews={setDiscoveryMinReviews}
+            />
           </FilterModule>
 
-          <FilterModule label="Location" dense>
+          <FilterModule label="Location">
             <button
               type="button"
               onClick={onLocate}
@@ -157,39 +104,12 @@ export function DiscoveryFilters({
         </div>
       </div>
 
-      <div className="border-border/60 shrink-0 border-t px-4 py-3">
-        {count != null && count > 0 ? (
-          <Button
-            type="button"
-            size="lg"
-            onClick={onClose}
-            className="shadow-glow w-full text-sm font-semibold"
-          >
-            Show {count} {count === 1 ? "place" : "places"}
-          </Button>
-        ) : count === 0 && hasPredicates ? (
-          <button
-            type="button"
-            onClick={resetDiscoveryFilters}
-            className="bg-foreground text-paper flex h-12 w-full items-center justify-center rounded-xl text-sm font-semibold transition active:scale-[0.99]"
-          >
-            No matches — reset filters
-          </button>
-        ) : count === 0 ? (
-          <div className="bg-muted/60 text-muted-foreground flex h-12 w-full items-center justify-center rounded-xl text-sm font-medium">
-            No places to show
-          </div>
-        ) : (
-          <Button
-            type="button"
-            size="lg"
-            onClick={onClose}
-            className="shadow-glow w-full text-sm font-semibold"
-          >
-            Done
-          </Button>
-        )}
-      </div>
+      <FiltersSheetFooter
+        count={count}
+        hasPredicates={hasPredicates}
+        onReset={resetDiscoveryFilters}
+        onClose={onClose}
+      />
     </div>
   );
 }

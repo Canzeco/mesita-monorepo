@@ -18,10 +18,9 @@
 // the drift. Do not read the assertions below as evidence that two surfaces
 // still share this grid — one does.
 //
-// Source-read rather than rendered, the same way favorites-saves-only reads
-// its: the surface paints a skeleton first (`hydrated` is false until
-// localStorage is read), so a static render would assert against the loading
-// state, not the grid.
+// Source-read rather than rendered: the surface paints a skeleton first
+// (`hydrated` is false until localStorage is read), so a static render would
+// assert against the loading state, not the grid.
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -189,8 +188,6 @@ describe("Discovery invents no places", () => {
     ["Favs", "components/consumer/home/FavoritesList.tsx"],
   ])("%s ships no mock deck", (_label, rel) => {
     const src = read(rel);
-    expect(src).not.toContain("FEED_MOCK_PLACES");
-    expect(src).not.toContain("mock/feed-places");
     expect(src).not.toContain("mock/scroll-places");
   });
 
@@ -200,7 +197,6 @@ describe("Discovery invents no places", () => {
       'from "@/lib/mock/enrich-overview"',
       'from "@/lib/mock/scroll-places"',
     ]);
-    expect(scroll).not.toContain("mock/feed-places");
     // The switch replaces the whole source; fake and real never share a feed.
     expect(scroll).toContain(
       "const source = SCROLL_USES_MOCK ? scrollMockPlaces() : (located ?? places);",

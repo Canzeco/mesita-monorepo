@@ -18,13 +18,11 @@ import { SurfaceSwitch } from "@/components/consumer/SurfaceSwitch";
 export function EnterpriseAuthLayout({
   title,
   subtitle,
-  chip,
   children,
   footer,
 }: {
   title: string;
   subtitle: string;
-  chip?: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
 }) {
@@ -42,7 +40,6 @@ export function EnterpriseAuthLayout({
                 {subtitle}
               </p>
               <SurfaceSwitch />
-              {chip}
             </header>
             {children}
             {footer && (

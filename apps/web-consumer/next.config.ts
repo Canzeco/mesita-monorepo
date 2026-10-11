@@ -51,10 +51,8 @@ const nextConfig: NextConfig = {
       // spellings, the Order tab, and the public gift landing. Each is ONE
       // hop. Deepest sources first so the intent survives a `:param` rewrite.
       { source: "/new-visit/wallet/:path*", destination: "/pay", permanent: true },
-      { source: "/new-visit/wallet", destination: "/pay", permanent: true },
       { source: "/new-visit", destination: "/pay", permanent: true },
       { source: "/wallet/:path*", destination: "/pay", permanent: true },
-      { source: "/wallet", destination: "/pay", permanent: true },
       { source: "/credits", destination: "/pay", permanent: true },
       { source: "/inbox/credits", destination: "/pay", permanent: true },
       { source: "/inbox/orders", destination: "/pay", permanent: true },
@@ -116,7 +114,6 @@ const nextConfig: NextConfig = {
       // ACTIVITY IS GONE AS A CONTAINER (MESITA-1626). /inbox 308s onto the
       // hub in ONE hop. /inbox/credits and /inbox/orders sit ABOVE this and
       // point at Pay: Next takes the first match.
-      { source: "/inbox", destination: "/me", permanent: true },
       { source: "/inbox/:path*", destination: "/me", permanent: true },
     ];
   },

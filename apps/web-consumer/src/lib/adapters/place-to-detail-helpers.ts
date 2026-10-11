@@ -1,5 +1,4 @@
 import type { PlaceDetail } from "@/lib/mock/place";
-import { currencyPrefix } from "@/lib/place-price";
 import { FALLBACK_IANA_TZ } from "@/lib/place-time";
 
 // Loose row type — the EF returns the full place projection; helpers read it
@@ -134,30 +133,10 @@ function parseMinutes(t: unknown): number | null {
   return min >= 0 && min <= 1440 ? min : null;
 }
 
-function fallbackPriceRange(
-  priceLevel: 1 | 2 | 3 | 4,
-  currency: string,
-): string {
-  const prefix = currencyPrefix(currency);
-  const ranges: Record<1 | 2 | 3 | 4, [number, number]> = {
-    1: [100, 200],
-    2: [200, 300],
-    3: [300, 500],
-    4: [500, 800],
-  };
-  const [min, max] = ranges[priceLevel];
-  return `${prefix}${min}-${max}`;
-}
-
-export function derivePriceRange(
-  row: Row,
-  priceLevel: 1 | 2 | 3 | 4,
-  currency: string,
-): string {
+/** The place's own numeric range, or "" — the chip falls back to price_level. */
+export function derivePriceRange(row: Row): string {
   const raw = str(row.price_range);
-  // Keep explicit numeric ranges from the backend when present.
-  if (raw && hasDigit(raw)) return raw;
-  return fallbackPriceRange(priceLevel, currency);
+  return raw && hasDigit(raw) ? raw : "";
 }
 
 // Derives live open/closed state from the weekly `hours` jsonb in the place's
@@ -171,14 +150,6 @@ export function derivePriceRange(
 export function computeOpenState(
   hours: unknown,
   tz: string | undefined,
-  // Optional place-local minutes-since-midnight override (MESITA-650): the
-  // discovery filters ask "open at hour H today?" with the SAME split-shift
-  // and overnight math. Omitted = evaluate at the current moment.
-  atMinutes?: number,
-  // Optional weekday override, 0=Sun..6=Sat (MESITA-672): the "When → at" filter
-  // asks "open at hour H on THIS weekday?" (e.g. Saturday at noon). Omitted =
-  // the current place-local weekday.
-  atDayIdx?: number,
 ): { open_now: boolean; opens_at: string; closes_at: string } {
   const fallback = { open_now: false, opens_at: "", closes_at: "" };
   const h = obj(hours);
@@ -209,12 +180,6 @@ export function computeOpenState(
     nowMin = hr * 60 + mn;
   } catch {
     return fallback;
-  }
-  if (atMinutes != null && Number.isFinite(atMinutes)) {
-    nowMin = Math.min(Math.max(Math.round(atMinutes), 0), 24 * 60 - 1);
-  }
-  if (atDayIdx != null && Number.isFinite(atDayIdx)) {
-    dayIdx = ((Math.round(atDayIdx) % 7) + 7) % 7;
   }
 
   const todayKey = WEEK_KEYS[dayIdx];

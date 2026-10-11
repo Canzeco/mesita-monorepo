@@ -2,9 +2,7 @@
 //
 // These are intentionally NOT React components — they're string constants
 // so you can compose them with cn() at the call site, mix in modifiers,
-// or apply them to native elements without an extra wrapper. The fields
-// that DO benefit from a component (label + hint + required mark, for
-// example) live in src/components/shared/Field.tsx.
+// or apply them to native elements without an extra wrapper.
 
 // Single-line text input. Matches the visual rhythm used across every
 // Mesita form: 44px tall, 12px border-radius, subtle card background,

@@ -19,7 +19,7 @@ function emit() {
   for (const listener of listeners) listener();
 }
 
-export function requestUserLocation(): Promise<Coords | null> {
+function requestUserLocation(): Promise<Coords | null> {
   if (typeof navigator === "undefined" || !navigator.geolocation) {
     return Promise.resolve(null);
   }

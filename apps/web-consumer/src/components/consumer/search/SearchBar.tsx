@@ -1,15 +1,11 @@
 "use client";
 
 import type { RefObject } from "react";
-import { Compass, Search, X } from "lucide-react";
-import { countryBarChip } from "@/lib/search-scope";
-import { cn } from "@/lib/utils";
+import { Search, X } from "lucide-react";
 
 // The Search map's query field — the one search bar in the app. Query
 // field only: Places scope + Family + Popularity live in the Filters sheet,
 // opened as a labelled third of the row beside this.
-// `onOpenScope` stays as an optional far-right control for hosts that
-// still want country + location on the pill.
 type SearchBarProps = {
   query: string;
   showClear: boolean;
@@ -21,12 +17,6 @@ type SearchBarProps = {
   /** Paired with onFocus by hosts that put chrome aside while the bar is live. */
   onBlur?: () => void;
   inputRef?: RefObject<HTMLInputElement | null>;
-  /** Opens the two-knob scope sheet (country + location). */
-  onOpenScope?: () => void;
-  /** ISO country shown on the chip; null renders the Any globe. */
-  countryCode?: string | null;
-  /** Location is live or connected — the compass fills primary. */
-  locationSet?: boolean;
 };
 
 export function SearchBar({
@@ -38,15 +28,7 @@ export function SearchBar({
   onClear,
   placeholder = "Search places…",
   inputRef,
-  onOpenScope,
-  countryCode = null,
-  locationSet = false,
 }: SearchBarProps) {
-  const scopeLabel = [
-    countryCode ?? "any country",
-    locationSet ? "location set" : "location not set",
-  ].join(", ");
-
   // h-11, NOT h-12: 44px is the touch-target floor, so this is as short as the
   // bar goes. It matched the filter pill that used to sit beside it — two pills
   // of different heights in one row read as a misalignment.
@@ -96,31 +78,6 @@ export function SearchBar({
         >
           <X className="h-4 w-4" />
         </button>
-      )}
-      {onOpenScope && (
-        <>
-          <span className="bg-border h-5 w-px shrink-0" aria-hidden />
-          <button
-            type="button"
-            onClick={onOpenScope}
-            aria-label={scopeLabel}
-            aria-haspopup="dialog"
-            title={scopeLabel}
-            className="text-foreground hover:bg-muted/60 mr-1 flex h-10 shrink-0 items-center gap-1.5 rounded-full px-2.5 transition"
-          >
-            <span className="type-label min-w-[1.25rem] text-center font-semibold tracking-wide">
-              {countryBarChip(countryCode)}
-            </span>
-            <Compass
-              aria-hidden
-              strokeWidth={1.75}
-              className={cn(
-                "h-3.5 w-3.5",
-                locationSet ? "text-primary" : "text-muted-foreground/50",
-              )}
-            />
-          </button>
-        </>
       )}
     </div>
   );

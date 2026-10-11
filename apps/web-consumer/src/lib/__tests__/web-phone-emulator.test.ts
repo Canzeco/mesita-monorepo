@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -14,13 +14,6 @@ const read = (p: string) => readFileSync(join(SRC, p), "utf8");
 
 describe("/web is the phone emulator", () => {
   const shell = read("app/(shell)/layout.tsx");
-
-  it("the sidebar frame is gone", () => {
-    expect(existsSync(join(SRC, "components/consumer/WebFrame.tsx"))).toBe(
-      false,
-    );
-    expect(shell).not.toContain("WebFrame");
-  });
 
   it("every shell return draws the phone card with the bottom menu", () => {
     const frames = [...shell.matchAll(/<MobileFrame surface=/g)];

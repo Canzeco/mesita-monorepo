@@ -355,14 +355,12 @@ function SheetField({
   value,
   onChange,
   placeholder,
-  inputMode,
   autoComplete,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
-  inputMode?: "text" | "tel";
   autoComplete?: string;
 }) {
   return (
@@ -374,7 +372,6 @@ function SheetField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        inputMode={inputMode}
         autoComplete={autoComplete}
         className={cn(INPUT_CLASS, "h-auto rounded-lg py-2")}
       />

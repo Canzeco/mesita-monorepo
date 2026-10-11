@@ -118,9 +118,9 @@ describe("T1 — every page lives inside the (shell) auth segment", () => {
 
 // ── T2 — an intercepted route must be allowed to PAINT ──────────────────────
 //
-// SlideOverShell and BottomSheetShell both open with
-// `if (!isModalContractPath(pathname)) return null`. They are the only
-// consumers of that predicate, and they are mounted only from
+// SlideOverShell opens with
+// `if (!isModalContractPath(pathname)) return null`. It is the only
+// consumer of that predicate, and it is mounted only from
 // @modal/(.)X/layout.tsx. So adding an intercept directory WITHOUT adding its
 // path to the predicate ships a silently blank modal: the URL changes, the
 // page underneath stays, nothing opens. Typecheck, build and the contract test

@@ -20,7 +20,7 @@ import { useRef } from "react";
 // NO DELAY ON A SINGLE TAP, because a single tap does nothing here. That is
 // the whole reason the carousel's tap zones are off on Scroll.
 
-export type TapPoint = { x: number; y: number; t: number };
+type TapPoint = { x: number; y: number; t: number };
 
 /** The second tap must land within this window after the first. */
 export const DOUBLE_TAP_MS = 300;

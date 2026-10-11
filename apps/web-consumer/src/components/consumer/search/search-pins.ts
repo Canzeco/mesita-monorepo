@@ -133,7 +133,7 @@ export function pinGesture(
 /** Overlay map-pin tap. First tap holds (black ring); later tap opens.
  *  Overlay-only Mesita (not in the catalog snapshot) never opens on select —
  *  stash the prediction and keep the overlay. Google stash is the same hold. */
-export type OverlayPinAction =
+type OverlayPinAction =
   | "select-google"
   | "select-mesita-catalog"
   | "select-mesita-overlay"
@@ -178,7 +178,7 @@ export function placePinTone(place: {
 /** Live-search overlay pins. Catalog is coords only — tone follows the EF row
  *  so the list dot and the map pin cannot disagree. Empty coords → null so
  *  the map keeps catalog markers instead of blanking. */
-export type SearchPinPrediction = {
+type SearchPinPrediction = {
   placeId: string;
   mainText: string;
   state?: string | null;
@@ -192,13 +192,13 @@ export type SearchPinPrediction = {
   lng?: number | null;
 };
 
-export type SearchPinPlace = {
+type SearchPinPlace = {
   id: string;
   lat?: number | null;
   lng?: number | null;
 };
 
-export type BuiltSearchPin = {
+type BuiltSearchPin = {
   id: string;
   lat: number;
   lng: number;

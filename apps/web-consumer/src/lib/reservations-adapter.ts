@@ -56,28 +56,6 @@ function reservationPhase(row: EFReservationRow): ReservationState {
   }
 }
 
-/** Format a parked retry instant in Mexico City wall-clock (MESITA-954). */
-function formatNextAttempt(iso: string | null | undefined): string | null {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  const weekday = d.toLocaleDateString("en-US", {
-    weekday: "short",
-    timeZone: TZ,
-  });
-  const monthDay = d.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: TZ,
-  });
-  const time = d.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: TZ,
-  });
-  return `${weekday} ${monthDay} · ${time}`;
-}
-
 function noteFor(
   phase: ReservationState,
   row: EFReservationRow,
@@ -88,7 +66,10 @@ function noteFor(
     case "booking": {
       // Leg 1 park states — don't say "on the phone" while waiting for hours.
       if (row.attempts_state === "scheduled") {
-        const when = formatNextAttempt(row.next_attempt_at);
+        // The parked retry instant, in Mexico City wall-clock (MESITA-954).
+        const when = row.next_attempt_at
+          ? formatReservationWhen(row.next_attempt_at)
+          : "";
         return when
           ? `Mesita will call the place when it opens — next try ${when}.`
           : "Mesita will call the place when it opens — you'll see the answer here.";

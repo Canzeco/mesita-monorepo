@@ -5,7 +5,6 @@ import { describe, expect, it } from "vitest";
 import {
   CONSUMER_SEXES,
   consumerCanBrowse,
-  consumerCanBook,
   firstIncompleteOnboardStep,
   isConsumerSex,
   ONBOARD_STEPS,
@@ -45,12 +44,12 @@ describe("consumerCanBrowse — the signup gate", () => {
     "fails when %s is missing",
     (field) => {
       expect(consumerCanBrowse({ ...complete, [field]: null })).toBe(false);
+      expect(consumerCanBrowse({ ...complete, [field]: "" })).toBe(false);
     },
   );
 
   it("does not require the last name — that is the reservation's gate", () => {
     expect(consumerCanBrowse({ ...complete, last_name: null })).toBe(true);
-    expect(consumerCanBook({ ...complete, last_name: null })).toBe(false);
   });
 
   it("rejects a sex value the DB constraint would not store", () => {

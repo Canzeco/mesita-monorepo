@@ -40,12 +40,10 @@ export const APP_CARD_ID = "mesita-app-card";
 
 export function MobileFrame({
   children,
-  className,
   surface = "mob",
   signedIn = true,
 }: {
   children: React.ReactNode;
-  className?: string;
   /**
    * Both surfaces draw this card (MESITA-2134). The strip's one link goes to
    * the OTHER way in: /mob offers guest browsing, /web offers sign-in to a
@@ -101,7 +99,7 @@ export function MobileFrame({
             </Link>
           )}
         </div>
-        <div className={cn("flex flex-1 flex-col overflow-hidden", className)}>
+        <div className="flex flex-1 flex-col overflow-hidden">
           {children}
         </div>
       </div>

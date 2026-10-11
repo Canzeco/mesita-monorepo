@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { CalendarCheck, CalendarClock, Loader2, PhoneCall } from "lucide-react";
 
-import { clearSwipeProgress } from "@/components/consumer/home/deck-progress";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
   buildDateOptions,
@@ -48,7 +47,7 @@ const RESERVATION_LIMIT_MESSAGE =
 /**
  * Everything the sheet needs from a place: the place id it books against and
  * a name to show. Deliberately narrower than PlaceDetail (which structurally
- * satisfies it) so the swipe deck can open this straight from a deck card,
+ * satisfies it) so the Scroll deck can open this straight from a deck card,
  * without fetching the full place-detail payload.
  *
  * `hours_table` rides along when the caller has it (the detail page does; a deck
@@ -273,12 +272,6 @@ export function ReservationSheet({
         return;
       }
       const msg = errMsg(e, "");
-      // The card came from a cached deck whose place no longer exists (an admin
-      // reset re-creates places under fresh uuids). Drop the snapshot so the
-      // next mount refetches instead of re-offering the same dead card.
-      if (/isn't available anymore|place_not_found/i.test(msg)) {
-        clearSwipeProgress();
-      }
       setError(msg || "Couldn't request the reservation.");
     } finally {
       setSubmitting(false);

@@ -76,7 +76,7 @@ export function apiConfirmReservation(
 
 // Which slice of the caller's bookings to list. "upcoming" = pending |
 // confirmed; "past" = the terminal states; "all" leaves it unfiltered.
-export type ReservationScope = "upcoming" | "past" | "all";
+type ReservationScope = "upcoming" | "past" | "all";
 
 // One row from consumer-web-list-reservations: booking metadata joined with
 // the place summary. No money fields.

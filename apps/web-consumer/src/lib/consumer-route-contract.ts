@@ -147,10 +147,8 @@ export const CONSUMER_ROUTE_PREFIX = {
   // individually for Home. NO `search` KEY either: Search is an exact
   // top-level segment with no siblings to disambiguate from.
   place: "/place",
-  reservations: "/reservations",
   pay: "/pay",
   me: "/me",
-  saved: "/saved",
 } as const;
 
 // Matches both the /reservations list and /reservation/[id] details
@@ -168,9 +166,9 @@ export function reservationPath(id: string): string {
 /**
  * Does this path paint inside a routed modal shell?
  *
- * SlideOverShell and BottomSheetShell both open with
- * `if (!isModalContractPath(pathname)) return null`, and they are this
- * predicate's ONLY consumers. So a new @modal intercept whose path is missing
+ * SlideOverShell opens with
+ * `if (!isModalContractPath(pathname)) return null`, and it is this
+ * predicate's ONLY consumer. So a new @modal intercept whose path is missing
  * here renders BLANK — URL changes, page underneath stays, nothing opens, and
  * typecheck/build/tests all stay green. `route-structure.test.tsx` T2 guards
  * that direction.

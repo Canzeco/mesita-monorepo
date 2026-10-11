@@ -3,7 +3,7 @@
 // Ask AI — the Memo concierge as a full Home tab (moved off Search, MESITA-156
 // follow-up). Provides the same deps SearchClient used to give AskAiPanel — the
 // Supabase client, live location for "near me", and the navigate / create-place
-// handlers — around the shared, inline-layout AskAiPanel.
+// handlers — around AskAiPanel.
 
 import { useCallback, useState } from "react";
 import { Phone } from "lucide-react";
@@ -103,7 +103,6 @@ export function AskAiTab({ places }: { places: Place[] }) {
       <MemoModeHeader />
       <div className="min-h-0 flex-1">
         <AskAiPanel
-          layout="inline"
           ask={askMemo}
           loadGreeting={loadGreeting}
           addStates={addStates}

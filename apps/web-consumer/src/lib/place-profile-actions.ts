@@ -1,7 +1,7 @@
 // Guest Reserve gate — mirrors `isReserveActionEnabled` in
 // supabase/_shared/place-profile-actions.ts.
 
-export type ActionFlagRow = {
+type ActionFlagRow = {
   reservations_enabled?: boolean | null;
 };
 

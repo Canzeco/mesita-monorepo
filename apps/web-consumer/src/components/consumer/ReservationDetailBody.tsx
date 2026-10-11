@@ -140,11 +140,11 @@ export function ReservationDetailBody({
         <p
           className={cn(
             "type-body rounded-2xl px-3 py-2.5 leading-snug",
-            r.state === "booking" || r.state === "created"
+            r.state === "booking" ||
+              r.state === "created" ||
+              r.state === "failed"
               ? "bg-muted text-foreground ring-1 ring-foreground"
-              : r.state === "failed"
-                ? "bg-muted text-foreground ring-1 ring-foreground"
-                : "bg-muted text-muted-foreground",
+              : "bg-muted text-muted-foreground",
           )}
         >
           {banner}

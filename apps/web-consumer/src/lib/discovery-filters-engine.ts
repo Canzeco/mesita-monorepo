@@ -22,24 +22,7 @@ import { type FamilyKey } from "@/lib/place-families";
 
 export type DiscoveryPlacesScope = "mesita" | "google";
 
-export const DISCOVERY_PLACES_SCOPE_DEFAULT: DiscoveryPlacesScope = "mesita";
-
-export const DISCOVERY_SCOPE_STOPS = [
-  {
-    key: "mesita",
-    tick: "Mesita Enriched Places",
-    hint: "Mesita Enriched Places only",
-  },
-  {
-    key: "google",
-    tick: "Google Places",
-    hint: "Google Places, Mesita places included",
-  },
-] as const satisfies readonly {
-  key: DiscoveryPlacesScope;
-  tick: string;
-  hint: string;
-}[];
+const DISCOVERY_PLACES_SCOPE_DEFAULT: DiscoveryPlacesScope = "mesita";
 
 export const DISCOVERY_REVIEW_STOPS = [0, 10, 100, 1000, 10000] as const;
 export type DiscoveryReviewFloor = (typeof DISCOVERY_REVIEW_STOPS)[number];
@@ -57,12 +40,6 @@ export function clampReviewFloor(value: unknown): DiscoveryReviewFloor {
     }
   }
   return best;
-}
-
-export function formatReviewFloor(n: DiscoveryReviewFloor): string {
-  if (n === 0) return "0";
-  if (n >= 1000) return `${n / 1000}K+`;
-  return `${n}+`;
 }
 
 export function parsePlacesScope(value: unknown): DiscoveryPlacesScope {
@@ -101,10 +78,6 @@ export function countAppliedDiscoveryFilters(f: DiscoveryFilters): number {
   if (f.placesScope !== DISCOVERY_PLACES_SCOPE_DEFAULT) n += 1;
   if (f.minReviews > 0) n += 1;
   return n;
-}
-
-export function discoveryFiltersAreActive(f: DiscoveryFilters): boolean {
-  return hasDiscoveryPredicates(f);
 }
 
 function googleReviewCount(place: Place): number | null {

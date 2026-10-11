@@ -2,12 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { Place } from "@/lib/api/places";
 import {
   DISCOVERY_FILTER_DEFAULTS,
-  DISCOVERY_SCOPE_STOPS,
   applyDiscoveryFilters,
   clampReviewFloor,
   countAppliedDiscoveryFilters,
-  discoveryFiltersAreActive,
-  formatReviewFloor,
   hasDiscoveryPredicates,
   parsePlacesScope,
   type DiscoveryFilters,
@@ -43,7 +40,6 @@ describe("no predicate set is a pass-through, not a filter", () => {
 
   it("defaults are not an applied filter", () => {
     expect(hasDiscoveryPredicates(filters())).toBe(false);
-    expect(discoveryFiltersAreActive(filters())).toBe(false);
     expect(countAppliedDiscoveryFilters(filters())).toBe(0);
   });
 });
@@ -61,11 +57,7 @@ describe("Family", () => {
 });
 
 describe("Scope", () => {
-  it("is two stops, Mesita first", () => {
-    expect(DISCOVERY_SCOPE_STOPS.map((s) => s.key)).toEqual([
-      "mesita",
-      "google",
-    ]);
+  it("defaults to the inner ring, Mesita", () => {
     expect(DISCOVERY_FILTER_DEFAULTS.placesScope).toBe("mesita");
   });
 
@@ -109,14 +101,6 @@ describe("Google review floor", () => {
     expect(clampReviewFloor(50)).toBe(10);
     expect(clampReviewFloor(80)).toBe(100);
     expect(clampReviewFloor(4000)).toBe(1000);
-  });
-
-  it("labels the stops as a minimum review count", () => {
-    expect(formatReviewFloor(0)).toBe("0");
-    expect(formatReviewFloor(10)).toBe("10+");
-    expect(formatReviewFloor(100)).toBe("100+");
-    expect(formatReviewFloor(1000)).toBe("1K+");
-    expect(formatReviewFloor(10000)).toBe("10K+");
   });
 
   it("drops places below the floor and places with no count", () => {

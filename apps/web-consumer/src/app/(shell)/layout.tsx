@@ -9,7 +9,6 @@ import { DownloadAppScreen } from "@/components/consumer/DownloadAppScreen";
 import { BottomNav } from "@/components/consumer/BottomNav";
 import { ConsumerLocalDataGuard } from "@/components/consumer/ConsumerLocalDataGuard";
 import { PlaceGoneNotice } from "@/components/consumer/PlaceGoneNotice";
-import { ShellChildrenSlot } from "@/components/consumer/ShellChildrenSlot";
 import { Toaster } from "@/components/consumer/Toaster";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiFetchConsumerProfile } from "@/lib/api/profile";
@@ -90,7 +89,7 @@ export default async function ConsumerShellLayout({
 
   // consumer-get-profile lazily creates the row, so a brand-new account still
   // reads back successfully (just with null fields). The row is read ONCE
-  // here and its identity (name, photo, Instagram) is threaded into the shell
+  // here and its identity (Instagram) is threaded into the shell
   // through ConsumerIdentityProvider; pages never re-fetch it.
   //
   // "The EF threw" is NOT the same as "the profile is incomplete": a cold
@@ -105,8 +104,6 @@ export default async function ConsumerShellLayout({
   // otherwise the catch swallows it and reports a redirect as a failure.
   let instagramHandle: string | null = null;
   let instagramFollowers: number | null = null;
-  let displayName: string | null = null;
-  let avatarUrl: string | null = null;
   let needsOnboarding = false;
   // "The EF threw" is not "the guest has no Instagram" (design review
   // 2026-08-22). This layout deliberately degrades rather than ejecting, so
@@ -122,13 +119,6 @@ export default async function ConsumerShellLayout({
     needsOnboarding = !consumerCanBrowse(profile);
     instagramHandle = profile.instagram_handle?.trim() || null;
     instagramFollowers = profile.instagram_followers_count ?? null;
-    const first = profile.first_name?.trim() ?? "";
-    const last = profile.last_name?.trim() ?? "";
-    displayName =
-      [first, last].filter(Boolean).join(" ") ||
-      profile.full_name?.trim() ||
-      null;
-    avatarUrl = profile.avatar_url ?? null;
   } catch (err) {
     console.error(
       "[consumer/shell] consumer-get-profile:",
@@ -172,18 +162,15 @@ export default async function ConsumerShellLayout({
         <PlaceGoneNotice />
       </Suspense>
       <ConsumerIdentityProvider
-        userId={user.id}
-        displayName={displayName}
-        avatarUrl={avatarUrl}
         instagramHandle={instagramHandle}
         instagramFollowers={instagramFollowers}
         profileUnavailable={profileUnavailable}
       >
         <div className="relative flex flex-1 flex-col overflow-hidden">
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-            <ShellChildrenSlot>{children}</ShellChildrenSlot>
+            {children}
           </div>
-          <BottomNav userId={user.id} />
+          <BottomNav />
           {/* Single modal host layer above shell chrome. Keeping this as the
               only stacking context avoids "menu peeking through" races while
               intercepted routes resolve/loading UI mounts. */}

@@ -15,11 +15,10 @@ export type PlaceDetail = {
   category: string;
   vibe: string;
   price_level: 1 | 2 | 3 | 4;
-  // Actual per-person price range. Quick-view surfaces (swipe / catalog
-  // / map) keep using price_level rendered as $-symbols; the place
-  // detail page renders price_range so users can see real numbers.
-  // Pre-formatted with the currency prefix (e.g. "MX$200–300") to
-  // match what the place's currency column dictates.
+  // The place's own per-person numeric range (e.g. "MX$200–300"), or ""
+  // when it has none. Quick-view surfaces (swipe / catalog / map) render
+  // price_level as $-symbols; the place detail chip renders this and falls
+  // back to a range derived from price_level when it is empty.
   price_range: string;
   // ISO 4217 code mirroring public.places.currency (default MXN).
   // Carried through so future surfaces can render dynamic prefixes
@@ -128,33 +127,7 @@ export type PlaceDetail = {
     range: string;
     bars: number[];
   }>;
-  popular_times_featured: string; // day name to show in the Popular times card
 
-  // 7. Details (Google-Places-style metadata: category, zone, hours, etc.)
-  // Most of the extra fields below mirror what Google's Places panel
-  // and OpenTable surface on their detail views — dining style, dress
-  // code, parking, accessibility, amenities, executive chef. Optional
-  // OpenTable extras land here too (reservations, payment methods,
-  // kid/pet friendliness).
-  details: {
-    category_full: string;
-    zone: string;
-    dining_style: string;
-    dress_code: string;
-    service_options: string[];
-    reservations: string;
-    payment_methods: string[];
-    parking: string;
-    amenities: string[];
-    accessibility: string[];
-    dietary_options: string[];
-    good_for: string[];
-    languages: string[];
-    kid_friendly?: boolean;
-    pet_friendly?: boolean;
-    established_year?: number;
-    executive_chef?: string;
-  };
   channels: {
     website_url?: string;
     whatsapp_url?: string;
