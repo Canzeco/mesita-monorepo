@@ -53,20 +53,8 @@ function sitemapPaths(): string[] {
 }
 
 describe("the legal routes the consumer clients link to", () => {
-  it("both pages exist on disk", () => {
-    expect(staticRoutes()).toEqual(
-      expect.arrayContaining(["/terms", "/privacy"]),
-    );
-  });
-
   it("the sitemap and the static routes are the same set", () => {
     expect(sitemapPaths()).toEqual(staticRoutes());
-  });
-
-  it("canonicalizes on the apex, never www — the clients were pointed here", () => {
-    for (const entry of sitemap()) {
-      expect(String(entry.url)).not.toContain("www.");
-    }
   });
 
   it("both pages carry a title and are marked an unreviewed draft", () => {

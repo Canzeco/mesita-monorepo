@@ -226,17 +226,6 @@ export function composeClaim(c: Claim): string {
   return `claimed platform=${c.platform} host=${c.host} branch=${c.branch} worktree=${c.worktree} footprint=${c.footprint || "none"}`;
 }
 
-export function parseClaim(line: string): Claim | null {
-  if (!line.trim().startsWith("claimed ")) return null;
-  const out: Record<string, string> = {};
-  for (const tok of line.trim().slice("claimed ".length).split(/\s+/)) {
-    const eq = tok.indexOf("=");
-    if (eq > 0) out[tok.slice(0, eq)] = tok.slice(eq + 1);
-  }
-  if (!out.branch || !out.worktree) return null;
-  return { platform: out.platform ?? "", host: out.host ?? "", branch: out.branch, worktree: out.worktree, footprint: out.footprint ?? "none" };
-}
-
 // ── Parsing ─────────────────────────────────────────────────────────────────
 
 /** `git worktree list --porcelain -z`: NUL-terminated attributes, entries separated by an extra NUL. */

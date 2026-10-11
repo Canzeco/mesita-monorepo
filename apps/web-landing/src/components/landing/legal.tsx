@@ -105,4 +105,4 @@ function LegalPage({
   );
 }
 
-export { DraftNotice, LegalPage, LegalSection };
+export { LegalPage, LegalSection };

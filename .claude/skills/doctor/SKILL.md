@@ -108,12 +108,9 @@ The singleton rule is the one that silently breaks. Check it first.
     ```
 
 1.7 **Known-intentional exceptions** — assert they still hold, and report if flipped:
-    `profiles` (the view, renamed from `projects_view`) must be `security_invoker = true`. One thing that looks broken and
-    is not (MESITA-1048, until a new engine ships): `consumer-web-recommend-swipe`
-    returns active places in random order and reads-then-discards `lat` / `lng` /
-    `radiusKm` / `randomness` — slug and response shape are frozen for deployed Expo
-    binaries. (`places.manual_priority` was the second such exception; MESITA-1055
-    dropped the column, so its absence is correct — do not report it as missing.)
+    `profiles` (the view, renamed from `projects_view`) must be `security_invoker = true`.
+    (`places.manual_priority` was once an exception; MESITA-1055 dropped the column,
+    so its absence is correct — do not report it as missing.)
 
 ## Scope 2 — Postgres health (imported standard) · P1
 
@@ -229,8 +226,8 @@ doc, not a missing page). `agents_config` is EF-managed with no page yet.
 ## Scope 5 — Callers, agents & boundaries · P2
 
 5.1 **EF naming.** `<caller>-<verb>-<name>`; caller prefix ∈ the registered set
-    (`admin` · `business` · `consumer` · `staff` · `check` · `eleven` · `stripe` ·
-    `supabase` · `_shared`; retired: `twilio`). Count prefixes from
+    (`admin` · `consumer` · `eleven` · `enricher` · `supabase` · `_shared`; retired:
+    `twilio` · `business` · `staff` · `check` · `validate` · `stripe` · `gift`). Count prefixes from
     `supabase/supabase/functions/*` — do not keep a census here. Reservationist ships as
     `eleven-a{1–4}` / `eleven-agent`, not `reservationist-agent`.
 5.2 **Direction rule.** Natural callers may invoke artificial callers, never the reverse.
@@ -315,8 +312,7 @@ whether it is already known: an open Linear issue naming it · a doc that declar
 drift (a `SPEC vs SHIPPED` paragraph) · a documented freeze. Known → record `TRACKED (MESITA-…)`,
 never `FINDING`. Re-reporting settled state is how a report earns being ignored; a doc
 that declares its own drift is doing its job. **Quote both values with `file:line`;** a
-grep count is not a finding. Example: `_shared/pulse-pieces.ts` vs Intake §A is TRACKED
-(MESITA-1172).
+grep count is not a finding.
 
 9.1 **Docs tree shape.** Every domain link on 📚 Docs resolves · exactly one page per domain
     (the tree is FLAT, one level, forever) · no page carrying a domain's title that the index
@@ -333,7 +329,7 @@ grep count is not a finding. Example: `_shared/pulse-pieces.ts` vs Intake §A is
     Intake `*enrich*`, `_shared/enrich-*.ts`, `_shared/channels*.ts` ·
     Discovery `*discover*`, `*filter*`, `_shared/embeddings*.ts` ·
     Passport `_shared/consumer-*.ts` · Rewards — no code; a page claiming shipped machinery IS the finding ·
-    Visits `*visit*`, `_shared/business-ticket-billing.ts` ·
+    Visits `*visit*` ·
     Orders `*order*` (expect DESIGNED NOT BUILT) · Reservations `*reserv*` ·
     Checkout `*stripe*` · Credits — no code; a page claiming shipped machinery IS the finding ·
     Vocabulary — repo-wide banned-word sweep · Design `assets/brand/`, `**/globals.css`,
