@@ -139,8 +139,6 @@ export type Database = {
           id: string
           kind: string
           payload: Json
-          resolved_at: string | null
-          state: string
         }
         Insert: {
           consumer_id: string
@@ -148,8 +146,6 @@ export type Database = {
           id?: string
           kind: string
           payload?: Json
-          resolved_at?: string | null
-          state?: string
         }
         Update: {
           consumer_id?: string
@@ -157,8 +153,6 @@ export type Database = {
           id?: string
           kind?: string
           payload?: Json
-          resolved_at?: string | null
-          state?: string
         }
         Relationships: [
           {
@@ -175,7 +169,6 @@ export type Database = {
           avatar_url: string | null
           birthday: string | null
           code: string | null
-          country: string | null
           created_at: string
           deleted_at: string | null
           first_name: string | null
@@ -191,7 +184,6 @@ export type Database = {
           avatar_url?: string | null
           birthday?: string | null
           code?: string | null
-          country?: string | null
           created_at?: string
           deleted_at?: string | null
           first_name?: string | null
@@ -207,7 +199,6 @@ export type Database = {
           avatar_url?: string | null
           birthday?: string | null
           code?: string | null
-          country?: string | null
           created_at?: string
           deleted_at?: string | null
           first_name?: string | null
@@ -511,39 +502,6 @@ export type Database = {
           },
         ]
       }
-      place_name_history: {
-        Row: {
-          google_name: string
-          place_id: string
-          retired_at: string
-        }
-        Insert: {
-          google_name: string
-          place_id: string
-          retired_at?: string
-        }
-        Update: {
-          google_name?: string
-          place_id?: string
-          retired_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "place_name_history_place_id_fkey"
-            columns: ["place_id"]
-            isOneToOne: false
-            referencedRelation: "place_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "place_name_history_place_id_fkey"
-            columns: ["place_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       place_profiles: {
         Row: {
           address: string | null
@@ -553,26 +511,16 @@ export type Database = {
           category_label: string | null
           city: string | null
           closes_at: string | null
-          country: string | null
           created_at: string
           description: string | null
-          details: Json | null
           didi_food_url: string | null
-          editorial_summary: string | null
-          email: string | null
           embedding: string | null
           embedding_source_hash: string | null
           embedding_source_text: string | null
-          enrich_every_days: number | null
-          enrich_mode: string
-          enrich_next_at: string | null
           enriched_at: string | null
           enrichment: Json
           enrichment_sources: Json | null
-          established_year: number | null
-          executive_chef: string | null
           facebook_followers: number | null
-          facebook_rating: number | null
           facebook_url: string | null
           family_keys: string[] | null
           google_maps_url: string | null
@@ -613,7 +561,6 @@ export type Database = {
           timezone: string | null
           uber_eats_url: string | null
           updated_at: string
-          vibe: string | null
           website_url: string | null
           whatsapp_url: string | null
           x_url: string | null
@@ -627,26 +574,16 @@ export type Database = {
           category_label?: string | null
           city?: string | null
           closes_at?: string | null
-          country?: string | null
           created_at?: string
           description?: string | null
-          details?: Json | null
           didi_food_url?: string | null
-          editorial_summary?: string | null
-          email?: string | null
           embedding?: string | null
           embedding_source_hash?: string | null
           embedding_source_text?: string | null
-          enrich_every_days?: number | null
-          enrich_mode?: string
-          enrich_next_at?: string | null
           enriched_at?: string | null
           enrichment?: Json
           enrichment_sources?: Json | null
-          established_year?: number | null
-          executive_chef?: string | null
           facebook_followers?: number | null
-          facebook_rating?: number | null
           facebook_url?: string | null
           family_keys?: string[] | null
           google_maps_url?: string | null
@@ -687,7 +624,6 @@ export type Database = {
           timezone?: string | null
           uber_eats_url?: string | null
           updated_at?: string
-          vibe?: string | null
           website_url?: string | null
           whatsapp_url?: string | null
           x_url?: string | null
@@ -701,26 +637,16 @@ export type Database = {
           category_label?: string | null
           city?: string | null
           closes_at?: string | null
-          country?: string | null
           created_at?: string
           description?: string | null
-          details?: Json | null
           didi_food_url?: string | null
-          editorial_summary?: string | null
-          email?: string | null
           embedding?: string | null
           embedding_source_hash?: string | null
           embedding_source_text?: string | null
-          enrich_every_days?: number | null
-          enrich_mode?: string
-          enrich_next_at?: string | null
           enriched_at?: string | null
           enrichment?: Json
           enrichment_sources?: Json | null
-          established_year?: number | null
-          executive_chef?: string | null
           facebook_followers?: number | null
-          facebook_rating?: number | null
           facebook_url?: string | null
           family_keys?: string[] | null
           google_maps_url?: string | null
@@ -761,7 +687,6 @@ export type Database = {
           timezone?: string | null
           uber_eats_url?: string | null
           updated_at?: string
-          vibe?: string | null
           website_url?: string | null
           whatsapp_url?: string | null
           x_url?: string | null
@@ -878,7 +803,6 @@ export type Database = {
           facet: string
           label_en: string
           label_es: string
-          section: string
           slug: string
           sort_order: number
         }
@@ -887,7 +811,6 @@ export type Database = {
           facet: string
           label_en: string
           label_es: string
-          section: string
           slug: string
           sort_order: number
         }
@@ -896,7 +819,6 @@ export type Database = {
           facet?: string
           label_en?: string
           label_es?: string
-          section?: string
           slug?: string
           sort_order?: number
         }
@@ -980,7 +902,6 @@ export type Database = {
           cancelled_at: string | null
           cancelled_by: string | null
           claimed_at: string | null
-          completed_at: string | null
           confirmed_at: string | null
           consumer_confirmed_at: string | null
           consumer_id: string
@@ -1033,7 +954,6 @@ export type Database = {
           cancelled_at?: string | null
           cancelled_by?: string | null
           claimed_at?: string | null
-          completed_at?: string | null
           confirmed_at?: string | null
           consumer_confirmed_at?: string | null
           consumer_id: string
@@ -1086,7 +1006,6 @@ export type Database = {
           cancelled_at?: string | null
           cancelled_by?: string | null
           claimed_at?: string | null
-          completed_at?: string | null
           confirmed_at?: string | null
           consumer_confirmed_at?: string | null
           consumer_id?: string
@@ -1148,7 +1067,6 @@ export type Database = {
           created_at: string
           email: string
           note: string | null
-          phone: string | null
           user_id: string | null
         }
         Insert: {
@@ -1156,7 +1074,6 @@ export type Database = {
           created_at?: string
           email: string
           note?: string | null
-          phone?: string | null
           user_id?: string | null
         }
         Update: {
@@ -1164,7 +1081,6 @@ export type Database = {
           created_at?: string
           email?: string
           note?: string | null
-          phone?: string | null
           user_id?: string | null
         }
         Relationships: []
@@ -1181,23 +1097,16 @@ export type Database = {
           city: string | null
           closes_at: string | null
           content_state: Database["public"]["Enums"]["content_state"] | null
-          country: string | null
           created_at: string | null
           currency: string | null
           description: string | null
-          details: Json | null
           didi_food_url: string | null
-          editorial_summary: string | null
-          email: string | null
           embedding: string | null
           embedding_source_hash: string | null
           embedding_source_text: string | null
           enriched_at: string | null
           enrichment_sources: Json | null
-          established_year: number | null
-          executive_chef: string | null
           facebook_followers: number | null
-          facebook_rating: number | null
           facebook_url: string | null
           family_keys: string[] | null
           google_maps_url: string | null
@@ -1240,7 +1149,6 @@ export type Database = {
           timezone: string | null
           uber_eats_url: string | null
           updated_at: string | null
-          vibe: string | null
           website_url: string | null
           whatsapp_url: string | null
           x_url: string | null
@@ -1304,7 +1212,6 @@ export type Database = {
           run_id: string
         }[]
       }
-      queue_due_place_enrichments: { Args: never; Returns: number }
       run_place_enrichment_stages: { Args: never; Returns: number }
       seed_place_categories: { Args: never; Returns: undefined }
       seed_place_families: { Args: never; Returns: undefined }
@@ -1312,19 +1219,12 @@ export type Database = {
       service_elevenlabs_api_key: { Args: never; Returns: string }
     }
     Enums: {
-      content_state: "queued" | "generating" | "ready" | "failed"
-      place_state:
-        | "lead"
-        | "active"
-        | "paused"
-        | "archived"
-        | "pending_review"
-        | "pending_verification"
+      content_state: "generating" | "ready" | "failed"
+      place_state: "active" | "paused" | "archived"
       reservation_state:
         | "pending"
         | "confirmed"
         | "declined"
-        | "no_show"
         | "cancelled"
         | "unreachable"
         | "unresolved"
@@ -1458,20 +1358,12 @@ export const Constants = {
   },
   public: {
     Enums: {
-      content_state: ["queued", "generating", "ready", "failed"],
-      place_state: [
-        "lead",
-        "active",
-        "paused",
-        "archived",
-        "pending_review",
-        "pending_verification",
-      ],
+      content_state: ["generating", "ready", "failed"],
+      place_state: ["active", "paused", "archived"],
       reservation_state: [
         "pending",
         "confirmed",
         "declined",
-        "no_show",
         "cancelled",
         "unreachable",
         "unresolved",
