@@ -77,3 +77,41 @@ describe("the carousel reports the photo on screen", () => {
     expect(src).toMatch(/setIdx\(i\);\s*onIdxChange\?\.\(i\);/);
   });
 });
+
+// SCROLL IS SWIPE, VERTICAL (Pato, MESITA-2147: "scroll must have the same
+// boxes as swipe" and "reserve button must be as equal as the others").
+describe("Scroll states a place with Swipe's boxes", () => {
+  const html = () =>
+    renderToStaticMarkup(
+      <ScrollCard
+        place={mock}
+        index={0}
+        total={12}
+        near
+        cardSize={phone}
+        saved={false}
+        profileHref={null}
+        onProfile={() => {}}
+        onToggleSave={() => {}}
+        onShare={() => {}}
+        onReserve={() => {}}
+      />,
+    );
+
+  it("renders SwipeCardInfo, not its own text lines", () => {
+    const src = read("components/consumer/home/scroll/scroll-card.tsx");
+    expect(src).toContain("<SwipeCardInfo place={place} compact />");
+    expect(src).not.toContain("metaLine");
+    // Swipe's chip shape: bordered dark boxes.
+    expect(html()).toContain("border-white/35 bg-black/60");
+  });
+
+  it("draws Reserve on the same disc as Profile, Save and Share", () => {
+    const discs = [...html().matchAll(/<span class="(bg-media-glass[^"]*)"/g)].map(
+      (m) => m[1],
+    );
+    expect(discs.length).toBe(4);
+    expect(new Set(discs.map((d) => d.replace(/ scale-110/, ""))).size).toBe(1);
+    expect(html()).not.toContain("bg-on-media text-foreground");
+  });
+});

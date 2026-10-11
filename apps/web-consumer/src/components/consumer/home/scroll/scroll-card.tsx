@@ -6,17 +6,9 @@ import Link from "next/link";
 import { CalendarCheck, Heart, Share2 } from "lucide-react";
 
 import type { Place } from "@/lib/api/places";
-import { resolveZoneLabel } from "@/lib/adapters/place-to-detail";
-import { resolvePlaceCategoryName } from "@/lib/place-category";
-import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
-import { getOpeningStateLabel } from "@/lib/place-state";
-import {
-  cn,
-  formatCompactCount,
-  formatDistanceKm,
-  formatRating,
-} from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { ImageCarousel } from "@/components/consumer/ImageCarousel";
+import { SwipeCardInfo } from "@/components/consumer/SwipeCardInfo";
 import { useDoubleTap } from "./use-double-tap";
 
 // One place, one screen, TikTok's grammar (MESITA-2105, design 1A).
@@ -29,10 +21,10 @@ import { useDoubleTap } from "./use-double-tap";
 // `bg-media-glass` disc, and white on 55% black stays at 4.74:1 even over a
 // pure-white photo.
 //
-// HIERARCHY: photo, then the name, then Reserve. Reserve is the ONE solid white
-// disc in the column — the MVP's First Stage is reservations, so it is the
-// conversion and must read third with nothing competing (Pato, 2026-10-10:
-// "Profile, Save, Share, Reserve"; it replaced Go and its visit/order doors).
+// HIERARCHY: photo, then the name and its boxes, then the four actions, all
+// four the same glass disc (Pato, MESITA-2147: "reserve button must be as
+// equal as the others"; the order is his 2026-10-10 "Profile, Save, Share,
+// Reserve").
 //
 // SQUARE AND WIDE PHOTOS WEAR THE REFLECTION (Pato: "use the reflection thing
 // that swipe used to have, because squares"). A photo much wider than the card
@@ -106,24 +98,6 @@ export function ScrollCard({
     setBurst((n) => n + 1);
   });
 
-  const category = resolvePlaceCategoryName({
-    categoryLabel: place.category_label,
-    category: place.category,
-  });
-  const price = formatPlacePriceLevelSymbols(place.price_level);
-  const zone = resolveZoneLabel({ zone: place.zone, address: place.address });
-  // 0 is withUserDistance's "no coordinates" placeholder, not "you are here".
-  const distance =
-    place.distance_km != null && place.distance_km > 0
-      ? formatDistanceKm(place.distance_km)
-      : null;
-  const rating = formatRating(place.google_rating);
-  const ratingCount =
-    place.google_count != null ? formatCompactCount(place.google_count) : null;
-  const openState = getOpeningStateLabel(place);
-  const metaLine = [category, price, zone, distance]
-    .filter(Boolean)
-    .join(" · ");
   const initial = place.name.trim().charAt(0).toUpperCase() || "·";
 
   return (
@@ -184,32 +158,12 @@ export function ScrollCard({
         />
       )}
 
-      <div className="text-on-media pointer-events-none absolute right-[72px] bottom-0 left-0 flex flex-col gap-1 p-4 pb-5">
-        <h2 className="font-display flex min-w-0 items-center gap-1.5 text-2xl leading-tight font-semibold [text-shadow:0_2px_12px_rgba(0,0,0,0.62)]">
-          <span className="truncate">{place.name}</span>
-        </h2>
-        {metaLine && (
-          <p className="text-on-media-muted truncate text-sm font-medium">
-            {metaLine}
-          </p>
-        )}
-        {(rating || openState) && (
-          <p className="text-on-media-muted truncate text-sm font-medium tabular-nums">
-            {rating && (
-              <>
-                ★ {rating}
-                {ratingCount && ` (${ratingCount})`}
-              </>
-            )}
-            {rating && openState && " · "}
-            {openState}
-          </p>
-        )}
-        {place.pitch && (
-          <p className="text-on-media-muted line-clamp-2 text-sm leading-snug [@media(max-height:640px)]:hidden">
-            {place.pitch}
-          </p>
-        )}
+      {/* SWIPE'S BOXES (Pato, MESITA-2147: "scroll must have the same boxes
+          as swipe. it basically swipe but ... vertical"). The name and the
+          chip row are SwipeCardInfo itself, so the two modes state a place
+          identically; only the direction of travel differs. */}
+      <div className="pointer-events-none absolute right-[72px] bottom-0 left-0 px-3.5 pt-2.5 pb-5">
+        <SwipeCardInfo place={place} compact />
       </div>
 
       <div className="absolute right-3 bottom-5 flex flex-col items-center gap-3 [@media(max-height:640px)]:gap-2">
@@ -269,13 +223,9 @@ export function ScrollCard({
           aria-label={`Reserve at ${place.name}`}
           className={ACTION}
         >
-          {/* THE ONE INVERTED DISC. */}
-          <span
-            className={cn(
-              DISC,
-              "bg-on-media text-foreground backdrop-blur-none",
-            )}
-          >
+          {/* THE SAME DISC AS THE OTHERS (Pato, MESITA-2147: "reserve button
+              must be as equal as the others"). */}
+          <span className={DISC}>
             <CalendarCheck className="h-6 w-6" strokeWidth={2.2} aria-hidden />
           </span>
           <span className={LABEL}>Reserve</span>
