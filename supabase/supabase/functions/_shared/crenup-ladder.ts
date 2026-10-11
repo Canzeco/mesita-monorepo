@@ -57,8 +57,9 @@
 // reported on writes that happened two stages away. Rule 2 of crenup-report
 // says `completed` means THE EFFECT LANDED, and that is far easier to honour
 // now that the function which WRITES is the function which REPORTS.
-// `content_state` still flips exactly ONCE, after 8, so a place never goes
-// public wearing this run's images over last run's description.
+// `content_state` still flips exactly ONCE, right after function 7 persists
+// the profile (8 then embeds a ready place), so a place never goes public
+// wearing this run's images over last run's description.
 //
 // THE THREE TEXTS, each with exactly one reader, never collapsed:
 //   SERP Summary        function 2 — soft context the PIPELINE reads

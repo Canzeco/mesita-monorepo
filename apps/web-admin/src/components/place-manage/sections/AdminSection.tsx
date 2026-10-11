@@ -17,8 +17,8 @@ import { formatAbsoluteUtc } from "@/lib/format";
 //                         Active · Listed · Requested `0…n`.
 //                         Owns both operator writes (Active, Listed).
 //   Enrichment States   how far did the pipeline get? Enriched (last
-//                         completed) · Enriching (live run) over the eleven
-//                         functions 0. Seed … 10. Embedding. OWNS the
+//                         completed) · Enriching (live run) over the nine
+//                         functions 0. Seed … 8. Embedding. OWNS the
 //                         enrichment read — StateCard no longer fetches it.
 // Then the rest:
 //   Enrichment  queues the full Enricher process

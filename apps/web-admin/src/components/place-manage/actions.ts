@@ -150,7 +150,7 @@ export type AdminPlace = {
   enrich_crenup_labels?: string[];
   /** Why the queue stopped where it did. Absent on an older payload. */
   enrich_crenup_blocked?: CrenupBlock | null;
-  /** Per Enrich subfunction (1–10). Overview payload only. */
+  /** Per Enrich subfunction (1–8). Overview payload only. */
   enrich_functions?: Record<string, {
     state: "pending" | "completed" | "failed";
     at: string | null;

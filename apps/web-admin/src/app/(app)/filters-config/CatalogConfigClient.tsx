@@ -4,12 +4,13 @@ import { DISCOVERY_MODE_SOURCES } from "./catalog";
 import { ModeSourceChips } from "./ModeSourceChips";
 import { NoWeightsNote } from "./NoWeightsNote";
 
-// Feed box — empty Soon. Home shipped, but the Catalog ENGINE did not: Feed's
-// rails come back from consumer-web-list-catalog ranked by cosine, and the
-// seed / rail counts on `discovery_config.catalog` still have no reader. So
-// the box stays Soon and this file must not render them.
+// Catalog box — empty Soon. Catalog is off Home's rail (Swipe · Scroll · Chat
+// · Favs; /discover/feed 308s to Scroll, MESITA-2140/2142). Its rails come
+// back from consumer-web-list-catalog ranked by cosine, and the seed / rail
+// counts on `discovery_config.catalog` still have no reader. So the box stays
+// Soon and this file must not render them.
 //
-// Its weights line says so out loud (MESITA-1859): Feed ranks by cosine
+// Its weights line says so out loud (MESITA-1859): Catalog ranks by cosine
 // similarity, not by the signal blend, so it gets no column in the weights
 // table and never will unless the engine changes.
 export function CatalogConfigClient() {
@@ -21,7 +22,7 @@ export function CatalogConfigClient() {
       doc="Notion Docs › Discovery"
       footer={
         <>
-          <NoWeightsNote reason="Feed's rails come back ranked by cosine similarity, not by the signal blend, so there is nothing to weight." />
+          <NoWeightsNote reason="Catalog's rails come back ranked by cosine similarity, not by the signal blend, so there is nothing to weight." />
           <ModeSourceChips sources={DISCOVERY_MODE_SOURCES.catalog} />
         </>
       }

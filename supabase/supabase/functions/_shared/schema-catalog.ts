@@ -72,7 +72,7 @@ export const FunctionStateSchema: Schema<FunctionState> = object({
 
 /**
  * A `FunctionStateMap` is a PARTIAL record — most place_profiles have not run every
- * one of the 10 steps yet, and an absent key means exactly that, not
+ * one of the 8 steps yet, and an absent key means exactly that, not
  * `{state:"pending",...}`. `object()` iterates every key of its shape
  * regardless of presence, which is the right behavior for a fixed-shape
  * document (place-doc.ts's own PlaceProfilePatch keys) but wrong here: a place
@@ -155,7 +155,7 @@ export function foldFunctionStateMap(
 
 
 /**
- * The ten Enrich operator functions (1–10), every key present
+ * The eight Enrich operator functions (1–8), every key present
  * so State can list them without inventing a second ladder.
  */
 export function operatorFunctionStates(

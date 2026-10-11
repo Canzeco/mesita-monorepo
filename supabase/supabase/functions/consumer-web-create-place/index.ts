@@ -56,7 +56,6 @@ Deno.serve(async (req) => {
     admin,
     callerName: "consumer-web-create-place",
     googlePlaceId,
-    queueEnrich: false,
   });
   if (!created.ok) return json(created.body, created.status);
 

@@ -5,7 +5,7 @@
 // passes a Google Places `placeId` and gets back the ugly profile (Create
 // 1–4, content_state ready, enriched_at null). Enricher is NOT queued —
 // Enrich / Create+Enrich is a second call; guests vote on the Enrich tab.
-// Core: createMinimalPlace (_shared/create-place.ts) with queueEnrich:false.
+// Core: createMinimalPlace (_shared/create-place.ts), which never seeds Enricher.
 //
 // Roles are simple now: admins create from the admin app via THIS function;
 // businesses created from the business app via business-web-create-place
@@ -56,7 +56,6 @@ Deno.serve(async (req) => {
     admin,
     callerName: "admin-web-create-place",
     googlePlaceId: placeId,
-    queueEnrich: false,
   });
   if (!created.ok) return json(created.body, created.status);
 

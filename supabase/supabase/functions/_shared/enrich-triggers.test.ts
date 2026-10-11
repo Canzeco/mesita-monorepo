@@ -17,8 +17,9 @@ import {
 // Just write it as soon"): apps/web-admin's Enrichment route is a Soon page,
 // and NOTHING writes app_config.enrichment_triggers from a UI today.
 //
-// The gates did not move. on_create is still a LIVE emitter whose resolved
-// subprocess list gates real Apify / Firecrawl / Perplexity spend — three independent audits said so, and deleting the console changed
+// The gates did not move. on_update and on_reservation_failed are still LIVE
+// readers whose resolved subprocess lists gate real Apify / Firecrawl /
+// Perplexity spend — three independent audits said so, and deleting the console changed
 // none of it. What changed is who can flip a cell: admin-web-update-enricher-
 // config, called directly, is the last write door.
 //
@@ -84,8 +85,6 @@ Deno.test("TRIGGER_META: exactly the rows some code reads are marked live", () =
   // not "this row seeds no run".
   //
   // The readers, exhaustively:
-  //   on_create   — create-place.ts resolves subprocessesFor(t, "on_create")
-  //                 and hard-skips the first run when the row buys nothing.
   //   on_update   — admin-web-update-place resolves it and skips the
   //                 follower refresh / the re-embed (MESITA-1188). It is the
   //                 one reader that WITHHOLDS work instead of scheduling it,
@@ -95,7 +94,8 @@ Deno.test("TRIGGER_META: exactly the rows some code reads are marked live", () =
   //                 terminal, unambiguous signal the stored channel is stale
   //                 (MESITA-1189). declined/counter_offer/confirmed mean the
   //                 channel worked; unreachable is documented as retryable.
-  // on_visit / on_order / on_reservation_ok still have no reader and must
+  // on_create / on_visit / on_order / on_reservation_ok have no reader (both
+  // create doors save a ready place and never seed the Enricher) and must
   // stay staged until one exists.
   const live = Object.entries(TRIGGER_META)
     .filter(([, m]) => !m.staged)
@@ -103,7 +103,6 @@ Deno.test("TRIGGER_META: exactly the rows some code reads are marked live", () =
     .sort();
 
   assertEquals(live, [
-    "on_create",
     "on_reservation_failed",
     "on_update",
   ]);
@@ -187,12 +186,12 @@ Deno.test("on_reservation_failed: default cooldown is 24h, not 0", () => {
 });
 
 Deno.test("subprocessesFor: a disabled live row buys nothing", () => {
-  // An empty list is what create-place.ts turns into a hard skip of the
-  // first-run pipeline.
+  // An empty list is what admin-web-update-place reads as "withhold every
+  // refresh".
   const cfg = structuredClone(ENRICHMENT_TRIGGERS_DEFAULTS);
-  cfg.on_create.enabled = false;
+  cfg.on_update.enabled = false;
 
-  assertEquals(subprocessesFor(cfg, "on_create"), []);
+  assertEquals(subprocessesFor(cfg, "on_update"), []);
 });
 
 Deno.test("subprocessesFor: an enabled row buys exactly its true cells", () => {

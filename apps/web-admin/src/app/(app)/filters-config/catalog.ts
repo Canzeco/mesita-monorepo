@@ -270,7 +270,7 @@ type WiredEngineKey = (typeof WIRED_ENGINE_KEYS)[number];
  * `weightsForMode` for it, AND its mask carries more than one signal. Word
  * satisfies the first and fails the second — its mask is `["name"]`, and a
  * one-factor `s^w` is a monotone transform of `s`, so no exponent can reorder
- * a Word result. Feed ranks by cosine; Chat and Favorites have no engine, and
+ * a Word result. Catalog ranks by cosine; Chat and Favorites have no engine, and
  * Favorites' mask is empty besides.
  *
  * Map is CONDITIONALLY real: consumer-web-list-places skips the reorder

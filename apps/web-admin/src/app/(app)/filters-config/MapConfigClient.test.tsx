@@ -46,7 +46,8 @@ describe("Map reload pairs", () => {
     expect(html).toContain("never a search source");
     expect(html).toContain("Places sets");
     expect(html).toContain("Closest N of the selected set");
-    expect(html).toContain("Listed pins then Lineup, not distance");
+    expect(html).toContain("Lineup ranks listed pins only when Google adds none");
+    expect(html).not.toContain("Listed pins then Lineup");
     expect(html).toContain("Reload after");
     expect(html).toContain("AND wait this long");
     expect(html).toContain("Only dragging the map counts");

@@ -69,8 +69,8 @@ export function MesitaSourceCards({ seed }: { seed: FloorSeed }) {
         >
           <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
             Used by Map. N is the guest&apos;s How many, never a console
-            number. Listed pins then Lineup under the Map mask; the Google set
-            stays distance.
+            number. Lineup ranks listed pins under the Map mask only when
+            Google adds none; otherwise distance.
           </p>
           <FiltersFloorOwner seed={seed} />
         </SectionCard>
@@ -79,7 +79,7 @@ export function MesitaSourceCards({ seed }: { seed: FloorSeed }) {
         <ConfigSoon
           Icon={Layers}
           title="Mesita Places Browse Search is coming soon"
-          body="No query at all — the catalog itself, railed by occupied Atlas categories and a sampled vibe bank. No mode calls it today: Catalog became Flexible when its Feed grew a filter control. Browse is what an engine that rails the catalog on no guest input at all would be, which is why the Matrix keeps its row, off for every mode."
+          body="No query at all — the catalog itself, railed by occupied Atlas categories and a sampled vibe bank. No mode calls it today: Catalog became Flexible when it grew a filter control. Browse is what an engine that rails the catalog on no guest input at all would be, which is why the Matrix keeps its row, off for every mode."
           doc="Notion Docs › Discovery"
           footer={<FloorSoonNote />}
         />

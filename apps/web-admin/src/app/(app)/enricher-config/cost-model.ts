@@ -363,7 +363,7 @@ export function computeCreateCost(s: CrenupSettings): CostEstimate {
   });
 }
 
-/** One Enrich of one place: live knobs. Queue cadence (5/tick) is not this card. */
+/** One Enrich of one place: live knobs. */
 export function computeEnrichTickCost(s: CrenupSettings): CostEstimate {
   return computeEnrichmentCost(costParamsFromSettings(s));
 }

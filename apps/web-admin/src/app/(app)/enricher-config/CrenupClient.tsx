@@ -262,9 +262,9 @@ export function CrenupClient({
             <FlowPanel
               facts={[
                 {
-                  term: "Cadence",
+                  term: "Starts",
                   detail:
-                    "Place editor sets the days. Queue every 15 minutes, five places per tick.",
+                    "Votes reach the threshold, or admin Enrich. A wrong-number call refetches Google.",
                 },
                 {
                   term: "Stops",
@@ -485,7 +485,7 @@ export function CrenupClient({
                 index="7 · $"
                 flows={flowTagFor("description")}
                 name="Description"
-                blurb="Family · Category · Tags · Presentation · Orders Enabled · Reservations Enabled · Mesita Name · Semantic Summary."
+                blurb="Family · Category · Tags · Presentation · Reservations Enabled · Mesita Name · Semantic Summary."
                 knobs="in Models"
               >
                 <KnobElsewhere>
@@ -500,7 +500,7 @@ export function CrenupClient({
                 index="8 · $"
                 flows={flowTagFor("embedding")}
                 name="Embedding"
-                blurb="Mesita Name Embedding · Semantic Summary Embedding. Two vectors, one function. Closes Enrich at 10."
+                blurb="Mesita Name Embedding · Semantic Summary Embedding. Two vectors, one function. Closes Enrich at 8."
                 knobs="locked"
               >
                 <NoKnobs>

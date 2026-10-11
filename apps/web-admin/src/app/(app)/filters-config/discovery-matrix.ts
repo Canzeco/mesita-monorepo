@@ -42,11 +42,13 @@ export type DiscoveryModeKey = (typeof DISCOVERY_MODE_KEYS)[number];
 // Scroll (a vertical feed, same deck) and Catalog's body moved to Home's Feed
 // tab. The engines did not move, so this is a relabel and nothing else — the
 // same key-vs-label split the consumer app already lives with at Pay
-// (`/new-visit`) and Activity (`/inbox`).
+// (`/new-visit`) and Activity (`/inbox`). Feed left Home's rail at
+// MESITA-2140 (the rail is Swipe · Scroll · Chat · Favs; /discover/feed 308s
+// to Scroll), so `catalog` reads Catalog again.
 export const DISCOVERY_MODE_LABELS: Record<DiscoveryModeKey, string> = {
   word: "Word",
   map: "Map",
-  catalog: "Feed",
+  catalog: "Catalog",
   swipe: "Scroll",
   chat: "Chat",
   favorites: "Favorites",
@@ -189,7 +191,7 @@ export const DISCOVERY_SOURCES_NO_CALLER = [
  *   Flexible  an arbitrary set of predicates                 → Swipe, Catalog, Chat
  *
  * CATALOG BECAME FLEXIBLE AT MESITA-1697: Home's Feed grew a filter control
- * and the Feed's list lane now cuts its pool with `applyDeckPredicates`
+ * and Catalog's list lane now cuts its pool with `applyDeckPredicates`
  * before it plans a rail, so it stopped admitting on nothing. That left
  * Places Browse with no caller at all — it keeps its row and its Soon box
  * because it is what any future engine that rails the catalog with no guest

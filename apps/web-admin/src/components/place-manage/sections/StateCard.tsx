@@ -5,7 +5,7 @@
 //   General States      is this place real and reachable?
 //                         Created · Active · Listed · Requested
 //   Enrichment States   how far has the pipeline gotten? Enriched ·
-//                         Enriching + the eleven functions — all of it in
+//                         Enriching + the nine functions — all of it in
 //                         CrenupStateCard, which OWNS the enrichment read.
 //
 // Partnership States (Partnered · Rewards · Mesita Pay · Mesita Credits) went
@@ -61,7 +61,7 @@ import {
 } from "@/lib/state-vocabulary";
 
 // States box (Pato, 2026-08-25): bools + Requested 0…n. Crenup is the next
-// box — not chips under Enriched, and not a Create 1–5 / Enrich 1–10 split.
+// box — not chips under Enriched, and not a Create / Enrich split.
 // Chips never repeat the row name.
 //
 //   Created    a google_place_id exists. Nothing enriches without it.

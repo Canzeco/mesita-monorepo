@@ -7,7 +7,7 @@
 // belong to the ladder now (crenup-ladder.ts); a caller simply runs fewer.
 //
 //   0 seed        → dedupe on google_place_id, mint the paired rows
-//                   (generating when queueing Enrich, ready when not).
+//                   (content_state ready, enriched_at null).
 //                   NEVER STAMPED: the row existing IS the seed.
 //   1 details     → the Google spine persisted (fetchGoogleBasics fields,
 //                   category='undefined' and family_keys=['undefined'] as the
@@ -20,22 +20,22 @@
 //                   the thin Google signals infers Family, Category,
 //                   Tags, Presentation, Reservations, Mesita Name (through
 //                   the mesita-name-door, gate D2) and the Semantic Summary.
-//                   SKIPPED when the create queues a full Enrich — the
-//                   Enricher's step 7 redoes it properly minutes later.
+//                   A later Enrich run's step 7 redoes it with rich grounding.
 //   8 embedding   → embed-only: Name vector + Summary vector of what the
-//                   door wrote, awaited in this same function. Also skipped
-//                   when Enrich is queued (step 8 will close it).
+//                   door wrote, awaited in this same function.
 //
 // Details, Description and Embedding are SHARED with the ENRICH queue — create
 // AWAITS its subfunctions; enrich runs each as its own tick. Create STAMPS
 // what it ran so a fresh place reads its true rungs immediately and state
 // accumulates across create and every later run under one rule.
 //
-// queueEnrich (MESITA-1364): consumer and admin Create mint the ugly
-// profile and do NOT seed Enricher. Enriched is `place_profiles.enriched_at`, not
-// content_state. Guests vote on the Enrich tab; the Crenup threshold
-// seeds the queue. Business create still queues. Admin Enrich /
-// Create+Enrich is a second call.
+// CREATE NEVER SEEDS THE ENRICHER (MESITA-1364). Every caller mints the ugly
+// profile and stops. Enriched is `place_profiles.enriched_at`, not
+// content_state. Guests vote on the Enrich tab and the Crenup threshold seeds
+// the queue (place-requests.ts); admin Enrich / Create+Enrich is a second
+// call. The opt-in `queueEnrich` path that seeded from the trigger matrix's
+// on_create row had no caller once business create retired (MESITA-2090) and
+// left in MESITA-2151.
 //
 // Callers: admin-web-create-place and consumer-web-create-place
 // (business-web-create-place and the consumer-web-schedule-place-creation
@@ -43,11 +43,6 @@
 // queue); only auth and response shaping differ per EF.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import {
-  loadEnrichmentTriggers,
-  seedPlaceResearch,
-  subprocessesFor,
-} from "./enrich-pipeline.ts";
 import { fetchGoogleBasics } from "./enrich-google-basics.ts";
 import { storeFirstPlaceImage } from "./store-place-images.ts";
 import { savePlaceData } from "./save-place.ts";
@@ -61,7 +56,9 @@ import { evaluatePlaceForMap } from "./map-engine.ts";
 
 export type CreatedPlace = { id: string; slug: string; name: string; state: string };
 
-// The `enrichment` block every create response carries.
+// The `enrichment` block every create response carries. Create never seeds
+// the Enricher, so `enrichmentTriggered` is always false and
+// `enrichmentError` always null; the shape stays for the admin client's read.
 export type EnrichmentSummary = {
   photoCount: number;
   enrichmentTriggered: boolean;
@@ -74,15 +71,11 @@ export type CreatePlaceOutcome =
 
 export async function createMinimalPlace(opts: {
   admin: SupabaseClient;
-  // The product caller's EF name — recorded as place_research.created_by.
+  // The product caller's EF name — the log prefix for this create.
   callerName: string;
   googlePlaceId: string;
-  // true (default): seed Enricher from the on_create row. false: mint the
-  // ugly profile and stop — votes (or admin Enrich) start the queue.
-  queueEnrich?: boolean;
 }): Promise<CreatePlaceOutcome> {
   const { admin, callerName, googlePlaceId } = opts;
-  const queueEnrich = opts.queueEnrich !== false;
 
   // decision: Pato (MESITA-468) — every create path requires a Google Place ID;
   // callers already validate, but guard here so a future caller can't skip it.
@@ -193,15 +186,10 @@ export async function createMinimalPlace(opts: {
     business_state_at: basicsRes.businessStatus ? new Date().toISOString() : null,
   };
 
-  // ── 2) Persist the minimal rows (in-process). queueEnrich lands
-  // content_state='generating' until contents flips it to ready. A cheap
-  // mint lands 'ready' with enriched_at null — the ugly profile is
-  // viewable; Enriched stays no until Enricher finishes. ──
-  const saveRes = await savePlaceData(
-    admin,
-    place,
-    queueEnrich ? "generating" : "ready",
-  );
+  // ── 2) Persist the minimal rows (in-process). The mint lands 'ready' with
+  // enriched_at null — the ugly profile is viewable; Enriched stays no until
+  // an Enricher run finishes. ──
+  const saveRes = await savePlaceData(admin, place, "ready");
   if (!saveRes.ok) {
     return { ok: false, status: saveRes.status, body: saveRes.body };
   }
@@ -233,8 +221,8 @@ export async function createMinimalPlace(opts: {
   // not a rung beside it: the gate above passed — the listing resolves and is
   // not permanently closed — and the spine the save just persisted IS the
   // observed effect. Best-effort (a stamp failure never fails a create).
-  // Result: a fresh, healthy place reads enriched 1/8 the moment it exists;
-  // an un-queued create climbs on to 7–8 via the door below.
+  // Result: a fresh, healthy place reads enriched 1/8 the moment it exists
+  // and climbs on to 7–8 via the door below.
   await reportCrenupSteps(admin, saved.place_id, {
     details: stepDone(
       basicsRes.businessStatus
@@ -245,115 +233,84 @@ export async function createMinimalPlace(opts: {
   });
 
   // ── 7 DESCRIPTION + 8 EMBEDDING at the door (§8.4 v4, gate D1) ─────────
-  // Only when this create does NOT queue a full Enrich: the queue's own
-  // steps 7+8 would redo this minutes later with rich grounding, so a
-  // queued create skips the door and leaves both rungs pending. Best-effort —
-  // nothing here ever fails the create.
-  if (!queueEnrich) {
-    try {
-      const openaiKey = Deno.env.get("OPENAI_KEY")?.trim();
-      if (openaiKey) {
-        const door = await synthesizeDoorProfile(admin, openaiKey, {
-          name: saved.name,
-          address: (place.address ?? null) as string | null,
-          zone: (place.zone ?? null) as string | null,
-          city: (place.city ?? null) as string | null,
-          googleTypes: Array.isArray(place.google_types)
-            ? place.google_types as string[]
-            : null,
-          // Google's blurb rides the envelope, not `basics` — it is a
-          // classifier input, not a place_profiles column (MESITA-2144).
-          editorialSummary: basicsRes.editorialSummary,
-          priceLevel: typeof place.price_level === "number"
-            ? place.price_level
-            : null,
-        });
-        if (door) {
-          const patch: Record<string, unknown> = {};
-          if (door.category) patch.category = door.category;
-          if (door.familyKeys.length > 0) patch.family_keys = door.familyKeys;
-          if (door.tags.length > 0) patch.tags = door.tags;
-          if (door.description) patch.description = door.description;
-          // The seed for a place nobody has answered for yet; an operator's
-          // channel pick supersedes it from then on (MESITA-1737).
-          patch.reservations_enabled = door.reservationsLikely;
-          if (door.semanticSummary) {
-            patch.embedding_source_text = door.semanticSummary;
-          }
-          const doorWrite = await writePlace(admin, {
-            table: "place_profiles",
-            mode: "update",
-            id: saved.place_id,
-            patch,
-          });
-          if (door.mesitaNameCandidate) {
-            await applyInferredMesitaName(
-              admin,
-              saved.place_id,
-              door.mesitaNameCandidate,
-            );
-          }
-          await reportCrenupSteps(admin, saved.place_id, {
-            description: doorWrite.ok
-              ? stepDone(
-                `Door Description — category “${door.category ?? "n/a"}”, ` +
-                  `${door.tags.length} tag(s), Mesita Name + Semantic Summary inferred.`,
-                { via: "create" },
-              )
-              : stepFailed(`Door Description persist failed — ${doorWrite.ok ? "" : doorWrite.error}`),
-          });
+  // Best-effort — nothing here ever fails the create.
+  try {
+    const openaiKey = Deno.env.get("OPENAI_KEY")?.trim();
+    if (openaiKey) {
+      const door = await synthesizeDoorProfile(admin, openaiKey, {
+        name: saved.name,
+        address: (place.address ?? null) as string | null,
+        zone: (place.zone ?? null) as string | null,
+        city: (place.city ?? null) as string | null,
+        googleTypes: Array.isArray(place.google_types)
+          ? place.google_types as string[]
+          : null,
+        // Google's blurb rides the envelope, not `basics` — it is a
+        // classifier input, not a place_profiles column (MESITA-2144).
+        editorialSummary: basicsRes.editorialSummary,
+        priceLevel: typeof place.price_level === "number"
+          ? place.price_level
+          : null,
+      });
+      if (door) {
+        const patch: Record<string, unknown> = {};
+        if (door.category) patch.category = door.category;
+        if (door.familyKeys.length > 0) patch.family_keys = door.familyKeys;
+        if (door.tags.length > 0) patch.tags = door.tags;
+        if (door.description) patch.description = door.description;
+        // The seed for a place nobody has answered for yet; an operator's
+        // channel pick supersedes it from then on (MESITA-1737).
+        patch.reservations_enabled = door.reservationsLikely;
+        if (door.semanticSummary) {
+          patch.embedding_source_text = door.semanticSummary;
         }
+        const doorWrite = await writePlace(admin, {
+          table: "place_profiles",
+          mode: "update",
+          id: saved.place_id,
+          patch,
+        });
+        if (door.mesitaNameCandidate) {
+          await applyInferredMesitaName(
+            admin,
+            saved.place_id,
+            door.mesitaNameCandidate,
+          );
+        }
+        await reportCrenupSteps(admin, saved.place_id, {
+          description: doorWrite.ok
+            ? stepDone(
+              `Door Description — category “${door.category ?? "n/a"}”, ` +
+                `${door.tags.length} tag(s), Mesita Name + Semantic Summary inferred.`,
+              { via: "create" },
+            )
+            : stepFailed(`Door Description persist failed — ${doorWrite.ok ? "" : doorWrite.error}`),
+        });
       }
-      // 5 EMBEDDING — embed-only vectors of what the door just wrote; the
-      // embedding stamp lands where the vector write is observed
-      // (place-embeddings).
-      await runPlaceEmbeddingsOnUpdate(
-        admin,
-        saved.place_id,
-        Deno.env.get("OPENAI_KEY")?.trim(),
-        `${callerName}/on-create`,
-        "create",
-        "stored",
-      );
-    } catch (err) {
-      console.error(`[${callerName}/on-create] door:`, err);
     }
+    // 8 EMBEDDING — embed-only vectors of what the door just wrote; the
+    // embedding stamp lands where the vector write is observed
+    // (place-embeddings).
+    await runPlaceEmbeddingsOnUpdate(
+      admin,
+      saved.place_id,
+      Deno.env.get("OPENAI_KEY")?.trim(),
+      `${callerName}/on-create`,
+      "create",
+      "stored",
+    );
+  } catch (err) {
+    console.error(`[${callerName}/on-create] door:`, err);
   }
 
-  // ── 3) Queue deep enrichment (async) only when the caller bought it.
-  // Consumer/admin Create skip this — votes or a later Enrich call seed.
-  const trigger = queueEnrich
-    ? await queueOnCreateEnrichment(admin, saved.place_id, googlePlaceId, callerName)
-    : { ok: false as const, error: null as string | null, skipped: true };
-
+  // No Enricher seed here — votes or a later admin Enrich call start it.
   return {
     ok: true,
     place: { id: saved.place_id, slug: saved.slug, name: saved.name, state: saved.state },
     enrichment: {
       photoCount: Array.isArray(place.photos) ? place.photos.length : 0,
-      enrichmentTriggered: trigger.ok,
-      enrichmentError: trigger.ok ? null : trigger.error ?? null,
+      enrichmentTriggered: false,
+      enrichmentError: null,
     },
   };
-}
-
-async function queueOnCreateEnrichment(
-  admin: SupabaseClient,
-  projectId: string,
-  googlePlaceId: string,
-  callerName: string,
-): Promise<{ ok: boolean; error: string | null }> {
-  const triggers = await loadEnrichmentTriggers(admin);
-  const subprocesses = subprocessesFor(triggers, "on_create");
-  if (subprocesses.length === 0) {
-    return { ok: false, error: "on_create disabled in the enrichment trigger matrix" };
-  }
-  const seeded = await seedPlaceResearch(
-    admin,
-    projectId,
-    googlePlaceId,
-    callerName,
-    { trigger: "on_create", subprocesses, cooldownHours: 0 },
-  );
-  return { ok: seeded.ok, error: seeded.ok ? null : seeded.error ?? null };
 }

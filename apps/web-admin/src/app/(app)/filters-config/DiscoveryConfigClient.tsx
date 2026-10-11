@@ -12,7 +12,7 @@ export function DiscoveryConfigClient() {
     <ConfigSoon
       Icon={MessageSquare}
       title="Chat is coming soon"
-      body="Discover › Chat is Don Memo. Mesita Places Flexible Search answers with places; Mesita Socials Flexible Search answers with events. Never one mixed list."
+      body="Home › Chat is Don Memo. Mesita Places Flexible Search answers with places; Mesita Socials Flexible Search answers with events. Never one mixed list."
       doc="Notion Docs › Discovery"
       footer={
         <>
