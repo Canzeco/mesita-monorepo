@@ -1,9 +1,10 @@
-// linklab — the 5 link-discovery strategies under test.
+// linklab — the link-discovery strategies under test (A–G).
 // Each: (ctx, keys) => { website, instagram } (raw chosen URL or null). Scoring normalizes.
 // They deliberately span the retrieval x reasoner space; see the table in the benchmark README.
 
 import { PlaceContext } from "./context.ts";
 import {
+  claudeResearch,
   firecrawlScrapeLinks,
   firecrawlSearch,
   Keys,
@@ -269,6 +270,48 @@ const stratF: Strategy = {
   },
 };
 
+// =============================================================================
+// STRATEGY G — Claude researches it: server-side web search + web fetch (MESITA-2118)
+// =============================================================================
+// Same per-place context as A–F, no candidate list: Claude searches, opens pages
+// (the place's site, its Instagram, directories) and submits through a strict tool.
+// Same Google-seed fallback as B/D/F so the comparison isolates the research.
+const stratG: Strategy = {
+  id: "G",
+  name: "Claude web search + fetch (Opus 5.5)",
+  run: async (ctx, keys) => {
+    const seedSite = ctx.seedWebsite ? `https://${normWebsiteHost(ctx.seedWebsite)}` : null;
+    const research = await claudeResearch(
+      keys,
+      "You find a restaurant's own official website and official Instagram profile. Use web " +
+        "search, and open pages with web fetch to confirm a candidate really is this place (same " +
+        "name, same city). The website must be the place's own domain — never a directory, " +
+        "review site, delivery app, Linktree, Google, Facebook or Instagram page; if the place has " +
+        "no site of its own, the website is null. Prefer the place's own Instagram account over a " +
+        "parent brand or group account covering many locations; a brand's single main account is " +
+        "acceptable when the place has none of its own. Only submit a URL you saw in a search " +
+        "result or a fetched page. Prefer null over a guess. Finish by calling submit_links once.",
+      `${contextLine(ctx)}\n` +
+        (seedSite ? `Known official website (from Google): ${seedSite}.\n` : "") +
+        `Find the official website and the official Instagram profile URL for THIS place.`,
+      LINK_SCHEMA,
+    );
+    const out = validatePair(research.answer);
+    if (!out.website && seedSite) out.website = seedSite;
+    return {
+      ...out,
+      debug: {
+        searches: research.searches,
+        fetches: research.fetches,
+        inputTokens: research.inputTokens,
+        outputTokens: research.outputTokens,
+        stopReason: research.stopReason,
+        ...(research.error ? { error: research.error } : {}),
+      },
+    };
+  },
+};
+
 // Round 4 (precision-safe FN recovery): if the judge declined an Instagram but the place's OWN
 // site links one, trust that footer handle. Only fills a null — never overrides a judge pick — so
 // it cannot introduce a wrong answer over a correct one; footer = the site linking its own account.
@@ -299,15 +342,17 @@ function dedupeUrls(urls: string[]): string[] {
   return out;
 }
 
-export const STRATEGIES: Strategy[] = [stratA, stratB, stratC, stratD, stratE, stratF];
+export const STRATEGIES: Strategy[] = [stratA, stratB, stratC, stratD, stratE, stratF, stratG];
 
 export async function runAllStrategies(
   ctx: PlaceContext,
   keys: Keys,
+  only: string[] | null = null,
 ): Promise<Record<string, StrategyResult>> {
   const out: Record<string, StrategyResult> = {};
-  // sequential to keep provider rate limits happy and cost legible
-  for (const s of STRATEGIES) {
+  // sequential to keep provider rate limits happy and cost legible; `only` skips the
+  // rest BEFORE they run, so a one-strategy run doesn't bill the other six
+  for (const s of STRATEGIES.filter((s) => !only || only.includes(s.id))) {
     try {
       out[s.id] = await s.run(ctx, keys);
     } catch (e) {

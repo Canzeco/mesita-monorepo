@@ -20,8 +20,9 @@
 // load was never the slow one. A client navigation between siblings (Profile
 // → Menus, the thing being complained about) re-runs the PAGE SEGMENT ALONE,
 // in a new request: the layout does not re-run, the cache is empty, and the
-// page pays `business-web-get-overview` in full. Measured in production over
-// 24h: p50 472ms, p95 913ms, on a call whose entire result was a boolean.
+// page pays the place overview (admin-web-get-overview since MESITA-2090) in
+// full. Measured in production over 24h: p50 472ms, p95 913ms, on a call
+// whose entire result was a boolean.
 //
 // So the facts travel DOWN instead of being fetched again. The layout resolves
 // the matrix once — it already did, for the rail — and publishes it here.
@@ -30,16 +31,15 @@
 //
 // `tabs` is `tabsForAccess`'s answer, the ONE matrix (lib/place-tabs), and
 // `PlaceTabGate` is its only consumer. `held` is `manage !== null` — whether
-// this place has a manage surface at all. `view` is the identity payload, and
-// it rides ONLY for a pool place, because that is the one branch that renders
-// it; a held place gets null and reads everything through `PlaceContext`.
+// this place has a manage surface at all. There is no `view` any more
+// (MESITA-2090): it was the business console's pool-place identity payload,
+// and admin always passed null.
 //
 // The AdminPlace does NOT ride here. `PlaceManageShell` owns it, it is
 // mutable (the save bar writes it), and two providers holding one record is
 // how a screen starts disagreeing with itself.
 
 import { createContext, useContext } from "react";
-import type { ConsolePlaceView } from "@/lib/api/console";
 import type { PlaceTab } from "@/lib/place-tabs";
 
 export type PlaceScopeValue = {
@@ -48,10 +48,6 @@ export type PlaceScopeValue = {
   tabs: readonly PlaceTab[];
   /** The caller holds this place and can manage it. */
   held: boolean;
-  /** Identity + holder + claimable. Null for a held place — nothing renders
-   *  it there, and shipping a second copy of a record `PlaceContext` already
-   *  owns is how two readers start disagreeing. */
-  view: ConsolePlaceView | null;
 };
 
 const PlaceScopeContext = createContext<PlaceScopeValue | null>(null);

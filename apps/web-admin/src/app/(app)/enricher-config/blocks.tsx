@@ -370,22 +370,3 @@ export function PromptDisclosure({
   );
 }
 
-export function ModelRow({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="border-border grid grid-cols-1 items-center gap-2 border-t py-3 first:border-t-0 first:pt-0 sm:grid-cols-[6.5rem_minmax(12rem,20rem)_1fr] sm:gap-4">
-      <span className="text-sm font-medium">{label}</span>
-      <div className="min-w-0">{children}</div>
-      <span className="text-muted-foreground type-label sm:text-right">
-        {hint}
-      </span>
-    </div>
-  );
-}

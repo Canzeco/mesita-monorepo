@@ -11,8 +11,9 @@
 //   2. THE BYPASS IS A FLAG, NEVER A ROLE. A super-admin with no membership
 //      row passes all three guards with `role` still null — because
 //      place-ownership.ts `isLastOwnerOfPlace` counts place_members rows with
-//      role='owner', and business-web-get-overview attaches the Staff Check
-//      PIN on the owner branch. A fabricated 'owner' would corrupt both.
+//      role='owner' (and business-web-get-overview, retired in MESITA-2090,
+//      attached the Staff Check PIN on the owner branch). A fabricated 'owner'
+//      would corrupt both.
 //   3. THE SCOPE IS BOTH HALVES. The read filters on place_id AND manager_id.
 //      A guard that filtered on only one would pass every role test above
 //      while handing one place's members every other place's data — which is

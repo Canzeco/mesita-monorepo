@@ -10,18 +10,18 @@
 //
 // The mock era ended and the divergence resolved the other way. The
 // organization is deleted: `partnered`, `legal_name`, `rfc`, the payment
-// account and the members are columns and tables on `places` now, and the
-// console reads them through `lib/api/console.ts`. Fourteen of the sixteen
-// exports here had no importer at all — a contract for a table nobody queries
-// is a vocabulary describing a screen that no longer exists, which is the note
-// `SoonStrips.ts` already carries about entries nobody renders.
+// account and the members are columns and tables on `places` now. Fourteen
+// of the sixteen exports here had no importer at all — a contract for a table
+// nobody queries is a vocabulary describing a screen that no longer exists,
+// which is the note `SoonStrips.ts` already carries about entries nobody
+// renders.
 //
 // `organizationState()` went with them (`lib/model/format.ts`, deleted): it
 // folded a Stripe lifecycle into "connected / not connected" for a headline
 // no surface printed, and its only caller was its own test.
 //
-// What is left is what `components/console/badges.tsx` and
-// `lib/api/console.ts` actually import.
+// What is left is what `components/console/badges.tsx` actually imports
+// (`lib/api/console.ts`, the other importer, went in MESITA-2090).
 
 /** PLACE state. A property of one address: Listed = Atlas found it and a
  *  guest can reach it. Verified (someone proved they operate it) went with

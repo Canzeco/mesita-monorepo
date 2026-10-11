@@ -245,8 +245,7 @@ export async function listAllPlaces(): Promise<
 /** Listed is the guest-visibility gate: places.state, which is what the
  *  consumer RLS policy places_select_public_visible gates every guest read
  *  on. Unlisting removes the place from browse, search, the swipe deck and
- *  any shared link at once. business-web-update-place does not accept
- *  `state`, so this is its own admin door (admin-web-set-place-listed). */
+ *  any shared link at once. Its own admin door (admin-web-set-place-listed). */
 export async function setPlaceListed(
   placeId: string,
   listed: boolean,
@@ -259,14 +258,9 @@ export async function setPlaceListed(
   return { ok: true, data: true };
 }
 
-// Active, Verified and Partnered are NOT settable from here any more
-// (MESITA-1664, decision: Pato — "place cannot be partner from the
-// console"). A manager claims, verifies (mock-code OTP) and owns a place
-// from the business console, then onboards Stripe to activate Partnership
-// from there too. Admin keeps read-only visibility into all three on the
-// Mesita Search catalog table; it just lost the write door. The EFs
-// themselves (admin-web-set-place-active/-verified, admin-web-set-plan)
-// are untouched — nothing else in admin called them.
+// Verified and Partnered are read-only here (MESITA-1664); their write doors
+// were retired with the business console (MESITA-2090). Active is Single
+// Place's switch (admin-web-set-place-active).
 
 /** Soft delete: writes places.state = 'archived' — the terminal value
  *  admin-web-set-place-listed's own header reserves for this. Reversible
@@ -303,11 +297,12 @@ export async function enrichPlace(
   return { ok: true, data: true };
 }
 
-// ── Google Autocomplete (Single Place › Find, MESITA-2116) ───────────────
+// ── Name searches (Single Place › Find, MESITA-2116 · MESITA-2124) ───────
 
-/** One Autocomplete row as admin-web-suggest-places ships it. `mesitaId`
- *  rides only a row the EF resolved to a Mesita place. */
-export type AutocompleteHit = {
+/** One row as admin-web-suggest-places ships it, in any mode. `placeId` is
+ *  the Google Place ID (empty on a Mesita row that has none); `mesitaId`
+ *  rides only a row resolved to — or drawn from — a Mesita place. */
+export type SuggestHit = {
   placeId: string;
   mainText: string;
   secondaryText: string;
@@ -315,22 +310,40 @@ export type AutocompleteHit = {
   mesitaId?: string;
 };
 
-/** Google Autocomplete for a name — the lane's `fast` mode, Autocomplete
- *  alone, so it adds a source beside Find's Text Search instead of
- *  repeating it. Discovery › General cuts it as it cuts every Google lane. */
-export async function autocompleteGooglePlaces(
+async function suggestPlacesIn(
+  mode: "fast" | "mesita",
   input: string,
   sessionToken: string,
-): Promise<Result<AutocompleteHit[]>> {
+): Promise<Result<SuggestHit[]>> {
   const q = input.trim();
   if (q.length < 2) return { ok: true, data: [] };
-  const r = await efInvoke<{ predictions: AutocompleteHit[] }>("admin-web-suggest-places", {
+  const r = await efInvoke<{ predictions: SuggestHit[] }>("admin-web-suggest-places", {
     input: q,
     sessionToken,
-    mode: "fast",
+    mode,
   });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data.predictions ?? [] };
+}
+
+/** Google Places Autocomplete Search for a name — the lane's `fast` mode,
+ *  Autocomplete alone. Discovery › General cuts it as it cuts every Google
+ *  lane. */
+export async function autocompleteGooglePlaces(
+  input: string,
+  sessionToken: string,
+): Promise<Result<SuggestHit[]>> {
+  return suggestPlacesIn("fast", input, sessionToken);
+}
+
+/** Mesita Places Name Search for a name — the lane's `mesita` mode: the
+ *  name-embedding match over listed places that consumer Search runs, and
+ *  no Google call. */
+export async function searchMesitaNames(
+  input: string,
+  sessionToken: string,
+): Promise<Result<SuggestHit[]>> {
+  return suggestPlacesIn("mesita", input, sessionToken);
 }
 
 // The create-place pipeline lives beside this file in ./create-place; this

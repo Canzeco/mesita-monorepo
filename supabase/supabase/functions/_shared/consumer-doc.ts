@@ -37,9 +37,10 @@
 //   - class_expires_at, if set, must be null. The slot no longer expires
 //     with a Stripe period; plan does.
 //   - invitation_class_key and invitation_granted_at are set or cleared
-//     TOGETHER — both call sites that touch them (admin-web-grant-class,
-//     consumer-web-claim-invite-code) always write both in the same patch;
-//     nothing has ever needed to move one without the other.
+//     TOGETHER — both call sites that touched them (admin-web-grant-class,
+//     consumer-web-claim-invite-code, both retired in MESITA-2090) always
+//     wrote both in the same patch; nothing ever needed to move one without
+//     the other.
 //   - deleted_at, if set, is a timestamp string or null — MESITA-1250:
 //     deletion is a state. Only `_shared/delete-history-free.ts` writes it.
 //

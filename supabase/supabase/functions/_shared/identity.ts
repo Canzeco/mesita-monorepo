@@ -1,5 +1,6 @@
 // Shared identity-check handler behind the per-caller *-get-identity EFs
-// (admin-web-get-identity, business-web-get-identity). Split out of the old
+// (admin-web-get-identity; business-web-get-identity was retired in
+// MESITA-2090). Split out of the old
 // multi-caller auth-get-identity EF (MESITA-54): the endpoint name IS the
 // ACL, so each app shell gets its own thin door over this one handler.
 //

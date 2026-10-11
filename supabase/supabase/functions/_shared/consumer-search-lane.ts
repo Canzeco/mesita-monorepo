@@ -2,11 +2,11 @@
 // Search after idle.
 //
 // THREE NAME BARS RUN THIS LANE: consumer Search, admin Manage Single Place
-// (admin-web-suggest-places, mode deep), and — since MESITA-1874 — the
-// business console's Add place. The last one used to run `suggestPlaces`
-// (Autocomplete + a Mesita ILIKE) and returned one establishment from
-// anywhere on earth for a partial name; `suggestPlaces` itself stays, for
-// consumer-mcp.
+// (admin-web-suggest-places, mode deep), and — from MESITA-1874 until
+// MESITA-2090 retired it — the business console's Add place. That one used to
+// run `suggestPlaces` (Autocomplete + a Mesita ILIKE), which returned one
+// establishment from anywhere on earth for a partial name; `suggestPlaces`
+// went with its last caller, consumer-mcp (retired, MESITA-2090).
 //
 // Fast: Google Autocomplete only. Cap min(googleCount, count) — the two
 // Fast numbers are the same list; they stay locked.

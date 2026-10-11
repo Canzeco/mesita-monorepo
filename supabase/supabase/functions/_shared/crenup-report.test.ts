@@ -4,7 +4,7 @@
 // caller's own tests (enrich-pipeline.ts's reportEnrichmentStep is a thin,
 // already-covered insert). These tests cover the NEW half (MESITA-1249):
 // reportCrenupSteps also merges the same outcomes into place_profiles.enrichment,
-// read-merge-write, so admin-web-search-places/business-web-get-overview
+// read-merge-write, so admin-web-search-places/admin-web-get-overview
 // can read a live meter instead of re-deriving it from the event log.
 
 import { assert, assertEquals } from "jsr:@std/assert@1";

@@ -1,7 +1,6 @@
 "use client";
 
 import { CheckCircle2, ChevronRight, Loader2 } from "lucide-react";
-import { SYNTHESIS_QUALITIES, type SynthesisQuality } from "@/lib/synthesis-quality";
 
 // Shared admin config kit — `@/components/admin-ui/config`.
 // Light-themed; semantic tokens only. Canonical for new config pages
@@ -521,40 +520,3 @@ export function SaveRow({
   );
 }
 
-
-// Shared economy/standard/high segmented picker used by the calculator and the
-// inline cost card. High is identical to Standard in enrich-config.ts
-// (both gpt-4o) — label it so the calculator doesn't imply a third tier.
-const QUALITY_PICKER_LABEL: Record<SynthesisQuality, string> = {
-  economy: "economy",
-  standard: "standard",
-  high: "high (=std)",
-};
-
-export function QualityPicker({
-  value,
-  onChange,
-}: {
-  value: SynthesisQuality;
-  onChange: (v: SynthesisQuality) => void;
-}) {
-  return (
-    <div className="flex w-full gap-1">
-      {SYNTHESIS_QUALITIES.map((q) => (
-        <button
-          key={q}
-          type="button"
-          onClick={() => onChange(q)}
-          title={q === "high" ? "Identical to Standard (gpt-4o) — no-op tier" : undefined}
-          className={`h-8 flex-1 rounded-lg border px-2 text-xs font-semibold transition ${
-            value === q
-              ? "border-foreground bg-foreground text-background"
-              : "border-border bg-card hover:border-foreground/40"
-          }`}
-        >
-          {QUALITY_PICKER_LABEL[q]}
-        </button>
-      ))}
-    </div>
-  );
-}

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { MesitaMark } from "@/components/brand/MesitaMark";
+import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
 import { DB_PARENT } from "@/app/(app)/manage-database/nav";
 import { MULTIPLE_PLACES_PARENT } from "@/app/(app)/manage-multiple/nav";
 import { SINGLE_PLACE_PARENT } from "@/app/(app)/manage-single/nav";
@@ -43,9 +44,10 @@ const PRIMARY_NAV: NavItem[] = [
   { href: "/account", label: "Account", Icon: UserRound },
 ];
 
-// The MVP First Stage rail (MESITA-2088): Account · Manage · Configurations.
-// Alerts (Global Monitor, Credits Liability) and Testing › Billing are
-// deleted, routes and all — Pato, 2026-10-10: "kill the stupid alerts".
+// The MVP First Stage rail (MESITA-2088): Account · Manage · Configurations ·
+// Testing. Alerts (Global Monitor, Credits Liability) are deleted, routes and
+// all — Pato, 2026-10-10: "kill the stupid alerts". Testing › Billing went
+// with them and came back the same day (MESITA-2125).
 
 // Manage — the records of real things. Admins first (Pato, 2026-09-12):
 // who may operate the console is a record, not a policy blob, and a
@@ -102,6 +104,9 @@ export const CONFIGURATIONS_NAV: NavItem[] = [
   RESERVATIONS_PARENT,
 ];
 
+// Testing — operator tools that probe live systems rather than configure them.
+const TESTING_NAV: NavItem[] = [BILLING_TEST_PARENT];
+
 // The first group is deliberately unlabelled: a heading reading "Account" above
 // a lone "Account" link is the redundancy this menu is trying to shed.
 const SIDEBAR_SECTIONS: {
@@ -112,6 +117,7 @@ const SIDEBAR_SECTIONS: {
   { id: "primary", label: null, items: PRIMARY_NAV },
   { id: "manage", label: "Manage", items: MANAGE_NAV },
   { id: "configurations", label: "Configurations", items: CONFIGURATIONS_NAV },
+  { id: "testing", label: "Testing", items: TESTING_NAV },
 ];
 
 function NavLink({

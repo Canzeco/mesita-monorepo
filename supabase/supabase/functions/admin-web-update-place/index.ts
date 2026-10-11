@@ -1,0 +1,534 @@
+// Supabase Edge Function — admin-web-update-place
+//
+// Super-admin only. Updates the editable profile fields of one place — the
+// write behind admin's Single Place save bar (manage-single/[id]). Validates
+// input, writes via the service role through the place document door, and
+// queues the on_update side effects (social follower refresh, embeddings).
+// Does NOT call any other Edge Function.
+//
+// WAS business-web-update-place (MESITA-2090). The business console that
+// owned it is deleted in the MVP First Stage cut, so the one surviving caller
+// names it: the EF name is the ACL (ef-caller-acl.test.ts). Gone with the
+// business console: the place_members editor/owner gate (requireEditor), and
+// the rewards fields — the four promo rates, monthly_promo_cap, the
+// partnership-gated strategy switch and the Promos segmentation toggles. No
+// admin screen sends any of them.
+//
+// Local:  supabase functions serve admin-web-update-place
+// Deploy: supabase functions deploy admin-web-update-place
+
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import {
+  adminClient,
+  getAuthedUser,
+  readEFEnv,
+  requireSuperAdmin,
+} from "../_shared/auth.ts";
+import { isEmailish } from "../_shared/input.ts";
+import { PLACE_BUSINESS_COLUMNS } from "../_shared/place-columns.ts";
+import { isServingChannel, type ProfilePatch, writePlace } from "../_shared/place-doc.ts";
+import { ENRICH_FIELD_LIMITS } from "../_shared/enrich-field-limits.ts";
+import { sanitizePlaceTags } from "../_shared/tags.ts";
+import { type PlaceHours, sanitiseHours } from "./place-hours.ts";
+import { isUrl, URL_FIELDS, type UrlField } from "./place-urls.ts";
+import {
+  isMissingCategoryLabelColumnError,
+  optString,
+} from "./place-update-utils.ts";
+import { resolveCategoryInput } from "./category-input.ts";
+import { applyMediaUpdates } from "./place-media-update.ts";
+import {
+  loadPreviousSocialUrlsForRefresh,
+  queueSocialFollowersRefresh,
+} from "./place-social-refresh.ts";
+import {
+  queuePlaceEmbeddingsOnUpdate,
+  updateTouchesEmbeddingInputs,
+} from "../_shared/place-embeddings.ts";
+import {
+  loadEnrichmentTriggers,
+  subprocessesFor,
+} from "../_shared/enrich-triggers.ts";
+import { persistBusinessFieldPins } from "../_shared/field-correction-writer.ts";
+
+const MAX_PHOTOS = ENRICH_FIELD_LIMITS.photos.max;
+const MAX_TAGS = ENRICH_FIELD_LIMITS.tagsPerPlace.max;
+const MAX_TAG_LEN = ENRICH_FIELD_LIMITS.tagSlugLength.max;
+// Matches the Place editor's About field cap (PLACE_DESCRIPTION_MAX).
+const MAX_DESCRIPTION_LEN = 2000;
+
+function normalisePlaceTags(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null;
+
+  // Lowercase + trim + dedupe in one pass. Empty entries drop out so the
+  // form can submit a partially typed list without rejecting the request.
+  const seen = new Set<string>();
+  const clean: string[] = [];
+  for (const t of value) {
+    if (typeof t !== "string") continue;
+    const norm = t.trim().toLowerCase().slice(0, MAX_TAG_LEN);
+    if (!norm || seen.has(norm)) continue;
+    seen.add(norm);
+    clean.push(norm);
+    if (clean.length >= MAX_TAGS) break;
+  }
+  // Strip mutually exclusive catalog pairs (same rules as Enricher).
+  return sanitizePlaceTags(clean).slice(0, MAX_TAGS);
+}
+
+type UpdateBody = {
+  id?: string;
+  name?: string | null;
+  category?: string | null;
+  vibe?: string | null;
+  // NOTE: `price_level` is deliberately NOT editable here. It is inferred
+  // from Google Places during Enrich-Research and must not be overridden
+  // by admin, business, or any client.
+  // NOTE: `google_maps_url` / `google_place_id` are native — seeded at create
+  // from the Google Place ID spine; the EF rejects manual writes (MESITA-468).
+  // ISO 4217 code. Mesita defaults every place to MXN; the business
+  // can switch to USD/EUR/etc. only when we extend coverage outside
+  // Mexico. Kept as text so the EF doesn't hard-code an enum.
+  currency?: string | null;
+  state?: "active" | "paused" | "archived";
+  fiscal_type?: "formal" | "informal";
+  // NOTE: `plan` is deliberately NOT editable here, so a profile save can
+  // never move a place's plan.
+  // NOTE: `address` is native (Google/Enricher-sourced) and deliberately NOT
+  // editable here — kept in the type only so stale clients get the reject.
+  address?: string | null;
+  closes_at?: string | null;
+  hours?: PlaceHours | null;
+  phone?: string | null;
+  pitch?: string | null;
+  story?: string | null;
+  photos?: string[];
+  // External + social channels
+  website_url?: string | null;
+  instagram_url?: string | null;
+  facebook_url?: string | null;
+  whatsapp_url?: string | null;
+  opentable_url?: string | null;
+  resy_url?: string | null;
+  uber_eats_url?: string | null;
+  x_url?: string | null;
+  threads_url?: string | null;
+  reddit_url?: string | null;
+  didi_food_url?: string | null;
+  // Native — rejected below (kept in the type so stale clients get the reject).
+  google_maps_url?: string | null;
+  google_place_id?: string | null;
+  // Plain contact (not URL-shaped)
+  email?: string | null;
+  // Routing: which contact each rail reaches the place on (MESITA-1208).
+  // 'phone' is the only served channel; null clears the rail.
+  reservation_channel?: string | null;
+  reservation_target?: string | null;
+  order_channel?: string | null;
+  order_target?: string | null;
+  // Place-redesign editable surface (Business-E=YES on the Components spec).
+  description?: string | null;
+  menu_pdf_url?: string | null;
+  // Optional human label paired with menu_pdf_url. Null clears.
+  menu_pdf_name?: string | null;
+  // Alias fields used by the products-first UI.
+  product_catalog_url?: string | null;
+  product_catalog_name?: string | null;
+  // Generic products payload. Menu is one subtype under products.menu.
+  products?: { menu?: unknown[] | null } | null;
+  tags?: string[];
+};
+
+const EDITABLE_STATES = new Set(["active", "paused", "archived"]);
+const OPENAI_KEY = Deno.env.get("OPENAI_KEY");
+const APIFY_KEY = Deno.env.get("APIFY_KEY");
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return corsPreflight();
+  const methodReject = rejectUnlessMethods(req, "POST");
+  if (methodReject) return methodReject;
+
+  const envRes = readEFEnv();
+  if (!envRes.ok) return envRes.response;
+  const authRes = await getAuthedUser(req, envRes.env);
+  if (!authRes.ok) return authRes.response;
+
+  const admin = adminClient(envRes.env);
+
+  // Auth: super-admins only, like every other admin-web-* door.
+  const saRes = await requireSuperAdmin(admin, authRes.user);
+  if (!saRes.ok) return saRes.response;
+
+  // Parse + validate.
+  const bodyRes = await readJson<UpdateBody>(req);
+  if (!bodyRes.ok) return bodyRes.response;
+  const body = bodyRes.body;
+  const placeId = (body.id ?? "").toString().trim();
+  if (!placeId) return json({ ok: false, error: "id is required" }, 400);
+
+  // Build the update payload from the whitelist. Missing keys are not
+  // touched. Explicit null clears the field.
+  const update: Record<string, unknown> = {};
+  // Operator name override → places.mesita_name. `name` itself is a GENERATED
+  // display column (coalesce(mesita_name, google_name)) and is not writable, so
+  // a caller sending `name` is expressing "label this place", which is exactly
+  // mesita_name. Both spellings are accepted; `mesita_name` wins if both arrive.
+  // Empty/whitespace CLEARS the override so the place falls back to Google.
+  if ("mesita_name" in body || "name" in body) {
+    const raw = "mesita_name" in body ? body.mesita_name : body.name;
+    const n = (raw ?? "").toString().trim();
+    if (n.length > ENRICH_FIELD_LIMITS.placeName.max) {
+      return json({ ok: false, error: "name too long" }, 400);
+    }
+    update.mesita_name = n.length > 0 ? n : null;
+  }
+  if ("google_name" in body) {
+    return json(
+      {
+        ok: false,
+        code: "google_name_via_enrich",
+        error:
+          "google_name is the cached Google Places label, refreshed by the Enricher. Change it on the Google Business Profile, then re-enrich. To label the place inside Mesita, set mesita_name.",
+      },
+      400,
+    );
+  }
+  if ("category" in body) {
+    const resolved = await resolveCategoryInput(
+      admin,
+      body.category,
+      OPENAI_KEY,
+    );
+    if (!resolved.ok) {
+      return json({ ok: false, error: resolved.error }, 400);
+    }
+    update.category = resolved.slug;
+    update.category_label = resolved.label;
+    update.family_keys = resolved.familyKeys;
+  }
+  if ("vibe" in body) update.vibe = optString(body.vibe, 80);
+  if ("price_level" in body) {
+    // Price is enrich-only (Google Places). Reject so stale clients learn
+    // the contract — same posture as `plan` via billing.
+    return json(
+      {
+        ok: false,
+        code: "price_via_enrich",
+        error:
+          "price_level is set by Enrich-Research from Google Places and cannot be updated manually.",
+      },
+      400,
+    );
+  }
+  // currency: ISO 4217 uppercase code, 3 chars. Reject anything else
+  // — accidental empty strings or longer strings would corrupt every
+  // monetary render downstream.
+  if ("currency" in body) {
+    const c = (body.currency ?? "").toString().trim().toUpperCase();
+    if (c.length === 3 && /^[A-Z]{3}$/.test(c)) update.currency = c;
+  }
+  if ("state" in body) {
+    const s = body.state;
+    if (!s || !EDITABLE_STATES.has(s)) {
+      return json(
+        { ok: false, error: "state must be active|paused|archived" },
+        400,
+      );
+    }
+    update.state = s;
+  }
+  if ("fiscal_type" in body) {
+    const f = body.fiscal_type;
+    if (f !== "formal" && f !== "informal") {
+      return json(
+        { ok: false, error: "fiscal_type must be 'formal' or 'informal'" },
+        400,
+      );
+    }
+    update.fiscal_type = f;
+  }
+  if ("plan" in body) {
+    // Plan is not profile: reject instead of silently ignoring so a stale
+    // client learns the contract.
+    return json(
+      {
+        ok: false,
+        code: "plan_via_billing",
+        error: "plan is not a profile field and cannot be updated here.",
+      },
+      400,
+    );
+  }
+  if ("address" in body) {
+    // Address is native — seeded from Google Places and refined by the
+    // Enricher, which writes public.place_profiles directly. Reject so stale clients
+    // learn the contract — same posture as `price_level` and `plan`.
+    return json(
+      {
+        ok: false,
+        code: "address_via_enrich",
+        error:
+          "address is set from Google Places / the Enricher and cannot be updated manually.",
+      },
+      400,
+    );
+  }
+  if ("google_maps_url" in body || "google_place_id" in body) {
+    // decision: Pato (MESITA-468) — Google Maps + Place ID are native-locked.
+    // Seeded at create from the Google spine; nobody edits them afterwards.
+    return json(
+      {
+        ok: false,
+        code: "google_maps_native",
+        error:
+          "google_maps_url / google_place_id are set at create from Google Places and cannot be updated manually.",
+      },
+      400,
+    );
+  }
+  if ("closes_at" in body) {
+    const raw = optString(body.closes_at, 5);
+    if (raw != null && !/^([01]?\d|2[0-3]):[0-5]\d$/.test(raw)) {
+      return json(
+        { ok: false, error: "closes_at must be 24h HH:MM (e.g. 02:00)" },
+        400,
+      );
+    }
+    update.closes_at = raw;
+  }
+  if ("hours" in body) {
+    const cleaned = sanitiseHours(body.hours);
+    if (cleaned === "invalid") {
+      return json(
+        {
+          ok: false,
+          error:
+            "hours must be a map of weekday → [{open,close}] with HH:MM values",
+        },
+        400,
+      );
+    }
+    update.hours = cleaned;
+  }
+  if ("phone" in body) {
+    const raw = optString(body.phone, 40);
+    // Phones ALWAYS carry a country code (E.164-style prefix). Null/empty
+    // still clears; anything else must start with "+".
+    if (raw != null && !/^\+[0-9]/.test(raw)) {
+      return json(
+        {
+          ok: false,
+          code: "phone_needs_country_code",
+          error: "phone must include a country code, e.g. +52 81 8378 2164.",
+        },
+        400,
+      );
+    }
+    update.phone = raw;
+  }
+  if ("pitch" in body) update.pitch = optString(body.pitch, 200);
+  if ("story" in body) update.story = optString(body.story, 1500);
+  const mediaError = applyMediaUpdates(body, update, MAX_PHOTOS);
+  if (mediaError) return mediaError;
+
+  // External + social URLs — each optional, each validated to https://.
+  for (const field of URL_FIELDS) {
+    if (!(field in body)) continue;
+    const raw = body[field as UrlField];
+    if (raw == null || (typeof raw === "string" && raw.trim() === "")) {
+      update[field] = null;
+      continue;
+    }
+    if (!isUrl(raw)) {
+      return json(
+        { ok: false, error: `${field} must be a valid https:// URL` },
+        400,
+      );
+    }
+    update[field] = raw.trim();
+  }
+
+  // Place-redesign editable fields.
+  if ("description" in body) {
+    update.description = optString(body.description, MAX_DESCRIPTION_LEN);
+  }
+  if ("tags" in body) {
+    const tags = normalisePlaceTags(body.tags);
+    if (!tags) {
+      return json(
+        { ok: false, error: "tags must be an array of strings" },
+        400,
+      );
+    }
+    update.tags = tags;
+  }
+  // Email: not a URL. Just trim + sanity-check the shape (has @ and a dot
+  // after it). Empty / null clears the field.
+  if ("email" in body) {
+    const raw = body.email;
+    if (raw == null || (typeof raw === "string" && raw.trim() === "")) {
+      update.email = null;
+    } else if (typeof raw !== "string") {
+      return json({ ok: false, error: "email must be a string" }, 400);
+    } else {
+      const trimmed = raw.trim();
+      if (!isEmailish(trimmed)) {
+        return json({
+          ok: false,
+          error: "email must look like name@domain.tld",
+        }, 400);
+      }
+      if (trimmed.length > 254) {
+        return json({ ok: false, error: "email too long" }, 400);
+      }
+      update.email = trimmed.toLowerCase();
+    }
+  }
+
+  // Order + reservation ROUTING — which door each rail uses (MESITA-1208).
+  // Five picks: phone · whatsapp · instagram · web · none (Pato 2026-08-25).
+  // The Reservationist still only DIALS phone. Null / empty clears the rail.
+  for (
+    const [key, channelCol, targetCol] of [
+      ["reservation", "reservation_channel", "reservation_target"],
+      ["orders", "order_channel", "order_target"],
+    ] as const
+  ) {
+    if (!(channelCol in body)) continue;
+    const raw = (body as Record<string, unknown>)[channelCol];
+    if (raw == null || (typeof raw === "string" && raw.trim() === "")) {
+      update[channelCol] = null;
+      update[targetCol] = null;
+      continue;
+    }
+    if (!isServingChannel(raw)) {
+      return json(
+        {
+          ok: false,
+          code: "channel_not_served",
+          error:
+            `${key} routing accepts phone, whatsapp, instagram, web, or none.`,
+        },
+        400,
+      );
+    }
+    if (raw === "none") {
+      update[channelCol] = "none";
+      update[targetCol] = null;
+      continue;
+    }
+    const target = (body as Record<string, unknown>)[targetCol];
+    const value = typeof target === "string" ? target.trim().slice(0, 500) : "";
+    if (!value) {
+      return json(
+        { ok: false, error: `${targetCol} is required when ${channelCol} is ${raw}` },
+        400,
+      );
+    }
+    update[channelCol] = raw;
+    update[targetCol] = value;
+  }
+
+  if (Object.keys(update).length === 0) {
+    return json({ ok: false, error: "No editable fields provided" }, 400);
+  }
+
+  // Follower counts follow the account (indirect edit, MESITA-416): a changed
+  // instagram_url/facebook_url triggers an Apify follower refresh after the
+  // response. Snapshot the current URLs first — clients resubmit whole forms,
+  // and an unchanged URL must not burn a paid scrape.
+  const prevSocial = await loadPreviousSocialUrlsForRefresh(
+    admin,
+    placeId,
+    update,
+    APIFY_KEY,
+  );
+
+  let updRes = await writePlace(admin, {
+    table: "profiles",
+    mode: "update",
+    id: placeId,
+    patch: update as ProfilePatch,
+    select: PLACE_BUSINESS_COLUMNS,
+  });
+
+  // Backward compatibility: in projects where category_label migration hasn't
+  // landed (or schema cache is stale), retry the same update without
+  // category_label so edits can still be saved.
+  if (
+    !updRes.ok && isMissingCategoryLabelColumnError({ message: updRes.error }) &&
+    "category_label" in update
+  ) {
+    const retryUpdate = { ...update };
+    delete retryUpdate.category_label;
+    updRes = await writePlace(admin, {
+      table: "profiles",
+      mode: "update",
+      id: placeId,
+      patch: retryUpdate as ProfilePatch,
+      select: PLACE_BUSINESS_COLUMNS,
+    });
+  }
+  if (!updRes.ok) {
+    return json(
+      {
+        ok: false,
+        error: `place_update: ${updRes.error}`,
+        code: updRes.code ?? null,
+      },
+      400,
+    );
+  }
+  const place = updRes.row;
+
+  const pinRes = await persistBusinessFieldPins(admin, placeId, update);
+  if (!pinRes.ok) {
+    return json(
+      { ok: false, error: `field_pin: ${pinRes.error}` },
+      500,
+    );
+  }
+
+  // ── The on_update row of the trigger matrix, honoured (MESITA-1188) ──────
+  // Until now this row was decorative: it rendered two editable cells and
+  // nothing read them, so flipping either changed nothing. It is the one row
+  // honoured by WITHHOLDING work — an edit is ground truth, so this path seeds
+  // no run and re-derives nothing. It has exactly two operator-controlled
+  // cells, `social` and `embedding`; lockedCell() forces the other seven false
+  // so wiring the row can never re-scrape over the human who just fixed the
+  // record. A disabled row buys nothing, which stops both side effects.
+  //
+  // loadEnrichmentTriggers falls back to the code defaults when the blob is
+  // missing, and both cells default ON — so a fresh environment behaves
+  // exactly as it did before this row was wired.
+  const onUpdateBuys = subprocessesFor(
+    await loadEnrichmentTriggers(admin),
+    "on_update",
+  );
+
+  if (onUpdateBuys.includes("social")) {
+    queueSocialFollowersRefresh({
+      admin,
+      apifyKey: APIFY_KEY,
+      placeId,
+      update,
+      prevSocial,
+    });
+  }
+
+  // On-Update embeddings (MESITA-720): when profile fields that feed the
+  // blurb change, re-synthesize human text + vector in the background.
+  // Tags alone never trigger a re-embed.
+  if (onUpdateBuys.includes("embedding") && updateTouchesEmbeddingInputs(update)) {
+    queuePlaceEmbeddingsOnUpdate({
+      admin,
+      placeId,
+      apiKey: Deno.env.get("OPENAI_KEY")?.trim(),
+      logPrefix: "admin-web-update-place/on-update",
+      via: "update",
+    });
+  }
+
+  return json({ ok: true, place });
+});

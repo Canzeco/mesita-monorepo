@@ -2,22 +2,19 @@
 
 // Single Place › Find — the picker in front of the place surface
 // (MESITA-2084, MESITA-2086). One box, read two ways: a Google Place ID looks
-// the place up by its identity spine; anything else is a name search over the
-// catalogue. A hit OPENS the place at /manage-single/<id>/profile — the
-// place screens admin owns (MESITA-2115) — rather than drawing a
-// second card of its facts here. A name also searches Google beside the
-// catalogue, and a Google place Mesita does not hold is added from that list
-// (MESITA-2094). Google Autocomplete runs beside Text Search as its own list
-// (MESITA-2116), and Nearby Search around the top Text Search hit as a third
-// (MESITA-2117). Create and Add are the only writes this page makes itself.
+// the place up by its identity spine; anything else is a name, and a name
+// asks FOUR sources at once — Mesita's catalogue and Name Search, Google's
+// Autocomplete and Text Search — and draws ONE table of every place they
+// returned, with a column per source (MESITA-2124; it replaced four stacked
+// lists, and Nearby left with them). A hit OPENS the place at
+// /manage-single/<id>/profile — the place screens admin owns (MESITA-2115).
+// Create and Add are the only writes this page makes itself.
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Building, ExternalLink, Loader2, Play, Search } from "lucide-react";
 import {
-  autocompleteGooglePlaces,
   createPlaceFromGooglePlaceId,
-  listAllPlaces,
   searchPlacesByGoogleIds,
   type PlaceHit,
 } from "@/app/(app)/manage-multiple/actions";
@@ -26,26 +23,18 @@ import { StateIcon, type BatchRowState } from "@/app/(app)/manage-multiple/State
 import { CopyIdButton, ReadField, SectionCard } from "@/components/admin-ui/manage";
 import { placeHref } from "@/lib/console-routes";
 import type { PlaceLite, SearchErrorResponse, SearchResponse } from "@/lib/places-types";
+import { mergeFindResults, type FindResult, type FindRow, type SourceResult } from "./find-results";
 import {
-  GoogleMatchList,
-  searchGoogleByName,
-  searchGoogleNearby,
-  type GoogleRowNote,
-  type GoogleState,
-} from "./GoogleMatches";
-import {
-  autocompleteToLite,
-  classifyLookup,
-  filterCatalog,
-  googleMapsPlaceHref,
-  googleOnMesita,
-  MAX_NAME_MATCHES,
-  nearbyAnchor,
-  type NearbyAnchor,
-} from "./single-place-lookup";
+  loadCatalogSource,
+  searchAutocompleteSource,
+  searchNameSource,
+  searchTextSource,
+} from "./find-sources";
+import { FindResults, type RowNote } from "./FindResults";
+import { classifyLookup, filterCatalog, googleMapsPlaceHref } from "./single-place-lookup";
 
 export type View =
-  | { kind: "matches"; query: string; hits: PlaceHit[] }
+  | { kind: "matches"; query: string; result: FindResult }
   // A Google Place ID Mesita does not hold yet. `google` is what Google says
   // about it (one Place-ID lookup, which consumes the Discovery › Map gate
   // like any other), so Create is informed; null when that lookup failed.
@@ -60,38 +49,18 @@ export function SinglePlaceClient() {
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View | null>(null);
   const [note, setNote] = useState<Note | null>(null);
-  // The catalogue, read once per page life for name searches.
+  // The catalogue, read once per page life (and again after an Add).
   const [catalog, setCatalog] = useState<PlaceHit[] | null>(null);
-  // From Google, for the name in the matches view. `googleSeq` drops a reply
-  // that lands after a newer Find; `added` (Google Place ID → Mesita id) and
-  // `googleNotes` are this page's Adds.
-  const [google, setGoogle] = useState<GoogleState | null>(null);
-  // Autocomplete, the second Google list; `autoMesitaIds` are the rows the
-  // EF resolved to a Mesita place (Google Place ID → Mesita id).
-  const [auto, setAuto] = useState<GoogleState | null>(null);
-  const [autoMesitaIds, setAutoMesitaIds] = useState<ReadonlyMap<string, string>>(new Map());
-  // Nearby, the third: searched around the top Text Search hit once Text
-  // Search lands. "none" = Text Search gave no point to search around.
-  const [near, setNear] = useState<{ anchor: NearbyAnchor; google: GoogleState } | "none" | null>(
-    null,
-  );
-  const googleSeq = useRef(0);
+  // `findSeq` drops a reply that lands after a newer Find and keys the table,
+  // so its Show more resets. `added` (Google Place ID → Mesita id) and
+  // `rowNotes` are this page's Adds.
+  const findSeq = useRef(0);
+  const [tableKey, setTableKey] = useState(0);
   const [added, setAdded] = useState<ReadonlyMap<string, string>>(new Map());
-  const [googleNotes, setGoogleNotes] = useState<Record<string, GoogleRowNote>>({});
+  const [rowNotes, setRowNotes] = useState<Record<string, RowNote>>({});
 
   const lookup = useMemo(() => classifyLookup(text), [text]);
   const isBusy = busy !== null;
-  // Google Place IDs this page knows Mesita holds: the catalogue's, plus
-  // what Autocomplete resolved — one set, so a row's badge and its open path
-  // read the same witnesses.
-  const heldGoogleIds = useMemo(
-    () =>
-      new Set([
-        ...(catalog ?? []).flatMap((p) => (p.google_place_id ? [p.google_place_id] : [])),
-        ...autoMesitaIds.keys(),
-      ]),
-    [catalog, autoMesitaIds],
-  );
 
   function open(placeId: string) {
     router.push(placeHref(placeId));
@@ -102,11 +71,8 @@ export function SinglePlaceClient() {
     setBusy("find");
     setError(null);
     setNote(null);
-    googleSeq.current += 1;
-    setGoogle(null);
-    setAuto(null);
-    setNear(null);
-    setGoogleNotes({});
+    findSeq.current += 1;
+    setRowNotes({});
     try {
       if (lookup.kind === "google_place_id") await findByGoogleId(lookup.id);
       else await findByName(lookup.query);
@@ -132,71 +98,50 @@ export function SinglePlaceClient() {
     setView({ kind: "absent", googleId, google: peek.place, note: peek.note });
   }
 
+  /** All four sources at once; the table draws when the last one settles,
+   *  so no row moves after it appears. */
   async function findByName(query: string) {
-    // Both Google sources run beside the catalogue read, not after it, and
-    // each lands on its own.
-    const seq = googleSeq.current;
-    setGoogle({ status: "loading" });
-    setAuto({ status: "loading" });
-    void searchGoogleByName(query).then((g) => {
-      if (googleSeq.current !== seq) return;
-      setGoogle(g);
-      // Nearby needs a point, so it starts where Text Search lands.
-      const anchor = g.status === "ok" ? nearbyAnchor(g.result.places) : null;
-      if (!anchor) {
-        setNear("none");
-        return;
-      }
-      setNear({ anchor, google: { status: "loading" } });
-      void searchGoogleNearby({ lat: anchor.lat, lng: anchor.lng }).then((n) => {
-        if (googleSeq.current === seq) setNear({ anchor, google: n });
-      });
+    const seq = findSeq.current;
+    const catalogue: Promise<SourceResult<PlaceHit[]>> = catalog
+      ? Promise.resolve({ status: "ok", data: catalog })
+      : loadCatalogSource();
+    const [all, name, autocomplete, textSearch] = await Promise.all([
+      catalogue,
+      searchNameSource(query),
+      searchAutocompleteSource(query),
+      searchTextSource(query),
+    ]);
+    if (findSeq.current !== seq) return;
+    if (all.status === "ok") setCatalog(all.data);
+    setTableKey(seq);
+    setView({
+      kind: "matches",
+      query,
+      result: mergeFindResults({
+        catalogue: all.status === "ok" ? { status: "ok", data: filterCatalog(all.data, query) } : all,
+        catalog: all.status === "ok" ? all.data : [],
+        name,
+        autocomplete,
+        text: textSearch,
+      }),
     });
-    void searchGoogleAutocomplete(query).then((a) => {
-      if (googleSeq.current !== seq) return;
-      setAuto(a.google);
-      setAutoMesitaIds(a.mesitaIds);
-    });
-    let places = catalog;
-    if (!places) {
-      const r = await listAllPlaces();
-      if (!r.ok) {
-        setError(r.error);
-        return;
-      }
-      places = r.data.places;
-      setCatalog(places);
-    }
-    // Always the list, even for one catalogue match — the Google half is why
-    // a name was typed.
-    setView({ kind: "matches", query, hits: filterCatalog(places, query) });
   }
 
-  /** A Google row: one Mesita holds opens the place (this page's Add, the
-   *  Autocomplete resolve, then the catalogue, else the identity lookup); one
-   *  it does not opens Not on Mesita with what Google already said, so Create
-   *  spends no second call. An Autocomplete row (`peek`) said no rating, so
-   *  it takes the identity lookup, which asks Google for the rest. */
-  async function openGoogle(place: PlaceLite, peek = false) {
+  /** A held row opens its place; held per Text Search's join alone (no id
+   *  yet) takes the identity lookup, which opens it. */
+  async function openRow(row: FindRow) {
     if (isBusy) return;
-    const known =
-      added.get(place.id) ??
-      autoMesitaIds.get(place.id) ??
-      catalog?.find((p) => p.google_place_id === place.id)?.id;
-    if (known) {
-      open(known);
+    const id = row.mesitaId ?? (row.googleId ? added.get(row.googleId) : undefined);
+    if (id) {
+      open(id);
       return;
     }
-    if (!peek && !googleOnMesita(place, heldGoogleIds, added)) {
-      setNote(null);
-      setView({ kind: "absent", googleId: place.id, google: place, note: null });
-      return;
-    }
+    if (!row.googleId) return;
     setBusy("find");
     setError(null);
     setNote(null);
     try {
-      await findByGoogleId(place.id);
+      await findByGoogleId(row.googleId);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -204,16 +149,17 @@ export function SinglePlaceClient() {
     }
   }
 
-  /** Add mints a Google row in place and leaves the list up, so one search
-   *  can add several. Same action as Create; the row then opens the place. */
-  async function addFromGoogle(place: PlaceLite) {
-    if (googleNotes[place.id]?.state === "running") return;
-    setGoogleNotes((n) => ({ ...n, [place.id]: { state: "running", text: "Adding…" } }));
-    let rowNote: GoogleRowNote;
+  /** Add mints a row in place and leaves the table up, so one search can add
+   *  several. Same action as Create; the row then opens the place. */
+  async function addRow(row: FindRow) {
+    const googleId = row.googleId;
+    if (!googleId || rowNotes[googleId]?.state === "running") return;
+    setRowNotes((n) => ({ ...n, [googleId]: { state: "running", text: "Adding…" } }));
+    let rowNote: RowNote;
     try {
-      const r = await createPlaceFromGooglePlaceId(place.id);
+      const r = await createPlaceFromGooglePlaceId(googleId);
       if (r.ok) {
-        setAdded((m) => new Map(m).set(place.id, r.placeId));
+        setAdded((m) => new Map(m).set(googleId, r.placeId));
         setCatalog(null);
         rowNote = {
           state: r.alreadyExisted ? "existed" : "ok",
@@ -229,7 +175,7 @@ export function SinglePlaceClient() {
     } catch (err) {
       rowNote = { state: "error", text: err instanceof Error ? err.message : "Unexpected error" };
     }
-    setGoogleNotes((n) => ({ ...n, [place.id]: rowNote }));
+    setRowNotes((n) => ({ ...n, [googleId]: rowNote }));
   }
 
   async function create() {
@@ -267,7 +213,7 @@ export function SinglePlaceClient() {
       <SectionCard
         tint="sky"
         title="Find"
-        subtitle="A Google Place ID looks it up by identity. Anything else searches Mesita by name, address or slug, and Google beside it: Text Search, Autocomplete, and Nearby around the top Text Search hit. A hit opens the place."
+        subtitle="A Google Place ID looks it up by identity. Anything else searches Mesita (catalogue and Name Search) and Google (Autocomplete and Text Search) at once. A hit opens the place."
         icon={<Search className="h-4 w-4" />}
       >
         <form
@@ -309,65 +255,16 @@ export function SinglePlaceClient() {
         ) : null}
 
         {view?.kind === "matches" ? (
-          <>
-            <ListHeading>On Mesita</ListHeading>
-            <MatchList query={view.query} hits={view.hits} onPick={(h) => open(h.id)} />
-            {google ? (
-              <>
-                <ListHeading>From Google · Text Search</ListHeading>
-                <GoogleMatchList
-                  query={view.query}
-                  google={google}
-                  onMesita={(p) => googleOnMesita(p, heldGoogleIds, added)}
-                  notes={googleNotes}
-                  disabled={isBusy}
-                  onOpen={(p) => void openGoogle(p)}
-                  onAdd={(p) => void addFromGoogle(p)}
-                />
-              </>
-            ) : null}
-            {auto ? (
-              <>
-                <ListHeading>From Google · Autocomplete</ListHeading>
-                <GoogleMatchList
-                  query={view.query}
-                  source="autocomplete"
-                  google={auto}
-                  onMesita={(p) => googleOnMesita(p, heldGoogleIds, added)}
-                  notes={googleNotes}
-                  disabled={isBusy}
-                  onOpen={(p) => void openGoogle(p, true)}
-                  onAdd={(p) => void addFromGoogle(p)}
-                />
-              </>
-            ) : null}
-            {google ? (
-              <>
-                <ListHeading>From Google · Nearby</ListHeading>
-                {near === null ? (
-                  <p className="text-muted-foreground mt-2 inline-flex items-center gap-2 text-sm">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Waiting for the top Text Search hit to search around…
-                  </p>
-                ) : near === "none" ? (
-                  <p className="text-muted-foreground mt-2 text-sm">
-                    Nearby searches around the top Text Search hit, and there is none.
-                  </p>
-                ) : (
-                  <GoogleMatchList
-                    query={near.anchor.place.displayName}
-                    source="nearby"
-                    google={near.google}
-                    onMesita={(p) => googleOnMesita(p, heldGoogleIds, added)}
-                    notes={googleNotes}
-                    disabled={isBusy}
-                    onOpen={(p) => void openGoogle(p)}
-                    onAdd={(p) => void addFromGoogle(p)}
-                  />
-                )}
-              </>
-            ) : null}
-          </>
+          <FindResults
+            key={tableKey}
+            query={view.query}
+            result={view.result}
+            added={added}
+            notes={rowNotes}
+            disabled={isBusy}
+            onOpen={(row) => void openRow(row)}
+            onAdd={(row) => void addRow(row)}
+          />
         ) : null}
       </SectionCard>
 
@@ -381,14 +278,6 @@ export function SinglePlaceClient() {
         />
       ) : null}
     </div>
-  );
-}
-
-function ListHeading({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-muted-foreground mt-5 type-label font-semibold tracking-wide uppercase">
-      {children}
-    </p>
   );
 }
 
@@ -413,89 +302,6 @@ async function peekGoogle(
   } catch (err) {
     return { place: null, note: err instanceof Error ? err.message : String(err) };
   }
-}
-
-/** Google Autocomplete for a name, as a list Find can draw. One session
- *  token per Find — Google bills an Autocomplete session, not a keystroke,
- *  and Find asks once. Autocomplete reports no floors, so none are shown. */
-async function searchGoogleAutocomplete(
-  query: string,
-): Promise<{ google: GoogleState; mesitaIds: ReadonlyMap<string, string> }> {
-  const none = new Map<string, string>();
-  try {
-    const r = await autocompleteGooglePlaces(query, crypto.randomUUID());
-    if (!r.ok) return { google: { status: "error", error: r.error }, mesitaIds: none };
-    const mesitaIds = new Map(
-      r.data.flatMap((h) => (h.mesitaId ? [[h.placeId, h.mesitaId] as const] : [])),
-    );
-    return {
-      google: {
-        status: "ok",
-        result: {
-          places: r.data.map(autocompleteToLite),
-          minRating: 0,
-          minUserRatingCount: 0,
-          filteredOutCount: 0,
-          mesitaLookupError: null,
-        },
-      },
-      mesitaIds,
-    };
-  } catch (err) {
-    return {
-      google: { status: "error", error: err instanceof Error ? err.message : String(err) },
-      mesitaIds: none,
-    };
-  }
-}
-
-function MatchList({
-  query,
-  hits,
-  onPick,
-}: {
-  query: string;
-  hits: PlaceHit[];
-  onPick: (hit: PlaceHit) => void;
-}) {
-  if (hits.length === 0) {
-    return (
-      <p className="text-muted-foreground mt-2 text-sm">
-        Nothing on Mesita matches “{query}”. Add it from Google below.
-      </p>
-    );
-  }
-  return (
-    <div className="border-border bg-card mt-2 overflow-hidden rounded-2xl border">
-      <p className="text-muted-foreground border-border border-b px-4 py-2 type-label">
-        {hits.length >= MAX_NAME_MATCHES
-          ? `First ${MAX_NAME_MATCHES} matches — narrow the name`
-          : `${hits.length} match${hits.length === 1 ? "" : "es"}`}
-      </p>
-      <ul className="divide-border/60 divide-y">
-        {hits.map((h) => (
-          <li key={h.id}>
-            <button
-              type="button"
-              onClick={() => onPick(h)}
-              className="hover:bg-muted/50 flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition"
-            >
-              <Building className="text-muted-foreground h-4 w-4 shrink-0" />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-medium">{h.google_name || h.name}</span>
-                {h.address ? (
-                  <span className="text-muted-foreground block truncate type-label">
-                    {h.address}
-                  </span>
-                ) : null}
-              </span>
-              <StatePill on={h.listed} />
-            </button>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
 }
 
 export function AbsentCard({

@@ -14,7 +14,8 @@
 // fix_requested as a COLUMN at scanned, never a state.
 // `awaiting_payment_confirm` has had NO writer since MESITA-1093 retired the
 // transitional staff bill path that set it. It stays LIVE for rows already
-// parked there (business-web-mark-ticket-paid still closes them); moving it
+// parked there (business-web-mark-ticket-paid closed them until MESITA-2090
+// retired it); moving it
 // to LEGACY is a separate change, because LIVE_STATES is the wallet's active
 // scope and the app mirrors below must move with it.
 //
@@ -123,7 +124,8 @@ export const BUSINESS_CANCELLABLE_STATES: readonly TicketState[] = [
 export const CLOSED_TICKET_STATE: TicketState = "revealed";
 
 /**
- * The QR-farming dedupe set: consumer-web-create-ticket's friendly pre-check.
+ * The QR-farming dedupe set: consumer-web-create-ticket's friendly pre-check
+ * (that function was retired in MESITA-2090; the index below still stands).
  * MUST stay equal to the predicate of the partial unique index
  * `tickets_one_open_check_per_consumer_place` (rebuilt over this exact set
  * by 20260817050100_ticket_v4_schema.sql) — the index is the guard that wins

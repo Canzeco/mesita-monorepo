@@ -30,8 +30,9 @@
 // the wire format doing its job.
 //
 // Comments are stripped before matching, because
-// consumer-web-select-ticket-payment/index.ts explains this very rename in a
-// comment sitting INSIDE its own `.select(...)` parentheses.
+// consumer-web-select-ticket-payment/index.ts (retired, MESITA-2090) explained
+// this very rename in a comment sitting INSIDE its own `.select(...)`
+// parentheses.
 //
 // `organization_id` IS NOT ON THIS LIST, on purpose. It was DROPPED, not
 // renamed — there is no compat seam and no wire name to protect — so the

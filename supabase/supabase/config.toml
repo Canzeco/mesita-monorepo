@@ -112,25 +112,19 @@ s3_region = "env(S3_REGION)"
 s3_access_key = "env(S3_ACCESS_KEY)"
 s3_secret_key = "env(S3_SECRET_KEY)"
 
-# Per-function overrides. Naming rule: <caller>-<verb>-<noun> (e.g.
-# business-web-create-place, consumer-list-tickets). All functions verify the
-# JWT except the truly public catalog reads, which rely on RLS to gate
-# visibility instead.
+# Per-function overrides. Naming rule: <caller>-<origin>-<verb>-<noun> (e.g.
+# admin-web-create-place, consumer-web-list-places). The closed caller set is
+# consumer · admin · eleven · supabase (MESITA-2090; the enricher prefix
+# arrives with MESITA-2121).
+# All functions verify the JWT except the truly public catalog reads, which
+# rely on RLS to gate visibility instead.
 
-# --- Sign-in / accept-invite (post-signin housekeeping per role) ---
+# --- Sign-in (post-signin housekeeping) ---
 #
-# These run AFTER the Supabase Auth call lands a session. They set
-# app_metadata.role, create the corresponding profile row, and (admin)
-# enforce @canzeco.com + MFA. verify_jwt = true gates each to a real
-# session.
-
-[functions.business-web-signin-email]
-verify_jwt = true
-
+# Runs AFTER the Supabase Auth phone-OTP call lands a session: stamps
+# app_metadata.role and lazy-creates the consumers row. verify_jwt = true
+# gates it to a real session.
 [functions.consumer-web-signin-phone]
-verify_jwt = true
-
-[functions.business-web-accept-invite]
 verify_jwt = true
 
 # Internal-only (supabase-edgefunc caller). verify_jwt = true so the gateway
@@ -163,11 +157,10 @@ verify_jwt = true
 # --- Memo's data surface (the agent holds NO database client) ---
 #
 # Memo reads Mesita ONLY through these four endpoints, called via
-# _shared/memo-data.ts from consumer-web-ask-memo and admin-web-ask-memo. Each
-# owns its SELECT and projects to a public shape, so Memo's reach is a closed
-# set you can enumerate instead of an open service-role query capability. All
-# read-only — there is deliberately no write endpoint here to add a tool for.
-# Documented for operators at admin.mesita.ai/memo-config (Data Access).
+# _shared/memo-data.ts from consumer-web-ask-memo. Each owns its SELECT and
+# projects to a public shape, so Memo's reach is a closed set you can
+# enumerate instead of an open service-role query capability. All read-only —
+# there is deliberately no write endpoint here to add a tool for.
 
 # Memo's RAG leg: pool near the caller → embed intent → cosine rank → public
 # cards. Embedding vectors and OPENAI_KEY never leave this function. Renamed
@@ -205,30 +198,13 @@ verify_jwt = true
 [functions.supabase-cron-enrich-place-contents]
 verify_jwt = true
 
-# LIVE admin create path — seeds the minimal 'generating' place in-process
-# (_shared/save-place.ts) and queues deep enrichment (place_research →
-# supabase-cron-enrich-place-*). Operator JWT + super_admins allowlist.
-[functions.admin-web-create-place]
-verify_jwt = true
+# --- Consumer ---
 
-# Soft delete: writes places.state = 'archived'. See the EF's own header for
-# why 'archived' and not a hard row delete.
-[functions.admin-web-delete-place]
-verify_jwt = true
-
-# Authed consumer writes / reads tied to the signed-in consumer's own data.
 # Public catalog reads. RLS enforces which place states are visible.
 [functions.consumer-web-list-places]
 verify_jwt = false
 
 [functions.consumer-web-get-place]
-verify_jwt = false
-
-# Consumer Requests: one vote per consumer per Listed-not-Enriched place.
-[functions.consumer-web-request-place]
-verify_jwt = true
-
-[functions.consumer-web-get-place-activity]
 verify_jwt = false
 
 # Memo — the consumer AI concierge (Mesita's third agent, alongside the
@@ -251,164 +227,32 @@ verify_jwt = true
 [functions.consumer-web-list-catalog]
 verify_jwt = true
 
-# Consumer "Add to Mesita": creates the place inline (MESITA-128; MESITA-127)
+# Consumer Requests: one vote per consumer per Listed-not-Enriched place.
+[functions.consumer-web-request-place]
+verify_jwt = true
+
+# Consumer "Add to Mesita": creates the place inline (MESITA-128; MESITA-127
 # dropped the staggered creation queue — only enrichment is scheduled now).
 [functions.consumer-web-create-place]
 verify_jwt = true
 
-# COMPAT ALIAS for the deployed consumer app (also creates inline, keeps the old
-# response keys). Delete once the app is verified on consumer-web-create-place.
-[functions.consumer-web-schedule-place-creation]
+[functions.consumer-web-suggest-places]
 verify_jwt = true
 
-# Entity-split EFs (migration 0031). consumer-list-tickets stays for
-# now while clients migrate; the new surfaces split favorites and
-# reservations into first-class entities.
-[functions.consumer-web-add-favorite]
+# The signed-in consumer's own data.
+[functions.consumer-web-get-profile]
 verify_jwt = true
 
-[functions.consumer-web-list-favorites]
+[functions.consumer-web-update-profile]
 verify_jwt = true
-
-[functions.consumer-web-create-reservation]
-verify_jwt = true
-
-[functions.consumer-web-list-tickets]
-verify_jwt = true
-
-# The live discount quote for a place × this consumer (renamed from
-# consumer-web-get-reward-quote). Authenticated: the rate is per-consumer.
-[functions.consumer-web-get-discount-quote]
-verify_jwt = true
-
-# Tickets v2 self-check-in (MESITA-806): the guest creates/cancels their own
-# visit ticket; the QR encodes check.mesita.ai/<check_code>.
-[functions.consumer-web-create-ticket]
-verify_jwt = true
-
-[functions.consumer-web-cancel-ticket]
-verify_jwt = true
-
-# v3b amount fallback (MESITA-850): guest records the bill total after a
-# no-bill close. Authed — owner-only writes, provenance bill_source=consumer.
-[functions.consumer-web-submit-ticket-total]
-verify_jwt = true
-
-# THE TICKET v4 (MESITA-1088/1091/1092): the guest's bill+tip (step 1), the
-# ticket screen's 10s live poll, and the post-approval settle pick. All
-# authed — owner-only reads and writes.
-[functions.consumer-web-submit-ticket-bill]
-verify_jwt = true
-
-[functions.consumer-web-get-ticket]
-verify_jwt = true
-
-[functions.consumer-web-select-ticket-payment]
-verify_jwt = true
-
-# v3c report button (MESITA-851): the guest's only route that isn't arguing
-# with the person holding the terminal. Authed — owner-only, and a report is
-# evidence for an operator, never an automatic strike.
-[functions.consumer-web-report-ticket]
-verify_jwt = true
-
-# --- validate-web (PUBLIC Validate page; live host still check.mesita.ai/<code>) ---
-# verify_jwt deliberately FALSE: the 128-bit tickets.check_code is the whole
-# authentication — whoever holds the freshly scanned QR (nominally staff) can
-# view, optionally bill (internal control, never a gate — MESITA-850), and
-# close the ticket. That includes the guest themselves; a static QR
-# screenshot is indistinguishable from a live scan. ACCEPTED: Mesita never
-# moves money — the staff apply the discount off this same page — so
-# self-service is a data-quality nuisance, not theft. Mitigations are visibility (first_scanned_at on the page,
-# ticket_check_events audit with self_view + daily-salted ip_hash, in-EF rate
-# limiting, uniform 404s). See _shared/ticket-check.ts.
-
-# MESITA-1117: the 7 check-web-* twins are deleted. Staff callers
-# (apps/web-validate) hit these validate-web-* names.
-[functions.validate-web-get-ticket]
-verify_jwt = false
-
-[functions.validate-web-mark-paid]
-verify_jwt = false
-
-# THE TICKET v4 handshake (MESITA-1090/1092): scan (open→scanned, an
-# affirmative staff write), approve / request-fix (the C1 verdict pair, CAS
-# on updated_at), the audit-free poll (get-ticket logs an event per read and
-# the limiter counts events per ip_hash — a 2-3s poll through it would
-# rate-limit the waiter out of their own approve), and validate (payment
-# confirmed → the ticket closes). Same code-possession posture as above;
-# omitting a stanza here would default verify_jwt=true and 401 the staff app
-# at the gateway.
-[functions.validate-web-scan-ticket]
-verify_jwt = false
-
-[functions.validate-web-approve-ticket]
-verify_jwt = false
-
-[functions.validate-web-request-fix]
-verify_jwt = false
-
-[functions.validate-web-poll-ticket]
-verify_jwt = false
-
-[functions.validate-web-validate-ticket]
-verify_jwt = false
-
-# --- gift-web (PUBLIC gift landing page, MESITA-1677) ---
-# A DIFFERENT actor prefix than validate-web, deliberately: that one is
-# possession auth for whoever holds a freshly scanned ticket QR (nominally
-# staff); this one is a stranger holding a gift code, who may have never
-# heard of Mesita before this link. verify_jwt = FALSE for the same
-# structural reason — "auth-optional" is not a gateway setting, and a
-# recipient must see the org's identity and the gift's terms BEFORE any
-# sign-in wall, or gifting's whole acquisition value is gone. The keyed HMAC
-# digest of the 10-digit code is the entire authentication; see
-# _shared/gift-code.ts. Rate-limited, uniform 404 on an unknown/implausible
-# code — money-path-efs.smoke.test.ts's PUBLIC_CHECK_EFS pins the contract.
-[functions.gift-web-preview-code]
-verify_jwt = false
-
-# Entity-split EFs (migration 0031). consumer-list-tickets stays for
-# now while clients migrate; the new surfaces split favorites and
-# reservations into first-class entities.
 
 [functions.consumer-web-delete-account]
 verify_jwt = true
 
-# --- Business (all authed) ---
-
-# Identity
-
-[functions.consumer-web-submit-story]
-verify_jwt = true
-
-[functions.consumer-web-submit-review]
-verify_jwt = true
-
-# Consumer lookup at the table (resolve 6-char code → name + balance).
-
 [functions.consumer-web-claim-instagram]
 verify_jwt = true
 
-# Ownership-verification submit + state-poll, called from /add on
-# business.mesita.ai.
-[functions.business-web-get-verification]
-verify_jwt = true
-
-[functions.business-web-request-manual-review]
-verify_jwt = true
-
-# Email / phone OTP flow for ownership verification.
-
-[functions.consumer-web-get-profile]
-verify_jwt = true
-
-# Me → Metrics sheet (MESITA-895): lifetime counters, fetched lazily when the
-# sheet opens — deliberately not part of get-profile (which runs every load).
-[functions.consumer-web-get-metrics]
-verify_jwt = true
-
-[functions.consumer-web-update-profile]
+[functions.consumer-web-list-pay-notifications]
 verify_jwt = true
 
 # Product instrumentation (MESITA-1387): one row in consumer_analytics_events
@@ -418,179 +262,21 @@ verify_jwt = true
 [functions.consumer-web-track-event]
 verify_jwt = true
 
+# Reservations Agent (the consumer's half; the engine is
+# supabase-edgefunc-reservation-call above).
+[functions.consumer-web-create-reservation]
+verify_jwt = true
+
 [functions.consumer-web-list-reservations]
 verify_jwt = true
 
-[functions.consumer-web-list-pay-notifications]
+[functions.consumer-web-cancel-reservation]
 verify_jwt = true
 
-# Consumer MCP — personal access tokens + Streamable HTTP MCP endpoint.
-# Mint/list/revoke use the consumer session JWT; consumer-mcp itself uses
-# a mesita_mcp_… bearer (verify_jwt off — custom auth in-handler).
-[functions.consumer-web-create-connector]
+[functions.consumer-web-confirm-reservation]
 verify_jwt = true
 
-[functions.consumer-web-list-connectors]
-verify_jwt = true
-
-[functions.consumer-web-revoke-connector]
-verify_jwt = true
-
-# Place API keys — mint/list/revoke from Settings › Developers (MESITA-2062).
-[functions.business-web-create-place-api-key]
-verify_jwt = true
-
-[functions.business-web-list-place-api-keys]
-verify_jwt = true
-
-[functions.business-web-revoke-place-api-key]
-verify_jwt = true
-
-[functions.consumer-mcp]
-verify_jwt = false
-
-[functions.consumer-web-submit-ticket-review]
-verify_jwt = true
-
-[functions.business-web-get-manager]
-verify_jwt = true
-
-[functions.business-web-create-manager]
-verify_jwt = true
-
-# Unit (place) lifecycle
-[functions.business-web-create-place]
-verify_jwt = true
-
-[functions.business-web-update-place]
-verify_jwt = true
-
-# Ownership-verification submit + state-poll, called from /add on
-# business.mesita.ai.
-[functions.business-web-send-email-otp]
-verify_jwt = true
-
-[functions.business-web-verify-email-otp]
-verify_jwt = true
-
-[functions.business-web-send-phone-otp]
-verify_jwt = true
-
-[functions.business-web-verify-phone-otp]
-verify_jwt = true
-
-# State-aware Place ID → Mesita place lookup. Powers the /add page's
-# inline result card (not_in_mesita / web_listed_unclaimed / pending /
-# verified_partner).
-[functions.business-web-find-place]
-verify_jwt = true
-
-# One-shot dashboard bundle: user + places + active place + recent tickets.
-[functions.business-web-get-overview]
-verify_jwt = true
-
-# v3d Performance tab (MESITA-852): the place's whole record — summary, what
-# the guests produced, and the per-place feed. Membership-scoped, and never
-# selects a consumer's class (blended-rate privacy).
-[functions.business-web-get-performance]
-verify_jwt = true
-
-# Profile editor vocabulary (MESITA-1740): Super Categories, categories,
-# tags, facets, field limits. Twin of admin-web-get-atlas-fields.
-[functions.business-web-get-atlas-fields]
-verify_jwt = true
-
-# Free partnership join / drop / strategy switch (MESITA-1740). Narrow
-# door: never takes a plan field, so a client cannot grant itself Verified.
-[functions.business-web-set-partnership]
-verify_jwt = true
-
-# The paid door into Mesita Partner (MESITA-1877): an owner buys the yearly
-# Mesita Membership for the PLACE. Not
-# Stripe-locked — Connect is what Mesita Pay needs, not the partnership.
-# Entitlement is the webhook's, never this EF's, outside MOCK_SUBSCRIPTION.
-[functions.business-web-start-membership]
-verify_jwt = true
-
-# The door OUT of Mesita Partner (MESITA-1891): an owner opens Stripe's own
-# Billing Portal and cancels there. Owner-only, mints nothing but a session,
-# and writes no cancellation logic — the webhook mirrors what Stripe does.
-[functions.business-web-manage-membership]
-verify_jwt = true
-
-# MESITA-892: Memo-backed next-promo suggestions on Performance (advisory;
-# never writes rates; never exposes consumer class).
-[functions.business-web-suggest-promo]
-verify_jwt = true
-
-# Ticket workflow — business-web-create-ticket retired by Tickets v2
-# (MESITA-806): guests create their own tickets (consumer-web-create-ticket).
-[functions.business-web-mark-ticket-paid]
-verify_jwt = true
-
-[functions.business-web-list-tickets]
-verify_jwt = true
-
-[functions.business-web-list-reviews]
-verify_jwt = true
-
-[functions.business-web-cancel-ticket]
-verify_jwt = true
-
-[functions.business-web-suggest-places]
-verify_jwt = true
-
-# Team management — owner / editor / viewer tier + waiters.
-[functions.business-web-list-members]
-verify_jwt = true
-
-# ── Account / Place (2026-09-05, re-scoped by MESITA-1892) ─────────────
-# The organization half of this block is gone with the layer: listing,
-# creating and the six org-membership endpoints were each a duplicate of a
-# place endpoint that already exists (list-places, create-place,
-# invite-member, accept-invite, list-members, update-member-role,
-# remove-member), and the place is the sole tenant boundary now.
-# Every one of these still requires a session: a place's claim state and
-# portfolio are nobody's public business. get-place is the read behind the
-# Place screen — the pool half of it is no wider than list-places
-# scope=public, but it still answers as YOU, so it needs your JWT.
-[functions.business-web-update-legal-identity]
-verify_jwt = true
-
-[functions.business-web-list-places]
-verify_jwt = true
-
-[functions.business-web-get-place]
-verify_jwt = true
-
-[functions.business-web-claim-place]
-verify_jwt = true
-
-[functions.business-web-verify-place]
-verify_jwt = true
-
-[functions.business-web-release-place]
-verify_jwt = true
-
-[functions.business-web-invite-member]
-verify_jwt = true
-
-[functions.business-web-remove-member]
-verify_jwt = true
-
-[functions.business-web-update-member-role]
-verify_jwt = true
-
-[functions.business-web-record-strike]
-verify_jwt = true
-
-[functions.business-web-set-check-pin]
-verify_jwt = true
-
-# The operator's door onto the four acceptance intent bits — twin of
-# admin-web-set-place-rails, same body via _shared/place-rails.ts,
-# requireEditor instead of requireSuperAdmin (MESITA-1736).
-[functions.business-web-set-place-rails]
+[functions.consumer-web-update-reservation]
 verify_jwt = true
 
 # --- Admin (Supabase Auth + super_admins allowlist) ---
@@ -599,47 +285,35 @@ verify_jwt = true
 # Each EF re-checks the caller's JWT email against public.super_admins
 # before doing anything privileged.
 
-# Per-caller identity doors over _shared/identity.ts (the endpoint name IS
+# Per-caller identity door over _shared/identity.ts (the endpoint name IS
 # the ACL). The old shared auth-get-identity door was deleted in MESITA-59.
 [functions.admin-web-get-identity]
 verify_jwt = true
 
-[functions.business-web-get-identity]
+# LIVE admin create path — seeds the minimal 'generating' place in-process
+# (_shared/save-place.ts) and queues deep enrichment (place_research →
+# supabase-cron-enrich-place-*). Operator JWT + super_admins allowlist.
+[functions.admin-web-check-api-health]
+verify_jwt = true
+[functions.admin-web-create-place]
 verify_jwt = true
 
-# Ownership-verification queue surface for super-admins.
-[functions.admin-web-list-verifications]
+# Soft delete: writes places.state = 'archived'. See the EF's own header for
+# why 'archived' and not a hard row delete.
+[functions.admin-web-delete-place]
 verify_jwt = true
 
-# Global Performance notifications feed for super-admins (derived,
-# non-realtime — the console pulls it on Refresh).
-[functions.admin-web-list-notifications]
+# Single Place's place row + State facts, and its profile save bar
+# (MESITA-2090: were business-web-get-overview / business-web-update-place,
+# renamed when the business console was deleted). Super-admin gated
+# in-function.
+[functions.admin-web-get-overview]
 verify_jwt = true
 
-[functions.admin-web-decide-verification]
+[functions.admin-web-update-place]
 verify_jwt = true
 
-# Per-place ownership-verification glance (immutable verified-by email)
-# for Manage Single → Admin → Verification.
-[functions.admin-web-get-place-verification]
-verify_jwt = true
-
-# Pool-claim audit trail (MESITA-1544). business-web-claim-place grants
-# ownership instantly with no admin gate; these two are the after-the-fact
-# review — list the unreviewed claims, then clear one or reverse it back
-# into the public pool.
-[functions.admin-web-list-place-claims]
-verify_jwt = true
-
-[functions.admin-web-decide-place-claim]
-verify_jwt = true
-
-# Verification Config (partner-badge create policy + ownership auto-confirm),
-# Orders Config (the REMOTE context's policy) and Visits Config (the LOCAL
-# context's) are sections of the config pair below, not functions of their own
-# since MESITA-1724. The ownership Verification Queue (list/decide above) is a
-# different surface and keeps its own EFs.
-
+# Single Place's tag and category vocabularies.
 [functions.admin-web-get-atlas-fields]
 verify_jwt = true
 
@@ -652,20 +326,22 @@ verify_jwt = true
 [functions.admin-web-suggest-places]
 verify_jwt = true
 
-# Resolve a Google Place ID to a Mesita place. Powers the admin
-# console's "open in business" link generator.
-[functions.admin-web-find-place]
-verify_jwt = true
-
-# Memo Config Playground engine — runs Memo's reasoning agent for a super-admin
-# with a full reasoning trace (real/mock persona, persona+model override, always
-# the agent engine). Read-only; the agent's airlock is read-only by construction.
-[functions.admin-web-ask-memo]
-verify_jwt = true
-
 # Super-admin free-text place search (name / slug / id) for the admin
 # console's Manage Single Place place picker.
 [functions.admin-web-search-places]
+verify_jwt = true
+
+# Re-run the Enricher on an existing place, and read what it stored.
+[functions.admin-web-enrich-place]
+verify_jwt = true
+
+[functions.admin-web-get-place-enrichment]
+verify_jwt = true
+
+[functions.admin-web-set-place-listed]
+verify_jwt = true
+
+[functions.admin-web-set-place-active]
 verify_jwt = true
 
 # DESTRUCTIVE full reset. Gated on super_admins + a typed "RESET"
@@ -685,199 +361,24 @@ verify_jwt = true
 [functions.admin-web-revoke-admin]
 verify_jwt = true
 
-# The class-grant write — seats or unseats one consumer on a class by hand,
-# re-checking super_admins on the caller. No console page calls it any more:
-# the roster that did listed Aura, a retired class.
-[functions.admin-web-grant-class]
-verify_jwt = true
-
-# The bearer half of the same door (MESITA-1168): an operator mints a
-# labelled BATCH of 10-digit PINs for a class, a partner hands them to
-# people Mesita has never met, and the holder redeems one after signing up.
-# Both stay JWT-gated — the PIN is the invitation, not the authentication.
-[functions.admin-web-mint-invite-codes]
-verify_jwt = true
-
-[functions.consumer-web-claim-invite-code]
-verify_jwt = true
-
-# Read-only per-place activity for the admin Performance tab: reservations +
-# their Reservationist call lifecycle, story/review screenshots, review text,
-# and the two inbound AI lines. No writes — a booking is changed by phoning
-# a3/a4, never by editing a row (MESITA-847).
-[functions.admin-web-get-place-activity]
-verify_jwt = true
-
 # THE admin config pair (MESITA-1724). Every app_config section the console
-# edits — controls, discovery, enricher, models, ojo, orders, reservations,
-# rewards, verification, visits — arrives here under `section`, and the
-# no-section read is the Crenup page's own payload. Registry:
-# functions/_shared/config-sections.ts. Both re-check super_admins.
+# edits arrives here under `section`, and the no-section read is the Crenup
+# page's own payload. Registry: functions/_shared/config-sections.ts. Both
+# re-check super_admins.
 [functions.admin-web-get-config]
 verify_jwt = true
 
 [functions.admin-web-update-config]
 verify_jwt = true
 
-# Re-run the Enricher on an existing place (super-admin only).
-[functions.admin-web-enrich-place]
-verify_jwt = true
+# --- ElevenLabs Reservationist ---
 
-# Consumer Premium Checkout session creator.
-[functions.consumer-web-create-subscription]
-verify_jwt = true
-
-# The Cards wallet — a consumer's saved payment methods. Stripe is the only
-# store: these four never write card data to Postgres, only read it back
-# through the consumers.stripe_customer_id anchor.
-[functions.consumer-web-list-cards]
-verify_jwt = true
-
-[functions.consumer-web-add-card]
-verify_jwt = true
-
-[functions.consumer-web-remove-card]
-verify_jwt = true
-
-[functions.consumer-web-set-default-card]
-verify_jwt = true
-
-# Mesita Credits — buy path (MESITA-1676). Charges the guest's saved card,
-# cloned onto the target place's connected Stripe account
-# (mesita-pay-charge.ts), and writes an org-scoped credit_lots row through
-# the create_credit_lot RPC. The webhook's Connect branch is the reliability
-# backstop for the same charge (stripe-webhook-handle-event).
-[functions.consumer-web-buy-credits]
-verify_jwt = true
-
-# The Buy sheet's "Where" picker: places that accept Mesita Credits AND whose
-# place is Connect charge-ready today.
-[functions.consumer-web-list-credit-places]
-verify_jwt = true
-
-# Gift Credits (MESITA-1677) — issuance only (MESITA-1380: no transfers
-# between consumers). The sender's own card is charged, cloned onto the
-# target place exactly like Buy; the resulting lot has no
-# owner until a stranger redeems its hashed code. All four are JWT-gated —
-# the PUBLIC half of gifting is gift-web-preview-code, above, a different
-# actor prefix entirely. Redeem stays behind the auth wall on purpose
-# (MESITA-1692: "claiming credits a wallet, and a wallet needs an account").
-[functions.consumer-web-gift-credits]
-verify_jwt = true
-
-[functions.consumer-web-redeem-credit-gift]
-verify_jwt = true
-
-[functions.consumer-web-cancel-credit-gift]
-verify_jwt = true
-
-[functions.consumer-web-list-credit-gifts]
-verify_jwt = true
-
-# The Wallet's real balance read (MESITA-1674): the calling consumer's own
-# credit_lots, grouped by place and paginated.
-[functions.consumer-web-list-credit-balances]
-verify_jwt = true
-
-# The guest-facing slice of the Credits policy the admin Controls page owns
-# (hold, bonus, expiry days), so the Wallet stops hard-coding numbers.
-[functions.consumer-web-get-controls-config]
-verify_jwt = true
-
-# Spending the balance (MESITA-1678): a one-time bill reduction on an
-# approved ticket, never the tip. Idempotent on the ticket, so a client
-# retry after a timeout returns the original result instead of double-spending.
-[functions.consumer-web-apply-ticket-credits]
-verify_jwt = true
-
-# The operator side of Credits (MESITA-1679). Liability is the exposure view
-# — issued value, outstanding balance, per-place exposure, breakage.
-# The spend report is visibility only: Mesita has no POS to reconcile
-# at_place spend against. Refund is the support primitive; its "refund" kind
-# only calls Stripe, and the webhook remains the sole writer of a refund
-# ledger row.
-[functions.admin-web-list-credit-liability]
-verify_jwt = true
-
-[functions.admin-web-get-credits-spend-report]
-verify_jwt = true
-
-[functions.admin-web-refund-credit-lot]
-verify_jwt = true
-
-[functions.stripe-webhook-handle-event]
-verify_jwt = false
-
-# Stripe Connect PLATFORM account layer (no charges). The merchant of record
-# is the PLACE (MESITA-1545, re-scoped by MESITA-1892). Owner-only
-# onboarding starter: creates the place's connected account + returns the Stripe-hosted
-# Account Link.
-[functions.business-web-start-payment-onboarding]
-verify_jwt = true
-
-# Any-member read of the place's Connect mirror; refresh-through from
-# Stripe by default while the webhook endpoint is missing (MESITA-1531).
-[functions.business-web-get-payment-account]
-verify_jwt = true
-
-# Org-owner-only single-use Express dashboard login link. Was shipped in
-# MESITA-1532 but never declared here, so it never auto-deployed — fixed
-# alongside the org re-key.
-[functions.business-web-get-payment-dashboard-link]
-verify_jwt = true
-
-# Super-admin read of a place's Connect mirror (resolved through its
-# place) + the pay-readiness AND chain (intent bit ∧ payCard rail ∧
-# Stripe capability); refresh-on-read.
-[functions.admin-web-get-place-payment-account]
-verify_jwt = true
-
-# The Reservations / Rewards / Models / Controls / Discovery / Ojo config
-# surfaces used to hold twelve EFs here. They are sections of
-# admin-web-get-config + admin-web-update-config since MESITA-1724; Memo keeps
-# its own pair (models_config carries the model and the console reads it there).
-[functions.admin-web-get-place-enrichment]
-verify_jwt = true
-[functions.admin-web-set-place-enrichment]
-verify_jwt = true
-[functions.admin-web-check-api-health]
-verify_jwt = true
-[functions.admin-web-set-plan]
-verify_jwt = true
-
-# Ghost-partner hold triage (MESITA-1311): confirm/dismiss a guest report,
-# restore the reward lane when review ends. Super-admin gated in-function.
-[functions.admin-web-review-ticket-report]
-verify_jwt = true
-
-[functions.admin-web-set-place-listed]
-verify_jwt = true
-
-[functions.admin-web-set-place-active]
-verify_jwt = true
-
-[functions.admin-web-set-place-verified]
-verify_jwt = true
-
-[functions.admin-web-set-place-rails]
-verify_jwt = true
-
-# Reservationist product + cron companions not previously listed.
-[functions.consumer-web-cancel-reservation]
-verify_jwt = true
-[functions.consumer-web-confirm-reservation]
-verify_jwt = true
-[functions.consumer-web-update-reservation]
-verify_jwt = true
-[functions.consumer-web-suggest-places]
-verify_jwt = true
-[functions.business-web-confirm-reservation]
-verify_jwt = true
+# Pushes the fleet spec (_shared/reservationist-fleet.ts) to ElevenLabs.
 [functions.supabase-edgefunc-sync-reservationist]
 verify_jwt = true
 
-# ElevenLabs Reservationist tools — gateway accepts the project anon JWT;
-# each EF still requires x-agent-secret (see _shared/agent-tools.ts).
+# The agents' tools — gateway accepts the project anon JWT; each EF still
+# requires x-agent-secret (see _shared/agent-tools.ts).
 [functions.eleven-a1-report-outcome]
 verify_jwt = true
 [functions.eleven-a2-cancel-reservation]
@@ -904,9 +405,3 @@ verify_jwt = true
 # ([auth.sms.twilio] above), and voice is the Reservationist's line, whose
 # webhooks point at ElevenLabs. The `twilio-webhook` caller is retired with
 # the WhatsApp rail that was its only user.
-
-# Diagnostic-only (not client-wired): runs the 5 link-discovery strategies from
-# _shared/linklab against a place and returns each strategy's {website, instagram}.
-# Same module the offline benchmark (scripts/linklab) scores. Service-role JWT.
-[functions.staff-web-benchmark-link-strategies]
-verify_jwt = true

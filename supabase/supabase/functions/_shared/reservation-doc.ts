@@ -10,9 +10,10 @@
 //   _shared/agent-tools.ts (cancelTicket, 1 site — 4 callers share it),
 //   eleven-a1-report-outcome (1), eleven-a2-confirm-reservation (4),
 //   consumer-web-create-reservation (1 insert), consumer-mcp/index.ts
-//   (1 insert), consumer-web-update-reservation (1), consumer-web-confirm-
-//   reservation (2) — 11 sites routed through writeReservation below;
-//   business-web-confirm-reservation (1), supabase-cron-reservation-retries
+//   (1 insert; retired in MESITA-2090), consumer-web-update-reservation (1),
+//   consumer-web-confirm-reservation (2) — 11 sites routed through
+//   writeReservation below; business-web-confirm-reservation (1; retired in
+//   MESITA-2090), supabase-cron-reservation-retries
 //   (3, all bulk/filtered `.in()`/`.lt()` sweeps) — 4 more sites gated
 //   through validateReservationPatch directly (see below for why they don't
 //   use writeReservation); and supabase-edgefunc-reservation-call (13 — the
@@ -71,8 +72,9 @@
 // issue's own landmine note, those three are written mid-call by
 // eleven-a1-report-outcome WITHOUT flipping state (state transitions are
 // owned by supabase-edgefunc-reservation-call) — but OTHER legitimate patches
-// (business-web-confirm-reservation, eleven-a2-confirm-reservation,
-// consumer-web-update-reservation's reschedule reset) DO set state and
+// (eleven-a2-confirm-reservation, consumer-web-update-reservation's
+// reschedule reset, and business-web-confirm-reservation until MESITA-2090
+// retired it) DO set state and
 // reported_verdict together in the same write. There is no single rule that
 // covers both truths, so this validator type-checks each field independently
 // and leaves the "which fields travel together" decision where it already
@@ -654,7 +656,7 @@ export type ReservationWriteArgs =
      * {state: "pending"}. For a filter this door doesn't model (`.in(...)`,
      * `.or(...)`, a bulk sweep with no single id), call
      * validateReservationPatch directly and build the query yourself — see
-     * business-web-confirm-reservation and supabase-cron-reservation-retries. */
+     * supabase-cron-reservation-retries. */
     match?: Record<string, string>;
     select?: string;
   };
