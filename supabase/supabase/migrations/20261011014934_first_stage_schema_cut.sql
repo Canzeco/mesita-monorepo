@@ -116,6 +116,18 @@ begin
   end if;
 end $money_guard$;
 
+-- Every hot table this file rewrites, locked once, up front, in one fixed
+-- order: a live EF holding one of them makes this wait at most 20s and fail
+-- cleanly instead of deadlocking halfway through the cut. Inside a DO block
+-- because a top-level LOCK TABLE errors when the runner does not open an
+-- explicit transaction; the lock still lasts until this file commits.
+do $lock_hot_tables$
+begin
+  perform set_config('lock_timeout', '20s', true);
+  lock table public.place_profiles, public.places, public.consumers,
+    public.consumer_notifications in access exclusive mode;
+end $lock_hot_tables$;
+
 -- ══════════════════════════════════════════════════════════════════════════
 -- 1. CRON
 -- ══════════════════════════════════════════════════════════════════════════
@@ -144,8 +156,8 @@ drop policy if exists "ticket_proofs_public_read" on storage.objects;
 -- Their write policies read `is_super_admin() OR is_place_member(...)`, and
 -- place members no longer exist, so each one is recreated with the
 -- super-admin half alone and named for what it now allows. The bucket,
--- 'business' prefix and place-uuid folder checks are unchanged. The three
--- public-read policies are untouched.
+-- 'business' prefix and place-uuid folder checks are unchanged. The two
+-- public-read policies (menu-images, menu-pdfs) are untouched.
 
 drop policy if exists "place_images_member_or_admin_insert" on storage.objects;
 drop policy if exists "place_images_member_or_admin_update" on storage.objects;
@@ -287,7 +299,7 @@ create policy "menu_pdfs_admin_delete"
 -- 3. THE VIEW COMES DOWN FIRST
 -- ══════════════════════════════════════════════════════════════════════════
 --
--- `profiles` projects 35 of the columns below plus four NULL/false dummies,
+-- `profiles` projects 34 of the columns below plus four NULL/false dummies,
 -- and DROP COLUMN refuses (2BP01) while a view reads the column. Nothing
 -- depends on the view except its two INSTEAD OF triggers, which go with it
 -- and are rebound in step 10. Its grants go too and are restated there.
