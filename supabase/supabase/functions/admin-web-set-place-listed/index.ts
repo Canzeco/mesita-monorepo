@@ -4,21 +4,18 @@
 //
 // Listed is one of the nine facts the admin State box reports — "can a guest
 // reach this place on Mesita at all" — and until now it was the only one
-// nothing in the product could change. The column was enforced (the consumer
-// RLS policy projects_select_public_visible gates SELECT on it) and
-// unreachable: business-web-update-place did not accept `state`, and no
-// admin EF wrote it. Every row read 'active' purely because nothing had ever
-// written anything else. Pato, 2026-08-22: "maybe we want to activate or not
-// the place in Mesita."
+// nothing in the product could change. The column is enforced (the consumer
+// RLS policy places_select_public_visible gates SELECT on it), and this EF
+// is the one thing that writes it. Pato, 2026-08-22: "maybe we want to
+// activate or not the place in Mesita."
 //
 // LISTED is exactly the policy's predicate, not a new idea:
 //
-//   projects_select_public_visible USING
-//     state IN ('active','lead') AND content_state IN (...)
+//   places_select_public_visible USING
+//     state = 'active' AND content_state IN ('ready','generating','failed')
 //
-// The content_state leg allows all four labels of its enum, so `state`
-// alone decides — and `lead` is a dead label no writer sends (MESITA-2144),
-// so listed means `active` (place-state.ts isPlaceListed). Unlisting
+// The content_state leg allows every label of its enum, so `state` alone
+// decides: listed means `active` (place-state.ts isPlaceListed). Unlisting
 // therefore removes the place from every guest surface at once — browse,
 // search, the swipe deck, a shared link — because they all read through that
 // one policy with the anon key.

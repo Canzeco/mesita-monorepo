@@ -214,9 +214,8 @@ Deno.serve(async (req) => {
   if (!envRes.ok) return envRes.response;
 
   // Anon client is sufficient: the places RLS policy already restricts SELECT
-  // to listed rows for anon + authenticated (`lead` is still named there but
-  // dead, so that means state 'active'). This is the single source of truth
-  // for what consumers are allowed to see.
+  // to listed rows (state 'active') for anon + authenticated. This is the
+  // single source of truth for what consumers are allowed to see.
   const supabase = anonClient(envRes.env);
 
   // Limit can come from a JSON body (POST from supabase.functions.invoke) or
