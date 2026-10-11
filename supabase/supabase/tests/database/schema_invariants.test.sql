@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(103);
+select plan(104);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1089,6 +1089,11 @@ select is_empty(
      where polrelid = 'storage.objects'::regclass
        and (polname like '%member_or_admin%' or polname like 'ticket_proofs%')$$,
   'no member_or_admin or ticket-proofs storage policy survives'
+);
+
+select is_empty(
+  $$select id from storage.buckets where id = 'ticket-proofs'$$,
+  'the ticket-proofs bucket is gone (MESITA-2131)'
 );
 
 -- Me › Notifications (MESITA-2080) is kept; its visit-ticket coupling is not.
