@@ -3,16 +3,20 @@
 import {
   Bell,
   Download,
+  FileText,
   MessageSquare,
   Globe,
   Languages,
   MapPin,
+  ScrollText,
   Settings as SettingsIcon,
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
 import {
   MESITA_PRIVACY_EMAIL,
+  MESITA_PRIVACY_URL,
+  MESITA_TERMS_URL,
 } from "@/lib/mesita-contact";
 import { APP_VERSION } from "@/lib/app-version";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
@@ -114,8 +118,7 @@ export function SettingsModal() {
             />
           </SettingsGroup>
 
-          {/* Contact lives here: Support has no contact reference of any
-              kind, so this is the only door to a human in the product. */}
+          {/* Contact is the only door to a human. Support, below, is legal. */}
           <SettingsGroup title="Your account">
             <SettingsLinkRow
               Icon={MessageSquare}
@@ -148,12 +151,33 @@ export function SettingsModal() {
           </SettingsGroup>
 
           {/* Sign out is an account control, so it sits with the rest of
-              them. Last group on purpose: nothing below it but the
-              version. */}
+              them. Support follows: legal moved off its own tile
+              (MESITA-2169) and /me/help 308s here. Nothing below Support
+              but the version, which stays one line. */}
           <SettingsGroup title="Session">
             <SignOutButton
               redirectTo="/"
               className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold transition"
+            />
+          </SettingsGroup>
+
+          <SettingsGroup title="Support">
+            <SettingsLinkRow
+              Icon={ScrollText}
+              tint="muted"
+              href={MESITA_TERMS_URL}
+              label="Terms of use"
+              sub="mesita.ai/terms"
+              external
+            />
+            <RowDivider />
+            <SettingsLinkRow
+              Icon={FileText}
+              tint="muted"
+              href={MESITA_PRIVACY_URL}
+              label="Privacy policy"
+              sub="mesita.ai/privacy"
+              external
             />
           </SettingsGroup>
 

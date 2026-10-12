@@ -1,5 +1,5 @@
-// Public Mesita URLs and contact lines — one place so Me › Contact, Settings,
-// Support and the account-deletion copy cannot drift apart.
+// Public Mesita URLs and contact lines — one place so Me › Contact, Settings
+// and the account-deletion copy cannot drift apart.
 //
 // THE HOST IS THE APEX, NO `www.` (MESITA-1888). web-landing canonicalizes on
 // https://mesita.ai in layout.tsx `metadataBase`, sitemap.ts and robots.ts;

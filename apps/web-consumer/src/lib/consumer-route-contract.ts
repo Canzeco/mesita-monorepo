@@ -67,7 +67,6 @@ export const CONSUMER_ROUTES = {
     plan: "/me/plan",
     settings: "/me/settings",
     settingsContact: "/me/settings/contact",
-    help: "/me/help",
     notifications: "/me/notifications",
     reservations: "/me/reservations",
   },
@@ -124,6 +123,8 @@ export const CONSUMER_ROUTES = {
     meVisits: "/me/visits",
     meSettingsMetrics: "/me/settings/metrics",
     mePassport: "/me/passport",
+    // Support's page (MESITA-2169). Terms and privacy live on Settings.
+    meHelp: "/me/help",
     subscribe: "/subscribe/premium",
     // /web's anonymous dead end, deleted with anonymous sessions
     // (MESITA-2137). It lands on Home's deck, behind the sign-in wall.

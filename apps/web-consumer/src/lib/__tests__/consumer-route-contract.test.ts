@@ -123,7 +123,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         plan: "/me/plan",
         settings: "/me/settings",
         settingsContact: "/me/settings/contact",
-        help: "/me/help",
         notifications: "/me/notifications",
         reservations: "/me/reservations",
       },
@@ -164,6 +163,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         meVisits: "/me/visits",
         meSettingsMetrics: "/me/settings/metrics",
         mePassport: "/me/passport",
+        meHelp: "/me/help",
         subscribe: "/subscribe/premium",
         getTheApp: "/get-the-app",
         discoverFeed: "/discover/feed",
@@ -312,7 +312,7 @@ describe("isModalContractPath (intercepted detail overlays)", () => {
     "/me/notifications",
     "/me/reservations",
     "/me/settings",
-    "/me/help",
+    "/me/help", // retired; 308s to Settings before it could intercept
     // Second Stage spellings 308 before they could ever intercept.
     "/new-visit",
     "/visit/t1",
@@ -373,6 +373,7 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       { source: "/me/visits", destination: "/me", permanent: true },
       { source: "/me/settings/metrics", destination: "/me/settings", permanent: true },
       { source: "/me/passport", destination: "/me/profile", permanent: true },
+      { source: "/me/help", destination: "/me/settings", permanent: true },
       { source: "/share", destination: "/me", permanent: true },
       { source: "/invite", destination: "/me", permanent: true },
       // The retired Home hub (2026-09-01). Every leaf 308s straight to the

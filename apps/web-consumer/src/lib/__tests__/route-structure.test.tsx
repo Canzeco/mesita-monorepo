@@ -581,7 +581,7 @@ describe("T6 — Activity's sections are pages on Me", () => {
 // The regression this catches is a tile for a surface that does not exist
 // — `DestTile` has no `soon` prop and its `href` is required, so such a tile
 // would ship as a live Link pointing at nothing.
-describe("T8 — Me's grid is seven live cells", () => {
+describe("T8 — Me's grid is six live cells", () => {
   const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
   /** `<DestTile … title="X">` values, in render order. */
   const gridTitles = (source: string) => {
@@ -593,11 +593,11 @@ describe("T8 — Me's grid is seven live cells", () => {
       .filter((t): t is string => Boolean(t));
   };
 
-  it("renders seven cells in Pato's order", () => {
-    // Pato, MESITA-2134: "profile and instagram and plan and notifications
-    // and reservations and settings and support". PROFILE LEADS (Pato,
-    // 2026-09-08): the header states the identity, so the first cell is the
-    // one that edits it.
+  it("renders six cells in Pato's order", () => {
+    // Pato, MESITA-2134, then MESITA-2169: "move support into settings".
+    // PROFILE LEADS (Pato, 2026-09-08): the header states the identity, so
+    // the first cell is the one that edits it. Support is a group on
+    // Settings, not a cell.
     expect(gridTitles(ME)).toEqual([
       "Profile",
       "Instagram",
@@ -605,7 +605,6 @@ describe("T8 — Me's grid is seven live cells", () => {
       "Notifications",
       "Reservations",
       "Settings",
-      "Support",
     ]);
   });
 
@@ -626,18 +625,17 @@ describe("T8 — Me's grid is seven live cells", () => {
     }
   });
 
-  it("Settings and Support close the page", () => {
-    // The most-reached cells in the tail (MESITA-1642), and Support (the
-    // /me/help page) is the legal and version footer, so it is last.
-    expect(gridTitles(ME).slice(-2)).toEqual(["Settings", "Support"]);
+  it("Settings closes the page", () => {
+    // The tail cell (MESITA-1642). Support moved into it (MESITA-2169).
+    expect(gridTitles(ME).at(-1)).toBe("Settings");
+    expect(gridTitles(ME)).not.toContain("Support");
   });
 
-  it("rows are pairs, Support alone last; nothing spans", () => {
-    // Four `DestGrid`s: three pairs and Support on its own. Counting grids
-    // and spans SEPARATELY on purpose: a cells-per-grid ratio stays true of
-    // any row width.
-    expect([...ME.matchAll(/<DestGrid>/g)]).toHaveLength(4);
-    expect([...ME.matchAll(/<DestTile\b[\s\S]*?\/>/g)]).toHaveLength(7);
+  it("rows are pairs; nothing spans", () => {
+    // Three `DestGrid`s, each a pair. Counting grids and spans SEPARATELY
+    // on purpose: a cells-per-grid ratio stays true of any row width.
+    expect([...ME.matchAll(/<DestGrid>/g)]).toHaveLength(3);
+    expect([...ME.matchAll(/<DestTile\b[\s\S]*?\/>/g)]).toHaveLength(6);
     expect([...ME.matchAll(/^\s*full$/gm)]).toHaveLength(0);
     expect(ME).not.toMatch(/<DestGrid cols=/);
   });
@@ -690,19 +688,20 @@ describe("T8 — Me's grid is seven live cells", () => {
     ).toContain("SignOutButton");
   });
 
-  it("Help is the only door to terms and privacy", () => {
-    // Legal lives in Help (MESITA-1650) and must not gain a second door.
-    // Reading the URL CONSTANTS, not the words "terms"/"privacy": Settings'
-    // Export-my-data row names the privacy@ inbox, which has nothing to do
-    // with the policy.
+  it("Settings is the only door to terms and privacy", () => {
+    // Legal moved into Settings with Support (MESITA-2169). One door:
+    // the Support page is gone, and nothing else links the policy URLs.
+    // Reading the URL CONSTANTS, not the words "terms"/"privacy": the
+    // Export-my-data row names the privacy@ inbox, which is a different
+    // constant.
     const dir = join(COMPONENTS, "me");
     const settings = readFileSync(join(dir, "SettingsModal.tsx"), "utf8");
-    const help = readFileSync(join(dir, "HelpModal.tsx"), "utf8");
     for (const url of ["MESITA_TERMS_URL", "MESITA_PRIVACY_URL"]) {
-      expect(settings).not.toContain(url);
-      expect(help).toContain(url);
+      expect(settings).toContain(url);
     }
+    expect(existsSync(join(dir, "HelpModal.tsx"))).toBe(false);
     expect(existsSync(join(dir, "AboutModal.tsx"))).toBe(false);
+    expect(existsSync(join(SHELL, "me", "help", "page.tsx"))).toBe(false);
   });
 
   it("the version has ONE source, and it is not a literal on the page", () => {
@@ -712,12 +711,16 @@ describe("T8 — Me's grid is seven live cells", () => {
     // Comments STRIPPED first. The note explaining why the footer is gone
     // necessarily quotes it, so a raw scan fires on its own rationale and
     // the cheapest way to green it would be deleting the rationale.
-    const help = readFileSync(join(COMPONENTS, "me", "HelpModal.tsx"), "utf8");
+    const settings = readFileSync(
+      join(COMPONENTS, "me", "SettingsModal.tsx"),
+      "utf8",
+    );
     const code = (src: string) =>
       src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
-    // It renders in Help now, not on the page (MESITA-1650).
-    expect(code(help)).toContain("APP_VERSION");
-    expect(code(help)).not.toMatch(/v\d+\.\d+\.\d+/);
+    // It renders once, on Settings (MESITA-2169 moved Support's copy here).
+    // The import and the JSX both name APP_VERSION; the render line is one.
+    expect(code(settings).match(/\{APP_VERSION\}/g)).toHaveLength(1);
+    expect(code(settings)).not.toMatch(/v\d+\.\d+\.\d+/);
     expect(code(ME)).not.toMatch(/v\d+\.\d+\.\d+/);
   });
 });
