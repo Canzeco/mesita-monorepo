@@ -1,14 +1,21 @@
-import { Wand2 } from "lucide-react";
+import { RefreshCw, Wand2 } from "lucide-react";
 
-// One sidebar entry, "Intake" (Pato, MESITA-2159: "Merge Creation and
-// Enrichment into Intake"). It undoes the MESITA-2083 split into two rows.
+// Two sidebar entries since MESITA-2083 — "Creation" and "Enrichment" — over
+// the one Crenup client (CrenupClient's `view`). Pato: "Models, Creation,
+// Enrichment, Discovery, Reservations".
 //
-// The page is Models (read-only link) · Create · Enrich · Functions. What may
-// appear in Search lives on Discovery › Map.
+// Creation is Models (read-only) · Create; Enrichment is
+// Enrich · Functions. What may appear in Search lives on Discovery › Map.
 // THE ROUTE PREFIX IS FROZEN: /enricher-config, atlas_* columns,
-// admin-web-*-enricher-config. /creation and /enrichment 308 here.
-export const INTAKE_PARENT = {
-  href: "/enricher-config",
-  label: "Intake",
+// admin-web-*-enricher-config. Bare /enricher-config 308s to Creation.
+export const CREATION_PARENT = {
+  href: "/enricher-config/creation",
+  label: "Creation",
   Icon: Wand2,
+} as const;
+
+export const ENRICHMENT_PARENT = {
+  href: "/enricher-config/enrichment",
+  label: "Enrichment",
+  Icon: RefreshCw,
 } as const;

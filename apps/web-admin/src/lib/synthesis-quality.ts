@@ -1,5 +1,5 @@
 // The Enricher's two quality tiers and the model each one runs, shared by the
-// Models page and Intake's cost model. A neutral module: the kit must not
+// Models page and Creation's cost model. A neutral module: the kit must not
 // import app routes, and a "use server" file may export only async functions.
 //
 // Two tiers since MESITA-2126: "high" ran the same gpt-4o as "standard" and was
