@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import {
   Bell,
   CalendarCheck,
-  CircleHelp,
   Gem,
   Instagram,
   Settings as SettingsIcon,
@@ -26,17 +25,16 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { DestGrid, DestTile } from "./profile-sections";
 import { IdentityBar } from "./IdentityBar";
 
-// The Me surface — the identity header, then seven cells in Pato's order
-// (MESITA-2134: "profile and instagram and plan and notifications and
-// reservations and settings and support"):
+// The Me surface — the identity header, then six cells. Support left the
+// grid (Pato, MESITA-2169: "move support into settings") and lives on
+// Settings; the order of the rest is still MESITA-2134:
 //
 //   header         identity + Instagram; the bar IS a door (MESITA-1652)
 //   2              Profile (carries the member number) · Instagram
 //   2              Plan · Notifications
 //   2              Reservations · Settings
-//   1              Support
 //
-// SEVEN CELLS, AND THAT IS THE WHOLE PAGE. route-structure T8 pins them.
+// SIX CELLS, AND THAT IS THE WHOLE PAGE. route-structure T8 pins them.
 //
 // EVERY CELL IS A ROUTE (Pato, MESITA-1789). Sheets over this hub stacked
 // history as overlays. DestTiles Link to /me/<box>.
@@ -132,9 +130,9 @@ export function ProfileClient() {
             />
           </DestGrid>
 
-          {/* PATO'S ORDER, verbatim (MESITA-2134): profile, instagram,
-              plan, notifications, reservations, settings, support. Seven
-              tiles, so Support sits alone on the last row. */}
+          {/* PATO'S ORDER (MESITA-2134), minus Support (MESITA-2169):
+              profile, instagram, plan, notifications, reservations,
+              settings. Three pairs. */}
           <DestGrid>
             <DestTile
               Icon={Gem}
@@ -162,15 +160,6 @@ export function ProfileClient() {
               title="Settings"
               summary="Language, account"
               href={CONSUMER_ROUTES.mePages.settings}
-            />
-          </DestGrid>
-
-          <DestGrid>
-            <DestTile
-              Icon={CircleHelp}
-              title="Support"
-              summary="Questions, legal"
-              href={CONSUMER_ROUTES.mePages.help}
             />
           </DestGrid>
         </div>

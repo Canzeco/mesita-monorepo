@@ -83,6 +83,8 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   },
   // The Passport (MESITA-2043). The member number lives on Profile.
   { source: "/me/passport", destination: "/me/profile", permanent: true },
+  // Support (MESITA-2169). Terms and privacy live on Settings.
+  { source: "/me/help", destination: "/me/settings", permanent: true },
   { source: "/share", destination: "/me", permanent: true },
   { source: "/invite", destination: "/me", permanent: true },
   // The retired Home hub (2026-09-01). Every leaf 308s straight to the
