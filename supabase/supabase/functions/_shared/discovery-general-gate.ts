@@ -33,7 +33,7 @@
 import type { GeneralConfig } from "./discovery-config.ts";
 import type { FilterableQuery } from "./discovery-filters.ts";
 
-/** The State-box fact `active`. Google's own label, verbatim. */
+/** The Pulsing state (`business_state`). Google's own label, verbatim. */
 export const OPERATIONAL = "OPERATIONAL";
 
 export type GeneralGateSignals = {

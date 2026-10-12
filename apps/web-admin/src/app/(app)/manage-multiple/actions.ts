@@ -65,10 +65,11 @@ export type PlaceHit = {
   google_stars_overall: number | null;
   google_review_count: number | null;
   content_state: string | null;
-  // ── The state facts (labels: Created · Active · Listed · Requested ·
+  // ── The state facts (labels: Created · Pulsing · Disabled · Requested ·
   //    Enriching · Enriched). Bools except Requested (0…n). All derived (or
   //    projected) in admin-web-search-places, except Enriching which is
-  //    content_state generating (MESITA-453 whole-pipeline).
+  //    content_state generating (MESITA-453 whole-pipeline). Disabled is
+  //    `!listed`: the operator's off switch.
   /** Google Place ID spine — used to match a Mesita Search paste. */
   google_place_id: string | null;
   /** google_place_id present — the identity spine every run starts from. */
