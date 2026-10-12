@@ -2,9 +2,9 @@
 
 // Live text-search results over the map: one merged lane (max 10), no
 // source section labels. The MARK tells the two entities apart
-// (MESITA-1404): a Place wears the tone point — gray = Google Places, red =
-// Mesita Enriched Places — and a Location (a city, a region) wears a
-// location icon instead. The two semantics never share a mark: a colour
+// (MESITA-1404): a Place wears the tone point — gray = Google Places, ink =
+// Mesita Places, red = Mesita Enriched Places — and a Location (a city, a
+// region) wears a location icon instead. The two semantics never share a mark: a colour
 // that means "we wrote a profile" cannot also mean "this is not a place".
 // Every row pick anchors the map (MESITA-1405).
 

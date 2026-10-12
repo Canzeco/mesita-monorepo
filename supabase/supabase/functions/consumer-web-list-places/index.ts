@@ -17,14 +17,15 @@
 //     the Mesita Places set. No Google stubs — mobile opens `/place/:id`
 //     and cannot host GooglePlaceSheet.
 //   { google: true, lat, lng } — web
-//     Search catalog. TWO NESTED SETS:
-//       Google Places ⊃ Mesita Enriched Places
-//       gray                   red
-//     `placesScope` names the set — "mesita" | "google" — and enrichment
-//     (`enriched_at` set, MESITA-2154) gates the Mesita ring. A Created
-//     place is never in the ring. A Google hit Mesita owns is never a
-//     stub: a Created row paints it gray, and an Enriched row the ring
-//     cuts left out drops it (`claimOwnedHits`).
+//     Search catalog. THREE NESTED SETS (MESITA-2158):
+//       Google Places ⊃ Mesita Places ⊃ Mesita Enriched Places
+//       gray            ink             red
+//     `placesScope` names the set — "enriched" | "mesita" | "google".
+//     Mesita Places is every listed row whose profile is ready, Created
+//     ones included; enrichment (`enriched_at` set, MESITA-2154) gates
+//     only the inner ring (`admitsScopeRow`). A Google hit Mesita owns is
+//     never a stub: a Created row a cut left out paints it, and an
+//     Enriched row the ring cuts left out drops it (`claimOwnedHits`).
 //
 //     WEB SEARCH POSTS scope + familyKeys + minReviews (MESITA-1790).
 //     How many stays operator `map.pinCount`. `map.googleFill` still
@@ -36,7 +37,8 @@
 //     default; a live Filters sheet always names the ring.
 //
 //     A call WITHOUT `google: true` keeps the old default: absent or
-//     unknown resolves to "mesita", the widest Mesita ring. Mobile Search
+//     unknown resolves to "mesita", the widest Mesita ring (wider since
+//     MESITA-2158: Created places too). Mobile Search
 //     and the web Pay picker post no scope and must not be narrowed, and
 //     the Pay picker names its scope outright besides.
 //
@@ -89,8 +91,8 @@ import {
   wantsGoogleFill,
 } from "../_shared/geo.ts";
 import {
+  admitsScopeRow,
   claimOwnedHits,
-  isEnrichedListedRow,
   lanesForPlacesScope,
   mergeNearbyCatalog,
   parsePlacesScope,
@@ -310,9 +312,17 @@ Deno.serve(async (req) => {
     : enabledNearbyTypes(cfg.map);
   const googleFill = mapShouldFillGoogle(clientGoogle, cfg.map) &&
     nearbyTypes.length > 0;
+  // Only the inner ring runs the Enriched gate; the two wider rings admit
+  // Created rows and are cut to a ready profile instead (`readyOnMap`).
   const filters = isNearby
-    ? listedMapFilters(cfg.filters, cfg.map)
+    ? listedMapFilters(cfg.filters, cfg.map, placesScope)
     : cfg.filters;
+  // Mesita Places = listed (RLS) + `content_state = 'ready'`, on EVERY ring:
+  // the inner ring's gate already carries it, and `admitsScopeRow` re-checks
+  // each row. In SQL so a dense bbox is not filled with unshowable rows.
+  const readyOnMap = <Q extends { eq: (col: string, val: unknown) => Q }>(
+    q: Q,
+  ): Q => q.eq("content_state", "ready");
 
   // MESITA-1283: list returns MANY places per request — the card projection
   // (every public column except the five enrichment-filled jsonb ones), not
@@ -335,7 +345,9 @@ Deno.serve(async (req) => {
   // this is the Map lane's answer to "only active places", and Pay / Home
   // callers keep `discovery_config.filters` exactly as before
   // (the same line `listedMapFilters` draws two statements up).
-  if (isNearby) filtered = applyGeneralGateQuery(filtered, cfg.general);
+  if (isNearby) {
+    filtered = readyOnMap(applyGeneralGateQuery(filtered, cfg.general));
+  }
   // Guest Popularity: same SQL gte the General gate uses, so a capped
   // pool is not thinned after the fact. Unknown (null) does not clear.
   if (isNearby && guestMinReviews > 0) {
@@ -374,7 +386,7 @@ Deno.serve(async (req) => {
     const center = { lat, lng };
     const scanRows = (data ?? []) as unknown as CardRow[];
     const lanes = lanesForPlacesScope(placesScope, limit, cfg.map.googlePull);
-    let mesitaRows = scanRows.filter((row) => isEnrichedListedRow(row));
+    let mesitaRows = scanRows.filter((row) => admitsScopeRow(placesScope, row));
     if (guestSupers.length > 0) {
       mesitaRows = mesitaRows.filter((row) =>
         guestSupers.some((key) => familiesForPlace(row).includes(key))
@@ -467,23 +479,24 @@ Deno.serve(async (req) => {
         ownedRows = (owned.data ?? []) as CardRow[];
       }
     }
-    // Ring admission keeps every cut: only an Enriched owned row can join,
-    // and only if the filtered query (bbox aside) still returns it. Skipped
-    // when no owned row is enriched, so the common case stays one query.
-    const enrichedOwnedGids = [
+    // Ring admission keeps every cut: only an owned row the scope admits can
+    // join, and only if the filtered query (bbox aside) still returns it.
+    // Skipped when no owned row is in the scope, so the common case stays
+    // one query.
+    const ringOwnedGids = [
       ...new Set(
         ownedRows
-          .filter((row) => isEnrichedListedRow(row))
+          .filter((row) => admitsScopeRow(placesScope, row))
           .map((row) => row.google_place_id?.trim())
           .filter((id): id is string => Boolean(id)),
       ),
     ];
-    if (enrichedOwnedGids.length > 0) {
+    if (ringOwnedGids.length > 0) {
       const extraSelect = supabase.from("profiles").select(selectCols);
-      let extraFiltered = applyGeneralGateQuery(
+      let extraFiltered = readyOnMap(applyGeneralGateQuery(
         applyDiscoveryFilters(extraSelect, filters, { lat: null, lng: null }),
         cfg.general,
-      );
+      ));
       if (guestMinReviews > 0) {
         extraFiltered = extraFiltered.gte(
           "google_review_count",
@@ -500,12 +513,12 @@ Deno.serve(async (req) => {
           col: string,
           vals: string[],
         ) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>;
-      }).in("google_place_id", enrichedOwnedGids);
+      }).in("google_place_id", ringOwnedGids);
       if (!extra.error && extra.data) {
         const seen = new Set(mesitaRows.map((row) => row.id));
         for (const row of extra.data as CardRow[]) {
           if (seen.has(row.id)) continue;
-          if (!isEnrichedListedRow(row)) continue;
+          if (!admitsScopeRow(placesScope, row)) continue;
           if (
             guestSupers.length > 0 &&
             !guestSupers.some((key) => familiesForPlace(row).includes(key))
@@ -517,8 +530,8 @@ Deno.serve(async (req) => {
         }
       }
     }
-    // A Created row paints its hit gray; an Enriched row the cuts left out
-    // drops its hit. Either way no owned gid becomes a stub.
+    // A Created row the cuts left out paints its hit; an Enriched row the
+    // cuts left out drops its hit. Either way no owned gid becomes a stub.
     const claim = claimOwnedHits(googleHits, ownedRows, mesitaRows);
     // The Google side of the same gate. Nearby now carries businessStatus +
     // userRatingCount on its field mask, so the wipe is provable here rather
@@ -538,8 +551,8 @@ Deno.serve(async (req) => {
     // The `enriched` signal's gradient (MESITA-1598, kept at MESITA-1858)
     // needs `crenup_high_water` on the row, and `profiles` doesn't carry it.
     // One batched side-read merges it in before ranking, same pattern as
-    // consumer-web-recommend-swipe. WITHOUT THIS every listed row scores the
-    // same 1 — `isEnrichedListedRow` already admitted only enriched rows.
+    // consumer-web-recommend-swipe. WITHOUT THIS every enriched row scores
+    // the same 1 — on the inner ring `admitsScopeRow` admitted only those.
     // Skipped when the Google-fill branch below keeps distance order instead.
     const willReorder = !(wantGoogleNearby && googleForMerge.length > 0);
     const listedForCatalog = willReorder && efEnv.ok

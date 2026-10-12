@@ -1,12 +1,14 @@
 // Map catalog = closest N of the selected Places set, then paint.
-// TWO NESTED SETS:
-//   Google Places ⊃ Mesita Enriched Places
-//   mesita    the closest N enriched Mesita rows. No Google Nearby.
-//   google    the closest N Nearby hits too. A hit that is Mesita is
-//             painted, not added as a second pin. Max pins = N, never
-//             the sum of the lanes.
-// ENRICHMENT GATES THE MESITA RING: a Created or Requested stub is not in
-// it, and reads gray until it is enriched.
+// THREE NESTED SETS (MESITA-2158):
+//   Google Places ⊃ Mesita Places ⊃ Mesita Enriched Places
+//   enriched  the closest N enriched Mesita rows. No Google Nearby.
+//   mesita    the closest N Mesita rows a guest can reach (profile
+//             ready), enriched or not. No Google Nearby.
+//   google    every Mesita row of the `mesita` ring plus the closest N
+//             Nearby hits. A hit that is Mesita is painted, not added as a
+//             second pin. Max pins = N, never the sum of the lanes.
+// ENRICHMENT GATES ONLY THE INNER RING: a Created place is in Mesita
+// Places and reads ink; it turns red when an Enrich run completes.
 // N is the GUEST's How many (Pato, 2026-08-29) — the max number is asked
 // once, on the consumer Filters sheet, never again in the console.
 // Empty Nearby (quota skip) falls back to the Mesita set. Only the Google
@@ -26,7 +28,7 @@ import {
 } from "./geo.ts";
 import { GOOGLE_SEARCH_TYPES } from "./google-type-super.ts";
 import { NEARBY_TYPE_KEYS } from "./discovery-config.ts";
-import { isPlaceEnriched } from "./place-state.ts";
+import { isPlaceEnriched, isPlaceProfileReady } from "./place-state.ts";
 
 /** Google bills Nearby in pages of 20. Legacy paginates with next_page_token
  *  (3 pages = 60); New caps one POST at maxResultCount 20 with no page token. */
@@ -449,27 +451,28 @@ export type NearbyMerged<T> =
   | { kind: "google"; hit: NearbyHit };
 
 /**
- * TWO NESTED SETS:
+ * THREE NESTED SETS (MESITA-2158):
  *
- *   Google Places  ⊃  Mesita Enriched Places
- *      gray                    red
+ *   Google Places  ⊃  Mesita Places  ⊃  Mesita Enriched Places
+ *      gray              ink                 red
  *
- * The wire carries the set by NAME, never by an ordinal. Two clients post
- * no scope at all — mobile Search and the web Pay picker — so the absent
- * value has to be safe on its own, and an ordinal whose meaning moved
- * would have narrowed both of them silently. Unknown and absent alike
- * resolve to `mesita`.
+ * The wire carries the set by NAME, never by an ordinal. A caller that
+ * posts no scope must be safe on its own, and an ordinal whose meaning
+ * moved would narrow it silently. Unknown and absent alike resolve to
+ * `mesita`, the widest Mesita ring. `enriched` is the inner ring's word;
+ * a client from before it existed sends `mesita` and now gets the wider
+ * set, Created places included, which is harmless.
  *
  * Legacy numerics keep their OLD shipped meanings (1 = Mesita, 2 = Google,
  * 3 = Google) so a client deployed before this EF still gets the set it
  * asked for. Vercel and the Edge Functions deploy on separate paths, so
  * that skew window is real, not hypothetical.
  */
-export type PlacesScope = "mesita" | "google";
+export type PlacesScope = "enriched" | "mesita" | "google";
 
 export const PLACES_SCOPE_DEFAULT: PlacesScope = "mesita";
 
-const PLACES_SCOPES: readonly PlacesScope[] = ["mesita", "google"];
+const PLACES_SCOPES: readonly PlacesScope[] = ["enriched", "mesita", "google"];
 
 export function parsePlacesScope(value: unknown): PlacesScope {
   if (typeof value === "string") {
@@ -518,19 +521,43 @@ export function lanesForPlacesScope(
 }
 
 /**
- * Mesita Places on Search: enriched profile, not a Created stub. EVERY scope
- * admits exactly these Mesita rows — the Google scope keeps the same ones, so
- * a wider ring never shows FEWER Mesita places, it only adds Google ones
- * alongside them. "Red is EARNED by enrichment" (Pato, 2026-09-05).
+ * The inner ring's half of the gate: enriched profile, not a Created stub.
+ * "Red is EARNED by enrichment" (Pato, 2026-09-05).
  *
  * Enriched = an Enrich run completed = `enriched_at` set (MESITA-2154) — the
  * same {@link isPlaceEnriched} every reader uses. A Created place is
- * `content_state = 'ready'` with a null stamp: viewable, never in this ring.
+ * `content_state = 'ready'` with a null stamp: in Mesita Places, never in
+ * Mesita Enriched Places.
  */
 export function isEnrichedListedRow(row: {
   enriched_at?: string | null;
 }): boolean {
   return isPlaceEnriched(row.enriched_at);
+}
+
+/**
+ * Mesita Places: a listed row (RLS already limits the read to
+ * `state = 'active'`) whose profile can be shown now — `content_state =
+ * 'ready'`, which Create saves too. Enriched or not.
+ */
+export function isMesitaListedRow(row: {
+  content_state?: string | null;
+}): boolean {
+  return isPlaceProfileReady(row.content_state);
+}
+
+/**
+ * Which Mesita rows a scope admits. The rings NEST, so a wider ring never
+ * shows FEWER Mesita places: `google` keeps exactly the `mesita` ring's rows
+ * and only adds Google ones alongside them, and `enriched` is the `mesita`
+ * ring cut to the rows an Enrich run completed.
+ */
+export function admitsScopeRow(
+  scope: PlacesScope,
+  row: { content_state?: string | null; enriched_at?: string | null },
+): boolean {
+  if (!isMesitaListedRow(row)) return false;
+  return scope === "enriched" ? isEnrichedListedRow(row) : true;
 }
 
 /** The row fields {@link claimOwnedHits} reads. */
@@ -543,7 +570,8 @@ export type OwnedNearbyRow = {
 export type OwnedHitClaim<T> = {
   /** The hits that may merge: Google-only ones, the ring's own, Created ones. */
   hits: NearbyHit[];
-  /** Created (not enriched) rows that paint their hit, gray, in its slot. */
+  /** Created (not enriched) rows a ring cut left out: each paints its hit,
+   *  as a Mesita row, in the hit's slot. */
   paintByGid: Map<string, T>;
   /** Every google_place_id a Mesita row carries, ring and owned alike. */
   ownedGids: Set<string>;
@@ -562,13 +590,14 @@ function gidOf(row: OwnedNearbyRow): string | null {
  * guest gets a toast instead of the place. So a hit whose google_place_id a
  * listed Mesita row carries resolves one of three ways:
  *
- *   ring   the row is in the Mesita ring: the hit passes and merge pairs it
- *          with the row, as it always has.
- *   paint  the row is NOT enriched (a Created place): the hit passes and
- *          goes out as that Mesita row, gray, in the hit's slot. Created
- *          places stay reachable here, with the guest Enrich vote, whatever
- *          their stored family_keys or review count say — the hit already
- *          cleared the Google-side cuts.
+ *   ring   the row is in the scope's Mesita rows (on the Google ring that
+ *          is every ready Mesita row, Created ones included — MESITA-2158):
+ *          the hit passes and merge pairs it with the row.
+ *   paint  the row is NOT enriched (a Created place) and a ring cut left it
+ *          out: the hit passes and goes out as that Mesita row, ink, in the
+ *          hit's slot. Created places stay reachable here, with the guest
+ *          Enrich vote, whatever their stored family_keys or review count
+ *          say — the hit already cleared the Google-side cuts.
  *   drop   the row IS enriched but a ring cut left it out (the General gate,
  *          a Map floor, the guest's Popularity or Super on stored keys, a
  *          profile that is not ready): the hit is removed, so every red row

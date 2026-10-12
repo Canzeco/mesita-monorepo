@@ -15,7 +15,7 @@ import type { DiscoveryPredicatesWire } from "@/lib/discovery-filters-wire";
 
 export type Place = {
   /** Server's answer: did an Enrich run complete (`enriched_at` set,
-   *  MESITA-2154)? Drives the Enriched colour and the Mesita ring. Absent
+   *  MESITA-2154)? Drives the Enriched colour and the Enriched ring. Absent
    *  on an older payload — the client falls back to `enriched_at` alone
    *  (lib/place-enriched.ts), never `content_state`. */
   enriched?: boolean | null;
@@ -141,8 +141,8 @@ export async function apiFetchPublicPlaces(
 }
 
 /** The wire word for a Places ring. Mirrors `_shared/nearby-places.ts`:
- *  a place is on Mesita or it is Google's. */
-type PlacesScopeWire = "mesita" | "google";
+ *  Google Places ⊃ Mesita Places ⊃ Mesita Enriched Places (MESITA-2158). */
+type PlacesScopeWire = "enriched" | "mesita" | "google";
 
 type ViewportPlaces = {
   places: Place[];

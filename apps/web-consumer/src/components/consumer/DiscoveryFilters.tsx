@@ -2,7 +2,10 @@
 
 import { LocateFixed } from "lucide-react";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
-import { hasDiscoveryPredicates } from "@/lib/discovery-filters-engine";
+import {
+  DISCOVERY_SCOPE_STOPS,
+  hasDiscoveryPredicates,
+} from "@/lib/discovery-filters-engine";
 import {
   resetDiscoveryFilters,
   setDiscoveryMinReviews,
@@ -64,6 +67,7 @@ export function DiscoveryFilters({
           <FilterModule label="Scope">
             <SearchPlacesScope
               label="Scope"
+              stops={DISCOVERY_SCOPE_STOPS}
               scope={filters.placesScope}
               onScope={setDiscoveryPlacesScope}
             />

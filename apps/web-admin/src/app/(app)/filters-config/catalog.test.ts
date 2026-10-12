@@ -222,30 +222,38 @@ describe("Discovery function APIs", () => {
     expect(modeReturnsEntity("map", "social")).toBe(false);
   });
 
-  it("two nested place types: Map picks the ring, Catalog and Scroll need enrichment", () => {
-    // The band IS `Google Places ⊃ Mesita Enriched Places` from
-    // nearby-places.ts, in that order. `listed` retired at MESITA-1856: a row
-    // existing is not a gate any mode runs.
-    expect(DISCOVERY_POOLS.map((p) => p.key)).toEqual(["google", "enriched"]);
+  it("three nested place types: Map picks the ring, Catalog and Scroll need enrichment", () => {
+    // The band IS `Google Places ⊃ Mesita Places ⊃ Mesita Enriched Places`
+    // from nearby-places.ts, in that order (MESITA-2158). `listed` retired at
+    // MESITA-1856: a row existing is not a gate any mode runs.
+    expect(DISCOVERY_POOLS.map((p) => p.key)).toEqual([
+      "google",
+      "mesita",
+      "enriched",
+    ]);
     expect(DISCOVERY_POOLS.map((p) => p.label)).toEqual([
       "Google Places",
+      "Mesita Places",
       "Mesita Enriched Places",
     ]);
     // Map is the one mode whose GUEST picks the ring — PlacesScope is
-    // exactly these two — and isEnrichedListedRow refuses an unenriched row
-    // in either scope.
+    // exactly these three, and admitsScopeRow cuts only the inner one to
+    // enriched rows.
     expect(modeRequiresPool("map", "google")).toBe(true);
+    expect(modeRequiresPool("map", "mesita")).toBe(true);
     expect(modeRequiresPool("map", "enriched")).toBe(true);
     // requireReady defaults true and Scroll hardcodes it, and requireReady
     // IS the Enriched gate (`enriched_at IS NOT NULL` AND `content_state =
     // 'ready'`, MESITA-2154).
     expect(modeRequiresPool("catalog", "google")).toBe(true);
+    expect(modeRequiresPool("catalog", "mesita")).toBe(true);
     expect(modeRequiresPool("catalog", "enriched")).toBe(true);
     expect(modeRequiresPool("swipe", "google")).toBe(true);
     expect(modeRequiresPool("swipe", "enriched")).toBe(true);
     // A bookmark is always a Google-sourced place, and it is NOT gated on
     // enrichment: Create stubs get bookmarked too.
     expect(modeRequiresPool("favorites", "google")).toBe(true);
+    expect(modeRequiresPool("favorites", "mesita")).toBe(false);
     expect(modeRequiresPool("favorites", "enriched")).toBe(false);
     // Word and Chat answer from whatever came back; no ring gate at all.
     for (const pool of DISCOVERY_POOLS) {
@@ -560,8 +568,8 @@ describe("Discovery page box order", () => {
     // The Nearby pull is a different number with a different owner, and it
     // lives on Search Sources, not here.
     expect(map).not.toContain("googlePull");
-    expect(map).toContain("Two nested sets");
-    expect(map).toContain("Enrichment gates the Mesita ring");
+    expect(map).toContain("Three nested sets");
+    expect(map).toContain("Enrichment gates the inner ring");
     expect(map).not.toContain("LaneMergeFunnel");
     expect(map).not.toContain("cascadeLaneCounts");
     expect(map).toContain("Closest N of the selected set");

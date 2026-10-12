@@ -19,8 +19,9 @@
 //             concatenates Autocomplete, Text Search and Mesita Places
 //             (Name on Mesita `places.name`, never `google_name`). Word
 //             never calls Nearby Search. Map loads closest N of the
-//             selected Places set — TWO NESTED SETS: Google Places ⊃
-//             Mesita Enriched Places; inner membership paints, it does not
+//             selected Places set — THREE NESTED SETS: Google Places ⊃
+//             Mesita Places ⊃ Mesita Enriched Places; inner membership
+//             paints, it does not
 //             add pins. N is the GUEST's How many, not a console knob. Chat calls Text Search, Nearby, and
 //             the two Flexible sources. Favorites calls no source, and the
 //             only ring it requires is Google Places — it is NOT gated on

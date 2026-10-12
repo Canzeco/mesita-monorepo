@@ -3,8 +3,8 @@
 // Search allowlist for guest map, admin Google Search, Create, and Name
 // Google (Fast Autocomplete + Deep Text Search) via Map floors. Nearby
 // catalog is closest N of the selected Places set — three nested sets
-// (Pato, 2026-09-05): Google Places ⊃ Mesita Enriched Places ⊃ Mesita
-// Partner Places. Inner membership paints; it does not add pins. Type batteries
+// (MESITA-2158): Google Places ⊃ Mesita Places ⊃ Mesita Enriched Places.
+// Inner membership paints; it does not add pins. Type batteries
 // ride the Google call only. Floors exclude. Name Google categories live
 // on discovery_config.name. googleFill AND googleCount > 0 gate Nearby.
 //
@@ -26,7 +26,7 @@ import {
   type SignalParamBag,
   type SignalPlace,
 } from "./discovery-signals.ts";
-import type { NearbyHit } from "./nearby-places.ts";
+import type { NearbyHit, PlacesScope } from "./nearby-places.ts";
 import {
   familiesForGoogleType,
   type EligibilityResult,
@@ -55,13 +55,23 @@ function popPlace(
   };
 }
 
-/** Stricter of global operator filters and Map floors, for the listed query. */
+/**
+ * Stricter of global operator filters and Map floors, for the listed query.
+ *
+ * `requireReady` is the Enriched gate (`enriched_at IS NOT NULL` AND
+ * `content_state = 'ready'`), and only the inner ring runs it (MESITA-2158).
+ * Mesita Places and Google Places admit Created rows, so their query drops
+ * it; the caller cuts them to `content_state = 'ready'` on its own, and
+ * {@link admitsScopeRow} re-checks every row either way.
+ */
 export function listedMapFilters(
   global: DiscoveryFilters,
   map: MapConfig,
+  scope: PlacesScope = "enriched",
 ): DiscoveryFilters {
   return {
     ...global,
+    requireReady: scope === "enriched" ? global.requireReady : false,
     minRating: Math.max(global.minRating, map.minRating),
     minReviews: Math.max(global.minReviews, map.minReviews),
   };

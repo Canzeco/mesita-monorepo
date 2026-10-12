@@ -5,17 +5,15 @@ import { TriangleAlert } from "lucide-react";
 import {
   MAP_SEARCH_STOPS,
   type MapPlacesScope,
+  type PlacesScopeStop,
 } from "@/lib/map-filters-engine";
-import {
-  MAP_GOOGLE_PIN_COLOR,
-  MAP_ENRICHED_PIN_COLOR,
-} from "@/lib/map-defaults";
+import { pinToneColor } from "./search-pins";
 import { cn } from "@/lib/utils";
 
-// Places scope — TWO NESTED SETS (Pato, 2026-09-05):
+// Places scope — THREE NESTED SETS (Pato, 2026-10-12, MESITA-2158):
 //
-//   Google Places  ⊃  Mesita Enriched Places
-//      gray                    red
+//   Google Places  ⊃  Mesita Places  ⊃  Mesita Enriched Places
+//      gray              ink                 red
 //
 // A superset chain, so the figure is CONCENTRIC RINGS (an Euler diagram),
 // not overlapping circles. The rings are the whole point of the module:
@@ -24,25 +22,36 @@ import { cn } from "@/lib/utils";
 //
 // THE FIGURE IS 28px AND SITS BESIDE THE LEGEND, not above it.
 // Selected is a FILL, not a hairline. EACH ROW CARRIES ITS COUNT.
-
-const SCOPE_COLOR: Record<MapPlacesScope, string> = {
-  mesita: MAP_ENRICHED_PIN_COLOR,
-  google: MAP_GOOGLE_PIN_COLOR,
-};
+// The fills are the pin tones themselves (`pinToneColor`), so the glyph,
+// the row dot and the map pin cannot disagree.
 
 const SCOPE_STROKE: Record<MapPlacesScope, string> = {
-  mesita: "#c4123c",
+  enriched: "#c4123c",
+  mesita: "#111111",
   google: "#6b7280",
 };
 
 const GLYPH = 28;
 const GLYPH_RADII: Record<MapPlacesScope, number> = {
   google: 12.5,
-  mesita: 7,
+  mesita: 9,
+  enriched: 5.5,
 };
 
+function widestFirst<K extends string>(
+  stops: readonly PlacesScopeStop<K>[],
+): PlacesScopeStop<K>[] {
+  return [...stops].sort((a, b) => GLYPH_RADII[b.ring] - GLYPH_RADII[a.ring]);
+}
+
 /** The chain as one 28px figure: every ring drawn, the picked one filled. */
-function ScopeGlyph({ scope }: { scope: MapPlacesScope }) {
+function ScopeGlyph<K extends string>({
+  ring,
+  stops,
+}: {
+  ring: MapPlacesScope;
+  stops: readonly PlacesScopeStop<K>[];
+}) {
   const mid = GLYPH / 2;
   return (
     <svg
@@ -52,16 +61,17 @@ function ScopeGlyph({ scope }: { scope: MapPlacesScope }) {
       viewBox={`0 0 ${GLYPH} ${GLYPH}`}
       className="shrink-0"
     >
-      {MAP_SEARCH_STOPS.map((stop) => {
-        const inside = GLYPH_RADII[stop.key] <= GLYPH_RADII[scope];
+      {/* Widest first, so each inner ring paints over the one around it. */}
+      {widestFirst(stops).map((stop) => {
+        const inside = GLYPH_RADII[stop.ring] <= GLYPH_RADII[ring];
         return (
           <circle
             key={stop.key}
             cx={mid}
             cy={mid}
-            r={GLYPH_RADII[stop.key]}
-            fill={inside ? SCOPE_COLOR[stop.key] : "none"}
-            stroke={SCOPE_STROKE[stop.key]}
+            r={GLYPH_RADII[stop.ring]}
+            fill={inside ? pinToneColor(stop.ring) : "none"}
+            stroke={SCOPE_STROKE[stop.ring]}
             strokeWidth={1}
           />
         );
@@ -70,50 +80,57 @@ function ScopeGlyph({ scope }: { scope: MapPlacesScope }) {
   );
 }
 
-export function SearchPlacesScope({
+export function SearchPlacesScope<K extends string = MapPlacesScope>({
   scope,
   onScope,
   counts,
+  stops = MAP_SEARCH_STOPS as unknown as readonly PlacesScopeStop<K>[],
   label = "Places",
 }: {
-  scope: MapPlacesScope;
-  onScope: (scope: MapPlacesScope) => void;
+  scope: K;
+  onScope: (scope: K) => void;
   /** Places each ring would show, from the catalog already in hand. */
-  counts?: Partial<Record<MapPlacesScope, number>>;
+  counts?: Partial<Record<K, number>>;
+  /** The radios, in order. The Map's three by default; Feed/Scroll pass
+   *  their own two, whose `mesita` wire word is the enriched ring. */
+  stops?: readonly PlacesScopeStop<K>[];
   /** The radiogroup's accessible name — the module label it sits under. */
   label?: string;
 }) {
   const chainId = useId();
+  const picked = stops.find((stop) => stop.key === scope) ?? stops[0]!;
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    const index = MAP_SEARCH_STOPS.findIndex((stop) => stop.key === scope);
-    const last = MAP_SEARCH_STOPS.length - 1;
+    const index = stops.findIndex((stop) => stop.key === scope);
+    const last = stops.length - 1;
     if (event.key === "ArrowDown" || event.key === "ArrowRight") {
       event.preventDefault();
-      onScope(MAP_SEARCH_STOPS[Math.min(index + 1, last)]!.key);
+      onScope(stops[Math.min(index + 1, last)]!.key);
       return;
     }
     if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
       event.preventDefault();
-      onScope(MAP_SEARCH_STOPS[Math.max(index - 1, 0)]!.key);
+      onScope(stops[Math.max(index - 1, 0)]!.key);
       return;
     }
     if (event.key === "Home") {
       event.preventDefault();
-      onScope(MAP_SEARCH_STOPS[0]!.key);
+      onScope(stops[0]!.key);
       return;
     }
     if (event.key === "End") {
       event.preventDefault();
-      onScope(MAP_SEARCH_STOPS[last]!.key);
+      onScope(stops[last]!.key);
     }
   };
 
   return (
     <>
       <div className="flex items-center gap-2.5">
-        <ScopeGlyph scope={scope} />
+        <ScopeGlyph ring={picked.ring} stops={stops} />
         <p id={chainId} className="sr-only">
-          Two nested sets: Google Places contains Mesita Enriched Places.
+          {`Nested sets: ${widestFirst(stops)
+            .map((stop) => stop.tick)
+            .join(" contains ")}.`}
         </p>
         <div
           role="radiogroup"
@@ -123,7 +140,7 @@ export function SearchPlacesScope({
           onKeyDown={onKeyDown}
           className="flex min-w-0 flex-1 flex-col gap-1"
         >
-          {MAP_SEARCH_STOPS.map((stop) => {
+          {stops.map((stop) => {
             const active = scope === stop.key;
             const count = counts?.[stop.key];
             return (
@@ -147,8 +164,10 @@ export function SearchPlacesScope({
                   aria-hidden
                   className="inline-block size-2 shrink-0 rounded-full"
                   style={{
-                    backgroundColor: SCOPE_COLOR[stop.key],
-                    outline: `1px solid ${SCOPE_STROKE[stop.key]}`,
+                    backgroundColor: pinToneColor(stop.ring),
+                    // On the filled (ink) active row, a paper hairline keeps
+                    // the ink dot visible.
+                    outline: `1px solid ${active ? "#ffffff" : SCOPE_STROKE[stop.ring]}`,
                   }}
                 />
                 <span className="min-w-0 flex-1 truncate text-left">
@@ -164,7 +183,7 @@ export function SearchPlacesScope({
           })}
         </div>
       </div>
-      {scope === "google" ? (
+      {picked.ring === "google" ? (
         <p
           role="note"
           className="mt-2 flex items-start gap-1.5 rounded-xl bg-muted px-2.5 py-2 type-body text-foreground ring-1 ring-foreground"

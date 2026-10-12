@@ -1,15 +1,14 @@
 "use client";
 
-// Map hyperparameters — live. Places scope picks one of TWO NESTED SETS:
-// Google Places ⊃ Mesita Enriched Places. Closest N of that set; inner
-// membership paints, it does not add pins. Google types live on the Search
-// Sources subpage.
+// Map hyperparameters — live. Places scope picks one of THREE NESTED SETS
+// (MESITA-2158): Google Places ⊃ Mesita Places ⊃ Mesita Enriched Places.
+// Closest N of that set; inner membership paints, it does not add pins.
+// Google types live on the Search Sources subpage.
 //
-// MESITA PLACES MEANS CREATED **AND** ENRICHED (Pato, 2026-08-29) — the
-// honest name is Mesita Enriched Places, shortened on the guest's sheet.
-// A Created or Requested stub is not a search source. The console must
-// say so: an operator reading "Mesita Places" would otherwise price the
-// set at every row in the table.
+// MESITA PLACES IS EVERY READY PROFILE, Created ones included; Mesita
+// Enriched Places is the ones an Enrich run completed. The console must
+// say which is which: an operator reading "Mesita Places" would otherwise
+// price the enriched set at every row in the table, or the reverse.
 //
 // HOW MANY PINS CAME BACK HERE (Pato, 2026-09-08: "remove filters from
 // search. like those filters are controlled in admin console, not in
@@ -84,17 +83,19 @@ export function MapConfigClient({
             Places sets
           </p>
           <p className="text-muted-foreground mb-1.5 type-meta">
-            Two nested sets: Google Places &sup; Mesita Enriched Places. The
-            guest picks one on the Filters sheet, by name.
+            Three nested sets: Google Places &sup; Mesita Places &sup; Mesita
+            Enriched Places. The guest picks one on the Filters sheet, by
+            name.
           </p>
           <p className="text-muted-foreground type-meta">
             <span className="text-foreground font-semibold">
-              Enrichment gates the Mesita ring
+              Enrichment gates the inner ring
             </span>{" "}
-            — a place reads gray until an Enrich run completes. A Created
-            or Requested place is never a search source; on the Google ring
-            it shows gray in its Google hit&apos;s slot. Absent or unknown
-            scope resolves to Mesita Enriched Places.
+            — Mesita Places is every listed place whose profile is ready, and
+            a Created place there reads ink until an Enrich run completes and
+            turns it red. A profile that cannot be shown now is never a
+            search source. Absent or unknown scope on the wire resolves to
+            Mesita Places.
           </p>
         </div>
         <div className="mt-5">

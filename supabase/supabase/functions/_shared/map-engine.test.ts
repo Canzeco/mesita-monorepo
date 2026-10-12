@@ -88,6 +88,20 @@ Deno.test("listed Map filters take the stricter of global filters and Map floors
   );
 });
 
+Deno.test("listed Map filters: only the Enriched ring runs the Enriched gate (MESITA-2158)", () => {
+  const global = { ...DISCOVERY_DEFAULTS.filters, requireReady: true };
+  assertEquals(listedMapFilters(global, MAP).requireReady, true);
+  assertEquals(listedMapFilters(global, MAP, "enriched").requireReady, true);
+  assertEquals(listedMapFilters(global, MAP, "mesita").requireReady, false);
+  assertEquals(listedMapFilters(global, MAP, "google").requireReady, false);
+  // An operator who switched the gate off keeps it off on the inner ring too.
+  assertEquals(
+    listedMapFilters({ ...global, requireReady: false }, MAP, "enriched")
+      .requireReady,
+    false,
+  );
+});
+
 Deno.test("unrated Google stubs drop when a rating or popularity floor is on", () => {
   const rated = { ...MAP, minRating: 3.5 };
   assertEquals(googleHitClearsMapFloors(hit({ rating: null }), rated), false);

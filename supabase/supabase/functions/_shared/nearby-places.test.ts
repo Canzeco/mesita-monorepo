@@ -9,7 +9,9 @@ import {
   GOOGLE_NEARBY_MAX,
   nearbyCallCount,
   parsePlacesScope,
+  admitsScopeRow,
   isEnrichedListedRow,
+  isMesitaListedRow,
   lanesForPlacesScope,
   mergeNearbyCatalog,
   peekCachedNearbyPlaces,
@@ -111,7 +113,7 @@ Deno.test("mergeNearbyCatalog: drops bbox-corner rows past the 50 km circle", ()
 });
 
 Deno.test("mergeNearbyCatalog: closest-N only — the ring cut happens upstream", () => {
-  // The Places ring is applied by isEnrichedListedRow BEFORE the merge, so
+  // The Places ring is applied by admitsScopeRow BEFORE the merge, so
   // this function stays a pure closest-N: the closest rows handed to it win.
   const mesita = [
     { id: "np-close", google_place_id: "np", lat: 25.67005, lng: -100.30005 },
@@ -568,7 +570,7 @@ Deno.test("searchNearbyPlaces: isolate budget skip does not call beforeFanout", 
   }
 });
 
-Deno.test("places scope: two nested sets, named on the wire, Mesita by default", () => {
+Deno.test("places scope: three nested sets, named on the wire, Mesita by default", () => {
   // The absent value is the one that matters most: any caller that posts no
   // scope lands on it, so it must be the Mesita set, never a paid call.
   assertEquals(parsePlacesScope(undefined), "mesita");
@@ -581,6 +583,7 @@ Deno.test("places scope: two nested sets, named on the wire, Mesita by default",
   assertEquals(parsePlacesScope("partners"), "mesita");
   assertEquals(parsePlacesScope("MESITA"), "mesita");
   assertEquals(parsePlacesScope(" google "), "google");
+  assertEquals(parsePlacesScope(" Enriched "), "enriched");
   // Legacy ordinals keep their OLD shipped meanings, so a client deployed
   // before this EF still gets the set it asked for during the skew window.
   assertEquals(parsePlacesScope(1), "mesita");
@@ -590,6 +593,7 @@ Deno.test("places scope: two nested sets, named on the wire, Mesita by default",
 
   // Lane caps are the GUEST's How many, never a console knob. Only the
   // Google ring opens the Google lane — the Mesita ring never does.
+  assertEquals(lanesForPlacesScope("enriched", 20), { mesitaCount: 20, googleCount: 0 });
   assertEquals(lanesForPlacesScope("mesita", 20), { mesitaCount: 20, googleCount: 0 });
   assertEquals(lanesForPlacesScope("google", 20), { mesitaCount: 20, googleCount: 20 });
   // Google's own Nearby call tops out at 20 however large How many is.
@@ -605,6 +609,76 @@ Deno.test("places scope: two nested sets, named on the wire, Mesita by default",
   assertEquals(isEnrichedListedRow(created), false);
   assertEquals(isEnrichedListedRow({ enriched_at: null }), false);
   assertEquals(isEnrichedListedRow({}), false);
+});
+
+// ── Three rings admit nested Mesita rows (MESITA-2158) ─────────────────────
+
+const ENRICHED_ROW = { content_state: "ready", enriched_at: "2026-08-01T00:00:00Z" };
+const CREATED_ROW = { content_state: "ready", enriched_at: null };
+const MID_REENRICH_ROW = {
+  content_state: "generating",
+  enriched_at: "2026-08-01T00:00:00Z",
+};
+const SCOPES = ["enriched", "mesita", "google"] as const;
+
+Deno.test("admitsScopeRow: a Created place is in Mesita Places, never in Mesita Enriched Places", () => {
+  assertEquals(isMesitaListedRow(CREATED_ROW), true);
+  assertEquals(admitsScopeRow("enriched", CREATED_ROW), false);
+  assertEquals(admitsScopeRow("mesita", CREATED_ROW), true);
+  assertEquals(admitsScopeRow("google", CREATED_ROW), true);
+});
+
+Deno.test("admitsScopeRow: an enriched place is in all three rings", () => {
+  for (const scope of SCOPES) {
+    assertEquals(admitsScopeRow(scope, ENRICHED_ROW), true, scope);
+  }
+});
+
+Deno.test("admitsScopeRow: a profile that cannot be shown now is in no Mesita ring", () => {
+  // Enriched but mid re-enrich: the Enriched gate's ready half, on every ring.
+  for (const scope of SCOPES) {
+    assertEquals(admitsScopeRow(scope, MID_REENRICH_ROW), false, scope);
+    assertEquals(admitsScopeRow(scope, { enriched_at: null }), false, scope);
+  }
+});
+
+Deno.test("admitsScopeRow: the rings nest — enriched ⊆ mesita ⊆ google", () => {
+  const rows = [
+    ENRICHED_ROW,
+    CREATED_ROW,
+    MID_REENRICH_ROW,
+    { content_state: "failed", enriched_at: null },
+    {},
+  ];
+  const count = (scope: (typeof SCOPES)[number]) =>
+    rows.filter((row) => admitsScopeRow(scope, row)).length;
+  for (const row of rows) {
+    if (admitsScopeRow("enriched", row)) {
+      assertEquals(admitsScopeRow("mesita", row), true);
+    }
+    // Google keeps exactly the Mesita ring's rows; it only adds Google hits.
+    assertEquals(admitsScopeRow("google", row), admitsScopeRow("mesita", row));
+  }
+  assertEquals([count("enriched"), count("mesita"), count("google")], [1, 2, 2]);
+});
+
+Deno.test("claimOwnedHits: on the Google ring a Created row is a ring row, never a stub", () => {
+  const hits = [nearbyHit("gid-created", 25.6701, -100.3001)];
+  const created = {
+    id: "c",
+    google_place_id: "gid-created",
+    lat: 25.6701,
+    lng: -100.3001,
+    ...CREATED_ROW,
+  };
+  const ring = [created].filter((row) => admitsScopeRow("google", row));
+  const claim = claimOwnedHits(hits, [created], ring);
+  assertEquals(claim.hits.map((hit) => hit.placeId), ["gid-created"]);
+  assertEquals(claim.paintByGid.size, 0);
+  // Merge pairs it with the row; were it unpaired it drops, never a stub.
+  assertEquals(resolveGoogleItem(hits[0]!, claim).kind, "drop");
+  const merged = mergeNearbyCatalog(ring, hits, CENTER, lanesForPlacesScope("google", 20));
+  assertEquals(merged.map((item) => item.kind), ["listed"]);
 });
 
 // ── Owned hits never go out as stubs (MESITA-2154) ──────────────────────────
@@ -930,4 +1004,19 @@ Deno.test("searchNearbyPlaces: a mid-pull quota denial truncates, keeps, and doe
     globalThis.fetch = orig;
     __resetNearbyGoogleCacheForTests();
   }
+});
+
+Deno.test("list-places admits every Mesita row through the scope, on the scoped filters (MESITA-2158)", async () => {
+  const src = await Deno.readTextFile(
+    new URL("../consumer-web-list-places/index.ts", import.meta.url),
+  );
+  // The scan, the owned-gid pick and the extra query all ask the one rule.
+  assertEquals(src.split("admitsScopeRow(placesScope, row)").length - 1, 3);
+  assertEquals(src.includes("isEnrichedListedRow("), false);
+  // The Enriched gate binds the inner ring only; the ready half binds all.
+  assertEquals(
+    src.includes("listedMapFilters(cfg.filters, cfg.map, placesScope)"),
+    true,
+  );
+  assertEquals(src.split("readyOnMap(applyGeneralGateQuery(").length - 1, 2);
 });

@@ -18,11 +18,35 @@
 // Predicates CUT, signals RANK, and a predicate cuts first.
 
 import type { Place } from "@/lib/api/places";
+import type { PlacesScopeStop } from "@/lib/map-filters-engine";
 import { type FamilyKey } from "@/lib/place-families";
 
 export type DiscoveryPlacesScope = "mesita" | "google";
 
 const DISCOVERY_PLACES_SCOPE_DEFAULT: DiscoveryPlacesScope = "mesita";
+
+/**
+ * This sheet's two radios, narrowest first. Its `mesita` is the ENRICHED
+ * ring — Feed/Scroll's pool is the Enriched gate — so the dot and glyph
+ * paint it red. The Map's own Mesita Places ring (MESITA-2158) is not a
+ * set this pool can hold, so it is not offered here.
+ */
+export const DISCOVERY_SCOPE_STOPS = [
+  {
+    key: "mesita",
+    ring: "enriched",
+    tick: "Mesita Enriched Places",
+    label: "Mesita Enriched Places",
+    hint: "Mesita Enriched Places only",
+  },
+  {
+    key: "google",
+    ring: "google",
+    tick: "Google Places",
+    label: "Google Places",
+    hint: "Google Places, Mesita places included",
+  },
+] as const satisfies readonly PlacesScopeStop<DiscoveryPlacesScope>[];
 
 export const DISCOVERY_REVIEW_STOPS = [0, 10, 100, 1000, 10000] as const;
 export type DiscoveryReviewFloor = (typeof DISCOVERY_REVIEW_STOPS)[number];

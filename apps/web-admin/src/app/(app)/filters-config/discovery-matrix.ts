@@ -97,14 +97,16 @@ const DISCOVERY_MODE_ENTITIES: Record<
 };
 
 /**
- * THE TWO NESTED PLACE TYPES, in the code's own words: `nearby-places.ts`
- * opens with `Google Places ⊃ Mesita Enriched Places`, and
- * `PlacesScope = "mesita" | "google"` IS this band. `Mesita Listed` retired
- * at MESITA-1856: listing is a row existing, which no mode gates on —
- * enrichment is the gate every mode actually runs.
+ * THE THREE NESTED PLACE TYPES, in the code's own words: `nearby-places.ts`
+ * opens with `Google Places ⊃ Mesita Places ⊃ Mesita Enriched Places`, and
+ * `PlacesScope = "enriched" | "mesita" | "google"` IS this band
+ * (MESITA-2158). Mesita Places is a listed row whose profile can be shown
+ * now, Created ones included; `Mesita Listed` (a row existing, MESITA-1856)
+ * stays retired, because the ready profile is what Map gates on.
  */
 export const DISCOVERY_POOLS = [
   { key: "google", label: "Google Places" },
+  { key: "mesita", label: "Mesita Places" },
   { key: "enriched", label: "Mesita Enriched Places" },
 ] as const;
 
@@ -116,17 +118,18 @@ export type DiscoveryPoolKey = (typeof DISCOVERY_POOLS)[number]["key"];
  * Relabelling alone would have left rows dead for every mode, so the mapping
  * moved with the labels (MESITA-1856):
  *
- *   Map        both — it is the one mode whose GUEST picks the ring, and
- *              `isEnrichedListedRow` refuses an unenriched row in either
- *              scope, so Enriched is Map's Mesita ring.
- *   Catalog    Google + Enriched. `filters.requireReady` defaults true and
+ *   Map        all three — it is the one mode whose GUEST picks the ring;
+ *              `admitsScopeRow` admits a ready row on Mesita and Google
+ *              and cuts the Enriched ring to `enriched_at` set (MESITA-2158).
+ *   Catalog    all three, because Enriched sits inside the other two.
+ *              `filters.requireReady` defaults true and
  *   Swipe      Scroll hardcodes it; requireReady IS the Enriched gate —
  *              discovery-filters turns it into `enriched_at IS NOT NULL`
  *              AND `content_state = 'ready'` (MESITA-2154; it was the
  *              ready check alone, which every Created place also carries).
  *   Favorites  Google alone: a bookmark is always a Google-sourced place,
- *              and it is NOT gated on enrichment — bookmarks may include
- *              unenriched Created places.
+ *              and it is NOT gated on enrichment or on a ready profile —
+ *              bookmarks may include unenriched Created places.
  *   Word, Chat no ring gate at all; they answer from whatever came back.
  */
 const DISCOVERY_MODE_POOLS: Record<
@@ -134,9 +137,9 @@ const DISCOVERY_MODE_POOLS: Record<
   readonly DiscoveryPoolKey[]
 > = {
   word: [],
-  map: ["google", "enriched"],
-  catalog: ["google", "enriched"],
-  swipe: ["google", "enriched"],
+  map: ["google", "mesita", "enriched"],
+  catalog: ["google", "mesita", "enriched"],
+  swipe: ["google", "mesita", "enriched"],
   chat: [],
   favorites: ["google"],
 };

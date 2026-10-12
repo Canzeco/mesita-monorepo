@@ -158,9 +158,9 @@ export type SuperParamKey = (typeof SUPER_PARAM_KEYS)[number];
 
 /**
  * Map pool policy. Closest N of the selected Places set, then paint.
- * TWO NESTED SETS:
- *   Google Places ⊃ Mesita Enriched Places
- * Enrichment gates the Mesita ring. N is `pinCount`, an OPERATOR number since
+ * THREE NESTED SETS (MESITA-2158):
+ *   Google Places ⊃ Mesita Places ⊃ Mesita Enriched Places
+ * Enrichment gates only the inner ring. N is `pinCount`, an OPERATOR number since
  * MESITA-1699 — the guest's Filters sheet is gone and its three controls
  * live here and on Search Sources. Floors still exclude; 0 = off.
  */
@@ -602,7 +602,7 @@ export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
   /**
    * `requireReady` (the Enriched gate) ships ON because it is already the
    * shipped behaviour — MESITA-1228 hardcoded it into Map and Swipe, and the
-   * product promise is that Swipe, Catalog and the Mesita ring hold only
+   * product promise is that Swipe, Catalog and the Enriched ring hold only
    * Enriched places (MESITA-2154 made the predicate match the promise).
    *
    * The quality floors ship OFF. Popularity already DEMOTES a weak place, and
