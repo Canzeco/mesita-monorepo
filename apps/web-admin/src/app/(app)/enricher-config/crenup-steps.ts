@@ -83,7 +83,7 @@ function chip(s: CrenupStepSpec, base: string): CrenupChip {
 }
 
 /** `base` is the page that holds Functions — empty when it is this page.
- *  Intake holds both flows and the ladder, so its chips pass none. */
+ *  Creation's chips point across at Enrichment, where the ladder lives. */
 export function chipsFor(flow: CrenupFlow, base = ""): CrenupChip[] {
   return CRENUP_STEP_SPECS.filter((s) => s.flows.includes(flow)).map((s) =>
     chip(s, base),
