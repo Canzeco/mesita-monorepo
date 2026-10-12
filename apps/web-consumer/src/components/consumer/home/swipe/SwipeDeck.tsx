@@ -10,6 +10,7 @@ import { apiRecommendDeck, type Place } from "@/lib/api/places";
 import { upsertSavedPlacePreview, useSavedPlaces } from "@/lib/saved-places";
 import { toast } from "@/lib/toast";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
+import { trackEvent } from "@/lib/analytics/track";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { placeHref } from "@/lib/place-route";
 import { isReserveActionEnabled } from "@/lib/place-profile-actions";
@@ -391,6 +392,12 @@ function Deck({ places }: { places: Place[] }) {
         upsertSavedPlacePreview(v);
         setSaved(v.id, true);
         if (!alreadySaved) {
+          // The funnel's save series — Scroll fired it until it left the
+          // rail (MESITA-2163); Swipe is the only deck now.
+          trackEvent(supabase, "home_card_save", {
+            mode: "swipe",
+            place_id: v.id,
+          });
           // No "View" action while Favorites is parked (2026-09-01) — same
           // reasoning as the place detail's Save toast. It pushed
           // CONSUMER_ROUTES.favorites, and that route left with the /home
@@ -405,7 +412,7 @@ function Deck({ places }: { places: Place[] }) {
     },
     // `router` left this list with the Saved toast's "View" action — the
     // callback no longer navigates. It is still used elsewhere in the file.
-    [isSaved, releaseCapture, resetGesture, setSaved, v],
+    [isSaved, releaseCapture, resetGesture, setSaved, supabase, v],
   );
 
   const isForeignPointer = useCallback((pointerId: number) => {
@@ -735,7 +742,18 @@ function Deck({ places }: { places: Place[] }) {
           onOpenInfo={openInfo}
           onSave={save}
           onReserve={
-            isReserveActionEnabled(v) ? () => setReserveOpen(true) : null
+            isReserveActionEnabled(v)
+              ? () => {
+                  // Reserve is the conversion intent; the event name predates
+                  // it and stays, so the funnel keeps one series.
+                  trackEvent(supabase, "home_card_open", {
+                    mode: "swipe",
+                    place_id: v.id,
+                    position: idx,
+                  });
+                  setReserveOpen(true);
+                }
+              : null
           }
         />
       </div>

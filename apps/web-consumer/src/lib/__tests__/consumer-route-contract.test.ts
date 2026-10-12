@@ -95,14 +95,12 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // moved to /discover precisely so each typed mode could be a real
       // segment.
       discover: "/discover",
-      // Home's four pills (MESITA-2142). Feed is OFF the rail, so its
+      // Home's two pills (MESITA-2163). Feed is OFF the rail, so its
       // address is in the legacy block instead — a page and a redirect for
       // one path cannot coexist, so a `feed` key here and
       // `legacy.discoverFeed` must never both appear.
       discoverTabs: {
         swipe: "/discover/swipe",
-        scroll: "/discover/scroll",
-        chat: "/discover/chat",
         favs: "/discover/favs",
       },
       // Default IS the first pill (MESITA-1609/1615); Swipe leads since
@@ -136,6 +134,8 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         discoverMap: "/discover/map",
         discoverHome: "/discover/home",
         discoverCatalog: "/discover/catalog",
+        discoverScroll: "/discover/scroll",
+        discoverChat: "/discover/chat",
         // The Second Stage tab and everything under it. All land on `pay`.
         newVisit: "/new-visit",
         newVisitWallet: "/new-visit/wallet",
@@ -296,8 +296,7 @@ describe("isModalContractPath (intercepted detail overlays)", () => {
   const notModal = [
     "/",
     "/onboard",
-    "/discover/scroll",
-    "/discover/chat",
+    "/discover/swipe",
     "/discover/favs",
     "/search",
     "/pay",
@@ -334,10 +333,10 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
     const redirects = LEGACY_REDIRECTS;
     expect(redirects).toEqual([
       // Explore era (pre-Home). Straight to the Discover default.
-      { source: "/explore", destination: "/discover/scroll", permanent: true },
-      { source: "/explore/swipe", destination: "/discover/scroll", permanent: true },
-      { source: "/explore/map", destination: "/discover/scroll", permanent: true },
-      { source: "/explore/add", destination: "/discover/scroll", permanent: true },
+      { source: "/explore", destination: "/discover/swipe", permanent: true },
+      { source: "/explore/swipe", destination: "/discover/swipe", permanent: true },
+      { source: "/explore/map", destination: "/discover/swipe", permanent: true },
+      { source: "/explore/add", destination: "/discover/swipe", permanent: true },
       { source: "/explore/place/:id", destination: "/place/:id", permanent: true },
       // THE SECOND STAGE (MESITA-2087): every address that hung off the
       // centre tab lands on Pay in ONE hop. Deepest sources first.
@@ -362,7 +361,7 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       // need an entry or they 404.
       { source: "/subscribe", destination: "/me", permanent: true },
       { source: "/subscribe/:plan", destination: "/me", permanent: true },
-      { source: "/get-the-app", destination: "/discover/scroll", permanent: true },
+      { source: "/get-the-app", destination: "/discover/swipe", permanent: true },
       { source: "/me/class/invite", destination: "/me", permanent: true },
       { source: "/me/class", destination: "/me", permanent: true },
       { source: "/me/diamond/invite", destination: "/me", permanent: true },
@@ -375,22 +374,25 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       // The retired Home hub (2026-09-01). Every leaf 308s straight to the
       // Discover default — never through /discover/map or /discover/search,
       // which are themselves 308s below.
-      { source: "/home", destination: "/discover/scroll", permanent: true },
-      { source: "/home/swipe", destination: "/discover/scroll", permanent: true },
-      { source: "/home/catalog", destination: "/discover/scroll", permanent: true },
-      { source: "/home/chat", destination: "/discover/scroll", permanent: true },
-      { source: "/home/ai", destination: "/discover/scroll", permanent: true },
-      { source: "/home/social", destination: "/discover/scroll", permanent: true },
-      { source: "/home/favorites", destination: "/discover/scroll", permanent: true },
+      { source: "/home", destination: "/discover/swipe", permanent: true },
+      { source: "/home/swipe", destination: "/discover/swipe", permanent: true },
+      { source: "/home/catalog", destination: "/discover/swipe", permanent: true },
+      { source: "/home/chat", destination: "/discover/swipe", permanent: true },
+      { source: "/home/ai", destination: "/discover/swipe", permanent: true },
+      { source: "/home/social", destination: "/discover/swipe", permanent: true },
+      { source: "/home/favorites", destination: "/discover/swipe", permanent: true },
       // Search's two addresses under /discover (MESITA-1609 → 1616).
       { source: "/discover/search", destination: "/search", permanent: true },
       { source: "/discover/map", destination: "/search", permanent: true },
       // Catalog's day as Home, Swipe's week as the default, Catalog's own
       // segment (MESITA-1697), and Catalog's /discover/feed itself, off the
-      // rail again (MESITA-2140). All land on Scroll, the default pill.
-      { source: "/discover/home", destination: "/discover/scroll", permanent: true },
-      { source: "/discover/catalog", destination: "/discover/scroll", permanent: true },
-      { source: "/discover/feed", destination: "/discover/scroll", permanent: true },
+      // rail again (MESITA-2140). All land on Swipe, the default pill.
+      { source: "/discover/home", destination: "/discover/swipe", permanent: true },
+      { source: "/discover/catalog", destination: "/discover/swipe", permanent: true },
+      { source: "/discover/feed", destination: "/discover/swipe", permanent: true },
+      // Scroll and Chat, off the rail (MESITA-2163).
+      { source: "/discover/scroll", destination: "/discover/swipe", permanent: true },
+      { source: "/discover/chat", destination: "/discover/swipe", permanent: true },
       // The Saved tab and the /saved/place dual path (MESITA-1585).
       { source: "/saved", destination: "/me", permanent: true },
       { source: "/saved/reservations", destination: "/me/reservations", permanent: true },
@@ -406,7 +408,7 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
   });
 
   // Redirects that carry logic stay as server pages (not in next.config):
-  //   /discover          → /discover/scroll    (default pill)
+  //   /discover          → /discover/swipe     (default pill)
   //   /me/[tab]          → /me (+ query)       (retired one-segment boxes)
   //   /reservations      → /me/reservations    (the list's old tab route)
   // Their targets are pinned via CONSUMER_ROUTES above; the pages themselves
@@ -431,7 +433,7 @@ describe("middleware auth wall (shouldGate)", () => {
   // Only "/" and "/onboard" are reachable signed-out.
   const ungatedAtMiddleware = [
     "/",
-    "/discover/scroll",
+    "/discover/swipe",
     "/discover/favs",
     "/search",
     "/place/abc",
