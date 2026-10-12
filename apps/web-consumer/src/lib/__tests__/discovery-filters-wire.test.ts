@@ -5,7 +5,6 @@ import {
 } from "@/lib/discovery-filters-engine";
 import {
   deckRequestKey,
-  toDeckRequest,
   UNFILTERED_DECK_KEY,
 } from "@/lib/discovery-filters-wire";
 
@@ -14,34 +13,6 @@ function filters(over: Partial<DiscoveryFilters> = {}): DiscoveryFilters {
 }
 
 const HERE = { lat: 19.4326, lng: -99.1332 };
-
-describe("toDeckRequest", () => {
-  it("sends no predicates when nothing narrows", () => {
-    expect(toDeckRequest(filters(), null, 50)).toEqual({ limit: 50 });
-  });
-
-  it("still ships coordinates when location is connected, even with no cut", () => {
-    expect(toDeckRequest(filters(), HERE, 50)).toEqual({
-      limit: 50,
-      lat: HERE.lat,
-      lng: HERE.lng,
-    });
-  });
-
-  it("carries Family, scope, and review floor once any of them narrows", () => {
-    const req = toDeckRequest(
-      filters({ familyKeys: ["restaurants"], minReviews: 100 }),
-      HERE,
-      50,
-    );
-    expect(req.predicates).toEqual({
-      familyKeys: ["restaurants"],
-      placesScope: "mesita",
-      minReviews: 100,
-    });
-    expect(req.lat).toBe(HERE.lat);
-  });
-});
 
 describe("deckRequestKey", () => {
   it("collapses to the unfiltered key when nothing narrows and there is no fix", () => {

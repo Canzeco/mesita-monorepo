@@ -13,13 +13,6 @@ export type DiscoveryPredicatesWire = {
 
 type DeckCenter = { lat: number; lng: number } | null;
 
-type DeckRequest = {
-  limit: number;
-  lat?: number;
-  lng?: number;
-  predicates?: DiscoveryPredicatesWire;
-};
-
 export function toDiscoveryPredicatesWire(
   f: DiscoveryFilters,
 ): DiscoveryPredicatesWire {
@@ -27,24 +20,6 @@ export function toDiscoveryPredicatesWire(
     familyKeys: [...f.familyKeys],
     placesScope: f.placesScope,
     minReviews: f.minReviews,
-  };
-}
-
-export function toDeckRequest(
-  f: DiscoveryFilters,
-  center: DeckCenter,
-  limit: number,
-): DeckRequest {
-  if (!hasDiscoveryPredicates(f)) {
-    return {
-      limit,
-      ...(center ? { lat: center.lat, lng: center.lng } : {}),
-    };
-  }
-  return {
-    limit,
-    ...(center ? { lat: center.lat, lng: center.lng } : {}),
-    predicates: toDiscoveryPredicatesWire(f),
   };
 }
 

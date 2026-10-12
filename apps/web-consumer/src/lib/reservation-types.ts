@@ -11,7 +11,7 @@ export type ReservationState =
   | "cancelled"
   | "failed";
 
-export type ReservationAlternative = {
+type ReservationAlternative = {
   time: string;
   date?: string;
   note?: string;
