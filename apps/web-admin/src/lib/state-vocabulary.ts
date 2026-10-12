@@ -77,10 +77,6 @@ export const GENERAL_STATE_FACTS = [
 
 export type GeneralStateKey = (typeof GENERAL_STATE_FACTS)[number]["key"];
 
-/** The two groups the Single Place boxes print. */
-export const GENERAL_STATES = GENERAL_STATE_FACTS.slice(0, 3);
-export const ENRICHMENT_STATES = GENERAL_STATE_FACTS.slice(3);
-
 /** Facts where `true` is the problem: a Disabled place is switched off. The
  *  tables draw them rose when true and green when false. */
 export const BAD_WHEN_TRUE: ReadonlySet<GeneralStateKey> = new Set(["disabled"]);
@@ -108,9 +104,6 @@ export const CRENUP_STEPS = [
 ] as const;
 
 export type CrenupStepKey = (typeof CRENUP_STEPS)[number]["key"];
-
-export const GENERAL_STATE_COUNT = GENERAL_STATE_FACTS.length;
-export const CRENUP_STEP_COUNT = CRENUP_STEPS.length;
 
 /** Operator label: `0. Seed` … `8. Embedding`. */
 export function crenupStepLabel(n: number, label: string): string {

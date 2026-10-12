@@ -2,15 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Loader2 } from "lucide-react";
+import { INPUT_BASE } from "@/components/admin-ui/manage";
 import { listPlaceTagCatalog, type PlaceCategoryOption } from "./actions";
 
 // Atlas category picker for Manage Single Place Basics (MESITA-469).
 // Catalog from admin-web-get-atlas-fields — same source the tags picker uses.
-
-const INPUT_BASE =
-  "w-full rounded-xl border border-border/60 bg-muted/60 text-sm outline-none transition " +
-  "placeholder:text-muted-foreground/50 focus:border-ring/60 focus:bg-card focus:ring-4 " +
-  "focus:ring-ring/10 disabled:opacity-50";
 
 export function PlaceCategorySelect({
   value,

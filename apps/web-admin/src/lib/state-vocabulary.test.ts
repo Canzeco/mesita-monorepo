@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BAD_WHEN_TRUE,
-  ENRICHMENT_STATES,
-  GENERAL_STATE_COUNT,
   GENERAL_STATE_FACTS,
-  GENERAL_STATES,
-  CRENUP_STEP_COUNT,
   CRENUP_STEPS,
   crenupStepLabel,
   STATE_FACT_FALSE_TONE,
@@ -19,22 +15,10 @@ describe("state vocabulary", () => {
     // The MVP First Stage cut the commercial facts: Verified (MESITA-2106),
     // then Owned · Partnered · Rewards · Mesita Pay · Mesita Credits
     // (MESITA-2115).
-    expect(GENERAL_STATE_COUNT).toBe(6);
-    expect(CRENUP_STEP_COUNT).toBe(9);
     expect(GENERAL_STATE_FACTS.map((f) => f.label)).toEqual([
       "Created",
       "Pulsing",
       "Disabled",
-      "Requested",
-      "Enriching",
-      "Enriched",
-    ]);
-    expect(GENERAL_STATES.map((f) => f.label)).toEqual([
-      "Created",
-      "Pulsing",
-      "Disabled",
-    ]);
-    expect(ENRICHMENT_STATES.map((f) => f.label)).toEqual([
       "Requested",
       "Enriching",
       "Enriched",

@@ -1,5 +1,7 @@
 "use server";
 
+import type { CrenupBlock } from "@/app/(app)/manage-multiple/actions";
+import type { MenuNutrition } from "@/lib/nutrition";
 import { efInvoke } from "@/lib/supabase-ef";
 
 // ════════════════════════════════════════════════════════════════════════
@@ -26,29 +28,12 @@ type Result<T> =
 
 // ── Place load ───────────────────────────────────────────────────────────
 
-/**
- * Why the enrichment queue stopped, straight off `crenupBlockedAt` in
- * `_shared/crenup-ladder.ts`. `failed` = the function ran and could not do its
- * job; `missing` = it has no event yet. Both admin EFs ship it beside the
- * number, because the number alone cannot tell those two apart at 0.
- */
-export type CrenupBlock = {
-  key: string;
-  index: number;
-  state: "failed" | "missing";
-};
-
 // One menu / catalog entry under products.menu (and legacy menus).
 export type AdminMenuItem = {
   name?: string | null;
   url?: string | null;
   items?: unknown[] | null;
-  nutrition?: {
-    kcal: number;
-    proteinG: number;
-    carbsG: number;
-    fatG: number;
-  } | null;
+  nutrition?: MenuNutrition | null;
 };
 
 // The full place row, loaded for a super-admin via admin-web-get-overview.
@@ -374,26 +359,4 @@ export async function getPlaceEnrichment(
     ok: true,
     data: { state: r.data.state ?? null },
   };
-}
-// Which slice of the Enricher pipeline a manual re-enrich re-runs:
-//   full     → research + analysis + contents (fresh gather; refreshes phone)
-//   analysis → analysis + contents, reusing stored gathered (no re-gather)
-//   contents → contents only, reusing stored gathered + analysis (cheapest)
-// The lighter modes need a prior full run; the EF rejects (422) otherwise.
-export type ReenrichMode = "full" | "analysis" | "contents";
-
-// Manually re-run the Enricher pipeline for one place. Re-seeds place_research
-// to the stage implied by `mode`; the cron poller takes it from there. Runs
-// ASYNC — poll getPlaceEnrichment to watch progress.
-export async function enrichPlace(
-  placeId: string,
-  mode: ReenrichMode = "full",
-): Promise<Result<true>> {
-  // Wire key stays `projectId` — admin-web-enrich-place's MESITA-26 alias.
-  const r = await efInvoke<{ enrichmentTriggered: boolean }>(
-    "admin-web-enrich-place",
-    { projectId: placeId, mode },
-  );
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: true };
 }

@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { Sparkles } from "lucide-react";
+import { enrichPlace } from "@/app/(app)/manage-multiple/actions";
 import {
-  enrichPlace,
   getPlaceEnrichment,
   type AdminPlace,
   type PlaceEnrichmentState,
