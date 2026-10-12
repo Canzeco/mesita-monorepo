@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  BAD_WHEN_TRUE,
+  ENRICHMENT_STATES,
   GENERAL_STATE_COUNT,
   GENERAL_STATE_FACTS,
+  GENERAL_STATES,
   CRENUP_STEP_COUNT,
   CRENUP_STEPS,
   crenupStepLabel,
@@ -20,12 +23,23 @@ describe("state vocabulary", () => {
     expect(CRENUP_STEP_COUNT).toBe(9);
     expect(GENERAL_STATE_FACTS.map((f) => f.label)).toEqual([
       "Created",
-      "Active",
-      "Listed",
+      "Pulsing",
+      "Disabled",
       "Requested",
       "Enriching",
       "Enriched",
     ]);
+    expect(GENERAL_STATES.map((f) => f.label)).toEqual([
+      "Created",
+      "Pulsing",
+      "Disabled",
+    ]);
+    expect(ENRICHMENT_STATES.map((f) => f.label)).toEqual([
+      "Requested",
+      "Enriching",
+      "Enriched",
+    ]);
+    expect([...BAD_WHEN_TRUE]).toEqual(["disabled"]);
     expect(CRENUP_STEPS.map((f) => `${f.n}. ${f.label}`)).toEqual([
       "0. Seed",
       "1. Details",

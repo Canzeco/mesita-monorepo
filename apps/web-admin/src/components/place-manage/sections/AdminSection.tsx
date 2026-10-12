@@ -14,12 +14,13 @@ import { formatAbsoluteUtc } from "@/lib/format";
 // Admin — states are two boxes (Pato, 2026-08-30; Partnership States went
 // with the MVP First Stage cut, MESITA-2115), each answering one question:
 //   General States      is this place real and reachable? Created ·
-//                         Active · Listed · Requested `0…n`.
-//                         Owns both operator writes (Active, Listed).
-//   Enrichment States   how far did the pipeline get? Enriched (last
-//                         completed) · Enriching (live run) over the nine
-//                         functions 0. Seed … 8. Embedding. OWNS the
-//                         enrichment read — StateCard no longer fetches it.
+//                         Pulsing · Disabled.
+//                         Owns both operator writes (Pulsing, Disabled).
+//   Enrichment States   how far did the pipeline get? Requested `0…n` ·
+//                         Enriching (live run) · Enriched (last completed)
+//                         over the nine functions 0. Seed … 8. Embedding.
+//                         OWNS the enrichment read — StateCard no longer
+//                         fetches it.
 // Then the rest:
 //   Enrichment  queues the full Enricher process
 //   SERP / Embedding / Metadata (UID & audit)

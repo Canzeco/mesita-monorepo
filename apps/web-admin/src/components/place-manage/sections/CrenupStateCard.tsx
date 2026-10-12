@@ -10,7 +10,11 @@ import {
 } from "../actions";
 import { isEnriching } from "../place-header-state";
 import { isEnrichedPlace } from "@/lib/place-enriched";
-import { stateBoolChip } from "@/lib/state-vocabulary";
+import {
+  requestCountChip,
+  requestCountFromRow,
+  stateBoolChip,
+} from "@/lib/state-vocabulary";
 import { StateRow } from "./StateCard";
 import {
   crenupMeterLine,
@@ -19,8 +23,9 @@ import {
 } from "./state-enrichment";
 
 /**
- * Enrichment States — the whole pipeline picture in one box (Pato, 2026-08-30):
- * the two SUMMARY facts (Enriching, Enriched) over the nine functions,
+ * Enrichment States — the whole pipeline picture in one box (Pato, 2026-08-30;
+ * the six states, 2026-10-11): the three facts (Requested, Enriching,
+ * Enriched) over the nine functions,
  * 0. Seed … 8. Embedding (CRENUP_STEPS), each a bool (called / not). Create
  * runs 0, 1, 7, 8 and Enrich 1–8 of that one ladder, never a second one.
  * Enriched is `enriched_at` set (MESITA-2154); the high-water is the meter.
@@ -82,6 +87,13 @@ export function CrenupStateCard({ place }: { place: AdminPlace }) {
       ? "An Enrich run completed" + (enrichedAt ? ` ${enrichedAt}.` : ".")
       : "No Enrich run has completed — a Created profile is not enriched.") +
     (meter ? ` ${meter}` : "");
+  const requestCount = requestCountFromRow(place.request_count);
+  const requestedDetail =
+    requestCount === "unknown"
+      ? "Couldn't read the request count."
+      : requestCount === 0
+        ? "No guest has requested this profile."
+        : `${requestCount} guest request${requestCount === 1 ? "" : "s"}.`;
   const enrichingDetail = enriching
     ? "The Enricher pipeline is mid-flight — research, analysis, or contents is running."
     : "No Enricher run is in flight.";
@@ -93,6 +105,12 @@ export function CrenupStateCard({ place }: { place: AdminPlace }) {
       title="Enrichment States"
     >
       <div className="mt-5 flex flex-col">
+        <StateRow
+          name="Requested"
+          on={requestCount !== "unknown" && requestCount > 0}
+          chip={requestCountChip(place.request_count)}
+          detail={requestedDetail}
+        />
         <StateRow
           name="Enriching"
           on={enriching}
@@ -107,7 +125,7 @@ export function CrenupStateCard({ place }: { place: AdminPlace }) {
         />
       </div>
 
-      {/* The nine functions the two facts above summarize. */}
+      {/* The nine functions the facts above summarize. */}
       <div className="border-border/60 mt-4 flex flex-col border-t pt-2">
         {rows.map((row) => (
           <div

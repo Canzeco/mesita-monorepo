@@ -14,9 +14,13 @@ import { crenupCalled } from "./mesita-search-facts";
 export function StatePill({
   on,
   falseTone = "pending",
+  badWhenTrue = false,
 }: {
   on: boolean | "unknown";
   falseTone?: "pending" | "neutral";
+  /** For a fact where `true` is the problem (Disabled): rose when true,
+   *  green when false. */
+  badWhenTrue?: boolean;
 }) {
   // "?" is its own rendering, not a shade of no: the row is saying it does not
   // know, and a grey "no" would read as an answer.
@@ -34,11 +38,15 @@ export function StatePill({
     <span
       className={
         "inline-flex items-center justify-center rounded-full px-2 py-0.5 type-label font-semibold " +
-        (on
-          ? "bg-green-500/10 text-green-700"
-          : falseTone === "neutral"
-            ? "text-muted-foreground bg-muted"
-            : "bg-rose-500/10 text-rose-700")
+        (badWhenTrue
+          ? on
+            ? "bg-rose-500/10 text-rose-700"
+            : "bg-green-500/10 text-green-700"
+          : on
+            ? "bg-green-500/10 text-green-700"
+            : falseTone === "neutral"
+              ? "text-muted-foreground bg-muted"
+              : "bg-rose-500/10 text-rose-700")
       }
     >
       {on ? "yes" : "no"}

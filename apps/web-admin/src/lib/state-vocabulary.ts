@@ -1,8 +1,12 @@
 // State — two boxes (Pato, 2026-08-25 · 2026-08-29).
 //
-//   STATES (6)    Created · Active · Listed · Enriching · Enriched are bools
-//                 (`true` / `false`). Requested is the guest request count,
-//                 0…n — not a Yes/No. Never a places.state.
+//   STATES (6)    A place has six states, in two groups (Pato, 2026-10-11):
+//                 General — Created · Pulsing (Google active) · Disabled;
+//                 Enrichment — Requested · Enriching · Enriched.
+//                 All are bools (`true` / `false`) except Requested, the
+//                 guest request count, 0…n — not a Yes/No. Disabled is the
+//                 operator's off switch (places.state is not active), the
+//                 old Listed turned over: `true` is the warning.
 //
 //                 The MVP First Stage cut the commercial facts: Verified
 //                 (MESITA-2106), then Owned · Partnered · Rewards · Mesita
@@ -58,18 +62,28 @@ export function requestCountChip(requestCount: unknown): string {
   return n === "unknown" ? "?" : String(n);
 }
 
+/** The six states of a place, General first, then Enrichment. Verified ·
+ *  Owned · Partnered · Rewards · Mesita Pay · Mesita Credits left with the
+ *  MVP First Stage cut (MESITA-2106, MESITA-2115): nobody holds, proves, pays
+ *  or redeems yet. Wire key `seeded` stays; the label is Created. */
 export const GENERAL_STATE_FACTS = [
   { key: "seeded", label: "Created" },
-  { key: "active", label: "Active" },
-  { key: "listed", label: "Listed" },
+  { key: "pulsing", label: "Pulsing" },
+  { key: "disabled", label: "Disabled" },
   { key: "requested", label: "Requested" },
   { key: "enriching", label: "Enriching" },
   { key: "enriched", label: "Enriched" },
-  // Owned · Partnered · Rewards · Mesita Pay · Mesita Credits left with the
-  // MVP First Stage cut (MESITA-2115): nobody holds, pays or redeems yet.
 ] as const;
 
 export type GeneralStateKey = (typeof GENERAL_STATE_FACTS)[number]["key"];
+
+/** The two groups the Single Place boxes print. */
+export const GENERAL_STATES = GENERAL_STATE_FACTS.slice(0, 3);
+export const ENRICHMENT_STATES = GENERAL_STATE_FACTS.slice(3);
+
+/** Facts where `true` is the problem: a Disabled place is switched off. The
+ *  tables draw them rose when true and green when false. */
+export const BAD_WHEN_TRUE: ReadonlySet<GeneralStateKey> = new Set(["disabled"]);
 
 /** EMPTY (Pato, 2026-09-08, decision: overturns MESITA-1608's "a free place
  *  and a place that doesn't take a not-yet-live rail are not defects"):

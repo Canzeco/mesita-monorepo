@@ -42,10 +42,10 @@ describe("Multiple Places renders five boxes (MESITA-2096)", () => {
     expect([...at].sort((a, b) => a - b)).toEqual(at);
   });
 
-  it("puts Create, Enrich and List · Unlist · Delete in their own boxes", () => {
+  it("puts Create, Enrich and Enable · Disable · Delete in their own boxes", () => {
     expect(buttons(box("create"))).toEqual(["Create"]);
     expect(buttons(box("enrich"))).toEqual(["Enrich"]);
-    expect(buttons(box("update"))).toEqual(["List", "Unlist", "Delete"]);
+    expect(buttons(box("update"))).toEqual(["Enable", "Disable", "Delete"]);
   });
 
   it("gives every write box its own Google Place ID field", () => {
