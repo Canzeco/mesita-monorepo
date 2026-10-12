@@ -246,7 +246,7 @@ Deno.test("list-places: owned gids come from an unfiltered lookup and gate every
   // The owned lookup is the first profiles read in the branch, and it
   // carries no cut: no discovery filters, no General gate, no guest floors.
   const ownedStart = googleBranch.indexOf("let ownedRows");
-  const ownedEnd = googleBranch.indexOf("const enrichedOwnedGids");
+  const ownedEnd = googleBranch.indexOf("const ringOwnedGids");
   assertEquals(ownedStart > -1 && ownedEnd > ownedStart, true);
   const ownedLookup = googleBranch.slice(ownedStart, ownedEnd);
   assertEquals(ownedLookup.includes('.in("google_place_id", missing)'), true);

@@ -1,18 +1,18 @@
 // The pin tone is the coloured point, on the results rows AND the map pins.
-// THE LAW, two nested sets (Pato, 2026-09-05):
+// THE LAW, three nested sets (Pato, 2026-10-12, MESITA-2158):
 //
 //   enriched  red    an Enrich run completed (`enriched_at` set)
-//   unlisted  gray   everything else — Google rows AND our own Created places
+//   mesita    ink    our own place, not enriched yet (a Created place)
+//   google    gray   a Google row Mesita does not hold
 //
-// These are the two sets the Filters sheet lists, not a separate palette:
-// Google Places ⊃ Mesita Enriched Places. A set the guest can pick has to
-// be the same set the colour promises.
+// These are the three sets the Filters sheet lists, not a separate palette:
+// Google Places ⊃ Mesita Places ⊃ Mesita Enriched Places. A set the guest
+// can pick has to be the same set the colour promises, so each tone is the
+// NARROWEST ring the place sits in (`placeSearchScope`).
 //
 // Red is EARNED. The bucket is named `enriched`, not "listed": listed means
 // "we have a row", which a Created place also satisfies, and a basic
 // Created profile must not wear the colour that promises an enriched one.
-// The gray one is `unlisted` rather than `google`, because it holds our own
-// Created places too.
 //
 // The SERVER states `enriched` (`_shared/place-family-keys.ts`): an Enrich
 // run completed, i.e. `places.enriched_at` is set (MESITA-2154). Nothing
@@ -25,14 +25,17 @@
 import {
   MAP_ENRICHED_PIN_COLOR,
   MAP_GOOGLE_PIN_COLOR,
+  MAP_MESITA_PIN_COLOR,
   MAP_PIN_STROKE_COLOR,
   MAP_SELECTED_PIN_COLOR,
 } from "@/lib/map-defaults";
+import { type MapPlacesScope } from "@/lib/map-filters-engine";
 import { isEnrichedPlace } from "@/lib/place-enriched";
 
 export { isEnrichedPlace };
 
-export type PinTone = "enriched" | "unlisted";
+/** The tone IS the narrowest ring — the same three words the wire carries. */
+export type PinTone = MapPlacesScope;
 
 /** On Mesita per EF — mesitaId/slug win over a stale not_in_mesita state. */
 export function predictionOnMesita(item: {
@@ -56,7 +59,8 @@ export function catalogPlaceOnMesita(place: {
 
 const TONE_COLORS: Record<PinTone, string> = {
   enriched: MAP_ENRICHED_PIN_COLOR,
-  unlisted: MAP_GOOGLE_PIN_COLOR,
+  mesita: MAP_MESITA_PIN_COLOR,
+  google: MAP_GOOGLE_PIN_COLOR,
 };
 
 /**
@@ -86,17 +90,17 @@ export function locationTypeLabel(locationType?: string | null): string {
   }
 }
 
-/** Name-lane rows. No column fallback on this wire, so a payload without
- *  `enriched` reads as gray: understating beats promising a profile that
- *  is not there. */
+/** Name-lane rows. No column fallback on this wire, so a Mesita row
+ *  without `enriched` reads as ink, never red: understating beats promising
+ *  a profile that is not there. Off Mesita is gray. */
 export function predictionPinTone(item: {
   state?: string | null;
   enriched?: boolean | null;
   mesitaId?: string | null;
   mesitaSlug?: string | null;
 }): PinTone {
-  if (!predictionOnMesita(item)) return "unlisted";
-  return item.enriched === true ? "enriched" : "unlisted";
+  if (!predictionOnMesita(item)) return "google";
+  return item.enriched === true ? "enriched" : "mesita";
 }
 
 export function pinToneColor(tone: PinTone): string {
@@ -152,16 +156,17 @@ export function overlayPinDecision(input: {
   return "noop";
 }
 
-/** Map/catalog rows: a Google stub is gray, and so is a Mesita row nobody
- *  has enriched yet. */
+/** Map/catalog rows: a Google stub is gray, a Mesita row nobody has
+ *  enriched yet is ink, an enriched one red. Same rule as the ring counts
+ *  (`placeSearchScope`), so a dot and its ring cannot disagree. */
 export function placePinTone(place: {
   googleOnly?: boolean;
   from_google?: boolean;
   enriched?: boolean | null;
   enriched_at?: string | null;
 }): PinTone {
-  if (place.googleOnly || place.from_google) return "unlisted";
-  return isEnrichedPlace(place) ? "enriched" : "unlisted";
+  if (place.googleOnly || place.from_google) return "google";
+  return isEnrichedPlace(place) ? "enriched" : "mesita";
 }
 
 /** Live-search overlay pins. Catalog is coords only — tone follows the EF row
@@ -171,8 +176,8 @@ type SearchPinPrediction = {
   placeId: string;
   mainText: string;
   state?: string | null;
-  /** The server's `enriched`. Required for the pin to reach red: a
-   *  prediction without it stays gray. */
+  /** The server's `enriched`. Required for the pin to reach red: a Mesita
+   *  prediction without it stays ink. */
   enriched?: boolean | null;
   /** Word's second entity — a Location is a camera destination, never a pin. */
   kind?: "place" | "location";

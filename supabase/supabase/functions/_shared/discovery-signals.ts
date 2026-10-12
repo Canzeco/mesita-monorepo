@@ -424,8 +424,10 @@ export function name(
  * PREDICATE THE RANKED LANES ADMIT ON, so on every surface that can score it
  * the answer is a constant 1:
  *
- *   - Map filters every listed row through `isEnrichedListedRow` (the same
- *     `isPlaceEnriched`), BEFORE `reorderListedLanes` ranks anything.
+ *   - Map's inner ring (Mesita Enriched Places) admits a listed row only
+ *     through `isEnrichedListedRow` (the same `isPlaceEnriched`), BEFORE
+ *     `reorderListedLanes` ranks anything. The two wider rings admit
+ *     Created rows too (MESITA-2158), where the binary half does bite.
  *   - Scroll's pool query is the Enriched gate, `enriched_at IS NOT NULL`.
  *   - Word masks this signal to 0 and never scores it at all.
  *

@@ -24,8 +24,8 @@ import { SearchPopularity } from "./SearchPopularity";
 // Search-map Filters sheet. Family + Places + Popularity, DENSE.
 // How many (closest N) is operator `map.pinCount`, not a guest knob.
 //
-// Places is TWO NESTED SETS (Pato, 2026-09-05):
-//   Google Places ⊃ Mesita Enriched Places
+// Places is THREE NESTED SETS (Pato, 2026-10-12, MESITA-2158):
+//   Google Places ⊃ Mesita Places ⊃ Mesita Enriched Places
 // Default is the inner ring — the places Mesita has actually written up.
 //
 // Popularity is the Google review-count floor (0 / 10 / 100 / 1k / 10k).

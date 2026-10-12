@@ -36,10 +36,12 @@ describe("Discovery matrix", () => {
       expect(html).toContain(`Mesita Places Browse Search · ${mode} · off`);
       expect(html).not.toContain(`Mesita Places Browse Search · ${mode} · on`);
     }
-    // THE TWO NESTED PLACE TYPES. Mesita Listed retired: listing is a row
-    // existing, which no mode gates on — enrichment is the gate that runs.
+    // THE THREE NESTED PLACE TYPES (MESITA-2158). Mesita Listed stays
+    // retired: Mesita Places is a ready profile, not a row existing.
     expect(html).not.toContain("Mesita Listed");
     expect(html).toContain("Google Places · Favorites · required");
+    expect(html).toContain("Mesita Places · Map · required");
+    expect(html).toContain("Mesita Places · Favorites · not required");
     expect(html).toContain("Mesita Enriched Places · Favorites · not required");
     expect(html).not.toContain("Mesita Partnered Places");
     expect(html).toContain("Mesita Enriched Places · Map · required");

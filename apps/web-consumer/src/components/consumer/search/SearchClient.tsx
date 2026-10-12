@@ -65,7 +65,7 @@ import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import { mapFilterCount, placeSearchScope } from "@/lib/map-filters-engine";
+import { mapFilterCount, placesScopeCounts } from "@/lib/map-filters-engine";
 import { useMapFilters } from "@/lib/use-map-filters";
 import {
   buildSearchMapPins,
@@ -216,17 +216,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       : null;
     return prependAnchorPlace(nearby, anchorRow);
   }, [nearby, anchor, distanceCenter]);
-  // Each ring's count is cumulative — the sets nest, so a Mesita row is in
-  // the Google ring too. A Created (not enriched) row counts in Google only.
-  const scopeCounts = useMemo(() => {
-    let mesita = 0;
-    let google = 0;
-    for (const place of nearby) {
-      if (placeSearchScope(place) === "mesita") mesita += 1;
-      google += 1;
-    }
-    return { mesita, google };
-  }, [nearby]);
+  // Each ring's count is cumulative — the three sets nest, so an enriched
+  // row counts in every ring and a Created row in Mesita and Google.
+  const scopeCounts = useMemo(() => placesScopeCounts(nearby), [nearby]);
   // TYPED SEARCH LIVES HERE, on the map. A found place needs somewhere to
   // land, and on a bare list it lands nowhere.
   //

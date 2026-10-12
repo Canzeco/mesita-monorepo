@@ -307,8 +307,9 @@ Deno.test("name's unembedded floor still bends when a param bag carries one", ()
 Deno.test("Enriched reorders two rows a ranked lane ACTUALLY admits", () => {
   // THE ADMISSION PREDICATE IS NOT THE SIGNAL, and this test exists because
   // the binary made them the same function. Every row a ranked lane scores
-  // already satisfies `isEnrichedPlace`: Map filters each listed row through
-  // `isEnrichedListedRow` before `reorderListedLanes` ranks anything, and
+  // already satisfies `isEnrichedPlace`: Map's Enriched ring admits each
+  // listed row through `isEnrichedListedRow` before `reorderListedLanes`
+  // ranks anything (the wider rings add Created rows, MESITA-2158), and
   // Scroll's pool query is the Enriched gate, `enriched_at IS NOT NULL`. So `enriched === true` on every row this signal ever sees, and
   // a pure binary is a CONSTANT 1 on the whole population — an operator dial
   // that cannot move a deck. `enriched: false` here would be green by
