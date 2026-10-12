@@ -14,8 +14,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, ChevronRight, ExternalLink, Loader2, Plus } from "lucide-react";
+import type { PlaceHit } from "@/app/(app)/manage-multiple/actions";
+import { StatePill } from "@/app/(app)/manage-multiple/PlaceFacts";
+import { factOn } from "@/app/(app)/manage-multiple/mesita-search-facts";
 import { StateIcon, type BatchRowState } from "@/app/(app)/manage-multiple/StateIcon";
 import { placeTabHref } from "@/lib/place-tabs";
+import {
+  BAD_WHEN_TRUE,
+  GENERAL_STATE_FACTS,
+  STATE_FACT_FALSE_TONE,
+} from "@/lib/state-vocabulary";
 import {
   FOCUS_RING_CLASS,
   PILL_BUTTON_CLASS,
@@ -158,6 +166,7 @@ export function FindResults({
                         {ratingLabel(row)}
                       </span>
                     ) : null}
+                    {row.placeHit ? <PlaceStateFacts hit={row.placeHit} /> : null}
                     <PhoneSources row={row} />
                   </th>
                   {FIND_SOURCES.map((s) => (
@@ -303,6 +312,38 @@ function SourceCell({
       </span>
       <span className="sr-only">{failed ? `${source} failed` : `Not found by ${source}`}</span>
     </>
+  );
+}
+
+/** The six place states when the catalogue row is known — same facts as
+ *  Mesita Search, laid out for the Place column. */
+function PlaceStateFacts({ hit }: { hit: PlaceHit }) {
+  return (
+    <dl className="mt-1.5 flex flex-wrap gap-x-2.5 gap-y-1">
+      {GENERAL_STATE_FACTS.map((f) => (
+        <div key={f.key} className="flex items-center gap-1">
+          <dt className="text-muted-foreground type-label">{f.label}</dt>
+          <dd className="m-0">
+            {f.key === "requested" ? (
+              <span
+                className={
+                  "type-label font-semibold tabular-nums " +
+                  (hit.request_count > 0 ? "text-foreground" : "text-muted-foreground")
+                }
+              >
+                {hit.request_count}
+              </span>
+            ) : (
+              <StatePill
+                on={factOn(hit, f.key)}
+                falseTone={STATE_FACT_FALSE_TONE[f.key]}
+                badWhenTrue={BAD_WHEN_TRUE.has(f.key)}
+              />
+            )}
+          </dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 
