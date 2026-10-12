@@ -27,15 +27,17 @@
 // (MESITA-2115): nothing is a partner yet.
 
 import { usePathname } from "next/navigation";
-import { ListedBadge } from "@/components/console/badges";
+import { DisabledBadge } from "@/components/console/badges";
 import { PLACE_TAB_LABEL, placeTabFromPathname } from "@/lib/place-tabs";
 
 export function PlaceHeading({
   name,
-  listed,
+  disabled,
 }: {
   name: string;
-  listed: boolean;
+  /** True only when the overview says the place is switched off; a missing
+   *  fact never draws the chip. */
+  disabled: boolean;
 }) {
   const pathname = usePathname();
   // Same reader the rail uses (MESITA-1732). This was the second independent
@@ -55,7 +57,7 @@ export function PlaceHeading({
         >
           {name}
         </h1>
-        {listed ? <ListedBadge /> : null}
+        {disabled ? <DisabledBadge /> : null}
       </div>
       {/* Which view you are in. The rail says it too, but the rail is a menu
           and this is the page — a title that does not name the page it titles

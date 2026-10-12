@@ -5,12 +5,12 @@
 //
 // ONE READ, SUPER-ADMIN ONLY. `getManagePlace` is admin-web-get-overview,
 // which answers any place id for a super-admin; it is the AdminPlace every
-// section edits, and it carries the heading's Listed fact (derived off
+// section edits, and it carries the heading's Disabled fact (derived off
 // `places.state` by the same helper the catalogue uses).
 //
 // The second read is gone (MESITA-2090). The layout used to list the WHOLE
 // catalogue through the business console's list-places (scope "all") to find
-// this one place's row, for the heading's Listed fact — which the overview
+// this one place's row, for the heading's Disabled fact — which the overview
 // already ships.
 import { notFound } from "next/navigation";
 import { PlaceHeading } from "@/components/console/PlaceHeading";
@@ -38,7 +38,7 @@ export default async function AdminPlaceLayout({
         <div className="flex flex-col gap-4">
           <PlaceHeading
             name={manage.place.name}
-            listed={manage.place.listed === true}
+            disabled={manage.place.listed === false}
           />
           <PlaceTabStrip placeId={id} tabs={FIRST_STAGE_TABS} />
           {children}

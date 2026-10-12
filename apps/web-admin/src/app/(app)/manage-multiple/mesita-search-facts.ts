@@ -19,13 +19,14 @@ export function factOn(
   key: (typeof GENERAL_STATE_FACTS)[number]["key"],
 ): boolean | "unknown" {
   if (key === "seeded") return hit.seeded;
-  if (key === "active") {
+  if (key === "pulsing") {
     // Google's silence is a third state. Flattening null to false asserts the
     // business is closed, which is a claim we never read (MESITA-1239).
     if (hit.business_state == null || hit.business_state === "") return "unknown";
     return hit.business_state === "OPERATIONAL";
   }
-  if (key === "listed") return hit.listed;
+  // Disabled is the operator's off switch: places.state is not active.
+  if (key === "disabled") return !hit.listed;
   if (key === "requested") return hit.request_count > 0;
   // An Enrich run completed — `enriched_at` set (MESITA-2154). NOT the
   // high-water reaching 8: that is the completeness meter, and a Created

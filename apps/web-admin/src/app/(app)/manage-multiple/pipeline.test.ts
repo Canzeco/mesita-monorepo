@@ -56,8 +56,8 @@ describe("the page chrome names the five surfaces", () => {
     // onboarding) until MESITA-2089 deleted it.
     expect(box).toContain('label: "Create"');
     expect(box).toContain('label: "Delete"');
-    expect(box).toContain('label: "List"');
-    expect(box).toContain('label: "Unlist"');
+    expect(box).toContain('label: "Enable"');
+    expect(box).toContain('label: "Disable"');
     expect(box).toContain('label: "Enrich"');
     expect(box).toContain("alreadyExisted");
     expect(box).toContain("Copy failed IDs");

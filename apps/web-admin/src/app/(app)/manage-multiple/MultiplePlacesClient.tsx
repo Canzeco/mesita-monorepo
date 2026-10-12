@@ -128,7 +128,7 @@ export function MultiplePlacesClient() {
         id={PIPELINE_STEPS[4].id}
         tint="rose"
         title={PIPELINE_STEPS[4].label}
-        blurb="Writes to places already on Mesita. List and Unlist toggle guest visibility; Delete archives, no Undo here."
+        blurb="Writes to places already on Mesita. Enable and Disable toggle guest visibility; Delete archives, no Undo here."
       >
         <WriteBox
           id={PIPELINE_STEPS[4].id}

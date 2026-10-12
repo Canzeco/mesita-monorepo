@@ -44,8 +44,8 @@ const BUTTONS: Record<
 > = {
   create: { label: "Create", variant: "primary" },
   enrich: { label: "Enrich", variant: "primary" },
-  list: { label: "List", variant: "secondary" },
-  unlist: { label: "Unlist", variant: "secondary" },
+  list: { label: "Enable", variant: "secondary" },
+  unlist: { label: "Disable", variant: "secondary" },
   delete: { label: "Delete", variant: "destructive" },
 };
 
@@ -114,9 +114,9 @@ export function WriteBox({
       : lastRun === "enrich"
         ? `${enriching} enriching · ${failed} failed`
         : lastRun === "list"
-          ? `${written} listed · ${failed} failed`
+          ? `${written} enabled · ${failed} failed`
           : lastRun === "unlist"
-            ? `${written} unlisted · ${failed} failed`
+            ? `${written} disabled · ${failed} failed`
             : `${written} deleted · ${failed} failed`;
 
   return (
@@ -299,7 +299,7 @@ async function listOne(googleId: string, listed: boolean): Promise<Row> {
   return {
     state: "ok",
     name: found.name,
-    detail: listed ? "Listed on" : "Listed off",
+    detail: listed ? "Enabled" : "Disabled",
   };
 }
 

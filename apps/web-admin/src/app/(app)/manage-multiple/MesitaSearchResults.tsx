@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { placeTabHref } from "@/lib/place-tabs";
 import {
+  BAD_WHEN_TRUE,
   GENERAL_STATE_FACTS,
   STATE_FACT_FALSE_TONE,
 } from "@/lib/state-vocabulary";
@@ -80,6 +81,7 @@ export function MesitaSearchResults({ rows }: { rows: Row[] }) {
                             <StatePill
                               on={factOn(hit, f.key)}
                               falseTone={STATE_FACT_FALSE_TONE[f.key]}
+                              badWhenTrue={BAD_WHEN_TRUE.has(f.key)}
                             />
                           )}
                         </td>
