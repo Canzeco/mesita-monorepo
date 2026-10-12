@@ -6,8 +6,9 @@
 // the locked Swipe mask (Pato, 2026-08-28). The 2026-08-26 two-signal SUM is
 // gone.
 //
-//   1. ADMIT  — enriched (enriched_at set), reviews floor, Map type
-//               batteries, then the guest's predicates. These EXCLUDE.
+//   1. ADMIT  — enriched (enriched_at set, profile ready), reviews floor,
+//               Map type batteries, then the guest's predicates. These
+//               EXCLUDE.
 //   2. TIER   — open now + closing buffer, the operator radius, and the
 //               Proximity reach. These BAND and never exclude (MESITA-2047):
 //               open-and-near leads, then open within reach, closed within

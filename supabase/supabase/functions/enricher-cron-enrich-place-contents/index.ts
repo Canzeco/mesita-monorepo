@@ -89,6 +89,7 @@ import {
   releaseResearchRow,
   reportEnrichmentStep,
   serveEnrichStage,
+  stampsEnrichedAt,
   wants,
 } from "../_shared/enrich-pipeline.ts";
 import {
@@ -416,7 +417,8 @@ serveEnrichStage("contents", async (admin, env, row) => {
   // everything (`subprocesses` null), while the wrong-number refetch buys
   // only `google` and skips synthesis, photos and embedding. That refetch
   // must not make a Created place read as Enriched.
-  if (wants(buys, "synthesis")) {
+  // `enrich-triggers.test.ts` pins both the rule and this call site.
+  if (stampsEnrichedAt(buys)) {
     persisted.enriched_at = new Date().toISOString();
   }
   // NEVER `= sources` on its own: the pins are durable state stored in this

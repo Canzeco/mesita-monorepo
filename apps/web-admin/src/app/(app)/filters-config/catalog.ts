@@ -252,8 +252,9 @@ export type ParamField = {
 };
 
 export type DiscoveryFilters = {
-  /** The Enriched gate — `enriched_at IS NOT NULL` (MESITA-2154). The stored
-   *  key keeps its old name: renaming it would reset the operator's value. */
+  /** The Enriched gate — `enriched_at IS NOT NULL` AND `content_state =
+   *  'ready'` (MESITA-2154). The stored key keeps its old name: renaming it
+   *  would reset the operator's value. */
   requireReady: boolean;
   minRating: number;
   minReviews: number;

@@ -22,8 +22,9 @@
 //       gray                   red
 //     `placesScope` names the set — "mesita" | "google" — and enrichment
 //     (`enriched_at` set, MESITA-2154) gates the Mesita ring. A Created
-//     place is never in the ring; a Google hit that IS one goes out as its
-//     Mesita row, gray, never as a stub.
+//     place is never in the ring. A Google hit Mesita owns is never a
+//     stub: a Created row paints it gray, and an Enriched row the ring
+//     cuts left out drops it (`claimOwnedHits`).
 //
 //     WEB SEARCH POSTS scope + familyKeys + minReviews (MESITA-1790).
 //     How many stays operator `map.pinCount`. `map.googleFill` still
@@ -88,12 +89,14 @@ import {
   wantsGoogleFill,
 } from "../_shared/geo.ts";
 import {
+  claimOwnedHits,
   isEnrichedListedRow,
   lanesForPlacesScope,
   mergeNearbyCatalog,
   parsePlacesScope,
   peekCachedNearbyPlaces,
   PLACES_SCOPE_DEFAULT,
+  resolveGoogleItem,
   searchNearbyPlaces,
   type NearbyHit,
   type PlacesScope,
@@ -444,23 +447,41 @@ Deno.serve(async (req) => {
         googleHits.map((hit) => hit.placeId).filter((id) => !haveGid.has(id)),
       ),
     ];
-    // A Google hit can be a Mesita place that is listed but NOT enriched —
-    // a Created place (content_state ready, enriched_at null). It stays out
-    // of the Mesita ring, but it must never go out as a Google stub: the
-    // stub's Create button would 409 `place_already_exists`. So the
-    // gid lookup below drops ONLY the Enriched gate, and an unenriched row
-    // it finds PAINTS its hit — the Mesita row, gray (`enriched: false`),
-    // in the hit's slot — without joining the ring or its backfill
-    // (MESITA-2154).
-    const createdByGid = new Map<string, CardRow>();
+    // Which of these hits does Mesita already own? ONE unfiltered lookup by
+    // google_place_id (RLS limits it to listed rows). It must not carry the
+    // ring cuts: a Created place that fails the General gate, a Map floor,
+    // the guest's Popularity or the Super overlap on stored family_keys
+    // (door synthesis can leave `['undefined']`) would fall through to a
+    // stub whose "Add to Mesita" 409s `place_already_exists`. MESITA-2154.
+    let ownedRows: CardRow[] = [];
     if (missing.length > 0) {
+      const owned = await (supabase.from("profiles").select(selectCols) as unknown as {
+        in: (
+          col: string,
+          vals: string[],
+        ) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>;
+      }).in("google_place_id", missing);
+      if (owned.error) {
+        console.error("[consumer-web-list-places] owned gid lookup:", owned.error.message);
+      } else {
+        ownedRows = (owned.data ?? []) as CardRow[];
+      }
+    }
+    // Ring admission keeps every cut: only an Enriched owned row can join,
+    // and only if the filtered query (bbox aside) still returns it. Skipped
+    // when no owned row is enriched, so the common case stays one query.
+    const enrichedOwnedGids = [
+      ...new Set(
+        ownedRows
+          .filter((row) => isEnrichedListedRow(row))
+          .map((row) => row.google_place_id?.trim())
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    if (enrichedOwnedGids.length > 0) {
       const extraSelect = supabase.from("profiles").select(selectCols);
       let extraFiltered = applyGeneralGateQuery(
-        applyDiscoveryFilters(
-          extraSelect,
-          { ...filters, requireReady: false },
-          { lat: null, lng: null },
-        ),
+        applyDiscoveryFilters(extraSelect, filters, { lat: null, lng: null }),
         cfg.general,
       );
       if (guestMinReviews > 0) {
@@ -479,16 +500,12 @@ Deno.serve(async (req) => {
           col: string,
           vals: string[],
         ) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>;
-      }).in("google_place_id", missing);
+      }).in("google_place_id", enrichedOwnedGids);
       if (!extra.error && extra.data) {
         const seen = new Set(mesitaRows.map((row) => row.id));
         for (const row of extra.data as CardRow[]) {
           if (seen.has(row.id)) continue;
-          if (!isEnrichedListedRow(row)) {
-            const gid = row.google_place_id?.trim();
-            if (gid && !createdByGid.has(gid)) createdByGid.set(gid, row);
-            continue;
-          }
+          if (!isEnrichedListedRow(row)) continue;
           if (
             guestSupers.length > 0 &&
             !guestSupers.some((key) => familiesForPlace(row).includes(key))
@@ -500,12 +517,15 @@ Deno.serve(async (req) => {
         }
       }
     }
+    // A Created row paints its hit gray; an Enriched row the cuts left out
+    // drops its hit. Either way no owned gid becomes a stub.
+    const claim = claimOwnedHits(googleHits, ownedRows, mesitaRows);
     // The Google side of the same gate. Nearby now carries businessStatus +
     // userRatingCount on its field mask, so the wipe is provable here rather
     // than deferred to a Details call the map lane never makes.
     const mapped = admitMapCatalog(
       mesitaRows,
-      googleHits.filter((hit) => clearsGeneralGate(cfg.general, hit)),
+      claim.hits.filter((hit) => clearsGeneralGate(cfg.general, hit)),
       cfg.map,
       cfg.params.popularity,
     );
@@ -548,27 +568,28 @@ Deno.serve(async (req) => {
         : reorderListedLanes(catalog, lineupOpts)
     ).slice(0, limit);
     const places = withFamilyKeysList(
-      merged.map((item) => {
+      merged.flatMap((item) => {
         if (item.kind === "listed") {
           const row = stripGooglePlaceId(item.row);
-          return {
+          return [{
             ...row,
             distance_km: roundedKm(lat, lng, row.lat, row.lng),
-          };
+          }];
         }
-        // A Created place's hit goes out as its Mesita row, not a stub.
-        const created = createdByGid.get(item.hit.placeId);
-        if (created) {
-          const row = stripGooglePlaceId(created);
-          return {
+        // Never a stub for a gid Mesita owns (claimOwnedHits above).
+        const out = resolveGoogleItem(item.hit, claim);
+        if (out.kind === "drop") return [];
+        if (out.kind === "mesita") {
+          const row = stripGooglePlaceId(out.row);
+          return [{
             ...row,
             distance_km: roundedKm(lat, lng, row.lat, row.lng),
-          };
+          }];
         }
-        return googleStub(
+        return [googleStub(
           item.hit,
           roundedKm(lat, lng, item.hit.lat, item.hit.lng),
-        );
+        )];
       }) as Array<{
         name?: string | null;
         google_name?: string | null;

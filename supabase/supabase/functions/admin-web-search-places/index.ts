@@ -144,8 +144,10 @@ Deno.serve(async (req) => {
 
   // ── One id-scoped read for the flag that is NOT on profiles. ──
   //
-  // ENRICHED is the CRENUP high-water, 0-8, folded from place_enrichment_events
-  // by crenupHighWater. There used to be a SECOND enriched number here — a 0-3
+  // The CRENUP high-water (0-8, folded from place_enrichment_events by
+  // crenupHighWater) is the completeness meter, NOT Enriched. Enriched is
+  // `enriched_at` set (isPlaceEnriched, below; MESITA-2154).
+  // There used to be a SECOND completeness number here — a 0-3
   // stage level off place_research — and the two disagreed on every row: the
   // chip read one, the detail prose read the other (MESITA-1218). One fact,
   // one table, one number. The place_research read went with it: computing

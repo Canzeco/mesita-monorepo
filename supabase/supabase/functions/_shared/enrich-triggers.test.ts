@@ -3,6 +3,7 @@ import {
   ENRICHMENT_TRIGGERS_DEFAULTS,
   normalizeEnrichmentTriggers,
   RUN_TRIGGERS,
+  stampsEnrichedAt,
   subprocessesFor,
   TRIGGER_KEYS,
   TRIGGER_META,
@@ -245,4 +246,44 @@ Deno.test("runs: `manual` is a run trigger and NOT a matrix trigger", () => {
   for (const k of TRIGGER_KEYS) {
     assertEquals((RUN_TRIGGERS as readonly string[]).includes(k), true);
   }
+});
+
+// ── The Enriched stamp (MESITA-2154) ─────────────────────────────────────────
+//
+// `enriched_at` IS the Enriched fact: every server and app reader asks only
+// "is it set". The contents stage is its one writer, and it must stamp only a
+// run that paid for synthesis. The wrong-number refetch buys `google` alone;
+// if it stamped, a Created place would read as Enriched after one bad phone
+// number, with every other gate green.
+
+Deno.test("stampsEnrichedAt: a run that buys everything (null) stamps", () => {
+  assertEquals(stampsEnrichedAt(null), true);
+  assertEquals(stampsEnrichedAt(undefined), true);
+});
+
+Deno.test("stampsEnrichedAt: a google-only run does NOT stamp", () => {
+  assertEquals(stampsEnrichedAt(["google"]), false);
+  assertEquals(stampsEnrichedAt([]), false);
+  assertEquals(stampsEnrichedAt(["google", "photos", "embedding"]), false);
+});
+
+Deno.test("stampsEnrichedAt: any purchase that includes synthesis stamps", () => {
+  assertEquals(stampsEnrichedAt(["synthesis"]), true);
+  assertEquals(stampsEnrichedAt(["google", "reviews", "synthesis"]), true);
+});
+
+Deno.test("stampsEnrichedAt: the shipped wrong-number refetch never stamps; on_create does", () => {
+  const cfg = ENRICHMENT_TRIGGERS_DEFAULTS;
+  assertEquals(stampsEnrichedAt(subprocessesFor(cfg, "on_reservation_failed")), false);
+  assertEquals(stampsEnrichedAt(subprocessesFor(cfg, "on_create")), true);
+});
+
+Deno.test("contents stage: enriched_at is written once, only inside the stamp guard", async () => {
+  const src = await Deno.readTextFile(
+    new URL("../enricher-cron-enrich-place-contents/index.ts", import.meta.url),
+  );
+  const writes = src.match(/\benriched_at\s*=(?!=)/g) ?? [];
+  assertEquals(writes.length, 1, "exactly one enriched_at write in the contents stage");
+  const guard = "if (stampsEnrichedAt(buys)) {\n    persisted.enriched_at = new Date().toISOString();\n  }";
+  assert(src.includes(guard), "the enriched_at write sits inside `if (stampsEnrichedAt(buys))`");
 });

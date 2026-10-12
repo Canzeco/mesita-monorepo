@@ -45,12 +45,23 @@ const NOWHERE = { lat: null, lng: null };
 
 // ── The predicates ───────────────────────────────────────────────────────────
 
-Deno.test("defaults push exactly one predicate: the Enriched gate, enriched_at IS NOT NULL", () => {
+Deno.test("defaults push exactly the Enriched gate: enriched_at IS NOT NULL AND content_state = 'ready'", () => {
   const q = applyDiscoveryFilters(new FakeQuery(), filters(), NOWHERE);
-  assertEquals(q.calls, [{ op: "not.is", col: "enriched_at", val: null }]);
-  // MESITA-2154: never content_state — Create saves 'ready', so a ready
-  // gate admitted every Created (not enriched) place.
-  assert(!q.calls.some((c) => c.col === "content_state"));
+  assertEquals(q.calls, [
+    { op: "not.is", col: "enriched_at", val: null },
+    { op: "eq", col: "content_state", val: "ready" },
+  ]);
+});
+
+Deno.test("the Enriched gate needs BOTH facts (MESITA-2154)", () => {
+  const q = applyDiscoveryFilters(new FakeQuery(), filters(), NOWHERE);
+  // `ready` alone admitted every Created place: Create saves 'ready' and
+  // never stamps enriched_at.
+  assert(q.calls.some((c) => c.op === "not.is" && c.col === "enriched_at"));
+  // The stamp alone admitted an Enriched place mid re-enrich ('generating')
+  // or after a failed one ('failed'), whose Reserve then 409s
+  // `profile_not_ready` in consumer-web-create-reservation.
+  assert(q.calls.some((c) => c.op === "eq" && c.col === "content_state" && c.val === "ready"));
 });
 
 Deno.test("requireReady off pushes nothing at all", () => {
@@ -119,8 +130,9 @@ Deno.test("every filter at once still pushes every predicate", () => {
     filters({ requireReady: true, minRating: 4, minReviews: 10, maxDistanceKm: 5 }),
     CDMX,
   );
-  assertEquals(q.calls.length, 7);
+  assertEquals(q.calls.length, 8);
   assert(q.calls.some((c) => c.col === "enriched_at"));
+  assert(q.calls.some((c) => c.col === "content_state"));
   assert(q.calls.some((c) => c.col === "google_stars_overall"));
   assert(q.calls.some((c) => c.col === "google_review_count"));
   assertEquals(q.calls.filter((c) => c.col === "lat" || c.col === "lng").length, 4);

@@ -122,8 +122,8 @@ export type DiscoveryPoolKey = (typeof DISCOVERY_POOLS)[number]["key"];
  *   Catalog    Google + Enriched. `filters.requireReady` defaults true and
  *   Swipe      Scroll hardcodes it; requireReady IS the Enriched gate —
  *              discovery-filters turns it into `enriched_at IS NOT NULL`
- *              (MESITA-2154; it was `content_state = 'ready'`, which every
- *              Created place also carries).
+ *              AND `content_state = 'ready'` (MESITA-2154; it was the
+ *              ready check alone, which every Created place also carries).
  *   Favorites  Google alone: a bookmark is always a Google-sourced place,
  *              and it is NOT gated on enrichment — bookmarks may include
  *              unenriched Created places.

@@ -27,7 +27,7 @@
 // is a camera destination: coordinates + viewport resolve on pick, never
 // per keystroke, and the viewport picks the zoom.
 //
-// The from-Google preview sheet and the Create flow are NOT search chrome. The
+// The from-Google preview sheet and the Add flow are NOT search chrome. The
 // catalog itself carries Google-only places (the grey pins), so a pin or
 // rail-card tap reaches them through handleOpenPlace, and `heldOverlay` still
 // stashes a prediction between the select tap and the open.
@@ -156,14 +156,14 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const viewportGen = useRef(0);
   // Google Places session token. Per Google's session-billing semantics a
   // session spans the keystrokes up to ONE selection — so the token is
-  // regenerated after every selection (Info / Create tap) and whenever the
+  // regenerated after every selection (Info / Add tap) and whenever the
   // results panel is dismissed, scoping each autocomplete run properly.
   const sessionTokenRef = useRef(newSessionToken());
   const railRefs = useRef(new Map<string, HTMLElement | null>());
   const railScrollRef = useRef<HTMLDivElement | null>(null);
 
   const [addStates, setAddStates] = useState<Record<string, AddState>>({});
-  /** Google placeId → Mesita slug/id after Create succeeds. */
+  /** Google placeId → Mesita slug/id after Add to Mesita succeeds. */
   const [addedProfiles, setAddedProfiles] = useState<Record<string, string>>(
     {},
   );
@@ -558,7 +558,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   );
 
   // Pin / rail-card SECOND tap on a from-Google row → the not-on-Mesita
-  // preview sheet (the Create flow lives there). The bar pick never lands
+  // preview sheet (the Add flow lives there). The bar pick never lands
   // here any more — it anchors, and the sheet moved to this second tap.
   const openGooglePreview = (prediction: PlacePrediction) => {
     const fromAdd = addedProfiles[prediction.placeId];

@@ -300,9 +300,10 @@ export const CHAT_PROMPT_MAX = 12_000;
  */
 export type DiscoveryFilters = {
   /**
-   * The Enriched gate: `enriched_at IS NOT NULL` — an Enrich run completed
-   * (MESITA-2154; it was `content_state = 'ready'`, MESITA-1228, which a
-   * Created place also carries). The key keeps its old name: renaming a
+   * The Enriched gate: `enriched_at IS NOT NULL` (an Enrich run completed)
+   * AND `content_state = 'ready'` (the profile can be shown now) —
+   * MESITA-2154. It was `content_state = 'ready'` alone (MESITA-1228), which
+   * a Created place also carries. The key keeps its old name: renaming a
    * stored key silently resets the operator's value to the default.
    */
   requireReady: boolean;

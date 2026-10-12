@@ -52,6 +52,7 @@ export {
   loadEnrichmentTriggers,
   RUN_TRIGGERS,
   type RunTrigger,
+  stampsEnrichedAt,
   type SubprocessKey,
   subprocessesFor,
   type TriggerKey,

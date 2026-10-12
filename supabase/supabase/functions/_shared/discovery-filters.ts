@@ -63,16 +63,23 @@ export function applyDiscoveryFilters<T extends DiscoveryFilterQuery<T>>(
   let q = query;
 
   if (filters.requireReady) {
-    // The Enriched gate (MESITA-2154): `enriched_at IS NOT NULL` — an Enrich
-    // run completed, the same fact `isPlaceEnriched` reads everywhere else.
-    // It used to be `content_state = 'ready'` (MESITA-1228), but Create saves
-    // 'ready' too, so every freshly Created place walked into Swipe, Catalog
-    // and the Map's Mesita ring. The stored key keeps its old name on
-    // purpose: renaming a persisted key resets the operator's value to the
-    // default. Side benefit: an enriched place being re-enriched
-    // ('generating') stays in the pool. The 0–8 Crenup high-water cannot do
-    // this job: it is a read-time fold over an event log, not a column.
-    q = q.not("enriched_at", "is", null);
+    // The Enriched gate (MESITA-2154) is TWO facts, both required:
+    //   `enriched_at IS NOT NULL` — an Enrich run completed, the same fact
+    //     `isPlaceEnriched` reads everywhere else. `content_state = 'ready'`
+    //     alone (MESITA-1228) admitted every freshly Created place, because
+    //     Create saves 'ready' too.
+    //   `content_state = 'ready'` — the profile can be shown NOW. Without it
+    //     an Enriched place mid re-enrich ('generating', including the
+    //     wrong-number refetch a reservation outcome fires) or after a failed
+    //     re-enrich ('failed', which nothing clears on its own; the stamp
+    //     survives it) walks into Swipe, Scroll, Catalog and the Mesita ring
+    //     wearing a Reserve button that consumer-web-create-reservation then
+    //     409s as `profile_not_ready`.
+    // The stored key keeps its old name on purpose: renaming a persisted key
+    // resets the operator's value to the default. The 0–8 Crenup high-water
+    // cannot do this job: it is a read-time fold over an event log, not a
+    // column.
+    q = q.not("enriched_at", "is", null).eq("content_state", "ready");
   }
 
   if (filters.minRating > 0) {

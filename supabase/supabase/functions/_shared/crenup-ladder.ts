@@ -80,9 +80,9 @@
 // linear, so ">= N" is a MEANINGFUL question to ask of it. It is not, today, a
 // question anything can ask in SQL: this value is a read-time fold over the
 // run-event log, not a column, so it cannot appear in a WHERE clause. The
-// consumer Mesita lanes therefore gate on `enriched_at IS NOT NULL` instead
-// (MESITA-2154; `content_state = 'ready'` before it, MESITA-1228) — a real
-// predicate, applied before the pool cap.
+// consumer Mesita lanes therefore gate on `enriched_at IS NOT NULL` AND
+// `content_state = 'ready'` instead (MESITA-2154; `content_state = 'ready'`
+// alone before it, MESITA-1228) — real predicates, applied before the pool cap.
 //
 // THE METER IS NOT THE ENRICHED FACT (MESITA-2154). Enriched is yes/no:
 // `places.enriched_at` set, i.e. an Enrich run completed. The high-water is

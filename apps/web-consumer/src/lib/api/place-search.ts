@@ -1,5 +1,5 @@
 // Frontend API surface for the Search page — live catalog text search +
-// the consumer Create flow.
+// the consumer "Add to Mesita" create flow.
 //
 // Architectural constraints honoured (same as places.ts):
 // - Clients NEVER query the database directly. Every read or write goes
