@@ -5,10 +5,10 @@
 
 export const ENRICH_FIELD_LIMITS = {
   placeName: { max: 80 },
-  // The Place editor's overwrite ceiling (admin-web-update-place). A freshly
-  // enriched place can exceed it: the Enricher's own synthesis ceiling is
-  // ENRICH_DESCRIPTION_MAX (1,000-word target × 7, enrich-config.ts).
-  description: { max: 2000 },
+  // The Presentation ceiling, one number everywhere: the Enricher's synthesis
+  // slice (ENRICH_DESCRIPTION_MAX reads this) and the Place editor's
+  // overwrite (admin-web-update-place). 1,000 characters (MESITA-2161).
+  description: { max: 1000 },
   // The Semantic Summary that OpenAI embeds (places.embedding_source_text) —
   // NOT the Presentation. One of the three enrichment texts, and the only one
   // the INDEX reads (`_shared/crenup-ladder.ts`). Words, enforced at word

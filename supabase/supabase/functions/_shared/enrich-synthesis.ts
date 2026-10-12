@@ -168,13 +168,13 @@ export function buildPresentationInput(place: {
     `English, even when the source material is Spanish. Translate facts ` +
     `into English; do not leave Spanish prose in any field. ` +
     `Write "description" as the public Presentation for the Place page: ` +
-    `a rich, inviting, factual narrative of roughly ` +
+    `a short, inviting, factual narrative of roughly ` +
     `${ENRICH_DESCRIPTION_TARGET_WORDS} words (max ` +
     `${ENRICH_DESCRIPTION_MAX} characters). ` +
     `CRITICAL — paragraphs: "description" MUST be several short paragraphs ` +
     `separated by a blank line (the two-character sequence \\n\\n). Never ` +
-    `return one unbroken wall of text. Aim for 3–6 paragraphs; each ` +
-    `paragraph is 2–4 sentences on one idea (atmosphere, cuisine, signature ` +
+    `return one unbroken wall of text. Aim for 2–3 paragraphs; each ` +
+    `paragraph is 2–3 sentences on one idea (atmosphere, cuisine, signature ` +
     `dishes or experiences, history or neighborhood, why visit) — only when ` +
     `the sources support it. No filler or invented detail. ` +
     `"mesita_name" is the clean public display name, in proper case: strip ` +
