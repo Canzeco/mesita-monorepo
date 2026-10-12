@@ -6,7 +6,7 @@
 // Create, Enrich and Update write, each in its own box over the same Google
 // Place IDs (MESITA-2096, Pato: "just use a create box, enrich box, and
 // update box. i don't care if kinda redundant"). Create mints the place,
-// Enrich fills it, and Update is List, Unlist and Delete — writes to a place
+// Enrich fills it, and Update is Enable, Disable and Delete — writes to a place
 // that already exists. Update is a box, never a button, and there is no
 // Create + Enrich combo.
 
