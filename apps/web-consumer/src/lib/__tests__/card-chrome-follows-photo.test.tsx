@@ -15,19 +15,6 @@ import { describe, expect, it } from "vitest";
 const SRC = join(__dirname, "..", "..");
 const read = (p: string) => readFileSync(join(SRC, p), "utf8");
 
-describe("Swipe", () => {
-  it("reads the mode of the photo on screen, not the first one", () => {
-    const src = read("components/consumer/PlaceSwipeCardFace.tsx");
-    expect(src).toContain("onIdxChange={setActivePhotoIdx}");
-    expect(src).toMatch(/place\.photos\[activePhotoIdx\]/);
-  });
-
-  it("only the cover mode draws the gradient", () => {
-    const src = read("components/consumer/SwipeCardFieldsLayer.tsx");
-    expect(src).toMatch(/\{!split && \(\s*<div className="absolute inset-0 bg-gradient-to-t/);
-  });
-});
-
 describe("the carousel reports the photo on screen", () => {
   it("calls onIdxChange when the page changes", () => {
     const src = read("components/consumer/ImageCarousel.tsx");

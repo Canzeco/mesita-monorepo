@@ -108,37 +108,14 @@ describe("one place-grid geometry, shared", () => {
   });
 });
 
-// Swipe reads the SHARED deck; Favs resolves saves against it. Swipe adds
-// ONE located fetch of its own and that is deliberate — HomeDeckBoundary
-// sends no coordinates, so without it Proximity would contribute nothing.
-describe("Swipe rides the shared deck", () => {
-  const swipe = read("components/consumer/home/swipe/SwipeDeck.tsx");
-
-  it("takes the deck from the shared boundary", () => {
-    const page = read("app/(shell)/(discovery)/discover/swipe/page.tsx");
-    expect(page).toContain("useHomeDeck()");
-    expect(swipe).not.toContain("apiListCatalog");
-  });
-
-  it("re-fetches when coordinates or filters would change the server's answer", () => {
-    expect(swipe).toContain("apiRecommendDeck");
-    expect(swipe).toContain("toDeckRequest");
-  });
-
-  it("keeps the engine's banded order — the client never re-sorts the deck", () => {
-    // A client float here lifts a CLOSED backfill card above open ones.
-    // Comments are stripped first, so a note explaining this rule cannot
-    // trip it — only a real call can.
-    const code = (src: string) =>
-      src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
-    const boundary = read("components/consumer/home/HomeDeckBoundary.tsx");
-    expect(boundary).toContain("await apiRecommendDeck(supabase");
-    for (const [name, src] of [
-      ["SwipeDeck.tsx", swipe],
-      ["HomeDeckBoundary.tsx", boundary],
-    ] as const) {
-      expect(code(src), name).not.toMatch(/\.(sort|toSorted|reverse|toReversed)\(/);
-    }
+// Places' rails are deliberately NOT a PLACE_GRID caller — horizontal rails
+// under category headings answer a different question from a vertical grid.
+// If they ever adopt the constants this is the deliberate edit that says so.
+describe("Places keeps its rails", () => {
+  it("scrolls sideways and does not use the grid", () => {
+    const rails = read("components/consumer/home/CatalogRails.tsx");
+    expect(rails).not.toContain("PLACE_GRID_CLASS");
+    expect(rails).toContain("overflow-x-auto");
   });
 });
 
@@ -148,14 +125,14 @@ describe("Swipe rides the shared deck", () => {
 // cannot visit teaches a reviewer nothing while quietly becoming the thing
 // everyone demos. MESITA-2105 brought a sample deck back for one day;
 // MESITA-2095 deleted it with `lib/mock/` once Pato began creating real
-// places, and this pin is absolute again. With no places, Swipe shows its
-// "No places yet" screen.
+// places, and this pin is absolute again. Social has no data and says so
+// rather than painting sample people.
 describe("Discovery invents no places", () => {
   const favs = read("components/consumer/home/FavoritesList.tsx");
 
   it.each([
-    ["Swipe", "components/consumer/home/swipe/SwipeDeck.tsx"],
-    ["Swipe's page", "app/(shell)/(discovery)/discover/swipe/page.tsx"],
+    ["Places", "components/consumer/home/CatalogRails.tsx"],
+    ["Social", "app/(shell)/(discovery)/discover/social/page.tsx"],
     ["Favs", "components/consumer/home/FavoritesList.tsx"],
     ["the place lookup", "lib/api/places.ts"],
   ])("%s ships no mock deck", (_label, rel) => {

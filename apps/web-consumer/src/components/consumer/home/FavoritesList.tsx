@@ -131,10 +131,10 @@ export function FavoritesList({
         <EmptyState
           icon={Heart}
           title="Nothing saved yet"
-          description="Swipe right on a place and it lands here."
+          description="Save a place and it lands here."
           action={{
-            label: "Start swiping",
-            href: CONSUMER_ROUTES.discoverTabs.swipe,
+            label: "Browse places",
+            href: CONSUMER_ROUTES.discoverTabs.places,
           }}
         />
       ) : (
