@@ -4,6 +4,9 @@
 //
 //   Home    Places · Social · Chat · Favs        (MESITA-2166)
 //
+// ALL FOUR ARE SOON (Pato, MESITA-2168). Each pill wears Pay's chip. The
+// chip sits above the pill, so it adds no width and the 359px budget holds.
+//
 // It was DiscoverModeNav. It is drawn by app/(shell)/(discovery)/discover/
 // layout.tsx, so the pills share one frame and one deck fetch, and
 // Search — its own bottom tab since MESITA-2055 — sits outside it with no
@@ -45,6 +48,8 @@ type Mode = {
   href: string;
   label: string;
   Icon: LucideIcon;
+  // Temporary (MESITA-2168). The page behind the pill is the Soon empty state.
+  soon?: boolean;
 };
 
 // THE ORDER IS PATO'S (MESITA-2166: "Places. Social. Chat. Favs. (Like
@@ -52,10 +57,30 @@ type Mode = {
 // CONSUMER_ROUTES.discoverDefault, which is Places' href. Swipe and Scroll
 // are legacy 308s to Places.
 export const HOME_MODES: Mode[] = [
-  { href: CONSUMER_ROUTES.discoverTabs.places, label: "Places", Icon: Store },
-  { href: CONSUMER_ROUTES.discoverTabs.social, label: "Social", Icon: Users },
-  { href: CONSUMER_ROUTES.discoverTabs.chat, label: "Chat", Icon: Sparkles },
-  { href: CONSUMER_ROUTES.discoverTabs.favs, label: "Favs", Icon: Heart },
+  {
+    href: CONSUMER_ROUTES.discoverTabs.places,
+    label: "Places",
+    Icon: Store,
+    soon: true,
+  },
+  {
+    href: CONSUMER_ROUTES.discoverTabs.social,
+    label: "Social",
+    Icon: Users,
+    soon: true,
+  },
+  {
+    href: CONSUMER_ROUTES.discoverTabs.chat,
+    label: "Chat",
+    Icon: Sparkles,
+    soon: true,
+  },
+  {
+    href: CONSUMER_ROUTES.discoverTabs.favs,
+    label: "Favs",
+    Icon: Heart,
+    soon: true,
+  },
 ];
 
 export function ModeRail() {
@@ -77,9 +102,11 @@ export function ModeRail() {
 
   return (
     <div className="border-border bg-background/90 sticky top-0 z-20 shrink-0 border-b backdrop-blur-xl">
-      <div className="scrollbar-hide overflow-x-auto px-2 py-2.5">
+      {/* pt-3 clears the Soon chip: it hangs 8px above the pill, and
+          overflow-x-auto clips anything past the padding edge. */}
+      <div className="scrollbar-hide overflow-x-auto px-2 pt-3 pb-2.5">
         <div className="grid w-max min-w-full auto-cols-fr grid-flow-col items-center gap-1">
-          {HOME_MODES.map(({ href, label, Icon }) => {
+          {HOME_MODES.map(({ href, label, Icon, soon }) => {
             // EXACT match, never startsWith: nothing under one pill's href may
             // light it.
             const isActive = pathname === href;
@@ -95,8 +122,13 @@ export function ModeRail() {
                   if (!isActive)
                     trackEvent(supabase, "home_mode_view", { mode: label });
                 }}
-                className={cn(base, isActive ? active : resting)}
+                className={cn(base, "relative", isActive ? active : resting)}
               >
+                {soon && (
+                  <span className="bg-muted text-muted-foreground ring-card type-meta pointer-events-none absolute -top-2 left-1/2 z-10 flex h-4 -translate-x-1/2 items-center rounded-full px-1.5 leading-none font-semibold whitespace-nowrap ring-2">
+                    Soon
+                  </span>
+                )}
                 <Icon className="h-3.5 w-3.5 shrink-0" strokeWidth={2.2} />
                 <span>{label}</span>
               </Link>

@@ -419,6 +419,26 @@ describe("T5b — Home's supporting rail", () => {
     ]);
   });
 
+  // Pato, MESITA-2168: all four are Soon for the moment. The chip is one
+  // site in the rail, drawn for every pill. Each page is the Soon empty
+  // state — Filters, Memo and the saved grid do not mount.
+  it("marks every pill Soon, and each page says so", async () => {
+    const { HOME_MODES } = await import("@/components/consumer/ModeRail");
+    expect(HOME_MODES.map((m) => m.soon)).toEqual([true, true, true, true]);
+    const rail = readFileSync(join(COMPONENTS, "ModeRail.tsx"), "utf8");
+    expect(rail).toMatch(/>\s*Soon\s*</);
+    for (const seg of ["places", "social", "chat", "favs"]) {
+      const page = readFileSync(
+        join(SHELL, "(discovery)", "discover", seg, "page.tsx"),
+        "utf8",
+      );
+      expect(page, seg).toContain("HomeSoon");
+      expect(page, seg).not.toMatch(/<CatalogRails|<AskAiTab|<FavoritesList/);
+    }
+    const soon = readFileSync(join(COMPONENTS, "home", "HomeSoon.tsx"), "utf8");
+    expect(soon).toContain("is coming soon");
+  });
+
   // Swipe (MESITA-2166), Scroll (MESITA-2163) and Catalog's old Feed address
   // left the rail: no page, one hop to Places, the default.
   it.each(["swipe", "scroll", "feed"])(
@@ -787,7 +807,11 @@ describe("T9 — Pay is one page, and the Second Stage trees are gone", () => {
   // every gate stays green.
   it("keeps /pay itself out of the redirect table", async () => {
     const redirects = await nextConfig.redirects!();
-    expect(redirects.find((r) => r.source === CONSUMER_ROUTES.pay)).toBeUndefined();
-    expect(redirects.find((r) => matches(r.source, CONSUMER_ROUTES.pay))).toBeUndefined();
+    expect(
+      redirects.find((r) => r.source === CONSUMER_ROUTES.pay),
+    ).toBeUndefined();
+    expect(
+      redirects.find((r) => matches(r.source, CONSUMER_ROUTES.pay)),
+    ).toBeUndefined();
   });
 });
