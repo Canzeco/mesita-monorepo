@@ -73,14 +73,18 @@ export async function gatherInstagram(opts: {
   // The candidate we DERIVE from the Facebook slug can't use FB to vouch for
   // itself (circular), so that one must clear the website match or the LLM judge.
   const attempt = async (handle: string | null, corroborateFb = true) => {
-    if (!handle || tried.has(handle.toLowerCase())) return null;
-    tried.add(handle.toLowerCase());
+    // One key for `tried` AND `apiErrors`: Instagram handles are
+    // case-insensitive, and a mixed-case FB slug keyed differently made the
+    // infra_fail check below miss its error (MESITA-2162).
+    const key = handle?.toLowerCase();
+    if (!handle || !key || tried.has(key)) return null;
+    tried.add(key);
     const run = await runApifyActor<Record<string, unknown>>(
       APIFY_ACTORS.instagramProfile,
       { usernames: [handle] },
       apifyKey,
     );
-    if (run.error) apiErrors[handle] = `${run.status ?? "net"}: ${run.error}`;
+    if (run.error) apiErrors[key] = `${run.status ?? "net"}: ${run.error}`;
     const p = run.items?.[0];
     // A NONEXISTENT handle still returns a non-null object — the username echoed
     // back with every field null/empty. Treat that empty stub as not-found so a
