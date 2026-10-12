@@ -263,8 +263,7 @@ describe("T5 — exactly one tab lights per surface", () => {
   }
 
   const MATRIX: [string, string][] = [
-    ["/discover/scroll", "Home"],
-    ["/discover/chat", "Home"],
+    ["/discover/swipe", "Home"],
     ["/discover/favs", "Home"],
     ["/place/abc", "Home"],
     ["/search", "Search"],
@@ -408,25 +407,34 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
 //
 // The order is Pato's (MESITA-2142): "swipe scroll chat favs".
 describe("T5b — Home's supporting rail", () => {
-  it("is exactly Swipe · Scroll · Chat · Favs", async () => {
+  it("is exactly Swipe · Favs", async () => {
     const { HOME_MODES } = await import("@/components/consumer/ModeRail");
-    expect(HOME_MODES.map((m) => m.label)).toEqual([
-      "Swipe",
-      "Scroll",
-      "Chat",
-      "Favs",
-    ]);
+    expect(HOME_MODES.map((m) => m.label)).toEqual(["Swipe", "Favs"]);
   });
 
+  // Scroll and Chat left the rail (MESITA-2163): no page, one hop to Swipe.
+  it.each(["scroll", "chat"])(
+    "/discover/%s has no page and 308s to Swipe",
+    async (seg) => {
+      const hop = (await nextConfig.redirects!()).find(
+        (r) => r.source === `/discover/${seg}`,
+      );
+      expect(hop?.destination).toBe(CONSUMER_ROUTES.discoverTabs.swipe);
+      expect(
+        existsSync(join(SHELL, "(discovery)", "discover", seg, "page.tsx")),
+      ).toBe(false);
+    },
+  );
+
   // Catalog left the rail again (MESITA-2140), as at MESITA-2050: its page is
-  // gone and /discover/feed is a one-hop 308 onto Scroll, the deck.
-  it("Catalog is off the rail: /discover/feed has no page and 308s to Scroll", async () => {
+  // gone and /discover/feed is a one-hop 308 onto Swipe, the default.
+  it("Catalog is off the rail: /discover/feed has no page and 308s to Swipe", async () => {
     const { HOME_MODES } = await import("@/components/consumer/ModeRail");
     expect(HOME_MODES.map((m) => m.href)).not.toContain("/discover/feed");
     const hop = (await nextConfig.redirects!()).find(
       (r) => r.source === "/discover/feed",
     );
-    expect(hop?.destination).toBe(CONSUMER_ROUTES.discoverTabs.scroll);
+    expect(hop?.destination).toBe(CONSUMER_ROUTES.discoverTabs.swipe);
     expect(
       existsSync(join(SHELL, "(discovery)", "discover", "feed", "page.tsx")),
     ).toBe(false);
@@ -499,8 +507,6 @@ describe("T5b — Home's supporting rail", () => {
   it("every Home pill's page lives under discover", () => {
     for (const rel of [
       ["discover", "swipe"],
-      ["discover", "scroll"],
-      ["discover", "chat"],
       ["discover", "favs"],
     ]) {
       expect(

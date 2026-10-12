@@ -8,19 +8,17 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/discover",
 }));
 
-import DiscoverScrollPage from "@/app/(shell)/(discovery)/discover/scroll/page";
 import DiscoverSwipePage from "@/app/(shell)/(discovery)/discover/swipe/page";
 import { HomeDeckProvider } from "@/components/consumer/home/HomeDeckContext";
 
 // THE EMPTY CATALOG IS A SCREEN, NOT A BLANK (MESITA-2095). The sample deck
 // that stood in for the catalog is deleted, and on the day it went the live
 // catalog held zero places — so this is the first thing a guest sees on Swipe
-// and Scroll until real places land. Both modes must say so in words, draw no
+// until real places land. Swipe must say so in words, draw no
 // card, and keep "the request failed" apart from "there is nothing yet".
 
 const MODES: Array<[string, () => ReactElement]> = [
   ["Swipe", () => <DiscoverSwipePage />],
-  ["Scroll", () => <DiscoverScrollPage />],
 ];
 
 const render = (page: ReactElement, fetchError: string | null = null) =>
@@ -52,14 +50,5 @@ describe("an empty catalog", () => {
     const html = render(page(), "consumer-web-recommend-swipe 502");
     expect(html).toMatch(/<button[^>]*type="button"[^>]*>(?:(?!<\/button>).)*Try again<\/button>/);
     expect(html).not.toMatch(/<a [^>]*>(?:(?!<\/a>).)*Try again/);
-  });
-
-  // Scroll's page slot is a positioned block; EmptyState needs a flex column
-  // around it or it hugs the top edge instead of sitting in the middle.
-  it("Scroll centres the message in a positioned flex column", () => {
-    const html = render(<DiscoverScrollPage />);
-    expect(html).toContain(
-      '<div class="relative min-h-0 flex-1 overflow-hidden"><div class="absolute inset-0 flex flex-col"><div class="flex min-h-0 flex-1 flex-col items-center justify-center',
-    );
   });
 });

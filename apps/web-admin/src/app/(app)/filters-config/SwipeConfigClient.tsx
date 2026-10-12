@@ -2,7 +2,7 @@
 
 // Scroll — LIVE (MESITA-1859). This box was a Soon card until now, on copy
 // dated 2026-08-28 that justified itself with Home being parked. Home shipped:
-// `ScrollDeck.tsx` is live in web-consumer and consumer-web-recommend-swipe
+// `SwipeDeck.tsx` is live in web-consumer and consumer-web-recommend-swipe
 // is called on every load. A Soon card sitting above a live exponent column is
 // the exact dishonesty the empty-state component's own header exists to
 // prevent, so the copy could not survive this PR.

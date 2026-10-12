@@ -108,55 +108,37 @@ describe("one place-grid geometry, shared", () => {
   });
 });
 
-// Scroll reads the SHARED deck; Favs resolves saves against it. Scroll adds
-// ONE fetch of its own and that is deliberate — HomeDeckBoundary sends no
-// coordinates, so without it Proximity would contribute nothing to Home.
-describe("Scroll rides the shared deck", () => {
-  const scroll = read("components/consumer/home/scroll/ScrollDeck.tsx");
+// Swipe reads the SHARED deck; Favs resolves saves against it. Swipe adds
+// ONE located fetch of its own and that is deliberate — HomeDeckBoundary
+// sends no coordinates, so without it Proximity would contribute nothing.
+describe("Swipe rides the shared deck", () => {
+  const swipe = read("components/consumer/home/swipe/SwipeDeck.tsx");
 
-  it("takes the deck as a prop", () => {
-    const page = read("app/(shell)/(discovery)/discover/scroll/page.tsx");
+  it("takes the deck from the shared boundary", () => {
+    const page = read("app/(shell)/(discovery)/discover/swipe/page.tsx");
     expect(page).toContain("useHomeDeck()");
-    expect(scroll).not.toContain("apiListCatalog");
+    expect(swipe).not.toContain("apiListCatalog");
   });
 
   it("re-fetches when coordinates or filters would change the server's answer", () => {
-    expect(scroll).toContain("apiRecommendDeck");
-    expect(scroll).toContain("toDeckRequest");
-  });
-
-  // MESITA-2047: the one real place sat behind "No places yet" all Tuesday.
-  // The engine now backfills closed and far places, and the client must not
-  // undo either half of that.
-  it("an empty located answer never blanks the shared deck when no filter is set", () => {
-    expect(scroll).toContain(
-      "geoDeck && (geoDeck.length > 0 || hasDiscoveryPredicates(filters))",
-    );
-    expect(scroll).not.toContain("geoDeck ?? places");
+    expect(swipe).toContain("apiRecommendDeck");
+    expect(swipe).toContain("toDeckRequest");
   });
 
   it("keeps the engine's banded order — the client never re-sorts the deck", () => {
-    // A client float here lifts a CLOSED backfill card above open ones. The
-    // engine ranks; both the deck and the boundary that fetches it hand the
-    // rows on in the order they arrived. Comments are stripped first, so a
-    // note explaining this rule cannot trip it — only a real call can.
+    // A client float here lifts a CLOSED backfill card above open ones.
+    // Comments are stripped first, so a note explaining this rule cannot
+    // trip it — only a real call can.
     const code = (src: string) =>
       src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
     const boundary = read("components/consumer/home/HomeDeckBoundary.tsx");
     expect(boundary).toContain("await apiRecommendDeck(supabase");
     for (const [name, src] of [
-      ["ScrollDeck.tsx", scroll],
+      ["SwipeDeck.tsx", swipe],
       ["HomeDeckBoundary.tsx", boundary],
     ] as const) {
       expect(code(src), name).not.toMatch(/\.(sort|toSorted|reverse|toReversed)\(/);
     }
-  });
-
-  it("records the located key when its answer lands, not when it is asked", () => {
-    // Recording at request time dropped the located deck whenever the effect
-    // re-ran on the same key mid-flight.
-    expect(scroll).toContain("settledKeyRef.current = requestKey;");
-    expect(scroll).not.toContain("requestKeyRef");
   });
 });
 
@@ -164,22 +146,14 @@ describe("Scroll rides the shared deck", () => {
 // shitty mock data"). `lib/mock/feed-places.ts` is deleted, not parked — it
 // was the last caller's only consumer, and a plausible-looking place you
 // cannot visit teaches a reviewer nothing while quietly becoming the thing
-// everyone demos. MESITA-2105 brought a sample deck back for Scroll and Swipe
-// behind a switch for one day; MESITA-2095 deleted it with `lib/mock/` once
-// Pato began creating real places, and this pin is absolute again.
-//
-// Scroll fills its 50-card deck by CYCLING the real rows instead. With one
-// place in the catalog that is the same place fifty times, which is honest by
-// construction: every card is tappable and savable, and starts a real
-// reservation wherever the place takes bookings. With none, both modes show
-// their "No places yet" screen.
+// everyone demos. MESITA-2105 brought a sample deck back for one day;
+// MESITA-2095 deleted it with `lib/mock/` once Pato began creating real
+// places, and this pin is absolute again. With no places, Swipe shows its
+// "No places yet" screen.
 describe("Discovery invents no places", () => {
-  const scroll = read("components/consumer/home/scroll/ScrollDeck.tsx");
   const favs = read("components/consumer/home/FavoritesList.tsx");
 
   it.each([
-    ["Scroll", "components/consumer/home/scroll/ScrollDeck.tsx"],
-    ["Scroll's card", "components/consumer/home/scroll/scroll-card.tsx"],
     ["Swipe", "components/consumer/home/swipe/SwipeDeck.tsx"],
     ["Swipe's page", "app/(shell)/(discovery)/discover/swipe/page.tsx"],
     ["Favs", "components/consumer/home/FavoritesList.tsx"],
@@ -191,19 +165,6 @@ describe("Discovery invents no places", () => {
     expect(src).not.toContain("lib/mock/");
     expect(src).not.toMatch(/SCROLL_USES_MOCK|scrollMockPlaces|isMockPlace|mockPlaceDetail/);
     expect(src).not.toMatch(/["'`]mock-/);
-  });
-
-  // The deck reads the server's rows and nothing else: the located re-fetch
-  // when it has one, the shared Home deck otherwise.
-  it("Scroll's only source is the real deck", () => {
-    expect(scroll).toContain("const source = located ?? places;");
-  });
-
-  // The deck is a fixed 50 cycled from whatever is real — never padded with
-  // invented rows, and never left at length 1 where the gesture cannot happen.
-  it("Scroll cycles the real rows to a full deck", () => {
-    expect(scroll).toContain("const DECK_SIZE = 50;");
-    expect(scroll).toContain("rows[i % rows.length]");
   });
 
   // An empty saved list is a real, meaningful state — you have saved nothing.

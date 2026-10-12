@@ -15,8 +15,8 @@ export const CONSUMER_ROUTES = {
   // the one search bar + Filters. `/discover/search` and `/discover/map` are
   // redirect SOURCES for the bookmarks those addresses shipped under.
   search: "/search",
-  // DISCOVER — Home's mode-rail namespace. Four modes, matching ModeRail's
-  // four columns exactly: Home · Scroll · Chat · Favs (Pato, MESITA-2081).
+  // DISCOVER — Home's mode-rail namespace. Two modes, matching ModeRail's
+  // two columns exactly: Swipe · Favs (Pato, MESITA-2163).
   //
   // THE ENGINE KEY IS STILL `swipe`, AND THAT IS DELIBERATE. `swipe` is a
   // persisted key in `app_config.discovery_config`, the only entry in
@@ -24,18 +24,15 @@ export const CONSUMER_ROUTES = {
   // admin twin, and the mask for weightsForMode("swipe"). Renaming it would
   // make loadDiscoveryConfig read `undefined` and silently fall back to
   // DEFAULT_SWIPE, discarding every operator-tuned radius in the live config
-  // — and the two code twins pin EACH OTHER, so it would go green. Scroll is
-  // Swipe's segment, renamed (MESITA-1697).
+  // — and the two code twins pin EACH OTHER, so it would go green.
   //
-  // HOME'S RAIL IS SWIPE · SCROLL · CHAT · FAVS (Pato, MESITA-2142: "Return
-  // the swipe mode from old commits. swipe scroll chat favs"). Swipe, the
-  // card stack, is back at its own segment; Catalog's /discover/feed stays a
-  // legacy 308 to Scroll (MESITA-2140).
+  // HOME'S RAIL IS SWIPE · FAVS (Pato, 2026-10-12, MESITA-2163: "just swipe
+  // or scroll, but just one not two"). Swipe stays because each card is a
+  // decision and every like lands in Favs; Scroll duplicated it and Search.
+  // Chat (Memo) is cut for the MVP. Both addresses are legacy 308s to Swipe.
   discover: "/discover",
   discoverTabs: {
     swipe: "/discover/swipe",
-    scroll: "/discover/scroll",
-    chat: "/discover/chat",
     favs: "/discover/favs",
   },
   // SWIPE LEADS (MESITA-2142): the default is the card stack, the first
@@ -90,6 +87,9 @@ export const CONSUMER_ROUTES = {
     // Catalog's day as Home, Swipe's week as the default, Catalog's segment.
     discoverHome: "/discover/home",
     discoverCatalog: "/discover/catalog",
+    // Scroll's feed and Chat's Memo, off the rail since MESITA-2163.
+    discoverScroll: "/discover/scroll",
+    discoverChat: "/discover/chat",
     // The Second Stage tab and everything under it (MESITA-2087). The QR
     // place list, THE TICKET, Wallet with Buy · Gift · Redeem · balance,
     // standalone Credits, the Order tab, the public gift landing, and every
