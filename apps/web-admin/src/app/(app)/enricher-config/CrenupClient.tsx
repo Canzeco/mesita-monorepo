@@ -42,32 +42,28 @@ import {
   Tag,
 } from "./blocks";
 import { CrenupSaveBar } from "./CrenupSaveBar";
-import { SectionStrip, type CrenupView } from "./SectionStrip";
+import { SectionStrip } from "./SectionStrip";
 import { clampFunnel, type CrenupSettings } from "./crenup-guards";
 import { MODELS_PARENT } from "../models-config/nav";
-import { ENRICHMENT_PARENT } from "./nav";
 
 /** The Create box on Multiple Places — where Create actually runs. */
 const CREATE_BOX_HREF = "/manage-multiple#create";
 
-// THE CRENUP PAGES (MESITA-2083: two rail rows, two pages, one client).
-//   Creation    Models (a link to /models-config) · Create
-//   Enrichment  Enrich · Functions
-// Discovery-shaped. One Save for atlas_* on both. Search eligibility lives
-// on Discovery › Map. Creation had a third module, Verification, until
+// THE INTAKE PAGE (MESITA-2159 merged Creation and Enrichment back into one
+// rail row, one page): Models (a link to /models-config) · Create · Enrich ·
+// Functions. Discovery-shaped. One Save for atlas_*. Search eligibility lives
+// on Discovery › Map. Create had a sibling module, Verification, until
 // MESITA-2106: the MVP has no business app, so nobody proves ownership.
 
 const MAX_DISCOVERY_CANDIDATES = 10;
 
 
 export function CrenupClient({
-  view,
   initialSettings,
   settingsUpdatedAt,
   settingsLoadError,
   prompts,
 }: {
-  view: CrenupView;
   initialSettings: CrenupSettings;
   settingsUpdatedAt: string | null;
   settingsLoadError: string | null;
@@ -147,12 +143,10 @@ export function CrenupClient({
 
   return (
     <>
-      <SectionStrip view={view} />
+      <SectionStrip />
 
       {/* pb-24 keeps the last module clear of the sticky CrenupSaveBar. */}
       <div className="flex flex-col gap-4 pb-24">
-        {view === "creation" && (
-        <>
         <div id="s-models" className="scroll-mt-16">
           <SectionCard
             icon={<Gauge className="text-secondary h-4 w-4" />}
@@ -207,8 +201,7 @@ export function CrenupClient({
                   ),
                 },
               ]}
-              // Functions lives on Enrichment, so Create's chips cross over.
-              steps={chipsFor("create", ENRICHMENT_PARENT.href)}
+              steps={chipsFor("create")}
               estimate={
                 <FlowEstimate
                   caption="Details + Description + Embedding. One place."
@@ -247,11 +240,6 @@ export function CrenupClient({
           </SectionCard>
         </div>
 
-        </>
-        )}
-
-        {view === "enrichment" && (
-        <>
         <div id="s-enrich" className="scroll-mt-16">
           <SectionCard
             icon={<RefreshCw className="text-secondary h-4 w-4" />}
@@ -513,9 +501,6 @@ export function CrenupClient({
             </div>
           </SectionCard>
         </div>
-
-        </>
-        )}
       </div>
 
       <CrenupSaveBar
