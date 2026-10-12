@@ -51,8 +51,7 @@ import { persistBusinessFieldPins } from "../_shared/field-correction-writer.ts"
 const MAX_PHOTOS = ENRICH_FIELD_LIMITS.photos.max;
 const MAX_TAGS = ENRICH_FIELD_LIMITS.tagsPerPlace.max;
 const MAX_TAG_LEN = ENRICH_FIELD_LIMITS.tagSlugLength.max;
-// Matches the Place editor's About field cap (PLACE_DESCRIPTION_MAX).
-const MAX_DESCRIPTION_LEN = 2000;
+const MAX_DESCRIPTION_LEN = ENRICH_FIELD_LIMITS.description.max;
 
 function normalisePlaceTags(value: unknown): string[] | null {
   if (!Array.isArray(value)) return null;

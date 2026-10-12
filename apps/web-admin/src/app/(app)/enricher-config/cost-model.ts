@@ -40,7 +40,7 @@ export const COST_RATES = {
   visionEconomy: 0.001, // gpt-4o-mini vision, one image (detail:low)
   visionStandard: 0.008, // gpt-4o vision, one image
   sort: 0.001, // gpt-4o-mini text sort / short judge
-  synthEconomy: 0.002, // gpt-4o-mini synthesis (~1000-word Presentation)
+  synthEconomy: 0.002, // gpt-4o-mini synthesis (1,000-char Presentation)
   synthStandard: 0.028, // gpt-4o synthesis (standard)
 } as const;
 

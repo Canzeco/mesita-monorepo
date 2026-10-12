@@ -7,6 +7,7 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";
 import { normalizeEnrichmentConfig } from "./enrichment-config.ts";
+import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 
 export const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
@@ -38,10 +39,11 @@ export function visionModelFor(quality: string): string {
 // save cap is enrichment_config.atlasSaveTotalImages, applied at the end).
 export const PHOTO_CEILING = 50;
 
-// Presentation target: a full public narrative, not a blurb. ~7 chars/word
-// (word + space) gives a predictable synthesis budget.
-export const ENRICH_DESCRIPTION_TARGET_WORDS = 1000;
-export const ENRICH_DESCRIPTION_MAX = ENRICH_DESCRIPTION_TARGET_WORDS * 7;
+// Presentation ceiling (ENRICH_FIELD_LIMITS.description). The word target sits
+// under it at ~7 chars/word (word + space) so the model lands short and the
+// hard slice rarely cuts a sentence.
+export const ENRICH_DESCRIPTION_MAX = ENRICH_FIELD_LIMITS.description.max;
+export const ENRICH_DESCRIPTION_TARGET_WORDS = 130;
 
 // Per-call cost estimates (USD), from each provider's PUBLISHED price list
 // (verified 2026-07-07). MIRRORS the admin cost calculator's rate card

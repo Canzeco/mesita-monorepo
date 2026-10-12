@@ -301,7 +301,7 @@ type PlaceTagCatalog = {
 
 const DEFAULT_PLACE_FIELD_LIMITS: PlaceFieldLimits = {
   placeNameMax: 80,
-  descriptionMax: 2000,
+  descriptionMax: 1000,
   tagsPerPlaceMax: 20,
   photosMax: 10,
 };
