@@ -185,29 +185,6 @@
    2026-05-27 — consumer joins the rest of the suite on light. See
    project_theme_strategy memory note for the reasoning. */
 
-/* Scroll's double-tap heart (MESITA-2105): pops in, holds, fades. Animates
-   `transform` only — the centring rides Tailwind v4's separate `translate`
-   property, so the two never fight. Reduced motion hides it entirely
-   (`motion-reduce:hidden` on the element); the Save disc still fills. */
-@keyframes scroll-heart-burst {
-  0% {
-    transform: scale(0.5);
-    opacity: 0;
-  }
-  18% {
-    transform: scale(1.15);
-    opacity: 1;
-  }
-  65% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1.08);
-    opacity: 0;
-  }
-}
-
 @theme inline {
   /* Tightened radius scale — flatter, less "pill-like" corners across the
      whole app. Deltas between steps are small so even rounded-3xl stays crisp. */
