@@ -1,15 +1,14 @@
-"use client";
+import { Sparkles } from "lucide-react";
+import { HomeSoon } from "@/components/consumer/home/HomeSoon";
 
-import { AskAiTab } from "@/components/consumer/home/AskAiTab";
-import { useHomeDeck } from "@/components/consumer/home/HomeDeckContext";
-
-// Chat — Memo. Don Memo is the persona you meet inside; the
-// mode is named for what you do here, not who you meet.
+// CHAT — Soon for the moment (Pato, MESITA-2168). Memo stays in AskAiTab;
+// this page does not mount it.
 export default function DiscoverChatPage() {
-  const { places } = useHomeDeck();
   return (
-    <div className="min-h-0 flex-1 overflow-hidden">
-      <AskAiTab places={places} />
-    </div>
+    <HomeSoon
+      icon={Sparkles}
+      name="Chat"
+      description="Asking Don Memo lands here shortly — thanks for waiting."
+    />
   );
 }

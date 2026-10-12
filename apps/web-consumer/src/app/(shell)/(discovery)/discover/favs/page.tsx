@@ -1,15 +1,14 @@
-"use client";
+import { Heart } from "lucide-react";
+import { HomeSoon } from "@/components/consumer/home/HomeSoon";
 
-import { FavoritesList } from "@/components/consumer/home/FavoritesList";
-import { useHomeDeck } from "@/components/consumer/home/HomeDeckContext";
-
-// Favs — saved place ids live in localStorage and are
-// resolved against the shared deck.
-//
-// `fetchError` rides along: when the deck fetch fails the saves still render
-// from their stored previews, but the list has to SAY the picks are stale
-// rather than quietly showing a thinner screen.
+// FAVS — Soon for the moment (Pato, MESITA-2168). FavoritesList stays in
+// the tree; this page does not mount it.
 export default function DiscoverFavsPage() {
-  const { places, fetchError } = useHomeDeck();
-  return <FavoritesList deckPlaces={places} deckError={fetchError} />;
+  return (
+    <HomeSoon
+      icon={Heart}
+      name="Favs"
+      description="Your saved places land here shortly — thanks for waiting."
+    />
+  );
 }
