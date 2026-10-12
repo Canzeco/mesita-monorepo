@@ -14,10 +14,7 @@ import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
 import { DB_PARENT } from "@/app/(app)/manage-database/nav";
 import { MULTIPLE_PLACES_PARENT } from "@/app/(app)/manage-multiple/nav";
 import { SINGLE_PLACE_PARENT } from "@/app/(app)/manage-single/nav";
-import {
-  CREATION_PARENT,
-  ENRICHMENT_PARENT,
-} from "@/app/(app)/enricher-config/nav";
+import { INTAKE_PARENT } from "@/app/(app)/enricher-config/nav";
 import { FILTERS_PARENT } from "@/app/(app)/filters-config/nav";
 import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
 import { MODELS_PARENT } from "@/app/(app)/models-config/nav";
@@ -66,11 +63,11 @@ export const MANAGE_NAV: NavItem[] = [
   SINGLE_PLACE_PARENT,
 ];
 
-// Configurations — exactly five rows (Pato, MESITA-2083: "Models, Creation,
-// Enrichment, Discovery, Reservations — Only those"), ordered as the product
-// flows: which model each subsystem thinks with, then a place's life on Crenup
-// (Creation, then Enrichment), then a guest's night (how they find a place,
-// how they book it).
+// Configurations — exactly four rows (Pato, MESITA-2083: "Models, Creation,
+// Enrichment, Discovery, Reservations — Only those"; MESITA-2159: "Merge
+// Creation and Enrichment into Intake"), ordered as the product flows: which
+// model each subsystem thinks with, then how a place becomes a profile
+// (Intake), then a guest's night (how they find a place, how they book it).
 //
 // Visits (with Ojo and Visits Rewards), Orders and Payments were off-rail
 // pages until MESITA-2088 deleted them: the MVP has no Second Stage.
@@ -96,9 +93,8 @@ export const MANAGE_NAV: NavItem[] = [
 export const CONFIGURATIONS_NAV: NavItem[] = [
   // Models — four platform picks. /general-config redirects here (MESITA-1788).
   MODELS_PARENT,
-  // Crenup's two halves.
-  CREATION_PARENT,
-  ENRICHMENT_PARENT,
+  // Create · Enrich, one page.
+  INTAKE_PARENT,
   // Discovery.
   FILTERS_PARENT,
   RESERVATIONS_PARENT,
