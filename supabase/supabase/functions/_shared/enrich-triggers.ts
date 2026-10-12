@@ -381,6 +381,18 @@ export function wants(
 }
 
 /**
+ * Does a run with this purchase stamp `enriched_at`, THE Enriched fact
+ * (MESITA-2154)? Only when it paid for synthesis. Votes, admin Enrich and
+ * every manual mode buy everything (`null`), so they stamp; the
+ * wrong-number refetch (`on_reservation_failed`) buys only `google`, so it
+ * must not turn a Created place into an Enriched one. The contents stage
+ * is the one writer and it asks only this.
+ */
+export function stampsEnrichedAt(stored: unknown): boolean {
+  return wants(stored, "synthesis");
+}
+
+/**
  * Read the matrix from the app_config singleton. A missing blob is not an
  * error: the code defaults ARE the shipped policy, so a fresh environment
  * enriches correctly before anyone opens the console.

@@ -5,9 +5,11 @@ import {
   shouldTriggerRequestEnrichment,
 } from "./place-requests.ts";
 
+const STAMP = "2026-08-28T00:00:00Z";
+
 Deno.test("zero requests: listed, no auto-enrich", () => {
   assertEquals(
-    placeRequestLifecycle({ contentState: "generating", requestCount: 0 }),
+    placeRequestLifecycle({ requestCount: 0, enrichedAt: null }),
     "listed",
   );
   assertEquals(
@@ -15,6 +17,7 @@ Deno.test("zero requests: listed, no auto-enrich", () => {
       requestCount: 0,
       threshold: 3,
       contentState: "generating",
+      enrichedAt: null,
     }),
     false,
   );
@@ -22,7 +25,7 @@ Deno.test("zero requests: listed, no auto-enrich", () => {
 
 Deno.test("below-threshold requests: Requested, no auto-enrich", () => {
   assertEquals(
-    placeRequestLifecycle({ contentState: "failed", requestCount: 2 }),
+    placeRequestLifecycle({ requestCount: 2, enrichedAt: null }),
     "requested",
   );
   assertEquals(
@@ -30,17 +33,19 @@ Deno.test("below-threshold requests: Requested, no auto-enrich", () => {
       requestCount: 2,
       threshold: 3,
       contentState: "failed",
+      enrichedAt: null,
     }),
     false,
   );
 });
 
-Deno.test("threshold crossing: trigger when not ready and not already enriching", () => {
+Deno.test("threshold crossing: trigger when not enriched and not already enriching", () => {
   assertEquals(
     shouldTriggerRequestEnrichment({
       requestCount: 3,
       threshold: 3,
       contentState: "failed",
+      enrichedAt: null,
     }),
     true,
   );
@@ -49,6 +54,7 @@ Deno.test("threshold crossing: trigger when not ready and not already enriching"
       requestCount: 4,
       threshold: 3,
       contentState: "generating",
+      enrichedAt: null,
     }),
     false,
   );
@@ -60,12 +66,14 @@ Deno.test("duplicate requests: count is the stored number, not a second incremen
     threshold: 3,
     requested: true,
     contentState: "failed",
+    enrichedAt: null,
   });
   const duplicate = placeRequestState({
     requestCount: 1,
     threshold: 3,
     requested: true,
     contentState: "failed",
+    enrichedAt: null,
   });
   assertEquals(first.request_count, duplicate.request_count);
   assertEquals(first.request_lifecycle, "requested");
@@ -74,22 +82,23 @@ Deno.test("duplicate requests: count is the stored number, not a second incremen
       requestCount: duplicate.request_count,
       threshold: 3,
       contentState: "failed",
+      enrichedAt: null,
     }),
     false,
   );
 });
 
-Deno.test("successful transition to Enriched unlocks the profile", () => {
+Deno.test("enriched_at set: Enriched wins over a leftover request count", () => {
   assertEquals(
-    placeRequestLifecycle({ contentState: "ready", requestCount: 7 }),
+    placeRequestLifecycle({ requestCount: 7, enrichedAt: STAMP }),
     "enriched",
-    "Enriched wins over a leftover request count",
   );
   assertEquals(
     shouldTriggerRequestEnrichment({
       requestCount: 7,
       threshold: 3,
       contentState: "ready",
+      enrichedAt: STAMP,
     }),
     false,
   );
@@ -98,27 +107,20 @@ Deno.test("successful transition to Enriched unlocks the profile", () => {
     threshold: 3,
     requested: true,
     contentState: "ready",
+    enrichedAt: STAMP,
   });
   assertEquals(state.is_profile_ready, true);
   assertEquals(state.is_enriched, true);
   assertEquals(state.request_lifecycle, "enriched");
 });
 
-Deno.test("ugly Create profile: ready + no enriched_at still accepts votes", () => {
+Deno.test("Created place: ready + no enriched_at is NOT enriched and still accepts votes", () => {
   assertEquals(
-    placeRequestLifecycle({
-      contentState: "ready",
-      requestCount: 0,
-      enrichedAt: null,
-    }),
+    placeRequestLifecycle({ requestCount: 0, enrichedAt: null }),
     "listed",
   );
   assertEquals(
-    placeRequestLifecycle({
-      contentState: "ready",
-      requestCount: 2,
-      enrichedAt: null,
-    }),
+    placeRequestLifecycle({ requestCount: 2, enrichedAt: null }),
     "requested",
   );
   assertEquals(
@@ -130,23 +132,28 @@ Deno.test("ugly Create profile: ready + no enriched_at still accepts votes", () 
     }),
     true,
   );
-  assertEquals(
-    shouldTriggerRequestEnrichment({
-      requestCount: 3,
-      threshold: 3,
-      contentState: "ready",
-      enrichedAt: "2026-08-28T00:00:00Z",
-    }),
-    false,
-  );
-  const ugly = placeRequestState({
+  const created = placeRequestState({
     requestCount: 2,
     threshold: 3,
     requested: true,
     contentState: "ready",
     enrichedAt: null,
   });
-  assertEquals(ugly.is_profile_ready, true);
-  assertEquals(ugly.is_enriched, false);
-  assertEquals(ugly.request_lifecycle, "requested");
+  assertEquals(created.is_profile_ready, true);
+  assertEquals(created.is_enriched, false);
+  assertEquals(created.request_lifecycle, "requested");
+});
+
+Deno.test("a missing enrichedAt never lets ready read as Enriched (MESITA-2154)", () => {
+  // The deleted fallback treated `enrichedAt === undefined && ready` as
+  // enriched; two admin EFs that forgot the column shipped requested=false.
+  const state = placeRequestState({
+    requestCount: 2,
+    threshold: 3,
+    requested: true,
+    contentState: "ready",
+    enrichedAt: undefined,
+  });
+  assertEquals(state.is_enriched, false);
+  assertEquals(state.request_lifecycle, "requested");
 });

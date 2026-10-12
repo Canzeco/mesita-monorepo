@@ -67,19 +67,22 @@ Deno.test("a mapped row moves Popularity off the prior — the dead-signal guard
   assert(mapped > bare, `a 4.6 across 900 reviews (${mapped}) should beat the prior (${bare})`);
 });
 
-Deno.test("toSignalPlace sets `enriched` explicitly, from EITHER fact", () => {
-  // `isEnrichedPlace` is content_state='ready' OR a stamped enriched_at —
-  // BOTH, never one: 27% of the live catalog is ready with a null
-  // enriched_at, so an enriched_at-only test would grey a quarter of it.
-  // Set HERE, once, so the signal never re-derives it off a relation that
-  // may not carry the column (`public.places` has neither enriched_at nor
-  // family_keys; `place_profiles` and the `profiles` view do).
-  assertEquals(toSignalPlace({ ...ROW, content_state: "ready" }).enriched, true);
+Deno.test("toSignalPlace sets `enriched` explicitly, from enriched_at alone", () => {
+  // MESITA-2154: `isEnrichedPlace` is a stamped enriched_at — an Enrich run
+  // completed. Set HERE, once, so the signal never re-derives it.
+  const STAMP = "2026-09-01T00:00:00Z";
+  assertEquals(toSignalPlace({ ...ROW, content_state: "ready", enriched_at: STAMP }).enriched, true);
   assertEquals(
-    toSignalPlace({ ...ROW, content_state: "generating", enriched_at: "2026-09-01T00:00:00Z" })
-      .enriched,
+    toSignalPlace({ ...ROW, content_state: "generating", enriched_at: STAMP }).enriched,
     true,
+    "a re-enrich in flight keeps an enriched place enriched",
   );
+  // A Created place: Create saves ready and never stamps enriched_at.
+  assertEquals(
+    toSignalPlace({ ...ROW, content_state: "ready", enriched_at: null }).enriched,
+    false,
+  );
+  assertEquals(toSignalPlace({ ...ROW, content_state: "ready" }).enriched, false);
   assertEquals(
     toSignalPlace({ ...ROW, content_state: "generating", enriched_at: null }).enriched,
     false,
@@ -88,14 +91,13 @@ Deno.test("toSignalPlace sets `enriched` explicitly, from EITHER fact", () => {
   assertEquals(toSignalPlace({}).enriched, false);
 });
 
-Deno.test("a synthesized Google row is never enriched, whatever its content_state says", () => {
-  // consumer-web-list-places stamps `content_state: "ready"` alongside
-  // `googleOnly: true` on a raw Google hit Mesita has never touched. Gating
-  // the PROJECTION keeps that out of ranking. The same synthesis on the
-  // consumer WIRE (withFamilyKeys) is a pre-existing bug with its own issue
-  // and is deliberately untouched here — this asserts the ranking side only.
+Deno.test("a synthesized Google row is never enriched, whatever else it carries", () => {
+  // consumer-web-list-places builds a raw Google hit with `googleOnly: true`.
+  // Gating the PROJECTION by name keeps it out of the enriched multiplier
+  // even if a stub ever carried a stamp.
   assertEquals(
-    toSignalPlace({ ...ROW, content_state: "ready", googleOnly: true }).enriched,
+    toSignalPlace({ ...ROW, content_state: "ready", enriched_at: "2026-09-01T00:00:00Z", googleOnly: true })
+      .enriched,
     false,
   );
   assertEquals(
@@ -112,7 +114,10 @@ Deno.test("toLineupPlace adds nameEmbedding; toSignalPlace still omits it", () =
   assertEquals(lineup.rating, 4.6);
   // And it inherits `enriched` through the spread — the earned fact travels
   // on both projections, unlike the name vector.
-  assertEquals(toLineupPlace({ ...ROW, content_state: "ready" }).enriched, true);
+  assertEquals(
+    toLineupPlace({ ...ROW, enriched_at: "2026-09-01T00:00:00Z" }).enriched,
+    true,
+  );
 });
 
 Deno.test("junk numbers degrade to null rather than poisoning a score", () => {

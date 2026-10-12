@@ -74,20 +74,23 @@
 // migration — shrinking the ladder cannot narrow a CHECK that already
 // accepted S0–S99.
 //
-// `enriched` is NOT a count of functions that worked. It is HOW FAR THE QUEUE
+// The high-water is NOT a count of functions that worked. It is HOW FAR THE QUEUE
 // GOT: the index of the last good function, 0-8, where 0 is the SEEDED floor
 // and 8 is a complete profile including both vectors. The queue is strictly
 // linear, so ">= N" is a MEANINGFUL question to ask of it. It is not, today, a
 // question anything can ask in SQL: this value is a read-time fold over the
-// run-event log, not a column, so it cannot appear in a WHERE clause. Consumer
-// visibility therefore gates on `content_state = 'ready'` instead
-// (MESITA-1228) — a real predicate, applied before the pool cap.
+// run-event log, not a column, so it cannot appear in a WHERE clause. The
+// consumer Mesita lanes therefore gate on `enriched_at IS NOT NULL` AND
+// `content_state = 'ready'` instead (MESITA-2154; `content_state = 'ready'`
+// alone before it, MESITA-1228) — real predicates, applied before the pool cap.
 //
-// A CREATE THAT SKIPS ENRICH JUMPS TO 8 WITH 2–6 A GAP. That is the same
-// accumulate-don't-reset rule as always, merely more visible now one ladder
-// serves both flows: 8 means "the highest function that ran", not "fully
-// enriched". A function a run did not buy writes NOTHING (MESITA-1172
-// blocker 2) — that rule is what lets two callers share one ladder.
+// THE METER IS NOT THE ENRICHED FACT (MESITA-2154). Enriched is yes/no:
+// `places.enriched_at` set, i.e. an Enrich run completed. The high-water is
+// completeness. A CREATE THAT SKIPS ENRICH READS 1, stopped at serp: it
+// stamps 1, 7 and 8, but the walk stops at the first gap, so 7 and 8 never
+// count until an Enrich run fills 2–6. A function a run did not buy writes
+// NOTHING (MESITA-1172 blocker 2) — that rule is what lets two callers share
+// one ladder.
 //
 // THIS IS NOT THE TRIGGER MATRIX'S VOCABULARY. `enrich-triggers.ts` keys what a
 // run may BUY (purchase units); these are what an operator is told. Different

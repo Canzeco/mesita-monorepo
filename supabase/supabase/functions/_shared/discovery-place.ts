@@ -43,8 +43,9 @@ export const EARNED_LANE_COLUMNS = [
   "google_stars_overall",
   "google_review_count",
   "embedding",
-  // The two columns `isEnrichedPlace` reads (MESITA-1858). Both are already
-  // in PLACE_PUBLIC_COLUMNS, so no consumer payload grows.
+  // `enriched_at` is the one column `isEnrichedPlace` reads (MESITA-2154);
+  // `content_state` rides along for the lifecycle. Both are already in
+  // PLACE_PUBLIC_COLUMNS, so no consumer payload grows.
   "content_state",
   "enriched_at",
 ] as const;
@@ -58,15 +59,12 @@ function nOrNull(v: unknown): number | null {
  * signal library's own names.
  *
  * `enriched` is set HERE, explicitly, and the signal never re-derives it
- * (MESITA-1858). `isEnrichedPlace` degrades to `content_state` alone on a
- * relation that lacks `enriched_at` — `public.places` is exactly such a
- * relation — so the answer belongs at the one place that knows which relation
- * the row came from. A synthesized Google row is excluded by name:
- * consumer-web-list-places stamps `content_state: "ready"` alongside
- * `googleOnly: true` on a hit Mesita has never touched, and calling that
- * enriched would hand the raw Google lane the enriched multiplier.
- * (The same synthesis on the CONSUMER WIRE is a separate, pre-existing bug
- * with its own issue; this gate is scoped to ranking and does not touch it.)
+ * (MESITA-1858). Since MESITA-2154 `isEnrichedPlace` reads `enriched_at`
+ * alone, so a Created place (content_state ready, no stamp) scores OFF and a
+ * relation that lacks the column reads not-enriched — the safe direction. A
+ * synthesized Google row is still excluded by name: consumer-web-list-places
+ * builds it with `googleOnly: true` on a hit Mesita has never touched, and
+ * it must never take the enriched multiplier whatever else it carries.
  */
 export function toSignalPlace(row: Record<string, unknown>): SignalPlace {
   return {
@@ -79,7 +77,6 @@ export function toSignalPlace(row: Record<string, unknown>): SignalPlace {
     user_ratings_total: nOrNull(row.google_review_count),
     embedding: row.embedding,
     enriched: row.googleOnly === true ? false : isEnrichedPlace(row as {
-      content_state?: string | null;
       enriched_at?: string | null;
     }),
   };

@@ -40,7 +40,12 @@ import {
   requireSuperAdmin,
 } from "../_shared/auth.ts";
 import { PLACE_BUSINESS_COLUMNS as PLACE_PROFILE_COLUMNS } from "../_shared/place-columns.ts";
-import { isPlaceListed, isPlaceRequested, isPlaceSeeded } from "../_shared/place-state.ts";
+import {
+  isPlaceEnriched,
+  isPlaceListed,
+  isPlaceRequested,
+  isPlaceSeeded,
+} from "../_shared/place-state.ts";
 import { CRENUP_LABELS_IN_ORDER, CRENUP_TOTAL } from "../_shared/crenup-ladder.ts";
 import type { EnrichmentMap, FunctionState } from "../_shared/schema-catalog.ts";
 import { operatorFunctionStates } from "../_shared/schema-catalog.ts";
@@ -125,8 +130,11 @@ Deno.serve(async (req) => {
     listed: isPlaceListed(placeFields.state),
     requested: isPlaceRequested({
       requestCount: placeFields.request_count,
-      contentState: placeFields.content_state,
+      enrichedAt: placeFields.enriched_at,
     }),
+    // THE Enriched fact (MESITA-2154) — `enriched_at` set; same helper as
+    // admin-web-search-places, so Status and the catalog table agree.
+    enriched: isPlaceEnriched(placeFields.enriched_at),
     enrich_crenup: enrichmentMap.highWater,
     enrich_crenup_total: CRENUP_TOTAL,
     enrich_crenup_labels: CRENUP_LABELS_IN_ORDER,

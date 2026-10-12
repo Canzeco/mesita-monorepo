@@ -4,6 +4,7 @@ import {
   __resetNearbyGoogleCacheForTests,
   __setLegacyPageTokenDelayForTests,
   CATALOG_NEARBY_HARD_MAX,
+  claimOwnedHits,
   GOOGLE_FANOUT_MAX,
   GOOGLE_NEARBY_MAX,
   nearbyCallCount,
@@ -12,6 +13,7 @@ import {
   lanesForPlacesScope,
   mergeNearbyCatalog,
   peekCachedNearbyPlaces,
+  resolveGoogleItem,
   searchNearbyPlaces,
   type NearbyHit,
   type NearbyLaneCaps,
@@ -596,10 +598,95 @@ Deno.test("places scope: two nested sets, named on the wire, Mesita by default",
   assertEquals(lanesForPlacesScope("google", 999).mesitaCount, CATALOG_NEARBY_HARD_MAX);
   assertEquals(lanesForPlacesScope("mesita", Number.NaN).mesitaCount, 0);
 
-  assertEquals(isEnrichedListedRow({ content_state: "ready" }), true);
+  // MESITA-2154: the ring admits enriched_at set, and nothing else. A
+  // Created place (ready, no stamp) is outside it.
   assertEquals(isEnrichedListedRow({ enriched_at: "2026-08-01T00:00:00Z" }), true);
-  assertEquals(isEnrichedListedRow({ content_state: "generating" }), false);
+  const created = { content_state: "ready", enriched_at: null };
+  assertEquals(isEnrichedListedRow(created), false);
+  assertEquals(isEnrichedListedRow({ enriched_at: null }), false);
   assertEquals(isEnrichedListedRow({}), false);
+});
+
+// ── Owned hits never go out as stubs (MESITA-2154) ──────────────────────────
+//
+// A stub's "Add to Mesita" posts consumer-web-create-place, which 409s
+// `place_already_exists` for a google_place_id Mesita owns. The owned rows
+// come from an UNFILTERED gid lookup, so a Created row that failed the
+// guest's Super overlap (door synthesis left `['undefined']`) or Popularity
+// floor is still here — and must paint its hit, never fall through.
+
+type OwnedRow = {
+  id: string;
+  google_place_id: string | null;
+  enriched_at: string | null;
+  content_state: string;
+  family_keys: string[];
+  google_review_count: number | null;
+};
+
+const ownedRow = (over: Partial<OwnedRow> & { id: string }): OwnedRow => ({
+  google_place_id: `gid-${over.id}`,
+  enriched_at: null,
+  content_state: "ready",
+  family_keys: ["undefined"],
+  google_review_count: 3,
+  ...over,
+});
+
+Deno.test("claimOwnedHits: a Created row that failed the family and reviews cuts paints its hit, never a stub", () => {
+  const created = ownedRow({ id: "c1" });
+  const hits = [nearbyHit("gid-c1", 25.671, -100.301), nearbyHit("gid-g1", 25.672, -100.302)];
+  // The ring is empty: the Created row failed every Mesita-side cut.
+  const claim = claimOwnedHits(hits, [created], []);
+  assertEquals(claim.hits.map((h) => h.placeId), ["gid-c1", "gid-g1"]);
+  const out = resolveGoogleItem(hits[0], claim);
+  assertEquals(out.kind, "mesita");
+  assertEquals(out.kind === "mesita" ? out.row.id : null, "c1");
+  // A hit nobody owns is still a Google stub.
+  assertEquals(resolveGoogleItem(hits[1], claim).kind, "stub");
+});
+
+Deno.test("claimOwnedHits: an Enriched row the ring cuts left out drops its hit", () => {
+  const enriched = ownedRow({ id: "e1", enriched_at: "2026-10-01T00:00:00Z" });
+  const hits = [nearbyHit("gid-e1", 25.671, -100.301)];
+  const claim = claimOwnedHits(hits, [enriched], []);
+  assertEquals(claim.hits, []);
+  // Even if a hit slipped through, the last word is drop, not stub.
+  assertEquals(resolveGoogleItem(hits[0], claim).kind, "drop");
+});
+
+Deno.test("claimOwnedHits: a ring row's hit passes for merge to pair; unpaired, it drops", () => {
+  const ring = ownedRow({ id: "r1", enriched_at: "2026-10-01T00:00:00Z" });
+  const hits = [nearbyHit("gid-r1", 25.671, -100.301)];
+  const claim = claimOwnedHits(hits, [ring], [ring]);
+  assertEquals(claim.hits.map((h) => h.placeId), ["gid-r1"]);
+  assertEquals(claim.paintByGid.size, 0);
+  // A later JS cut removed the ring row, so merge left the hit unpaired.
+  assertEquals(resolveGoogleItem(hits[0], claim).kind, "drop");
+});
+
+Deno.test("claimOwnedHits: every owned gid resolves to Mesita or drop, never a `g:` stub", () => {
+  const rows = [
+    ownedRow({ id: "c1" }),
+    ownedRow({ id: "c2", content_state: "generating" }),
+    ownedRow({ id: "c3", content_state: "failed", family_keys: ["bars"] }),
+    ownedRow({ id: "e1", enriched_at: "2026-10-01T00:00:00Z" }),
+    ownedRow({ id: "e2", enriched_at: "2026-10-01T00:00:00Z", content_state: "failed" }),
+  ];
+  const hits = rows.map((row, i) => nearbyHit(row.google_place_id!, 25.67 + i / 1000, -100.3));
+  const claim = claimOwnedHits(hits, rows, []);
+  for (const hit of hits) {
+    assertEquals(resolveGoogleItem(hit, claim).kind === "stub", false, hit.placeId);
+  }
+  assertEquals([...claim.paintByGid.keys()].sort(), ["gid-c1", "gid-c2", "gid-c3"]);
+  assertEquals(claim.hits.map((h) => h.placeId).sort(), ["gid-c1", "gid-c2", "gid-c3"]);
+});
+
+Deno.test("claimOwnedHits: rows without a google_place_id claim nothing", () => {
+  const hits = [nearbyHit("gid-x", 25.671, -100.301)];
+  const claim = claimOwnedHits(hits, [ownedRow({ id: "n1", google_place_id: "  " })], []);
+  assertEquals(claim.ownedGids.size, 0);
+  assertEquals(resolveGoogleItem(hits[0], claim).kind, "stub");
 });
 
 

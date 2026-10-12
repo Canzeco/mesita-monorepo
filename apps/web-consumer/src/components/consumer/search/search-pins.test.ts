@@ -32,20 +32,26 @@ describe("pin tones — enriched > everything else", () => {
   // the Filters sheet lists — Google ⊃ Mesita Enriched. Red is EARNED by
   // enrichment: a set the guest can pick has to be the same set the colour
   // promises.
-  it("paints map rows red only once a profile exists", () => {
-    const ready = { content_state: "ready" };
-    expect(placePinTone(ready)).toBe("enriched");
-    expect(placePinTone({ enriched_at: "2026-08-01T00:00:00Z" })).toBe(
-      "enriched",
-    );
-    // A Created / Requested stub used to paint red.
+  it("paints map rows red only once an Enrich run completed", () => {
+    const stamped = { enriched_at: "2026-08-01T00:00:00Z" };
+    expect(placePinTone(stamped)).toBe("enriched");
+    expect(placePinTone({ enriched: true })).toBe("enriched");
+    // MESITA-2154: a Created place (ready, no stamp) is gray — `ready`
+    // means the profile can be shown, not that it was enriched.
+    const created = { content_state: "ready", enriched_at: null };
+    expect(placePinTone(created)).toBe("unlisted");
+    expect(placePinTone({ ...created, enriched: false })).toBe("unlisted");
     expect(placePinTone({})).toBe("unlisted");
-    expect(placePinTone({ content_state: "generating" })).toBe("unlisted");
-    expect(placePinTone({ request_count: 3 } as never)).toBe("unlisted");
+    const requested = {
+      content_state: "generating",
+      request_count: 3,
+      enriched_at: null,
+    };
+    expect(placePinTone(requested)).toBe("unlisted");
     expect(placePinTone({ googleOnly: true })).toBe("unlisted");
     expect(placePinTone({ from_google: true })).toBe("unlisted");
     // A Google stub stays gray even if it somehow carries enrichment.
-    expect(placePinTone({ googleOnly: true, ...ready })).toBe("unlisted");
+    expect(placePinTone({ googleOnly: true, ...stamped })).toBe("unlisted");
   });
 
   it("paints name-lane rows the same way, gray when the server is silent", () => {
@@ -82,19 +88,19 @@ describe("pin tones — enriched > everything else", () => {
     ).toBe("unlisted");
   });
 
-  it("counts ready OR a stamped enriched_at, never one alone", () => {
-    // 27% of the live catalog is ready with a null enriched_at
-    // (measured 2026-08-29). An enriched_at-only test would grey a
-    // quarter of the catalog on deploy.
-    expect(isEnrichedPlace({ content_state: "ready" })).toBe(true);
+  it("is the server's boolean, else enriched_at — never content_state", () => {
+    // MESITA-2154: enriched = an Enrich run completed = enriched_at set.
     expect(isEnrichedPlace({ enriched_at: "2026-08-01T00:00:00Z" })).toBe(true);
-    expect(isEnrichedPlace({ content_state: "generating" })).toBe(false);
+    // A Created place: Create saves ready and never stamps enriched_at.
+    const created = { content_state: "ready", enriched_at: null };
+    expect(isEnrichedPlace(created)).toBe(false);
+    expect(isEnrichedPlace({ enriched_at: "  " })).toBe(false);
     expect(isEnrichedPlace({})).toBe(false);
-    // The server's boolean wins over the columns, both ways.
+    // The server's boolean wins over the column, both ways.
     expect(isEnrichedPlace({ enriched: true })).toBe(true);
-    expect(isEnrichedPlace({ enriched: false, content_state: "ready" })).toBe(
-      false,
-    );
+    expect(
+      isEnrichedPlace({ enriched: false, enriched_at: "2026-08-01T00:00:00Z" }),
+    ).toBe(false);
   });
 
   it("uses red for enriched Mesita, gray for everything else", () => {

@@ -76,3 +76,25 @@ export function crenupStepRows(
     };
   });
 }
+
+/**
+ * "Crenup 1 of 8, stopped at Serp (missing)." — the completeness meter off
+ * the server's high-water and its stop reason. Null when the payload carries
+ * no number (an older payload), so the line is left out rather than guessed.
+ */
+export function crenupMeterLine(place: {
+  enrich_crenup?: number;
+  enrich_crenup_total?: number;
+  enrich_crenup_labels?: string[];
+  enrich_crenup_blocked?: { key: string; index: number; state: string } | null;
+}): string | null {
+  const n = typeof place.enrich_crenup === "number" ? place.enrich_crenup : null;
+  const total = typeof place.enrich_crenup_total === "number"
+    ? place.enrich_crenup_total
+    : null;
+  if (n === null || total === null || total === 0) return null;
+  const blocked = place.enrich_crenup_blocked ?? null;
+  if (!blocked) return `Crenup ${n} of ${total}.`;
+  const label = place.enrich_crenup_labels?.[blocked.index] ?? blocked.key;
+  return `Crenup ${n} of ${total}, stopped at ${label} (${blocked.state}).`;
+}

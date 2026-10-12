@@ -84,14 +84,17 @@ const COLUMNS: readonly string[] = [
   "google_reviews",
   "menus",
   "popular_times",
+  // THE Enriched fact (MESITA-2154): set by the contents stage when an
+  // Enrich run completes, never by Create. `isPlaceEnriched` reads it.
   "enriched_at",
-  // Enrichment lifecycle (places.content_state: generating | ready |
-  // failed). Stays 'generating' for the FULL pipeline
-  // (research → analysis → contents); only contents lands 'ready'.
+  // Profile lifecycle (places.content_state: generating | ready | failed).
+  // Create saves 'ready' (the profile can be shown — NOT enriched); an
+  // Enrich run holds 'generating' for the FULL pipeline
+  // (research → analysis → contents) and contents lands 'ready' again.
   // Public-safe — lets consumer surfaces show "(Enriching)" until done.
   "content_state",
   // Consumer Requests count. Progress toward Crenup atlasRequestThreshold.
-  // Requested is derived (count > 0 and content_state <> ready).
+  // Requested is derived (count > 0 and enriched_at null).
   "request_count",
   // Description/Actions (Enricher step 7) — the guest Reserve CTA.
   "reservations_enabled",

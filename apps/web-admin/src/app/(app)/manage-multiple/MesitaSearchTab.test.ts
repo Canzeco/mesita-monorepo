@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { crenupCalled } from "./mesita-search-facts";
+import { crenupCalled, factOn } from "./mesita-search-facts";
 import type { PlaceHit } from "./actions";
 import { CRENUP_STEPS } from "@/lib/state-vocabulary";
 
@@ -26,6 +26,8 @@ const GAP_FIXTURE: PlaceHit = {
   requested: false,
   request_count: 0,
   enriching: false,
+  enriched: false,
+  enriched_at: null,
   business_state: "OPERATIONAL",
   business_state_at: null,
   enrich_crenup: 2,
@@ -82,5 +84,35 @@ describe("crenupCalled — the honest per-step map (MESITA-1611)", () => {
     // a-gap step reads as never-called.
     expect(crenupCalled(legacy, functionByKey("social"))).toBe(false);
     expect(crenupCalled(legacy, functionByKey("images"))).toBe(false);
+  });
+});
+
+describe("factOn enriched — an Enrich run completed (MESITA-2154)", () => {
+  it("reads a Created place (ready, no enriched_at) as NOT enriched", () => {
+    const created: PlaceHit = {
+      ...GAP_FIXTURE,
+      content_state: "ready",
+      enriched: false,
+      enriched_at: null,
+      enrich_crenup: 1,
+      enrich_crenup_blocked: { key: "serp", index: 2, state: "missing" },
+      enrich_functions: null,
+    };
+    expect(factOn(created, "enriched")).toBe(false);
+  });
+
+  it("reads enriched_at set as enriched, whatever the high-water says", () => {
+    const enriched: PlaceHit = {
+      ...GAP_FIXTURE,
+      enriched: true,
+      enriched_at: "2026-10-01T00:00:00Z",
+    };
+    // High-water 2 (a gap at links) — still Enriched: the meter is
+    // completeness, not the yes/no.
+    expect(factOn(enriched, "enriched")).toBe(true);
+    // And a full high-water without a completed run is not Enriched.
+    expect(
+      factOn({ ...GAP_FIXTURE, enrich_crenup: 8, enriched: false }, "enriched"),
+    ).toBe(false);
   });
 });

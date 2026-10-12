@@ -31,28 +31,16 @@ Deno.test("listed: a missing or non-string state is never listed", () => {
   }
 });
 
-Deno.test("requested: count > 0 and not ready; Enriched wins", () => {
+Deno.test("requested: count > 0 and not Enriched; ready never stands in", () => {
+  assertEquals(isPlaceRequested({ requestCount: 1, enrichedAt: null }), true);
+  assertEquals(isPlaceRequested({ requestCount: 0, enrichedAt: null }), false);
+  assertEquals(isPlaceRequested({ requestCount: null, enrichedAt: null }), false);
   assertEquals(
-    isPlaceRequested({ requestCount: 1, contentState: "generating" }),
-    true,
-  );
-  assertEquals(
-    isPlaceRequested({ requestCount: 2, contentState: "failed" }),
-    true,
-  );
-  assertEquals(
-    isPlaceRequested({ requestCount: 0, contentState: "generating" }),
+    isPlaceRequested({ requestCount: 7, enrichedAt: "2026-08-28T00:00:00Z" }),
     false,
   );
-  assertEquals(
-    isPlaceRequested({ requestCount: 7, contentState: "ready" }),
-    false,
-  );
-  assertEquals(
-    isPlaceRequested({ requestCount: null, contentState: "generating" }),
-    false,
-  );
-  assertEquals(isPlaceRequested({}), false);
+  // MESITA-2154: a missing enrichedAt is "not enriched", never "ready wins".
+  assertEquals(isPlaceRequested({ requestCount: 3, enrichedAt: undefined }), true);
 });
 
 Deno.test("enriching: only generating is mid-flight", () => {
@@ -68,20 +56,12 @@ Deno.test("enriched: a stamp on places.enriched_at, never content_state", () => 
   assertEquals(isPlaceEnriched(""), false);
   assertEquals(isPlaceEnriched("   "), false);
   assertEquals(
-    isPlaceRequested({
-      requestCount: 2,
-      contentState: "ready",
-      enrichedAt: null,
-    }),
+    isPlaceRequested({ requestCount: 2, enrichedAt: null }),
     true,
-    "ugly Create profile can still collect votes",
+    "a Created profile (ready, no stamp) can still collect votes",
   );
   assertEquals(
-    isPlaceRequested({
-      requestCount: 2,
-      contentState: "ready",
-      enrichedAt: "2026-08-28T00:00:00Z",
-    }),
+    isPlaceRequested({ requestCount: 2, enrichedAt: "2026-08-28T00:00:00Z" }),
     false,
   );
 });

@@ -21,7 +21,8 @@
 //   Active     Google pulse — Google OPERATIONAL (not Crenup 1. Pulse)
 //   Listed     places.state = active
 //   Requested  guest request count, 0…n — not a Yes/No
-//   Enriched   CRENUP complete — a yes, not a 0–8 high-water.
+//   Enriched   an Enrich run completed — `enriched_at` set (MESITA-2154).
+//              A yes/no, not the 0–8 high-water; a Created place is no.
 //   Enriching  Enricher pipeline mid-flight (live run). Independent of Enriched.
 //
 // OPERATING is Google's, not ours (MESITA-1239). It answers "does this business

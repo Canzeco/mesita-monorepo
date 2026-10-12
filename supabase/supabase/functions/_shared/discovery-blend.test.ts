@@ -125,7 +125,7 @@ Deno.test("rankByBlend sorts best-first and breaks ties on incoming order", () =
 Deno.test("the Enriched weight reorders two rows a ranked lane ACTUALLY admits", () => {
   // BOTH ROWS ARE ENRICHED, because that is the only population this signal
   // ever scores: Map admits a listed row only through `isEnrichedListedRow`
-  // and Scroll's pool is `.eq("content_state", "ready")`. An `enriched: false`
+  // and Scroll's pool is the Enriched gate (`enriched_at IS NOT NULL`). An `enriched: false`
   // row here would make the assertion green by construction — production
   // never ranks one. What must move the blend is the difference between a
   // thin profile and a finished one, both admitted.

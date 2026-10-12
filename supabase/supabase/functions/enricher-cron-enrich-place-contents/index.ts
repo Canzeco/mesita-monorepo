@@ -89,6 +89,7 @@ import {
   releaseResearchRow,
   reportEnrichmentStep,
   serveEnrichStage,
+  stampsEnrichedAt,
   wants,
 } from "../_shared/enrich-pipeline.ts";
 import {
@@ -410,7 +411,16 @@ serveEnrichStage("contents", async (admin, env, row) => {
   );
   if (pinnedSkipped.length > 0) sources.pins_respected = pinnedSkipped;
 
-  persisted.enriched_at = new Date().toISOString();
+  // `enriched_at` IS the Enriched fact (MESITA-2154): every reader in the
+  // server and both apps asks only "is it set". Stamp it only when this run
+  // paid for synthesis — votes, admin Enrich and every manual mode buy
+  // everything (`subprocesses` null), while the wrong-number refetch buys
+  // only `google` and skips synthesis, photos and embedding. That refetch
+  // must not make a Created place read as Enriched.
+  // `enrich-triggers.test.ts` pins both the rule and this call site.
+  if (stampsEnrichedAt(buys)) {
+    persisted.enriched_at = new Date().toISOString();
+  }
   // NEVER `= sources` on its own: the pins are durable state stored in this
   // otherwise per-run blob, so a plain overwrite deletes every correction on the
   // next enrichment. `_shared/enrich-corrections.test.ts` is the gate.

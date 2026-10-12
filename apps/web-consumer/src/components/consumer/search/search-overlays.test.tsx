@@ -959,6 +959,39 @@ describe("a Location wears the location icon, never a place tone (MESITA-1404)",
     expect(html).not.toContain("From Google");
   });
 
+  it("speaks a Created place as a profile that is not enriched yet (MESITA-2154)", () => {
+    const html = renderToStaticMarkup(
+      <SearchResultsPanel
+        query="strana"
+        searching={false}
+        searchError={null}
+        predictions={[
+          {
+            placeId: "ChIJ-created",
+            mainText: "Strana",
+            secondaryText: "Monterrey",
+            state: "web_listed",
+            enriched: false,
+            mesitaId: "m-created",
+          },
+          {
+            placeId: "ChIJ-enriched",
+            mainText: "Casa",
+            secondaryText: "Monterrey",
+            state: "web_listed",
+            enriched: true,
+            mesitaId: "m-enriched",
+          },
+        ]}
+        addStates={{}}
+        onPick={() => {}}
+      />,
+    );
+    expect(html).toContain("Strana, Monterrey, Mesita profile, not enriched yet");
+    expect(html).toContain("Casa, Monterrey, Mesita profile");
+    expect(html).not.toContain("No profile yet");
+  });
+
   it("branches on kind BEFORE the tone function is asked anything", () => {
     const panel = read("SearchResultsPanel.tsx");
     const branchAt = panel.indexOf('prediction.kind === "location"');

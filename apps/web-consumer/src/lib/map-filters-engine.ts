@@ -8,8 +8,10 @@
 //
 // A superset chain, not overlapping circles — so the control is a
 // cumulative ladder and the figure is concentric rings. ENRICHMENT GATES
-// THE MESITA RING: Created and Requested stubs were never a search source,
-// so a Mesita row nobody has enriched is in neither ring and reads gray.
+// THE MESITA RING (`enriched_at` set, MESITA-2154): Created and Requested
+// places were never a search source, so a Mesita row nobody has enriched is
+// outside the Mesita ring and reads gray — reachable only where a Google
+// hit is that place (the Google ring), on Word and on Favorites.
 // Default is Mesita Enriched Places, the inner ring — a discovery surface
 // opens on the places Mesita has actually written up.
 //
@@ -25,6 +27,7 @@
 // the set. Swipe keeps DiscoveryFilters.
 
 import type { Place } from "@/lib/api/places";
+import { isEnrichedPlace } from "@/lib/place-enriched";
 import { type FamilyKey } from "@/lib/place-families";
 
 /** The set the guest picked. Named, never an ordinal — the wire carries
@@ -118,14 +121,16 @@ export function parsePlacesScope(value: unknown): MapPlacesScope {
 }
 
 /**
- * The narrowest ring a place belongs to. Created and Requested return null
- * — the Mesita ring is enriched-only, never a thin stub, and that is what
- * keeps the ring the same set the colour promises.
+ * The narrowest ring a place belongs to. The Mesita ring is enriched-only —
+ * the server's `enriched` (`enriched_at` set, MESITA-2154), never
+ * `content_state` — and that is what keeps the ring the same set the colour
+ * promises. A Created or Requested Mesita row is in the Google ring: the
+ * server only sends one when a Google hit IS that place, painted gray in
+ * the hit's slot, so it counts there and never in the Mesita ring.
  */
-export function placeSearchScope(place: Place): MapPlacesScope | null {
+export function placeSearchScope(place: Place): MapPlacesScope {
   if (place.googleOnly || place.from_google) return "google";
-  const enriched = place.content_state === "ready" || Boolean(place.enriched_at);
-  return enriched ? "mesita" : null;
+  return isEnrichedPlace(place) ? "mesita" : "google";
 }
 
 export function mapFiltersAreActive(f: MapFilters): boolean {

@@ -411,8 +411,9 @@ export function name(
  * Did Mesita do the work on this place.
  *
  * ONE FACT, READ AND NOTHING ELSE: the explicit `enriched` boolean the
- * projection set from `isEnrichedPlace` (place-family-keys.ts — `content_state
- * = 'ready'` OR a stamped `enriched_at`). The signal does not re-derive it,
+ * projection set from `isEnrichedPlace` (place-family-keys.ts — `enriched_at`
+ * set, i.e. an Enrich run completed; MESITA-2154 dropped the `content_state
+ * = 'ready'` half, which every Created place carries). The signal does not re-derive it,
  * and there is deliberately no second predicate here: two answers to "is this
  * place enriched" is how the consumer wire and the ranker drift apart.
  *
@@ -423,16 +424,16 @@ export function name(
  * PREDICATE THE RANKED LANES ADMIT ON, so on every surface that can score it
  * the answer is a constant 1:
  *
- *   - Map filters every listed row through `isEnrichedListedRow`, a copy
- *     of `isEnrichedPlace`, BEFORE `reorderListedLanes` ranks anything.
- *   - Scroll's pool query is `.eq("content_state", "ready")`.
+ *   - Map filters every listed row through `isEnrichedListedRow` (the same
+ *     `isPlaceEnriched`), BEFORE `reorderListedLanes` ranks anything.
+ *   - Scroll's pool query is the Enriched gate, `enriched_at IS NOT NULL`.
  *   - Word masks this signal to 0 and never scores it at all.
  *
  * A constant signal cannot reorder a deck, and the Discovery console would be
  * rendering an operator a dial that does nothing. Worse, it is a REGRESSION:
  * the retired `mesita_level` folded `crenup_high_water` (0..CRENUP_TOTAL), a
  * fact that is NOT the admission predicate, so it did discriminate among
- * admitted rows — two ready rows at one point on the Map, high-water 10 and
+ * admitted rows — two admitted rows at one point on the Map, high-water 10 and
  * 2, ranked 3.1x apart and would now tie, handing the order to whatever
  * Postgres returned.
  *

@@ -16,6 +16,7 @@ import type { PlacePrediction } from "@/lib/api/place-search";
 import {
   locationTypeLabel,
   pinToneColor,
+  predictionOnMesita,
   predictionPinTone,
 } from "./search-pins";
 import type { AddState } from "./add-state";
@@ -153,7 +154,13 @@ function SuggestionLine({
 
   const tone = predictionPinTone(prediction);
   const added = addState === "added";
-  const toneLabel = tone === "enriched" ? "Mesita profile" : "No profile yet";
+  // Three spoken answers over the two tones: a Created place (on Mesita, not
+  // enriched — MESITA-2154) has a basic profile, so it is not "No profile".
+  const toneLabel = tone === "enriched"
+    ? "Mesita profile"
+    : predictionOnMesita(prediction)
+      ? "Mesita profile, not enriched yet"
+      : "No profile yet";
 
   return (
     <SuggestionRow

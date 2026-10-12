@@ -217,14 +217,12 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     return prependAnchorPlace(nearby, anchorRow);
   }, [nearby, anchor, distanceCenter]);
   // Each ring's count is cumulative — the sets nest, so a Mesita row is in
-  // the Google ring too.
+  // the Google ring too. A Created (not enriched) row counts in Google only.
   const scopeCounts = useMemo(() => {
     let mesita = 0;
     let google = 0;
     for (const place of nearby) {
-      const ring = placeSearchScope(place);
-      if (!ring) continue;
-      if (ring === "mesita") mesita += 1;
+      if (placeSearchScope(place) === "mesita") mesita += 1;
       google += 1;
     }
     return { mesita, google };

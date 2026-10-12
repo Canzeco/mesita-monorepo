@@ -320,6 +320,7 @@ function listedToLane(row: ListedRow): LaneItem | null {
     state: "web_listed",
     // Membership colour is the SERVER's answer on this lane too, so the
     // list dot and the map pin cannot disagree (Pato, 2026-08-29).
+    // `enriched_at` set (MESITA-2154): a Created row reads gray here.
     enriched: isEnrichedPlace(row),
     mesitaId: row.id,
     mesitaSlug: row.slug,
@@ -829,8 +830,10 @@ async function fetchEmbedPool(
   // The `enriched` gradient needs `crenup_high_water` on the row, and
   // `profiles` doesn't carry it. One batched side-read merges it in here, the
   // single choke point both `runDeepSearch` and `runMesitaNameSearch` rank
-  // through — and this pool is already `.eq("content_state", "ready")`, so
-  // without it the signal is a constant across every row in it.
+  // through. This pool is deliberately NOT gated on enrichment — Word keeps
+  // Created places reachable, painted gray (MESITA-2154) — so a Created row
+  // (`enriched_at` null) scores the floor, and among enriched rows the
+  // side-read is what keeps the signal from being a constant.
   return await attachCrenupHighWater(
     admin,
     (data ?? []) as unknown as Record<string, unknown>[],

@@ -14,9 +14,10 @@ import type { PlaceDetail } from "@/lib/place-detail";
 import type { DiscoveryPredicatesWire } from "@/lib/discovery-filters-wire";
 
 export type Place = {
-  /** Server's answer: did we write a profile? Drives the Enriched colour.
-   *  Absent on an older payload — the client falls back to the enrichment
-   *  columns, which ship on the same projection. */
+  /** Server's answer: did an Enrich run complete (`enriched_at` set,
+   *  MESITA-2154)? Drives the Enriched colour and the Mesita ring. Absent
+   *  on an older payload — the client falls back to `enriched_at` alone
+   *  (lib/place-enriched.ts), never `content_state`. */
   enriched?: boolean | null;
   id: string;
   slug: string;
@@ -106,7 +107,7 @@ export type Place = {
   enriched_at?: string | null;
   /** Enricher pipeline state (`generating` / `ready` / `failed`). */
   content_state?: string | null;
-  /** Consumer Requests count. Requested on the map is count > 0 and not ready. */
+  /** Consumer Requests count. Requested is count > 0 and not enriched. */
   request_count?: number | null;
   google_place_id?: string | null;
 };
@@ -267,8 +268,9 @@ export type PlacePrediction = {
   mainText: string;
   secondaryText: string;
   state: PlacePredictionState;
-  /** Server's answer: did we write a profile? No column fallback on this
-   *  lane, so an older payload reads as not-enriched (gray understates). */
+  /** Server's answer: did an Enrich run complete (`enriched_at` set)? No
+   *  column fallback on this lane, so an older payload reads as
+   *  not-enriched (gray understates). */
   enriched?: boolean;
   /**
    * Word's second entity (MESITA-1403). Absent = "place" — a place row

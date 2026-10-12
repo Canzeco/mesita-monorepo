@@ -97,21 +97,24 @@ Deno.test("reorderListedLanes: the enrichment fact reorders when Enriched is wei
   // weighted". The gradient collapsed to a binary at MESITA-1858, so the
   // high-water numbers no longer move anything — but the DIRECTION they
   // encoded still has to reach the ranker, and that is what this pins. The
-  // fact now travels on the row itself (`content_state` / `enriched_at`,
-  // selected by EARNED_LANE_COLUMNS), not on a side-read.
+  // fact now travels on the row itself (`enriched_at`, selected by
+  // EARNED_LANE_COLUMNS), not on a side-read. MESITA-2154: `lo` is a Created
+  // place — content_state ready, no stamp — and is NOT enriched.
   const hi = {
     id: "hi",
     google_place_id: "ChIJ-hi",
     lat: 25.6701,
     lng: -100.3001,
     content_state: "ready",
+    enriched_at: "2026-09-01T00:00:00Z",
   };
   const lo = {
     id: "lo",
     google_place_id: "ChIJ-lo",
     lat: 25.6701,
     lng: -100.3001,
-    content_state: "generating",
+    content_state: "ready",
+    enriched_at: null,
   };
   const merged = mergeNearbyCatalog([lo, hi], [], CENTER, LANES);
   const enrichedOnly = { ...mapLineupWeights(DISCOVERY_DEFAULTS) };
@@ -228,4 +231,42 @@ Deno.test("list-places googleFill reorders; lat/lng-only does not", async () => 
   );
   assertEquals(listedOnly.includes("reorderListedLanes"), false);
   assertEquals(listedOnly.includes("mergeNearbyCatalog"), true);
+});
+
+// MESITA-2154: a Google hit Mesita owns never goes out as a `g:` stub (its
+// "Add to Mesita" 409s `place_already_exists`). The behaviour lives in
+// claimOwnedHits / resolveGoogleItem (nearby-places.test.ts); this pins that
+// the EF feeds them an UNFILTERED owned lookup and routes every Google item
+// through them before googleStub.
+Deno.test("list-places: owned gids come from an unfiltered lookup and gate every stub", async () => {
+  const src = await Deno.readTextFile(
+    new URL("../consumer-web-list-places/index.ts", import.meta.url),
+  );
+  const googleBranch = src.slice(src.indexOf("let googleHits"));
+  // The owned lookup is the first profiles read in the branch, and it
+  // carries no cut: no discovery filters, no General gate, no guest floors.
+  const ownedStart = googleBranch.indexOf("let ownedRows");
+  const ownedEnd = googleBranch.indexOf("const enrichedOwnedGids");
+  assertEquals(ownedStart > -1 && ownedEnd > ownedStart, true);
+  const ownedLookup = googleBranch.slice(ownedStart, ownedEnd);
+  assertEquals(ownedLookup.includes('.in("google_place_id", missing)'), true);
+  for (const cut of [
+    "applyDiscoveryFilters",
+    "applyGeneralGateQuery",
+    "google_review_count",
+    "overlaps",
+    "requireReady",
+  ]) {
+    assertEquals(ownedLookup.includes(cut), false, `owned lookup carries ${cut}`);
+  }
+  // The ring admission query keeps the operator's filters intact.
+  assertEquals(src.includes("requireReady: false"), false);
+  // The claim feeds the merge, and every Google item is resolved before
+  // googleStub is reachable.
+  assertEquals(googleBranch.includes("claimOwnedHits(googleHits, ownedRows, mesitaRows)"), true);
+  assertEquals(googleBranch.includes("claim.hits.filter("), true);
+  const resolveAt = googleBranch.indexOf("resolveGoogleItem(item.hit, claim)");
+  const stubAt = googleBranch.indexOf("googleStub(");
+  assertEquals(resolveAt > -1 && stubAt > resolveAt, true);
+  assertEquals(googleBranch.indexOf("googleStub(", stubAt + 1), -1);
 });

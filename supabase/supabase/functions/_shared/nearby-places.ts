@@ -26,6 +26,7 @@ import {
 } from "./geo.ts";
 import { GOOGLE_SEARCH_TYPES } from "./google-type-super.ts";
 import { NEARBY_TYPE_KEYS } from "./discovery-config.ts";
+import { isPlaceEnriched } from "./place-state.ts";
 
 /** Google bills Nearby in pages of 20. Legacy paginates with next_page_token
  *  (3 pages = 60); New caps one POST at maxResultCount 20 with no page token. */
@@ -521,12 +522,114 @@ export function lanesForPlacesScope(
  * admits exactly these Mesita rows — the Google scope keeps the same ones, so
  * a wider ring never shows FEWER Mesita places, it only adds Google ones
  * alongside them. "Red is EARNED by enrichment" (Pato, 2026-09-05).
+ *
+ * Enriched = an Enrich run completed = `enriched_at` set (MESITA-2154) — the
+ * same {@link isPlaceEnriched} every reader uses. A Created place is
+ * `content_state = 'ready'` with a null stamp: viewable, never in this ring.
  */
 export function isEnrichedListedRow(row: {
-  content_state?: string | null;
   enriched_at?: string | null;
 }): boolean {
-  return row.content_state === "ready" || Boolean(row.enriched_at);
+  return isPlaceEnriched(row.enriched_at);
+}
+
+/** The row fields {@link claimOwnedHits} reads. */
+export type OwnedNearbyRow = {
+  google_place_id?: string | null;
+  enriched_at?: string | null;
+};
+
+/** What {@link claimOwnedHits} decided about the Google hits Mesita owns. */
+export type OwnedHitClaim<T> = {
+  /** The hits that may merge: Google-only ones, the ring's own, Created ones. */
+  hits: NearbyHit[];
+  /** Created (not enriched) rows that paint their hit, gray, in its slot. */
+  paintByGid: Map<string, T>;
+  /** Every google_place_id a Mesita row carries, ring and owned alike. */
+  ownedGids: Set<string>;
+};
+
+function gidOf(row: OwnedNearbyRow): string | null {
+  const gid = row.google_place_id?.trim();
+  return gid ? gid : null;
+}
+
+/**
+ * A Google hit Mesita already owns is NEVER sent as a `g:` stub (MESITA-2154).
+ *
+ * The stub's "Add to Mesita" button posts consumer-web-create-place, which
+ * 409s `place_already_exists` for a google_place_id Mesita holds, and the
+ * guest gets a toast instead of the place. So a hit whose google_place_id a
+ * listed Mesita row carries resolves one of three ways:
+ *
+ *   ring   the row is in the Mesita ring: the hit passes and merge pairs it
+ *          with the row, as it always has.
+ *   paint  the row is NOT enriched (a Created place): the hit passes and
+ *          goes out as that Mesita row, gray, in the hit's slot. Created
+ *          places stay reachable here, with the guest Enrich vote, whatever
+ *          their stored family_keys or review count say — the hit already
+ *          cleared the Google-side cuts.
+ *   drop   the row IS enriched but a ring cut left it out (the General gate,
+ *          a Map floor, the guest's Popularity or Super on stored keys, a
+ *          profile that is not ready): the hit is removed, so every red row
+ *          on the map has passed every ring cut.
+ *
+ * `owned` must come from an UNFILTERED google_place_id lookup (RLS already
+ * limits it to listed rows): a lookup that carries the ring cuts is exactly
+ * how a cut Created row used to fall through to a stub.
+ */
+export function claimOwnedHits<T extends OwnedNearbyRow>(
+  hits: readonly NearbyHit[],
+  owned: readonly T[],
+  ring: readonly T[],
+): OwnedHitClaim<T> {
+  const ringGids = new Set<string>();
+  for (const row of ring) {
+    const gid = gidOf(row);
+    if (gid) ringGids.add(gid);
+  }
+  const ownedGids = new Set(ringGids);
+  const paintByGid = new Map<string, T>();
+  const dropGids = new Set<string>();
+  for (const row of owned) {
+    const gid = gidOf(row);
+    if (!gid) continue;
+    ownedGids.add(gid);
+    if (ringGids.has(gid)) continue;
+    if (!isPlaceEnriched(row.enriched_at)) {
+      if (!paintByGid.has(gid)) paintByGid.set(gid, row);
+      dropGids.delete(gid);
+    } else if (!paintByGid.has(gid)) {
+      dropGids.add(gid);
+    }
+  }
+  return {
+    hits: hits.filter((hit) => !dropGids.has(hit.placeId)),
+    paintByGid,
+    ownedGids,
+  };
+}
+
+/** How one merged `google` item goes out on the wire. */
+export type GoogleItemRow<T> =
+  | { kind: "mesita"; row: T }
+  | { kind: "stub" }
+  | { kind: "drop" };
+
+/**
+ * The last word on a merged `google` item: its painting Created row, else a
+ * stub — unless Mesita owns the gid, in which case it is dropped. That last
+ * case is a ring row that a later JS cut removed after {@link claimOwnedHits}
+ * let its hit through; it still must not become a stub.
+ */
+export function resolveGoogleItem<T>(
+  hit: NearbyHit,
+  claim: OwnedHitClaim<T>,
+): GoogleItemRow<T> {
+  const painted = claim.paintByGid.get(hit.placeId);
+  if (painted) return { kind: "mesita", row: painted };
+  if (claim.ownedGids.has(hit.placeId)) return { kind: "drop" };
+  return { kind: "stub" };
 }
 
 export function mergeNearbyCatalog<T extends MesitaNearbyRow>(

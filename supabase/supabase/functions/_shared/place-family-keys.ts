@@ -9,11 +9,12 @@
 // Clients must not re-mirror that expansion; Search map Filters cut on
 // Family off this field.
 //
-// Adds `enriched` — whether Mesita wrote a profile for this place (below).
+// Adds `enriched` — whether an Enrich run completed on this place (below).
 // Every consumer place payload runs through here, so this is the one place
 // both facts are stated.
 
 import { familiesForPlace, type FamilyKey } from "./place-taxonomy.ts";
+import { isPlaceEnriched } from "./place-state.ts";
 
 export type PlaceCategoryRow = {
   category?: string | null;
@@ -29,20 +30,24 @@ export type WireExtras = {
 };
 
 /**
- * Did we do the work on this place? `content_state = 'ready'` OR a stamped
- * `enriched_at` — BOTH, never one. 27% of the live catalog is ready with a
- * null `enriched_at` (measured 2026-08-29), so an `enriched_at`-only test
- * would grey a quarter of the catalog on deploy.
+ * Did an Enrich run complete on this place? `enriched_at` set — that alone
+ * (MESITA-2154; delegates to {@link isPlaceEnriched}, the one definition).
+ *
+ * `content_state = 'ready'` is NOT enriched: Create saves `ready` because
+ * the profile can be shown, and Create never stamps `enriched_at`. The old
+ * rule (`ready OR enriched_at`) painted every freshly Created place red,
+ * put it in the Mesita ring and admitted it to Swipe while its own detail
+ * page showed the Enrich vote tab.
  *
  * This is the SERVER's answer. Membership colour is stated here and never
  * re-derived by a client (Pato, 2026-08-29): three clients each deriving the
  * same fact is how red drifted from "we wrote a profile" to "we have a row".
  */
 export function isEnrichedPlace(
-  row: { content_state?: string | null; enriched_at?: string | null } | null,
+  row: { enriched_at?: string | null } | null,
 ): boolean {
   if (!row) return false;
-  return row.content_state === "ready" || Boolean(row.enriched_at);
+  return isPlaceEnriched(row.enriched_at);
 }
 
 /** The row as a guest receives it. */
@@ -50,7 +55,7 @@ export type WirePlace<T> = T & WireExtras;
 
 /**
  * Wire mapper: set `family_keys` from Atlas membership / stored / Google type,
- * and `enriched` from the two enrichment columns. Both are always overwritten
+ * and `enriched` from `enriched_at`. Both are always overwritten
  * so a stale client cache can't leak a previous value.
  */
 export function withFamilyKeys<T extends PlaceCategoryRow>(

@@ -6,7 +6,7 @@
 // insensitive, longest name first so "Vancouver Wings Tec" wins over the bare
 // "Vancouver", non-overlapping, first mention only). Tapping a name opens the
 // place: on-Mesita → the detail modal (onInfo); not-yet-on-Mesita → the real
-// Add / enrich flow (onAdd). Names Memo didn't spell out verbatim in the prose
+// Add flow (onAdd). Names Memo didn't spell out verbatim in the prose
 // still get a home in a compact trailing line so no suggestion is lost.
 
 import { useMemo } from "react";
@@ -100,7 +100,8 @@ export function MemoAnswerText({
   );
 
   // On-Mesita → open the detail modal; otherwise kick off the real Add flow so
-  // the place gets created + enriched (same mechanics the old cards used).
+  // the place gets created, NOT enriched — Enrich waits for guest votes
+  // (same mechanics the old cards used).
   const open = (prediction: PlacePrediction) => {
     const onMesita =
       Boolean(prediction.mesitaSlug ?? prediction.mesitaId) ||
