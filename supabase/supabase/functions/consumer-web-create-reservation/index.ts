@@ -22,6 +22,11 @@ import { writeReservation } from "../_shared/reservation-doc.ts";
 import { accountDeletedResponse, isDeletedConsumer } from "../_shared/delete-history-free.ts";
 import { isPlaceProfileReady } from "../_shared/place-state.ts";
 import {
+  RESERVATIONS_OFF_CODE,
+  RESERVATIONS_OFF_MESSAGE,
+  takesReservations,
+} from "../_shared/place-reservable.ts";
+import {
   MONTHLY_RESERVATION_CAP,
   RESERVATION_LIMIT_CODE,
   RESERVATION_LIMIT_MESSAGE,
@@ -107,6 +112,23 @@ Deno.serve(async (req) => {
       ok: false,
       code: "profile_not_ready",
       error: "This place's profile hasn't been created yet.",
+    }, 409);
+  }
+
+  // ── The place must take reservations (MESITA-2156) ──────────────────────
+  // Every client hides Reserve when reservations_enabled is false, but a
+  // stale tab or a direct call would still ring a walk-in place.
+  const { data: profileRow, error: profileErr } = await admin
+    .from("place_profiles")
+    .select("reservations_enabled")
+    .eq("id", body.project_id)
+    .maybeSingle();
+  if (profileErr) return json({ ok: false, error: profileErr.message }, 500);
+  if (!takesReservations(profileRow as { reservations_enabled?: boolean | null } | null)) {
+    return json({
+      ok: false,
+      code: RESERVATIONS_OFF_CODE,
+      error: RESERVATIONS_OFF_MESSAGE,
     }, 409);
   }
 

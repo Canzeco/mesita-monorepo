@@ -1,9 +1,8 @@
 // Guest Reserve gate: the place page's action bar and the Scroll and Swipe
-// cards all read it. It is CLIENT-ONLY today. The server twin this comment
-// used to name (supabase/_shared/place-profile-actions.ts) does not exist, and
-// consumer-web-create-reservation does not read `reservations_enabled`, so
-// these surfaces are the only thing between a guest and a booking at a
-// walk-in place.
+// cards all read it. Its server twin is takesReservations
+// (supabase/_shared/place-reservable.ts): consumer-web-create-reservation
+// 409s `reservations_off` on the same rule (MESITA-2156), and the sheet
+// prints that refusal's `error`. Change the two together.
 
 type ActionFlagRow = {
   reservations_enabled?: boolean | null;
