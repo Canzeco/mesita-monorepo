@@ -2,7 +2,7 @@
 
 // Multiple Places — five boxes: Google Search and Mesita Search read;
 // Create, Enrich and Update write (MESITA-2096). Sticky rail so none scroll
-// away. Spend estimates live on Configurations › Creation and Enrichment.
+// away. Spend estimates live on Configurations › Intake.
 
 import { useEffect, useState } from "react";
 import { SectionCard, type Tint } from "@/components/admin-ui/manage";
