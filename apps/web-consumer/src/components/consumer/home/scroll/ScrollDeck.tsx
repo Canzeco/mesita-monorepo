@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Compass, SlidersHorizontal } from "lucide-react";
 
 import { apiRecommendDeck, type Place } from "@/lib/api/places";
@@ -11,12 +12,7 @@ import {
   useUserLocationLocating,
 } from "@/lib/use-user-location";
 import { withUserDistance } from "@/lib/place-distance";
-import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
-import {
-  SCROLL_USES_MOCK,
-  isMockPlace,
-  scrollMockPlaces,
-} from "@/lib/mock/scroll-places";
+import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { placeHref } from "@/lib/place-route";
 import { sharePlace } from "@/lib/share-place";
 import { cn, errMsg } from "@/lib/utils";
@@ -100,19 +96,6 @@ export function ScrollDeck({
   // Share, Reserve").
   const [reservePlace, setReservePlace] = useState<Place | null>(null);
 
-  // A mock card's heart lives here and nowhere else (design 3A): writing a
-  // `mock-` id into Favs would leave a ghost place on the Favs tab after the
-  // mock is gone.
-  const [mockSavedIds, setMockSavedIds] = useState<ReadonlySet<string>>(
-    () => new Set(),
-  );
-  const setMockSaved = (id: string, saved: boolean) =>
-    setMockSavedIds((prev) => {
-      const next = new Set(prev);
-      if (saved) next.add(id);
-      else next.delete(id);
-      return next;
-    });
   // The card on screen, from the scroll listener below (eng review R3).
   const [active, setActive] = useState(0);
   // Every card is the scrollport's size. A photo needs that box to decide
@@ -138,9 +121,6 @@ export function ScrollDeck({
   const requestKey = deckRequestKey(filters, center);
 
   useEffect(() => {
-    // THE MOCK NEVER ASKS THE SERVER (design 2A). Its rows are filtered on the
-    // client below, so a located or filtered re-fetch would only be thrown away.
-    if (SCROLL_USES_MOCK) return;
     if (settledKeyRef.current === requestKey) return;
     let cancelled = false;
     if (requestKey === UNFILTERED_DECK_KEY) {
@@ -197,9 +177,7 @@ export function ScrollDeck({
       geoDeck && (geoDeck.length > 0 || hasDiscoveryPredicates(filters))
         ? geoDeck
         : null;
-    // The switch replaces the WHOLE source, never part of it: fake and real
-    // cards never share a feed (design 2A).
-    const source = SCROLL_USES_MOCK ? scrollMockPlaces() : (located ?? places);
+    const source = located ?? places;
     const listed = source.filter((place) => {
       if (place.googleOnly || place.from_google) {
         return filters.placesScope === "google";
@@ -210,17 +188,16 @@ export function ScrollDeck({
     return applyDiscoveryFilters(withDistance, filters);
   }, [geoDeck, places, center, filters]);
 
-  // THE DECK IS ALWAYS 50, CYCLED (Pato, live: "the deck must be 50 items.
-  // then it repeats. if n is one, fill the 50 items deck with the same place.
-  // for the moment").
+  // THE DECK IS ALWAYS 50, CYCLED FROM WHATEVER IS REAL (Pato, live: "the deck
+  // must be 50 items. then it repeats. if n is one, fill the 50 items deck with
+  // the same place. for the moment").
   //
-  // WHAT IT CYCLES DEPENDS ON ONE SWITCH. With SCROLL_USES_MOCK on (MESITA-2105,
-  // Pato, 2026-10-10: "for the moment use mock data written in the frontend")
-  // it is the twelve shared mock places; off, it is whatever is real, the way
-  // it was from 2026-09-08 when Pato killed the last mock. That reversal is
-  // deliberate and bounded: one file, one switch, Scroll only, and the exit is
-  // MESITA-2095. A mock card can never reach Favs, analytics or a place URL
-  // (scrollCardActions).
+  // NO INVENTED PLACES. Twice a frontend sample deck stood in for the catalog
+  // (killed 2026-09-08, and again by MESITA-2095 on 2026-10-11 once Pato began
+  // creating real places). Repeating the ONE real place is honest by
+  // construction — you can tap it, save it, and reserve at it when it takes
+  // bookings. An empty catalog is the "No places yet" screen below, never a
+  // fake card.
   //
   // TEMPORARY, and the instruction said so. When the catalog holds 50+ this
   // slice is a plain `rows.slice(0, DECK_SIZE)` and the modulo goes away.
@@ -232,7 +209,7 @@ export function ScrollDeck({
     );
   }, [rows]);
 
-  const saveReal = (place: Place, saved: boolean) => {
+  const save = (place: Place, saved: boolean) => {
     if (saved) {
       upsertSavedPlacePreview(place);
       setSaved(place.id, true);
@@ -243,7 +220,9 @@ export function ScrollDeck({
       setSaved(place.id, false);
     }
   };
-  const realSavedIds = hydrated ? savedIds : EMPTY_IDS;
+  // Nothing reads as saved until the Favs store has loaded from localStorage,
+  // so the server render and the first client render agree.
+  const shownSavedIds = hydrated ? savedIds : EMPTY_IDS;
 
   const hasDeck = deck.length > 0;
 
@@ -325,18 +304,13 @@ export function ScrollDeck({
   // TWO DIFFERENT FAILURES, TWO DIFFERENT SCREENS. A deck that came back empty
   // means the catalog is still filling; a deck that FAILED means we could not
   // ask. Telling a guest the catalog is empty when the request 502'd sends them
-  // away from a screen that a retry would have fixed. While the mock is on the
-  // server's answer is not read at all, so its failure is not shown either.
+  // away from a screen that a retry would have fixed.
+  //
+  // EVERY EMPTY SCREEN SITS IN THE SAME FLEX BOX the filtered one does. The
+  // page slot is a positioned block, and a block parent leaves EmptyState's
+  // `flex-1` with nothing to fill, so the message would hug the top edge.
   if (deck.length === 0) {
-    if (fetchError && !SCROLL_USES_MOCK) {
-      return (
-        <EmptyState
-          icon={Compass}
-          title="Couldn't load tonight's places"
-          description="The request didn't come back. Pull the tab again in a moment."
-        />
-      );
-    }
+    if (fetchError) return <ScrollFetchError />;
     if (hasDiscoveryPredicates(filters)) {
       return (
         <div className="absolute inset-0 flex flex-col">
@@ -352,11 +326,13 @@ export function ScrollDeck({
       );
     }
     return (
-      <EmptyState
-        icon={Compass}
-        title="No places yet"
-        description="The catalog is still filling up. Check back soon."
-      />
+      <div className="absolute inset-0 flex flex-col">
+        <EmptyState
+          icon={Compass}
+          title="No places yet"
+          description="The catalog is still filling up. Check back soon."
+        />
+      </div>
     );
   }
 
@@ -389,19 +365,12 @@ export function ScrollDeck({
       >
         {deck.map((place, i) => {
           const actions = scrollCardActions(place, i, {
-            isMock: isMockPlace(place),
-            savedIds: realSavedIds,
-            mockSavedIds,
-            toast,
-            saveReal,
-            setMockSaved,
+            savedIds: shownSavedIds,
+            save,
             track: (event, props) => trackEvent(supabase, event, props),
             share: (p) => void sharePlace(p),
             openReserve: setReservePlace,
-            // A sample's profile is keyed by its `mock-` id, never its slug,
-            // so it resolves locally instead of asking the EF.
-            profileHref: (p) =>
-              placeHref(isMockPlace(p) ? p.id : (p.slug ?? p.id)),
+            profileHref: (p) => placeHref(p.slug ?? p.id),
           });
           return (
             <ScrollCard
@@ -450,6 +419,31 @@ export function ScrollDeck({
           onClose={() => setReservePlace(null)}
         />
       )}
+    </div>
+  );
+}
+
+/**
+ * The deck request failed. "Try again" REFRESHES: the deck is fetched once in
+ * the /discover layout (HomeDeckBoundary), which a tab navigation never
+ * re-runs, and this shell has no pull-to-refresh. router.refresh() re-runs the
+ * layout's server fetch, as PlaceGoneNotice does. Its own component so the
+ * router hook mounts only on this screen.
+ */
+function ScrollFetchError() {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  return (
+    <div className="absolute inset-0 flex flex-col">
+      <EmptyState
+        icon={Compass}
+        title="Couldn't load tonight's places"
+        description="The request didn't come back. Try again in a moment."
+        action={{
+          label: pending ? "Trying again…" : "Try again",
+          onClick: () => startTransition(() => router.refresh()),
+        }}
+      />
     </div>
   );
 }

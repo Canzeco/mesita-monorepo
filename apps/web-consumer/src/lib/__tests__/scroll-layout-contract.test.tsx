@@ -5,6 +5,7 @@ vi.mock("@/lib/supabase/browser", () => ({ useBrowserSupabase: () => ({}) }));
 
 import DiscoverScrollPage from "@/app/(shell)/(discovery)/discover/scroll/page";
 import { HomeDeckProvider } from "@/components/consumer/home/HomeDeckContext";
+import { testPlace } from "./fixtures/place";
 
 // THE BLANK TAB, PINNED (MESITA-2105). Every child of the deck is absolutely
 // positioned, so the deck has a height only if each box between the discover
@@ -14,12 +15,12 @@ import { HomeDeckProvider } from "@/components/consumer/home/HomeDeckContext";
 // typecheck, lint, 632 tests and the build all green. This is the same class
 // of failure MESITA-1697 shipped once already. The node test environment
 // cannot measure layout, so this pins the chain of boxes that makes the
-// percentage heights resolve.
+// percentage heights resolve. One real row is enough: the deck cycles it to 50.
 describe("Scroll's definite-height chain", () => {
   // React hoists the first photo's preload <link> to the front; the layout
   // starts after it.
   const html = renderToStaticMarkup(
-    <HomeDeckProvider places={[]} fetchError={null}>
+    <HomeDeckProvider places={[testPlace()]} fetchError={null}>
       <DiscoverScrollPage />
     </HomeDeckProvider>,
   ).replace(/^(<link [^>]*>)+/, "");

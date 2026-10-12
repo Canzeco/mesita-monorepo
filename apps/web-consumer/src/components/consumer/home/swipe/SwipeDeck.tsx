@@ -10,10 +10,12 @@ import { apiRecommendDeck, type Place } from "@/lib/api/places";
 import { upsertSavedPlacePreview, useSavedPlaces } from "@/lib/saved-places";
 import { toast } from "@/lib/toast";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
+import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { placeHref } from "@/lib/place-route";
+import { isReserveActionEnabled } from "@/lib/place-profile-actions";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import {
+  DeckFetchError,
   EmptyDeck,
   ExhaustedDeck,
   LoadingDeck,
@@ -41,8 +43,6 @@ import {
 import { useDiscoveryFilters } from "@/lib/use-discovery-filters";
 import { DiscoveryFilters } from "@/components/consumer/DiscoveryFilters";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import { isMockPlace } from "@/lib/mock/scroll-places";
-import { SAMPLE_PLACE_TOAST } from "@/components/consumer/home/scroll/scroll-card";
 
 const SWIPE_THRESHOLD = 64;
 const SWIPE_VELOCITY = 0.35; // px/ms — a quick flick commits even with small displacement
@@ -95,24 +95,11 @@ function prepareDeck(rows: Place[]): Place[] {
 export function SwipeDeck({
   places,
   fetchError,
-  errorRetryHref = CONSUMER_ROUTES.discoverDefault,
 }: {
   places: Place[];
   fetchError: string | null;
-  /** Where the fetch-error "Try again" CTA lands — hosts embedding the
-      deck outside /home pass their own route. */
-  errorRetryHref?: string;
 }) {
-  if (fetchError) {
-    return (
-      <EmptyDeck
-        title="Couldn't load places"
-        body={fetchError}
-        actionHref={errorRetryHref}
-        actionLabel="Try again"
-      />
-    );
-  }
+  if (fetchError) return <DeckFetchError body={fetchError} />;
   if (places.length === 0) {
     return (
       <EmptyDeck
@@ -275,7 +262,7 @@ function Deck({ places }: { places: Place[] }) {
   };
 
   // Real "X km" distances. The SSR deck fetch has no user location, so
-  // places arrive without distance_km (the demo row carries a mock one).
+  // places arrive without distance_km.
   // Once the browser hands us a fix we recompute each card's distance
   // from its lat/lng — a real value always wins; places missing coords
   // (or a denied prompt) keep whatever distance they had, or fall back
@@ -399,11 +386,7 @@ function Deck({ places }: { places: Place[] }) {
   const beginExit = useCallback(
     (dir: "left" | "right") => {
       if (exitingRef.current) return;
-      // A SAMPLE CARD NEVER REACHES FAVS (design 3A, the rule Scroll keeps):
-      // swiping it right says so instead of saving it.
-      if (dir === "right" && v && isMockPlace(v)) {
-        toast(SAMPLE_PLACE_TOAST);
-      } else if (dir === "right" && v) {
+      if (dir === "right" && v) {
         const alreadySaved = isSaved(v.id);
         upsertSavedPlacePreview(v);
         setSaved(v.id, true);
@@ -662,9 +645,8 @@ function Deck({ places }: { places: Place[] }) {
 
   const skip = () => beginExit("left");
   const save = () => beginExit("right");
-  const saved = !isMockPlace(v) && isSaved(v.id);
+  const saved = isSaved(v.id);
 
-  // A sample place opens its sample profile (MESITA-2142).
   const openInfo = () => {
     if (infoOpeningRef.current) return;
     infoOpeningRef.current = true;
@@ -752,13 +734,9 @@ function Deck({ places }: { places: Place[] }) {
           onSkip={skip}
           onOpenInfo={openInfo}
           onSave={save}
-          onReserve={() => {
-            if (isMockPlace(v)) {
-              toast(SAMPLE_PLACE_TOAST);
-              return;
-            }
-            setReserveOpen(true);
-          }}
+          onReserve={
+            isReserveActionEnabled(v) ? () => setReserveOpen(true) : null
+          }
         />
       </div>
 

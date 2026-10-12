@@ -8,7 +8,8 @@
 // returned, with a column per source (MESITA-2124; it replaced four stacked
 // lists, and Nearby left with them). A hit OPENS the place at
 // /manage-single/<id>/profile — the place screens admin owns (MESITA-2115).
-// Create and Add are the only writes this page makes itself.
+// Create (from a Google Place ID, or a table row) is the only write this
+// page makes itself.
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -49,7 +50,7 @@ export function SinglePlaceClient() {
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View | null>(null);
   const [note, setNote] = useState<Note | null>(null);
-  // The catalogue, read once per page life (and again after an Add).
+  // The catalogue, read once per page life (and again after a Create).
   const [catalog, setCatalog] = useState<PlaceHit[] | null>(null);
   // `findSeq` drops a reply that lands after a newer Find and keys the table,
   // so its Show more resets. `added` (Google Place ID → Mesita id) and
@@ -149,12 +150,13 @@ export function SinglePlaceClient() {
     }
   }
 
-  /** Add mints a row in place and leaves the table up, so one search can add
-   *  several. Same action as Create; the row then opens the place. */
+  /** A row's Create mints the place in place and leaves the table up, so one
+   *  search can create several; the row then opens the place. Create builds
+   *  the basic profile only: it never enriches. */
   async function addRow(row: FindRow) {
     const googleId = row.googleId;
     if (!googleId || rowNotes[googleId]?.state === "running") return;
-    setRowNotes((n) => ({ ...n, [googleId]: { state: "running", text: "Adding…" } }));
+    setRowNotes((n) => ({ ...n, [googleId]: { state: "running", text: "Creating…" } }));
     let rowNote: RowNote;
     try {
       const r = await createPlaceFromGooglePlaceId(googleId);
@@ -163,11 +165,7 @@ export function SinglePlaceClient() {
         setCatalog(null);
         rowNote = {
           state: r.alreadyExisted ? "existed" : "ok",
-          text: r.alreadyExisted
-            ? "Already on Mesita"
-            : r.enrichmentTriggered
-              ? "Added · enrich queued"
-              : "Added · enrich not queued",
+          text: r.alreadyExisted ? "Already on Mesita" : "Created · not enriched",
         };
       } else {
         rowNote = { state: "error", text: r.error };
@@ -193,9 +191,7 @@ export function SinglePlaceClient() {
         state: r.alreadyExisted ? "existed" : "ok",
         text: r.alreadyExisted
           ? "Already on Mesita — opening it"
-          : r.enrichmentTriggered
-            ? "Created · enrich queued — opening it"
-            : "Created · enrich not queued — opening it",
+          : "Created · not enriched — opening it",
       });
       open(r.placeId);
     } catch (err) {

@@ -1,4 +1,4 @@
-import type { PlaceDetail } from "@/lib/mock/place";
+import type { PlaceDetail } from "@/lib/place-detail";
 import { FALLBACK_IANA_TZ } from "@/lib/place-time";
 
 // Loose row type — the EF returns the full place projection; helpers read it
@@ -144,7 +144,7 @@ export function derivePriceRange(row: Row): string {
 // closes the next day). Falls back to closed/empty when hours or tz are
 // missing/unparseable — never throws.
 //
-// Exported so the deck/catalog card deriver (lib/mock/enrich-overview.ts)
+// Exported so the deck/catalog card deriver (lib/adapters/enrich-overview.ts)
 // computes open/closed exactly the same way as the detail modal — one
 // implementation, card + detail always agree.
 export function computeOpenState(

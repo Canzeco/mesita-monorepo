@@ -6,6 +6,7 @@ import Link from "next/link";
 import { CalendarCheck, Heart, Share2 } from "lucide-react";
 
 import type { Place } from "@/lib/api/places";
+import { isReserveActionEnabled } from "@/lib/place-profile-actions";
 import { cn } from "@/lib/utils";
 import { ImageCarousel } from "@/components/consumer/ImageCarousel";
 import { SwipeCardInfo } from "@/components/consumer/SwipeCardInfo";
@@ -39,11 +40,13 @@ import { useDoubleTap } from "./use-double-tap";
 //
 // THE AVATAR IS THE PROFILE LINK now, top of the column, the way every vertical
 // feed links to the account behind a post. The name stopped being the link
-// when the tap zones stopped covering the card.
+// when the tap zones stopped covering the card. What Save, Share and Reserve
+// do is decided by the deck (scrollCardActions), not by this file.
 //
-// A MOCK CARD (design 3A) links to its sample profile, answered locally
-// (MESITA-2142); the deck — not this file — decides what Save, Share and
-// Reserve do, and for a sample they toast.
+// A WALK-IN PLACE HAS NO RESERVE DISC. `reservations_enabled: false` is the
+// place saying it takes no bookings; the place page's action bar steps aside
+// for it (PlaceActionBar), and so does this column, rather than open a booking
+// sheet that would ring a business that never takes them.
 export function ScrollCard({
   place,
   index,
@@ -53,7 +56,6 @@ export function ScrollCard({
   priority = false,
   saved,
   profileHref,
-  onProfile,
   onToggleSave,
   onShare,
   onReserve,
@@ -69,13 +71,12 @@ export function ScrollCard({
   cardSize?: { width: number; height: number } | null;
   priority?: boolean;
   saved: boolean;
-  /** The place page, or null for a card that has none (a mock). */
-  profileHref: string | null;
-  /** Used when `profileHref` is null. */
-  onProfile: () => void;
+  /** The place page. */
+  profileHref: string;
   onToggleSave: () => void;
   onShare: () => void;
-  onReserve: () => void;
+  /** Null when the place takes no bookings: the Reserve disc is not drawn. */
+  onReserve: (() => void) | null;
 }) {
   // A key, not a boolean: every double tap remounts the heart so the burst
   // replays even when the place is already saved.
@@ -167,26 +168,14 @@ export function ScrollCard({
       </div>
 
       <div className="absolute right-3 bottom-5 flex flex-col items-center gap-3 [@media(max-height:640px)]:gap-2">
-        {profileHref ? (
-          <Link
-            href={profileHref}
-            aria-label={`Open ${place.name}`}
-            className={cn(ACTION, "font-display text-lg font-semibold")}
-          >
-            <span className={DISC}>{initial}</span>
-            <span className={LABEL}>Profile</span>
-          </Link>
-        ) : (
-          <button
-            type="button"
-            onClick={onProfile}
-            aria-label={`Open ${place.name}`}
-            className={cn(ACTION, "font-display text-lg font-semibold")}
-          >
-            <span className={DISC}>{initial}</span>
-            <span className={LABEL}>Profile</span>
-          </button>
-        )}
+        <Link
+          href={profileHref}
+          aria-label={`Open ${place.name}`}
+          className={cn(ACTION, "font-display text-lg font-semibold")}
+        >
+          <span className={DISC}>{initial}</span>
+          <span className={LABEL}>Profile</span>
+        </Link>
 
         <button
           type="button"
@@ -217,49 +206,40 @@ export function ScrollCard({
           <span className={LABEL}>Share</span>
         </button>
 
-        <button
-          type="button"
-          onClick={onReserve}
-          aria-label={`Reserve at ${place.name}`}
-          className={ACTION}
-        >
-          {/* THE SAME DISC AS THE OTHERS (Pato, MESITA-2147: "reserve button
-              must be as equal as the others"). */}
-          <span className={DISC}>
-            <CalendarCheck className="h-6 w-6" strokeWidth={2.2} aria-hidden />
-          </span>
-          <span className={LABEL}>Reserve</span>
-        </button>
+        {onReserve && (
+          <button
+            type="button"
+            onClick={onReserve}
+            aria-label={`Reserve at ${place.name}`}
+            className={ACTION}
+          >
+            {/* THE SAME DISC AS THE OTHERS (Pato, MESITA-2147: "reserve button
+                must be as equal as the others"). */}
+            <span className={DISC}>
+              <CalendarCheck className="h-6 w-6" strokeWidth={2.2} aria-hidden />
+            </span>
+            <span className={LABEL}>Reserve</span>
+          </button>
+        )}
       </div>
     </li>
   );
 }
 
-/** What a mock card says when you ask it for something real (design 3A). */
-export const SAMPLE_PLACE_TOAST = "Sample place — real places land here soon";
-
 /**
  * Where each of a card's actions goes. ONE function decides it for every card,
- * so the rule that a mock place never reaches real data lives in one place and
- * one test (design 3A, eng review 1.2):
- *
- *   mock → Save toggles in-memory state only; Share and Reserve toast;
- *          Profile opens the sample's own profile (MESITA-2142), answered
- *          locally. Nothing touches Favs, analytics or a booking.
- *   real → the Favs store (+ first-save toast and the `home_card_save`
- *          event), the place page, the share sheet, and the reservation
- *          sheet behind `home_card_open`.
+ * so the wiring lives in one place and one test (eng review 1.2): Save writes
+ * the Favs store (+ the first-save toast and the `home_card_save` event),
+ * Profile is the place page, Share is the share sheet, and Reserve opens the
+ * reservation sheet behind `home_card_open` — or is null for a place that
+ * takes no bookings (`isReserveActionEnabled`, the place page's own gate).
  */
 export function scrollCardActions(
   place: Place,
   position: number,
   deps: {
-    isMock: boolean;
     savedIds: ReadonlySet<string>;
-    mockSavedIds: ReadonlySet<string>;
-    toast: (message: string) => void;
-    saveReal: (place: Place, saved: boolean) => void;
-    setMockSaved: (id: string, saved: boolean) => void;
+    save: (place: Place, saved: boolean) => void;
     track: (
       event: "home_card_save" | "home_card_open",
       props: Record<string, string | number>,
@@ -269,40 +249,29 @@ export function scrollCardActions(
     profileHref: (place: Place) => string;
   },
 ) {
-  const sample = () => deps.toast(SAMPLE_PLACE_TOAST);
-  if (deps.isMock) {
-    const saved = deps.mockSavedIds.has(place.id);
-    return {
-      saved,
-      profileHref: deps.profileHref(place),
-      onProfile: () => {},
-      onToggleSave: () => deps.setMockSaved(place.id, !saved),
-      onShare: sample,
-      onReserve: sample,
-    };
-  }
   const saved = deps.savedIds.has(place.id);
   return {
     saved,
     profileHref: deps.profileHref(place),
-    onProfile: () => {},
     onToggleSave: () => {
-      deps.saveReal(place, !saved);
+      deps.save(place, !saved);
       if (!saved) {
         deps.track("home_card_save", { mode: "scroll", place_id: place.id });
       }
     },
     onShare: () => deps.share(place),
-    onReserve: () => {
-      // Reserve is the conversion intent; the event name predates it (it
-      // tracked Go) and stays, so the funnel keeps one series.
-      deps.track("home_card_open", {
-        mode: "scroll",
-        place_id: place.id,
-        position,
-      });
-      deps.openReserve(place);
-    },
+    onReserve: isReserveActionEnabled(place)
+      ? () => {
+          // Reserve is the conversion intent; the event name predates it (it
+          // tracked Go) and stays, so the funnel keeps one series.
+          deps.track("home_card_open", {
+            mode: "scroll",
+            place_id: place.id,
+            position,
+          });
+          deps.openReserve(place);
+        }
+      : null,
   };
 }
 

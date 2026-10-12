@@ -79,12 +79,13 @@ describe("Find › one table", () => {
     expect(html).toContain(">—<");
   });
 
-  it("opens a held place and offers Add on one Mesita lacks, both labelled", () => {
+  it("opens a held place and offers Create on one Mesita lacks, both labelled", () => {
     const html = render(OK);
     expect(html).toContain('href="/manage-single/mesita-a/profile"');
     expect(html).toContain('aria-label="Open Café Nin"');
-    expect(html).toContain('aria-label="Add Dos Amores Brunch &amp; Meal to Mesita"');
-    expect(html).toContain(">Add<");
+    expect(html).toContain('aria-label="Create Dos Amores Brunch &amp; Meal on Mesita"');
+    expect(html).toContain(">Create<");
+    expect(html).not.toContain(">Add<");
   });
 
   it("links a place Mesita lacks to Google Maps instead of swapping the table", () => {
@@ -101,16 +102,16 @@ describe("Find › one table", () => {
     expect(html).toContain("Catalogue #1 · Name #1 · Autocomplete #2 · Text #1");
   });
 
-  it("treats a row this page added as Mesita's", () => {
+  it("treats a row this page created as Mesita's", () => {
     const html = render(OK, { added: new Map([[G2, "mesita-new"]]) });
     expect(html).toContain('href="/manage-single/mesita-new/profile"');
-    expect(html).not.toContain(">Add<");
+    expect(html).not.toContain(">Create<");
   });
 
-  it("shows an Add in flight, then its outcome, in a live region", () => {
-    expect(render(OK, { notes: { [G2]: { state: "running", text: "Adding…" } } })).toContain("Adding…");
-    const done = render(OK, { notes: { [G2]: { state: "ok", text: "Added · enrich queued" } } });
-    expect(done).toContain("Added · enrich queued");
+  it("shows a Create in flight, then its outcome, in a live region", () => {
+    expect(render(OK, { notes: { [G2]: { state: "running", text: "Creating…" } } })).toContain("Creating…");
+    const done = render(OK, { notes: { [G2]: { state: "ok", text: "Created · not enriched" } } });
+    expect(done).toContain("Created · not enriched");
     expect(done).toContain('aria-live="polite"');
   });
 

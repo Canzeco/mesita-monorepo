@@ -5,7 +5,7 @@ import { Check, Loader2, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { apiRequestPlace } from "@/lib/api/places";
-import type { PlaceDetail } from "@/lib/mock/place";
+import type { PlaceDetail } from "@/lib/place-detail";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn, errMsg } from "@/lib/utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";

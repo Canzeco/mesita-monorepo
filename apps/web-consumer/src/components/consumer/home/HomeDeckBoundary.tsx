@@ -5,7 +5,7 @@ import {
   apiFetchPublicPlaces,
   type Place,
 } from "@/lib/api/places";
-import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
+import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { errMsg } from "@/lib/utils";
 import { HomeDeckProvider } from "./HomeDeckContext";
 

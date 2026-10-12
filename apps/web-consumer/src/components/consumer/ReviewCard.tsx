@@ -4,7 +4,7 @@ import { useState } from "react";
 import { GoogleLogo } from "./BrandLogos";
 import { Header, Quote, StarRow, Thumbnail } from "./review-card-parts";
 import { firstInitial } from "@/lib/utils";
-import type { PlaceDetail } from "@/lib/mock/place";
+import type { PlaceDetail } from "@/lib/place-detail";
 
 // One Google review card. Lives in its own client file because the
 // long-quote read-more toggle needs state.

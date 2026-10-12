@@ -6,13 +6,11 @@
 // - Each helper here calls exactly one Edge Function and never composes
 //   multiple Edge Functions (composition belongs inside the function).
 
-import { mockPlaceDetail } from "@/lib/mock/scroll-place-detail";
-import { SCROLL_USES_MOCK } from "@/lib/mock/scroll-places";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { EFError, invokeEF } from "./_invoke";
 import { placeRowToDetail } from "@/lib/adapters/place-to-detail";
 import type { ResolvedTag } from "@/lib/adapters/place-to-detail";
-import type { PlaceDetail } from "@/lib/mock/place";
+import type { PlaceDetail } from "@/lib/place-detail";
 import type { DiscoveryPredicatesWire } from "@/lib/discovery-filters-wire";
 
 export type Place = {
@@ -203,10 +201,6 @@ export async function apiFetchPlaceDetail(
   client: SupabaseClient,
   idOrSlug: string,
 ): Promise<PlaceDetail | null> {
-  // A sample place answers locally (MESITA-2142); see scroll-place-detail.
-  if (SCROLL_USES_MOCK && idOrSlug.trim().toLowerCase().startsWith("mock-")) {
-    return mockPlaceDetail(idOrSlug);
-  }
   try {
     const { place, tags } = await invokeEF<{
       place: Record<string, unknown>;

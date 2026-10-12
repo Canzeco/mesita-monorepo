@@ -2,7 +2,7 @@
 
 import { Clock, MapPin } from "lucide-react";
 
-import type { PlaceDetail } from "@/lib/mock/place";
+import type { PlaceDetail } from "@/lib/place-detail";
 import { FALLBACK_IANA_TZ } from "@/lib/place-time";
 import { buildUberDropoffUrl } from "@/lib/uber-link";
 import { cn, formatDistanceKm } from "@/lib/utils";

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { ArrowUpDown, Heart } from "lucide-react";
 import type { Place } from "@/lib/api/places";
-import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
+import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import {
   readSavedPlacePreviews,
   removeSavedPlacePreview,
