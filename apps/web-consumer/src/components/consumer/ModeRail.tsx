@@ -2,10 +2,10 @@
 
 // Home's top rail — one row of pills over /discover/*:
 //
-//   Home    Swipe · Favs        (MESITA-2163)
+//   Home    Places · Social · Chat · Favs        (MESITA-2166)
 //
 // It was DiscoverModeNav. It is drawn by app/(shell)/(discovery)/discover/
-// layout.tsx, so the four pills share one frame and one deck fetch, and
+// layout.tsx, so the pills share one frame and one deck fetch, and
 // Search — its own bottom tab since MESITA-2055 — sits outside it with no
 // rail painting over the map (the MESITA-1616 bug cannot return).
 //
@@ -20,10 +20,12 @@
 //
 //   label    text@12   + 26px chrome
 //   -------  --------  -------------
-//   Swipe    35.6      61.6   <- widest (MESITA-2142)
+//   Places   38.3      64.3   <- widest (MESITA-2166)
+//   Social   36.7      62.7
+//   Chat     27.3      53.3
 //   Favs     27.6      53.6
 //
-// Two columns: 2 x 61.6 + 4 = 127.2 of 359px. Fits, with room to spare.
+// Four columns: 4 x 64.3 + 12 = 269.2 of 359px. Fits, with room to spare.
 // The icon is 14px (chrome 26) rather than the 16px of MESITA-1697: the
 // budget was set when the row held five pills, and the label stays at 12px
 // (`text-xs`) so the pills read the same whatever the count.
@@ -33,7 +35,7 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { barePath } from "@/lib/surface";
-import { Heart, Layers, type LucideIcon } from "lucide-react";
+import { Heart, Sparkles, Store, Users, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics/track";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -45,13 +47,14 @@ type Mode = {
   Icon: LucideIcon;
 };
 
-// ONE WAY TO DISCOVER, ONE PLACE TO KEEP (Pato, MESITA-2163: "just swipe or
-// scroll, but just one not two"). Swipe leads and is the tab's default: the
-// tab href is CONSUMER_ROUTES.discoverDefault, which is Swipe's href. Every
-// like lands in Favs. Scroll and Chat are legacy 308s to Swipe, and Search is
-// where the whole catalog is browsed.
+// THE ORDER IS PATO'S (MESITA-2166: "Places. Social. Chat. Favs. (Like
+// that)"). Places leads and is the tab's default: the tab href is
+// CONSUMER_ROUTES.discoverDefault, which is Places' href. Swipe and Scroll
+// are legacy 308s to Places.
 export const HOME_MODES: Mode[] = [
-  { href: CONSUMER_ROUTES.discoverTabs.swipe, label: "Swipe", Icon: Layers },
+  { href: CONSUMER_ROUTES.discoverTabs.places, label: "Places", Icon: Store },
+  { href: CONSUMER_ROUTES.discoverTabs.social, label: "Social", Icon: Users },
+  { href: CONSUMER_ROUTES.discoverTabs.chat, label: "Chat", Icon: Sparkles },
   { href: CONSUMER_ROUTES.discoverTabs.favs, label: "Favs", Icon: Heart },
 ];
 

@@ -263,7 +263,9 @@ describe("T5 — exactly one tab lights per surface", () => {
   }
 
   const MATRIX: [string, string][] = [
-    ["/discover/swipe", "Home"],
+    ["/discover/places", "Home"],
+    ["/discover/social", "Home"],
+    ["/discover/chat", "Home"],
     ["/discover/favs", "Home"],
     ["/place/abc", "Home"],
     ["/search", "Search"],
@@ -405,40 +407,34 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
 // loses its selected state. This pins ORDER, COUNT, the width budget, and
 // that every pill is a real page.
 //
-// The order is Pato's (MESITA-2142): "swipe scroll chat favs".
+// The order is Pato's (MESITA-2166): "Places. Social. Chat. Favs."
 describe("T5b — Home's supporting rail", () => {
-  it("is exactly Swipe · Favs", async () => {
+  it("is exactly Places · Social · Chat · Favs", async () => {
     const { HOME_MODES } = await import("@/components/consumer/ModeRail");
-    expect(HOME_MODES.map((m) => m.label)).toEqual(["Swipe", "Favs"]);
+    expect(HOME_MODES.map((m) => m.label)).toEqual([
+      "Places",
+      "Social",
+      "Chat",
+      "Favs",
+    ]);
   });
 
-  // Scroll and Chat left the rail (MESITA-2163): no page, one hop to Swipe.
-  it.each(["scroll", "chat"])(
-    "/discover/%s has no page and 308s to Swipe",
+  // Swipe (MESITA-2166), Scroll (MESITA-2163) and Catalog's old Feed address
+  // left the rail: no page, one hop to Places, the default.
+  it.each(["swipe", "scroll", "feed"])(
+    "/discover/%s has no page and 308s to Places",
     async (seg) => {
+      const { HOME_MODES } = await import("@/components/consumer/ModeRail");
+      expect(HOME_MODES.map((m) => m.href)).not.toContain(`/discover/${seg}`);
       const hop = (await nextConfig.redirects!()).find(
         (r) => r.source === `/discover/${seg}`,
       );
-      expect(hop?.destination).toBe(CONSUMER_ROUTES.discoverTabs.swipe);
+      expect(hop?.destination).toBe(CONSUMER_ROUTES.discoverTabs.places);
       expect(
         existsSync(join(SHELL, "(discovery)", "discover", seg, "page.tsx")),
       ).toBe(false);
     },
   );
-
-  // Catalog left the rail again (MESITA-2140), as at MESITA-2050: its page is
-  // gone and /discover/feed is a one-hop 308 onto Swipe, the default.
-  it("Catalog is off the rail: /discover/feed has no page and 308s to Swipe", async () => {
-    const { HOME_MODES } = await import("@/components/consumer/ModeRail");
-    expect(HOME_MODES.map((m) => m.href)).not.toContain("/discover/feed");
-    const hop = (await nextConfig.redirects!()).find(
-      (r) => r.source === "/discover/feed",
-    );
-    expect(hop?.destination).toBe(CONSUMER_ROUTES.discoverTabs.swipe);
-    expect(
-      existsSync(join(SHELL, "(discovery)", "discover", "feed", "page.tsx")),
-    ).toBe(false);
-  });
 
   // The width budget, as an assertion rather than a comment. `auto-cols-fr`
   // sizes every column to the WIDEST pill, so the track is N x widest plus
@@ -452,6 +448,10 @@ describe("T5b — Home's supporting rail", () => {
     expect(navSrc).toContain('className="h-3.5 w-3.5 shrink-0"');
     const TEXT_PX: Record<string, number> = {
       Home: 34.2,
+      // Estimated from Inter 600 advance widths at 12px, rounded up
+      // (MESITA-2166); four columns leave ~90px of slack either way.
+      Places: 38.3,
+      Social: 36.7,
       // Inter 600's hmtx at 12px (MESITA-2142).
       Swipe: 35.6,
       // Inter 600's hmtx at 12px, the same table as the rest (MESITA-2134).
@@ -498,15 +498,17 @@ describe("T5b — Home's supporting rail", () => {
   it("lands Home on its leading pill", async () => {
     const { HOME_MODES } = await import("@/components/consumer/ModeRail");
     expect(CONSUMER_ROUTES.discoverDefault).toBe(
-      CONSUMER_ROUTES.discoverTabs.swipe,
+      CONSUMER_ROUTES.discoverTabs.places,
     );
     expect(HOME_MODES[0].href).toBe(CONSUMER_ROUTES.discoverDefault);
-    expect(HOME_MODES[0].label).toBe("Swipe");
+    expect(HOME_MODES[0].label).toBe("Places");
   });
 
   it("every Home pill's page lives under discover", () => {
     for (const rel of [
-      ["discover", "swipe"],
+      ["discover", "places"],
+      ["discover", "social"],
+      ["discover", "chat"],
       ["discover", "favs"],
     ]) {
       expect(

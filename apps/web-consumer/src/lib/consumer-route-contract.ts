@@ -15,8 +15,8 @@ export const CONSUMER_ROUTES = {
   // the one search bar + Filters. `/discover/search` and `/discover/map` are
   // redirect SOURCES for the bookmarks those addresses shipped under.
   search: "/search",
-  // DISCOVER — Home's mode-rail namespace. Two modes, matching ModeRail's
-  // two columns exactly: Swipe · Favs (Pato, MESITA-2163).
+  // DISCOVER — Home's mode-rail namespace. Four modes, matching ModeRail's
+  // four columns exactly: Places · Social · Chat · Favs (Pato, MESITA-2166).
   //
   // THE ENGINE KEY IS STILL `swipe`, AND THAT IS DELIBERATE. `swipe` is a
   // persisted key in `app_config.discovery_config`, the only entry in
@@ -26,18 +26,20 @@ export const CONSUMER_ROUTES = {
   // DEFAULT_SWIPE, discarding every operator-tuned radius in the live config
   // — and the two code twins pin EACH OTHER, so it would go green.
   //
-  // HOME'S RAIL IS SWIPE · FAVS (Pato, 2026-10-12, MESITA-2163: "just swipe
-  // or scroll, but just one not two"). Swipe stays because each card is a
-  // decision and every like lands in Favs; Scroll duplicated it and Search.
-  // Chat (Memo) is cut for the MVP. Both addresses are legacy 308s to Swipe.
+  // HOME'S RAIL IS PLACES · SOCIAL · CHAT · FAVS (Pato, 2026-10-12,
+  // MESITA-2166: "no swipe nor scroll for the moment. Kill them."). Places is
+  // the catalog rails; Social has no data yet and says so; Chat is Memo.
+  // Swipe and Scroll are legacy 308s to Places.
   discover: "/discover",
   discoverTabs: {
-    swipe: "/discover/swipe",
+    places: "/discover/places",
+    social: "/discover/social",
+    chat: "/discover/chat",
     favs: "/discover/favs",
   },
-  // SWIPE LEADS (MESITA-2142): the default is the card stack, the first
-  // pill. route-structure T5b pins first-pill-is-default.
-  discoverDefault: "/discover/swipe",
+  // PLACES LEADS (MESITA-2166): the default is the first pill.
+  // route-structure T5b pins first-pill-is-default.
+  discoverDefault: "/discover/places",
   place: {
     prefix: "/place/",
   },
@@ -87,9 +89,9 @@ export const CONSUMER_ROUTES = {
     // Catalog's day as Home, Swipe's week as the default, Catalog's segment.
     discoverHome: "/discover/home",
     discoverCatalog: "/discover/catalog",
-    // Scroll's feed and Chat's Memo, off the rail since MESITA-2163.
+    // Scroll's feed (MESITA-2163) and Swipe's card stack (MESITA-2166).
     discoverScroll: "/discover/scroll",
-    discoverChat: "/discover/chat",
+    discoverSwipe: "/discover/swipe",
     // The Second Stage tab and everything under it (MESITA-2087). The QR
     // place list, THE TICKET, Wallet with Buy · Gift · Redeem · balance,
     // standalone Credits, the Order tab, the public gift landing, and every
