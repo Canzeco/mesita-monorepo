@@ -7,7 +7,7 @@
 import { instagramHandleFromUrl } from "./apify.ts";
 import { facebookPageFromUrl } from "./channels-facebook.ts";
 
-export { facebookPageFromUrl, fbSlugCandidate } from "./channels-facebook.ts";
+export { fbSlugCandidate } from "./channels-facebook.ts";
 
 export type ChannelKey =
   | "website_url"

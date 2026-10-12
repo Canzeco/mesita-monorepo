@@ -42,15 +42,6 @@ export function num(): Schema<number> {
   };
 }
 
-export function bool(): Schema<boolean> {
-  return {
-    parse: (raw) =>
-      typeof raw === "boolean"
-        ? { ok: true, value: raw }
-        : { ok: false, error: `expected boolean, got ${typeof raw}` },
-  };
-}
-
 export function enumOf<T extends readonly [string, ...string[]]>(
   values: T,
 ): Schema<T[number]> {

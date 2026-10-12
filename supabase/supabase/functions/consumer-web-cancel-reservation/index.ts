@@ -21,12 +21,9 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { cancelTicket, fireCancelNotice } from "../_shared/agent-tools.ts";
+import { PASSED_GRACE_MS } from "../_shared/reservation-doc.ts";
 
 type Body = { reservation_id?: string; reason?: string };
-
-// A slot is "passed" once it's more than this far behind — the same grace the
-// list EF uses to keep tonight's table in Upcoming while you're at it.
-const PASSED_GRACE_MS = 4 * 3600_000;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();

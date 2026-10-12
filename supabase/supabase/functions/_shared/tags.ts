@@ -18,10 +18,10 @@ import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";
 import { selectTopPlaceTags } from "./tags-sanitize.ts";
+import { OPENAI_URL } from "./enrich-config.ts";
 
-export { sanitizePlaceTags, selectTopPlaceTags } from "./tags-sanitize.ts";
+export { sanitizePlaceTags } from "./tags-sanitize.ts";
 
-const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 /** Fallback when caller omits models_config.enricher.model. */
 const DEFAULT_TAGGER_MODEL = DEFAULT_MODELS_CONFIG.enricher.model!;
 const MAX_INFERRED_TAGS = ENRICH_FIELD_LIMITS.tagsPerPlace.max;
@@ -33,15 +33,6 @@ export type PlaceTag = {
   facet: string;
   sort_order: number;
 };
-
-/** Consumer/default chip text: English first; slug title-case as last resort. */
-export function displayPlaceTagLabel(
-  tag: Pick<PlaceTag, "slug" | "label_en"> & { label_es?: string },
-): string {
-  const en = typeof tag.label_en === "string" ? tag.label_en.trim() : "";
-  if (en) return en;
-  return tag.slug.replace(/_/g, " ");
-}
 
 // The 17 tag facets, in display order, with the emoji + bilingual group label
 // the picker renders as section headers. Kept here (not in the DB) because it is

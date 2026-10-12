@@ -4,8 +4,8 @@
 
 import type { PlaceCategory } from "./categories.ts";
 import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";
+import { OPENAI_URL } from "./enrich-config.ts";
 
-const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 /** Fallback when caller omits models_config.enricher.model. */
 const DEFAULT_CLASSIFIER_MODEL = DEFAULT_MODELS_CONFIG.enricher.model!;
 

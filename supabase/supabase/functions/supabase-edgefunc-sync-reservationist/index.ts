@@ -44,6 +44,8 @@ import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { requireInternalCaller } from "../_shared/internal.ts";
 import {
   consumerFromNumber,
+  EL_BASE,
+  elHeaders,
   resolveElevenLabsKey,
   reservationAgentId,
   reservationFromNumber,
@@ -60,12 +62,6 @@ import {
   reservationistKbDocName,
 } from "../_shared/reservationist-kb.ts";
 
-const EL_BASE = "https://api.elevenlabs.io";
-
-function headers(key: string): HeadersInit {
-  return { "xi-api-key": key, "Content-Type": "application/json" };
-}
-
 async function elFetch(
   key: string,
   path: string,
@@ -75,7 +71,7 @@ async function elFetch(
   try {
     r = await fetch(`${EL_BASE}${path}`, {
       method: init?.method ?? "GET",
-      headers: headers(key),
+      headers: elHeaders(key),
       body: init?.body !== undefined ? JSON.stringify(init.body) : undefined,
     });
   } catch (e) {

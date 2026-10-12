@@ -9,7 +9,7 @@
 
 import { phoneDigits } from "./phone.ts";
 
-const EL_BASE = "https://api.elevenlabs.io";
+export const EL_BASE = "https://api.elevenlabs.io";
 
 // Fallback agent = eleven-a1 (es-mx) · c2b outbound booker. The old single
 // donor ("XD" / agent_2201kxsktw0me9rb2kdtqerrgzha) was deleted — the fleet
@@ -94,7 +94,7 @@ export function consumerFromNumber(): string {
     reservationFromNumber();
 }
 
-function headers(key: string): HeadersInit {
+export function elHeaders(key: string): HeadersInit {
   return { "xi-api-key": key, "Content-Type": "application/json" };
 }
 
@@ -113,7 +113,7 @@ export async function resolvePhoneNumberId(
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   let r: Response;
   try {
-    r = await fetch(`${EL_BASE}/v1/convai/phone-numbers`, { headers: headers(key) });
+    r = await fetch(`${EL_BASE}/v1/convai/phone-numbers`, { headers: elHeaders(key) });
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "phone-numbers fetch failed" };
   }
@@ -179,7 +179,7 @@ export async function getConversationStatus(
   try {
     r = await fetch(
       `${EL_BASE}/v1/convai/conversations/${encodeURIComponent(conversationId)}`,
-      { headers: headers(key) },
+      { headers: elHeaders(key) },
     );
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "conversation fetch failed" };
@@ -284,7 +284,7 @@ export async function placeOutboundCall(
     try {
       r = await fetch(`${EL_BASE}/v1/convai/twilio/outbound-call`, {
         method: "POST",
-        headers: headers(key),
+        headers: elHeaders(key),
         body: JSON.stringify({
           agent_id: input.agentId,
           agent_phone_number_id: input.agentPhoneNumberId,

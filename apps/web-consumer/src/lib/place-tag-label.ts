@@ -6,9 +6,6 @@
  * - Do not bind chips to `mesita:pref:language` until that TMS exists
  *   (the pref still defaults to `es`).
  * - `slug` is the stable translation key for later.
- *
- * Keep in sync with `supabase/supabase/functions/_shared/tags.ts` →
- * `displayPlaceTagLabel`.
  */
 export function displayPlaceTagLabel(tag: {
   slug: string;

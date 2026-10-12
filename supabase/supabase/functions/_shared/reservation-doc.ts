@@ -311,6 +311,11 @@ export type ReservationValidationResult =
   | { ok: true; patch: ReservationPatch }
   | { ok: false; error: string };
 
+/** How long a slot counts as upcoming after its time — you're still at the
+ *  table. Past it, a reservation is "passed": it lists under History and can
+ *  no longer be changed or cancelled. One value for list, update and cancel. */
+export const PASSED_GRACE_MS = 4 * 3600_000;
+
 const STATE_VALUES = new Set<string>([
   "pending",
   "confirmed",

@@ -24,7 +24,6 @@ import {
   operatorFunctionStates,
   crenupBlockedAtFromMap,
   crenupHighWaterFromMap,
-  toFunctionState,
   type FunctionState,
   type FunctionStateMap,
 } from "./schema-catalog.ts";
@@ -163,14 +162,6 @@ Deno.test("crenupBlockedAtFromMap: a pending (in-flight) piece reads as failed, 
     serp: { state: "pending", at: "2026-08-23T00:00:00Z", detail: null },
   };
   assertEquals(crenupBlockedAtFromMap(map), { key: "serp", index: 2, state: "failed" });
-});
-
-Deno.test("toFunctionState: completed stays completed, started becomes pending, everything else becomes failed", () => {
-  assertEquals(toFunctionState("completed"), "completed");
-  assertEquals(toFunctionState("started"), "pending");
-  assertEquals(toFunctionState("failed"), "failed");
-  assertEquals(toFunctionState("skipped"), "failed");
-  assertEquals(toFunctionState("some-future-unknown-state"), "failed");
 });
 
 Deno.test("FunctionStateMapSchema: folds legacy name+summary into embedding", () => {

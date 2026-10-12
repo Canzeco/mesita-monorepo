@@ -49,11 +49,6 @@ export function costFromGathered(
 }
 
 /** S1 Google spine: Place Details + Time Zone + Place Photo media fetches. */
-export function googleSpineCost(photoCount: number): number {
-  return COST.googleDetails + COST.googleTimezone +
-    COST.googlePhoto * Math.max(0, photoCount);
-}
-
 export function chargeGoogleSpine(
   ledger: EnrichCostLedger,
   photoCount: number,

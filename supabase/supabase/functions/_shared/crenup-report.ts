@@ -173,8 +173,7 @@ async function mergeEnrichmentMap(
   for (const [key, outcome] of Object.entries(stamped)) {
     if (!outcome) continue;
     // outcome.state is "completed" | "failed" — already a valid
-    // FunctionState.state, no translation needed (that mapping only
-    // applies to raw historical event rows — see toFunctionState).
+    // FunctionState.state, no translation needed.
     functions[key as CrenupStep] = {
       state: outcome.state,
       at: now,

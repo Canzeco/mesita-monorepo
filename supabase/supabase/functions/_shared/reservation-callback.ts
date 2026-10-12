@@ -32,7 +32,28 @@ export const GUEST_CALL_MAX_ATTEMPTS = GUEST_CALL_LADDER_MIN.length + 1;
 const QUIET_OPENS = 9; // first callable hour, place-local
 const QUIET_CLOSES = 22; // first NON-callable hour
 const URGENT_WINDOW_MS = 6 * 3600_000;
-const CUTOFF_BEFORE_SLOT_MS = 30 * 60_000;
+/** No guest call this close to the slot. Shared with reservation-reminder. */
+export const CUTOFF_BEFORE_SLOT_MS = 30 * 60_000;
+
+/**
+ * Nudge `at` in half-hour steps until the place-local hour is callable
+ * (09:00–22:00); bounded so a pathological zone can never loop forever
+ * (48 × 30 min = a full day). `deferred` says whether it moved. Shared with
+ * reservation-reminder so both guest calls keep one politeness window.
+ */
+export function deferToCallableHour(
+  at: Date,
+  lng: number | null,
+): { at: Date; deferred: boolean } {
+  let deferred = false;
+  for (let i = 0; i < 48; i++) {
+    const h = placeLocalHour(at, lng);
+    if (h >= QUIET_OPENS && h < QUIET_CLOSES) break;
+    at = new Date(at.getTime() + 30 * 60_000);
+    deferred = true;
+  }
+  return { at, deferred };
+}
 
 /**
  * The instant the next guest call may fire, or null when there must be no
@@ -59,14 +80,7 @@ export function nextGuestCallAt(
     reservedAt.getTime() - now.getTime() < URGENT_WINDOW_MS;
   let deferred = false;
   if (!urgent) {
-    // Nudge in half-hour steps until the local hour is callable; bounded so a
-    // pathological zone can never loop forever (48 × 30 min = a full day).
-    for (let i = 0; i < 48; i++) {
-      const h = placeLocalHour(at, lng);
-      if (h >= QUIET_OPENS && h < QUIET_CLOSES) break;
-      at = new Date(at.getTime() + 30 * 60_000);
-      deferred = true;
-    }
+    ({ at, deferred } = deferToCallableHour(at, lng));
     if (cutoff !== null && at.getTime() > cutoff) return null;
   }
 
