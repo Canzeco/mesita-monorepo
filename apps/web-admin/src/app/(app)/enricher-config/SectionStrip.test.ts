@@ -41,7 +41,7 @@ describe("the save bar leaves module space", () => {
   });
 });
 
-describe("Creation's Models section is a link, not a copy (MESITA-2126)", () => {
+describe("Intake's Models section is a link, not a copy (MESITA-2126)", () => {
   it("links to Models and neither shows nor saves model tiers", () => {
     expect(client).toContain("Which AI model each step uses is set on");
     expect(client).toContain('href={MODELS_PARENT.href}');
