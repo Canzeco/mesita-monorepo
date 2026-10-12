@@ -30,14 +30,28 @@ function filters(over: Partial<MapFilters> = {}): MapFilters {
 
 describe("placeSearchScope", () => {
   it("names the ring a place is in — enrichment gates the Mesita ring", () => {
-    expect(placeSearchScope(place({ content_state: "ready" }))).toBe("mesita");
     expect(
       placeSearchScope(place({ enriched_at: "2026-08-01T00:00:00Z" })),
     ).toBe("mesita");
-    expect(placeSearchScope(place({ content_state: "generating" }))).toBeNull();
+    expect(placeSearchScope(place({ enriched: true }))).toBe("mesita");
     expect(placeSearchScope(place({ googleOnly: true }))).toBe("google");
     expect(placeSearchScope(place({ from_google: true }))).toBe("google");
-    expect(placeSearchScope(place())).toBeNull();
+  });
+
+  it("keeps a Created place out of the Mesita ring (MESITA-2154)", () => {
+    // Create saves content_state ready and never stamps enriched_at: the
+    // profile can be shown, but it is NOT enriched. The server only sends
+    // one on the Google ring, painted onto its Google hit.
+    expect(
+      placeSearchScope(place({ content_state: "ready", enriched_at: null })),
+    ).toBe("google");
+    expect(
+      placeSearchScope(place({ content_state: "ready", enriched: false })),
+    ).toBe("google");
+    expect(placeSearchScope(place({ content_state: "generating" }))).toBe(
+      "google",
+    );
+    expect(placeSearchScope(place())).toBe("google");
   });
 });
 

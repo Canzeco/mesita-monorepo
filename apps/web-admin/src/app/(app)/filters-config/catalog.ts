@@ -252,6 +252,8 @@ export type ParamField = {
 };
 
 export type DiscoveryFilters = {
+  /** The Enriched gate — `enriched_at IS NOT NULL` (MESITA-2154). The stored
+   *  key keeps its old name: renaming it would reset the operator's value. */
   requireReady: boolean;
   minRating: number;
   minReviews: number;
@@ -564,7 +566,7 @@ export const SIGNALS: {
     key: "enriched",
     label: "Enriched",
     input: "The explicit enriched boolean the projection set, plus Crenup high-water when the surface merged it in. The signal never re-derives either.",
-    output: "Did Mesita do the work on this place — a written profile, not a raw Google row.",
+    output: "Did an Enrich run complete on this place (enriched_at set) — a Created profile or a raw Google row is not enriched.",
     fields: UNIT,
   },
   {

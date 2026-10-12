@@ -38,7 +38,11 @@ import type {
 } from "./discovery-config.ts";
 import { familiesForPlace } from "./place-taxonomy.ts";
 
-/** Query predicates Swipe owns. Map type batteries stay a separate cut. */
+/**
+ * Query predicates Swipe owns. Map type batteries stay a separate cut.
+ * `requireReady` is the Enriched gate (`enriched_at IS NOT NULL`,
+ * MESITA-2154), forced on: a Created place never enters the deck.
+ */
 export function swipeAdmissionFilters(swipe: SwipeConfig): DiscoveryFilters {
   return {
     requireReady: true,

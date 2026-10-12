@@ -227,10 +227,13 @@ Deno.test("deepModuleFlags: which Deep modules fire", () => {
   }
 });
 
+const STAMP = "2026-09-01T00:00:00Z";
+
 function listed(
   id: string,
   name: string,
   embedding: number[],
+  enriched_at: string | null = STAMP,
   content_state: string | null = "ready",
 ): ListedRow {
   return {
@@ -242,7 +245,7 @@ function listed(
     lat: 19.4,
     lng: -99.1,
     content_state,
-    enriched_at: null,
+    enriched_at,
     business_state: "OPERATIONAL",
     google_review_count: null,
     name_embedding: embedding,
@@ -285,18 +288,17 @@ Deno.test("orderDeepLineup: Name 0 vs on reorders an unsorted pool", () => {
   ]);
 });
 
-Deno.test("orderDeepLineup: the enrichment gradient reorders two rows the pool ADMITS", () => {
+Deno.test("orderDeepLineup: the enrichment gradient reorders two enriched rows", () => {
   // Carries "crenup_high_water (MESITA-1601) reorders when Level is weighted"
   // across the MESITA-1858 split, and comes back to high-water for the reason
-  // that split's review found: this pool is already `.eq("content_state",
-  // "ready")`, so every row Deep ranks satisfies the enrichment BOOLEAN and it
-  // ties across the whole lane. Same name-embedding (so Name ties too) — only
-  // high-water differs, which is the only part of Enriched that can still
-  // reorder an admitted pool.
-  const hi = withHighWater(listed("hi", "Hi", QUERY, "ready"), CRENUP_TOTAL);
-  const lo = withHighWater(listed("lo", "Lo", QUERY, "ready"), 2);
-  // A row that never got admitted anywhere still floors below both.
-  const un = listed("un", "Un", QUERY, "generating");
+  // that split's review found: among enriched rows the enrichment BOOLEAN
+  // ties. Same name-embedding (so Name ties too) — only high-water differs,
+  // which is the only part of Enriched that can reorder them.
+  const hi = withHighWater(listed("hi", "Hi", QUERY), CRENUP_TOTAL);
+  const lo = withHighWater(listed("lo", "Lo", QUERY), 2);
+  // A Created row (ready, enriched_at null — MESITA-2154) is NOT enriched:
+  // it floors below both, whatever its content_state or high-water.
+  const un = withHighWater(listed("un", "Un", QUERY, null, "ready"), 1);
   const enrichedOnly = weights(0);
   enrichedOnly.enriched = 2;
   assertEquals(

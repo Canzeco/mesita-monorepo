@@ -26,6 +26,7 @@ import {
 } from "./geo.ts";
 import { GOOGLE_SEARCH_TYPES } from "./google-type-super.ts";
 import { NEARBY_TYPE_KEYS } from "./discovery-config.ts";
+import { isPlaceEnriched } from "./place-state.ts";
 
 /** Google bills Nearby in pages of 20. Legacy paginates with next_page_token
  *  (3 pages = 60); New caps one POST at maxResultCount 20 with no page token. */
@@ -521,12 +522,15 @@ export function lanesForPlacesScope(
  * admits exactly these Mesita rows — the Google scope keeps the same ones, so
  * a wider ring never shows FEWER Mesita places, it only adds Google ones
  * alongside them. "Red is EARNED by enrichment" (Pato, 2026-09-05).
+ *
+ * Enriched = an Enrich run completed = `enriched_at` set (MESITA-2154) — the
+ * same {@link isPlaceEnriched} every reader uses. A Created place is
+ * `content_state = 'ready'` with a null stamp: viewable, never in this ring.
  */
 export function isEnrichedListedRow(row: {
-  content_state?: string | null;
   enriched_at?: string | null;
 }): boolean {
-  return row.content_state === "ready" || Boolean(row.enriched_at);
+  return isPlaceEnriched(row.enriched_at);
 }
 
 export function mergeNearbyCatalog<T extends MesitaNearbyRow>(

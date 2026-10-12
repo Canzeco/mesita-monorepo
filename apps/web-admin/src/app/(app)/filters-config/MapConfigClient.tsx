@@ -91,8 +91,9 @@ export function MapConfigClient({
             <span className="text-foreground font-semibold">
               Enrichment gates the Mesita ring
             </span>{" "}
-            — an unenriched place reads gray until it is enriched. A Created
-            or Requested stub is never a search source. Absent or unknown
+            — a place reads gray until an Enrich run completes. A Created
+            or Requested place is never a search source; on the Google ring
+            it shows gray in its Google hit&apos;s slot. Absent or unknown
             scope resolves to Mesita Enriched Places.
           </p>
         </div>

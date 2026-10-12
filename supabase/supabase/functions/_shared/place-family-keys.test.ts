@@ -1,6 +1,7 @@
 import { assertEquals } from "jsr:@std/assert";
 import {
   isEnrichedPlace,
+  type PlaceCategoryRow,
   withFamilyKeys,
   withFamilyKeysList,
 } from "./place-family-keys.ts";
@@ -74,35 +75,51 @@ Deno.test("withFamilyKeysList maps a list", () => {
 
 // THE MEMBERSHIP COLOUR LAW (Pato, 2026-08-29): enriched > everything else.
 // The SERVER states `enriched`, so no client re-derives it.
-Deno.test("isEnrichedPlace counts ready OR a stamped enriched_at, never one alone", () => {
-  assertEquals(isEnrichedPlace({ content_state: "ready" }), true);
-  assertEquals(isEnrichedPlace({ enriched_at: "2026-08-01T00:00:00Z" }), true);
-  // 27% of the live catalog is ready with a null enriched_at (measured
-  // 2026-08-29), so an enriched_at-only test would grey a quarter of it.
+// MESITA-2154: enriched = an Enrich run completed = `enriched_at` set.
+Deno.test("isEnrichedPlace: enriched_at set, and nothing else", () => {
+  const rows: Record<string, PlaceCategoryRow> = {
+    stamped: { enriched_at: "2026-08-01T00:00:00Z" },
+    reEnriching: { content_state: "generating", enriched_at: "2026-08-01T00:00:00Z" },
+    // A Created place: Create saves ready and never stamps enriched_at.
+    readyOnly: { content_state: "ready" },
+    created: { content_state: "ready", enriched_at: null },
+    generating: { content_state: "generating" },
+    failed: { content_state: "failed" },
+    blank: { enriched_at: "  " },
+    empty: {},
+  };
+  assertEquals(isEnrichedPlace(rows.stamped), true);
   assertEquals(
-    isEnrichedPlace({ content_state: "ready", enriched_at: null }),
+    isEnrichedPlace(rows.reEnriching),
     true,
+    "a re-enrich in flight keeps an enriched place enriched",
   );
-  assertEquals(isEnrichedPlace({ content_state: "generating" }), false);
-  assertEquals(isEnrichedPlace({ content_state: "failed" }), false);
-  assertEquals(isEnrichedPlace({}), false);
+  for (const key of ["readyOnly", "created", "generating", "failed", "blank", "empty"]) {
+    assertEquals(isEnrichedPlace(rows[key]), false, key);
+  }
   assertEquals(isEnrichedPlace(null), false);
 });
 
 Deno.test("withFamilyKeys states enriched on the wire", () => {
-  const ready = withFamilyKeys({
+  const enriched = withFamilyKeys({
     id: "1",
     category: "gastropub",
     content_state: "ready",
+    enriched_at: "2026-08-01T00:00:00Z",
   });
-  assertEquals(ready.enriched, true);
+  assertEquals(enriched.enriched, true);
 
-  // A Created stub: on Mesita, nothing to show. Gray, not red.
-  const stub = withFamilyKeys({ id: "2", category: "gastropub" });
-  assertEquals(stub.enriched, false);
+  // A Created place: viewable (ready), NOT enriched. Gray, not red.
+  const created = withFamilyKeys({
+    id: "2",
+    category: "gastropub",
+    content_state: "ready",
+    enriched_at: null,
+  });
+  assertEquals(created.enriched, false);
 
   // The guest never receives the raw enrichment verdict's inputs as the
   // answer — the boolean is always present, both ways.
-  assertEquals(typeof ready.enriched, "boolean");
-  assertEquals(typeof stub.enriched, "boolean");
+  assertEquals(typeof enriched.enriched, "boolean");
+  assertEquals(typeof created.enriched, "boolean");
 });

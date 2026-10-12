@@ -299,7 +299,12 @@ export const CHAT_PROMPT_MAX = 12_000;
  * WHERE clause does not belong in this box.
  */
 export type DiscoveryFilters = {
-  /** `content_state = 'ready'` — the enrichment gate MESITA-1228 hardcoded. */
+  /**
+   * The Enriched gate: `enriched_at IS NOT NULL` — an Enrich run completed
+   * (MESITA-2154; it was `content_state = 'ready'`, MESITA-1228, which a
+   * Created place also carries). The key keeps its old name: renaming a
+   * stored key silently resets the operator's value to the default.
+   */
   requireReady: boolean;
   /** Google stars floor. 0 = off. Above 0 EXCLUDES unrated places — see below. */
   minRating: number;
@@ -594,9 +599,10 @@ export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
   weightsByMode: DEFAULT_WEIGHTS_BY_MODE,
   params: DEFAULT_SIGNAL_PARAMS,
   /**
-   * `requireReady` ships ON because it is already the shipped behaviour —
-   * MESITA-1228 hardcoded it into Map and Swipe. Adopting a live gate at its
-   * current value is the only default that changes nothing on landing.
+   * `requireReady` (the Enriched gate) ships ON because it is already the
+   * shipped behaviour — MESITA-1228 hardcoded it into Map and Swipe, and the
+   * product promise is that Swipe, Catalog and the Mesita ring hold only
+   * Enriched places (MESITA-2154 made the predicate match the promise).
    *
    * The quality floors ship OFF. Popularity already DEMOTES a weak place, and
    * a floor on top of it would delete the same place twice over — the reason

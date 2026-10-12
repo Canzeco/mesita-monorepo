@@ -33,23 +33,18 @@ export type PlaceRequestState = {
 };
 
 /**
- * Enriched is enriched_at (Enricher finished). Create-without-enrich is
- * ready + no stamp — still listed/requested. When enrichedAt is omitted,
- * ready still means enriched (legacy callers / tests).
+ * Enriched is enriched_at alone (an Enrich run completed). Create is ready +
+ * no stamp — still listed/requested. `enrichedAt` is required; `ready` never
+ * stands in for it (MESITA-2154).
  */
 export function placeRequestLifecycle(input: {
-  contentState: unknown;
   requestCount: number;
-  enrichedAt?: unknown;
+  enrichedAt: unknown;
 }): PlaceRequestLifecycle {
   if (isPlaceEnriched(input.enrichedAt)) return "enriched";
-  if (input.enrichedAt === undefined && isPlaceProfileReady(input.contentState)) {
-    return "enriched";
-  }
   if (
     isPlaceRequested({
       requestCount: input.requestCount,
-      contentState: input.contentState,
       enrichedAt: input.enrichedAt,
     })
   ) {
@@ -63,12 +58,9 @@ export function shouldTriggerRequestEnrichment(input: {
   requestCount: number;
   threshold: number;
   contentState: unknown;
-  enrichedAt?: unknown;
+  enrichedAt: unknown;
 }): boolean {
   if (isPlaceEnriched(input.enrichedAt)) return false;
-  if (input.enrichedAt === undefined && isPlaceProfileReady(input.contentState)) {
-    return false;
-  }
   if (isPlaceEnriching(input.contentState)) return false;
   if (input.threshold < REQUEST_THRESHOLD_MIN) return false;
   return input.requestCount >= input.threshold;
@@ -79,7 +71,7 @@ export function placeRequestState(input: {
   threshold: number;
   requested: boolean;
   contentState: unknown;
-  enrichedAt?: unknown;
+  enrichedAt: unknown;
   enrichmentTriggered?: boolean;
 }): PlaceRequestState {
   const request_count = Math.max(0, Math.trunc(input.requestCount));
@@ -92,10 +84,8 @@ export function placeRequestState(input: {
     request_threshold,
     requested: input.requested,
     is_profile_ready: isPlaceProfileReady(input.contentState),
-    is_enriched: isPlaceEnriched(input.enrichedAt) ||
-      (input.enrichedAt === undefined && isPlaceProfileReady(input.contentState)),
+    is_enriched: isPlaceEnriched(input.enrichedAt),
     request_lifecycle: placeRequestLifecycle({
-      contentState: input.contentState,
       requestCount: request_count,
       enrichedAt: input.enrichedAt,
     }),

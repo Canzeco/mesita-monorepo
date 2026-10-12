@@ -120,11 +120,13 @@ export type DiscoveryPoolKey = (typeof DISCOVERY_POOLS)[number]["key"];
  *              `isEnrichedListedRow` refuses an unenriched row in either
  *              scope, so Enriched is Map's Mesita ring.
  *   Catalog    Google + Enriched. `filters.requireReady` defaults true and
- *   Swipe      Scroll hardcodes it; requireReady IS the enrichment gate —
- *              discovery-filters turns it into `content_state = 'ready'`.
+ *   Swipe      Scroll hardcodes it; requireReady IS the Enriched gate —
+ *              discovery-filters turns it into `enriched_at IS NOT NULL`
+ *              (MESITA-2154; it was `content_state = 'ready'`, which every
+ *              Created place also carries).
  *   Favorites  Google alone: a bookmark is always a Google-sourced place,
  *              and it is NOT gated on enrichment — bookmarks may include
- *              unenriched Create stubs.
+ *              unenriched Created places.
  *   Word, Chat no ring gate at all; they answer from whatever came back.
  */
 const DISCOVERY_MODE_POOLS: Record<

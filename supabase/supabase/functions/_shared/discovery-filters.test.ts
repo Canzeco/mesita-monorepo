@@ -2,7 +2,7 @@ import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
   applyDiscoveryFilters,
   trimToRadius,
-  type FilterableQuery,
+  type DiscoveryFilterQuery,
 } from "./discovery-filters.ts";
 import {
   DISCOVERY_DEFAULTS,
@@ -15,7 +15,7 @@ import { SIGNAL_KEYS } from "./discovery-signals.ts";
 /** Records every predicate instead of talking to PostgREST. */
 type Call = { op: string; col: string; val: unknown };
 
-class FakeQuery implements FilterableQuery<FakeQuery> {
+class FakeQuery implements DiscoveryFilterQuery<FakeQuery> {
   calls: Call[] = [];
   eq(col: string, val: unknown) {
     this.calls.push({ op: "eq", col, val });
@@ -27,6 +27,10 @@ class FakeQuery implements FilterableQuery<FakeQuery> {
   }
   lte(col: string, val: unknown) {
     this.calls.push({ op: "lte", col, val });
+    return this;
+  }
+  not(col: string, op: string, val: unknown) {
+    this.calls.push({ op: `not.${op}`, col, val });
     return this;
   }
 }
@@ -41,9 +45,12 @@ const NOWHERE = { lat: null, lng: null };
 
 // ── The predicates ───────────────────────────────────────────────────────────
 
-Deno.test("defaults push exactly one predicate: the enrichment gate", () => {
+Deno.test("defaults push exactly one predicate: the Enriched gate, enriched_at IS NOT NULL", () => {
   const q = applyDiscoveryFilters(new FakeQuery(), filters(), NOWHERE);
-  assertEquals(q.calls, [{ op: "eq", col: "content_state", val: "ready" }]);
+  assertEquals(q.calls, [{ op: "not.is", col: "enriched_at", val: null }]);
+  // MESITA-2154: never content_state — Create saves 'ready', so a ready
+  // gate admitted every Created (not enriched) place.
+  assert(!q.calls.some((c) => c.col === "content_state"));
 });
 
 Deno.test("requireReady off pushes nothing at all", () => {
@@ -113,7 +120,7 @@ Deno.test("every filter at once still pushes every predicate", () => {
     CDMX,
   );
   assertEquals(q.calls.length, 7);
-  assert(q.calls.some((c) => c.col === "content_state"));
+  assert(q.calls.some((c) => c.col === "enriched_at"));
   assert(q.calls.some((c) => c.col === "google_stars_overall"));
   assert(q.calls.some((c) => c.col === "google_review_count"));
   assertEquals(q.calls.filter((c) => c.col === "lat" || c.col === "lng").length, 4);

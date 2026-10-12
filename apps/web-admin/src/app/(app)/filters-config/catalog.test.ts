@@ -237,7 +237,7 @@ describe("Discovery function APIs", () => {
     expect(modeRequiresPool("map", "google")).toBe(true);
     expect(modeRequiresPool("map", "enriched")).toBe(true);
     // requireReady defaults true and Scroll hardcodes it, and requireReady
-    // IS the enrichment gate.
+    // IS the Enriched gate (`enriched_at IS NOT NULL`, MESITA-2154).
     expect(modeRequiresPool("catalog", "google")).toBe(true);
     expect(modeRequiresPool("catalog", "enriched")).toBe(true);
     expect(modeRequiresPool("swipe", "google")).toBe(true);

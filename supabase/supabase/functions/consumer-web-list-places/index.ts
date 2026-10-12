@@ -21,7 +21,9 @@
 //       Google Places ⊃ Mesita Enriched Places
 //       gray                   red
 //     `placesScope` names the set — "mesita" | "google" — and enrichment
-//     gates the Mesita ring.
+//     (`enriched_at` set, MESITA-2154) gates the Mesita ring. A Created
+//     place is never in the ring; a Google hit that IS one goes out as its
+//     Mesita row, gray, never as a stub.
 //
 //     WEB SEARCH POSTS scope + familyKeys + minReviews (MESITA-1790).
 //     How many stays operator `map.pinCount`. `map.googleFill` still
@@ -150,7 +152,10 @@ function googleStub(hit: NearbyHit, distanceKm: number | null): Record<string, u
     google_count: hit.reviewCount,
     zone: null,
     city: null,
+    // Not a Mesita place, so never enriched: no `enriched_at`, and
+    // `googleOnly` excludes it from the Enriched signal by name.
     content_state: "ready",
+    enriched_at: null,
     googleOnly: true,
     from_google: true,
     distance_km: distanceKm,
@@ -439,10 +444,23 @@ Deno.serve(async (req) => {
         googleHits.map((hit) => hit.placeId).filter((id) => !haveGid.has(id)),
       ),
     ];
+    // A Google hit can be a Mesita place that is listed but NOT enriched —
+    // a Created place (content_state ready, enriched_at null). It stays out
+    // of the Mesita ring, but it must never go out as a Google stub: the
+    // stub's Create button would 409 `place_already_exists`. So the
+    // gid lookup below drops ONLY the Enriched gate, and an unenriched row
+    // it finds PAINTS its hit — the Mesita row, gray (`enriched: false`),
+    // in the hit's slot — without joining the ring or its backfill
+    // (MESITA-2154).
+    const createdByGid = new Map<string, CardRow>();
     if (missing.length > 0) {
       const extraSelect = supabase.from("profiles").select(selectCols);
       let extraFiltered = applyGeneralGateQuery(
-        applyDiscoveryFilters(extraSelect, filters, { lat: null, lng: null }),
+        applyDiscoveryFilters(
+          extraSelect,
+          { ...filters, requireReady: false },
+          { lat: null, lng: null },
+        ),
         cfg.general,
       );
       if (guestMinReviews > 0) {
@@ -466,7 +484,11 @@ Deno.serve(async (req) => {
         const seen = new Set(mesitaRows.map((row) => row.id));
         for (const row of extra.data as CardRow[]) {
           if (seen.has(row.id)) continue;
-          if (!isEnrichedListedRow(row)) continue;
+          if (!isEnrichedListedRow(row)) {
+            const gid = row.google_place_id?.trim();
+            if (gid && !createdByGid.has(gid)) createdByGid.set(gid, row);
+            continue;
+          }
           if (
             guestSupers.length > 0 &&
             !guestSupers.some((key) => familiesForPlace(row).includes(key))
@@ -529,6 +551,15 @@ Deno.serve(async (req) => {
       merged.map((item) => {
         if (item.kind === "listed") {
           const row = stripGooglePlaceId(item.row);
+          return {
+            ...row,
+            distance_km: roundedKm(lat, lng, row.lat, row.lng),
+          };
+        }
+        // A Created place's hit goes out as its Mesita row, not a stub.
+        const created = createdByGid.get(item.hit.placeId);
+        if (created) {
+          const row = stripGooglePlaceId(created);
           return {
             ...row,
             distance_km: roundedKm(lat, lng, row.lat, row.lng),

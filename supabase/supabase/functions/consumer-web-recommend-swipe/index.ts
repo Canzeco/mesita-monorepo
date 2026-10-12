@@ -6,7 +6,7 @@
 // the locked Swipe mask (Pato, 2026-08-28). The 2026-08-26 two-signal SUM is
 // gone.
 //
-//   1. ADMIT  — enriched (content_state ready), reviews floor, Map type
+//   1. ADMIT  — enriched (enriched_at set), reviews floor, Map type
 //               batteries, then the guest's predicates. These EXCLUDE.
 //   2. TIER   — open now + closing buffer, the operator radius, and the
 //               Proximity reach. These BAND and never exclude (MESITA-2047):
@@ -81,7 +81,7 @@ const POOL_CAP = 1000;
  */
 const OUTER_RINGS_KM = [NEARBY_DEFAULT_RADIUS_KM, 0] as const;
 /**
- * A ring bigger than this many ready places ends the widening, best effort:
+ * A ring bigger than this many enriched places ends the widening, best effort:
  * every ring after it is bigger still. Pages carry the card columns only.
  */
 const RING_PAGES_MAX = 3;
@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
     ? { lat: geo.lat, lng: geo.lng }
     : null;
 
-  // Swipe owns radius / reviews / ready. Map floors stay off this query so a
+  // Swipe owns radius / reviews / enriched. Map floors stay off this query so a
   // Map rating knob cannot empty the deck this engine just scored.
   const filters = swipeAdmissionFilters(cfg.swipe);
   const poolQuery = async (maxDistanceKm: number) => {

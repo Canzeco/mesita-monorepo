@@ -23,7 +23,12 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
-import { isPlaceListed, isPlaceRequested, isPlaceSeeded } from "../_shared/place-state.ts";
+import {
+  isPlaceEnriched,
+  isPlaceListed,
+  isPlaceRequested,
+  isPlaceSeeded,
+} from "../_shared/place-state.ts";
 import { CRENUP_LABELS_IN_ORDER, CRENUP_TOTAL } from "../_shared/crenup-ladder.ts";
 import {
   operatorFunctionStates,
@@ -89,7 +94,7 @@ Deno.serve(async (req) => {
   // OPERATIONAL fact (Active).
   // Keep as a single string literal so supabase-js can type the select.
   const cols =
-    "id, slug, name, google_name, google_place_id, category, category_label, state, address, photos, zone, google_stars_overall, google_review_count, content_state, request_count, business_state, business_state_at, updated_at";
+    "id, slug, name, google_name, google_place_id, category, category_label, state, address, photos, zone, google_stars_overall, google_review_count, content_state, enriched_at, request_count, business_state, business_state_at, updated_at";
   let rows: Record<string, unknown>[] = [];
   // Only ALL mode reports it: a paste's count is the number of rows already
   // returned, and a second query would say nothing.
@@ -207,13 +212,20 @@ Deno.serve(async (req) => {
       listed: isPlaceListed(v.state),
       requested: isPlaceRequested({
         requestCount: v.request_count,
-        contentState: contentState,
+        enrichedAt: v.enriched_at,
       }),
+      // THE Enriched fact (MESITA-2154): an Enrich run completed —
+      // `enriched_at` set. Create never stamps it, so a Created place is
+      // `enriched: false` here whatever its content_state or high-water.
+      enriched: isPlaceEnriched(v.enriched_at),
+      enriched_at: (v.enriched_at as string | null) ?? null,
       // CRENUP: how far the EIGHT-step ENRICH queue got, 0-8
       // (MESITA-1253). Not a count of functions that worked — the index of
       // the last function such that it and everything before it completed.
-      // 0 is the CREATED floor; create stamps pulse+details, so a healthy
-      // fresh place reads 2.
+      // 0 is the seeded floor. Create stamps details (1), description (7)
+      // and embedding (8) but never serp (2), and the walk stops at the
+      // first gap — so a fresh Created place reads 1, stopped at serp. This
+      // is the completeness meter, never the Enriched yes/no.
       enrich_crenup: (enrichment.get(id) ?? EMPTY_ENRICHMENT).highWater,
       enrich_crenup_total: CRENUP_TOTAL,
       // The function NAMES ride with the number so the client renders what the

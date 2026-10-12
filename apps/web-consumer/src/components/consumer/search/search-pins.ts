@@ -1,23 +1,26 @@
 // The pin tone is the coloured point, on the results rows AND the map pins.
 // THE LAW, two nested sets (Pato, 2026-09-05):
 //
-//   enriched  red    we wrote a profile
-//   unlisted  gray   everything else — Google rows AND our own stubs
+//   enriched  red    an Enrich run completed (`enriched_at` set)
+//   unlisted  gray   everything else — Google rows AND our own Created places
 //
 // These are the two sets the Filters sheet lists, not a separate palette:
 // Google Places ⊃ Mesita Enriched Places. A set the guest can pick has to
 // be the same set the colour promises.
 //
 // Red is EARNED. The bucket is named `enriched`, not "listed": listed means
-// "we have a row", which a Created stub also satisfies, and a place with
-// nothing to show must not wear the colour that promises a profile. The
-// gray one is `unlisted` rather than `google`, because it holds our own
-// stubs too.
+// "we have a row", which a Created place also satisfies, and a basic
+// Created profile must not wear the colour that promises an enriched one.
+// The gray one is `unlisted` rather than `google`, because it holds our own
+// Created places too.
 //
-// The SERVER states `enriched` (`_shared/place-family-keys.ts`). Nothing
-// here re-derives it from raw columns except as a fallback for a payload
-// that predates the field. Hexes live in lib/map-defaults.ts; a selected
-// pin keeps its tone fill and gains a black ring.
+// The SERVER states `enriched` (`_shared/place-family-keys.ts`): an Enrich
+// run completed, i.e. `places.enriched_at` is set (MESITA-2154). Nothing
+// here re-derives it from raw columns except `enriched_at` as a fallback for
+// a payload that predates the field — never `content_state`, which a
+// Created place carries as 'ready'. The one client reader is
+// lib/place-enriched.ts. Hexes live in lib/map-defaults.ts; a selected pin
+// keeps its tone fill and gains a black ring.
 
 import {
   MAP_ENRICHED_PIN_COLOR,
@@ -25,24 +28,11 @@ import {
   MAP_PIN_STROKE_COLOR,
   MAP_SELECTED_PIN_COLOR,
 } from "@/lib/map-defaults";
+import { isEnrichedPlace } from "@/lib/place-enriched";
+
+export { isEnrichedPlace };
 
 export type PinTone = "enriched" | "unlisted";
-
-/**
- * Did we write a profile? The server's `enriched` is the answer. The column
- * pair is only a fallback for a payload minted before the field existed:
- * `content_state = 'ready'` OR a stamped `enriched_at`, never one alone —
- * 27% of the live catalog is ready with a null `enriched_at` (measured
- * 2026-08-29), so an `enriched_at`-only test would grey a quarter of it.
- */
-export function isEnrichedPlace(place: {
-  enriched?: boolean | null;
-  content_state?: string | null;
-  enriched_at?: string | null;
-}): boolean {
-  if (typeof place.enriched === "boolean") return place.enriched;
-  return place.content_state === "ready" || Boolean(place.enriched_at);
-}
 
 /** On Mesita per EF — mesitaId/slug win over a stale not_in_mesita state. */
 export function predictionOnMesita(item: {
@@ -168,7 +158,6 @@ export function placePinTone(place: {
   googleOnly?: boolean;
   from_google?: boolean;
   enriched?: boolean | null;
-  content_state?: string | null;
   enriched_at?: string | null;
 }): PinTone {
   if (place.googleOnly || place.from_google) return "unlisted";

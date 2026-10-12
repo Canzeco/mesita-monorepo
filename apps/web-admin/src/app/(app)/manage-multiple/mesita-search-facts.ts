@@ -27,9 +27,10 @@ export function factOn(
   }
   if (key === "listed") return hit.listed;
   if (key === "requested") return hit.request_count > 0;
-  if (key === "enriched") {
-    return hit.enrich_crenup_total > 0 && hit.enrich_crenup === hit.enrich_crenup_total;
-  }
+  // An Enrich run completed — `enriched_at` set (MESITA-2154). NOT the
+  // high-water reaching 8: that is the completeness meter, and a Created
+  // place must never read Enriched off either it or content_state.
+  if (key === "enriched") return hit.enriched;
   if (key === "enriching") return hit.enriching;
   return "unknown";
 }

@@ -596,9 +596,12 @@ Deno.test("places scope: two nested sets, named on the wire, Mesita by default",
   assertEquals(lanesForPlacesScope("google", 999).mesitaCount, CATALOG_NEARBY_HARD_MAX);
   assertEquals(lanesForPlacesScope("mesita", Number.NaN).mesitaCount, 0);
 
-  assertEquals(isEnrichedListedRow({ content_state: "ready" }), true);
+  // MESITA-2154: the ring admits enriched_at set, and nothing else. A
+  // Created place (ready, no stamp) is outside it.
   assertEquals(isEnrichedListedRow({ enriched_at: "2026-08-01T00:00:00Z" }), true);
-  assertEquals(isEnrichedListedRow({ content_state: "generating" }), false);
+  const created = { content_state: "ready", enriched_at: null };
+  assertEquals(isEnrichedListedRow(created), false);
+  assertEquals(isEnrichedListedRow({ enriched_at: null }), false);
   assertEquals(isEnrichedListedRow({}), false);
 });
 

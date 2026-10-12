@@ -114,8 +114,9 @@ export type AdminPlace = {
   facebook_followers: number | null;
   created_at: string | null;
   updated_at: string | null;
-  // Stamped by the Enricher's final write — lets the Meta box attribute
-  // updated_at to the AI (≈ same instant) vs a human edit (later).
+  // Stamped by the Enricher's final write — THE Enriched fact (MESITA-2154;
+  // Create never stamps it). Also lets the Meta box attribute updated_at to
+  // the AI (≈ same instant) vs a human edit (later).
   enriched_at: string | null;
   // On-Update embeddings (MESITA-720) — human blurb + vector; super-admin
   // overview only. Tags are never part of the source text.
@@ -135,6 +136,9 @@ export type AdminPlace = {
   listed?: boolean;
   /** Derived has-demand for filters. State chip is request_count. */
   requested?: boolean;
+  /** THE Enriched fact (MESITA-2154): an Enrich run completed —
+   *  `enriched_at` set. Never the Crenup high-water, never content_state. */
+  enriched?: boolean;
   /** Guest request count — the Requested State fact, 0…n. */
   request_count?: number;
   /** Operating: Google's businessStatus, verbatim (MESITA-1239). */

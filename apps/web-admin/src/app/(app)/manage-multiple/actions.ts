@@ -1,6 +1,7 @@
 "use server";
 
 import { efInvoke } from "@/lib/supabase-ef";
+import { isEnrichedPlace } from "@/lib/place-enriched";
 import { createPlaceFromGooglePlaceId as createPlaceFromGooglePlaceIdImpl } from "./create-place";
 
 // ════════════════════════════════════════════════════════════════════════
@@ -80,14 +81,21 @@ export type PlaceHit = {
   request_count: number;
   /** Enricher pipeline mid-flight (content_state generating). */
   enriching: boolean;
+  /** THE Enriched fact (MESITA-2154): an Enrich run completed —
+   *  `enriched_at` set, shipped by the EF as `enriched`. Never the
+   *  high-water below, never content_state: a Created place is not enriched. */
+  enriched: boolean;
+  /** When the last Enrich run completed; null for a Created place. */
+  enriched_at: string | null;
   /** Operating (MESITA-1239): Google's businessStatus, verbatim. NULL = Google
    *  is silent, which is a third state and not OPERATIONAL. A FLAG, never a
    *  visibility gate — Listed above is the gate. */
   business_state: string | null;
   /** When Operating was last observed. Without it a stale claim reads current. */
   business_state_at: string | null;
-  /** CRENUP: how far the eight-step queue got, 0-8. 0 means it never started
-   *  — or the place predates piece reporting and has no events. */
+  /** CRENUP: how far the eight-step queue got, 0-8 — the completeness
+   *  meter, not the Enriched yes/no. 0 means it never started — or the place
+   *  predates piece reporting and has no events. A Created place reads 1. */
   enrich_crenup: number;
   /** The ladder's length, so nothing hardcodes 9. */
   enrich_crenup_total: number;
@@ -126,6 +134,8 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
       typeof raw.google_review_count === "number" ? raw.google_review_count : null,
     content_state: contentState,
     enriching: contentState === "generating",
+    enriched: isEnrichedPlace(raw),
+    enriched_at: typeof raw.enriched_at === "string" ? raw.enriched_at : null,
     google_place_id: raw.google_place_id ?? null,
     seeded: raw.seeded ?? false,
     listed: raw.listed ?? false,
@@ -136,7 +146,7 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     requested:
       typeof raw.requested === "boolean"
         ? raw.requested
-        : contentState !== "ready" &&
+        : !isEnrichedPlace(raw) &&
           typeof raw.request_count === "number" &&
           raw.request_count > 0,
     business_state:

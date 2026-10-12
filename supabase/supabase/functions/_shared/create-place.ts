@@ -30,8 +30,10 @@
 // accumulates across create and every later run under one rule.
 //
 // CREATE NEVER SEEDS THE ENRICHER (MESITA-1364). Every caller mints the ugly
-// profile and stops. Enriched is `place_profiles.enriched_at`, not
-// content_state. Guests vote on the Enrich tab and the Crenup threshold seeds
+// profile and stops. Enriched is `place_profiles.enriched_at` set (an Enrich
+// run completed), never content_state: a Created place is shown (ready) but
+// reads not-enriched everywhere — gray pin, outside the Mesita ring, out of
+// Swipe and Catalog (MESITA-2154). Guests vote on the Enrich tab and the Crenup threshold seeds
 // the queue (place-requests.ts); admin Enrich / Create+Enrich is a second
 // call. The opt-in `queueEnrich` path that seeded from the trigger matrix's
 // on_create row had no caller once business create retired (MESITA-2090) and
@@ -221,8 +223,11 @@ export async function createMinimalPlace(opts: {
   // not a rung beside it: the gate above passed — the listing resolves and is
   // not permanently closed — and the spine the save just persisted IS the
   // observed effect. Best-effort (a stamp failure never fails a create).
-  // Result: a fresh, healthy place reads enriched 1/8 the moment it exists
-  // and climbs on to 7–8 via the door below.
+  // Result: a fresh, healthy place reads 1/8 on the high-water the moment
+  // it exists, stopped at serp. The door below stamps 7 and 8 too, but the
+  // walk stops at the first gap, so they count only once an Enrich run
+  // fills 2–6. Neither the meter nor `ready` makes it Enriched — only an
+  // Enrich run's `enriched_at` does (MESITA-2154).
   await reportCrenupSteps(admin, saved.place_id, {
     details: stepDone(
       basicsRes.businessStatus

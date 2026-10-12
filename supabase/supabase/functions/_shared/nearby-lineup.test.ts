@@ -97,21 +97,24 @@ Deno.test("reorderListedLanes: the enrichment fact reorders when Enriched is wei
   // weighted". The gradient collapsed to a binary at MESITA-1858, so the
   // high-water numbers no longer move anything — but the DIRECTION they
   // encoded still has to reach the ranker, and that is what this pins. The
-  // fact now travels on the row itself (`content_state` / `enriched_at`,
-  // selected by EARNED_LANE_COLUMNS), not on a side-read.
+  // fact now travels on the row itself (`enriched_at`, selected by
+  // EARNED_LANE_COLUMNS), not on a side-read. MESITA-2154: `lo` is a Created
+  // place — content_state ready, no stamp — and is NOT enriched.
   const hi = {
     id: "hi",
     google_place_id: "ChIJ-hi",
     lat: 25.6701,
     lng: -100.3001,
     content_state: "ready",
+    enriched_at: "2026-09-01T00:00:00Z",
   };
   const lo = {
     id: "lo",
     google_place_id: "ChIJ-lo",
     lat: 25.6701,
     lng: -100.3001,
-    content_state: "generating",
+    content_state: "ready",
+    enriched_at: null,
   };
   const merged = mergeNearbyCatalog([lo, hi], [], CENTER, LANES);
   const enrichedOnly = { ...mapLineupWeights(DISCOVERY_DEFAULTS) };

@@ -9,9 +9,11 @@ import {
   type PlaceEnrichmentState,
 } from "../actions";
 import { isEnriching } from "../place-header-state";
+import { isEnrichedPlace } from "@/lib/place-enriched";
 import { stateBoolChip } from "@/lib/state-vocabulary";
 import { StateRow } from "./StateCard";
 import {
+  crenupMeterLine,
   crenupStepRows,
   type EnrichFunctionState,
 } from "./state-enrichment";
@@ -21,6 +23,7 @@ import {
  * the two SUMMARY facts (Enriching, Enriched) over the nine functions,
  * 0. Seed … 8. Embedding (CRENUP_STEPS), each a bool (called / not). Create
  * runs 0, 1, 7, 8 and Enrich 1–8 of that one ladder, never a second one.
+ * Enriched is `enriched_at` set (MESITA-2154); the high-water is the meter.
  *
  * This box OWNS the enrichment read. It moved here from StateCard with the
  * two rows that need it, so the Admin tab still issues exactly one
@@ -62,26 +65,23 @@ export function CrenupStateCard({ place }: { place: AdminPlace }) {
     },
   );
 
-  // Enriched is complete-or-not, from the same high-water the catalog uses.
-  // A missing number is unknown, not a no.
-  const pulse = typeof place.enrich_crenup === "number" ? place.enrich_crenup : null;
-  const pulseTotal = typeof place.enrich_crenup_total === "number"
-    ? place.enrich_crenup_total
-    : null;
-  const enriched: boolean | "unknown" =
-    pulse === null || pulseTotal === null || pulseTotal === 0
-      ? "unknown"
-      : pulse >= pulseTotal;
-
+  // Enriched = an Enrich run completed — `enriched_at` set (MESITA-2154),
+  // the server's `enriched`. The same fact the Multiple Places table and the
+  // consumer pins read. A Created place (content_state ready, no stamp) is
+  // NOT enriched, whatever its high-water.
+  const enriched = isEnrichedPlace(place);
+  // The Crenup high-water rides the detail line as the completeness meter —
+  // "N of 8, stopped at …" — never as the yes/no.
+  const meter = crenupMeterLine(place);
+  const enrichedAt =
+    typeof place.enriched_at === "string" && place.enriched_at.trim() !== ""
+      ? place.enriched_at.slice(0, 10)
+      : null;
   const enrichedDetail =
-    enriched === "unknown"
-      ? "Couldn't read the pipeline events."
-      : enriched
-        ? "The enrich queue finished." +
-          (place.enriched_at
-            ? ` Last run ${String(place.enriched_at).slice(0, 10)}.`
-            : "")
-        : "The enrich queue has not finished.";
+    (enriched
+      ? "An Enrich run completed" + (enrichedAt ? ` ${enrichedAt}.` : ".")
+      : "No Enrich run has completed — a Created profile is not enriched.") +
+    (meter ? ` ${meter}` : "");
   const enrichingDetail = enriching
     ? "The Enricher pipeline is mid-flight — research, analysis, or contents is running."
     : "No Enricher run is in flight.";

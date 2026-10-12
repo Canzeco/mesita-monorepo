@@ -309,7 +309,7 @@ Deno.test("Enriched reorders two rows a ranked lane ACTUALLY admits", () => {
   // the binary made them the same function. Every row a ranked lane scores
   // already satisfies `isEnrichedPlace`: Map filters each listed row through
   // `isEnrichedListedRow` before `reorderListedLanes` ranks anything, and
-  // Scroll's pool query is `.eq("content_state", "ready")`. So `enriched === true` on every row this signal ever sees, and
+  // Scroll's pool query is the Enriched gate, `enriched_at IS NOT NULL`. So `enriched === true` on every row this signal ever sees, and
   // a pure binary is a CONSTANT 1 on the whole population — an operator dial
   // that cannot move a deck. `enriched: false` here would be green by
   // construction: production never hands the signal that row.
@@ -362,11 +362,10 @@ Deno.test("an absent enrichment fact reads OFF, and is always a finite number", 
 });
 
 Deno.test("a synthesized Google row scores OFF, not enriched", () => {
-  // consumer-web-list-places stamps `content_state: "ready"` on a Google-only
-  // hit Mesita never touched. The PROJECTION excludes it by name
+  // consumer-web-list-places builds a Google-only hit Mesita never touched
+  // with `googleOnly: true`. The PROJECTION excludes it by name
   // (discovery-place.ts), so the signal sees `enriched: false` and this is the
-  // end-to-end statement of that. The same synthesis on the consumer WIRE is a
-  // separate pre-existing bug with its own issue and is not touched here.
+  // end-to-end statement of that.
   const googleRow = toSignalPlace({
     lat: 19.4326,
     lng: -99.1332,
@@ -375,6 +374,26 @@ Deno.test("a synthesized Google row scores OFF, not enriched", () => {
   });
   assertEquals(googleRow.enriched, false);
   assertEquals(enriched(googleRow), ENRICHED_OFF);
+});
+
+Deno.test("a Created place scores OFF, whatever its content_state or high-water", () => {
+  // MESITA-2154: Create saves content_state ready and never stamps
+  // enriched_at, so the projection says `enriched: false` and the
+  // high-water a Created place carries (1, stopped at serp) cannot climb it.
+  const created = {
+    ...toSignalPlace({
+      lat: 19.4326,
+      lng: -99.1332,
+      content_state: "ready",
+      enriched_at: null,
+    }),
+    crenupHighWater: 1,
+  };
+  assertEquals(created.enriched, false);
+  assertEquals(enriched(created), ENRICHED_OFF);
+  const stamped = toSignalPlace({ content_state: "ready", enriched_at: "2026-09-01T00:00:00Z" });
+  assertEquals(stamped.enriched, true);
+  assertEquals(enriched(stamped), 1);
 });
 
 Deno.test("Enriched's off-value is not 0 — a hard zero deletes a place from a multiplicative blend", () => {

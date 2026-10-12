@@ -30,6 +30,15 @@ export type FilterableQuery<T> = {
   lte: (col: string, val: unknown) => T;
 };
 
+/**
+ * The builder `applyDiscoveryFilters` needs: the three comparisons plus
+ * `not`, for the Enriched gate's `enriched_at IS NOT NULL`. A separate type
+ * so the General gate's structural builder keeps its three methods.
+ */
+export type DiscoveryFilterQuery<T> = FilterableQuery<T> & {
+  not: (col: string, op: string, val: unknown) => T;
+};
+
 /** Where the guest is, when they told us. Both halves or neither. */
 export type GeoIntent = { lat: number | null; lng: number | null };
 
@@ -46,7 +55,7 @@ export type GeoIntent = { lat: number | null; lng: number | null };
  * needs PostGIS or a lat/lng expression PostgREST cannot express. The box
  * over-selects the corners by ~27%, and `trimToRadius` below removes them.
  */
-export function applyDiscoveryFilters<T extends FilterableQuery<T>>(
+export function applyDiscoveryFilters<T extends DiscoveryFilterQuery<T>>(
   query: T,
   filters: DiscoveryFilters,
   geo: GeoIntent,
@@ -54,13 +63,16 @@ export function applyDiscoveryFilters<T extends FilterableQuery<T>>(
   let q = query;
 
   if (filters.requireReady) {
-    // The enrichment gate (MESITA-1228). `content_state` is the lifecycle
-    // column and only the contents stage lands 'ready', so it answers "the
-    // pipeline finished" and separates done from failed. The 0–9 pulse ordinal
-    // cannot do this job: it is a read-time fold over an event log, not a
-    // column, so it cannot appear in a WHERE clause until MESITA-1249
-    // materializes it.
-    q = q.eq("content_state", "ready");
+    // The Enriched gate (MESITA-2154): `enriched_at IS NOT NULL` — an Enrich
+    // run completed, the same fact `isPlaceEnriched` reads everywhere else.
+    // It used to be `content_state = 'ready'` (MESITA-1228), but Create saves
+    // 'ready' too, so every freshly Created place walked into Swipe, Catalog
+    // and the Map's Mesita ring. The stored key keeps its old name on
+    // purpose: renaming a persisted key resets the operator's value to the
+    // default. Side benefit: an enriched place being re-enriched
+    // ('generating') stays in the pool. The 0–8 Crenup high-water cannot do
+    // this job: it is a read-time fold over an event log, not a column.
+    q = q.not("enriched_at", "is", null);
   }
 
   if (filters.minRating > 0) {
