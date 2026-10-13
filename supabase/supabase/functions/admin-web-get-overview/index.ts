@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
       .maybeSingle(),
     admin
       .from("place_profiles")
-      .select("enrichment")
+      .select("enrichment, reviews_state")
       .eq("id", placeId)
       .maybeSingle(),
     fetchPlaceCategories(admin),
@@ -162,6 +162,7 @@ Deno.serve(async (req) => {
     enrich_functions: operatorFunctionStates(
       enrichmentMap.functions as Partial<Record<string, FunctionState>>,
     ),
+    reviews_state: (enrichmentRow.data as { reviews_state?: unknown } | null)?.reviews_state ?? null,
   };
 
   const profile = {

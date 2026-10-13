@@ -300,6 +300,10 @@ verify_jwt = true
 [functions.admin-web-update-place]
 verify_jwt = true
 
+# Reviews tab: one source, one reload. Not the Enricher.
+[functions.admin-web-reload-place-reviews]
+verify_jwt = true
+
 # Single Place's tag and category vocabularies.
 [functions.admin-web-get-atlas-fields]
 verify_jwt = true

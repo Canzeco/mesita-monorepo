@@ -55,6 +55,7 @@ import { writePlace } from "./place-doc.ts";
 import { stepDone, stepFailed, reportCrenupSteps } from "./crenup-report.ts";
 import { loadDiscoveryConfig } from "./discovery-config.ts";
 import { evaluatePlaceForMap } from "./map-engine.ts";
+import { omitReviewsTileColumns } from "./reviews-state.ts";
 
 export type CreatedPlace = { id: string; slug: string; name: string; state: string };
 
@@ -173,7 +174,9 @@ export async function createMinimalPlace(opts: {
 
   // category 'undefined' until the Enricher resolves it; the category-label
   // trigger fills category_label from the 'undefined' catalog row.
-  const place: Record<string, unknown> = {
+  // The map gate above already read the live Google rating. The stored tile
+  // columns stay empty until the Reviews reload (MESITA-2183).
+  const place: Record<string, unknown> = omitReviewsTileColumns({
     ...basicsRes.basics,
     category: "undefined",
     category_label: null,
@@ -186,7 +189,7 @@ export async function createMinimalPlace(opts: {
     // current.
     business_state: basicsRes.businessStatus ?? null,
     business_state_at: basicsRes.businessStatus ? new Date().toISOString() : null,
-  };
+  });
 
   // ── 2) Persist the minimal rows (in-process). The mint lands 'ready' with
   // enriched_at null — the ugly profile is viewable; Enriched stays no until

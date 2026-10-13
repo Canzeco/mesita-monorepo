@@ -3,8 +3,9 @@
 // Super-admin only. Updates the editable profile fields of one place — the
 // write behind admin's Single Place save bar (manage-single/[id]). Validates
 // input, writes via the service role through the place document door, and
-// queues the on_update side effects (social follower refresh, embeddings).
-// Does NOT call any other Edge Function.
+// queues the on_update side effects (embeddings). A changed Instagram or
+// Facebook URL empties that reviews source; it does not scrape. Does NOT
+// call any other Edge Function.
 //
 // WAS business-web-update-place (MESITA-2090). The business console that
 // owned it is deleted in the MVP First Stage cut, so the one surviving caller
@@ -40,8 +41,10 @@ import {
 import { resolveCategoryInput } from "./category-input.ts";
 import { applyMediaUpdates } from "./place-media-update.ts";
 import {
-  loadPreviousSocialUrlsForRefresh,
-  queueSocialFollowersRefresh,
+  applySocialCountClears,
+  loadPreviousSocialUrls,
+  reviewsTileKeyInBody,
+  writeClearedReviewsState,
 } from "./place-social-refresh.ts";
 import {
   queuePlaceEmbeddingsOnUpdate,
@@ -105,7 +108,6 @@ type UpdateBody = {
 };
 
 const OPENAI_KEY = Deno.env.get("OPENAI_KEY");
-const APIFY_KEY = Deno.env.get("APIFY_KEY");
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -127,6 +129,13 @@ Deno.serve(async (req) => {
   const bodyRes = await readJson<UpdateBody>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
+  const blocked = reviewsTileKeyInBody(body);
+  if (blocked) {
+    return json(
+      { ok: false, code: "reviews_owned", error: `${blocked} is reloaded from the Reviews tab` },
+      400,
+    );
+  }
   const placeId = (body.id ?? "").toString().trim();
   if (!placeId) return json({ ok: false, error: "id is required" }, 400);
 
@@ -224,16 +233,11 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "No editable fields provided" }, 400);
   }
 
-  // Follower counts follow the account (indirect edit, MESITA-416): a changed
-  // instagram_url/facebook_url triggers an Apify follower refresh after the
-  // response. Snapshot the current URLs first — clients resubmit whole forms,
-  // and an unchanged URL must not burn a paid scrape.
-  const prevSocial = await loadPreviousSocialUrlsForRefresh(
-    admin,
-    placeId,
-    update,
-    APIFY_KEY,
-  );
+  // A changed social URL empties that source. The reload fetches the new
+  // number. Snapshot the current URLs first — clients resubmit whole forms,
+  // and an unchanged URL must not wipe a count (MESITA-2183).
+  const prevSocial = await loadPreviousSocialUrls(admin, placeId, update);
+  const clears = applySocialCountClears(update, prevSocial);
 
   const updRes = await writePlace(admin, {
     table: "profiles",
@@ -253,7 +257,9 @@ Deno.serve(async (req) => {
       400,
     );
   }
-  const place = updRes.row;
+  const place = updRes.row as Record<string, unknown>;
+  const cleared = await writeClearedReviewsState(admin, placeId, prevSocial, clears);
+  if (cleared) place.reviews_state = cleared;
 
   const pinRes = await persistBusinessFieldPins(admin, placeId, update);
   if (!pinRes.ok) {
@@ -263,36 +269,15 @@ Deno.serve(async (req) => {
     );
   }
 
-  // ── The on_update row of the trigger matrix, honoured (MESITA-1188) ──────
-  // Until now this row was decorative: it rendered two editable cells and
-  // nothing read them, so flipping either changed nothing. It is the one row
-  // honoured by WITHHOLDING work — an edit is ground truth, so this path seeds
-  // no run and re-derives nothing. It has exactly two operator-controlled
-  // cells, `social` and `embedding`; lockedCell() forces the other seven false
-  // so wiring the row can never re-scrape over the human who just fixed the
-  // record. A disabled row buys nothing, which stops both side effects.
-  //
-  // loadEnrichmentTriggers falls back to the code defaults when the blob is
-  // missing, and both cells default ON — so a fresh environment behaves
-  // exactly as it did before this row was wired.
+  // The on_update row has two operator cells, `social` and `embedding`.
+  // `social` no longer scrapes (MESITA-2183): a changed URL empties that
+  // source above, and the Reviews tab is the only fetch. `embedding` still
+  // re-synthesises when the blurb inputs change. A disabled row buys nothing.
   const onUpdateBuys = subprocessesFor(
     await loadEnrichmentTriggers(admin),
     "on_update",
   );
 
-  if (onUpdateBuys.includes("social")) {
-    queueSocialFollowersRefresh({
-      admin,
-      apifyKey: APIFY_KEY,
-      placeId,
-      update,
-      prevSocial,
-    });
-  }
-
-  // On-Update embeddings (MESITA-720): when profile fields that feed the
-  // blurb change, re-synthesize human text + vector in the background.
-  // Tags alone never trigger a re-embed.
   if (onUpdateBuys.includes("embedding") && updateTouchesEmbeddingInputs(update)) {
     queuePlaceEmbeddingsOnUpdate({
       admin,

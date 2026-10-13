@@ -164,6 +164,7 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "admin-web-enrich-place/index.ts",
   "admin-web-search-places/index.ts",
   "admin-web-get-overview/index.ts",
+  "admin-web-reload-place-reviews/index.ts",
   "admin-web-update-place/place-social-refresh.ts",
   "consumer-web-confirm-reservation/index.ts",
   "consumer-web-create-reservation/index.ts", // reservations_enabled gate before the insert (MESITA-2156)
@@ -313,7 +314,6 @@ const SWALLOWED_TODAY = [
   "_shared/place-slug.ts",
   "_shared/reservation-places.ts",
   "_shared/save-place.ts",
-  "admin-web-update-place/place-social-refresh.ts",
   "consumer-web-confirm-reservation/index.ts",
   "eleven-a1-report-outcome/index.ts",
   "eleven-a2-confirm-reservation/index.ts",

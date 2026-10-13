@@ -64,6 +64,7 @@ import { gatherSerpSummary } from "../_shared/enrich-serp.ts";
 import { gatherInstagram, type InstagramResult } from "../_shared/enrich-instagram.ts";
 import { type FacebookResult, gatherFacebook } from "../_shared/enrich-facebook.ts";
 import { writePlace } from "../_shared/place-doc.ts";
+import { omitReviewsTileColumns } from "../_shared/reviews-state.ts";
 import {
   advanceResearchStage,
   failResearchRow,
@@ -187,7 +188,8 @@ serveEnrichStage("research", async (admin, _env, row) => {
   chargeGoogleSpine(ledger, basics.photos.length);
 
   const sources: Record<string, unknown> = {};
-  const place: Record<string, unknown> = { ...basics };
+  // Tile columns belong to the reviews reload, not this gather (MESITA-2183).
+  const place: Record<string, unknown> = omitReviewsTileColumns({ ...basics });
   // Search term for SERP / channel discovery: always the Google label, since
   // that is what the rest of the web indexes this place under.
   const name = basics.google_name;
@@ -202,7 +204,6 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // non-critical, so a GMaps failure is recorded in diag, never fatal. SERP is
   // awaited here because it feeds S3 discovery context.
   let reviews: Record<string, unknown>[] = [];
-  let reviewCount: number | null = null;
   let googleReviewsText = "";
   let googleImages: string[] = [];
   let serpSummary: string | null = null;
@@ -220,7 +221,6 @@ serveEnrichStage("research", async (admin, _env, row) => {
         maxReviews: cfg.gatherReviews,
       });
       reviews = g.reviews;
-      reviewCount = g.reviewCount;
       googleReviewsText = g.googleReviewsText;
       googleImages = g.googleImages;
       sources.apify_google_reviews = g.diag;
@@ -459,12 +459,11 @@ serveEnrichStage("research", async (admin, _env, row) => {
   }
 
   // Numeric source facts + verified IG.
+  // The review corpus still feeds the written profile. The score, the count,
+  // and the follower numbers do not: those are the Reviews tab (MESITA-2183).
   if (reviews.length > 0) {
     place.google_reviews = reviews;
-    if (reviewCount != null) place.google_review_count = reviewCount;
   }
-  if (igR?.igFollowers != null) place.instagram_followers_count = igR.igFollowers;
-  if (fbR?.fbFollowers != null) place.facebook_followers = fbR.fbFollowers;
   if (igR?.verifiedInstagramUrl) place.instagram_url = igR.verifiedInstagramUrl;
 
   // Leniency fallback (MESITA-120): when the IG scraper never got a real look

@@ -8,7 +8,9 @@ import {
   useMemo,
   useRef,
   useState,
+  type Dispatch,
   type ReactNode,
+  type SetStateAction,
 } from "react";
 import { updatePlace, type AdminPlace, type ProfileRead } from "./actions";
 import {
@@ -70,7 +72,7 @@ type SectionSaver = {
 
 type PlaceContextValue = {
   place: AdminPlace;
-  setPlace: (place: AdminPlace) => void;
+  setPlace: Dispatch<SetStateAction<AdminPlace>>;
   /** Vocabulary and resolved Family / Category from the one profile read. */
   profile: ProfileRead;
   setProfile: (profile: ProfileRead) => void;
@@ -118,7 +120,7 @@ export function PlaceProvider({
 }: {
   placeId: string;
   place: AdminPlace;
-  setPlace: (place: AdminPlace) => void;
+  setPlace: Dispatch<SetStateAction<AdminPlace>>;
   profile: ProfileRead;
   setProfile: (profile: ProfileRead) => void;
   children: ReactNode;
@@ -208,8 +210,11 @@ export function PlaceProvider({
         setSaveError(r.error);
         return;
       }
-      for (const s of Object.values(savers.current)) s.onSaved(r.data.place);
-      setPlace(r.data.place);
+      const next: AdminPlace = r.data.place.reviews_state != null
+        ? r.data.place
+        : { ...r.data.place, reviews_state: place.reviews_state };
+      for (const s of Object.values(savers.current)) s.onSaved(next);
+      setPlace(next);
       if (r.data.family || r.data.familyStored) {
         setProfile({
           ...profile,
@@ -221,7 +226,7 @@ export function PlaceProvider({
       setSaveOk(true);
       window.setTimeout(() => setSaveOk(false), 2500);
     })();
-  }, [placeId, setPlace, profile, setProfile]);
+  }, [place, placeId, setPlace, profile, setProfile]);
 
   const isDirty = useMemo(
     () => Object.values(dirtyMap).some(Boolean),

@@ -66,6 +66,7 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { nullable } from "./doc-schema.ts";
 import { GoogleReviewsSchema, PopularTimesSchema } from "./place-jsonb-schemas.ts";
 import { EnrichmentMapSchema } from "./schema-catalog.ts";
+import { parseReviewsState } from "./reviews-state.ts";
 
 // ── PlaceProfileRow — the full `place_profiles` row shape ──────────────────────────────────
 
@@ -147,6 +148,8 @@ export type PlaceProfileRow = {
   mesita_name: string | null;
   /** MESITA-1249: the materialized meter — see EnrichmentMapSchema. */
   enrichment: unknown;
+  /** MESITA-2183: per-source reviews reload. Not an enrichment fact. */
+  reviews_state: unknown;
   reservation_channel: ServingChannel | null;
   reservation_target: string | null;
   business_state: "OPERATIONAL" | "CLOSED_TEMPORARILY" | "CLOSED_PERMANENTLY" | null;
@@ -207,6 +210,7 @@ export const PLACE_PROFILE_PATCH_KEYS = [
   "google_name",
   "mesita_name",
   "enrichment",
+  "reviews_state",
   "reservation_channel",
   "reservation_target",
   "business_state",
@@ -340,6 +344,7 @@ const PLACE_SCHEMA_JSON_KEYS: Record<string, { parse(v: unknown): { ok: boolean;
   popular_times: nullable(PopularTimesSchema),
   // NOT nullable — place_profiles.enrichment is NOT NULL with a default (MESITA-1249).
   enrichment: EnrichmentMapSchema,
+  reviews_state: { parse: parseReviewsState },
 };
 const PLACE_STRING_ARRAY_KEYS = new Set<string>(["photos", "tags"]);
 // NOT NULL boolean column, default true (MESITA-1799). It joined
