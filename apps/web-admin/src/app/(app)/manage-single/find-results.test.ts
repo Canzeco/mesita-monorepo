@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { PlaceHit, SuggestHit } from "@/app/(app)/manage-multiple/actions";
 import type { PlaceLite } from "@/lib/places-types";
-import { catalogueList, mergeFindResults, type FindInputs, type TextSearchResult } from "./find-results";
+import {
+  catalogueList,
+  enrichmentMark,
+  mergeFindResults,
+  reviewNumbers,
+  type FindInputs,
+  type TextSearchResult,
+} from "./find-results";
 
 const A = "ChIJAAAAAAAAAAAAAAAAAAAAAA"; // held, every source
 const B = "ChIJBBBBBBBBBBBBBBBBBBBBBB"; // Google only
@@ -170,6 +177,34 @@ describe("mergeFindResults", () => {
     expect(r.notes.map((n) => n.text)).toContainEqual(
       "Showing 1 of 500. The rest are past the catalogue ceiling.",
     );
+  });
+
+  it("reads an Enrichment cell off the function map, including a failed call", () => {
+    const place = hit({
+      enrich_functions: {
+        details: { state: "completed", at: null, detail: null },
+        serp: { state: "failed", at: null, detail: null },
+        semantic: { state: "completed", at: null, detail: null },
+      },
+    });
+    expect(enrichmentMark(place, "details")).toBe("yes");
+    expect(enrichmentMark(place, "serp")).toBe("fail");
+    expect(enrichmentMark(place, "links")).toBe("no");
+    expect(enrichmentMark(place, "embedding")).toBe("yes");
+    expect(enrichmentMark(hit({}), "details")).toBe("unknown");
+  });
+
+  it("prefers the catalogue's review numbers over Text Search", () => {
+    expect(
+      reviewNumbers({
+        placeHit: hit({ google_stars_overall: 3.8, google_review_count: 474 }),
+        rating: 4.7,
+        reviews: 266,
+      }),
+    ).toEqual({ stars: 3.8, count: 474 });
+    expect(
+      reviewNumbers({ placeHit: null, rating: 4.7, reviews: 266 }),
+    ).toEqual({ stars: 4.7, count: 266 });
   });
 
   it("is empty when every source is empty", () => {

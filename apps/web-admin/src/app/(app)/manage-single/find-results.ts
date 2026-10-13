@@ -1,5 +1,10 @@
 import type { PlaceHit, SuggestHit } from "@/app/(app)/manage-multiple/actions";
 import type { PlaceLite } from "@/lib/places-types";
+import {
+  CRENUP_STEPS,
+  stepEnriches,
+  type CrenupStepKey,
+} from "@/lib/state-vocabulary";
 
 // Single Place › Find draws ONE table for a name (MESITA-2124): every place
 // any of the four sources returned, once, with a column per source saying
@@ -33,6 +38,45 @@ const TIE_ORDER: readonly FindSource[] = ["text", "autocomplete", "name", "catal
 
 /** Rows shown before "Show N more" (D6). */
 export const FIND_FIRST_ROWS = 20;
+
+/** Enrichment Steps columns: the Enrich pass, 1–8. Seed stays off. */
+export const ENRICHMENT_COLUMNS = CRENUP_STEPS.filter((step) =>
+  stepEnriches(step.flows),
+);
+
+/** Reviews columns. Stars and count — the Google facts the catalogue row
+ *  already carries. Instagram and Facebook stay on the place's Reviews card. */
+export const REVIEW_COLUMNS = [
+  { key: "stars", label: "Stars" },
+  { key: "count", label: "Count" },
+] as const;
+
+export type ReviewColumn = (typeof REVIEW_COLUMNS)[number]["key"];
+
+/** What one Enrichment Steps cell says. `unknown` is a payload with no
+ *  function map — never a confident no. */
+export type EnrichmentMark = "yes" | "no" | "fail" | "unknown";
+
+export function enrichmentMark(hit: PlaceHit, key: CrenupStepKey): EnrichmentMark {
+  const map = hit.enrich_functions;
+  if (map == null) return "unknown";
+  const state =
+    map[key]?.state ?? (key === "embedding" ? map.semantic?.state : undefined);
+  if (state === "completed") return "yes";
+  if (state === "failed") return "fail";
+  return "no";
+}
+
+/** Catalogue numbers win when Mesita holds the place. A Google-only row
+ *  falls back to what Text Search reported. */
+export function reviewNumbers(
+  row: Pick<FindRow, "placeHit" | "rating" | "reviews">,
+): { stars: number | null; count: number | null } {
+  return {
+    stars: row.placeHit?.google_stars_overall ?? row.rating,
+    count: row.placeHit?.google_review_count ?? row.reviews,
+  };
+}
 
 export type SourceResult<T> = { status: "ok"; data: T } | { status: "error"; error: string };
 
@@ -69,8 +113,8 @@ export type FindRow = {
   address: string;
   rating: number | null;
   reviews: number | null;
-  /** Catalogue row when Mesita knows this place — drives the six states in
-   *  the Place column. Null when Google-only or held only per Text Search's
+  /** Catalogue row when Mesita knows this place — drives the Profile and
+   *  Enrichment columns. Null when Google-only or held only per Text Search's
    *  join without a catalogue match. */
   placeHit: PlaceHit | null;
   /** 1-based position in each source; null = that source missed it. */
