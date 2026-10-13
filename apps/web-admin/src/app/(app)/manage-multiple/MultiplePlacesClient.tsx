@@ -113,7 +113,7 @@ export function MultiplePlacesClient() {
         id={PIPELINE_STEPS[3].id}
         tint="amber"
         title={PIPELINE_STEPS[3].label}
-        blurb="Fills each place from zero, Details through Vectors. Queued — the cron works one place at a time."
+        blurb="Fills each place from zero, Details through Embedding. Queued — the cron works one place at a time."
       >
         <WriteBox
           id={PIPELINE_STEPS[3].id}

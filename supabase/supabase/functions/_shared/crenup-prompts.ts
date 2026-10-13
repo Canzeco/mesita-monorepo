@@ -75,9 +75,9 @@ const PLACE = {
 function scoutPrompt(): CrenupPrompt {
   return {
     key: "scout",
-    fn: "3 · Web",
+    fn: "3 · Serp",
     agent: "Scout",
-    label: "Web summary",
+    label: "SERP Summary",
     vendor: "Perplexity Agent",
     vendorNote:
       "One Perplexity Agent call — the managed Agents API, not chat completions " +
@@ -85,7 +85,7 @@ function scoutPrompt(): CrenupPrompt {
       "Search model on Models (shown beside the vendor above, never hardcoded " +
       "here) — the Resolver at Links reads that same setting.",
     writes:
-      "The web summary: soft web context only. It is never persisted as a fact, " +
+      "The SERP Summary: soft web context only. It is never persisted as a fact, " +
       "and it grounds two later steps — the Resolver's link selection and the " +
       "Presentation synthesis.",
     instructions: SCOUT_INSTRUCTIONS,

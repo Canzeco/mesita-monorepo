@@ -134,18 +134,18 @@ export type CrenupStep = (typeof CRENUP_LADDER)[number];
  * and the only one never stamped — the row existing IS the seed, so 0 is the
  * persistence floor rather than a pre-ladder limbo.
  */
-export const CRENUP_FLOOR_LABEL = "Place";
+export const CRENUP_FLOOR_LABEL = "Seed";
 
 /** The operator-facing name of each function. Names only — see below for why. */
 const CRENUP_LABELS: Record<CrenupStep, string> = {
   details: "Details",
-  serp: "Web",
+  serp: "Serp",
   links: "Links",
   social: "Social",
   reviews: "Reviews",
   images: "Images",
   description: "Description",
-  embedding: "Vectors",
+  embedding: "Embedding",
 };
 
 /**

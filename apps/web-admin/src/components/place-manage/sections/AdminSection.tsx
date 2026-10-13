@@ -179,7 +179,7 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="font-display text-base font-semibold tracking-tight">
-            Vectors
+            Embedding
           </h2>
           <p className="text-muted-foreground mt-0.5 text-xs">
             Two vectors — Mesita Name, and the Semantic Summary.
@@ -335,7 +335,7 @@ function SerpSummaryCard({ place }: { place: AdminPlace }) {
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="font-display text-base font-semibold tracking-tight">
-            Web summary
+            SERP Summary
           </h2>
           <p className="text-muted-foreground mt-0.5 text-xs">
             Soft context for the pipeline — never a source of facts.
@@ -354,7 +354,7 @@ function SerpSummaryCard({ place }: { place: AdminPlace }) {
             <span className="text-sm leading-relaxed whitespace-pre-wrap">{text}</span>
           ) : (
             <span className="text-muted-foreground text-xs italic">
-              No web summary on the last run — either the run did not buy it, or
+              No SERP Summary on the last run — either the run did not buy it, or
               the web had nothing to say about this place.
             </span>
           )}

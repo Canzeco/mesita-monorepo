@@ -27,20 +27,20 @@ describe("crenup steps", () => {
     // simply runs a subset (0, 1, 7, 8). Before this, Create numbered itself
     // from 1 by position and called the same step 3.
     expect(chipsFor("create").map((c) => c.label)).toEqual([
-      "0 Place",
+      "0 Seed",
       "1 Details",
       "7 Description",
-      "8 Vectors",
+      "8 Embedding",
     ]);
     expect(chipsFor("enrich").map((c) => c.label)).toEqual([
       "1 Details",
-      "2 Web",
+      "2 Serp",
       "3 Links",
       "4 Social",
       "5 Reviews",
       "6 Images",
       "7 Description",
-      "8 Vectors",
+      "8 Embedding",
     ]);
   });
 

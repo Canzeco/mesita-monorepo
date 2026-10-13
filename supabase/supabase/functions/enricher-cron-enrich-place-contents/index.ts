@@ -655,9 +655,9 @@ serveEnrichStage("contents", async (admin, env, row) => {
     // EMBEDDING — function 8. Embed-only: vectors of the words function 7
     // wrote. It CLOSES the queue.
     contentPieces.embedding = embeddingWrote
-      ? stepDone("Vectors — Mesita Name and Semantic Summary vectors written.")
+      ? stepDone("Embedding — Mesita Name and Semantic Summary vectors written.")
       : stepFailed(
-        "Vectors did not write (no summary text, or the embed failed). Re-enrich to retry.",
+        "Embedding did not write (no summary text, or the embed failed). Re-enrich to retry.",
       );
   }
   await reportCrenupSteps(admin, placeId, contentPieces);

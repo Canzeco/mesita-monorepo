@@ -11,9 +11,9 @@ import type { CrenupPrompt } from "./actions";
 
 const SCOUT: CrenupPrompt = {
   key: "scout",
-  fn: "3 · Web",
+  fn: "3 · Serp",
   agent: "Scout",
-  label: "Web summary",
+  label: "SERP Summary",
   vendor: "Perplexity Agent",
   vendorNote: "One Perplexity Agent call. The preset is the Search model on Models.",
   writes: "The SERP Summary: soft web context only.",
