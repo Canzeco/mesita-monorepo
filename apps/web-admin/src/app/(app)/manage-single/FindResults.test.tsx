@@ -132,6 +132,9 @@ describe("Find › one table", () => {
     expect(place).toBeGreaterThan(on);
     expect(html).toContain(">Mesita</span>");
     expect(html).toContain(">Google only</span>");
+    expect(html).toContain("hidden sticky left-0 w-36");
+    expect(html).toContain("sm:left-36");
+    expect(html).toContain("sm:hidden");
   });
 
   it("says Mesita for a held place and Google only for one Mesita lacks", () => {
