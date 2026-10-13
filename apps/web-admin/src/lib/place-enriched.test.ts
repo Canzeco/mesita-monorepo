@@ -47,12 +47,12 @@ describe("crenupMeterLine — the completeness meter, never the yes/no", () => {
         enrich_crenup_labels: ["Seed", "Details", "Serp"],
         enrich_crenup_blocked: { key: "serp", index: 2, state: "missing" },
       }),
-    ).toBe("Crenup 1 of 8, stopped at Serp (missing).");
+    ).toBe("1 of 8, stopped at Serp (missing).");
   });
 
   it("drops the stop reason once the queue finished, and the line on an older payload", () => {
     expect(crenupMeterLine({ enrich_crenup: 8, enrich_crenup_total: 8, enrich_crenup_blocked: null })).toBe(
-      "Crenup 8 of 8.",
+      "8 of 8.",
     );
     expect(crenupMeterLine({})).toBeNull();
   });

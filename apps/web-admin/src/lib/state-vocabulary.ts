@@ -12,15 +12,19 @@
 //                 (MESITA-2106), then Owned · Partnered · Rewards · Mesita
 //                 Pay · Mesita Credits (MESITA-2115). Nobody holds, proves,
 //                 pays or redeems yet.
-//   CRENUP (9)    own box: 0. Seed … 8. Embedding, each a bool: called or not
+//   FUNCTIONS (9) one ladder under Enrichment: 0. Seed … 8. Embedding, each
+//                 a bool (called or not). Create runs 0, 1, 7, 8, so those
+//                 four also print under General States (MESITA-2174). Enrich
+//                 runs 1–8. A creation row wears Create or Create + Enrich;
+//                 an Enrich-only row stays untagged.
 //
 // Repeating the row name on the chip is redundant. Enriching is the live run;
-// Enriched is last-completed — they are independent. Crenup just names the
-// nine steps. Since MESITA-2027 there is ONE ladder: Create runs 0, 1, 7, 8
-// and Enrich runs 1–8, so a shared step no longer carries two numbers
-// depending on who called it. It is still not a third State ladder. Wire key
-// `seeded` stays; the label is Seed — step 0, never stamped, because the row
-// existing IS the seed.
+// Enriched is last-completed — they are independent. The ladder just names
+// the nine functions. Since MESITA-2027 there is ONE ladder: Create runs
+// 0, 1, 7, 8 and Enrich runs 1–8, so a shared step no longer carries two
+// numbers depending on who called it. It is still not a third State ladder.
+// Wire key `seeded` stays; the label is Seed — step 0, never stamped, because
+// the row existing IS the seed.
 //
 // A NOTE ON THE WORD `STEP`. These are the LADDER's steps — what an operator
 // is told ran. The pipeline's own stages (S1…S8 inside the three Enricher
@@ -91,16 +95,18 @@ export const BAD_WHEN_TRUE: ReadonlySet<GeneralStateKey> = new Set(["disabled"])
  *  keys populate it did. */
 export const STATE_FACT_FALSE_TONE: Partial<Record<GeneralStateKey, "neutral">> = {};
 
+export type CrenupFlow = "create" | "enrich";
+
 export const CRENUP_STEPS = [
-  { key: "seed", label: "Seed", n: 0 },
-  { key: "details", label: "Details", n: 1 },
-  { key: "serp", label: "Serp", n: 2 },
-  { key: "links", label: "Links", n: 3 },
-  { key: "social", label: "Social", n: 4 },
-  { key: "reviews", label: "Reviews", n: 5 },
-  { key: "images", label: "Images", n: 6 },
-  { key: "description", label: "Description", n: 7 },
-  { key: "embedding", label: "Embedding", n: 8 },
+  { key: "seed", label: "Seed", n: 0, flows: ["create"] },
+  { key: "details", label: "Details", n: 1, flows: ["create", "enrich"] },
+  { key: "serp", label: "Serp", n: 2, flows: ["enrich"] },
+  { key: "links", label: "Links", n: 3, flows: ["enrich"] },
+  { key: "social", label: "Social", n: 4, flows: ["enrich"] },
+  { key: "reviews", label: "Reviews", n: 5, flows: ["enrich"] },
+  { key: "images", label: "Images", n: 6, flows: ["enrich"] },
+  { key: "description", label: "Description", n: 7, flows: ["create", "enrich"] },
+  { key: "embedding", label: "Embedding", n: 8, flows: ["create", "enrich"] },
 ] as const;
 
 export type CrenupStepKey = (typeof CRENUP_STEPS)[number]["key"];
@@ -108,4 +114,21 @@ export type CrenupStepKey = (typeof CRENUP_STEPS)[number]["key"];
 /** Operator label: `0. Seed` … `8. Embedding`. */
 export function crenupStepLabel(n: number, label: string): string {
   return `${n}. ${label}`;
+}
+
+/** Which run shape a function belongs to. Shared functions are both. */
+export function crenupFlowTag(flows: readonly string[]): string {
+  const create = flows.includes("create");
+  const enrich = flows.includes("enrich");
+  if (create && enrich) return "Create + Enrich";
+  if (create) return "Create";
+  return "Enrich";
+}
+
+/**
+ * Tag for a function Create also runs. Enrich-only returns null so the
+ * Enrichment box does not repeat itself on every row.
+ */
+export function creationFlowMark(flows: readonly string[]): string | null {
+  return flows.includes("create") ? crenupFlowTag(flows) : null;
 }

@@ -4,11 +4,13 @@
 // the six states, 2026-10-11):
 //
 //   General States      is this place real and reachable?
-//                         Created · Pulsing · Disabled
+//                         Created · Pulsing · Disabled, then Creation:
+//                         0. Seed · 1. Details · 7. Description · 8. Embedding.
+//                         Those four also run on Enrich (except Seed).
 //   Enrichment States   how far has the pipeline gotten? Requested ·
-//                         Enriching · Enriched + the nine functions — all of
-//                         it in CrenupStateCard, which OWNS the enrichment
-//                         read.
+//                         Enriching · Enriched + the nine functions — the
+//                         facts and the ladder live in CrenupStateCard, which
+//                         OWNS the enrichment read.
 //
 // Partnership States (Partnered · Rewards · Mesita Pay · Mesita Credits) went
 // with the MVP First Stage cut (MESITA-2115): nothing commercial is live.
@@ -58,6 +60,8 @@ import { ConfirmDialog, SectionCard } from "@/components/admin-ui/manage";
 import { usePlaceContext } from "../PlaceContext";
 import { ErrorNote } from "@/components/ErrorNote";
 import { stateBoolChip } from "@/lib/state-vocabulary";
+import { FunctionLadder } from "./FunctionLadder";
+import { crenupStepRows, type EnrichFunctionState } from "./state-enrichment";
 
 // States box (Pato, 2026-08-25): bools. Crenup is the next box — not chips
 // under Enriched, and not a Create / Enrich split. Chips never repeat the row
@@ -83,6 +87,12 @@ export function StateCard({ place }: { place: AdminPlace }) {
   // place is worse than admitting the read failed.
   const seeded: boolean | "unknown" =
     typeof place.seeded === "boolean" ? place.seeded : "unknown";
+  const enrichFunctions = (place.enrich_functions ?? null) as
+    | Record<string, EnrichFunctionState>
+    | null;
+  const creationRows = crenupStepRows(enrichFunctions, seeded).filter((row) =>
+    row.flows.includes("create"),
+  );
   const listedFromRow = listedFromState(place.state);
   const listed: boolean | "unknown" =
     listedFromRow !== "unknown"
@@ -164,6 +174,7 @@ export function StateCard({ place }: { place: AdminPlace }) {
           action={<ListedToggle place={place} listed={listed} />}
         />
       </div>
+      <FunctionLadder title="Creation" rows={creationRows} />
     </SectionCard>
   );
 }

@@ -23,6 +23,13 @@ describe("the six states of a place", () => {
     expect(rowNames(enrichment)).toEqual(["Requested", "Enriching", "Enriched"]);
   });
 
+  it("Creation's four functions print under General and stay on the enrichment ladder", () => {
+    expect(general).toContain('title="Creation"');
+    expect(general).toContain("FunctionLadder");
+    expect(enrichment).toContain("<FunctionLadder rows={rows} />");
+    expect(enrichment).not.toContain('title="Creation"');
+  });
+
   it("no retired state name is a row, a chip or a button", () => {
     for (const src of [general, enrichment]) {
       for (const dead of ["Verified", "Owned", "Partnered", "Listed", "Unlist"]) {

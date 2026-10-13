@@ -19,6 +19,8 @@ import { formatAbsoluteUtc } from "@/lib/format";
 //   Enrichment States   how far did the pipeline get? Requested `0…n` ·
 //                         Enriching (live run) · Enriched (last completed)
 //                         over the nine functions 0. Seed … 8. Embedding.
+//                         Seed · Details · Description · Embedding are also
+//                         Creation, printed again under General States.
 //                         OWNS the enrichment read — StateCard no longer
 //                         fetches it.
 // Then the rest:
