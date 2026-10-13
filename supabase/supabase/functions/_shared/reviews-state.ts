@@ -123,19 +123,42 @@ export type SocialUrlPair = {
 
 /** Contents replays URLs it did not choose. Only a different non-empty
  *  account empties the count. A missing URL, a null, or a cosmetic spelling
- *  of the same link does not. */
+ *  of the same link does not. Facebook `profile.php?id=` stays in the
+ *  comparison; tracking params do not. */
 export function socialAccountReplaced(prev: string | null, next: unknown): boolean {
   if (typeof next !== "string" || !next.trim() || !prev?.trim()) return false;
   return canonicalSocialUrl(prev) !== canonicalSocialUrl(next);
 }
 
+const TRACKING_PARAMS = new Set([
+  "fbclid",
+  "hl",
+  "igsh",
+  "igshid",
+  "ref",
+  "refsrc",
+  "utm_campaign",
+  "utm_content",
+  "utm_medium",
+  "utm_source",
+  "utm_term",
+]);
+
 function canonicalSocialUrl(url: string): string {
   const trimmed = url.trim();
   try {
     const parsed = new URL(trimmed);
-    const host = parsed.hostname.replace(/^www\./, "").toLowerCase();
+    let host = parsed.hostname.toLowerCase().replace(/^www\./, "");
+    if (host === "m.facebook.com" || host === "fb.com" || host.endsWith(".facebook.com")) {
+      host = "facebook.com";
+    }
     const path = parsed.pathname.replace(/\/+$/, "").toLowerCase();
-    return `${parsed.protocol}//${host}${path}`;
+    const query = [...parsed.searchParams.entries()]
+      .filter(([key]) => !TRACKING_PARAMS.has(key.toLowerCase()))
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, value]) => `${key}=${value}`)
+      .join("&");
+    return `https://${host}${path}${query ? `?${query}` : ""}`;
   } catch {
     return trimmed.replace(/\/+$/, "").toLowerCase();
   }

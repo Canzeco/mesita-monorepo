@@ -68,6 +68,20 @@ Deno.test("socialAccountReplaced ignores a replay of the same account", () => {
     socialAccountReplaced(stored, "https://instagram.com/other"),
     true,
   );
+  assertEquals(
+    socialAccountReplaced(
+      "https://www.facebook.com/profile.php?id=111",
+      "https://m.facebook.com/profile.php?id=111&ref=page",
+    ),
+    false,
+  );
+  assertEquals(
+    socialAccountReplaced(
+      "https://www.facebook.com/profile.php?id=111",
+      "https://facebook.com/profile.php?id=222",
+    ),
+    true,
+  );
 });
 
 Deno.test("socialSourcesToEmpty only when the saved URL actually changed", () => {
