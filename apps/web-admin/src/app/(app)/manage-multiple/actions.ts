@@ -245,12 +245,12 @@ export async function deletePlace(placeId: string): Promise<Result<true>> {
 
 // ── Crenup ───────────────────────────────────────────────────────────────
 
-// Re-enrichment depth:
-//   full     → research + analysis + contents (fresh gather; refreshes phone)
-//   analysis → analysis + contents, reusing stored gathered (no re-gather)
-//   contents → contents only, reusing stored gathered + analysis (cheapest)
-// The lighter modes need a prior full run; the EF rejects (422) otherwise.
-export type ReenrichMode = "fill" | "full" | "photos" | "write";
+// Re-enrichment depth. The three steps are first, second, third.
+//   fill   → complete steps that have not landed
+//   full   → first, second, third, from a fresh fetch
+//   second → second then third, reusing the first step's payload
+//   third  → third only, reusing both stored payloads
+export type ReenrichMode = "fill" | "full" | "second" | "third";
 
 // Manually re-run the Enricher pipeline for one place. Re-seeds place_research
 // to the stage implied by `mode`; the cron poller takes it from there. Runs

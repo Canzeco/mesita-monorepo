@@ -184,7 +184,7 @@ Deno.test("the Enricher never writes mesita_name", async () => {
 
 Deno.test("contents persist drops google_place_id before the writePlace update", async () => {
   const src = await Deno.readTextFile(
-    new URL("../enricher-cron-enrich-place-write/index.ts", import.meta.url),
+    new URL("../enricher-cron-enrich-place-third/index.ts", import.meta.url),
   );
   assertEquals(
     /google_place_id:\s*_dropGooglePlaceId/.test(src),

@@ -1,7 +1,7 @@
-// Supabase Edge Function — enricher-cron-enrich-place-write (internal / cron)
+// Supabase Edge Function — enricher-cron-enrich-place-third (internal / cron)
 //
-// Stage 3 (final) of the Enricher pipeline. The pg_cron poller claims
-// place_research rows at stage='contents' and fires this EF with { place_id }.
+// Step 3 of Enrich. The pg_cron poller claims
+// place_research rows at stage='third' and fires this EF with { place_id }.
 // It acks 202 immediately and runs the WRITE half in a background task:
 //
 //   S7  DESCRIPTION (function 7) — synthesis (About/details, grounded ONLY in
@@ -25,12 +25,12 @@
 //
 // Ends the pipeline: place_research.stage='done'. The gathered/analysis jsonb
 // stay on the row, so re-synthesis without re-scraping = reset stage to
-// 'contents' and let the poller re-run just this stage.
+// 'third' and let the poller re-run just this step.
 //
 // Contract: verify_jwt=true; requireInternalCaller gates the service-role bearer.
 //
-// Local:  supabase functions serve enricher-cron-enrich-place-write
-// Deploy: supabase functions deploy enricher-cron-enrich-place-write
+// Local:  supabase functions serve enricher-cron-enrich-place-third
+// Deploy: supabase functions deploy enricher-cron-enrich-place-third
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { invokeInternalCaller } from "../_shared/internal.ts";
@@ -113,18 +113,18 @@ import {
   withReviewSource,
 } from "../_shared/reviews-state.ts";
 
-serveEnrichStage("write", async (admin, env, row) => {
+serveEnrichStage("third", async (admin, env, row) => {
   // What this run bought, per the trigger matrix (NULL = everything).
   const buys = row.subprocesses;
   const placeId = row.place_id;
   const { gathered, analysis } = row;
   if (!gathered) {
     // Research output missing (shouldn't happen) — send the row back to research.
-    await advanceResearchStage(admin, placeId, "gather");
+    await advanceResearchStage(admin, placeId, "first");
     return;
   }
   if (!analysis) {
-    await advanceResearchStage(admin, placeId, "photos");
+    await advanceResearchStage(admin, placeId, "second");
     return;
   }
   const OPENAI_KEY = Deno.env.get("OPENAI_KEY");
@@ -610,8 +610,8 @@ serveEnrichStage("write", async (admin, env, row) => {
       admin,
       placeId,
       openaiKey,
-      "enrich-write/on-update",
-      "write",
+      "enrich-third/on-update",
+      "third",
       "stored",
     ));
   }
@@ -636,7 +636,7 @@ serveEnrichStage("write", async (admin, env, row) => {
   } else if (assets.length > 0) {
     const storeRes = await invokeInternalCaller<{ queued?: number }>(
       env,
-      "enricher-cron-enrich-place-write",
+      "enricher-cron-enrich-place-third",
       "enricher-edgefunc-store-place-images",
       {
         place_id: placeId,

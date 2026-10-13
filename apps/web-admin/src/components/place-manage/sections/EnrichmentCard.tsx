@@ -59,7 +59,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
       setQueued(true);
       setEnrichState((prev) => ({
         content_state: "generating",
-        stage: "gather",
+        stage: "first",
         stage_state: "queued",
         error: null,
         last_enriched_at: prev?.last_enriched_at ?? null,
@@ -91,7 +91,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
               {enrichState?.last_enriched_at
                 ? formatAbsoluteUtc(enrichState.last_enriched_at)
                 : "never"}
-              . This queues the full Enricher process — gather, then write.
+              . This queues Enrich — first, then second, then third.
             </p>
           )}
 

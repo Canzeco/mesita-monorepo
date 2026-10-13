@@ -281,7 +281,7 @@ Deno.test("stampsEnrichedAt: the shipped wrong-number refetch never stamps; on_c
 
 Deno.test("contents stage: enriched_at is written once, only inside the stamp guard", async () => {
   const src = await Deno.readTextFile(
-    new URL("../enricher-cron-enrich-place-write/index.ts", import.meta.url),
+    new URL("../enricher-cron-enrich-place-third/index.ts", import.meta.url),
   );
   const writes = src.match(/\benriched_at\s*=(?!=)/g) ?? [];
   assertEquals(writes.length, 1, "exactly one enriched_at write in the contents stage");

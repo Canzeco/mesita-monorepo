@@ -1,8 +1,7 @@
-// Supabase Edge Function — enricher-cron-enrich-place-photos (internal / cron)
+// Supabase Edge Function — enricher-cron-enrich-place-second (internal / cron)
 //
-// Stage 2 of the Enricher pipeline (the Enricher is a PROCESS — a cron-driven
-// pipeline of three EFs — not an agent). The pg_cron poller claims
-// place_research rows at stage='analysis' and fires this EF with
+// Step 2 of Enrich. The pg_cron poller claims
+// place_research rows at stage='second' and fires this EF with
 // { place_id }. It acks 202 immediately and runs the IMAGE half in a
 // background task:
 //
@@ -13,12 +12,12 @@
 //
 // Input:  place_research.gathered.images (+ existing photos)
 // Output: place_research.analysis { finalPhotos, saved, imageAnalysisByUrl }
-//         → stage='contents'.
+//         → stage='third'.
 //
 // Contract: verify_jwt=true; requireInternalCaller gates the service-role bearer.
 //
-// Local:  supabase functions serve enricher-cron-enrich-place-photos
-// Deploy: supabase functions deploy enricher-cron-enrich-place-photos
+// Local:  supabase functions serve enricher-cron-enrich-place-second
+// Deploy: supabase functions deploy enricher-cron-enrich-place-second
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { COST, loadEnrichConfig, PHOTO_CEILING, VISION_MODEL, visionModelFor } from "../_shared/enrich-config.ts";
@@ -39,12 +38,12 @@ import {
 import { stepDone, reportCrenupSteps } from "../_shared/crenup-report.ts";
 import { loadEnrichFill, stepRuns } from "../_shared/enrich-fill.ts";
 
-serveEnrichStage("photos", async (admin, _env, row) => {
+serveEnrichStage("second", async (admin, _env, row) => {
   const placeId = row.place_id;
   const gathered = row.gathered;
   if (!gathered) {
     // Research output missing (shouldn't happen) — send the row back to research.
-    await advanceResearchStage(admin, placeId, "gather");
+    await advanceResearchStage(admin, placeId, "first");
     return;
   }
 
@@ -63,7 +62,7 @@ serveEnrichStage("photos", async (admin, _env, row) => {
     // The rule it broke is in crenup-report.ts: a step a run did not BUY writes
     // NOTHING, so the previous run's result stands. What this run bought is
     // already recorded in place_research.subprocesses, so nothing is lost.
-    await advanceResearchStage(admin, placeId, "write", {
+    await advanceResearchStage(admin, placeId, "third", {
       analysis: row.analysis ?? {
         finalPhotos: [],
         saved: [],
@@ -128,10 +127,10 @@ serveEnrichStage("photos", async (admin, _env, row) => {
     ),
   });
 
-  // The STAGE notification, named `analysis` rather than `images`: a beacon
+  // The STAGE notification, named `second` rather than `images`: a beacon
   // that borrows a piece key lands in the same column the ladder reads, which
   // is how MESITA-1209 happened. The piece itself is reported above.
-  await reportEnrichmentStep(admin, placeId, "S5", "photos", "completed",
+  await reportEnrichmentStep(admin, placeId, "S5", "second", "completed",
     `Image analysis complete — described ${described} candidate photo(s), selected ${funnel.finalPhotos.length} final photo(s) for the profile.`,
     { described, finalPhotos: funnel.finalPhotos.length, spentUsd: ledger.spentUsd });
 
@@ -142,7 +141,7 @@ serveEnrichStage("photos", async (admin, _env, row) => {
     diag: funnel.diag,
   };
   // Persist the running ledger so contents carries the per-run total forward.
-  await advanceResearchStage(admin, placeId, "write", {
+  await advanceResearchStage(admin, placeId, "third", {
     analysis,
     gathered: {
       ...gathered,
