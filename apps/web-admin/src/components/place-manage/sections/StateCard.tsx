@@ -1,22 +1,15 @@
 "use client";
 
-// The state boxes, split by the question each answers (Pato, 2026-08-30;
-// the six states, 2026-10-11):
+// Profile States — the six facts of a place (Pato, 2026-10-13, MESITA-2176):
 //
-//   General States      is this place real and reachable?
-//                         Created · Pulsing · Disabled, then Creation:
-//                         0. Seed · 1. Details · 7. Description · 8. Embedding.
-//                         Those four also run on Enrich (except Seed).
-//   Enrichment States   how far has the pipeline gotten? Requested ·
-//                         Enriching · Enriched + the nine functions — the
-//                         facts and the ladder live in CrenupStateCard, which
-//                         OWNS the enrichment read.
+//   Created · Pulsing · Requested · Enriching · Enriched · Disabled
+//
+// The ladder is the next box, Enrichment Steps. It is not a state.
 //
 // Partnership States (Partnered · Rewards · Mesita Pay · Mesita Credits) went
 // with the MVP First Stage cut (MESITA-2115): nothing commercial is live.
 //
-// This file renders General States; `StateRow` is exported so the Enrichment
-// States box prints its facts in the same shape.
+// This file renders Profile States. `StateRow` is the shared row shape.
 //
 // The state is Created; Seed is Crenup function 0. Wire key `seeded` /
 // `isPlaceSeeded` stays.
@@ -24,7 +17,7 @@
 //   Created    google_place_id present (identity spine)
 //   Pulsing    Google pulse — Google OPERATIONAL (not Crenup 1. Pulse)
 //   Disabled   places.state is not active — the operator's off switch
-//   Requested  guest request count, 0…n — not a Yes/No (CrenupStateCard)
+//   Requested  guest request count, 0…n — not a Yes/No
 //   Enriching  Enricher pipeline mid-flight (live run). Independent of Enriched.
 //   Enriched   an Enrich run completed — `enriched_at` set (MESITA-2154).
 //              A yes/no, not the 0–8 high-water; a Created place is no.
@@ -48,20 +41,26 @@
 // renamed the columns too, so `place.state` / `content_state` /
 // `business_state` below mirror the schema exactly — one word, one meaning.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CircleCheck, Loader2 } from "lucide-react";
 import {
+  getPlaceEnrichment,
   setPlaceActive,
   setPlaceListed,
   type AdminPlace,
+  type PlaceEnrichmentState,
 } from "../actions";
-import { listedFromState } from "../place-header-state";
+import { isEnriching, listedFromState } from "../place-header-state";
+import { isEnrichedPlace } from "@/lib/place-enriched";
 import { ConfirmDialog, SectionCard } from "@/components/admin-ui/manage";
 import { usePlaceContext } from "../PlaceContext";
 import { ErrorNote } from "@/components/ErrorNote";
-import { stateBoolChip } from "@/lib/state-vocabulary";
-import { FunctionLadder } from "./FunctionLadder";
-import { crenupStepRows, type EnrichFunctionState } from "./state-enrichment";
+import {
+  requestCountChip,
+  requestCountFromRow,
+  stateBoolChip,
+} from "@/lib/state-vocabulary";
+import { crenupMeterLine } from "./state-enrichment";
 
 // States box (Pato, 2026-08-25): bools. Crenup is the next box — not chips
 // under Enriched, and not a Create / Enrich split. Chips never repeat the row
@@ -82,17 +81,11 @@ import { crenupStepRows, type EnrichFunctionState } from "./state-enrichment";
 // Single Place table uses, so the box and the table can never disagree.
 
 export function StateCard({ place }: { place: AdminPlace }) {
-  // The three pipeline facts ride on the super-admin overview payload. An
+  // The pipeline facts ride on the super-admin overview payload. An
   // absent key means an older payload, not a "no": misreporting a real
   // place is worse than admitting the read failed.
   const seeded: boolean | "unknown" =
     typeof place.seeded === "boolean" ? place.seeded : "unknown";
-  const enrichFunctions = (place.enrich_functions ?? null) as
-    | Record<string, EnrichFunctionState>
-    | null;
-  const creationRows = crenupStepRows(enrichFunctions, seeded).filter((row) =>
-    row.flows.includes("create"),
-  );
   const listedFromRow = listedFromState(place.state);
   const listed: boolean | "unknown" =
     listedFromRow !== "unknown"
@@ -146,11 +139,60 @@ export function StateCard({ place }: { place: AdminPlace }) {
         ? `Temporary close${operatingSeen ? ` (seen ${operatingSeen})` : ""} — a refurb or a seasonal break. Marking inactive also disables.`
         : `Permanently closed${operatingSeen ? ` (seen ${operatingSeen})` : ""}. Inactive. Enabling it again is a separate write.`;
 
+  const [enrichState, setEnrichState] = useState<PlaceEnrichmentState | null>(
+    null,
+  );
+  useEffect(() => {
+    let alive = true;
+    getPlaceEnrichment(place.id).then((r) => {
+      if (!alive) return;
+      if (r.ok) setEnrichState(r.data.state);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [place.id]);
+
+  const contentState =
+    typeof place.content_state === "string" ? place.content_state : null;
+  const enriching = isEnriching(
+    enrichState ?? {
+      content_state: contentState,
+      stage: null,
+      stage_state: null,
+      error: null,
+      last_enriched_at: null,
+      updated_at: null,
+      serp_summary: null,
+    },
+  );
+  const enriched = isEnrichedPlace(place);
+  const meter = crenupMeterLine(place);
+  const enrichedAt =
+    typeof place.enriched_at === "string" && place.enriched_at.trim() !== ""
+      ? place.enriched_at.slice(0, 10)
+      : null;
+  const enrichedDetail =
+    (enriched
+      ? "An Enrich run completed" + (enrichedAt ? ` ${enrichedAt}.` : ".")
+      : "No Enrich run has completed — a Created profile is not enriched.") +
+    (meter ? ` ${meter}` : "");
+  const requestCount = requestCountFromRow(place.request_count);
+  const requestedDetail =
+    requestCount === "unknown"
+      ? "Couldn't read the request count."
+      : requestCount === 0
+        ? "No guest has requested this profile."
+        : `${requestCount} guest request${requestCount === 1 ? "" : "s"}.`;
+  const enrichingDetail = enriching
+    ? "The Enricher pipeline is mid-flight — research, analysis, or contents is running."
+    : "No Enricher run is in flight.";
+
   return (
     <SectionCard
       icon={<CircleCheck className="h-4 w-4" />}
       tint="emerald"
-      title="General States"
+      title="Profile States"
     >
       <div className="mt-5 flex flex-col">
         <StateRow
@@ -167,6 +209,24 @@ export function StateCard({ place }: { place: AdminPlace }) {
           action={<ActiveToggle place={place} operating={operating} />}
         />
         <StateRow
+          name="Requested"
+          on={requestCount !== "unknown" && requestCount > 0}
+          chip={requestCountChip(place.request_count)}
+          detail={requestedDetail}
+        />
+        <StateRow
+          name="Enriching"
+          on={enriching}
+          chip={stateBoolChip(enriching)}
+          detail={enrichingDetail}
+        />
+        <StateRow
+          name="Enriched"
+          on={enriched === true}
+          chip={stateBoolChip(enriched)}
+          detail={enrichedDetail}
+        />
+        <StateRow
           name="Disabled"
           on={disabled === true}
           chip={stateBoolChip(disabled)}
@@ -174,7 +234,6 @@ export function StateCard({ place }: { place: AdminPlace }) {
           action={<ListedToggle place={place} listed={listed} />}
         />
       </div>
-      <FunctionLadder title="Creation" rows={creationRows} />
     </SectionCard>
   );
 }

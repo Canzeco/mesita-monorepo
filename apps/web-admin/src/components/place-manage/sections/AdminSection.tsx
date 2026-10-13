@@ -11,18 +11,13 @@ import { formatAbsoluteUtc } from "@/lib/format";
 
 // Admin — the Mesita-internal tab (Pato, 2026-08-04).
 //
-// Admin — states are two boxes (Pato, 2026-08-30; Partnership States went
-// with the MVP First Stage cut, MESITA-2115), each answering one question:
-//   General States      is this place real and reachable? Created ·
-//                         Pulsing · Disabled.
-//                         Owns both operator writes (Pulsing, Disabled).
-//   Enrichment States   how far did the pipeline get? Requested `0…n` ·
-//                         Enriching (live run) · Enriched (last completed)
-//                         over the nine functions 0. Seed … 8. Embedding.
-//                         Seed · Details · Description · Embedding are also
-//                         Creation, printed again under General States.
-//                         OWNS the enrichment read — StateCard no longer
-//                         fetches it.
+// Admin — two boxes (Pato, 2026-10-13, MESITA-2176; Partnership States went
+// with the MVP First Stage cut, MESITA-2115):
+//   Profile States      Created · Pulsing · Requested · Enriching ·
+//                         Enriched · Disabled. Owns both operator writes
+//                         (Pulsing, Disabled) and the enrichment read.
+//   Enrichment Steps    1. Details Enriched … 8. Embedding Enriched.
+//                         Seed is not a step.
 // Then the rest:
 //   Enrichment  queues the full Enricher process
 //   SERP / Embedding / Metadata (UID & audit)
