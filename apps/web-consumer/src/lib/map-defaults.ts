@@ -77,7 +77,7 @@ export const MAP_MINIMAL_STYLES = [
 export const MAP_PLACE_PIN_RADIUS = 10;
 export const MAP_PIN_HIT_SIZE = 44;
 export const MAP_PIN_CURSOR = "default";
-export const MAP_PIN_STROKE_WEIGHT = 1.75;
+const MAP_PIN_STROKE_WEIGHT = 1.75;
 
 /** SVG for the Search pin: near-invisible full pad + the coloured disk. */
 export function mapPinSvg(fillColor: string, strokeColor: string): string {
