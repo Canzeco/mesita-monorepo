@@ -1,6 +1,7 @@
 import {
   CRENUP_STEPS,
   crenupStepLabel,
+  type CrenupFlow,
   type CrenupStepKey,
 } from "@/lib/state-vocabulary";
 
@@ -21,6 +22,8 @@ export type CrenupStepRow = {
    *  matrix cell, which can show why, and not to the single-place box, which
    *  only asks whether the pipeline reached this rung. */
   failed: boolean;
+  /** Which run shapes call this function. Create is 0 · 1 · 7 · 8. */
+  flows: readonly CrenupFlow[];
 };
 
 function called(state: EnrichFunctionState["state"] | undefined): boolean {
@@ -64,6 +67,7 @@ export function crenupStepRows(
         label: crenupStepLabel(def.n, def.label),
         on: seeded === "unknown" ? ("unknown" as const) : seeded === true,
         failed: false,
+        flows: def.flows,
       };
     }
     const state = functionState(functions, def.key);
@@ -73,14 +77,16 @@ export function crenupStepRows(
       label: crenupStepLabel(def.n, def.label),
       on: noMap ? ("unknown" as const) : called(state),
       failed: state === "failed",
+      flows: def.flows,
     };
   });
 }
 
 /**
- * "Crenup 1 of 8, stopped at Serp (missing)." — the completeness meter off
- * the server's high-water and its stop reason. Null when the payload carries
+ * "1 of 8, stopped at Serp (missing)." — the completeness meter off the
+ * server's high-water and its stop reason. Null when the payload carries
  * no number (an older payload), so the line is left out rather than guessed.
+ * The banned umbrella word never reaches the screen.
  */
 export function crenupMeterLine(place: {
   enrich_crenup?: number;
@@ -94,7 +100,7 @@ export function crenupMeterLine(place: {
     : null;
   if (n === null || total === null || total === 0) return null;
   const blocked = place.enrich_crenup_blocked ?? null;
-  if (!blocked) return `Crenup ${n} of ${total}.`;
+  if (!blocked) return `${n} of ${total}.`;
   const label = place.enrich_crenup_labels?.[blocked.index] ?? blocked.key;
-  return `Crenup ${n} of ${total}, stopped at ${label} (${blocked.state}).`;
+  return `${n} of ${total}, stopped at ${label} (${blocked.state}).`;
 }

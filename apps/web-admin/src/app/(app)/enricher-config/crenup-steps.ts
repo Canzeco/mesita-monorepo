@@ -19,9 +19,13 @@
 // so the split bought a rung and no information), and the menu is operator
 // input the Enricher never derived.
 
-import { CRENUP_STEPS } from "@/lib/state-vocabulary";
+import {
+  CRENUP_STEPS,
+  crenupFlowTag,
+  type CrenupFlow,
+} from "@/lib/state-vocabulary";
 
-export type CrenupFlow = "create" | "enrich";
+export type { CrenupFlow };
 
 export type CrenupChip = {
   href: string;
@@ -40,31 +44,14 @@ export type CrenupStepSpec = {
   flows: readonly CrenupFlow[];
 };
 
-/** Which flows run a given step. The ladder itself lives in shared/. */
-const FLOWS_BY_KEY: Readonly<Record<string, readonly CrenupFlow[]>> = {
-  seed: ["create"],
-  details: ["create", "enrich"],
-  serp: ["enrich"],
-  links: ["enrich"],
-  social: ["enrich"],
-  reviews: ["enrich"],
-  images: ["enrich"],
-  description: ["create", "enrich"],
-  embedding: ["create", "enrich"],
-};
-
 export const CRENUP_STEP_SPECS: readonly CrenupStepSpec[] = CRENUP_STEPS.map(
-  (step) => {
-    const flows = FLOWS_BY_KEY[step.key];
-    if (!flows) throw new Error(`Crenup step with no flows: ${step.key}`);
-    return {
-      id: `f-${step.key}`,
-      key: step.key,
-      name: step.label,
-      number: step.n,
-      flows,
-    };
-  },
+  (step) => ({
+    id: `f-${step.key}`,
+    key: step.key,
+    name: step.label,
+    number: step.n,
+    flows: step.flows,
+  }),
 );
 
 function rowByKey(key: string): CrenupStepSpec {
@@ -91,9 +78,7 @@ export function chipsFor(flow: CrenupFlow, base = ""): CrenupChip[] {
 }
 
 export function flowTag(flows: readonly CrenupFlow[]): string {
-  if (flows.length === 2) return "Create + Enrich";
-  if (flows[0] === "create") return "Create";
-  return "Enrich";
+  return crenupFlowTag(flows);
 }
 
 export function flowTagFor(key: string): string {

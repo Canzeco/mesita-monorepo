@@ -3,6 +3,8 @@ import {
   BAD_WHEN_TRUE,
   GENERAL_STATE_FACTS,
   CRENUP_STEPS,
+  creationFlowMark,
+  crenupFlowTag,
   crenupStepLabel,
   STATE_FACT_FALSE_TONE,
   requestCountChip,
@@ -38,6 +40,15 @@ describe("state vocabulary", () => {
     expect(CRENUP_STEPS.map((f) => crenupStepLabel(f.n, f.label))).toEqual(
       CRENUP_STEPS.map((f) => `${f.n}. ${f.label}`),
     );
+    expect(
+      CRENUP_STEPS.filter((f) => creationFlowMark(f.flows) !== null).map((f) => f.label),
+    ).toEqual(["Seed", "Details", "Description", "Embedding"]);
+    expect(crenupFlowTag(["create"])).toBe("Create");
+    expect(crenupFlowTag(["create", "enrich"])).toBe("Create + Enrich");
+    expect(crenupFlowTag(["enrich"])).toBe("Enrich");
+    expect(creationFlowMark(["create"])).toBe("Create");
+    expect(creationFlowMark(["create", "enrich"])).toBe("Create + Enrich");
+    expect(creationFlowMark(["enrich"])).toBeNull();
   });
 
   it("every general-state false reads rose — no neutral-grey exception (MESITA-1684, decision: Pato)", () => {
