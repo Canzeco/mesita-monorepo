@@ -104,6 +104,41 @@ function rowKey(googleId: string | null | undefined, mesitaId: string | null | u
   return mesitaId ? `mesita:${mesitaId}` : null;
 }
 
+/** The empty search: every catalogue place, in the order `listAllPlaces`
+ *  already sorted (name). Ranks stay empty — those sources were not asked.
+ *  `total` is the server's count; a short list says it hit the ceiling. */
+export function catalogueList(places: readonly PlaceHit[], total: number): FindResult {
+  const notes: FindNote[] = [];
+  if (places.length > 0) {
+    notes.push({ tone: "muted", text: "Mesita only. Google was not asked." });
+  }
+  if (total > places.length) {
+    notes.push({
+      tone: "muted",
+      text: `Showing ${places.length.toLocaleString()} of ${total.toLocaleString()}. The rest are past the catalogue ceiling.`,
+    });
+  }
+  return {
+    rows: places.map((hit) => {
+      const googleId = hit.google_place_id?.trim() || null;
+      return {
+        key: `mesita:${hit.id}`,
+        googleId,
+        mesitaId: hit.id,
+        held: true,
+        name: hit.name.trim() || "Unnamed place",
+        address: hit.address ?? "",
+        rating: hit.google_stars_overall,
+        reviews: hit.google_review_count,
+        placeHit: hit,
+        ranks: { catalogue: null, name: null, autocomplete: null, text: null },
+      };
+    }),
+    failed: [],
+    notes,
+  };
+}
+
 export function mergeFindResults(input: FindInputs): FindResult {
   // Every key a draft answers to, and each draft once in first-seen order.
   const byKey = new Map<string, Draft>();
