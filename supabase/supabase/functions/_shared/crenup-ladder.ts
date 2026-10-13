@@ -145,7 +145,7 @@ const CRENUP_LABELS: Record<CrenupStep, string> = {
   reviews: "Reviews",
   images: "Images",
   description: "Description",
-  embedding: "Embedding",
+  embedding: "Vectors",
 };
 
 /**

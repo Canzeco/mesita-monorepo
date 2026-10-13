@@ -12,7 +12,7 @@
 //                 (MESITA-2106), then Owned · Partnered · Rewards · Mesita
 //                 Pay · Mesita Credits (MESITA-2115). Nobody holds, proves,
 //                 pays or redeems yet.
-//   FUNCTIONS (9) one ladder under Enrichment: 0. Seed … 8. Embedding, each
+//   FUNCTIONS (9) one ladder under Enrichment: 0. Seed … 8. Vectors, each
 //                 a bool (called or not). Create runs 0, 1, 7, 8, so those
 //                 four also print under General States (MESITA-2174). Enrich
 //                 runs 1–8. A creation row wears Create or Create + Enrich;
@@ -106,12 +106,12 @@ export const CRENUP_STEPS = [
   { key: "reviews", label: "Reviews", n: 5, flows: ["enrich"] },
   { key: "images", label: "Images", n: 6, flows: ["enrich"] },
   { key: "description", label: "Description", n: 7, flows: ["create", "enrich"] },
-  { key: "embedding", label: "Embedding", n: 8, flows: ["create", "enrich"] },
+  { key: "embedding", label: "Vectors", n: 8, flows: ["create", "enrich"] },
 ] as const;
 
 export type CrenupStepKey = (typeof CRENUP_STEPS)[number]["key"];
 
-/** Operator label: `0. Seed` … `8. Embedding`. */
+/** Operator label: `0. Seed` … `8. Vectors`. The key stays `embedding`. */
 export function crenupStepLabel(n: number, label: string): string {
   return `${n}. ${label}`;
 }

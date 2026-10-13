@@ -218,7 +218,7 @@ Deno.test("crenup: the index is the position, and the labels ride in order", () 
   // labels[8] is Embedding. A client renders labels[level] with no
   // off-by-one.
   assertEquals(CRENUP_FLOOR_LABEL, "Seed");
-  assertEquals(CRENUP_LABELS_IN_ORDER[CRENUP_TOTAL], "Embedding");
+  assertEquals(CRENUP_LABELS_IN_ORDER[CRENUP_TOTAL], "Vectors");
   assertEquals([...CRENUP_LABELS_IN_ORDER], [
     "Seed",
     "Details",
@@ -228,7 +228,7 @@ Deno.test("crenup: the index is the position, and the labels ride in order", () 
     "Reviews",
     "Images",
     "Description",
-    "Embedding",
+    "Vectors",
   ]);
   assertEquals(CRENUP_LABELS_IN_ORDER.every((l) => l.trim() !== ""), true);
 });

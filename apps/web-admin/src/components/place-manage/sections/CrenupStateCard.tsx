@@ -27,7 +27,7 @@ import {
  * Enrichment States — the whole pipeline picture in one box (Pato, 2026-08-30;
  * the six states, 2026-10-11): the three facts (Requested, Enriching,
  * Enriched) over the nine functions,
- * 0. Seed … 8. Embedding (CRENUP_STEPS), each a bool (called / not). Create
+ * 0. Seed … 8. Vectors (CRENUP_STEPS), each a bool (called / not). Create
  * runs 0, 1, 7, 8 — those four also print under General States — and Enrich
  * runs 1–8 of that one ladder, never a second one. A creation function wears
  * Create or Create + Enrich. Enriched is `enriched_at` set (MESITA-2154);

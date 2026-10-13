@@ -5,7 +5,7 @@
 //
 //   General States      is this place real and reachable?
 //                         Created · Pulsing · Disabled, then Creation:
-//                         0. Seed · 1. Details · 7. Description · 8. Embedding.
+//                         0. Seed · 1. Details · 7. Description · 8. Vectors.
 //                         Those four also run on Enrich (except Seed).
 //   Enrichment States   how far has the pipeline gotten? Requested ·
 //                         Enriching · Enriched + the nine functions — the

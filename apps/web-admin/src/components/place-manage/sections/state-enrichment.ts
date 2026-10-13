@@ -43,7 +43,7 @@ function functionState(
 }
 
 /**
- * The nine Crenup functions the Crenup box mentions — 0. Seed … 8. Embedding
+ * The nine Crenup functions the Crenup box mentions — 0. Seed … 8. Vectors
  * — each called or not. Same keys as Crenup, never a second ladder.
  *
  * THREE ANSWERS, NOT TWO (MESITA-1608). A missing map and a map that says a

@@ -2,7 +2,7 @@
 //
 // ONE LADDER, TWO FLOWS (Main §8.4 v4, MESITA-2027):
 //   0 Seed → 1 Details → 2 Serp → 3 Links → 4 Social
-//     → 5 Reviews → 6 Images → 7 Description → 8 Embedding
+//     → 5 Reviews → 6 Images → 7 Description → 8 Vectors
 //   CREATE runs 0, 1, 7, 8.   ENRICH runs 1–8.
 //
 // THE NUMBER IS THE LADDER'S, NOT THE FLOW'S. This file used to number each

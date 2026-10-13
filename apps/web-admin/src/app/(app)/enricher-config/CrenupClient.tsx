@@ -211,7 +211,7 @@ export function CrenupClient({
               steps={chipsFor("create", ENRICHMENT_PARENT.href)}
               estimate={
                 <FlowEstimate
-                  caption="Details + Description + Embedding. One place."
+                  caption="Details + Description + Vectors. One place."
                   estimate={createCost}
                 />
               }
@@ -499,7 +499,7 @@ export function CrenupClient({
                 id="f-embedding"
                 index="8 · $"
                 flows={flowTagFor("embedding")}
-                name="Embedding"
+                name="Vectors"
                 blurb="Mesita Name Embedding · Semantic Summary Embedding. Two vectors, one function. Closes Enrich at 8."
                 knobs="locked"
               >

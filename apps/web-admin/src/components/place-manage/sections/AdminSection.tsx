@@ -18,14 +18,14 @@ import { formatAbsoluteUtc } from "@/lib/format";
 //                         Owns both operator writes (Pulsing, Disabled).
 //   Enrichment States   how far did the pipeline get? Requested `0…n` ·
 //                         Enriching (live run) · Enriched (last completed)
-//                         over the nine functions 0. Seed … 8. Embedding.
-//                         Seed · Details · Description · Embedding are also
+//                         over the nine functions 0. Seed … 8. Vectors.
+//                         Seed · Details · Description · Vectors are also
 //                         Creation, printed again under General States.
 //                         OWNS the enrichment read — StateCard no longer
 //                         fetches it.
 // Then the rest:
 //   Enrichment  queues the full Enricher process
-//   SERP / Embedding / Metadata (UID & audit)
+//   SERP / Vectors / Metadata (UID & audit)
 // The Verification box (ownership proof + queue decide) went with
 // MESITA-2106: the MVP has no business app, so nobody proves ownership.
 export function AdminSection({ place }: { place: AdminPlace }) {
@@ -179,7 +179,7 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="font-display text-base font-semibold tracking-tight">
-            Embedding
+            Vectors
           </h2>
           <p className="text-muted-foreground mt-0.5 text-xs">
             Two vectors — Mesita Name, and the Semantic Summary.

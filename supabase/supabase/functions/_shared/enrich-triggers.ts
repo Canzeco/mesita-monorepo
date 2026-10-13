@@ -169,7 +169,7 @@ export const SUBPROCESS_META: Record<
     blurb: "Mirror the winning photos into the place-images bucket.",
   },
   embedding: {
-    label: "Embedding",
+    label: "Vectors",
     functions: "8",
     cost: "free",
     blurb: "Re-vectorize the place so search and recall see the new text.",
