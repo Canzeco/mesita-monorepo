@@ -1,20 +1,17 @@
 "use client";
 
-// Single Place › Find › the one results table (MESITA-2124). A row per
-// place any source returned; MESITA (Catalogue · Name Search) | GOOGLE
-// (Autocomplete · Text Search) columns say where each source ranked it; the
-// action sits at the row end. Drawn once every source has settled, so no row
-// ever moves under the cursor. Skeleton and classes are Multiple Places ›
-// Mesita Search's table (MesitaSearchResults.tsx).
+// Single Place › Find › the one results table (MESITA-2124, MESITA-2181).
+// A row per place. Columns are the states, in three groups — Profile States,
+// Enrichment Steps, Reviews — then, on a typed search, where each source
+// ranked it. The action sits at the row end. Drawn once every source has
+// settled, so no row ever moves under the cursor.
 //
-// Under 640px the four source columns fold into one line beneath the
-// address, so the name, its sources and its action all fit without a
-// sideways scroll.
+// The Place column stays pinned while the state columns scroll. Under 640px
+// the four source columns fold into one line beneath the address.
 
 import { useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, ChevronRight, ExternalLink, Loader2, Plus } from "lucide-react";
-import type { PlaceHit } from "@/app/(app)/manage-multiple/actions";
 import { StatePill } from "@/app/(app)/manage-multiple/PlaceFacts";
 import { factOn } from "@/app/(app)/manage-multiple/mesita-search-facts";
 import { StateIcon, type BatchRowState } from "@/app/(app)/manage-multiple/StateIcon";
@@ -23,18 +20,20 @@ import {
   BAD_WHEN_TRUE,
   GENERAL_STATE_FACTS,
   STATE_FACT_FALSE_TONE,
+  enrichmentStepLabel,
 } from "@/lib/state-vocabulary";
 import {
   FOCUS_RING_CLASS,
   PILL_BUTTON_CLASS,
-  STICKY_COL_CELL,
-  STICKY_COL_HEAD,
   TOUCH_TARGET_CLASS,
 } from "@/lib/ui-classes";
 import {
+  ENRICHMENT_COLUMNS,
   FIND_FIRST_ROWS,
   FIND_SOURCES,
-  ratingLabel,
+  REVIEW_COLUMNS,
+  enrichmentMark,
+  reviewNumbers,
   type FindResult,
   type FindRow,
 } from "./find-results";
@@ -46,8 +45,19 @@ const HEAD_ROW =
   "text-muted-foreground bg-muted/30 text-left type-label font-semibold tracking-[0.12em] uppercase";
 const ROW_DIVIDERS =
   "[&>td]:border-border/60 [&>td]:border-t [&>th]:border-border/60 [&>th]:border-t";
-/** The thin line between the MESITA and GOOGLE groups. */
+/** The thin line between column groups. */
 const GROUP_EDGE = "border-border border-l";
+/** Place stays put. This table is wider than the pane at every breakpoint,
+ *  so the shared sticky classes (which let go at `sm`) would unpin the name. */
+const PIN_HEAD =
+  "sticky left-0 z-20 bg-[color-mix(in_oklab,var(--color-muted)_30%,var(--color-card))]";
+const PIN_CELL = "sticky left-0 z-10 bg-card";
+
+const STATE_GROUPS = [
+  { label: "Profile States", span: GENERAL_STATE_FACTS.length, edge: false },
+  { label: "Enrichment Steps", span: ENRICHMENT_COLUMNS.length, edge: true },
+  { label: "Reviews", span: REVIEW_COLUMNS.length, edge: true },
+] as const;
 
 export const rowNameId = (i: number) => `find-row-name-${i}`;
 
@@ -78,6 +88,12 @@ export function FindResults({
   const more = rows.length - shown.length;
   const failed = new Set(result.failed);
   const ranks = variant === "search";
+  const colSpan =
+    2 +
+    GENERAL_STATE_FACTS.length +
+    ENRICHMENT_COLUMNS.length +
+    REVIEW_COLUMNS.length +
+    (ranks ? FIND_SOURCES.length : 0);
 
   if (rows.length === 0) {
     const allFailed = ranks && failed.size === FIND_SOURCES.length;
@@ -104,32 +120,40 @@ export function FindResults({
     <>
       <div className="border-border bg-card -mx-5 mt-5 overflow-hidden border-y sm:mx-0 sm:rounded-2xl sm:border">
         <div className="overflow-x-auto">
-          <table
-            className={
-              "w-full border-separate border-spacing-0 text-sm" +
-              (ranks ? " sm:min-w-[720px]" : "")
-            }
-          >
+          <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
             <caption className="sr-only">
               {ranks
-                ? `Places matching “${query}”, with the rank each source gave them`
-                : "Every place on Mesita"}
+                ? `Places matching “${query}”, with profile, enrichment and review states, and the rank each source gave them`
+                : "Every place on Mesita, with profile, enrichment and review states"}
             </caption>
             <thead>
               <tr className={HEAD_ROW}>
                 <th
-                  rowSpan={ranks ? 2 : 1}
+                  rowSpan={2}
                   scope="col"
-                  className={`px-4 py-3 align-bottom font-semibold ${STICKY_COL_HEAD}`}
+                  className={`px-4 py-3 align-bottom font-semibold ${PIN_HEAD}`}
                 >
                   Place
                 </th>
+                {STATE_GROUPS.map((g) => (
+                  <th
+                    key={g.label}
+                    colSpan={g.span}
+                    scope="colgroup"
+                    className={
+                      "px-3 pt-3 pb-1 text-center font-semibold whitespace-nowrap " +
+                      (g.edge ? GROUP_EDGE : "")
+                    }
+                  >
+                    {g.label}
+                  </th>
+                ))}
                 {ranks ? (
                   <>
                     <th
                       colSpan={2}
                       scope="colgroup"
-                      className="hidden px-3 pt-3 pb-1 text-center font-semibold sm:table-cell"
+                      className={`hidden px-3 pt-3 pb-1 text-center font-semibold sm:table-cell ${GROUP_EDGE}`}
                     >
                       Mesita
                     </th>
@@ -142,39 +166,73 @@ export function FindResults({
                     </th>
                   </>
                 ) : null}
-                <th rowSpan={ranks ? 2 : 1} scope="col" className="px-4 py-3">
+                <th rowSpan={2} scope="col" className="px-4 py-3">
                   <span className="sr-only">Action</span>
                 </th>
               </tr>
-              {ranks ? (
-                <tr className={HEAD_ROW}>
-                  {FIND_SOURCES.map((s) => (
-                    <th
-                      key={s.key}
-                      scope="col"
-                      className={
-                        "hidden px-3 pb-3 text-center font-semibold whitespace-nowrap sm:table-cell " +
-                        (s.key === "autocomplete" ? GROUP_EDGE : "")
-                      }
-                    >
-                      {s.label}
-                      {failed.has(s.key) ? (
-                        <span title={`${s.long} failed`} className="text-destructive ml-1 inline-flex align-[-2px]">
-                          <AlertTriangle className="h-3 w-3" aria-hidden="true" />
-                          <span className="sr-only">{s.long} failed</span>
-                        </span>
-                      ) : null}
-                    </th>
-                  ))}
-                </tr>
-              ) : null}
+              <tr className={HEAD_ROW}>
+                {GENERAL_STATE_FACTS.map((f) => (
+                  <th
+                    key={f.key}
+                    scope="col"
+                    className="px-3 pb-3 text-center font-semibold whitespace-nowrap"
+                  >
+                    {f.label}
+                  </th>
+                ))}
+                {ENRICHMENT_COLUMNS.map((step, i) => (
+                  <th
+                    key={step.key}
+                    scope="col"
+                    title={enrichmentStepLabel(step.n, step.label)}
+                    className={
+                      "px-3 pb-3 text-center font-semibold whitespace-nowrap " +
+                      (i === 0 ? GROUP_EDGE : "")
+                    }
+                  >
+                    {step.label}
+                  </th>
+                ))}
+                {REVIEW_COLUMNS.map((col, i) => (
+                  <th
+                    key={col.key}
+                    scope="col"
+                    className={
+                      "px-3 pb-3 text-center font-semibold whitespace-nowrap " +
+                      (i === 0 ? GROUP_EDGE : "")
+                    }
+                  >
+                    {col.label}
+                  </th>
+                ))}
+                {ranks
+                  ? FIND_SOURCES.map((s) => (
+                      <th
+                        key={s.key}
+                        scope="col"
+                        className={
+                          "hidden px-3 pb-3 text-center font-semibold whitespace-nowrap sm:table-cell " +
+                          (s.key === "catalogue" || s.key === "autocomplete" ? GROUP_EDGE : "")
+                        }
+                      >
+                        {s.label}
+                        {failed.has(s.key) ? (
+                          <span title={`${s.long} failed`} className="text-destructive ml-1 inline-flex align-[-2px]">
+                            <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+                            <span className="sr-only">{s.long} failed</span>
+                          </span>
+                        ) : null}
+                      </th>
+                    ))
+                  : null}
+              </tr>
             </thead>
             <tbody>
               {shown.map((row, i) => (
                 <tr key={row.key} className={ROW_DIVIDERS}>
                   <th
                     scope="row"
-                    className={`max-w-[60vw] px-4 py-3 text-left align-top font-normal sm:max-w-[320px] ${STICKY_COL_CELL}`}
+                    className={`max-w-[60vw] px-4 py-3 text-left align-top font-normal sm:max-w-[280px] ${PIN_CELL}`}
                   >
                     <NameCell row={row} id={rowNameId(i)} disabled={disabled} onOpen={onOpen} />
                     {row.address ? (
@@ -182,21 +240,18 @@ export function FindResults({
                         {row.address}
                       </span>
                     ) : null}
-                    {ratingLabel(row) ? (
-                      <span className="text-muted-foreground block type-label tabular-nums">
-                        {ratingLabel(row)}
-                      </span>
-                    ) : null}
-                    {ranks && row.placeHit ? <PlaceStateFacts hit={row.placeHit} /> : null}
                     {ranks ? <PhoneSources row={row} /> : null}
                   </th>
+                  <ProfileCells row={row} />
+                  <EnrichmentCells row={row} />
+                  <ReviewCells row={row} />
                   {ranks
                     ? FIND_SOURCES.map((s) => (
                         <td
                           key={s.key}
                           className={
                             "hidden px-3 py-3 text-center align-top sm:table-cell " +
-                            (s.key === "autocomplete" ? GROUP_EDGE : "")
+                            (s.key === "catalogue" || s.key === "autocomplete" ? GROUP_EDGE : "")
                           }
                         >
                           <SourceCell
@@ -220,7 +275,7 @@ export function FindResults({
               ))}
               {more > 0 ? (
                 <tr className={ROW_DIVIDERS}>
-                  <td colSpan={ranks ? 6 : 2} className="px-4 py-2">
+                  <td colSpan={colSpan} className="px-4 py-2">
                     <button
                       type="button"
                       onClick={() => {
@@ -338,16 +393,16 @@ function SourceCell({
   );
 }
 
-/** The six place states when the catalogue row is known — same facts as
- *  Mesita Search, laid out for the Place column. */
-function PlaceStateFacts({ hit }: { hit: PlaceHit }) {
+const CELL = "px-3 py-3 text-center align-top whitespace-nowrap";
+
+function ProfileCells({ row }: { row: FindRow }) {
+  const hit = row.placeHit;
   return (
-    <dl className="mt-1.5 flex flex-wrap gap-x-2.5 gap-y-1">
+    <>
       {GENERAL_STATE_FACTS.map((f) => (
-        <div key={f.key} className="flex items-center gap-1">
-          <dt className="text-muted-foreground type-label">{f.label}</dt>
-          <dd className="m-0">
-            {f.key === "requested" ? (
+        <td key={f.key} className={CELL}>
+          {hit ? (
+            f.key === "requested" ? (
               <span
                 className={
                   "type-label font-semibold tabular-nums " +
@@ -355,6 +410,10 @@ function PlaceStateFacts({ hit }: { hit: PlaceHit }) {
                 }
               >
                 {hit.request_count}
+                <span className="sr-only">
+                  {" "}
+                  request{hit.request_count === 1 ? "" : "s"}
+                </span>
               </span>
             ) : (
               <StatePill
@@ -362,11 +421,88 @@ function PlaceStateFacts({ hit }: { hit: PlaceHit }) {
                 falseTone={STATE_FACT_FALSE_TONE[f.key]}
                 badWhenTrue={BAD_WHEN_TRUE.has(f.key)}
               />
-            )}
-          </dd>
-        </div>
+            )
+          ) : (
+            <Miss label={f.label} />
+          )}
+        </td>
       ))}
-    </dl>
+    </>
+  );
+}
+
+function EnrichmentCells({ row }: { row: FindRow }) {
+  const hit = row.placeHit;
+  return (
+    <>
+      {ENRICHMENT_COLUMNS.map((step, i) => {
+        const mark = hit ? enrichmentMark(hit, step.key) : null;
+        return (
+          <td key={step.key} className={CELL + (i === 0 ? ` ${GROUP_EDGE}` : "")}>
+            {mark == null ? (
+              <Miss label={step.label} />
+            ) : mark === "unknown" ? (
+              <StatePill on="unknown" />
+            ) : mark === "fail" ? (
+              <span
+                title={`${step.label} ran and failed`}
+                className="inline-flex items-center justify-center rounded-full bg-rose-500/10 px-2 py-0.5 type-label font-semibold text-rose-700"
+              >
+                fail
+                <span className="sr-only">, ran and failed</span>
+              </span>
+            ) : (
+              <StatePill on={mark === "yes"} />
+            )}
+          </td>
+        );
+      })}
+    </>
+  );
+}
+
+function ReviewCells({ row }: { row: FindRow }) {
+  const { stars, count } = reviewNumbers(row);
+  return (
+    <>
+      <td className={`${CELL} ${GROUP_EDGE}`}>
+        <NumberCell value={stars} kind="stars" />
+      </td>
+      <td className={CELL}>
+        <NumberCell value={count} kind="count" />
+      </td>
+    </>
+  );
+}
+
+function NumberCell({ value, kind }: { value: number | null; kind: "stars" | "count" }) {
+  if (value == null) {
+    return (
+      <>
+        <span aria-hidden="true" className="text-muted-foreground">
+          —
+        </span>
+        <span className="sr-only">{kind === "stars" ? "No star rating" : "No review count"}</span>
+      </>
+    );
+  }
+  const text = kind === "stars" ? value.toFixed(1) : value.toLocaleString();
+  return (
+    <span className="text-foreground type-label font-semibold tabular-nums">
+      {text}
+      <span className="sr-only">{kind === "stars" ? " stars" : " reviews"}</span>
+    </span>
+  );
+}
+
+function Miss({ label }: { label: string }) {
+  return (
+    <>
+      <span aria-hidden="true" className="text-muted-foreground">
+        —
+      </span>
+      <span className="sr-only">{label}: not on Mesita</span>
+    </>
   );
 }
 

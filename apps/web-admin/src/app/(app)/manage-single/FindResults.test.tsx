@@ -99,7 +99,7 @@ function render(
 const OK: FindResult = { rows: [HELD, NEW], failed: [], notes: [] };
 
 describe("Find › one table", () => {
-  it("draws Place and On Mesita only for the catalogue list — no rank columns", () => {
+  it("draws state columns for the catalogue list, and no rank columns", () => {
     const html = render(
       { rows: [HELD], failed: [], notes: [{ tone: "muted", text: "Mesita only. Google was not asked." }] },
       { query: "", variant: "catalogue" },
@@ -107,7 +107,12 @@ describe("Find › one table", () => {
     expect(html).not.toContain(">Catalogue<");
     expect(html).not.toContain(">Name Search<");
     expect(html).not.toContain("Catalogue #1");
-    expect(html).toContain("Every place on Mesita");
+    expect(html).toContain("Every place on Mesita, with profile, enrichment and review states");
+    expect(html).toContain("Profile States");
+    expect(html).toContain("Enrichment Steps");
+    expect(html).toContain(">Reviews<");
+    expect(html).toContain(">Created<");
+    expect(html).toContain(">Stars<");
     expect(html).toContain("On Mesita");
     expect(html).toContain("Mesita only. Google was not asked.");
   });
@@ -152,22 +157,64 @@ describe("Find › one table", () => {
     expect(html).toContain('target="_blank"');
   });
 
-  it("lists the six place states under the address when the catalogue row is known", () => {
+  it("draws profile, enrichment and review columns, and catalogue numbers win", () => {
     const html = render({
-      rows: [row({ placeHit: placeHit({ request_count: 2, enriched: true }) })],
+      rows: [
+        row({
+          placeHit: placeHit({
+            request_count: 2,
+            enriched: true,
+            google_stars_overall: 3.8,
+            google_review_count: 474,
+            enrich_functions: {
+              details: { state: "completed", at: null, detail: null },
+              serp: { state: "failed", at: null, detail: null },
+              links: { state: "pending", at: null, detail: null },
+            },
+          }),
+          rating: 4.7,
+          reviews: 266,
+        }),
+      ],
       failed: [],
       notes: [],
     });
-    for (const label of ["Created", "Pulsing", "Disabled", "Requested", "Enriching", "Enriched"]) {
-      expect(html).toContain(label);
+    for (const label of [
+      "Profile States",
+      "Enrichment Steps",
+      "Created",
+      "Pulsing",
+      "Requested",
+      "Enriching",
+      "Enriched",
+      "Disabled",
+      "Details",
+      "Serp",
+      "Embedding",
+      "Stars",
+      "Count",
+    ]) {
+      expect(html).toContain(`>${label}<`);
     }
     expect(html).toContain(">2<");
     expect(html).toContain(">yes<");
+    expect(html).toContain(">fail<");
+    expect(html).toContain(">3.8<");
+    expect(html).toContain(">474<");
+    expect(html).not.toContain("4.7");
+    expect(html).not.toContain(">266<");
   });
 
-  it("shows the Text Search rating and folds the sources into one line for a phone", () => {
+  it("shows a Google-only row's Text Search rating in Reviews, and a dash for states Mesita holds", () => {
     const html = render(OK);
-    expect(html).toContain("4.7 · 266 reviews");
+    expect(html).toContain(">4.7<");
+    expect(html).toContain(">266<");
+    expect(html).toContain("Created: not on Mesita");
+    expect(html).not.toContain("4.7 · 266 reviews");
+  });
+
+  it("folds the sources into one line for a phone", () => {
+    const html = render(OK);
     expect(html).toContain("Autocomplete #1 · Text #2");
     expect(html).toContain("Catalogue #1 · Name #1 · Autocomplete #2 · Text #1");
   });
