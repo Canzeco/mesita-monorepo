@@ -11,8 +11,8 @@ import {
   sanitizeFamilyKeys,
   type FamilyKey,
 } from "./place-taxonomy.ts";
+import { OPENAI_URL } from "./enrich-config.ts";
 
-const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 const DEFAULT_CLASSIFIER_MODEL = DEFAULT_MODELS_CONFIG.enricher.model!;
 
 export type FamilyOption = {

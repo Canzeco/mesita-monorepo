@@ -248,25 +248,3 @@ export function crenupHighWaterFromMap(map: FunctionStateMap): number {
 export function crenupBlockedAtFromMap(map: FunctionStateMap): CrenupBlock | null {
   return crenupBlockedAt(functionStateMapToEvents(map));
 }
-
-/**
- * Raw `place_enrichment_events.state` -> `FunctionState.state`. Only
- * needed for translating HISTORICAL event rows (the migration backfill) —
- * the live write path (crenup-report.ts) only ever produces `StepOutcome`,
- * whose state is already `"completed" | "failed"`, a strict subset of
- * `FunctionState.state`, so it never needs this mapping.
- *
- * `completed` stays itself. `started` (in-flight, no outcome yet) becomes
- * `pending`. Everything else — `failed`, the `skipped` a legacy row might
- * carry, or an unrecognized value — becomes `failed`. This is not a new
- * rule: it is `crenupBlockedAt`'s own documented one ("anything not
- * completed and not absent is the function having run and not delivered"),
- * applied here rather than invented — the decision this map's header
- * flagged as 1249's to make is "reuse the ladder's existing skipped-is-a-
- * form-of-failed rule", not a fresh one.
- */
-export function toFunctionState(rawState: string): FunctionState["state"] {
-  if (rawState === "completed") return "completed";
-  if (rawState === "started") return "pending";
-  return "failed";
-}

@@ -7,19 +7,14 @@ import {
   MAP_ENRICHED_PIN_COLOR,
   MAP_MESITA_PIN_COLOR,
   MAP_PIN_HIT_SIZE,
-  MAP_PIN_SCALE,
   MAP_PIN_STROKE_COLOR,
-  MAP_PIN_STROKE_WEIGHT,
   MAP_PLACE_PIN_RADIUS,
-  MAP_USER_LOCATION_PIN_COLOR,
-  mapCircleIcon,
   mapPinIcon,
   mapPinSvg,
 } from "@/lib/map-defaults";
 import {
   buildSearchMapPins,
   catalogPlaceOnMesita,
-  isEnrichedPlace,
   overlayPinDecision,
   pinFillColor,
   pinGesture,
@@ -101,21 +96,6 @@ describe("pin tones — enriched > mesita > google", () => {
         enriched: false,
       }),
     ).toBe("mesita");
-  });
-
-  it("is the server's boolean, else enriched_at — never content_state", () => {
-    // MESITA-2154: enriched = an Enrich run completed = enriched_at set.
-    expect(isEnrichedPlace({ enriched_at: "2026-08-01T00:00:00Z" })).toBe(true);
-    // A Created place: Create saves ready and never stamps enriched_at.
-    const created = { content_state: "ready", enriched_at: null };
-    expect(isEnrichedPlace(created)).toBe(false);
-    expect(isEnrichedPlace({ enriched_at: "  " })).toBe(false);
-    expect(isEnrichedPlace({})).toBe(false);
-    // The server's boolean wins over the column, both ways.
-    expect(isEnrichedPlace({ enriched: true })).toBe(true);
-    expect(
-      isEnrichedPlace({ enriched: false, enriched_at: "2026-08-01T00:00:00Z" }),
-    ).toBe(false);
   });
 
   it("uses red for enriched, brand ink for Mesita, gray for Google", () => {
@@ -337,24 +317,6 @@ describe("buildSearchMapPins", () => {
 
   it("returns null when the query produced no predictions", () => {
     expect(buildSearchMapPins([], [{ id: "m1", lat: 1, lng: 2 }])).toBeNull();
-  });
-});
-
-describe("mapCircleIcon", () => {
-  it("draws red place pins and the blue user pin the same size", () => {
-    const red = mapCircleIcon(MAP_ENRICHED_PIN_COLOR, MAP_PIN_STROKE_COLOR);
-    const blue = mapCircleIcon(
-      MAP_USER_LOCATION_PIN_COLOR,
-      MAP_PIN_STROKE_COLOR,
-    );
-    const selected = mapCircleIcon(MAP_ENRICHED_PIN_COLOR, "#111111");
-    expect(red.path).toBe(blue.path);
-    expect(red.scale).toBe(blue.scale);
-    expect(red.strokeWeight).toBe(blue.strokeWeight);
-    expect(selected.path).toBe(blue.path);
-    expect(selected.scale).toBe(MAP_PIN_SCALE);
-    expect(selected.strokeWeight).toBe(MAP_PIN_STROKE_WEIGHT);
-    expect(red.fillColor).not.toBe(blue.fillColor);
   });
 });
 

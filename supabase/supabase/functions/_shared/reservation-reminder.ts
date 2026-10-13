@@ -14,15 +14,11 @@
 //
 // Pure scheduling math — no clock, no DB.
 
-import { placeLocalHour } from "./local-time.ts";
+import { CUTOFF_BEFORE_SLOT_MS, deferToCallableHour } from "./reservation-callback.ts";
 import type { ReservationPatch } from "./reservation-doc.ts";
 
 export const REMINDER_LEAD_MS = 3 * 3600_000;
 export const REMINDER_MAX_ATTEMPTS = 1;
-
-const QUIET_OPENS = 9;
-const QUIET_CLOSES = 22;
-const CUTOFF_BEFORE_SLOT_MS = 30 * 60_000;
 
 export type ReminderPark = Pick<ReservationPatch, "reminder_state" | "reminder_at">;
 
@@ -38,17 +34,11 @@ export function reminderCallAt(
 ): { at: Date; reason: string } | null {
   if (!reservedAt) return null;
   const cutoff = reservedAt.getTime() - CUTOFF_BEFORE_SLOT_MS;
-  let at = new Date(reservedAt.getTime() - REMINDER_LEAD_MS);
-  if (at.getTime() < now.getTime()) return null;
-  if (at.getTime() > cutoff) return null;
+  const lead = new Date(reservedAt.getTime() - REMINDER_LEAD_MS);
+  if (lead.getTime() < now.getTime()) return null;
+  if (lead.getTime() > cutoff) return null;
 
-  let deferred = false;
-  for (let i = 0; i < 48; i++) {
-    const h = placeLocalHour(at, lng);
-    if (h >= QUIET_OPENS && h < QUIET_CLOSES) break;
-    at = new Date(at.getTime() + 30 * 60_000);
-    deferred = true;
-  }
+  const { at, deferred } = deferToCallableHour(lead, lng);
   if (at.getTime() > cutoff) return null;
   if (at.getTime() < now.getTime()) return null;
 

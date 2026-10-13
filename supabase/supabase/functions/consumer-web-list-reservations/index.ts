@@ -15,14 +15,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { clampIntRange, corsPreflight, json, rejectUnlessMethods, readJsonOr } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { PASSED_GRACE_MS } from "../_shared/reservation-doc.ts";
 import { attachPlaces } from "../_shared/reservation-places.ts";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
-
-// How long a slot stays in Upcoming after its time — you're still at the
-// table. Mirrored by consumer-web-{cancel,update}-reservation.
-const PASSED_GRACE_MS = 4 * 3600_000;
 
 // Everything that ended without a live booking. `passed` is NOT here: it's
 // derived (confirmed + slot behind us), never stored — no cron to keep honest.

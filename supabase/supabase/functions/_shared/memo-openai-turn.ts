@@ -5,7 +5,7 @@
 // flags a cheaper ingest as Due). This file does not persist conversation
 // state. The only cap is a char fuse so a runaway paste cannot blow the model.
 
-const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
+import { OPENAI_URL } from "./enrich-config.ts";
 
 /** Fuse, not a product cap: drop oldest turns only after this many chars. */
 export const CONTEXT_CHAR_BUDGET = 120_000;

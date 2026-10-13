@@ -26,9 +26,21 @@ const OFFSET_MINUTES = (() => {
   return (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3]));
 })();
 
-function pad(n: number): string {
+/** Zero-pad to two digits — the one copy for clock and date strings. */
+export function pad(n: number): string {
   return String(n).padStart(2, "0");
 }
+
+/** Sunday-first to match `placeDateParts().weekday` / JS `getDay()`. */
+export const WEEK_KEYS = [
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+] as const;
 
 /** Shift an instant into place wall-clock, readable through the UTC getters. */
 function placeClock(at: number): Date {

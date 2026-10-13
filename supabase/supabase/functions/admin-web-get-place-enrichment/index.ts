@@ -1,20 +1,13 @@
 // Supabase Edge Function — admin-web-get-place-enrichment (product caller / admin)
 //
 // Read-only per-place Enricher inspector for the admin console. Given a
-// place id, returns:
-//   • media  — one entry per stored image (keyed by public_url AND source_url,
-//     so it resolves whether places.photos[] holds the mirrored URL or the raw
-//     source URL when mirroring failed), carrying SOURCE (google/website/
-//     instagram), the enricher vision ANALYSIS text, plus the pre-analysis
-//     source metadata: caption/likes for Instagram (+ comments/timestamp/video
-//     flag) and alt/page/dimensions for website images.
-//   • state — enrichment progress for the place: places.content_state +
-//     the place_research stage/state/error + last_enriched_at (the moment the
-//     pipeline last reached stage='done').
-//   • serpSummary — the SERP Summary (the Scout's soft editorial read) for the
-//     last run. Selected as a JSON PATH, never as the whole `gathered` blob:
-//     that column is tens of KB and shipping it wholesale is the regression
-//     MESITA-1198 already had to undo once.
+// place id, returns `state` — enrichment progress for the place:
+// places.content_state + the place_research stage/state/error +
+// last_enriched_at (the moment the pipeline last reached stage='done') +
+// serp_summary, the SERP Summary (the Scout's soft editorial read) for the last
+// run. That one is selected as a JSON PATH, never as the whole `gathered` blob:
+// the column is tens of KB and shipping it wholesale is the regression
+// MESITA-1198 already had to undo once.
 //
 // Internal enricher output — super-admin gated, admin console only. Never
 // exposed through a shared business EF.
@@ -30,10 +23,6 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
-import {
-  type MediaRow,
-  indexMediaByUrl,
-} from "./place-enrichment-media.ts";
 
 type Body = { projectId?: string; placeId?: string };
 
@@ -59,14 +48,7 @@ Deno.serve(async (req) => {
   const placeId = readPlaceIdAlias(bodyRes.body);
   if (!placeId) return jsonError("Missing placeId", 400);
 
-  const [mediaRes, placeRes, researchRes] = await Promise.all([
-    admin
-      .from("place_media_assets")
-      .select(
-        "public_url, source, state, analysis_text, caption, likes_count, source_url, source_metadata",
-      )
-      .eq("place_id", placeId)
-      .order("created_at", { ascending: true }),
+  const [placeRes, researchRes] = await Promise.all([
     admin
       .from("places")
       .select("content_state")
@@ -81,18 +63,12 @@ Deno.serve(async (req) => {
       .maybeSingle(),
   ]);
 
-  if (mediaRes.error) {
-    return jsonError(`place_media_assets: ${mediaRes.error.message}`, 500);
-  }
   if (placeRes.error) {
     return jsonError(`places: ${placeRes.error.message}`, 500);
   }
   if (researchRes.error) {
     return jsonError(`place_research: ${researchRes.error.message}`, 500);
   }
-
-  const rows = (mediaRes.data ?? []) as MediaRow[];
-  const media = indexMediaByUrl(rows);
 
   const research = researchRes.data as
     | {
@@ -119,5 +95,5 @@ Deno.serve(async (req) => {
     serp_summary: research?.serp_summary ?? null,
   };
 
-  return json({ ok: true, media, state });
+  return json({ ok: true, state });
 });

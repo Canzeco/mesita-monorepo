@@ -37,7 +37,7 @@ export type MapPlacesScope = "enriched" | "mesita" | "google";
 export const MAP_PLACES_SCOPE_DEFAULT: MapPlacesScope = "enriched";
 
 /** Outer to inner — the order Pato named them. A guest picks one. */
-export const MAP_PLACES_SCOPES = [
+const MAP_PLACES_SCOPES = [
   "google",
   "mesita",
   "enriched",

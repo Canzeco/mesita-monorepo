@@ -26,11 +26,19 @@ describe("isEnrichedPlace — an Enrich run completed (MESITA-2154)", () => {
     const created = { content_state: "ready", enriched_at: null };
     expect(isEnrichedPlace(created)).toBe(false);
     expect(isEnrichedPlace({ ...created, enriched: false })).toBe(false);
+    expect(isEnrichedPlace({ enriched_at: "  " })).toBe(false);
+    expect(isEnrichedPlace({})).toBe(false);
   });
 
   it("reads enriched_at set as enriched", () => {
     expect(isEnrichedPlace({ enriched_at: "2026-10-01T00:00:00Z" })).toBe(true);
     expect(isEnrichedPlace({ enriched: true })).toBe(true);
+  });
+
+  it("lets the server's boolean win over the column", () => {
+    expect(
+      isEnrichedPlace({ enriched: false, enriched_at: "2026-10-01T00:00:00Z" }),
+    ).toBe(false);
   });
 
   it("states the server's one rule: every server reader goes through isPlaceEnriched", () => {

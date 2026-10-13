@@ -111,13 +111,6 @@ export function nearbyBbox(
   };
 }
 
-export function circleBbox(
-  center: { lat: number; lng: number },
-  radiusKm: number,
-): GeoBbox {
-  return nearbyBbox(center.lat, center.lng, radiusKm);
-}
-
 export function sortByDistance<T extends { lat?: number | null; lng?: number | null }>(
   rows: T[],
   lat: number,

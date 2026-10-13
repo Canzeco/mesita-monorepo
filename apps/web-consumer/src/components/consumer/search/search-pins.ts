@@ -32,8 +32,6 @@ import {
 import { type MapPlacesScope } from "@/lib/map-filters-engine";
 import { isEnrichedPlace } from "@/lib/place-enriched";
 
-export { isEnrichedPlace };
-
 /** The tone IS the narrowest ring — the same three words the wire carries. */
 export type PinTone = MapPlacesScope;
 

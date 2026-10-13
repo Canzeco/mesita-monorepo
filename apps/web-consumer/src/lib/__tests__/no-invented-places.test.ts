@@ -10,8 +10,8 @@ import { describe, expect, it } from "vitest";
 // directory is gone, and this gate keeps the door shut for every file, not
 // only the decks a per-file pin happens to name.
 //
-// Tests are exempt: a render test needs a row, and its fixture lives in
-// `__tests__/fixtures/`, which no app file may import.
+// Tests are exempt: a render test needs a row, and no app file may import a
+// test's fixture.
 
 const SRC = join(__dirname, "..", "..");
 const CODE = /\.(ts|tsx)$/;

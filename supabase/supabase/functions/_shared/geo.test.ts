@@ -1,7 +1,6 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import {
   applyBboxPredicate,
-  circleBbox,
   decideNearby,
   wantsGoogleFill,
   haversineKm,
@@ -115,8 +114,8 @@ Deno.test("takeClosest: product cap 50, nearest first", () => {
   assertEquals(got[49].id, 49);
 });
 
-Deno.test("circleBbox: 50 km around Monterrey stays inside the clamp", () => {
-  const box = circleBbox({ lat: 25.67, lng: -100.3 }, NEARBY_RADIUS_KM);
+Deno.test("nearbyBbox: 50 km around Monterrey stays inside the clamp", () => {
+  const box = nearbyBbox(25.67, -100.3, NEARBY_RADIUS_KM);
   assertEquals(box.south < 25.67, true);
   assertEquals(box.north > 25.67, true);
   assertEquals(NEARBY_RADIUS_KM, 50);

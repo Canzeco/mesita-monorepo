@@ -6,8 +6,8 @@
 // (MESITA-1799: fail open so a miss cannot padlock Reserve).
 
 import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";
+import { OPENAI_URL } from "./enrich-config.ts";
 
-const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 const DEFAULT_MODEL = DEFAULT_MODELS_CONFIG.enricher.model!;
 
 export type ReservationInferSignals = {

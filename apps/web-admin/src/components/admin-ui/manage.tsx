@@ -100,7 +100,7 @@ export function SectionCard({
 // Filled fields with a visible resting edge — a hairline border on the gray
 // well makes fields read as fields on the white card (the old transparent
 // border left them as faint smudges at a glance).
-const INPUT_BASE =
+export const INPUT_BASE =
   "w-full rounded-xl border border-border/60 bg-muted/60 text-sm outline-none transition " +
   "placeholder:text-muted-foreground/50 focus:border-ring/60 focus:bg-card focus:ring-4 " +
   "focus:ring-ring/10 disabled:opacity-50";

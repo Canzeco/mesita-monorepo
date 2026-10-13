@@ -20,9 +20,11 @@
 
 import {
   isSlotPast,
+  pad,
   slotMinutes,
   placeDateIso,
   placeDateParts,
+  WEEK_KEYS,
 } from "@/lib/place-time";
 
 /**
@@ -61,17 +63,6 @@ const ANCHOR_MINUTES = slotMinutes("20:00");
 const STEP_MINUTES = 30;
 const MS_PER_DAY = 86_400_000;
 
-/** Sunday-first to match `placeDateParts().weekday` / JS `getDay()`. */
-const WEEK_KEYS = [
-  "sunday",
-  "monday",
-  "tuesday",
-  "wednesday",
-  "thursday",
-  "friday",
-  "saturday",
-] as const;
-
 type DayKey = (typeof WEEK_KEYS)[number];
 
 /** One shift, `HH:mm`. `close <= open` means it closes the NEXT day. */
@@ -103,10 +94,6 @@ const DAY_LABEL_TO_KEY = {
   saturday: "saturday",
   sunday: "sunday",
 } as const satisfies Record<string, DayKey>;
-
-function pad(n: number): string {
-  return String(n).padStart(2, "0");
-}
 
 function toHhmm(minutes: number): string {
   const m = ((minutes % 1440) + 1440) % 1440;

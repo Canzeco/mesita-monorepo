@@ -25,8 +25,9 @@ import type { Place } from "@/lib/api/places";
 import {
   computeOpenState,
   neighborhoodFromAddress,
-} from "@/lib/adapters/place-to-detail";
-import { num, str } from "@/lib/adapters/place-to-detail-helpers";
+  num,
+  str,
+} from "@/lib/adapters/place-to-detail-helpers";
 import { formatPlacePriceChip } from "@/lib/place-price";
 import { relativeLabel } from "@/lib/utils";
 import { DEFAULT_CURRENCY } from "@/lib/money";

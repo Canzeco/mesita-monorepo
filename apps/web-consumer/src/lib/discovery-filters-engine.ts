@@ -17,8 +17,11 @@
 // Location is not a predicate: it only grants coordinates for ranking.
 // Predicates CUT, signals RANK, and a predicate cuts first.
 
-import type { Place } from "@/lib/api/places";
-import type { PlacesScopeStop } from "@/lib/map-filters-engine";
+import {
+  clampMinReviews,
+  type MapMinReviews,
+  type PlacesScopeStop,
+} from "@/lib/map-filters-engine";
 import { type FamilyKey } from "@/lib/place-families";
 
 export type DiscoveryPlacesScope = "mesita" | "google";
@@ -48,23 +51,10 @@ export const DISCOVERY_SCOPE_STOPS = [
   },
 ] as const satisfies readonly PlacesScopeStop<DiscoveryPlacesScope>[];
 
-export const DISCOVERY_REVIEW_STOPS = [0, 10, 100, 1000, 10000] as const;
-export type DiscoveryReviewFloor = (typeof DISCOVERY_REVIEW_STOPS)[number];
-
-export function clampReviewFloor(value: unknown): DiscoveryReviewFloor {
-  const n = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(n) || n <= 0) return 0;
-  let best: DiscoveryReviewFloor = 0;
-  let bestD = Number.POSITIVE_INFINITY;
-  for (const stop of DISCOVERY_REVIEW_STOPS) {
-    const d = Math.abs(stop - n);
-    if (d < bestD || (d === bestD && stop > best)) {
-      best = stop;
-      bestD = d;
-    }
-  }
-  return best;
-}
+// Popularity floor: the same stops and nearest-stop rule as the map's, so one
+// copy serves both.
+export type DiscoveryReviewFloor = MapMinReviews;
+export const clampReviewFloor = clampMinReviews;
 
 export function parsePlacesScope(value: unknown): DiscoveryPlacesScope {
   if (typeof value === "string") {
@@ -102,36 +92,4 @@ export function countAppliedDiscoveryFilters(f: DiscoveryFilters): number {
   if (f.placesScope !== DISCOVERY_PLACES_SCOPE_DEFAULT) n += 1;
   if (f.minReviews > 0) n += 1;
   return n;
-}
-
-function googleReviewCount(place: Place): number | null {
-  const n = place.google_count ?? place.google_review_count;
-  return typeof n === "number" && Number.isFinite(n) ? n : null;
-}
-
-/** A Google stub needs the outer ring; every Mesita row sits in both. */
-function keepPlaceForScope(place: Place, scope: DiscoveryPlacesScope): boolean {
-  if (place.googleOnly || place.from_google) return scope === "google";
-  return true;
-}
-
-function matchesDiscoveryFilters(place: Place, f: DiscoveryFilters): boolean {
-  if (f.familyKeys.length > 0) {
-    const hit = f.familyKeys.some((key) => (place.family_keys ?? []).includes(key));
-    if (!hit) return false;
-  }
-  if (!keepPlaceForScope(place, f.placesScope)) return false;
-  if (f.minReviews > 0) {
-    const count = googleReviewCount(place);
-    if (count === null || count < f.minReviews) return false;
-  }
-  return true;
-}
-
-export function applyDiscoveryFilters(
-  places: Place[],
-  f: DiscoveryFilters,
-): Place[] {
-  if (!hasDiscoveryPredicates(f)) return places;
-  return places.filter((place) => matchesDiscoveryFilters(place, f));
 }

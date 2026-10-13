@@ -1,5 +1,5 @@
 import type { PlaceDetail } from "@/lib/place-detail";
-import { FALLBACK_IANA_TZ } from "@/lib/place-time";
+import { FALLBACK_IANA_TZ, WEEK_KEYS } from "@/lib/place-time";
 
 // Loose row type — the EF returns the full place projection; helpers read it
 // defensively because enrichment leaves many columns empty.
@@ -57,35 +57,6 @@ export function neighborhoodFromAddress(
   return candidate;
 }
 
-// City fallback when zone + colonia are missing. Parses MX-style
-// "…. 64000 Monterrey," or the penultimate comma segment. Shared with the
-// swipe card zone label so card + detail stay aligned.
-function cityFromAddress(address: string | undefined): string | null {
-  if (!address) return null;
-  const postCodeCityMatch = address.match(/\d{5}\s+([^,]+)/);
-  const direct = postCodeCityMatch?.[1]?.trim();
-  if (direct && !hasDigit(direct)) return direct;
-
-  const parts = address
-    .split(",")
-    .map((p) => p.trim())
-    .filter(Boolean);
-  const fallback = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
-  if (!fallback || hasDigit(fallback)) return null;
-  return fallback;
-}
-
-/** Zone chip: prefer explicit zone, else colonia, else city from address. */
-export function resolveZoneLabel(input: {
-  zone?: string | null;
-  address?: string | null;
-}): string | null {
-  if (input.zone && input.zone.trim().length > 0) return input.zone;
-  const fromNeighborhood = neighborhoodFromAddress(input.address ?? undefined);
-  if (fromNeighborhood) return fromNeighborhood;
-  return cityFromAddress(input.address ?? undefined);
-}
-
 const DAY_ORDER = [
   "monday",
   "tuesday",
@@ -105,18 +76,6 @@ const DAY_LABELS = {
   saturday: "Saturday",
   sunday: "Sunday",
 } as const satisfies Record<(typeof DAY_ORDER)[number], string>;
-
-// Week keyed Sunday-first to match JS getDay() and let us reach "yesterday"
-// for overnight ranges that started the day before.
-const WEEK_KEYS = [
-  "sunday",
-  "monday",
-  "tuesday",
-  "wednesday",
-  "thursday",
-  "friday",
-  "saturday",
-];
 
 // One weekday's shift, as stored in the `hours` jsonb — shared by
 // computeOpenState and hoursTable so both read the same shape.

@@ -26,7 +26,11 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { invokeInternalCaller } from "../_shared/internal.ts";
-import { type ReservationPatch, writeReservation } from "../_shared/reservation-doc.ts";
+import {
+  PASSED_GRACE_MS,
+  type ReservationPatch,
+  writeReservation,
+} from "../_shared/reservation-doc.ts";
 import { coerceReservationsCallConfig } from "../_shared/reservations-config.ts";
 import { REMINDER_CLEAR } from "../_shared/reservation-reminder.ts";
 
@@ -37,7 +41,6 @@ type Body = {
   notes?: string;
 };
 
-const PASSED_GRACE_MS = 4 * 3600_000;
 const MAX_PARTY = 20;
 
 Deno.serve(async (req) => {

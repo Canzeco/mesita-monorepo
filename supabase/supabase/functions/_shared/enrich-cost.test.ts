@@ -5,7 +5,6 @@ import {
   createEnrichCostLedger,
   discoverySearchCost,
   googleMapsRunCost,
-  googleSpineCost,
   instagramRunCost,
   runOwnsGatherSpend,
   synthesisRunCost,
@@ -44,8 +43,7 @@ Deno.test("ledger: resumes from prior snapshot across stages", () => {
 });
 
 Deno.test("helpers: google spine / IG / vision / synth / discovery", () => {
-  const spine = googleSpineCost(2);
-  assertEquals(spine, COST.googleDetails + COST.googleTimezone + COST.googlePhoto * 2);
+  const spine = COST.googleDetails + COST.googleTimezone + COST.googlePhoto * 2;
   const ledger = createEnrichCostLedger();
   chargeGoogleSpine(ledger, 2);
   // Ledger rounds to 4dp — compare the booked amount, not the raw float sum.

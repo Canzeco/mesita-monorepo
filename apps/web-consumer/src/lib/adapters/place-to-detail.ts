@@ -28,12 +28,6 @@ import {
   str,
 } from "./place-to-detail-helpers";
 
-export {
-  computeOpenState,
-  neighborhoodFromAddress,
-  resolveZoneLabel,
-} from "./place-to-detail-helpers";
-
 // Resolved tag as returned by consumer-get-place's `tags` array: only the
 // place's selected tags, already ordered by sort_order. Display uses
 // label_en (MESITA-963); facet drives the per-facet chip tint in the modal.
