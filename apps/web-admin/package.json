@@ -11,7 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.10.3",
+    "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.3",
     "@vis.gl/react-google-maps": "^1.10.1",
     "lucide-react": "^1.54.0",
