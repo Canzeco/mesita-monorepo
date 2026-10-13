@@ -1,9 +1,11 @@
-type PageSize = "3xl" | "5xl" | "6xl";
+type PageSize = "3xl" | "5xl" | "6xl" | "full";
 
 const MAX_WIDTH: Record<PageSize, string> = {
   "3xl": "max-w-3xl",
   "5xl": "max-w-5xl",
   "6xl": "max-w-6xl",
+  // The main pane, edge to edge inside the page padding (MESITA-2177).
+  full: "max-w-none",
 };
 
 // Shared page wrapper — responsive horizontal padding and vertical rhythm
