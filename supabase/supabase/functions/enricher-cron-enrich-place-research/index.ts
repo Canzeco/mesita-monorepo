@@ -83,9 +83,8 @@ import {
 serveEnrichStage("research", async (admin, _env, row) => {
   const placeId = row.place_id;
   const googlePlaceId = row.google_place_id;
-  // What this run bought, per the trigger matrix. S1 (the Google gate) is not
-  // gated: it is the identity spine every stage downstream trusts.
-  const buys = row.subprocesses;
+  // S1 (the Google gate) is not gated: it is the identity spine every stage
+  // downstream trusts. Which fields get written is decided by the fill plan.
   const plan = await loadEnrichFill(admin, row);
   const ran = new Set<FillStep>();
   const runDetails = stepRuns(plan, "details");
