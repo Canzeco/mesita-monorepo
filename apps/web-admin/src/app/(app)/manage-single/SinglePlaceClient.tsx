@@ -69,9 +69,10 @@ export function SinglePlaceClient() {
   const [tableKey, setTableKey] = useState(0);
   const [added, setAdded] = useState<ReadonlyMap<string, string>>(new Map());
   const [rowNotes, setRowNotes] = useState<Record<string, RowNote>>({});
+  const [catalogueBootstrapped, setCatalogueBootstrapped] = useState(false);
 
   const lookup = useMemo(() => classifyLookup(text), [text]);
-  const isBusy = busy !== null;
+  const isBusy = busy !== null || !catalogueBootstrapped;
 
   function open(placeId: string) {
     router.push(placeTabHref(placeId, "profile"));
@@ -130,15 +131,11 @@ export function SinglePlaceClient() {
   useEffect(() => {
     let live = true;
     findSeq.current += 1;
-    // After paint, so the load is not a setState inside the effect body.
-    const timer = window.setTimeout(() => {
-      void findCatalogue().finally(() => {
-        if (live) setBusy(null);
-      });
-    }, 0);
+    void findCatalogue().finally(() => {
+      if (live) setCatalogueBootstrapped(true);
+    });
     return () => {
       live = false;
-      window.clearTimeout(timer);
     };
     // Mount only. An empty Find from the button calls findCatalogue itself.
     // eslint-disable-next-line react-hooks/exhaustive-deps
