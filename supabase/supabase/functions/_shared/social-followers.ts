@@ -51,7 +51,7 @@ export async function refreshSocialFollowers(opts: SocialFollowersRefresh): Prom
   if (!res.ok) console.error("[social-followers] update:", res.error);
 }
 
-async function scrapeInstagramFollowers(
+export async function scrapeInstagramFollowers(
   apifyKey: string,
   instagramUrl: string | null,
 ): Promise<number | null> {

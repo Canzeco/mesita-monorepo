@@ -98,6 +98,7 @@ import {
   readFieldPins,
   stripPinnedColumns,
 } from "../_shared/enrich-corrections.ts";
+import { omitReviewsTileColumns } from "../_shared/reviews-state.ts";
 
 serveEnrichStage("contents", async (admin, env, row) => {
   // What this run bought, per the trigger matrix (NULL = everything).
@@ -459,6 +460,10 @@ serveEnrichStage("contents", async (admin, env, row) => {
   // country/editorial_summary/facebook_rating left the place in MESITA-2144:
   // a blob stored before then still carries them, and writePlace refuses an
   // unknown field, so they are stripped here like the wave-040 columns.
+  // Tile columns are the Reviews reload's. An old gathered blob still carries
+  // them; drop them before the patch so a contents re-run cannot cover a
+  // reload (MESITA-2183).
+  const persistedReviewsOmitted = omitReviewsTileColumns(persisted);
   const {
     id: _dropId,
     created_at: _dropCreated,
@@ -477,7 +482,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
     editorial_summary: _dropEditorialSummary,
     facebook_rating: _dropFacebookRating,
     ...placeUpdate
-  } = persisted as Record<string, unknown> & {
+  } = persistedReviewsOmitted as Record<string, unknown> & {
     id?: unknown;
     created_at?: unknown;
     updated_at?: unknown;

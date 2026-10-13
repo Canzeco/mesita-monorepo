@@ -75,9 +75,9 @@ export type PlaceDetail = {
 
   // 3. External reputation — the three outside channels the summary reads.
   // Google carries a rating and a count; Facebook and Instagram carry reach.
-  google: { rating: number; count: number };
-  facebook: { followers: number };
-  instagram: { followers: number };
+  google: { rating: number | null; count: number | null };
+  facebook: { followers: number | null };
+  instagram: { followers: number | null };
 
   // 4. Google reviews
   google_reviews: Array<{

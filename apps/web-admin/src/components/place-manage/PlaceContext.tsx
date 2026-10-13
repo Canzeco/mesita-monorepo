@@ -208,8 +208,11 @@ export function PlaceProvider({
         setSaveError(r.error);
         return;
       }
-      for (const s of Object.values(savers.current)) s.onSaved(r.data.place);
-      setPlace(r.data.place);
+      const next: AdminPlace = r.data.place.reviews_state != null
+        ? r.data.place
+        : { ...r.data.place, reviews_state: place.reviews_state };
+      for (const s of Object.values(savers.current)) s.onSaved(next);
+      setPlace(next);
       if (r.data.family || r.data.familyStored) {
         setProfile({
           ...profile,
@@ -221,7 +224,7 @@ export function PlaceProvider({
       setSaveOk(true);
       window.setTimeout(() => setSaveOk(false), 2500);
     })();
-  }, [placeId, setPlace, profile, setProfile]);
+  }, [place, placeId, setPlace, profile, setProfile]);
 
   const isDirty = useMemo(
     () => Object.values(dirtyMap).some(Boolean),

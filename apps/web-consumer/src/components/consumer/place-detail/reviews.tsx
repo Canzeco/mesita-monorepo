@@ -23,30 +23,53 @@ import {
 // ── 3. Reviews summary ──────────────────────────────────────────────────
 
 export function ReviewsSummaryBox({ place }: { place: PlaceDetail }) {
-  // The three outside channels in a 3-up grid — same shape, different
-  // source. Google carries a rating and a count; Instagram and Facebook
-  // carry reach.
+  const rating = formatRating(place.google.rating);
+  const cards = [
+    rating != null ? (
+      <ExternalCard
+        key="google"
+        logo={<GoogleLogo />}
+        icon="star"
+        value={rating}
+        meta={
+          place.google.count != null
+            ? `${formatCompactCount(place.google.count, true)} reviews`
+            : "Google"
+        }
+      />
+    ) : null,
+    place.instagram.followers != null ? (
+      <ExternalCard
+        key="instagram"
+        logo={<InstagramLogo />}
+        icon="users"
+        value={formatCompactCount(place.instagram.followers, false)}
+        meta="followers"
+      />
+    ) : null,
+    place.facebook.followers != null ? (
+      <ExternalCard
+        key="facebook"
+        logo={<FacebookLogo />}
+        icon="users"
+        value={formatCompactCount(place.facebook.followers, false)}
+        meta="followers"
+      />
+    ) : null,
+  ].filter((card) => card != null);
+  if (cards.length === 0) return null;
   return (
     <Box title="Reviews summary" icon={Star} iconColor="text-muted-foreground">
-      <div className="grid grid-cols-3 gap-2">
-        <ExternalCard
-          logo={<GoogleLogo />}
-          icon="star"
-          value={formatRating(place.google.rating)!}
-          meta={`${formatCompactCount(place.google.count, true)} reviews`}
-        />
-        <ExternalCard
-          logo={<InstagramLogo />}
-          icon="users"
-          value={formatCompactCount(place.instagram.followers, false)}
-          meta="followers"
-        />
-        <ExternalCard
-          logo={<FacebookLogo />}
-          icon="users"
-          value={formatCompactCount(place.facebook.followers, false)}
-          meta="followers"
-        />
+      <div
+        className={
+          cards.length >= 3
+            ? "grid grid-cols-3 gap-2"
+            : cards.length === 2
+            ? "grid grid-cols-2 gap-2"
+            : "grid grid-cols-1 gap-2"
+        }
+      >
+        {cards}
       </div>
     </Box>
   );
@@ -81,7 +104,11 @@ export function GoogleReviewsBox({ place }: { place: PlaceDetail }) {
       title="Google reviews"
       icon={Star}
       iconColor="text-muted-foreground"
-      right={`${formatCompactCount(place.google.count, true)} total`}
+      right={
+        place.google.count != null
+          ? `${formatCompactCount(place.google.count, true)} total`
+          : undefined
+      }
     >
       <ReviewSortChips
         sort={sort}
