@@ -1,8 +1,9 @@
 import { Blocks, Compass, LayoutGrid, Search } from "lucide-react";
 
-// Discovery — ONE sidebar entry, THREE subpages (Matrix · Discovery Modes ·
-// Search Sources). The prefix is frozen: /filters-config. Tabs live here so
-// layout, redirects, and deep links share one list.
+// Discovery — ONE sidebar entry, THREE subpages (Search Sources · Discovery
+// Modes · Matrix). The prefix is frozen: /filters-config. Tabs live here so
+// layout, redirects, and deep links share one list. The sidebar row opens
+// the first tab (Pato, 2026-10-13).
 //
 // Matrix  = how modes, sources and signals relate, plus the shape numbers
 //           behind each signal. Neither a mode nor a source, which is why it
@@ -14,7 +15,7 @@ import { Blocks, Compass, LayoutGrid, Search } from "lucide-react";
 //           signal-weights table — the one control that spans modes.
 // Sources = the nine searches themselves. Google types live here.
 //
-// THE SECOND TAB IS SEARCH SOURCES, NOT DISCOVERY SOURCES (Pato,
+// THE SOURCES TAB IS SEARCH SOURCES, NOT DISCOVERY SOURCES (Pato,
 // 2026-09-02). All nine Sources are searches — every instance name ends in
 // `Search` — and the matrix band on Modes has read "Search Sources" since
 // it was drawn, so the tab was the odd one out. A row reading "Discovery …
@@ -36,7 +37,7 @@ const DISCOVERY_SOURCES_HREF = "/filters-config/sources" as const;
 export const DISCOVERY_MAP_HREF = "/filters-config/modes#s-map" as const;
 
 export const DISCOVERY_TABS = [
-  { href: DISCOVERY_MATRIX_HREF, label: "Matrix", Icon: LayoutGrid },
-  { href: DISCOVERY_MODES_HREF, label: "Discovery Modes", Icon: Search },
   { href: DISCOVERY_SOURCES_HREF, label: "Search Sources", Icon: Blocks },
+  { href: DISCOVERY_MODES_HREF, label: "Discovery Modes", Icon: Search },
+  { href: DISCOVERY_MATRIX_HREF, label: "Matrix", Icon: LayoutGrid },
 ] as const;

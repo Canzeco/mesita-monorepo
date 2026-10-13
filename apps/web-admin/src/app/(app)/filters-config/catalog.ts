@@ -6,12 +6,13 @@
 // signal is a code change in both packages — deliberately, because a signal
 // nobody wrote has nothing to score.
 //
-// Live HTML: three subpages — MATRIX, DISCOVERY MODES and SEARCH SOURCES.
-// Mode → what it can answer with → sources it may call → signals. Index
-// redirects to Matrix, which is where the locked matrix has lived since
-// MESITA-1675 moved it off Modes. The third tab says Search, not
-// Discovery (Pato, 2026-09-02): all nine Sources are searches, and the
-// matrix band already read Search Sources. The route stays /sources.
+// Live HTML: three subpages — SEARCH SOURCES, DISCOVERY MODES and MATRIX
+// (Pato, 2026-10-13). Mode → what it can answer with → sources it may call →
+// signals. The index opens the first tab, Search Sources. The matrix has
+// lived on its own page since MESITA-1675 moved it off Modes. The sources
+// tab says Search, not Discovery (Pato, 2026-09-02): all nine Sources are
+// searches, and the matrix band already read Search Sources. The route
+// stays /sources.
 //
 //   MODES     General · Word (Fast) · Word (Deep) · Map · Catalog · Swipe ·
 //             Chat · Favorites. Each card shows locked source chips. Word

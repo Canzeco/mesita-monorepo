@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/PageContainer";
 import { isNavActive } from "@/lib/nav-active";
 import { DISCOVERY_TABS } from "./nav";
 
-// Title follows the active subpage: Matrix · Discovery Modes · Search Sources.
+// Title follows the active subpage: Search Sources · Discovery Modes · Matrix.
 export function DiscoveryChrome() {
   const pathname = usePathname();
   const tab = DISCOVERY_TABS.find((t) => isNavActive(pathname, t.href));
