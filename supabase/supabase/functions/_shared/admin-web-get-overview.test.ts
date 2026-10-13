@@ -32,6 +32,13 @@ Deno.test("admin-web-get-overview is super-admin only", () => {
   }
 });
 
+Deno.test("family and category resolve inside the one read", () => {
+  assertEquals(CODE.includes("resolveProfileFamily("), true);
+  assertEquals(CODE.includes("resolveStoredFamily("), true);
+  assertEquals(CODE.includes("categoriesWithFamilyDisplay("), true);
+  assertEquals(CODE.includes("admin-web-get-atlas-fields"), false);
+});
+
 Deno.test("the place row and its enrichment map are read together", () => {
   // One round trip for both (MESITA-1249): the State box's `enriched`
   // high-water must come from the same request as the row it sits on.

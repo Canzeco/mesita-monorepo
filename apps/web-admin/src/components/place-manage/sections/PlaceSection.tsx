@@ -16,7 +16,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import {
-  listPlaceTagCatalog,
   type AdminPlace,
   type PlaceFieldLimits,
 } from "../actions";
@@ -156,7 +155,8 @@ type Form = {
   hours: Record<Day, DayHours>;
 };
 
-// Fallback until admin-web-get-atlas-fields returns; never the source of truth.
+// Limits arrive on the profile read. These match ENRICH_FIELD_LIMITS and
+// exist only so placeToForm can be called before the caller passes them.
 const FALLBACK_LIMITS: PlaceFieldLimits = {
   placeNameMax: 80,
   descriptionMax: 1000,
@@ -247,8 +247,9 @@ export function PlaceSection({
   /** Extra Place-page boxes (Reviews) — flow in the same masonry columns. */
   children?: React.ReactNode;
 }) {
-  const [limits, setLimits] = useState<PlaceFieldLimits>(FALLBACK_LIMITS);
-  const [form, setForm] = useState<Form>(() => placeToForm(place));
+  const { savePending, profile } = usePlaceContext();
+  const limits = profile.fieldLimits;
+  const [form, setForm] = useState<Form>(() => placeToForm(place, limits));
   const [saved, setSaved] = useState<Form>(form);
   const [errors, setErrors] = useState<{ photos?: string }>({});
 
@@ -297,8 +298,6 @@ export function PlaceSection({
   );
 
   const placeDirty = dirtyBasics || dirtyTime || dirtyChannels || dirtyPhotos;
-
-  const { savePending } = usePlaceContext();
 
   // Four boxes, ONE patch. Only the dirty ones contribute, so a save never
   // rewrites columns nobody touched — which matters for Basics in particular,
@@ -423,24 +422,6 @@ export function PlaceSection({
   // internals (MESITA-1740).
   const [metaFor, setMetaFor] = useState<string | null>(null);
 
-  useEffect(() => {
-    let alive = true;
-    // Field limits come from admin-web-get-atlas-fields — never hardcode.
-    listPlaceTagCatalog().then((r) => {
-      if (!alive || !r.ok) return;
-      setLimits(r.data.fieldLimits);
-      setForm((f) => ({
-        ...f,
-        mesitaName: f.mesitaName.slice(0, r.data.fieldLimits.placeNameMax),
-        description: f.description.slice(0, r.data.fieldLimits.descriptionMax),
-        tags: f.tags.slice(0, r.data.fieldLimits.tagsPerPlaceMax),
-      }));
-    });
-    return () => {
-      alive = false;
-    };
-  }, [place.id]);
-
   return (
     // Masonry, not a grid: CSS columns pack the cards top-down, so a short
     // card never strands empty space beside a tall neighbour — columns don't
@@ -483,10 +464,7 @@ export function PlaceSection({
           <ReadField label="Google price" auto boxed>
             <PriceDisplay level={place.price_level} currency={place.currency} />
           </ReadField>
-          <PlaceFamilyField
-            category={form.category ?? ""}
-            familyKeys={place.family_keys ?? null}
-          />
+          <PlaceFamilyField category={form.category ?? ""} />
           <PlaceCategorySelect
             value={form.category ?? ""}
             onChange={(slug) => set("category", slug)}

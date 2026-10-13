@@ -10,21 +10,30 @@
 import { useState } from "react";
 import { PlaceProvider } from "@/components/place-manage/PlaceContext";
 import { PlaceSaveBar } from "@/components/place-manage/PlaceSaveBar";
-import type { AdminPlace } from "@/components/place-manage/actions";
+import type { AdminPlace, ProfileRead } from "@/components/place-manage/actions";
 
 export function PlaceManageShell({
   placeId,
   initialPlace,
+  initialProfile,
   children,
 }: {
   placeId: string;
   initialPlace: AdminPlace;
+  initialProfile: ProfileRead;
   children: React.ReactNode;
 }) {
   const [place, setPlace] = useState<AdminPlace>(initialPlace);
+  const [profile, setProfile] = useState<ProfileRead>(initialProfile);
 
   return (
-    <PlaceProvider placeId={placeId} place={place} setPlace={setPlace}>
+    <PlaceProvider
+      placeId={placeId}
+      place={place}
+      setPlace={setPlace}
+      profile={profile}
+      setProfile={setProfile}
+    >
       {children}
       <PlaceSaveBar />
     </PlaceProvider>

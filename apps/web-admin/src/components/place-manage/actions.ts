@@ -155,19 +155,24 @@ export type AdminPlace = {
  *  is super-admin only, so a 200 always carries `isSuperAdmin: true`. */
 export async function getPlaceAndRole(
   placeId: string,
-): Promise<Result<{ place: AdminPlace; isSuperAdmin: boolean }>> {
+): Promise<Result<{ place: AdminPlace; isSuperAdmin: boolean; profile: ProfileRead }>> {
   const r = await efInvoke<{
     active: { place: AdminPlace } | null;
     isSuperAdmin?: boolean;
+    profile?: unknown;
   }>("admin-web-get-overview", { placeId });
   if (!r.ok) return { ok: false, error: r.error };
   const place = r.data.active?.place ?? null;
   if (!place || place.id !== placeId) {
     return { ok: false, error: "Place not found or not loadable." };
   }
+  const profile = readProfile(r.data.profile);
+  if (!profile) {
+    return { ok: false, error: "Profile read did not resolve family and category." };
+  }
   return {
     ok: true,
-    data: { place, isSuperAdmin: r.data.isSuperAdmin === true },
+    data: { place, isSuperAdmin: r.data.isSuperAdmin === true, profile },
   };
 }
 
@@ -175,10 +180,27 @@ export async function getPlaceAndRole(
 
 export async function updatePlace(
   patch: Record<string, unknown> & { id: string },
-): Promise<Result<AdminPlace>> {
-  const r = await efInvoke<{ place: AdminPlace }>("admin-web-update-place", patch);
+): Promise<
+  Result<{
+    place: AdminPlace;
+    family: ResolvedFamily | null;
+    familyStored: ResolvedFamily | null;
+  }>
+> {
+  const r = await efInvoke<{
+    place: AdminPlace;
+    family?: unknown;
+    familyStored?: unknown;
+  }>("admin-web-update-place", patch);
   if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data.place };
+  return {
+    ok: true,
+    data: {
+      place: r.data.place,
+      family: readResolvedFamily(r.data.family),
+      familyStored: readResolvedFamily(r.data.familyStored),
+    },
+  };
 }
 
 /** List or unlist the place on Mesita — the ONLY write path to
@@ -234,8 +256,9 @@ export async function setPlaceActive(
   };
 }
 
-// ── Atlas tag catalog (for Place tags picker) ────────────────────────────
-// Read through admin-web-get-atlas-fields.
+// ── Profile vocabulary ───────────────────────────────────────────────────
+// Arrives on admin-web-get-overview, the one profile read. Family and
+// Category are already resolved there. The editor does not fetch them.
 
 export type PlaceTagOption = {
   slug: string;
@@ -259,6 +282,11 @@ export type PlaceFieldLimits = {
   photosMax: number;
 };
 
+export type ResolvedFamily = {
+  text: string;
+  inferred: boolean;
+};
+
 export type PlaceCategoryOption = {
   slug: string;
   label: string;
@@ -266,21 +294,19 @@ export type PlaceCategoryOption = {
   sort_order: number;
   /** 1–2 place family parents (multi-parent law). */
   family_keys?: string[];
+  /** Membership already joined by the profile read. */
+  family_display: string;
 };
 
-export type PlaceFamilyOption = {
-  slug: string;
-  label: string;
-  emoji: string;
-  sort_order: number;
-};
-
-type PlaceTagCatalog = {
+/** Everything the profile editor needs besides the place row. One read. */
+export type ProfileRead = {
+  /** Family for the row as stored. */
+  family: ResolvedFamily;
+  /** Family while the draft category is undefined: stored family_keys. */
+  familyStored: ResolvedFamily;
+  categories: PlaceCategoryOption[];
   tags: PlaceTagOption[];
   facets: PlaceTagFacet[];
-  categories: PlaceCategoryOption[];
-  families: PlaceFamilyOption[];
-  tagsPerPlaceMax: number;
   fieldLimits: PlaceFieldLimits;
 };
 
@@ -304,26 +330,49 @@ function readPlaceFieldLimits(
   };
 }
 
-export async function listPlaceTagCatalog(): Promise<Result<PlaceTagCatalog>> {
-  const r = await efInvoke<{
-    tags: PlaceTagOption[];
-    facets: PlaceTagFacet[];
-    categories: PlaceCategoryOption[];
-    families?: PlaceFamilyOption[];
+function readResolvedFamily(value: unknown): ResolvedFamily | null {
+  if (!value || typeof value !== "object") return null;
+  const row = value as { text?: unknown; inferred?: unknown };
+  if (typeof row.text !== "string" || row.text.length === 0) return null;
+  return { text: row.text, inferred: row.inferred === true };
+}
+
+function readProfile(value: unknown): ProfileRead | null {
+  if (!value || typeof value !== "object") return null;
+  const row = value as {
+    family?: unknown;
+    familyStored?: unknown;
+    categories?: unknown;
+    tags?: unknown;
+    facets?: unknown;
     fieldLimits?: Record<string, { max: number }>;
-  }>("admin-web-get-atlas-fields", {});
-  if (!r.ok) return { ok: false, error: r.error };
-  const fieldLimits = readPlaceFieldLimits(r.data.fieldLimits);
+  };
+  const family = readResolvedFamily(row.family);
+  const familyStored = readResolvedFamily(row.familyStored);
+  if (!family || !familyStored) return null;
+  if (!Array.isArray(row.categories) || row.categories.length === 0) return null;
+  if (!Array.isArray(row.tags) || !Array.isArray(row.facets)) return null;
+  const categories: PlaceCategoryOption[] = [];
+  for (const item of row.categories) {
+    if (!item || typeof item !== "object") return null;
+    const c = item as PlaceCategoryOption;
+    if (
+      typeof c.slug !== "string" ||
+      typeof c.label !== "string" ||
+      typeof c.section !== "string" ||
+      typeof c.family_display !== "string"
+    ) {
+      return null;
+    }
+    categories.push(c);
+  }
   return {
-    ok: true,
-    data: {
-      tags: r.data.tags ?? [],
-      facets: r.data.facets ?? [],
-      categories: r.data.categories ?? [],
-      families: r.data.families ?? [],
-      tagsPerPlaceMax: fieldLimits.tagsPerPlaceMax,
-      fieldLimits,
-    },
+    family,
+    familyStored,
+    categories,
+    tags: row.tags as PlaceTagOption[],
+    facets: row.facets as PlaceTagFacet[],
+    fieldLimits: readPlaceFieldLimits(row.fieldLimits),
   };
 }
 
