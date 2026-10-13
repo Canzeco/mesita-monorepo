@@ -1,4 +1,4 @@
-// Supabase Edge Function — enricher-cron-enrich-place-contents (internal / cron)
+// Supabase Edge Function — enricher-cron-enrich-place-write (internal / cron)
 //
 // Stage 3 (final) of the Enricher pipeline. The pg_cron poller claims
 // place_research rows at stage='contents' and fires this EF with { place_id }.
@@ -29,8 +29,8 @@
 //
 // Contract: verify_jwt=true; requireInternalCaller gates the service-role bearer.
 //
-// Local:  supabase functions serve enricher-cron-enrich-place-contents
-// Deploy: supabase functions deploy enricher-cron-enrich-place-contents
+// Local:  supabase functions serve enricher-cron-enrich-place-write
+// Deploy: supabase functions deploy enricher-cron-enrich-place-write
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { invokeInternalCaller } from "../_shared/internal.ts";
@@ -106,18 +106,18 @@ import {
   stripPinnedColumns,
 } from "../_shared/enrich-corrections.ts";
 
-serveEnrichStage("contents", async (admin, env, row) => {
+serveEnrichStage("write", async (admin, env, row) => {
   // What this run bought, per the trigger matrix (NULL = everything).
   const buys = row.subprocesses;
   const placeId = row.place_id;
   const { gathered, analysis } = row;
   if (!gathered) {
     // Research output missing (shouldn't happen) — send the row back to research.
-    await advanceResearchStage(admin, placeId, "research");
+    await advanceResearchStage(admin, placeId, "gather");
     return;
   }
   if (!analysis) {
-    await advanceResearchStage(admin, placeId, "analysis");
+    await advanceResearchStage(admin, placeId, "photos");
     return;
   }
   const OPENAI_KEY = Deno.env.get("OPENAI_KEY");
@@ -579,8 +579,8 @@ serveEnrichStage("contents", async (admin, env, row) => {
       admin,
       placeId,
       openaiKey,
-      "enrich-contents/on-update",
-      "contents",
+      "enrich-write/on-update",
+      "write",
       "stored",
     ));
   }
@@ -605,7 +605,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
   } else if (assets.length > 0) {
     const storeRes = await invokeInternalCaller<{ queued?: number }>(
       env,
-      "enricher-cron-enrich-place-contents",
+      "enricher-cron-enrich-place-write",
       "enricher-edgefunc-store-place-images",
       {
         place_id: placeId,

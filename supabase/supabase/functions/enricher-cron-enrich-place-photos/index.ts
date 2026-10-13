@@ -1,4 +1,4 @@
-// Supabase Edge Function — enricher-cron-enrich-place-analysis (internal / cron)
+// Supabase Edge Function — enricher-cron-enrich-place-photos (internal / cron)
 //
 // Stage 2 of the Enricher pipeline (the Enricher is a PROCESS — a cron-driven
 // pipeline of three EFs — not an agent). The pg_cron poller claims
@@ -17,8 +17,8 @@
 //
 // Contract: verify_jwt=true; requireInternalCaller gates the service-role bearer.
 //
-// Local:  supabase functions serve enricher-cron-enrich-place-analysis
-// Deploy: supabase functions deploy enricher-cron-enrich-place-analysis
+// Local:  supabase functions serve enricher-cron-enrich-place-photos
+// Deploy: supabase functions deploy enricher-cron-enrich-place-photos
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { COST, loadEnrichConfig, PHOTO_CEILING, VISION_MODEL, visionModelFor } from "../_shared/enrich-config.ts";
@@ -39,12 +39,12 @@ import {
 import { stepDone, reportCrenupSteps } from "../_shared/crenup-report.ts";
 import { loadEnrichFill, stepRuns } from "../_shared/enrich-fill.ts";
 
-serveEnrichStage("analysis", async (admin, _env, row) => {
+serveEnrichStage("photos", async (admin, _env, row) => {
   const placeId = row.place_id;
   const gathered = row.gathered;
   if (!gathered) {
     // Research output missing (shouldn't happen) — send the row back to research.
-    await advanceResearchStage(admin, placeId, "research");
+    await advanceResearchStage(admin, placeId, "gather");
     return;
   }
 
@@ -63,7 +63,7 @@ serveEnrichStage("analysis", async (admin, _env, row) => {
     // The rule it broke is in crenup-report.ts: a step a run did not BUY writes
     // NOTHING, so the previous run's result stands. What this run bought is
     // already recorded in place_research.subprocesses, so nothing is lost.
-    await advanceResearchStage(admin, placeId, "contents", {
+    await advanceResearchStage(admin, placeId, "write", {
       analysis: row.analysis ?? {
         finalPhotos: [],
         saved: [],
@@ -131,7 +131,7 @@ serveEnrichStage("analysis", async (admin, _env, row) => {
   // The STAGE notification, named `analysis` rather than `images`: a beacon
   // that borrows a piece key lands in the same column the ladder reads, which
   // is how MESITA-1209 happened. The piece itself is reported above.
-  await reportEnrichmentStep(admin, placeId, "S5", "analysis", "completed",
+  await reportEnrichmentStep(admin, placeId, "S5", "photos", "completed",
     `Image analysis complete — described ${described} candidate photo(s), selected ${funnel.finalPhotos.length} final photo(s) for the profile.`,
     { described, finalPhotos: funnel.finalPhotos.length, spentUsd: ledger.spentUsd });
 
@@ -142,7 +142,7 @@ serveEnrichStage("analysis", async (admin, _env, row) => {
     diag: funnel.diag,
   };
   // Persist the running ledger so contents carries the per-run total forward.
-  await advanceResearchStage(admin, placeId, "contents", {
+  await advanceResearchStage(admin, placeId, "write", {
     analysis,
     gathered: {
       ...gathered,

@@ -98,7 +98,7 @@ export function CrenupStateCard({ place }: { place: AdminPlace }) {
         ? "No guest has requested this profile."
         : `${requestCount} guest request${requestCount === 1 ? "" : "s"}.`;
   const enrichingDetail = enriching
-    ? "The Enricher pipeline is mid-flight — research, analysis, or contents is running."
+    ? "The Enricher pipeline is mid-flight — gather, photos, or write is running."
     : "No Enricher run is in flight.";
 
   return (

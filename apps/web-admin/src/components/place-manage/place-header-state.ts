@@ -5,7 +5,7 @@ import type { PlaceEnrichmentState } from "./actions";
  *  research OR analysis OR contents. Never clear after research alone. */
 export function isEnriching(state: PlaceEnrichmentState | null): boolean {
   const stage = state?.stage ?? null;
-  if (stage === "research" || stage === "analysis" || stage === "contents") {
+  if (stage === "gather" || stage === "photos" || stage === "write") {
     return true;
   }
   return (state?.content_state ?? null) === "generating";

@@ -15,7 +15,7 @@ import type {
 export function isEnrichingStage(
   stage: string | null | undefined,
 ): boolean {
-  return stage === "research" || stage === "analysis" || stage === "contents";
+  return stage === "gather" || stage === "photos" || stage === "write";
 }
 
 /**
@@ -93,7 +93,7 @@ export async function seedPlaceResearch(
   const opened = await openEnrichmentRun(admin, placeId, {
     ...run,
     seededBy: createdBy,
-    entryStage: "research",
+    entryStage: "gather",
   });
   if (!opened.ok) return { ok: false, error: opened.error };
   if (opened.blocked) return { ok: false, blocked: opened.blocked };
@@ -101,7 +101,7 @@ export async function seedPlaceResearch(
   const payload: Record<string, unknown> = {
     place_id: placeId,
     google_place_id: googlePlaceId,
-    stage: "research",
+    stage: "gather",
     state: "pending",
     attempts: 0,
     error: null,
@@ -159,7 +159,7 @@ export async function openEnrichmentRun(
     p_trigger: opts.trigger,
     p_seeded_by: opts.seededBy,
     p_subprocesses: opts.subprocesses ?? null,
-    p_entry_stage: opts.entryStage ?? "research",
+    p_entry_stage: opts.entryStage ?? "gather",
     p_cooldown_hours: Math.max(0, Math.round(opts.cooldownHours)),
     p_actor_user_id: opts.actorUserId ?? null,
     p_meta: opts.meta ?? {},

@@ -114,5 +114,5 @@ export function discoverySearchCost(cfg: Pick<EnrichConfig, "discoverCandidates"
  * recording nothing, which is the failure this fixes.
  */
 export function runOwnsGatherSpend(entryStage: string | null | undefined): boolean {
-  return entryStage !== "analysis" && entryStage !== "contents";
+  return entryStage !== "photos" && entryStage !== "write";
 }

@@ -46,7 +46,7 @@ import { parseOverwrite, type FillStep } from "../_shared/enrich-fill.ts";
 
 // `placeId` is the canonical MESITA-26 key; `projectId` is the legacy alias
 // both consoles still send here. readPlaceIdAlias accepts both (placeId wins).
-type ReenrichMode = "fill" | "full" | "analysis" | "contents";
+type ReenrichMode = "fill" | "full" | "photos" | "write";
 type Body = {
   projectId?: string;
   placeId?: string;
@@ -55,7 +55,7 @@ type Body = {
   overwrite?: unknown;
 };
 
-const MODES: ReenrichMode[] = ["fill", "full", "analysis", "contents"];
+const MODES: ReenrichMode[] = ["fill", "full", "photos", "write"];
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -86,7 +86,10 @@ Deno.serve(async (req) => {
 
   // Default is fill: complete steps that have not landed. `full` is the old
   // re-run-everything path, kept so a caller can still force it.
-  const mode = (bodyRes.body.mode ?? "fill").toString().trim() as ReenrichMode;
+  const rawMode = (bodyRes.body.mode ?? "fill").toString().trim();
+  const mode = (
+    rawMode === "analysis" ? "photos" : rawMode === "contents" ? "write" : rawMode
+  ) as ReenrichMode;
   if (!MODES.includes(mode)) {
     return json({ ok: false, error: `Invalid mode '${mode}'. Expected one of: ${MODES.join(", ")}.` }, 400);
   }
@@ -136,12 +139,12 @@ Deno.serve(async (req) => {
       meta: mode === "fill" ? { mode, fill: true, overwrite } : { mode },
     });
     if (!seed.ok) return { ok: false, error: seed.error ?? "Failed to queue enrichment", status: 500 };
-    return { ok: true, stage: "research" };
+    return { ok: true, stage: "gather" };
   }
 
   // ── Lighter modes: reseed to the chosen stage, REUSING the stored payloads.
   // Require that a prior full run populated what the stage depends on. ──
-  const stage: "analysis" | "contents" = mode === "analysis" ? "analysis" : "contents";
+  const stage: "photos" | "write" = mode === "photos" ? "photos" : "write";
   const { data: row, error: rowErr } = await admin
     .from("place_research")
     .select("gathered, analysis")
@@ -162,7 +165,7 @@ Deno.serve(async (req) => {
       status: 422,
     };
   }
-  if (stage === "contents" && !row.analysis) {
+  if (stage === "write" && !row.analysis) {
     return {
       ok: false,
       error: "No analysis data — run a full or analysis re-enrich first.",

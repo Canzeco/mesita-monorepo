@@ -262,6 +262,9 @@ jobs:
             supabase-cron-enrich-place-research
             supabase-cron-enrich-place-analysis
             supabase-cron-enrich-place-contents
+            enricher-cron-enrich-place-research
+            enricher-cron-enrich-place-analysis
+            enricher-cron-enrich-place-contents
             supabase-edgefunc-store-place-images
             supabase-edgefunc-recall-places
             supabase-edgefunc-search-places

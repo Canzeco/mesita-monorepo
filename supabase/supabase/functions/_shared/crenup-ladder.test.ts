@@ -349,9 +349,9 @@ Deno.test("high water: never exceeds the total, and never goes negative", () => 
 Deno.test("no raw beacon may use a CRENUP step key as its step_name", async () => {
   const dir = new URL("../", import.meta.url);
   const stages = [
-    "enricher-cron-enrich-place-research",
-    "enricher-cron-enrich-place-analysis",
-    "enricher-cron-enrich-place-contents",
+    "enricher-cron-enrich-place-gather",
+    "enricher-cron-enrich-place-photos",
+    "enricher-cron-enrich-place-write",
   ];
   const pieces = new Set<string>(CRENUP_LADDER);
   const offenders: string[] = [];

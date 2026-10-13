@@ -171,17 +171,17 @@ verify_jwt = true
 
 # --- Enricher v2 pipeline (the Enricher is a PROCESS: cron-driven stages) ---
 #
-# Three stage EFs walk a place_research row research → analysis → contents.
+# Three stage EFs walk a place_research row gather → photos → write.
 # The pg_cron poller (run_place_enrichment_stages) claims pending rows and
 # fires one net.http_post per row with the Vault service-role bearer; each EF
 # acks immediately and works in an EdgeRuntime background task. Internal-only.
-[functions.enricher-cron-enrich-place-research]
+[functions.enricher-cron-enrich-place-gather]
 verify_jwt = true
 
-[functions.enricher-cron-enrich-place-analysis]
+[functions.enricher-cron-enrich-place-photos]
 verify_jwt = true
 
-[functions.enricher-cron-enrich-place-contents]
+[functions.enricher-cron-enrich-place-write]
 verify_jwt = true
 
 # --- Consumer ---

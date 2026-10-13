@@ -59,7 +59,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
       setQueued(true);
       setEnrichState((prev) => ({
         content_state: "generating",
-        stage: "research",
+        stage: "gather",
         stage_state: "queued",
         error: null,
         last_enriched_at: prev?.last_enriched_at ?? null,

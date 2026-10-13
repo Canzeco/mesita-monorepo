@@ -1,4 +1,4 @@
-// Supabase Edge Function — enricher-cron-enrich-place-research (internal / cron)
+// Supabase Edge Function — enricher-cron-enrich-place-gather (internal / cron)
 //
 // Stage 1 of the Enricher pipeline (the Enricher is a PROCESS — a cron-driven
 // pipeline of three EFs — not an agent). The pg_cron poller
@@ -31,8 +31,8 @@
 //
 // Contract: verify_jwt=true; requireInternalCaller gates the service-role bearer.
 //
-// Local:  supabase functions serve enricher-cron-enrich-place-research
-// Deploy: supabase functions deploy enricher-cron-enrich-place-research
+// Local:  supabase functions serve enricher-cron-enrich-place-gather
+// Deploy: supabase functions deploy enricher-cron-enrich-place-gather
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { instagramHandleFromUrl } from "../_shared/apify.ts";
@@ -80,7 +80,7 @@ import {
   serveEnrichStage,
 } from "../_shared/enrich-pipeline.ts";
 
-serveEnrichStage("research", async (admin, _env, row) => {
+serveEnrichStage("gather", async (admin, _env, row) => {
   const placeId = row.place_id;
   const googlePlaceId = row.google_place_id;
   // S1 (the Google gate) is not gated: it is the identity spine every stage
@@ -107,7 +107,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
         "Google identity spine incomplete — no reliable Google Places match, so the enrichment run was aborted.");
       await failResearchRow(admin, placeId, `google_spine: ${basicsRes.error}`, {
         runId: row.run_id,
-        stage: "research",
+        stage: "gather",
       });
     } else {
       // Transient Google trouble — release for a retry.
@@ -183,7 +183,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
       admin,
       placeId,
       "pulse: google reports CLOSED_PERMANENTLY",
-      { runId: row.run_id, stage: "research" },
+      { runId: row.run_id, stage: "gather" },
     );
     return;
   }
@@ -320,7 +320,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // `phone` is a CorrectableField and the Reservationist calling a place is
   // exactly how we learn the listed number is dead, so this write is the second
   // of the two persist doors that must stand down for a pin. (The other is S8
-  // in enricher-cron-enrich-place-contents, which owns hours/address/website/
+  // in enricher-cron-enrich-place-write, which owns hours/address/website/
   // closes_at/reservation endpoint.) Pins live in `places.enrichment_sources`,
   // which this stage never writes, so a plain read is enough here.
   if (runDetails && basics.phone) {
@@ -667,5 +667,5 @@ serveEnrichStage("research", async (admin, _env, row) => {
     stepsRan: [...ran],
     cost: ledger.snapshot(),
   };
-  await advanceResearchStage(admin, placeId, "analysis", { gathered });
+  await advanceResearchStage(admin, placeId, "photos", { gathered });
 });

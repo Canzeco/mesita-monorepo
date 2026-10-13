@@ -94,11 +94,11 @@ Deno.test("runOwnsGatherSpend: only a run that walked from research is billed", 
   // (`row.stage === "contents"`) answered false here — inside the contents EF
   // `row.stage` is always "contents", because loadClaimedRow refuses the row
   // otherwise — so every successful run wrote cost_usd = null.
-  assertEquals(runOwnsGatherSpend("research"), true);
+  assertEquals(runOwnsGatherSpend("gather"), true);
 
   // A light re-enrich reused a gather it never paid for.
-  assertEquals(runOwnsGatherSpend("analysis"), false);
-  assertEquals(runOwnsGatherSpend("contents"), false);
+  assertEquals(runOwnsGatherSpend("photos"), false);
+  assertEquals(runOwnsGatherSpend("write"), false);
 
   // Unknown (no run row, or the read failed) bills rather than drops: losing
   // the number is the failure being fixed, so unknown fails toward recording.
@@ -119,7 +119,7 @@ Deno.test("a stage EF never decides anything from row.stage — loadClaimedRow p
   // the type checker and every test were happy. Only the invariant two files
   // away makes it a tautology. So assert on the source.
   for (
-    const stage of ["research", "analysis", "contents"] as const
+    const stage of ["gather", "photos", "write"] as const
   ) {
     const src = Deno.readTextFileSync(
       new URL(`../enricher-cron-enrich-place-${stage}/index.ts`, import.meta.url),
