@@ -79,24 +79,9 @@ const CHECKS: readonly CompletenessCheck[] = [
     weight: 10,
     done: (p) => !!(p.website_url || p.instagram_url),
   },
-  {
-    label: "Menu",
-    hint: "Add a menu",
-    weight: 10,
-    done: (p) =>
-      (p.products?.menu?.length ?? 0) > 0 ||
-      (p.menus?.length ?? 0) > 0 ||
-      !!p.menu_pdf_url,
-    // A SCROLL AGAIN (MESITA-1919), and this is the bug's full arc. It was
-    // `scrollId: "place-products"` — the id `MenusSection` renders — until
-    // MESITA-1848 gave Menus its own address; from that day the target was on
-    // a different page, so the chip called `getElementById`, got null, and
-    // returned: a button that did nothing at all, on the one card whose entire
-    // job is telling an operator what to go and fix. MESITA-1883 made it a
-    // `tab` link to stop the silence. Profile renders `MenusSection` again, so
-    // the id resolves on this page and the cheaper answer is correct once more.
-    scrollId: "place-products",
-  },
+  // Menu left the meter with the card (MESITA-2175). Upload is off, so a
+  // chip that says "Add a menu" would point at a section this page does not
+  // render. Stored menus still count nowhere here.
   {
     label: "Tags",
     hint: "Pick at least 3 tags",
