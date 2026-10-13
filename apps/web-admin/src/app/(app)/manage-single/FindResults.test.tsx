@@ -78,7 +78,10 @@ const NEW = row({
   ranks: { catalogue: null, name: null, autocomplete: 1, text: 2 },
 });
 
-function render(result: FindResult, over: Partial<Parameters<typeof FindResults>[0]> = {}) {
+function render(
+  result: FindResult,
+  over: Partial<Parameters<typeof FindResults>[0]> = {},
+) {
   return renderToStaticMarkup(
     <FindResults
       query="dos amores"
@@ -96,6 +99,25 @@ function render(result: FindResult, over: Partial<Parameters<typeof FindResults>
 const OK: FindResult = { rows: [HELD, NEW], failed: [], notes: [] };
 
 describe("Find › one table", () => {
+  it("draws Place and On Mesita only for the catalogue list — no rank columns", () => {
+    const html = render(
+      { rows: [HELD], failed: [], notes: [{ tone: "muted", text: "Mesita only. Google was not asked." }] },
+      { query: "", variant: "catalogue" },
+    );
+    expect(html).not.toContain(">Catalogue<");
+    expect(html).not.toContain(">Name Search<");
+    expect(html).not.toContain("Catalogue #1");
+    expect(html).toContain("Every place on Mesita");
+    expect(html).toContain("On Mesita");
+    expect(html).toContain("Mesita only. Google was not asked.");
+  });
+
+  it("says the catalogue is empty instead of a missed search", () => {
+    const html = render({ rows: [], failed: [], notes: [] }, { query: "", variant: "catalogue" });
+    expect(html).toContain("Mesita has no places yet. Paste a Google Place ID (ChIJ…) to create the first.");
+    expect(html).not.toContain("Nothing on Mesita or Google matches");
+  });
+
   it("groups the source columns MESITA | GOOGLE, as column groups", () => {
     const html = render(OK);
     expect(html).toMatch(/<th[^>]*colSpan="2"[^>]*scope="colgroup"[^>]*>Mesita<\/th>/i);

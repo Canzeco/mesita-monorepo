@@ -59,6 +59,7 @@ export function FindResults({
   disabled,
   onOpen,
   onAdd,
+  variant = "search",
 }: {
   query: string;
   result: FindResult;
@@ -68,24 +69,31 @@ export function FindResults({
   disabled: boolean;
   onOpen: (row: FindRow) => void;
   onAdd: (row: FindRow) => void;
+  /** `catalogue` is the empty search: Mesita places only, no rank columns. */
+  variant?: "search" | "catalogue";
 }) {
   const [expanded, setExpanded] = useState(false);
   const rows = result.rows.map((row) => withAdd(row, added));
   const shown = expanded ? rows : rows.slice(0, FIND_FIRST_ROWS);
   const more = rows.length - shown.length;
   const failed = new Set(result.failed);
+  const ranks = variant === "search";
 
   if (rows.length === 0) {
-    const allFailed = failed.size === FIND_SOURCES.length;
+    const allFailed = ranks && failed.size === FIND_SOURCES.length;
     return (
       <div className="mt-5">
-        {allFailed ? null : (
+        {allFailed ? null : ranks ? (
           <>
             <p className="text-sm">Nothing on Mesita or Google matches “{query}”.</p>
             <p className="text-muted-foreground mt-1 text-sm">
               Paste its Google Place ID (ChIJ…) to look it up directly.
             </p>
           </>
+        ) : (
+          <p className="text-sm">
+            Mesita has no places yet. Paste a Google Place ID (ChIJ…) to create the first.
+          </p>
         )}
         <NoteLines notes={result.notes} />
       </div>
@@ -96,57 +104,70 @@ export function FindResults({
     <>
       <div className="border-border bg-card -mx-5 mt-5 overflow-hidden border-y sm:mx-0 sm:rounded-2xl sm:border">
         <div className="overflow-x-auto">
-          <table className="w-full border-separate border-spacing-0 text-sm sm:min-w-[720px]">
+          <table
+            className={
+              "w-full border-separate border-spacing-0 text-sm" +
+              (ranks ? " sm:min-w-[720px]" : "")
+            }
+          >
             <caption className="sr-only">
-              Places matching “{query}”, with the rank each source gave them
+              {ranks
+                ? `Places matching “${query}”, with the rank each source gave them`
+                : "Every place on Mesita"}
             </caption>
             <thead>
               <tr className={HEAD_ROW}>
                 <th
-                  rowSpan={2}
+                  rowSpan={ranks ? 2 : 1}
                   scope="col"
                   className={`px-4 py-3 align-bottom font-semibold ${STICKY_COL_HEAD}`}
                 >
                   Place
                 </th>
-                <th
-                  colSpan={2}
-                  scope="colgroup"
-                  className="hidden px-3 pt-3 pb-1 text-center font-semibold sm:table-cell"
-                >
-                  Mesita
-                </th>
-                <th
-                  colSpan={2}
-                  scope="colgroup"
-                  className={`hidden px-3 pt-3 pb-1 text-center font-semibold sm:table-cell ${GROUP_EDGE}`}
-                >
-                  Google
-                </th>
-                <th rowSpan={2} scope="col" className="px-4 py-3">
+                {ranks ? (
+                  <>
+                    <th
+                      colSpan={2}
+                      scope="colgroup"
+                      className="hidden px-3 pt-3 pb-1 text-center font-semibold sm:table-cell"
+                    >
+                      Mesita
+                    </th>
+                    <th
+                      colSpan={2}
+                      scope="colgroup"
+                      className={`hidden px-3 pt-3 pb-1 text-center font-semibold sm:table-cell ${GROUP_EDGE}`}
+                    >
+                      Google
+                    </th>
+                  </>
+                ) : null}
+                <th rowSpan={ranks ? 2 : 1} scope="col" className="px-4 py-3">
                   <span className="sr-only">Action</span>
                 </th>
               </tr>
-              <tr className={HEAD_ROW}>
-                {FIND_SOURCES.map((s) => (
-                  <th
-                    key={s.key}
-                    scope="col"
-                    className={
-                      "hidden px-3 pb-3 text-center font-semibold whitespace-nowrap sm:table-cell " +
-                      (s.key === "autocomplete" ? GROUP_EDGE : "")
-                    }
-                  >
-                    {s.label}
-                    {failed.has(s.key) ? (
-                      <span title={`${s.long} failed`} className="text-destructive ml-1 inline-flex align-[-2px]">
-                        <AlertTriangle className="h-3 w-3" aria-hidden="true" />
-                        <span className="sr-only">{s.long} failed</span>
-                      </span>
-                    ) : null}
-                  </th>
-                ))}
-              </tr>
+              {ranks ? (
+                <tr className={HEAD_ROW}>
+                  {FIND_SOURCES.map((s) => (
+                    <th
+                      key={s.key}
+                      scope="col"
+                      className={
+                        "hidden px-3 pb-3 text-center font-semibold whitespace-nowrap sm:table-cell " +
+                        (s.key === "autocomplete" ? GROUP_EDGE : "")
+                      }
+                    >
+                      {s.label}
+                      {failed.has(s.key) ? (
+                        <span title={`${s.long} failed`} className="text-destructive ml-1 inline-flex align-[-2px]">
+                          <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+                          <span className="sr-only">{s.long} failed</span>
+                        </span>
+                      ) : null}
+                    </th>
+                  ))}
+                </tr>
+              ) : null}
             </thead>
             <tbody>
               {shown.map((row, i) => (
@@ -166,24 +187,26 @@ export function FindResults({
                         {ratingLabel(row)}
                       </span>
                     ) : null}
-                    {row.placeHit ? <PlaceStateFacts hit={row.placeHit} /> : null}
-                    <PhoneSources row={row} />
+                    {ranks && row.placeHit ? <PlaceStateFacts hit={row.placeHit} /> : null}
+                    {ranks ? <PhoneSources row={row} /> : null}
                   </th>
-                  {FIND_SOURCES.map((s) => (
-                    <td
-                      key={s.key}
-                      className={
-                        "hidden px-3 py-3 text-center align-top sm:table-cell " +
-                        (s.key === "autocomplete" ? GROUP_EDGE : "")
-                      }
-                    >
-                      <SourceCell
-                        rank={row.ranks[s.key]}
-                        source={s.long}
-                        failed={failed.has(s.key)}
-                      />
-                    </td>
-                  ))}
+                  {ranks
+                    ? FIND_SOURCES.map((s) => (
+                        <td
+                          key={s.key}
+                          className={
+                            "hidden px-3 py-3 text-center align-top sm:table-cell " +
+                            (s.key === "autocomplete" ? GROUP_EDGE : "")
+                          }
+                        >
+                          <SourceCell
+                            rank={row.ranks[s.key]}
+                            source={s.long}
+                            failed={failed.has(s.key)}
+                          />
+                        </td>
+                      ))
+                    : null}
                   <td className="px-4 py-3 text-right align-top">
                     <ActionCell
                       row={row}
@@ -197,7 +220,7 @@ export function FindResults({
               ))}
               {more > 0 ? (
                 <tr className={ROW_DIVIDERS}>
-                  <td colSpan={6} className="px-4 py-2">
+                  <td colSpan={ranks ? 6 : 2} className="px-4 py-2">
                     <button
                       type="button"
                       onClick={() => {

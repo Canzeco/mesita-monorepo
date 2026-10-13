@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PlaceHit, SuggestHit } from "@/app/(app)/manage-multiple/actions";
 import type { PlaceLite } from "@/lib/places-types";
-import { mergeFindResults, type FindInputs, type TextSearchResult } from "./find-results";
+import { catalogueList, mergeFindResults, type FindInputs, type TextSearchResult } from "./find-results";
 
 const A = "ChIJAAAAAAAAAAAAAAAAAAAAAA"; // held, every source
 const B = "ChIJBBBBBBBBBBBBBBBBBBBBBB"; // Google only
@@ -147,6 +147,29 @@ describe("mergeFindResults", () => {
       "Discovery › Map hid 4 Text Search results (rating ≥ 4, reviews ≥ 50).",
       "Text Search's Mesita lookup failed (timeout); On Mesita reads the catalogue and the Mesita searches only.",
     ]);
+  });
+
+  it("lists every catalogue place for the empty search, with no ranks", () => {
+    const places = [
+      hit({ id: "m-b", name: "Bravo", google_place_id: B }),
+      hit({ id: "m-a", name: "Alpha", google_place_id: A }),
+    ];
+    const r = catalogueList(places, 2);
+    expect(r.rows.map((x) => x.name)).toEqual(["Bravo", "Alpha"]);
+    expect(r.rows[0]).toMatchObject({
+      key: `mesita:m-b`,
+      held: true,
+      mesitaId: "m-b",
+      ranks: { catalogue: null, name: null, autocomplete: null, text: null },
+    });
+    expect(r.notes.map((n) => n.text)).toContain("Mesita only. Google was not asked.");
+  });
+
+  it("notes when the catalogue total exceeds the returned page", () => {
+    const r = catalogueList([hit({})], 500);
+    expect(r.notes.map((n) => n.text)).toContainEqual(
+      "Showing 1 of 500. The rest are past the catalogue ceiling.",
+    );
   });
 
   it("is empty when every source is empty", () => {

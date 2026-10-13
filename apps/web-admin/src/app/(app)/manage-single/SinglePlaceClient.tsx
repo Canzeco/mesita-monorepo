@@ -6,12 +6,14 @@
 // asks FOUR sources at once — Mesita's catalogue and Name Search, Google's
 // Autocomplete and Text Search — and draws ONE table of every place they
 // returned, with a column per source (MESITA-2124; it replaced four stacked
-// lists, and Nearby left with them). A hit OPENS the place at
+// lists, and Nearby left with them). Opening the page is that search with an
+// empty query: every Mesita place, and no Google call (MESITA-2172). A hit
+// OPENS the place at
 // /manage-single/<id>/profile — the place screens admin owns (MESITA-2115).
 // Create (from a Google Place ID, or a table row) is the only write this
 // page makes itself.
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Building, ExternalLink, Loader2, Play, Search } from "lucide-react";
 import {
@@ -24,9 +26,16 @@ import { StateIcon, type BatchRowState } from "@/app/(app)/manage-multiple/State
 import { CopyIdButton, ReadField, SectionCard } from "@/components/admin-ui/manage";
 import { placeTabHref } from "@/lib/place-tabs";
 import type { PlaceLite, SearchErrorResponse, SearchResponse } from "@/lib/places-types";
-import { mergeFindResults, type FindResult, type FindRow, type SourceResult } from "./find-results";
+import {
+  catalogueList,
+  mergeFindResults,
+  type FindResult,
+  type FindRow,
+  type SourceResult,
+} from "./find-results";
 import {
   loadCatalogSource,
+  loadCatalogueWithTotal,
   searchAutocompleteSource,
   searchNameSource,
   searchTextSource,
@@ -35,7 +44,7 @@ import { FindResults, type RowNote } from "./FindResults";
 import { classifyLookup, filterCatalog, googleMapsPlaceHref } from "./single-place-lookup";
 
 export type View =
-  | { kind: "matches"; query: string; result: FindResult }
+  | { kind: "matches"; query: string; result: FindResult; variant: "search" | "catalogue" }
   // A Google Place ID Mesita does not hold yet. `google` is what Google says
   // about it (one Place-ID lookup, which consumes the Discovery › Map gate
   // like any other), so Create is informed; null when that lookup failed.
@@ -46,12 +55,13 @@ type Note = { state: BatchRowState; text: string };
 export function SinglePlaceClient() {
   const router = useRouter();
   const [text, setText] = useState("");
-  const [busy, setBusy] = useState<"find" | "create" | null>(null);
+  const [busy, setBusy] = useState<"find" | "create" | null>("find");
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View | null>(null);
   const [note, setNote] = useState<Note | null>(null);
   // The catalogue, read once per page life (and again after a Create).
   const [catalog, setCatalog] = useState<PlaceHit[] | null>(null);
+  const [catalogTotal, setCatalogTotal] = useState<number | null>(null);
   // `findSeq` drops a reply that lands after a newer Find and keys the table,
   // so its Show more resets. `added` (Google Place ID → Mesita id) and
   // `rowNotes` are this page's Adds.
@@ -59,23 +69,25 @@ export function SinglePlaceClient() {
   const [tableKey, setTableKey] = useState(0);
   const [added, setAdded] = useState<ReadonlyMap<string, string>>(new Map());
   const [rowNotes, setRowNotes] = useState<Record<string, RowNote>>({});
+  const [catalogueBootstrapped, setCatalogueBootstrapped] = useState(false);
 
   const lookup = useMemo(() => classifyLookup(text), [text]);
-  const isBusy = busy !== null;
+  const isBusy = busy !== null || !catalogueBootstrapped;
 
   function open(placeId: string) {
     router.push(placeTabHref(placeId, "profile"));
   }
 
   async function find() {
-    if (isBusy || lookup.kind === "empty") return;
+    if (isBusy) return;
     setBusy("find");
     setError(null);
     setNote(null);
     findSeq.current += 1;
     setRowNotes({});
     try {
-      if (lookup.kind === "google_place_id") await findByGoogleId(lookup.id);
+      if (lookup.kind === "empty") await findCatalogue();
+      else if (lookup.kind === "google_place_id") await findByGoogleId(lookup.id);
       else await findByName(lookup.query);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -83,6 +95,51 @@ export function SinglePlaceClient() {
       setBusy(null);
     }
   }
+
+  /** Empty Find: every Mesita place from the catalogue only (MESITA-2172). */
+  async function findCatalogue() {
+    const seq = findSeq.current;
+    if (catalog && catalogTotal != null) {
+      if (findSeq.current !== seq) return;
+      setTableKey(seq);
+      setView({
+        kind: "matches",
+        query: "",
+        variant: "catalogue",
+        result: catalogueList(catalog, catalogTotal),
+      });
+      return;
+    }
+    const all = await loadCatalogueWithTotal();
+    if (findSeq.current !== seq) return;
+    if (all.status === "error") {
+      setError(`Catalogue failed: ${all.error}`);
+      setView(null);
+      return;
+    }
+    setCatalog(all.data.places);
+    setCatalogTotal(all.data.total);
+    setTableKey(seq);
+    setView({
+      kind: "matches",
+      query: "",
+      variant: "catalogue",
+      result: catalogueList(all.data.places, all.data.total),
+    });
+  }
+
+  useEffect(() => {
+    let live = true;
+    findSeq.current += 1;
+    void findCatalogue().finally(() => {
+      if (live) setCatalogueBootstrapped(true);
+    });
+    return () => {
+      live = false;
+    };
+    // Mount only. An empty Find from the button calls findCatalogue itself.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function findByGoogleId(googleId: string) {
     const r = await searchPlacesByGoogleIds([googleId]);
@@ -118,6 +175,7 @@ export function SinglePlaceClient() {
     setView({
       kind: "matches",
       query,
+      variant: "search",
       result: mergeFindResults({
         catalogue: all.status === "ok" ? { status: "ok", data: filterCatalog(all.data, query) } : all,
         catalog: all.status === "ok" ? all.data : [],
@@ -163,6 +221,7 @@ export function SinglePlaceClient() {
       if (r.ok) {
         setAdded((m) => new Map(m).set(googleId, r.placeId));
         setCatalog(null);
+        setCatalogTotal(null);
         rowNote = {
           state: r.alreadyExisted ? "existed" : "ok",
           text: r.alreadyExisted ? "Already on Mesita" : "Created · not enriched",
@@ -181,6 +240,7 @@ export function SinglePlaceClient() {
     setBusy("create");
     setNote({ state: "running", text: "Creating…" });
     setCatalog(null);
+    setCatalogTotal(null);
     try {
       const r = await createPlaceFromGooglePlaceId(view.googleId);
       if (!r.ok) {
@@ -209,7 +269,7 @@ export function SinglePlaceClient() {
       <SectionCard
         tint="sky"
         title="Find"
-        subtitle="A Google Place ID looks it up by identity. Anything else searches Mesita (catalogue and Name Search) and Google (Autocomplete and Text Search) at once. A hit opens the place."
+        subtitle="The list is every place Mesita holds. Type a name to ask Google too, or paste a Google Place ID to open or create."
         icon={<Search className="h-4 w-4" />}
       >
         <form
@@ -231,7 +291,7 @@ export function SinglePlaceClient() {
           />
           <button
             type="submit"
-            disabled={isBusy || lookup.kind === "empty"}
+            disabled={isBusy}
             className="bg-foreground text-background inline-flex h-10 shrink-0 items-center gap-2 rounded-full px-5 text-sm font-semibold disabled:opacity-50"
           >
             {busy === "find" ? (
@@ -250,6 +310,14 @@ export function SinglePlaceClient() {
           </div>
         ) : null}
 
+        {busy === "find" && view == null ? (
+          <div className="mt-5 space-y-2" aria-busy="true" aria-label="Loading Mesita places">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="bg-muted/50 h-12 animate-pulse rounded-xl" />
+            ))}
+          </div>
+        ) : null}
+
         {view?.kind === "matches" ? (
           <FindResults
             key={tableKey}
@@ -258,6 +326,7 @@ export function SinglePlaceClient() {
             added={added}
             notes={rowNotes}
             disabled={isBusy}
+            variant={view.variant}
             onOpen={(row) => void openRow(row)}
             onAdd={(row) => void addRow(row)}
           />

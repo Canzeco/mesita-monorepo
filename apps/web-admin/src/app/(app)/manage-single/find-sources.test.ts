@@ -25,7 +25,7 @@ describe("Find's sources never throw", () => {
     expect(await searchNameSource("cafe")).toEqual({ status: "error", error: "no embedding key" });
     actions.autocompleteGooglePlaces.mockRejectedValue(new Error("network"));
     expect(await searchAutocompleteSource("cafe")).toEqual({ status: "error", error: "network" });
-    actions.listAllPlaces.mockResolvedValue({ ok: true, data: { places: [] } });
+    actions.listAllPlaces.mockResolvedValue({ ok: true, data: { places: [], total: 0 } });
     expect(await loadCatalogSource()).toEqual({ status: "ok", data: [] });
   });
 

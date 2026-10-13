@@ -20,9 +20,18 @@ function failed(err: unknown): { status: "error"; error: string } {
 /** The whole catalogue: the Catalogue column matches inside it, and it is
  *  how a held row learns its Mesita id and name. */
 export async function loadCatalogSource(): Promise<SourceResult<PlaceHit[]>> {
+  const r = await loadCatalogueWithTotal();
+  return r.status === "ok" ? { status: "ok", data: r.data.places } : r;
+}
+
+export async function loadCatalogueWithTotal(): Promise<
+  SourceResult<{ places: PlaceHit[]; total: number }>
+> {
   try {
     const r = await listAllPlaces();
-    return r.ok ? { status: "ok", data: r.data.places } : { status: "error", error: r.error };
+    return r.ok
+      ? { status: "ok", data: { places: r.data.places, total: r.data.total } }
+      : { status: "error", error: r.error };
   } catch (err) {
     return failed(err);
   }
