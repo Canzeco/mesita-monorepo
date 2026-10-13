@@ -74,7 +74,7 @@ Deno.test("crenup: `seed` is function 0 and is NEVER stamped", () => {
   assertEquals((CRENUP_LADDER as readonly string[]).includes("seed"), false);
   assertEquals(CRENUP_LADDER[0], "details");
   assertEquals(CRENUP_STEP_META.details.index, 1);
-  assertEquals(CRENUP_FLOOR_LABEL, "Seed");
+  assertEquals(CRENUP_FLOOR_LABEL, "Place");
 
   // No seed event anywhere, and the queue still reaches 8.
   const events = fullQueue();
@@ -217,18 +217,18 @@ Deno.test("crenup: the index is the position, and the labels ride in order", () 
   // the piece list — labels[0] is Seed (function 0, never stamped),
   // labels[8] is Embedding. A client renders labels[level] with no
   // off-by-one.
-  assertEquals(CRENUP_FLOOR_LABEL, "Seed");
-  assertEquals(CRENUP_LABELS_IN_ORDER[CRENUP_TOTAL], "Embedding");
+  assertEquals(CRENUP_FLOOR_LABEL, "Place");
+  assertEquals(CRENUP_LABELS_IN_ORDER[CRENUP_TOTAL], "Vectors");
   assertEquals([...CRENUP_LABELS_IN_ORDER], [
-    "Seed",
+    "Place",
     "Details",
-    "Serp",
+    "Web",
     "Links",
     "Social",
     "Reviews",
     "Images",
     "Description",
-    "Embedding",
+    "Vectors",
   ]);
   assertEquals(CRENUP_LABELS_IN_ORDER.every((l) => l.trim() !== ""), true);
 });

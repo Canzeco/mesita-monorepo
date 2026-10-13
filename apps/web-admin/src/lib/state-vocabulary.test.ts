@@ -27,22 +27,22 @@ describe("state vocabulary", () => {
     ]);
     expect([...BAD_WHEN_TRUE]).toEqual(["disabled"]);
     expect(CRENUP_STEPS.map((f) => `${f.n}. ${f.label}`)).toEqual([
-      "0. Seed",
+      "0. Place",
       "1. Details",
-      "2. Serp",
+      "2. Web",
       "3. Links",
       "4. Social",
       "5. Reviews",
       "6. Images",
       "7. Description",
-      "8. Embedding",
+      "8. Vectors",
     ]);
     expect(CRENUP_STEPS.map((f) => crenupStepLabel(f.n, f.label))).toEqual(
       CRENUP_STEPS.map((f) => `${f.n}. ${f.label}`),
     );
     expect(
       CRENUP_STEPS.filter((f) => creationFlowMark(f.flows) !== null).map((f) => f.label),
-    ).toEqual(["Seed", "Details", "Description", "Embedding"]);
+    ).toEqual(["Place", "Details", "Description", "Vectors"]);
     expect(crenupFlowTag(["create"])).toBe("Create");
     expect(crenupFlowTag(["create", "enrich"])).toBe("Create + Enrich");
     expect(crenupFlowTag(["enrich"])).toBe("Enrich");

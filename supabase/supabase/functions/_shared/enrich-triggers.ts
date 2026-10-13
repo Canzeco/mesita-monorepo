@@ -126,7 +126,7 @@ export const SUBPROCESS_META: Record<
     blurb: "Apify Google Maps scrape — the newest reviews that ground the Presentation.",
   },
   serp: {
-    label: "Serp",
+    label: "Web",
     functions: "2",
     cost: "low",
     blurb: "The Scout's editorial read of the open web. Soft context, never facts.",
@@ -169,7 +169,7 @@ export const SUBPROCESS_META: Record<
     blurb: "Mirror the winning photos into the place-images bucket.",
   },
   embedding: {
-    label: "Embedding",
+    label: "Vectors",
     functions: "8",
     cost: "free",
     blurb: "Re-vectorize the place so search and recall see the new text.",

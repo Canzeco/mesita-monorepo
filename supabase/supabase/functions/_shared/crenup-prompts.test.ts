@@ -38,7 +38,7 @@ Deno.test("the two named agents are Scout and Resolver, and nothing else is name
   const named = crenupPromptsMeta()
     .filter((p) => p.agent)
     .map((p) => `${p.agent}@${p.fn}`);
-  assertEquals(named, ["Scout@3 · Serp", "Resolver@4 · Links"]);
+  assertEquals(named, ["Scout@3 · Web", "Resolver@4 · Links"]);
 });
 
 Deno.test("every entry names its vendor and carries a non-empty prompt", () => {

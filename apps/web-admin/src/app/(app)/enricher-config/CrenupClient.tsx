@@ -211,7 +211,7 @@ export function CrenupClient({
               steps={chipsFor("create", ENRICHMENT_PARENT.href)}
               estimate={
                 <FlowEstimate
-                  caption="Details + Description + Embedding. One place."
+                  caption="Details + Description + Vectors. One place."
                   estimate={createCost}
                 />
               }
@@ -287,13 +287,13 @@ export function CrenupClient({
           <SectionCard
             icon={<ListOrdered className="text-secondary h-4 w-4" />}
             title="Functions"
-            subtitle="One ladder: Seed at 0, then 1–8."
+            subtitle="One ladder: Place at 0, then 1–8."
           >
             <div className="border-border mt-4 overflow-hidden rounded-xl border">
               <FunctionModule
                 id="f-seed"
                 index="0"
-                name="Seed"
+                name="Place"
                 flows={flowTagFor("seed")}
                 blurb="Dedupe on the Google Place ID and mint the paired rows. The row existing is the seed."
                 knobs="no knobs"
@@ -320,7 +320,7 @@ export function CrenupClient({
                 id="f-serp"
                 index="2 · $"
                 flows={flowTagFor("serp")}
-                name="Serp"
+                name="Web"
                 blurb="Editorial read Links spends to recognise the place. Never a fact source."
                 knobs="in Models"
               >
@@ -499,7 +499,7 @@ export function CrenupClient({
                 id="f-embedding"
                 index="8 · $"
                 flows={flowTagFor("embedding")}
-                name="Embedding"
+                name="Vectors"
                 blurb="Mesita Name Embedding · Semantic Summary Embedding. Two vectors, one function. Closes Enrich at 8."
                 knobs="locked"
               >

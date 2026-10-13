@@ -98,20 +98,20 @@ export const STATE_FACT_FALSE_TONE: Partial<Record<GeneralStateKey, "neutral">> 
 export type CrenupFlow = "create" | "enrich";
 
 export const CRENUP_STEPS = [
-  { key: "seed", label: "Seed", n: 0, flows: ["create"] },
+  { key: "seed", label: "Place", n: 0, flows: ["create"] },
   { key: "details", label: "Details", n: 1, flows: ["create", "enrich"] },
-  { key: "serp", label: "Serp", n: 2, flows: ["enrich"] },
+  { key: "serp", label: "Web", n: 2, flows: ["enrich"] },
   { key: "links", label: "Links", n: 3, flows: ["enrich"] },
   { key: "social", label: "Social", n: 4, flows: ["enrich"] },
   { key: "reviews", label: "Reviews", n: 5, flows: ["enrich"] },
   { key: "images", label: "Images", n: 6, flows: ["enrich"] },
   { key: "description", label: "Description", n: 7, flows: ["create", "enrich"] },
-  { key: "embedding", label: "Embedding", n: 8, flows: ["create", "enrich"] },
+  { key: "embedding", label: "Vectors", n: 8, flows: ["create", "enrich"] },
 ] as const;
 
 export type CrenupStepKey = (typeof CRENUP_STEPS)[number]["key"];
 
-/** Operator label: `0. Seed` … `8. Embedding`. */
+/** Operator label: `0. Place` … `8. Vectors`. Keys stay seed / serp / embedding. */
 export function crenupStepLabel(n: number, label: string): string {
   return `${n}. ${label}`;
 }
