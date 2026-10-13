@@ -1,12 +1,13 @@
 "use client";
 
-// Single Place › Find › the one results table (MESITA-2124, MESITA-2181).
-// A row per place. Columns are the states, in three groups — Profile States,
-// Enrichment Steps, Reviews — then, on a typed search, where each source
-// ranked it. The action sits at the row end. Drawn once every source has
-// settled, so no row ever moves under the cursor.
+// Single Place › Find › the one results table (MESITA-2124, MESITA-2181,
+// MESITA-2187). A row per place. The first column says whether Mesita holds
+// it or it is Google only — the first fact to read. Then the states, in
+// three groups — Profile States, Enrichment Steps, Reviews — then, on a
+// typed search, where each source ranked it. The action sits at the row end.
+// Drawn once every source has settled, so no row ever moves under the cursor.
 //
-// The Place column stays pinned while the state columns scroll. Under 640px
+// Held and Place stay pinned while the state columns scroll. Under 640px
 // the four source columns fold into one line beneath the address.
 
 import { useState } from "react";
@@ -47,11 +48,16 @@ const ROW_DIVIDERS =
   "[&>td]:border-border/60 [&>td]:border-t [&>th]:border-border/60 [&>th]:border-t";
 /** The thin line between column groups. */
 const GROUP_EDGE = "border-border border-l";
-/** Place stays put. This table is wider than the pane at every breakpoint,
- *  so the shared sticky classes (which let go at `sm`) would unpin the name. */
-const PIN_HEAD =
-  "sticky left-0 z-20 bg-[color-mix(in_oklab,var(--color-muted)_30%,var(--color-card))]";
-const PIN_CELL = "sticky left-0 z-10 bg-card";
+/** Held and Place stay put. This table is wider than the pane at every
+ *  breakpoint, so the shared sticky classes (which let go at `sm`) would
+ *  unpin the name. Held is a fixed 9rem; Place starts where it ends. */
+const PIN_HEAD_BG =
+  "z-20 bg-[color-mix(in_oklab,var(--color-muted)_30%,var(--color-card))]";
+const PIN_CELL_BG = "z-10 bg-card";
+const PIN_HELD_HEAD = `sticky left-0 w-36 min-w-36 max-w-36 ${PIN_HEAD_BG}`;
+const PIN_PLACE_HEAD = `sticky left-36 ${PIN_HEAD_BG}`;
+const PIN_HELD_CELL = `sticky left-0 w-36 min-w-36 max-w-36 ${PIN_CELL_BG}`;
+const PIN_PLACE_CELL = `sticky left-36 ${PIN_CELL_BG}`;
 
 const STATE_GROUPS = [
   { label: "Profile States", span: GENERAL_STATE_FACTS.length, edge: false },
@@ -89,7 +95,7 @@ export function FindResults({
   const failed = new Set(result.failed);
   const ranks = variant === "search";
   const colSpan =
-    2 +
+    3 +
     GENERAL_STATE_FACTS.length +
     ENRICHMENT_COLUMNS.length +
     REVIEW_COLUMNS.length +
@@ -131,7 +137,14 @@ export function FindResults({
                 <th
                   rowSpan={2}
                   scope="col"
-                  className={`px-4 py-3 align-bottom font-semibold ${PIN_HEAD}`}
+                  className={`px-3 py-3 text-center align-bottom font-semibold ${PIN_HELD_HEAD}`}
+                >
+                  On
+                </th>
+                <th
+                  rowSpan={2}
+                  scope="col"
+                  className={`px-4 py-3 align-bottom font-semibold ${PIN_PLACE_HEAD}`}
                 >
                   Place
                 </th>
@@ -230,9 +243,12 @@ export function FindResults({
             <tbody>
               {shown.map((row, i) => (
                 <tr key={row.key} className={ROW_DIVIDERS}>
+                  <td className={`px-3 py-3 text-center align-top ${PIN_HELD_CELL}`}>
+                    <HeldCell row={row} />
+                  </td>
                   <th
                     scope="row"
-                    className={`max-w-[60vw] px-4 py-3 text-left align-top font-normal sm:max-w-[280px] ${PIN_CELL}`}
+                    className={`max-w-[60vw] px-4 py-3 text-left align-top font-normal sm:max-w-[280px] ${PIN_PLACE_CELL}`}
                   >
                     <NameCell row={row} id={rowNameId(i)} disabled={disabled} onOpen={onOpen} />
                     {row.address ? (
@@ -298,6 +314,23 @@ export function FindResults({
       </div>
       <NoteLines notes={result.notes} />
     </>
+  );
+}
+
+/** First column. Green when Mesita holds the place; muted when it is
+ *  Google only. Google is not a failure, so it is not rose. */
+function HeldCell({ row }: { row: FindRow }) {
+  if (row.held) {
+    return (
+      <span className="inline-flex items-center justify-center rounded-full bg-green-500/10 px-2 py-0.5 type-label font-semibold whitespace-nowrap text-green-700">
+        Mesita
+      </span>
+    );
+  }
+  return (
+    <span className="text-muted-foreground bg-muted inline-flex items-center justify-center rounded-full px-2 py-0.5 type-label font-semibold whitespace-nowrap">
+      Google
+    </span>
   );
 }
 

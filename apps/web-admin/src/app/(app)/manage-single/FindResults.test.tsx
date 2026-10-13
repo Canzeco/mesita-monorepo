@@ -114,6 +114,7 @@ describe("Find › one table", () => {
     expect(html).toContain(">Created<");
     expect(html).toContain(">Stars<");
     expect(html).toContain("On Mesita");
+    expect(html).toContain(">Mesita</span>");
     expect(html).toContain("Mesita only. Google was not asked.");
   });
 
@@ -121,6 +122,25 @@ describe("Find › one table", () => {
     const html = render({ rows: [], failed: [], notes: [] }, { query: "", variant: "catalogue" });
     expect(html).toContain("Mesita has no places yet. Paste a Google Place ID (ChIJ…) to create the first.");
     expect(html).not.toContain("Nothing on Mesita or Google matches");
+  });
+
+  it("leads with whether Mesita holds the place or it is Google only", () => {
+    const html = render(OK);
+    const on = html.search(/<th[^>]*>\s*On\s*<\/th>/);
+    const place = html.search(/<th[^>]*>\s*Place\s*<\/th>/);
+    expect(on).toBeGreaterThan(-1);
+    expect(place).toBeGreaterThan(on);
+    expect(html).toContain(">Mesita</span>");
+    expect(html).toContain(">Google</span>");
+  });
+
+  it("says Mesita for a held place and Google for one Mesita lacks", () => {
+    const held = render({ rows: [HELD], failed: [], notes: [] });
+    expect(held).toContain(">Mesita</span>");
+    expect(held).not.toContain(">Google</span>");
+    const google = render({ rows: [NEW], failed: [], notes: [] });
+    expect(google).toContain(">Google</span>");
+    expect(google).not.toContain(">Mesita</span>");
   });
 
   it("groups the source columns MESITA | GOOGLE, as column groups", () => {
@@ -231,6 +251,7 @@ describe("Find › one table", () => {
     const html = render(OK, { added: new Map([[G2, "mesita-new"]]) });
     expect(html).toContain('href="/manage-single/mesita-new/profile"');
     expect(html).not.toContain(">Create<");
+    expect(html).not.toContain(">Google</span>");
   });
 
   it("shows a Create in flight, then its outcome, in a live region", () => {
