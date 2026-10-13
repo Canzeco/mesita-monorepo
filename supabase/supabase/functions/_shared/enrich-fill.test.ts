@@ -4,6 +4,7 @@ import {
   embeddingRuns,
   type EnrichFill,
   channelForSocial,
+  completedSnapshot,
   omitUnrunKeys,
   parseOverwrite,
   stepRuns,
@@ -85,6 +86,34 @@ Deno.test("omitUnrunKeys drops fields the skipped steps own", () => {
   assertEquals(place.google_reviews, undefined);
   assertEquals(place.description, undefined);
   assertEquals(place.photos, undefined);
+});
+
+Deno.test("omitUnrunKeys drops Google spine extras a skipped Details left behind", () => {
+  const place: Record<string, unknown> = {
+    pitch: "editorial",
+    story: null,
+    x_url: null,
+    threads_url: "https://threads",
+    reddit_url: null,
+    resy_url: null,
+    didi_food_url: null,
+    address: "kept-only-if-details",
+  };
+  omitUnrunKeys(place, new Set(["serp"]));
+  assertEquals(place.pitch, undefined);
+  assertEquals(place.story, undefined);
+  assertEquals(place.x_url, undefined);
+  assertEquals(place.threads_url, undefined);
+  assertEquals(place.reddit_url, undefined);
+  assertEquals(place.resy_url, undefined);
+  assertEquals(place.didi_food_url, undefined);
+  assertEquals(place.address, undefined);
+});
+
+Deno.test("a completed snapshot is frozen, and a missing one is not", () => {
+  assertEquals(completedSnapshot(undefined), null);
+  assertEquals([...(completedSnapshot([]) ?? [])], []);
+  assertEquals([...(completedSnapshot(["details", "nope"]) ?? [])], ["details"]);
 });
 
 Deno.test("a skipped Links step keeps the stored handle over Google's", () => {

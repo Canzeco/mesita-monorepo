@@ -117,6 +117,13 @@ function asSteps(raw: unknown): Set<FillStep> {
   return out;
 }
 
+/** The completed set frozen on the run at its first read. Null when this
+ *  run has not snapshotted yet. An empty array is a real snapshot. */
+export function completedSnapshot(raw: unknown): Set<FillStep> | null {
+  if (!Array.isArray(raw)) return null;
+  return asSteps(raw);
+}
+
 export async function loadEnrichFill(
   admin: SupabaseClient,
   row: {
@@ -128,23 +135,34 @@ export async function loadEnrichFill(
 ): Promise<EnrichFill> {
   let fill = false;
   const overwrite = new Set<FillStep>();
+  let meta: Record<string, unknown> | null = null;
   if (row.run_id) {
-    const { data } = await admin
+    const { data, error } = await admin
       .from("place_enrichment_runs")
       .select("meta")
       .eq("id", row.run_id)
       .maybeSingle();
-    const meta = (data?.meta ?? null) as { fill?: unknown; overwrite?: unknown } | null;
-    fill = meta?.fill === true;
-    const parsed = parseOverwrite(meta?.overwrite);
-    if (!Array.isArray(parsed)) {
-      // Stored by our own writer; a bad blob just fills nothing extra.
-    } else {
-      for (const step of parsed) overwrite.add(step);
+    if (!error && data) {
+      meta = (data.meta ?? {}) as Record<string, unknown>;
+      fill = meta.fill === true;
+      const parsed = parseOverwrite(meta.overwrite);
+      if (Array.isArray(parsed)) {
+        for (const step of parsed) overwrite.add(step);
+      }
+      const frozen = fill ? completedSnapshot(meta.completed) : null;
+      if (frozen) {
+        return {
+          fill,
+          overwrite,
+          completed: frozen,
+          earlier: asSteps(row.gathered?.stepsRan),
+          subprocesses: row.subprocesses,
+        };
+      }
     }
   }
   const completed = new Set<FillStep>();
-  if (fill) {
+  if (fill && row.run_id && meta && !Array.isArray(meta.completed)) {
     const { data, error } = await admin
       .from("place_profiles")
       .select("enrichment")
@@ -158,6 +176,16 @@ export async function loadEnrichFill(
       for (const step of FILL_STEPS) {
         if (functions[step]?.state === "completed") completed.add(step);
       }
+    }
+    // Freeze this set on the run before any stage stamps. A retry that
+    // re-read the live map would treat this run's own stamps as already
+    // done, skip the work, and then let write strip the columns.
+    const { error: snapErr } = await admin
+      .from("place_enrichment_runs")
+      .update({ meta: { ...meta, completed: [...completed] } })
+      .eq("id", row.run_id);
+    if (snapErr) {
+      console.error("[enrich-fill] completed snapshot:", snapErr.message);
     }
   }
   return {
@@ -185,6 +213,16 @@ export const STEP_WRITE_KEYS: Record<FillStep, readonly string[]> = {
     "google_maps_url",
     "google_stars_overall",
     "business_state",
+    // Google spine text and the channels Links does not discover. They ride
+    // in on `place = { ...basics }`. A skipped Details must not persist them,
+    // nulls included.
+    "pitch",
+    "story",
+    "x_url",
+    "threads_url",
+    "reddit_url",
+    "resy_url",
+    "didi_food_url",
   ],
   serp: [],
   links: [
