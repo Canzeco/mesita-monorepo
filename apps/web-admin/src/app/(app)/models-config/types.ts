@@ -122,7 +122,7 @@ export function changedEnricherFields(
   return patch;
 }
 
-// What each tier costs, from Intake's cost model (one rate card, not two).
+// What each tier costs, from Creation's cost model (one rate card, not two).
 const TIER_PRICE: Record<"writing" | "photos", Record<SynthesisQuality, string>> = {
   writing: {
     economy: `~$${COST_RATES.synthEconomy} per place`,

@@ -6,13 +6,13 @@ import { CONFIGURATIONS_NAV, MANAGE_NAV } from "./Sidebar";
 const APP = join(__dirname, "..", "app", "(app)");
 
 // Pato, MESITA-2083: "Models, Creation, Enrichment, Discovery, Reservations —
-// Only those"; MESITA-2159: "Merge Creation and Enrichment into Intake".
-// Order and count are the instruction.
+// Only those". Order and count are the instruction.
 describe("Configurations rail", () => {
-  it("is exactly Models · Intake · Discovery · Reservations", () => {
+  it("is exactly Models · Creation · Enrichment · Discovery · Reservations", () => {
     expect(CONFIGURATIONS_NAV.map((i) => i.label)).toEqual([
       "Models",
-      "Intake",
+      "Creation",
+      "Enrichment",
       "Discovery",
       "Reservations",
     ]);
@@ -25,10 +25,8 @@ describe("Configurations rail", () => {
     for (const a of hrefs)
       for (const b of hrefs)
         if (a !== b) expect(b.startsWith(`${a}/`), `${a} lights on ${b}`).toBe(false);
-    expect(existsSync(join(APP, "enricher-config", "page.tsx"))).toBe(true);
-    // The MESITA-2083 halves are gone: their URLs fall to the [...slug] 308.
-    for (const half of ["creation", "enrichment"])
-      expect(existsSync(join(APP, "enricher-config", half)), half).toBe(false);
+    for (const href of ["/enricher-config/creation", "/enricher-config/enrichment"])
+      expect(existsSync(join(APP, ...href.split("/").filter(Boolean), "page.tsx")), href).toBe(true);
   });
 });
 

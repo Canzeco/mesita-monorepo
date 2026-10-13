@@ -2,14 +2,14 @@ import { ConfigPageLayout } from "@/components/ConfigPageLayout";
 import { normalizeTier } from "@/lib/synthesis-quality";
 import { getAtlasSettings } from "./actions";
 import { CrenupClient } from "./CrenupClient";
+import type { CrenupView } from "./SectionStrip";
 import { type CrenupSettings } from "./crenup-guards";
-import { INTAKE_PARENT } from "./nav";
 
-// How a place becomes a profile, as one page: Intake (MESITA-2159 merged
-// Creation and Enrichment) — Models · Create · Enrich · Functions. Search
-// eligibility is Discovery › Map, not here.
+// How a place becomes a profile, as two pages (MESITA-2083):
+// Creation (Models · Create) and Enrichment (Enrich ·
+// Functions). Search eligibility is Discovery › Map, not here.
 //
-// One GET, seeded server-side. A failed load blocks Save so
+// One GET, seeded server-side, for either page. A failed load blocks Save so
 // client defaults cannot overwrite the live singleton (MESITA-737).
 
 const SETTINGS_FALLBACK: CrenupSettings = {
@@ -34,13 +34,18 @@ const SETTINGS_FALLBACK: CrenupSettings = {
   requestThreshold: 5,
 };
 
-export async function CrenupPage() {
+const TITLE: Record<CrenupView, string> = {
+  creation: "Creation",
+  enrichment: "Enrichment",
+};
+
+export async function CrenupPage({ view }: { view: CrenupView }) {
   const settings = await getAtlasSettings();
-  const title = INTAKE_PARENT.label;
 
   return (
-    <ConfigPageLayout eyebrow={`Operations · ${title}`} title={title}>
+    <ConfigPageLayout eyebrow={`Operations · ${TITLE[view]}`} title={TITLE[view]}>
     <CrenupClient
+      view={view}
       initialSettings={
         settings.ok
           ? {
