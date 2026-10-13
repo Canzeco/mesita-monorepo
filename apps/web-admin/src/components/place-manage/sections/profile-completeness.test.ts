@@ -59,6 +59,22 @@ function filesRenderingId(target: string): string[] {
     .map((f) => f.replace(/\.tsx$/, ""));
 }
 
+describe("menu upload stays off (MESITA-2175)", () => {
+  const strip = (text: string) =>
+    text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+
+  it("Profile does not mount MenusSection", () => {
+    const code = strip(read(join(SRC, "components/place-manage/ProfileTab.tsx")));
+    expect(code).not.toContain("MenusSection");
+  });
+
+  it("the completeness meter does not ask for a menu", () => {
+    const code = strip(read(join(SECTIONS, "ProfileCompleteness.tsx")));
+    expect(code).not.toMatch(/label:\s*"Menu"/);
+    expect(code).not.toContain("place-products");
+  });
+});
+
 describe("ProfileCompleteness chips land somewhere real", () => {
   const card = read(join(SECTIONS, "ProfileCompleteness.tsx"));
   // Comments in this file NAME the old scrollId to explain why it left, so

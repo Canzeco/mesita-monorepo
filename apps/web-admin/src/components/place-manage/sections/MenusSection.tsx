@@ -1,5 +1,9 @@
 "use client";
 
+// UNWIRED (MESITA-2175, Pato 2026-10-13). Profile does not mount this card,
+// and the completeness meter does not ask for a menu. Upload stays off until
+// that decision is reversed. Stored menus are left as they are.
+
 import { useMemo, useRef, useState } from "react";
 import {
   ExternalLink,
