@@ -180,9 +180,9 @@ export type PlaceEmbeddingWrite = {
  * Who asked for this embed — stamped onto the summary event so the Monitor can
  * attribute the beacon to the right caller instead of guessing from the key
  * (MESITA-1253 audit): "create" = the front door, "update" = a profile edit
- * re-embedding in-process, "contents" = the enrich stage.
+ * re-embedding in-process, "third" = the last Enrich step.
  */
-export type EmbeddingVia = "create" | "update" | "write";
+export type EmbeddingVia = "create" | "update" | "third";
 
 // On-Update S2+S3 for one place. Skips when facts digest matches the stored
 // embedding_source_hash and both text + vector are present.

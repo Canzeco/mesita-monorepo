@@ -305,6 +305,9 @@ Deno.test("high water: legacy stage beacons are not functions", () => {
   assertEquals(
     crenupHighWater([
       { step_name: "gather", state: "completed", created_at: at(1) },
+      { step_name: "first", state: "completed", created_at: at(1) },
+      { step_name: "second", state: "completed", created_at: at(1) },
+      { step_name: "third", state: "completed", created_at: at(1) },
       { step_name: "publish", state: "completed", created_at: at(2) },
     ]),
     0,
@@ -349,9 +352,9 @@ Deno.test("high water: never exceeds the total, and never goes negative", () => 
 Deno.test("no raw beacon may use a CRENUP step key as its step_name", async () => {
   const dir = new URL("../", import.meta.url);
   const stages = [
-    "enricher-cron-enrich-place-gather",
-    "enricher-cron-enrich-place-photos",
-    "enricher-cron-enrich-place-write",
+    "enricher-cron-enrich-place-first",
+    "enricher-cron-enrich-place-second",
+    "enricher-cron-enrich-place-third",
   ];
   const pieces = new Set<string>(CRENUP_LADDER);
   const offenders: string[] = [];

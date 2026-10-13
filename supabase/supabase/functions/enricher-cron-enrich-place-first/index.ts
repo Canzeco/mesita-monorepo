@@ -1,8 +1,7 @@
-// Supabase Edge Function — enricher-cron-enrich-place-gather (internal / cron)
+// Supabase Edge Function — enricher-cron-enrich-place-first (internal / cron)
 //
-// Stage 1 of the Enricher pipeline (the Enricher is a PROCESS — a cron-driven
-// pipeline of three EFs — not an agent). The pg_cron poller
-// (run_place_enrichment_stages) claims place_research rows at stage='research'
+// Step 1 of Enrich. The pg_cron poller
+// (run_place_enrichment_stages) claims place_research rows at stage='first'
 // and fires this EF with { place_id }. It acks 202 immediately and runs the
 // RESEARCH half in a background task:
 //
@@ -22,7 +21,7 @@
 //       (website CONTENT crawl retired — enrichment no longer reads the site)
 //
 // Output: place_research.gathered (partial place update + grounding + candidate
-// image pools + per-image metadata) → stage='analysis'. The profile persists once,
+// image pools + per-image metadata) → stage='second'. The profile persists once,
 // at the contents stage — exceptions written directly here (research-only):
 // `phone`, and the cached Google label (`google_name`; `places.name` is a
 // generated column and `mesita_name` belongs to the operator).
@@ -31,8 +30,8 @@
 //
 // Contract: verify_jwt=true; requireInternalCaller gates the service-role bearer.
 //
-// Local:  supabase functions serve enricher-cron-enrich-place-gather
-// Deploy: supabase functions deploy enricher-cron-enrich-place-gather
+// Local:  supabase functions serve enricher-cron-enrich-place-first
+// Deploy: supabase functions deploy enricher-cron-enrich-place-first
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { instagramHandleFromUrl } from "../_shared/apify.ts";
@@ -81,7 +80,7 @@ import {
   serveEnrichStage,
 } from "../_shared/enrich-pipeline.ts";
 
-serveEnrichStage("gather", async (admin, _env, row) => {
+serveEnrichStage("first", async (admin, _env, row) => {
   const placeId = row.place_id;
   const googlePlaceId = row.google_place_id;
   // S1 (the Google gate) is not gated: it is the identity spine every stage
@@ -108,7 +107,7 @@ serveEnrichStage("gather", async (admin, _env, row) => {
         "Google identity spine incomplete — no reliable Google Places match, so the enrichment run was aborted.");
       await failResearchRow(admin, placeId, `google_spine: ${basicsRes.error}`, {
         runId: row.run_id,
-        stage: "gather",
+        stage: "first",
       });
     } else {
       // Transient Google trouble — release for a retry.
@@ -165,7 +164,7 @@ serveEnrichStage("gather", async (admin, _env, row) => {
     },
   });
   if (!opRes.ok) {
-    console.error("[enrich-gather] business_state write:", opRes.error);
+    console.error("[enrich-first] business_state write:", opRes.error);
   }
 
   if (businessStatus === "CLOSED_PERMANENTLY") {
@@ -183,7 +182,7 @@ serveEnrichStage("gather", async (admin, _env, row) => {
       admin,
       placeId,
       "pulse: google reports CLOSED_PERMANENTLY",
-      { runId: row.run_id, stage: "gather" },
+      { runId: row.run_id, stage: "first" },
     );
     return;
   }
@@ -368,7 +367,7 @@ serveEnrichStage("gather", async (admin, _env, row) => {
   // `phone` is a CorrectableField and the Reservationist calling a place is
   // exactly how we learn the listed number is dead, so this write is the second
   // of the two persist doors that must stand down for a pin. (The other is S8
-  // in enricher-cron-enrich-place-write, which owns hours/address/website/
+  // in enricher-cron-enrich-place-third, which owns hours/address/website/
   // closes_at/reservation endpoint.) Pins live in `places.enrichment_sources`,
   // which this stage never writes, so a plain read is enough here.
   if (runDetails && basics.phone) {
@@ -540,7 +539,7 @@ serveEnrichStage("gather", async (admin, _env, row) => {
   // One beacon for the whole research stage (S1–S4) — one notification per
   // function. Summarises everything gathered; granular per-source diag lives
   // in gathered->sources.
-  await reportEnrichmentStep(admin, placeId, "S1", "gather", "completed",
+  await reportEnrichmentStep(admin, placeId, "S1", "first", "completed",
     `Research complete for “${name}” — ${basics.photos.length} Google photo(s), ${reviews.length} review(s), ${resolvedCount} link/contact field(s); Instagram ${igMark}, Facebook ${fbOk ? "✓" : "—"}.`,
     {
       photoCount: basics.photos.length,
@@ -716,5 +715,5 @@ serveEnrichStage("gather", async (admin, _env, row) => {
     stepsRan: [...ran],
     cost: ledger.snapshot(),
   };
-  await advanceResearchStage(admin, placeId, "photos", { gathered });
+  await advanceResearchStage(admin, placeId, "second", { gathered });
 });

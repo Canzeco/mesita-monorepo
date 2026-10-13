@@ -134,7 +134,7 @@ Deno.test("a skipped Links step keeps the stored handle over Google's", () => {
 
 Deno.test("gather does not strip description's facts before the write stage", async () => {
   const src = await Deno.readTextFile(
-    new URL("../enricher-cron-enrich-place-gather/index.ts", import.meta.url),
+    new URL("../enricher-cron-enrich-place-first/index.ts", import.meta.url),
   );
   assertEquals(src.includes("omitUnrunKeys("), false);
 });

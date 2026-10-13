@@ -4,20 +4,16 @@
 // place id and a `mode`, it reseeds place_research so the pg_cron poller
 // (run_place_enrichment_stages) runs from a chosen stage:
 //
-//   mode 'fill'      → default. Reseed to research but KEEP stored payloads.
-//                      A step runs only when it has not completed, or it is
-//                      named in `overwrite`. Description and Embedding also
-//                      run when an earlier step of this run executed.
-//   mode 'full'      → reseed to stage='research' (fresh gather; nulls the stored
-//                      gathered/analysis) → research → analysis → contents.
-//                      Refreshes the Google spine, channels, reviews, images, and
-//                      generated copy. Phone is re-fetched + overridden here.
-//   mode 'analysis'  → reseed to stage='analysis' (REUSES stored gathered) →
-//                      analysis → contents. Re-ranks/rebuilds images + re-persists,
-//                      WITHOUT re-gathering. Phone/contacts left untouched.
-//   mode 'contents'  → reseed to stage='contents' (REUSES stored gathered +
-//                      analysis) → contents only. Re-synthesises copy/category/tags
-//                      + re-persists. Cheapest. Phone/contacts left untouched.
+//   mode 'fill'    → default. Reseed to first but KEEP stored payloads.
+//                    A step runs only when it has not completed, or it is
+//                    named in `overwrite`. Description and Embedding also
+//                    run when an earlier step of this run executed.
+//   mode 'full'    → reseed to stage='first' and null the stored payloads.
+//                    Runs first, then second, then third.
+//   mode 'second'  → reseed to stage='second' (reuses the first step's payload).
+//                    Old callers may still send 'photos' or 'analysis'.
+//   mode 'third'   → reseed to stage='third' (reuses both stored payloads).
+//                    Old callers may still send 'write' or 'contents'.
 //
 // The lighter modes need a prior full run to have populated the payloads they
 // reuse (gathered for 'analysis'; gathered + analysis for 'contents'); if those
@@ -46,7 +42,7 @@ import { parseOverwrite, type FillStep } from "../_shared/enrich-fill.ts";
 
 // `placeId` is the canonical MESITA-26 key; `projectId` is the legacy alias
 // both consoles still send here. readPlaceIdAlias accepts both (placeId wins).
-type ReenrichMode = "fill" | "full" | "photos" | "write";
+type ReenrichMode = "fill" | "full" | "second" | "third";
 type Body = {
   projectId?: string;
   placeId?: string;
@@ -55,7 +51,7 @@ type Body = {
   overwrite?: unknown;
 };
 
-const MODES: ReenrichMode[] = ["fill", "full", "photos", "write"];
+const MODES: ReenrichMode[] = ["fill", "full", "second", "third"];
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -88,7 +84,9 @@ Deno.serve(async (req) => {
   // re-run-everything path, kept so a caller can still force it.
   const rawMode = (bodyRes.body.mode ?? "fill").toString().trim();
   const mode = (
-    rawMode === "analysis" ? "photos" : rawMode === "contents" ? "write" : rawMode
+    rawMode === "analysis" || rawMode === "photos" ? "second"
+    : rawMode === "contents" || rawMode === "write" ? "third"
+    : rawMode
   ) as ReenrichMode;
   if (!MODES.includes(mode)) {
     return json({ ok: false, error: `Invalid mode '${mode}'. Expected one of: ${MODES.join(", ")}.` }, 400);
@@ -139,12 +137,12 @@ Deno.serve(async (req) => {
       meta: mode === "fill" ? { mode, fill: true, overwrite } : { mode },
     });
     if (!seed.ok) return { ok: false, error: seed.error ?? "Failed to queue enrichment", status: 500 };
-    return { ok: true, stage: "gather" };
+    return { ok: true, stage: "first" };
   }
 
   // ── Lighter modes: reseed to the chosen stage, REUSING the stored payloads.
   // Require that a prior full run populated what the stage depends on. ──
-  const stage: "photos" | "write" = mode === "photos" ? "photos" : "write";
+  const stage: "second" | "third" = mode === "second" ? "second" : "third";
   const { data: row, error: rowErr } = await admin
     .from("place_research")
     .select("gathered, analysis")
@@ -165,7 +163,7 @@ Deno.serve(async (req) => {
       status: 422,
     };
   }
-  if (stage === "write" && !row.analysis) {
+  if (stage === "third" && !row.analysis) {
     return {
       ok: false,
       error: "No analysis data — run a full or analysis re-enrich first.",

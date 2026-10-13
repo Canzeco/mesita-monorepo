@@ -78,7 +78,7 @@ Deno.test("both prompts are fed a zone/city anchor to qualify a branch with", as
     "create-place.ts must pass the zone into the door",
   );
   const contents = await Deno.readTextFile(
-    new URL("../enricher-cron-enrich-place-write/index.ts", import.meta.url),
+    new URL("../enricher-cron-enrich-place-third/index.ts", import.meta.url),
   );
   assertEquals(
     /zone: \(place\.zone \?\? null\)/.test(contents),

@@ -3,9 +3,9 @@
 // The Enricher is a PROCESS (not an agent): a cron-driven pipeline of three
 // Edge Functions over public.place_research:
 //
-//   stage 'gather'  → enricher-cron-enrich-place-gather   (Details through Reviews)
-//   stage 'photos'  → enricher-cron-enrich-place-photos   (Images)
-//   stage 'write'   → enricher-cron-enrich-place-write    (Description and Embedding)
+//   stage 'first'   → enricher-cron-enrich-place-first    (Details through Reviews)
+//   stage 'second'  → enricher-cron-enrich-place-second   (Images)
+//   stage 'third'   → enricher-cron-enrich-place-third    (Description and Embedding)
 //   stage 'done' | 'failed' — terminal.
 //
 // The SQL poller (run_place_enrichment_stages, pg_cron) claims pending rows
@@ -72,7 +72,7 @@ export {
   seedPlaceResearch,
 };
 
-export type ResearchStage = "gather" | "photos" | "write" | "done" | "failed";
+export type ResearchStage = "first" | "second" | "third" | "done" | "failed";
 
 export type PlaceResearchRow = {
   place_id: string;
@@ -178,9 +178,9 @@ export { runInBackground };
 // First step of each stage's S-range (research S1–S4, analysis S5–S6,
 // contents S7–S9) — anchors the crash beacon in the admin feed's step model.
 const STAGE_CRASH_STEP: Partial<Record<ResearchStage, `S${number}`>> = {
-  gather: "S1",
-  photos: "S5",
-  write: "S7",
+  first: "S1",
+  second: "S5",
+  third: "S7",
 };
 
 // The boilerplate every stage EF shares: guards → internal-caller gate →

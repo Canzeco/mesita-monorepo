@@ -175,8 +175,8 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "eleven-a4-find-reservation/index.ts",
   "eleven-a4-verify-caller/index.ts",
   "eleven-agent-get-reservation/index.ts",
-  "enricher-cron-enrich-place-write/index.ts",
-  "enricher-cron-enrich-place-gather/index.ts",
+  "enricher-cron-enrich-place-third/index.ts",
+  "enricher-cron-enrich-place-first/index.ts",
   "supabase-edgefunc-reservation-call/index.ts",
 ];
 
@@ -323,8 +323,8 @@ const SWALLOWED_TODAY = [
   "eleven-a4-find-reservation/index.ts",
   "eleven-a4-verify-caller/index.ts",
   "eleven-agent-get-reservation/index.ts",
-  "enricher-cron-enrich-place-write/index.ts",
-  "enricher-cron-enrich-place-gather/index.ts",
+  "enricher-cron-enrich-place-third/index.ts",
+  "enricher-cron-enrich-place-first/index.ts",
   "supabase-cron-reservation-retries/index.ts",
   "supabase-edgefunc-reservation-call/index.ts",
 ];

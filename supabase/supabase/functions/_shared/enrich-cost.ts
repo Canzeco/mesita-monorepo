@@ -113,6 +113,16 @@ export function discoverySearchCost(cfg: Pick<EnrichConfig, "discoverCandidates"
  * as owning it: recording a cost that might belong to an earlier gather beats
  * recording nothing, which is the failure this fixes.
  */
+const REUSED_ENTRY = new Set([
+  "second",
+  "third",
+  "photos",
+  "write",
+  "analysis",
+  "contents",
+]);
+
 export function runOwnsGatherSpend(entryStage: string | null | undefined): boolean {
-  return entryStage !== "photos" && entryStage !== "write";
+  if (entryStage == null) return true;
+  return !REUSED_ENTRY.has(entryStage);
 }
