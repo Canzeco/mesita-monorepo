@@ -121,6 +121,26 @@ export type SocialUrlPair = {
   facebook_url: string | null;
 };
 
+/** Contents replays URLs it did not choose. Only a different non-empty
+ *  account empties the count. A missing URL, a null, or a cosmetic spelling
+ *  of the same link does not. */
+export function socialAccountReplaced(prev: string | null, next: unknown): boolean {
+  if (typeof next !== "string" || !next.trim() || !prev?.trim()) return false;
+  return canonicalSocialUrl(prev) !== canonicalSocialUrl(next);
+}
+
+function canonicalSocialUrl(url: string): string {
+  const trimmed = url.trim();
+  try {
+    const parsed = new URL(trimmed);
+    const host = parsed.hostname.replace(/^www\./, "").toLowerCase();
+    const path = parsed.pathname.replace(/\/+$/, "").toLowerCase();
+    return `${parsed.protocol}//${host}${path}`;
+  } catch {
+    return trimmed.replace(/\/+$/, "").toLowerCase();
+  }
+}
+
 /** Which social sources a profile save must empty. Undefined in `next`
  *  means that URL was not in the patch. */
 export function socialSourcesToEmpty(

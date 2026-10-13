@@ -102,7 +102,7 @@ import {
   emptyReviewSource,
   normalizeReviewsState,
   omitReviewsTileColumns,
-  socialSourcesToEmpty,
+  socialAccountReplaced,
   withReviewSource,
 } from "../_shared/reviews-state.ts";
 
@@ -514,24 +514,18 @@ serveEnrichStage("contents", async (admin, env, row) => {
   if ("google_reviews" in placeUpdate) {
     placeUpdate.google_reviews = persistGoogleReviews(placeUpdate.google_reviews);
   }
+  // A gathered URL is replayed on runs that did not pick a new account.
+  // Only a different non-empty account empties the count. A missing URL, a
+  // null, or a slash/www spelling of the same link leaves a reload alone.
   if (live) {
-    const clears = socialSourcesToEmpty(
-      { instagram_url: live.instagram_url, facebook_url: live.facebook_url },
-      {
-        instagram_url: "instagram_url" in placeUpdate
-          ? (placeUpdate.instagram_url as string | null)
-          : undefined,
-        facebook_url: "facebook_url" in placeUpdate
-          ? (placeUpdate.facebook_url as string | null)
-          : undefined,
-      },
-    );
-    if (clears.instagram) placeUpdate.instagram_followers_count = null;
-    if (clears.facebook) placeUpdate.facebook_followers = null;
-    if (clears.instagram || clears.facebook) {
+    const instagram = socialAccountReplaced(live.instagram_url, placeUpdate.instagram_url);
+    const facebook = socialAccountReplaced(live.facebook_url, placeUpdate.facebook_url);
+    if (instagram) placeUpdate.instagram_followers_count = null;
+    if (facebook) placeUpdate.facebook_followers = null;
+    if (instagram || facebook) {
       let state = normalizeReviewsState(live.reviews_state);
-      if (clears.instagram) state = withReviewSource(state, "instagram", emptyReviewSource());
-      if (clears.facebook) state = withReviewSource(state, "facebook", emptyReviewSource());
+      if (instagram) state = withReviewSource(state, "instagram", emptyReviewSource());
+      if (facebook) state = withReviewSource(state, "facebook", emptyReviewSource());
       placeUpdate.reviews_state = state;
     }
   }

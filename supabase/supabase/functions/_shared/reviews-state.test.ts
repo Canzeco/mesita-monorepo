@@ -6,6 +6,7 @@ import {
   omitReviewsTileColumns,
   parseReviewsState,
   readyReviewSource,
+  socialAccountReplaced,
   socialSourcesToEmpty,
   withReviewSource,
 } from "./reviews-state.ts";
@@ -55,6 +56,18 @@ Deno.test("withReviewSource replaces one source", () => {
   const next = withReviewSource(emptyReviewsState(), "facebook", readyReviewSource("t"));
   assertEquals(next.facebook.status, "ready");
   assertEquals(next.instagram.status, "empty");
+});
+
+Deno.test("socialAccountReplaced ignores a replay of the same account", () => {
+  const stored = "https://www.instagram.com/strana/";
+  assertEquals(socialAccountReplaced(stored, "https://instagram.com/strana"), false);
+  assertEquals(socialAccountReplaced(stored, null), false);
+  assertEquals(socialAccountReplaced(stored, undefined), false);
+  assertEquals(socialAccountReplaced(null, "https://instagram.com/strana"), false);
+  assertEquals(
+    socialAccountReplaced(stored, "https://instagram.com/other"),
+    true,
+  );
 });
 
 Deno.test("socialSourcesToEmpty only when the saved URL actually changed", () => {
