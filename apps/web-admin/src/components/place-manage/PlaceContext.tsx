@@ -210,11 +210,11 @@ export function PlaceProvider({
       }
       for (const s of Object.values(savers.current)) s.onSaved(r.data.place);
       setPlace(r.data.place);
-      if (r.data.family && r.data.familyStored) {
+      if (r.data.family || r.data.familyStored) {
         setProfile({
           ...profile,
-          family: r.data.family,
-          familyStored: r.data.familyStored,
+          ...(r.data.family ? { family: r.data.family } : {}),
+          ...(r.data.familyStored ? { familyStored: r.data.familyStored } : {}),
         });
       }
       setDirtyMap({});

@@ -31,8 +31,19 @@ const profile: Pick<ProfileRead, "family" | "familyStored" | "categories"> = {
 };
 
 describe("shownFamily", () => {
-  it("paints the stored resolution when the draft matches the row", () => {
-    expect(shownFamily("nightclub", "nightclub", profile)).toEqual(profile.family);
+  it("paints the option display for a catalog slug, even when the stored family string is stale", () => {
+    const stale = {
+      ...profile,
+      family: { text: "☕ Cafés & Desserts", inferred: false },
+    };
+    expect(shownFamily("nightclub", "nightclub", stale)).toEqual({
+      text: "🍸 Bars & Nightlife",
+      inferred: false,
+    });
+  });
+
+  it("paints the stored resolution for a slug the vocabulary does not list", () => {
+    expect(shownFamily("not_a_category", "not_a_category", profile)).toEqual(profile.family);
   });
 
   it("paints the option's display when the draft category changes", () => {
