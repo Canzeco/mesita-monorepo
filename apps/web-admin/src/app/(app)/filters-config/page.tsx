@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
-import { DISCOVERY_MATRIX_HREF } from "./nav";
+import { DISCOVERY_TABS } from "./nav";
 
-// Discovery index — the sidebar row. Matrix is the default section: it is
-// the map of how modes, sources and signals relate, so it reads first.
+// Discovery index — the sidebar row. It opens the first tab.
 export default function DiscoveryIndex() {
-  redirect(DISCOVERY_MATRIX_HREF);
+  redirect(DISCOVERY_TABS[0].href);
 }

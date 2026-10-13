@@ -424,7 +424,7 @@ describe("Discovery function APIs", () => {
 });
 
 describe("Discovery page box order", () => {
-  it("is three subpages — Matrix, Discovery Modes and Search Sources", () => {
+  it("is three subpages — Search Sources, Discovery Modes and Matrix", () => {
     const page = readFileSync(join(__dirname, "page.tsx"), "utf8");
     const layout = readFileSync(join(__dirname, "layout.tsx"), "utf8");
     const nav = readFileSync(join(__dirname, "nav.ts"), "utf8");
@@ -447,12 +447,18 @@ describe("Discovery page box order", () => {
       "utf8",
     );
 
-    // Matrix leads (Pato, 2026-09-08): it is neither a mode nor a source,
-    // so it owns a page instead of riding on top of one.
+    // Sources leads (Pato, 2026-10-13). Matrix still owns its page: it is
+    // neither a mode nor a source (Pato, 2026-09-08).
+    const sourcesAt = nav.indexOf('label: "Search Sources"');
+    const modesAt = nav.indexOf('label: "Discovery Modes"');
+    const matrixAt = nav.indexOf('label: "Matrix"');
+    expect(sourcesAt).toBeGreaterThan(-1);
+    expect(sourcesAt).toBeLessThan(modesAt);
+    expect(modesAt).toBeLessThan(matrixAt);
     expect(nav).toContain('label: "Matrix"');
     expect(nav).toContain('"/filters-config/matrix"');
     expect(nav).toContain('label: "Discovery Modes"');
-    // The second tab is Search Sources: all nine are searches, and the
+    // The sources tab is Search Sources: all nine are searches, and the
     // matrix band on Modes has said so since it was drawn (Pato, 2026-09-02).
     expect(nav).toContain('label: "Search Sources"');
     expect(nav).not.toContain('label: "Discovery Sources"');
@@ -465,7 +471,7 @@ describe("Discovery page box order", () => {
     expect(chrome).toContain("ConfigTabNav");
     expect(chrome).toContain("DISCOVERY_TABS");
     expect(chrome).toContain("tab?.label");
-    expect(page).toContain("redirect(DISCOVERY_MATRIX_HREF)");
+    expect(page).toContain("redirect(DISCOVERY_TABS[0].href)");
     expect(page).not.toContain("FamiliesClient");
     expect(page).not.toContain("ConfigSection");
     expect(nextConfig).toContain('destination: "/filters-config/modes"');

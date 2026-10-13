@@ -3,7 +3,8 @@ import { SignalsConfigClient } from "../SignalsConfigClient";
 import { getDiscoveryConfig } from "../actions";
 import { DEFAULT_CONFIG } from "../catalog";
 
-// Matrix — the first Discovery subpage (Pato, 2026-09-08). It holds the two
+// Matrix — its own Discovery subpage (Pato, 2026-09-08), third in the tab
+// row (Pato, 2026-10-13). It holds the two
 // things that are neither a mode nor a source: the locked mode × entity ×
 // pool × source × signal matrix, and the signal library beneath it — what
 // each signal computes and the shape numbers that bend its curve. The matrix
