@@ -117,6 +117,9 @@ export type GatheredPayload = {
   }>;
   locationLine: string;
   sources: Record<string, unknown>;
+  // Steps this run actually executed (not the ones it left alone). Contents
+  // reads it to decide whether Description and Embedding must recompute.
+  stepsRan?: string[];
   // Accumulated estimated USD for this enrichment run. Carried across
   // research → analysis → contents so the per-run total spans stages.
   cost?: {

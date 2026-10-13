@@ -42,6 +42,13 @@ import {
   type StampableCrenupStep,
 } from "../_shared/crenup-report.ts";
 import {
+  descriptionRuns,
+  embeddingRuns,
+  loadEnrichFill,
+  omitUnrunKeys,
+  type FillStep,
+} from "../_shared/enrich-fill.ts";
+import {
   applyProfileToUpdate,
   asProfileText,
   synthesisModelFor,
@@ -142,7 +149,11 @@ serveEnrichStage("contents", async (admin, env, row) => {
   const category = (place.category ?? null) as string | null;
   const { igBio, googleReviewsText, serpSummary } = gathered.grounding;
 
-  if (analysis.finalPhotos.length > 0) place.photos = analysis.finalPhotos;
+  const plan = await loadEnrichFill(admin, row);
+  const ranImages = (gathered.stepsRan ?? []).includes("images");
+  if (analysis.finalPhotos.length > 0 && (!plan.fill || ranImages)) {
+    place.photos = analysis.finalPhotos;
+  }
 
   // ━━━ S7 — synthesis + category + tags ━━━
   // Admin cost model: synthesis + 3 × classify calls (category, Super
@@ -155,9 +166,14 @@ serveEnrichStage("contents", async (admin, env, row) => {
   // a liveness refresh must never re-synthesize: About, category and tags stay
   // exactly as they are, and only what research resolved is persisted below.
   let inferredTags: string[] = [];
-  if (!wants(buys, "synthesis")) {
-    sources.synthesis = { skipped: "subprocess_not_requested" };
+  const runDescription = descriptionRuns(plan);
+  let descriptionRan = false;
+  if (!runDescription) {
+    sources.synthesis = {
+      skipped: plan.fill ? "already_filled" : "subprocess_not_requested",
+    };
   } else {
+    descriptionRan = true;
     const synthCost = synthesisRunCost(cfg.synthesisQuality);
     const classifyCost = COST.sort * 3;
 
@@ -405,6 +421,16 @@ serveEnrichStage("contents", async (admin, env, row) => {
   // Done before the blob below is sealed so the diagnostics can name the
   // fields the Enricher stood down on. Only correctable columns are removed —
   // description/category/tags are read further down and are not correctable.
+  const keep = new Set<FillStep>();
+  for (const step of gathered.stepsRan ?? []) {
+    if (
+      step === "details" || step === "serp" || step === "links" ||
+      step === "social" || step === "reviews" || step === "images"
+    ) keep.add(step);
+  }
+  if (descriptionRan) keep.add("description");
+  omitUnrunKeys(place, keep);
+
   const { update: persisted, skipped: pinnedSkipped } = stripPinnedColumns(
     place,
     pins,
@@ -418,7 +444,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
   // only `google` and skips synthesis, photos and embedding. That refetch
   // must not make a Created place read as Enriched.
   // `enrich-triggers.test.ts` pins both the rule and this call site.
-  if (stampsEnrichedAt(buys)) {
+  if (stampsEnrichedAt(buys) && descriptionRan) {
     persisted.enriched_at = new Date().toISOString();
   }
   // NEVER `= sources` on its own: the pins are durable state stored in this
@@ -545,7 +571,9 @@ serveEnrichStage("contents", async (admin, env, row) => {
   // place at rung 7 rather than failing the run — a stuck vector needs a
   // re-enrich, not patience (MESITA-1222).
   let embeddingWrote = false;
-  if (wants(buys, "embedding")) {
+  let embeddingAttempted = false;
+  if (embeddingRuns(plan, descriptionRan)) {
+    embeddingAttempted = true;
     const openaiKey = Deno.env.get("OPENAI_KEY")?.trim();
     embeddingWrote = !!(await runPlaceEmbeddingsOnUpdate(
       admin,
@@ -564,7 +592,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
   const assets = buildMediaAssets(gathered, analysis);
   let imagesSummary: string;
   const imagesMeta: Record<string, unknown> = {};
-  if (!wants(buys, "photos")) {
+  if (!wants(buys, "photos") || (plan.fill && !ranImages)) {
     // The trigger did not buy storage mirroring; photos still render from
     // their source URLs, exactly as when the admin toggle is off.
     imagesSummary = "image storage skipped (trigger)";
@@ -609,7 +637,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
   // (`menu_pdf_url`, `menus`, the console's MenusSection), not something the
   // Enricher derives. The menu data is untouched; only the claim went away.
   const contentPieces: Partial<Record<StampableCrenupStep, StepOutcome>> = {};
-  if (wants(buys, "synthesis")) {
+  if (descriptionRan) {
     // DESCRIPTION (7) — the PRESENTATION, then category, then tags. NOT the
     // Semantic Summary: that is Embedding below, and the two are different
     // artifacts (prose a GUEST reads vs the 60-word blurb the INDEX reads).
@@ -623,7 +651,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
       )
       : stepFailed("Synthesis ran but no Presentation was persisted.");
   }
-  if (wants(buys, "embedding")) {
+  if (embeddingAttempted) {
     // EMBEDDING — function 8. Embed-only: vectors of the words function 7
     // wrote. It CLOSES the queue.
     contentPieces.embedding = embeddingWrote

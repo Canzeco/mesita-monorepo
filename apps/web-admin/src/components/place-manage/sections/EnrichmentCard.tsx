@@ -15,7 +15,7 @@ import { isEnriching } from "../place-header-state";
 
 // Enrichment — one button. This is not a scheduler (Pato, 2026-08-25).
 // Cadence and mode chips lived here and made a press look like config.
-// The only action is Run the full Enricher process now.
+// The only action is Enrich: fill steps that have not completed.
 //
 // The live run STATE stays in the chrome. This box only queues.
 
@@ -51,7 +51,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
     setRunError(null);
     setQueued(false);
     startRun(async () => {
-      const r = await enrichPlace(place.id, "full");
+      const r = await enrichPlace(place.id);
       if (!r.ok) {
         setRunError(r.error);
         return;

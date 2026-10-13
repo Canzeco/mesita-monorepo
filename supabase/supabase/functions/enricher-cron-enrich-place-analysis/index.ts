@@ -35,9 +35,9 @@ import {
   mapToObject,
   reportEnrichmentStep,
   serveEnrichStage,
-  wants,
 } from "../_shared/enrich-pipeline.ts";
 import { stepDone, reportCrenupSteps } from "../_shared/crenup-report.ts";
+import { loadEnrichFill, stepRuns } from "../_shared/enrich-fill.ts";
 
 serveEnrichStage("analysis", async (admin, _env, row) => {
   const placeId = row.place_id;
@@ -52,7 +52,8 @@ serveEnrichStage("analysis", async (admin, _env, row) => {
   // has no business spending vision dollars) still walks the stage machine —
   // it just hands contents an empty gallery. Contents only writes photos when
   // the list is non-empty, so the place keeps the gallery it already had.
-  if (!wants(row.subprocesses, "images")) {
+  const plan = await loadEnrichFill(admin, row);
+  if (!stepRuns(plan, "images")) {
     // NO BEACON HERE (MESITA-1209). This used to write
     // { step_name: "images", state: "skipped" } — and `images` is a CRENUP
     // piece key, so the high-water reader saw a non-completed piece mid-ladder
@@ -63,7 +64,7 @@ serveEnrichStage("analysis", async (admin, _env, row) => {
     // NOTHING, so the previous run's result stands. What this run bought is
     // already recorded in place_research.subprocesses, so nothing is lost.
     await advanceResearchStage(admin, placeId, "contents", {
-      analysis: {
+      analysis: row.analysis ?? {
         finalPhotos: [],
         saved: [],
         imageAnalysisByUrl: {},
@@ -143,6 +144,10 @@ serveEnrichStage("analysis", async (admin, _env, row) => {
   // Persist the running ledger so contents carries the per-run total forward.
   await advanceResearchStage(admin, placeId, "contents", {
     analysis,
-    gathered: { ...gathered, cost: ledger.snapshot() },
+    gathered: {
+      ...gathered,
+      cost: ledger.snapshot(),
+      stepsRan: [...(gathered.stepsRan ?? []), "images"],
+    },
   });
 });

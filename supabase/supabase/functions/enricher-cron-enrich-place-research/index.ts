@@ -47,6 +47,12 @@ import {
 import type { CrenupStep } from "../_shared/crenup-ladder.ts";
 import { COST, loadEnrichConfig } from "../_shared/enrich-config.ts";
 import {
+  loadEnrichFill,
+  omitUnrunKeys,
+  stepRuns,
+  type FillStep,
+} from "../_shared/enrich-fill.ts";
+import {
   chargeGoogleSpine,
   createEnrichCostLedger,
   discoverySearchCost,
@@ -72,7 +78,6 @@ import {
   releaseResearchRow,
   reportEnrichmentStep,
   serveEnrichStage,
-  wants,
 } from "../_shared/enrich-pipeline.ts";
 
 serveEnrichStage("research", async (admin, _env, row) => {
@@ -81,6 +86,9 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // What this run bought, per the trigger matrix. S1 (the Google gate) is not
   // gated: it is the identity spine every stage downstream trusts.
   const buys = row.subprocesses;
+  const plan = await loadEnrichFill(admin, row);
+  const ran = new Set<FillStep>();
+  const runDetails = stepRuns(plan, "details");
   const GOOGLE_KEY = Deno.env.get("GMP_KEY") ?? Deno.env.get("SUPA_GMP_KEY");
   if (!GOOGLE_KEY) {
     await releaseResearchRow(admin, placeId, "server_misconfigured: missing GMP_KEY");
@@ -142,7 +150,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // Best-effort. This is a flag, not a gate — a failed write must not stop the
   // pipeline, and the gate below reads `businessStatus` directly, never the
   // column.
-  {
+  if (runDetails) {
     const opRes = await writePlace(admin, {
       table: "place_profiles",
       mode: "update",
@@ -209,7 +217,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
   let gmapsInvoked = false;
 
   const gmapsGather = (async () => {
-    if (!wants(buys, "reviews")) return;
+    if (!stepRuns(plan, "reviews")) return;
     if (!APIFY_KEY || !basics.google_place_id) return;
     gmapsInvoked = true;
     try {
@@ -232,7 +240,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
     }
   })();
 
-  if (PERPLEXITY_KEY && wants(buys, "serp")) {
+  if (PERPLEXITY_KEY && stepRuns(plan, "serp")) {
     const serp = await gatherSerpSummary({ perplexityKey: PERPLEXITY_KEY, name, locationLine, category, perplexityPreset: cfg.perplexityPreset });
     serpSummary = serp.summary;
     sources.serp = serp.diag;
@@ -250,7 +258,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
   let resolvedOpenTable = basics.opentable_url;
   let resolvedUberEats = basics.uber_eats_url;
 
-  const needsDiscovery = wants(buys, "links") &&
+  const needsDiscovery = stepRuns(plan, "links") &&
     (!!FIRECRAWL_KEY || !!PERPLEXITY_KEY) &&
     (!resolvedInstagram || !resolvedFacebook || !resolvedWebsite || !resolvedOpenTable ||
       !resolvedUberEats);
@@ -316,7 +324,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // in enricher-cron-enrich-place-contents, which owns hours/address/website/
   // closes_at/reservation endpoint.) Pins live in `places.enrichment_sources`,
   // which this stage never writes, so a plain read is enough here.
-  if (basics.phone) {
+  if (runDetails && basics.phone) {
     const { data: pinRow } = await admin
       .from("place_profiles")
       .select("enrichment_sources")
@@ -369,7 +377,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // against the PREVIOUS google_name, a value that moves on every re-enrich, so
   // a place whose Google listing caught up to its Mesita label silently
   // re-entered tracking and lost that label on the next rename.
-  {
+  if (runDetails) {
     const googleName = typeof basics.google_name === "string"
       ? basics.google_name.trim()
       : "";
@@ -410,7 +418,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // category from the Google spine + reviews + the Perplexity SERP blurb (+ IG),
   // and never scrapes the site body. S3 discovery is Firecrawl SEARCH only (no
   // footer scrape) → the Resolver selection.
-  const runSocial = wants(buys, "social");
+  const runSocial = stepRuns(plan, "social");
   const runInstagram = runSocial && !!APIFY_KEY &&
     (!!igHandle || !!fbHandleCandidate || !!PERPLEXITY_KEY);
   const runFacebook = runSocial && !!APIFY_KEY && !!resolvedFacebook;
@@ -527,9 +535,8 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // NOTE: there is no `seed` stamp — seed is not an enrich function at all;
   // it is FUNCTION 0, and the row existing IS the seed. 0 on the meter means
   // seeded and no function above it completed.
-  const pieces: Partial<Record<CrenupStep, StepOutcome>> = {
-    // DETAILS (1) — the Google spine, THE HOURS, and the LIVENESS GATE, all
-    // off one `fetchGoogleBasics` call.
+  const pieces: Partial<Record<CrenupStep, StepOutcome>> = {};
+  if (runDetails) pieces.details = stepDone(
     //
     // PULSE USED TO BE ITS OWN RUNG (MESITA-2027 folded it in). It never
     // bought data: functions 1 and 2 already shared this single call, so the
@@ -559,20 +566,18 @@ serveEnrichStage("research", async (admin, _env, row) => {
     // The `google_name` refresh behind the GENERATED `places.name` also lands
     // on this function's call. It has no rung of its own — it is one field on
     // the same fetch. What carries the name is Embedding (8).
-    details: stepDone(
-      [
-        spineFacts.length
-          ? `Google spine resolved — ${spineFacts.join(", ")}`
-          : "Google returned no hours, contact or address detail",
-        businessStatus
-          ? `listing ${businessStatus}`
-          : "no business status stated; the listing resolves",
-      ].join("; ") + ".",
-      { businessStatus },
-    ),
-  };
+    [
+      spineFacts.length
+        ? `Google spine resolved — ${spineFacts.join(", ")}`
+        : "Google returned no hours, contact or address detail",
+      businessStatus
+        ? `listing ${businessStatus}`
+        : "no business status stated; the listing resolves",
+    ].join("; ") + ".",
+    { businessStatus },
+  );
 
-  if (wants(buys, "serp")) {
+  if (stepRuns(plan, "serp")) {
     // SERP (2) — the SERP Summary, the Scout's soft editorial read. It is bought
     // FOR links: the Resolver cannot pick between five Instagram candidates on a
     // name and a city, and this is what it recognises the place by.
@@ -590,7 +595,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
       );
   }
 
-  if (wants(buys, "links")) {
+  if (stepRuns(plan, "links")) {
     pieces.links = anyChannelResolved || !needsDiscovery
       // Nothing to discover is a RESULT: every channel was already known.
       ? stepDone(`${resolvedCount} link/contact field(s) known.`)
@@ -610,7 +615,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
       : stepDone("No social presence to gather.");
   }
 
-  if (wants(buys, "reviews")) {
+  if (stepRuns(plan, "reviews")) {
     pieces.reviews = diagOk(sources.apify_google_reviews)
       ? stepDone(`${reviews.length} Google review(s).`)
       : stepFailed(
@@ -620,22 +625,42 @@ serveEnrichStage("research", async (admin, _env, row) => {
 
   await reportCrenupSteps(admin, placeId, pieces);
 
+  if (runDetails) ran.add("details");
+  if (stepRuns(plan, "serp")) ran.add("serp");
+  if (stepRuns(plan, "links")) ran.add("links");
+  if (runSocial) ran.add("social");
+  if (stepRuns(plan, "reviews")) ran.add("reviews");
+  // A skipped step keeps what the previous run stored, so contents does not
+  // write an empty value over a field this run chose not to touch.
+  const prior = row.gathered;
+  if (!ran.has("serp") && prior?.grounding.serpSummary) {
+    serpSummary = prior.grounding.serpSummary;
+  }
+  if (!ran.has("reviews") && prior) {
+    googleReviewsText = prior.grounding.googleReviewsText ?? "";
+    if (prior.images.google.length > 0) googleImages = prior.images.google;
+  }
+  omitUnrunKeys(place, ran);
+
   // ━━━ hand off to the analysis stage ━━━
   const gathered: GatheredPayload = {
     place,
     grounding: {
-      igBio: igR?.igBio ?? "",
+      igBio: ran.has("social") ? (igR?.igBio ?? "") : (prior?.grounding.igBio ?? ""),
       googleReviewsText,
       serpSummary,
     },
     images: {
       google: googleImages,
-      instagram: igR?.instagramImages ?? [],
+      instagram: ran.has("social")
+        ? (igR?.instagramImages ?? [])
+        : (prior?.images.instagram ?? []),
       existingPhotos: basics.photos,
     },
     instagramAssetMeta: mapToObject(igR?.instagramAssetMeta),
     locationLine,
     sources,
+    stepsRan: [...ran],
     cost: ledger.snapshot(),
   };
   await advanceResearchStage(admin, placeId, "analysis", { gathered });

@@ -250,19 +250,20 @@ export async function deletePlace(placeId: string): Promise<Result<true>> {
 //   analysis → analysis + contents, reusing stored gathered (no re-gather)
 //   contents → contents only, reusing stored gathered + analysis (cheapest)
 // The lighter modes need a prior full run; the EF rejects (422) otherwise.
-export type ReenrichMode = "full" | "analysis" | "contents";
+export type ReenrichMode = "fill" | "full" | "analysis" | "contents";
 
 // Manually re-run the Enricher pipeline for one place. Re-seeds place_research
 // to the stage implied by `mode`; the cron poller takes it from there. Runs
 // ASYNC — the batch row reports the trigger, not the finish.
 export async function enrichPlace(
   placeId: string,
-  mode: ReenrichMode = "full",
+  mode: ReenrichMode = "fill",
+  overwrite: string[] = [],
 ): Promise<Result<true>> {
   // Wire key stays `projectId` — admin-web-enrich-place's MESITA-26 alias.
   const r = await efInvoke<{ enrichmentTriggered: boolean }>(
     "admin-web-enrich-place",
-    { projectId: placeId, mode },
+    { projectId: placeId, mode, overwrite },
   );
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: true };
