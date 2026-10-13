@@ -64,8 +64,17 @@ function Stars({ value }: { value: number }) {
 
 /** One metric well — big number, optional star row, hint line. Shared so a
  *  score and a follower count read as peers on the same 2×2 grid. */
+function ProviderMark({ src }: { src: string }) {
+  return (
+    // Static brand SVG — next/image adds nothing at this size.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={src} alt="" aria-hidden className="h-4 w-4 shrink-0" />
+  );
+}
+
 function Tile({
   label,
+  logo,
   value,
   muted,
   ariaLabel,
@@ -73,6 +82,8 @@ function Tile({
   hint,
 }: {
   label: string;
+  /** Brand SVG in /public/channels — the tile's identity mark. */
+  logo: string;
   value: string;
   /** The value is a placeholder, not a fact — dim it. */
   muted: boolean;
@@ -82,7 +93,10 @@ function Tile({
 }) {
   return (
     <div className="border-border/60 bg-muted/40 flex min-w-0 flex-col gap-1.5 rounded-xl border px-3.5 py-3">
-      <p className="text-muted-foreground type-label">{label}</p>
+      <p className="text-muted-foreground type-label flex items-center gap-1.5">
+        <ProviderMark src={logo} />
+        {label}
+      </p>
       <p className="flex items-center gap-2" aria-label={ariaLabel}>
         <span
           className={
@@ -101,16 +115,19 @@ function Tile({
 
 function Score({
   label,
+  logo,
   stars,
   hint,
 }: {
   label: string;
+  logo: string;
   stars: number | null;
   hint: string;
 }) {
   return (
     <Tile
       label={label}
+      logo={logo}
       value={stars == null ? "—" : stars.toFixed(1)}
       muted={stars == null}
       ariaLabel={`${label}: ${stars == null ? "no score" : `${stars.toFixed(1)} out of 5`}`}
@@ -124,14 +141,17 @@ function Score({
  *  unlinked account reads "not linked" rather than a fabricated 0. */
 function Reach({
   label,
+  logo,
   followers,
 }: {
   label: string;
+  logo: string;
   followers: number | null;
 }) {
   return (
     <Tile
       label={label}
+      logo={logo}
       value={followers == null ? "—" : compact(followers)}
       muted={followers == null}
       ariaLabel={`${label}: ${
@@ -172,12 +192,21 @@ export function ReviewsSummary({ place }: { place: AdminPlace }) {
         <div className="sm:col-span-2">
           <Score
             label="Google"
+            logo="/channels/google.svg"
             stars={googleStars}
             hint={googleCount > 0 ? reviewWord(googleCount) : "not scraped yet"}
           />
         </div>
-        <Reach label="Instagram" followers={instagramFollowers} />
-        <Reach label="Facebook" followers={facebookFollowers} />
+        <Reach
+          label="Instagram"
+          logo="/channels/instagram.svg"
+          followers={instagramFollowers}
+        />
+        <Reach
+          label="Facebook"
+          logo="/channels/facebook.svg"
+          followers={facebookFollowers}
+        />
       </div>
     </SectionCard>
   );
