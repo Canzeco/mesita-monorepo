@@ -98,14 +98,14 @@ function ChannelLabelIcon({
   Icon?: LucideIcon;
 }) {
   if (logo) {
-    // Static 14px brand SVG — next/image adds nothing here.
+    // Static brand SVG beside the provider name — next/image adds nothing here.
     return (
       // eslint-disable-next-line @next/next/no-img-element
-      <img src={logo} alt="" aria-hidden className="h-3.5 w-3.5 shrink-0" />
+      <img src={logo} alt="" aria-hidden className="h-4 w-4 shrink-0" />
     );
   }
   if (Icon) {
-    return <Icon className="text-muted-foreground h-3.5 w-3.5 shrink-0" />;
+    return <Icon className="text-muted-foreground h-4 w-4 shrink-0" />;
   }
   return null;
 }
@@ -666,11 +666,15 @@ export function PlaceSection({
         <div className="mt-5 grid grid-cols-1 gap-3.5">
           {CHANNELS.map((c) => {
             const val = form.channels[c.key as string] ?? "";
+            const mark = (
+              <ChannelLabelIcon logo={c.logo} Icon={c.Icon} />
+            );
             if (c.readOnly) {
               return (
                 <ReadField
                   key={c.key as string}
                   label={c.label}
+                  icon={mark}
                   boxed
                   auto
                   labelRight={val.trim() ? <OpenLink href={val} /> : undefined}
@@ -693,6 +697,7 @@ export function PlaceSection({
                 <PhoneField
                   key={c.key as string}
                   label={c.label}
+                  icon={mark}
                   value={val}
                   onChange={(full) =>
                     setChannel(
@@ -709,7 +714,7 @@ export function PlaceSection({
               <TextField
                 key={c.key as string}
                 label={c.label}
-                leading={<ChannelLabelIcon logo={c.logo} Icon={c.Icon} />}
+                icon={mark}
                 labelRight={val.trim() ? <OpenLink href={val} /> : undefined}
                 value={val}
                 onChange={(x) => setChannel(c.key as string, x)}
