@@ -1,17 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, Loader2, Search, Tag, X } from "lucide-react";
-import {
-  listPlaceTagCatalog,
-  type PlaceTagFacet,
-  type PlaceTagOption,
-} from "./actions";
+import { Check, Search, Tag, X } from "lucide-react";
+import { usePlaceContext } from "./PlaceContext";
+import type { PlaceTagFacet, PlaceTagOption } from "./actions";
 
-// Atlas-catalog multi-select modal for place tags.
-//
-// Catalog is loaded via server action → admin-web-get-atlas-fields. This
-// page never reads place_tags from the client.
+// Atlas-catalog multi-select for place tags. The catalog arrives on the
+// profile read. Opening the picker does not fetch.
 
 export function PlaceTagsPicker({
   value,
@@ -22,39 +17,17 @@ export function PlaceTagsPicker({
   onChange: (tags: string[]) => void;
   disabled?: boolean;
 }) {
+  const { profile } = usePlaceContext();
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [facets, setFacets] = useState<PlaceTagFacet[]>([]);
-  const [tags, setTags] = useState<PlaceTagOption[]>([]);
-  const [max, setMax] = useState(20);
   const [query, setQuery] = useState("");
-  const [loaded, setLoaded] = useState(false);
-
-  const loadCatalog = () => {
-    if (loaded || loading) return;
-    setLoading(true);
-    setError(null);
-    listPlaceTagCatalog().then((r) => {
-      setLoading(false);
-      if (!r.ok) {
-        setError(r.error);
-        setFacets([]);
-        setTags([]);
-        return;
-      }
-      setFacets(r.data.facets);
-      setTags(r.data.tags);
-      setMax(r.data.tagsPerPlaceMax);
-      setLoaded(true);
-    });
-  };
+  const facets = profile.facets;
+  const tags = profile.tags;
+  const max = profile.fieldLimits.tagsPerPlaceMax;
 
   const openModal = () => {
     if (disabled) return;
     setOpen(true);
     setQuery("");
-    loadCatalog();
   };
 
   const bySlug = useMemo(() => {
@@ -154,8 +127,6 @@ export function PlaceTagsPicker({
 
       {open ? (
         <TagsModal
-          loading={loading}
-          error={error}
           query={query}
           onQueryChange={setQuery}
           visibleGroups={visibleGroups}
@@ -175,8 +146,6 @@ export function PlaceTagsPicker({
 }
 
 function TagsModal({
-  loading,
-  error,
   query,
   onQueryChange,
   visibleGroups,
@@ -187,8 +156,6 @@ function TagsModal({
   onToggle,
   onClose,
 }: {
-  loading: boolean;
-  error: string | null;
   query: string;
   onQueryChange: (v: string) => void;
   visibleGroups: { facet: PlaceTagFacet; rows: PlaceTagOption[] }[];
@@ -248,14 +215,7 @@ function TagsModal({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {loading ? (
-            <div className="text-muted-foreground flex items-center justify-center gap-2 py-16 text-sm">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading catalog…
-            </div>
-          ) : error ? (
-            <p className="text-destructive px-4 py-10 text-center text-sm">{error}</p>
-          ) : visibleGroups.length === 0 ? (
+          {visibleGroups.length === 0 ? (
             <p className="text-muted-foreground px-4 py-10 text-center text-sm">
               No matching tags.
             </p>

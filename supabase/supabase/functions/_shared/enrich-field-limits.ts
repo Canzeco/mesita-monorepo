@@ -1,7 +1,8 @@
 // Shared Enricher place field limits — enforced by the Enricher, the create
-// door and admin-web-update-place, and shipped to the admin Profile editor by
-// admin-web-get-atlas-fields (which reads placeName, description, tagsPerPlace
-// and photos).
+// door and admin-web-update-place, and shipped to the admin Profile editor on
+// the one profile read, admin-web-get-overview (placeName, description,
+// tagsPerPlace and photos). admin-web-get-atlas-fields still returns them;
+// the profile page does not call it.
 
 export const ENRICH_FIELD_LIMITS = {
   placeName: { max: 80 },
