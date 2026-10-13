@@ -93,6 +93,13 @@ describe("mergeFindResults", () => {
     expect(rows[1]).toMatchObject({ held: false, mesitaId: null, name: "Brunch Dos" });
   });
 
+  it("attaches the catalogue hit for place states when Mesita knows the row", () => {
+    const { rows } = mergeFindResults(inputs());
+    expect(rows[0].placeHit).toMatchObject({ id: "mesita-a", google_place_id: A });
+    expect(rows[1].placeHit).toBeNull();
+    expect(rows[2].placeHit).toBeNull();
+  });
+
   it("takes the address and rating from Text Search when it has them", () => {
     const { rows } = mergeFindResults(inputs());
     expect(rows[1]).toMatchObject({ address: "Parque 455", rating: 4.7, reviews: 266 });
@@ -103,6 +110,7 @@ describe("mergeFindResults", () => {
     const { rows } = mergeFindResults(inputs({ catalogue: { status: "ok", data: [] }, catalog }));
     const b = rows.find((r) => r.key === B);
     expect(b).toMatchObject({ held: true, mesitaId: "mesita-b", name: "Dos Amores" });
+    expect(b?.placeHit).toMatchObject({ id: "mesita-b" });
   });
 
   it("keeps Text Search's held-without-id join: held, no id", () => {

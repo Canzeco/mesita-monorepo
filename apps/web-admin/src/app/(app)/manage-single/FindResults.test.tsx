@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import type { PlaceHit } from "@/app/(app)/manage-multiple/actions";
 import type { FindResult, FindRow } from "./find-results";
 
 vi.mock("next/link", () => ({
@@ -25,7 +26,41 @@ function row(over: Partial<FindRow>): FindRow {
     address: "Calle Havre 73, Juárez",
     rating: null,
     reviews: null,
+    placeHit: null,
     ranks: { catalogue: 1, name: 1, autocomplete: 2, text: 1 },
+    ...over,
+  };
+}
+
+function placeHit(over: Partial<PlaceHit> = {}): PlaceHit {
+  return {
+    id: "mesita-a",
+    slug: null,
+    name: "Café Nin",
+    google_name: "Cafe Nin",
+    category: null,
+    category_label: null,
+    state: null,
+    address: "Calle Havre 73",
+    photo: null,
+    zone: null,
+    google_stars_overall: null,
+    google_review_count: null,
+    content_state: null,
+    google_place_id: G1,
+    seeded: true,
+    listed: true,
+    requested: false,
+    request_count: 0,
+    enriching: false,
+    enriched: false,
+    enriched_at: null,
+    business_state: "OPERATIONAL",
+    business_state_at: null,
+    enrich_crenup: 1,
+    enrich_crenup_total: 8,
+    enrich_crenup_labels: [],
+    enrich_crenup_blocked: null,
     ...over,
   };
 }
@@ -93,6 +128,19 @@ describe("Find › one table", () => {
     expect(html).toContain(`href="https://www.google.com/maps/place/?q=place_id:${G2}"`);
     expect(html).toContain('aria-label="Dos Amores Brunch &amp; Meal, opens Google Maps in a new tab"');
     expect(html).toContain('target="_blank"');
+  });
+
+  it("lists the six place states under the address when the catalogue row is known", () => {
+    const html = render({
+      rows: [row({ placeHit: placeHit({ request_count: 2, enriched: true }) })],
+      failed: [],
+      notes: [],
+    });
+    for (const label of ["Created", "Pulsing", "Disabled", "Requested", "Enriching", "Enriched"]) {
+      expect(html).toContain(label);
+    }
+    expect(html).toContain(">2<");
+    expect(html).toContain(">yes<");
   });
 
   it("shows the Text Search rating and folds the sources into one line for a phone", () => {

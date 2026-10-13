@@ -69,6 +69,10 @@ export type FindRow = {
   address: string;
   rating: number | null;
   reviews: number | null;
+  /** Catalogue row when Mesita knows this place — drives the six states in
+   *  the Place column. Null when Google-only or held only per Text Search's
+   *  join without a catalogue match. */
+  placeHit: PlaceHit | null;
   /** 1-based position in each source; null = that source missed it. */
   ranks: Record<FindSource, number | null>;
 };
@@ -224,6 +228,7 @@ function toRow(d: Draft, byGoogleId: ReadonlyMap<string, PlaceHit>): FindRow {
       "",
     rating: d.text?.rating ?? null,
     reviews: d.text?.userRatingCount ?? null,
+    placeHit: record,
     ranks: d.ranks,
   };
 }
