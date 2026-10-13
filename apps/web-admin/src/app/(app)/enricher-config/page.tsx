@@ -1,9 +1,8 @@
-import { CrenupPage } from "./crenup-page";
+import { permanentRedirect } from "next/navigation";
+import { CREATION_PARENT } from "./nav";
 
-export const dynamic = "force-dynamic";
-
-// Intake (MESITA-2159): Creation and Enrichment are one page again, at the
-// bare frozen prefix. /creation, /enrichment and every older subpath 308 here.
-export default function Page() {
-  return <CrenupPage />;
+// Bare /enricher-config is Creation now (MESITA-2083): Crenup became two rail
+// rows, Creation and Enrichment, each its own page under this frozen prefix.
+export default function CrenupIndex() {
+  permanentRedirect(CREATION_PARENT.href);
 }
