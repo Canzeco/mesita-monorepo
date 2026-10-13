@@ -16,10 +16,11 @@
 // screen reads any of them.
 //
 // Body:     { placeId }   (legacy aliases via readPlaceIdAlias)
-// Response: { ok: true, isSuperAdmin: true, active: { place } }
-//           `active.place` is the AdminPlace (apps/web-admin
-//           components/place-manage/actions.ts). The envelope keeps the
-//           old shape so the client's one reader did not have to move.
+// Response: { ok: true, isSuperAdmin: true, active: { place }, profile }
+//           `active.place` is the AdminPlace. `profile` is the rest of the
+//           same read: Family and Category already resolved, the category
+//           options (each with its family display), the tag catalog, and
+//           the field limits. The profile page does not call another door.
 // Auth:     caller must be in public.super_admins.
 //
 // Local:  supabase functions serve admin-web-get-overview
@@ -49,6 +50,14 @@ import {
 import { CRENUP_LABELS_IN_ORDER, CRENUP_TOTAL } from "../_shared/crenup-ladder.ts";
 import type { EnrichmentMap, FunctionState } from "../_shared/schema-catalog.ts";
 import { operatorFunctionStates } from "../_shared/schema-catalog.ts";
+import { fetchPlaceCategories, fetchPlaceFamilies } from "../_shared/categories.ts";
+import { ENRICH_FIELD_LIMITS } from "../_shared/enrich-field-limits.ts";
+import {
+  categoriesWithFamilyDisplay,
+  resolveProfileFamily,
+  resolveStoredFamily,
+} from "../_shared/profile-family.ts";
+import { fetchPlaceTags, TAG_FACETS } from "../_shared/tags.ts";
 
 // The Embeddings card (MESITA-720) reads these. Never part of the public
 // column set: a heavy field only this screen and admin-web-search-places need.
@@ -83,12 +92,12 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "placeId is required" }, 400);
   }
 
-  // One round trip for both: the place row, and the materialized enrichment
-  // map the State box's `enriched` high-water reads from (MESITA-1249).
-  // `enrichment` is read off `place_profiles` directly, not `profiles` — it is
-  // deliberately NOT in the profiles view's column list (adding it means
-  // rebuilding the view's two INSTEAD OF triggers).
-  const [placeRow, enrichmentRow] = await Promise.all([
+  // One round trip: the place row, its enrichment map, and the vocabulary
+  // Family and Category resolve against. The profile page paints from this
+  // response alone (MESITA-2180). `enrichment` is read off `place_profiles`
+  // directly, not `profiles` — it is deliberately NOT in the profiles view's
+  // column list (adding it means rebuilding the view's two INSTEAD OF triggers).
+  const [placeRow, enrichmentRow, categories, families, tags] = await Promise.all([
     admin
       .from("profiles")
       .select(
@@ -101,12 +110,21 @@ Deno.serve(async (req) => {
       .select("enrichment")
       .eq("id", placeId)
       .maybeSingle(),
+    fetchPlaceCategories(admin),
+    fetchPlaceFamilies(admin),
+    fetchPlaceTags(admin),
   ]);
   if (placeRow.error) {
     return json({ ok: false, error: placeRow.error.message }, 500);
   }
   if (!placeRow.data) {
     return json({ ok: false, error: "Place not found" }, 404);
+  }
+  // Family and Category cannot paint without the vocabulary. An empty list is
+  // the fetchers' error posture; a half profile is the bug this read exists
+  // to stop.
+  if (categories.length === 0 || families.length === 0) {
+    return json({ ok: false, error: "Profile vocabulary unavailable" }, 500);
   }
   const placeFields = placeRow.data as unknown as Record<string, unknown>;
 
@@ -146,9 +164,24 @@ Deno.serve(async (req) => {
     ),
   };
 
+  const profile = {
+    family: resolveProfileFamily({
+      category: placeFields.category,
+      familyKeys: placeFields.family_keys,
+      categories,
+      families,
+    }),
+    familyStored: resolveStoredFamily(placeFields.family_keys, families),
+    categories: categoriesWithFamilyDisplay(categories, families),
+    tags,
+    facets: TAG_FACETS,
+    fieldLimits: ENRICH_FIELD_LIMITS,
+  };
+
   return json({
     ok: true,
     isSuperAdmin: true,
     active: { place },
+    profile,
   });
 });

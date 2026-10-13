@@ -1,8 +1,8 @@
-// State — two boxes (Pato, 2026-08-25 · 2026-08-29).
+// State — two boxes (Pato, 2026-08-25 · Profile States + Enrichment Steps, 2026-10-13).
 //
-//   STATES (6)    A place has six states, in two groups (Pato, 2026-10-11):
-//                 General — Created · Pulsing (Google active) · Disabled;
-//                 Enrichment — Requested · Enriching · Enriched.
+//   PROFILE STATES (6)  One box (Pato, 2026-10-13, MESITA-2176):
+//                 Created · Pulsing (Google active) · Requested ·
+//                 Enriching · Enriched · Disabled.
 //                 All are bools (`true` / `false`) except Requested, the
 //                 guest request count, 0…n — not a Yes/No. Disabled is the
 //                 operator's off switch (places.state is not active), the
@@ -12,19 +12,19 @@
 //                 (MESITA-2106), then Owned · Partnered · Rewards · Mesita
 //                 Pay · Mesita Credits (MESITA-2115). Nobody holds, proves,
 //                 pays or redeems yet.
-//   FUNCTIONS (9) one ladder under Enrichment: 0. Seed … 8. Vectors, each
-//                 a bool (called or not). Create runs 0, 1, 7, 8, so those
-//                 four also print under General States (MESITA-2174). Enrich
-//                 runs 1–8. A creation row wears Create or Create + Enrich;
-//                 an Enrich-only row stays untagged.
+//   ENRICHMENT STEPS (8)  their own box: 1. Details Enriched …
+//                 8. Vectors Enriched, each a bool (called or not).
+//                 Seed is Create-only and is not a step on this box.
+//                 Details, Description and Vectors also run on Create;
+//                 the "Enriched" suffix is the Enrich pass of that function.
+//                 The stored key of function 8 stays `embedding`.
 //
 // Repeating the row name on the chip is redundant. Enriching is the live run;
-// Enriched is last-completed — they are independent. The ladder just names
-// the nine functions. Since MESITA-2027 there is ONE ladder: Create runs
-// 0, 1, 7, 8 and Enrich runs 1–8, so a shared step no longer carries two
-// numbers depending on who called it. It is still not a third State ladder.
-// Wire key `seeded` stays; the label is Seed — step 0, never stamped, because
-// the row existing IS the seed.
+// Enriched is last-completed — they are independent. Since MESITA-2027 there
+// is ONE ladder: Create runs 0, 1, 7, 8 and Enrich runs 1–8. Enrichment Steps
+// prints the Enrich pass only (1–8), each named "X Enriched". Seed stays step
+// 0 in the ladder and off that box. Wire key `seeded` stays; the row existing
+// IS the seed.
 //
 // A NOTE ON THE WORD `STEP`. These are the LADDER's steps — what an operator
 // is told ran. The pipeline's own stages (S1…S8 inside the three Enricher
@@ -66,17 +66,17 @@ export function requestCountChip(requestCount: unknown): string {
   return n === "unknown" ? "?" : String(n);
 }
 
-/** The six states of a place, General first, then Enrichment. Verified ·
- *  Owned · Partnered · Rewards · Mesita Pay · Mesita Credits left with the
- *  MVP First Stage cut (MESITA-2106, MESITA-2115): nobody holds, proves, pays
- *  or redeems yet. Wire key `seeded` stays; the label is Created. */
+/** The six profile states, in the order the Profile States box prints them.
+ *  Verified · Owned · Partnered · Rewards · Mesita Pay · Mesita Credits left
+ *  with the MVP First Stage cut (MESITA-2106, MESITA-2115): nobody holds,
+ *  proves, pays or redeems yet. Wire key `seeded` stays; the label is Created. */
 export const GENERAL_STATE_FACTS = [
   { key: "seeded", label: "Created" },
   { key: "pulsing", label: "Pulsing" },
-  { key: "disabled", label: "Disabled" },
   { key: "requested", label: "Requested" },
   { key: "enriching", label: "Enriching" },
   { key: "enriched", label: "Enriched" },
+  { key: "disabled", label: "Disabled" },
 ] as const;
 
 export type GeneralStateKey = (typeof GENERAL_STATE_FACTS)[number]["key"];
@@ -114,6 +114,16 @@ export type CrenupStepKey = (typeof CRENUP_STEPS)[number]["key"];
 /** Operator label: `0. Seed` … `8. Vectors`. The key stays `embedding`. */
 export function crenupStepLabel(n: number, label: string): string {
   return `${n}. ${label}`;
+}
+
+/** Enrichment Steps on a place: `1. Details Enriched` … `8. Vectors Enriched`. */
+export function enrichmentStepLabel(n: number, label: string): string {
+  return `${n}. ${label} Enriched`;
+}
+
+/** True when Enrich runs this function. Seed is the only step this rejects. */
+export function stepEnriches(flows: readonly string[]): boolean {
+  return flows.includes("enrich");
 }
 
 /** Which run shape a function belongs to. Shared functions are both. */

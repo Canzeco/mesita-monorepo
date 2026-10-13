@@ -63,9 +63,10 @@ describe("menu upload stays off (MESITA-2175)", () => {
   const strip = (text: string) =>
     text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
 
-  it("Profile does not mount MenusSection", () => {
+  it("Profile does not mount MenusSection or the completeness meter", () => {
     const code = strip(read(join(SRC, "components/place-manage/ProfileTab.tsx")));
     expect(code).not.toContain("MenusSection");
+    expect(code).not.toContain("ProfileCompleteness");
   });
 
   it("the completeness meter does not ask for a menu", () => {
@@ -89,21 +90,8 @@ describe("ProfileCompleteness chips land somewhere real", () => {
     }
   });
 
-  it("every scrollId is rendered by the view that draws this card", () => {
-    // The card lives on Profile, so a same-page scroll may only target a
-    // section Profile itself renders. Targeting any other view's section is
-    // the MESITA-1848 regression, and it is silent.
+  it("Profile does not draw this card (MESITA-2179)", () => {
     const profileSections = sectionsByView().profile ?? [];
-    expect(profileSections).toContain("ProfileCompleteness");
-
-    for (const id of scrollIds) {
-      for (const owner of filesRenderingId(id)) {
-        expect(
-          profileSections,
-          `scrollId "${id}" lives in ${owner}, which Profile does not render — ` +
-            `it must be a \`tab\` link instead of a scroll`,
-        ).toContain(owner);
-      }
-    }
+    expect(profileSections).not.toContain("ProfileCompleteness");
   });
 });

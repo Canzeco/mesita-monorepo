@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 export default function ManageSinglePlacePage() {
   return (
-    <PageContainer size="5xl" className="pb-16 sm:pb-24">
+    <PageContainer size="full" className="pb-16 sm:pb-24">
       <PageHeader
         eyebrow="Manage · Single Place"
         title="Single Place"

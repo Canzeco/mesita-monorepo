@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, Loader2 } from "lucide-react";
+import { useMemo } from "react";
+import { ChevronDown } from "lucide-react";
 import { INPUT_BASE } from "@/components/admin-ui/manage";
-import { listPlaceTagCatalog, type PlaceCategoryOption } from "./actions";
+import { usePlaceContext } from "./PlaceContext";
 
-// Atlas category picker for Manage Single Place Basics (MESITA-469).
-// Catalog from admin-web-get-atlas-fields — same source the tags picker uses.
+// Atlas category picker. Options arrive on the profile read, each already
+// carrying its family display. Nothing here fetches.
 
 export function PlaceCategorySelect({
   value,
@@ -17,26 +17,14 @@ export function PlaceCategorySelect({
   value: string;
   onChange: (slug: string) => void;
   disabled?: boolean;
-  /** Friendly label currently on the place (category_label) — shown while loading. */
+  /** Label already on the place, for a slug the vocabulary no longer lists. */
   googleLabel?: string | null;
 }) {
-  const [categories, setCategories] = useState<PlaceCategoryOption[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let alive = true;
-    listPlaceTagCatalog().then((r) => {
-      if (!alive) return;
-      setCategories(r.ok ? r.data.categories : []);
-      setLoading(false);
-    });
-    return () => {
-      alive = false;
-    };
-  }, []);
+  const { profile } = usePlaceContext();
+  const categories = profile.categories;
 
   const sections = useMemo(() => {
-    const grouped = new Map<string, PlaceCategoryOption[]>();
+    const grouped = new Map<string, typeof categories>();
     for (const row of categories) {
       const list = grouped.get(row.section) ?? [];
       list.push(row);
@@ -44,21 +32,6 @@ export function PlaceCategorySelect({
     }
     return Array.from(grouped.entries());
   }, [categories]);
-
-  if (loading) {
-    return (
-      <label className="flex flex-col gap-1.5">
-        <span className="text-foreground/90 type-body font-medium">Category</span>
-        <span className="text-muted-foreground flex h-10 items-center gap-1.5 text-xs">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          Loading…
-          {googleLabel ? (
-            <span className="text-muted-foreground/70 truncate">· {googleLabel}</span>
-          ) : null}
-        </span>
-      </label>
-    );
-  }
 
   return (
     <label className="flex flex-col gap-1.5">

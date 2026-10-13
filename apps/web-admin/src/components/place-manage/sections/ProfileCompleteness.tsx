@@ -1,5 +1,7 @@
 "use client";
 
+// UNWIRED (MESITA-2179, Pato 2026-10-13). Profile does not mount this meter.
+
 import { CheckCircle2, Gauge } from "lucide-react";
 import type { AdminPlace } from "../actions";
 

@@ -3,6 +3,7 @@ import {
   descriptionRuns,
   embeddingRuns,
   type EnrichFill,
+  channelForSocial,
   omitUnrunKeys,
   parseOverwrite,
   stepRuns,
@@ -84,4 +85,27 @@ Deno.test("omitUnrunKeys drops fields the skipped steps own", () => {
   assertEquals(place.google_reviews, undefined);
   assertEquals(place.description, undefined);
   assertEquals(place.photos, undefined);
+});
+
+Deno.test("a skipped Links step keeps the stored handle over Google's", () => {
+  assertEquals(
+    channelForSocial(false, null, "https://ig.stored", "https://ig.prior"),
+    "https://ig.stored",
+  );
+  assertEquals(
+    channelForSocial(false, "https://ig.google", null, "https://ig.prior"),
+    "https://ig.prior",
+  );
+  assertEquals(
+    channelForSocial(true, "https://ig.google", "https://ig.stored", null),
+    "https://ig.google",
+  );
+  assertEquals(channelForSocial(false, "  ", "", null), null);
+});
+
+Deno.test("gather does not strip description's facts before the write stage", async () => {
+  const src = await Deno.readTextFile(
+    new URL("../enricher-cron-enrich-place-gather/index.ts", import.meta.url),
+  );
+  assertEquals(src.includes("omitUnrunKeys("), false);
 });

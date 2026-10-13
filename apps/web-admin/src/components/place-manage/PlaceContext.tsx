@@ -10,7 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { updatePlace, type AdminPlace } from "./actions";
+import { updatePlace, type AdminPlace, type ProfileRead } from "./actions";
 import {
   dirtyDialogNavBody,
   dirtyDialogReenrichBody,
@@ -71,6 +71,9 @@ type SectionSaver = {
 type PlaceContextValue = {
   place: AdminPlace;
   setPlace: (place: AdminPlace) => void;
+  /** Vocabulary and resolved Family / Category from the one profile read. */
+  profile: ProfileRead;
+  setProfile: (profile: ProfileRead) => void;
   /** Any registered section has unsaved drafts. */
   isDirty: boolean;
   setSectionDirty: (section: string, dirty: boolean) => void;
@@ -109,11 +112,15 @@ export function PlaceProvider({
   placeId,
   place,
   setPlace,
+  profile,
+  setProfile,
   children,
 }: {
   placeId: string;
   place: AdminPlace;
   setPlace: (place: AdminPlace) => void;
+  profile: ProfileRead;
+  setProfile: (profile: ProfileRead) => void;
   children: ReactNode;
 }) {
   const [dirtyMap, setDirtyMap] = useState<Record<string, boolean>>({});
@@ -201,13 +208,20 @@ export function PlaceProvider({
         setSaveError(r.error);
         return;
       }
-      for (const s of Object.values(savers.current)) s.onSaved(r.data);
-      setPlace(r.data);
+      for (const s of Object.values(savers.current)) s.onSaved(r.data.place);
+      setPlace(r.data.place);
+      if (r.data.family || r.data.familyStored) {
+        setProfile({
+          ...profile,
+          ...(r.data.family ? { family: r.data.family } : {}),
+          ...(r.data.familyStored ? { familyStored: r.data.familyStored } : {}),
+        });
+      }
       setDirtyMap({});
       setSaveOk(true);
       window.setTimeout(() => setSaveOk(false), 2500);
     })();
-  }, [placeId, setPlace]);
+  }, [placeId, setPlace, profile, setProfile]);
 
   const isDirty = useMemo(
     () => Object.values(dirtyMap).some(Boolean),
@@ -288,6 +302,8 @@ export function PlaceProvider({
     () => ({
       place,
       setPlace,
+      profile,
+      setProfile,
       isDirty,
       setSectionDirty,
       registerDiscardHandler,
@@ -303,6 +319,8 @@ export function PlaceProvider({
     [
       place,
       setPlace,
+      profile,
+      setProfile,
       isDirty,
       setSectionDirty,
       registerDiscardHandler,

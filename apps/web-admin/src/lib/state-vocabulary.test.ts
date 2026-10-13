@@ -6,6 +6,8 @@ import {
   creationFlowMark,
   crenupFlowTag,
   crenupStepLabel,
+  enrichmentStepLabel,
+  stepEnriches,
   STATE_FACT_FALSE_TONE,
   requestCountChip,
   requestCountFromRow,
@@ -20,10 +22,10 @@ describe("state vocabulary", () => {
     expect(GENERAL_STATE_FACTS.map((f) => f.label)).toEqual([
       "Created",
       "Pulsing",
-      "Disabled",
       "Requested",
       "Enriching",
       "Enriched",
+      "Disabled",
     ]);
     expect([...BAD_WHEN_TRUE]).toEqual(["disabled"]);
     expect(CRENUP_STEPS.map((f) => `${f.n}. ${f.label}`)).toEqual([
@@ -40,6 +42,20 @@ describe("state vocabulary", () => {
     expect(CRENUP_STEPS.map((f) => crenupStepLabel(f.n, f.label))).toEqual(
       CRENUP_STEPS.map((f) => `${f.n}. ${f.label}`),
     );
+    expect(
+      CRENUP_STEPS.filter((f) => stepEnriches(f.flows)).map((f) =>
+        enrichmentStepLabel(f.n, f.label),
+      ),
+    ).toEqual([
+      "1. Details Enriched",
+      "2. Serp Enriched",
+      "3. Links Enriched",
+      "4. Social Enriched",
+      "5. Reviews Enriched",
+      "6. Images Enriched",
+      "7. Description Enriched",
+      "8. Vectors Enriched",
+    ]);
     expect(
       CRENUP_STEPS.filter((f) => creationFlowMark(f.flows) !== null).map((f) => f.label),
     ).toEqual(["Seed", "Details", "Description", "Vectors"]);

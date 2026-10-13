@@ -108,7 +108,7 @@ export function MesitaSearchResults({ rows }: { rows: Row[] }) {
             return (
               <li key={`${row.key}-ladder`} className="px-4 py-3">
                 <p className="text-muted-foreground type-label mb-2">
-                  Steps · {hit.google_name || hit.name}
+                  Enrichment Steps · {hit.google_name || hit.name}
                 </p>
                 <CrenupLadder hit={hit} />
               </li>

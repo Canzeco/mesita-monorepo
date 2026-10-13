@@ -171,12 +171,15 @@ export function TextField({
 // phones without a country code, and the picker makes the +CC unforgettable.
 export function PhoneField({
   label,
+  icon,
   value,
   onChange,
   placeholder = "55 1234 5678",
   disabled,
 }: {
   label: string;
+  /** Optional leading mark next to the label (brand SVG or lucide). */
+  icon?: React.ReactNode;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
@@ -207,7 +210,8 @@ export function PhoneField({
 
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-foreground/90 flex min-h-4 items-center type-body font-medium">
+      <span className="text-foreground/90 flex min-h-4 items-center gap-1.5 type-body font-medium">
+        {icon}
         {label}
       </span>
       <span
@@ -414,12 +418,15 @@ export function Spinner({ label }: { label?: string }) {
 // `auto` pill signals the value is Enricher-owned and not hand-edited.
 export function ReadField({
   label,
+  icon,
   auto,
   boxed,
   labelRight,
   children,
 }: {
   label: string;
+  /** Optional leading mark next to the label (brand SVG or lucide). */
+  icon?: React.ReactNode;
   auto?: boolean;
   /** Render label + value like a (disabled) filled input, so the field sits
    *  flush with the editable TextFields around it instead of as bare text. */
@@ -440,6 +447,7 @@ export function ReadField({
               : "text-muted-foreground flex items-center gap-1.5 type-label font-semibold tracking-[0.12em] uppercase"
           }
         >
+          {icon}
           {label}
           {auto ? (
             <span className="text-muted-foreground/70 inline-flex items-center gap-0.5 type-meta font-normal tracking-normal normal-case">

@@ -224,3 +224,21 @@ export function omitUnrunKeys(
   // Links finds the handle; Social is what verifies it.
   if (!ran.has("links") && !ran.has("social")) delete place.instagram_url;
 }
+
+function nonempty(value: unknown): string | null {
+  return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+}
+
+/** Social's handle when Links did not run this time. A skipped Links step
+ *  must scrape the URL already stored, not this fetch's Google copy, which
+ *  is often empty and would overwrite the discovered one. */
+export function channelForSocial(
+  linksRun: boolean,
+  google: unknown,
+  stored: unknown,
+  prior: unknown,
+): string | null {
+  const fromGoogle = nonempty(google);
+  if (linksRun) return fromGoogle;
+  return nonempty(stored) ?? nonempty(prior) ?? fromGoogle;
+}
