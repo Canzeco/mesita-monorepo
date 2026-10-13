@@ -131,15 +131,15 @@ describe("Find › one table", () => {
     expect(on).toBeGreaterThan(-1);
     expect(place).toBeGreaterThan(on);
     expect(html).toContain(">Mesita</span>");
-    expect(html).toContain(">Google</span>");
+    expect(html).toContain(">Google only</span>");
   });
 
-  it("says Mesita for a held place and Google for one Mesita lacks", () => {
+  it("says Mesita for a held place and Google only for one Mesita lacks", () => {
     const held = render({ rows: [HELD], failed: [], notes: [] });
     expect(held).toContain(">Mesita</span>");
-    expect(held).not.toContain(">Google</span>");
+    expect(held).not.toContain(">Google only</span>");
     const google = render({ rows: [NEW], failed: [], notes: [] });
-    expect(google).toContain(">Google</span>");
+    expect(google).toContain(">Google only</span>");
     expect(google).not.toContain(">Mesita</span>");
   });
 
@@ -251,7 +251,7 @@ describe("Find › one table", () => {
     const html = render(OK, { added: new Map([[G2, "mesita-new"]]) });
     expect(html).toContain('href="/manage-single/mesita-new/profile"');
     expect(html).not.toContain(">Create<");
-    expect(html).not.toContain(">Google</span>");
+    expect(html).not.toContain(">Google only</span>");
   });
 
   it("shows a Create in flight, then its outcome, in a live region", () => {

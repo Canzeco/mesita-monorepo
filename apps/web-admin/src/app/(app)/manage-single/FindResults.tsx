@@ -329,7 +329,7 @@ function HeldCell({ row }: { row: FindRow }) {
   }
   return (
     <span className="text-muted-foreground bg-muted inline-flex items-center justify-center rounded-full px-2 py-0.5 type-label font-semibold whitespace-nowrap">
-      Google
+      Google only
     </span>
   );
 }
