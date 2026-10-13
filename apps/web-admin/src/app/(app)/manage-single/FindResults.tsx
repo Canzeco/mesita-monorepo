@@ -422,6 +422,8 @@ function ProfileCells({ row }: { row: FindRow }) {
                 badWhenTrue={BAD_WHEN_TRUE.has(f.key)}
               />
             )
+          ) : row.held ? (
+            <StatePill on="unknown" />
           ) : (
             <Miss label={f.label} />
           )}
@@ -440,7 +442,7 @@ function EnrichmentCells({ row }: { row: FindRow }) {
         return (
           <td key={step.key} className={CELL + (i === 0 ? ` ${GROUP_EDGE}` : "")}>
             {mark == null ? (
-              <Miss label={step.label} />
+              row.held ? <StatePill on="unknown" /> : <Miss label={step.label} />
             ) : mark === "unknown" ? (
               <StatePill on="unknown" />
             ) : mark === "fail" ? (

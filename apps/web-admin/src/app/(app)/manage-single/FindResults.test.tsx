@@ -206,11 +206,19 @@ describe("Find › one table", () => {
   });
 
   it("shows a Google-only row's Text Search rating in Reviews, and a dash for states Mesita holds", () => {
-    const html = render(OK);
+    const html = render({ rows: [NEW], failed: [], notes: [] });
     expect(html).toContain(">4.7<");
     expect(html).toContain(">266<");
     expect(html).toContain("Created: not on Mesita");
     expect(html).not.toContain("4.7 · 266 reviews");
+  });
+
+  it("says unknown, not 'not on Mesita', when the row is held without a catalogue payload", () => {
+    const html = render({ rows: [HELD], failed: [], notes: [] });
+    expect(html).toContain('aria-label="Open Café Nin"');
+    expect(html).toContain("This payload does not carry that fact");
+    expect(html).not.toContain("Created: not on Mesita");
+    expect(html).not.toContain("Details: not on Mesita");
   });
 
   it("folds the sources into one line for a phone", () => {
