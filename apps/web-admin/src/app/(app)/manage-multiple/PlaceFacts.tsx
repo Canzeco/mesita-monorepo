@@ -1,6 +1,6 @@
 "use client";
 
-import { CRENUP_STEPS } from "@/lib/state-vocabulary";
+import { CRENUP_STEPS, enrichmentStepLabel, stepEnriches } from "@/lib/state-vocabulary";
 import type { PlaceHit } from "./actions";
 import { crenupCalled } from "./mesita-search-facts";
 
@@ -54,9 +54,10 @@ export function StatePill({
   );
 }
 
-/** The Crenup ladder for one place: where it stopped, then one chip per step,
- *  green when the function was called (completed OR failed — see
- *  crenupCalled). Renders nothing for a payload that carries no ladder. */
+/** Enrichment Steps for one place: where it stopped, then one chip per
+ *  Enrich function (1–8, Seed left off), green when the function was called
+ *  (completed OR failed — see crenupCalled). Renders nothing for a payload
+ *  that carries no ladder. */
 export function CrenupLadder({ hit }: { hit: PlaceHit }) {
   if (hit.enrich_crenup_labels.length === 0) return null;
   return (
@@ -74,7 +75,7 @@ export function CrenupLadder({ hit }: { hit: PlaceHit }) {
         </p>
       ) : null}
       <div className="flex flex-wrap gap-1.5">
-        {CRENUP_STEPS.map((fn) => {
+        {CRENUP_STEPS.filter((fn) => stepEnriches(fn.flows)).map((fn) => {
           const called = crenupCalled(hit, fn);
           return (
             <span
@@ -86,7 +87,7 @@ export function CrenupLadder({ hit }: { hit: PlaceHit }) {
                   : "bg-muted text-muted-foreground")
               }
             >
-              {fn.n}. {fn.label}
+              {enrichmentStepLabel(fn.n, fn.label)}
             </span>
           );
         })}

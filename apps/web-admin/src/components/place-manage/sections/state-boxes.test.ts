@@ -2,10 +2,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-// A place has six states (Pato, 2026-10-11), in two boxes. Verified, Owned and
-// Partnered no longer exist; nothing commercial is live. This pins the names
-// and the grouping so neither box can quietly grow a seventh row or keep an
-// old label.
+// A place has six profile states (Pato, 2026-10-13), in one box, and the
+// Enrich pass of the ladder in another. Verified, Owned and Partnered no
+// longer exist; nothing commercial is live. This pins the names and the
+// split so a step cannot sneak back into the states.
 
 const here = __dirname;
 const general = readFileSync(join(here, "StateCard.tsx"), "utf8");
@@ -15,18 +15,26 @@ const rowNames = (src: string) =>
   [...src.matchAll(/<StateRow\s+name="([^"]+)"/g)].map((m) => m[1]);
 
 describe("the six states of a place", () => {
-  it("General States prints Created · Pulsing · Disabled", () => {
-    expect(rowNames(general)).toEqual(["Created", "Pulsing", "Disabled"]);
+  it("Profile States prints Created · Pulsing · Requested · Enriching · Enriched · Disabled", () => {
+    expect(rowNames(general)).toEqual([
+      "Created",
+      "Pulsing",
+      "Requested",
+      "Enriching",
+      "Enriched",
+      "Disabled",
+    ]);
+    expect(general).toContain('title="Profile States"');
+    expect(general).not.toContain("FunctionLadder");
+    expect(general).not.toContain('title="General States"');
+    expect(general).not.toContain('title="Creation"');
   });
 
-  it("Enrichment States prints Requested · Enriching · Enriched", () => {
-    expect(rowNames(enrichment)).toEqual(["Requested", "Enriching", "Enriched"]);
-  });
-
-  it("Creation's four functions print under General and stay on the enrichment ladder", () => {
-    expect(general).toContain('title="Creation"');
-    expect(general).toContain("FunctionLadder");
-    expect(enrichment).toContain("<FunctionLadder rows={rows} />");
+  it("Enrichment Steps is the ladder, not three more states", () => {
+    expect(rowNames(enrichment)).toEqual([]);
+    expect(enrichment).toContain('title="Enrichment Steps"');
+    expect(enrichment).toContain("enrichmentStepRows");
+    expect(enrichment).not.toContain('title="Enrichment States"');
     expect(enrichment).not.toContain('title="Creation"');
   });
 

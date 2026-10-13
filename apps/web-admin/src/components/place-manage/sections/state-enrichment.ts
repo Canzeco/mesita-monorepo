@@ -1,6 +1,7 @@
 import {
   CRENUP_STEPS,
   crenupStepLabel,
+  enrichmentStepLabel,
   type CrenupFlow,
   type CrenupStepKey,
 } from "@/lib/state-vocabulary";
@@ -43,8 +44,9 @@ function functionState(
 }
 
 /**
- * The nine Crenup functions the Crenup box mentions — 0. Seed … 8. Embedding
- * — each called or not. Same keys as Crenup, never a second ladder.
+ * The nine functions — 0. Seed … 8. Embedding — each called or not. Same
+ * keys as the ladder, never a second one. Enrichment Steps filters this to
+ * the Enrich pass (1–8) and renames each row.
  *
  * THREE ANSWERS, NOT TWO (MESITA-1608). A missing map and a map that says a
  * function has not run are different facts, and the console list renders them
@@ -80,6 +82,22 @@ export function crenupStepRows(
       flows: def.flows,
     };
   });
+}
+
+/**
+ * Enrichment Steps: the Enrich pass only, 1. Details Enriched …
+ * 8. Embedding Enriched. Seed is Create-only and stays off this list.
+ */
+export function enrichmentStepRows(
+  functions: Record<string, EnrichFunctionState> | null | undefined,
+  seeded: boolean | "unknown",
+): CrenupStepRow[] {
+  return crenupStepRows(functions, seeded)
+    .filter((row) => row.flows.includes("enrich"))
+    .map((row) => {
+      const name = CRENUP_STEPS.find((step) => step.key === row.key)?.label ?? row.key;
+      return { ...row, label: enrichmentStepLabel(row.n, name) };
+    });
 }
 
 /**
