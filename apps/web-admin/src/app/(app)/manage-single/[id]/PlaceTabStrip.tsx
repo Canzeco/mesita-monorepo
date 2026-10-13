@@ -1,7 +1,7 @@
 "use client";
 
 // Every door on one place, one row (MESITA-2086). The strip draws exactly
-// the views the layout published (`FIRST_STAGE_TABS`, MESITA-2088: Profile ·
+// the views the layout published (`FIRST_STAGE_TABS`: Profile · Reviews ·
 // Admin), in `PLACE_TABS` order.
 
 import Link from "next/link";

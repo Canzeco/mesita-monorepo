@@ -105,6 +105,13 @@ import {
   readFieldPins,
   stripPinnedColumns,
 } from "../_shared/enrich-corrections.ts";
+import {
+  emptyReviewSource,
+  normalizeReviewsState,
+  omitReviewsTileColumns,
+  socialAccountReplaced,
+  withReviewSource,
+} from "../_shared/reviews-state.ts";
 
 serveEnrichStage("write", async (admin, env, row) => {
   // What this run bought, per the trigger matrix (NULL = everything).
@@ -373,7 +380,7 @@ serveEnrichStage("write", async (admin, env, row) => {
 
   const { data: liveContacts } = await admin
     .from("place_profiles")
-    .select("phone, reservation_channel, enrichment_sources")
+    .select("phone, reservation_channel, enrichment_sources, instagram_url, facebook_url, reviews_state")
     .eq("id", placeId)
     .maybeSingle();
   const live = (liveContacts ?? null) as
@@ -381,6 +388,9 @@ serveEnrichStage("write", async (admin, env, row) => {
       phone: string | null;
       reservation_channel: string | null;
       enrichment_sources: unknown;
+      instagram_url: string | null;
+      facebook_url: string | null;
+      reviews_state: unknown;
     }
     | null;
 
@@ -485,6 +495,12 @@ serveEnrichStage("write", async (admin, env, row) => {
   // country/editorial_summary/facebook_rating left the place in MESITA-2144:
   // a blob stored before then still carries them, and writePlace refuses an
   // unknown field, so they are stripped here like the wave-040 columns.
+  // Tile columns are the Reviews reload's. An old gathered blob still carries
+  // them; drop them before the patch so a contents re-run cannot cover a
+  // reload (MESITA-2183). A social URL this run actually changed still empties
+  // that source, the same rule as a profile save: the old account's count must
+  // not sit next to the new link.
+  const persistedReviewsOmitted = omitReviewsTileColumns(persisted);
   const {
     id: _dropId,
     created_at: _dropCreated,
@@ -503,7 +519,7 @@ serveEnrichStage("write", async (admin, env, row) => {
     editorial_summary: _dropEditorialSummary,
     facebook_rating: _dropFacebookRating,
     ...placeUpdate
-  } = persisted as Record<string, unknown> & {
+  } = persistedReviewsOmitted as Record<string, unknown> & {
     id?: unknown;
     created_at?: unknown;
     updated_at?: unknown;
@@ -523,6 +539,21 @@ serveEnrichStage("write", async (admin, env, row) => {
   };
   if ("google_reviews" in placeUpdate) {
     placeUpdate.google_reviews = persistGoogleReviews(placeUpdate.google_reviews);
+  }
+  // A gathered URL is replayed on runs that did not pick a new account.
+  // Only a different non-empty account empties the count. A missing URL, a
+  // null, or a slash/www spelling of the same link leaves a reload alone.
+  if (live) {
+    const instagram = socialAccountReplaced(live.instagram_url, placeUpdate.instagram_url);
+    const facebook = socialAccountReplaced(live.facebook_url, placeUpdate.facebook_url);
+    if (instagram) placeUpdate.instagram_followers_count = null;
+    if (facebook) placeUpdate.facebook_followers = null;
+    if (instagram || facebook) {
+      let state = normalizeReviewsState(live.reviews_state);
+      if (instagram) state = withReviewSource(state, "instagram", emptyReviewSource());
+      if (facebook) state = withReviewSource(state, "facebook", emptyReviewSource());
+      placeUpdate.reviews_state = state;
+    }
   }
   const placeRes = await writePlace(admin, {
     table: "place_profiles",

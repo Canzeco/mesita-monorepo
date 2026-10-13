@@ -148,10 +148,11 @@ Deno.test("on_update: the seven locked cells stay false even when stored true", 
   assertEquals(out.on_update.subprocesses.embedding, true);
 });
 
-Deno.test("on_update: what the update path is allowed to buy is exactly social + embedding", () => {
-  // admin-web-update-place gates on `.includes("social")` and
-  // `.includes("embedding")`. If this list ever grows, that EF starts
-  // re-deriving a field a human just typed.
+Deno.test("on_update: the matrix still offers social + embedding", () => {
+  // The social cell stays in the matrix. admin-web-update-place no longer
+  // buys a scrape from it (MESITA-2183): a changed URL empties that source,
+  // and the Reviews tab is the only fetch. Embedding is still gated on
+  // `.includes("embedding")`.
   const buys = subprocessesFor(ENRICHMENT_TRIGGERS_DEFAULTS, "on_update").sort();
   assertEquals(buys, ["embedding", "social"]);
 });

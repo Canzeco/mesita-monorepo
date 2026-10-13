@@ -115,11 +115,11 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
     })),
 
     google: {
-      rating: num(row.google_stars_overall) ?? 0,
-      count: num(row.google_review_count) ?? 0,
+      rating: num(row.google_stars_overall) ?? null,
+      count: num(row.google_review_count) ?? null,
     },
-    facebook: { followers: num(row.facebook_followers) ?? 0 },
-    instagram: { followers: num(row.instagram_followers_count) ?? 0 },
+    facebook: { followers: num(row.facebook_followers) ?? null },
+    instagram: { followers: num(row.instagram_followers_count) ?? null },
 
     // Enricher (enricher-cron-enrich-place-*) stores each review as
     // { author, rating, text, published } — map those onto the detail shape

@@ -1,64 +1,102 @@
+// A changed Instagram or Facebook URL empties that reviews source in the
+// same save (MESITA-2183). It does not scrape. The reload on the Reviews
+// tab is the only fetch.
+//
+// The count null rides the profiles write (the view trigger copies
+// instagram_followers_count and facebook_followers). reviews_state is not
+// on the view, so it is a second write to place_profiles.
+
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
-import { runInBackground } from "../_shared/background.ts";
-import { refreshSocialFollowers } from "../_shared/social-followers.ts";
+import { writePlace } from "../_shared/place-doc.ts";
+import {
+  emptyReviewSource,
+  normalizeReviewsState,
+  socialSourcesToEmpty,
+  withReviewSource,
+  type ReviewsState,
+  type SocialUrlPair,
+} from "../_shared/reviews-state.ts";
 
-export type PreviousSocialUrls = {
-  instagram_url: string | null;
-  facebook_url: string | null;
-};
+export const REVIEWS_TILE_BODY_KEYS = [
+  "google_stars_overall",
+  "google_review_count",
+  "instagram_followers_count",
+  "facebook_followers",
+  "reviews_state",
+] as const;
 
-function updatesSocialUrl(update: Record<string, unknown>): boolean {
-  return "instagram_url" in update || "facebook_url" in update;
+/** A profile save must not carry the tile columns. The reload owns them. */
+export function reviewsTileKeyInBody(body: object): string | null {
+  for (const key of REVIEWS_TILE_BODY_KEYS) {
+    if (key in body) return key;
+  }
+  return null;
 }
 
-export async function loadPreviousSocialUrlsForRefresh(
+type PrevSocial = SocialUrlPair & { reviews_state?: unknown };
+
+export async function loadPreviousSocialUrls(
   admin: SupabaseClient,
   placeId: string,
   update: Record<string, unknown>,
-  apifyKey: string | undefined,
-): Promise<PreviousSocialUrls | null> {
-  if (!apifyKey || !updatesSocialUrl(update)) return null;
-
-  const { data: prev } = await admin
+): Promise<PrevSocial | null> {
+  if (!("instagram_url" in update) && !("facebook_url" in update)) return null;
+  const { data, error } = await admin
     .from("place_profiles")
-    .select("instagram_url, facebook_url")
+    .select("instagram_url, facebook_url, reviews_state")
     .eq("id", placeId)
     .maybeSingle();
-
-  return (prev as PreviousSocialUrls | null) ?? null;
+  if (error || !data) {
+    if (error) console.error("[place-social] previous urls:", error.message);
+    return null;
+  }
+  const row = data as {
+    instagram_url: string | null;
+    facebook_url: string | null;
+    reviews_state: unknown;
+  };
+  return {
+    instagram_url: row.instagram_url,
+    facebook_url: row.facebook_url,
+    reviews_state: row.reviews_state,
+  };
 }
 
-export function queueSocialFollowersRefresh(opts: {
-  admin: SupabaseClient;
-  apifyKey: string | undefined;
-  placeId: string;
-  update: Record<string, unknown>;
-  prevSocial: PreviousSocialUrls | null;
-}): void {
-  const { admin, apifyKey, placeId, update, prevSocial } = opts;
-  if (!apifyKey) return;
+/** Null the follower columns on `update` when the URL changed. */
+export function applySocialCountClears(
+  update: Record<string, unknown>,
+  prev: PrevSocial | null,
+): { instagram: boolean; facebook: boolean } {
+  if (!prev) return { instagram: false, facebook: false };
+  const clears = socialSourcesToEmpty(prev, {
+    instagram_url: "instagram_url" in update ? (update.instagram_url as string | null) : undefined,
+    facebook_url: "facebook_url" in update ? (update.facebook_url as string | null) : undefined,
+  });
+  if (clears.instagram) update.instagram_followers_count = null;
+  if (clears.facebook) update.facebook_followers = null;
+  return clears;
+}
 
-  const igNext = "instagram_url" in update
-    ? (update.instagram_url as string | null)
-    : undefined;
-  const fbNext = "facebook_url" in update
-    ? (update.facebook_url as string | null)
-    : undefined;
-  const igChanged = igNext !== undefined &&
-    igNext !== (prevSocial?.instagram_url ?? null);
-  const fbChanged = fbNext !== undefined &&
-    fbNext !== (prevSocial?.facebook_url ?? null);
-
-  if (!igChanged && !fbChanged) return;
-
-  runInBackground(
-    refreshSocialFollowers({
-      admin,
-      apifyKey,
-      placeId,
-      ...(igChanged ? { instagramUrl: igNext } : {}),
-      ...(fbChanged ? { facebookUrl: fbNext } : {}),
-    }).catch(() => {}),
-  );
+export async function writeClearedReviewsState(
+  admin: SupabaseClient,
+  placeId: string,
+  prev: PrevSocial | null,
+  clears: { instagram: boolean; facebook: boolean },
+): Promise<ReviewsState | null> {
+  if (!prev || (!clears.instagram && !clears.facebook)) return null;
+  let state = normalizeReviewsState(prev.reviews_state);
+  if (clears.instagram) state = withReviewSource(state, "instagram", emptyReviewSource());
+  if (clears.facebook) state = withReviewSource(state, "facebook", emptyReviewSource());
+  const res = await writePlace(admin, {
+    table: "place_profiles",
+    mode: "update",
+    id: placeId,
+    patch: { reviews_state: state },
+  });
+  if (!res.ok) {
+    console.error("[place-social] reviews_state:", res.error);
+    return null;
+  }
+  return state;
 }

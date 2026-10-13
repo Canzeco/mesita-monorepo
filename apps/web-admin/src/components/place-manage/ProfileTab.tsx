@@ -8,14 +8,9 @@
 // ProfileCompleteness (MESITA-2179). Both components stay in the repo.
 
 import { PlaceSection } from "@/components/place-manage/sections/PlaceSection";
-import { ReviewsSummary } from "@/components/place-manage/sections/ReviewsSummary";
 import { usePlaceContext } from "@/components/place-manage/PlaceContext";
 
 export function ProfileTab() {
   const { place } = usePlaceContext();
-  return (
-    <PlaceSection place={place}>
-      <ReviewsSummary place={place} />
-    </PlaceSection>
-  );
+  return <PlaceSection place={place} />;
 }

@@ -35,10 +35,39 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
   // decision: Pato (live, 2026-08-03) — the stat trio is the three OUTSIDE
   // channels: Google · Instagram · Facebook. They are the reputation numbers
   // a guest already trusts, and each one has a count to stand on.
-  const googleRating = formatRating(place.google.rating)!;
-  const googleCount = formatCompactCount(place.google.count, false);
-  const igFollowers = formatCompactCount(place.instagram.followers, false);
-  const fbFollowers = formatCompactCount(place.facebook.followers, false);
+  const googleRating = formatRating(place.google.rating);
+  const googleCount = place.google.count;
+  const stats = [
+    googleRating != null
+      ? {
+          key: "google",
+          value: googleRating,
+          label: googleCount != null ? `${formatCompactCount(googleCount, false)} Google` : "Google",
+          icon: (
+            <Star
+              className="fill-foreground text-muted-foreground h-3 w-3"
+              strokeWidth={0}
+            />
+          ),
+        }
+      : null,
+    place.instagram.followers != null
+      ? {
+          key: "instagram",
+          value: formatCompactCount(place.instagram.followers, false),
+          label: "Instagram",
+          icon: <Instagram className="text-muted-foreground h-3 w-3" />,
+        }
+      : null,
+    place.facebook.followers != null
+      ? {
+          key: "facebook",
+          value: formatCompactCount(place.facebook.followers, false),
+          label: "Facebook",
+          icon: <Facebook className="text-muted-foreground h-3 w-3" />,
+        }
+      : null,
+  ].filter((stat) => stat != null);
   const priceLabel =
     formatPlacePriceChip({
       priceRange: place.price_range,
@@ -54,28 +83,29 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
     <section className="border-border bg-card flex flex-col gap-3 border-b px-4 pt-3 pb-4">
       <div className="flex items-center gap-4">
         <ProfilePhoto place={place} />
-        <div className="grid min-w-0 flex-1 grid-cols-3 gap-1">
-          <ProfileStat
-            value={googleRating}
-            label={`${googleCount} Google`}
-            icon={
-              <Star
-                className="fill-foreground text-muted-foreground h-3 w-3"
-                strokeWidth={0}
-              />
+        {stats.length > 0 ? (
+          <div
+            className={
+              "grid min-w-0 flex-1 gap-1 " +
+              (stats.length >= 3
+                ? "grid-cols-3"
+                : stats.length === 2
+                ? "grid-cols-2"
+                : "grid-cols-1")
             }
-          />
-          <ProfileStat
-            value={igFollowers}
-            label="Instagram"
-            icon={<Instagram className="text-muted-foreground h-3 w-3" />}
-          />
-          <ProfileStat
-            value={fbFollowers}
-            label="Facebook"
-            icon={<Facebook className="text-muted-foreground h-3 w-3" />}
-          />
-        </div>
+          >
+            {stats.map((stat) => (
+              <ProfileStat
+                key={stat.key}
+                value={stat.value}
+                label={stat.label}
+                icon={stat.icon}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="min-w-0 flex-1" />
+        )}
       </div>
 
       {/* decision: Pato — when the Enricher is still building the profile an
