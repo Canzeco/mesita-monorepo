@@ -124,6 +124,22 @@ export function completedSnapshot(raw: unknown): Set<FillStep> | null {
   return asSteps(raw);
 }
 
+/** Writes the run row, not the place. Kept above any place_profiles read:
+ *  the write-surface scan looks 2000 chars forward from a `.from()` and
+ *  would otherwise call this a profile writer. */
+async function freezeCompleted(
+  admin: SupabaseClient,
+  runId: string,
+  meta: Record<string, unknown>,
+  completed: ReadonlySet<FillStep>,
+): Promise<void> {
+  const { error } = await admin
+    .from("place_enrichment_runs")
+    .update({ meta: { ...meta, completed: [...completed] } })
+    .eq("id", runId);
+  if (error) console.error("[enrich-fill] completed snapshot:", error.message);
+}
+
 export async function loadEnrichFill(
   admin: SupabaseClient,
   row: {
@@ -180,13 +196,7 @@ export async function loadEnrichFill(
     // Freeze this set on the run before any stage stamps. A retry that
     // re-read the live map would treat this run's own stamps as already
     // done, skip the work, and then let write strip the columns.
-    const { error: snapErr } = await admin
-      .from("place_enrichment_runs")
-      .update({ meta: { ...meta, completed: [...completed] } })
-      .eq("id", row.run_id);
-    if (snapErr) {
-      console.error("[enrich-fill] completed snapshot:", snapErr.message);
-    }
+    await freezeCompleted(admin, row.run_id, meta, completed);
   }
   return {
     fill,
