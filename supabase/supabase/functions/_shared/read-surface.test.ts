@@ -161,6 +161,7 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "_shared/mesita-name-door.ts",
   "_shared/crenup-report.ts",
   "_shared/field-correction-writer.ts", // read enrichment_sources before pin merge (MESITA-2029)
+  "_shared/enrich-fill.ts", // enrichment jsonb only, to see which ladder steps already completed (MESITA-2178)
   "admin-web-enrich-place/index.ts",
   "admin-web-search-places/index.ts",
   "admin-web-get-overview/index.ts",

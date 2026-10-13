@@ -145,15 +145,19 @@ export async function loadEnrichFill(
   }
   const completed = new Set<FillStep>();
   if (fill) {
-    const { data } = await admin
+    const { data, error } = await admin
       .from("place_profiles")
       .select("enrichment")
       .eq("id", row.place_id)
       .maybeSingle();
-    const stored = (data?.enrichment ?? null) as EnrichmentMap | null;
-    const functions = foldFunctionStateMap(stored?.functions ?? {});
-    for (const step of FILL_STEPS) {
-      if (functions[step]?.state === "completed") completed.add(step);
+    // A failed read is not "everything is filled". Leave completed empty so
+    // the run redoes the steps it bought rather than skipping them.
+    if (!error) {
+      const stored = (data?.enrichment ?? null) as EnrichmentMap | null;
+      const functions = foldFunctionStateMap(stored?.functions ?? {});
+      for (const step of FILL_STEPS) {
+        if (functions[step]?.state === "completed") completed.add(step);
+      }
     }
   }
   return {

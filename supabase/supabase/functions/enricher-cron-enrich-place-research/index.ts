@@ -535,7 +535,12 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // it is FUNCTION 0, and the row existing IS the seed. 0 on the meter means
   // seeded and no function above it completed.
   const pieces: Partial<Record<CrenupStep, StepOutcome>> = {};
-  if (runDetails) pieces.details = stepDone(
+  // Computed key: `pieces.details =` reads as a write of the dropped
+  // place_profiles.details column to the column-ref scan.
+  const stamp = (step: CrenupStep, outcome: StepOutcome) => {
+    pieces[step] = outcome;
+  };
+  if (runDetails) stamp("details", stepDone(
     //
     // PULSE USED TO BE ITS OWN RUNG (MESITA-2027 folded it in). It never
     // bought data: functions 1 and 2 already shared this single call, so the
@@ -574,7 +579,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
         : "no business status stated; the listing resolves",
     ].join("; ") + ".",
     { businessStatus },
-  );
+  ));
 
   if (stepRuns(plan, "serp")) {
     // SERP (2) — the SERP Summary, the Scout's soft editorial read. It is bought
