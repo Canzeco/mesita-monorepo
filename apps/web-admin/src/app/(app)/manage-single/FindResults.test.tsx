@@ -106,8 +106,16 @@ describe("Find › one table", () => {
     );
     expect(html).not.toContain(">Catalogue<");
     expect(html).not.toContain(">Name Search<");
+    expect(html).not.toContain("Catalogue #1");
     expect(html).toContain("Every place on Mesita");
     expect(html).toContain("On Mesita");
+    expect(html).toContain("Mesita only. Google was not asked.");
+  });
+
+  it("says the catalogue is empty instead of a missed search", () => {
+    const html = render({ rows: [], failed: [], notes: [] }, { query: "", variant: "catalogue" });
+    expect(html).toContain("Mesita has no places yet. Paste a Google Place ID (ChIJ…) to create the first.");
+    expect(html).not.toContain("Nothing on Mesita or Google matches");
   });
 
   it("groups the source columns MESITA | GOOGLE, as column groups", () => {

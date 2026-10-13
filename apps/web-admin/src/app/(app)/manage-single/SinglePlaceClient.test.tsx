@@ -17,8 +17,10 @@ import { AbsentCard, SinglePlaceClient } from "./SinglePlaceClient";
 const GID = "ChIJN1t_tDeuEmsRUsoyG83frY4";
 
 describe("Single Place", () => {
-  it("opens on the Find box alone — a hit opens the place, it is not drawn here", () => {
+  it("renders Find before the catalogue arrives — a hit opens the place, it is not drawn here", () => {
     const html = renderToStaticMarkup(<SinglePlaceClient />);
+    expect(html).toContain("The list is every place Mesita holds.");
+    expect(html).toContain("Loading Mesita places");
     expect(html).toContain("ChIJ… or a place name");
     expect(html).not.toContain("General States");
     expect(html).not.toContain(">Create<");

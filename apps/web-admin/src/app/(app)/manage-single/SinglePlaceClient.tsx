@@ -18,7 +18,6 @@ import { useRouter } from "next/navigation";
 import { AlertTriangle, Building, ExternalLink, Loader2, Play, Search } from "lucide-react";
 import {
   createPlaceFromGooglePlaceId,
-  listAllPlaces,
   searchPlacesByGoogleIds,
   type PlaceHit,
 } from "@/app/(app)/manage-multiple/actions";
@@ -56,7 +55,7 @@ type Note = { state: BatchRowState; text: string };
 export function SinglePlaceClient() {
   const router = useRouter();
   const [text, setText] = useState("");
-  const [busy, setBusy] = useState<"find" | "create" | null>(null);
+  const [busy, setBusy] = useState<"find" | "create" | null>("find");
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View | null>(null);
   const [note, setNote] = useState<Note | null>(null);
@@ -73,12 +72,6 @@ export function SinglePlaceClient() {
 
   const lookup = useMemo(() => classifyLookup(text), [text]);
   const isBusy = busy !== null;
-
-  useEffect(() => {
-    findSeq.current += 1;
-    setBusy("find");
-    void findCatalogue().finally(() => setBusy(null));
-  }, []);
 
   function open(placeId: string) {
     router.push(placeTabHref(placeId, "profile"));
@@ -119,7 +112,7 @@ export function SinglePlaceClient() {
     const all = await loadCatalogueWithTotal();
     if (findSeq.current !== seq) return;
     if (all.status === "error") {
-      setError(all.error);
+      setError(`Catalogue failed: ${all.error}`);
       setView(null);
       return;
     }
@@ -133,6 +126,23 @@ export function SinglePlaceClient() {
       result: catalogueList(all.data.places, all.data.total),
     });
   }
+
+  useEffect(() => {
+    let live = true;
+    findSeq.current += 1;
+    // After paint, so the load is not a setState inside the effect body.
+    const timer = window.setTimeout(() => {
+      void findCatalogue().finally(() => {
+        if (live) setBusy(null);
+      });
+    }, 0);
+    return () => {
+      live = false;
+      window.clearTimeout(timer);
+    };
+    // Mount only. An empty Find from the button calls findCatalogue itself.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function findByGoogleId(googleId: string) {
     const r = await searchPlacesByGoogleIds([googleId]);
@@ -233,6 +243,7 @@ export function SinglePlaceClient() {
     setBusy("create");
     setNote({ state: "running", text: "Creating…" });
     setCatalog(null);
+    setCatalogTotal(null);
     try {
       const r = await createPlaceFromGooglePlaceId(view.googleId);
       if (!r.ok) {
@@ -299,6 +310,14 @@ export function SinglePlaceClient() {
           <div className="border-destructive/40 bg-destructive/5 text-destructive mt-4 flex items-start gap-3 rounded-2xl border p-4 text-sm">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <p>{error}</p>
+          </div>
+        ) : null}
+
+        {busy === "find" && view == null ? (
+          <div className="mt-5 space-y-2" aria-busy="true" aria-label="Loading Mesita places">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="bg-muted/50 h-12 animate-pulse rounded-xl" />
+            ))}
           </div>
         ) : null}
 
