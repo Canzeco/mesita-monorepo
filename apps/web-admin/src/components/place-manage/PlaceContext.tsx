@@ -8,7 +8,9 @@ import {
   useMemo,
   useRef,
   useState,
+  type Dispatch,
   type ReactNode,
+  type SetStateAction,
 } from "react";
 import { updatePlace, type AdminPlace, type ProfileRead } from "./actions";
 import {
@@ -70,7 +72,7 @@ type SectionSaver = {
 
 type PlaceContextValue = {
   place: AdminPlace;
-  setPlace: (place: AdminPlace) => void;
+  setPlace: Dispatch<SetStateAction<AdminPlace>>;
   /** Vocabulary and resolved Family / Category from the one profile read. */
   profile: ProfileRead;
   setProfile: (profile: ProfileRead) => void;
@@ -118,7 +120,7 @@ export function PlaceProvider({
 }: {
   placeId: string;
   place: AdminPlace;
-  setPlace: (place: AdminPlace) => void;
+  setPlace: Dispatch<SetStateAction<AdminPlace>>;
   profile: ProfileRead;
   setProfile: (profile: ProfileRead) => void;
   children: ReactNode;

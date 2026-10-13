@@ -98,7 +98,13 @@ import {
   readFieldPins,
   stripPinnedColumns,
 } from "../_shared/enrich-corrections.ts";
-import { omitReviewsTileColumns } from "../_shared/reviews-state.ts";
+import {
+  emptyReviewSource,
+  normalizeReviewsState,
+  omitReviewsTileColumns,
+  socialSourcesToEmpty,
+  withReviewSource,
+} from "../_shared/reviews-state.ts";
 
 serveEnrichStage("contents", async (admin, env, row) => {
   // What this run bought, per the trigger matrix (NULL = everything).
@@ -358,7 +364,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
 
   const { data: liveContacts } = await admin
     .from("place_profiles")
-    .select("phone, reservation_channel, enrichment_sources")
+    .select("phone, reservation_channel, enrichment_sources, instagram_url, facebook_url, reviews_state")
     .eq("id", placeId)
     .maybeSingle();
   const live = (liveContacts ?? null) as
@@ -366,6 +372,9 @@ serveEnrichStage("contents", async (admin, env, row) => {
       phone: string | null;
       reservation_channel: string | null;
       enrichment_sources: unknown;
+      instagram_url: string | null;
+      facebook_url: string | null;
+      reviews_state: unknown;
     }
     | null;
 
@@ -462,7 +471,9 @@ serveEnrichStage("contents", async (admin, env, row) => {
   // unknown field, so they are stripped here like the wave-040 columns.
   // Tile columns are the Reviews reload's. An old gathered blob still carries
   // them; drop them before the patch so a contents re-run cannot cover a
-  // reload (MESITA-2183).
+  // reload (MESITA-2183). A social URL this run actually changed still empties
+  // that source, the same rule as a profile save: the old account's count must
+  // not sit next to the new link.
   const persistedReviewsOmitted = omitReviewsTileColumns(persisted);
   const {
     id: _dropId,
@@ -502,6 +513,27 @@ serveEnrichStage("contents", async (admin, env, row) => {
   };
   if ("google_reviews" in placeUpdate) {
     placeUpdate.google_reviews = persistGoogleReviews(placeUpdate.google_reviews);
+  }
+  if (live) {
+    const clears = socialSourcesToEmpty(
+      { instagram_url: live.instagram_url, facebook_url: live.facebook_url },
+      {
+        instagram_url: "instagram_url" in placeUpdate
+          ? (placeUpdate.instagram_url as string | null)
+          : undefined,
+        facebook_url: "facebook_url" in placeUpdate
+          ? (placeUpdate.facebook_url as string | null)
+          : undefined,
+      },
+    );
+    if (clears.instagram) placeUpdate.instagram_followers_count = null;
+    if (clears.facebook) placeUpdate.facebook_followers = null;
+    if (clears.instagram || clears.facebook) {
+      let state = normalizeReviewsState(live.reviews_state);
+      if (clears.instagram) state = withReviewSource(state, "instagram", emptyReviewSource());
+      if (clears.facebook) state = withReviewSource(state, "facebook", emptyReviewSource());
+      placeUpdate.reviews_state = state;
+    }
   }
   const placeRes = await writePlace(admin, {
     table: "place_profiles",

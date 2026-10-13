@@ -123,14 +123,14 @@ export function ReviewsSummary() {
       setNote(r.error);
       return;
     }
-    setPlace({
-      ...place,
+    setPlace((current) => ({
+      ...current,
       google_stars_overall: r.data.google_stars_overall,
       google_review_count: r.data.google_review_count,
       instagram_followers_count: r.data.instagram_followers_count,
       facebook_followers: r.data.facebook_followers,
       reviews_state: r.data.reviews_state,
-    });
+    }));
     if (r.data.failed && r.data.error) setNote(r.data.error);
   }
 
