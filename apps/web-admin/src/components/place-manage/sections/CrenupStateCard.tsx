@@ -11,9 +11,10 @@ import {
 
 /**
  * Enrichment Steps — the Enrich pass of the ladder (Pato, 2026-10-13,
- * MESITA-2176): 1. Details Enriched … 8. Embedding Enriched. Seed is
- * Create-only and is not a step here. Details, Description and Embedding
- * also run on Create; this box reports the Enrich pass.
+ * MESITA-2176): 1. Details Enriched … 8. Vectors Enriched. Seed is
+ * Create-only and is not a step here. Details, Description and Vectors
+ * also run on Create; this box reports the Enrich pass. Function 8's key
+ * stays `embedding`.
  *
  * Profile States owns the enrichment read (Enriching). These rows come off
  * the place payload's function map.

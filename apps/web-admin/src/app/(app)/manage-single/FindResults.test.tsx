@@ -190,7 +190,7 @@ describe("Find › one table", () => {
       "Disabled",
       "Details",
       "Serp",
-      "Embedding",
+      "Vectors",
       "Stars",
       "Count",
     ]) {

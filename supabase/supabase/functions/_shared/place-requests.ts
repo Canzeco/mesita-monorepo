@@ -191,7 +191,8 @@ export async function applyPlaceRequest(
           subprocesses: null,
           cooldownHours: 0,
           actorUserId: opts.consumerId,
-          meta: { source: "consumer_request" },
+          keepPayloads: true,
+          meta: { source: "consumer_request", fill: true, overwrite: [] },
         },
       );
       if (seed.ok) {

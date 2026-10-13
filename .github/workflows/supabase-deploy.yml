@@ -262,6 +262,10 @@ jobs:
             supabase-cron-enrich-place-research
             supabase-cron-enrich-place-analysis
             supabase-cron-enrich-place-contents
+            # MESITA-2178: enricher-cron-enrich-place-research, -analysis and
+            # -contents stay callable. This job does not apply SQL. Deleting
+            # them here races the poller, which still posts to those slugs
+            # until the gather/photos/write migration is on the cloud.
             supabase-edgefunc-store-place-images
             supabase-edgefunc-recall-places
             supabase-edgefunc-search-places

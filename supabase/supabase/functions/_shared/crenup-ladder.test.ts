@@ -218,7 +218,7 @@ Deno.test("crenup: the index is the position, and the labels ride in order", () 
   // labels[8] is Embedding. A client renders labels[level] with no
   // off-by-one.
   assertEquals(CRENUP_FLOOR_LABEL, "Seed");
-  assertEquals(CRENUP_LABELS_IN_ORDER[CRENUP_TOTAL], "Embedding");
+  assertEquals(CRENUP_LABELS_IN_ORDER[CRENUP_TOTAL], "Vectors");
   assertEquals([...CRENUP_LABELS_IN_ORDER], [
     "Seed",
     "Details",
@@ -228,7 +228,7 @@ Deno.test("crenup: the index is the position, and the labels ride in order", () 
     "Reviews",
     "Images",
     "Description",
-    "Embedding",
+    "Vectors",
   ]);
   assertEquals(CRENUP_LABELS_IN_ORDER.every((l) => l.trim() !== ""), true);
 });
@@ -349,9 +349,9 @@ Deno.test("high water: never exceeds the total, and never goes negative", () => 
 Deno.test("no raw beacon may use a CRENUP step key as its step_name", async () => {
   const dir = new URL("../", import.meta.url);
   const stages = [
-    "enricher-cron-enrich-place-research",
-    "enricher-cron-enrich-place-analysis",
-    "enricher-cron-enrich-place-contents",
+    "enricher-cron-enrich-place-gather",
+    "enricher-cron-enrich-place-photos",
+    "enricher-cron-enrich-place-write",
   ];
   const pieces = new Set<string>(CRENUP_LADDER);
   const offenders: string[] = [];

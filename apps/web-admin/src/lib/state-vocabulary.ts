@@ -13,10 +13,11 @@
 //                 Pay · Mesita Credits (MESITA-2115). Nobody holds, proves,
 //                 pays or redeems yet.
 //   ENRICHMENT STEPS (8)  their own box: 1. Details Enriched …
-//                 8. Embedding Enriched, each a bool (called or not).
+//                 8. Vectors Enriched, each a bool (called or not).
 //                 Seed is Create-only and is not a step on this box.
-//                 Details, Description and Embedding also run on Create;
+//                 Details, Description and Vectors also run on Create;
 //                 the "Enriched" suffix is the Enrich pass of that function.
+//                 The stored key of function 8 stays `embedding`.
 //
 // Repeating the row name on the chip is redundant. Enriching is the live run;
 // Enriched is last-completed — they are independent. Since MESITA-2027 there
@@ -105,17 +106,17 @@ export const CRENUP_STEPS = [
   { key: "reviews", label: "Reviews", n: 5, flows: ["enrich"] },
   { key: "images", label: "Images", n: 6, flows: ["enrich"] },
   { key: "description", label: "Description", n: 7, flows: ["create", "enrich"] },
-  { key: "embedding", label: "Embedding", n: 8, flows: ["create", "enrich"] },
+  { key: "embedding", label: "Vectors", n: 8, flows: ["create", "enrich"] },
 ] as const;
 
 export type CrenupStepKey = (typeof CRENUP_STEPS)[number]["key"];
 
-/** Operator label of a function: `0. Seed` … `8. Embedding`. */
+/** Operator label: `0. Seed` … `8. Vectors`. The key stays `embedding`. */
 export function crenupStepLabel(n: number, label: string): string {
   return `${n}. ${label}`;
 }
 
-/** Enrichment Steps on a place: `1. Details Enriched` … `8. Embedding Enriched`. */
+/** Enrichment Steps on a place: `1. Details Enriched` … `8. Vectors Enriched`. */
 export function enrichmentStepLabel(n: number, label: string): string {
   return `${n}. ${label} Enriched`;
 }

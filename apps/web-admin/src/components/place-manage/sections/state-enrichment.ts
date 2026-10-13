@@ -44,9 +44,10 @@ function functionState(
 }
 
 /**
- * The nine functions — 0. Seed … 8. Embedding — each called or not. Same
+ * The nine functions — 0. Seed … 8. Vectors — each called or not. Same
  * keys as the ladder, never a second one. Enrichment Steps filters this to
- * the Enrich pass (1–8) and renames each row.
+ * the Enrich pass (1–8) and renames each row. Function 8's key stays
+ * `embedding`.
  *
  * THREE ANSWERS, NOT TWO (MESITA-1608). A missing map and a map that says a
  * function has not run are different facts, and the console list renders them
@@ -86,7 +87,7 @@ export function crenupStepRows(
 
 /**
  * Enrichment Steps: the Enrich pass only, 1. Details Enriched …
- * 8. Embedding Enriched. Seed is Create-only and stays off this list.
+ * 8. Vectors Enriched. Seed is Create-only and stays off this list.
  */
 export function enrichmentStepRows(
   functions: Record<string, EnrichFunctionState> | null | undefined,

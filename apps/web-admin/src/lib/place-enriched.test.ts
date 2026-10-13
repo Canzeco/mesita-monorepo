@@ -78,7 +78,7 @@ describe("enrichmentStepRows — the Enrich pass, Seed left off", () => {
       "5. Reviews Enriched",
       "6. Images Enriched",
       "7. Description Enriched",
-      "8. Embedding Enriched",
+      "8. Vectors Enriched",
     ]);
     expect(rows.map((row) => row.key)).not.toContain("seed");
     expect(rows.find((row) => row.key === "details")?.on).toBe(true);

@@ -8,7 +8,7 @@ import {
 } from "./crenup-steps";
 
 describe("crenup steps", () => {
-  it("is nine, Seed through Embedding", () => {
+  it("is nine, Seed through Vectors", () => {
     expect(CRENUP_STEP_SPECS.map((s) => s.key)).toEqual([
       "seed",
       "details",
@@ -30,7 +30,7 @@ describe("crenup steps", () => {
       "0 Seed",
       "1 Details",
       "7 Description",
-      "8 Embedding",
+      "8 Vectors",
     ]);
     expect(chipsFor("enrich").map((c) => c.label)).toEqual([
       "1 Details",
@@ -40,7 +40,7 @@ describe("crenup steps", () => {
       "5 Reviews",
       "6 Images",
       "7 Description",
-      "8 Embedding",
+      "8 Vectors",
     ]);
   });
 

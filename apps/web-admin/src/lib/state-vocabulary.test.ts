@@ -37,7 +37,7 @@ describe("state vocabulary", () => {
       "5. Reviews",
       "6. Images",
       "7. Description",
-      "8. Embedding",
+      "8. Vectors",
     ]);
     expect(CRENUP_STEPS.map((f) => crenupStepLabel(f.n, f.label))).toEqual(
       CRENUP_STEPS.map((f) => `${f.n}. ${f.label}`),
@@ -54,11 +54,11 @@ describe("state vocabulary", () => {
       "5. Reviews Enriched",
       "6. Images Enriched",
       "7. Description Enriched",
-      "8. Embedding Enriched",
+      "8. Vectors Enriched",
     ]);
     expect(
       CRENUP_STEPS.filter((f) => creationFlowMark(f.flows) !== null).map((f) => f.label),
-    ).toEqual(["Seed", "Details", "Description", "Embedding"]);
+    ).toEqual(["Seed", "Details", "Description", "Vectors"]);
     expect(crenupFlowTag(["create"])).toBe("Create");
     expect(crenupFlowTag(["create", "enrich"])).toBe("Create + Enrich");
     expect(crenupFlowTag(["enrich"])).toBe("Enrich");

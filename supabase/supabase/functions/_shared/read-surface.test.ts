@@ -161,6 +161,7 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "_shared/mesita-name-door.ts",
   "_shared/crenup-report.ts",
   "_shared/field-correction-writer.ts", // read enrichment_sources before pin merge (MESITA-2029)
+  "_shared/enrich-fill.ts", // enrichment jsonb only, to see which ladder steps already completed (MESITA-2178)
   "admin-web-enrich-place/index.ts",
   "admin-web-search-places/index.ts",
   "admin-web-get-overview/index.ts",
@@ -174,8 +175,8 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "eleven-a4-find-reservation/index.ts",
   "eleven-a4-verify-caller/index.ts",
   "eleven-agent-get-reservation/index.ts",
-  "enricher-cron-enrich-place-contents/index.ts",
-  "enricher-cron-enrich-place-research/index.ts",
+  "enricher-cron-enrich-place-write/index.ts",
+  "enricher-cron-enrich-place-gather/index.ts",
   "supabase-edgefunc-reservation-call/index.ts",
 ];
 
@@ -322,8 +323,8 @@ const SWALLOWED_TODAY = [
   "eleven-a4-find-reservation/index.ts",
   "eleven-a4-verify-caller/index.ts",
   "eleven-agent-get-reservation/index.ts",
-  "enricher-cron-enrich-place-contents/index.ts",
-  "enricher-cron-enrich-place-research/index.ts",
+  "enricher-cron-enrich-place-write/index.ts",
+  "enricher-cron-enrich-place-gather/index.ts",
   "supabase-cron-reservation-retries/index.ts",
   "supabase-edgefunc-reservation-call/index.ts",
 ];

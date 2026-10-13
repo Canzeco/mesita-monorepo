@@ -1,4 +1,4 @@
-// Supabase Edge Function — enricher-cron-enrich-place-research (internal / cron)
+// Supabase Edge Function — enricher-cron-enrich-place-gather (internal / cron)
 //
 // Stage 1 of the Enricher pipeline (the Enricher is a PROCESS — a cron-driven
 // pipeline of three EFs — not an agent). The pg_cron poller
@@ -31,8 +31,8 @@
 //
 // Contract: verify_jwt=true; requireInternalCaller gates the service-role bearer.
 //
-// Local:  supabase functions serve enricher-cron-enrich-place-research
-// Deploy: supabase functions deploy enricher-cron-enrich-place-research
+// Local:  supabase functions serve enricher-cron-enrich-place-gather
+// Deploy: supabase functions deploy enricher-cron-enrich-place-gather
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { instagramHandleFromUrl } from "../_shared/apify.ts";
@@ -46,6 +46,12 @@ import {
 } from "../_shared/crenup-report.ts";
 import type { CrenupStep } from "../_shared/crenup-ladder.ts";
 import { COST, loadEnrichConfig } from "../_shared/enrich-config.ts";
+import {
+  channelForSocial,
+  loadEnrichFill,
+  stepRuns,
+  type FillStep,
+} from "../_shared/enrich-fill.ts";
 import {
   chargeGoogleSpine,
   createEnrichCostLedger,
@@ -73,15 +79,16 @@ import {
   releaseResearchRow,
   reportEnrichmentStep,
   serveEnrichStage,
-  wants,
 } from "../_shared/enrich-pipeline.ts";
 
-serveEnrichStage("research", async (admin, _env, row) => {
+serveEnrichStage("gather", async (admin, _env, row) => {
   const placeId = row.place_id;
   const googlePlaceId = row.google_place_id;
-  // What this run bought, per the trigger matrix. S1 (the Google gate) is not
-  // gated: it is the identity spine every stage downstream trusts.
-  const buys = row.subprocesses;
+  // S1 (the Google gate) is not gated: it is the identity spine every stage
+  // downstream trusts. Which fields get written is decided by the fill plan.
+  const plan = await loadEnrichFill(admin, row);
+  const ran = new Set<FillStep>();
+  const runDetails = stepRuns(plan, "details");
   const GOOGLE_KEY = Deno.env.get("GMP_KEY") ?? Deno.env.get("SUPA_GMP_KEY");
   if (!GOOGLE_KEY) {
     await releaseResearchRow(admin, placeId, "server_misconfigured: missing GMP_KEY");
@@ -101,7 +108,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
         "Google identity spine incomplete — no reliable Google Places match, so the enrichment run was aborted.");
       await failResearchRow(admin, placeId, `google_spine: ${basicsRes.error}`, {
         runId: row.run_id,
-        stage: "research",
+        stage: "gather",
       });
     } else {
       // Transient Google trouble — release for a retry.
@@ -136,30 +143,29 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // Operating (MESITA-1239) — persist what Google just said, BEFORE the gate
   // below can return. A place reported CLOSED_PERMANENTLY fails its run, and
   // the run row records that; but without this write nothing on the PLACE says
-  // why, so an operator sees a failed enrichment and no reason. Written here,
-  // in research only, for the same reason phone and google_name are: a lighter
-  // analysis/contents re-run must never replay a stale liveness claim.
+  // why, so an operator sees a failed enrichment and no reason. This is the
+  // liveness flag, not the Details stamp: a fill that skips Details still
+  // records a permanent close. A photos/write re-run does not reach this
+  // stage, so it cannot replay a stale claim.
   //
   // Best-effort. This is a flag, not a gate — a failed write must not stop the
   // pipeline, and the gate below reads `businessStatus` directly, never the
   // column.
-  {
-    const opRes = await writePlace(admin, {
-      table: "place_profiles",
-      mode: "update",
-      id: placeId,
-      patch: {
-        business_state: (businessStatus ?? null) as
-          | "OPERATIONAL"
-          | "CLOSED_TEMPORARILY"
-          | "CLOSED_PERMANENTLY"
-          | null,
-        business_state_at: new Date().toISOString(),
-      },
-    });
-    if (!opRes.ok) {
-      console.error("[enrich-research] business_state write:", opRes.error);
-    }
+  const opRes = await writePlace(admin, {
+    table: "place_profiles",
+    mode: "update",
+    id: placeId,
+    patch: {
+      business_state: (businessStatus ?? null) as
+        | "OPERATIONAL"
+        | "CLOSED_TEMPORARILY"
+        | "CLOSED_PERMANENTLY"
+        | null,
+      business_state_at: new Date().toISOString(),
+    },
+  });
+  if (!opRes.ok) {
+    console.error("[enrich-gather] business_state write:", opRes.error);
   }
 
   if (businessStatus === "CLOSED_PERMANENTLY") {
@@ -177,7 +183,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
       admin,
       placeId,
       "pulse: google reports CLOSED_PERMANENTLY",
-      { runId: row.run_id, stage: "research" },
+      { runId: row.run_id, stage: "gather" },
     );
     return;
   }
@@ -210,7 +216,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
   let gmapsInvoked = false;
 
   const gmapsGather = (async () => {
-    if (!wants(buys, "reviews")) return;
+    if (!stepRuns(plan, "reviews")) return;
     if (!APIFY_KEY || !basics.google_place_id) return;
     gmapsInvoked = true;
     try {
@@ -232,7 +238,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
     }
   })();
 
-  if (PERPLEXITY_KEY && wants(buys, "serp")) {
+  if (PERPLEXITY_KEY && stepRuns(plan, "serp")) {
     const serp = await gatherSerpSummary({ perplexityKey: PERPLEXITY_KEY, name, locationLine, category, perplexityPreset: cfg.perplexityPreset });
     serpSummary = serp.summary;
     sources.serp = serp.diag;
@@ -244,13 +250,51 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // editing its own Place) or the Google identity spine, never from a web
   // search. See enrich-channel-discovery.ts. Below we take care never to
   // OVERWRITE a Mesita-entered phone with a null (partial-update contract).
-  let resolvedInstagram = basics.instagram_url;
-  let resolvedFacebook = basics.facebook_url;
-  let resolvedWebsite = basics.website_url;
-  let resolvedOpenTable = basics.opentable_url;
-  let resolvedUberEats = basics.uber_eats_url;
+  const linksRun = stepRuns(plan, "links");
+  const priorPlace = (row.gathered?.place ?? {}) as Record<string, unknown>;
+  let storedChannels: Record<string, unknown> = {};
+  if (!linksRun) {
+    const { data, error } = await admin
+      .from("place_profiles")
+      .select(
+        "instagram_url, facebook_url, website_url, opentable_url, uber_eats_url",
+      )
+      .eq("id", placeId)
+      .maybeSingle();
+    if (!error && data) storedChannels = data;
+  }
+  let resolvedInstagram = channelForSocial(
+    linksRun,
+    basics.instagram_url,
+    storedChannels.instagram_url,
+    priorPlace.instagram_url,
+  );
+  let resolvedFacebook = channelForSocial(
+    linksRun,
+    basics.facebook_url,
+    storedChannels.facebook_url,
+    priorPlace.facebook_url,
+  );
+  let resolvedWebsite = channelForSocial(
+    linksRun,
+    basics.website_url,
+    storedChannels.website_url,
+    priorPlace.website_url,
+  );
+  let resolvedOpenTable = channelForSocial(
+    linksRun,
+    basics.opentable_url,
+    storedChannels.opentable_url,
+    priorPlace.opentable_url,
+  );
+  let resolvedUberEats = channelForSocial(
+    linksRun,
+    basics.uber_eats_url,
+    storedChannels.uber_eats_url,
+    priorPlace.uber_eats_url,
+  );
 
-  const needsDiscovery = wants(buys, "links") &&
+  const needsDiscovery = linksRun &&
     (!!FIRECRAWL_KEY || !!PERPLEXITY_KEY) &&
     (!resolvedInstagram || !resolvedFacebook || !resolvedWebsite || !resolvedOpenTable ||
       !resolvedUberEats);
@@ -293,10 +337,21 @@ serveEnrichStage("research", async (admin, _env, row) => {
   }
 
   // Fold resolved channels into the profile. instagram_url waits for S4 verify.
-  place.facebook_url = resolvedFacebook;
-  place.website_url = resolvedWebsite;
-  place.opentable_url = resolvedOpenTable;
-  place.uber_eats_url = resolvedUberEats;
+  // A skipped Links step must not leave Google's copy of these keys on the
+  // payload: Social writes instagram_url only when it actually resolved one.
+  if (!linksRun) {
+    delete place.instagram_url;
+    delete place.facebook_url;
+    delete place.website_url;
+    delete place.opentable_url;
+    delete place.uber_eats_url;
+  }
+  // A null from a skipped Links step must not land: Details still owns
+  // website_url, and writing null here would wipe the stored site.
+  if (linksRun || resolvedFacebook) place.facebook_url = resolvedFacebook;
+  if (linksRun || resolvedWebsite) place.website_url = resolvedWebsite;
+  if (linksRun || resolvedOpenTable) place.opentable_url = resolvedOpenTable;
+  if (linksRun || resolvedUberEats) place.uber_eats_url = resolvedUberEats;
 
   // ━━━ Contacts — phone is persisted HERE, in the research stage only ━━━
   // Phone comes from Mesita input or the Google spine, never a web search.
@@ -313,10 +368,10 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // `phone` is a CorrectableField and the Reservationist calling a place is
   // exactly how we learn the listed number is dead, so this write is the second
   // of the two persist doors that must stand down for a pin. (The other is S8
-  // in enricher-cron-enrich-place-contents, which owns hours/address/website/
+  // in enricher-cron-enrich-place-write, which owns hours/address/website/
   // closes_at/reservation endpoint.) Pins live in `places.enrichment_sources`,
   // which this stage never writes, so a plain read is enough here.
-  if (basics.phone) {
+  if (runDetails && basics.phone) {
     const { data: pinRow } = await admin
       .from("place_profiles")
       .select("enrichment_sources")
@@ -369,7 +424,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // against the PREVIOUS google_name, a value that moves on every re-enrich, so
   // a place whose Google listing caught up to its Mesita label silently
   // re-entered tracking and lost that label on the next rename.
-  {
+  if (runDetails) {
     const googleName = typeof basics.google_name === "string"
       ? basics.google_name.trim()
       : "";
@@ -410,7 +465,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // category from the Google spine + reviews + the Perplexity SERP blurb (+ IG),
   // and never scrapes the site body. S3 discovery is Firecrawl SEARCH only (no
   // footer scrape) → the Resolver selection.
-  const runSocial = wants(buys, "social");
+  const runSocial = stepRuns(plan, "social");
   const runInstagram = runSocial && !!APIFY_KEY &&
     (!!igHandle || !!fbHandleCandidate || !!PERPLEXITY_KEY);
   const runFacebook = runSocial && !!APIFY_KEY && !!resolvedFacebook;
@@ -526,9 +581,13 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // NOTE: there is no `seed` stamp — seed is not an enrich function at all;
   // it is FUNCTION 0, and the row existing IS the seed. 0 on the meter means
   // seeded and no function above it completed.
-  const pieces: Partial<Record<CrenupStep, StepOutcome>> = {
-    // DETAILS (1) — the Google spine, THE HOURS, and the LIVENESS GATE, all
-    // off one `fetchGoogleBasics` call.
+  const pieces: Partial<Record<CrenupStep, StepOutcome>> = {};
+  // Computed key: `pieces.details =` reads as a write of the dropped
+  // place_profiles.details column to the column-ref scan.
+  const stamp = (step: CrenupStep, outcome: StepOutcome) => {
+    pieces[step] = outcome;
+  };
+  if (runDetails) stamp("details", stepDone(
     //
     // PULSE USED TO BE ITS OWN RUNG (MESITA-2027 folded it in). It never
     // bought data: functions 1 and 2 already shared this single call, so the
@@ -558,20 +617,18 @@ serveEnrichStage("research", async (admin, _env, row) => {
     // The `google_name` refresh behind the GENERATED `places.name` also lands
     // on this function's call. It has no rung of its own — it is one field on
     // the same fetch. What carries the name is Embedding (8).
-    details: stepDone(
-      [
-        spineFacts.length
-          ? `Google spine resolved — ${spineFacts.join(", ")}`
-          : "Google returned no hours, contact or address detail",
-        businessStatus
-          ? `listing ${businessStatus}`
-          : "no business status stated; the listing resolves",
-      ].join("; ") + ".",
-      { businessStatus },
-    ),
-  };
+    [
+      spineFacts.length
+        ? `Google spine resolved — ${spineFacts.join(", ")}`
+        : "Google returned no hours, contact or address detail",
+      businessStatus
+        ? `listing ${businessStatus}`
+        : "no business status stated; the listing resolves",
+    ].join("; ") + ".",
+    { businessStatus },
+  ));
 
-  if (wants(buys, "serp")) {
+  if (stepRuns(plan, "serp")) {
     // SERP (2) — the SERP Summary, the Scout's soft editorial read. It is bought
     // FOR links: the Resolver cannot pick between five Instagram candidates on a
     // name and a city, and this is what it recognises the place by.
@@ -589,7 +646,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
       );
   }
 
-  if (wants(buys, "links")) {
+  if (linksRun) {
     pieces.links = anyChannelResolved || !needsDiscovery
       // Nothing to discover is a RESULT: every channel was already known.
       ? stepDone(`${resolvedCount} link/contact field(s) known.`)
@@ -609,7 +666,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
       : stepDone("No social presence to gather.");
   }
 
-  if (wants(buys, "reviews")) {
+  if (stepRuns(plan, "reviews")) {
     pieces.reviews = diagOk(sources.apify_google_reviews)
       ? stepDone(`${reviews.length} Google review(s).`)
       : stepFailed(
@@ -619,23 +676,45 @@ serveEnrichStage("research", async (admin, _env, row) => {
 
   await reportCrenupSteps(admin, placeId, pieces);
 
-  // ━━━ hand off to the analysis stage ━━━
+  if (runDetails) ran.add("details");
+  if (stepRuns(plan, "serp")) ran.add("serp");
+  if (linksRun) ran.add("links");
+  if (runSocial) ran.add("social");
+  if (stepRuns(plan, "reviews")) ran.add("reviews");
+  // A skipped step keeps what the previous run stored, so contents does not
+  // write an empty value over a field this run chose not to touch.
+  const prior = row.gathered;
+  if (!ran.has("serp") && prior?.grounding.serpSummary) {
+    serpSummary = prior.grounding.serpSummary;
+  }
+  if (!ran.has("reviews") && prior) {
+    googleReviewsText = prior.grounding.googleReviewsText ?? "";
+    if (prior.images.google.length > 0) googleImages = prior.images.google;
+  }
+  // Description reads category, zone, city and price off this payload. The
+  // write stage strips columns a skipped step owns, after synthesis has
+  // used them. Stripping here would hand Description an empty spine.
+
+  // ━━━ hand off to the photos stage ━━━
   const gathered: GatheredPayload = {
     place,
     grounding: {
-      igBio: igR?.igBio ?? "",
+      igBio: ran.has("social") ? (igR?.igBio ?? "") : (prior?.grounding.igBio ?? ""),
       googleReviewsText,
       serpSummary,
     },
     images: {
       google: googleImages,
-      instagram: igR?.instagramImages ?? [],
+      instagram: ran.has("social")
+        ? (igR?.instagramImages ?? [])
+        : (prior?.images.instagram ?? []),
       existingPhotos: basics.photos,
     },
     instagramAssetMeta: mapToObject(igR?.instagramAssetMeta),
     locationLine,
     sources,
+    stepsRan: [...ran],
     cost: ledger.snapshot(),
   };
-  await advanceResearchStage(admin, placeId, "analysis", { gathered });
+  await advanceResearchStage(admin, placeId, "photos", { gathered });
 });

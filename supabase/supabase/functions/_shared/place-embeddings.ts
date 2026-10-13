@@ -182,7 +182,7 @@ export type PlaceEmbeddingWrite = {
  * (MESITA-1253 audit): "create" = the front door, "update" = a profile edit
  * re-embedding in-process, "contents" = the enrich stage.
  */
-export type EmbeddingVia = "create" | "update" | "contents";
+export type EmbeddingVia = "create" | "update" | "write";
 
 // On-Update S2+S3 for one place. Skips when facts digest matches the stored
 // embedding_source_hash and both text + vector are present.

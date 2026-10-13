@@ -2,10 +2,10 @@ import type { PlaceEnrichmentState } from "./actions";
 
 /** True while the Enricher pipeline is mid-flight.
  *  decision: Pato (MESITA-453) — Enriching = the WHOLE pipeline:
- *  research OR analysis OR contents. Never clear after research alone. */
+ *  gather OR photos OR write. Never clear after gather alone. */
 export function isEnriching(state: PlaceEnrichmentState | null): boolean {
   const stage = state?.stage ?? null;
-  if (stage === "research" || stage === "analysis" || stage === "contents") {
+  if (stage === "gather" || stage === "photos" || stage === "write") {
     return true;
   }
   return (state?.content_state ?? null) === "generating";

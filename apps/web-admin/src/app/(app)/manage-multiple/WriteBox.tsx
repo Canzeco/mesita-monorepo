@@ -282,12 +282,12 @@ async function createOne(googleId: string): Promise<Row> {
 async function enrichOne(googleId: string): Promise<Row> {
   const found = await resolveMesitaId(googleId);
   if (!found.ok) return { state: "error", error: found.error };
-  const en = await enrichPlace(found.placeId, "full");
+  const en = await enrichPlace(found.placeId);
   if (!en.ok) return { state: "error", name: found.name, error: en.error };
   return {
     state: "enriching",
     name: found.name,
-    detail: "Re-enrich from zero — steps 1–8 queued",
+    detail: "Filling steps that have not completed",
   };
 }
 

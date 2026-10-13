@@ -15,7 +15,7 @@ import type {
 export function isEnrichingStage(
   stage: string | null | undefined,
 ): boolean {
-  return stage === "research" || stage === "analysis" || stage === "contents";
+  return stage === "gather" || stage === "photos" || stage === "write";
 }
 
 /**
@@ -82,6 +82,10 @@ export async function seedPlaceResearch(
     cooldownHours: number;
     actorUserId?: string | null;
     meta?: Record<string, unknown>;
+    /** Keep gathered/analysis. A fill run must not wipe a step it is skipping. */
+    keepPayloads?: boolean;
+    /** Drop the stored image funnel so Images runs again. */
+    clearAnalysis?: boolean;
   },
 ): Promise<
   { ok: boolean; error?: string; runId?: string; blocked?: "cooldown" | "already_open" }
@@ -89,25 +93,33 @@ export async function seedPlaceResearch(
   const opened = await openEnrichmentRun(admin, placeId, {
     ...run,
     seededBy: createdBy,
-    entryStage: "research",
+    entryStage: "gather",
   });
   if (!opened.ok) return { ok: false, error: opened.error };
   if (opened.blocked) return { ok: false, blocked: opened.blocked };
 
-  const { error } = await admin.from("place_research").upsert({
+  const payload: Record<string, unknown> = {
     place_id: placeId,
     google_place_id: googlePlaceId,
-    stage: "research",
+    stage: "gather",
     state: "pending",
     attempts: 0,
-    gathered: null,
-    analysis: null,
     error: null,
     subprocesses: run.subprocesses,
     created_by: createdBy,
     run_id: opened.runId ?? null,
     updated_at: new Date().toISOString(),
-  }, { onConflict: "place_id" });
+  };
+  // A fill run leaves stored gather/analysis in place so a skipped step still
+  // has its output. A full re-run wipes both. Overwriting Images drops only
+  // the funnel result.
+  if (!run.keepPayloads) {
+    payload.gathered = null;
+    payload.analysis = null;
+  } else if (run.clearAnalysis) {
+    payload.analysis = null;
+  }
+  const { error } = await admin.from("place_research").upsert(payload, { onConflict: "place_id" });
   if (error) {
     // The run stays open and un-pointed-at; the janitor's orphan sweep closes it
     // as `abandoned` after its grace window. Deliberately not closed here: a
@@ -147,7 +159,7 @@ export async function openEnrichmentRun(
     p_trigger: opts.trigger,
     p_seeded_by: opts.seededBy,
     p_subprocesses: opts.subprocesses ?? null,
-    p_entry_stage: opts.entryStage ?? "research",
+    p_entry_stage: opts.entryStage ?? "gather",
     p_cooldown_hours: Math.max(0, Math.round(opts.cooldownHours)),
     p_actor_user_id: opts.actorUserId ?? null,
     p_meta: opts.meta ?? {},

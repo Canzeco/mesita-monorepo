@@ -16,11 +16,12 @@ import { formatAbsoluteUtc } from "@/lib/format";
 //   Profile States      Created · Pulsing · Requested · Enriching ·
 //                         Enriched · Disabled. Owns both operator writes
 //                         (Pulsing, Disabled) and the enrichment read.
-//   Enrichment Steps    1. Details Enriched … 8. Embedding Enriched.
-//                         Seed is not a step.
+//   Enrichment Steps    1. Details Enriched … 8. Vectors Enriched.
+//                         Seed is not a step. Function 8's key stays
+//                         `embedding`.
 // Then the rest:
 //   Enrichment  queues the full Enricher process
-//   SERP / Embedding / Metadata (UID & audit)
+//   SERP / Vectors / Metadata (UID & audit)
 // The Verification box (ownership proof + queue decide) went with
 // MESITA-2106: the MVP has no business app, so nobody proves ownership.
 export function AdminSection({ place }: { place: AdminPlace }) {
@@ -174,7 +175,7 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="font-display text-base font-semibold tracking-tight">
-            Embedding
+            Vectors
           </h2>
           <p className="text-muted-foreground mt-0.5 text-xs">
             Two vectors — Mesita Name, and the Semantic Summary.
