@@ -10,7 +10,7 @@ import {
 } from "@/lib/state-vocabulary";
 import { STICKY_COL_CELL, STICKY_COL_HEAD } from "@/lib/ui-classes";
 import { factOn, type Row } from "./mesita-search-facts";
-import { CrenupLadder, StatePill } from "./PlaceFacts";
+import { StatePill } from "./PlaceFacts";
 
 export function MesitaSearchResults({ rows }: { rows: Row[] }) {
   return (
@@ -120,22 +120,6 @@ export function MesitaSearchResults({ rows }: { rows: Row[] }) {
           </tbody>
         </table>
       </div>
-      {rows.some((r) => r.hit && r.hit.enrich_crenup_labels.length > 0) ? (
-        <ul className="border-border divide-border divide-y border-t">
-          {rows.map((row) => {
-            const hit = row.hit;
-            if (!hit || hit.enrich_crenup_labels.length === 0) return null;
-            return (
-              <li key={`${row.key}-ladder`} className="px-4 py-3">
-                <p className="text-muted-foreground type-label mb-2">
-                  Enrichment Steps · {hit.google_name || hit.name}
-                </p>
-                <CrenupLadder hit={hit} />
-              </li>
-            );
-          })}
-        </ul>
-      ) : null}
     </div>
   );
 }

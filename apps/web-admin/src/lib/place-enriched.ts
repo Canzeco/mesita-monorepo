@@ -17,3 +17,14 @@ export function isEnrichedPlace(place: {
   if (typeof place.enriched === "boolean") return place.enriched;
   return typeof place.enriched_at === "string" && place.enriched_at.trim() !== "";
 }
+
+/** The two enrichment states. A live run is enriching, and not enriched,
+ *  until the one finished write lands. */
+export function enrichmentView(place: {
+  content_state?: unknown;
+  enriched?: unknown;
+  enriched_at?: unknown;
+}): { enriching: boolean; enriched: boolean } {
+  const enriching = place.content_state === "generating";
+  return { enriching, enriched: enriching ? false : isEnrichedPlace(place) };
+}

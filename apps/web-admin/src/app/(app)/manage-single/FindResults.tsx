@@ -3,7 +3,7 @@
 // Single Place › Find › the one results table (MESITA-2124, MESITA-2181,
 // MESITA-2187, MESITA-2188). A row per place. The first column says whether
 // Mesita holds it or it is Google only — the first fact to read. Then the
-// states, in three groups — General States, Enrichment Steps, Reviews —
+// states, in two groups — General States and Reviews —
 // then, on a typed search, where each source ranked it. The action sits at
 // the row end. Drawn once every source has settled, so no row ever moves
 // under the cursor.
@@ -24,7 +24,6 @@ import {
   BAD_WHEN_TRUE,
   GENERAL_STATE_FACTS,
   STATE_FACT_FALSE_TONE,
-  enrichmentStepLabel,
 } from "@/lib/state-vocabulary";
 import {
   FOCUS_RING_CLASS,
@@ -32,11 +31,9 @@ import {
   TOUCH_TARGET_CLASS,
 } from "@/lib/ui-classes";
 import {
-  ENRICHMENT_COLUMNS,
   FIND_FIRST_ROWS,
   FIND_SOURCES,
   REVIEW_COLUMNS,
-  enrichmentMark,
   reviewFound,
   type FindResult,
   type FindRow,
@@ -65,7 +62,6 @@ const PIN_PLACE_CELL = `sticky left-0 sm:left-36 ${PIN_CELL_BG}`;
 
 const STATE_GROUPS = [
   { label: "General States", span: GENERAL_STATE_FACTS.length, edge: false },
-  { label: "Enrichment Steps", span: ENRICHMENT_COLUMNS.length, edge: true },
   { label: "Reviews", span: REVIEW_COLUMNS.length, edge: true },
 ] as const;
 
@@ -101,7 +97,6 @@ export function FindResults({
   const colSpan =
     3 +
     GENERAL_STATE_FACTS.length +
-    ENRICHMENT_COLUMNS.length +
     REVIEW_COLUMNS.length +
     (ranks ? FIND_SOURCES.length : 0);
 
@@ -133,8 +128,8 @@ export function FindResults({
           <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
             <caption className="sr-only">
               {ranks
-                ? `Places matching “${query}”, with general, enrichment and review states, and the rank each source gave them`
-                : "Every place on Mesita, with general, enrichment and review states"}
+                ? `Places matching “${query}”, with general and review states, and the rank each source gave them`
+                : "Every place on Mesita, with general and review states"}
             </caption>
             <thead>
               <tr className={HEAD_ROW}>
@@ -197,19 +192,6 @@ export function FindResults({
                     {f.label}
                   </th>
                 ))}
-                {ENRICHMENT_COLUMNS.map((step, i) => (
-                  <th
-                    key={step.key}
-                    scope="col"
-                    title={enrichmentStepLabel(step.n, step.label)}
-                    className={
-                      "px-3 pb-3 text-center font-semibold whitespace-nowrap " +
-                      (i === 0 ? GROUP_EDGE : "")
-                    }
-                  >
-                    {step.label}
-                  </th>
-                ))}
                 {REVIEW_COLUMNS.map((col, i) => (
                   <th
                     key={col.key}
@@ -266,7 +248,6 @@ export function FindResults({
                     {ranks ? <PhoneSources row={row} /> : null}
                   </th>
                   <ProfileCells row={row} />
-                  <EnrichmentCells row={row} />
                   <ReviewCells row={row} />
                   {ranks
                     ? FIND_SOURCES.map((s) => (
@@ -469,36 +450,6 @@ function ProfileCells({ row }: { row: FindRow }) {
           )}
         </td>
       ))}
-    </>
-  );
-}
-
-function EnrichmentCells({ row }: { row: FindRow }) {
-  const hit = row.placeHit;
-  return (
-    <>
-      {ENRICHMENT_COLUMNS.map((step, i) => {
-        const mark = hit ? enrichmentMark(hit, step.key) : null;
-        return (
-          <td key={step.key} className={CELL + (i === 0 ? ` ${GROUP_EDGE}` : "")}>
-            {mark == null ? (
-              row.held ? <StatePill on="unknown" /> : <Miss label={step.label} />
-            ) : mark === "unknown" ? (
-              <StatePill on="unknown" />
-            ) : mark === "fail" ? (
-              <span
-                title={`${step.label} ran and failed`}
-                className="inline-flex items-center justify-center rounded-full bg-rose-500/10 px-2 py-0.5 type-label font-semibold text-rose-700"
-              >
-                fail
-                <span className="sr-only">, ran and failed</span>
-              </span>
-            ) : (
-              <StatePill on={mark === "yes"} />
-            )}
-          </td>
-        );
-      })}
     </>
   );
 }

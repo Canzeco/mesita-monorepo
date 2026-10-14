@@ -6,6 +6,10 @@ const WORKFLOW = "mesita-monorepo";
 
 export type EnrichJob = { placeId: string; googlePlaceId: string };
 
+/** The only write before the profile exists. The proxy sets it after Render
+ *  accepts the run, and returns. Render writes the profile once, at the end. */
+export const ENRICHING_PATCH = { content_state: "generating" } as const;
+
 export function enrichmentRun(jobs: readonly EnrichJob[]): { task: string; input: unknown[] } {
   if (jobs.length === 1) {
     return { task: `${WORKFLOW}/enrich-single-place`, input: [jobs[0]] };

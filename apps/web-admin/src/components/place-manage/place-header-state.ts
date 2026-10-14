@@ -1,13 +1,8 @@
 import type { PlaceEnrichmentState } from "./actions";
 
-/** True while the Enricher pipeline is mid-flight.
- *  decision: Pato (MESITA-453) — Enriching = the WHOLE pipeline:
- *  first OR second OR third. */
+/** True while a run is in flight. Enriching is `content_state = generating`,
+ *  set when the run starts. The finished write clears it. */
 export function isEnriching(state: PlaceEnrichmentState | null): boolean {
-  const stage = state?.stage ?? null;
-  if (stage === "first" || stage === "second" || stage === "third") {
-    return true;
-  }
   return (state?.content_state ?? null) === "generating";
 }
 

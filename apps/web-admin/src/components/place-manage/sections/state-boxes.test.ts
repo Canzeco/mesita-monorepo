@@ -2,14 +2,13 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-// A place has six profile states (Pato, 2026-10-13), in one box, and the
-// Enrich pass of the ladder in another. Verified, Owned and Partnered no
-// longer exist; nothing commercial is live. This pins the names and the
-// split so a step cannot sneak back into the states.
+// A place has six profile states (Pato, 2026-10-13), in one box. Enriching
+// and Enriched are the enrichment states. Verified, Owned and Partnered no
+// longer exist; nothing commercial is live. This pins the names so a step
+// cannot sneak back into the states.
 
 const here = __dirname;
 const general = readFileSync(join(here, "StateCard.tsx"), "utf8");
-const enrichment = readFileSync(join(here, "CrenupStateCard.tsx"), "utf8");
 const reviews = readFileSync(join(here, "ReviewsStateCard.tsx"), "utf8");
 
 const rowNames = (src: string) =>
@@ -38,16 +37,16 @@ describe("the six states of a place", () => {
     expect(rowNames(reviews)).toEqual([]);
   });
 
-  it("Enrichment Steps is the ladder, not three more states", () => {
-    expect(rowNames(enrichment)).toEqual([]);
-    expect(enrichment).toContain('title="Enrichment Steps"');
-    expect(enrichment).toContain("enrichmentStepRows");
-    expect(enrichment).not.toContain('title="Enrichment States"');
-    expect(enrichment).not.toContain('title="Creation"');
+  it("the place page has no enrichment step ladder", () => {
+    const admin = readFileSync(join(here, "AdminSection.tsx"), "utf8");
+    expect(admin).not.toContain("CrenupStateCard");
+    expect(admin).not.toContain("Enrichment Steps");
+    expect(admin).toContain("<StateCard");
+    expect(admin).toContain("<ReviewsStateCard");
   });
 
   it("no retired state name is a row, a chip or a button", () => {
-    for (const src of [general, enrichment]) {
+    for (const src of [general, reviews]) {
       for (const dead of ["Verified", "Owned", "Partnered", "Listed", "Unlist"]) {
         expect(src).not.toMatch(new RegExp(`(name|label)="${dead}`));
         expect(src).not.toContain(`>${dead}<`);
