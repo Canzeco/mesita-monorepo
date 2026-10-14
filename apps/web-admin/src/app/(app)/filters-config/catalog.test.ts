@@ -99,7 +99,7 @@ describe("Discovery function APIs", () => {
     ).toEqual([...WEIGHTED_MODE_KEYS].sort());
   });
 
-  it("nine sources and a locked mode → source matrix", () => {
+  it("ten sources and a locked mode → source matrix", () => {
     expect([...DISCOVERY_MODE_KEYS]).toEqual([
       "word",
       "map",
@@ -116,6 +116,7 @@ describe("Discovery function APIs", () => {
       "Mesita Places Nearby Search",
       "Mesita Places Browse Search",
       "Mesita Places Flexible Search",
+      "Mesita Catalog Search",
       "Mesita Socials Browse Search",
       "Mesita Socials Flexible Search",
     ]);
@@ -137,7 +138,7 @@ describe("Discovery function APIs", () => {
     // a matrix that reports one source fewer than the page is a worse map
     // than one empty row.
     expect(DISCOVERY_MODE_SOURCES.catalog).toEqual([
-      "Mesita Places Flexible Search",
+      "Mesita Catalog Search",
       "Mesita Socials Browse Search",
     ]);
     expect(DISCOVERY_MODE_SOURCES.swipe).toEqual(["Mesita Places Flexible Search"]);
@@ -424,7 +425,7 @@ describe("Discovery function APIs", () => {
 });
 
 describe("Discovery page box order", () => {
-  it("is three subpages — Search Sources, Discovery Modes and Matrix", () => {
+  it("is four subpages — Sources, Modes, Catalog and Matrix", () => {
     const page = readFileSync(join(__dirname, "page.tsx"), "utf8");
     const layout = readFileSync(join(__dirname, "layout.tsx"), "utf8");
     const nav = readFileSync(join(__dirname, "nav.ts"), "utf8");
@@ -449,18 +450,20 @@ describe("Discovery page box order", () => {
 
     // Sources leads (Pato, 2026-10-13). Matrix still owns its page: it is
     // neither a mode nor a source (Pato, 2026-09-08).
-    const sourcesAt = nav.indexOf('label: "Search Sources"');
-    const modesAt = nav.indexOf('label: "Discovery Modes"');
+    const sourcesAt = nav.indexOf('label: "Sources"');
+    const modesAt = nav.indexOf('label: "Modes"');
+    const catalogAt = nav.indexOf('label: "Catalog"');
     const matrixAt = nav.indexOf('label: "Matrix"');
     expect(sourcesAt).toBeGreaterThan(-1);
     expect(sourcesAt).toBeLessThan(modesAt);
-    expect(modesAt).toBeLessThan(matrixAt);
+    expect(modesAt).toBeLessThan(catalogAt);
+    expect(catalogAt).toBeLessThan(matrixAt);
     expect(nav).toContain('label: "Matrix"');
     expect(nav).toContain('"/filters-config/matrix"');
-    expect(nav).toContain('label: "Discovery Modes"');
-    // The sources tab is Search Sources: all nine are searches, and the
-    // matrix band on Modes has said so since it was drawn (Pato, 2026-09-02).
-    expect(nav).toContain('label: "Search Sources"');
+    expect(nav).toContain('label: "Modes"');
+    expect(nav).toContain('"/filters-config/catalog"');
+    // The tab is Sources, not Discovery Sources (Pato, 2026-09-02).
+    expect(nav).toContain('label: "Sources"');
     expect(nav).not.toContain('label: "Discovery Sources"');
     expect(nav).toContain('"/filters-config/modes"');
     expect(nav).toContain('"/filters-config/sources"');
@@ -699,6 +702,7 @@ describe("Discovery page box order", () => {
     );
     expect(mesitaSources).toContain("Mesita Places Browse Search");
     expect(mesitaSources).toContain("Mesita Places Flexible Search");
+    expect(mesitaSources).toContain("Mesita Catalog Search");
     expect(mesitaSources).toContain("Mesita Socials Browse Search");
     expect(mesitaSources).toContain("Mesita Socials Flexible Search");
     // Name and Nearby ship today without knobs of their own; the other four

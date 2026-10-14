@@ -20,7 +20,8 @@ describe("Discovery matrix", () => {
     // with the guest's predicates instead of admitting on nothing. The mode
     // KEY is still `catalog`; the label went Feed and back to Catalog when
     // Feed left Home's rail (MESITA-2140).
-    expect(html).toContain("Mesita Places Flexible Search · Catalog · on");
+    expect(html).toContain("Mesita Catalog Search · Catalog · on");
+    expect(html).toContain("Mesita Places Flexible Search · Catalog · off");
     expect(html).not.toContain("· Feed ·");
     expect(html).toContain("Mesita Places Flexible Search · Scroll · on");
     expect(html).toContain("Mesita Places Flexible Search · Chat · on");

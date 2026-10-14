@@ -143,11 +143,32 @@ export type DiscoveryConfig = {
   swipe: SwipeConfig;
 };
 
+/** Mirrors CATALOG_RANK_KEYS in _shared/discovery-config.ts. One shared profile. */
+export const CATALOG_RANK_KEYS = [
+  "name",
+  "description",
+  "proximity",
+  "popularity",
+  "selected",
+  "randomness",
+] as const;
+export type CatalogRankKey = (typeof CATALOG_RANK_KEYS)[number];
+
+export const DEFAULT_CATALOG_RANKING: Record<CatalogRankKey, number> = {
+  name: 1,
+  description: 1,
+  proximity: 1,
+  popularity: 1,
+  selected: 1,
+  randomness: 0,
+};
+
 export type CatalogConfig = {
   seedCount: number;
   generatedCount: number;
   placesPerRail: number;
   minSeedPlaces: number;
+  ranking: Record<CatalogRankKey, number>;
 };
 
 // Mirrors SUPER_PARAM_KEYS in _shared/discovery-config.ts, itself pinned to
@@ -364,6 +385,7 @@ export const DEFAULT_CATALOG: CatalogConfig = {
   generatedCount: 8,
   placesPerRail: 8,
   minSeedPlaces: 2,
+  ranking: { ...DEFAULT_CATALOG_RANKING },
 };
 
 // The three supers the strip always asked for stay on; the four it could not
@@ -771,6 +793,16 @@ function coerceSwipe(raw: unknown): SwipeConfig {
   };
 }
 
+function coerceCatalogRanking(raw: unknown): Record<CatalogRankKey, number> {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const out = {} as Record<CatalogRankKey, number>;
+  for (const key of CATALOG_RANK_KEYS) {
+    const v = num(r[key], DEFAULT_CATALOG_RANKING[key], WEIGHT_MIN, WEIGHT_MAX);
+    out[key] = Math.round(v * 100) / 100;
+  }
+  return out;
+}
+
 function coerceCatalog(raw: unknown): CatalogConfig {
   const c = (raw ?? {}) as Record<string, unknown>;
   return {
@@ -789,6 +821,7 @@ function coerceCatalog(raw: unknown): CatalogConfig {
     minSeedPlaces: Math.round(
       num(c.minSeedPlaces, DEFAULT_CATALOG.minSeedPlaces, 1, CATALOG_MIN_SEED_PLACES_MAX),
     ),
+    ranking: coerceCatalogRanking(c.ranking),
   };
 }
 

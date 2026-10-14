@@ -1,7 +1,7 @@
-import { Blocks, Compass, LayoutGrid, Search } from "lucide-react";
+import { Blocks, Compass, GalleryHorizontal, LayoutGrid, Search } from "lucide-react";
 
-// Discovery — ONE sidebar entry, THREE subpages (Search Sources · Discovery
-// Modes · Matrix). The prefix is frozen: /filters-config. Tabs live here so
+// Discovery — ONE sidebar entry, FOUR subpages (Sources · Modes · Catalog ·
+// Matrix). The prefix is frozen: /filters-config. Tabs live here so
 // layout, redirects, and deep links share one list. The sidebar row opens
 // the first tab (Pato, 2026-10-13).
 //
@@ -36,8 +36,11 @@ const DISCOVERY_SOURCES_HREF = "/filters-config/sources" as const;
 // this anchor does NOT move with the split (pipeline.test.ts asserts it).
 export const DISCOVERY_MAP_HREF = "/filters-config/modes#s-map" as const;
 
+export const DISCOVERY_CATALOG_HREF = "/filters-config/catalog" as const;
+
 export const DISCOVERY_TABS = [
-  { href: DISCOVERY_SOURCES_HREF, label: "Search Sources", Icon: Blocks },
-  { href: DISCOVERY_MODES_HREF, label: "Discovery Modes", Icon: Search },
+  { href: DISCOVERY_SOURCES_HREF, label: "Sources", Icon: Blocks },
+  { href: DISCOVERY_MODES_HREF, label: "Modes", Icon: Search },
+  { href: DISCOVERY_CATALOG_HREF, label: "Catalog", Icon: GalleryHorizontal },
   { href: DISCOVERY_MATRIX_HREF, label: "Matrix", Icon: LayoutGrid },
 ] as const;

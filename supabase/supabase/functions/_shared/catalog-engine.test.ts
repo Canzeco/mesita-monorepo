@@ -50,6 +50,25 @@ Deno.test("normalizeCatalogConfig clamps and defaults", () => {
   assertEquals(normalizeCatalogConfig(null), DEFAULT_CATALOG);
   assertEquals(normalizeCatalogConfig({ seedCount: 99, placesPerRail: 1 }).seedCount, 20);
   assertEquals(normalizeCatalogConfig({ placesPerRail: 1 }).placesPerRail, 4);
+  assertEquals(normalizeCatalogConfig(null).ranking, {
+    name: 1,
+    description: 1,
+    proximity: 1,
+    popularity: 1,
+    selected: 1,
+    randomness: 0,
+  });
+  assertEquals(
+    normalizeCatalogConfig({ ranking: { name: 9, randomness: -1, proximity: 1.256 } }).ranking,
+    {
+      name: 4,
+      description: 1,
+      proximity: 1.26,
+      popularity: 1,
+      selected: 1,
+      randomness: 0,
+    },
+  );
 });
 
 Deno.test("sliceSeedPlaces samples one Atlas slug", () => {

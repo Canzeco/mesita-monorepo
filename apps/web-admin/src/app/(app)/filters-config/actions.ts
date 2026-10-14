@@ -54,7 +54,9 @@ export type DiscoverySlice =
   | "nameFast"
   | "nameDeep"
   | "swipe"
-  | "signals";
+  | "signals"
+  // The Catalog page. One profile, written once, shared by the seven lists.
+  | "catalogRanking";
 
 export async function updateDiscoveryConfig(
   config: DiscoveryConfig,
@@ -98,6 +100,9 @@ export async function updateDiscoveryConfig(
     // must not drop it.
     weights: keys.has("signals") ? config.weights : live.config.weights,
     params: keys.has("signals") ? config.params : live.config.params,
+    catalog: keys.has("catalogRanking")
+      ? { ...live.config.catalog, ranking: config.catalog.ranking }
+      : live.config.catalog,
   };
   const r = await efInvoke<{ config: unknown; updatedAt: string | null }>(
     "admin-web-update-config",
