@@ -71,6 +71,12 @@ export const KNOWN_PROBES: ReadonlyArray<{
     label: "Google Places",
     impact: "Identity spine for Atlas and the Enricher",
   },
+  {
+    id: "render",
+    label: "Render",
+    impact:
+      "Enrichment workflow host. A rejected key means no enrich run can start",
+  },
 ];
 
 /** Every probe id, in registry order — what the one Run button sends. */
