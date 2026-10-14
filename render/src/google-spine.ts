@@ -2,6 +2,7 @@
 // Google type slug is not a Mesita category. Photo links are fetched separately
 // and copied into storage by the write.
 
+import { channelFromUrl, priceLevelFromGoogle } from "./channels.ts";
 import { closesAtFromHours, weeklyHoursFromPeriods, type GooglePeriod } from "./hours.ts";
 
 const FIELD_MASK = [
@@ -14,6 +15,7 @@ const FIELD_MASK = [
   "internationalPhoneNumber",
   "websiteUri",
   "googleMapsUri",
+  "priceLevel",
   "rating",
   "userRatingCount",
   "businessStatus",
@@ -36,6 +38,7 @@ export type GooglePlace = {
   internationalPhoneNumber?: string;
   websiteUri?: string;
   googleMapsUri?: string;
+  priceLevel?: string;
   rating?: number;
   userRatingCount?: number;
   businessStatus?: string;
@@ -85,7 +88,8 @@ export function profileFromGoogle(details: GooglePlace, requestedId: string): Go
   const generative = details.generativeSummary?.overview?.text?.trim() ?? "";
   const description = (editorial || generative).slice(0, 1000) || null;
   const phone = (details.internationalPhoneNumber || details.nationalPhoneNumber || "").trim();
-  const website = httpUrl(details.websiteUri);
+  const channel = channelFromUrl(details.websiteUri);
+  const website = channel?.key === "website_url" ? channel.url : null;
   const placeId = (details.id ?? requestedId).trim();
   const maps = httpUrl(details.googleMapsUri) ??
     `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(placeId)}`;
@@ -104,7 +108,13 @@ export function profileFromGoogle(details: GooglePlace, requestedId: string): Go
   if (zone) patch.zone = zone;
   if (city) patch.city = city;
   if (phone) patch.phone = phone;
-  if (website) patch.website_url = website;
+  if (channel) {
+    patch[channel.key] = channel.url;
+    if (channel.key === "instagram_url") patch.instagram_found = true;
+    if (channel.key === "facebook_url") patch.facebook_found = true;
+  }
+  const price = priceLevelFromGoogle(details.priceLevel);
+  if (price) patch.price_level = price;
   if (typeof details.rating === "number" && details.rating >= 0 && details.rating <= 5) {
     patch.google_stars_overall = details.rating;
   }
@@ -131,6 +141,7 @@ export function profileFromGoogle(details: GooglePlace, requestedId: string): Go
     zone ? `Neighborhood: ${zone}` : "",
     phone ? `Phone: ${phone}` : "",
     website ? `Website: ${website}` : "",
+    channel && channel.key !== "website_url" ? `Link: ${channel.url}` : "",
     typeof details.rating === "number" ? `Google rating: ${details.rating}` : "",
     description ? `Google summary: ${description}` : "",
   ].filter(Boolean).join("\n");
@@ -138,10 +149,15 @@ export function profileFromGoogle(details: GooglePlace, requestedId: string): Go
   return { ok: true, description, facts, patch };
 }
 
+function reviewRating(value: number | undefined): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return 0;
+  return Math.min(5, Math.max(0, value));
+}
+
 function googleReviews(reviews: GooglePlace["reviews"]): { author: string; rating: number; quote: string; date: string }[] | null {
   const mapped = (reviews ?? []).map((review) => ({
     author: review.authorAttribution?.displayName?.trim() || "Google reviewer",
-    rating: typeof review.rating === "number" ? review.rating : 0,
+    rating: reviewRating(review.rating),
     quote: (review.text?.text ?? review.originalText?.text ?? "").trim(),
     date: review.relativePublishTimeDescription ?? "",
   })).filter((review) => review.quote.length > 0);
