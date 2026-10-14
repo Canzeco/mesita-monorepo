@@ -77,21 +77,23 @@ export async function buildEnrichment(job: EnrichJob): Promise<Record<string, un
   return patch;
 }
 
-export const enrichSingle = task(
-  { name: "enrichSingle", retry: NO_RETRY, timeoutSeconds: DAY },
-  async function enrichSingle(_ctx: TaskContext, job: EnrichJob): Promise<{ placeId: string }> {
+// enrich single place
+export const enrichSinglePlace = task(
+  { name: "enrich-single-place", retry: NO_RETRY, timeoutSeconds: DAY },
+  async function enrichSinglePlace(_ctx: TaskContext, job: EnrichJob): Promise<{ placeId: string }> {
     const patch = await buildEnrichment(job);
     return writeFinishedPlace(job.placeId, patch);
   },
 );
 
-export const enrichMultiple = task(
-  { name: "enrichMultiple", retry: NO_RETRY, timeoutSeconds: DAY },
-  async function enrichMultiple(ctx: TaskContext, jobs: EnrichJob[]): Promise<{ placeId: string }[]> {
+// enrich multiple places
+export const enrichMultiplePlaces = task(
+  { name: "enrich-multiple-places", retry: NO_RETRY, timeoutSeconds: DAY },
+  async function enrichMultiplePlaces(ctx: TaskContext, jobs: EnrichJob[]): Promise<{ placeId: string }[]> {
     const results: { placeId: string }[] = [];
     for (let i = 0; i < jobs.length; i += AT_ONCE) {
       const wave = jobs.slice(i, i + AT_ONCE);
-      const done = await Promise.all(wave.map((job) => ctx.run(enrichSingle, job)));
+      const done = await Promise.all(wave.map((job) => ctx.run(enrichSinglePlace, job)));
       results.push(...done);
     }
     return results;

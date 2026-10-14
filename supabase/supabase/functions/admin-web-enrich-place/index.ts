@@ -1,9 +1,8 @@
 // Supabase Edge Function — admin-web-enrich-place (product caller / admin)
 //
-// Direct execute. One place starts the Render task enrichSingle. A list
-// starts enrichMultiple once. The workflow runtime decides how many places
-// run at once and where an external API bottlenecks. Nothing here waits on
-// a cron poller.
+// Direct execute. One place starts enrich single place. A list starts
+// enrich multiple places once. Render decides how many places run at once.
+// Nothing here waits on a poller.
 //
 // Internal enricher control — super-admin gated, admin console only.
 
