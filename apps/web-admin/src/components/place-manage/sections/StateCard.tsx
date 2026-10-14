@@ -4,7 +4,8 @@
 //
 //   Created · Pulsing · Requested · Enriching · Enriched · Disabled
 //
-// The ladder is the next box, Enrichment Steps. It is not a state.
+// Enriching and Enriched are the only enrichment states. A live run is
+// enriching; the one finished write is enriched.
 //
 // Partnership States (Partnered · Rewards · Mesita Pay · Mesita Credits) went
 // with the MVP First Stage cut (MESITA-2115): nothing commercial is live.
@@ -18,8 +19,9 @@
 //   Pulsing    Google pulse — Google OPERATIONAL (not Crenup 1. Pulse)
 //   Disabled   places.state is not active — the operator's off switch
 //   Requested  guest request count, 0…n — not a Yes/No
-//   Enriching  Enricher pipeline mid-flight (live run). Independent of Enriched.
-//   Enriched   an Enrich run completed — `enriched_at` set (MESITA-2154).
+//   Enriching  a run is in flight (`content_state = generating`).
+//   Enriched   the one write landed — `enriched_at` set (MESITA-2154).
+//              A live run shows enriching, not enriched.
 //              A yes/no, not the 0–8 high-water; a Created place is no.
 //
 // OPERATING is Google's, not ours (MESITA-1239). It answers "does this business
@@ -60,11 +62,8 @@ import {
   requestCountFromRow,
   stateBoolChip,
 } from "@/lib/state-vocabulary";
-import { crenupMeterLine } from "./state-enrichment";
-
-// States box (Pato, 2026-08-25): bools. Crenup is the next box — not chips
-// under Enriched, and not a Create / Enrich split. Chips never repeat the row
-// name.
+// States box (Pato, 2026-08-25): bools. Enriching and Enriched are the two
+// enrichment states. Chips never repeat the row name.
 //
 //   Created    a google_place_id exists. Nothing enriches without it.
 //   Disabled   a guest cannot reach the place AT ALL. places.state = active
@@ -166,17 +165,16 @@ export function StateCard({ place }: { place: AdminPlace }) {
       serp_summary: null,
     },
   );
-  const enriched = isEnrichedPlace(place);
-  const meter = crenupMeterLine(place);
+  const enriched = enriching ? false : isEnrichedPlace(place);
   const enrichedAt =
     typeof place.enriched_at === "string" && place.enriched_at.trim() !== ""
       ? place.enriched_at.slice(0, 10)
       : null;
-  const enrichedDetail =
-    (enriched
-      ? "An Enrich run completed" + (enrichedAt ? ` ${enrichedAt}.` : ".")
-      : "No Enrich run has completed — a Created profile is not enriched.") +
-    (meter ? ` ${meter}` : "");
+  const enrichedDetail = enriched
+    ? "An Enrich run completed" + (enrichedAt ? ` ${enrichedAt}.` : ".")
+    : enriching
+      ? "A run is in progress. The profile is written once, when it finishes."
+      : "No Enrich run has completed — a Created profile is not enriched.";
   const requestCount = requestCountFromRow(place.request_count);
   const requestedDetail =
     requestCount === "unknown"
@@ -185,8 +183,8 @@ export function StateCard({ place }: { place: AdminPlace }) {
         ? "No guest has requested this profile."
         : `${requestCount} guest request${requestCount === 1 ? "" : "s"}.`;
   const enrichingDetail = enriching
-    ? "The Enricher pipeline is mid-flight — first, second, or third is running."
-    : "No Enricher run is in flight.";
+    ? "A run is in progress. Nothing is saved until the profile is finished."
+    : "No run is in progress.";
 
   return (
     <SectionCard

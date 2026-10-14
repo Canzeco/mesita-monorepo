@@ -2,14 +2,16 @@
 //
 // Direct execute. One place starts enrich single place. A list starts
 // enrich multiple places once. Render decides how many places run at once.
-// Nothing here waits on a poller.
+// Nothing here waits on the run. When Render accepts it, this marks each
+// place enriching and returns. The profile is written once, at the end.
 //
 // Internal enricher control — super-admin gated, admin console only.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, readPlaceIdAlias } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv, requireSuperAdmin } from "../_shared/auth.ts";
-import { enrichmentRun } from "./start-enrichment.ts";
+import { writePlace } from "../_shared/place-doc.ts";
+import { ENRICHING_PATCH, enrichmentRun } from "./start-enrichment.ts";
 
 type Body = {
   projectId?: string;
@@ -73,6 +75,13 @@ Deno.serve(async (req) => {
   if (!res.ok) {
     const detail = await res.text();
     return json({ ok: false, error: detail.slice(0, 300) || `Render did not start the run (${res.status})` }, 502);
+  }
+  const marked = await Promise.all(placeIds.map((id) =>
+    writePlace(admin, { table: "places", mode: "update", id, patch: { ...ENRICHING_PATCH } })
+  ));
+  const failed = marked.find((row) => !row.ok);
+  if (failed && !failed.ok) {
+    return json({ ok: false, error: `Run started, but the place was not marked enriching: ${failed.error}` }, 500);
   }
   return json({ ok: true, enrichmentTriggered: true, task: run.task });
 });

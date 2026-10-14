@@ -1,7 +1,7 @@
 "use server";
 
 import { efInvoke } from "@/lib/supabase-ef";
-import { isEnrichedPlace } from "@/lib/place-enriched";
+import { enrichmentView, isEnrichedPlace } from "@/lib/place-enriched";
 
 // ════════════════════════════════════════════════════════════════════════
 // Places — a super-admin drives MANY places at once through the admin-* edge
@@ -141,8 +141,7 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     instagram_found: raw.instagram_found === true,
     facebook_found: raw.facebook_found === true,
     content_state: contentState,
-    enriching: contentState === "generating",
-    enriched: isEnrichedPlace(raw),
+    ...enrichmentView({ ...raw, content_state: contentState }),
     enriched_at: typeof raw.enriched_at === "string" ? raw.enriched_at : null,
     google_place_id: raw.google_place_id ?? null,
     seeded: raw.seeded ?? false,

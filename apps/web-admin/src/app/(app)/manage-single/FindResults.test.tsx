@@ -110,9 +110,9 @@ describe("Find › one table", () => {
     expect(html).not.toContain(">Catalogue<");
     expect(html).not.toContain(">Name Search<");
     expect(html).not.toContain("Catalogue #1");
-    expect(html).toContain("Every place on Mesita, with general, enrichment and review states");
+    expect(html).toContain("Every place on Mesita, with general and review states");
     expect(html).toContain("General States");
-    expect(html).toContain("Enrichment Steps");
+    expect(html).not.toContain("Enrichment Steps");
     expect(html).toContain(">Reviews<");
     expect(html).toContain(">Created<");
     expect(html).toContain(">Google Found<");
@@ -185,7 +185,7 @@ describe("Find › one table", () => {
     expect(html).toContain('target="_blank"');
   });
 
-  it("draws general, enrichment and review columns, and Found is yes or no", () => {
+  it("draws general and review columns, and Found is yes or no", () => {
     const html = render({
       rows: [
         row({
@@ -212,26 +212,26 @@ describe("Find › one table", () => {
     });
     for (const label of [
       "General States",
-      "Enrichment Steps",
       "Created",
       "Pulsing",
       "Requested",
       "Enriching",
       "Enriched",
       "Disabled",
-      "Details",
-      "Serp",
-      "Vectors",
       "Google Found",
       "Instagram Found",
       "Facebook Found",
     ]) {
       expect(html).toContain(`>${label}<`);
     }
+    expect(html).not.toContain("Enrichment Steps");
+    expect(html).not.toContain(">Details<");
+    expect(html).not.toContain(">Serp<");
+    expect(html).not.toContain(">Vectors<");
     expect(html).toContain(">2<");
     expect(html).toContain(">yes<");
     expect(html).toContain(">no<");
-    expect(html).toContain(">fail<");
+    expect(html).not.toContain(">fail<");
     expect(html).not.toContain(">3.8<");
     expect(html).not.toContain(">474<");
     expect(html).not.toContain(">Stars<");

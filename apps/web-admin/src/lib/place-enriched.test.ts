@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { isEnrichedPlace } from "./place-enriched";
+import { enrichmentView, isEnrichedPlace } from "./place-enriched";
 import {
   crenupMeterLine,
   enrichmentStepRows,
@@ -26,6 +26,21 @@ describe("isEnrichedPlace — an Enrich run completed (MESITA-2154)", () => {
     expect(isEnrichedPlace({ enriched: false, enriched_at: STAMP })).toBe(false);
     expect(isEnrichedPlace({ enriched: true, enriched_at: null })).toBe(true);
     expect(isEnrichedPlace({ enriched_at: "  " })).toBe(false);
+  });
+
+  it("a live run is enriching, and not enriched, until the one write lands", () => {
+    expect(enrichmentView({ content_state: "generating", enriched_at: STAMP })).toEqual({
+      enriching: true,
+      enriched: false,
+    });
+    expect(enrichmentView({ content_state: "ready", enriched_at: STAMP })).toEqual({
+      enriching: false,
+      enriched: true,
+    });
+    expect(enrichmentView({ content_state: "ready", enriched_at: null })).toEqual({
+      enriching: false,
+      enriched: false,
+    });
   });
 
   it("is the server's rule: place-state.ts reads enriched_at, never content_state", () => {

@@ -6,7 +6,6 @@ import { getPlaceEnrichment, type AdminPlace } from "../actions";
 import { CopyIdButton, ReadField } from "@/components/admin-ui/manage";
 import { EnrichmentCard } from "./EnrichmentCard";
 import { StateCard } from "./StateCard";
-import { CrenupStateCard } from "./CrenupStateCard";
 import { ReviewsStateCard } from "./ReviewsStateCard";
 import { formatAbsoluteUtc } from "@/lib/format";
 
@@ -15,11 +14,8 @@ import { formatAbsoluteUtc } from "@/lib/format";
 // Admin — two boxes (Pato, 2026-10-13, MESITA-2176; Partnership States went
 // with the MVP First Stage cut, MESITA-2115):
 //   Profile States      Created · Pulsing · Requested · Enriching ·
-//                         Enriched · Disabled. Owns both operator writes
-//                         (Pulsing, Disabled) and the enrichment read.
-//   Enrichment Steps    1. Details Enriched … 8. Vectors Enriched.
-//                         Seed is not a step. Function 8's key stays
-//                         `embedding`.
+//                         Enriched · Disabled. A place is enriching or
+//                         enriched. There is no step ladder.
 //   Reviews States      Google Found · Instagram Found · Facebook Found.
 //                         Yes or no. Stars and follower counts are display.
 // Then the rest:
@@ -32,7 +28,6 @@ export function AdminSection({ place }: { place: AdminPlace }) {
     // Same masonry as the Place tab — columns pack top-down (MESITA-399).
     <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5 xl:columns-3">
       <StateCard place={place} />
-      <CrenupStateCard place={place} />
       <ReviewsStateCard place={place} />
       {/* key remounts the loader when the operator switches places. */}
       <EnrichmentCard key={`enrich-${place.id}`} place={place} />
