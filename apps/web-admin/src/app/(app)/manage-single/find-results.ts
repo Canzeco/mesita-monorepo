@@ -2,6 +2,7 @@ import type { PlaceHit, SuggestHit } from "@/app/(app)/manage-multiple/actions";
 import type { PlaceLite } from "@/lib/places-types";
 import {
   CRENUP_STEPS,
+  REVIEW_STATE_FACTS,
   stepEnriches,
   type CrenupStepKey,
 } from "@/lib/state-vocabulary";
@@ -44,12 +45,9 @@ export const ENRICHMENT_COLUMNS = CRENUP_STEPS.filter((step) =>
   stepEnriches(step.flows),
 );
 
-/** Reviews columns. Stars and count — the Google facts the catalogue row
- *  already carries. Instagram and Facebook stay on the place's Reviews card. */
-export const REVIEW_COLUMNS = [
-  { key: "stars", label: "Stars" },
-  { key: "count", label: "Count" },
-] as const;
+/** Reviews columns. The three Found facts, in vocabulary order. A Google-only
+ *  row has no place profile, so the table draws a dash instead. */
+export const REVIEW_COLUMNS = REVIEW_STATE_FACTS;
 
 export type ReviewColumn = (typeof REVIEW_COLUMNS)[number]["key"];
 
@@ -67,14 +65,19 @@ export function enrichmentMark(hit: PlaceHit, key: CrenupStepKey): EnrichmentMar
   return "no";
 }
 
-/** Catalogue numbers win when Mesita holds the place. A Google-only row
- *  falls back to what Text Search reported. */
-export function reviewNumbers(
-  row: Pick<FindRow, "placeHit" | "rating" | "reviews">,
-): { stars: number | null; count: number | null } {
+/** A Mesita row reads the three Found facts. A Google-only row has none —
+ *  stars and a review count are display, not a state. */
+export function reviewFound(
+  row: Pick<FindRow, "placeHit">,
+): Record<ReviewColumn, boolean | null> {
+  const hit = row.placeHit;
+  if (!hit) {
+    return { google_found: null, instagram_found: null, facebook_found: null };
+  }
   return {
-    stars: row.placeHit?.google_stars_overall ?? row.rating,
-    count: row.placeHit?.google_review_count ?? row.reviews,
+    google_found: hit.google_found === true,
+    instagram_found: hit.instagram_found === true,
+    facebook_found: hit.facebook_found === true,
   };
 }
 

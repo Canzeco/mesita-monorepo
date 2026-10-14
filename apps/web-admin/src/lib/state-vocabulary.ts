@@ -81,6 +81,17 @@ export const GENERAL_STATE_FACTS = [
 
 export type GeneralStateKey = (typeof GENERAL_STATE_FACTS)[number]["key"];
 
+/** Reviews states: whether each source resolved. Yes or no. Stars, snippets
+ *  and follower counts are display, never a state. Google stays in the list
+ *  so the three sources stay symmetric. */
+export const REVIEW_STATE_FACTS = [
+  { key: "google_found", label: "Google Found" },
+  { key: "instagram_found", label: "Instagram Found" },
+  { key: "facebook_found", label: "Facebook Found" },
+] as const;
+
+export type ReviewStateKey = (typeof REVIEW_STATE_FACTS)[number]["key"];
+
 /** Facts where `true` is the problem: a Disabled place is switched off. The
  *  tables draw them rose when true and green when false. */
 export const BAD_WHEN_TRUE: ReadonlySet<GeneralStateKey> = new Set(["disabled"]);

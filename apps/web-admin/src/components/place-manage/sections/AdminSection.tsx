@@ -7,6 +7,7 @@ import { CopyIdButton, ReadField } from "@/components/admin-ui/manage";
 import { EnrichmentCard } from "./EnrichmentCard";
 import { StateCard } from "./StateCard";
 import { CrenupStateCard } from "./CrenupStateCard";
+import { ReviewsStateCard } from "./ReviewsStateCard";
 import { formatAbsoluteUtc } from "@/lib/format";
 
 // Admin — the Mesita-internal tab (Pato, 2026-08-04).
@@ -19,6 +20,8 @@ import { formatAbsoluteUtc } from "@/lib/format";
 //   Enrichment Steps    1. Details Enriched … 8. Vectors Enriched.
 //                         Seed is not a step. Function 8's key stays
 //                         `embedding`.
+//   Reviews States      Google Found · Instagram Found · Facebook Found.
+//                         Yes or no. Stars and follower counts are display.
 // Then the rest:
 //   Enrichment  queues the full Enricher process
 //   SERP / Vectors / Metadata (UID & audit)
@@ -30,6 +33,7 @@ export function AdminSection({ place }: { place: AdminPlace }) {
     <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5 xl:columns-3">
       <StateCard place={place} />
       <CrenupStateCard place={place} />
+      <ReviewsStateCard place={place} />
       {/* key remounts the loader when the operator switches places. */}
       <EnrichmentCard key={`enrich-${place.id}`} place={place} />
       <SerpSummaryCard place={place} />

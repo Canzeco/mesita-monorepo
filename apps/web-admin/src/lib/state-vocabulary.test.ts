@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   BAD_WHEN_TRUE,
   GENERAL_STATE_FACTS,
+  REVIEW_STATE_FACTS,
   CRENUP_STEPS,
   creationFlowMark,
   crenupFlowTag,
@@ -26,6 +27,11 @@ describe("state vocabulary", () => {
       "Enriching",
       "Enriched",
       "Disabled",
+    ]);
+    expect(REVIEW_STATE_FACTS.map((f) => f.label)).toEqual([
+      "Google Found",
+      "Instagram Found",
+      "Facebook Found",
     ]);
     expect([...BAD_WHEN_TRUE]).toEqual(["disabled"]);
     expect(CRENUP_STEPS.map((f) => `${f.n}. ${f.label}`)).toEqual([

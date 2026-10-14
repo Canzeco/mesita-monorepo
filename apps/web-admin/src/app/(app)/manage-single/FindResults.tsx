@@ -3,7 +3,7 @@
 // Single Place › Find › the one results table (MESITA-2124, MESITA-2181,
 // MESITA-2187, MESITA-2188). A row per place. The first column says whether
 // Mesita holds it or it is Google only — the first fact to read. Then the
-// states, in three groups — Profile States, Enrichment Steps, Reviews —
+// states, in three groups — General States, Enrichment Steps, Reviews —
 // then, on a typed search, where each source ranked it. The action sits at
 // the row end. Drawn once every source has settled, so no row ever moves
 // under the cursor.
@@ -37,7 +37,7 @@ import {
   FIND_SOURCES,
   REVIEW_COLUMNS,
   enrichmentMark,
-  reviewNumbers,
+  reviewFound,
   type FindResult,
   type FindRow,
 } from "./find-results";
@@ -64,7 +64,7 @@ const PIN_HELD_CELL = `hidden sticky left-0 w-36 min-w-36 max-w-36 sm:table-cell
 const PIN_PLACE_CELL = `sticky left-0 sm:left-36 ${PIN_CELL_BG}`;
 
 const STATE_GROUPS = [
-  { label: "Profile States", span: GENERAL_STATE_FACTS.length, edge: false },
+  { label: "General States", span: GENERAL_STATE_FACTS.length, edge: false },
   { label: "Enrichment Steps", span: ENRICHMENT_COLUMNS.length, edge: true },
   { label: "Reviews", span: REVIEW_COLUMNS.length, edge: true },
 ] as const;
@@ -133,8 +133,8 @@ export function FindResults({
           <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
             <caption className="sr-only">
               {ranks
-                ? `Places matching “${query}”, with profile, enrichment and review states, and the rank each source gave them`
-                : "Every place on Mesita, with profile, enrichment and review states"}
+                ? `Places matching “${query}”, with general, enrichment and review states, and the rank each source gave them`
+                : "Every place on Mesita, with general, enrichment and review states"}
             </caption>
             <thead>
               <tr className={HEAD_ROW}>
@@ -504,36 +504,18 @@ function EnrichmentCells({ row }: { row: FindRow }) {
 }
 
 function ReviewCells({ row }: { row: FindRow }) {
-  const { stars, count } = reviewNumbers(row);
+  const found = reviewFound(row);
   return (
     <>
-      <td className={`${CELL} ${GROUP_EDGE}`}>
-        <NumberCell value={stars} kind="stars" />
-      </td>
-      <td className={CELL}>
-        <NumberCell value={count} kind="count" />
-      </td>
+      {REVIEW_COLUMNS.map((col, i) => {
+        const value = found[col.key];
+        return (
+          <td key={col.key} className={CELL + (i === 0 ? ` ${GROUP_EDGE}` : "")}>
+            {value == null ? <Miss label={col.label} /> : <StatePill on={value} />}
+          </td>
+        );
+      })}
     </>
-  );
-}
-
-function NumberCell({ value, kind }: { value: number | null; kind: "stars" | "count" }) {
-  if (value == null) {
-    return (
-      <>
-        <span aria-hidden="true" className="text-muted-foreground">
-          —
-        </span>
-        <span className="sr-only">{kind === "stars" ? "No star rating" : "No review count"}</span>
-      </>
-    );
-  }
-  const text = kind === "stars" ? value.toFixed(1) : value.toLocaleString();
-  return (
-    <span className="text-foreground type-label font-semibold tabular-nums">
-      {text}
-      <span className="sr-only">{kind === "stars" ? " stars" : " reviews"}</span>
-    </span>
   );
 }
 
