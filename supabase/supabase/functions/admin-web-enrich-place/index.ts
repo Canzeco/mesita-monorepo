@@ -60,7 +60,8 @@ Deno.serve(async (req) => {
   const key = Deno.env.get("RENDER_API_KEY")?.trim() ?? "";
   if (!key) return json({ ok: false, error: "Server misconfigured" }, 500);
 
-  const run = enrichmentRun(placeIds);
+  const jobs = placeIds.map((id) => ({ placeId: id, googlePlaceId: byId.get(id) ?? "" }));
+  const run = enrichmentRun(jobs);
   const res = await fetch("https://api.render.com/v1/task-runs", {
     method: "POST",
     headers: {
