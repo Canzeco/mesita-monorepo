@@ -1064,6 +1064,14 @@ select is_empty(
   'the Credits expiry sweep is unscheduled'
 );
 
+-- MESITA-2206. The job stays so a resume is alter_job(..., active := true).
+-- A replay that schedules it active again fails here.
+select is(
+  (select active from cron.job where jobname = 'run-place-enrichment-stages'),
+  false,
+  'the Enricher stage poller ships paused'
+);
+
 -- web-admin uploads gallery photos and menus to these buckets straight from
 -- the browser (lib/place-upload-utils.ts). Losing a write policy is a 403 on
 -- every upload; keeping a member path open is a door for a role that no
