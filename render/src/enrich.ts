@@ -6,6 +6,7 @@ import {
   fetchTimezone,
   profileFromGoogle,
 } from "./google-spine.ts";
+import { digest, embedPair, embeddingFacts, embeddingFields } from "./embedding.ts";
 import { writeFinishedPlace } from "./write-place.ts";
 
 // Paid vendor calls must not be replayed by the platform.
@@ -47,12 +48,33 @@ export async function buildEnrichment(job: EnrichJob): Promise<Record<string, un
   }
   if (!description) throw new Error("The place has no description, so it was not written.");
 
-  return {
+  const patch: Record<string, unknown> = {
     ...spine.patch,
     description,
     content_state: "ready",
     enriched_at: new Date().toISOString(),
   };
+  const name = typeof spine.patch.google_name === "string" ? spine.patch.google_name : "";
+  const openaiKey = process.env.OPENAI_KEY?.trim() ?? "";
+  if (openaiKey && name) {
+    const facts = embeddingFacts({
+      name,
+      zone: typeof spine.patch.zone === "string" ? spine.patch.zone : null,
+      city: typeof spine.patch.city === "string" ? spine.patch.city : null,
+      address: typeof spine.patch.address === "string" ? spine.patch.address : null,
+      description,
+    });
+    const vectors = await embedPair(facts, name, openaiKey);
+    const fields = embeddingFields(
+      vectors.summary,
+      vectors.name,
+      await digest(facts),
+      await digest(name),
+      facts,
+    );
+    if (fields) Object.assign(patch, fields);
+  }
+  return patch;
 }
 
 export const enrichSingle = task(
