@@ -263,16 +263,14 @@ jobs:
             supabase-cron-enrich-place-research
             supabase-cron-enrich-place-analysis
             supabase-cron-enrich-place-contents
-            # MESITA-2178 and MESITA-2186: the previous stage slugs stay
-            # callable. This job does not apply SQL. Deleting them here races
-            # the poller, which still posts to the old suffix until the
-            # first/second/third migration is on the cloud.
-            # enricher-cron-enrich-place-research
-            # enricher-cron-enrich-place-analysis
-            # enricher-cron-enrich-place-contents
-            # enricher-cron-enrich-place-gather
-            # enricher-cron-enrich-place-photos
-            # enricher-cron-enrich-place-write
+            # The poller appends first/second/third. These earlier suffixes
+            # are deleted from the cloud (MESITA-2204).
+            enricher-cron-enrich-place-research
+            enricher-cron-enrich-place-analysis
+            enricher-cron-enrich-place-contents
+            enricher-cron-enrich-place-gather
+            enricher-cron-enrich-place-photos
+            enricher-cron-enrich-place-write
             supabase-edgefunc-store-place-images
             supabase-edgefunc-recall-places
             supabase-edgefunc-search-places
