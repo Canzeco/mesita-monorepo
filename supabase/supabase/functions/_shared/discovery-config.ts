@@ -71,6 +71,31 @@ import { num, bool } from "./config-coerce.ts";
 
 export type SignalParams = Record<SignalKey, SignalParamBag>;
 
+/**
+ * Catalog Search exponents. One profile for every family list.
+ * Family and Enriched are gates, so they are not in this vector.
+ * Timing is out. A missing key abstains at the default.
+ * `selected` is the exponent, not the per-entity value.
+ */
+export const CATALOG_RANK_KEYS = [
+  "name",
+  "description",
+  "proximity",
+  "popularity",
+  "selected",
+  "randomness",
+] as const;
+export type CatalogRankKey = (typeof CATALOG_RANK_KEYS)[number];
+
+export const DEFAULT_CATALOG_RANKING: Record<CatalogRankKey, number> = {
+  name: 1,
+  description: 1,
+  proximity: 1,
+  popularity: 1,
+  selected: 1,
+  randomness: 0,
+};
+
 export type CatalogConfig = {
   /** Atlas category rails that currently have inventory. */
   seedCount: number;
@@ -79,6 +104,8 @@ export type CatalogConfig = {
   placesPerRail: number;
   /** Seed category must have at least this many listed places. */
   minSeedPlaces: number;
+  /** Shared Catalog Search profile. The seven lists differ only by family. */
+  ranking: Record<CatalogRankKey, number>;
 };
 
 /**
@@ -462,6 +489,7 @@ export const DEFAULT_CATALOG: CatalogConfig = {
   generatedCount: 8,
   placesPerRail: 8,
   minSeedPlaces: 2,
+  ranking: { ...DEFAULT_CATALOG_RANKING },
 };
 
 export const DEFAULT_NAME_FAST: NameFastConfig = {
@@ -633,6 +661,16 @@ export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
   swipe: DEFAULT_SWIPE,
 };
 
+function normalizeCatalogRanking(raw: unknown): Record<CatalogRankKey, number> {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const out = {} as Record<CatalogRankKey, number>;
+  for (const key of CATALOG_RANK_KEYS) {
+    const v = num(r[key], DEFAULT_CATALOG_RANKING[key], WEIGHT_MIN, WEIGHT_MAX);
+    out[key] = Math.round(v * 100) / 100;
+  }
+  return out;
+}
+
 export function normalizeCatalogConfig(raw: unknown): CatalogConfig {
   const r = (raw ?? {}) as Record<string, unknown>;
   const seedCount = Math.round(
@@ -660,6 +698,7 @@ export function normalizeCatalogConfig(raw: unknown): CatalogConfig {
         CATALOG_MIN_SEED_PLACES_MAX,
       ),
     ),
+    ranking: normalizeCatalogRanking(r.ranking),
   };
 }
 

@@ -308,6 +308,10 @@ verify_jwt = true
 [functions.admin-web-get-atlas-fields]
 verify_jwt = true
 
+# Manage › Families. Read-only taxonomy map.
+[functions.admin-web-get-families]
+verify_jwt = true
+
 # Bulk Google Places Text Search proxy. Many queries in, deduped
 # Place IDs out.
 [functions.admin-web-discover-places]

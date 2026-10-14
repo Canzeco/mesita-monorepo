@@ -1,4 +1,5 @@
-import { Compass, Layers, MapPin, PartyPopper, Sparkles, Type } from "lucide-react";
+import Link from "next/link";
+import { Compass, GalleryHorizontal, Layers, MapPin, PartyPopper, Sparkles, Type } from "lucide-react";
 import { ConfigSoon } from "@/components/admin-ui/ConfigSoon";
 import { KnobState, SectionCard } from "@/components/admin-ui/config";
 import {
@@ -92,6 +93,30 @@ export function MesitaSourceCards({ seed }: { seed: FloorSeed }) {
           doc="Notion Docs › Discovery"
           footer={<FloorSoonNote />}
         />
+      </div>
+      <div id="s-mesita-catalog" className="scroll-mt-16">
+        <SectionCard
+          icon={<GalleryHorizontal className="text-primary h-4 w-4" />}
+          title="Mesita Catalog Search"
+          subtitle="The catalog's retriever. Seven family lists share one ranking profile: Name, Description, Proximity, Popularity, Selected, and Randomness. Family and Enriched admit; they do not score. Timing is not in this profile."
+          state={
+            <KnobState
+              kind="not-wired"
+              reason="the profile is stored; Catalog Search does not rank with it yet"
+            />
+          }
+        >
+          <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
+            Used by Catalog. The exponents live on the Catalog tab, once,
+            and every list reads that same profile.
+          </p>
+          <Link
+            href="/filters-config/catalog"
+            className="text-foreground mt-3 inline-block text-sm font-medium underline"
+          >
+            Open the ranking profile
+          </Link>
+        </SectionCard>
       </div>
       <div id="s-social-browse" className="scroll-mt-16">
         <ConfigSoon

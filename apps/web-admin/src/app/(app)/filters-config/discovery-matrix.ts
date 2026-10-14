@@ -163,6 +163,7 @@ export const DISCOVERY_SOURCES = [
   FILTERS_FLOOR_OWNER,
   "Mesita Places Browse Search",
   "Mesita Places Flexible Search",
+  "Mesita Catalog Search",
   "Mesita Socials Browse Search",
   "Mesita Socials Flexible Search",
 ] as const;
@@ -215,7 +216,7 @@ export const DISCOVERY_MODE_SOURCES = {
     "Mesita Places Name Search",
   ],
   map: ["Google Places Nearby Search", FILTERS_FLOOR_OWNER],
-  catalog: ["Mesita Places Flexible Search", "Mesita Socials Browse Search"],
+  catalog: ["Mesita Catalog Search", "Mesita Socials Browse Search"],
   swipe: ["Mesita Places Flexible Search"],
   chat: [
     "Google Places Text Search",

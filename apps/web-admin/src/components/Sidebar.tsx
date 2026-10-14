@@ -14,6 +14,7 @@ import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
 import { DB_PARENT } from "@/app/(app)/manage-database/nav";
 import { MULTIPLE_PLACES_PARENT } from "@/app/(app)/manage-multiple/nav";
 import { SINGLE_PLACE_PARENT } from "@/app/(app)/manage-single/nav";
+import { FAMILIES_PARENT } from "@/app/(app)/families/nav";
 import {
   CREATION_PARENT,
   ENRICHMENT_PARENT,
@@ -64,6 +65,7 @@ export const MANAGE_NAV: NavItem[] = [
   DB_PARENT,
   MULTIPLE_PLACES_PARENT,
   SINGLE_PLACE_PARENT,
+  FAMILIES_PARENT,
 ];
 
 // Configurations — exactly five rows (Pato, MESITA-2083: "Models, Creation,
