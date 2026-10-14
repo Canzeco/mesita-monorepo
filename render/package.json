@@ -1,0 +1,14 @@
+{
+  "name": "mesita-render",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/hello.ts"
+  },
+  "dependencies": {
+    "@renderinc/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.2"
+  }
+}

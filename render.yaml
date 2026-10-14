@@ -1,0 +1,12 @@
+# Enrichment workflow. Render syncs this on every push to main.
+# Root directory is render/, so an app or supabase change does not rebuild it.
+services:
+  - type: workflow
+    name: mesita-enrich
+    runtime: node
+    region: oregon
+    rootDir: render
+    buildCommand: npm install
+    startCommand: npm start
+    branch: main
+    autoDeployTrigger: commit

@@ -41,10 +41,11 @@
 | `apps/web-consumer` | Consumer app · consumer.mesita.ai (Next.js · Vercel) |
 | `apps/web-landing` | Marketing landing · mesita.ai (Next.js · Vercel) |
 | `supabase` | DB · RLS · Edge Functions — source of truth (Supabase CLI · Deno) |
+| `render` | Enrichment workflow (Render). Own install root. Build `npm install`, start `npm start`. |
 | `assets` | The brand: edit `assets/brand/brand.json`, `deno task sync-brand` writes every output (guide: Notion Docs › Design) |
 
 - **MVP First Stage = the three apps + `supabase/`** (MESITA-2089). Business, Validate and both mobile apps were deleted; git history keeps them.
-- **Packages are independent install roots** (own `pnpm-workspace.yaml` + lockfile; no root pnpm workspace). `cd` into a package to work; run every `supabase` command from `supabase/`.
+- **Packages are independent install roots** (no root workspace). The web packages and `supabase/` use pnpm. `render/` uses npm, because the Render workflow build command is `npm install`. `cd` into a package to work; run every `supabase` command from `supabase/`.
 - **Vercel:** each `apps/web-*` is its own Vercel project (canzeco team) on this repo, Root Directory the package, "skip unaffected" on — a push to `main` deploys only what changed.
 - **CI is path-filtered per package** (`web-admin.yml`, `web-consumer.yml`, `web-landing.yml`, `supabase.yml`) plus two repo-wide gates: `rules.yml` (instruction-file sync + markdown allowlist + word budgets + the forbidden-asset guard, no `.icns`/`.jxl`/`.heif`/`.heic`) and `brand.yml` (brand sync).
 - **Instruction files:** root `CLAUDE.md` = generated quickstart block + this tail · package `CLAUDE.md` = package rules only (markers forbidden) · every `AGENTS.md` = generated, what Cursor and Codex read (never a `CODEX.md`). Edit `scripts/rules-quickstart.md` or a `CLAUDE.md`, then `deno task sync-rules`; strict `--check` gates CI.
