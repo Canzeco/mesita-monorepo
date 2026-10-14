@@ -13,10 +13,10 @@ import { Blocks, Compass, GalleryHorizontal, LayoutGrid, Search } from "lucide-r
 //           per-mode number belongs on the page about modes.
 // Modes   = ways guests look (each names the sources it may call), plus the
 //           signal-weights table — the one control that spans modes.
-// Sources = the nine searches themselves. Google types live here.
+// Sources = the seven searches themselves. Google types live here.
 //
 // THE SOURCES TAB IS SEARCH SOURCES, NOT DISCOVERY SOURCES (Pato,
-// 2026-09-02). All nine Sources are searches — every instance name ends in
+// 2026-09-02). All seven Sources are searches — every instance name ends in
 // `Search` — and the matrix band on Modes has read "Search Sources" since
 // it was drawn, so the tab was the odd one out. A row reading "Discovery …
 // · Discovery …" under a "Product · Discovery" eyebrow also spends its

@@ -16,7 +16,7 @@ import { FILTERS_FLOOR_OWNER } from "./source-floor-copy";
 // one mode now, **Word**: the searchbar, both its passes, and the only mode
 // that can answer with a Location. Word and Map share a screen and are still
 // two modes, because they answer with different sets from different sources.
-// **Social left the mode list**; its retrieval survives as two Sources.
+// **Social left the mode list**; its retrieval survives as Mesita Social Catalog Search.
 export const DISCOVERY_MODE_KEYS = [
   "word",
   "map",
@@ -61,8 +61,8 @@ export const DISCOVERY_MODE_LABELS: Record<DiscoveryModeKey, string> = {
  * different answer from the place itself and never merges into one list with
  * it (MESITA-1856). Filled square = the mode can answer with that entity.
  *
- * Socials is SPEC-ONLY today: both Socials sources are Soon and no events
- * engine exists behind either, so the row states the shape of the answer,
+ * Socials is SPEC-ONLY today: Mesita Social Catalog Search is Soon and no
+ * events engine exists behind it, so the row states the shape of the answer,
  * not a lane that runs.
  */
 export const DISCOVERY_ENTITIES = [
@@ -81,8 +81,8 @@ export type DiscoveryEntityKey = (typeof DISCOVERY_ENTITIES)[number]["key"];
  * Word's Location rows only ever come from its Autocomplete query.
  *
  * Socials follows the same rule one band down: the modes that can answer with
- * an event are exactly the modes that call a Socials source — Catalog rails
- * them, Chat is asked about them.
+ * an event are exactly the modes that call Mesita Social Catalog Search —
+ * Catalog rails them, Chat is asked about them.
  */
 const DISCOVERY_MODE_ENTITIES: Record<
   DiscoveryModeKey,
@@ -145,11 +145,10 @@ const DISCOVERY_MODE_POOLS: Record<
 };
 
 /**
- * The nine Sources — Docs > Discovery section 8.2. Signals are not a Source.
+ * The seven Sources — Docs > Discovery section 8.2. Signals are not a Source.
  *
- * `Search` survives on the three Google entries because it quotes endpoints
- * Google itself named that way, and on the six Mesita entries because they
- * are the same kind of thing: a call that returns candidates.
+ * Pato, 2026-10-13: Browse and Flexible are gone. The catalog is one search
+ * per family — Mesita Places Catalog Search, Mesita Social Catalog Search.
  *
  * PERPLEXITY IS NOT A SOURCE. It was on the old seven-module list twice
  * (Search, Agent) and neither is retrieval Mesita performs — Chat has no
@@ -161,53 +160,33 @@ export const DISCOVERY_SOURCES = [
   "Google Places Nearby Search",
   "Mesita Places Name Search",
   FILTERS_FLOOR_OWNER,
-  "Mesita Places Browse Search",
-  "Mesita Places Flexible Search",
-  "Mesita Catalog Search",
-  "Mesita Socials Browse Search",
-  "Mesita Socials Flexible Search",
+  "Mesita Places Catalog Search",
+  "Mesita Social Catalog Search",
 ] as const;
 
 /**
- * THE ONE SOURCE NO MODE CALLS, named out loud (MESITA-1856).
- *
- * Mesita Places Browse Search lost its only caller at MESITA-1697, when
- * Catalog became Flexible. It left this list then, which made the Matrix
- * report eight sources while Search Sources rendered nine boxes — the box
- * never went anywhere, and a map that under-reports the territory by one is
- * worse than a row of empty marks. So the row is back, off for every mode,
- * and the contract test asserts exactly that: a source is either called by
- * some mode, or it is listed here.
+ * A source is either called by some mode, or named here. Empty since Browse
+ * and Flexible left: both Catalog searches have callers (MESITA-2195).
  */
-export const DISCOVERY_SOURCES_NO_CALLER = [
-  "Mesita Places Browse Search",
-] as const;
+export const DISCOVERY_SOURCES_NO_CALLER = [] as const;
 
 /**
  * Locked mode → sources. Chips are read-only until dispatch reads a
  * persistable set.
  *
- * THE FOUR MESITA PLACES SOURCES ARE TOLD APART BY WHAT DRAWS THE CANDIDATE
- * SET, never by what ranks it — Lineup ranks all four the same way, under the
- * mode's own signal mask:
+ * THE THREE MESITA PLACES SOURCES ARE TOLD APART BY WHAT DRAWS THE CANDIDATE
+ * SET, never by what ranks it:
  *
  *   Name      a string, matched on `places.name_embedding`   → Word
  *   Nearby    a centre and a radius, closest-N               → Map
- *   Browse    no query at all, the catalog itself            → no mode today
- *   Flexible  an arbitrary set of predicates                 → Swipe, Catalog, Chat
+ *   Catalog   the catalog's lists                            → Catalog, Scroll, Chat
  *
- * CATALOG BECAME FLEXIBLE AT MESITA-1697: Home's Feed grew a filter control
- * and Catalog's list lane now cuts its pool with `applyDeckPredicates`
- * before it plans a rail, so it stopped admitting on nothing. That left
- * Places Browse with no caller at all — it keeps its row and its Soon box
- * because it is what any future engine that rails the catalog with no guest
- * input would be (see DISCOVERY_SOURCES_NO_CALLER).
+ * Browse and Flexible are not sources. Catalog is the one door that used to
+ * be split across those two.
  *
- * THE SOCIALS SOURCES OUTLIVED THE SOCIAL MODE. Socials answer with events a
- * place hosts, not with places, and they lost their own surface when the mode
- * list became six — so the two sources hang off the two modes that can carry
- * an event: Catalog rails it, Chat is asked about it. Both stay Soon; there
- * is no events engine.
+ * SOCIAL CATALOG OUTLIVED THE SOCIAL MODE. It answers with events a place
+ * hosts, not with places. Catalog rails them; Chat is asked about them.
+ * The box stays Soon: there is no events engine.
  */
 export const DISCOVERY_MODE_SOURCES = {
   word: [
@@ -216,13 +195,13 @@ export const DISCOVERY_MODE_SOURCES = {
     "Mesita Places Name Search",
   ],
   map: ["Google Places Nearby Search", FILTERS_FLOOR_OWNER],
-  catalog: ["Mesita Catalog Search", "Mesita Socials Browse Search"],
-  swipe: ["Mesita Places Flexible Search"],
+  catalog: ["Mesita Places Catalog Search", "Mesita Social Catalog Search"],
+  swipe: ["Mesita Places Catalog Search"],
   chat: [
     "Google Places Text Search",
     "Google Places Nearby Search",
-    "Mesita Places Flexible Search",
-    "Mesita Socials Flexible Search",
+    "Mesita Places Catalog Search",
+    "Mesita Social Catalog Search",
   ],
   favorites: [],
 } as const;
