@@ -154,8 +154,9 @@ export const CATALOG_RANK_KEYS = [
 ] as const;
 export type CatalogRankKey = (typeof CATALOG_RANK_KEYS)[number];
 
+/** Mirrors DEFAULT_CATALOG_RANKING in _shared/discovery-config.ts. Name ships off. */
 export const DEFAULT_CATALOG_RANKING: Record<CatalogRankKey, number> = {
-  name: 1,
+  name: 0,
   description: 1,
   proximity: 1,
   popularity: 1,

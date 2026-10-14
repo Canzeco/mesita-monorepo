@@ -1,11 +1,11 @@
 // Catalog Search (MESITA-2196). One shared profile, seven guest family lists.
 //
 // Family and Enriched admit; they do not score. Timing is not in this
-// profile. Name, Description, and Selected abstain until a query vector or
-// a per-entity Selected value exists — a missing fact is not a zero, and a
-// zero would delete the place from the product. Weight 0 drops its signal
-// before it is called. Proximity and Popularity rank inside the gates.
-// Randomness ships at exponent 0, so it is not called.
+// profile. Name and Randomness ship at exponent 0 (MESITA-2199), so neither
+// is called. Description and Selected stay at 1 and abstain until a query
+// vector or a per-entity Selected value exists — a missing fact is not a
+// zero, and a zero would delete the place from the product. Weight 0 drops
+// its signal before it is called. Proximity and Popularity rank at 1.
 
 import { FAMILIES, type FamilyKey } from "./place-taxonomy.ts";
 import {

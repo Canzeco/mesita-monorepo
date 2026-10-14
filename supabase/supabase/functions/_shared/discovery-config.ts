@@ -76,6 +76,12 @@ export type SignalParams = Record<SignalKey, SignalParamBag>;
  * Family and Enriched are gates, so they are not in this vector.
  * Timing is out. A missing key abstains at the default.
  * `selected` is the exponent, not the per-entity value.
+ *
+ * Name and Randomness ship at 0 (MESITA-2199). A family list has no name
+ * query, so a stored 1 was an armed exponent nothing called. Proximity and
+ * Popularity ship at 1: the log curve already rewards close, and shrinkage
+ * keeps popularity in a narrow band. Description and Selected stay at 1 and
+ * still abstain until a query vector or a per-place Selected value exists.
  */
 export const CATALOG_RANK_KEYS = [
   "name",
@@ -88,7 +94,7 @@ export const CATALOG_RANK_KEYS = [
 export type CatalogRankKey = (typeof CATALOG_RANK_KEYS)[number];
 
 export const DEFAULT_CATALOG_RANKING: Record<CatalogRankKey, number> = {
-  name: 1,
+  name: 0,
   description: 1,
   proximity: 1,
   popularity: 1,

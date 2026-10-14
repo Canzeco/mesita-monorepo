@@ -2,8 +2,9 @@
 //
 // The CATALOG engine — seven guest family lists (Docs › Discovery).
 // One round trip: the listed Mesita pool, then one shared ranking profile.
-// Family is the list filter. Enriched admits. Name, Description, and
-// Selected abstain until a query or a per-entity value exists. No Google.
+// Family is the list filter. Enriched admits. Name and Randomness ship at 0.
+// Description and Selected stay at 1 and abstain until a query or a
+// per-entity value exists. Proximity and Popularity rank at 1. No Google.
 // Map owns Nearby.
 //
 // Local:  supabase functions serve consumer-web-list-catalog
