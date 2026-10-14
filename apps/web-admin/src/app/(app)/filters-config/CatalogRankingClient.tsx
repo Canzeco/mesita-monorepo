@@ -48,8 +48,8 @@ export function CatalogRankingClient({
         subtitle="One profile for every list. The only difference between lists is the family filter. Exponents run from 0 (off) to 4. Randomness ships off."
         state={
           <KnobState
-            kind="not-wired"
-            reason="stored on discovery_config.catalog.ranking; Catalog Search does not rank with it yet"
+            kind="enforced"
+            reason="consumer-web-list-catalog ranks every family list with this profile"
           />
         }
       >

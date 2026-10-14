@@ -614,7 +614,7 @@ describe("Discovery page box order", () => {
     for (const src of [catalog, chat, surfaces]) {
       expect(src).toContain("NoWeightsNote");
     }
-    expect(catalog).toContain("cosine similarity");
+    expect(catalog).toContain("own profile");
     expect(surfaces).toContain("signal mask is empty");
     // …and none of them grows an input.
     for (const src of [catalog, chat, surfaces]) {

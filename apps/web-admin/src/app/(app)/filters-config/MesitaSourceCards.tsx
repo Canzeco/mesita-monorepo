@@ -80,8 +80,8 @@ export function MesitaSourceCards({ seed }: { seed: FloorSeed }) {
           subtitle="The catalog's retriever. Seven family lists share one ranking profile: Name, Description, Proximity, Popularity, Selected, and Randomness. Family and Enriched admit; they do not score. Timing is not in this profile."
           state={
             <KnobState
-              kind="not-wired"
-              reason="the profile is stored; Catalog Search does not rank with it yet"
+              kind="enforced"
+              reason="consumer-web-list-catalog ranks the seven family lists with this profile"
             />
           }
         >

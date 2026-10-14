@@ -92,7 +92,7 @@ export const DISCOVERY_MODE_SIGNAL_ZERO: Partial<
  *           console card says so.
  *   swipe   always ranks. Every Scroll deck goes through it.
  *
- * Catalog ranks by cosine, Chat and Favorites have no engine, and Favorites'
+ * Catalog ranks on its own profile, Chat and Favorites have no engine, and Favorites'
  * mask is empty besides — none of them calls this function at all.
  */
 export const WEIGHTED_MODE_KEYS = ["map", "swipe"] as const;

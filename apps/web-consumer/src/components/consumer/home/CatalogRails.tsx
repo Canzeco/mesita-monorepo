@@ -4,9 +4,9 @@
 //
 // This is Catalog's body at Feed's address (MESITA-1697). The component, the
 // mode key, the EF and the admin matrix column all still say catalog; only the
-// guest-facing tab is named Feed. Seed rails are occupied Atlas categories,
-// generated rails are vibe queries ranked against Mesita embeddings, tiles are
-// FavoriteTile. The page must be a flex column so this scroller gets a height.
+// guest-facing tab is named Feed. Each rail is one guest family, ranked by
+// the shared Catalog profile. Tiles are FavoriteTile. The page must be a
+// flex column so this scroller gets a height.
 //
 // THE FILTER CUTS ON THE SERVER, and the refetch key is the whole reason this
 // works. The fetch used to be keyed on `[supabase]` alone — mount once, never
