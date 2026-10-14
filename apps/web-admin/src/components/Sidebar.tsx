@@ -67,8 +67,9 @@ export const MANAGE_NAV: NavItem[] = [
   SINGLE_PLACE_PARENT,
 ];
 
-// Configurations — six rows. Models, then Families (the read-only map of
-// Google categories, Mesita families, and Mesita categories), then Creation,
+// Configurations — six rows. Models, then Families (the Google-search
+// switches, then the read-only map of Google categories, Mesita families,
+// and Mesita categories), then Creation,
 // Enrichment, Discovery, Reservations. Families left Manage for this rail
 // (Pato, 2026-10-13). The rest stays the MESITA-2083 order: which model each
 // subsystem thinks with, then a place's life (Creation, then Enrichment),

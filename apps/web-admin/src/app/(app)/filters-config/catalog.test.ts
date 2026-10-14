@@ -503,12 +503,14 @@ describe("Discovery page box order", () => {
     expect(googleSources).toContain("NearbyPullOwner");
     expect(map).not.toContain("googlePull");
     expect(googleSources).toContain("FloorMirror");
+    expect(googleSources).toContain('href="/families"');
+    expect(googleSources).not.toContain("on this page");
     expect(mesitaSources).toContain("FiltersFloorOwner");
     expect(mesitaSources).toContain("FloorMirror");
     // Social Catalog is the only Soon source left on this strip.
     expect(mesitaSources.match(/FloorSoonNote \/>/g)?.length).toBe(1);
-    // THREE boxes write `map` on this one page now, so none may save the
-    // whole slice from its own seed or the last Save wipes the others.
+    // Families, Nearby's floor and Nearby's pull all write `map`, so none
+    // may save the whole slice or the last Save wipes the others.
     expect(supersStrip).toContain('["nameFast", "nameDeep", "mapSupers"]');
     const acts = readFileSync(join(__dirname, "actions.ts"), "utf8");
     expect(acts).toContain('"mapSupers"');
@@ -755,17 +757,20 @@ describe("Discovery page box order", () => {
       last = idx;
     }
     expect(modesJsx).not.toContain("SocialConfigClient");
-    // Families stay on Sources; the wipe stays on Modes. Two boxes,
-    // two questions — never fold one into the other.
+    // The wipe stays on Modes. Families left Sources for Configurations ›
+    // Families (MESITA-2200) — two questions, never fold one into the other.
     expect(modesJsx).not.toContain("FamiliesClient");
     expect(modesJsx).not.toContain("GeneralGateConfigClient");
     expect(sourcesJsx).not.toContain("GeneralGateConfigClient");
+    expect(sourcesJsx).not.toContain("FamiliesClient");
     expect(modesJsx).not.toContain("SignalsConfigClient");
     expect(modesJsx).not.toContain("ConfigSoon");
 
-    // SEVEN BOXES AND NOTHING ELSE. The Families strip is a shared
-    // battery above them, not a source, so it does not spend one of the seven.
-    const sourceOrder = ["FamiliesClient", "GoogleSourceCards", "MesitaSourceCards"];
+    const familiesPage = readFileSync(join(__dirname, "../families/page.tsx"), "utf8");
+    expect(familiesPage).toContain("FamiliesClient");
+
+    // SEVEN BOXES AND NOTHING ELSE. The family switches are not a source.
+    const sourceOrder = ["GoogleSourceCards", "MesitaSourceCards"];
     expect(sourcesJsx).not.toContain("GoogleQualityFloorCard");
     expect(sourcesJsx).not.toContain("PoolQualityFloorCard");
     expect(sourcesJsx).not.toContain("SignalsConfigClient");

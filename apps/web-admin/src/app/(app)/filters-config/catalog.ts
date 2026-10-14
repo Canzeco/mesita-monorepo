@@ -27,8 +27,8 @@
 //             both Catalog searches. Favorites calls no source, and the
 //             only ring it requires is Google Places — it is NOT gated on
 //             enrichment, because bookmarks may include unenriched Create
-//             stubs. Google category knobs live on Search
-//             Sources, not here. General sits first, under the matrix:
+//             stubs. Google category knobs live on Configurations ›
+//             Families, not here (MESITA-2200). General sits first, under the matrix:
 //             the post-Google wipe (Active + a review floor) every mode
 //             runs on what a Google Places query returned. The mode list
 //             and its locks live in discovery-matrix.ts.
@@ -37,10 +37,9 @@
 //             source that returns regions and cities, in the SAME call as
 //             the places; Socials is spec-only until an events engine exists.
 //             The band lives in discovery-matrix.ts.
-//   SOURCES   the Search Sources subpage: Families strip (seven
-//             params, one list written onto Fast / Deep / Map) ·
-//             the three Google Places searches · the three Mesita Places
-//             searches (Name · Nearby · Catalog) · Mesita Social Catalog
+//   SOURCES   the Search Sources subpage: the three Google Places
+//             searches · the three Mesita Places searches (Name · Nearby ·
+//             Catalog) · Mesita Social Catalog
 //             Search. Browse and Flexible are gone. Mesita Places Name and
 //             Nearby are live without knobs of their own — their counts sit
 //             on the Word and Map mode boxes. Social Catalog is the one Soon
