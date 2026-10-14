@@ -41,6 +41,7 @@ import {
   stripeSecretKeyNames,
   stripeSecretKeyProblem,
 } from "../_shared/stripe-env.ts";
+import { renderWorkspaceName } from "./render-owners.ts";
 import { inactiveAccountLine, twilioFailureDetail } from "./twilio-failure.ts";
 
 // How long any single probe may take before we call it dead. Vendors that are
@@ -690,6 +691,31 @@ const PROBES: ProbeSpec[] = [
           return Array.isArray(places)
             ? `Key accepted — ${places.length} result(s).`
             : "Key accepted.";
+        },
+      };
+    },
+  },
+  {
+    id: "render",
+    label: "Render",
+    impact:
+      "Enrichment workflow host. A rejected key means no enrich run can start",
+    envKeys: ["RENDER_API_KEY"],
+    run: async (keys) => {
+      const key = firstKey(keys, ["RENDER_API_KEY"])!;
+      // GET /owners is account metadata. Render does not bill it, and it
+      // proves the key can see the workspace the workflow will run in.
+      const res = await timedFetch("https://api.render.com/v1/owners", {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${key}`,
+        },
+      });
+      return {
+        res,
+        detail: (b) => {
+          const name = renderWorkspaceName(b);
+          return name ? `Key accepted. Workspace: ${name}.` : "Key accepted.";
         },
       };
     },
