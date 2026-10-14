@@ -15,6 +15,11 @@ function matches(query: string, text: string): boolean {
   return text.toLowerCase().includes(q);
 }
 
+/** The column shows spaces. Search must hit that label and the stored slug. */
+export function googleTypeHaystack(slug: string): string {
+  return `${slug.replaceAll("_", " ")} ${slug}`;
+}
+
 export function FamiliesExplorer({ map }: { map: FamiliesMap }) {
   const [sel, setSel] = useState<FamiliesSelection>({
     kind: "family",
@@ -39,7 +44,7 @@ export function FamiliesExplorer({ map }: { map: FamiliesMap }) {
         count={map.googleTypes.length}
       >
         {map.googleTypes
-          .filter((row) => matches(googleQuery, row.slug) || hit.google.has(row.slug))
+          .filter((row) => matches(googleQuery, googleTypeHaystack(row.slug)) || hit.google.has(row.slug))
           .map((row) => (
             <Row
               key={row.slug}
