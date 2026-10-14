@@ -14,6 +14,7 @@ const PLACE = {
   userRatingCount: 120,
   businessStatus: "OPERATIONAL",
   websiteUri: "https://example.com",
+  priceLevel: "PRICE_LEVEL_EXPENSIVE",
   regularOpeningHours: {
     weekdayDescriptions: ["Monday: 9:00 AM – 6:00 PM"],
     periods: [{ open: { day: 1, hour: 9, minute: 0 }, close: { day: 1, hour: 18, minute: 0 } }],
@@ -35,6 +36,8 @@ test("a complete Google place becomes a finished profile without a database key"
   assert.equal(got.patch.phone, "+52 55 0000 0000");
   assert.equal(got.patch.city, "Ciudad de México");
   assert.equal(got.patch.google_found, true);
+  assert.equal(got.patch.website_url, "https://example.com/");
+  assert.equal(got.patch.price_level, 3);
   assert.deepEqual(got.patch.hours, { monday: [{ open: "09:00", close: "18:00" }] });
   assert.equal(got.patch.closes_at, "18:00");
   assert.deepEqual(got.patch.google_reviews, [{
@@ -58,6 +61,22 @@ test("photo links are https only, ten at most", () => {
   const urls = photoUris(bodies);
   assert.equal(urls.length, 10);
   assert.equal(urls[0], "https://lh3.googleusercontent.com/a");
+});
+
+test("Google's Instagram link is the Instagram field, not the website", () => {
+  const got = profileFromGoogle({
+    ...PLACE,
+    websiteUri: "https://www.instagram.com/casaluminar/",
+    priceLevel: "PRICE_LEVEL_UNSPECIFIED",
+    reviews: [{ rating: Number.NaN, text: { text: "Bien" } }],
+  }, "ChIJ-test");
+  assert.equal(got.ok, true);
+  if (!got.ok) return;
+  assert.equal(got.patch.instagram_url, "https://www.instagram.com/casaluminar");
+  assert.equal(got.patch.instagram_found, true);
+  assert.equal("website_url" in got.patch, false);
+  assert.equal("price_level" in got.patch, false);
+  assert.equal((got.patch.google_reviews as { rating: number }[])[0].rating, 0);
 });
 
 test("a place without a name, coordinates, or address writes nothing", () => {
