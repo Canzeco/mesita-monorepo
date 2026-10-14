@@ -102,6 +102,7 @@ jobs:
         run: |
           set -euo pipefail
           leftover=(
+            supabase-edgefunc-bench-resolver
             check-web-get-ticket
             check-web-mark-paid
             check-web-scan-ticket

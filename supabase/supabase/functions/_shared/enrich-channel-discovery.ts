@@ -196,8 +196,11 @@ export const RESOLVER_INSTRUCTIONS =
   "You are a meticulous reviewer that resolves a place's OWN official online " +
   "channels. You are given candidate URLs found by search plus web access. For " +
   "each requested field, review the candidates and the web, then return the single " +
-  "URL that is unmistakably THIS place's own official presence, or null. Output " +
-  "ONLY strict JSON matching the schema. Never fabricate a URL.";
+  "URL that is unmistakably THIS place's own official presence, or null. Prefer " +
+  "this location's own branch site and accounts over a parent group or holding " +
+  "company. When the same handle is linked from the website and from another " +
+  "channel, that agreement wins. Output ONLY strict JSON matching the schema. " +
+  "Never fabricate a URL.";
 
 export async function selectChannels(
   key: string,
@@ -306,7 +309,10 @@ export function buildResolverInput(
     `you can find is even plausibly this place's own presence. ${igRule}` +
     `Each URL must be the place's OWN channel — NEVER a review site, ranking / "best of" ` +
     `list, guide, directory, aggregator, a single post/video, or a source you merely cited. ` +
-    `A franchise / multi-location brand's MAIN account or page IS acceptable. ` +
+    `This location's own branch wins over a parent group, holding company, or umbrella brand. ` +
+    `A franchise main account is not acceptable when a branch account exists. ` +
+    `Return null for website when the only site you can find is a parent group. ` +
+    `A handle that appears on more than one of this place's own channels outranks a larger parent account. ` +
     `Never invent a URL.`;
 
   return input;
