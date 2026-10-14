@@ -2,7 +2,7 @@
 
 // THE QUALITY FLOOR THAT LIVES INSIDE A SOURCE BOX (Pato, 2026-09-08).
 //
-// Nine source boxes, nine floor blocks, one shape. Redundancy is the point:
+// Seven source boxes, one shape. Redundancy is the point:
 // every box states the floor that cuts it, even when two boxes name the same
 // number. What is NOT duplicated is the INPUT.
 //
@@ -16,9 +16,10 @@
 // pool in `consumer-search-lane.ts:846`, which IS Mesita Places Name Search,
 // so a Mesita box mirrors a key that also governs the three Google ones.
 //
-// A SOON SOURCE NEVER GETS AN INPUT. The four have no engine, so a live field
-// there would have to write some other slice — editing "Mesita Socials Browse
-// Search" would silently move the Home rails. It prints the state instead.
+// A SOON SOURCE NEVER GETS AN INPUT. Social Catalog has no engine, so a live
+// field there would have to write some other slice — editing "Mesita Social
+// Catalog Search" would silently move the Home rails. It prints the state
+// instead.
 
 import { Layers, Star, Users } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
@@ -100,7 +101,7 @@ export function FloorMirror({
  * The floor line for a Soon source. One sentence in ConfigSoon's footer, never
  * a control: Pato's 2026-08-21 law for an engine that does not exist is that
  * the knobs are DELETED from the markup, not staged. A field here would also
- * have to write some other source's key, so editing "Mesita Socials Browse
+ * have to write some other source's key, so editing "Mesita Social Catalog
  * Search" would move the Home rails.
  */
 export function FloorSoonNote() {

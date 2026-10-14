@@ -99,7 +99,7 @@ describe("Discovery function APIs", () => {
     ).toEqual([...WEIGHTED_MODE_KEYS].sort());
   });
 
-  it("ten sources and a locked mode → source matrix", () => {
+  it("seven sources and a locked mode → source matrix", () => {
     expect([...DISCOVERY_MODE_KEYS]).toEqual([
       "word",
       "map",
@@ -114,11 +114,8 @@ describe("Discovery function APIs", () => {
       "Google Places Nearby Search",
       "Mesita Places Name Search",
       "Mesita Places Nearby Search",
-      "Mesita Places Browse Search",
-      "Mesita Places Flexible Search",
-      "Mesita Catalog Search",
-      "Mesita Socials Browse Search",
-      "Mesita Socials Flexible Search",
+      "Mesita Places Catalog Search",
+      "Mesita Social Catalog Search",
     ]);
     expect(DISCOVERY_MODE_SOURCES.word).toEqual([
       "Google Places Autocomplete Search",
@@ -129,24 +126,18 @@ describe("Discovery function APIs", () => {
       "Google Places Nearby Search",
       "Mesita Places Nearby Search",
     ]);
-    // Catalog is FLEXIBLE for Places since MESITA-1697 — Home's Feed grew a
-    // filter control and consumer-web-list-catalog cuts its pool with the
-    // guest's predicates before planning a rail. Socials rails stay Browse:
-    // no predicate reaches them, and no events engine exists to take one.
-    // "Mesita Places Browse Search" lost its only caller there and keeps its
-    // row anyway (MESITA-1856) — the Sources page still renders its box, and
-    // a matrix that reports one source fewer than the page is a worse map
-    // than one empty row.
+    // Browse and Flexible are gone (MESITA-2195). Catalog is the one door:
+    // Places Catalog for places, Social Catalog for events.
     expect(DISCOVERY_MODE_SOURCES.catalog).toEqual([
-      "Mesita Catalog Search",
-      "Mesita Socials Browse Search",
+      "Mesita Places Catalog Search",
+      "Mesita Social Catalog Search",
     ]);
-    expect(DISCOVERY_MODE_SOURCES.swipe).toEqual(["Mesita Places Flexible Search"]);
+    expect(DISCOVERY_MODE_SOURCES.swipe).toEqual(["Mesita Places Catalog Search"]);
     expect(DISCOVERY_MODE_SOURCES.chat).toEqual([
       "Google Places Text Search",
       "Google Places Nearby Search",
-      "Mesita Places Flexible Search",
-      "Mesita Socials Flexible Search",
+      "Mesita Places Catalog Search",
+      "Mesita Social Catalog Search",
     ]);
     expect(DISCOVERY_MODE_SOURCES.favorites).toEqual([]);
     // The pin biases Autocomplete and Text Search; a bias is not a call.
@@ -156,9 +147,7 @@ describe("Discovery function APIs", () => {
     // A Source has a caller, or it is NAMED as one that has none. An empty
     // row is allowed; an empty row nobody declared is a mode list that lost
     // a source by accident.
-    expect([...DISCOVERY_SOURCES_NO_CALLER]).toEqual([
-      "Mesita Places Browse Search",
-    ]);
+    expect([...DISCOVERY_SOURCES_NO_CALLER]).toEqual([]);
     for (const source of DISCOVERY_SOURCES) {
       const called = DISCOVERY_MODE_KEYS.some((mode) =>
         modeCallsSource(mode, source),
@@ -211,11 +200,10 @@ describe("Discovery function APIs", () => {
         modeCallsSource(mode, "Google Places Autocomplete Search"),
       );
       // An entity comes from a source: the modes that answer with a Social
-      // are exactly the modes that call a Socials source. Both are Soon, so
-      // the row is spec-only until an events engine exists.
+      // are exactly the modes that call Social Catalog. It stays Soon until
+      // an events engine exists.
       expect(modeReturnsEntity(mode, "social"), mode).toBe(
-        modeCallsSource(mode, "Mesita Socials Browse Search") ||
-          modeCallsSource(mode, "Mesita Socials Flexible Search"),
+        modeCallsSource(mode, "Mesita Social Catalog Search"),
       );
     }
     expect(modeReturnsEntity("catalog", "social")).toBe(true);
@@ -517,7 +505,8 @@ describe("Discovery page box order", () => {
     expect(googleSources).toContain("FloorMirror");
     expect(mesitaSources).toContain("FiltersFloorOwner");
     expect(mesitaSources).toContain("FloorMirror");
-    expect(mesitaSources.match(/FloorSoonNote \/>/g)?.length).toBe(4);
+    // Social Catalog is the only Soon source left on this strip.
+    expect(mesitaSources.match(/FloorSoonNote \/>/g)?.length).toBe(1);
     // THREE boxes write `map` on this one page now, so none may save the
     // whole slice from its own seed or the last Save wipes the others.
     expect(supersStrip).toContain('["nameFast", "nameDeep", "mapSupers"]');
@@ -700,14 +689,12 @@ describe("Discovery page box order", () => {
     expect(floorCopy).toContain(
       'export const FILTERS_FLOOR_OWNER = "Mesita Places Nearby Search"',
     );
-    expect(mesitaSources).toContain("Mesita Places Browse Search");
-    expect(mesitaSources).toContain("Mesita Places Flexible Search");
-    expect(mesitaSources).toContain("Mesita Catalog Search");
-    expect(mesitaSources).toContain("Mesita Socials Browse Search");
-    expect(mesitaSources).toContain("Mesita Socials Flexible Search");
-    // Name and Nearby ship today without knobs of their own; the other four
-    // have no engine, so they are the only Soon boxes on this strip.
-    expect(mesitaSources.match(/ConfigSoon\n/g)?.length).toBe(4);
+    expect(mesitaSources).toContain("Mesita Places Catalog Search");
+    expect(mesitaSources).toContain("Mesita Social Catalog Search");
+    expect(mesitaSources).not.toContain("Browse Search");
+    expect(mesitaSources).not.toContain("Flexible Search");
+    // Name, Nearby, and Places Catalog ship; Social Catalog is the one Soon box.
+    expect(mesitaSources.match(/ConfigSoon\n/g)?.length).toBe(1);
     expect(chips).toContain("export function ModeSourceChips");
     expect(chips).toContain("None");
     expect(matrixPage).toContain("DiscoveryMatrix");
@@ -776,8 +763,8 @@ describe("Discovery page box order", () => {
     expect(modesJsx).not.toContain("SignalsConfigClient");
     expect(modesJsx).not.toContain("ConfigSoon");
 
-    // NINE BOXES AND NOTHING ELSE. The Families strip is a shared
-    // battery above them, not a source, so it does not spend one of the nine.
+    // SEVEN BOXES AND NOTHING ELSE. The Families strip is a shared
+    // battery above them, not a source, so it does not spend one of the seven.
     const sourceOrder = ["FamiliesClient", "GoogleSourceCards", "MesitaSourceCards"];
     expect(sourcesJsx).not.toContain("GoogleQualityFloorCard");
     expect(sourcesJsx).not.toContain("PoolQualityFloorCard");

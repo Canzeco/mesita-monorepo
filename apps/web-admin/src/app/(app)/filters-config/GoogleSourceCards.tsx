@@ -25,8 +25,8 @@ import { floorNumber, GENERAL_FLOOR_OWNER } from "./source-floor-copy";
 // on any Google lane — so that box shows two frames, because two floors
 // really do cut it.
 //
-// All three keep the word `Search` because Google named its own endpoints
-// that way; every other Source drops the class noun.
+// Every Source name ends in Search. The three Google ones quote endpoints
+// Google itself named that way.
 
 export function GoogleSourceCards({ seed }: { seed: FloorSeed }) {
   const g = seed.initialConfig.general;

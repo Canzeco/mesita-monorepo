@@ -15,28 +15,17 @@ describe("Discovery matrix", () => {
     expect(html).toContain("Google Places Text Search · Word · on");
     expect(html).toContain("Mesita Places Name Search · Word · on");
     expect(html).toContain("Mesita Places Nearby Search · Map · on");
-    // Catalog became FLEXIBLE at MESITA-1697 — its surface (Home's Feed)
-    // gained a filter control, so consumer-web-list-catalog now cuts its pool
-    // with the guest's predicates instead of admitting on nothing. The mode
-    // KEY is still `catalog`; the label went Feed and back to Catalog when
-    // Feed left Home's rail (MESITA-2140).
-    expect(html).toContain("Mesita Catalog Search · Catalog · on");
-    expect(html).toContain("Mesita Places Flexible Search · Catalog · off");
+    // Browse and Flexible are gone (MESITA-2195). Catalog is the one door.
+    expect(html).toContain("Mesita Places Catalog Search · Catalog · on");
+    expect(html).toContain("Mesita Places Catalog Search · Scroll · on");
+    expect(html).toContain("Mesita Places Catalog Search · Chat · on");
+    expect(html).not.toContain("Browse Search");
+    expect(html).not.toContain("Flexible Search");
     expect(html).not.toContain("· Feed ·");
-    expect(html).toContain("Mesita Places Flexible Search · Scroll · on");
-    expect(html).toContain("Mesita Places Flexible Search · Chat · on");
     // Social lost its mode, not its retrieval: Catalog rails the events and
     // Chat is asked about them.
-    // The Socials rails are still Browse — no guest predicate reaches them.
-    expect(html).toContain("Mesita Socials Browse Search · Catalog · on");
-    expect(html).toContain("Mesita Socials Flexible Search · Chat · on");
-    // Places Browse kept its row when it lost its caller (MESITA-1856): the
-    // Sources page still renders its box, so the row is off for every mode
-    // rather than absent.
-    for (const mode of ["Word", "Map", "Catalog", "Scroll", "Chat", "Favorites"]) {
-      expect(html).toContain(`Mesita Places Browse Search · ${mode} · off`);
-      expect(html).not.toContain(`Mesita Places Browse Search · ${mode} · on`);
-    }
+    expect(html).toContain("Mesita Social Catalog Search · Catalog · on");
+    expect(html).toContain("Mesita Social Catalog Search · Chat · on");
     // THE THREE NESTED PLACE TYPES (MESITA-2158). Mesita Listed stays
     // retired: Mesita Places is a ready profile, not a row existing.
     expect(html).not.toContain("Mesita Listed");
@@ -72,7 +61,7 @@ describe("Discovery matrix", () => {
     expect(html).toContain("Places · Word · returned");
     expect(html).not.toContain("Places · Word · not returned");
     // Socials is the third Result Entity, and it rides the two modes that
-    // carry an event source. Spec-only: both Socials sources are Soon.
+    // call Mesita Social Catalog Search. Spec-only: that source is Soon.
     expect(html).toContain("Socials · Catalog · returned");
     expect(html).toContain("Socials · Chat · returned");
     for (const mode of ["Word", "Map", "Scroll", "Favorites"]) {

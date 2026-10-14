@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Compass, GalleryHorizontal, Layers, MapPin, PartyPopper, Sparkles, Type } from "lucide-react";
+import { GalleryHorizontal, MapPin, PartyPopper, Type } from "lucide-react";
 import { ConfigSoon } from "@/components/admin-ui/ConfigSoon";
 import { KnobState, SectionCard } from "@/components/admin-ui/config";
 import {
@@ -14,14 +14,10 @@ import {
   GENERAL_FLOOR_OWNER,
 } from "./source-floor-copy";
 
-// The six Mesita sources, in taxonomy order: the four over Places, then the
-// two over Socials.
+// The four Mesita sources, in taxonomy order: Name, Nearby, and Catalog over
+// Places, then Social Catalog.
 //
-// ONE RANKER, FOUR DOORS. All four Places sources hand their candidates to
-// the same Lineup blend under the calling mode's signal mask — what tells
-// them apart is what DRAWS the candidate set, never what orders it. A string
-// draws Name, a centre and a radius draw Nearby, nothing at all draws Browse,
-// and an arbitrary set of predicates draws Flexible.
+// Browse and Flexible are gone (Pato, 2026-10-13). Catalog is the one door.
 //
 // FLOORS (MESITA-1681). Name Search mirrors `general`: `fetchEmbedPool` in
 // consumer-search-lane.ts gates the `name_embedding` query with the same wipe
@@ -29,9 +25,10 @@ import {
 // Nearby Search owns `filters`, the listed-pool floor, and its effective cut
 // is max(filters, map) via listedMapFilters.
 //
-// The four Soon sources get a sentence, never a field. Pato, 2026-08-21: an
-// engine that does not exist gets its knobs DELETED from the markup, not
-// staged — and a field here would have to write another source's key.
+// Social Catalog is the one Soon source. It gets a sentence, never a field.
+// Pato, 2026-08-21: an engine that does not exist gets its knobs DELETED from
+// the markup, not staged — and a field here would have to write another
+// source's key.
 
 export function MesitaSourceCards({ seed }: { seed: FloorSeed }) {
   const g = seed.initialConfig.general;
@@ -76,28 +73,10 @@ export function MesitaSourceCards({ seed }: { seed: FloorSeed }) {
           <FiltersFloorOwner seed={seed} />
         </SectionCard>
       </div>
-      <div id="s-mesita-browse" className="scroll-mt-16">
-        <ConfigSoon
-          Icon={Layers}
-          title="Mesita Places Browse Search is coming soon"
-          body="No query at all — the catalog itself, railed by occupied Atlas categories and a sampled vibe bank. No mode calls it today: Catalog became Flexible when it grew a filter control. Browse is what an engine that rails the catalog on no guest input at all would be, which is why the Matrix keeps its row, off for every mode."
-          doc="Notion Docs › Discovery"
-          footer={<FloorSoonNote />}
-        />
-      </div>
-      <div id="s-mesita-flexible" className="scroll-mt-16">
-        <ConfigSoon
-          Icon={Compass}
-          title="Mesita Places Flexible Search is coming soon"
-          body="An arbitrary set of predicates in, ordered places out. Swipe hands it the guest's filters; Chat hands it whatever the question turned into. It is the general form the other three are special cases of."
-          doc="Notion Docs › Discovery"
-          footer={<FloorSoonNote />}
-        />
-      </div>
       <div id="s-mesita-catalog" className="scroll-mt-16">
         <SectionCard
           icon={<GalleryHorizontal className="text-primary h-4 w-4" />}
-          title="Mesita Catalog Search"
+          title="Mesita Places Catalog Search"
           subtitle="The catalog's retriever. Seven family lists share one ranking profile: Name, Description, Proximity, Popularity, Selected, and Randomness. Family and Enriched admit; they do not score. Timing is not in this profile."
           state={
             <KnobState
@@ -107,8 +86,8 @@ export function MesitaSourceCards({ seed }: { seed: FloorSeed }) {
           }
         >
           <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-            Used by Catalog. The exponents live on the Catalog tab, once,
-            and every list reads that same profile.
+            Used by Catalog, Scroll, and Chat. The exponents live on the
+            Catalog tab, once, and every list reads that same profile.
           </p>
           <Link
             href="/filters-config/catalog"
@@ -118,20 +97,11 @@ export function MesitaSourceCards({ seed }: { seed: FloorSeed }) {
           </Link>
         </SectionCard>
       </div>
-      <div id="s-social-browse" className="scroll-mt-16">
+      <div id="s-social-catalog" className="scroll-mt-16">
         <ConfigSoon
           Icon={PartyPopper}
-          title="Mesita Socials Browse Search is coming soon"
-          body="Events a place hosts, not places. Catalog rails them. Social lost its own mode, not its retrieval — there is still no events engine behind either Socials source."
-          doc="Notion Docs › Discovery"
-          footer={<FloorSoonNote />}
-        />
-      </div>
-      <div id="s-social-flexible" className="scroll-mt-16">
-        <ConfigSoon
-          Icon={Sparkles}
-          title="Mesita Socials Flexible Search is coming soon"
-          body="The same events under an arbitrary set of predicates, for when Chat is asked what is on tonight. Never merged into one list with places: an event and a place are different answers."
+          title="Mesita Social Catalog Search is coming soon"
+          body="Events a place hosts, not places. Catalog rails them and Chat is asked about them. Never one list with places. There is still no events engine."
           doc="Notion Docs › Discovery"
           footer={<FloorSoonNote />}
         />

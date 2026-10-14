@@ -10,7 +10,7 @@
 // (Pato, 2026-10-13). Mode → what it can answer with → sources it may call →
 // signals. The index opens the first tab, Search Sources. The matrix has
 // lived on its own page since MESITA-1675 moved it off Modes. The sources
-// tab says Search, not Discovery (Pato, 2026-09-02): all nine Sources are
+// tab says Search, not Discovery (Pato, 2026-09-02): all seven Sources are
 // searches, and the matrix band already read Search Sources. The route
 // stays /sources.
 //
@@ -24,7 +24,7 @@
 //             Mesita Places ⊃ Mesita Enriched Places; inner membership
 //             paints, it does not
 //             add pins. N is the GUEST's How many, not a console knob. Chat calls Text Search, Nearby, and
-//             the two Flexible sources. Favorites calls no source, and the
+//             both Catalog searches. Favorites calls no source, and the
 //             only ring it requires is Google Places — it is NOT gated on
 //             enrichment, because bookmarks may include unenriched Create
 //             stubs. Google category knobs live on Search
@@ -39,18 +39,18 @@
 //             The band lives in discovery-matrix.ts.
 //   SOURCES   the Search Sources subpage: Families strip (seven
 //             params, one list written onto Fast / Deep / Map) ·
-//             the three Google Places searches · the four Mesita Places
-//             searches (Name · Nearby · Browse · Flexible) · the two Mesita
-//             Socials searches (Browse · Flexible). Mesita Places Name and
+//             the three Google Places searches · the three Mesita Places
+//             searches (Name · Nearby · Catalog) · Mesita Social Catalog
+//             Search. Browse and Flexible are gone. Mesita Places Name and
 //             Nearby are live without knobs of their own — their counts sit
-//             on the Word and Map mode boxes — so the four Soon boxes are
-//             Browse, Flexible, and both Socials ones. The source list and
+//             on the Word and Map mode boxes. Social Catalog is the one Soon
+//             box. The source list and
 //             each mode's locked sources live in discovery-matrix.ts.
 //   SIGNALS   seven earned signals: Name · Category · Proximity · Timing ·
 //             Enriched · Popularity · Randomness. None reads money.
 //             Partnership and Promotion merged into Mesita Level and Social
 //             left the library (MESITA-1408); Social then left the mode list
-//             too, and is now two Sources. Mesita Level is Enriched now
+//             too, and is now Mesita Social Catalog Search. Mesita Level is Enriched now
 //             (MESITA-1858), and an old blob's `mesita_level` folds onto it.
 //             Summary left at MESITA-2144: no caller ever built its query
 //             vector, so it scored every place 1 and could reorder nothing.

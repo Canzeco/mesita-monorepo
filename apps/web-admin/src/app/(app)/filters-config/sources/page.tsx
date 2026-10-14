@@ -4,13 +4,15 @@ import { MesitaSourceCards } from "../MesitaSourceCards";
 import { getDiscoveryConfig } from "../actions";
 import { DEFAULT_CONFIG } from "../catalog";
 
-// Search Sources — the nine searches: three Google Places, four Mesita
-// Places, two Mesita Socials, after the shared Families strip.
-// NINE BOXES AND NOTHING ELSE (Pato, 2026-09-08). Every quality floor now
-// lives INSIDE the source it cuts, so the standalone floor cards are gone.
+// Search Sources — the seven searches: three Google Places, three Mesita
+// Places (Name · Nearby · Catalog), one Mesita Social Catalog, after the
+// shared Families strip.
+// SEVEN BOXES AND NOTHING ELSE (Pato, 2026-10-13). Browse and Flexible are
+// gone. Every quality floor now lives INSIDE the source it cuts, so the
+// standalone floor cards are gone.
 // One box owns each key and the rest mirror it read-only — see SourceFloor.
 // The Families strip stays a header above the three Google boxes: it
-// is a shared battery, not a source, so it does not spend one of the nine.
+// is a shared battery, not a source, so it does not spend one of the seven.
 //
 // Signals moved to the Matrix subpage (MESITA-1675): they rank what a
 // source returns, which is not the same question as which sources exist.
@@ -18,7 +20,7 @@ import { DEFAULT_CONFIG } from "../catalog";
 // `GeneralConfigClient`, which shared a name with the General box on Modes —
 // the post-Google wipe, a different thing entirely (MESITA-1695).
 //
-// THE PAGE IS SEARCH SOURCES (Pato, 2026-09-02). Every one of the nine is a
+// THE PAGE IS SEARCH SOURCES (Pato, 2026-09-02). Every one of the seven is a
 // search, which is what the matrix band already called this set.
 // The route stays /sources: the entity is Source, the page label says what
 // kind. Modes stays Discovery Modes — a mode is a surface, not a search.
