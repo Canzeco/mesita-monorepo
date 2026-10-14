@@ -1,16 +1,19 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import { enrichmentRun } from "./start-enrichment.ts";
 
-Deno.test("one place starts enrichSingle", () => {
-  assertEquals(enrichmentRun(["place-1"]), {
+const ONE = { placeId: "place-1", googlePlaceId: "ChIJ-1" };
+const TWO = { placeId: "place-2", googlePlaceId: "ChIJ-2" };
+
+Deno.test("one place starts enrichSingle with its Google id", () => {
+  assertEquals(enrichmentRun([ONE]), {
     task: "mesita-monorepo/enrichSingle",
-    input: ["place-1"],
+    input: [ONE],
   });
 });
 
 Deno.test("a list starts one enrichMultiple", () => {
-  assertEquals(enrichmentRun(["place-1", "place-2"]), {
+  assertEquals(enrichmentRun([ONE, TWO]), {
     task: "mesita-monorepo/enrichMultiple",
-    input: [["place-1", "place-2"]],
+    input: [[ONE, TWO]],
   });
 });
