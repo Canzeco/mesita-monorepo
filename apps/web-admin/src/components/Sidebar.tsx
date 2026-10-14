@@ -65,14 +65,14 @@ export const MANAGE_NAV: NavItem[] = [
   DB_PARENT,
   MULTIPLE_PLACES_PARENT,
   SINGLE_PLACE_PARENT,
-  FAMILIES_PARENT,
 ];
 
-// Configurations — exactly five rows (Pato, MESITA-2083: "Models, Creation,
-// Enrichment, Discovery, Reservations — Only those"), ordered as the product
-// flows: which model each subsystem thinks with, then a place's life on Crenup
-// (Creation, then Enrichment), then a guest's night (how they find a place,
-// how they book it).
+// Configurations — six rows. Models, then Families (the read-only map of
+// Google categories, Mesita families, and Mesita categories), then Creation,
+// Enrichment, Discovery, Reservations. Families left Manage for this rail
+// (Pato, 2026-10-13). The rest stays the MESITA-2083 order: which model each
+// subsystem thinks with, then a place's life (Creation, then Enrichment),
+// then a guest's night (how they find a place, how they book it).
 //
 // Visits (with Ojo and Visits Rewards), Orders and Payments were off-rail
 // pages until MESITA-2088 deleted them: the MVP has no Second Stage.
@@ -98,6 +98,8 @@ export const MANAGE_NAV: NavItem[] = [
 export const CONFIGURATIONS_NAV: NavItem[] = [
   // Models — four platform picks. /general-config redirects here (MESITA-1788).
   MODELS_PARENT,
+  // Taxonomy. Read-only. Not a Discovery tab.
+  FAMILIES_PARENT,
   // Crenup's two halves.
   CREATION_PARENT,
   ENRICHMENT_PARENT,

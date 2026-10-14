@@ -5,12 +5,12 @@ import { CONFIGURATIONS_NAV, MANAGE_NAV } from "./Sidebar";
 
 const APP = join(__dirname, "..", "app", "(app)");
 
-// Pato, MESITA-2083: "Models, Creation, Enrichment, Discovery, Reservations —
-// Only those". Order and count are the instruction.
+// Models, then Families, then the MESITA-2083 order.
 describe("Configurations rail", () => {
-  it("is exactly Models · Creation · Enrichment · Discovery · Reservations", () => {
+  it("is exactly Models · Families · Creation · Enrichment · Discovery · Reservations", () => {
     expect(CONFIGURATIONS_NAV.map((i) => i.label)).toEqual([
       "Models",
+      "Families",
       "Creation",
       "Enrichment",
       "Discovery",
@@ -25,7 +25,7 @@ describe("Configurations rail", () => {
     for (const a of hrefs)
       for (const b of hrefs)
         if (a !== b) expect(b.startsWith(`${a}/`), `${a} lights on ${b}`).toBe(false);
-    for (const href of ["/enricher-config/creation", "/enricher-config/enrichment"])
+    for (const href of ["/enricher-config/creation", "/enricher-config/enrichment", "/families"])
       expect(existsSync(join(APP, ...href.split("/").filter(Boolean), "page.tsx")), href).toBe(true);
   });
 });
@@ -33,13 +33,12 @@ describe("Configurations rail", () => {
 // Pato, MESITA-2084, on the rail with Places highlighted: "Multiple Places /
 // Single Place". Many then one, after the two wider records.
 describe("Manage rail", () => {
-  it("is exactly Admins · Database · Multiple Places · Single Place · Families", () => {
+  it("is exactly Admins · Database · Multiple Places · Single Place", () => {
     expect(MANAGE_NAV.map((i) => i.label)).toEqual([
       "Admins",
       "Database",
       "Multiple Places",
       "Single Place",
-      "Families",
     ]);
   });
 
@@ -49,7 +48,7 @@ describe("Manage rail", () => {
     for (const a of hrefs)
       for (const b of hrefs)
         if (a !== b) expect(b.startsWith(`${a}/`), `${a} lights on ${b}`).toBe(false);
-    for (const href of ["/manage-multiple", "/manage-single", "/families"])
+    for (const href of ["/manage-multiple", "/manage-single"])
       expect(existsSync(join(APP, ...href.split("/").filter(Boolean), "page.tsx")), href).toBe(true);
   });
 });
