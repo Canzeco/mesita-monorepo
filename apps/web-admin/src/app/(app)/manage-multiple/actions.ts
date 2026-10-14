@@ -253,28 +253,30 @@ export async function deletePlace(placeId: string): Promise<Result<true>> {
 
 // ── Crenup ───────────────────────────────────────────────────────────────
 
-// Re-enrichment depth. The three steps are first, second, third.
-//   fill   → complete steps that have not landed
-//   full   → first, second, third, from a fresh fetch
-//   second → second then third, reusing the first step's payload
-//   third  → third only, reusing both stored payloads
+// Kept so existing callers still type-check. The workflow runs the whole
+// enrichment; it does not resume a stage.
 export type ReenrichMode = "fill" | "full" | "second" | "third";
 
-// Manually re-run the Enricher pipeline for one place. Re-seeds place_research
-// to the stage implied by `mode`; the cron poller takes it from there. Runs
-// ASYNC — the batch row reports the trigger, not the finish.
-export async function enrichPlace(
-  placeId: string,
-  mode: ReenrichMode = "fill",
-  overwrite: string[] = [],
-): Promise<Result<true>> {
-  // Wire key stays `projectId` — admin-web-enrich-place's MESITA-26 alias.
+// Start enrichment. One place starts enrichSingle. A list starts enrichMultiple
+// once, and the workflow decides how many run at once. The row reports the
+// start, not the finish.
+export async function enrichPlaces(placeIds: string[]): Promise<Result<true>> {
+  const ids = placeIds.map((id) => id.trim()).filter(Boolean);
+  if (ids.length === 0) return { ok: false, error: "Missing placeId" };
   const r = await efInvoke<{ enrichmentTriggered: boolean }>(
     "admin-web-enrich-place",
-    { projectId: placeId, mode, overwrite },
+    ids.length === 1 ? { projectId: ids[0] } : { placeIds: ids },
   );
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: true };
+}
+
+export async function enrichPlace(
+  placeId: string,
+  _mode: ReenrichMode = "fill",
+  _overwrite: string[] = [],
+): Promise<Result<true>> {
+  return enrichPlaces([placeId]);
 }
 
 // ── Name searches (Single Place › Find, MESITA-2116 · MESITA-2124) ───────
