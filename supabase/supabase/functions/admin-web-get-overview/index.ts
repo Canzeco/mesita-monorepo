@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
       .maybeSingle(),
     admin
       .from("place_profiles")
-      .select("enrichment, reviews_state")
+      .select("enrichment, google_found, instagram_found, facebook_found")
       .eq("id", placeId)
       .maybeSingle(),
     fetchPlaceCategories(admin),
@@ -162,7 +162,9 @@ Deno.serve(async (req) => {
     enrich_functions: operatorFunctionStates(
       enrichmentMap.functions as Partial<Record<string, FunctionState>>,
     ),
-    reviews_state: (enrichmentRow.data as { reviews_state?: unknown } | null)?.reviews_state ?? null,
+    google_found: (enrichmentRow.data as { google_found?: boolean } | null)?.google_found === true,
+    instagram_found: (enrichmentRow.data as { instagram_found?: boolean } | null)?.instagram_found === true,
+    facebook_found: (enrichmentRow.data as { facebook_found?: boolean } | null)?.facebook_found === true,
   };
 
   const profile = {

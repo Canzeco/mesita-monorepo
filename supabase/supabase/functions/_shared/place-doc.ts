@@ -66,8 +66,6 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { nullable } from "./doc-schema.ts";
 import { GoogleReviewsSchema, PopularTimesSchema } from "./place-jsonb-schemas.ts";
 import { EnrichmentMapSchema } from "./schema-catalog.ts";
-import { parseReviewsState } from "./reviews-state.ts";
-
 // ── PlaceProfileRow — the full `place_profiles` row shape ──────────────────────────────────
 
 /** How a guest reaches the place on Reservations (Pato 2026-08-25). */
@@ -148,8 +146,12 @@ export type PlaceProfileRow = {
   mesita_name: string | null;
   /** MESITA-1249: the materialized meter — see EnrichmentMapSchema. */
   enrichment: unknown;
-  /** MESITA-2183: per-source reviews reload. Not an enrichment fact. */
-  reviews_state: unknown;
+  /** MESITA-2189: the Google place id resolved. Not an enrichment fact. */
+  google_found: boolean;
+  /** MESITA-2189: a live Instagram profile came back. */
+  instagram_found: boolean;
+  /** MESITA-2189: a Facebook page came back. */
+  facebook_found: boolean;
   reservation_channel: ServingChannel | null;
   reservation_target: string | null;
   business_state: "OPERATIONAL" | "CLOSED_TEMPORARILY" | "CLOSED_PERMANENTLY" | null;
@@ -210,7 +212,9 @@ export const PLACE_PROFILE_PATCH_KEYS = [
   "google_name",
   "mesita_name",
   "enrichment",
-  "reviews_state",
+  "google_found",
+  "instagram_found",
+  "facebook_found",
   "reservation_channel",
   "reservation_target",
   "business_state",
@@ -344,7 +348,6 @@ const PLACE_SCHEMA_JSON_KEYS: Record<string, { parse(v: unknown): { ok: boolean;
   popular_times: nullable(PopularTimesSchema),
   // NOT nullable — place_profiles.enrichment is NOT NULL with a default (MESITA-1249).
   enrichment: EnrichmentMapSchema,
-  reviews_state: { parse: parseReviewsState },
 };
 const PLACE_STRING_ARRAY_KEYS = new Set<string>(["photos", "tags"]);
 // NOT NULL boolean column, default true (MESITA-1799). It joined
@@ -353,7 +356,12 @@ const PLACE_STRING_ARRAY_KEYS = new Set<string>(["photos", "tags"]);
 // the WHOLE patch was rejected (latent until the 2026-08-29 EF redeploy sweep
 // put the door in front of the live contents publish; caught and fixed the
 // same day).
-const PLACE_PROFILE_BOOLEAN_KEYS = new Set<string>(["reservations_enabled"]);
+const PLACE_PROFILE_BOOLEAN_KEYS = new Set<string>([
+  "reservations_enabled",
+  "google_found",
+  "instagram_found",
+  "facebook_found",
+]);
 const BUSINESS_STATE_VALUES = new Set(["OPERATIONAL", "CLOSED_TEMPORARILY", "CLOSED_PERMANENTLY"]);
 
 function checkPlaceProfileField(key: string, v: unknown): string | null {

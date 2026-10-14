@@ -7,14 +7,8 @@ import { reloadPlaceReviews } from "../actions";
 import { SectionCard } from "@/components/admin-ui/manage";
 import { usePlaceContext } from "../PlaceContext";
 
-// Reviews tab (MESITA-2183). Read-only numbers. Each tile reloads from its
-// own link and that reload is the only fetch. Enrichment does not own this.
-
-type SourceState = {
-  status: "empty" | "ready" | "failed";
-  fetched_at: string | null;
-  error: string | null;
-};
+// Reviews tab. Read-only numbers. Each tile reloads its own source through
+// the shared verifier. A profile save of a link already waited for it.
 
 function num(v: unknown): number | null {
   if (typeof v === "number" && Number.isFinite(v)) return v;
@@ -33,37 +27,6 @@ function compact(n: number): string {
 
 function reviewWord(n: number): string {
   return `${compact(n)} review${n === 1 ? "" : "s"}`;
-}
-
-function sourceState(raw: unknown, name: ReviewsReloadSource, hasNumber: boolean): SourceState {
-  const blob = raw && typeof raw === "object" ? (raw as Record<string, unknown>)[name] : null;
-  if (blob && typeof blob === "object") {
-    const row = blob as Record<string, unknown>;
-    const status = row.status;
-    if (status === "empty" || status === "ready" || status === "failed") {
-      return {
-        status,
-        fetched_at: typeof row.fetched_at === "string" ? row.fetched_at : null,
-        error: typeof row.error === "string" ? row.error : null,
-      };
-    }
-  }
-  return hasNumber
-    ? { status: "ready", fetched_at: null, error: null }
-    : { status: "empty", fetched_at: null, error: null };
-}
-
-function age(iso: string | null): string | null {
-  if (!iso) return null;
-  const t = Date.parse(iso);
-  if (!Number.isFinite(t)) return null;
-  const mins = Math.round((Date.now() - t) / 60_000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.round(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.round(hrs / 24);
-  return `${days}d ago`;
 }
 
 function Stars({ value }: { value: number }) {
@@ -129,9 +92,10 @@ export function ReviewsSummary() {
       google_review_count: r.data.google_review_count,
       instagram_followers_count: r.data.instagram_followers_count,
       facebook_followers: r.data.facebook_followers,
-      reviews_state: r.data.reviews_state,
+      google_found: r.data.google_found,
+      instagram_found: r.data.instagram_found,
+      facebook_found: r.data.facebook_found,
     }));
-    if (r.data.failed && r.data.error) setNote(r.data.error);
   }
 
   return (
@@ -149,7 +113,7 @@ export function ReviewsSummary() {
           label="Instagram"
           followers={num(place.instagram_followers_count)}
           linked={!!place.instagram_url?.trim()}
-          state={sourceState(place.reviews_state, "instagram", num(place.instagram_followers_count) != null)}
+          found={place.instagram_found === true}
           busy={busy === "instagram"}
           onReload={() => reload("instagram")}
         />
@@ -157,7 +121,7 @@ export function ReviewsSummary() {
           label="Facebook"
           followers={num(place.facebook_followers)}
           linked={!!place.facebook_url?.trim()}
-          state={sourceState(place.reviews_state, "facebook", num(place.facebook_followers) != null)}
+          found={place.facebook_found === true}
           busy={busy === "facebook"}
           onReload={() => reload("facebook")}
         />
@@ -179,17 +143,17 @@ function GoogleTile({
   const stars = num(place.google_stars_overall);
   const count = num(place.google_review_count);
   const armed = !!place.google_place_id?.trim();
-  const state = sourceState(place.reviews_state, "google", stars != null || count != null);
-  const show = state.status !== "empty" && (stars != null || count != null);
+  const found = place.google_found === true;
+  const show = found && (stars != null || count != null);
   const hint = !armed
     ? "This place has no Google place id"
-    : state.status === "failed"
-    ? (state.error ?? "Couldn't reload. Try again.")
-    : !show
-    ? "Reload to fetch the score."
+    : !found
+    ? "Not found."
     : count != null && count > 0
-    ? `${reviewWord(count)} · ${age(state.fetched_at) ?? "on file"}`
-    : (age(state.fetched_at) ? `updated ${age(state.fetched_at)}` : "on file");
+    ? reviewWord(count)
+    : stars != null
+    ? "on file"
+    : "Found. No rating.";
   return (
     <Tile
       label="Google"
@@ -208,25 +172,25 @@ function SocialTile({
   label,
   followers,
   linked,
-  state,
+  found,
   busy,
   onReload,
 }: {
   label: string;
   followers: number | null;
   linked: boolean;
-  state: SourceState;
+  found: boolean;
   busy: boolean;
   onReload: () => void;
 }) {
-  const showNumber = state.status !== "empty" && followers != null;
+  const showNumber = found && followers != null;
   const hint = !linked
     ? `Add a ${label} link on Profile`
-    : state.status === "failed"
-    ? (state.error ?? "Couldn't reload. Try again.")
-    : !showNumber
-    ? "Saved link. Reload to fetch followers."
-    : `followers · ${age(state.fetched_at) ?? "on file"}`;
+    : !found
+    ? "Not found."
+    : showNumber
+    ? "followers"
+    : "Found. No follower count.";
   return (
     <Tile
       label={label}

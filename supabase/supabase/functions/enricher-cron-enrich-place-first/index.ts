@@ -67,7 +67,14 @@ import {
 } from "../_shared/enrich-corrections.ts";
 import { gatherSerpSummary } from "../_shared/enrich-serp.ts";
 import { gatherInstagram, type InstagramResult } from "../_shared/enrich-instagram.ts";
-import { type FacebookResult, gatherFacebook } from "../_shared/enrich-facebook.ts";
+import { type FacebookResult } from "../_shared/enrich-facebook.ts";
+import {
+  emptyReviewMetrics,
+  gatheredReview,
+  googleMetricsFromDetails,
+  verifyFacebook,
+  type GatheredReview,
+} from "../_shared/review-sources.ts";
 import { writePlace } from "../_shared/place-doc.ts";
 import { omitReviewsTileColumns } from "../_shared/reviews-state.ts";
 import {
@@ -193,7 +200,8 @@ serveEnrichStage("first", async (admin, _env, row) => {
   chargeGoogleSpine(ledger, basics.photos.length);
 
   const sources: Record<string, unknown> = {};
-  // Tile columns belong to the reviews reload, not this gather (MESITA-2183).
+  // Stars and follower counts are the verifier's. They ride on
+  // sources.reviews, not on this place blob (MESITA-2189).
   const place: Record<string, unknown> = omitReviewsTileColumns({ ...basics });
   // Search term for SERP / channel discovery: always the Google label, since
   // that is what the rest of the web indexes this place under.
@@ -473,6 +481,7 @@ serveEnrichStage("first", async (admin, _env, row) => {
 
   let ig: InstagramResult | null = null;
   let fb: FacebookResult | null = null;
+  let facebookReview: GatheredReview | null = null;
   await Promise.all([
     (async () => {
       if (!runInstagram) return;
@@ -489,7 +498,15 @@ serveEnrichStage("first", async (admin, _env, row) => {
     })(),
     (async () => {
       if (!runFacebook) return;
-      fb = await gatherFacebook({ apifyKey: APIFY_KEY!, facebookUrl: resolvedFacebook! });
+      const verified = await verifyFacebook(resolvedFacebook!, APIFY_KEY!);
+      facebookReview = gatheredReview(resolvedFacebook!, verified);
+      fb = {
+        fbFollowers: verified.found ? verified.metrics.facebook_followers : null,
+        diag: {
+          ok: verified.found,
+          ...(verified.reason ? { error: verified.reason } : {}),
+        },
+      };
     })(),
   ]);
   const igR = ig as InstagramResult | null;
@@ -530,6 +547,37 @@ serveEnrichStage("first", async (admin, _env, row) => {
     place.instagram_url = resolvedInstagram;
     sources.instagram_fallback = { attached_unverified: true, url: resolvedInstagram };
   }
+
+  // Reviews facts ride along with the links. They are not a ladder step.
+  // Third writes the flag and the numbers from this block. Google uses the
+  // Details response already in hand — no second Places call.
+  const reviewsGathered: Record<string, GatheredReview> = {};
+  if (runDetails) {
+    reviewsGathered.google = {
+      found: true,
+      metrics: googleMetricsFromDetails({
+        rating: basics.google_stars_overall,
+        userRatingCount: basics.google_review_count,
+      }),
+    };
+  }
+  if (igR?.verifiedInstagramUrl) {
+    reviewsGathered.instagram = {
+      url: igR.verifiedInstagramUrl,
+      found: true,
+      metrics: {
+        ...emptyReviewMetrics(),
+        instagram_followers_count: igR.igFollowers,
+      },
+    };
+  } else if (igUnverifiedFallback && resolvedInstagram) {
+    reviewsGathered.instagram = gatheredReview(resolvedInstagram, {
+      found: false,
+      metrics: emptyReviewMetrics(),
+    });
+  }
+  if (facebookReview) reviewsGathered.facebook = facebookReview;
+  if (Object.keys(reviewsGathered).length > 0) sources.reviews = reviewsGathered;
 
   // The beacon reports actual gather success, not mere "the call returned"
   // (fbR exists even when the page scrape failed).

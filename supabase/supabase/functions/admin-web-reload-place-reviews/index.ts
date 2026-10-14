@@ -1,34 +1,33 @@
-// Supabase Edge Function — admin-web-reload-place-reviews (MESITA-2183)
+// Supabase Edge Function — admin-web-reload-place-reviews (MESITA-2189)
 //
-// One source, one click. Writes that source's tile columns and reviews_state.
-// Does not touch place_research, enriched_at, photos, or google_reviews.
+// One source, one click. Calls the shared verifier and writes that
+// source's found flag and numbers. Does not touch place_research,
+// enriched_at, photos, or google_reviews. Keeps no fetch of its own.
 //
-//   instagram  saved instagram_url → follower count, no posts
+//   instagram  saved instagram_url → follower count
 //   facebook   saved facebook_url  → follower count
 //   google     google_place_id     → Places rating + userRatingCount
 //
-// A failed read keeps the previous number and marks the source failed.
-// No link is 400 and writes nothing.
+// A technical failure is not found: the flag is false and the numbers
+// are nulled. The reason stays in the verifier's log. No link is 400
+// and writes nothing.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, readPlaceIdAlias, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv, requireSuperAdmin } from "../_shared/auth.ts";
 import { writePlace } from "../_shared/place-doc.ts";
-import { gatherFacebook } from "../_shared/enrich-facebook.ts";
-import { scrapeInstagramFollowers } from "../_shared/social-followers.ts";
-import { GOOGLE_PLACES_DETAILS_BASE, readGooglePlacesKey } from "../_shared/google-places.ts";
 import {
-  failedReviewSource,
-  normalizeReviewsState,
-  readyReviewSource,
-  withReviewSource,
-  type ReviewSourceName,
-  type ReviewSourceState,
-} from "../_shared/reviews-state.ts";
+  reviewSourcePatch,
+  verifyFacebook,
+  verifyGoogle,
+  verifyInstagram,
+  type ReviewVerify,
+} from "../_shared/review-sources.ts";
 
-const SOURCES = new Set<ReviewSourceName>(["google", "instagram", "facebook"]);
+const SOURCES = new Set(["google", "instagram", "facebook"]);
 
 type Body = { placeId?: string; projectId?: string; source?: string };
+type SourceName = "google" | "instagram" | "facebook";
 
 type PlaceRow = {
   id: string;
@@ -39,7 +38,9 @@ type PlaceRow = {
   google_review_count: number | null;
   instagram_followers_count: number | null;
   facebook_followers: number | null;
-  reviews_state: unknown;
+  google_found: boolean;
+  instagram_found: boolean;
+  facebook_found: boolean;
 };
 
 Deno.serve(async (req) => {
@@ -60,7 +61,7 @@ Deno.serve(async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const placeId = readPlaceIdAlias(bodyRes.body);
   if (!placeId) return json({ ok: false, error: "Missing placeId" }, 400);
-  const source = (bodyRes.body.source ?? "").toString().trim() as ReviewSourceName;
+  const source = (bodyRes.body.source ?? "").toString().trim() as SourceName;
   if (!SOURCES.has(source)) {
     return json({ ok: false, error: "source must be google, instagram, or facebook" }, 400);
   }
@@ -68,7 +69,7 @@ Deno.serve(async (req) => {
   const { data, error } = await admin
     .from("place_profiles")
     .select(
-      "id, google_place_id, instagram_url, facebook_url, google_stars_overall, google_review_count, instagram_followers_count, facebook_followers, reviews_state",
+      "id, google_place_id, instagram_url, facebook_url, google_stars_overall, google_review_count, instagram_followers_count, facebook_followers, google_found, instagram_found, facebook_found",
     )
     .eq("id", placeId)
     .maybeSingle();
@@ -79,17 +80,8 @@ Deno.serve(async (req) => {
   const linkError = unlinked(source, place);
   if (linkError) return json({ ok: false, code: "unlinked", error: linkError }, 400);
 
-  const fetched = await fetchSource(source, place);
-  const previous = normalizeReviewsState(place.reviews_state);
-  const now = new Date().toISOString();
-  const nextSource: ReviewSourceState = fetched.ok
-    ? readyReviewSource(now)
-    : failedReviewSource(previous[source], fetched.error);
-  const reviewsState = withReviewSource(previous, source, nextSource);
-
-  const patch: Record<string, unknown> = { reviews_state: reviewsState };
-  if (fetched.ok) Object.assign(patch, fetched.columns);
-
+  const result = await verifySource(source, place);
+  const patch = reviewSourcePatch({ source, result });
   const written = await writePlace(admin, {
     table: "place_profiles",
     mode: "update",
@@ -101,25 +93,26 @@ Deno.serve(async (req) => {
   return json({
     ok: true,
     source,
-    failed: !fetched.ok,
-    error: fetched.ok ? null : fetched.error,
-    google_stars_overall: "google_stars_overall" in patch
-      ? patch.google_stars_overall
-      : place.google_stars_overall,
-    google_review_count: "google_review_count" in patch
-      ? patch.google_review_count
-      : place.google_review_count,
-    instagram_followers_count: "instagram_followers_count" in patch
-      ? patch.instagram_followers_count
-      : place.instagram_followers_count,
-    facebook_followers: "facebook_followers" in patch
-      ? patch.facebook_followers
-      : place.facebook_followers,
-    reviews_state: reviewsState,
+    google_stars_overall: numberOr(patch.google_stars_overall, place.google_stars_overall),
+    google_review_count: numberOr(patch.google_review_count, place.google_review_count),
+    instagram_followers_count: numberOr(patch.instagram_followers_count, place.instagram_followers_count),
+    facebook_followers: numberOr(patch.facebook_followers, place.facebook_followers),
+    google_found: flagOr(patch.google_found, place.google_found),
+    instagram_found: flagOr(patch.instagram_found, place.instagram_found),
+    facebook_found: flagOr(patch.facebook_found, place.facebook_found),
   });
 });
 
-function unlinked(source: ReviewSourceName, place: PlaceRow): string | null {
+function numberOr(next: unknown, prev: number | null): number | null {
+  if (next === null) return null;
+  return typeof next === "number" ? next : prev;
+}
+
+function flagOr(next: unknown, prev: boolean): boolean {
+  return typeof next === "boolean" ? next : prev;
+}
+
+function unlinked(source: SourceName, place: PlaceRow): string | null {
   if (source === "instagram" && !place.instagram_url?.trim()) {
     return "Add an Instagram link on Profile";
   }
@@ -132,62 +125,8 @@ function unlinked(source: ReviewSourceName, place: PlaceRow): string | null {
   return null;
 }
 
-type FetchResult =
-  | { ok: true; columns: Record<string, number> }
-  | { ok: false; error: string };
-
-async function fetchSource(source: ReviewSourceName, place: PlaceRow): Promise<FetchResult> {
-  if (source === "instagram") {
-    const key = Deno.env.get("APIFY_KEY")?.trim();
-    if (!key) return { ok: false, error: "No Apify key configured." };
-    const count = await scrapeInstagramFollowers(key, place.instagram_url);
-    if (count == null) return { ok: false, error: "Couldn't reload. Try again." };
-    return { ok: true, columns: { instagram_followers_count: count } };
-  }
-  if (source === "facebook") {
-    const key = Deno.env.get("APIFY_KEY")?.trim();
-    if (!key) return { ok: false, error: "No Apify key configured." };
-    const fb = await gatherFacebook({ apifyKey: key, facebookUrl: place.facebook_url! });
-    if (fb.diag.ok !== true || fb.fbFollowers == null) {
-      return { ok: false, error: "Couldn't reload. Try again." };
-    }
-    return { ok: true, columns: { facebook_followers: fb.fbFollowers } };
-  }
-  const key = readGooglePlacesKey();
-  if (!key.ok) return { ok: false, error: "Google Places is not configured." };
-  return fetchGoogleScore(place.google_place_id!, key.key);
-}
-
-async function fetchGoogleScore(placeId: string, apiKey: string): Promise<FetchResult> {
-  let response: Response;
-  try {
-    response = await fetch(
-      `${GOOGLE_PLACES_DETAILS_BASE}/${encodeURIComponent(placeId)}?languageCode=es-MX&regionCode=MX`,
-      {
-        headers: {
-          "X-Goog-Api-Key": apiKey,
-          "X-Goog-FieldMask": "rating,userRatingCount",
-        },
-      },
-    );
-  } catch {
-    return { ok: false, error: "Couldn't reload. Try again." };
-  }
-  if (!response.ok) return { ok: false, error: "Couldn't reload. Try again." };
-  const body = await response.json().catch(() => null) as {
-    rating?: unknown;
-    userRatingCount?: unknown;
-  } | null;
-  const stars = typeof body?.rating === "number" && body.rating >= 0 && body.rating <= 5
-    ? body.rating
-    : null;
-  const count = typeof body?.userRatingCount === "number" &&
-      Number.isInteger(body.userRatingCount) && body.userRatingCount >= 0
-    ? body.userRatingCount
-    : null;
-  if (stars == null && count == null) return { ok: false, error: "Google returned no rating." };
-  const columns: Record<string, number> = {};
-  if (stars != null) columns.google_stars_overall = stars;
-  if (count != null) columns.google_review_count = count;
-  return { ok: true, columns };
+function verifySource(source: SourceName, place: PlaceRow): Promise<ReviewVerify> {
+  if (source === "instagram") return verifyInstagram(place.instagram_url);
+  if (source === "facebook") return verifyFacebook(place.facebook_url);
+  return verifyGoogle(place.google_place_id);
 }

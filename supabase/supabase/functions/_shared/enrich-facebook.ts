@@ -1,7 +1,8 @@
 // Atlas source — Apify Facebook page (followers). Social-layer.
+// The scrape itself is the shared verifier. This shape is what First's
+// beacon still reads.
 
-import { APIFY_ACTORS, runApifyActor } from "./apify.ts";
-import { numOf } from "./parse-utils.ts";
+import { verifyFacebook } from "./review-sources.ts";
 
 export type FacebookResult = {
   fbFollowers: number | null;
@@ -12,18 +13,12 @@ export async function gatherFacebook(opts: {
   apifyKey: string;
   facebookUrl: string;
 }): Promise<FacebookResult> {
-  const run = await runApifyActor<Record<string, unknown>>(
-    APIFY_ACTORS.facebookPages,
-    { startUrls: [{ url: opts.facebookUrl }] },
-    opts.apifyKey,
-  );
-  const p = run.items?.[0];
-  if (!p) {
-    return {
-      fbFollowers: null,
-      diag: { ok: false, ...(run.error ? { status: run.status, error: run.error } : {}) },
-    };
-  }
-  const fbFollowers = numOf(p.followers) ?? numOf(p.likes);
-  return { fbFollowers, diag: { ok: true } };
+  const verified = await verifyFacebook(opts.facebookUrl, opts.apifyKey);
+  return {
+    fbFollowers: verified.found ? verified.metrics.facebook_followers : null,
+    diag: {
+      ok: verified.found,
+      ...(verified.reason ? { error: verified.reason } : {}),
+    },
+  };
 }
