@@ -5,7 +5,7 @@ import {
   catalogueList,
   enrichmentMark,
   mergeFindResults,
-  reviewNumbers,
+  reviewFound,
   type FindInputs,
   type TextSearchResult,
 } from "./find-results";
@@ -194,17 +194,21 @@ describe("mergeFindResults", () => {
     expect(enrichmentMark(hit({}), "details")).toBe("unknown");
   });
 
-  it("prefers the catalogue's review numbers over Text Search", () => {
+  it("reads Found off the Mesita row and dashes a Google-only row", () => {
     expect(
-      reviewNumbers({
-        placeHit: hit({ google_stars_overall: 3.8, google_review_count: 474 }),
-        rating: 4.7,
-        reviews: 266,
+      reviewFound({
+        placeHit: hit({
+          google_found: true,
+          instagram_found: false,
+          facebook_found: true,
+        }),
       }),
-    ).toEqual({ stars: 3.8, count: 474 });
-    expect(
-      reviewNumbers({ placeHit: null, rating: 4.7, reviews: 266 }),
-    ).toEqual({ stars: 4.7, count: 266 });
+    ).toEqual({ google_found: true, instagram_found: false, facebook_found: true });
+    expect(reviewFound({ placeHit: null })).toEqual({
+      google_found: null,
+      instagram_found: null,
+      facebook_found: null,
+    });
   });
 
   it("is empty when every source is empty", () => {

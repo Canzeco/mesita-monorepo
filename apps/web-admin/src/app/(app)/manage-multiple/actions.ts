@@ -63,6 +63,11 @@ export type PlaceHit = {
   zone: string | null;
   google_stars_overall: number | null;
   google_review_count: number | null;
+  /** Reviews states. Yes when that source resolved. Display numbers stay
+   *  off this type's state columns. */
+  google_found: boolean;
+  instagram_found: boolean;
+  facebook_found: boolean;
   content_state: string | null;
   // ── The state facts (labels: Created · Pulsing · Disabled · Requested ·
   //    Enriching · Enriched). Bools except Requested (0…n). All derived (or
@@ -132,6 +137,9 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
       typeof raw.google_stars_overall === "number" ? raw.google_stars_overall : null,
     google_review_count:
       typeof raw.google_review_count === "number" ? raw.google_review_count : null,
+    google_found: raw.google_found === true,
+    instagram_found: raw.instagram_found === true,
+    facebook_found: raw.facebook_found === true,
     content_state: contentState,
     enriching: contentState === "generating",
     enriched: isEnrichedPlace(raw),

@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 const here = __dirname;
 const general = readFileSync(join(here, "StateCard.tsx"), "utf8");
 const enrichment = readFileSync(join(here, "CrenupStateCard.tsx"), "utf8");
+const reviews = readFileSync(join(here, "ReviewsStateCard.tsx"), "utf8");
 
 const rowNames = (src: string) =>
   [...src.matchAll(/<StateRow\s+name="([^"]+)"/g)].map((m) => m[1]);
@@ -28,6 +29,13 @@ describe("the six states of a place", () => {
     expect(general).not.toContain("FunctionLadder");
     expect(general).not.toContain('title="General States"');
     expect(general).not.toContain('title="Creation"');
+  });
+
+  it("Reviews States reads the vocabulary, not a second copy of the names", () => {
+    expect(reviews).toContain('title="Reviews States"');
+    expect(reviews).toContain("REVIEW_STATE_FACTS.map");
+    expect(reviews).toContain("name={fact.label}");
+    expect(rowNames(reviews)).toEqual([]);
   });
 
   it("Enrichment Steps is the ladder, not three more states", () => {

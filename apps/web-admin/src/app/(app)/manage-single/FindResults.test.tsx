@@ -46,6 +46,9 @@ function placeHit(over: Partial<PlaceHit> = {}): PlaceHit {
     zone: null,
     google_stars_overall: null,
     google_review_count: null,
+    google_found: false,
+    instagram_found: false,
+    facebook_found: false,
     content_state: null,
     google_place_id: G1,
     seeded: true,
@@ -107,12 +110,14 @@ describe("Find › one table", () => {
     expect(html).not.toContain(">Catalogue<");
     expect(html).not.toContain(">Name Search<");
     expect(html).not.toContain("Catalogue #1");
-    expect(html).toContain("Every place on Mesita, with profile, enrichment and review states");
-    expect(html).toContain("Profile States");
+    expect(html).toContain("Every place on Mesita, with general, enrichment and review states");
+    expect(html).toContain("General States");
     expect(html).toContain("Enrichment Steps");
     expect(html).toContain(">Reviews<");
     expect(html).toContain(">Created<");
-    expect(html).toContain(">Stars<");
+    expect(html).toContain(">Google Found<");
+    expect(html).toContain(">Instagram Found<");
+    expect(html).toContain(">Facebook Found<");
     expect(html).toContain("On Mesita");
     expect(html).toContain(">Mesita</span>");
     expect(html).toContain("Mesita only. Google was not asked.");
@@ -180,7 +185,7 @@ describe("Find › one table", () => {
     expect(html).toContain('target="_blank"');
   });
 
-  it("draws profile, enrichment and review columns, and catalogue numbers win", () => {
+  it("draws general, enrichment and review columns, and Found is yes or no", () => {
     const html = render({
       rows: [
         row({
@@ -189,6 +194,9 @@ describe("Find › one table", () => {
             enriched: true,
             google_stars_overall: 3.8,
             google_review_count: 474,
+            google_found: true,
+            instagram_found: false,
+            facebook_found: true,
             enrich_functions: {
               details: { state: "completed", at: null, detail: null },
               serp: { state: "failed", at: null, detail: null },
@@ -203,7 +211,7 @@ describe("Find › one table", () => {
       notes: [],
     });
     for (const label of [
-      "Profile States",
+      "General States",
       "Enrichment Steps",
       "Created",
       "Pulsing",
@@ -214,26 +222,30 @@ describe("Find › one table", () => {
       "Details",
       "Serp",
       "Vectors",
-      "Stars",
-      "Count",
+      "Google Found",
+      "Instagram Found",
+      "Facebook Found",
     ]) {
       expect(html).toContain(`>${label}<`);
     }
     expect(html).toContain(">2<");
     expect(html).toContain(">yes<");
+    expect(html).toContain(">no<");
     expect(html).toContain(">fail<");
-    expect(html).toContain(">3.8<");
-    expect(html).toContain(">474<");
-    expect(html).not.toContain("4.7");
-    expect(html).not.toContain(">266<");
+    expect(html).not.toContain(">3.8<");
+    expect(html).not.toContain(">474<");
+    expect(html).not.toContain(">Stars<");
+    expect(html).not.toContain(">Count<");
   });
 
-  it("shows a Google-only row's Text Search rating in Reviews, and a dash for states Mesita holds", () => {
+  it("dashes Reviews on a Google-only row, and dashes the states Mesita holds", () => {
     const html = render({ rows: [NEW], failed: [], notes: [] });
-    expect(html).toContain(">4.7<");
-    expect(html).toContain(">266<");
+    expect(html).toContain("Google Found: not on Mesita");
+    expect(html).toContain("Instagram Found: not on Mesita");
+    expect(html).toContain("Facebook Found: not on Mesita");
     expect(html).toContain("Created: not on Mesita");
-    expect(html).not.toContain("4.7 · 266 reviews");
+    expect(html).not.toContain(">4.7<");
+    expect(html).not.toContain(">266<");
   });
 
   it("says unknown, not 'not on Mesita', when the row is held without a catalogue payload", () => {

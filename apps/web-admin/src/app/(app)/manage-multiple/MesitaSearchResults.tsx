@@ -5,6 +5,7 @@ import { placeTabHref } from "@/lib/place-tabs";
 import {
   BAD_WHEN_TRUE,
   GENERAL_STATE_FACTS,
+  REVIEW_STATE_FACTS,
   STATE_FACT_FALSE_TONE,
 } from "@/lib/state-vocabulary";
 import { STICKY_COL_CELL, STICKY_COL_HEAD } from "@/lib/ui-classes";
@@ -17,13 +18,18 @@ export function MesitaSearchResults({ rows }: { rows: Row[] }) {
     // the full screen rather than the ~295px left inside it.
     <div className="border-border bg-card -mx-5 mt-6 overflow-hidden border-y sm:mx-0 sm:rounded-2xl sm:border">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1040px] border-separate border-spacing-0 text-sm">
+        <table className="w-full min-w-[1400px] border-separate border-spacing-0 text-sm">
           <thead>
             <tr className="text-muted-foreground bg-muted/30 text-left type-label font-semibold tracking-[0.12em] uppercase">
               <th className={`px-4 py-3 font-semibold ${STICKY_COL_HEAD}`}>
                 Place
               </th>
               {GENERAL_STATE_FACTS.map((f) => (
+                <th key={f.key} className="px-3 py-3 text-center font-semibold">
+                  {f.label}
+                </th>
+              ))}
+              {REVIEW_STATE_FACTS.map((f) => (
                 <th key={f.key} className="px-3 py-3 text-center font-semibold">
                   {f.label}
                 </th>
@@ -87,6 +93,20 @@ export function MesitaSearchResults({ rows }: { rows: Row[] }) {
                         </td>
                       ))
                     : GENERAL_STATE_FACTS.map((f) => (
+                        <td
+                          key={f.key}
+                          className="text-muted-foreground px-3 py-3 text-center"
+                        >
+                          —
+                        </td>
+                      ))}
+                  {hit
+                    ? REVIEW_STATE_FACTS.map((f) => (
+                        <td key={f.key} className="px-3 py-3 text-center">
+                          <StatePill on={hit[f.key] === true} />
+                        </td>
+                      ))
+                    : REVIEW_STATE_FACTS.map((f) => (
                         <td
                           key={f.key}
                           className="text-muted-foreground px-3 py-3 text-center"

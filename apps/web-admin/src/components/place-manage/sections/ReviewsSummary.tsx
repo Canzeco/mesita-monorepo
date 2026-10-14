@@ -5,6 +5,7 @@ import { RefreshCw, Star } from "lucide-react";
 import type { AdminPlace, ReviewsReloadSource } from "../actions";
 import { reloadPlaceReviews } from "../actions";
 import { SectionCard } from "@/components/admin-ui/manage";
+import { StatePill } from "@/app/(app)/manage-multiple/PlaceFacts";
 import { usePlaceContext } from "../PlaceContext";
 
 // Reviews tab. Read-only numbers. Each tile reloads its own source through
@@ -157,6 +158,7 @@ function GoogleTile({
   return (
     <Tile
       label="Google"
+      found={found}
       value={!show || stars == null ? "—" : stars.toFixed(1)}
       muted={!show || stars == null}
       stars={show && stars != null ? stars : null}
@@ -194,6 +196,7 @@ function SocialTile({
   return (
     <Tile
       label={label}
+      found={found}
       value={showNumber ? compact(followers!) : "—"}
       muted={!showNumber}
       hint={hint}
@@ -211,6 +214,7 @@ function SocialTile({
 
 function Tile({
   label,
+  found,
   value,
   muted,
   stars,
@@ -218,6 +222,7 @@ function Tile({
   reload,
 }: {
   label: string;
+  found: boolean;
   value: string;
   muted: boolean;
   stars?: number | null;
@@ -227,7 +232,11 @@ function Tile({
   return (
     <div className="border-border/60 bg-muted/40 flex min-w-0 items-center gap-3 rounded-xl border px-3.5 py-3">
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <p className="text-muted-foreground type-label">{label}</p>
+        <p className="flex items-center gap-2">
+          <span className="text-muted-foreground type-label">{label}</span>
+          <span className="text-muted-foreground type-label">Found</span>
+          <StatePill on={found} />
+        </p>
         <p className="flex items-center gap-2">
           <span
             className={
