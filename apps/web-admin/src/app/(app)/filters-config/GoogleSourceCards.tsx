@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { MapPin, Search, TextSearch } from "lucide-react";
 import { KnobState, SectionCard } from "@/components/admin-ui/config";
 import {
@@ -10,9 +11,9 @@ import {
 import { floorNumber, GENERAL_FLOOR_OWNER } from "./source-floor-copy";
 
 // The three Google Places sources, in taxonomy order: Autocomplete Search ·
-// Text Search · Nearby Search. Category knobs live on the shared family
-// Categories strip — these cards name who calls them and carry the floor that
-// cuts them (MESITA-1681).
+// Text Search · Nearby Search. Category knobs live on Configurations ›
+// Families — these cards name who calls them and carry the floor that
+// cuts them (MESITA-1681, MESITA-2200).
 //
 // Nearby also owns the PULL (MESITA-1695): 20 / 40 / 60, how many rows one map
 // load buys from Google. It sits here and not on the Map mode box because it
@@ -44,8 +45,8 @@ export function GoogleSourceCards({ seed }: { seed: FloorSeed }) {
           state={<KnobState kind="enforced" reason="suggest-places · Search" />}
         >
           <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-            Used by Word. Categories come from the Families strip on
-            this page.
+            Used by Word. Categories come from{" "}
+            <FamiliesLink />.
           </p>
           <GeneralFloorOwner seed={seed} />
         </SectionCard>
@@ -58,8 +59,8 @@ export function GoogleSourceCards({ seed }: { seed: FloorSeed }) {
           state={<KnobState kind="enforced" reason="suggest-places · Search" />}
         >
           <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-            Used by Word and Chat. Categories come from the Families
-            strip on this page. Merge is after resolve, not a fourth source.
+            Used by Word and Chat. Categories come from <FamiliesLink />.
+            Merge is after resolve, not a fourth source.
           </p>
           <FloorMirror rows={generalRows} ownedBy={GENERAL_FLOOR_OWNER} />
         </SectionCard>
@@ -74,7 +75,7 @@ export function GoogleSourceCards({ seed }: { seed: FloorSeed }) {
           <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
             Used by Map and Chat. Word stays red on the matrix — the guest pin
             biases Autocomplete and Text Search, and a bias is not a call.
-            Categories come from the Families strip on this page.
+            Categories come from <FamiliesLink />.
           </p>
           <FloorMirror
             label="Quality floor · the General wipe"
@@ -86,5 +87,13 @@ export function GoogleSourceCards({ seed }: { seed: FloorSeed }) {
         </SectionCard>
       </div>
     </div>
+  );
+}
+
+function FamiliesLink() {
+  return (
+    <Link href="/families" className="text-foreground font-medium underline">
+      Families
+    </Link>
   );
 }

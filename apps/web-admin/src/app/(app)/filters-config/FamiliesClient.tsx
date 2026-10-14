@@ -1,9 +1,11 @@
 "use client";
 
-// Shared Families — live. Seven params, the same seven the guest sees
-// as pills, written onto all three Google callers (Fast / Deep / Map) as one
-// list. Each family sends its whole Google battery; the operator never toggles
-// a Google slug, and there is no ordered "first N" cap on top (MESITA-1695).
+// Shared Families — live, on Configurations › Families (MESITA-2200).
+// Seven params, the same seven the guest sees as pills, written onto all
+// three Google callers (Fast / Deep / Map) as one list. Each family sends
+// its whole Google battery; the operator never toggles a Google slug, and
+// there is no ordered "first N" cap on top (MESITA-1695). The file stays
+// beside the discovery blob it writes.
 
 import { useMemo } from "react";
 import { Plug, SlidersHorizontal } from "lucide-react";
