@@ -1,5 +1,5 @@
 import { task, type TaskContext } from "@renderinc/sdk/workflows";
-import { describeFromFacts, fetchGooglePlace, profileFromGoogle } from "./google-spine.ts";
+import { describeFromFacts, fetchGooglePlace, fetchTimezone, profileFromGoogle } from "./google-spine.ts";
 import { writeFinishedPlace } from "./write-place.ts";
 
 // Paid vendor calls must not be replayed by the platform.
@@ -24,6 +24,12 @@ export async function buildEnrichment(job: EnrichJob): Promise<Record<string, un
   const details = await fetchGooglePlace(googlePlaceId, googleKey);
   const spine = profileFromGoogle(details, googlePlaceId);
   if (!spine.ok) throw new Error(spine.error);
+  const lat = spine.patch.lat;
+  const lng = spine.patch.lng;
+  if (typeof lat === "number" && typeof lng === "number") {
+    const timezone = await fetchTimezone(lat, lng, googleKey);
+    if (timezone) spine.patch.timezone = timezone;
+  }
 
   let description = spine.description;
   if (!description) {
