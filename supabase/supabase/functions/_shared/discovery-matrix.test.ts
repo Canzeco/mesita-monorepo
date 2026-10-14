@@ -78,21 +78,20 @@ async function liveCallerModes(): Promise<Set<string>> {
  * than one signal.
  *
  * WHAT THIS TEST PREVENTS is the rule being relaxed to "has a caller", which
- * is how the column set was first written down and which Word falsifies. Word
- * has two live callers (`orderDeepLineup` and its fast sibling in
- * consumer-search-lane.ts) and a mask of exactly `["name"]`. A one-factor
- * product `s^w` is a monotone transform of `s`, so no exponent can reorder a
- * Word result: a Word column would be a knob that provably changes nothing,
- * and the caller-set rule alone would ship it. It also prevents the opposite
- * drift — a column surviving after its last reader is deleted, which is a
- * console lying about what the engine reads.
+ * is how the column set was first written down and which Word falsifies. Word's
+ * mask is exactly `["name"]`, and Mesita search ranks that lane with the
+ * six-signal lineup instead of `weightsForMode("word")`. A one-factor product
+ * `s^w` is a monotone transform of `s`, so no exponent can reorder a Word
+ * result: a Word column would be a knob that provably changes nothing. It also
+ * prevents the opposite drift — a column surviving after its last reader is
+ * deleted, which is a console lying about what the engine reads.
  */
 Deno.test(
-  "a mode earns a weight column only with a live caller AND a mask over one signal — Word has the caller and not the mask",
+  "a mode earns a weight column only with a live caller AND a mask over one signal — Word has neither the caller nor a mask that can reorder",
   async () => {
     const callers = await liveCallerModes();
     // Not vacuous: if the regex ever stops matching, this line goes red.
-    assertEquals(callers.has("word"), true);
+    assertEquals(callers.has("word"), false);
     assertEquals(callers.has("swipe"), true);
     assertEquals(callers.has("map"), true);
 

@@ -81,11 +81,10 @@ export const DISCOVERY_MODE_SIGNAL_ZERO: Partial<
  *   1. some non-test file calls `weightsForMode` for it, and
  *   2. its mask carries MORE THAN ONE signal.
  *
- * Half 1 alone is wrong, and Word is why. Word calls `weightsForMode` twice
- * (consumer-search-lane.ts), so a caller-set rule would hand it a column — but
- * its mask is `["name"]`, and a one-factor product `s^w` is a monotone
- * transform of `s`. The exponent cannot reorder a Word result, so a column for
- * it would be a knob that provably changes nothing.
+ * Half 1 alone is wrong, and Word is why. Mesita search no longer calls
+ * `weightsForMode("word")` — that lane is the six-signal Deep lineup — and
+ * its mask is still `["name"]`. A one-factor product `s^w` is a monotone
+ * transform of `s`, so a Word column would be a knob that changes nothing.
  *
  *   map     ranks only on the no-Google-fill branch (`willReorder` in
  *           consumer-web-list-places/index.ts) — CONDITIONALLY real, and the

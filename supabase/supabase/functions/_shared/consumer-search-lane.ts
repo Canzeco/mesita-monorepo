@@ -16,15 +16,16 @@
 // earlier query keeps the slot. Order:
 //   1. Google Autocomplete (autoCount)
 //   2. Google Text Search (googleCount)
-//   3. Mesita Places — name embedding (mesitaCount)
+//   3. Mesita Places — six search signals (mesitaCount)
 // Never Nearby Search. Guest pin biases Autocomplete / Text / name match.
 // Discovery > General runs LAST on both modes: whatever a Google query
 // returned, and whatever Mesita row it resolved to, has to clear Active +
 // the review floor (discovery-general-gate.ts). It cuts on-Mesita rows too --
 // an operator who switched Active off meant it.
 // A Google hit that resolves to Mesita stays in its Google query; later
-// Mesita queries skip it. Summary and the other Lineup signals are not a
-// Deep input. Membership is a boolean `enriched`.
+// Mesita queries skip it. The Mesita lane itself ranks with
+// places-search-signals.ts (name, family, proximity, enriched, popularity,
+// then the two tile coins). It does not read the word-mode blend.
 // Word answers with TWO entities (MESITA-1403): Places are places,
 // Locations are regions/cities. Autocomplete returns both in one call;
 // classification reads `types` off rows the response already carries —
@@ -63,13 +64,6 @@ import {
   clearsGeneralGate,
   type GeneralGateQuery,
 } from "./discovery-general-gate.ts";
-import {
-  rankByBlend,
-  type SignalParamsByKey,
-  type SignalWeights,
-} from "./discovery-blend.ts";
-import { weightsForMode } from "./discovery-matrix.ts";
-import { attachCrenupHighWater, toLineupPlace } from "./discovery-place.ts";
 import { evaluatePlaceForMap } from "./map-engine.ts";
 import { embedSingle } from "./embeddings-http.ts";
 import { resolveEmbeddingModel } from "./embeddings.ts";
@@ -78,7 +72,8 @@ import {
   parseVector,
 } from "./embeddings-vector.ts";
 import { isEnrichedPlace } from "./place-family-keys.ts";
-import { radiusBoundingBox } from "./geo.ts";
+import { haversineKm, radiusBoundingBox } from "./geo.ts";
+import { rankPlacesSearch } from "./places-search-signals.ts";
 
 export const NAME_MIN_COSINE = 0.4;
 /** Pay has no Google fallback, so its lane never collapses to nothing. */
@@ -305,6 +300,8 @@ export type ListedRow = {
   enriched_at: string | null;
   business_state: string | null;
   google_review_count: number | null;
+  google_stars_overall?: number | null;
+  family_keys?: string[] | null;
   name_embedding: unknown | null;
   embedding: unknown | null;
 };
@@ -376,23 +373,49 @@ export function admitNameFloor(
   return out;
 }
 
+/** Guest pin, optional family ask, and an injectable coin for the two tile swaps. */
+export type MesitaPlacesOrder = {
+  origin?: { lat: number; lng: number } | null;
+  families?: string[] | null;
+  /** Returns [0, 1). Omitted → Math.random. */
+  random?: () => number;
+};
+
 /**
- * Deep Lineup: Name mask only. Exponent 1 vs 4 does not reorder; 0 vs on
- * does (off → incoming pool order).
+ * Mesita Places order. Name, proximity, and popularity rank. Family and
+ * Enriched gate. Then the top tile and the bottom tile may swap with their
+ * one neighbor. Ties keep incoming order.
  */
 export function orderDeepLineup(
   admitted: ListedRow[],
   queryNameVector: number[],
-  weights: SignalWeights,
-  params?: SignalParamsByKey,
+  order: MesitaPlacesOrder = {},
 ): ListedRow[] {
-  return rankByBlend(
+  const origin = order.origin ?? null;
+  const hasGuestGeo = origin != null;
+  return rankPlacesSearch(
     admitted,
-    (row) => toLineupPlace(row as unknown as Record<string, unknown>),
-    { queryNameVector },
-    weights,
-    params,
-  ).map((r) => r.row);
+    (row) => {
+      const vec = parseVector(row.name_embedding);
+      const cosine = vec && vec.length === queryNameVector.length
+        ? cosineSim(vec, queryNameVector)
+        : -1;
+      const km = hasGuestGeo &&
+          typeof row.lat === "number" && typeof row.lng === "number"
+        ? haversineKm(origin.lat, origin.lng, row.lat, row.lng)
+        : null;
+      return {
+        cosine,
+        familyKeys: row.family_keys,
+        km,
+        enriched: isEnrichedPlace(row),
+        stars: row.google_stars_overall ?? null,
+        reviews: row.google_review_count,
+      };
+    },
+    { families: order.families, hasGuestGeo },
+    order.random,
+  );
 }
 
 function takeListedLane(rows: ListedRow[], cap: number): LaneItem[] {
@@ -458,8 +481,6 @@ export async function runConsumerSearchLane(
       admin,
       cfg.name,
       cfg.general,
-      cfg.weights,
-      cfg.params,
       input,
       origin,
     )
@@ -470,8 +491,6 @@ export async function runConsumerSearchLane(
       cfg.map,
       cfg.name,
       cfg.general,
-      cfg.weights,
-      cfg.params,
       input,
       sessionToken,
       origin,
@@ -607,8 +626,6 @@ async function runDeepSearch(
   map: MapConfig,
   name: NameConfig,
   general: GeneralConfig,
-  weights: SignalWeights,
-  params: SignalParamsByKey,
   input: string,
   sessionToken: string,
   origin: { lat: number; lng: number } | null,
@@ -668,12 +685,7 @@ async function runDeepSearch(
     ? admitNameFloor(embedPool, queryVec, NAME_MIN_COSINE)
     : [];
   const ordered = queryVec
-    ? orderDeepLineup(
-      admitted,
-      queryVec,
-      weightsForMode("word", weights),
-      params,
-    )
+    ? orderDeepLineup(admitted, queryVec, { origin, random: Math.random })
     : [];
   const lineupMesita = deep.mesitaCount > 0
     ? takeListedLane(ordered, deep.mesitaCount)
@@ -701,8 +713,6 @@ async function runMesitaNameSearch(
   admin: SupabaseClient,
   name: NameConfig,
   general: GeneralConfig,
-  weights: SignalWeights,
-  params: SignalParamsByKey,
   input: string,
   origin: { lat: number; lng: number } | null,
 ): Promise<LaneItem[]> {
@@ -716,8 +726,7 @@ async function runMesitaNameSearch(
   const ordered = orderDeepLineup(
     admitNameFloor(embedPool, queryVec, NAME_MIN_COSINE),
     queryVec,
-    weightsForMode("word", weights),
-    params,
+    { origin, random: Math.random },
   );
   return takeListedLane(ordered, mesitaNameCap(name.deep));
 }
@@ -788,7 +797,7 @@ async function embedQueryVector(
 }
 
 const EMBED_COLUMNS =
-  "id, slug, google_place_id, name, address, lat, lng, content_state, enriched_at, business_state, google_review_count, name_embedding, embedding";
+  "id, slug, google_place_id, name, address, lat, lng, content_state, enriched_at, business_state, google_review_count, google_stars_overall, family_keys, name_embedding, embedding";
 /** In-process cosine budget — a bounded pool, not every vector. */
 const EMBED_POOL = 300;
 const EMBED_RADIUS_KM = 40;
@@ -827,17 +836,7 @@ async function fetchEmbedPool(
     console.error("[consumer-search-lane] embed pool:", error.message);
     return [];
   }
-  // The `enriched` gradient needs `crenup_high_water` on the row, and
-  // `profiles` doesn't carry it. One batched side-read merges it in here, the
-  // single choke point both `runDeepSearch` and `runMesitaNameSearch` rank
-  // through. This pool is deliberately NOT gated on enrichment — Word keeps
-  // Created places reachable, painted gray (MESITA-2154) — so a Created row
-  // (`enriched_at` null) scores the floor, and among enriched rows the
-  // side-read is what keeps the signal from being a constant.
-  return await attachCrenupHighWater(
-    admin,
-    (data ?? []) as unknown as Record<string, unknown>[],
-  ) as unknown as ListedRow[];
+  return (data ?? []) as unknown as ListedRow[];
 }
 
 async function fetchAutocomplete(
