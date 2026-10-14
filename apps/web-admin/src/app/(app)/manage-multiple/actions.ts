@@ -253,13 +253,12 @@ export async function deletePlace(placeId: string): Promise<Result<true>> {
 
 // ── Crenup ───────────────────────────────────────────────────────────────
 
-// Kept so existing callers still type-check. The workflow runs the whole
-// enrichment; it does not resume a stage.
+// Kept so existing callers still type-check. Render runs the whole enrichment.
 export type ReenrichMode = "fill" | "full" | "second" | "third";
 
-// Start enrichment. One place starts enrichSingle. A list starts enrichMultiple
-// once, and the workflow decides how many run at once. The row reports the
-// start, not the finish.
+// Start enrichment. One place starts enrich single place. A list starts
+// enrich multiple places once, and Render decides how many run at once.
+// The row reports the start, not the finish.
 export async function enrichPlaces(placeIds: string[]): Promise<Result<true>> {
   const ids = placeIds.map((id) => id.trim()).filter(Boolean);
   if (ids.length === 0) return { ok: false, error: "Missing placeId" };
