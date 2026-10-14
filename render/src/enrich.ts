@@ -1,4 +1,3 @@
-import { task, type TaskContext } from "@renderinc/sdk/workflows";
 import {
   describeFromFacts,
   fetchGooglePhotoUrls,
@@ -7,13 +6,12 @@ import {
   profileFromGoogle,
 } from "./google-spine.ts";
 import { digest, embedPair, embeddingFacts, embeddingFields } from "./embedding.ts";
-import { writeFinishedPlace } from "./write-place.ts";
 
 // Paid vendor calls must not be replayed by the platform.
-const NO_RETRY = { maxRetries: 0, waitDurationMs: 1000, backoffScaling: 1 };
-const DAY = 86400;
+export const NO_RETRY = { maxRetries: 0, waitDurationMs: 1000, backoffScaling: 1 };
+export const DAY = 86400;
 // Two places at a time. Each one already calls Google and, when needed, OpenAI.
-const AT_ONCE = 2;
+export const AT_ONCE = 2;
 
 export type EnrichJob = { placeId: string; googlePlaceId: string };
 
@@ -76,26 +74,3 @@ export async function buildEnrichment(job: EnrichJob): Promise<Record<string, un
   }
   return patch;
 }
-
-// enrich single place
-export const enrichSinglePlace = task(
-  { name: "enrich-single-place", retry: NO_RETRY, timeoutSeconds: DAY },
-  async function enrichSinglePlace(_ctx: TaskContext, job: EnrichJob): Promise<{ placeId: string }> {
-    const patch = await buildEnrichment(job);
-    return writeFinishedPlace(job.placeId, patch);
-  },
-);
-
-// enrich multiple places
-export const enrichMultiplePlaces = task(
-  { name: "enrich-multiple-places", retry: NO_RETRY, timeoutSeconds: DAY },
-  async function enrichMultiplePlaces(ctx: TaskContext, jobs: EnrichJob[]): Promise<{ placeId: string }[]> {
-    const results: { placeId: string }[] = [];
-    for (let i = 0; i < jobs.length; i += AT_ONCE) {
-      const wave = jobs.slice(i, i + AT_ONCE);
-      const done = await Promise.all(wave.map((job) => ctx.run(enrichSinglePlace, job)));
-      results.push(...done);
-    }
-    return results;
-  },
-);

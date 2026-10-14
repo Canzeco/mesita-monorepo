@@ -1,2 +1,2 @@
-import "./hello.ts";
-import "./enrich.ts";
+import "./enrich-single.ts";
+import "./enrich-multiple.ts";
