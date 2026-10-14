@@ -93,8 +93,12 @@ export async function gatherInstagram(opts: {
       return null;
     }
     const p = verified.profile;
-    const ok = await igProfileMatchesPlace(p, place, openaiKey, corroborateFb);
-    return { handle, p, ok };
+    const verdict = await igProfileMatchesPlace(p, place, openaiKey, corroborateFb);
+    if (verdict === "infra") {
+      apiErrors[key] = "identity judge unavailable";
+      return { handle, p, ok: false };
+    }
+    return { handle, p, ok: verdict === true };
   };
 
   // 1) Firecrawl/Google candidate (independent → FB corroboration ok).

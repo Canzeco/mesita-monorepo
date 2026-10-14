@@ -1,7 +1,7 @@
-// Firecrawl web search (v1 /search), used by channel discovery.
-// Returns result URLs best-first; [] on any failure.
+// Firecrawl web search (v2 /search, the same endpoint linklab uses).
+// Returns result URLs best-first; [] on any failure, which is logged.
 
-const SEARCH_URL = "https://api.firecrawl.dev/v1/search";
+const SEARCH_URL = "https://api.firecrawl.dev/v2/search";
 
 export async function firecrawlSearch(
   apiKey: string,
@@ -14,15 +14,16 @@ export async function firecrawlSearch(
     const r = await fetch(SEARCH_URL, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ query, limit }),
+      body: JSON.stringify({ query, limit, sources: [{ type: "web" }] }),
       signal: ctrl.signal,
     });
-    if (!r.ok) return [];
-    // Response shape drifted: the current /v1/search API nests results by source
-    // under `data` ({ web: [...], news: [...], images: [...] }). Older shapes put
-    // a flat array on `data` or `results`. Accept all three so discovery keeps
-    // working across versions — web first (what channel discovery wants), then
-    // news/images as a fallback.
+    if (!r.ok) {
+      const body = (await r.text().catch(() => "")).slice(0, 200);
+      console.error(`[firecrawl-search] ${r.status} ${body}`);
+      return [];
+    }
+    // v2 nests web hits under `data.web`. Older shapes put a flat array on
+    // `data` or `results`. Accept all three — web first, then news/images.
     const d = (await r.json()) as {
       data?: unknown[] | { web?: unknown[]; news?: unknown[]; images?: unknown[] };
       results?: unknown[];
@@ -41,7 +42,11 @@ export async function firecrawlSearch(
         x && typeof (x as { url?: unknown }).url === "string" ? (x as { url: string }).url : "",
       )
       .filter(Boolean);
-  } catch {
+  } catch (err) {
+    const why = ctrl.signal.aborted
+      ? "timeout after 20000ms"
+      : (err instanceof Error ? err.message : String(err)).slice(0, 200);
+    console.error(`[firecrawl-search] ${why}`);
     return [];
   } finally {
     clearTimeout(timer);

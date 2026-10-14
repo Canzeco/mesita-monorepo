@@ -93,7 +93,18 @@ export type ResolvedChannels = ChannelMap & {
   // Diagnostics only (orchestrator stuffs these into sources.discovery).
   via: Partial<Record<ChannelField, ChannelSource>>;
   provenance: Partial<Record<ChannelField, { source: ChannelSource; url: string }>>;
+  /**
+   * Whether the Resolver answered. null = it was not called (no key, or
+   * nothing was missing). false = the call returned null. A Google seed
+   * must not count as the Resolver having answered (MESITA-2198).
+   */
+  resolverAnswered: boolean | null;
 };
+
+/** `sources.discovery.ok`. A skipped Resolver is not a failure; a null call is. */
+export function discoveryRecordedOk(answered: boolean | null): boolean {
+  return answered !== false;
+}
 
 // Canonicalise + host-route + shape-gate a candidate for one field. Returns the
 // canonical URL or null. The single gate every candidate (Agent answer, citation,
@@ -199,9 +210,9 @@ export async function selectChannels(
     website?: string | null;
     preset?: string;
   } = {},
-): Promise<{ channels: Partial<ChannelMap> }> {
+): Promise<{ channels: Partial<ChannelMap>; answered: boolean }> {
   const fields = CHANNEL_FIELDS.filter((f) => want.has(f));
-  if (!fields.length) return { channels: {} };
+  if (!fields.length) return { channels: {}, answered: true };
 
   // Schema: every requested channel field, each string-or-null.
   const properties: Record<string, { type: string[] }> = {};
@@ -215,7 +226,7 @@ export async function selectChannels(
     maxSteps: 10,
     preset: opts.preset,
   });
-  if (!res) return { channels: {} };
+  if (!res) return { channels: {}, answered: false };
 
   const answer = res.answer;
   const hitUrls = res.hitUrls;
@@ -231,7 +242,7 @@ export async function selectChannels(
     if (valid) channels[f] = valid;
   }
 
-  return { channels };
+  return { channels, answered: true };
 }
 
 // The per-place message. Pure and exported so crenup-prompts.ts can render the
@@ -348,7 +359,8 @@ export async function resolveChannels(opts: {
     provenance[field] = { source, url };
   };
 
-  const assemble = (): ResolvedChannels => ({ ...out, via, provenance });
+  let resolverAnswered: boolean | null = null;
+  const assemble = (): ResolvedChannels => ({ ...out, via, provenance, resolverAnswered });
 
   const nothingToDo = missing().size === 0;
   if (nothingToDo || (!firecrawlKey && !perplexityKey)) return assemble();
@@ -374,6 +386,7 @@ export async function resolveChannels(opts: {
       pools,
       { siblings, serpContext, website: out.website_url, preset: opts.perplexityPreset },
     );
+    resolverAnswered = sel.answered;
     for (const f of CHANNEL_FIELDS) fill(f, sel.channels[f] ?? null, "perplexity");
   } else if (firecrawlKey) {
     // Degraded leg (no Perplexity key): no Resolver to review, so take the first

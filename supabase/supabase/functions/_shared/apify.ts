@@ -73,6 +73,15 @@ export async function runApifyActor<T = Record<string, unknown>>(
   }
 }
 
+/** Apify's unpaid-invoice refusal, named so a step doesn't say only "gather failed". */
+export function apifyBillingDetail(text: string | null | undefined): string | null {
+  if (!text) return null;
+  if (/outstanding invoices|platform-feature-disabled/i.test(text)) {
+    return "Apify refused the call: too many outstanding invoices.";
+  }
+  return null;
+}
+
 // Extracts a bare Instagram handle from a profile URL. Returns null for
 // non-profile URLs (posts, reels, explore) so we don't scrape garbage.
 export function instagramHandleFromUrl(url: string | null | undefined): string | null {

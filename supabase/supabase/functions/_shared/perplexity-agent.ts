@@ -10,6 +10,9 @@ const PERPLEXITY_AGENT_URL = "https://api.perplexity.ai/v1/agent";
 // Default preset when the caller doesn't pass one (matches the app_config
 // default). Callers pass the admin-selected preset via opts.preset.
 const DEFAULT_PRESET = "pro-search";
+// A slow agent used to stall the whole research stage. Past this, the call
+// aborts and the caller degrades (MESITA-2198).
+export const PERPLEXITY_AGENT_TIMEOUT_MS = 45_000;
 
 // Call the managed Perplexity Agent once. Returns the schema JSON answer plus the
 // source URLs the agent actually cited (annotations) — both host-locked, so
@@ -20,6 +23,8 @@ export async function callPerplexityAgent(
   schema: unknown,
   opts: { instructions: string; maxSteps?: number; preset?: string },
 ): Promise<{ answer: Record<string, unknown>; hitUrls: string[] } | null> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), PERPLEXITY_AGENT_TIMEOUT_MS);
   try {
     const r = await fetch(PERPLEXITY_AGENT_URL, {
       method: "POST",
@@ -27,6 +32,7 @@ export async function callPerplexityAgent(
         Authorization: `Bearer ${key}`,
         "Content-Type": "application/json",
       },
+      signal: ctrl.signal,
       body: JSON.stringify({
         input,
         preset: opts.preset ?? DEFAULT_PRESET,
@@ -35,7 +41,11 @@ export async function callPerplexityAgent(
         response_format: { type: "json_schema", json_schema: { schema } },
       }),
     });
-    if (!r.ok) return null;
+    if (!r.ok) {
+      const body = (await r.text().catch(() => "")).slice(0, 200);
+      console.error(`[perplexity-agent] ${r.status} ${body}`);
+      return null;
+    }
     const d = (await r.json()) as {
       output?: {
         type?: string;
@@ -56,7 +66,13 @@ export async function callPerplexityAgent(
     }
     const answer = (safeParseJson(text) as Record<string, unknown> | null) ?? {};
     return { answer, hitUrls };
-  } catch {
+  } catch (err) {
+    const why = ctrl.signal.aborted
+      ? `timeout after ${PERPLEXITY_AGENT_TIMEOUT_MS}ms`
+      : (err instanceof Error ? err.message : String(err)).slice(0, 200);
+    console.error(`[perplexity-agent] ${why}`);
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }

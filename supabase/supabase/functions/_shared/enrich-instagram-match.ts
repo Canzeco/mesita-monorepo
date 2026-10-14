@@ -27,6 +27,10 @@ export function isDeadIgStub(p: Record<string, unknown>): boolean {
 // place's brand (so franchises resolve to their one brand account). Otherwise
 // an LLM judge decides, biased toward TRUE, rejecting only a clearly different
 // business. No OpenAI key → fall back to the brand/slug signals above only.
+// "infra" is an OpenAI failure or timeout: the caller attaches the handle
+// unverified instead of treating the outage as "not this place" (MESITA-2198).
+export type IgMatch = true | false | "infra";
+
 export async function igProfileMatchesPlace(
   p: Record<string, unknown>,
   place: {
@@ -38,7 +42,7 @@ export async function igProfileMatchesPlace(
   },
   openaiKey: string | undefined,
   corroborateFb = true,
-): Promise<boolean> {
+): Promise<IgMatch> {
   const username = typeof p.username === "string" ? p.username : "";
   const fullName = typeof p.fullName === "string" ? p.fullName : "";
   const bio = typeof p.biography === "string" ? p.biography : "";
@@ -123,14 +127,14 @@ export async function igProfileMatchesPlace(
         ],
       }),
     });
-    if (!r.ok) return false;
+    if (!r.ok) return "infra";
     const data = (await r.json()) as { choices?: { message?: { content?: string } }[] };
     const obj = safeParseJson(data.choices?.[0]?.message?.content ?? "") as
       | { match?: unknown }
       | null;
     return obj?.match === true;
   } catch {
-    return false;
+    return "infra";
   } finally {
     clearTimeout(timer);
   }

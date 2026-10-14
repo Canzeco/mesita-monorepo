@@ -34,8 +34,8 @@
 // Deploy: supabase functions deploy enricher-cron-enrich-place-first
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { instagramHandleFromUrl } from "../_shared/apify.ts";
-import { resolveChannels } from "../_shared/enrich-channel-discovery.ts";
+import { apifyBillingDetail, instagramHandleFromUrl } from "../_shared/apify.ts";
+import { discoveryRecordedOk, resolveChannels } from "../_shared/enrich-channel-discovery.ts";
 import { fbSlugCandidate } from "../_shared/channels.ts";
 import {
   stepDone,
@@ -220,6 +220,12 @@ serveEnrichStage("first", async (admin, _env, row) => {
   let googleReviewsText = "";
   let googleImages: string[] = [];
   let serpSummary: string | null = null;
+  // Fill skips Serp when it already completed. Restore the stored summary
+  // BEFORE channel discovery, or the Resolver runs without the context it
+  // was bought for (MESITA-2198). A run that buys Serp overwrites this.
+  if (!stepRuns(plan, "serp") && row.gathered?.grounding.serpSummary) {
+    serpSummary = row.gathered.grounding.serpSummary;
+  }
   let gmapsInvoked = false;
 
   const gmapsGather = (async () => {
@@ -301,6 +307,7 @@ serveEnrichStage("first", async (admin, _env, row) => {
     priorPlace.uber_eats_url,
   );
 
+  let resolverAnswered: boolean | null = null;
   const needsDiscovery = linksRun &&
     (!!FIRECRAWL_KEY || !!PERPLEXITY_KEY) &&
     (!resolvedInstagram || !resolvedFacebook || !resolvedWebsite || !resolvedOpenTable ||
@@ -334,8 +341,14 @@ serveEnrichStage("first", async (admin, _env, row) => {
     if (!resolvedOpenTable && found.opentable_url) resolvedOpenTable = found.opentable_url;
     if (!resolvedUberEats && found.uber_eats_url) resolvedUberEats = found.uber_eats_url;
 
+    resolverAnswered = found.resolverAnswered;
     sources.discovery = {
-      ok: true, via: found.via, provenance: found.provenance,
+      ok: discoveryRecordedOk(found.resolverAnswered),
+      resolver: found.resolverAnswered === null
+        ? "skipped"
+        : found.resolverAnswered ? "answered" : "failed",
+      via: found.via,
+      provenance: found.provenance,
       instagram: !!resolvedInstagram, facebook: !!resolvedFacebook, website: !!resolvedWebsite,
       opentable: !!resolvedOpenTable, ubereats: !!resolvedUberEats,
     };
@@ -694,10 +707,15 @@ serveEnrichStage("first", async (admin, _env, row) => {
   }
 
   if (linksRun) {
-    pieces.links = anyChannelResolved || !needsDiscovery
-      // Nothing to discover is a RESULT: every channel was already known.
+    // A Resolver that did not answer is not "links known" just because Google
+    // already seeded one channel (MESITA-2198).
+    pieces.links = resolverAnswered !== false && (anyChannelResolved || !needsDiscovery)
       ? stepDone(`${resolvedCount} link/contact field(s) known.`)
-      : stepFailed("No channel could be resolved.");
+      : stepFailed(
+        resolverAnswered === false
+          ? "The Resolver did not answer."
+          : "No channel could be resolved.",
+      );
   }
 
   if (runSocial) {
@@ -706,18 +724,32 @@ serveEnrichStage("first", async (admin, _env, row) => {
     // place must be able to reach 8 without socials. Only a place that HAD a
     // handle and could not be scraped fails.
     const hadSomethingToTry = !!igHandle || !!fbHandleCandidate || !!resolvedFacebook;
+    const socialErrors = [
+      ...Object.values(
+        (igR?.diag as { errors?: Record<string, string> } | undefined)?.errors ?? {},
+      ),
+      typeof fbR?.diag.error === "string" ? fbR.diag.error : "",
+    ].filter(Boolean).join(" ");
+    const socialBilling = apifyBillingDetail(socialErrors);
     pieces.social = (igR?.verifiedInstagramUrl || fbOk)
       ? stepDone(`Instagram ${igMark}, Facebook ${fbOk ? "✓" : "—"}.`)
       : hadSomethingToTry
-      ? stepFailed("A social handle was known but could not be gathered.")
+      ? stepFailed(socialBilling ?? "A social handle was known but could not be gathered.")
       : stepDone("No social presence to gather.");
   }
 
   if (stepRuns(plan, "reviews")) {
+    const reviewError = (sources.apify_google_reviews as { error?: string } | undefined)?.error;
+    const reviewBilling = apifyBillingDetail(reviewError);
     pieces.reviews = diagOk(sources.apify_google_reviews)
       ? stepDone(`${reviews.length} Google review(s).`)
       : stepFailed(
-        gmapsInvoked ? "The Apify gather failed." : "No Apify key or Google place id.",
+        !gmapsInvoked
+          ? "No Apify key or Google place id."
+          : reviewBilling ??
+            (reviewError
+              ? `The Apify gather failed: ${reviewError.slice(0, 160)}`
+              : "The Apify gather failed."),
       );
   }
 
