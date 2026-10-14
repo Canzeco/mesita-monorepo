@@ -20,7 +20,7 @@
 //   Word              calls weightsForMode too, and gets NO column: its mask
 //                     is one signal, so the exponent is a monotone transform
 //                     and provably cannot reorder anything.
-//   Catalog           ranks by cosine, not by weights.
+//   Catalog           ranks on its own profile, not this table.
 //   Chat, Favorites   no engine at all; Favorites' mask is empty besides.
 //
 // THE MASK STAYS OUTER. `modeSignalState` is code law, not data: a masked-off

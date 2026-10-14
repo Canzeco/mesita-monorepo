@@ -253,11 +253,11 @@ export async function apiRecommendDeck(
 export type CatalogRail = {
   key: string;
   label: string;
-  source: "seed" | "generated";
+  source: "family" | "seed" | "generated";
   places: Place[];
 };
 
-/** Home › Places rails — one EF, Atlas seeds + vibe-query Mesita search. */
+/** Home › Places rails — one EF, seven family lists, one ranking profile. */
 export async function apiListCatalog(
   client: SupabaseClient,
   origin?: { lat: number; lng: number } | null,
