@@ -7,7 +7,8 @@
 //     or TWO families (breakfast is restaurants AND cafés; karaoke is bars
 //     AND experiences). Never more than two; `undefined` only ever alone.
 //   · GOOGLE side is EXCLUSIVE: every Table A type maps to exactly one
-//     family or `other` (google-type-super.ts owns that map + batteries).
+//     of the eight families (google-type-super.ts owns that map + batteries).
+//     Types outside the seven land on `undefined`.
 //   · family_keys is TOTAL: every place resolves to at least one family —
 //     Atlas membership → stored keys → Google type map → ['undefined'].
 //     No place is ever pill-less.
@@ -20,8 +21,8 @@
 // Contents enrichment infers a classified Category; family_keys becomes
 // that category's FULL membership (1–2 keys). While category stays
 // `undefined`, the classifier may infer 1–2 families directly; failing
-// that, ['undefined'] stands. Family `undefined` is not Google `other`
-// (hotels/shops stay ineligible).
+// that, ['undefined'] stands. A Google type on Undefined is still not a
+// guest pill (familiesForGoogleType drops it; hotels/shops stay ineligible).
 
 import {
   familiesForGoogleType,

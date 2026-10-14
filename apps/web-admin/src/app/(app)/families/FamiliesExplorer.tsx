@@ -7,8 +7,6 @@ import {
   type FamiliesSelection,
 } from "./highlight";
 
-const OTHER = { slug: "other", label: "Other", emoji: "" };
-
 function matches(query: string, text: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
@@ -30,10 +28,7 @@ export function FamiliesExplorer({ map }: { map: FamiliesMap }) {
   const [categoryQuery, setCategoryQuery] = useState("");
   const hit = useMemo(() => highlightFamilies(map, sel), [map, sel]);
 
-  const families = [
-    ...map.families,
-    OTHER,
-  ];
+  const families = map.families;
 
   return (
     <div className="mt-8 grid gap-4 lg:grid-cols-3">

@@ -1,24 +1,25 @@
 // Google type → Family. Search and Add eligibility is Discovery ›
 // Map (`evaluatePlaceForMap`). The exclusive 478-type Google map lives in
 // google-type-super.ts — this file re-exports FamilyKey and maps a type
-// onto zero or one guest Super (`other` → ineligible). The CATEGORY side
-// is multi-parent (≤2) in place-taxonomy.ts; the Google side stays
-// exclusive. Hotels, schools, shops are `other`.
+// onto zero or one guest family. A type whose family is `undefined` returns
+// nothing here: Undefined is a family, and it is not a guest pill, so
+// hotels, schools, and shops stay ineligible. The CATEGORY side is
+// multi-parent (≤2) in place-taxonomy.ts; the Google side stays exclusive.
 
 import { superForGoogleType, type GuestSuper } from "./google-type-super.ts";
 
 export type FamilyKey = GuestSuper;
 
 /**
- * The one guest Super a Google type (or leftover places.category slug)
- * belongs to. Empty = `other` / unknown — not a Mesita type. Partition:
- * gastropub is restaurants only.
+ * The one guest family a Google type belongs to. Empty when the type
+ * maps to Undefined or is unknown — Undefined is a family, and it is
+ * not a guest pill. Partition: gastropub is restaurants only.
  */
 export function familiesForGoogleType(
   primaryType: string | null | undefined,
 ): FamilyKey[] {
   const superKey = superForGoogleType(primaryType);
-  if (!superKey || superKey === "other") return [];
+  if (!superKey || superKey === "undefined") return [];
   return [superKey];
 }
 

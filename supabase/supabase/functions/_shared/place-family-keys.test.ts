@@ -53,7 +53,7 @@ Deno.test("withFamilyKeys keeps the Atlas membership when stored keys disagree",
   );
 });
 
-Deno.test("withFamilyKeys is TOTAL: undefined category and leftovers land on Other", () => {
+Deno.test("withFamilyKeys is TOTAL: undefined category and leftovers land on Undefined", () => {
   assertEquals(withFamilyKeys({ category: "undefined" }).family_keys, [
     "undefined",
   ]);
