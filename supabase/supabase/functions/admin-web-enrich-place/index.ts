@@ -1,57 +1,22 @@
 // Supabase Edge Function — admin-web-enrich-place (product caller / admin)
 //
-// Manual enrich trigger for one place or a list (placeIds, max 50). Given a
-// place id and a `mode`, it reseeds place_research so the pg_cron poller
-// (run_place_enrichment_stages) runs from a chosen stage:
-//
-//   mode 'fill'    → default. Reseed to first but KEEP stored payloads.
-//                    A step runs only when it has not completed, or it is
-//                    named in `overwrite`. Description and Embedding also
-//                    run when an earlier step of this run executed.
-//   mode 'full'    → reseed to stage='first' and null the stored payloads.
-//                    Runs first, then second, then third.
-//   mode 'second'  → reseed to stage='second' (reuses the first step's payload).
-//                    Old callers may still send 'photos' or 'analysis'.
-//   mode 'third'   → reseed to stage='third' (reuses both stored payloads).
-//                    Old callers may still send 'write' or 'contents'.
-//
-// The lighter modes need a prior full run to have populated the payloads they
-// reuse (gathered for 'analysis'; gathered + analysis for 'contents'); if those
-// are missing we reject with 422 so the admin runs a full re-enrich first, rather
-// than silently self-healing into an unexpected full run.
-//
-// This is the button behind the admin Place editor's re-enrich actions. The place
-// must already exist and carry a google_place_id (the pipeline's identity spine);
-// an admin-created 'undefined' place still has one from create time.
+// Direct execute. One place starts the Render task enrichSingle. A list
+// starts enrichMultiple once. The workflow runtime decides how many places
+// run at once and where an external API bottlenecks. Nothing here waits on
+// a cron poller.
 //
 // Internal enricher control — super-admin gated, admin console only.
-//
-// Local:  supabase functions serve admin-web-enrich-place
-// Deploy: supabase functions deploy admin-web-enrich-place
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, readPlaceIdAlias } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv, requireSuperAdmin } from "../_shared/auth.ts";
-import {
-  advanceResearchStage,
-  markPlaceGenerating,
-  openEnrichmentRun,
-  seedPlaceResearch,
-} from "../_shared/enrich-pipeline.ts";
-import { parseOverwrite, type FillStep } from "../_shared/enrich-fill.ts";
+import { enrichmentRun } from "./start-enrichment.ts";
 
-// `placeId` is the canonical MESITA-26 key; `projectId` is the legacy alias
-// both consoles still send here. readPlaceIdAlias accepts both (placeId wins).
-type ReenrichMode = "fill" | "full" | "second" | "third";
 type Body = {
   projectId?: string;
   placeId?: string;
   placeIds?: string[];
-  mode?: string;
-  overwrite?: unknown;
 };
-
-const MODES: ReenrichMode[] = ["fill", "full", "second", "third"];
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -64,7 +29,6 @@ Deno.serve(async (req) => {
   if (!authRes.ok) return authRes.response;
 
   const admin = adminClient(envRes.env);
-  const actorUserId = authRes.user.id;
   const guard = await requireSuperAdmin(admin, authRes.user, "Only admins can re-enrich places.");
   if (!guard.ok) return guard.response;
 
@@ -80,140 +44,35 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "At most 50 places per enrich call." }, 400);
   }
 
-  // Default is fill: complete steps that have not landed. `full` is the old
-  // re-run-everything path, kept so a caller can still force it.
-  const rawMode = (bodyRes.body.mode ?? "fill").toString().trim();
-  const mode = (
-    rawMode === "analysis" || rawMode === "photos" ? "second"
-    : rawMode === "contents" || rawMode === "write" ? "third"
-    : rawMode
-  ) as ReenrichMode;
-  if (!MODES.includes(mode)) {
-    return json({ ok: false, error: `Invalid mode '${mode}'. Expected one of: ${MODES.join(", ")}.` }, 400);
-  }
-
-  const parsedOverwrite = parseOverwrite(bodyRes.body.overwrite);
-  if (!Array.isArray(parsedOverwrite)) {
-    return json({ ok: false, error: parsedOverwrite.error }, 400);
-  }
-  const overwrite: FillStep[] = parsedOverwrite;
-
-  async function enrichOne(id: string): Promise<{ ok: true; stage: string } | { ok: false; error: string; status: number }> {
-  // Resolve the identity spine the pipeline re-checks first (fetchGoogleBasics).
-  // google_place_id lives on the place_profiles base table (place_profiles.id ==
-  // the editor's placeId); the places table has no such column. Without
-  // it the research stage can't run, so reject early.
-  const { data: place, error: placeErr } = await admin
+  const { data: places, error: placeErr } = await admin
     .from("place_profiles")
     .select("id, google_place_id")
-    .eq("id", id)
-    .maybeSingle();
-  if (placeErr) return { ok: false, error: `places: ${placeErr.message}`, status: 500 };
-  if (!place) return { ok: false, error: "Place not found", status: 404 };
-  const googlePlaceId = (place.google_place_id ?? "").toString().trim();
-  if (!googlePlaceId) {
-    return {
-      ok: false,
-      error: "Place has no Google Place ID — nothing to enrich from.",
-      status: 422,
-    };
-  }
-
-  // ── Full re-enrich: reseed to 'research' (nulls stored payloads).
-  // Fill keeps the stored payloads and only runs steps that have not completed,
-  // plus anything named in overwrite. ──
-  if (mode === "full" || mode === "fill") {
-    // `manual`, not a matrix trigger. The Run-now button opts out of the grid on
-    // both axes — it clears `subprocesses` and ignores cooldown — so recording it
-    // as a matrix trigger would poison exactly the cost-attribution and cooldown
-    // queries the run history exists to answer (MESITA-1185).
-    const seed = await seedPlaceResearch(admin, id, googlePlaceId, "admin-web-enrich-place", {
-      trigger: "manual",
-      subprocesses: null,
-      cooldownHours: 0,
-      actorUserId,
-      keepPayloads: mode === "fill",
-      clearAnalysis: mode === "fill" && overwrite.includes("images"),
-      meta: mode === "fill" ? { mode, fill: true, overwrite } : { mode },
-    });
-    if (!seed.ok) return { ok: false, error: seed.error ?? "Failed to queue enrichment", status: 500 };
-    return { ok: true, stage: "first" };
-  }
-
-  // ── Lighter modes: reseed to the chosen stage, REUSING the stored payloads.
-  // Require that a prior full run populated what the stage depends on. ──
-  const stage: "second" | "third" = mode === "second" ? "second" : "third";
-  const { data: row, error: rowErr } = await admin
-    .from("place_research")
-    .select("gathered, analysis")
-    .eq("place_id", id)
-    .maybeSingle();
-  if (rowErr) return { ok: false, error: `place_research: ${rowErr.message}`, status: 500 };
-  if (!row) {
-    return {
-      ok: false,
-      error: "No enrichment run exists for this place yet — run a full re-enrich first.",
-      status: 422,
-    };
-  }
-  if (!row.gathered) {
-    return {
-      ok: false,
-      error: "No gathered research data — run a full re-enrich first.",
-      status: 422,
-    };
-  }
-  if (stage === "third" && !row.analysis) {
-    return {
-      ok: false,
-      error: "No analysis data — run a full or analysis re-enrich first.",
-      status: 422,
-    };
-  }
-
-  // advanceResearchStage reseeds (stage + state='pending' + attempts=0) without
-  // touching gathered/analysis — the poller re-claims the row at the chosen stage.
-  // MESITA-453: Enriching covers the whole pipeline (research|analysis|contents),
-  // so flip content_state back to generating for light re-enrich modes too.
-  await markPlaceGenerating(admin, id);
-  // Explicit operator intent outranks the trigger matrix: clear whatever
-  // subprocess set the last automatic trigger stamped, so a light re-enrich
-  // queued after (say) an on_visit refresh still runs every step of its stage.
-  // A light re-enrich is still a RUN: it spends money and it changes the
-  // profile. It enters mid-pipeline, and `entryStage` is what stops the janitor
-  // later crediting it with the spend of the gather it is reusing.
-  const opened = await openEnrichmentRun(admin, id, {
-    trigger: "manual",
-    seededBy: "admin-web-enrich-place",
-    subprocesses: null,
-    entryStage: stage,
-    cooldownHours: 0,
-    actorUserId,
-    meta: { mode },
-  });
-  await admin
-    .from("place_research")
-    .update({ subprocesses: null, run_id: opened.runId ?? null })
-    .eq("place_id", id);
-  await advanceResearchStage(admin, id, stage);
-  return { ok: true, stage };
-  }
-
-  const results = [];
+    .in("id", placeIds);
+  if (placeErr) return json({ ok: false, error: `places: ${placeErr.message}` }, 500);
+  const byId = new Map((places ?? []).map((row) => [row.id, (row.google_place_id ?? "").toString().trim()]));
   for (const id of placeIds) {
-    const one = await enrichOne(id);
-    results.push({ placeId: id, ...one });
+    if (!byId.has(id)) return json({ ok: false, error: "Place not found" }, 404);
+    if (!byId.get(id)) {
+      return json({ ok: false, error: "Place has no Google Place ID — nothing to enrich from." }, 422);
+    }
   }
-  if (placeIds.length === 1 && listed.length === 0) {
-    const one = results[0];
-    if (!one.ok) return json({ ok: false, error: one.error }, one.status);
-    return json({ ok: true, enrichmentTriggered: true, mode, stage: one.stage });
+
+  const key = Deno.env.get("RENDER_API_KEY")?.trim() ?? "";
+  if (!key) return json({ ok: false, error: "Server misconfigured" }, 500);
+
+  const run = enrichmentRun(placeIds);
+  const res = await fetch("https://api.render.com/v1/task-runs", {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(run),
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    return json({ ok: false, error: detail.slice(0, 300) || `Render did not start the run (${res.status})` }, 502);
   }
-  const failed = results.filter((r) => !r.ok).length;
-  return json({
-    ok: failed === 0,
-    enrichmentTriggered: failed < results.length,
-    mode,
-    results,
-  }, failed === results.length ? 422 : 200);
+  return json({ ok: true, enrichmentTriggered: true, task: run.task });
 });

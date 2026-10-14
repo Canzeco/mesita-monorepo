@@ -6,6 +6,7 @@ import {
   createPlaceFromGooglePlaceId,
   deletePlace,
   enrichPlace,
+  enrichPlaces,
   searchPlacesByGoogleIds,
   setPlaceListed,
 } from "./actions";
@@ -99,7 +100,8 @@ export function WriteBox({
       Object.fromEntries(placeIds.map((id) => [id, { state: "pending" as const }])),
     );
     const ids = [...placeIds];
-    await Promise.all(ids.map((id) => runRow(id, action, setResults)));
+    if (action === "enrich") await runEnrich(ids, setResults);
+    else await Promise.all(ids.map((id) => runRow(id, action, setResults)));
     setRunning(null);
   }
 
@@ -239,6 +241,32 @@ function ActionButton({
   );
 }
 
+async function runEnrich(
+  googleIds: string[],
+  setResults: Dispatch<SetStateAction<Record<string, Row>>>,
+): Promise<void> {
+  const resolved: { googleId: string; placeId: string; name: string }[] = [];
+  await Promise.all(googleIds.map(async (googleId) => {
+    setResults((prev) => ({ ...prev, [googleId]: { state: "running" } }));
+    const found = await resolveMesitaId(googleId);
+    if (!found.ok) {
+      setResults((prev) => ({ ...prev, [googleId]: { state: "error", error: found.error } }));
+      return;
+    }
+    resolved.push({ googleId, placeId: found.placeId, name: found.name });
+  }));
+  if (resolved.length === 0) return;
+  const started = await enrichPlaces(resolved.map((row) => row.placeId));
+  for (const row of resolved) {
+    setResults((prev) => ({
+      ...prev,
+      [row.googleId]: started.ok
+        ? { state: "enriching", name: row.name, detail: "Enrichment started" }
+        : { state: "error", name: row.name, error: started.error },
+    }));
+  }
+}
+
 async function runRow(
   googleId: string,
   action: CrenupAction,
@@ -287,7 +315,7 @@ async function enrichOne(googleId: string): Promise<Row> {
   return {
     state: "enriching",
     name: found.name,
-    detail: "Filling steps that have not completed",
+    detail: "Enrichment started",
   };
 }
 
