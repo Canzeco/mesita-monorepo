@@ -1,5 +1,6 @@
-// The Google identity spine, mapped to the one write. Photos and category stay
-// out: photo URLs expire, and a Google type slug is not a Mesita category.
+// The Google identity spine, mapped to the one write. Category stays out: a
+// Google type slug is not a Mesita category. Photo links are fetched separately
+// and copied into storage by the write.
 
 import { closesAtFromHours, weeklyHoursFromPeriods, type GooglePeriod } from "./hours.ts";
 
@@ -20,6 +21,7 @@ const FIELD_MASK = [
   "generativeSummary",
   "regularOpeningHours",
   "reviews",
+  "photos",
 ].join(",");
 
 const BUSINESS = new Set(["OPERATIONAL", "CLOSED_TEMPORARILY", "CLOSED_PERMANENTLY"]);
@@ -47,6 +49,7 @@ export type GooglePlace = {
     originalText?: { text?: string };
     relativePublishTimeDescription?: string;
   }[];
+  photos?: { name?: string }[];
 };
 
 export type GoogleSpine =
@@ -153,6 +156,38 @@ export async function fetchTimezone(lat: number, lng: number, apiKey: string): P
   if (!res.ok) return null;
   const body = await res.json().catch(() => null) as { status?: string; timeZoneId?: string } | null;
   return body?.status === "OK" && body.timeZoneId ? body.timeZoneId : null;
+}
+
+const PHOTO_CAP = 10;
+
+export function photoUris(bodies: { photoUri?: string }[]): string[] {
+  const out: string[] = [];
+  for (const body of bodies) {
+    const uri = body.photoUri?.trim() ?? "";
+    if (!uri.startsWith("https://") || out.includes(uri)) continue;
+    out.push(uri);
+    if (out.length === PHOTO_CAP) break;
+  }
+  return out;
+}
+
+export async function fetchGooglePhotoUrls(
+  photos: { name?: string }[] | undefined,
+  apiKey: string,
+): Promise<string[]> {
+  const names = (photos ?? [])
+    .map((photo) => photo.name?.trim() ?? "")
+    .filter(Boolean)
+    .slice(0, PHOTO_CAP);
+  const bodies = await Promise.all(names.map(async (name) => {
+    const res = await fetch(
+      `https://places.googleapis.com/v1/${name}/media?maxHeightPx=1600&skipHttpRedirect=true`,
+      { headers: { "X-Goog-Api-Key": apiKey } },
+    );
+    if (!res.ok) return {};
+    return await res.json().catch(() => ({})) as { photoUri?: string };
+  }));
+  return photoUris(bodies);
 }
 
 export async function fetchGooglePlace(googlePlaceId: string, apiKey: string): Promise<GooglePlace> {
