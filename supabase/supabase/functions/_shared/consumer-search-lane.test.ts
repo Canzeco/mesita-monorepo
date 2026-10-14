@@ -20,8 +20,6 @@ import {
 } from "./consumer-search-lane.ts";
 import { DISCOVERY_DEFAULTS } from "./discovery-config.ts";
 import { stripPlacesPrefix } from "./google-places.ts";
-import { SIGNAL_KEYS, type SignalKey } from "./discovery-signals.ts";
-import { CRENUP_TOTAL } from "./crenup-ladder.ts";
 
 function item(over: Partial<LaneItem> & Pick<LaneItem, "placeId" | "mainText">): LaneItem {
   return {
@@ -253,57 +251,32 @@ function listed(
   };
 }
 
-/** The `attachCrenupHighWater` merge, in fixture form. */
-const withHighWater = (row: ListedRow, highWater: number): ListedRow =>
-  ({ ...row, crenup_high_water: highWater }) as ListedRow;
-
 const QUERY = [1, 0];
 const BEST = listed("best", "Best", [1, 0]);
 const WORSE = listed("worse", "Worse", [0.8, 0.6]);
 
-function weights(name: number): Record<SignalKey, number> {
-  const out = {} as Record<SignalKey, number>;
-  for (const key of SIGNAL_KEYS) out[key] = 0;
-  out.name = name;
-  return out;
-}
+/** Coins that never fire. A draw of 1 sits above every flip probability. */
+const HOLD = () => 1;
 
-Deno.test("orderDeepLineup: Name 1 vs 4 keeps the same order", () => {
+Deno.test("orderDeepLineup: a better cosine ranks first", () => {
   const pool = [WORSE, BEST];
-  const at1 = orderDeepLineup(pool, QUERY, weights(1)).map((r) => r.id);
-  const at4 = orderDeepLineup(pool, QUERY, weights(4)).map((r) => r.id);
-  assertEquals(at1, ["best", "worse"]);
-  assertEquals(at4, ["best", "worse"]);
-});
-
-Deno.test("orderDeepLineup: Name 0 vs on reorders an unsorted pool", () => {
-  const pool = [WORSE, BEST];
-  assertEquals(orderDeepLineup(pool, QUERY, weights(0)).map((r) => r.id), [
-    "worse",
-    "best",
-  ]);
-  assertEquals(orderDeepLineup(pool, QUERY, weights(1)).map((r) => r.id), [
+  assertEquals(orderDeepLineup(pool, QUERY, { random: HOLD }).map((r) => r.id), [
     "best",
     "worse",
   ]);
 });
 
-Deno.test("orderDeepLineup: the enrichment gradient reorders two enriched rows", () => {
-  // Carries "crenup_high_water (MESITA-1601) reorders when Level is weighted"
-  // across the MESITA-1858 split, and comes back to high-water for the reason
-  // that split's review found: among enriched rows the enrichment BOOLEAN
-  // ties. Same name-embedding (so Name ties too) — only high-water differs,
-  // which is the only part of Enriched that can reorder them.
-  const hi = withHighWater(listed("hi", "Hi", QUERY), CRENUP_TOTAL);
-  const lo = withHighWater(listed("lo", "Lo", QUERY), 2);
-  // A Created row (ready, enriched_at null — MESITA-2154) is NOT enriched:
-  // it floors below both, whatever its content_state or high-water.
-  const un = withHighWater(listed("un", "Un", QUERY, null, "ready"), 1);
-  const enrichedOnly = weights(0);
-  enrichedOnly.enriched = 2;
+Deno.test("orderDeepLineup: an unenriched place is out, popularity breaks a cosine tie", () => {
+  const hi = listed("hi", "Hi", QUERY);
+  hi.google_stars_overall = 4.8;
+  hi.google_review_count = 2000;
+  const lo = listed("lo", "Lo", QUERY);
+  lo.google_stars_overall = 4.2;
+  lo.google_review_count = 8;
+  const un = listed("un", "Un", QUERY, null, "ready");
   assertEquals(
-    orderDeepLineup([un, lo, hi], QUERY, enrichedOnly).map((r) => r.id),
-    ["hi", "lo", "un"],
+    orderDeepLineup([un, lo, hi], QUERY, { random: HOLD }).map((r) => r.id),
+    ["hi", "lo"],
   );
 });
 
@@ -320,7 +293,8 @@ Deno.test("Deep source never calls searchNearbyPlaces", async () => {
   assertEquals(src.includes("searchNearbyPlaces"), false);
   assertEquals(src.includes("applyPlacesCallerRegion"), false);
   assertEquals(src.includes("includedRegionCodes"), false);
-  assertEquals(src.includes("rankByBlend"), true);
+  assertEquals(src.includes("rankPlacesSearch"), true);
+  assertEquals(src.includes("rankByBlend"), false);
   assertEquals(src.includes("queryNameVector"), true);
 });
 
