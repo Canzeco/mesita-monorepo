@@ -14,6 +14,16 @@ const PLACE = {
   userRatingCount: 120,
   businessStatus: "OPERATIONAL",
   websiteUri: "https://example.com",
+  regularOpeningHours: {
+    weekdayDescriptions: ["Monday: 9:00 AM – 6:00 PM"],
+    periods: [{ open: { day: 1, hour: 9, minute: 0 }, close: { day: 1, hour: 18, minute: 0 } }],
+  },
+  reviews: [{
+    authorAttribution: { displayName: "Ana" },
+    rating: 5,
+    text: { text: "Muy bueno" },
+    relativePublishTimeDescription: "hace una semana",
+  }],
 };
 
 test("a complete Google place becomes a finished profile without a database key", () => {
@@ -25,6 +35,15 @@ test("a complete Google place becomes a finished profile without a database key"
   assert.equal(got.patch.phone, "+52 55 0000 0000");
   assert.equal(got.patch.city, "Ciudad de México");
   assert.equal(got.patch.google_found, true);
+  assert.deepEqual(got.patch.hours, { monday: [{ open: "09:00", close: "18:00" }] });
+  assert.equal(got.patch.closes_at, "18:00");
+  assert.deepEqual(got.patch.google_reviews, [{
+    author: "Ana",
+    rating: 5,
+    quote: "Muy bueno",
+    date: "hace una semana",
+  }]);
+  assert.equal(got.patch.pitch, "Cocina de mercado en la Condesa.");
   assert.equal("google_place_id" in got.patch, false);
   assert.equal("content_state" in got.patch, false);
 });

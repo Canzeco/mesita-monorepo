@@ -1,5 +1,7 @@
-// The Google identity spine, mapped to the one write. Hours, photos, reviews,
-// and category stay out: a wrong shape would reject the whole place.
+// The Google identity spine, mapped to the one write. Photos and category stay
+// out: photo URLs expire, and a Google type slug is not a Mesita category.
+
+import { closesAtFromHours, weeklyHoursFromPeriods, type GooglePeriod } from "./hours.ts";
 
 const FIELD_MASK = [
   "id",
@@ -16,6 +18,8 @@ const FIELD_MASK = [
   "businessStatus",
   "editorialSummary",
   "generativeSummary",
+  "regularOpeningHours",
+  "reviews",
 ].join(",");
 
 const BUSINESS = new Set(["OPERATIONAL", "CLOSED_TEMPORARILY", "CLOSED_PERMANENTLY"]);
@@ -35,6 +39,14 @@ export type GooglePlace = {
   businessStatus?: string;
   editorialSummary?: { text?: string };
   generativeSummary?: { overview?: { text?: string } };
+  regularOpeningHours?: { weekdayDescriptions?: string[]; periods?: GooglePeriod[] };
+  reviews?: {
+    authorAttribution?: { displayName?: string };
+    rating?: number;
+    text?: { text?: string };
+    originalText?: { text?: string };
+    relativePublishTimeDescription?: string;
+  }[];
 };
 
 export type GoogleSpine =
@@ -100,6 +112,14 @@ export function profileFromGoogle(details: GooglePlace, requestedId: string): Go
     patch.business_state = business;
     patch.business_state_at = new Date().toISOString();
   }
+  const hours = weeklyHoursFromPeriods(details.regularOpeningHours?.periods);
+  if (hours) patch.hours = hours;
+  const closesAt = closesAtFromHours(details.regularOpeningHours?.weekdayDescriptions);
+  if (closesAt) patch.closes_at = closesAt;
+  const reviews = googleReviews(details.reviews);
+  if (reviews) patch.google_reviews = reviews;
+  if (editorial) patch.pitch = editorial.slice(0, 1000);
+  if (generative) patch.story = generative.slice(0, 1000);
 
   const facts = [
     `Name: ${name}`,
@@ -113,6 +133,26 @@ export function profileFromGoogle(details: GooglePlace, requestedId: string): Go
   ].filter(Boolean).join("\n");
 
   return { ok: true, description, facts, patch };
+}
+
+function googleReviews(reviews: GooglePlace["reviews"]): { author: string; rating: number; quote: string; date: string }[] | null {
+  const mapped = (reviews ?? []).map((review) => ({
+    author: review.authorAttribution?.displayName?.trim() || "Google reviewer",
+    rating: typeof review.rating === "number" ? review.rating : 0,
+    quote: (review.text?.text ?? review.originalText?.text ?? "").trim(),
+    date: review.relativePublishTimeDescription ?? "",
+  })).filter((review) => review.quote.length > 0);
+  return mapped.length > 0 ? mapped : null;
+}
+
+export async function fetchTimezone(lat: number, lng: number, apiKey: string): Promise<string | null> {
+  const stamp = Math.floor(Date.now() / 1000);
+  const res = await fetch(
+    `https://maps.googleapis.com/maps/api/timezone/json?location=${lat},${lng}&timestamp=${stamp}&key=${encodeURIComponent(apiKey)}`,
+  );
+  if (!res.ok) return null;
+  const body = await res.json().catch(() => null) as { status?: string; timeZoneId?: string } | null;
+  return body?.status === "OK" && body.timeZoneId ? body.timeZoneId : null;
 }
 
 export async function fetchGooglePlace(googlePlaceId: string, apiKey: string): Promise<GooglePlace> {
