@@ -45,7 +45,7 @@ export function CatalogRankingClient({
       <SectionCard
         icon={<GalleryHorizontal className="text-primary h-4 w-4" />}
         title="Ranking profile"
-        subtitle="One profile for every list. The only difference between lists is the family filter. Exponents run from 0 (off) to 4. Randomness ships off."
+        subtitle="One profile for every list. The only difference between lists is the family filter. Exponents run from 0 (off) to 4. Name and Randomness ship off. Proximity and Popularity ship at 1."
         state={
           <KnobState
             kind="enforced"

@@ -77,7 +77,7 @@ export function MesitaSourceCards({ seed }: { seed: FloorSeed }) {
         <SectionCard
           icon={<GalleryHorizontal className="text-primary h-4 w-4" />}
           title="Mesita Places Catalog Search"
-          subtitle="The catalog's retriever. Seven family lists share one ranking profile: Name, Description, Proximity, Popularity, Selected, and Randomness. Family and Enriched admit; they do not score. Timing is not in this profile."
+          subtitle="The catalog's retriever. Seven family lists share one ranking profile. Proximity and Popularity ship at 1. Name and Randomness ship at 0. Description and Selected stay at 1 and abstain. Family and Enriched admit; they do not score. Timing is not in this profile."
           state={
             <KnobState
               kind="enforced"

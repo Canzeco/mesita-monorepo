@@ -51,7 +51,7 @@ Deno.test("normalizeCatalogConfig clamps and defaults", () => {
   assertEquals(normalizeCatalogConfig({ seedCount: 99, placesPerRail: 1 }).seedCount, 20);
   assertEquals(normalizeCatalogConfig({ placesPerRail: 1 }).placesPerRail, 4);
   assertEquals(normalizeCatalogConfig(null).ranking, {
-    name: 1,
+    name: 0,
     description: 1,
     proximity: 1,
     popularity: 1,
