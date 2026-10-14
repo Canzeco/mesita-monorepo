@@ -13,7 +13,7 @@ const map: FamiliesMap = {
   googleTypes: [
     { slug: "restaurant", family: "restaurants" },
     { slug: "cafe", family: "cafes_bakeries" },
-    { slug: "accounting", family: "other" },
+    { slug: "accounting", family: "undefined" },
   ],
 };
 
@@ -39,8 +39,8 @@ describe("highlightFamilies", () => {
     expect(hit.google.has("accounting")).toBe(false);
   });
 
-  it("treats other as a google sink with no categories", () => {
-    const hit = highlightFamilies(map, { kind: "family", slug: "other" });
+  it("highlights the google types that land on undefined", () => {
+    const hit = highlightFamilies(map, { kind: "family", slug: "undefined" });
     expect([...hit.google]).toEqual(["accounting"]);
     expect(hit.categories.size).toBe(0);
   });

@@ -11,7 +11,7 @@ export default async function FamiliesPage() {
       <PageHeader
         eyebrow="Operations · Families"
         title="Families"
-        description="Google Place Categories, Mesita Families, and Mesita Categories. Read-only. Selecting any row highlights what it maps to. A category may belong to two families. A Google type maps to one family, or to Other."
+        description="Google Place Categories, Mesita Families, and Mesita Categories. Read-only. Selecting any row highlights what it maps to. A category may belong to two families. A Google type maps to one family. Types outside the seven land on Undefined."
       />
       {map.ok ? (
         <FamiliesExplorer map={map} />

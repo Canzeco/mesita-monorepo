@@ -2,7 +2,7 @@
 // tables. Google types come from the code map — that record is the
 // exclusive side of the taxonomy, and it is not stored twice.
 import type { PlaceCategory, PlaceFamily } from "./categories.ts";
-import { GOOGLE_TYPE_SUPER, type SuperOrOther } from "./google-type-super.ts";
+import { GOOGLE_TYPE_SUPER, type GuestSuper } from "./google-type-super.ts";
 
 export type FamiliesMapFamily = {
   slug: string;
@@ -19,7 +19,7 @@ export type FamiliesMapCategory = {
 
 export type FamiliesMapGoogleType = {
   slug: string;
-  family: SuperOrOther;
+  family: GuestSuper;
 };
 
 export type FamiliesMap = {

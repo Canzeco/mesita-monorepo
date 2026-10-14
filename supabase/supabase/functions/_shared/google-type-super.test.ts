@@ -23,7 +23,7 @@ const GUEST: GuestSuper[] = [
   "undefined",
 ];
 
-Deno.test("478 Google Table A types each map to exactly one Super or other", () => {
+Deno.test("478 Google Table A types each map to exactly one of the eight families", () => {
   const keys = Object.keys(GOOGLE_TYPE_SUPER);
   assertEquals(keys.length, 478);
   assertEquals(new Set(keys).size, 478);
@@ -40,7 +40,7 @@ Deno.test("478 Google Table A types each map to exactly one Super or other", () 
     wellness_beauty: 16,
     experiences: 58,
     culture_arts: 18,
-    other: 201,
+    undefined: 201,
   });
 });
 
@@ -51,8 +51,8 @@ Deno.test("Google side stays exclusive even where the category is a double", () 
   assertEquals(superForGoogleType("winery"), "bars_nightlife");
   assertEquals(superForGoogleType("movie_theater"), "experiences");
   assertEquals(superForGoogleType("breakfast_restaurant"), "restaurants");
-  assertEquals(superForGoogleType("hotel"), "other");
-  assertEquals(superForGoogleType("gas_station"), "other");
+  assertEquals(superForGoogleType("hotel"), "undefined");
+  assertEquals(superForGoogleType("gas_station"), "undefined");
   assertEquals(superForGoogleType("fine_dining"), "restaurants");
 });
 
@@ -93,6 +93,7 @@ Deno.test("search batteries stay inside Google's API caps", () => {
       ...GOOGLE_SEARCH_TYPES.culture_arts,
     ],
   );
+  // `other` is not a family. An unknown slug adds nothing.
   assertEquals(nearbyTypesForSupers(["other", "nope"]), []);
 });
 

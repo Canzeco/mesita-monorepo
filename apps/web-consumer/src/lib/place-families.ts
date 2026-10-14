@@ -1,11 +1,12 @@
-// Place families — the Atlas families (seven real + Other).
+// Place families — the eight Atlas families (seven guest pills + Undefined).
 // THE LAW: the CATEGORY side is multi-parent — a Mesita category belongs
 // to one or TWO families (breakfast is restaurants AND cafés), so a place
 // may match two pills. The GOOGLE side is exclusive: each Table A type
-// maps to exactly one family (or `other`, not a guest pill). Search map
-// Filters cut on these keys only. Family `undefined` (label "Undefined", ❓)
-// is the leftover/create-path bucket — ALWAYS rendered last — not Google
-// `other` (hotels, shops, schools stay ineligible).
+// maps to exactly one of these eight. Types outside the seven land on
+// Undefined, which is not a guest pill (hotels, shops, schools stay
+// ineligible). Search map Filters cut on these keys only. Family
+// `undefined` (label "Undefined", ❓) is the leftover bucket — ALWAYS
+// rendered last.
 //
 // NOT mock data: the family KEYS are a live product contract, mirrored in
 //   · public.place_families
