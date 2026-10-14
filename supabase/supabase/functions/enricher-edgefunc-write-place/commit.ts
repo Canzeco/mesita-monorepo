@@ -1,0 +1,28 @@
+// The only enrichment write Render is allowed to ask for.
+// A finished place carries content_state "ready". Anything else is refused
+// before a row is touched, so a place is enriched or it is not.
+
+export type EnrichmentCommit =
+  | { ok: true; placeId: string; patch: Record<string, unknown> }
+  | { ok: false; error: string };
+
+export function enrichmentCommit(body: unknown): EnrichmentCommit {
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    return { ok: false, error: "body must be an object" };
+  }
+  const raw = body as { placeId?: unknown; patch?: unknown };
+  const placeId = typeof raw.placeId === "string" ? raw.placeId.trim() : "";
+  if (!placeId) return { ok: false, error: "placeId is required" };
+  if (typeof raw.patch !== "object" || raw.patch === null || Array.isArray(raw.patch)) {
+    return { ok: false, error: "patch must be an object" };
+  }
+  const patch = raw.patch as Record<string, unknown>;
+  if (patch.content_state !== "ready") {
+    return { ok: false, error: "patch.content_state must be ready" };
+  }
+  const profileFields = Object.keys(patch).filter((key) => key !== "content_state");
+  if (profileFields.length === 0) {
+    return { ok: false, error: "a finished place needs its profile" };
+  }
+  return { ok: true, placeId, patch };
+}

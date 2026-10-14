@@ -184,6 +184,12 @@ verify_jwt = true
 [functions.enricher-cron-enrich-place-third]
 verify_jwt = true
 
+# Render posts the finished place here. The gateway does not check a JWT:
+# the function compares Authorization to ENRICH_WRITE_KEY. Render does not
+# hold the service-role key.
+[functions.enricher-edgefunc-write-place]
+verify_jwt = false
+
 # --- Consumer ---
 
 # Public catalog reads. RLS enforces which place states are visible.

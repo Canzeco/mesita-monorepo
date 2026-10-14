@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "tsx src/hello.ts"
+    "start": "tsx src/index.ts",
+    "test": "node --experimental-strip-types --test src/write-place.test.ts"
   },
   "dependencies": {
     "@renderinc/sdk": "^1.0.0"
