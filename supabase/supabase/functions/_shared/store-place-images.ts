@@ -107,6 +107,22 @@ export async function storeFirstPlaceImage(
   return { ok: true, url: finalUrl };
 }
 
+/** Copy source images into the bucket and return the durable public URLs.
+ *  A URL that fails to copy is dropped. This does not write the place. */
+export async function mirrorPlacePhotos(
+  admin: SupabaseClient,
+  supabaseUrl: string,
+  urls: string[],
+): Promise<string[]> {
+  const clean = sanitiseUrls(urls).slice(0, 10);
+  const settled = await Promise.all(clean.map((url) => mirrorOne(admin, supabaseUrl, url)));
+  const durable: string[] = [];
+  for (const row of settled) {
+    if (row.ok && row.publicUrl && !durable.includes(row.publicUrl)) durable.push(row.publicUrl);
+  }
+  return durable;
+}
+
 /** Upsert metadata rows and kick off background mirroring. */
 export async function storePlaceImages(
   admin: SupabaseClient,

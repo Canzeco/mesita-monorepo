@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { profileFromGoogle } from "./google-spine.ts";
+import { photoUris, profileFromGoogle } from "./google-spine.ts";
 
 const PLACE = {
   id: "ChIJ-test",
@@ -46,6 +46,18 @@ test("a complete Google place becomes a finished profile without a database key"
   assert.equal(got.patch.pitch, "Cocina de mercado en la Condesa.");
   assert.equal("google_place_id" in got.patch, false);
   assert.equal("content_state" in got.patch, false);
+});
+
+test("photo links are https only, ten at most", () => {
+  const bodies = [
+    { photoUri: "https://lh3.googleusercontent.com/a" },
+    { photoUri: "http://insecure.example/a" },
+    { photoUri: "" },
+    ...Array.from({ length: 12 }, (_, i) => ({ photoUri: `https://lh3.googleusercontent.com/${i}` })),
+  ];
+  const urls = photoUris(bodies);
+  assert.equal(urls.length, 10);
+  assert.equal(urls[0], "https://lh3.googleusercontent.com/a");
 });
 
 test("a place without a name, coordinates, or address writes nothing", () => {

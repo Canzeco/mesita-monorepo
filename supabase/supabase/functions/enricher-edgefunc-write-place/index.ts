@@ -10,8 +10,10 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { validateProfilePatch, writePlace } from "../_shared/place-doc.ts";
+import { mirrorPlacePhotos } from "../_shared/store-place-images.ts";
 import { timingSafeEqual } from "../_shared/timing-safe-equal.ts";
 import { enrichmentCommit } from "./commit.ts";
+import { galleryUrls } from "./photos.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -37,11 +39,21 @@ Deno.serve(async (req) => {
   if (!validated.ok) return json({ ok: false, error: validated.error }, 400);
 
   const admin = adminClient(envRes.env);
+  let patch = validated.patch;
+  const gallery = galleryUrls(patch.photos);
+  if (gallery.length > 0) {
+    const durable = await mirrorPlacePhotos(admin, envRes.env.url, gallery);
+    if (durable.length > 0) patch = { ...patch, photos: durable };
+    else {
+      const { photos: _drop, ...without } = patch;
+      patch = without;
+    }
+  }
   const written = await writePlace(admin, {
     table: "profiles",
     mode: "update",
     id: commit.placeId,
-    patch: validated.patch,
+    patch,
   });
   if (!written.ok) return json({ ok: false, error: written.error }, 500);
   return json({ ok: true, placeId: commit.placeId, content_state: "ready" });
