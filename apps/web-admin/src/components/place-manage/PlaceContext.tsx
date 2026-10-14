@@ -210,9 +210,18 @@ export function PlaceProvider({
         setSaveError(r.error);
         return;
       }
-      const next: AdminPlace = r.data.place.reviews_state != null
-        ? r.data.place
-        : { ...r.data.place, reviews_state: place.reviews_state };
+      const next: AdminPlace = {
+        ...r.data.place,
+        google_found: typeof r.data.place.google_found === "boolean"
+          ? r.data.place.google_found
+          : place.google_found,
+        instagram_found: typeof r.data.place.instagram_found === "boolean"
+          ? r.data.place.instagram_found
+          : place.instagram_found,
+        facebook_found: typeof r.data.place.facebook_found === "boolean"
+          ? r.data.place.facebook_found
+          : place.facebook_found,
+      };
       for (const s of Object.values(savers.current)) s.onSaved(next);
       setPlace(next);
       if (r.data.family || r.data.familyStored) {

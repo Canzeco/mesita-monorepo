@@ -521,8 +521,10 @@ export type Database = {
           enrichment: Json
           enrichment_sources: Json | null
           facebook_followers: number | null
+          facebook_found: boolean
           facebook_url: string | null
           family_keys: string[] | null
+          google_found: boolean
           google_maps_url: string | null
           google_name: string | null
           google_place_id: string | null
@@ -532,6 +534,7 @@ export type Database = {
           hours: Json | null
           id: string
           instagram_followers_count: number | null
+          instagram_found: boolean
           instagram_url: string | null
           lat: number | null
           lng: number | null
@@ -584,8 +587,10 @@ export type Database = {
           enrichment?: Json
           enrichment_sources?: Json | null
           facebook_followers?: number | null
+          facebook_found?: boolean
           facebook_url?: string | null
           family_keys?: string[] | null
+          google_found?: boolean
           google_maps_url?: string | null
           google_name?: string | null
           google_place_id?: string | null
@@ -595,6 +600,7 @@ export type Database = {
           hours?: Json | null
           id?: string
           instagram_followers_count?: number | null
+          instagram_found?: boolean
           instagram_url?: string | null
           lat?: number | null
           lng?: number | null
@@ -647,8 +653,10 @@ export type Database = {
           enrichment?: Json
           enrichment_sources?: Json | null
           facebook_followers?: number | null
+          facebook_found?: boolean
           facebook_url?: string | null
           family_keys?: string[] | null
+          google_found?: boolean
           google_maps_url?: string | null
           google_name?: string | null
           google_place_id?: string | null
@@ -658,6 +666,7 @@ export type Database = {
           hours?: Json | null
           id?: string
           instagram_followers_count?: number | null
+          instagram_found?: boolean
           instagram_url?: string | null
           lat?: number | null
           lng?: number | null

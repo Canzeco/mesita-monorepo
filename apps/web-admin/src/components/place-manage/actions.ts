@@ -97,8 +97,10 @@ export type AdminPlace = {
   google_reviews: unknown;
   instagram_followers_count: number | null;
   facebook_followers: number | null;
-  /** Per-source reload state. Null on a payload from before MESITA-2183. */
-  reviews_state?: unknown;
+  /** The source resolved. False is not found, including a technical miss. */
+  google_found?: boolean;
+  instagram_found?: boolean;
+  facebook_found?: boolean;
   created_at: string | null;
   updated_at: string | null;
   // Stamped by the Enricher's final write — THE Enriched fact (MESITA-2154;
@@ -213,37 +215,37 @@ export async function reloadPlaceReviews(
 ): Promise<
   Result<{
     source: ReviewsReloadSource;
-    failed: boolean;
-    error: string | null;
     google_stars_overall: number | null;
     google_review_count: number | null;
     instagram_followers_count: number | null;
     facebook_followers: number | null;
-    reviews_state: unknown;
+    google_found: boolean;
+    instagram_found: boolean;
+    facebook_found: boolean;
   }>
 > {
   const r = await efInvoke<{
     source: ReviewsReloadSource;
-    failed?: boolean;
-    error?: string | null;
     google_stars_overall: number | null;
     google_review_count: number | null;
     instagram_followers_count: number | null;
     facebook_followers: number | null;
-    reviews_state: unknown;
+    google_found: boolean;
+    instagram_found: boolean;
+    facebook_found: boolean;
   }>("admin-web-reload-place-reviews", { placeId, source });
   if (!r.ok) return { ok: false, error: r.error, code: r.code };
   return {
     ok: true,
     data: {
       source: r.data.source,
-      failed: r.data.failed === true,
-      error: r.data.error ?? null,
       google_stars_overall: r.data.google_stars_overall,
       google_review_count: r.data.google_review_count,
       instagram_followers_count: r.data.instagram_followers_count,
       facebook_followers: r.data.facebook_followers,
-      reviews_state: r.data.reviews_state,
+      google_found: r.data.google_found === true,
+      instagram_found: r.data.instagram_found === true,
+      facebook_found: r.data.facebook_found === true,
     },
   };
 }

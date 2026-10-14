@@ -10,9 +10,10 @@
 // doubt we attach the brand account rather than nothing.
 
 import { APIFY_ACTORS, instagramHandleFromUrl, runApifyActor } from "./apify.ts";
+import { verifyInstagram } from "./review-sources.ts";
 import { numOf } from "./parse-utils.ts";
 import { selectChannels } from "./enrich-channel-discovery.ts";
-import { igProfileMatchesPlace, isDeadIgStub } from "./enrich-instagram-match.ts";
+import { igProfileMatchesPlace } from "./enrich-instagram-match.ts";
 
 export type InstagramPlaceCtx = {
   name: string;
@@ -79,17 +80,19 @@ export async function gatherInstagram(opts: {
     const key = handle?.toLowerCase();
     if (!handle || !key || tried.has(key)) return null;
     tried.add(key);
-    const run = await runApifyActor<Record<string, unknown>>(
-      APIFY_ACTORS.instagramProfile,
-      { usernames: [handle] },
-      apifyKey,
-    );
-    if (run.error) apiErrors[key] = `${run.status ?? "net"}: ${run.error}`;
-    const p = run.items?.[0];
-    // A NONEXISTENT handle still returns a non-null object — the username echoed
-    // back with every field null/empty. Treat that empty stub as not-found so a
-    // dead handle (e.g. a guessed FB-slug) never reaches the identity judge.
-    if (!p || isDeadIgStub(p)) return null;
+    // The verifier owns the profile scrape. The identity judge reads that
+    // payload, so this handle is not fetched twice.
+    const verified = await verifyInstagram(`https://www.instagram.com/${handle}/`, apifyKey);
+    if (!verified.found || !verified.profile) {
+      if (
+        verified.reason && verified.reason !== "not_a_profile" &&
+        verified.reason !== "no_handle"
+      ) {
+        apiErrors[key] = verified.reason;
+      }
+      return null;
+    }
+    const p = verified.profile;
     const ok = await igProfileMatchesPlace(p, place, openaiKey, corroborateFb);
     return { handle, p, ok };
   };

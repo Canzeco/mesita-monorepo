@@ -4,8 +4,8 @@
 // write behind admin's Single Place save bar (manage-single/[id]). Validates
 // input, writes via the service role through the place document door, and
 // queues the on_update side effects (embeddings). A changed Instagram or
-// Facebook URL empties that reviews source; it does not scrape. Does NOT
-// call any other Edge Function.
+// Facebook URL waits for the shared verifier, then stores the link, the
+// found flag, and the numbers together. Does NOT call any other Edge Function.
 //
 // WAS business-web-update-place (MESITA-2090). The business console that
 // owned it is deleted in the MVP First Stage cut, so the one surviving caller
@@ -40,12 +40,7 @@ import {
 } from "../_shared/profile-family.ts";
 import { resolveCategoryInput } from "./category-input.ts";
 import { applyMediaUpdates } from "./place-media-update.ts";
-import {
-  applySocialCountClears,
-  loadPreviousSocialUrls,
-  reviewsTileKeyInBody,
-  writeClearedReviewsState,
-} from "./place-social-refresh.ts";
+import { reviewPatchForSocialEdit, reviewsTileKeyInBody } from "./place-social-refresh.ts";
 import {
   queuePlaceEmbeddingsOnUpdate,
   updateTouchesEmbeddingInputs,
@@ -233,11 +228,28 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "No editable fields provided" }, 400);
   }
 
-  // A changed social URL empties that source. The reload fetches the new
-  // number. Snapshot the current URLs first — clients resubmit whole forms,
-  // and an unchanged URL must not wipe a count (MESITA-2183).
-  const prevSocial = await loadPreviousSocialUrls(admin, placeId, update);
-  const clears = applySocialCountClears(update, prevSocial);
+  // A changed social URL waits here. The verifier's patch is written
+  // first, so the link, the flag, and the numbers land together. The
+  // view write below repeats the link and the count (those columns are
+  // on the view) and returns the row the console paints.
+  const reviewPatch = await reviewPatchForSocialEdit(admin, placeId, update);
+  if (Object.keys(reviewPatch).length > 0) {
+    const reviewed = await writePlace(admin, {
+      table: "place_profiles",
+      mode: "update",
+      id: placeId,
+      patch: reviewPatch,
+    });
+    if (!reviewed.ok) {
+      return json({ ok: false, error: `reviews: ${reviewed.error}` }, 500);
+    }
+    if ("instagram_followers_count" in reviewPatch) {
+      update.instagram_followers_count = reviewPatch.instagram_followers_count;
+    }
+    if ("facebook_followers" in reviewPatch) {
+      update.facebook_followers = reviewPatch.facebook_followers;
+    }
+  }
 
   const updRes = await writePlace(admin, {
     table: "profiles",
@@ -258,8 +270,14 @@ Deno.serve(async (req) => {
     );
   }
   const place = updRes.row as Record<string, unknown>;
-  const cleared = await writeClearedReviewsState(admin, placeId, prevSocial, clears);
-  if (cleared) place.reviews_state = cleared;
+  if ("instagram_found" in reviewPatch) place.instagram_found = reviewPatch.instagram_found;
+  if ("facebook_found" in reviewPatch) place.facebook_found = reviewPatch.facebook_found;
+  if ("instagram_followers_count" in reviewPatch) {
+    place.instagram_followers_count = reviewPatch.instagram_followers_count;
+  }
+  if ("facebook_followers" in reviewPatch) {
+    place.facebook_followers = reviewPatch.facebook_followers;
+  }
 
   const pinRes = await persistBusinessFieldPins(admin, placeId, update);
   if (!pinRes.ok) {
@@ -269,10 +287,9 @@ Deno.serve(async (req) => {
     );
   }
 
-  // The on_update row has two operator cells, `social` and `embedding`.
-  // `social` no longer scrapes (MESITA-2183): a changed URL empties that
-  // source above, and the Reviews tab is the only fetch. `embedding` still
-  // re-synthesises when the blurb inputs change. A disabled row buys nothing.
+  // The on_update row's `embedding` cell re-synthesises when the blurb
+  // inputs change. The reviews verifier already ran above; it is not this
+  // trigger. A disabled row buys nothing.
   const onUpdateBuys = subprocessesFor(
     await loadEnrichmentTriggers(admin),
     "on_update",

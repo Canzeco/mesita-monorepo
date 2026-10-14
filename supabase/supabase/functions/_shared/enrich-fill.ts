@@ -221,7 +221,6 @@ export const STEP_WRITE_KEYS: Record<FillStep, readonly string[]> = {
     "hours",
     "phone",
     "google_maps_url",
-    "google_stars_overall",
     "business_state",
     // Google spine text and the channels Links does not discover. They ride
     // in on `place = { ...basics }`. A skipped Details must not persist them,
@@ -240,7 +239,10 @@ export const STEP_WRITE_KEYS: Record<FillStep, readonly string[]> = {
     "opentable_url",
     "uber_eats_url",
   ],
-  social: ["instagram_followers_count", "facebook_followers", "facebook_rating"],
+  // Follower counts and stars are the Reviews verifier, not this step.
+  // facebook_rating is a dropped column; a blob that still carries it must
+  // be stripped or the profile write refuses the whole patch.
+  social: ["facebook_rating"],
   reviews: ["google_reviews"],
   images: ["photos"],
   description: [
@@ -264,9 +266,6 @@ export function omitUnrunKeys(
     if (ran.has(step)) continue;
     for (const key of STEP_WRITE_KEYS[step]) delete place[key];
   }
-  // Review count belongs to Details. Reviews may also refresh it, so keep it
-  // when either step ran.
-  if (!ran.has("details") && !ran.has("reviews")) delete place.google_review_count;
   // Google's website is Details; a discovered website is Links.
   if (!ran.has("details") && !ran.has("links")) delete place.website_url;
   // Links finds the handle; Social is what verifies it.
