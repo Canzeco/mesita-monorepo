@@ -247,7 +247,7 @@ export function PlaceSection({
   /** Extra Place-page boxes (Reviews) — flow in the same masonry columns. */
   children?: React.ReactNode;
 }) {
-  const { savePending, profile } = usePlaceContext();
+  const { savePending, profile, reportSocialDraft } = usePlaceContext();
   const limits = profile.fieldLimits;
   const [form, setForm] = useState<Form>(() => placeToForm(place, limits));
   const [saved, setSaved] = useState<Form>(form);
@@ -339,6 +339,17 @@ export function PlaceSection({
       setErrors({});
     },
   );
+
+  useEffect(() => {
+    reportSocialDraft({
+      instagram_url: form.channels.instagram_url ?? "",
+      facebook_url: form.channels.facebook_url ?? "",
+    });
+  }, [
+    form.channels.instagram_url,
+    form.channels.facebook_url,
+    reportSocialDraft,
+  ]);
 
   const anyPending = savePending;
 

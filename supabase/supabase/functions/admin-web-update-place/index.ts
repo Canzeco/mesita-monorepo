@@ -4,8 +4,9 @@
 // write behind admin's Single Place save bar (manage-single/[id]). Validates
 // input, writes via the service role through the place document door, and
 // queues the on_update side effects (embeddings). A changed Instagram or
-// Facebook URL waits for the shared verifier, then stores the link, the
-// found flag, and the numbers together. Does NOT call any other Edge Function.
+// Facebook URL waits for the shared verifier. The link is stored only when
+// that account is connected; a miss refuses the save and writes nothing.
+// Does NOT call any other Edge Function.
 //
 // WAS business-web-update-place (MESITA-2090). The business console that
 // owned it is deleted in the MVP First Stage cut, so the one surviving caller
@@ -19,7 +20,12 @@
 // Deploy: supabase functions deploy admin-web-update-place
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import {
+  corsPreflight,
+  json,
+  readJson,
+  rejectUnlessMethods,
+} from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -33,14 +39,20 @@ import { sanitizePlaceTags } from "../_shared/tags.ts";
 import { type PlaceHours, sanitiseHours } from "./place-hours.ts";
 import { isUrl, URL_FIELDS, type UrlField } from "./place-urls.ts";
 import { optString } from "./place-update-utils.ts";
-import { fetchPlaceCategories, fetchPlaceFamilies } from "../_shared/categories.ts";
+import {
+  fetchPlaceCategories,
+  fetchPlaceFamilies,
+} from "../_shared/categories.ts";
 import {
   resolveProfileFamily,
   resolveStoredFamily,
 } from "../_shared/profile-family.ts";
 import { resolveCategoryInput } from "./category-input.ts";
 import { applyMediaUpdates } from "./place-media-update.ts";
-import { reviewPatchForSocialEdit, reviewsTileKeyInBody } from "./place-social-refresh.ts";
+import {
+  reviewPatchForSocialEdit,
+  reviewsTileKeyInBody,
+} from "./place-social-refresh.ts";
 import {
   queuePlaceEmbeddingsOnUpdate,
   updateTouchesEmbeddingInputs,
@@ -127,7 +139,11 @@ Deno.serve(async (req) => {
   const blocked = reviewsTileKeyInBody(body);
   if (blocked) {
     return json(
-      { ok: false, code: "reviews_owned", error: `${blocked} is reloaded from the Reviews tab` },
+      {
+        ok: false,
+        code: "reviews_owned",
+        error: `${blocked} is reloaded from the Reviews tab`,
+      },
       400,
     );
   }
@@ -228,11 +244,26 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "No editable fields provided" }, 400);
   }
 
-  // A changed social URL waits here. The verifier's patch is written
+  // A changed social URL waits here. A miss refuses the whole save
+  // before either write, so a dead account never lands and the rest of
+  // the draft stays unwritten. A connected account's patch is written
   // first, so the link, the flag, and the numbers land together. The
   // view write below repeats the link and the count (those columns are
   // on the view) and returns the row the console paints.
-  const reviewPatch = await reviewPatchForSocialEdit(admin, placeId, update);
+  const social = await reviewPatchForSocialEdit(admin, placeId, update);
+  if (!social.ok) {
+    return json(
+      {
+        ok: false,
+        code: social.code,
+        error: social.error,
+        retryable: social.retryable,
+        fields: social.fields,
+      },
+      400,
+    );
+  }
+  const reviewPatch = social.patch;
   if (Object.keys(reviewPatch).length > 0) {
     const reviewed = await writePlace(admin, {
       table: "place_profiles",
@@ -270,8 +301,12 @@ Deno.serve(async (req) => {
     );
   }
   const place = updRes.row as Record<string, unknown>;
-  if ("instagram_found" in reviewPatch) place.instagram_found = reviewPatch.instagram_found;
-  if ("facebook_found" in reviewPatch) place.facebook_found = reviewPatch.facebook_found;
+  if ("instagram_found" in reviewPatch) {
+    place.instagram_found = reviewPatch.instagram_found;
+  }
+  if ("facebook_found" in reviewPatch) {
+    place.facebook_found = reviewPatch.facebook_found;
+  }
   if ("instagram_followers_count" in reviewPatch) {
     place.instagram_followers_count = reviewPatch.instagram_followers_count;
   }
@@ -295,7 +330,9 @@ Deno.serve(async (req) => {
     "on_update",
   );
 
-  if (onUpdateBuys.includes("embedding") && updateTouchesEmbeddingInputs(update)) {
+  if (
+    onUpdateBuys.includes("embedding") && updateTouchesEmbeddingInputs(update)
+  ) {
     queuePlaceEmbeddingsOnUpdate({
       admin,
       placeId,
