@@ -91,7 +91,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
               {enrichState?.last_enriched_at
                 ? formatAbsoluteUtc(enrichState.last_enriched_at)
                 : "never"}
-              . This queues Enrich — first, then second, then third.
+              . Press Enrich to start it.
             </p>
           )}
 
@@ -104,7 +104,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
             }}
             className="bg-foreground text-paper inline-flex h-10 items-center rounded-full px-5 text-sm font-semibold transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {runPending ? "Queuing…" : running ? "Enriching…" : "Enrich"}
+            {runPending ? "Starting…" : running ? "Enriching…" : "Enrich"}
           </button>
 
           <p className="mt-2 min-h-4 type-label" aria-live="polite">
@@ -112,7 +112,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
               <span className="text-destructive">{runError}</span>
             ) : queued ? (
               <span className="text-muted-foreground">
-                Queued — the Enricher picks it up within seconds.
+                Started.
               </span>
             ) : running ? (
               <span className="text-muted-foreground">
