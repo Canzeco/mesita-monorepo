@@ -7,9 +7,8 @@
 // Enrich / Create+Enrich is a second call; guests vote on the Enrich tab.
 // Core: createMinimalPlace (_shared/create-place.ts), which never seeds Enricher.
 //
-// Roles are simple now: admins create from the admin app via THIS function;
-// businesses created from the business app via business-web-create-place
-// until MESITA-2090 retired it with the business console.
+// Roles are simple now: admins create from the admin app via THIS function.
+// business-web-create-place retired with web-business (MESITA-2090).
 //
 // Gating: operator JWT → the admin allowlist (requireSuperAdmin checks the
 // public.super_admins table — that table IS the admin allowlist; this is the

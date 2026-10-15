@@ -178,7 +178,7 @@ export function forgetSavedPlace(placeId: string): void {
 // Wipe the localStorage-backed saved set + previews and reset the in-memory
 // cache, then notify subscribers. Called when the signed-in consumer changes
 // (see consumer-local-reset.ts): these saves live only in the browser, so
-// they outlive both a sign-out and a server-side `admin-web-reset-database`
+// they outlive both a sign-out and a server-side admin database reset
 // wipe. Without this, a fresh consumer signing in on the same browser — or
 // the same operator re-creating an account after a DB reset — inherits the
 // previous consumer's favorites (stale places from the old data). Setting

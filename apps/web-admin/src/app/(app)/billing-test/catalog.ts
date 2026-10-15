@@ -53,13 +53,12 @@ export const KNOWN_PROBES: ReadonlyArray<{
   {
     id: "openai",
     label: "OpenAI",
-    impact:
-      "Enricher text/vision + Memo + Ojo proof verification (MESITA-1034, off by default)",
+    impact: "Enricher text/vision + Memo",
   },
   {
     id: "stripe",
     label: "Stripe",
-    impact: "Business plans + consumer Premium subscriptions",
+    impact: "Key still stored. No First Stage screen charges it.",
   },
   {
     id: "perplexity",
