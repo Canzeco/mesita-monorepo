@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
   if (!commit.ok) return json({ ok: false, error: commit.error }, 400);
   if (commit.baseUpdatedAt) {
     const { data: versionRow, error: versionErr } = await admin
-      .from("place_profiles")
+      .from("profiles")
       .select("updated_at, content_state, enriched_at")
       .eq("id", commit.placeId)
       .maybeSingle();

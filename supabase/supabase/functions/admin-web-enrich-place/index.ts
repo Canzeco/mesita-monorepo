@@ -132,12 +132,12 @@ Deno.serve(async (req) => {
   if (!res.ok) {
     const detail = await res.text();
     await Promise.all(placeIds.map(async (id) => {
-      const { data } = await admin
+      const { data, error } = await admin
         .from("place_profiles")
         .select("content_state, enriched_at")
         .eq("id", id)
         .maybeSingle();
-      if (!data || data.content_state !== "generating") return;
+      if (error || !data || data.content_state !== "generating") return;
       const next = typeof data.enriched_at === "string" && data.enriched_at.trim() ? "ready" : "failed";
       await writePlace(admin, { table: "places", mode: "update", id, patch: { content_state: next } });
     }));
