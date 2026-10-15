@@ -3,8 +3,8 @@
 // Single Place › Find › the one results table (MESITA-2124, MESITA-2181,
 // MESITA-2187, MESITA-2188). A row per place. The first column says whether
 // Mesita holds it or it is Google only — the first fact to read. Then the
-// states, in two groups — General States and Reviews —
-// then, on a word, Name Search and Google. The action sits at the row end.
+// states — General States — then, on a word, Name Search and Google.
+// Reviews stay off this table (MESITA-2222). The action sits at the row end.
 // Drawn once both have settled, so no row ever moves under the cursor.
 //
 // From 640px, On and Place stay pinned while the state columns scroll.
@@ -31,9 +31,7 @@ import {
 } from "@/lib/ui-classes";
 import {
   FIND_FIRST_ROWS,
-  REVIEW_COLUMNS,
   WORD_RANK_COLUMNS,
-  reviewFound,
   type FindResult,
   type FindRow,
 } from "./find-results";
@@ -60,8 +58,7 @@ const PIN_HELD_CELL = `hidden sticky left-0 w-36 min-w-36 max-w-36 sm:table-cell
 const PIN_PLACE_CELL = `sticky left-0 sm:left-36 ${PIN_CELL_BG}`;
 
 const STATE_GROUPS = [
-  { label: "General States", span: GENERAL_STATE_FACTS.length, edge: false },
-  { label: "Reviews", span: REVIEW_COLUMNS.length, edge: true },
+  { label: "General States", span: GENERAL_STATE_FACTS.length },
 ] as const;
 
 export const rowNameId = (i: number) => `find-row-name-${i}`;
@@ -94,10 +91,7 @@ export function FindResults({
   const failed = new Set(result.failed);
   const ranks = variant === "search";
   const colSpan =
-    3 +
-    GENERAL_STATE_FACTS.length +
-    REVIEW_COLUMNS.length +
-    (ranks ? WORD_RANK_COLUMNS.length : 0);
+    3 + GENERAL_STATE_FACTS.length + (ranks ? WORD_RANK_COLUMNS.length : 0);
 
   if (rows.length === 0) {
     const allFailed = ranks && WORD_RANK_COLUMNS.every((s) => failed.has(s.key));
@@ -127,8 +121,8 @@ export function FindResults({
           <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
             <caption className="sr-only">
               {ranks
-                ? `Places matching “${query}”, with general and review states, and where Name Search and Google ranked them`
-                : "Every place on Mesita, with general and review states"}
+                ? `Places matching “${query}”, with general states, and where Name Search and Google ranked them`
+                : "Every place on Mesita, with general states"}
             </caption>
             <thead>
               <tr className={HEAD_ROW}>
@@ -151,10 +145,7 @@ export function FindResults({
                     key={g.label}
                     colSpan={g.span}
                     scope="colgroup"
-                    className={
-                      "px-3 pt-3 pb-1 text-center font-semibold whitespace-nowrap " +
-                      (g.edge ? GROUP_EDGE : "")
-                    }
+                    className="px-3 pt-3 pb-1 text-center font-semibold whitespace-nowrap"
                   >
                     {g.label}
                   </th>
@@ -194,18 +185,6 @@ export function FindResults({
                     {f.label}
                   </th>
                 ))}
-                {REVIEW_COLUMNS.map((col, i) => (
-                  <th
-                    key={col.key}
-                    scope="col"
-                    className={
-                      "px-3 pb-3 text-center font-semibold whitespace-nowrap " +
-                      (i === 0 ? GROUP_EDGE : "")
-                    }
-                  >
-                    {col.label}
-                  </th>
-                ))}
               </tr>
             </thead>
             <tbody>
@@ -230,7 +209,6 @@ export function FindResults({
                     {ranks ? <PhoneSources row={row} /> : null}
                   </th>
                   <ProfileCells row={row} />
-                  <ReviewCells row={row} />
                   {ranks
                     ? WORD_RANK_COLUMNS.map((s, i) => (
                         <td
@@ -432,22 +410,6 @@ function ProfileCells({ row }: { row: FindRow }) {
           )}
         </td>
       ))}
-    </>
-  );
-}
-
-function ReviewCells({ row }: { row: FindRow }) {
-  const found = reviewFound(row);
-  return (
-    <>
-      {REVIEW_COLUMNS.map((col, i) => {
-        const value = found[col.key];
-        return (
-          <td key={col.key} className={CELL + (i === 0 ? ` ${GROUP_EDGE}` : "")}>
-            {value == null ? <Miss label={col.label} /> : <StatePill on={value} />}
-          </td>
-        );
-      })}
     </>
   );
 }

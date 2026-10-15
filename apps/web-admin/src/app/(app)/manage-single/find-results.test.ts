@@ -5,7 +5,6 @@ import {
   catalogueList,
   enrichmentMark,
   mergeFindResults,
-  reviewFound,
   type FindInputs,
   type TextSearchResult,
 } from "./find-results";
@@ -192,23 +191,6 @@ describe("mergeFindResults", () => {
     expect(enrichmentMark(place, "links")).toBe("no");
     expect(enrichmentMark(place, "embedding")).toBe("yes");
     expect(enrichmentMark(hit({}), "details")).toBe("unknown");
-  });
-
-  it("reads Found off the Mesita row and dashes a Google-only row", () => {
-    expect(
-      reviewFound({
-        placeHit: hit({
-          google_found: true,
-          instagram_found: false,
-          facebook_found: true,
-        }),
-      }),
-    ).toEqual({ google_found: true, instagram_found: false, facebook_found: true });
-    expect(reviewFound({ placeHit: null })).toEqual({
-      google_found: null,
-      instagram_found: null,
-      facebook_found: null,
-    });
   });
 
   it("is empty when every source is empty", () => {
