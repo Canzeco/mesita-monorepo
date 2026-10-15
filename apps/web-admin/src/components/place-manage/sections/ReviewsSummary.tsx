@@ -8,8 +8,9 @@ import { SectionCard } from "@/components/admin-ui/manage";
 import { StatePill } from "@/app/(app)/manage-multiple/PlaceFacts";
 import { usePlaceContext } from "../PlaceContext";
 
-// Reviews tab. Read-only numbers. Each tile reloads its own source through
-// the shared verifier. A profile save of a link already waited for it.
+// Reviews tab. Four separate reloads: Instagram followers, Facebook
+// followers, Google stars and count, and the individual Google review list.
+// Google is attached at Create, so that row is not a Found yes/no.
 
 function num(v: unknown): number | null {
   if (typeof v === "number" && Number.isFinite(v)) return v;
@@ -96,6 +97,7 @@ export function ReviewsSummary() {
       google_found: r.data.google_found,
       instagram_found: r.data.instagram_found,
       facebook_found: r.data.facebook_found,
+      ...(r.data.source === "google_reviews" ? { google_reviews: r.data.google_reviews } : {}),
     }));
   }
 
@@ -109,6 +111,13 @@ export function ReviewsSummary() {
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <GoogleTile place={place} busy={busy === "google"} onReload={() => reload("google")} />
+        </div>
+        <div className="sm:col-span-2">
+          <GoogleReviewsTile
+            place={place}
+            busy={busy === "google_reviews"}
+            onReload={() => reload("google_reviews")}
+          />
         </div>
         <SocialTile
           label="Instagram"
@@ -144,27 +153,84 @@ function GoogleTile({
   const stars = num(place.google_stars_overall);
   const count = num(place.google_review_count);
   const armed = !!place.google_place_id?.trim();
-  const found = place.google_found === true;
-  const show = found && (stars != null || count != null);
   const hint = !armed
     ? "This place has no Google place id"
-    : !found
-    ? "Not found."
     : count != null && count > 0
     ? reviewWord(count)
     : stars != null
     ? "on file"
-    : "Found. No rating.";
+    : "No rating yet.";
   return (
     <Tile
       label="Google"
-      found={found}
-      value={!show || stars == null ? "—" : stars.toFixed(1)}
-      muted={!show || stars == null}
-      stars={show && stars != null ? stars : null}
+      value={stars == null ? "—" : stars.toFixed(1)}
+      muted={stars == null}
+      stars={stars}
       hint={hint}
       reload={
-        <ReloadButton label="Reload Google reviews" armed={armed} busy={busy} onClick={onReload} />
+        <ReloadButton label="Reload Google stars" armed={armed} busy={busy} onClick={onReload} />
+      }
+    />
+  );
+}
+
+function storedReviews(raw: unknown): { author: string; quote: string }[] {
+  if (!Array.isArray(raw)) return [];
+  const out: { author: string; quote: string }[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    const quote = typeof row.quote === "string" ? row.quote.trim() : "";
+    if (!quote) continue;
+    const author = typeof row.author === "string" && row.author.trim()
+      ? row.author.trim()
+      : "Google reviewer";
+    out.push({ author, quote });
+  }
+  return out;
+}
+
+function GoogleReviewsTile({
+  place,
+  busy,
+  onReload,
+}: {
+  place: AdminPlace;
+  busy: boolean;
+  onReload: () => void;
+}) {
+  const reviews = storedReviews(place.google_reviews);
+  const armed = !!place.google_place_id?.trim();
+  const shown = reviews.slice(0, 3);
+  return (
+    <Tile
+      label="Google reviews"
+      value={reviews.length > 0 ? String(reviews.length) : "—"}
+      muted={reviews.length === 0}
+      hint={!armed
+        ? "This place has no Google place id"
+        : reviews.length > 0
+        ? "on file"
+        : "No reviews on file."}
+      extra={shown.length > 0 ? (
+        <ul className="text-muted-foreground mt-1 space-y-1 type-label">
+          {shown.map((review, i) => (
+            <li key={i} className="truncate">
+              {review.author}: {review.quote}
+            </li>
+          ))}
+          {reviews.length > shown.length ? (
+            <li>+{reviews.length - shown.length} more</li>
+          ) : null}
+        </ul>
+      ) : null}
+      reload={
+        <ReloadButton
+          label="Reload Google review list"
+          armed={armed}
+          busy={busy}
+          onClick={onReload}
+        />
       }
     />
   );
@@ -219,14 +285,16 @@ function Tile({
   muted,
   stars,
   hint,
+  extra,
   reload,
 }: {
   label: string;
-  found: boolean;
+  found?: boolean;
   value: string;
   muted: boolean;
   stars?: number | null;
   hint: string;
+  extra?: ReactNode;
   reload: ReactNode;
 }) {
   return (
@@ -234,8 +302,12 @@ function Tile({
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <p className="flex items-center gap-2">
           <span className="text-muted-foreground type-label">{label}</span>
-          <span className="text-muted-foreground type-label">Found</span>
-          <StatePill on={found} />
+          {found == null ? null : (
+            <>
+              <span className="text-muted-foreground type-label">Found</span>
+              <StatePill on={found} />
+            </>
+          )}
         </p>
         <p className="flex items-center gap-2">
           <span
@@ -249,6 +321,7 @@ function Tile({
           {stars != null ? <Stars value={stars} /> : null}
         </p>
         <p className="text-muted-foreground type-label">{hint}</p>
+        {extra}
       </div>
       {reload}
     </div>
