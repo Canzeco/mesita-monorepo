@@ -105,19 +105,32 @@ test("the saved analysis prompt is what vision is told", async () => {
   assert.match(told, /gpt-4o-mini:Best room first\./);
 });
 
-test("an Apify miss leaves Instagram photos empty", async () => {
+test("an Apify miss leaves Instagram photos empty and logs one line", async () => {
   let sent: { username?: string[]; resultsLimit?: number; skipPinnedPosts?: boolean } = {};
-  const posts = await fetchInstagramPosts({
-    instagramUrl: "https://www.instagram.com/pujol/",
-    depth: 10,
-    apifyKey: "apify-test",
-    fetchImpl: async (input, init) => {
-      assert.match(String(input), /apify~instagram-post-scraper/);
-      sent = JSON.parse(String(init?.body ?? "{}"));
-      return new Response("outstanding invoices", { status: 403 });
-    },
-  });
-  assert.deepEqual(posts, []);
+  const lines: string[] = [];
+  const previous = console.error;
+  console.error = (...args: unknown[]) => {
+    lines.push(args.map(String).join(" "));
+  };
+  try {
+    const posts = await fetchInstagramPosts({
+      instagramUrl: "https://www.instagram.com/pujol/",
+      depth: 10,
+      apifyKey: "apify-test",
+      fetchImpl: async (input, init) => {
+        assert.match(String(input), /apify~instagram-post-scraper/);
+        sent = JSON.parse(String(init?.body ?? "{}"));
+        return new Response('{\n  "error": {\n    "message": "Too many outstanding invoices"\n  }\n}', { status: 403 });
+      },
+    });
+    assert.deepEqual(posts, []);
+  } finally {
+    console.error = previous;
+  }
+  assert.equal(lines.length, 1);
+  assert.equal(lines[0].includes("\n"), false);
+  assert.match(lines[0], /\[images\] apify 403/);
+  assert.match(lines[0], /Too many outstanding invoices/);
   assert.deepEqual(sent.username, ["pujol"]);
   assert.equal(sent.resultsLimit, 10);
   assert.equal(sent.skipPinnedPosts, true);
