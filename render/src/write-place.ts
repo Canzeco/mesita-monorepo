@@ -9,6 +9,7 @@ export function writePlaceUrl(supabaseUrl: string): string {
 export async function writeFinishedPlace(
   placeId: string,
   patch: Record<string, unknown>,
+  mirrorPhotos = true,
 ): Promise<{ placeId: string }> {
   const supabaseUrl = process.env.SUPABASE_URL?.trim() ?? "";
   const writeKey = process.env.ENRICH_WRITE_KEY?.trim() ?? "";
@@ -22,7 +23,7 @@ export async function writeFinishedPlace(
       Authorization: `Bearer ${writeKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ placeId, patch }),
+    body: JSON.stringify({ placeId, patch, mirrorPhotos }),
   });
   const body = await res.json().catch(() => null) as { ok?: boolean; error?: string } | null;
   if (!res.ok || !body?.ok) {

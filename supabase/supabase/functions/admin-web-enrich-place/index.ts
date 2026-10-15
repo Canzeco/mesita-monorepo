@@ -11,7 +11,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, readPlaceIdAlias } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv, requireSuperAdmin } from "../_shared/auth.ts";
 import { writePlace } from "../_shared/place-doc.ts";
-import { ENRICHING_PATCH, enrichmentRun, renderApiKey } from "./start-enrichment.ts";
+import { loadEnrichConfig } from "../_shared/enrich-config.ts";
+import { ENRICHING_PATCH, enrichmentKnobs, enrichmentRun, renderApiKey } from "./start-enrichment.ts";
 
 type Body = {
   projectId?: string;
@@ -61,7 +62,8 @@ Deno.serve(async (req) => {
   const key = renderApiKey(Deno.env);
   if (!key) return json({ ok: false, error: "Server misconfigured" }, 500);
 
-  const jobs = placeIds.map((id) => ({ placeId: id, googlePlaceId: byId.get(id) ?? "" }));
+  const knobs = enrichmentKnobs(await loadEnrichConfig(admin));
+  const jobs = placeIds.map((id) => ({ placeId: id, googlePlaceId: byId.get(id) ?? "", knobs }));
   const run = enrichmentRun(jobs);
   const res = await fetch("https://api.render.com/v1/task-runs", {
     method: "POST",

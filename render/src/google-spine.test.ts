@@ -61,6 +61,7 @@ test("photo links are https only, ten at most", () => {
   const urls = photoUris(bodies);
   assert.equal(urls.length, 10);
   assert.equal(urls[0], "https://lh3.googleusercontent.com/a");
+  assert.equal(photoUris(bodies, 2).length, 2);
 });
 
 test("Google's Instagram link is the Instagram field, not the website", () => {

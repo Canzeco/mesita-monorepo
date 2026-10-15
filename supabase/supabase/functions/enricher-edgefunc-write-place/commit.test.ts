@@ -13,6 +13,20 @@ Deno.test("a finished place is accepted", () => {
   }
 });
 
+Deno.test("mirror stays on unless the body turns it off", () => {
+  const on = enrichmentCommit({
+    placeId: "place-1",
+    patch: { content_state: "ready", phone: "x" },
+  });
+  const off = enrichmentCommit({
+    placeId: "place-1",
+    patch: { content_state: "ready", phone: "x" },
+    mirrorPhotos: false,
+  });
+  assertEquals(on.ok && on.mirrorPhotos, true);
+  assertEquals(off.ok && off.mirrorPhotos, false);
+});
+
 Deno.test("anything short of a finished profile writes nothing", () => {
   assertEquals(
     enrichmentCommit({ placeId: "place-1", patch: { content_state: "generating", phone: "x" } }).ok,

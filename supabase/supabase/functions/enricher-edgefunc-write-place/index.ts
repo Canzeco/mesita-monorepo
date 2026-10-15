@@ -41,7 +41,12 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
   let patch = validated.patch;
   const gallery = galleryUrls(patch.photos);
-  if (gallery.length > 0) {
+  if (gallery.length === 0) {
+    const { photos: _drop, ...without } = patch;
+    patch = without;
+  } else if (!commit.mirrorPhotos) {
+    patch = { ...patch, photos: gallery };
+  } else {
     const durable = await mirrorPlacePhotos(admin, envRes.env.url, gallery);
     if (durable.length > 0) patch = { ...patch, photos: durable };
     else {
