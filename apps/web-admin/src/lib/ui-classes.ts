@@ -19,10 +19,8 @@ export const STICKY_COL_HEAD =
 export const STICKY_COL_CELL =
   "sticky left-0 z-10 bg-card sm:static sm:bg-transparent";
 
-// ── The business console's button vocabulary ───────────────────────────────
-// The place surface Single Place renders (MESITA-2086) reaches these four by
-// alias. They are the business console's own strings, kept verbatim when
-// MESITA-2089 deleted web-business, so the cards still render its pill.
+// ── Shared pill / CTA classes (Single Place place surface, MESITA-2086) ─────
+// Kept verbatim when MESITA-2089 deleted web-business so cards still match.
 export const FOCUS_RING_CLASS =
   "outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 

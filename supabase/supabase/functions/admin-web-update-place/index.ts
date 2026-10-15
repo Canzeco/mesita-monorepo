@@ -32,7 +32,7 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
-import { PLACE_BUSINESS_COLUMNS } from "../_shared/place-columns.ts";
+import { PLACE_PROFILE_COLUMNS } from "../_shared/place-columns.ts";
 import { type ProfilePatch, writePlace } from "../_shared/place-doc.ts";
 import { ENRICH_FIELD_LIMITS } from "../_shared/enrich-field-limits.ts";
 import { sanitizePlaceTags } from "../_shared/tags.ts";
@@ -287,7 +287,7 @@ Deno.serve(async (req) => {
     mode: "update",
     id: placeId,
     patch: update as ProfilePatch,
-    select: PLACE_BUSINESS_COLUMNS,
+    select: PLACE_PROFILE_COLUMNS,
   });
 
   if (!updRes.ok) {

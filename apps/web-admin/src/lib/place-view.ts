@@ -6,9 +6,8 @@
 //                    caller is a super-admin, and the resolved profile
 //                    (Family, Category options, tags, field limits).
 //
-// `getPlaceView` and `visibleTabs` are gone (MESITA-2090): they read the
-// business console's get-place, which 404s a place to a non-member, and the
-// admin layout had stopped calling either. The tab set is
+// `getPlaceView` and `visibleTabs` are gone (MESITA-2090): they called the
+// deleted web-business get-place door. The tab set is
 // `FIRST_STAGE_TABS` in manage-single/[id]/access.ts.
 
 import { cache } from "react";
