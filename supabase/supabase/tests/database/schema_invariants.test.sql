@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(114);
+select plan(125);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -780,6 +780,17 @@ select throws_ok(
 
 insert into public.place_profiles (id, google_name)
 values ('00000000-0000-4000-8000-0000000fa111', 'Family Probe');
+
+-- profiles is places JOIN place_profiles. A profile row alone is invisible
+-- there, so the catalog assertions below would read NULL.
+insert into public.places (id, slug, state, content_state, currency)
+values (
+  '00000000-0000-4000-8000-0000000fa111',
+  'mesita-1857-probe',
+  'active',
+  'generating',
+  'MXN'
+);
 
 select lives_ok(
   $$update public.place_profiles set family_keys = array['restaurants', 'cafes_bakeries']

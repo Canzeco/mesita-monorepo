@@ -37,6 +37,9 @@ import { describe, expect, it } from "vitest";
 // Prose that lives in a span is caught in review, not here.
 
 const SRC = join(__dirname, "..", "..");
+// Place prose moved into the shared profile package. The floor below counts
+// those paragraphs too, or the guard goes vacuous the moment the app thins.
+const PACKAGE_SRC = join(SRC, "..", "..", "..", "packages", "place-profile", "src");
 
 /** Classes that make a small role CORRECT rather than a regression. */
 const EXEMPT = [
@@ -85,6 +88,8 @@ function walk(dir: string, out: string[] = []): string[] {
 function proseTags(file: string): { where: string; classes: string }[] {
   const src = readFileSync(file, "utf8");
   const found: { where: string; classes: string }[] = [];
+  const root = file.startsWith(PACKAGE_SRC) ? PACKAGE_SRC : SRC;
+  const prefix = file.startsWith(PACKAGE_SRC) ? "place-profile/" : "";
   // No `s` flag — the tsconfig target predates it, and nothing here needs it:
   // `[^>]*?` and `[^"]*` already cross newlines, which is the whole point (a
   // long className is routinely wrapped across three lines by Prettier).
@@ -92,7 +97,7 @@ function proseTags(file: string): { where: string; classes: string }[] {
   for (const m of src.matchAll(re)) {
     const line = src.slice(0, m.index).split("\n").length;
     found.push({
-      where: `${file.slice(SRC.length + 1)}:${line}`,
+      where: `${prefix}${file.slice(root.length + 1)}:${line}`,
       classes: m[1],
     });
   }
@@ -100,7 +105,7 @@ function proseTags(file: string): { where: string; classes: string }[] {
 }
 
 describe("prose does not wear a label role", () => {
-  const files = walk(SRC);
+  const files = [...walk(SRC), ...walk(PACKAGE_SRC)];
 
   it("scanned the app (guards the walker itself)", () => {
     expect(files.length).toBeGreaterThan(100);
@@ -151,7 +156,7 @@ describe("prose does not wear a label role", () => {
 // already at the small end, and it does it to the muted token that is ALREADY
 // the app's way of saying secondary. A field hint was doing it.
 describe("prose is not dimmed for rank", () => {
-  const files = walk(SRC);
+  const files = [...walk(SRC), ...walk(PACKAGE_SRC)];
 
   it("has no <p> carrying a rank opacity on the muted token", () => {
     const offenders = files

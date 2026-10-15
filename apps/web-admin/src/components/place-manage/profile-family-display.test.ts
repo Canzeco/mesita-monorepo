@@ -9,6 +9,7 @@ const DIR = join(process.cwd(), "src/components/place-manage");
 // Not a string literal on `section:`: config-section-callers.test.ts treats
 // `section: "..."` as a config key the console posts to admin-web-update-config.
 const nightlife = "Nightlife";
+const other = "Other";
 const profile: Pick<ProfileRead, "family" | "familyStored" | "categories"> = {
   family: { text: "🍸 Bars & Nightlife", inferred: false },
   familyStored: { text: "🍸 Bars & Nightlife", inferred: true },
@@ -30,7 +31,7 @@ const profile: Pick<ProfileRead, "family" | "familyStored" | "categories"> = {
     {
       slug: "undefined",
       label: "Undefined",
-      section: "Other",
+      section: other,
       sort_order: 99,
       family_display: "❓ Undefined",
     },
