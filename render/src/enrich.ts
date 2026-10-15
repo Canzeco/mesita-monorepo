@@ -6,6 +6,8 @@ import {
   profileFromGoogle,
 } from "./google-spine.ts";
 import { digest, embedPair, embeddingFacts, embeddingFields } from "./embedding.ts";
+import { sortPlacePhotos } from "./images.ts";
+import { discoverOfficialLinks, type LinkField } from "./links.ts";
 
 // Paid vendor calls must not be replayed by the platform.
 export const NO_RETRY = { maxRetries: 0, waitDurationMs: 1000, backoffScaling: 1 };
@@ -15,9 +17,10 @@ export const AT_ONCE = 2;
 
 export type EnrichJob = { placeId: string; googlePlaceId: string };
 
-// A finished place is the Google spine plus a description. The description is
-// Google's own summary when it has one, otherwise one written from those facts.
-// Anything short of that throws before the write.
+// A finished place is the Google spine, the official links Firecrawl sourced and
+// Perplexity kept, up to ten photos ranked best-first, and a description. The
+// description is Google's own summary when it has one, otherwise one written
+// from those facts. Anything short of that throws before the write.
 export async function buildEnrichment(job: EnrichJob): Promise<Record<string, unknown>> {
   const googlePlaceId = job.googlePlaceId?.trim() ?? "";
   if (!job.placeId?.trim() || !googlePlaceId) {
@@ -35,14 +38,38 @@ export async function buildEnrichment(job: EnrichJob): Promise<Record<string, un
     const timezone = await fetchTimezone(lat, lng, googleKey);
     if (timezone) spine.patch.timezone = timezone;
   }
-  const photos = await fetchGooglePhotoUrls(details.photos, googleKey);
+  const name = typeof spine.patch.google_name === "string" ? spine.patch.google_name : "";
+  const city = typeof spine.patch.city === "string" ? spine.patch.city : null;
+  const links = await discoverOfficialLinks({
+    name,
+    city,
+    have: {
+      website_url: stringField(spine.patch.website_url),
+      instagram_url: stringField(spine.patch.instagram_url),
+      facebook_url: stringField(spine.patch.facebook_url),
+      opentable_url: stringField(spine.patch.opentable_url),
+      uber_eats_url: stringField(spine.patch.uber_eats_url),
+    },
+    firecrawlKey: process.env.FIRECRAWL_KEY,
+    perplexityKey: process.env.PERPLEXITY_KEY,
+  });
+  for (const [key, url] of Object.entries(links) as [LinkField, string][]) {
+    spine.patch[key] = url;
+    if (key === "instagram_url") spine.patch.instagram_found = true;
+    if (key === "facebook_url") spine.patch.facebook_found = true;
+  }
+
+  const openaiKey = process.env.OPENAI_KEY?.trim() ?? "";
+  const photos = await sortPlacePhotos(
+    await fetchGooglePhotoUrls(details.photos, googleKey),
+    openaiKey,
+  );
   if (photos.length > 0) spine.patch.photos = photos;
 
   let description = spine.description;
   if (!description) {
-    const openaiKey = process.env.OPENAI_KEY?.trim() ?? "";
     if (!openaiKey) throw new Error("Google has no summary and Render is missing OPENAI_KEY");
-    description = await describeFromFacts(spine.facts, openaiKey);
+    description = await describeFromFacts(factsWithLinks(spine.facts, links), openaiKey);
   }
   if (!description) throw new Error("The place has no description, so it was not written.");
 
@@ -52,8 +79,6 @@ export async function buildEnrichment(job: EnrichJob): Promise<Record<string, un
     content_state: "ready",
     enriched_at: new Date().toISOString(),
   };
-  const name = typeof spine.patch.google_name === "string" ? spine.patch.google_name : "";
-  const openaiKey = process.env.OPENAI_KEY?.trim() ?? "";
   if (openaiKey && name) {
     const facts = embeddingFacts({
       name,
@@ -73,4 +98,13 @@ export async function buildEnrichment(job: EnrichJob): Promise<Record<string, un
     if (fields) Object.assign(patch, fields);
   }
   return patch;
+}
+
+function stringField(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function factsWithLinks(facts: string, links: Partial<Record<LinkField, string>>): string {
+  const lines = Object.entries(links).map(([key, url]) => `${key}: ${url}`);
+  return lines.length ? `${facts}\n${lines.join("\n")}` : facts;
 }
