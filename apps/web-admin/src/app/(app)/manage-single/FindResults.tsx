@@ -333,7 +333,7 @@ function NameCell({
   onOpen: (row: FindRow) => void;
 }) {
   const name =
-    "block truncate font-medium underline underline-offset-4 text-[color:var(--brand-pink-text)] decoration-[color:var(--brand-pink-text)] visited:text-[color:var(--brand-pink-900)] visited:decoration-[color:var(--brand-pink-900)] " +
+    "block truncate font-medium underline underline-offset-4 text-(--brand-pink-text) decoration-(--brand-pink-text) visited:text-(--brand-pink-900) visited:decoration-(--brand-pink-900) " +
     FOCUS_RING_CLASS;
   if (row.held && row.mesitaId) {
     return (

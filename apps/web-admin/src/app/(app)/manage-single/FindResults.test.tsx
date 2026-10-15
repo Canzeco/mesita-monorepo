@@ -176,7 +176,7 @@ describe("Find › one table", () => {
     expect(html).toContain('href="/manage-single/mesita-a/profile"');
     expect(html).toContain('aria-label="Open Café Nin"');
     expect(html).toContain('aria-label="Enrich Café Nin"');
-    expect(html).toContain("visited:text-[color:var(--brand-pink-900)]");
+    expect(html).toContain("visited:text-(--brand-pink-900)");
     expect(html).toContain('aria-label="Create Dos Amores Brunch &amp; Meal on Mesita"');
     expect(html).toContain(">Create<");
     expect(html).not.toContain(">Add<");
