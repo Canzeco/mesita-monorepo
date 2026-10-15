@@ -4,7 +4,8 @@
 // database key. This function writes the finished profile and
 // content_state = ready through the profiles view, which is one Postgres
 // statement. A body that is not a finished enrichment is refused and no
-// row changes.
+// row changes. A stop is the other accepted body: the task sends it when
+// the run fails, before it exits, and enriching turns off.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
@@ -14,6 +15,7 @@ import { mirrorPlacePhotos } from "../_shared/store-place-images.ts";
 import { timingSafeEqual } from "../_shared/timing-safe-equal.ts";
 import { enrichmentCommit } from "./commit.ts";
 import { galleryUrls } from "./photos.ts";
+import { contentStateAfterStop, enrichmentStop } from "./stop.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -33,12 +35,38 @@ Deno.serve(async (req) => {
   const bodyRes = await readJson<unknown>(req);
   if (!bodyRes.ok) return bodyRes.response;
 
+  const admin = adminClient(envRes.env);
+  const stop = enrichmentStop(bodyRes.body);
+  if (stop.kind === "invalid") return json({ ok: false, error: stop.error }, 400);
+  if (stop.kind === "stop") {
+    const { data, error } = await admin
+      .from("profiles")
+      .select("content_state, enriched_at")
+      .eq("id", stop.placeId)
+      .maybeSingle();
+    if (error) return json({ ok: false, error: error.message }, 500);
+    const next = contentStateAfterStop({
+      content_state: (data?.content_state ?? null) as string | null,
+      enriched_at: (data?.enriched_at ?? null) as string | null,
+    });
+    if (!next) {
+      return json({ ok: true, placeId: stop.placeId, content_state: data?.content_state ?? null });
+    }
+    const cleared = await writePlace(admin, {
+      table: "places",
+      mode: "update",
+      id: stop.placeId,
+      patch: { content_state: next },
+    });
+    if (!cleared.ok) return json({ ok: false, error: cleared.error }, 500);
+    return json({ ok: true, placeId: stop.placeId, content_state: next });
+  }
+
   const commit = enrichmentCommit(bodyRes.body);
   if (!commit.ok) return json({ ok: false, error: commit.error }, 400);
   const validated = validateProfilePatch(commit.patch);
   if (!validated.ok) return json({ ok: false, error: validated.error }, 400);
 
-  const admin = adminClient(envRes.env);
   let patch = validated.patch;
   const gallery = galleryUrls(patch.photos);
   if (gallery.length === 0) {
