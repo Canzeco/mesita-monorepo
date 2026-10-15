@@ -31,3 +31,39 @@ export async function writeFinishedPlace(
   }
   return { placeId };
 }
+
+// Sent before a failed task exits. The function turns enriching off. A
+// failure here must not replace the error that failed the run.
+export function stopEnrichingBody(placeId: string): { placeId: string; stop: true } {
+  return { placeId, stop: true };
+}
+
+export async function stopEnriching(placeId: string): Promise<void> {
+  const id = placeId.trim();
+  const supabaseUrl = process.env.SUPABASE_URL?.trim() ?? "";
+  const writeKey = process.env.ENRICH_WRITE_KEY?.trim() ?? "";
+  if (!id || !supabaseUrl || !writeKey) return;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 10_000);
+  try {
+    const res = await fetch(writePlaceUrl(supabaseUrl), {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${writeKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(stopEnrichingBody(id)),
+      signal: ctrl.signal,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null) as { error?: string } | null;
+      console.error(`[enrich] stop enriching failed: ${body?.error || res.status}`);
+    }
+  } catch (err) {
+    const why = err instanceof Error ? err.message : String(err);
+    console.error(`[enrich] stop enriching failed: ${why}`);
+  } finally {
+    clearTimeout(timer);
+  }
+}

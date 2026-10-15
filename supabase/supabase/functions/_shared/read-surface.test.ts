@@ -201,6 +201,8 @@ const PROFILES_READ_ALLOWLIST = [
   "consumer-web-list-places/index.ts",
   "consumer-web-recommend-swipe/index.ts",
   "supabase-edgefunc-discover-places/index.ts",
+  // Stop reads content_state and enriched_at, and only to turn enriching off (MESITA-2221).
+  "enricher-edgefunc-write-place/index.ts",
 ];
 
 Deno.test("PROFILES READ: no new raw reader of profiles outside the allowlist", async () => {
