@@ -60,7 +60,7 @@ Deno.test("applyProfileToUpdate: happy path unchanged (trimmed, capped, typed)",
     popular_times: [{ day: "Fri", range: "8-11pm" }],
   } as ProfileResult);
   assertEquals(update.description, "Un lugar con historia.");
-  assertEquals(update.zone, "San Pedro");
+  assertEquals("zone" in update, false);
   assertEquals(update.popular_times, [{ day: "Fri", range: "8-11pm" }]);
 });
 
@@ -93,25 +93,16 @@ Deno.test("applyProfileToUpdate: ignores description_es — English only for now
   assertEquals(update.description_es, undefined);
 });
 
-Deno.test("applyProfileToUpdate: native Google zone/city win — synthesis never overwrites them", () => {
-  // The Google spine seeds zone/city onto `update` before synthesis runs.
-  const update: Record<string, unknown> = { zone: "Roma Norte", city: "Ciudad de México" };
+Deno.test("applyProfileToUpdate does not write location from the model", () => {
+  const update: Record<string, unknown> = {};
   applyProfileToUpdate(update, {
     zone: "Condesa",
     city: "CDMX",
+    description: "A terrace.",
   } as unknown as ProfileResult);
-  assertEquals(update.zone, "Roma Norte");
-  assertEquals(update.city, "Ciudad de México");
-});
-
-Deno.test("applyProfileToUpdate: synthesis fills zone/city only when Google left them empty", () => {
-  const update: Record<string, unknown> = { city: "Monterrey" }; // Google had city, not zone
-  applyProfileToUpdate(update, {
-    zone: "San Pedro",
-    city: "MTY",
-  } as unknown as ProfileResult);
-  assertEquals(update.zone, "San Pedro"); // filled (was empty)
-  assertEquals(update.city, "Monterrey"); // native kept
+  assertEquals(update.description, "A terrace.");
+  assertEquals("zone" in update, false);
+  assertEquals("city" in update, false);
 });
 
 Deno.test("formatDescriptionParagraphs: keeps blank-line paragraphs, collapses inner whitespace", () => {

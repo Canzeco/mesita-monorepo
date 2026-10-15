@@ -58,10 +58,9 @@ Deno.test("Family cuts Atlas slugs; a double-parent category matches both pills"
       rows,
       readDeckPredicates({ familyKeys: ["restaurants"] }),
     ).map((r) => r.id),
-    ["taco", "brunch", "shyBreakfast"],
+    ["taco", "brunch"],
   );
-  // brunch and breakfast are restaurants AND cafés — the cafés pill
-  // matches them too (full membership, stored subsets ignored).
+  // The keys on the row are the category mapping. shyBreakfast is only cafés.
   assertEquals(
     applyDeckPredicates(
       rows,
@@ -74,9 +73,9 @@ Deno.test("Family cuts Atlas slugs; a double-parent category matches both pills"
       rows,
       readDeckPredicates({ familyKeys: ["bars_nightlife"] }),
     ).map((r) => r.id),
-    ["karaoke"],
+    [],
   );
-  // karaoke is bars AND experiences.
+  // karaoke's mapping on this row is experiences only.
   assertEquals(
     applyDeckPredicates(
       rows,

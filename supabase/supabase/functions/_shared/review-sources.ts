@@ -1,9 +1,9 @@
 // One awaited verifier for Google, Instagram, and Facebook (MESITA-2189).
 //
-// Enrich, a profile save, and the Reviews reload all call these functions
-// and wait. Nothing is fired in the background, and no Edge Function calls
-// another. A technical failure is not found: the flag stays boolean, and
-// the reason is logged here, never stored on the place.
+// Sync calls these functions and waits. Profile save does not. Nothing is
+// fired in the background, and no Edge Function calls another. A technical
+// failure is not found: the flag stays boolean, and the reason is logged
+// here, never stored on the place.
 
 import {
   APIFY_ACTORS,
@@ -373,7 +373,9 @@ async function socialPatch(
       },
     };
   }
-  return { patch: reviewSourcePatch({ source, link, result }) };
+  // Connected is enough to save the URL. Followers and review data wait
+  // for Sync. Clearing a link still drops the old count below.
+  return { patch: { [LINK[source]]: link } };
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {

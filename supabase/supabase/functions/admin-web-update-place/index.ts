@@ -3,10 +3,9 @@
 // Super-admin only. Updates the editable profile fields of one place — the
 // write behind admin's Single Place save bar (manage-single/[id]). Validates
 // input, writes via the service role through the place document door, and
-// queues the on_update side effects (embeddings). A changed Instagram or
-// Facebook URL waits for the shared verifier. The link is stored only when
-// that account is connected; a miss refuses the save and writes nothing.
-// Does NOT call any other Edge Function.
+// queues the on_update side effects (embeddings). A changed link is stored
+// as a URL. It does not Sync. Sync is the Reviews header and the enrichment
+// draft, through one core. Does NOT call any other Edge Function.
 //
 // WAS business-web-update-place (MESITA-2090). The business console that
 // owned it is deleted in the MVP First Stage cut, so the one surviving caller
@@ -35,7 +34,7 @@ import {
 import { PLACE_PROFILE_COLUMNS } from "../_shared/place-columns.ts";
 import { type ProfilePatch, writePlace } from "../_shared/place-doc.ts";
 import { ENRICH_FIELD_LIMITS } from "../_shared/enrich-field-limits.ts";
-import { sanitizePlaceTags } from "../_shared/tags.ts";
+import { fetchPlaceTags, sanitizePlaceTags } from "../_shared/tags.ts";
 import { type PlaceHours, sanitiseHours } from "./place-hours.ts";
 import { isUrl, URL_FIELDS, type UrlField } from "./place-urls.ts";
 import { optString } from "./place-update-utils.ts";
@@ -49,10 +48,7 @@ import {
 } from "../_shared/profile-family.ts";
 import { resolveCategoryInput } from "./category-input.ts";
 import { applyMediaUpdates } from "./place-media-update.ts";
-import {
-  reviewPatchForSocialEdit,
-  reviewsTileKeyInBody,
-} from "./place-social-refresh.ts";
+import { reviewsOwnedBodyKey as reviewsTileKeyInBody } from "../_shared/review-sources.ts";
 import {
   queuePlaceEmbeddingsOnUpdate,
   updateTouchesEmbeddingInputs,
@@ -142,7 +138,7 @@ Deno.serve(async (req) => {
       {
         ok: false,
         code: "reviews_owned",
-        error: `${blocked} is reloaded from the Reviews tab`,
+        error: `${blocked} is updated by Sync`,
       },
       400,
     );
@@ -172,9 +168,11 @@ Deno.serve(async (req) => {
     if (!resolved.ok) {
       return json({ ok: false, error: resolved.error }, 400);
     }
+    if (!resolved.slug) {
+      return json({ ok: false, error: "A place needs exactly one category" }, 400);
+    }
     update.category = resolved.slug;
     update.category_label = resolved.label;
-    update.family_keys = resolved.familyKeys;
   }
   if ("hours" in body) {
     const cleaned = sanitiseHours(body.hours);
@@ -238,48 +236,19 @@ Deno.serve(async (req) => {
         400,
       );
     }
+    const catalog = await fetchPlaceTags(admin);
+    if (tags.length > 0 && catalog.length === 0) {
+      return json({ ok: false, error: "Tag catalog did not load" }, 500);
+    }
+    const allowed = new Set(catalog.map((tag) => tag.slug));
+    const unknown = tags.filter((tag) => !allowed.has(tag));
+    if (unknown.length > 0) {
+      return json({ ok: false, error: `Unknown tag: ${unknown[0]}` }, 400);
+    }
     update.tags = tags;
   }
   if (Object.keys(update).length === 0) {
     return json({ ok: false, error: "No editable fields provided" }, 400);
-  }
-
-  // A changed social URL waits here. A miss refuses the whole save
-  // before either write, so a dead account never lands and the rest of
-  // the draft stays unwritten. A connected account's patch is written
-  // first, so the link, the flag, and the numbers land together. The
-  // view write below repeats the link and the count (those columns are
-  // on the view) and returns the row the console paints.
-  const social = await reviewPatchForSocialEdit(admin, placeId, update);
-  if (!social.ok) {
-    return json(
-      {
-        ok: false,
-        code: social.code,
-        error: social.error,
-        retryable: social.retryable,
-        fields: social.fields,
-      },
-      400,
-    );
-  }
-  const reviewPatch = social.patch;
-  if (Object.keys(reviewPatch).length > 0) {
-    const reviewed = await writePlace(admin, {
-      table: "place_profiles",
-      mode: "update",
-      id: placeId,
-      patch: reviewPatch,
-    });
-    if (!reviewed.ok) {
-      return json({ ok: false, error: `reviews: ${reviewed.error}` }, 500);
-    }
-    if ("instagram_followers_count" in reviewPatch) {
-      update.instagram_followers_count = reviewPatch.instagram_followers_count;
-    }
-    if ("facebook_followers" in reviewPatch) {
-      update.facebook_followers = reviewPatch.facebook_followers;
-    }
   }
 
   const updRes = await writePlace(admin, {
@@ -301,18 +270,6 @@ Deno.serve(async (req) => {
     );
   }
   const place = updRes.row as Record<string, unknown>;
-  if ("instagram_found" in reviewPatch) {
-    place.instagram_found = reviewPatch.instagram_found;
-  }
-  if ("facebook_found" in reviewPatch) {
-    place.facebook_found = reviewPatch.facebook_found;
-  }
-  if ("instagram_followers_count" in reviewPatch) {
-    place.instagram_followers_count = reviewPatch.instagram_followers_count;
-  }
-  if ("facebook_followers" in reviewPatch) {
-    place.facebook_followers = reviewPatch.facebook_followers;
-  }
 
   const pinRes = await persistBusinessFieldPins(admin, placeId, update);
   if (!pinRes.ok) {
@@ -323,8 +280,7 @@ Deno.serve(async (req) => {
   }
 
   // The on_update row's `embedding` cell re-synthesises when the blurb
-  // inputs change. The reviews verifier already ran above; it is not this
-  // trigger. A disabled row buys nothing.
+  // inputs change. Sync is not this save. A disabled row buys nothing.
   const onUpdateBuys = subprocessesFor(
     await loadEnrichmentTriggers(admin),
     "on_update",

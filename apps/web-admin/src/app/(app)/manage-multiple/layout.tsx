@@ -17,7 +17,7 @@ export default function ManageMultipleLayout({
       <PageHeader
         eyebrow="Manage · Multiple Places"
         title="Multiple Places"
-        description="Many places at once. Google Search and Mesita Search look them up; Create, Enrich and Update write them. The rail jumps to each; one place at a time is Single Place."
+        description="Many places at once. Google Search and Mesita Search look them up; Create, Enrich and Edit write them. The rail jumps to each; one place at a time is Single Place."
       />
       <div className="mt-6 sm:mt-8">{children}</div>
     </PageContainer>

@@ -166,7 +166,6 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "admin-web-search-places/index.ts",
   "admin-web-get-overview/index.ts",
   "admin-web-reload-place-reviews/index.ts",
-  "admin-web-update-place/place-social-refresh.ts",
   "consumer-web-confirm-reservation/index.ts",
   "consumer-web-create-reservation/index.ts", // reservations_enabled gate before the insert (MESITA-2156)
   "eleven-a1-report-outcome/index.ts",

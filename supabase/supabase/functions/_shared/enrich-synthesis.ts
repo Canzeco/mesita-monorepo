@@ -25,8 +25,6 @@ export {
 const PROFILE_SCHEMA = {
   type: "object",
   properties: {
-    zone: { type: ["string", "null"] },
-    city: { type: ["string", "null"] },
     // A classifier INPUT only (category / families / reservations read it in
     // the contents stage); never written onto the place (MESITA-2144).
     editorial_summary: { type: ["string", "null"] },
@@ -141,7 +139,7 @@ export const PRESENTATION_INSTRUCTIONS =
   "Output a SINGLE valid JSON object (no prose, no markdown fences) matching " +
   "this shape, using null or [] when the sources don't support a field: " +
   JSON.stringify(PROFILE_SCHEMA.properties) +
-  " Text fields (zone, city, editorial_summary, description) " +
+  " Text fields (editorial_summary, description) " +
   "are single JSON strings — never arrays or nested objects. " +
   "For description: separate paragraphs with blank lines " +
   "(\\n\\n); never one continuous block. Never invent ratings, reviewer " +

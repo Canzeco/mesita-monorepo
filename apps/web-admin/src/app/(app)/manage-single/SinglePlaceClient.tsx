@@ -25,6 +25,7 @@ import {
 import { StatePill } from "@/app/(app)/manage-multiple/PlaceFacts";
 import { StateIcon, type BatchRowState } from "@/app/(app)/manage-multiple/StateIcon";
 import { CopyIdButton, ReadField, SectionCard } from "@/components/admin-ui/manage";
+import { OverwriteSwitch } from "@/components/place-manage/OverwriteSwitch";
 import { placeTabHref } from "@/lib/place-tabs";
 import type { PlaceLite, SearchErrorResponse, SearchResponse } from "@/lib/places-types";
 import {
@@ -73,6 +74,7 @@ export function SinglePlaceClient() {
   const [enrichingIds, setEnrichingIds] = useState<ReadonlySet<string>>(new Set());
   const [enrichErrors, setEnrichErrors] = useState<Readonly<Record<string, string>>>({});
   const enrichFlight = useRef(new Set<string>());
+  const [overwrite, setOverwrite] = useState(false);
 
   const lookup = useMemo(() => classifyLookup(text), [text]);
   const isBusy = busy !== null;
@@ -239,6 +241,14 @@ export function SinglePlaceClient() {
     const id = row.mesitaId ?? (row.googleId ? added.get(row.googleId) : undefined);
     if (!id || enrichFlight.current.has(id)) return;
     if (row.placeHit?.enriching === true || enrichingIds.has(id)) return;
+    if (row.placeHit?.enriched || overwrite) {
+      const ok = window.confirm(
+        overwrite
+          ? "Overwrite existing data and run enrichment? This can replace the profile."
+          : "This place is already enriched. Run enrichment again?",
+      );
+      if (!ok) return;
+    }
     enrichFlight.current.add(id);
     setStartingIds((s) => new Set(s).add(id));
     setEnrichErrors((e) => {
@@ -249,7 +259,7 @@ export function SinglePlaceClient() {
     });
     let failed: string | null = null;
     try {
-      const r = await enrichPlace(id);
+      const r = await enrichPlace(id, "fill", [], overwrite);
       if (!r.ok) failed = r.error;
     } catch (err) {
       failed = err instanceof Error ? err.message : "Unexpected error";
@@ -267,6 +277,7 @@ export function SinglePlaceClient() {
       return;
     }
     setEnrichingIds((s) => new Set(s).add(id));
+    setOverwrite(false);
   }
 
   async function create() {
@@ -336,6 +347,9 @@ export function SinglePlaceClient() {
             {busy === "find" ? "Finding…" : "Find"}
           </button>
         </form>
+        <div className="mt-4">
+          <OverwriteSwitch checked={overwrite} disabled={isBusy} onChange={setOverwrite} />
+        </div>
 
         {error ? (
           <div className="border-destructive/40 bg-destructive/5 text-destructive mt-4 flex items-start gap-3 rounded-2xl border p-4 text-sm">

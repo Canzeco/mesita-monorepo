@@ -12,6 +12,7 @@ import { PlaceHeading } from "@/components/console/PlaceHeading";
 import { getManagePlace } from "@/lib/place-view";
 import { FIRST_STAGE_TABS } from "./access";
 import { PlaceManageShell } from "./PlaceManageShell";
+import { PlaceScroll } from "./PlaceScroll";
 import { PlaceTabStrip } from "./PlaceTabStrip";
 
 export const dynamic = "force-dynamic";
@@ -28,19 +29,21 @@ export default async function AdminPlaceLayout({
   if (!manage) notFound();
 
   return (
-    <div className="mx-auto w-full px-4 pt-6 pb-16 sm:px-6 sm:pt-8 sm:pb-24 lg:px-8">
+    <div className="mx-auto flex h-full min-h-0 w-full flex-col px-4 pt-6 sm:px-6 sm:pt-8 lg:px-8">
       <PlaceManageShell
         placeId={id}
         initialPlace={manage.place}
         initialProfile={manage.profile}
       >
-        <div className="flex flex-col gap-4">
-          <PlaceHeading
-            name={manage.place.name}
-            disabled={manage.place.listed === false}
-          />
-          <PlaceTabStrip placeId={id} tabs={FIRST_STAGE_TABS} />
-          {children}
+        <div className="flex min-h-0 flex-1 flex-col gap-4">
+          <div className="flex shrink-0 flex-col gap-4">
+            <PlaceHeading
+              name={manage.place.name}
+              disabled={manage.place.listed === false}
+            />
+            <PlaceTabStrip placeId={id} tabs={FIRST_STAGE_TABS} />
+          </div>
+          <PlaceScroll>{children}</PlaceScroll>
         </div>
       </PlaceManageShell>
     </div>

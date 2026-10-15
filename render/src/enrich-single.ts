@@ -13,7 +13,12 @@ export const enrichSinglePlace = task(
     console.log(runLog("start", placeId));
     try {
       const built = await buildEnrichment(job);
-      const written = await writeFinishedPlace(placeId, built.patch, built.mirrorPhotos);
+      const written = await writeFinishedPlace(
+        placeId,
+        built.patch,
+        built.mirrorPhotos,
+        job.baseUpdatedAt,
+      );
       console.log(runLog("finished", placeId));
       return written;
     } catch (err) {

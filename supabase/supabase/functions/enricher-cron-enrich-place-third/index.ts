@@ -254,7 +254,7 @@ serveEnrichStage("third", async (admin, env, row) => {
     );
     // Total write: resolveEnrichedFamilyKeys never returns empty — a place
     // always lands under at least one pill (['undefined'] at worst).
-    place.family_keys = resolvedFamilies;
+    // Families are derived from the category mapping. Do not copy them onto the place.
     const categoryForTags = (place.category ?? category) as string | null;
     inferredTags = await inferPlaceTags(OPENAI_KEY, tagVocabulary, {
       name,

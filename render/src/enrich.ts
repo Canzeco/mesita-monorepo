@@ -14,7 +14,8 @@ import {
   type ImageKnobs,
 } from "./images.ts";
 import { discoverOfficialLinks, linkCounts, type LinkField } from "./links.ts";
-import { fetchApifyGoogleReviews } from "./reviews.ts";
+import { fetchDraftSync } from "./draft-sync.ts";
+import { applyOverwrite } from "./fill-existing.ts";
 
 // Paid vendor calls must not be replayed by the platform.
 export const NO_RETRY = { maxRetries: 0, waitDurationMs: 1000, backoffScaling: 1 };
@@ -47,6 +48,11 @@ export type EnrichJob = {
   placeId: string;
   googlePlaceId: string;
   knobs?: EnrichmentKnobs;
+  /** False fills only empty fields and keeps saved links. True may replace. */
+  overwrite?: boolean;
+  /** Profile at the moment enriching was marked. The write refuses a newer row. */
+  baseUpdatedAt?: string | null;
+  saved?: Record<string, unknown>;
 };
 
 export type BuiltEnrichment = {
@@ -77,16 +83,6 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment> 
     const timezone = await fetchTimezone(lat, lng, googleKey);
     if (timezone) spine.patch.timezone = timezone;
   }
-  const listed = await fetchApifyGoogleReviews({
-    googlePlaceId,
-    apifyKey: process.env.APIFY_KEY,
-  });
-  const knownCount = details.userRatingCount;
-  if (listed.length > 0) spine.patch.google_reviews = listed;
-  else if (typeof knownCount === "number" && knownCount > 0) {
-    throw new Error("Apify returned no Google reviews.");
-  }
-
   const name = typeof spine.patch.google_name === "string" ? spine.patch.google_name : "";
   const city = typeof spine.patch.city === "string" ? spine.patch.city : null;
   const knobs = job.knobs ?? {};
@@ -97,15 +93,23 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment> 
     opentable_url: knobs.discoverOpentableN,
     uber_eats_url: knobs.discoverUbereatsN,
   });
+  const overwrite = job.overwrite === true;
+  const saved = job.saved ?? {};
+  if (!overwrite) {
+    for (const key of ["website_url", "instagram_url", "facebook_url", "opentable_url", "uber_eats_url"] as const) {
+      const savedUrl = stringField(saved[key]);
+      if (savedUrl) spine.patch[key] = savedUrl;
+    }
+  }
   const links = await discoverOfficialLinks({
     name,
     city,
     have: {
-      website_url: stringField(spine.patch.website_url),
-      instagram_url: stringField(spine.patch.instagram_url),
-      facebook_url: stringField(spine.patch.facebook_url),
-      opentable_url: stringField(spine.patch.opentable_url),
-      uber_eats_url: stringField(spine.patch.uber_eats_url),
+      website_url: heldLink(overwrite, saved.website_url, spine.patch.website_url),
+      instagram_url: heldLink(overwrite, saved.instagram_url, spine.patch.instagram_url),
+      facebook_url: heldLink(overwrite, saved.facebook_url, spine.patch.facebook_url),
+      opentable_url: heldLink(overwrite, saved.opentable_url, spine.patch.opentable_url),
+      uber_eats_url: heldLink(overwrite, saved.uber_eats_url, spine.patch.uber_eats_url),
     },
     counts,
     preset: knobs.perplexityPreset,
@@ -115,9 +119,12 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment> 
   });
   for (const [key, url] of Object.entries(links) as [LinkField, string][]) {
     spine.patch[key] = url;
-    if (key === "instagram_url") spine.patch.instagram_found = true;
-    if (key === "facebook_url") spine.patch.facebook_found = true;
   }
+  Object.assign(spine.patch, await fetchDraftSync({
+    googlePlaceId,
+    instagramUrl: stringField(spine.patch.instagram_url),
+    facebookUrl: stringField(spine.patch.facebook_url),
+  }));
 
   const openaiKey = process.env.OPENAI_KEY?.trim() ?? "";
   const images = imageKnobs(knobs);
@@ -142,12 +149,16 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment> 
   }
   if (!description) throw new Error("The place has no description, so it was not written.");
 
-  const patch: Record<string, unknown> = {
-    ...spine.patch,
-    description,
-    content_state: "ready",
-    enriched_at: new Date().toISOString(),
-  };
+  const patch: Record<string, unknown> = applyOverwrite({
+    overwrite,
+    saved,
+    patch: {
+      ...spine.patch,
+      description,
+      content_state: "ready",
+      enriched_at: new Date().toISOString(),
+    },
+  });
   if (openaiKey && name) {
     const facts = embeddingFacts({
       name,
@@ -192,6 +203,12 @@ function countOr(value: number | undefined, fallback: number): number {
 
 function stringField(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value : null;
+}
+
+/** Off keeps a saved link so discovery does not hunt a different one. */
+function heldLink(overwrite: boolean, saved: unknown, fresh: unknown): string | null {
+  if (overwrite) return null;
+  return stringField(saved) ?? stringField(fresh);
 }
 
 function factsWithLinks(facts: string, links: Partial<Record<LinkField, string>>): string {

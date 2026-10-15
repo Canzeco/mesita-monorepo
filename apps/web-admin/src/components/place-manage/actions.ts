@@ -72,6 +72,8 @@ export type AdminPlace = {
   lat: number | null;
   lng: number | null;
   zone: string | null;
+  google_address: unknown;
+  source_sync: unknown;
   city: string | null;
   timezone: string | null;
   description: string | null;
@@ -138,6 +140,8 @@ export type AdminPlace = {
   enriched?: boolean;
   /** Guest request count — the Requested State fact, 0…n. */
   request_count?: number;
+  /** Votes required before Enrich starts. Settings `atlasRequestThreshold`. */
+  request_threshold?: number;
   /** Operating: Google's businessStatus, verbatim (MESITA-1239). */
   business_state?: string | null;
   business_state_at?: string | null;
@@ -238,7 +242,7 @@ export async function updatePlace(
   };
 }
 
-export type ReviewsReloadSource = "google" | "google_reviews" | "instagram" | "facebook";
+export type ReviewsReloadSource = "sync" | "google" | "google_reviews" | "instagram" | "facebook";
 
 export async function reloadPlaceReviews(
   placeId: string,
@@ -254,6 +258,9 @@ export async function reloadPlaceReviews(
     instagram_found: boolean;
     facebook_found: boolean;
     google_reviews?: unknown;
+    lastSyncedAt?: string | null;
+    source_sync?: unknown;
+    sources?: { source: string; status: string; error: string | null }[];
   }>
 > {
   const r = await efInvoke<{
@@ -266,6 +273,9 @@ export async function reloadPlaceReviews(
     instagram_found: boolean;
     facebook_found: boolean;
     google_reviews?: unknown;
+    lastSyncedAt?: string | null;
+    source_sync?: unknown;
+    sources?: { source: string; status: string; error: string | null }[];
   }>("admin-web-reload-place-reviews", { placeId, source });
   if (!r.ok) return { ok: false, error: r.error, code: r.code };
   return {
@@ -279,7 +289,10 @@ export async function reloadPlaceReviews(
       google_found: r.data.google_found === true,
       instagram_found: r.data.instagram_found === true,
       facebook_found: r.data.facebook_found === true,
-      ...(r.data.source === "google_reviews" ? { google_reviews: r.data.google_reviews ?? [] } : {}),
+      ...(r.data.google_reviews !== undefined ? { google_reviews: r.data.google_reviews ?? [] } : {}),
+      lastSyncedAt: r.data.lastSyncedAt ?? null,
+      source_sync: r.data.source_sync,
+      sources: r.data.sources,
     },
   };
 }

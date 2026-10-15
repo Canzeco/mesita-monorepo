@@ -12,6 +12,7 @@ import {
 } from "./actions";
 import { parseGooglePlaceIds } from "./google-place-ids";
 import type { CrenupAction } from "./pipeline";
+import { OverwriteSwitch } from "@/components/place-manage/OverwriteSwitch";
 import { IdListField } from "./IdListField";
 import { StateIcon, type BatchRowState } from "./StateIcon";
 
@@ -65,6 +66,7 @@ export function WriteBox({
   const [results, setResults] = useState<Record<string, Row>>({});
   const [running, setRunning] = useState<CrenupAction | null>(null);
   const [lastRun, setLastRun] = useState<CrenupAction | null>(null);
+  const [overwrite, setOverwrite] = useState(false);
   const busy = running !== null;
 
   const done = placeIds.filter((id) => {
@@ -86,6 +88,14 @@ export function WriteBox({
     // DB edit, never by any button here. One confirm for the whole batch,
     // not per row: the paste is already the commitment, this just catches
     // a fat-fingered click before it archives a hundred places.
+    if (action === "enrich" && overwrite) {
+      const ok = window.confirm(
+        placeIds.length === 1
+          ? "Overwrite existing data on 1 place? Enrichment can replace the profile."
+          : `Overwrite existing data on ${placeIds.length} places? Enrichment can replace every profile in this batch.`,
+      );
+      if (!ok) return;
+    }
     if (action === "delete") {
       const ok = window.confirm(
         placeIds.length === 1
@@ -100,7 +110,10 @@ export function WriteBox({
       Object.fromEntries(placeIds.map((id) => [id, { state: "pending" as const }])),
     );
     const ids = [...placeIds];
-    if (action === "enrich") await runEnrich(ids, setResults);
+    if (action === "enrich") {
+      await runEnrich(ids, setResults, overwrite);
+      setOverwrite(false);
+    }
     else await Promise.all(ids.map((id) => runRow(id, action, setResults)));
     setRunning(null);
   }
@@ -134,6 +147,11 @@ export function WriteBox({
 
       <div>
         <div className="flex flex-wrap items-center gap-2">
+          {actions.includes("enrich") ? (
+            <div className="mb-3">
+              <OverwriteSwitch checked={overwrite} disabled={busy} onChange={setOverwrite} />
+            </div>
+          ) : null}
           {actions.map((action) => (
             <ActionButton
               key={action}
@@ -244,6 +262,7 @@ function ActionButton({
 async function runEnrich(
   googleIds: string[],
   setResults: Dispatch<SetStateAction<Record<string, Row>>>,
+  overwrite: boolean,
 ): Promise<void> {
   const resolved: { googleId: string; placeId: string; name: string }[] = [];
   await Promise.all(googleIds.map(async (googleId) => {
@@ -256,7 +275,7 @@ async function runEnrich(
     resolved.push({ googleId, placeId: found.placeId, name: found.name });
   }));
   if (resolved.length === 0) return;
-  const started = await enrichPlaces(resolved.map((row) => row.placeId));
+  const started = await enrichPlaces(resolved.map((row) => row.placeId), overwrite);
   for (const row of resolved) {
     setResults((prev) => ({
       ...prev,

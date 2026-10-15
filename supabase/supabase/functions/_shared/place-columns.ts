@@ -27,7 +27,7 @@ const COLUMNS: readonly string[] = [
   // Human-friendly category copy (emoji + natural-language label),
   // derived from category via place_categories.
   "category_label",
-  // Families inferred by contents enrichment. NULL until then.
+  // Derived in the profiles view from the category mapping. Not stored.
   "family_keys",
   "price_level",
   // ISO 4217 code (default MXN). Every monetary amount on a place —
@@ -39,6 +39,7 @@ const COLUMNS: readonly string[] = [
   "lat",
   "lng",
   "address",
+  "google_address",
   "timezone",
   "closes_at",
   "hours",
@@ -82,6 +83,7 @@ const COLUMNS: readonly string[] = [
   // Generic product payload. Menus live under products.menu.
   "products",
   "google_reviews",
+  "source_sync",
   "menus",
   "popular_times",
   // THE Enriched fact (MESITA-2154): set by the contents stage when an
