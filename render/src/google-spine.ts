@@ -129,8 +129,8 @@ export function profileFromGoogle(details: GooglePlace, requestedId: string): Go
   if (hours) patch.hours = hours;
   const closesAt = closesAtFromHours(details.regularOpeningHours?.weekdayDescriptions);
   if (closesAt) patch.closes_at = closesAt;
-  const reviews = googleReviews(details.reviews);
-  if (reviews) patch.google_reviews = reviews;
+  // Places returns at most five reviews. The review list is Apify's, written
+  // by buildEnrichment. Copying these five would be the list the guest sees.
   if (editorial) patch.pitch = editorial.slice(0, 1000);
   if (generative) patch.story = generative.slice(0, 1000);
 
@@ -147,21 +147,6 @@ export function profileFromGoogle(details: GooglePlace, requestedId: string): Go
   ].filter(Boolean).join("\n");
 
   return { ok: true, description, facts, patch };
-}
-
-function reviewRating(value: number | undefined): number {
-  if (typeof value !== "number" || !Number.isFinite(value)) return 0;
-  return Math.min(5, Math.max(0, value));
-}
-
-function googleReviews(reviews: GooglePlace["reviews"]): { author: string; rating: number; quote: string; date: string }[] | null {
-  const mapped = (reviews ?? []).map((review) => ({
-    author: review.authorAttribution?.displayName?.trim() || "Google reviewer",
-    rating: reviewRating(review.rating),
-    quote: (review.text?.text ?? review.originalText?.text ?? "").trim(),
-    date: review.relativePublishTimeDescription ?? "",
-  })).filter((review) => review.quote.length > 0);
-  return mapped.length > 0 ? mapped : null;
 }
 
 export async function fetchTimezone(lat: number, lng: number, apiKey: string): Promise<string | null> {

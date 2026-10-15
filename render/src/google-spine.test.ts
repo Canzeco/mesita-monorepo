@@ -40,12 +40,7 @@ test("a complete Google place becomes a finished profile without a database key"
   assert.equal(got.patch.price_level, 3);
   assert.deepEqual(got.patch.hours, { monday: [{ open: "09:00", close: "18:00" }] });
   assert.equal(got.patch.closes_at, "18:00");
-  assert.deepEqual(got.patch.google_reviews, [{
-    author: "Ana",
-    rating: 5,
-    quote: "Muy bueno",
-    date: "hace una semana",
-  }]);
+  assert.equal("google_reviews" in got.patch, false);
   assert.equal(got.patch.pitch, "Cocina de mercado en la Condesa.");
   assert.equal("google_place_id" in got.patch, false);
   assert.equal("content_state" in got.patch, false);
@@ -77,7 +72,7 @@ test("Google's Instagram link is the Instagram field, not the website", () => {
   assert.equal(got.patch.instagram_found, true);
   assert.equal("website_url" in got.patch, false);
   assert.equal("price_level" in got.patch, false);
-  assert.equal((got.patch.google_reviews as { rating: number }[])[0].rating, 0);
+  assert.equal("google_reviews" in got.patch, false);
 });
 
 test("a place without a name, coordinates, or address writes nothing", () => {

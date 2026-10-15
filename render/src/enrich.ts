@@ -14,6 +14,7 @@ import {
   type ImageKnobs,
 } from "./images.ts";
 import { discoverOfficialLinks, linkCounts, type LinkField } from "./links.ts";
+import { fetchApifyGoogleReviews } from "./reviews.ts";
 
 // Paid vendor calls must not be replayed by the platform.
 export const NO_RETRY = { maxRetries: 0, waitDurationMs: 1000, backoffScaling: 1 };
@@ -54,10 +55,11 @@ export type BuiltEnrichment = {
 };
 
 // A finished place is the Google spine, the official links Firecrawl sourced and
-// the Resolver kept, the gallery the Enrichment page asked for, and a
-// description. The description is Google's own summary when it has one,
-// otherwise one written from those facts. Anything short of that throws
-// before the write.
+// the Resolver kept, the gallery the Enrichment page asked for, the 100 newest
+// Google reviews from Apify, and a description. The description is Google's own
+// summary when it has one, otherwise one written from those facts. Anything
+// short of that throws before the write. Places itself never supplies the
+// review list: it returns five.
 export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment> {
   const googlePlaceId = job.googlePlaceId?.trim() ?? "";
   if (!job.placeId?.trim() || !googlePlaceId) {
@@ -75,6 +77,16 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment> 
     const timezone = await fetchTimezone(lat, lng, googleKey);
     if (timezone) spine.patch.timezone = timezone;
   }
+  const listed = await fetchApifyGoogleReviews({
+    googlePlaceId,
+    apifyKey: process.env.APIFY_KEY,
+  });
+  const knownCount = details.userRatingCount;
+  if (listed.length > 0) spine.patch.google_reviews = listed;
+  else if (typeof knownCount === "number" && knownCount > 0) {
+    throw new Error("Apify returned no Google reviews.");
+  }
+
   const name = typeof spine.patch.google_name === "string" ? spine.patch.google_name : "";
   const city = typeof spine.patch.city === "string" ? spine.patch.city : null;
   const knobs = job.knobs ?? {};
