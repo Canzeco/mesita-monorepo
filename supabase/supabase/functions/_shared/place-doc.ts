@@ -569,6 +569,8 @@ export type PlaceWriteArgs =
     patch: PlacePatch;
     select?: string;
     selectMode?: SelectMode;
+    /** Match only a row still in this content_state. A row that already left it is not written. */
+    onlyWhile?: "generating";
   }
   | {
     table: "profiles";
@@ -640,7 +642,10 @@ export async function writePlace(
   }
 
   // mode === "update"
-  const updateBuilder = admin.from(args.table).update(validated.patch).eq("id", args.id);
+  let updateBuilder = admin.from(args.table).update(validated.patch).eq("id", args.id);
+  if ("onlyWhile" in args && args.onlyWhile) {
+    updateBuilder = updateBuilder.eq("content_state", args.onlyWhile);
+  }
   if (args.select) {
     const withSelect = updateBuilder.select(args.select);
     const { data, error } = selectMode === "maybeSingle"
