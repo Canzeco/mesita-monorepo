@@ -56,7 +56,7 @@ import { stepDone, stepFailed, reportCrenupSteps } from "./crenup-report.ts";
 import { loadDiscoveryConfig } from "./discovery-config.ts";
 import { evaluatePlaceForMap } from "./map-engine.ts";
 import { omitReviewsTileColumns } from "./reviews-state.ts";
-import { exactGoogleFamily } from "./place-taxonomy.ts";
+import { familiesForExactGoogle } from "./place-taxonomy.ts";
 
 export type CreatedPlace = { id: string; slug: string; name: string; state: string };
 
@@ -177,10 +177,10 @@ export async function createMinimalPlace(opts: {
   // type's one family. The map gate above already read the live Google
   // rating. The stored tile columns stay empty until the Reviews reload
   // (MESITA-2183).
-  const googleFamily = exactGoogleFamily(basicsRes.basics.category);
+  const googleFamilies = familiesForExactGoogle(basicsRes.basics.category);
   const place: Record<string, unknown> = omitReviewsTileColumns({
     ...basicsRes.basics,
-    family_keys: googleFamily ? [googleFamily] : ["undefined"],
+    family_keys: googleFamilies ?? ["undefined"],
     // Operating (MESITA-1239). businessStatus rides the envelope, not `basics`,
     // so the spread above does not carry it. Stored verbatim: reaching here
     // means it is not CLOSED_PERMANENTLY (refused above), but OPERATIONAL,

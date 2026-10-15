@@ -5,7 +5,7 @@
 // search, distance slider, When, and category chips — is gone from this
 // sheet.
 //
-//   · Family — the seven real families; empty = no constraint.
+//   · Family — the twenty guest families; empty = no constraint.
 //   · Scope          — two nested sets: Google ⊃ Mesita Enriched. Default is
 //                      the inner ring. On Feed/Scroll the pool is listed
 //                      Mesita places, so Google == all enriched; the ring

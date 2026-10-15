@@ -138,7 +138,7 @@ Deno.test("validatePlaceProfilePatch: accepts string-array fields", () => {
 
 Deno.test("validatePlaceProfilePatch: family_keys is nullable until enrichment", () => {
   assert(validatePlaceProfilePatch({ family_keys: null }).ok);
-  assert(validatePlaceProfilePatch({ family_keys: ["restaurants", "cafes_bakeries"] }).ok);
+  assert(validatePlaceProfilePatch({ family_keys: ["dinner", "coffee"] }).ok);
   assert(!validatePlaceProfilePatch({ family_keys: "restaurants" }).ok);
 });
 

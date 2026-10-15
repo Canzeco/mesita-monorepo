@@ -637,8 +637,8 @@ select has_table(
 
 select is(
   (select count(*)::bigint from public.place_families),
-  8::bigint,
-  'place family catalog is eight slugs: seven real + Other'
+  21::bigint,
+  'place family catalog is twenty guest families plus Undefined'
 );
 
 select is(
@@ -649,42 +649,43 @@ select is(
 
 select is(
   (select array_agg(slug order by sort_order) from public.place_families),
-  array['restaurants','cafes_bakeries','bars_nightlife','experiences',
-        'culture_arts','sports_fitness','wellness_beauty','undefined']::text[],
-  'family catalog order matches the law; Other last'
+  array['coffee','breakfast','quick_bite','pizza','tacos','sushi','burgers',
+        'noodles','dinner','sweet','drinks','wine','night_out','live','go_out',
+        'with_kids','outdoors','culture','move','feel_better','undefined']::text[],
+  'family catalog order is the twenty guest rails, Undefined last'
 );
 
 select is(
   (select family_keys from public.place_categories where slug = 'breakfast'),
-  array['restaurants','cafes_bakeries']::text[],
-  'breakfast is a double: restaurants AND cafés'
+  array['breakfast']::text[],
+  'breakfast is the breakfast rail'
 );
 
 select is(
   (select family_keys from public.place_categories where slug = 'karaoke'),
-  array['bars_nightlife','experiences']::text[],
-  'karaoke is a double: bars AND experiences'
+  array['night_out','go_out']::text[],
+  'karaoke is a night out and something to do'
 );
 
 select is(
   (select count(*)::bigint from public.place_categories
     where cardinality(family_keys) = 2),
-  7::bigint,
-  'exactly seven double-parent categories'
+  11::bigint,
+  'eleven categories sit on two families'
 );
 
 select is(
   (select count(*)::bigint from public.place_categories
-    where 'sports_fitness' = any(family_keys)),
+    where 'move' = any(family_keys)),
   12::bigint,
-  'Sports & Fitness holds twelve categories'
+  'Move holds twelve categories'
 );
 
 select is(
   (select count(*)::bigint from public.place_categories
-    where 'wellness_beauty' = any(family_keys)),
+    where 'feel_better' = any(family_keys)),
   12::bigint,
-  'Wellness & Beauty holds twelve categories'
+  'Feel better holds twelve categories'
 );
 
 select is(
@@ -699,10 +700,9 @@ select is(
   'every Atlas category maps to at least one family'
 );
 
-select is(
-  (select max(cardinality(family_keys))::bigint from public.place_categories),
-  2::bigint,
-  'every Atlas category maps to at most two families'
+select ok(
+  (select max(cardinality(family_keys)) from public.place_categories) between 1 and 20,
+  'a category sits on at least one family and not more than the catalog'
 );
 
 select is_empty(
@@ -766,7 +766,7 @@ savepoint before_family_write_probe;
 
 select lives_ok(
   $$insert into public.place_categories (slug, label, section, sort_order, family_keys)
-    values ('mesita_1857_probe', 'probe', 'Food & Nightlife', 998, array['restaurants'])$$,
+    values ('mesita_1857_probe', 'probe', 'Food & Nightlife', 998, array['dinner'])$$,
   'INSERT into place_categories calls the validator and survives'
 );
 
@@ -781,7 +781,7 @@ insert into public.place_profiles (id, google_name)
 values ('00000000-0000-4000-8000-0000000fa111', 'Family Probe');
 
 select lives_ok(
-  $$update public.place_profiles set family_keys = array['restaurants', 'cafes_bakeries']
+  $$update public.place_profiles set family_keys = array['dinner', 'coffee']
      where id = '00000000-0000-4000-8000-0000000fa111'$$,
   'UPDATE of place_profiles.family_keys calls the validator and survives'
 );

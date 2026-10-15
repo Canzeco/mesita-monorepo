@@ -1,8 +1,8 @@
 // A persisted family key the Filters sheet no longer renders is a filter the
 // guest cannot see or clear: the red active-filters dot stays lit, the result
 // set stays narrowed, and no pill exists to switch it off — only whole-sheet
-// Reset. Both sheets render FILTERABLE_PLACE_FAMILIES (the seven), so both
-// stores must hydrate from the seven too.
+// Reset. Both sheets render FILTERABLE_PLACE_FAMILIES (the twenty), so both
+// stores hydrate from the twenty too.
 //
 // `undefined` is the live case: it is a real key in PLACE_FAMILIES, so the old
 // `PLACE_FAMILIES`-built allow-list let it survive hydrate, and the catalog
@@ -48,23 +48,23 @@ afterEach(() => {
   delete (globalThis as { window?: unknown }).window;
 });
 
-describe("persisted familyKeys hydrate from the filterable seven", () => {
+describe("persisted familyKeys hydrate from the filterable twenty", () => {
   it("drops undefined and wellness_spa from a Discovery session", async () => {
     store.set(
       DISCOVERY_KEY,
       JSON.stringify({
-        familyKeys: ["undefined", "wellness_spa", "cafes_bakeries"],
+        familyKeys: ["undefined", "wellness_spa", "coffee"],
         placesScope: "all",
         minReviews: 0,
       }),
     );
 
     const mod = await import("@/lib/use-discovery-filters");
-    mod.toggleDiscoveryFamily("restaurants");
+    mod.toggleDiscoveryFamily("dinner");
 
     expect(persistedFamilyKeys(store, DISCOVERY_KEY)).toEqual([
-      "cafes_bakeries",
-      "restaurants",
+      "coffee",
+      "dinner",
     ]);
   });
 
@@ -77,10 +77,10 @@ describe("persisted familyKeys hydrate from the filterable seven", () => {
     );
 
     const mod = await import("@/lib/use-discovery-filters");
-    mod.toggleDiscoveryFamily("restaurants"); // was selected → drops out
+    mod.toggleDiscoveryFamily("dinner"); // was selected → drops out
 
     expect(persistedFamilyKeys(store, DISCOVERY_KEY)).toEqual(
-      all.filter((k) => k !== "restaurants"),
+      all.filter((k) => k !== "dinner"),
     );
   });
 
@@ -88,18 +88,18 @@ describe("persisted familyKeys hydrate from the filterable seven", () => {
     store.set(
       MAP_KEY,
       JSON.stringify({
-        familyKeys: ["undefined", "wellness_spa", "cafes_bakeries"],
+        familyKeys: ["undefined", "wellness_spa", "coffee"],
         placesScope: "all",
         minReviews: 0,
       }),
     );
 
     const mod = await import("@/lib/use-map-filters");
-    mod.toggleMapFamily("restaurants");
+    mod.toggleMapFamily("dinner");
 
     expect(persistedFamilyKeys(store, MAP_KEY)).toEqual([
-      "cafes_bakeries",
-      "restaurants",
+      "coffee",
+      "dinner",
     ]);
   });
 
@@ -112,10 +112,10 @@ describe("persisted familyKeys hydrate from the filterable seven", () => {
     );
 
     const mod = await import("@/lib/use-map-filters");
-    mod.toggleMapFamily("restaurants");
+    mod.toggleMapFamily("dinner");
 
     expect(persistedFamilyKeys(store, MAP_KEY)).toEqual(
-      all.filter((k) => k !== "restaurants"),
+      all.filter((k) => k !== "dinner"),
     );
   });
 });

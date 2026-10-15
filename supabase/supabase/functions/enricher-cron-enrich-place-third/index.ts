@@ -67,7 +67,7 @@ import {
   synthesizePlaceSummaryText,
 } from "../_shared/place-embeddings.ts";
 import { applyInferredMesitaName } from "../_shared/mesita-name-door.ts";
-import { exactGoogleFamily } from "../_shared/place-taxonomy.ts";
+import { familiesForExactGoogle } from "../_shared/place-taxonomy.ts";
 import { fetchPlaceTags, inferPlaceTags } from "../_shared/tags.ts";
 import { inferPlaceReservationsLikely } from "../_shared/infer-place-reservations.ts";
 import { loadModelsConfig } from "../_shared/models-config.ts";
@@ -203,8 +203,8 @@ serveEnrichStage("third", async (admin, env, row) => {
       ((place.description ?? null) as string | null)?.slice(0, 1500) || null;
     const enricherModel = models.enricherModel;
     const categorySlug = (place.category ?? category) as string | null;
-    const googleFamily = exactGoogleFamily(categorySlug);
-    const resolvedFamilies = googleFamily ? [googleFamily] : ["undefined"];
+    const googleFamilies = familiesForExactGoogle(categorySlug);
+    const resolvedFamilies = googleFamilies ?? ["undefined"];
     place.family_keys = resolvedFamilies;
     if (categorySlug) {
       place.category_label = humanizeCategorySlug(categorySlug) ?? categorySlug;

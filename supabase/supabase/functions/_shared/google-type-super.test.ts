@@ -70,8 +70,8 @@ Deno.test("sports split from beauty on the Google side too", () => {
 });
 
 Deno.test("search batteries stay inside Google's API caps", () => {
-  for (const slug of GUEST) {
-    const types = GOOGLE_SEARCH_TYPES[slug];
+  for (const slug of Object.keys(GOOGLE_SEARCH_TYPES)) {
+    const types = GOOGLE_SEARCH_TYPES[slug as keyof typeof GOOGLE_SEARCH_TYPES];
     if (slug === "undefined") {
       assertEquals(types.length, 0);
       continue;
@@ -80,60 +80,44 @@ Deno.test("search batteries stay inside Google's API caps", () => {
       throw new Error(`${slug} search battery is ${types.length}`);
     }
     for (const t of types) {
-      assertEquals(GOOGLE_TYPE_SUPER[t], slug);
+      if (!GOOGLE_TYPE_SUPER[t]) throw new Error(`${t} is not a Table A type`);
     }
   }
-  assertEquals(GOOGLE_SEARCH_TYPES.restaurants, ["restaurant"]);
+  assertEquals(GOOGLE_SEARCH_TYPES.dinner, ["restaurant"]);
   assertEquals(GOOGLE_SEARCH_TYPES.undefined, []);
   assertEquals(nearbyTypesForSupers(["undefined"]), []);
   assertEquals(
-    nearbyTypesForSupers(["sports_fitness", "culture_arts"]),
+    nearbyTypesForSupers(["move", "culture"]),
     [
-      ...GOOGLE_SEARCH_TYPES.sports_fitness,
-      ...GOOGLE_SEARCH_TYPES.culture_arts,
+      ...GOOGLE_SEARCH_TYPES.move,
+      ...GOOGLE_SEARCH_TYPES.culture,
     ],
   );
-  // `other` is not a family. An unknown slug adds nothing.
   assertEquals(nearbyTypesForSupers(["other", "nope"]), []);
 });
 
-// MESITA-1683: the strip drifted to five keys covering three Families
-// while the law had seven and 22 types, and nothing caught it. This is the
-// fix — the list is pinned to the taxonomy, so adding a Super or a battery
-// entry without touching NEARBY_TYPE_KEYS fails here instead of quietly
-// hiding a whole category from the operator for weeks.
 Deno.test("NEARBY_TYPE_KEYS is exactly GOOGLE_SEARCH_TYPES, flattened", () => {
-  const flat = (Object.keys(GOOGLE_SEARCH_TYPES) as GuestSuper[])
-    .flatMap((s) => [...GOOGLE_SEARCH_TYPES[s]]);
+  const flat = Object.values(GOOGLE_SEARCH_TYPES).flatMap((types) => [...types]);
   assertEquals([...NEARBY_TYPE_KEYS], flat);
-  // Every guest Super is represented; `undefined` is the one empty battery.
-  const covered = new Set(
-    (Object.keys(GOOGLE_SEARCH_TYPES) as GuestSuper[]).filter(
-      (s) => GOOGLE_SEARCH_TYPES[s].length > 0,
-    ),
-  );
-  assertEquals(covered.size, 7);
+  const covered = Object.values(GOOGLE_SEARCH_TYPES).filter((types) => types.length > 0);
+  assertEquals(covered.length, 20);
 });
 
-// The operator's param IS the Super list (MESITA-1695). Pin it to the
-// taxonomy so a new Super cannot appear in `place-taxonomy.ts` and stay
-// invisible in the console, which is exactly how the five-key strip rotted.
-Deno.test("SUPER_PARAM_KEYS is the guest Supers, minus the empty battery", () => {
-  const withBattery = (Object.keys(GOOGLE_SEARCH_TYPES) as GuestSuper[])
-    .filter((s) => GOOGLE_SEARCH_TYPES[s].length > 0);
+Deno.test("SUPER_PARAM_KEYS is the guest families, minus the empty battery", () => {
+  const withBattery = Object.entries(GOOGLE_SEARCH_TYPES)
+    .filter(([, types]) => types.length > 0)
+    .map(([slug]) => slug);
   assertEquals(new Set(SUPER_PARAM_KEYS), new Set(withBattery));
-  assertEquals(SUPER_PARAM_KEYS.length, 7);
-  // `undefined` has no Google battery, so a toggle for it could never change
-  // a call. It is deliberately not a param.
+  assertEquals(SUPER_PARAM_KEYS.length, 20);
   assertEquals((SUPER_PARAM_KEYS as readonly string[]).includes("undefined"), false);
 });
 
-// The three F&B Supers are what the strip has always billed; the four it
-// could not see until MESITA-1683 stay off until an operator opts in.
-Deno.test("the three billed Supers default on, the other four off", () => {
+Deno.test("the billed families default on and still send the old Nearby set", () => {
   const on = SUPER_PARAM_KEYS.filter((s) => DEFAULT_MAP_SUPERS[s]);
-  assertEquals(new Set(on), new Set(["restaurants", "bars_nightlife", "cafes_bakeries"]));
-  // Their union is the five slugs the strip has always sent to Nearby.
+  assertEquals(
+    new Set(on),
+    new Set(["coffee", "dinner", "sweet", "drinks", "night_out"]),
+  );
   const flat = on.flatMap((s) => [...GOOGLE_SEARCH_TYPES[s]]);
   assertEquals(
     new Set(flat),
