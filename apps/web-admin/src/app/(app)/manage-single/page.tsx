@@ -16,7 +16,7 @@ export default function ManageSinglePlacePage() {
       <PageHeader
         eyebrow="Manage · Single Place"
         title="Single Place"
-        description="Every place Mesita holds. Type a name to ask Google too."
+        description="Every place Mesita holds. Press Enter to search."
       />
       <div className="mt-6 sm:mt-8">
         <SinglePlaceClient />

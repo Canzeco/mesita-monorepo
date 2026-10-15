@@ -20,7 +20,15 @@ describe("Single Place", () => {
   it("renders Find before the catalogue arrives — a hit opens the place, it is not drawn here", () => {
     const html = renderToStaticMarkup(<SinglePlaceClient />);
     expect(html).toContain("The list is every place Mesita holds.");
+    expect(html).toContain("Press Enter to search.");
     expect(html).toContain("Loading Mesita places");
+    expect(html).toContain(">Find<");
+    expect(html).not.toContain("Finding");
+    const field = html.slice(
+      html.indexOf('id="single-place-lookup"'),
+      html.indexOf("/>", html.indexOf('id="single-place-lookup"')),
+    );
+    expect(field).not.toMatch(/\sdisabled(?:[\s=]|$)/);
     expect(html).toContain("ChIJ… or a place name");
     expect(html).not.toContain("General States");
     expect(html).not.toContain(">Create<");

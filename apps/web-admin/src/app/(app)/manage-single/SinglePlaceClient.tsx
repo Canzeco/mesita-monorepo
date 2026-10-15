@@ -6,8 +6,9 @@
 // asks FOUR sources at once — Mesita's catalogue and Name Search, Google's
 // Autocomplete and Text Search — and draws ONE table of every place they
 // returned, with a column per source (MESITA-2124; it replaced four stacked
-// lists, and Nearby left with them). Opening the page is that search with an
-// empty query: every Mesita place, and no Google call (MESITA-2172). A hit
+// lists, and Nearby left with them). Opening the page lists every Mesita
+// place and leaves the field open: no Google call, and the field is not an
+// autocomplete (MESITA-2172). Enter is the deep search. A hit
 // OPENS the place at
 // /manage-single/<id>/profile — the place screens admin owns (MESITA-2115).
 // Create (from a Google Place ID, or a table row) is the only write this
@@ -55,7 +56,7 @@ type Note = { state: BatchRowState; text: string };
 export function SinglePlaceClient() {
   const router = useRouter();
   const [text, setText] = useState("");
-  const [busy, setBusy] = useState<"find" | "create" | null>("find");
+  const [busy, setBusy] = useState<"find" | "create" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View | null>(null);
   const [note, setNote] = useState<Note | null>(null);
@@ -69,10 +70,9 @@ export function SinglePlaceClient() {
   const [tableKey, setTableKey] = useState(0);
   const [added, setAdded] = useState<ReadonlyMap<string, string>>(new Map());
   const [rowNotes, setRowNotes] = useState<Record<string, RowNote>>({});
-  const [catalogueBootstrapped, setCatalogueBootstrapped] = useState(false);
 
   const lookup = useMemo(() => classifyLookup(text), [text]);
-  const isBusy = busy !== null || !catalogueBootstrapped;
+  const isBusy = busy !== null;
 
   function open(placeId: string) {
     router.push(placeTabHref(placeId, "profile"));
@@ -129,15 +129,10 @@ export function SinglePlaceClient() {
   }
 
   useEffect(() => {
-    let live = true;
     findSeq.current += 1;
-    void findCatalogue().finally(() => {
-      if (live) setCatalogueBootstrapped(true);
-    });
-    return () => {
-      live = false;
-    };
-    // Mount only. An empty Find from the button calls findCatalogue itself.
+    void findCatalogue();
+    // Mount only. The list loads without locking the field. Enter is the
+    // deep search; an empty submit calls findCatalogue itself.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -269,7 +264,7 @@ export function SinglePlaceClient() {
       <SectionCard
         tint="sky"
         title="Find"
-        subtitle="The list is every place Mesita holds. Type a name to ask Google too, or paste a Google Place ID to open or create."
+        subtitle="The list is every place Mesita holds. Press Enter to search. A name asks Google. A Google Place ID opens or creates."
         icon={<Search className="h-4 w-4" />}
       >
         <form
@@ -310,7 +305,7 @@ export function SinglePlaceClient() {
           </div>
         ) : null}
 
-        {busy === "find" && view == null ? (
+        {view == null ? (
           <div className="mt-5 space-y-2" aria-busy="true" aria-label="Loading Mesita places">
             {[0, 1, 2].map((i) => (
               <div key={i} className="bg-muted/50 h-12 animate-pulse rounded-xl" />
