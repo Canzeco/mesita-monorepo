@@ -110,14 +110,14 @@ describe("Find › one table", () => {
     expect(html).not.toContain(">Catalogue<");
     expect(html).not.toContain(">Name Search<");
     expect(html).not.toContain("Catalogue #1");
-    expect(html).toContain("Every place on Mesita, with general and review states");
+    expect(html).toContain("Every place on Mesita, with general states");
     expect(html).toContain("General States");
     expect(html).not.toContain("Enrichment Steps");
-    expect(html).toContain(">Reviews<");
+    expect(html).not.toContain(">Reviews<");
     expect(html).toContain(">Created<");
-    expect(html).toContain(">Google Found<");
-    expect(html).toContain(">Instagram Found<");
-    expect(html).toContain(">Facebook Found<");
+    expect(html).not.toContain(">Google Found<");
+    expect(html).not.toContain(">Instagram Found<");
+    expect(html).not.toContain(">Facebook Found<");
     expect(html).toContain("On Mesita");
     expect(html).toContain(">Mesita</span>");
     expect(html).toContain("Mesita only. Google was not asked.");
@@ -185,7 +185,7 @@ describe("Find › one table", () => {
     expect(html).toContain('target="_blank"');
   });
 
-  it("draws general and review columns, and Found is yes or no", () => {
+  it("draws general state columns, and Found stays off the table", () => {
     const html = render({
       rows: [
         row({
@@ -218,12 +218,13 @@ describe("Find › one table", () => {
       "Enriching",
       "Enriched",
       "Disabled",
-      "Google Found",
-      "Instagram Found",
-      "Facebook Found",
     ]) {
       expect(html).toContain(`>${label}<`);
     }
+    expect(html).not.toContain(">Reviews<");
+    expect(html).not.toContain(">Google Found<");
+    expect(html).not.toContain(">Instagram Found<");
+    expect(html).not.toContain(">Facebook Found<");
     expect(html).not.toContain("Enrichment Steps");
     expect(html).not.toContain(">Details<");
     expect(html).not.toContain(">Serp<");
@@ -238,11 +239,11 @@ describe("Find › one table", () => {
     expect(html).not.toContain(">Count<");
   });
 
-  it("dashes Reviews on a Google-only row, and dashes the states Mesita holds", () => {
+  it("dashes the states Mesita holds on a Google-only row", () => {
     const html = render({ rows: [NEW], failed: [], notes: [] });
-    expect(html).toContain("Google Found: not on Mesita");
-    expect(html).toContain("Instagram Found: not on Mesita");
-    expect(html).toContain("Facebook Found: not on Mesita");
+    expect(html).not.toContain("Google Found: not on Mesita");
+    expect(html).not.toContain("Instagram Found: not on Mesita");
+    expect(html).not.toContain("Facebook Found: not on Mesita");
     expect(html).toContain("Created: not on Mesita");
     expect(html).not.toContain(">4.7<");
     expect(html).not.toContain(">266<");

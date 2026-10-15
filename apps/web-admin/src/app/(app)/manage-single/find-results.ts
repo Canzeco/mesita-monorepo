@@ -2,7 +2,6 @@ import type { PlaceHit, SuggestHit } from "@/app/(app)/manage-multiple/actions";
 import type { PlaceLite } from "@/lib/places-types";
 import {
   CRENUP_STEPS,
-  REVIEW_STATE_FACTS,
   stepEnriches,
   type CrenupStepKey,
 } from "@/lib/state-vocabulary";
@@ -57,12 +56,6 @@ export const ENRICHMENT_COLUMNS = CRENUP_STEPS.filter((step) =>
   stepEnriches(step.flows),
 );
 
-/** Reviews columns. The three Found facts, in vocabulary order. A Google-only
- *  row has no place profile, so the table draws a dash instead. */
-export const REVIEW_COLUMNS = REVIEW_STATE_FACTS;
-
-export type ReviewColumn = (typeof REVIEW_COLUMNS)[number]["key"];
-
 /** What one Enrichment Steps cell says. `unknown` is a payload with no
  *  function map — never a confident no. */
 export type EnrichmentMark = "yes" | "no" | "fail" | "unknown";
@@ -75,22 +68,6 @@ export function enrichmentMark(hit: PlaceHit, key: CrenupStepKey): EnrichmentMar
   if (state === "completed") return "yes";
   if (state === "failed") return "fail";
   return "no";
-}
-
-/** A Mesita row reads the three Found facts. A Google-only row has none —
- *  stars and a review count are display, not a state. */
-export function reviewFound(
-  row: Pick<FindRow, "placeHit">,
-): Record<ReviewColumn, boolean | null> {
-  const hit = row.placeHit;
-  if (!hit) {
-    return { google_found: null, instagram_found: null, facebook_found: null };
-  }
-  return {
-    google_found: hit.google_found === true,
-    instagram_found: hit.instagram_found === true,
-    facebook_found: hit.facebook_found === true,
-  };
 }
 
 export type SourceResult<T> = { status: "ok"; data: T } | { status: "error"; error: string };
