@@ -1,7 +1,8 @@
 // Official links the Google spine did not already have.
-// Firecrawl Search is the only source. Perplexity judges that pool and may
-// not introduce a URL. A URL outside the pool, or one that fails the channel
-// shape, is a false positive and is dropped.
+// Firecrawl Search is the only source. The Resolver (the Perplexity Agent the
+// Enrichment page shows) picks one URL per field, and a URL outside that
+// Firecrawl pool is dropped. A count of 0 does not search that source.
+// Google's own link is left alone.
 
 import { channelFromUrl, type GoogleChannel } from "./channels.ts";
 
@@ -15,12 +16,16 @@ export const LINK_FIELDS = [
 
 export type LinkField = (typeof LINK_FIELDS)[number];
 
-const SEARCH_LIMIT: Record<LinkField, number> = {
+export type LinkCounts = Partial<Record<LinkField, number>>;
+
+// What the Enrichment page ships when a run has no knobs: website 5,
+// Instagram 7, Facebook 3, OpenTable 3, Uber Eats 3. Each is capped at 10.
+const DEFAULT_COUNTS: Record<LinkField, number> = {
   website_url: 5,
-  instagram_url: 5,
-  facebook_url: 5,
+  instagram_url: 7,
+  facebook_url: 3,
   opentable_url: 3,
-  uber_eats_url: 2,
+  uber_eats_url: 3,
 };
 
 const SEARCH_TERM: Record<LinkField, string> = {
@@ -31,7 +36,22 @@ const SEARCH_TERM: Record<LinkField, string> = {
   uber_eats_url: "uber eats",
 };
 
+const AGENT_URL = "https://api.perplexity.ai/v1/agent";
+const AGENT_TIMEOUT_MS = 45_000;
+
 type FetchImpl = typeof fetch;
+
+export function linkCounts(counts?: LinkCounts): Record<LinkField, number> {
+  const out = { ...DEFAULT_COUNTS };
+  if (!counts) return out;
+  for (const field of LINK_FIELDS) {
+    const value = counts[field];
+    if (typeof value === "number" && Number.isFinite(value)) {
+      out[field] = Math.max(0, Math.min(10, Math.floor(value)));
+    }
+  }
+  return out;
+}
 
 export function validateLink(field: LinkField, raw: string): string | null {
   const channel = channelFromUrl(raw);
@@ -72,7 +92,7 @@ export function sameOfficialUrl(a: string, b: string): boolean {
   }
 }
 
-// The judge's pick survives only when it is one of the URLs Firecrawl returned.
+// The Resolver's pick survives only when it is one of the URLs Firecrawl returned.
 export function confirmedLink(field: LinkField, pool: string[], answer: unknown): string | null {
   if (typeof answer !== "string") return null;
   const picked = answer.trim();
@@ -86,13 +106,17 @@ export async function discoverOfficialLinks(opts: {
   name: string;
   city: string | null;
   have: Partial<Record<LinkField, string | null>>;
+  counts?: LinkCounts;
+  preset?: string;
+  instructions?: string;
   firecrawlKey?: string;
   perplexityKey?: string;
   fetchImpl?: FetchImpl;
 }): Promise<Partial<Record<LinkField, string>>> {
   const firecrawlKey = opts.firecrawlKey?.trim() ?? "";
   const perplexityKey = opts.perplexityKey?.trim() ?? "";
-  const missing = LINK_FIELDS.filter((field) => !opts.have[field]);
+  const counts = linkCounts(opts.counts);
+  const missing = LINK_FIELDS.filter((field) => !opts.have[field] && counts[field] > 0);
   if (!missing.length) return {};
   if (!firecrawlKey || !perplexityKey) {
     console.error("[links] Firecrawl and Perplexity are both required; no new links");
@@ -100,13 +124,26 @@ export async function discoverOfficialLinks(opts: {
   }
   const fetchImpl = opts.fetchImpl ?? fetch;
   try {
-    const pools = await gatherPools(fetchImpl, firecrawlKey, opts.name, opts.city, missing);
+    const pools = await gatherPools(fetchImpl, firecrawlKey, opts.name, opts.city, missing, counts);
     const judgedFields = missing.filter((field) => (pools[field] ?? []).length > 0);
     if (!judgedFields.length) return {};
-    const answer = await judgePools(fetchImpl, perplexityKey, opts.name, opts.city, pools, judgedFields);
+    const judged = await judgePools(
+      fetchImpl,
+      perplexityKey,
+      opts.name,
+      opts.city,
+      pools,
+      judgedFields,
+      opts.preset?.trim() || "pro-search",
+      opts.instructions?.trim() ||
+        "You are a meticulous reviewer that resolves a place's OWN official online channels. Never fabricate a URL.",
+    );
+    if (!judged) return {};
     const found: Partial<Record<LinkField, string>> = {};
     for (const field of judgedFields) {
-      const url = confirmedLink(field, pools[field] ?? [], answer?.[field]);
+      const pool = pools[field] ?? [];
+      const url = confirmedLink(field, pool, judged.answer[field]) ??
+        citedLink(field, pool, judged.hitUrls);
       if (url) found[field] = url;
     }
     return found;
@@ -117,21 +154,28 @@ export async function discoverOfficialLinks(opts: {
   }
 }
 
+// A citation is a pick only when that URL is already in this field's pool.
+// The first candidate is not a pick: an empty answer stays empty.
+function citedLink(field: LinkField, pool: string[], hitUrls: string[]): string | null {
+  for (const url of hitUrls) {
+    const hit = confirmedLink(field, pool, url);
+    if (hit) return hit;
+  }
+  return null;
+}
+
 async function gatherPools(
   fetchImpl: FetchImpl,
   apiKey: string,
   name: string,
   city: string | null,
   fields: LinkField[],
+  counts: Record<LinkField, number>,
 ): Promise<Partial<Record<LinkField, string[]>>> {
   const scope = [name, city ?? ""].map((part) => part.trim()).filter(Boolean).join(" ");
-  const runs = await Promise.all(fields.map(async (field) => {
-    const limit = SEARCH_LIMIT[field];
-    const primary = await firecrawlSearch(fetchImpl, apiKey, `${scope} ${SEARCH_TERM[field]}`, limit);
-    if (field !== "instagram_url") return primary;
-    const alt = await firecrawlSearch(fetchImpl, apiKey, `"${name}" site:instagram.com`, limit);
-    return [...primary, ...alt];
-  }));
+  const runs = await Promise.all(fields.map((field) =>
+    firecrawlSearch(fetchImpl, apiKey, `${scope} ${SEARCH_TERM[field]}`, counts[field])
+  ));
   const pools: Partial<Record<LinkField, string[]>> = {};
   fields.forEach((field, index) => {
     pools[field] = poolFromUrls(field, runs[index]);
@@ -202,42 +246,34 @@ async function judgePools(
   city: string | null,
   pools: Partial<Record<LinkField, string[]>>,
   fields: LinkField[],
-): Promise<Record<string, unknown> | null> {
+  preset: string,
+  instructions: string,
+): Promise<{ answer: Record<string, unknown>; hitUrls: string[] } | null> {
   const properties: Record<string, { type: string[] }> = {};
   for (const field of fields) properties[field] = { type: ["string", "null"] };
+  const where = city?.trim() ? ` in ${city.trim()}` : "";
   const lists = fields.map((field) => {
     const pool = pools[field] ?? [];
-    return `${field}:\n${pool.map((url) => `- ${url}`).join("\n")}`;
+    return `${field} candidates:\n${pool.map((url) => `- ${url}`).join("\n")}`;
   }).join("\n");
-  const where = city?.trim() ? ` in ${city.trim()}` : "";
-  const user =
-    `Place: "${name}"${where}.\n` +
-    "These URLs were found by search. For each field, return the one URL that is " +
-    "this place's own official page, or null.\n" +
-    "Return null for a different business, a different city, a directory, a best-of list, " +
-    "a review site, a parent group, or a fan account.\n" +
-    "Return only a URL from that field's list. Never invent one.\n\n" +
-    lists;
+  const input =
+    `Review and select the official channels for the place "${name}"${where}.\n\n` +
+    `Candidate URLs found by search — review each and pick the correct one when present:\n${lists}\n\n` +
+    "Return strict JSON. Each value is one URL from that field's list, or null. Never invent a URL.";
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 30000);
+  const timer = setTimeout(() => ctrl.abort(), AGENT_TIMEOUT_MS);
   try {
-    const res = await fetchImpl("https://api.perplexity.ai/chat/completions", {
+    const res = await fetchImpl(AGENT_URL, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "sonar-pro",
-        disable_search: true,
-        messages: [
-          {
-            role: "system",
-            content: "You reject false positives among candidate URLs. Output only JSON matching the schema.",
-          },
-          { role: "user", content: user },
-        ],
+        input,
+        preset,
+        instructions,
+        max_steps: 10,
         response_format: {
           type: "json_schema",
           json_schema: {
-            name: "official_links",
             schema: {
               type: "object",
               additionalProperties: false,
@@ -254,17 +290,34 @@ async function judgePools(
       console.error(`[links] perplexity ${res.status} ${body}`);
       return null;
     }
-    const body = await res.json() as { choices?: { message?: { content?: string } }[] };
-    return parseJsonObject(body.choices?.[0]?.message?.content ?? "");
+    return agentResult(await res.json());
   } catch (err) {
     const why = ctrl.signal.aborted
-      ? "timeout after 30000ms"
+      ? `timeout after ${AGENT_TIMEOUT_MS}ms`
       : (err instanceof Error ? err.message : String(err)).slice(0, 200);
     console.error(`[links] perplexity ${why}`);
     return null;
   } finally {
     clearTimeout(timer);
   }
+}
+
+function agentResult(payload: unknown): { answer: Record<string, unknown>; hitUrls: string[] } {
+  const output = payload && typeof payload === "object"
+    ? (payload as { output?: { type?: string; content?: { text?: string; annotations?: { url?: unknown }[] }[] }[] }).output
+    : undefined;
+  let text = "";
+  const hitUrls: string[] = [];
+  for (const item of output ?? []) {
+    if (item?.type !== "message" || !Array.isArray(item.content)) continue;
+    for (const part of item.content) {
+      if (typeof part?.text === "string") text += part.text;
+      for (const note of part?.annotations ?? []) {
+        if (note && typeof note.url === "string") hitUrls.push(note.url);
+      }
+    }
+  }
+  return { answer: parseJsonObject(text) ?? {}, hitUrls };
 }
 
 function parseJsonObject(text: string): Record<string, unknown> | null {

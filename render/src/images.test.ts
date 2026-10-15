@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { applyPhotoOrder, sortPlacePhotos } from "./images.ts";
+import {
+  applyPhotoOrder,
+  defaultImageKnobs,
+  fetchInstagramPosts,
+  rankGallery,
+  rankPostsByLikes,
+  sortPlacePhotos,
+} from "./images.ts";
 
 const A = "https://lh3.googleusercontent.com/a";
 const B = "https://lh3.googleusercontent.com/b";
@@ -40,4 +47,78 @@ test("no OpenAI key still returns the gathered photos", async () => {
     }),
     [A, B],
   );
+});
+
+test("likes rank the newest Instagram window", () => {
+  assert.deepEqual(rankPostsByLikes([
+    { displayUrl: A, likesCount: 2 },
+    { displayUrl: B, likesCount: 40 },
+    { displayUrl: "http://insecure.example/c", likesCount: 100 },
+    { displayUrl: C, likesCount: 9 },
+  ]), [B, C, A]);
+});
+
+test("vision off keeps gather order and does not call the model", async () => {
+  const knobs = { ...defaultImageKnobs(), visionEnabled: false, saveTotalImages: 3 };
+  assert.deepEqual(
+    await rankGallery({
+      google: [A, B],
+      instagram: [C, "https://lh3.googleusercontent.com/d"],
+      knobs,
+      openaiKey: "sk-test",
+      fetchImpl: async () => {
+        throw new Error("vision is off");
+      },
+    }),
+    [A, B, C],
+  );
+});
+
+test("the saved analysis prompt is what vision is told", async () => {
+  let told = "";
+  const knobs = {
+    ...defaultImageKnobs(),
+    imageAnalysisPrompt: "Name the room.",
+    imageSortingPrompt: "Best room first.",
+    visionModel: "gpt-4o",
+    sortModel: "gpt-4o-mini",
+    saveTotalImages: 2,
+  };
+  const fetchImpl: typeof fetch = async (_input, init) => {
+    const body = JSON.parse(String(init?.body ?? "{}")) as {
+      model?: string;
+      messages?: { content?: unknown }[];
+    };
+    const content = body.messages?.[0]?.content;
+    if (Array.isArray(content)) {
+      told = `${body.model}:${(content[0] as { text?: string }).text ?? ""}`;
+      return Response.json({ choices: [{ message: { content: "A dining room." } }] });
+    }
+    told += `|${body.model}:${typeof content === "string" ? content : ""}`;
+    return Response.json({ choices: [{ message: { content: JSON.stringify({ order: [1, 0] }) } }] });
+  };
+  assert.deepEqual(
+    await rankGallery({ google: [A, B], instagram: [], knobs, openaiKey: "sk-test", fetchImpl }),
+    [B, A],
+  );
+  assert.match(told, /^gpt-4o:Name the room\./);
+  assert.match(told, /gpt-4o-mini:Best room first\./);
+});
+
+test("an Apify miss leaves Instagram photos empty", async () => {
+  let sent: { username?: string[]; resultsLimit?: number; skipPinnedPosts?: boolean } = {};
+  const posts = await fetchInstagramPosts({
+    instagramUrl: "https://www.instagram.com/pujol/",
+    depth: 10,
+    apifyKey: "apify-test",
+    fetchImpl: async (input, init) => {
+      assert.match(String(input), /apify~instagram-post-scraper/);
+      sent = JSON.parse(String(init?.body ?? "{}"));
+      return new Response("outstanding invoices", { status: 403 });
+    },
+  });
+  assert.deepEqual(posts, []);
+  assert.deepEqual(sent.username, ["pujol"]);
+  assert.equal(sent.resultsLimit, 10);
+  assert.equal(sent.skipPinnedPosts, true);
 });

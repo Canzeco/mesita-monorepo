@@ -6,7 +6,7 @@ import { writeFinishedPlace } from "./write-place.ts";
 export const enrichSinglePlace = task(
   { name: "enrich-single-place", retry: NO_RETRY, timeoutSeconds: DAY },
   async function enrichSinglePlace(_ctx: TaskContext, job: EnrichJob): Promise<{ placeId: string }> {
-    const patch = await buildEnrichment(job);
-    return writeFinishedPlace(job.placeId, patch);
+    const built = await buildEnrichment(job);
+    return writeFinishedPlace(job.placeId, built.patch, built.mirrorPhotos);
   },
 );

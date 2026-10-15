@@ -1,10 +1,13 @@
-// Google already gathered the place's photos. This ranks that set best-first
-// for a should-we-go-tonight decision, then the write copies the bytes.
-// The wording matches the enrichment config defaults. A failed rank keeps
-// Google's order, so a vision miss still brings the photos.
+// The gallery the Enrichment page describes.
+// Google photos are already best-first: take that many. Instagram posts come
+// back newest first: rank that window by likes, then vision the top of each.
+// Vision describes, the text model ranks, and keep is how many land on the
+// profile. Vision off keeps that order and does not call the model. A failed
+// describe keeps the order too.
 
-const SAVE = 10;
-const VISION_MODEL = "gpt-4o-mini";
+const GALLERY_CAP = 10;
+const GOOGLE_CAP = 10;
+const INSTAGRAM_CAP = 30;
 
 const ANALYSIS_PROMPT =
   "Describe this place photo: subject (ambience / interior / exterior / food / people / detail), visual quality, lighting, and whether it is representative and appealing. Be concise and factual.";
@@ -14,10 +17,39 @@ const SORTING_PROMPT =
 
 type FetchImpl = typeof fetch;
 
-export function applyPhotoOrder(urls: string[], raw: unknown): string[] {
+export type ImageKnobs = {
+  gatherGoogleImages: number;
+  analyzeGoogleImages: number;
+  analyzeInstagramImages: number;
+  saveTotalImages: number;
+  visionEnabled: boolean;
+  imageAnalysisPrompt: string;
+  imageSortingPrompt: string;
+  visionModel: string;
+  sortModel: string;
+};
+
+export type InstagramPost = { displayUrl?: unknown; likesCount?: unknown };
+
+export function defaultImageKnobs(): ImageKnobs {
+  return {
+    gatherGoogleImages: 10,
+    analyzeGoogleImages: 10,
+    analyzeInstagramImages: 10,
+    saveTotalImages: 10,
+    visionEnabled: true,
+    imageAnalysisPrompt: ANALYSIS_PROMPT,
+    imageSortingPrompt: SORTING_PROMPT,
+    visionModel: "gpt-4o-mini",
+    sortModel: "gpt-4o-mini",
+  };
+}
+
+export function applyPhotoOrder(urls: string[], raw: unknown, keep = GALLERY_CAP): string[] {
+  const cap = clamp(keep, GALLERY_CAP);
   const order = normaliseOrder(raw, urls.length);
-  if (!order) return urls.slice(0, SAVE);
-  return order.map((index) => urls[index]).filter((url): url is string => !!url).slice(0, SAVE);
+  if (!order) return urls.slice(0, cap);
+  return order.map((index) => urls[index]).filter((url): url is string => !!url).slice(0, cap);
 }
 
 function normaliseOrder(raw: unknown, length: number): number[] | null {
@@ -37,32 +69,152 @@ function normaliseOrder(raw: unknown, length: number): number[] | null {
   return order;
 }
 
+// Apify returns the newest posts. Likes decide which of that window is seen first.
+export function rankPostsByLikes(posts: InstagramPost[]): string[] {
+  return posts
+    .filter((post): post is InstagramPost & { displayUrl: string } =>
+      typeof post.displayUrl === "string" && post.displayUrl.startsWith("https://")
+    )
+    .sort((a, b) => (likesOf(b.likesCount) - likesOf(a.likesCount)))
+    .map((post) => post.displayUrl);
+}
+
+function likesOf(value: unknown): number {
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+export function instagramHandle(url: string | null | undefined): string | null {
+  const match = /instagram\.com\/([^/?#]+)/i.exec(url ?? "");
+  if (!match) return null;
+  const handle = match[1].replace(/^@/, "").trim();
+  if (!handle) return null;
+  if (new Set(["p", "reel", "reels", "explore", "stories", "tv"]).has(handle.toLowerCase())) return null;
+  return handle;
+}
+
+export async function fetchInstagramPosts(opts: {
+  instagramUrl: string | null;
+  depth: number;
+  apifyKey?: string;
+  fetchImpl?: FetchImpl;
+}): Promise<InstagramPost[]> {
+  const handle = instagramHandle(opts.instagramUrl);
+  const key = opts.apifyKey?.trim() ?? "";
+  const depth = clamp(opts.depth, INSTAGRAM_CAP);
+  if (!handle || !key || depth <= 0) return [];
+  const fetchImpl = opts.fetchImpl ?? fetch;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 60_000);
+  try {
+    const res = await fetchImpl(
+      `https://api.apify.com/v2/acts/apify~instagram-post-scraper/run-sync-get-dataset-items?token=${encodeURIComponent(key)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: [handle], resultsLimit: depth, skipPinnedPosts: true }),
+        signal: ctrl.signal,
+      },
+    );
+    if (!res.ok) {
+      const body = (await res.text().catch(() => "")).slice(0, 200);
+      console.error(`[images] apify ${res.status} ${body}`);
+      return [];
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data as InstagramPost[] : [];
+  } catch (err) {
+    const why = ctrl.signal.aborted
+      ? "timeout after 60000ms"
+      : (err instanceof Error ? err.message : String(err)).slice(0, 200);
+    console.error(`[images] apify ${why}`);
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function sortPlacePhotos(
   urls: string[],
   openaiKey: string | undefined,
   fetchImpl: FetchImpl = fetch,
 ): Promise<string[]> {
-  const photos = urls.filter((url) => url.startsWith("https://")).slice(0, SAVE);
-  const key = openaiKey?.trim() ?? "";
-  if (photos.length < 2 || !key) return photos;
+  return rankGallery({
+    google: urls,
+    instagram: [],
+    knobs: defaultImageKnobs(),
+    openaiKey,
+    fetchImpl,
+  });
+}
+
+export async function rankGallery(opts: {
+  google: string[];
+  instagram: string[];
+  knobs: ImageKnobs;
+  openaiKey?: string;
+  fetchImpl?: FetchImpl;
+}): Promise<string[]> {
+  const knobs = opts.knobs;
+  const keep = clamp(knobs.saveTotalImages, GALLERY_CAP);
+  const google = httpsOnly(opts.google).slice(0, clamp(knobs.gatherGoogleImages, GOOGLE_CAP));
+  const instagram = httpsOnly(opts.instagram);
+  const photos = dedupe(knobs.visionEnabled
+    ? [
+      ...google.slice(0, clamp(knobs.analyzeGoogleImages, google.length)),
+      ...instagram.slice(0, clamp(knobs.analyzeInstagramImages, instagram.length)),
+    ]
+    : [...google, ...instagram]);
+  if (keep <= 0) return [];
+  const kept = photos.slice(0, keep);
+  const key = opts.openaiKey?.trim() ?? "";
+  if (!knobs.visionEnabled || photos.length < 2 || !key) return kept;
+  const fetchImpl = opts.fetchImpl ?? fetch;
   try {
-    const descriptions = await describePhotos(fetchImpl, key, photos);
-    if (!descriptions || descriptions.every((line) => !line)) return photos;
-    const order = await rankPhotos(fetchImpl, key, descriptions);
-    return order ? applyPhotoOrder(photos, order) : photos;
+    const descriptions = await describePhotos(fetchImpl, key, photos, knobs);
+    if (!descriptions || descriptions.every((line) => !line)) return kept;
+    const order = await rankPhotos(fetchImpl, key, descriptions, knobs);
+    return order ? applyPhotoOrder(photos, order, keep) : kept;
   } catch (err) {
     const why = err instanceof Error ? err.message : String(err);
     console.error(`[images] ${why.slice(0, 200)}`);
-    return photos;
+    return kept;
   }
 }
 
-async function describePhotos(fetchImpl: FetchImpl, apiKey: string, urls: string[]): Promise<string[] | null> {
-  const descriptions = await Promise.all(urls.map((url) => describeOne(fetchImpl, apiKey, url)));
+function httpsOnly(urls: string[]): string[] {
+  return urls.filter((url) => url.startsWith("https://"));
+}
+
+function dedupe(urls: string[]): string[] {
+  const out: string[] = [];
+  for (const url of urls) {
+    if (!out.includes(url)) out.push(url);
+  }
+  return out;
+}
+
+function clamp(value: number, max: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(max, Math.floor(value)));
+}
+
+async function describePhotos(
+  fetchImpl: FetchImpl,
+  apiKey: string,
+  urls: string[],
+  knobs: ImageKnobs,
+): Promise<string[] | null> {
+  const descriptions = await Promise.all(urls.map((url) => describeOne(fetchImpl, apiKey, url, knobs)));
   return descriptions.every((line) => !line) ? null : descriptions;
 }
 
-async function describeOne(fetchImpl: FetchImpl, apiKey: string, url: string): Promise<string> {
+async function describeOne(
+  fetchImpl: FetchImpl,
+  apiKey: string,
+  url: string,
+  knobs: ImageKnobs,
+): Promise<string> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 25000);
   try {
@@ -70,13 +222,13 @@ async function describeOne(fetchImpl: FetchImpl, apiKey: string, url: string): P
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: VISION_MODEL,
+        model: knobs.visionModel,
         temperature: 0,
         max_tokens: 200,
         messages: [{
           role: "user",
           content: [
-            { type: "text", text: ANALYSIS_PROMPT },
+            { type: "text", text: knobs.imageAnalysisPrompt },
             { type: "image_url", image_url: { url, detail: "low" } },
           ],
         }],
@@ -93,18 +245,23 @@ async function describeOne(fetchImpl: FetchImpl, apiKey: string, url: string): P
   }
 }
 
-async function rankPhotos(fetchImpl: FetchImpl, apiKey: string, descriptions: string[]): Promise<unknown> {
+async function rankPhotos(
+  fetchImpl: FetchImpl,
+  apiKey: string,
+  descriptions: string[],
+  knobs: ImageKnobs,
+): Promise<unknown> {
   const list = descriptions.map((line, index) => `${index}: ${line || "(no description)"}`).join("\n");
   const res = await fetchImpl("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: VISION_MODEL,
+      model: knobs.sortModel,
       temperature: 0,
       messages: [{
         role: "user",
         content:
-          `${SORTING_PROMPT}\n\nImages (index: description):\n${list}\n\n` +
+          `${knobs.imageSortingPrompt}\n\nImages (index: description):\n${list}\n\n` +
           'Return a SINGLE JSON object {"order": [indices best-to-worst]}. ' +
           "Include EVERY index exactly once; do not drop any. No prose, no fences.",
       }],

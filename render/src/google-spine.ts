@@ -176,13 +176,14 @@ export async function fetchTimezone(lat: number, lng: number, apiKey: string): P
 
 const PHOTO_CAP = 10;
 
-export function photoUris(bodies: { photoUri?: string }[]): string[] {
+export function photoUris(bodies: { photoUri?: string }[], cap = PHOTO_CAP): string[] {
+  const limit = Math.min(PHOTO_CAP, Math.max(0, Math.floor(cap)));
   const out: string[] = [];
   for (const body of bodies) {
+    if (out.length >= limit) break;
     const uri = body.photoUri?.trim() ?? "";
     if (!uri.startsWith("https://") || out.includes(uri)) continue;
     out.push(uri);
-    if (out.length === PHOTO_CAP) break;
   }
   return out;
 }
@@ -190,11 +191,13 @@ export function photoUris(bodies: { photoUri?: string }[]): string[] {
 export async function fetchGooglePhotoUrls(
   photos: { name?: string }[] | undefined,
   apiKey: string,
+  cap = PHOTO_CAP,
 ): Promise<string[]> {
+  const limit = Math.min(PHOTO_CAP, Math.max(0, Math.floor(cap)));
   const names = (photos ?? [])
     .map((photo) => photo.name?.trim() ?? "")
     .filter(Boolean)
-    .slice(0, PHOTO_CAP);
+    .slice(0, limit);
   const bodies = await Promise.all(names.map(async (name) => {
     const res = await fetch(
       `https://places.googleapis.com/v1/${name}/media?maxHeightPx=1600&skipHttpRedirect=true`,
@@ -203,7 +206,7 @@ export async function fetchGooglePhotoUrls(
     if (!res.ok) return {};
     return await res.json().catch(() => ({})) as { photoUri?: string };
   }));
-  return photoUris(bodies);
+  return photoUris(bodies, limit);
 }
 
 export async function fetchGooglePlace(googlePlaceId: string, apiKey: string): Promise<GooglePlace> {

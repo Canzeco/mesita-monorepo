@@ -46,12 +46,21 @@ test("Firecrawl v2 web hits and a flat data array both yield URLs", () => {
 });
 
 test("a sourced link is kept and an invented one is dropped", async () => {
-  let judged: string[] = [];
+  const searches: { query: string; limit: number }[] = [];
+  let judged: { preset?: string; instructions?: string; input?: string; max_steps?: number } = {};
   const fetchImpl: typeof fetch = async (input, init) => {
     const url = String(input);
-    const body = JSON.parse(String(init?.body ?? "{}")) as { query?: string; messages?: { content?: string }[] };
+    const body = JSON.parse(String(init?.body ?? "{}")) as {
+      query?: string;
+      limit?: number;
+      preset?: string;
+      instructions?: string;
+      input?: string;
+      max_steps?: number;
+    };
     if (url.includes("firecrawl")) {
       const query = body.query ?? "";
+      searches.push({ query, limit: body.limit ?? 0 });
       const hits = query.includes("instagram")
         ? [{ url: "https://www.instagram.com/pujol/" }, { url: "https://www.instagram.com/p/Cabc/" }]
         : query.includes("website")
@@ -59,18 +68,19 @@ test("a sourced link is kept and an invented one is dropped", async () => {
         : [];
       return Response.json({ data: { web: hits } });
     }
-    judged = body.messages?.map((message) => message.content ?? "") ?? [];
+    judged = body;
     return Response.json({
-      choices: [{
-        message: {
-          content: JSON.stringify({
+      output: [{
+        type: "message",
+        content: [{
+          text: JSON.stringify({
             website_url: "https://pujol.com.mx/menu?utm=1",
             instagram_url: "https://www.instagram.com/not-this-place",
             facebook_url: null,
             opentable_url: null,
             uber_eats_url: null,
           }),
-        },
+        }],
       }],
     });
   };
@@ -79,14 +89,95 @@ test("a sourced link is kept and an invented one is dropped", async () => {
     name: "Pujol",
     city: "Mexico City",
     have: { website_url: null, instagram_url: null, facebook_url: null, opentable_url: null, uber_eats_url: null },
+    counts: { website_url: 5, instagram_url: 7, facebook_url: 3, opentable_url: 3, uber_eats_url: 3 },
+    preset: "pro-search",
+    instructions: "Never fabricate a URL.",
     firecrawlKey: "fc",
     perplexityKey: "px",
     fetchImpl,
   });
   assert.equal(found.website_url, "https://www.pujol.com.mx/menu");
   assert.equal(found.instagram_url, undefined);
-  assert.match(judged.join("\n"), /reject false positives/i);
-  assert.match(judged.join("\n"), /https:\/\/www\.pujol\.com\.mx\/menu/);
+  assert.equal(searches.filter((search) => search.query.includes("instagram")).length, 1);
+  assert.equal(searches.find((search) => search.query.includes("instagram"))?.limit, 7);
+  assert.equal(judged.preset, "pro-search");
+  assert.equal(judged.max_steps, 10);
+  assert.match(judged.instructions ?? "", /Never fabricate a URL/);
+  assert.match(judged.input ?? "", /https:\/\/www\.pujol\.com\.mx\/menu/);
+});
+
+test("a count of zero does not search that source", async () => {
+  const queries: string[] = [];
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const url = String(input);
+    const body = JSON.parse(String(init?.body ?? "{}")) as { query?: string };
+    if (url.includes("firecrawl")) {
+      queries.push(body.query ?? "");
+      return Response.json({ data: { web: [{ url: "https://www.pujol.com.mx/" }] } });
+    }
+    return Response.json({
+      output: [{
+        type: "message",
+        content: [{ text: JSON.stringify({ website_url: "https://www.pujol.com.mx/" }) }],
+      }],
+    });
+  };
+  const found = await discoverOfficialLinks({
+    name: "Pujol",
+    city: "Mexico City",
+    have: {},
+    counts: { website_url: 5, instagram_url: 0, facebook_url: 0, opentable_url: 0, uber_eats_url: 0 },
+    firecrawlKey: "fc",
+    perplexityKey: "px",
+    fetchImpl,
+  });
+  assert.equal(found.website_url, "https://www.pujol.com.mx/");
+  assert.equal(queries.length, 1);
+  assert.equal(queries[0]?.includes("instagram"), false);
+});
+
+test("a citation is kept only when Firecrawl already returned it", async () => {
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = String(input);
+    if (url.includes("firecrawl")) {
+      return Response.json({
+        data: {
+          web: [
+            { url: "https://www.pujol.com.mx/menu" },
+            { url: "https://www.instagram.com/pujol" },
+          ],
+        },
+      });
+    }
+    return Response.json({
+      output: [{
+        type: "message",
+        content: [{
+          text: JSON.stringify({
+            website_url: null,
+            instagram_url: null,
+            facebook_url: null,
+            opentable_url: null,
+            uber_eats_url: null,
+          }),
+          annotations: [
+            { url: "https://pujol.com.mx/menu" },
+            { url: "https://www.instagram.com/not-in-the-pool" },
+          ],
+        }],
+      }],
+    });
+  };
+  const found = await discoverOfficialLinks({
+    name: "Pujol",
+    city: "Mexico City",
+    have: {},
+    firecrawlKey: "fc",
+    perplexityKey: "px",
+    fetchImpl,
+  });
+  assert.equal(found.website_url, "https://www.pujol.com.mx/menu");
+  assert.equal(found.instagram_url, undefined);
 });
 
 test("Google's own link is not searched again", async () => {
