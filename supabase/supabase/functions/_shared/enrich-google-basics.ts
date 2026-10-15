@@ -12,7 +12,6 @@
 // the same status codes the old seed used (409/422/502/503).
 
 import { classifyLinks } from "./channels.ts";
-import { slugify } from "./place-slug.ts";
 import { humanizeCategorySlug } from "./parse-utils.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 import { mapGoogleReviews } from "./enrich-google-review-snippets.ts";
@@ -247,9 +246,11 @@ export async function fetchGoogleBasics(
     (details.googleMapsUri && details.googleMapsUri.trim()) ||
     `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(placeIdSpine)}`;
 
-  // Cheap Google placeholder category; the enricher re-infers the real one.
-  const categorySlug = slugify(details.primaryTypeDisplayName?.text ?? details.primaryType ?? "") || null;
-  const categoryLabel = categorySlug ? humanizeCategorySlug(categorySlug) : null;
+  // The category is Google's primary type, saved as Google spells it.
+  // `mexican_restaurant` stays `mexican_restaurant`. The label is that slug
+  // made readable. No emoji, and no remap onto a Mesita category.
+  const categorySlug = details.primaryType?.trim() || null;
+  const categoryLabel = humanizeCategorySlug(categorySlug);
 
   const hours = weeklyHoursFromPeriods(details.regularOpeningHours?.periods);
   const closesAt = closesAtFromHours(details.regularOpeningHours?.weekdayDescriptions ?? []);

@@ -10,15 +10,15 @@
 //                   (content_state ready, enriched_at null).
 //                   NEVER STAMPED: the row existing IS the seed.
 //   1 details     → the Google spine persisted (fetchGoogleBasics fields,
-//                   category='undefined' and family_keys=['undefined'] as the
-//                   floor) PLUS the first Google photo mirrored into
+//                   category = Google's primary type, family from that type)
+//                   PLUS the first Google photo mirrored into
 //                   place-images so a Created place can show a thumb. The
 //                   LIVENESS GATE is a subprocess of this step, not a rung of
 //                   its own: a place reported CLOSED_PERMANENTLY is REFUSED at
 //                   the door, before any row exists.
 //   7 description → the DOOR Description (gate D1): ONE batched prompt over
-//                   the thin Google signals infers Family, Category,
-//                   Tags, Presentation, Reservations, Mesita Name (through
+//                   the thin Google signals infers Tags, Presentation,
+//                   Reservations, Mesita Name (through
 //                   the mesita-name-door, gate D2) and the Semantic Summary.
 //                   A later Enrich run's step 7 redoes it with rich grounding.
 //   8 embedding   → embed-only: Name vector + Summary vector of what the
@@ -56,6 +56,7 @@ import { stepDone, stepFailed, reportCrenupSteps } from "./crenup-report.ts";
 import { loadDiscoveryConfig } from "./discovery-config.ts";
 import { evaluatePlaceForMap } from "./map-engine.ts";
 import { omitReviewsTileColumns } from "./reviews-state.ts";
+import { exactGoogleFamily } from "./place-taxonomy.ts";
 
 export type CreatedPlace = { id: string; slug: string; name: string; state: string };
 
@@ -172,15 +173,14 @@ export async function createMinimalPlace(opts: {
     };
   }
 
-  // category 'undefined' until the Enricher resolves it; the category-label
-  // trigger fills category_label from the 'undefined' catalog row.
-  // The map gate above already read the live Google rating. The stored tile
-  // columns stay empty until the Reviews reload (MESITA-2183).
+  // Category is Google's primary type, already on basics. Family is that
+  // type's one family. The map gate above already read the live Google
+  // rating. The stored tile columns stay empty until the Reviews reload
+  // (MESITA-2183).
+  const googleFamily = exactGoogleFamily(basicsRes.basics.category);
   const place: Record<string, unknown> = omitReviewsTileColumns({
     ...basicsRes.basics,
-    category: "undefined",
-    category_label: null,
-    family_keys: ["undefined"],
+    family_keys: googleFamily ? [googleFamily] : ["undefined"],
     // Operating (MESITA-1239). businessStatus rides the envelope, not `basics`,
     // so the spread above does not carry it. Stored verbatim: reaching here
     // means it is not CLOSED_PERMANENTLY (refused above), but OPERATIONAL,
@@ -262,8 +262,8 @@ export async function createMinimalPlace(opts: {
       });
       if (door) {
         const patch: Record<string, unknown> = {};
-        if (door.category) patch.category = door.category;
-        if (door.familyKeys.length > 0) patch.family_keys = door.familyKeys;
+        // Category and family already came from Google. The door does not
+        // replace them with a Mesita category.
         if (door.tags.length > 0) patch.tags = door.tags;
         if (door.description) patch.description = door.description;
         // The seed for a place nobody has answered for yet; an operator's

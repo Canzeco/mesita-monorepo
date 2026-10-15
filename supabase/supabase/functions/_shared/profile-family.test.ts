@@ -48,7 +48,7 @@ Deno.test("a defined category resolves to its full membership", () => {
   );
 });
 
-Deno.test("a multi-parent category joins both families", () => {
+Deno.test("a Google type shows its one family", () => {
   assertEquals(
     resolveProfileFamily({
       category: "karaoke",
@@ -56,7 +56,7 @@ Deno.test("a multi-parent category joins both families", () => {
       categories,
       families,
     }).text,
-    "🍸 Bars & Nightlife · 🎟️ Experiences",
+    "🍸 Bars & Nightlife",
   );
 });
 

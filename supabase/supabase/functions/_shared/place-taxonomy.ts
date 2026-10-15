@@ -24,6 +24,7 @@
 // that, ['undefined'] stands. A Google type on Undefined is still not a
 // guest pill (familiesForGoogleType drops it; hotels/shops stay ineligible).
 
+import { GOOGLE_TYPE_SUPER } from "./google-type-super.ts";
 import {
   familiesForGoogleType,
   type FamilyKey,
@@ -214,6 +215,21 @@ export function readGuestFamilyKeys(raw: unknown): FamilyKey[] {
   );
 }
 
+/**
+ * The family of a category that is exactly a Google Table A type.
+ * Null when the slug is not one of those types. The `_restaurant` alias
+ * is not applied: a leftover Mesita slug such as `breakfast` is not
+ * `breakfast_restaurant`.
+ */
+export function exactGoogleFamily(
+  category: string | null | undefined,
+): FamilyKey | null {
+  if (typeof category !== "string") return null;
+  const slug = category.trim().toLowerCase();
+  if (!slug) return null;
+  return GOOGLE_TYPE_SUPER[slug] ?? null;
+}
+
 export function familiesForAtlasCategory(
   category: string | null | undefined,
 ): FamilyKey[] {
@@ -230,15 +246,18 @@ export type FamilyPlace = {
 
 /**
  * Families for a place on the wire or in a predicate. TOTAL:
- * Atlas membership (1–2) wins when the category is in the catalog; stored
- * keys win when membership is empty (leftover slugs); else the Google
- * primaryType map (Nearby pins); else ['undefined'] — every place lands
- * under at least one pill, always.
+ * an exact Google type wins (one family, including Undefined); else Atlas
+ * membership for a leftover Mesita slug; else stored keys; else the
+ * Google alias map; else ['undefined'].
  */
 export function familiesForPlace(place: FamilyPlace): FamilyKey[] {
-  const atlas = familiesForAtlasCategory(
-    typeof place.category === "string" ? place.category : null,
-  );
+  const category = typeof place.category === "string" ? place.category : null;
+  // A Google type is the category. Its family is the one Google map entry,
+  // including Undefined. A Mesita catalog slug that is not a Google type
+  // still resolves through Atlas until a later Google read rewrites it.
+  const exact = exactGoogleFamily(category);
+  if (exact) return [exact];
+  const atlas = familiesForAtlasCategory(category);
   if (atlas.length > 0) return atlas;
   const stored = sanitizeFamilyKeys(place.family_keys);
   if (stored.length > 0) return stored;
@@ -260,6 +279,8 @@ export function resolveEnrichedFamilyKeys(
   category: string | null | undefined,
   inferred: unknown,
 ): FamilyKey[] {
+  const exact = exactGoogleFamily(category);
+  if (exact) return [exact];
   const membership = familiesForAtlasCategory(category);
   if (membership.length > 0) return membership;
   const sanitized = sanitizeFamilyKeys(inferred);

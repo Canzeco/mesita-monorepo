@@ -10,6 +10,7 @@
 //   · nothing known → the Undefined family.
 
 import type { PlaceCategory, PlaceFamily } from "./categories.ts";
+import { GOOGLE_TYPE_SUPER } from "./google-type-super.ts";
 
 export type ResolvedFamily = {
   /** "🍸 Bars & Nightlife" or "🍸 Bars & Nightlife · 🎟️ Experiences". */
@@ -72,6 +73,14 @@ export function resolveProfileFamily(input: {
     ? input.category.trim().toLowerCase()
     : "";
   if (slug && slug !== "undefined") {
+    const google = GOOGLE_TYPE_SUPER[slug];
+    if (google && google !== "undefined") {
+      const text = joinFamilies([google], input.families);
+      if (text) return { text, inferred: false };
+    }
+    if (google === "undefined") {
+      return { text: undefinedFamily(input.families), inferred: false };
+    }
     const hit = input.categories.find((c) => c.slug === slug);
     const text = joinFamilies(hit?.family_keys ?? [], input.families);
     if (text) return { text, inferred: false };

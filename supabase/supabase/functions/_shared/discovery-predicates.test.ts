@@ -76,13 +76,13 @@ Deno.test("Family cuts Atlas slugs; a double-parent category matches both pills"
     ).map((r) => r.id),
     ["karaoke"],
   );
-  // karaoke is bars AND experiences.
+  // karaoke is Google's type, and that type is bars only.
   assertEquals(
     applyDeckPredicates(
       rows,
       readDeckPredicates({ familyKeys: ["experiences"] }),
     ).map((r) => r.id),
-    ["karaoke"],
+    [],
   );
 });
 

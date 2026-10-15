@@ -210,8 +210,6 @@ function boxToPatch(
       mesita_name: mesitaName.length > 0 ? mesitaName : null,
       description: nz(f.description.slice(0, limits.descriptionMax)),
       tags: f.tags.slice(0, limits.tagsPerPlaceMax),
-      // decision: Pato (MESITA-469) — admin may set category (Enricher + Admin + Business).
-      category: nz(f.category) || "undefined",
     };
   }
   if (box === "time") {
@@ -260,24 +258,20 @@ export function PlaceSection({
           mesitaName: form.mesitaName,
           description: form.description,
           tags: form.tags,
-          category: form.category,
         },
         {
           mesitaName: saved.mesitaName,
           description: saved.description,
           tags: saved.tags,
-          category: saved.category,
         },
       ),
     [
       form.mesitaName,
       form.description,
       form.tags,
-      form.category,
       saved.mesitaName,
       saved.description,
       saved.tags,
-      saved.category,
     ],
   );
   const dirtyTime = useMemo(
@@ -477,12 +471,7 @@ export function PlaceSection({
             <PriceDisplay level={place.price_level} currency={place.currency} />
           </ReadField>
           <PlaceFamilyField category={form.category ?? ""} />
-          <PlaceCategorySelect
-            value={form.category ?? ""}
-            onChange={(slug) => set("category", slug)}
-            disabled={anyPending}
-            googleLabel={place.category_label}
-          />
+          <PlaceCategorySelect value={place.category ?? ""} />
         </div>
         <div className="mt-4 grid gap-4">
           <TextArea

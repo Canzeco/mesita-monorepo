@@ -168,7 +168,11 @@ Deno.test("resolveEnrichedFamilyKeys keeps full membership; total fallback", () 
   );
   assertEquals(
     resolveEnrichedFamilyKeys("karaoke", ["experiences"]),
-    ["bars_nightlife", "experiences"],
+    ["bars_nightlife"],
+  );
+  assertEquals(
+    resolveEnrichedFamilyKeys("mexican_restaurant", ["cafes_bakeries"]),
+    ["restaurants"],
   );
   assertEquals(
     resolveEnrichedFamilyKeys("undefined", ["bars_nightlife"]),

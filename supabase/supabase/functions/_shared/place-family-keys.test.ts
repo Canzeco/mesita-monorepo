@@ -25,7 +25,6 @@ Deno.test("withFamilyKeys ships the FULL Atlas membership (1–2 supers)", () =>
   ]);
   assertEquals(withFamilyKeys({ category: "karaoke" }).family_keys, [
     "bars_nightlife",
-    "experiences",
   ]);
 });
 
