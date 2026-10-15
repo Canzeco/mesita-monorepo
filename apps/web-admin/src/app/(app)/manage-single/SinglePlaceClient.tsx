@@ -9,14 +9,16 @@
 // autocomplete (MESITA-2172). Enter is the deep search. A hit
 // OPENS the place at
 // /manage-single/<id>/profile — the place screens admin owns (MESITA-2115).
-// Create (from a Google Place ID, or a table row) is the only write this
-// page makes itself.
+// Create (from a Google Place ID, or a table row) and Enrich (a held row)
+// are the writes this page makes itself. Enrich is the same call as the
+// Admin tab. Reviews stay a separate reload.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Building, ExternalLink, Loader2, Play, Search } from "lucide-react";
 import {
   createPlaceFromGooglePlaceId,
+  enrichPlace,
   searchPlacesByGoogleIds,
   type PlaceHit,
 } from "@/app/(app)/manage-multiple/actions";
@@ -67,6 +69,10 @@ export function SinglePlaceClient() {
   const [tableKey, setTableKey] = useState(0);
   const [added, setAdded] = useState<ReadonlyMap<string, string>>(new Map());
   const [rowNotes, setRowNotes] = useState<Record<string, RowNote>>({});
+  const [startingIds, setStartingIds] = useState<ReadonlySet<string>>(new Set());
+  const [enrichingIds, setEnrichingIds] = useState<ReadonlySet<string>>(new Set());
+  const [enrichErrors, setEnrichErrors] = useState<Readonly<Record<string, string>>>({});
+  const enrichFlight = useRef(new Set<string>());
 
   const lookup = useMemo(() => classifyLookup(text), [text]);
   const isBusy = busy !== null;
@@ -227,6 +233,42 @@ export function SinglePlaceClient() {
     setRowNotes((n) => ({ ...n, [googleId]: rowNote }));
   }
 
+  /** Same Enrich as the Admin card. Starting… while the call is in flight,
+   *  then Enriching. A second click does nothing. Failure puts the verb back. */
+  async function enrichRow(row: FindRow) {
+    const id = row.mesitaId ?? (row.googleId ? added.get(row.googleId) : undefined);
+    if (!id || enrichFlight.current.has(id)) return;
+    if (row.placeHit?.enriching === true || enrichingIds.has(id)) return;
+    enrichFlight.current.add(id);
+    setStartingIds((s) => new Set(s).add(id));
+    setEnrichErrors((e) => {
+      if (!(id in e)) return e;
+      const next = { ...e };
+      delete next[id];
+      return next;
+    });
+    let failed: string | null = null;
+    try {
+      const r = await enrichPlace(id);
+      if (!r.ok) failed = r.error;
+    } catch (err) {
+      failed = err instanceof Error ? err.message : "Unexpected error";
+    } finally {
+      enrichFlight.current.delete(id);
+      setStartingIds((s) => {
+        const next = new Set(s);
+        next.delete(id);
+        return next;
+      });
+    }
+    if (failed) {
+      const message = failed;
+      setEnrichErrors((e) => ({ ...e, [id]: message }));
+      return;
+    }
+    setEnrichingIds((s) => new Set(s).add(id));
+  }
+
   async function create() {
     if (isBusy || view?.kind !== "absent") return;
     setBusy("create");
@@ -321,6 +363,10 @@ export function SinglePlaceClient() {
             variant={view.variant}
             onOpen={(row) => void openRow(row)}
             onAdd={(row) => void addRow(row)}
+            onEnrich={(row) => void enrichRow(row)}
+            startingIds={startingIds}
+            enrichingIds={enrichingIds}
+            enrichErrors={enrichErrors}
           />
         ) : null}
       </SectionCard>

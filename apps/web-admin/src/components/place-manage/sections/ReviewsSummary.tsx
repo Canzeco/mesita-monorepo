@@ -78,14 +78,20 @@ export function ReviewsSummary() {
   const { place, setPlace } = usePlaceContext();
   const [busy, setBusy] = useState<ReviewsReloadSource | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [reviewNote, setReviewNote] = useState<string | null>(null);
 
   async function reload(source: ReviewsReloadSource) {
     setBusy(source);
-    setNote(null);
+    if (source === "google_reviews") setReviewNote(null);
+    else setNote(null);
     const r = await reloadPlaceReviews(place.id, source);
     setBusy(null);
     if (!r.ok) {
-      setNote(r.error);
+      if (source === "google_reviews") {
+        setReviewNote("Apify couldn't load these reviews. Try again.");
+      } else {
+        setNote(r.error);
+      }
       return;
     }
     setPlace((current) => ({
@@ -116,6 +122,7 @@ export function ReviewsSummary() {
           <GoogleReviewsTile
             place={place}
             busy={busy === "google_reviews"}
+            apifyLine={busy === "google_reviews" ? "loading" : reviewNote ? "error" : null}
             onReload={() => reload("google_reviews")}
           />
         </div>
@@ -193,10 +200,12 @@ function storedReviews(raw: unknown): { author: string; quote: string }[] {
 function GoogleReviewsTile({
   place,
   busy,
+  apifyLine,
   onReload,
 }: {
   place: AdminPlace;
   busy: boolean;
+  apifyLine: "loading" | "error" | null;
   onReload: () => void;
 }) {
   const reviews = storedReviews(place.google_reviews);
@@ -212,18 +221,27 @@ function GoogleReviewsTile({
         : reviews.length > 0
         ? "on file"
         : "No reviews on file."}
-      extra={shown.length > 0 ? (
-        <ul className="text-muted-foreground mt-1 space-y-1 type-label">
-          {shown.map((review, i) => (
-            <li key={i} className="truncate">
-              {review.author}: {review.quote}
-            </li>
-          ))}
-          {reviews.length > shown.length ? (
-            <li>+{reviews.length - shown.length} more</li>
+      extra={
+        <>
+          {shown.length > 0 ? (
+            <ul className="text-muted-foreground mt-1 space-y-1 type-label">
+              {shown.map((review, i) => (
+                <li key={i} className="truncate">
+                  {review.author}: {review.quote}
+                </li>
+              ))}
+              {reviews.length > shown.length ? (
+                <li>+{reviews.length - shown.length} more</li>
+              ) : null}
+            </ul>
           ) : null}
-        </ul>
-      ) : null}
+          {apifyLine === "loading" ? (
+            <p className="text-muted-foreground type-label">Loading reviews from Apify…</p>
+          ) : apifyLine === "error" ? (
+            <p className="text-destructive type-label">Apify couldn&apos;t load these reviews. Try again.</p>
+          ) : null}
+        </>
+      }
       reload={
         <ReloadButton
           label="Reload Google review list"

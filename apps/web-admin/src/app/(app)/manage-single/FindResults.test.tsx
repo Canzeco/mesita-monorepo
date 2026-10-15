@@ -118,7 +118,9 @@ describe("Find › one table", () => {
     expect(html).not.toContain(">Google Found<");
     expect(html).not.toContain(">Instagram Found<");
     expect(html).not.toContain(">Facebook Found<");
-    expect(html).toContain("On Mesita");
+    expect(html).toContain(">Open<");
+    expect(html).toContain(">Enrich<");
+    expect(html).not.toContain(">On Mesita<");
     expect(html).toContain(">Mesita</span>");
     expect(html).toContain("Mesita only. Google was not asked.");
   });
@@ -173,6 +175,8 @@ describe("Find › one table", () => {
     const html = render(OK);
     expect(html).toContain('href="/manage-single/mesita-a/profile"');
     expect(html).toContain('aria-label="Open Café Nin"');
+    expect(html).toContain('aria-label="Enrich Café Nin"');
+    expect(html).toContain("visited:text-(--brand-pink-900)");
     expect(html).toContain('aria-label="Create Dos Amores Brunch &amp; Meal on Mesita"');
     expect(html).toContain(">Create<");
     expect(html).not.toContain(">Add<");
@@ -255,6 +259,47 @@ describe("Find › one table", () => {
     expect(html).toContain("This payload does not carry that fact");
     expect(html).not.toContain("Created: not on Mesita");
     expect(html).not.toContain("Details: not on Mesita");
+  });
+
+  it("a held place offers Enrich, and a Google-only place does not", () => {
+    const held = render({ rows: [HELD], failed: [], notes: [] });
+    expect(held).toContain('aria-label="Enrich Café Nin"');
+    expect(held).not.toContain(">On Mesita<");
+    const google = render({ rows: [NEW], failed: [], notes: [] });
+    expect(google).toContain(">Create<");
+    expect(google).not.toContain('aria-label="Enrich ');
+    expect(google).not.toContain(">Open<");
+  });
+
+  it("a run already going replaces Enrich with a disabled Enriching control", () => {
+    const html = render({
+      rows: [row({ placeHit: placeHit({ enriching: true }) })],
+      failed: [],
+      notes: [],
+    });
+    expect(html).toContain('aria-label="Enriching Café Nin"');
+    expect(html).toContain('aria-busy="true"');
+    expect(html).toContain(">Open<");
+    expect(html).not.toContain('aria-label="Enrich Café Nin"');
+  });
+
+  it("Starting… is the click still in flight", () => {
+    const html = render(
+      { rows: [row({ placeHit: placeHit({ enriching: false }) })], failed: [], notes: [] },
+      { startingIds: new Set(["mesita-a"]) },
+    );
+    expect(html).toContain('aria-label="Starting Café Nin"');
+    expect(html).toContain(">Starting…<");
+    expect(html).toContain(">yes<");
+  });
+
+  it("an Enrich failure sits under the verbs and the button comes back", () => {
+    const html = render(
+      { rows: [HELD], failed: [], notes: [] },
+      { enrichErrors: { "mesita-a": "Render refused the run" } },
+    );
+    expect(html).toContain("Render refused the run");
+    expect(html).toContain('aria-label="Enrich Café Nin"');
   });
 
   it("folds the sources into one line for a phone", () => {
