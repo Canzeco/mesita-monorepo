@@ -24,7 +24,15 @@ import { efInvoke } from "@/lib/supabase-ef";
 // how a copy edit in Deno silently breaks a screen in Next.
 type Result<T> =
   | { ok: true; data: T }
-  | { ok: false; error: string; code?: string | null };
+  | {
+    ok: false;
+    error: string;
+    code?: string | null;
+    /** A social miss the operator can send again without editing the link. */
+    retryable?: boolean;
+    /** Instagram or Facebook inputs a definite miss belongs to. */
+    fields?: ("instagram_url" | "facebook_url")[];
+  };
 
 // ── Place load ───────────────────────────────────────────────────────────
 
@@ -180,6 +188,21 @@ export async function getPlaceAndRole(
   };
 }
 
+function readRetryable(data: unknown): boolean {
+  if (!data || typeof data !== "object" || !("retryable" in data)) return false;
+  return (data as { retryable: unknown }).retryable === true;
+}
+
+function readSocialFields(data: unknown): ("instagram_url" | "facebook_url")[] {
+  if (!data || typeof data !== "object" || !("fields" in data)) return [];
+  const fields = (data as { fields: unknown }).fields;
+  if (!Array.isArray(fields)) return [];
+  return fields.filter(
+    (field): field is "instagram_url" | "facebook_url" =>
+      field === "instagram_url" || field === "facebook_url",
+  );
+}
+
 // ── Place: write place fields ────────────────────────────────────────────
 
 export async function updatePlace(
@@ -196,7 +219,15 @@ export async function updatePlace(
     family?: unknown;
     familyStored?: unknown;
   }>("admin-web-update-place", patch);
-  if (!r.ok) return { ok: false, error: r.error };
+  if (!r.ok) {
+    return {
+      ok: false,
+      error: r.error,
+      code: r.code,
+      retryable: readRetryable(r.data),
+      fields: readSocialFields(r.data),
+    };
+  }
   return {
     ok: true,
     data: {

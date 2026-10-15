@@ -5,11 +5,22 @@
 // another. A technical failure is not found: the flag stays boolean, and
 // the reason is logged here, never stored on the place.
 
-import { APIFY_ACTORS, instagramHandleFromUrl, runApifyActor } from "./apify.ts";
+import {
+  APIFY_ACTORS,
+  instagramHandleFromUrl,
+  runApifyActor,
+} from "./apify.ts";
 import { isDeadIgStub } from "./enrich-instagram-match.ts";
-import { GOOGLE_PLACES_DETAILS_BASE, readGooglePlacesKey } from "./google-places.ts";
+import {
+  GOOGLE_PLACES_DETAILS_BASE,
+  readGooglePlacesKey,
+} from "./google-places.ts";
 import { numOf } from "./parse-utils.ts";
-import { socialAccountReplaced, socialSourcesToEmpty, type SocialUrlPair } from "./reviews-state.ts";
+import {
+  socialAccountReplaced,
+  socialSourcesToEmpty,
+  type SocialUrlPair,
+} from "./reviews-state.ts";
 
 export const REVIEW_VERIFY_TIMEOUT_MS = 20_000;
 
@@ -93,9 +104,10 @@ export function reviewsOwnedBodyKey(body: object): string | null {
 export function googleMetricsFromDetails(
   body: { rating?: unknown; userRatingCount?: unknown } | null,
 ): ReviewMetrics {
-  const stars = typeof body?.rating === "number" && body.rating >= 0 && body.rating <= 5
-    ? body.rating
-    : null;
+  const stars =
+    typeof body?.rating === "number" && body.rating >= 0 && body.rating <= 5
+      ? body.rating
+      : null;
   const count = typeof body?.userRatingCount === "number" &&
       Number.isInteger(body.userRatingCount) && body.userRatingCount >= 0
     ? body.userRatingCount
@@ -107,7 +119,10 @@ export function googleMetricsFromDetails(
   };
 }
 
-export function gatheredReview(url: string | null, result: ReviewVerify): GatheredReview {
+export function gatheredReview(
+  url: string | null,
+  result: ReviewVerify,
+): GatheredReview {
   return {
     url,
     found: result.found,
@@ -200,7 +215,9 @@ export async function verifyFacebook(
   };
 }
 
-export async function verifyGoogle(googlePlaceId: string | null): Promise<ReviewVerify> {
+export async function verifyGoogle(
+  googlePlaceId: string | null,
+): Promise<ReviewVerify> {
   if (!googlePlaceId?.trim()) return notFound("no_place_id");
   const key = readGooglePlacesKey();
   if (!key.ok) {
@@ -210,7 +227,9 @@ export async function verifyGoogle(googlePlaceId: string | null): Promise<Review
   let response: Response;
   try {
     response = await fetch(
-      `${GOOGLE_PLACES_DETAILS_BASE}/${encodeURIComponent(googlePlaceId)}?languageCode=es-MX&regionCode=MX`,
+      `${GOOGLE_PLACES_DETAILS_BASE}/${
+        encodeURIComponent(googlePlaceId)
+      }?languageCode=es-MX&regionCode=MX`,
       {
         signal: AbortSignal.timeout(REVIEW_VERIFY_TIMEOUT_MS),
         headers: {
@@ -240,15 +259,66 @@ type SocialNext = {
   facebook_url?: string | null;
 };
 
+export const SOCIAL_NOT_CONNECTED = "social_not_connected" as const;
+
+export type SocialLinkField = "instagram_url" | "facebook_url";
+
+/** A profile save writes the patch only when every changed account is
+ *  connected. A miss carries the sentence the save bar shows. */
+export type SocialLinksCheck =
+  | { ok: true; patch: Record<string, unknown> }
+  | {
+    ok: false;
+    code: typeof SOCIAL_NOT_CONNECTED;
+    error: string;
+    /** A timeout or a dark vendor can be tried again. A dead account cannot. */
+    retryable: boolean;
+    fields: SocialLinkField[];
+  };
+
+const ACCOUNT_MISS = new Set([
+  "no_handle",
+  "not_a_profile",
+  "no_page",
+  "no_url",
+]);
+
+const FIELD: Record<"instagram" | "facebook", SocialLinkField> = {
+  instagram: "instagram_url",
+  facebook: "facebook_url",
+};
+
+/** A definite miss is an account the scraper did not find. Anything else
+ *  is the vendor, and the operator can try the same link again. */
+export function socialConnectionRefusal(
+  source: "instagram" | "facebook",
+  reason: string | undefined,
+): { text: string; retryable: boolean } {
+  const name = source === "instagram" ? "Instagram" : "Facebook";
+  if (reason != null && ACCOUNT_MISS.has(reason)) {
+    const what = source === "instagram" ? "an account" : "a page";
+    return {
+      text:
+        `${name} isn't connected. That link doesn't open ${what}, so nothing was saved.`,
+      retryable: false,
+    };
+  }
+  return {
+    text: `${name} couldn't be checked, so nothing was saved. Try again.`,
+    retryable: true,
+  };
+}
+
 /** An unchanged URL is absent from the patch. A cleared link nulls the
- *  numbers without a fetch. A changed link waits for the verifier. Both
- *  changed links are fetched together. */
+ *  numbers without a fetch. A changed link waits for the verifier. A link
+ *  the verifier does not find refuses the save: the caller writes nothing.
+ *  Both changed links are fetched together. */
 export async function verifyChangedSocialLinks(opts: {
   prev: SocialUrlPair;
   next: SocialNext;
   verifyInstagram?: (url: string) => Promise<ReviewVerify>;
   verifyFacebook?: (url: string) => Promise<ReviewVerify>;
-}): Promise<Record<string, unknown>> {
+}): Promise<SocialLinksCheck> {
   const plan = socialSourcesToEmpty(opts.prev, opts.next);
   const ig = opts.verifyInstagram ?? ((url: string) => verifyInstagram(url));
   const fb = opts.verifyFacebook ?? ((url: string) => verifyFacebook(url));
@@ -256,7 +326,25 @@ export async function verifyChangedSocialLinks(opts: {
     socialPatch("instagram", plan.instagram, opts.next.instagram_url, ig),
     socialPatch("facebook", plan.facebook, opts.next.facebook_url, fb),
   ]);
-  return { ...(instagram ?? {}), ...(facebook ?? {}) };
+  const misses = [instagram, facebook].flatMap((row) =>
+    row?.miss ? [row.miss] : []
+  );
+  if (misses.length > 0) {
+    return {
+      ok: false,
+      code: SOCIAL_NOT_CONNECTED,
+      error: misses.map((miss) => miss.text).join(" "),
+      retryable: misses.every((miss) => miss.retryable),
+      fields: misses.map((miss) => miss.field),
+    };
+  }
+  return {
+    ok: true,
+    patch: {
+      ...(instagram?.patch ?? {}),
+      ...(facebook?.patch ?? {}),
+    },
+  };
 }
 
 async function socialPatch(
@@ -264,13 +352,28 @@ async function socialPatch(
   changed: boolean,
   link: string | null | undefined,
   verify: (url: string) => Promise<ReviewVerify>,
-): Promise<Record<string, unknown> | null> {
+): Promise<
+  {
+    patch?: Record<string, unknown>;
+    miss?: { field: SocialLinkField; text: string; retryable: boolean };
+  } | null
+> {
   if (!changed) return null;
   if (link == null || link.trim() === "") {
-    return reviewSourcePatch({ source, link: null });
+    return { patch: reviewSourcePatch({ source, link: null }) };
   }
   const result = await verify(link);
-  return reviewSourcePatch({ source, link, result });
+  if (!result.found) {
+    const refusal = socialConnectionRefusal(source, result.reason);
+    return {
+      miss: {
+        field: FIELD[source],
+        text: refusal.text,
+        retryable: refusal.retryable,
+      },
+    };
+  }
+  return { patch: reviewSourcePatch({ source, link, result }) };
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -300,13 +403,29 @@ export function applyGatheredReviews(
   const block = asRecord(reviews);
   const google = asRecord(block?.google);
   if (google) {
-    Object.assign(placeUpdate, reviewSourcePatch({
-      source: "google",
-      result: { found: google.found === true, metrics: metricsFrom(google.metrics) },
-    }));
+    Object.assign(
+      placeUpdate,
+      reviewSourcePatch({
+        source: "google",
+        result: {
+          found: google.found === true,
+          metrics: metricsFrom(google.metrics),
+        },
+      }),
+    );
   }
-  applySocial("instagram", block?.instagram, placeUpdate, live?.instagram_url ?? null);
-  applySocial("facebook", block?.facebook, placeUpdate, live?.facebook_url ?? null);
+  applySocial(
+    "instagram",
+    block?.instagram,
+    placeUpdate,
+    live?.instagram_url ?? null,
+  );
+  applySocial(
+    "facebook",
+    block?.facebook,
+    placeUpdate,
+    live?.facebook_url ?? null,
+  );
 }
 
 function applySocial(
@@ -317,19 +436,32 @@ function applySocial(
 ): void {
   const row = asRecord(raw);
   if (row) {
-    const url = typeof row.url === "string" ? row.url : row.url === null ? null : undefined;
-    Object.assign(placeUpdate, reviewSourcePatch({
-      source,
-      link: url,
-      result: { found: row.found === true, metrics: metricsFrom(row.metrics) },
-    }));
+    const url = typeof row.url === "string"
+      ? row.url
+      : row.url === null
+      ? null
+      : undefined;
+    Object.assign(
+      placeUpdate,
+      reviewSourcePatch({
+        source,
+        link: url,
+        result: {
+          found: row.found === true,
+          metrics: metricsFrom(row.metrics),
+        },
+      }),
+    );
     return;
   }
   const next = placeUpdate[LINK[source]];
   if (!socialAccountReplaced(liveUrl, next) || typeof next !== "string") return;
-  Object.assign(placeUpdate, reviewSourcePatch({
-    source,
-    link: next,
-    result: { found: false, metrics: emptyReviewMetrics() },
-  }));
+  Object.assign(
+    placeUpdate,
+    reviewSourcePatch({
+      source,
+      link: next,
+      result: { found: false, metrics: emptyReviewMetrics() },
+    }),
+  );
 }
