@@ -2,11 +2,9 @@
 
 // Single Place › Find — the picker in front of the place surface
 // (MESITA-2084, MESITA-2086). One box, read two ways: a Google Place ID looks
-// the place up by its identity spine; anything else is a name, and a name
-// asks FOUR sources at once — Mesita's catalogue and Name Search, Google's
-// Autocomplete and Text Search — and draws ONE table of every place they
-// returned, with a column per source (MESITA-2124; it replaced four stacked
-// lists, and Nearby left with them). Opening the page lists every Mesita
+// the place up by its identity spine; anything else is a word, and a word
+// asks Mesita Name Search and Google, and draws one table of every place
+// they returned. Opening the page lists every Mesita
 // place and leaves the field open: no Google call, and the field is not an
 // autocomplete (MESITA-2172). Enter is the deep search. A hit
 // OPENS the place at
@@ -37,12 +35,11 @@ import {
 import {
   loadCatalogSource,
   loadCatalogueWithTotal,
-  searchAutocompleteSource,
   searchNameSource,
   searchTextSource,
 } from "./find-sources";
 import { FindResults, type RowNote } from "./FindResults";
-import { classifyLookup, filterCatalog, googleMapsPlaceHref } from "./single-place-lookup";
+import { classifyLookup, googleMapsPlaceHref } from "./single-place-lookup";
 
 export type View =
   | { kind: "matches"; query: string; result: FindResult; variant: "search" | "catalogue" }
@@ -151,17 +148,17 @@ export function SinglePlaceClient() {
     setView({ kind: "absent", googleId, google: peek.place, note: peek.note });
   }
 
-  /** All four sources at once; the table draws when the last one settles,
-   *  so no row moves after it appears. */
+  /** Name Search and Google, together. The table draws when both settle,
+   *  so no row moves after it appears. The catalogue only says which hits
+   *  Mesita already holds; it is not a search. */
   async function findByName(query: string) {
     const seq = findSeq.current;
     const catalogue: Promise<SourceResult<PlaceHit[]>> = catalog
       ? Promise.resolve({ status: "ok", data: catalog })
       : loadCatalogSource();
-    const [all, name, autocomplete, textSearch] = await Promise.all([
+    const [all, name, textSearch] = await Promise.all([
       catalogue,
       searchNameSource(query),
-      searchAutocompleteSource(query),
       searchTextSource(query),
     ]);
     if (findSeq.current !== seq) return;
@@ -172,10 +169,10 @@ export function SinglePlaceClient() {
       query,
       variant: "search",
       result: mergeFindResults({
-        catalogue: all.status === "ok" ? { status: "ok", data: filterCatalog(all.data, query) } : all,
+        catalogue: { status: "ok", data: [] },
         catalog: all.status === "ok" ? all.data : [],
         name,
-        autocomplete,
+        autocomplete: { status: "ok", data: [] },
         text: textSearch,
       }),
     });

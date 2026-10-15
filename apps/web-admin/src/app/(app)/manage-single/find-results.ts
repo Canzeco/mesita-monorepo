@@ -18,8 +18,20 @@ import {
 
 export type FindSource = "catalogue" | "name" | "autocomplete" | "text";
 
-/** Column order: MESITA (Catalogue · Name Search) | GOOGLE (Autocomplete ·
- *  Text Search). `long` is what a screen reader and the note line say. */
+/** What a word search shows. Catalogue is the empty list, not a search.
+ *  Autocomplete is not a column. Mesita is Name Search. Google is the deep
+ *  search. `long` is what a screen reader says. */
+export const WORD_RANK_COLUMNS: readonly {
+  key: "name" | "text";
+  label: string;
+  short: string;
+  long: string;
+}[] = [
+  { key: "name", label: "Name Search", short: "Name", long: "Mesita Name Search" },
+  { key: "text", label: "Google", short: "Google", long: "Google" },
+];
+
+/** The sources a name can still merge. The table draws WORD_RANK_COLUMNS. */
 export const FIND_SOURCES: readonly {
   key: FindSource;
   group: "mesita" | "google";
