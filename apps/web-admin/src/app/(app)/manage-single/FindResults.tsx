@@ -4,14 +4,13 @@
 // MESITA-2187, MESITA-2188). A row per place. The first column says whether
 // Mesita holds it or it is Google only — the first fact to read. Then the
 // states, in two groups — General States and Reviews —
-// then, on a typed search, where each source ranked it. The action sits at
-// the row end. Drawn once every source has settled, so no row ever moves
-// under the cursor.
+// then, on a word, Name Search and Google. The action sits at the row end.
+// Drawn once both have settled, so no row ever moves under the cursor.
 //
 // From 640px, On and Place stay pinned while the state columns scroll.
 // Under that, On hides and the same pill sits in the Place cell: a second
-// 9rem pin plus Place at 60vw would fill the phone. The four source
-// columns fold into one line beneath the address.
+// 9rem pin plus Place at 60vw would fill the phone. The two ranks fold
+// into one line beneath the address.
 
 import { useState } from "react";
 import Link from "next/link";
@@ -32,8 +31,8 @@ import {
 } from "@/lib/ui-classes";
 import {
   FIND_FIRST_ROWS,
-  FIND_SOURCES,
   REVIEW_COLUMNS,
+  WORD_RANK_COLUMNS,
   reviewFound,
   type FindResult,
   type FindRow,
@@ -98,10 +97,10 @@ export function FindResults({
     3 +
     GENERAL_STATE_FACTS.length +
     REVIEW_COLUMNS.length +
-    (ranks ? FIND_SOURCES.length : 0);
+    (ranks ? WORD_RANK_COLUMNS.length : 0);
 
   if (rows.length === 0) {
-    const allFailed = ranks && failed.size === FIND_SOURCES.length;
+    const allFailed = ranks && WORD_RANK_COLUMNS.every((s) => failed.has(s.key));
     return (
       <div className="mt-5">
         {allFailed ? null : ranks ? (
@@ -128,7 +127,7 @@ export function FindResults({
           <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
             <caption className="sr-only">
               {ranks
-                ? `Places matching “${query}”, with general and review states, and the rank each source gave them`
+                ? `Places matching “${query}”, with general and review states, and where Name Search and Google ranked them`
                 : "Every place on Mesita, with general and review states"}
             </caption>
             <thead>
@@ -160,24 +159,27 @@ export function FindResults({
                     {g.label}
                   </th>
                 ))}
-                {ranks ? (
-                  <>
-                    <th
-                      colSpan={2}
-                      scope="colgroup"
-                      className={`hidden px-3 pt-3 pb-1 text-center font-semibold sm:table-cell ${GROUP_EDGE}`}
-                    >
-                      Mesita
-                    </th>
-                    <th
-                      colSpan={2}
-                      scope="colgroup"
-                      className={`hidden px-3 pt-3 pb-1 text-center font-semibold sm:table-cell ${GROUP_EDGE}`}
-                    >
-                      Google
-                    </th>
-                  </>
-                ) : null}
+                {ranks
+                  ? WORD_RANK_COLUMNS.map((s, i) => (
+                      <th
+                        key={s.key}
+                        rowSpan={2}
+                        scope="col"
+                        className={
+                          "hidden px-3 py-3 text-center align-bottom font-semibold whitespace-nowrap sm:table-cell " +
+                          (i === 0 ? GROUP_EDGE : "")
+                        }
+                      >
+                        {s.label}
+                        {failed.has(s.key) ? (
+                          <span title={`${s.long} failed`} className="text-destructive ml-1 inline-flex align-[-2px]">
+                            <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+                            <span className="sr-only">{s.long} failed</span>
+                          </span>
+                        ) : null}
+                      </th>
+                    ))
+                  : null}
                 <th rowSpan={2} scope="col" className="px-4 py-3">
                   <span className="sr-only">Action</span>
                 </th>
@@ -204,26 +206,6 @@ export function FindResults({
                     {col.label}
                   </th>
                 ))}
-                {ranks
-                  ? FIND_SOURCES.map((s) => (
-                      <th
-                        key={s.key}
-                        scope="col"
-                        className={
-                          "hidden px-3 pb-3 text-center font-semibold whitespace-nowrap sm:table-cell " +
-                          (s.key === "catalogue" || s.key === "autocomplete" ? GROUP_EDGE : "")
-                        }
-                      >
-                        {s.label}
-                        {failed.has(s.key) ? (
-                          <span title={`${s.long} failed`} className="text-destructive ml-1 inline-flex align-[-2px]">
-                            <AlertTriangle className="h-3 w-3" aria-hidden="true" />
-                            <span className="sr-only">{s.long} failed</span>
-                          </span>
-                        ) : null}
-                      </th>
-                    ))
-                  : null}
               </tr>
             </thead>
             <tbody>
@@ -250,12 +232,12 @@ export function FindResults({
                   <ProfileCells row={row} />
                   <ReviewCells row={row} />
                   {ranks
-                    ? FIND_SOURCES.map((s) => (
+                    ? WORD_RANK_COLUMNS.map((s, i) => (
                         <td
                           key={s.key}
                           className={
                             "hidden px-3 py-3 text-center align-top sm:table-cell " +
-                            (s.key === "catalogue" || s.key === "autocomplete" ? GROUP_EDGE : "")
+                            (i === 0 ? GROUP_EDGE : "")
                           }
                         >
                           <SourceCell
@@ -481,9 +463,9 @@ function Miss({ label }: { label: string }) {
   );
 }
 
-/** The four columns, folded into one line for a phone. Misses are omitted. */
+/** Name Search and Google, folded into one line for a phone. Misses are omitted. */
 function PhoneSources({ row }: { row: FindRow }) {
-  const parts = FIND_SOURCES.flatMap((s) =>
+  const parts = WORD_RANK_COLUMNS.flatMap((s) =>
     row.ranks[s.key] != null ? [`${s.short} #${row.ranks[s.key]}`] : [],
   );
   if (parts.length === 0) return null;

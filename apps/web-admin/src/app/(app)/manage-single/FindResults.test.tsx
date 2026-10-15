@@ -151,21 +151,21 @@ describe("Find › one table", () => {
     expect(google).not.toContain(">Mesita</span>");
   });
 
-  it("groups the source columns MESITA | GOOGLE, as column groups", () => {
+  it("a word shows Name Search and Google, not Catalogue or Autocomplete", () => {
     const html = render(OK);
-    expect(html).toMatch(/<th[^>]*colSpan="2"[^>]*scope="colgroup"[^>]*>Mesita<\/th>/i);
-    expect(html).toMatch(/<th[^>]*colSpan="2"[^>]*scope="colgroup"[^>]*>Google<\/th>/i);
-    for (const label of ["Catalogue", "Name Search", "Autocomplete", "Text Search"]) {
-      expect(html).toContain(`>${label}`);
-    }
+    expect(html).toContain(">Name Search<");
+    expect(html).toContain(">Google<");
+    expect(html).not.toContain(">Catalogue<");
+    expect(html).not.toContain(">Autocomplete<");
+    expect(html).not.toContain(">Text Search<");
     expect(html).toContain('scope="row"');
   });
 
-  it("shows each source's rank, a dash where it missed, both read aloud", () => {
+  it("shows each rank, a dash where it missed, both read aloud", () => {
     const html = render(OK);
     expect(html).toContain(">#2<");
-    expect(html).toContain("Google Text Search: rank 2");
-    expect(html).toContain("Not found by Mesita catalogue");
+    expect(html).toContain("Google: rank 2");
+    expect(html).toContain("Not found by Mesita Name Search");
     expect(html).toContain(">—<");
   });
 
@@ -258,8 +258,8 @@ describe("Find › one table", () => {
 
   it("folds the sources into one line for a phone", () => {
     const html = render(OK);
-    expect(html).toContain("Autocomplete #1 · Text #2");
-    expect(html).toContain("Catalogue #1 · Name #1 · Autocomplete #2 · Text #1");
+    expect(html).toContain("Google #2");
+    expect(html).toContain("Name #1 · Google #1");
   });
 
   it("treats a row this page created as Mesita's", () => {
@@ -278,12 +278,12 @@ describe("Find › one table", () => {
 
   it("marks a failed source's column and says why under the table", () => {
     const html = render({
-      rows: [row({ ranks: { catalogue: 1, name: 1, autocomplete: null, text: 1 } })],
-      failed: ["autocomplete"],
-      notes: [{ tone: "error", text: "Google Autocomplete failed: quota" }],
+      rows: [row({ ranks: { catalogue: null, name: null, autocomplete: null, text: 1 } })],
+      failed: ["name"],
+      notes: [{ tone: "error", text: "Mesita Name Search failed: quota" }],
     });
-    expect(html).toContain('title="Google Autocomplete failed"');
-    expect(html).toContain("Google Autocomplete failed: quota");
+    expect(html).toContain('title="Mesita Name Search failed"');
+    expect(html).toContain("Mesita Name Search failed: quota");
   });
 
   it("draws the first 20 rows and offers the rest", () => {
@@ -303,10 +303,10 @@ describe("Find › one table", () => {
   it("when every source failed, lists the failures instead of claiming no match", () => {
     const html = render({
       rows: [],
-      failed: ["catalogue", "name", "autocomplete", "text"],
-      notes: [{ tone: "error", text: "Google Text Search failed: down" }],
+      failed: ["name", "text"],
+      notes: [{ tone: "error", text: "Google failed: down" }],
     });
     expect(html).not.toContain("Nothing on Mesita or Google matches");
-    expect(html).toContain("Google Text Search failed: down");
+    expect(html).toContain("Google failed: down");
   });
 });
