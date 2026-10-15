@@ -12,8 +12,10 @@
 // the same status codes the old seed used (409/422/502/503).
 
 import { classifyLinks } from "./channels.ts";
-import { slugify } from "./place-slug.ts";
-import { humanizeCategorySlug } from "./parse-utils.ts";
+import {
+  categorySlugForGoogleType,
+  googleCategoryDisplay,
+} from "./google-categories.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 import { mapGoogleReviews } from "./enrich-google-review-snippets.ts";
 import { GoogleReviewsSchema } from "./place-jsonb-schemas.ts";
@@ -247,9 +249,9 @@ export async function fetchGoogleBasics(
     (details.googleMapsUri && details.googleMapsUri.trim()) ||
     `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(placeIdSpine)}`;
 
-  // Cheap Google placeholder category; the enricher re-infers the real one.
-  const categorySlug = slugify(details.primaryTypeDisplayName?.text ?? details.primaryType ?? "") || null;
-  const categoryLabel = categorySlug ? humanizeCategorySlug(categorySlug) : null;
+  // The category is Google's primary type. One emoji is added from the catalog.
+  const categorySlug = categorySlugForGoogleType(details.primaryType);
+  const categoryLabel = googleCategoryDisplay(categorySlug);
 
   const hours = weeklyHoursFromPeriods(details.regularOpeningHours?.periods);
   const closesAt = closesAtFromHours(details.regularOpeningHours?.weekdayDescriptions ?? []);
@@ -269,7 +271,7 @@ export async function fetchGoogleBasics(
       // operator. Writing either would clobber an editorial label.
       google_name: placeName,
       category: categorySlug,
-      category_label: categoryLabel ?? humanizeCategorySlug(categorySlug ?? ""),
+      category_label: categoryLabel,
       price_level: priceLevelFromGoogle(details.priceLevel),
       lat: details.location.latitude,
       lng: details.location.longitude,

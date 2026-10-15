@@ -12,12 +12,7 @@
 // land it (gate D2).
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import {
-  fetchPlaceCategories,
-  fetchPlaceFamilies,
-} from "./categories.ts";
 import { fetchPlaceTags } from "./tags.ts";
-import { resolveEnrichedFamilyKeys } from "./place-taxonomy.ts";
 import {
   formatDescriptionParagraphs,
 } from "./enrich-synthesis-profile.ts";
@@ -61,17 +56,10 @@ export async function synthesizeDoorProfile(
   openaiKey: string,
   signals: DoorSignals,
 ): Promise<DoorProfile | null> {
-  const [categories, families, tagVocab, models] = await Promise.all([
-    fetchPlaceCategories(admin),
-    fetchPlaceFamilies(admin),
+  const [tagVocab, models] = await Promise.all([
     fetchPlaceTags(admin),
     loadModelsConfig(admin),
   ]);
-  if (categories.length === 0 || families.length === 0) return null;
-
-  const realCategories = categories.filter((c) => c.slug !== "undefined");
-  const realFamilies = families.filter((f) => f.slug !== "undefined");
-  const categorySlugs = new Set(realCategories.map((c) => c.slug));
   const tagSlugs = new Set(tagVocab.map((t) => t.slug));
 
   const placeLines = [
@@ -91,9 +79,7 @@ export async function synthesizeDoorProfile(
   const systemContent =
     "You are Mesita's create-door profiler. From the thin Google signals " +
     "provided, return ONE JSON object with EXACTLY these keys: " +
-    '{"category":"<slug from the category list>",' +
-    '"families":["<1-2 slugs from the family list>"],' +
-    '"tags":["<0-' + String(MAX_INFERRED_TAGS) + ' slugs from the tag list>"],' +
+    '{"tags":["<0-' + String(MAX_INFERRED_TAGS) + ' slugs from the tag list>"],' +
     '"presentation":"<2-3 short English paragraphs separated by \\n\\n>",' +
     '"reservations_likely":<boolean>,' +
     '"mesita_name":"<clean display name, proper case; null when the given ' +
@@ -115,8 +101,6 @@ export async function synthesizeDoorProfile(
     "Slugs are copied VERBATIM from the lists. English only. No invented " +
     "facts, ratings, or prices — thin sources mean shorter honest text.";
   const userPrompt =
-    `Categories:\n${realCategories.map((c) => c.slug).join(", ")}\n\n` +
-    `Families:\n${realFamilies.map((f) => f.slug).join(", ")}\n\n` +
     `Tags:\n${tagVocab.map((t) => t.slug).join(", ")}\n\n` +
     `Place:\n${placeLines}`;
 
@@ -151,14 +135,8 @@ export async function synthesizeDoorProfile(
       return null;
     }
 
-    const category = (() => {
-      const c = str(parsed.category)?.toLowerCase() ?? null;
-      return c && categorySlugs.has(c) ? c : null;
-    })();
-    const familyKeys = resolveEnrichedFamilyKeys(
-      category,
-      Array.isArray(parsed.families) ? parsed.families : [],
-    );
+    const category = null;
+    const familyKeys: string[] = [];
     const tags = (Array.isArray(parsed.tags) ? parsed.tags : [])
       .map((t) => (typeof t === "string" ? t.trim().toLowerCase() : ""))
       .filter((t) => tagSlugs.has(t))

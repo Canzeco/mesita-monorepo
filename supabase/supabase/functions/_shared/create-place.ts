@@ -45,6 +45,7 @@
 // queue); only auth and response shaping differ per EF.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { categorySlugForGoogleType } from "./google-categories.ts";
 import { fetchGoogleBasics } from "./enrich-google-basics.ts";
 import { storeFirstPlaceImage } from "./store-place-images.ts";
 import { savePlaceData } from "./save-place.ts";
@@ -172,15 +173,13 @@ export async function createMinimalPlace(opts: {
     };
   }
 
-  // category 'undefined' until the Enricher resolves it; the category-label
-  // trigger fills category_label from the 'undefined' catalog row.
+  // Category is Google's primary type. The label trigger writes emoji + name.
   // The map gate above already read the live Google rating. The stored tile
   // columns stay empty until the Reviews reload (MESITA-2183).
   const place: Record<string, unknown> = omitReviewsTileColumns({
     ...basicsRes.basics,
-    category: "undefined",
+    category: categorySlugForGoogleType(basicsRes.primaryType),
     category_label: null,
-    family_keys: ["undefined"],
     // Operating (MESITA-1239). businessStatus rides the envelope, not `basics`,
     // so the spread above does not carry it. Stored verbatim: reaching here
     // means it is not CLOSED_PERMANENTLY (refused above), but OPERATIONAL,
@@ -262,8 +261,6 @@ export async function createMinimalPlace(opts: {
       });
       if (door) {
         const patch: Record<string, unknown> = {};
-        if (door.category) patch.category = door.category;
-        if (door.familyKeys.length > 0) patch.family_keys = door.familyKeys;
         if (door.tags.length > 0) patch.tags = door.tags;
         if (door.description) patch.description = door.description;
         // The seed for a place nobody has answered for yet; an operator's

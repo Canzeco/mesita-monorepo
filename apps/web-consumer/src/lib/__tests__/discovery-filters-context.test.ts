@@ -28,8 +28,8 @@ describe("the sheet is the map set, not the old intent stack", () => {
     "utf8",
   );
 
-  it("ships Family, Scope, Google reviews, and location", () => {
-    expect(src).toContain("Family");
+  it("ships Scope, Google reviews, and location", () => {
+    expect(src).not.toContain("Family");
     expect(src).toContain("Scope");
     expect(src).toContain("Minimum number of Google reviews");
     expect(src).toContain("Use my location");

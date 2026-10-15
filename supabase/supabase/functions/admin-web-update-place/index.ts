@@ -39,14 +39,6 @@ import { sanitizePlaceTags } from "../_shared/tags.ts";
 import { type PlaceHours, sanitiseHours } from "./place-hours.ts";
 import { isUrl, URL_FIELDS, type UrlField } from "./place-urls.ts";
 import { optString } from "./place-update-utils.ts";
-import {
-  fetchPlaceCategories,
-  fetchPlaceFamilies,
-} from "../_shared/categories.ts";
-import {
-  resolveProfileFamily,
-  resolveStoredFamily,
-} from "../_shared/profile-family.ts";
 import { resolveCategoryInput } from "./category-input.ts";
 import { applyMediaUpdates } from "./place-media-update.ts";
 import {
@@ -174,7 +166,6 @@ Deno.serve(async (req) => {
     }
     update.category = resolved.slug;
     update.category_label = resolved.label;
-    update.family_keys = resolved.familyKeys;
   }
   if ("hours" in body) {
     const cleaned = sanitiseHours(body.hours);
@@ -342,25 +333,5 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Restamp Family for the row just written, so the profile does not re-read
-  // to learn what the new category's families are. A vocabulary miss leaves
-  // the strings off; the save itself already landed.
-  const [categories, families] = await Promise.all([
-    fetchPlaceCategories(admin),
-    fetchPlaceFamilies(admin),
-  ]);
-  const row = place as { category?: unknown; family_keys?: unknown };
-  const family = categories.length > 0 && families.length > 0
-    ? resolveProfileFamily({
-      category: row.category,
-      familyKeys: row.family_keys,
-      categories,
-      families,
-    })
-    : undefined;
-  const familyStored = families.length > 0
-    ? resolveStoredFamily(row.family_keys, families)
-    : undefined;
-
-  return json({ ok: true, place, family, familyStored });
+  return json({ ok: true, place });
 });

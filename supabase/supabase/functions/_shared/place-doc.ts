@@ -93,8 +93,6 @@ export type PlaceProfileRow = {
   /** Immutable once set — see the header. Settable only via mode: "insert". */
   google_place_id: string | null;
   category: string | null;
-  /** Families (0–1). Create path stamps ['undefined'] until contents infers a classified Category. */
-  family_keys: string[] | null;
   price_level: number | null;
   lat: number | null;
   lng: number | null;
@@ -163,7 +161,6 @@ export type PlaceProfileRow = {
 export const PLACE_PROFILE_PATCH_KEYS = [
   "google_place_id",
   "category",
-  "family_keys",
   "price_level",
   "lat",
   "lng",
@@ -389,11 +386,6 @@ function checkPlaceProfileField(key: string, v: unknown): string | null {
   }
   if (PLACE_STRING_ARRAY_KEYS.has(key)) {
     return isStringArray(v) ? null : `${key} must be an array of strings`;
-  }
-  if (key === "family_keys") {
-    return v === null || isStringArray(v)
-      ? null
-      : "family_keys must be an array of strings or null";
   }
   switch (key) {
     // place_profiles_price_level_check

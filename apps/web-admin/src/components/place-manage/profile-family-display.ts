@@ -18,7 +18,7 @@ export function shownFamily(
   // so a save that moved the row onto this slug still paints the right
   // families when the restamp did not land.
   const row = profile.categories.find((c) => c.slug === slug);
-  if (row) return { text: row.family_display, inferred: false };
+  if (row) return { text: row.family_display ?? row.label, inferred: false };
   if (slug === stored) return profile.family;
   return profile.familyStored;
 }

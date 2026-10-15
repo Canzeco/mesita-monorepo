@@ -17,7 +17,8 @@ export type PlaceCategory = {
   label: string;
   section: string;
   sort_order: number;
-  family_keys?: string[];
+  /** One emoji for this Google category. */
+  emoji?: string;
 };
 
 export type PlaceFamily = {
@@ -35,7 +36,7 @@ export async function fetchPlaceCategories(
 ): Promise<PlaceCategory[]> {
   const { data, error } = await admin
     .from("place_categories")
-    .select("slug, label, section, sort_order, family_keys")
+    .select("slug, label, section, sort_order, emoji")
     .order("sort_order", { ascending: true });
   if (error || !data) return [];
   return data as PlaceCategory[];

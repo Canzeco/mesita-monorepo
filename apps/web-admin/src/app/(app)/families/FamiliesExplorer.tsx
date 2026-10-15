@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import {
-  highlightFamilies,
   type FamiliesMap,
   type FamiliesSelection,
   type TagRow,
@@ -42,69 +41,30 @@ export function groupTags(tags: TagRow[], query: string): TagGroup[] {
 
 export function FamiliesExplorer({ map }: { map: FamiliesMap }) {
   const [sel, setSel] = useState<FamiliesSelection>({
-    kind: "family",
-    slug: map.families[0]?.slug ?? "restaurants",
+    kind: "category",
+    slug: map.categories[0]?.slug ?? "",
   });
-  const [googleQuery, setGoogleQuery] = useState("");
-  const [familyQuery, setFamilyQuery] = useState("");
   const [categoryQuery, setCategoryQuery] = useState("");
   const [tagQuery, setTagQuery] = useState("");
-  const hit = useMemo(() => highlightFamilies(map, sel), [map, sel]);
   const tagGroups = useMemo(() => groupTags(map.tags, tagQuery), [map.tags, tagQuery]);
 
   return (
     <>
-      <div className="mt-8 grid gap-4 lg:grid-cols-3">
+      <div className="mt-8 grid gap-4 lg:grid-cols-1">
         <Column
-          title="FamiliesIA DNA"
-          query={familyQuery}
-          onQuery={setFamilyQuery}
-          count={map.families.length}
-        >
-          {map.families
-            .filter((row) => matches(familyQuery, `${row.label} ${row.slug}`) || hit.families.has(row.slug))
-            .map((row) => (
-              <Row
-                key={row.slug}
-                label={row.emoji ? `${row.emoji} ${row.label}` : row.label}
-                selected={sel.kind === "family" && sel.slug === row.slug}
-                related={hit.families.has(row.slug)}
-                onClick={() => setSel({ kind: "family", slug: row.slug })}
-              />
-            ))}
-        </Column>
-        <Column
-          title="Google Categories"
-          query={googleQuery}
-          onQuery={setGoogleQuery}
-          count={map.googleTypes.length}
-        >
-          {map.googleTypes
-            .filter((row) => matches(googleQuery, googleTypeHaystack(row.slug)) || hit.google.has(row.slug))
-            .map((row) => (
-              <Row
-                key={row.slug}
-                label={row.slug.replaceAll("_", " ")}
-                selected={sel.kind === "google" && sel.slug === row.slug}
-                related={hit.google.has(row.slug)}
-                onClick={() => setSel({ kind: "google", slug: row.slug })}
-              />
-            ))}
-        </Column>
-        <Column
-          title="Mesita Categories"
+          title="Categories"
           query={categoryQuery}
           onQuery={setCategoryQuery}
           count={map.categories.length}
         >
           {map.categories
-            .filter((row) => matches(categoryQuery, `${row.label} ${row.slug}`) || hit.categories.has(row.slug))
+            .filter((row) => matches(categoryQuery, `${row.emoji ?? ""} ${row.label} ${row.slug}`))
             .map((row) => (
               <Row
                 key={row.slug}
-                label={row.label}
+                label={row.emoji ? `${row.emoji} ${row.label}` : row.label}
                 selected={sel.kind === "category" && sel.slug === row.slug}
-                related={hit.categories.has(row.slug)}
+                related={false}
                 onClick={() => setSel({ kind: "category", slug: row.slug })}
               />
             ))}

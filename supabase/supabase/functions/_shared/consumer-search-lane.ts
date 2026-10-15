@@ -797,7 +797,7 @@ async function embedQueryVector(
 }
 
 const EMBED_COLUMNS =
-  "id, slug, google_place_id, name, address, lat, lng, content_state, enriched_at, business_state, google_review_count, google_stars_overall, family_keys, name_embedding, embedding";
+  "id, slug, google_place_id, name, address, lat, lng, content_state, enriched_at, business_state, google_review_count, google_stars_overall, name_embedding, embedding";
 /** In-process cosine budget — a bounded pool, not every vector. */
 const EMBED_POOL = 300;
 const EMBED_RADIUS_KM = 40;

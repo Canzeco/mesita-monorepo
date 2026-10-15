@@ -630,102 +630,40 @@ select ok(
   'public.profiles exposes request_count'
 );
 
-select has_table(
+select hasnt_table(
   'public', 'place_families',
-  'place family vocabulary exists'
+  'places have no family vocabulary'
 );
 
 select is(
-  (select count(*)::bigint from public.place_families),
-  8::bigint,
-  'place family catalog is eight slugs: seven real + Other'
+  (select count(*)::bigint from public.place_categories),
+  478::bigint,
+  'place categories are Google Table A, one row each'
 );
 
 select is(
-  (select label from public.place_families where slug = 'undefined'),
-  'Undefined',
-  'the leftover family is labelled Undefined'
-);
-
-select is(
-  (select array_agg(slug order by sort_order) from public.place_families),
-  array['restaurants','cafes_bakeries','bars_nightlife','experiences',
-        'culture_arts','sports_fitness','wellness_beauty','undefined']::text[],
-  'family catalog order matches the law; Other last'
-);
-
-select is(
-  (select family_keys from public.place_categories where slug = 'breakfast'),
-  array['restaurants','cafes_bakeries']::text[],
-  'breakfast is a double: restaurants AND cafés'
-);
-
-select is(
-  (select family_keys from public.place_categories where slug = 'karaoke'),
-  array['bars_nightlife','experiences']::text[],
-  'karaoke is a double: bars AND experiences'
-);
-
-select is(
-  (select count(*)::bigint from public.place_categories
-    where cardinality(family_keys) = 2),
-  7::bigint,
-  'exactly seven double-parent categories'
-);
-
-select is(
-  (select count(*)::bigint from public.place_categories
-    where 'sports_fitness' = any(family_keys)),
-  12::bigint,
-  'Sports & Fitness holds twelve categories'
-);
-
-select is(
-  (select count(*)::bigint from public.place_categories
-    where 'wellness_beauty' = any(family_keys)),
-  12::bigint,
-  'Wellness & Beauty holds twelve categories'
-);
-
-select is(
-  (select family_keys from public.place_categories where slug = 'undefined'),
-  array['undefined']::text[],
-  'undefined category belongs to family undefined'
-);
-
-select is(
-  (select min(cardinality(family_keys))::bigint from public.place_categories),
-  1::bigint,
-  'every Atlas category maps to at least one family'
-);
-
-select is(
-  (select max(cardinality(family_keys))::bigint from public.place_categories),
-  2::bigint,
-  'every Atlas category maps to at most two families'
+  (select emoji || ' ' || label from public.place_categories where slug = 'mexican_restaurant'),
+  '🌮 Mexican restaurant',
+  'a Google category has one emoji and Google''s name'
 );
 
 select is_empty(
-  $$select p.id from public.place_profiles p
-     where p.family_keys is not null
-       and exists (
-         select 1 from unnest(p.family_keys) k
-          where k not in (select slug from public.place_families)
-       )$$,
-  'no place carries an orphan family key'
+  $$select slug from public.place_categories
+     where emoji is null or btrim(emoji) = '' or position(' ' in emoji) > 0$$,
+  'every Google category has exactly one emoji'
 );
 
 select ok(
-  exists (
+  not exists (
     select 1 from information_schema.columns
      where table_schema = 'public' and table_name = 'place_profiles'
        and column_name = 'family_keys'
-  ) and exists (
+  ) and not exists (
     select 1 from information_schema.columns
      where table_schema = 'public' and table_name = 'profiles'
        and column_name = 'family_keys'
   ),
-  'place_profiles.family_keys is stored and exposed on public.profiles'
+  'a place does not store a family'
 );
 
 -- ━━━ MESITA-1857 — the rename, proved by CALLING, not by looking ━━━━━━━━━━━
@@ -745,9 +683,8 @@ select hasnt_table(
 
 select ok(
   (select count(*) from pg_constraint
-    where conname in ('place_categories_family_keys_valid', 'place_profiles_family_keys_valid')
-      and pg_get_constraintdef(oid) like '%atlas_family_slugs_valid%') = 2,
-  'both family CHECK constraints call atlas_family_slugs_valid (a CHECK stores the function OID, so it does not follow a create-or-replace under a new name)'
+    where conname in ('place_categories_family_keys_valid', 'place_profiles_family_keys_valid')) = 0,
+  'family CHECK constraints are gone'
 );
 
 -- The other half of the same class: a PL/pgSQL body that still spells the old
@@ -762,38 +699,18 @@ select is_empty(
   'no function body still spells super_categor (a string body compiles fine and 42P01s only at call time)'
 );
 
-savepoint before_family_write_probe;
+savepoint before_category_label_probe;
 
-select lives_ok(
-  $$insert into public.place_categories (slug, label, section, sort_order, family_keys)
-    values ('mesita_1857_probe', 'probe', 'Food & Nightlife', 998, array['restaurants'])$$,
-  'INSERT into place_categories calls the validator and survives'
+insert into public.place_profiles (id, google_name, category)
+values ('00000000-0000-4000-8000-0000000fa111', 'Category Probe', 'mexican_restaurant');
+
+select is(
+  (select category_label from public.place_profiles where id = '00000000-0000-4000-8000-0000000fa111'),
+  '🌮 Mexican restaurant',
+  'the category label trigger writes one emoji plus Google''s name'
 );
 
-select throws_ok(
-  $$insert into public.place_categories (slug, label, section, sort_order, family_keys)
-    values ('mesita_1857_probe_bad', 'probe', 'Food & Nightlife', 997, array['not_a_family'])$$,
-  '23514'::char(5), null::text,
-  'the validator still REFUSES a slug absent from place_families (so the lives_ok above is not vacuous)'
-);
-
-insert into public.place_profiles (id, google_name)
-values ('00000000-0000-4000-8000-0000000fa111', 'Family Probe');
-
-select lives_ok(
-  $$update public.place_profiles set family_keys = array['restaurants', 'cafes_bakeries']
-     where id = '00000000-0000-4000-8000-0000000fa111'$$,
-  'UPDATE of place_profiles.family_keys calls the validator and survives'
-);
-
-select throws_ok(
-  $$update public.place_profiles set family_keys = array['not_a_family']
-     where id = '00000000-0000-4000-8000-0000000fa111'$$,
-  '23514'::char(5), null::text,
-  'place_profiles.family_keys still REFUSES a slug absent from place_families'
-);
-
-rollback to savepoint before_family_write_probe;
+rollback to savepoint before_category_label_probe;
 
 -- ━━━ admin_reset_database — the survivor registry ━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -813,7 +730,7 @@ select ok(
 -- forgets the other turns Reset into a hard error at the worst moment.
 select is_empty(
   $$select r from unnest(array[
-      'app_config', 'super_admins', 'place_categories', 'place_families',
+      'app_config', 'super_admins', 'place_categories',
       'place_tags', 'consumer_code_counter'
     ]) r
     where not exists (

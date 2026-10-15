@@ -1,6 +1,5 @@
 "use client";
 
-import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import {
   mapFiltersAreActive,
   type MapPlacesScope,
@@ -9,19 +8,18 @@ import {
   resetMapFilters,
   setMapMinReviews,
   setMapPlacesScope,
-  toggleMapFamily,
   useMapFilters,
 } from "@/lib/use-map-filters";
 import {
   FilterModule,
   FiltersSheetFooter,
   FiltersSheetHeader,
-  Pill,
 } from "@/components/consumer/discovery-filter-controls";
 import { SearchPlacesScope } from "./SearchPlacesScope";
 import { SearchPopularity } from "./SearchPopularity";
 
-// Search-map Filters sheet. Family + Places + Popularity, DENSE.
+// Search-map Filters sheet. Places + Popularity. A place has a Google
+// category, not a family.
 // How many (closest N) is operator `map.pinCount`, not a guest knob.
 //
 // Places is THREE NESTED SETS (Pato, 2026-10-12, MESITA-2158):
@@ -51,20 +49,6 @@ export function SearchMapFilters({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3">
         <div className="flex flex-col gap-2">
-          <FilterModule label="Family">
-            <div className="flex flex-wrap gap-1">
-              {FILTERABLE_PLACE_FAMILIES.map((family) => (
-                <Pill
-                  key={family.key}
-                  active={filters.familyKeys.includes(family.key)}
-                  onClick={() => toggleMapFamily(family.key)}
-                >
-                  {family.label}
-                </Pill>
-              ))}
-            </div>
-          </FilterModule>
-
           <FilterModule label="Places">
             <SearchPlacesScope
               scope={filters.placesScope}

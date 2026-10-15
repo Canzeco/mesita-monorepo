@@ -7,8 +7,8 @@ import type { FamiliesMap } from "./highlight";
 export async function getFamiliesMap(): Promise<ActionResult<FamiliesMap>> {
   const r = await efInvoke<FamiliesMap & { ok: boolean }>("admin-web-get-families", {});
   if (!r.ok) return { ok: false, error: r.error };
-  if (!r.data.families?.length) {
-    return { ok: false, error: "Families did not load." };
+  if (!r.data.categories?.length) {
+    return { ok: false, error: "Categories did not load." };
   }
   return {
     ok: true,

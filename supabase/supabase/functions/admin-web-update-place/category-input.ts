@@ -1,33 +1,23 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { inferPlaceCategory } from "../_shared/categories-infer.ts";
 import type { PlaceCategory } from "../_shared/categories.ts";
-import {
-  familiesForAtlasCategory,
-  sanitizeFamilyKeys,
-} from "../_shared/place-taxonomy.ts";
+import { googleCategoryDisplay } from "../_shared/google-categories.ts";
 import { optString } from "./place-update-utils.ts";
-
-function familyKeysForCategory(hit: PlaceCategory): string[] | null {
-  const live = sanitizeFamilyKeys(hit.family_keys);
-  const keys = live.length > 0 ? live : familiesForAtlasCategory(hit.slug);
-  return keys.length > 0 ? keys : null;
-}
 
 export async function resolveCategoryInput(
   admin: SupabaseClient,
   input: unknown,
-  openaiKey: string | undefined,
+  _openaiKey: string | undefined,
 ): Promise<
-  | { ok: true; slug: string | null; label: string | null; familyKeys: string[] | null }
+  | { ok: true; slug: string | null; label: string | null }
   | { ok: false; error: string }
 > {
   const raw = optString(input, 120);
   if (raw == null) {
-    return { ok: true, slug: null, label: null, familyKeys: null };
+    return { ok: true, slug: null, label: null };
   }
   const { data, error } = await admin
     .from("place_categories")
-    .select("slug, label, family_keys");
+    .select("slug, label, emoji");
   if (error) {
     return { ok: false, error: `category_lookup: ${error.message}` };
   }
@@ -40,33 +30,12 @@ export async function resolveCategoryInput(
     return {
       ok: true,
       slug: hit.slug,
-      label: hit.label,
-      familyKeys: familyKeysForCategory(hit),
+      label: googleCategoryDisplay(hit.slug) ?? hit.label,
     };
-  }
-
-  // NLP fallback: map free-form/Google category text to the closest Mesita
-  // category slug instead of requiring exact text equality.
-  const inferredSlug = await inferPlaceCategory(openaiKey, categories, {
-    name: raw,
-    googlePrimaryType: raw,
-    googlePrimaryTypeDisplay: raw,
-  });
-  if (inferredSlug) {
-    const inferredHit = categories.find((c) => c.slug === inferredSlug);
-    if (inferredHit) {
-      return {
-        ok: true,
-        slug: inferredHit.slug,
-        label: inferredHit.label,
-        familyKeys: familyKeysForCategory(inferredHit),
-      };
-    }
   }
 
   return {
     ok: false,
-    error:
-      "category could not be mapped to a Mesita category. Try a clearer category name.",
+    error: "category must be one of Google's categories.",
   };
 }

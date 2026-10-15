@@ -11,22 +11,19 @@ Deno.test("google types stay exclusive and leftovers land on undefined", () => {
   assert(!map.googleTypes.some((t) => (t.family as string) === "other"));
 });
 
-Deno.test("a category keeps both family keys and does not invent a third", () => {
+Deno.test("a category carries one emoji and no family", () => {
   const map = buildFamiliesMap(
-    [{ slug: "restaurants", label: "Restaurants", emoji: "🍽️", sort_order: 1 }],
+    [],
     [{
-      slug: "brunch",
-      label: "Brunch",
-      section: "food",
+      slug: "mexican_restaurant",
+      label: "Mexican restaurant",
+      section: "Google",
       sort_order: 2,
-      family_keys: ["restaurants", "cafes_bakeries"],
+      emoji: "🌮",
     }],
   );
-  assertEquals(map.categories[0]?.familyKeys, [
-    "restaurants",
-    "cafes_bakeries",
-  ]);
-  assertEquals(map.families[0]?.slug, "restaurants");
+  assertEquals(map.categories[0]?.emoji, "🌮");
+  assertEquals(map.categories[0]?.familyKeys, []);
   assertEquals(map.tags, []);
 });
 

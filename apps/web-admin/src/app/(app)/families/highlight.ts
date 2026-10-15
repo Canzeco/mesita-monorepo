@@ -12,6 +12,7 @@ export type FamilyRow = {
 export type CategoryRow = {
   slug: string;
   label: string;
+  emoji?: string;
   familyKeys: string[];
 };
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { LocateFixed } from "lucide-react";
-import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import {
   DISCOVERY_SCOPE_STOPS,
   hasDiscoveryPredicates,
@@ -10,14 +9,12 @@ import {
   resetDiscoveryFilters,
   setDiscoveryMinReviews,
   setDiscoveryPlacesScope,
-  toggleDiscoveryFamily,
   useDiscoveryFilters,
 } from "@/lib/use-discovery-filters";
 import {
   FilterModule,
   FiltersSheetFooter,
   FiltersSheetHeader,
-  Pill,
 } from "./discovery-filter-controls";
 import { SearchPlacesScope } from "./search/SearchPlacesScope";
 import { SearchPopularity } from "./search/SearchPopularity";
@@ -50,20 +47,6 @@ export function DiscoveryFilters({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3">
         <div className="flex flex-col gap-2">
-          <FilterModule label="Family">
-            <div className="flex flex-wrap gap-1">
-              {FILTERABLE_PLACE_FAMILIES.map((family) => (
-                <Pill
-                  key={family.key}
-                  active={filters.familyKeys.includes(family.key)}
-                  onClick={() => toggleDiscoveryFamily(family.key)}
-                >
-                  {family.label}
-                </Pill>
-              ))}
-            </div>
-          </FilterModule>
-
           <FilterModule label="Scope">
             <SearchPlacesScope
               label="Scope"

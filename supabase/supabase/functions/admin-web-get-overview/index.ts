@@ -50,14 +50,10 @@ import {
 import { CRENUP_LABELS_IN_ORDER, CRENUP_TOTAL } from "../_shared/crenup-ladder.ts";
 import type { EnrichmentMap, FunctionState } from "../_shared/schema-catalog.ts";
 import { operatorFunctionStates } from "../_shared/schema-catalog.ts";
-import { fetchPlaceCategories, fetchPlaceFamilies } from "../_shared/categories.ts";
+import { fetchPlaceCategories } from "../_shared/categories.ts";
 import { ENRICH_FIELD_LIMITS } from "../_shared/enrich-field-limits.ts";
-import {
-  categoriesWithFamilyDisplay,
-  resolveProfileFamily,
-  resolveStoredFamily,
-} from "../_shared/profile-family.ts";
 import { fetchPlaceTags, TAG_FACETS } from "../_shared/tags.ts";
+import { googleCategoryDisplay } from "../_shared/google-categories.ts";
 
 // The Embeddings card (MESITA-720) reads these. Never part of the public
 // column set: a heavy field only this screen and admin-web-search-places need.
@@ -97,7 +93,7 @@ Deno.serve(async (req) => {
   // response alone (MESITA-2180). `enrichment` is read off `place_profiles`
   // directly, not `profiles` — it is deliberately NOT in the profiles view's
   // column list (adding it means rebuilding the view's two INSTEAD OF triggers).
-  const [placeRow, enrichmentRow, categories, families, tags] = await Promise.all([
+  const [placeRow, enrichmentRow, categories, tags] = await Promise.all([
     admin
       .from("profiles")
       .select(
@@ -111,7 +107,6 @@ Deno.serve(async (req) => {
       .eq("id", placeId)
       .maybeSingle(),
     fetchPlaceCategories(admin),
-    fetchPlaceFamilies(admin),
     fetchPlaceTags(admin),
   ]);
   if (placeRow.error) {
@@ -123,7 +118,7 @@ Deno.serve(async (req) => {
   // Family and Category cannot paint without the vocabulary. An empty list is
   // the fetchers' error posture; a half profile is the bug this read exists
   // to stop.
-  if (categories.length === 0 || families.length === 0) {
+  if (categories.length === 0) {
     return json({ ok: false, error: "Profile vocabulary unavailable" }, 500);
   }
   const placeFields = placeRow.data as unknown as Record<string, unknown>;
@@ -168,14 +163,11 @@ Deno.serve(async (req) => {
   };
 
   const profile = {
-    family: resolveProfileFamily({
-      category: placeFields.category,
-      familyKeys: placeFields.family_keys,
-      categories,
-      families,
-    }),
-    familyStored: resolveStoredFamily(placeFields.family_keys, families),
-    categories: categoriesWithFamilyDisplay(categories, families),
+    categories: categories.map((c) => ({
+      ...c,
+      label: googleCategoryDisplay(c.slug) ?? `${c.emoji ?? ""} ${c.label}`.trim(),
+      family_display: c.emoji ?? "",
+    })),
     tags,
     facets: TAG_FACETS,
     fieldLimits: ENRICH_FIELD_LIMITS,

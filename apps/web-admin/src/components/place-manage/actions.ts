@@ -373,17 +373,13 @@ export type PlaceCategoryOption = {
   label: string;
   section: string;
   sort_order: number;
-  /** 1–2 place family parents (multi-parent law). */
-  family_keys?: string[];
-  /** Membership already joined by the profile read. */
-  family_display: string;
+  emoji?: string;
+  family_display?: string;
 };
 
 /** Everything the profile editor needs besides the place row. One read. */
 export type ProfileRead = {
-  /** Family for the row as stored. */
   family: ResolvedFamily;
-  /** Family while the draft category is undefined: stored family_keys. */
   familyStored: ResolvedFamily;
   categories: PlaceCategoryOption[];
   tags: PlaceTagOption[];
@@ -428,9 +424,6 @@ function readProfile(value: unknown): ProfileRead | null {
     facets?: unknown;
     fieldLimits?: Record<string, { max: number }>;
   };
-  const family = readResolvedFamily(row.family);
-  const familyStored = readResolvedFamily(row.familyStored);
-  if (!family || !familyStored) return null;
   if (!Array.isArray(row.categories) || row.categories.length === 0) return null;
   if (!Array.isArray(row.tags) || !Array.isArray(row.facets)) return null;
   const categories: PlaceCategoryOption[] = [];
@@ -440,16 +433,16 @@ function readProfile(value: unknown): ProfileRead | null {
     if (
       typeof c.slug !== "string" ||
       typeof c.label !== "string" ||
-      typeof c.section !== "string" ||
-      typeof c.family_display !== "string"
+      typeof c.section !== "string"
     ) {
       return null;
     }
     categories.push(c);
   }
+  const emptyFamily: ResolvedFamily = { text: "", inferred: false };
   return {
-    family,
-    familyStored,
+    family: emptyFamily,
+    familyStored: emptyFamily,
     categories,
     tags: row.tags as PlaceTagOption[],
     facets: row.facets as PlaceTagFacet[],

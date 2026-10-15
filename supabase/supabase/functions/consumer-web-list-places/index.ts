@@ -60,9 +60,7 @@ import { clampIntRange, corsPreflight, json, rejectUnlessMethods, readJsonOr } f
 import { adminClient, anonClient, readAnonEnv, readEFEnv } from "../_shared/auth.ts";
 import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
 import { withFamilyKeysList } from "../_shared/place-family-keys.ts";
-import { familiesForGoogleType } from "../_shared/sourcing.ts";
-import { nearbyTypesForSupers } from "../_shared/google-type-super.ts";
-import { familiesForPlace, readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
+import { googleCategoryDisplay } from "../_shared/google-categories.ts";
 import {
   loadDiscoveryConfig,
 } from "../_shared/discovery-config.ts";
@@ -122,8 +120,7 @@ function googleStub(hit: NearbyHit, distanceKm: number | null): Record<string, u
     google_place_id: hit.placeId,
     name: hit.name,
     category: hit.primaryType,
-    family_keys: familiesForGoogleType(hit.primaryType),
-    category_label: null,
+    category_label: googleCategoryDisplay(hit.primaryType),
     price_level: null,
     currency: "MXN",
     state: "active",
@@ -240,7 +237,6 @@ Deno.serve(async (req) => {
   let nearbyDecision: ReturnType<typeof decideNearby> = { mode: "none" };
   let clientGoogle = false;
   let placesScope: PlacesScope = PLACES_SCOPE_DEFAULT;
-  let guestSupers: ReturnType<typeof readGuestFamilyKeys> = [];
   let guestMinReviews = 0;
   if (req.method === "POST") {
     const body = await readJsonOr<ListBody>(req, {});
@@ -256,7 +252,6 @@ Deno.serve(async (req) => {
     scopeFromClient = body.placesScope !== undefined ||
       body.searchPower !== undefined;
     placesScope = parsePlacesScope(body.placesScope ?? body.searchPower);
-    guestSupers = readGuestFamilyKeys(body.familyKeys);
     guestMinReviews = parseMapMinReviews(body.minReviews);
   } else {
     const q = Number(new URL(req.url).searchParams.get("limit"));
@@ -300,16 +295,8 @@ Deno.serve(async (req) => {
   if (clientGoogle && !scopeFromClient) {
     placesScope = "google";
   }
-  // A GUEST PILL OUTRANKS THE TYPE STRIP, deliberately (MESITA-1685). The
-  // pill IS the guest's question, and `nearbyTypesForSupers` reads no config,
-  // so `cfg.map.supers` sits this branch out entirely.
-  // Do not "fix" this by intersecting the two: types are free (one request
-  // carries the whole array), so an intersection saves nothing and, with the
-  // catalog this thin, empties the four Supers the operator has not enabled.
-  // The operator still holds googleFill, the floors, and the rate controls.
-  const nearbyTypes = guestSupers.length > 0
-    ? nearbyTypesForSupers(guestSupers)
-    : enabledNearbyTypes(cfg.map);
+  // Places have no family, so Nearby uses the operator's type batteries.
+  const nearbyTypes = enabledNearbyTypes(cfg.map);
   const googleFill = mapShouldFillGoogle(clientGoogle, cfg.map) &&
     nearbyTypes.length > 0;
   // Only the inner ring runs the Enriched gate; the two wider rings admit
@@ -353,15 +340,6 @@ Deno.serve(async (req) => {
   if (isNearby && guestMinReviews > 0) {
     filtered = filtered.gte("google_review_count", guestMinReviews);
   }
-  // Guest Family: same reason as Popularity. family_keys is
-  // total on the row; overlaps so a dense bbox does not fill NEARBY_SCAN_LIMIT
-  // with the wrong supers and drop closer matches. The JS familiesForPlace
-  // pass still runs for Atlas-inferred rows whose stored keys lag.
-  if (isNearby && guestSupers.length > 0) {
-    filtered = (filtered as typeof filtered & {
-      overlaps: (col: string, val: string[]) => typeof filtered;
-    }).overlaps("family_keys", [...guestSupers]);
-  }
   if (nearbyDecision.mode === "ok") {
     filtered = applyBboxPredicate(
       filtered,
@@ -387,11 +365,6 @@ Deno.serve(async (req) => {
     const scanRows = (data ?? []) as unknown as CardRow[];
     const lanes = lanesForPlacesScope(placesScope, limit, cfg.map.googlePull);
     let mesitaRows = scanRows.filter((row) => admitsScopeRow(placesScope, row));
-    if (guestSupers.length > 0) {
-      mesitaRows = mesitaRows.filter((row) =>
-        guestSupers.some((key) => familiesForPlace(row).includes(key))
-      );
-    }
 
     if (!googleFill) {
       const admitted = admitGuestMinReviews(
@@ -503,11 +476,6 @@ Deno.serve(async (req) => {
           guestMinReviews,
         );
       }
-      if (guestSupers.length > 0) {
-        extraFiltered = (extraFiltered as typeof extraFiltered & {
-          overlaps: (col: string, val: string[]) => typeof extraFiltered;
-        }).overlaps("family_keys", [...guestSupers]);
-      }
       const extra = await (extraFiltered as unknown as {
         in: (
           col: string,
@@ -519,12 +487,6 @@ Deno.serve(async (req) => {
         for (const row of extra.data as CardRow[]) {
           if (seen.has(row.id)) continue;
           if (!admitsScopeRow(placesScope, row)) continue;
-          if (
-            guestSupers.length > 0 &&
-            !guestSupers.some((key) => familiesForPlace(row).includes(key))
-          ) {
-            continue;
-          }
           seen.add(row.id);
           mesitaRows = [...mesitaRows, row];
         }

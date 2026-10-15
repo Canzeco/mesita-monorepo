@@ -17,7 +17,7 @@ export default async function FamiliesPage() {
       <PageHeader
         eyebrow="Operations · Atlas"
         title="Atlas"
-        description="The switches decide which families Google search asks for. Selecting a row in FamiliesIA DNA, Google Categories or Mesita Categories highlights what it maps to. A category may belong to two families. A Google type maps to one family. Types outside the seven land on Undefined. Tags list the whole catalog."
+        description="Categories are Google's. Each one has one emoji. A place has that category and no family. Tags list the whole catalog."
       />
       <div className="mt-8">
         <FamiliesClient

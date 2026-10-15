@@ -16,6 +16,7 @@ export type FamiliesMapFamily = {
 export type FamiliesMapCategory = {
   slug: string;
   label: string;
+  emoji: string;
   familyKeys: string[];
 };
 
@@ -60,7 +61,8 @@ export function buildFamiliesMap(
     categories: categories.map((c) => ({
       slug: c.slug,
       label: c.label,
-      familyKeys: c.family_keys ?? [],
+      emoji: c.emoji ?? "📍",
+      familyKeys: [],
     })),
     googleTypes: Object.entries(GOOGLE_TYPE_SUPER)
       .map(([slug, family]) => ({ slug, family }))

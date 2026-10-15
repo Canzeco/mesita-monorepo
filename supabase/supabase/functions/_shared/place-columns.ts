@@ -27,8 +27,6 @@ const COLUMNS: readonly string[] = [
   // Human-friendly category copy (emoji + natural-language label),
   // derived from category via place_categories.
   "category_label",
-  // Families inferred by contents enrichment. NULL until then.
-  "family_keys",
   "price_level",
   // ISO 4217 code (default MXN). Every monetary amount on a place —
   // price ranges shown on the consumer detail page, future cover

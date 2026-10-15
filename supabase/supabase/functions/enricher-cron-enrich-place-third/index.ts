@@ -67,16 +67,11 @@ import {
   synthesizePlaceSummaryText,
 } from "../_shared/place-embeddings.ts";
 import { applyInferredMesitaName } from "../_shared/mesita-name-door.ts";
+import { fetchPlaceCategories } from "../_shared/categories.ts";
 import {
-  fetchPlaceCategories,
-  fetchPlaceFamilies,
-} from "../_shared/categories.ts";
-import { inferPlaceCategory } from "../_shared/categories-infer.ts";
-import { inferPlaceFamilies } from "../_shared/infer-families.ts";
-import {
-  familiesForAtlasCategory,
-  resolveEnrichedFamilyKeys,
-} from "../_shared/place-taxonomy.ts";
+  categorySlugForGoogleType,
+  googleCategoryDisplay,
+} from "../_shared/google-categories.ts";
 import { fetchPlaceTags, inferPlaceTags } from "../_shared/tags.ts";
 import { inferPlaceReservationsLikely } from "../_shared/infer-place-reservations.ts";
 import { loadModelsConfig } from "../_shared/models-config.ts";
@@ -86,7 +81,6 @@ import {
   reservationTargetPatch,
   selectReservationEndpoint,
 } from "../_shared/enrich-reservation-endpoint.ts";
-import { humanizeCategorySlug } from "../_shared/parse-utils.ts";
 import { persistGoogleReviews } from "../_shared/enrich-google-review-snippets.ts";
 import { type PlaceProfilePatch, writePlace } from "../_shared/place-doc.ts";
 import {
@@ -204,57 +198,24 @@ serveEnrichStage("third", async (admin, env, row) => {
 
     // About first (above), then category, then tags — each step feeds the next.
     // Category + tags both ground primarily on the synthesized About.
-    const [categoryList, familyList, tagVocabulary, models] = await Promise.all([
+    const [categoryList, tagVocabulary, models] = await Promise.all([
       fetchPlaceCategories(admin),
-      fetchPlaceFamilies(admin),
       fetchPlaceTags(admin),
       loadModelsConfig(admin),
     ]);
-    // Family `undefined` is a catalog membership, not a classifier target —
-    // never offer the leftover slug (thin-signal places would land there).
-    // Same for the family candidates: the classifier picks among the seven
-    // real families or stays silent (resolve falls back to ['undefined']).
-    const realCategories = categoryList.filter((c) => c.slug !== "undefined");
-    const realFamilies = familyList.filter((f) => f.slug !== "undefined");
     const aboutText =
       ((place.description ?? null) as string | null)?.slice(0, 1500) || null;
     const enricherModel = models.enricherModel;
-    const classifySignals = {
-      name,
-      address: (place.address ?? null) as string | null,
-      editorialSummary,
-      // Prefer the About we just synthesized; fall back to IG bio when synthesis
-      // produced nothing (thin harvest).
-      description: aboutText || igBio || null,
-    };
-    const [inferredCategory, inferredFamilies] = await Promise.all([
-      inferPlaceCategory(
-        OPENAI_KEY,
-        realCategories,
-        classifySignals,
-        enricherModel,
-      ),
-      inferPlaceFamilies(
-        OPENAI_KEY,
-        realFamilies,
-        { ...classifySignals, category },
-        enricherModel,
-      ),
-    ]);
-    if (inferredCategory) {
-      place.category = inferredCategory;
-      place.category_label = realCategories.find((c) =>
-        c.slug === inferredCategory
-      )?.label ??
-        humanizeCategorySlug(inferredCategory) ?? inferredCategory;
+    // The category is Google's type. Do not invent a second vocabulary.
+    const googleCategory = categorySlugForGoogleType(
+      typeof place.category === "string" ? place.category : null,
+    ) ?? categorySlugForGoogleType(typeof category === "string" ? category : null);
+    if (googleCategory) {
+      place.category = googleCategory;
+      place.category_label = googleCategoryDisplay(googleCategory) ??
+        categoryList.find((c) => c.slug === googleCategory)?.label ??
+        googleCategory;
     }
-    const resolvedFamilies = resolveEnrichedFamilyKeys(
-      (place.category ?? category) as string | null,
-      inferredFamilies,
-    );
-    // Total write: resolveEnrichedFamilyKeys never returns empty — a place
-    // always lands under at least one pill (['undefined'] at worst).
-    place.family_keys = resolvedFamilies;
     const categoryForTags = (place.category ?? category) as string | null;
     inferredTags = await inferPlaceTags(OPENAI_KEY, tagVocabulary, {
       name,
@@ -266,25 +227,9 @@ serveEnrichStage("third", async (admin, env, row) => {
     if (inferredTags.length > 0) place.tags = inferredTags;
     ledger.charge("category_tags", classifyCost);
     sources.category = {
-      ok: !!inferredCategory,
-      slug: inferredCategory,
-      candidates: realCategories.length,
-    };
-    sources.families = {
-      ok: resolvedFamilies.length > 0,
-      slugs: resolvedFamilies,
-      inferred: inferredFamilies,
-      candidates: realFamilies.length,
-      // membership = derived from the classified category's 1–2 parents;
-      // inferred = classifier picked (category still undefined/leftover);
-      // fallback = nothing known, ['undefined'] stands (❓ Other pill).
-      mode: familiesForAtlasCategory(
-          (place.category ?? category) as string | null,
-        ).length > 0
-        ? "membership"
-        : resolvedFamilies.length === 1 && resolvedFamilies[0] === "undefined"
-        ? "fallback"
-        : "inferred",
+      ok: !!googleCategory,
+      slug: googleCategory,
+      candidates: categoryList.length,
     };
     sources.tags = {
       ok: inferredTags.length > 0,

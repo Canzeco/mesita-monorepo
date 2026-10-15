@@ -53,14 +53,12 @@ describe("groupTags", () => {
 });
 
 describe("Atlas lists", () => {
-  it("shows FamiliesIA DNA, Google Categories, Mesita Categories, then tags as text", () => {
+  it("shows Google categories with one emoji, then tags as text", () => {
     const src = readFileSync(join(__dirname, "FamiliesExplorer.tsx"), "utf8");
-    const dna = src.indexOf('title="FamiliesIA DNA"');
-    const google = src.indexOf('title="Google Categories"');
-    const mesita = src.indexOf('title="Mesita Categories"');
-    expect(dna).toBeGreaterThan(-1);
-    expect(google).toBeGreaterThan(dna);
-    expect(mesita).toBeGreaterThan(google);
+    expect(src).toContain('title="Categories"');
+    expect(src).toContain("row.emoji");
+    expect(src).not.toContain("Mesita Categories");
+    expect(src).not.toContain("FamiliesIA DNA");
     const tagsList = src.slice(src.indexOf("function TagsList"), src.indexOf("function Column"));
     expect(tagsList).toContain("The full catalog");
     expect(tagsList).not.toContain("<button");
