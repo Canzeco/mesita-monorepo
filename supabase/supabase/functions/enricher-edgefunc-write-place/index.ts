@@ -16,7 +16,7 @@ import { validateProfilePatch, writePlace } from "../_shared/place-doc.ts";
 import { mirrorPlacePhotos } from "../_shared/store-place-images.ts";
 import { timingSafeEqual } from "../_shared/timing-safe-equal.ts";
 import { enrichmentCommit } from "./commit.ts";
-import { withoutFoundFlags } from "./found-flags.ts";
+import { withoutFoundFlags } from "../_shared/profile-patch-found.ts";
 import { galleryUrls } from "./photos.ts";
 import { contentStateAfterStop, enrichmentStop } from "./stop.ts";
 

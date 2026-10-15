@@ -48,7 +48,15 @@ export type GatheredReview = {
 
 type ReviewSourceName = "google" | "instagram" | "facebook";
 
-const FLAG: Record<ReviewSourceName, string> = {
+export const REVIEW_FOUND_FLAG_KEYS = [
+  "google_found",
+  "instagram_found",
+  "facebook_found",
+] as const;
+
+export type ReviewFoundFlagKey = (typeof REVIEW_FOUND_FLAG_KEYS)[number];
+
+const FLAG: Record<ReviewSourceName, ReviewFoundFlagKey> = {
   google: "google_found",
   instagram: "instagram_found",
   facebook: "facebook_found",

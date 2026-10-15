@@ -29,6 +29,10 @@ import {
   isPlaceRequested,
   isPlaceSeeded,
 } from "../_shared/place-state.ts";
+import {
+  type ReviewFoundFlags,
+  reviewFoundFromRow,
+} from "../_shared/review-found.ts";
 import { CRENUP_LABELS_IN_ORDER, CRENUP_TOTAL } from "../_shared/crenup-ladder.ts";
 import {
   operatorFunctionStates,
@@ -164,10 +168,7 @@ Deno.serve(async (req) => {
   const enrichment = new Map<string, EnrichmentMap>();
   // Found flags live on place_profiles, not the profiles view. Same read as
   // the enrichment map so a catalog row can show the three Reviews states.
-  const reviewFound = new Map<
-    string,
-    { google_found: boolean; instagram_found: boolean; facebook_found: boolean }
-  >();
+  const reviewFound = new Map<string, ReviewFoundFlags>();
   for (const idPart of chunked(ids, ID_CHUNK)) {
     const enrichmentRes = await admin
       .from("place_profiles")
@@ -183,11 +184,7 @@ Deno.serve(async (req) => {
     for (const r of (enrichmentRes.data ?? []) as Record<string, unknown>[]) {
       const id = String(r.id);
       if (r.enrichment) enrichment.set(id, r.enrichment as EnrichmentMap);
-      reviewFound.set(id, {
-        google_found: r.google_found === true,
-        instagram_found: r.instagram_found === true,
-        facebook_found: r.facebook_found === true,
-      });
+      reviewFound.set(id, reviewFoundFromRow(r));
     }
   }
   const EMPTY_ENRICHMENT: EnrichmentMap = { functions: {}, highWater: 0, blockedAt: null };

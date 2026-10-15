@@ -2,6 +2,7 @@
 
 import type { CrenupBlock } from "@/app/(app)/manage-multiple/actions";
 import type { MenuNutrition } from "@/lib/nutrition";
+import { reviewFoundFlags } from "@/lib/review-found";
 import { efInvoke } from "@/lib/supabase-ef";
 
 // ════════════════════════════════════════════════════════════════════════
@@ -245,9 +246,7 @@ export async function reloadPlaceReviews(
       google_review_count: r.data.google_review_count,
       instagram_followers_count: r.data.instagram_followers_count,
       facebook_followers: r.data.facebook_followers,
-      google_found: r.data.google_found === true,
-      instagram_found: r.data.instagram_found === true,
-      facebook_found: r.data.facebook_found === true,
+      ...reviewFoundFlags(r.data),
       ...(r.data.source === "google_reviews" ? { google_reviews: r.data.google_reviews ?? [] } : {}),
     },
   };

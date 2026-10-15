@@ -2,6 +2,7 @@
 
 import { efInvoke } from "@/lib/supabase-ef";
 import { enrichmentView, isEnrichedPlace } from "@/lib/place-enriched";
+import { reviewFoundFlags } from "@/lib/review-found";
 
 // ════════════════════════════════════════════════════════════════════════
 // Places — a super-admin drives MANY places at once through the admin-* edge
@@ -137,9 +138,7 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
       typeof raw.google_stars_overall === "number" ? raw.google_stars_overall : null,
     google_review_count:
       typeof raw.google_review_count === "number" ? raw.google_review_count : null,
-    google_found: raw.google_found === true,
-    instagram_found: raw.instagram_found === true,
-    facebook_found: raw.facebook_found === true,
+    ...reviewFoundFlags(raw),
     content_state: contentState,
     ...enrichmentView({ ...raw, content_state: contentState }),
     enriched_at: typeof raw.enriched_at === "string" ? raw.enriched_at : null,
