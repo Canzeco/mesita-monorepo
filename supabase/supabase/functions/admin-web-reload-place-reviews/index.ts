@@ -159,9 +159,7 @@ function numbers(place: PlaceRow) {
     google_review_count: place.google_review_count,
     instagram_followers_count: place.instagram_followers_count,
     facebook_followers: place.facebook_followers,
-    google_found: place.google_found,
-    instagram_found: place.instagram_found,
-    facebook_found: place.facebook_found,
+    ...reviewFoundFromRow(place),
   };
 }
 

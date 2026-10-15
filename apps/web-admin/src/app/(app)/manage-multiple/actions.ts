@@ -2,7 +2,7 @@
 
 import { efInvoke } from "@/lib/supabase-ef";
 import { enrichmentView, isEnrichedPlace } from "@/lib/place-enriched";
-import { reviewFoundFlags } from "@/lib/review-found";
+import { type ReviewFoundFlags, reviewFoundFlags } from "@/lib/review-found";
 
 // ════════════════════════════════════════════════════════════════════════
 // Places — a super-admin drives MANY places at once through the admin-* edge
@@ -64,11 +64,6 @@ export type PlaceHit = {
   zone: string | null;
   google_stars_overall: number | null;
   google_review_count: number | null;
-  /** Reviews states. Yes when that source resolved. Display numbers stay
-   *  off this type's state columns. */
-  google_found: boolean;
-  instagram_found: boolean;
-  facebook_found: boolean;
   content_state: string | null;
   // ── The state facts (labels: Created · Pulsing · Disabled · Requested ·
   //    Enriching · Enriched). Bools except Requested (0…n). All derived (or
@@ -115,7 +110,7 @@ export type PlaceHit = {
    *  the fallback, and it alone cannot show a function that completed AFTER
    *  an earlier one failed, which is exactly the gap this map closes. */
   enrich_functions?: Record<string, EnrichFunctionState> | null;
-};
+} & ReviewFoundFlags;
 
 // The search EF only guarantees id/name — every other field may be absent,
 // hence the defensive `?? null` normalization below.

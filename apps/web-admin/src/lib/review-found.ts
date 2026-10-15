@@ -1,5 +1,6 @@
 /** Review-source found booleans on place_profiles (MESITA-2189). */
 
+/** Yes when that source resolved. Display metrics stay on separate fields. */
 export type ReviewFoundFlags = {
   google_found: boolean;
   instagram_found: boolean;

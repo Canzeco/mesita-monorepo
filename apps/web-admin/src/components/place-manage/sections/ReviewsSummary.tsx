@@ -6,6 +6,7 @@ import type { AdminPlace, ReviewsReloadSource } from "../actions";
 import { reloadPlaceReviews } from "../actions";
 import { SectionCard } from "@/components/admin-ui/manage";
 import { StatePill } from "@/app/(app)/manage-multiple/PlaceFacts";
+import { mergeReviewFoundFlags, reviewFoundFlags } from "@/lib/review-found";
 import { usePlaceContext } from "../PlaceContext";
 
 // Reviews tab. Four separate reloads: Instagram followers, Facebook
@@ -76,6 +77,7 @@ function ReloadButton({
 
 export function ReviewsSummary() {
   const { place, setPlace } = usePlaceContext();
+  const reviewFound = reviewFoundFlags(place);
   const [busy, setBusy] = useState<ReviewsReloadSource | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [reviewNote, setReviewNote] = useState<string | null>(null);
@@ -100,9 +102,7 @@ export function ReviewsSummary() {
       google_review_count: r.data.google_review_count,
       instagram_followers_count: r.data.instagram_followers_count,
       facebook_followers: r.data.facebook_followers,
-      google_found: r.data.google_found,
-      instagram_found: r.data.instagram_found,
-      facebook_found: r.data.facebook_found,
+      ...mergeReviewFoundFlags(current, r.data),
       ...(r.data.source === "google_reviews" ? { google_reviews: r.data.google_reviews } : {}),
     }));
   }
@@ -130,7 +130,7 @@ export function ReviewsSummary() {
           label="Instagram"
           followers={num(place.instagram_followers_count)}
           linked={!!place.instagram_url?.trim()}
-          found={place.instagram_found === true}
+          found={reviewFound.instagram_found}
           busy={busy === "instagram"}
           onReload={() => reload("instagram")}
         />
@@ -138,7 +138,7 @@ export function ReviewsSummary() {
           label="Facebook"
           followers={num(place.facebook_followers)}
           linked={!!place.facebook_url?.trim()}
-          found={place.facebook_found === true}
+          found={reviewFound.facebook_found}
           busy={busy === "facebook"}
           onReload={() => reload("facebook")}
         />

@@ -30,6 +30,7 @@ import {
   isPlaceSeeded,
 } from "../_shared/place-state.ts";
 import {
+  emptyReviewFound,
   type ReviewFoundFlags,
   reviewFoundFromRow,
 } from "../_shared/review-found.ts";
@@ -211,9 +212,7 @@ Deno.serve(async (req) => {
         typeof v.google_stars_overall === "number" ? v.google_stars_overall : null,
       google_review_count:
         typeof v.google_review_count === "number" ? v.google_review_count : null,
-      google_found: reviewFound.get(id)?.google_found ?? false,
-      instagram_found: reviewFound.get(id)?.instagram_found ?? false,
-      facebook_found: reviewFound.get(id)?.facebook_found ?? false,
+      ...reviewFound.get(id) ?? emptyReviewFound(),
       content_state: contentState,
       request_count: Number(v.request_count) || 0,
       // The state facts, in table order.

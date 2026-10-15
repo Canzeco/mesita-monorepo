@@ -2,7 +2,7 @@
 
 import type { CrenupBlock } from "@/app/(app)/manage-multiple/actions";
 import type { MenuNutrition } from "@/lib/nutrition";
-import { reviewFoundFlags } from "@/lib/review-found";
+import { type ReviewFoundFlags, reviewFoundFlags } from "@/lib/review-found";
 import { efInvoke } from "@/lib/supabase-ef";
 
 // ════════════════════════════════════════════════════════════════════════
@@ -210,33 +210,20 @@ export async function updatePlace(
 
 export type ReviewsReloadSource = "google" | "google_reviews" | "instagram" | "facebook";
 
+type ReviewsReloadPayload = {
+  source: ReviewsReloadSource;
+  google_stars_overall: number | null;
+  google_review_count: number | null;
+  instagram_followers_count: number | null;
+  facebook_followers: number | null;
+  google_reviews?: unknown;
+} & ReviewFoundFlags;
+
 export async function reloadPlaceReviews(
   placeId: string,
   source: ReviewsReloadSource,
-): Promise<
-  Result<{
-    source: ReviewsReloadSource;
-    google_stars_overall: number | null;
-    google_review_count: number | null;
-    instagram_followers_count: number | null;
-    facebook_followers: number | null;
-    google_found: boolean;
-    instagram_found: boolean;
-    facebook_found: boolean;
-    google_reviews?: unknown;
-  }>
-> {
-  const r = await efInvoke<{
-    source: ReviewsReloadSource;
-    google_stars_overall: number | null;
-    google_review_count: number | null;
-    instagram_followers_count: number | null;
-    facebook_followers: number | null;
-    google_found: boolean;
-    instagram_found: boolean;
-    facebook_found: boolean;
-    google_reviews?: unknown;
-  }>("admin-web-reload-place-reviews", { placeId, source });
+): Promise<Result<ReviewsReloadPayload>> {
+  const r = await efInvoke<ReviewsReloadPayload>("admin-web-reload-place-reviews", { placeId, source });
   if (!r.ok) return { ok: false, error: r.error, code: r.code };
   return {
     ok: true,
