@@ -37,6 +37,7 @@ export function ReviewsStateCard({ place }: { place: AdminPlace }) {
     >
       <div className="mt-5 flex flex-col">
         {REVIEW_STATE_FACTS.map((fact) => {
+          if (fact.key === "instagram_found" || fact.key === "facebook_found") return null;
           const raw = place[fact.key];
           const known = typeof raw === "boolean";
           const on = known ? raw : false;

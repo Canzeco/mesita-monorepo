@@ -258,12 +258,17 @@ export type ReenrichMode = "fill" | "full" | "second" | "third";
 // Start enrichment. One place starts enrich single place. A list starts
 // enrich multiple places once, and Render decides how many run at once.
 // The row reports the start, not the finish.
-export async function enrichPlaces(placeIds: string[]): Promise<Result<true>> {
+export async function enrichPlaces(
+  placeIds: string[],
+  overwrite = false,
+): Promise<Result<true>> {
   const ids = placeIds.map((id) => id.trim()).filter(Boolean);
   if (ids.length === 0) return { ok: false, error: "Missing placeId" };
   const r = await efInvoke<{ enrichmentTriggered: boolean }>(
     "admin-web-enrich-place",
-    ids.length === 1 ? { projectId: ids[0] } : { placeIds: ids },
+    ids.length === 1
+      ? { projectId: ids[0], overwrite }
+      : { placeIds: ids, overwrite },
   );
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: true };
@@ -273,8 +278,9 @@ export async function enrichPlace(
   placeId: string,
   _mode: ReenrichMode = "fill",
   _overwrite: string[] = [],
+  overwrite = false,
 ): Promise<Result<true>> {
-  return enrichPlaces([placeId]);
+  return enrichPlaces([placeId], overwrite || _overwrite.length > 0);
 }
 
 // ── Name searches (Single Place › Find, MESITA-2116 · MESITA-2124) ───────

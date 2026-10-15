@@ -74,6 +74,19 @@ function linkChipLogo(def: LinkChipDef) {
   };
 }
 
+function showsExternalAction(key: string, url: string): boolean {
+  if (key !== "opentable_url" && key !== "uber_eats_url") return true;
+  try {
+    const parsed = new URL(url);
+    if (key === "uber_eats_url") {
+      return parsed.hostname.includes("ubereats.com") && parsed.pathname.includes("/store/");
+    }
+    return parsed.hostname.includes("opentable.") && parsed.pathname.startsWith("/r/");
+  } catch {
+    return false;
+  }
+}
+
 export function LinksBox({ place }: { place: PlaceDetail }) {
   // Flatten every link source into a single chip set — no subgroups.
   // Phone leads since calling is the most direct contact action; the
@@ -100,7 +113,7 @@ export function LinksBox({ place }: { place: PlaceDetail }) {
   }
   for (const def of RESERVATION_DEFS) {
     const url = place.reservations[def.key];
-    if (url)
+    if (url && showsExternalAction(def.key, url))
       chips.push({
         key: def.key,
         label: def.label,
@@ -124,7 +137,7 @@ export function LinksBox({ place }: { place: PlaceDetail }) {
   // decision: light like Location / About — drop the inverted Channels surface.
   // Soft clay brand tints (CHANNEL_CLAY) so each chip reads as its app.
   return (
-    <Box title="Channels" icon={Link2} iconColor="text-muted-foreground">
+    <Box title="Links" icon={Link2} iconColor="text-muted-foreground">
       <ChannelChips chips={chips} />
     </Box>
   );

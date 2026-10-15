@@ -15,6 +15,7 @@ import {
 } from "./images.ts";
 import { discoverOfficialLinks, linkCounts, type LinkField } from "./links.ts";
 import { fetchApifyGoogleReviews } from "./reviews.ts";
+import { applyOverwrite } from "./fill-existing.ts";
 
 // Paid vendor calls must not be replayed by the platform.
 export const NO_RETRY = { maxRetries: 0, waitDurationMs: 1000, backoffScaling: 1 };
@@ -47,6 +48,11 @@ export type EnrichJob = {
   placeId: string;
   googlePlaceId: string;
   knobs?: EnrichmentKnobs;
+  /** False fills only empty fields and keeps saved links. True may replace. */
+  overwrite?: boolean;
+  /** Profile at the moment enriching was marked. The write refuses a newer row. */
+  baseUpdatedAt?: string | null;
+  saved?: Record<string, unknown>;
 };
 
 export type BuiltEnrichment = {
@@ -97,15 +103,17 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment> 
     opentable_url: knobs.discoverOpentableN,
     uber_eats_url: knobs.discoverUbereatsN,
   });
+  const overwrite = job.overwrite === true;
+  const saved = job.saved ?? {};
   const links = await discoverOfficialLinks({
     name,
     city,
     have: {
-      website_url: stringField(spine.patch.website_url),
-      instagram_url: stringField(spine.patch.instagram_url),
-      facebook_url: stringField(spine.patch.facebook_url),
-      opentable_url: stringField(spine.patch.opentable_url),
-      uber_eats_url: stringField(spine.patch.uber_eats_url),
+      website_url: heldLink(overwrite, saved.website_url, spine.patch.website_url),
+      instagram_url: heldLink(overwrite, saved.instagram_url, spine.patch.instagram_url),
+      facebook_url: heldLink(overwrite, saved.facebook_url, spine.patch.facebook_url),
+      opentable_url: heldLink(overwrite, saved.opentable_url, spine.patch.opentable_url),
+      uber_eats_url: heldLink(overwrite, saved.uber_eats_url, spine.patch.uber_eats_url),
     },
     counts,
     preset: knobs.perplexityPreset,
@@ -142,12 +150,16 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment> 
   }
   if (!description) throw new Error("The place has no description, so it was not written.");
 
-  const patch: Record<string, unknown> = {
-    ...spine.patch,
-    description,
-    content_state: "ready",
-    enriched_at: new Date().toISOString(),
-  };
+  const patch: Record<string, unknown> = applyOverwrite({
+    overwrite,
+    saved,
+    patch: {
+      ...spine.patch,
+      description,
+      content_state: "ready",
+      enriched_at: new Date().toISOString(),
+    },
+  });
   if (openaiKey && name) {
     const facts = embeddingFacts({
       name,
@@ -192,6 +204,12 @@ function countOr(value: number | undefined, fallback: number): number {
 
 function stringField(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value : null;
+}
+
+/** Off keeps a saved link so discovery does not hunt a different one. */
+function heldLink(overwrite: boolean, saved: unknown, fresh: unknown): string | null {
+  if (overwrite) return null;
+  return stringField(saved) ?? stringField(fresh);
 }
 
 function factsWithLinks(facts: string, links: Partial<Record<LinkField, string>>): string {

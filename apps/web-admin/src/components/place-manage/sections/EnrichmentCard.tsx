@@ -9,6 +9,7 @@ import {
   type PlaceEnrichmentState,
 } from "../actions";
 import { SectionCard, Spinner } from "@/components/admin-ui/manage";
+import { OverwriteSwitch } from "../OverwriteSwitch";
 import { usePlaceContext } from "../PlaceContext";
 import { formatAbsoluteUtc } from "@/lib/format";
 import { isEnriching } from "../place-header-state";
@@ -27,6 +28,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
   const [runPending, startRun] = useTransition();
   const [runError, setRunError] = useState<string | null>(null);
   const [queued, setQueued] = useState(false);
+  const [overwrite, setOverwrite] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -46,17 +48,34 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
   }, [place.id]);
 
   const running = isEnriching(enrichState);
+  const alreadyEnriched = Boolean(enrichState?.last_enriched_at) || enrichState?.content_state === "ready";
+  const status = running
+    ? "Enriching"
+    : enrichState?.content_state === "failed"
+    ? "Failed"
+    : alreadyEnriched
+    ? "Enriched"
+    : "Never enriched";
 
   const runFull = useCallback(() => {
+    if (alreadyEnriched) {
+      const again = window.confirm(
+        overwrite
+          ? "Run enrichment again and overwrite existing data?"
+          : "This place is already enriched. Run enrichment again?",
+      );
+      if (!again) return;
+    }
     setRunError(null);
     setQueued(false);
     startRun(async () => {
-      const r = await enrichPlace(place.id);
+      const r = await enrichPlace(place.id, "fill", [], overwrite);
       if (!r.ok) {
         setRunError(r.error);
         return;
       }
       setQueued(true);
+      setOverwrite(false);
       setEnrichState((prev) => ({
         content_state: "generating",
         stage: "first",
@@ -67,7 +86,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
         serp_summary: prev?.serp_summary ?? null,
       }));
     });
-  }, [place.id]);
+  }, [alreadyEnriched, overwrite, place.id]);
 
   return (
     <SectionCard
@@ -87,13 +106,21 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
             </p>
           ) : (
             <p className="text-muted-foreground mb-4 text-xs leading-relaxed">
-              Last run{" "}
+              {status}. Last run{" "}
               {enrichState?.last_enriched_at
                 ? formatAbsoluteUtc(enrichState.last_enriched_at)
                 : "never"}
-              . Press Enrich to start it.
+              .
             </p>
           )}
+
+          <div className="mb-4">
+            <OverwriteSwitch
+              checked={overwrite}
+              disabled={runPending || running}
+              onChange={setOverwrite}
+            />
+          </div>
 
           <button
             type="button"
@@ -104,20 +131,18 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
             }}
             className="bg-foreground text-paper inline-flex h-10 items-center rounded-full px-5 text-sm font-semibold transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {runPending ? "Starting…" : running ? "Enriching…" : "Enrich"}
+            {runPending ? "Starting…" : running ? "Enriching…" : "Run Enrichment"}
           </button>
 
           <p className="mt-2 min-h-4 type-label" aria-live="polite">
             {runError ? (
               <span className="text-destructive">{runError}</span>
+            ) : enrichState?.error ? (
+              <span className="text-destructive">{enrichState.error}</span>
             ) : queued ? (
-              <span className="text-muted-foreground">
-                Started.
-              </span>
+              <span className="text-muted-foreground">Started.</span>
             ) : running ? (
-              <span className="text-muted-foreground">
-                A run is in flight. State is in the header.
-              </span>
+              <span className="text-muted-foreground">Enrichment is running.</span>
             ) : null}
           </p>
         </div>

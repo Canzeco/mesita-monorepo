@@ -9,7 +9,7 @@ export const enrichSinglePlace = task(
   async function enrichSinglePlace(_ctx: TaskContext, job: EnrichJob): Promise<{ placeId: string }> {
     try {
       const built = await buildEnrichment(job);
-      return await writeFinishedPlace(job.placeId, built.patch, built.mirrorPhotos);
+      return await writeFinishedPlace(job.placeId, built.patch, built.mirrorPhotos, job.baseUpdatedAt);
     } catch (err) {
       await stopEnriching(job.placeId);
       throw err;

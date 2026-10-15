@@ -21,7 +21,6 @@ import {
   computeOpenState,
   derivePriceRange,
   hoursTable,
-  neighborhoodFromAddress,
   num,
   obj,
   resolvePlaceDisplayName,
@@ -72,11 +71,7 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
     address: str(row.address) ?? "",
     lat: num(row.lat) ?? null,
     lng: num(row.lng) ?? null,
-    zone:
-      str(row.zone) ??
-      neighborhoodFromAddress(str(row.address)) ??
-      str(row.city) ??
-      "",
+    zone: str(row.zone) ?? "",
     created_label: createdLabel,
     updated_label: updatedLabel,
     last_updated_label: updatedLabel,

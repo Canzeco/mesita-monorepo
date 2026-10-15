@@ -52,7 +52,7 @@ export const CHANNEL_DEFS = [
 export const RESERVATION_DEFS = [
   {
     key: "opentable_url",
-    label: "OpenTable",
+    label: "Reservar",
     Icon: CalendarCheck,
     logo: "/channels/opentable.svg",
   },
@@ -61,7 +61,7 @@ export const RESERVATION_DEFS = [
     key: "uber_eats_url",
     // decision: Pato — real Uber Eats Simple Icons mark (green stacked
     // wordmark), not the fake green app-square with "eats" lettering.
-    label: "Uber Eats",
+    label: "Pedir",
     Icon: Bike,
     logo: "/channels/ubereats-mark.svg",
   },
