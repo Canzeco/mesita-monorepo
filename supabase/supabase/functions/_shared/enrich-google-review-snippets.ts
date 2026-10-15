@@ -60,3 +60,13 @@ export function persistGoogleReviews(raw: unknown): GoogleReviewSnippet[] | null
   }
   return mapped.length > 0 ? mapped : null;
 }
+
+/** A failed scrape must not replace the stored list with nothing. */
+export function googleReviewListFromScrape(
+  reviews: unknown,
+  error: string | null | undefined,
+): { ok: true; list: GoogleReviewSnippet[] | null } | { ok: false; error: string } {
+  const empty = !Array.isArray(reviews) || reviews.length === 0;
+  if (error && empty) return { ok: false, error };
+  return { ok: true, list: persistGoogleReviews(reviews) };
+}

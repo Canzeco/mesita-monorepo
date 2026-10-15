@@ -207,7 +207,7 @@ export async function updatePlace(
   };
 }
 
-export type ReviewsReloadSource = "google" | "instagram" | "facebook";
+export type ReviewsReloadSource = "google" | "google_reviews" | "instagram" | "facebook";
 
 export async function reloadPlaceReviews(
   placeId: string,
@@ -222,6 +222,7 @@ export async function reloadPlaceReviews(
     google_found: boolean;
     instagram_found: boolean;
     facebook_found: boolean;
+    google_reviews?: unknown;
   }>
 > {
   const r = await efInvoke<{
@@ -233,6 +234,7 @@ export async function reloadPlaceReviews(
     google_found: boolean;
     instagram_found: boolean;
     facebook_found: boolean;
+    google_reviews?: unknown;
   }>("admin-web-reload-place-reviews", { placeId, source });
   if (!r.ok) return { ok: false, error: r.error, code: r.code };
   return {
@@ -246,6 +248,7 @@ export async function reloadPlaceReviews(
       google_found: r.data.google_found === true,
       instagram_found: r.data.instagram_found === true,
       facebook_found: r.data.facebook_found === true,
+      ...(r.data.source === "google_reviews" ? { google_reviews: r.data.google_reviews ?? [] } : {}),
     },
   };
 }

@@ -4,18 +4,27 @@
 // source's found flag and numbers. Does not touch place_research,
 // enriched_at, photos, or google_reviews. Keeps no fetch of its own.
 //
-//   instagram  saved instagram_url → follower count
-//   facebook   saved facebook_url  → follower count
-//   google     google_place_id     → Places rating + userRatingCount
+//   instagram       saved instagram_url → follower count
+//   facebook        saved facebook_url  → follower count
+//   google          google_place_id     → Places rating + userRatingCount
+//   google_reviews  google_place_id     → the individual review list
+//
+// Stars and the list are separate clicks. The star click does not write
+// google_reviews. The list click does not write the star average or the count.
 //
 // A technical failure is not found: the flag is false and the numbers
 // are nulled. The reason stays in the verifier's log. No link is 400
-// and writes nothing.
+// and writes nothing. A failed list scrape writes nothing.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, readPlaceIdAlias, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv, requireSuperAdmin } from "../_shared/auth.ts";
 import { writePlace } from "../_shared/place-doc.ts";
+import { gatherGoogleMaps } from "../_shared/enrich-google.ts";
+import {
+  googleReviewListFromScrape,
+  type GoogleReviewSnippet,
+} from "../_shared/enrich-google-review-snippets.ts";
 import {
   reviewSourcePatch,
   verifyFacebook,
@@ -24,10 +33,10 @@ import {
   type ReviewVerify,
 } from "../_shared/review-sources.ts";
 
-const SOURCES = new Set(["google", "instagram", "facebook"]);
+const SOURCES = new Set(["google", "google_reviews", "instagram", "facebook"]);
 
 type Body = { placeId?: string; projectId?: string; source?: string };
-type SourceName = "google" | "instagram" | "facebook";
+type SourceName = "google" | "google_reviews" | "instagram" | "facebook";
 
 type PlaceRow = {
   id: string;
@@ -63,7 +72,7 @@ Deno.serve(async (req) => {
   if (!placeId) return json({ ok: false, error: "Missing placeId" }, 400);
   const source = (bodyRes.body.source ?? "").toString().trim() as SourceName;
   if (!SOURCES.has(source)) {
-    return json({ ok: false, error: "source must be google, instagram, or facebook" }, 400);
+    return json({ ok: false, error: "source must be google, google_reviews, instagram, or facebook" }, 400);
   }
 
   const { data, error } = await admin
@@ -79,6 +88,24 @@ Deno.serve(async (req) => {
 
   const linkError = unlinked(source, place);
   if (linkError) return json({ ok: false, code: "unlinked", error: linkError }, 400);
+
+  if (source === "google_reviews") {
+    const listed = await reloadGoogleReviewList(place.google_place_id);
+    if (!listed.ok) return json({ ok: false, error: listed.error }, listed.status);
+    const written = await writePlace(admin, {
+      table: "place_profiles",
+      mode: "update",
+      id: placeId,
+      patch: { google_reviews: listed.list },
+    });
+    if (!written.ok) return json({ ok: false, error: written.error }, 500);
+    return json({
+      ok: true,
+      source,
+      ...numbers(place),
+      google_reviews: listed.list ?? [],
+    });
+  }
 
   const result = await verifySource(source, place);
   const patch = reviewSourcePatch({ source, result });
@@ -119,14 +146,45 @@ function unlinked(source: SourceName, place: PlaceRow): string | null {
   if (source === "facebook" && !place.facebook_url?.trim()) {
     return "Add a Facebook link on Profile";
   }
-  if (source === "google" && !place.google_place_id?.trim()) {
+  if ((source === "google" || source === "google_reviews") && !place.google_place_id?.trim()) {
     return "This place has no Google place id";
   }
   return null;
 }
 
-function verifySource(source: SourceName, place: PlaceRow): Promise<ReviewVerify> {
+function verifySource(source: Exclude<SourceName, "google_reviews">, place: PlaceRow): Promise<ReviewVerify> {
   if (source === "instagram") return verifyInstagram(place.instagram_url);
   if (source === "facebook") return verifyFacebook(place.facebook_url);
   return verifyGoogle(place.google_place_id);
+}
+
+function numbers(place: PlaceRow) {
+  return {
+    google_stars_overall: place.google_stars_overall,
+    google_review_count: place.google_review_count,
+    instagram_followers_count: place.instagram_followers_count,
+    facebook_followers: place.facebook_followers,
+    google_found: place.google_found,
+    instagram_found: place.instagram_found,
+    facebook_found: place.facebook_found,
+  };
+}
+
+async function reloadGoogleReviewList(
+  googlePlaceId: string | null,
+): Promise<
+  | { ok: true; list: GoogleReviewSnippet[] | null }
+  | { ok: false; error: string; status: number }
+> {
+  const key = Deno.env.get("APIFY_KEY")?.trim() ?? "";
+  if (!key) return { ok: false, error: "Apify is not configured", status: 500 };
+  const gathered = await gatherGoogleMaps({
+    apifyKey: key,
+    placeId: googlePlaceId ?? "",
+    gatherGoogleImages: 0,
+  });
+  const error = typeof gathered.diag.error === "string" ? gathered.diag.error : null;
+  const listed = googleReviewListFromScrape(gathered.reviews, error);
+  if (!listed.ok) return { ok: false, error: "Google reviews could not be loaded", status: 502 };
+  return { ok: true, list: listed.list };
 }
