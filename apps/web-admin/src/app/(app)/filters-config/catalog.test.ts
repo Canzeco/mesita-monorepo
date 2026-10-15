@@ -504,6 +504,7 @@ describe("Discovery page box order", () => {
     expect(map).not.toContain("googlePull");
     expect(googleSources).toContain("FloorMirror");
     expect(googleSources).toContain('href="/families"');
+    expect(googleSources).toContain("Atlas");
     expect(googleSources).not.toContain("on this page");
     expect(mesitaSources).toContain("FiltersFloorOwner");
     expect(mesitaSources).toContain("FloorMirror");

@@ -314,7 +314,7 @@ verify_jwt = true
 [functions.admin-web-get-atlas-fields]
 verify_jwt = true
 
-# Manage › Families. Read-only taxonomy map.
+# Configurations › Atlas. Read-only taxonomy lists.
 [functions.admin-web-get-families]
 verify_jwt = true
 
