@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { Button } from "@/components/admin-ui/config";
@@ -50,18 +50,25 @@ export function LogsClient({ initial }: { initial: ListLogsResult }) {
   const [error, setError] = useState<string | null>(initial.ok ? null : initial.error);
   const [refreshing, setRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(initial.ok ? initial.hasMore : false);
+  const busy = useRef(false);
 
   const refresh = useCallback(async () => {
+    if (busy.current) return;
+    busy.current = true;
     setRefreshing(true);
-    const result = await listLogs();
-    setRefreshing(false);
-    if (!result.ok) {
-      setError(result.error);
-      return;
+    try {
+      const result = await listLogs();
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setError(null);
+      setLines(result.lines);
+      setHasMore(result.hasMore);
+    } finally {
+      busy.current = false;
+      setRefreshing(false);
     }
-    setError(null);
-    setLines(result.lines);
-    setHasMore(result.hasMore);
   }, []);
 
   useEffect(() => {
