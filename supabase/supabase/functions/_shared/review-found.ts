@@ -27,3 +27,16 @@ export function reviewFoundFromRow(row: Record<string, unknown>): ReviewFoundFla
   }
   return out;
 }
+
+/** Apply a patch: only explicit booleans override the previous flags. */
+export function mergeReviewFoundFlags(
+  prev: ReviewFoundFlags,
+  patch: Partial<Record<ReviewFoundFlagKey, unknown>>,
+): ReviewFoundFlags {
+  const out = { ...prev };
+  for (const key of REVIEW_FOUND_FLAG_KEYS) {
+    const next = patch[key];
+    if (typeof next === "boolean") out[key] = next;
+  }
+  return out;
+}

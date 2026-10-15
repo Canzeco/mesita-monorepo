@@ -1,5 +1,9 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { emptyReviewFound, reviewFoundFromRow } from "./review-found.ts";
+import {
+  emptyReviewFound,
+  mergeReviewFoundFlags,
+  reviewFoundFromRow,
+} from "./review-found.ts";
 
 Deno.test("emptyReviewFound is all false", () => {
   assertEquals(emptyReviewFound(), {
@@ -7,6 +11,16 @@ Deno.test("emptyReviewFound is all false", () => {
     instagram_found: false,
     facebook_found: false,
   });
+});
+
+Deno.test("mergeReviewFoundFlags keeps prev unless patch sends a boolean", () => {
+  assertEquals(
+    mergeReviewFoundFlags(
+      { google_found: true, instagram_found: false, facebook_found: true },
+      { instagram_found: true, google_found: "yes" },
+    ),
+    { google_found: true, instagram_found: true, facebook_found: true },
+  );
 });
 
 Deno.test("reviewFoundFromRow only treats true as found", () => {

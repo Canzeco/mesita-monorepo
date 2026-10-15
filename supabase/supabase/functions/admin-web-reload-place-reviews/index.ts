@@ -32,6 +32,7 @@ import {
   verifyInstagram,
   type ReviewVerify,
 } from "../_shared/review-sources.ts";
+import { mergeReviewFoundFlags, reviewFoundFromRow } from "../_shared/review-found.ts";
 
 const SOURCES = new Set(["google", "google_reviews", "instagram", "facebook"]);
 
@@ -124,19 +125,13 @@ Deno.serve(async (req) => {
     google_review_count: numberOr(patch.google_review_count, place.google_review_count),
     instagram_followers_count: numberOr(patch.instagram_followers_count, place.instagram_followers_count),
     facebook_followers: numberOr(patch.facebook_followers, place.facebook_followers),
-    google_found: flagOr(patch.google_found, place.google_found),
-    instagram_found: flagOr(patch.instagram_found, place.instagram_found),
-    facebook_found: flagOr(patch.facebook_found, place.facebook_found),
+    ...mergeReviewFoundFlags(reviewFoundFromRow(place), patch),
   });
 });
 
 function numberOr(next: unknown, prev: number | null): number | null {
   if (next === null) return null;
   return typeof next === "number" ? next : prev;
-}
-
-function flagOr(next: unknown, prev: boolean): boolean {
-  return typeof next === "boolean" ? next : prev;
 }
 
 function unlinked(source: SourceName, place: PlaceRow): string | null {

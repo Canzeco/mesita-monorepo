@@ -26,3 +26,23 @@ export function reviewFoundFlags(raw: {
     facebook_found: raw.facebook_found === true,
   };
 }
+
+type ReviewFoundLike = {
+  google_found?: unknown;
+  instagram_found?: unknown;
+  facebook_found?: unknown;
+};
+
+/** After a partial EF response: only explicit booleans override prior flags. */
+export function mergeReviewFoundFlags(prev: ReviewFoundLike, patch: ReviewFoundLike): ReviewFoundFlags {
+  const base = reviewFoundFlags(prev);
+  return {
+    google_found: typeof patch.google_found === "boolean" ? patch.google_found : base.google_found,
+    instagram_found: typeof patch.instagram_found === "boolean"
+      ? patch.instagram_found
+      : base.instagram_found,
+    facebook_found: typeof patch.facebook_found === "boolean"
+      ? patch.facebook_found
+      : base.facebook_found,
+  };
+}

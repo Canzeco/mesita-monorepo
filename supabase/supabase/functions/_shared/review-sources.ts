@@ -13,14 +13,20 @@ import { socialAccountReplaced, socialSourcesToEmpty, type SocialUrlPair } from 
 
 export const REVIEW_VERIFY_TIMEOUT_MS = 20_000;
 
+export const REVIEW_FOUND_FLAG_KEYS = [
+  "google_found",
+  "instagram_found",
+  "facebook_found",
+] as const;
+
+export type ReviewFoundFlagKey = (typeof REVIEW_FOUND_FLAG_KEYS)[number];
+
 const REVIEWS_OWNED_BODY_KEYS = [
   "google_stars_overall",
   "google_review_count",
   "instagram_followers_count",
   "facebook_followers",
-  "google_found",
-  "instagram_found",
-  "facebook_found",
+  ...REVIEW_FOUND_FLAG_KEYS,
   "reviews_state",
 ] as const;
 
@@ -47,14 +53,6 @@ export type GatheredReview = {
 };
 
 type ReviewSourceName = "google" | "instagram" | "facebook";
-
-export const REVIEW_FOUND_FLAG_KEYS = [
-  "google_found",
-  "instagram_found",
-  "facebook_found",
-] as const;
-
-export type ReviewFoundFlagKey = (typeof REVIEW_FOUND_FLAG_KEYS)[number];
 
 const FLAG: Record<ReviewSourceName, ReviewFoundFlagKey> = {
   google: "google_found",
