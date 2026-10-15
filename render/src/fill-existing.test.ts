@@ -21,6 +21,16 @@ test("off keeps a saved link and still takes the new review count", () => {
   assert.deepEqual(next.tags, ["terraza", "desayuno"]);
 });
 
+test("off keeps a saved Google address and still takes the new rating", () => {
+  const next = applyOverwrite({
+    overwrite: false,
+    saved: { google_address: { formattedAddress: "saved" } },
+    patch: { google_address: { formattedAddress: "fresh" }, google_stars_overall: 4.2 },
+  });
+  assert.deepEqual(next.google_address, { formattedAddress: "saved" });
+  assert.equal(next.google_stars_overall, 4.2);
+});
+
 test("off fills a field that was empty", () => {
   const next = applyOverwrite({
     overwrite: false,

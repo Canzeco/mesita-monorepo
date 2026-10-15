@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@source "../../../../packages/place-profile/src";
 
 :root {
   --radius: 0.875rem;
@@ -189,6 +190,14 @@
   box-shadow: var(--shadow-elev);
 }
 
+@utility shadow-glow-sm {
+  box-shadow: var(--shadow-glow-sm);
+}
+
+@utility shadow-glow {
+  box-shadow: var(--shadow-glow);
+}
+
 /* Card resting shadow — one soft ambient layer + a tight contact edge. */
 @utility shadow-card {
   box-shadow:
@@ -254,4 +263,46 @@
   h3 {
     overflow-wrap: break-word;
   }
+}
+
+/* The member phone is the consumer surface. Admin's page ground stays the
+   warm near-white; these tokens apply only inside the frame. */
+.member-phone {
+  --paper: oklch(1 0 0);
+  --page: oklch(0.952 0 0);
+  --fill: var(--page);
+  --background: var(--page);
+  --foreground: oklch(0.205 0 0);
+  --card: var(--paper);
+  --card-foreground: oklch(0.205 0 0);
+  --popover: var(--paper);
+  --popover-foreground: oklch(0.205 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: var(--paper);
+  --secondary: oklch(0.371 0 0);
+  --secondary-foreground: var(--paper);
+  --muted: var(--fill);
+  --muted-foreground: oklch(0.48 0 0);
+  --accent: var(--fill);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.58 0.24 28);
+  --destructive-foreground: var(--paper);
+  --border: oklch(0.891 0 0);
+  --input: var(--fill);
+  --ring: oklch(0.205 0 0);
+  --gradient-pink: oklch(0.205 0 0);
+  --shadow-elev: 0 25px 60px -15px oklch(0 0 0 / 0.14);
+  --shadow-glow-sm: 0 14px 32px -16px oklch(0 0 0 / 0.22);
+  --shadow-glow: 0 30px 80px -20px oklch(0 0 0 / 0.14);
+  --shadow-danger: 0 2px 10px -2px oklch(0.58 0.245 27 / 0.5);
+  color: var(--foreground);
+  background: var(--background);
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

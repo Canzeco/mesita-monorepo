@@ -22,6 +22,7 @@ const PROTECTED = [
   "uber_eats_url",
   "whatsapp_url",
   "google_maps_url",
+  "google_address",
 ] as const;
 
 export function hasSavedValue(value: unknown): boolean {

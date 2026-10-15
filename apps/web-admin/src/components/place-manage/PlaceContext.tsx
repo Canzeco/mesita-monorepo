@@ -214,14 +214,10 @@ export function PlaceProvider({
     const patch = Object.assign({ id: placeId }, ...fragments) as {
       id: string;
     } & Record<string, unknown>;
-    const checkingAccount =
-      (typeof patch.instagram_url === "string" && patch.instagram_url.trim() !== "") ||
-      (typeof patch.facebook_url === "string" && patch.facebook_url.trim() !== "");
-
     setSaveError(null);
     setSaveOk(false);
     setSocialLock(null);
-    setSaveLabel(checkingAccount ? "Checking the account…" : "Saving…");
+    setSaveLabel("Saving…");
     setSavePending(true);
     void (async () => {
       const r = await updatePlace(patch);

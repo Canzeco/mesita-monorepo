@@ -22,6 +22,7 @@ import {
 import { PlaceTagsPicker } from "../PlaceTagsPicker";
 import { PlaceCategorySelect } from "../PlaceCategorySelect";
 import { PlaceFamilyField } from "../PlaceFamilyField";
+import { googleLocationEntries, type LocationPair } from "../google-location";
 import {
   OpenLink,
   PhoneField,
@@ -164,6 +165,17 @@ function PriceDisplay({
       {range ? <span className="text-muted-foreground">{range}</span> : null}
     </span>
   );
+}
+
+function locationPairs(place: AdminPlace): LocationPair[] {
+  const stored = googleLocationEntries(place.google_address);
+  if (stored.length > 0) return stored;
+  return googleLocationEntries({
+    formattedAddress: place.address,
+    location: place.lat != null && place.lng != null
+      ? { latitude: place.lat, longitude: place.lng }
+      : undefined,
+  });
 }
 
 type DayHours = { closed: boolean; open: string; close: string };
@@ -540,33 +552,21 @@ export function PlaceSection({
         </div>
       </SectionCard>
 
-      {/* Location is native — Google Places seed + Enricher synthesis.
-          The EF rejects manual address writes, so this card is read-only. */}
       <SectionCard
         icon={<MapPin className="h-4 w-4" />}
         tint="sky"
         title="Location"
-        subtitle="Google keys, copied as sent. locality prefers that component, then administrative_area_level_2. neighborhood prefers neighborhood, then sublocality_level_1, then sublocality."
+        subtitle="Google's keys, as returned."
       >
         <div className="mt-5 grid gap-4">
-          <ReadField label="formattedAddress" auto boxed>
-            {place.address?.trim() ? place.address : "—"}
-          </ReadField>
-          <ReadField label="locality" auto boxed>
-            {place.city ?? "—"}
-          </ReadField>
-          <ReadField label="neighborhood" auto boxed>
-            {place.zone ?? "—"}
-          </ReadField>
-          <ReadField label="latitude" auto boxed>
-            {place.lat != null ? String(place.lat) : "—"}
-          </ReadField>
-          <ReadField label="longitude" auto boxed>
-            {place.lng != null ? String(place.lng) : "—"}
-          </ReadField>
           <ReadField label="placeId" auto boxed>
             {place.google_place_id?.trim() ? place.google_place_id : "—"}
           </ReadField>
+          {locationPairs(place).map((pair) => (
+            <ReadField key={pair.key} label={pair.key} auto boxed>
+              {pair.value}
+            </ReadField>
+          ))}
         </div>
         {place.lat != null && place.lng != null ? (
           <div className="border-border/60 mt-4 overflow-hidden rounded-xl border">

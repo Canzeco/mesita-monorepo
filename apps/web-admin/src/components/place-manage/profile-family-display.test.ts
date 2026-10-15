@@ -27,6 +27,13 @@ const profile: Pick<ProfileRead, "family" | "familyStored" | "categories"> = {
       sort_order: 2,
       family_display: "🍸 Bars & Nightlife · 🎟️ Experiences",
     },
+    {
+      slug: "undefined",
+      label: "Undefined",
+      section: "Other",
+      sort_order: 99,
+      family_display: "❓ Undefined",
+    },
   ],
 };
 
@@ -53,9 +60,15 @@ describe("shownFamily", () => {
     });
   });
 
-  it("paints the stored keys when the draft category is undefined", () => {
-    expect(shownFamily("undefined", "nightclub", profile)).toEqual(profile.familyStored);
-    expect(shownFamily("", "nightclub", profile)).toEqual(profile.familyStored);
+  it("paints the undefined category's mapping, not keys copied onto the place", () => {
+    expect(shownFamily("undefined", "nightclub", profile)).toEqual({
+      text: "❓ Undefined",
+      inferred: false,
+    });
+    expect(shownFamily("", "nightclub", profile)).toEqual({
+      text: "❓ Undefined",
+      inferred: false,
+    });
   });
 });
 

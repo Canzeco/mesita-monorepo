@@ -47,6 +47,7 @@ import {
   isPlaceRequested,
   isPlaceSeeded,
 } from "../_shared/place-state.ts";
+import { loadRequestThreshold } from "../_shared/place-requests.ts";
 import { CRENUP_LABELS_IN_ORDER, CRENUP_TOTAL } from "../_shared/crenup-ladder.ts";
 import type { EnrichmentMap, FunctionState } from "../_shared/schema-catalog.ts";
 import { operatorFunctionStates } from "../_shared/schema-catalog.ts";
@@ -97,7 +98,8 @@ Deno.serve(async (req) => {
   // response alone (MESITA-2180). `enrichment` is read off `place_profiles`
   // directly, not `profiles` — it is deliberately NOT in the profiles view's
   // column list (adding it means rebuilding the view's two INSTEAD OF triggers).
-  const [placeRow, enrichmentRow, categories, families, tags] = await Promise.all([
+  const [placeRow, enrichmentRow, categories, families, tags, requestThreshold] =
+    await Promise.all([
     admin
       .from("profiles")
       .select(
@@ -113,6 +115,7 @@ Deno.serve(async (req) => {
     fetchPlaceCategories(admin),
     fetchPlaceFamilies(admin),
     fetchPlaceTags(admin),
+    loadRequestThreshold(admin),
   ]);
   if (placeRow.error) {
     return json({ ok: false, error: placeRow.error.message }, 500);
@@ -150,6 +153,7 @@ Deno.serve(async (req) => {
       requestCount: placeFields.request_count,
       enrichedAt: placeFields.enriched_at,
     }),
+    request_threshold: requestThreshold,
     // THE Enriched fact (MESITA-2154) — `enriched_at` set; same helper as
     // admin-web-search-places, so Status and the catalog table agree.
     enriched: isPlaceEnriched(placeFields.enriched_at),

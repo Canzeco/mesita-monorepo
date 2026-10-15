@@ -70,5 +70,8 @@ describe("Atlas lists", () => {
     expect(tagsList).toContain("The full catalog");
     expect(tagsList).not.toContain("<button");
     expect(src).toContain("Each family lists the categories it contains");
+    expect(src).toContain("categories.length");
+    expect(src).not.toContain("100 categories");
+    expect(src).not.toContain("200 tags");
   });
 });

@@ -180,7 +180,6 @@ export async function createMinimalPlace(opts: {
     ...basicsRes.basics,
     category: "undefined",
     category_label: null,
-    family_keys: ["undefined"],
     // Operating (MESITA-1239). businessStatus rides the envelope, not `basics`,
     // so the spread above does not carry it. Stored verbatim: reaching here
     // means it is not CLOSED_PERMANENTLY (refused above), but OPERATIONAL,
@@ -263,7 +262,6 @@ export async function createMinimalPlace(opts: {
       if (door) {
         const patch: Record<string, unknown> = {};
         if (door.category) patch.category = door.category;
-        if (door.familyKeys.length > 0) patch.family_keys = door.familyKeys;
         if (door.tags.length > 0) patch.tags = door.tags;
         if (door.description) patch.description = door.description;
         // The seed for a place nobody has answered for yet; an operator's

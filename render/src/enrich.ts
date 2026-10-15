@@ -14,7 +14,7 @@ import {
   type ImageKnobs,
 } from "./images.ts";
 import { discoverOfficialLinks, linkCounts, type LinkField } from "./links.ts";
-import { fetchApifyGoogleReviews } from "./reviews.ts";
+import { fetchDraftSync } from "./draft-sync.ts";
 import { applyOverwrite } from "./fill-existing.ts";
 
 // Paid vendor calls must not be replayed by the platform.
@@ -83,16 +83,6 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment> 
     const timezone = await fetchTimezone(lat, lng, googleKey);
     if (timezone) spine.patch.timezone = timezone;
   }
-  const listed = await fetchApifyGoogleReviews({
-    googlePlaceId,
-    apifyKey: process.env.APIFY_KEY,
-  });
-  const knownCount = details.userRatingCount;
-  if (listed.length > 0) spine.patch.google_reviews = listed;
-  else if (typeof knownCount === "number" && knownCount > 0) {
-    throw new Error("Apify returned no Google reviews.");
-  }
-
   const name = typeof spine.patch.google_name === "string" ? spine.patch.google_name : "";
   const city = typeof spine.patch.city === "string" ? spine.patch.city : null;
   const knobs = job.knobs ?? {};
@@ -105,6 +95,12 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment> 
   });
   const overwrite = job.overwrite === true;
   const saved = job.saved ?? {};
+  if (!overwrite) {
+    for (const key of ["website_url", "instagram_url", "facebook_url", "opentable_url", "uber_eats_url"] as const) {
+      const savedUrl = stringField(saved[key]);
+      if (savedUrl) spine.patch[key] = savedUrl;
+    }
+  }
   const links = await discoverOfficialLinks({
     name,
     city,
@@ -123,9 +119,12 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment> 
   });
   for (const [key, url] of Object.entries(links) as [LinkField, string][]) {
     spine.patch[key] = url;
-    if (key === "instagram_url") spine.patch.instagram_found = true;
-    if (key === "facebook_url") spine.patch.facebook_found = true;
   }
+  Object.assign(spine.patch, await fetchDraftSync({
+    googlePlaceId,
+    instagramUrl: stringField(spine.patch.instagram_url),
+    facebookUrl: stringField(spine.patch.facebook_url),
+  }));
 
   const openaiKey = process.env.OPENAI_KEY?.trim() ?? "";
   const images = imageKnobs(knobs);

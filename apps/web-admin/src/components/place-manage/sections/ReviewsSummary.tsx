@@ -10,7 +10,7 @@ import { usePlaceContext } from "../PlaceContext";
 // Reviews. One Sync in the header updates the four boxes from saved links.
 // Save on Profile does not call this. Found flags are not profile fields.
 
-type BoxState = "no-link" | "configured" | "syncing" | "synced" | "error";
+type BoxState = "no-link" | "never-synced" | "syncing" | "synced" | "error";
 
 function num(v: unknown): number | null {
   if (typeof v === "number" && Number.isFinite(v)) return v;
@@ -81,51 +81,56 @@ export function ReviewsSummary() {
   async function sync() {
     setSyncing(true);
     setFailures([]);
-    const failed: string[] = [];
-    const jobs: { source: "google" | "instagram" | "facebook" | "google_reviews"; label: string; armed: boolean }[] = [
-      { source: "google", label: "Google", armed: !!place.google_place_id?.trim() },
-      { source: "instagram", label: "Instagram", armed: !!place.instagram_url?.trim() },
-      { source: "facebook", label: "Facebook", armed: !!place.facebook_url?.trim() },
-      { source: "google_reviews", label: "Google reviews", armed: !!place.google_place_id?.trim() },
-    ];
-    for (const job of jobs) {
-      if (!job.armed) {
-        setBox((prev) => ({ ...prev, [job.source]: "no-link" }));
-        continue;
-      }
-      setBox((prev) => ({ ...prev, [job.source]: "syncing" }));
-      const r = await reloadPlaceReviews(place.id, job.source);
-      if (!r.ok) {
-        failed.push(job.label);
-        setBox((prev) => ({ ...prev, [job.source]: "error" }));
-        continue;
-      }
-      setBox((prev) => ({ ...prev, [job.source]: "synced" }));
-      setPlace((current) => ({
-        ...current,
-        google_stars_overall: r.data.google_stars_overall,
-        google_review_count: r.data.google_review_count,
-        instagram_followers_count: r.data.instagram_followers_count,
-        facebook_followers: r.data.facebook_followers,
-        ...(r.data.source === "google_reviews" ? { google_reviews: r.data.google_reviews } : {}),
-      }));
-    }
-    setFailures(failed);
-    if (failed.length < jobs.filter((job) => job.armed).length) setSyncedAt(new Date().toISOString());
+    setBox({
+      google: place.google_place_id?.trim() ? "syncing" : "no-link",
+      instagram: place.instagram_url?.trim() ? "syncing" : "no-link",
+      facebook: place.facebook_url?.trim() ? "syncing" : "no-link",
+      google_reviews: place.google_place_id?.trim() ? "syncing" : "no-link",
+    });
+    const r = await reloadPlaceReviews(place.id, "sync");
     setSyncing(false);
+    if (!r.ok) {
+      setFailures(["Sync"]);
+      return;
+    }
+    const sources = r.data.sources ?? [];
+    const next: Record<string, BoxState> = {};
+    const failed: string[] = [];
+    for (const row of sources) {
+      next[row.source] = row.status === "no_link"
+        ? "no-link"
+        : row.status === "error"
+        ? "error"
+        : "synced";
+      if (row.status === "error") failed.push(row.source);
+    }
+    setBox(next);
+    setFailures(failed);
+    setSyncedAt(r.data.lastSyncedAt ?? new Date().toISOString());
+    setPlace((current) => ({
+      ...current,
+      google_stars_overall: r.data.google_stars_overall,
+      google_review_count: r.data.google_review_count,
+      instagram_followers_count: r.data.instagram_followers_count,
+      facebook_followers: r.data.facebook_followers,
+      google_reviews: r.data.google_reviews ?? current.google_reviews,
+      source_sync: r.data.source_sync ?? current.source_sync,
+    }));
   }
 
-  const googleState = box.google ?? (place.google_place_id?.trim() ? "configured" : "no-link");
-  const igState = box.instagram ?? (place.instagram_url?.trim() ? "configured" : "no-link");
-  const fbState = box.facebook ?? (place.facebook_url?.trim() ? "configured" : "no-link");
-  const reviewsState = box.google_reviews ?? (place.google_place_id?.trim() ? "configured" : "no-link");
+  const stored = storedSync(place.source_sync);
+  const googleState = box.google ?? reviewBoxState(!!place.google_place_id?.trim(), stored.google);
+  const igState = box.instagram ?? reviewBoxState(!!place.instagram_url?.trim(), stored.instagram);
+  const fbState = box.facebook ?? reviewBoxState(!!place.facebook_url?.trim(), stored.facebook);
+  const reviewsState = box.google_reviews ?? reviewBoxState(!!place.google_place_id?.trim(), stored.google_reviews);
+  const shownAt = syncedAt ?? stored.lastSyncedAt;
 
   return (
     <SectionCard
       icon={<Star className="h-4 w-4" />}
       tint="violet"
       title="Reviews"
-      subtitle={syncSubtitle({ syncedAt, failures, syncing })}
+      subtitle={syncSubtitle({ syncedAt: shownAt, failures, syncing })}
       action={
         <button
           type="button"
@@ -176,7 +181,34 @@ function hintFor(state: BoxState, detail: string): string {
   if (state === "syncing") return "Syncing";
   if (state === "error") return "Error";
   if (state === "synced") return `Synced · ${detail}`;
-  return `Configured · ${detail}`;
+  return `Never synced · ${detail}`;
+}
+
+export function reviewBoxState(armed: boolean, status: string | undefined): BoxState {
+  if (!armed) return "no-link";
+  if (status === "error") return "error";
+  if (status === "synced") return "synced";
+  return "never-synced";
+}
+
+function storedSync(raw: unknown): {
+  lastSyncedAt: string | null;
+  google?: string;
+  instagram?: string;
+  facebook?: string;
+  google_reviews?: string;
+} {
+  if (!raw || typeof raw !== "object") return { lastSyncedAt: null };
+  const body = raw as { lastSyncedAt?: unknown; sources?: { source?: string; status?: string }[] };
+  const out: ReturnType<typeof storedSync> = {
+    lastSyncedAt: typeof body.lastSyncedAt === "string" ? body.lastSyncedAt : null,
+  };
+  for (const row of body.sources ?? []) {
+    if (row.source === "google" || row.source === "instagram" || row.source === "facebook" || row.source === "google_reviews") {
+      out[row.source] = row.status;
+    }
+  }
+  return out;
 }
 
 function storedReviews(raw: unknown): { author: string; quote: string }[] {
@@ -204,7 +236,7 @@ function ReviewsTile({ place, state }: { place: AdminPlace; state: BoxState }) {
   const shown = reviews.slice(0, 3);
   return (
     <Tile
-      label="Google reviews"
+      label="Google Reviews"
       state={state}
       value={reviews.length > 0 ? String(reviews.length) : "—"}
       muted={reviews.length === 0}

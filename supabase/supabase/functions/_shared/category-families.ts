@@ -14,6 +14,7 @@ export function normalizeCategoryFamilies(
     if (!slug || !known.has(slug)) return { ok: false, error: `Unknown family: ${slug || "(empty)"}` };
     if (!keys.includes(slug)) keys.push(slug);
   }
+  if (keys.length === 0) return { ok: false, error: "A category needs a family" };
   if (keys.includes("undefined") && keys.length > 1) {
     return { ok: false, error: "Undefined does not share a category with another family" };
   }

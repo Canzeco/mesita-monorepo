@@ -119,20 +119,20 @@ Deno.test("undefined category maps to family undefined; empty has none", () => {
   assertEquals(familiesForAtlasCategory(""), []);
 });
 
-Deno.test("familiesForPlace uses FULL Atlas membership, never a stored subset", () => {
-  assertEquals(
-    familiesForPlace({
-      category: "breakfast",
-      family_keys: ["cafes_bakeries"],
-    }),
-    ["restaurants", "cafes_bakeries"],
-  );
+Deno.test("familiesForPlace uses the category mapping carried on the row", () => {
   assertEquals(
     familiesForPlace({
       category: "mexican",
-      family_keys: ["bars_nightlife"],
+      family_keys: ["cafes_bakeries"],
     }),
-    ["restaurants"],
+    ["cafes_bakeries"],
+  );
+  assertEquals(
+    familiesForPlace({
+      category: "breakfast",
+      family_keys: ["restaurants", "cafes_bakeries"],
+    }),
+    ["restaurants", "cafes_bakeries"],
   );
   assertEquals(familiesForPlace({ category: "mexican" }), ["restaurants"]);
   assertEquals(familiesForPlace({ category: "gastropub" }), ["restaurants"]);
@@ -141,9 +141,16 @@ Deno.test("familiesForPlace uses FULL Atlas membership, never a stored subset", 
       category: "undefined",
       family_keys: ["bars_nightlife"],
     }),
-    ["undefined"],
+    ["bars_nightlife"],
   );
   assertEquals(familiesForPlace({ category: "undefined" }), ["undefined"]);
+  assertEquals(
+    familiesForPlace({
+      category: "cafe",
+      family_keys: ["cafes_bakeries", "experiences", "restaurants", "bars_nightlife"],
+    }),
+    ["restaurants", "cafes_bakeries", "bars_nightlife", "experiences"],
+  );
 });
 
 Deno.test("familiesForPlace is TOTAL — no place is ever pill-less", () => {
@@ -184,14 +191,14 @@ Deno.test("resolveEnrichedFamilyKeys keeps full membership; total fallback", () 
   ]);
 });
 
-Deno.test("sanitizeFamilyKeys drops junk, dedupes, caps at TWO, catalog order", () => {
+Deno.test("sanitizeFamilyKeys drops junk, dedupes, keeps more than two, catalog order", () => {
   assertEquals(
     sanitizeFamilyKeys(["experiences", "restaurants", "restaurants", "nope"]),
     ["restaurants", "experiences"],
   );
   assertEquals(
-    sanitizeFamilyKeys(["wellness_beauty", "sports_fitness", "restaurants"]),
-    ["restaurants", "sports_fitness"],
+    sanitizeFamilyKeys(["wellness_beauty", "sports_fitness", "restaurants", "cafes_bakeries"]),
+    ["restaurants", "cafes_bakeries", "sports_fitness", "wellness_beauty"],
   );
   assertEquals(sanitizeFamilyKeys(["a", "b", "c"]), []);
   assertEquals(sanitizeFamilyKeys(null), []);

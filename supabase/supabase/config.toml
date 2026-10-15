@@ -306,9 +306,13 @@ verify_jwt = true
 [functions.admin-web-update-place]
 verify_jwt = true
 
-# Reviews tab: one source, one reload. Not the Enricher.
+# Reviews tab Sync, and the per-source reload it replaced. Not a second fetch path.
 [functions.admin-web-reload-place-reviews]
 verify_jwt = true
+
+# Enrichment asks for the same Sync and does not write here.
+[functions.enricher-edgefunc-sync-sources]
+verify_jwt = false
 
 # Single Place's tag and category vocabularies.
 [functions.admin-web-get-atlas-fields]

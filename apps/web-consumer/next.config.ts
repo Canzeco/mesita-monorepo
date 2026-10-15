@@ -1,6 +1,10 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 
 import { LEGACY_REDIRECTS, withSurfaceTwins } from "./src/lib/legacy-redirects";
+
+const appDir = __dirname;
+const repoRoot = path.resolve(appDir, "../..");
 
 // Identity of THIS build, baked into the client bundle. Vercel sets
 // VERCEL_GIT_COMMIT_SHA at build time; locally it's "dev". The DeploymentWatcher
@@ -12,6 +16,21 @@ const buildSha =
   "dev";
 
 const nextConfig: NextConfig = {
+  agentRules: false,
+  transpilePackages: ["@mesita/place-profile"],
+  // Tailwind reads packages/place-profile. Turbopack refuses that tree unless
+  // the root includes it. Aliases keep this app's own React and Next.
+  turbopack: {
+    root: repoRoot,
+    resolveAlias: {
+      react: path.join(appDir, "node_modules/react"),
+      "react-dom": path.join(appDir, "node_modules/react-dom"),
+      next: path.join(appDir, "node_modules/next"),
+      "lucide-react": path.join(appDir, "node_modules/lucide-react"),
+      clsx: path.join(appDir, "node_modules/clsx"),
+      "tailwind-merge": path.join(appDir, "node_modules/tailwind-merge"),
+    },
+  },
   env: {
     NEXT_PUBLIC_BUILD_SHA: buildSha,
   },

@@ -1,8 +1,7 @@
 "use client";
 
-import { PlaceDetailTitle } from "@/components/consumer/PlaceDetailTitle";
+import { PlaceActionBar, PlaceDetailTitle } from "@mesita/place-profile";
 import { SlideOverHeader } from "@/components/consumer/overlay/SlideOverShell";
-import { PlaceActionBar } from "@/components/consumer/place-detail/PlaceActionBar";
 import type { PlaceDetail } from "@/lib/place-detail";
 
 // Content chrome for the intercepted /place/[id] route. The sliding panel
@@ -28,9 +27,11 @@ import type { PlaceDetail } from "@/lib/place-detail";
 export function PlaceDetailModalShell({
   children,
   place,
+  onReserve,
 }: {
   children: React.ReactNode;
   place: PlaceDetail;
+  onReserve?: () => void;
 }) {
   return (
     <>
@@ -50,7 +51,7 @@ export function PlaceDetailModalShell({
       <div className="min-h-0 flex-1 overflow-y-auto">
         {children}
       </div>
-      <PlaceActionBar place={place} />
+      <PlaceActionBar place={place} onReserve={onReserve} />
     </>
   );
 }

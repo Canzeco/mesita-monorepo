@@ -6,11 +6,16 @@
 // with web-business, MESITA-2089) minus `PlaceNavBridge` — that bridge
 // published the unsaved-edits guard to the business rail, and admin's rail is
 // not a place rail.
+//
+// Preview hides the save bar so it does not cover the phone. The draft still
+// lives in the mounted Profile form.
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { PlaceProvider } from "@/components/place-manage/PlaceContext";
 import { PlaceSaveBar } from "@/components/place-manage/PlaceSaveBar";
 import type { AdminPlace, ProfileRead } from "@/components/place-manage/actions";
+import { placeTabFromPathname } from "@/lib/place-tabs";
 
 export function PlaceManageShell({
   placeId,
@@ -25,6 +30,7 @@ export function PlaceManageShell({
 }) {
   const [place, setPlace] = useState<AdminPlace>(initialPlace);
   const [profile, setProfile] = useState<ProfileRead>(initialProfile);
+  const tab = placeTabFromPathname(usePathname());
 
   return (
     <PlaceProvider
@@ -34,8 +40,8 @@ export function PlaceManageShell({
       profile={profile}
       setProfile={setProfile}
     >
-      {children}
-      <PlaceSaveBar />
+      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+      {tab === "preview" ? null : <PlaceSaveBar />}
     </PlaceProvider>
   );
 }

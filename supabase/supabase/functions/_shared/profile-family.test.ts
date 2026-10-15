@@ -60,7 +60,7 @@ Deno.test("a multi-parent category joins both families", () => {
   );
 });
 
-Deno.test("undefined category shows stored keys as inferred", () => {
+Deno.test("undefined category uses the dictionary, not keys copied onto the place", () => {
   assertEquals(
     resolveProfileFamily({
       category: "undefined",
@@ -68,7 +68,7 @@ Deno.test("undefined category shows stored keys as inferred", () => {
       categories,
       families,
     }),
-    { text: "🍸 Bars & Nightlife", inferred: true },
+    { text: "❓ Undefined", inferred: false },
   );
 });
 
@@ -88,7 +88,7 @@ Deno.test("nothing known falls through to Undefined", () => {
   );
 });
 
-Deno.test("an unknown category falls through to stored keys", () => {
+Deno.test("an unknown category does not invent a family from a place copy", () => {
   assertEquals(
     resolveProfileFamily({
       category: "not_a_category",
@@ -96,7 +96,7 @@ Deno.test("an unknown category falls through to stored keys", () => {
       categories,
       families,
     }),
-    { text: "🎟️ Experiences", inferred: true },
+    { text: "❓ Undefined", inferred: false },
   );
 });
 

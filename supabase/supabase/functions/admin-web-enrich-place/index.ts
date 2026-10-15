@@ -43,6 +43,7 @@ const SAVED_KEYS = [
   "uber_eats_url",
   "whatsapp_url",
   "google_maps_url",
+  "google_address",
 ] as const;
 
 Deno.serve(async (req) => {

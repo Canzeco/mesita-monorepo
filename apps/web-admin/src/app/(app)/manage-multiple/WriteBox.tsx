@@ -110,7 +110,10 @@ export function WriteBox({
       Object.fromEntries(placeIds.map((id) => [id, { state: "pending" as const }])),
     );
     const ids = [...placeIds];
-    if (action === "enrich") await runEnrich(ids, setResults, overwrite);
+    if (action === "enrich") {
+      await runEnrich(ids, setResults, overwrite);
+      setOverwrite(false);
+    }
     else await Promise.all(ids.map((id) => runRow(id, action, setResults)));
     setRunning(null);
   }

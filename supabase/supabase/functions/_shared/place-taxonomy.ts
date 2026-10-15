@@ -3,9 +3,9 @@
 // MESITA-1857 — DB, EFs and consoles all say it now):
 //   · Eight families: seven real guest pills + `undefined`
 //     (label "Undefined", ❓), the leftover/create-path bucket — always last.
-//   · CATEGORY side is MULTI-PARENT: each Mesita category belongs to one
-//     or TWO families (breakfast is restaurants AND cafés; karaoke is bars
-//     AND experiences). Never more than two; `undefined` only ever alone.
+//   · CATEGORY side is many-to-many: a category may sit in any number of
+//     families. `undefined` only ever alone. The code twin below is the
+//     seeded list; the live mapping is place_categories.family_keys.
 //   · GOOGLE side is EXCLUSIVE: every Table A type maps to exactly one
 //     of the eight families (google-type-super.ts owns that map + batteries).
 //     Types outside the seven land on `undefined`.
@@ -180,8 +180,8 @@ export function isFamilyKey(value: string): value is FamilyKey {
 }
 
 /**
- * Unique valid families, catalog order, at most TWO (place membership).
- * `undefined` never rides along with a real family — real families win.
+ * Unique valid families, catalog order, any count. A category may sit in
+ * many families. `undefined` never rides along with a real family.
  */
 export function sanitizeFamilyKeys(raw: unknown): FamilyKey[] {
   if (!Array.isArray(raw)) return [];
@@ -192,9 +192,9 @@ export function sanitizeFamilyKeys(raw: unknown): FamilyKey[] {
     if (isFamilyKey(slug)) seen.add(slug);
   }
   if (seen.size > 1) seen.delete("undefined");
-  return [...seen]
-    .sort((a, b) => (FAMILY_ORDER.get(a) ?? 99) - (FAMILY_ORDER.get(b) ?? 99))
-    .slice(0, 2);
+  return [...seen].sort(
+    (a, b) => (FAMILY_ORDER.get(a) ?? 99) - (FAMILY_ORDER.get(b) ?? 99),
+  );
 }
 
 /**
@@ -236,12 +236,15 @@ export type FamilyPlace = {
  * under at least one pill, always.
  */
 export function familiesForPlace(place: FamilyPlace): FamilyKey[] {
+  // The profiles view puts the category's current mapping on family_keys.
+  // That list wins, so a dictionary edit changes membership without a
+  // profile write. The code twin fills only when the row has no mapping.
+  const mapped = sanitizeFamilyKeys(place.family_keys);
+  if (mapped.length > 0) return mapped;
   const atlas = familiesForAtlasCategory(
     typeof place.category === "string" ? place.category : null,
   );
   if (atlas.length > 0) return atlas;
-  const stored = sanitizeFamilyKeys(place.family_keys);
-  if (stored.length > 0) return stored;
   const google = familiesForGoogleType(
     typeof place.category === "string" ? place.category : null,
   );

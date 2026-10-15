@@ -12,12 +12,15 @@ import { describe, expect, it } from "vitest";
 // photo-paging and image-load half needs a real browser, so the wiring is
 // pinned at the source and the first paint is rendered.
 
-const SRC = join(__dirname, "..", "..");
-const read = (p: string) => readFileSync(join(SRC, p), "utf8");
+const CAROUSEL = join(
+  __dirname,
+  "../../../../../packages/place-profile/src/components/ImageCarousel.tsx",
+);
+const read = (p: string) => readFileSync(p, "utf8");
 
 describe("the carousel reports the photo on screen", () => {
   it("calls onIdxChange when the page changes", () => {
-    const src = read("components/consumer/ImageCarousel.tsx");
+    const src = read(CAROUSEL);
     expect(src).toMatch(/setIdx\(i\);\s*onIdxChange\?\.\(i\);/);
   });
 });
