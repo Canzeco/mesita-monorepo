@@ -1,10 +1,10 @@
-import { Shapes } from "lucide-react";
+import { Map } from "lucide-react";
 
-// Configurations › Families — the seven Google-search switches, then the
-// taxonomy map. Not a Discovery page: profiles, search and the catalog all
-// read the same three lists. The switches write discovery_config.
+// Configurations › Atlas — the seven Google-search switches, then the
+// taxonomy: FamiliesIA DNA, Google categories, Mesita categories, and every
+// tag. Not a Discovery page. The switches write discovery_config.
 export const FAMILIES_PARENT = {
   href: "/families",
-  label: "Families",
-  Icon: Shapes,
+  label: "Atlas",
+  Icon: Map,
 } as const;

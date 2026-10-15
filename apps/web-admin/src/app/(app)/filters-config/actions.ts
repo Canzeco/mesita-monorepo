@@ -36,7 +36,7 @@ export type DiscoverySlice =
   | "filters"
   | "map"
   // Narrow map slices (MESITA-1681, widened by MESITA-1695). Families
-  // (Configurations › Families), Google Nearby's floor, and Google Nearby's
+  // (Configurations › Atlas), Google Nearby's floor, and Google Nearby's
   // pull all write `map`. Whole-slice saves from those seeds mean the last
   // Save wipes the others, so each writes only its own fields. `map` stays
   // for the Map mode box, which owns the rest.

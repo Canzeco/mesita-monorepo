@@ -1,6 +1,6 @@
 "use client";
 
-// Shared Families — live, on Configurations › Families (MESITA-2200).
+// Shared family switches — live, on Configurations › Atlas (MESITA-2200).
 // Seven params, the same seven the guest sees as pills, written onto all
 // three Google callers (Fast / Deep / Map) as one list. Each family sends
 // its whole Google battery; the operator never toggles a Google slug, and

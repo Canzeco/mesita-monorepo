@@ -12,5 +12,9 @@ Deno.test("the families door is super-admin only and reads the map", async () =>
   const admin = codeOnly(await Deno.readTextFile(DOOR));
   assertStringIncludes(admin, "requireSuperAdmin(");
   assertStringIncludes(admin, "buildFamiliesMap(");
-  assert(!admin.includes("requireEditor("), "the admin door must stay super-admin only");
+  assertStringIncludes(admin, "fetchPlaceTags(");
+  assert(
+    !admin.includes("requireEditor("),
+    "the admin door must stay super-admin only",
+  );
 });

@@ -15,6 +15,7 @@ const map: FamiliesMap = {
     { slug: "cafe", family: "cafes_bakeries" },
     { slug: "accounting", family: "undefined" },
   ],
+  tags: [],
 };
 
 describe("highlightFamilies", () => {

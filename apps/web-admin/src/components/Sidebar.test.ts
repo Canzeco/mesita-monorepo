@@ -5,12 +5,12 @@ import { CONFIGURATIONS_NAV, MANAGE_NAV } from "./Sidebar";
 
 const APP = join(__dirname, "..", "app", "(app)");
 
-// Models, then Families, then the MESITA-2083 order.
+// Models, then Atlas, then the MESITA-2083 order.
 describe("Configurations rail", () => {
-  it("is exactly Models · Families · Creation · Enrichment · Discovery · Reservations", () => {
+  it("is exactly Models · Atlas · Creation · Enrichment · Discovery · Reservations", () => {
     expect(CONFIGURATIONS_NAV.map((i) => i.label)).toEqual([
       "Models",
-      "Families",
+      "Atlas",
       "Creation",
       "Enrichment",
       "Discovery",

@@ -20,10 +20,20 @@ export type GoogleTypeRow = {
   family: string;
 };
 
+export type TagRow = {
+  slug: string;
+  label: string;
+  facet: string;
+  facetLabel: string;
+  facetEmoji: string;
+  sortOrder: number;
+};
+
 export type FamiliesMap = {
   families: FamilyRow[];
   categories: CategoryRow[];
   googleTypes: GoogleTypeRow[];
+  tags: TagRow[];
 };
 
 export type FamiliesSelection =
