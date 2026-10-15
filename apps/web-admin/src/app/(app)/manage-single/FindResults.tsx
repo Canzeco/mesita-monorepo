@@ -14,7 +14,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ChevronRight, ExternalLink, Loader2, Plus } from "lucide-react";
+import { AlertTriangle, ExternalLink, Loader2, Plus } from "lucide-react";
 import { StatePill } from "@/app/(app)/manage-multiple/PlaceFacts";
 import { factOn } from "@/app/(app)/manage-multiple/mesita-search-facts";
 import { StateIcon, type BatchRowState } from "@/app/(app)/manage-multiple/StateIcon";
@@ -63,6 +63,22 @@ const STATE_GROUPS = [
 
 export const rowNameId = (i: number) => `find-row-name-${i}`;
 
+const NO_IDS: ReadonlySet<string> = new Set();
+const NO_ERRORS: Readonly<Record<string, string>> = {};
+
+/** Idle, the click is awaiting the server, or a run is already generating. */
+function enrichPhase(
+  row: FindRow,
+  startingIds: ReadonlySet<string>,
+  enrichingIds: ReadonlySet<string>,
+): "idle" | "starting" | "enriching" {
+  const id = row.mesitaId;
+  if (!id) return "idle";
+  if (startingIds.has(id)) return "starting";
+  if (enrichingIds.has(id) || row.placeHit?.enriching === true) return "enriching";
+  return "idle";
+}
+
 export function FindResults({
   query,
   result,
@@ -71,6 +87,10 @@ export function FindResults({
   disabled,
   onOpen,
   onAdd,
+  onEnrich,
+  startingIds = NO_IDS,
+  enrichingIds = NO_IDS,
+  enrichErrors = NO_ERRORS,
   variant = "search",
 }: {
   query: string;
@@ -81,6 +101,13 @@ export function FindResults({
   disabled: boolean;
   onOpen: (row: FindRow) => void;
   onAdd: (row: FindRow) => void;
+  onEnrich?: (row: FindRow) => void;
+  /** Mesita ids whose Enrich click has not been accepted yet. */
+  startingIds?: ReadonlySet<string>;
+  /** Mesita ids this page has started, on top of `placeHit.enriching`. */
+  enrichingIds?: ReadonlySet<string>;
+  /** Mesita id → the last Enrich error. Cleared while a new click is in flight. */
+  enrichErrors?: Readonly<Record<string, string>>;
   /** `catalogue` is the empty search: Mesita places only, no rank columns. */
   variant?: "search" | "catalogue";
 }) {
@@ -208,7 +235,10 @@ export function FindResults({
                     ) : null}
                     {ranks ? <PhoneSources row={row} /> : null}
                   </th>
-                  <ProfileCells row={row} />
+                  <ProfileCells
+                    row={row}
+                    enrichingNow={enrichPhase(row, startingIds, enrichingIds) !== "idle"}
+                  />
                   {ranks
                     ? WORD_RANK_COLUMNS.map((s, i) => (
                         <td
@@ -230,9 +260,12 @@ export function FindResults({
                     <ActionCell
                       row={row}
                       note={row.googleId ? notes[row.googleId] : undefined}
+                      phase={enrichPhase(row, startingIds, enrichingIds)}
+                      enrichError={row.mesitaId ? enrichErrors[row.mesitaId] : undefined}
                       disabled={disabled}
                       onOpen={onOpen}
                       onAdd={onAdd}
+                      onEnrich={onEnrich}
                     />
                   </td>
                 </tr>
@@ -299,7 +332,9 @@ function NameCell({
   disabled: boolean;
   onOpen: (row: FindRow) => void;
 }) {
-  const name = "block truncate font-medium underline-offset-4 hover:underline " + FOCUS_RING_CLASS;
+  const name =
+    "block truncate font-medium underline underline-offset-4 text-[color:var(--brand-pink-text)] decoration-[color:var(--brand-pink-text)] visited:text-[color:var(--brand-pink-900)] visited:decoration-[color:var(--brand-pink-900)] " +
+    FOCUS_RING_CLASS;
   if (row.held && row.mesitaId) {
     return (
       <Link id={id} href={placeTabHref(row.mesitaId, "profile")} className={name}>
@@ -376,13 +411,19 @@ function SourceCell({
 
 const CELL = "px-3 py-3 text-center align-top whitespace-nowrap";
 
-function ProfileCells({ row }: { row: FindRow }) {
+function ProfileCells({ row, enrichingNow }: { row: FindRow; enrichingNow: boolean }) {
   const hit = row.placeHit;
   return (
     <>
       {GENERAL_STATE_FACTS.map((f) => (
         <td key={f.key} className={CELL}>
-          {hit ? (
+          {f.key === "enriching" && enrichingNow ? (
+            <StatePill
+              on={true}
+              falseTone={STATE_FACT_FALSE_TONE[f.key]}
+              badWhenTrue={BAD_WHEN_TRUE.has(f.key)}
+            />
+          ) : hit ? (
             f.key === "requested" ? (
               <span
                 className={
@@ -441,30 +482,58 @@ function PhoneSources({ row }: { row: FindRow }) {
 function ActionCell({
   row,
   note,
+  phase,
+  enrichError,
   disabled,
   onOpen,
   onAdd,
+  onEnrich,
 }: {
   row: FindRow;
   note: RowNote | undefined;
+  phase: "idle" | "starting" | "enriching";
+  enrichError: string | undefined;
   disabled: boolean;
   onOpen: (row: FindRow) => void;
   onAdd: (row: FindRow) => void;
+  onEnrich?: (row: FindRow) => void;
 }) {
   const adding = note?.state === "running";
   return (
     <div className="flex flex-col items-end gap-1.5">
       {row.held ? (
-        <button
-          type="button"
-          onClick={() => onOpen(row)}
-          disabled={disabled}
-          aria-label={`Open ${row.name}`}
-          className={`inline-flex shrink-0 items-center gap-1 rounded-full bg-green-500/10 px-2.5 py-1 type-label font-semibold whitespace-nowrap text-green-700 disabled:opacity-60 ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`}
-        >
-          On Mesita
-          <ChevronRight className="h-3 w-3" aria-hidden="true" />
-        </button>
+        <span className="inline-flex flex-col items-end gap-1.5">
+          <button
+            type="button"
+            onClick={() => onOpen(row)}
+            disabled={disabled}
+            aria-label={`Open ${row.name}`}
+            className={`${PILL_BUTTON_CLASS} whitespace-nowrap`}
+          >
+            Open
+          </button>
+          {row.mesitaId ? (
+            <button
+              type="button"
+              onClick={() => onEnrich?.(row)}
+              disabled={disabled || phase !== "idle"}
+              aria-busy={phase !== "idle"}
+              aria-label={
+                phase === "starting"
+                  ? `Starting ${row.name}`
+                  : phase === "enriching"
+                    ? `Enriching ${row.name}`
+                    : `Enrich ${row.name}`
+              }
+              className={`${PILL_BUTTON_CLASS} whitespace-nowrap`}
+            >
+              {phase !== "idle" ? (
+                <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+              ) : null}
+              {phase === "starting" ? "Starting…" : phase === "enriching" ? "Enriching" : "Enrich"}
+            </button>
+          ) : null}
+        </span>
       ) : row.googleId ? (
         <button
           type="button"
@@ -482,6 +551,12 @@ function ActionCell({
         </button>
       ) : null}
       <span aria-live="polite" className="max-w-56">
+        {phase === "idle" && enrichError ? (
+          <span className="inline-flex items-center gap-1.5 text-left type-label text-destructive">
+            <StateIcon state="error" />
+            <span>{enrichError}</span>
+          </span>
+        ) : null}
         {note && note.state !== "running" ? (
           <span
             className={
