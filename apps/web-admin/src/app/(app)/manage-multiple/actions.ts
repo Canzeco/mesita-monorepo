@@ -12,9 +12,8 @@ import { enrichmentView, isEnrichedPlace } from "@/lib/place-enriched";
 // it was deleted (MESITA-1588); this page was their only surviving caller, so
 // they moved here. Single Place (MESITA-2084) imports them from here rather
 // than owning a copy — ONE caller set, so the two pages cannot drift on what
-// a button does. The per-place EDITOR is the business console's place
-// surface, which Single Place renders (MESITA-2086; web-business itself was
-// deleted, MESITA-2089).
+// a button does. The per-place editor is Single Place (MESITA-2086); web-
+// business was deleted in MESITA-2089.
 // ════════════════════════════════════════════════════════════════════════
 
 // `code` is the EF's machine-readable failure (efInvoke already keeps it off

@@ -4,6 +4,16 @@ import type { NextConfig } from "next";
 const appDir = __dirname;
 const repoRoot = path.resolve(appDir, "../..");
 
+// Absolute aliases become `./vercel/path0/...` once turbopack.root is the
+// repo. Paths are relative to that root so the server build can resolve them.
+function packageAlias(name: string): string {
+  const relative = path
+    .relative(repoRoot, path.join(appDir, "node_modules", name))
+    .split(path.sep)
+    .join("/");
+  return `./${relative}`;
+}
+
 const nextConfig: NextConfig = {
   agentRules: false,
   transpilePackages: ["@mesita/place-profile"],
@@ -15,12 +25,12 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: repoRoot,
     resolveAlias: {
-      react: path.join(appDir, "node_modules/react"),
-      "react-dom": path.join(appDir, "node_modules/react-dom"),
-      next: path.join(appDir, "node_modules/next"),
-      "lucide-react": path.join(appDir, "node_modules/lucide-react"),
-      clsx: path.join(appDir, "node_modules/clsx"),
-      "tailwind-merge": path.join(appDir, "node_modules/tailwind-merge"),
+      react: packageAlias("react"),
+      "react-dom": packageAlias("react-dom"),
+      next: packageAlias("next"),
+      "lucide-react": packageAlias("lucide-react"),
+      clsx: packageAlias("clsx"),
+      "tailwind-merge": packageAlias("tailwind-merge"),
     },
   },
   async redirects() {

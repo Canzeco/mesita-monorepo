@@ -31,7 +31,7 @@ export type ReservationsConfig = {
    */
   testCall: { enabled: boolean; number: string };
   /**
-   * TESTING ONLY. While on, `consumer-web-create-reservation` skips the
+   * TESTING ONLY. While on, the consumer reservation EF skips the
    * monthly reservation cap (_shared/reservation-cap.ts) for EVERY consumer,
    * so a tester can keep booking past it. Off in any real run — the cap is
    * the abuse guard on metered calls.

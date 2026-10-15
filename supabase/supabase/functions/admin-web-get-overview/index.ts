@@ -5,10 +5,9 @@
 // in one round trip.
 //
 // WAS business-web-get-overview (MESITA-2090). That function served three
-// readers — the business console's sidebar (every place the caller held), its
-// Place screen (the active place plus recent tickets, the rewards config and
-// the staff PIN) and, through its super-admin branch, this admin screen. The
-// business console is deleted in the MVP First Stage cut, so only the
+// readers — the deleted web-business sidebar, its Place screen, and, through
+// its super-admin branch, this admin screen. MESITA-2089 deleted web-business,
+// so only the
 // super-admin branch survives, under the name of the one app that calls it:
 // the EF name is the ACL (ef-caller-acl.test.ts). Gone with the business
 // readers: the place_members branch, recent tickets, `rewardsConfig`, the
@@ -40,7 +39,7 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
-import { PLACE_BUSINESS_COLUMNS as PLACE_PROFILE_COLUMNS } from "../_shared/place-columns.ts";
+import { PLACE_PROFILE_COLUMNS } from "../_shared/place-columns.ts";
 import {
   isPlaceEnriched,
   isPlaceListed,

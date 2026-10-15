@@ -6,6 +6,16 @@ import { LEGACY_REDIRECTS, withSurfaceTwins } from "./src/lib/legacy-redirects";
 const appDir = __dirname;
 const repoRoot = path.resolve(appDir, "../..");
 
+// Absolute aliases become `./vercel/path0/...` once turbopack.root is the
+// repo. Paths are relative to that root so the server build can resolve them.
+function packageAlias(name: string): string {
+  const relative = path
+    .relative(repoRoot, path.join(appDir, "node_modules", name))
+    .split(path.sep)
+    .join("/");
+  return `./${relative}`;
+}
+
 // Identity of THIS build, baked into the client bundle. Vercel sets
 // VERCEL_GIT_COMMIT_SHA at build time; locally it's "dev". The DeploymentWatcher
 // compares this against the live /api/version to detect a newer production
@@ -23,12 +33,12 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: repoRoot,
     resolveAlias: {
-      react: path.join(appDir, "node_modules/react"),
-      "react-dom": path.join(appDir, "node_modules/react-dom"),
-      next: path.join(appDir, "node_modules/next"),
-      "lucide-react": path.join(appDir, "node_modules/lucide-react"),
-      clsx: path.join(appDir, "node_modules/clsx"),
-      "tailwind-merge": path.join(appDir, "node_modules/tailwind-merge"),
+      react: packageAlias("react"),
+      "react-dom": packageAlias("react-dom"),
+      next: packageAlias("next"),
+      "lucide-react": packageAlias("lucide-react"),
+      clsx: packageAlias("clsx"),
+      "tailwind-merge": packageAlias("tailwind-merge"),
     },
   },
   env: {

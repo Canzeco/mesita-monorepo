@@ -151,10 +151,9 @@ const OPERATING_COLUMNS: readonly string[] = [
   "business_state_at",
 ];
 
-// Business reads — includes `updated_at` so the business UI can show
-// "saved · 2 min ago" style affordances, plus the routing columns Single
-// Place edits and the Operating fact the State box renders.
-export const PLACE_BUSINESS_COLUMNS = [
+// Admin place profile select list — includes `updated_at` for save affordances,
+// routing columns Single Place edits, and Operating facts the State box renders.
+export const PLACE_PROFILE_COLUMNS = [
   ...COLUMNS,
   ...ROUTING_COLUMNS,
   ...OPERATING_COLUMNS,

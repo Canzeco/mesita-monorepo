@@ -55,13 +55,22 @@ Deno.serve(async (req) => {
     if (!next) {
       return json({ ok: true, placeId: stop.placeId, content_state: data?.content_state ?? null });
     }
+    // The read above picks ready or failed. The write itself matches only a
+    // row that is still generating, so a finish that landed in between is
+    // not overwritten.
     const cleared = await writePlace(admin, {
       table: "places",
       mode: "update",
       id: stop.placeId,
       patch: { content_state: next },
+      onlyWhile: "generating",
+      select: "content_state",
+      selectMode: "maybeSingle",
     });
     if (!cleared.ok) return json({ ok: false, error: cleared.error }, 500);
+    if (!cleared.row) {
+      return json({ ok: true, placeId: stop.placeId, content_state: null });
+    }
     return json({ ok: true, placeId: stop.placeId, content_state: next });
   }
 

@@ -4,7 +4,7 @@
 // in the browser — there is no EF behind them yet (see the consumer app
 // CLAUDE.md: "Favorites = localStorage, not an EF"). Because that state lives
 // in localStorage, it survives BOTH a consumer sign-out AND a server-side
-// `admin-web-reset-database` wipe. So a
+// admin database reset wipe. So a
 // second consumer signing in on the same browser — or the same operator
 // re-creating an account after a reset — would otherwise inherit the previous
 // consumer's saved places (stale rows from the old data).

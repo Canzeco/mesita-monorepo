@@ -11,6 +11,7 @@ import {
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
+import { LOGS_PARENT } from "@/app/(app)/logs/nav";
 import { DB_PARENT } from "@/app/(app)/manage-database/nav";
 import { MULTIPLE_PLACES_PARENT } from "@/app/(app)/manage-multiple/nav";
 import { SINGLE_PLACE_PARENT } from "@/app/(app)/manage-single/nav";
@@ -110,7 +111,8 @@ export const CONFIGURATIONS_NAV: NavItem[] = [
 ];
 
 // Testing — operator tools that probe live systems rather than configure them.
-const TESTING_NAV: NavItem[] = [BILLING_TEST_PARENT];
+// Logs reads the enrichment workflow. It is not an alert feed.
+const TESTING_NAV: NavItem[] = [BILLING_TEST_PARENT, LOGS_PARENT];
 
 // The first group is deliberately unlabelled: a heading reading "Account" above
 // a lone "Account" link is the redundancy this menu is trying to shed.
