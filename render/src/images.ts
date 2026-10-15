@@ -117,7 +117,7 @@ export async function fetchInstagramPosts(opts: {
       },
     );
     if (!res.ok) {
-      const body = (await res.text().catch(() => "")).slice(0, 200);
+      const body = (await res.text().catch(() => "")).replace(/\s+/g, " ").trim().slice(0, 200);
       console.error(`[images] apify ${res.status} ${body}`);
       return [];
     }
