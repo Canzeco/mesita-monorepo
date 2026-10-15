@@ -10,6 +10,11 @@ export type EnrichJob = { placeId: string; googlePlaceId: string };
  *  accepts the run, and returns. Render writes the profile once, at the end. */
 export const ENRICHING_PATCH = { content_state: "generating" } as const;
 
+/** The live secret is RENDER_KEY. RENDER_API_KEY is the older name. */
+export function renderApiKey(env: { get(name: string): string | undefined }): string {
+  return (env.get("RENDER_KEY") ?? env.get("RENDER_API_KEY") ?? "").trim();
+}
+
 export function enrichmentRun(jobs: readonly EnrichJob[]): { task: string; input: unknown[] } {
   if (jobs.length === 1) {
     return { task: `${WORKFLOW}/enrich-single-place`, input: [jobs[0]] };

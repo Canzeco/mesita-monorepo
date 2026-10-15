@@ -700,9 +700,9 @@ const PROBES: ProbeSpec[] = [
     label: "Render",
     impact:
       "Enrichment workflow host. A rejected key means no enrich run can start",
-    envKeys: ["RENDER_API_KEY"],
+    envKeys: ["RENDER_KEY", "RENDER_API_KEY"],
     run: async (keys) => {
-      const key = firstKey(keys, ["RENDER_API_KEY"])!;
+      const key = firstKey(keys, ["RENDER_KEY", "RENDER_API_KEY"])!;
       // GET /owners is account metadata. Render does not bill it, and it
       // proves the key can see the workspace the workflow will run in.
       const res = await timedFetch("https://api.render.com/v1/owners", {

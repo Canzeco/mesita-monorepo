@@ -11,7 +11,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, readPlaceIdAlias } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv, requireSuperAdmin } from "../_shared/auth.ts";
 import { writePlace } from "../_shared/place-doc.ts";
-import { ENRICHING_PATCH, enrichmentRun } from "./start-enrichment.ts";
+import { ENRICHING_PATCH, enrichmentRun, renderApiKey } from "./start-enrichment.ts";
 
 type Body = {
   projectId?: string;
@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  const key = Deno.env.get("RENDER_API_KEY")?.trim() ?? "";
+  const key = renderApiKey(Deno.env);
   if (!key) return json({ ok: false, error: "Server misconfigured" }, 500);
 
   const jobs = placeIds.map((id) => ({ placeId: id, googlePlaceId: byId.get(id) ?? "" }));
