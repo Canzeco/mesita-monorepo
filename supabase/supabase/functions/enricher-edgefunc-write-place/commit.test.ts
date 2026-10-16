@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { enrichmentCommit } from "./commit.ts";
+import { enrichmentCommit, enrichmentConflicts } from "./commit.ts";
 
 Deno.test("a finished place is accepted", () => {
   const got = enrichmentCommit({
@@ -25,6 +25,13 @@ Deno.test("mirror stays on unless the body turns it off", () => {
   });
   assertEquals(on.ok && on.mirrorPhotos, true);
   assertEquals(off.ok && off.mirrorPhotos, false);
+});
+
+Deno.test("a newer profile conflicts and an unchanged one does not", () => {
+  assertEquals(enrichmentConflicts("2026-10-16T01:00:00Z", "2026-10-16T00:00:00Z"), true);
+  assertEquals(enrichmentConflicts("2026-10-16T00:00:00Z", "2026-10-16T00:00:00Z"), false);
+  assertEquals(enrichmentConflicts(null, "2026-10-16T00:00:00Z"), true);
+  assertEquals(enrichmentConflicts("2026-10-16T00:00:00Z", null), false);
 });
 
 Deno.test("anything short of a finished profile writes nothing", () => {

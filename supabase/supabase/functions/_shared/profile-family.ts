@@ -4,13 +4,12 @@
 // admin-web-update-place after a save). The admin client paints the strings;
 // it does not join slugs to emoji and labels.
 //
-// Precedence, same law the Profile field has always shown:
-//   · a real category → that category's full membership (1–2 families);
-//   · category undefined / unknown → the stored family_keys, marked inferred;
-//   · nothing known → the Undefined family.
+// Precedence:
+//   · a category in the live dictionary → that category's families;
+//   · anything else → the Undefined family.
+// Keys copied onto a place are not membership.
 
 import type { PlaceCategory, PlaceFamily } from "./categories.ts";
-import { familiesForExactGoogle } from "./place-taxonomy.ts";
 
 export type ResolvedFamily = {
   /** "🍸 Bars & Nightlife" or "🍸 Bars & Nightlife · 🎟️ Experiences". */
@@ -77,11 +76,6 @@ export function resolveProfileFamily(input: {
     if (hit) {
       const text = joinFamilies(hit.family_keys ?? [], input.families);
       return { text: text ?? undefinedFamily(input.families), inferred: false };
-    }
-    const exact = familiesForExactGoogle(slug);
-    if (exact) {
-      const text = joinFamilies(exact, input.families);
-      if (text) return { text, inferred: false };
     }
   }
   return { text: undefinedFamily(input.families), inferred: false };

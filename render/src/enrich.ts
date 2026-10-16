@@ -100,7 +100,16 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment> 
   const overwrite = job.overwrite === true;
   const saved = job.saved ?? {};
   if (isQuickEnrich(job)) {
-    return buildQuickEnrichment({ details, spine, googleKey, knobs, overwrite, saved, name });
+    return buildQuickEnrichment({
+      details,
+      spine,
+      googleKey,
+      knobs,
+      overwrite,
+      saved,
+      name,
+      googlePlaceId,
+    });
   }
   const counts = linkCounts({
     website_url: knobs.discoverWebsiteN,
@@ -191,10 +200,25 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment> 
     );
     if (fields) Object.assign(patch, fields);
   }
-  return { patch, mirrorPhotos: knobs.saveImagesToStorage !== false };
+  return {
+    patch: stampOverwrite(patch, overwrite),
+    mirrorPhotos: knobs.saveImagesToStorage !== false,
+  };
 }
 
-/** Google's record only. No Firecrawl, Perplexity, Instagram, review sync, or vision. */
+/** The mode that produced this commit. Not a preference for the next run. */
+export function stampOverwrite(
+  patch: Record<string, unknown>,
+  overwrite: boolean,
+): Record<string, unknown> {
+  const current = patch.source_sync;
+  const sync = current && typeof current === "object" && !Array.isArray(current)
+    ? { ...(current as Record<string, unknown>) }
+    : {};
+  return { ...patch, source_sync: { ...sync, overwrite } };
+}
+
+/** Google's record, then the same Sync the Reviews button uses, in the draft. */
 export function quickPatch(opts: {
   spine: Record<string, unknown>;
   description: string | null;
@@ -219,6 +243,7 @@ async function buildQuickEnrichment(opts: {
   overwrite: boolean;
   saved: Record<string, unknown>;
   name: string;
+  googlePlaceId: string;
 }): Promise<BuiltEnrichment> {
   const images = imageKnobs(opts.knobs);
   let photos: string[] = [];
@@ -262,7 +287,20 @@ async function buildQuickEnrichment(opts: {
       // Quick still writes Google's record when the vectors fail.
     }
   }
-  return { patch, mirrorPhotos: opts.knobs.saveImagesToStorage !== false };
+  const synced = await fetchDraftSync({
+    googlePlaceId: opts.googlePlaceId,
+    instagramUrl: stringField(patch.instagram_url),
+    facebookUrl: stringField(patch.facebook_url),
+  });
+  const merged = applyOverwrite({
+    overwrite: opts.overwrite,
+    saved: opts.saved,
+    patch: { ...patch, ...synced },
+  });
+  return {
+    patch: stampOverwrite(merged, opts.overwrite),
+    mirrorPhotos: opts.knobs.saveImagesToStorage !== false,
+  };
 }
 
 function imageKnobs(knobs: EnrichmentKnobs): ImageKnobs {

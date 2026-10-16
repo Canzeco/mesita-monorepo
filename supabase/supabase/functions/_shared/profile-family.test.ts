@@ -100,6 +100,17 @@ Deno.test("an unknown category does not invent a family from a place copy", () =
   );
 });
 
+Deno.test("a Google type that is not in the dictionary is Undefined", () => {
+  assertEquals(
+    resolveProfileFamily({
+      category: "mexican_restaurant",
+      categories,
+      families,
+    }),
+    { text: "❓ Undefined", inferred: false },
+  );
+});
+
 Deno.test("each category option carries its family display", () => {
   const options = categoriesWithFamilyDisplay(categories, families);
   assertEquals(options.find((c) => c.slug === "karaoke")?.family_display, "🍸 Bars & Nightlife · 🎟️ Experiences");
