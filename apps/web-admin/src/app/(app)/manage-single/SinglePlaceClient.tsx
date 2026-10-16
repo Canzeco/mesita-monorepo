@@ -10,8 +10,9 @@
 // OPENS the place at
 // /manage-single/<id>/profile — the place screens admin owns (MESITA-2115).
 // Create (from a Google Place ID, or a table row) and Enrich (a held row)
-// are the writes this page makes itself. Quick and Full are the same calls
-// as the Admin tab. Reviews stay a separate reload.
+// are the writes this page makes itself. Quick and Full fill empty fields.
+// They do not overwrite; that switch lives on the place's Enrichment card.
+// Reviews stay a separate reload.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -25,7 +26,6 @@ import {
 import { StatePill } from "@/app/(app)/manage-multiple/PlaceFacts";
 import { StateIcon, type BatchRowState } from "@/app/(app)/manage-multiple/StateIcon";
 import { CopyIdButton, ReadField, SectionCard } from "@/components/admin-ui/manage";
-import { OverwriteSwitch } from "@/components/place-manage/OverwriteSwitch";
 import type { EnrichDepth } from "@/lib/enrich-depth";
 import { placeTabHref } from "@/lib/place-tabs";
 import type { PlaceLite, SearchErrorResponse, SearchResponse } from "@/lib/places-types";
@@ -75,7 +75,6 @@ export function SinglePlaceClient() {
   const [enrichingIds, setEnrichingIds] = useState<ReadonlySet<string>>(new Set());
   const [enrichErrors, setEnrichErrors] = useState<Readonly<Record<string, string>>>({});
   const enrichFlight = useRef(new Set<string>());
-  const [overwrite, setOverwrite] = useState(false);
 
   const lookup = useMemo(() => classifyLookup(text), [text]);
   const isBusy = busy !== null;
@@ -243,11 +242,9 @@ export function SinglePlaceClient() {
     if (!id || enrichFlight.current.has(id)) return;
     if (row.placeHit?.enriching === true || enrichingIds.has(id)) return;
     const label = depth === "quick" ? "Quick" : "Full";
-    if (row.placeHit?.enriched || overwrite) {
+    if (row.placeHit?.enriched) {
       const ok = window.confirm(
-        overwrite
-          ? `Overwrite existing data and run ${label} enrich? This can replace the profile.`
-          : `This place is already enriched. Run ${label} enrich again?`,
+        `This place is already enriched. Run ${label} enrich again?`,
       );
       if (!ok) return;
     }
@@ -261,7 +258,7 @@ export function SinglePlaceClient() {
     });
     let failed: string | null = null;
     try {
-      const r = await enrichPlace(id, "fill", [], overwrite, depth);
+      const r = await enrichPlace(id, "fill", [], false, depth);
       if (!r.ok) failed = r.error;
     } catch (err) {
       failed = err instanceof Error ? err.message : "Unexpected error";
@@ -279,7 +276,6 @@ export function SinglePlaceClient() {
       return;
     }
     setEnrichingIds((s) => new Set(s).add(id));
-    setOverwrite(false);
   }
 
   async function create() {
@@ -349,9 +345,6 @@ export function SinglePlaceClient() {
             {busy === "find" ? "Finding…" : "Find"}
           </button>
         </form>
-        <div className="mt-4">
-          <OverwriteSwitch checked={overwrite} disabled={isBusy} onChange={setOverwrite} />
-        </div>
 
         {error ? (
           <div className="border-destructive/40 bg-destructive/5 text-destructive mt-4 flex items-start gap-3 rounded-2xl border p-4 text-sm">
