@@ -58,30 +58,28 @@ import {
   PROXIMITY_KNEE_KM,
   PROXIMITY_MAX_KM,
   SIGNAL_KEYS,
-  TIMING_CLOSED_FLOOR,
-  TIMING_OPEN_SHARE,
   type SignalKey,
   type SignalParamBag,
+  TIMING_CLOSED_FLOOR,
+  TIMING_OPEN_SHARE,
 } from "./discovery-signals.ts";
 import {
   WEIGHTED_MODE_KEYS,
   type WeightedModeKey,
 } from "./discovery-matrix.ts";
-import { num, bool } from "./config-coerce.ts";
+import { bool, num } from "./config-coerce.ts";
 
 export type SignalParams = Record<SignalKey, SignalParamBag>;
 
 /**
  * Catalog Search exponents. One profile for every family list.
  * Family and Enriched are gates, so they are not in this vector.
- * Timing is out. A missing key abstains at the default.
- * `selected` is the exponent, not the per-entity value.
+ * Timing is out.
  *
- * Name and Randomness ship at 0 (MESITA-2199). A family list has no name
- * query, so a stored 1 was an armed exponent nothing called. Proximity and
- * Popularity ship at 1: the log curve already rewards close, and shrinkage
- * keeps popularity in a narrow band. Description and Selected stay at 1 and
- * still abstain until a query vector or a per-place Selected value exists.
+ * STORED KEYS vs SCORED KEYS. `catalogScore` multiplies only
+ * `CATALOG_LIVE_RANK_KEYS`. Name, Description, and Selected stay on the blob
+ * so a save does not drop a stored value, and they are not applied: there is
+ * no name query, no description vector, and no per-place Selected value.
  */
 export const CATALOG_RANK_KEYS = [
   "name",
@@ -92,6 +90,17 @@ export const CATALOG_RANK_KEYS = [
   "randomness",
 ] as const;
 export type CatalogRankKey = (typeof CATALOG_RANK_KEYS)[number];
+
+/** The signals `catalogScore` actually raises. A zero drops that signal. */
+export const CATALOG_LIVE_RANK_KEYS = [
+  "proximity",
+  "popularity",
+  "randomness",
+] as const satisfies readonly CatalogRankKey[];
+export type CatalogLiveRankKey = (typeof CATALOG_LIVE_RANK_KEYS)[number];
+
+export const CATALOG_ALL_ZERO_ERROR =
+  "At least one Catalog signal must have a weight above zero.";
 
 export const DEFAULT_CATALOG_RANKING: Record<CatalogRankKey, number> = {
   name: 0,
@@ -110,9 +119,37 @@ export type CatalogConfig = {
   placesPerRail: number;
   /** Seed category must have at least this many listed places. */
   minSeedPlaces: number;
-  /** Shared Catalog Search profile. The seven lists differ only by family. */
+  /** Shared Catalog Search profile. Every guest family list reads this one vector. */
   ranking: Record<CatalogRankKey, number>;
 };
+
+/**
+ * Relative exponents for the signals Catalog actually scores.
+ * A proportional change of every nonzero weight returns the same vector,
+ * so it cannot reorder. Zero stays zero and is left out of the sum.
+ */
+export function catalogRelativeExponents(
+  ranking: Record<CatalogRankKey, number>,
+): Record<CatalogLiveRankKey, number> {
+  const out = {} as Record<CatalogLiveRankKey, number>;
+  let sum = 0;
+  for (const key of CATALOG_LIVE_RANK_KEYS) {
+    const w = ranking[key];
+    if (typeof w === "number" && Number.isFinite(w) && w > 0) sum += w;
+  }
+  for (const key of CATALOG_LIVE_RANK_KEYS) {
+    const w = ranking[key];
+    const on = typeof w === "number" && Number.isFinite(w) && w > 0;
+    out[key] = sum > 0 && on ? w / sum : 0;
+  }
+  return out;
+}
+
+export function catalogLiveWeightsAllZero(
+  ranking: Record<CatalogRankKey, number>,
+): boolean {
+  return CATALOG_LIVE_RANK_KEYS.every((key) => !(ranking[key] > 0));
+}
 
 /**
  * Google Nearby primary types the map asks for. Off = absent from the
@@ -426,7 +463,9 @@ export function snapMapReloadPair(
 ): { km: number; sec: number } {
   const fallback = MAP_RELOAD_PAIRS[1];
   const k = typeof km === "number" && Number.isFinite(km) ? km : fallback.km;
-  const s = typeof sec === "number" && Number.isFinite(sec) ? sec : fallback.sec;
+  const s = typeof sec === "number" && Number.isFinite(sec)
+    ? sec
+    : fallback.sec;
   let best: (typeof MAP_RELOAD_PAIRS)[number] = fallback;
   let bestD = Number.POSITIVE_INFINITY;
   for (const pair of MAP_RELOAD_PAIRS) {
@@ -547,7 +586,11 @@ export const DEFAULT_SWIPE: SwipeConfig = {
  * fall back to, so a blob with no `params` scores identically to yesterday.
  */
 export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
-  proximity: { maxKm: PROXIMITY_MAX_KM, kneeKm: PROXIMITY_KNEE_KM, missingGeo: 0.35 },
+  proximity: {
+    maxKm: PROXIMITY_MAX_KM,
+    kneeKm: PROXIMITY_KNEE_KM,
+    missingGeo: 0.35,
+  },
   timing: {
     openShare: TIMING_OPEN_SHARE,
     closedFloor: TIMING_CLOSED_FLOOR,
@@ -558,7 +601,11 @@ export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
     evening: DAYPART_EVENING,
     late: DAYPART_LATE,
   },
-  category: { exact: CATEGORY_EXACT, family: CATEGORY_FAMILY, miss: CATEGORY_MISS },
+  category: {
+    exact: CATEGORY_EXACT,
+    family: CATEGORY_FAMILY,
+    miss: CATEGORY_MISS,
+  },
   popularity: {
     priorRating: POPULARITY_PRIOR_RATING,
     confidence: POPULARITY_CONFIDENCE,
@@ -743,7 +790,12 @@ export function normalizeSuperParams(
 
 /** 20, 40 or 60 — snapped to the nearest stop, never a free number. */
 export function normalizeGooglePull(raw: unknown): number {
-  const n = num(raw, GOOGLE_PULL_DEFAULT, GOOGLE_PULL_STOPS[0], GOOGLE_PULL_STOPS[2]);
+  const n = num(
+    raw,
+    GOOGLE_PULL_DEFAULT,
+    GOOGLE_PULL_STOPS[0],
+    GOOGLE_PULL_STOPS[2],
+  );
   let best: number = GOOGLE_PULL_DEFAULT;
   for (const stop of GOOGLE_PULL_STOPS) {
     if (Math.abs(stop - n) < Math.abs(best - n)) best = stop;
@@ -783,13 +835,28 @@ export function normalizeNameConfig(raw: unknown): NameConfig {
     },
     deep: {
       mesitaCount: Math.round(
-        num(deep.mesitaCount, DEFAULT_NAME_DEEP.mesitaCount, 0, NAME_LANE_COUNT_MAX),
+        num(
+          deep.mesitaCount,
+          DEFAULT_NAME_DEEP.mesitaCount,
+          0,
+          NAME_LANE_COUNT_MAX,
+        ),
       ),
       autoCount: Math.round(
-        num(deep.autoCount, DEFAULT_NAME_DEEP.autoCount, 0, NAME_LANE_COUNT_MAX),
+        num(
+          deep.autoCount,
+          DEFAULT_NAME_DEEP.autoCount,
+          0,
+          NAME_LANE_COUNT_MAX,
+        ),
       ),
       googleCount: Math.round(
-        num(deep.googleCount, DEFAULT_NAME_DEEP.googleCount, 0, NAME_LANE_COUNT_MAX),
+        num(
+          deep.googleCount,
+          DEFAULT_NAME_DEEP.googleCount,
+          0,
+          NAME_LANE_COUNT_MAX,
+        ),
       ),
       supers: normalizeSuperParams(deep.supers),
     },
@@ -806,7 +873,12 @@ export function normalizeSwipeConfig(raw: unknown): SwipeConfig {
   const r = (raw ?? {}) as Record<string, unknown>;
   return {
     radiusKm: Math.round(
-      num(r.radiusKm, DEFAULT_SWIPE.radiusKm, SWIPE_RADIUS_KM_MIN, SWIPE_RADIUS_KM_MAX) * 10,
+      num(
+        r.radiusKm,
+        DEFAULT_SWIPE.radiusKm,
+        SWIPE_RADIUS_KM_MIN,
+        SWIPE_RADIUS_KM_MAX,
+      ) * 10,
     ) / 10,
     closingBufferMin: Math.round(
       num(
@@ -816,7 +888,9 @@ export function normalizeSwipeConfig(raw: unknown): SwipeConfig {
         SWIPE_CLOSING_BUFFER_MAX,
       ),
     ),
-    minReviews: Math.round(num(r.minReviews, DEFAULT_SWIPE.minReviews, 0, 100_000)),
+    minReviews: Math.round(
+      num(r.minReviews, DEFAULT_SWIPE.minReviews, 0, 100_000),
+    ),
     savedAt: normalizeSavedAt(r.savedAt),
   };
 }
@@ -829,9 +903,16 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
     minRating: Math.round(
       num(r.minRating, DEFAULT_MAP.minRating, 0, MIN_RATING_MAX) * 10,
     ) / 10,
-    minReviews: Math.round(num(r.minReviews, DEFAULT_MAP.minReviews, 0, 100_000)),
+    minReviews: Math.round(
+      num(r.minReviews, DEFAULT_MAP.minReviews, 0, 100_000),
+    ),
     minPopularity: Math.round(
-      num(r.minPopularity, DEFAULT_MAP.minPopularity, 0, MAP_MIN_POPULARITY_MAX) * 100,
+      num(
+        r.minPopularity,
+        DEFAULT_MAP.minPopularity,
+        0,
+        MAP_MIN_POPULARITY_MAX,
+      ) * 100,
     ) / 100,
     reloadMinKm: reload.km,
     reloadMinSec: reload.sec,
@@ -927,7 +1008,9 @@ export function foldLegacySignalBag(
 
 export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
   const r = (raw ?? {}) as Record<string, unknown>;
-  const rawWeights = foldLegacySignalBag((r.weights ?? {}) as Record<string, unknown>);
+  const rawWeights = foldLegacySignalBag(
+    (r.weights ?? {}) as Record<string, unknown>,
+  );
 
   const weights: Record<string, number> = {};
   // Unknown keys first, so a known key always overwrites a stale one.
@@ -935,7 +1018,8 @@ export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
     if ((SIGNAL_KEYS as readonly string[]).includes(key)) continue;
     const n = typeof raw === "number" ? raw : Number(raw);
     if (!Number.isFinite(n)) continue;
-    weights[key] = Math.round(Math.min(WEIGHT_MAX, Math.max(WEIGHT_MIN, n)) * 100) / 100;
+    weights[key] =
+      Math.round(Math.min(WEIGHT_MAX, Math.max(WEIGHT_MIN, n)) * 100) / 100;
   }
   for (const key of SIGNAL_KEYS) {
     const v = num(
@@ -959,7 +1043,10 @@ export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
   // read after this deploys. Falling back to `weights` makes a pre-1859 blob
   // score byte-identically to yesterday.
   const rawByMode = (r.weightsByMode ?? {}) as Record<string, unknown>;
-  const weightsByMode = {} as Record<WeightedModeKey, Record<SignalKey, number>>;
+  const weightsByMode = {} as Record<
+    WeightedModeKey,
+    Record<SignalKey, number>
+  >;
   for (const mode of WEIGHTED_MODE_KEYS) {
     // No legacy fold here: this bag was born at MESITA-1859, after the
     // `mesita_level` split, so it can never carry the retired key.
@@ -978,7 +1065,9 @@ export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
   const engines = {} as Record<WiredEngineKey, { ranked: boolean }>;
   for (const key of WIRED_ENGINE_KEYS) {
     const e = (rawEngines[key] ?? {}) as Record<string, unknown>;
-    engines[key] = { ranked: bool(e.ranked, DISCOVERY_DEFAULTS.engines[key].ranked) };
+    engines[key] = {
+      ranked: bool(e.ranked, DISCOVERY_DEFAULTS.engines[key].ranked),
+    };
   }
 
   // No legacy fold here (see foldLegacySignalBag): a stored `params` key
@@ -1004,14 +1093,27 @@ export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
     weightsByMode,
     params,
     filters: {
-      requireReady: bool(rawFilters.requireReady, DISCOVERY_DEFAULTS.filters.requireReady),
+      requireReady: bool(
+        rawFilters.requireReady,
+        DISCOVERY_DEFAULTS.filters.requireReady,
+      ),
       // Rounded to one decimal: Google stars are one-decimal values, and a
       // floor of 4.300000000000001 would leave the page permanently dirty.
       minRating: Math.round(
-        num(rawFilters.minRating, DISCOVERY_DEFAULTS.filters.minRating, 0, MIN_RATING_MAX) * 10,
+        num(
+          rawFilters.minRating,
+          DISCOVERY_DEFAULTS.filters.minRating,
+          0,
+          MIN_RATING_MAX,
+        ) * 10,
       ) / 10,
       minReviews: Math.round(
-        num(rawFilters.minReviews, DISCOVERY_DEFAULTS.filters.minReviews, 0, 100_000),
+        num(
+          rawFilters.minReviews,
+          DISCOVERY_DEFAULTS.filters.minReviews,
+          0,
+          100_000,
+        ),
       ),
       maxDistanceKm: Math.round(
         num(

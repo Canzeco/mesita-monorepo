@@ -170,7 +170,7 @@ export function NameConfigClient({
         <SectionCard
           icon={<Layers className="text-primary h-4 w-4" />}
           title="Word (Deep Search)"
-          subtitle="Three independent queries, then concat. Overlaps drop; first query keeps the slot. Word never calls Nearby Search. Guest pin biases Autocomplete, Text Search, and name match. Name signal only (`places.name`, not `google_name`). Map Filters never cut this list."
+          subtitle="Three independent queries, then concat. Overlaps drop; first query keeps the slot. Word never calls Nearby Search. A guest pin biases Autocomplete, Text Search, and the name match. Only the name decides the Mesita order. Map Filters never cut this list."
           state={
             <KnobState
               kind="enforced"

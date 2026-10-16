@@ -80,11 +80,11 @@ const COLUMN_READER: Record<
 > = {
   map: {
     kind: "fallback",
-    reason: "consumer-web-list-places ranks only when Google fill returns nothing",
+    reason: "Ranks listed pins only when Google returns nothing",
   },
   swipe: {
     kind: "enforced",
-    reason: "consumer-web-recommend-swipe ranks every deck",
+    reason: "Ranks every deck",
   },
 };
 
@@ -238,163 +238,94 @@ export function ModeWeightsClient({
   return (
     <div id="s-weights" className="scroll-mt-16 flex flex-col gap-4">
       {error ? <ErrorNote message={error} /> : null}
-
-      <SectionCard
-        icon={<Compass className="text-primary h-4 w-4" />}
-        title="Signal weights by mode"
-        subtitle="The exponent each signal is raised to, per mode. Only the ratios within a column mean anything — the blend is Π s^w. A dash is a signal that mode never reads. Map ranks only when Google fill comes back empty."
-      >
-        {/* Bleeds through the card padding on a phone, the same trick the
-            matrix uses: 52rem reads better across 375px than across the
-            311px left inside the card. Two columns is narrower than the
-            six-column matrix, so the width is already proven. */}
-        <div className="-mx-4 mt-5 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-          <table className="w-full min-w-[52rem] border-collapse text-left">
-            <thead>
-              <tr className="border-border border-b align-bottom">
-                <th className="text-muted-foreground type-meta w-40 py-2 pr-3 font-semibold">
-                  Signal
-                </th>
-                {WEIGHTED_MODE_KEYS.map((mode) => (
-                  <th key={mode} className="px-3 py-2">
-                    <span className="block text-sm font-semibold">
-                      {DISCOVERY_MODE_LABELS[mode]}
-                    </span>
-                    <span className="mt-1 block">
-                      <KnobState
-                        kind={COLUMN_READER[mode].kind}
-                        reason={COLUMN_READER[mode].reason}
-                      />
-                    </span>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
+      {WEIGHTED_MODE_KEYS.map((mode) => {
+        const modeLabel = DISCOVERY_MODE_LABELS[mode];
+        return (
+          <SectionCard
+            key={mode}
+            icon={<Compass className="text-primary h-4 w-4" />}
+            title={`${modeLabel} ranking`}
+            subtitle="Exponents for the signals this mode actually multiplies. A signal it does not use is not shown. Zero turns a signal off."
+            state={
+              <KnobState
+                kind={COLUMN_READER[mode].kind}
+                reason={COLUMN_READER[mode].reason}
+              />
+            }
+          >
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
               {SIGNAL_KEYS.map((key) => {
-                const label =
-                  SIGNALS.find((s) => s.key === key)?.label ?? key;
+                if (modeSignalState(mode, key) !== "on") return null;
+                const label = SIGNALS.find((s) => s.key === key)?.label ?? key;
                 const max = weightMaxFor(key);
                 return (
-                  <tr
-                    key={key}
-                    className="border-border/60 border-b last:border-0"
-                  >
-                    <th className="type-label py-2 pr-3 font-medium">{label}</th>
-                    {WEIGHTED_MODE_KEYS.map((mode) => {
-                      const modeLabel = DISCOVERY_MODE_LABELS[mode];
-                      const state = modeSignalState(mode, key);
-                      if (state !== "on") {
-                        // A LABELLED EM-DASH, never a disabled 0. Map's
-                        // Randomness is off, not zero-and-editable, and a
-                        // printed 0 would read as a number someone chose.
-                        return (
-                          <td key={mode} className="px-3 py-2">
-                            <span className="text-muted-foreground" aria-hidden>
-                              —
-                            </span>
-                            <span className="sr-only">
-                              {label} weight · {modeLabel} · off
-                            </span>
-                          </td>
-                        );
-                      }
-                      return (
-                        <td key={mode} className="px-3 py-2">
-                          <span className="flex items-center gap-2">
-                            <input
-                              type="number"
-                              inputMode="decimal"
-                              min={WEIGHT_MIN}
-                              max={max}
-                              step={0.05}
-                              // Otherwise this is ~14 inputs all called
-                              // "Weight" — the row header is not the
-                              // accessible name of a cell's control.
-                              aria-label={`${label} weight · ${modeLabel}`}
-                              value={columnOf(cfg, mode)[key]}
-                              disabled={pending || loadBlocked}
-                              onChange={(e) => {
-                                const raw = Number(e.target.value);
-                                if (Number.isNaN(raw)) return;
-                                const n = Math.round(raw * 100) / 100;
-                                patch(
-                                  mode,
-                                  key,
-                                  Math.max(WEIGHT_MIN, Math.min(max, n)),
-                                );
-                              }}
-                              className="border-border bg-card focus:border-foreground h-9 w-24 rounded-lg border px-3 text-right text-sm tabular-nums outline-none disabled:opacity-50"
-                            />
-                            {/* weightMaxFor clamps silently, so the range is
-                                printed rather than discovered by typing. */}
-                            <span className="text-muted-foreground type-meta tabular-nums">
-                              {WEIGHT_MIN}–{max}
-                            </span>
-                          </span>
-                        </td>
-                      );
-                    })}
-                  </tr>
+                  <label key={key} className="flex flex-col gap-2">
+                    <span className="text-sm font-medium">{label}</span>
+                    <span className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        min={WEIGHT_MIN}
+                        max={max}
+                        step={0.05}
+                        aria-label={`${label} weight · ${modeLabel}`}
+                        value={columnOf(cfg, mode)[key]}
+                        disabled={pending || loadBlocked}
+                        onChange={(e) => {
+                          const raw = Number(e.target.value);
+                          if (Number.isNaN(raw)) return;
+                          const n = Math.round(raw * 100) / 100;
+                          patch(mode, key, Math.max(WEIGHT_MIN, Math.min(max, n)));
+                        }}
+                        className="border-border bg-card focus:border-foreground h-9 w-28 rounded-lg border px-3 text-right text-sm tabular-nums outline-none disabled:opacity-50"
+                      />
+                      <span className="text-muted-foreground type-meta tabular-nums">
+                        {WEIGHT_MIN}–{max}
+                      </span>
+                    </span>
+                  </label>
                 );
               })}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td />
-                {WEIGHTED_MODE_KEYS.map((mode) => (
-                  <td key={mode} className="px-3 align-top">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <SaveRow
-                        pending={pending && savingMode === mode}
-                        dirty={dirty[mode]}
-                        ok={okMode === mode}
-                        onClick={() => save(mode)}
-                        loadError={loadBlocked ? error : null}
-                      />
-                      {/* No preset library, no CRUD, no persistence — Pato's
-                          constraint is "keep the params simpler". Reset is
-                          the only way back to the shipped numbers, and Revert
-                          exists because there is no other Discard anywhere in
-                          this console and Apply-without-undo destroys a
-                          hand-tuned column. */}
-                      <span className="mt-5 flex flex-wrap items-center gap-2">
-                        <Button
-                          tone="ghost"
-                          size="sm"
-                          icon={<RotateCcw className="h-3.5 w-3.5" />}
-                          disabled={pending || loadBlocked}
-                          onClick={() =>
-                            setColumn(mode, DEFAULT_WEIGHTS_BY_MODE[mode])}
-                        >
-                          Reset to defaults
-                        </Button>
-                        {dirty[mode] ? (
-                          <Button
-                            tone="ghost"
-                            size="sm"
-                            icon={<Undo2 className="h-3.5 w-3.5" />}
-                            disabled={pending || loadBlocked}
-                            onClick={() => setColumn(mode, columnOf(saved, mode))}
-                          >
-                            Revert to saved
-                          </Button>
-                        ) : null}
-                      </span>
-                    </div>
-                  </td>
-                ))}
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-
-        {updatedAt ? (
-          <p className="text-muted-foreground mt-4 type-meta">
-            Last saved {formatShortDate(updatedAt)}
-          </p>
-        ) : null}
-      </SectionCard>
+            </div>
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              <SaveRow
+                pending={pending && savingMode === mode}
+                dirty={dirty[mode]}
+                ok={okMode === mode}
+                onClick={() => save(mode)}
+                loadError={loadBlocked ? error : null}
+              />
+              <span className="mt-5 flex flex-wrap items-center gap-2">
+                <Button
+                  tone="ghost"
+                  size="sm"
+                  icon={<RotateCcw className="h-3.5 w-3.5" />}
+                  disabled={pending || loadBlocked}
+                  onClick={() => setColumn(mode, DEFAULT_WEIGHTS_BY_MODE[mode])}
+                >
+                  Reset to defaults
+                </Button>
+                {dirty[mode] ? (
+                  <Button
+                    tone="ghost"
+                    size="sm"
+                    icon={<Undo2 className="h-3.5 w-3.5" />}
+                    disabled={pending || loadBlocked}
+                    onClick={() => setColumn(mode, columnOf(saved, mode))}
+                  >
+                    Revert to saved
+                  </Button>
+                ) : null}
+              </span>
+            </div>
+            {updatedAt ? (
+              <p className="text-muted-foreground mt-4 type-meta">
+                Last saved {formatShortDate(updatedAt)}
+              </p>
+            ) : null}
+          </SectionCard>
+        );
+      })}
     </div>
   );
 }

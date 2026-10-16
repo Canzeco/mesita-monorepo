@@ -49,7 +49,7 @@ export const DISCOVERY_MODE_LABELS: Record<DiscoveryModeKey, string> = {
   word: "Word",
   map: "Map",
   catalog: "Catalog",
-  swipe: "Scroll",
+  swipe: "Swipe",
   chat: "Chat",
   favorites: "Favorites",
 };
@@ -90,9 +90,9 @@ const DISCOVERY_MODE_ENTITIES: Record<
 > = {
   word: ["location", "place"],
   map: ["place"],
-  catalog: ["place", "social"],
+  catalog: ["place"],
   swipe: ["place"],
-  chat: ["place", "social"],
+  chat: [],
   favorites: ["place"],
 };
 
@@ -164,11 +164,8 @@ export const DISCOVERY_SOURCES = [
   "Mesita Social Catalog Search",
 ] as const;
 
-/**
- * A source is either called by some mode, or named here. Empty since Browse
- * and Flexible left: both Catalog searches have callers (MESITA-2195).
- */
-export const DISCOVERY_SOURCES_NO_CALLER = [] as const;
+/** Social Catalog has no engine, so no mode calls it. */
+export const DISCOVERY_SOURCES_NO_CALLER = ["Mesita Social Catalog Search"] as const;
 
 /**
  * Locked mode → sources. Chips are read-only until dispatch reads a
@@ -195,14 +192,9 @@ export const DISCOVERY_MODE_SOURCES = {
     "Mesita Places Name Search",
   ],
   map: ["Google Places Nearby Search", FILTERS_FLOOR_OWNER],
-  catalog: ["Mesita Places Catalog Search", "Mesita Social Catalog Search"],
+  catalog: ["Mesita Places Catalog Search"],
   swipe: ["Mesita Places Catalog Search"],
-  chat: [
-    "Google Places Text Search",
-    "Google Places Nearby Search",
-    "Mesita Places Catalog Search",
-    "Mesita Social Catalog Search",
-  ],
+  chat: [],
   favorites: [],
 } as const;
 
