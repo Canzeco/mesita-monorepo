@@ -1,8 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { setCategoryFamilies } from "./actions";
-import type { CategoryRow, FamiliesMap, FamilyRow, TagRow } from "./highlight";
+import type { FamiliesMap, FamilyRow, TagRow } from "./highlight";
 
 /** The column shows spaces. Search must hit that label and the stored slug. */
 export function googleTypeHaystack(slug: string): string {
@@ -32,135 +31,53 @@ export function groupTags(tags: TagRow[], query: string): TagGroup[] {
 
 export function FamiliesExplorer({ map }: { map: FamiliesMap }) {
   const [tagQuery, setTagQuery] = useState("");
-  const [categories, setCategories] = useState(map.categories);
+  const guestFamilies = useMemo(
+    () => map.families.filter((family) => family.slug !== "undefined"),
+    [map.families],
+  );
   const tagGroups = useMemo(() => groupTags(map.tags, tagQuery), [map.tags, tagQuery]);
 
   return (
     <>
       <p className="text-muted-foreground mt-8 text-sm">
-        {categories.length} categories · {map.tags.length} tags · {map.families.length} families
+        {guestFamilies.length} guest families · {map.tags.length} tags ·{" "}
+        {map.googleTypes.length} Google types in the coarse map
       </p>
-      <CategorySection
-        categories={categories}
-        families={map.families}
-        onSaved={(slug, familyKeys) => {
-          setCategories((rows) =>
-            rows.map((row) => (row.slug === slug ? { ...row, familyKeys } : row)),
-          );
-        }}
-      />
       <TagsList
         groups={tagGroups}
         count={map.tags.length}
         query={tagQuery}
         onQuery={setTagQuery}
       />
-      <FamiliesSection families={map.families} categories={categories} />
+      <FamiliesSection families={guestFamilies} />
     </>
   );
 }
 
-function CategorySection({
-  categories,
-  families,
-  onSaved,
-}: {
-  categories: CategoryRow[];
-  families: FamilyRow[];
-  onSaved: (slug: string, familyKeys: string[]) => void;
-}) {
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState<string | null>(null);
-
-  async function toggle(category: CategoryRow, family: string, on: boolean) {
-    const next = on
-      ? [...category.familyKeys, family]
-      : category.familyKeys.filter((key) => key !== family);
-    setPending(category.slug);
-    setError(null);
-    const saved = await setCategoryFamilies(category.slug, next);
-    setPending(null);
-    if (!saved.ok) {
-      setError(saved.error);
-      return;
-    }
-    onSaved(category.slug, saved.familyKeys);
-  }
-
+function FamiliesSection({ families }: { families: FamilyRow[] }) {
   return (
     <section className="border-border bg-card mt-4 rounded-2xl border">
       <div className="border-border border-b p-4">
         <h2 className="font-display text-sm font-semibold tracking-tight">
-          Categories
-          <span className="text-muted-foreground ml-2 font-normal">{categories.length}</span>
-        </h2>
-        <p className="text-muted-foreground mt-1 text-sm">
-          One category maps to the families checked here. Places are not listed.
-        </p>
-        {error ? <p className="text-destructive mt-2 text-sm">{error}</p> : null}
-      </div>
-      <ul className="max-h-[32rem] divide-y overflow-y-auto">
-        {categories.map((category) => (
-          <li key={category.slug} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <span className="text-sm font-medium">{category.label}</span>
-            <span className="flex flex-wrap gap-3">
-              {families.map((family) => (
-                <label key={family.slug} className="text-muted-foreground inline-flex items-center gap-1.5 text-xs">
-                  <input
-                    type="checkbox"
-                    checked={category.familyKeys.includes(family.slug)}
-                    disabled={pending === category.slug}
-                    onChange={(e) => void toggle(category, family.slug, e.target.checked)}
-                  />
-                  {family.label}
-                </label>
-              ))}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-function FamiliesSection({
-  families,
-  categories,
-}: {
-  families: FamilyRow[];
-  categories: CategoryRow[];
-}) {
-  return (
-    <section className="border-border bg-card mt-4 rounded-2xl border">
-      <div className="border-border border-b p-4">
-        <h2 className="font-display text-sm font-semibold tracking-tight">
-          Families
+          Guest families
           <span className="text-muted-foreground ml-2 font-normal">{families.length}</span>
         </h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          Each family lists the categories it contains. The mapping is the dictionary, not a place field.
+          Loaded live from <code className="text-xs">place_families</code>. Carousel membership
+          for a place comes from its Google primary type via the catalog, not from a field on the
+          row.
         </p>
       </div>
       <ul className="divide-y">
-        {families.map((family) => {
-          const members = categories.filter((row) => row.familyKeys.includes(family.slug));
-          return (
-            <li key={family.slug} className="p-4">
-              <h3 className="text-sm font-medium">
-                {family.emoji ? `${family.emoji} ` : ""}
-                {family.label}
-                <span className="text-muted-foreground ml-2 font-normal">{members.length}</span>
-              </h3>
-              {members.length === 0 ? (
-                <p className="text-muted-foreground mt-1 text-sm">No categories.</p>
-              ) : (
-                <p className="text-muted-foreground mt-1 text-sm">
-                  {members.map((row) => row.label).join(", ")}
-                </p>
-              )}
-            </li>
-          );
-        })}
+        {families.map((family) => (
+          <li key={family.slug} className="flex items-center gap-2 p-4">
+            <span className="text-sm font-medium">
+              {family.emoji ? `${family.emoji} ` : ""}
+              {family.label}
+            </span>
+            <span className="text-muted-foreground font-mono text-xs">{family.slug}</span>
+          </li>
+        ))}
       </ul>
     </section>
   );

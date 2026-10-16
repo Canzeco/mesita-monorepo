@@ -75,7 +75,6 @@ describe("shownFamily", () => {
 
 describe("the profile page does not fetch a second door", () => {
   const files = [
-    "PlaceFamilyField.tsx",
     "PlaceCategorySelect.tsx",
     "PlaceTagsPicker.tsx",
     "sections/PlaceSection.tsx",

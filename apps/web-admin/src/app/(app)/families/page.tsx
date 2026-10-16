@@ -17,7 +17,7 @@ export default async function FamiliesPage() {
       <PageHeader
         eyebrow="Operations · Atlas"
         title="Atlas"
-        description="The switches decide which of the fifteen families Google search asks for. Below: counts, then Categories, Tags, and Families. A category can sit on more than one family. A precise rail is not also the broader one. Places are not listed."
+        description="The switches decide which of the fifteen guest families Google search asks for. Below: live counts, Tags, and the family rails loaded from the database. A place carries Google's primary type as its category; guest-family membership is derived from that type at read time and is not stored on the place. Places are not listed."
       />
       <div className="mt-8">
         <FamiliesClient
