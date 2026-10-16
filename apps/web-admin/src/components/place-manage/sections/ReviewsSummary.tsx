@@ -40,7 +40,10 @@ export function syncSubtitle(input: {
   if (input.syncing) return "Syncing…";
   if (input.failures.length > 0) {
     const messages = input.failures
-      .map((source) => input.errors?.[source]?.trim())
+      .map((source) => {
+        const raw = input.errors?.[source]?.trim();
+        return raw ? formatSyncError(raw) : null;
+      })
       .filter((message): message is string => !!message);
     const unique = [...new Set(messages)];
     if (unique.length === 1) return unique[0];
@@ -192,10 +195,18 @@ export function ReviewsSummary() {
   );
 }
 
+function formatSyncError(raw: string): string {
+  const text = raw.trim();
+  if (/outstanding invoices|platform-feature-disabled/i.test(text)) {
+    return "Apify refused the call: too many outstanding invoices.";
+  }
+  return text.length > 160 ? `${text.slice(0, 157)}…` : text;
+}
+
 function hintFor(state: BoxState, detail: string, error?: string): string {
   if (state === "no-link") return "No link";
   if (state === "syncing") return "Syncing";
-  if (state === "error") return error?.trim() || "Error";
+  if (state === "error") return error?.trim() ? formatSyncError(error) : "Error";
   if (state === "synced") return `Synced · ${detail}`;
   return `Never synced · ${detail}`;
 }
