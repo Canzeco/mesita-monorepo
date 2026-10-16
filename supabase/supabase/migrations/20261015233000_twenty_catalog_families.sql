@@ -22,6 +22,10 @@ as $$
     );
 $$;
 
+-- The seven families already occupy sort orders 1–7. Park them out of the
+-- way so the twenty can take those orders, then delete the seven.
+update public.place_families set sort_order = sort_order + 200;
+
 insert into public.place_families (slug, label, emoji, sort_order) values
   ('coffee', 'Coffee', '·', 1),
   ('breakfast', 'Breakfast', '·', 2),
