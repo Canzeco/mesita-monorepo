@@ -142,17 +142,10 @@ export const NEARBY_TYPE_KEYS = [
   "restaurant",
   "bakery",
   "bar",
-  "wine_bar",
   "night_club",
-  "concert_hall",
   "tourist_attraction",
   "bowling_alley",
   "movie_theater",
-  "amusement_park",
-  "park",
-  "museum",
-  "art_gallery",
-  "performing_arts_theater",
   "gym",
   "fitness_center",
   "yoga_studio",
@@ -165,8 +158,8 @@ export const NEARBY_TYPE_KEYS = [
 export type NearbyTypeKey = (typeof NEARBY_TYPE_KEYS)[number];
 
 /**
- * THE OPERATOR'S CATEGORY PARAM (Pato, 2026-09-08, MESITA-1695): the seven
- * guest families, in `FAMILIES` sort order — the same seven, in the same
+ * THE OPERATOR'S CATEGORY PARAM (Pato, 2026-09-08, MESITA-1695): the fifteen
+ * guest families, in `FAMILIES` sort order — the same fifteen, in the same
  * order, the guest sees as pills on the Filters sheet.
  *
  * Google's own type slugs are not a param. Twenty-two switches asked the
@@ -191,13 +184,8 @@ export const SUPER_PARAM_KEYS = [
   "dinner",
   "sweet",
   "drinks",
-  "wine",
   "night_out",
-  "live",
   "go_out",
-  "with_kids",
-  "outdoors",
-  "culture",
   "move",
   "feel_better",
 ] as const;
@@ -492,13 +480,8 @@ export const DEFAULT_MAP_SUPERS: Record<SuperParamKey, boolean> = {
   dinner: true,
   sweet: true,
   drinks: true,
-  wine: false,
   night_out: true,
-  live: false,
   go_out: false,
-  with_kids: false,
-  outdoors: false,
-  culture: false,
   move: false,
   feel_better: false,
 };

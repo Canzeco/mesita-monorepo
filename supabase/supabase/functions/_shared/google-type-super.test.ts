@@ -75,10 +75,10 @@ Deno.test("search batteries stay inside Google's API caps", () => {
   assertEquals(GOOGLE_SEARCH_TYPES.undefined, []);
   assertEquals(nearbyTypesForSupers(["undefined"]), []);
   assertEquals(
-    nearbyTypesForSupers(["move", "culture"]),
+    nearbyTypesForSupers(["move", "go_out"]),
     [
       ...GOOGLE_SEARCH_TYPES.move,
-      ...GOOGLE_SEARCH_TYPES.culture,
+      ...GOOGLE_SEARCH_TYPES.go_out,
     ],
   );
   assertEquals(nearbyTypesForSupers(["other", "nope"]), []);
@@ -88,7 +88,7 @@ Deno.test("NEARBY_TYPE_KEYS is exactly GOOGLE_SEARCH_TYPES, flattened", () => {
   const flat = Object.values(GOOGLE_SEARCH_TYPES).flatMap((types) => [...types]);
   assertEquals([...NEARBY_TYPE_KEYS], flat);
   const covered = Object.values(GOOGLE_SEARCH_TYPES).filter((types) => types.length > 0);
-  assertEquals(covered.length, 20);
+  assertEquals(covered.length, 15);
 });
 
 Deno.test("SUPER_PARAM_KEYS is the guest families, minus the empty battery", () => {
@@ -96,7 +96,7 @@ Deno.test("SUPER_PARAM_KEYS is the guest families, minus the empty battery", () 
     .filter(([, types]) => types.length > 0)
     .map(([slug]) => slug);
   assertEquals(new Set(SUPER_PARAM_KEYS), new Set(withBattery));
-  assertEquals(SUPER_PARAM_KEYS.length, 20);
+  assertEquals(SUPER_PARAM_KEYS.length, 15);
   assertEquals((SUPER_PARAM_KEYS as readonly string[]).includes("undefined"), false);
 });
 

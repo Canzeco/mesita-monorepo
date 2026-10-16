@@ -224,10 +224,10 @@ export function admitSwipeCatalog<T extends SwipeListedRow>(
 // Search + Add share this allowlist. A Super param expands to the Google
 // Table A types in that Super (`mexican_restaurant` rides `restaurant`).
 //
-// Food and drink rails gate Search and Add. Move, Feel better, Go out,
-// With kids, Outdoors, Culture and Live do not: those places admitted
-// before a family toggle existed, and turning the toggle into a gate
-// would drop listed museums, gyms and parks.
+// Food and drink rails gate Search and Add. Night out does too.
+// Move, Feel better and Go out do not: those places admitted before a
+// family toggle existed, and turning the toggle into a gate would drop
+// listed museums, gyms and parks.
 
 const PARAM_GATED_FAMILIES = new Set<FamilyKey>([
   "coffee",
@@ -241,7 +241,6 @@ const PARAM_GATED_FAMILIES = new Set<FamilyKey>([
   "dinner",
   "sweet",
   "drinks",
-  "wine",
   "night_out",
 ]);
 

@@ -637,8 +637,8 @@ select has_table(
 
 select is(
   (select count(*)::bigint from public.place_families),
-  21::bigint,
-  'place family catalog is twenty guest families plus Undefined'
+  16::bigint,
+  'place family catalog is fifteen guest families plus Undefined'
 );
 
 select is(
@@ -650,9 +650,9 @@ select is(
 select is(
   (select array_agg(slug order by sort_order) from public.place_families),
   array['coffee','breakfast','quick_bite','pizza','tacos','sushi','burgers',
-        'noodles','dinner','sweet','drinks','wine','night_out','live','go_out',
-        'with_kids','outdoors','culture','move','feel_better','undefined']::text[],
-  'family catalog order is the twenty guest rails, Undefined last'
+        'noodles','dinner','sweet','drinks','night_out','go_out',
+        'move','feel_better','undefined']::text[],
+  'family catalog order is the fifteen guest rails, Undefined last'
 );
 
 select is(
@@ -670,8 +670,8 @@ select is(
 select is(
   (select count(*)::bigint from public.place_categories
     where cardinality(family_keys) = 2),
-  11::bigint,
-  'eleven categories sit on two families'
+  5::bigint,
+  'five categories sit on two families'
 );
 
 select is(
@@ -701,13 +701,13 @@ select is(
 );
 
 select ok(
-  (select max(cardinality(family_keys)) from public.place_categories) between 1 and 20,
+  (select max(cardinality(family_keys)) from public.place_categories) between 1 and 15,
   'a category sits on at least one family and not more than the catalog'
 );
 
 select ok(
   position(
-    'cardinality(slugs) <= 20' in pg_get_functiondef('public.atlas_family_slugs_valid(text[])'::regprocedure)
+    'cardinality(slugs) <= 15' in pg_get_functiondef('public.atlas_family_slugs_valid(text[])'::regprocedure)
   ) > 0,
   'a category is not capped at two families'
 );
@@ -872,7 +872,7 @@ select is(
 
 select lives_ok(
   $$update public.place_categories
-       set family_keys = array['dinner', 'coffee', 'culture']
+       set family_keys = array['dinner', 'coffee', 'move']
      where slug = 'mesita_1857_probe'$$,
   'the mapping can change again'
 );
@@ -887,7 +887,7 @@ select is(
 select is(
   (select family_keys from public.profiles
     where id = '00000000-0000-4000-8000-0000000fa111'),
-  array['dinner', 'coffee', 'culture']::text[],
+  array['dinner', 'coffee', 'move']::text[],
   'the catalog view follows the new mapping'
 );
 

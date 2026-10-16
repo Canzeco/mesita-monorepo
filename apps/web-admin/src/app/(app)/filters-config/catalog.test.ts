@@ -349,10 +349,10 @@ describe("Discovery function APIs", () => {
     });
   });
 
-  it("the category param is twenty families", () => {
+  it("the category param is fifteen families", () => {
     expect(coerceConfig({ weights: {}, slotting: {} }).general).toEqual(DEFAULT_GENERAL);
-    expect(SUPER_FIELDS.length).toBe(20);
-    expect(new Set(SUPER_FIELDS.map((f) => f.key)).size).toBe(20);
+    expect(SUPER_FIELDS.length).toBe(15);
+    expect(new Set(SUPER_FIELDS.map((f) => f.key)).size).toBe(15);
     for (const f of SUPER_FIELDS) expect(f.battery.length, f.key).toBeGreaterThan(0);
     const on = SUPER_FIELDS.filter((f) => DEFAULT_MAP.supers[f.key]).map((f) => f.key);
     expect(new Set(on)).toEqual(

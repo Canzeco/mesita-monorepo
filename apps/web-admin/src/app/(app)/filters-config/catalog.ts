@@ -173,7 +173,7 @@ export type CatalogConfig = {
 
 // Mirrors SUPER_PARAM_KEYS in _shared/discovery-config.ts, itself pinned to
 // the taxonomy by google-type-super.test.ts. The operator's category param is
-// the SUPER, not Google's slug (MESITA-1695): twenty-two switches in Google's
+// the SUPER, not Google's slug (MESITA-1695): fifteen switches in Google's
 // vocabulary, capped by an ordered "first N", is what let four whole families
 // sit invisibly off. Order is the guest's — FAMILIES sort_order.
 export const SUPER_PARAM_KEYS = [
@@ -188,13 +188,8 @@ export const SUPER_PARAM_KEYS = [
   "dinner",
   "sweet",
   "drinks",
-  "wine",
   "night_out",
-  "live",
   "go_out",
-  "with_kids",
-  "outdoors",
-  "culture",
   "move",
   "feel_better",
 ] as const;
@@ -245,13 +240,8 @@ export const SUPER_FIELDS: {
   { key: "dinner", label: "Dinner", emoji: "·", battery: ["restaurant"] },
   { key: "sweet", label: "Sweet", emoji: "·", battery: ["bakery"] },
   { key: "drinks", label: "Drinks", emoji: "·", battery: ["bar"] },
-  { key: "wine", label: "Wine", emoji: "·", battery: ["wine_bar"] },
   { key: "night_out", label: "Night out", emoji: "·", battery: ["night_club"] },
-  { key: "live", label: "Live", emoji: "·", battery: ["concert_hall"] },
   { key: "go_out", label: "Go out", emoji: "·", battery: ["tourist_attraction", "bowling_alley", "movie_theater"] },
-  { key: "with_kids", label: "With kids", emoji: "·", battery: ["amusement_park"] },
-  { key: "outdoors", label: "Outdoors", emoji: "·", battery: ["park"] },
-  { key: "culture", label: "Culture", emoji: "·", battery: ["museum", "art_gallery", "performing_arts_theater"] },
   { key: "move", label: "Move", emoji: "·", battery: ["gym", "fitness_center", "yoga_studio", "sports_club"] },
   { key: "feel_better", label: "Feel better", emoji: "·", battery: ["spa", "beauty_salon", "hair_salon", "massage"] },
 ];
@@ -394,13 +384,8 @@ const DEFAULT_MAP_SUPERS: Record<SuperParamKey, boolean> = {
   dinner: true,
   sweet: true,
   drinks: true,
-  wine: false,
   night_out: true,
-  live: false,
   go_out: false,
-  with_kids: false,
-  outdoors: false,
-  culture: false,
   move: false,
   feel_better: false,
 };

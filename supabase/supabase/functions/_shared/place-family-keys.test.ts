@@ -63,7 +63,7 @@ Deno.test("withFamilyKeysList maps a list", () => {
     { category: "museum" },
   ]);
   assertEquals(rows[0]?.family_keys, ["coffee", "breakfast"]);
-  assertEquals(rows[1]?.family_keys, ["culture"]);
+  assertEquals(rows[1]?.family_keys, ["go_out"]);
 });
 
 // THE MEMBERSHIP COLOUR LAW (Pato, 2026-08-29): enriched > everything else.
