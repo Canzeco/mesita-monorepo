@@ -105,6 +105,8 @@ export function ReviewsSummary() {
     setSyncing(false);
     if (!r.ok) {
       setFailures(["Sync"]);
+      if (r.error?.trim()) setSourceErrors({ Sync: r.error.trim() });
+      setBox((current) => boxesAfterFailedSync(current));
       return;
     }
     const sources = r.data.sources ?? [];
@@ -211,6 +213,15 @@ function hintFor(state: BoxState, detail: string, error?: string): string {
   if (state === "error") return error?.trim() ? formatSyncError(error) : "Error";
   if (state === "synced") return `Synced · ${detail}`;
   return `Never synced · ${detail}`;
+}
+
+/** A failed call never landed a per-source result, so tiles left on Syncing become Error. */
+export function boxesAfterFailedSync(box: Record<string, BoxState>): Record<string, BoxState> {
+  const next: Record<string, BoxState> = {};
+  for (const [key, value] of Object.entries(box)) {
+    next[key] = value === "syncing" ? "error" : value;
+  }
+  return next;
 }
 
 export function reviewBoxState(armed: boolean, status: string | undefined): BoxState {

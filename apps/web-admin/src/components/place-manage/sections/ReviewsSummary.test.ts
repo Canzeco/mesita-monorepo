@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { reviewBoxState, syncSubtitle } from "./ReviewsSummary";
+import { boxesAfterFailedSync, reviewBoxState, syncSubtitle } from "./ReviewsSummary";
 
 describe("review boxes", () => {
   it("names the five states from the saved link and the last sync", () => {
@@ -30,6 +30,20 @@ describe("review boxes", () => {
         google_reviews: "Apify refused the call: too many outstanding invoices.",
       },
     })).toBe("Apify refused the call: too many outstanding invoices.");
+  });
+
+  it("turns tiles that were still syncing into errors when the call fails", () => {
+    expect(boxesAfterFailedSync({
+      google: "syncing",
+      instagram: "no-link",
+      facebook: "syncing",
+      google_reviews: "syncing",
+    })).toEqual({
+      google: "error",
+      instagram: "no-link",
+      facebook: "error",
+      google_reviews: "error",
+    });
   });
 
   it("keeps Sync in the Reviews header and the four boxes", () => {
