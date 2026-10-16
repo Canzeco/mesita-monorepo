@@ -174,7 +174,7 @@ export function ReviewsSummary() {
             value={num(place.google_stars_overall) == null ? "—" : num(place.google_stars_overall)!.toFixed(1)}
             muted={num(place.google_stars_overall) == null}
             stars={num(place.google_stars_overall)}
-            hint={hintFor(googleState, num(place.google_review_count) != null ? reviewWord(num(place.google_review_count)!) : "No rating yet.", errors.google)}
+            hint={hintFor(googleState, num(place.google_review_count) != null ? reviewWord(num(place.google_review_count)!) : "No rating yet.", errors.google, shownAt)}
           />
         </div>
         <SummaryTile
@@ -182,17 +182,17 @@ export function ReviewsSummary() {
           state={igState}
           value={num(place.instagram_followers_count) == null ? "—" : compact(num(place.instagram_followers_count)!)}
           muted={num(place.instagram_followers_count) == null}
-          hint={hintFor(igState, "followers", errors.instagram)}
+          hint={hintFor(igState, "followers", errors.instagram, shownAt)}
         />
         <SummaryTile
           label="Facebook Summary"
           state={fbState}
           value={num(place.facebook_followers) == null ? "—" : compact(num(place.facebook_followers)!)}
           muted={num(place.facebook_followers) == null}
-          hint={hintFor(fbState, "followers", errors.facebook)}
+          hint={hintFor(fbState, "followers", errors.facebook, shownAt)}
         />
         <div className="sm:col-span-2">
-          <ReviewsTile place={place} state={reviewsState} error={errors.google_reviews} />
+          <ReviewsTile place={place} state={reviewsState} error={errors.google_reviews} when={shownAt} />
         </div>
       </div>
     </SectionCard>
@@ -202,16 +202,24 @@ export function ReviewsSummary() {
 function formatSyncError(raw: string): string {
   const text = raw.trim();
   if (/outstanding invoices|platform-feature-disabled/i.test(text)) {
-    return "Apify refused the call: too many outstanding invoices.";
+    return "Sync could not run: too many outstanding invoices.";
   }
   return text.length > 160 ? `${text.slice(0, 157)}…` : text;
 }
 
-function hintFor(state: BoxState, detail: string, error?: string): string {
-  if (state === "no-link") return "No link";
+export function boxStateLabel(state: BoxState): string {
+  if (state === "no-link") return "No link configured";
+  if (state === "never-synced") return "Never synced";
+  if (state === "syncing") return "Syncing";
+  if (state === "error") return "Error";
+  return "Synced";
+}
+
+function hintFor(state: BoxState, detail: string, error?: string, when?: string | null): string {
+  if (state === "no-link") return "No link configured";
   if (state === "syncing") return "Syncing";
   if (state === "error") return error?.trim() ? formatSyncError(error) : "Error";
-  if (state === "synced") return `Synced · ${detail}`;
+  if (state === "synced") return when ? `Synced ${relative(when)} · ${detail}` : `Synced · ${detail}`;
   return `Never synced · ${detail}`;
 }
 
@@ -283,20 +291,22 @@ function ReviewsTile({
   place,
   state,
   error,
+  when,
 }: {
   place: AdminPlace;
   state: BoxState;
   error?: string;
+  when?: string | null;
 }) {
   const reviews = storedReviews(place.google_reviews);
   const shown = reviews.slice(0, 3);
   return (
     <Tile
-      label="Google Reviews"
+      label="Individual Google Reviews"
       state={state}
       value={reviews.length > 0 ? String(reviews.length) : "—"}
       muted={reviews.length === 0}
-      hint={hintFor(state, reviews.length > 0 ? "on file" : "No reviews on file.", error)}
+      hint={hintFor(state, reviews.length > 0 ? "on file" : "No reviews on file.", error, when)}
       extra={shown.length > 0 ? (
         <ul className="text-muted-foreground mt-1 space-y-1 type-label">
           {shown.map((review, i) => (
@@ -364,7 +374,7 @@ function Tile({
         <p className="text-muted-foreground type-label">{hint}</p>
         {extra}
       </div>
-      <span className="text-muted-foreground type-label capitalize">{state.replace("-", " ")}</span>
+      <span className="text-muted-foreground type-label">{boxStateLabel(state)}</span>
     </div>
   );
 }
