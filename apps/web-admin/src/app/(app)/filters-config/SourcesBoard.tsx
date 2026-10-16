@@ -129,9 +129,9 @@ function SourceControls({
         Catalog and Swipe both read listed Mesita places. Ranking weights for
         the family lists are on{" "}
         <Link href={DISCOVERY_CATALOG_HREF} className="text-foreground font-medium underline">
-          Catalog
+          Modes
         </Link>
-        . One profile covers every family.
+        , on Catalog. One profile covers every family.
       </p>
     );
   }

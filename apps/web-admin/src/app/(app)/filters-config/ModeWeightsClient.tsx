@@ -109,10 +109,13 @@ export function ModeWeightsClient({
   initialConfig,
   initialUpdatedAt,
   loadError,
+  only,
 }: {
   initialConfig: DiscoveryConfig;
   initialUpdatedAt: string | null;
   loadError: string | null;
+  /** Render one mode's weights. Omit to render every mode that ranks. */
+  only?: WeightedModeKey;
 }) {
   const [cfg, setCfg] = useState<DiscoveryConfig>(initialConfig);
   const [saved, setSaved] = useState<DiscoveryConfig>(initialConfig);
@@ -235,10 +238,14 @@ export function ModeWeightsClient({
     });
   };
 
+  const columns = only
+    ? WEIGHTED_MODE_KEYS.filter((key) => key === only)
+    : WEIGHTED_MODE_KEYS;
+
   return (
-    <div id="s-weights" className="scroll-mt-16 flex flex-col gap-4">
+    <div id={only ? `s-weights-${only}` : "s-weights"} className="scroll-mt-16 flex flex-col gap-4">
       {error ? <ErrorNote message={error} /> : null}
-      {WEIGHTED_MODE_KEYS.map((mode) => {
+      {columns.map((mode) => {
         const modeLabel = DISCOVERY_MODE_LABELS[mode];
         return (
           <SectionCard

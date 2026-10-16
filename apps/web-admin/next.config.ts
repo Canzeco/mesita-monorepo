@@ -69,6 +69,17 @@ const nextConfig: NextConfig = {
         destination: "/filters-config/sources",
         permanent: true,
       },
+      // Catalog is a mode on Modes. The old tab still lands there.
+      {
+        source: "/filters-config/catalog",
+        destination: "/filters-config/modes",
+        permanent: false,
+      },
+      {
+        source: "/filters-config/catalog/:path*",
+        destination: "/filters-config/modes",
+        permanent: false,
+      },
     ];
   },
 };
