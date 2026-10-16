@@ -48,7 +48,7 @@ Deno.test("a defined category resolves to its full membership", () => {
   );
 });
 
-Deno.test("a multi-parent category joins both families", () => {
+Deno.test("a category in the dictionary shows every family it belongs to", () => {
   assertEquals(
     resolveProfileFamily({
       category: "karaoke",

@@ -224,22 +224,25 @@ export function admitSwipeCatalog<T extends SwipeListedRow>(
 // Search + Add share this allowlist. A Super param expands to the Google
 // Table A types in that Super (`mexican_restaurant` rides `restaurant`).
 //
-// ONLY THE THREE F&B SUPERS GATE BY PARAM. Sports, wellness, experiences and
-// culture admit whatever the operator has toggled, because that is what they
-// did before the param existed: the strip only knew five F&B slugs until
-// MESITA-1683, so a listed spa, museum or park has never been gated here.
-// Turning the other four into real gates would newly EXCLUDE listed places
-// from Search and Add, which is a product decision, not a rename — so the
-// carve-out stays explicit until Pato takes it (MESITA-1695).
-//
-// Guest Super pills send `GOOGLE_SEARCH_TYPES` on Nearby. googleFill is
-// Nearby-only and is not a Search/Add gate. Super `undefined` has no battery,
-// so listed leftover places still admit.
+// Food and drink rails gate Search and Add. Move, Feel better, Go out,
+// With kids, Outdoors, Culture and Live do not: those places admitted
+// before a family toggle existed, and turning the toggle into a gate
+// would drop listed museums, gyms and parks.
 
 const PARAM_GATED_FAMILIES = new Set<FamilyKey>([
-  "restaurants",
-  "bars_nightlife",
-  "cafes_bakeries",
+  "coffee",
+  "breakfast",
+  "quick_bite",
+  "pizza",
+  "tacos",
+  "sushi",
+  "burgers",
+  "noodles",
+  "dinner",
+  "sweet",
+  "drinks",
+  "wine",
+  "night_out",
 ]);
 
 export type MapPlaceSignals = {

@@ -43,8 +43,8 @@ function place(over: Partial<SignalPlace> = {}): SignalPlace {
 Deno.test("undefined is not a list and a dual-family place is in both", () => {
   const rows = [
     row("only-undefined", ["undefined"]),
-    row("both", ["restaurants", "bars_nightlife"]),
-    row("cafe", ["cafes_bakeries"]),
+    row("both", ["dinner", "drinks"]),
+    row("cafe", ["coffee"]),
   ];
   const places = rows.map(() => place());
   const lists = rankFamilyLists(
@@ -55,12 +55,9 @@ Deno.test("undefined is not a list and a dual-family place is in both", () => {
     guest,
     8,
   );
-  assertEquals(lists.map((l) => l.key), [
-    "restaurants",
-    "cafes_bakeries",
-    "bars_nightlife",
-  ]);
-  assertEquals(lists[0].places.map((p) => p.id), ["both"]);
+  assertEquals(lists.map((l) => l.key), ["coffee", "dinner", "drinks"]);
+  assertEquals(lists[0].places.map((p) => p.id), ["cafe"]);
+  assertEquals(lists[1].places.map((p) => p.id), ["both"]);
   assertEquals(lists[2].places.map((p) => p.id), ["both"]);
   assertEquals(lists.every((l) => l.source === "family"), true);
 });
@@ -72,7 +69,7 @@ Deno.test("enriched and ready are required", () => {
     false,
   );
   const lists = rankFamilyLists(
-    [row("raw", ["restaurants"], { enriched_at: null })],
+    [row("raw", ["dinner"], { enriched_at: null })],
     [place()],
     DEFAULT_CATALOG_RANKING,
     DEFAULT_SIGNAL_PARAMS,
@@ -85,7 +82,7 @@ Deno.test("enriched and ready are required", () => {
 Deno.test("name abstains without a query, so proximity still orders", () => {
   const far = place({ lat: guest.lat + 0.08 });
   const near = place();
-  const rows = [row("far", ["restaurants"]), row("near", ["restaurants"])];
+  const rows = [row("far", ["dinner"]), row("near", ["dinner"])];
   const lists = rankFamilyLists(
     rows,
     [far, near],
@@ -100,7 +97,7 @@ Deno.test("name abstains without a query, so proximity still orders", () => {
 Deno.test("weight 0 drops popularity and keeps incoming order", () => {
   const quiet = place({ rating: 3.2, user_ratings_total: 10 });
   const loved = place({ rating: 4.9, user_ratings_total: 900 });
-  const rows = [row("quiet", ["experiences"]), row("loved", ["experiences"])];
+  const rows = [row("quiet", ["go_out"]), row("loved", ["go_out"])];
   const ranking = {
     ...DEFAULT_CATALOG_RANKING,
     proximity: 0,

@@ -349,8 +349,9 @@ Deno.test("map knobs default on an old blob and clamp", () => {
   assertEquals(legacyReload.map.reloadMinKm, 0.5);
   assertEquals(legacyReload.map.reloadMinSec, 2);
   assertEquals(clamped.map.googleFill, true);
-  assertEquals(clamped.map.supers.restaurants, false);
-  assertEquals(clamped.map.supers.cafes_bakeries, true);
+  assertEquals(clamped.map.supers.coffee, true);
+  assertEquals(clamped.map.supers.dinner, true);
+  assertEquals("restaurants" in clamped.map.supers, false);
 });
 
 Deno.test("map.pinCount is the operator's How many, snapped to a stop", () => {
@@ -412,8 +413,9 @@ Deno.test("name knobs default Fast 5 and Deep 3+3+3 on an old blob and clamp", (
     },
   });
   assertEquals(clamped.name.fast.count, 20);
-  assertEquals(clamped.name.fast.supers.restaurants, false);
-  assertEquals(clamped.name.fast.supers.cafes_bakeries, true);
+  assertEquals(clamped.name.fast.supers.coffee, true);
+  assertEquals(clamped.name.fast.supers.dinner, true);
+  assertEquals("restaurants" in clamped.name.fast.supers, false);
   // The retired Deep partners cap does not survive a read.
   assertEquals("partnerCount" in clamped.name.deep, false);
   assertEquals(clamped.name.deep.mesitaCount, 7);

@@ -46,7 +46,6 @@ import {
   resolveProfileFamily,
   resolveStoredFamily,
 } from "../_shared/profile-family.ts";
-import { resolveCategoryInput } from "./category-input.ts";
 import { applyMediaUpdates } from "./place-media-update.ts";
 import { reviewsOwnedBodyKey as reviewsTileKeyInBody } from "../_shared/review-sources.ts";
 import {
@@ -110,8 +109,6 @@ type UpdateBody = {
   tags?: string[];
 };
 
-const OPENAI_KEY = Deno.env.get("OPENAI_KEY");
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
@@ -159,21 +156,8 @@ Deno.serve(async (req) => {
     }
     update.mesita_name = n.length > 0 ? n : null;
   }
-  if ("category" in body) {
-    const resolved = await resolveCategoryInput(
-      admin,
-      body.category,
-      OPENAI_KEY,
-    );
-    if (!resolved.ok) {
-      return json({ ok: false, error: resolved.error }, 400);
-    }
-    if (!resolved.slug) {
-      return json({ ok: false, error: "A place needs exactly one category" }, 400);
-    }
-    update.category = resolved.slug;
-    update.category_label = resolved.label;
-  }
+  // Category is Google's primary type, written by Create and Enrich.
+  // Admin does not remap it, the same way admin does not rewrite the address.
   if ("hours" in body) {
     const cleaned = sanitiseHours(body.hours);
     if (cleaned === "invalid") {

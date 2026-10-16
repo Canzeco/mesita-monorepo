@@ -122,7 +122,7 @@ describe("mapFilterCount", () => {
     expect(mapFilterCount(filters({ placesScope: "mesita" }))).toBe(1);
     expect(
       mapFilterCount(
-        filters({ placesScope: "enriched", familyKeys: ["restaurants"] }),
+        filters({ placesScope: "enriched", familyKeys: ["dinner"] }),
       ),
     ).toBe(1);
     expect(mapFilterCount(filters({ minReviews: 0 }))).toBe(0);
@@ -152,16 +152,29 @@ describe("Popularity — 0 / 10 / 100 / 1000 / 10000", () => {
 });
 
 describe("PLACE_FAMILIES catalog (final law)", () => {
-  it("is eight pills in table order, Other last, text-only labels", () => {
-    expect(PLACE_FAMILIES).toHaveLength(8);
+  it("is twenty guest families plus Undefined last", () => {
+    expect(PLACE_FAMILIES).toHaveLength(21);
     expect(PLACE_FAMILIES.map((f) => f.key)).toEqual([
-      "restaurants",
-      "cafes_bakeries",
-      "bars_nightlife",
-      "experiences",
-      "culture_arts",
-      "sports_fitness",
-      "wellness_beauty",
+      "coffee",
+      "breakfast",
+      "quick_bite",
+      "pizza",
+      "tacos",
+      "sushi",
+      "burgers",
+      "noodles",
+      "dinner",
+      "sweet",
+      "drinks",
+      "wine",
+      "night_out",
+      "live",
+      "go_out",
+      "with_kids",
+      "outdoors",
+      "culture",
+      "move",
+      "feel_better",
       "undefined",
     ]);
     const last = PLACE_FAMILIES[PLACE_FAMILIES.length - 1]!;

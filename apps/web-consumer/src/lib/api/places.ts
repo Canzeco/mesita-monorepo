@@ -257,7 +257,7 @@ export type CatalogRail = {
   places: Place[];
 };
 
-/** Home › Places rails — one EF, seven family lists, one ranking profile. */
+/** Home › Places rails — one EF, twenty family lists, one ranking profile. */
 export async function apiListCatalog(
   client: SupabaseClient,
   origin?: { lat: number; lng: number } | null,

@@ -10,6 +10,7 @@
 //   · nothing known → the Undefined family.
 
 import type { PlaceCategory, PlaceFamily } from "./categories.ts";
+import { familiesForExactGoogle } from "./place-taxonomy.ts";
 
 export type ResolvedFamily = {
   /** "🍸 Bars & Nightlife" or "🍸 Bars & Nightlife · 🎟️ Experiences". */
@@ -76,6 +77,11 @@ export function resolveProfileFamily(input: {
     if (hit) {
       const text = joinFamilies(hit.family_keys ?? [], input.families);
       return { text: text ?? undefinedFamily(input.families), inferred: false };
+    }
+    const exact = familiesForExactGoogle(slug);
+    if (exact) {
+      const text = joinFamilies(exact, input.families);
+      if (text) return { text, inferred: false };
     }
   }
   return { text: undefinedFamily(input.families), inferred: false };

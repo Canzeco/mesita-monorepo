@@ -162,8 +162,9 @@ Deno.test("Map mask zeros randomness against the blob default", () => {
 Deno.test("Category intent is enabled types plus their families", () => {
   const intent = mapLineupIntent(["restaurant", "cafe"]);
   assertEquals(intent.categories, ["restaurant", "cafe"]);
-  assertEquals(intent.families.includes("restaurants"), true);
-  assertEquals(intent.families.includes("cafes_bakeries"), true);
+  assertEquals(intent.families.includes("dinner"), true);
+  assertEquals(intent.families.includes("coffee"), true);
+  assertEquals(intent.families.includes("breakfast"), true);
 });
 
 Deno.test("throw during blend returns the closest-N merge order", () => {

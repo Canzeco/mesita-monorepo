@@ -1,179 +1,140 @@
-// Place family + Atlas category law. Search map Filters cut on FAMILY only.
-// THE LAW (2026-08-29, final; the word became `family` everywhere in
-// MESITA-1857 — DB, EFs and consoles all say it now):
-//   · Eight families: seven real guest pills + `undefined`
-//     (label "Undefined", ❓), the leftover/create-path bucket — always last.
-//   · CATEGORY side is many-to-many: a category may sit in any number of
-//     families. `undefined` only ever alone. The code twin below is the
-//     seeded list; the live mapping is place_categories.family_keys.
-//   · GOOGLE side is EXCLUSIVE: every Table A type maps to exactly one
-//     of the eight families (google-type-super.ts owns that map + batteries).
-//     Types outside the seven land on `undefined`.
-//   · family_keys is TOTAL: every place resolves to at least one family —
-//     Atlas membership → stored keys → Google type map → ['undefined'].
-//     No place is ever pill-less.
-// The eight slugs here are the live catalog (`public.place_families`) — keep
-// this file lock-step with `seed_place_families` / `seed_place_categories`,
-// and with the two consumer twins (`place-families-parity.test.ts` pins all
-// three).
-//
-// Places start with category='undefined' and family_keys=['undefined'].
-// Contents enrichment infers a classified Category; family_keys becomes
-// that category's FULL membership (1–2 keys). While category stays
-// `undefined`, the classifier may infer 1–2 families directly; failing
-// that, ['undefined'] stands. A Google type on Undefined is still not a
-// guest pill (familiesForGoogleType drops it; hotels/shops stay ineligible).
+// Place family law. The guest catalog is twenty families (catalog-families.ts).
+// Undefined is last and is not a carousel.
+// A type may sit on more than one family when the trips are different.
+// A precise rail takes the place off the broader one.
+// The profiles view derives family_keys from the category dictionary.
+// The base column stays null. A row that already carries the mapping wins,
+// so a dictionary edit changes membership without a profile write.
+// With no mapping on the row: Google type → Atlas slug → alias → ['undefined'].
 
 import {
-  familiesForGoogleType,
+  CATALOG_FAMILIES,
+  familiesForCatalogSlug,
   type FamilyKey,
-} from "./sourcing.ts";
+} from "./catalog-families.ts";
+import { GOOGLE_TYPE_SUPER } from "./google-type-super.ts";
+import { familiesForGoogleType } from "./sourcing.ts";
 
 export type { FamilyKey };
 
-export const FAMILIES: readonly {
-  slug: FamilyKey;
-  label: string;
-  emoji: string;
-  sort_order: number;
-}[] = [
-  { slug: "restaurants", label: "Restaurants", emoji: "🍽️", sort_order: 1 },
-  { slug: "cafes_bakeries", label: "Cafés & Desserts", emoji: "☕", sort_order: 2 },
-  { slug: "bars_nightlife", label: "Bars & Nightlife", emoji: "🍸", sort_order: 3 },
-  { slug: "experiences", label: "Experiences", emoji: "🎟️", sort_order: 4 },
-  { slug: "culture_arts", label: "Culture & Arts", emoji: "🎭", sort_order: 5 },
-  { slug: "sports_fitness", label: "Sports & Fitness", emoji: "⚽", sort_order: 6 },
-  { slug: "wellness_beauty", label: "Wellness & Beauty", emoji: "💆", sort_order: 7 },
-  { slug: "undefined", label: "Undefined", emoji: "❓", sort_order: 999 },
-];
+export const FAMILIES = CATALOG_FAMILIES;
 
 const FAMILY_SLUGS = new Set<string>(FAMILIES.map((s) => s.slug));
 const FAMILY_ORDER = new Map<FamilyKey, number>(
   FAMILIES.map((s) => [s.slug, s.sort_order]),
 );
 
-const R = "restaurants" as const;
-const N = "bars_nightlife" as const;
-const C = "cafes_bakeries" as const;
-const E = "experiences" as const;
-const A = "culture_arts" as const;
-const S = "sports_fitness" as const;
-const W = "wellness_beauty" as const;
-const U = "undefined" as const;
+const ATLAS_COARSE: Readonly<Record<string, string>> = {
+  mexican: "restaurants",
+  taco: "restaurants",
+  seafood: "restaurants",
+  steak_house: "restaurants",
+  italian: "restaurants",
+  pizza: "restaurants",
+  japanese: "restaurants",
+  sushi: "restaurants",
+  ramen: "restaurants",
+  chinese: "restaurants",
+  thai: "restaurants",
+  korean: "restaurants",
+  vietnamese: "restaurants",
+  indian: "restaurants",
+  middle_eastern: "restaurants",
+  mediterranean: "restaurants",
+  greek: "restaurants",
+  spanish: "restaurants",
+  french: "restaurants",
+  american: "restaurants",
+  argentinian: "restaurants",
+  brazilian: "restaurants",
+  peruvian: "restaurants",
+  asian_fusion: "restaurants",
+  burger: "restaurants",
+  sandwich: "restaurants",
+  bbq: "restaurants",
+  breakfast: "restaurants",
+  brunch: "restaurants",
+  vegan: "restaurants",
+  vegetarian: "restaurants",
+  salad: "restaurants",
+  fast_food: "restaurants",
+  fine_dining: "restaurants",
+  food_truck: "restaurants",
+  food_hall: "restaurants",
+  deli: "restaurants",
+  cafe: "cafes_bakeries",
+  coffee_shop: "cafes_bakeries",
+  bakery: "cafes_bakeries",
+  dessert_shop: "cafes_bakeries",
+  ice_cream: "cafes_bakeries",
+  juice_bar: "cafes_bakeries",
+  board_game_cafe: "cafes_bakeries",
+  bar: "bars_nightlife",
+  pub: "bars_nightlife",
+  cocktail_bar: "bars_nightlife",
+  wine_bar: "bars_nightlife",
+  brewery: "bars_nightlife",
+  night_club: "bars_nightlife",
+  karaoke: "bars_nightlife",
+  casino: "bars_nightlife",
+  winery: "bars_nightlife",
+  bowling_alley: "experiences",
+  escape_room: "experiences",
+  arcade: "experiences",
+  billiards: "experiences",
+  park: "experiences",
+  mini_golf: "experiences",
+  laser_tag: "experiences",
+  axe_throwing: "experiences",
+  trampoline_park: "experiences",
+  go_kart: "experiences",
+  amusement_park: "experiences",
+  water_park: "experiences",
+  aquarium: "experiences",
+  zoo: "experiences",
+  observation_deck: "experiences",
+  botanical_garden: "experiences",
+  market: "experiences",
+  movie_theater: "experiences",
+  museum: "culture_arts",
+  art_gallery: "culture_arts",
+  theater: "culture_arts",
+  concert_venue: "culture_arts",
+  cultural_center: "culture_arts",
+  padel_club: "sports_fitness",
+  tennis_club: "sports_fitness",
+  golf_course: "sports_fitness",
+  soccer_field: "sports_fitness",
+  swimming_pool: "sports_fitness",
+  climbing_gym: "sports_fitness",
+  gym: "sports_fitness",
+  crossfit_box: "sports_fitness",
+  yoga_studio: "sports_fitness",
+  pilates_studio: "sports_fitness",
+  dance_studio: "sports_fitness",
+  martial_arts: "sports_fitness",
+  spa: "wellness_beauty",
+  temazcal: "wellness_beauty",
+  hot_springs: "wellness_beauty",
+  massage: "wellness_beauty",
+  sauna: "wellness_beauty",
+  wellness_center: "wellness_beauty",
+  medical_spa: "wellness_beauty",
+  barbershop: "wellness_beauty",
+  hair_salon: "wellness_beauty",
+  nail_salon: "wellness_beauty",
+  beauty_salon: "wellness_beauty",
+  tattoo_studio: "wellness_beauty",
+  undefined: "undefined",
+};
 
-/**
- * Atlas category slug → 1–2 place families (multi-parent). The seven
- * doubles: breakfast, brunch (R+C) · karaoke, casino, winery (N+E) ·
- * board_game_cafe (C+E) · movie_theater (A+E).
- *
- * `concert_venue` is Google's own Table A slug (google-type-super.ts) —
- * `venue` is banned in our vocabulary (MESITA-1591) but this key must match
- * Google's API literally.
- */
 export const ATLAS_CATEGORY_FAMILIES: Readonly<Record<string, readonly FamilyKey[]>> =
-  {
-    mexican: [R],
-    taco: [R],
-    seafood: [R],
-    steak_house: [R],
-    italian: [R],
-    pizza: [R],
-    japanese: [R],
-    sushi: [R],
-    ramen: [R],
-    chinese: [R],
-    thai: [R],
-    korean: [R],
-    vietnamese: [R],
-    indian: [R],
-    middle_eastern: [R],
-    mediterranean: [R],
-    greek: [R],
-    spanish: [R],
-    french: [R],
-    american: [R],
-    argentinian: [R],
-    brazilian: [R],
-    peruvian: [R],
-    asian_fusion: [R],
-    burger: [R],
-    sandwich: [R],
-    bbq: [R],
-    breakfast: [R, C],
-    brunch: [R, C],
-    vegan: [R],
-    vegetarian: [R],
-    salad: [R],
-    fast_food: [R],
-    fine_dining: [R],
-    food_truck: [R],
-    food_hall: [R],
-    deli: [R],
-    cafe: [C],
-    coffee_shop: [C],
-    bakery: [C],
-    dessert_shop: [C],
-    ice_cream: [C],
-    juice_bar: [C],
-    board_game_cafe: [C, E],
-    bar: [N],
-    pub: [N],
-    cocktail_bar: [N],
-    wine_bar: [N],
-    brewery: [N],
-    night_club: [N],
-    karaoke: [N, E],
-    casino: [N, E],
-    winery: [N, E],
-    bowling_alley: [E],
-    escape_room: [E],
-    arcade: [E],
-    billiards: [E],
-    park: [E],
-    mini_golf: [E],
-    laser_tag: [E],
-    axe_throwing: [E],
-    trampoline_park: [E],
-    go_kart: [E],
-    amusement_park: [E],
-    water_park: [E],
-    aquarium: [E],
-    zoo: [E],
-    observation_deck: [E],
-    botanical_garden: [E],
-    market: [E],
-    movie_theater: [A, E],
-    museum: [A],
-    art_gallery: [A],
-    theater: [A],
-    concert_venue: [A],
-    cultural_center: [A],
-    padel_club: [S],
-    tennis_club: [S],
-    golf_course: [S],
-    soccer_field: [S],
-    swimming_pool: [S],
-    climbing_gym: [S],
-    gym: [S],
-    crossfit_box: [S],
-    yoga_studio: [S],
-    pilates_studio: [S],
-    dance_studio: [S],
-    martial_arts: [S],
-    spa: [W],
-    temazcal: [W],
-    hot_springs: [W],
-    massage: [W],
-    sauna: [W],
-    wellness_center: [W],
-    medical_spa: [W],
-    barbershop: [W],
-    hair_salon: [W],
-    nail_salon: [W],
-    beauty_salon: [W],
-    tattoo_studio: [W],
-    undefined: [U],
-  };
+  Object.fromEntries(
+    Object.entries(ATLAS_COARSE).map(([slug, coarse]) => [
+      slug,
+      familiesForCatalogSlug(slug, coarse),
+    ]),
+  );
 
 export function isFamilyKey(value: string): value is FamilyKey {
   return FAMILY_SLUGS.has(value);
@@ -214,6 +175,25 @@ export function readGuestFamilyKeys(raw: unknown): FamilyKey[] {
   );
 }
 
+/**
+ * The family of a category that is exactly a Google Table A type.
+ * Null when the slug is not one of those types. The `_restaurant` alias
+ * is not applied: a leftover Mesita slug such as `breakfast` is not
+ * `breakfast_restaurant`.
+ */
+/** Catalog families when the category is exactly a Google Table A type. */
+export function familiesForExactGoogle(
+  category: string | null | undefined,
+): FamilyKey[] | null {
+  if (typeof category !== "string") return null;
+  const slug = category.trim().toLowerCase();
+  if (!slug) return null;
+  const coarse = GOOGLE_TYPE_SUPER[slug];
+  if (!coarse) return null;
+  const families = familiesForCatalogSlug(slug, coarse);
+  return families.length > 0 ? families : ["undefined"];
+}
+
 export function familiesForAtlasCategory(
   category: string | null | undefined,
 ): FamilyKey[] {
@@ -229,21 +209,17 @@ export type FamilyPlace = {
 };
 
 /**
- * Families for a place on the wire or in a predicate. TOTAL:
- * Atlas membership (1–2) wins when the category is in the catalog; stored
- * keys win when membership is empty (leftover slugs); else the Google
- * primaryType map (Nearby pins); else ['undefined'] — every place lands
- * under at least one pill, always.
+ * Families for a place on the wire or in a predicate. TOTAL.
+ * The mapping carried on the row wins. Otherwise an exact Google type,
+ * then an Atlas slug, then the Google alias, then ['undefined'].
  */
 export function familiesForPlace(place: FamilyPlace): FamilyKey[] {
-  // The profiles view puts the category's current mapping on family_keys.
-  // That list wins, so a dictionary edit changes membership without a
-  // profile write. The code twin fills only when the row has no mapping.
+  const category = typeof place.category === "string" ? place.category : null;
   const mapped = sanitizeFamilyKeys(place.family_keys);
   if (mapped.length > 0) return mapped;
-  const atlas = familiesForAtlasCategory(
-    typeof place.category === "string" ? place.category : null,
-  );
+  const exact = familiesForExactGoogle(category);
+  if (exact) return exact;
+  const atlas = familiesForAtlasCategory(category);
   if (atlas.length > 0) return atlas;
   const google = familiesForGoogleType(
     typeof place.category === "string" ? place.category : null,
@@ -263,6 +239,8 @@ export function resolveEnrichedFamilyKeys(
   category: string | null | undefined,
   inferred: unknown,
 ): FamilyKey[] {
+  const exact = familiesForExactGoogle(category);
+  if (exact) return exact;
   const membership = familiesForAtlasCategory(category);
   if (membership.length > 0) return membership;
   const sanitized = sanitizeFamilyKeys(inferred);
