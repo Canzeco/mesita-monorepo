@@ -8,21 +8,28 @@
 
 import { Facebook, Instagram } from "./brand-icons";
 
-// Multi-color Google "G". The header uses compact; review cards use the
-// larger tile so the three source badges stay the same size.
+// Multi-color Google "G" on a red tile, the same rounded shape as
+// Instagram and Facebook. A white disc keeps the red segment of the G
+// readable. The header uses compact; review cards use the larger tile.
 export function GoogleLogo({ compact = false }: { compact?: boolean }) {
   return (
     <div
       className={
-        "flex shrink-0 items-center justify-center rounded-full bg-white " +
+        "flex shrink-0 items-center justify-center rounded-lg bg-[#EA4335] " +
         (compact ? "h-6 w-6" : "h-8 w-8")
       }
     >
-      <svg
-        viewBox="0 0 48 48"
-        className={compact ? "h-4 w-4" : "h-5 w-5"}
-        aria-hidden
+      <div
+        className={
+          "flex items-center justify-center rounded-full bg-white " +
+          (compact ? "h-4 w-4" : "h-[22px] w-[22px]")
+        }
       >
+        <svg
+          viewBox="0 0 48 48"
+          className={compact ? "h-3.5 w-3.5" : "h-4 w-4"}
+          aria-hidden
+        >
         <path
           fill="#FFC107"
           d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"
@@ -39,7 +46,8 @@ export function GoogleLogo({ compact = false }: { compact?: boolean }) {
           fill="#1976D2"
           d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"
         />
-      </svg>
+        </svg>
+      </div>
     </div>
   );
 }
