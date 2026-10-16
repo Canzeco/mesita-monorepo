@@ -58,6 +58,7 @@ import {
   resolveStoredFamily,
 } from "../_shared/profile-family.ts";
 import { fetchPlaceTags, TAG_FACETS } from "../_shared/tags.ts";
+import { reviewFoundFromRow } from "../_shared/review-found.ts";
 
 // The Embeddings card (MESITA-720) reads these. Never part of the public
 // column set: a heavy field only this screen and admin-web-search-places need.
@@ -165,9 +166,9 @@ Deno.serve(async (req) => {
     enrich_functions: operatorFunctionStates(
       enrichmentMap.functions as Partial<Record<string, FunctionState>>,
     ),
-    google_found: (enrichmentRow.data as { google_found?: boolean } | null)?.google_found === true,
-    instagram_found: (enrichmentRow.data as { instagram_found?: boolean } | null)?.instagram_found === true,
-    facebook_found: (enrichmentRow.data as { facebook_found?: boolean } | null)?.facebook_found === true,
+    ...reviewFoundFromRow(
+      (enrichmentRow.data ?? {}) as Record<string, unknown>,
+    ),
   };
 
   const profile = {

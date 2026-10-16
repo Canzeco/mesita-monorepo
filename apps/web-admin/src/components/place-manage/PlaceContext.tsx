@@ -12,6 +12,7 @@ import {
   type ReactNode,
   type SetStateAction,
 } from "react";
+import { mergeReviewFoundFlags } from "@/lib/review-found";
 import { updatePlace, type AdminPlace, type ProfileRead } from "./actions";
 import {
   dirtyDialogNavBody,
@@ -243,15 +244,7 @@ export function PlaceProvider({
       }
       const next: AdminPlace = {
         ...r.data.place,
-        google_found: typeof r.data.place.google_found === "boolean"
-          ? r.data.place.google_found
-          : place.google_found,
-        instagram_found: typeof r.data.place.instagram_found === "boolean"
-          ? r.data.place.instagram_found
-          : place.instagram_found,
-        facebook_found: typeof r.data.place.facebook_found === "boolean"
-          ? r.data.place.facebook_found
-          : place.facebook_found,
+        ...mergeReviewFoundFlags(place, r.data.place),
       };
       for (const s of Object.values(savers.current)) s.onSaved(next);
       setPlace(next);

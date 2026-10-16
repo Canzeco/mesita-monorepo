@@ -5,6 +5,7 @@ import { RefreshCw, Star } from "lucide-react";
 import type { AdminPlace } from "../actions";
 import { reloadPlaceReviews } from "../actions";
 import { SectionCard } from "@/components/admin-ui/manage";
+import { mergeReviewFoundFlags } from "@/lib/review-found";
 import { usePlaceContext } from "../PlaceContext";
 
 // Reviews. One Sync in the header updates the four boxes from saved links.
@@ -113,6 +114,7 @@ export function ReviewsSummary() {
       google_review_count: r.data.google_review_count,
       instagram_followers_count: r.data.instagram_followers_count,
       facebook_followers: r.data.facebook_followers,
+      ...mergeReviewFoundFlags(current, r.data),
       google_reviews: r.data.google_reviews ?? current.google_reviews,
       source_sync: r.data.source_sync ?? current.source_sync,
     }));

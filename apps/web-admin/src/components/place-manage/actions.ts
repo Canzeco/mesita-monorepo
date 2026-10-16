@@ -2,6 +2,7 @@
 
 import type { CrenupBlock } from "@/app/(app)/manage-multiple/actions";
 import type { MenuNutrition } from "@/lib/nutrition";
+import type { ReviewFoundFlags } from "@/lib/review-found";
 import { efInvoke } from "@/lib/supabase-ef";
 
 // ════════════════════════════════════════════════════════════════════════
@@ -244,39 +245,23 @@ export async function updatePlace(
 
 export type ReviewsReloadSource = "sync" | "google" | "google_reviews" | "instagram" | "facebook";
 
+type ReviewsReloadPayload = {
+  source: ReviewsReloadSource;
+  google_stars_overall: number | null;
+  google_review_count: number | null;
+  instagram_followers_count: number | null;
+  facebook_followers: number | null;
+  google_reviews?: unknown;
+  lastSyncedAt?: string | null;
+  source_sync?: unknown;
+  sources?: { source: string; status: string; error: string | null }[];
+} & Partial<ReviewFoundFlags>;
+
 export async function reloadPlaceReviews(
   placeId: string,
   source: ReviewsReloadSource,
-): Promise<
-  Result<{
-    source: ReviewsReloadSource;
-    google_stars_overall: number | null;
-    google_review_count: number | null;
-    instagram_followers_count: number | null;
-    facebook_followers: number | null;
-    google_found: boolean;
-    instagram_found: boolean;
-    facebook_found: boolean;
-    google_reviews?: unknown;
-    lastSyncedAt?: string | null;
-    source_sync?: unknown;
-    sources?: { source: string; status: string; error: string | null }[];
-  }>
-> {
-  const r = await efInvoke<{
-    source: ReviewsReloadSource;
-    google_stars_overall: number | null;
-    google_review_count: number | null;
-    instagram_followers_count: number | null;
-    facebook_followers: number | null;
-    google_found: boolean;
-    instagram_found: boolean;
-    facebook_found: boolean;
-    google_reviews?: unknown;
-    lastSyncedAt?: string | null;
-    source_sync?: unknown;
-    sources?: { source: string; status: string; error: string | null }[];
-  }>("admin-web-reload-place-reviews", { placeId, source });
+): Promise<Result<ReviewsReloadPayload>> {
+  const r = await efInvoke<ReviewsReloadPayload>("admin-web-reload-place-reviews", { placeId, source });
   if (!r.ok) return { ok: false, error: r.error, code: r.code };
   return {
     ok: true,
@@ -286,14 +271,25 @@ export async function reloadPlaceReviews(
       google_review_count: r.data.google_review_count,
       instagram_followers_count: r.data.instagram_followers_count,
       facebook_followers: r.data.facebook_followers,
-      google_found: r.data.google_found === true,
-      instagram_found: r.data.instagram_found === true,
-      facebook_found: r.data.facebook_found === true,
+      ...explicitFound(r.data),
       ...(r.data.google_reviews !== undefined ? { google_reviews: r.data.google_reviews ?? [] } : {}),
       lastSyncedAt: r.data.lastSyncedAt ?? null,
       source_sync: r.data.source_sync,
       sources: r.data.sources,
     },
+  };
+}
+
+/** A sync response omits found flags. Only a real boolean may override them. */
+function explicitFound(data: {
+  google_found?: unknown;
+  instagram_found?: unknown;
+  facebook_found?: unknown;
+}): Partial<ReviewFoundFlags> {
+  return {
+    ...(typeof data.google_found === "boolean" ? { google_found: data.google_found } : {}),
+    ...(typeof data.instagram_found === "boolean" ? { instagram_found: data.instagram_found } : {}),
+    ...(typeof data.facebook_found === "boolean" ? { facebook_found: data.facebook_found } : {}),
   };
 }
 

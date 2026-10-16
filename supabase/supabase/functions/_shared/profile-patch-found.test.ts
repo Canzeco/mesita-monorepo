@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { withoutFoundFlags } from "./found-flags.ts";
+import { withoutFoundFlags } from "./profile-patch-found.ts";
 
 Deno.test("found flags leave the profile patch and stay booleans", () => {
   const { profile, found } = withoutFoundFlags({
