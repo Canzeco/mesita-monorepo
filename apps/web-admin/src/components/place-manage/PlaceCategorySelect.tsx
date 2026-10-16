@@ -1,21 +1,22 @@
 "use client";
 
 import { ReadField } from "@/components/admin-ui/manage";
+import { googleCategoryDisplay } from "./google-category-display";
 
-// The category is Google's primary type. Admin reads it. Nothing here fetches.
+// Google's primary type. Admin reads it; Create and Enrich write it.
 
-function readableCategory(slug: string): string {
-  const trimmed = slug.trim();
-  if (!trimmed) return "—";
-  return trimmed.replaceAll("_", " ");
-}
+export function PlaceCategorySelect({
+  slug,
+  label,
+}: {
+  slug: string | null;
+  label: string | null;
+}) {
+  const display = googleCategoryDisplay(slug, label);
 
-export function PlaceCategorySelect({ value }: { value: string }) {
   return (
-    <ReadField label="Category" auto boxed>
-      <span aria-label={`Category: ${readableCategory(value)}`}>
-        {readableCategory(value)}
-      </span>
+    <ReadField label="Google category" auto boxed>
+      <span aria-label={`Google category: ${display}`}>{display}</span>
     </ReadField>
   );
 }

@@ -53,24 +53,22 @@ describe("groupTags", () => {
 });
 
 describe("Atlas lists", () => {
-  it("shows counts, then Categories, Tags, and Families with their categories", () => {
+  it("shows guest-family counts, then Tags and the live family rails", () => {
     const src = readFileSync(join(__dirname, "FamiliesExplorer.tsx"), "utf8");
-    expect(src).toContain("categories ·");
+    expect(src).toContain("guest families ·");
     const body = src.slice(
       src.indexOf("export function FamiliesExplorer"),
-      src.indexOf("function CategorySection"),
+      src.indexOf("function FamiliesSection"),
     );
-    const categories = body.indexOf("<CategorySection");
     const tags = body.indexOf("<TagsList");
     const families = body.indexOf("<FamiliesSection");
-    expect(categories).toBeGreaterThan(-1);
-    expect(tags).toBeGreaterThan(categories);
+    expect(tags).toBeGreaterThan(-1);
     expect(families).toBeGreaterThan(tags);
     const tagsList = src.slice(src.indexOf("function TagsList"));
     expect(tagsList).toContain("The full catalog");
     expect(tagsList).not.toContain("<button");
-    expect(src).toContain("Each family lists the categories it contains");
-    expect(src).toContain("categories.length");
+    expect(src).toContain("Guest families");
+    expect(src).toContain('family.slug !== "undefined"');
     expect(src).not.toContain("100 categories");
     expect(src).not.toContain("200 tags");
   });
