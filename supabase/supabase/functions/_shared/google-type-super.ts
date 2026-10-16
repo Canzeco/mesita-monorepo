@@ -19,7 +19,9 @@
 // banned in OUR vocabulary (MESITA-1591) but these must match Google's API
 // literally, so they stay as Google spells them.
 
-/** The eight families. Seven are guest pills; `undefined` is the leftover. */
+import { CATALOG_SEARCH_TYPES, isCatalogFamily } from "./catalog-families.ts";
+
+/** Coarse exclusive bucket. The guest catalog is the twenty families. */
 export type GuestSuper =
   | "restaurants"
   | "bars_nightlife"
@@ -30,17 +32,7 @@ export type GuestSuper =
   | "culture_arts"
   | "undefined";
 
-export const GOOGLE_SEARCH_TYPES: Record<GuestSuper, readonly string[]> = {
-  restaurants: ["restaurant"] as const,
-  bars_nightlife: ["bar", "night_club"] as const,
-  cafes_bakeries: ["cafe", "bakery"] as const,
-  sports_fitness: ["gym", "fitness_center", "yoga_studio", "sports_club"] as const,
-  wellness_beauty: ["spa", "beauty_salon", "hair_salon", "massage"] as const,
-  experiences: ["tourist_attraction", "amusement_park", "bowling_alley", "park", "movie_theater"] as const,
-  culture_arts: ["museum", "art_gallery", "performing_arts_theater", "concert_hall"] as const,
-  // Undefined is a family, not a Nearby battery. Empty = skip Nearby.
-  undefined: [] as const,
-};
+export const GOOGLE_SEARCH_TYPES = CATALOG_SEARCH_TYPES;
 
 export const GOOGLE_TYPE_SUPER: Readonly<Record<string, GuestSuper>> = {
   "academic_department": "undefined",
@@ -566,7 +558,7 @@ export function nearbyTypesForSupers(
   const out: string[] = [];
   const seen = new Set<string>();
   for (const raw of supers) {
-    if (!isGuestSuper(raw)) continue;
+    if (!isCatalogFamily(raw)) continue;
     for (const t of GOOGLE_SEARCH_TYPES[raw]) {
       if (seen.has(t)) continue;
       seen.add(t);

@@ -138,7 +138,7 @@ Deno.test("validatePlaceProfilePatch: accepts string-array fields", () => {
 
 Deno.test("validatePlaceProfilePatch: family_keys is nullable until enrichment", () => {
   assert(validatePlaceProfilePatch({ family_keys: null }).ok);
-  assert(validatePlaceProfilePatch({ family_keys: ["restaurants", "cafes_bakeries"] }).ok);
+  assert(validatePlaceProfilePatch({ family_keys: ["dinner", "coffee"] }).ok);
   assert(!validatePlaceProfilePatch({ family_keys: "restaurants" }).ok);
 });
 
@@ -393,8 +393,10 @@ Deno.test("writePlace: refuses to update google_place_id, before validation even
 function fakePlaceAdmin(opts: { row?: Record<string, unknown>; errorCode?: string } = {}): {
   admin: SupabaseClient;
   calls: { table: string; op: "insert" | "update" | "delete"; value?: Record<string, unknown> }[];
+  matches: { col: string; value: unknown }[];
 } {
   const calls: { table: string; op: "insert" | "update" | "delete"; value?: Record<string, unknown> }[] = [];
+  const matches: { col: string; value: unknown }[] = [];
   const error = opts.errorCode ? { message: "conflict", code: opts.errorCode } : null;
   const terminal = () => Promise.resolve({ data: null, error });
   const selectable = () => ({
@@ -413,7 +415,10 @@ function fakePlaceAdmin(opts: { row?: Record<string, unknown>; errorCode?: strin
       update: (value: Record<string, unknown>) => {
         calls.push({ table, op: "update", value });
         const eqChain: { eq: (col: string, v: unknown) => unknown; select: () => unknown } = {
-          eq: () => eqChain,
+          eq: (col: string, value: unknown) => {
+            matches.push({ col, value });
+            return eqChain;
+          },
           select: () => ({
             single: () => Promise.resolve({ data: opts.row ?? null, error }),
             maybeSingle: () => Promise.resolve({ data: opts.row ?? null, error }),
@@ -429,7 +434,7 @@ function fakePlaceAdmin(opts: { row?: Record<string, unknown>; errorCode?: strin
       }),
     }),
   } as unknown as SupabaseClient;
-  return { admin, calls };
+  return { admin, calls, matches };
 }
 
 Deno.test("writePlace: place_profiles update writes exactly the validated patch, no select", async () => {
@@ -508,6 +513,25 @@ Deno.test("writePlace: surfaces the Postgres error code for a unique-violation r
   });
   assert(!res.ok);
   assertEquals(res.code, "23505");
+});
+
+Deno.test("writePlace: a places update can match only while the row is still generating", async () => {
+  const { admin, matches } = fakePlaceAdmin({ row: { content_state: "failed" } });
+  const res = await writePlace(admin, {
+    table: "places",
+    mode: "update",
+    id: "place-1",
+    patch: { content_state: "failed" },
+    onlyWhile: "generating",
+    select: "content_state",
+    selectMode: "maybeSingle",
+  });
+  assert(res.ok);
+  assertEquals(res.row, { content_state: "failed" });
+  assertEquals(matches, [
+    { col: "id", value: "place-1" },
+    { col: "content_state", value: "generating" },
+  ]);
 });
 
 Deno.test("writePlace: maybeSingle select mode reaches the DB the same as single", async () => {

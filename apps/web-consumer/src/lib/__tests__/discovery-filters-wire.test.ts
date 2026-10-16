@@ -20,8 +20,8 @@ describe("deckRequestKey", () => {
   });
 
   it("ignores pick order so re-selecting the same set never refetches", () => {
-    const a = filters({ familyKeys: ["restaurants", "bars_nightlife"] });
-    const b = filters({ familyKeys: ["bars_nightlife", "restaurants"] });
+    const a = filters({ familyKeys: ["dinner", "drinks"] });
+    const b = filters({ familyKeys: ["drinks", "dinner"] });
     expect(deckRequestKey(a, HERE)).toBe(deckRequestKey(b, HERE));
   });
 
@@ -36,19 +36,19 @@ describe("deckRequestKey", () => {
   });
 
   it("moves whenever a predicate does", () => {
-    const base = deckRequestKey(filters({ familyKeys: ["restaurants"] }), HERE);
+    const base = deckRequestKey(filters({ familyKeys: ["dinner"] }), HERE);
     expect(
-      deckRequestKey(filters({ familyKeys: ["bars_nightlife"] }), HERE),
+      deckRequestKey(filters({ familyKeys: ["drinks"] }), HERE),
     ).not.toBe(base);
     expect(
       deckRequestKey(
-        filters({ familyKeys: ["restaurants"], placesScope: "google" }),
+        filters({ familyKeys: ["dinner"], placesScope: "google" }),
         HERE,
       ),
     ).not.toBe(base);
     expect(
       deckRequestKey(
-        filters({ familyKeys: ["restaurants"], minReviews: 100 }),
+        filters({ familyKeys: ["dinner"], minReviews: 100 }),
         HERE,
       ),
     ).not.toBe(base);

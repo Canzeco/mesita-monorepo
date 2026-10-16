@@ -38,50 +38,39 @@ Deno.test("garbage filters degrade to no predicate rather than throwing", () => 
   }
 });
 
-Deno.test("Family cuts Atlas slugs; a double-parent category matches both pills", () => {
+Deno.test("Family cuts the mapping on the row, else the catalog trip", () => {
   const rows = [
     place({ id: "taco", category: "taco" }),
     place({ id: "brunch", category: "brunch" }),
     place({
       id: "shyBreakfast",
       category: "breakfast",
-      family_keys: ["cafes_bakeries"],
+      family_keys: ["coffee"],
     }),
     place({
       id: "karaoke",
       category: "karaoke",
-      family_keys: ["experiences"],
+      family_keys: ["go_out"],
     }),
   ];
   assertEquals(
-    applyDeckPredicates(
-      rows,
-      readDeckPredicates({ familyKeys: ["restaurants"] }),
-    ).map((r) => r.id),
-    ["taco", "brunch", "shyBreakfast"],
-  );
-  // brunch and breakfast are restaurants AND cafés — the cafés pill
-  // matches them too (full membership, stored subsets ignored).
-  assertEquals(
-    applyDeckPredicates(
-      rows,
-      readDeckPredicates({ familyKeys: ["cafes_bakeries"] }),
-    ).map((r) => r.id),
-    ["brunch", "shyBreakfast"],
+    applyDeckPredicates(rows, readDeckPredicates({ familyKeys: ["tacos"] })).map((r) => r.id),
+    ["taco"],
   );
   assertEquals(
-    applyDeckPredicates(
-      rows,
-      readDeckPredicates({ familyKeys: ["bars_nightlife"] }),
-    ).map((r) => r.id),
-    ["karaoke"],
+    applyDeckPredicates(rows, readDeckPredicates({ familyKeys: ["breakfast"] })).map((r) => r.id),
+    ["brunch"],
   );
-  // karaoke is bars AND experiences.
   assertEquals(
-    applyDeckPredicates(
-      rows,
-      readDeckPredicates({ familyKeys: ["experiences"] }),
-    ).map((r) => r.id),
+    applyDeckPredicates(rows, readDeckPredicates({ familyKeys: ["coffee"] })).map((r) => r.id),
+    ["shyBreakfast"],
+  );
+  assertEquals(
+    applyDeckPredicates(rows, readDeckPredicates({ familyKeys: ["night_out"] })).map((r) => r.id),
+    [],
+  );
+  assertEquals(
+    applyDeckPredicates(rows, readDeckPredicates({ familyKeys: ["go_out"] })).map((r) => r.id),
     ["karaoke"],
   );
 });
@@ -101,7 +90,7 @@ Deno.test("Super undefined matches Atlas leftover category", () => {
   assertEquals(
     applyDeckPredicates(
       rows,
-      readDeckPredicates({ familyKeys: ["restaurants"] }),
+      readDeckPredicates({ familyKeys: ["tacos"] }),
     ).map((r) => r.id),
     ["taco"],
   );
@@ -118,7 +107,7 @@ Deno.test("the cut is what makes a narrow filter searchable, not thinning", () =
   ];
   const kept = applyDeckPredicates(
     catalog,
-    readDeckPredicates({ familyKeys: ["cafes_bakeries"] }),
+    readDeckPredicates({ familyKeys: ["coffee"] }),
   );
   assertEquals(kept.map((r) => r.id), ["cafe-1", "cafe-2"]);
   // Slicing 50 off the UNFILTERED catalog and filtering afterwards — the old

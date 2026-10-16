@@ -5,10 +5,12 @@ on:
     branches: [main]
     paths:
       - "apps/web-admin/**"
+      - "packages/place-profile/**"
       - ".github/workflows/web-admin.yml"
   pull_request:
     paths:
       - "apps/web-admin/**"
+      - "packages/place-profile/**"
       - ".github/workflows/web-admin.yml"
 
 concurrency:

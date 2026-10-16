@@ -137,6 +137,10 @@ export type PlaceProfileRow = {
   city: string | null;
   facebook_followers: number | null;
   google_reviews: unknown | null;
+  /** Google's structured location. Not an LLM rewrite. */
+  google_address: unknown | null;
+  /** Last sync of volatile review and social fields. */
+  source_sync: unknown | null;
   menus: unknown | null;
   popular_times: unknown | null;
   products: unknown | null;
@@ -207,6 +211,8 @@ export const PLACE_PROFILE_PATCH_KEYS = [
   "menus",
   "popular_times",
   "products",
+  "google_address",
+  "source_sync",
   "category_label",
   "embedding_source_text",
   "google_name",
@@ -337,7 +343,7 @@ const PLACE_NONNEG_INT_KEYS = new Set<string>([
 // door's own PLACE/PROFILE surfaces, save-place.ts's create insert, and
 // any future writer), not just the two hand-patched call sites.
 const PLACE_JSON_KEYS = new Set<string>([
-  "hours", "enrichment_sources", "menus", "products",
+  "hours", "enrichment_sources", "menus", "products", "google_address", "source_sync",
 ]);
 // Content-validated JSONB keys — nullable() wraps each schema because the
 // column itself is nullable and a patch clearing it to null must stay legal
@@ -569,6 +575,8 @@ export type PlaceWriteArgs =
     patch: PlacePatch;
     select?: string;
     selectMode?: SelectMode;
+    /** Match only a row still in this content_state. A row that already left it is not written. */
+    onlyWhile?: "generating";
   }
   | {
     table: "profiles";
@@ -640,7 +648,10 @@ export async function writePlace(
   }
 
   // mode === "update"
-  const updateBuilder = admin.from(args.table).update(validated.patch).eq("id", args.id);
+  let updateBuilder = admin.from(args.table).update(validated.patch).eq("id", args.id);
+  if ("onlyWhile" in args && args.onlyWhile) {
+    updateBuilder = updateBuilder.eq("content_state", args.onlyWhile);
+  }
   if (args.select) {
     const withSelect = updateBuilder.select(args.select);
     const { data, error } = selectMode === "maybeSingle"

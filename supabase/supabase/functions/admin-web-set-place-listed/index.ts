@@ -45,7 +45,7 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
-import { PLACE_BUSINESS_COLUMNS } from "../_shared/place-columns.ts";
+import { PLACE_PROFILE_COLUMNS } from "../_shared/place-columns.ts";
 import { writePlace } from "../_shared/place-doc.ts";
 import { isPlaceListed } from "../_shared/place-state.ts";
 
@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
   if (alreadyListed === listed) {
     const { data: place, error: readError } = await admin
       .from("profiles")
-      .select(PLACE_BUSINESS_COLUMNS)
+      .select(PLACE_PROFILE_COLUMNS)
       .eq("id", placeId)
       .single();
     if (readError) {
@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
 
   const { data: place, error: readError } = await admin
     .from("profiles")
-    .select(PLACE_BUSINESS_COLUMNS)
+    .select(PLACE_PROFILE_COLUMNS)
     .eq("id", placeId)
     .single();
   if (readError) {

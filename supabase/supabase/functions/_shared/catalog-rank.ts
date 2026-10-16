@@ -78,7 +78,7 @@ export function catalogScore(
 }
 
 /**
- * Seven lists in family order. A place in two families is in both lists.
+ * Twenty lists in family order. A place in two families is in both lists.
  * Undefined is internal and never a list. Empty lists are omitted.
  * Ties keep the incoming order.
  */

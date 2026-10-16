@@ -26,6 +26,11 @@ import {
   type HistoryGuardState,
 } from "./historyGuard";
 import { ConfirmDialog } from "@/components/admin-ui/manage";
+import {
+  socialSaveLocked,
+  type SocialDraft,
+  type SocialLock,
+} from "./social-save-lock";
 
 /** Something that would throw away unsaved edits if it ran right now. */
 type GuardedIntent = {
@@ -89,6 +94,12 @@ type PlaceContextValue = {
   dirtyLabels: string[];
   /** A page-level save is in flight. */
   savePending: boolean;
+  /** What the bar says while the save is in flight. */
+  saveLabel: string;
+  /** A dead Instagram or Facebook link is still in the draft. Save stays off. */
+  socialLocked: boolean;
+  /** Channels reports the Instagram and Facebook drafts so the lock can lift. */
+  reportSocialDraft: (draft: SocialDraft) => void;
   /** The last save's failure, or null. Cleared when a new save starts. */
   saveError: string | null;
   /** True briefly after a save lands, for the confirmation state. */
@@ -132,8 +143,12 @@ export function PlaceProvider({
   const historyRef = useRef<HistoryGuardState>(INITIAL_HISTORY_GUARD);
   const isDirtyRef = useRef(false);
   const [savePending, setSavePending] = useState(false);
+  const [saveLabel, setSaveLabel] = useState("Saving…");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveOk, setSaveOk] = useState(false);
+  const [socialLock, setSocialLock] = useState<SocialLock | null>(null);
+  const [socialDraft, setSocialDraft] = useState<SocialDraft | null>(null);
+  const socialDraftRef = useRef<SocialDraft | null>(null);
 
   const setSectionDirty = useCallback((section: string, dirty: boolean) => {
     setDirtyMap((prev) => {
@@ -175,6 +190,7 @@ export function PlaceProvider({
     }
     setDirtyMap({});
     setSaveError(null);
+    setSocialLock(null);
   }, []);
 
   // ONE call for the whole page. Object.assign is safe here precisely because
@@ -196,19 +212,34 @@ export function PlaceProvider({
     const fragments = results.flatMap((r) => (r.kind === "patch" ? [r.patch] : []));
     if (fragments.length === 0) return;
 
+    const patch = Object.assign({ id: placeId }, ...fragments) as {
+      id: string;
+    } & Record<string, unknown>;
     setSaveError(null);
     setSaveOk(false);
+    setSocialLock(null);
+    setSaveLabel("Saving…");
     setSavePending(true);
     void (async () => {
-      const patch = Object.assign({ id: placeId }, ...fragments) as {
-        id: string;
-      } & Record<string, unknown>;
       const r = await updatePlace(patch);
       setSavePending(false);
       if (!r.ok) {
         // Nothing was written, so nothing is re-seeded and every draft stays
         // exactly as the operator left it — the whole point of one call.
+        // A definite miss keeps Save off until that link changes, so the
+        // same dead account is not sent to Apify again.
         setSaveError(r.error);
+        if (r.code === "social_not_connected" && !r.retryable) {
+          const draft = socialDraftRef.current;
+          const lock: SocialLock = {};
+          if (r.fields?.includes("instagram_url")) {
+            lock.instagram_url = draft?.instagram_url ?? "";
+          }
+          if (r.fields?.includes("facebook_url")) {
+            lock.facebook_url = draft?.facebook_url ?? "";
+          }
+          setSocialLock(lock);
+        }
         return;
       }
       const next: AdminPlace = {
@@ -225,6 +256,7 @@ export function PlaceProvider({
         });
       }
       setDirtyMap({});
+      setSocialLock(null);
       setSaveOk(true);
       window.setTimeout(() => setSaveOk(false), 2500);
     })();
@@ -234,6 +266,13 @@ export function PlaceProvider({
     () => Object.values(dirtyMap).some(Boolean),
     [dirtyMap],
   );
+
+  const reportSocialDraft = useCallback((draft: SocialDraft) => {
+    socialDraftRef.current = draft;
+    setSocialDraft(draft);
+  }, []);
+
+  const socialLocked = socialSaveLocked(socialLock, socialDraft);
 
   const dirtyLabels = useMemo(
     () => dirtySectionLabels(dirtyMap),
@@ -318,6 +357,9 @@ export function PlaceProvider({
       registerSaver,
       dirtyLabels,
       savePending,
+      saveLabel,
+      socialLocked,
+      reportSocialDraft,
       saveError,
       saveOk,
       saveAll,
@@ -335,6 +377,9 @@ export function PlaceProvider({
       registerSaver,
       dirtyLabels,
       savePending,
+      saveLabel,
+      socialLocked,
+      reportSocialDraft,
       saveError,
       saveOk,
       saveAll,

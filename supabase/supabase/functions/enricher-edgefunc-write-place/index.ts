@@ -55,18 +55,54 @@ Deno.serve(async (req) => {
     if (!next) {
       return json({ ok: true, placeId: stop.placeId, content_state: data?.content_state ?? null });
     }
+    // The read above picks ready or failed. The write itself matches only a
+    // row that is still generating, so a finish that landed in between is
+    // not overwritten.
     const cleared = await writePlace(admin, {
       table: "places",
       mode: "update",
       id: stop.placeId,
       patch: { content_state: next },
+      onlyWhile: "generating",
+      select: "content_state",
+      selectMode: "maybeSingle",
     });
     if (!cleared.ok) return json({ ok: false, error: cleared.error }, 500);
+    if (!cleared.row) {
+      return json({ ok: true, placeId: stop.placeId, content_state: null });
+    }
     return json({ ok: true, placeId: stop.placeId, content_state: next });
   }
 
   const commit = enrichmentCommit(bodyRes.body);
   if (!commit.ok) return json({ ok: false, error: commit.error }, 400);
+  if (commit.baseUpdatedAt) {
+    const { data: versionRow, error: versionErr } = await admin
+      .from("profiles")
+      .select("updated_at, content_state, enriched_at")
+      .eq("id", commit.placeId)
+      .maybeSingle();
+    if (versionErr) return json({ ok: false, error: versionErr.message }, 500);
+    const current = (versionRow?.updated_at ?? null) as string | null;
+    if (current !== commit.baseUpdatedAt) {
+      const next = contentStateAfterStop({
+        content_state: (versionRow?.content_state ?? null) as string | null,
+        enriched_at: (versionRow?.enriched_at ?? null) as string | null,
+      });
+      if (next) {
+        await writePlace(admin, {
+          table: "places",
+          mode: "update",
+          id: commit.placeId,
+          patch: { content_state: next },
+        });
+      }
+      return json({
+        ok: false,
+        error: "The profile changed during enrichment. The previous profile was kept.",
+      }, 409);
+    }
+  }
   const validated = validateProfilePatch(commit.patch);
   if (!validated.ok) return json({ ok: false, error: validated.error }, 400);
 

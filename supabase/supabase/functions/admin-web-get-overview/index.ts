@@ -5,10 +5,9 @@
 // in one round trip.
 //
 // WAS business-web-get-overview (MESITA-2090). That function served three
-// readers — the business console's sidebar (every place the caller held), its
-// Place screen (the active place plus recent tickets, the rewards config and
-// the staff PIN) and, through its super-admin branch, this admin screen. The
-// business console is deleted in the MVP First Stage cut, so only the
+// readers — the deleted web-business sidebar, its Place screen, and, through
+// its super-admin branch, this admin screen. MESITA-2089 deleted web-business,
+// so only the
 // super-admin branch survives, under the name of the one app that calls it:
 // the EF name is the ACL (ef-caller-acl.test.ts). Gone with the business
 // readers: the place_members branch, recent tickets, `rewardsConfig`, the
@@ -40,13 +39,14 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
-import { PLACE_BUSINESS_COLUMNS as PLACE_PROFILE_COLUMNS } from "../_shared/place-columns.ts";
+import { PLACE_PROFILE_COLUMNS } from "../_shared/place-columns.ts";
 import {
   isPlaceEnriched,
   isPlaceListed,
   isPlaceRequested,
   isPlaceSeeded,
 } from "../_shared/place-state.ts";
+import { loadRequestThreshold } from "../_shared/place-requests.ts";
 import { CRENUP_LABELS_IN_ORDER, CRENUP_TOTAL } from "../_shared/crenup-ladder.ts";
 import type { EnrichmentMap, FunctionState } from "../_shared/schema-catalog.ts";
 import { operatorFunctionStates } from "../_shared/schema-catalog.ts";
@@ -98,7 +98,8 @@ Deno.serve(async (req) => {
   // response alone (MESITA-2180). `enrichment` is read off `place_profiles`
   // directly, not `profiles` — it is deliberately NOT in the profiles view's
   // column list (adding it means rebuilding the view's two INSTEAD OF triggers).
-  const [placeRow, enrichmentRow, categories, families, tags] = await Promise.all([
+  const [placeRow, enrichmentRow, categories, families, tags, requestThreshold] =
+    await Promise.all([
     admin
       .from("profiles")
       .select(
@@ -114,6 +115,7 @@ Deno.serve(async (req) => {
     fetchPlaceCategories(admin),
     fetchPlaceFamilies(admin),
     fetchPlaceTags(admin),
+    loadRequestThreshold(admin),
   ]);
   if (placeRow.error) {
     return json({ ok: false, error: placeRow.error.message }, 500);
@@ -151,6 +153,7 @@ Deno.serve(async (req) => {
       requestCount: placeFields.request_count,
       enrichedAt: placeFields.enriched_at,
     }),
+    request_threshold: requestThreshold,
     // THE Enriched fact (MESITA-2154) — `enriched_at` set; same helper as
     // admin-web-search-places, so Status and the catalog table agree.
     enriched: isPlaceEnriched(placeFields.enriched_at),

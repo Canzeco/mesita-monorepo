@@ -74,9 +74,9 @@ Deno.test("googleFill off or every Super off skips Nearby even if the client opt
   assertEquals(
     new Set(enabledNearbyTypes({
       ...MAP,
-      supers: { ...MAP.supers, cafes_bakeries: false },
+      supers: { ...MAP.supers, coffee: false },
     })),
-    new Set(["restaurant", "bar", "night_club"]),
+    new Set(["restaurant", "bakery", "bar", "night_club"]),
   );
 });
 
@@ -141,9 +141,9 @@ Deno.test("admitMapCatalog still admits Google for a listed place that missed po
   assertEquals(got.google.map((h) => h.placeId), ["ChIJ-weak", "ChIJ-only"]);
 });
 
-Deno.test("evaluatePlaceForMap admits restaurant subtypes when restaurant is on", () => {
+Deno.test("evaluatePlaceForMap admits a dinner place when Dinner is on", () => {
   const ok = evaluatePlaceForMap(MAP, {
-    primaryType: "mexican_restaurant",
+    primaryType: "thai_restaurant",
     rating: 4.2,
     reviewCount: 80,
   });
@@ -168,7 +168,7 @@ Deno.test("evaluatePlaceForMap admits wellness; rejects hotels", () => {
 Deno.test("evaluatePlaceForMap respects the Super params and floors", () => {
   const barsOnly = {
     ...MAP,
-    supers: { ...supersAllOff(), bars_nightlife: true },
+    supers: { ...supersAllOff(), night_out: true },
   };
   assertEquals(
     evaluatePlaceForMap(barsOnly, {
@@ -198,7 +198,7 @@ Deno.test("evaluatePlaceForMap respects the Super params and floors", () => {
 
 Deno.test("admitSwipeCatalog keeps listed F&B and spas, drops hotels, never Google", () => {
   const listed = [
-    { id: "rest", category: "mexican_restaurant" },
+    { id: "rest", category: "thai_restaurant" },
     { id: "bar", category: "bar" },
     { id: "hotel", category: "hotel" },
     { id: "spa", category: "spa" },
@@ -211,7 +211,7 @@ Deno.test("admitSwipeCatalog keeps listed F&B and spas, drops hotels, never Goog
 Deno.test("admitSwipeCatalog honors the Map Super params", () => {
   const barsOnly = {
     ...MAP,
-    supers: { ...supersAllOff(), bars_nightlife: true },
+    supers: { ...supersAllOff(), night_out: true },
   };
   const listed = [
     { id: "rest", category: "restaurant" },

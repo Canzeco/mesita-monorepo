@@ -3,7 +3,7 @@ import { SinglePlaceClient } from "./SinglePlaceClient";
 
 // Manage › Single Place — the picker. One box finds a place by Google Place
 // ID or by name; a hit opens the place itself at /manage-single/<id>, which
-// is the business console's place surface rendered here (MESITA-2086). An ID
+// is the Single Place editor rendered here (MESITA-2086). An ID
 // Mesita does not hold yet gets Create, and then opens the same way.
 //
 // The header lives on this page, not a layout: the place beneath

@@ -2,7 +2,7 @@
 
 import type { CrenupBlock } from "@/app/(app)/manage-multiple/actions";
 import type { MenuNutrition } from "@/lib/nutrition";
-import { type ReviewFoundFlags, reviewFoundFlags } from "@/lib/review-found";
+import type { ReviewFoundFlags } from "@/lib/review-found";
 import { efInvoke } from "@/lib/supabase-ef";
 
 // ════════════════════════════════════════════════════════════════════════
@@ -25,7 +25,15 @@ import { efInvoke } from "@/lib/supabase-ef";
 // how a copy edit in Deno silently breaks a screen in Next.
 type Result<T> =
   | { ok: true; data: T }
-  | { ok: false; error: string; code?: string | null };
+  | {
+    ok: false;
+    error: string;
+    code?: string | null;
+    /** A social miss the operator can send again without editing the link. */
+    retryable?: boolean;
+    /** Instagram or Facebook inputs a definite miss belongs to. */
+    fields?: ("instagram_url" | "facebook_url")[];
+  };
 
 // ── Place load ───────────────────────────────────────────────────────────
 
@@ -65,6 +73,8 @@ export type AdminPlace = {
   lat: number | null;
   lng: number | null;
   zone: string | null;
+  google_address: unknown;
+  source_sync: unknown;
   city: string | null;
   timezone: string | null;
   description: string | null;
@@ -131,6 +141,8 @@ export type AdminPlace = {
   enriched?: boolean;
   /** Guest request count — the Requested State fact, 0…n. */
   request_count?: number;
+  /** Votes required before Enrich starts. Settings `atlasRequestThreshold`. */
+  request_threshold?: number;
   /** Operating: Google's businessStatus, verbatim (MESITA-1239). */
   business_state?: string | null;
   business_state_at?: string | null;
@@ -181,6 +193,21 @@ export async function getPlaceAndRole(
   };
 }
 
+function readRetryable(data: unknown): boolean {
+  if (!data || typeof data !== "object" || !("retryable" in data)) return false;
+  return (data as { retryable: unknown }).retryable === true;
+}
+
+function readSocialFields(data: unknown): ("instagram_url" | "facebook_url")[] {
+  if (!data || typeof data !== "object" || !("fields" in data)) return [];
+  const fields = (data as { fields: unknown }).fields;
+  if (!Array.isArray(fields)) return [];
+  return fields.filter(
+    (field): field is "instagram_url" | "facebook_url" =>
+      field === "instagram_url" || field === "facebook_url",
+  );
+}
+
 // ── Place: write place fields ────────────────────────────────────────────
 
 export async function updatePlace(
@@ -197,7 +224,15 @@ export async function updatePlace(
     family?: unknown;
     familyStored?: unknown;
   }>("admin-web-update-place", patch);
-  if (!r.ok) return { ok: false, error: r.error };
+  if (!r.ok) {
+    return {
+      ok: false,
+      error: r.error,
+      code: r.code,
+      retryable: readRetryable(r.data),
+      fields: readSocialFields(r.data),
+    };
+  }
   return {
     ok: true,
     data: {
@@ -208,7 +243,7 @@ export async function updatePlace(
   };
 }
 
-export type ReviewsReloadSource = "google" | "google_reviews" | "instagram" | "facebook";
+export type ReviewsReloadSource = "sync" | "google" | "google_reviews" | "instagram" | "facebook";
 
 type ReviewsReloadPayload = {
   source: ReviewsReloadSource;
@@ -217,7 +252,10 @@ type ReviewsReloadPayload = {
   instagram_followers_count: number | null;
   facebook_followers: number | null;
   google_reviews?: unknown;
-} & ReviewFoundFlags;
+  lastSyncedAt?: string | null;
+  source_sync?: unknown;
+  sources?: { source: string; status: string; error: string | null }[];
+} & Partial<ReviewFoundFlags>;
 
 export async function reloadPlaceReviews(
   placeId: string,
@@ -233,9 +271,25 @@ export async function reloadPlaceReviews(
       google_review_count: r.data.google_review_count,
       instagram_followers_count: r.data.instagram_followers_count,
       facebook_followers: r.data.facebook_followers,
-      ...reviewFoundFlags(r.data),
-      ...(r.data.source === "google_reviews" ? { google_reviews: r.data.google_reviews ?? [] } : {}),
+      ...explicitFound(r.data),
+      ...(r.data.google_reviews !== undefined ? { google_reviews: r.data.google_reviews ?? [] } : {}),
+      lastSyncedAt: r.data.lastSyncedAt ?? null,
+      source_sync: r.data.source_sync,
+      sources: r.data.sources,
     },
+  };
+}
+
+/** A sync response omits found flags. Only a real boolean may override them. */
+function explicitFound(data: {
+  google_found?: unknown;
+  instagram_found?: unknown;
+  facebook_found?: unknown;
+}): Partial<ReviewFoundFlags> {
+  return {
+    ...(typeof data.google_found === "boolean" ? { google_found: data.google_found } : {}),
+    ...(typeof data.instagram_found === "boolean" ? { instagram_found: data.instagram_found } : {}),
+    ...(typeof data.facebook_found === "boolean" ? { facebook_found: data.facebook_found } : {}),
   };
 }
 

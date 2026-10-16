@@ -12,13 +12,40 @@ import { corsPreflight, json, readJson, rejectUnlessMethods, readPlaceIdAlias } 
 import { adminClient, getAuthedUser, readEFEnv, requireSuperAdmin } from "../_shared/auth.ts";
 import { writePlace } from "../_shared/place-doc.ts";
 import { loadEnrichConfig } from "../_shared/enrich-config.ts";
-import { ENRICHING_PATCH, enrichmentKnobs, enrichmentRun, renderApiKey } from "./start-enrichment.ts";
+import { ENRICHING_PATCH, enrichDepthOf, enrichmentKnobs, enrichmentRun, renderApiKey } from "./start-enrichment.ts";
 
 type Body = {
   projectId?: string;
   placeId?: string;
   placeIds?: string[];
+  overwrite?: boolean;
+  depth?: string;
 };
+
+const SAVED_KEYS = [
+  "google_name",
+  "mesita_name",
+  "name",
+  "category",
+  "category_label",
+  "description",
+  "address",
+  "zone",
+  "city",
+  "lat",
+  "lng",
+  "photos",
+  "phone",
+  "tags",
+  "website_url",
+  "instagram_url",
+  "facebook_url",
+  "opentable_url",
+  "uber_eats_url",
+  "whatsapp_url",
+  "google_maps_url",
+  "google_address",
+] as const;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -40,6 +67,8 @@ Deno.serve(async (req) => {
     ? bodyRes.body.placeIds.map((id) => String(id ?? "").trim()).filter(Boolean)
     : [];
   const placeId = readPlaceIdAlias(bodyRes.body);
+  const overwrite = bodyRes.body.overwrite === true;
+  const depth = enrichDepthOf(bodyRes.body.depth);
   const placeIds = listed.length > 0 ? listed : placeId ? [placeId] : [];
   if (placeIds.length === 0) return json({ ok: false, error: "Missing placeId" }, 400);
   if (placeIds.length > 50) {
@@ -48,13 +77,17 @@ Deno.serve(async (req) => {
 
   const { data: places, error: placeErr } = await admin
     .from("place_profiles")
-    .select("id, google_place_id")
+    .select(["id", "google_place_id", ...SAVED_KEYS].join(", "))
     .in("id", placeIds);
   if (placeErr) return json({ ok: false, error: `places: ${placeErr.message}` }, 500);
-  const byId = new Map((places ?? []).map((row) => [row.id, (row.google_place_id ?? "").toString().trim()]));
+  const rows = new Map((places ?? []).map((row) => {
+    const record = row as unknown as Record<string, unknown>;
+    return [String(record.id), record] as const;
+  }));
   for (const id of placeIds) {
-    if (!byId.has(id)) return json({ ok: false, error: "Place not found" }, 404);
-    if (!byId.get(id)) {
+    const row = rows.get(id);
+    if (!row) return json({ ok: false, error: "Place not found" }, 404);
+    if (!String(row.google_place_id ?? "").trim()) {
       return json({ ok: false, error: "Place has no Google Place ID — nothing to enrich from." }, 422);
     }
   }
@@ -63,7 +96,33 @@ Deno.serve(async (req) => {
   if (!key) return json({ ok: false, error: "Server misconfigured" }, 500);
 
   const knobs = enrichmentKnobs(await loadEnrichConfig(admin));
-  const jobs = placeIds.map((id) => ({ placeId: id, googlePlaceId: byId.get(id) ?? "", knobs }));
+  const marked = await Promise.all(placeIds.map((id) =>
+    writePlace(admin, { table: "places", mode: "update", id, patch: { ...ENRICHING_PATCH } })
+  ));
+  const failed = marked.find((row) => !row.ok);
+  if (failed && !failed.ok) {
+    return json({ ok: false, error: `The place was not marked enriching: ${failed.error}` }, 500);
+  }
+  const { data: stamps, error: stampErr } = await admin
+    .from("place_profiles")
+    .select("id, updated_at")
+    .in("id", placeIds);
+  if (stampErr) return json({ ok: false, error: stampErr.message }, 500);
+  const updatedAt = new Map((stamps ?? []).map((row) => [row.id as string, (row.updated_at ?? null) as string | null]));
+  const jobs = placeIds.map((id) => {
+    const row = rows.get(id) ?? {};
+    const saved: Record<string, unknown> = {};
+    for (const column of SAVED_KEYS) saved[column] = row[column] ?? null;
+    return {
+      placeId: id,
+      googlePlaceId: String(row.google_place_id ?? "").trim(),
+      knobs,
+      depth,
+      overwrite,
+      baseUpdatedAt: updatedAt.get(id) ?? null,
+      saved,
+    };
+  });
   const run = enrichmentRun(jobs);
   const res = await fetch("https://api.render.com/v1/task-runs", {
     method: "POST",
@@ -76,14 +135,17 @@ Deno.serve(async (req) => {
   });
   if (!res.ok) {
     const detail = await res.text();
+    await Promise.all(placeIds.map(async (id) => {
+      const { data, error } = await admin
+        .from("place_profiles")
+        .select("content_state, enriched_at")
+        .eq("id", id)
+        .maybeSingle();
+      if (error || !data || data.content_state !== "generating") return;
+      const next = typeof data.enriched_at === "string" && data.enriched_at.trim() ? "ready" : "failed";
+      await writePlace(admin, { table: "places", mode: "update", id, patch: { content_state: next } });
+    }));
     return json({ ok: false, error: detail.slice(0, 300) || `Render did not start the run (${res.status})` }, 502);
   }
-  const marked = await Promise.all(placeIds.map((id) =>
-    writePlace(admin, { table: "places", mode: "update", id, patch: { ...ENRICHING_PATCH } })
-  ));
-  const failed = marked.find((row) => !row.ok);
-  if (failed && !failed.ok) {
-    return json({ ok: false, error: `Run started, but the place was not marked enriching: ${failed.error}` }, 500);
-  }
-  return json({ ok: true, enrichmentTriggered: true, task: run.task });
+  return json({ ok: true, enrichmentTriggered: true, task: run.task, overwrite });
 });

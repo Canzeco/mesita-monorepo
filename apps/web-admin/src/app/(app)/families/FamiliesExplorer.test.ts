@@ -53,16 +53,25 @@ describe("groupTags", () => {
 });
 
 describe("Atlas lists", () => {
-  it("shows FamiliesIA DNA, Google Categories, Mesita Categories, then tags as text", () => {
+  it("shows counts, then Categories, Tags, and Families with their categories", () => {
     const src = readFileSync(join(__dirname, "FamiliesExplorer.tsx"), "utf8");
-    const dna = src.indexOf('title="FamiliesIA DNA"');
-    const google = src.indexOf('title="Google Categories"');
-    const mesita = src.indexOf('title="Mesita Categories"');
-    expect(dna).toBeGreaterThan(-1);
-    expect(google).toBeGreaterThan(dna);
-    expect(mesita).toBeGreaterThan(google);
-    const tagsList = src.slice(src.indexOf("function TagsList"), src.indexOf("function Column"));
+    expect(src).toContain("categories ·");
+    const body = src.slice(
+      src.indexOf("export function FamiliesExplorer"),
+      src.indexOf("function CategorySection"),
+    );
+    const categories = body.indexOf("<CategorySection");
+    const tags = body.indexOf("<TagsList");
+    const families = body.indexOf("<FamiliesSection");
+    expect(categories).toBeGreaterThan(-1);
+    expect(tags).toBeGreaterThan(categories);
+    expect(families).toBeGreaterThan(tags);
+    const tagsList = src.slice(src.indexOf("function TagsList"));
     expect(tagsList).toContain("The full catalog");
     expect(tagsList).not.toContain("<button");
+    expect(src).toContain("Each family lists the categories it contains");
+    expect(src).toContain("categories.length");
+    expect(src).not.toContain("100 categories");
+    expect(src).not.toContain("200 tags");
   });
 });

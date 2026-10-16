@@ -10,6 +10,7 @@
 //   · nothing known → the Undefined family.
 
 import type { PlaceCategory, PlaceFamily } from "./categories.ts";
+import { familiesForExactGoogle } from "./place-taxonomy.ts";
 
 export type ResolvedFamily = {
   /** "🍸 Bars & Nightlife" or "🍸 Bars & Nightlife · 🎟️ Experiences". */
@@ -61,22 +62,29 @@ export function resolveStoredFamily(
   return { text: undefinedFamily(families), inferred: false };
 }
 
-/** The row as stored. A defined category wins; otherwise the stored keys. */
+/** Family display is the category's current mapping. Place rows do not store it. */
 export function resolveProfileFamily(input: {
   category: unknown;
-  familyKeys: unknown;
+  familyKeys?: unknown;
   categories: readonly PlaceCategory[];
   families: readonly PlaceFamily[];
 }): ResolvedFamily {
   const slug = typeof input.category === "string"
     ? input.category.trim().toLowerCase()
     : "";
-  if (slug && slug !== "undefined") {
+  if (slug) {
     const hit = input.categories.find((c) => c.slug === slug);
-    const text = joinFamilies(hit?.family_keys ?? [], input.families);
-    if (text) return { text, inferred: false };
+    if (hit) {
+      const text = joinFamilies(hit.family_keys ?? [], input.families);
+      return { text: text ?? undefinedFamily(input.families), inferred: false };
+    }
+    const exact = familiesForExactGoogle(slug);
+    if (exact) {
+      const text = joinFamilies(exact, input.families);
+      if (text) return { text, inferred: false };
+    }
   }
-  return resolveStoredFamily(input.familyKeys, input.families);
+  return { text: undefinedFamily(input.families), inferred: false };
 }
 
 /** One display string per category, so a draft change is a lookup. */

@@ -6,21 +6,25 @@
 // hotels, schools, and shops stay ineligible. The CATEGORY side is
 // multi-parent (≤2) in place-taxonomy.ts; the Google side stays exclusive.
 
-import { superForGoogleType, type GuestSuper } from "./google-type-super.ts";
+import { familiesForCatalogSlug, type FamilyKey } from "./catalog-families.ts";
+import { GOOGLE_TYPE_SUPER, superForGoogleType } from "./google-type-super.ts";
 
-export type FamilyKey = GuestSuper;
+export type { FamilyKey };
 
 /**
- * The one guest family a Google type belongs to. Empty when the type
- * maps to Undefined or is unknown — Undefined is a family, and it is
- * not a guest pill. Partition: gastropub is restaurants only.
+ * Guest families for a Google type. Empty when the type is unknown.
+ * Undefined is a family and not a guest pill, so hotels and shops
+ * return nothing here.
  */
 export function familiesForGoogleType(
   primaryType: string | null | undefined,
 ): FamilyKey[] {
-  const superKey = superForGoogleType(primaryType);
-  if (!superKey || superKey === "undefined") return [];
-  return [superKey];
+  if (!primaryType) return [];
+  const slug = primaryType.trim().toLowerCase();
+  if (!slug) return [];
+  const coarse = GOOGLE_TYPE_SUPER[slug] ?? superForGoogleType(slug);
+  const families = familiesForCatalogSlug(slug, coarse);
+  return families.filter((key) => key !== "undefined");
 }
 
 type GeoOrigin = { lat: number; lng: number };

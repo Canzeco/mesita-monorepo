@@ -33,11 +33,12 @@ import {
   type ReviewVerify,
 } from "../_shared/review-sources.ts";
 import { mergeReviewFoundFlags, reviewFoundFromRow } from "../_shared/review-found.ts";
+import { runPlaceSync } from "../_shared/place-sync-run.ts";
 
-const SOURCES = new Set(["google", "google_reviews", "instagram", "facebook"]);
+const SOURCES = new Set(["google", "google_reviews", "instagram", "facebook", "sync"]);
 
 type Body = { placeId?: string; projectId?: string; source?: string };
-type SourceName = "google" | "google_reviews" | "instagram" | "facebook";
+type SourceName = "google" | "google_reviews" | "instagram" | "facebook" | "sync";
 
 type PlaceRow = {
   id: string;
@@ -73,7 +74,7 @@ Deno.serve(async (req) => {
   if (!placeId) return json({ ok: false, error: "Missing placeId" }, 400);
   const source = (bodyRes.body.source ?? "").toString().trim() as SourceName;
   if (!SOURCES.has(source)) {
-    return json({ ok: false, error: "source must be google, google_reviews, instagram, or facebook" }, 400);
+    return json({ ok: false, error: "source must be sync, google, google_reviews, instagram, or facebook" }, 400);
   }
 
   const { data, error } = await admin
@@ -86,6 +87,37 @@ Deno.serve(async (req) => {
   if (error) return json({ ok: false, error: error.message }, 500);
   if (!data) return json({ ok: false, error: "Place not found" }, 404);
   const place = data as PlaceRow;
+
+  if (source === "sync") {
+    const synced = await runPlaceSync({
+      googlePlaceId: place.google_place_id,
+      instagramUrl: place.instagram_url,
+      facebookUrl: place.facebook_url,
+    });
+    const written = await writePlace(admin, {
+      table: "place_profiles",
+      mode: "update",
+      id: placeId,
+      patch: synced.patch,
+    });
+    if (!written.ok) return json({ ok: false, error: written.error }, 500);
+    return json({
+      ok: true,
+      source: "sync",
+      lastSyncedAt: synced.lastSyncedAt,
+      sources: synced.sources.map((row) => ({
+        source: row.source,
+        status: row.status,
+        error: row.error,
+      })),
+      google_stars_overall: numberOr(synced.patch.google_stars_overall, place.google_stars_overall),
+      google_review_count: numberOr(synced.patch.google_review_count, place.google_review_count),
+      instagram_followers_count: numberOr(synced.patch.instagram_followers_count, place.instagram_followers_count),
+      facebook_followers: numberOr(synced.patch.facebook_followers, place.facebook_followers),
+      google_reviews: synced.patch.google_reviews ?? undefined,
+      source_sync: synced.patch.source_sync,
+    });
+  }
 
   const linkError = unlinked(source, place);
   if (linkError) return json({ ok: false, code: "unlinked", error: linkError }, 400);

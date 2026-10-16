@@ -8,41 +8,34 @@ import {
 
 Deno.test("withFamilyKeys attaches one Super for gastropub", () => {
   const out = withFamilyKeys({ id: "1", category: "gastropub" });
-  assertEquals(out.family_keys, ["restaurants"]);
+  assertEquals(out.family_keys, ["dinner", "drinks"]);
   assertEquals(out.id, "1");
 });
 
 Deno.test("withFamilyKeys ships the FULL Atlas membership (1–2 supers)", () => {
-  assertEquals(withFamilyKeys({ category: "mexican" }).family_keys, [
-    "restaurants",
-  ]);
-  assertEquals(withFamilyKeys({ category: "fine_dining" }).family_keys, [
-    "restaurants",
-  ]);
-  assertEquals(withFamilyKeys({ category: "breakfast" }).family_keys, [
-    "restaurants",
-    "cafes_bakeries",
-  ]);
+  assertEquals(withFamilyKeys({ category: "mexican" }).family_keys, ["tacos"]);
+  assertEquals(withFamilyKeys({ category: "fine_dining" }).family_keys, ["dinner"]);
+  assertEquals(withFamilyKeys({ category: "breakfast" }).family_keys, ["breakfast"]);
   assertEquals(withFamilyKeys({ category: "karaoke" }).family_keys, [
-    "bars_nightlife",
-    "experiences",
+    "night_out",
+    "go_out",
   ]);
 });
 
-Deno.test("withFamilyKeys keeps the Atlas membership when stored keys disagree", () => {
+Deno.test("withFamilyKeys keeps the mapping on the row when it disagrees with the code twin", () => {
   assertEquals(
     withFamilyKeys({
       category: "breakfast",
-      family_keys: ["cafes_bakeries"],
+      family_keys: ["coffee"],
     }).family_keys,
-    ["restaurants", "cafes_bakeries"],
+    ["coffee"],
   );
   assertEquals(
     withFamilyKeys({
       category: "mexican",
-      family_keys: ["bars_nightlife"],
+      family_keys: ["drinks"],
     }).family_keys,
-    ["restaurants"],
+    ["drinks"],
   );
   assertEquals(
     withFamilyKeys({
@@ -69,8 +62,8 @@ Deno.test("withFamilyKeysList maps a list", () => {
     { category: "cafe" },
     { category: "museum" },
   ]);
-  assertEquals(rows[0]?.family_keys, ["cafes_bakeries"]);
-  assertEquals(rows[1]?.family_keys, ["culture_arts"]);
+  assertEquals(rows[0]?.family_keys, ["coffee", "breakfast"]);
+  assertEquals(rows[1]?.family_keys, ["culture"]);
 });
 
 // THE MEMBERSHIP COLOUR LAW (Pato, 2026-08-29): enriched > everything else.

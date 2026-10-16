@@ -28,6 +28,8 @@ export function PlaceSaveBar() {
     isDirty,
     dirtyLabels,
     savePending,
+    saveLabel,
+    socialLocked,
     saveError,
     saveOk,
     saveAll,
@@ -52,7 +54,7 @@ export function PlaceSaveBar() {
           {savePending ? (
             <>
               <Loader2 className="text-muted-foreground h-4 w-4 shrink-0 animate-spin" />
-              <span className="text-sm font-semibold">Saving…</span>
+              <span className="text-sm font-semibold">{saveLabel}</span>
             </>
           ) : saveOk && !isDirty ? (
             <>
@@ -91,7 +93,7 @@ export function PlaceSaveBar() {
           <button
             type="button"
             onClick={saveAll}
-            disabled={savePending || !isDirty}
+            disabled={savePending || !isDirty || socialLocked}
             className="bg-pink-gradient shadow-save inline-flex h-10 items-center gap-2 rounded-full px-5 text-sm font-semibold text-white transition hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
           >
             {savePending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}

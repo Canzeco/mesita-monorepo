@@ -172,6 +172,7 @@ export function TextField({
 export function PhoneField({
   label,
   icon,
+  labelRight,
   value,
   onChange,
   placeholder = "55 1234 5678",
@@ -180,6 +181,8 @@ export function PhoneField({
   label: string;
   /** Optional leading mark next to the label (brand SVG or lucide). */
   icon?: React.ReactNode;
+  /** Optional trailing accessory in the label row (e.g. a tel: link). */
+  labelRight?: React.ReactNode;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
@@ -210,9 +213,12 @@ export function PhoneField({
 
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-foreground/90 flex min-h-4 items-center gap-1.5 type-body font-medium">
-        {icon}
-        {label}
+      <span className="flex min-h-4 items-center justify-between gap-2">
+        <span className="text-foreground/90 flex items-center gap-1.5 type-body font-medium">
+          {icon}
+          {label}
+        </span>
+        {labelRight}
       </span>
       <span
         className={

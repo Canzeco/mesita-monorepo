@@ -131,35 +131,36 @@ export type CatalogConfig = {
  * `nearbyTypesForSupers`. Nothing reads this list positionally any more.
  */
 export const NEARBY_TYPE_KEYS = [
-  // restaurants
-  "restaurant",
-  // bars_nightlife
-  "bar",
-  "night_club",
-  // cafes_bakeries
   "cafe",
+  "breakfast_restaurant",
+  "fast_food_restaurant",
+  "pizza_restaurant",
+  "mexican_restaurant",
+  "sushi_restaurant",
+  "hamburger_restaurant",
+  "ramen_restaurant",
+  "restaurant",
   "bakery",
-  // sports_fitness
+  "bar",
+  "wine_bar",
+  "night_club",
+  "concert_hall",
+  "tourist_attraction",
+  "bowling_alley",
+  "movie_theater",
+  "amusement_park",
+  "park",
+  "museum",
+  "art_gallery",
+  "performing_arts_theater",
   "gym",
   "fitness_center",
   "yoga_studio",
   "sports_club",
-  // wellness_beauty
   "spa",
   "beauty_salon",
   "hair_salon",
   "massage",
-  // experiences
-  "tourist_attraction",
-  "amusement_park",
-  "bowling_alley",
-  "park",
-  "movie_theater",
-  // culture_arts
-  "museum",
-  "art_gallery",
-  "performing_arts_theater",
-  "concert_hall",
 ] as const;
 export type NearbyTypeKey = (typeof NEARBY_TYPE_KEYS)[number];
 
@@ -179,13 +180,26 @@ export type NearbyTypeKey = (typeof NEARBY_TYPE_KEYS)[number];
  * to the taxonomy.
  */
 export const SUPER_PARAM_KEYS = [
-  "restaurants",
-  "cafes_bakeries",
-  "bars_nightlife",
-  "experiences",
-  "culture_arts",
-  "sports_fitness",
-  "wellness_beauty",
+  "coffee",
+  "breakfast",
+  "quick_bite",
+  "pizza",
+  "tacos",
+  "sushi",
+  "burgers",
+  "noodles",
+  "dinner",
+  "sweet",
+  "drinks",
+  "wine",
+  "night_out",
+  "live",
+  "go_out",
+  "with_kids",
+  "outdoors",
+  "culture",
+  "move",
+  "feel_better",
 ] as const;
 export type SuperParamKey = (typeof SUPER_PARAM_KEYS)[number];
 
@@ -467,13 +481,26 @@ export const SWIPE_CLOSING_BUFFER_MAX = 180;
  * admits is an operator's decision, not a side effect of the list growing.
  */
 export const DEFAULT_MAP_SUPERS: Record<SuperParamKey, boolean> = {
-  restaurants: true,
-  cafes_bakeries: true,
-  bars_nightlife: true,
-  experiences: false,
-  culture_arts: false,
-  sports_fitness: false,
-  wellness_beauty: false,
+  coffee: true,
+  breakfast: false,
+  quick_bite: false,
+  pizza: false,
+  tacos: false,
+  sushi: false,
+  burgers: false,
+  noodles: false,
+  dinner: true,
+  sweet: true,
+  drinks: true,
+  wine: false,
+  night_out: true,
+  live: false,
+  go_out: false,
+  with_kids: false,
+  outdoors: false,
+  culture: false,
+  move: false,
+  feel_better: false,
 };
 
 /** How many pins is the GUEST's question (How many, on the Filters sheet),

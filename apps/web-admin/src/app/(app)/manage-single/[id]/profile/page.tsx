@@ -1,7 +1,5 @@
-import { ProfileTab } from "@/components/place-manage/ProfileTab";
-
-// Held, always (access.ts): the pool branch business's PlaceProfileBody keeps
-// for an unclaimed place has no reader here.
+// The editor is mounted once by PlaceScroll so a tab change cannot wipe
+// the draft. This segment stays so /profile is still a real route.
 export default function AdminPlaceProfilePage() {
-  return <ProfileTab />;
+  return null;
 }

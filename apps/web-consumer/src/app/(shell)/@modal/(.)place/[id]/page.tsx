@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
-import { PlaceDetailBody } from "@/components/consumer/PlaceDetailBody";
-import { PlaceDetailModalShell } from "@/components/consumer/PlaceDetailModalShell";
+import { MemberPlaceModal } from "@/components/consumer/MemberPlaceModal";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiFetchPlaceDetail } from "@/lib/api/places";
 import { placeGoneHref, toCanonicalPlaceHrefOrNull } from "@/lib/place-route";
@@ -24,9 +23,5 @@ export default async function PlaceModalPage({
     // Bounce, but say so — see <PlaceGoneNotice />.
     redirect(placeGoneHref(CONSUMER_ROUTES.discoverDefault, id));
   }
-  return (
-    <PlaceDetailModalShell place={place}>
-      <PlaceDetailBody place={place} />
-    </PlaceDetailModalShell>
-  );
+  return <MemberPlaceModal place={place} />;
 }

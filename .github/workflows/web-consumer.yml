@@ -5,10 +5,12 @@ on:
     branches: [main]
     paths:
       - "apps/web-consumer/**"
+      - "packages/place-profile/**"
       - ".github/workflows/web-consumer.yml"
   pull_request:
     paths:
       - "apps/web-consumer/**"
+      - "packages/place-profile/**"
       - ".github/workflows/web-consumer.yml"
 
 concurrency:

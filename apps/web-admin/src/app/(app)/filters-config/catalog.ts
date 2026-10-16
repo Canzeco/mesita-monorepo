@@ -177,13 +177,26 @@ export type CatalogConfig = {
 // vocabulary, capped by an ordered "first N", is what let four whole families
 // sit invisibly off. Order is the guest's — FAMILIES sort_order.
 export const SUPER_PARAM_KEYS = [
-  "restaurants",
-  "cafes_bakeries",
-  "bars_nightlife",
-  "experiences",
-  "culture_arts",
-  "sports_fitness",
-  "wellness_beauty",
+  "coffee",
+  "breakfast",
+  "quick_bite",
+  "pizza",
+  "tacos",
+  "sushi",
+  "burgers",
+  "noodles",
+  "dinner",
+  "sweet",
+  "drinks",
+  "wine",
+  "night_out",
+  "live",
+  "go_out",
+  "with_kids",
+  "outdoors",
+  "culture",
+  "move",
+  "feel_better",
 ] as const;
 export type SuperParamKey = (typeof SUPER_PARAM_KEYS)[number];
 
@@ -221,49 +234,26 @@ export const SUPER_FIELDS: {
   emoji: string;
   battery: readonly string[];
 }[] = [
-  { key: "restaurants", label: "Restaurants", emoji: "\u{1F37D}\uFE0F", battery: ["restaurant"] },
-  {
-    key: "cafes_bakeries",
-    label: "Caf\u00e9s & Desserts",
-    emoji: "\u2615",
-    battery: ["cafe", "bakery"],
-  },
-  {
-    key: "bars_nightlife",
-    label: "Bars & Nightlife",
-    emoji: "\u{1F378}",
-    battery: ["bar", "night_club"],
-  },
-  {
-    key: "experiences",
-    label: "Experiences",
-    emoji: "\u{1F39F}\uFE0F",
-    battery: [
-      "tourist_attraction",
-      "amusement_park",
-      "bowling_alley",
-      "park",
-      "movie_theater",
-    ],
-  },
-  {
-    key: "culture_arts",
-    label: "Culture & Arts",
-    emoji: "\u{1F3AD}",
-    battery: ["museum", "art_gallery", "performing_arts_theater", "concert_hall"],
-  },
-  {
-    key: "sports_fitness",
-    label: "Sports & Fitness",
-    emoji: "\u26BD",
-    battery: ["gym", "fitness_center", "yoga_studio", "sports_club"],
-  },
-  {
-    key: "wellness_beauty",
-    label: "Wellness & Beauty",
-    emoji: "\u{1F486}",
-    battery: ["spa", "beauty_salon", "hair_salon", "massage"],
-  },
+  { key: "coffee", label: "Coffee", emoji: "·", battery: ["cafe"] },
+  { key: "breakfast", label: "Breakfast", emoji: "·", battery: ["breakfast_restaurant"] },
+  { key: "quick_bite", label: "Quick bite", emoji: "·", battery: ["fast_food_restaurant"] },
+  { key: "pizza", label: "Pizza", emoji: "·", battery: ["pizza_restaurant"] },
+  { key: "tacos", label: "Tacos", emoji: "·", battery: ["mexican_restaurant"] },
+  { key: "sushi", label: "Sushi", emoji: "·", battery: ["sushi_restaurant"] },
+  { key: "burgers", label: "Burgers", emoji: "·", battery: ["hamburger_restaurant"] },
+  { key: "noodles", label: "Noodles", emoji: "·", battery: ["ramen_restaurant"] },
+  { key: "dinner", label: "Dinner", emoji: "·", battery: ["restaurant"] },
+  { key: "sweet", label: "Sweet", emoji: "·", battery: ["bakery"] },
+  { key: "drinks", label: "Drinks", emoji: "·", battery: ["bar"] },
+  { key: "wine", label: "Wine", emoji: "·", battery: ["wine_bar"] },
+  { key: "night_out", label: "Night out", emoji: "·", battery: ["night_club"] },
+  { key: "live", label: "Live", emoji: "·", battery: ["concert_hall"] },
+  { key: "go_out", label: "Go out", emoji: "·", battery: ["tourist_attraction", "bowling_alley", "movie_theater"] },
+  { key: "with_kids", label: "With kids", emoji: "·", battery: ["amusement_park"] },
+  { key: "outdoors", label: "Outdoors", emoji: "·", battery: ["park"] },
+  { key: "culture", label: "Culture", emoji: "·", battery: ["museum", "art_gallery", "performing_arts_theater"] },
+  { key: "move", label: "Move", emoji: "·", battery: ["gym", "fitness_center", "yoga_studio", "sports_club"] },
+  { key: "feel_better", label: "Feel better", emoji: "·", battery: ["spa", "beauty_salon", "hair_salon", "massage"] },
 ];
 
 export type ParamField = {
@@ -393,13 +383,26 @@ export const DEFAULT_CATALOG: CatalogConfig = {
 // type, so types are free (MESITA-1685). Off because it keeps the returned pool
 // unchanged until an operator widens it deliberately.
 const DEFAULT_MAP_SUPERS: Record<SuperParamKey, boolean> = {
-  restaurants: true,
-  cafes_bakeries: true,
-  bars_nightlife: true,
-  experiences: false,
-  culture_arts: false,
-  sports_fitness: false,
-  wellness_beauty: false,
+  coffee: true,
+  breakfast: false,
+  quick_bite: false,
+  pizza: false,
+  tacos: false,
+  sushi: false,
+  burgers: false,
+  noodles: false,
+  dinner: true,
+  sweet: true,
+  drinks: true,
+  wine: false,
+  night_out: true,
+  live: false,
+  go_out: false,
+  with_kids: false,
+  outdoors: false,
+  culture: false,
+  move: false,
+  feel_better: false,
 };
 
 export const DEFAULT_MAP: MapConfig = {

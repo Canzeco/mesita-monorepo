@@ -13,6 +13,7 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
+    "@mesita/place-profile": "file:../../packages/place-profile",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.117.3",
     "@vis.gl/react-google-maps": "^1.10.1",
@@ -34,10 +35,16 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.11",
+    "happy-dom": "^21.0.1",
     "prettier": "^3.9.9",
     "prettier-plugin-tailwindcss": "^0.8.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",
     "vitest": "^4.1.11"
+  },
+  "dependenciesMeta": {
+    "@mesita/place-profile": {
+      "injected": false
+    }
   }
 }

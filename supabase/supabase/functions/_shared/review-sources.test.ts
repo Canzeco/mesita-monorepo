@@ -3,14 +3,19 @@ import {
   applyGatheredReviews,
   emptyReviewMetrics,
   reviewSourcePatch,
-  verifyChangedSocialLinks,
   type ReviewVerify,
+  socialConnectionRefusal,
+  verifyChangedSocialLinks,
 } from "./review-sources.ts";
 
 function found(count: number): ReviewVerify {
   return {
     found: true,
-    metrics: { ...emptyReviewMetrics(), instagram_followers_count: count, facebook_followers: count },
+    metrics: {
+      ...emptyReviewMetrics(),
+      instagram_followers_count: count,
+      facebook_followers: count,
+    },
   };
 }
 
@@ -50,7 +55,7 @@ Deno.test("reviewSourcePatch clears the link, the flag, and the numbers", () => 
 
 Deno.test("a profile edit awaits the verifier only for a URL that changed", async () => {
   const calls: string[] = [];
-  const patch = await verifyChangedSocialLinks({
+  const checked = await verifyChangedSocialLinks({
     prev: {
       instagram_url: "https://instagram.com/same",
       facebook_url: "https://facebook.com/old",
@@ -65,19 +70,79 @@ Deno.test("a profile edit awaits the verifier only for a URL that changed", asyn
     },
     verifyFacebook: (url) => {
       calls.push(url);
-      return Promise.resolve(missed("no_page"));
+      return Promise.resolve(found(40));
     },
   });
   assertEquals(calls, ["https://facebook.com/new"]);
-  assertEquals(patch.facebook_url, "https://facebook.com/new");
-  assertEquals(patch.facebook_found, false);
-  assertEquals(patch.facebook_followers, null);
-  assert(!("instagram_url" in patch));
+  assert(checked.ok);
+  if (!checked.ok) return;
+  assertEquals(checked.patch.facebook_url, "https://facebook.com/new");
+  assertEquals("facebook_found" in checked.patch, false);
+  assertEquals("facebook_followers" in checked.patch, false);
+  assert(!("instagram_url" in checked.patch));
+});
+
+Deno.test("a profile edit refuses a link that is not connected and writes nothing", async () => {
+  const checked = await verifyChangedSocialLinks({
+    prev: { instagram_url: null, facebook_url: null },
+    next: {
+      instagram_url: "https://instagram.com/gone",
+      facebook_url: "https://facebook.com/also-gone",
+    },
+    verifyInstagram: () => Promise.resolve(missed("not_a_profile")),
+    verifyFacebook: () => Promise.resolve(missed("no_page")),
+  });
+  assertEquals(checked.ok, false);
+  if (checked.ok) return;
+  assertEquals(checked.code, "social_not_connected");
+  assertEquals(checked.retryable, false);
+  assertEquals(checked.fields, ["instagram_url", "facebook_url"]);
+  assert(checked.error.includes("Instagram"));
+  assert(checked.error.includes("Facebook"));
+  assert(!("patch" in checked));
+});
+
+Deno.test("a connected account does not save beside one that is not", async () => {
+  const checked = await verifyChangedSocialLinks({
+    prev: { instagram_url: null, facebook_url: null },
+    next: {
+      instagram_url: "https://instagram.com/strana",
+      facebook_url: "https://facebook.com/gone",
+    },
+    verifyInstagram: () => Promise.resolve(found(12)),
+    verifyFacebook: () => Promise.resolve(missed("no_page")),
+  });
+  assertEquals(checked.ok, false);
+  if (checked.ok) return;
+  assertEquals(checked.fields, ["facebook_url"]);
+  assertEquals(checked.retryable, false);
+});
+
+Deno.test("a vendor miss can be tried again", () => {
+  const refusal = socialConnectionRefusal(
+    "instagram",
+    "client timeout after 20000ms",
+  );
+  assertEquals(refusal.retryable, true);
+  assert(refusal.text.includes("Try again"));
+});
+
+Deno.test("a vendor miss refuses the save without locking the same link", async () => {
+  const checked = await verifyChangedSocialLinks({
+    prev: { instagram_url: null, facebook_url: null },
+    next: { instagram_url: "https://instagram.com/strana" },
+    verifyInstagram: () =>
+      Promise.resolve(missed("client timeout after 20000ms")),
+  });
+  assertEquals(checked.ok, false);
+  if (checked.ok) return;
+  assertEquals(checked.retryable, true);
+  assertEquals(checked.fields, ["instagram_url"]);
 });
 
 Deno.test("clearing a link does not call the verifier", async () => {
   let called = false;
-  const patch = await verifyChangedSocialLinks({
+  const checked = await verifyChangedSocialLinks({
     prev: { instagram_url: "https://instagram.com/a", facebook_url: null },
     next: { instagram_url: null },
     verifyInstagram: () => {
@@ -86,9 +151,11 @@ Deno.test("clearing a link does not call the verifier", async () => {
     },
   });
   assertEquals(called, false);
-  assertEquals(patch.instagram_url, null);
-  assertEquals(patch.instagram_found, false);
-  assertEquals(patch.instagram_followers_count, null);
+  assert(checked.ok);
+  if (!checked.ok) return;
+  assertEquals(checked.patch.instagram_url, null);
+  assertEquals(checked.patch.instagram_found, false);
+  assertEquals(checked.patch.instagram_followers_count, null);
 });
 
 Deno.test("third persists gathered flags and numbers in the profile patch", () => {
@@ -96,7 +163,11 @@ Deno.test("third persists gathered flags and numbers in the profile patch", () =
   applyGatheredReviews(place, {
     google: {
       found: true,
-      metrics: { ...emptyReviewMetrics(), google_stars_overall: 4.6, google_review_count: 80 },
+      metrics: {
+        ...emptyReviewMetrics(),
+        google_stars_overall: 4.6,
+        google_review_count: 80,
+      },
     },
     instagram: {
       url: "https://instagram.com/strana",

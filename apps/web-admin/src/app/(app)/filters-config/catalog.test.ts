@@ -296,7 +296,7 @@ describe("Discovery function APIs", () => {
       ...DEFAULT_MAP,
       minRating: 5,
       minPopularity: 1,
-      supers: { ...DEFAULT_MAP.supers, restaurants: false },
+      supers: { ...DEFAULT_MAP.supers },
     });
     expect(
       coerceConfig({ map: { reloadMinKm: 99, reloadMinSec: 40 } }).map,
@@ -349,21 +349,15 @@ describe("Discovery function APIs", () => {
     });
   });
 
-  it("the category param is seven families", () => {
-    // MESITA-1695: the operator's noun is the family, not Google's slug.
+  it("the category param is twenty families", () => {
     expect(coerceConfig({ weights: {}, slotting: {} }).general).toEqual(DEFAULT_GENERAL);
-    expect(SUPER_FIELDS.length).toBe(7);
-    expect(new Set(SUPER_FIELDS.map((f) => f.key)).size).toBe(7);
-    // Every family names the Google battery it bills, so the box can say what
-    // it spends without asking anyone to toggle Google's vocabulary.
+    expect(SUPER_FIELDS.length).toBe(20);
+    expect(new Set(SUPER_FIELDS.map((f) => f.key)).size).toBe(20);
     for (const f of SUPER_FIELDS) expect(f.battery.length, f.key).toBeGreaterThan(0);
-    // The three the strip has always billed are on; the four it could not see
-    // until MESITA-1683 stay off until an operator opts in.
     const on = SUPER_FIELDS.filter((f) => DEFAULT_MAP.supers[f.key]).map((f) => f.key);
     expect(new Set(on)).toEqual(
-      new Set(["restaurants", "cafes_bakeries", "bars_nightlife"]),
+      new Set(["coffee", "dinner", "sweet", "drinks", "night_out"]),
     );
-    // Their union is the five slugs the pre-1695 blob had true.
     expect(
       new Set(SUPER_FIELDS.filter((f) => on.includes(f.key)).flatMap((f) => f.battery)),
     ).toEqual(new Set(["restaurant", "bar", "night_club", "cafe", "bakery"]));

@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(114);
+select plan(126);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -637,8 +637,8 @@ select has_table(
 
 select is(
   (select count(*)::bigint from public.place_families),
-  8::bigint,
-  'place family catalog is eight slugs: seven real + Other'
+  21::bigint,
+  'place family catalog is twenty guest families plus Undefined'
 );
 
 select is(
@@ -649,42 +649,43 @@ select is(
 
 select is(
   (select array_agg(slug order by sort_order) from public.place_families),
-  array['restaurants','cafes_bakeries','bars_nightlife','experiences',
-        'culture_arts','sports_fitness','wellness_beauty','undefined']::text[],
-  'family catalog order matches the law; Other last'
+  array['coffee','breakfast','quick_bite','pizza','tacos','sushi','burgers',
+        'noodles','dinner','sweet','drinks','wine','night_out','live','go_out',
+        'with_kids','outdoors','culture','move','feel_better','undefined']::text[],
+  'family catalog order is the twenty guest rails, Undefined last'
 );
 
 select is(
   (select family_keys from public.place_categories where slug = 'breakfast'),
-  array['restaurants','cafes_bakeries']::text[],
-  'breakfast is a double: restaurants AND cafés'
+  array['breakfast']::text[],
+  'breakfast is the breakfast rail'
 );
 
 select is(
   (select family_keys from public.place_categories where slug = 'karaoke'),
-  array['bars_nightlife','experiences']::text[],
-  'karaoke is a double: bars AND experiences'
+  array['night_out','go_out']::text[],
+  'karaoke is a night out and something to do'
 );
 
 select is(
   (select count(*)::bigint from public.place_categories
     where cardinality(family_keys) = 2),
-  7::bigint,
-  'exactly seven double-parent categories'
+  11::bigint,
+  'eleven categories sit on two families'
 );
 
 select is(
   (select count(*)::bigint from public.place_categories
-    where 'sports_fitness' = any(family_keys)),
+    where 'move' = any(family_keys)),
   12::bigint,
-  'Sports & Fitness holds twelve categories'
+  'Move holds twelve categories'
 );
 
 select is(
   (select count(*)::bigint from public.place_categories
-    where 'wellness_beauty' = any(family_keys)),
+    where 'feel_better' = any(family_keys)),
   12::bigint,
-  'Wellness & Beauty holds twelve categories'
+  'Feel better holds twelve categories'
 );
 
 select is(
@@ -699,10 +700,16 @@ select is(
   'every Atlas category maps to at least one family'
 );
 
-select is(
-  (select max(cardinality(family_keys))::bigint from public.place_categories),
-  2::bigint,
-  'every Atlas category maps to at most two families'
+select ok(
+  (select max(cardinality(family_keys)) from public.place_categories) between 1 and 20,
+  'a category sits on at least one family and not more than the catalog'
+);
+
+select ok(
+  position(
+    'cardinality(slugs) <= 20' in pg_get_functiondef('public.atlas_family_slugs_valid(text[])'::regprocedure)
+  ) > 0,
+  'a category is not capped at two families'
 );
 
 select is_empty(
@@ -766,7 +773,7 @@ savepoint before_family_write_probe;
 
 select lives_ok(
   $$insert into public.place_categories (slug, label, section, sort_order, family_keys)
-    values ('mesita_1857_probe', 'probe', 'Food & Nightlife', 998, array['restaurants'])$$,
+    values ('mesita_1857_probe', 'probe', 'Food & Nightlife', 998, array['dinner'])$$,
   'INSERT into place_categories calls the validator and survives'
 );
 
@@ -780,17 +787,108 @@ select throws_ok(
 insert into public.place_profiles (id, google_name)
 values ('00000000-0000-4000-8000-0000000fa111', 'Family Probe');
 
+-- profiles is places JOIN place_profiles. A profile row alone is invisible
+-- there, so the catalog assertions below would read NULL.
+insert into public.places (id, slug, state, content_state, currency)
+values (
+  '00000000-0000-4000-8000-0000000fa111',
+  'mesita-1857-probe',
+  'active',
+  'generating',
+  'MXN'
+);
+
 select lives_ok(
-  $$update public.place_profiles set family_keys = array['restaurants', 'cafes_bakeries']
+  $$update public.place_profiles set family_keys = array['dinner', 'coffee']
      where id = '00000000-0000-4000-8000-0000000fa111'$$,
-  'UPDATE of place_profiles.family_keys calls the validator and survives'
+  'a place write survives when a family list is offered'
+);
+
+select is(
+  (select family_keys from public.place_profiles
+    where id = '00000000-0000-4000-8000-0000000fa111'),
+  null::text[],
+  'a place does not keep the family list — membership comes from the category'
+);
+
+select lives_ok(
+  $$update public.place_profiles set family_keys = array['not_a_family']
+     where id = '00000000-0000-4000-8000-0000000fa111'$$,
+  'an unknown family slug is not stored on the place'
+);
+
+select is(
+  (select family_keys from public.place_profiles
+    where id = '00000000-0000-4000-8000-0000000fa111'),
+  null::text[],
+  'the unknown family slug was dropped instead of saved'
 );
 
 select throws_ok(
-  $$update public.place_profiles set family_keys = array['not_a_family']
+  $$update public.place_profiles set category = 'not_a_category'
      where id = '00000000-0000-4000-8000-0000000fa111'$$,
-  '23514'::char(5), null::text,
-  'place_profiles.family_keys still REFUSES a slug absent from place_families'
+  'P0001'::char(5), null::text,
+  'an unknown category is refused'
+);
+
+select lives_ok(
+  'update public.place_profiles set tags = array[' ||
+    quote_literal((select slug from public.place_tags order by sort_order, slug limit 1)) ||
+  '] where id = ''00000000-0000-4000-8000-0000000fa111''',
+  'a catalog tag is accepted'
+);
+
+select throws_ok(
+  $$update public.place_profiles set tags = array['not_a_tag']
+     where id = '00000000-0000-4000-8000-0000000fa111'$$,
+  'P0001'::char(5), null::text,
+  'an unknown tag is refused'
+);
+
+select lives_ok(
+  $$update public.place_categories
+       set family_keys = array['dinner', 'coffee', 'drinks', 'go_out']
+     where slug = 'mesita_1857_probe'$$,
+  'a category can belong to more than two families'
+);
+
+update public.place_profiles
+   set category = 'mesita_1857_probe'
+ where id = '00000000-0000-4000-8000-0000000fa111';
+
+select is(
+  (select family_keys from public.place_profiles
+    where id = '00000000-0000-4000-8000-0000000fa111'),
+  null::text[],
+  'pointing a place at that category does not store the families on the place'
+);
+
+select is(
+  (select family_keys from public.profiles
+    where id = '00000000-0000-4000-8000-0000000fa111'),
+  array['dinner', 'coffee', 'drinks', 'go_out']::text[],
+  'the catalog view reads the four-family mapping'
+);
+
+select lives_ok(
+  $$update public.place_categories
+       set family_keys = array['dinner', 'coffee', 'culture']
+     where slug = 'mesita_1857_probe'$$,
+  'the mapping can change again'
+);
+
+select is(
+  (select family_keys from public.place_profiles
+    where id = '00000000-0000-4000-8000-0000000fa111'),
+  null::text[],
+  'changing the mapping does not write families onto the place'
+);
+
+select is(
+  (select family_keys from public.profiles
+    where id = '00000000-0000-4000-8000-0000000fa111'),
+  array['dinner', 'coffee', 'culture']::text[],
+  'the catalog view follows the new mapping'
 );
 
 rollback to savepoint before_family_write_probe;
