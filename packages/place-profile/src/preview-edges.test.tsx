@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { PlaceProfile } from "./components/PlaceProfile";
+import { SoonScreen } from "./components/place-detail/soon-screen";
 import { placeRowToDetail } from "./place-to-detail";
 import type { PlaceDetail } from "./place-detail";
 
@@ -33,7 +34,37 @@ describe("member preview edges", () => {
     );
     expect(html).toContain("Enrich");
     expect(html).not.toContain("Overview");
+    expect(html).not.toContain("Rewards");
     expect(html).toContain("Vote to enrich");
+  });
+
+  it("keeps Google, Instagram, and Facebook when the socials are empty", () => {
+    const html = renderToStaticMarkup(
+      <PlaceProfile
+        place={detail({
+          google_stars_overall: 3.8,
+          google_review_count: 484,
+        })}
+      />,
+    );
+    expect(html).toContain("3.8");
+    expect(html).toContain("484 Google");
+    expect(html).toContain("Instagram, Not connected");
+    expect(html).toContain("Facebook, Not connected");
+    const googleAt = html.indexOf("484 Google");
+    const instagramAt = html.indexOf(">Instagram<");
+    const facebookAt = html.indexOf(">Facebook<");
+    expect(googleAt).toBeGreaterThan(-1);
+    expect(instagramAt).toBeGreaterThan(googleAt);
+    expect(facebookAt).toBeGreaterThan(instagramAt);
+    expect(html).toContain("from-purple-600");
+    expect(html).toContain("bg-[#1877F2]");
+    expect(html).toContain("#FFC107");
+    expect(html).toContain(">Not connected<");
+    expect(html).toContain(">Instagram<");
+    expect(html).toContain(">Facebook<");
+    expect(html).not.toContain(">—<");
+    expect(html).not.toContain("Reviews summary");
   });
 
   it("renders a place with no photos", () => {
@@ -42,6 +73,15 @@ describe("member preview edges", () => {
     );
     expect(html).toContain("Lupita");
     expect(html).toContain("Overview");
+    expect(html).toContain("Menus");
+    expect(html).toContain("Rewards");
+    expect(html).toContain("Soon");
+    expect(renderToStaticMarkup(<SoonScreen title="Menus" />)).toContain(
+      "Menus is coming soon",
+    );
+    expect(renderToStaticMarkup(<SoonScreen title="Rewards" />)).toContain(
+      "Rewards is coming soon",
+    );
   });
 
   it("renders no outbound href when links and callbacks are absent", () => {

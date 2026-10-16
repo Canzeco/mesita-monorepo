@@ -10,7 +10,7 @@
 // opens Sources. Mode, source, and routing facts live in discovery-surface.ts,
 // which is a tested copy of the Edge Function surface. Catalog weights are
 // the three signals catalogScore multiplies. Map and Swipe exponents stay
-// on Modes. Routing is fixed. Family switches stay on Atlas.
+// on Modes. Routing is fixed. Family membership stays on Atlas.
 //   SIGNALS   seven earned signals: Name · Category · Proximity · Timing ·
 //             Enriched · Popularity · Randomness. None reads money.
 //             Partnership and Promotion merged into Mesita Level and Social

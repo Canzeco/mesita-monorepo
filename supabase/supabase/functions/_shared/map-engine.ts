@@ -30,7 +30,6 @@ import type { NearbyHit, PlacesScope } from "./nearby-places.ts";
 import {
   familiesForGoogleType,
   type EligibilityResult,
-  type FamilyKey,
 } from "./sourcing.ts";
 import { familiesForAtlasCategory } from "./place-taxonomy.ts";
 
@@ -124,9 +123,9 @@ export function admitGuestMinReviews<T extends ListedMapRow>(
   };
 }
 
-/** The Supers the operator left on, in param order. */
-export function enabledMapSupers(map: MapConfig): SuperParamKey[] {
-  return SUPER_PARAM_KEYS.filter((key) => map.supers[key]);
+/** Every guest family. Stored switches do not turn a family off. */
+export function enabledMapSupers(_map: MapConfig): SuperParamKey[] {
+  return [...SUPER_PARAM_KEYS];
 }
 
 /** Their Google batteries, flattened — what one Nearby call asks for. */
@@ -221,29 +220,6 @@ export function admitSwipeCatalog<T extends SwipeListedRow>(
   return admitMapCatalog(typed, [], map, params).listed;
 }
 
-// Search + Add share this allowlist. A Super param expands to the Google
-// Table A types in that Super (`mexican_restaurant` rides `restaurant`).
-//
-// Food and drink rails gate Search and Add. Night out does too.
-// Move, Feel better and Go out do not: those places admitted before a
-// family toggle existed, and turning the toggle into a gate would drop
-// listed museums, gyms and parks.
-
-const PARAM_GATED_FAMILIES = new Set<FamilyKey>([
-  "coffee",
-  "breakfast",
-  "quick_bite",
-  "pizza",
-  "tacos",
-  "sushi",
-  "burgers",
-  "noodles",
-  "dinner",
-  "sweet",
-  "drinks",
-  "night_out",
-]);
-
 export type MapPlaceSignals = {
   primaryType: string | null;
   rating: number | null;
@@ -268,12 +244,7 @@ export function primaryTypeClearsMapTypes(
     if (atlas.length > 0) return atlas;
     return familiesForGoogleType(primaryType);
   })();
-  if (families.length === 0) return false;
-  return families.some((family) => {
-    if (!PARAM_GATED_FAMILIES.has(family)) return true;
-    if (enabled.size === 0) return false;
-    return map.supers[family as SuperParamKey] === true;
-  });
+  return families.length > 0;
 }
 
 /** Text Search / Place Details / Create — full rating + review signals. */

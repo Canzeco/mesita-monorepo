@@ -8,43 +8,14 @@ import type { PlaceDetail } from "../../place-detail";
 import { formatCompactCount } from "../../lib/format";
 
 import { Box, BoxHScroll } from "./box";
-import { reviewsTabChannelStats } from "./channel-stats";
-import { channelStatIcon } from "./channel-stat-icons";
-import { ProfileStat } from "./profile-summary-parts";
 import {
   type ReviewSort,
   ReviewSortChips,
   reviewTimeMs,
 } from "./review-ui";
 
-// ── 3. Reviews summary ──────────────────────────────────────────────────
-
-export function ReviewsSummaryBox({ place }: { place: PlaceDetail }) {
-  const stats = reviewsTabChannelStats(place);
-  const hasAny =
-    place.google.count != null ||
-    place.google.rating != null ||
-    place.instagram.followers != null ||
-    place.facebook.followers != null;
-  if (!hasAny) return null;
-
-  return (
-    <Box title="Reviews summary" icon={Star} iconColor="text-muted-foreground">
-      <div className="grid grid-cols-3 gap-1">
-        {stats.map((stat) => (
-          <ProfileStat
-            key={stat.key}
-            value={stat.value}
-            label={stat.label}
-            icon={channelStatIcon(stat)}
-          />
-        ))}
-      </div>
-    </Box>
-  );
-}
-
-// ── 4. Individual reviews (Reviews tab: Google's cards) ─────────────────
+// Google, Instagram, and Facebook sit in the profile header, beside the
+// photo. This tab is Google's own review cards.
 
 export function GoogleReviewsBox({ place }: { place: PlaceDetail }) {
   const [sort, setSort] = useState<ReviewSort>("newest");

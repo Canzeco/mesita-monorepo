@@ -4,6 +4,7 @@ import {
   FAMILIES,
   familiesForAtlasCategory,
   familiesForPlace,
+  keepAtlasValues,
   readGuestFamilyKeys,
   resolveEnrichedFamilyKeys,
   sanitizeFamilyKeys,
@@ -84,7 +85,9 @@ Deno.test("undefined category maps to family undefined; empty has none", () => {
   assertEquals(familiesForAtlasCategory(""), []);
 });
 
-Deno.test("familiesForPlace uses the mapping on the row, else the catalog trip", () => {
+Deno.test("familiesForPlace follows the mapping, not the code twin", () => {
+  assertEquals(familiesForAtlasCategory("mexican"), ["tacos"]);
+  assertEquals(familiesForPlace({ category: "mexican" }), ["undefined"]);
   assertEquals(
     familiesForPlace({
       category: "breakfast",
@@ -93,23 +96,17 @@ Deno.test("familiesForPlace uses the mapping on the row, else the catalog trip",
     ["coffee"],
   );
   assertEquals(
-    familiesForPlace({
-      category: "mexican",
-      family_keys: ["drinks"],
-    }),
-    ["drinks"],
+    familiesForPlace(
+      { category: "mexican", family_keys: ["tacos"] },
+      { mexican: ["dinner"] },
+    ),
+    ["dinner"],
   );
-  assertEquals(familiesForPlace({ category: "mexican" }), ["tacos"]);
-  assertEquals(familiesForPlace({ category: "gastropub" }), ["dinner", "drinks"]);
   assertEquals(
-    familiesForPlace({
-      category: "undefined",
-      family_keys: ["drinks"],
-    }),
-    ["drinks"],
+    familiesForPlace({ category: "cafe" }, { cafe: ["coffee", "breakfast"] }),
+    ["coffee", "breakfast"],
   );
   assertEquals(familiesForPlace({ category: "undefined" }), ["undefined"]);
-  assertEquals(familiesForPlace({ category: "cafe" }), ["coffee", "breakfast"]);
 });
 
 Deno.test("familiesForPlace is TOTAL — no place is ever pill-less", () => {
@@ -123,21 +120,40 @@ Deno.test("familiesForPlace is TOTAL — no place is ever pill-less", () => {
   ]);
 });
 
-Deno.test("resolveEnrichedFamilyKeys keeps the catalog trip", () => {
-  assertEquals(resolveEnrichedFamilyKeys("mexican", ["dinner"]), ["tacos"]);
-  assertEquals(resolveEnrichedFamilyKeys("breakfast", ["coffee"]), ["breakfast"]);
-  assertEquals(resolveEnrichedFamilyKeys("karaoke", ["go_out"]), [
-    "night_out",
-    "go_out",
-  ]);
-  assertEquals(resolveEnrichedFamilyKeys("mexican_restaurant", ["dinner"]), [
-    "tacos",
-  ]);
-  assertEquals(resolveEnrichedFamilyKeys("undefined", ["drinks"]), ["undefined"]);
-  assertEquals(resolveEnrichedFamilyKeys("undefined", []), ["undefined"]);
-  assertEquals(resolveEnrichedFamilyKeys(null, []), ["undefined"]);
-  assertEquals(resolveEnrichedFamilyKeys("leftover_slug", ["dinner"]), ["dinner"]);
-  assertEquals(resolveEnrichedFamilyKeys("leftover_slug", ["junk"]), ["undefined"]);
+Deno.test("resolveEnrichedFamilyKeys ignores a family the model invented", () => {
+  const mapping = {
+    mexican: ["tacos"],
+    karaoke: ["night_out", "go_out"],
+  };
+  assertEquals(resolveEnrichedFamilyKeys("mexican", ["dinner"], mapping), ["tacos"]);
+  assertEquals(
+    resolveEnrichedFamilyKeys("karaoke", ["invented_family"], mapping),
+    ["night_out", "go_out"],
+  );
+  assertEquals(resolveEnrichedFamilyKeys("mexican", ["dinner"]), ["undefined"]);
+  assertEquals(resolveEnrichedFamilyKeys("leftover_slug", ["dinner"]), ["undefined"]);
+  assertEquals(resolveEnrichedFamilyKeys(null, ["dinner"], mapping), ["undefined"]);
+});
+
+Deno.test("keepAtlasValues drops a category and tags Atlas does not define", () => {
+  assertEquals(
+    keepAtlasValues({
+      category: "invented_bistro",
+      tags: ["terraza", "made_up", "terraza", "desayuno"],
+      categories: ["mexican", "undefined"],
+      tagVocabulary: ["terraza", "desayuno"],
+    }),
+    { category: "undefined", tags: ["terraza", "desayuno"] },
+  );
+  assertEquals(
+    keepAtlasValues({
+      category: "Mexican",
+      tags: ["desayuno"],
+      categories: ["mexican"],
+      tagVocabulary: ["desayuno"],
+    }),
+    { category: "mexican", tags: ["desayuno"] },
+  );
 });
 
 Deno.test("sanitizeFamilyKeys drops junk, dedupes, keeps more than two, catalog order", () => {

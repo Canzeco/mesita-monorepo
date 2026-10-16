@@ -8,6 +8,7 @@ const supersAllOff = (): Record<SuperParamKey, boolean> =>
     SuperParamKey,
     boolean
   >;
+import { nearbyTypesForSupers } from "./google-type-super.ts";
 import {
   admitGuestMinReviews,
   admitMapCatalog,
@@ -41,18 +42,9 @@ function hit(over: Partial<NearbyHit> = {}): NearbyHit {
   };
 }
 
-Deno.test("defaults admit everything and fire the three billed Supers", () => {
-  // Not every type any more: the strip covers all seven Families
-  // since MESITA-1683, and the four it could not see before default OFF, so
-  // growing the list bills nothing new until an operator opts in.
-  // Battery order follows the Super param order, not the old slug list.
-  assertEquals(new Set(enabledNearbyTypes(MAP)), new Set([
-    "restaurant",
-    "cafe",
-    "bakery",
-    "bar",
-    "night_club",
-  ]));
+Deno.test("defaults admit everything and ask Google for every guest family", () => {
+  const all = new Set(nearbyTypesForSupers([...SUPER_PARAM_KEYS]));
+  assertEquals(new Set(enabledNearbyTypes(MAP)), all);
   assertEquals(mapShouldFillGoogle(true, MAP), true);
   assertEquals(mapShouldFillGoogle(false, MAP), false);
   assertEquals(googleHitClearsMapFloors(hit({ rating: null }), MAP), true);
@@ -62,21 +54,22 @@ Deno.test("defaults admit everything and fire the three billed Supers", () => {
   );
 });
 
-Deno.test("googleFill off or every Super off skips Nearby even if the client opts in", () => {
+Deno.test("googleFill off skips Nearby; a stored family switch does not", () => {
+  const all = new Set(nearbyTypesForSupers([...SUPER_PARAM_KEYS]));
   assertEquals(mapShouldFillGoogle(true, { ...MAP, googleFill: false }), false);
   assertEquals(
     mapShouldFillGoogle(true, {
       ...MAP,
       supers: supersAllOff(),
     }),
-    false,
+    true,
   );
   assertEquals(
     new Set(enabledNearbyTypes({
       ...MAP,
       supers: { ...MAP.supers, coffee: false },
     })),
-    new Set(["restaurant", "bakery", "bar", "night_club"]),
+    all,
   );
 });
 
@@ -165,7 +158,7 @@ Deno.test("evaluatePlaceForMap admits wellness; rejects hotels", () => {
   assertEquals(hotel.eligible, false);
 });
 
-Deno.test("evaluatePlaceForMap respects the Super params and floors", () => {
+Deno.test("evaluatePlaceForMap ignores stored family switches and still applies floors", () => {
   const barsOnly = {
     ...MAP,
     supers: { ...supersAllOff(), night_out: true },
@@ -184,7 +177,7 @@ Deno.test("evaluatePlaceForMap respects the Super params and floors", () => {
       rating: 4.5,
       reviewCount: 10,
     }).eligible,
-    false,
+    true,
   );
   const floored = { ...MAP, minRating: 4, minReviews: 50 };
   const low = evaluatePlaceForMap(floored, {
@@ -208,7 +201,7 @@ Deno.test("admitSwipeCatalog keeps listed F&B and spas, drops hotels, never Goog
   assertEquals(got.map((r) => r.id), ["rest", "bar", "spa", "unk"]);
 });
 
-Deno.test("admitSwipeCatalog honors the Map Super params", () => {
+Deno.test("admitSwipeCatalog ignores stored family switches", () => {
   const barsOnly = {
     ...MAP,
     supers: { ...supersAllOff(), night_out: true },
@@ -217,7 +210,7 @@ Deno.test("admitSwipeCatalog honors the Map Super params", () => {
     { id: "rest", category: "restaurant" },
     { id: "club", category: "night_club" },
   ];
-  assertEquals(admitSwipeCatalog(listed, barsOnly).map((r) => r.id), ["club"]);
+  assertEquals(admitSwipeCatalog(listed, barsOnly).map((r) => r.id), ["rest", "club"]);
 });
 
 Deno.test("Atlas leftover slugs admit via Super membership, not Google type", () => {

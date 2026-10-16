@@ -88,7 +88,7 @@ function SourceControls({
           <Link href={DISCOVERY_MODES_HREF} className="text-foreground font-medium underline">
             Modes
           </Link>
-          , under Word. Family switches are on Atlas.
+          , under Word. Family membership is on Atlas.
         </p>
         <GeneralFloorOwner seed={seed} />
       </>

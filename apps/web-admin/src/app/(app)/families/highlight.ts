@@ -29,10 +29,16 @@ export type TagRow = {
   sortOrder: number;
 };
 
+export type GoogleMembershipRow = {
+  slug: string;
+  familyKeys: string[];
+};
+
 export type FamiliesMap = {
   families: FamilyRow[];
   categories: CategoryRow[];
   googleTypes: GoogleTypeRow[];
+  googleMembership: GoogleMembershipRow[];
   tags: TagRow[];
 };
 

@@ -15,6 +15,7 @@ export async function getFamiliesMap(): Promise<ActionResult<FamiliesMap>> {
     families: r.data.families,
     categories: r.data.categories ?? [],
     googleTypes: r.data.googleTypes ?? [],
+    googleMembership: r.data.googleMembership ?? [],
     tags: r.data.tags ?? [],
   };
 }

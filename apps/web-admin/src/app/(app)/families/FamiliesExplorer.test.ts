@@ -53,25 +53,19 @@ describe("groupTags", () => {
 });
 
 describe("Atlas lists", () => {
-  it("shows counts, then Categories, Tags, and Families with their categories", () => {
+  it("shows the category matrix, then Tags, and no family switches", () => {
     const src = readFileSync(join(__dirname, "FamiliesExplorer.tsx"), "utf8");
-    expect(src).toContain("categories ·");
-    const body = src.slice(
-      src.indexOf("export function FamiliesExplorer"),
-      src.indexOf("function CategorySection"),
-    );
-    const categories = body.indexOf("<CategorySection");
+    const page = readFileSync(join(__dirname, "page.tsx"), "utf8");
+    const body = src.slice(src.indexOf("export function FamiliesExplorer"));
+    const matrix = body.indexOf("<MembershipMatrix");
     const tags = body.indexOf("<TagsList");
-    const families = body.indexOf("<FamiliesSection");
-    expect(categories).toBeGreaterThan(-1);
-    expect(tags).toBeGreaterThan(categories);
-    expect(families).toBeGreaterThan(tags);
+    expect(matrix).toBeGreaterThan(-1);
+    expect(tags).toBeGreaterThan(matrix);
+    expect(src).not.toContain("FamiliesSection");
+    expect(page).not.toContain("FamiliesClient");
+    expect(page).not.toContain("<Switch");
     const tagsList = src.slice(src.indexOf("function TagsList"));
     expect(tagsList).toContain("The full catalog");
     expect(tagsList).not.toContain("<button");
-    expect(src).toContain("Each family lists the categories it contains");
-    expect(src).toContain("categories.length");
-    expect(src).not.toContain("100 categories");
-    expect(src).not.toContain("200 tags");
   });
 });

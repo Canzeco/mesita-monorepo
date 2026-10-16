@@ -415,7 +415,6 @@ describe("Discovery page box order", () => {
     const swipe = readFileSync(join(__dirname, "SwipeConfigClient.tsx"), "utf8");
     const name = readFileSync(join(__dirname, "NameConfigClient.tsx"), "utf8");
     const map = readFileSync(join(__dirname, "MapConfigClient.tsx"), "utf8");
-    const supersStrip = readFileSync(join(__dirname, "FamiliesClient.tsx"), "utf8");
     const signals = readFileSync(join(__dirname, "SignalsConfigClient.tsx"), "utf8");
     const chips = readFileSync(join(__dirname, "ModeSourceChips.tsx"), "utf8");
     const nextConfig = readFileSync(
@@ -458,13 +457,7 @@ describe("Discovery page box order", () => {
     expect(nextConfig).toContain('source: "/filters-config/modules"');
     expect(nextConfig).toContain('destination: "/filters-config/sources"');
 
-    // The param is the family (MESITA-1695). Google's slugs are printed under
-    // each switch as the battery it bills, never as twenty-two switches.
-    expect(supersStrip).toContain('title="Families"');
-    expect(supersStrip).toContain("SUPER_FIELDS");
-    expect(supersStrip).not.toContain("NEARBY_TYPE_FIELDS");
-    expect(supersStrip).not.toContain("Categories available");
-    expect(supersStrip).not.toContain("categoryCount");
+    // Family membership is the Atlas matrix, not a Discovery source.
 
     // The floor lives INSIDE the source it cuts (Pato, 2026-09-08). One box
     // owns each key; the rest mirror it read-only, so no two inputs move one
@@ -493,9 +486,6 @@ describe("Discovery page box order", () => {
     expect(sourcesBoard).toContain("FiltersFloorOwner");
     expect(sourcesBoard).not.toContain("FloorSoonNote");
     expect(sourcesBoard).not.toContain("ConfigSoon");
-    // Families, Nearby's floor and Nearby's pull all write `map`, so none
-    // may save the whole slice or the last Save wipes the others.
-    expect(supersStrip).toContain('["nameFast", "nameDeep", "mapSupers"]');
     const acts = readFileSync(join(__dirname, "actions.ts"), "utf8");
     expect(acts).toContain('"mapSupers"');
     expect(acts).toContain('"mapFloors"');
@@ -715,7 +705,8 @@ describe("Discovery page box order", () => {
     expect(modesJsx).not.toContain("ConfigSoon");
 
     const familiesPage = readFileSync(join(__dirname, "../families/page.tsx"), "utf8");
-    expect(familiesPage).toContain("FamiliesClient");
+    expect(familiesPage).not.toContain("FamiliesClient");
+    expect(familiesPage).toContain("FamiliesExplorer");
 
     // SEVEN BOXES AND NOTHING ELSE. The family switches are not a source.
     const sourceOrder = ["SourcesBoard"];

@@ -1,9 +1,17 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { boxesAfterFailedSync, reviewBoxState, syncSubtitle } from "./ReviewsSummary";
+import { boxStateLabel, boxesAfterFailedSync, reviewBoxState, syncSubtitle } from "./ReviewsSummary";
 
 describe("review boxes", () => {
+  it("states the five operator phrases", () => {
+    expect(boxStateLabel("no-link")).toBe("No link configured");
+    expect(boxStateLabel("never-synced")).toBe("Never synced");
+    expect(boxStateLabel("syncing")).toBe("Syncing");
+    expect(boxStateLabel("synced")).toBe("Synced");
+    expect(boxStateLabel("error")).toBe("Error");
+  });
+
   it("names the five states from the saved link and the last sync", () => {
     expect(reviewBoxState(false, undefined)).toBe("no-link");
     expect(reviewBoxState(true, undefined)).toBe("never-synced");
@@ -29,7 +37,7 @@ describe("review boxes", () => {
         facebook: "Apify refused the call: too many outstanding invoices.",
         google_reviews: "Apify refused the call: too many outstanding invoices.",
       },
-    })).toBe("Apify refused the call: too many outstanding invoices.");
+    })).toBe("Sync could not run: too many outstanding invoices.");
   });
 
   it("turns tiles that were still syncing into errors when the call fails", () => {
@@ -52,8 +60,9 @@ describe("review boxes", () => {
     expect(src).toContain("Google Summary");
     expect(src).toContain("Instagram Summary");
     expect(src).toContain("Facebook Summary");
-    expect(src).toContain("Google Reviews");
+    expect(src).toContain("Individual Google Reviews");
+    expect(src).toContain("No link configured");
     expect(src).not.toContain("instagram_found");
-    expect(src).not.toContain("apify");
+    expect(src.toLowerCase()).not.toContain("apify");
   });
 });

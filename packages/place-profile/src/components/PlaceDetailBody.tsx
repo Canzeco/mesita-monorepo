@@ -9,11 +9,11 @@ import type { PlaceDetail } from "../place-detail";
 import { LocationBox, HoursBox } from "./place-detail/location-hours";
 import { PopularTimesBox } from "./place-detail/popular-times";
 import { MediaBox } from "./place-detail/media";
-import { MenusBox } from "./place-detail/menus";
 import { ProfileSummary } from "./place-detail/profile-summary";
-import { GoogleReviewsBox, ReviewsSummaryBox } from "./place-detail/reviews";
+import { GoogleReviewsBox } from "./place-detail/reviews";
 import { PlaceRequestPanelView } from "./place-detail/PlaceRequestPanel";
 import { PlaceTabBar, type PlaceTab } from "./place-detail/tabs";
+import { SoonScreen } from "./place-detail/soon-screen";
 import { DatesBox, LinksBox, TagsBox } from "./place-detail/tags-links-meta";
 
 // Pure presentation for the place detail surface, laid out like an
@@ -25,7 +25,7 @@ import { DatesBox, LinksBox, TagsBox } from "./place-detail/tags-links-meta";
 //   1. Profile summary — name in page chrome; photo + Google/Instagram/
 //      Facebook; swipe-style tags; then Save · Contact · Share.
 //   2. Sticky tab strip — Enrich only until Enriched, then Overview ·
-//      Reviews · Menus.
+//      Reviews · Menus (Soon) · Rewards (Soon).
 //   3. The active tab's boxes.
 
 export function PlaceDetailBody({
@@ -79,16 +79,14 @@ export function PlaceDetailBody({
             <DatesBox place={place} />
           </>
         )}
-        {/* The outside channels' numbers first, then Google's own reviews as
-            the one source with cards to read. */}
         {activeTab === "reviews" && place.is_enriched && (
-          <>
-            <ReviewsSummaryBox place={place} />
-            <GoogleReviewsBox place={place} />
-          </>
+          <GoogleReviewsBox place={place} />
         )}
         {activeTab === "products" && place.is_enriched && (
-          <MenusBox place={place} onOpenMenu={actions?.onOpenMenu} />
+          <SoonScreen title="Menus" />
+        )}
+        {activeTab === "rewards" && place.is_enriched && (
+          <SoonScreen title="Rewards" />
         )}
       </div>
     </div>

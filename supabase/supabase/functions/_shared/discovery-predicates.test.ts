@@ -38,10 +38,12 @@ Deno.test("garbage filters degrade to no predicate rather than throwing", () => 
   }
 });
 
-Deno.test("Family cuts the mapping on the row, else the catalog trip", () => {
+Deno.test("Family cuts the derived mapping and does not invent a trip", () => {
   const rows = [
-    place({ id: "taco", category: "taco" }),
-    place({ id: "brunch", category: "brunch" }),
+    place({ id: "taco", category: "taco", family_keys: ["tacos"] }),
+    place({ id: "moved", category: "taco", family_keys: ["dinner"] }),
+    place({ id: "bare", category: "taco" }),
+    place({ id: "brunch", category: "brunch", family_keys: ["breakfast"] }),
     place({
       id: "shyBreakfast",
       category: "breakfast",
@@ -56,6 +58,10 @@ Deno.test("Family cuts the mapping on the row, else the catalog trip", () => {
   assertEquals(
     applyDeckPredicates(rows, readDeckPredicates({ familyKeys: ["tacos"] })).map((r) => r.id),
     ["taco"],
+  );
+  assertEquals(
+    applyDeckPredicates(rows, readDeckPredicates({ familyKeys: ["dinner"] })).map((r) => r.id),
+    ["moved"],
   );
   assertEquals(
     applyDeckPredicates(rows, readDeckPredicates({ familyKeys: ["breakfast"] })).map((r) => r.id),
@@ -78,7 +84,7 @@ Deno.test("Family cuts the mapping on the row, else the catalog trip", () => {
 Deno.test("Super undefined matches Atlas leftover category", () => {
   const rows = [
     place({ id: "unk", category: "undefined" }),
-    place({ id: "taco", category: "taco" }),
+    place({ id: "taco", category: "taco", family_keys: ["tacos"] }),
   ];
   assertEquals(
     applyDeckPredicates(
@@ -102,8 +108,8 @@ Deno.test("the cut is what makes a narrow filter searchable, not thinning", () =
   const catalog = [
     ...Array.from({ length: 200 }, (_, i) =>
       place({ id: `bar-${i}`, category: "bar" })),
-    place({ id: "cafe-1", category: "coffee_shop" }),
-    place({ id: "cafe-2", category: "cafe" }),
+    place({ id: "cafe-1", category: "coffee_shop", family_keys: ["coffee", "breakfast"] }),
+    place({ id: "cafe-2", category: "cafe", family_keys: ["coffee", "breakfast"] }),
   ];
   const kept = applyDeckPredicates(
     catalog,

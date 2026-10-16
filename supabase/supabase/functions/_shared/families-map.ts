@@ -1,9 +1,10 @@
 // The Atlas page payload. Families, categories and tags come from the live
-// tables. Google types come from the code map — that record is the
-// exclusive side of the taxonomy, and it is not stored twice. Facet chrome
-// is presentation and lives with the tag vocabulary.
+// tables. Google membership is the same join Search uses: one Table A type,
+// zero or more guest families. The coarse exclusive bucket stays on
+// googleTypes for older readers. Facet chrome lives with the tag vocabulary.
 import type { PlaceCategory, PlaceFamily } from "./categories.ts";
 import { GOOGLE_TYPE_SUPER, type GuestSuper } from "./google-type-super.ts";
+import { familiesForGoogleType } from "./sourcing.ts";
 import { type PlaceTag, TAG_FACETS } from "./tags.ts";
 
 export type FamiliesMapFamily = {
@@ -24,6 +25,12 @@ export type FamiliesMapGoogleType = {
   family: GuestSuper;
 };
 
+/** One Places API (New) type and the guest families it sits in. */
+export type FamiliesMapGoogleMembership = {
+  slug: string;
+  familyKeys: string[];
+};
+
 export type FamiliesMapTag = {
   slug: string;
   label: string;
@@ -37,6 +44,7 @@ export type FamiliesMap = {
   families: FamiliesMapFamily[];
   categories: FamiliesMapCategory[];
   googleTypes: FamiliesMapGoogleType[];
+  googleMembership: FamiliesMapGoogleMembership[];
   tags: FamiliesMapTag[];
 };
 
@@ -64,6 +72,12 @@ export function buildFamiliesMap(
     })),
     googleTypes: Object.entries(GOOGLE_TYPE_SUPER)
       .map(([slug, family]) => ({ slug, family }))
+      .sort((a, b) => a.slug.localeCompare(b.slug)),
+    googleMembership: Object.keys(GOOGLE_TYPE_SUPER)
+      .map((slug) => ({
+        slug,
+        familyKeys: familiesForGoogleType(slug),
+      }))
       .sort((a, b) => a.slug.localeCompare(b.slug)),
     tags: tags
       .map((tag) => {

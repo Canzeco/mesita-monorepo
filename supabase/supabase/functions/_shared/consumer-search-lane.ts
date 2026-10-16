@@ -56,7 +56,6 @@ import {
   loadDiscoveryConfig,
   type MapConfig,
   type NameConfig,
-  SUPER_PARAM_KEYS,
   type SuperParamKey,
 } from "./discovery-config.ts";
 import {
@@ -108,9 +107,9 @@ type PredictionState =
   | "verified_partner_other"
   | "verified_partner_self";
 
-/** Google is skipped when every Super is off. */
-function anySuperOn(supers: Record<SuperParamKey, boolean>): boolean {
-  return SUPER_PARAM_KEYS.some((k) => supers[k]);
+/** Guest families stay on. A stored off switch does not skip Google. */
+function anySuperOn(_supers: Record<SuperParamKey, boolean>): boolean {
+  return true;
 }
 
 export type LaneItem = {

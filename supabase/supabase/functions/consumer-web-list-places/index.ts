@@ -300,13 +300,10 @@ Deno.serve(async (req) => {
   if (clientGoogle && !scopeFromClient) {
     placesScope = "google";
   }
-  // A GUEST PILL OUTRANKS THE TYPE STRIP, deliberately (MESITA-1685). The
-  // pill IS the guest's question, and `nearbyTypesForSupers` reads no config,
-  // so `cfg.map.supers` sits this branch out entirely.
-  // Do not "fix" this by intersecting the two: types are free (one request
-  // carries the whole array), so an intersection saves nothing and, with the
-  // catalog this thin, empties the four Supers the operator has not enabled.
-  // The operator still holds googleFill, the floors, and the rate controls.
+  // A GUEST PILL OUTRANKS THE FULL BATTERY, deliberately (MESITA-1685). The
+  // pill IS the guest's question. With no pill, Nearby asks for every guest
+  // family. Stored family switches are not read. The operator still holds
+  // googleFill, the floors, and the rate controls.
   const nearbyTypes = guestSupers.length > 0
     ? nearbyTypesForSupers(guestSupers)
     : enabledNearbyTypes(cfg.map);
@@ -353,10 +350,9 @@ Deno.serve(async (req) => {
   if (isNearby && guestMinReviews > 0) {
     filtered = filtered.gte("google_review_count", guestMinReviews);
   }
-  // Guest Family: same reason as Popularity. family_keys is
-  // total on the row; overlaps so a dense bbox does not fill NEARBY_SCAN_LIMIT
-  // with the wrong supers and drop closer matches. The JS familiesForPlace
-  // pass still runs for Atlas-inferred rows whose stored keys lag.
+  // Guest Family: family_keys on the row is the view's derived mapping.
+  // overlaps so a dense bbox does not fill NEARBY_SCAN_LIMIT with the wrong
+  // families. The JS pass uses those keys and does not invent a family.
   if (isNearby && guestSupers.length > 0) {
     filtered = (filtered as typeof filtered & {
       overlaps: (col: string, val: string[]) => typeof filtered;
