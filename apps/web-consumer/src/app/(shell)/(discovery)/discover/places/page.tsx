@@ -1,14 +1,7 @@
-import { Store } from "lucide-react";
-import { HomeSoon } from "@/components/consumer/home/HomeSoon";
+import { CatalogRails } from "@/components/consumer/home/CatalogRails";
 
-// PLACES — Soon for the moment (Pato, MESITA-2168). CatalogRails stays in
-// the tree; this page does not mount it, so the Filters control is gone.
+// PLACES — the catalog (Pato, MESITA-2254). Family rails, filters, and sort.
+// Social, Chat and Favs stay the Soon empty state.
 export default function DiscoverPlacesPage() {
-  return (
-    <HomeSoon
-      icon={Store}
-      name="Places"
-      description="Browsing places on Home lands here shortly — thanks for waiting."
-    />
-  );
+  return <CatalogRails />;
 }

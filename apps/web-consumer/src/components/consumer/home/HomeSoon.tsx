@@ -1,8 +1,9 @@
 import type { LucideIcon } from "lucide-react";
 import { EmptyState } from "@/components/shared";
 
-// The four Home pills share Pay's Soon page (MESITA-2168). A flex column so
-// EmptyState centres; a block parent collapses it.
+// Social, Chat and Favs share Pay's Soon page (MESITA-2168). Places is the
+// catalog and does not use this. A flex column so EmptyState centres; a
+// block parent collapses it.
 export function HomeSoon({
   icon,
   name,
