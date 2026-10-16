@@ -1,8 +1,6 @@
 "use client";
 
-import { Clock, MapPin, Navigation, Star } from "lucide-react";
-
-import { Facebook, Instagram } from "../brand-icons";
+import { Clock, MapPin, Navigation } from "lucide-react";
 
 import type { PlaceActions } from "../../actions";
 import { Spinner } from "../Spinner";
@@ -11,11 +9,11 @@ import { formatPlacePriceChip } from "../../lib/place-price";
 import { getOpeningStateLabel } from "../../lib/place-state";
 import {
   cn,
-  formatCompactCount,
   formatDistanceKm,
-  formatRating,
 } from "../../lib/format";
 
+import { profileChannelStats } from "./channel-stats";
+import { channelStatIcon } from "./channel-stat-icons";
 import { ProfileActions } from "./ProfileActions";
 import {
   ProfileMetaChip,
@@ -37,39 +35,7 @@ export function ProfileSummary({
   // decision: Pato (live, 2026-08-03) — the stat trio is the three OUTSIDE
   // channels: Google · Instagram · Facebook. They are the reputation numbers
   // a guest already trusts, and each one has a count to stand on.
-  const googleRating = formatRating(place.google.rating);
-  const googleCount = place.google.count;
-  const stats = [
-    googleRating != null
-      ? {
-          key: "google",
-          value: googleRating,
-          label: googleCount != null ? `${formatCompactCount(googleCount, false)} Google` : "Google",
-          icon: (
-            <Star
-              className="fill-foreground text-muted-foreground h-3 w-3"
-              strokeWidth={0}
-            />
-          ),
-        }
-      : null,
-    place.instagram.followers != null
-      ? {
-          key: "instagram",
-          value: formatCompactCount(place.instagram.followers, false),
-          label: "Instagram",
-          icon: <Instagram className="text-muted-foreground h-3 w-3" />,
-        }
-      : null,
-    place.facebook.followers != null
-      ? {
-          key: "facebook",
-          value: formatCompactCount(place.facebook.followers, false),
-          label: "Facebook",
-          icon: <Facebook className="text-muted-foreground h-3 w-3" />,
-        }
-      : null,
-  ].filter((stat) => stat != null);
+  const stats = profileChannelStats(place);
   const priceLabel =
     formatPlacePriceChip({
       priceRange: place.price_range,
@@ -101,7 +67,7 @@ export function ProfileSummary({
                 key={stat.key}
                 value={stat.value}
                 label={stat.label}
-                icon={stat.icon}
+                icon={channelStatIcon(stat)}
               />
             ))}
           </div>
