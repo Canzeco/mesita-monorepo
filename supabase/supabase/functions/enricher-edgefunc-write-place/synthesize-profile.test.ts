@@ -19,14 +19,18 @@ Deno.test("review quotes are the text the presentation can read", () => {
 Deno.test("overwrite off keeps a saved presentation and adds tags", () => {
   const next = mergeSynthesizedProfile({
     overwrite: false,
-    saved: { description: "Already written.", category: "nightclub", tags: ["dj"] },
-    patch: { content_state: "ready", description: "Google blurb" },
+    patch: {
+      content_state: "ready",
+      description: "Already written.",
+      category: "nightclub",
+      tags: ["dj"],
+    },
     presentation: "A new essay that should not replace the saved one.",
     category: "bar",
     tags: ["bottle_service", "dj"],
   });
   assertEquals(next.description, "Already written.");
-  assertEquals(next.category, undefined);
+  assertEquals(next.category, "nightclub");
   assertEquals(next.tags, ["dj", "bottle_service"]);
 });
 
@@ -34,7 +38,6 @@ Deno.test("an empty profile takes the presentation, one category, and the tags",
   const long = "b".repeat(900);
   const next = mergeSynthesizedProfile({
     overwrite: false,
-    saved: {},
     patch: { content_state: "ready" },
     presentation: long,
     category: "nightclub",
@@ -49,8 +52,13 @@ Deno.test("an empty profile takes the presentation, one category, and the tags",
 Deno.test("overwrite on replaces the presentation, the category, and the tags", () => {
   const next = mergeSynthesizedProfile({
     overwrite: true,
-    saved: { description: "Old", category: "bar", tags: ["quiet"] },
-    patch: { content_state: "ready", source_sync: { overwrite: true } },
+    patch: {
+      content_state: "ready",
+      description: "Old",
+      category: "bar",
+      tags: ["quiet"],
+      source_sync: { overwrite: true },
+    },
     presentation: "Vibrant nightclub.",
     category: "nightclub",
     tags: ["dj"],

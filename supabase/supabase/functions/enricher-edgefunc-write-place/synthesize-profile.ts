@@ -49,10 +49,9 @@ function slugs(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
 }
 
-/** Saved fields stay when Overwrite is off. Empty fields take the new ones. */
+/** Fields already on the patch stay when Overwrite is off. Empty ones take the new values. */
 export function mergeSynthesizedProfile(opts: {
   overwrite: boolean;
-  saved: { description?: unknown; category?: unknown; tags?: unknown };
   patch: Record<string, unknown>;
   presentation: string | null;
   category: string | null;
@@ -60,23 +59,19 @@ export function mergeSynthesizedProfile(opts: {
 }): Record<string, unknown> {
   const next = { ...opts.patch };
   const presentation = opts.presentation ? capPresentation(opts.presentation) : "";
-  if (filled(opts.saved.description) && !opts.overwrite) {
-    next.description = opts.saved.description;
-  } else if (presentation) {
+  if (presentation && (opts.overwrite || !filled(opts.patch.description))) {
     next.description = presentation;
   }
-  if (filled(opts.saved.category) && !opts.overwrite) {
-    if ("category" in opts.patch) next.category = opts.saved.category;
-  } else if (opts.category && opts.category !== "undefined") {
+  if (opts.category && opts.category !== "undefined" && (opts.overwrite || !filled(opts.patch.category))) {
     next.category = opts.category;
     next.category_label = humanizeCategorySlug(opts.category);
   }
   if (opts.tags.length === 0) return next;
-  if (opts.overwrite || !filled(opts.saved.tags)) {
+  if (opts.overwrite || !filled(opts.patch.tags)) {
     next.tags = opts.tags;
     return next;
   }
-  next.tags = [...new Set([...slugs(opts.saved.tags), ...opts.tags])];
+  next.tags = [...new Set([...slugs(opts.patch.tags), ...opts.tags])];
   return next;
 }
 
@@ -110,20 +105,18 @@ export async function fillAtlasProfile(
 
 async function fillAtlasProfileInner(
   admin: SupabaseClient,
-  placeId: string,
+  _placeId: string,
   patch: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
   const openaiKey = Deno.env.get("OPENAI_KEY")?.trim() ?? "";
   if (!openaiKey) return patch;
 
-  const [{ data: row }, categories, tagVocabulary, models, cfg] = await Promise.all([
-    admin.from("profiles").select("description, category, tags").eq("id", placeId).maybeSingle(),
+  const [categories, tagVocabulary, models, cfg] = await Promise.all([
     fetchPlaceCategories(admin),
     fetchPlaceTags(admin),
     loadModelsConfig(admin),
     loadEnrichConfig(admin),
   ]);
-  const saved = (row ?? {}) as { description?: unknown; category?: unknown; tags?: unknown };
   const name = textField(patch.google_name) || textField(patch.mesita_name);
   const address = textField(patch.address);
   const googleSummary = textField(patch.pitch) || textField(patch.story) || textField(patch.description);
@@ -136,7 +129,7 @@ async function fillAtlasProfileInner(
       model: synthesisModelFor(cfg.synthesisQuality),
       name,
       locationLine: address,
-      category: textField(saved.category) || null,
+      category: textField(patch.category) || null,
       igBio: "",
       googleReviewsText: reviews,
       serpSummary: googleSummary || null,
@@ -171,7 +164,6 @@ async function fillAtlasProfileInner(
 
   return mergeSynthesizedProfile({
     overwrite: overwriteOn(patch),
-    saved,
     patch,
     presentation,
     category: kept.category,

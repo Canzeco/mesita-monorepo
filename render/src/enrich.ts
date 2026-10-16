@@ -174,15 +174,20 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment> 
   }
   if (!description) throw new Error("The place has no description, so it was not written.");
 
+  // The write fills the Presentation when this run may replace it. A saved
+  // one stays on the patch through applyOverwrite and is left alone.
+  const draft: Record<string, unknown> = {
+    ...spine.patch,
+    content_state: "ready",
+    enriched_at: new Date().toISOString(),
+  };
+  if (!overwrite && typeof saved.description === "string" && saved.description.trim()) {
+    draft.description = saved.description;
+  }
   const patch: Record<string, unknown> = applyOverwrite({
     overwrite,
     saved,
-    patch: {
-      ...spine.patch,
-      description,
-      content_state: "ready",
-      enriched_at: new Date().toISOString(),
-    },
+    patch: draft,
   });
   if (openaiKey && name) {
     const facts = embeddingFacts({
