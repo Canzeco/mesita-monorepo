@@ -9,19 +9,7 @@ import {
   GOOGLE_TYPE_SUPER,
   nearbyTypesForSupers,
   superForGoogleType,
-  type GuestSuper,
 } from "./google-type-super.ts";
-
-const GUEST: GuestSuper[] = [
-  "restaurants",
-  "bars_nightlife",
-  "cafes_bakeries",
-  "sports_fitness",
-  "wellness_beauty",
-  "experiences",
-  "culture_arts",
-  "undefined",
-];
 
 Deno.test("478 Google Table A types each map to exactly one of the eight families", () => {
   const keys = Object.keys(GOOGLE_TYPE_SUPER);
