@@ -20,6 +20,16 @@ describe("review boxes", () => {
       failures: ["instagram"],
       syncing: false,
     })).toBe("instagram failed.");
+    expect(syncSubtitle({
+      syncedAt: "2026-10-15T00:00:00Z",
+      failures: ["instagram", "facebook", "google_reviews"],
+      syncing: false,
+      errors: {
+        instagram: "Apify refused the call: too many outstanding invoices.",
+        facebook: "Apify refused the call: too many outstanding invoices.",
+        google_reviews: "Apify refused the call: too many outstanding invoices.",
+      },
+    })).toBe("Apify refused the call: too many outstanding invoices.");
   });
 
   it("keeps Sync in the Reviews header and the four boxes", () => {

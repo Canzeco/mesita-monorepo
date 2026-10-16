@@ -36,9 +36,20 @@ export function syncSubtitle(input: {
   syncedAt: string | null;
   failures: string[];
   syncing: boolean;
+  errors?: Record<string, string>;
 }): string {
   if (input.syncing) return "Syncing…";
-  if (input.failures.length > 0) return `${input.failures.join(", ")} failed.`;
+  if (input.failures.length > 0) {
+    const messages = input.failures
+      .map((source) => {
+        const raw = input.errors?.[source]?.trim();
+        return raw ? formatSyncError(raw) : null;
+      })
+      .filter((message): message is string => !!message);
+    const unique = [...new Set(messages)];
+    if (unique.length === 1) return unique[0];
+    return `${input.failures.join(", ")} failed.`;
+  }
   if (!input.syncedAt) return "Never synced";
   return `Synced ${relative(input.syncedAt)}`;
 }
@@ -77,11 +88,13 @@ export function ReviewsSummary() {
   const [syncing, setSyncing] = useState(false);
   const [syncedAt, setSyncedAt] = useState<string | null>(null);
   const [failures, setFailures] = useState<string[]>([]);
+  const [sourceErrors, setSourceErrors] = useState<Record<string, string>>({});
   const [box, setBox] = useState<Record<string, BoxState>>({});
 
   async function sync() {
     setSyncing(true);
     setFailures([]);
+    setSourceErrors({});
     setBox({
       google: place.google_place_id?.trim() ? "syncing" : "no-link",
       instagram: place.instagram_url?.trim() ? "syncing" : "no-link",
@@ -97,16 +110,21 @@ export function ReviewsSummary() {
     const sources = r.data.sources ?? [];
     const next: Record<string, BoxState> = {};
     const failed: string[] = [];
+    const errors: Record<string, string> = {};
     for (const row of sources) {
       next[row.source] = row.status === "no_link"
         ? "no-link"
         : row.status === "error"
         ? "error"
         : "synced";
-      if (row.status === "error") failed.push(row.source);
+      if (row.status === "error") {
+        failed.push(row.source);
+        if (row.error?.trim()) errors[row.source] = row.error.trim();
+      }
     }
     setBox(next);
     setFailures(failed);
+    setSourceErrors(errors);
     setSyncedAt(r.data.lastSyncedAt ?? new Date().toISOString());
     setPlace((current) => ({
       ...current,
@@ -121,6 +139,7 @@ export function ReviewsSummary() {
   }
 
   const stored = storedSync(place.source_sync);
+  const errors = { ...stored.errors, ...sourceErrors };
   const googleState = box.google ?? reviewBoxState(!!place.google_place_id?.trim(), stored.google);
   const igState = box.instagram ?? reviewBoxState(!!place.instagram_url?.trim(), stored.instagram);
   const fbState = box.facebook ?? reviewBoxState(!!place.facebook_url?.trim(), stored.facebook);
@@ -132,7 +151,7 @@ export function ReviewsSummary() {
       icon={<Star className="h-4 w-4" />}
       tint="violet"
       title="Reviews"
-      subtitle={syncSubtitle({ syncedAt: shownAt, failures, syncing })}
+      subtitle={syncSubtitle({ syncedAt: shownAt, failures, syncing, errors })}
       action={
         <button
           type="button"
@@ -153,7 +172,7 @@ export function ReviewsSummary() {
             value={num(place.google_stars_overall) == null ? "—" : num(place.google_stars_overall)!.toFixed(1)}
             muted={num(place.google_stars_overall) == null}
             stars={num(place.google_stars_overall)}
-            hint={hintFor(googleState, num(place.google_review_count) != null ? reviewWord(num(place.google_review_count)!) : "No rating yet.")}
+            hint={hintFor(googleState, num(place.google_review_count) != null ? reviewWord(num(place.google_review_count)!) : "No rating yet.", errors.google)}
           />
         </div>
         <SummaryTile
@@ -161,27 +180,35 @@ export function ReviewsSummary() {
           state={igState}
           value={num(place.instagram_followers_count) == null ? "—" : compact(num(place.instagram_followers_count)!)}
           muted={num(place.instagram_followers_count) == null}
-          hint={hintFor(igState, "followers")}
+          hint={hintFor(igState, "followers", errors.instagram)}
         />
         <SummaryTile
           label="Facebook Summary"
           state={fbState}
           value={num(place.facebook_followers) == null ? "—" : compact(num(place.facebook_followers)!)}
           muted={num(place.facebook_followers) == null}
-          hint={hintFor(fbState, "followers")}
+          hint={hintFor(fbState, "followers", errors.facebook)}
         />
         <div className="sm:col-span-2">
-          <ReviewsTile place={place} state={reviewsState} />
+          <ReviewsTile place={place} state={reviewsState} error={errors.google_reviews} />
         </div>
       </div>
     </SectionCard>
   );
 }
 
-function hintFor(state: BoxState, detail: string): string {
+function formatSyncError(raw: string): string {
+  const text = raw.trim();
+  if (/outstanding invoices|platform-feature-disabled/i.test(text)) {
+    return "Apify refused the call: too many outstanding invoices.";
+  }
+  return text.length > 160 ? `${text.slice(0, 157)}…` : text;
+}
+
+function hintFor(state: BoxState, detail: string, error?: string): string {
   if (state === "no-link") return "No link";
   if (state === "syncing") return "Syncing";
-  if (state === "error") return "Error";
+  if (state === "error") return error?.trim() ? formatSyncError(error) : "Error";
   if (state === "synced") return `Synced · ${detail}`;
   return `Never synced · ${detail}`;
 }
@@ -199,15 +226,23 @@ function storedSync(raw: unknown): {
   instagram?: string;
   facebook?: string;
   google_reviews?: string;
+  errors: Record<string, string>;
 } {
-  if (!raw || typeof raw !== "object") return { lastSyncedAt: null };
-  const body = raw as { lastSyncedAt?: unknown; sources?: { source?: string; status?: string }[] };
+  if (!raw || typeof raw !== "object") return { lastSyncedAt: null, errors: {} };
+  const body = raw as {
+    lastSyncedAt?: unknown;
+    sources?: { source?: string; status?: string; error?: string | null }[];
+  };
   const out: ReturnType<typeof storedSync> = {
     lastSyncedAt: typeof body.lastSyncedAt === "string" ? body.lastSyncedAt : null,
+    errors: {},
   };
   for (const row of body.sources ?? []) {
     if (row.source === "google" || row.source === "instagram" || row.source === "facebook" || row.source === "google_reviews") {
       out[row.source] = row.status;
+      if (row.status === "error" && row.error?.trim()) {
+        out.errors[row.source] = row.error.trim();
+      }
     }
   }
   return out;
@@ -233,7 +268,15 @@ function storedReviews(raw: unknown): { author: string; quote: string }[] {
   return out;
 }
 
-function ReviewsTile({ place, state }: { place: AdminPlace; state: BoxState }) {
+function ReviewsTile({
+  place,
+  state,
+  error,
+}: {
+  place: AdminPlace;
+  state: BoxState;
+  error?: string;
+}) {
   const reviews = storedReviews(place.google_reviews);
   const shown = reviews.slice(0, 3);
   return (
@@ -242,7 +285,7 @@ function ReviewsTile({ place, state }: { place: AdminPlace; state: BoxState }) {
       state={state}
       value={reviews.length > 0 ? String(reviews.length) : "—"}
       muted={reviews.length === 0}
-      hint={hintFor(state, reviews.length > 0 ? "on file" : "No reviews on file.")}
+      hint={hintFor(state, reviews.length > 0 ? "on file" : "No reviews on file.", error)}
       extra={shown.length > 0 ? (
         <ul className="text-muted-foreground mt-1 space-y-1 type-label">
           {shown.map((review, i) => (
