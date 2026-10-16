@@ -26,9 +26,9 @@ export function ProfilePhoto({ place }: { place: PlaceDetail }) {
   );
 }
 
-/** Instagram-style stat cell: big number, small label underneath.
- *  A mention (zero is a number; "Not connected" / "No count" is not) keeps
- *  the icon and lets the words wrap instead of leaving the cell blank. */
+/** Instagram-style stat: a filled number line, then the channel name.
+ *  Zero is a number. "Not connected" and "No count" sit in the number line
+ *  so the column is never a blank gap beside the photo. */
 export function ProfileStat({
   value,
   label,
@@ -42,7 +42,7 @@ export function ProfileStat({
   mention?: boolean;
   name?: string;
 }) {
-  const spoken = mention ? `${name ?? label}, ${label}` : `${value} ${label}`;
+  const spoken = mention ? `${name ?? label}, ${value}` : `${value} ${label}`;
   return (
     <div
       className="flex min-w-0 flex-col items-center justify-center px-0.5 text-center"
@@ -50,21 +50,16 @@ export function ProfileStat({
     >
       <span
         className={
-          "flex items-center justify-center gap-0.5 leading-tight font-bold " +
+          "flex min-h-7 items-center justify-center gap-1 leading-tight " +
           (mention
-            ? "text-muted-foreground"
-            : "text-foreground text-lg tabular-nums")
+            ? "text-foreground type-label text-balance font-semibold"
+            : "text-foreground text-lg font-bold tabular-nums")
         }
       >
         {icon}
         {value}
       </span>
-      <span
-        className={
-          "text-muted-foreground mt-0.5 max-w-full leading-tight font-medium " +
-          (mention ? "type-label text-balance" : "type-meta truncate")
-        }
-      >
+      <span className="text-muted-foreground type-meta mt-0.5 max-w-full truncate leading-tight font-medium">
         {label}
       </span>
     </div>

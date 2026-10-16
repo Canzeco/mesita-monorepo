@@ -51,7 +51,11 @@ describe("member preview edges", () => {
     expect(html).toContain("484 Google");
     expect(html).toContain("Instagram, Not connected");
     expect(html).toContain("Facebook, Not connected");
+    expect(html).toContain(">Not connected<");
+    expect(html).toContain(">Instagram<");
+    expect(html).toContain(">Facebook<");
     expect(html).not.toContain(">—<");
+    expect(html).not.toContain("Reviews summary");
   });
 
   it("renders a place with no photos", () => {

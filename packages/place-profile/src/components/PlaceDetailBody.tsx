@@ -10,7 +10,7 @@ import { LocationBox, HoursBox } from "./place-detail/location-hours";
 import { PopularTimesBox } from "./place-detail/popular-times";
 import { MediaBox } from "./place-detail/media";
 import { ProfileSummary } from "./place-detail/profile-summary";
-import { GoogleReviewsBox, ReviewsSummaryBox } from "./place-detail/reviews";
+import { GoogleReviewsBox } from "./place-detail/reviews";
 import { PlaceRequestPanelView } from "./place-detail/PlaceRequestPanel";
 import { PlaceTabBar, type PlaceTab } from "./place-detail/tabs";
 import { SoonScreen } from "./place-detail/soon-screen";
@@ -79,13 +79,8 @@ export function PlaceDetailBody({
             <DatesBox place={place} />
           </>
         )}
-        {/* The outside channels' numbers first, then Google's own reviews as
-            the one source with cards to read. */}
         {activeTab === "reviews" && place.is_enriched && (
-          <>
-            <ReviewsSummaryBox place={place} />
-            <GoogleReviewsBox place={place} />
-          </>
+          <GoogleReviewsBox place={place} />
         )}
         {activeTab === "products" && place.is_enriched && (
           <SoonScreen title="Menus" />

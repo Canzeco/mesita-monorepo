@@ -4,7 +4,7 @@ import { formatCompactCount, formatRating } from "../../lib/format";
 export type ChannelStat = {
   key: "google" | "instagram" | "facebook";
   name: "Google" | "Instagram" | "Facebook";
-  /** Big number. Empty when the cell is a mention instead of a count. */
+  /** Big number, or "Not connected" / "No count" when there is no number. */
   value: string;
   label: string;
   /** No stored number. The icon stays; the label says why. */
@@ -28,11 +28,12 @@ function reachStat(
       label: name,
     };
   }
+  // The number slot stays filled. An empty string reads as a blank column.
   return {
     key,
     name,
-    value: "",
-    label: linked ? NO_COUNT : NOT_CONNECTED,
+    value: linked ? NO_COUNT : NOT_CONNECTED,
+    label: name,
     mention: true,
   };
 }
@@ -49,8 +50,8 @@ function googleStat(
   return {
     key: "google",
     name: "Google",
-    value: "",
-    label: linked ? "No rating" : NOT_CONNECTED,
+    value: linked ? "No rating" : NOT_CONNECTED,
+    label: "Google",
     mention: true,
   };
 }
@@ -96,28 +97,3 @@ export function profileChannelStats(place: PlaceDetail): ChannelStat[] {
   ];
 }
 
-/** Reviews tab — same three channels, Google's number is the review count. */
-export function reviewsTabChannelStats(place: PlaceDetail): ChannelStat[] {
-  const googleCount = place.google.count;
-  const googleRating = formatRating(place.google.rating);
-  const google =
-    googleCount != null
-      ? googleStat(place, formatCompactCount(googleCount, false), "Google")
-      : googleStat(place, googleRating, "Google");
-
-  return [
-    google,
-    reachStat(
-      "instagram",
-      "Instagram",
-      place.instagram.followers,
-      Boolean(place.channels.instagram_url),
-    ),
-    reachStat(
-      "facebook",
-      "Facebook",
-      place.facebook.followers,
-      Boolean(place.channels.facebook_url),
-    ),
-  ];
-}
