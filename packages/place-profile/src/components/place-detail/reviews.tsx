@@ -21,12 +21,6 @@ import {
 
 export function ReviewsSummaryBox({ place }: { place: PlaceDetail }) {
   const stats = reviewsTabChannelStats(place);
-  const hasAny =
-    place.google.count != null ||
-    place.google.rating != null ||
-    place.instagram.followers != null ||
-    place.facebook.followers != null;
-  if (!hasAny) return null;
 
   return (
     <Box title="Reviews summary" icon={Star} iconColor="text-muted-foreground">
@@ -37,6 +31,8 @@ export function ReviewsSummaryBox({ place }: { place: PlaceDetail }) {
             value={stat.value}
             label={stat.label}
             icon={channelStatIcon(stat)}
+            mention={stat.mention}
+            name={stat.name}
           />
         ))}
       </div>

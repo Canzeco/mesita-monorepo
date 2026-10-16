@@ -36,6 +36,22 @@ describe("member preview edges", () => {
     expect(html).toContain("Vote to enrich");
   });
 
+  it("keeps Google, Instagram, and Facebook when the socials are empty", () => {
+    const html = renderToStaticMarkup(
+      <PlaceProfile
+        place={detail({
+          google_stars_overall: 3.8,
+          google_review_count: 484,
+        })}
+      />,
+    );
+    expect(html).toContain("3.8");
+    expect(html).toContain("484 Google");
+    expect(html).toContain("Instagram, Not connected");
+    expect(html).toContain("Facebook, Not connected");
+    expect(html).not.toContain(">—<");
+  });
+
   it("renders a place with no photos", () => {
     const html = renderToStaticMarkup(
       <PlaceProfile place={detail({ photos: [] })} />,
