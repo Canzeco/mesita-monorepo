@@ -15,6 +15,7 @@ import type { CrenupAction } from "./pipeline";
 import { OverwriteSwitch } from "@/components/place-manage/OverwriteSwitch";
 import { IdListField } from "./IdListField";
 import { StateIcon, type BatchRowState } from "./StateIcon";
+import { ENRICH_ACTIONS, type EnrichDepth } from "@/lib/enrich-depth";
 
 type Row = {
   state: BatchRowState;
@@ -67,6 +68,7 @@ export function WriteBox({
   const [running, setRunning] = useState<CrenupAction | null>(null);
   const [lastRun, setLastRun] = useState<CrenupAction | null>(null);
   const [overwrite, setOverwrite] = useState(false);
+  const [enrichingDepth, setEnrichingDepth] = useState<EnrichDepth | null>(null);
   const busy = running !== null;
 
   const done = placeIds.filter((id) => {
@@ -82,17 +84,18 @@ export function WriteBox({
   }).length;
   const failed = placeIds.filter((id) => results[id]?.state === "error").length;
 
-  async function run(action: CrenupAction) {
+  async function run(action: CrenupAction, depth: EnrichDepth = "full") {
     if (busy || placeIds.length === 0) return;
     // Delete writes places.state = 'archived' — reversible only by a direct
     // DB edit, never by any button here. One confirm for the whole batch,
     // not per row: the paste is already the commitment, this just catches
     // a fat-fingered click before it archives a hundred places.
     if (action === "enrich" && overwrite) {
+      const label = depth === "quick" ? "Quick" : "Full";
       const ok = window.confirm(
         placeIds.length === 1
-          ? "Overwrite existing data on 1 place? Enrichment can replace the profile."
-          : `Overwrite existing data on ${placeIds.length} places? Enrichment can replace every profile in this batch.`,
+          ? `Overwrite existing data on 1 place and run ${label} enrich? This can replace the profile.`
+          : `Overwrite existing data on ${placeIds.length} places and run ${label} enrich? This can replace every profile in this batch.`,
       );
       if (!ok) return;
     }
@@ -111,7 +114,9 @@ export function WriteBox({
     );
     const ids = [...placeIds];
     if (action === "enrich") {
-      await runEnrich(ids, setResults, overwrite);
+      setEnrichingDepth(depth);
+      await runEnrich(ids, setResults, overwrite, depth);
+      setEnrichingDepth(null);
       setOverwrite(false);
     }
     else await Promise.all(ids.map((id) => runRow(id, action, setResults)));
@@ -152,16 +157,30 @@ export function WriteBox({
               <OverwriteSwitch checked={overwrite} disabled={busy} onChange={setOverwrite} />
             </div>
           ) : null}
-          {actions.map((action) => (
-            <ActionButton
-              key={action}
-              label={BUTTONS[action].label}
-              variant={BUTTONS[action].variant}
-              busy={running === action}
-              disabled={busy || placeIds.length === 0}
-              onClick={() => void run(action)}
-            />
-          ))}
+          {actions.map((action) =>
+            action === "enrich" ? (
+              ENRICH_ACTIONS.map((choice) => (
+                <ActionButton
+                  key={choice.depth}
+                  label={choice.label}
+                  title={choice.title}
+                  variant={choice.depth === "quick" ? "secondary" : "primary"}
+                  busy={running === "enrich" && enrichingDepth === choice.depth}
+                  disabled={busy || placeIds.length === 0}
+                  onClick={() => void run("enrich", choice.depth)}
+                />
+              ))
+            ) : (
+              <ActionButton
+                key={action}
+                label={BUTTONS[action].label}
+                variant={BUTTONS[action].variant}
+                busy={running === action}
+                disabled={busy || placeIds.length === 0}
+                onClick={() => void run(action)}
+              />
+            ),
+          )}
           {done > 0 ? (
             <span className="text-muted-foreground text-xs">{summary}</span>
           ) : null}
@@ -230,12 +249,14 @@ function ResultList({
 // actions when they are not.
 function ActionButton({
   label,
+  title,
   variant,
   busy,
   disabled,
   onClick,
 }: {
   label: string;
+  title?: string;
   variant: "primary" | "secondary" | "destructive";
   busy: boolean;
   disabled: boolean;
@@ -248,7 +269,7 @@ function ActionButton({
         ? "border-destructive/40 text-destructive hover:bg-destructive/5 inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-medium transition disabled:opacity-50"
         : "border-border hover:border-foreground/40 inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-medium transition disabled:opacity-50";
   return (
-    <button type="button" onClick={onClick} disabled={disabled} className={className}>
+    <button type="button" title={title} onClick={onClick} disabled={disabled} className={className}>
       {busy ? (
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
       ) : (
@@ -263,6 +284,7 @@ async function runEnrich(
   googleIds: string[],
   setResults: Dispatch<SetStateAction<Record<string, Row>>>,
   overwrite: boolean,
+  depth: EnrichDepth,
 ): Promise<void> {
   const resolved: { googleId: string; placeId: string; name: string }[] = [];
   await Promise.all(googleIds.map(async (googleId) => {
@@ -275,12 +297,13 @@ async function runEnrich(
     resolved.push({ googleId, placeId: found.placeId, name: found.name });
   }));
   if (resolved.length === 0) return;
-  const started = await enrichPlaces(resolved.map((row) => row.placeId), overwrite);
+  const started = await enrichPlaces(resolved.map((row) => row.placeId), overwrite, depth);
+  const detail = depth === "quick" ? "Quick enrich started" : "Full enrich started";
   for (const row of resolved) {
     setResults((prev) => ({
       ...prev,
       [row.googleId]: started.ok
-        ? { state: "enriching", name: row.name, detail: "Enrichment started" }
+        ? { state: "enriching", name: row.name, detail }
         : { state: "error", name: row.name, error: started.error },
     }));
   }

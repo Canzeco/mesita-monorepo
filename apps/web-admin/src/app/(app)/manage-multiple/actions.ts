@@ -2,6 +2,7 @@
 
 import { efInvoke } from "@/lib/supabase-ef";
 import { enrichmentView, isEnrichedPlace } from "@/lib/place-enriched";
+import type { EnrichDepth } from "@/lib/enrich-depth";
 
 // ════════════════════════════════════════════════════════════════════════
 // Places — a super-admin drives MANY places at once through the admin-* edge
@@ -249,25 +250,26 @@ export async function deletePlace(placeId: string): Promise<Result<true>> {
   return { ok: true, data: true };
 }
 
-// ── Crenup ───────────────────────────────────────────────────────────────
+// ── Enrich ───────────────────────────────────────────────────────────────
 
-// Kept so existing callers still type-check. Render runs the whole enrichment.
+// Kept so existing callers still type-check. The live choice is EnrichDepth.
 export type ReenrichMode = "fill" | "full" | "second" | "third";
 
 // Start enrichment. One place starts enrich single place. A list starts
 // enrich multiple places once, and Render decides how many run at once.
-// The row reports the start, not the finish.
+// The row reports the start, not the finish. depth defaults to full.
 export async function enrichPlaces(
   placeIds: string[],
   overwrite = false,
+  depth: EnrichDepth = "full",
 ): Promise<Result<true>> {
   const ids = placeIds.map((id) => id.trim()).filter(Boolean);
   if (ids.length === 0) return { ok: false, error: "Missing placeId" };
   const r = await efInvoke<{ enrichmentTriggered: boolean }>(
     "admin-web-enrich-place",
     ids.length === 1
-      ? { projectId: ids[0], overwrite }
-      : { placeIds: ids, overwrite },
+      ? { projectId: ids[0], overwrite, depth }
+      : { placeIds: ids, overwrite, depth },
   );
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: true };
@@ -278,8 +280,9 @@ export async function enrichPlace(
   _mode: ReenrichMode = "fill",
   _overwrite: string[] = [],
   overwrite = false,
+  depth: EnrichDepth = "full",
 ): Promise<Result<true>> {
-  return enrichPlaces([placeId], overwrite || _overwrite.length > 0);
+  return enrichPlaces([placeId], overwrite || _overwrite.length > 0, depth);
 }
 
 // ── Name searches (Single Place › Find, MESITA-2116 · MESITA-2124) ───────

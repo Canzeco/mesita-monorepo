@@ -12,13 +12,14 @@ import { corsPreflight, json, readJson, rejectUnlessMethods, readPlaceIdAlias } 
 import { adminClient, getAuthedUser, readEFEnv, requireSuperAdmin } from "../_shared/auth.ts";
 import { writePlace } from "../_shared/place-doc.ts";
 import { loadEnrichConfig } from "../_shared/enrich-config.ts";
-import { ENRICHING_PATCH, enrichmentKnobs, enrichmentRun, renderApiKey } from "./start-enrichment.ts";
+import { ENRICHING_PATCH, enrichDepthOf, enrichmentKnobs, enrichmentRun, renderApiKey } from "./start-enrichment.ts";
 
 type Body = {
   projectId?: string;
   placeId?: string;
   placeIds?: string[];
   overwrite?: boolean;
+  depth?: string;
 };
 
 const SAVED_KEYS = [
@@ -67,6 +68,7 @@ Deno.serve(async (req) => {
     : [];
   const placeId = readPlaceIdAlias(bodyRes.body);
   const overwrite = bodyRes.body.overwrite === true;
+  const depth = enrichDepthOf(bodyRes.body.depth);
   const placeIds = listed.length > 0 ? listed : placeId ? [placeId] : [];
   if (placeIds.length === 0) return json({ ok: false, error: "Missing placeId" }, 400);
   if (placeIds.length > 50) {
@@ -115,6 +117,7 @@ Deno.serve(async (req) => {
       placeId: id,
       googlePlaceId: String(row.google_place_id ?? "").trim(),
       knobs,
+      depth,
       overwrite,
       baseUpdatedAt: updatedAt.get(id) ?? null,
       saved,

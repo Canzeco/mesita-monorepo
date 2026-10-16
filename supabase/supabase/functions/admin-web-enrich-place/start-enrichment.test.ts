@@ -1,6 +1,6 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import { RESOLVER_INSTRUCTIONS } from "../_shared/enrich-channel-discovery.ts";
-import { ENRICHING_PATCH, enrichmentKnobs, enrichmentRun, renderApiKey } from "./start-enrichment.ts";
+import { ENRICHING_PATCH, enrichDepthOf, enrichmentKnobs, enrichmentRun, renderApiKey } from "./start-enrichment.ts";
 
 const ONE = { placeId: "place-1", googlePlaceId: "ChIJ-1" };
 const TWO = { placeId: "place-2", googlePlaceId: "ChIJ-2" };
@@ -57,6 +57,13 @@ Deno.test("the Enrichment page rides on the job", () => {
   assertEquals(knobs.sortModel, "gpt-4o");
   assertEquals(knobs.resolverInstructions, RESOLVER_INSTRUCTIONS);
   assertEquals(knobs.imageAnalysisPrompt, "describe the room");
+});
+
+Deno.test("quick is the only short run; anything else is full", () => {
+  assertEquals(enrichDepthOf("quick"), "quick");
+  assertEquals(enrichDepthOf("full"), "full");
+  assertEquals(enrichDepthOf("fast"), "full");
+  assertEquals(enrichDepthOf(undefined), "full");
 });
 
 Deno.test("a list starts enrich multiple places", () => {
