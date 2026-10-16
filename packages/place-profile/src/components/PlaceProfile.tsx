@@ -9,8 +9,9 @@ import { PlaceActionBar } from "./place-detail/PlaceActionBar";
 import { PlaceDetailBody } from "./PlaceDetailBody";
 import { PlaceDetailTitle } from "./PlaceDetailTitle";
 
-// Header, scrolling body, pinned Reserve. The consumer page and the admin
-// phone both render this. Omitted callbacks stay visible and do nothing.
+// Header, scrolling body, pinned Reserve · Pay · Save. The consumer page
+// and the admin phone both render this. Omitted callbacks stay visible
+// and do nothing. Pay and Save are Soon.
 export function PlaceProfile({
   place,
   onBack,

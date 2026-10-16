@@ -2,7 +2,6 @@
 
 import { Clock, MapPin, Navigation } from "lucide-react";
 
-import type { PlaceActions } from "../../actions";
 import { Spinner } from "../Spinner";
 import type { PlaceDetail } from "../../place-detail";
 import { formatPlacePriceChip } from "../../lib/place-price";
@@ -14,7 +13,6 @@ import {
 
 import { profileChannelStats } from "./channel-stats";
 import { channelStatIcon } from "./channel-stat-icons";
-import { ProfileActions } from "./ProfileActions";
 import {
   ProfileMetaChip,
   ProfilePhoto,
@@ -23,15 +21,10 @@ import {
 
 // ── 1. Profile summary (IG photo+stats + swipe-style tags) ───────────────
 
-export function ProfileSummary({
-  place,
-  actions,
-}: {
-  place: PlaceDetail;
-  actions?: PlaceActions;
-}) {
+export function ProfileSummary({ place }: { place: PlaceDetail }) {
   // decision: Pato — name in header; photo · Google · IG · Facebook; then
   // swipe-style tags: category · price · zone · distance · hours (MESITA-561).
+  // The three action buttons are pinned below the scroll: Reserve · Pay · Save.
   // decision: Pato (live, 2026-08-03) — the stat trio is the three OUTSIDE
   // channels: Google · Instagram · Facebook, laid out like an Instagram
   // profile's posts · followers · following.
@@ -128,7 +121,6 @@ export function ProfileSummary({
         )}
       </div>
 
-      <ProfileActions className="mt-5" place={place} actions={actions} />
     </section>
   );
 }

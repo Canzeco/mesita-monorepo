@@ -73,6 +73,14 @@ describe("member preview edges", () => {
     );
     expect(html).toContain("Lupita");
     expect(html).toContain("Overview");
+    const reserveAt = html.indexOf("Reserve a table");
+    const payAt = html.indexOf("Pay, Soon");
+    const saveAt = html.indexOf("Save, Soon");
+    expect(reserveAt).toBeGreaterThan(-1);
+    expect(payAt).toBeGreaterThan(reserveAt);
+    expect(saveAt).toBeGreaterThan(payAt);
+    expect(html).not.toContain(">Contact<");
+    expect(html).not.toContain(">Share<");
     expect(html).toContain("Menus");
     expect(html).toContain("Rewards");
     expect(html).toContain("Soon");
