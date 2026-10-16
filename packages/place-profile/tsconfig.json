@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "isolatedModules": true,
+    "baseUrl": ".",
+    "paths": {
+      "react": ["../../apps/web-consumer/node_modules/@types/react/index.d.ts"],
+      "react-dom": ["../../apps/web-consumer/node_modules/@types/react-dom/index.d.ts"],
+      "next": ["../../apps/web-consumer/node_modules/next"],
+      "next/*": ["../../apps/web-consumer/node_modules/next/*"],
+      "lucide-react": ["../../apps/web-consumer/node_modules/lucide-react"],
+      "clsx": ["../../apps/web-consumer/node_modules/clsx"],
+      "tailwind-merge": ["../../apps/web-consumer/node_modules/tailwind-merge"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
+}

@@ -1,0 +1,38 @@
+{
+  "name": "@mesita/place-profile",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./src/place-detail.ts",
+    "./map": "./src/place-to-detail.ts",
+    "./helpers": "./src/place-to-detail-helpers.ts"
+  },
+  "peerDependencies": {
+    "lucide-react": "*",
+    "next": ">=16",
+    "react": "^19",
+    "react-dom": "^19"
+  },
+  "peerDependenciesMeta": {
+    "lucide-react": { "optional": true },
+    "next": { "optional": true },
+    "react": { "optional": true },
+    "react-dom": { "optional": true }
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.7.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^5",
+    "vitest": "^4.1.11"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  }
+}

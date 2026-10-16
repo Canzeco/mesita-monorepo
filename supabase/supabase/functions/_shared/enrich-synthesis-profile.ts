@@ -90,13 +90,8 @@ export function applyProfileToUpdate(
   update: Record<string, unknown>,
   parsed: ProfileResult,
 ): void {
-  // Zone + city are Google-native (Docs › Atlas §A): the Google spine seeds
-  // them onto `update` before synthesis runs. Synthesis is only a FALLBACK for
-  // when Google carried none — never let the LLM overwrite a native value.
-  const zone = asProfileText(parsed.zone);
-  if (zone && !update.zone) update.zone = zone;
-  const city = asProfileText(parsed.city);
-  if (city && !update.city) update.city = city;
+  // Location is Google's structured response. Synthesis may read those facts
+  // as input for Presentation. It does not write zone, city, or address.
   // Canonical Presentation — English only (MESITA-939). Spanish TMS later.
   const description = asProfileText(parsed.description);
   if (description) {

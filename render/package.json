@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "start": "tsx src/index.ts",
-    "test": "node --experimental-strip-types --test src/runtime.test.ts src/wave-stop.test.ts src/write-place.test.ts src/google-spine.test.ts src/hours.test.ts src/embedding.test.ts src/channels.test.ts src/links.test.ts src/images.test.ts src/reviews.test.ts"
+    "test": "node --experimental-strip-types --test src/runtime.test.ts src/run-log.test.ts src/wave-stop.test.ts src/write-place.test.ts src/google-spine.test.ts src/hours.test.ts src/embedding.test.ts src/channels.test.ts src/links.test.ts src/images.test.ts src/reviews.test.ts src/fill-existing.test.ts src/enrich.test.ts"
   },
   "dependencies": {
     "@renderinc/sdk": "^1.0.0",

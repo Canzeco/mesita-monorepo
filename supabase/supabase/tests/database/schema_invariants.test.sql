@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(114);
+select plan(125);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -705,6 +705,13 @@ select ok(
   'a category sits on at least one family and not more than the catalog'
 );
 
+select ok(
+  position(
+    'cardinality(slugs) <= 2' in pg_get_functiondef('public.atlas_family_slugs_valid(text[])'::regprocedure)
+  ) = 0,
+  'a category is not capped at two families'
+);
+
 select is_empty(
   $$select p.id from public.place_profiles p
      where p.family_keys is not null
@@ -780,17 +787,108 @@ select throws_ok(
 insert into public.place_profiles (id, google_name)
 values ('00000000-0000-4000-8000-0000000fa111', 'Family Probe');
 
+-- profiles is places JOIN place_profiles. A profile row alone is invisible
+-- there, so the catalog assertions below would read NULL.
+insert into public.places (id, slug, state, content_state, currency)
+values (
+  '00000000-0000-4000-8000-0000000fa111',
+  'mesita-1857-probe',
+  'active',
+  'generating',
+  'MXN'
+);
+
 select lives_ok(
   $$update public.place_profiles set family_keys = array['dinner', 'coffee']
      where id = '00000000-0000-4000-8000-0000000fa111'$$,
-  'UPDATE of place_profiles.family_keys calls the validator and survives'
+  'a place write survives when a family list is offered'
+);
+
+select is(
+  (select family_keys from public.place_profiles
+    where id = '00000000-0000-4000-8000-0000000fa111'),
+  null::text[],
+  'a place does not keep the family list — membership comes from the category'
+);
+
+select lives_ok(
+  $$update public.place_profiles set family_keys = array['not_a_family']
+     where id = '00000000-0000-4000-8000-0000000fa111'$$,
+  'an unknown family slug is not stored on the place'
+);
+
+select is(
+  (select family_keys from public.place_profiles
+    where id = '00000000-0000-4000-8000-0000000fa111'),
+  null::text[],
+  'the unknown family slug was dropped instead of saved'
 );
 
 select throws_ok(
-  $$update public.place_profiles set family_keys = array['not_a_family']
+  $$update public.place_profiles set category = 'not_a_category'
      where id = '00000000-0000-4000-8000-0000000fa111'$$,
-  '23514'::char(5), null::text,
-  'place_profiles.family_keys still REFUSES a slug absent from place_families'
+  'P0001'::char(5), null::text,
+  'an unknown category is refused'
+);
+
+select lives_ok(
+  'update public.place_profiles set tags = array[' ||
+    quote_literal((select slug from public.place_tags order by sort_order, slug limit 1)) ||
+  '] where id = ''00000000-0000-4000-8000-0000000fa111''',
+  'a catalog tag is accepted'
+);
+
+select throws_ok(
+  $$update public.place_profiles set tags = array['not_a_tag']
+     where id = '00000000-0000-4000-8000-0000000fa111'$$,
+  'P0001'::char(5), null::text,
+  'an unknown tag is refused'
+);
+
+select lives_ok(
+  $$update public.place_categories
+       set family_keys = array['restaurants', 'cafes_bakeries', 'bars_nightlife', 'experiences']
+     where slug = 'mesita_1857_probe'$$,
+  'a category can belong to more than two families'
+);
+
+update public.place_profiles
+   set category = 'mesita_1857_probe'
+ where id = '00000000-0000-4000-8000-0000000fa111';
+
+select is(
+  (select family_keys from public.place_profiles
+    where id = '00000000-0000-4000-8000-0000000fa111'),
+  null::text[],
+  'pointing a place at that category does not store the families on the place'
+);
+
+select is(
+  (select family_keys from public.profiles
+    where id = '00000000-0000-4000-8000-0000000fa111'),
+  array['restaurants', 'cafes_bakeries', 'bars_nightlife', 'experiences']::text[],
+  'the catalog view reads the four-family mapping'
+);
+
+select lives_ok(
+  $$update public.place_categories
+       set family_keys = array['restaurants', 'cafes_bakeries', 'culture_arts']
+     where slug = 'mesita_1857_probe'$$,
+  'the mapping can change again'
+);
+
+select is(
+  (select family_keys from public.place_profiles
+    where id = '00000000-0000-4000-8000-0000000fa111'),
+  null::text[],
+  'changing the mapping does not write families onto the place'
+);
+
+select is(
+  (select family_keys from public.profiles
+    where id = '00000000-0000-4000-8000-0000000fa111'),
+  array['restaurants', 'cafes_bakeries', 'culture_arts']::text[],
+  'the catalog view follows the new mapping'
 );
 
 rollback to savepoint before_family_write_probe;

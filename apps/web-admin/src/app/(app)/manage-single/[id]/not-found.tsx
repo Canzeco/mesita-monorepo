@@ -1,4 +1,4 @@
-import { PageErrorState } from "@/components/business/PageErrorState";
+import { PageErrorState } from "@/components/admin-ui/PageErrorState";
 import { PLACE_BASE } from "@/lib/place-base";
 
 export default function AdminPlaceNotFound() {

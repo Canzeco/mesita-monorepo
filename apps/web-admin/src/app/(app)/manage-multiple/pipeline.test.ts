@@ -8,13 +8,13 @@ import { LEGACY_HASHES, PIPELINE_STEPS, WRITE_BOX_ACTIONS } from "./pipeline";
 const here = dirname(fileURLToPath(import.meta.url));
 
 describe("PIPELINE_STEPS", () => {
-  it("is Google Search, Mesita Search, Create, Enrich, Update", () => {
+  it("is Google Search, Mesita Search, Create, Enrich, Edit", () => {
     expect(PIPELINE_STEPS.map((s) => s.label)).toEqual([
       "Google Search",
       "Mesita Search",
       "Create",
       "Enrich",
-      "Update",
+      "Edit",
     ]);
     expect(PIPELINE_STEPS.map((s) => s.n)).toEqual([1, 2, 3, 4, 5]);
     expect(new Set(PIPELINE_STEPS.map((s) => s.id)).size).toBe(5);
@@ -28,7 +28,7 @@ describe("PIPELINE_STEPS", () => {
     expect(LEGACY_HASHES["edit-states"]).toBe("update");
   });
 
-  it("gives each write box its own buttons — Update is a box, never a button", () => {
+  it("gives each write box its own buttons — Edit is a box, never a button", () => {
     expect(WRITE_BOX_ACTIONS).toEqual({
       create: ["create"],
       enrich: ["enrich"],

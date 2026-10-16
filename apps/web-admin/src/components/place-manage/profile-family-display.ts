@@ -11,14 +11,15 @@ export function shownFamily(
 ): ResolvedFamily {
   const slug = draftCategory.trim().toLowerCase();
   const stored = (storedCategory ?? "").trim().toLowerCase();
-  // Undefined has no membership display. The stored-keys string is the one
-  // the read (and a later save) resolved.
-  if (!slug || slug === "undefined") return profile.familyStored;
-  // A catalog slug carries its own display. Prefer that over profile.family
-  // so a save that moved the row onto this slug still paints the right
-  // families when the restamp did not land.
+  // The option's display is the live mapping. A place does not keep its own.
   const row = profile.categories.find((c) => c.slug === slug);
-  if (row) return { text: row.family_display, inferred: false };
+  if (row?.family_display) return { text: row.family_display, inferred: false };
+  if (!slug || slug === "undefined") {
+    const fallback = profile.categories.find((c) => c.slug === "undefined");
+    if (fallback?.family_display) {
+      return { text: fallback.family_display, inferred: false };
+    }
+  }
   if (slug === stored) return profile.family;
-  return profile.familyStored;
+  return profile.family;
 }

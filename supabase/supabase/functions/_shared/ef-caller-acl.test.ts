@@ -53,10 +53,7 @@ const ACTOR_APPS: Record<string, readonly string[]> = {
  * consoles — removes its line here in the same PR. The eight
  * `admin-web-*:web-business` entries left with that app (MESITA-2089).
  */
-const GRANDFATHERED_VIOLATIONS = new Set([
-  "admin-web-reset-database:web-consumer",
-  "consumer-web-create-reservation:web-admin",
-]);
+const GRANDFATHERED_VIOLATIONS = new Set<string>([]);
 
 async function efActorPrefixes(): Promise<string[]> {
   const names: string[] = [];

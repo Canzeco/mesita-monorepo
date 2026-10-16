@@ -22,20 +22,20 @@ Deno.test("withFamilyKeys ships the FULL Atlas membership (1–2 supers)", () =>
   ]);
 });
 
-Deno.test("withFamilyKeys keeps the Atlas membership when stored keys disagree", () => {
+Deno.test("withFamilyKeys keeps the mapping on the row when it disagrees with the code twin", () => {
   assertEquals(
     withFamilyKeys({
       category: "breakfast",
-      family_keys: ["cafes_bakeries"],
+      family_keys: ["coffee"],
     }).family_keys,
-    ["breakfast"],
+    ["coffee"],
   );
   assertEquals(
     withFamilyKeys({
       category: "mexican",
       family_keys: ["drinks"],
     }).family_keys,
-    ["tacos"],
+    ["drinks"],
   );
   assertEquals(
     withFamilyKeys({

@@ -3,14 +3,25 @@
 // before a row is touched, so a place is enriched or it is not.
 
 export type EnrichmentCommit =
-  | { ok: true; placeId: string; patch: Record<string, unknown>; mirrorPhotos: boolean }
+  | {
+    ok: true;
+    placeId: string;
+    patch: Record<string, unknown>;
+    mirrorPhotos: boolean;
+    baseUpdatedAt: string | null;
+  }
   | { ok: false; error: string };
 
 export function enrichmentCommit(body: unknown): EnrichmentCommit {
   if (typeof body !== "object" || body === null || Array.isArray(body)) {
     return { ok: false, error: "body must be an object" };
   }
-  const raw = body as { placeId?: unknown; patch?: unknown; mirrorPhotos?: unknown };
+  const raw = body as {
+    placeId?: unknown;
+    patch?: unknown;
+    mirrorPhotos?: unknown;
+    baseUpdatedAt?: unknown;
+  };
   const placeId = typeof raw.placeId === "string" ? raw.placeId.trim() : "";
   if (!placeId) return { ok: false, error: "placeId is required" };
   if (typeof raw.patch !== "object" || raw.patch === null || Array.isArray(raw.patch)) {
@@ -27,5 +38,8 @@ export function enrichmentCommit(body: unknown): EnrichmentCommit {
   // Absent means mirror, which is the Enrichment page default. An explicit
   // false is the Mirror switch turned off: keep the source URLs.
   const mirrorPhotos = raw.mirrorPhotos !== false;
-  return { ok: true, placeId, patch, mirrorPhotos };
+  const baseUpdatedAt = typeof raw.baseUpdatedAt === "string" && raw.baseUpdatedAt.trim()
+    ? raw.baseUpdatedAt.trim()
+    : null;
+  return { ok: true, placeId, patch, mirrorPhotos, baseUpdatedAt };
 }

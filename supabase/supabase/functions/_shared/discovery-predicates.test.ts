@@ -38,7 +38,7 @@ Deno.test("garbage filters degrade to no predicate rather than throwing", () => 
   }
 });
 
-Deno.test("Family cuts the catalog trip, not a stored subset", () => {
+Deno.test("Family cuts the mapping on the row, else the catalog trip", () => {
   const rows = [
     place({ id: "taco", category: "taco" }),
     place({ id: "brunch", category: "brunch" }),
@@ -59,11 +59,15 @@ Deno.test("Family cuts the catalog trip, not a stored subset", () => {
   );
   assertEquals(
     applyDeckPredicates(rows, readDeckPredicates({ familyKeys: ["breakfast"] })).map((r) => r.id),
-    ["brunch", "shyBreakfast"],
+    ["brunch"],
+  );
+  assertEquals(
+    applyDeckPredicates(rows, readDeckPredicates({ familyKeys: ["coffee"] })).map((r) => r.id),
+    ["shyBreakfast"],
   );
   assertEquals(
     applyDeckPredicates(rows, readDeckPredicates({ familyKeys: ["night_out"] })).map((r) => r.id),
-    ["karaoke"],
+    [],
   );
   assertEquals(
     applyDeckPredicates(rows, readDeckPredicates({ familyKeys: ["go_out"] })).map((r) => r.id),

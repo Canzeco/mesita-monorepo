@@ -2,6 +2,7 @@
 
 import { efInvoke } from "@/lib/supabase-ef";
 import { enrichmentView, isEnrichedPlace } from "@/lib/place-enriched";
+import type { EnrichDepth } from "@/lib/enrich-depth";
 
 // ════════════════════════════════════════════════════════════════════════
 // Places — a super-admin drives MANY places at once through the admin-* edge
@@ -12,9 +13,8 @@ import { enrichmentView, isEnrichedPlace } from "@/lib/place-enriched";
 // it was deleted (MESITA-1588); this page was their only surviving caller, so
 // they moved here. Single Place (MESITA-2084) imports them from here rather
 // than owning a copy — ONE caller set, so the two pages cannot drift on what
-// a button does. The per-place EDITOR is the business console's place
-// surface, which Single Place renders (MESITA-2086; web-business itself was
-// deleted, MESITA-2089).
+// a button does. The per-place editor is Single Place (MESITA-2086); web-
+// business was deleted in MESITA-2089.
 // ════════════════════════════════════════════════════════════════════════
 
 // `code` is the EF's machine-readable failure (efInvoke already keeps it off
@@ -250,20 +250,26 @@ export async function deletePlace(placeId: string): Promise<Result<true>> {
   return { ok: true, data: true };
 }
 
-// ── Crenup ───────────────────────────────────────────────────────────────
+// ── Enrich ───────────────────────────────────────────────────────────────
 
-// Kept so existing callers still type-check. Render runs the whole enrichment.
+// Kept so existing callers still type-check. The live choice is EnrichDepth.
 export type ReenrichMode = "fill" | "full" | "second" | "third";
 
 // Start enrichment. One place starts enrich single place. A list starts
 // enrich multiple places once, and Render decides how many run at once.
-// The row reports the start, not the finish.
-export async function enrichPlaces(placeIds: string[]): Promise<Result<true>> {
+// The row reports the start, not the finish. depth defaults to full.
+export async function enrichPlaces(
+  placeIds: string[],
+  overwrite = false,
+  depth: EnrichDepth = "full",
+): Promise<Result<true>> {
   const ids = placeIds.map((id) => id.trim()).filter(Boolean);
   if (ids.length === 0) return { ok: false, error: "Missing placeId" };
   const r = await efInvoke<{ enrichmentTriggered: boolean }>(
     "admin-web-enrich-place",
-    ids.length === 1 ? { projectId: ids[0] } : { placeIds: ids },
+    ids.length === 1
+      ? { projectId: ids[0], overwrite, depth }
+      : { placeIds: ids, overwrite, depth },
   );
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: true };
@@ -273,8 +279,10 @@ export async function enrichPlace(
   placeId: string,
   _mode: ReenrichMode = "fill",
   _overwrite: string[] = [],
+  overwrite = false,
+  depth: EnrichDepth = "full",
 ): Promise<Result<true>> {
-  return enrichPlaces([placeId]);
+  return enrichPlaces([placeId], overwrite || _overwrite.length > 0, depth);
 }
 
 // ── Name searches (Single Place › Find, MESITA-2116 · MESITA-2124) ───────

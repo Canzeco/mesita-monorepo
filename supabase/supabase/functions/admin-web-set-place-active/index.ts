@@ -26,7 +26,7 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
-import { PLACE_BUSINESS_COLUMNS } from "../_shared/place-columns.ts";
+import { PLACE_PROFILE_COLUMNS } from "../_shared/place-columns.ts";
 import { writePlace } from "../_shared/place-doc.ts";
 import { isPlaceListed } from "../_shared/place-state.ts";
 import { activeWritePatch } from "../_shared/place-active.ts";
@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
   if (bizSame && stateSame) {
     const { data: place, error: readError } = await admin
       .from("profiles")
-      .select(PLACE_BUSINESS_COLUMNS)
+      .select(PLACE_PROFILE_COLUMNS)
       .eq("id", projectId)
       .single();
     if (readError) {
@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
       business_state_at: now,
       ...(patch.state ? { state: patch.state } : {}),
     },
-    select: PLACE_BUSINESS_COLUMNS,
+    select: PLACE_PROFILE_COLUMNS,
     selectMode: "maybeSingle",
   });
   if (!updRes.ok) {

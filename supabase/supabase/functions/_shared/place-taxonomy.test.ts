@@ -95,20 +95,20 @@ Deno.test("undefined category maps to family undefined; empty has none", () => {
   assertEquals(familiesForAtlasCategory(""), []);
 });
 
-Deno.test("familiesForPlace uses the catalog trip, never a stored subset", () => {
+Deno.test("familiesForPlace uses the mapping on the row, else the catalog trip", () => {
   assertEquals(
     familiesForPlace({
       category: "breakfast",
       family_keys: ["coffee"],
     }),
-    ["breakfast"],
+    ["coffee"],
   );
   assertEquals(
     familiesForPlace({
       category: "mexican",
       family_keys: ["drinks"],
     }),
-    ["tacos"],
+    ["drinks"],
   );
   assertEquals(familiesForPlace({ category: "mexican" }), ["tacos"]);
   assertEquals(familiesForPlace({ category: "gastropub" }), ["dinner", "drinks"]);
@@ -117,9 +117,10 @@ Deno.test("familiesForPlace uses the catalog trip, never a stored subset", () =>
       category: "undefined",
       family_keys: ["drinks"],
     }),
-    ["undefined"],
+    ["drinks"],
   );
   assertEquals(familiesForPlace({ category: "undefined" }), ["undefined"]);
+  assertEquals(familiesForPlace({ category: "cafe" }), ["coffee", "breakfast"]);
 });
 
 Deno.test("familiesForPlace is TOTAL — no place is ever pill-less", () => {
@@ -150,7 +151,7 @@ Deno.test("resolveEnrichedFamilyKeys keeps the catalog trip", () => {
   assertEquals(resolveEnrichedFamilyKeys("leftover_slug", ["junk"]), ["undefined"]);
 });
 
-Deno.test("sanitizeFamilyKeys drops junk, dedupes, catalog order", () => {
+Deno.test("sanitizeFamilyKeys drops junk, dedupes, keeps more than two, catalog order", () => {
   assertEquals(
     sanitizeFamilyKeys(["go_out", "dinner", "dinner", "nope"]),
     ["dinner", "go_out"],

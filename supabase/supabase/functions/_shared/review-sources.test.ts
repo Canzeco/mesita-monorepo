@@ -77,8 +77,8 @@ Deno.test("a profile edit awaits the verifier only for a URL that changed", asyn
   assert(checked.ok);
   if (!checked.ok) return;
   assertEquals(checked.patch.facebook_url, "https://facebook.com/new");
-  assertEquals(checked.patch.facebook_found, true);
-  assertEquals(checked.patch.facebook_followers, 40);
+  assertEquals("facebook_found" in checked.patch, false);
+  assertEquals("facebook_followers" in checked.patch, false);
   assert(!("instagram_url" in checked.patch));
 });
 

@@ -205,7 +205,6 @@ serveEnrichStage("third", async (admin, env, row) => {
     const categorySlug = (place.category ?? category) as string | null;
     const googleFamilies = familiesForExactGoogle(categorySlug);
     const resolvedFamilies = googleFamilies ?? ["undefined"];
-    place.family_keys = resolvedFamilies;
     if (categorySlug) {
       place.category_label = humanizeCategorySlug(categorySlug) ?? categorySlug;
     }

@@ -56,8 +56,6 @@ import { stepDone, stepFailed, reportCrenupSteps } from "./crenup-report.ts";
 import { loadDiscoveryConfig } from "./discovery-config.ts";
 import { evaluatePlaceForMap } from "./map-engine.ts";
 import { omitReviewsTileColumns } from "./reviews-state.ts";
-import { familiesForExactGoogle } from "./place-taxonomy.ts";
-
 export type CreatedPlace = { id: string; slug: string; name: string; state: string };
 
 // The `enrichment` block every create response carries. Create never seeds
@@ -173,14 +171,12 @@ export async function createMinimalPlace(opts: {
     };
   }
 
-  // Category is Google's primary type, already on basics. Family is that
-  // type's catalog rails. The map gate above already read the live Google
-  // rating. The stored tile columns stay empty until the Reviews reload
-  // (MESITA-2183).
-  const googleFamilies = familiesForExactGoogle(basicsRes.basics.category);
+  // Category is Google's primary type, already on basics. The profiles view
+  // derives the family rails from that category. The map gate above already
+  // read the live Google rating. The stored tile columns stay empty until
+  // the Reviews reload (MESITA-2183).
   const place: Record<string, unknown> = omitReviewsTileColumns({
     ...basicsRes.basics,
-    family_keys: googleFamilies ?? ["undefined"],
     // Operating (MESITA-1239). businessStatus rides the envelope, not `basics`,
     // so the spread above does not carry it. Stored verbatim: reaching here
     // means it is not CLOSED_PERMANENTLY (refused above), but OPERATIONAL,
@@ -262,8 +258,7 @@ export async function createMinimalPlace(opts: {
       });
       if (door) {
         const patch: Record<string, unknown> = {};
-        // Category and family already came from Google. The door does not
-        // replace them with a Mesita category.
+        // Category already came from Google. The door does not replace it.
         if (door.tags.length > 0) patch.tags = door.tags;
         if (door.description) patch.description = door.description;
         // The seed for a place nobody has answered for yet; an operator's

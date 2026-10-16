@@ -3,19 +3,19 @@
 // appear on one and vanish from the other.
 //
 // Google Search looks up Google. Mesita Search looks up Mesita (read-only).
-// Create, Enrich and Update write, each in its own box over the same Google
+// Create, Enrich and Edit write, each in its own box over the same Google
 // Place IDs (MESITA-2096, Pato: "just use a create box, enrich box, and
 // update box. i don't care if kinda redundant"). Create mints the place,
-// Enrich fills it, and Update is Enable, Disable and Delete — writes to a place
-// that already exists. Update is a box, never a button, and there is no
-// Create + Enrich combo.
+// Enrich fills it, and Edit is Enable, Disable and Delete — writes to a place
+// that already exists. Edit is a box, never a button, and there is no
+// Create + Enrich combo. Edit does not sync.
 
 export const PIPELINE_STEPS = [
   { n: 1, id: "google-search", label: "Google Search" },
   { n: 2, id: "mesita-search", label: "Mesita Search" },
   { n: 3, id: "create", label: "Create" },
   { n: 4, id: "enrich", label: "Enrich" },
-  { n: 5, id: "update", label: "Update" },
+  { n: 5, id: "update", label: "Edit" },
 ] as const;
 
 export type PipelineStepId = (typeof PIPELINE_STEPS)[number]["id"];

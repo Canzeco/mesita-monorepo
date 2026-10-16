@@ -34,7 +34,12 @@ test("a complete Google place becomes a finished profile without a database key"
   assert.equal(got.description, "Cocina de mercado en la Condesa.");
   assert.equal(got.patch.google_name, "Casa Luminar");
   assert.equal(got.patch.phone, "+52 55 0000 0000");
-  assert.equal(got.patch.city, "Ciudad de México");
+  assert.equal(got.patch.city, undefined);
+  assert.deepEqual(got.patch.google_address, {
+    formattedAddress: "Av. Ámsterdam 1, CDMX",
+    location: { latitude: 19.4, longitude: -99.1 },
+    addressComponents: [{ types: ["locality"], longText: "Ciudad de México" }],
+  });
   assert.equal(got.patch.google_found, true);
   assert.equal(got.patch.website_url, "https://example.com/");
   assert.equal(got.patch.price_level, 3);

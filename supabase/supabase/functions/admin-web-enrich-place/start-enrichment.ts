@@ -29,11 +29,20 @@ export type EnrichmentKnobs = {
   sortModel: string;
 };
 
+export type EnrichDepth = "quick" | "full";
+
 export type EnrichJob = {
   placeId: string;
   googlePlaceId: string;
   knobs?: EnrichmentKnobs;
+  /** Absent is Full. */
+  depth?: EnrichDepth;
 };
+
+/** Anything other than quick is the whole enrichment. */
+export function enrichDepthOf(value: unknown): EnrichDepth {
+  return value === "quick" ? "quick" : "full";
+}
 
 type KnobSource = Pick<
   EnrichConfig,

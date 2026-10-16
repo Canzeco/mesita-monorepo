@@ -76,6 +76,33 @@ Deno.serve(async (req) => {
 
   const commit = enrichmentCommit(bodyRes.body);
   if (!commit.ok) return json({ ok: false, error: commit.error }, 400);
+  if (commit.baseUpdatedAt) {
+    const { data: versionRow, error: versionErr } = await admin
+      .from("profiles")
+      .select("updated_at, content_state, enriched_at")
+      .eq("id", commit.placeId)
+      .maybeSingle();
+    if (versionErr) return json({ ok: false, error: versionErr.message }, 500);
+    const current = (versionRow?.updated_at ?? null) as string | null;
+    if (current !== commit.baseUpdatedAt) {
+      const next = contentStateAfterStop({
+        content_state: (versionRow?.content_state ?? null) as string | null,
+        enriched_at: (versionRow?.enriched_at ?? null) as string | null,
+      });
+      if (next) {
+        await writePlace(admin, {
+          table: "places",
+          mode: "update",
+          id: commit.placeId,
+          patch: { content_state: next },
+        });
+      }
+      return json({
+        ok: false,
+        error: "The profile changed during enrichment. The previous profile was kept.",
+      }, 409);
+    }
+  }
   const validated = validateProfilePatch(commit.patch);
   if (!validated.ok) return json({ ok: false, error: validated.error }, 400);
 

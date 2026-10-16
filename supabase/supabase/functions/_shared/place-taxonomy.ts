@@ -2,7 +2,10 @@
 // Undefined is last and is not a carousel.
 // A type may sit on more than one family when the trips are different.
 // A precise rail takes the place off the broader one.
-// family_keys is total: Google type → Atlas slug → stored keys → ['undefined'].
+// The profiles view derives family_keys from the category dictionary.
+// The base column stays null. A row that already carries the mapping wins,
+// so a dictionary edit changes membership without a profile write.
+// With no mapping on the row: Google type → Atlas slug → alias → ['undefined'].
 
 import {
   CATALOG_FAMILIES,
@@ -138,8 +141,8 @@ export function isFamilyKey(value: string): value is FamilyKey {
 }
 
 /**
- * Unique valid families, catalog order. `undefined` never rides along
- * with a real family.
+ * Unique valid families, catalog order, any count. A category may sit in
+ * many families. `undefined` never rides along with a real family.
  */
 export function sanitizeFamilyKeys(raw: unknown): FamilyKey[] {
   if (!Array.isArray(raw)) return [];
@@ -206,22 +209,18 @@ export type FamilyPlace = {
 };
 
 /**
- * Families for a place on the wire or in a predicate. TOTAL:
- * an exact Google type wins (one family, including Undefined); else Atlas
- * membership for a leftover Mesita slug; else stored keys; else the
- * Google alias map; else ['undefined'].
+ * Families for a place on the wire or in a predicate. TOTAL.
+ * The mapping carried on the row wins. Otherwise an exact Google type,
+ * then an Atlas slug, then the Google alias, then ['undefined'].
  */
 export function familiesForPlace(place: FamilyPlace): FamilyKey[] {
   const category = typeof place.category === "string" ? place.category : null;
-  // A Google type is the category. Its family is the one Google map entry,
-  // including Undefined. A Mesita catalog slug that is not a Google type
-  // still resolves through Atlas until a later Google read rewrites it.
+  const mapped = sanitizeFamilyKeys(place.family_keys);
+  if (mapped.length > 0) return mapped;
   const exact = familiesForExactGoogle(category);
   if (exact) return exact;
   const atlas = familiesForAtlasCategory(category);
   if (atlas.length > 0) return atlas;
-  const stored = sanitizeFamilyKeys(place.family_keys);
-  if (stored.length > 0) return stored;
   const google = familiesForGoogleType(
     typeof place.category === "string" ? place.category : null,
   );

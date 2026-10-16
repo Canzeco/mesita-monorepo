@@ -7,7 +7,7 @@ import { reconcileConsumerLocalOwner } from "@/lib/consumer-local-reset";
 // consumer id. Clears the browser's client-only consumer data (favorites,
 // saved-place previews, draft reservations) whenever a different consumer owns
 // the session — so a fresh account never inherits stale saves after a sign-out,
-// an account switch, or an `admin-web-reset-database` reset. See
+// an account switch, or an admin database reset. See
 // consumer-local-reset.ts for the rationale.
 //
 // The reconcile runs in a useState initializer (not an effect) so the wipe

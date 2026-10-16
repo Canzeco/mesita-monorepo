@@ -22,6 +22,7 @@ import {
 import { PlaceTagsPicker } from "../PlaceTagsPicker";
 import { PlaceCategorySelect } from "../PlaceCategorySelect";
 import { PlaceFamilyField } from "../PlaceFamilyField";
+import { googleLocationEntries, type LocationPair } from "../google-location";
 import {
   OpenLink,
   PhoneField,
@@ -89,6 +90,34 @@ const CHANNELS: {
 
 const EDITABLE_CHANNELS = CHANNELS.filter((c) => !c.readOnly);
 
+function verifiedAction(key: string, value: string): string | null {
+  const raw = value.trim();
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    if (key === "uber_eats_url" && url.hostname.includes("ubereats.com") && url.pathname.includes("/store/")) {
+      return "Pedir";
+    }
+    if (key === "opentable_url" && url.hostname.includes("opentable.") && url.pathname.startsWith("/r/")) {
+      return "Reservar";
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function linkAction(key: string, value: string) {
+  if (!value.trim()) return undefined;
+  const action = verifiedAction(key, value);
+  return (
+    <span className="inline-flex items-center gap-2">
+      {action ? <span>{action}</span> : null}
+      <OpenLink href={value} />
+    </span>
+  );
+}
+
 function ChannelLabelIcon({
   logo,
   Icon,
@@ -136,6 +165,17 @@ function PriceDisplay({
       {range ? <span className="text-muted-foreground">{range}</span> : null}
     </span>
   );
+}
+
+function locationPairs(place: AdminPlace): LocationPair[] {
+  const stored = googleLocationEntries(place.google_address);
+  if (stored.length > 0) return stored;
+  return googleLocationEntries({
+    formattedAddress: place.address,
+    location: place.lat != null && place.lng != null
+      ? { latitude: place.lat, longitude: place.lng }
+      : undefined,
+  });
 }
 
 type DayHours = { closed: boolean; open: string; close: string };
@@ -442,7 +482,7 @@ export function PlaceSection({
     <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5 xl:columns-3">
       {/* Box order (MESITA-547 / MESITA-720 / MESITA-834 / MESITA-900;
           Basics, Location and Hours are separate cards — Pato, 2026-08-29):
-          Basics → Location → Hours → Channels → Photos.
+          Basics → Location → Hours → Links → Photos.
           Reviews is its own tab (MESITA-2183).
           Menus is unwired (MESITA-2175). Mesita-internal cards live on Admin;
           Team on Controls; the reputation rail on Activity. */}
@@ -501,38 +541,21 @@ export function PlaceSection({
         </div>
       </SectionCard>
 
-      {/* Location is native — Google Places seed + Enricher synthesis.
-          The EF rejects manual address writes, so this card is read-only. */}
       <SectionCard
         icon={<MapPin className="h-4 w-4" />}
         tint="sky"
         title="Location"
-        subtitle="Where it sits."
+        subtitle="Google's keys, as returned."
       >
-        {/* One boxed field per row — same filled-input language as every
-            other card.
-
-            THREE ROWS, NOT FIVE (MESITA-2012). Pato: *"hide stuff such as
-            latitude and so on. it looks too unprofessional. is okey if we
-            have that. but hide it."* `Lat / Lng` and `Timezone` were the
-            seed talking to itself — a coordinate pair and an IANA
-            identifier, both in a read-only `auto` box a restaurant owner
-            can neither read nor act on.
-
-            HIDDEN, NOT DELETED. `place.lat`, `place.lng` and
-            `place.timezone` still arrive on the record and are still
-            typed; the map below is drawn from the first two. What went is
-            the notation, not the fact. */}
         <div className="mt-5 grid gap-4">
-          <ReadField label="Address" auto boxed>
-            {place.address?.trim() ? place.address : "—"}
+          <ReadField label="placeId" auto boxed>
+            {place.google_place_id?.trim() ? place.google_place_id : "—"}
           </ReadField>
-          <ReadField label="Zone" auto boxed>
-            {place.zone ?? "—"}
-          </ReadField>
-          <ReadField label="City" auto boxed>
-            {place.city ?? "—"}
-          </ReadField>
+          {locationPairs(place).map((pair) => (
+            <ReadField key={pair.key} label={pair.key} auto boxed>
+              {pair.value}
+            </ReadField>
+          ))}
         </div>
         {place.lat != null && place.lng != null ? (
           <div className="border-border/60 mt-4 overflow-hidden rounded-xl border">
@@ -636,7 +659,7 @@ export function PlaceSection({
       <SectionCard
         icon={<Globe className="h-4 w-4" />}
         tint="indigo"
-        title="Channels"
+        title="Links"
       >
         {/* One column, one list — links and contacts are all just channels;
             no sub-grouping. grid-cols-1 (minmax(0,1fr)) bounds the column so a
@@ -694,7 +717,7 @@ export function PlaceSection({
                 key={c.key as string}
                 label={c.label}
                 icon={mark}
-                labelRight={val.trim() ? <OpenLink href={val} /> : undefined}
+                labelRight={linkAction(c.key as string, val)}
                 value={val}
                 onChange={(x) => setChannel(c.key as string, x)}
                 placeholder="https://…"
@@ -707,6 +730,11 @@ export function PlaceSection({
               the local number. */}
           <PhoneField
             label="Phone"
+            labelRight={
+              form.phone.trim() ? (
+                <OpenLink href={`tel:${form.phone.replace(/\s+/g, "")}`} />
+              ) : undefined
+            }
             value={form.phone}
             onChange={(x) => set("phone", x)}
             placeholder="81 8378 2164"

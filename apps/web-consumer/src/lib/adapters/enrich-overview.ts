@@ -24,7 +24,6 @@
 import type { Place } from "@/lib/api/places";
 import {
   computeOpenState,
-  neighborhoodFromAddress,
   num,
   str,
 } from "@/lib/adapters/place-to-detail-helpers";
@@ -41,14 +40,7 @@ export function enrichPlaceOverview(v: Place): Place {
   const igFollowers = num(v.instagram_followers_count);
   const priceLevel = num(v.price_level);
   const currency = str(v.currency) ?? DEFAULT_CURRENCY;
-  // Neighborhood (zone) priority: the real zone column → the colonia
-  // parsed out of the formatted address → the city. Most places have no
-  // zone column yet but DO carry the colonia inside `address`
-  // ("…, Valle del Campestre, 66266 …"), so deriving it here lights up the
-  // neighborhood chip without a DB backfill, and degrades to city when the
-  // address has none (e.g. US places).
-  const zone =
-    str(v.zone) ?? neighborhoodFromAddress(str(v.address)) ?? str(v.city);
+  const zone = str(v.zone) ?? "";
   const freshness = relativeLabel(str(v.enriched_at) ?? str(v.created_at));
 
   // Only trust the live open/closed math when the row actually carries an

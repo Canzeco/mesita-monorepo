@@ -59,15 +59,6 @@ export type GoogleSpine =
   | { ok: true; description: string | null; facts: string; patch: Record<string, unknown> }
   | { ok: false; error: string };
 
-function component(details: GooglePlace, types: string[]): string | null {
-  for (const want of types) {
-    const hit = (details.addressComponents ?? []).find((row) => (row.types ?? []).includes(want));
-    const text = hit?.longText?.trim() ?? "";
-    if (text) return text;
-  }
-  return null;
-}
-
 function httpUrl(value: string | undefined): string | null {
   const url = value?.trim() ?? "";
   return url.startsWith("https://") || url.startsWith("http://") ? url : null;
@@ -102,11 +93,12 @@ export function profileFromGoogle(details: GooglePlace, requestedId: string): Go
     lng,
     google_maps_url: maps,
     google_found: true,
+    google_address: {
+      formattedAddress: address,
+      location: { latitude: lat, longitude: lng },
+      addressComponents: details.addressComponents ?? [],
+    },
   };
-  const zone = component(details, ["neighborhood", "sublocality_level_1", "sublocality"]);
-  const city = component(details, ["locality", "administrative_area_level_2"]);
-  if (zone) patch.zone = zone;
-  if (city) patch.city = city;
   if (phone) patch.phone = phone;
   if (channel) {
     patch[channel.key] = channel.url;
@@ -134,11 +126,15 @@ export function profileFromGoogle(details: GooglePlace, requestedId: string): Go
   if (editorial) patch.pitch = editorial.slice(0, 1000);
   if (generative) patch.story = generative.slice(0, 1000);
 
+  const componentFacts = (details.addressComponents ?? []).flatMap((row) => {
+    const key = (row.types ?? []).find((type) => type && type !== "political");
+    const value = row.longText?.trim() ?? "";
+    return key && value ? [`${key}: ${value}`] : [];
+  });
   const facts = [
     `Name: ${name}`,
-    `Address: ${address}`,
-    city ? `City: ${city}` : "",
-    zone ? `Neighborhood: ${zone}` : "",
+    `formattedAddress: ${address}`,
+    ...componentFacts,
     phone ? `Phone: ${phone}` : "",
     website ? `Website: ${website}` : "",
     channel && channel.key !== "website_url" ? `Link: ${channel.url}` : "",

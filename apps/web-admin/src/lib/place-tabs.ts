@@ -16,12 +16,13 @@ import { PLACE_BASE } from "@/lib/place-base";
 // Profile has its own segment (MESITA-1732): the bare place URL is a temporary
 // redirect onto it, so the view an operator is most likely to link to has a
 // link.
-export const PLACE_TABS = ["profile", "reviews", "admin"] as const;
+export const PLACE_TABS = ["profile", "reviews", "preview", "admin"] as const;
 export type PlaceTab = (typeof PLACE_TABS)[number];
 
 export const PLACE_TAB_LABEL: Record<PlaceTab, string> = {
   profile: "Profile",
   reviews: "Reviews",
+  preview: "Preview",
   admin: "Admin",
 };
 

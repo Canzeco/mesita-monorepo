@@ -1,4 +1,4 @@
-/** Shared upload constraints — mirrors mesita-web-business place-upload-utils. */
+/** Shared upload constraints for admin place media uploads. */
 
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 

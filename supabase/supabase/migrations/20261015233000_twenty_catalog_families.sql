@@ -597,14 +597,63 @@ update public.place_categories c
   from family_remap r
  where c.slug = r.slug;
 
-update public.place_profiles p
-   set family_keys = r.keys
-  from family_remap r
- where p.category = r.slug;
+-- The profiles view derives membership from this dictionary. A Google type
+-- that is not one of the old Atlas slugs still has to resolve, and Create
+-- refuses a category that is in neither list.
+create table public.catalog_membership (
+  slug text primary key,
+  family_keys text[] not null,
+  constraint catalog_membership_keys_valid check (public.atlas_family_slugs_valid(family_keys))
+);
 
-update public.place_profiles
-   set family_keys = array['undefined']
- where family_keys && array['restaurants','cafes_bakeries','bars_nightlife','experiences','culture_arts','sports_fitness','wellness_beauty'];
+alter table public.catalog_membership enable row level security;
+
+insert into public.catalog_membership (slug, family_keys)
+select slug, keys from family_remap;
+
+create or replace function public.families_for_category(cat text)
+returns text[]
+language sql
+stable
+security definer
+set search_path to 'public'
+as $$
+  select coalesce(
+    (select family_keys from public.place_categories where slug = cat),
+    (select family_keys from public.catalog_membership where slug = cat),
+    array['undefined']::text[]
+  );
+$$;
+
+create or replace function public.place_profiles_taxonomy()
+returns trigger
+language plpgsql
+set search_path to 'public'
+as $$
+begin
+  if new.category is null or btrim(new.category) = '' then
+    new.category := 'undefined';
+  end if;
+  if tg_op = 'INSERT' or new.category is distinct from old.category then
+    if not exists (select 1 from public.catalog_membership c where c.slug = new.category)
+       and not exists (select 1 from public.place_categories c where c.slug = new.category)
+    then
+      raise exception 'unknown category %', new.category;
+    end if;
+  end if;
+  if tg_op = 'INSERT' or new.tags is distinct from old.tags then
+    if exists (
+      select 1
+        from unnest(coalesce(new.tags, '{}'::text[])) as tag(slug)
+       where not exists (select 1 from public.place_tags pt where pt.slug = tag.slug)
+    ) then
+      raise exception 'unknown tag';
+    end if;
+  end if;
+  new.family_keys := null;
+  return new;
+end;
+$$;
 
 delete from public.place_families
  where slug in (
