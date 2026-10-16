@@ -707,8 +707,8 @@ select ok(
 
 select ok(
   position(
-    'cardinality(slugs) <= 2' in pg_get_functiondef('public.atlas_family_slugs_valid(text[])'::regprocedure)
-  ) = 0,
+    'cardinality(slugs) <= 20' in pg_get_functiondef('public.atlas_family_slugs_valid(text[])'::regprocedure)
+  ) > 0,
   'a category is not capped at two families'
 );
 
@@ -847,7 +847,7 @@ select throws_ok(
 
 select lives_ok(
   $$update public.place_categories
-       set family_keys = array['restaurants', 'cafes_bakeries', 'bars_nightlife', 'experiences']
+       set family_keys = array['dinner', 'coffee', 'drinks', 'go_out']
      where slug = 'mesita_1857_probe'$$,
   'a category can belong to more than two families'
 );
@@ -866,13 +866,13 @@ select is(
 select is(
   (select family_keys from public.profiles
     where id = '00000000-0000-4000-8000-0000000fa111'),
-  array['restaurants', 'cafes_bakeries', 'bars_nightlife', 'experiences']::text[],
+  array['dinner', 'coffee', 'drinks', 'go_out']::text[],
   'the catalog view reads the four-family mapping'
 );
 
 select lives_ok(
   $$update public.place_categories
-       set family_keys = array['restaurants', 'cafes_bakeries', 'culture_arts']
+       set family_keys = array['dinner', 'coffee', 'culture']
      where slug = 'mesita_1857_probe'$$,
   'the mapping can change again'
 );
@@ -887,7 +887,7 @@ select is(
 select is(
   (select family_keys from public.profiles
     where id = '00000000-0000-4000-8000-0000000fa111'),
-  array['restaurants', 'cafes_bakeries', 'culture_arts']::text[],
+  array['dinner', 'coffee', 'culture']::text[],
   'the catalog view follows the new mapping'
 );
 
