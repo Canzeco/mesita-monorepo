@@ -8,13 +8,21 @@
 
 import { Facebook, Instagram } from "./brand-icons";
 
-// Multi-color Google "G" inside a white circle. h-8 w-8 to align with the
-// other source badges (Instagram / Facebook) on the reviews summary and
-// individual review cards.
-export function GoogleLogo() {
+// Multi-color Google "G". The header uses compact; review cards use the
+// larger tile so the three source badges stay the same size.
+export function GoogleLogo({ compact = false }: { compact?: boolean }) {
   return (
-    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white">
-      <svg viewBox="0 0 48 48" className="h-5 w-5" aria-hidden>
+    <div
+      className={
+        "flex shrink-0 items-center justify-center rounded-full bg-white " +
+        (compact ? "h-6 w-6" : "h-8 w-8")
+      }
+    >
+      <svg
+        viewBox="0 0 48 48"
+        className={compact ? "h-4 w-4" : "h-5 w-5"}
+        aria-hidden
+      >
         <path
           fill="#FFC107"
           d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"
@@ -37,19 +45,39 @@ export function GoogleLogo() {
 }
 
 // Instagram brand-gradient tile used as a source badge.
-export function InstagramLogo() {
+export function InstagramLogo({ compact = false }: { compact?: boolean }) {
   return (
-    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400">
-      <Instagram className="h-4 w-4 text-white" strokeWidth={2} />
+    <div
+      className={
+        "flex shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 " +
+        (compact ? "h-6 w-6" : "h-8 w-8")
+      }
+    >
+      <Instagram
+        className={compact ? "h-3.5 w-3.5 text-white" : "h-4 w-4 text-white"}
+        strokeWidth={2}
+      />
     </div>
   );
 }
 
 // Facebook brand-blue tile used as a source badge.
-export function FacebookLogo() {
+export function FacebookLogo({ compact = false }: { compact?: boolean }) {
   return (
-    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1877F2]">
-      <Facebook className="h-4 w-4 fill-white text-white" strokeWidth={0} />
+    <div
+      className={
+        "flex shrink-0 items-center justify-center rounded-lg bg-[#1877F2] " +
+        (compact ? "h-6 w-6" : "h-8 w-8")
+      }
+    >
+      <Facebook
+        className={
+          compact
+            ? "h-3.5 w-3.5 fill-white text-white"
+            : "h-4 w-4 fill-white text-white"
+        }
+        strokeWidth={0}
+      />
     </div>
   );
 }

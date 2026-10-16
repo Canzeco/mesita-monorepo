@@ -51,6 +51,15 @@ describe("member preview edges", () => {
     expect(html).toContain("484 Google");
     expect(html).toContain("Instagram, Not connected");
     expect(html).toContain("Facebook, Not connected");
+    const googleAt = html.indexOf("484 Google");
+    const instagramAt = html.indexOf(">Instagram<");
+    const facebookAt = html.indexOf(">Facebook<");
+    expect(googleAt).toBeGreaterThan(-1);
+    expect(instagramAt).toBeGreaterThan(googleAt);
+    expect(facebookAt).toBeGreaterThan(instagramAt);
+    expect(html).toContain("from-purple-600");
+    expect(html).toContain("bg-[#1877F2]");
+    expect(html).toContain("#FFC107");
     expect(html).toContain(">Not connected<");
     expect(html).toContain(">Instagram<");
     expect(html).toContain(">Facebook<");
