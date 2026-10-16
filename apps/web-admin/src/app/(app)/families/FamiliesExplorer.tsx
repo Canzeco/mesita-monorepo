@@ -1,12 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { FamiliesMap, FamilyRow, TagRow } from "./highlight";
+import type { FamiliesMap, TagRow } from "./highlight";
+import { MembershipMatrix } from "./MembershipMatrix";
 
-/** The column shows spaces. Search must hit that label and the stored slug. */
-export function googleTypeHaystack(slug: string): string {
-  return `${slug.replaceAll("_", " ")} ${slug}`;
-}
+export { googleTypeHaystack } from "./membership-matrix";
 
 export type TagGroup = {
   key: string;
@@ -31,55 +29,18 @@ export function groupTags(tags: TagRow[], query: string): TagGroup[] {
 
 export function FamiliesExplorer({ map }: { map: FamiliesMap }) {
   const [tagQuery, setTagQuery] = useState("");
-  const guestFamilies = useMemo(
-    () => map.families.filter((family) => family.slug !== "undefined"),
-    [map.families],
-  );
   const tagGroups = useMemo(() => groupTags(map.tags, tagQuery), [map.tags, tagQuery]);
 
   return (
     <>
-      <p className="text-muted-foreground mt-8 text-sm">
-        {guestFamilies.length} guest families · {map.tags.length} tags ·{" "}
-        {map.googleTypes.length} Google types in the coarse map
-      </p>
+      <MembershipMatrix families={map.families} rows={map.googleMembership} />
       <TagsList
         groups={tagGroups}
         count={map.tags.length}
         query={tagQuery}
         onQuery={setTagQuery}
       />
-      <FamiliesSection families={guestFamilies} />
     </>
-  );
-}
-
-function FamiliesSection({ families }: { families: FamilyRow[] }) {
-  return (
-    <section className="border-border bg-card mt-4 rounded-2xl border">
-      <div className="border-border border-b p-4">
-        <h2 className="font-display text-sm font-semibold tracking-tight">
-          Guest families
-          <span className="text-muted-foreground ml-2 font-normal">{families.length}</span>
-        </h2>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Loaded live from <code className="text-xs">place_families</code>. Carousel membership
-          for a place comes from its Google primary type via the catalog, not from a field on the
-          row.
-        </p>
-      </div>
-      <ul className="divide-y">
-        {families.map((family) => (
-          <li key={family.slug} className="flex items-center gap-2 p-4">
-            <span className="text-sm font-medium">
-              {family.emoji ? `${family.emoji} ` : ""}
-              {family.label}
-            </span>
-            <span className="text-muted-foreground font-mono text-xs">{family.slug}</span>
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }
 
