@@ -1,11 +1,12 @@
-// Catalog Search (MESITA-2196). One shared profile, seven guest family lists.
+// Catalog Search. One shared profile, one list per guest family.
 //
 // Family and Enriched admit; they do not score. Timing is not in this
-// profile. Name and Randomness ship at exponent 0 (MESITA-2199), so neither
-// is called. Description and Selected stay at 1 and abstain until a query
-// vector or a per-entity Selected value exists — a missing fact is not a
-// zero, and a zero would delete the place from the product. Weight 0 drops
-// its signal before it is called. Proximity and Popularity rank at 1.
+// profile. catalogScore multiplies only proximity, popularity, and
+// randomness, and it raises them to RELATIVE exponents (weight / sum of
+// the nonzero live weights). Name, description, and selected may still sit
+// on the stored blob; this function does not read them. Weight 0 drops a
+// live signal. All three at 0 leaves every place at 1 (incoming order).
+// A save of that vector is rejected before it is stored.
 
 import { FAMILIES, type FamilyKey } from "./place-taxonomy.ts";
 import {
@@ -16,7 +17,12 @@ import {
   type SignalPlace,
 } from "./discovery-signals.ts";
 import { isEnrichedPlace } from "./place-family-keys.ts";
-import type { CatalogRankKey, SignalParams } from "./discovery-config.ts";
+import {
+  type CatalogLiveRankKey,
+  type CatalogRankKey,
+  catalogRelativeExponents,
+  type SignalParams,
+} from "./discovery-config.ts";
 
 export type CatalogListPlace = Record<string, unknown> & {
   id: string;
@@ -33,11 +39,6 @@ export type CatalogFamilyList<T extends CatalogListPlace> = {
 };
 
 const GUEST_FAMILIES = FAMILIES.filter((f) => f.slug !== "undefined");
-
-function weightOf(ranking: Record<CatalogRankKey, number>, key: CatalogRankKey): number {
-  const w = ranking[key];
-  return typeof w === "number" && Number.isFinite(w) ? w : 0;
-}
 
 /** Enriched gate: a completed Enrich run, and a profile that can be shown. */
 export function catalogAdmitted(row: {
@@ -62,16 +63,15 @@ export function catalogScore(
   intent: SignalIntent,
 ): number {
   let score = 1;
-  const apply = (key: CatalogRankKey, value: number | null) => {
-    const w = weightOf(ranking, key);
+  const relative = catalogRelativeExponents(ranking);
+  const apply = (key: CatalogLiveRankKey, value: number | null) => {
+    const w = relative[key];
     if (!(w > 0) || value == null || !Number.isFinite(value)) return;
     score *= Math.pow(Math.max(0, value), w);
   };
-  // No browse query, so Name and Description have nothing to compare.
-  // No per-entity Selected column, so that exponent has nothing to raise.
   apply("proximity", proximity(place, intent, params.proximity));
   apply("popularity", popularity(place, undefined, params.popularity));
-  if (weightOf(ranking, "randomness") > 0) {
+  if (relative.randomness > 0) {
     apply("randomness", randomness(place, intent));
   }
   return score;

@@ -1,9 +1,9 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import {
   catalogAdmitted,
+  type CatalogListPlace,
   catalogScore,
   rankFamilyLists,
-  type CatalogListPlace,
 } from "./catalog-rank.ts";
 import {
   DEFAULT_CATALOG_RANKING,
@@ -63,9 +63,15 @@ Deno.test("undefined is not a list and a dual-family place is in both", () => {
 });
 
 Deno.test("enriched and ready are required", () => {
-  assertEquals(catalogAdmitted({ enriched_at: null, content_state: "ready" }), false);
   assertEquals(
-    catalogAdmitted({ enriched_at: "2026-01-01T00:00:00Z", content_state: "generating" }),
+    catalogAdmitted({ enriched_at: null, content_state: "ready" }),
+    false,
+  );
+  assertEquals(
+    catalogAdmitted({
+      enriched_at: "2026-01-01T00:00:00Z",
+      content_state: "generating",
+    }),
     false,
   );
   const lists = rankFamilyLists(
@@ -122,6 +128,46 @@ Deno.test("weight 0 drops popularity and keeps incoming order", () => {
     8,
   );
   assertEquals(ranked[0].places.map((p) => p.id), ["loved", "quiet"]);
+});
+
+Deno.test("proportional Catalog weights score the same", () => {
+  const here = place({
+    lat: guest.lat + 0.02,
+    rating: 4.8,
+    user_ratings_total: 400,
+  });
+  const base = {
+    ...DEFAULT_CATALOG_RANKING,
+    proximity: 1,
+    popularity: 3,
+    randomness: 0,
+  };
+  const doubled = { ...base, proximity: 2, popularity: 6 };
+  assertEquals(
+    catalogScore(here, base, DEFAULT_SIGNAL_PARAMS, guest),
+    catalogScore(here, doubled, DEFAULT_SIGNAL_PARAMS, guest),
+  );
+});
+
+Deno.test("a zero Catalog weight drops that signal", () => {
+  const quiet = place({ rating: 3.1, user_ratings_total: 5 });
+  const loved = place({ rating: 4.9, user_ratings_total: 800 });
+  const off = {
+    ...DEFAULT_CATALOG_RANKING,
+    proximity: 0,
+    popularity: 0,
+    randomness: 0,
+  };
+  assertEquals(
+    catalogScore(quiet, off, DEFAULT_SIGNAL_PARAMS, guest),
+    catalogScore(loved, off, DEFAULT_SIGNAL_PARAMS, guest),
+  );
+  const on = { ...off, popularity: 2 };
+  assertEquals(
+    catalogScore(loved, on, DEFAULT_SIGNAL_PARAMS, guest) >
+      catalogScore(quiet, on, DEFAULT_SIGNAL_PARAMS, guest),
+    true,
+  );
 });
 
 Deno.test("a zero name would tie; abstaining does not", () => {

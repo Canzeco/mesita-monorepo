@@ -1,173 +1,77 @@
-import { LayoutGrid } from "lucide-react";
+import { Blocks } from "lucide-react";
 import { SectionCard } from "@/components/admin-ui/config";
 import { Mark } from "./DiscoveryMarks";
 import {
-  DISCOVERY_ENTITIES,
-  DISCOVERY_MODE_KEYS,
-  DISCOVERY_MODE_LABELS,
+  DISCOVERY_MODES,
+  DISCOVERY_ROUTING_EDITABLE,
   DISCOVERY_SOURCES,
-  DISCOVERY_POOLS,
-  SIGNAL_KEYS,
-  SIGNALS,
   modeCallsSource,
-  modeRequiresPool,
-  modeReturnsEntity,
-  modeSignalState,
-} from "./catalog";
+} from "./discovery-surface";
 
-// Locked mode × entity × pool × source × signal matrix (Pato, 2026-08-28;
-// Result Entities added 2026-09-02; Modules became Sources 2026-09-02).
-// Four bands: Result Entities · Places Types · Search Sources · Mesita
-// Places Search Signals. The third band names the subpage that configures
-// it — the tab followed the band here, not the other way round. Rules separate the bands. Map Randomness is off,
-// not a printed 0.
-//
-// RESULT ENTITIES LEADS because it answers the first question an operator
-// asks of a mode — what comes back — and the three bands under it are the
-// machinery that produces it.
-//
-// ONE MARK, FOUR BANDS (MESITA-1856). Every cell is a `Mark`: filled = on,
-// hollow = off, in ink. The emerald/rose flag that used to encode the
-// bottom two bands by hue alone is gone — one table cannot carry two
-// grammars for one boolean. Shape is the surviving distinction and it means
-// the class of fact, not the value: squares are sets (an entity answered
-// with, a place type required, a source called), circles are Lineup signals
-// that rank what those sets returned.
-
-const COLS = 1 + DISCOVERY_MODE_KEYS.length;
-
-function BandRule() {
-  return (
-    <tr aria-hidden>
-      <td colSpan={COLS} className="px-0 py-3">
-        <div className="border-border border-t-2" />
-        <div className="border-border mt-0.5 border-t" />
-      </td>
-    </tr>
-  );
-}
-
-function BandTitle({ title }: { title: string }) {
-  return (
-    <tr>
-      <th
-        colSpan={COLS}
-        className="text-muted-foreground type-meta font-semibold pb-2 pt-1"
-      >
-        {title}
-      </th>
-    </tr>
-  );
-}
+const COLS = 1 + DISCOVERY_MODES.length;
 
 export function DiscoveryMatrix() {
   return (
     <SectionCard
-      icon={<LayoutGrid className="text-muted-foreground size-4" />}
-      title="Discovery matrix"
-      subtitle="Locked. The six modes across the top. Result Entities, Places Types, Search Sources, then the signals that rank them. A filled mark is on, a hollow one is off. Chips on the mode cards repeat the sources each one calls."
+      icon={<Blocks className="text-muted-foreground size-4" />}
+      title="Modes and sources"
+      subtitle="Fixed. A filled mark means that mode calls that source. There is no fallback order, and nothing in this grid can be edited."
     >
-      {/* Bleeds through the card padding on a phone: 52rem of matrix reads
-          better across 375px than across the 311px left inside it. */}
       <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-        <table className="w-full min-w-[52rem] border-collapse text-left">
+        <table className="w-full min-w-[40rem] border-collapse text-left">
           <thead>
             <tr className="border-border border-b">
-              <th className="text-muted-foreground type-meta font-semibold pr-3 py-2">
-                Discovery
+              <th className="text-muted-foreground type-meta py-2 pr-3 font-semibold">
+                Source
               </th>
-              {DISCOVERY_MODE_KEYS.map((mode) => (
+              {DISCOVERY_MODES.map((mode) => (
                 <th
-                  key={mode}
-                  className="text-muted-foreground type-meta font-semibold px-1.5 py-2 text-center"
+                  key={mode.key}
+                  className="text-muted-foreground type-meta px-1.5 py-2 text-center font-semibold"
                 >
-                  {DISCOVERY_MODE_LABELS[mode]}
+                  {mode.label}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            <BandTitle title="Result Entities" />
-            {DISCOVERY_ENTITIES.map((entity) => (
-              <tr key={entity.key} className="border-border/60 border-b">
-                <th className="type-label font-medium pr-3 py-2">
-                  {entity.label}
-                </th>
-                {DISCOVERY_MODE_KEYS.map((mode) => {
-                  const on = modeReturnsEntity(mode, entity.key);
-                  return (
-                    <td key={mode} className="px-1.5 py-2 text-center">
-                      <Mark
-                        on={on}
-                        label={`${entity.label} · ${DISCOVERY_MODE_LABELS[mode]} · ${on ? "returned" : "not returned"}`}
-                      />
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-            <BandRule />
-            <BandTitle title="Places Types" />
-            {DISCOVERY_POOLS.map((pool) => (
-              <tr key={pool.key} className="border-border/60 border-b">
-                <th className="type-label font-medium pr-3 py-2">{pool.label}</th>
-                {DISCOVERY_MODE_KEYS.map((mode) => {
-                  const on = modeRequiresPool(mode, pool.key);
-                  return (
-                    <td key={mode} className="px-1.5 py-2 text-center">
-                      <Mark
-                        on={on}
-                        label={`${pool.label} · ${DISCOVERY_MODE_LABELS[mode]} · ${on ? "required" : "not required"}`}
-                      />
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-            <BandRule />
-            <BandTitle title="Search Sources" />
             {DISCOVERY_SOURCES.map((source) => (
-              <tr key={source} className="border-border/60 border-b">
-                <th className="type-label font-medium pr-3 py-2">{source}</th>
-                {DISCOVERY_MODE_KEYS.map((mode) => {
-                  const on = modeCallsSource(mode, source);
+              <tr key={source.key} className="border-border/60 border-b">
+                <th className="py-2 pr-3">
+                  <span className="type-label block font-medium">{source.label}</span>
+                  <span className="text-muted-foreground type-meta block">
+                    {source.availabilityLabel}
+                    {DISCOVERY_ROUTING_EDITABLE ? "" : " · Fixed"}
+                  </span>
+                </th>
+                {DISCOVERY_MODES.map((mode) => {
+                  const on = modeCallsSource(mode.key, source.key);
+                  const state = on ? "calls" : "does not call";
                   return (
-                    <td key={mode} className="px-1.5 py-2 text-center">
+                    <td key={mode.key} className="px-1.5 py-2 text-center">
                       <Mark
                         on={on}
-                        label={`${source} · ${DISCOVERY_MODE_LABELS[mode]} · ${on ? "on" : "off"}`}
+                        label={`${source.label} · ${mode.label} · ${state}`}
                       />
                     </td>
                   );
                 })}
               </tr>
             ))}
-            <BandRule />
-            <BandTitle title="Mesita Places Search Signals" />
-            {SIGNAL_KEYS.map((key) => {
-              const label =
-                SIGNALS.find((s) => s.key === key)?.label ?? key;
-              return (
-                <tr key={key} className="border-border/60 border-b last:border-0">
-                  <th className="type-label font-medium pr-3 py-2">{label}</th>
-                  {DISCOVERY_MODE_KEYS.map((mode) => {
-                    const state = modeSignalState(mode, key);
-                    return (
-                      <td key={mode} className="px-1.5 py-2 text-center">
-                        <Mark
-                          on={state === "on"}
-                          shape="circle"
-                          label={`${label} · ${DISCOVERY_MODE_LABELS[mode]} · ${state === "on" ? "on" : "off"}`}
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
+            <tr aria-hidden>
+              <td colSpan={COLS} className="px-0 py-3">
+                <div className="border-border border-t-2" />
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>
+      <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
+        Word calls Autocomplete, Text Search, and Name Search together. Map
+        calls Nearby Search on Google and on Mesita. Catalog and Swipe call
+        the Mesita catalog. Chat and Favorites call no source. Social Catalog
+        is unavailable, so every cell in that row stays off.
+      </p>
     </SectionCard>
   );
 }

@@ -3,22 +3,8 @@ import { SignalsConfigClient } from "../SignalsConfigClient";
 import { getDiscoveryConfig } from "../actions";
 import { DEFAULT_CONFIG } from "../catalog";
 
-// Matrix — its own Discovery subpage (Pato, 2026-09-08), third in the tab
-// row (Pato, 2026-10-13). It holds the two
-// things that are neither a mode nor a source: the locked mode × entity ×
-// pool × source × signal matrix, and the signal library beneath it — what
-// each signal computes and the shape numbers that bend its curve. The matrix
-// used to sit on top of Modes and Signals at the bottom of Sources; both were
-// guests on pages that did not describe them.
-//
-// THE EXPONENTS ARE NOT HERE ANY MORE (MESITA-1859). A weight is not a
-// property of a signal, it is a property of a signal IN A MODE — Scroll and
-// Map can now want different ones — so the weights became one table on
-// Discovery Modes and this page kept the shape numbers, which are the same
-// for every mode.
-//
-// The matrix card says "Locked." about ITSELF, not about this page. Signals
-// below it are fully editable and keep their own slice Save.
+// Matrix — modes against the sources they call. Routing is fixed.
+// Under it, the two signal shape numbers the lineup still reads.
 export const dynamic = "force-dynamic";
 
 export default async function DiscoveryMatrixPage() {
