@@ -1,8 +1,8 @@
 import { PageContainer } from "@/components/PageContainer";
 import { DiscoveryChrome } from "./DiscoveryChrome";
 
-// Discovery — three subpages under a frozen /filters-config prefix.
-// Search Sources · Discovery Modes · Matrix.
+// Discovery — four subpages under a frozen /filters-config prefix.
+// Sources · Modes · Catalog · Matrix.
 export default function DiscoveryLayout({
   children,
 }: {

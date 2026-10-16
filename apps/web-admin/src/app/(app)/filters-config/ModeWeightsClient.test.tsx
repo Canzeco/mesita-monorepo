@@ -22,15 +22,12 @@ function html() {
 describe("Signal weights by mode", () => {
   it("has exactly two editable columns — the modes that can actually reorder", () => {
     const markup = html();
-    expect(markup).toContain(">Map<");
-    expect(markup).toContain(">Scroll<");
-    // WORD IS THE POINT OF THIS TEST. It calls weightsForMode twice, so a
-    // caller-set rule would give it a column — but its mask is one signal,
-    // and a one-factor Π s^w is a monotone transform of s, so no exponent can
-    // reorder a Word result. Catalog ranks on its own profile; Chat and Favorites have no
-    // engine, and Favorites' mask is empty besides.
-    for (const absent of ["Word", "Catalog", "Chat", "Favorites"]) {
-      expect(markup, absent).not.toContain(`>${absent}<`);
+    expect(markup).toContain("Map ranking");
+    expect(markup).toContain("Swipe ranking");
+    // Word is one signal, so an exponent cannot reorder it. Catalog uses its
+    // own profile. Chat and Favorites do not rank.
+    for (const absent of ["Word ranking", "Catalog ranking", "Chat ranking", "Favorites ranking"]) {
+      expect(markup, absent).not.toContain(absent);
     }
     // Two columns, so two inputs per on-signal and no more: five on Map
     // (Randomness is zeroed there) and six on Scroll.
@@ -40,9 +37,9 @@ describe("Signal weights by mode", () => {
 
   it("labels every input with its signal AND its mode", () => {
     const markup = html();
-    expect(markup).toContain('aria-label="Proximity weight · Scroll"');
+    expect(markup).toContain('aria-label="Proximity weight · Swipe"');
     expect(markup).toContain('aria-label="Proximity weight · Map"');
-    expect(markup).toContain('aria-label="Randomness weight · Scroll"');
+    expect(markup).toContain('aria-label="Randomness weight · Swipe"');
     // Otherwise this is a table of boxes all called "Weight".
     expect(markup).not.toContain('aria-label="Weight"');
     for (const key of SIGNAL_KEYS) {
@@ -55,12 +52,9 @@ describe("Signal weights by mode", () => {
     // Map × Randomness is DISCOVERY_MODE_SIGNAL_ZERO: present on the mode at
     // weight 0, which is off, not a number anyone chose. A printed 0 in an
     // editable box would invite an operator to "turn it up".
-    expect(markup).toContain("Randomness weight · Map · off");
     expect(markup).not.toContain('aria-label="Randomness weight · Map"');
-    // Word-only signals are off on both columns.
-    expect(markup).toContain("Name weight · Map · off");
-    expect(markup).toContain("Name weight · Scroll · off");
-    expect(markup).toContain("—");
+    expect(markup).not.toContain('aria-label="Name weight · Map"');
+    expect(markup).not.toContain('aria-label="Name weight · Swipe"');
     expect(markup).not.toContain(">0</span>");
   });
 
@@ -78,9 +72,9 @@ describe("Signal weights by mode", () => {
     const markup = html();
     // Scroll always ranks; Map ranks only on the no-Google-fill branch, so
     // Enforced would overclaim and Not wired would underclaim.
-    expect(markup).toContain("consumer-web-recommend-swipe ranks every deck");
+    expect(markup).toContain("Ranks every deck");
     expect(markup).toContain(
-      "consumer-web-list-places ranks only when Google fill returns nothing",
+      "Ranks listed pins only when Google returns nothing",
     );
     expect(markup).toContain("Enforced");
     expect(markup).toContain("Fallback");

@@ -125,12 +125,12 @@ export function SwipeConfigClient({
 
       <SectionCard
         icon={<GalleryHorizontalEnd className="text-primary h-4 w-4" />}
-        title="Scroll"
-        subtitle="Home's ranked deck. Google reviewers cut the pool. Radius and the closing buffer pick who leads: places open inside the radius come first, then open and closed places within Proximity's reach (its max km), then other cities — so Scroll is never empty while the catalog has a place. Places Lineup ranks each group under the Scroll column."
+        title="Swipe"
+        subtitle="Home's ranked deck. Reviewers cut who may enter. Radius and the closing buffer pick who leads. Places stay in the deck even when they are closed."
         state={
           <KnobState
             kind="enforced"
-            reason="consumer-web-recommend-swipe admits the pool"
+            reason="This is the pool the deck admits"
           />
         }
       >
@@ -165,10 +165,6 @@ export function SwipeConfigClient({
           />
         </div>
 
-        <p className="text-muted-foreground/80 mt-4 max-w-md type-meta">
-          Weights: in the table above. The exponents Scroll ranks by are the
-          Scroll column of Signal weights by mode, not a knob on this card.
-        </p>
         <ModeSourceChips sources={DISCOVERY_MODE_SOURCES.swipe} />
 
         {updatedAt ? (

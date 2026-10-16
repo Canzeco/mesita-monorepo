@@ -6,45 +6,11 @@
 // signal is a code change in both packages — deliberately, because a signal
 // nobody wrote has nothing to score.
 //
-// Live HTML: three subpages — SEARCH SOURCES, DISCOVERY MODES and MATRIX
-// (Pato, 2026-10-13). Mode → what it can answer with → sources it may call →
-// signals. The index opens the first tab, Search Sources. The matrix has
-// lived on its own page since MESITA-1675 moved it off Modes. The sources
-// tab says Search, not Discovery (Pato, 2026-09-02): all seven Sources are
-// searches, and the matrix band already read Search Sources. The route
-// stays /sources.
-//
-//   MODES     General · Word (Fast) · Word (Deep) · Map · Catalog · Swipe ·
-//             Chat · Favorites. Each card shows locked source chips. Word
-//             is ONE mode with two passes: Fast is Autocomplete only, Deep
-//             concatenates Autocomplete, Text Search and Mesita Places
-//             (Name on Mesita `places.name`, never `google_name`). Word
-//             never calls Nearby Search. Map loads closest N of the
-//             selected Places set — THREE NESTED SETS: Google Places ⊃
-//             Mesita Places ⊃ Mesita Enriched Places; inner membership
-//             paints, it does not
-//             add pins. N is the GUEST's How many, not a console knob. Chat calls Text Search, Nearby, and
-//             both Catalog searches. Favorites calls no source, and the
-//             only ring it requires is Google Places — it is NOT gated on
-//             enrichment, because bookmarks may include unenriched Create
-//             stubs. Google category knobs live on Configurations ›
-//             Families, not here (MESITA-2200). General sits first, under the matrix:
-//             the post-Google wipe (Active + a review floor) every mode
-//             runs on what a Google Places query returned. The mode list
-//             and its locks live in discovery-matrix.ts.
-//   ENTITIES  what a mode can answer with: Places always, Locations on Word
-//             only, Socials on Catalog and Chat. Autocomplete is the one
-//             source that returns regions and cities, in the SAME call as
-//             the places; Socials is spec-only until an events engine exists.
-//             The band lives in discovery-matrix.ts.
-//   SOURCES   the Search Sources subpage: the three Google Places
-//             searches · the three Mesita Places searches (Name · Nearby ·
-//             Catalog) · Mesita Social Catalog
-//             Search. Browse and Flexible are gone. Mesita Places Name and
-//             Nearby are live without knobs of their own — their counts sit
-//             on the Word and Map mode boxes. Social Catalog is the one Soon
-//             box. The source list and
-//             each mode's locked sources live in discovery-matrix.ts.
+// Live HTML: four subpages — Sources, Modes, Catalog, Matrix. The index
+// opens Sources. Mode, source, and routing facts live in discovery-surface.ts,
+// which is a tested copy of the Edge Function surface. Catalog weights are
+// the three signals catalogScore multiplies. Map and Swipe exponents stay
+// on Modes. Routing is fixed. Family membership stays on Atlas.
 //   SIGNALS   seven earned signals: Name · Category · Proximity · Timing ·
 //             Enriched · Popularity · Randomness. None reads money.
 //             Partnership and Promotion merged into Mesita Level and Social
@@ -550,15 +516,15 @@ export const SIGNALS: {
   {
     key: "proximity",
     label: "Proximity",
-    input: "Place geo × guest geo. No guest geo → abstains at 1.",
-    output: "1 at the guest, 0 past maxKm. Unlocated place → missingGeo.",
+    input: "How far the guest is from the place. With no guest location, every place scores the same.",
+    output: "Full score beside the guest, none past the max distance.",
     fields: [{ key: "maxKm", label: "Max km", min: 1, max: 200, step: 0.5 }],
   },
   {
     key: "timing",
     label: "Timing",
-    input: "Weekly hours × the place's local clock.",
-    output: "Closed is demoted to closedFloor, never hidden.",
+    input: "Whether the place is open on its local clock.",
+    output: "A closed place is pushed down, never removed.",
     fields: [ZERO_ONE("closedFloor", "Closed floor")],
   },
   {

@@ -139,19 +139,19 @@ export function SignalsConfigClient({
 
       <SectionCard
         icon={<Compass className="text-primary h-4 w-4" />}
-        title="Mesita Places Search Signals"
-        subtitle="What each of the nine earned signals computes, and the shape numbers that bend its curve. Each returns one number in [0, 1]. The exponents live in Signal weights by mode, on Discovery Modes."
+        title="Signal shape"
+        subtitle="Two numbers the lineup reads for every mode that uses them. Max km is how far proximity still scores. Closed floor is how far a closed place is demoted."
         state={
           <KnobState
             kind="enforced"
-            reason="Lineup · Map · Word · Scroll read these shape numbers"
+            reason="Map and Swipe read these shape numbers"
           />
         }
       >
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           {SIGNAL_KEYS.map((key) => {
             const spec = SIGNALS.find((s) => s.key === key);
-            if (!spec) return null;
+            if (!spec || spec.fields.length === 0) return null;
             const Icon = ICONS[spec.key];
             return (
               <article
@@ -167,18 +167,7 @@ export function SignalsConfigClient({
                     </p>
                   </div>
                 </div>
-                {/* SEVEN OF THE NINE HAVE NO SHAPE NUMBER, and since the
-                    weights left this card that means seven cards would
-                    otherwise be a heading over an empty box. One sentence
-                    says where the number went instead — the same rule the
-                    parked mode boxes follow. */}
-                {spec.fields.length === 0 ? (
-                  <p className="text-muted-foreground/80 mt-3 type-meta">
-                    No shape numbers. Its exponent lives in Signal weights by
-                    mode, on Discovery Modes.
-                  </p>
-                ) : (
-                  <div className="mt-3 grid gap-3">
+                <div className="mt-3 grid gap-3">
                     {spec.fields.map((field) => (
                       <label key={field.key} className="flex flex-col gap-2">
                         <span className="flex items-start gap-2 text-sm font-medium leading-snug">
@@ -211,7 +200,6 @@ export function SignalsConfigClient({
                       </label>
                     ))}
                   </div>
-                )}
               </article>
             );
           })}

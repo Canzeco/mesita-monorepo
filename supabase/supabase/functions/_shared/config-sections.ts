@@ -25,10 +25,17 @@ import {
   type SectionWriteContext,
   writeSectionColumn,
 } from "./config-section-base.ts";
-import { normalizeDiscoveryConfig } from "./discovery-config.ts";
+import {
+  CATALOG_ALL_ZERO_ERROR,
+  catalogLiveWeightsAllZero,
+  normalizeDiscoveryConfig,
+} from "./discovery-config.ts";
 import { normalizeEnrichmentConfig } from "./enrichment-config.ts";
 import { writeEnricherSection } from "./config-section-enricher.ts";
-import { readModelsSection, writeModelsSection } from "./config-section-models.ts";
+import {
+  readModelsSection,
+  writeModelsSection,
+} from "./config-section-models.ts";
 import {
   readReservationsSection,
   writeReservationsSection,
@@ -37,11 +44,31 @@ import {
 /** Raw jsonb through unchanged — the section's client owns the coercion. */
 const asIs = (raw: unknown): unknown => raw ?? null;
 
+/**
+ * Discovery is a whole-blob write, plus one refusal: a Catalog profile whose
+ * live signals are all zero cannot rank, so it is not stored. Other slices
+ * ride the same blob; a valid profile passes through unchanged.
+ */
+function writeDiscoverySection(
+  ctx: SectionWriteContext,
+  section: ConfigSection,
+): Promise<Response> {
+  const next = normalizeDiscoveryConfig(ctx.body.config);
+  if (catalogLiveWeightsAllZero(next.catalog.ranking)) {
+    return Promise.resolve(jsonError(CATALOG_ALL_ZERO_ERROR, 400));
+  }
+  return writeSectionColumn(ctx, section);
+}
+
 export const CONFIG_SECTIONS: Record<string, ConfigSection> = {
   // ── Uniform: read the column, write the whole blob back ──────────────────
   // The ranking model: one exponent per earned signal. The signal vocabulary
   // is code-defined; this serves numbers, never the list.
-  discovery: { column: "discovery_config", normalize: normalizeDiscoveryConfig },
+  discovery: {
+    column: "discovery_config",
+    normalize: normalizeDiscoveryConfig,
+    write: writeDiscoverySection,
+  },
   //
   // controls · ojo · orders · visits · rewards left with the admin pages that
   // reached them (MESITA-2088, the MVP First Stage).

@@ -130,15 +130,9 @@ describe("Discovery function APIs", () => {
     // Places Catalog for places, Social Catalog for events.
     expect(DISCOVERY_MODE_SOURCES.catalog).toEqual([
       "Mesita Places Catalog Search",
-      "Mesita Social Catalog Search",
     ]);
     expect(DISCOVERY_MODE_SOURCES.swipe).toEqual(["Mesita Places Catalog Search"]);
-    expect(DISCOVERY_MODE_SOURCES.chat).toEqual([
-      "Google Places Text Search",
-      "Google Places Nearby Search",
-      "Mesita Places Catalog Search",
-      "Mesita Social Catalog Search",
-    ]);
+    expect(DISCOVERY_MODE_SOURCES.chat).toEqual([]);
     expect(DISCOVERY_MODE_SOURCES.favorites).toEqual([]);
     // The pin biases Autocomplete and Text Search; a bias is not a call.
     expect(modeCallsSource("word", "Google Places Nearby Search")).toBe(false);
@@ -147,7 +141,9 @@ describe("Discovery function APIs", () => {
     // A Source has a caller, or it is NAMED as one that has none. An empty
     // row is allowed; an empty row nobody declared is a mode list that lost
     // a source by accident.
-    expect([...DISCOVERY_SOURCES_NO_CALLER]).toEqual([]);
+    expect([...DISCOVERY_SOURCES_NO_CALLER]).toEqual([
+      "Mesita Social Catalog Search",
+    ]);
     for (const source of DISCOVERY_SOURCES) {
       const called = DISCOVERY_MODE_KEYS.some((mode) =>
         modeCallsSource(mode, source),
@@ -195,7 +191,7 @@ describe("Discovery function APIs", () => {
       "Socials",
     ]);
     for (const mode of DISCOVERY_MODE_KEYS) {
-      expect(modeReturnsEntity(mode, "place"), mode).toBe(true);
+      expect(modeReturnsEntity(mode, "place"), mode).toBe(mode !== "chat");
       expect(modeReturnsEntity(mode, "location"), mode).toBe(
         modeCallsSource(mode, "Google Places Autocomplete Search"),
       );
@@ -206,8 +202,8 @@ describe("Discovery function APIs", () => {
         modeCallsSource(mode, "Mesita Social Catalog Search"),
       );
     }
-    expect(modeReturnsEntity("catalog", "social")).toBe(true);
-    expect(modeReturnsEntity("chat", "social")).toBe(true);
+    expect(modeReturnsEntity("catalog", "social")).toBe(false);
+    expect(modeReturnsEntity("chat", "social")).toBe(false);
     expect(modeReturnsEntity("map", "social")).toBe(false);
   });
 
@@ -414,15 +410,12 @@ describe("Discovery page box order", () => {
     const modesPage = readFileSync(join(__dirname, "modes/page.tsx"), "utf8");
     const sourcesPage = readFileSync(join(__dirname, "sources/page.tsx"), "utf8");
     const matrixPage = readFileSync(join(__dirname, "matrix/page.tsx"), "utf8");
-    const surfaces = readFileSync(join(__dirname, "DiscoverySurfaceCards.tsx"), "utf8");
+    const facts = readFileSync(join(__dirname, "ModeFactList.tsx"), "utf8");
+    const sourcesBoard = readFileSync(join(__dirname, "SourcesBoard.tsx"), "utf8");
     const swipe = readFileSync(join(__dirname, "SwipeConfigClient.tsx"), "utf8");
     const name = readFileSync(join(__dirname, "NameConfigClient.tsx"), "utf8");
-    const catalog = readFileSync(join(__dirname, "CatalogConfigClient.tsx"), "utf8");
-    const chat = readFileSync(join(__dirname, "DiscoveryConfigClient.tsx"), "utf8");
     const map = readFileSync(join(__dirname, "MapConfigClient.tsx"), "utf8");
     const signals = readFileSync(join(__dirname, "SignalsConfigClient.tsx"), "utf8");
-    const googleSources = readFileSync(join(__dirname, "GoogleSourceCards.tsx"), "utf8");
-    const mesitaSources = readFileSync(join(__dirname, "MesitaSourceCards.tsx"), "utf8");
     const chips = readFileSync(join(__dirname, "ModeSourceChips.tsx"), "utf8");
     const nextConfig = readFileSync(
       join(__dirname, "../../../../next.config.ts"),
@@ -483,22 +476,16 @@ describe("Discovery page box order", () => {
     // A Soon source states the fact; it never gets a field to type in.
     expect(floor).toContain("FloorSoonNote");
     expect(floor).not.toContain("categoryCount");
-    expect(googleSources).toContain("GeneralFloorOwner");
-    expect(googleSources).toContain("MapFloorOwner");
-    // The Google pull is a property of the SOURCE, so it lives on the Nearby
-    // box, never on the Map mode box whose number is the guest's How many.
-    expect(googleSources).toContain("NearbyPullOwner");
+    expect(sourcesBoard).toContain("GeneralFloorOwner");
+    expect(sourcesBoard).toContain("MapFloorOwner");
+    expect(sourcesBoard).toContain("NearbyPullOwner");
     expect(map).not.toContain("googlePull");
-    expect(googleSources).toContain("FloorMirror");
-    expect(googleSources).toContain('href="/families"');
-    expect(googleSources).toContain("Atlas");
-    expect(googleSources).not.toContain("on this page");
-    expect(mesitaSources).toContain("FiltersFloorOwner");
-    expect(mesitaSources).toContain("FloorMirror");
-    // Social Catalog is the only Soon source left on this strip.
-    expect(mesitaSources.match(/FloorSoonNote \/>/g)?.length).toBe(1);
-    // Nearby's floor and Nearby's pull both write `map`, so neither
-    // may save the whole slice or the last Save wipes the other.
+    expect(sourcesBoard).toContain("FloorMirror");
+    expect(sourcesBoard).toContain("Atlas");
+    expect(sourcesBoard).not.toContain("on this page");
+    expect(sourcesBoard).toContain("FiltersFloorOwner");
+    expect(sourcesBoard).not.toContain("FloorSoonNote");
+    expect(sourcesBoard).not.toContain("ConfigSoon");
     const acts = readFileSync(join(__dirname, "actions.ts"), "utf8");
     expect(acts).toContain('"mapSupers"');
     expect(acts).toContain('"mapFloors"');
@@ -510,9 +497,7 @@ describe("Discovery page box order", () => {
     expect(name).not.toContain('title="Name (Fast Search)"');
     expect(name).not.toContain('title="Name (Deep Search)"');
     expect(name).toContain("Google Places Autocomplete only");
-    expect(name).toContain("Name signal only");
-    expect(name).toContain("places.name");
-    expect(name).toContain("google_name");
+    expect(name).toContain("Only the name decides the Mesita order");
     expect(name).toContain("Word never calls Nearby Search");
     expect(name).toContain("Needs a location. No pin, no bias.");
     expect(name).toContain("Deep reads Name (off vs on)");
@@ -576,10 +561,10 @@ describe("Discovery page box order", () => {
     expect(swipe).not.toContain("coming soon");
     expect(swipe).not.toContain("ConfigSoon");
     expect(swipe).not.toContain("Home is parked");
-    expect(swipe).toContain('title="Scroll"');
+    expect(swipe).toContain('title="Swipe"');
     expect(swipe).toContain("SectionCard");
     expect(swipe).toContain('kind="enforced"');
-    expect(swipe).toContain("consumer-web-recommend-swipe admits the pool");
+    expect(swipe).toContain("This is the pool the deck admits");
     // Exactly the three fields that have a reader — and NOT the exponents.
     expect(swipe).toContain('label="Radius (km)"');
     expect(swipe).toContain('label="Minimum Google reviewers"');
@@ -589,32 +574,14 @@ describe("Discovery page box order", () => {
     expect(swipe).not.toContain("categoryFilter");
     expect(swipe).not.toContain("weightProximity");
     expect(swipe).toContain('updateDiscoveryConfig(cfg, ["swipe"])');
-    expect(catalog).toContain('title="Catalog is coming soon"');
-    expect(catalog).toContain("ConfigSoon");
-    expect(chat).toContain('title="Chat is coming soon"');
-    expect(chat).toContain("ConfigSoon");
-    expect(surfaces).toContain('title="Favorites is coming soon"');
-    expect(surfaces).toContain("ConfigSoon");
-    // A mode that cannot be tuned says so in ONE SENTENCE where the control
-    // would be — never a staged column (MESITA-1859), following the
-    // FloorSoonNote precedent on Search Sources.
-    const noWeights = readFileSync(join(__dirname, "NoWeightsNote.tsx"), "utf8");
-    expect(noWeights).toContain("Weights: none.");
-    for (const src of [catalog, chat, surfaces]) {
-      expect(src).toContain("NoWeightsNote");
-    }
-    expect(catalog).toContain("own profile");
-    expect(surfaces).toContain("signal mask is empty");
-    // …and none of them grows an input.
-    for (const src of [catalog, chat, surfaces]) {
-      expect(src).not.toContain("weightMaxFor");
-    }
-    expect(surfaces).not.toContain('title="Favs"');
-    expect(surfaces).not.toContain('title="Name"');
-    expect(surfaces).not.toContain('title="Swipe"');
+    expect(facts).toContain("There is no weight to edit.");
+    expect(facts).toContain("Unavailable");
+    expect(facts).not.toContain("ConfigSoon");
+    expect(facts).not.toContain("weightMaxFor");
+    expect(facts).toContain("DISCOVERY_MODES.map");
     // Social left the mode list; it has no box of its own any more.
     expect(() => readFileSync(join(__dirname, "SocialConfigClient.tsx"))).toThrow();
-    expect(signals).toContain('title="Mesita Places Search Signals"');
+    expect(signals).toContain('title="Signal shape"');
     expect(signals).toContain("SIGNAL_KEYS.map");
     expect(signals).not.toContain("Promoting");
     expect(signals).toContain("randomness");
@@ -628,24 +595,24 @@ describe("Discovery page box order", () => {
     expect(signals).toContain('kind="enforced"');
     // The exponents left this card at MESITA-1859: a weight is a property of
     // a signal IN A MODE, and one column of inputs could not say which.
-    expect(signals).toContain("Scroll read these shape numbers");
+    expect(signals).toContain("Map and Swipe read these shape numbers");
     expect(signals).not.toContain("Swipe keeps its own sum");
     expect(signals).not.toContain("weightMaxFor");
     expect(signals).not.toContain("cfg.weights");
-    expect(signals).toContain("Signal weights by mode");
+    expect(signals).not.toContain("Signal weights by mode");
 
     // ONE TABLE, on the page about modes. Signal rows, wired-mode columns.
     const weights = readFileSync(join(__dirname, "ModeWeightsClient.tsx"), "utf8");
     expect(modesPage).toContain("ModeWeightsClient");
     expect(matrixPage).not.toContain("ModeWeightsClient");
-    expect(weights).toContain('title="Signal weights by mode"');
+    expect(weights).toContain("ranking");
+    expect(weights).not.toContain('title="Signal weights by mode"');
     expect(weights).toContain("SIGNAL_KEYS.map");
     expect(weights).toContain("WEIGHTED_MODE_KEYS");
     // The mask is consulted before anything is rendered, and a masked-off
     // cell is an em-dash, never a disabled 0.
     expect(weights).toContain("modeSignalState");
-    expect(weights).toContain("—");
-    expect(weights).not.toContain(">0</span>");
+    expect(weights).not.toContain("min-w-[52rem]");
     // Every input names its signal AND its mode, or it is ~14 boxes all
     // called "Weight".
     expect(weights).toContain("aria-label={`${label} weight · ${modeLabel}`}");
@@ -660,30 +627,20 @@ describe("Discovery page box order", () => {
     // No preset library: no dropdown, no named presets, no CRUD.
     expect(weights).not.toContain("<select");
     expect(weights).not.toContain("PRESETS");
-    // The matrix's own proven responsive bleed.
-    expect(weights).toContain("-mx-4");
-    expect(weights).toContain("min-w-[52rem]");
     expect(acts).toContain('"weightsMap"');
     expect(acts).toContain('"weightsScroll"');
-    expect(googleSources).toContain("Google Places Autocomplete Search");
-    expect(googleSources).toContain("Google Places Nearby Search");
-    expect(googleSources).toContain("Google Places Text Search");
-    expect(googleSources).toContain("Word (Deep Search)");
-    expect(googleSources).toContain("Word does not");
-    expect(mesitaSources).toContain("Mesita Places Name Search");
-    // Nearby's title is the floor-owner constant, so the card and the matrix
-    // cannot drift. The words themselves live in source-floor-copy.ts.
-    expect(mesitaSources).toContain("title={FILTERS_FLOOR_OWNER}");
-    const floorCopy = readFileSync(join(__dirname, "source-floor-copy.ts"), "utf8");
-    expect(floorCopy).toContain(
-      'export const FILTERS_FLOOR_OWNER = "Mesita Places Nearby Search"',
-    );
-    expect(mesitaSources).toContain("Mesita Places Catalog Search");
-    expect(mesitaSources).toContain("Mesita Social Catalog Search");
-    expect(mesitaSources).not.toContain("Browse Search");
-    expect(mesitaSources).not.toContain("Flexible Search");
-    // Name, Nearby, and Places Catalog ship; Social Catalog is the one Soon box.
-    expect(mesitaSources.match(/ConfigSoon\n/g)?.length).toBe(1);
+    const surface = readFileSync(join(__dirname, "discovery-surface.ts"), "utf8");
+    expect(surface).toContain("Google Places Autocomplete Search");
+    expect(surface).toContain("Google Places Nearby Search");
+    expect(surface).toContain("Google Places Text Search");
+    expect(surface).toContain("Mesita Places Name Search");
+    expect(surface).toContain("Mesita Places Nearby Search");
+    expect(surface).toContain("Mesita Places Catalog Search");
+    expect(surface).toContain("Mesita Social Catalog Search");
+    expect(surface).not.toContain("Browse Search");
+    expect(surface).not.toContain("Flexible Search");
+    expect(sourcesBoard).toContain("DISCOVERY_SOURCES.map");
+    expect(sourcesBoard).not.toContain("ConfigSoon");
     expect(chips).toContain("export function ModeSourceChips");
     expect(chips).toContain("None");
     expect(matrixPage).toContain("DiscoveryMatrix");
@@ -691,14 +648,9 @@ describe("Discovery page box order", () => {
     expect(modesPage).not.toContain("DiscoveryMatrix");
     expect(sourcesPage).not.toContain("SignalsConfigClient");
     const matrix = readFileSync(join(__dirname, "DiscoveryMatrix.tsx"), "utf8");
-    expect(matrix).toContain("Places Types");
-    expect(matrix).toContain("Search Sources");
-    expect(matrix).toContain("Mesita Places Search Signals");
-    expect(matrix).not.toContain("Search Modules");
-    // The band title carries the class noun; a row never repeats it.
-    expect(matrix).not.toContain("Places Lineup {label}");
-    expect(matrix).toContain("BandRule");
-    expect(matrix).toContain("modeSignalState");
+    expect(matrix).toContain("Modes and sources");
+    expect(matrix).toContain("does not call");
+    expect(matrix).not.toContain("modeSignalState");
     expect(matrix).not.toContain("zero=");
     expect(matrix).not.toContain("Map Randomness is 0");
     // ONE grammar, in ink. Fill carries the boolean on all four bands; the
@@ -730,12 +682,11 @@ describe("Discovery page box order", () => {
     // having moved to its own subpage (MESITA-1675). It runs last but reads
     // first. The mode cards then run in section 8.1 order.
     const modeOrder = [
+      "ModeFactList",
       "NameConfigClient",
       "MapConfigClient",
-      "CatalogConfigClient",
       "SwipeConfigClient",
-      "DiscoveryConfigClient",
-      "FavsConfigCard",
+      "ModeWeightsClient",
     ];
     let last = -1;
     for (const n of modeOrder) {
@@ -758,7 +709,7 @@ describe("Discovery page box order", () => {
     expect(familiesPage).toContain("FamiliesExplorer");
 
     // SEVEN BOXES AND NOTHING ELSE. The family switches are not a source.
-    const sourceOrder = ["GoogleSourceCards", "MesitaSourceCards"];
+    const sourceOrder = ["SourcesBoard"];
     expect(sourcesJsx).not.toContain("GoogleQualityFloorCard");
     expect(sourcesJsx).not.toContain("PoolQualityFloorCard");
     expect(sourcesJsx).not.toContain("SignalsConfigClient");
