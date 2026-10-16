@@ -419,15 +419,27 @@ describe("T5b — Home's supporting rail", () => {
     ]);
   });
 
-  // Pato, MESITA-2168: all four are Soon for the moment. The chip is one
-  // site in the rail, drawn for every pill. Each page is the Soon empty
-  // state — Filters, Memo and the saved grid do not mount.
-  it("marks every pill Soon, and each page says so", async () => {
+  // Places is the catalog (Pato, MESITA-2254). Social, Chat and Favs stay
+  // Soon (MESITA-2168): the chip is one site in the rail, drawn for those
+  // three. Their pages stay the Soon empty state — Memo and the saved grid
+  // do not mount.
+  it("Places is the catalog; Social, Chat and Favs stay Soon", async () => {
     const { HOME_MODES } = await import("@/components/consumer/ModeRail");
-    expect(HOME_MODES.map((m) => m.soon)).toEqual([true, true, true, true]);
+    expect(HOME_MODES.map((m) => Boolean(m.soon))).toEqual([
+      false,
+      true,
+      true,
+      true,
+    ]);
     const rail = readFileSync(join(COMPONENTS, "ModeRail.tsx"), "utf8");
     expect(rail).toMatch(/>\s*Soon\s*</);
-    for (const seg of ["places", "social", "chat", "favs"]) {
+    const places = readFileSync(
+      join(SHELL, "(discovery)", "discover", "places", "page.tsx"),
+      "utf8",
+    );
+    expect(places).toContain("<CatalogRails");
+    expect(places).not.toContain("HomeSoon");
+    for (const seg of ["social", "chat", "favs"]) {
       const page = readFileSync(
         join(SHELL, "(discovery)", "discover", seg, "page.tsx"),
         "utf8",

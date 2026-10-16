@@ -28,8 +28,8 @@ export const CONSUMER_ROUTES = {
   //
   // HOME'S RAIL IS PLACES · SOCIAL · CHAT · FAVS (Pato, 2026-10-12,
   // MESITA-2166: "no swipe nor scroll for the moment. Kill them."). Places is
-  // the catalog rails; Social has no data yet and says so; Chat is Memo.
-  // Swipe and Scroll are legacy 308s to Places.
+  // the live catalog rails (MESITA-2254). Social, Chat and Favs stay Soon
+  // (MESITA-2168). Swipe and Scroll are legacy 308s to Places.
   discover: "/discover",
   discoverTabs: {
     places: "/discover/places",

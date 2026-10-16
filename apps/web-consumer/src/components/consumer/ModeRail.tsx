@@ -4,8 +4,9 @@
 //
 //   Home    Places · Social · Chat · Favs        (MESITA-2166)
 //
-// ALL FOUR ARE SOON (Pato, MESITA-2168). Each pill wears Pay's chip. The
-// chip sits above the pill, so it adds no width and the 359px budget holds.
+// PLACES IS THE CATALOG (Pato, MESITA-2254). Social, Chat and Favs stay Soon
+// (MESITA-2168) and wear Pay's chip. The chip sits above the pill, so it adds
+// no width and the 359px budget holds.
 //
 // It was DiscoverModeNav. It is drawn by app/(shell)/(discovery)/discover/
 // layout.tsx, so the pills share one frame and one deck fetch, and
@@ -48,7 +49,7 @@ type Mode = {
   href: string;
   label: string;
   Icon: LucideIcon;
-  // Temporary (MESITA-2168). The page behind the pill is the Soon empty state.
+  // Social, Chat and Favs (MESITA-2168). Places has no chip: it is the catalog.
   soon?: boolean;
 };
 
@@ -61,7 +62,6 @@ export const HOME_MODES: Mode[] = [
     href: CONSUMER_ROUTES.discoverTabs.places,
     label: "Places",
     Icon: Store,
-    soon: true,
   },
   {
     href: CONSUMER_ROUTES.discoverTabs.social,

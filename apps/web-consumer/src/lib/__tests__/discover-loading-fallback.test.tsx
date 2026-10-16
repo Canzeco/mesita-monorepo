@@ -3,9 +3,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { DiscoverFallback } from "@/components/consumer/home/DiscoverFallback";
 
-// The skeleton stays in the tree. Home's layout does not use it while the
-// four pills are Soon (MESITA-2168): a Suspense wait in front of an empty
-// state reads as a failed load.
+// The skeleton stays in the tree. Home's layout does not mount it: Places
+// loads its own rails (MESITA-2254), and a Suspense wait in front of a Soon
+// page (Social, Chat, Favs) reads as a failed load.
 describe("Home's loading fallback", () => {
   it("is the rounded skeleton", () => {
     const html = renderToStaticMarkup(<DiscoverFallback />);
@@ -13,7 +13,7 @@ describe("Home's loading fallback", () => {
     expect(html).not.toContain("bg-foreground");
   });
 
-  it("the Soon layout paints the page, not this fallback", async () => {
+  it("the layout paints the page, not this fallback", async () => {
     const { readFileSync } = await import("node:fs");
     const { join } = await import("node:path");
     const layout = readFileSync(
