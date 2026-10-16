@@ -3,18 +3,15 @@
 import { useMemo, useState } from "react";
 import { Star } from "lucide-react";
 
-import {
-  FacebookLogo,
-  GoogleLogo,
-  InstagramLogo,
-} from "../BrandLogos";
 import { ReviewCard } from "../ReviewCard";
 import type { PlaceDetail } from "../../place-detail";
-import { formatCompactCount, formatRating } from "../../lib/format";
+import { formatCompactCount } from "../../lib/format";
 
 import { Box, BoxHScroll } from "./box";
+import { reviewsTabChannelStats } from "./channel-stats";
+import { channelStatIcon } from "./channel-stat-icons";
+import { ProfileStat } from "./profile-summary-parts";
 import {
-  ExternalCard,
   type ReviewSort,
   ReviewSortChips,
   reviewTimeMs,
@@ -23,53 +20,25 @@ import {
 // ── 3. Reviews summary ──────────────────────────────────────────────────
 
 export function ReviewsSummaryBox({ place }: { place: PlaceDetail }) {
-  const rating = formatRating(place.google.rating);
-  const cards = [
-    rating != null ? (
-      <ExternalCard
-        key="google"
-        logo={<GoogleLogo />}
-        icon="star"
-        value={rating}
-        meta={
-          place.google.count != null
-            ? `${formatCompactCount(place.google.count, true)} reviews`
-            : "Google"
-        }
-      />
-    ) : null,
-    place.instagram.followers != null ? (
-      <ExternalCard
-        key="instagram"
-        logo={<InstagramLogo />}
-        icon="users"
-        value={formatCompactCount(place.instagram.followers, false)}
-        meta="followers"
-      />
-    ) : null,
-    place.facebook.followers != null ? (
-      <ExternalCard
-        key="facebook"
-        logo={<FacebookLogo />}
-        icon="users"
-        value={formatCompactCount(place.facebook.followers, false)}
-        meta="followers"
-      />
-    ) : null,
-  ].filter((card) => card != null);
-  if (cards.length === 0) return null;
+  const stats = reviewsTabChannelStats(place);
+  const hasAny =
+    place.google.count != null ||
+    place.google.rating != null ||
+    place.instagram.followers != null ||
+    place.facebook.followers != null;
+  if (!hasAny) return null;
+
   return (
     <Box title="Reviews summary" icon={Star} iconColor="text-muted-foreground">
-      <div
-        className={
-          cards.length >= 3
-            ? "grid grid-cols-3 gap-2"
-            : cards.length === 2
-            ? "grid grid-cols-2 gap-2"
-            : "grid grid-cols-1 gap-2"
-        }
-      >
-        {cards}
+      <div className="grid grid-cols-3 gap-1">
+        {stats.map((stat) => (
+          <ProfileStat
+            key={stat.key}
+            value={stat.value}
+            label={stat.label}
+            icon={channelStatIcon(stat)}
+          />
+        ))}
       </div>
     </Box>
   );
