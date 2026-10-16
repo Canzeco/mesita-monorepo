@@ -174,7 +174,7 @@ export async function createMinimalPlace(opts: {
   }
 
   // Category is Google's primary type, already on basics. Family is that
-  // type's one family. The map gate above already read the live Google
+  // type's catalog rails. The map gate above already read the live Google
   // rating. The stored tile columns stay empty until the Reviews reload
   // (MESITA-2183).
   const googleFamilies = familiesForExactGoogle(basicsRes.basics.category);

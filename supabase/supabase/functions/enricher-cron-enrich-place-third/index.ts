@@ -194,7 +194,7 @@ serveEnrichStage("third", async (admin, env, row) => {
       ((place.pitch ?? null) as string | null);
 
     // Category is already Google's primary type from the spine. Nothing
-    // here remaps it onto a Mesita category. Family is that type's one family.
+    // here remaps it onto a Mesita category. Family is that type's catalog rails.
     const [tagVocabulary, models] = await Promise.all([
       fetchPlaceTags(admin),
       loadModelsConfig(admin),
@@ -227,7 +227,7 @@ serveEnrichStage("third", async (admin, env, row) => {
     sources.families = {
       ok: resolvedFamilies.length > 0,
       slugs: resolvedFamilies,
-      mode: googleFamily ? "google" : "fallback",
+      mode: googleFamilies ? "google" : "fallback",
     };
     sources.tags = {
       ok: inferredTags.length > 0,
