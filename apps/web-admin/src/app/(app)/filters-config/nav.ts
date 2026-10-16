@@ -1,28 +1,16 @@
-import { Blocks, Compass, GalleryHorizontal, LayoutGrid, Search } from "lucide-react";
+import { Activity, Blocks, Compass, LayoutGrid, Search } from "lucide-react";
 
-// Discovery — ONE sidebar entry, FOUR subpages (Sources · Modes · Catalog ·
+// Discovery — ONE sidebar entry, FOUR subpages (Sources · Modes · Signals ·
 // Matrix). The prefix is frozen: /filters-config. Tabs live here so
 // layout, redirects, and deep links share one list. The sidebar row opens
 // the first tab (Pato, 2026-10-13).
 //
-// Matrix  = how modes, sources and signals relate, plus the shape numbers
-//           behind each signal. Neither a mode nor a source, which is why it
-//           owns a page rather than riding on top of one (Pato, 2026-09-08).
-//           THE WEIGHTS LEFT THIS PAGE at MESITA-1859: there is no longer one
-//           exponent per signal, there is one per signal PER MODE, and a
-//           per-mode number belongs on the page about modes.
-// Modes   = ways guests look (each names the sources it may call), plus the
-//           signal-weights table — the one control that spans modes.
+// Matrix  = how modes and sources relate. Read-only. Routing is fixed.
+// Signals = the function each signal computes. Shape numbers live here.
+//           Weights do not: a weight belongs to a mode.
+// Modes   = ways guests look, plus the weights of the modes that rank.
+//           Catalog is a mode on this page, not its own tab.
 // Sources = the seven searches themselves. Google types live here.
-//
-// THE SOURCES TAB IS SEARCH SOURCES, NOT DISCOVERY SOURCES (Pato,
-// 2026-09-02). All seven Sources are searches — every instance name ends in
-// `Search` — and the matrix band on Modes has read "Search Sources" since
-// it was drawn, so the tab was the odd one out. A row reading "Discovery …
-// · Discovery …" under a "Product · Discovery" eyebrow also spends its
-// first word repeating the eyebrow. Modes keeps the prefix: a mode is a
-// Discovery surface, not a search. The ROUTE stays /sources — the entity is
-// still Source, and only the page label changed.
 export const FILTERS_PARENT = {
   href: "/filters-config",
   label: "Discovery",
@@ -31,16 +19,16 @@ export const FILTERS_PARENT = {
 
 export const DISCOVERY_MATRIX_HREF = "/filters-config/matrix" as const;
 export const DISCOVERY_MODES_HREF = "/filters-config/modes" as const;
+export const DISCOVERY_SIGNALS_HREF = "/filters-config/signals" as const;
 const DISCOVERY_SOURCES_HREF = "/filters-config/sources" as const;
-// Deep link from Crenup and Manage Multiple. The Map box stays on Modes, so
-// this anchor does NOT move with the split (pipeline.test.ts asserts it).
+// Deep link from Crenup and Manage Multiple. The Map box stays on Modes.
 export const DISCOVERY_MAP_HREF = "/filters-config/modes#s-map" as const;
-
-export const DISCOVERY_CATALOG_HREF = "/filters-config/catalog" as const;
+// Catalog is a mode. Old bookmarks of the Catalog tab land on Modes.
+export const DISCOVERY_CATALOG_HREF = "/filters-config/modes#s-catalog" as const;
 
 export const DISCOVERY_TABS = [
   { href: DISCOVERY_SOURCES_HREF, label: "Sources", Icon: Blocks },
   { href: DISCOVERY_MODES_HREF, label: "Modes", Icon: Search },
-  { href: DISCOVERY_CATALOG_HREF, label: "Catalog", Icon: GalleryHorizontal },
+  { href: DISCOVERY_SIGNALS_HREF, label: "Signals", Icon: Activity },
   { href: DISCOVERY_MATRIX_HREF, label: "Matrix", Icon: LayoutGrid },
 ] as const;

@@ -6,11 +6,9 @@
 // scale. Mesita Level is the Enriched row now (MESITA-1858): it reads the
 // enrichment state and nothing about money.
 //
-// THE WEIGHTS LEFT THIS CARD (MESITA-1859). It is the SHAPE card now: what
-// each signal computes, and the numbers that bend its curve. The exponents
-// moved to one signals-by-mode table on Discovery Modes, because there is no
-// longer one exponent per signal — there is one per signal PER MODE, and a
-// single column of inputs here could not say which mode it meant.
+// WEIGHTS DO NOT LIVE HERE. A weight belongs to a mode. This page states the
+// function each signal computes, and the shape numbers that bend that
+// function. Modes that rank edit their own weights.
 //
 // THE CARDS DO NOT REDRAW THE MATRIX (MESITA-1856). Each card used to carry
 // a strip of six unlabelled circles — which modes read this signal — under
@@ -139,19 +137,19 @@ export function SignalsConfigClient({
 
       <SectionCard
         icon={<Compass className="text-primary h-4 w-4" />}
-        title="Signal shape"
-        subtitle="Two numbers the lineup reads for every mode that uses them. Max km is how far proximity still scores. Closed floor is how far a closed place is demoted."
+        title="Signals"
+        subtitle="Each signal is a function. It turns a fact about a place into a score from 0 to 1. A weight is not part of the function."
         state={
           <KnobState
             kind="enforced"
-            reason="Map and Swipe read these shape numbers"
+            reason="These numbers shape the score. They are not weights."
           />
         }
       >
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           {SIGNAL_KEYS.map((key) => {
             const spec = SIGNALS.find((s) => s.key === key);
-            if (!spec || spec.fields.length === 0) return null;
+            if (!spec) return null;
             const Icon = ICONS[spec.key];
             return (
               <article
@@ -167,6 +165,7 @@ export function SignalsConfigClient({
                     </p>
                   </div>
                 </div>
+                {spec.fields.length > 0 ? (
                 <div className="mt-3 grid gap-3">
                     {spec.fields.map((field) => (
                       <label key={field.key} className="flex flex-col gap-2">
@@ -200,6 +199,7 @@ export function SignalsConfigClient({
                       </label>
                     ))}
                   </div>
+                ) : null}
               </article>
             );
           })}

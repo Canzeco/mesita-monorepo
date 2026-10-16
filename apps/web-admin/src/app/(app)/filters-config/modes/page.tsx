@@ -1,12 +1,13 @@
+import { CatalogRankingClient } from "../CatalogRankingClient";
 import { MapConfigClient } from "../MapConfigClient";
-import { ModeFactList } from "../ModeFactList";
+import { ModeFact } from "../ModeFactList";
+import { ModeWeightsClient } from "../ModeWeightsClient";
 import { NameConfigClient } from "../NameConfigClient";
 import { SwipeConfigClient } from "../SwipeConfigClient";
 import { getDiscoveryConfig } from "../actions";
 import { DEFAULT_CONFIG } from "../catalog";
 
-// Discovery Modes. Facts, then the settings the runtime reads.
-// Catalog is a link to the next subpage. Signal weights live there.
+// Discovery Modes. Catalog stays here. Weights sit on the modes that rank.
 export const dynamic = "force-dynamic";
 
 export default async function DiscoveryModesPage() {
@@ -17,10 +18,20 @@ export default async function DiscoveryModesPage() {
   const props = { initialConfig, initialUpdatedAt, loadError };
   return (
     <div className="flex flex-col gap-10">
-      <ModeFactList />
+      <ModeFact modeKey="word" />
       <NameConfigClient {...props} />
+      <ModeFact modeKey="map" />
       <MapConfigClient {...props} />
+      <ModeWeightsClient {...props} only="map" />
+      <div id="s-catalog" className="scroll-mt-16 flex flex-col gap-10">
+        <ModeFact modeKey="catalog" />
+        <CatalogRankingClient {...props} />
+      </div>
+      <ModeFact modeKey="swipe" />
       <SwipeConfigClient {...props} />
+      <ModeWeightsClient {...props} only="swipe" />
+      <ModeFact modeKey="chat" />
+      <ModeFact modeKey="favorites" />
     </div>
   );
 }

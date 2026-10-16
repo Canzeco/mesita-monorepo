@@ -2,7 +2,7 @@ import { PageContainer } from "@/components/PageContainer";
 import { DiscoveryChrome } from "./DiscoveryChrome";
 
 // Discovery — four subpages under a frozen /filters-config prefix.
-// Sources · Modes · Catalog · Matrix.
+// Sources · Modes · Signals · Matrix. Catalog is a mode.
 export default function DiscoveryLayout({
   children,
 }: {

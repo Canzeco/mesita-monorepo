@@ -403,7 +403,7 @@ describe("Discovery function APIs", () => {
 });
 
 describe("Discovery page box order", () => {
-  it("is four subpages — Sources, Modes, Catalog and Matrix", () => {
+  it("is four subpages — Sources, Modes, Signals and Matrix", () => {
     const page = readFileSync(join(__dirname, "page.tsx"), "utf8");
     const layout = readFileSync(join(__dirname, "layout.tsx"), "utf8");
     const nav = readFileSync(join(__dirname, "nav.ts"), "utf8");
@@ -426,16 +426,18 @@ describe("Discovery page box order", () => {
     // neither a mode nor a source (Pato, 2026-09-08).
     const sourcesAt = nav.indexOf('label: "Sources"');
     const modesAt = nav.indexOf('label: "Modes"');
-    const catalogAt = nav.indexOf('label: "Catalog"');
+    const signalsAt = nav.indexOf('label: "Signals"');
     const matrixAt = nav.indexOf('label: "Matrix"');
     expect(sourcesAt).toBeGreaterThan(-1);
     expect(sourcesAt).toBeLessThan(modesAt);
-    expect(modesAt).toBeLessThan(catalogAt);
-    expect(catalogAt).toBeLessThan(matrixAt);
+    expect(modesAt).toBeLessThan(signalsAt);
+    expect(signalsAt).toBeLessThan(matrixAt);
     expect(nav).toContain('label: "Matrix"');
     expect(nav).toContain('"/filters-config/matrix"');
     expect(nav).toContain('label: "Modes"');
-    expect(nav).toContain('"/filters-config/catalog"');
+    expect(nav).toContain('"/filters-config/signals"');
+    expect(nav).toContain('"/filters-config/modes#s-catalog"');
+    expect(nav).not.toContain('label: "Catalog"');
     // The tab is Sources, not Discovery Sources (Pato, 2026-09-02).
     expect(nav).toContain('label: "Sources"');
     expect(nav).not.toContain('label: "Discovery Sources"');
@@ -456,6 +458,8 @@ describe("Discovery page box order", () => {
     // The retired subpage keeps an operator's bookmark alive.
     expect(nextConfig).toContain('source: "/filters-config/modules"');
     expect(nextConfig).toContain('destination: "/filters-config/sources"');
+    expect(nextConfig).toContain('source: "/filters-config/catalog"');
+    expect(nextConfig).toContain('destination: "/filters-config/modes"');
 
     // Family membership is the Atlas matrix, not a Discovery source.
 
@@ -578,12 +582,12 @@ describe("Discovery page box order", () => {
     expect(facts).toContain("Unavailable");
     expect(facts).not.toContain("ConfigSoon");
     expect(facts).not.toContain("weightMaxFor");
-    expect(facts).toContain("DISCOVERY_CATALOG_HREF");
-    expect(facts).toContain('mode.key === "catalog"');
+    expect(facts).toContain("export function ModeFact");
+    expect(facts).not.toContain("DISCOVERY_CATALOG_HREF");
     expect(facts).not.toContain("on this page");
     // Social left the mode list; it has no box of its own any more.
     expect(() => readFileSync(join(__dirname, "SocialConfigClient.tsx"))).toThrow();
-    expect(signals).toContain('title="Signal shape"');
+    expect(signals).toContain('title="Signals"');
     expect(signals).toContain("SIGNAL_KEYS.map");
     expect(signals).not.toContain("Promoting");
     expect(signals).toContain("randomness");
@@ -597,7 +601,7 @@ describe("Discovery page box order", () => {
     expect(signals).toContain('kind="enforced"');
     // The exponents left this card at MESITA-1859: a weight is a property of
     // a signal IN A MODE, and one column of inputs could not say which.
-    expect(signals).toContain("Map and Swipe read these shape numbers");
+    expect(signals).toContain("These numbers shape the score. They are not weights.");
     expect(signals).not.toContain("Swipe keeps its own sum");
     expect(signals).not.toContain("weightMaxFor");
     expect(signals).not.toContain("cfg.weights");
@@ -605,9 +609,11 @@ describe("Discovery page box order", () => {
 
     // ONE TABLE, on the page about modes. Signal rows, wired-mode columns.
     const weights = readFileSync(join(__dirname, "ModeWeightsClient.tsx"), "utf8");
-    expect(modesPage).not.toContain("ModeWeightsClient");
-    const catalogPage = readFileSync(join(__dirname, "catalog/page.tsx"), "utf8");
-    expect(catalogPage).toContain("ModeWeightsClient");
+    expect(modesPage).toContain("ModeWeightsClient");
+    expect(modesPage).toContain("CatalogRankingClient");
+    expect(modesPage).toContain('only="map"');
+    expect(modesPage).toContain('only="swipe"');
+    expect(() => readFileSync(join(__dirname, "catalog/page.tsx"))).toThrow();
     expect(matrixPage).not.toContain("ModeWeightsClient");
     expect(weights).toContain("ranking");
     expect(weights).not.toContain('title="Signal weights by mode"');
@@ -648,7 +654,9 @@ describe("Discovery page box order", () => {
     expect(chips).toContain("export function ModeSourceChips");
     expect(chips).toContain("None");
     expect(matrixPage).toContain("DiscoveryMatrix");
-    expect(matrixPage).toContain("SignalsConfigClient");
+    expect(matrixPage).not.toContain("SignalsConfigClient");
+    const signalsPage = readFileSync(join(__dirname, "signals/page.tsx"), "utf8");
+    expect(signalsPage).toContain("SignalsConfigClient");
     expect(modesPage).not.toContain("DiscoveryMatrix");
     expect(sourcesPage).not.toContain("SignalsConfigClient");
     const matrix = readFileSync(join(__dirname, "DiscoveryMatrix.tsx"), "utf8");
@@ -686,10 +694,18 @@ describe("Discovery page box order", () => {
     // having moved to its own subpage (MESITA-1675). It runs last but reads
     // first. The mode cards then run in section 8.1 order.
     const modeOrder = [
-      "ModeFactList",
+      'modeKey="word"',
       "NameConfigClient",
+      'modeKey="map"',
       "MapConfigClient",
+      'only="map"',
+      'modeKey="catalog"',
+      "CatalogRankingClient",
+      'modeKey="swipe"',
       "SwipeConfigClient",
+      'only="swipe"',
+      'modeKey="chat"',
+      'modeKey="favorites"',
     ];
     let last = -1;
     for (const n of modeOrder) {
