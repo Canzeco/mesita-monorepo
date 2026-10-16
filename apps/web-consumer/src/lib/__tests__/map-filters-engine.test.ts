@@ -152,8 +152,8 @@ describe("Popularity — 0 / 10 / 100 / 1000 / 10000", () => {
 });
 
 describe("PLACE_FAMILIES catalog (final law)", () => {
-  it("is twenty guest families plus Undefined last", () => {
-    expect(PLACE_FAMILIES).toHaveLength(21);
+  it("is fifteen guest families plus Undefined last", () => {
+    expect(PLACE_FAMILIES).toHaveLength(16);
     expect(PLACE_FAMILIES.map((f) => f.key)).toEqual([
       "coffee",
       "breakfast",
@@ -166,13 +166,8 @@ describe("PLACE_FAMILIES catalog (final law)", () => {
       "dinner",
       "sweet",
       "drinks",
-      "wine",
       "night_out",
-      "live",
       "go_out",
-      "with_kids",
-      "outdoors",
-      "culture",
       "move",
       "feel_better",
       "undefined",

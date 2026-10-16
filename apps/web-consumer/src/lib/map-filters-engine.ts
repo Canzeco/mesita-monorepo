@@ -92,7 +92,7 @@ const MAP_MIN_REVIEWS_DEFAULT: MapMinReviews = 0;
 export type MapFilters = {
   /** Which of the three nested sets. Default is the inner ring. */
   placesScope: MapPlacesScope;
-  /** Family: the twenty guest families; empty = no constraint. */
+  /** Family: the fifteen guest families; empty = no constraint. */
   familyKeys: FamilyKey[];
   /** Minimum Google reviews. 0 = any. */
   minReviews: MapMinReviews;

@@ -1,4 +1,4 @@
-// Twenty guest families, plus Undefined last. Undefined is not a filter.
+// Fifteen guest families, plus Undefined last. Undefined is not a filter.
 // Labels are the carousel titles.
 
 export type FamilyKey =
@@ -13,13 +13,8 @@ export type FamilyKey =
   | "dinner"
   | "sweet"
   | "drinks"
-  | "wine"
   | "night_out"
-  | "live"
   | "go_out"
-  | "with_kids"
-  | "outdoors"
-  | "culture"
   | "move"
   | "feel_better"
   | "undefined";
@@ -42,13 +37,8 @@ export const PLACE_FAMILIES: PlaceFamily[] = [
   { key: "dinner", label: "Dinner", emoji: "·" },
   { key: "sweet", label: "Sweet", emoji: "·" },
   { key: "drinks", label: "Drinks", emoji: "·" },
-  { key: "wine", label: "Wine", emoji: "·" },
   { key: "night_out", label: "Night out", emoji: "·" },
-  { key: "live", label: "Live", emoji: "·" },
   { key: "go_out", label: "Go out", emoji: "·" },
-  { key: "with_kids", label: "With kids", emoji: "·" },
-  { key: "outdoors", label: "Outdoors", emoji: "·" },
-  { key: "culture", label: "Culture", emoji: "·" },
   { key: "move", label: "Move", emoji: "·" },
   { key: "feel_better", label: "Feel better", emoji: "·" },
   { key: "undefined", label: "Undefined", emoji: "·" },

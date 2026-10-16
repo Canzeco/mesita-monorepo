@@ -1,4 +1,4 @@
-// Place family law. The guest catalog is twenty families (catalog-families.ts).
+// Place family law. The guest catalog is fifteen families (catalog-families.ts).
 // Undefined is last and is not a carousel.
 // A type may sit on more than one family when the trips are different.
 // A precise rail takes the place off the broader one.

@@ -21,7 +21,7 @@
 
 import { CATALOG_SEARCH_TYPES, isCatalogFamily } from "./catalog-families.ts";
 
-/** Coarse exclusive bucket. The guest catalog is the twenty families. */
+/** Coarse exclusive bucket. The guest catalog is the fifteen families. */
 export type GuestSuper =
   | "restaurants"
   | "bars_nightlife"

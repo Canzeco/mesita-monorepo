@@ -9,8 +9,8 @@ import {
   sanitizeFamilyKeys,
 } from "./place-taxonomy.ts";
 
-Deno.test("place family catalog is twenty guest families, Undefined last", () => {
-  assertEquals(FAMILIES.length, 21);
+Deno.test("place family catalog is fifteen guest families, Undefined last", () => {
+  assertEquals(FAMILIES.length, 16);
   assertEquals(FAMILIES.map((s) => s.slug), [
     "coffee",
     "breakfast",
@@ -23,13 +23,8 @@ Deno.test("place family catalog is twenty guest families, Undefined last", () =>
     "dinner",
     "sweet",
     "drinks",
-    "wine",
     "night_out",
-    "live",
     "go_out",
-    "with_kids",
-    "outdoors",
-    "culture",
     "move",
     "feel_better",
     "undefined",
@@ -40,7 +35,7 @@ Deno.test("place family catalog is twenty guest families, Undefined last", () =>
   assertEquals(last.sort_order, 999);
 });
 
-Deno.test("every Atlas category maps onto the twenty; eleven sit on two", () => {
+Deno.test("every Atlas category maps onto the fifteen; five sit on two", () => {
   const slugs = Object.keys(ATLAS_CATEGORY_FAMILIES);
   assertEquals(slugs.length, 101);
   assertEquals(slugs.includes("undefined"), true);
@@ -55,17 +50,11 @@ Deno.test("every Atlas category maps onto the twenty; eleven sit on two", () => 
     for (const s of families) covered.add(s);
   }
   assertEquals(doubles.sort(), [
-    "amusement_park",
-    "aquarium",
     "bakery",
     "board_game_cafe",
-    "botanical_garden",
     "cafe",
     "coffee_shop",
     "karaoke",
-    "movie_theater",
-    "park",
-    "zoo",
   ]);
   assertEquals(covered.has("undefined"), true);
   assertEquals(covered.has("pizza"), true);
@@ -77,9 +66,9 @@ Deno.test("a cafe is coffee and breakfast; a pizzeria is only pizza", () => {
   assertEquals(familiesForAtlasCategory("brunch"), ["breakfast"]);
   assertEquals(familiesForAtlasCategory("cafe"), ["coffee", "breakfast"]);
   assertEquals(familiesForAtlasCategory("karaoke"), ["night_out", "go_out"]);
-  assertEquals(familiesForAtlasCategory("winery"), ["wine"]);
+  assertEquals(familiesForAtlasCategory("winery"), ["drinks"]);
   assertEquals(familiesForAtlasCategory("pizza"), ["pizza"]);
-  assertEquals(familiesForAtlasCategory("movie_theater"), ["go_out", "with_kids"]);
+  assertEquals(familiesForAtlasCategory("movie_theater"), ["go_out"]);
 });
 
 Deno.test("training is Move and a spa is Feel better", () => {
