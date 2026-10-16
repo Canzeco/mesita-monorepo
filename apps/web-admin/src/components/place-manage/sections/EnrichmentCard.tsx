@@ -10,13 +10,14 @@ import {
 } from "../actions";
 import { SectionCard, Spinner } from "@/components/admin-ui/manage";
 import { OverwriteSwitch } from "../OverwriteSwitch";
+import { ENRICH_ACTIONS, type EnrichDepth } from "@/lib/enrich-depth";
 import { usePlaceContext } from "../PlaceContext";
 import { formatAbsoluteUtc } from "@/lib/format";
 import { isEnriching } from "../place-header-state";
 
-// Enrichment — one button. This is not a scheduler (Pato, 2026-08-25).
+// Enrichment — Quick or Full. This is not a scheduler (Pato, 2026-08-25).
 // Cadence and mode chips lived here and made a press look like config.
-// The only action is Enrich: fill steps that have not completed.
+// Quick is Google's record. Full is the whole enrichment.
 //
 // The live run STATE stays in the chrome. This box only queues.
 
@@ -29,6 +30,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
   const [runError, setRunError] = useState<string | null>(null);
   const [queued, setQueued] = useState(false);
   const [overwrite, setOverwrite] = useState(false);
+  const [pendingDepth, setPendingDepth] = useState<EnrichDepth | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -57,34 +59,40 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
     ? "Enriched"
     : "Never enriched";
 
-  const runFull = useCallback(() => {
+  const runDepth = useCallback((depth: EnrichDepth) => {
+    const label = depth === "quick" ? "Quick" : "Full";
     if (alreadyEnriched) {
       const again = window.confirm(
         overwrite
-          ? "Run enrichment again and overwrite existing data?"
-          : "This place is already enriched. Run enrichment again?",
+          ? `Run ${label} enrich again and overwrite existing data?`
+          : `This place is already enriched. Run ${label} enrich again?`,
       );
       if (!again) return;
     }
     setRunError(null);
     setQueued(false);
+    setPendingDepth(depth);
     startRun(async () => {
-      const r = await enrichPlace(place.id, "fill", [], overwrite);
-      if (!r.ok) {
-        setRunError(r.error);
-        return;
+      try {
+        const r = await enrichPlace(place.id, "fill", [], overwrite, depth);
+        if (!r.ok) {
+          setRunError(r.error);
+          return;
+        }
+        setQueued(true);
+        setOverwrite(false);
+        setEnrichState((prev) => ({
+          content_state: "generating",
+          stage: "first",
+          stage_state: "queued",
+          error: null,
+          last_enriched_at: prev?.last_enriched_at ?? null,
+          updated_at: new Date().toISOString(),
+          serp_summary: prev?.serp_summary ?? null,
+        }));
+      } finally {
+        setPendingDepth(null);
       }
-      setQueued(true);
-      setOverwrite(false);
-      setEnrichState((prev) => ({
-        content_state: "generating",
-        stage: "first",
-        stage_state: "queued",
-        error: null,
-        last_enriched_at: prev?.last_enriched_at ?? null,
-        updated_at: new Date().toISOString(),
-        serp_summary: prev?.serp_summary ?? null,
-      }));
     });
   }, [alreadyEnriched, overwrite, place.id]);
 
@@ -110,7 +118,8 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
               {enrichState?.last_enriched_at
                 ? formatAbsoluteUtc(enrichState.last_enriched_at)
                 : "never"}
-              .
+              . Quick reads Google and stops. Full also finds links, Instagram,
+              reviews, and writes the description.
             </p>
           )}
 
@@ -122,17 +131,42 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
             />
           </div>
 
-          <button
-            type="button"
-            disabled={runPending || running}
-            onClick={() => {
-              if (guardIntent({ kind: "reenrich", run: runFull })) return;
-              runFull();
-            }}
-            className="bg-foreground text-paper inline-flex h-10 items-center rounded-full px-5 text-sm font-semibold transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {runPending ? "Starting…" : running ? "Enriching…" : "Run Enrichment"}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            {running && !runPending ? (
+              <button
+                type="button"
+                disabled
+                aria-busy="true"
+                className="bg-foreground text-paper inline-flex h-10 items-center rounded-full px-5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Enriching…
+              </button>
+            ) : (
+              ENRICH_ACTIONS.map((action) => {
+                const pending = runPending && pendingDepth === action.depth;
+                const quick = action.depth === "quick";
+                return (
+                  <button
+                    key={action.depth}
+                    type="button"
+                    title={action.title}
+                    disabled={runPending || running}
+                    onClick={() => {
+                      if (guardIntent({ kind: "reenrich", run: () => runDepth(action.depth) })) return;
+                      runDepth(action.depth);
+                    }}
+                    className={
+                      quick
+                        ? "border-border text-foreground hover:border-foreground/40 inline-flex h-10 items-center rounded-full border bg-card px-5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50"
+                        : "bg-foreground text-paper inline-flex h-10 items-center rounded-full px-5 text-sm font-semibold transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                    }
+                  >
+                    {pending ? "Starting…" : action.label}
+                  </button>
+                );
+              })
+            )}
+          </div>
 
           <p className="mt-2 min-h-4 type-label" aria-live="polite">
             {runError ? (

@@ -24,6 +24,7 @@ import {
   GENERAL_STATE_FACTS,
   STATE_FACT_FALSE_TONE,
 } from "@/lib/state-vocabulary";
+import { ENRICH_ACTIONS, type EnrichDepth } from "@/lib/enrich-depth";
 import {
   FOCUS_RING_CLASS,
   PILL_BUTTON_CLASS,
@@ -63,6 +64,9 @@ const STATE_GROUPS = [
 
 export const rowNameId = (i: number) => `find-row-name-${i}`;
 
+/** Quick is the lighter action, so it stays an outline. Full is filled. */
+const QUICK_PILL_CLASS = `border-border text-foreground hover:border-foreground/40 inline-flex items-center gap-1.5 rounded-full border bg-card px-3.5 py-1.5 text-xs font-semibold transition disabled:opacity-60 ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
+
 const NO_IDS: ReadonlySet<string> = new Set();
 const NO_ERRORS: Readonly<Record<string, string>> = {};
 
@@ -101,7 +105,7 @@ export function FindResults({
   disabled: boolean;
   onOpen: (row: FindRow) => void;
   onAdd: (row: FindRow) => void;
-  onEnrich?: (row: FindRow) => void;
+  onEnrich?: (row: FindRow, depth: EnrichDepth) => void;
   /** Mesita ids whose Enrich click has not been accepted yet. */
   startingIds?: ReadonlySet<string>;
   /** Mesita ids this page has started, on top of `placeHit.enriching`. */
@@ -496,7 +500,7 @@ function ActionCell({
   disabled: boolean;
   onOpen: (row: FindRow) => void;
   onAdd: (row: FindRow) => void;
-  onEnrich?: (row: FindRow) => void;
+  onEnrich?: (row: FindRow, depth: EnrichDepth) => void;
 }) {
   const adding = note?.state === "running";
   return (
@@ -513,25 +517,32 @@ function ActionCell({
             Open
           </button>
           {row.mesitaId ? (
-            <button
-              type="button"
-              onClick={() => onEnrich?.(row)}
-              disabled={disabled || phase !== "idle"}
-              aria-busy={phase !== "idle"}
-              aria-label={
-                phase === "starting"
-                  ? `Starting ${row.name}`
-                  : phase === "enriching"
-                    ? `Enriching ${row.name}`
-                    : `Enrich ${row.name}`
-              }
-              className={`${PILL_BUTTON_CLASS} whitespace-nowrap`}
-            >
-              {phase !== "idle" ? (
+            phase === "idle" ? (
+              ENRICH_ACTIONS.map((action) => (
+                <button
+                  key={action.depth}
+                  type="button"
+                  onClick={() => onEnrich?.(row, action.depth)}
+                  disabled={disabled}
+                  title={action.title}
+                  aria-label={`${action.label} enrich ${row.name}`}
+                  className={`${action.depth === "quick" ? QUICK_PILL_CLASS : PILL_BUTTON_CLASS} whitespace-nowrap`}
+                >
+                  {action.label}
+                </button>
+              ))
+            ) : (
+              <button
+                type="button"
+                disabled
+                aria-busy="true"
+                aria-label={phase === "starting" ? `Starting ${row.name}` : `Enriching ${row.name}`}
+                className={`${PILL_BUTTON_CLASS} whitespace-nowrap`}
+              >
                 <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-              ) : null}
-              {phase === "starting" ? "Starting…" : phase === "enriching" ? "Enriching" : "Enrich"}
-            </button>
+                {phase === "starting" ? "Starting…" : "Enriching"}
+              </button>
+            )
           ) : null}
         </span>
       ) : row.googleId ? (

@@ -4,6 +4,8 @@ import {
   fetchGooglePlace,
   fetchTimezone,
   profileFromGoogle,
+  type GooglePlace,
+  type GoogleSpine,
 } from "./google-spine.ts";
 import { digest, embedPair, embeddingFacts, embeddingFields } from "./embedding.ts";
 import {
@@ -44,16 +46,25 @@ export type EnrichmentKnobs = {
   sortModel?: string;
 };
 
+/** Quick is Google's record. Full is links, Instagram, reviews, vision, and a description. */
+export type EnrichDepth = "quick" | "full";
+
 export type EnrichJob = {
   placeId: string;
   googlePlaceId: string;
   knobs?: EnrichmentKnobs;
+  /** Absent is Full, so an older caller does not become Quick. */
+  depth?: EnrichDepth;
   /** False fills only empty fields and keeps saved links. True may replace. */
   overwrite?: boolean;
   /** Profile at the moment enriching was marked. The write refuses a newer row. */
   baseUpdatedAt?: string | null;
   saved?: Record<string, unknown>;
 };
+
+export function isQuickEnrich(job: EnrichJob): boolean {
+  return job.depth === "quick";
+}
 
 export type BuiltEnrichment = {
   patch: Record<string, unknown>;
@@ -86,6 +97,11 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment> 
   const name = typeof spine.patch.google_name === "string" ? spine.patch.google_name : "";
   const city = typeof spine.patch.city === "string" ? spine.patch.city : null;
   const knobs = job.knobs ?? {};
+  const overwrite = job.overwrite === true;
+  const saved = job.saved ?? {};
+  if (isQuickEnrich(job)) {
+    return buildQuickEnrichment({ details, spine, googleKey, knobs, overwrite, saved, name });
+  }
   const counts = linkCounts({
     website_url: knobs.discoverWebsiteN,
     instagram_url: knobs.discoverInstagramN,
@@ -93,8 +109,6 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment> 
     opentable_url: knobs.discoverOpentableN,
     uber_eats_url: knobs.discoverUbereatsN,
   });
-  const overwrite = job.overwrite === true;
-  const saved = job.saved ?? {};
   if (!overwrite) {
     for (const key of ["website_url", "instagram_url", "facebook_url", "opentable_url", "uber_eats_url"] as const) {
       const savedUrl = stringField(saved[key]);
@@ -178,6 +192,77 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment> 
     if (fields) Object.assign(patch, fields);
   }
   return { patch, mirrorPhotos: knobs.saveImagesToStorage !== false };
+}
+
+/** Google's record only. No Firecrawl, Perplexity, Instagram, review sync, or vision. */
+export function quickPatch(opts: {
+  spine: Record<string, unknown>;
+  description: string | null;
+  photos: string[];
+  now: string;
+}): Record<string, unknown> {
+  const patch: Record<string, unknown> = {
+    ...opts.spine,
+    content_state: "ready",
+    enriched_at: opts.now,
+  };
+  if (opts.description) patch.description = opts.description;
+  if (opts.photos.length > 0) patch.photos = opts.photos;
+  return patch;
+}
+
+async function buildQuickEnrichment(opts: {
+  details: GooglePlace;
+  spine: Extract<GoogleSpine, { ok: true }>;
+  googleKey: string;
+  knobs: EnrichmentKnobs;
+  overwrite: boolean;
+  saved: Record<string, unknown>;
+  name: string;
+}): Promise<BuiltEnrichment> {
+  const images = imageKnobs(opts.knobs);
+  let photos: string[] = [];
+  try {
+    photos = await fetchGooglePhotoUrls(opts.details.photos, opts.googleKey, images.gatherGoogleImages);
+  } catch {
+    photos = [];
+  }
+  const description = opts.spine.description;
+  const patch = applyOverwrite({
+    overwrite: opts.overwrite,
+    saved: opts.saved,
+    patch: quickPatch({
+      spine: opts.spine.patch,
+      description,
+      photos,
+      now: new Date().toISOString(),
+    }),
+  });
+  const openaiKey = process.env.OPENAI_KEY?.trim() ?? "";
+  const written = typeof patch.description === "string" ? patch.description : "";
+  if (openaiKey && opts.name && written) {
+    try {
+      const facts = embeddingFacts({
+        name: opts.name,
+        zone: typeof opts.spine.patch.zone === "string" ? opts.spine.patch.zone : null,
+        city: typeof opts.spine.patch.city === "string" ? opts.spine.patch.city : null,
+        address: typeof opts.spine.patch.address === "string" ? opts.spine.patch.address : null,
+        description: written,
+      });
+      const vectors = await embedPair(facts, opts.name, openaiKey);
+      const fields = embeddingFields(
+        vectors.summary,
+        vectors.name,
+        await digest(facts),
+        await digest(opts.name),
+        facts,
+      );
+      if (fields) Object.assign(patch, fields);
+    } catch {
+      // Quick still writes Google's record when the vectors fail.
+    }
+  }
+  return { patch, mirrorPhotos: opts.knobs.saveImagesToStorage !== false };
 }
 
 function imageKnobs(knobs: EnrichmentKnobs): ImageKnobs {
