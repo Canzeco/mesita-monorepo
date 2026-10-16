@@ -73,10 +73,12 @@ export type BuiltEnrichment = {
 
 // A finished place is the Google spine, the official links Firecrawl sourced and
 // the Resolver kept, the gallery the Enrichment page asked for, the 100 newest
-// Google reviews from Apify, and a description. The description is Google's own
-// summary when it has one, otherwise one written from those facts. Anything
-// short of that throws before the write. Places itself never supplies the
-// review list: it returns five.
+// Google reviews from Apify, and a description of at most 500 characters.
+// The description is Google's own summary when it has one, otherwise one
+// written from those facts. The write then fills one Atlas category and
+// Atlas tags, and replaces an empty presentation with the synthesized one.
+// Anything short of a finished profile throws before the write. Places
+// itself never supplies the review list: it returns five.
 export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment> {
   const googlePlaceId = job.googlePlaceId?.trim() ?? "";
   if (!job.placeId?.trim() || !googlePlaceId) {
@@ -172,15 +174,20 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment> 
   }
   if (!description) throw new Error("The place has no description, so it was not written.");
 
+  // The write fills the Presentation when this run may replace it. A saved
+  // one stays on the patch through applyOverwrite and is left alone.
+  const draft: Record<string, unknown> = {
+    ...spine.patch,
+    content_state: "ready",
+    enriched_at: new Date().toISOString(),
+  };
+  if (!overwrite && typeof saved.description === "string" && saved.description.trim()) {
+    draft.description = saved.description;
+  }
   const patch: Record<string, unknown> = applyOverwrite({
     overwrite,
     saved,
-    patch: {
-      ...spine.patch,
-      description,
-      content_state: "ready",
-      enriched_at: new Date().toISOString(),
-    },
+    patch: draft,
   });
   if (openaiKey && name) {
     const facts = embeddingFacts({

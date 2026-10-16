@@ -402,7 +402,7 @@ export type ProfileRead = {
 
 const DEFAULT_PLACE_FIELD_LIMITS: PlaceFieldLimits = {
   placeNameMax: 80,
-  descriptionMax: 1000,
+  descriptionMax: 500,
   tagsPerPlaceMax: 20,
   photosMax: 10,
 };
