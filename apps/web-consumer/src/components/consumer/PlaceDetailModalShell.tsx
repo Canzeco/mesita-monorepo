@@ -14,8 +14,8 @@ import type { PlaceDetail } from "@/lib/place-detail";
 // renders a w-9 spacer for the absent actions slot, so the title stays centered.
 // decision: Pato (MESITA-451, revised) — the "Enriching" state now lives as
 // a chip in the profile summary (PlaceDetailBody), not the title row.
-// decision: Pato (MESITA-1065) — the body row is Save · Contact · Share and
-// scrolls; Reserve is pinned in a third band.
+// decision: Pato (2026-10-16) — the pinned band is Reserve · Pay · Save.
+// Pay and Save are Soon. Contact and Share wait.
 //   1. SlideOverHeader (shrink-0) — dismiss + place name
 //   2. Scroll area (flex-1 overflow-y-auto) — PlaceDetailBody (ugly
 //      Create profile included). Enrich is a tab until Enriched.
