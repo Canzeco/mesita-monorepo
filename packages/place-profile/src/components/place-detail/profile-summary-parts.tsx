@@ -48,15 +48,15 @@ export function ProfileStat({
       className="flex min-w-0 flex-col items-center justify-center px-0.5 text-center"
       aria-label={spoken}
     >
+      {icon ? <span className="mb-1 flex shrink-0">{icon}</span> : null}
       <span
         className={
-          "flex min-h-7 items-center justify-center gap-1 leading-tight " +
+          "flex min-h-7 items-center justify-center leading-tight " +
           (mention
             ? "text-foreground type-label text-balance font-semibold"
             : "text-foreground text-lg font-bold tabular-nums")
         }
       >
-        {icon}
         {value}
       </span>
       <span className="text-muted-foreground type-meta mt-0.5 max-w-full truncate leading-tight font-medium">
