@@ -6,20 +6,19 @@ import {
   withFamilyKeysList,
 } from "./place-family-keys.ts";
 
-Deno.test("withFamilyKeys attaches one Super for gastropub", () => {
-  const out = withFamilyKeys({ id: "1", category: "gastropub" });
+Deno.test("withFamilyKeys keeps the derived mapping and does not invent one", () => {
+  const out = withFamilyKeys({
+    id: "1",
+    category: "gastropub",
+    family_keys: ["dinner", "drinks"],
+  });
   assertEquals(out.family_keys, ["dinner", "drinks"]);
   assertEquals(out.id, "1");
-});
-
-Deno.test("withFamilyKeys ships the FULL Atlas membership (1–2 supers)", () => {
-  assertEquals(withFamilyKeys({ category: "mexican" }).family_keys, ["tacos"]);
-  assertEquals(withFamilyKeys({ category: "fine_dining" }).family_keys, ["dinner"]);
-  assertEquals(withFamilyKeys({ category: "breakfast" }).family_keys, ["breakfast"]);
-  assertEquals(withFamilyKeys({ category: "karaoke" }).family_keys, [
-    "night_out",
-    "go_out",
-  ]);
+  assertEquals(withFamilyKeys({ category: "mexican" }).family_keys, ["undefined"]);
+  assertEquals(
+    withFamilyKeys({ category: "karaoke", family_keys: ["night_out", "go_out"] }).family_keys,
+    ["night_out", "go_out"],
+  );
 });
 
 Deno.test("withFamilyKeys keeps the mapping on the row when it disagrees with the code twin", () => {
@@ -59,8 +58,8 @@ Deno.test("withFamilyKeys is TOTAL: undefined category and leftovers land on Und
 
 Deno.test("withFamilyKeysList maps a list", () => {
   const rows = withFamilyKeysList([
-    { category: "cafe" },
-    { category: "museum" },
+    { category: "cafe", family_keys: ["coffee", "breakfast"] },
+    { category: "museum", family_keys: ["go_out"] },
   ]);
   assertEquals(rows[0]?.family_keys, ["coffee", "breakfast"]);
   assertEquals(rows[1]?.family_keys, ["go_out"]);

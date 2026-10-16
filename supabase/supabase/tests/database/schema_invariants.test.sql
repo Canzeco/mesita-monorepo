@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(126);
+select plan(129);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -889,6 +889,28 @@ select is(
     where id = '00000000-0000-4000-8000-0000000fa111'),
   array['dinner', 'coffee', 'move']::text[],
   'the catalog view follows the new mapping'
+);
+
+select lives_ok(
+  'update public.place_profiles set category = null, tags = array[' ||
+    quote_literal((select slug from public.place_tags order by sort_order, slug limit 1)) || ',' ||
+    quote_literal((select slug from public.place_tags order by sort_order, slug offset 1 limit 1)) ||
+  '] where id = ''00000000-0000-4000-8000-0000000fa111''',
+  'several tags are accepted and a blank category is still one category'
+);
+
+select is(
+  (select category from public.place_profiles
+    where id = '00000000-0000-4000-8000-0000000fa111'),
+  'undefined',
+  'a blank category becomes the single category undefined'
+);
+
+select is(
+  (select cardinality(tags) from public.place_profiles
+    where id = '00000000-0000-4000-8000-0000000fa111'),
+  2,
+  'a place keeps more than one tag'
 );
 
 rollback to savepoint before_family_write_probe;

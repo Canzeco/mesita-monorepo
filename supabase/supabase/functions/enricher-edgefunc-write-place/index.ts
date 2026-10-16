@@ -15,7 +15,7 @@ import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { validateProfilePatch, writePlace } from "../_shared/place-doc.ts";
 import { mirrorPlacePhotos } from "../_shared/store-place-images.ts";
 import { timingSafeEqual } from "../_shared/timing-safe-equal.ts";
-import { enrichmentCommit } from "./commit.ts";
+import { enrichmentCommit, enrichmentConflicts } from "./commit.ts";
 import { withoutFoundFlags } from "../_shared/profile-patch-found.ts";
 import { galleryUrls } from "./photos.ts";
 import { contentStateAfterStop, enrichmentStop } from "./stop.ts";
@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (versionErr) return json({ ok: false, error: versionErr.message }, 500);
     const current = (versionRow?.updated_at ?? null) as string | null;
-    if (current !== commit.baseUpdatedAt) {
+    if (enrichmentConflicts(current, commit.baseUpdatedAt)) {
       const next = contentStateAfterStop({
         content_state: (versionRow?.content_state ?? null) as string | null,
         enriched_at: (versionRow?.enriched_at ?? null) as string | null,

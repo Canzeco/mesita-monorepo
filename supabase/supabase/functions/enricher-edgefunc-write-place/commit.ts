@@ -12,6 +12,15 @@ export type EnrichmentCommit =
   }
   | { ok: false; error: string };
 
+/** True when a person saved the profile after this run started. */
+export function enrichmentConflicts(
+  currentUpdatedAt: string | null,
+  baseUpdatedAt: string | null,
+): boolean {
+  if (!baseUpdatedAt) return false;
+  return currentUpdatedAt !== baseUpdatedAt;
+}
+
 export function enrichmentCommit(body: unknown): EnrichmentCommit {
   if (typeof body !== "object" || body === null || Array.isArray(body)) {
     return { ok: false, error: "body must be an object" };

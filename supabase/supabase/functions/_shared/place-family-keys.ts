@@ -1,11 +1,9 @@
 // The consumer wire mapper: everything computed onto a place row on its way
 // out to a guest.
 //
-// Adds `family_keys` (MESITA-679) — source of truth is
-// `_shared/place-taxonomy.ts` (Atlas membership = the FULL 1–2 super set
-// when the category is in the catalog; stored keys only when membership
-// is empty; else the Google primaryType map; else ['undefined'] — the
-// resolution is total). A category in two supers ships both keys.
+// Adds `family_keys` — the keys already derived onto the row by the
+// profiles view. A row with none is Undefined. This does not consult the
+// hardcoded category map.
 // Clients must not re-mirror that expansion; Search map Filters cut on
 // Family off this field.
 //
@@ -54,7 +52,7 @@ export function isEnrichedPlace(
 export type WirePlace<T> = T & WireExtras;
 
 /**
- * Wire mapper: set `family_keys` from Atlas membership / stored / Google type,
+ * Wire mapper: set `family_keys` from the derived keys on the row,
  * and `enriched` from `enriched_at`. Both are always overwritten
  * so a stale client cache can't leak a previous value.
  */

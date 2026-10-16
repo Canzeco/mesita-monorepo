@@ -9,9 +9,8 @@ import { DEFAULT_CONFIG } from "../catalog";
 // gone. Every quality floor now lives INSIDE the source it cuts, so the
 // standalone floor cards are gone.
 // One box owns each key and the rest mirror it read-only — see SourceFloor.
-// The family switches are not a source. They live on Configurations ›
-// Families (MESITA-2200): a shared battery, so they do not spend one of
-// the seven.
+// Family membership is not a source. It lives on Atlas as the category
+// matrix, so it does not spend one of the seven.
 //
 // Signals moved to the Matrix subpage (MESITA-1675): they rank what a
 // source returns, which is not the same question as which sources exist.

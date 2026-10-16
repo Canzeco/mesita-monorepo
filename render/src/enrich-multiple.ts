@@ -12,7 +12,8 @@ export const enrichMultiplePlaces = task(
   { name: "enrich-multiple-places", retry: NO_RETRY, timeoutSeconds: DAY },
   async function enrichMultiplePlaces(ctx: TaskContext, jobs: EnrichJob[]): Promise<{ placeId: string }[]> {
     const results: { placeId: string }[] = [];
-    console.log(runLog("start", `${jobs.length} places`));
+    const mode = jobs.length > 0 && jobs.every((job) => job.overwrite === true) ? "on" : "off";
+    console.log(runLog("start", `${jobs.length} places overwrite=${mode}`));
     try {
       for (let i = 0; i < jobs.length; i += AT_ONCE) {
         const wave = jobs.slice(i, i + AT_ONCE);

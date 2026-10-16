@@ -2,6 +2,16 @@ import { assert, assertEquals } from "jsr:@std/assert@1";
 import { buildFamiliesMap } from "./families-map.ts";
 import { GOOGLE_TYPE_SUPER } from "./google-type-super.ts";
 
+Deno.test("a Google type can sit in several guest families", () => {
+  const map = buildFamiliesMap([], []);
+  const bySlug = new Map(map.googleMembership.map((row) => [row.slug, row.familyKeys]));
+  assertEquals(bySlug.get("cafe"), ["coffee", "breakfast"]);
+  assertEquals(bySlug.get("pizza_restaurant"), ["pizza"]);
+  assertEquals(bySlug.get("gas_station"), []);
+  assertEquals(map.googleMembership.length, Object.keys(GOOGLE_TYPE_SUPER).length);
+  assert(map.googleMembership.every((row) => !row.familyKeys.includes("undefined")));
+});
+
 Deno.test("google types stay exclusive and leftovers land on undefined", () => {
   const map = buildFamiliesMap([], []);
   const slugs = map.googleTypes.map((t) => t.slug);

@@ -21,7 +21,6 @@ import {
 } from "../actions";
 import { PlaceTagsPicker } from "../PlaceTagsPicker";
 import { PlaceCategorySelect } from "../PlaceCategorySelect";
-import { PlaceFamilyField } from "../PlaceFamilyField";
 import { googleLocationEntries, type LocationPair } from "../google-location";
 import {
   OpenLink,
@@ -510,8 +509,10 @@ export function PlaceSection({
           <ReadField label="Google price" auto boxed>
             <PriceDisplay level={place.price_level} currency={place.currency} />
           </ReadField>
-          <PlaceFamilyField category={form.category ?? ""} />
-          <PlaceCategorySelect value={place.category ?? ""} />
+          <PlaceCategorySelect
+            slug={place.category}
+            label={place.category_label}
+          />
         </div>
         <div className="mt-4 grid gap-4">
           <TextArea

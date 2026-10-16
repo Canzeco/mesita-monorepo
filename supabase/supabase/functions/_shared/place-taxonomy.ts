@@ -1,11 +1,10 @@
 // Place family law. The guest catalog is fifteen families (catalog-families.ts).
 // Undefined is last and is not a carousel.
-// A type may sit on more than one family when the trips are different.
-// A precise rail takes the place off the broader one.
-// The profiles view derives family_keys from the category dictionary.
-// The base column stays null. A row that already carries the mapping wins,
-// so a dictionary edit changes membership without a profile write.
-// With no mapping on the row: Google type → Atlas slug → alias → ['undefined'].
+// A category may belong to more than one family. A family may contain more
+// than one category. The profiles view derives family_keys from
+// place_categories. The base column stays null.
+// Live membership is that mapping: the keys already derived onto the row,
+// or a dictionary passed in. The code twin below is not live membership.
 
 import {
   CATALOG_FAMILIES,
@@ -13,7 +12,6 @@ import {
   type FamilyKey,
 } from "./catalog-families.ts";
 import { GOOGLE_TYPE_SUPER } from "./google-type-super.ts";
-import { familiesForGoogleType } from "./sourcing.ts";
 
 export type { FamilyKey };
 
@@ -208,42 +206,63 @@ export type FamilyPlace = {
   family_keys?: unknown;
 };
 
+export type CategoryFamilyMap = Readonly<Record<string, readonly string[]>>;
+
 /**
- * Families for a place on the wire or in a predicate. TOTAL.
- * The mapping carried on the row wins. Otherwise an exact Google type,
- * then an Atlas slug, then the Google alias, then ['undefined'].
+ * Families for a place. TOTAL.
+ * A dictionary is the mutable Category ↔ Family mapping and wins outright,
+ * so a mapping change reorganizes the catalog without a profile write.
+ * With no dictionary, the keys already on the row are the view's derived
+ * membership. An empty row is Undefined. The code twin is not consulted.
  */
-export function familiesForPlace(place: FamilyPlace): FamilyKey[] {
-  const category = typeof place.category === "string" ? place.category : null;
-  const mapped = sanitizeFamilyKeys(place.family_keys);
-  if (mapped.length > 0) return mapped;
-  const exact = familiesForExactGoogle(category);
-  if (exact) return exact;
-  const atlas = familiesForAtlasCategory(category);
-  if (atlas.length > 0) return atlas;
-  const google = familiesForGoogleType(
-    typeof place.category === "string" ? place.category : null,
-  );
-  if (google.length > 0) return google;
+export function familiesForPlace(
+  place: FamilyPlace,
+  mapping?: CategoryFamilyMap,
+): FamilyKey[] {
+  if (mapping) {
+    const category = typeof place.category === "string"
+      ? place.category.trim().toLowerCase()
+      : "";
+    const fromMap = category ? sanitizeFamilyKeys(mapping[category]) : [];
+    return fromMap.length > 0 ? fromMap : ["undefined"];
+  }
+  const carried = sanitizeFamilyKeys(place.family_keys);
+  if (carried.length > 0) return carried;
   return ["undefined"];
 }
 
 /**
- * After semantics infers both fields: a known Atlas category keeps its
- * FULL membership (1–2 families, including `undefined` → family undefined).
- * Inference fills family_keys only when the category has no membership
- * yet; when inference comes back empty too, ['undefined'] stands — the
- * write stays total, never null.
+ * Enrichment does not assign families. `inferred` is ignored. Membership
+ * is the dictionary when the caller has it, otherwise Undefined.
  */
 export function resolveEnrichedFamilyKeys(
   category: string | null | undefined,
   inferred: unknown,
+  mapping?: CategoryFamilyMap,
 ): FamilyKey[] {
-  const exact = familiesForExactGoogle(category);
-  if (exact) return exact;
-  const membership = familiesForAtlasCategory(category);
-  if (membership.length > 0) return membership;
-  const sanitized = sanitizeFamilyKeys(inferred);
-  if (sanitized.length > 0) return sanitized;
-  return ["undefined"];
+  void inferred;
+  return familiesForPlace({ category }, mapping);
+}
+
+/** Enrichment may keep only Categories and Tags Atlas already defines. */
+export function keepAtlasValues(opts: {
+  category: string | null | undefined;
+  tags: readonly unknown[] | null | undefined;
+  categories: readonly string[];
+  tagVocabulary: readonly string[];
+}): { category: string; tags: string[] } {
+  const categories = new Set(
+    opts.categories.map((slug) => slug.trim().toLowerCase()).filter(Boolean),
+  );
+  const vocabulary = new Set(opts.tagVocabulary);
+  const raw = typeof opts.category === "string" ? opts.category.trim().toLowerCase() : "";
+  const category = raw && categories.has(raw) ? raw : "undefined";
+  const tags: string[] = [];
+  for (const tag of opts.tags ?? []) {
+    if (typeof tag !== "string") continue;
+    const slug = tag.trim();
+    if (!slug || !vocabulary.has(slug) || tags.includes(slug)) continue;
+    tags.push(slug);
+  }
+  return { category, tags };
 }
