@@ -33,8 +33,11 @@ export function ProfileSummary({
   // decision: Pato — name in header; photo · Google · IG · Facebook; then
   // swipe-style tags: category · price · zone · distance · hours (MESITA-561).
   // decision: Pato (live, 2026-08-03) — the stat trio is the three OUTSIDE
-  // channels: Google · Instagram · Facebook. They are the reputation numbers
-  // a guest already trusts, and each one has a count to stand on.
+  // channels: Google · Instagram · Facebook, laid out like an Instagram
+  // profile's posts · followers · following.
+  // decision: Pato (live, 2026-10-16) — a zero stays visible. No link says
+  // "Not connected". A link with no number says "No count". The icon stays
+  // either way; the cell is never blank.
   const stats = profileChannelStats(place);
   const priceLabel =
     formatPlacePriceChip({
@@ -51,29 +54,18 @@ export function ProfileSummary({
     <section className="border-border bg-card flex flex-col gap-3 border-b px-4 pt-3 pb-4">
       <div className="flex items-center gap-4">
         <ProfilePhoto place={place} />
-        {stats.length > 0 ? (
-          <div
-            className={
-              "grid min-w-0 flex-1 gap-1 " +
-              (stats.length >= 3
-                ? "grid-cols-3"
-                : stats.length === 2
-                ? "grid-cols-2"
-                : "grid-cols-1")
-            }
-          >
-            {stats.map((stat) => (
-              <ProfileStat
-                key={stat.key}
-                value={stat.value}
-                label={stat.label}
-                icon={channelStatIcon(stat)}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="min-w-0 flex-1" />
-        )}
+        <div className="grid min-w-0 flex-1 grid-cols-3 gap-1">
+          {stats.map((stat) => (
+            <ProfileStat
+              key={stat.key}
+              value={stat.value}
+              label={stat.label}
+              icon={channelStatIcon(stat)}
+              mention={stat.mention}
+              name={stat.name}
+            />
+          ))}
+        </div>
       </div>
 
       {/* decision: Pato — when the Enricher is still building the profile an

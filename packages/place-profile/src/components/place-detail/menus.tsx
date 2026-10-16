@@ -12,6 +12,8 @@ import { Box } from "./box";
 
 // ── Menus ───────────────────────────────────────────────────────────────
 
+// The Menus tab renders SoonScreen. This box stays for the stored files
+// and is not mounted while that tab is Soon (Pato, 2026-10-16).
 export function MenusBox({
   place,
   onOpenMenu,

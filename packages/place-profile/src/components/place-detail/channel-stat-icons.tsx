@@ -5,20 +5,22 @@ import { Facebook, Instagram } from "../brand-icons";
 
 import type { ChannelStat } from "./channel-stats";
 
-const STAR = (
-  <Star
-    className="fill-foreground text-muted-foreground h-3 w-3"
-    strokeWidth={0}
-  />
-);
-
 export function channelStatIcon(stat: ChannelStat): React.ReactNode {
-  if (stat.googleShowStar) return STAR;
+  const box = stat.mention ? "h-4 w-4" : "h-3 w-3";
   if (stat.key === "instagram") {
-    return <Instagram className="text-muted-foreground h-3 w-3" />;
+    return <Instagram className={`text-muted-foreground ${box}`} />;
   }
   if (stat.key === "facebook") {
-    return <Facebook className="text-muted-foreground h-3 w-3" />;
+    return <Facebook className={`text-muted-foreground ${box}`} />;
   }
-  return undefined;
+  return (
+    <Star
+      className={
+        stat.mention
+          ? `text-muted-foreground ${box}`
+          : "fill-foreground text-muted-foreground h-3 w-3"
+      }
+      strokeWidth={stat.mention ? 1.75 : 0}
+    />
+  );
 }

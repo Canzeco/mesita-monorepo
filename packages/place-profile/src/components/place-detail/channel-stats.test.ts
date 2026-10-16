@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { PlaceDetail } from "../../place-detail";
-import { profileChannelStats, reviewsTabChannelStats } from "./channel-stats.ts";
+import { profileChannelStats } from "./channel-stats";
 
 function basePlace(overrides: Partial<PlaceDetail> = {}): PlaceDetail {
   return {
@@ -39,27 +39,56 @@ function basePlace(overrides: Partial<PlaceDetail> = {}): PlaceDetail {
     google_reviews: [],
     products: { menu: [] },
     long_description: "",
-    hours: [],
+    hours_table: [],
     popular_times: [],
-    links: {},
+    channels: {},
     reviews_maps: {},
     ...overrides,
   } as PlaceDetail;
 }
 
-describe("reviewsTabChannelStats", () => {
-  it("always returns Google, Instagram, and Facebook", () => {
-    const stats = reviewsTabChannelStats(basePlace());
-    expect(stats.map((s) => s.label)).toEqual(["Google", "Instagram", "Facebook"]);
-    expect(stats[0]?.value).toBe("411");
-    expect(stats[1]?.value).toBe("—");
-    expect(stats[2]?.value).toBe("—");
-  });
-});
-
 describe("profileChannelStats", () => {
-  it("omits channels with no numbers", () => {
+  it("keeps every channel, and fills the number line when it is not connected", () => {
     const stats = profileChannelStats(basePlace());
-    expect(stats.map((s) => s.key)).toEqual(["google"]);
+    expect(stats.map((s) => s.key)).toEqual(["google", "instagram", "facebook"]);
+    expect(stats[0]?.value).toBe("3.9");
+    expect(stats[0]?.label).toBe("411 Google");
+    expect(stats[1]).toMatchObject({
+      value: "Not connected",
+      label: "Instagram",
+      mention: true,
+    });
+    expect(stats[2]).toMatchObject({
+      value: "Not connected",
+      label: "Facebook",
+      mention: true,
+    });
+    expect(stats.every((s) => s.value !== "" && s.value !== "—")).toBe(true);
+  });
+
+  it("shows a zero instead of hiding it", () => {
+    const stats = profileChannelStats(
+      basePlace({
+        instagram: { followers: 0 },
+        facebook: { followers: 0 },
+        channels: { instagram_url: "https://instagram.com/strana" },
+      }),
+    );
+    expect(stats[1]).toMatchObject({ value: "0", label: "Instagram" });
+    expect(stats[1]?.mention).toBeUndefined();
+    expect(stats[2]).toMatchObject({ value: "0", label: "Facebook" });
+  });
+
+  it("says no count when the link is saved and the number is not", () => {
+    const stats = profileChannelStats(
+      basePlace({
+        channels: {
+          instagram_url: "https://instagram.com/strana",
+          facebook_url: "https://facebook.com/strana",
+        },
+      }),
+    );
+    expect(stats[1]).toMatchObject({ value: "No count", label: "Instagram" });
+    expect(stats[2]).toMatchObject({ value: "No count", label: "Facebook" });
   });
 });

@@ -26,19 +26,36 @@ export function ProfilePhoto({ place }: { place: PlaceDetail }) {
   );
 }
 
-/** Instagram-style stat cell: big number, small label underneath. */
+/** Instagram-style stat: a filled number line, then the channel name.
+ *  Zero is a number. "Not connected" and "No count" sit in the number line
+ *  so the column is never a blank gap beside the photo. */
 export function ProfileStat({
   value,
   label,
   icon,
+  mention = false,
+  name,
 }: {
   value: string;
   label: string;
   icon?: React.ReactNode;
+  mention?: boolean;
+  name?: string;
 }) {
+  const spoken = mention ? `${name ?? label}, ${value}` : `${value} ${label}`;
   return (
-    <div className="flex min-w-0 flex-col items-center justify-center px-0.5 text-center">
-      <span className="text-foreground flex items-center gap-0.5 text-lg leading-tight font-bold tabular-nums">
+    <div
+      className="flex min-w-0 flex-col items-center justify-center px-0.5 text-center"
+      aria-label={spoken}
+    >
+      <span
+        className={
+          "flex min-h-7 items-center justify-center gap-1 leading-tight " +
+          (mention
+            ? "text-foreground type-label text-balance font-semibold"
+            : "text-foreground text-lg font-bold tabular-nums")
+        }
+      >
         {icon}
         {value}
       </span>
