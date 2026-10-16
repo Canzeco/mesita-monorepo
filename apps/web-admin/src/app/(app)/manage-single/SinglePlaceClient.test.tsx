@@ -30,6 +30,7 @@ describe("Single Place", () => {
     );
     expect(field).not.toMatch(/\sdisabled(?:[\s=]|$)/);
     expect(html).toContain("ChIJ… or a place name");
+    expect(html).not.toContain("Overwrite existing data");
     expect(html).not.toContain("General States");
     expect(html).not.toContain(">Create<");
   });
