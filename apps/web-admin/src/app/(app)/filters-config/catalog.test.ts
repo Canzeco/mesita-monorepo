@@ -578,7 +578,9 @@ describe("Discovery page box order", () => {
     expect(facts).toContain("Unavailable");
     expect(facts).not.toContain("ConfigSoon");
     expect(facts).not.toContain("weightMaxFor");
-    expect(facts).toContain("DISCOVERY_MODES.map");
+    expect(facts).toContain("DISCOVERY_CATALOG_HREF");
+    expect(facts).toContain('mode.key === "catalog"');
+    expect(facts).not.toContain("on this page");
     // Social left the mode list; it has no box of its own any more.
     expect(() => readFileSync(join(__dirname, "SocialConfigClient.tsx"))).toThrow();
     expect(signals).toContain('title="Signal shape"');
@@ -603,7 +605,9 @@ describe("Discovery page box order", () => {
 
     // ONE TABLE, on the page about modes. Signal rows, wired-mode columns.
     const weights = readFileSync(join(__dirname, "ModeWeightsClient.tsx"), "utf8");
-    expect(modesPage).toContain("ModeWeightsClient");
+    expect(modesPage).not.toContain("ModeWeightsClient");
+    const catalogPage = readFileSync(join(__dirname, "catalog/page.tsx"), "utf8");
+    expect(catalogPage).toContain("ModeWeightsClient");
     expect(matrixPage).not.toContain("ModeWeightsClient");
     expect(weights).toContain("ranking");
     expect(weights).not.toContain('title="Signal weights by mode"');
@@ -686,7 +690,6 @@ describe("Discovery page box order", () => {
       "NameConfigClient",
       "MapConfigClient",
       "SwipeConfigClient",
-      "ModeWeightsClient",
     ];
     let last = -1;
     for (const n of modeOrder) {

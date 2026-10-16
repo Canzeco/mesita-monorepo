@@ -18,53 +18,61 @@ function sourcesFor(mode: DiscoverySurfaceModeKey): string {
 export function ModeFactList() {
   return (
     <div className="flex flex-col gap-4">
-      {DISCOVERY_MODES.map((mode) => (
-        <SectionCard
-          key={mode.key}
-          icon={<Search className="text-primary h-4 w-4" />}
-          title={mode.label}
-          subtitle={mode.intent}
-          state={
-            <KnobState
-              kind={mode.availability === "live" ? "enforced" : "not-wired"}
-              reason={mode.availabilityLabel}
-            />
-          }
-        >
-          <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-            <Fact label="Input" value={mode.input} />
-            <Fact label="Sources" value={sourcesFor(mode.key)} />
-            <Fact label="How results are chosen" value={mode.selection} />
-            <Fact label="What comes back" value={mode.output} />
-          </dl>
-          {mode.signals.length === 1 ? (
-            <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-              This mode uses one signal, so that signal decides the Mesita order.
-              There is no weight to edit.
-            </p>
-          ) : null}
-          {mode.signals.length > 1 && !mode.weightsEditable ? (
-            <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-              Several signals combine here. Their weights are on{" "}
-              <Link href={DISCOVERY_CATALOG_HREF} className="text-foreground font-medium underline">
-                Catalog
-              </Link>
-              .
-            </p>
-          ) : null}
-          {mode.weightsEditable ? (
-            <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-              Several signals combine. Their exponents are in Ranking on this
-              page. A zero turns that signal off for this mode.
-            </p>
-          ) : null}
-          {mode.availability === "unavailable" ? (
-            <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-              Unavailable. No screen calls it, so there is nothing to configure.
-            </p>
-          ) : null}
-        </SectionCard>
-      ))}
+      {DISCOVERY_MODES.map((mode) =>
+        mode.key === "catalog" ? (
+          <Link
+            key={mode.key}
+            href={DISCOVERY_CATALOG_HREF}
+            className="border-border bg-card hover:bg-muted/40 flex items-center gap-2 rounded-2xl border px-4 py-4 text-sm font-semibold sm:px-6"
+          >
+            <Search className="text-primary h-4 w-4" />
+            Catalog
+          </Link>
+        ) : (
+          <SectionCard
+            key={mode.key}
+            icon={<Search className="text-primary h-4 w-4" />}
+            title={mode.label}
+            subtitle={mode.intent}
+            state={
+              <KnobState
+                kind={mode.availability === "live" ? "enforced" : "not-wired"}
+                reason={mode.availabilityLabel}
+              />
+            }
+          >
+            <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+              <Fact label="Input" value={mode.input} />
+              <Fact label="Sources" value={sourcesFor(mode.key)} />
+              <Fact label="How results are chosen" value={mode.selection} />
+              <Fact label="What comes back" value={mode.output} />
+            </dl>
+            {mode.signals.length === 1 ? (
+              <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
+                This mode uses one signal, so that signal decides the Mesita order.
+                There is no weight to edit.
+              </p>
+            ) : null}
+            {mode.weightsEditable ? (
+              <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
+                Several signals combine. Their weights are on{" "}
+                <Link
+                  href={DISCOVERY_CATALOG_HREF}
+                  className="text-foreground font-medium underline"
+                >
+                  Catalog
+                </Link>
+                .
+              </p>
+            ) : null}
+            {mode.availability === "unavailable" ? (
+              <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
+                Unavailable. No screen calls it, so there is nothing to configure.
+              </p>
+            ) : null}
+          </SectionCard>
+        ),
+      )}
     </div>
   );
 }
