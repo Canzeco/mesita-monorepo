@@ -21,7 +21,7 @@ import {
 } from "../actions";
 import { PlaceTagsPicker } from "../PlaceTagsPicker";
 import { PlaceCategorySelect } from "../PlaceCategorySelect";
-import { googleLocationEntries, type LocationPair } from "../google-location";
+import { googleFormattedAddress } from "../google-location";
 import {
   OpenLink,
   PhoneField,
@@ -166,15 +166,12 @@ function PriceDisplay({
   );
 }
 
-function locationPairs(place: AdminPlace): LocationPair[] {
-  const stored = googleLocationEntries(place.google_address);
-  if (stored.length > 0) return stored;
-  return googleLocationEntries({
-    formattedAddress: place.address,
-    location: place.lat != null && place.lng != null
-      ? { latitude: place.lat, longitude: place.lng }
-      : undefined,
-  });
+function locationAddress(place: AdminPlace): string {
+  return (
+    googleFormattedAddress(place.google_address) ||
+    place.address?.trim() ||
+    "—"
+  );
 }
 
 type DayHours = { closed: boolean; open: string; close: string };
@@ -546,17 +543,15 @@ export function PlaceSection({
         icon={<MapPin className="h-4 w-4" />}
         tint="sky"
         title="Location"
-        subtitle="Google's keys, as returned."
+        subtitle="Where it is."
       >
         <div className="mt-5 grid gap-4">
-          <ReadField label="placeId" auto boxed>
+          <ReadField label="Google Place ID" auto boxed>
             {place.google_place_id?.trim() ? place.google_place_id : "—"}
           </ReadField>
-          {locationPairs(place).map((pair) => (
-            <ReadField key={pair.key} label={pair.key} auto boxed>
-              {pair.value}
-            </ReadField>
-          ))}
+          <ReadField label="Google Address" auto boxed>
+            {locationAddress(place)}
+          </ReadField>
         </div>
         {place.lat != null && place.lng != null ? (
           <div className="border-border/60 mt-4 overflow-hidden rounded-xl border">
