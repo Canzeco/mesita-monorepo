@@ -114,12 +114,13 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
             </p>
           ) : (
             <p className="text-muted-foreground mb-4 text-xs leading-relaxed">
-              {status}. Last run{" "}
+              State: {status}. Last run{" "}
               {enrichState?.last_enriched_at
                 ? formatAbsoluteUtc(enrichState.last_enriched_at)
                 : "never"}
-              . Quick reads Google and stops. Full also finds links, Instagram,
-              reviews, and writes the description.
+              . Result: {enrichState?.error ? "Error" : status}. Quick reads
+              Google and stops. Full also finds links, Instagram, reviews, and
+              writes the description.
             </p>
           )}
 
@@ -131,6 +132,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
             />
           </div>
 
+          <p className="mb-2 text-sm font-semibold">Run Enrichment</p>
           <div className="flex flex-wrap gap-2">
             {running && !runPending ? (
               <button

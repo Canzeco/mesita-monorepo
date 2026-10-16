@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { photoUris, profileFromGoogle } from "./google-spine.ts";
 
@@ -35,6 +36,10 @@ test("a complete Google place becomes a finished profile without a database key"
   assert.equal(got.patch.google_name, "Casa Luminar");
   assert.equal(got.patch.phone, "+52 55 0000 0000");
   assert.equal(got.patch.city, undefined);
+  assert.equal(got.patch.zone, undefined);
+  assert.equal(got.patch.address, "Av. Ámsterdam 1, CDMX");
+  assert.equal(got.patch.lat, 19.4);
+  assert.equal(got.patch.lng, -99.1);
   assert.deepEqual(got.patch.google_address, {
     formattedAddress: "Av. Ámsterdam 1, CDMX",
     location: { latitude: 19.4, longitude: -99.1 },
@@ -49,6 +54,17 @@ test("a complete Google place becomes a finished profile without a database key"
   assert.equal(got.patch.pitch, "Cocina de mercado en la Condesa.");
   assert.equal("google_place_id" in got.patch, false);
   assert.equal("content_state" in got.patch, false);
+});
+
+test("profileFromGoogle does not call the description model", () => {
+  const src = readFileSync(new URL("./google-spine.ts", import.meta.url), "utf8");
+  const fn = src.slice(
+    src.indexOf("export function profileFromGoogle"),
+    src.indexOf("export async function fetchTimezone"),
+  );
+  assert.equal(fn.includes("describeFromFacts"), false);
+  assert.equal(fn.includes("openai"), false);
+  assert.equal(fn.includes("formattedAddress.split"), false);
 });
 
 test("photo links are https only, ten at most", () => {

@@ -67,7 +67,7 @@ import {
   synthesizePlaceSummaryText,
 } from "../_shared/place-embeddings.ts";
 import { applyInferredMesitaName } from "../_shared/mesita-name-door.ts";
-import { familiesForExactGoogle } from "../_shared/place-taxonomy.ts";
+import { keepAtlasValues } from "../_shared/place-taxonomy.ts";
 import { fetchPlaceTags, inferPlaceTags } from "../_shared/tags.ts";
 import { inferPlaceReservationsLikely } from "../_shared/infer-place-reservations.ts";
 import { loadModelsConfig } from "../_shared/models-config.ts";
@@ -193,8 +193,8 @@ serveEnrichStage("third", async (admin, env, row) => {
     const editorialSummary = asProfileText(parsed?.editorial_summary) ??
       ((place.pitch ?? null) as string | null);
 
-    // Category is already Google's primary type from the spine. Nothing
-    // here remaps it onto a Mesita category. Family is that type's catalog rails.
+    // Category stays the saved Atlas slug. Families are derived from the
+    // category mapping and are not written here.
     const [tagVocabulary, models] = await Promise.all([
       fetchPlaceTags(admin),
       loadModelsConfig(admin),
@@ -203,8 +203,6 @@ serveEnrichStage("third", async (admin, env, row) => {
       ((place.description ?? null) as string | null)?.slice(0, 1500) || null;
     const enricherModel = models.enricherModel;
     const categorySlug = (place.category ?? category) as string | null;
-    const googleFamilies = familiesForExactGoogle(categorySlug);
-    const resolvedFamilies = googleFamilies ?? ["undefined"];
     if (categorySlug) {
       place.category_label = humanizeCategorySlug(categorySlug) ?? categorySlug;
     }
@@ -216,17 +214,23 @@ serveEnrichStage("third", async (admin, env, row) => {
       googleReviewsText,
       serpSummary,
     }, enricherModel);
-    if (inferredTags.length > 0) place.tags = inferredTags;
+    const kept = keepAtlasValues({
+      category: categorySlug,
+      tags: inferredTags,
+      categories: [],
+      tagVocabulary: tagVocabulary.map((tag) => tag.slug),
+    });
+    if (kept.tags.length > 0) place.tags = kept.tags;
     ledger.charge("category_tags", classifyCost);
     sources.category = {
       ok: !!categorySlug,
       slug: categorySlug,
-      source: "google",
+      source: "saved",
     };
     sources.families = {
-      ok: resolvedFamilies.length > 0,
-      slugs: resolvedFamilies,
-      mode: googleFamilies ? "google" : "fallback",
+      ok: true,
+      slugs: [] as string[],
+      mode: "derived",
     };
     sources.tags = {
       ok: inferredTags.length > 0,

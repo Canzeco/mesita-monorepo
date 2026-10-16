@@ -1,16 +1,12 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { inferPlaceCategory } from "../_shared/categories-infer.ts";
 import type { PlaceCategory } from "../_shared/categories.ts";
-import {
-  familiesForAtlasCategory,
-  sanitizeFamilyKeys,
-} from "../_shared/place-taxonomy.ts";
+import { sanitizeFamilyKeys } from "../_shared/place-taxonomy.ts";
 import { optString } from "./place-update-utils.ts";
 
 function familyKeysForCategory(hit: PlaceCategory): string[] | null {
   const live = sanitizeFamilyKeys(hit.family_keys);
-  const keys = live.length > 0 ? live : familiesForAtlasCategory(hit.slug);
-  return keys.length > 0 ? keys : null;
+  return live.length > 0 ? live : null;
 }
 
 export async function resolveCategoryInput(
