@@ -132,29 +132,40 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {ENRICH_ACTIONS.map((action) => {
-              const pending = runPending && pendingDepth === action.depth;
-              const quick = action.depth === "quick";
-              return (
-                <button
-                  key={action.depth}
-                  type="button"
-                  title={action.title}
-                  disabled={runPending || running}
-                  onClick={() => {
-                    if (guardIntent({ kind: "reenrich", run: () => runDepth(action.depth) })) return;
-                    runDepth(action.depth);
-                  }}
-                  className={
-                    quick
-                      ? "border-border text-foreground hover:border-foreground/40 inline-flex h-10 items-center rounded-full border bg-card px-5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50"
-                      : "bg-foreground text-paper inline-flex h-10 items-center rounded-full px-5 text-sm font-semibold transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                  }
-                >
-                  {pending ? "Starting…" : running ? "Enriching…" : action.label}
-                </button>
-              );
-            })}
+            {running && !runPending ? (
+              <button
+                type="button"
+                disabled
+                aria-busy="true"
+                className="bg-foreground text-paper inline-flex h-10 items-center rounded-full px-5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Enriching…
+              </button>
+            ) : (
+              ENRICH_ACTIONS.map((action) => {
+                const pending = runPending && pendingDepth === action.depth;
+                const quick = action.depth === "quick";
+                return (
+                  <button
+                    key={action.depth}
+                    type="button"
+                    title={action.title}
+                    disabled={runPending || running}
+                    onClick={() => {
+                      if (guardIntent({ kind: "reenrich", run: () => runDepth(action.depth) })) return;
+                      runDepth(action.depth);
+                    }}
+                    className={
+                      quick
+                        ? "border-border text-foreground hover:border-foreground/40 inline-flex h-10 items-center rounded-full border bg-card px-5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50"
+                        : "bg-foreground text-paper inline-flex h-10 items-center rounded-full px-5 text-sm font-semibold transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                    }
+                  >
+                    {pending ? "Starting…" : action.label}
+                  </button>
+                );
+              })
+            )}
           </div>
 
           <p className="mt-2 min-h-4 type-label" aria-live="polite">
