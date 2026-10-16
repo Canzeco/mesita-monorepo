@@ -7,6 +7,7 @@
 
 import {
   APIFY_ACTORS,
+  apifyActorError,
   instagramHandleFromUrl,
   runApifyActor,
 } from "./apify.ts";
@@ -169,8 +170,9 @@ export async function verifyInstagram(
     REVIEW_VERIFY_TIMEOUT_MS,
   );
   if (run.error) {
-    logMiss("instagram", run.error);
-    return notFound(run.error);
+    const reason = apifyActorError(run.error);
+    logMiss("instagram", reason);
+    return notFound(reason);
   }
   const profile = run.items?.[0];
   if (!profile || isDeadIgStub(profile)) return notFound("not_a_profile");
@@ -201,8 +203,9 @@ export async function verifyFacebook(
     REVIEW_VERIFY_TIMEOUT_MS,
   );
   if (run.error) {
-    logMiss("facebook", run.error);
-    return notFound(run.error);
+    const reason = apifyActorError(run.error);
+    logMiss("facebook", reason);
+    return notFound(reason);
   }
   const page = run.items?.[0];
   if (!page) return notFound("no_page");

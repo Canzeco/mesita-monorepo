@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { apifyBillingDetail } from "./apify.ts";
+import { apifyActorError, apifyBillingDetail } from "./apify.ts";
 import { discoveryRecordedOk } from "./enrich-channel-discovery.ts";
 import { igProfileMatchesPlace } from "./enrich-instagram-match.ts";
 import { firecrawlSearch } from "./firecrawl-search.ts";
@@ -11,6 +11,11 @@ Deno.test("Apify's invoice refusal is named, and any other error is not", () => 
   );
   assertEquals(apifyBillingDetail("actor timed out"), null);
   assertEquals(apifyBillingDetail(null), null);
+  assertEquals(
+    apifyActorError('{"error":{"message":"Too many outstanding invoices"}}'),
+    "Apify refused the call: too many outstanding invoices.",
+  );
+  assertEquals(apifyActorError("client timeout after 20000ms"), "client timeout after 20000ms");
 });
 
 Deno.test("discovery.ok fails only when the Resolver was called and did not answer", () => {

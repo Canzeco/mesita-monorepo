@@ -82,6 +82,15 @@ export function apifyBillingDetail(text: string | null | undefined): string | nu
   return null;
 }
 
+/** Operator-facing text for a failed actor run (billing first, then a short body). */
+export function apifyActorError(text: string | null | undefined): string {
+  const billing = apifyBillingDetail(text);
+  if (billing) return billing;
+  const trimmed = text?.replace(/\s+/g, " ").trim() ?? "";
+  if (!trimmed) return "Apify did not return data.";
+  return trimmed.length > 160 ? `${trimmed.slice(0, 157)}…` : trimmed;
+}
+
 // Extracts a bare Instagram handle from a profile URL. Returns null for
 // non-profile URLs (posts, reels, explore) so we don't scrape garbage.
 export function instagramHandleFromUrl(url: string | null | undefined): string | null {

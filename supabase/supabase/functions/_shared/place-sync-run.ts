@@ -1,5 +1,6 @@
 // Adapters around the one Sync. Callers decide whether to persist.
 
+import { apifyActorError, apifyBillingDetail } from "./apify.ts";
 import { gatherGoogleMaps } from "./enrich-google.ts";
 import { googleReviewListFromScrape } from "./enrich-google-review-snippets.ts";
 import {
@@ -44,7 +45,13 @@ export async function runPlaceSync(links: SyncLinks): Promise<PlaceSyncResult> {
         });
         const error = typeof gathered.diag.error === "string" ? gathered.diag.error : null;
         const listed = googleReviewListFromScrape(gathered.reviews, error);
-        if (!listed.ok) return { ok: false, error: "Google reviews could not be loaded" };
+        if (!listed.ok) {
+          return {
+            ok: false,
+            error: apifyBillingDetail(error) ??
+              (error ? apifyActorError(error) : "Google reviews could not be loaded"),
+          };
+        }
         return { ok: true, value: listed.list ?? [] };
       },
     },
