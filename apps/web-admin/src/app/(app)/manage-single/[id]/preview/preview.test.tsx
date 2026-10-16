@@ -115,6 +115,22 @@ describe("admin member preview", () => {
     expect(html).not.toContain("<a ");
   });
 
+  it("renders the consumer place module, and a package change deploys both apps", () => {
+    const preview = readFileSync(join(__dirname, "PlacePreview.tsx"), "utf8");
+    const consumer = readFileSync(
+      join(ROOT, "apps/web-consumer/src/components/consumer/PlaceDetailPageBody.tsx"),
+      "utf8",
+    );
+    const adminIgnore = readFileSync(join(ROOT, "apps/web-admin/vercel.json"), "utf8");
+    const consumerIgnore = readFileSync(join(ROOT, "apps/web-consumer/vercel.json"), "utf8");
+    for (const src of [preview, consumer]) {
+      expect(src).toContain('from "@mesita/place-profile"');
+      expect(src).not.toContain("function PlaceProfile");
+    }
+    expect(adminIgnore).toContain("packages/place-profile");
+    expect(consumerIgnore).toContain("packages/place-profile");
+  });
+
   it("keeps Profile mounted and the phone photos allowed", () => {
     const scroll = readFileSync(join(__dirname, "../PlaceScroll.tsx"), "utf8");
     const profilePage = readFileSync(join(__dirname, "../profile/page.tsx"), "utf8");
