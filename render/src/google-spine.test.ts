@@ -67,6 +67,20 @@ test("profileFromGoogle does not call the description model", () => {
   assert.equal(fn.includes("formattedAddress.split"), false);
 });
 
+test("a Google summary longer than 500 characters is cut there", () => {
+  const got = profileFromGoogle({
+    ...PLACE,
+    editorialSummary: { text: "A".repeat(800) },
+    generativeSummary: { overview: { text: "B".repeat(900) } },
+  }, "ChIJ-test");
+  assert.equal(got.ok, true);
+  if (!got.ok) return;
+  assert.equal(got.description?.length, 500);
+  assert.equal(got.description, "A".repeat(500));
+  assert.equal(got.patch.pitch, "A".repeat(500));
+  assert.equal(got.patch.story, "B".repeat(500));
+});
+
 test("photo links are https only, ten at most", () => {
   const bodies = [
     { photoUri: "https://lh3.googleusercontent.com/a" },

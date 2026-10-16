@@ -198,7 +198,7 @@ type Form = {
 // exist only so placeToForm can be called before the caller passes them.
 const FALLBACK_LIMITS: PlaceFieldLimits = {
   placeNameMax: 80,
-  descriptionMax: 1000,
+  descriptionMax: 500,
   tagsPerPlaceMax: 20,
   photosMax: 10,
 };

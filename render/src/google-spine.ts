@@ -77,7 +77,7 @@ export function profileFromGoogle(details: GooglePlace, requestedId: string): Go
 
   const editorial = details.editorialSummary?.text?.trim() ?? "";
   const generative = details.generativeSummary?.overview?.text?.trim() ?? "";
-  const description = (editorial || generative).slice(0, 1000) || null;
+  const description = capPresentation(editorial || generative);
   const phone = (details.internationalPhoneNumber || details.nationalPhoneNumber || "").trim();
   const channel = channelFromUrl(details.websiteUri);
   const website = channel?.key === "website_url" ? channel.url : null;
@@ -123,8 +123,8 @@ export function profileFromGoogle(details: GooglePlace, requestedId: string): Go
   if (closesAt) patch.closes_at = closesAt;
   // Places returns at most five reviews. The review list is Apify's, written
   // by buildEnrichment. Copying these five would be the list the guest sees.
-  if (editorial) patch.pitch = editorial.slice(0, 1000);
-  if (generative) patch.story = generative.slice(0, 1000);
+  if (editorial) patch.pitch = capPresentation(editorial);
+  if (generative) patch.story = capPresentation(generative);
 
   const componentFacts = (details.addressComponents ?? []).flatMap((row) => {
     const key = (row.types ?? []).find((type) => type && type !== "political");
@@ -216,7 +216,7 @@ export async function describeFromFacts(facts: string, apiKey: string): Promise<
         {
           role: "system",
           content:
-            "Write a place description in Spanish from the facts given. Use only those facts. Do not invent hours, prices, or a menu. At most 800 characters.",
+            "Write a place description in English from the facts given. Use only those facts. Do not invent hours, prices, or a menu. At most 500 characters.",
         },
         { role: "user", content: facts },
       ],
@@ -227,5 +227,13 @@ export async function describeFromFacts(facts: string, apiKey: string): Promise<
     error?: { message?: string };
   } | null;
   if (!res.ok) throw new Error(body?.error?.message || `OpenAI did not write a description (${res.status})`);
-  return (body?.choices?.[0]?.message?.content ?? "").trim().slice(0, 1000);
+  return capPresentation(body?.choices?.[0]?.message?.content ?? "") ?? "";
+}
+
+/** Guest Presentation ceiling. Same number as ENRICH_FIELD_LIMITS.description. */
+export const PRESENTATION_MAX = 500;
+
+export function capPresentation(text: string): string | null {
+  const trimmed = text.trim().slice(0, PRESENTATION_MAX);
+  return trimmed || null;
 }

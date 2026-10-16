@@ -16,6 +16,7 @@ import { validateProfilePatch, writePlace } from "../_shared/place-doc.ts";
 import { mirrorPlacePhotos } from "../_shared/store-place-images.ts";
 import { timingSafeEqual } from "../_shared/timing-safe-equal.ts";
 import { enrichmentCommit, enrichmentConflicts } from "./commit.ts";
+import { fillAtlasProfile } from "./synthesize-profile.ts";
 import { withoutFoundFlags } from "../_shared/profile-patch-found.ts";
 import { galleryUrls } from "./photos.ts";
 import { contentStateAfterStop, enrichmentStop } from "./stop.ts";
@@ -106,7 +107,7 @@ Deno.serve(async (req) => {
   const validated = validateProfilePatch(commit.patch);
   if (!validated.ok) return json({ ok: false, error: validated.error }, 400);
 
-  let patch = validated.patch;
+  let patch = await fillAtlasProfile(admin, commit.placeId, validated.patch);
   const gallery = galleryUrls(patch.photos);
   if (gallery.length === 0) {
     const { photos: _drop, ...without } = patch;

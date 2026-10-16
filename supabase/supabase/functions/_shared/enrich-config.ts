@@ -41,9 +41,9 @@ export const PHOTO_CEILING = 50;
 
 // Presentation ceiling (ENRICH_FIELD_LIMITS.description). The word target sits
 // under it at ~7 chars/word (word + space) so the model lands short and the
-// hard slice rarely cuts a sentence.
+// hard slice rarely cuts a sentence. 60 words is about 420 characters.
 export const ENRICH_DESCRIPTION_MAX = ENRICH_FIELD_LIMITS.description.max;
-export const ENRICH_DESCRIPTION_TARGET_WORDS = 130;
+export const ENRICH_DESCRIPTION_TARGET_WORDS = 60;
 
 // Per-call cost estimates (USD), from each provider's PUBLISHED price list
 // (verified 2026-07-07). MIRRORS the admin cost calculator's rate card
