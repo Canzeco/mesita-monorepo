@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { PlaceProfile } from "./components/PlaceProfile";
+import { SoonScreen } from "./components/place-detail/soon-screen";
 import { placeRowToDetail } from "./place-to-detail";
 import type { PlaceDetail } from "./place-detail";
 
@@ -33,6 +34,7 @@ describe("member preview edges", () => {
     );
     expect(html).toContain("Enrich");
     expect(html).not.toContain("Overview");
+    expect(html).not.toContain("Rewards");
     expect(html).toContain("Vote to enrich");
   });
 
@@ -58,6 +60,15 @@ describe("member preview edges", () => {
     );
     expect(html).toContain("Lupita");
     expect(html).toContain("Overview");
+    expect(html).toContain("Menus");
+    expect(html).toContain("Rewards");
+    expect(html).toContain("Soon");
+    expect(renderToStaticMarkup(<SoonScreen title="Menus" />)).toContain(
+      "Menus is coming soon",
+    );
+    expect(renderToStaticMarkup(<SoonScreen title="Rewards" />)).toContain(
+      "Rewards is coming soon",
+    );
   });
 
   it("renders no outbound href when links and callbacks are absent", () => {
