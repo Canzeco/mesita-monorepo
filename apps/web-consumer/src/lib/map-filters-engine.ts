@@ -84,17 +84,21 @@ export type PlacesScopeStop<K extends string> = {
   hint: string;
 };
 
-/** Google review-count floor. Mirror `_shared/map-engine.ts`. */
-export const MAP_MIN_REVIEW_STOPS = [0, 10, 100, 1000, 10000] as const;
+/**
+ * Google review-count floor: 0+ · 10+ · 100+ · 1,000+, default 100+
+ * (MESITA-2298). Mirror `_shared/map-engine.ts`. A count of people, never
+ * stars; applied after Google answers, and never to Mesita Selected.
+ */
+export const MAP_MIN_REVIEW_STOPS = [0, 10, 100, 1000] as const;
 export type MapMinReviews = (typeof MAP_MIN_REVIEW_STOPS)[number];
-const MAP_MIN_REVIEWS_DEFAULT: MapMinReviews = 0;
+const MAP_MIN_REVIEWS_DEFAULT: MapMinReviews = 100;
 
 export type MapFilters = {
   /** Which of the three nested sets. Default is the inner ring. */
   placesScope: MapPlacesScope;
   /** Family: the fifteen guest families; empty = no constraint. */
   familyKeys: FamilyKey[];
-  /** Minimum Google reviews. 0 = any. */
+  /** Minimum Google reviews. 0 = any; the default is 100. */
   minReviews: MapMinReviews;
 };
 
@@ -106,7 +110,8 @@ export const MAP_FILTER_DEFAULTS: MapFilters = {
 
 export function clampMinReviews(value: unknown): MapMinReviews {
   const n = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(n) || n <= 0) return MAP_MIN_REVIEWS_DEFAULT;
+  if (!Number.isFinite(n)) return MAP_MIN_REVIEWS_DEFAULT;
+  if (n <= 0) return 0;
   let best: MapMinReviews = MAP_MIN_REVIEW_STOPS[MAP_MIN_REVIEW_STOPS.length - 1];
   let bestD = Number.POSITIVE_INFINITY;
   for (const stop of MAP_MIN_REVIEW_STOPS) {

@@ -13,11 +13,11 @@
 // Map would not show). Pay / Home catalog keep `discovery_config.filters`.
 // A SIGNAL DEMOTES; a MAP FLOOR EXCLUDES.
 
-import type { MapConfig, DiscoveryFilters } from "./discovery-config.ts";
+import type { DiscoveryFilters, MapConfig } from "./discovery-config.ts";
 import {
   NEARBY_TYPE_KEYS,
-  SUPER_PARAM_KEYS,
   type NearbyTypeKey,
+  SUPER_PARAM_KEYS,
   type SuperParamKey,
 } from "./discovery-config.ts";
 import { nearbyTypesForSupers } from "./google-type-super.ts";
@@ -27,10 +27,7 @@ import {
   type SignalPlace,
 } from "./discovery-signals.ts";
 import type { NearbyHit, PlacesScope } from "./nearby-places.ts";
-import {
-  familiesForGoogleType,
-  type EligibilityResult,
-} from "./sourcing.ts";
+import { type EligibilityResult, familiesForGoogleType } from "./sourcing.ts";
 import { familiesForAtlasCategory } from "./place-taxonomy.ts";
 
 export type ListedMapRow = {
@@ -82,13 +79,14 @@ export function listedMapFilters(
  * is assembled, never as a Nearby API param. Stops match the Filters
  * sheet. 0 = no extra guest cut; operator floors still bind underneath.
  */
-export const MAP_MIN_REVIEW_STOPS = [0, 10, 100, 1000, 10000] as const;
+export const MAP_MIN_REVIEW_STOPS = [0, 10, 100, 1000] as const;
 export type MapMinReviews = (typeof MAP_MIN_REVIEW_STOPS)[number];
 
 export function parseMapMinReviews(value: unknown): MapMinReviews {
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n) || n <= 0) return 0;
-  let best: MapMinReviews = MAP_MIN_REVIEW_STOPS[MAP_MIN_REVIEW_STOPS.length - 1];
+  let best: MapMinReviews =
+    MAP_MIN_REVIEW_STOPS[MAP_MIN_REVIEW_STOPS.length - 1];
   let bestD = Number.POSITIVE_INFINITY;
   for (const stop of MAP_MIN_REVIEW_STOPS) {
     const d = Math.abs(stop - n);
@@ -119,7 +117,9 @@ export function admitGuestMinReviews<T extends ListedMapRow>(
     listed: listed.filter((row) =>
       clearsMinReviews(row.google_review_count, minReviews)
     ),
-    google: google.filter((hit) => clearsMinReviews(hit.reviewCount, minReviews)),
+    google: google.filter((hit) =>
+      clearsMinReviews(hit.reviewCount, minReviews)
+    ),
   };
 }
 
@@ -152,7 +152,10 @@ export function listedClearsMapPopularity(
 ): boolean {
   if (!(map.minPopularity > 0)) return true;
   const score = popularity(
-    popPlace(place.google_stars_overall ?? null, place.google_review_count ?? null),
+    popPlace(
+      place.google_stars_overall ?? null,
+      place.google_review_count ?? null,
+    ),
     undefined,
     params,
   );
@@ -215,7 +218,7 @@ export function admitSwipeCatalog<T extends SwipeListedRow>(
   params?: SignalParamBag,
 ): T[] {
   const typed = listed.filter((row) =>
-    primaryTypeClearsMapTypes(row.category, map),
+    primaryTypeClearsMapTypes(row.category, map)
   );
   return admitMapCatalog(typed, [], map, params).listed;
 }
@@ -259,11 +262,15 @@ export function evaluatePlaceForMap(
       reason: "This kind of place isn't in Discovery › Map.",
     };
   }
-  if (map.minRating > 0 && (signals.rating === null || signals.rating < map.minRating)) {
+  if (
+    map.minRating > 0 &&
+    (signals.rating === null || signals.rating < map.minRating)
+  ) {
     return {
       eligible: false,
       code: "below_min_rating",
-      reason: `This place doesn't meet Mesita's minimum Google rating (${map.minRating}★).`,
+      reason:
+        `This place doesn't meet Mesita's minimum Google rating (${map.minRating}★).`,
     };
   }
   if (
@@ -273,7 +280,8 @@ export function evaluatePlaceForMap(
     return {
       eligible: false,
       code: "below_min_reviews",
-      reason: `This place doesn't have enough Google reviews yet (min ${map.minReviews}).`,
+      reason:
+        `This place doesn't have enough Google reviews yet (min ${map.minReviews}).`,
     };
   }
   if (
@@ -289,7 +297,8 @@ export function evaluatePlaceForMap(
     return {
       eligible: false,
       code: "below_min_popularity",
-      reason: `This place doesn't meet Mesita's minimum popularity (${map.minPopularity}).`,
+      reason:
+        `This place doesn't meet Mesita's minimum popularity (${map.minPopularity}).`,
     };
   }
   return { eligible: true };

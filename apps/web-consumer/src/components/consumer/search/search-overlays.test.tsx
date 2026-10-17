@@ -218,10 +218,11 @@ describe("Search map's top row is the query bar plus labelled Filters", () => {
     const popularity = read("SearchPopularity.tsx");
     expect(sheet).toContain('label="Minimum number of Google reviews"');
     expect(sheet).not.toContain('label="Popularity"');
+    expect(popularity).toContain('"0+"');
     expect(popularity).toContain('"10+"');
     expect(popularity).toContain('"100+"');
-    expect(popularity).toContain('"1K+"');
-    expect(popularity).toContain('"10K+"');
+    expect(popularity).toContain('"1,000+"');
+    expect(popularity).not.toContain('"10K+"');
     for (const gone of ["SearchResultLimit.tsx", "SearchCategoryRow.tsx"]) {
       expect(existsSync(join(SEARCH_DIR, gone)), gone).toBe(false);
     }
