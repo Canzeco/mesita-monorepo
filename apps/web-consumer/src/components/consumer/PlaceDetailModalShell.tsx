@@ -37,7 +37,11 @@ export function PlaceDetailModalShell({
     <>
       <SlideOverHeader
         title={
-          <PlaceDetailTitle placeName={place.name} className="flex-none" />
+          <PlaceDetailTitle
+            placeName={place.name}
+            enriched={place.is_enriched}
+            className="flex-none"
+          />
         }
       />
       {/*
@@ -48,9 +52,7 @@ export function PlaceDetailModalShell({
         `position: sticky top-0` on the tab strip ends up anchored to a
         scroll container that isn't actually scrolling.
       */}
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        {children}
-      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
       <PlaceActionBar place={place} onReserve={onReserve} />
     </>
   );

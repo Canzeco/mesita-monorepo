@@ -3,7 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Heart, Star } from "lucide-react";
+import { EnrichedBadge } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
+import { isEnrichedPlace } from "@/lib/place-enriched";
 import { placeHref } from "@/lib/place-route";
 import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 import { cn, firstInitial, formatRating } from "@/lib/utils";
@@ -18,7 +20,8 @@ function readableKind(place: Place): string | null {
  * One place in a family rail, in the OpenTable shape: a rounded
  * photo, the name with the save heart beside it, then price, the Google
  * category, and the Google stars. No zone. The row is about 2.5 of
- * these wide. Favs does not use this tile.
+ * these wide. An enriched place wears the Enriched mark after its name
+ * (MESITA-2296). Favs does not use this tile.
  */
 export function CatalogTile({
   place,
@@ -68,8 +71,11 @@ export function CatalogTile({
             href={href}
             className="focus-visible:ring-primary min-w-0 flex-1 py-2 outline-none focus-visible:ring-2 focus-visible:ring-inset"
           >
-            <p className="font-display text-foreground truncate text-sm leading-tight font-semibold tracking-tight">
-              {place.name}
+            <p className="font-display text-foreground flex min-w-0 items-center gap-1 text-sm leading-tight font-semibold tracking-tight">
+              <span className="truncate">{place.name}</span>
+              {isEnrichedPlace(place) ? (
+                <EnrichedBadge className="h-3.5 w-3.5" />
+              ) : null}
             </p>
             {facts.length > 0 ? (
               <p className="text-muted-foreground mt-0.5 flex min-w-0 items-center gap-1 text-xs leading-tight">
