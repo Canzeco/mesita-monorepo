@@ -112,25 +112,3 @@ export async function updateDiscoveryConfig(
   return { ok: true, config: coerceConfig(r.data.config), updatedAt: r.data.updatedAt ?? null };
 }
 
-export type SignalPreviewRow = { label: string; score: number; note: string };
-export type SignalPreviewCurvePoint = { km: number; score: number };
-
-export type SignalPreviewRequest = {
-  signal: "name" | "proximity" | "timing" | "family" | "popularity" | "enrichment" | "randomness";
-  maxKm?: number;
-  samplesKm?: number[];
-  closedFloor?: number;
-  query?: string;
-  names?: string[];
-};
-
-export async function previewDiscoverySignal(
-  body: SignalPreviewRequest,
-): Promise<ActionResult<{ rows: SignalPreviewRow[]; curve?: SignalPreviewCurvePoint[] }>> {
-  const r = await efInvoke<{ rows?: SignalPreviewRow[]; curve?: SignalPreviewCurvePoint[] }>(
-    "admin-web-preview-signals",
-    body,
-  );
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, rows: r.data.rows ?? [], curve: r.data.curve };
-}
