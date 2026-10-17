@@ -108,16 +108,19 @@ describe("one place-grid geometry, shared", () => {
   });
 });
 
-// Places' rails are deliberately NOT a PLACE_GRID caller — horizontal rails
-// under category headings answer a different question from a vertical grid.
-// If they ever adopt the constants this is the deliberate edit that says so.
-describe("Places keeps its rails", () => {
-  it("scrolls sideways and does not use the grid", () => {
+// Places is its own wall. Favs stays on the rounded 4:3 tile.
+describe("Places is a packed wall", () => {
+  it("fills two columns and does not scroll sideways", () => {
     const rails = read("components/consumer/home/CatalogRails.tsx");
-    expect(rails).not.toContain("PLACE_GRID_CLASS");
-    expect(rails).toContain("overflow-x-auto");
-    expect(rails).toContain("placesFeed");
+    const tile = read("components/consumer/home/CatalogTile.tsx");
+    expect(rails).toContain("catalogWall");
+    expect(rails).toContain("grid-cols-2");
+    expect(rails).not.toContain("overflow-x-auto");
+    expect(rails).not.toContain("FavoriteTile");
     expect(rails).not.toContain("ArrowUpDown");
+    expect(tile).toContain("aspect-[1/2]");
+    expect(tile).toContain("aspect-square");
+    expect(tile).not.toContain("rounded-2xl");
   });
 });
 
