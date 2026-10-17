@@ -13,7 +13,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { validateProfilePatch, writePlace } from "../_shared/place-doc.ts";
-import { mirrorPlacePhotos } from "../_shared/store-place-images.ts";
+import { mirrorPlacePhotos, saveGalleryAnalyses } from "../_shared/store-place-images.ts";
+import { pairedAnalyses } from "../_shared/photo-analysis.ts";
 import { timingSafeEqual } from "../_shared/timing-safe-equal.ts";
 import { enrichmentCommit, enrichmentConflicts } from "./commit.ts";
 import { fillAtlasProfile } from "./synthesize-profile.ts";
@@ -109,15 +110,19 @@ Deno.serve(async (req) => {
 
   let patch = await fillAtlasProfile(admin, commit.placeId, validated.patch);
   const gallery = galleryUrls(patch.photos);
+  let stored: { sourceUrl: string; publicUrl: string }[] = [];
   if (gallery.length === 0) {
     const { photos: _drop, ...without } = patch;
     patch = without;
   } else if (!commit.mirrorPhotos) {
     patch = { ...patch, photos: gallery };
+    stored = gallery.map((url) => ({ sourceUrl: url, publicUrl: url }));
   } else {
     const durable = await mirrorPlacePhotos(admin, envRes.env.url, gallery);
-    if (durable.length > 0) patch = { ...patch, photos: durable };
-    else {
+    if (durable.length > 0) {
+      patch = { ...patch, photos: durable.map((row) => row.publicUrl) };
+      stored = durable;
+    } else {
       const { photos: _drop, ...without } = patch;
       patch = without;
     }
@@ -139,5 +144,10 @@ Deno.serve(async (req) => {
     });
     if (!flags.ok) return json({ ok: false, error: flags.error }, 500);
   }
+  await saveGalleryAnalyses(
+    admin,
+    commit.placeId,
+    pairedAnalyses(stored, commit.photoAnalyses),
+  );
   return json({ ok: true, placeId: commit.placeId, content_state: "ready" });
 });
