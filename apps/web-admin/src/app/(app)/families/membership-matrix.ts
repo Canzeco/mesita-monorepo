@@ -34,5 +34,7 @@ export function googleTypeHaystack(slug: string): string {
 }
 
 export function googleCategoryLabel(slug: string): string {
-  return slug.replaceAll("_", " ");
+  return slug
+    .replaceAll("_", " ")
+    .replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
 }
