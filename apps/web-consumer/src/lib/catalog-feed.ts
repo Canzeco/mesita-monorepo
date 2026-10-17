@@ -2,8 +2,8 @@ import type { CatalogRail } from "@/lib/api/places";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 
 /**
- * The Places feed is always one universal carousel plus one carousel per
- * guest family. A family the server left out is still a row, with no places.
+ * The Places feed is always one universal rail plus one rail per
+ * guest family. A family the server left out is still a rail, with no places.
  */
 export function placesFeed(rails: readonly CatalogRail[]): CatalogRail[] {
   const byKey = new Map(rails.map((rail) => [rail.key, rail]));

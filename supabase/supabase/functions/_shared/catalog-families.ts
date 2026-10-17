@@ -1,5 +1,5 @@
 // The guest catalog is these fifteen families. Not fourteen, not sixteen.
-// Undefined is the leftover and is not a carousel.
+// Undefined is the leftover and is not a rail.
 //
 // A Google type sits on a family only when that rail is a different trip.
 // A precise rail takes the type off the broader one: a pizzeria is Pizza,

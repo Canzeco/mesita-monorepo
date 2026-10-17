@@ -15,7 +15,7 @@ function readableKind(place: Place): string | null {
 }
 
 /**
- * One place in a family carousel, in the OpenTable shape: a rounded
+ * One place in a family rail, in the OpenTable shape: a rounded
  * photo, the name with the save heart beside it, then price, the Google
  * category, and the Google stars. No zone. The row is about 2.5 of
  * these wide. Favs does not use this tile.

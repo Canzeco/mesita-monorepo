@@ -1,5 +1,5 @@
 // Fifteen guest families, plus Undefined last. Undefined is not a filter.
-// Each guest family has one emoji. That mark is the carousel title and the
+// Each guest family has one emoji. That mark is the rail title and the
 // same mark in the admin console.
 
 export type FamilyKey =

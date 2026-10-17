@@ -3,7 +3,7 @@
 //   · Places — Mesita Enriched Places, then Mesita Places. Default is the
 //     inner ring. Google Places is not a catalog set.
 //
-// Family is not a catalog cut. Every guest family is its own carousel,
+// Family is not a catalog cut. Every guest family is its own rail,
 // after All. The Google review floor belongs to Search.
 // Location is not a predicate: it only grants coordinates for ranking.
 
