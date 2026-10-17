@@ -1,0 +1,134 @@
+/**
+ * @vitest-environment happy-dom
+ */
+import { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { afterEach, describe, expect, it } from "vitest";
+import { PlaceProfile } from "./components/PlaceProfile";
+import { placeRowToDetail } from "./place-to-detail";
+
+(
+  globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true;
+
+let root: Root | null = null;
+
+afterEach(() => {
+  act(() => {
+    root?.unmount();
+  });
+  root = null;
+  document.body.innerHTML = "";
+});
+
+function review(author: string, rating: number, day: number) {
+  return {
+    author,
+    rating,
+    text: `${author} liked the room.`,
+    published: `2026-10-${String(day).padStart(2, "0")}`,
+  };
+}
+
+function mount() {
+  document.body.innerHTML = `<div id="host"></div>`;
+  const host = document.getElementById("host");
+  if (!host) throw new Error("missing host");
+  root = createRoot(host);
+  const story = "A short presentation that stays fully visible. ".repeat(8);
+  const place = placeRowToDetail({
+    id: "p-1",
+    mesita_name: "Strana",
+    enriched_at: "2026-01-01T00:00:00Z",
+    description: story,
+    google_stars_overall: 3.8,
+    google_review_count: 484,
+    instagram_followers_count: 4321,
+    facebook_followers: 8900,
+    google_reviews: [
+      review("R1", 1, 7),
+      review("R2", 2, 6),
+      review("R3", 3, 5),
+      review("R4", 4, 4),
+      review("R5", 5, 3),
+      review("R6", 1, 2),
+      review("R7", 1, 1),
+    ],
+  });
+  act(() => {
+    root?.render(<PlaceProfile place={place} />);
+  });
+}
+
+function clickNamed(label: string) {
+  const button = [...document.querySelectorAll("button")].find((el) =>
+    el.textContent?.includes(label),
+  );
+  if (!button) throw new Error(`missing button ${label}`);
+  act(() => {
+    button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+}
+
+describe("Reviews is a vertical list", () => {
+  it("keeps the channel counts on Overview and hides them on Reviews", () => {
+    mount();
+    const overview = document.body.textContent ?? "";
+    expect(overview).toContain("3.8");
+    expect(overview).toContain("484 Google");
+    expect(overview).toContain("4.3K");
+    expect(overview).toContain("8.9K");
+    expect(overview).toContain("A short presentation");
+    expect(overview).not.toContain("Show more");
+    expect(overview).toContain("Save");
+    expect(overview).toContain("Contact");
+    expect(overview).toContain("Share");
+
+    clickNamed("Reviews");
+    const reviews = document.body.textContent ?? "";
+    expect(reviews).not.toContain("3.8");
+    expect(reviews).not.toContain("484 Google");
+    expect(reviews).not.toContain("4.3K");
+    expect(reviews).not.toContain("8.9K");
+    expect(reviews).not.toContain("Google Summary");
+    expect(reviews).not.toContain("Instagram Summary");
+    expect(reviews).not.toContain("Facebook Summary");
+    expect(reviews).toContain("Save");
+    expect(reviews).toContain("Contact");
+    expect(reviews).toContain("Share");
+    expect(reviews).toContain("Newest");
+    expect(reviews).toContain("Highest");
+    expect(reviews).toContain("Lowest");
+  });
+
+  it("shows a first batch, then Show more reveals the next reviews", () => {
+    mount();
+    clickNamed("Reviews");
+    const html = document.body.innerHTML;
+    expect(html).not.toContain("overflow-x-auto");
+    expect(html).not.toContain("w-72");
+    expect(html).not.toContain("snap-start");
+    expect(html).toContain("flex-col");
+
+    let text = document.body.textContent ?? "";
+    for (const name of ["R1", "R2", "R3", "R4", "R5"]) {
+      expect(text).toContain(name);
+    }
+    expect(text).not.toContain("R6");
+    expect(text).not.toContain("R7");
+    expect(text).toContain("Show more");
+
+    clickNamed("Show more");
+    text = document.body.textContent ?? "";
+    expect(text).toContain("R6");
+    expect(text).toContain("R7");
+    expect(text).not.toContain("Show more");
+
+    clickNamed("Highest");
+    text = document.body.textContent ?? "";
+    expect(text.indexOf("R5")).toBeGreaterThan(-1);
+    expect(text.indexOf("R5")).toBeLessThan(text.indexOf("R4"));
+    expect(text).not.toContain("R6");
+    expect(text).toContain("Show more");
+  });
+});

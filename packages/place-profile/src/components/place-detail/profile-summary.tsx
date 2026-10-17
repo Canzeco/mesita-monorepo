@@ -26,9 +26,12 @@ import {
 export function ProfileSummary({
   place,
   actions,
+  showChannelStats = true,
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
+  /** Google stars and the Instagram / Facebook counts. Off on Reviews. */
+  showChannelStats?: boolean;
 }) {
   // decision: Pato — name in header; photo · Google · IG · Facebook; then
   // swipe-style tags: category · price · zone · distance · hours (MESITA-561).
@@ -57,18 +60,20 @@ export function ProfileSummary({
     <section className="border-border bg-card flex flex-col gap-3 border-b px-4 pt-3 pb-4">
       <div className="flex items-center gap-4">
         <ProfilePhoto place={place} />
-        <div className="grid min-w-0 flex-1 grid-cols-3 gap-1">
-          {stats.map((stat) => (
-            <ProfileStat
-              key={stat.key}
-              value={stat.value}
-              label={stat.label}
-              icon={channelStatIcon(stat)}
-              mention={stat.mention}
-              name={stat.name}
-            />
-          ))}
-        </div>
+        {showChannelStats && (
+          <div className="grid min-w-0 flex-1 grid-cols-3 gap-1">
+            {stats.map((stat) => (
+              <ProfileStat
+                key={stat.key}
+                value={stat.value}
+                label={stat.label}
+                icon={channelStatIcon(stat)}
+                mention={stat.mention}
+                name={stat.name}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* decision: Pato — when the Enricher is still building the profile an

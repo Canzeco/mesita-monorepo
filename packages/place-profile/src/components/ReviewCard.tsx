@@ -25,7 +25,7 @@ export function ReviewCard({
   const [expanded, setExpanded] = useState(false);
   const isLong = review.quote.length > LONG_QUOTE_THRESHOLD;
   return (
-    <article className="bg-background flex w-72 shrink-0 snap-start flex-col gap-3 rounded-2xl p-4">
+    <article className="bg-background flex w-full flex-col gap-3 rounded-2xl p-4">
       <Header
         avatar={
           <div className="bg-muted text-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold">
