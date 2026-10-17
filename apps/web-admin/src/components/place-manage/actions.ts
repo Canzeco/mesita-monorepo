@@ -319,33 +319,6 @@ export async function setPlaceListed(
   };
 }
 
-/** Operator Active (State box). Writes business_state. Active off also
- *  unlists — guests disappear in the same apply. Active on does not list. */
-export async function setPlaceActive(
-  placeId: string,
-  active: boolean,
-): Promise<Result<AdminPlace>> {
-  const r = await efInvoke<{
-    place: AdminPlace;
-    active?: boolean;
-    listed?: boolean;
-    business_state?: string | null;
-    state?: string | null;
-  }>("admin-web-set-place-active", { placeId, active });
-  if (!r.ok) return { ok: false, error: r.error };
-  return {
-    ok: true,
-    data: {
-      ...r.data.place,
-      listed: r.data.listed ?? r.data.place.listed,
-      business_state: r.data.business_state ?? r.data.place.business_state,
-      // Stamp state so listedFromState sees paused after Active off, even if
-      // an older place payload omitted it.
-      state: r.data.state ?? r.data.place.state,
-    },
-  };
-}
-
 // ── Profile vocabulary ───────────────────────────────────────────────────
 // Arrives on admin-web-get-overview, the one profile read. Family and
 // Category are already resolved there. The editor does not fetch them.
