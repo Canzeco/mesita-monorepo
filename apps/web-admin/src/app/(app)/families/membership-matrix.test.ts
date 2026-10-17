@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   cellOn,
   filterMembershipRows,
+  googleCategoryLabel,
   guestFamilyColumns,
   type MembershipFamily,
   type MembershipRow,
@@ -36,6 +37,13 @@ describe("cellOn", () => {
     expect(cellOn(cafe, "pizza")).toBe(false);
     expect(cellOn(rows[1], "pizza")).toBe(true);
     expect(cellOn(rows[2], "coffee")).toBe(false);
+  });
+});
+
+describe("googleCategoryLabel", () => {
+  it("reads as a name, with the slug's words capitalized", () => {
+    expect(googleCategoryLabel("pizza_restaurant")).toBe("Pizza Restaurant");
+    expect(googleCategoryLabel("acai_shop")).toBe("Acai Shop");
   });
 });
 
