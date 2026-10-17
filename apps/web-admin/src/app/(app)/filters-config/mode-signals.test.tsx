@@ -12,6 +12,9 @@ describe("signals are raw numbers", () => {
         loadError={null}
       />,
     );
+    for (const label of ["Name", "Family", "Proximity", "Timing", "Enriched", "Popularity", "Randomness"]) {
+      expect(html).toContain(label);
+    }
     expect(html).toContain("Max km");
     expect(html).toContain("Closed floor");
     expect(html).not.toContain("Search query");
