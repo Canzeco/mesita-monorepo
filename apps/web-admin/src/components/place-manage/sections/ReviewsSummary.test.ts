@@ -54,13 +54,15 @@ describe("review boxes", () => {
     });
   });
 
-  it("keeps Sync in the Reviews header and the four boxes", () => {
+  it("keeps Sync in the Reviews header and four separate boxes", () => {
     const src = readFileSync(join(__dirname, "ReviewsSummary.tsx"), "utf8");
     expect(src).toMatch(/\n\s+Sync\n/);
-    expect(src).toContain("Google Summary");
-    expect(src).toContain("Instagram Summary");
-    expect(src).toContain("Facebook Summary");
-    expect(src).toContain("Individual Google Reviews");
+    expect(src).toContain('title="Google Summary"');
+    expect(src).toContain('title="Instagram Summary"');
+    expect(src).toContain('title="Facebook Summary"');
+    expect(src).toContain('title="Google Reviews"');
+    expect(src).not.toContain('title="Reviews"');
+    expect(src).not.toContain("Individual Google Reviews");
     expect(src).toContain("No link configured");
     expect(src).not.toContain("instagram_found");
     expect(src.toLowerCase()).not.toContain("apify");

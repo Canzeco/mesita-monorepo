@@ -2,14 +2,14 @@
 
 import { useState, type ReactNode } from "react";
 import { RefreshCw, Star } from "lucide-react";
-import type { AdminPlace } from "../actions";
 import { reloadPlaceReviews } from "../actions";
-import { SectionCard } from "@/components/admin-ui/manage";
+import { SectionCard, type Tint } from "@/components/admin-ui/manage";
 import { mergeReviewFoundFlags } from "@/lib/review-found";
 import { usePlaceContext } from "../PlaceContext";
 
 // Reviews. One Sync in the header updates the four boxes from saved links.
 // Save on Profile does not call this. Found flags are not profile fields.
+// The four boxes are separate cards (Pato, MESITA-2261). Sync stays above them.
 
 type BoxState = "no-link" | "never-synced" | "syncing" | "synced" | "error";
 
@@ -147,14 +147,23 @@ export function ReviewsSummary() {
   const fbState = box.facebook ?? reviewBoxState(!!place.facebook_url?.trim(), stored.facebook);
   const reviewsState = box.google_reviews ?? reviewBoxState(!!place.google_place_id?.trim(), stored.google_reviews);
   const shownAt = syncedAt ?? stored.lastSyncedAt;
+  const reviews = storedReviews(place.google_reviews);
+  const shown = reviews.slice(0, 3);
 
   return (
-    <SectionCard
-      icon={<Star className="h-4 w-4" />}
-      tint="violet"
-      title="Reviews"
-      subtitle={syncSubtitle({ syncedAt: shownAt, failures, syncing, errors })}
-      action={
+    <div className="flex flex-col gap-4 pb-8">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="bg-violet-500/10 text-violet-600 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
+            <Star className="h-4 w-4" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="font-display text-base font-semibold tracking-tight">Reviews</h2>
+            <p className="text-muted-foreground mt-0.5 max-w-2xl text-xs leading-relaxed">
+              {syncSubtitle({ syncedAt: shownAt, failures, syncing, errors })}
+            </p>
+          </div>
+        </div>
         <button
           type="button"
           onClick={() => void sync()}
@@ -164,38 +173,53 @@ export function ReviewsSummary() {
           <RefreshCw className={"h-3.5 w-3.5 " + (syncing ? "animate-spin" : "")} />
           Sync
         </button>
-      }
-    >
-      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="sm:col-span-2">
-          <SummaryTile
-            label="Google Summary"
-            state={googleState}
-            value={num(place.google_stars_overall) == null ? "—" : num(place.google_stars_overall)!.toFixed(1)}
-            muted={num(place.google_stars_overall) == null}
-            stars={num(place.google_stars_overall)}
-            hint={hintFor(googleState, num(place.google_review_count) != null ? reviewWord(num(place.google_review_count)!) : "No rating yet.", errors.google, shownAt)}
-          />
-        </div>
-        <SummaryTile
-          label="Instagram Summary"
-          state={igState}
-          value={num(place.instagram_followers_count) == null ? "—" : compact(num(place.instagram_followers_count)!)}
-          muted={num(place.instagram_followers_count) == null}
-          hint={hintFor(igState, "followers", errors.instagram, shownAt)}
-        />
-        <SummaryTile
-          label="Facebook Summary"
-          state={fbState}
-          value={num(place.facebook_followers) == null ? "—" : compact(num(place.facebook_followers)!)}
-          muted={num(place.facebook_followers) == null}
-          hint={hintFor(fbState, "followers", errors.facebook, shownAt)}
-        />
-        <div className="sm:col-span-2">
-          <ReviewsTile place={place} state={reviewsState} error={errors.google_reviews} when={shownAt} />
-        </div>
-      </div>
-    </SectionCard>
+      </header>
+      <ReviewBox
+        mark="/channels/google.svg"
+        tint="amber"
+        title="Google Summary"
+        state={googleState}
+        hint={hintFor(googleState, num(place.google_review_count) != null ? reviewWord(num(place.google_review_count)!) : "No rating yet.", errors.google, shownAt)}
+        value={num(place.google_stars_overall) == null ? "—" : num(place.google_stars_overall)!.toFixed(1)}
+        muted={num(place.google_stars_overall) == null}
+        stars={num(place.google_stars_overall)}
+      />
+      <ReviewBox
+        mark="/channels/instagram.svg"
+        tint="pink"
+        title="Instagram Summary"
+        state={igState}
+        hint={hintFor(igState, "followers", errors.instagram, shownAt)}
+        value={num(place.instagram_followers_count) == null ? "—" : compact(num(place.instagram_followers_count)!)}
+        muted={num(place.instagram_followers_count) == null}
+      />
+      <ReviewBox
+        mark="/channels/facebook.svg"
+        tint="sky"
+        title="Facebook Summary"
+        state={fbState}
+        hint={hintFor(fbState, "followers", errors.facebook, shownAt)}
+        value={num(place.facebook_followers) == null ? "—" : compact(num(place.facebook_followers)!)}
+        muted={num(place.facebook_followers) == null}
+      />
+      <ReviewBox
+        mark="/channels/google.svg"
+        tint="violet"
+        title="Google Reviews"
+        state={reviewsState}
+        hint={hintFor(reviewsState, reviews.length > 0 ? "on file" : "No reviews on file.", errors.google_reviews, shownAt)}
+        value={reviews.length > 0 ? String(reviews.length) : "—"}
+        muted={reviews.length === 0}
+        extra={shown.length > 0 ? (
+          <ul className="text-muted-foreground mt-1 space-y-1 type-label">
+            {shown.map((review, i) => (
+              <li key={i} className="truncate">{review.author}: {review.quote}</li>
+            ))}
+            {reviews.length > shown.length ? <li>+{reviews.length - shown.length} more</li> : null}
+          </ul>
+        ) : null}
+      />
+    </div>
   );
 }
 
@@ -287,79 +311,39 @@ function storedReviews(raw: unknown): { author: string; quote: string }[] {
   return out;
 }
 
-function ReviewsTile({
-  place,
+function ReviewBox({
+  mark,
+  tint,
+  title,
   state,
-  error,
-  when,
-}: {
-  place: AdminPlace;
-  state: BoxState;
-  error?: string;
-  when?: string | null;
-}) {
-  const reviews = storedReviews(place.google_reviews);
-  const shown = reviews.slice(0, 3);
-  return (
-    <Tile
-      label="Individual Google Reviews"
-      state={state}
-      value={reviews.length > 0 ? String(reviews.length) : "—"}
-      muted={reviews.length === 0}
-      hint={hintFor(state, reviews.length > 0 ? "on file" : "No reviews on file.", error, when)}
-      extra={shown.length > 0 ? (
-        <ul className="text-muted-foreground mt-1 space-y-1 type-label">
-          {shown.map((review, i) => (
-            <li key={i} className="truncate">{review.author}: {review.quote}</li>
-          ))}
-          {reviews.length > shown.length ? <li>+{reviews.length - shown.length} more</li> : null}
-        </ul>
-      ) : null}
-    />
-  );
-}
-
-function SummaryTile({
-  label,
-  state,
+  hint,
   value,
   muted,
   stars,
-  hint,
-}: {
-  label: string;
-  state: BoxState;
-  value: string;
-  muted: boolean;
-  stars?: number | null;
-  hint: string;
-}) {
-  return (
-    <Tile label={label} state={state} value={value} muted={muted} stars={stars} hint={hint} />
-  );
-}
-
-function Tile({
-  label,
-  state,
-  value,
-  muted,
-  stars,
-  hint,
   extra,
 }: {
-  label: string;
+  mark: string;
+  tint: Tint;
+  title: string;
   state: BoxState;
+  hint: string;
   value: string;
   muted: boolean;
   stars?: number | null;
-  hint: string;
   extra?: ReactNode;
 }) {
   return (
-    <div className="border-border/60 bg-muted/40 flex min-w-0 items-center gap-3 rounded-xl border px-3.5 py-3">
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <p className="text-muted-foreground type-label">{label}</p>
+    <SectionCard
+      icon={
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={mark} alt="" aria-hidden className="h-4 w-4" />
+      }
+      tint={tint}
+      title={title}
+      subtitle={hint}
+      action={<span className="text-muted-foreground type-label">{boxStateLabel(state)}</span>}
+    >
+      <div className="mt-5 flex min-w-0 flex-col gap-1.5">
         <p className="flex items-center gap-2">
           <span
             className={
@@ -371,10 +355,8 @@ function Tile({
           </span>
           {stars != null ? <Stars value={stars} /> : null}
         </p>
-        <p className="text-muted-foreground type-label">{hint}</p>
         {extra}
       </div>
-      <span className="text-muted-foreground type-label">{boxStateLabel(state)}</span>
-    </div>
+    </SectionCard>
   );
 }
