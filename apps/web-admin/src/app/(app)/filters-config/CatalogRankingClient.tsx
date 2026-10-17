@@ -76,9 +76,6 @@ export function CatalogRankingClient({
                     });
                   }}
                 />
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  {copy.explanation}
-                </p>
                 <p className="text-sm font-medium tabular-nums">
                   Share {catalogShareLabel(shares[key])}
                 </p>

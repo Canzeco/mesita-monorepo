@@ -16,20 +16,11 @@ export const CATALOG_ALL_ZERO_ERROR =
 
 export const CATALOG_LIVE_SIGNAL_COPY: Record<
   CatalogLiveRankKey,
-  { label: string; explanation: string }
+  { label: string }
 > = {
-  proximity: {
-    label: "Proximity",
-    explanation: "Closer places rank higher. Past the reach, this signal is zero.",
-  },
-  popularity: {
-    label: "Popularity",
-    explanation: "A well-reviewed place ranks higher than a barely reviewed one.",
-  },
-  randomness: {
-    label: "Randomness",
-    explanation: "Breaks ties so the same guest does not see one frozen order.",
-  },
+  proximity: { label: "Proximity" },
+  popularity: { label: "Popularity" },
+  randomness: { label: "Randomness" },
 };
 
 export function catalogRelativeExponents(
