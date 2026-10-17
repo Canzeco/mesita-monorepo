@@ -1,13 +1,11 @@
 // Supabase Edge Function — consumer-web-list-catalog (product caller)
 //
-// The CATALOG engine. One round trip: Mesita places, then one shared
-// ranking profile, then one rail per guest family.
-// Scope is Mesita Places by default: every active, ready place, enriched
-// or not, with Enriched as a ranking signal (MESITA-2292). An explicit
-// placesScope "enriched" narrows it to Mesita Enriched Places. Google is
-// not a catalog set. Family is not a cut: All comes first, then one rail
-// per guest family. A place in two families is in both of those rails. No
-// per-rail cap.
+// The CATALOG engine. One round trip: every active, ready Mesita place,
+// then one shared ranking profile, then N + 2 rails (MESITA-2294):
+// Right Now (Created Places open now, cap 20), Universal (every Enriched
+// Place, no cap), then one rail per guest family (Enriched only, cap 20).
+// Each rail admits its own pool, so placesScope no longer narrows the
+// fetch. Empty rails are omitted. A place in two families is in both.
 //
 // Local:  supabase functions serve consumer-web-list-catalog
 // Deploy: supabase functions deploy consumer-web-list-catalog
@@ -30,7 +28,7 @@ import {
 } from "../_shared/discovery-place.ts";
 import {
   type CatalogListPlace,
-  rankFamilyLists,
+  rankCatalogRails,
 } from "../_shared/catalog-rank.ts";
 import {
   applyDeckPredicates,
@@ -42,15 +40,9 @@ const POOL_CAP = 1000;
 type Body = {
   lat?: number;
   lng?: number;
-  /** Mesita scope. Family and a review floor are ignored. Google is not a catalog scope. */
+  /** Deck predicates. Family, a review floor, and placesScope are ignored. */
   predicates?: unknown;
 };
-
-function catalogScope(raw: unknown): "enriched" | "mesita" {
-  if (!raw || typeof raw !== "object") return "mesita";
-  const scope = (raw as { placesScope?: unknown }).placesScope;
-  return scope === "enriched" ? "enriched" : "mesita";
-}
 
 function wirePlaces(rows: PlaceProfileRow[]): CatalogListPlace[] {
   return rows.map((r) => {
@@ -80,16 +72,12 @@ Deno.serve(async (req) => {
     lng: typeof body.lng === "number" ? body.lng : null,
   };
 
-  const base = admin
+  const { data, error } = await admin
     .from("profiles")
     .select(`${PLACE_CARD_COLUMNS}, ${DISCOVERY_EXTRA_COLUMNS}`)
-    .eq("state", "active");
-
-  const scope = catalogScope(body.predicates);
-  let query = base.eq("content_state", "ready");
-  if (scope === "enriched") query = query.not("enriched_at", "is", null);
-
-  const { data, error } = await query.limit(POOL_CAP);
+    .eq("state", "active")
+    .eq("content_state", "ready")
+    .limit(POOL_CAP);
 
   if (error) {
     console.error("[list-catalog] pool:", error.message);
@@ -111,14 +99,12 @@ Deno.serve(async (req) => {
   const signals = pool.map((row) =>
     toLineupPlace(row as unknown as Record<string, unknown>)
   );
-  const rails = rankFamilyLists(
+  const rails = rankCatalogRails(
     wired,
     signals,
     cfg.catalog.ranking,
     cfg.params,
-    { lat: geo.lat, lng: geo.lng },
-    undefined,
-    scope === "enriched",
+    { lat: geo.lat, lng: geo.lng, now: new Date() },
   );
 
   return json({

@@ -1,7 +1,8 @@
-// Catalog Search. One shared profile, All then one rail per guest family.
+// Catalog Search. The Feed is N + 2 rails (MESITA-2294): Right Now (open
+// Mesita Created Places), Universal (every Mesita Enriched Place), then one
+// rail per guest family (enriched only). Empty rails are omitted.
 //
-// Family picks the rail; it does not score. Enriched scores (MESITA-2292):
-// a Created place stays in, behind its enriched neighbours. Timing is not
+// Family picks the rail; it does not score. Enriched still scores. Timing is not
 // in this profile. catalogScore multiplies only proximity, enriched,
 // popularity, and randomness, and it raises them to RELATIVE exponents
 // (weight / sum of the nonzero live weights). Name, description, and
@@ -20,6 +21,7 @@ import {
   type SignalPlace,
 } from "./discovery-signals.ts";
 import { isEnrichedPlace } from "./place-family-keys.ts";
+import { isOpenNow } from "./local-time-open.ts";
 import {
   type CatalogLiveRankKey,
   type CatalogRankKey,
@@ -33,13 +35,16 @@ export type CatalogListPlace = Record<string, unknown> & {
   content_state?: string | null;
 };
 
-export type CatalogFamilyList<T extends CatalogListPlace> = {
+export type CatalogRail<T extends CatalogListPlace> = {
   key: string;
   label: string;
   emoji: string;
-  source: "family";
+  source: "signal" | "family";
   places: T[];
 };
+
+/** Right Now and every family rail stop here; Universal has no cap. */
+export const CATALOG_RAIL_CAP = 20;
 
 const GUEST_FAMILIES = FAMILIES.filter((f) => f.slug !== "undefined");
 
@@ -85,62 +90,81 @@ export function catalogScore(
 }
 
 /**
- * All, then one list per guest family. That is always n + 1 lists when
- * anyone is admitted: n guest families, plus the universal list. A place
- * in two families is in both of those lists, and also in All. Undefined
- * is never its own list. A family with no members is still a list, and
- * its places array is empty. Ties keep the incoming order. Omitting
- * `perList` returns every member.
+ * The Feed is N + 2 rails, top to bottom:
+ *   1. Right Now — Mesita Created Places (every ready row, enriched or
+ *      not) that are open at `intent.now` on their own local clock.
+ *      Proximity, then popularity, then incoming order. Cap 20.
+ *   2. Universal — every Mesita Enriched Place, by catalogScore. No cap:
+ *      it is the one rail that reaches every enriched place.
+ *   3. One rail per guest family — enriched members only, by
+ *      catalogScore. Cap 20.
+ * Every empty rail is omitted. A place in two families is in both of those
+ * rails. Undefined is never a rail. Ties keep the incoming order.
  */
-export function rankFamilyLists<T extends CatalogListPlace>(
+export function rankCatalogRails<T extends CatalogListPlace>(
   rows: readonly T[],
   places: readonly SignalPlace[],
   ranking: Record<CatalogRankKey, number>,
   params: SignalParams,
   intent: SignalIntent,
-  perList?: number,
-  enrichedOnly = false,
-): CatalogFamilyList<T>[] {
-  const unlimited = perList == null;
-  const cap = unlimited ? 0 : Math.max(0, Math.floor(perList));
+): CatalogRail<T>[] {
+  const now = intent.now ?? new Date();
   const scored = rows.map((row, i) => ({
     row,
     place: places[i],
     score: places[i] ? catalogScore(places[i], ranking, params, intent) : 0,
     index: i,
   }));
-  const admitted = (row: T) =>
-    enrichedOnly ? catalogAdmitted(row) : row.content_state === "ready";
-  const take = (
-    members: typeof scored,
-  ): T[] => (unlimited ? members : members.slice(0, cap)).map((m) => m.row);
+  const byScore = (a: typeof scored[number], b: typeof scored[number]) =>
+    b.score - a.score || a.index - b.index;
+  const rails: CatalogRail<T>[] = [];
 
-  const lists: CatalogFamilyList<T>[] = [];
-  const everyone = scored
-    .filter((s) => admitted(s.row))
-    .sort((a, b) => b.score - a.score || a.index - b.index);
-  if (everyone.length === 0 || (!unlimited && cap === 0)) return lists;
-  lists.push({
-    key: "all",
-    label: "All",
-    emoji: "·",
-    source: "family",
-    places: take(everyone),
-  });
+  const open = scored
+    .filter((s) =>
+      s.row.content_state === "ready" && s.place &&
+      isOpenNow(s.place.hours, s.place.lng ?? null, now) === true
+    )
+    .map((s) => ({
+      ...s,
+      near: proximity(s.place, intent, params.proximity),
+      loved: popularity(s.place, undefined, params.popularity),
+    }))
+    .sort((a, b) => b.near - a.near || b.loved - a.loved || a.index - b.index);
+  if (open.length > 0) {
+    rails.push({
+      key: "right_now",
+      label: "Right Now",
+      emoji: "🕒",
+      source: "signal",
+      places: open.slice(0, CATALOG_RAIL_CAP).map((s) => s.row),
+    });
+  }
+
+  const enrichedRows = scored.filter((s) => catalogAdmitted(s.row)).sort(
+    byScore,
+  );
+  if (enrichedRows.length > 0) {
+    rails.push({
+      key: "universal",
+      label: "Universal",
+      emoji: "✨",
+      source: "signal",
+      places: enrichedRows.map((s) => s.row),
+    });
+  }
+
   for (const family of GUEST_FAMILIES) {
-    const members = scored
-      .filter((s) =>
-        admitted(s.row) &&
-        placeBelongsToFamily(s.row.family_keys, family.slug)
-      )
-      .sort((a, b) => b.score - a.score || a.index - b.index);
-    lists.push({
+    const members = enrichedRows.filter((s) =>
+      placeBelongsToFamily(s.row.family_keys, family.slug)
+    );
+    if (members.length === 0) continue;
+    rails.push({
       key: family.slug,
       label: family.label,
       emoji: family.emoji,
       source: "family",
-      places: members.length === 0 ? [] : take(members),
+      places: members.slice(0, CATALOG_RAIL_CAP).map((s) => s.row),
     });
   }
-  return lists;
+  return rails;
 }
