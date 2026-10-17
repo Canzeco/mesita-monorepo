@@ -118,6 +118,21 @@ describe("member preview edges", () => {
     expect(html).toContain("3 of 12 votes");
   });
 
+  it("renders the full Presentation with no show-more control", () => {
+    const capped = "A".repeat(500);
+    const overOldClamp = "B".repeat(700);
+    for (const text of [capped, overOldClamp]) {
+      const html = renderToStaticMarkup(
+        <PlaceProfile place={detail({ description: text })} />,
+      );
+      expect(html).toContain("Presentation");
+      expect(html).toContain(text);
+      expect(html).not.toContain("Show more");
+      expect(html).not.toContain("Show less");
+      expect(html).not.toContain("line-clamp");
+    }
+  });
+
   it("does not treat a listed-false row as hidden", () => {
     const place = placeRowToDetail({
       id: "p-1",
