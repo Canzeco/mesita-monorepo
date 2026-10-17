@@ -2,7 +2,7 @@
 
 // Catalog filter store. The two Mesita rings. Location is GPS, not
 // persisted here. A stored family selection and a stored review floor
-// are dropped: family is a carousel, and the review floor is the map's.
+// are dropped: family is a rail, and the review floor is the map's.
 
 import { useSyncExternalStore } from "react";
 import {

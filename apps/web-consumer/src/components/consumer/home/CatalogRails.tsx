@@ -1,6 +1,6 @@
 "use client";
 
-// Places — All, then one carousel per guest family. A card is wide
+// Places — All, then one rail per guest family. A card is wide
 // enough that about 2.5 fit, so the next one peeks and the row reads
 // as a scroll. The gap above a row is the family name. An empty
 // family is the name only. Favs keeps its own rounded tile.

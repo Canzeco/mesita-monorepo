@@ -110,7 +110,7 @@ describe("one place-grid geometry, shared", () => {
 
 // Places is one horizontal row per family. About 2.5 cards show, so the
 // next card peeks. Favs stays on the rounded 4:3 tile.
-describe("Places is family carousels", () => {
+describe("Places is family rails", () => {
   it("scrolls sideways at 2.5 cards and does not fill the row", () => {
     const rails = read("components/consumer/home/CatalogRails.tsx");
     const tile = read("components/consumer/home/CatalogTile.tsx");

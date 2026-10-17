@@ -19,7 +19,7 @@ import { SearchPlacesScope } from "./search/SearchPlacesScope";
 import { cn } from "@/lib/utils";
 
 // Catalog Filters. The two Mesita rings, and location.
-// No family cut: every family is a carousel. No Google Places.
+// No family cut: every family is a rail. No Google Places.
 // The Google review floor is the map's.
 
 export function DiscoveryFilters({

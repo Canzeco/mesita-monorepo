@@ -1,5 +1,5 @@
 // Place family law. The guest catalog is fifteen families (catalog-families.ts).
-// Undefined is last and is not a carousel.
+// Undefined is last and is not a rail.
 // A category may belong to more than one family. A family may contain more
 // than one category. The profiles view derives family_keys from
 // place_categories. The base column stays null.

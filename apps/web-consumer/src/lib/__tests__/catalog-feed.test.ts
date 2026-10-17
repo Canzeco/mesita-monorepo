@@ -17,7 +17,7 @@ function rail(key: string, label: string, ids: string[]): CatalogRail {
 }
 
 describe("places feed", () => {
-  it("is always All plus one carousel per guest family", () => {
+  it("is always All plus one rail per guest family", () => {
     const feed = placesFeed([
       rail("all", "All", ["cafe", "club"]),
       rail("coffee", "Coffee", ["cafe"]),
