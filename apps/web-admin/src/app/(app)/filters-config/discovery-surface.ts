@@ -214,7 +214,9 @@ export const CATALOG_FAMILY_FACTS: readonly { key: string; label: string; emoji:
 
 // The Feed's rails, top to bottom (consumer-web-list-catalog,
 // `_shared/catalog-rank.ts`): the two signal rails, then one rail per guest
-// family in CATALOG_FAMILY_FACTS order, enriched members only. Every rail
+// family in CATALOG_FAMILY_FACTS order, enriched members only. Right Now is
+// Google places open now when the guest shares a location (MESITA-2295),
+// the Mesita one otherwise. Every rail
 // stops at CATALOG_RAIL_CAP and an empty rail is omitted. The supabase
 // contract test pins these against what rankCatalogRails returns.
 export const CATALOG_RAIL_CAP = 5;
@@ -230,8 +232,10 @@ export const CATALOG_SIGNAL_RAILS: readonly {
     key: "right_now",
     label: "Right Now",
     emoji: "🕒",
-    holds: "Every ready Mesita place that is open now on its own clock, enriched or not.",
-    order: "Nearest first, then Popularity.",
+    holds:
+      "Every Google place open now near the guest (Nearby, Search's per-IP budget, ~1 km cells cached 5 min); a Mesita place wins its own Google id. Without a location, Google fill off, or no budget: every ready Mesita place open now on its own clock.",
+    order:
+      "Google: nearest first. Mesita fallback: nearest first, then Popularity.",
   },
   {
     key: "universal",
