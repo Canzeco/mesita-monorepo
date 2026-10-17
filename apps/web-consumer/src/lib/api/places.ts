@@ -184,7 +184,8 @@ export async function apiFetchNearbyCatalog(
         ? data.reloadMinKm
         : undefined,
     reloadMinSec:
-      typeof data.reloadMinSec === "number" && Number.isFinite(data.reloadMinSec)
+      typeof data.reloadMinSec === "number" &&
+      Number.isFinite(data.reloadMinSec)
         ? data.reloadMinSec
         : undefined,
   };
@@ -206,7 +207,7 @@ export async function apiFetchPlaceDetail(
       place: Record<string, unknown>;
       tags?: ResolvedTag[];
     }>(client, "consumer-web-get-place", { id: idOrSlug }, "Place not found");
-      return place ? placeRowToDetail(place, tags) : null;
+    return place ? placeRowToDetail(place, tags) : null;
   } catch (err) {
     if (!(err instanceof EFError && err.status === 404)) {
       console.error(
@@ -232,11 +233,9 @@ export async function apiRequestPlace(
   client: SupabaseClient,
   placeId: string,
 ): Promise<PlaceRequestResult> {
-  return invokeEF<PlaceRequestResult>(
-    client,
-    "consumer-web-request-place",
-    { placeId },
-  );
+  return invokeEF<PlaceRequestResult>(client, "consumer-web-request-place", {
+    placeId,
+  });
 }
 export async function apiRecommendDeck(
   client: SupabaseClient,
@@ -268,7 +267,9 @@ export async function apiListCatalog(
     client,
     "consumer-web-list-catalog",
     {
-      ...(origin ? { lat: origin.lat, lng: origin.lng } : {}),
+      // `google: true` asks for Right Now from Google (MESITA-2295), as
+      // Search's opt-in; without a location the EF keeps it on Mesita.
+      ...(origin ? { lat: origin.lat, lng: origin.lng, google: true } : {}),
       ...(predicates ? { predicates } : {}),
     },
   );
@@ -348,16 +349,15 @@ export async function apiSuggestPlaces(
       input: trimmed,
       sessionToken,
       mode,
-      ...(origin
-        ? { lat: origin.lat, lng: origin.lng }
-        : {}),
+      ...(origin ? { lat: origin.lat, lng: origin.lng } : {}),
     },
   );
   return predictions;
 }
 
 // Legacy rows may carry http:// photos. Next.js Image rejects them and
-// would crash the whole page; filter to https before render.
-function stripInsecurePhotos<T extends { photos: string[] }>(v: T): T {
+// would crash the whole page; filter to https before render. A Google
+// photoUri (https://lh3.googleusercontent.com/…) passes.
+export function stripInsecurePhotos<T extends { photos: string[] }>(v: T): T {
   return { ...v, photos: v.photos.filter((p) => p.startsWith("https://")) };
 }

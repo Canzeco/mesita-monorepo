@@ -7,6 +7,14 @@
 // Each rail admits its own pool, so placesScope no longer narrows the
 // fetch. Empty rails are omitted. A place in two families is in both.
 //
+// RIGHT NOW FROM GOOGLE (MESITA-2295). `{ google: true, lat, lng }` makes
+// Right Now every Google place open now near the guest, 5 nearest, on
+// Search's Google path (`_shared/right-now-google.ts`): the operator's
+// `map.googleFill`, the per-IP Nearby ledger, a ~1 km cell cached for
+// minutes, Mesita rows winning their own google_place_id, one photo per
+// Google-only card. No location, a refusal or an error keeps the Mesita
+// Created Places Right Now.
+//
 // Local:  supabase functions serve consumer-web-list-catalog
 // Deploy: supabase functions deploy consumer-web-list-catalog
 
@@ -29,7 +37,17 @@ import {
 import {
   type CatalogListPlace,
   rankCatalogRails,
+  withGoogleRightNow,
 } from "../_shared/catalog-rank.ts";
+import { decideNearby, wantsGoogleFill } from "../_shared/geo.ts";
+import { mapShouldFillGoogle } from "../_shared/map-engine.ts";
+import { readGooglePlacesKey } from "../_shared/google-places.ts";
+import { consumeNearbyGoogleQuota } from "../_shared/nearby-google-quota.ts";
+import { hashConnectingIp } from "../_shared/connecting-ip.ts";
+import {
+  rightNowGooglePlaces,
+  type RightNowOwnedRow,
+} from "../_shared/right-now-google.ts";
 import {
   applyDeckPredicates,
   readDeckPredicates,
@@ -40,6 +58,8 @@ const POOL_CAP = 1000;
 type Body = {
   lat?: number;
   lng?: number;
+  /** Right Now from Google, as Search's opt-in. */
+  google?: boolean;
   /** Deck predicates. Family, a review floor, and placesScope are ignored. */
   predicates?: unknown;
 };
@@ -99,12 +119,46 @@ Deno.serve(async (req) => {
   const signals = pool.map((row) =>
     toLineupPlace(row as unknown as Record<string, unknown>)
   );
-  const rails = rankCatalogRails(
+  const ranked = rankCatalogRails(
     wired,
     signals,
     cfg.catalog.ranking,
     cfg.params,
     { lat: geo.lat, lng: geo.lng, now: new Date() },
+  );
+
+  const nearby = decideNearby(body as Record<string, unknown>);
+  const googleOn = nearby.mode === "ok" &&
+    mapShouldFillGoogle(wantsGoogleFill(body as Record<string, unknown>), cfg.map);
+  const gmp = googleOn ? readGooglePlacesKey() : null;
+  const googleRightNow = googleOn && nearby.mode === "ok"
+    ? await rightNowGooglePlaces<RightNowOwnedRow>({
+      apiKey: gmp?.ok ? gmp.key : null,
+      center: { lat: nearby.lat, lng: nearby.lng },
+      consumeQuota: async () => {
+        const ipHash = await hashConnectingIp(req, env.serviceKey);
+        return (await consumeNearbyGoogleQuota(admin, ipHash)).allow;
+      },
+      lookupOwned: async (gids) => {
+        const owned = await admin
+          .from("profiles")
+          .select(`${PLACE_CARD_COLUMNS}, google_place_id`)
+          .eq("state", "active")
+          .eq("content_state", "ready")
+          .in("google_place_id", gids);
+        if (owned.error) {
+          console.error("[list-catalog] right now owned:", owned.error.message);
+          return null;
+        }
+        return wirePlaces(
+          (owned.data ?? []) as unknown as PlaceProfileRow[],
+        ) as RightNowOwnedRow[];
+      },
+    })
+    : null;
+  const rails = withGoogleRightNow(
+    ranked,
+    googleRightNow as CatalogListPlace[] | null,
   );
 
   return json({
@@ -113,6 +167,7 @@ Deno.serve(async (req) => {
     summary: {
       pool: pool.length,
       lists: rails.length,
+      rightNow: googleRightNow ? "google" : "mesita",
     },
   });
 });

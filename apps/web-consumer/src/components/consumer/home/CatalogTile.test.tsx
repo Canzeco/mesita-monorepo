@@ -31,3 +31,31 @@ describe("the Enriched mark on a catalog card", () => {
     expect(tile({ enriched: false })).not.toContain('aria-label="Enriched"');
   });
 });
+
+describe("a Google-only card (Right Now from Google)", () => {
+  it("opens Google Maps in a new tab, never a Mesita page", () => {
+    const html = tile({
+      id: "g:ChIJx",
+      slug: "ChIJx",
+      google_place_id: "ChIJx",
+      googleOnly: true,
+    });
+    expect(html).toContain(
+      'href="https://www.google.com/maps/search/?api=1&amp;query=Casa&amp;query_place_id=ChIJx"',
+    );
+    expect(html).toContain('target="_blank"');
+    expect(html).not.toContain('href="/place/');
+  });
+
+  it("has no save heart", () => {
+    expect(tile({ id: "g:ChIJx", googleOnly: true })).not.toContain(
+      "Save Casa",
+    );
+  });
+
+  it("a Mesita card still links to its page and can be saved", () => {
+    const html = tile({});
+    expect(html).not.toContain("google.com/maps");
+    expect(html).toContain("Save Casa");
+  });
+});

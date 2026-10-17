@@ -1,7 +1,9 @@
 // Catalog Search. The Feed is N + 2 rails (MESITA-2294): Right Now (open
 // Mesita Created Places), Universal (Mesita Enriched Places), then one rail
 // per guest family (enriched only). At most 5 places per rail; empty rails
-// are omitted.
+// are omitted. With the guest's location, Right Now is Google places open
+// now instead (MESITA-2295, `withGoogleRightNow`); the Mesita one is the
+// fallback.
 //
 // Family picks the rail; it does not score. Enriched still scores. Timing is not
 // in this profile. catalogScore multiplies only proximity, enriched,
@@ -168,4 +170,24 @@ export function rankCatalogRails<T extends CatalogListPlace>(
     });
   }
   return rails;
+}
+
+/**
+ * Right Now from Google (MESITA-2295). Given the Google rail's places, they
+ * replace the Mesita Right Now, or open the Feed when none was open. Null
+ * or empty keeps the rails as ranked: the Mesita Created Places fallback.
+ */
+export function withGoogleRightNow<T extends CatalogListPlace>(
+  rails: CatalogRail<T>[],
+  google: readonly T[] | null,
+): CatalogRail<T>[] {
+  if (!google || google.length === 0) return rails;
+  const rail: CatalogRail<T> = {
+    key: "right_now",
+    label: "Right Now",
+    emoji: "🕒",
+    source: "signal",
+    places: google.slice(0, CATALOG_RAIL_CAP),
+  };
+  return [rail, ...rails.filter((r) => r.key !== "right_now")];
 }

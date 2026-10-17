@@ -40,6 +40,14 @@ let legacyPageTokenDelayMs = LEGACY_PAGE_TOKEN_DELAY_MS;
 export const CATALOG_NEARBY_HARD_MAX = 60;
 export const GOOGLE_NEARBY_RADIUS_M = NEARBY_RADIUS_KM * 1000;
 const NEARBY_CACHE_MS = 15_000;
+/** Feed › Right Now's cell TTL (MESITA-2295). "Open now" moves slowly, so a
+ *  cell is reused for minutes, not Search's 15 s. */
+export const RIGHT_NOW_CACHE_MS = 5 * 60_000;
+const NEARBY_FIELD_MASK =
+  "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.businessStatus,places.primaryType";
+/** Right Now's mask: Search's, plus open-now and photos. Never Search's. */
+const RIGHT_NOW_FIELD_MASK =
+  `${NEARBY_FIELD_MASK},places.currentOpeningHours.openNow,places.photos`;
 
 export type NearbyHit = {
   placeId: string;
@@ -52,6 +60,10 @@ export type NearbyHit = {
   /** Google's own label. Feeds Discovery › General's post-Google wipe. */
   businessStatus: string | null;
   reviewCount: number | null;
+  /** Right Now only: Google's `currentOpeningHours.openNow`. */
+  openNow?: boolean | null;
+  /** Right Now only: the first photo's resource name (`places/…/photos/…`). */
+  photoName?: string | null;
 };
 
 type NearbyOnce =
@@ -63,14 +75,14 @@ async function searchNearbyOnce(
   center: { lat: number; lng: number },
   radiusM: number,
   includedPrimaryTypes: string[],
+  rightNow = false,
 ): Promise<NearbyOnce> {
   const r = await fetch(GOOGLE_PLACES_NEARBY_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask":
-        "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.businessStatus,places.primaryType",
+      "X-Goog-FieldMask": rightNow ? RIGHT_NOW_FIELD_MASK : NEARBY_FIELD_MASK,
     },
     body: JSON.stringify({
       maxResultCount: GOOGLE_NEARBY_MAX,
@@ -100,10 +112,12 @@ async function searchNearbyOnce(
       userRatingCount?: number;
       businessStatus?: string;
       primaryType?: string;
+      currentOpeningHours?: { openNow?: boolean };
+      photos?: Array<{ name?: string }>;
     }>;
   };
   const hits = (data.places ?? [])
-    .map((p) => {
+    .map((p): NearbyHit => {
       const raw = p.id ?? "";
       const placeId = stripPlacesPrefix(raw);
       const lat = p.location?.latitude;
@@ -122,6 +136,14 @@ async function searchNearbyOnce(
         reviewCount: typeof p.userRatingCount === "number"
           ? p.userRatingCount
           : null,
+        ...(rightNow
+          ? {
+            openNow: typeof p.currentOpeningHours?.openNow === "boolean"
+              ? p.currentOpeningHours.openNow
+              : null,
+            photoName: p.photos?.[0]?.name ?? null,
+          }
+          : {}),
       };
     })
     .filter((p) => p.placeId && p.name);
@@ -247,12 +269,22 @@ export function peekCachedNearbyPlaces(
   center: { lat: number; lng: number },
   types?: readonly string[],
   pull?: number,
+  rightNow = false,
 ): NearbyHit[] | null {
   const hit = nearbyCache.get(
-    nearbyCellKey(center, resolveNearbyTypes(types), pull ?? GOOGLE_NEARBY_MAX),
+    nearbyCellKey(
+      center,
+      resolveNearbyTypes(types),
+      pull ?? GOOGLE_NEARBY_MAX,
+      rightNow,
+    ),
   );
-  if (hit && Date.now() - hit.at < NEARBY_CACHE_MS) return hit.hits;
+  if (hit && Date.now() - hit.at < nearbyCacheMs(rightNow)) return hit.hits;
   return null;
+}
+
+function nearbyCacheMs(rightNow: boolean): number {
+  return rightNow ? RIGHT_NOW_CACHE_MS : NEARBY_CACHE_MS;
 }
 
 export type SearchNearbyOpts = {
@@ -279,6 +311,13 @@ export type SearchNearbyOpts = {
    * a pull truncates it and keeps what the earlier slices already returned.
    */
   beforeFanout?: () => Promise<boolean>;
+  /**
+   * Feed › Right Now (MESITA-2295): one New POST (pull 20 only) whose mask
+   * adds `currentOpeningHours.openNow` + `photos`, cached in its own cell
+   * for RIGHT_NOW_CACHE_MS. Search never sets it, so its mask, SKU and 15 s
+   * cell are untouched.
+   */
+  rightNow?: boolean;
 };
 
 function nearbyTypesKey(types: readonly string[]): string {
@@ -289,10 +328,11 @@ function nearbyCellKey(
   center: { lat: number; lng: number },
   types: readonly string[] = NEARBY_TYPE_KEYS,
   pull: number = GOOGLE_NEARBY_MAX,
+  rightNow = false,
 ): string {
   return `${center.lat.toFixed(2)},${center.lng.toFixed(2)}:${
     nearbyTypesKey(types)
-  }:p${pull}`;
+  }:p${pull}${rightNow ? ":now" : ""}`;
 }
 
 /** Billed Nearby pages one pull buys. 20 → 1, 40 → 2, 60 → 3; never more than 3. */
@@ -329,12 +369,14 @@ export async function searchNearbyPlaces(
   const beforeFanout = opts.beforeFanout;
   const types = resolveNearbyTypes(opts.types);
   if (types.length === 0) return [];
-  const pull = opts.pull ?? GOOGLE_NEARBY_MAX;
+  const rightNow = opts.rightNow === true;
+  // Right Now's extra fields ride the New POST only, so it is one page.
+  const pull = rightNow ? GOOGLE_NEARBY_MAX : opts.pull ?? GOOGLE_NEARBY_MAX;
   const pages = nearbyCallCount(pull);
-  const key = nearbyCellKey(center, types, pull);
+  const key = nearbyCellKey(center, types, pull, rightNow);
   const hit = nearbyCache.get(key);
   const now = Date.now();
-  if (hit && now - hit.at < NEARBY_CACHE_MS) return hit.hits;
+  if (hit && now - hit.at < nearbyCacheMs(rightNow)) return hit.hits;
   const pending = nearbyInflight.get(key);
   if (pending) return pending;
 
@@ -375,6 +417,7 @@ export async function searchNearbyPlaces(
           center,
           radius,
           [...types],
+          rightNow,
         );
         if (!batch.ok) {
           complete = false;
