@@ -446,6 +446,7 @@ describe("Discovery page box order", () => {
     expect(nav).not.toContain("modules");
     expect(nav).toContain("/filters-config/modes#s-map");
     expect(layout).toContain("DiscoveryChrome");
+    expect(layout).toContain("DiscoveryPanels");
     const chrome = readFileSync(join(__dirname, "DiscoveryChrome.tsx"), "utf8");
     expect(chrome).toContain("ConfigTabNav");
     expect(chrome).toContain("DISCOVERY_TABS");

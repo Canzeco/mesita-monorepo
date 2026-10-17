@@ -1,14 +1,14 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import { ConfigTabNav } from "@/components/ConfigTabNav";
 import { PageHeader } from "@/components/PageContainer";
 import { isNavActive } from "@/lib/nav-active";
+import { useDiscoveryPathname } from "./discovery-route";
 import { DISCOVERY_TABS } from "./nav";
 
-// Title follows the active subpage: Sources · Modes · Catalog · Matrix.
+// Title follows the active subpage: Sources · Modes · Signals · Matrix.
 export function DiscoveryChrome() {
-  const pathname = usePathname();
+  const pathname = useDiscoveryPathname();
   const tab = DISCOVERY_TABS.find((t) => isNavActive(pathname, t.href));
   return (
     <>
