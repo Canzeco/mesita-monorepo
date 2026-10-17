@@ -1,9 +1,9 @@
 "use client";
 
-// Places — one wall. Two columns. Each place once, in server order.
-// A square photo over an equal square of facts. Square corners.
-// A family is a line on the tile, not a row: a one-place row leaves a
-// blank cell. Favs keeps its own rounded tile.
+// Places — All, then one carousel per guest family. A card is wide
+// enough that about 2.5 fit, so the next one peeks and the row reads
+// as a scroll. The gap above a row is the family name. An empty
+// family is the name only. Favs keeps its own rounded tile.
 //
 // The catalog is Mesita places only. Filters are the two Mesita rings.
 // Family is not a filter. Google Places is not a choice. The review floor
@@ -26,7 +26,7 @@ import { EmptyState } from "@/components/shared";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { CatalogTile } from "./CatalogTile";
 import { cn, errMsg } from "@/lib/utils";
-import { catalogWall } from "@/lib/catalog-feed";
+import { placesFeed } from "@/lib/catalog-feed";
 import { summarizeCatalog } from "@/lib/catalog-summary";
 import {
   resetDiscoveryFilters,
@@ -87,7 +87,7 @@ export function CatalogRails() {
   }, [supabase, requestKey]);
 
   const summary = useMemo(() => summarizeCatalog(rails ?? []), [rails]);
-  const wall = useMemo(() => catalogWall(rails ?? []), [rails]);
+  const shownRails = useMemo(() => placesFeed(rails ?? []), [rails]);
 
   const placesShown = summary.total;
 
@@ -173,12 +173,19 @@ export function CatalogRails() {
 
   if (rails === null) {
     return shell(
-      <div className="bg-card scrollbar-hide grid min-h-0 flex-1 grid-cols-2 overflow-y-auto overscroll-y-contain">
-        {Array.from({ length: 4 }, (_, i) => (
-          <Skeleton
-            key={i}
-            className="border-border aspect-[1/2] rounded-none border-r border-b"
-          />
+      <div className="bg-card scrollbar-hide flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-y-contain pt-3">
+        {Array.from({ length: 2 }, (_, i) => (
+          <div key={i}>
+            <Skeleton className="mx-3 mb-2 h-4 w-24 rounded-none" />
+            <div className="flex gap-2 overflow-hidden pl-3">
+              {Array.from({ length: 3 }, (_, j) => (
+                <Skeleton
+                  key={j}
+                  className="aspect-[3/4] w-[calc((100%-1rem)/2.5)] shrink-0 rounded-none"
+                />
+              ))}
+            </div>
+          </div>
         ))}
       </div>,
     );
@@ -209,20 +216,44 @@ export function CatalogRails() {
         {summary.total} {summary.total === 1 ? "place" : "places"}
         {summary.openNow > 0 ? ` · ${summary.openNow} open now` : ""}
       </p>
-      <ul role="list" aria-label="Places" className="grid grid-cols-2">
-        {wall.map((place) => {
-          const located = withUserDistance(place, coords);
-          const saved = savedIds.has(place.id);
-          return (
-            <CatalogTile
-              key={place.id}
-              place={located}
-              saved={saved}
-              onToggle={() => toggleSave(place, saved)}
-            />
-          );
-        })}
-      </ul>
+      <div className="flex flex-col gap-4 pb-4">
+        {shownRails.map((rail) => (
+          <section key={rail.key} aria-labelledby={`${rail.key}-heading`}>
+            <h2
+              id={`${rail.key}-heading`}
+              className="font-display text-foreground px-3 text-sm font-semibold tracking-tight"
+            >
+              {rail.emoji && rail.emoji !== "·" ? (
+                <span className="mr-1.5" aria-hidden>
+                  {rail.emoji}
+                </span>
+              ) : null}
+              {rail.label}
+            </h2>
+            {rail.places.length > 0 ? (
+              <ul
+                role="list"
+                aria-label={rail.label}
+                className="scrollbar-hide mt-2 flex gap-2 overflow-x-auto overscroll-x-contain pl-3"
+              >
+                {rail.places.map((place) => {
+                  const located = withUserDistance(place, coords);
+                  const saved = savedIds.has(place.id);
+                  return (
+                    <CatalogTile
+                      key={place.id}
+                      place={located}
+                      saved={saved}
+                      onToggle={() => toggleSave(place, saved)}
+                      className="w-[calc((100%-1rem)/2.5)] shrink-0"
+                    />
+                  );
+                })}
+              </ul>
+            ) : null}
+          </section>
+        ))}
+      </div>
     </div>,
   );
 }

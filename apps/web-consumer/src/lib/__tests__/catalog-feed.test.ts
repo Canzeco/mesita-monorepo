@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CatalogRail, Place } from "@/lib/api/places";
-import { catalogWall, placesFeed } from "@/lib/catalog-feed";
+import { placesFeed } from "@/lib/catalog-feed";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 
 function place(id: string): Place {
@@ -41,23 +41,5 @@ describe("places feed", () => {
     expect(feed.find((row) => row.key === "breakfast")?.places).toEqual([]);
     expect(feed.find((row) => row.key === "coffee")?.emoji).toBe("☕");
     expect(feed.find((row) => row.key === "night_out")?.emoji).toBe("🌙");
-  });
-});
-
-describe("catalog wall", () => {
-  it("lists All once and drops a repeated family copy", () => {
-    const wall = catalogWall([
-      rail("all", "All", ["cafe", "club"]),
-      rail("coffee", "Coffee", ["cafe"]),
-    ]);
-    expect(wall.map((row) => row.id)).toEqual(["cafe", "club"]);
-  });
-
-  it("falls back to the rails when All is missing", () => {
-    const wall = catalogWall([
-      rail("coffee", "Coffee", ["cafe"]),
-      rail("night_out", "Night out", ["cafe", "club"]),
-    ]);
-    expect(wall.map((row) => row.id)).toEqual(["cafe", "club"]);
   });
 });
