@@ -8,9 +8,10 @@
 
 import { Facebook, Instagram } from "./brand-icons";
 
-// Multi-color Google "G" on a red tile, the same rounded shape as
-// Instagram and Facebook. A white disc keeps the red segment of the G
-// readable. The header uses compact; review cards use the larger tile.
+// Multi-color Google "G" on a red tile, the same size and rounded shape as
+// Instagram and Facebook. The header uses compact: the G is smaller than
+// the white disc so every color, including the red segment, sits on white
+// instead of blending into the tile. Review cards use the larger tile.
 export function GoogleLogo({ compact = false }: { compact?: boolean }) {
   return (
     <div
@@ -22,12 +23,12 @@ export function GoogleLogo({ compact = false }: { compact?: boolean }) {
       <div
         className={
           "flex items-center justify-center rounded-full bg-white " +
-          (compact ? "h-4 w-4" : "h-[22px] w-[22px]")
+          (compact ? "h-[18px] w-[18px]" : "h-[22px] w-[22px]")
         }
       >
         <svg
           viewBox="0 0 48 48"
-          className={compact ? "h-3.5 w-3.5" : "h-4 w-4"}
+          className={compact ? "h-3 w-3" : "h-4 w-4"}
           aria-hidden
         >
         <path
