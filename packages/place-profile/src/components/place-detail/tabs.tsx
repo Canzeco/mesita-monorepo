@@ -42,11 +42,12 @@ export function PlaceTabBar({
   const tabs = placeTabs(enriched);
   return (
     // Sticky to the top of the scroll container so the tabs stay reachable
-    // while the user is deep in a tab's content. Solid bg-background (no
-    // translucency) so scrolled-out content can't bleed through the strip.
+    // while the user is deep in a tab's content. Solid bg-card (no
+    // translucency) so the strip matches the name header and scrolled
+    // content can't bleed through. The page wash stays below the strip.
     <nav
       className={cn(
-        "bg-background border-border sticky top-0 z-20 -mx-4 grid border-b px-1",
+        "bg-card border-border sticky top-0 z-20 -mx-4 grid border-b px-1",
         enriched ? "grid-cols-4" : "grid-cols-1",
       )}
       aria-label="Place sections"

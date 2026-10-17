@@ -43,7 +43,7 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
 
   return (
     // Full-bleed white band under the top chrome so the summary reads as
-    // the page header; pink body starts at the tab strip below.
+    // the page header. The section strip below is the same white surface.
     <section className="border-border bg-card flex flex-col gap-3 border-b px-4 pt-3 pb-4">
       <div className="flex items-center gap-4">
         <ProfilePhoto place={place} />

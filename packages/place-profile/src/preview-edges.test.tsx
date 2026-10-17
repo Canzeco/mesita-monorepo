@@ -74,6 +74,10 @@ describe("member preview edges", () => {
     );
     expect(html).toContain("Lupita");
     expect(html).toContain("Overview");
+    const nav = html.slice(html.indexOf("<nav"), html.indexOf(">", html.indexOf("<nav")) + 1);
+    expect(nav).toContain('aria-label="Place sections"');
+    expect(nav).toContain("bg-card");
+    expect(nav).not.toContain("bg-background");
     const reserveAt = html.indexOf("Reserve a table");
     const payAt = html.indexOf("Pay, Soon");
     const saveAt = html.indexOf("Save, Soon");
