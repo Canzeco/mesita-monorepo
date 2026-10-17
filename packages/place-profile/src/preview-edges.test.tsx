@@ -74,6 +74,9 @@ describe("member preview edges", () => {
     );
     expect(html).toContain("Lupita");
     expect(html).toContain("Overview");
+    const sectionBar = html.match(/<nav[^>]*aria-label="Place sections"[^>]*>/)?.[0] ?? "";
+    expect(sectionBar).toContain("bg-card");
+    expect(sectionBar).not.toContain("bg-background");
     const reserveAt = html.indexOf("Reserve a table");
     const payAt = html.indexOf("Pay, Soon");
     const saveAt = html.indexOf("Save, Soon");
