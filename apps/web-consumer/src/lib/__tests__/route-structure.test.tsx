@@ -407,23 +407,24 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
 // loses its selected state. This pins ORDER, COUNT, the width budget, and
 // that every pill is a real page.
 //
-// The order is Pato's (MESITA-2166): "Places. Social. Chat. Favs."
+// The order is Pato's (MESITA-2166): "Places. Social. Chat. Favs." The first
+// pill reads Feed since MESITA-2285; its route is still /discover/places.
 describe("T5b — Home's supporting rail", () => {
-  it("is exactly Places · Social · Chat · Favs", async () => {
+  it("is exactly Feed · Social · Chat · Favs", async () => {
     const { HOME_MODES } = await import("@/components/consumer/ModeRail");
     expect(HOME_MODES.map((m) => m.label)).toEqual([
-      "Places",
+      "Feed",
       "Social",
       "Chat",
       "Favs",
     ]);
   });
 
-  // Places is the catalog (Pato, MESITA-2254). Social, Chat and Favs stay
+  // Feed is the catalog (Pato, MESITA-2254). Social, Chat and Favs stay
   // Soon (MESITA-2168): the chip is one site in the rail, drawn for those
   // three. Their pages stay the Soon empty state — Memo and the saved grid
   // do not mount.
-  it("Places is the catalog; Social, Chat and Favs stay Soon", async () => {
+  it("Feed is the catalog; Social, Chat and Favs stay Soon", async () => {
     const { HOME_MODES } = await import("@/components/consumer/ModeRail");
     expect(HOME_MODES.map((m) => Boolean(m.soon))).toEqual([
       false,
@@ -483,6 +484,8 @@ describe("T5b — Home's supporting rail", () => {
       // Estimated from Inter 600 advance widths at 12px, rounded up
       // (MESITA-2166); four columns leave ~90px of slack either way.
       Places: 38.3,
+      // Inter 600's hmtx at 12px, rounded up (MESITA-2285).
+      Feed: 28.8,
       Social: 36.7,
       // Inter 600's hmtx at 12px (MESITA-2142).
       Swipe: 35.6,
@@ -533,7 +536,7 @@ describe("T5b — Home's supporting rail", () => {
       CONSUMER_ROUTES.discoverTabs.places,
     );
     expect(HOME_MODES[0].href).toBe(CONSUMER_ROUTES.discoverDefault);
-    expect(HOME_MODES[0].label).toBe("Places");
+    expect(HOME_MODES[0].label).toBe("Feed");
   });
 
   it("every Home pill's page lives under discover", () => {
