@@ -1,3 +1,4 @@
+import { CatalogRailList } from "../CatalogRailList";
 import { CatalogRankingClient } from "../CatalogRankingClient";
 import { MapConfigClient } from "../MapConfigClient";
 import { ModeFact } from "../ModeFactList";
@@ -6,8 +7,9 @@ import { NameConfigClient } from "../NameConfigClient";
 import type { ConfigSeed } from "@/components/admin-ui/use-config-editor";
 import type { DiscoveryConfig } from "../catalog";
 
-// Discovery Modes. Catalog stays here. A mode sets the weight of each signal
-// it ranks. The function, the curve, and the graphic live on Signals.
+// Discovery Modes. Catalog stays here, with the Feed's rails. A mode sets
+// the weight of each signal it ranks. The function, the curve, and the
+// graphic live on Signals.
 export function DiscoveryModesView({ seed }: { seed: ConfigSeed<DiscoveryConfig> }) {
   const props = seed;
   return (
@@ -20,6 +22,7 @@ export function DiscoveryModesView({ seed }: { seed: ConfigSeed<DiscoveryConfig>
       <div id="s-catalog" className="scroll-mt-16 flex flex-col gap-10">
         <ModeFact modeKey="catalog" />
         <CatalogRankingClient {...props} />
+        <CatalogRailList />
       </div>
       <ModeFact modeKey="chat" />
       <ModeFact modeKey="favorites" />
