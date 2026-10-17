@@ -739,8 +739,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     }
   };
 
-  // Create only — the ugly profile is live immediately. Enricher waits
-  // for votes on the Enrich tab. Open that profile the moment it exists.
+  // Get-or-create (MESITA-2298): the explicit open is the ONLY call that
+  // creates a Mesita Place. A held Google Place ID comes back `created:
+  // false` and opens as is; a new one is live immediately, ugly, and waits
+  // for votes on the Enrich tab. Nothing creates on render or on a pin tap.
   const handleAdd = useCallback(
     (prediction: PlacePrediction) => {
       if (addStates[prediction.placeId]) return;
@@ -760,9 +762,11 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
             }));
           }
           setPreviewOpen(false);
-          toast.success(
-            `${prediction.mainText} is on Mesita. Vote to enrich its profile.`,
-          );
+          if (created.created !== false) {
+            toast.success(
+              `${prediction.mainText} is on Mesita. Vote to enrich its profile.`,
+            );
+          }
           if (dest) router.push(placeHref(dest));
         } catch (err) {
           setAddStates((s) => {

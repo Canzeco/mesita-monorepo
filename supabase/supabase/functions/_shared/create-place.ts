@@ -52,11 +52,16 @@ import { runPlaceEmbeddingsOnUpdate } from "./place-embeddings.ts";
 import { synthesizeDoorProfile } from "./create-door-profile.ts";
 import { applyInferredMesitaName } from "./mesita-name-door.ts";
 import { writePlace } from "./place-doc.ts";
-import { stepDone, stepFailed, reportCrenupSteps } from "./crenup-report.ts";
+import { reportCrenupSteps, stepDone, stepFailed } from "./crenup-report.ts";
 import { loadDiscoveryConfig } from "./discovery-config.ts";
 import { evaluatePlaceForMap } from "./map-engine.ts";
 import { omitReviewsTileColumns } from "./reviews-state.ts";
-export type CreatedPlace = { id: string; slug: string; name: string; state: string };
+export type CreatedPlace = {
+  id: string;
+  slug: string;
+  name: string;
+  state: string;
+};
 
 // The `enrichment` block every create response carries. Create never seeds
 // the Enricher, so `enrichmentTriggered` is always false and
@@ -70,6 +75,50 @@ export type EnrichmentSummary = {
 export type CreatePlaceOutcome =
   | { ok: true; place: CreatedPlace; enrichment: EnrichmentSummary }
   | { ok: false; status: number; body: Record<string, unknown> };
+
+/**
+ * Get-or-create at a consumer door (MESITA-2298): opening a Google-only
+ * result's profile creates the Mesita Place once, and every later open of
+ * the same google_place_id resolves to that row. This is the "already
+ * there" half: the response a consumer EF sends instead of the shared
+ * core's 409, so the client opens the profile either way.
+ */
+export function openedExistingPlace(
+  existing: CreatedPlace,
+): {
+  ok: true;
+  created: false;
+  place: CreatedPlace;
+  enrichment: EnrichmentSummary;
+} {
+  return {
+    ok: true,
+    created: false,
+    place: existing,
+    enrichment: {
+      photoCount: 0,
+      enrichmentTriggered: false,
+      enrichmentError: null,
+    },
+  };
+}
+
+/** The shared core's duplicate verdict, with the row it found. */
+export function existingFromDuplicate(
+  outcome: CreatePlaceOutcome,
+): CreatedPlace | null {
+  if (outcome.ok) return null;
+  const body = outcome.body;
+  if (body.code !== "place_already_exists") return null;
+  const row = body.existing as Partial<CreatedPlace> | null | undefined;
+  if (!row || typeof row.id !== "string") return null;
+  return {
+    id: row.id,
+    slug: typeof row.slug === "string" ? row.slug : "",
+    name: typeof row.name === "string" ? row.name : "",
+    state: typeof row.state === "string" ? row.state : "active",
+  };
+}
 
 export async function createMinimalPlace(opts: {
   admin: SupabaseClient;
@@ -184,7 +233,9 @@ export async function createMinimalPlace(opts: {
     // which. Stamped with the observation time so a stale claim cannot read as
     // current.
     business_state: basicsRes.businessStatus ?? null,
-    business_state_at: basicsRes.businessStatus ? new Date().toISOString() : null,
+    business_state_at: basicsRes.businessStatus
+      ? new Date().toISOString()
+      : null,
   });
 
   // ── 2) Persist the minimal rows (in-process). The mint lands 'ready' with
@@ -287,7 +338,11 @@ export async function createMinimalPlace(opts: {
                 `${door.tags.length} tag(s), Mesita Name + Semantic Summary inferred.`,
               { via: "create" },
             )
-            : stepFailed(`Door Description persist failed — ${doorWrite.ok ? "" : doorWrite.error}`),
+            : stepFailed(
+              `Door Description persist failed — ${
+                doorWrite.ok ? "" : doorWrite.error
+              }`,
+            ),
         });
       }
     }
@@ -309,7 +364,12 @@ export async function createMinimalPlace(opts: {
   // No Enricher seed here — votes or a later admin Enrich call start it.
   return {
     ok: true,
-    place: { id: saved.place_id, slug: saved.slug, name: saved.name, state: saved.state },
+    place: {
+      id: saved.place_id,
+      slug: saved.slug,
+      name: saved.name,
+      state: saved.state,
+    },
     enrichment: {
       photoCount: Array.isArray(place.photos) ? place.photos.length : 0,
       enrichmentTriggered: false,
