@@ -1,7 +1,6 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { __resetNearbyGoogleCacheForTests } from "./nearby-places.ts";
 import {
-  __resetRightNowPhotosForTests,
   rightNowGooglePlaces,
   type RightNowOwnedRow,
 } from "./right-now-google.ts";
@@ -30,7 +29,9 @@ function gPlace(p: GPlace) {
     ...(p.openNow === undefined
       ? {}
       : { currentOpeningHours: { openNow: p.openNow } }),
-    ...(p.photo ? { photos: [{ name: `places/${p.id}/photos/${p.photo}` }] } : {}),
+    ...(p.photo
+      ? { photos: [{ name: `places/${p.id}/photos/${p.photo}` }] }
+      : {}),
   };
 }
 
@@ -68,7 +69,6 @@ function stubGoogle(
 
 function reset() {
   __resetNearbyGoogleCacheForTests();
-  __resetRightNowPhotosForTests();
 }
 
 function deps(
@@ -91,7 +91,8 @@ function deps(
 
 const nearbyCalls = (calls: Call[]) =>
   calls.filter((c) => c.url.includes("places:searchNearby"));
-const photoCalls = (calls: Call[]) => calls.filter((c) => c.url.includes("/media?"));
+const photoCalls = (calls: Call[]) =>
+  calls.filter((c) => c.url.includes("/media?"));
 
 Deno.test("right now: keeps open + OPERATIONAL only, nearest first, at most 5", async () => {
   reset();
@@ -113,15 +114,14 @@ Deno.test("right now: keeps open + OPERATIONAL only, nearest first, at most 5", 
     assert(got);
     assertEquals(got.map((p) => p.slug), ["o1", "o2", "o3", "o4", "o5"]);
     assert(got.every((p) => p.googleOnly === true));
-    assertEquals(got[0].photos, [
-      "https://lh3.googleusercontent.com/places/o1/photos/p",
-    ]);
+    // No photo for an ephemeral card (MESITA-2298): none asked for, none bought.
+    assertEquals(got[0].photos, []);
     assertEquals(quota(), 1);
     assertEquals(nearbyCalls(g.calls).length, 1);
-    assertEquals(photoCalls(g.calls).length, 5);
+    assertEquals(photoCalls(g.calls).length, 0);
     const mask = nearbyCalls(g.calls)[0].mask ?? "";
     assert(mask.includes("places.currentOpeningHours.openNow"));
-    assert(mask.includes("places.photos"));
+    assert(!mask.includes("places.photos"));
   } finally {
     g.restore();
   }
@@ -157,8 +157,9 @@ Deno.test("right now: a hit Mesita owns goes out as the Mesita card", async () =
     assertEquals(got[0].googleOnly, undefined);
     assertEquals("google_place_id" in got[0], false);
     assertEquals(got[0].photos, ["https://example.com/a.jpg"]);
-    // Only the Google-only card buys a photo.
-    assertEquals(photoCalls(g.calls).length, 1);
+    // The Mesita card keeps its stored photo; the Google-only one buys none.
+    assertEquals(got[1].photos, []);
+    assertEquals(photoCalls(g.calls).length, 0);
   } finally {
     g.restore();
   }
@@ -245,8 +246,20 @@ Deno.test("right now: a warm cell makes no Google call and spends no quota", asy
 
 Deno.test("withGoogleRightNow: replaces the Mesita Right Now, or keeps it on null", () => {
   const rails = [
-    { key: "right_now", label: "Right Now", emoji: "🕒", source: "signal" as const, places: [{ id: "m" }] },
-    { key: "universal", label: "Universal", emoji: "✨", source: "signal" as const, places: [{ id: "u" }] },
+    {
+      key: "right_now",
+      label: "Right Now",
+      emoji: "🕒",
+      source: "signal" as const,
+      places: [{ id: "m" }],
+    },
+    {
+      key: "universal",
+      label: "Universal",
+      emoji: "✨",
+      source: "signal" as const,
+      places: [{ id: "u" }],
+    },
   ];
   assertEquals(withGoogleRightNow(rails, null), rails);
   assertEquals(withGoogleRightNow(rails, []), rails);

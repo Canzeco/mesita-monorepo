@@ -4,11 +4,12 @@
 // join and isolate budget), the same per-IP ledger (`beforeFanout`), the same
 // Mesita-wins dedupe (`claimOwnedHits` + `mergeNearbyCatalog`) and the same
 // Google-only card (`googleStub`). The differences are small:
-//   - the mask adds `currentOpeningHours.openNow` + `photos`, in its own
-//     cell cached RIGHT_NOW_CACHE_MS (Search's mask and 15 s cell stay);
+//   - the mask adds `currentOpeningHours.openNow`, in its own cell cached
+//     RIGHT_NOW_CACHE_MS (Search's mask and 15 s cell stay);
 //   - the 15 guest families' types, pull 20, one call;
 //   - only `openNow === true` and `OPERATIONAL`, nearest first, 5;
-//   - one photo per Google-only card, resolved here, the key never sent.
+//   - no photo: a Google-only card draws its family emoji (MESITA-2298),
+//     so no `/media` call is ever made for a card.
 // Fail closed on money: no key, no location, a quota refusal, a ledger or
 // Google error all return null, and the caller keeps Right Now on Mesita
 // Created Places. An area with nothing open returns null too.
@@ -54,41 +55,6 @@ export type RightNowDeps<T extends RightNowOwnedRow> = {
   lookupOwned: (gids: string[]) => Promise<T[] | null>;
 };
 
-const photoCache = new Map<string, { at: number; uri: string | null }>();
-
-export function __resetRightNowPhotosForTests(): void {
-  photoCache.clear();
-}
-
-/** One photo for one Google-only card, cached with the area. */
-async function resolvePhoto(
-  apiKey: string,
-  hit: NearbyHit,
-): Promise<string | null> {
-  if (!hit.photoName) return null;
-  const cached = photoCache.get(hit.placeId);
-  if (cached && Date.now() - cached.at < RIGHT_NOW_CACHE_MS) return cached.uri;
-  let uri: string | null = null;
-  try {
-    const r = await fetch(
-      `https://places.googleapis.com/v1/${hit.photoName}/media?maxHeightPx=800&skipHttpRedirect=true`,
-      { headers: { "X-Goog-Api-Key": apiKey } },
-    );
-    if (r.ok) {
-      const d = (await r.json()) as { photoUri?: string };
-      uri = typeof d.photoUri === "string" && d.photoUri.startsWith("https://")
-        ? d.photoUri
-        : null;
-    } else {
-      await r.body?.cancel();
-    }
-  } catch (err) {
-    console.error("[right-now] photo failed", (err as Error).message);
-  }
-  photoCache.set(hit.placeId, { at: Date.now(), uri });
-  return uri;
-}
-
 function roundedKm(
   center: { lat: number; lng: number },
   lat: number | null | undefined,
@@ -101,7 +67,7 @@ function roundedKm(
 /**
  * The Google Right Now rail's places, nearest first, at most
  * CATALOG_RAIL_CAP. A hit an active Mesita row owns goes out as that row
- * (Reserve works); the rest are Google-only stubs with one photo. Null
+ * (Reserve works); the rest are Google-only stubs with no photo. Null
  * means "keep the Mesita Right Now".
  */
 export async function rightNowGooglePlaces<T extends RightNowOwnedRow>(
@@ -140,25 +106,18 @@ export async function rightNowGooglePlaces<T extends RightNowOwnedRow>(
     googleCount: CATALOG_RAIL_CAP,
   }).slice(0, CATALOG_RAIL_CAP);
 
-  const out = await Promise.all(
-    merged.map(async (item): Promise<Record<string, unknown> | null> => {
-      if (item.kind === "listed") {
-        const { google_place_id: _gid, ...row } = item.row;
-        return {
-          ...row,
-          distance_km: roundedKm(center, item.row.lat, item.row.lng),
-        };
-      }
-      const resolved = resolveGoogleItem(item.hit, claim);
-      if (resolved.kind !== "stub") return null;
-      const stub = googleStub(
-        item.hit,
-        roundedKm(center, item.hit.lat, item.hit.lng),
-      );
-      const photo = await resolvePhoto(apiKey, item.hit);
-      return { ...stub, photos: photo ? [photo] : [] };
-    }),
-  );
+  const out = merged.map((item): Record<string, unknown> | null => {
+    if (item.kind === "listed") {
+      const { google_place_id: _gid, ...row } = item.row;
+      return {
+        ...row,
+        distance_km: roundedKm(center, item.row.lat, item.row.lng),
+      };
+    }
+    const resolved = resolveGoogleItem(item.hit, claim);
+    if (resolved.kind !== "stub") return null;
+    return googleStub(item.hit, roundedKm(center, item.hit.lat, item.hit.lng));
+  });
   const places = out.filter((p): p is Record<string, unknown> => p !== null);
   return places.length > 0 ? places : null;
 }

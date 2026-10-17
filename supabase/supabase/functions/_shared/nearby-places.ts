@@ -16,16 +16,12 @@
 // maxes a Nearby call at 20; type batteries ride that one call.
 
 import {
+  classifyGoogleError,
   GOOGLE_PLACES_NEARBY_LEGACY_URL,
   GOOGLE_PLACES_NEARBY_URL,
-  classifyGoogleError,
   stripPlacesPrefix,
 } from "./google-places.ts";
-import {
-  haversineKm,
-  NEARBY_RADIUS_KM,
-  takeClosest,
-} from "./geo.ts";
+import { haversineKm, NEARBY_RADIUS_KM, takeClosest } from "./geo.ts";
 import { GOOGLE_SEARCH_TYPES } from "./google-type-super.ts";
 import { NEARBY_TYPE_KEYS } from "./discovery-config.ts";
 import { isPlaceEnriched, isPlaceProfileReady } from "./place-state.ts";
@@ -45,9 +41,10 @@ const NEARBY_CACHE_MS = 15_000;
 export const RIGHT_NOW_CACHE_MS = 5 * 60_000;
 const NEARBY_FIELD_MASK =
   "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.businessStatus,places.primaryType";
-/** Right Now's mask: Search's, plus open-now and photos. Never Search's. */
+/** Right Now's mask: Search's, plus open-now. Never a photo field: a card
+ *  for an ephemeral Google result draws a placeholder (MESITA-2298). */
 const RIGHT_NOW_FIELD_MASK =
-  `${NEARBY_FIELD_MASK},places.currentOpeningHours.openNow,places.photos`;
+  `${NEARBY_FIELD_MASK},places.currentOpeningHours.openNow`;
 
 export type NearbyHit = {
   placeId: string;
@@ -62,8 +59,6 @@ export type NearbyHit = {
   reviewCount: number | null;
   /** Right Now only: Google's `currentOpeningHours.openNow`. */
   openNow?: boolean | null;
-  /** Right Now only: the first photo's resource name (`places/…/photos/…`). */
-  photoName?: string | null;
 };
 
 type NearbyOnce =
@@ -113,7 +108,6 @@ async function searchNearbyOnce(
       businessStatus?: string;
       primaryType?: string;
       currentOpeningHours?: { openNow?: boolean };
-      photos?: Array<{ name?: string }>;
     }>;
   };
   const hits = (data.places ?? [])
@@ -141,7 +135,6 @@ async function searchNearbyOnce(
             openNow: typeof p.currentOpeningHours?.openNow === "boolean"
               ? p.currentOpeningHours.openNow
               : null,
-            photoName: p.photos?.[0]?.name ?? null,
           }
           : {}),
       };
@@ -247,7 +240,9 @@ export const GOOGLE_FANOUT_WINDOW_MS = 60_000;
 let googleFanoutAt: number[] = [];
 
 function pruneGoogleFanout(now: number): void {
-  googleFanoutAt = googleFanoutAt.filter((at) => now - at < GOOGLE_FANOUT_WINDOW_MS);
+  googleFanoutAt = googleFanoutAt.filter((at) =>
+    now - at < GOOGLE_FANOUT_WINDOW_MS
+  );
 }
 
 export function __resetNearbyGoogleCacheForTests(): void {
@@ -708,11 +703,16 @@ export function mergeNearbyCatalog<T extends MesitaNearbyRow>(
   mesita: T[],
   google: NearbyHit[],
   center: { lat: number; lng: number },
-  lanes: NearbyLaneCaps = lanesForPlacesScope("google", CATALOG_NEARBY_HARD_MAX),
+  lanes: NearbyLaneCaps = lanesForPlacesScope(
+    "google",
+    CATALOG_NEARBY_HARD_MAX,
+  ),
 ): Array<NearbyMerged<T>> {
   const inCircle = (lat: number | null, lng: number | null) =>
     haversineKm(center.lat, center.lng, lat, lng) <= NEARBY_RADIUS_KM;
-  const inMesita = mesita.filter((row) => inCircle(row.lat ?? null, row.lng ?? null));
+  const inMesita = mesita.filter((row) =>
+    inCircle(row.lat ?? null, row.lng ?? null)
+  );
   const inGoogle = google.filter((hit) => inCircle(hit.lat, hit.lng));
 
   if (lanes.googleCount > 0 && inGoogle.length > 0) {
@@ -735,11 +735,13 @@ export function mergeNearbyCatalog<T extends MesitaNearbyRow>(
     );
     const remaining = lanes.mesitaCount - merged.length;
     if (remaining > 0) {
-      for (const row of takeClosest(
-        inMesita.filter((r) => !usedIds.has(r.id)),
-        center,
-        remaining,
-      )) {
+      for (
+        const row of takeClosest(
+          inMesita.filter((r) => !usedIds.has(r.id)),
+          center,
+          remaining,
+        )
+      ) {
         merged.push({ kind: "listed" as const, row });
       }
     }
