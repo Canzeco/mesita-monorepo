@@ -22,6 +22,7 @@ import {
   useUserLocationLocating,
 } from "@/lib/use-user-location";
 import { withUserDistance } from "@/lib/place-distance";
+import { useOpenGooglePlace } from "@/lib/use-open-google-place";
 import { upsertSavedPlacePreview, useSavedPlaces } from "@/lib/saved-places";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { EmptyState } from "@/components/shared";
@@ -37,6 +38,7 @@ export function CatalogRails() {
   const locating = useUserLocationLocating();
   const locate = useLocateUser();
   const { savedIds, setSaved } = useSavedPlaces();
+  const openGooglePlace = useOpenGooglePlace();
   const [rails, setRails] = useState<CatalogRail[] | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const requestKey =
@@ -198,6 +200,7 @@ export function CatalogRails() {
                       place={located}
                       saved={saved}
                       onToggle={() => toggleSave(place, saved)}
+                      onOpenGoogle={() => openGooglePlace(place)}
                       className="w-[calc((100%-1rem)/2.5)] shrink-0"
                     />
                   );
