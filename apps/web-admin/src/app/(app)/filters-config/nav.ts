@@ -6,7 +6,7 @@ import { Activity, Blocks, Compass, LayoutGrid, Search } from "lucide-react";
 // the first tab (Pato, 2026-10-13).
 //
 // Matrix  = how modes and sources relate. Read-only. Routing is fixed.
-// Signals = every signal. Proximity and Timing hold the shape numbers.
+// Signals = Name, Description, Family, Proximity, Timing, Enriched, Popularity, Randomness.
 //           Weights do not: a weight belongs to a mode.
 // Modes   = ways guests look, plus the weight of each signal that mode ranks.
 //           Catalog is a mode on this page, not its own tab.
