@@ -359,16 +359,20 @@ describe("Discovery function APIs", () => {
     ).toEqual(new Set(["restaurant", "bar", "night_club", "cafe", "bakery"]));
   });
 
-  it("googlePull snaps to a stop — 40 and 60 are billed calls, not a slider", () => {
+  it("map.googlePull is retired and map.radiusKm is the one Nearby radius (MESITA-2298)", () => {
+    // One Nearby Search (New) call per request, 20 places, never widened: the
+    // Legacy 40/60 pull is gone and an old blob's key is dropped on coerce.
     expect(GOOGLE_PULL_STOPS).toEqual([20, 40, 60]);
-    expect(DEFAULT_MAP.googlePull).toBe(20);
-    const pull = (raw: unknown) => coerceConfig({ map: { googlePull: raw } }).map.googlePull;
-    expect(pull(40)).toBe(40);
-    expect(pull(60)).toBe(60);
-    expect(pull(37)).toBe(40);
-    expect(pull(9_000)).toBe(60);
-    expect(pull(-1)).toBe(20);
-    expect(pull("lots")).toBe(20);
+    expect("googlePull" in DEFAULT_MAP).toBe(false);
+    expect("googlePull" in coerceConfig({ map: { googlePull: 60 } }).map).toBe(false);
+    // The radius: default 50, clamped 1..50 (Google's circle cap), one decimal.
+    expect(DEFAULT_MAP.radiusKm).toBe(50);
+    const radius = (raw: unknown) => coerceConfig({ map: { radiusKm: raw } }).map.radiusKm;
+    expect(radius(0.2)).toBe(1);
+    expect(radius(999)).toBe(50);
+    expect(radius(12.34)).toBe(12.3);
+    expect(radius(7)).toBe(7);
+    expect(radius("far")).toBe(50);
   });
 
   it("coerceConfig defaults name Fast 5 and Deep 3+3+3", () => {
@@ -476,14 +480,16 @@ describe("Discovery page box order", () => {
     expect(floor).not.toContain('label="Minimum reviews"');
     expect(floor).toContain('"general",');
     expect(floor).toContain('"mapFloors",');
-    expect(floor).toContain('"mapPull",');
+    expect(floor).not.toContain('"mapPull"');
+    expect(floor).not.toContain("NearbyPullOwner");
     expect(floor).toContain('"filters",');
     // A Soon source states the fact; it never gets a field to type in.
     expect(floor).toContain("FloorSoonNote");
     expect(floor).not.toContain("categoryCount");
     expect(sourcesBoard).toContain("GeneralFloorOwner");
     expect(sourcesBoard).toContain("MapFloorOwner");
-    expect(sourcesBoard).toContain("NearbyPullOwner");
+    expect(sourcesBoard).not.toContain("NearbyPullOwner");
+    expect(sourcesBoard).toContain("One Nearby Search (New) call per request");
     expect(map).not.toContain("googlePull");
     expect(sourcesBoard).toContain("FloorMirror");
     expect(sourcesBoard).toContain("Atlas");
@@ -494,7 +500,7 @@ describe("Discovery page box order", () => {
     const acts = readFileSync(join(__dirname, "actions.ts"), "utf8");
     expect(acts).toContain('"mapSupers"');
     expect(acts).toContain('"mapFloors"');
-    expect(acts).toContain('"mapPull"');
+    expect(acts).not.toContain('"mapPull"');
     expect(acts).not.toContain('"mapTypes"');
     // Word is ONE mode with two passes. The blob slices keep their names.
     expect(name).toContain('title="Word (Fast Search)"');
@@ -542,15 +548,19 @@ describe("Discovery page box order", () => {
     expect(map).not.toContain("MAP_GOOGLE_COUNT_MAX");
     expect(map).toContain("HOW MANY PINS CAME BACK HERE");
     expect(map).toContain("pinCount");
-    // The Nearby pull is a different number with a different owner, and it
-    // lives on Search Sources, not here.
+    // The Nearby pull knob retired with MESITA-2298; the radius is the Map's
+    // second number, shared with the Feed.
     expect(map).not.toContain("googlePull");
-    expect(map).toContain("Three nested sets");
-    expect(map).toContain("Enrichment gates the inner ring");
+    expect(map).toContain("radiusKm");
+    expect(map).toContain('label="Radius (km)"');
+    expect(map).toContain("MAP_RADIUS_KM_MIN");
+    expect(map).toContain("Mesita Selected");
+    expect(map).not.toContain("Three nested sets");
+    expect(map).not.toContain("Enrichment gates the inner ring");
     expect(map).not.toContain("LaneMergeFunnel");
     expect(map).not.toContain("cascadeLaneCounts");
-    expect(map).toContain("Closest N of the selected set");
-    expect(map).toContain("Lineup ranks listed pins only when Google adds none");
+    expect(map).toContain("the nearest N of the guest's scope");
+    expect(map).not.toContain("Lineup ranks listed pins only when Google adds none");
     expect(map).not.toContain("Listed pins then Lineup");
     expect(map).toContain("Map reads the Map mask");
     expect(map).toContain("Reload after");

@@ -1013,9 +1013,10 @@ Deno.test("list-places admits every Mesita row through the scope, on the scoped 
   // The scan, the owned-gid pick and the extra query all ask the one rule.
   assertEquals(src.split("admitsScopeRow(placesScope, row)").length - 1, 3);
   assertEquals(src.includes("isEnrichedListedRow("), false);
-  // The Enriched gate binds the inner ring only; the ready half binds all.
+  // The Mesita lane is Mesita Selected: the Enriched gate is always on
+  // (MESITA-2298); the ready half binds in SQL as well.
   assertEquals(
-    src.includes("listedMapFilters(cfg.filters, cfg.map, placesScope)"),
+    src.includes("listedMapFilters(cfg.filters, cfg.map)"),
     true,
   );
   assertEquals(src.split("readyOnMap(applyGeneralGateQuery(").length - 1, 2);

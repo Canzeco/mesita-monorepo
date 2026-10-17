@@ -23,10 +23,8 @@ import {
   claimOwnedHits,
   GOOGLE_NEARBY_MAX,
   mergeNearbyCatalog,
-  type NearbyHit,
   peekCachedNearbyPlaces,
   resolveGoogleItem,
-  RIGHT_NOW_CACHE_MS,
   searchNearbyPlaces,
 } from "./nearby-places.ts";
 

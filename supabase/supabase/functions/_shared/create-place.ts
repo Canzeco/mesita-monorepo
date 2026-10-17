@@ -120,6 +120,24 @@ export function existingFromDuplicate(
   };
 }
 
+/**
+ * The one reader behind get-or-create (MESITA-2298): the Mesita row that
+ * already owns a Google Place ID, or null. A query failure is NOT "not
+ * found" — it throws, so the caller never creates a duplicate on a 42703.
+ */
+export async function findPlaceByGooglePlaceId(
+  admin: SupabaseClient,
+  googlePlaceId: string,
+): Promise<CreatedPlace | null> {
+  const { data, error } = await admin
+    .from("profiles")
+    .select("id, slug, name, state")
+    .eq("google_place_id", googlePlaceId)
+    .maybeSingle();
+  if (error) throw new Error(`profiles lookup failed: ${error.message}`);
+  return (data as CreatedPlace | null) ?? null;
+}
+
 export async function createMinimalPlace(opts: {
   admin: SupabaseClient;
   // The product caller's EF name — the log prefix for this create.
@@ -141,11 +159,7 @@ export async function createMinimalPlace(opts: {
   // ── Early dedupe (idempotency on google_place_id): reject already-onboarded
   // place_profiles BEFORE spending any budget. savePlaceData dedupes again as a race
   // guard; gating here keeps a duplicate click cheap. ──
-  const { data: existing } = await admin
-    .from("profiles")
-    .select("id, slug, name, state")
-    .eq("google_place_id", googlePlaceId)
-    .maybeSingle();
+  const existing = await findPlaceByGooglePlaceId(admin, googlePlaceId);
   if (existing) {
     return {
       ok: false,

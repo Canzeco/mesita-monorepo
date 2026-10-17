@@ -163,9 +163,13 @@ export const SUPER_PARAM_KEYS = [
 ] as const;
 export type SuperParamKey = (typeof SUPER_PARAM_KEYS)[number];
 
-/** Mirrors GOOGLE_PULL_STOPS in _shared/discovery-config.ts. */
+/** Mirrors GOOGLE_PULL_STOPS in _shared/discovery-config.ts — `map.pinCount`'s stops. */
 export const GOOGLE_PULL_STOPS = [20, 40, 60] as const;
 const GOOGLE_PULL_DEFAULT = 20;
+/** Mirrors MAP_RADIUS_KM_* in _shared/discovery-config.ts. Max = Google's Nearby circle cap. */
+export const MAP_RADIUS_KM_MIN = 1;
+export const MAP_RADIUS_KM_MAX = 50;
+const MAP_RADIUS_KM_DEFAULT = 50;
 /** Same ceiling as filters.minReviews — one reviewer floor reads like another. */
 export const GENERAL_MIN_REVIEWS_MAX = 100_000;
 
@@ -179,10 +183,13 @@ export type MapConfig = {
   reloadMinSec: number;
   googleFill: boolean;
   supers: Record<SuperParamKey, boolean>;
-  /** 20 / 40 / 60 — how many Google rows one Nearby pull buys. */
-  googlePull: number;
   /** 20 / 40 / 60 — how many pins the map query returns. Was the guest's. */
   pinCount: number;
+  /**
+   * The one Nearby radius (km), shared by the Map and the Feed's Google
+   * Places and Mesita Selected rails (MESITA-2298). Never the guest's.
+   */
+  radiusKm: number;
 };
 
 /**
@@ -366,8 +373,8 @@ export const DEFAULT_MAP: MapConfig = {
   reloadMinSec: 2,
   googleFill: true,
   supers: DEFAULT_MAP_SUPERS,
-  googlePull: GOOGLE_PULL_DEFAULT,
   pinCount: GOOGLE_PULL_DEFAULT,
+  radiusKm: MAP_RADIUS_KM_DEFAULT,
 };
 
 const DEFAULT_NAME_FAST: NameFastConfig = {
@@ -800,7 +807,7 @@ function coerceSuperParams(raw: unknown): Record<SuperParamKey, boolean> {
   return out;
 }
 
-/** 20 / 40 / 60, snapped. Never a free number: 40 and 60 are billed calls. */
+/** `pinCount`: 20 / 40 / 60, snapped. Never a free number. */
 function coerceGooglePull(raw: unknown): number {
   const n = num(raw, GOOGLE_PULL_DEFAULT, GOOGLE_PULL_STOPS[0], GOOGLE_PULL_STOPS[2]);
   let best: number = GOOGLE_PULL_DEFAULT;
@@ -869,7 +876,12 @@ function coerceMap(raw: unknown): MapConfig {
     reloadMinSec: reload.sec,
     googleFill: typeof m.googleFill === "boolean" ? m.googleFill : DEFAULT_MAP.googleFill,
     supers,
-    googlePull: coerceGooglePull(m.googlePull),
     pinCount: coerceGooglePull(m.pinCount),
+    // Rebuilt key by key: an old blob's `googlePull` (the retired Legacy
+    // pull, MESITA-2298) is dropped on the next save.
+    radiusKm:
+      Math.round(
+        num(m.radiusKm, DEFAULT_MAP.radiusKm, MAP_RADIUS_KM_MIN, MAP_RADIUS_KM_MAX) * 10,
+      ) / 10,
   };
 }

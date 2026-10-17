@@ -238,12 +238,14 @@ export const SUPER_PARAM_KEYS = [
 export type SuperParamKey = (typeof SUPER_PARAM_KEYS)[number];
 
 /**
- * Map pool policy. Closest N of the selected Places set, then paint.
- * THREE NESTED SETS (MESITA-2158):
- *   Google Places ⊃ Mesita Places ⊃ Mesita Enriched Places
- * Enrichment gates only the inner ring. N is `pinCount`, an OPERATOR number since
- * MESITA-1699 — the guest's Filters sheet is gone and its three controls
- * live here and on Search Sources. Floors still exclude; 0 = off.
+ * Map pool policy. One Nearby Search (New) call inside `radiusKm`, the
+ * nearest `pinCount` of the guest's one scope (Google Places or Mesita
+ * Selected, MESITA-2298), then paint. Internally the three nested sets
+ * (Google Places ⊃ Mesita Places ⊃ Mesita Enriched Places) still describe
+ * the data; a guest never sees the middle ring or the word Enriched. N is
+ * `pinCount`, an OPERATOR number since MESITA-1699 — the guest's Filters
+ * sheet is gone and its controls live here and on Search Sources. Floors
+ * still exclude; 0 = off.
  */
 export type MapConfig = {
   minRating: number;
@@ -261,18 +263,18 @@ export type MapConfig = {
    *
    * THIS WAS THE GUEST'S QUESTION UNTIL MESITA-1699. Pato: "remove filters
    * from search. like those filters are controlled in admin console, not in
-   * consumer app." It caps BOTH lanes and the merged union, so max pins =
-   * pinCount, never the sum. Distinct from `googlePull`, which caps only how
-   * many GOOGLE rows we are willing to pay for.
+   * consumer app." It caps the one scope's list, so max pins = pinCount.
+   * Google itself returns at most 20 per Nearby call and the engine never
+   * widens (MESITA-2298); 40 and 60 only matter for Mesita Selected.
    */
   pinCount: number;
   /**
-   * Max places one Nearby pull asks Google for: 20, 40 or 60 (`GOOGLE_PULL_STOPS`).
-   * Google bills in pages of 20; 40 and 60 are 2 and 3 billed requests over the
-   * same query (Legacy next_page_token). Pull 20 stays one Nearby Search (New)
-   * POST. Operator spend knob; `pinCount` caps painted pins.
+   * THE ONE NEARBY RADIUS (km), shared by the Map and the Feed's Google
+   * Places and Mesita Selected rails (MESITA-2298). The operator's number; a
+   * guest never sets it. `MAP_RADIUS_KM_MIN`..`MAP_RADIUS_KM_MAX` — the max
+   * is Google's Nearby circle cap (50 km). One decimal.
    */
-  googlePull: number;
+  radiusKm: number;
 };
 
 /**
@@ -492,13 +494,16 @@ export const NAME_FAST_COUNT_DEFAULT = 5;
 export const NAME_MESITA_COUNT_DEFAULT = 3;
 export const NAME_GOOGLE_COUNT_DEFAULT = 3;
 /**
- * The three stops the Nearby box offers. 20 is one Google request; 40 and 60
- * are 2 and 3, because Nearby Search (New) caps `maxResultCount` at 20 and
- * has no page token (`GOOGLE_NEARBY_MAX` in nearby-places.ts). Picking 60
- * therefore triples that lane's Nearby bill.
+ * The three stops `map.pinCount` offers (How many pins). Google itself hands
+ * back at most 20 per Nearby Search (New) call and the engine never widens
+ * (MESITA-2298), so the stops above 20 only let Mesita Selected paint more.
  */
 export const GOOGLE_PULL_STOPS = [20, 40, 60] as const;
 export const GOOGLE_PULL_DEFAULT = 20;
+/** `map.radiusKm` bounds. The max is Google's Nearby circle cap. */
+export const MAP_RADIUS_KM_MIN = 1;
+export const MAP_RADIUS_KM_MAX = 50;
+export const MAP_RADIUS_KM_DEFAULT = 50;
 /** Same ceiling as filters.minReviews — one review floor reads like another. */
 export const GENERAL_MIN_REVIEWS_MAX = 100_000;
 
@@ -544,8 +549,8 @@ export const DEFAULT_MAP: MapConfig = {
   reloadMinSec: 2,
   googleFill: true,
   supers: DEFAULT_MAP_SUPERS,
-  googlePull: GOOGLE_PULL_DEFAULT,
   pinCount: GOOGLE_PULL_DEFAULT,
+  radiusKm: MAP_RADIUS_KM_DEFAULT,
 };
 
 export const DEFAULT_CATALOG: CatalogConfig = {
@@ -797,7 +802,7 @@ export function normalizeSuperParams(
   return out;
 }
 
-/** 20, 40 or 60 — snapped to the nearest stop, never a free number. */
+/** `pinCount`: 20, 40 or 60 — snapped to the nearest stop, never a free number. */
 export function normalizeGooglePull(raw: unknown): number {
   const n = num(
     raw,
@@ -927,8 +932,17 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
     reloadMinSec: reload.sec,
     googleFill: bool(r.googleFill, DEFAULT_MAP.googleFill),
     supers,
-    googlePull: normalizeGooglePull(r.googlePull),
     pinCount: normalizeGooglePull(r.pinCount),
+    // Rebuilt key by key: an old blob's `googlePull` (the retired Legacy
+    // pull, MESITA-2298) is dropped on the next save.
+    radiusKm: Math.round(
+      num(
+        r.radiusKm,
+        DEFAULT_MAP.radiusKm,
+        MAP_RADIUS_KM_MIN,
+        MAP_RADIUS_KM_MAX,
+      ) * 10,
+    ) / 10,
   };
 }
 

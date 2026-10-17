@@ -238,10 +238,10 @@ Deno.serve(async (req) => {
   // Nearby uses its own large radius + closest N of the selected Places
   // set. Pay / Home GET callers keep global filters only. Google
   // fill is client opt-in AND operator googleFill AND at least one Super on.
-  // HOW MANY PINS is `map.pinCount`; HOW MANY GOOGLE ROWS WE BUY is
-  // `map.googlePull` (MESITA-1695). Two questions, two knobs. Guest
-  // Popularity (`minReviews`) is a Discovery-mode floor on top, never a
-  // Nearby API param.
+  // HOW MANY PINS is `map.pinCount`; Google hands back at most 20 per call
+  // and the engine never widens (MESITA-2298). Guest Google Reviews
+  // (`minReviews`) is a Discovery-mode floor on top, applied after Google's
+  // response, never a Nearby API param.
   const efEnv = readEFEnv();
   const cfg = efEnv.ok
     ? await loadDiscoveryConfig(adminClient(efEnv.env))
@@ -268,10 +268,10 @@ Deno.serve(async (req) => {
     : enabledNearbyTypes(cfg.map);
   const googleFill = mapShouldFillGoogle(clientGoogle, cfg.map) &&
     nearbyTypes.length > 0;
-  // Only the inner ring runs the Enriched gate; the two wider rings admit
-  // Created rows and are cut to a ready profile instead (`readyOnMap`).
+  // The Mesita lane is Mesita Selected: the Enriched gate is always on
+  // (MESITA-2298); `readyOnMap` keeps the ready cut in SQL either way.
   const filters = isNearby
-    ? listedMapFilters(cfg.filters, cfg.map, placesScope)
+    ? listedMapFilters(cfg.filters, cfg.map)
     : cfg.filters;
   // Mesita Places = listed (RLS) + `content_state = 'ready'`, on EVERY ring:
   // the inner ring's gate already carries it, and `admitsScopeRow` re-checks
@@ -340,7 +340,7 @@ Deno.serve(async (req) => {
     const { lat, lng } = nearbyDecision;
     const center = { lat, lng };
     const scanRows = (data ?? []) as unknown as CardRow[];
-    const lanes = lanesForPlacesScope(placesScope, limit, cfg.map.googlePull);
+    const lanes = lanesForPlacesScope(placesScope, limit);
     let mesitaRows = scanRows.filter((row) => admitsScopeRow(placesScope, row));
     if (guestSupers.length > 0) {
       mesitaRows = mesitaRows.filter((row) =>
@@ -385,11 +385,7 @@ Deno.serve(async (req) => {
     const wantGoogleNearby = lanes.googleCount > 0;
     const gmp = readGooglePlacesKey();
     if (wantGoogleNearby && gmp.ok) {
-      const cached = peekCachedNearbyPlaces(
-        center,
-        nearbyTypes,
-        cfg.map.googlePull,
-      );
+      const cached = peekCachedNearbyPlaces(center, nearbyTypes);
       if (cached) {
         googleHits = cached;
       } else if (efEnv.ok) {
@@ -400,8 +396,7 @@ Deno.serve(async (req) => {
         const ipHash = await hashConnectingIp(req, efEnv.env.serviceKey);
         googleHits = await searchNearbyPlaces(gmp.key, center, {
           types: nearbyTypes,
-          // 20 is one request; 40 and 60 are 2 and 3, split by battery.
-          pull: cfg.map.googlePull,
+          // ONE Nearby Search (New) call, 20 places, never widened (MESITA-2298).
           beforeFanout: () =>
             consumeNearbyGoogleQuota(adminClient(efEnv.env), ipHash).then(
               (quota) => quota.allow,

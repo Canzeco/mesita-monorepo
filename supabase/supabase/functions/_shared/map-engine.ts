@@ -26,7 +26,7 @@ import {
   type SignalParamBag,
   type SignalPlace,
 } from "./discovery-signals.ts";
-import type { NearbyHit, PlacesScope } from "./nearby-places.ts";
+import type { NearbyHit } from "./nearby-places.ts";
 import { type EligibilityResult, familiesForGoogleType } from "./sourcing.ts";
 import { familiesForAtlasCategory } from "./place-taxonomy.ts";
 
@@ -52,39 +52,43 @@ function popPlace(
 }
 
 /**
- * Stricter of global operator filters and Map floors, for the listed query.
+ * Stricter of global operator filters and Map floors, for the Mesita
+ * Selected query (MESITA-2298).
  *
  * `requireReady` is the Enriched gate (`enriched_at IS NOT NULL` AND
- * `content_state = 'ready'`), and only the inner ring runs it (MESITA-2158).
- * Mesita Places and Google Places admit Created rows, so their query drops
- * it; the caller cuts them to `content_state = 'ready'` on its own, and
- * {@link admitsScopeRow} re-checks every row either way.
+ * `content_state = 'ready'`). Mesita Selected IS that set today, so the
+ * gate is always on here whatever the global toggle says: a Created row is
+ * not Selected, and a guest has no scope that would show it.
  */
 export function listedMapFilters(
   global: DiscoveryFilters,
   map: MapConfig,
-  scope: PlacesScope = "enriched",
 ): DiscoveryFilters {
   return {
     ...global,
-    requireReady: scope === "enriched" ? global.requireReady : false,
+    requireReady: true,
     minRating: Math.max(global.minRating, map.minRating),
     minReviews: Math.max(global.minReviews, map.minReviews),
   };
 }
 
 /**
- * Guest Popularity — Map mode only (MESITA-1790). A Discovery-mode
- * artificial filter: Google review-count floor applied AFTER the catalog
- * is assembled, never as a Nearby API param. Stops match the Filters
- * sheet. 0 = no extra guest cut; operator floors still bind underneath.
+ * Guest Google Reviews — Map mode only (MESITA-1790). A Discovery-mode
+ * artificial filter: Google review-COUNT floor applied AFTER Google's
+ * response, never as a Nearby API param, never a refill, and never to
+ * Mesita Selected (MESITA-2298). Stops match the Filters sheet; a silent
+ * client gets the sheet's default, 100+. 0 = no extra guest cut; operator
+ * floors still bind underneath.
  */
 export const MAP_MIN_REVIEW_STOPS = [0, 10, 100, 1000] as const;
 export type MapMinReviews = (typeof MAP_MIN_REVIEW_STOPS)[number];
+export const MAP_MIN_REVIEWS_DEFAULT: MapMinReviews = 100;
 
 export function parseMapMinReviews(value: unknown): MapMinReviews {
+  if (value === undefined || value === null) return MAP_MIN_REVIEWS_DEFAULT;
   const n = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(n) || n <= 0) return 0;
+  if (!Number.isFinite(n)) return MAP_MIN_REVIEWS_DEFAULT;
+  if (n <= 0) return 0;
   let best: MapMinReviews =
     MAP_MIN_REVIEW_STOPS[MAP_MIN_REVIEW_STOPS.length - 1];
   let bestD = Number.POSITIVE_INFINITY;

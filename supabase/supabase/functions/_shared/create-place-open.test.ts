@@ -48,7 +48,7 @@ Deno.test("consumer-web-create-place looks the id up before the quota and never 
   const src = await Deno.readTextFile(
     new URL("../consumer-web-create-place/index.ts", import.meta.url),
   );
-  const lookup = src.indexOf('.eq("google_place_id", googlePlaceId)');
+  const lookup = src.indexOf("findPlaceByGooglePlaceId(admin, googlePlaceId)");
   const quota = src.indexOf("consumeConsumerCreateQuota(");
   assertEquals(lookup > 0 && quota > 0 && lookup < quota, true);
   assertEquals(src.includes("openedExistingPlace(existing)"), true);

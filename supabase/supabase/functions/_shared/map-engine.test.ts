@@ -20,6 +20,7 @@ import {
   listedClearsMapPopularity,
   listedMapFilters,
   MAP_MIN_REVIEW_STOPS,
+  MAP_MIN_REVIEWS_DEFAULT,
   mapShouldFillGoogle,
   parseMapMinReviews,
   primaryTypeClearsMapTypes,
@@ -89,17 +90,15 @@ Deno.test("listed Map filters take the stricter of global filters and Map floors
   );
 });
 
-Deno.test("listed Map filters: only the Enriched ring runs the Enriched gate (MESITA-2158)", () => {
+Deno.test("listed Map filters: the Selected pool always runs the Enriched gate (MESITA-2298)", () => {
+  // Mesita Selected IS the enriched, ready set today; a Created row is not
+  // Selected and no guest scope shows it, so the gate ignores the global
+  // toggle here.
   const global = { ...DISCOVERY_DEFAULTS.filters, requireReady: true };
   assertEquals(listedMapFilters(global, MAP).requireReady, true);
-  assertEquals(listedMapFilters(global, MAP, "enriched").requireReady, true);
-  assertEquals(listedMapFilters(global, MAP, "mesita").requireReady, false);
-  assertEquals(listedMapFilters(global, MAP, "google").requireReady, false);
-  // An operator who switched the gate off keeps it off on the inner ring too.
   assertEquals(
-    listedMapFilters({ ...global, requireReady: false }, MAP, "enriched")
-      .requireReady,
-    false,
+    listedMapFilters({ ...global, requireReady: false }, MAP).requireReady,
+    true,
   );
 });
 
@@ -247,8 +246,15 @@ Deno.test("Atlas leftover slugs admit via Super membership, not Google type", ()
   assertEquals(primaryTypeClearsMapTypes("gas_station", MAP), false);
 });
 
-Deno.test("guest Google Reviews snaps to 0/10/100/1000 and unknown fails a floor", () => {
-  assertEquals(parseMapMinReviews(undefined), 0);
+Deno.test("guest Google Reviews snaps to 0/10/100/1000, silence is 100+, unknown fails a floor", () => {
+  // The sheet's default is 100+ (MESITA-2298): a client that says nothing
+  // gets it; a client that says 0 means "any number of reviews".
+  assertEquals(MAP_MIN_REVIEWS_DEFAULT, 100);
+  assertEquals(parseMapMinReviews(undefined), 100);
+  assertEquals(parseMapMinReviews(null), 100);
+  assertEquals(parseMapMinReviews("x"), 100);
+  assertEquals(parseMapMinReviews(0), 0);
+  assertEquals(parseMapMinReviews("0"), 0);
   assertEquals(parseMapMinReviews(-1), 0);
   assertEquals(parseMapMinReviews(10), 10);
   assertEquals(parseMapMinReviews(55), 100);

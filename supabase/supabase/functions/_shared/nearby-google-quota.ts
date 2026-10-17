@@ -1,10 +1,9 @@
 // Per-IP Google Nearby fill quota (abuse guard for public list-places).
 //
 // consumer-web-list-places is verify_jwt = false. Web Search opt-in
-// `{ google: true, lat, lng }` spends the server GMP_KEY on one to three
-// Nearby Search (New) calls — `discovery_config.map.googlePull` picks 20, 40
-// or 60, and Google caps a request at 20 with no page token, so the stops are
-// 1, 2 and 3 BILLED requests (MESITA-1695). The 15s in-isolate cell cache and the 20/60s
+// `{ google: true, lat, lng }` spends the server GMP_KEY on ONE Nearby
+// Search (New) call per cache-miss cell — 20 places, never widened
+// (MESITA-2298). The 15s in-isolate cell cache and the 20/60s
 // isolate fan-out cap in nearby-places.ts do not bind across isolates, so a
 // unique-~1 km-cell spray is otherwise an independent billed budget per
 // isolate.
@@ -35,9 +34,8 @@ import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 // Google-fill POSTs per hashed IP per rolling 60 s, counted per billed Nearby
 // request. Search pan-idle is ~1 s so a real explorer stays well under this
-// at a 20 pull; a 60 pull spends three of these per cache-miss cell, which is
-// the honest cost and is what the operator picked. Unique cells across
-// isolates share the same ledger.
+// at one call per cache-miss cell. Unique cells across isolates share the
+// same ledger.
 export const GOOGLE_NEARBY_IP_MAX = 45;
 export const GOOGLE_NEARBY_GLOBAL_MAX = 600;
 export const GOOGLE_NEARBY_IP_WINDOW_MS = 60_000;

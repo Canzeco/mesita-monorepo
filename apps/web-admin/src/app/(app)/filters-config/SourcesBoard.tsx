@@ -8,7 +8,6 @@ import {
   FiltersFloorOwner,
   GeneralFloorOwner,
   MapFloorOwner,
-  NearbyPullOwner,
   type FloorSeed,
 } from "./SourceFloor";
 import { floorNumber, GENERAL_FLOOR_OWNER } from "./source-floor-copy";
@@ -116,7 +115,12 @@ function SourceControls({
           ownedBy={GENERAL_FLOOR_OWNER}
         />
         <MapFloorOwner seed={seed} label="Quality floor · Nearby's own" />
-        <NearbyPullOwner seed={seed} />
+        <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
+          One Nearby Search (New) call per request: 20 places, nearest first,
+          inside the Map&apos;s radius. Never a second page, never a wider
+          circle (MESITA-2298). How many pins and the radius are on the Map
+          box.
+        </p>
       </>
     );
   }

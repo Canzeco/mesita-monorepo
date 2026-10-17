@@ -28,6 +28,7 @@ import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import {
   createMinimalPlace,
   existingFromDuplicate,
+  findPlaceByGooglePlaceId,
   openedExistingPlace,
 } from "../_shared/create-place.ts";
 import { consumeConsumerCreateQuota } from "../_shared/create-quota.ts";
@@ -58,11 +59,7 @@ Deno.serve(async (req) => {
   const admin = adminClient(env);
 
   // Get: a place Mesita holds opens without spending quota or Google money.
-  const { data: existing } = await admin
-    .from("profiles")
-    .select("id, slug, name, state")
-    .eq("google_place_id", googlePlaceId)
-    .maybeSingle();
+  const existing = await findPlaceByGooglePlaceId(admin, googlePlaceId);
   if (existing) return json(openedExistingPlace(existing), 200);
 
   // Per-consumer rolling 24 h quota — every CREATE attempt is metered BEFORE

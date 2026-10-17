@@ -21,11 +21,10 @@
 // Catalog Search" would silently move the Home rails. It prints the state
 // instead.
 
-import { Layers, Star, Users } from "lucide-react";
+import { Star, Users } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import {
-  ChoicePill,
   NumberField,
   SaveRow,
   Switch,
@@ -38,7 +37,6 @@ import {
 } from "./actions";
 import {
   GENERAL_MIN_REVIEWS_MAX,
-  GOOGLE_PULL_STOPS,
   MIN_RATING_MAX,
   type DiscoveryConfig,
 } from "./catalog";
@@ -254,79 +252,7 @@ export function MapFloorOwner({
       </div>
       <FloorTail
         updatedAt={ed.updatedAt}
-        note="Reviewers is a HEAD COUNT, rating is the stars — two different cuts. Applied EF-side after the Nearby fetch, and maxed with the listed-pool floor on the Mesita Nearby lane. The General wipe above runs as well."
-        pending={ed.pending}
-        dirty={ed.dirty}
-        ok={ed.ok}
-        onClick={ed.save}
-        loadError={ed.loadBlocked ? ed.error : null}
-      />
-    </FloorFrame>
-  );
-}
-
-/**
- * Google Nearby owns the PULL — max places one map load asks Google for.
- *
- * Google bills Nearby in pages of 20. The operator picks 20, 40, or 60 as the
- * max input — not a loop until that many match. Forty and sixty are two and
- * three billed requests over the same query (Legacy next_page_token).
- *
- * It is NOT the guest's How many. That one caps the pins painted on the map
- * (`map.pinCount` on the Map mode box).
- */
-export function NearbyPullOwner({ seed }: { seed: FloorSeed }) {
-  const ed = useFloorEditor(
-    seed,
-    "mapPull",
-    (a, b) => a.map.googlePull !== b.map.googlePull,
-  );
-  const pull = ed.cfg.map.googlePull;
-  const patch = (googlePull: number) => {
-    ed.setOk(false);
-    ed.setCfg((c) => ({ ...c, map: { ...c.map, googlePull } }));
-  };
-  const calls = Math.max(1, Math.round(pull / GOOGLE_PULL_STOPS[0]));
-  return (
-    <FloorFrame label="How many Google pulls">
-      {ed.error ? <ErrorNote message={ed.error} /> : null}
-      <p className="text-muted-foreground mt-3 type-meta">
-        Max places one map load asks Google for. Nearby returns{" "}
-        {GOOGLE_PULL_STOPS[0]} per billed call; 40 and 60 are 2 and 3{" "}
-        <span className="text-foreground font-semibold">billed</span> pages over
-        the same query (pagination), not a loop until that many match.
-      </p>
-      <p className="text-muted-foreground mt-2 type-meta">
-        Pull {GOOGLE_PULL_STOPS[0]} is one Nearby Search (New) POST with every
-        enabled type. Pull 40 or 60 paginates Legacy Nearby with{" "}
-        <span className="text-foreground font-semibold">next_page_token</span>,
-        then filters to the family battery and distance-sorts. Each page spends
-        one per-IP quota unit.
-      </p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {GOOGLE_PULL_STOPS.map((stop) => {
-          const active = pull === stop;
-          return (
-            <ChoicePill
-              key={stop}
-              active={active}
-              disabled={ed.busy}
-              onClick={() => patch(stop)}
-            >
-              {stop}
-            </ChoicePill>
-          );
-        })}
-      </div>
-      <p className="text-muted-foreground mt-3 type-meta">
-        <Layers className="mr-1 inline h-3.5 w-3.5 align-[-2px]" />
-        {calls === 1
-          ? "One Nearby request per cache-miss cell — today's spend."
-          : `${calls} Nearby requests per cache-miss cell — ${calls}x today's spend on this lane.`}
-      </p>
-      <FloorTail
-        updatedAt={ed.updatedAt}
-        note="A pull that cannot finish every page still returns what it got, but is never cached. How many pins is on the Map box."
+        note="Reviewers is a HEAD COUNT, rating is the stars — two different cuts. Applied EF-side after the one Nearby Search (New) call, and maxed with the listed-pool floor on the Mesita Nearby lane. The General wipe above runs as well."
         pending={ed.pending}
         dirty={ed.dirty}
         ok={ed.ok}
