@@ -126,8 +126,8 @@ function SourceControls({
   if (source === "mesita_catalog") {
     return (
       <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-        Catalog and Swipe both read listed Mesita places. Ranking weights for
-        the family lists are on{" "}
+        Catalog reads listed Mesita places. Ranking weights for the family
+        lists are on{" "}
         <Link href={DISCOVERY_CATALOG_HREF} className="text-foreground font-medium underline">
           Modes
         </Link>

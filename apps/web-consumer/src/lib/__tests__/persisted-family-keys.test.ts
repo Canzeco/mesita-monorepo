@@ -16,7 +16,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const DISCOVERY_KEY = "mesita_discovery_filters_v6";
+const DISCOVERY_KEY = "mesita_discovery_filters_v7";
 const MAP_KEY = "mesita_map_filters_v6";
 
 function installSessionStorage(): Map<string, string> {

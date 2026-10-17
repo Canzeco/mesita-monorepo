@@ -257,15 +257,10 @@ export type CatalogRail = {
   places: Place[];
 };
 
-/** Home › Places rails — one EF, twenty family lists, one ranking profile. */
+/** Home › Places rails — Mesita places, one row per family. */
 export async function apiListCatalog(
   client: SupabaseClient,
   origin?: { lat: number; lng: number } | null,
-  /**
-   * The guest's predicates (MESITA-1697). Sent so the EF cuts its POOL before
-   * planning rails — filtering the response here instead would leave 0-2 tiles
-   * under headings that still paint. See the EF's own note.
-   */
   predicates?: DiscoveryPredicatesWire,
 ): Promise<CatalogRail[]> {
   const data = await invokeEF<{ rails: CatalogRail[] }>(

@@ -385,6 +385,10 @@ verify_jwt = true
 [functions.admin-web-update-config]
 verify_jwt = true
 
+# Scores example inputs with the live Discovery signal functions.
+[functions.admin-web-preview-signals]
+verify_jwt = true
+
 # --- ElevenLabs Reservationist ---
 
 # Pushes the fleet spec (_shared/reservationist-fleet.ts) to ElevenLabs.

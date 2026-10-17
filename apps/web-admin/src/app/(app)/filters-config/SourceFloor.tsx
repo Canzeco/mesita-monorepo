@@ -377,7 +377,7 @@ export function FiltersFloorOwner({ seed }: { seed: FloorSeed }) {
       </div>
       <FloorTail
         updatedAt={ed.updatedAt}
-        note="This is the listed-pool floor, so it also cuts the Home rails, the Pay and viewport-map branch, and Swipe. Here it is maxed with the Google Nearby floor. Most of a young catalog is unrated, so reach for the count first."
+        note="This is the listed-pool floor, so it also cuts the Home rails and the Pay and viewport-map branch. Here it is maxed with the Google Nearby floor. Most of a young catalog is unrated, so reach for the count first."
         pending={ed.pending}
         dirty={ed.dirty}
         ok={ed.ok}

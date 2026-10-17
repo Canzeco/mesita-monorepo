@@ -6,10 +6,8 @@
 // sheet.
 //
 //   · Family — the fifteen guest families; empty = no constraint.
-//   · Scope          — two nested sets: Google ⊃ Mesita Enriched. Default is
-//                      the inner ring. On Feed/Scroll the pool is listed
-//                      Mesita places, so Google == all enriched; the ring
-//                      still names the same sets the map uses.
+//   · Scope — Mesita Places ⊃ Mesita Enriched Places. Default is the
+//     inner ring. Google Places is not a catalog set.
 //   · Google reviews — review-count floor 0 / 10 / 100 / 1000 / 10000.
 //                      Guest copy: 0 / 10+ / 100+ / 1K+ / 10K+. Missing
 //                      count fails a floor above 0.
@@ -24,30 +22,25 @@ import {
 } from "@/lib/map-filters-engine";
 import { type FamilyKey } from "@/lib/place-families";
 
-export type DiscoveryPlacesScope = "mesita" | "google";
+export type DiscoveryPlacesScope = "enriched" | "mesita";
 
-const DISCOVERY_PLACES_SCOPE_DEFAULT: DiscoveryPlacesScope = "mesita";
+const DISCOVERY_PLACES_SCOPE_DEFAULT: DiscoveryPlacesScope = "enriched";
 
-/**
- * This sheet's two radios, narrowest first. Its `mesita` is the ENRICHED
- * ring — Feed/Scroll's pool is the Enriched gate — so the dot and glyph
- * paint it red. The Map's own Mesita Places ring (MESITA-2158) is not a
- * set this pool can hold, so it is not offered here.
- */
+/** Widest first. Catalog never offers Google Places. */
 export const DISCOVERY_SCOPE_STOPS = [
   {
     key: "mesita",
+    ring: "mesita",
+    tick: "Mesita Places",
+    label: "Mesita Places",
+    hint: "Mesita Places, enriched or not",
+  },
+  {
+    key: "enriched",
     ring: "enriched",
     tick: "Mesita Enriched Places",
     label: "Mesita Enriched Places",
     hint: "Mesita Enriched Places only",
-  },
-  {
-    key: "google",
-    ring: "google",
-    tick: "Google Places",
-    label: "Google Places",
-    hint: "Google Places, Mesita places included",
   },
 ] as const satisfies readonly PlacesScopeStop<DiscoveryPlacesScope>[];
 
@@ -59,10 +52,8 @@ export const clampReviewFloor = clampMinReviews;
 export function parsePlacesScope(value: unknown): DiscoveryPlacesScope {
   if (typeof value === "string") {
     const key = value.trim().toLowerCase();
-    if (key === "mesita" || key === "google") return key;
+    if (key === "mesita" || key === "enriched") return key;
   }
-  // Unknown words land on the default — including whatever ring a persisted
-  // v6 blob may still carry.
   return DISCOVERY_PLACES_SCOPE_DEFAULT;
 }
 

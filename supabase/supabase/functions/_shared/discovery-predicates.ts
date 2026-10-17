@@ -52,9 +52,9 @@ function clampReviewFloor(value: unknown): number {
  * pre-MESITA-1153 behaviour.
  *
  * Web (MESITA-1792) sends Family, Places scope, and Google review floor.
- * Places scope cuts nothing here: every row these pools hold is a Mesita row,
- * and a Mesita row sits in both rings, so only the browser — which also holds
- * Google stubs — has anything to narrow.
+ * Places scope is not applied here. Catalog reads it itself: Mesita
+ * Places is every ready listed row, Mesita Enriched Places is the subset
+ * with `enriched_at` set. Search applies its own rings, including Google.
  */
 export type DeckPredicates = {
   familyKeys: string[];

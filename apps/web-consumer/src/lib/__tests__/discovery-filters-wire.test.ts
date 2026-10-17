@@ -42,7 +42,7 @@ describe("deckRequestKey", () => {
     ).not.toBe(base);
     expect(
       deckRequestKey(
-        filters({ familyKeys: ["dinner"], placesScope: "google" }),
+        filters({ familyKeys: ["dinner"], placesScope: "mesita" }),
         HERE,
       ),
     ).not.toBe(base);

@@ -17,7 +17,7 @@ import {
 } from "@/lib/discovery-filters-engine";
 import { FILTERABLE_PLACE_FAMILIES, type FamilyKey } from "@/lib/place-families";
 
-const STORAGE_KEY = "mesita_discovery_filters_v6";
+const STORAGE_KEY = "mesita_discovery_filters_v7";
 
 // Hydrate from the FILTERABLE seven, not all eight.
 // A persisted key the sheet no longer renders is a filter the guest cannot

@@ -8,7 +8,7 @@ describe("Discovery matrix", () => {
   it("renders every runtime source against every runtime mode, read-only", () => {
     const html = renderToStaticMarkup(<DiscoveryMatrix />);
     expect(DISCOVERY_SOURCES).toHaveLength(7);
-    expect(DISCOVERY_MODES).toHaveLength(6);
+    expect(DISCOVERY_MODES).toHaveLength(5);
     for (const source of DISCOVERY_SOURCES) {
       expect(html).toContain(source.label);
     }
@@ -22,7 +22,7 @@ describe("Discovery matrix", () => {
     expect(html).toContain("Google Places Nearby Search · Map · calls");
     expect(html).toContain("Mesita Places Nearby Search · Map · calls");
     expect(html).toContain("Mesita Places Catalog Search · Catalog · calls");
-    expect(html).toContain("Mesita Places Catalog Search · Swipe · calls");
+    expect(html).not.toContain("Swipe");
     expect(html).toContain("Mesita Places Catalog Search · Chat · does not call");
     expect(html).toContain("Mesita Social Catalog Search · Catalog · does not call");
     expect(html).toContain("Mesita Social Catalog Search · Chat · does not call");

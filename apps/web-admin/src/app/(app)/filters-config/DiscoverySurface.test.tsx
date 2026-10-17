@@ -29,11 +29,12 @@ describe("Discovery sources and modes", () => {
 
   it("renders every mode and gives Word no weight control", () => {
     const html = renderToStaticMarkup(<ModeFactList />);
-    expect(DISCOVERY_MODES).toHaveLength(6);
+    expect(DISCOVERY_MODES).toHaveLength(5);
     for (const mode of DISCOVERY_MODES) {
       expect(html).toContain(mode.label);
     }
     expect(html).toContain("There is no weight to edit.");
+    expect(html).not.toContain("Swipe");
     expect(html).not.toContain("<input");
     expect(html).not.toContain("Name, Description");
   });
