@@ -5,8 +5,10 @@ import Link from "next/link";
 import { Heart, Star } from "lucide-react";
 import type { Place } from "@/lib/api/places";
 import { placeHref } from "@/lib/place-route";
+import { isEnrichedPlace } from "@/lib/place-enriched";
 import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 import { cn, firstInitial, formatRating } from "@/lib/utils";
+import { CatalogEnrichChip } from "./CatalogEnrichChip";
 
 function readableKind(place: Place): string | null {
   const raw = place.category_label ?? place.category;
@@ -18,7 +20,8 @@ function readableKind(place: Place): string | null {
  * One place in a family rail, in the OpenTable shape: a rounded
  * photo, the name with the save heart beside it, then price, the Google
  * category, and the Google stars. No zone. The row is about 2.5 of
- * these wide. Favs does not use this tile.
+ * these wide. A Created place wears the Enrich vote on its photo
+ * (MESITA-2293). Favs does not use this tile.
  */
 export function CatalogTile({
   place,
@@ -41,28 +44,36 @@ export function CatalogTile({
   return (
     <li className={cn("min-w-0", className)}>
       <div className="bg-card border-border overflow-hidden rounded-2xl border">
-        <Link
-          href={href}
-          className="focus-visible:ring-primary block outline-none focus-visible:ring-2 focus-visible:ring-inset"
-        >
-          <div className="bg-muted relative aspect-[3/2] w-full overflow-hidden">
-            {photo ? (
-              <Image
-                src={photo}
-                alt=""
-                fill
-                sizes="(max-width: 448px) 40vw, 180px"
-                className="object-cover"
-              />
-            ) : (
-              <div className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-white/90">
-                <span className="font-display text-3xl font-bold tracking-tight">
-                  {firstInitial(place.name)}
-                </span>
-              </div>
-            )}
-          </div>
-        </Link>
+        <div className="relative">
+          <Link
+            href={href}
+            className="focus-visible:ring-primary block outline-none focus-visible:ring-2 focus-visible:ring-inset"
+          >
+            <div className="bg-muted relative aspect-[3/2] w-full overflow-hidden">
+              {photo ? (
+                <Image
+                  src={photo}
+                  alt=""
+                  fill
+                  sizes="(max-width: 448px) 40vw, 180px"
+                  className="object-cover"
+                />
+              ) : (
+                <div className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-white/90">
+                  <span className="font-display text-3xl font-bold tracking-tight">
+                    {firstInitial(place.name)}
+                  </span>
+                </div>
+              )}
+            </div>
+          </Link>
+          {isEnrichedPlace(place) ? null : (
+            <CatalogEnrichChip
+              place={place}
+              className="absolute bottom-2 left-2"
+            />
+          )}
+        </div>
         <div className="flex items-center pr-0.5 pl-2.5">
           <Link
             href={href}
