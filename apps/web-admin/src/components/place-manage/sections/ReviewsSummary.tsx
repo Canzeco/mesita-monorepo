@@ -2,7 +2,6 @@
 
 import { useState, type ReactNode } from "react";
 import { RefreshCw, Star } from "lucide-react";
-import type { AdminPlace } from "../actions";
 import { reloadPlaceReviews } from "../actions";
 import { SectionCard, type Tint } from "@/components/admin-ui/manage";
 import { mergeReviewFoundFlags } from "@/lib/review-found";
