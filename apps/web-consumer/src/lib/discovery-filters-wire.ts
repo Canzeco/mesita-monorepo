@@ -19,7 +19,7 @@ export function toDiscoveryPredicatesWire(
   return {
     familyKeys: [...f.familyKeys],
     placesScope: f.placesScope,
-    minReviews: f.minReviews,
+    minReviews: 0,
   };
 }
 
@@ -38,7 +38,6 @@ export function deckRequestKey(
   return [
     [...f.familyKeys].sort().join("+"),
     f.placesScope,
-    f.minReviews,
     where,
   ].join("|");
 }

@@ -51,6 +51,6 @@ describe("deckRequestKey", () => {
         filters({ familyKeys: ["dinner"], minReviews: 100 }),
         HERE,
       ),
-    ).not.toBe(base);
+    ).toBe(base);
   });
 });

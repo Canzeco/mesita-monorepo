@@ -38,7 +38,7 @@ const POOL_CAP = 1000;
 type Body = {
   lat?: number;
   lng?: number;
-  /** Family, Mesita scope, and review floor. Google is not a catalog scope. */
+  /** Family and Mesita scope. A review floor is ignored. Google is not a catalog scope. */
   predicates?: unknown;
 };
 
@@ -93,7 +93,10 @@ Deno.serve(async (req) => {
   }
 
   const fetched = (data ?? []) as unknown as PlaceProfileRow[];
-  const guestPredicates = readDeckPredicates(body.predicates);
+  const guestPredicates = {
+    ...readDeckPredicates(body.predicates),
+    minReviews: 0,
+  };
   const pool = applyDeckPredicates(
     fetched as unknown as Record<string, unknown>[],
     guestPredicates,

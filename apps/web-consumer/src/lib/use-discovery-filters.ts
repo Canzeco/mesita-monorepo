@@ -1,19 +1,15 @@
 "use client";
 
-// ONE shared discovery-filter store for Feed and Scroll (MESITA-1792).
-// Family · Places scope · Google review floor. Location is GPS,
-// not persisted here. Module-level state + useSyncExternalStore.
-// Search map Places + Family + Popularity live in
-// use-map-filters (MESITA-1790) — Map-only, a different store.
+// Catalog filter store. Family and the two Mesita rings. Location is GPS,
+// not persisted here. A stored Google review floor is dropped: that cut
+// belongs to the map. Module-level state + useSyncExternalStore.
 
 import { useSyncExternalStore } from "react";
 import {
   DISCOVERY_FILTER_DEFAULTS,
-  clampReviewFloor,
   parsePlacesScope,
   type DiscoveryFilters,
   type DiscoveryPlacesScope,
-  type DiscoveryReviewFloor,
 } from "@/lib/discovery-filters-engine";
 import { FILTERABLE_PLACE_FAMILIES, type FamilyKey } from "@/lib/place-families";
 
@@ -42,7 +38,7 @@ function readPersisted(): DiscoveryFilters {
           )
         : [],
       placesScope: parsePlacesScope(parsed.placesScope),
-      minReviews: clampReviewFloor(parsed.minReviews),
+      minReviews: 0,
     };
   } catch {
     return DISCOVERY_FILTER_DEFAULTS;
@@ -94,10 +90,6 @@ export function toggleDiscoveryFamily(key: FamilyKey) {
 
 export function setDiscoveryPlacesScope(placesScope: DiscoveryPlacesScope) {
   patchDiscoveryFilters({ placesScope });
-}
-
-export function setDiscoveryMinReviews(minReviews: DiscoveryReviewFloor) {
-  patchDiscoveryFilters({ minReviews: clampReviewFloor(minReviews) });
 }
 
 export function useDiscoveryFilters(): DiscoveryFilters {

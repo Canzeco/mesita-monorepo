@@ -29,21 +29,21 @@ describe("the catalog sheet offers Mesita rings only", () => {
     "utf8",
   );
 
-  it("ships Family, Places, Google reviews, and location", () => {
+  it("ships Family, Places, and location, and not a review floor", () => {
     expect(src).toContain("Family");
     expect(src).toContain("Places");
-    expect(src).toContain("Minimum number of Google reviews");
     expect(src).toContain("Use my location");
+    expect(src).not.toContain("Minimum number of Google reviews");
   });
 
-  it("offers Mesita Places and Mesita Enriched Places", () => {
+  it("offers Mesita Enriched Places, then Mesita Places", () => {
     expect(DISCOVERY_SCOPE_STOPS.map((stop) => stop.key)).toEqual([
-      "mesita",
       "enriched",
+      "mesita",
     ]);
     expect(DISCOVERY_SCOPE_STOPS.map((stop) => stop.label)).toEqual([
-      "Mesita Places",
       "Mesita Enriched Places",
+      "Mesita Places",
     ]);
   });
 });
