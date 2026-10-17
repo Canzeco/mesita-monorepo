@@ -1,17 +1,10 @@
-// Discovery filter engine — Feed and Scroll (MESITA-1792).
-//
-// Same three guest params as the Search map (MESITA-1790), plus one extra:
-// connect current location. Nothing else. The old intent stack — Where
-// search, distance slider, When, and category chips — is gone from this
-// sheet.
+// Catalog filter engine.
 //
 //   · Family — the fifteen guest families; empty = no constraint.
-//   · Scope — Mesita Places ⊃ Mesita Enriched Places. Default is the
+//   · Places — Mesita Enriched Places, then Mesita Places. Default is the
 //     inner ring. Google Places is not a catalog set.
-//   · Google reviews — review-count floor 0 / 10 / 100 / 1000 / 10000.
-//                      Guest copy: 0 / 10+ / 100+ / 1K+ / 10K+. Missing
-//                      count fails a floor above 0.
 //
+// The Google review floor belongs to Search. A stored floor is ignored.
 // Location is not a predicate: it only grants coordinates for ranking.
 // Predicates CUT, signals RANK, and a predicate cuts first.
 
@@ -26,21 +19,21 @@ export type DiscoveryPlacesScope = "enriched" | "mesita";
 
 const DISCOVERY_PLACES_SCOPE_DEFAULT: DiscoveryPlacesScope = "enriched";
 
-/** Widest first. Catalog never offers Google Places. */
+/** Inner ring first. Catalog never offers Google Places. */
 export const DISCOVERY_SCOPE_STOPS = [
-  {
-    key: "mesita",
-    ring: "mesita",
-    tick: "Mesita Places",
-    label: "Mesita Places",
-    hint: "Mesita Places, enriched or not",
-  },
   {
     key: "enriched",
     ring: "enriched",
     tick: "Mesita Enriched Places",
     label: "Mesita Enriched Places",
     hint: "Mesita Enriched Places only",
+  },
+  {
+    key: "mesita",
+    ring: "mesita",
+    tick: "Mesita Places",
+    label: "Mesita Places",
+    hint: "Mesita Places, enriched or not",
   },
 ] as const satisfies readonly PlacesScopeStop<DiscoveryPlacesScope>[];
 
@@ -72,8 +65,7 @@ export const DISCOVERY_FILTER_DEFAULTS: DiscoveryFilters = {
 export function hasDiscoveryPredicates(f: DiscoveryFilters): boolean {
   return (
     f.familyKeys.length > 0 ||
-    f.placesScope !== DISCOVERY_PLACES_SCOPE_DEFAULT ||
-    f.minReviews > 0
+    f.placesScope !== DISCOVERY_PLACES_SCOPE_DEFAULT
   );
 }
 
@@ -81,6 +73,5 @@ export function countAppliedDiscoveryFilters(f: DiscoveryFilters): number {
   let n = 0;
   if (f.familyKeys.length > 0) n += 1;
   if (f.placesScope !== DISCOVERY_PLACES_SCOPE_DEFAULT) n += 1;
-  if (f.minReviews > 0) n += 1;
   return n;
 }

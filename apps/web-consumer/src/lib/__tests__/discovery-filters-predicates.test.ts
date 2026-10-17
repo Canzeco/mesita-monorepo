@@ -16,6 +16,11 @@ describe("no predicate set", () => {
     expect(hasDiscoveryPredicates(filters())).toBe(false);
     expect(countAppliedDiscoveryFilters(filters())).toBe(0);
   });
+
+  it("a stored review floor is not a catalog filter", () => {
+    expect(hasDiscoveryPredicates(filters({ minReviews: 100 }))).toBe(false);
+    expect(countAppliedDiscoveryFilters(filters({ minReviews: 100 }))).toBe(0);
+  });
 });
 
 describe("Scope", () => {

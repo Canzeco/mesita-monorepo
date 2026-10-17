@@ -8,7 +8,6 @@ import {
 } from "@/lib/discovery-filters-engine";
 import {
   resetDiscoveryFilters,
-  setDiscoveryMinReviews,
   setDiscoveryPlacesScope,
   toggleDiscoveryFamily,
   useDiscoveryFilters,
@@ -20,13 +19,10 @@ import {
   Pill,
 } from "./discovery-filter-controls";
 import { SearchPlacesScope } from "./search/SearchPlacesScope";
-import { SearchPopularity } from "./search/SearchPopularity";
 import { cn } from "@/lib/utils";
 
-// Feed + Scroll Filters. Same three guest params as the Search map
-// (Family, Places scope, Google review floor), drawn by the same controls,
-// plus one extra: connect current location. Dense on purpose — the sheet
-// should not scroll.
+// Catalog Filters. Family, the two Mesita rings, and location.
+// Google Places is not a choice. The Google review floor is the map's.
 
 export function DiscoveryFilters({
   onClose,
@@ -70,13 +66,6 @@ export function DiscoveryFilters({
               stops={DISCOVERY_SCOPE_STOPS}
               scope={filters.placesScope}
               onScope={setDiscoveryPlacesScope}
-            />
-          </FilterModule>
-
-          <FilterModule label="Minimum number of Google reviews">
-            <SearchPopularity
-              minReviews={filters.minReviews}
-              onMinReviews={setDiscoveryMinReviews}
             />
           </FilterModule>
 
