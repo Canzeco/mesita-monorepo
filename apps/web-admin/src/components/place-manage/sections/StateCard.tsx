@@ -247,7 +247,7 @@ export function StateRow({
   /** `true`/`false`/`?`/`…` for bools, `0…n` for Requested, `0`/`1`/`2` for Promoted. */
   chip: string;
   detail: string;
-  /** Control under the detail. Disabled is the operator write. */}
+  /** Control under the detail. Disabled is the operator write. */
   action?: React.ReactNode;
 }) {
   return (
