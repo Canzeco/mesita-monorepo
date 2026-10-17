@@ -203,7 +203,7 @@ export const CATALOG_FAMILY_FACTS: readonly { key: string; label: string; emoji:
   { key: "sushi", label: "Sushi", emoji: "🍣" },
   { key: "burgers", label: "Burgers", emoji: "🍔" },
   { key: "noodles", label: "Noodles", emoji: "🍜" },
-  { key: "dinner", label: "Dinner", emoji: "🍽️" },
+  { key: "dinner", label: "Dinner", emoji: "🍝" },
   { key: "sweet", label: "Sweet", emoji: "🍰" },
   { key: "drinks", label: "Drinks", emoji: "🍸" },
   { key: "night_out", label: "Night out", emoji: "🌙" },
