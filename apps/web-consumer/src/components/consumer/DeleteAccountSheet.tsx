@@ -44,9 +44,10 @@ export function DeleteAccountSheet({
     try {
       await apiDeleteConsumerAccount(supabase);
       // The auth user is gone server-side; clear the local session (best
-      // effort — it may already be invalid) and leave the app entirely.
+      // effort — it may already be invalid) and leave the app entirely. A full
+      // load, never router.push: nothing of the deleted session may survive.
       await supabase.auth.signOut({ scope: "local" }).catch(() => {});
-      window.location.href = "/";
+      window.location.assign(new URL("/", window.location.origin));
     } catch (e) {
       toast(errMsg(e, "Couldn't delete your account — try again."));
       setDeleting(false);

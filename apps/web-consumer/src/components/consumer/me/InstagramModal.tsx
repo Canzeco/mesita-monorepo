@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { BadgeCheck, Instagram } from "lucide-react";
+import { BadgeCheck } from "lucide-react";
+import { Instagram } from "@/components/shared/instagram-icon";
 import { cn, errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
@@ -65,7 +66,12 @@ export function InstagramModal() {
       // surface that reads it, and the identity is seeded server-side by the
       // shell layout, so every successful claim re-seeds the same way. A
       // soft `router.back()` left the header chip stale.
-      window.location.href = `${CONSUMER_ROUTES.me}?instagram=success`;
+      window.location.assign(
+        new URL(
+          `${CONSUMER_ROUTES.me}?instagram=success`,
+          window.location.origin,
+        ),
+      );
     } catch (e) {
       toast(errMsg(e, "Couldn’t verify — try again."));
       setVerifying(false);

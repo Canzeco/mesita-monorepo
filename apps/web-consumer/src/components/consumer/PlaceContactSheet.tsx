@@ -2,7 +2,8 @@
 
 import { Fragment } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Globe, Instagram, MessageCircle, Phone } from "lucide-react";
+import { Globe, MessageCircle, Phone } from "lucide-react";
+import { Instagram } from "@/components/shared/instagram-icon";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
 import {

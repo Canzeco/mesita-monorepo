@@ -1,6 +1,7 @@
 "use client";
 
-import { HelpCircle, Instagram, Mail } from "lucide-react";
+import { HelpCircle, Mail } from "lucide-react";
+import { Instagram } from "@/components/shared/instagram-icon";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import {
   MESITA_INSTAGRAM_HANDLE,

@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronRight, Instagram, Phone } from "lucide-react";
+import { ChevronRight, Phone } from "lucide-react";
+import { Instagram } from "@/components/shared/instagram-icon";
 import type { ConsumerProfile } from "@/lib/api/profile";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
