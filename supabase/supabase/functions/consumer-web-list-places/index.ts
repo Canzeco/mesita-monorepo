@@ -68,7 +68,6 @@ import {
 } from "../_shared/discovery-config.ts";
 import { DISCOVERY_DEFAULTS } from "../_shared/discovery-config.ts";
 import { applyDiscoveryFilters } from "../_shared/discovery-filters.ts";
-import { attachCrenupHighWater } from "../_shared/discovery-place.ts";
 import {
   applyGeneralGateQuery,
   clearsGeneralGate,
@@ -544,21 +543,8 @@ Deno.serve(async (req) => {
       guestMinReviews,
     );
     const googleForMerge = wantGoogleNearby ? admitted.google : [];
-    // The `enriched` signal's gradient (MESITA-1598, kept at MESITA-1858)
-    // needs `crenup_high_water` on the row, and `profiles` doesn't carry it.
-    // One batched side-read merges it in before ranking, same pattern as
-    // consumer-web-recommend-swipe. WITHOUT THIS every enriched row scores
-    // the same 1 — on the inner ring `admitsScopeRow` admitted only those.
-    // Skipped when the Google-fill branch below keeps distance order instead.
-    const willReorder = !(wantGoogleNearby && googleForMerge.length > 0);
-    const listedForCatalog = willReorder && efEnv.ok
-      ? await attachCrenupHighWater(
-        adminClient(efEnv.env),
-        admitted.listed as unknown as Record<string, unknown>[],
-      ) as unknown as typeof admitted.listed
-      : admitted.listed;
     const catalog = mergeNearbyCatalog(
-      listedForCatalog,
+      admitted.listed,
       googleForMerge,
       center,
       lanes,

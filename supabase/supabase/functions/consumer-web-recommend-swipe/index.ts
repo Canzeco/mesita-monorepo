@@ -48,10 +48,7 @@ import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
 import {
   loadDiscoveryConfig,
 } from "../_shared/discovery-config.ts";
-import {
-  attachCrenupHighWater,
-  DISCOVERY_EXTRA_COLUMNS,
-} from "../_shared/discovery-place.ts";
+import { DISCOVERY_EXTRA_COLUMNS } from "../_shared/discovery-place.ts";
 import { applyDiscoveryFilters } from "../_shared/discovery-filters.ts";
 import { NEARBY_DEFAULT_RADIUS_KM } from "../_shared/geo.ts";
 import {
@@ -225,17 +222,10 @@ Deno.serve(async (req) => {
   const { deck: ordered, backfilled } = await fillSwipeDeck(
     tiers,
     limit,
-    async (tierRows) =>
+    (tierRows) =>
       cfg.engines.swipe.ranked
         ? rankSwipeDeck(
-          // The `enriched` gradient (MESITA-1598) needs `crenup_high_water`
-          // on the row — `profiles` doesn't carry it, so one batched side-read
-          // per band merges it in before ranking. Skipped entirely when
-          // ranking is off, and never run for a band the deck has no room for.
-          await attachCrenupHighWater(
-            admin,
-            tierRows as unknown as Record<string, unknown>[],
-          ),
+          tierRows as unknown as Record<string, unknown>[],
           guestGeo,
           swipeLineupWeights(cfg),
           cfg.params,
