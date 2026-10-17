@@ -17,7 +17,8 @@ function readableKind(place: Place): string | null {
 
 /**
  * One place in a family carousel. The card is 2:3: a square photo, then
- * a block half that tall with the preliminary facts. Square corners.
+ * a block half that tall with the preliminary facts. A 1px line
+ * frames the card so the next one reads as another box. Square corners.
  * The row is about 2.5 of these wide. The heart stays a circle.
  * Favs does not use this tile.
  */
@@ -45,7 +46,7 @@ export function CatalogTile({
 
   return (
     <li className={cn("min-w-0", className)}>
-      <div className="bg-card relative aspect-[2/3] overflow-hidden">
+      <div className="bg-card relative aspect-[2/3] overflow-hidden border border-border">
         <Link
           href={placeHref(place.slug || place.id)}
           className="focus-visible:ring-primary grid h-full grid-rows-[2fr_1fr] outline-none focus-visible:ring-2 focus-visible:ring-inset"

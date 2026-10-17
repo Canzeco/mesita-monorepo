@@ -122,6 +122,7 @@ describe("Places is family carousels", () => {
     expect(rails).not.toContain("ArrowUpDown");
     expect(tile).toContain("aspect-[2/3]");
     expect(tile).toContain("grid-rows-[2fr_1fr]");
+    expect(tile).toContain("border border-border");
     expect(tile).not.toContain("aspect-[1/2]");
     expect(tile).not.toContain("rounded-2xl");
   });
