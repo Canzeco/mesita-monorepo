@@ -25,6 +25,7 @@ describe("Catalog ranking", () => {
   it("shows only the signals the catalog engine multiplies", () => {
     const markup = html();
     expect(markup).toContain("Proximity");
+    expect(markup).toContain("Enriched");
     expect(markup).toContain("Popularity");
     expect(markup).toContain("Randomness");
     expect(markup).not.toContain(">Name<");
@@ -46,6 +47,7 @@ describe("Catalog ranking", () => {
         ranking: {
           ...DEFAULT_CONFIG.catalog.ranking,
           proximity: 0,
+          enriched: 0,
           popularity: 0,
           randomness: 0,
         },

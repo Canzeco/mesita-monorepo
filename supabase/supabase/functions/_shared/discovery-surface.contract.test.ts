@@ -43,11 +43,12 @@ Deno.test("admin Catalog shares match the scorer", () => {
   const sample = {
     ...DEFAULT_CATALOG_RANKING,
     proximity: 1,
+    enriched: 2,
     popularity: 3,
     randomness: 0,
   };
   assertEquals(adminExponents(sample), catalogRelativeExponents(sample));
-  const doubled = { ...sample, proximity: 2, popularity: 6 };
+  const doubled = { ...sample, proximity: 2, enriched: 4, popularity: 6 };
   assertEquals(
     catalogRelativeExponents(sample),
     catalogRelativeExponents(doubled),

@@ -5,6 +5,7 @@
 
 export const CATALOG_LIVE_RANK_KEYS = [
   "proximity",
+  "enriched",
   "popularity",
   "randomness",
 ] as const;
@@ -19,6 +20,7 @@ export const CATALOG_LIVE_SIGNAL_COPY: Record<
   { label: string }
 > = {
   proximity: { label: "Proximity" },
+  enriched: { label: "Enriched" },
   popularity: { label: "Popularity" },
   randomness: { label: "Randomness" },
 };

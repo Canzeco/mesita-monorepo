@@ -113,17 +113,19 @@ export const CATALOG_RANK_KEYS = [
   "name",
   "description",
   "proximity",
+  "enriched",
   "popularity",
   "selected",
   "randomness",
 ] as const;
 export type CatalogRankKey = (typeof CATALOG_RANK_KEYS)[number];
 
-/** Mirrors DEFAULT_CATALOG_RANKING in _shared/discovery-config.ts. Name ships off. */
+/** Mirrors DEFAULT_CATALOG_RANKING in _shared/discovery-config.ts. Name ships off; Enriched ships at 2. */
 export const DEFAULT_CATALOG_RANKING: Record<CatalogRankKey, number> = {
   name: 0,
   description: 1,
   proximity: 1,
+  enriched: 2,
   popularity: 1,
   selected: 1,
   randomness: 0,

@@ -1,10 +1,13 @@
 // Supabase Edge Function — consumer-web-list-catalog (product caller)
 //
 // The CATALOG engine. One round trip: Mesita places, then one shared
-// ranking profile, then one row per guest family.
-// Scope is Mesita Places or Mesita Enriched Places. Google is not a
-// catalog set. Family is not a cut: All comes first, then one row per
-// guest family. A place in two families is in both of those rows. No per-row cap.
+// ranking profile, then one rail per guest family.
+// Scope is Mesita Places by default: every active, ready place, enriched
+// or not, with Enriched as a ranking signal (MESITA-2292). An explicit
+// placesScope "enriched" narrows it to Mesita Enriched Places. Google is
+// not a catalog set. Family is not a cut: All comes first, then one rail
+// per guest family. A place in two families is in both of those rails. No
+// per-rail cap.
 //
 // Local:  supabase functions serve consumer-web-list-catalog
 // Deploy: supabase functions deploy consumer-web-list-catalog
@@ -44,9 +47,9 @@ type Body = {
 };
 
 function catalogScope(raw: unknown): "enriched" | "mesita" {
-  if (!raw || typeof raw !== "object") return "enriched";
+  if (!raw || typeof raw !== "object") return "mesita";
   const scope = (raw as { placesScope?: unknown }).placesScope;
-  return scope === "mesita" ? "mesita" : "enriched";
+  return scope === "enriched" ? "enriched" : "mesita";
 }
 
 function wirePlaces(rows: PlaceProfileRow[]): CatalogListPlace[] {

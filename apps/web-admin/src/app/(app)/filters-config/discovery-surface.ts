@@ -146,12 +146,12 @@ export const DISCOVERY_MODES: readonly DiscoveryModeFact[] = [
     intent: "Browse places by family.",
     input: "An optional location. Family chooses the list. It does not score.",
     selection:
-      "One shared profile: proximity, popularity, and randomness. Enrichment decides who may enter.",
+      "One shared profile: proximity, enriched, popularity, and randomness. Every ready Mesita place enters; enriched ones lead.",
     output:
       "One list for each guest family. A place in two families is in both.",
     availability: "live",
     availabilityLabel: "Live",
-    signals: ["proximity", "popularity", "randomness"],
+    signals: ["proximity", "enriched", "popularity", "randomness"],
     weightsEditable: false,
   },
   {
