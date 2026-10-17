@@ -1,8 +1,8 @@
 "use client";
 
-// Catalog filter store. Family and the two Mesita rings. Location is GPS,
-// not persisted here. A stored Google review floor is dropped: that cut
-// belongs to the map. Module-level state + useSyncExternalStore.
+// Catalog filter store. The two Mesita rings. Location is GPS, not
+// persisted here. A stored family selection and a stored review floor
+// are dropped: family is a carousel, and the review floor is the map's.
 
 import { useSyncExternalStore } from "react";
 import {
@@ -11,16 +11,8 @@ import {
   type DiscoveryFilters,
   type DiscoveryPlacesScope,
 } from "@/lib/discovery-filters-engine";
-import { FILTERABLE_PLACE_FAMILIES, type FamilyKey } from "@/lib/place-families";
 
 const STORAGE_KEY = "mesita_discovery_filters_v7";
-
-// Hydrate from the FILTERABLE seven, not all eight.
-// A persisted key the sheet no longer renders is a filter the guest cannot
-// see or clear (MESITA-1857).
-const KNOWN_FAMILY_KEYS = new Set<string>(
-  FILTERABLE_PLACE_FAMILIES.map((f) => f.key),
-);
 
 function readPersisted(): DiscoveryFilters {
   if (typeof window === "undefined") return DISCOVERY_FILTER_DEFAULTS;
@@ -31,12 +23,7 @@ function readPersisted(): DiscoveryFilters {
       Record<keyof DiscoveryFilters, unknown>
     >;
     return {
-      familyKeys: Array.isArray(parsed.familyKeys)
-        ? (parsed.familyKeys as unknown[]).filter(
-            (k): k is FamilyKey =>
-              typeof k === "string" && KNOWN_FAMILY_KEYS.has(k),
-          )
-        : [],
+      familyKeys: [],
       placesScope: parsePlacesScope(parsed.placesScope),
       minReviews: 0,
     };
@@ -78,14 +65,6 @@ export function resetDiscoveryFilters() {
   state = DISCOVERY_FILTER_DEFAULTS;
   persist();
   emit();
-}
-
-export function toggleDiscoveryFamily(key: FamilyKey) {
-  patchDiscoveryFilters({
-    familyKeys: state.familyKeys.includes(key)
-      ? state.familyKeys.filter((k) => k !== key)
-      : [...state.familyKeys, key],
-  });
 }
 
 export function setDiscoveryPlacesScope(placesScope: DiscoveryPlacesScope) {

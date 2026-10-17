@@ -1,14 +1,10 @@
 "use client";
 
-// Places — stacked family rows, with a filter control above them.
+// Places — All, then one carousel per family.
 //
-// The catalog is Mesita places only. Filters are Family, Places scope
-// (Mesita Places or Mesita Enriched Places), and a Google review floor.
-// Google Places is not a choice. Location, when the browser has it, ranks
-// proximity and labels distance. It is not a cut.
-//
-// Each row is one guest family. A place in two families is in both rows.
-// The row holds every place that survived the filter, not a short sample.
+// The catalog is Mesita places only. Filters are the two Mesita rings.
+// Family is not a filter. Google Places is not a choice. The review floor
+// is the map's. Location, when the browser has it, ranks proximity.
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ArrowUpDown, Compass, SlidersHorizontal } from "lucide-react";
@@ -97,10 +93,7 @@ export function CatalogRails() {
     [rails, sort],
   );
 
-  const placesShown = useMemo(
-    () => (rails ?? []).reduce((n, rail) => n + rail.places.length, 0),
-    [rails],
-  );
+  const placesShown = summary.total;
 
   const filterBar = (
     <div className="border-border bg-background/90 shrink-0 border-b px-4 py-2.5 backdrop-blur-xl">

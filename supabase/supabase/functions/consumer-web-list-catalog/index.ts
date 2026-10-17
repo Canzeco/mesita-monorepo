@@ -3,7 +3,8 @@
 // The CATALOG engine. One round trip: Mesita places, then one shared
 // ranking profile, then one row per guest family.
 // Scope is Mesita Places or Mesita Enriched Places. Google is not a
-// catalog set. A place in two families is in both rows. No per-row cap.
+// catalog set. Family is not a cut: All comes first, then one row per
+// guest family. A place in two families is in both of those rows. No per-row cap.
 //
 // Local:  supabase functions serve consumer-web-list-catalog
 // Deploy: supabase functions deploy consumer-web-list-catalog
@@ -38,7 +39,7 @@ const POOL_CAP = 1000;
 type Body = {
   lat?: number;
   lng?: number;
-  /** Family and Mesita scope. A review floor is ignored. Google is not a catalog scope. */
+  /** Mesita scope. Family and a review floor are ignored. Google is not a catalog scope. */
   predicates?: unknown;
 };
 
@@ -95,6 +96,7 @@ Deno.serve(async (req) => {
   const fetched = (data ?? []) as unknown as PlaceProfileRow[];
   const guestPredicates = {
     ...readDeckPredicates(body.predicates),
+    familyKeys: [],
     minReviews: 0,
   };
   const pool = applyDeckPredicates(
