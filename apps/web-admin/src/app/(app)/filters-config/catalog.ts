@@ -203,7 +203,7 @@ export const SUPER_FIELDS: {
   { key: "sushi", label: "Sushi", emoji: "🍣", battery: ["sushi_restaurant"] },
   { key: "burgers", label: "Burgers", emoji: "🍔", battery: ["hamburger_restaurant"] },
   { key: "noodles", label: "Noodles", emoji: "🍜", battery: ["ramen_restaurant"] },
-  { key: "dinner", label: "Dinner", emoji: "🍽️", battery: ["restaurant"] },
+  { key: "dinner", label: "Dinner", emoji: "🍝", battery: ["restaurant"] },
   { key: "sweet", label: "Sweet", emoji: "🍰", battery: ["bakery"] },
   { key: "drinks", label: "Drinks", emoji: "🍸", battery: ["bar"] },
   { key: "night_out", label: "Night out", emoji: "🌙", battery: ["night_club"] },

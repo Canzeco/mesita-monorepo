@@ -41,7 +41,7 @@ export const CATALOG_FAMILIES: readonly {
   { slug: "sushi", label: "Sushi", emoji: "🍣", sort_order: 6 },
   { slug: "burgers", label: "Burgers", emoji: "🍔", sort_order: 7 },
   { slug: "noodles", label: "Noodles", emoji: "🍜", sort_order: 8 },
-  { slug: "dinner", label: "Dinner", emoji: "🍽️", sort_order: 9 },
+  { slug: "dinner", label: "Dinner", emoji: "🍝", sort_order: 9 },
   { slug: "sweet", label: "Sweet", emoji: "🍰", sort_order: 10 },
   { slug: "drinks", label: "Drinks", emoji: "🍸", sort_order: 11 },
   { slug: "night_out", label: "Night out", emoji: "🌙", sort_order: 12 },
