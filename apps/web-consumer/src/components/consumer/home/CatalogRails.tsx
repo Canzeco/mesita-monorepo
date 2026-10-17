@@ -1,8 +1,9 @@
 "use client";
 
-// Places — All, then one carousel per guest family. That is always
-// n + 1 carousels when the catalog has places. A family with no places
-// stays on the feed, empty. Each family heading carries its one emoji.
+// Places — one wall. Two columns. Each place once, in server order.
+// A square photo over an equal square of facts. Square corners.
+// A family is a line on the tile, not a row: a one-place row leaves a
+// blank cell. Favs keeps its own rounded tile.
 //
 // The catalog is Mesita places only. Filters are the two Mesita rings.
 // Family is not a filter. Google Places is not a choice. The review floor
@@ -23,9 +24,9 @@ import { upsertSavedPlacePreview, useSavedPlaces } from "@/lib/saved-places";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { EmptyState } from "@/components/shared";
 import { Skeleton } from "@/components/shared/Skeleton";
-import { FavoriteTile } from "./FavoriteTile";
+import { CatalogTile } from "./CatalogTile";
 import { cn, errMsg } from "@/lib/utils";
-import { placesFeed } from "@/lib/catalog-feed";
+import { catalogWall } from "@/lib/catalog-feed";
 import { summarizeCatalog } from "@/lib/catalog-summary";
 import {
   resetDiscoveryFilters,
@@ -86,7 +87,7 @@ export function CatalogRails() {
   }, [supabase, requestKey]);
 
   const summary = useMemo(() => summarizeCatalog(rails ?? []), [rails]);
-  const shownRails = useMemo(() => placesFeed(rails ?? []), [rails]);
+  const wall = useMemo(() => catalogWall(rails ?? []), [rails]);
 
   const placesShown = summary.total;
 
@@ -172,19 +173,12 @@ export function CatalogRails() {
 
   if (rails === null) {
     return shell(
-      <div className="scrollbar-hide flex min-h-0 flex-1 flex-col gap-8 overflow-y-auto overscroll-y-contain px-4 pt-4 pb-6">
-        {Array.from({ length: 3 }, (_, i) => (
-          <div key={i} className="space-y-3">
-            <Skeleton className="h-4 w-28" />
-            <div className="flex gap-2.5 overflow-hidden">
-              {Array.from({ length: 4 }, (_, j) => (
-                <Skeleton
-                  key={j}
-                  className="h-[222px] w-[148px] shrink-0 rounded-2xl"
-                />
-              ))}
-            </div>
-          </div>
+      <div className="bg-card scrollbar-hide grid min-h-0 flex-1 grid-cols-2 overflow-y-auto overscroll-y-contain">
+        {Array.from({ length: 4 }, (_, i) => (
+          <Skeleton
+            key={i}
+            className="border-border aspect-[1/2] rounded-none border-r border-b"
+          />
         ))}
       </div>,
     );
@@ -210,51 +204,25 @@ export function CatalogRails() {
   }
 
   return shell(
-    <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain px-4 pt-4 pb-6">
-      <p className="type-body text-muted-foreground mb-4 px-1 tabular-nums">
+    <div className="bg-card scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain">
+      <p className="type-body text-muted-foreground px-3 py-2.5 tabular-nums">
         {summary.total} {summary.total === 1 ? "place" : "places"}
         {summary.openNow > 0 ? ` · ${summary.openNow} open now` : ""}
       </p>
-      <div className="flex flex-col gap-8">
-        {shownRails.map((rail) => (
-          <section key={rail.key} aria-labelledby={`${rail.key}-heading`}>
-            <h2
-              id={`${rail.key}-heading`}
-              className="font-display text-foreground px-1 text-base font-semibold tracking-tight"
-            >
-              {rail.emoji && rail.emoji !== "·" ? (
-                <span className="mr-1.5" aria-hidden>
-                  {rail.emoji}
-                </span>
-              ) : null}
-              {rail.label}
-            </h2>
-            {rail.places.length === 0 ? (
-              <div className="mt-3 h-8" aria-hidden />
-            ) : (
-              <ul
-                role="list"
-                aria-label={rail.label}
-                className="scrollbar-hide -mx-4 mt-3 flex flex-nowrap gap-2.5 overflow-x-auto overscroll-x-contain px-4 pb-1"
-              >
-                {rail.places.map((place) => {
-                  const located = withUserDistance(place, coords);
-                  const saved = savedIds.has(place.id);
-                  return (
-                    <FavoriteTile
-                      key={place.id}
-                      place={located}
-                      saved={saved}
-                      onToggle={() => toggleSave(place, saved)}
-                      className="w-[148px] shrink-0"
-                    />
-                  );
-                })}
-              </ul>
-            )}
-          </section>
-        ))}
-      </div>
+      <ul role="list" aria-label="Places" className="grid grid-cols-2">
+        {wall.map((place) => {
+          const located = withUserDistance(place, coords);
+          const saved = savedIds.has(place.id);
+          return (
+            <CatalogTile
+              key={place.id}
+              place={located}
+              saved={saved}
+              onToggle={() => toggleSave(place, saved)}
+            />
+          );
+        })}
+      </ul>
     </div>,
   );
 }
