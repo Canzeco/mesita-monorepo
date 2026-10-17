@@ -1,6 +1,7 @@
 // Catalog Search. The Feed is N + 2 rails (MESITA-2294): Right Now (open
-// Mesita Created Places), Universal (every Mesita Enriched Place), then one
-// rail per guest family (enriched only). Empty rails are omitted.
+// Mesita Created Places), Universal (Mesita Enriched Places), then one rail
+// per guest family (enriched only). At most 5 places per rail; empty rails
+// are omitted.
 //
 // Family picks the rail; it does not score. Enriched still scores. Timing is not
 // in this profile. catalogScore multiplies only proximity, enriched,
@@ -43,8 +44,8 @@ export type CatalogRail<T extends CatalogListPlace> = {
   places: T[];
 };
 
-/** Right Now and every family rail stop here; Universal has no cap. */
-export const CATALOG_RAIL_CAP = 20;
+/** Every rail carries at most this many places. */
+export const CATALOG_RAIL_CAP = 5;
 
 const GUEST_FAMILIES = FAMILIES.filter((f) => f.slug !== "undefined");
 
@@ -93,11 +94,11 @@ export function catalogScore(
  * The Feed is N + 2 rails, top to bottom:
  *   1. Right Now — Mesita Created Places (every ready row, enriched or
  *      not) that are open at `intent.now` on their own local clock.
- *      Proximity, then popularity, then incoming order. Cap 20.
- *   2. Universal — every Mesita Enriched Place, by catalogScore. No cap:
- *      it is the one rail that reaches every enriched place.
+ *      Proximity, then popularity, then incoming order.
+ *   2. Universal — Mesita Enriched Places, by catalogScore.
  *   3. One rail per guest family — enriched members only, by
- *      catalogScore. Cap 20.
+ *      catalogScore.
+ * Every rail stops at CATALOG_RAIL_CAP.
  * Every empty rail is omitted. A place in two families is in both of those
  * rails. Undefined is never a rail. Ties keep the incoming order.
  */
@@ -149,7 +150,7 @@ export function rankCatalogRails<T extends CatalogListPlace>(
       label: "Universal",
       emoji: "✨",
       source: "signal",
-      places: enrichedRows.map((s) => s.row),
+      places: enrichedRows.slice(0, CATALOG_RAIL_CAP).map((s) => s.row),
     });
   }
 

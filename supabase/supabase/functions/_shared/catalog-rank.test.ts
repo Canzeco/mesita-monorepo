@@ -132,7 +132,7 @@ Deno.test("Right Now is absent when nothing is open", () => {
   assertEquals(out.map((r) => r.key), ["universal", "coffee"]);
 });
 
-Deno.test("Universal is enriched-only and uncapped; families cap at 20", () => {
+Deno.test("every rail caps at 5; Universal and families are enriched-only", () => {
   const n = CATALOG_RAIL_CAP + 5;
   const rows = [
     ...Array.from({ length: n }, (_, i) => row(`e${i}`, ["coffee"])),
@@ -140,12 +140,19 @@ Deno.test("Universal is enriched-only and uncapped; families cap at 20", () => {
   ];
   const out = rails(rows, rows.map(() => place({ hours: ALWAYS })));
   const universal = out.find((r) => r.key === "universal")!;
-  assertEquals(universal.places.length, n);
+  assertEquals(CATALOG_RAIL_CAP, 5);
+  assertEquals(universal.places.length, CATALOG_RAIL_CAP);
   assertEquals(ids(universal)!.includes("created"), false);
   const coffee = out.find((r) => r.key === "coffee")!;
   assertEquals(coffee.places.length, CATALOG_RAIL_CAP);
   assertEquals(ids(coffee)!.includes("created"), false);
   assertEquals(out[0].places.length, CATALOG_RAIL_CAP);
+});
+
+Deno.test("a short rail shows what it has", () => {
+  const rows = [row("a", ["coffee"]), row("b", ["coffee"])];
+  const out = rails(rows, rows.map(() => place({ hours: ALWAYS })));
+  for (const r of out) assertEquals(r.places.length, 2);
 });
 
 Deno.test("families are enriched-only and an empty family is omitted", () => {

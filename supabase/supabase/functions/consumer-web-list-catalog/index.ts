@@ -2,8 +2,8 @@
 //
 // The CATALOG engine. One round trip: every active, ready Mesita place,
 // then one shared ranking profile, then N + 2 rails (MESITA-2294):
-// Right Now (Created Places open now, cap 20), Universal (every Enriched
-// Place, no cap), then one rail per guest family (Enriched only, cap 20).
+// Right Now (Created Places open now), Universal (Enriched Places), then
+// one rail per guest family (Enriched only). At most 5 places per rail.
 // Each rail admits its own pool, so placesScope no longer narrows the
 // fetch. Empty rails are omitted. A place in two families is in both.
 //
