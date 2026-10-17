@@ -61,7 +61,7 @@ export function MembershipMatrix({
                   className="border-border bg-muted/40 sticky top-0 z-20 border-b border-l p-0 align-bottom"
                 >
                   <span className="flex h-36 items-end justify-center pb-2">
-                    <span className="text-[11px] leading-none font-medium whitespace-nowrap [writing-mode:vertical-rl] rotate-180">
+                    <span className="type-label leading-none font-medium whitespace-nowrap [writing-mode:vertical-rl] rotate-180">
                       {family.label}
                     </span>
                   </span>
