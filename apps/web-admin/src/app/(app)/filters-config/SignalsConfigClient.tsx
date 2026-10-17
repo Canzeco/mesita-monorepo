@@ -6,8 +6,8 @@
 // scale. Mesita Level is the Enriched row now (MESITA-1858): it reads the
 // enrichment state and nothing about money.
 //
-// WEIGHTS DO NOT LIVE HERE. A weight belongs to a mode. This page is the
-// shape numbers that have a knob. No preview, no curve, no score bars.
+// WEIGHTS DO NOT LIVE HERE. A weight belongs to a mode. This page lists every
+// signal. Proximity and Timing are the ones with a number. No preview.
 //
 // THE CARDS DO NOT REDRAW THE MATRIX (MESITA-1856). Each card used to carry
 // a strip of six unlabelled circles — which modes read this signal — under
@@ -137,7 +137,7 @@ export function SignalsConfigClient({
       <SectionCard
         icon={<Compass className="text-primary h-4 w-4" />}
         title="Signals"
-        subtitle="The numbers that bend a score. A weight belongs to the mode."
+        subtitle="A weight belongs to the mode."
         state={
           <KnobState
             kind="enforced"
@@ -145,10 +145,10 @@ export function SignalsConfigClient({
           />
         }
       >
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <div className="mt-5 flex flex-col gap-5">
           {SIGNAL_KEYS.map((key) => {
             const spec = SIGNALS.find((s) => s.key === key);
-            if (!spec || spec.fields.length === 0) return null;
+            if (!spec) return null;
             const Icon = ICONS[spec.key];
             return (
               <div key={spec.key} className="flex flex-col gap-3">

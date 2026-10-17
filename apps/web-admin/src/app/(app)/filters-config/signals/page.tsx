@@ -2,7 +2,7 @@ import type { ConfigSeed } from "@/components/admin-ui/use-config-editor";
 import { SignalsConfigClient } from "../SignalsConfigClient";
 import type { DiscoveryConfig } from "../catalog";
 
-// Signals — the shape numbers. Weights live on Modes.
+// Signals — every signal. Weights live on Modes.
 export function DiscoverySignalsView({ seed }: { seed: ConfigSeed<DiscoveryConfig> }) {
   return (
     <SignalsConfigClient
