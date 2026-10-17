@@ -9,7 +9,8 @@ import type { Place } from "@/lib/api/places";
 import { isEnrichedPlace } from "@/lib/place-enriched";
 import { placeHref } from "@/lib/place-route";
 import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
-import { cn, firstInitial, formatRating } from "@/lib/utils";
+import { cardPhoto, placePlaceholder } from "@/lib/place-placeholder";
+import { cn, formatRating } from "@/lib/utils";
 
 /**
  * A Google-only card (Feed › Right Now, MESITA-2295) has no Mesita page, so
@@ -79,7 +80,8 @@ export function CatalogTile({
   onToggle: () => void;
   className?: string;
 }) {
-  const photo = place.photos[0];
+  const photo = cardPhoto(place);
+  const placeholder = placePlaceholder(place);
   const google = googleMapsHref(place);
   const href = google ?? placeHref(place.slug || place.id);
   const priceLabel = formatPlacePriceLevelSymbols(place.price_level);
@@ -105,9 +107,15 @@ export function CatalogTile({
                 className="object-cover"
               />
             ) : (
-              <div className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-white/90">
-                <span className="font-display text-3xl font-bold tracking-tight">
-                  {firstInitial(place.name)}
+              <div
+                className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-white/90"
+                data-placeholder={placeholder.kind}
+              >
+                <span
+                  className="font-display text-3xl font-bold tracking-tight"
+                  aria-hidden
+                >
+                  {placeholder.text}
                 </span>
               </div>
             )}

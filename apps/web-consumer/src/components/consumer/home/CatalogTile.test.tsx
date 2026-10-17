@@ -59,3 +59,28 @@ describe("a Google-only card (Right Now from Google)", () => {
     expect(html).toContain("Save Casa");
   });
 });
+
+describe("a Google-only card's image is a placeholder, never a photo (MESITA-2298)", () => {
+  it("draws the family emoji and ignores any photo on the wire", () => {
+    const html = tile({
+      id: "g:ChIJx",
+      googleOnly: true,
+      family_keys: ["tacos"],
+      photos: ["https://lh3.googleusercontent.com/p"],
+    });
+    expect(html).not.toContain("<img");
+    expect(html).toContain('data-placeholder="emoji"');
+    expect(html).toContain("🌮");
+  });
+
+  it("falls back to the initial when no family resolves", () => {
+    const html = tile({ id: "g:ChIJx", googleOnly: true, family_keys: [] });
+    expect(html).toContain('data-placeholder="initial"');
+    expect(html).toContain(">C<");
+  });
+
+  it("a Mesita place still shows its stored photo", () => {
+    const html = tile({ photos: ["https://example.com/a.jpg"] });
+    expect(html).toContain("<img");
+  });
+});

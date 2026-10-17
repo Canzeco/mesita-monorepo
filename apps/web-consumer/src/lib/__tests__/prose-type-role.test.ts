@@ -68,7 +68,7 @@ const SMALL_ROLES = ["type-label", "type-meta"];
 const LABEL_BY_CONTENT: Record<string, string> = {
   "components/consumer/home/FavoriteTile.tsx:130":
     "the rating row inside the MEASURED 4:3+4:3 tile (Docs › Design §D); its sibling category line is type-label too, and 13px here would outrank it",
-  "components/consumer/search/SearchRailCard.tsx:81":
+  "components/consumer/search/SearchRailCard.tsx:87":
     "the rail card's meta row sits in a fixed h-4/leading-4 line box — 13px does not fit a 16px box, and this is a figure row anyway",
 };
 
