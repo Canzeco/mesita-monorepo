@@ -68,7 +68,7 @@ describe("The quality floor inside a source box", () => {
     const filters = renderToStaticMarkup(<FiltersFloorOwner seed={seed} />);
     // filters is not confined to this source — an operator must see that.
     expect(filters).toContain("Home rails");
-    expect(filters).toContain("Swipe");
+    expect(filters).not.toContain("Swipe");
     expect(filters).toContain("reach for the count first");
   });
 

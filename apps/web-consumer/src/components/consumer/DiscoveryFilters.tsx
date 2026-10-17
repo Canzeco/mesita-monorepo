@@ -64,9 +64,9 @@ export function DiscoveryFilters({
             </div>
           </FilterModule>
 
-          <FilterModule label="Scope">
+          <FilterModule label="Places">
             <SearchPlacesScope
-              label="Scope"
+              label="Places"
               stops={DISCOVERY_SCOPE_STOPS}
               scope={filters.placesScope}
               onScope={setDiscoveryPlacesScope}

@@ -91,8 +91,8 @@ export function SearchPlacesScope<K extends string = MapPlacesScope>({
   onScope: (scope: K) => void;
   /** Places each ring would show, from the catalog already in hand. */
   counts?: Partial<Record<K, number>>;
-  /** The radios, in order. The Map's three by default; Feed/Scroll pass
-   *  their own two, whose `mesita` wire word is the enriched ring. */
+  /** The radios, in order. The Map's three by default. Catalog passes
+   *  Mesita Places and Mesita Enriched Places, and no Google ring. */
   stops?: readonly PlacesScopeStop<K>[];
   /** The radiogroup's accessible name — the module label it sits under. */
   label?: string;

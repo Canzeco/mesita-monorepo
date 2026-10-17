@@ -68,9 +68,9 @@ export function DiscoveryMatrix() {
       </div>
       <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
         Word calls Autocomplete, Text Search, and Name Search together. Map
-        calls Nearby Search on Google and on Mesita. Catalog and Swipe call
-        the Mesita catalog. Chat and Favorites call no source. Social Catalog
-        is unavailable, so every cell in that row stays off.
+        calls Nearby Search on Google and on Mesita. Catalog calls the Mesita
+        catalog. Chat and Favorites call no source. Social Catalog is
+        unavailable, so every cell in that row stays off.
       </p>
     </SectionCard>
   );

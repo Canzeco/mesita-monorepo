@@ -1,38 +1,16 @@
 "use client";
 
-// FEED — stacked horizontal rails with a filter control above them.
+// Places — stacked family rows, with a filter control above them.
 //
-// This is Catalog's body at Feed's address (MESITA-1697). The component, the
-// mode key, the EF and the admin matrix column all still say catalog; only the
-// guest-facing tab is named Feed. Each rail is one guest family, ranked by
-// the shared Catalog profile. Tiles are FavoriteTile. The page must be a
-// flex column so this scroller gets a height.
+// The catalog is Mesita places only. Filters are Family, Places scope
+// (Mesita Places or Mesita Enriched Places), and a Google review floor.
+// Google Places is not a choice. Location, when the browser has it, ranks
+// proximity and labels distance. It is not a cut.
 //
-// THE FILTER CUTS ON THE SERVER, and the refetch key is the whole reason this
-// works. The fetch used to be keyed on `[supabase]` alone — mount once, never
-// again — so mounting a filter control above it would have produced a control
-// that visibly did nothing: the rails were already fetched. `deckRequestKey`
-// is the identity of "which answer the server would give", so keying the
-// effect on it re-asks exactly when the answer would change and never on GPS
-// jitter alone.
-//
-// TWO COUNTS, TWO MEANINGS, AND THEY ARE NOT INTERCHANGEABLE. The trigger
-// shows how many FILTERS ARE APPLIED (its own state, legible before the sheet
-// opens); the sheet's CTA shows how many PLACES MATCH (the result). Both props
-// are called `count` in their respective components, which is exactly why this
-// is written down.
-//
-// THE TRIGGER IS FULL WIDTH. It was written against Search's Filters
-// control — same 44px height, border, `shadow-elev`, blur and
-// primary-filled applied state, but full width rather than a third of
-// the map's chrome row. Search's sheet is Family · Places ·
-// Popularity; this one is Feed's DiscoveryFilters.
-//
-// It sits OUTSIDE the scroller: a filter control that scrolls away is
-// unreachable at the moment a guest most wants it, which is the same mistake
-// #1572 fixed on the map.
+// Each row is one guest family. A place in two families is in both rows.
+// The row holds every place that survived the filter, not a short sample.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ArrowUpDown, Compass, SlidersHorizontal } from "lucide-react";
 import { apiListCatalog, type CatalogRail, type Place } from "@/lib/api/places";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -86,8 +64,6 @@ export function CatalogRails() {
 
   useEffect(() => {
     let cancelled = false;
-    // Back to the skeleton while a new filter set is in flight — scheduled
-    // rather than set in the effect body, which cascades renders.
     const raf = requestAnimationFrame(() => {
       if (cancelled) return;
       setRails(null);
@@ -112,9 +88,6 @@ export function CatalogRails() {
       cancelled = true;
       cancelAnimationFrame(raf);
     };
-    // `requestKey` IS the dependency — it moves when and only when the
-    // server's answer would. `filters`/`coords` are read inside and would
-    // re-run this on every GPS tick if listed.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase, requestKey]);
 
@@ -169,7 +142,6 @@ export function CatalogRails() {
     >
       <DiscoveryFilters
         onClose={() => setFiltersOpen(false)}
-        // PLACES MATCHING, not filters applied — the other meaning of `count`.
         count={rails === null ? null : placesShown}
         hasLocation={coords !== null}
         locating={locating}
@@ -185,18 +157,13 @@ export function CatalogRails() {
     }
     upsertSavedPlacePreview(place);
     setSaved(place.id, true);
-    // The funnel's save series — Places is the only Home deck since
-    // MESITA-2166.
     trackEvent(supabase, "home_card_save", {
       mode: "places",
       place_id: place.id,
     });
   };
 
-  // The bar and the sheet are OUTSIDE every branch below — a filter control
-  // that vanishes on the empty state is missing at the one moment the guest
-  // needs it, which is the mistake #1572 fixed on the map's own filter.
-  const shell = (body: React.ReactNode) => (
+  const shell = (body: ReactNode) => (
     <div className="flex min-h-0 flex-1 flex-col">
       {filterBar}
       {body}
@@ -225,9 +192,6 @@ export function CatalogRails() {
               {Array.from({ length: 4 }, (_, j) => (
                 <Skeleton
                   key={j}
-                  // The tile grew to 2:3 with MESITA-1624's 4:3 + 4:3 body,
-                  // so a 148px rail card is 222px tall, not the 208px this
-                  // used to guess.
                   className="h-[222px] w-[148px] shrink-0 rounded-2xl"
                 />
               ))}
@@ -238,10 +202,6 @@ export function CatalogRails() {
     );
   }
 
-  // TWO DIFFERENT FAILURES, TWO DIFFERENT SCREENS. "No places yet" blames the
-  // catalog; when a filter is what emptied the rails, saying that is simply
-  // wrong — and it hides the one control that would fix it. The guest is told
-  // which of the two happened and handed the way out.
   if (rails.length === 0) {
     return shell(
       filtered ? (
@@ -263,8 +223,6 @@ export function CatalogRails() {
 
   return shell(
     <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain px-4 pt-4 pb-6">
-      {/* THE COUNT AND THE SORT (MESITA-2135), back from the mobile app:
-          what the catalog holds tonight, and one way to reorder it. */}
       <div className="mb-4 flex items-center justify-between gap-3 px-1">
         <p className="type-body text-muted-foreground tabular-nums">
           {summary.total} {summary.total === 1 ? "place" : "places"}

@@ -35,7 +35,6 @@ Deno.test("surface routing matches the engines that actually retrieve", async ()
   ]);
   assertEquals(DISCOVERY_MODE_SOURCES.map, ["google_nearby", "mesita_nearby"]);
   assertEquals(DISCOVERY_MODE_SOURCES.catalog, ["mesita_catalog"]);
-  assertEquals(DISCOVERY_MODE_SOURCES.swipe, ["mesita_catalog"]);
   assertEquals(DISCOVERY_MODE_SOURCES.chat, []);
   assertEquals(DISCOVERY_MODE_SOURCES.favorites, []);
   assertEquals(modesCallingSource("mesita_social"), []);

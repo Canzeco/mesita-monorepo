@@ -11,7 +11,7 @@
 // which is a tested copy of the Edge Function surface. Catalog weights are
 // the three signals catalogScore multiplies. Map and Swipe exponents stay
 // on Modes. Routing is fixed. Family membership stays on Atlas.
-//   SIGNALS   seven earned signals: Name · Category · Proximity · Timing ·
+//   SIGNALS   seven earned signals: Name · Family · Proximity · Timing ·
 //             Enriched · Popularity · Randomness. None reads money.
 //             Partnership and Promotion merged into Mesita Level and Social
 //             left the library (MESITA-1408); Social then left the mode list
@@ -529,7 +529,7 @@ export const SIGNALS: {
   },
   {
     key: "category",
-    label: "Category",
+    label: "Family",
     input: "Whether the place's type matches what the guest asked for.",
     output: "An exact type scores full. The same family scores in the middle. A miss scores low. No request, every place scores the same.",
     fields: UNIT,

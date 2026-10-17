@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { DISCOVERY_SCOPE_STOPS } from "@/lib/discovery-filters-engine";
 
 describe("Places' two filter counts stay distinct", () => {
   const src = readFileSync(
@@ -22,16 +23,27 @@ describe("Places' two filter counts stay distinct", () => {
   });
 });
 
-describe("the sheet is the map set, not the old intent stack", () => {
+describe("the catalog sheet offers Mesita rings only", () => {
   const src = readFileSync(
     join(__dirname, "../../components/consumer/DiscoveryFilters.tsx"),
     "utf8",
   );
 
-  it("ships Family, Scope, Google reviews, and location", () => {
+  it("ships Family, Places, Google reviews, and location", () => {
     expect(src).toContain("Family");
-    expect(src).toContain("Scope");
+    expect(src).toContain("Places");
     expect(src).toContain("Minimum number of Google reviews");
     expect(src).toContain("Use my location");
+  });
+
+  it("offers Mesita Places and Mesita Enriched Places", () => {
+    expect(DISCOVERY_SCOPE_STOPS.map((stop) => stop.key)).toEqual([
+      "mesita",
+      "enriched",
+    ]);
+    expect(DISCOVERY_SCOPE_STOPS.map((stop) => stop.label)).toEqual([
+      "Mesita Places",
+      "Mesita Enriched Places",
+    ]);
   });
 });

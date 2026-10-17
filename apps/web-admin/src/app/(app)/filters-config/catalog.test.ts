@@ -612,7 +612,8 @@ describe("Discovery page box order", () => {
     expect(modesPage).toContain("ModeWeightsClient");
     expect(modesPage).toContain("CatalogRankingClient");
     expect(modesPage).toContain('only="map"');
-    expect(modesPage).toContain('only="swipe"');
+    expect(modesPage).not.toContain('only="swipe"');
+    expect(modesPage).not.toContain("SwipeConfigClient");
     expect(() => readFileSync(join(__dirname, "catalog/page.tsx"))).toThrow();
     expect(matrixPage).not.toContain("ModeWeightsClient");
     expect(weights).toContain("ranking");
@@ -701,9 +702,6 @@ describe("Discovery page box order", () => {
       'only="map"',
       'modeKey="catalog"',
       "CatalogRankingClient",
-      'modeKey="swipe"',
-      "SwipeConfigClient",
-      'only="swipe"',
       'modeKey="chat"',
       'modeKey="favorites"',
     ];

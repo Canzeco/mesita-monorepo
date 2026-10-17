@@ -19,16 +19,16 @@ describe("no predicate set", () => {
 });
 
 describe("Scope", () => {
-  it("defaults to the inner ring, Mesita", () => {
-    expect(DISCOVERY_FILTER_DEFAULTS.placesScope).toBe("mesita");
+  it("defaults to the inner ring", () => {
+    expect(DISCOVERY_FILTER_DEFAULTS.placesScope).toBe("enriched");
   });
 
-  it("parses the two words and lands everything else on the default", () => {
-    expect(parsePlacesScope("google")).toBe("google");
+  it("parses the two Mesita words and lands Google on the inner ring", () => {
+    expect(parsePlacesScope("enriched")).toBe("enriched");
     expect(parsePlacesScope(" MESITA ")).toBe("mesita");
-    // The retired paid ring, still in a persisted v6 blob.
-    expect(parsePlacesScope("partners")).toBe("mesita");
-    expect(parsePlacesScope(undefined)).toBe("mesita");
-    expect(parsePlacesScope(3)).toBe("mesita");
+    expect(parsePlacesScope("google")).toBe("enriched");
+    expect(parsePlacesScope("partners")).toBe("enriched");
+    expect(parsePlacesScope(undefined)).toBe("enriched");
+    expect(parsePlacesScope(3)).toBe("enriched");
   });
 });

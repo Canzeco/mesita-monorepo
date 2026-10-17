@@ -188,3 +188,47 @@ Deno.test("a zero name would tie; abstaining does not", () => {
   assertEquals(withName, 1);
   assertEquals(without, 1);
 });
+
+Deno.test("catalog rows keep every enriched member when no cap is passed", () => {
+  const rows = [
+    row("a", ["coffee"]),
+    row("b", ["coffee"]),
+    row("c", ["coffee"]),
+  ];
+  const lists = rankFamilyLists(
+    rows,
+    [place(), place(), place()],
+    DEFAULT_CATALOG_RANKING,
+    DEFAULT_SIGNAL_PARAMS,
+    guest,
+  );
+  assertEquals(lists[0].places.map((p) => p.id).sort(), ["a", "b", "c"]);
+});
+
+Deno.test("Mesita Places keeps a created place that the enriched ring drops", () => {
+  const created = row("created", ["coffee"], { enriched_at: null });
+  const written = row("written", ["coffee"]);
+  const rows = [created, written];
+  const places = [place(), place()];
+  const enriched = rankFamilyLists(
+    rows,
+    places,
+    DEFAULT_CATALOG_RANKING,
+    DEFAULT_SIGNAL_PARAMS,
+    guest,
+  );
+  assertEquals(enriched[0].places.map((p) => p.id), ["written"]);
+  const mesita = rankFamilyLists(
+    rows,
+    places,
+    DEFAULT_CATALOG_RANKING,
+    DEFAULT_SIGNAL_PARAMS,
+    guest,
+    undefined,
+    false,
+  );
+  assertEquals(mesita[0].places.map((p) => p.id).sort(), [
+    "created",
+    "written",
+  ]);
+});

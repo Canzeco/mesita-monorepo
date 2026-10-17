@@ -88,7 +88,6 @@ export const DISCOVERY_MODE_KEYS = [
   "word",
   "map",
   "catalog",
-  "swipe",
   "chat",
   "favorites",
 ] as const;
@@ -134,7 +133,7 @@ export const DISCOVERY_MODES: readonly DiscoveryModeFact[] = [
     input:
       "The center of the map, the place set the guest picks, and how many pins.",
     selection:
-      "Distance, unless Google returns nothing. Then Mesita pins are reordered by category, proximity, timing, enrichment, and popularity.",
+      "Distance, unless Google returns nothing. Then Mesita pins are reordered by family, proximity, timing, enrichment, and popularity.",
     output: "Pins, and the same places in the row under the search bar.",
     availability: "live",
     availabilityLabel: "Live",
@@ -154,26 +153,6 @@ export const DISCOVERY_MODES: readonly DiscoveryModeFact[] = [
     availabilityLabel: "Live",
     signals: ["proximity", "popularity", "randomness"],
     weightsEditable: false,
-  },
-  {
-    key: "swipe",
-    label: "Swipe",
-    intent: "A deck of places to save or skip.",
-    input: "The guest's location, when they allow it, and their own filters.",
-    selection:
-      "Open now and distance form bands. Inside a band, category, proximity, timing, enrichment, popularity, and randomness reorder.",
-    output: "The home card stack.",
-    availability: "live",
-    availabilityLabel: "Live",
-    signals: [
-      "category",
-      "proximity",
-      "timing",
-      "enriched",
-      "popularity",
-      "randomness",
-    ],
-    weightsEditable: true,
   },
   {
     key: "chat",
@@ -209,7 +188,6 @@ export const DISCOVERY_MODE_SOURCES: Record<
   word: ["google_autocomplete", "google_text", "mesita_name"],
   map: ["google_nearby", "mesita_nearby"],
   catalog: ["mesita_catalog"],
-  swipe: ["mesita_catalog"],
   chat: [],
   favorites: [],
 };

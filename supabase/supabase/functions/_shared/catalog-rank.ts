@@ -48,8 +48,11 @@ export function catalogAdmitted(row: {
   return isEnrichedPlace(row) && row.content_state === "ready";
 }
 
-function belongsTo(row: CatalogListPlace, family: FamilyKey): boolean {
-  return Array.isArray(row.family_keys) && row.family_keys.includes(family);
+export function placeBelongsToFamily(
+  familyKeys: readonly string[] | null | undefined,
+  family: string,
+): boolean {
+  return Array.isArray(familyKeys) && familyKeys.includes(family);
 }
 
 /**
@@ -80,7 +83,7 @@ export function catalogScore(
 /**
  * Fifteen lists in family order. A place in two families is in both lists.
  * Undefined is internal and never a list. Empty lists are omitted.
- * Ties keep the incoming order.
+ * Ties keep the incoming order. Omitting `perList` returns every member.
  */
 export function rankFamilyLists<T extends CatalogListPlace>(
   rows: readonly T[],
@@ -88,9 +91,11 @@ export function rankFamilyLists<T extends CatalogListPlace>(
   ranking: Record<CatalogRankKey, number>,
   params: SignalParams,
   intent: SignalIntent,
-  perList: number,
+  perList?: number,
+  enrichedOnly = true,
 ): CatalogFamilyList<T>[] {
-  const cap = Math.max(0, Math.floor(perList));
+  const unlimited = perList == null;
+  const cap = unlimited ? 0 : Math.max(0, Math.floor(perList));
   const scored = rows.map((row, i) => ({
     row,
     place: places[i],
@@ -101,15 +106,20 @@ export function rankFamilyLists<T extends CatalogListPlace>(
   const lists: CatalogFamilyList<T>[] = [];
   for (const family of GUEST_FAMILIES) {
     const members = scored
-      .filter((s) => catalogAdmitted(s.row) && belongsTo(s.row, family.slug))
+      .filter((s) =>
+        (enrichedOnly
+          ? catalogAdmitted(s.row)
+          : s.row.content_state === "ready") &&
+        placeBelongsToFamily(s.row.family_keys, family.slug)
+      )
       .sort((a, b) => b.score - a.score || a.index - b.index);
-    if (members.length === 0 || cap === 0) continue;
+    if (members.length === 0 || (!unlimited && cap === 0)) continue;
     lists.push({
       key: family.slug,
       label: family.label,
       emoji: family.emoji,
       source: "family",
-      places: members.slice(0, cap).map((m) => m.row),
+      places: (unlimited ? members : members.slice(0, cap)).map((m) => m.row),
     });
   }
   return lists;
