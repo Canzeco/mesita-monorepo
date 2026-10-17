@@ -181,7 +181,7 @@ export function CatalogRails() {
               {Array.from({ length: 3 }, (_, j) => (
                 <Skeleton
                   key={j}
-                  className="aspect-[3/4] w-[calc((100%-1rem)/2.5)] shrink-0 rounded-none"
+                  className="aspect-[2/3] w-[calc((100%-1rem)/2.5)] shrink-0 rounded-none"
                 />
               ))}
             </div>

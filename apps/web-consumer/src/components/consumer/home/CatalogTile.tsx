@@ -16,9 +16,10 @@ function readableKind(place: Place): string | null {
 }
 
 /**
- * One place in a family carousel. Square photo, facts tight under it,
- * square corners. The row is about 2.5 of these wide. The heart stays
- * a circle. Favs does not use this tile.
+ * One place in a family carousel. The card is 2:3: a square photo, then
+ * a block half that tall with the preliminary facts. Square corners.
+ * The row is about 2.5 of these wide. The heart stays a circle.
+ * Favs does not use this tile.
  */
 export function CatalogTile({
   place,
@@ -44,12 +45,12 @@ export function CatalogTile({
 
   return (
     <li className={cn("min-w-0", className)}>
-      <div className="bg-card relative">
+      <div className="bg-card relative aspect-[2/3] overflow-hidden">
         <Link
           href={placeHref(place.slug || place.id)}
-          className="focus-visible:ring-primary block outline-none focus-visible:ring-2 focus-visible:ring-inset"
+          className="focus-visible:ring-primary grid h-full grid-rows-[2fr_1fr] outline-none focus-visible:ring-2 focus-visible:ring-inset"
         >
-          <div className="bg-muted relative aspect-square w-full overflow-hidden">
+          <div className="bg-muted relative min-h-0 overflow-hidden">
             {photo ? (
               <Image
                 src={photo}
@@ -66,40 +67,39 @@ export function CatalogTile({
               </div>
             )}
           </div>
-          <div className="flex flex-col gap-0.5 px-2 py-2">
-            <p className="font-display text-foreground line-clamp-2 text-sm leading-tight font-semibold tracking-tight">
+          <div className="flex min-h-0 flex-1 flex-col justify-center gap-0.5 overflow-hidden px-2">
+            <p className="font-display text-foreground truncate text-sm leading-tight font-semibold tracking-tight">
               {place.name}
             </p>
             {typeLine ? (
-              <p className="text-muted-foreground truncate text-sm leading-snug">
+              <p className="text-muted-foreground truncate text-xs leading-tight">
                 {typeLine}
               </p>
             ) : null}
-            <div className="flex min-w-0 flex-col gap-0.5">
-              {where ? (
-                <p className="text-foreground flex items-start gap-1 text-sm leading-snug">
-                  <Navigation className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  <span className="line-clamp-2">{where}</span>
-                </p>
-              ) : null}
-              {openingLabel ? (
-                <p className="inline-flex items-center gap-1.5 text-sm leading-snug font-medium">
-                  <span
-                    className={cn(
-                      "h-1.5 w-1.5 shrink-0 rounded-full",
-                      isOpen ? "bg-foreground" : "bg-muted-foreground/40",
-                    )}
-                  />
-                  <span
-                    className={
-                      isOpen ? "text-foreground" : "text-muted-foreground"
-                    }
-                  >
-                    {openingLabel}
-                  </span>
-                </p>
-              ) : null}
-            </div>
+            {where ? (
+              <p className="text-foreground flex min-w-0 items-center gap-1 text-xs leading-tight">
+                <Navigation className="h-3 w-3 shrink-0" />
+                <span className="truncate">{where}</span>
+              </p>
+            ) : null}
+            {openingLabel ? (
+              <p className="inline-flex min-w-0 items-center gap-1 text-xs leading-tight font-medium">
+                <span
+                  className={cn(
+                    "h-1.5 w-1.5 shrink-0 rounded-full",
+                    isOpen ? "bg-foreground" : "bg-muted-foreground/40",
+                  )}
+                />
+                <span
+                  className={cn(
+                    "truncate",
+                    isOpen ? "text-foreground" : "text-muted-foreground",
+                  )}
+                >
+                  {openingLabel}
+                </span>
+              </p>
+            ) : null}
           </div>
         </Link>
         <button
