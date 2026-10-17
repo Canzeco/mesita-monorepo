@@ -212,6 +212,36 @@ export const CATALOG_FAMILY_FACTS: readonly { key: string; label: string; emoji:
   { key: "feel_better", label: "Feel better", emoji: "💆" },
 ];
 
+// The Feed's rails, top to bottom (consumer-web-list-catalog,
+// `_shared/catalog-rank.ts`): the two signal rails, then one rail per guest
+// family in CATALOG_FAMILY_FACTS order, enriched members only. Every rail
+// stops at CATALOG_RAIL_CAP and an empty rail is omitted. The supabase
+// contract test pins these against what rankCatalogRails returns.
+export const CATALOG_RAIL_CAP = 5;
+
+export const CATALOG_SIGNAL_RAILS: readonly {
+  key: string;
+  label: string;
+  emoji: string;
+  holds: string;
+  order: string;
+}[] = [
+  {
+    key: "right_now",
+    label: "Right Now",
+    emoji: "🕒",
+    holds: "Every ready Mesita place that is open now on its own clock, enriched or not.",
+    order: "Nearest first, then Popularity.",
+  },
+  {
+    key: "universal",
+    label: "Universal",
+    emoji: "✨",
+    holds: "Every Mesita Enriched Place.",
+    order: "Catalog score.",
+  },
+];
+
 export function sourceByKey(key: DiscoverySourceKey): DiscoverySourceFact {
   const found = DISCOVERY_SOURCES.find((s) => s.key === key);
   if (!found) throw new Error(`unknown source ${key}`);

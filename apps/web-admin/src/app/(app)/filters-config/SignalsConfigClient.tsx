@@ -2,7 +2,8 @@
 
 // Mesita Places Search Signals, in list order: Name, Description, Family,
 // Proximity, Timing, Enriched, Popularity, Randomness. Description is on the
-// list and has no number. Weights live on Modes. No preview.
+// list and has no number or graphic. Weights live on Modes. Every other
+// signal draws its graphic, computed by the live function (SignalGraphic).
 //
 // THE CARDS DO NOT REDRAW THE MATRIX (MESITA-1856). Each card used to carry
 // a strip of six unlabelled circles — which modes read this signal — under
@@ -26,6 +27,7 @@ import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import { KnobState, SaveRow, SectionCard } from "@/components/admin-ui/config";
 import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
+import { SignalGraphic } from "./SignalGraphic";
 import {
   SIGNALS,
   type DiscoveryConfig,
@@ -155,7 +157,7 @@ export function SignalsConfigClient({
       <SectionCard
         icon={<Compass className="text-primary h-4 w-4" />}
         title="Signals"
-        subtitle="A weight belongs to the mode."
+        subtitle="Each graphic is computed by the live signal function with the numbers below. A weight belongs to the mode."
         state={
           <KnobState
             kind="enforced"
@@ -201,6 +203,13 @@ export function SignalsConfigClient({
                     />
                   </label>
                 ))}
+                {spec ? (
+                  <SignalGraphic
+                    signal={spec.key}
+                    maxKm={cfg.params.proximity.maxKm}
+                    closedFloor={cfg.params.timing.closedFloor}
+                  />
+                ) : null}
               </div>
             );
           })}

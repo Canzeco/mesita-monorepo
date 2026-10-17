@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import { SignalsConfigClient } from "./SignalsConfigClient";
 import { DEFAULT_CONFIG } from "./catalog";
 
-describe("signals are raw numbers", () => {
-  it("shows the shape knobs and no simulator", () => {
+describe("signals", () => {
+  it("shows the shape knobs and no simulator inputs", () => {
     const html = renderToStaticMarkup(
       <SignalsConfigClient
         initialConfig={DEFAULT_CONFIG}
@@ -24,6 +24,5 @@ describe("signals are raw numbers", () => {
     expect(html).not.toContain("Search query");
     expect(html).not.toContain("Preview");
     expect(html).not.toContain("Effective contribution");
-    expect(html).not.toContain("Proximity curve");
   });
 });
