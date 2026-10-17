@@ -3,9 +3,10 @@
 import { cn } from "../../lib/format";
 
 // The KEYS are addresses (and map to places.products); only the LABELS are
-// the words a guest reads. "Menus", never "Products" (Pato 2026-08-22).
+// the words a guest reads. "Menu", never "Products" (Pato 2026-08-22;
+// singular, Pato 2026-10-16).
 // Enrich is first and only while the place is not Enriched (MESITA-1364).
-// decision: Pato (2026-10-16) — Menus and Rewards wear Soon. Rewards is the
+// decision: Pato (2026-10-16) — Menu and Rewards wear Soon. Rewards is the
 // fourth screen. Both are the same strip on admin Preview and consumer.
 export type PlaceTab = "enrich" | "place" | "reviews" | "products" | "rewards";
 
@@ -18,7 +19,7 @@ export type PlaceTabDef = {
 const CORE_TABS = [
   { key: "place", label: "Overview" },
   { key: "reviews", label: "Reviews" },
-  { key: "products", label: "Menus", soon: true },
+  { key: "products", label: "Menu", soon: true },
   { key: "rewards", label: "Rewards", soon: true },
 ] as const satisfies ReadonlyArray<PlaceTabDef>;
 

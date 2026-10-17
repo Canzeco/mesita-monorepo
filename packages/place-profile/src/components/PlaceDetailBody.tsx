@@ -26,7 +26,7 @@ import { DatesBox, LinksBox, TagsBox } from "./place-detail/tags-links-meta";
 //      Facebook; swipe-style tags; then Save · Contact · Share.
 //      Reserve · Pay (Soon) are pinned below.
 //   2. Sticky tab strip — Enrich only until Enriched, then Overview ·
-//      Reviews · Menus (Soon) · Rewards (Soon).
+//      Reviews · Menu (Soon) · Rewards (Soon).
 //   3. The active tab's boxes.
 
 export function PlaceDetailBody({
@@ -84,7 +84,7 @@ export function PlaceDetailBody({
           <GoogleReviewsBox place={place} />
         )}
         {activeTab === "products" && place.is_enriched && (
-          <SoonScreen title="Menus" />
+          <SoonScreen title="Menu" />
         )}
         {activeTab === "rewards" && place.is_enriched && (
           <SoonScreen title="Rewards" />

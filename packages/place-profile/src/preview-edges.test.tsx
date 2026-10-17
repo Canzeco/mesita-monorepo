@@ -91,12 +91,14 @@ describe("member preview edges", () => {
     expect(reserveAt).toBeGreaterThan(shareAt);
     expect(payAt).toBeGreaterThan(reserveAt);
     expect(html).not.toContain("Save, Soon");
-    expect(html).toContain("Menus");
+    expect(html).toContain("Menu");
+    expect(html).not.toContain("Menus");
     expect(html).toContain("Rewards");
     expect(html).toContain("Soon");
-    expect(renderToStaticMarkup(<SoonScreen title="Menus" />)).toContain(
-      "Menus is coming soon",
-    );
+    const menuSoon = renderToStaticMarkup(<SoonScreen title="Menu" />);
+    expect(menuSoon).toContain("Menu is coming soon");
+    expect(menuSoon).toContain("Menu at this place lands here shortly.");
+    expect(menuSoon).not.toContain("Menus");
     expect(renderToStaticMarkup(<SoonScreen title="Rewards" />)).toContain(
       "Rewards is coming soon",
     );

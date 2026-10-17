@@ -12,7 +12,7 @@ import { Box } from "./box";
 
 // ── Menus ───────────────────────────────────────────────────────────────
 
-// The Menus tab renders SoonScreen. This box stays for the stored files
+// The Menu tab renders SoonScreen. This box stays for the stored files
 // and is not mounted while that tab is Soon (Pato, 2026-10-16).
 export function MenusBox({
   place,
@@ -21,7 +21,7 @@ export function MenusBox({
   place: PlaceDetail;
   onOpenMenu?: PlaceActions["onOpenMenu"];
 }) {
-  // Sole occupant of the Menus tab, so it never returns null — a place with
+  // Sole occupant of the Menu tab, so it never returns null — a place with
   // no menus renders an explicit empty state instead of a blank tab.
   //
   // `place.products.menu` keeps its name: that is the column the row is read
