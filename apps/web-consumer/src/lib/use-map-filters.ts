@@ -102,6 +102,11 @@ export function toggleMapFamily(key: FamilyKey) {
   });
 }
 
+/** All Families: no family cut at all, the default (MESITA-2298). */
+export function clearMapFamilies() {
+  patchMapFilters({ familyKeys: [] });
+}
+
 export function useMapFilters(): MapFilters {
   return useSyncExternalStore(
     subscribe,

@@ -217,6 +217,9 @@ describe("Search map's top row is the query bar plus labelled Filters", () => {
     const sheet = read("SearchMapFilters.tsx");
     const popularity = read("SearchPopularity.tsx");
     expect(sheet).toContain('label="Minimum number of Google reviews"');
+    expect(sheet).toContain('label="Families"');
+    expect(sheet).toContain("All Families");
+    expect(sheet).toContain("clearMapFamilies");
     expect(sheet).not.toContain('label="Popularity"');
     expect(popularity).toContain('"0+"');
     expect(popularity).toContain('"10+"');

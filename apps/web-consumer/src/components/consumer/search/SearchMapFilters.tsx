@@ -6,6 +6,7 @@ import {
   type MapPlacesScope,
 } from "@/lib/map-filters-engine";
 import {
+  clearMapFamilies,
   resetMapFilters,
   setMapMinReviews,
   setMapPlacesScope,
@@ -28,9 +29,11 @@ import { SearchPopularity } from "./SearchPopularity";
 //   Google Places ⊃ Mesita Places ⊃ Mesita Enriched Places
 // Default is the inner ring — the places Mesita has actually written up.
 //
-// Popularity is the Google review-count floor (0 / 10 / 100 / 1k / 10k).
-// Guest copy is "Minimum number of Google reviews" with 0 / 10+ / 100+ /
-// 1K+ / 10K+. Discovery-mode, not a Nearby API param.
+// Families is All Families (the default: no family cut) or any set of the
+// fifteen; the server turns the set into the union of their Google types
+// (MESITA-2298). Google Reviews is the review-count floor, 0+ / 10+ / 100+ /
+// 1,000+, default 100+; applied after Google answers, never as a Nearby API
+// param, and never to Mesita Selected.
 
 export function SearchMapFilters({
   onClose,
@@ -51,8 +54,14 @@ export function SearchMapFilters({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3">
         <div className="flex flex-col gap-2">
-          <FilterModule label="Family">
+          <FilterModule label="Families">
             <div className="flex flex-wrap gap-1">
+              <Pill
+                active={filters.familyKeys.length === 0}
+                onClick={clearMapFamilies}
+              >
+                All Families
+              </Pill>
               {FILTERABLE_PLACE_FAMILIES.map((family) => (
                 <Pill
                   key={family.key}
