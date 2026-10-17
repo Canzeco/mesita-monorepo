@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { CATALOG_FAMILY_FACTS } from "../filters-config/discovery-surface";
 import {
   cellOn,
   filterMembershipRows,
@@ -9,6 +10,15 @@ import {
   type MembershipFamily,
   type MembershipRow,
 } from "./membership-matrix";
+
+const FAMILY_EMOJI = new Map(
+  CATALOG_FAMILY_FACTS.map((family) => [family.key, family.emoji]),
+);
+
+function familyMark(family: MembershipFamily): string {
+  if (family.emoji && family.emoji !== "·") return family.emoji;
+  return FAMILY_EMOJI.get(family.slug) ?? "";
+}
 
 export function MembershipMatrix({
   families,
@@ -60,7 +70,10 @@ export function MembershipMatrix({
                   key={family.slug}
                   className="border-border bg-muted/40 sticky top-0 z-20 border-b border-l p-0 align-bottom"
                 >
-                  <span className="flex h-36 items-end justify-center pb-2">
+                  <span className="flex h-36 flex-col items-center justify-end gap-1 pb-2">
+                    <span className="text-base leading-none" aria-hidden>
+                      {familyMark(family)}
+                    </span>
                     <span className="type-label leading-none font-medium whitespace-nowrap [writing-mode:vertical-rl] rotate-180">
                       {family.label}
                     </span>

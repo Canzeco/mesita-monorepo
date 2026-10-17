@@ -195,21 +195,21 @@ export const SUPER_FIELDS: {
   emoji: string;
   battery: readonly string[];
 }[] = [
-  { key: "coffee", label: "Coffee", emoji: "·", battery: ["cafe"] },
-  { key: "breakfast", label: "Breakfast", emoji: "·", battery: ["breakfast_restaurant"] },
-  { key: "quick_bite", label: "Quick bite", emoji: "·", battery: ["fast_food_restaurant"] },
-  { key: "pizza", label: "Pizza", emoji: "·", battery: ["pizza_restaurant"] },
-  { key: "tacos", label: "Tacos", emoji: "·", battery: ["mexican_restaurant"] },
-  { key: "sushi", label: "Sushi", emoji: "·", battery: ["sushi_restaurant"] },
-  { key: "burgers", label: "Burgers", emoji: "·", battery: ["hamburger_restaurant"] },
-  { key: "noodles", label: "Noodles", emoji: "·", battery: ["ramen_restaurant"] },
-  { key: "dinner", label: "Dinner", emoji: "·", battery: ["restaurant"] },
-  { key: "sweet", label: "Sweet", emoji: "·", battery: ["bakery"] },
-  { key: "drinks", label: "Drinks", emoji: "·", battery: ["bar"] },
-  { key: "night_out", label: "Night out", emoji: "·", battery: ["night_club"] },
-  { key: "go_out", label: "Go out", emoji: "·", battery: ["tourist_attraction", "bowling_alley", "movie_theater"] },
-  { key: "move", label: "Move", emoji: "·", battery: ["gym", "fitness_center", "yoga_studio", "sports_club"] },
-  { key: "feel_better", label: "Feel better", emoji: "·", battery: ["spa", "beauty_salon", "hair_salon", "massage"] },
+  { key: "coffee", label: "Coffee", emoji: "☕", battery: ["cafe"] },
+  { key: "breakfast", label: "Breakfast", emoji: "🥐", battery: ["breakfast_restaurant"] },
+  { key: "quick_bite", label: "Quick bite", emoji: "🥙", battery: ["fast_food_restaurant"] },
+  { key: "pizza", label: "Pizza", emoji: "🍕", battery: ["pizza_restaurant"] },
+  { key: "tacos", label: "Tacos", emoji: "🌮", battery: ["mexican_restaurant"] },
+  { key: "sushi", label: "Sushi", emoji: "🍣", battery: ["sushi_restaurant"] },
+  { key: "burgers", label: "Burgers", emoji: "🍔", battery: ["hamburger_restaurant"] },
+  { key: "noodles", label: "Noodles", emoji: "🍜", battery: ["ramen_restaurant"] },
+  { key: "dinner", label: "Dinner", emoji: "🍽️", battery: ["restaurant"] },
+  { key: "sweet", label: "Sweet", emoji: "🍰", battery: ["bakery"] },
+  { key: "drinks", label: "Drinks", emoji: "🍸", battery: ["bar"] },
+  { key: "night_out", label: "Night out", emoji: "🌙", battery: ["night_club"] },
+  { key: "go_out", label: "Go out", emoji: "🎟️", battery: ["tourist_attraction", "bowling_alley", "movie_theater"] },
+  { key: "move", label: "Move", emoji: "🏃", battery: ["gym", "fitness_center", "yoga_studio", "sports_club"] },
+  { key: "feel_better", label: "Feel better", emoji: "💆", battery: ["spa", "beauty_salon", "hair_salon", "massage"] },
 ];
 
 export type ParamField = {

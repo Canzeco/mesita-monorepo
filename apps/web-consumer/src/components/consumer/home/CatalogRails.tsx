@@ -1,13 +1,15 @@
 "use client";
 
-// Places — All, then one carousel per family.
+// Places — All, then one carousel per guest family. That is always
+// n + 1 carousels when the catalog has places. A family with no places
+// stays on the feed, empty. Each family heading carries its one emoji.
 //
 // The catalog is Mesita places only. Filters are the two Mesita rings.
 // Family is not a filter. Google Places is not a choice. The review floor
 // is the map's. Location, when the browser has it, ranks proximity.
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { ArrowUpDown, Compass, SlidersHorizontal } from "lucide-react";
+import { Compass, SlidersHorizontal } from "lucide-react";
 import { apiListCatalog, type CatalogRail, type Place } from "@/lib/api/places";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { trackEvent } from "@/lib/analytics/track";
@@ -23,11 +25,8 @@ import { EmptyState } from "@/components/shared";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { FavoriteTile } from "./FavoriteTile";
 import { cn, errMsg } from "@/lib/utils";
-import {
-  sortCatalogRails,
-  summarizeCatalog,
-  type CatalogSort,
-} from "@/lib/catalog-summary";
+import { placesFeed } from "@/lib/catalog-feed";
+import { summarizeCatalog } from "@/lib/catalog-summary";
 import {
   resetDiscoveryFilters,
   useDiscoveryFilters,
@@ -52,7 +51,6 @@ export function CatalogRails() {
   const [rails, setRails] = useState<CatalogRail[] | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [sort, setSort] = useState<CatalogSort>("suggested");
   const filters = useDiscoveryFilters();
   const appliedCount = countAppliedDiscoveryFilters(filters);
   const filtered = hasDiscoveryPredicates(filters);
@@ -88,10 +86,7 @@ export function CatalogRails() {
   }, [supabase, requestKey]);
 
   const summary = useMemo(() => summarizeCatalog(rails ?? []), [rails]);
-  const shownRails = useMemo(
-    () => sortCatalogRails(rails ?? [], sort),
-    [rails, sort],
-  );
+  const shownRails = useMemo(() => placesFeed(rails ?? []), [rails]);
 
   const placesShown = summary.total;
 
@@ -216,23 +211,10 @@ export function CatalogRails() {
 
   return shell(
     <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain px-4 pt-4 pb-6">
-      <div className="mb-4 flex items-center justify-between gap-3 px-1">
-        <p className="type-body text-muted-foreground tabular-nums">
-          {summary.total} {summary.total === 1 ? "place" : "places"}
-          {summary.openNow > 0 ? ` · ${summary.openNow} open now` : ""}
-        </p>
-        <button
-          type="button"
-          onClick={() =>
-            setSort((s) => (s === "suggested" ? "open" : "suggested"))
-          }
-          aria-label={`Sort: ${sort === "suggested" ? "Suggested" : "Open first"}. Change sort order`}
-          className="border-border bg-card text-foreground type-meta flex shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 font-semibold transition active:scale-[0.98]"
-        >
-          <ArrowUpDown className="h-3.5 w-3.5" aria-hidden />
-          {sort === "suggested" ? "Suggested" : "Open first"}
-        </button>
-      </div>
+      <p className="type-body text-muted-foreground mb-4 px-1 tabular-nums">
+        {summary.total} {summary.total === 1 ? "place" : "places"}
+        {summary.openNow > 0 ? ` · ${summary.openNow} open now` : ""}
+      </p>
       <div className="flex flex-col gap-8">
         {shownRails.map((rail) => (
           <section key={rail.key} aria-labelledby={`${rail.key}-heading`}>
@@ -240,27 +222,36 @@ export function CatalogRails() {
               id={`${rail.key}-heading`}
               className="font-display text-foreground px-1 text-base font-semibold tracking-tight"
             >
+              {rail.emoji && rail.emoji !== "·" ? (
+                <span className="mr-1.5" aria-hidden>
+                  {rail.emoji}
+                </span>
+              ) : null}
               {rail.label}
             </h2>
-            <ul
-              role="list"
-              aria-label={rail.label}
-              className="scrollbar-hide -mx-4 mt-3 flex flex-nowrap gap-2.5 overflow-x-auto overscroll-x-contain px-4 pb-1"
-            >
-              {rail.places.map((place) => {
-                const located = withUserDistance(place, coords);
-                const saved = savedIds.has(place.id);
-                return (
-                  <FavoriteTile
-                    key={place.id}
-                    place={located}
-                    saved={saved}
-                    onToggle={() => toggleSave(place, saved)}
-                    className="w-[148px] shrink-0"
-                  />
-                );
-              })}
-            </ul>
+            {rail.places.length === 0 ? (
+              <div className="mt-3 h-8" aria-hidden />
+            ) : (
+              <ul
+                role="list"
+                aria-label={rail.label}
+                className="scrollbar-hide -mx-4 mt-3 flex flex-nowrap gap-2.5 overflow-x-auto overscroll-x-contain px-4 pb-1"
+              >
+                {rail.places.map((place) => {
+                  const located = withUserDistance(place, coords);
+                  const saved = savedIds.has(place.id);
+                  return (
+                    <FavoriteTile
+                      key={place.id}
+                      place={located}
+                      saved={saved}
+                      onToggle={() => toggleSave(place, saved)}
+                      className="w-[148px] shrink-0"
+                    />
+                  );
+                })}
+              </ul>
+            )}
           </section>
         ))}
       </div>

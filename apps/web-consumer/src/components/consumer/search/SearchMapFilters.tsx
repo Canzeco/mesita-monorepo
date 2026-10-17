@@ -59,7 +59,7 @@ export function SearchMapFilters({
                   active={filters.familyKeys.includes(family.key)}
                   onClick={() => toggleMapFamily(family.key)}
                 >
-                  {family.label}
+                  <span aria-hidden>{family.emoji}</span> {family.label}
                 </Pill>
               ))}
             </div>

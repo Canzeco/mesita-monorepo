@@ -130,7 +130,9 @@ export function CatalogRankingClient({
               key={family.key}
               className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
             >
-              <span className="text-sm font-medium">{family.label}</span>
+              <span className="text-sm font-medium">
+                <span aria-hidden>{family.emoji}</span> {family.label}
+              </span>
               <span className="text-muted-foreground text-sm">
                 Family filter · shared profile
               </span>
