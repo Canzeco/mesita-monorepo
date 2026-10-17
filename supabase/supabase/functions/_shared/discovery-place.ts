@@ -18,11 +18,8 @@
 // scores the entire deck identically — a dead signal that looks perfectly
 // healthy in every log and every response.
 
-import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import type { SignalPlace } from "./discovery-signals.ts";
 import { isEnrichedPlace } from "./place-family-keys.ts";
-import { crenupOf } from "./crenup-ladder.ts";
-import { chunked, ID_CHUNK } from "./postgrest.ts";
 
 /**
  * The columns a ranking engine must SELECT beyond PLACE_PUBLIC_COLUMNS.
@@ -83,83 +80,13 @@ export function toSignalPlace(row: Record<string, unknown>): SignalPlace {
 }
 
 /**
- * Places Lineup projection: `toSignalPlace` plus the two facts only some rows
- * carry, the name vector and the Crenup high-water. New blend call sites use
- * this so Name can actually fire.
- *
- * `crenup_high_water` (MESITA-1598) is read straight off the row like any
- * other field — it is NOT selected by `EARNED_LANE_COLUMNS` (`places.
- * enrichment` sits behind the `profiles` view and isn't in the public
- * projection), so a row only carries it when the caller ran
- * `attachCrenupHighWater` first. THE `enriched` SIGNAL READS IT (MESITA-1858
- * kept the gradient: the binary alone is a constant on every lane that admits
- * only enriched rows). A row without it scores the binary instead.
+ * Places Lineup projection: `toSignalPlace` plus the name vector, which only
+ * some rows carry. New blend call sites use this so Name can actually fire.
  */
 export function toLineupPlace(row: Record<string, unknown>): SignalPlace {
   return {
     ...toSignalPlace(row),
     nameEmbedding: row.name_embedding,
-    crenupHighWater: nOrNull(row.crenup_high_water),
   };
 }
 
-/**
- * The side-read the retired `mesita_level` gradient needed and `profiles`
- * doesn't carry (MESITA-1598): `places.enrichment->highWater` for a batch of
- * place ids, merged onto each row as `crenup_high_water` — the same shape
- * `toLineupPlace` already knows how to read off any other column. Call this
- * AFTER the main admission query and BEFORE ranking.
- *
- * THIS IS WHAT MAKES `enriched` AN AXIS (MESITA-1858). The signal's binary
- * half reads the same predicate the ranked lanes admit on, so without this
- * side-read it answers 1 for every row it is ever handed. The gradient it
- * feeds is the only part of the signal that can reorder an admitted pool.
- *
- * Batched in `ID_CHUNK`s, run in parallel — never N+1, and it never joins
- * into the ranking query itself, so a surface that doesn't call this pays
- * nothing extra. Chunked since MESITA-2047: an `in` list rides in the URL,
- * and Scroll's closed-within-reach band can hand this hundreds of ids, which
- * one request would have lost to the URL length limit.
- */
-export async function attachCrenupHighWater<
-  T extends Record<string, unknown>,
->(
-  admin: SupabaseClient,
-  rows: T[],
-): Promise<(T & { crenup_high_water?: number })[]> {
-  if (rows.length === 0) return [];
-  const ids = rows
-    .map((r) => r.id)
-    .filter((id): id is string => typeof id === "string");
-  if (ids.length === 0) return rows;
-
-  const parts = await Promise.all(
-    chunked(ids, ID_CHUNK).map((part) =>
-      admin
-        .from("place_profiles")
-        .select("id, enrichment")
-        .in("id", part)
-    ),
-  );
-  const failed = parts.find((r) => r.error);
-  if (failed?.error) {
-    // Degrade to UNKNOWN for everyone, never to a confirmed-zero — a failed
-    // side-read must not read as "the whole pool is at the Created floor".
-    // Logged, not thrown: ranking must not 500 over this query hiccuping.
-    console.error("[discovery-place] attachCrenupHighWater:", failed.error.message);
-    return rows;
-  }
-  const byId = new Map<string, number>();
-  for (const { data } of parts) {
-    for (const row of (data ?? []) as { id: string; enrichment: unknown }[]) {
-      byId.set(row.id, crenupOf(row.enrichment));
-    }
-  }
-  // A row the query returned nothing for (a place-id-shaped id that isn't
-  // actually in `places`, or an org-pool oddity) gets a real 0 — it IS
-  // confirmed unenriched by absence, not merely un-fetched.
-  return rows.map((r) => ({
-    ...r,
-    crenup_high_water: byId.get(r.id as string) ?? 0,
-  }));
-}

@@ -157,7 +157,6 @@ Deno.test("RESERVATION READ: no new raw reader of reservation_tickets outside th
 
 const PLACE_PROFILE_READ_ALLOWLIST = [
   "_shared/agent-tools.ts",
-  "_shared/discovery-place.ts",
   "_shared/mesita-name-door.ts",
   "_shared/crenup-report.ts",
   "_shared/field-correction-writer.ts", // read enrichment_sources before pin merge (MESITA-2029)

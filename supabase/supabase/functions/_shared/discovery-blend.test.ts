@@ -122,33 +122,15 @@ Deno.test("rankByBlend sorts best-first and breaks ties on incoming order", () =
   }
 });
 
-Deno.test("the Enriched weight reorders two rows a ranked lane ACTUALLY admits", () => {
-  // BOTH ROWS ARE ENRICHED, because that is the only population this signal
-  // ever scores on the inner ring: Map's Enriched ring admits a listed row
-  // only through `isEnrichedListedRow` and Scroll's pool is the Enriched gate (`enriched_at IS NOT NULL`). An `enriched: false`
-  // row here would make the assertion green by construction — production
-  // never ranks one. What must move the blend is the difference between a
-  // thin profile and a finished one, both admitted.
+Deno.test("the Enriched weight puts an enriched row above a Created one", () => {
+  // Map's wider rings admit Created rows too (MESITA-2158), which is where
+  // this binary bites. On an enriched-only lane it is a constant 1.
   const w: SignalWeights = { ...WEIGHTS_OFF, enriched: 1 };
-  const thin = blend(
-    { ...project(row("thin", 4.5)), enriched: true, crenupHighWater: 2 },
-    {},
-    w,
-  );
-  const full = blend(
-    { ...project(row("full", 4.5)), enriched: true, crenupHighWater: 8 },
-    {},
-    w,
-  );
-  assert(full.score > thin.score, `full ${full.score} must beat thin ${thin.score}`);
+  const full = blend({ ...project(row("full", 4.5)), enriched: true }, {}, w);
+  const created = blend({ ...project(row("created", 4.5)), enriched: false }, {}, w);
+  assert(full.score > created.score, `full ${full.score} must beat created ${created.score}`);
   assertEquals(full.parts.enriched, 1);
-  assertAlmostEquals(thin.parts.enriched, ENRICHED_OFF + (1 - ENRICHED_OFF) * 0.25, 1e-12);
-  // The floor still holds at the bottom of the gradient: demote, never delete.
-  const created = blend(
-    { ...project(row("created", 4.5)), enriched: true, crenupHighWater: 0 },
-    {},
-    w,
-  );
+  // Demote, never delete.
   assertAlmostEquals(created.parts.enriched, ENRICHED_OFF, 1e-12);
 });
 

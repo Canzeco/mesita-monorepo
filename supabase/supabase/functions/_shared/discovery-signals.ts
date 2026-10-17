@@ -18,13 +18,10 @@
 // work on this place — is the half a catalog with nothing for sale can read,
 // and an old blob's `mesita_level` folds onto it (discovery-config.ts).
 //
-// THE ENRICHMENT GRADIENT SURVIVES THE SPLIT. MESITA-1858 first wrote
-// `enriched` as a pure binary and deferred the `crenup_high_water` gradient
-// (MESITA-1598) to a later issue. Review caught that the binary reads the
-// SAME predicate the ranked lanes admit on, so it is a constant 1 wherever it
-// is scored — a dead axis and a live regression against the old ladder. The
-// gradient is therefore kept, off `crenupHighWater` and
-// `attachCrenupHighWater` at their three call sites. Details at `enriched`.
+// `enriched` IS A BINARY. The `crenup_high_water` gradient (MESITA-1598) left
+// with MESITA-2288: Render's one write sets `enriched_at` and never stamps the
+// ladder, so the high-water froze at Create's 1 and squashed every enriched
+// place to ~0.26. Details at `enriched`.
 //
 // The key is `enriched`, never bare `level`. `places.price_level` is Google's
 // field and create-door-profile.ts already writes "Price level:" into a
@@ -65,7 +62,6 @@ import { haversineKm } from "./geo.ts";
 import { isOpenAt } from "./local-time-open.ts";
 import { localClock } from "./local-time.ts";
 import { cosineSim, parseVector } from "./embeddings-vector.ts";
-import { CRENUP_TOTAL } from "./crenup-ladder.ts";
 
 /**
  * The seven earned signals, in Notion Docs > Discovery section 8.3 order:
@@ -143,15 +139,6 @@ export type SignalPlace = {
    * credit: an unstated enrichment is not an enriched place.
    */
   enriched?: boolean;
-  /**
-   * How far the Crenup queue got, 0..CRENUP_TOTAL (`crenupOf`,
-   * crenup-ladder.ts). `enriched` reads this; nothing else may. It is the
-   * gradient MESITA-1598 added and MESITA-1858 restored — the binary alone is
-   * a constant on every lane that admits only enriched rows (see `enriched`).
-   * A surface has to opt in by running `attachCrenupHighWater`; absent, the
-   * signal falls back to the binary.
-   */
-  crenupHighWater?: number | null;
 };
 
 /** What the CALLER wants. Every field is optional; an absent one abstains. */
@@ -417,46 +404,21 @@ export function name(
  * and there is deliberately no second predicate here: two answers to "is this
  * place enriched" is how the consumer wire and the ranker drift apart.
  *
- * GRADED WHERE THE ROW CARRIES A HIGH-WATER NUMBER, binary where it does not.
+ * BINARY: 1 when enriched, `ENRICHED_OFF` otherwise. On a lane that admits
+ * only enriched rows (Swipe, Map's inner ring) it is a constant 1 and drops
+ * out of the product; it bites where Created rows are admitted too (Map's
+ * wider rings, MESITA-2158).
  *
- * MESITA-1858 wrote this as a pure binary and called the lost resolution a
- * deferred item. IT IS NOT DEFERRABLE, because the binary reads the SAME
- * PREDICATE THE RANKED LANES ADMIT ON, so on every surface that can score it
- * the answer is a constant 1:
+ * THE LADDER GRADIENT IS GONE (MESITA-2288). It used to read
+ * `ENRICHED_OFF + (1 - ENRICHED_OFF) * highWater / CRENUP_TOTAL` off
+ * `place_profiles.enrichment`. Render's one write never stamps that ladder,
+ * so every place sat at Create's high-water of 1 and an enriched place
+ * scored ~0.26 instead of 1.
  *
- *   - Map's inner ring (Mesita Enriched Places) admits a listed row only
- *     through `isEnrichedListedRow` (the same `isPlaceEnriched`), BEFORE
- *     `reorderListedLanes` ranks anything. The two wider rings admit
- *     Created rows too (MESITA-2158), where the binary half does bite.
- *   - Scroll's pool query is the Enriched gate, `enriched_at IS NOT NULL`.
- *   - Word masks this signal to 0 and never scores it at all.
- *
- * A constant signal cannot reorder a deck, and the Discovery console would be
- * rendering an operator a dial that does nothing. Worse, it is a REGRESSION:
- * the retired `mesita_level` folded `crenup_high_water` (0..CRENUP_TOTAL), a
- * fact that is NOT the admission predicate, so it did discriminate among
- * admitted rows — two admitted rows at one point on the Map, high-water 10 and
- * 2, ranked 3.1x apart and would now tie, handing the order to whatever
- * Postgres returned.
- *
- * So the gradient is restored here, verbatim: `ENRICHED_OFF + (1 -
- * ENRICHED_OFF) * hw / CRENUP_TOTAL`, which is MESITA-1598's own
- * `0.15 + 0.85 * hw/10`. MESITA-1858 kept `crenupHighWater` and
- * `attachCrenupHighWater` wired for exactly this, and the issue's note that
- * the collapse was deliberate was written believing the binary would still
- * separate enriched from unenriched places in a deck — which it cannot,
- * because an unenriched place never enters one. Pato reverses this in one
- * line by deleting the high-water branch.
- *
- * AN EXPLICIT `enriched: false` STAYS AT THE FLOOR whatever the side-read
- * says. That is the googleOnly exclusion the projection makes by name; a
- * synthesized row must not be able to climb on a number fetched by id.
- *
- * ABSENT READS OFF, NOT UNKNOWN. The opposite of `crenupHighWater`'s old
- * rule, and deliberately: high-water is a side-read a surface has to opt
- * into, while `enriched` is set by the projection every ranking engine runs
- * through. An absent value means the row genuinely said nothing, and the
- * honest score for "we have no evidence Mesita touched this" is the floor.
+ * ABSENT READS OFF, NOT UNKNOWN. `enriched` is set by the projection every
+ * ranking engine runs through, so an absent value means the row genuinely
+ * said nothing, and the honest score for "we have no evidence Mesita touched
+ * this" is the floor.
  */
 
 /**
@@ -473,13 +435,6 @@ export function enriched(
   _intent?: SignalIntent,
   _params?: SignalParamBag,
 ): number {
-  if (place.enriched === false) return clamp01(ENRICHED_OFF);
-  const highWater = place.crenupHighWater;
-  if (typeof highWater === "number" && Number.isFinite(highWater)) {
-    return clamp01(
-      ENRICHED_OFF + (1 - ENRICHED_OFF) * clamp01(highWater / CRENUP_TOTAL),
-    );
-  }
   return clamp01(place.enriched === true ? 1 : ENRICHED_OFF);
 }
 

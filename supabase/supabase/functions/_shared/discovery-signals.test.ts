@@ -18,7 +18,6 @@ import {
   type SignalPlace,
 } from "./discovery-signals.ts";
 import { toSignalPlace } from "./discovery-place.ts";
-import { CRENUP_TOTAL } from "./crenup-ladder.ts";
 
 const place = (over: Partial<SignalPlace> = {}): SignalPlace => ({
   lat: 19.4326,
@@ -304,55 +303,23 @@ Deno.test("name's unembedded floor still bends when a param bag carries one", ()
 
 // ── Enriched ──────────────────────────────────────────────
 
-Deno.test("Enriched reorders two rows a ranked lane ACTUALLY admits", () => {
-  // THE ADMISSION PREDICATE IS NOT THE SIGNAL, and this test exists because
-  // the binary made them the same function. Every row a ranked lane scores
-  // already satisfies `isEnrichedPlace`: Map's Enriched ring admits each
-  // listed row through `isEnrichedListedRow` before `reorderListedLanes`
-  // ranks anything (the wider rings add Created rows, MESITA-2158), and
-  // Scroll's pool query is the Enriched gate, `enriched_at IS NOT NULL`. So `enriched === true` on every row this signal ever sees, and
-  // a pure binary is a CONSTANT 1 on the whole population — an operator dial
-  // that cannot move a deck. `enriched: false` here would be green by
-  // construction: production never hands the signal that row.
-  //
-  // The high-water gradient is what discriminates among ADMITTED rows, which
-  // is the only population this signal is asked about.
-  const thin = enriched(place({ enriched: true, crenupHighWater: 2 }));
-  const full = enriched(place({ enriched: true, crenupHighWater: CRENUP_TOTAL }));
-  assert(full > thin, `a full profile must outrank a thin one: ${full} vs ${thin}`);
-  assertAlmostEquals(full, 1, 1e-12);
-  assertAlmostEquals(thin, ENRICHED_OFF + (1 - ENRICHED_OFF) * 0.25, 1e-12);
-  // Floor at the bottom of the gradient too — never 0, which would delete the
-  // place from a multiplicative blend.
-  assertAlmostEquals(enriched(place({ enriched: true, crenupHighWater: 0 })), ENRICHED_OFF, 1e-12);
-  // And the gradient is monotone across the whole queue, not just at the ends.
-  let prev = -1;
-  for (let hw = 0; hw <= CRENUP_TOTAL; hw++) {
-    const s = enriched(place({ enriched: true, crenupHighWater: hw }));
-    assert(s > prev, `high-water ${hw} must score above ${hw - 1}`);
-    prev = s;
-  }
-});
-
-Deno.test("without the high-water side-read Enriched falls back to the binary", () => {
-  // A surface that never ran `attachCrenupHighWater` carries no high-water
-  // number, and the binary is the honest answer there — not an abstention.
+Deno.test("Enriched is a binary: 1 when enriched, the floor when not", () => {
   assertEquals(enriched(place({ enriched: true })), 1);
   assertEquals(enriched(place({ enriched: false })), ENRICHED_OFF);
-  // An explicitly-false enrichment fact stays at the floor even WITH a
-  // high-water number: the googleOnly exclusion the projection makes by name
-  // must not be climbable by a side-read.
-  assertEquals(
-    enriched(place({ enriched: false, crenupHighWater: CRENUP_TOTAL })),
-    ENRICHED_OFF,
-  );
+});
+
+Deno.test("a stale ladder high-water cannot cap an enriched place (MESITA-2288)", () => {
+  // Render's one write sets enriched_at and never stamps the ladder, so live
+  // rows carry Create's high-water of 1. The gradient read that and scored a
+  // fully enriched place ~0.26. Whatever the row carries, enriched is 1.
+  const row = { ...place({ enriched: true }), crenupHighWater: 1 } as SignalPlace;
+  assertEquals(enriched(row), 1);
 });
 
 Deno.test("an absent enrichment fact reads OFF, and is always a finite number", () => {
-  // The opposite of the retired crenupHighWater rule, deliberately: high-water
-  // was an opt-in side-read, while `enriched` is set by the projection every
-  // ranking engine runs through. Absent means the row said nothing, and "no
-  // evidence Mesita touched this" is honestly the floor, not full credit.
+  // `enriched` is set by the projection every ranking engine runs through.
+  // Absent means the row said nothing, and "no evidence Mesita touched this"
+  // is honestly the floor, not full credit.
   const absent = enriched(place());
   assertEquals(absent, ENRICHED_OFF);
   assert(Number.isFinite(absent), "enriched() must never return undefined or NaN");
@@ -377,19 +344,15 @@ Deno.test("a synthesized Google row scores OFF, not enriched", () => {
   assertEquals(enriched(googleRow), ENRICHED_OFF);
 });
 
-Deno.test("a Created place scores OFF, whatever its content_state or high-water", () => {
+Deno.test("a Created place scores OFF, whatever its content_state", () => {
   // MESITA-2154: Create saves content_state ready and never stamps
-  // enriched_at, so the projection says `enriched: false` and the
-  // high-water a Created place carries (1, stopped at serp) cannot climb it.
-  const created = {
-    ...toSignalPlace({
-      lat: 19.4326,
-      lng: -99.1332,
-      content_state: "ready",
-      enriched_at: null,
-    }),
-    crenupHighWater: 1,
-  };
+  // enriched_at, so the projection says `enriched: false`.
+  const created = toSignalPlace({
+    lat: 19.4326,
+    lng: -99.1332,
+    content_state: "ready",
+    enriched_at: null,
+  });
   assertEquals(created.enriched, false);
   assertEquals(enriched(created), ENRICHED_OFF);
   const stamped = toSignalPlace({ content_state: "ready", enriched_at: "2026-09-01T00:00:00Z" });
