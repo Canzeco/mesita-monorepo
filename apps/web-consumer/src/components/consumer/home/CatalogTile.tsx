@@ -27,6 +27,7 @@ import {
   TILE_PHOTO,
   TILE_TEXT,
 } from "./catalog-tile-classes";
+import { CatalogEnrichChip } from "./CatalogEnrichChip";
 
 /**
  * A Google-only card has no Mesita page yet. Its tap is the explicit open
@@ -161,8 +162,8 @@ export function CatalogTile({
   // "better 40% and 60%, and use the space for 4 rows"), every tile, a
   // Google-only card too (MESITA-2663): name; category · $$ · stars;
   // hours · distance; then Save and Share side by side (32px, 44px hit
-  // area). 20px lines and a 2px gap so the four fit. The photo is fully
-  // shown and centred, nothing over it (MESITA-2369); the band under it is
+  // area). 20px lines and a 2px gap so the four fit. A Created Mesita place
+  // wears the Enrich vote on its photo (MESITA-2293); the band under it is
   // plain white (MESITA-2658: the reflection went). The split went 45/55
   // (MESITA-2652) and 66/34 (MESITA-2654) on the way back to 60/40. The
   // boxes are catalog-tile-classes.ts, shared with the tile's loading
@@ -200,6 +201,14 @@ export function CatalogTile({
           </div>
         </div>
       </TileLink>
+      {!isEnrichedPlace(place) && !google ? (
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-[60%]">
+          <CatalogEnrichChip
+            place={place}
+            className="pointer-events-auto absolute bottom-2 left-2"
+          />
+        </div>
+      ) : null}
       {/* Google-only cards get Save and Share too (Pato, MESITA-2663:
           "keep the save and share button even if no profile yet, just
           create the profile and then trigger it"); the parent's handlers
