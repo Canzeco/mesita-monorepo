@@ -6,9 +6,8 @@
 // scale. Mesita Level is the Enriched row now (MESITA-1858): it reads the
 // enrichment state and nothing about money.
 //
-// WEIGHTS DO NOT LIVE HERE. A weight belongs to a mode. This page states the
-// function, draws the curve, and shows the graphic. Modes that rank edit
-// their own weights.
+// WEIGHTS DO NOT LIVE HERE. A weight belongs to a mode. This page is the
+// shape numbers that have a knob. No preview, no curve, no score bars.
 //
 // THE CARDS DO NOT REDRAW THE MATRIX (MESITA-1856). Each card used to carry
 // a strip of six unlabelled circles — which modes read this signal — under
@@ -31,7 +30,6 @@ import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import { KnobState, SaveRow, SectionCard } from "@/components/admin-ui/config";
 import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
-import { SignalGraphic } from "./SignalGraphic";
 import {
   SIGNAL_KEYS,
   SIGNALS,
@@ -139,7 +137,7 @@ export function SignalsConfigClient({
       <SectionCard
         icon={<Compass className="text-primary h-4 w-4" />}
         title="Signals"
-        subtitle="The function, the curve, and the graphic. A weight belongs to the mode that uses the signal."
+        subtitle="The numbers that bend a score. A weight belongs to the mode."
         state={
           <KnobState
             kind="enforced"
@@ -147,66 +145,46 @@ export function SignalsConfigClient({
           />
         }
       >
-        <div className="mt-5 grid gap-3">
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
           {SIGNAL_KEYS.map((key) => {
             const spec = SIGNALS.find((s) => s.key === key);
-            if (!spec) return null;
+            if (!spec || spec.fields.length === 0) return null;
             const Icon = ICONS[spec.key];
             return (
-              <article
-                key={spec.key}
-                className="border-border bg-background rounded-xl border p-4"
-              >
-                <div className="flex items-start gap-2">
-                  <Icon className="text-primary mt-0.5 h-4 w-4 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold">{spec.label}</p>
-                    <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-                      {spec.input} {spec.output}
-                    </p>
-                  </div>
-                </div>
-                {spec.fields.length > 0 ? (
-                <div className="mt-3 grid gap-3">
-                    {spec.fields.map((field) => (
-                      <label key={field.key} className="flex flex-col gap-2">
-                        <span className="flex items-start gap-2 text-sm font-medium leading-snug">
-                          <Icon className="mt-0.5 h-4 w-4 shrink-0" />
-                          {field.label}
-                        </span>
-                        <input
-                          type="number"
-                          inputMode={field.step < 1 ? "decimal" : "numeric"}
-                          min={field.min}
-                          max={field.max}
-                          step={field.step}
-                          value={cfg.params[spec.key][field.key] ?? 0}
-                          disabled={pending || loadBlocked}
-                          onChange={(e) => {
-                            const raw = Number(e.target.value);
-                            if (Number.isNaN(raw)) return;
-                            const n =
-                              field.step < 1
-                                ? Math.round(raw * 100) / 100
-                                : Math.round(raw);
-                            patchParam(
-                              spec.key,
-                              field.key,
-                              Math.max(field.min, Math.min(field.max, n)),
-                            );
-                          }}
-                          className="border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-3 text-right text-sm tabular-nums outline-none disabled:opacity-50"
-                        />
-                      </label>
-                    ))}
-                  </div>
-                ) : null}
-                <SignalGraphic
-                  signal={spec.key}
-                  maxKm={cfg.params.proximity.maxKm}
-                  closedFloor={cfg.params.timing.closedFloor}
-                />
-              </article>
+              <div key={spec.key} className="flex flex-col gap-3">
+                <p className="flex items-center gap-2 text-sm font-semibold">
+                  <Icon className="text-primary h-4 w-4 shrink-0" />
+                  {spec.label}
+                </p>
+                {spec.fields.map((field) => (
+                  <label key={field.key} className="flex flex-col gap-2">
+                    <span className="text-sm font-medium">{field.label}</span>
+                    <input
+                      type="number"
+                      inputMode={field.step < 1 ? "decimal" : "numeric"}
+                      min={field.min}
+                      max={field.max}
+                      step={field.step}
+                      value={cfg.params[spec.key][field.key] ?? 0}
+                      disabled={pending || loadBlocked}
+                      onChange={(e) => {
+                        const raw = Number(e.target.value);
+                        if (Number.isNaN(raw)) return;
+                        const n =
+                          field.step < 1
+                            ? Math.round(raw * 100) / 100
+                            : Math.round(raw);
+                        patchParam(
+                          spec.key,
+                          field.key,
+                          Math.max(field.min, Math.min(field.max, n)),
+                        );
+                      }}
+                      className="border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-3 text-right text-sm tabular-nums outline-none disabled:opacity-50"
+                    />
+                  </label>
+                ))}
+              </div>
             );
           })}
         </div>
