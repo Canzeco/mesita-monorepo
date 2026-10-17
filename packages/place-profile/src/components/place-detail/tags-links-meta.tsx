@@ -26,7 +26,7 @@ export function TagsBox({ place }: { place: PlaceDetail }) {
   // whole box disappears when the place has no tags.
   if (place.tags.length === 0) return null;
   return (
-    <Box title="Tags" icon={Tags} iconColor="text-muted-foreground">
+    <Box title="Mesita Tags" icon={Tags} iconColor="text-muted-foreground">
       <TagChips tags={place.tags} />
     </Box>
   );

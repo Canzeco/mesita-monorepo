@@ -1,17 +1,18 @@
+import type { ConfigSeed } from "@/components/admin-ui/use-config-editor";
 import { SignalsConfigClient } from "../SignalsConfigClient";
-import { getDiscoveryConfig } from "../actions";
-import { DEFAULT_CONFIG } from "../catalog";
+import type { DiscoveryConfig } from "../catalog";
 
-// Signals — the function each signal computes. Weights live on Modes.
-export const dynamic = "force-dynamic";
-
-export default async function DiscoverySignalsPage() {
-  const seed = await getDiscoveryConfig();
+// Signals — the function, the curve, and the graphic. Weights live on Modes.
+export function DiscoverySignalsView({ seed }: { seed: ConfigSeed<DiscoveryConfig> }) {
   return (
     <SignalsConfigClient
-      initialConfig={seed.ok ? seed.config : DEFAULT_CONFIG}
-      initialUpdatedAt={seed.ok ? seed.updatedAt : null}
-      loadError={seed.ok ? null : seed.error}
+      initialConfig={seed.initialConfig}
+      initialUpdatedAt={seed.initialUpdatedAt}
+      loadError={seed.loadError}
     />
   );
+}
+
+export default function DiscoverySignalsPage() {
+  return null;
 }

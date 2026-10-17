@@ -86,7 +86,7 @@ export function PlaceTagsPicker({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-foreground/80 type-body font-medium">Tags</span>
+        <span className="text-foreground/80 type-body font-medium">Mesita Tags</span>
         <span className="text-muted-foreground type-label tabular-nums">
           {value.length} / {max}
         </span>

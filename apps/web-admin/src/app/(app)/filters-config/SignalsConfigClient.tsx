@@ -7,8 +7,8 @@
 // enrichment state and nothing about money.
 //
 // WEIGHTS DO NOT LIVE HERE. A weight belongs to a mode. This page states the
-// function each signal computes, and the shape numbers that bend that
-// function. Modes that rank edit their own weights.
+// function, draws the curve, and shows the graphic. Modes that rank edit
+// their own weights.
 //
 // THE CARDS DO NOT REDRAW THE MATRIX (MESITA-1856). Each card used to carry
 // a strip of six unlabelled circles — which modes read this signal — under
@@ -31,6 +31,7 @@ import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import { KnobState, SaveRow, SectionCard } from "@/components/admin-ui/config";
 import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
+import { SignalGraphic } from "./SignalGraphic";
 import {
   SIGNAL_KEYS,
   SIGNALS,
@@ -138,7 +139,7 @@ export function SignalsConfigClient({
       <SectionCard
         icon={<Compass className="text-primary h-4 w-4" />}
         title="Signals"
-        subtitle="Each signal is a function. It turns a fact about a place into a score from 0 to 1. A weight is not part of the function."
+        subtitle="The function, the curve, and the graphic. A weight belongs to the mode that uses the signal."
         state={
           <KnobState
             kind="enforced"
@@ -146,7 +147,7 @@ export function SignalsConfigClient({
           />
         }
       >
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <div className="mt-5 grid gap-3">
           {SIGNAL_KEYS.map((key) => {
             const spec = SIGNALS.find((s) => s.key === key);
             if (!spec) return null;
@@ -200,6 +201,11 @@ export function SignalsConfigClient({
                     ))}
                   </div>
                 ) : null}
+                <SignalGraphic
+                  signal={spec.key}
+                  maxKm={cfg.params.proximity.maxKm}
+                  closedFloor={cfg.params.timing.closedFloor}
+                />
               </article>
             );
           })}

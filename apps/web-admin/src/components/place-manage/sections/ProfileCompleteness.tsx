@@ -85,7 +85,7 @@ const CHECKS: readonly CompletenessCheck[] = [
   // chip that says "Add a menu" would point at a section this page does not
   // render. Stored menus still count nowhere here.
   {
-    label: "Tags",
+    label: "Mesita Tags",
     hint: "Pick at least 3 tags",
     weight: 10,
     done: (p) => (p.tags?.length ?? 0) >= 3,

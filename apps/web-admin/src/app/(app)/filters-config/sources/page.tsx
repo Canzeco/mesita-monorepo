@@ -1,16 +1,14 @@
+import type { ConfigSeed } from "@/components/admin-ui/use-config-editor";
 import { SourcesBoard } from "../SourcesBoard";
-import { getDiscoveryConfig } from "../actions";
-import { DEFAULT_CONFIG } from "../catalog";
+import type { DiscoveryConfig } from "../catalog";
 
 // Search Sources — one card per source the runtime actually has.
-export const dynamic = "force-dynamic";
-
-export default async function SearchSourcesPage() {
-  const r = await getDiscoveryConfig();
-  const initialConfig = r.ok ? r.config : DEFAULT_CONFIG;
-  const initialUpdatedAt = r.ok ? r.updatedAt : null;
-  const loadError = r.ok ? null : r.error;
+export function SearchSourcesView({ seed }: { seed: ConfigSeed<DiscoveryConfig> }) {
   return (
-    <SourcesBoard seed={{ initialConfig, initialUpdatedAt, loadError }} />
+    <SourcesBoard seed={seed} />
   );
+}
+
+export default function SearchSourcesPage() {
+  return null;
 }

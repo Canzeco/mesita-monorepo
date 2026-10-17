@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import { isNavActive } from "@/lib/nav-active";
+import { useDiscoveryPathname } from "@/app/(app)/filters-config/discovery-route";
 
 type ConfigSubRoute = {
   href: string;
@@ -21,7 +21,7 @@ export function ConfigTabNav({
   ariaLabel: string;
   subroutes: ReadonlyArray<ConfigSubRoute>;
 }) {
-  const pathname = usePathname();
+  const pathname = useDiscoveryPathname();
 
   return (
     <div

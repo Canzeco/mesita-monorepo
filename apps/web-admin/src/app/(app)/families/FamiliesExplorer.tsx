@@ -59,7 +59,7 @@ function TagsList({
     <section className="border-border bg-card mt-4 rounded-2xl border">
       <div className="border-border border-b p-4">
         <h2 className="font-display text-sm font-semibold tracking-tight">
-          Tags
+          Mesita Tags
           <span className="text-muted-foreground ml-2 font-normal">{count}</span>
         </h2>
         <p className="text-muted-foreground mt-1 text-sm">
@@ -69,7 +69,7 @@ function TagsList({
           value={query}
           onChange={(e) => onQuery(e.target.value)}
           placeholder="Search"
-          aria-label="Search Tags"
+          aria-label="Search Mesita Tags"
           className="border-border bg-background focus:border-foreground mt-3 h-9 w-full rounded-lg border px-3 text-sm outline-none"
         />
       </div>

@@ -87,5 +87,7 @@ describe("the profile page does not fetch a second door", () => {
       expect(src, file).not.toContain("listPlaceTagCatalog");
       expect(src, file).not.toContain("admin-web-get-atlas-fields");
     }
+    const picker = readFileSync(join(DIR, "PlaceTagsPicker.tsx"), "utf8");
+    expect(picker).toContain("Mesita Tags");
   });
 });

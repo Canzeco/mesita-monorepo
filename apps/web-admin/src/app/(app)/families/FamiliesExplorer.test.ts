@@ -65,7 +65,11 @@ describe("Atlas lists", () => {
     expect(page).not.toContain("FamiliesClient");
     expect(page).not.toContain("<Switch");
     const tagsList = src.slice(src.indexOf("function TagsList"));
+    expect(tagsList).toContain("Mesita Tags");
     expect(tagsList).toContain("The full catalog");
     expect(tagsList).not.toContain("<button");
+    const matrixSrc = readFileSync(join(__dirname, "MembershipMatrix.tsx"), "utf8");
+    expect(matrixSrc).toContain("table-fixed");
+    expect(matrixSrc).not.toContain("●");
   });
 });
