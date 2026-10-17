@@ -1,5 +1,6 @@
 // Fifteen guest families, plus Undefined last. Undefined is not a filter.
-// Labels are the carousel titles.
+// Each guest family has one emoji. That mark is the carousel title and the
+// same mark in the admin console.
 
 export type FamilyKey =
   | "coffee"
@@ -26,21 +27,21 @@ type PlaceFamily = {
 };
 
 export const PLACE_FAMILIES: PlaceFamily[] = [
-  { key: "coffee", label: "Coffee", emoji: "·" },
-  { key: "breakfast", label: "Breakfast", emoji: "·" },
-  { key: "quick_bite", label: "Quick bite", emoji: "·" },
-  { key: "pizza", label: "Pizza", emoji: "·" },
-  { key: "tacos", label: "Tacos", emoji: "·" },
-  { key: "sushi", label: "Sushi", emoji: "·" },
-  { key: "burgers", label: "Burgers", emoji: "·" },
-  { key: "noodles", label: "Noodles", emoji: "·" },
-  { key: "dinner", label: "Dinner", emoji: "·" },
-  { key: "sweet", label: "Sweet", emoji: "·" },
-  { key: "drinks", label: "Drinks", emoji: "·" },
-  { key: "night_out", label: "Night out", emoji: "·" },
-  { key: "go_out", label: "Go out", emoji: "·" },
-  { key: "move", label: "Move", emoji: "·" },
-  { key: "feel_better", label: "Feel better", emoji: "·" },
+  { key: "coffee", label: "Coffee", emoji: "☕" },
+  { key: "breakfast", label: "Breakfast", emoji: "🥐" },
+  { key: "quick_bite", label: "Quick bite", emoji: "🥙" },
+  { key: "pizza", label: "Pizza", emoji: "🍕" },
+  { key: "tacos", label: "Tacos", emoji: "🌮" },
+  { key: "sushi", label: "Sushi", emoji: "🍣" },
+  { key: "burgers", label: "Burgers", emoji: "🍔" },
+  { key: "noodles", label: "Noodles", emoji: "🍜" },
+  { key: "dinner", label: "Dinner", emoji: "🍽️" },
+  { key: "sweet", label: "Sweet", emoji: "🍰" },
+  { key: "drinks", label: "Drinks", emoji: "🍸" },
+  { key: "night_out", label: "Night out", emoji: "🌙" },
+  { key: "go_out", label: "Go out", emoji: "🎟️" },
+  { key: "move", label: "Move", emoji: "🏃" },
+  { key: "feel_better", label: "Feel better", emoji: "💆" },
   { key: "undefined", label: "Undefined", emoji: "·" },
 ];
 

@@ -253,6 +253,7 @@ export async function apiRecommendDeck(
 export type CatalogRail = {
   key: string;
   label: string;
+  emoji?: string;
   source: "family" | "seed" | "generated";
   places: Place[];
 };

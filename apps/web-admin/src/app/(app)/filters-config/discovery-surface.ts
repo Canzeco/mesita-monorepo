@@ -194,22 +194,22 @@ export const DISCOVERY_MODE_SOURCES: Record<
 
 export const DISCOVERY_ROUTING_EDITABLE = false;
 
-export const CATALOG_FAMILY_FACTS: readonly { key: string; label: string }[] = [
-  { key: "coffee", label: "Coffee" },
-  { key: "breakfast", label: "Breakfast" },
-  { key: "quick_bite", label: "Quick bite" },
-  { key: "pizza", label: "Pizza" },
-  { key: "tacos", label: "Tacos" },
-  { key: "sushi", label: "Sushi" },
-  { key: "burgers", label: "Burgers" },
-  { key: "noodles", label: "Noodles" },
-  { key: "dinner", label: "Dinner" },
-  { key: "sweet", label: "Sweet" },
-  { key: "drinks", label: "Drinks" },
-  { key: "night_out", label: "Night out" },
-  { key: "go_out", label: "Go out" },
-  { key: "move", label: "Move" },
-  { key: "feel_better", label: "Feel better" },
+export const CATALOG_FAMILY_FACTS: readonly { key: string; label: string; emoji: string }[] = [
+  { key: "coffee", label: "Coffee", emoji: "☕" },
+  { key: "breakfast", label: "Breakfast", emoji: "🥐" },
+  { key: "quick_bite", label: "Quick bite", emoji: "🥙" },
+  { key: "pizza", label: "Pizza", emoji: "🍕" },
+  { key: "tacos", label: "Tacos", emoji: "🌮" },
+  { key: "sushi", label: "Sushi", emoji: "🍣" },
+  { key: "burgers", label: "Burgers", emoji: "🍔" },
+  { key: "noodles", label: "Noodles", emoji: "🍜" },
+  { key: "dinner", label: "Dinner", emoji: "🍽️" },
+  { key: "sweet", label: "Sweet", emoji: "🍰" },
+  { key: "drinks", label: "Drinks", emoji: "🍸" },
+  { key: "night_out", label: "Night out", emoji: "🌙" },
+  { key: "go_out", label: "Go out", emoji: "🎟️" },
+  { key: "move", label: "Move", emoji: "🏃" },
+  { key: "feel_better", label: "Feel better", emoji: "💆" },
 ];
 
 export function sourceByKey(key: DiscoverySourceKey): DiscoverySourceFact {

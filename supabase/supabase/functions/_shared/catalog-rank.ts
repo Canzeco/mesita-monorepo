@@ -81,9 +81,11 @@ export function catalogScore(
 }
 
 /**
- * All, then one list per guest family. A place in two families is in both
- * of those lists, and also in All. Undefined is never its own list.
- * Empty lists are omitted. Ties keep the incoming order. Omitting
+ * All, then one list per guest family. That is always n + 1 lists when
+ * anyone is admitted: n guest families, plus the universal list. A place
+ * in two families is in both of those lists, and also in All. Undefined
+ * is never its own list. A family with no members is still a list, and
+ * its places array is empty. Ties keep the incoming order. Omitting
  * `perList` returns every member.
  */
 export function rankFamilyLists<T extends CatalogListPlace>(
@@ -113,15 +115,14 @@ export function rankFamilyLists<T extends CatalogListPlace>(
   const everyone = scored
     .filter((s) => admitted(s.row))
     .sort((a, b) => b.score - a.score || a.index - b.index);
-  if (everyone.length > 0 && (unlimited || cap > 0)) {
-    lists.push({
-      key: "all",
-      label: "All",
-      emoji: "·",
-      source: "family",
-      places: take(everyone),
-    });
-  }
+  if (everyone.length === 0 || (!unlimited && cap === 0)) return lists;
+  lists.push({
+    key: "all",
+    label: "All",
+    emoji: "·",
+    source: "family",
+    places: take(everyone),
+  });
   for (const family of GUEST_FAMILIES) {
     const members = scored
       .filter((s) =>
@@ -129,13 +130,12 @@ export function rankFamilyLists<T extends CatalogListPlace>(
         placeBelongsToFamily(s.row.family_keys, family.slug)
       )
       .sort((a, b) => b.score - a.score || a.index - b.index);
-    if (members.length === 0 || (!unlimited && cap === 0)) continue;
     lists.push({
       key: family.slug,
       label: family.label,
       emoji: family.emoji,
       source: "family",
-      places: take(members),
+      places: members.length === 0 ? [] : take(members),
     });
   }
   return lists;

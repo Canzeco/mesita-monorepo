@@ -116,6 +116,8 @@ describe("Places keeps its rails", () => {
     const rails = read("components/consumer/home/CatalogRails.tsx");
     expect(rails).not.toContain("PLACE_GRID_CLASS");
     expect(rails).toContain("overflow-x-auto");
+    expect(rails).toContain("placesFeed");
+    expect(rails).not.toContain("ArrowUpDown");
   });
 });
 
