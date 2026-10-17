@@ -60,6 +60,8 @@ describe("member preview edges", () => {
     expect(html).toContain("from-purple-600");
     expect(html).toContain("bg-[#1877F2]");
     expect(html).toContain("bg-[#EA4335]");
+    expect(html).toContain("h-[18px] w-[18px]");
+    expect(html).toContain('class="h-3 w-3"');
     expect(html).toContain("#FFC107");
     expect(html).toContain(">Not connected<");
     expect(html).toContain(">Instagram<");
