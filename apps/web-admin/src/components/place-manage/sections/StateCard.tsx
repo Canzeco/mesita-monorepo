@@ -47,7 +47,6 @@ import { useEffect, useState } from "react";
 import { CircleCheck, Loader2 } from "lucide-react";
 import {
   getPlaceEnrichment,
-  setPlaceActive,
   setPlaceListed,
   type AdminPlace,
   type PlaceEnrichmentState,
@@ -133,10 +132,10 @@ export function StateCard({ place }: { place: AdminPlace }) {
   const operatingDetail = bizStatus === null
     ? "Google has not reported a business status for this listing yet."
     : bizStatus === "OPERATIONAL"
-      ? `Open and trading${operatingSeen ? ` (seen ${operatingSeen})` : ""}. Pulse can refresh this from Google. Off also disables.`
+      ? `Open and trading${operatingSeen ? ` (seen ${operatingSeen})` : ""}. Pulse can refresh this from Google.`
       : bizStatus === "CLOSED_TEMPORARILY"
-        ? `Temporary close${operatingSeen ? ` (seen ${operatingSeen})` : ""} — a refurb or a seasonal break. Marking inactive also disables.`
-        : `Permanently closed${operatingSeen ? ` (seen ${operatingSeen})` : ""}. Inactive. Enabling it again is a separate write.`;
+        ? `Temporary close${operatingSeen ? ` (seen ${operatingSeen})` : ""} — a refurb or a seasonal break.`
+        : `Permanently closed${operatingSeen ? ` (seen ${operatingSeen})` : ""}. Inactive.`;
 
   const [enrichState, setEnrichState] = useState<PlaceEnrichmentState | null>(
     null,
@@ -204,7 +203,6 @@ export function StateCard({ place }: { place: AdminPlace }) {
           on={operating === true}
           chip={stateBoolChip(operating)}
           detail={operatingDetail}
-          action={<ActiveToggle place={place} operating={operating} />}
         />
         <StateRow
           name="Requested"
@@ -249,7 +247,7 @@ export function StateRow({
   /** `true`/`false`/`?`/`…` for bools, `0…n` for Requested, `0`/`1`/`2` for Promoted. */
   chip: string;
   detail: string;
-  /** Control under the detail. Pulsing and Disabled are the two operator writes. */
+  /** Control under the detail. Disabled is the operator write. */
   action?: React.ReactNode;
 }) {
   return (
@@ -272,77 +270,6 @@ export function StateRow({
   );
 }
 
-
-/**
- * Pulsing is the operator override of business_state. Off also disables
- * (admin-web-set-place-active). On writes OPERATIONAL and does not list.
- * Confirm the off direction — guests disappear with the disable.
- */
-function ActiveToggle({
-  place,
-  operating,
-}: {
-  place: AdminPlace;
-  operating: boolean | "unknown";
-}) {
-  const { setPlace } = usePlaceContext();
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [confirming, setConfirming] = useState(false);
-
-  const apply = (next: boolean) => {
-    setError(null);
-    setPending(true);
-    void setPlaceActive(place.id, next).then((r) => {
-      setPending(false);
-      setConfirming(false);
-      if (!r.ok) {
-        setError(r.error);
-        return;
-      }
-      setPlace(r.data);
-    });
-  };
-
-  const active = operating === true;
-
-  return (
-    <>
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => (active ? setConfirming(true) : apply(true))}
-        className={
-          "inline-flex h-9 items-center gap-2 rounded-full border px-4 text-xs font-semibold transition active:scale-[0.98] disabled:opacity-50 " +
-          (active
-            ? "border-border/70 text-foreground/70 hover:bg-muted hover:text-foreground"
-            : "border-transparent bg-pink-gradient text-white shadow-save hover:brightness-105")
-        }
-      >
-        {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-        {active ? "Mark inactive" : "Mark active"}
-      </button>
-      {error ? <ErrorNote message={error} /> : null}
-
-      <ConfirmDialog
-        open={confirming}
-        title="Mark inactive and disable?"
-        danger
-        busy={pending}
-        confirmLabel="Mark inactive"
-        body={
-          <p>
-            {place.name} is marked closed, and guests stop finding it
-            everywhere at once — browse, search, the swipe deck, and any
-            link already shared. Enabling it again is a separate write.
-          </p>
-        }
-        onCancel={() => setConfirming(false)}
-        onConfirm={() => apply(false)}
-      />
-    </>
-  );
-}
 
 /**
  * Disabled writes places.state through admin-web-set-place-listed.

@@ -54,6 +54,9 @@ describe("the six states of a place", () => {
     }
     expect(general).not.toContain('name="Active');
     expect(general).not.toContain("List on Mesita");
+    expect(general).not.toContain("Mark inactive");
+    expect(general).not.toContain("Mark active");
+    expect(general).not.toContain("setPlaceActive");
     expect(general).toContain('"Disable" : "Enable"');
   });
 });

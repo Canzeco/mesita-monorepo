@@ -231,8 +231,9 @@ export async function setPlaceListed(
 }
 
 // Verified and Partnered are read-only here (MESITA-1664); their write doors
-// were retired with the business console (MESITA-2090). Active is Single
-// Place's switch (admin-web-set-place-active).
+// were retired with the business console (MESITA-2090). Google's business
+// status is display-only. Disable is the operator write
+// (admin-web-set-place-listed).
 
 /** Soft delete: writes places.state = 'archived' — the terminal value
  *  admin-web-set-place-listed's own header reserves for this. Reversible
