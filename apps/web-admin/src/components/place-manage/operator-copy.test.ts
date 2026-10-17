@@ -30,7 +30,10 @@ describe("operator copy", () => {
   });
 
   it("keeps Sync on Reviews and Enrichment on Admin", () => {
-    expect(reviews).toContain('title="Reviews"');
+    expect(reviews).toContain("\n          Sync\n");
+    expect(reviews).toContain('title="Google Summary"');
+    expect(reviews).toContain('title="Google Reviews"');
+    expect(reviews).not.toContain('title="Reviews"');
     expect(reviews).not.toContain("Enrichment");
     expect(enrichment).toContain('title="Enrichment"');
     expect(enrichment).toContain("Run Enrichment");
