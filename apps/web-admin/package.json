@@ -25,7 +25,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/google.maps": "^3.64.1",
+    "@types/google.maps": "^3.66.6",
     "@types/node": "^20",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
