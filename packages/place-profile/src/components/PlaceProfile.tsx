@@ -35,7 +35,7 @@ export function PlaceProfile({
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <PlaceDetailTitle placeName={place.name} />
+        <PlaceDetailTitle placeName={place.name} enriched={place.is_enriched} />
         <div className="h-9 w-9 shrink-0" aria-hidden />
       </header>
       <div
