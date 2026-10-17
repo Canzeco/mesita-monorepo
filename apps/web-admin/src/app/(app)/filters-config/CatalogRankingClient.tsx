@@ -40,7 +40,7 @@ export function CatalogRankingClient({
       <SectionCard
         icon={<GalleryHorizontal className="text-primary h-4 w-4" />}
         title="Ranking"
-        subtitle="One profile for every family list. Weights are relative: doubling every number does not change the order. Zero turns that signal off."
+        subtitle="One profile for every rail. Weights are relative: doubling every number does not change the order. Zero turns that signal off."
         state={
           <KnobState
             kind="enforced"
@@ -84,9 +84,10 @@ export function CatalogRankingClient({
           })}
         </div>
         <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-          Family only chooses which list a place is in. Enrichment decides
-          whether the place may enter. Both are fixed. This page does not
-          edit family membership.
+          Every ready Mesita place enters, enriched or not. Enriched ranks
+          an enriched place ahead of a Created one; it does not keep the
+          Created one out. Family only chooses which rail a place is in.
+          This page does not edit family membership.
         </p>
         {allZero ? (
           <p className="text-destructive mt-3 text-sm" role="alert">

@@ -72,8 +72,9 @@ import { bool, num } from "./config-coerce.ts";
 export type SignalParams = Record<SignalKey, SignalParamBag>;
 
 /**
- * Catalog Search exponents. One profile for every family list.
- * Family and Enriched are gates, so they are not in this vector.
+ * Catalog Search exponents. One profile for every rail.
+ * Family picks the rail, so it is not in this vector. Enriched scores
+ * (MESITA-2292): it leads every rail without keeping a Created place out.
  * Timing is out.
  *
  * STORED KEYS vs SCORED KEYS. `catalogScore` multiplies only
@@ -85,6 +86,7 @@ export const CATALOG_RANK_KEYS = [
   "name",
   "description",
   "proximity",
+  "enriched",
   "popularity",
   "selected",
   "randomness",
@@ -94,6 +96,7 @@ export type CatalogRankKey = (typeof CATALOG_RANK_KEYS)[number];
 /** The signals `catalogScore` actually raises. A zero drops that signal. */
 export const CATALOG_LIVE_RANK_KEYS = [
   "proximity",
+  "enriched",
   "popularity",
   "randomness",
 ] as const satisfies readonly CatalogRankKey[];
@@ -102,10 +105,16 @@ export type CatalogLiveRankKey = (typeof CATALOG_LIVE_RANK_KEYS)[number];
 export const CATALOG_ALL_ZERO_ERROR =
   "At least one Catalog signal must have a weight above zero.";
 
+/**
+ * Enriched ships at 2 beside Proximity 1 and Popularity 1: a relative
+ * exponent of 0.5, so a Created place scores 0.15^0.5 ≈ 0.39 of an
+ * enriched twin. It leads; it does not filter.
+ */
 export const DEFAULT_CATALOG_RANKING: Record<CatalogRankKey, number> = {
   name: 0,
   description: 1,
   proximity: 1,
+  enriched: 2,
   popularity: 1,
   selected: 1,
   randomness: 0,

@@ -1,15 +1,18 @@
-// Catalog Search. One shared profile, one list per guest family.
+// Catalog Search. One shared profile, All then one rail per guest family.
 //
-// Family and Enriched admit; they do not score. Timing is not in this
-// profile. catalogScore multiplies only proximity, popularity, and
-// randomness, and it raises them to RELATIVE exponents (weight / sum of
-// the nonzero live weights). Name, description, and selected may still sit
-// on the stored blob; this function does not read them. Weight 0 drops a
-// live signal. All three at 0 leaves every place at 1 (incoming order).
+// Family picks the rail; it does not score. Enriched scores (MESITA-2292):
+// a Created place stays in, behind its enriched neighbours. Timing is not
+// in this profile. catalogScore multiplies only proximity, enriched,
+// popularity, and randomness, and it raises them to RELATIVE exponents
+// (weight / sum of the nonzero live weights). Name, description, and
+// selected may still sit on the stored blob; this function does not read
+// them. Weight 0 drops a live signal. All four at 0 leaves every place at
+// 1 (incoming order).
 // A save of that vector is rejected before it is stored.
 
 import { FAMILIES } from "./place-taxonomy.ts";
 import {
+  enriched,
   popularity,
   proximity,
   randomness,
@@ -40,7 +43,7 @@ export type CatalogFamilyList<T extends CatalogListPlace> = {
 
 const GUEST_FAMILIES = FAMILIES.filter((f) => f.slug !== "undefined");
 
-/** Enriched gate: a completed Enrich run, and a profile that can be shown. */
+/** The enriched ring: a completed Enrich run, and a profile that can be shown. */
 export function catalogAdmitted(row: {
   enriched_at?: string | null;
   content_state?: string | null;
@@ -73,6 +76,7 @@ export function catalogScore(
     score *= Math.pow(Math.max(0, value), w);
   };
   apply("proximity", proximity(place, intent, params.proximity));
+  apply("enriched", enriched(place));
   apply("popularity", popularity(place, undefined, params.popularity));
   if (relative.randomness > 0) {
     apply("randomness", randomness(place, intent));
@@ -95,7 +99,7 @@ export function rankFamilyLists<T extends CatalogListPlace>(
   params: SignalParams,
   intent: SignalIntent,
   perList?: number,
-  enrichedOnly = true,
+  enrichedOnly = false,
 ): CatalogFamilyList<T>[] {
   const unlimited = perList == null;
   const cap = unlimited ? 0 : Math.max(0, Math.floor(perList));

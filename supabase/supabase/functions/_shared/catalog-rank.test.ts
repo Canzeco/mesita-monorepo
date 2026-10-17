@@ -74,7 +74,7 @@ Deno.test("undefined is not a list and a dual-family place is in both", () => {
   assertEquals(lists.every((l) => l.source === "family"), true);
 });
 
-Deno.test("enriched and ready are required", () => {
+Deno.test("the enriched ring requires enriched and ready", () => {
   assertEquals(
     catalogAdmitted({ enriched_at: null, content_state: "ready" }),
     false,
@@ -93,8 +93,54 @@ Deno.test("enriched and ready are required", () => {
     DEFAULT_SIGNAL_PARAMS,
     guest,
     8,
+    true,
   );
   assertEquals(lists, []);
+});
+
+Deno.test("Mesita Places admits a ready Created place, never a generating one", () => {
+  const lists = rankFamilyLists(
+    [
+      row("created", ["dinner"], { enriched_at: null }),
+      row("busy", ["dinner"], { enriched_at: null, content_state: "generating" }),
+    ],
+    [place(), place()],
+    DEFAULT_CATALOG_RANKING,
+    DEFAULT_SIGNAL_PARAMS,
+    guest,
+  );
+  assertEquals(lists[0].places.map((p) => p.id), ["created"]);
+});
+
+Deno.test("an enriched place leads its Created twin at the default weights", () => {
+  const rows = [
+    row("created", ["coffee"], { enriched_at: null }),
+    row("written", ["coffee"]),
+  ];
+  const lists = rankFamilyLists(
+    rows,
+    [place({ enriched: false }), place({ enriched: true })],
+    DEFAULT_CATALOG_RANKING,
+    DEFAULT_SIGNAL_PARAMS,
+    guest,
+  );
+  for (const key of ["all", "coffee"]) {
+    assertEquals(
+      lists.find((l) => l.key === key)!.places.map((p) => p.id),
+      ["written", "created"],
+    );
+  }
+});
+
+Deno.test("Enriched at weight 0 leaves Created and enriched to the other signals", () => {
+  const created = place({ enriched: false, rating: 4.9, user_ratings_total: 900 });
+  const written = place({ enriched: true, rating: 3.2, user_ratings_total: 10 });
+  const ranking = { ...DEFAULT_CATALOG_RANKING, enriched: 0 };
+  assertEquals(
+    catalogScore(created, ranking, DEFAULT_SIGNAL_PARAMS, guest) >
+      catalogScore(written, ranking, DEFAULT_SIGNAL_PARAMS, guest),
+    true,
+  );
 });
 
 Deno.test("name abstains without a query, so proximity still orders", () => {
@@ -151,10 +197,11 @@ Deno.test("proportional Catalog weights score the same", () => {
   const base = {
     ...DEFAULT_CATALOG_RANKING,
     proximity: 1,
+    enriched: 2,
     popularity: 3,
     randomness: 0,
   };
-  const doubled = { ...base, proximity: 2, popularity: 6 };
+  const doubled = { ...base, proximity: 2, enriched: 4, popularity: 6 };
   assertEquals(
     catalogScore(here, base, DEFAULT_SIGNAL_PARAMS, guest),
     catalogScore(here, doubled, DEFAULT_SIGNAL_PARAMS, guest),
@@ -167,6 +214,7 @@ Deno.test("a zero Catalog weight drops that signal", () => {
   const off = {
     ...DEFAULT_CATALOG_RANKING,
     proximity: 0,
+    enriched: 0,
     popularity: 0,
     randomness: 0,
   };
@@ -187,13 +235,13 @@ Deno.test("a zero name would tie; abstaining does not", () => {
   const b = place();
   const withName = catalogScore(
     b,
-    { ...DEFAULT_CATALOG_RANKING, proximity: 0, popularity: 0, name: 4 },
+    { ...DEFAULT_CATALOG_RANKING, proximity: 0, enriched: 0, popularity: 0, name: 4 },
     DEFAULT_SIGNAL_PARAMS,
     guest,
   );
   const without = catalogScore(
     a,
-    { ...DEFAULT_CATALOG_RANKING, proximity: 0, popularity: 0, name: 0 },
+    { ...DEFAULT_CATALOG_RANKING, proximity: 0, enriched: 0, popularity: 0, name: 0 },
     DEFAULT_SIGNAL_PARAMS,
     guest,
   );
@@ -228,6 +276,8 @@ Deno.test("Mesita Places keeps a created place that the enriched ring drops", ()
     DEFAULT_CATALOG_RANKING,
     DEFAULT_SIGNAL_PARAMS,
     guest,
+    undefined,
+    true,
   );
   assertEquals(enriched[0].places.map((p) => p.id), ["written"]);
   const mesita = rankFamilyLists(
@@ -236,8 +286,6 @@ Deno.test("Mesita Places keeps a created place that the enriched ring drops", ()
     DEFAULT_CATALOG_RANKING,
     DEFAULT_SIGNAL_PARAMS,
     guest,
-    undefined,
-    false,
   );
   assertEquals(mesita[0].places.map((p) => p.id).sort(), [
     "created",
