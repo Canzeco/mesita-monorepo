@@ -87,6 +87,10 @@ describe("admin member preview", () => {
     expect(html).toContain("Lupita");
     expect(html).toContain("- km");
     expect(html).toContain("Overview");
+    const nav = html.slice(html.indexOf("<nav"), html.indexOf(">", html.indexOf("<nav")) + 1);
+    expect(nav).toContain('aria-label="Place sections"');
+    expect(nav).toContain("bg-card");
+    expect(nav).not.toContain("bg-background");
     expect(html).not.toContain("Phone emulator");
     expect(html).not.toContain("<a ");
     expect(html).not.toContain("Families");
