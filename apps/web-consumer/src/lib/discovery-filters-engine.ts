@@ -1,12 +1,11 @@
 // Catalog filter engine.
 //
-//   · Family — the fifteen guest families; empty = no constraint.
 //   · Places — Mesita Enriched Places, then Mesita Places. Default is the
 //     inner ring. Google Places is not a catalog set.
 //
-// The Google review floor belongs to Search. A stored floor is ignored.
+// Family is not a catalog cut. Every guest family is its own carousel,
+// after All. The Google review floor belongs to Search.
 // Location is not a predicate: it only grants coordinates for ranking.
-// Predicates CUT, signals RANK, and a predicate cuts first.
 
 import {
   clampMinReviews,
@@ -63,15 +62,9 @@ export const DISCOVERY_FILTER_DEFAULTS: DiscoveryFilters = {
 };
 
 export function hasDiscoveryPredicates(f: DiscoveryFilters): boolean {
-  return (
-    f.familyKeys.length > 0 ||
-    f.placesScope !== DISCOVERY_PLACES_SCOPE_DEFAULT
-  );
+  return f.placesScope !== DISCOVERY_PLACES_SCOPE_DEFAULT;
 }
 
 export function countAppliedDiscoveryFilters(f: DiscoveryFilters): number {
-  let n = 0;
-  if (f.familyKeys.length > 0) n += 1;
-  if (f.placesScope !== DISCOVERY_PLACES_SCOPE_DEFAULT) n += 1;
-  return n;
+  return f.placesScope !== DISCOVERY_PLACES_SCOPE_DEFAULT ? 1 : 0;
 }

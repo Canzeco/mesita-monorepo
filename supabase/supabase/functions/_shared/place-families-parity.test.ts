@@ -59,11 +59,6 @@ const PGTAP = new URL("supabase/supabase/tests/database/schema_invariants.test.s
 const MIGRATIONS = new URL("supabase/supabase/migrations/", REPO_ROOT);
 
 /** The two persisted discovery-filter stores. */
-const FILTER_STORES = [
-  "apps/web-consumer/src/lib/use-discovery-filters.ts",
-  "apps/web-consumer/src/lib/use-map-filters.ts",
-] as const;
-
 type Family = { key: string; label: string; emoji: string };
 
 /**
@@ -129,27 +124,29 @@ Deno.test("the consumer app filters on the seven, never on Undefined", async () 
   );
 });
 
-Deno.test("every persisted filter store hydrates from the seven, not all eight", async () => {
-  // Read from source, like everything else here. A store that accepts a key
-  // its sheet does not render leaves the guest with a filter they can see the
-  // effect of (empty deck, lit dot) and no pill to clear.
-  for (const rel of FILTER_STORES) {
-    const src = await Deno.readTextFile(new URL(rel, REPO_ROOT));
-    const decl = src.match(/const KNOWN_FAMILY_KEYS[^;]*;/);
-    if (!decl) {
-      throw new Error(
-        `${rel}: no KNOWN_FAMILY_KEYS declaration found — this pin went blind`,
-      );
-    }
-    assertEquals(
-      /FILTERABLE_PLACE_FAMILIES\s*\.?\s*map\(/.test(decl[0]),
-      true,
-      `${rel}: KNOWN_FAMILY_KEYS must be built from FILTERABLE_PLACE_FAMILIES, ` +
-        `not PLACE_FAMILIES — a persisted "undefined" would survive hydrate and ` +
-        "narrow the deck to nothing with no pill to clear it (MESITA-1857).\n  " +
-        decl[0],
+Deno.test("the map store hydrates from the fifteen; the catalog drops family", async () => {
+  // A store that accepts a key its sheet does not render leaves the guest
+  // with a filter they can see the effect of and no pill to clear.
+  const map = await Deno.readTextFile(
+    new URL("apps/web-consumer/src/lib/use-map-filters.ts", REPO_ROOT),
+  );
+  const decl = map.match(/const KNOWN_FAMILY_KEYS[^;]*;/);
+  if (!decl) {
+    throw new Error(
+      "use-map-filters.ts: no KNOWN_FAMILY_KEYS declaration found — this pin went blind",
     );
   }
+  assertEquals(
+    /FILTERABLE_PLACE_FAMILIES\s*\.?\s*map\(/.test(decl[0]),
+    true,
+    "use-map-filters.ts: KNOWN_FAMILY_KEYS must be built from FILTERABLE_PLACE_FAMILIES",
+  );
+
+  const catalog = await Deno.readTextFile(
+    new URL("apps/web-consumer/src/lib/use-discovery-filters.ts", REPO_ROOT),
+  );
+  assertEquals(catalog.includes("familyKeys: []"), true);
+  assertEquals(/const KNOWN_FAMILY_KEYS/.test(catalog), false);
 });
 
 // ── the DB leg ─────────────────────────────────────────────────────────────

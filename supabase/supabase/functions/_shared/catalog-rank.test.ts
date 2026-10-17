@@ -55,10 +55,16 @@ Deno.test("undefined is not a list and a dual-family place is in both", () => {
     guest,
     8,
   );
-  assertEquals(lists.map((l) => l.key), ["coffee", "dinner", "drinks"]);
-  assertEquals(lists[0].places.map((p) => p.id), ["cafe"]);
-  assertEquals(lists[1].places.map((p) => p.id), ["both"]);
+  assertEquals(lists.map((l) => l.key), ["all", "coffee", "dinner", "drinks"]);
+  assertEquals(lists[0].label, "All");
+  assertEquals(lists[0].places.map((p) => p.id), [
+    "only-undefined",
+    "both",
+    "cafe",
+  ]);
+  assertEquals(lists[1].places.map((p) => p.id), ["cafe"]);
   assertEquals(lists[2].places.map((p) => p.id), ["both"]);
+  assertEquals(lists[3].places.map((p) => p.id), ["both"]);
   assertEquals(lists.every((l) => l.source === "family"), true);
 });
 

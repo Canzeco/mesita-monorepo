@@ -1,7 +1,6 @@
 "use client";
 
 import { LocateFixed } from "lucide-react";
-import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import {
   DISCOVERY_SCOPE_STOPS,
   hasDiscoveryPredicates,
@@ -9,20 +8,19 @@ import {
 import {
   resetDiscoveryFilters,
   setDiscoveryPlacesScope,
-  toggleDiscoveryFamily,
   useDiscoveryFilters,
 } from "@/lib/use-discovery-filters";
 import {
   FilterModule,
   FiltersSheetFooter,
   FiltersSheetHeader,
-  Pill,
 } from "./discovery-filter-controls";
 import { SearchPlacesScope } from "./search/SearchPlacesScope";
 import { cn } from "@/lib/utils";
 
-// Catalog Filters. Family, the two Mesita rings, and location.
-// Google Places is not a choice. The Google review floor is the map's.
+// Catalog Filters. The two Mesita rings, and location.
+// No family cut: every family is a carousel. No Google Places.
+// The Google review floor is the map's.
 
 export function DiscoveryFilters({
   onClose,
@@ -46,20 +44,6 @@ export function DiscoveryFilters({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3">
         <div className="flex flex-col gap-2">
-          <FilterModule label="Family">
-            <div className="flex flex-wrap gap-1">
-              {FILTERABLE_PLACE_FAMILIES.map((family) => (
-                <Pill
-                  key={family.key}
-                  active={filters.familyKeys.includes(family.key)}
-                  onClick={() => toggleDiscoveryFamily(family.key)}
-                >
-                  {family.label}
-                </Pill>
-              ))}
-            </div>
-          </FilterModule>
-
           <FilterModule label="Places">
             <SearchPlacesScope
               label="Places"

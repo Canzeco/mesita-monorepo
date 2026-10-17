@@ -35,22 +35,12 @@ describe("deckRequestKey", () => {
     );
   });
 
-  it("moves whenever a predicate does", () => {
-    const base = deckRequestKey(filters({ familyKeys: ["dinner"] }), HERE);
+  it("moves when the ring changes, and ignores family and reviews", () => {
+    const base = deckRequestKey(filters(), HERE);
+    expect(deckRequestKey(filters({ familyKeys: ["dinner"] }), HERE)).toBe(base);
+    expect(deckRequestKey(filters({ minReviews: 100 }), HERE)).toBe(base);
     expect(
-      deckRequestKey(filters({ familyKeys: ["drinks"] }), HERE),
+      deckRequestKey(filters({ placesScope: "mesita" }), HERE),
     ).not.toBe(base);
-    expect(
-      deckRequestKey(
-        filters({ familyKeys: ["dinner"], placesScope: "mesita" }),
-        HERE,
-      ),
-    ).not.toBe(base);
-    expect(
-      deckRequestKey(
-        filters({ familyKeys: ["dinner"], minReviews: 100 }),
-        HERE,
-      ),
-    ).toBe(base);
   });
 });

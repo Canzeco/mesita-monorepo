@@ -17,7 +17,7 @@ export function toDiscoveryPredicatesWire(
   f: DiscoveryFilters,
 ): DiscoveryPredicatesWire {
   return {
-    familyKeys: [...f.familyKeys],
+    familyKeys: [],
     placesScope: f.placesScope,
     minReviews: 0,
   };
@@ -35,9 +35,5 @@ export function deckRequestKey(
   if (!hasDiscoveryPredicates(f)) {
     return where || UNFILTERED_DECK_KEY;
   }
-  return [
-    [...f.familyKeys].sort().join("+"),
-    f.placesScope,
-    where,
-  ].join("|");
+  return [f.placesScope, where].join("|");
 }

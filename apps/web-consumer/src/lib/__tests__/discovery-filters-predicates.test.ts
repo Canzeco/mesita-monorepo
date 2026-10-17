@@ -17,8 +17,10 @@ describe("no predicate set", () => {
     expect(countAppliedDiscoveryFilters(filters())).toBe(0);
   });
 
-  it("a stored review floor is not a catalog filter", () => {
-    expect(hasDiscoveryPredicates(filters({ minReviews: 100 }))).toBe(false);
+  it("a stored family or review floor is not a catalog filter", () => {
+    expect(hasDiscoveryPredicates(filters({ familyKeys: ["dinner"] }))).toBe(
+      false,
+    );
     expect(countAppliedDiscoveryFilters(filters({ minReviews: 100 }))).toBe(0);
   });
 });

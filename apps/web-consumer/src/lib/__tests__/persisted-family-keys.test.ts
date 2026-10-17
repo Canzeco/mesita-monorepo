@@ -1,8 +1,5 @@
-// A persisted family key the Filters sheet no longer renders is a filter the
-// guest cannot see or clear: the red active-filters dot stays lit, the result
-// set stays narrowed, and no pill exists to switch it off — only whole-sheet
-// Reset. Both sheets render FILTERABLE_PLACE_FAMILIES (the fifteen), so both
-// stores hydrate from the fifteen too.
+// The catalog no longer filters by family, so a stored family list is dropped
+// the next time that store writes. The map still hydrates from the fifteen.
 //
 // `undefined` is the live case: it is a real key in PLACE_FAMILIES, so the old
 // `PLACE_FAMILIES`-built allow-list let it survive hydrate, and the catalog
@@ -49,39 +46,20 @@ afterEach(() => {
 });
 
 describe("persisted familyKeys hydrate from the filterable fifteen", () => {
-  it("drops undefined and wellness_spa from a Discovery session", async () => {
+  it("drops a stored family list from the catalog", async () => {
     store.set(
       DISCOVERY_KEY,
       JSON.stringify({
         familyKeys: ["undefined", "wellness_spa", "coffee"],
-        placesScope: "all",
-        minReviews: 0,
+        placesScope: "enriched",
+        minReviews: 100,
       }),
     );
 
     const mod = await import("@/lib/use-discovery-filters");
-    mod.toggleDiscoveryFamily("dinner");
+    mod.setDiscoveryPlacesScope("mesita");
 
-    expect(persistedFamilyKeys(store, DISCOVERY_KEY)).toEqual([
-      "coffee",
-      "dinner",
-    ]);
-  });
-
-  it("keeps every key the Discovery sheet still renders", async () => {
-    const { FILTERABLE_PLACE_FAMILIES } = await import("@/lib/place-families");
-    const all = FILTERABLE_PLACE_FAMILIES.map((f) => f.key);
-    store.set(
-      DISCOVERY_KEY,
-      JSON.stringify({ familyKeys: all, placesScope: "all", minReviews: 0 }),
-    );
-
-    const mod = await import("@/lib/use-discovery-filters");
-    mod.toggleDiscoveryFamily("dinner"); // was selected → drops out
-
-    expect(persistedFamilyKeys(store, DISCOVERY_KEY)).toEqual(
-      all.filter((k) => k !== "dinner"),
-    );
+    expect(persistedFamilyKeys(store, DISCOVERY_KEY)).toEqual([]);
   });
 
   it("drops undefined and wellness_spa from a Map session", async () => {

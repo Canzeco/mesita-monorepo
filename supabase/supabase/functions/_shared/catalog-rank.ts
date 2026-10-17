@@ -8,7 +8,7 @@
 // live signal. All three at 0 leaves every place at 1 (incoming order).
 // A save of that vector is rejected before it is stored.
 
-import { FAMILIES, type FamilyKey } from "./place-taxonomy.ts";
+import { FAMILIES } from "./place-taxonomy.ts";
 import {
   popularity,
   proximity,
@@ -31,7 +31,7 @@ export type CatalogListPlace = Record<string, unknown> & {
 };
 
 export type CatalogFamilyList<T extends CatalogListPlace> = {
-  key: FamilyKey;
+  key: string;
   label: string;
   emoji: string;
   source: "family";
@@ -81,9 +81,10 @@ export function catalogScore(
 }
 
 /**
- * Fifteen lists in family order. A place in two families is in both lists.
- * Undefined is internal and never a list. Empty lists are omitted.
- * Ties keep the incoming order. Omitting `perList` returns every member.
+ * All, then one list per guest family. A place in two families is in both
+ * of those lists, and also in All. Undefined is never its own list.
+ * Empty lists are omitted. Ties keep the incoming order. Omitting
+ * `perList` returns every member.
  */
 export function rankFamilyLists<T extends CatalogListPlace>(
   rows: readonly T[],
@@ -102,14 +103,29 @@ export function rankFamilyLists<T extends CatalogListPlace>(
     score: places[i] ? catalogScore(places[i], ranking, params, intent) : 0,
     index: i,
   }));
+  const admitted = (row: T) =>
+    enrichedOnly ? catalogAdmitted(row) : row.content_state === "ready";
+  const take = (
+    members: typeof scored,
+  ): T[] => (unlimited ? members : members.slice(0, cap)).map((m) => m.row);
 
   const lists: CatalogFamilyList<T>[] = [];
+  const everyone = scored
+    .filter((s) => admitted(s.row))
+    .sort((a, b) => b.score - a.score || a.index - b.index);
+  if (everyone.length > 0 && (unlimited || cap > 0)) {
+    lists.push({
+      key: "all",
+      label: "All",
+      emoji: "·",
+      source: "family",
+      places: take(everyone),
+    });
+  }
   for (const family of GUEST_FAMILIES) {
     const members = scored
       .filter((s) =>
-        (enrichedOnly
-          ? catalogAdmitted(s.row)
-          : s.row.content_state === "ready") &&
+        admitted(s.row) &&
         placeBelongsToFamily(s.row.family_keys, family.slug)
       )
       .sort((a, b) => b.score - a.score || a.index - b.index);
@@ -119,7 +135,7 @@ export function rankFamilyLists<T extends CatalogListPlace>(
       label: family.label,
       emoji: family.emoji,
       source: "family",
-      places: (unlimited ? members : members.slice(0, cap)).map((m) => m.row),
+      places: take(members),
     });
   }
   return lists;

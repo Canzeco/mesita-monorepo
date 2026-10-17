@@ -29,10 +29,10 @@ describe("the catalog sheet offers Mesita rings only", () => {
     "utf8",
   );
 
-  it("ships Family, Places, and location, and not a review floor", () => {
-    expect(src).toContain("Family");
+  it("ships Places and location, and not a family or review cut", () => {
     expect(src).toContain("Places");
     expect(src).toContain("Use my location");
+    expect(src).not.toContain('label="Family"');
     expect(src).not.toContain("Minimum number of Google reviews");
   });
 
