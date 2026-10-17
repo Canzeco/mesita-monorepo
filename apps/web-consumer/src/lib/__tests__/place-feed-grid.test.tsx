@@ -108,18 +108,20 @@ describe("one place-grid geometry, shared", () => {
   });
 });
 
-// Places is its own wall. Favs stays on the rounded 4:3 tile.
-describe("Places is a packed wall", () => {
-  it("fills two columns and does not scroll sideways", () => {
+// Places is one horizontal row per family. About 2.5 cards show, so the
+// next card peeks. Favs stays on the rounded 4:3 tile.
+describe("Places is family carousels", () => {
+  it("scrolls sideways at 2.5 cards and does not fill the row", () => {
     const rails = read("components/consumer/home/CatalogRails.tsx");
     const tile = read("components/consumer/home/CatalogTile.tsx");
-    expect(rails).toContain("catalogWall");
-    expect(rails).toContain("grid-cols-2");
-    expect(rails).not.toContain("overflow-x-auto");
+    expect(rails).toContain("placesFeed");
+    expect(rails).toContain("overflow-x-auto");
+    expect(rails).toContain("w-[calc((100%-1rem)/2.5)]");
+    expect(rails).not.toContain("grid-cols-2");
     expect(rails).not.toContain("FavoriteTile");
     expect(rails).not.toContain("ArrowUpDown");
-    expect(tile).toContain("aspect-[1/2]");
     expect(tile).toContain("aspect-square");
+    expect(tile).not.toContain("aspect-[1/2]");
     expect(tile).not.toContain("rounded-2xl");
   });
 });

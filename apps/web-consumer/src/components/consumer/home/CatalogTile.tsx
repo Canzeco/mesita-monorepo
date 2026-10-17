@@ -7,30 +7,29 @@ import type { Place } from "@/lib/api/places";
 import { getOpeningStateLabel } from "@/lib/place-state";
 import { placeHref } from "@/lib/place-route";
 import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
-import { PLACE_FAMILIES } from "@/lib/place-families";
 import { cn, firstInitial, formatDistanceKm } from "@/lib/utils";
 
-function familyMark(place: Place): string | null {
-  const key = place.family_keys?.find((family) => family !== "undefined");
-  if (!key) return null;
-  const family = PLACE_FAMILIES.find((row) => row.key === key);
-  if (!family || family.emoji === "·") return null;
-  return `${family.emoji} ${family.label}`;
+function readableKind(place: Place): string | null {
+  const raw = place.category_label ?? place.category;
+  if (!raw || raw.trim().toLowerCase() === "undefined") return null;
+  return raw;
 }
 
 /**
- * One place on the Places wall. A square photo over an equal square of
- * facts, so the tile is 1:2. Square corners. The heart stays a circle.
- * Favs does not use this tile.
+ * One place in a family carousel. Square photo, facts tight under it,
+ * square corners. The row is about 2.5 of these wide. The heart stays
+ * a circle. Favs does not use this tile.
  */
 export function CatalogTile({
   place,
   saved,
   onToggle,
+  className,
 }: {
   place: Place;
   saved: boolean;
   onToggle: () => void;
+  className?: string;
 }) {
   const photo = place.photos[0];
   const distanceLabel =
@@ -41,17 +40,16 @@ export function CatalogTile({
   const openingLabel = getOpeningStateLabel(place);
   const isOpen = place.open_now === true;
   const priceLabel = formatPlacePriceLevelSymbols(place.price_level);
-  const kind = familyMark(place) ?? place.category_label ?? place.category;
-  const typeLine = [kind, priceLabel].filter(Boolean).join(" · ");
+  const typeLine = [readableKind(place), priceLabel].filter(Boolean).join(" · ");
 
   return (
-    <li className="border-border bg-card min-w-0 border-r border-b">
-      <div className="relative flex aspect-[1/2] flex-col overflow-hidden">
+    <li className={cn("min-w-0", className)}>
+      <div className="bg-card relative">
         <Link
           href={placeHref(place.slug || place.id)}
-          className="focus-visible:ring-primary flex min-h-0 flex-1 flex-col outline-none focus-visible:ring-2 focus-visible:ring-inset"
+          className="focus-visible:ring-primary block outline-none focus-visible:ring-2 focus-visible:ring-inset"
         >
-          <div className="bg-muted relative aspect-square w-full shrink-0 overflow-hidden">
+          <div className="bg-muted relative aspect-square w-full overflow-hidden">
             {photo ? (
               <Image
                 src={photo}
@@ -68,18 +66,16 @@ export function CatalogTile({
               </div>
             )}
           </div>
-          <div className="flex min-h-0 flex-1 flex-col justify-between gap-1 px-2.5 py-2">
-            <div className="min-w-0">
-              <p className="font-display text-foreground line-clamp-2 text-base leading-tight font-semibold tracking-tight">
-                {place.name}
+          <div className="flex flex-col gap-0.5 px-2 py-2">
+            <p className="font-display text-foreground line-clamp-2 text-sm leading-tight font-semibold tracking-tight">
+              {place.name}
+            </p>
+            {typeLine ? (
+              <p className="text-muted-foreground truncate text-sm leading-snug">
+                {typeLine}
               </p>
-              {typeLine ? (
-                <p className="text-muted-foreground mt-1 line-clamp-2 text-sm leading-snug">
-                  {typeLine}
-                </p>
-              ) : null}
-            </div>
-            <div className="flex min-w-0 flex-col gap-1">
+            ) : null}
+            <div className="flex min-w-0 flex-col gap-0.5">
               {where ? (
                 <p className="text-foreground flex items-start gap-1 text-sm leading-snug">
                   <Navigation className="mt-0.5 h-3.5 w-3.5 shrink-0" />
