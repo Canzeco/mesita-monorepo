@@ -3,23 +3,21 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { DISCOVERY_SCOPE_STOPS } from "@/lib/discovery-filters-engine";
 
-describe("Places' two filter counts stay distinct", () => {
+describe("Places hides its Filters control", () => {
   const src = readFileSync(
     join(__dirname, "../../components/consumer/home/CatalogRails.tsx"),
     "utf8",
   );
 
-  it("hands the SHEET the number of matching places", () => {
-    expect(src).toContain("count={rails === null ? null : placesShown}");
+  it("does not mount the pill or the sheet", () => {
+    expect(src).not.toContain("Filter places");
+    expect(src).not.toContain("DiscoveryFilters");
+    expect(src).not.toContain("setFiltersOpen");
   });
 
-  it("hands the TRIGGER the number of applied filters", () => {
-    expect(src).toContain("countAppliedDiscoveryFilters(filters)");
-    expect(src).toContain("`Filters, ${appliedCount} applied`");
-  });
-
-  it("never labels the trigger with a place count", () => {
-    expect(src).not.toContain("${placesShown} applied");
+  it("loads the catalog with no guest predicates", () => {
+    expect(src).not.toContain("toDiscoveryPredicatesWire");
+    expect(src).toContain("apiListCatalog(supabase, coords)");
   });
 });
 

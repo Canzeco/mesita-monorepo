@@ -5,57 +5,35 @@
 // as a scroll. The gap above a row is the family name. An empty
 // family is the name only. Favs keeps its own rounded tile.
 //
-// The catalog is Mesita places only. Filters are the two Mesita rings.
-// Family is not a filter. Google Places is not a choice. The review floor
-// is the map's. Location, when the browser has it, ranks proximity.
+// The catalog is Mesita Enriched Places. The Filters pill is hidden
+// (MESITA-2283): a saved scope must not keep cutting this list, so the
+// request sends no predicates. Search keeps its own Filters. Location,
+// when the browser has it, ranks proximity.
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Compass, SlidersHorizontal } from "lucide-react";
+import { Compass } from "lucide-react";
 import { apiListCatalog, type CatalogRail, type Place } from "@/lib/api/places";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { trackEvent } from "@/lib/analytics/track";
-import {
-  useLocateUser,
-  useUserLocation,
-  useUserLocationLocating,
-} from "@/lib/use-user-location";
+import { useUserLocation } from "@/lib/use-user-location";
 import { withUserDistance } from "@/lib/place-distance";
 import { upsertSavedPlacePreview, useSavedPlaces } from "@/lib/saved-places";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { EmptyState } from "@/components/shared";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { CatalogTile } from "./CatalogTile";
-import { cn, errMsg } from "@/lib/utils";
+import { errMsg } from "@/lib/utils";
 import { placesFeed } from "@/lib/catalog-feed";
 import { summarizeCatalog } from "@/lib/catalog-summary";
-import {
-  resetDiscoveryFilters,
-  useDiscoveryFilters,
-} from "@/lib/use-discovery-filters";
-import {
-  countAppliedDiscoveryFilters,
-  hasDiscoveryPredicates,
-} from "@/lib/discovery-filters-engine";
-import {
-  deckRequestKey,
-  toDiscoveryPredicatesWire,
-} from "@/lib/discovery-filters-wire";
-import { DiscoveryFilters } from "@/components/consumer/DiscoveryFilters";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 
 export function CatalogRails() {
   const supabase = useBrowserSupabase();
   const coords = useUserLocation();
-  const locating = useUserLocationLocating();
-  const locate = useLocateUser();
   const { savedIds, setSaved } = useSavedPlaces();
   const [rails, setRails] = useState<CatalogRail[] | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const filters = useDiscoveryFilters();
-  const appliedCount = countAppliedDiscoveryFilters(filters);
-  const filtered = hasDiscoveryPredicates(filters);
-  const requestKey = deckRequestKey(filters, coords);
+  const requestKey =
+    coords === null ? "" : `${coords.lat.toFixed(3)},${coords.lng.toFixed(3)}`;
 
   useEffect(() => {
     let cancelled = false;
@@ -66,11 +44,7 @@ export function CatalogRails() {
     });
     (async () => {
       try {
-        const next = await apiListCatalog(
-          supabase,
-          coords,
-          filtered ? toDiscoveryPredicatesWire(filters) : undefined,
-        );
+        const next = await apiListCatalog(supabase, coords);
         if (cancelled) return;
         setRails(next);
       } catch (err) {
@@ -89,56 +63,6 @@ export function CatalogRails() {
   const summary = useMemo(() => summarizeCatalog(rails ?? []), [rails]);
   const shownRails = useMemo(() => placesFeed(rails ?? []), [rails]);
 
-  const placesShown = summary.total;
-
-  const filterBar = (
-    <div className="border-border bg-background/90 shrink-0 border-b px-4 py-2.5 backdrop-blur-xl">
-      <button
-        type="button"
-        onClick={() => setFiltersOpen(true)}
-        aria-label={
-          appliedCount > 0
-            ? `Filters, ${appliedCount} applied`
-            : "Filter places"
-        }
-        aria-haspopup="dialog"
-        aria-pressed={appliedCount > 0}
-        className={cn(
-          "shadow-elev flex h-11 w-full items-center justify-center gap-1.5 rounded-full border px-3 text-sm font-semibold backdrop-blur-xl transition active:scale-[0.98]",
-          appliedCount > 0
-            ? "border-primary bg-primary text-primary-foreground shadow-glow"
-            : "border-border bg-card/95 text-foreground",
-        )}
-      >
-        <SlidersHorizontal
-          className="h-4 w-4 shrink-0"
-          strokeWidth={2.25}
-          aria-hidden
-        />
-        <span className="truncate">Filters</span>
-        {appliedCount > 0 && (
-          <span className="tabular-nums">· {appliedCount}</span>
-        )}
-      </button>
-    </div>
-  );
-
-  const filtersSheet = (
-    <LocalSheet
-      open={filtersOpen}
-      onClose={() => setFiltersOpen(false)}
-      ariaLabel="Filters"
-    >
-      <DiscoveryFilters
-        onClose={() => setFiltersOpen(false)}
-        count={rails === null ? null : placesShown}
-        hasLocation={coords !== null}
-        locating={locating}
-        onLocate={locate}
-      />
-    </LocalSheet>
-  );
-
   const toggleSave = (place: Place, saved: boolean) => {
     if (saved) {
       setSaved(place.id, false);
@@ -153,11 +77,7 @@ export function CatalogRails() {
   };
 
   const shell = (body: ReactNode) => (
-    <div className="flex min-h-0 flex-1 flex-col">
-      {filterBar}
-      {body}
-      {filtersSheet}
-    </div>
+    <div className="flex min-h-0 flex-1 flex-col">{body}</div>
   );
 
   if (fetchError) {
@@ -193,20 +113,11 @@ export function CatalogRails() {
 
   if (rails.length === 0) {
     return shell(
-      filtered ? (
-        <EmptyState
-          icon={SlidersHorizontal}
-          title="No places match these filters"
-          description="Nothing in tonight's catalog fits. Widen a filter and the rails come back."
-          action={{ label: "Clear filters", onClick: resetDiscoveryFilters }}
-        />
-      ) : (
-        <EmptyState
-          icon={Compass}
-          title="No places yet"
-          description="The catalog is still filling up. Check back soon."
-        />
-      ),
+      <EmptyState
+        icon={Compass}
+        title="No places yet"
+        description="The catalog is still filling up. Check back soon."
+      />,
     );
   }
 
