@@ -32,11 +32,11 @@ describe("Enrich tab gate", () => {
     expect(placeTabs(true).map((t) => t.label)).toEqual([
       "Overview",
       "Reviews",
-      "Menus",
+      "Menu",
       "Rewards",
     ]);
     expect(placeTabs(true).filter((t) => t.soon).map((t) => t.label)).toEqual([
-      "Menus",
+      "Menu",
       "Rewards",
     ]);
   });
@@ -49,7 +49,7 @@ describe("Enrich tab gate", () => {
     expect(html).toContain("grid-cols-1");
     expect(html).not.toContain("Overview");
     expect(html).not.toContain("Reviews");
-    expect(html).not.toContain("Menus");
+    expect(html).not.toContain("Menu");
   });
 
   it("renders the three core tabs and not Enrich once Enriched", () => {
@@ -58,7 +58,8 @@ describe("Enrich tab gate", () => {
     );
     expect(html).toContain("Overview");
     expect(html).toContain("Reviews");
-    expect(html).toContain("Menus");
+    expect(html).toContain("Menu");
+    expect(html).not.toContain("Menus");
     expect(html).toContain("Rewards");
     expect(html).toContain("Soon");
     expect(html).toContain("grid-cols-4");
