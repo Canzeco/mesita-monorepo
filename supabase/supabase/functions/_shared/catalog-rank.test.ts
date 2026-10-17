@@ -4,7 +4,8 @@ import {
   catalogAdmitted,
   type CatalogListPlace,
   catalogScore,
-  rankFamilyLists,
+  CATALOG_RAIL_CAP,
+  rankCatalogRails,
 } from "./catalog-rank.ts";
 import {
   DEFAULT_CATALOG_RANKING,
@@ -41,37 +42,133 @@ function place(over: Partial<SignalPlace> = {}): SignalPlace {
   };
 }
 
-Deno.test("undefined is not a list and a dual-family place is in both", () => {
-  const rows = [
-    row("only-undefined", ["undefined"]),
-    row("both", ["dinner", "drinks"]),
-    row("cafe", ["coffee"]),
-  ];
-  const places = rows.map(() => place());
-  const lists = rankFamilyLists(
+// 2026-10-17 15:00 UTC is Saturday morning on Mexico City's local clock.
+const NOON_SAT = new Date("2026-10-17T15:00:00Z");
+const at = { ...guest, now: NOON_SAT };
+const ALWAYS = Object.fromEntries(
+  ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
+    .map((d) => [d, [{ open: "00:00", close: "24:00" }]]),
+);
+const NEVER_SAT = { ...ALWAYS, saturday: [] };
+
+function rails(rows: CatalogListPlace[], places: SignalPlace[], intent = at) {
+  return rankCatalogRails(
     rows,
     places,
     DEFAULT_CATALOG_RANKING,
     DEFAULT_SIGNAL_PARAMS,
-    guest,
-    8,
+    intent,
   );
-  assertEquals(lists.map((l) => l.key), ["all", ...CATALOG_FAMILY_SLUGS]);
-  assertEquals(lists[0].label, "All");
-  assertEquals(lists[0].places.map((p) => p.id), [
-    "only-undefined",
+}
+
+const ids = (list: { places: CatalogListPlace[] } | undefined) =>
+  list?.places.map((p) => p.id);
+
+Deno.test("rails run Right Now, Universal, then families in catalog order", () => {
+  const rows = [
+    row("cafe", ["coffee"]),
+    row("both", ["dinner", "drinks"]),
+    row("only-undefined", ["undefined"]),
+  ];
+  const out = rails(rows, rows.map(() => place({ hours: ALWAYS })));
+  const families = CATALOG_FAMILY_SLUGS.filter((f) =>
+    ["coffee", "dinner", "drinks"].includes(f)
+  );
+  assertEquals(out.map((r) => r.key), ["right_now", "universal", ...families]);
+  assertEquals(out[0].label, "Right Now");
+  assertEquals(out[0].emoji, "🕒");
+  assertEquals(out[1].label, "Universal");
+  assertEquals(out[1].emoji, "✨");
+  assertEquals(out.slice(0, 2).every((r) => r.source === "signal"), true);
+  assertEquals(out.slice(2).every((r) => r.source === "family"), true);
+  assertEquals(out.find((r) => r.key === "coffee")!.emoji, "☕");
+});
+
+Deno.test("a dual-family place is in both family rails; undefined is none", () => {
+  const rows = [row("both", ["dinner", "drinks"]), row("u", ["undefined"])];
+  const out = rails(rows, rows.map(() => place()));
+  assertEquals(ids(out.find((r) => r.key === "dinner")), ["both"]);
+  assertEquals(ids(out.find((r) => r.key === "drinks")), ["both"]);
+  assertEquals(out.some((r) => r.key === "undefined"), false);
+  assertEquals(ids(out.find((r) => r.key === "universal"))!.sort(), [
     "both",
-    "cafe",
+    "u",
   ]);
-  const placesOf = (key: string) =>
-    lists.find((list) => list.key === key)!.places.map((p) => p.id);
-  assertEquals(placesOf("coffee"), ["cafe"]);
-  assertEquals(placesOf("dinner"), ["both"]);
-  assertEquals(placesOf("drinks"), ["both"]);
-  assertEquals(placesOf("breakfast"), []);
-  assertEquals(placesOf("pizza"), []);
-  assertEquals(lists.find((list) => list.key === "coffee")!.emoji, "☕");
-  assertEquals(lists.every((l) => l.source === "family"), true);
+});
+
+Deno.test("Right Now admits an open Created place and drops closed or no-hours", () => {
+  const rows = [
+    row("created-open", ["dinner"], { enriched_at: null }),
+    row("closed", ["dinner"]),
+    row("no-hours", ["dinner"]),
+    row("busy", ["dinner"], { content_state: "generating" }),
+  ];
+  const out = rails(rows, [
+    place({ hours: ALWAYS }),
+    place({ hours: NEVER_SAT }),
+    place({ hours: null }),
+    place({ hours: ALWAYS }),
+  ]);
+  assertEquals(ids(out.find((r) => r.key === "right_now")), ["created-open"]);
+  assertEquals(
+    ids(out.find((r) => r.key === "universal"))!.includes("created-open"),
+    false,
+  );
+});
+
+Deno.test("Right Now sorts by proximity, then popularity", () => {
+  const rows = [row("far", []), row("quiet", []), row("loved", [])];
+  const out = rails(rows, [
+    place({ hours: ALWAYS, lat: guest.lat + 0.08, rating: 5, user_ratings_total: 999 }),
+    place({ hours: ALWAYS, rating: 3.2, user_ratings_total: 10 }),
+    place({ hours: ALWAYS, rating: 4.9, user_ratings_total: 900 }),
+  ]);
+  assertEquals(ids(out[0]), ["loved", "quiet", "far"]);
+});
+
+Deno.test("Right Now is absent when nothing is open", () => {
+  const rows = [row("a", ["coffee"]), row("b", ["coffee"])];
+  const out = rails(rows, [place({ hours: NEVER_SAT }), place()]);
+  assertEquals(out.map((r) => r.key), ["universal", "coffee"]);
+});
+
+Deno.test("every rail caps at 5; Universal and families are enriched-only", () => {
+  const n = CATALOG_RAIL_CAP + 5;
+  const rows = [
+    ...Array.from({ length: n }, (_, i) => row(`e${i}`, ["coffee"])),
+    row("created", ["coffee"], { enriched_at: null }),
+  ];
+  const out = rails(rows, rows.map(() => place({ hours: ALWAYS })));
+  const universal = out.find((r) => r.key === "universal")!;
+  assertEquals(CATALOG_RAIL_CAP, 5);
+  assertEquals(universal.places.length, CATALOG_RAIL_CAP);
+  assertEquals(ids(universal)!.includes("created"), false);
+  const coffee = out.find((r) => r.key === "coffee")!;
+  assertEquals(coffee.places.length, CATALOG_RAIL_CAP);
+  assertEquals(ids(coffee)!.includes("created"), false);
+  assertEquals(out[0].places.length, CATALOG_RAIL_CAP);
+});
+
+Deno.test("a short rail shows what it has", () => {
+  const rows = [row("a", ["coffee"]), row("b", ["coffee"])];
+  const out = rails(rows, rows.map(() => place({ hours: ALWAYS })));
+  for (const r of out) assertEquals(r.places.length, 2);
+});
+
+Deno.test("families are enriched-only and an empty family is omitted", () => {
+  const rows = [
+    row("raw", ["dinner"], { enriched_at: null }),
+    row("cafe", ["coffee"]),
+  ];
+  const out = rails(rows, [place(), place()]);
+  assertEquals(out.map((r) => r.key), ["universal", "coffee"]);
+});
+
+Deno.test("no enriched place and nothing open leaves no rails", () => {
+  assertEquals(
+    rails([row("raw", ["dinner"], { enriched_at: null })], [place()]),
+    [],
+  );
 });
 
 Deno.test("the enriched ring requires enriched and ready", () => {
@@ -86,49 +183,13 @@ Deno.test("the enriched ring requires enriched and ready", () => {
     }),
     false,
   );
-  const lists = rankFamilyLists(
-    [row("raw", ["dinner"], { enriched_at: null })],
-    [place()],
-    DEFAULT_CATALOG_RANKING,
-    DEFAULT_SIGNAL_PARAMS,
-    guest,
-    8,
-    true,
-  );
-  assertEquals(lists, []);
 });
 
-Deno.test("Mesita Places admits a ready Created place, never a generating one", () => {
-  const lists = rankFamilyLists(
-    [
-      row("created", ["dinner"], { enriched_at: null }),
-      row("busy", ["dinner"], { enriched_at: null, content_state: "generating" }),
-    ],
-    [place(), place()],
-    DEFAULT_CATALOG_RANKING,
-    DEFAULT_SIGNAL_PARAMS,
-    guest,
-  );
-  assertEquals(lists[0].places.map((p) => p.id), ["created"]);
-});
-
-Deno.test("an enriched place leads its Created twin at the default weights", () => {
-  const rows = [
-    row("created", ["coffee"], { enriched_at: null }),
-    row("written", ["coffee"]),
-  ];
-  const lists = rankFamilyLists(
-    rows,
-    [place({ enriched: false }), place({ enriched: true })],
-    DEFAULT_CATALOG_RANKING,
-    DEFAULT_SIGNAL_PARAMS,
-    guest,
-  );
-  for (const key of ["all", "coffee"]) {
-    assertEquals(
-      lists.find((l) => l.key === key)!.places.map((p) => p.id),
-      ["written", "created"],
-    );
+Deno.test("an enriched place leads at the default weights in Universal", () => {
+  const rows = [row("far", ["dinner"]), row("near", ["dinner"])];
+  const out = rails(rows, [place({ lat: guest.lat + 0.08 }), place()]);
+  for (const key of ["universal", "dinner"]) {
+    assertEquals(ids(out.find((r) => r.key === key)), ["near", "far"]);
   }
 });
 
@@ -141,51 +202,6 @@ Deno.test("Enriched at weight 0 leaves Created and enriched to the other signals
       catalogScore(written, ranking, DEFAULT_SIGNAL_PARAMS, guest),
     true,
   );
-});
-
-Deno.test("name abstains without a query, so proximity still orders", () => {
-  const far = place({ lat: guest.lat + 0.08 });
-  const near = place();
-  const rows = [row("far", ["dinner"]), row("near", ["dinner"])];
-  const lists = rankFamilyLists(
-    rows,
-    [far, near],
-    { ...DEFAULT_CATALOG_RANKING, name: 1, description: 1, selected: 1 },
-    DEFAULT_SIGNAL_PARAMS,
-    guest,
-    8,
-  );
-  assertEquals(lists[0].places.map((p) => p.id), ["near", "far"]);
-});
-
-Deno.test("weight 0 drops popularity and keeps incoming order", () => {
-  const quiet = place({ rating: 3.2, user_ratings_total: 10 });
-  const loved = place({ rating: 4.9, user_ratings_total: 900 });
-  const rows = [row("quiet", ["go_out"]), row("loved", ["go_out"])];
-  const ranking = {
-    ...DEFAULT_CATALOG_RANKING,
-    proximity: 0,
-    popularity: 0,
-    randomness: 0,
-  };
-  const lists = rankFamilyLists(
-    rows,
-    [quiet, loved],
-    ranking,
-    DEFAULT_SIGNAL_PARAMS,
-    guest,
-    8,
-  );
-  assertEquals(lists[0].places.map((p) => p.id), ["quiet", "loved"]);
-  const ranked = rankFamilyLists(
-    rows,
-    [quiet, loved],
-    { ...ranking, popularity: 1 },
-    DEFAULT_SIGNAL_PARAMS,
-    guest,
-    8,
-  );
-  assertEquals(ranked[0].places.map((p) => p.id), ["loved", "quiet"]);
 });
 
 Deno.test("proportional Catalog weights score the same", () => {
@@ -247,48 +263,4 @@ Deno.test("a zero name would tie; abstaining does not", () => {
   );
   assertEquals(withName, 1);
   assertEquals(without, 1);
-});
-
-Deno.test("catalog rows keep every enriched member when no cap is passed", () => {
-  const rows = [
-    row("a", ["coffee"]),
-    row("b", ["coffee"]),
-    row("c", ["coffee"]),
-  ];
-  const lists = rankFamilyLists(
-    rows,
-    [place(), place(), place()],
-    DEFAULT_CATALOG_RANKING,
-    DEFAULT_SIGNAL_PARAMS,
-    guest,
-  );
-  assertEquals(lists[0].places.map((p) => p.id).sort(), ["a", "b", "c"]);
-});
-
-Deno.test("Mesita Places keeps a created place that the enriched ring drops", () => {
-  const created = row("created", ["coffee"], { enriched_at: null });
-  const written = row("written", ["coffee"]);
-  const rows = [created, written];
-  const places = [place(), place()];
-  const enriched = rankFamilyLists(
-    rows,
-    places,
-    DEFAULT_CATALOG_RANKING,
-    DEFAULT_SIGNAL_PARAMS,
-    guest,
-    undefined,
-    true,
-  );
-  assertEquals(enriched[0].places.map((p) => p.id), ["written"]);
-  const mesita = rankFamilyLists(
-    rows,
-    places,
-    DEFAULT_CATALOG_RANKING,
-    DEFAULT_SIGNAL_PARAMS,
-    guest,
-  );
-  assertEquals(mesita[0].places.map((p) => p.id).sort(), [
-    "created",
-    "written",
-  ]);
 });

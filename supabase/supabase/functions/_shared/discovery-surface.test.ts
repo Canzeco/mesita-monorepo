@@ -22,8 +22,8 @@ Deno.test("surface routing matches the engines that actually retrieve", async ()
   assertEquals(lane.includes("autocomplete"), true);
   assertEquals(lane.includes("fetchEmbedPool"), true);
   assertEquals(map.includes("searchNearbyPlaces"), true);
-  assertEquals(catalog.includes("rankFamilyLists"), true);
-  assertEquals(swipe.includes("rankFamilyLists"), false);
+  assertEquals(catalog.includes("rankCatalogRails"), true);
+  assertEquals(swipe.includes("rankCatalogRails"), false);
   assertEquals(swipe.includes('.from("profiles")'), true);
   assertEquals(chat.includes("searchNearbyPlaces"), false);
   assertEquals(chat.includes("searchText"), false);

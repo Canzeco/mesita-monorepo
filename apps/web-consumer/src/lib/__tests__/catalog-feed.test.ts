@@ -1,45 +1,47 @@
 import { describe, expect, it } from "vitest";
 import type { CatalogRail, Place } from "@/lib/api/places";
 import { placesFeed } from "@/lib/catalog-feed";
-import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 
 function place(id: string): Place {
   return { id, name: id } as Place;
 }
 
-function rail(key: string, label: string, ids: string[]): CatalogRail {
+function rail(
+  key: string,
+  label: string,
+  ids: string[],
+  source: CatalogRail["source"] = "family",
+): CatalogRail {
   return {
     key,
     label,
-    source: "family",
+    source,
     places: ids.map(place),
   };
 }
 
 describe("places feed", () => {
-  it("is always All plus one rail per guest family", () => {
+  it("keeps the server's rails in server order", () => {
     const feed = placesFeed([
-      rail("all", "All", ["cafe", "club"]),
+      rail("right_now", "Right Now", ["club"], "signal"),
+      rail("universal", "Universal", ["cafe", "club"], "signal"),
       rail("coffee", "Coffee", ["cafe"]),
     ]);
     expect(feed.map((row) => row.key)).toEqual([
-      "all",
-      ...FILTERABLE_PLACE_FAMILIES.map((family) => family.key),
+      "right_now",
+      "universal",
+      "coffee",
     ]);
-    expect(feed).toHaveLength(FILTERABLE_PLACE_FAMILIES.length + 1);
+    expect(feed[1]?.places.map((row) => row.id)).toEqual(["cafe", "club"]);
   });
 
-  it("keeps every place on All and leaves a short family empty", () => {
+  it("invents no All rail and drops empty rails", () => {
     const feed = placesFeed([
-      rail("all", "All", ["cafe", "club"]),
+      rail("universal", "Universal", ["cafe"], "signal"),
+      rail("breakfast", "Breakfast", []),
       rail("coffee", "Coffee", ["cafe"]),
     ]);
-    expect(feed[0]?.places.map((row) => row.id)).toEqual(["cafe", "club"]);
-    expect(feed.find((row) => row.key === "coffee")?.places.map((row) => row.id)).toEqual([
-      "cafe",
-    ]);
-    expect(feed.find((row) => row.key === "breakfast")?.places).toEqual([]);
-    expect(feed.find((row) => row.key === "coffee")?.emoji).toBe("☕");
-    expect(feed.find((row) => row.key === "night_out")?.emoji).toBe("🌙");
+    expect(feed.map((row) => row.key)).toEqual(["universal", "coffee"]);
+    expect(placesFeed([])).toEqual([]);
   });
 });

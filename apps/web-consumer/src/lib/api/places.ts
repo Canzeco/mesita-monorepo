@@ -254,11 +254,11 @@ export type CatalogRail = {
   key: string;
   label: string;
   emoji?: string;
-  source: "family" | "seed" | "generated";
+  source: "signal" | "family" | "seed" | "generated";
   places: Place[];
 };
 
-/** Home › Places rails — Mesita places, one row per family. */
+/** Home › Places rails — Right Now, Universal, then one rail per family. */
 export async function apiListCatalog(
   client: SupabaseClient,
   origin?: { lat: number; lng: number } | null,
