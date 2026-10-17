@@ -74,6 +74,10 @@ describe("member preview edges", () => {
     );
     expect(html).toContain("Lupita");
     expect(html).toContain("Overview");
+    const nav = html.slice(html.indexOf("<nav"), html.indexOf(">", html.indexOf("<nav")) + 1);
+    expect(nav).toContain('aria-label="Place sections"');
+    expect(nav).toContain("bg-card");
+    expect(nav).not.toContain("bg-background");
     const saveAt = html.indexOf(">Save<");
     const contactAt = html.indexOf(">Contact<");
     const shareAt = html.indexOf(">Share<");
@@ -119,6 +123,21 @@ describe("member preview edges", () => {
     expect(place.request_threshold).toBe(12);
     const html = renderToStaticMarkup(<PlaceProfile place={place} />);
     expect(html).toContain("3 of 12 votes");
+  });
+
+  it("renders the full Presentation with no show-more control", () => {
+    const capped = "A".repeat(500);
+    const overOldClamp = "B".repeat(700);
+    for (const text of [capped, overOldClamp]) {
+      const html = renderToStaticMarkup(
+        <PlaceProfile place={detail({ description: text })} />,
+      );
+      expect(html).toContain("Presentation");
+      expect(html).toContain(text);
+      expect(html).not.toContain("Show more");
+      expect(html).not.toContain("Show less");
+      expect(html).not.toContain("line-clamp");
+    }
   });
 
   it("does not treat a listed-false row as hidden", () => {

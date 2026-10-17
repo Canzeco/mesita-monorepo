@@ -10,6 +10,7 @@ Deno.test("a finished place is accepted", () => {
   if (got.ok) {
     assertEquals(got.placeId, "place-1");
     assertEquals(got.patch.content_state, "ready");
+    assertEquals(got.photoAnalyses, []);
   }
 });
 
@@ -25,6 +26,22 @@ Deno.test("mirror stays on unless the body turns it off", () => {
   });
   assertEquals(on.ok && on.mirrorPhotos, true);
   assertEquals(off.ok && off.mirrorPhotos, false);
+});
+
+Deno.test("photo text rides with the commit and junk is dropped", () => {
+  const got = enrichmentCommit({
+    placeId: "place-1",
+    patch: { content_state: "ready", phone: "x" },
+    photoAnalyses: [
+      { url: "https://google.example/a", source: "google", text: "A chandelier over the floor." },
+      { url: "notaurl", source: "google", text: "no" },
+    ],
+  });
+  assertEquals(got.ok && got.photoAnalyses, [{
+    url: "https://google.example/a",
+    source: "google",
+    text: "A chandelier over the floor.",
+  }]);
 });
 
 Deno.test("a newer profile conflicts and an unchanged one does not", () => {

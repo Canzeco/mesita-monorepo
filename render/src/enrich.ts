@@ -14,6 +14,7 @@ import {
   rankGallery,
   rankPostsByLikes,
   type ImageKnobs,
+  type PhotoAnalysis,
 } from "./images.ts";
 import { discoverOfficialLinks, linkCounts, type LinkField } from "./links.ts";
 import { fetchDraftSync } from "./draft-sync.ts";
@@ -69,6 +70,7 @@ export function isQuickEnrich(job: EnrichJob): boolean {
 export type BuiltEnrichment = {
   patch: Record<string, unknown>;
   mirrorPhotos: boolean;
+  photoAnalyses: PhotoAnalysis[];
 };
 
 // A finished place is the Google spine, the official links Firecrawl sourced and
@@ -165,7 +167,7 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment> 
     knobs: images,
     openaiKey,
   });
-  if (photos.length > 0) spine.patch.photos = photos;
+  if (photos.urls.length > 0) spine.patch.photos = photos.urls;
 
   let description = spine.description;
   if (!description) {
@@ -210,6 +212,7 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment> 
   return {
     patch: stampOverwrite(patch, overwrite),
     mirrorPhotos: knobs.saveImagesToStorage !== false,
+    photoAnalyses: photos.analyses,
   };
 }
 
@@ -307,6 +310,7 @@ async function buildQuickEnrichment(opts: {
   return {
     patch: stampOverwrite(merged, opts.overwrite),
     mirrorPhotos: opts.knobs.saveImagesToStorage !== false,
+    photoAnalyses: [],
   };
 }
 

@@ -134,18 +134,30 @@ export async function fetchInstagramPosts(opts: {
   }
 }
 
+export type PhotoAnalysis = {
+  url: string;
+  source: "google" | "instagram";
+  text: string;
+};
+
+export type GalleryRank = {
+  urls: string[];
+  analyses: PhotoAnalysis[];
+};
+
 export async function sortPlacePhotos(
   urls: string[],
   openaiKey: string | undefined,
   fetchImpl: FetchImpl = fetch,
 ): Promise<string[]> {
-  return rankGallery({
+  const ranked = await rankGallery({
     google: urls,
     instagram: [],
     knobs: defaultImageKnobs(),
     openaiKey,
     fetchImpl,
   });
+  return ranked.urls;
 }
 
 export async function rankGallery(opts: {
@@ -154,31 +166,45 @@ export async function rankGallery(opts: {
   knobs: ImageKnobs;
   openaiKey?: string;
   fetchImpl?: FetchImpl;
-}): Promise<string[]> {
+}): Promise<GalleryRank> {
   const knobs = opts.knobs;
   const keep = clamp(knobs.saveTotalImages, GALLERY_CAP);
   const google = httpsOnly(opts.google).slice(0, clamp(knobs.gatherGoogleImages, GOOGLE_CAP));
   const instagram = httpsOnly(opts.instagram);
+  const googleSet = new Set(google);
   const photos = dedupe(knobs.visionEnabled
     ? [
       ...google.slice(0, clamp(knobs.analyzeGoogleImages, google.length)),
       ...instagram.slice(0, clamp(knobs.analyzeInstagramImages, instagram.length)),
     ]
     : [...google, ...instagram]);
-  if (keep <= 0) return [];
+  if (keep <= 0) return { urls: [], analyses: [] };
   const kept = photos.slice(0, keep);
   const key = opts.openaiKey?.trim() ?? "";
-  if (!knobs.visionEnabled || photos.length < 2 || !key) return kept;
+  if (!knobs.visionEnabled || photos.length === 0 || !key) return { urls: kept, analyses: [] };
   const fetchImpl = opts.fetchImpl ?? fetch;
   try {
     const descriptions = await describePhotos(fetchImpl, key, photos, knobs);
-    if (!descriptions || descriptions.every((line) => !line)) return kept;
+    if (!descriptions || descriptions.every((line) => !line)) return { urls: kept, analyses: [] };
     const order = await rankPhotos(fetchImpl, key, descriptions, knobs);
-    return order ? applyPhotoOrder(photos, order, keep) : kept;
+    const urls = order ? applyPhotoOrder(photos, order, keep) : kept;
+    const saved = new Set(urls);
+    const analyses: PhotoAnalysis[] = [];
+    for (let i = 0; i < photos.length; i++) {
+      const text = (descriptions[i] ?? "").trim();
+      const url = photos[i];
+      if (!text || !url || !saved.has(url)) continue;
+      analyses.push({
+        url,
+        source: googleSet.has(url) ? "google" : "instagram",
+        text,
+      });
+    }
+    return { urls, analyses };
   } catch (err) {
     const why = err instanceof Error ? err.message : String(err);
     console.error(`[images] ${why.slice(0, 200)}`);
-    return kept;
+    return { urls: kept, analyses: [] };
   }
 }
 

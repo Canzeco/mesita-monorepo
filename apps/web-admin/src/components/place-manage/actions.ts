@@ -81,6 +81,8 @@ export type AdminPlace = {
   phone: string | null;
   hours: Record<string, { open: string; close: string }[]> | null;
   photos: string[] | null;
+  /** Vision text keyed by the gallery URL. Absent until a Full run describes it. */
+  photo_analysis?: Record<string, string> | null;
   tags: string[] | null;
   website_url: string | null;
   instagram_url: string | null;

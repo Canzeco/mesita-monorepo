@@ -10,6 +10,7 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { dedup } from "./parse-utils.ts";
 import { runInBackground } from "./background.ts";
 import { writePlace } from "./place-doc.ts";
+import type { SavedAnalysis, StoredPhoto } from "./photo-analysis.ts";
 import {
   type AssetRow,
   extFor,
@@ -107,20 +108,50 @@ export async function storeFirstPlaceImage(
   return { ok: true, url: finalUrl };
 }
 
-/** Copy source images into the bucket and return the durable public URLs.
- *  A URL that fails to copy is dropped. This does not write the place. */
+/** Copy source images into the bucket and return each durable URL with the
+ *  source it came from. A URL that fails to copy is dropped. This does not
+ *  write the place. */
 export async function mirrorPlacePhotos(
   admin: SupabaseClient,
   supabaseUrl: string,
   urls: string[],
-): Promise<string[]> {
+): Promise<StoredPhoto[]> {
   const clean = sanitiseUrls(urls).slice(0, 10);
-  const settled = await Promise.all(clean.map((url) => mirrorOne(admin, supabaseUrl, url)));
-  const durable: string[] = [];
-  for (const row of settled) {
-    if (row.ok && row.publicUrl && !durable.includes(row.publicUrl)) durable.push(row.publicUrl);
+  const settled = await Promise.all(clean.map(async (sourceUrl) => {
+    const row = await mirrorOne(admin, supabaseUrl, sourceUrl);
+    return { sourceUrl, row };
+  }));
+  const durable: StoredPhoto[] = [];
+  const seen = new Set<string>();
+  for (const item of settled) {
+    const publicUrl = item.row.ok ? item.row.publicUrl : null;
+    if (!publicUrl || seen.has(publicUrl)) continue;
+    seen.add(publicUrl);
+    durable.push({ sourceUrl: item.sourceUrl, publicUrl });
   }
   return durable;
+}
+
+/** The description stays on the photo the gallery shows. A failure here does
+ *  not undo the profile write. */
+export async function saveGalleryAnalyses(
+  admin: SupabaseClient,
+  placeId: string,
+  rows: SavedAnalysis[],
+): Promise<void> {
+  if (rows.length === 0) return;
+  const { error } = await admin.from("place_media_assets").upsert(
+    rows.map((row) => ({
+      place_id: placeId,
+      source: row.source,
+      source_url: row.sourceUrl,
+      public_url: row.publicUrl,
+      state: "saved",
+      analysis_text: row.text,
+    })),
+    { onConflict: "place_id,source_url" },
+  );
+  if (error) console.error(`[store-place-images] analysis: ${error.message}`);
 }
 
 /** Upsert metadata rows and kick off background mirroring. */

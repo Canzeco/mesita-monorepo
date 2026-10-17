@@ -44,8 +44,8 @@ export function PlaceDetailBody({
   // a stale tab cannot light empty content under Enrich-only.
   const activeTab: PlaceTab = place.is_enriched ? tab : "enrich";
   return (
-    // decision: Pato — white profile-summary header vs pink tab body for
-    // contrast. Summary sits on bg-card; tabs + content keep bg-background.
+    // decision: Pato (2026-10-16) — the name header and the section strip
+    // are both white (bg-card). The page wash shows in the content below.
     // pb-4 gives the last section breathing room above whatever footer
     // (nav) the parent layout renders below the scroll area.
     <div className="flex flex-col pb-4">

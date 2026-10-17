@@ -18,6 +18,7 @@ export const enrichSinglePlace = task(
         built.patch,
         built.mirrorPhotos,
         job.baseUpdatedAt,
+        built.photoAnalyses,
       );
       console.log(runLog("finished", placeId));
       return written;

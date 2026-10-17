@@ -2,12 +2,16 @@
 // A finished place carries content_state "ready". Anything else is refused
 // before a row is touched, so a place is enriched or it is not.
 
+import type { PhotoAnalysis } from "../_shared/photo-analysis.ts";
+import { readPhotoAnalyses } from "../_shared/photo-analysis.ts";
+
 export type EnrichmentCommit =
   | {
     ok: true;
     placeId: string;
     patch: Record<string, unknown>;
     mirrorPhotos: boolean;
+    photoAnalyses: PhotoAnalysis[];
     baseUpdatedAt: string | null;
   }
   | { ok: false; error: string };
@@ -29,6 +33,7 @@ export function enrichmentCommit(body: unknown): EnrichmentCommit {
     placeId?: unknown;
     patch?: unknown;
     mirrorPhotos?: unknown;
+    photoAnalyses?: unknown;
     baseUpdatedAt?: unknown;
   };
   const placeId = typeof raw.placeId === "string" ? raw.placeId.trim() : "";
@@ -47,8 +52,9 @@ export function enrichmentCommit(body: unknown): EnrichmentCommit {
   // Absent means mirror, which is the Enrichment page default. An explicit
   // false is the Mirror switch turned off: keep the source URLs.
   const mirrorPhotos = raw.mirrorPhotos !== false;
+  const photoAnalyses = readPhotoAnalyses(raw.photoAnalyses);
   const baseUpdatedAt = typeof raw.baseUpdatedAt === "string" && raw.baseUpdatedAt.trim()
     ? raw.baseUpdatedAt.trim()
     : null;
-  return { ok: true, placeId, patch, mirrorPhotos, baseUpdatedAt };
+  return { ok: true, placeId, patch, mirrorPhotos, photoAnalyses, baseUpdatedAt };
 }

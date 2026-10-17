@@ -61,7 +61,7 @@ test("likes rank the newest Instagram window", () => {
 test("vision off keeps gather order and does not call the model", async () => {
   const knobs = { ...defaultImageKnobs(), visionEnabled: false, saveTotalImages: 3 };
   assert.deepEqual(
-    await rankGallery({
+    (await rankGallery({
       google: [A, B],
       instagram: [C, "https://lh3.googleusercontent.com/d"],
       knobs,
@@ -69,7 +69,7 @@ test("vision off keeps gather order and does not call the model", async () => {
       fetchImpl: async () => {
         throw new Error("vision is off");
       },
-    }),
+    })).urls,
     [A, B, C],
   );
 });
@@ -97,10 +97,12 @@ test("the saved analysis prompt is what vision is told", async () => {
     told += `|${body.model}:${typeof content === "string" ? content : ""}`;
     return Response.json({ choices: [{ message: { content: JSON.stringify({ order: [1, 0] }) } }] });
   };
-  assert.deepEqual(
-    await rankGallery({ google: [A, B], instagram: [], knobs, openaiKey: "sk-test", fetchImpl }),
-    [B, A],
-  );
+  const ranked = await rankGallery({ google: [A, B], instagram: [], knobs, openaiKey: "sk-test", fetchImpl });
+  assert.deepEqual(ranked.urls, [B, A]);
+  assert.deepEqual(ranked.analyses, [
+    { url: A, source: "google", text: "A dining room." },
+    { url: B, source: "google", text: "A dining room." },
+  ]);
   assert.match(told, /^gpt-4o:Name the room\./);
   assert.match(told, /gpt-4o-mini:Best room first\./);
 });

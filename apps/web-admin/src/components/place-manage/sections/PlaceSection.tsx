@@ -31,6 +31,7 @@ import {
   TextField,
 } from "@/components/admin-ui/manage";
 import { usePlaceContext } from "../PlaceContext";
+import { photoCaption } from "../photo-caption";
 import { useSectionSaver } from "../useSectionDirty";
 import { ErrorNote } from "@/components/ErrorNote";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
@@ -458,9 +459,6 @@ export function PlaceSection({
   const removePhoto = (idx: number) =>
     setPhotos(form.photos.filter((_, i) => i !== idx));
 
-  // Per-photo Enricher analysis lives on the Admin tab. The ⓘ dialog on
-  // Profile only has gallery order — vision text and SERP are operator
-  // internals (MESITA-1740).
   const [metaFor, setMetaFor] = useState<string | null>(null);
 
   return (
@@ -790,6 +788,7 @@ export function PlaceSection({
       {metaFor !== null && (
         <MediaMetaDialog
           url={metaFor}
+          analysis={photoCaption(place.photo_analysis, metaFor)}
           position={form.photos.indexOf(metaFor) + 1}
           total={form.photos.length}
           onClose={() => setMetaFor(null)}
@@ -937,16 +936,15 @@ function PhotosEditor({
   );
 }
 
-// Gallery order for the tile you are curating. Enricher analysis text
-// lives on the Admin tab — a restaurant reading vision copy as if it
-// were theirs is the bug MESITA-1740 named.
 function MediaMetaDialog({
   url,
+  analysis,
   position,
   total,
   onClose,
 }: {
   url: string;
+  analysis: string | null;
   position: number;
   total: number;
   onClose: () => void;
@@ -1007,10 +1005,14 @@ function MediaMetaDialog({
             )}
           </div>
 
-          <p className="text-muted-foreground text-sm italic">
-            No information for this image yet — it hasn’t been analyzed by the
-            Enricher.
-          </p>
+          {analysis ? (
+            <p className="text-foreground text-sm leading-relaxed">{analysis}</p>
+          ) : (
+            <p className="text-muted-foreground text-sm italic">
+              No information for this image yet — it hasn’t been analyzed by the
+              Enricher.
+            </p>
+          )}
         </div>
       </div>
     </div>
