@@ -589,7 +589,8 @@ describe("Discovery page box order", () => {
     // Social left the mode list; it has no box of its own any more.
     expect(() => readFileSync(join(__dirname, "SocialConfigClient.tsx"))).toThrow();
     expect(signals).toContain('title="Signals"');
-    expect(signals).toContain("SIGNAL_KEYS.map");
+    expect(signals).toContain("LISTED.map");
+    expect(signals).toContain('"description"');
     expect(signals).not.toContain("Promoting");
     expect(signals).toContain("randomness");
     expect(signals).toContain("enriched");

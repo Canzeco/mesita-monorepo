@@ -1,13 +1,8 @@
 "use client";
 
-// Mesita Places Search Signals — the seven earned signals every Mesita
-// Places source is ranked by (Docs > Discovery 8.3). Sources retrieve;
-// Lineup ranks; these are what it reads. Engines do not invent a second
-// scale. Mesita Level is the Enriched row now (MESITA-1858): it reads the
-// enrichment state and nothing about money.
-//
-// WEIGHTS DO NOT LIVE HERE. A weight belongs to a mode. This page lists every
-// signal. Proximity and Timing are the ones with a number. No preview.
+// Mesita Places Search Signals, in list order: Name, Description, Family,
+// Proximity, Timing, Enriched, Popularity, Randomness. Description is on the
+// list and has no number. Weights live on Modes. No preview.
 //
 // THE CARDS DO NOT REDRAW THE MATRIX (MESITA-1856). Each card used to carry
 // a strip of six unlabelled circles — which modes read this signal — under
@@ -17,6 +12,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
+  AlignLeft,
   Clock,
   Compass,
   Dices,
@@ -31,7 +27,6 @@ import { formatShortDate } from "@/lib/format";
 import { KnobState, SaveRow, SectionCard } from "@/components/admin-ui/config";
 import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
 import {
-  SIGNAL_KEYS,
   SIGNALS,
   type DiscoveryConfig,
   type SignalKey,
@@ -46,6 +41,29 @@ const ICONS: Record<SignalKey, typeof MapPin> = {
   enriched: Sparkles,
   randomness: Dices,
 };
+
+const LISTED = [
+  "name",
+  "description",
+  "category",
+  "proximity",
+  "timing",
+  "enriched",
+  "popularity",
+  "randomness",
+] as const;
+
+type ListedSignal = (typeof LISTED)[number];
+
+function listedIcon(key: ListedSignal) {
+  if (key === "description") return AlignLeft;
+  return ICONS[key];
+}
+
+function listedLabel(key: ListedSignal): string {
+  if (key === "description") return "Description";
+  return SIGNALS.find((spec) => spec.key === key)?.label ?? key;
+}
 
 export function SignalsConfigClient({
   initialConfig,
@@ -146,17 +164,16 @@ export function SignalsConfigClient({
         }
       >
         <div className="mt-5 flex flex-col gap-5">
-          {SIGNAL_KEYS.map((key) => {
-            const spec = SIGNALS.find((s) => s.key === key);
-            if (!spec) return null;
-            const Icon = ICONS[spec.key];
+          {LISTED.map((key) => {
+            const spec = key === "description" ? null : SIGNALS.find((item) => item.key === key);
+            const Icon = listedIcon(key);
             return (
-              <div key={spec.key} className="flex flex-col gap-3">
+              <div key={key} className="flex flex-col gap-3">
                 <p className="flex items-center gap-2 text-sm font-semibold">
                   <Icon className="text-primary h-4 w-4 shrink-0" />
-                  {spec.label}
+                  {listedLabel(key)}
                 </p>
-                {spec.fields.map((field) => (
+                {spec?.fields.map((field) => (
                   <label key={field.key} className="flex flex-col gap-2">
                     <span className="text-sm font-medium">{field.label}</span>
                     <input
