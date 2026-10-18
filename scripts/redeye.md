@@ -18,7 +18,7 @@ The unit of work is the QUEUE, not the issue. A merge does not finish you; it pu
 1. `deno task boot` — take the top unblocked issue whose footprint is disjoint from every live claim.
 2. `deno task worktree add MESITA-<id> <slug>` (a cloud clone: `--adopt .`) · In Progress · paste the claim line.
 3. Read the domain's Docs page. Commit and push every change the moment it is made; nothing is batched.
-4. `deno task worktree pr` → `gh pr ready` → checks → `gh pr merge --squash` the moment they pass. Healthy is UNSTABLE, not green; a path-filtered check reporting SKIPPED is mergeable.
+4. `deno task worktree pr` → `gh pr ready` → checks → `gh pr merge --squash` the moment they pass. A path-filtered check reporting SKIPPED is mergeable.
 5. Rewrite the Docs page. Close the issue. `deno task worktree remove`.
 6. Back to 1, same breath. Announcing the loop is not running it.
 

@@ -15,6 +15,9 @@ import { parse as parseYaml } from "@std/yaml";
 import {
   budgetsFor,
   buildAllowedFiles,
+  CARD_BUDGETS,
+  cardBudgetCheck,
+  ceilingFor,
   CHAT_INSTRUCTIONS_WORD_BUDGET,
   REDEYE_WORD_BUDGET,
   countWords,
@@ -28,10 +31,8 @@ import {
   FORBIDDEN_ASSET_EXTS,
   FORBIDDEN_ASSET_GLOBS,
   forbiddenAssetMessage,
-  GITHUB_CARD_BUDGETS,
-  githubCardBudgetCheck,
   groupSkillDocs,
-  isGithubMarkdown,
+  isToolingCard,
   MD_ALLOW_DIRS,
   MD_SCAN_GLOBS,
   missingStampMessage,
@@ -45,7 +46,7 @@ import {
   SKILLS_DIR,
   START,
   TARGETS,
-  unbudgetedGithubCardMessage,
+  unbudgetedCardMessage,
   type Target,
 } from "./sync-rules.ts";
 
@@ -147,25 +148,31 @@ Deno.test("budgetsFor flags an over-budget ROOT tail", () => {
   assertEquals(b.over, true);
 });
 
-Deno.test("every explicit ceiling is justified by a file that actually needs it", async () => {
+Deno.test("every ceiling above the default belongs to a file that needs it", async () => {
   // Guards the ratchet: a raised ceiling with no file near it is a budget that
   // was bumped speculatively, which is the accretion this gate exists to stop.
+  // A ceiling below the default is always allowed: tighter never needs a reason.
   for (const target of TARGETS) {
-    if (target.budget === undefined) continue;
+    if (target.budget === undefined || target.budget <= DEFAULT_PACKAGE_WORD_BUDGET) continue;
     const text = await Deno.readTextFile(join(target.dir, "CLAUDE.md"));
     const [b] = budgetsFor(target, text);
     assert(
       b.words > DEFAULT_PACKAGE_WORD_BUDGET,
-      `${target.label} carries an explicit ceiling of ${target.budget} but is only ${b.words} words — drop the override`,
+      `${target.label} carries a ceiling of ${target.budget} above the default ${DEFAULT_PACKAGE_WORD_BUDGET} but is only ${b.words} words; drop the override`,
     );
   }
 });
 
-Deno.test("overBudgetMessage prescribes a rewrite, not a trim", () => {
-  const msg = overBudgetMessage({ label: "x/CLAUDE.md", words: 900, budget: 450, over: true });
-  assertStringIncludes(msg, "900 words > 450");
-  assertStringIncludes(msg, "rewrite it from scratch");
-  assertStringIncludes(msg, "don't trim around the edges");
+Deno.test("ceilingFor gives 10% headroom, never less than 20 words, in whole words", () => {
+  assertEquals(ceilingFor(100), 120, "+20 beats +10%");
+  assertEquals(ceilingFor(200), 220, "the two meet at 200, with no float rounding up to 221");
+  assertEquals(ceilingFor(300), 330);
+  assertEquals(ceilingFor(301), 332, "a fractional tenth rounds up");
+});
+
+Deno.test("overBudgetMessage names the file, the count and both fixes", () => {
+  const msg = overBudgetMessage({ label: "apps/web-admin/CLAUDE.md", words: 211, budget: 200, over: true });
+  assertEquals(msg, "apps/web-admin/CLAUDE.md: 211/200 words; cut, or raise its row in sync-rules.ts with a reason");
 });
 
 // ── Skill budgets — the surface `.claude/` used to hide from the ruler ───────
@@ -186,7 +193,7 @@ Deno.test("skillNameOf names only files INSIDE a skill directory", () => {
   assertEquals(skillNameOf(`${SKILLS_DIR}doctor/SKILL.md`), "doctor");
   assertEquals(skillNameOf(`${SKILLS_DIR}doctor/references/queries.md`), "doctor");
   assertEquals(skillNameOf(`${SKILLS_DIR}loose.md`), null, "not in a skill dir");
-  assertEquals(skillNameOf(".claude/launch.json"), null);
+  assertEquals(skillNameOf(".claude/settings.json"), null);
   assertEquals(skillNameOf("apps/web-admin/CLAUDE.md"), null);
 });
 
@@ -270,34 +277,37 @@ Deno.test("every shipped skill is within budget", async () => {
   }
 });
 
-// ── GitHub cards (MESITA-1775) ─────────────────────────────────────────────
+// ── Tooling cards — every allowlisted markdown file owes a ceiling ───────────
 
-Deno.test("isGithubMarkdown is root .github/ only, markdown extensions only", () => {
-  assertEquals(isGithubMarkdown(".github/README.md"), true);
-  assertEquals(isGithubMarkdown(".github/PULL_REQUEST_TEMPLATE.md"), true);
-  assertEquals(isGithubMarkdown(".github/workflows/rules.yml"), false);
-  assertEquals(isGithubMarkdown("apps/web-admin/.github/README.md"), false);
-  assertEquals(isGithubMarkdown("README.md"), false);
+Deno.test("isToolingCard is every root tooling dir's markdown, except a skill's", () => {
+  assertEquals(isToolingCard(".github/README.md"), true);
+  assertEquals(isToolingCard(".github/PULL_REQUEST_TEMPLATE.md"), true);
+  assertEquals(isToolingCard(".cursor/rules/autonomy.mdc"), true, "the hole this closes");
+  assertEquals(isToolingCard(".codex/notes.md"), true);
+  assertEquals(isToolingCard(".claude/notes.md"), true);
+  assertEquals(isToolingCard(`${SKILLS_DIR}doctor/SKILL.md`), false, "skills are budgeted per directory");
+  assertEquals(isToolingCard(".github/workflows/rules.yml"), false);
+  assertEquals(isToolingCard("apps/web-admin/.github/README.md"), false);
+  assertEquals(isToolingCard("README.md"), false);
 });
 
-Deno.test("githubCardBudgetCheck uses the named ceiling and trips one word over", () => {
-  assertEquals(githubCardBudgetCheck(".github/README.md", 150).over, false);
-  assertEquals(githubCardBudgetCheck(".github/README.md", 151).over, true);
-  assertEquals(githubCardBudgetCheck(".github/SECURITY.md", 100).over, false);
-  assertEquals(githubCardBudgetCheck(".github/PULL_REQUEST_TEMPLATE.md", 61).over, true);
-  assertEquals(githubCardBudgetCheck(".github/UNKNOWN.md", 1).over, true);
-  assertEquals(githubCardBudgetCheck(".github/UNKNOWN.md", 1).budget, 0);
+Deno.test("cardBudgetCheck uses the named ceiling and trips one word over", () => {
+  assertEquals(cardBudgetCheck(".github/README.md", 150).over, false);
+  assertEquals(cardBudgetCheck(".github/README.md", 151).over, true);
+  assertEquals(cardBudgetCheck(".github/SECURITY.md", 100).over, false);
+  assertEquals(cardBudgetCheck(".github/PULL_REQUEST_TEMPLATE.md", 61).over, true);
+  assertEquals(cardBudgetCheck(".cursor/UNKNOWN.md", 1).over, true);
+  assertEquals(cardBudgetCheck(".cursor/UNKNOWN.md", 1).budget, 0);
 });
 
-Deno.test("unbudgetedGithubCardMessage names the file and the table", () => {
-  const msg = unbudgetedGithubCardMessage(".github/copilot-instructions.md");
-  assertStringIncludes(msg, "UNBUDGETED GITHUB CARD");
-  assertStringIncludes(msg, ".github/copilot-instructions.md");
-  assertStringIncludes(msg, "GITHUB_CARD_BUDGETS");
+Deno.test("unbudgetedCardMessage names the file and the table", () => {
+  const msg = unbudgetedCardMessage(".cursor/rules/new-rule.mdc");
+  assertEquals(msg, ".cursor/rules/new-rule.mdc: no budget; add its CARD_BUDGETS row in sync-rules.ts (ceilingFor its words) and its Markdowns row");
 });
 
-Deno.test("every GITHUB_CARD_BUDGETS path is a shipped file within its ceiling", async () => {
-  for (const [path, budget] of Object.entries(GITHUB_CARD_BUDGETS)) {
+Deno.test("every CARD_BUDGETS path is a shipped tooling card within its ceiling", async () => {
+  for (const [path, budget] of Object.entries(CARD_BUDGETS)) {
+    assert(isToolingCard(path), `${path} is not a tooling card; its row belongs elsewhere`);
     const text = await Deno.readTextFile(join(repoRoot, path));
     const words = countWords(text);
     assert(

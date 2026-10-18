@@ -48,15 +48,21 @@ export const AGENTS_NOTICE =
 // Budgeting only the block would leave the tail as the one unmetered surface
 // in the tree, which is exactly where accretion would migrate next.
 //
-// Ceilings are PER PACKAGE (see TARGETS), not one number. The surfaces differ
-// in size: a single ceiling loose enough for supabase hands web-admin ~300
+// Ceilings are PER FILE (see TARGETS), not one number. The surfaces differ in
+// size: a single ceiling loose enough for supabase hands web-landing ~200
 // words of headroom, which stops forcing anything there.
-// Each ceiling is ~5% above what that package needs after a from-scratch
-// rewrite, so the next appended clause trips the gate instead of sliding under
-// it. Raising one is a visible line in the table below — that visibility is
-// the whole point; a budget nobody sees being raised is not a budget.
+//
+// Every ceiling is ceilingFor(words) of its file at its last from-scratch
+// rewrite: 10% headroom, never less than 20 words. A one-line fix fits; the
+// next appended paragraph trips the gate instead of sliding under it. Raising
+// one is a visible line in a table here with its reason in a comment; a budget
+// nobody sees being raised is not a budget.
+export function ceilingFor(words: number): number {
+  return Math.max(Math.ceil((words * 11) / 10), words + 20);
+}
+
 export const QUICKSTART_WORD_BUDGET = 700;
-export const DEFAULT_PACKAGE_WORD_BUDGET = 450;
+export const DEFAULT_PACKAGE_WORD_BUDGET = 220;
 
 // ── Chat boot card budget (MESITA-1762) ─────────────────────────────────────
 // scripts/chat-instructions.md is pasted verbatim into a chat project's
@@ -70,44 +76,44 @@ export const CHAT_INSTRUCTIONS_WORD_BUDGET = 250;
 // agent is handed it by `deno task redeye`, or by the SessionStart hook in a
 // cloud clone, and obeys it. It is the autonomy law — asking is prohibited, the queue is the unit
 // of work, the claim survives the bypass — and nothing else. It runs longer
-// It runs longer than the chat card (250) because it carries two things that
+// than the chat card because it carries two things that
 // card does not: a loop, and a platform axis — local or cloud, four agents. It
 // stays shorter than the quickstart because it states no product fact: every
 // line an agent could instead read in Rules, Docs or a CLAUDE.md belongs there,
 // and a line that drifts from them is worse than a line that is missing.
 export const REDEYE_WORD_BUDGET = 500;
 
-// ── GitHub cards (Markdowns › GitHub cards, MESITA-1775) ───────────────────
-// `.github/` is allowlisted wholesale (MD_ALLOW_DIRS), so these files were
-// allowed and therefore never measured — the same hole skills used to be.
-// The allowlist decides what may exist; these ceilings decide how big each
-// GitHub card may get. Ceilings are the Markdowns Planned row (CONTRIBUTING
-// is Linear Done, not on that table at ship time). Raising one is a visible
-// line here. An unlisted `.github/*.md` fails until it gets a row.
-export const GITHUB_DIR = ".github/";
-export const GITHUB_CARD_BUDGETS: Record<string, number> = {
+// ── Tooling cards (Markdowns) ───────────────────────────────────────────────
+// The tooling dirs are allowlisted wholesale (MD_ALLOW_DIRS), and an allowed
+// file nobody measures grows unseen. So every markdown file in them owes a row
+// here, except a skill's, which its directory's skill budget measures. The
+// allowlist decides what may exist; these ceilings decide how big each card
+// may get. An unlisted card fails until it gets a row.
+export const CARD_BUDGETS: Record<string, number> = {
   ".github/README.md": 150,
   ".github/SECURITY.md": 100,
   ".github/CONTRIBUTING.md": 100,
   ".github/PULL_REQUEST_TEMPLATE.md": 60,
+  ".cursor/rules/autonomy.mdc": 128,
 };
 
-export function isGithubMarkdown(path: string): boolean {
-  return path.startsWith(GITHUB_DIR) && /\.(md|MD|mdx|mdc)$/.test(path);
+/** A markdown file in a tooling dir that is not part of a skill: it owes a CARD_BUDGETS row. */
+export function isToolingCard(path: string): boolean {
+  return MD_ALLOW_DIRS.some((d) => path.startsWith(d)) && /\.(md|MD|mdx|mdc)$/.test(path) &&
+    skillNameOf(path) === null;
 }
 
-export function githubCardBudgetCheck(path: string, words: number): BudgetCheck {
-  const budget = GITHUB_CARD_BUDGETS[path];
+export function cardBudgetCheck(path: string, words: number): BudgetCheck {
+  const budget = CARD_BUDGETS[path];
   if (budget === undefined) {
     return { label: path, words, budget: 0, over: true };
   }
   return { label: path, words, budget, over: words > budget };
 }
 
-export function unbudgetedGithubCardMessage(path: string): string {
-  return `UNBUDGETED GITHUB CARD: ${path} — add a GITHUB_CARD_BUDGETS line ` +
-    `(Markdowns › GitHub cards); an unmeasured .github markdown file is the ` +
-    `same hole skills used to be.`;
+export function unbudgetedCardMessage(path: string): string {
+  return `${path}: no budget; add its CARD_BUDGETS row in sync-rules.ts ` +
+    `(ceilingFor its words) and its Markdowns row`;
 }
 
 // ── Skill budgets (Rules §0) ────────────────────────────────────────────────
@@ -117,7 +123,7 @@ export function unbudgetedGithubCardMessage(path: string): string {
 //
 // A skill is a PROCEDURE, not law: ordered steps, queries, thresholds, report
 // shapes. It legitimately runs longer than a package CLAUDE.md, so it gets its
-// own default rather than being crushed into 450.
+// own default rather than being crushed into a card's.
 //
 // The budget is per SKILL DIRECTORY, summed over every tracked markdown file in
 // it. Budgeting SKILL.md alone would make the cure for an over-budget skill
@@ -177,9 +183,9 @@ export const MD_SCAN_GLOBS = ["*.md", "*.MD", "*.mdx", "*.mdc"];
 // parked there is invisible to every other agent. Package rules belong in that
 // package's CLAUDE.md, which every platform loads through its own dialect.
 //
-// Allowlisted ≠ unmeasured: `.claude/skills/*` still owes a word budget
-// (SKILL_BUDGETS above). The allowlist decides what may exist, the budget
-// decides how big it may get.
+// Allowlisted ≠ unmeasured: a skill owes its directory's word budget
+// (SKILL_BUDGETS above), every other file here a CARD_BUDGETS row. The
+// allowlist decides what may exist, the budget decides how big it may get.
 export const MD_ALLOW_DIRS = [".claude/", ".cursor/", ".codex/", ".github/"];
 
 // ── Forbidden asset extensions (MESITA-1077) ───────────────────────────────
@@ -225,33 +231,20 @@ const repoRoot = dirname(dirname(fromFileUrl(import.meta.url)));
 
 export type Target = { label: string; dir: string; quickstart: boolean; budget?: number };
 
-// `budget` omitted = DEFAULT_PACKAGE_WORD_BUDGET. Only surfaces that genuinely
-// cannot state their law in 450 words carry an explicit ceiling, and each one
-// names why. Bumping a number here without a from-scratch rewrite first is the
-// accretion this gate exists to stop.
+// `budget` omitted = DEFAULT_PACKAGE_WORD_BUDGET, the ceiling a new package's
+// card starts from. A card is law only: the rules an agent needs before its
+// first edit that no test enforces, plus a one-line pointer to each test that
+// pins the rest. Product description lives in Notion Docs. Every row below is
+// ceilingFor() of the 2026-10-18 rewrite (MESITA-2394); one above the default
+// names why.
 export const TARGETS: Target[] = [
-  { label: "root", dir: repoRoot, quickstart: true },
-  { label: "apps/web-admin", dir: join(repoRoot, "apps", "web-admin"), quickstart: false },
-  // Widest consumer surface, and the budget is an override of the 450 default
-  // for that reason: four tabs, SEVEN Discover modes, three Inbox sections,
-  // the wallet, the seven-step ticket journey, and two section-nav looks.
-  //
-  // 600 -> 650 -> 680, both on 2026-09-01. The first raise covered Discover
-  // growing its own route tree; the second covers Pay becoming a container
-  // with a section row and Discover's five modes all going live with a shared
-  // deck provider. Each time the test was the same and each time it was met:
-  // more product to describe, not more words to say it in — three compression
-  // passes ran first, and the words that remained were law.
-  //
-  // TWO RAISES IN ONE DAY IS THE SIGNAL, THOUGH. This file is trying to hold
-  // the whole consumer product's law on one page. The next raise should not be
-  // a raise: move the ticket-journey and Classes paragraphs to Notion Docs >
-  // Apps, which is where deep knowledge is supposed to live, and leave this
-  // file the routing and primitive rules an agent needs before its first edit.
-  { label: "apps/web-consumer", dir: join(repoRoot, "apps", "web-consumer"), quickstart: false, budget: 680 },
-  { label: "apps/web-landing", dir: join(repoRoot, "apps", "web-landing"), quickstart: false },
-  // Carries the schema invariants (security_invoker, generated name, reset registry).
-  { label: "supabase", dir: join(repoRoot, "supabase"), quickstart: false, budget: 725 },
+  { label: "root", dir: repoRoot, quickstart: true, budget: 218 },
+  { label: "apps/web-admin", dir: join(repoRoot, "apps", "web-admin"), quickstart: false, budget: 205 },
+  // The widest app: the route contract, the overlay primitives and the auth wall.
+  { label: "apps/web-consumer", dir: join(repoRoot, "apps", "web-consumer"), quickstart: false, budget: 297 },
+  { label: "apps/web-landing", dir: join(repoRoot, "apps", "web-landing"), quickstart: false, budget: 104 },
+  // The deploy path, the ACL and the RLS rules no test pins.
+  { label: "supabase", dir: join(repoRoot, "supabase"), quickstart: false, budget: 351 },
 ];
 
 /** Repo-relative paths every tracked markdown file is checked against. */
@@ -305,9 +298,9 @@ export type BudgetCheck = { label: string; words: number; budget: number; over: 
 export function budgetsFor(target: Target, text: string): BudgetCheck[] {
   const budget = target.budget ?? DEFAULT_PACKAGE_WORD_BUDGET;
   const measured = target.quickstart ? rootTail(text) : text;
-  const suffix = target.quickstart ? "/CLAUDE.md tail" : "/CLAUDE.md";
+  const label = target.quickstart ? "CLAUDE.md tail" : `${target.label}/CLAUDE.md`;
   const words = countWords(measured);
-  return [{ label: `${target.label}${suffix}`, words, budget, over: words > budget }];
+  return [{ label, words, budget, over: words > budget }];
 }
 
 // ── Skills: which files a skill budget measures ─────────────────────────────
@@ -359,9 +352,7 @@ export function skillBudgetCheck(name: string, words: number, budgets: Record<st
 }
 
 export function overBudgetMessage({ label, words, budget }: BudgetCheck): string {
-  return `OVER BUDGET: ${label} — ${words} words > ${budget} — ` +
-    `rewrite it from scratch (present law only, ` +
-    `no history trails); don't trim around the edges.`;
+  return `${label}: ${words}/${budget} words; cut, or raise its row in sync-rules.ts with a reason`;
 }
 
 async function main(): Promise<void> {
@@ -514,15 +505,15 @@ async function main(): Promise<void> {
         }
       }
 
-      // GitHub cards: same hole — `.github/` is allowlisted wholesale.
-      for (const path of tracked.filter(isGithubMarkdown)) {
-        if (!(path in GITHUB_CARD_BUDGETS)) {
-          console.error(unbudgetedGithubCardMessage(path));
+      // Every other file in a tooling dir owes its own row.
+      for (const path of tracked.filter(isToolingCard)) {
+        if (!(path in CARD_BUDGETS)) {
+          console.error(unbudgetedCardMessage(path));
           failed++;
           continue;
         }
         const words = countWords(await Deno.readTextFile(join(repoRoot, path)));
-        const b = githubCardBudgetCheck(path, words);
+        const b = cardBudgetCheck(path, words);
         if (b.over) {
           console.error(overBudgetMessage(b));
           failed++;

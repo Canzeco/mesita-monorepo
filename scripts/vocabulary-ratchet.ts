@@ -1,7 +1,7 @@
 // Docs › Vocabulary ratchet — banned tokens in human-facing strings and cards.
 // Run via deno task test:rules (vocabulary-ratchet.test.ts).
 
-import { extname, join, relative } from "@std/path";
+import { join, relative } from "@std/path";
 
 export type Violation = { file: string; line: number; token: string; excerpt: string };
 
@@ -30,8 +30,6 @@ const CARD_PATHS = [
   "apps/web-landing/CLAUDE.md",
   "supabase/CLAUDE.md",
 ] as const;
-
-const EF_ROOT = "supabase/supabase/functions";
 
 const SKIP_FILE = /\.(test|spec)\.(ts|tsx)$/;
 const RATCHET_SELF = /vocabulary-ratchet/;
@@ -132,6 +130,8 @@ function isCarvedOut(token: string, text: string, file: string): boolean {
         /\bCRENUP_/.test(text);
     case "Active":
       return /\bOnly active places\b/.test(text);
+    case "membership":
+      return /\bfamily membership\b/i.test(text);
     case "Listed":
       return false;
     case "Intake":
@@ -172,6 +172,11 @@ function scanUiFile(repoRoot: string, relPath: string): Violation[] {
   } catch {
     return [];
   }
+  return scanSource(relPath, source);
+}
+
+/** Every banned token in one UI file's human-facing strings. */
+export function scanSource(relPath: string, source: string): Violation[] {
   const violations: Violation[] = [];
   const strings = extractHumanStrings(source);
 
@@ -212,6 +217,9 @@ function scanUiFile(repoRoot: string, relPath: string): Violation[] {
     pushIf("guest account", /guest account/i, text, index);
     pushIf("member code", /member code/i, text, index);
     pushIf("ambiance", /\bambiance\b/i, text, index);
+    // Second Stage words (Docs › Vocabulary): a family's members are the one allowed membership.
+    pushIf("promo", /\bpromos?\b/i, text, index);
+    pushIf("membership", /\bmemberships?\b/i, text, index);
     pushIf("Agent X", /Agent X/i, text, index);
     pushIf("Agent Y", /Agent Y/i, text, index);
     pushIf("Intaker", /\bIntaker\b/, text, index);
