@@ -208,14 +208,8 @@ verify_jwt = false
 [functions.consumer-web-ask-memo]
 verify_jwt = false
 
-# Home › Scroll deck. Admits ready listed places, bands them open-and-near
-# first (never empties on open-now or radius, MESITA-2047), then ranks each
-# band with Places Lineup under the Scroll column. web-consumer's Home deck
-# calls it. JWT still required.
-[functions.consumer-web-recommend-swipe]
-verify_jwt = true
-
-# Home › Catalog rails. JWT like swipe. Reads discovery_config.catalog.
+# Home › Feed rails, the Area pipeline's Catalog view. JWT required. Reads
+# discovery_config.map, catalog and params.
 [functions.consumer-web-list-catalog]
 verify_jwt = true
 

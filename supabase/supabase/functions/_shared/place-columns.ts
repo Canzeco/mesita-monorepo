@@ -120,7 +120,7 @@ const PLACE_CARD_EXCLUDED_COLUMNS = new Set([
 
 // The real card projection: every public column EXCEPT the four heavy
 // jsonb ones — not a hand-picked subset. Any consumer surface returning
-// MORE THAN ONE place per request (list, search, swipe/recommend) should
+// MORE THAN ONE place per request (list, search, the Feed) should
 // select this, not PLACE_PUBLIC_COLUMNS; a single-place detail read
 // (consumer-web-get-place) still wants the full projection, heavy columns
 // included.

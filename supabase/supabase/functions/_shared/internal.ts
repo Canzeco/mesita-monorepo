@@ -118,7 +118,7 @@ export function requireInternalCaller(
 // headers without supabase-js layering its own auth on top.
 export async function invokeInternalCaller<T = unknown>(
   env: EFEnv,
-  callerName: string, // who the product caller is, e.g. "consumer-web-recommend-swipe"
+  callerName: string, // who the product caller is, e.g. "consumer-web-create-reservation"
   internalName: string, // who we're calling, e.g. "enricher-edgefunc-store-place-images"
   body: unknown,
 ): Promise<

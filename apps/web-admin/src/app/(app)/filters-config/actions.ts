@@ -44,12 +44,10 @@ export type DiscoverySlice =
   | "mapFloors"
   | "nameFast"
   | "nameDeep"
-  | "swipe"
   // The Chat Agent's prompt (MESITA-2303), on the Deep box since MESITA-2327.
   | "chat"
-  // The Area box's Proximity half distance and Popularity reference, and the
-  // Deep box (MESITA-2327). Narrow on purpose: `params` also carries the
-  // retired deck's numbers, which no box may overwrite.
+  // The Area box's Proximity half distance and Popularity reference: all of
+  // `params` since the deck's numbers retired (MESITA-2328).
   | "areaSignals"
   | "deep"
   // Name's Locations switch and the Feed's places per row (MESITA-2319).
@@ -69,10 +67,8 @@ export async function updateDiscoveryConfig(
   const next: DiscoveryConfig = {
     ...live.config,
     general: keys.has("general") ? config.general : live.config.general,
-    // The operator floor for the listed Mesita pool — Home rails, Pay / bbox,
-    // Swipe. Until MESITA-1667 this slice had no member here at all, so it
-    // rode through every save on `...live.config` and no console could reach
-    // it while `applyDiscoveryFilters` enforced it on every one of those lanes.
+    // The operator floor for the listed Mesita pool (consumer-web-list-places'
+    // listed lanes). No box edits it; it rides through every Save.
     filters: keys.has("filters") ? config.filters : live.config.filters,
     map: {
       ...(keys.has("map") ? config.map : live.config.map),
@@ -90,28 +86,7 @@ export async function updateDiscoveryConfig(
       idleSec: keys.has("nameIdle") ? config.name.idleSec : live.config.name.idleSec,
       admin: keys.has("nameAdmin") ? config.name.admin : live.config.name.admin,
     },
-    swipe: keys.has("swipe")
-      ? { ...config.swipe, savedAt: new Date().toISOString() }
-      : live.config.swipe,
-    // No box edits weights any more (MESITA-2327): the stored vectors ride
-    // through untouched for the retired deck.
-    weightsByMode: live.config.weightsByMode,
-    weights: live.config.weights,
-    // Only the Area pipeline's two numbers move; every other param stands.
-    params: keys.has("areaSignals")
-      ? {
-        ...live.config.params,
-        proximity: {
-          ...live.config.params.proximity,
-          halfDistanceKm: config.params.proximity.halfDistanceKm,
-        },
-        popularity: {
-          ...live.config.params.popularity,
-          referenceRating: config.params.popularity.referenceRating,
-          referenceReviews: config.params.popularity.referenceReviews,
-        },
-      }
-      : live.config.params,
+    params: keys.has("areaSignals") ? config.params : live.config.params,
     deep: keys.has("deep") ? config.deep : live.config.deep,
     chat: keys.has("chat") ? config.chat : live.config.chat,
     catalog: {

@@ -71,8 +71,9 @@ Deno.test("an old blob with no Area params reads the provisional defaults (MESIT
   assertEquals(cfg.params.proximity.halfDistanceKm, 4.1);
   assertEquals(cfg.params.popularity.referenceRating, 4.5);
   assertEquals(cfg.params.popularity.referenceReviews, 1000);
-  // The retired deck's numbers still parse; the Catalog ranking does not.
-  assertEquals(cfg.params.proximity.maxKm, 25);
+  // The retired deck's numbers and the Catalog ranking are dropped (MESITA-2328).
+  assertEquals("maxKm" in cfg.params.proximity, false);
+  assertEquals("confidence" in cfg.params.popularity, false);
   assertEquals("ranking" in cfg.catalog, false);
 });
 

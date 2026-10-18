@@ -113,23 +113,26 @@ type SectionCase = {
 
 const CASES: Record<string, SectionCase> = {
   discovery: {
-    valid: { config: { weights: { proximity: 2 } } },
+    // The Area box's Save (MESITA-2327): Proximity's half distance.
+    valid: { config: { params: { proximity: { halfDistanceKm: 6 } } } },
     assertSaved: (saved) => {
       const c = saved.config as Row;
-      assertEquals((c.weights as Row).proximity, 2);
-      assert(c.params && typeof c.params === "object", "params missing");
+      assertEquals(((c.params as Row).proximity as Row).halfDistanceKm, 6);
+      assert(c.map && typeof c.map === "object", "map missing");
     },
-    // NO LONGER DROPPED (MESITA-1858): the weights map is ADDITIVE, so an
-    // unknown key is PRESERVED rather than deleted — that is
-    // the mitigation for the web-admin-ships-before-the-EFs deploy window.
-    // It is still coerced, not stored as sent: 9 lands clamped at WEIGHT_MAX,
-    // and an unknown key binds to no signal because `blend` iterates
-    // SIGNAL_KEYS. Preservation is inert storage, not a live weight.
-    invalid: { config: { weights: { a_signal_that_was_retired: 9 } } },
+    // Coerced, not stored as sent: 999 km lands clamped at the 50 km ceiling,
+    // and a retired key (the Swipe deck's `weights`, MESITA-2328) is dropped.
+    invalid: {
+      config: {
+        params: { proximity: { halfDistanceKm: 999 } },
+        weights: { proximity: 2 },
+      },
+    },
     refuse: {
       clamped: (saved) => {
-        const weights = (saved.config as Row).weights as Row;
-        assertEquals(weights.a_signal_that_was_retired, 4);
+        const c = saved.config as Row;
+        assertEquals(((c.params as Row).proximity as Row).halfDistanceKm, 50);
+        assertEquals("weights" in c, false);
       },
     },
   },

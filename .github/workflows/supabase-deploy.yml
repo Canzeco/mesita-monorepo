@@ -278,6 +278,9 @@ jobs:
             # The Signals subpage's graphics; Discovery is one page of
             # pipeline boxes now (MESITA-2327).
             admin-web-preview-signals
+            # The Swipe deck, no caller since MESITA-2166; its seven-signal
+            # library went with it (MESITA-2328).
+            consumer-web-recommend-swipe
           )
           listed=$(supabase functions list --project-ref yjalywfzdelacdzccpgb)
           echo "$listed"

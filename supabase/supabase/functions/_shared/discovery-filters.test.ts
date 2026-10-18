@@ -7,10 +7,8 @@ import {
 import {
   DISCOVERY_DEFAULTS,
   normalizeDiscoveryConfig,
-  WIRED_ENGINE_KEYS,
   type DiscoveryFilters,
 } from "./discovery-config.ts";
-import { SIGNAL_KEYS } from "./discovery-signals.ts";
 
 /** Records every predicate instead of talking to PostgREST. */
 type Call = { op: string; col: string; val: unknown };
@@ -170,120 +168,65 @@ Deno.test("the trim keeps a row with no geo rather than silently dropping it", (
   assertEquals(trimToRadius(rows, latOf, lngOf, 5, CDMX).map((r) => r.id), ["unlocated"]);
 });
 
-// ── The config, now that it carries four sections ────────────────────────────
+// ── The config ───────────────────────────────────────────────────────────────
 
-Deno.test("a blob from before this change reads back with the new sections defaulted", () => {
-  // Exactly what the previous migration stored: weights + slotting only.
+Deno.test("a blob from before this change reads back with every live section defaulted", () => {
+  // What an early migration stored: weights + slotting only. Both retired.
   const old = {
     weights: { proximity: 2, timing: 1, category: 1, popularity: 1, summary: 1, randomness: 0.35 },
     slotting: { enabled: true, everyNth: 7 },
   };
   const cfg = normalizeDiscoveryConfig(old);
-  // The operator's own values survive...
-  assertEquals(cfg.weights.proximity, 2);
-  // ...the retired Summary exponent as inert storage only (MESITA-2144): the
-  // weights map is additive, and no signal key binds it any more...
-  assertEquals((cfg.weights as unknown as Record<string, number>).summary, 1);
-  assertEquals((SIGNAL_KEYS as readonly string[]).includes("summary"), false);
-  assertEquals(cfg.weights.name, 1);
-  assertEquals(cfg.weights.enriched, 1);
-  assertEquals("slotting" in cfg, false);
-  // ...and the new sections arrive at their defaults rather than undefined.
+  const keys = cfg as unknown as Record<string, unknown>;
+  assertEquals("weights" in keys, false);
+  assertEquals("slotting" in keys, false);
+  // ...and the live sections arrive at their defaults rather than undefined.
   assertEquals(cfg.filters, DISCOVERY_DEFAULTS.filters);
-  assertEquals(cfg.engines, DISCOVERY_DEFAULTS.engines);
   assertEquals(cfg.params, DISCOVERY_DEFAULTS.params);
   assertEquals(cfg.catalog, DISCOVERY_DEFAULTS.catalog);
   assertEquals(cfg.map, DISCOVERY_DEFAULTS.map);
   assertEquals(cfg.name, DISCOVERY_DEFAULTS.name);
   assertEquals(cfg.chat, DISCOVERY_DEFAULTS.chat);
-  assertEquals(cfg.swipe, DISCOVERY_DEFAULTS.swipe);
 });
 
-Deno.test("swipe knobs default on an old blob and clamp", () => {
-  const missing = normalizeDiscoveryConfig({ weights: {}, slotting: {} });
-  assertEquals(missing.swipe, DISCOVERY_DEFAULTS.swipe);
-  const clamped = normalizeDiscoveryConfig({
-    swipe: {
-      radiusKm: 99,
-      closingBufferMin: -4,
-      minReviews: -1,
-      savedAt: "not-a-date",
-    },
-  });
-  assertEquals(clamped.swipe.radiusKm, 50);
-  assertEquals(clamped.swipe.closingBufferMin, 0);
-  assertEquals(clamped.swipe.minReviews, 0);
-  assertEquals(clamped.swipe.savedAt, null);
-  assertEquals(
-    normalizeDiscoveryConfig({ swipe: { savedAt: "2026-08-26T18:00:00.000Z" } }).swipe.savedAt,
-    "2026-08-26T18:00:00.000Z",
-  );
-});
-
-// THE FIVE UNREAD RANKING KNOBS ARE DELETED (MESITA-1859), not merely
-// unrendered. A blob that still carries them must come back WITHOUT them, or
-// `weightProximity: 0.7` sits in jsonb next to a live per-mode Proximity
-// exponent and the next reader has to work out which one the deck obeys.
-Deno.test("the retired swipe ranking knobs do not survive a normalize", () => {
-  const swipe = normalizeDiscoveryConfig({
-    swipe: {
-      radiusKm: 7,
-      weightProximity: 0.7,
-      starsExponent: 1.5,
-      logDivisor: 10,
-      partnerBias: { none: 1, dominant: 2 },
-      randomnessMax: 1.3,
-    },
-  }).swipe as Record<string, unknown>;
-  for (
-    const dead of [
-      "weightProximity",
-      "starsExponent",
-      "logDivisor",
-      "partnerBias",
-      "randomnessMax",
-    ]
-  ) {
-    assertEquals(dead in swipe, false, dead);
+// THE SWIPE DECK RETIRED (MESITA-2328), and every key only it read went with
+// it. A blob that still carries them must come back WITHOUT them, or the next
+// Save writes them straight back. `swipe` is dropped, never renamed.
+Deno.test("the deck's slices do not survive a normalize: swipe, engines, weights, weightsByMode", () => {
+  const cfg = normalizeDiscoveryConfig({
+    swipe: { radiusKm: 7, closingBufferMin: 30, minReviews: 1, savedAt: null },
+    engines: { swipe: { ranked: false } },
+    weights: { proximity: 1.5, mesita_level: 2, partnership: 2 },
+    weightsByMode: { swipe: { timing: 1.5 }, map: { proximity: 0.5 } },
+  }) as unknown as Record<string, unknown>;
+  for (const dead of ["swipe", "engines", "weights", "weightsByMode"]) {
+    assertEquals(dead in cfg, false, dead);
   }
-  // The admission knobs beside them are untouched.
-  assertEquals(swipe.radiusKm, 7);
 });
 
-Deno.test("signal params clamp and an old blob without params stays default-shaped", () => {
+// What the live blob still stores under `params` (2026-10-18): the deck's
+// shape numbers on seven bags. Only the Area pipeline's three numbers are
+// read now; the rest must not come back, or the next Save writes it back.
+Deno.test("the deck's param bags and numbers do not survive a normalize", () => {
   const cfg = normalizeDiscoveryConfig({
     params: {
-      proximity: { maxKm: 999, kneeKm: 0, missingGeo: 2 },
-      popularity: { confidence: -3 },
-    },
-  });
-  assertEquals(cfg.params.proximity.maxKm, 200);
-  assertEquals(cfg.params.proximity.kneeKm, 0.1);
-  assertEquals(cfg.params.proximity.missingGeo, 1);
-  assertEquals(cfg.params.popularity.confidence, 1);
-  assertEquals(cfg.params.name, DISCOVERY_DEFAULTS.params.name);
-});
-
-// What the live blob still stores under `params` (MESITA-2144): the retired
-// Summary bag, Name's `unembedded` at its own fallback, and the empty
-// `mesita_level` bag. None of it may come back from a normalize, or the next
-// Save writes it straight back over the migration that strips it.
-Deno.test("the retired param bags and Name's unembedded do not survive a normalize", () => {
-  const cfg = normalizeDiscoveryConfig({
-    params: {
+      name: {},
+      timing: { dawn: 0.55, openShare: 0.7, closedFloor: 0.2 },
+      category: { miss: 0.1, exact: 1, family: 0.55 },
+      proximity: { maxKm: 25, kneeKm: 1, missingGeo: 0.35, halfDistanceKm: 6 },
+      popularity: { confidence: 60, floorRating: 3, priorRating: 4.2, referenceReviews: 500 },
+      randomness: {},
       summary: { unembedded: 0.4 },
-      name: { unembedded: 0.4 },
       mesita_level: {},
-      proximity: { maxKm: 30 },
     },
   });
-  const params = cfg.params as unknown as Record<string, unknown>;
-  assertEquals("summary" in params, false);
-  assertEquals("mesita_level" in params, false);
-  assertEquals(cfg.params.name, {});
-  assertEquals(Object.keys(cfg.params).sort(), [...SIGNAL_KEYS].sort());
-  // The live bag beside them is untouched.
-  assertEquals(cfg.params.proximity.maxKm, 30);
+  assertEquals(cfg.params, {
+    proximity: { halfDistanceKm: 6 },
+    popularity: {
+      referenceRating: DISCOVERY_DEFAULTS.params.popularity.referenceRating,
+      referenceReviews: 500,
+    },
+  });
 });
 
 Deno.test("filters clamp, and minRating keeps one decimal", () => {
@@ -297,14 +240,6 @@ Deno.test("filters clamp, and minRating keeps one decimal", () => {
   assertEquals(cfg.filters.maxDistanceKm, 200);
 
   assertEquals(normalizeDiscoveryConfig({ filters: { minRating: 4.26 } }).filters.minRating, 4.3);
-});
-
-Deno.test("engines are rebuilt from the code list, so a retired key cannot survive", () => {
-  const cfg = normalizeDiscoveryConfig({
-    engines: { swipe: { ranked: false }, chat: { ranked: true }, ghost: { ranked: true } },
-  });
-  assertEquals(Object.keys(cfg.engines).sort(), [...WIRED_ENGINE_KEYS].sort());
-  assertEquals(cfg.engines.swipe.ranked, false);
 });
 
 // The tentative Social engine's box had no reader (MESITA-2144). A blob that
@@ -429,30 +364,4 @@ Deno.test("name knobs default Fast 5 and Deep 3+3+3 on an old blob and clamp", (
   });
   assertEquals(missingAuto.name.deep.autoCount, 3);
   assertEquals(missingAuto.name.deep.googleCount, 20);
-});
-
-Deno.test("the retired partnership/promotion/social weights bind to nothing, but are no longer erased", () => {
-  const cfg = normalizeDiscoveryConfig({
-    weights: { partnership: 2, promotion: 3, social: 4, proximity: 1.5 },
-    params: { partnership: {}, promotion: {}, social: {} },
-  });
-  // WHAT CHANGED AT MESITA-1858: the weights map is ADDITIVE, so an unknown
-  // key rides along instead of being deleted. That is the whole
-  // mitigation for the deploy window — web-admin ships on merge, the Edge
-  // Functions ship by hand, and in between a whole-blob Save from the old
-  // side must not evict a key the new side is about to need.
-  const kept = cfg.weights as unknown as Record<string, number>;
-  assertEquals(kept.partnership, 2);
-  assertEquals(kept.promotion, 3);
-  assertEquals(kept.social, 4);
-  // NO LONGER TRUE, deliberately: these keys used to be asserted absent.
-  // They bind to no signal either way — `blend` iterates SIGNAL_KEYS — so
-  // preservation is inert storage, not a resurrected signal.
-  assertEquals((SIGNAL_KEYS as readonly string[]).includes("partnership"), false);
-  // `params` is still rebuilt from SIGNAL_KEYS: a param bag for a signal that
-  // does not exist cannot be read by anything and has no deploy-window risk.
-  assertEquals(Object.hasOwn(cfg.params, "partnership"), false);
-  // The replacement axes arrive at their defaults rather than inheriting a number.
-  assertEquals(cfg.weights.enriched, DISCOVERY_DEFAULTS.weights.enriched);
-  assertEquals(cfg.weights.proximity, 1.5);
 });

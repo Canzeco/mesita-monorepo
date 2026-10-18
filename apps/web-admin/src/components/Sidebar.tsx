@@ -90,9 +90,8 @@ export const MANAGE_NAV: NavItem[] = [
  * Every prose copy of it drifted within two days of the MESITA-1175 rail
  * rework: Rules §0, Product Rules §A, the doctor's Scope 4 and the comment
  * block 20 lines above this one all disagreed with each other and with the
- * console. Same argument `_shared/channels.ts` makes about `ChannelKey`, and
- * `_shared/discovery-signals.ts` about `SIGNAL_KEYS` — neither has ever
- * drifted, because there is nothing to copy.
+ * console. Same argument `_shared/channels.ts` makes about `ChannelKey` — it
+ * has never drifted, because there is nothing to copy.
  *
  * Anything that needs to know the set imports it. Anything that only needs to
  * NAME it points here instead of enumerating.

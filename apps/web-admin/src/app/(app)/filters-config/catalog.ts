@@ -1,48 +1,32 @@
-// Discovery catalog — the operator-facing mirror of the signal library.
-//
-// The vocabulary lives in code on the Edge Function side
-// (`supabase/functions/_shared/discovery-signals.ts` SIGNAL_KEYS) and this file
-// mirrors it: the console edits NUMBERS, never the list of signals. Adding a
-// signal is a code change in both packages — deliberately, because a signal
-// nobody wrote has nothing to score.
+// Discovery config — the console's twin of `_shared/discovery-config.ts`.
 //
 // Live HTML: ONE page, four pipeline boxes (MESITA-2327). Source, pipeline,
 // signal and gate facts live in discovery-surface.ts, a tested copy of the
-// Edge Function model. The Area pipeline has no weights; only the retired
-// Scroll deck keeps a stored exponent column, which no box edits. Family
-// membership stays on Atlas.
-//   SIGNALS   seven earned signals: Name · Family · Proximity · Timing ·
-//             Enriched · Popularity · Randomness. None reads money.
-//             Partnership and Promotion merged into Mesita Level and Social
-//             left the library (MESITA-1408); Social then left the mode list
-//             too, and is now Mesita Social Catalog Search. Mesita Level is Enriched now
-//             (MESITA-1858), and an old blob's `mesita_level` folds onto it.
-//             Summary left at MESITA-2144: no caller ever built its query
-//             vector, so it scored every place 1 and could reorder nothing.
+// Edge Function model. Family membership stays on Atlas.
 //
-// Operator filters still live on the blob so a whole-blob Save cannot
-// reset them. They have no knobs on this page.
+// `coerceConfig` mirrors `normalizeDiscoveryConfig` key for key: this page
+// saves the WHOLE blob, so a key it forgets is reset to its default on the
+// server, and a key it keeps that the server dropped comes back on every
+// Save. The EF twin's discovery-config.test.ts reads this file to pin it.
+//
+// RETIRED WITH THE SWIPE DECK (MESITA-2328): `weights`, `weightsByMode`,
+// `engines`, the `swipe` slice and the deck's numbers on `params`. They are
+// dropped on the next Save, never renamed.
+//
+// Operator filters still live on the blob (consumer-web-list-places reads
+// them), so a whole-blob Save carries them through. They have no knobs on
+// this page.
 
 import { num } from "@/lib/config-coerce";
 
-// Signal order — Notion Docs > Discovery section 8.3. What the caller ASKED
-// FOR first, then what the world is, then where the place sits with us, then
-// the tie-breaker. Presentation only: the blend is a product, so order cannot
-// change a score.
-export const SIGNAL_KEYS = [
-  "name",
-  "category",
-  "proximity",
-  "timing",
-  "enriched",
-  "popularity",
-  "randomness",
-] as const;
-
-export type SignalKey = (typeof SIGNAL_KEYS)[number];
-
-export type SignalParamBag = Record<string, number>;
-export type SignalParams = Record<SignalKey, SignalParamBag>;
+/**
+ * The Area pipeline's calibration (MESITA-2327), the only numbers `params`
+ * still carries. Mirrors SignalParams in _shared/discovery-config.ts.
+ */
+export type SignalParams = {
+  proximity: { halfDistanceKm: number };
+  popularity: { referenceRating: number; referenceReviews: number };
+};
 
 export type NameFastConfig = {
   /** Redundant with count on Fast — one source. Locked together. */
@@ -78,22 +62,6 @@ export type NameAdminConfig = {
   emptyQuery: boolean;
 };
 
-/**
- * Scroll admission knobs. Mirrors SwipeConfig in _shared/discovery-config.ts.
- *
- * THE FIVE 2026-08-26 RANKING KNOBS ARE GONE (MESITA-1859): weightProximity,
- * starsExponent, logDivisor, partnerBias and randomnessMax carried the retired
- * two-signal SUM and had sat unread since the blend replaced it. A dead
- * `weightProximity` beside a live per-mode Proximity exponent reads as a
- * second, competing dial. The unread `categoryFilter` went the same way.
- */
-export type SwipeConfig = {
-  radiusKm: number;
-  closingBufferMin: number;
-  minReviews: number;
-  savedAt: string | null;
-};
-
 export type GeneralConfig = {
   /**
    * The post-Google wipe. Active is `business_state === "OPERATIONAL"` on
@@ -106,20 +74,14 @@ export type GeneralConfig = {
 };
 
 export type DiscoveryConfig = {
-  /** Word's vector, and the fallback under every mode with no column. */
-  weights: Record<SignalKey, number>;
-  /** One exponent vector per wired mode (MESITA-1859). Mask stays outer. */
-  weightsByMode: Record<WeightedModeKey, Record<SignalKey, number>>;
   params: SignalParams;
   filters: DiscoveryFilters;
-  engines: Record<WiredEngineKey, { ranked: boolean }>;
   general: GeneralConfig;
   catalog: CatalogConfig;
   map: MapConfig;
   name: NameConfig;
   deep: DeepConfig;
   chat: { prompt: string };
-  swipe: SwipeConfig;
 };
 
 /** Mirrors DeepConfig in _shared/discovery-config.ts (MESITA-2327). */
@@ -230,14 +192,6 @@ export const SUPER_FIELDS: {
   { key: "feel_better", label: "Feel better", emoji: "💆", battery: ["spa", "beauty_salon", "hair_salon", "massage"] },
 ];
 
-export type ParamField = {
-  key: string;
-  label: string;
-  min: number;
-  max: number;
-  step: number;
-};
-
 export type DiscoveryFilters = {
   /** The Enriched gate — `enriched_at IS NOT NULL` AND `content_state =
    *  'ready'` (MESITA-2154). The stored key keeps its old name: renaming it
@@ -248,54 +202,6 @@ export type DiscoveryFilters = {
   maxDistanceKm: number;
 };
 
-/** Mirrors WIRED_ENGINE_KEYS in _shared/discovery-config.ts. */
-const WIRED_ENGINE_KEYS = ["swipe"] as const;
-type WiredEngineKey = (typeof WIRED_ENGINE_KEYS)[number];
-
-/**
- * Mirrors WEIGHTED_MODE_KEYS in _shared/discovery-matrix.ts — the modes that
- * earn a column in the weights table on Discovery Modes (MESITA-1859).
- *
- * A mode is here when BOTH halves hold: some non-test file calls
- * `weightsForMode` for it, AND its mask carries more than one signal. Word
- * satisfies the first and fails the second — its mask is `["name"]`, and a
- * one-factor `s^w` is a monotone transform of `s`, so no exponent can reorder
- * a Word result. Catalog ranks on its own profile, not this table; Chat and Favorites have no engine, and
- * Favorites' mask is empty besides.
- *
- * Map is real too (MESITA-2298): the shared engine ranks every Google Places
- * selection — the Map's Google scope and the Feed's Google Places rail — with
- * this column, so its badge reads Enforced.
- *
- * The EF twin's own contract test asserts both halves. These are PERSISTED
- * keys: `swipe` is the stored key and Scroll is only its label.
- */
-// Map's column retired with its reader (MESITA-2327); the retired deck keeps its own.
-export const WEIGHTED_MODE_KEYS = ["swipe"] as const;
-export type WeightedModeKey = (typeof WEIGHTED_MODE_KEYS)[number];
-
-/** Mirrors WEIGHT_MIN / WEIGHT_MAX in _shared/discovery-config.ts. */
-export const WEIGHT_MIN = 0;
-export const WEIGHT_MAX = 4;
-
-/**
- * Mirrors SIGNAL_WEIGHT_MAX / weightMaxFor in _shared/discovery-config.ts.
- *
- * `enriched` is capped at 2, not the uniform 4, because it floors far below
- * the ~0.85 the uniform ceiling was reasoned from: at 0.15 its span is
- * ~6.67^w (44x at 2, ~1,975x at 4). At the uniform ceiling it stops being a
- * weight and becomes a filter.
- *
- * The EF clamps this server-side either way — the mirror is here so the
- * console's dial cannot offer a number the backend will silently refuse.
- */
-export const SIGNAL_WEIGHT_MAX: Partial<Record<SignalKey, number>> = {
-  enriched: 2,
-};
-
-export function weightMaxFor(key: SignalKey): number {
-  return SIGNAL_WEIGHT_MAX[key] ?? WEIGHT_MAX;
-}
 /** Google stars top out at 5. Exported since MESITA-1667 gave `filters` a box. */
 export const MIN_RATING_MAX = 5;
 const MAX_DISTANCE_KM_MAX = 200;
@@ -337,11 +243,6 @@ const NAME_FAST_COUNT_DEFAULT = 5;
 const NAME_MESITA_COUNT_DEFAULT = 3;
 const NAME_GOOGLE_COUNT_DEFAULT = 3;
 
-/** Exported since MESITA-1859 gave Scroll a live card with three fields. */
-export const SWIPE_RADIUS_KM_MIN = 1;
-export const SWIPE_RADIUS_KM_MAX = 50;
-const SWIPE_CLOSING_BUFFER_MIN = 0;
-export const SWIPE_CLOSING_BUFFER_MAX = 180;
 /** Mirrors CHAT_PROMPT_MAX in _shared/discovery-config.ts. */
 const CHAT_PROMPT_MAX = 12_000;
 
@@ -432,320 +333,79 @@ export const DEFAULT_GENERAL: GeneralConfig = {
   minReviews: 0,
 };
 
-export const DEFAULT_SWIPE: SwipeConfig = {
-  radiusKm: 5,
-  closingBufferMin: 30,
-  minReviews: 1,
-  savedAt: null,
-};
-
-/** Mirrors DISCOVERY_DEFAULTS. Used only as the seed on a failed load. */
+/** Mirrors DEFAULT_SIGNAL_PARAMS: the Area pipeline's provisional values. */
 const DEFAULT_SIGNAL_PARAMS: SignalParams = {
-  proximity: { maxKm: 25, kneeKm: 1, missingGeo: 0.35, halfDistanceKm: 4.1 },
-  timing: {
-    openShare: 0.7,
-    closedFloor: 0.2,
-    dead: 0.25,
-    dawn: 0.55,
-    breakfast: 0.8,
-    midday: 1,
-    evening: 1,
-    late: 0.5,
-  },
-  category: { exact: 1, family: 0.55, miss: 0.1 },
-  popularity: {
-    priorRating: 4.2,
-    confidence: 60,
-    floorRating: 3,
-    referenceRating: 4.5,
-    referenceReviews: 1000,
-  },
-  // Zero params since MESITA-2144: `unembedded` was never a knob, and `name`
-  // falls back to its own 0.4 in _shared/discovery-signals.ts.
-  name: {},
-  // Zero params, exact parity with the `mesita_level` row it replaces.
-  enriched: {},
-  randomness: {},
+  proximity: { halfDistanceKm: 4.1 },
+  popularity: { referenceRating: 4.5, referenceReviews: 1000 },
 };
-
-const DEFAULT_WEIGHTS: Record<SignalKey, number> = {
-  proximity: 1,
-  timing: 1,
-  category: 1,
-  popularity: 1,
-  name: 1,
-  enriched: 1,
-  randomness: 0.35,
-};
-
-/**
- * Mirrors DISCOVERY_DEFAULTS.weightsByMode. Day zero equals the global vector
- * per wired mode, so the first deploy moves no deck. The `Reset to defaults`
- * ghost button on each column writes this back.
- */
-export const DEFAULT_WEIGHTS_BY_MODE: Record<
-  WeightedModeKey,
-  Record<SignalKey, number>
-> = Object.fromEntries(
-  WEIGHTED_MODE_KEYS.map((mode) => [mode, { ...DEFAULT_WEIGHTS }]),
-) as Record<WeightedModeKey, Record<SignalKey, number>>;
 
 export const DEFAULT_CONFIG: DiscoveryConfig = {
-  weights: DEFAULT_WEIGHTS,
-  weightsByMode: DEFAULT_WEIGHTS_BY_MODE,
   params: DEFAULT_SIGNAL_PARAMS,
   filters: { requireReady: true, minRating: 0, minReviews: 0, maxDistanceKm: 0 },
-  engines: { swipe: { ranked: true } },
   general: DEFAULT_GENERAL,
   catalog: DEFAULT_CATALOG,
   map: DEFAULT_MAP,
   name: DEFAULT_NAME,
   deep: DEFAULT_DEEP,
   chat: { prompt: "" },
-  swipe: DEFAULT_SWIPE,
 };
 
-const UNIT: ParamField[] = [];
-const ZERO_ONE = (key: string, label: string): ParamField => ({
-  key,
-  label,
-  min: 0,
-  max: 1,
-  step: 0.05,
-});
-
-/** Ranges for shape numbers that stay in the blob but are not console knobs. */
-const HIDDEN_FIELD: Record<string, Pick<ParamField, "min" | "max" | "step">> = {
-  // The Area pipeline's two numbers (MESITA-2327), edited on the Area box.
-  halfDistanceKm: { min: HALF_DISTANCE_KM_MIN, max: HALF_DISTANCE_KM_MAX, step: 0.5 },
-  referenceRating: { min: REFERENCE_RATING_MIN, max: REFERENCE_RATING_MAX, step: 0.5 },
-  referenceReviews: { min: REFERENCE_REVIEWS_MIN, max: REFERENCE_REVIEWS_MAX, step: 1 },
-  kneeKm: { min: 0.1, max: 25, step: 0.1 },
-  missingGeo: { min: 0, max: 1, step: 0.05 },
-  openShare: { min: 0, max: 1, step: 0.05 },
-  dead: { min: 0, max: 1, step: 0.05 },
-  dawn: { min: 0, max: 1, step: 0.05 },
-  breakfast: { min: 0, max: 1, step: 0.05 },
-  midday: { min: 0, max: 1, step: 0.05 },
-  evening: { min: 0, max: 1, step: 0.05 },
-  late: { min: 0, max: 1, step: 0.05 },
-  exact: { min: 0, max: 1, step: 0.05 },
-  family: { min: 0, max: 1, step: 0.05 },
-  miss: { min: 0, max: 1, step: 0.05 },
-  priorRating: { min: 0, max: 5, step: 0.1 },
-  confidence: { min: 1, max: 1000, step: 1 },
-  floorRating: { min: 0, max: 4.9, step: 0.1 },
-};
-
-export {
-  DISCOVERY_MODE_KEYS,
-  DISCOVERY_MODE_LABELS,
-  DISCOVERY_ENTITIES,
-  DISCOVERY_POOLS,
-  DISCOVERY_SOURCES,
-  DISCOVERY_SOURCES_NO_CALLER,
-  DISCOVERY_MODE_SOURCES,
-  modeReturnsEntity,
-  modeRequiresPool,
-  modeCallsSource,
-  modeSignalState,
-} from "./discovery-matrix";
-
-export const SIGNALS: {
-  key: SignalKey;
-  label: string;
-  input: string;
-  output: string;
-  fields: ParamField[];
-}[] = [
-  {
-    key: "name",
-    label: "Name",
-    input: "How close a typed name is to the place's name.",
-    output: "No name to compare, every place scores the same. A place with no name of its own scores low, not zero.",
-    fields: UNIT,
-  },
-  {
-    key: "proximity",
-    label: "Proximity",
-    input: "Distance from the guest to the place. Close places score high. The score falls on a curve and reaches zero at Max km.",
-    output: "No guest location, every place scores the same. A place with no coordinates scores low.",
-    fields: [{ key: "maxKm", label: "Max km", min: 1, max: 200, step: 0.5 }],
-  },
-  {
-    key: "timing",
-    label: "Timing",
-    input: "Whether the place is open, and whether this is its hour, on the place's own clock.",
-    output: "A closed place is pushed down to Closed floor. It is never removed.",
-    fields: [ZERO_ONE("closedFloor", "Closed floor")],
-  },
-  {
-    key: "category",
-    label: "Family",
-    input: "Whether the place's type matches what the guest asked for.",
-    output: "An exact type scores full. The same family scores in the middle. A miss scores low. No request, every place scores the same.",
-    fields: UNIT,
-  },
-  {
-    key: "popularity",
-    label: "Popularity",
-    input: "The place's rating, pulled toward the usual rating by how many reviews it has.",
-    output: "A perfect rating from a few reviews does not beat a strong rating from many. No rating uses the usual rating.",
-    fields: UNIT,
-  },
-  {
-    key: "enriched",
-    label: "Enriched",
-    input: "How far Mesita got while building this place.",
-    output: "A finished place scores full. A place Mesita has not worked on scores low.",
-    fields: UNIT,
-  },
-  {
-    key: "randomness",
-    label: "Randomness",
-    input: "A fresh draw. It reads nothing about the place.",
-    output: "It only breaks ties between places that otherwise score the same.",
-    fields: UNIT,
-  },
-];
-
-/**
- * Retired signal keys an old blob may still carry. Mirrors
- * LEGACY_SIGNAL_ALIASES in _shared/discovery-config.ts.
- *
- *   mesita_level  → enriched   (MESITA-1858)
- *
- * An explicitly-set new key always wins over the alias.
- */
-const LEGACY_SIGNAL_ALIASES: Record<string, readonly SignalKey[]> = {
-  mesita_level: ["enriched"],
-};
-
-const warnedLegacyKeys = new Set<string>();
-
-/** Test seam: the structured warn below fires once per key per page load. */
-export function resetLegacySignalWarnings(): void {
-  warnedLegacyKeys.clear();
+/** Round to the field's own decimals so a float cannot leave the page dirty. */
+function bounded(raw: unknown, fallback: number, min: number, max: number, decimals: number): number {
+  const factor = 10 ** decimals;
+  return Math.round(num(raw, fallback, min, max) * factor) / factor;
 }
 
 /**
- * Weights only (MESITA-2144), like the EF twin: `enriched` has no params, so
- * a params fold could only ever copy the retired bag's `{}`.
+ * The Area pipeline's three numbers. Mirrors `normalizeSignalParams`: rebuilt
+ * field by field, so the retired deck's bags (maxKm, timing, category,
+ * priorRating, …) are dropped on the next Save.
  */
-function foldLegacySignalBag(
-  raw: Record<string, unknown>,
-): Record<string, unknown> {
-  const next = { ...raw };
-  for (const [legacy, targets] of Object.entries(LEGACY_SIGNAL_ALIASES)) {
-    const value = next[legacy];
-    if (value == null) continue;
-    const foldedTo: SignalKey[] = [];
-    for (const target of targets) {
-      if (next[target] == null) {
-        next[target] = value;
-        foldedTo.push(target);
-      }
-    }
-    if (!warnedLegacyKeys.has(legacy)) {
-      warnedLegacyKeys.add(legacy);
-      console.warn("[filters-config] legacy signal key", {
-        key: legacy,
-        value,
-        foldedTo,
-        preserved: true,
-      });
-    }
-  }
-  return next;
+function coerceParams(raw: unknown): SignalParams {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const prox = (r.proximity ?? {}) as Record<string, unknown>;
+  const pop = (r.popularity ?? {}) as Record<string, unknown>;
+  const d = DEFAULT_SIGNAL_PARAMS;
+  return {
+    proximity: {
+      halfDistanceKm: bounded(
+        prox.halfDistanceKm,
+        d.proximity.halfDistanceKm,
+        HALF_DISTANCE_KM_MIN,
+        HALF_DISTANCE_KM_MAX,
+        1,
+      ),
+    },
+    popularity: {
+      referenceRating: bounded(
+        pop.referenceRating,
+        d.popularity.referenceRating,
+        REFERENCE_RATING_MIN,
+        REFERENCE_RATING_MAX,
+        1,
+      ),
+      referenceReviews: bounded(
+        pop.referenceReviews,
+        d.popularity.referenceReviews,
+        REFERENCE_REVIEWS_MIN,
+        REFERENCE_REVIEWS_MAX,
+        0,
+      ),
+    },
+  };
 }
 
 /**
- * Tolerant read of whatever the EF returned.
- *
- * THE WEIGHTS MAP IS ADDITIVE (MESITA-1858), matching
- * `normalizeDiscoveryConfig`. This page does a WHOLE-BLOB save, and it deploys
- * on merge while the Edge Functions deploy by hand — so between the two, a
- * rebuild-from-SIGNAL_KEYS here would evict a key the still-old EF reads the
- * moment an operator saved any unrelated section, and that EF would read a
- * deliberately-set number back as its default. Preserving unknown weight keys
- * is what makes that window survivable rather than destructive.
- *
- * Exponents round to two decimals for the same reason the EF normalizer does:
- * the field steps in 0.05, and a float landing at 1.7000000000000002 would
- * leave the page permanently `dirty` against its own saved value.
+ * Tolerant read of whatever the EF returned, rebuilt key by key exactly like
+ * `normalizeDiscoveryConfig`: a retired key (`weights`, `weightsByMode`,
+ * `engines`, `swipe`, MESITA-2328) is not carried into the next Save.
  */
 export function coerceConfig(raw: unknown): DiscoveryConfig {
   const r = (raw ?? {}) as Record<string, unknown>;
-  const w = foldLegacySignalBag((r.weights ?? {}) as Record<string, unknown>);
-
-  const weights: Record<string, number> = {};
-  // Unknown keys first, so a known key always overwrites a stale one.
-  for (const [key, raw] of Object.entries(w)) {
-    if ((SIGNAL_KEYS as readonly string[]).includes(key)) continue;
-    const n = typeof raw === "number" ? raw : Number(raw);
-    if (!Number.isFinite(n)) continue;
-    weights[key] = Math.round(Math.min(WEIGHT_MAX, Math.max(WEIGHT_MIN, n)) * 100) / 100;
-  }
-  for (const key of SIGNAL_KEYS) {
-    const v = num(w[key], DEFAULT_CONFIG.weights[key], WEIGHT_MIN, weightMaxFor(key));
-    weights[key] = Math.round(v * 100) / 100;
-  }
-
-  // Per-mode exponents (MESITA-1859). Mirrors normalizeDiscoveryConfig's own
-  // branch EXACTLY, including the fallback: a missing column seeds from THIS
-  // BLOB's vector, never from DEFAULT_CONFIG. The live config carries
-  // hand-tuned global exponents, and seeding from the in-code defaults would
-  // quietly revert every one of them the first time the page loaded.
-  const rawByMode = (r.weightsByMode ?? {}) as Record<string, unknown>;
-  const weightsByMode = {} as Record<WeightedModeKey, Record<SignalKey, number>>;
-  for (const mode of WEIGHTED_MODE_KEYS) {
-    const bag = (rawByMode[mode] ?? {}) as Record<string, unknown>;
-    const col = {} as Record<SignalKey, number>;
-    for (const key of SIGNAL_KEYS) {
-      const v = num(bag[key], weights[key], WEIGHT_MIN, weightMaxFor(key));
-      col[key] = Math.round(v * 100) / 100;
-    }
-    weightsByMode[mode] = col;
-  }
-
   const f = (r.filters ?? {}) as Record<string, unknown>;
-  const e = (r.engines ?? {}) as Record<string, unknown>;
-
-  const engines = {} as Record<WiredEngineKey, { ranked: boolean }>;
-  for (const key of WIRED_ENGINE_KEYS) {
-    const row = (e[key] ?? {}) as Record<string, unknown>;
-    engines[key] = {
-      ranked: typeof row.ranked === "boolean" ? row.ranked : DEFAULT_CONFIG.engines[key].ranked,
-    };
-  }
-
-  // No legacy fold here: a stored `params` key outside SIGNAL_KEYS,
-  // `mesita_level` included, is simply not rebuilt.
-  const rawParams = (r.params ?? {}) as Record<string, unknown>;
-  const params = {} as SignalParams;
-  for (const key of SIGNAL_KEYS) {
-    const bag = (rawParams[key] ?? {}) as Record<string, unknown>;
-    const next: SignalParamBag = {};
-    const spec = SIGNALS.find((s) => s.key === key);
-    for (const fieldKey of Object.keys(DEFAULT_SIGNAL_PARAMS[key])) {
-      const field = spec?.fields.find((f) => f.key === fieldKey);
-      const hidden = HIDDEN_FIELD[fieldKey];
-      const fallback = DEFAULT_SIGNAL_PARAMS[key][fieldKey];
-      const min = field?.min ?? hidden?.min ?? 0;
-      const max = field?.max ?? hidden?.max ?? 1_000_000;
-      const step = field?.step ?? hidden?.step ?? 0.01;
-      const v = num(bag[fieldKey], fallback, min, max);
-      const decimals = step >= 1 ? 0 : step >= 0.5 ? 1 : 2;
-      const factor = 10 ** decimals;
-      next[fieldKey] = Math.round(v * factor) / factor;
-    }
-    params[key] = next;
-  }
 
   return {
-    weights: weights as Record<SignalKey, number>,
-    weightsByMode,
-    params,
+    params: coerceParams(r.params),
     filters: {
       requireReady: typeof f.requireReady === "boolean"
         ? f.requireReady
@@ -760,7 +420,6 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
         num(f.maxDistanceKm, DEFAULT_CONFIG.filters.maxDistanceKm, 0, MAX_DISTANCE_KM_MAX),
       ),
     },
-    engines,
     general: coerceGeneral(r.general),
     catalog: coerceCatalog(r.catalog),
     map: coerceMap(r.map),
@@ -771,35 +430,8 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
         ? (r.chat as { prompt: string }).prompt.slice(0, CHAT_PROMPT_MAX)
         : DEFAULT_CONFIG.chat.prompt,
     },
-    swipe: coerceSwipe(r.swipe),
   };
 }
-
-function coerceSavedAt(raw: unknown): string | null {
-  if (typeof raw !== "string") return null;
-  const t = Date.parse(raw);
-  return Number.isFinite(t) ? new Date(t).toISOString() : null;
-}
-
-function coerceSwipe(raw: unknown): SwipeConfig {
-  const s = (raw ?? {}) as Record<string, unknown>;
-  return {
-    radiusKm: Math.round(
-      num(s.radiusKm, DEFAULT_SWIPE.radiusKm, SWIPE_RADIUS_KM_MIN, SWIPE_RADIUS_KM_MAX) * 10,
-    ) / 10,
-    closingBufferMin: Math.round(
-      num(
-        s.closingBufferMin,
-        DEFAULT_SWIPE.closingBufferMin,
-        SWIPE_CLOSING_BUFFER_MIN,
-        SWIPE_CLOSING_BUFFER_MAX,
-      ),
-    ),
-    minReviews: Math.round(num(s.minReviews, DEFAULT_SWIPE.minReviews, 0, 100_000)),
-    savedAt: coerceSavedAt(s.savedAt),
-  };
-}
-
 
 function coerceCatalog(raw: unknown): CatalogConfig {
   const c = (raw ?? {}) as Record<string, unknown>;

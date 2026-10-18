@@ -21,7 +21,6 @@ describe("Home's loading fallback", () => {
       "utf8",
     );
     expect(layout).not.toContain("DiscoverFallback");
-    expect(layout).not.toContain("HomeDeckBoundary");
     expect(layout).toContain("<ModeTabs />");
     expect(layout).toContain("{children}");
   });
