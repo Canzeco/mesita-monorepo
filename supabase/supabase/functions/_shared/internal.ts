@@ -1,5 +1,5 @@
 // Shared helpers for EF→EF hops: authenticating internal callers and invoking
-// `supabase-edgefunc-*` / `supabase-cron-*` endpoints from product EFs.
+// internal endpoints (the list below) from product EFs and from each other.
 //
 // Background: product / vendor callers authenticate end users or vendors via
 // these LIVE folder prefixes (code is SoT; Notion closed-set may lag):
@@ -10,16 +10,30 @@
 // staff-web one.) The product agent
 // Reservationist runs as eleven-* mid-call tools — there is no
 // `reservationist-agent` folder prefix.
-// Internal endpoints (`supabase-edgefunc-*`, `supabase-cron-*`) are reusable
-// services with no end-user session — they exist so multiple product callers
-// can share expensive pipelines without duplicating hundreds of lines per
-// product EF. Default modularization is still in-process `_shared/` imports;
-// use an EF hop only when it earns its cost (async ack, separate deploy
-// boundary, cron claim).
+// Internal endpoints are reusable services with no end-user session — they
+// exist so multiple product callers can share expensive pipelines without
+// duplicating hundreds of lines per product EF. Default modularization is
+// still in-process `_shared/` imports; use an EF hop only when it earns its
+// cost (async ack, separate deploy boundary, cron claim). Every internal
+// endpoint runs requireInternalCaller (the three enrich stages through
+// serveEnrichStage in enrich-pipeline.ts), and internal-callers.test.ts holds
+// this list to the code and to verify_jwt = true:
+//   enricher-cron-enrich-place-first
+//   enricher-cron-enrich-place-second
+//   enricher-cron-enrich-place-third
+//   enricher-edgefunc-store-place-images
+//   supabase-cron-reservation-retries
+//   supabase-edgefunc-discover-places
+//   supabase-edgefunc-get-memo-config
+//   supabase-edgefunc-reservation-call
+//   supabase-edgefunc-sync-reservationist
+// enricher-edgefunc-write-place and enricher-edgefunc-sync-sources are not on
+// it: Render calls them with ENRICH_WRITE_KEY on verify_jwt = false, so this
+// role check must never guard them (see the invariant below).
 //
 // Wire protocol:
-//   1. The product caller sends `Authorization: Bearer <service_role JWT or
-//      sb_secret_…>` and `X-Internal-Caller: <product-EF-name>` to the
+//   1. The caller sends `Authorization: Bearer <service_role JWT or
+//      sb_secret_…>` and `X-Internal-Caller: <its EF name>` to the
 //      internal endpoint.
 //   2. The internal endpoint has `verify_jwt = true` in supabase/config.toml,
 //      so Supabase's gateway VERIFIES THE JWT SIGNATURE before the function
@@ -67,9 +81,9 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 }
 
 // Verifies that a request was made by another EF (or the pg_cron poller) with a
-// service-role credential. Use this at the top of every `supabase-edgefunc-*`
-// / `supabase-cron-*` EF — and ONLY on EFs that are `verify_jwt = true`
-// (see the invariant above).
+// service-role credential. Use this at the top of every internal endpoint
+// (the list above) — and ONLY on EFs that are `verify_jwt = true` (see the
+// invariant above).
 //
 // Two accepted bearer shapes (the platform migrated EF env to the NEW API
 // keys on 2026-07-05, so both circulate):
@@ -109,9 +123,10 @@ export function requireInternalCaller(
   return { ok: true, callerName };
 }
 
-// Invokes an internal (`supabase-edgefunc-*` / `supabase-cron-*`) EF from a
-// product caller. Returns the parsed body verbatim — the internal endpoint's
-// response shape is the product caller's response shape minus auth/shaping.
+// Invokes an internal endpoint (the list at the top) from a product caller or
+// from another internal endpoint. Returns the parsed body verbatim — the
+// internal endpoint's response shape is the caller's response shape minus
+// auth/shaping.
 //
 // We use the gateway URL (env.url + "/functions/v1/<name>") directly
 // instead of supabase-js's functions.invoke so we can pass through arbitrary
