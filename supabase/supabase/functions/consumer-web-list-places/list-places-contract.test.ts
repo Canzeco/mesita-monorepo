@@ -6,7 +6,8 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 
 const src = await Deno.readTextFile(new URL("./index.ts", import.meta.url));
-const webBranch = src.slice(src.indexOf("const center = { lat: nearbyDecision.lat"));
+const anchor = src.indexOf("const center = { lat: nearbyDecision.lat");
+const webBranch = anchor >= 0 ? src.slice(anchor) : "";
 
 Deno.test("list-places: the Google scope is selectGooglePlaces, Selected is the pool query + selectMesitaSelected", () => {
   assert(webBranch.length > 0);

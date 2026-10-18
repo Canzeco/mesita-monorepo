@@ -34,8 +34,8 @@ export function factOn(
   if (key === "enriched") return hit.enriched;
   if (key === "enriching") return hit.enriching;
   // Mesita Selected (MESITA-2318): the Map/Feed gate — Enriched AND ready
-  // (map-engine's requireReady) — and switched on, since a Disabled place
-  // reaches no guest.
+  // (area-pipeline's selectedPoolQuery) — and switched on, since a Disabled
+  // place reaches no guest.
   if (key === "selected") {
     return hit.enriched && hit.content_state === "ready" && hit.listed;
   }
