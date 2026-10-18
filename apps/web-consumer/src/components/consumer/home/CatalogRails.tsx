@@ -4,9 +4,10 @@
 //
 //   ┌────────────────┬────────────────────┐
 //   │ ➤ Current loc. │                    │   left third, two groups:
-//   │▌⌖ Tecnologico  │       square       │   WHERE — current location, the
-//   │ ⌖ Del Valle    │        tile        │   nearby zones (MESITA-2378), and
-//   │ + Add location │                    │   Add location at the bottom;
+//   │ ⚑ Home         │       square       │   WHERE — current location, the
+//   │▌⌖ Tecnologico  │        tile        │   guest's saved locations
+//   │ + Add location │                    │   (MESITA-2380), the nearby zones
+//   │                │                    │   (MESITA-2378), Add location;
 //   │ ────────────── ├────────────────────┤   then WHAT — All and the
 //   │▌🍽️ All          │       square       │   families (MESITA-2381). The
 //   │ ☕ Coffee       │        tile        │   chosen row is white, bold, an
@@ -26,7 +27,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Compass, MapPin, Navigation, Plus } from "lucide-react";
+import { Bookmark, Compass, MapPin, Navigation, Plus, X } from "lucide-react";
 import { apiListCatalog, type CatalogRail, type Place } from "@/lib/api/places";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { trackEvent } from "@/lib/analytics/track";
@@ -46,6 +47,11 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { EmptyState } from "@/components/shared";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { CatalogTile } from "./CatalogTile";
+import { AddLocationSheet } from "./AddLocationSheet";
+import {
+  removeSavedLocation,
+  useSavedLocations,
+} from "@/lib/saved-locations";
 import { cn, errMsg, haversineKm } from "@/lib/utils";
 import { placesFeed } from "@/lib/catalog-feed";
 
@@ -151,8 +157,10 @@ export function CatalogRails() {
   const [rails, setRails] = useState<CatalogRail[] | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   // Location first, then category (Pato, MESITA-2378): null = the guest's
-  // current location; a zone = search from that zone's centre.
-  const [origin, setOrigin] = useState<PlacesZone | null>(null);
+  // current location; a zone or a saved location = search from that point.
+  const [origin, setOrigin] = useState<{ key: string; lat: number; lng: number } | null>(null);
+  const savedLocations = useSavedLocations();
+  const [adding, setAdding] = useState(false);
   // The zone list is taken from current-location loads only, so picking a
   // zone never reshuffles the list under the guest's finger.
   const [zones, setZones] = useState<PlacesZone[]>([]);
@@ -252,8 +260,10 @@ export function CatalogRails() {
     selected: boolean;
     onClick: () => void;
     muted?: boolean;
+    /** A saved location's remove control, shown while it is chosen. */
+    onRemove?: () => void;
   }) => (
-    <li key={row.key}>
+    <li key={row.key} className="relative">
       <button
         type="button"
         onClick={row.onClick}
@@ -271,8 +281,21 @@ export function CatalogRails() {
           />
         ) : null}
         {row.icon}
-        <span className="min-w-0 break-words">{row.label}</span>
+        <span className={cn("min-w-0 break-words", row.onRemove && row.selected && "pr-6")}>
+          {row.label}
+        </span>
       </button>
+      {row.onRemove && row.selected ? (
+        <button
+          type="button"
+          onClick={row.onRemove}
+          aria-label={`Remove ${row.label}`}
+          className="text-muted-foreground hover:text-foreground absolute inset-y-0 right-0 flex w-9 items-center justify-center"
+          data-places-remove-location
+        >
+          <X className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+        </button>
+      ) : null}
     </li>
   );
 
@@ -303,34 +326,51 @@ export function CatalogRails() {
             if (coords === null) locate();
           },
         })}
+        {savedLocations.map((l) =>
+          pickRow({
+            key: `saved:${l.id}`,
+            label: l.name,
+            icon: <Bookmark className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />,
+            selected: origin?.key === `saved:${l.id}`,
+            onClick: () => setOrigin({ key: `saved:${l.id}`, lat: l.lat, lng: l.lng }),
+            onRemove: () => {
+              removeSavedLocation(l.id);
+              setOrigin(null);
+            },
+          }),
+        )}
         {zones.map((z) =>
           pickRow({
             key: `zone:${z.name}`,
             label: z.name,
             icon: <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />,
-            selected: origin?.name === z.name,
-            onClick: () => setOrigin(z),
+            selected: origin?.key === `zone:${z.name}`,
+            onClick: () => setOrigin({ key: `zone:${z.name}`, lat: z.lat, lng: z.lng }),
           }),
         )}
-        {/* Add location, at the bottom (Pato, MESITA-2381). Saved areas are
-            their own issue (MESITA-2380); until then the row wears Soon. */}
+        {/* Add location, at the bottom (Pato, MESITA-2381): search or take
+            where you stand, name it, and Places searches from it
+            (MESITA-2380). */}
         <li>
           <button
             type="button"
-            disabled
-            className={cn(ROW_BASE, "text-muted-foreground")}
+            onClick={() => setAdding(true)}
+            className={cn(ROW_BASE, ROW_OFF)}
             data-places-add-location
           >
             <Plus className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
             <span className="min-w-0 break-words">Add location</span>
-            <span className="bg-card text-muted-foreground type-meta ml-auto shrink-0 rounded-full px-1.5 leading-4 font-semibold">
-              Soon
-            </span>
           </button>
         </li>
       </ul>
       <div className="border-border mx-3 border-t" aria-hidden />
       <ul role="list" aria-label="Families">{chips.map(categoryRow)}</ul>
+      <AddLocationSheet
+        open={adding}
+        onClose={() => setAdding(false)}
+        here={coords}
+        onSaved={(l) => setOrigin({ key: `saved:${l.id}`, lat: l.lat, lng: l.lng })}
+      />
     </nav>
   );
 
