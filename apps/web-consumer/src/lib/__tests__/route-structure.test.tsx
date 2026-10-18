@@ -399,14 +399,12 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
   });
 });
 
-// ── T5b — Home's header and Search's pills ─────────────────────────────────
+// ── T5b — Home's header and Search's header ────────────────────────────────
 // HOME'S HEADER IS THE LOCATION ALONE (Pato, MESITA-2405: "The top bar is
 // just to select the location. thats it."). Social and Favorites are rows of
-// the catalog's column; Home has no pills. Search keeps Search · Chat. A pill
-// whose href stops matching its own pathname lights NOTHING, and neither tsc
-// nor the build notices — this pins order, count, the width budget, and that
-// every pill is a real page.
-describe("T5b — Home's header and Search's pills", () => {
+// the catalog's column; Home has no pills. Search's header is locate · bar ·
+// Ask AI over a row of family chips (MESITA-2409).
+describe("T5b — Home's header and Search's header", () => {
   it("Home's header is the location picker and nothing else", () => {
     const tabs = readFileSync(join(COMPONENTS, "ModeTabs.tsx"), "utf8");
     expect(tabs).toMatch(/data-home-header>\s*<LocationPicker \/>\s*<\/div>/);
@@ -418,22 +416,18 @@ describe("T5b — Home's header and Search's pills", () => {
     expect(layout).toContain("<ModeTabs />");
   });
 
-  it("Search's pills are exactly Search · Chat, Chat Soon", async () => {
-    const { SEARCH_MODES } = await import("@/components/consumer/ModeTabs");
-    expect(SEARCH_MODES.map((m) => m.label)).toEqual(["Search", "Chat"]);
-    expect(SEARCH_MODES.map((m) => m.href)).toEqual([CONSUMER_ROUTES.search, CONSUMER_ROUTES.searchChat]);
-    expect(SEARCH_MODES.map((m) => Boolean(m.soon))).toEqual([false, true]);
+  // Search's header (MESITA-2409): locate · bar · Ask AI, then family chips.
+  // Ask AI lands on /search/chat, the Soon page with a way back.
+  it("Search's header is locate · bar · Ask AI, and Ask AI is a real Soon page", () => {
+    const header = readFileSync(join(COMPONENTS, "search", "SearchHeader.tsx"), "utf8");
+    expect(header).toContain("href={CONSUMER_ROUTES.searchChat}");
+    expect(header).toMatch(/\{locate\}\s*<div className="min-w-0 flex-1">\{bar\}<\/div>\s*<Link/);
+    expect(header).toContain("Ask AI");
+    expect(new Set(allPages().map(pageUrl))).toContain(CONSUMER_ROUTES.searchChat);
     const chat = readFileSync(join(SHELL, "(discovery)", "search", "chat", "page.tsx"), "utf8");
     expect(chat).toContain("HomeSoon");
-    expect(chat).toContain("<SearchHeader />");
+    expect(chat).toContain("href={CONSUMER_ROUTES.search}");
     expect(chat).not.toMatch(/<AskAiTab/);
-    const rail = readFileSync(join(COMPONENTS, "ModeTabs.tsx"), "utf8");
-    expect(rail).toMatch(/>\s*Soon\s*</);
-    const header = readFileSync(join(COMPONENTS, "search", "SearchHeader.tsx"), "utf8");
-    expect(header).toContain('variant="header"');
-    for (const href of SEARCH_MODES.map((m) => m.href)) {
-      expect(new Set(allPages().map(pageUrl)), href).toContain(href);
-    }
   });
 
   // Home is ONE page: the catalog. Social is its Soon row (MESITA-2405).
@@ -479,32 +473,6 @@ describe("T5b — Home's header and Search's pills", () => {
     const hop = (await nextConfig.redirects!()).find((r) => r.source === "/places");
     expect(hop?.destination).toBe(CONSUMER_ROUTES.discoverDefault);
     expect(existsSync(join(SHELL, "(discovery)", "places", "page.tsx"))).toBe(false);
-  });
-
-  // The width budget, as an assertion rather than a comment. `auto-cols-fr`
-  // sizes every column to the WIDEST pill; the segments touch (no gap)
-  // inside one track with p-1 (MESITA-2404), so the track is N x widest + 8,
-  // and it owns the LEFT HALF of the row: (359 - 8) / 2.
-  it("keeps every Search label inside its half of the row", async () => {
-    const { SEARCH_MODES } = await import("@/components/consumer/ModeTabs");
-    const navSrc = readFileSync(join(COMPONENTS, "ModeTabs.tsx"), "utf8");
-    // Match the class strings themselves, not the words anywhere in the file.
-    expect(navSrc).toContain('"text-xs flex h-full items-center');
-    expect(navSrc).toContain("rounded-full p-1");
-    expect(navSrc).toContain('className="h-3.5 w-3.5 shrink-0"');
-    // Inter 600's hmtx at 12px (MESITA-2050).
-    const TEXT_PX: Record<string, number> = { Search: 40.9, Chat: 27.3 };
-    const widest = Math.max(
-      ...SEARCH_MODES.map((m) => {
-        const text = TEXT_PX[m.label];
-        expect(
-          text,
-          `unmeasured label "${m.label}" — measure it at 12px`,
-        ).toBeTypeOf("number");
-        return text + 26;
-      }),
-    );
-    expect(widest * SEARCH_MODES.length + 8).toBeLessThanOrEqual(175.5);
   });
 });
 

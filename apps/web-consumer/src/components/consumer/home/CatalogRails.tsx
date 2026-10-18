@@ -302,7 +302,12 @@ export function CatalogRails() {
     <li key={c.key}>
       <button
         type="button"
-        onClick={() => setChip(c.key)}
+        onClick={() => {
+          // The in-Home switch (`nav_tab_tap` is BottomNav's): since
+          // MESITA-2409 Home's modes are this column's rows.
+          if (chip !== c.key) trackEvent(supabase, "home_mode_view", { mode: c.label });
+          setChip(c.key);
+        }}
         aria-pressed={chip === c.key}
         className={cn(
           ROW_BASE,
@@ -427,7 +432,7 @@ export function CatalogRails() {
     if (!hydrated) {
       return shell(
         <div className={PLACES_LIST}>
-          <Skeleton className="aspect-square rounded-none" />
+          <Skeleton className="aspect-square rounded-md" />
         </div>,
       );
     }
@@ -459,7 +464,7 @@ export function CatalogRails() {
     return shell(
       <div className={PLACES_LIST}>
         {Array.from({ length: 3 }, (_, i) => (
-          <Skeleton key={i} className="aspect-square rounded-none" />
+          <Skeleton key={i} className="aspect-square rounded-md" />
         ))}
       </div>,
     );
