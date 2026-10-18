@@ -1,0 +1,82 @@
+name: pnpm check
+description: Install one pnpm package from its lockfile, then run the package.json scripts a job names, in order.
+
+# Composite actions do not inherit `defaults.run`, so every step names its
+# working directory from the inputs.
+inputs:
+  dir:
+    description: The package directory, relative to the repository root.
+    required: true
+  scripts:
+    description: Space-separated package.json scripts to run, in order. Each must exist, so a required check never passes by running nothing.
+    required: true
+  install-first:
+    description: A package directory installed before `dir`, for a package that resolves its dependencies from there.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Install pnpm
+      uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      with:
+        version: 11.1.2
+
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: pnpm
+        cache-dependency-path: |
+          ${{ inputs.dir }}/pnpm-lock.yaml
+          ${{ inputs.install-first != '' && format('{0}/pnpm-lock.yaml', inputs.install-first) || '' }}
+
+    - name: Every named script exists
+      shell: bash
+      working-directory: ${{ inputs.dir }}
+      env:
+        PKG: ${{ inputs.dir }}
+        SCRIPTS: ${{ inputs.scripts }}
+      run: |
+        if [ -z "${SCRIPTS// /}" ]; then
+          echo "::error::$PKG: no scripts named; required by web.yml"
+          exit 1
+        fi
+        missing=0
+        for s in $SCRIPTS; do
+          if ! node -e 'const p = JSON.parse(require("fs").readFileSync("package.json", "utf8")); process.exit(p.scripts && p.scripts[process.argv[1]] ? 0 : 1)' "$s"; then
+            echo "::error::$PKG has no \"$s\" script; required by web.yml"
+            missing=1
+          fi
+        done
+        exit "$missing"
+
+    - name: Install the package it resolves from
+      if: inputs.install-first != ''
+      shell: bash
+      working-directory: ${{ inputs.install-first }}
+      run: pnpm install --frozen-lockfile
+
+    - name: Install
+      shell: bash
+      working-directory: ${{ inputs.dir }}
+      run: pnpm install --frozen-lockfile
+
+    - name: Run the named scripts
+      shell: bash
+      working-directory: ${{ inputs.dir }}
+      env:
+        PKG: ${{ inputs.dir }}
+        SCRIPTS: ${{ inputs.scripts }}
+        NEXT_TELEMETRY_DISABLED: "1"
+      run: |
+        for s in $SCRIPTS; do
+          echo "::group::pnpm run $s"
+          if ! pnpm run "$s"; then
+            echo "::endgroup::"
+            echo "::error::$PKG: pnpm run $s failed"
+            exit 1
+          fi
+          echo "::endgroup::"
+        done
