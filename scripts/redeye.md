@@ -1,4 +1,4 @@
-**Redeye — mode 6.** The picker stops at *Bypass permissions*, which only takes the prompts away: it does not stop you asking in prose, and it does not stop you stopping. Redeye is that mode plus both of those. Local or cloud, any agent (Claude Code, Cursor, Codex, chat). On when Pato writes `activate Redeye`, off when he says stop — finishing something does not turn it off.
+**Redeye — mode 6.** The picker stops at *Bypass permissions*, which only takes the prompts away: it does not stop you asking in prose, and it does not stop you stopping. Redeye is that mode plus both of those. Any agent, local or cloud. On when Pato's prompt begins with `activate Redeye`, off when he says stop — finishing something does not turn it off. Arming lasts 24 hours.
 
 Boot: `deno task redeye` (prompts off, write gate on, this card) · `deno task boot` (where you are, the fleet, every live claim) · Rules §0, then the domain's Docs page before you write it (I-8).
 
