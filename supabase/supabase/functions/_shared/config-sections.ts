@@ -43,8 +43,8 @@ const asIs = (raw: unknown): unknown => raw ?? null;
 
 export const CONFIG_SECTIONS: Record<string, ConfigSection> = {
   // ── Uniform: read the column, write the whole blob back ──────────────────
-  // The ranking model: one exponent per earned signal. The signal vocabulary
-  // is code-defined; this serves numbers, never the list.
+  // The Discovery model's knobs (MESITA-2327): the pipeline boxes' slices.
+  // The normalizer rebuilds the blob, so a retired key drops on write.
   discovery: {
     column: "discovery_config",
     normalize: normalizeDiscoveryConfig,
