@@ -10,18 +10,18 @@ name: rules
 # advisories rest on (MESITA-1077). Adding such an asset is exactly the change
 # that must not slip through unrun.
 #
+# So do the sources the vocabulary ratchet scans (apps/*/src,
+# packages/*/src) and the files `deno task test:rules` pins: the workflows
+# and .github/required-checks.json.
+#
 # The extension lists below MUST match MD_SCAN_GLOBS and FORBIDDEN_ASSET_GLOBS
 # in scripts/sync-rules.ts — an extension the script scans but this filter omits
 # means the workflow never fires, so the gate reports green because it never
 # ran. `deno task test:rules` asserts the two stay in step (YAML cannot import
 # from TS).
 #
-# sync-shared rode here from MESITA-1614 until MESITA-2089 deleted it: with
-# web-business gone every target wrote into web-admin alone, so the copies
-# became web-admin's own files and no app src/** glob triggers this any more.
-#
-# The JOB NAME below is load-bearing: "instruction files in sync" is one of the
-# six required checks on main. Renaming it silently un-guards the branch.
+# "instruction files in sync" is a required check (.github/required-checks.json);
+# renaming the job silently un-guards the branch.
 on:
   push:
     branches: [main]
@@ -39,12 +39,13 @@ on:
       - "**/*.heic"
       - "**/*.HEIC"
       - "scripts/**"
+      - "apps/*/src/**"
+      - "packages/*/src/**"
       - "deno.json"
-      - ".github/workflows/rules.yml"
-  # Unfiltered on `pull_request` (MESITA-1576): a required check a path
-  # filter skips never reports, and branch protection blocks a PR on an
-  # "Expected" check that will never arrive. The `changes` job below decides
-  # per-PR whether there's anything to check.
+      - ".github/workflows/**"
+      - ".github/required-checks.json"
+  # Every PR runs this workflow; the `changes` job decides whether the check
+  # has anything to do.
   pull_request: {}
 
 concurrency:
@@ -56,10 +57,10 @@ jobs:
     name: detect rules-scoped changes
     runs-on: ubuntu-latest
     outputs:
-      changed: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rules == 'true' }}
+      changed: ${{ github.event_name != 'pull_request' && 'true' || steps.filter.outputs.rules }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3.0.4
         id: filter
         with:
           filters: |
@@ -77,47 +78,37 @@ jobs:
               - '**/*.heic'
               - '**/*.HEIC'
               - 'scripts/**'
+              - 'apps/*/src/**'
+              - 'packages/*/src/**'
               - 'deno.json'
-              - '.github/workflows/rules.yml'
+              - '.github/workflows/**'
+              - '.github/required-checks.json'
 
+  # SKIPPED when the PR touches nothing in scope, which merges. If `changes`
+  # fails, its output is empty, not 'false', and the check runs.
   check:
     name: instruction files in sync
     needs: changes
-    # THE JOB ITSELF MUST NEVER BE `if:`-GATED (MESITA-1679 fix, same bug
-    # fixed in brand.yml's sibling job). A job-level `if:` that evaluates
-    # false means the job does not run AT ALL and posts NO check run — so a
-    # PR that touches none of this filter's paths never gets an
-    # "instruction files in sync" status, and branch protection blocks it
-    # forever on a required check that will never arrive: the exact
-    # "Expected check that will never arrive" failure the comment on
-    # `pull_request: {}` above already names. MESITA-1576 fixed the TRIGGER
-    # (unfiltered on pull_request) but left this job-level `if:` re-creating
-    # the identical bug one level down. Gating each STEP instead keeps the
-    # job always green-and-reporting while still doing real work only when
-    # something in scope changed.
+    if: ${{ !cancelled() && needs.changes.outputs.changed != 'false' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        if: needs.changes.outputs.changed == 'true'
         uses: actions/checkout@v4
 
       - name: Install Deno
-        if: needs.changes.outputs.changed == 'true'
-        uses: denoland/setup-deno@v2
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
         with:
           deno-version: v2.9.1
 
       # The gates guarding the gates. Runs first: a broken enforcement path
       # would otherwise fail below with a message about the wrong thing.
       - name: Test
-        if: needs.changes.outputs.changed == 'true'
         run: deno task test:rules
 
-      # The fleet tool and the write gate (scripts/worktree.ts, scripts/preflight.sh)
-      # ran in no workflow before MESITA-1702: a claim step that had been fatal in
-      # every real clone stayed green because only its fixture ever ran it.
+      # The fleet tool and the write gate (scripts/worktree.ts,
+      # scripts/preflight.sh) guard every write; this is the only workflow
+      # that runs their tests.
       - name: Test the fleet tool and the write gate
-        if: needs.changes.outputs.changed == 'true'
         run: deno task test:worktree
 
       # Redeye arms by editing .claude/settings.local.json — the file holding the
@@ -125,12 +116,7 @@ jobs:
       # prompted than before, and nothing reports it: the file is gitignored, so
       # the only symptom is a session that quietly starts asking again.
       - name: Test the Redeye protocol's arming
-        if: needs.changes.outputs.changed == 'true'
         run: deno task test:redeye
 
-      # One checkout covers the whole monorepo — the old per-repo --only
-      # self-scoping (and its "cross-repo enforcement stays manual" caveat)
-      # is gone since MESITA-456.
       - name: Check
-        if: needs.changes.outputs.changed == 'true'
         run: deno task sync-rules:check

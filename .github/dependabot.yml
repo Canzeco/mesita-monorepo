@@ -1,16 +1,80 @@
-# Explicit app roots only — web-admin, web-consumer and web-landing. MESITA-2089 deleted
-# the other four apps (git history keeps them); a root that no longer exists must not be listed.
+# Monthly, per install root: one grouped minor-and-patch PR, each major in its
+# own PR, and security updates grouped in one PR. No bot PR can pass the
+# required `PR closes its issue` check, so an agent re-lands each month's set
+# under one Linear issue. supabase/ is Deno, which Dependabot does not read.
 version: 2
 updates:
   - package-ecosystem: npm
     directory: /apps/web-admin
     schedule:
-      interval: weekly
+      interval: monthly
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+      security:
+        applies-to: security-updates
+        patterns: ["*"]
+
   - package-ecosystem: npm
     directory: /apps/web-consumer
     schedule:
-      interval: weekly
+      interval: monthly
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+      security:
+        applies-to: security-updates
+        patterns: ["*"]
+
   - package-ecosystem: npm
     directory: /apps/web-landing
     schedule:
-      interval: weekly
+      interval: monthly
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+      security:
+        applies-to: security-updates
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /packages/place-profile
+    schedule:
+      interval: monthly
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+      security:
+        applies-to: security-updates
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /render
+    schedule:
+      interval: monthly
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+      security:
+        applies-to: security-updates
+        patterns: ["*"]
+
+  # `/` reads .github/workflows; the composite actions live one level down.
+  # Third-party actions are pinned by commit SHA with the version in a comment,
+  # and Dependabot moves both.
+  - package-ecosystem: github-actions
+    directories: ["/", "/.github/actions/*"]
+    schedule:
+      interval: monthly
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+      security:
+        applies-to: security-updates
+        patterns: ["*"]
