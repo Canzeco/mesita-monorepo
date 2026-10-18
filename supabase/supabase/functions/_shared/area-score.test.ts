@@ -64,3 +64,34 @@ Deno.test("ties break on distance, then id: deterministic", () => {
   // No rating → popularity 0 → every score 0; distance then id order them.
   assertEquals(ranked.map((r) => r.item.id), ["a", "b", "far"]);
 });
+
+// ── MESITA-2338: the product formula, not just the order ───────────────────
+
+Deno.test("the score at the half distance is exactly ½ × popularity (a product, no weights)", () => {
+  // 4 km north of the anchor with a 4 km half distance.
+  const c = cand({ lat: ANCHOR.lat + 4 / 111.195, rating: 4.0, reviewCount: 100 });
+  const s = areaScore(c, CTX);
+  assertAlmostEquals(s.proximity, 0.5, 1e-3);
+  assertAlmostEquals(s.score, 0.5 * s.popularity, 1e-3);
+  // Popularity alone or a sum would not give this.
+  assertEquals(Math.abs(s.score - s.popularity) > 0.1, true);
+});
+
+Deno.test("a closed gate zeroes the score itself, not only the ranking", () => {
+  assertEquals(areaScore(cand({ familyKeys: ["coffee"] }), { ...CTX, families: ["dinner"] }).score, 0);
+  assertEquals(areaScore(cand({ selected: false }), { ...CTX, selectedOnly: true }).score, 0);
+});
+
+Deno.test("non-finite numbers never reach the sort", () => {
+  const ranked = rankArea(
+    [
+      cand({ id: "nan", rating: Number.NaN, reviewCount: 10 }),
+      cand({ id: "inf", rating: 4.5, reviewCount: Number.POSITIVE_INFINITY }),
+      cand({ id: "ok", rating: 4.0, reviewCount: 50 }),
+    ],
+    (c) => c,
+    CTX,
+  );
+  for (const r of ranked) assertEquals(Number.isFinite(r.area.score), true, r.item.id);
+  assertEquals(ranked[0].item.id, "ok");
+});

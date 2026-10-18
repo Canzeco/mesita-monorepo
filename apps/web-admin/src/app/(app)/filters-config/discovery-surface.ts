@@ -27,6 +27,7 @@ export const DISCOVERY_FIELDS = [
   "open_now",
   "name_embedding",
   "description_embedding",
+  "about",
   "selected",
   "event",
 ] as const;
@@ -43,6 +44,7 @@ export const DISCOVERY_FIELD_LABELS: Record<DiscoveryField, string> = {
   open_now: "Open now",
   name_embedding: "Name embedding",
   description_embedding: "Description embedding",
+  about: "About",
   selected: "Selected",
   event: "Events",
 };
@@ -112,6 +114,7 @@ export const DISCOVERY_SOURCES: readonly DiscoverySourceFact[] = [
       "family",
       "name_embedding",
       "description_embedding",
+      "about",
       "selected",
     ],
     live: true,
@@ -144,6 +147,8 @@ export type DiscoverySignalFact = {
   computation: "runtime" | "precomputed" | "hybrid";
   cost: string;
   missing: string;
+  /** How the raw value becomes a score in 0..1. */
+  normalization: string;
 };
 
 export const DISCOVERY_SIGNALS: readonly DiscoverySignalFact[] = [
@@ -156,6 +161,7 @@ export const DISCOVERY_SIGNALS: readonly DiscoverySignalFact[] = [
     computation: "hybrid",
     cost: "Place vectors are precomputed; one embedding call per request, the cosine runs locally.",
     missing: "No embedding on either side: lexical trigram similarity instead, never a silent 0.",
+    normalization: "A cosine clamped to 0..1 (a negative one is 0); the lexical score is already 0..1. A Mesita row needs 0.4 by either method.",
   },
   {
     key: "description_similarity",
@@ -166,6 +172,7 @@ export const DISCOVERY_SIGNALS: readonly DiscoverySignalFact[] = [
     computation: "hybrid",
     cost: "Place vectors are precomputed; one embedding call, only when a pipeline that uses it runs.",
     missing: "No summary embedding: the place is left out (cannot judge), not ranked as a mismatch.",
+    normalization: "A cosine clamped to 0..1 (a negative one is 0); Deep keeps what clears the operator's minimum Description score.",
   },
   {
     key: "proximity",
@@ -176,6 +183,7 @@ export const DISCOVERY_SIGNALS: readonly DiscoverySignalFact[] = [
     computation: "runtime",
     cost: "Local arithmetic, free.",
     missing: "No anchor: 1 for every place (abstains). No coordinates: 0.",
+    normalization: "0..1 by construction: 1 at the anchor, ½ at the half distance, ¼ at twice it.",
   },
   {
     key: "popularity",
@@ -186,6 +194,7 @@ export const DISCOVERY_SIGNALS: readonly DiscoverySignalFact[] = [
     computation: "runtime",
     cost: "Local arithmetic over stored numbers, free.",
     missing: "No rating or no review count: 0. There is no new-place prior.",
+    normalization: "Divided by the reference's raw value and clamped to 0..1, so it multiplies with Proximity on the same scale.",
   },
 ];
 
@@ -239,6 +248,12 @@ export type DiscoveryPipelineFact = {
   signals: readonly DiscoverySignalKey[];
   gates: readonly DiscoveryGateKey[];
   scoring: string;
+  /** Sources whose rows keep the source's own order: no signal scores them,
+   *  so none is derived as feeding a signal. */
+  keepsOrder: readonly DiscoverySourceKey[];
+  /** Always-on eligibility rules that are not gates: they hold for every
+   *  request and no guest asks for them. */
+  rules: readonly string[];
   /** Who runs it: views, a bar, or the Chat Agent. Never a pipeline. */
   callers: readonly string[];
 };
@@ -252,6 +267,12 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     signals: ["name_similarity"],
     gates: [],
     scoring: "Google rows keep Google's order; Mesita rows are ordered by Name. Duplicates merge.",
+    keepsOrder: ["google_autocomplete", "google_text"],
+    rules: [
+      "Closed places never show (Discovery › General's active check).",
+      "A Google row must have a Google type of one of the fifteen families, the only places Mesita can hold (hotels, shops and schools never show), and clear the stored Google floors (map.minRating, minReviews, minPopularity; 0 is off and no box edits them).",
+      "Discovery › General's reviews floor (people, never stars; 0 is off) cuts Google and Mesita rows.",
+    ],
     callers: ["The guest's Search bar", "Admin Single Place › Find"],
   },
   {
@@ -262,6 +283,12 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     signals: ["proximity", "popularity"],
     gates: ["selected", "family"],
     scoring: "Family × Selected × Proximity × Popularity. Exponents 1, no weights; ties break on distance.",
+    keepsOrder: [],
+    rules: [
+      "Closed places never show (Discovery › General's active check).",
+      "Inside the radius: it decides who is a candidate and never scores.",
+      "Google Places scope only: the guest's Google Reviews stop (10+ · 100+ · 1,000+, default 100+) or the operator's floor, whichever is higher. Mesita Selected has no review floor.",
+    ],
     callers: ["Map (the Search tab)", "Catalog (Home's Feed)"],
   },
   {
@@ -272,6 +299,11 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     signals: ["description_similarity"],
     gates: [],
     scoring: "Description, best first; ties break on name.",
+    keepsOrder: [],
+    rules: [
+      "Closed places never show (Discovery › General's active check).",
+      "Only ready profiles with a summary vector can be judged; the rest are left out.",
+    ],
     callers: ["Chat (Don Memo)"],
   },
 ];
@@ -304,14 +336,17 @@ export function sourceProvides(
   return fields.every((f) => provides.includes(f));
 }
 
-/** The pipeline's sources that can feed this signal (derived from fields). */
+/** The pipeline's sources that feed this signal: derived from fields, minus
+ *  the sources whose rows the pipeline keeps in their own order. */
 export function sourcesFeedingSignal(
   pipeline: DiscoveryPipelineKey,
   signal: DiscoverySignalKey,
 ): DiscoverySourceKey[] {
   const p = DISCOVERY_PIPELINES.find((x) => x.key === pipeline);
   if (!p) return [];
-  return p.sources.filter((s) => sourceProvides(s, signalByKey(signal).requires));
+  return p.sources.filter((s) =>
+    !p.keepsOrder.includes(s) && sourceProvides(s, signalByKey(signal).requires)
+  );
 }
 
 export function pipelinesUsingSignal(signal: DiscoverySignalKey): DiscoveryPipelineKey[] {

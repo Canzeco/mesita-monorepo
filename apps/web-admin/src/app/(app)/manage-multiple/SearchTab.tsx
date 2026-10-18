@@ -186,7 +186,7 @@ export function SearchTab({
                 href={DISCOVERY_MAP_HREF}
                 className="text-foreground underline-offset-2 hover:underline"
               >
-                Discovery › Map
+                Discovery › place rules
               </Link>
             </span>
             <div className="flex flex-wrap items-center gap-2">

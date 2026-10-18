@@ -313,7 +313,9 @@ export type ListedRow = {
   google_stars_overall?: number | null;
   family_keys?: string[] | null;
   name_embedding: unknown | null;
-  embedding: unknown | null;
+  /** Never selected since MESITA-2338: the Name signal reads the name
+   *  embedding only; the summary vector is Deep's. */
+  embedding?: unknown | null;
 };
 
 function listedToLane(row: ListedRow): LaneItem | null {
@@ -695,8 +697,8 @@ async function runDeepSearch(
 /**
  * Pay's engine. Same pool, same cosine floor, same Deep Lineup order as
  * the Mesita lane inside `runDeepSearch` — no second retrieval scheme,
- * just that one lane on its own. `fetchEmbedPool` already requires
- * `name_embedding IS NOT NULL`, so this IS the name-embedding index.
+ * just that one lane on its own. The pool does not require a name embedding:
+ * a row without one is scored by the lexical fallback (MESITA-2327).
  *
  * The cap follows the operator's Deep count so Pay and Search rank the
  * same way, with a floor: an operator zeroing it would otherwise leave
@@ -787,7 +789,7 @@ async function embedQueryVector(
 }
 
 const EMBED_COLUMNS =
-  "id, slug, google_place_id, name, address, lat, lng, content_state, enriched_at, business_state, google_review_count, google_stars_overall, family_keys, name_embedding, embedding";
+  "id, slug, google_place_id, name, address, lat, lng, content_state, enriched_at, business_state, google_review_count, google_stars_overall, family_keys, name_embedding";
 /** In-process cosine budget — a bounded pool, not every vector. */
 const EMBED_POOL = 300;
 const EMBED_RADIUS_KM = 40;
@@ -816,9 +818,12 @@ async function fetchEmbedPool(
       .gte("lat", origin.lat - latDelta)
       .lte("lat", origin.lat + latDelta)
       .gte("lng", origin.lng - lngDelta)
-      .lte("lng", origin.lng + lngDelta);
+      .lte("lng", origin.lng + lngDelta)
+      // The same capped slice every time (MESITA-2338): without an order,
+      // Postgres may return any EMBED_POOL rows once the box holds more.
+      .order("id", { ascending: true });
   } else {
-    query = query.order("created_at", { ascending: false });
+    query = query.order("created_at", { ascending: false }).order("id", { ascending: true });
   }
   const { data, error } = await query.limit(EMBED_POOL);
   if (error) {

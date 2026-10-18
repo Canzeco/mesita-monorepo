@@ -7,16 +7,17 @@
 // Slices of the `app_config` singleton in ONE read:
 //   • greeting     — memo_config.greeting, the consumer Ask AI opener. Null
 //                    when blank so clients keep their in-code fallback.
-//   • instructions — discovery_config.chat.prompt (Discovery Chat box), else
-//                    leftover memo_config.instructions. Null when blank, so
-//                    the caller falls back to the in-code SYSTEM_PROMPT.
+//   • instructions — discovery_config.chat.prompt (Discovery › Deep Pipeline
+//                    box). Null when blank, so the caller falls back to the
+//                    in-code SYSTEM_PROMPT. The leftover
+//                    memo_config.instructions persona is no longer served
+//                    (MESITA-2338): a blank box means Mesita's default.
 //   • model        — models_config.memo.model (admin Models page; never blank,
 //                    loadModelsConfig defaults it).
 //
 // Read side for Memo. Greeting still has no editor (memo_config.greeting).
 // The Chat persona writes through admin-web-update-config's `discovery` section
-// (discovery_config.chat.prompt) and is preferred here over leftover
-// memo_config.instructions.
+// (discovery_config.chat.prompt).
 //
 // Naming: actor-origin-verb-noun → supabase · edgefunc · get · memo-config.
 // Auth: verify_jwt = true + requireInternalCaller (service-role bearer).
@@ -80,9 +81,9 @@ Deno.serve(async (req) => {
     );
     const greeting = memo.greeting.trim();
     const chatPrompt = discovery.chat.prompt.trim();
-    const instructions = chatPrompt.length > 0
-      ? chatPrompt
-      : memo.instructions.trim();
+    // A blank box is the in-code default, never the leftover
+    // memo_config.instructions persona, which predates the pipelines.
+    const instructions = chatPrompt;
     return json({
       ok: true,
       greeting: greeting.length > 0 ? greeting : null,

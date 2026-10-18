@@ -16,6 +16,7 @@ vi.mock("@/lib/supabase-ef", () => ({ efInvoke: vi.fn() }));
 import { efInvoke } from "@/lib/supabase-ef";
 import { updateDiscoveryConfig, type DiscoverySlice } from "./actions";
 import { coerceConfig, DEFAULT_CONFIG, type DiscoveryConfig } from "./catalog";
+import { BOX_SLICES } from "./PipelineBoxes";
 
 const mockInvoke = vi.mocked(efInvoke);
 
@@ -70,12 +71,9 @@ beforeEach(() => {
   mockInvoke.mockReset();
 });
 
-const ALL_BOX_SLICES: DiscoverySlice[][] = [
-  ["nameAdmin"],
-  ["nameDeep", "nameLocations", "nameIdle", "general"],
-  ["map", "catalogRows", "areaSignals"],
-  ["deep", "chat"],
-];
+// The slices each box's Save really sends, read from the boxes themselves
+// (MESITA-2338): a box that changes its slices changes what this proves.
+const ALL_BOX_SLICES: DiscoverySlice[][] = Object.values(BOX_SLICES).map((s) => [...s]);
 
 describe("no box writes the operator filters (list-places reads them)", () => {
   it.each(ALL_BOX_SLICES)("saving %s leaves the stored filters", async (...slices) => {
@@ -111,7 +109,7 @@ describe("the Area box", () => {
   it("writes map, railCap and the two params; leaves Name, Deep and the prompt", async () => {
     const live = liveConfig();
     const sent = armed(live);
-    await updateDiscoveryConfig(editedEverywhere(live), ["map", "catalogRows", "areaSignals"]);
+    await updateDiscoveryConfig(editedEverywhere(live), [...BOX_SLICES.area]);
     expect(sent.config?.map.radiusKm).toBe(3);
     expect(sent.config?.map.pinCount).toBe(20);
     expect(sent.config?.catalog.railCap).toBe(7);
@@ -127,7 +125,7 @@ describe("the Deep box", () => {
   it("writes Deep and the Chat prompt; leaves the Area and Name fields", async () => {
     const live = liveConfig();
     const sent = armed(live);
-    await updateDiscoveryConfig(editedEverywhere(live), ["deep", "chat"]);
+    await updateDiscoveryConfig(editedEverywhere(live), [...BOX_SLICES.deep]);
     expect(sent.config?.deep).toEqual({ limit: 9, minSimilarity: 0.3 });
     expect(sent.config?.chat.prompt).toBe("Be brief.");
     expect(sent.config?.map).toEqual(live.map);
@@ -158,12 +156,7 @@ describe("the Name boxes", () => {
   it("the Name box writes its four slices and not admin Find's caps", async () => {
     const live = liveConfig();
     const sent = armed(live);
-    await updateDiscoveryConfig(editedEverywhere(live), [
-      "nameDeep",
-      "nameLocations",
-      "nameIdle",
-      "general",
-    ]);
+    await updateDiscoveryConfig(editedEverywhere(live), [...BOX_SLICES.name]);
     expect(sent.config?.name.idleSec).toBe(2.5);
     expect(sent.config?.name.deep.autoCount).toBe(9);
     expect(sent.config?.general.minReviews).toBe(40);
@@ -179,5 +172,13 @@ describe("the Name boxes", () => {
     expect(sent.config?.name.deep).toEqual(live.name.deep);
     expect(sent.config?.name.idleSec).toBe(live.name.idleSec);
     expect(sent.config?.general).toEqual(live.general);
+  });
+});
+
+describe("the boxes' slices", () => {
+  it("are the four boxes, each with its own slices, none shared", () => {
+    expect(Object.keys(BOX_SLICES)).toEqual(["nameAdmin", "name", "area", "deep"]);
+    const all = Object.values(BOX_SLICES).flat();
+    expect(new Set(all).size).toBe(all.length);
   });
 });
