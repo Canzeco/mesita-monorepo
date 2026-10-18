@@ -1,11 +1,13 @@
 // consumer-web-ask-memo — Memo, the consumer Chat concierge.
 //
-// Stateless OpenAI turn (MESITA-1337): the client resends the Discovery
-// system prompt plus the full thread on every message. THE CHAT AGENT SITS
-// ABOVE THE PIPELINES (MESITA-2327): before the model answers, it runs the
-// Deep pipeline on the guest's message and hands the model those places as
-// context (`places` on the wire; `related` stays the follow-up chips the
-// client renders as strings, MESITA-2338). It never calls a source itself. Passive:
+// Stateless OpenAI turn (MESITA-1337): the client resends the full thread on
+// every message. THE CHAT AGENT SITS ABOVE THE PIPELINES (MESITA-2327,
+// MESITA-2339): before the model answers, `_shared/chat-agent.ts` reads the
+// guest's intent once and calls the pipelines it needs — Name for a place
+// they name, Area (Mesita Selected around their location) for families or
+// "near me", Deep for a qualitative need — and hands the model those places
+// as context (`places` on the wire; `related` stays the follow-up chips the
+// client renders as strings). It never calls a source itself. Passive:
 // nothing here writes. Greeting / prompt / model come from
 // supabase-edgefunc-get-memo-config (which reads discovery_config.chat).
 //
@@ -14,13 +16,17 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
-import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
+import { type DiscoveryConfig, loadDiscoveryConfig } from "../_shared/discovery-config.ts";
+import { deepDepsFor, runDeepPipeline } from "../_shared/deep-pipeline.ts";
+import { areaSelectedPlaces } from "../_shared/area-pipeline.ts";
+import { nameMesitaPlaces } from "../_shared/consumer-search-lane.ts";
 import {
-  type DeepPlace,
-  deepContextForChat,
-  deepDepsFor,
-  runDeepPipeline,
-} from "../_shared/deep-pipeline.ts";
+  type ChatPipelines,
+  type ChatPlace,
+  chatContextForModel,
+  extractChatIntent,
+  runChatAgent,
+} from "../_shared/chat-agent.ts";
 import { resolveMemoSystemPrompt } from "../_shared/memo-prompt.ts";
 import { createMemoData } from "../_shared/memo-data.ts";
 import { DEFAULT_MODELS_CONFIG } from "../_shared/models-config.ts";
@@ -30,7 +36,18 @@ import { toPlainText } from "../_shared/memo-text.ts";
 type MemoBody = {
   query?: string;
   history?: unknown;
+  /** The guest's location, when they shared it (Area's anchor). */
+  latitude?: unknown;
+  longitude?: unknown;
 };
+
+function anchorOf(lat: unknown, lng: unknown): { lat: number; lng: number } | null {
+  const a = typeof lat === "number" ? lat : Number.NaN;
+  const b = typeof lng === "number" ? lng : Number.NaN;
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+  if (Math.abs(a) > 90 || Math.abs(b) > 180) return null;
+  return { lat: a, lng: b };
+}
 
 const CONFIG_CACHE_MS = 30_000;
 const LINE_DROPPED =
@@ -71,17 +88,18 @@ Deno.serve(async (req) => {
   }
 
   const openaiKey = Deno.env.get("OPENAI_KEY") ?? "";
-  const [cfg, places] = await Promise.all([
-    configPromise,
-    deepPlacesFor(env, query, openaiKey),
-  ]);
+  const history = sanitizeChatHistory(body.history);
+  const anchor = anchorOf(body.latitude, body.longitude);
+  const cfg = await configPromise;
+  const model = (cfg.model ?? DEFAULT_MODELS_CONFIG.memo.model!).trim();
+  const places = await chatPlacesFor(env, query, history, anchor, openaiKey, model);
   const system = resolveMemoSystemPrompt(cfg.instructions);
-  const context = deepContextForChat(places);
+  const context = chatContextForModel(places);
   const answer = await completeChatTurn({
     openaiKey,
-    model: (cfg.model ?? DEFAULT_MODELS_CONFIG.memo.model!).trim(),
+    model,
     system: context ? `${system}\n\n${context}` : system,
-    history: sanitizeChatHistory(body.history),
+    history,
     query,
   });
 
@@ -93,29 +111,79 @@ Deno.serve(async (req) => {
     // Follow-up chips: the client renders each item as a string. Memo
     // suggests none yet.
     related: [],
-    // Deep's places for this turn, best first.
-    places: places.map((p) => ({ id: p.id, slug: p.slug, name: p.name, similarity: p.similarity })),
+    // The places the pipelines handed Chat this turn, and why.
+    places: places.map((p) => ({ id: p.id, slug: p.slug, name: p.name, why: p.why })),
   });
 });
 
-/** The Deep pipeline for this turn. Best effort: a pipeline failure leaves
- *  Chat answering from its prompt alone, never a failed turn. */
-async function deepPlacesFor(
+const toChatPlace = (why: ChatPlace["why"]) => (row: Record<string, unknown>): ChatPlace => ({
+  id: String(row.id ?? ""),
+  slug: typeof row.slug === "string" ? row.slug : null,
+  name: String(row.name ?? ""),
+  address: typeof row.address === "string" ? row.address : null,
+  familyKeys: Array.isArray(row.family_keys) ? (row.family_keys as string[]) : [],
+  rating: typeof row.google_stars_overall === "number" ? row.google_stars_overall : null,
+  reviewCount: typeof row.google_review_count === "number" ? row.google_review_count : null,
+  about: typeof row.description === "string" ? row.description.slice(0, 280) : null,
+  distanceKm: typeof row.distance_km === "number" ? row.distance_km : null,
+  why,
+});
+
+/** The pipelines Chat may call this turn, over Memo's one database client:
+ *  each reads through its own pipeline module, read-only. */
+function chatPipelines(
+  admin: ReturnType<typeof adminClient>,
+  discovery: DiscoveryConfig,
+  anchor: { lat: number; lng: number } | null,
+  openaiKey: string,
+): ChatPipelines {
+  const limit = discovery.deep.limit;
+  return {
+    hasAnchor: anchor !== null,
+    name: async (placeName) =>
+      (await nameMesitaPlaces(admin, discovery.general, placeName, anchor, limit))
+        .map((row) => toChatPlace("name")(row as unknown as Record<string, unknown>)),
+    area: async (families) =>
+      ((await areaSelectedPlaces(admin, discovery, { center: anchor, families, limit })) ?? [])
+        .map(toChatPlace("area")),
+    deep: async (text) =>
+      (await runDeepPipeline({ query: text, config: discovery.deep, ...deepDepsFor(admin, discovery.general, openaiKey) }))
+        .places.map((p) => ({
+          id: p.id,
+          slug: p.slug,
+          name: p.name,
+          address: p.address,
+          familyKeys: p.familyKeys,
+          rating: p.rating,
+          reviewCount: p.reviewCount,
+          about: p.about,
+          distanceKm: null,
+          why: "deep" as const,
+        })),
+  };
+}
+
+/** The Chat Agent for this turn. Best effort: any failure leaves Chat
+ *  answering from its prompt alone, never a failed turn. */
+async function chatPlacesFor(
   env: Parameters<typeof adminClient>[0],
   query: string,
+  history: ReturnType<typeof sanitizeChatHistory>,
+  anchor: { lat: number; lng: number } | null,
   openaiKey: string,
-): Promise<DeepPlace[]> {
+  model: string,
+): Promise<ChatPlace[]> {
   try {
     const admin = adminClient(env);
     const discovery = await loadDiscoveryConfig(admin);
-    const result = await runDeepPipeline({
+    const result = await runChatAgent(
       query,
-      config: discovery.deep,
-      ...deepDepsFor(admin, discovery.general, openaiKey),
-    });
+      () => extractChatIntent({ openaiKey, model, query, history }),
+      chatPipelines(admin, discovery, anchor, openaiKey),
+    );
     return result.places;
   } catch (err) {
-    console.error("[consumer-web-ask-memo] deep:", err instanceof Error ? err.message : err);
+    console.error("[consumer-web-ask-memo] chat agent:", err instanceof Error ? err.message : err);
     return [];
   }
 }

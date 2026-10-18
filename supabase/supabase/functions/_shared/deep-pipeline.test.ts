@@ -123,14 +123,17 @@ Deno.test("the persona allows recommending from Deep's list and never contradict
   }]).includes("Mesita looked these up"));
 });
 
-Deno.test("Memo's only database client feeds the config read and the Deep pipeline", async () => {
+Deno.test("Memo's only database client feeds the config read and the three pipelines", async () => {
   const chat = await Deno.readTextFile(new URL("../consumer-web-ask-memo/index.ts", import.meta.url));
   const uses = chat.match(/adminClient\(/g) ?? [];
   assertEquals(uses.length, 1);
-  const fn = chat.slice(chat.indexOf("async function deepPlacesFor"));
+  const fn = chat.slice(chat.indexOf("async function chatPlacesFor"));
   assert(fn.includes("adminClient(env)"));
   assert(fn.includes("loadDiscoveryConfig(admin)"));
-  assert(fn.includes("deepDepsFor(admin,"));
+  // The client reaches data only through the pipeline modules (MESITA-2339).
+  assert(chat.includes("nameMesitaPlaces(admin,"));
+  assert(chat.includes("areaSelectedPlaces(admin,"));
+  assert(chat.includes("deepDepsFor(admin,"));
   // Any member call, however the chain is wrapped (imports read `from "…"`).
   assertEquals(/\.\s*(from|rpc)\s*\(/.test(chat), false);
   assertEquals(chat.includes("createClient("), false);

@@ -1,13 +1,15 @@
 // memo-data.ts — Memo's route to Mesita config.
 //
-// THE INVARIANT: Memo reads Mesita data through exactly two closed paths, and
+// THE INVARIANT: Memo reads Mesita data through closed, named paths only, and
 // no other Memo code path touches Postgres:
 //
-//   config()           → supabase-edgefunc-get-memo-config (this client)
-//   the Deep pipeline  → `_shared/deep-pipeline.ts`: `loadDiscoveryConfig`
-//                        plus `deepDepsFor`'s one read-only `profiles` SELECT,
-//                        which consumer-web-ask-memo runs as the Chat Agent
-//                        above the pipelines (MESITA-2327, MESITA-2338)
+//   config()       → supabase-edgefunc-get-memo-config (this client)
+//   the pipelines  → consumer-web-ask-memo runs the Chat Agent above them
+//                    (MESITA-2327, MESITA-2339) with one client, used only
+//                    by `loadDiscoveryConfig` and each pipeline module's own
+//                    read-only `profiles` SELECT: the Name lane
+//                    (`nameMesitaPlaces`), Area's Selected scope
+//                    (`areaSelectedPlaces`) and Deep (`deepDepsFor`)
 //
 // Why, when Memo already runs inside Supabase with a service-role client: a
 // service-role client is a general query capability — Memo holding one means

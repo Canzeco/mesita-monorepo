@@ -488,11 +488,12 @@ export function DeepBox(seed: ConfigSeed<DiscoveryConfig>) {
         <p>
           Open-ended discovery in the guest&apos;s own words: &ldquo;an
           intimate jazz bar for a second date&rdquo;. The Chat Agent sits above
-          the pipelines: it sends the request here, gets back the best
-          matching Mesita places with their About, and answers from that list.
-          It never calls a source itself. The request is embedded once, only
-          when Chat asks; no other pipeline pays for it. The model is chosen
-          on Models.
+          the pipelines: it reads the guest&apos;s intent once, then calls Name
+          for a place they name, Area (Mesita Selected around them) for
+          families or &ldquo;near me&rdquo;, and Deep for the qualities they
+          describe, and answers only from the places those return. It never
+          calls a source itself. The request is embedded once, only when Deep
+          runs; no other pipeline pays for it. The model is chosen on Models.
         </p>
       }
       save={<Save editor={editor} dirty={dirty} slices={BOX_SLICES.deep} />}

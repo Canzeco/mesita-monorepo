@@ -399,6 +399,26 @@ export function rankMesitaByName(
     .map(({ row }) => row);
 }
 
+/**
+ * The Name pipeline's Mesita lane for a caller that is not a search bar —
+ * the Chat Agent (MESITA-2339). The Name signal over Mesita Places Search
+ * only: no Google source, so no Google bill. The query is embedded once.
+ */
+export async function nameMesitaPlaces(
+  admin: SupabaseClient,
+  general: GeneralConfig,
+  text: string,
+  origin: { lat: number; lng: number } | null,
+  cap: number,
+): Promise<ListedRow[]> {
+  const openaiKey = (Deno.env.get("OPENAI_KEY") ?? "").trim();
+  const [pool, vector] = await Promise.all([
+    fetchEmbedPool(admin, origin, general),
+    embedQueryVector(admin, text, openaiKey),
+  ]);
+  return rankMesitaByName(pool, { text, vector }).slice(0, Math.max(0, cap));
+}
+
 function takeListedLane(rows: ListedRow[], cap: number): LaneItem[] {
   const out: LaneItem[] = [];
   for (const row of rows) {

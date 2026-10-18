@@ -42,6 +42,8 @@ Deno.test("views and collections are not pipelines; the Chat Agent is a caller, 
     assertEquals(labels.some((l) => l.includes(notAPipeline)), false, notAPipeline);
   }
   assertEquals(DISCOVERY_PIPELINES.find((p) => p.key === "deep")?.callers, ["Chat (Don Memo)"]);
+  // The Chat Agent calls all three pipelines (MESITA-2339) and is none of them.
+  for (const p of DISCOVERY_PIPELINES) assert(p.callers.includes("Chat (Don Memo)"), p.key);
   assertEquals(DISCOVERY_SOURCES.some((s) => /chat|exa|perplexity|provider/i.test(s.label)), false);
 });
 
