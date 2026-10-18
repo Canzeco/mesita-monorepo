@@ -201,9 +201,11 @@ export function CatalogRails() {
     return shell(
       <div className="bg-card scrollbar-hide flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-y-contain pt-3">
         {Array.from({ length: 2 }, (_, i) => (
-          <div key={i}>
-            <Skeleton className="mx-3 mb-2 h-4 w-24 rounded-none" />
-            <div className="flex gap-2 overflow-hidden pl-3">
+          <div key={i} className="flex items-stretch">
+            <div className="flex w-8 shrink-0 justify-center py-6">
+              <Skeleton className="w-4 rounded-none" />
+            </div>
+            <div className="flex min-w-0 flex-1 gap-2 overflow-hidden">
               {Array.from({ length: 3 }, (_, j) => (
                 <Skeleton
                   key={j}
@@ -235,24 +237,35 @@ export function CatalogRails() {
   // surface, a hairline between bands — a super subtle division that
   // survives the rails' renaming (MESITA-2302). The "N places" line sits on
   // band A's tint. Semantic tokens only.
+  // The rail's name runs up the left edge of its cards, read bottom to top
+  // (Pato's sketch, MESITA-2350): a narrow column the height of the row,
+  // the name truncated to it, then the sideways card scroller.
   const renderRail = (rail: CatalogRail) => (
-    <section key={rail.key} aria-labelledby={`${rail.key}-heading`}>
-      <h2
-        id={`${rail.key}-heading`}
-        className="font-display text-foreground px-3 text-sm font-semibold tracking-tight"
-      >
-        {rail.emoji && rail.emoji !== "·" ? (
-          <span className="mr-1.5" aria-hidden>
-            {rail.emoji}
+    <section
+      key={rail.key}
+      aria-labelledby={`${rail.key}-heading`}
+      className="flex items-stretch"
+    >
+      <div className="relative w-8 shrink-0" data-rail-name>
+        <h2
+          id={`${rail.key}-heading`}
+          className="font-display text-foreground absolute inset-0 flex items-center justify-center overflow-hidden text-sm font-semibold tracking-tight"
+        >
+          <span className="max-h-full rotate-180 truncate [writing-mode:vertical-rl]">
+            {rail.emoji && rail.emoji !== "·" ? (
+              <span className="mb-1.5" aria-hidden>
+                {rail.emoji}
+              </span>
+            ) : null}
+            {rail.label}
           </span>
-        ) : null}
-        {rail.label}
-      </h2>
+        </h2>
+      </div>
       {rail.places.length > 0 ? (
         <ul
           role="list"
           aria-label={rail.label}
-          className="scrollbar-hide mt-2 flex gap-2 overflow-x-auto overscroll-x-contain pl-3"
+          className="scrollbar-hide flex min-w-0 flex-1 gap-2 overflow-x-auto overscroll-x-contain"
         >
           {rail.places.map((place) => {
             const located = withUserDistance(place, coords);
