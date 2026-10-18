@@ -209,7 +209,7 @@ export function CatalogRails() {
             <div className="border-border flex w-10 shrink-0 justify-center border-r py-6">
               <Skeleton className="w-4 rounded-none" />
             </div>
-            <div className="ml-3 flex min-w-0 flex-1 gap-1.5 overflow-hidden">
+            <div className="flex min-w-0 flex-1 gap-1.5 overflow-hidden p-1.5">
               {Array.from({ length: 3 }, (_, j) => (
                 <Skeleton
                   key={j}
@@ -245,10 +245,12 @@ export function CatalogRails() {
   // The rail's name runs up the left edge of its cards, read bottom to top
   // (Pato's sketch, MESITA-2350): a narrow column the height of the row,
   // the name truncated to it, then the sideways card scroller. A hairline
-  // on the column's right and room before the cards (MESITA-2351) split
-  // name from cards. The row's vertical padding lives on the card scroller,
-  // never around the rail, so that line runs edge to edge between the rail
-  // lines (MESITA-2354).
+  // on the column's right (MESITA-2351) splits name from cards. ONE gap,
+  // 6px, everywhere in the grid (Pato, MESITA-2358): between cards, card to
+  // the rail lines above and below, card to the name line, and after the
+  // last card — the scroller's `p-1.5` and `gap-1.5`. The padding lives on
+  // the scroller, never around the rail, so the name line runs edge to edge
+  // between the rail lines (MESITA-2354).
   const renderRail = (rail: CatalogRail) => (
     <section
       key={rail.key}
@@ -279,7 +281,7 @@ export function CatalogRails() {
         <ul
           role="list"
           aria-label={rail.label}
-          className="scrollbar-hide ml-3 flex min-w-0 flex-1 gap-1.5 overflow-x-auto overscroll-x-contain py-3"
+          className="scrollbar-hide flex min-w-0 flex-1 gap-1.5 overflow-x-auto overscroll-x-contain p-1.5"
         >
           {rail.places.map((place) => {
             const located = withUserDistance(place, coords);
