@@ -76,9 +76,9 @@ Deno.test("googleFill off skips Nearby; a stored family switch does not", () => 
 });
 
 Deno.test("minPopularity reads the Area pipeline's Popularity — unrated scores 0 (MESITA-2328)", () => {
-  // ln(1 + 4.8 × 200) / ln(1 + 4.5 × 1000) ≈ 0.82 against the default
-  // reference; an unrated row scores 0, so any floor above 0 drops it.
-  const high = { ...MAP, minPopularity: 0.7 };
+  // (4.8 ÷ 5) × 200 ÷ (200 + 100) = 0.64 at the default K (MESITA-2347);
+  // an unrated row scores 0, so any floor above 0 drops it.
+  const high = { ...MAP, minPopularity: 0.6 };
   assertEquals(
     listedClearsMapPopularity({
       google_stars_overall: null,
@@ -100,13 +100,20 @@ Deno.test("minPopularity reads the Area pipeline's Popularity — unrated scores
     }, { ...MAP, minPopularity: 0.01 }),
     false,
   );
-  // The operator's reference moves the score: a 100-review reference makes
-  // the same place a full 1.
+  // The operator's K moves the score: 4.5★ × 100 is 0.9 × 100/(100+K) —
+  // 0.45 at K = 100 (the default), 0.82 at K = 10 (MESITA-2347).
   assertEquals(
     listedClearsMapPopularity(
       { google_stars_overall: 4.5, google_review_count: 100 },
-      { ...MAP, minPopularity: 0.99 },
-      { referenceRating: 4.5, referenceReviews: 100 },
+      { ...MAP, minPopularity: 0.8 },
+    ),
+    false,
+  );
+  assertEquals(
+    listedClearsMapPopularity(
+      { google_stars_overall: 4.5, google_review_count: 100 },
+      { ...MAP, minPopularity: 0.8 },
+      { halfReviews: 10 },
     ),
     true,
   );

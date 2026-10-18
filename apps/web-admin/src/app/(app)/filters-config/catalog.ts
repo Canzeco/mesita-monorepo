@@ -20,12 +20,14 @@
 import { num } from "@/lib/config-coerce";
 
 /**
- * The Area pipeline's calibration (MESITA-2327), the only numbers `params`
- * still carries. Mirrors SignalParams in _shared/discovery-config.ts.
+ * The Area pipeline's three numbers (MESITA-2347): Popularity's reviews for
+ * half credit and the two weights of the weighted sum. Proximity has no
+ * number of its own — `map.radiusKm` is it. Mirrors SignalParams in
+ * _shared/discovery-config.ts.
  */
 export type SignalParams = {
-  proximity: { halfDistanceKm: number };
-  popularity: { referenceRating: number; referenceReviews: number };
+  popularity: { halfReviews: number };
+  balance: { proximity: number; popularity: number };
 };
 
 export type NameFastConfig = {
@@ -89,14 +91,12 @@ export const DEEP_LIMIT_MIN = 1;
 export const DEEP_LIMIT_MAX = 20;
 export const DEFAULT_DEEP: DeepConfig = { limit: 5, minSimilarity: 0 };
 
-/** Mirrors the Area params' bounds and provisional defaults in
- *  _shared/pipeline-signals.ts and discovery-config.ts (MESITA-2327). */
-export const HALF_DISTANCE_KM_MIN = 0.1;
-export const HALF_DISTANCE_KM_MAX = 50;
-export const REFERENCE_RATING_MIN = 1;
-export const REFERENCE_RATING_MAX = 5;
-export const REFERENCE_REVIEWS_MIN = 1;
-export const REFERENCE_REVIEWS_MAX = 1_000_000;
+/** Mirrors the Area params' bounds and defaults in
+ *  _shared/pipeline-signals.ts and discovery-config.ts (MESITA-2347). */
+export const HALF_REVIEWS_MIN = 1;
+export const HALF_REVIEWS_MAX = 100_000;
+export const AREA_WEIGHT_MIN = 0;
+export const AREA_WEIGHT_MAX = 10;
 
 export type CatalogConfig = {
   seedCount: number;
@@ -131,7 +131,8 @@ export const SUPER_PARAM_KEYS = [
 ] as const;
 export type SuperParamKey = (typeof SUPER_PARAM_KEYS)[number];
 
-/** Mirrors GOOGLE_PULL_STOPS in _shared/discovery-config.ts — `map.pinCount`'s stops. */
+/** Mirrors GOOGLE_PULL_STOPS in _shared/discovery-config.ts — the stops of
+ *  `map.googlePlaces` and `map.mesitaPlaces`. */
 export const GOOGLE_PULL_STOPS = [20, 40, 60] as const;
 const GOOGLE_PULL_DEFAULT = 20;
 /** Mirrors MAP_RADIUS_KM_* in _shared/discovery-config.ts. Max = Google's Nearby circle cap. */
@@ -151,8 +152,14 @@ export type MapConfig = {
   reloadMinSec: number;
   googleFill: boolean;
   supers: Record<SuperParamKey, boolean>;
-  /** 20 / 40 / 60 — how many pins the map query returns. Was the guest's. */
-  pinCount: number;
+  /**
+   * 20 / 40 / 60 — the Google Places scope's cap, places Mesita BUYS. The
+   * engine spends one Nearby call (20) today; 40 and 60 are stored but
+   * inert until a fan-out is wired and paid for (MESITA-2347).
+   */
+  googlePlaces: number;
+  /** 20 / 40 / 60 — the Mesita Selected scope's cap, a free read. */
+  mesitaPlaces: number;
   /**
    * The one Nearby radius (km), shared by the Map and the Feed's Google
    * Places and Mesita Selected rails (MESITA-2298). Never the guest's.
@@ -277,7 +284,8 @@ export const DEFAULT_MAP: MapConfig = {
   reloadMinSec: 2,
   googleFill: true,
   supers: DEFAULT_MAP_SUPERS,
-  pinCount: GOOGLE_PULL_DEFAULT,
+  googlePlaces: GOOGLE_PULL_DEFAULT,
+  mesitaPlaces: GOOGLE_PULL_DEFAULT,
   radiusKm: MAP_RADIUS_KM_DEFAULT,
   googleMinReviews: 0,
 };
@@ -321,10 +329,10 @@ export const DEFAULT_GENERAL: GeneralConfig = {
   minReviews: 0,
 };
 
-/** Mirrors DEFAULT_SIGNAL_PARAMS: the Area pipeline's provisional values. */
+/** Mirrors DEFAULT_SIGNAL_PARAMS: the Area pipeline's three numbers. */
 const DEFAULT_SIGNAL_PARAMS: SignalParams = {
-  proximity: { halfDistanceKm: 4.1 },
-  popularity: { referenceRating: 4.5, referenceReviews: 1000 },
+  popularity: { halfReviews: 100 },
+  balance: { proximity: 5, popularity: 5 },
 };
 
 export const DEFAULT_CONFIG: DiscoveryConfig = {
@@ -346,38 +354,21 @@ function bounded(raw: unknown, fallback: number, min: number, max: number, decim
 /**
  * The Area pipeline's three numbers. Mirrors `normalizeSignalParams`: rebuilt
  * field by field, so the retired deck's bags (maxKm, timing, category,
- * priorRating, …) are dropped on the next Save.
+ * priorRating, …) and the retired calibration (halfDistanceKm,
+ * referenceRating/Reviews, MESITA-2347) are dropped on the next Save.
  */
 function coerceParams(raw: unknown): SignalParams {
   const r = (raw ?? {}) as Record<string, unknown>;
-  const prox = (r.proximity ?? {}) as Record<string, unknown>;
   const pop = (r.popularity ?? {}) as Record<string, unknown>;
+  const b = (r.balance ?? {}) as Record<string, unknown>;
   const d = DEFAULT_SIGNAL_PARAMS;
   return {
-    proximity: {
-      halfDistanceKm: bounded(
-        prox.halfDistanceKm,
-        d.proximity.halfDistanceKm,
-        HALF_DISTANCE_KM_MIN,
-        HALF_DISTANCE_KM_MAX,
-        1,
-      ),
-    },
     popularity: {
-      referenceRating: bounded(
-        pop.referenceRating,
-        d.popularity.referenceRating,
-        REFERENCE_RATING_MIN,
-        REFERENCE_RATING_MAX,
-        1,
-      ),
-      referenceReviews: bounded(
-        pop.referenceReviews,
-        d.popularity.referenceReviews,
-        REFERENCE_REVIEWS_MIN,
-        REFERENCE_REVIEWS_MAX,
-        0,
-      ),
+      halfReviews: bounded(pop.halfReviews, d.popularity.halfReviews, HALF_REVIEWS_MIN, HALF_REVIEWS_MAX, 0),
+    },
+    balance: {
+      proximity: bounded(b.proximity, d.balance.proximity, AREA_WEIGHT_MIN, AREA_WEIGHT_MAX, 0),
+      popularity: bounded(b.popularity, d.balance.popularity, AREA_WEIGHT_MIN, AREA_WEIGHT_MAX, 0),
     },
   };
 }
@@ -449,7 +440,7 @@ function coerceSuperParams(raw: unknown): Record<SuperParamKey, boolean> {
   return out;
 }
 
-/** `pinCount`: 20 / 40 / 60, snapped. Never a free number. */
+/** A scope cap: 20 / 40 / 60, snapped. Never a free number. */
 function coerceGooglePull(raw: unknown): number {
   const n = num(raw, GOOGLE_PULL_DEFAULT, GOOGLE_PULL_STOPS[0], GOOGLE_PULL_STOPS[2]);
   let best: number = GOOGLE_PULL_DEFAULT;
@@ -543,9 +534,11 @@ function coerceMap(raw: unknown): MapConfig {
     reloadMinSec: reload.sec,
     googleFill: typeof m.googleFill === "boolean" ? m.googleFill : DEFAULT_MAP.googleFill,
     supers,
-    pinCount: coerceGooglePull(m.pinCount),
     // Rebuilt key by key: an old blob's `googlePull` (the retired Legacy
-    // pull, MESITA-2298) is dropped on the next save.
+    // pull, MESITA-2298) and `pinCount` (MESITA-2347) are dropped on the
+    // next save; a stored `pinCount` seeds both caps once.
+    googlePlaces: coerceGooglePull(m.googlePlaces ?? m.pinCount),
+    mesitaPlaces: coerceGooglePull(m.mesitaPlaces ?? m.pinCount),
     radiusKm:
       Math.round(
         num(m.radiusKm, DEFAULT_MAP.radiusKm, MAP_RADIUS_KM_MIN, MAP_RADIUS_KM_MAX) * 10,

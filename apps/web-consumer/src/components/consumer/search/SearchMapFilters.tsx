@@ -34,7 +34,7 @@ import { SearchPopularity } from "./SearchPopularity";
 //                   Nearby API param, and never to Mesita Selected.
 //
 // Location is not a module here: it is the disc at the left of the map's
-// top row. How many (closest N) is operator `map.pinCount`, the circle is
+// top row. How many (closest N) is operator the scope's cap (`map.googlePlaces` / `map.mesitaPlaces`), the circle is
 // operator `map.radiusKm`, and neither is a guest knob.
 
 export function SearchMapFilters({

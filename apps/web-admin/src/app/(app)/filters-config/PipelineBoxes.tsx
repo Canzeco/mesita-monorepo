@@ -24,9 +24,11 @@ import {
   DEEP_LIMIT_MAX,
   DEEP_LIMIT_MIN,
   GENERAL_MIN_REVIEWS_MAX,
+  AREA_WEIGHT_MAX,
+  AREA_WEIGHT_MIN,
   GOOGLE_PULL_STOPS,
-  HALF_DISTANCE_KM_MAX,
-  HALF_DISTANCE_KM_MIN,
+  HALF_REVIEWS_MAX,
+  HALF_REVIEWS_MIN,
   MAP_RADIUS_KM_MAX,
   MAP_RADIUS_KM_MIN,
   MAP_RELOAD_PAIRS,
@@ -35,10 +37,6 @@ import {
   NAME_IDLE_SEC_MAX,
   NAME_IDLE_SEC_MIN,
   NAME_LANE_COUNT_MAX,
-  REFERENCE_RATING_MAX,
-  REFERENCE_RATING_MIN,
-  REFERENCE_REVIEWS_MAX,
-  REFERENCE_REVIEWS_MIN,
   type DiscoveryConfig,
 } from "./catalog";
 import { CATALOG_FAMILY_FACTS, CATALOG_SIGNAL_RAILS } from "./discovery-surface";
@@ -298,18 +296,15 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
     setOk(false);
     setCfg((c) => ({ ...c, map: { ...c.map, ...p } }));
   };
-  const prox = cfg.params.proximity;
-  const pop = cfg.params.popularity;
-  const setParam = (signal: "proximity" | "popularity", key: string, v: number) => {
+  const params = cfg.params;
+  const setParam = (bag: "popularity" | "balance", key: string, v: number) => {
     setOk(false);
-    setCfg((c) => ({ ...c, params: { ...c.params, [signal]: { ...c.params[signal], [key]: v } } }));
+    setCfg((c) => ({ ...c, params: { ...c.params, [bag]: { ...c.params[bag], [key]: v } } }));
   };
   const dirty =
     !same(cfg.map, saved.map) ||
     cfg.catalog.railCap !== saved.catalog.railCap ||
-    prox.halfDistanceKm !== saved.params.proximity.halfDistanceKm ||
-    pop.referenceRating !== saved.params.popularity.referenceRating ||
-    pop.referenceReviews !== saved.params.popularity.referenceReviews;
+    !same(params, saved.params);
   return (
     <PipelineBox
       id="s-area"
@@ -322,16 +317,19 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             Places around an anchor: the device, a picked city, a searched
             destination, a dropped pin or the map&apos;s centre. The radius
             decides who is a candidate; the score orders them. The guest picks
-            one scope: <strong>Google Places</strong> (the nearest places one
-            Google call returns inside the radius, at most 20, a place already
-            on Mesita shown as its Mesita row) or{" "}
-            <strong>Mesita Selected</strong> (only places Mesita has written a
-            profile for).
+            one scope, and each scope has its own cap:{" "}
+            <strong>Google Places</strong> (the nearest places one Google call
+            returns inside the radius — places Mesita buys; a place already on
+            Mesita shown as its Mesita row) or <strong>Mesita Selected</strong>{" "}
+            (only places Mesita has written a profile for — a free read of our
+            own rows). The Mesita set is not a subset of the Google places
+            bought: a Selected place 3 km away can be absent from Google&apos;s
+            nearest 20.
           </p>
           <p className="mt-2">
             The Map and the Feed are two views of this one pipeline, so they
-            always agree. Proximity and Popularity carry no weights: neither
-            can be turned up or down, only calibrated below.
+            always agree. Proximity and Popularity add up with the two weights
+            below: a missing number lowers a place, it never removes it.
           </p>
         </>
       }
@@ -349,15 +347,6 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             onChange={(radiusKm) => map({ radiusKm })}
           />
           <NumberField
-            label="Proximity half distance (km)"
-            value={prox.halfDistanceKm}
-            min={HALF_DISTANCE_KM_MIN}
-            max={HALF_DISTANCE_KM_MAX}
-            decimals
-            disabled={off}
-            onChange={(v) => setParam("proximity", "halfDistanceKm", v)}
-          />
-          <NumberField
             label="Minimum number of Google reviews"
             value={cfg.map.googleMinReviews}
             min={0}
@@ -366,45 +355,71 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             onChange={(googleMinReviews) => map({ googleMinReviews })}
           />
           <NumberField
-            label="Popularity reference rating"
-            value={pop.referenceRating}
-            min={REFERENCE_RATING_MIN}
-            max={REFERENCE_RATING_MAX}
-            decimals
+            label="Reviews for half credit"
+            value={params.popularity.halfReviews}
+            min={HALF_REVIEWS_MIN}
+            max={HALF_REVIEWS_MAX}
             disabled={off}
-            onChange={(v) => setParam("popularity", "referenceRating", v)}
+            onChange={(v) => setParam("popularity", "halfReviews", v)}
           />
           <NumberField
-            label="Popularity reference reviews"
-            value={pop.referenceReviews}
-            min={REFERENCE_REVIEWS_MIN}
-            max={REFERENCE_REVIEWS_MAX}
+            label="Proximity weight"
+            value={params.balance.proximity}
+            min={AREA_WEIGHT_MIN}
+            max={AREA_WEIGHT_MAX}
             disabled={off}
-            onChange={(v) => setParam("popularity", "referenceReviews", v)}
+            onChange={(v) => setParam("balance", "proximity", v)}
+          />
+          <NumberField
+            label="Popularity weight"
+            value={params.balance.popularity}
+            min={AREA_WEIGHT_MIN}
+            max={AREA_WEIGHT_MAX}
+            disabled={off}
+            onChange={(v) => setParam("balance", "popularity", v)}
           />
         </div>
         <p className="text-muted-foreground type-meta">
-          Proximity is ½ at the half distance and ¼ at twice it. Popularity
-          reaches 1 at the reference rating × reference reviews. Both are
-          provisional (4.1 km, 4.5★ × 1,000) until calibrated on real
-          traffic. The reviews floor counts people, cuts Google Places only,
-          and 0 is off.
+          Proximity is 1 at the anchor and 0 at the edge of the radius, so the
+          radius is its only number. Popularity is rating ÷ 5 × reviews ÷
+          (reviews + half credit): a 3★ place is 60% of a 5★ one, and volume
+          earns half credit at that many reviews. The score is Proximity ×
+          its weight + Popularity × its weight; 0 turns a signal off. The
+          reviews floor counts people, cuts Google Places only, and 0 is off.
         </p>
       </Group>
       <Group title="Map view (the Search tab)">
         <div className="grid gap-3 sm:grid-cols-2">
           <ChoiceField
             icon={<Hash className="mt-0.5 h-4 w-4 shrink-0" />}
-            label="How many pins"
-            hint="Google answers at most 20 per call."
+            label="Google places"
+            hint="Places Mesita buys. One Nearby call answers 20; 40 and 60 wait for a 2–3-call fan-out."
           >
             <div className="flex flex-wrap gap-2">
               {GOOGLE_PULL_STOPS.map((stop) => (
                 <ChoicePill
                   key={stop}
-                  active={cfg.map.pinCount === stop}
+                  active={cfg.map.googlePlaces === stop}
+                  disabled={off || stop > 20}
+                  onClick={() => map({ googlePlaces: stop })}
+                >
+                  {stop}
+                </ChoicePill>
+              ))}
+            </div>
+          </ChoiceField>
+          <ChoiceField
+            icon={<Hash className="mt-0.5 h-4 w-4 shrink-0" />}
+            label="Mesita places"
+            hint="Places Mesita reads from its own rows, free."
+          >
+            <div className="flex flex-wrap gap-2">
+              {GOOGLE_PULL_STOPS.map((stop) => (
+                <ChoicePill
+                  key={stop}
+                  active={cfg.map.mesitaPlaces === stop}
                   disabled={off}
-                  onClick={() => map({ pinCount: stop })}
+                  onClick={() => map({ mesitaPlaces: stop })}
                 >
                   {stop}
                 </ChoicePill>

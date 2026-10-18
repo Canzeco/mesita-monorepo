@@ -376,13 +376,14 @@ Deno.test("selected: has no review floor — a two-review place is kept", () => 
   assertEquals(ids(out), ["thin"]);
 });
 
-Deno.test("selected: proximity × popularity ranks; the nearer twin first", () => {
+Deno.test("selected: the Area score ranks; the nearer twin first", () => {
   const out = selectMesitaSelected([
     mrow("far-twin", { lat: CENTER.lat + 0.02 }),
     mrow("near-twin", { lat: CENTER.lat + 0.001 }),
   ], selOpts);
   assertEquals(ids(out), ["near-twin", "far-twin"]);
-  // quiet: 1 × ln(16.5)/ln(4501) ≈ 0.33; loved at 1.1 km: 0.83 × 1.
+  // quiet at 0 km: (1 × 5 + 0.03 × 5) ÷ 10 ≈ 0.51; loved at 1.1 km on a
+  // 10 km radius: (0.89 × 5 + 0.95 × 5) ÷ 10 ≈ 0.92.
   const loved = selectMesitaSelected([
     mrow("quiet", { google_stars_overall: 3.1, google_review_count: 5 }),
     mrow("loved", {
@@ -394,21 +395,30 @@ Deno.test("selected: proximity × popularity ranks; the nearer twin first", () =
   assertEquals(ids(loved), ["loved", "quiet"]);
 });
 
-Deno.test("selected: the half distance is the operator's (params.proximity.halfDistanceKm)", () => {
+Deno.test("selected: the weights are the operator's (params.balance), MESITA-2347", () => {
   const rows = [
     mrow("near-quiet", { lat: CENTER.lat + 0.001, google_stars_overall: 4.0, google_review_count: 100 }),
     mrow("far-loved", { lat: CENTER.lat + 0.05, google_stars_overall: 4.9, google_review_count: 4000 }),
   ];
-  const tight = {
+  const distance = {
     ...selOpts,
-    params: { ...selOpts.params, proximity: { ...selOpts.params.proximity, halfDistanceKm: 0.5 } },
+    params: { ...selOpts.params, balance: { proximity: 10, popularity: 0 } },
   };
-  const loose = {
+  const proven = {
     ...selOpts,
-    params: { ...selOpts.params, proximity: { ...selOpts.params.proximity, halfDistanceKm: 40 } },
+    params: { ...selOpts.params, balance: { proximity: 0, popularity: 10 } },
   };
-  assertEquals(ids(selectMesitaSelected(rows, tight))[0], "near-quiet");
-  assertEquals(ids(selectMesitaSelected(rows, loose))[0], "far-loved");
+  assertEquals(ids(selectMesitaSelected(rows, distance))[0], "near-quiet");
+  assertEquals(ids(selectMesitaSelected(rows, proven))[0], "far-loved");
+});
+
+Deno.test("selected: Proximity reads the radius, so the same place scores differently on a wider circle", () => {
+  // 5.6 km north: 0 on a 5.6 km radius's edge… but inside only on a wider one.
+  const row = mrow("mid", { lat: CENTER.lat + 0.05 });
+  const narrow = selectMesitaSelected([row], { ...selOpts, radiusKm: 6 });
+  const wide = selectMesitaSelected([row], { ...selOpts, radiusKm: 60 });
+  assertEquals(ids(narrow), ["mid"]);
+  assertEquals(ids(wide), ["mid"]);
 });
 
 Deno.test("selected: guest families cut, and no centre means no radius", () => {

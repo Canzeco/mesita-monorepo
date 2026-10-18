@@ -24,7 +24,7 @@ const mockInvoke = vi.mocked(efInvoke);
 function liveConfig(): DiscoveryConfig {
   return coerceConfig({
     ...DEFAULT_CONFIG,
-    params: { ...DEFAULT_CONFIG.params, proximity: { halfDistanceKm: 4.1 } },
+    params: { ...DEFAULT_CONFIG.params, popularity: { halfReviews: 100 } },
     chat: { prompt: "live prompt" },
   });
 }
@@ -36,7 +36,7 @@ function storedBlob(live: DiscoveryConfig): DiscoveryConfig {
     filters: { requireReady: true, minRating: 3.5, minReviews: 0, maxDistanceKm: 0 },
     swipe: { radiusKm: 5, minReviews: 1 },
     engines: { swipe: { ranked: true } },
-    weights: { proximity: 1 },
+    balance: { proximity: 1 },
     weightsByMode: { map: { proximity: 0.5 } },
   } as unknown as DiscoveryConfig;
 }
@@ -59,10 +59,10 @@ function editedEverywhere(live: DiscoveryConfig): DiscoveryConfig {
   return {
     ...live,
     params: {
-      proximity: { halfDistanceKm: 2.5 },
-      popularity: { referenceRating: 4, referenceReviews: 500 },
+      popularity: { halfReviews: 250 },
+      balance: { proximity: 7, popularity: 3 },
     },
-    map: { ...live.map, radiusKm: 3, pinCount: 20 },
+    map: { ...live.map, radiusKm: 3, googlePlaces: 20, mesitaPlaces: 60 },
     catalog: { ...live.catalog, railCap: 7, seedCount: 99 },
     name: {
       ...live.name,
@@ -98,13 +98,13 @@ describe("no Save sends a retired key (MESITA-2328, MESITA-2337)", () => {
 });
 
 describe("the Area box", () => {
-  it("moves the half distance and the Popularity reference", async () => {
+  it("moves the half-credit count and the two weights", async () => {
     const live = liveConfig();
     const sent = armed(live);
     await updateDiscoveryConfig(editedEverywhere(live), ["areaSignals"]);
     expect(sent.config?.params).toEqual({
-      proximity: { halfDistanceKm: 2.5 },
-      popularity: { referenceRating: 4, referenceReviews: 500 },
+      popularity: { halfReviews: 250 },
+      balance: { proximity: 7, popularity: 3 },
     });
   });
 
@@ -113,7 +113,8 @@ describe("the Area box", () => {
     const sent = armed(live);
     await updateDiscoveryConfig(editedEverywhere(live), [...BOX_SLICES.area]);
     expect(sent.config?.map.radiusKm).toBe(3);
-    expect(sent.config?.map.pinCount).toBe(20);
+    expect(sent.config?.map.googlePlaces).toBe(20);
+    expect(sent.config?.map.mesitaPlaces).toBe(60);
     expect(sent.config?.catalog.railCap).toBe(7);
     expect(sent.config?.catalog.seedCount).toBe(live.catalog.seedCount);
     expect(sent.config?.name).toEqual(live.name);

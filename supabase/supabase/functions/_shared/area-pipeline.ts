@@ -6,8 +6,8 @@
 //   Sources  Google Nearby Search · Mesita Places Search
 //   Gates    Family (every scope) · Selected (the Mesita Selected scope)
 //   Signals  Proximity · Popularity
-//   Score    familyGate × selectedGate × proximity × popularity
-//            (area-score.ts; exponents 1, no weights)
+//   Score    familyGate × selectedGate × (proximity × Pw + popularity × Qw)
+//            ÷ (Pw + Qw) — area-score.ts, the operator's two weights
 //
 // Two entry points, one per guest scope:
 //   selectGooglePlaces   Google Places — ONE Nearby Search (New) call inside
@@ -41,12 +41,13 @@ import { clearsMinReviews } from "./map-engine.ts";
 import { familiesForPlace } from "./place-taxonomy.ts";
 import { familiesForGoogleType, nearbyExcludedTypesForFamilies } from "./sourcing.ts";
 import { type AreaCandidate, type AreaContext, rankArea } from "./area-score.ts";
+import { POPULARITY_HALF_REVIEWS_DEFAULT } from "./pipeline-signals.ts";
 import {
-  POPULARITY_REFERENCE_RATING_DEFAULT,
-  POPULARITY_REFERENCE_REVIEWS_DEFAULT,
-  PROXIMITY_HALF_DISTANCE_KM_DEFAULT,
-} from "./pipeline-signals.ts";
-import type { DiscoveryConfig, GeneralConfig, SignalParams } from "./discovery-config.ts";
+  AREA_WEIGHT_DEFAULT,
+  type DiscoveryConfig,
+  type GeneralConfig,
+  type SignalParams,
+} from "./discovery-config.ts";
 import {
   type NearbyHit,
   peekCachedNearbyPlaces,
@@ -61,17 +62,17 @@ export const FEED_GOOGLE_TYPES: readonly string[] = nearbyTypesForSupers(
 
 type Center = { lat: number; lng: number };
 
-/** Proximity's half distance and Popularity's reference, from the blob. */
+/** Popularity's reviews-for-half-credit and the two weights, from the blob. */
 export function areaSignalParams(params: SignalParams): Pick<
   AreaContext,
-  "halfDistanceKm" | "popularityReference"
+  "halfReviews" | "balance"
 > {
   const num = (v: unknown, d: number) => (typeof v === "number" && Number.isFinite(v) ? v : d);
   return {
-    halfDistanceKm: num(params.proximity?.halfDistanceKm, PROXIMITY_HALF_DISTANCE_KM_DEFAULT),
-    popularityReference: {
-      rating: num(params.popularity?.referenceRating, POPULARITY_REFERENCE_RATING_DEFAULT),
-      reviews: num(params.popularity?.referenceReviews, POPULARITY_REFERENCE_REVIEWS_DEFAULT),
+    halfReviews: num(params.popularity?.halfReviews, POPULARITY_HALF_REVIEWS_DEFAULT),
+    balance: {
+      proximity: num(params.balance?.proximity, AREA_WEIGHT_DEFAULT),
+      popularity: num(params.balance?.popularity, AREA_WEIGHT_DEFAULT),
     },
   };
 }
@@ -260,6 +261,7 @@ export async function selectGooglePlaces<T extends OwnedRow>(
     anchor: center,
     families: deps.families ?? [],
     selectedOnly: false,
+    radiusKm,
     ...areaSignalParams(deps.cfg.params),
   });
   return {
@@ -295,6 +297,7 @@ export function selectMesitaSelected<T extends Record<string, unknown>>(
     anchor: center,
     families: opts.families ?? [],
     selectedOnly: true,
+    radiusKm: opts.radiusKm,
     ...areaSignalParams(opts.params),
   });
   const out = ranked.map(({ item }) => ({

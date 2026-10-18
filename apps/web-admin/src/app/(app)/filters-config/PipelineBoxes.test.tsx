@@ -123,21 +123,29 @@ describe("the boxes' controls", () => {
     expect(html).not.toContain("Only active places");
   });
 
-  it("Area: radius, the two calibrations, both views", () => {
+  it("Area: radius, the three numbers, the two caps, both views (MESITA-2347)", () => {
     const html = render(<AreaBox {...seed} />);
     for (const label of [
       "Radius (km)",
-      "Proximity half distance (km)",
-      "Popularity reference rating",
-      "Popularity reference reviews",
-      "How many pins",
+      "Reviews for half credit",
+      "Proximity weight",
+      "Popularity weight",
+      "Google places",
+      "Mesita places",
       "Reload after",
       "Places per row",
     ]) {
       expect(html).toContain(label);
     }
-    expect(html).toContain('value="4.1"');
-    expect(html).toContain('value="1000"');
+    for (const dead of ["half distance", "reference rating", "reference reviews", "How many pins"]) {
+      expect(html).not.toContain(dead);
+    }
+    expect(html).toContain('value="100"');
+    expect(html).toContain('value="5"');
+    // Google places above 20 are not bought yet: the pills exist, disabled.
+    const google = html.slice(html.indexOf("Google places"), html.indexOf("Mesita places"));
+    expect(google.match(/<button[^>]*disabled=""[^>]*>(40|60)<\/button>/g)?.length).toBe(2);
+    expect(google).not.toMatch(/<button[^>]*disabled=""[^>]*>20<\/button>/);
   });
 
   it("Area lists Google Places, Mesita Selected, then every family in Feed order", () => {

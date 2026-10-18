@@ -87,7 +87,10 @@ Deno.test("the live blob loads: the retired keys drop, every live value stands",
     assertEquals(dead in cfg, false, dead);
   }
   assertEquals(cfg.general, LIVE_BLOB_2026_10_18.general);
-  assertEquals(cfg.map.pinCount, 60);
+  // The one `pinCount` seeds both scope caps on the cut-over (MESITA-2347).
+  assertEquals(cfg.map.googlePlaces, 60);
+  assertEquals(cfg.map.mesitaPlaces, 60);
+  assertEquals("pinCount" in cfg.map, false);
   assertEquals(cfg.map.reloadMinKm, 0.25);
   assertEquals(cfg.chat.prompt, "Be Memo.");
   // The deck's numbers on `params` go; the Area pipeline's three arrive at
@@ -184,12 +187,10 @@ Deno.test("the admin twin mirrors the Area params' bounds", () => {
     assert(m, `catalog.ts has no ${name}`);
     return Number(m[1].replaceAll("_", ""));
   };
-  assertEquals(constant("HALF_DISTANCE_KM_MIN"), SIGNAL_PARAM_BOUNDS.halfDistanceKm.min);
-  assertEquals(constant("HALF_DISTANCE_KM_MAX"), SIGNAL_PARAM_BOUNDS.halfDistanceKm.max);
-  assertEquals(constant("REFERENCE_RATING_MIN"), SIGNAL_PARAM_BOUNDS.referenceRating.min);
-  assertEquals(constant("REFERENCE_RATING_MAX"), SIGNAL_PARAM_BOUNDS.referenceRating.max);
-  assertEquals(constant("REFERENCE_REVIEWS_MIN"), SIGNAL_PARAM_BOUNDS.referenceReviews.min);
-  assertEquals(constant("REFERENCE_REVIEWS_MAX"), SIGNAL_PARAM_BOUNDS.referenceReviews.max);
+  assertEquals(constant("HALF_REVIEWS_MIN"), SIGNAL_PARAM_BOUNDS.halfReviews.min);
+  assertEquals(constant("HALF_REVIEWS_MAX"), SIGNAL_PARAM_BOUNDS.halfReviews.max);
+  assertEquals(constant("AREA_WEIGHT_MIN"), SIGNAL_PARAM_BOUNDS.weight.min);
+  assertEquals(constant("AREA_WEIGHT_MAX"), SIGNAL_PARAM_BOUNDS.weight.max);
 });
 
 // ── The normalizer, key by key ───────────────────────────────────────────────
@@ -197,7 +198,7 @@ Deno.test("the admin twin mirrors the Area params' bounds", () => {
 Deno.test("an early-migration blob reads back with every live section defaulted", () => {
   // What an early migration stored: weights + slotting only. Both retired.
   const old = {
-    weights: { proximity: 2, timing: 1, category: 1, popularity: 1, summary: 1, randomness: 0.35 },
+    balance: { proximity: 2, timing: 1, category: 1, popularity: 1, summary: 1, randomness: 0.35 },
     slotting: { enabled: true, everyNth: 7 },
   };
   const cfg = normalizeDiscoveryConfig(old);
@@ -219,7 +220,7 @@ Deno.test("the deck's slices do not survive a normalize: swipe, engines, weights
   const cfg = normalizeDiscoveryConfig({
     swipe: { radiusKm: 7, closingBufferMin: 30, minReviews: 1, savedAt: null },
     engines: { swipe: { ranked: false } },
-    weights: { proximity: 1.5, mesita_level: 2, partnership: 2 },
+    balance: { proximity: 1.5, mesita_level: 2, partnership: 2 },
     weightsByMode: { swipe: { timing: 1.5 }, map: { proximity: 0.5 } },
   }) as unknown as Record<string, unknown>;
   for (const dead of ["swipe", "engines", "weights", "weightsByMode"]) {
@@ -237,18 +238,25 @@ Deno.test("the deck's param bags and numbers do not survive a normalize", () => 
       timing: { dawn: 0.55, openShare: 0.7, closedFloor: 0.2 },
       category: { miss: 0.1, exact: 1, family: 0.55 },
       proximity: { maxKm: 25, kneeKm: 1, missingGeo: 0.35, halfDistanceKm: 6 },
-      popularity: { confidence: 60, floorRating: 3, priorRating: 4.2, referenceReviews: 500 },
+      popularity: {
+        confidence: 60,
+        floorRating: 3,
+        priorRating: 4.2,
+        referenceRating: 4.5,
+        referenceReviews: 500,
+        halfReviews: 250,
+      },
+      balance: { proximity: 7 },
       randomness: {},
       summary: { unembedded: 0.4 },
       mesita_level: {},
     },
   });
+  // The retired calibration (halfDistanceKm, referenceRating/Reviews,
+  // MESITA-2347) goes with the deck's bags; only the three live numbers stay.
   assertEquals(cfg.params, {
-    proximity: { halfDistanceKm: 6 },
-    popularity: {
-      referenceRating: DISCOVERY_DEFAULTS.params.popularity.referenceRating,
-      referenceReviews: 500,
-    },
+    popularity: { halfReviews: 250 },
+    balance: { proximity: 7, popularity: DISCOVERY_DEFAULTS.params.balance.popularity },
   });
 });
 
@@ -299,13 +307,18 @@ Deno.test("map knobs default on an old blob and clamp", () => {
   assertEquals("restaurants" in clamped.map.supers, false);
 });
 
-Deno.test("map.pinCount is the operator's How many, snapped to a stop", () => {
+Deno.test("map.googlePlaces and map.mesitaPlaces are the operator's two caps, each snapped to a stop", () => {
   // MESITA-1699 took the Search Filters sheet off the consumer app, so the
-  // number that was the guest's since 2026-08-29 lives here. It caps BOTH
-  // lanes and the merged union, so max pins = pinCount, never the sum.
+  // number that was the guest's since 2026-08-29 lives here; MESITA-2347
+  // split it per scope, because Google places are bought and Mesita places
+  // are read, and the Mesita set is not a subset of the Google places bought.
   const pins = (raw: unknown) =>
-    normalizeDiscoveryConfig({ map: { pinCount: raw } }).map.pinCount;
-  assertEquals(normalizeDiscoveryConfig({}).map.pinCount, 20);
+    normalizeDiscoveryConfig({ map: { googlePlaces: raw } }).map.googlePlaces;
+  assertEquals(normalizeDiscoveryConfig({}).map.googlePlaces, 20);
+  assertEquals(normalizeDiscoveryConfig({}).map.mesitaPlaces, 20);
+  const both = normalizeDiscoveryConfig({ map: { googlePlaces: 20, mesitaPlaces: 60 } }).map;
+  assertEquals([both.googlePlaces, both.mesitaPlaces], [20, 60]);
+  assertEquals(normalizeDiscoveryConfig({ map: { mesitaPlaces: 31 } }).map.mesitaPlaces, 40);
   assertEquals(pins(40), 40);
   assertEquals(pins(60), 60);
   assertEquals(pins(29), 20);
@@ -323,7 +336,7 @@ Deno.test("map.googlePull is retired: an old blob's key is dropped on normalize 
   // and the next save drops it from the blob.
   const map = normalizeDiscoveryConfig({ map: { googlePull: 60 } }).map;
   assertEquals("googlePull" in map, false);
-  assertEquals(map.pinCount, 20);
+  assertEquals(map.googlePlaces, 20);
   assertEquals("googlePull" in DISCOVERY_DEFAULTS.map, false);
 });
 

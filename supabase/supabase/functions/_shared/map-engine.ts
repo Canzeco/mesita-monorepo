@@ -10,8 +10,8 @@
 // Google hits only, after Google answers (`guestReviewFloor`). Name Google
 // categories live on discovery_config.name. `googleFill` gates Nearby.
 //
-// `minPopularity` reads the Area pipeline's Popularity (pipeline-signals.ts)
-// since the old seven-signal library retired (MESITA-2328).
+// `minPopularity` reads the Area pipeline's Popularity (pipeline-signals.ts,
+// rating × saturating volume since MESITA-2347).
 // A SIGNAL DEMOTES; a MAP FLOOR EXCLUDES.
 
 import type { MapConfig, SignalParams } from "./discovery-config.ts";
@@ -22,11 +22,7 @@ import {
   type SuperParamKey,
 } from "./discovery-config.ts";
 import { nearbyTypesForSupers } from "./google-type-super.ts";
-import {
-  popularity,
-  POPULARITY_REFERENCE_RATING_DEFAULT,
-  POPULARITY_REFERENCE_REVIEWS_DEFAULT,
-} from "./pipeline-signals.ts";
+import { popularity, POPULARITY_HALF_REVIEWS_DEFAULT } from "./pipeline-signals.ts";
 import type { NearbyHit, PlacesScope } from "./nearby-places.ts";
 import { type EligibilityResult, familiesForGoogleType } from "./sourcing.ts";
 import { familiesForAtlasCategory } from "./place-taxonomy.ts";
@@ -133,14 +129,15 @@ export function mapShouldFillGoogle(
 }
 
 /**
- * The Map popularity floor, on the Area pipeline's Popularity: 0..1 against
- * the operator's reference (`params.popularity`). An unrated place scores 0,
- * so any floor above 0 drops it, the same reading as a Google stub.
+ * The Map popularity floor, on the Area pipeline's Popularity: 0..1 with
+ * the operator's reviews-for-half-credit (`params.popularity.halfReviews`).
+ * An unrated place scores 0, so any floor above 0 drops it, the same
+ * reading as a Google stub.
  */
 export function listedClearsMapPopularity(
   place: ListedMapRow,
   map: MapConfig,
-  reference?: SignalParams["popularity"],
+  params?: SignalParams["popularity"],
 ): boolean {
   if (!(map.minPopularity > 0)) return true;
   const score = popularity(
@@ -148,11 +145,7 @@ export function listedClearsMapPopularity(
       rating: place.google_stars_overall ?? null,
       reviewCount: place.google_review_count ?? null,
     },
-    {
-      rating: reference?.referenceRating ?? POPULARITY_REFERENCE_RATING_DEFAULT,
-      reviews: reference?.referenceReviews ??
-        POPULARITY_REFERENCE_REVIEWS_DEFAULT,
-    },
+    params?.halfReviews ?? POPULARITY_HALF_REVIEWS_DEFAULT,
   );
   return score >= map.minPopularity;
 }

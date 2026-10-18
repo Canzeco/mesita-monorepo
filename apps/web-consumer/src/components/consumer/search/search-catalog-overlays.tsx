@@ -77,7 +77,7 @@ export function SearchRailOverlay({
 }) {
   // Filters live on the top-right disc. Reset on this empty state was
   // the one-tap way out of a cut the guest made; the sheet's own Reset
-  // is that now. An empty map is a fact about the catalog, pinCount, or
+  // is that now. An empty map is a fact about the catalog, the scope's cap, or
   // the guest's Popularity floor.
 
   if (catalogLoading && places.length === 0) {

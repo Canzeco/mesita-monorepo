@@ -41,7 +41,7 @@
 //     the predictions while a query is live.
 //   • Top overlay: the search bar (two thirds) + labelled Filters (one
 //     third: Family, Places scope, Popularity). How many is
-//     operator `map.pinCount`.
+//     operator the scope's cap (`map.googlePlaces` / `map.mesitaPlaces`).
 //   • Bottom overlay: the catalog rail around the camera, hidden while
 //     querying. Closest first. A guest pan auto-reloads after reloadMinKm
 //     AND reloadMinSec.
@@ -193,7 +193,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   // Filters, the disc at the right of the top row. Places scope, Families
   // and Google Reviews ride this store and the nearby call. How many is
-  // operator `map.pinCount`, the circle operator `map.radiusKm`. The server
+  // operator the scope's cap (`map.googlePlaces` / `map.mesitaPlaces`), the circle operator `map.radiusKm`. The server
   // is the one selector — this component never recuts the catalog.
   const filters = useMapFilters();
   const location = userLocation;
@@ -479,7 +479,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   useEffect(() => () => clearPendingReload(), [clearPendingReload]);
 
   // Places scope, Family and Popularity all change the Nearby
-  // engine. How many stays the operator's pinCount. The query bar never
+  // engine. How many stays the operator's per-scope cap. The query bar never
   // reads these filters.
   useEffect(() => {
     if (!lastFetchedCenter.current || !lastBoxRef.current) return;
