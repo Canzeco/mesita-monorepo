@@ -96,3 +96,20 @@ describe("the card is one square: photo half, info half (MESITA-2344, MESITA-236
     expect(html.indexOf("<img")).toBeLessThan(html.indexOf(">Casa<"));
   });
 });
+
+describe("the info band is the photo's reflection under 50% ink (MESITA-2363)", () => {
+  it("draws the image again, flipped, under a 50% ink layer, with paper text", () => {
+    const html = tile({ photos: ["https://example.com/a.jpg"] });
+    expect(html.match(/<img/g)?.length).toBe(2);
+    expect(html).toContain("-scale-y-100");
+    expect(html).toContain("bg-foreground/50");
+    expect(html).toContain("data-card-reflection");
+    expect(html).toContain("text-paper");
+  });
+
+  it("a Google card reflects its emoji tile, still with no photo", () => {
+    const html = tile({ id: "g:ChIJx", googleOnly: true, family_keys: ["tacos"] });
+    expect(html).not.toContain("<img");
+    expect(html.match(/data-placeholder="emoji"/g)?.length).toBe(2);
+  });
+});
