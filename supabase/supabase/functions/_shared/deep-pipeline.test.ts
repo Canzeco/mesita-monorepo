@@ -1,6 +1,7 @@
 // The Deep pipeline (MESITA-2327): lazy, Description-ranked, Chat-facing.
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { deepContextForChat, type DeepRow, runDeepPipeline } from "./deep-pipeline.ts";
+import { SYSTEM_PROMPT } from "./memo-prompt.ts";
 
 const row = (id: string, embedding: unknown, over: Partial<DeepRow> = {}): DeepRow => ({
   id,
@@ -94,4 +95,43 @@ Deno.test("the Chat Agent calls the Deep pipeline, never a source", async () => 
   ]) {
     assertEquals(chat.includes(source), false, source);
   }
+});
+
+// ── MESITA-2338: the Chat wire, the persona and Memo's data paths ──────────
+
+Deno.test("Chat keeps `related` as follow-up strings and sends Deep's places as `places`", async () => {
+  const chat = await Deno.readTextFile(new URL("../consumer-web-ask-memo/index.ts", import.meta.url));
+  // The client renders each `related` item as a string chip.
+  assertEquals(/related:\s*related\b|related:\s*places\b|related:\s*\w+\.map\(/.test(chat), false);
+  assert(chat.includes("places: places.map("));
+});
+
+Deno.test("the persona allows recommending from Deep's list and never contradicts it", () => {
+  assertEquals(SYSTEM_PROMPT.includes("Do not pretend you queried Mesita"), false);
+  assertEquals(SYSTEM_PROMPT.includes("cannot look up Google Places, Perplexity, the Mesita catalog"), false);
+  assert(SYSTEM_PROMPT.includes("only from that list"));
+  assert(deepContextForChat([{
+    id: "a",
+    slug: null,
+    name: "A",
+    address: null,
+    familyKeys: [],
+    rating: null,
+    reviewCount: null,
+    similarity: 0.9,
+    about: null,
+  }]).includes("Mesita looked these up"));
+});
+
+Deno.test("Memo's only database client feeds the config read and the Deep pipeline", async () => {
+  const chat = await Deno.readTextFile(new URL("../consumer-web-ask-memo/index.ts", import.meta.url));
+  const uses = chat.match(/adminClient\(/g) ?? [];
+  assertEquals(uses.length, 1);
+  const fn = chat.slice(chat.indexOf("async function deepPlacesFor"));
+  assert(fn.includes("adminClient(env)"));
+  assert(fn.includes("loadDiscoveryConfig(admin)"));
+  assert(fn.includes("deepDepsFor(admin,"));
+  // Any member call, however the chain is wrapped (imports read `from "…"`).
+  assertEquals(/\.\s*(from|rpc)\s*\(/.test(chat), false);
+  assertEquals(chat.includes("createClient("), false);
 });

@@ -62,7 +62,7 @@ export async function searchAutocompleteSource(
 }
 
 /** Google Places Text Search: one page through the route Multiple Places ›
- *  Google Search uses, so Discovery › Map's floors apply here as everywhere
+ *  Google Search uses, so Discovery's place rules apply here as everywhere
  *  and the note line can say how many they hid. */
 export async function searchTextSource(
   query: string,

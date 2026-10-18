@@ -495,3 +495,23 @@ Deno.test("Text Search asks for the listing mask and builds its card with google
   assertEquals(fn.includes("nearbyHitFromPlace(p)"), true);
   assertEquals(fn.includes("card: googleStub(hit, null)"), true);
 });
+
+// ── MESITA-2338: the query is embedded once per request, never per row ─────
+
+Deno.test("Name embeds the query once per request; fast mode never embeds; no row is re-embedded", async () => {
+  const src = await Deno.readTextFile(new URL("./consumer-search-lane.ts", import.meta.url));
+  const body = (name: string) => {
+    const start = src.indexOf(`async function ${name}(`);
+    const next = src.indexOf("\nasync function ", start + 1);
+    const nextExport = src.indexOf("\nexport ", start + 1);
+    const end = [next, nextExport].filter((i) => i > start).sort((a, b) => a - b)[0] ?? src.length;
+    return src.slice(start, end);
+  };
+  const count = (s: string, needle: string) => s.split(needle).length - 1;
+  assertEquals(count(body("runDeepSearch"), "embedQueryVector("), 1);
+  assertEquals(count(body("runMesitaNameSearch"), "embedQueryVector("), 1);
+  assertEquals(count(body("runFastSearch"), "embedQueryVector("), 0);
+  // embedSingle has exactly one call site: the query, inside embedQueryVector.
+  assertEquals(count(src, "embedSingle("), 1);
+  assertEquals(body("embedQueryVector").includes("embedSingle(input"), true);
+});

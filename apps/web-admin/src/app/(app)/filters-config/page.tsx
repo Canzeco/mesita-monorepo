@@ -17,7 +17,7 @@ export default async function DiscoveryPage() {
     <ConfigPageLayout
       eyebrow="Product · Discovery"
       title="Discovery"
-      description="Five sources, three pipelines, four signals, two gates. Every setting is on this page."
+      description="Five sources, three pipelines, four signals, two gates. Every Discovery control is on this page; family membership lives on Atlas."
     >
       <div className="flex flex-col gap-6">
         <NameAdminBox {...seed} />

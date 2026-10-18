@@ -107,9 +107,9 @@ export function QueryRow({
                     href={DISCOVERY_MAP_HREF}
                     className="text-foreground underline underline-offset-2"
                   >
-                    Discovery › Map
+                    Discovery&apos;s place rules
                   </Link>{" "}
-                  (types or Google floors). This row only —
+                  (Mesita&apos;s place types, or a stored Google floor). This row only —
                   other queries in the batch still stand.
                 </>
               ) : (
@@ -127,7 +127,7 @@ export function QueryRow({
                       href={DISCOVERY_MAP_HREF}
                       className="text-foreground underline underline-offset-2"
                     >
-                      Discovery › Map
+                      Discovery&apos;s place rules
                     </Link>
                   </span>
                 ) : (

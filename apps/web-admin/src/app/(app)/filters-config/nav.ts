@@ -10,6 +10,9 @@ export const FILTERS_PARENT = {
   Icon: Compass,
 } as const;
 
-// Deep link from Crenup and Manage Multiple: the Map view's knobs (radius,
-// reviews floor) sit in the Area Pipeline box.
-export const DISCOVERY_MAP_HREF = "/filters-config#s-area" as const;
+// Deep link from Crenup, Manage Multiple and Single Place: what Google
+// Search, Create and Find may admit is Discovery's place rules — Mesita's
+// place types and the stored Google floors (map.minRating, minReviews,
+// minPopularity; 0 = off, no box edits them) — stated in the Name Pipeline
+// box's always-on rules (MESITA-2338).
+export const DISCOVERY_MAP_HREF = "/filters-config#s-name" as const;

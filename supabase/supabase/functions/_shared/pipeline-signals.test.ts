@@ -4,6 +4,7 @@ import {
   descriptionSimilarity,
   lexicalNameSimilarity,
   nameSimilarity,
+  normalizeName,
   popularity,
   POPULARITY_REFERENCE_RATING_DEFAULT,
   POPULARITY_REFERENCE_REVIEWS_DEFAULT,
@@ -84,4 +85,35 @@ Deno.test("description: cosine of the request against the summary; no summary ve
   assertAlmostEquals(descriptionSimilarity([1, 0], [1, 0])!, 1, 1e-12);
   assertEquals(descriptionSimilarity([1, 0], null), null);
   assertEquals(descriptionSimilarity([1, 0, 0], [1, 0]), null);
+});
+
+// ── MESITA-2338: non-finite inputs and names outside Latin ─────────────────
+
+Deno.test("proximity: an unplaceable distance scores 0, never 1", () => {
+  assertEquals(proximityFromDistance(Number.NaN, 4.1), 0);
+  assertEquals(proximityFromDistance(Number.POSITIVE_INFINITY, 4.1), 0);
+  assertEquals(proximityFromDistance(0, Number.NaN), 1);
+  assertEquals(proximityFromDistance(4.1, Number.NaN), 0.5);
+});
+
+Deno.test("popularity: NaN or infinite numbers score 0, never NaN", () => {
+  const ref = { rating: 4.5, reviews: 1000 };
+  assertEquals(popularity({ rating: Number.NaN, reviewCount: 100 }, ref), 0);
+  assertEquals(popularity({ rating: 4.5, reviewCount: Number.POSITIVE_INFINITY }, ref), 0);
+  assertEquals(rawPopularity(Number.NaN, 10), 0);
+});
+
+Deno.test("name: letters of every script survive normalization", () => {
+  assertEquals(normalizeName("寿司 Kyo!"), "寿司 kyo");
+  assertEquals(normalizeName("Кафе Пушкин"), "кафе пушкин");
+  assertEquals(normalizeName("Café Niño — Güero!"), "cafe nino guero");
+  assertEquals(lexicalNameSimilarity("寿司", "寿司"), 1);
+  assert(lexicalNameSimilarity("Кафе", "Кафе Пушкин") >= 0.8);
+});
+
+Deno.test("name: other scripts keep their marks, so different names never collide", () => {
+  assert(normalizeName("カフェ") !== normalizeName("ガフェ"));
+  assert(normalizeName("कमल") !== normalizeName("कमाल"));
+  assertEquals(normalizeName("Café"), normalizeName("Cafe"));
+  assertEquals(normalizeName("La 1ª Taquería"), "la 1a taqueria");
 });

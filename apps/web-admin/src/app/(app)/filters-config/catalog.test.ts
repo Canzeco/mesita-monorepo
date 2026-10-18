@@ -208,7 +208,7 @@ describe("Discovery page box order", () => {
       expect(existsSync(join(__dirname, gone))).toBe(false);
     }
     expect(nav).not.toContain("DISCOVERY_TABS");
-    expect(nav).toContain('"/filters-config#s-area"');
+    expect(nav).toContain('"/filters-config#s-name"');
     // Every retired subpage keeps an operator's bookmark alive, one hop.
     for (const old of ["modes", "signals", "sources", "matrix", "modules", "catalog", "chat"]) {
       expect(nextConfig).toContain(`"/filters-config/${old}"`);

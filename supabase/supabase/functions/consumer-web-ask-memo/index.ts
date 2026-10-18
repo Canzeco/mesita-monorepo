@@ -4,7 +4,8 @@
 // system prompt plus the full thread on every message. THE CHAT AGENT SITS
 // ABOVE THE PIPELINES (MESITA-2327): before the model answers, it runs the
 // Deep pipeline on the guest's message and hands the model those places as
-// context (`related` on the wire). It never calls a source itself. Passive:
+// context (`places` on the wire; `related` stays the follow-up chips the
+// client renders as strings, MESITA-2338). It never calls a source itself. Passive:
 // nothing here writes. Greeting / prompt / model come from
 // supabase-edgefunc-get-memo-config (which reads discovery_config.chat).
 //
@@ -70,12 +71,12 @@ Deno.serve(async (req) => {
   }
 
   const openaiKey = Deno.env.get("OPENAI_KEY") ?? "";
-  const [cfg, related] = await Promise.all([
+  const [cfg, places] = await Promise.all([
     configPromise,
     deepPlacesFor(env, query, openaiKey),
   ]);
   const system = resolveMemoSystemPrompt(cfg.instructions);
-  const context = deepContextForChat(related);
+  const context = deepContextForChat(places);
   const answer = await completeChatTurn({
     openaiKey,
     model: (cfg.model ?? DEFAULT_MODELS_CONFIG.memo.model!).trim(),
@@ -89,7 +90,11 @@ Deno.serve(async (req) => {
     greeting: cfg.greeting,
     answer: toPlainText(answer && answer.length > 0 ? answer : LINE_DROPPED),
     predictions: [],
-    related: related.map((p) => ({ id: p.id, slug: p.slug, name: p.name, similarity: p.similarity })),
+    // Follow-up chips: the client renders each item as a string. Memo
+    // suggests none yet.
+    related: [],
+    // Deep's places for this turn, best first.
+    places: places.map((p) => ({ id: p.id, slug: p.slug, name: p.name, similarity: p.similarity })),
   });
 });
 

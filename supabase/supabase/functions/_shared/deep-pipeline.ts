@@ -123,7 +123,9 @@ export function deepDepsFor(
         .select(DEEP_COLUMNS)
         .eq("state", "active")
         .eq("content_state", "ready")
-        .not("embedding", "is", null);
+        .not("embedding", "is", null)
+        // The same capped slice every time (MESITA-2338).
+        .order("id", { ascending: true });
       const query = applyGeneralGateQuery(
         base as unknown as GeneralGateQuery,
         { ...general, minReviews: 0 },
@@ -154,7 +156,7 @@ export function deepContextForChat(places: readonly DeepPlace[]): string {
     return `${i + 1}. ${p.name} — ${facts}${p.about ? `\n   ${p.about}` : ""}`;
   });
   return [
-    "Mesita places that may fit the guest's request (the Deep pipeline, best match first). When you recommend a Mesita place, choose from this list; never invent one.",
+    "Mesita places that may fit the guest's request, best match first (Mesita looked these up for this turn; you did not). When you recommend a Mesita place, choose from this list; never invent one.",
     ...lines,
   ].join("\n");
 }
