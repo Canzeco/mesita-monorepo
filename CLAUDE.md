@@ -1,15 +1,17 @@
 <!-- RULES-QUICKSTART:START (generated — do not hand-edit; run: deno task sync-rules) -->
 # Mesita — agent quickstart (you're ~90% correct after this)
 
-**Notion is the library; it wins on any conflict.** This block mirrors [**Rules**](https://www.notion.so/Rules-3d9a9bf37a5280aaab2ed8af665485f7) §0 (`stamp: v5 2026-10-10`; unequal stamps are drift). **Rules = the law** (how change is allowed). **📚 [Docs](https://www.notion.so/Docs-3bfa9bf37a52801e891ec3407d717273) = the knowledge**, one flat page per domain. **Code = this repo.** Boot cards (this block, `AGENTS.md`, package `CLAUDE.md`, skills) mirror §0 and package law into the repo, never knowledge. Linear is the ledger, not a source of truth. **Rules beat Docs.** Two lifecycles: Code → SADLC (monorepo). Docs → KADLC. Changing this Rules tree is not a third lifecycle — issue + Pato for constitution, then SADLC if boot or a gate changed. SADLC / KADLC = Software / Knowledge Agentic Development Life Cycle. Mixed completes every Integrate. Fetch Rules, [SADLC](https://www.notion.so/3d9a9bf37a52800986a7f7f1363e2700), [KADLC](https://www.notion.so/3d9a9bf37a5280f18aa3f73ed6ab8edf) and [Markdowns](https://www.notion.so/3d9a9bf37a52803ebe4cf73bf300f1a3) only; the Map is Rules §4. The retired law pages are in the Trash.
+**Notion is the library; it wins on any conflict.** **📜 [Rules](https://www.notion.so/Rules-3d9a9bf37a5280aaab2ed8af665485f7) = the law** (how change is allowed). **📚 [Docs](https://www.notion.so/Docs-3bfa9bf37a52801e891ec3407d717273) = the knowledge**, one flat page per domain. **Code = this repo.** **Linear = the ledger**, not a source of truth. Boot cards (this block, `AGENTS.md`, package `CLAUDE.md`, skills) carry §0 and package law, never knowledge.
 
-**The repo.** `Canzeco/mesita-monorepo` is the whole product: `apps/{web-admin,web-consumer,web-landing}` + `supabase/` + `assets/`. The six former standalone repos are frozen. Package-specific rules: that package's `CLAUDE.md`.
+**Routing.** Code → [SADLC](https://www.notion.so/3d9a9bf37a52800986a7f7f1363e2700), Docs → [KADLC](https://www.notion.so/3d9a9bf37a5280f18aa3f73ed6ab8edf) (Software / Knowledge Agentic Development Life Cycle). Mixed completes every Integrate. Changing the Rules tree is not a third lifecycle: an issue; Pato for constitution, §2 constraints and I-1…I-10; `decision:` for adapter rows; then SADLC the same session if §0 or a gate changed. Fetch Rules, SADLC, KADLC and [Markdowns](https://www.notion.so/3d9a9bf37a52803ebe4cf73bf300f1a3) only; the Map is Rules §4. The retired law pages are in the Trash; never fetch them.
+
+**The repo.** `Canzeco/mesita-monorepo` is the whole product: `apps/{web-admin,web-consumer,web-landing}` + `packages/place-profile` + `supabase/` + `render/` + `assets/`. Package law: that package's `CLAUDE.md`.
 
 **The blackboard.** Agents never talk to each other. **Linear** (team Mesita, `MESITA-`) carries intent — issues + comments ONLY; Linear documents and Claude Artifacts are prohibited. **git/GitHub** carries the work — branches and squash PRs; `Closes MESITA-<id>` is the join.
 
-**The lock.** Every repo, Notion, or cloud (schema/EF) write has an issue (I-1). Claim = In Progress + one claim line (I-6). Workspace = a checkout a live claim names: one per code issue, none for Rules/Docs-only.
+**The lock.** Claim = In Progress + one claim line (I-6). Workspace = a checkout a live claim names: one per code issue, none for Rules/Docs-only. Issue header: Domain (Rules · Code · Docs · Mixed, also the label) · Footprint (paths, schema/EF, or `notion:<32hex>`) · Done (the named Integrates).
 
-**The loop.** `deno task boot` → pick unblocked, footprint-disjoint → `deno task worktree add MESITA-<id> <slug>` (`--adopt .` for the checkout you launched in) → enter the path → In Progress + the printed claim line → Docs first, small commits, push early → `deno task worktree pr` then `gh pr ready` then `gh pr merge --squash` with `Closes MESITA-<id>` → `deno task worktree remove` from a lobby → rewrite Docs. Never push to `main`. Never write in the shared checkout (I-4).
+**The loop.** `deno task boot` → pick unblocked, footprint-disjoint → `deno task worktree add MESITA-<id> <slug>` (`--adopt .` for the checkout you launched in) → enter the path → In Progress + the printed claim line → Docs first, small commits, push early → `deno task worktree pr` then `gh pr ready` then `gh pr merge --squash` with `Closes MESITA-<id>` once the required checks pass → `deno task worktree remove` from a lobby (`leave` for a launch checkout) → rewrite Docs. Never push to `main`. Never write in the shared checkout (I-4).
 
 **The invariants**
 - I-1 Every repo, Notion, or cloud (schema/EF) write has an issue, in a project. Pure Q&A needs none.
@@ -23,30 +25,19 @@
 - I-9 Finish clean at landing; verify by observed state.
 - I-10 Landed = a merged PR for the tip; only landed, clean, inactive workspaces are swept.
 
-**ALWAYS:** reply in English · clients call Edge Functions, never the DB · no local web dev servers (Vercel after merge) · admin-console configs bind · generated files are never hand-edited · the repo holds no knowledge markdown.
-
-**Generated output is never hand-edited.** `AGENTS.md` ← sibling `CLAUDE.md` (`deno task sync-rules`) · brand outputs ← `assets/brand/brand.json`. Edit `scripts/rules-quickstart.md` or a `CLAUDE.md`, then `deno task sync-rules`.
+**ALWAYS:** reply in English · clients call Edge Functions, never the DB · the EF name is the ACL · no local web dev servers (Vercel after merge) · admin-console configs bind · generated files are never hand-edited (`AGENTS.md` ← its `CLAUDE.md` via `deno task sync-rules`; brand outputs ← `assets/brand/brand.json` via `deno task sync-brand`) · the repo holds no knowledge markdown.
 
 **NEVER ask.** Reversible → decide, log `decision:`, ship (I-7).
 
-**Redeye.** When Pato writes `activate Redeye` — any interface, local or cloud — read `scripts/redeye.md` and obey it until he says stop: no question of any kind, every change committed and its PR merged at once, then the next issue. Mode 6; the picker's five are not it.
+**Redeye.** A prompt from Pato that begins with `activate Redeye` arms mode 6 for 24 hours; a cloud session arms it at start. Then obey `scripts/redeye.md` until he says stop: no question of any kind, every change committed and merged at once, then the next issue.
 
-**Hierarchy:** Pato's live instruction > the Linear issue > Rules > Docs > memory.
+**Hierarchy:** Pato's live instruction > the Linear issue > Rules > Docs > memory. Pato is the only human.
+
+**Mirror.** Rules §0 and this file below its title are one text, at most 700 words, copied by hand; `deno task sync-rules` then writes it into the root `CLAUDE.md`. Both carry `stamp: v6 2026-10-18`; unequal stamps are drift.
 <!-- RULES-QUICKSTART:END -->
 ## This repo — mesita-monorepo (root)
 
-| Path | What |
-| --- | --- |
-| `apps/web-admin` | Admin console · admin.mesita.ai (Next.js · Vercel) |
-| `apps/web-consumer` | Consumer app · consumer.mesita.ai (Next.js · Vercel) |
-| `apps/web-landing` | Marketing landing · mesita.ai (Next.js · Vercel) |
-| `supabase` | DB · RLS · Edge Functions — source of truth (Supabase CLI · Deno) |
-| `render` | Enrichment workflow (Render). Own install root. Build `npm install`, start `npm start`. |
-| `assets` | The brand: edit `assets/brand/brand.json`, `deno task sync-brand` writes every output (guide: Notion Docs › Design) |
-
-- **MVP First Stage = the three apps + `supabase/`** (MESITA-2089). Business, Validate and both mobile apps were deleted; git history keeps them.
-- **Packages are independent install roots** (no root workspace). The web packages and `supabase/` use pnpm. `render/` uses npm, because the Render workflow build command is `npm install`. `cd` into a package to work; run every `supabase` command from `supabase/`.
-- **Vercel:** each `apps/web-*` is its own Vercel project (canzeco team) on this repo, Root Directory the package, "skip unaffected" on — a push to `main` deploys only what changed.
-- **CI is path-filtered per package** (`web.yml`, `render.yml`, `supabase.yml`) plus two repo-wide gates: `rules.yml` (instruction-file sync + markdown allowlist + word budgets + the forbidden-asset guard, no `.icns`/`.jxl`/`.heif`/`.heic`) and `brand.yml` (brand sync). Weekly, `pipeline-audit.yml` checks what no PR can see (the live ruleset, merged PRs, red workflows, cloud functions, bot PRs); boot prints its last run.
-- **Instruction files:** root `CLAUDE.md` = generated quickstart block + this tail · package `CLAUDE.md` = package rules only (markers forbidden) · every `AGENTS.md` = generated, what Cursor and Codex read (never a `CODEX.md`). Edit `scripts/rules-quickstart.md` or a `CLAUDE.md`, then `deno task sync-rules`; strict `--check` gates CI.
-- **Workspaces, every platform (Rules I-3, I-4):** before a code issue's first repository write, one claimed workspace: `deno task worktree add MESITA-<id> <slug>` creates it in `../worktrees/<platform>/`; `--adopt .` claims the checkout you launched in (launch worktree, Cursor worktree, or the cloud clone itself); plain `add MESITA-<id>` resumes the live one, never a second. Work only from that path (Claude Code `EnterWorktree path=<printed>`; Cursor: open it; Codex: `cd`), confirmed by `deno task worktree preflight` before writing. **Enforced by `scripts/preflight.sh`:** Claude Code's `PreToolUse` hook (`.claude/settings.json`) refuses Edit/Write outside a claimed workspace, the git `pre-commit` hook `boot`/`add` install refuses commits (Cursor, Codex, humans), Cursor's shell hook (`.cursor/hooks.json`) refuses `git commit`. `.worktreeinclude` names the gitignored state a worktree receives (env files only). **Preview servers** (`.claude/launch.json`): web-admin :3001 · web-consumer :3003 · web-landing :3004.
+- **Packages**, each its own install root (`cd` into it): the three apps (Next.js, one Vercel project each) and `packages/place-profile`, the place screen both render, use pnpm; `supabase/`, the source of truth, uses Deno and the Supabase CLI, run from there; `render/`, the Enricher's workflow, uses npm.
+- **Preview** on the PR's Vercel deployment: the Vercel bot's PR comment links it (`gh pr view <n> --comments`); deployment protection needs a share link from the Vercel tool.
+- **CI:** every PR job is a required check, named in `.github/required-checks.json`: `PR closes its issue` · `instruction files in sync` · `brand assets in sync` · `deno lint · test` · `deno check` · `pgTAP · schema invariants` · `<app> · lint · typecheck · test · build` per web app · `place-profile · typecheck · test` · `render · test`. A check with nothing in scope reports SKIPPED, which merges. Weekly, `pipeline-audit.yml` sweeps what no PR can see.
+- **Workspaces:** `worktree add` files one in `../worktrees/<platform>/`; enter the printed path. `scripts/preflight.sh` refuses writes outside a claimed one (Claude Code's `PreToolUse` hook, the git `pre-commit` hook, Cursor's shell hook). `.worktreeinclude` seeds env files and `supabase/supabase/.temp/`.

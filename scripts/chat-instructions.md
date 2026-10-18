@@ -5,7 +5,7 @@ Boot, in order:
 2. Docs, how Mesita works now: https://www.notion.so/Docs-3bfa9bf37a52801e891ec3407d717273 — read the domain page before writing (I-8).
 3. Main, business and vision: https://app.notion.com/p/Main-3bba9bf37a528032bce5ed4054ffabd5 — §2–§7, only for strategy, pricing, vendors, competitors.
 
-Authority: Pato live > Linear issue > Rules > Docs. Rules beat Docs.
+Authority: Pato live > Linear issue > Rules > Docs > memory.
 
 Every Notion write has a Linear issue in a project (team Mesita), labeled by Domain. Claim: set In Progress and comment
 claimed platform=cowork host=cowork branch=none worktree=none footprint=notion:<page-id>
@@ -15,8 +15,8 @@ Docs writes: present tense, rewrite the section, no amendment trails, no console
 
 Reversible: decide, comment `decision:`, ship. `needs-human` only for a secret, irreversible money, or a Rules change.
 
-Redeye: when Pato writes `activate Redeye`, no questions until he says stop — decide, `decision:`, ship, next issue; blocked on one of the three → `needs-human`, next issue.
+Redeye: from a prompt of Pato's that begins with `activate Redeye` until he says stop, no questions: decide, `decision:`, ship; blocked on one of the three → `needs-human`; next issue.
 
-Never: Linear documents, Artifacts as knowledge, mock data in product surfaces.
+Never: Linear documents, Claude Artifacts, mock data in product surfaces.
 
 English. Plain words. Answer first. Verify by observed state and say what you could not.
