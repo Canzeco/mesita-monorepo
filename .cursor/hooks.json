@@ -3,7 +3,8 @@
   "hooks": {
     "beforeShellExecution": [
       {
-        "command": "bash scripts/preflight.sh cursor"
+        "command": "bash scripts/preflight.sh cursor",
+        "timeout": 20
       }
     ]
   }
