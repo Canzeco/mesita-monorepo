@@ -84,3 +84,13 @@ describe("a Google-only card's image is a placeholder, never a photo (MESITA-229
     expect(html).toContain("<img");
   });
 });
+
+describe("the card is one square, half photo and half white band (MESITA-2344)", () => {
+  it("is aspect-square with two h-1/2 halves", () => {
+    const html = tile({ photos: ["https://example.com/a.jpg"] });
+    expect(html).toContain("aspect-square");
+    expect(html).not.toContain("aspect-[3/2]");
+    expect(html.match(/h-1\/2/g)?.length).toBe(2);
+    expect(html.indexOf("<img")).toBeLessThan(html.indexOf(">Casa<"));
+  });
+});

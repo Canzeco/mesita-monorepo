@@ -120,7 +120,10 @@ describe("Places is family rails", () => {
     expect(rails).not.toContain("grid-cols-2");
     expect(rails).not.toContain("FavoriteTile");
     expect(rails).not.toContain("ArrowUpDown");
-    expect(tile).toContain("aspect-[3/2]");
+    // One square card, half photo, half white band (MESITA-2344).
+    expect(tile).toContain("aspect-square");
+    expect(tile).not.toContain("aspect-[3/2]");
+    expect(rails).toContain("aspect-square shrink-0 rounded-2xl");
     expect(tile).toContain("rounded-2xl");
     expect(tile).toContain("border-border");
     expect(tile).toContain("formatRating");
