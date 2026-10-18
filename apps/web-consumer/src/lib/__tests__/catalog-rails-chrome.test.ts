@@ -2,17 +2,17 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-describe("the Feed has no chrome above the rails (MESITA-2298, MESITA-2362)", () => {
+describe("Places has no chrome but its chip row (MESITA-2298, MESITA-2362, MESITA-2366)", () => {
   const src = readFileSync(
     join(__dirname, "../../components/consumer/home/CatalogRails.tsx"),
     "utf8",
   );
 
-  it("draws no Filters pill and no location bar; location is asked on mount", () => {
-    expect(src).not.toContain("Use my location");
-    expect(src).not.toContain("Near you");
-    expect(src).not.toContain("useLocateUser");
+  it("draws no Filters pill and no location bar; Location is a chip (MESITA-2366)", () => {
     expect(src).toContain("const coords = useUserLocation();");
+    expect(src).toContain("onClick={locate}");
+    expect(src).toContain('"Location"');
+    expect(src).not.toContain("locationStrip");
     expect(src).not.toContain("SlidersHorizontal");
     expect(src).not.toContain("Filter places");
     expect(src).not.toContain("DiscoveryFilters");

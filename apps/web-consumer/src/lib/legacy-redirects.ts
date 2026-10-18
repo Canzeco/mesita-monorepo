@@ -116,8 +116,14 @@ export const LEGACY_REDIRECTS: Redirect[] = [
     destination: "/discover/places",
     permanent: true,
   },
-  // SCROLL (MESITA-2163) AND SWIPE (MESITA-2166) LEFT HOME'S RAIL: Home is
-  // Places · Social · Chat · Favs.
+  // SCROLL (MESITA-2163) AND SWIPE (MESITA-2166) LEFT HOME'S RAIL; FAVS
+  // FOLDED INTO PLACES as its Favorites chip (MESITA-2366): Home is
+  // Places · Social · Chat.
+  {
+    source: "/discover/favs",
+    destination: "/discover/places",
+    permanent: true,
+  },
   {
     source: "/discover/scroll",
     destination: "/discover/places",

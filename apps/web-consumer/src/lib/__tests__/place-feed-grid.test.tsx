@@ -108,29 +108,17 @@ describe("one place-grid geometry, shared", () => {
   });
 });
 
-// Places is one Instagram grid per rail (MESITA-2364): three square tiles
-// across, 2px gaps, wrapping — no sideways scroll. Favs stays on its tile.
-describe("Places is family rails", () => {
-  it("lays each rail out as a 3-column Instagram grid beside its name", () => {
+// Places is ONE 2-column grid under a chip row (MESITA-2366): two square
+// tiles per row, 2px gaps, no sideways scroll. Favs stays on its tile.
+describe("Places is one grid", () => {
+  it("lays the chosen set out two tiles per row", () => {
     const rails = read("components/consumer/home/CatalogRails.tsx");
     const tile = read("components/consumer/home/CatalogTile.tsx");
     expect(rails).toContain("placesFeed");
-    expect(rails).toContain(
-      'const RAIL_GRID = "grid min-w-0 flex-1 grid-cols-3 content-start gap-0.5";',
-    );
-    expect(rails).not.toContain("overflow-x-auto");
+    expect(rails).toContain('const PLACES_GRID = "grid grid-cols-2 content-start gap-0.5";');
     expect(rails).not.toContain("cardWidth");
     expect(rails).not.toContain("FavoriteTile");
     expect(rails).not.toContain("ArrowUpDown");
-    // The rail's name runs vertically up the left (MESITA-2350), its emoji
-    // upright above it (MESITA-2354), in a column with a hairline (MESITA-2351).
-    expect(rails).toContain("[writing-mode:vertical-rl]");
-    expect(rails).toContain("rotate-180");
-    expect(rails).toContain("data-rail-name");
-    expect(rails.indexOf("data-rail-emoji")).toBeLessThan(
-      rails.indexOf("min-h-0 rotate-180 truncate"),
-    );
-    expect(rails).toContain('className="border-border relative w-10 shrink-0 border-r"');
     expect(rails).not.toContain('type="range"');
     // The tile: full-bleed square, no border, no radius.
     expect(tile).toContain("relative aspect-square min-w-0 overflow-hidden");

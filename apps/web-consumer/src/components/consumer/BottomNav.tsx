@@ -55,7 +55,7 @@ type Item = {
 
 const ITEMS: Item[] = [
   {
-    // Home owns its rail: Places, Social, Chat and Favs (MESITA-2166).
+    // Home owns its tabs: Places, Social and Chat (MESITA-2366).
     href: CONSUMER_ROUTES.discoverDefault,
     Icon: MesitaMark,
     label: "Home",
@@ -63,7 +63,6 @@ const ITEMS: Item[] = [
       CONSUMER_ROUTES.discoverTabs.places,
       CONSUMER_ROUTES.discoverTabs.social,
       CONSUMER_ROUTES.discoverTabs.chat,
-      CONSUMER_ROUTES.discoverTabs.favs,
       CONSUMER_ROUTE_PREFIX.place,
     ],
   },
