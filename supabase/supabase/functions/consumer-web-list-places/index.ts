@@ -288,8 +288,11 @@ Deno.serve(async (req) => {
     ? `${PLACE_CARD_COLUMNS}, google_place_id`
     : PLACE_CARD_COLUMNS;
   const scanLimit = isNearby ? NEARBY_SCAN_LIMIT : limit;
+  // THE ONE CIRCLE (MESITA-2298 §3, MESITA-2305): web Search draws the
+  // operator's `map.radiusKm` — the scan bbox, the Nearby call and the
+  // merge all read it; a client never sets it. Other callers keep theirs.
   const nearbyRadiusKm = nearbyDecision.mode === "ok"
-    ? (clientGoogle ? NEARBY_RADIUS_KM : nearbyDecision.radiusKm)
+    ? (clientGoogle ? cfg.map.radiusKm : nearbyDecision.radiusKm)
     : NEARBY_RADIUS_KM;
   const base = supabase.from("profiles").select(selectCols);
 
@@ -304,11 +307,9 @@ Deno.serve(async (req) => {
   if (isNearby) {
     filtered = readyOnMap(applyGeneralGateQuery(filtered, cfg.general));
   }
-  // Guest Popularity: same SQL gte the General gate uses, so a capped
-  // pool is not thinned after the fact. Unknown (null) does not clear.
-  if (isNearby && guestMinReviews > 0) {
-    filtered = filtered.gte("google_review_count", guestMinReviews);
-  }
+  // The guest Google Reviews floor NEVER touches the Mesita lane
+  // (MESITA-2298 §2, MESITA-2305): it cuts Google hits after Google's
+  // response, in `admitGuestMinReviews`, and nothing else.
   // Guest Family: family_keys on the row is the view's derived mapping.
   // overlaps so a dense bbox does not fill NEARBY_SCAN_LIMIT with the wrong
   // families. The JS pass uses those keys and does not invent a family.
@@ -363,6 +364,7 @@ Deno.serve(async (req) => {
         [],
         center,
         lanes,
+        nearbyRadiusKm,
       )
         .slice(0, limit)
         .flatMap((item) => item.kind === "listed" ? [item.row] : [])
@@ -385,7 +387,12 @@ Deno.serve(async (req) => {
     const wantGoogleNearby = lanes.googleCount > 0;
     const gmp = readGooglePlacesKey();
     if (wantGoogleNearby && gmp.ok) {
-      const cached = peekCachedNearbyPlaces(center, nearbyTypes);
+      const cached = peekCachedNearbyPlaces(
+        center,
+        nearbyTypes,
+        false,
+        nearbyRadiusKm,
+      );
       if (cached) {
         googleHits = cached;
       } else if (efEnv.ok) {
@@ -396,7 +403,9 @@ Deno.serve(async (req) => {
         const ipHash = await hashConnectingIp(req, efEnv.env.serviceKey);
         googleHits = await searchNearbyPlaces(gmp.key, center, {
           types: nearbyTypes,
-          // ONE Nearby Search (New) call, 20 places, never widened (MESITA-2298).
+          // ONE Nearby Search (New) call, 20 places, never widened (MESITA-2298),
+          // inside the operator's circle.
+          radiusKm: nearbyRadiusKm,
           beforeFanout: () =>
             consumeNearbyGoogleQuota(adminClient(efEnv.env), ipHash).then(
               (quota) => quota.allow,
@@ -458,12 +467,6 @@ Deno.serve(async (req) => {
         applyDiscoveryFilters(extraSelect, filters, { lat: null, lng: null }),
         cfg.general,
       ));
-      if (guestMinReviews > 0) {
-        extraFiltered = extraFiltered.gte(
-          "google_review_count",
-          guestMinReviews,
-        );
-      }
       if (guestSupers.length > 0) {
         extraFiltered = (extraFiltered as typeof extraFiltered & {
           overlaps: (col: string, val: string[]) => typeof extraFiltered;
@@ -516,6 +519,7 @@ Deno.serve(async (req) => {
       googleForMerge,
       center,
       lanes,
+      nearbyRadiusKm,
     );
     const lineupOpts = {
       center,

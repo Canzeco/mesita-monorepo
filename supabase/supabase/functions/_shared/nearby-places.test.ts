@@ -2,16 +2,17 @@ import { assertEquals } from "jsr:@std/assert@1";
 import { NEARBY_TYPE_KEYS } from "./discovery-config.ts";
 import {
   __resetNearbyGoogleCacheForTests,
+  admitsScopeRow,
   CATALOG_NEARBY_HARD_MAX,
   claimOwnedHits,
   GOOGLE_FANOUT_MAX,
   GOOGLE_NEARBY_MAX,
-  parsePlacesScope,
-  admitsScopeRow,
   isEnrichedListedRow,
   isMesitaListedRow,
   lanesForPlacesScope,
   mergeNearbyCatalog,
+  nearbyRadiusMetres,
+  parsePlacesScope,
   peekCachedNearbyPlaces,
   resolveGoogleItem,
   searchNearbyPlaces,
@@ -322,6 +323,54 @@ Deno.test("searchNearbyPlaces: one Nearby Search carries every enabled primary t
     globalThis.fetch = orig;
     __resetNearbyGoogleCacheForTests();
   }
+});
+
+Deno.test("searchNearbyPlaces: the operator's radius is the circle and part of the cell (MESITA-2305)", async () => {
+  __resetNearbyGoogleCacheForTests();
+  const radii: number[] = [];
+  const orig = globalThis.fetch;
+  globalThis.fetch = (_url, init) => {
+    const body = JSON.parse(String(init?.body ?? "{}")) as {
+      locationRestriction?: { circle?: { radius?: number } };
+    };
+    radii.push(body.locationRestriction?.circle?.radius ?? -1);
+    return Promise.resolve(
+      new Response(OK_BODY, {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  };
+  try {
+    const types = ["restaurant"];
+    await searchNearbyPlaces("k", CENTER, { types, radiusKm: 12 });
+    await searchNearbyPlaces("k", CENTER, { types, radiusKm: 12 });
+    await searchNearbyPlaces("k", CENTER, { types });
+    await searchNearbyPlaces("k", CENTER, { types, radiusKm: 999 });
+    await searchNearbyPlaces("k", CENTER, { types, radiusKm: 0.01 });
+    // 12 km is one cell (one call); 50 km (omitted) is another; 999 clamps
+    // to Google's 50 km cap and shares that cell; 0.01 km clamps to 50 m.
+    assertEquals(radii, [12_000, 50_000, 50]);
+    assertEquals(peekCachedNearbyPlaces(CENTER, types, false, 12)?.length, 1);
+    assertEquals(peekCachedNearbyPlaces(CENTER, types, false, 7), null);
+    assertEquals(nearbyRadiusMetres(undefined), 50_000);
+    assertEquals(nearbyRadiusMetres(2.5), 2_500);
+  } finally {
+    globalThis.fetch = orig;
+    __resetNearbyGoogleCacheForTests();
+  }
+});
+
+Deno.test("mergeNearbyCatalog: the operator's radius is the circle, not the 50 km constant (MESITA-2305)", () => {
+  // ~11 km north of CENTER.
+  const near = { id: "near", plan: "free", google_place_id: "near", lat: 25.67 + 0.05, lng: -100.3 };
+  const far = { id: "far", plan: "free", google_place_id: "far", lat: 25.67 + 0.1, lng: -100.3 };
+  const lanes = { mesitaCount: 20, googleCount: 0 };
+  assertEquals(
+    mergeNearbyCatalog([near, far], [], CENTER, lanes, 8).map((x) => x.kind === "listed" ? x.row.id : "?"),
+    ["near"],
+  );
+  assertEquals(mergeNearbyCatalog([near, far], [], CENTER, lanes).length, 2);
 });
 
 Deno.test("searchNearbyPlaces: success is cached for the cell", async () => {
@@ -854,4 +903,12 @@ Deno.test("list-places admits every Mesita row through the scope, on the scoped 
     true,
   );
   assertEquals(src.split("readyOnMap(applyGeneralGateQuery(").length - 1, 2);
+  // The guest Google Reviews floor never reaches the Mesita lane in SQL
+  // (MESITA-2305): the only review cut is admitGuestMinReviews on Google hits.
+  assertEquals(src.includes('gte("google_review_count"'), false);
+  assertEquals(src.includes('.gte(\n          "google_review_count"'), false);
+  // The operator's circle rides the Nearby call, the cache peek and the merge.
+  assertEquals(src.includes("clientGoogle ? cfg.map.radiusKm"), true);
+  assertEquals(src.includes("radiusKm: nearbyRadiusKm"), true);
+  assertEquals(src.split("nearbyRadiusKm,\n").length - 1 >= 2, true);
 });

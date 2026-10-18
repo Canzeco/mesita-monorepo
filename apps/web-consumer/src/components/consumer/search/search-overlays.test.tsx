@@ -240,6 +240,14 @@ describe("Search map's top row is location, the query bar and the Filters disc",
     expect(row.indexOf("<SearchLocateButton")).toBeLessThan(row.indexOf("<SearchBar"));
     expect(row.indexOf("<SearchBar")).toBeLessThan(row.indexOf("<SearchFilterRow"));
     expect(src).toContain("recentreOnGuest");
+    // Recentre reloads when the catalog was fetched elsewhere (MESITA-2305).
+    const recentre = src.slice(
+      src.indexOf("const recentreOnGuest"),
+      src.indexOf("const resetSearchSession"),
+    );
+    expect(recentre).toContain("catalogIsStale(lastFetchedCenter.current, location)");
+    expect(recentre).toContain("forceNextLoad.current = true");
+    expect(recentre).toContain("setHomeNonce");
     expect(src).toContain("SearchMapFilters");
     expect(src).toContain("catalogLoading ? null : catalog.length");
     expect(src).toContain("useMapFilters");
@@ -879,6 +887,17 @@ describe("a Google-only result opens through get-or-create, never a preview or a
       client.indexOf("const openGoogleOnly"),
     );
     expect(open).toContain("apiCreateProject(");
+    // One tap never creates: a Google-only open needs the RAW selection to
+    // match, else the tap selects (MESITA-2305).
+    const openPlace = client.slice(
+      client.indexOf("const handleOpenPlace"),
+      client.indexOf("const railSelectedId"),
+    );
+    expect(openPlace).toContain("if (selectedId !== place.id)");
+    expect(openPlace).toContain("handleSelectPlace(place)");
+    expect(openPlace.indexOf("if (selectedId !== place.id)")).toBeLessThan(
+      openPlace.indexOf("openGoogleOnly(google)"),
+    );
     for (const gone of ["GooglePlaceSheet.tsx"]) {
       expect(existsSync(join(SEARCH_DIR, gone)), gone).toBe(false);
     }
