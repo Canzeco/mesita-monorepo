@@ -1,18 +1,20 @@
-// Catalog Search. The Feed is N + 2 rails (MESITA-2294): Right Now (open
-// Mesita Created Places), Universal (Mesita Enriched Places), then one rail
-// per guest family (enriched only). At most 5 places per rail; empty rails
-// are omitted. With the guest's location, Right Now is Google places open
-// now instead (MESITA-2295, `withGoogleRightNow`); the Mesita one is the
-// fallback.
+// Catalog Search — the Feed's rails (MESITA-2302), top to bottom:
+//   1. Google Places — `selectGooglePlaces`, the Map's Google scope on the
+//      Feed: Google appears here and nowhere else, and only this rail may
+//      use the central reviews floor.
+//   2. Mesita Selected — `selectMesitaSelected`, the Map's Selected scope.
+//   3. One rail per guest family, holding Mesita Selected places only.
+// At most 5 places per rail; empty rails are omitted. Right Now and
+// Universal are gone.
 //
 // Family picks the rail; it does not score. Timing is not in this profile.
 // catalogScore multiplies only the Catalog ranking's live keys (proximity,
-// popularity — MESITA-2302: Enriched is the gate, Randomness is pinned to
-// 0), raised to RELATIVE exponents (weight / sum of the nonzero live
-// weights). Name, description, selected, enriched and randomness may still
-// sit on the stored blob; this function does not read them. Weight 0 drops
-// a live signal. Both at 0 leaves every place at 1 (incoming order).
-// A save of that vector is rejected before it is stored.
+// popularity: Enriched is the gate, Randomness is pinned to 0), raised to
+// RELATIVE exponents (weight / sum of the nonzero live weights). Name,
+// description, selected, enriched and randomness may still sit on the
+// stored blob; this function does not read them. Weight 0 drops a live
+// signal. Both at 0 leaves every place at 1 (incoming order). A save of
+// that vector is rejected before it is stored.
 
 import { FAMILIES } from "./place-taxonomy.ts";
 import {
@@ -22,7 +24,6 @@ import {
   type SignalPlace,
 } from "./discovery-signals.ts";
 import { isEnrichedPlace } from "./place-family-keys.ts";
-import { isOpenNow } from "./local-time-open.ts";
 import {
   type CatalogLiveRankKey,
   type CatalogRankKey,
@@ -36,7 +37,7 @@ export type CatalogListPlace = Record<string, unknown> & {
   content_state?: string | null;
 };
 
-export type CatalogRail<T extends CatalogListPlace> = {
+export type CatalogRail<T> = {
   key: string;
   label: string;
   emoji: string;
@@ -86,73 +87,52 @@ export function catalogScore(
   return score;
 }
 
+/** Rail 1's key and words. */
+export const GOOGLE_PLACES_RAIL = {
+  key: "google_places",
+  label: "Google Places",
+  emoji: "📍",
+} as const;
+/** Rail 2's key and words. */
+export const MESITA_SELECTED_RAIL = {
+  key: "mesita_selected",
+  label: "Mesita Selected",
+  emoji: "✨",
+} as const;
+
 /**
- * The Feed is N + 2 rails, top to bottom:
- *   1. Right Now — Mesita Created Places (every ready row, enriched or
- *      not) that are open at `intent.now` on their own local clock.
- *      Proximity, then popularity, then incoming order.
- *   2. Universal — Mesita Enriched Places, by catalogScore.
- *   3. One rail per guest family — enriched members only, by
- *      catalogScore.
- * Every rail stops at CATALOG_RAIL_CAP.
- * Every empty rail is omitted. A place in two families is in both of those
- * rails. Undefined is never a rail. Ties keep the incoming order.
+ * The Feed's rails from the engine's two answers. `google` can only land in
+ * rail 1; `selected` is re-checked against `catalogAdmitted`, so a Google
+ * stub or a Created row cannot reach rail 2 or a family rail. Both lists
+ * arrive ranked; this keeps their order. A place in two families is in both
+ * rails. Undefined is never a rail.
  */
-export function rankCatalogRails<T extends CatalogListPlace>(
-  rows: readonly T[],
-  places: readonly SignalPlace[],
-  ranking: Record<CatalogRankKey, number>,
-  params: SignalParams,
-  intent: SignalIntent,
-): CatalogRail<T>[] {
-  const now = intent.now ?? new Date();
-  const scored = rows.map((row, i) => ({
-    row,
-    place: places[i],
-    score: places[i] ? catalogScore(places[i], ranking, params, intent) : 0,
-    index: i,
-  }));
-  const byScore = (a: typeof scored[number], b: typeof scored[number]) =>
-    b.score - a.score || a.index - b.index;
-  const rails: CatalogRail<T>[] = [];
-
-  const open = scored
-    .filter((s) =>
-      s.row.content_state === "ready" && s.place &&
-      isOpenNow(s.place.hours, s.place.lng ?? null, now) === true
-    )
-    .map((s) => ({
-      ...s,
-      near: proximity(s.place, intent, params.proximity),
-      loved: popularity(s.place, undefined, params.popularity),
-    }))
-    .sort((a, b) => b.near - a.near || b.loved - a.loved || a.index - b.index);
-  if (open.length > 0) {
+export function buildCatalogRails<
+  G extends Record<string, unknown>,
+  S extends CatalogListPlace,
+>(
+  google: readonly G[],
+  selected: readonly S[],
+): CatalogRail<G | S>[] {
+  const rails: CatalogRail<G | S>[] = [];
+  if (google.length > 0) {
     rails.push({
-      key: "right_now",
-      label: "Right Now",
-      emoji: "🕒",
+      ...GOOGLE_PLACES_RAIL,
       source: "signal",
-      places: open.slice(0, CATALOG_RAIL_CAP).map((s) => s.row),
+      places: google.slice(0, CATALOG_RAIL_CAP),
     });
   }
-
-  const enrichedRows = scored.filter((s) => catalogAdmitted(s.row)).sort(
-    byScore,
-  );
-  if (enrichedRows.length > 0) {
+  const admitted = selected.filter((row) => catalogAdmitted(row));
+  if (admitted.length > 0) {
     rails.push({
-      key: "universal",
-      label: "Universal",
-      emoji: "✨",
+      ...MESITA_SELECTED_RAIL,
       source: "signal",
-      places: enrichedRows.slice(0, CATALOG_RAIL_CAP).map((s) => s.row),
+      places: admitted.slice(0, CATALOG_RAIL_CAP),
     });
   }
-
   for (const family of GUEST_FAMILIES) {
-    const members = enrichedRows.filter((s) =>
-      placeBelongsToFamily(s.row.family_keys, family.slug)
+    const members = admitted.filter((row) =>
+      placeBelongsToFamily(row.family_keys, family.slug)
     );
     if (members.length === 0) continue;
     rails.push({
@@ -160,28 +140,8 @@ export function rankCatalogRails<T extends CatalogListPlace>(
       label: family.label,
       emoji: family.emoji,
       source: "family",
-      places: members.slice(0, CATALOG_RAIL_CAP).map((s) => s.row),
+      places: members.slice(0, CATALOG_RAIL_CAP),
     });
   }
   return rails;
-}
-
-/**
- * Right Now from Google (MESITA-2295). Given the Google rail's places, they
- * replace the Mesita Right Now, or open the Feed when none was open. Null
- * or empty keeps the rails as ranked: the Mesita Created Places fallback.
- */
-export function withGoogleRightNow<T extends CatalogListPlace>(
-  rails: CatalogRail<T>[],
-  google: readonly T[] | null,
-): CatalogRail<T>[] {
-  if (!google || google.length === 0) return rails;
-  const rail: CatalogRail<T> = {
-    key: "right_now",
-    label: "Right Now",
-    emoji: "🕒",
-    source: "signal",
-    places: google.slice(0, CATALOG_RAIL_CAP),
-  };
-  return [rail, ...rails.filter((r) => r.key !== "right_now")];
 }
