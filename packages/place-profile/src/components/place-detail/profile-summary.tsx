@@ -66,6 +66,7 @@ export function ProfileSummary({
               <ProfileStat
                 key={stat.key}
                 value={stat.value}
+                detail={stat.detail}
                 label={stat.label}
                 icon={channelStatIcon(stat)}
                 mention={stat.mention}
@@ -83,7 +84,7 @@ export function ProfileSummary({
       <div className="flex flex-wrap items-center gap-1.5">
         {place.is_enriching && (
           <span
-            className="border-border bg-muted text-foreground inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-semibold whitespace-nowrap"
+            className="bg-muted text-foreground inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap"
             aria-live="polite"
           >
             <Spinner
@@ -104,18 +105,23 @@ export function ProfileSummary({
             <span className="font-semibold">{priceLabel}</span>
           </ProfileMetaChip>
         )}
-        <ProfileMetaChip>
-          <MapPin className="text-muted-foreground h-3 w-3 shrink-0" />
-          <span className="max-w-[160px] truncate font-semibold">
-            {place.zone}
-          </span>
-        </ProfileMetaChip>
-        <ProfileMetaChip>
-          <Navigation className="text-muted-foreground h-3 w-3 shrink-0" />
-          <span className="font-semibold">
-            {formatDistanceKm(place.distance_km)}
-          </span>
-        </ProfileMetaChip>
+        {/* No zone, no chip; no distance, no "- km" chip (MESITA-2315). */}
+        {place.zone && (
+          <ProfileMetaChip>
+            <MapPin className="text-muted-foreground h-3 w-3 shrink-0" />
+            <span className="max-w-[160px] truncate font-semibold">
+              {place.zone}
+            </span>
+          </ProfileMetaChip>
+        )}
+        {place.distance_km != null && place.distance_km > 0 && (
+          <ProfileMetaChip>
+            <Navigation className="text-muted-foreground h-3 w-3 shrink-0" />
+            <span className="font-semibold">
+              {formatDistanceKm(place.distance_km)}
+            </span>
+          </ProfileMetaChip>
+        )}
         {stateValue && (
           <ProfileMetaChip>
             <Clock
@@ -136,7 +142,7 @@ export function ProfileSummary({
         )}
       </div>
 
-      <ProfileActions className="mt-5" place={place} actions={actions} />
+      <ProfileActions className="mt-3" place={place} actions={actions} />
     </section>
   );
 }

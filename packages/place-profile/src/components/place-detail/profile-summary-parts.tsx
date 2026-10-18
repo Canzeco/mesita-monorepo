@@ -31,33 +31,43 @@ export function ProfilePhoto({ place }: { place: PlaceDetail }) {
  *  so the column is never a blank gap beside the photo. */
 export function ProfileStat({
   value,
+  detail,
   label,
   icon,
   mention = false,
   name,
 }: {
   value: string;
+  detail?: string;
   label: string;
   icon?: React.ReactNode;
   mention?: boolean;
   name?: string;
 }) {
-  const spoken = mention ? `${name ?? label}, ${value}` : `${value} ${label}`;
+  const shown = detail ? `${value} ${detail}` : value;
+  const spoken = mention ? `${name ?? label}, ${value}` : `${shown} ${label}`;
   return (
     <div
       className="flex min-w-0 flex-col items-center justify-center px-0.5 text-center"
       aria-label={spoken}
     >
       {icon ? <span className="mb-1 flex shrink-0">{icon}</span> : null}
+      {/* One line, like Maps: "4.9 ★" bold, "(13.8K)" small and muted
+          beside it (MESITA-2315). "Not connected" is muted, not shouted. */}
       <span
         className={
           "flex min-h-7 items-center justify-center leading-tight " +
           (mention
-            ? "text-foreground type-label text-balance font-semibold"
-            : "text-foreground text-lg font-bold tabular-nums")
+            ? "text-muted-foreground type-label text-balance font-medium"
+            : "text-foreground text-base font-bold whitespace-nowrap tabular-nums")
         }
       >
         {value}
+        {detail ? (
+          <span className="text-muted-foreground ml-1 text-xs font-medium">
+            {` ${detail}`}
+          </span>
+        ) : null}
       </span>
       <span className="text-muted-foreground type-meta mt-0.5 max-w-full truncate leading-tight font-medium">
         {label}
@@ -66,11 +76,10 @@ export function ProfileStat({
   );
 }
 
-/** Light-surface tag chip — same shape language as swipe MetaChip.
- *  Soft pink fill (`bg-background`) so chips read against the white summary. */
+/** Tag chip: a borderless muted pill on the white summary (MESITA-2315). */
 export function ProfileMetaChip({ children }: { children: React.ReactNode }) {
   return (
-    <span className="border-border bg-background text-foreground inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs whitespace-nowrap tabular-nums">
+    <span className="bg-muted text-foreground inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs whitespace-nowrap tabular-nums">
       {children}
     </span>
   );

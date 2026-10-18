@@ -25,8 +25,9 @@ export function ProfileActions({
   const onContact = actions?.onContact;
   const onShare = actions?.onShare;
 
+  // Instagram profile buttons: filled muted, no border (MESITA-2315).
   const outlineBtn =
-    "border-border bg-card text-foreground hover:bg-muted inline-flex items-center justify-center gap-1 rounded-xl border py-2.5 type-body font-semibold whitespace-nowrap transition active:scale-[0.99]";
+    "bg-muted text-foreground hover:bg-muted/70 inline-flex h-10 items-center justify-center gap-1.5 rounded-lg type-body font-semibold whitespace-nowrap transition active:scale-[0.99]";
 
   return (
     <div className={cn("grid grid-cols-3 gap-2", className)}>
@@ -39,7 +40,7 @@ export function ProfileActions({
         className={cn(
           outlineBtn,
           saved &&
-            "shadow-danger border-destructive bg-destructive text-white hover:border-destructive hover:bg-destructive",
+            "shadow-danger bg-destructive text-white hover:bg-destructive",
         )}
       >
         <Heart

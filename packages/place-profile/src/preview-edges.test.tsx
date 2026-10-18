@@ -17,13 +17,13 @@ function detail(over: Record<string, unknown> = {}): PlaceDetail {
 }
 
 describe("member preview edges", () => {
-  it("keeps a long name and the distance chip", () => {
+  it("keeps a long name and drops an unknown distance", () => {
     const name = "Casa de la Abuela Lupita y los Compadres del Centro Histórico";
     const html = renderToStaticMarkup(
       <PlaceProfile place={detail({ mesita_name: name })} scrollLabel="Member profile preview" />,
     );
     expect(html).toContain(name);
-    expect(html).toContain("- km");
+    expect(html).not.toContain("- km");
     expect(html).toContain('aria-label="Member profile preview"');
     expect(html).not.toContain("Phone emulator");
   });
@@ -36,6 +36,9 @@ describe("member preview edges", () => {
     expect(html).not.toContain("Overview");
     expect(html).not.toContain("Rewards");
     expect(html).toContain("Vote to enrich");
+    // No strip with one lone tab (MESITA-2315).
+    expect(html).not.toContain('aria-label="Place sections"');
+    expect(html).not.toContain("Community votes");
   });
 
   it("keeps Google, Instagram, and Facebook when the socials are empty", () => {

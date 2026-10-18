@@ -25,8 +25,9 @@ import { DatesBox, LinksBox, TagsBox } from "./place-detail/tags-links-meta";
 //   1. Profile summary — name in page chrome; photo + Google/Instagram/
 //      Facebook (that count row hides on Reviews); swipe-style tags; then
 //      Save · Contact · Share. Reserve · Pay (Soon) are pinned below.
-//   2. Sticky tab strip — Enrich only until Enriched, then Overview ·
-//      Reviews · Menu (Soon) · Rewards (Soon).
+//   2. Not Enriched: the vote panel, straight under the summary — no strip
+//      with one lone "Enrich" tab (MESITA-2315). Enriched: the sticky strip,
+//      Overview · Reviews · Menu (Soon) · Rewards (Soon).
 //   3. The active tab's boxes.
 
 export function PlaceDetailBody({
@@ -42,7 +43,12 @@ export function PlaceDetailBody({
 
   // Core tabs are not on the strip until Enriched; pin the active key so
   // a stale tab cannot light empty content under Enrich-only.
-  const activeTab: PlaceTab = place.is_enriched ? tab : "enrich";
+  // A place Enriched while open lands on Overview, not an empty "enrich".
+  const activeTab: PlaceTab = place.is_enriched
+    ? tab === "enrich"
+      ? "place"
+      : tab
+    : "enrich";
   return (
     // decision: Pato (2026-10-16) — the name header and the section strip
     // are both white (bg-card). The page wash shows in the content below.
@@ -54,46 +60,42 @@ export function PlaceDetailBody({
         actions={actions}
         showChannelStats={activeTab !== "reviews"}
       />
-      <div className="flex flex-col gap-3 px-4">
-        <PlaceTabBar
-          tab={activeTab}
-          onChange={setTab}
-          enriched={place.is_enriched}
+      {!place.is_enriched && (
+        <PlaceRequestPanelView
+          count={actions?.request?.count ?? place.request_count}
+          threshold={actions?.request?.threshold ?? place.request_threshold}
+          requested={actions?.request?.requested ?? place.requested}
+          enriching={actions?.request?.enriching ?? place.is_enriching}
+          pending={actions?.request?.pending ?? false}
+          error={actions?.request?.error ?? null}
+          onRequest={actions?.onRequest}
         />
-        {activeTab === "enrich" && !place.is_enriched && (
-          <PlaceRequestPanelView
-            count={actions?.request?.count ?? place.request_count}
-            threshold={actions?.request?.threshold ?? place.request_threshold}
-            requested={actions?.request?.requested ?? place.requested}
-            enriching={actions?.request?.enriching ?? place.is_enriching}
-            pending={actions?.request?.pending ?? false}
-            error={actions?.request?.error ?? null}
-            onRequest={actions?.onRequest}
+      )}
+      {place.is_enriched && (
+        <div className="flex flex-col gap-3 px-4">
+          <PlaceTabBar
+            tab={activeTab}
+            onChange={setTab}
+            enriched={place.is_enriched}
           />
-        )}
-        {activeTab === "place" && place.is_enriched && (
-          <>
-            <MediaBox place={place} />
-            {/* decision: Pato — Location first, then Time stacked (not side by side) */}
-            <LocationBox place={place} onOpenLink={actions?.onOpenLink} />
-            <HoursBox place={place} />
-            <PopularTimesBox place={place} />
-            <LinksBox place={place} onOpenLink={actions?.onOpenLink} />
-            <AboutBox text={place.long_description} />
-            <TagsBox place={place} />
-            <DatesBox place={place} />
-          </>
-        )}
-        {activeTab === "reviews" && place.is_enriched && (
-          <GoogleReviewsBox place={place} />
-        )}
-        {activeTab === "products" && place.is_enriched && (
-          <SoonScreen title="Menu" />
-        )}
-        {activeTab === "rewards" && place.is_enriched && (
-          <SoonScreen title="Rewards" />
-        )}
-      </div>
+          {activeTab === "place" && (
+            <>
+              <MediaBox place={place} />
+              {/* decision: Pato — Location first, then Time stacked (not side by side) */}
+              <LocationBox place={place} onOpenLink={actions?.onOpenLink} />
+              <HoursBox place={place} />
+              <PopularTimesBox place={place} />
+              <LinksBox place={place} onOpenLink={actions?.onOpenLink} />
+              <AboutBox text={place.long_description} />
+              <TagsBox place={place} />
+              <DatesBox place={place} />
+            </>
+          )}
+          {activeTab === "reviews" && <GoogleReviewsBox place={place} />}
+          {activeTab === "products" && <SoonScreen title="Menu" />}
+          {activeTab === "rewards" && <SoonScreen title="Rewards" />}
+        </div>
+      )}
     </div>
   );
 }
