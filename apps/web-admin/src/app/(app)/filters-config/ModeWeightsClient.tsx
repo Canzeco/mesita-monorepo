@@ -72,7 +72,7 @@ import {
  *
  * Map is `enforced` since MESITA-2298: every Google Places selection — the
  * Map's Google scope and the Feed's Google Places rail — ranks through the
- * shared engine (`scopeWeights("google")` in `_shared/nearby-lineup.ts`),
+ * shared engine (`selectGooglePlaces` in `_shared/nearby-selection.ts`),
  * which IS this column. There is no fallback branch any more: when Google
  * returns nothing the scope is empty, never a Mesita set ranked another way.
  * Mesita Selected ranks with the Catalog profile, not with this table.

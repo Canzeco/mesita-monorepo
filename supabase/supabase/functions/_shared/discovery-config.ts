@@ -76,8 +76,8 @@ export type SignalParams = Record<SignalKey, SignalParamBag>;
  * and on the Feed's Mesita Selected and family rails alike (MESITA-2302).
  * Family picks the rail, so it is not in this vector. Timing is out.
  *
- * STORED KEYS vs SCORED KEYS. `scopeWeights("selected")` raises only
- * `CATALOG_LIVE_RANK_KEYS`, through rankByBlend. Name, Description,
+ * STORED KEYS vs SCORED KEYS. `catalogScore` (via `selectMesitaSelected`) raises only
+ * `CATALOG_LIVE_RANK_KEYS`. Name, Description,
  * Selected, Enriched and Randomness stay on the blob so a save drops
  * nothing, and they are not applied: there is no name query, no
  * description vector, no per-place Selected value; Enriched is the GATE of
@@ -97,7 +97,7 @@ export const CATALOG_RANK_KEYS = [
 ] as const;
 export type CatalogRankKey = (typeof CATALOG_RANK_KEYS)[number];
 
-/** The signals `scopeWeights("selected")` actually raises. A zero drops
+/** The signals `catalogScore` actually raises. A zero drops
  *  that signal; both at zero is refused on save (CATALOG_ALL_ZERO_ERROR). */
 export const CATALOG_LIVE_RANK_KEYS = [
   "proximity",

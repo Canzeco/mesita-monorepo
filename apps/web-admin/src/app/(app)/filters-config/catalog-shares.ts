@@ -1,7 +1,7 @@
 // Display twin of catalogRelativeExponents in
 // supabase/functions/_shared/discovery-config.ts. The contract test
 // asserts these two functions agree. The shared engine's Mesita Selected
-// scope (`scopeWeights("selected")` in `_shared/nearby-lineup.ts`) multiplies
+// scope (`selectMesitaSelected` in `_shared/nearby-selection.ts`) multiplies
 // exactly these two keys, on the Map and on the Feed's Mesita Selected and
 // family rails; this file only labels the form. Enriched is the gate, not a
 // weight (every Selected row carries it), and Randomness is pinned to 0 (a
