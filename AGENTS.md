@@ -2,7 +2,7 @@
 <!-- RULES-QUICKSTART:START (generated — do not hand-edit; run: deno task sync-rules) -->
 # Mesita — agent quickstart (you're ~90% correct after this)
 
-**Notion is the library; it wins on any conflict.** **📜 [Rules](https://www.notion.so/Rules-3d9a9bf37a5280aaab2ed8af665485f7) = the law** (how change is allowed). **📚 [Docs](https://www.notion.so/Docs-3bfa9bf37a52801e891ec3407d717273) = the knowledge**, one flat page per domain. **Code = this repo.** **Linear = the ledger**, not a source of truth. Boot cards (this block, `AGENTS.md`, package `CLAUDE.md`, skills) carry §0 and package law, never knowledge.
+**Notion is the library; it wins on any conflict.** **📜 [Rules](https://www.notion.so/Rules-3d9a9bf37a5280aaab2ed8af665485f7) = the law** (how change is allowed). **📚 [Docs](https://www.notion.so/Docs-3bfa9bf37a52801e891ec3407d717273) = the knowledge**, one flat page per domain. **Code = this repo.** **Linear = the ledger**, not a source of truth. Boot cards (the root `CLAUDE.md`, every `AGENTS.md`, package `CLAUDE.md`, skills) carry §0 and package law, never knowledge.
 
 **Routing.** Code → [SADLC](https://www.notion.so/3d9a9bf37a52800986a7f7f1363e2700), Docs → [KADLC](https://www.notion.so/3d9a9bf37a5280f18aa3f73ed6ab8edf) (Software / Knowledge Agentic Development Life Cycle). Mixed completes every Integrate. Changing the Rules tree is not a third lifecycle: an issue; Pato for constitution, §2 constraints and I-1…I-10; `decision:` for adapter rows; then SADLC the same session if §0 or a gate changed. Fetch Rules, SADLC, KADLC and [Markdowns](https://www.notion.so/3d9a9bf37a52803ebe4cf73bf300f1a3) only; the Map is Rules §4. The retired law pages are in the Trash; never fetch them.
 
@@ -34,7 +34,7 @@
 
 **Hierarchy:** Pato's live instruction > the Linear issue > Rules > Docs > memory. Pato is the only human.
 
-**Mirror.** Rules §0 and this file below its title are one text, at most 700 words, copied by hand; `deno task sync-rules` then writes it into the root `CLAUDE.md`. Both carry `stamp: v6 2026-10-18`; unequal stamps are drift.
+**Mirror.** Rules §0 and `scripts/rules-quickstart.md` below its title are one text, at most 700 words, copied by hand; `deno task sync-rules` then writes it into the root `CLAUDE.md`. Both carry `stamp: v6 2026-10-18`; unequal stamps are drift.
 <!-- RULES-QUICKSTART:END -->
 ## This repo — mesita-monorepo (root)
 
