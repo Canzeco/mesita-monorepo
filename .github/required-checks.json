@@ -1,0 +1,13 @@
+[
+  "PR closes its issue",
+  "deno lint · test",
+  "deno check",
+  "pgTAP · schema invariants",
+  "instruction files in sync",
+  "brand assets in sync",
+  "web-admin · lint · typecheck · test · build",
+  "web-consumer · lint · typecheck · test · build",
+  "web-landing · lint · typecheck · test · build",
+  "place-profile · typecheck · test",
+  "render · test"
+]

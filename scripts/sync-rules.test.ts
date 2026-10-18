@@ -10,6 +10,7 @@
 
 import { assert, assertEquals, assertStringIncludes } from "@std/assert";
 import { dirname, fromFileUrl, join } from "@std/path";
+import { parse as parseYaml } from "jsr:@std/yaml@1";
 
 import {
   budgetsFor,
@@ -521,4 +522,260 @@ Deno.test("no package CLAUDE.md carries the quickstart markers", async () => {
       `${label}/CLAUDE.md carries quickstart markers — the block lives at the root only`,
     );
   }
+});
+
+// ── CI workflows: one gating pattern, and the required checks exist ─────────
+//
+// Every workflow runs on every PR (`pull_request: {}`) and a `changes` job's
+// path filter decides which checks have anything to do. A gated check whose
+// paths did not change is SKIPPED, and GitHub counts a SKIPPED required check
+// as passing, so the PR merges. Two halves keep a broken `changes` job from
+// passing a PR by skipping its checks: `!cancelled()` replaces the default
+// `success()`, which skips every gated job the moment `changes` fails, and the
+// gate compares against 'false': a filter that never ran leaves its output
+// empty, and empty runs the check. The checks below pin both halves, and that
+// .github/required-checks.json (what the ruleset requires) names real jobs.
+
+type WorkflowJob = {
+  name?: string;
+  needs?: string | string[];
+  if?: unknown;
+  outputs?: Record<string, unknown>;
+  steps?: { id?: string; uses?: string }[];
+};
+type Workflow = { file: string; on: Record<string, unknown>; jobs: Record<string, WorkflowJob> };
+
+const GATE_IF = /^\$\{\{ !cancelled\(\) && needs\.changes\.outputs\.([A-Za-z0-9_-]+) != 'false' \}\}$/;
+const GATE_IF_SHAPE = "${{ !cancelled() && needs.changes.outputs.<output> != 'false' }}";
+// The raw filter output, or 'true' for every event but a PR. Never a comparison:
+// `steps.filter.outputs.x == 'true'` turns a filter that never ran into 'false'.
+const CHANGES_OUTPUT =
+  /^\$\{\{ (?:github\.event_name != 'pull_request' && 'true' \|\| )?steps\.filter\.outputs\.([A-Za-z0-9_-]+) \}\}$/;
+const CHANGES_OUTPUT_SHAPE =
+  "${{ steps.filter.outputs.<filter> }}, or ${{ github.event_name != 'pull_request' && 'true' || steps.filter.outputs.<filter> }}";
+
+function parseWorkflow(file: string, text: string): Workflow {
+  const doc = (parseYaml(text) ?? {}) as Record<string, unknown>;
+  const on = doc.on;
+  return {
+    file,
+    on: typeof on === "string"
+      ? { [on]: null }
+      : Array.isArray(on)
+      ? Object.fromEntries(on.map((event) => [String(event), null]))
+      : ((on ?? {}) as Record<string, unknown>),
+    jobs: (doc.jobs ?? {}) as Record<string, WorkflowJob>,
+  };
+}
+
+async function readWorkflows(): Promise<Workflow[]> {
+  const dir = join(repoRoot, ".github", "workflows");
+  const workflows: Workflow[] = [];
+  for await (const entry of Deno.readDir(dir)) {
+    if (!entry.isFile || !/\.ya?ml$/.test(entry.name)) continue;
+    workflows.push(parseWorkflow(`.github/workflows/${entry.name}`, await Deno.readTextFile(join(dir, entry.name))));
+  }
+  return workflows.sort((a, b) => a.file.localeCompare(b.file));
+}
+
+async function readRequiredChecks(): Promise<unknown> {
+  return JSON.parse(await Deno.readTextFile(join(repoRoot, ".github", "required-checks.json")));
+}
+
+const checkName = (id: string, job: WorkflowJob) => job.name ?? id;
+const needsOf = (job: WorkflowJob) => (job.needs === undefined ? [] : [job.needs].flat());
+
+function gateProblems(workflows: Workflow[]): string[] {
+  const problems: string[] = [];
+  for (const w of workflows) {
+    const outputs = Object.keys(w.jobs.changes?.outputs ?? {});
+    for (const [id, job] of Object.entries(w.jobs)) {
+      const needs = needsOf(job);
+      if (!needs.includes("changes")) continue;
+      const at = `${w.file} › ${id}`;
+      if (needs.length !== 1) {
+        problems.push(`${at}: needs ${needs.join(", ")}; a gated job needs \`changes\` alone — !cancelled() would run it past any other failed need`);
+      }
+      const gate = typeof job.if === "string" ? GATE_IF.exec(job.if) : null;
+      if (!gate) {
+        problems.push(`${at}: expected if: ${GATE_IF_SHAPE}, actual: ${job.if === undefined ? "(none)" : String(job.if)}`);
+      } else if (!outputs.includes(gate[1])) {
+        problems.push(`${at}: needs.changes.outputs.${gate[1]} is not an output of its changes job (outputs: ${outputs.join(", ") || "none"})`);
+      }
+    }
+  }
+  return problems;
+}
+
+function changesOutputProblems(workflows: Workflow[]): string[] {
+  const problems: string[] = [];
+  for (const w of workflows) {
+    const changes = w.jobs.changes;
+    if (!changes) continue;
+    const steps = changes.steps ?? [];
+    const filter = steps.findIndex((step) => step.id === "filter");
+    if (filter === -1 || !steps[filter].uses?.startsWith("dorny/paths-filter@")) {
+      problems.push(`${w.file} › changes: expected a dorny/paths-filter step with id: filter, actual: none`);
+    } else if (filter !== steps.length - 1) {
+      problems.push(`${w.file} › changes: expected the filter step last, actual: step ${filter + 1} of ${steps.length} — a later step can fail after the filter wrote 'false', and the gate skips`);
+    }
+    for (const [name, value] of Object.entries(changes.outputs ?? {})) {
+      if (!CHANGES_OUTPUT.test(String(value))) {
+        problems.push(`${w.file} › changes.outputs.${name}: expected ${CHANGES_OUTPUT_SHAPE}, actual: ${String(value)}`);
+      }
+    }
+  }
+  return problems;
+}
+
+function pullRequestFilterProblems(workflows: Workflow[]): string[] {
+  const problems: string[] = [];
+  for (const w of workflows) {
+    if (!w.jobs.changes) continue;
+    const pr = w.on.pull_request;
+    const unfiltered = pr === null || (typeof pr === "object" && pr !== undefined && Object.keys(pr).length === 0);
+    if (!("pull_request" in w.on) || !unfiltered) {
+      problems.push(`${w.file}: expected on.pull_request: {} (the changes job does the filtering, so every check reports), actual: ${"pull_request" in w.on ? JSON.stringify(pr) : "no pull_request trigger"}`);
+    }
+  }
+  return problems;
+}
+
+function requiredCheckProblems(workflows: Workflow[], required: unknown): string[] {
+  if (!Array.isArray(required) || required.length === 0 || !required.every((n) => typeof n === "string" && n !== "")) {
+    return [`.github/required-checks.json: expected a non-empty JSON array of check names, actual: ${JSON.stringify(required)}`];
+  }
+  const producers = new Map<string, string[]>();
+  for (const w of workflows) {
+    for (const [id, job] of Object.entries(w.jobs)) {
+      const name = checkName(id, job);
+      producers.set(name, [...(producers.get(name) ?? []), `${w.file} › ${id}`]);
+    }
+  }
+  const problems: string[] = [];
+  const seen = new Set<string>();
+  for (const name of required as string[]) {
+    if (seen.has(name)) problems.push(`.github/required-checks.json: "${name}" is listed twice`);
+    seen.add(name);
+    const by = producers.get(name) ?? [];
+    if (by.length === 0) {
+      problems.push(`.github/required-checks.json: "${name}" is no job's name — a required check nothing reports blocks every PR as Expected`);
+    } else if (by.length > 1) {
+      problems.push(`.github/required-checks.json: "${name}" is the name of ${by.length} jobs (${by.join(", ")}) — one required name, one job`);
+    }
+  }
+  return problems;
+}
+
+function unrequiredJobProblems(workflows: Workflow[], required: string[]): string[] {
+  const problems: string[] = [];
+  for (const w of workflows) {
+    if (!("pull_request" in w.on) && !("pull_request_target" in w.on)) continue;
+    for (const [id, job] of Object.entries(w.jobs)) {
+      if (id === "changes") continue;
+      const name = checkName(id, job);
+      if (!required.includes(name)) {
+        problems.push(`${w.file} › ${id}: "${name}" runs on every PR but is not in .github/required-checks.json — require it, or delete the job`);
+      }
+    }
+  }
+  return problems;
+}
+
+Deno.test("every job that needs `changes` is gated by the one pattern", async () => {
+  const problems = gateProblems(await readWorkflows());
+  assertEquals(problems, [], `\n${problems.join("\n")}`);
+});
+
+Deno.test("every `changes` output is its filter's raw output, so a filter that never ran runs the gate", async () => {
+  const problems = changesOutputProblems(await readWorkflows());
+  assertEquals(problems, [], `\n${problems.join("\n")}`);
+});
+
+Deno.test("a workflow with a `changes` job runs on every pull request", async () => {
+  const problems = pullRequestFilterProblems(await readWorkflows());
+  assertEquals(problems, [], `\n${problems.join("\n")}`);
+});
+
+Deno.test(".github/required-checks.json names each required check once, and exactly one job reports it", async () => {
+  const problems = requiredCheckProblems(await readWorkflows(), await readRequiredChecks());
+  assertEquals(problems, [], `\n${problems.join("\n")}`);
+});
+
+Deno.test("every job that runs on a pull request is a required check, or a `changes` job", async () => {
+  const required = await readRequiredChecks();
+  assert(Array.isArray(required), ".github/required-checks.json must be a JSON array");
+  const problems = unrequiredJobProblems(await readWorkflows(), required as string[]);
+  assertEquals(problems, [], `\n${problems.join("\n")}`);
+});
+
+Deno.test("the CI checks bite: each old shape is rejected", () => {
+  const bad = parseWorkflow(
+    "bad.yml",
+    `
+on:
+  pull_request:
+    paths: ["x/**"]
+jobs:
+  changes:
+    outputs:
+      changed: \${{ github.event_name != 'pull_request' || steps.filter.outputs.x == 'true' }}
+    steps:
+      - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad
+        id: filter
+      - run: echo after the filter
+  check:
+    name: x check
+    needs: changes
+    if: needs.changes.outputs.changed == 'true'
+  build:
+    name: x build
+    needs: [changes, check]
+    if: \${{ !cancelled() && needs.changes.outputs.missing != 'false' }}
+`,
+  );
+  const gates = gateProblems([bad]);
+  assertEquals(gates.length, 3, gates.join("\n"));
+  assertStringIncludes(gates.join("\n"), "expected if: ${{ !cancelled() && needs.changes.outputs.<output> != 'false' }}, actual: needs.changes.outputs.changed == 'true'");
+  assertStringIncludes(gates.join("\n"), "needs changes, check");
+  assertStringIncludes(gates.join("\n"), "needs.changes.outputs.missing is not an output");
+  const outputs = changesOutputProblems([bad]);
+  assertEquals(outputs.length, 2, outputs.join("\n"));
+  assertStringIncludes(outputs.join("\n"), "expected the filter step last");
+  assertStringIncludes(outputs.join("\n"), "changes.outputs.changed");
+  assertEquals(pullRequestFilterProblems([bad]).length, 1);
+  assertEquals(requiredCheckProblems([bad], ["x check", "x check", "nobody"]).length, 2);
+  assertEquals(requiredCheckProblems([bad, { ...bad, file: "copy.yml" }], ["x check"]).length, 1);
+  assertEquals(requiredCheckProblems([bad], "x check").length, 1);
+  assertEquals(unrequiredJobProblems([bad], ["x check"]), [`bad.yml › build: "x build" runs on every PR but is not in .github/required-checks.json — require it, or delete the job`]);
+});
+
+Deno.test("the CI checks pass the canonical shape", () => {
+  const good = parseWorkflow(
+    "good.yml",
+    `
+on:
+  push:
+    branches: [main]
+  pull_request: {}
+jobs:
+  changes:
+    outputs:
+      x: \${{ github.event_name != 'pull_request' && 'true' || steps.filter.outputs.x }}
+      y: \${{ steps.filter.outputs.y }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad
+        id: filter
+  check:
+    name: x check
+    needs: changes
+    if: \${{ !cancelled() && needs.changes.outputs.x != 'false' }}
+`,
+  );
+  assertEquals(gateProblems([good]), []);
+  assertEquals(changesOutputProblems([good]), []);
+  assertEquals(pullRequestFilterProblems([good]), []);
+  assertEquals(requiredCheckProblems([good], ["x check"]), []);
+  assertEquals(unrequiredJobProblems([good], ["x check"]), []);
 });
