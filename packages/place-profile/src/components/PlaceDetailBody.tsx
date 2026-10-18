@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import type { PlaceActions } from "../actions";
+import type { PlaceActions, PlaceCreatingView } from "../actions";
 import { AboutBox } from "./AboutBox";
 import type { PlaceDetail } from "../place-detail";
 
@@ -11,6 +11,7 @@ import { PopularTimesBox } from "./place-detail/popular-times";
 import { MediaBox } from "./place-detail/media";
 import { ProfileSummary } from "./place-detail/profile-summary";
 import { GoogleReviewsBox } from "./place-detail/reviews";
+import { PlaceCreatingPanel } from "./place-detail/PlaceCreatingPanel";
 import { PlaceRequestPanelView } from "./place-detail/PlaceRequestPanel";
 import { PlaceTabBar, type PlaceTab } from "./place-detail/tabs";
 import { SoonScreen } from "./place-detail/soon-screen";
@@ -32,9 +33,13 @@ import { DatesBox, LinksBox, TagsBox } from "./place-detail/tags-links-meta";
 export function PlaceDetailBody({
   place,
   actions,
+  creating,
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
+  /** Set while a Google-only profile is being created: the Enrich slot
+   *  spins instead of asking for votes (MESITA-2307). */
+  creating?: PlaceCreatingView | null;
 }) {
   const [tab, setTab] = useState<PlaceTab>(
     place.is_enriched ? "place" : "enrich",
@@ -60,7 +65,10 @@ export function PlaceDetailBody({
           onChange={setTab}
           enriched={place.is_enriched}
         />
-        {activeTab === "enrich" && !place.is_enriched && (
+        {activeTab === "enrich" && !place.is_enriched && creating && (
+          <PlaceCreatingPanel error={creating.error} />
+        )}
+        {activeTab === "enrich" && !place.is_enriched && !creating && (
           <PlaceRequestPanelView
             count={actions?.request?.count ?? place.request_count}
             threshold={actions?.request?.threshold ?? place.request_threshold}

@@ -55,7 +55,6 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import type { Place } from "@/lib/api/places";
 import { apiFetchNearbyCatalog } from "@/lib/api/places";
 import {
-  apiCreateProject,
   apiResolveLocationAnchor,
   apiSuggestPlaces,
   type PlacePrediction,
@@ -69,6 +68,7 @@ import { MONTERREY_CENTER } from "@/lib/map-defaults";
 import { placeHref } from "@/lib/place-route";
 import { toast } from "@/lib/toast";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
+import { useOpenGooglePlace } from "@/lib/use-open-google-place";
 import { cn, errMsg } from "@/lib/utils";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
@@ -149,6 +149,11 @@ function googlePredictionFromPlace(place: Place): PlacePrediction | null {
   };
 }
 
+// No card is ever "adding" now: a Google-only open navigates at once and
+// PendingPlaceScreen awaits the create (MESITA-2307). The panels keep their
+// prop until the spinner leaves them.
+const NO_ADD_STATES: Record<string, AddState> = {};
+
 export function SearchClient({ apiKey }: { apiKey: string }) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
@@ -167,15 +172,12 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // session spans the keystrokes up to ONE selection — so the token is
   // regenerated after every selection (Info / Add tap) and whenever the
   // results panel is dismissed, scoping each autocomplete run properly.
+  const openGooglePlace = useOpenGooglePlace();
   const sessionTokenRef = useRef(newSessionToken());
   const railRefs = useRef(new Map<string, HTMLElement | null>());
   const railScrollRef = useRef<HTMLDivElement | null>(null);
 
-  const [addStates, setAddStates] = useState<Record<string, AddState>>({});
-  /** Google placeId → Mesita slug/id after Add to Mesita succeeds. */
-  const [addedProfiles, setAddedProfiles] = useState<Record<string, string>>(
-    {},
-  );
+  const addStates = NO_ADD_STATES;
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Overlay pin first-tap stash so a later tap can still open (the profile,
   // through get-or-create for a Google-only row) after the suggest list is
@@ -558,11 +560,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const openMesitaProfileFromPrediction = useCallback(
     (prediction: PlacePrediction) => {
       resetSearchSession();
-      const fromAdd = addedProfiles[prediction.placeId];
-      if (fromAdd) {
-        router.push(placeHref(fromAdd));
-        return;
-      }
       const direct = prediction.mesitaSlug ?? prediction.mesitaId;
       if (direct) {
         router.push(placeHref(direct));
@@ -577,49 +574,28 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         "This place is on Mesita but isn't in the map snapshot yet — opening it from search is coming soon.",
       );
     },
-    [addedProfiles, catalog, resetSearchSession, router],
+    [catalog, resetSearchSession, router],
   );
 
-  // Get-or-create (MESITA-2298): the explicit open is the ONLY call that
-  // creates a Mesita Place. A held Google Place ID comes back `created:
-  // false` and opens as is; a new one is live immediately, ugly, and waits
-  // for votes on the Enrich tab. Nothing creates on render or on a pin tap.
-  // Reached only from `openGoogleOnly`.
+  // The explicit open (MESITA-2298, MESITA-2307): the profile opens AT ONCE
+  // on /place/g:<id>, drawn from the card the guest already sees, while
+  // PendingPlaceScreen runs and awaits consumer-web-create-place
+  // (get-or-create) — the ONLY call that creates a Mesita Place. A held id
+  // comes back as is; a new one is live, ugly, and waits for votes on the
+  // Enrich tab. Nothing creates on render or on a pin tap. Reached only
+  // from `openGoogleOnly`.
   const openGoogleProfile = useCallback(
-    (prediction: PlacePrediction) => {
-      if (addStates[prediction.placeId] === "adding") return;
+    (prediction: PlacePrediction, card?: Place) => {
       resetSearchSession();
-      setAddStates((s) => ({ ...s, [prediction.placeId]: "adding" }));
-      void (async () => {
-        try {
-          const created = await apiCreateProject(supabase, {
-            placeId: prediction.placeId,
-          });
-          const dest = created.place.slug || created.place.id;
-          setAddStates((s) => ({ ...s, [prediction.placeId]: "added" }));
-          if (dest) {
-            setAddedProfiles((s) => ({
-              ...s,
-              [prediction.placeId]: dest,
-            }));
-          }
-          if (created.created !== false) {
-            toast.success(
-              `${prediction.mainText} is on Mesita. Vote to enrich its profile.`,
-            );
-          }
-          if (dest) router.push(placeHref(dest));
-        } catch (err) {
-          setAddStates((s) => {
-            const next = { ...s };
-            delete next[prediction.placeId];
-            return next;
-          });
-          toast.error(errMsg(err, "Couldn't open that place right now."));
-        }
-      })();
+      openGooglePlace(
+        card ?? {
+          name: prediction.mainText,
+          google_place_id: prediction.placeId,
+          address: prediction.secondaryText || null,
+        },
+      );
     },
-    [addStates, resetSearchSession, router, supabase],
+    [openGooglePlace, resetSearchSession],
   );
 
   // Pin / rail-card SECOND tap on a from-Google row = THE EXPLICIT OPEN
@@ -627,18 +603,12 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // profile; a Mesita row opens as Mesita; a Google-only row runs
   // get-or-create and opens. No preview, no photo, no Add button. The bar
   // pick never lands here — it anchors.
-  const openGoogleOnly = (prediction: PlacePrediction) => {
-    const fromAdd = addedProfiles[prediction.placeId];
-    if (fromAdd) {
-      resetSearchSession();
-      router.push(placeHref(fromAdd));
-      return;
-    }
+  const openGoogleOnly = (prediction: PlacePrediction, card?: Place) => {
     if (predictionOnMesita(prediction)) {
       openMesitaProfileFromPrediction(prediction);
       return;
     }
-    openGoogleProfile(prediction);
+    openGoogleProfile(prediction, card);
   };
 
   // One pick = one camera move + one forced reload + (for a Place) card
@@ -747,7 +717,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         handleSelectPlace(place);
         return;
       }
-      openGoogleOnly(google);
+      openGoogleOnly(google, place);
       return;
     }
     router.push(placeHref(place.slug || place.id));

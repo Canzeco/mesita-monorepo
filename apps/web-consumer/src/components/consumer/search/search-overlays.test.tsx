@@ -870,8 +870,8 @@ describe("catalogIsStale", () => {
   });
 });
 
-describe("a Google-only result opens through get-or-create, never a preview or a photo (MESITA-2298)", () => {
-  it("has no preview sheet, no client-side Places call, and one create call site", () => {
+describe("a Google-only result opens its profile at once, never a preview or a photo here (MESITA-2298, MESITA-2307)", () => {
+  it("has no preview sheet, no client-side Places call, and no create call of its own", () => {
     const client = read("SearchClient.tsx");
     expect(client).toContain("openGoogleOnly");
     expect(client).toContain("openGoogleProfile");
@@ -879,14 +879,16 @@ describe("a Google-only result opens through get-or-create, never a preview or a
     expect(client).not.toContain("fetchGooglePlacePreview");
     expect(client).not.toContain("setPreviewOpen");
     expect(client).not.toContain("places.googleapis.com");
-    // The ONE place that creates: inside openGoogleProfile, reached only
-    // from the explicit open. The import line is the other occurrence.
-    expect(client.match(/apiCreateProject\(/g)?.length).toBe(1);
+    // Nothing here creates: the explicit open navigates at once to the
+    // pending profile, and PendingPlaceScreen is the ONE create call site
+    // (MESITA-2307). The card the guest sees rides along as the first draft.
+    expect(client).not.toContain("apiCreateProject");
     const open = client.slice(
       client.indexOf("const openGoogleProfile"),
       client.indexOf("const openGoogleOnly"),
     );
-    expect(open).toContain("apiCreateProject(");
+    expect(open).toContain("openGooglePlace(");
+    expect(open).not.toContain("await ");
     // One tap never creates: a Google-only open needs the RAW selection to
     // match, else the tap selects (MESITA-2305).
     const openPlace = client.slice(
@@ -896,7 +898,7 @@ describe("a Google-only result opens through get-or-create, never a preview or a
     expect(openPlace).toContain("if (selectedId !== place.id)");
     expect(openPlace).toContain("handleSelectPlace(place)");
     expect(openPlace.indexOf("if (selectedId !== place.id)")).toBeLessThan(
-      openPlace.indexOf("openGoogleOnly(google)"),
+      openPlace.indexOf("openGoogleOnly(google, place)"),
     );
     for (const gone of ["GooglePlaceSheet.tsx"]) {
       expect(existsSync(join(SEARCH_DIR, gone)), gone).toBe(false);

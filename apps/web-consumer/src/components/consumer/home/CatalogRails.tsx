@@ -11,7 +11,7 @@
 // scope can never keep cutting this list. Search keeps its own Filters.
 // Location, when the browser has it, ranks proximity.
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Compass, Navigation } from "lucide-react";
 import { apiListCatalog, type CatalogRail, type Place } from "@/lib/api/places";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -22,6 +22,7 @@ import {
   useUserLocationLocating,
 } from "@/lib/use-user-location";
 import { withUserDistance } from "@/lib/place-distance";
+import { onPlaceCreated } from "@/lib/place-created-event";
 import { useOpenGooglePlace } from "@/lib/use-open-google-place";
 import { upsertSavedPlacePreview, useSavedPlaces } from "@/lib/saved-places";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
@@ -43,31 +44,48 @@ export function CatalogRails() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const requestKey =
     coords === null ? "" : `${coords.lat.toFixed(3)},${coords.lng.toFixed(3)}`;
+  // The running load's background reload: the rails on screen stay until
+  // the new ones land, and an error never replaces a good feed.
+  const reload = useRef<() => void>(() => {});
 
   useEffect(() => {
     let cancelled = false;
+    // The newest request wins; an older response is dropped.
+    let seq = 0;
     const raf = requestAnimationFrame(() => {
       if (cancelled) return;
       setRails(null);
       setFetchError(null);
     });
-    (async () => {
+    const fetchRails = async (mode: "fresh" | "keep") => {
+      const mine = ++seq;
       try {
         const next = await apiListCatalog(supabase, coords);
-        if (cancelled) return;
+        if (cancelled || mine !== seq) return;
         setRails(next);
+        setFetchError(null);
       } catch (err) {
-        if (cancelled) return;
+        if (cancelled || mine !== seq || mode === "keep") return;
         setFetchError(errMsg(err, "Couldn't load the catalog"));
         setRails([]);
       }
-    })();
+    };
+    reload.current = () => void fetchRails("keep");
+    void fetchRails("fresh");
     return () => {
       cancelled = true;
       cancelAnimationFrame(raf);
+      reload.current = () => {};
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase, requestKey]);
+
+  // A Google-only card the guest opened is a Mesita place once the create
+  // lands (PendingPlaceScreen says so). This Feed sits under the place
+  // modal and nothing else refetches it: reload behind the modal and the
+  // card comes back with its photo and its link, never the emoji stub
+  // (MESITA-2307).
+  useEffect(() => onPlaceCreated(() => reload.current()), []);
 
   const summary = useMemo(() => summarizeCatalog(rails ?? []), [rails]);
   const shownRails = useMemo(() => placesFeed(rails ?? []), [rails]);
