@@ -492,8 +492,9 @@ export function DeepBox(seed: ConfigSeed<DiscoveryConfig>) {
           for a place they name, Area (Mesita Selected around them) for
           families or &ldquo;near me&rdquo;, and Deep for the qualities they
           describe, and answers only from the places those return. It never
-          calls a source itself. The request is embedded once, only when Deep
-          runs; no other pipeline pays for it. The model is chosen on Models.
+          calls a source itself. Deep embeds the guest&apos;s request once,
+          only when it runs; Name embeds the place name the guest gives; Area
+          embeds nothing. The model is chosen on Models.
         </p>
       }
       save={<Save editor={editor} dirty={dirty} slices={BOX_SLICES.deep} />}

@@ -316,6 +316,8 @@ export type ListedRow = {
   /** Never selected since MESITA-2338: the Name signal reads the name
    *  embedding only; the summary vector is Deep's. */
   embedding?: unknown | null;
+  /** The About, read only for the few hits `nameMesitaPlaces` returns. */
+  description?: string | null;
 };
 
 function listedToLane(row: ListedRow): LaneItem | null {
@@ -416,7 +418,23 @@ export async function nameMesitaPlaces(
     fetchEmbedPool(admin, origin, general),
     embedQueryVector(admin, text, openaiKey),
   ]);
-  return rankMesitaByName(pool, { text, vector }).slice(0, Math.max(0, cap));
+  const hits = rankMesitaByName(pool, { text, vector }).slice(0, Math.max(0, cap));
+  if (hits.length === 0) return hits;
+  // The About for these few hits only: the bar's 300-row pool stays lean,
+  // and Chat can quote the place it names.
+  const { data, error } = await admin
+    .from("profiles")
+    .select("id, description")
+    .in("id", hits.map((h) => h.id));
+  if (error) {
+    // The names still answer; only the About is missing.
+    console.error("[consumer-search-lane] name about:", error.message);
+    return hits;
+  }
+  const about = new Map(
+    ((data ?? []) as Array<{ id: string; description: string | null }>).map((r) => [r.id, r.description]),
+  );
+  return hits.map((h) => ({ ...h, description: about.get(h.id) ?? null }));
 }
 
 function takeListedLane(rows: ListedRow[], cap: number): LaneItem[] {

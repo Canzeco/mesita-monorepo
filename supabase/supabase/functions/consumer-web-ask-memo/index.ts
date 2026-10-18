@@ -90,14 +90,19 @@ Deno.serve(async (req) => {
   const openaiKey = Deno.env.get("OPENAI_KEY") ?? "";
   const history = sanitizeChatHistory(body.history);
   const anchor = anchorOf(body.latitude, body.longitude);
-  const cfg = await configPromise;
-  const model = (cfg.model ?? DEFAULT_MODELS_CONFIG.memo.model!).trim();
-  const places = await chatPlacesFor(env, query, history, anchor, openaiKey, model);
+  const modelOf = (c: Awaited<typeof configPromise>) =>
+    (c.model ?? DEFAULT_MODELS_CONFIG.memo.model!).trim();
+  // The memo config and the Chat Agent overlap: the agent needs only the
+  // model name from it, and reads Discovery's config meanwhile.
+  const [cfg, places] = await Promise.all([
+    configPromise,
+    chatPlacesFor(env, query, history, anchor, openaiKey, configPromise.then(modelOf)),
+  ]);
   const system = resolveMemoSystemPrompt(cfg.instructions);
-  const context = chatContextForModel(places);
+  const context = chatContextForModel(places, { hasAnchor: anchor !== null });
   const answer = await completeChatTurn({
     openaiKey,
-    model,
+    model: modelOf(cfg),
     system: context ? `${system}\n\n${context}` : system,
     history,
     query,
@@ -171,15 +176,17 @@ async function chatPlacesFor(
   history: ReturnType<typeof sanitizeChatHistory>,
   anchor: { lat: number; lng: number } | null,
   openaiKey: string,
-  model: string,
+  modelPromise: Promise<string>,
 ): Promise<ChatPlace[]> {
   try {
     const admin = adminClient(env);
-    const discovery = await loadDiscoveryConfig(admin);
+    const [discovery, model] = await Promise.all([loadDiscoveryConfig(admin), modelPromise]);
     const result = await runChatAgent(
       query,
       () => extractChatIntent({ openaiKey, model, query, history }),
       chatPipelines(admin, discovery, anchor, openaiKey),
+      // The operator's "Places handed to Chat" caps the whole list.
+      discovery.deep.limit,
     );
     return result.places;
   } catch (err) {

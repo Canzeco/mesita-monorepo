@@ -11,8 +11,11 @@
 //        Deep  a qualitative need     → the Deep pipeline (Description)
 //      With no usable intent, Deep runs on the guest's message: the
 //      behaviour before this agent existed.
-//   3. Merge, dedupe by place id (the first pipeline to find a place keeps
-//      it), and hand the model one list grouped by WHY each place is on it.
+//   3. Merge fairly (round-robin across the pipelines that ran, so none is
+//      starved), dedupe by place id (the first pipeline to find a place
+//      keeps it, and borrows a later copy's About or distance), stop at the
+//      operator's "Places handed to Chat" (`deep.limit`), and hand the model
+//      one list grouped by WHY each place is on it.
 //
 // The agent calls pipelines through `ChatPipelines`; it holds no database
 // client and never calls a source (Google, Mesita's tables, embeddings).
@@ -20,8 +23,9 @@
 // call here. Every step fails soft: a failed intent read falls back to
 // Deep, a failed pipeline contributes nothing. Nothing here writes.
 
-import { CATALOG_FAMILY_SLUGS } from "./catalog-families.ts";
+import { CATALOG_FAMILIES, CATALOG_FAMILY_SLUGS } from "./catalog-families.ts";
 import { OPENAI_URL } from "./enrich-config.ts";
+import { familyGate } from "./area-score.ts";
 import type { ChatTurn } from "./memo-openai-turn.ts";
 
 export type ChatIntent = {
@@ -71,7 +75,8 @@ export type ChatAgentResult = {
 };
 
 const TEXT_MAX = 200;
-export const CHAT_PLACES_MAX = 12;
+/** The intent read is optional: past this it is abandoned for Deep. */
+const INTENT_TIMEOUT_MS = 4000;
 
 const FAMILY_SET = new Set<string>(CATALOG_FAMILY_SLUGS);
 
@@ -116,11 +121,39 @@ async function soft(p: Promise<ChatPlace[]>, label: string): Promise<ChatPlace[]
   }
 }
 
+/** Round-robin across lists, so the last pipeline is never the one cut. */
+function interleave(lists: ChatPlace[][]): ChatPlace[] {
+  const out: ChatPlace[] = [];
+  const longest = Math.max(0, ...lists.map((l) => l.length));
+  for (let i = 0; i < longest; i++) {
+    for (const list of lists) if (i < list.length) out.push(list[i]);
+  }
+  return out;
+}
+
+/** Dedupe by id: the first copy wins and borrows what a later one knows. */
+function mergeUnique(places: ChatPlace[]): ChatPlace[] {
+  const byId = new Map<string, ChatPlace>();
+  for (const p of places) {
+    if (!p.id) continue;
+    const kept = byId.get(p.id);
+    if (!kept) {
+      byId.set(p.id, { ...p });
+      continue;
+    }
+    if (kept.about === null && p.about !== null) kept.about = p.about;
+    if (kept.distanceKm === null && p.distanceKm !== null) kept.distanceKm = p.distanceKm;
+  }
+  return [...byId.values()];
+}
+
 export async function runChatAgent(
   query: string,
   extractIntent: () => Promise<ChatIntent | null>,
   pipelines: ChatPipelines,
+  limit: number,
 ): Promise<ChatAgentResult> {
+  const cap = Math.max(1, Math.floor(limit));
   let intent: ChatIntent | null = null;
   try {
     intent = await extractIntent();
@@ -130,41 +163,47 @@ export async function runChatAgent(
   if (!intent) {
     // The intent read failed: Deep on the guest's message, as before.
     const places = await soft(pipelines.deep(query), "deep");
-    return { intent: NO_INTENT, invoked: ["deep"], places: places.slice(0, CHAT_PLACES_MAX) };
+    return { intent: NO_INTENT, invoked: ["deep"], places: mergeUnique(places).slice(0, cap) };
   }
 
   const plan = planChatTurn(intent, pipelines.hasAnchor);
+  const families = intent.families;
   const results = await Promise.all(plan.map((key) => {
     if (key === "name") return soft(pipelines.name(intent!.placeName!), "name");
-    if (key === "area") return soft(pipelines.area(intent!.families), "area");
-    return soft(pipelines.deep(intent!.qualitative ?? query), "deep");
+    if (key === "area") return soft(pipelines.area(families), "area");
+    // Deep embeds the guest's whole message, so the kind of place they named
+    // shapes the meaning, and the Family gate applies when they asked for
+    // one: a café never answers "sushi barato" as a fit.
+    return soft(pipelines.deep(query), "deep").then((list) =>
+      families.length === 0 ? list : list.filter((p) => familyGate(p.familyKeys, families) === 1)
+    );
   }));
 
-  const seen = new Set<string>();
-  const places: ChatPlace[] = [];
-  for (const list of results) {
-    for (const p of list) {
-      if (!p.id || seen.has(p.id)) continue;
-      seen.add(p.id);
-      places.push(p);
-    }
-  }
-  return { intent, invoked: plan, places: places.slice(0, CHAT_PLACES_MAX) };
+  return { intent, invoked: plan, places: mergeUnique(interleave(results)).slice(0, cap) };
 }
 
 const HEADINGS: Record<ChatPipelineKey, string> = {
   name: "Mesita places matching the name the guest gave (the Name pipeline):",
   area: "Mesita Selected places around the guest, nearest and best loved first (the Area pipeline):",
-  deep: "Mesita places whose own description fits what the guest asked for (the Deep pipeline):",
+  deep: "Mesita places whose own description may fit what the guest asked for (the Deep pipeline):",
 };
+/** Area without a location ranks on Popularity alone, anywhere. */
+const AREA_NO_ANCHOR =
+  "Mesita Selected places of the kind the guest asked for, best loved first; the guest shared no location, so these may be anywhere (the Area pipeline):";
 
 /**
  * The agent's answer as context for the Chat model: the places grouped by
  * why they are there, with their facts and About. The model may recommend a
  * Mesita place only from this list; it advises and writes nothing.
  */
-export function chatContextForModel(places: readonly ChatPlace[]): string {
+const FAMILY_LABEL = new Map<string, string>(CATALOG_FAMILIES.map((f) => [f.slug, f.label]));
+
+export function chatContextForModel(
+  places: readonly ChatPlace[],
+  opts: { hasAnchor: boolean },
+): string {
   if (places.length === 0) return "";
+  const label = (k: string) => FAMILY_LABEL.get(k) ?? k;
   const lines = [
     "Mesita looked these places up for this turn; you did not. When you recommend a Mesita place, choose from this list; never invent one.",
   ];
@@ -172,10 +211,12 @@ export function chatContextForModel(places: readonly ChatPlace[]): string {
   for (const key of ["name", "area", "deep"] as const) {
     const group = places.filter((p) => p.why === key);
     if (group.length === 0) continue;
-    lines.push(HEADINGS[key]);
+    lines.push(key === "area" && !opts.hasAnchor ? AREA_NO_ANCHOR : HEADINGS[key]);
     for (const p of group) {
       n += 1;
+      const kinds = p.familyKeys.filter((f) => f && f !== "undefined").map(label);
       const facts = [
+        kinds.length > 0 ? kinds.join(", ") : null,
         p.address,
         p.rating !== null ? `${p.rating}★${p.reviewCount !== null ? ` (${p.reviewCount} reviews)` : ""}` : null,
         p.distanceKm !== null ? `${p.distanceKm} km away` : null,
@@ -234,6 +275,7 @@ export async function extractChatIntent(opts: {
   try {
     const res = await doFetch(OPENAI_URL, {
       method: "POST",
+      signal: AbortSignal.timeout(INTENT_TIMEOUT_MS),
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model,

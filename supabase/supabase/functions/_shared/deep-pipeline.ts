@@ -139,24 +139,3 @@ export function deepDepsFor(
     },
   };
 }
-
-/**
- * Deep's answer as context for the Chat model: the places, their Description
- * score and their own About. Chat may recommend only from this list when it
- * names a Mesita place; it advises and writes nothing.
- */
-export function deepContextForChat(places: readonly DeepPlace[]): string {
-  if (places.length === 0) return "";
-  const lines = places.map((p, i) => {
-    const facts = [
-      p.address,
-      p.rating !== null ? `${p.rating}★${p.reviewCount !== null ? ` (${p.reviewCount} reviews)` : ""}` : null,
-      `match ${p.similarity}`,
-    ].filter(Boolean).join(" · ");
-    return `${i + 1}. ${p.name} — ${facts}${p.about ? `\n   ${p.about}` : ""}`;
-  });
-  return [
-    "Mesita places that may fit the guest's request, best match first (Mesita looked these up for this turn; you did not). When you recommend a Mesita place, choose from this list; never invent one.",
-    ...lines,
-  ].join("\n");
-}
