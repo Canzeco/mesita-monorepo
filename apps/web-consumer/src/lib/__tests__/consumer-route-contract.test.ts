@@ -93,8 +93,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // that replaced it as a redirect source.
       search: "/search",
       searchChat: "/search/chat",
-      // The Places test tab: catalog + map in one view (MESITA-2402).
-      places: "/places",
       // SEGMENTS MATCH LABELS here, the exception in this codebase: the tab
       // moved to /discover precisely so each typed mode could be a real
       // segment.
@@ -103,9 +101,9 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // address is in the legacy block instead — a page and a redirect for
       // one path cannot coexist, so a `feed` key here and
       // `legacy.discoverFeed` must never both appear.
+      // ONE page since MESITA-2405: Social is a row of Home's column.
       discoverTabs: {
         places: "/discover/places",
-        social: "/discover/social",
       },
       // Default IS the first pill (MESITA-1609/1615); Swipe leads since
       // MESITA-2142.
@@ -141,6 +139,8 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         discoverSwipe: "/discover/swipe",
         discoverFavs: "/discover/favs",
         discoverChat: "/discover/chat",
+        discoverSocial: "/discover/social",
+        places: "/places",
         // The Second Stage tab and everything under it. All land on `pay`.
         newVisit: "/new-visit",
         newVisitWallet: "/new-visit/wallet",
@@ -403,6 +403,8 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       { source: "/discover/swipe", destination: "/discover/places", permanent: true },
       { source: "/discover/favs", destination: "/discover/places", permanent: true },
       { source: "/discover/chat", destination: "/search/chat", permanent: true },
+      { source: "/discover/social", destination: "/discover/places", permanent: true },
+      { source: "/places", destination: "/discover/places", permanent: true },
       // The Saved tab and the /saved/place dual path (MESITA-1585).
       { source: "/saved", destination: "/me", permanent: true },
       { source: "/saved/reservations", destination: "/me/reservations", permanent: true },
@@ -444,7 +446,7 @@ describe("middleware auth wall (shouldGate)", () => {
   const ungatedAtMiddleware = [
     "/",
     "/discover/places",
-    "/discover/social",
+    "/discover/social", // 308s to Home (MESITA-2405)
     "/discover/chat", // 308s to /search/chat (MESITA-2401)
     "/discover/favs", // 308s to Places (MESITA-2383)
     "/search",

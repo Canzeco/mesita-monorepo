@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { CatalogRail, Place } from "@/lib/api/places";
 import {
   FAVORITES_CHIP,
+  SOCIAL_CHIP,
   poolPlaces,
   PLACES_PAGE,
   favoritePlaces,
@@ -31,13 +32,16 @@ const RAILS: CatalogRail[] = [
 ];
 
 describe("the Places column (MESITA-2383)", () => {
-  it("is Favorites, Featured, then every guest family — no source rows (MESITA-2384)", () => {
+  // Social · Favorites, a rule, then Featured and the families (MESITA-2405).
+  it("is Social, Favorites, Featured, then every guest family — no source rows (MESITA-2384)", () => {
     const labels = placesChips().map((c) => c.label);
-    expect(labels.slice(0, 2)).toEqual(["Favorites", "Featured"]);
+    expect(labels.slice(0, 3)).toEqual(["Social", "Favorites", "Featured"]);
     expect(labels).toContain("Coffee");
     expect(labels).toContain("Breakfast");
     expect(labels).not.toContain("Undefined");
-    expect(placesChips().map((c) => c.key).slice(0, 2)).toEqual([FAVORITES_CHIP, FEATURED_CHIP]);
+    expect(placesChips().map((c) => c.key).slice(0, 3)).toEqual([SOCIAL_CHIP, FAVORITES_CHIP, FEATURED_CHIP]);
+    expect(src).toContain('c.key === FAVORITES_CHIP ? (');
+    expect(src).toContain("data-places-rule");
     expect(placesChips().map((c) => c.key)).not.toContain(GOOGLE_RAIL_KEY);
     expect(placesChips().map((c) => c.key)).not.toContain(MESITA_RAIL_KEY);
   });

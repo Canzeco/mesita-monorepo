@@ -10,7 +10,7 @@
 // A REDIRECT WHOSE SOURCE IS A LIVE ROUTE SHADOWS IT ENTIRELY — the page
 // never renders and typecheck, build and the whole vitest suite stay green.
 // Nothing here may name /pay, /discover/places,
-// /discover/social, /search, /search/chat, /me or any live /me/<box>.
+// /search, /search/chat, /me or any live /me/<box>.
 //
 // BARE ONLY. next.config.ts serves every entry twice: as written, and as a
 // `/:surface(web|mob)` twin that keeps the guest's surface. Next runs
@@ -140,6 +140,14 @@ export const LEGACY_REDIRECTS: Redirect[] = [
     destination: "/search/chat",
     permanent: true,
   },
+  // SOCIAL BECAME A ROW OF HOME'S COLUMN; THE PLACES TEST TAB DIED
+  // (MESITA-2405). Both land on Home.
+  {
+    source: "/discover/social",
+    destination: "/discover/places",
+    permanent: true,
+  },
+  { source: "/places", destination: "/discover/places", permanent: true },
   // The Saved tab (reservations, favorites) and the /saved/place dual
   // path (MESITA-1585). One hop each, straight to the canonical surface.
   { source: "/saved", destination: "/me", permanent: true },

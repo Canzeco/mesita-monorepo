@@ -1,24 +1,19 @@
 "use client";
 
-// Home's and Search's header row (MESITA-2401) — pills on the left half, one
-// control on the right half:
+// Home's and Search's header row:
 //
-//   Home     ( Places | Social·Soon )  [⌖ Tecnologico ⌄]   location = 50%
+//   Home     [⌖ Tecnologico                         ⌄]   the location alone
 //   Search   ( Search | Chat·Soon )                   (⚲)  Filters at the right
 //
-// ONE SEGMENTED CONTROL (Pato, MESITA-2404): the pills share a single muted
-// track with no border between them — the active segment is the filled one.
-// The location beside it is the same height with a border instead of a fill.
-//
-// PLACES IS THE CATALOG (Pato, MESITA-2254). MESITA-2301 restored the label
-// after MESITA-2285 had renamed it Feed. Favorites left the header for the
-// Places column (MESITA-2383); Chat left Home for the Search tab and the
-// location moved up into Home's header (Pato, MESITA-2401). Soon pills wear
-// Pay's chip (MESITA-2168); the chip sits above the pill, so it adds no width.
+// HOME'S HEADER IS THE LOCATION, NOTHING ELSE (Pato, MESITA-2405). Places ·
+// Social left it: Social and Favorites are rows of the catalog's column
+// (CatalogRails), and Home has no pills. Search keeps one segmented control
+// (MESITA-2404): its pills share a single muted track with no border between
+// them, the active segment filled; Filters beside it is bordered, same height.
 //
 // It was DiscoverModeNav. Home draws it from app/(shell)/(discovery)/
-// discover/layout.tsx; Search draws its own copy above the map
-// (SearchHeader), so Home's pills never paint over the map (MESITA-1616).
+// discover/layout.tsx; Search draws its own TabHeader above the map
+// (SearchHeader), so Home's header never paints over the map (MESITA-1616).
 //
 // EVERY PILL IS AN EQUAL COLUMN: `grid-flow-col auto-cols-fr` on a
 // `w-max min-w-full` track inside the left half. At rest min-w-full
@@ -31,8 +26,6 @@
 //
 //   label    text@12   + 26px chrome
 //   -------  --------  -------------
-//   Places   38.3      64.3   <- widest (MESITA-2166)
-//   Social   36.7      62.7
 //   Search   40.9      66.9   <- widest on Search
 //   Chat     27.3      53.3
 //
@@ -44,7 +37,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { barePath } from "@/lib/surface";
-import { Search, Sparkles, Store, Users, type LucideIcon } from "lucide-react";
+import { Search, Sparkles, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics/track";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -55,27 +48,9 @@ export type Mode = {
   href: string;
   label: string;
   Icon: LucideIcon;
-  // Social and Chat (MESITA-2168). Places has no chip: it is the catalog.
+  // Chat (MESITA-2168).
   soon?: boolean;
 };
-
-// THE ORDER IS PATO'S (MESITA-2401: "Home has Places and Social").
-// Places leads and is the tab's default: the tab href is
-// CONSUMER_ROUTES.discoverDefault, which is Places' href. Swipe and Scroll
-// are legacy 308s to Places.
-export const HOME_MODES: Mode[] = [
-  {
-    href: CONSUMER_ROUTES.discoverTabs.places,
-    label: "Places",
-    Icon: Store,
-  },
-  {
-    href: CONSUMER_ROUTES.discoverTabs.social,
-    label: "Social",
-    Icon: Users,
-    soon: true,
-  },
-];
 
 // Search's pills (MESITA-2401: "Search, Chat, Filters"). Chat is Soon.
 export const SEARCH_MODES: Mode[] = [
@@ -161,7 +136,15 @@ export function TabHeader({
   );
 }
 
-/** Home's header: Places · Social, the location in the right half. */
+/** Home's header: the location picker alone, full width (Pato, MESITA-2405:
+ *  "The top bar is just to select the location. thats it."). Social and
+ *  Favorites are rows of the catalog's column now. Same strip as Search's. */
 export function ModeTabs() {
-  return <TabHeader modes={HOME_MODES} label="Home" aside={<LocationPicker />} />;
+  return (
+    <div className="border-foreground/20 bg-background/90 sticky top-0 z-20 shrink-0 border-b-2 backdrop-blur-xl">
+      <div className="px-2 py-2.5" data-home-header>
+        <LocationPicker />
+      </div>
+    </div>
+  );
 }

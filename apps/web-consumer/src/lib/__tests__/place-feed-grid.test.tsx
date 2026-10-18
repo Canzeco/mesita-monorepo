@@ -47,7 +47,6 @@ describe("Discovery invents no places", () => {
 
   it.each([
     ["Places", "components/consumer/home/CatalogRails.tsx"],
-    ["Social", "app/(shell)/(discovery)/discover/social/page.tsx"],
     ["the place lookup", "lib/api/places.ts"],
   ])("%s ships no mock deck", (_label, rel) => {
     const src = read(rel);
