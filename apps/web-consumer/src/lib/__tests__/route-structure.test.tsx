@@ -266,7 +266,6 @@ describe("T5 — exactly one tab lights per surface", () => {
     ["/discover/places", "Home"],
     ["/discover/social", "Home"],
     ["/discover/chat", "Home"],
-    ["/discover/favs", "Home"],
     ["/place/abc", "Home"],
     ["/search", "Search"],
     // Pay is one page and lights its own tab there.
@@ -407,36 +406,21 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
 // loses its selected state. This pins ORDER, COUNT, the width budget, and
 // that every pill is a real page.
 //
-// The order is Pato's (MESITA-2368): "Places, Social, Chat, Favorites".
+// The order is Pato's (MESITA-2383): "Places, Social, Chat" — Favorites is a
+// row of the Places column now.
 // MESITA-2301 restored the Places label after MESITA-2285 had renamed it Feed.
 describe("T5b — Home's supporting rail", () => {
-  it("is exactly Places · Social · Chat · Favorites", async () => {
+  it("is exactly Places · Social · Chat", async () => {
     const { HOME_MODES } = await import("@/components/consumer/ModeTabs");
-    expect(HOME_MODES.map((m) => m.label)).toEqual([
-      "Places",
-      "Social",
-      "Chat",
-      "Favorites",
-    ]);
+    expect(HOME_MODES.map((m) => m.label)).toEqual(["Places", "Social", "Chat"]);
   });
 
-  // Places is the catalog (Pato, MESITA-2254); Favorites is the live saved
-  // grid (MESITA-2368). Social and Chat stay Soon (MESITA-2168): their pages
-  // stay the Soon empty state — Memo does not mount.
-  it("Places and Favorites are live; Social and Chat stay Soon", async () => {
+  // Places is the catalog (Pato, MESITA-2254), Favorites one of its rows
+  // (MESITA-2383). Social and Chat stay Soon (MESITA-2168): their pages stay
+  // the Soon empty state — Memo does not mount.
+  it("Places is live; Social and Chat stay Soon", async () => {
     const { HOME_MODES } = await import("@/components/consumer/ModeTabs");
-    expect(HOME_MODES.map((m) => Boolean(m.soon))).toEqual([
-      false,
-      true,
-      true,
-      false,
-    ]);
-    const favs = readFileSync(
-      join(SHELL, "(discovery)", "discover", "favs", "page.tsx"),
-      "utf8",
-    );
-    expect(favs).toContain("<FavoritesList");
-    expect(favs).not.toContain("HomeSoon");
+    expect(HOME_MODES.map((m) => Boolean(m.soon))).toEqual([false, true, true]);
     const rail = readFileSync(join(COMPONENTS, "ModeTabs.tsx"), "utf8");
     expect(rail).toMatch(/>\s*Soon\s*</);
     const places = readFileSync(
@@ -451,7 +435,7 @@ describe("T5b — Home's supporting rail", () => {
         "utf8",
       );
       expect(page, seg).toContain("HomeSoon");
-      expect(page, seg).not.toMatch(/<CatalogRails|<AskAiTab|<FavoritesList/);
+      expect(page, seg).not.toMatch(/<CatalogRails|<AskAiTab/);
     }
     const soon = readFileSync(join(COMPONENTS, "home", "HomeSoon.tsx"), "utf8");
     expect(soon).toContain("is coming soon");
@@ -459,7 +443,7 @@ describe("T5b — Home's supporting rail", () => {
 
   // Swipe (MESITA-2166), Scroll (MESITA-2163) and Catalog's old Feed address
   // left the rail: no page, one hop to Places, the default.
-  it.each(["swipe", "scroll", "feed"])(
+  it.each(["swipe", "scroll", "feed", "favs"])(
     "/discover/%s has no page and 308s to Places",
     async (seg) => {
       const { HOME_MODES } = await import("@/components/consumer/ModeTabs");
@@ -529,7 +513,7 @@ describe("T5b — Home's supporting rail", () => {
     const hrefs = HOME_MODES.map((m) => m.href);
     for (const href of hrefs) expect(pages, href).toContain(href);
     expect(new Set(HOME_MODES.map((m) => m.href)).size).toBe(HOME_MODES.length);
-    // The four /discover pills are exactly the contract's discoverTabs.
+    // The three /discover pills are exactly the contract's discoverTabs.
     expect(
       HOME_MODES.map((m) => m.href).filter((h) => h.startsWith("/discover/")),
     ).toEqual(Object.values(CONSUMER_ROUTES.discoverTabs));
@@ -551,7 +535,6 @@ describe("T5b — Home's supporting rail", () => {
       ["discover", "places"],
       ["discover", "social"],
       ["discover", "chat"],
-      ["discover", "favs"],
     ]) {
       expect(
         existsSync(join(SHELL, "(discovery)", ...rel, "page.tsx")),
