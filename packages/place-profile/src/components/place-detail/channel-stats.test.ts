@@ -51,7 +51,8 @@ describe("profileChannelStats", () => {
   it("keeps every channel, and fills the number line when it is not connected", () => {
     const stats = profileChannelStats(basePlace());
     expect(stats.map((s) => s.key)).toEqual(["google", "instagram", "facebook"]);
-    expect(stats[0]?.value).toBe("3.9 ★ (411)");
+    expect(stats[0]?.value).toBe("3.9 ★");
+    expect(stats[0]?.detail).toBe("(411)");
     expect(stats[0]?.label).toBe("Google");
     expect(stats[1]).toMatchObject({
       value: "Not connected",

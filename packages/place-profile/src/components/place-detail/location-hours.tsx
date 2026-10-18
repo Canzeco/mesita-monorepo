@@ -32,7 +32,11 @@ export function LocationBox({
       title="Location"
       icon={MapPin}
       iconColor="text-muted-foreground"
-      right={formatDistanceKm(place.distance_km)}
+      right={
+        place.distance_km != null && place.distance_km > 0
+          ? formatDistanceKm(place.distance_km)
+          : undefined
+      }
     >
       <div
         className="relative aspect-[2/1] overflow-hidden rounded-xl"

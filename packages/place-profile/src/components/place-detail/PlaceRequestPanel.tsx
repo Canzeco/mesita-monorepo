@@ -51,63 +51,48 @@ export function PlaceRequestPanelView({
   const progress = requestProgressMeta(count, threshold);
   const voteDisabled = requested || pending || enriching || progress.complete;
 
+  // One flat white band under the summary, like the flat reviews list
+  // (MESITA-2309): no card, no gradient, no box inside a box (MESITA-2315).
   return (
-    <section className="border-border bg-card shadow-elev overflow-hidden rounded-2xl border">
-      <div className="from-primary/12 via-primary/6 to-card bg-gradient-to-b px-5 pb-4 pt-6 text-center">
-        <span className="bg-primary/15 text-primary shadow-glow-sm mx-auto flex h-14 w-14 items-center justify-center rounded-2xl">
-          <Sparkles className="h-7 w-7" strokeWidth={2} />
-        </span>
-        <h3 className="font-display mt-4 text-xl font-semibold tracking-tight">
-          Vote to enrich this place
-        </h3>
-        <p className="text-muted-foreground mx-auto mt-2 max-w-[32ch] text-sm leading-relaxed">
-          The profile is on Mesita. Guest votes unlock the full Enrich pass.
-        </p>
-      </div>
+    <section className="bg-card border-border border-b px-6 pt-8 pb-6 text-center">
+      <span className="bg-primary/10 text-primary mx-auto flex h-12 w-12 items-center justify-center rounded-full">
+        <Sparkles className="h-6 w-6" strokeWidth={2} />
+      </span>
+      <h3 className="font-display mt-4 text-xl font-semibold tracking-tight">
+        Vote to enrich this place
+      </h3>
+      <p className="text-muted-foreground mx-auto mt-1.5 max-w-[32ch] text-sm leading-relaxed">
+        The profile is on Mesita. Guest votes unlock the full Enrich pass.
+      </p>
 
-      <div className="px-5 pb-5 pt-1">
+      <div
+        className="mx-auto mt-6 max-w-sm"
+        aria-label={requestProgressLabel(count, threshold)}
+      >
+        <div className="flex items-baseline justify-between gap-3 text-sm">
+          <span className="text-foreground font-semibold tabular-nums">
+            {`${progress.filled} of ${progress.threshold} ${progress.threshold === 1 ? "vote" : "votes"}`}
+          </span>
+          <span className="text-muted-foreground text-xs">
+            {remainingCopy(progress.remaining, progress.complete)}
+          </span>
+        </div>
         <div
-          className="border-border bg-background/80 rounded-2xl border px-4 py-4"
-          aria-label={requestProgressLabel(count, threshold)}
+          className="mt-2 flex gap-1"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={progress.threshold}
+          aria-valuenow={progress.filled}
         >
-          <div className="flex items-end justify-between gap-3">
-            <div className="text-left">
-              <p className="text-muted-foreground type-label font-semibold uppercase tracking-wide">
-                Community votes
-              </p>
-              <p className="font-display mt-1 text-3xl font-semibold tabular-nums tracking-tight">
-                {progress.filled}
-                <span className="text-muted-foreground text-lg font-medium">
-                  {" "}
-                  / {progress.threshold}
-                </span>
-              </p>
-            </div>
-            <p className="text-muted-foreground max-w-[14ch] text-right text-xs leading-snug">
-              {remainingCopy(progress.remaining, progress.complete)}
-            </p>
-          </div>
-
-          <div
-            className="mt-4 flex gap-1.5"
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={progress.threshold}
-            aria-valuenow={progress.filled}
-          >
-            {Array.from({ length: progress.threshold }, (_, i) => {
-              const filled = i < progress.filled;
-              return (
-                <span
-                  key={i}
-                  className={cn(
-                    "h-2.5 min-w-0 flex-1 rounded-full transition-colors",
-                    filled ? "bg-primary shadow-glow-sm" : "bg-muted",
-                  )}
-                />
-              );
-            })}
-          </div>
+          {Array.from({ length: progress.threshold }, (_, i) => (
+            <span
+              key={i}
+              className={cn(
+                "h-1.5 min-w-0 flex-1 rounded-full transition-colors",
+                i < progress.filled ? "bg-primary" : "bg-muted",
+              )}
+            />
+          ))}
         </div>
 
         {enriching ? (
@@ -127,8 +112,10 @@ export function PlaceRequestPanelView({
             ? { onClick: onRequest, disabled: voteDisabled }
             : inertButtonProps(false))}
           className={cn(
-            "bg-pink-gradient inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold whitespace-nowrap text-white shadow-glow transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60",
-            requested && "bg-muted text-foreground hover:bg-muted",
+            "mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold whitespace-nowrap transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60",
+            requested
+              ? "bg-muted text-foreground"
+              : "bg-pink-gradient text-white",
           )}
         >
           {pending ? (
@@ -146,7 +133,7 @@ export function PlaceRequestPanelView({
         </button>
 
         {requested && !enriching && !progress.complete ? (
-          <p className="text-muted-foreground mt-3 text-center text-xs leading-relaxed">
+          <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
             Thanks — share this place so others can vote too.
           </p>
         ) : null}
