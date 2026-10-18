@@ -15,7 +15,7 @@ import type { CrenupAction } from "./pipeline";
 import { OverwriteSwitch } from "@/components/place-manage/OverwriteSwitch";
 import { IdListField } from "./IdListField";
 import { StateIcon, type BatchRowState } from "./StateIcon";
-import { ENRICH_ACTIONS, type EnrichDepth } from "@/lib/enrich-depth";
+import { ENRICH_ACTIONS, enrichLabel, type EnrichDepth } from "@/lib/enrich-depth";
 
 type Row = {
   state: BatchRowState;
@@ -91,11 +91,11 @@ export function WriteBox({
     // not per row: the paste is already the commitment, this just catches
     // a fat-fingered click before it archives a hundred places.
     if (action === "enrich" && overwrite) {
-      const label = depth === "quick" ? "Quick" : "Full";
+      const label = enrichLabel(depth);
       const ok = window.confirm(
         placeIds.length === 1
-          ? `Overwrite existing data on 1 place and run ${label} enrich? This can replace the profile.`
-          : `Overwrite existing data on ${placeIds.length} places and run ${label} enrich? This can replace every profile in this batch.`,
+          ? `Overwrite existing data on 1 place and run ${label}? This can replace the profile.`
+          : `Overwrite existing data on ${placeIds.length} places and run ${label}? This can replace every profile in this batch.`,
       );
       if (!ok) return;
     }
@@ -298,7 +298,7 @@ async function runEnrich(
   }));
   if (resolved.length === 0) return;
   const started = await enrichPlaces(resolved.map((row) => row.placeId), overwrite, depth);
-  const detail = depth === "quick" ? "Quick enrich started" : "Full enrich started";
+  const detail = `${enrichLabel(depth)} started`;
   for (const row of resolved) {
     setResults((prev) => ({
       ...prev,

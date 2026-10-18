@@ -531,7 +531,9 @@ function ActionCell({
   return (
     <div className="flex flex-col items-end gap-1.5">
       {row.held ? (
-        <span className="inline-flex flex-col items-end gap-1.5">
+        /* decision: Pato (2026-10-17, MESITA-2320) — Open · Fast Enrich ·
+           Deep Enrich sit on one line, one pill style. */
+        <span className="inline-flex flex-nowrap items-center justify-end gap-1.5">
           <button
             type="button"
             onClick={() => onOpen(row)}
@@ -550,9 +552,7 @@ function ActionCell({
                   onClick={() => onEnrich?.(row, action.depth)}
                   disabled={disabled}
                   title={action.title}
-                  aria-label={`${action.label} enrich ${row.name}`}
-                  /* decision: Pato (2026-10-17, MESITA-2318) — Open · Quick ·
-                     Full are one colour; Quick is no longer an outline. */
+                  aria-label={`${action.label} ${row.name}`}
                   className={`${PILL_BUTTON_CLASS} whitespace-nowrap`}
                 >
                   {action.label}

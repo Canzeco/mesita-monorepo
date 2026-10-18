@@ -10,7 +10,7 @@ import {
 } from "../actions";
 import { SectionCard, Spinner } from "@/components/admin-ui/manage";
 import { OverwriteSwitch } from "../OverwriteSwitch";
-import { ENRICH_ACTIONS, type EnrichDepth } from "@/lib/enrich-depth";
+import { ENRICH_ACTIONS, enrichLabel, type EnrichDepth } from "@/lib/enrich-depth";
 import { usePlaceContext } from "../PlaceContext";
 import { formatAbsoluteUtc } from "@/lib/format";
 import { isEnriching } from "../place-header-state";
@@ -60,12 +60,12 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
     : "Never enriched";
 
   const runDepth = useCallback((depth: EnrichDepth) => {
-    const label = depth === "quick" ? "Quick" : "Full";
+    const label = enrichLabel(depth);
     if (alreadyEnriched) {
       const again = window.confirm(
         overwrite
-          ? `Run ${label} enrich again and overwrite existing data?`
-          : `This place is already enriched. Run ${label} enrich again?`,
+          ? `Run ${label} again and overwrite existing data?`
+          : `This place is already enriched. Run ${label} again?`,
       );
       if (!again) return;
     }
