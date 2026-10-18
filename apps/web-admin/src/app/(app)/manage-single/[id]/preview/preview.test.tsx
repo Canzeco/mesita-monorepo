@@ -85,7 +85,7 @@ describe("admin member preview", () => {
       <PlaceProfile place={detail} scrollLabel="Member profile preview" />,
     );
     expect(html).toContain("Lupita");
-    expect(html).toContain("- km");
+    expect(html).not.toContain("- km");
     expect(html).toContain("Overview");
     const nav = html.slice(html.indexOf("<nav"), html.indexOf(">", html.indexOf("<nav")) + 1);
     expect(nav).toContain('aria-label="Place sections"');

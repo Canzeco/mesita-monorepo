@@ -6,6 +6,8 @@ export type ChannelStat = {
   name: "Google" | "Instagram" | "Facebook";
   /** Big number, or "Not connected" / "No count" when there is no number. */
   value: string;
+  /** Smaller, muted text beside the value on the same line: "(13.8K)". */
+  detail?: string;
   label: string;
   /** No stored number. The icon stays; the label says why. */
   mention?: boolean;
@@ -42,9 +44,12 @@ function googleStat(
   place: PlaceDetail,
   value: string | null,
   label: string,
+  detail?: string,
 ): ChannelStat {
   if (value != null) {
-    return { key: "google", name: "Google", value, label };
+    return detail != null
+      ? { key: "google", name: "Google", value, detail, label }
+      : { key: "google", name: "Google", value, label };
   }
   const linked = Boolean(place.reviews_maps.google_maps_url);
   return {
@@ -64,6 +69,7 @@ function googleStat(
  *
  * Google reads the way Maps does, stars then the review count on one line:
  * "4.9 ★ (13.8K)" (Pato, MESITA-2312). The label under it is just "Google".
+ * The count is the smaller, muted detail so the line never wraps (MESITA-2315).
  */
 export function profileChannelStats(place: PlaceDetail): ChannelStat[] {
   const googleRating = formatRating(place.google.rating);
@@ -74,8 +80,9 @@ export function profileChannelStats(place: PlaceDetail): ChannelStat[] {
     googleRating != null
       ? googleStat(
           place,
-          count != null ? `${googleRating} ★ (${count})` : `${googleRating} ★`,
+          `${googleRating} ★`,
           "Google",
+          count != null ? `(${count})` : undefined,
         )
       : googleStat(place, count != null ? `(${count})` : null, "Google");
 
