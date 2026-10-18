@@ -1,16 +1,18 @@
 "use client";
 
-// Places — a Temu-style split (Pato, MESITA-2367) under Home's header.
+// Home — a Temu-style split (Pato, MESITA-2367) under Home's header.
 //
-//   [ Places ][ Social ] (⌖ Tecnologico ⌄)   Home's header (ModeTabs): the
-//   ┌────────────────┬─────────────────────┐   location is its right half
-//   │ ❤️ Favorites    │                     │   (MESITA-2401), written to
-//   │▌✨ Featured     │       square        │   lib/active-location.ts and
-//   │ ☕ Coffee       │        tile         │   read here.
-//   │ 🥐 Breakfast    │                     │
+//   [⌖ Tecnologico                       ⌄]   Home's header (ModeTabs) is the
+//   ┌────────────────┬─────────────────────┐   location alone (MESITA-2405),
+//   │ 👥 Social       │                     │   written to
+//   │ ❤️ Favorites    │       square        │   lib/active-location.ts and
+//   │▌✨ Featured     │        tile         │   read here.
+//   │ ──────────────  │                     │
+//   │ ☕ Coffee    ↕  │                     │
 //
-// Left quarter: Favorites, Featured (the default: every place), then one row
-// per family. The chosen row is white, bold, an ink bar on its left edge.
+// Left quarter (Pato, MESITA-2411): Social (Soon), Favorites and Featured
+// (the default: every place) PINNED above a rule; under it one row per
+// family, and only that list scrolls. The chosen row is white, bold, an ink bar on its left edge.
 // Featured is the server's ONE ranked Area pool (MESITA-2379/2384): Google
 // and Mesita places merged, scored and ranked there; this screen pages it
 // (20 tiles at a time, more on scroll) and a family row filters it on each
@@ -31,8 +33,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Compass, Heart, LayoutGrid, Map as MapIcon, Navigation } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Compass, Heart, Navigation, Users } from "lucide-react";
 import {
   apiListAreaPool,
   type AreaPool,
@@ -64,13 +65,11 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { EmptyState } from "@/components/shared";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { CatalogTile } from "./CatalogTile";
+import { HomeSoon } from "./HomeSoon";
 import { useActiveLocation } from "@/lib/active-location";
 import { cn, errMsg } from "@/lib/utils";
 import { placesFeed } from "@/lib/catalog-feed";
 import { AreaDiagnostics } from "./AreaDiagnostics";
-import { SearchMap } from "@/components/consumer/search/SearchMap";
-import { isGoogleOnlyPlace } from "@/lib/place-placeholder";
-import { placeHref } from "@/lib/place-route";
 
 /** The server's rail keys for the two sets Featured mixes. */
 export const MESITA_RAIL_KEY = "mesita_selected";
@@ -89,17 +88,23 @@ const ROW_OFF = "text-foreground hover:bg-card/60";
 export const FEATURED_CHIP = "featured";
 /** The guest's saved places (MESITA-2383; it was Home's Favorites tab). */
 export const FAVORITES_CHIP = "favorites";
+/** Social, Soon (MESITA-2168) — a row since MESITA-2405; it was a Home pill. */
+export const SOCIAL_CHIP = "social";
 
-/** The column: Favorites, Featured, then every guest family (MESITA-2383,
- *  MESITA-2384). Google Places and Mesita Selected are not guest choices
+/** The column: Social · Favorites · Featured, a rule, then every guest
+ *  family (MESITA-2383, MESITA-2384, MESITA-2411). Everything through
+ *  FEATURED_CHIP is pinned; the families after it scroll. Google Places and Mesita Selected are not guest choices
  *  (MESITA-2381): they are the sources Featured mixes. A family with
  *  nothing here says so rather than hiding. */
 export function placesChips(): {
   key: string;
   label: string;
   emoji?: string;
+  /** Social: not built yet (MESITA-2168). */
+  soon?: boolean;
 }[] {
   return [
+    { key: SOCIAL_CHIP, label: "Social", emoji: "👥", soon: true },
     { key: FAVORITES_CHIP, label: "Favorites", emoji: "❤️" },
     { key: FEATURED_CHIP, label: "Featured", emoji: "✨" },
     ...FILTERABLE_PLACE_FAMILIES.map((f) => ({
@@ -109,6 +114,9 @@ export function placesChips(): {
     })),
   ];
 }
+
+/** Social, Favorites, Featured: the pinned head of the column (MESITA-2411). */
+export const PINNED_CHIPS = 3;
 
 /** Tiles drawn per page; the next page appends on scroll (MESITA-2384). */
 export const PLACES_PAGE = 20;
@@ -157,30 +165,7 @@ export function favoritePlaces(
 }
 
 
-/** A place whose name holds every word of the query (Places tab, MESITA-2402). */
-export function matchesQuery(place: Pick<Place, "name">, query: string): boolean {
-  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  const name = place.name.toLowerCase();
-  return words.every((w) => name.includes(w));
-}
-
-const VIEW_PILL =
-  "text-xs flex items-center justify-center gap-1 rounded-full px-1 py-2 font-semibold whitespace-nowrap transition active:scale-[0.98]";
-
-/**
- * Home's Places mounts this bare. The Places TAB (MESITA-2402, a test)
- * passes `query` (its header's search bar, filtering by name) and
- * `mapApiKey`, which heads the right pane with Catalog | Map: the same list,
- * as tiles or as pins.
- */
-export function CatalogRails({
-  query = "",
-  mapApiKey,
-}: { query?: string; mapApiKey?: string } = {}) {
-  const router = useRouter();
-  const withMap = mapApiKey !== undefined;
-  const [view, setView] = useState<"catalog" | "map">("catalog");
-  const [pinId, setPinId] = useState<string | null>(null);
+export function CatalogRails() {
   const supabase = useBrowserSupabase();
   const coords = useUserLocation();
   const { savedIds, hydrated, setSaved } = useSavedPlaces();
@@ -256,11 +241,8 @@ export function CatalogRails({
   const pageCount = pages.key === pageKey ? pages.n : 1;
   const sentinel = useRef<HTMLLIElement | null>(null);
   const shown: Place[] = useMemo(
-    () =>
-      pool
-        ? poolPlaces(pool, chip).filter((p) => matchesQuery(p, query))
-        : [],
-    [pool, chip, query],
+    () => (pool ? poolPlaces(pool, chip) : []),
+    [pool, chip],
   );
   const hasMore = shown.length > pageCount * PLACES_PAGE;
   useEffect(() => {
@@ -279,11 +261,8 @@ export function CatalogRails({
   // Saved previews re-read whenever the saved set changes, so a heart
   // tapped on Featured shows up under Favorites at once.
   const favorites = useMemo(
-    () =>
-      favoritePlaces(savedIds, readSavedPlacePreviews<Place>()).filter((p) =>
-        matchesQuery(p, query),
-      ),
-    [savedIds, query],
+    () => favoritePlaces(savedIds, readSavedPlacePreviews<Place>()),
+    [savedIds],
   );
 
   /** What the events say about a tile: its source, rank and final score. */
@@ -315,13 +294,31 @@ export function CatalogRails({
     });
   };
 
-  const categoryRow = (c: { key: string; label: string; emoji?: string }) => (
+  // A Soon row reads different (Pato, MESITA-2408): its label muted at rest,
+  // a quiet "Soon" under it. The column is a quarter wide, so the tag stacks
+  // rather than sitting beside the label.
+  const categoryRow = (c: {
+    key: string;
+    label: string;
+    emoji?: string;
+    soon?: boolean;
+  }) => (
     <li key={c.key}>
       <button
         type="button"
-        onClick={() => setChip(c.key)}
+        onClick={() => {
+          // The in-Home switch (`nav_tab_tap` is BottomNav's): since
+          // MESITA-2409 Home's modes are this column's rows.
+          if (chip !== c.key) trackEvent(supabase, "home_mode_view", { mode: c.label });
+          setChip(c.key);
+        }}
         aria-pressed={chip === c.key}
-        className={cn(ROW_BASE, chip === c.key ? ROW_ON : ROW_OFF)}
+        className={cn(
+          ROW_BASE,
+          chip === c.key ? ROW_ON : ROW_OFF,
+          c.soon && chip !== c.key && "text-muted-foreground",
+        )}
+        data-places-soon={c.soon ? "" : undefined}
       >
         {chip === c.key ? (
           <span
@@ -334,7 +331,16 @@ export function CatalogRails({
             {c.emoji}
           </span>
         ) : null}
-        <span className="min-w-0 break-words">{c.label}</span>
+        {c.soon ? (
+          <span className="flex min-w-0 flex-col">
+            <span className="break-words">{c.label}</span>
+            <span className="text-muted-foreground type-meta font-medium tracking-wide uppercase">
+              Soon
+            </span>
+          </span>
+        ) : (
+          <span className="min-w-0 break-words">{c.label}</span>
+        )}
       </button>
     </li>
   );
@@ -342,105 +348,40 @@ export function CatalogRails({
 
   const categories = (
     <nav
-      className="bg-muted scrollbar-hide w-1/4 shrink-0 overflow-y-auto overscroll-y-contain"
+      className="bg-muted flex w-1/4 shrink-0 flex-col"
       aria-label="Places"
       data-places-categories
     >
-      <ul role="list" aria-label="Families">{chips.map(categoryRow)}</ul>
+      {/* Pinned: Social · Favorites · Featured never scroll (MESITA-2411). */}
+      <ul role="list" aria-label="Yours" className="shrink-0" data-places-pinned>
+        {chips.slice(0, PINNED_CHIPS).map(categoryRow)}
+      </ul>
+      <div
+        role="separator"
+        aria-hidden
+        className="border-foreground/15 mx-3 my-1 shrink-0 border-t"
+        data-places-rule
+      />
+      <ul
+        role="list"
+        aria-label="Families"
+        className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
+        data-places-families
+      >
+        {chips.slice(PINNED_CHIPS).map(categoryRow)}
+      </ul>
     </nav>
   );
 
-  // Home's header (location in its right half, MESITA-2401) → the split;
+  // Home's header (the location alone, MESITA-2405) → the split;
   // every state draws in the right three quarters, which scrolls on its own.
-  const scroller = (inner: ReactNode) => (
-    <div className="bg-card scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain">
-      {inner}
-    </div>
-  );
-
-  // The map pane: the row's list as pins. First tap selects, a second tap on
-  // the same pin opens (Search's gesture); a Google-only pin opens through
-  // get-or-create, a Mesita pin routes to its profile.
-  const openFromMap = (place: Place) => {
-    if (isGoogleOnlyPlace(place)) openGooglePlace(place);
-    else router.push(placeHref(place.slug || place.id));
-  };
-  const mapPane = () => {
-    const list = chip === FAVORITES_CHIP ? favorites : shown;
-    const picked = list.find((p) => p.id === pinId) ?? null;
-    return (
-      <div className="relative min-h-0 flex-1 overflow-hidden" data-places-map>
-        <SearchMap
-          apiKey={mapApiKey ?? ""}
-          places={list}
-          userLocation={coords}
-          viewCenter={from}
-          selectedId={pinId}
-          panTargetId={pinId}
-          onSelectPlace={(p) => setPinId(p.id)}
-          onOpenPlace={openFromMap}
-        />
-        {picked ? (
-          <button
-            type="button"
-            onClick={() => openFromMap(picked)}
-            className="bg-card/95 shadow-elev border-border absolute inset-x-2 bottom-2 z-10 flex min-w-0 items-center justify-between gap-2 rounded-2xl border px-3 py-2.5 text-left text-xs font-semibold backdrop-blur"
-          >
-            <span className="min-w-0 truncate">{picked.name}</span>
-            <span className="text-muted-foreground shrink-0 font-medium">Open</span>
-          </button>
-        ) : null}
-      </div>
-    );
-  };
-
-  const viewSwitch = (
-    <div
-      className="bg-card border-foreground/20 grid shrink-0 grid-cols-2 gap-1 border-b-2 px-1.5 py-1.5"
-      role="tablist"
-      aria-label="View"
-      data-places-view
-    >
-      {(
-        [
-          { key: "catalog", label: "Catalog", Icon: LayoutGrid },
-          { key: "map", label: "Map", Icon: MapIcon },
-        ] as const
-      ).map(({ key, label: viewLabel, Icon }) => (
-        <button
-          key={key}
-          type="button"
-          role="tab"
-          aria-selected={view === key}
-          onClick={() => setView(key)}
-          className={cn(
-            VIEW_PILL,
-            view === key
-              ? "bg-primary text-primary-foreground shadow-glow"
-              : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground",
-          )}
-        >
-          <Icon className="h-3.5 w-3.5 shrink-0" strokeWidth={2.2} />
-          <span>{viewLabel}</span>
-        </button>
-      ))}
-    </div>
-  );
-
   const shell = (inner: ReactNode) => (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex min-h-0 flex-1">
         {categories}
-        {withMap ? (
-          <div className="bg-card flex min-h-0 w-3/4 flex-col">
-            {viewSwitch}
-            {view === "map" ? mapPane() : scroller(inner)}
-          </div>
-        ) : (
-          <div className="bg-card scrollbar-hide flex min-h-0 w-3/4 flex-col overflow-y-auto overscroll-y-contain">
-            {inner}
-          </div>
-        )}
+        <div className="bg-card scrollbar-hide flex min-h-0 w-3/4 flex-col overflow-y-auto overscroll-y-contain">
+          {inner}
+        </div>
       </div>
     </div>
   );
@@ -480,23 +421,28 @@ export function CatalogRails({
     );
   };
 
+  // Social is Soon: the pane says so, nothing loads (MESITA-2168).
+  if (chip === SOCIAL_CHIP) {
+    return shell(
+      <HomeSoon
+        icon={Users}
+        name="Social"
+        description="Seeing where friends go lands here shortly — thanks for waiting."
+      />,
+    );
+  }
+
   // Favorites never waits on the catalog: the saves are local.
   if (chip === FAVORITES_CHIP) {
     if (!hydrated) {
       return shell(
         <div className={PLACES_LIST}>
-          <Skeleton className="aspect-square rounded-none" />
+          <Skeleton className="aspect-square rounded-md" />
         </div>,
       );
     }
     return shell(
-      favorites.length === 0 && query.trim() ? (
-        <EmptyState
-          icon={Heart}
-          title={`No "${query.trim()}" in Favorites`}
-          description="Try another name."
-        />
-      ) : favorites.length === 0 ? (
+      favorites.length === 0 ? (
         <EmptyState
           icon={Heart}
           title="Nothing saved yet"
@@ -523,7 +469,7 @@ export function CatalogRails({
     return shell(
       <div className={PLACES_LIST}>
         {Array.from({ length: 3 }, (_, i) => (
-          <Skeleton key={i} className="aspect-square rounded-none" />
+          <Skeleton key={i} className="aspect-square rounded-md" />
         ))}
       </div>,
     );
@@ -531,13 +477,7 @@ export function CatalogRails({
 
   const label = chips.find((c) => c.key === chip)?.label ?? "Places";
   const empty =
-    query.trim() ? (
-      <EmptyState
-        icon={Compass}
-        title={`No "${query.trim()}" in ${label}`}
-        description="Try another name, or another family."
-      />
-    ) : chip === FEATURED_CHIP && from === null ? (
+    chip === FEATURED_CHIP && from === null ? (
       <EmptyState
         icon={Navigation}
         title="Turn on location"

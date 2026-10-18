@@ -10,7 +10,6 @@
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
     "isolatedModules": true,
-    "baseUrl": ".",
     "paths": {
       "react": ["../../apps/web-consumer/node_modules/@types/react/index.d.ts"],
       "react-dom": ["../../apps/web-consumer/node_modules/@types/react-dom/index.d.ts"],

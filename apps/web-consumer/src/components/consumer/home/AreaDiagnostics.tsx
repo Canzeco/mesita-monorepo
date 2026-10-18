@@ -32,7 +32,7 @@ export function AreaDiagnostics({ area }: { area: Area }) {
   const families = area.familyKeys.length > 0 ? area.familyKeys.join(", ") : "none";
   return (
     <li
-      className="bg-muted text-muted-foreground type-meta px-2 py-1.5 font-mono leading-snug"
+      className="bg-muted text-muted-foreground type-meta rounded-md px-2 py-1.5 font-mono leading-snug"
       aria-label="Score breakdown (temporary)"
       data-area-diagnostics
     >

@@ -89,6 +89,15 @@ async function commitFile(cwd: string, rel: string, content: string, msg: string
   return await git(cwd, "rev-parse", "HEAD");
 }
 
+/** `commitFile` with a committer date: `git log` orders by it, so a test can make one commit the newest in the history. */
+async function commitFileAt(cwd: string, rel: string, content: string, msg: string, iso: string): Promise<string> {
+  await write(join(cwd, rel), content);
+  await git(cwd, "add", rel);
+  const r = await defaultRunner("git", ["-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "--no-verify", "-m", msg], { cwd, env: { GIT_COMMITTER_DATE: iso } });
+  if (r.code !== 0) throw new Error(`git commit failed in ${cwd}: ${r.stderr}`);
+  return await git(cwd, "rev-parse", "HEAD");
+}
+
 /** A commit that MEETS the pre-commit gate: the exit code and stderr are the assertion. */
 async function gatedCommit(cwd: string, rel: string, msg: string): Promise<Exec> {
   await write(join(cwd, rel), `${rel}\n`);
@@ -829,6 +838,42 @@ Deno.test("pr waits for the harness's draft PR only in a cloud session; a local 
   assertStringIncludes((await pr(cloud, { docs: "none: tooling" })).join("\n"), "adopted PR #47 on claude/MESITA-33-cloud (draft");
   assertEquals(sleeps, 2, "the cloud session waited until the harness draft appeared, then adopted it");
   assert(!f.calls.some((c) => c[0] === "pr" && c[1] === "create" && c.includes("claude/MESITA-33-cloud")), "no second PR beside the draft");
+});
+
+Deno.test("pr titles a new PR from the branch's own newest commit after a merge of main, and from the issue id when it has none of its own", async () => {
+  const f = await makeFixture();
+  const env = makeEnv(f);
+  f.ghOverride = (args) => {
+    if (args[0] === "pr" && args[1] === "list") return { code: 0, stdout: "[]", stderr: "" };
+    if (args[0] === "pr" && args[1] === "create") return { code: 0, stdout: "https://github.com/x/y/pull/48", stderr: "" };
+    return undefined;
+  };
+  const titleOf = async (cwd: string): Promise<string> => {
+    f.calls.length = 0;
+    await pr(makeEnv(f, { cwd }), { docs: "none: tooling" });
+    const create = f.calls.find((c) => c[0] === "pr" && c[1] === "create")!;
+    return create[create.indexOf("--title") + 1];
+  };
+  // Main moves on with a commit dated after every commit of ours, then the workspace merges it in.
+  const tomorrow = new Date(Date.now() + 86_400_000).toISOString();
+  const mergeNewerMain = async (cwd: string, subject: string) => {
+    await commitFileAt(f.main, `${subject.replaceAll(" ", "-")}.txt`, "m\n", subject, tomorrow);
+    await git(f.main, "push", "-q", "origin", "main");
+    await git(cwd, "merge", "-q", "--no-verify", "--no-edit", "--no-ff", "origin/main");
+  };
+
+  await add(env, { id: "MESITA-34", slug: "merged" });
+  const merged = join(platformDirOf(f.main, "claude-code"), "MESITA-34-merged");
+  await commitFile(merged, "own.txt", "own\n", "own work");
+  await mergeNewerMain(merged, "main moved on");
+  assertStringIncludes(await git(merged, "log", "-1", "--format=%s"), "Merge", "the tip is the merge of main");
+  assertEquals(await git(merged, "log", "-1", "--no-merges", "--format=%s"), "main moved on", "plain --no-merges would name main's commit");
+  assertEquals(await titleOf(merged), "own work");
+
+  await add(env, { id: "MESITA-35", slug: "bare" });
+  const bare = join(platformDirOf(f.main, "claude-code"), "MESITA-35-bare");
+  await mergeNewerMain(bare, "main moved on again");
+  assertEquals(await titleOf(bare), "MESITA-35", "only the merge of main to go on: the issue id, never a merge subject");
 });
 
 Deno.test("docsLineFrom accepts the three shapes, refuses the rest, and withJoin keeps an author's own Docs line", () => {

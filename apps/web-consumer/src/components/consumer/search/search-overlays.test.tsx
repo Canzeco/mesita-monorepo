@@ -191,9 +191,9 @@ describe("SearchFilterRow", () => {
     );
     expect(rest).toContain("shrink-0");
 
-    const src = read("SearchClient.tsx");
-    expect(src).toContain('<div className="min-w-0 flex-1">');
-    expect(src).toContain('<div className="flex min-w-0 items-center gap-2">');
+    const header = read("SearchHeader.tsx");
+    expect(header).toContain('<div className="min-w-0 flex-1">{bar}</div>');
+    expect(header).toContain('<div className="flex min-w-0 items-center gap-2 px-2 pt-2.5 pb-2">');
   });
 });
 
@@ -229,21 +229,23 @@ describe("SearchLocateButton", () => {
   });
 });
 
-describe("Search map's top row is location, the query bar and the Filters disc", () => {
-  it("puts location at the left and Filters at the right, with no client-side recut", () => {
+describe("Search's header is location · the query bar · Ask AI, then family chips", () => {
+  it("puts location at the left, Filters first in the chip row, with no client-side recut", () => {
     const src = read("SearchClient.tsx");
     const overlays = read("search-catalog-overlays.tsx");
-    // Filters moved up into Search's header (MESITA-2401), the right edge;
-    // the map's row is the location disc, then the bar.
+    // MESITA-2409: the header carries the row (locate, bar, Ask AI) and the
+    // horizontal chips (Filters, All, families); the map sits under it.
     expect(src).toContain("<SearchHeader");
     expect(src.indexOf("<SearchHeader")).toBeLessThan(src.indexOf("<SearchMap"));
     expect(src).not.toContain("<SearchFilterRow");
-    const row = src.slice(src.indexOf('<div className="flex min-w-0 items-center gap-2">'));
-    expect(row.indexOf("<SearchLocateButton")).toBeGreaterThan(-1);
-    expect(row.indexOf("<SearchLocateButton")).toBeLessThan(row.indexOf("<SearchBar"));
+    expect(src.indexOf("<SearchLocateButton")).toBeGreaterThan(-1);
+    expect(src.indexOf("<SearchLocateButton")).toBeLessThan(src.indexOf("<SearchBar"));
     const header = read("SearchHeader.tsx");
-    expect(header).toContain("SEARCH_MODES");
-    expect(header).toContain('variant="header"');
+    expect(header).toContain('variant="chip"');
+    expect(header).toContain("FILTERABLE_PLACE_FAMILIES.map");
+    expect(header).toContain("toggleMapFamily(family.key)");
+    expect(header).toContain("overflow-x-auto");
+    expect(header.indexOf("<SearchFilterRow")).toBeLessThan(header.indexOf("FILTERABLE_PLACE_FAMILIES.map"));
     expect(src).toContain("recentreOnGuest");
     // Recentre reloads when the catalog was fetched elsewhere (MESITA-2305).
     const recentre = src.slice(
@@ -257,7 +259,6 @@ describe("Search map's top row is location, the query bar and the Filters disc",
     expect(src).toContain("catalogLoading ? null : catalog.length");
     expect(src).toContain("useMapFilters");
     expect(src).toContain("mapFilterCount");
-    expect(src).toContain("flex min-w-0 items-center gap-2");
     expect(src).toContain("<SearchBar");
     // The SERVER is the one selector — SearchClient posts the three
     // params and paints what comes back.
