@@ -126,7 +126,7 @@ export function CatalogTile({
 
   return (
     <li className={cn("min-w-0", className)}>
-      <div className="bg-card border-border flex aspect-square flex-col overflow-hidden rounded-lg border">
+      <div className="bg-card border-border flex aspect-square flex-col overflow-hidden border">
         <TileLink
           href={href}
           google={google}
