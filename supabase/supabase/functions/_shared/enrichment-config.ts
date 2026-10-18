@@ -65,7 +65,15 @@ export type EnrichmentConfig = {
    */
   atlasCreateOnOpenConsumer: boolean;
   atlasCreateOnOpenAdmin: boolean;
+  /**
+   * Places one guest may create per rolling 24 h (MESITA-2376; was a
+   * hardcoded 20 in create-quota.ts). 1000 while in test mode — lower it
+   * before launch.
+   */
+  atlasConsumerCreatesPerDay: number;
 };
+
+export const CONSUMER_CREATES_PER_DAY_MAX = 10000;
 
 export const DEFAULT_ENRICHMENT_CONFIG: EnrichmentConfig = {
   atlasGatherGoogleImages: 10,
@@ -90,6 +98,7 @@ export const DEFAULT_ENRICHMENT_CONFIG: EnrichmentConfig = {
   atlasRequestThreshold: 5,
   atlasCreateOnOpenConsumer: true,
   atlasCreateOnOpenAdmin: true,
+  atlasConsumerCreatesPerDay: 1000,
 };
 
 function intIn(v: unknown, min: number, max: number, fallback: number): number {
@@ -146,5 +155,11 @@ export function normalizeEnrichmentConfig(raw: unknown): EnrichmentConfig {
     atlasRequestThreshold: intIn(r.atlasRequestThreshold, 1, 100, d.atlasRequestThreshold),
     atlasCreateOnOpenConsumer: r.atlasCreateOnOpenConsumer !== false,
     atlasCreateOnOpenAdmin: r.atlasCreateOnOpenAdmin !== false,
+    atlasConsumerCreatesPerDay: intIn(
+      r.atlasConsumerCreatesPerDay,
+      1,
+      CONSUMER_CREATES_PER_DAY_MAX,
+      d.atlasConsumerCreatesPerDay,
+    ),
   };
 }

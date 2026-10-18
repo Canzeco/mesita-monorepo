@@ -18,6 +18,7 @@
 //   discover{Website,Instagram,Facebook,Opentable,Ubereats}N (0–10)
 //   imageAnalysisPrompt / imageSortingPrompt
 //   createOnOpenConsumer / createOnOpenAdmin (boolean, MESITA-2298)
+//   consumerCreatesPerDay (1–10000, MESITA-2376)
 //
 // READ-MERGE-WRITE of the jsonb (same lost-update accept as verification: one
 // super-admin). enrichment_triggers stays its own column, and this is the one
@@ -31,7 +32,10 @@ import { readAppConfig, writeAppConfig } from "./write-config.ts";
 import type { ConfigSection, SectionWriteContext } from "./config-section-base.ts";
 import { normalizeEnrichmentTriggers } from "./enrich-triggers.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
-import { normalizeEnrichmentConfig } from "./enrichment-config.ts";
+import {
+  CONSUMER_CREATES_PER_DAY_MAX,
+  normalizeEnrichmentConfig,
+} from "./enrichment-config.ts";
 import { funnelLockError, intInRange } from "./atlas-config-validate.ts";
 
 const GOOGLE_REVIEWS_MAX = ENRICH_FIELD_LIMITS.googleReviews.max;
@@ -62,6 +66,7 @@ type Body = {
   requestThreshold?: number;
   createOnOpenConsumer?: boolean;
   createOnOpenAdmin?: boolean;
+  consumerCreatesPerDay?: number;
 };
 
 // Two tiers since MESITA-2126. "high" is still ACCEPTED on write and stored as
@@ -271,6 +276,17 @@ export async function writeEnricherSection(
       return jsonError("createOnOpenAdmin must be a boolean", 400);
     }
     next.atlasCreateOnOpenAdmin = body.createOnOpenAdmin;
+    blobTouched = true;
+  }
+  if (body.consumerCreatesPerDay !== undefined) {
+    const n = intInRange(body.consumerCreatesPerDay, 1, CONSUMER_CREATES_PER_DAY_MAX);
+    if (n === null) {
+      return jsonError(
+        `consumerCreatesPerDay must be an integer 1-${CONSUMER_CREATES_PER_DAY_MAX}`,
+        400,
+      );
+    }
+    next.atlasConsumerCreatesPerDay = n;
     blobTouched = true;
   }
 

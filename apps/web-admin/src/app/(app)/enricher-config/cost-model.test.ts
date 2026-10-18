@@ -96,6 +96,7 @@ const settings: CrenupSettings = {
   requestThreshold: 5,
   createOnOpenConsumer: true,
   createOnOpenAdmin: true,
+  consumerCreatesPerDay: 1000,
 };
 
 describe("instance estimates", () => {

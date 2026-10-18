@@ -24,16 +24,16 @@
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { json } from "./http.ts";
 
-// Attempts per consumer per rolling 24 h. Generous for a real user (adds are
-// occasional), tiny for a script. Dedupe-409 clicks count too — acceptable at
-// this ceiling.
-const CONSUMER_CREATE_QUOTA = 20;
+// Attempts per consumer per rolling 24 h come from Configurations › Creation
+// (`enrichment_config.atlasConsumerCreatesPerDay`, MESITA-2376). Dedupe-409
+// clicks count too.
 
 export async function consumeConsumerCreateQuota(
   admin: SupabaseClient,
   consumerId: string,
   googlePlaceId: string,
   caller: string,
+  perDay: number,
 ): Promise<{ ok: true } | { ok: false; response: Response }> {
   const reject = (status: number, body: Record<string, unknown>) => ({
     ok: false as const,
@@ -62,7 +62,7 @@ export async function consumeConsumerCreateQuota(
     return reject(500, { error: `create_quota: ${cntErr?.message ?? "no count"}` });
   }
 
-  if (count > CONSUMER_CREATE_QUOTA) {
+  if (count > perDay) {
     // Withdraw the rejected attempt so retries don't extend the lockout.
     await admin.from("place_creation_attempts").delete().eq("id", attempt.id);
     return reject(429, {

@@ -150,6 +150,7 @@ export function CrenupClient({
         requestThreshold: settings.requestThreshold,
         createOnOpenConsumer: settings.createOnOpenConsumer,
         createOnOpenAdmin: settings.createOnOpenAdmin,
+        consumerCreatesPerDay: settings.consumerCreatesPerDay,
       });
       if (r.ok) {
         setSavedSettings(settings);
@@ -288,6 +289,22 @@ export function CrenupClient({
                     patch({ createOnOpenAdmin: !settings.createOnOpenAdmin })
                   }
                 />
+                <Fields>
+                  <NumberField
+                    icon={<Users className="text-muted-foreground h-4 w-4" />}
+                    label="Guest creates per day"
+                    value={settings.consumerCreatesPerDay}
+                    min={1}
+                    max={10000}
+                    onChange={(v) => patch({ consumerCreatesPerDay: v })}
+                    disabled={pending}
+                  />
+                </Fields>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  How many places one guest may create in 24 hours. Past it, the
+                  open says the daily limit is reached. 1000 while testing; lower
+                  it before launch.
+                </p>
               </div>
               {/* This page CONFIGURES Create; it does not run it. The door is
                   Multiple Places › Create, same idiom as the Models section's jump. */}
