@@ -116,7 +116,6 @@ describe("Places is family rails", () => {
     const tile = read("components/consumer/home/CatalogTile.tsx");
     expect(rails).toContain("placesFeed");
     expect(rails).toContain("overflow-x-auto");
-    expect(rails).toContain("w-[calc((100%-1rem)/2.5)]");
     expect(rails).not.toContain("grid-cols-2");
     expect(rails).not.toContain("FavoriteTile");
     expect(rails).not.toContain("ArrowUpDown");
@@ -129,9 +128,13 @@ describe("Places is family rails", () => {
     expect(rails.indexOf("data-rail-emoji")).toBeLessThan(
       rails.indexOf("min-h-0 rotate-180 truncate"),
     );
-    // The temporary size switch has four stops (MESITA-2340, MESITA-2352).
-    expect(rails).toContain('CARD_SIZES = ["1.5", "1.75", "2", "2.5"]');
-    expect(rails).toContain("w-[calc((100%-1rem)/1.75)]");
+    // The temporary size control is a continuous slider (MESITA-2356):
+    // 1.25 to 3 cards, the width riding one CSS variable.
+    expect(rails).toContain('type="range"');
+    expect(rails).toContain("const CARDS_MIN = 1.25;");
+    expect(rails).toContain("const CARDS_MAX = 3;");
+    expect(rails).toContain("w-[calc((100%-1rem)/var(--cards))]");
+    expect(rails).not.toContain("CARD_SIZES");
     // …in its own column with a hairline and room before the cards
     // (MESITA-2351), on the same surface as the cards (MESITA-2355).
     expect(rails).toContain('className="border-border relative w-10 shrink-0 border-r"');

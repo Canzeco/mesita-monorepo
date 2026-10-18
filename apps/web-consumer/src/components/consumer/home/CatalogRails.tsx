@@ -11,7 +11,14 @@
 // scope can never keep cutting this list. Search keeps its own Filters.
 // Location, when the browser has it, ranks proximity.
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { Compass, Navigation } from "lucide-react";
 import { apiListCatalog, type CatalogRail, type Place } from "@/lib/api/places";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -33,29 +40,30 @@ import { cn, errMsg } from "@/lib/utils";
 import { placesFeed } from "@/lib/catalog-feed";
 import { useStoredString } from "@/lib/local-store";
 
-// TEMPORARY (Pato, MESITA-2340): a try-out switch for how many cards fit
-// across the screen — 1.5, 1.75 (MESITA-2352), 2 or 2.5 (today's size). Literal class strings so
-// Tailwind keeps them. Remove the switch once a size is picked.
-const CARD_SIZES = ["1.5", "1.75", "2", "2.5"] as const;
-type CardSize = (typeof CARD_SIZES)[number];
-const CARD_WIDTH: Record<CardSize, string> = {
-  "1.5": "w-[calc((100%-1rem)/1.5)]",
-  "1.75": "w-[calc((100%-1rem)/1.75)]",
-  "2": "w-[calc((100%-1rem)/2)]",
-  "2.5": "w-[calc((100%-1rem)/2.5)]",
-};
+// TEMPORARY (Pato, MESITA-2340): a try-out control for how many cards fit
+// across the screen. A continuous slider since MESITA-2356 (it was four
+// stops, MESITA-2352): 1.25 to 3 cards, default 2.5. The width rides one CSS
+// variable, `--cards`, set on the rails' root, so cards and skeletons follow
+// as it moves. Remove the slider once a size is picked.
+const CARDS_MIN = 1.25;
+const CARDS_MAX = 3;
+const CARDS_STEP = 0.05;
+const CARDS_DEFAULT = 2.5;
 const CARD_SIZE_KEY = "mesita:feed-card-size";
+const cardWidth = "w-[calc((100%-1rem)/var(--cards))]";
 
-function readCardSize(value: string): CardSize {
-  return (CARD_SIZES as readonly string[]).includes(value)
-    ? (value as CardSize)
-    : "2.5";
+export function readCardsPerScreen(value: string): number {
+  const n = Number.parseFloat(value);
+  if (!Number.isFinite(n)) return CARDS_DEFAULT;
+  return Math.min(CARDS_MAX, Math.max(CARDS_MIN, n));
 }
 
 export function CatalogRails() {
-  const [storedSize, setCardSize] = useStoredString(CARD_SIZE_KEY, "2.5");
-  const cardSize = readCardSize(storedSize);
-  const cardWidth = CARD_WIDTH[cardSize];
+  const [storedSize, setCardSize] = useStoredString(
+    CARD_SIZE_KEY,
+    String(CARDS_DEFAULT),
+  );
+  const cardsPerScreen = readCardsPerScreen(storedSize);
   const supabase = useBrowserSupabase();
   const coords = useUserLocation();
   const locating = useUserLocationLocating();
@@ -140,28 +148,22 @@ export function CatalogRails() {
               : "Use my location"}
         </span>
       </button>
-      <div
-        role="group"
-        aria-label="Card size"
-        className="border-border bg-card flex h-11 shrink-0 items-center gap-0.5 rounded-full border p-1"
-      >
-        {CARD_SIZES.map((size) => (
-          <button
-            key={size}
-            type="button"
-            onClick={() => setCardSize(size)}
-            aria-pressed={cardSize === size}
-            className={cn(
-              "type-label h-full rounded-full px-2.5 font-semibold tabular-nums transition",
-              cardSize === size
-                ? "bg-foreground text-paper"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {size}×
-          </button>
-        ))}
-      </div>
+      <label className="border-border bg-card flex h-11 w-[42%] shrink-0 items-center gap-2 rounded-full border px-3">
+        <span className="sr-only">Cards per screen</span>
+        <input
+          type="range"
+          min={CARDS_MIN}
+          max={CARDS_MAX}
+          step={CARDS_STEP}
+          value={cardsPerScreen}
+          onChange={(e) => setCardSize(e.target.value)}
+          className="accent-foreground h-11 min-w-0 flex-1 cursor-pointer"
+          data-card-size-slider
+        />
+        <span className="type-label text-foreground w-10 shrink-0 text-right font-semibold tabular-nums">
+          {cardsPerScreen.toFixed(2).replace(/0$/, "")}×
+        </span>
+      </label>
     </div>
   );
 
@@ -179,7 +181,10 @@ export function CatalogRails() {
   };
 
   const shell = (body: ReactNode) => (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div
+      className="flex min-h-0 flex-1 flex-col"
+      style={{ "--cards": cardsPerScreen } as CSSProperties}
+    >
       {locationStrip}
       {body}
     </div>
