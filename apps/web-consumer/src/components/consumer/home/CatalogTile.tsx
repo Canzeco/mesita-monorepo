@@ -126,21 +126,20 @@ export function CatalogTile({
 
   // The photo, or the Google card's emoji tile. Drawn twice: filling the
   // square, and flipped inside the info band as its reflection.
-  const media = (mirrored: boolean) =>
+  // The photo, or the Google card's emoji tile. Drawn twice: on the top
+  // 60%, and flipped from its foot as the reflection below it.
+  const media = () =>
     photo ? (
       <Image
         src={photo}
         alt=""
         fill
         sizes="(max-width: 448px) 66vw, 300px"
-        className={cn("object-cover", mirrored && "-scale-y-100")}
+        className="object-cover object-center"
       />
     ) : (
       <div
-        className={cn(
-          "bg-pink-gradient absolute inset-0 flex items-center justify-center text-white/90",
-          mirrored && "-scale-y-100",
-        )}
+        className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-white/90"
         data-placeholder={placeholder.kind}
       >
         <span
@@ -152,11 +151,11 @@ export function CatalogTile({
       </div>
     );
 
-  // ONE square (Pato, MESITA-2369): the photo fills it edge to edge, cropped
-  // as needed — no border, no radius. The bottom third is the photo's
-  // reflection under a 50% ink layer, so the info reads as part of the
-  // square, not a box under it (the solid white band of MESITA-2365 read as
-  // two parts). The heart sits top right.
+  // ONE square (Pato, MESITA-2369, MESITA-2373): the photo is the top 60%,
+  // fully shown and centred — nothing lies over it. The bottom 40% is its
+  // REFLECTION: a 60%-tall copy flipped so its foot meets the photo's foot,
+  // under a 50% paper layer, the three rows on it in dark text. No border,
+  // no radius; the heart sits top right.
   return (
     <li className={cn("relative aspect-square min-w-0 overflow-hidden", className)}>
       <TileLink
@@ -166,22 +165,27 @@ export function CatalogTile({
         label={place.name}
         className="focus-visible:ring-primary absolute inset-0 block outline-none focus-visible:ring-2 focus-visible:ring-inset"
       >
-        <div className="bg-muted absolute inset-0">{media(false)}</div>
-        {/* The info band: the photo's reflection under 50% ink across the
-            bottom 40%, three rows spread to fill it (MESITA-2369,
-            MESITA-2372). */}
+        <div className="bg-muted absolute inset-x-0 top-0 h-[60%] overflow-hidden">
+          {media()}
+        </div>
+        {/* The reflection: bottom 40%, the photo mirrored from its foot under
+            50% paper, three rows spread to fill it (MESITA-2372, MESITA-2373). */}
         <div
           className="absolute inset-x-0 bottom-0 h-[40%] overflow-hidden"
           data-tile-info
         >
-          <div className="absolute inset-0" aria-hidden>
-            {media(true)}
+          <div
+            className="absolute inset-x-0 top-0 h-[150%] -scale-y-100"
+            aria-hidden
+            data-tile-reflection
+          >
+            {media()}
           </div>
           <div
-            className="bg-foreground/50 absolute inset-0 backdrop-blur-sm"
+            className="bg-paper/50 absolute inset-0 backdrop-blur-sm"
             aria-hidden
           />
-          <div className="text-paper relative flex h-full flex-col justify-evenly px-3 py-1.5">
+          <div className="text-foreground relative flex h-full flex-col justify-evenly px-3 py-1.5">
             <p className="font-display flex min-w-0 items-center gap-1 text-base leading-tight font-semibold tracking-tight">
               <span className="truncate">{place.name}</span>
               {isEnrichedPlace(place) ? (
@@ -192,10 +196,10 @@ export function CatalogTile({
               <p className="flex min-w-0 items-center gap-1.5 text-sm leading-tight font-medium">
                 {ratingLabel ? (
                   <span className="inline-flex shrink-0 items-center gap-1">
-                    <Star className="fill-paper text-paper h-3.5 w-3.5" />
+                    <Star className="fill-foreground text-foreground h-3.5 w-3.5" />
                     {ratingLabel}
                     {reviews ? (
-                      <span className="text-paper/75 font-normal">({reviews})</span>
+                      <span className="text-muted-foreground font-normal">({reviews})</span>
                     ) : null}
                   </span>
                 ) : null}
@@ -204,7 +208,7 @@ export function CatalogTile({
               </p>
             ) : null}
             {kindLine ? (
-              <p className="text-paper/85 truncate text-sm leading-tight">{kindLine}</p>
+              <p className="text-muted-foreground truncate text-sm leading-tight">{kindLine}</p>
             ) : null}
           </div>
         </div>
