@@ -206,7 +206,7 @@ export function CatalogRails() {
             <div className="bg-muted/60 border-border flex w-10 shrink-0 justify-center border-r py-6">
               <Skeleton className="w-4 rounded-none" />
             </div>
-            <div className="ml-3 flex min-w-0 flex-1 gap-2 overflow-hidden">
+            <div className="ml-3 flex min-w-0 flex-1 gap-1.5 overflow-hidden">
               {Array.from({ length: 3 }, (_, j) => (
                 <Skeleton
                   key={j}
@@ -271,7 +271,7 @@ export function CatalogRails() {
         <ul
           role="list"
           aria-label={rail.label}
-          className="scrollbar-hide ml-3 flex min-w-0 flex-1 gap-2 overflow-x-auto overscroll-x-contain"
+          className="scrollbar-hide ml-3 flex min-w-0 flex-1 gap-1.5 overflow-x-auto overscroll-x-contain"
         >
           {rail.places.map((place) => {
             const located = withUserDistance(place, coords);
@@ -308,11 +308,16 @@ export function CatalogRails() {
         </div>
       ) : null}
       {restRails.length > 0 ? (
+        // Every family rail has its own hairline too (Pato, MESITA-2353).
         <div
-          className="bg-card border-border flex flex-col gap-4 border-t py-3 pb-4"
+          className="bg-card border-border divide-border flex flex-col divide-y border-t pb-1"
           data-band="c"
         >
-          {restRails.map(renderRail)}
+          {restRails.map((rail) => (
+            <div key={rail.key} className="py-3">
+              {renderRail(rail)}
+            </div>
+          ))}
         </div>
       ) : null}
     </div>,
