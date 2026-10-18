@@ -57,7 +57,10 @@ export type DiscoverySlice =
   // The Catalog page. One profile, written once, shared by the seven lists.
   | "catalogRanking"
   // Discovery › Modes › Chat: the Memo prompt (MESITA-2303).
-  | "chat";
+  | "chat"
+  // Word's Locations switch and Places' rows-per-rail (MESITA-2319).
+  | "nameLocations"
+  | "catalogRows";
 
 export async function updateDiscoveryConfig(
   config: DiscoveryConfig,
@@ -84,6 +87,9 @@ export async function updateDiscoveryConfig(
     name: {
       fast: keys.has("nameFast") ? config.name.fast : live.config.name.fast,
       deep: keys.has("nameDeep") ? config.name.deep : live.config.name.deep,
+      locations: keys.has("nameLocations")
+        ? config.name.locations
+        : live.config.name.locations,
     },
     swipe: keys.has("swipe")
       ? { ...config.swipe, savedAt: new Date().toISOString() }
@@ -101,9 +107,11 @@ export async function updateDiscoveryConfig(
     weights: keys.has("signals") ? config.weights : live.config.weights,
     params: keys.has("signals") ? config.params : live.config.params,
     chat: keys.has("chat") ? config.chat : live.config.chat,
-    catalog: keys.has("catalogRanking")
-      ? { ...live.config.catalog, ranking: config.catalog.ranking }
-      : live.config.catalog,
+    catalog: {
+      ...live.config.catalog,
+      ...(keys.has("catalogRanking") ? { ranking: config.catalog.ranking } : null),
+      ...(keys.has("catalogRows") ? { railCap: config.catalog.railCap } : null),
+    },
   };
   const r = await efInvoke<{ config: unknown; updatedAt: string | null }>(
     "admin-web-update-config",

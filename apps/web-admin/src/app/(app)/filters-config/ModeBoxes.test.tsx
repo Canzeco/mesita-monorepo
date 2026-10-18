@@ -57,7 +57,8 @@ describe("Discovery › Modes (MESITA-2303)", () => {
     expect(html).toContain("Max Autocomplete rows");
     expect(html).toContain("Only active places");
     expect(html).toContain("Minimum number of Google reviews");
-    expect(html.match(/Not wired/g)?.length).toBe(2);
+    expect(html.match(/Not wired/g)?.length).toBe(1);
+    expect(html).toContain('aria-label="Show Locations"');
   });
 });
 
@@ -84,5 +85,17 @@ describe("Places box", () => {
     expect(html).not.toContain('aria-label="Timing · Mesita Selected"');
     expect(html).toContain('aria-label="Timing · Google Places"');
     expect(html).not.toContain('aria-label="Randomness · Google Places"');
+  });
+});
+
+describe("knobs MESITA-2319 wired", () => {
+  it("Map's Google reviews floor and Places per row are live controls", () => {
+    const html = modes();
+    const map = html.slice(html.indexOf(">Map</h2>"), html.indexOf(">Places</h2>"));
+    expect(map).toContain("Minimum number of Google reviews");
+    expect(map).not.toContain("Not wired");
+    const places = html.slice(html.indexOf(">Places</h2>"), html.indexOf(">Social</h2>"));
+    expect(places).toContain("Places per row");
+    expect(places).not.toContain("Not wired");
   });
 });

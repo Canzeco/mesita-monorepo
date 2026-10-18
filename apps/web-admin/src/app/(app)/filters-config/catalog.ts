@@ -63,6 +63,8 @@ export type NameDeepConfig = {
 export type NameConfig = {
   fast: NameFastConfig;
   deep: NameDeepConfig;
+  /** Word's Locations on the consumer bar (MESITA-2319). */
+  locations: boolean;
 };
 
 /**
@@ -135,6 +137,8 @@ export type CatalogConfig = {
   seedCount: number;
   generatedCount: number;
   placesPerRail: number;
+  /** Places per Feed row (MESITA-2319). Mirrors `catalog.railCap`. */
+  railCap: number;
   minSeedPlaces: number;
   ranking: Record<CatalogRankKey, number>;
 };
@@ -190,6 +194,8 @@ export type MapConfig = {
    * Places and Mesita Selected rails (MESITA-2298). Never the guest's.
    */
   radiusKm: number;
+  /** Operator Google reviews floor, Google hits only (MESITA-2319). 0 = off. */
+  googleMinReviews: number;
 };
 
 /**
@@ -335,10 +341,16 @@ export const SWIPE_CLOSING_BUFFER_MAX = 180;
 /** Mirrors CHAT_PROMPT_MAX in _shared/discovery-config.ts. */
 const CHAT_PROMPT_MAX = 12_000;
 
+/** Mirrors CATALOG_RAIL_CAP_* in _shared/discovery-config.ts. */
+export const CATALOG_RAIL_CAP_MIN = 1;
+export const CATALOG_RAIL_CAP_MAX = 10;
+const CATALOG_RAIL_CAP_DEFAULT = 5;
+
 export const DEFAULT_CATALOG: CatalogConfig = {
   seedCount: 8,
   generatedCount: 8,
   placesPerRail: 8,
+  railCap: CATALOG_RAIL_CAP_DEFAULT,
   minSeedPlaces: 2,
   ranking: { ...DEFAULT_CATALOG_RANKING },
 };
@@ -375,6 +387,7 @@ export const DEFAULT_MAP: MapConfig = {
   supers: DEFAULT_MAP_SUPERS,
   pinCount: GOOGLE_PULL_DEFAULT,
   radiusKm: MAP_RADIUS_KM_DEFAULT,
+  googleMinReviews: 0,
 };
 
 const DEFAULT_NAME_FAST: NameFastConfig = {
@@ -393,6 +406,7 @@ const DEFAULT_NAME_DEEP: NameDeepConfig = {
 export const DEFAULT_NAME: NameConfig = {
   fast: DEFAULT_NAME_FAST,
   deep: DEFAULT_NAME_DEEP,
+  locations: true,
 };
 
 export const DEFAULT_GENERAL: GeneralConfig = {
@@ -781,6 +795,9 @@ function coerceCatalog(raw: unknown): CatalogConfig {
         CATALOG_PLACES_PER_RAIL_MAX,
       ),
     ),
+    railCap: Math.round(
+      num(c.railCap, DEFAULT_CATALOG.railCap, CATALOG_RAIL_CAP_MIN, CATALOG_RAIL_CAP_MAX),
+    ),
     minSeedPlaces: Math.round(
       num(c.minSeedPlaces, DEFAULT_CATALOG.minSeedPlaces, 1, CATALOG_MIN_SEED_PLACES_MAX),
     ),
@@ -857,6 +874,7 @@ function coerceName(raw: unknown): NameConfig {
       ),
       supers: coerceSuperParams(deep.supers),
     },
+    locations: typeof n.locations === "boolean" ? n.locations : DEFAULT_NAME.locations,
   };
 }
 
@@ -883,5 +901,8 @@ function coerceMap(raw: unknown): MapConfig {
       Math.round(
         num(m.radiusKm, DEFAULT_MAP.radiusKm, MAP_RADIUS_KM_MIN, MAP_RADIUS_KM_MAX) * 10,
       ) / 10,
+    googleMinReviews: Math.round(
+      num(m.googleMinReviews, DEFAULT_MAP.googleMinReviews, 0, 100_000),
+    ),
   };
 }
