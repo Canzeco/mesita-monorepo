@@ -13,10 +13,6 @@ import { isRegionPick } from "@/components/consumer/home/AddLocationSheet";
 
 // Pato (MESITA-2380): Add location saves the guest's own named points; Places
 // searches from the one picked. They live in this browser, like Favorites.
-const rails = readFileSync(
-  join(__dirname, "../../components/consumer/home/CatalogRails.tsx"),
-  "utf8",
-);
 const reset = readFileSync(join(__dirname, "../consumer-local-reset.ts"), "utf8");
 const sheet = readFileSync(
   join(__dirname, "../../components/consumer/home/AddLocationSheet.tsx"),
@@ -85,10 +81,14 @@ describe("saved locations (MESITA-2380)", () => {
     expect(sheet).toContain("bounds: isRegionPick(row) ? anchor.viewport : null");
   });
 
-  it("lists saved locations in the location sheet; Add location opens the add sheet", () => {
-    expect(rails.indexOf("savedLocations.map((l)")).toBeGreaterThan(rails.indexOf('"Current location"'));
-    expect(rails).toContain("setAdding(true)");
-    expect(rails).not.toMatch(/data-places-add-location[\s\S]{0,200}Soon/);
-    expect(rails).toContain("<AddLocationSheet");
+  it("lists saved locations in the header's location sheet; Add location opens the add sheet", () => {
+    const picker = readFileSync(
+      join(__dirname, "../../components/consumer/home/LocationPicker.tsx"),
+      "utf8",
+    );
+    expect(picker).toContain("savedLocations.map((l)");
+    expect(picker).toContain("setAdding(true)");
+    expect(picker).not.toMatch(/data-places-add-location[\s\S]{0,200}Soon/);
+    expect(picker).toContain("<AddLocationSheet");
   });
 });

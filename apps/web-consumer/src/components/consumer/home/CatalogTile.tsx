@@ -27,6 +27,7 @@ function TileLink({
   href,
   google,
   onOpen,
+  onTap,
   label,
   className,
   children,
@@ -36,6 +37,8 @@ function TileLink({
   google: boolean;
   /** The parent's explicit open for that button. */
   onOpen?: () => void;
+  /** Any tap, either kind: the parent's analytics (MESITA-2384). */
+  onTap?: () => void;
   label: string;
   className: string;
   children: ReactNode;
@@ -44,7 +47,10 @@ function TileLink({
     return (
       <button
         type="button"
-        onClick={onOpen}
+        onClick={() => {
+          onTap?.();
+          onOpen?.();
+        }}
         aria-label={`Open ${label}`}
         className={`${className} w-full text-left`}
       >
@@ -53,7 +59,7 @@ function TileLink({
     );
   }
   return (
-    <Link href={href} className={className}>
+    <Link href={href} className={className} onClick={onTap}>
       {children}
     </Link>
   );
@@ -80,11 +86,14 @@ export function CatalogTile({
   saved,
   onToggle,
   onOpenGoogle,
+  onOpen,
   className,
 }: {
   place: Place;
   saved: boolean;
   onToggle: () => void;
+  /** Any open of the tile, for analytics (MESITA-2384). */
+  onOpen?: () => void;
   /** The explicit open for a Google-only card (get-or-create, then route). */
   onOpenGoogle?: () => void;
   className?: string;
@@ -164,6 +173,7 @@ export function CatalogTile({
         href={href}
         google={google}
         onOpen={onOpenGoogle}
+        onTap={onOpen}
         label={place.name}
         className="focus-visible:ring-primary absolute inset-0 block outline-none focus-visible:ring-2 focus-visible:ring-inset"
       >
