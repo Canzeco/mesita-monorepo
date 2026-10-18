@@ -36,8 +36,17 @@ Deno.test("normalizeEnrichmentConfig: live-shaped blob round-trips", () => {
     atlasRequestThreshold: 5,
     atlasCreateOnOpenConsumer: true,
     atlasCreateOnOpenAdmin: false,
+    atlasConsumerCreatesPerDay: 250,
   };
   assertEquals(normalizeEnrichmentConfig(live), live);
+});
+
+Deno.test("normalizeEnrichmentConfig: guest creates per day is 1000 unless stored, clamped 1–10000 (MESITA-2376)", () => {
+  assertEquals(DEFAULT_ENRICHMENT_CONFIG.atlasConsumerCreatesPerDay, 1000);
+  assertEquals(normalizeEnrichmentConfig({}).atlasConsumerCreatesPerDay, 1000);
+  assertEquals(normalizeEnrichmentConfig({ atlasConsumerCreatesPerDay: 0 }).atlasConsumerCreatesPerDay, 1);
+  assertEquals(normalizeEnrichmentConfig({ atlasConsumerCreatesPerDay: 99999 }).atlasConsumerCreatesPerDay, 10000);
+  assertEquals(normalizeEnrichmentConfig({ atlasConsumerCreatesPerDay: "x" }).atlasConsumerCreatesPerDay, 1000);
 });
 
 Deno.test("normalizeEnrichmentConfig: Create-on-open is one switch per app, on unless stored false (MESITA-2298)", () => {

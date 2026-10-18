@@ -27,6 +27,7 @@ const seed: CrenupSettings = {
   requestThreshold: 5,
   createOnOpenConsumer: true,
   createOnOpenAdmin: true,
+  consumerCreatesPerDay: 1000,
 };
 
 describe("clampFunnel", () => {

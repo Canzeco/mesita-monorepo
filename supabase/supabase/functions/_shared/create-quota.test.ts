@@ -100,7 +100,7 @@ Deno.test("sequential bursts: exactly 20 of 25 succeed, cap holds", async () => 
   const admin = makeFakeAdmin(store);
   let successes = 0;
   for (let i = 0; i < 25; i++) {
-    const r = await consumeConsumerCreateQuota(admin, "consumer-1", `place-${i}`, "test");
+    const r = await consumeConsumerCreateQuota(admin, "consumer-1", `place-${i}`, "test", 20);
     if (r.ok) successes++;
   }
   assertEquals(successes, 20);
@@ -110,9 +110,9 @@ Deno.test("sequential bursts: exactly 20 of 25 succeed, cap holds", async () => 
 Deno.test("a rejected attempt does not extend the window (net-zero row count)", async () => {
   const store: Row[] = [];
   const admin = makeFakeAdmin(store);
-  for (let i = 0; i < 20; i++) await consumeConsumerCreateQuota(admin, "consumer-1", `place-${i}`, "test");
+  for (let i = 0; i < 20; i++) await consumeConsumerCreateQuota(admin, "consumer-1", `place-${i}`, "test", 20);
   const before = store.length;
-  const r = await consumeConsumerCreateQuota(admin, "consumer-1", "place-reject", "test");
+  const r = await consumeConsumerCreateQuota(admin, "consumer-1", "place-reject", "test", 20);
   assert(!r.ok);
   assertEquals(store.length, before);
 });
@@ -121,7 +121,7 @@ Deno.test("Promise.all of 25 calls doesn't crash or corrupt the store (smoke tes
   const store: Row[] = [];
   const admin = makeFakeAdmin(store);
   const results = await Promise.all(
-    Array.from({ length: 25 }, (_, i) => consumeConsumerCreateQuota(admin, "consumer-1", `place-${i}`, "test")),
+    Array.from({ length: 25 }, (_, i) => consumeConsumerCreateQuota(admin, "consumer-1", `place-${i}`, "test", 20)),
   );
   // Given this mock's synchronous insert(), Promise.all here is provably
   // equivalent to the sequential loop above: every call's count() sees all
@@ -139,7 +139,7 @@ Deno.test("Promise.all of 25 calls doesn't crash or corrupt the store (smoke tes
 Deno.test("different consumers do not share a window", async () => {
   const store: Row[] = [];
   const admin = makeFakeAdmin(store);
-  for (let i = 0; i < 20; i++) await consumeConsumerCreateQuota(admin, "consumer-A", `place-${i}`, "test");
-  const r = await consumeConsumerCreateQuota(admin, "consumer-B", "place-first", "test");
+  for (let i = 0; i < 20; i++) await consumeConsumerCreateQuota(admin, "consumer-A", `place-${i}`, "test", 20);
+  const r = await consumeConsumerCreateQuota(admin, "consumer-B", "place-first", "test", 20);
   assert(r.ok);
 });

@@ -35,6 +35,7 @@ const SETTINGS_FALLBACK: CrenupSettings = {
   requestThreshold: 5,
   createOnOpenConsumer: true,
   createOnOpenAdmin: true,
+  consumerCreatesPerDay: 1000,
 };
 
 const TITLE: Record<CrenupView, string> = {
@@ -78,6 +79,7 @@ export async function CrenupPage({ view }: { view: CrenupView }) {
               requestThreshold: settings.data.atlasRequestThreshold ?? 5,
               createOnOpenConsumer: settings.data.atlasCreateOnOpenConsumer !== false,
               createOnOpenAdmin: settings.data.atlasCreateOnOpenAdmin !== false,
+              consumerCreatesPerDay: settings.data.atlasConsumerCreatesPerDay ?? 1000,
             }
           : SETTINGS_FALLBACK
       }

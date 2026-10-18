@@ -30,6 +30,8 @@ export type CrenupSettings = {
   /** Create the profile on open — one switch per app (MESITA-2298). */
   createOnOpenConsumer: boolean;
   createOnOpenAdmin: boolean;
+  /** Places one guest may create per rolling 24 h (MESITA-2376). */
+  consumerCreatesPerDay: number;
 };
 
 const clampN = (v: number, lo: number, hi: number) =>
