@@ -66,7 +66,8 @@ function readableKind(place: Place): string | null {
 
 /**
  * One place in a family rail: one square card (Pato, MESITA-2344), the
- * photo the top half and the white band the bottom half — the name with
+ * photo the top two thirds and the white band the bottom third
+ * (MESITA-2348) — the name with
  * the save heart beside it, then price, the Google category, and the
  * Google stars. No zone. The row is about 2.5 of
  * these wide. An enriched place wears the Enriched mark after its name
@@ -105,7 +106,7 @@ export function CatalogTile({
           google={google}
           onOpen={onOpenGoogle}
           label={place.name}
-          className="focus-visible:ring-primary block h-1/2 shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-inset"
+          className="focus-visible:ring-primary block h-2/3 shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-inset"
         >
           <div className="bg-muted relative h-full w-full overflow-hidden">
             {photo ? (
@@ -131,13 +132,13 @@ export function CatalogTile({
             )}
           </div>
         </TileLink>
-        <div className="flex h-1/2 shrink-0 items-start pr-0.5 pl-2.5">
+        <div className="flex h-1/3 shrink-0 items-start pr-0.5 pl-2.5">
           <TileLink
             href={href}
             google={google}
             onOpen={onOpenGoogle}
             label={place.name}
-            className="focus-visible:ring-primary min-w-0 flex-1 py-2 outline-none focus-visible:ring-2 focus-visible:ring-inset"
+            className="focus-visible:ring-primary min-w-0 flex-1 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-inset"
           >
             <p className="font-display text-foreground flex min-w-0 items-center gap-1 text-sm leading-tight font-semibold tracking-tight">
               <span className="truncate">{place.name}</span>
