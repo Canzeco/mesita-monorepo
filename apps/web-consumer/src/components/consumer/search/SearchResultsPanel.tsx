@@ -2,8 +2,8 @@
 
 // Live text-search results over the map: one merged lane (max 10), no
 // source section labels. The MARK tells the two entities apart
-// (MESITA-1404): a Place wears the tone point — gray = Google Places, ink =
-// Mesita Places, red = Mesita Enriched Places — and a Location (a city, a
+// (MESITA-1404): a Place wears the tone point — gray = Google's alone, ink =
+// a basic Mesita profile, red = Mesita Selected — and a Location (a city, a
 // region) wears a location icon instead. The two semantics never share a mark: a colour
 // that means "we wrote a profile" cannot also mean "this is not a place".
 // Every row pick anchors the map (MESITA-1405).
@@ -154,12 +154,13 @@ function SuggestionLine({
 
   const tone = predictionPinTone(prediction);
   const added = addState === "added";
-  // Three spoken answers over the two tones: a Created place (on Mesita, not
-  // enriched — MESITA-2154) has a basic profile, so it is not "No profile".
+  // Three spoken answers over the three tones: a Created place (on Mesita,
+  // basic — MESITA-2154) has a profile, so it is not "No profile". The word
+  // Enriched never reaches a guest (MESITA-2298).
   const toneLabel = tone === "enriched"
-    ? "Mesita profile"
+    ? "Mesita Selected"
     : predictionOnMesita(prediction)
-      ? "Mesita profile, not enriched yet"
+      ? "Basic Mesita profile"
       : "No profile yet";
 
   return (

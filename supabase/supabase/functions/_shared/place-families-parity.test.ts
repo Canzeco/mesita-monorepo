@@ -124,7 +124,7 @@ Deno.test("the consumer app filters on the seven, never on Undefined", async () 
   );
 });
 
-Deno.test("the map store hydrates from the fifteen; the catalog drops family", async () => {
+Deno.test("the map store hydrates from the fifteen", async () => {
   // A store that accepts a key its sheet does not render leaves the guest
   // with a filter they can see the effect of and no pill to clear.
   const map = await Deno.readTextFile(
@@ -141,12 +141,6 @@ Deno.test("the map store hydrates from the fifteen; the catalog drops family", a
     true,
     "use-map-filters.ts: KNOWN_FAMILY_KEYS must be built from FILTERABLE_PLACE_FAMILIES",
   );
-
-  const catalog = await Deno.readTextFile(
-    new URL("apps/web-consumer/src/lib/use-discovery-filters.ts", REPO_ROOT),
-  );
-  assertEquals(catalog.includes("familyKeys: []"), true);
-  assertEquals(/const KNOWN_FAMILY_KEYS/.test(catalog), false);
 });
 
 // ── the DB leg ─────────────────────────────────────────────────────────────

@@ -57,7 +57,11 @@ import {
   apiSuggestPlaces,
   type PlacePrediction,
 } from "@/lib/api/place-search";
-import { useUserLocation } from "@/lib/use-user-location";
+import {
+  useLocateUser,
+  useUserLocation,
+  useUserLocationLocating,
+} from "@/lib/use-user-location";
 import { MONTERREY_CENTER } from "@/lib/map-defaults";
 import { placeHref } from "@/lib/place-route";
 import { toast } from "@/lib/toast";
@@ -85,6 +89,7 @@ import { SearchFilterRow } from "./SearchFilterRow";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import type { AddState } from "./add-state";
 import { SearchRailOverlay } from "./search-catalog-overlays";
+import { SearchLocateButton } from "./SearchLocateButton";
 import { SearchMapFilters } from "./SearchMapFilters";
 import {
   anchorPlaceFromPrediction,
@@ -146,6 +151,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
   const userLocation = useUserLocation();
+  const locating = useUserLocationLocating();
+  const locate = useLocateUser();
   const [places, setPlaces] = useState<Place[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [catalogLoading, setCatalogLoading] = useState(() => Boolean(apiKey));
@@ -184,13 +191,28 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // it reopens via the floating reopen pill or by tapping any pin.
   const [railCollapsed, setRailCollapsed] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  // Filters, a labelled third of the top row (Pato, 2026-09-12 then
-  // MESITA-1797). Family, Places scope and Popularity ride this
-  // store and the nearby call. How many is operator `map.pinCount`.
-  // The server is the one selector — this component never recuts the catalog.
+  // Filters, the disc at the right of the top row. Places scope, Families
+  // and Google Reviews ride this store and the nearby call. How many is
+  // operator `map.pinCount`, the circle operator `map.radiusKm`. The server
+  // is the one selector — this component never recuts the catalog.
   const filters = useMapFilters();
   const location = userLocation;
-  const center = location;
+  // The location disc at the LEFT of the top row recentres on the guest.
+  // `Recentre` keys on the coords OBJECT, so a tap mints a fresh one and
+  // pans back even when the fix is the one the map already knows; with no
+  // fix yet the tap asks the browser instead and the fix's arrival pans.
+  const [homeNonce, setHomeNonce] = useState(0);
+  const center = useMemo(
+    () =>
+      location && homeNonce >= 0
+        ? { lat: location.lat, lng: location.lng }
+        : null,
+    [location, homeNonce],
+  );
+  const recentreOnGuest = useCallback(() => {
+    if (location) setHomeNonce((n) => n + 1);
+    else locate();
+  }, [location, locate]);
 
   // EVERY searchbar pick anchors the map (MESITA-1405): camera to the
   // coordinates, catalog reload there, chosen Place as card ONE. Cleared
@@ -216,8 +238,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       : null;
     return prependAnchorPlace(nearby, anchorRow);
   }, [nearby, anchor, distanceCenter]);
-  // Each ring's count is cumulative — the three sets nest, so an enriched
-  // row counts in every ring and a Created row in Mesita and Google.
+  // Each scope's count is cumulative — the sets nest, so a Mesita row
+  // counts in Google Places too.
   const scopeCounts = useMemo(() => placesScopeCounts(nearby), [nearby]);
   // TYPED SEARCH LIVES HERE, on the map. A found place needs somewhere to
   // land, and on a bare list it lands nowhere.
@@ -844,11 +866,16 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         onUserViewport={onUserViewport}
       />
 
-      {/* Floating top overlay — query bar (two thirds) + labelled Filters
-          (one third). The pair that keeps Filters visible: `min-w-0 flex-1`
-          on the bar, `basis-1/3 shrink-0` on the control. */}
+      {/* Floating top overlay — location disc · query bar · Filters disc
+          (Pato, 2026-10-17). The pair that keeps the discs visible:
+          `min-w-0 flex-1` on the bar, `shrink-0` on each disc. */}
       <div className="absolute inset-x-3 top-3 z-30 flex flex-col gap-2">
         <div className="flex min-w-0 items-center gap-2">
+          <SearchLocateButton
+            located={location !== null}
+            locating={locating}
+            onClick={recentreOnGuest}
+          />
           <div className="min-w-0 flex-1">
             <SearchBar
               query={query}

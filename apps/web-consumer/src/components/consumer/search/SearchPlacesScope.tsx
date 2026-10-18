@@ -7,35 +7,39 @@ import {
   type MapPlacesScope,
   type PlacesScopeStop,
 } from "@/lib/map-filters-engine";
-import { pinToneColor } from "./search-pins";
+import { type PinTone, pinToneColor } from "./search-pins";
 import { cn } from "@/lib/utils";
 
-// Places scope — THREE NESTED SETS (Pato, 2026-10-12, MESITA-2158):
+// Places scope — TWO SETS (MESITA-2298), named for the guest:
 //
-//   Google Places  ⊃  Mesita Places  ⊃  Mesita Enriched Places
-//      gray              ink                 red
+//   Google Places  ⊃  Mesita Selected
+//      gray               red
 //
-// A superset chain, so the figure is CONCENTRIC RINGS (an Euler diagram),
-// not overlapping circles. The rings are the whole point of the module:
-// nothing else in the product says what the pin colours mean, and the
-// guest is looking at those pins right now.
+// A superset, so the figure is CONCENTRIC RINGS (an Euler diagram), not
+// overlapping circles. The rings are the whole point of the module: nothing
+// else in the product says what the pin colours mean, and the guest is
+// looking at those pins right now. No enrichment word reaches the guest here.
 //
 // THE FIGURE IS 28px AND SITS BESIDE THE LEGEND, not above it.
-// Selected is a FILL, not a hairline. EACH ROW CARRIES ITS COUNT.
+// Picked is a FILL, not a hairline. EACH ROW CARRIES ITS COUNT.
 // The fills are the pin tones themselves (`pinToneColor`), so the glyph,
 // the row dot and the map pin cannot disagree.
 
 const SCOPE_STROKE: Record<MapPlacesScope, string> = {
-  enriched: "#c4123c",
-  mesita: "#111111",
   google: "#6b7280",
+  selected: "#c4123c",
+};
+
+/** The pin tone each set paints: Mesita Selected is the red of a written-up profile. */
+const RING_TONE: Record<MapPlacesScope, PinTone> = {
+  google: "google",
+  selected: "enriched",
 };
 
 const GLYPH = 28;
 const GLYPH_RADII: Record<MapPlacesScope, number> = {
   google: 12.5,
-  mesita: 9,
-  enriched: 5.5,
+  selected: 7,
 };
 
 function widestFirst<K extends string>(
@@ -70,7 +74,7 @@ function ScopeGlyph<K extends string>({
             cx={mid}
             cy={mid}
             r={GLYPH_RADII[stop.ring]}
-            fill={inside ? pinToneColor(stop.ring) : "none"}
+            fill={inside ? pinToneColor(RING_TONE[stop.ring]) : "none"}
             stroke={SCOPE_STROKE[stop.ring]}
             strokeWidth={1}
           />
@@ -91,8 +95,7 @@ export function SearchPlacesScope<K extends string = MapPlacesScope>({
   onScope: (scope: K) => void;
   /** Places each ring would show, from the catalog already in hand. */
   counts?: Partial<Record<K, number>>;
-  /** The radios, in order. The Map's three by default. Catalog passes
-   *  Mesita Places and Mesita Enriched Places, and no Google ring. */
+  /** The radios, in order. The Map's two by default. */
   stops?: readonly PlacesScopeStop<K>[];
   /** The radiogroup's accessible name — the module label it sits under. */
   label?: string;
@@ -164,7 +167,7 @@ export function SearchPlacesScope<K extends string = MapPlacesScope>({
                   aria-hidden
                   className="inline-block size-2 shrink-0 rounded-full"
                   style={{
-                    backgroundColor: pinToneColor(stop.ring),
+                    backgroundColor: pinToneColor(RING_TONE[stop.ring]),
                     // On the filled (ink) active row, a paper hairline keeps
                     // the ink dot visible.
                     outline: `1px solid ${active ? "#ffffff" : SCOPE_STROKE[stop.ring]}`,

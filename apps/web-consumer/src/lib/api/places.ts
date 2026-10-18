@@ -11,7 +11,6 @@ import { EFError, invokeEF } from "./_invoke";
 import { placeRowToDetail } from "@/lib/adapters/place-to-detail";
 import type { ResolvedTag } from "@/lib/adapters/place-to-detail";
 import type { PlaceDetail } from "@/lib/place-detail";
-import type { DiscoveryPredicatesWire } from "@/lib/discovery-filters-wire";
 
 export type Place = {
   /** Server's answer: did an Enrich run complete (`enriched_at` set,
@@ -122,8 +121,8 @@ type RecommendDeckInput = {
   lat?: number;
   lng?: number;
   limit?: number;
-  /** The guest's discovery predicates — see lib/discovery-filters-wire. */
-  predicates?: DiscoveryPredicatesWire;
+  /** The deck's predicates (the deck is unmounted; the EF still reads them). */
+  predicates?: { familyKeys: string[]; placesScope: string; minReviews: number };
 };
 type RecommendDeckResponse = {
   deck: Place[];
@@ -140,9 +139,9 @@ export async function apiFetchPublicPlaces(
   return places.map(stripInsecurePhotos);
 }
 
-/** The wire word for a Places ring. Mirrors `_shared/nearby-places.ts`:
- *  Google Places ⊃ Mesita Places ⊃ Mesita Enriched Places (MESITA-2158). */
-type PlacesScopeWire = "enriched" | "mesita" | "google";
+/** The wire word for a Places scope (MESITA-2298): Google Places or Mesita
+ *  Selected. The server also reads the retired `enriched`/`mesita` words. */
+type PlacesScopeWire = "google" | "selected";
 
 type ViewportPlaces = {
   places: Place[];
@@ -151,19 +150,21 @@ type ViewportPlaces = {
 };
 
 /**
- * Search map catalog: closest N around a camera.
+ * Search map catalog: closest N around a camera, inside the operator's
+ * radius.
  *
- * Web Search posts Places scope, Family and Popularity
- * (MESITA-1790). How many stays operator `map.pinCount`. `google: true`
- * is not the ring — it is web Search saying it CAN render a Google-only
- * stub; a caller that omits it gets listed rows.
+ * Web Search posts Places scope, Families and Google Reviews; it never
+ * posts a radius (operator `map.radiusKm`) or a count (operator
+ * `map.pinCount`). `google: true` is not the scope — it is web Search
+ * saying it CAN render a Google-only stub; a caller that omits it gets
+ * listed rows.
  */
 export async function apiFetchNearbyCatalog(
   client: SupabaseClient,
   center: { lat: number; lng: number },
-  placesScope: PlacesScopeWire = "mesita",
+  placesScope: PlacesScopeWire = "selected",
   familyKeys: readonly string[] = [],
-  minReviews = 0,
+  minReviews = 100,
 ): Promise<ViewportPlaces> {
   const data = await invokeEF<{
     places: Place[];
@@ -261,7 +262,6 @@ export type CatalogRail = {
 export async function apiListCatalog(
   client: SupabaseClient,
   origin?: { lat: number; lng: number } | null,
-  predicates?: DiscoveryPredicatesWire,
 ): Promise<CatalogRail[]> {
   const data = await invokeEF<{ rails: CatalogRail[] }>(
     client,
@@ -270,7 +270,6 @@ export async function apiListCatalog(
       // `google: true` asks for Right Now from Google (MESITA-2295), as
       // Search's opt-in; without a location the EF keeps it on Mesita.
       ...(origin ? { lat: origin.lat, lng: origin.lng, google: true } : {}),
-      ...(predicates ? { predicates } : {}),
     },
   );
   return (data.rails ?? []).map((rail) => ({

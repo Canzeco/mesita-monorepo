@@ -54,7 +54,7 @@ export function SearchPopularity({
     <div className="flex flex-col">
       <div
         role="radiogroup"
-        aria-label="Minimum number of Google reviews"
+        aria-label="Google Reviews"
         aria-orientation="horizontal"
         onKeyDown={onKeyDown}
         className="border-border flex overflow-hidden rounded-xl border"
@@ -69,7 +69,7 @@ export function SearchPopularity({
               aria-checked={active}
               aria-label={
                 stop === 0
-                  ? "Any Google reviews"
+                  ? "Any number of Google reviews"
                   : `At least ${stop.toLocaleString()} Google reviews`
               }
               onClick={() => onMinReviews(stop)}

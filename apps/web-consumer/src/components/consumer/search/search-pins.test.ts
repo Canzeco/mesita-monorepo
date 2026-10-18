@@ -53,14 +53,19 @@ describe("pin tones — enriched > mesita > google", () => {
     expect(placePinTone({ googleOnly: true, ...stamped })).toBe("google");
   });
 
-  it("agrees with the ring the Filters sheet counts the place in", () => {
+  it("agrees with the scope the Filters sheet counts the place in (MESITA-2298)", () => {
+    // Gray is Google's alone, and only Google's; red and ink are both Mesita
+    // Selected on the sheet — the tone keeps the colour's promise, the scope
+    // the guest's two words.
     const rows = [
       { id: "e", slug: "e", name: "E", category: null, enriched: true },
       { id: "c", slug: "c", name: "C", category: null, content_state: "ready" },
       { id: "g:x", slug: "x", name: "X", category: null, googleOnly: true },
     ] as Place[];
     for (const row of rows) {
-      expect(placePinTone(row)).toBe(placeSearchScope(row));
+      expect(placePinTone(row) === "google").toBe(
+        placeSearchScope(row) === "google",
+      );
     }
   });
 

@@ -508,13 +508,20 @@ export type NearbyMerged<T> =
  */
 export type PlacesScope = "enriched" | "mesita" | "google";
 
-export const PLACES_SCOPE_DEFAULT: PlacesScope = "mesita";
+/**
+ * The guest has two scopes (MESITA-2298): `google` (Google Places) and
+ * `selected` (Mesita Selected = the enriched, ready set, `enriched` here).
+ * The retired `mesita` word and the absent value both land on Selected:
+ * there is no Created-rows scope a guest can ask for any more.
+ */
+export const PLACES_SCOPE_DEFAULT: PlacesScope = "enriched";
 
 const PLACES_SCOPES: readonly PlacesScope[] = ["enriched", "mesita", "google"];
 
 export function parsePlacesScope(value: unknown): PlacesScope {
   if (typeof value === "string") {
     const key = value.trim().toLowerCase();
+    if (key === "selected" || key === "mesita") return "enriched";
     if ((PLACES_SCOPES as readonly string[]).includes(key)) {
       return key as PlacesScope;
     }

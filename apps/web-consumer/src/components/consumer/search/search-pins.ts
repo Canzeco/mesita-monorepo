@@ -5,10 +5,11 @@
 //   mesita    ink    our own place, not enriched yet (a Created place)
 //   google    gray   a Google row Mesita does not hold
 //
-// These are the three sets the Filters sheet lists, not a separate palette:
-// Google Places ⊃ Mesita Places ⊃ Mesita Enriched Places. A set the guest
-// can pick has to be the same set the colour promises, so each tone is the
-// NARROWEST ring the place sits in (`placeSearchScope`).
+// The sets still nest — Google Places ⊃ Mesita Places ⊃ Mesita Enriched
+// Places — and each tone is the NARROWEST ring the place sits in. The
+// Filters sheet names only two of them (Google Places · Mesita Selected,
+// MESITA-2298): a tone is the colour's promise about the row, the scope is
+// the set the guest asked for (`placeSearchScope`).
 //
 // Red is EARNED. The bucket is named `enriched`, not "listed": listed means
 // "we have a row", which a Created place also satisfies, and a basic
@@ -29,11 +30,10 @@ import {
   MAP_PIN_STROKE_COLOR,
   MAP_SELECTED_PIN_COLOR,
 } from "@/lib/map-defaults";
-import { type MapPlacesScope } from "@/lib/map-filters-engine";
 import { isEnrichedPlace } from "@/lib/place-enriched";
 
-/** The tone IS the narrowest ring — the same three words the wire carries. */
-export type PinTone = MapPlacesScope;
+/** The tone IS the narrowest ring: red, ink or gray. */
+export type PinTone = "enriched" | "mesita" | "google";
 
 /** On Mesita per EF — mesitaId/slug win over a stale not_in_mesita state. */
 export function predictionOnMesita(item: {

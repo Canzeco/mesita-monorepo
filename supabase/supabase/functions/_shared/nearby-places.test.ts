@@ -570,23 +570,25 @@ Deno.test("searchNearbyPlaces: isolate budget skip does not call beforeFanout", 
   }
 });
 
-Deno.test("places scope: three nested sets, named on the wire, Mesita by default", () => {
+Deno.test("places scope: two guest words on the wire, Mesita Selected by default (MESITA-2298)", () => {
   // The absent value is the one that matters most: any caller that posts no
   // scope lands on it, so it must be the Mesita set, never a paid call.
-  assertEquals(parsePlacesScope(undefined), "mesita");
-  assertEquals(parsePlacesScope(null), "mesita");
-  assertEquals(parsePlacesScope(""), "mesita");
-  assertEquals(parsePlacesScope("nope"), "mesita");
-  assertEquals(parsePlacesScope({}), "mesita");
-  // A scope this EF does not name reads as the default, an old client's
-  // `partners` included.
-  assertEquals(parsePlacesScope("partners"), "mesita");
-  assertEquals(parsePlacesScope("MESITA"), "mesita");
+  assertEquals(parsePlacesScope(undefined), "enriched");
+  assertEquals(parsePlacesScope(null), "enriched");
+  assertEquals(parsePlacesScope(""), "enriched");
+  assertEquals(parsePlacesScope("nope"), "enriched");
+  assertEquals(parsePlacesScope({}), "enriched");
+  // `selected` is the guest's word for the enriched, ready set; the retired
+  // `mesita` (Created rows included) and an old client's `partners` land on
+  // it too — there is no wider Mesita scope any more.
+  assertEquals(parsePlacesScope(" Selected "), "enriched");
+  assertEquals(parsePlacesScope("partners"), "enriched");
+  assertEquals(parsePlacesScope("MESITA"), "enriched");
   assertEquals(parsePlacesScope(" google "), "google");
   assertEquals(parsePlacesScope(" Enriched "), "enriched");
   // Legacy ordinals keep their OLD shipped meanings, so a client deployed
   // before this EF still gets the set it asked for during the skew window.
-  assertEquals(parsePlacesScope(1), "mesita");
+  assertEquals(parsePlacesScope(1), "enriched");
   assertEquals(parsePlacesScope(2), "google");
   assertEquals(parsePlacesScope(3), "google");
   assertEquals(parsePlacesScope("2"), "google");

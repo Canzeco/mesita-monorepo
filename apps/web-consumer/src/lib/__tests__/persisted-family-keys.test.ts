@@ -1,19 +1,18 @@
-// The catalog no longer filters by family, so a stored family list is dropped
-// the next time that store writes. The map still hydrates from the fifteen.
+// The map store hydrates its family list from the fifteen. The Feed has no
+// filter store any more (MESITA-2298).
 //
 // `undefined` is the live case: it is a real key in PLACE_FAMILIES, so the old
 // `PLACE_FAMILIES`-built allow-list let it survive hydrate, and the catalog
-// holds zero unclassified places — the deck just went empty. `wellness_spa` is
+// holds zero unclassified places — the list just went empty. `wellness_spa` is
 // the already-dead key the same path drops, and it is here so the test proves
 // the filter runs at all rather than passing because nothing is ever dropped.
 //
-// Each store reads sessionStorage ONCE at module load, so every case seeds
+// The store reads sessionStorage ONCE at module load, so every case seeds
 // storage, resets the module registry, imports fresh, then makes one mutation
 // so the store writes its hydrated state back where we can read it.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const DISCOVERY_KEY = "mesita_discovery_filters_v7";
 const MAP_KEY = "mesita_map_filters_v6";
 
 function installSessionStorage(): Map<string, string> {
@@ -46,22 +45,6 @@ afterEach(() => {
 });
 
 describe("persisted familyKeys hydrate from the filterable fifteen", () => {
-  it("drops a stored family list from the catalog", async () => {
-    store.set(
-      DISCOVERY_KEY,
-      JSON.stringify({
-        familyKeys: ["undefined", "wellness_spa", "coffee"],
-        placesScope: "enriched",
-        minReviews: 100,
-      }),
-    );
-
-    const mod = await import("@/lib/use-discovery-filters");
-    mod.setDiscoveryPlacesScope("mesita");
-
-    expect(persistedFamilyKeys(store, DISCOVERY_KEY)).toEqual([]);
-  });
-
   it("drops undefined and wellness_spa from a Map session", async () => {
     store.set(
       MAP_KEY,
@@ -95,5 +78,22 @@ describe("persisted familyKeys hydrate from the filterable fifteen", () => {
     expect(persistedFamilyKeys(store, MAP_KEY)).toEqual(
       all.filter((k) => k !== "dinner"),
     );
+  });
+
+  it("maps a stored scope word the sheet retired onto Mesita Selected (MESITA-2298)", async () => {
+    store.set(
+      MAP_KEY,
+      JSON.stringify({ familyKeys: [], placesScope: "enriched", minReviews: 10000 }),
+    );
+
+    const mod = await import("@/lib/use-map-filters");
+    mod.toggleMapFamily("dinner");
+
+    const raw = JSON.parse(store.get(MAP_KEY)!) as {
+      placesScope: string;
+      minReviews: number;
+    };
+    expect(raw.placesScope).toBe("selected");
+    expect(raw.minReviews).toBe(1000);
   });
 });
