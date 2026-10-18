@@ -11,6 +11,8 @@ import { assert, assertEquals, assertRejects, assertStringIncludes } from "@std/
 import { join } from "@std/path";
 import {
   add,
+  AUDIT_TIMEOUT_MS,
+  auditLine,
   boot,
   classifyLanded,
   type Cloud,
@@ -20,6 +22,7 @@ import {
   decideRemote,
   declaredPlatform,
   defaultRunner,
+  describeAudit,
   docsLineFrom,
   ensureWorktreeConfig,
   type Env,
@@ -47,6 +50,7 @@ import {
   sweep,
   sweepCounts,
   originFlags,
+  TIMEOUT_CODE,
   validateId,
   validateSlug,
   withJoin,
@@ -886,6 +890,79 @@ Deno.test("boot names the worktree it runs from, not the shared checkout that co
   await write(join(w.path, "scripts", "rules-quickstart.md"), "# q\n(`stamp: v8 2025-12-31`)\n");
   const fromWorktree = (await boot(makeEnv(f, { cwd: w.path }))).join("\n");
   assertStringIncludes(fromWorktree, "rules: quickstart stamp v8 2025-12-31", "the checkout that boots is the one measured, not the lobby");
+});
+
+// ── boot: the pipeline audit line (MESITA-2391) ─────────────────────────────
+
+const AUDIT_NOW = new Date("2026-10-21T12:00:00Z");
+const auditRun = (conclusion: string, createdAt: string): Exec => ({
+  code: 0,
+  stdout: JSON.stringify([{ conclusion, createdAt, url: "https://github.com/Canzeco/mesita-monorepo/actions/runs/1" }]),
+  stderr: "",
+});
+
+Deno.test("describeAudit: the last run's result and age; a failed or stale run names what to do", () => {
+  assertEquals(describeAudit(auditRun("success", "2026-10-19T09:02:11Z"), AUDIT_NOW), "pipeline audit: pass 2 days ago (2026-10-19)");
+  assertEquals(describeAudit(auditRun("success", "2026-10-19T15:02:11Z"), AUDIT_NOW), "pipeline audit: pass 1 day ago (2026-10-19)", "whole days, rounded down");
+  assertEquals(describeAudit(auditRun("success", "2026-10-21T09:00:00Z"), AUDIT_NOW), "pipeline audit: pass 3 h ago (2026-10-21)");
+  assertEquals(
+    describeAudit(auditRun("failure", "2026-10-20T09:00:00Z"), AUDIT_NOW),
+    "pipeline audit: FAIL 1 day ago (2026-10-20) — read it: https://github.com/Canzeco/mesita-monorepo/actions/runs/1",
+  );
+  assertEquals(
+    describeAudit(auditRun("success", "2026-10-12T15:00:00Z"), AUDIT_NOW),
+    "pipeline audit: pass 8 days ago (2026-10-12); over 8 days old: gh workflow run pipeline-audit.yml",
+  );
+});
+
+Deno.test("describeAudit: every way gh can fail is unknown with its reason, never a pass", () => {
+  const fail = (code: number, stderr: string, stdout = ""): Exec => ({ code, stdout, stderr });
+  const cases: [Exec, string][] = [
+    [fail(TIMEOUT_CODE, "timed out after 3000 ms"), "timed out after 3 s"],
+    [fail(1, "HTTP 401: Bad credentials (https://api.github.com/repos/Canzeco/mesita-monorepo/actions/workflows/pipeline-audit.yml)\nTry authenticating with:  gh auth login -h github.com"), "no auth"],
+    [fail(4, "To get started with GitHub CLI, please run:  gh auth login"), "no auth"],
+    [fail(1, "HTTP 404: workflow pipeline-audit.yml not found on the default branch (https://api.github.com/...)"), "no runs yet"],
+    [fail(0, "", "[]"), "no runs yet"],
+    [fail(0, "", "<html>"), "unreadable gh output"],
+    [fail(0, "", '{"message":"x"}'), "unreadable gh output"],
+    [fail(1, "HTTP 502: Bad Gateway"), "gh failed: HTTP 502: Bad Gateway"],
+  ];
+  for (const [r, why] of cases) {
+    assertEquals(describeAudit(r, AUDIT_NOW), `pipeline audit: unknown (${why}); gh workflow run pipeline-audit.yml`);
+  }
+});
+
+Deno.test("auditLine asks with a timeout, and a missing gh is unknown, not a crash", async () => {
+  const f = await makeFixture();
+  let seen: { cwd?: string; timeoutMs?: number } | undefined;
+  const asked = await auditLine({ ...makeEnv(f, { now: () => AUDIT_NOW }), runner: (_cmd, _args, o) => {
+    seen = o;
+    return Promise.resolve(auditRun("success", "2026-10-19T15:00:00Z"));
+  } }, f.main);
+  assertEquals(asked, "pipeline audit: pass 1 day ago (2026-10-19)");
+  assertEquals(seen, { cwd: f.main, timeoutMs: AUDIT_TIMEOUT_MS });
+  const noGh = await auditLine({ ...makeEnv(f), runner: () => Promise.reject(new Deno.errors.NotFound("gh")) }, f.main);
+  assertEquals(noGh, "pipeline audit: unknown (no gh); gh workflow run pipeline-audit.yml");
+});
+
+Deno.test("defaultRunner kills a run past its timeout and returns the timeout code", async () => {
+  const started = Date.now();
+  const r = await defaultRunner("bash", ["-c", "sleep 5"], { timeoutMs: 200 });
+  assertEquals(r.code, TIMEOUT_CODE);
+  assert(Date.now() - started < 3000, `took ${Date.now() - started} ms`);
+  assertEquals((await defaultRunner("bash", ["-c", "exit 3"], { timeoutMs: 2000 })).code, 3, "a run inside its timeout keeps its own code");
+});
+
+Deno.test("boot prints the audit line locally and in the cloud, and boots on when gh fails", async () => {
+  const f = await makeFixture();
+  f.ghOverride = (args) => args[0] === "run" && args[1] === "list" ? auditRun("success", "2026-10-19T09:00:00Z") : undefined;
+  const local = (await boot(makeEnv(f, { now: () => AUDIT_NOW }))).join("\n");
+  assertStringIncludes(local, "pipeline audit: pass 2 days ago (2026-10-19)");
+  f.ghOverride = (args) => args[0] === "run" ? { code: 4, stdout: "", stderr: "To get started with GitHub CLI, please run:  gh auth login" } : undefined;
+  const clone = await makeClone(f);
+  const cloud = await boot(makeEnv(f, { cwd: clone, cloud: CLOUD }));
+  assertStringIncludes(cloud.join("\n"), "pipeline audit: unknown (no auth); gh workflow run pipeline-audit.yml");
+  assertEquals(cloud.at(-1), "next: one Linear read for live claims, then PICK", "boot ran to its last line");
 });
 
 Deno.test("hostHash is pinned in the home directory and survives a hostname change", async () => {

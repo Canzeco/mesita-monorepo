@@ -1,6 +1,6 @@
 // scripts/worktree.ts — the fleet tool behind Rules I-3, I-4, I-6, I-9 and I-10.
 //
-//   deno task boot                                   where am I, the shared-checkout checks, the fleet, the origin claims (every host's pushed branches), my claim line, my resumable workspaces
+//   deno task boot                                   where am I, the shared-checkout checks, the last pipeline audit, the fleet, the origin claims (every host's pushed branches), my claim line, my resumable workspaces
 //   deno task worktree add MESITA-<id> [slug] [--platform <token>] [--footprint <paths>] [--adopt <path>]
 //   deno task worktree preflight [path]              may this checkout receive writes? the verdict scripts/preflight.sh gives every hook
 //   deno task worktree pr [--docs <value>]           adopt or open the PR for this workspace; the body carries Closes MESITA-<id> and a Docs: line
@@ -44,7 +44,8 @@ import { dirname, fromFileUrl, join, relative, resolve } from "@std/path";
 // ── Types ───────────────────────────────────────────────────────────────────
 
 export type Exec = { code: number; stdout: string; stderr: string };
-export type Runner = (cmd: string, args: string[], opts?: { cwd?: string; env?: Record<string, string> }) => Promise<Exec>;
+/** `timeoutMs`: the run is killed past it and returns TIMEOUT_CODE, as coreutils `timeout` does. */
+export type Runner = (cmd: string, args: string[], opts?: { cwd?: string; env?: Record<string, string>; timeoutMs?: number }) => Promise<Exec>;
 
 /** A cloud session: the clone is the workspace; `session` is the harness id the claim line names. */
 export type Cloud = { platform: string; session: string | null };
@@ -112,6 +113,12 @@ export function platformDirOf(main: string, platform: string): string {
   return join(fleetDirOf(main), platform);
 }
 export const LOCK_PREFIX = "mesita claim=";
+export const TIMEOUT_CODE = 124;
+// The weekly pipeline audit (.github/workflows/pipeline-audit.yml, MESITA-2391). Boot asks the
+// Actions API for its last run, and never waits on it longer than AUDIT_TIMEOUT_MS.
+export const AUDIT_WORKFLOW = "pipeline-audit.yml";
+export const AUDIT_STALE_MS = 8 * 24 * 60 * 60 * 1000; // a weekly run, plus a day of slack
+export const AUDIT_TIMEOUT_MS = 3000;
 export const DRAFT_WAIT_MS = 60_000;
 export const DRAFT_POLL_MS = 10_000;
 
@@ -1225,12 +1232,57 @@ async function copyToClipboard(env: Env, text: string): Promise<boolean> {
 
 // ── boot ────────────────────────────────────────────────────────────────────
 
+/**
+ * Boot's line for the weekly pipeline audit: the last completed run on main, its result and its
+ * age. It never fails boot: no gh, no auth, no run yet or a slow API is `unknown (<reason>)`, and
+ * a stale or unknown audit prints the command that runs one now.
+ */
+export function describeAudit(r: Exec, now: Date): string {
+  const rerun = `gh workflow run ${AUDIT_WORKFLOW}`;
+  const unknown = (why: string) => `pipeline audit: unknown (${why}); ${rerun}`;
+  if (r.code === TIMEOUT_CODE) return unknown(`timed out after ${AUDIT_TIMEOUT_MS / 1000} s`);
+  if (r.code !== 0) {
+    const err = r.stderr.trim();
+    if (/HTTP 401|auth login/i.test(err)) return unknown("no auth");
+    if (/not found on the default branch|could not find any workflows/i.test(err)) return unknown("no runs yet");
+    return unknown(`gh failed: ${(err.split("\n")[0] ?? "").slice(0, 80)}`);
+  }
+  let runs: unknown;
+  try {
+    runs = JSON.parse(r.stdout);
+  } catch {
+    return unknown("unreadable gh output");
+  }
+  if (!Array.isArray(runs)) return unknown("unreadable gh output");
+  if (runs.length === 0) return unknown("no runs yet");
+  const last = runs[0] as { conclusion?: string; createdAt?: string; url?: string };
+  const at = Date.parse(last.createdAt ?? "");
+  if (Number.isNaN(at)) return unknown("unreadable gh output");
+  const hours = Math.floor((now.getTime() - at) / (60 * 60 * 1000));
+  const age = hours < 24 ? `${hours} h ago` : hours < 48 ? "1 day ago" : `${Math.floor(hours / 24)} days ago`;
+  const result = last.conclusion === "success" ? "pass" : last.conclusion === "failure" ? "FAIL" : last.conclusion ?? "no result";
+  let line = `pipeline audit: ${result} ${age} (${new Date(at).toISOString().slice(0, 10)})`;
+  if (last.conclusion !== "success") line += ` — read it: ${last.url}`;
+  if (now.getTime() - at > AUDIT_STALE_MS) line += `; over 8 days old: ${rerun}`;
+  return line;
+}
+
+export async function auditLine(env: Env, cwd: string): Promise<string> {
+  try {
+    const r = await env.runner("gh", ["run", "list", "--workflow", AUDIT_WORKFLOW, "--branch", "main", "--status", "completed", "--limit", "1", "--json", "conclusion,createdAt,url"], { cwd, timeoutMs: AUDIT_TIMEOUT_MS });
+    return describeAudit(r, env.now());
+  } catch {
+    return `pipeline audit: unknown (no gh); gh workflow run ${AUDIT_WORKFLOW}`;
+  }
+}
+
 export async function boot(env: Env): Promise<string[]> {
   const { main, rows } = await mainWorktree(env);
   const cwd = await realpath(env.cwd);
   const lines: string[] = [];
   if (env.cloud) {
-    // The clone is the workspace: no shared checkout to repair, no fleet to sweep, no gh to ask.
+    // The clone is the workspace: no shared checkout to repair, no fleet to sweep. gh may be
+    // missing or signed out here, so its one call, the audit line, degrades to unknown.
     const clone = rows[0];
     const issue = await worktreeConfig(env, main, "mesita.issue");
     const session = await worktreeConfig(env, main, "mesita.session");
@@ -1240,6 +1292,7 @@ export async function boot(env: Env): Promise<string[]> {
     lines.push(`rules: quickstart stamp ${await quickstartStamp(main) ?? "MISSING"} — compare with Rules §0's Mirror line; unequal is drift`);
     lines.push(`gate: ${await installHook(env, main)}`);
     lines.push(`preflight: ${(await preflight(env, cwd)).line}`);
+    lines.push(await auditLine(env, main));
     lines.push("fleet: none here (a cloud clone is one workspace; sweep and repair-lobby run on the fleet's host)");
     const origin = await originClaims(env, main, rows, { landed: false });
     lines.push(originTable(origin, env.now()));
@@ -1269,6 +1322,7 @@ export async function boot(env: Env): Promise<string[]> {
   lines.push(`rules: quickstart stamp ${await quickstartStamp(here?.path ?? main) ?? "MISSING"} — compare with Rules §0's Mirror line; unequal is drift`);
   lines.push(`gate: ${await installHook(env, main)}`);
   lines.push(`preflight: ${(await preflight(env, cwd)).line}`);
+  lines.push(await auditLine(env, main));
   const fleet = await inspect(env, main, await listFleet(env, main), { landed: true });
   lines.push(table(main, fleet, env.now()));
   const mine = fleet.filter((f) => f.issue && f.host === env.host && f.row.path !== main);
@@ -1290,8 +1344,10 @@ export async function boot(env: Env): Promise<string[]> {
 // ── CLI ─────────────────────────────────────────────────────────────────────
 
 export const defaultRunner: Runner = async (cmd, args, opts) => {
-  const c = new Deno.Command(cmd, { args, cwd: opts?.cwd, env: opts?.env, stdout: "piped", stderr: "piped" });
+  const signal = opts?.timeoutMs ? AbortSignal.timeout(opts.timeoutMs) : undefined;
+  const c = new Deno.Command(cmd, { args, cwd: opts?.cwd, env: opts?.env, stdout: "piped", stderr: "piped", signal });
   const o = await c.output();
+  if (signal?.aborted) return { code: TIMEOUT_CODE, stdout: "", stderr: `timed out after ${opts?.timeoutMs} ms` };
   const dec = new TextDecoder();
   return { code: o.code, stdout: dec.decode(o.stdout), stderr: dec.decode(o.stderr) };
 };
