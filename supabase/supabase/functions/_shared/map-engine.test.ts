@@ -17,6 +17,7 @@ import {
   enabledNearbyTypes,
   evaluatePlaceForMap,
   googleHitClearsMapFloors,
+  guestReviewFloor,
   listedClearsMapPopularity,
   listedMapFilters,
   MAP_MIN_REVIEW_STOPS,
@@ -40,6 +41,7 @@ function hit(over: Partial<NearbyHit> = {}): NearbyHit {
     primaryType: "cafe",
     businessStatus: "OPERATIONAL",
     reviewCount: null,
+    openNow: null,
     ...over,
   };
 }
@@ -278,4 +280,18 @@ Deno.test("guest Google Reviews snaps to 0/10/100/1000, silence is 100+, unknown
   const passthrough = admitGuestMinReviews(listed, google, 0);
   assertEquals(passthrough.listed.length, 2);
   assertEquals(passthrough.google.length, 2);
+});
+
+Deno.test("guestReviewFloor: the Selected scope has no floor, the Google scope snaps and defaults to 100+ (MESITA-2298)", () => {
+  // Mesita Selected is never gated by a review count, whatever the sheet
+  // says: the ONLY way to obtain a floor returns 0 for it by construction.
+  assertEquals(guestReviewFloor("selected", 1000), 0);
+  assertEquals(guestReviewFloor("selected", "100"), 0);
+  assertEquals(guestReviewFloor("selected", undefined), 0);
+  // Google Places: the sheet's stop, snapped; silence is the sheet's default.
+  assertEquals(guestReviewFloor("google", 1000), 1000);
+  assertEquals(guestReviewFloor("google", 10000), 1000);
+  assertEquals(guestReviewFloor("google", 0), 0);
+  assertEquals(guestReviewFloor("google", undefined), MAP_MIN_REVIEWS_DEFAULT);
+  assertEquals(guestReviewFloor("google", undefined), 100);
 });

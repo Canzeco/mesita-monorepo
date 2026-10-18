@@ -1,13 +1,16 @@
 // Display twin of catalogRelativeExponents in
 // supabase/functions/_shared/discovery-config.ts. The contract test
-// asserts these two functions agree. Catalog scoring uses the Edge
-// Function copy; this one only labels the form.
+// asserts these two functions agree. The shared engine's Mesita Selected
+// scope (`selectMesitaSelected` in `_shared/nearby-selection.ts`) multiplies
+// exactly these two keys, on the Map and on the Feed's Mesita Selected and
+// family rails; this file only labels the form. Enriched is the gate, not a
+// weight (every Selected row carries it), and Randomness is pinned to 0 (a
+// shuffled pin is a moved pin, and Map and Feed share one order). Both stay
+// stored on `catalog.ranking`, so a save drops nothing.
 
 export const CATALOG_LIVE_RANK_KEYS = [
   "proximity",
-  "enriched",
   "popularity",
-  "randomness",
 ] as const;
 
 export type CatalogLiveRankKey = (typeof CATALOG_LIVE_RANK_KEYS)[number];
@@ -20,9 +23,7 @@ export const CATALOG_LIVE_SIGNAL_COPY: Record<
   { label: string }
 > = {
   proximity: { label: "Proximity" },
-  enriched: { label: "Enriched" },
   popularity: { label: "Popularity" },
-  randomness: { label: "Randomness" },
 };
 
 export function catalogRelativeExponents(

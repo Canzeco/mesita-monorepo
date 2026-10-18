@@ -21,9 +21,11 @@ Deno.test("surface routing matches the engines that actually retrieve", async ()
   assertEquals(lane.includes("searchNearbyPlaces"), false);
   assertEquals(lane.includes("autocomplete"), true);
   assertEquals(lane.includes("fetchEmbedPool"), true);
-  assertEquals(map.includes("searchNearbyPlaces"), true);
-  assertEquals(catalog.includes("rankCatalogRails"), true);
-  assertEquals(swipe.includes("rankCatalogRails"), false);
+  // Map and the Feed buy Google through the one shared engine (MESITA-2302).
+  assertEquals(map.includes("selectGooglePlaces"), true);
+  assertEquals(catalog.includes("selectGooglePlaces"), true);
+  assertEquals(catalog.includes("buildCatalogRails"), true);
+  assertEquals(swipe.includes("buildCatalogRails"), false);
   assertEquals(swipe.includes('.from("profiles")'), true);
   assertEquals(chat.includes("searchNearbyPlaces"), false);
   assertEquals(chat.includes("searchText"), false);

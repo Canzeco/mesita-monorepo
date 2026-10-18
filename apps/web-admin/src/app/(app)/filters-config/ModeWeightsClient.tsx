@@ -15,8 +15,9 @@
 // be 54 knobs of which about eleven can move an output:
 //
 //   Scroll (`swipe`)  always ranks. Real.
-//   Map               ranks only on the no-Google-fill branch. Conditionally
-//                     real, which is what the Fallback badge says out loud.
+//   Map               ranks the Google Places scope — the Map's and the
+//                     Feed's Google Places rail — through the shared engine.
+//                     Real (MESITA-2298).
 //   Word              calls weightsForMode too, and gets NO column: its mask
 //                     is one signal, so the exponent is a monotone transform
 //                     and provably cannot reorder anything.
@@ -69,18 +70,20 @@ import {
  * Every column names its reader (config.tsx requires the reason to name who
  * reads it, so the badge stays checkable against the code).
  *
- * Map is `fallback` and not `enforced` on purpose: consumer-web-list-places
- * skips the listed-lane reorder entirely when the Google-fill branch returned
- * rows, so this column ranks only when Google fill came back empty. `enforced`
- * would overclaim; `not-wired` would underclaim.
+ * Map is `enforced` since MESITA-2298: every Google Places selection — the
+ * Map's Google scope and the Feed's Google Places rail — ranks through the
+ * shared engine (`selectGooglePlaces` in `_shared/nearby-selection.ts`),
+ * which IS this column. There is no fallback branch any more: when Google
+ * returns nothing the scope is empty, never a Mesita set ranked another way.
+ * Mesita Selected ranks with the Catalog profile, not with this table.
  */
 const COLUMN_READER: Record<
   WeightedModeKey,
-  { kind: "enforced" | "fallback"; reason: string }
+  { kind: "enforced"; reason: string }
 > = {
   map: {
-    kind: "fallback",
-    reason: "Ranks listed pins only when Google returns nothing",
+    kind: "enforced",
+    reason: "Ranks the Google Places scope on the Map and the Feed's Google Places rail",
   },
   swipe: {
     kind: "enforced",

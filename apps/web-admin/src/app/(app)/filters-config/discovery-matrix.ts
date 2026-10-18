@@ -97,49 +97,50 @@ const DISCOVERY_MODE_ENTITIES: Record<
 };
 
 /**
- * THE THREE NESTED PLACE TYPES, in the code's own words: `nearby-places.ts`
- * opens with `Google Places ⊃ Mesita Places ⊃ Mesita Enriched Places`, and
- * `PlacesScope = "enriched" | "mesita" | "google"` IS this band
- * (MESITA-2158). Mesita Places is a listed row whose profile can be shown
- * now, Created ones included; `Mesita Listed` (a row existing, MESITA-1856)
- * stays retired, because the ready profile is what Map gates on.
+ * THE GUEST'S TWO SCOPES, in the code's own words: `nearby-places.ts` has
+ * `PlacesScope = "google" | "selected"` (MESITA-2298), and this band IS that
+ * type. Internally the data is still three nested sets (Google Places ⊃
+ * Mesita Places ⊃ Mesita Enriched Places), but the middle ring is not a scope
+ * anyone picks: Mesita Selected is `enriched_at` set AND `content_state =
+ * 'ready'`, and a Created row (a profile that exists, not enriched) rides
+ * inside Google Places as a painted hit — the gray pin, never the red one.
+ * The word Enriched is the console's, never the guest's.
  */
 export const DISCOVERY_POOLS = [
   { key: "google", label: "Google Places" },
-  { key: "mesita", label: "Mesita Places" },
-  { key: "enriched", label: "Mesita Enriched Places" },
+  { key: "selected", label: "Mesita Selected" },
 ] as const;
 
 export type DiscoveryPoolKey = (typeof DISCOVERY_POOLS)[number]["key"];
 
 /**
- * Filled square = the mode requires that ring. Hollow = not a gate.
+ * Filled square = the mode serves that scope. Hollow = it does not.
  *
- * Relabelling alone would have left rows dead for every mode, so the mapping
- * moved with the labels (MESITA-1856):
- *
- *   Map        all three — it is the one mode whose GUEST picks the ring;
- *              `admitsScopeRow` admits a ready row on Mesita and Google
- *              and cuts the Enriched ring to `enriched_at` set (MESITA-2158).
- *   Catalog    all three, because Enriched sits inside the other two.
- *              `filters.requireReady` defaults true and
- *   Swipe      Scroll hardcodes it; requireReady IS the Enriched gate —
- *              discovery-filters turns it into `enriched_at IS NOT NULL`
- *              AND `content_state = 'ready'` (MESITA-2154; it was the
- *              ready check alone, which every Created place also carries).
+ *   Map        both — the one mode whose GUEST picks the scope. One shared
+ *              engine (`_shared/nearby-selection.ts`): Google Places is one
+ *              Nearby Search (New) call inside the operator's radius, a
+ *              Mesita row winning its own Google id; Mesita Selected is the
+ *              enriched, ready rows inside the same radius (`admitsScopeRow`).
+ *   Catalog    both — the Feed is rail 1 Google Places, rail 2 Mesita
+ *              Selected, then one rail per family from the Selected list.
+ *              Google appears only in rail 1 (MESITA-2298 §7).
+ *   Swipe      Selected only: Scroll hardcodes `requireReady`, and
+ *              requireReady IS the Selected gate — discovery-filters turns it
+ *              into `enriched_at IS NOT NULL` AND `content_state = 'ready'`
+ *              (MESITA-2154).
  *   Favorites  Google alone: a bookmark is always a Google-sourced place,
  *              and it is NOT gated on enrichment or on a ready profile —
  *              bookmarks may include unenriched Created places.
- *   Word, Chat no ring gate at all; they answer from whatever came back.
+ *   Word, Chat no scope gate at all; they answer from whatever came back.
  */
 const DISCOVERY_MODE_POOLS: Record<
   DiscoveryModeKey,
   readonly DiscoveryPoolKey[]
 > = {
   word: [],
-  map: ["google", "mesita", "enriched"],
-  catalog: ["google", "mesita", "enriched"],
-  swipe: ["google", "mesita", "enriched"],
+  map: ["google", "selected"],
+  catalog: ["google", "selected"],
+  swipe: ["selected"],
   chat: [],
   favorites: ["google"],
 };
@@ -175,8 +176,14 @@ export const DISCOVERY_SOURCES_NO_CALLER = ["Mesita Social Catalog Search"] as c
  * SET, never by what ranks it:
  *
  *   Name      a string, matched on `places.name_embedding`   → Word
- *   Nearby    a centre and a radius, closest-N               → Map
- *   Catalog   the catalog's lists                            → Catalog, Scroll, Chat
+ *   Nearby    a centre and the Map radius, closest-N         → Map, Catalog
+ *   Catalog   the catalog's lists, no centre                 → Catalog, Scroll
+ *
+ * THE FEED BUYS GOOGLE TOO (MESITA-2298 §7-8). Its rail 1 is Google Places
+ * Nearby Search — the same one call, radius, floor and ranking as the Map's
+ * Google scope. Its Mesita Selected and family rails read the Mesita Nearby
+ * pool inside the Map radius when the guest shares a location, and the whole
+ * catalog otherwise. Scroll still reads the catalog alone.
  *
  * Browse and Flexible are not sources. Catalog is the one door that used to
  * be split across those two.
@@ -192,7 +199,11 @@ export const DISCOVERY_MODE_SOURCES = {
     "Mesita Places Name Search",
   ],
   map: ["Google Places Nearby Search", FILTERS_FLOOR_OWNER],
-  catalog: ["Mesita Places Catalog Search"],
+  catalog: [
+    "Google Places Nearby Search",
+    FILTERS_FLOOR_OWNER,
+    "Mesita Places Catalog Search",
+  ],
   swipe: ["Mesita Places Catalog Search"],
   chat: [],
   favorites: [],

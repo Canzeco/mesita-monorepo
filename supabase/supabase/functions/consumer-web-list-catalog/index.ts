@@ -1,19 +1,21 @@
 // Supabase Edge Function — consumer-web-list-catalog (product caller)
 //
-// The CATALOG engine. One round trip: every active, ready Mesita place,
-// then one shared ranking profile, then N + 2 rails (MESITA-2294):
-// Right Now (Created Places open now), Universal (Enriched Places), then
-// one rail per guest family (Enriched only). At most 5 places per rail.
-// Each rail admits its own pool, so placesScope no longer narrows the
-// fetch. Empty rails are omitted. A place in two families is in both.
-//
-// RIGHT NOW FROM GOOGLE (MESITA-2295). `{ google: true, lat, lng }` makes
-// Right Now every Google place open now near the guest, 5 nearest, on
-// Search's Google path (`_shared/right-now-google.ts`): the operator's
-// `map.googleFill`, the per-IP Nearby ledger, a ~1 km cell cached for
-// minutes, Mesita rows winning their own google_place_id, one photo per
-// Google-only card. No location, a refusal or an error keeps the Mesita
-// Created Places Right Now.
+// The CATALOG engine, on the shared discovery engine (MESITA-2302,
+// `_shared/nearby-selection.ts`). One round trip, three kinds of rail:
+//   1. Google Places — `selectGooglePlaces`, the Map's Google scope: ONE
+//      Nearby Search (New) call inside `map.radiusKm` around the guest,
+//      eligibility after Google answers (General · Map floors · the central
+//      Google Reviews floor, default 100+), Mesita rows winning their own
+//      google_place_id, Google-only cards with no photo. Needs
+//      `{ google: true, lat, lng }`, the operator's `map.googleFill`, a key
+//      and the per-IP ledger; any refusal omits the rail.
+//   2. Mesita Selected — `selectMesitaSelected`, the Map's Selected scope:
+//      enriched, ready rows inside the same radius, ranked on
+//      `catalog.ranking`. Without a location, the whole capped pool, ranked
+//      on popularity alone.
+//   3. One rail per guest family, Mesita Selected places only.
+// At most 5 places per rail; empty rails are omitted. Right Now, Universal
+// and the guest deck filters are gone: the Feed sends none.
 //
 // Local:  supabase functions serve consumer-web-list-catalog
 // Deploy: supabase functions deploy consumer-web-list-catalog
@@ -30,38 +32,38 @@ import { stripInternal } from "../_shared/place-pool-shape.ts";
 import type { PlaceProfileRow } from "../_shared/place-pool-shape.ts";
 import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
 import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
+import { DISCOVERY_EXTRA_COLUMNS } from "../_shared/discovery-place.ts";
 import {
-  DISCOVERY_EXTRA_COLUMNS,
-  toLineupPlace,
-} from "../_shared/discovery-place.ts";
-import {
+  buildCatalogRails,
+  CATALOG_RAIL_CAP,
   type CatalogListPlace,
-  rankCatalogRails,
-  withGoogleRightNow,
 } from "../_shared/catalog-rank.ts";
 import { decideNearby, wantsGoogleFill } from "../_shared/geo.ts";
-import { mapShouldFillGoogle } from "../_shared/map-engine.ts";
+import {
+  guestReviewFloor,
+  mapShouldFillGoogle,
+} from "../_shared/map-engine.ts";
 import { readGooglePlacesKey } from "../_shared/google-places.ts";
 import { consumeNearbyGoogleQuota } from "../_shared/nearby-google-quota.ts";
 import { hashConnectingIp } from "../_shared/connecting-ip.ts";
 import {
-  rightNowGooglePlaces,
-  type RightNowOwnedRow,
-} from "../_shared/right-now-google.ts";
-import {
-  applyDeckPredicates,
-  readDeckPredicates,
-} from "../_shared/discovery-predicates.ts";
+  FEED_GOOGLE_TYPES,
+  type OwnedRow,
+  type PoolBuilder,
+  selectedPoolQuery,
+  selectGooglePlaces,
+  selectMesitaSelected,
+} from "../_shared/nearby-selection.ts";
 
 const POOL_CAP = 1000;
 
 type Body = {
   lat?: number;
   lng?: number;
-  /** Right Now from Google, as Search's opt-in. */
+  /** Rail 1 may buy Google Places, as Search's opt-in. */
   google?: boolean;
-  /** Deck predicates. Family, a review floor, and placesScope are ignored. */
-  predicates?: unknown;
+  /** The central Google Reviews floor for rail 1 (absent = 100+). */
+  minReviews?: unknown;
 };
 
 function wirePlaces(rows: PlaceProfileRow[]): CatalogListPlace[] {
@@ -87,54 +89,52 @@ Deno.serve(async (req) => {
   const body = await readJsonOr<Body>(req, {});
   const admin = adminClient(env);
   const cfg = await loadDiscoveryConfig(admin);
-  const geo = {
-    lat: typeof body.lat === "number" ? body.lat : null,
-    lng: typeof body.lng === "number" ? body.lng : null,
-  };
+  const nearby = decideNearby(body as Record<string, unknown>);
+  const center = nearby.mode === "ok"
+    ? { lat: nearby.lat, lng: nearby.lng }
+    : null;
+  const radiusKm = cfg.map.radiusKm;
 
-  const { data, error } = await admin
-    .from("profiles")
-    .select(`${PLACE_CARD_COLUMNS}, ${DISCOVERY_EXTRA_COLUMNS}`)
-    .eq("state", "active")
-    .eq("content_state", "ready")
-    .limit(POOL_CAP);
+  const { data, error } = await selectedPoolQuery(
+    admin
+      .from("profiles")
+      .select(`${PLACE_CARD_COLUMNS}, ${DISCOVERY_EXTRA_COLUMNS}`)
+      .eq("state", "active") as unknown as PoolBuilder,
+    cfg,
+    { center, radiusKm },
+  ).limit(POOL_CAP);
 
   if (error) {
     console.error("[list-catalog] pool:", error.message);
     return json({ ok: false, error: error.message }, 502);
   }
 
-  const fetched = (data ?? []) as unknown as PlaceProfileRow[];
-  const guestPredicates = {
-    ...readDeckPredicates(body.predicates),
-    familyKeys: [],
-    minReviews: 0,
-  };
-  const pool = applyDeckPredicates(
-    fetched as unknown as Record<string, unknown>[],
-    guestPredicates,
-  ) as unknown as PlaceProfileRow[];
-
-  const wired = wirePlaces(pool);
-  const signals = pool.map((row) =>
-    toLineupPlace(row as unknown as Record<string, unknown>)
-  );
-  const ranked = rankCatalogRails(
-    wired,
-    signals,
-    cfg.catalog.ranking,
-    cfg.params,
-    { lat: geo.lat, lng: geo.lng, now: new Date() },
+  const now = new Date();
+  const selected = selectMesitaSelected(
+    wirePlaces((data ?? []) as unknown as PlaceProfileRow[]),
+    {
+      center,
+      radiusKm,
+      ranking: cfg.catalog.ranking,
+      params: cfg.params,
+      map: cfg.map,
+      now,
+    },
   );
 
-  const nearby = decideNearby(body as Record<string, unknown>);
-  const googleOn = nearby.mode === "ok" &&
+  const googleOn = center !== null &&
     mapShouldFillGoogle(wantsGoogleFill(body as Record<string, unknown>), cfg.map);
   const gmp = googleOn ? readGooglePlacesKey() : null;
-  const googleRightNow = googleOn && nearby.mode === "ok"
-    ? await rightNowGooglePlaces<RightNowOwnedRow>({
+  const google = googleOn
+    ? await selectGooglePlaces<OwnedRow>({
       apiKey: gmp?.ok ? gmp.key : null,
-      center: { lat: nearby.lat, lng: nearby.lng },
+      center,
+      radiusKm,
+      types: FEED_GOOGLE_TYPES,
+      minReviews: guestReviewFloor("google", body.minReviews),
+      limit: CATALOG_RAIL_CAP,
+      cfg,
+      now,
       consumeQuota: async () => {
         const ipHash = await hashConnectingIp(req, env.serviceKey);
         return (await consumeNearbyGoogleQuota(admin, ipHash)).allow;
@@ -147,27 +147,24 @@ Deno.serve(async (req) => {
           .eq("content_state", "ready")
           .in("google_place_id", gids);
         if (owned.error) {
-          console.error("[list-catalog] right now owned:", owned.error.message);
+          console.error("[list-catalog] owned:", owned.error.message);
           return null;
         }
         return wirePlaces(
           (owned.data ?? []) as unknown as PlaceProfileRow[],
-        ) as RightNowOwnedRow[];
+        ) as OwnedRow[];
       },
     })
-    : null;
-  const rails = withGoogleRightNow(
-    ranked,
-    googleRightNow as CatalogListPlace[] | null,
-  );
+    : { places: [], hits: 0 };
+  const rails = buildCatalogRails(google.places, selected);
 
   return json({
     ok: true,
     rails,
     summary: {
-      pool: pool.length,
+      pool: data?.length ?? 0,
       lists: rails.length,
-      rightNow: googleRightNow ? "google" : "mesita",
+      google: google.places.length,
     },
   });
 });

@@ -254,9 +254,9 @@ type WiredEngineKey = (typeof WIRED_ENGINE_KEYS)[number];
  * a Word result. Catalog ranks on its own profile, not this table; Chat and Favorites have no engine, and
  * Favorites' mask is empty besides.
  *
- * Map is CONDITIONALLY real: consumer-web-list-places skips the reorder
- * entirely when Google fill returned rows, which is why its column's badge
- * reads Fallback rather than Enforced.
+ * Map is real too (MESITA-2298): the shared engine ranks every Google Places
+ * selection — the Map's Google scope and the Feed's Google Places rail — with
+ * this column, so its badge reads Enforced.
  *
  * The EF twin's own contract test asserts both halves. These are PERSISTED
  * keys: `swipe` is the stored key and Scroll is only its label.

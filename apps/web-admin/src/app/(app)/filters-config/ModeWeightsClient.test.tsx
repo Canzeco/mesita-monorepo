@@ -7,14 +7,15 @@ vi.mock("./actions", () => ({
 }));
 
 import { ModeWeightsClient } from "./ModeWeightsClient";
-import { DEFAULT_CONFIG, SIGNAL_KEYS } from "./catalog";
+import { DEFAULT_CONFIG, SIGNAL_KEYS, type WeightedModeKey } from "./catalog";
 
-function html() {
+function html(only?: WeightedModeKey) {
   return renderToStaticMarkup(
     <ModeWeightsClient
       initialConfig={DEFAULT_CONFIG}
       initialUpdatedAt={null}
       loadError={null}
+      only={only}
     />,
   );
 }
@@ -70,14 +71,19 @@ describe("Signal weights by mode", () => {
 
   it("gives each column a state badge that names its reader", () => {
     const markup = html();
-    // Scroll always ranks; Map ranks only on the no-Google-fill branch, so
-    // Enforced would overclaim and Not wired would underclaim.
+    // Scroll always ranks. Map ranks every Google Places selection — the
+    // Map's Google scope and the Feed's Google Places rail — through the
+    // shared engine (MESITA-2298), so it is Enforced too; the old
+    // "only when Google returns nothing" fallback branch is gone.
     expect(markup).toContain("Ranks every deck");
-    expect(markup).toContain(
-      "Ranks listed pins only when Google returns nothing",
-    );
+    expect(markup).toContain("Ranks the Google Places scope");
     expect(markup).toContain("Enforced");
-    expect(markup).toContain("Fallback");
+    expect(markup).not.toContain("Fallback");
+    const map = html("map");
+    expect(map).toContain("Map ranking");
+    expect(map).toContain("Enforced");
+    expect(map).not.toContain("Fallback");
+    expect(map).not.toContain("only when Google returns nothing");
   });
 
   it("offers Reset and Revert per column, and no preset library", () => {

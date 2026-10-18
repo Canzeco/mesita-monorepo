@@ -20,16 +20,18 @@ function rail(
   };
 }
 
+// The Feed is Google Places · Mesita Selected · one rail per family
+// (MESITA-2302); the client keeps the server's order and invents nothing.
 describe("places feed", () => {
   it("keeps the server's rails in server order", () => {
     const feed = placesFeed([
-      rail("right_now", "Right Now", ["club"], "signal"),
-      rail("universal", "Universal", ["cafe", "club"], "signal"),
+      rail("google", "Google Places", ["stub"], "signal"),
+      rail("selected", "Mesita Selected", ["cafe", "club"], "signal"),
       rail("coffee", "Coffee", ["cafe"]),
     ]);
     expect(feed.map((row) => row.key)).toEqual([
-      "right_now",
-      "universal",
+      "google",
+      "selected",
       "coffee",
     ]);
     expect(feed[1]?.places.map((row) => row.id)).toEqual(["cafe", "club"]);
@@ -37,11 +39,11 @@ describe("places feed", () => {
 
   it("invents no All rail and drops empty rails", () => {
     const feed = placesFeed([
-      rail("universal", "Universal", ["cafe"], "signal"),
+      rail("selected", "Mesita Selected", ["cafe"], "signal"),
       rail("breakfast", "Breakfast", []),
       rail("coffee", "Coffee", ["cafe"]),
     ]);
-    expect(feed.map((row) => row.key)).toEqual(["universal", "coffee"]);
+    expect(feed.map((row) => row.key)).toEqual(["selected", "coffee"]);
     expect(placesFeed([])).toEqual([]);
   });
 });

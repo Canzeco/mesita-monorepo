@@ -130,12 +130,13 @@ function SourceControls({
   if (source === "mesita_catalog") {
     return (
       <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-        Catalog reads listed Mesita places. Ranking weights for the family
-        lists are on{" "}
+        The Feed&apos;s Mesita Selected and family rails: Selected places
+        inside the Map radius when the guest shares a location, the whole
+        Selected pool otherwise. Ranking weights are on{" "}
         <Link href={DISCOVERY_CATALOG_HREF} className="text-foreground font-medium underline">
           Modes
         </Link>
-        , on Catalog. One profile covers every family.
+        , on Catalog.
       </p>
     );
   }

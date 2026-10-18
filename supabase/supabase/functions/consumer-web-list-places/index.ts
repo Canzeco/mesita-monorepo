@@ -13,43 +13,24 @@
 // silently falls back is not enforced, which is the house definition of a bug.
 //
 // TWO POST SHAPES:
-//   { lat, lng, limit? } — listed nearby (mobile Search). Closest N of
-//     the Mesita Places set. No Google stubs — mobile opens `/place/:id`
-//     and cannot host GooglePlaceSheet.
-//   { google: true, lat, lng } — web
-//     Search catalog. THREE NESTED SETS (MESITA-2158):
-//       Google Places ⊃ Mesita Places ⊃ Mesita Enriched Places
-//       gray            ink             red
-//     `placesScope` names the set — "enriched" | "mesita" | "google".
-//     Mesita Places is every listed row whose profile is ready, Created
-//     ones included; enrichment (`enriched_at` set, MESITA-2154) gates
-//     only the inner ring (`admitsScopeRow`). A Google hit Mesita owns is
-//     never a stub: a Created row a cut left out paints it, and an
-//     Enriched row the ring cuts left out drops it (`claimOwnedHits`).
-//
-//     WEB SEARCH POSTS scope + familyKeys + minReviews (MESITA-1790).
-//     How many stays operator `map.pinCount`. `map.googleFill` still
-//     decides whether Nearby may be billed. Guest Super pills outrank
-//     `map.supers` for Nearby batteries. Popularity (`minReviews`) is a
-//     Discovery-mode cut after the catalog is assembled — not a Nearby
-//     API param. A `google: true` call with no scope still resolves to the
-//     GOOGLE ring so a silent older client keeps its operator-widest
-//     default; a live Filters sheet always names the ring.
-//
-//     A call WITHOUT `google: true` keeps the old default: absent or
-//     unknown resolves to "mesita", the widest Mesita ring (wider since
-//     MESITA-2158: Created places too). Mobile Search
-//     and the web Pay picker post no scope and must not be narrowed, and
-//     the Pay picker names its scope outright besides.
-//
-//     Legacy numerics keep their old meanings (1 = Mesita, 2/3 = Google).
-//     A client `limit` still wins when one is sent; familyKeys still pick
-//     Nearby `includedPrimaryTypes` from GOOGLE_SEARCH_TYPES when a caller
-//     sends them. Only the Google scope calls Nearby, and
-//     every gate on that call reads `lanes.googleCount`, never the scope
-//     name — one place to change, no literal to miss. Google set stays
-//     distance. Listed set Lineup-reorders (Map mask). Google fill is
-//     metered per connecting IP.
+//   { lat, lng, limit? } — listed nearby (no `google: true`). Closest N of
+//     Mesita Selected. Never a Google call, never a stub.
+//   { google: true, lat, lng, placesScope, familyKeys, minReviews } — web
+//     Search, on the SHARED DISCOVERY ENGINE (MESITA-2302,
+//     `_shared/nearby-selection.ts`), one scope at a time:
+//       google    `selectGooglePlaces` — ONE Nearby Search (New) call inside
+//                 the operator's `map.radiusKm`; General gate, Map floors
+//                 and the guest Google Reviews floor cut AFTER Google
+//                 answers; a hit Mesita owns goes out as that row, the rest
+//                 as Google-only stubs; ranked on the Map column. No Mesita
+//                 backfill and no fallback to Selected: Google off, no key,
+//                 a quota refusal or an error is an empty answer.
+//       selected  `selectedPoolQuery` + `selectMesitaSelected` — enriched,
+//                 ready rows inside the same radius, ranked on
+//                 `catalog.ranking`; no review floor of any kind.
+//     How many is operator `map.pinCount` (Google is at most one call's
+//     20); the circle is `map.radiusKm`; a client sets neither. Absent and
+//     retired scope words land on `selected`.
 //   { limit? } / GET — Pay / Home: global newest-first.
 //
 // Local:  supabase functions serve consumer-web-list-places
@@ -81,57 +62,44 @@ import { DISCOVERY_DEFAULTS } from "../_shared/discovery-config.ts";
 import { applyDiscoveryFilters } from "../_shared/discovery-filters.ts";
 import {
   applyGeneralGateQuery,
-  clearsGeneralGate,
 } from "../_shared/discovery-general-gate.ts";
 import {
-  admitGuestMinReviews,
   admitMapCatalog,
   enabledNearbyTypes,
+  guestReviewFloor,
   listedMapFilters,
   mapShouldFillGoogle,
-  parseMapMinReviews,
 } from "../_shared/map-engine.ts";
 import {
   applyBboxPredicate,
   decideNearby,
   haversineKm,
-  NEARBY_RADIUS_KM,
   NEARBY_SCAN_LIMIT,
   nearbyBbox,
   wantsGoogleFill,
 } from "../_shared/geo.ts";
 import {
   admitsScopeRow,
-  claimOwnedHits,
-  lanesForPlacesScope,
+  CATALOG_NEARBY_HARD_MAX,
+  GOOGLE_NEARBY_MAX,
   mergeNearbyCatalog,
-  type NearbyHit,
   parsePlacesScope,
-  peekCachedNearbyPlaces,
   PLACES_SCOPE_DEFAULT,
   type PlacesScope,
-  resolveGoogleItem,
-  searchNearbyPlaces,
 } from "../_shared/nearby-places.ts";
 import {
-  mapLineupIntent,
-  mapLineupWeights,
-  reorderListedLanes,
-} from "../_shared/nearby-lineup.ts";
+  type OwnedRow,
+  type PoolBuilder,
+  selectedPoolQuery,
+  selectGooglePlaces,
+  selectMesitaSelected,
+} from "../_shared/nearby-selection.ts";
 import { consumeNearbyGoogleQuota } from "../_shared/nearby-google-quota.ts";
 import { hashConnectingIp } from "../_shared/connecting-ip.ts";
 import { readGooglePlacesKey } from "../_shared/google-places.ts";
-import { googleStub } from "../_shared/google-stub.ts";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
-
-function stripGooglePlaceId<T extends { google_place_id?: unknown }>(
-  row: T,
-): Omit<T, "google_place_id"> {
-  const { google_place_id: _gid, ...rest } = row;
-  return rest;
-}
 
 function roundedKm(
   lat: number,
@@ -200,7 +168,7 @@ Deno.serve(async (req) => {
   let clientGoogle = false;
   let placesScope: PlacesScope = PLACES_SCOPE_DEFAULT;
   let guestSupers: ReturnType<typeof readGuestFamilyKeys> = [];
-  let guestMinReviews = 0;
+  let rawMinReviews: unknown = undefined;
   if (req.method === "POST") {
     const body = await readJsonOr<ListBody>(req, {});
     if (typeof body.limit === "number") {
@@ -216,7 +184,7 @@ Deno.serve(async (req) => {
       body.searchPower !== undefined;
     placesScope = parsePlacesScope(body.placesScope ?? body.searchPower);
     guestSupers = readGuestFamilyKeys(body.familyKeys);
-    guestMinReviews = parseMapMinReviews(body.minReviews);
+    rawMinReviews = body.minReviews;
   } else {
     const q = Number(new URL(req.url).searchParams.get("limit"));
     if (Number.isFinite(q)) {
@@ -268,6 +236,102 @@ Deno.serve(async (req) => {
     : enabledNearbyTypes(cfg.map);
   const googleFill = mapShouldFillGoogle(clientGoogle, cfg.map) &&
     nearbyTypes.length > 0;
+  // WEB SEARCH: the shared engine answers, one scope at a time.
+  if (clientGoogle && nearbyDecision.mode === "ok") {
+    const center = { lat: nearbyDecision.lat, lng: nearbyDecision.lng };
+    const radiusKm = cfg.map.radiusKm;
+    let places: Array<Record<string, unknown>> = [];
+    let googleHits: number | null = null;
+    if (placesScope === "google") {
+      const gmp = googleFill ? readGooglePlacesKey() : null;
+      const selection = await selectGooglePlaces<OwnedRow>({
+        apiKey: gmp?.ok && efEnv.ok ? gmp.key : null,
+        center,
+        radiusKm,
+        types: googleFill ? nearbyTypes : [],
+        minReviews: guestReviewFloor(placesScope, rawMinReviews),
+        limit: Math.min(limit, GOOGLE_NEARBY_MAX),
+        cfg,
+        consumeQuota: async () => {
+          if (!efEnv.ok) return false;
+          // Identity is CF-Connecting-IP / rightmost XFF, never the
+          // spoofable leftmost hop; only a billed miss mints a row.
+          const ipHash = await hashConnectingIp(req, efEnv.env.serviceKey);
+          const quota = await consumeNearbyGoogleQuota(
+            adminClient(efEnv.env),
+            ipHash,
+          );
+          return quota.allow;
+        },
+        // ONE unfiltered lookup by google_place_id (RLS limits it to listed
+        // rows): a hit Mesita owns is never a stub (MESITA-2154).
+        lookupOwned: async (gids) => {
+          const owned = await (supabase
+            .from("profiles")
+            .select(`${PLACE_CARD_COLUMNS}, google_place_id`)
+            .eq("content_state", "ready") as unknown as {
+              in: (
+                col: string,
+                vals: string[],
+              ) => PromiseLike<
+                { data: unknown[] | null; error: { message: string } | null }
+              >;
+            }).in("google_place_id", gids);
+          if (owned.error) {
+            console.error(
+              "[consumer-web-list-places] owned gid lookup:",
+              owned.error.message,
+            );
+            return null;
+          }
+          return (owned.data ?? []) as OwnedRow[];
+        },
+      });
+      places = selection.places;
+      googleHits = selection.hits;
+    } else {
+      const pool = await selectedPoolQuery(
+        supabase.from("profiles").select(PLACE_CARD_COLUMNS) as unknown as PoolBuilder,
+        cfg,
+        { center, radiusKm, families: guestSupers },
+      ).limit(NEARBY_SCAN_LIMIT);
+      if (pool.error) {
+        return json({ ok: false, error: pool.error.message }, 500);
+      }
+      places = selectMesitaSelected(
+        (pool.data ?? []) as Array<Record<string, unknown>>,
+        {
+          center,
+          radiusKm,
+          families: guestSupers,
+          ranking: cfg.catalog.ranking,
+          params: cfg.params,
+          map: cfg.map,
+          limit,
+        },
+      );
+    }
+    // One line, because every failure mode of a scope is a WRONG SET rather
+    // than an error: a skewed client, Google switched off and a spent quota
+    // all look like a thin catalog from the outside.
+    console.log(JSON.stringify({
+      fn: "consumer-web-list-places",
+      mode: "nearby",
+      scope: placesScope,
+      googleFillOn: googleFill,
+      googleHits,
+      returned: places.length,
+      limit,
+    }));
+    return json({
+      ok: true,
+      places: withFamilyKeysList(places as CardRow[]),
+      mode: "nearby",
+      reloadMinKm: cfg.map.reloadMinKm,
+      reloadMinSec: cfg.map.reloadMinSec,
+    });
+  }
+
   // The Mesita lane is Mesita Selected: the Enriched gate is always on
   // (MESITA-2298); `readyOnMap` keeps the ready cut in SQL either way.
   const filters = isNearby
@@ -284,16 +348,11 @@ Deno.serve(async (req) => {
   // (every public column except the five enrichment-filled jsonb ones), not
   // the full single-place read. Nothing here reads those five; verified
   // against discovery-filters.ts and this file before wiring.
-  const selectCols = googleFill
-    ? `${PLACE_CARD_COLUMNS}, google_place_id`
-    : PLACE_CARD_COLUMNS;
+  const selectCols = PLACE_CARD_COLUMNS;
   const scanLimit = isNearby ? NEARBY_SCAN_LIMIT : limit;
-  // THE ONE CIRCLE (MESITA-2298 §3, MESITA-2305): web Search draws the
-  // operator's `map.radiusKm` — the scan bbox, the Nearby call and the
-  // merge all read it; a client never sets it. Other callers keep theirs.
-  const nearbyRadiusKm = nearbyDecision.mode === "ok"
-    ? (clientGoogle ? cfg.map.radiusKm : nearbyDecision.radiusKm)
-    : NEARBY_RADIUS_KM;
+  // THE ONE CIRCLE (MESITA-2298 §3, MESITA-2302): every nearby answer draws
+  // the operator's `map.radiusKm`; a client never sets it.
+  const nearbyRadiusKm = cfg.map.radiusKm;
   const base = supabase.from("profiles").select(selectCols);
 
   let filtered = applyDiscoveryFilters(base, filters, {
@@ -337,252 +396,40 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: error.message }, 500);
   }
 
+  // Listed nearby (no `google: true`): the closest N Mesita rows the scope
+  // admits, inside the caller's circle. Never a Google call.
   if (nearbyDecision.mode === "ok") {
     const { lat, lng } = nearbyDecision;
-    const center = { lat, lng };
-    const scanRows = (data ?? []) as unknown as CardRow[];
-    const lanes = lanesForPlacesScope(placesScope, limit);
-    let mesitaRows = scanRows.filter((row) => admitsScopeRow(placesScope, row));
+    let mesitaRows = ((data ?? []) as unknown as CardRow[]).filter((row) =>
+      admitsScopeRow(placesScope, row)
+    );
     if (guestSupers.length > 0) {
       mesitaRows = mesitaRows.filter((row) =>
         guestSupers.some((key) => familiesForPlace(row).includes(key))
       );
     }
-
-    if (!googleFill) {
-      const admitted = admitGuestMinReviews(
-        admitMapCatalog(mesitaRows, [], cfg.map, cfg.params.popularity).listed,
-        [],
-        guestMinReviews,
-      );
-      const inRadius = admitted.listed.filter((row) =>
-        haversineKm(lat, lng, row.lat ?? null, row.lng ?? null) <=
-          nearbyRadiusKm
-      );
-      const listed = mergeNearbyCatalog(
-        inRadius,
-        [],
-        center,
-        lanes,
-        nearbyRadiusKm,
-      )
-        .slice(0, limit)
-        .flatMap((item) => item.kind === "listed" ? [item.row] : [])
-        .map((row) => ({
-          ...row,
-          distance_km: roundedKm(lat, lng, row.lat, row.lng),
-        }));
-      return json({
-        ok: true,
-        places: withFamilyKeysList(listed),
-        mode: "nearby",
-        reloadMinKm: cfg.map.reloadMinKm,
-        reloadMinSec: cfg.map.reloadMinSec,
-      });
-    }
-
-    let googleHits: NearbyHit[] = [];
-    // Gate on the CAP, never on the scope name: the cap is one value that
-    // every branch below reuses, so there is no second literal to forget.
-    const wantGoogleNearby = lanes.googleCount > 0;
-    const gmp = readGooglePlacesKey();
-    if (wantGoogleNearby && gmp.ok) {
-      const cached = peekCachedNearbyPlaces(
-        center,
-        nearbyTypes,
-        false,
-        nearbyRadiusKm,
-      );
-      if (cached) {
-        googleHits = cached;
-      } else if (efEnv.ok) {
-        // Shared connecting-IP ledger only when THIS isolate is about to
-        // fire the one Nearby Search. In-flight same-cell joins and
-        // isolate budget skips must not mint a row. Identity is
-        // CF-Connecting-IP / rightmost XFF, not the spoofable leftmost hop.
-        const ipHash = await hashConnectingIp(req, efEnv.env.serviceKey);
-        googleHits = await searchNearbyPlaces(gmp.key, center, {
-          types: nearbyTypes,
-          // ONE Nearby Search (New) call, 20 places, never widened (MESITA-2298),
-          // inside the operator's circle.
-          radiusKm: nearbyRadiusKm,
-          beforeFanout: () =>
-            consumeNearbyGoogleQuota(adminClient(efEnv.env), ipHash).then(
-              (quota) => quota.allow,
-            ),
-        });
-      }
-    }
-    const haveGid = new Set(
-      mesitaRows.map((row) => row.google_place_id).filter((id): id is string =>
-        Boolean(id)
-      ),
-    );
-    const missing = [
-      ...new Set(
-        googleHits.map((hit) => hit.placeId).filter((id) => !haveGid.has(id)),
-      ),
-    ];
-    // Which of these hits does Mesita already own? ONE unfiltered lookup by
-    // google_place_id (RLS limits it to listed rows). It must not carry the
-    // ring cuts: a Created place that fails the General gate, a Map floor,
-    // the guest's Popularity or the Super overlap on stored family_keys
-    // (door synthesis can leave `['undefined']`) would fall through to a
-    // stub whose open would only resolve to the row Mesita holds. MESITA-2154.
-    let ownedRows: CardRow[] = [];
-    if (missing.length > 0) {
-      const owned =
-        await (supabase.from("profiles").select(selectCols) as unknown as {
-          in: (
-            col: string,
-            vals: string[],
-          ) => PromiseLike<
-            { data: unknown[] | null; error: { message: string } | null }
-          >;
-        }).in("google_place_id", missing);
-      if (owned.error) {
-        console.error(
-          "[consumer-web-list-places] owned gid lookup:",
-          owned.error.message,
-        );
-      } else {
-        ownedRows = (owned.data ?? []) as CardRow[];
-      }
-    }
-    // Ring admission keeps every cut: only an owned row the scope admits can
-    // join, and only if the filtered query (bbox aside) still returns it.
-    // Skipped when no owned row is in the scope, so the common case stays
-    // one query.
-    const ringOwnedGids = [
-      ...new Set(
-        ownedRows
-          .filter((row) => admitsScopeRow(placesScope, row))
-          .map((row) => row.google_place_id?.trim())
-          .filter((id): id is string => Boolean(id)),
-      ),
-    ];
-    if (ringOwnedGids.length > 0) {
-      const extraSelect = supabase.from("profiles").select(selectCols);
-      let extraFiltered = readyOnMap(applyGeneralGateQuery(
-        applyDiscoveryFilters(extraSelect, filters, { lat: null, lng: null }),
-        cfg.general,
-      ));
-      if (guestSupers.length > 0) {
-        extraFiltered = (extraFiltered as typeof extraFiltered & {
-          overlaps: (col: string, val: string[]) => typeof extraFiltered;
-        }).overlaps("family_keys", [...guestSupers]);
-      }
-      const extra = await (extraFiltered as unknown as {
-        in: (
-          col: string,
-          vals: string[],
-        ) => PromiseLike<
-          { data: unknown[] | null; error: { message: string } | null }
-        >;
-      }).in("google_place_id", ringOwnedGids);
-      if (!extra.error && extra.data) {
-        const seen = new Set(mesitaRows.map((row) => row.id));
-        for (const row of extra.data as CardRow[]) {
-          if (seen.has(row.id)) continue;
-          if (!admitsScopeRow(placesScope, row)) continue;
-          if (
-            guestSupers.length > 0 &&
-            !guestSupers.some((key) => familiesForPlace(row).includes(key))
-          ) {
-            continue;
-          }
-          seen.add(row.id);
-          mesitaRows = [...mesitaRows, row];
-        }
-      }
-    }
-    // A Created row the cuts left out paints its hit; an Enriched row the
-    // cuts left out drops its hit. Either way no owned gid becomes a stub.
-    const claim = claimOwnedHits(googleHits, ownedRows, mesitaRows);
-    // The Google side of the same gate. Nearby now carries businessStatus +
-    // userRatingCount on its field mask, so the wipe is provable here rather
-    // than deferred to a Details call the map lane never makes.
-    const mapped = admitMapCatalog(
+    const admitted = admitMapCatalog(
       mesitaRows,
-      claim.hits.filter((hit) => clearsGeneralGate(cfg.general, hit)),
+      [],
       cfg.map,
       cfg.params.popularity,
-    );
-    const admitted = admitGuestMinReviews(
-      mapped.listed,
-      mapped.google,
-      guestMinReviews,
-    );
-    const googleForMerge = wantGoogleNearby ? admitted.google : [];
-    const catalog = mergeNearbyCatalog(
-      admitted.listed,
-      googleForMerge,
-      center,
-      lanes,
+    ).listed;
+    const listed = mergeNearbyCatalog(
+      admitted,
+      [],
+      { lat, lng },
+      { mesitaCount: Math.min(CATALOG_NEARBY_HARD_MAX, limit), googleCount: 0 },
       nearbyRadiusKm,
-    );
-    const lineupOpts = {
-      center,
-      weights: mapLineupWeights(cfg),
-      params: cfg.params,
-      ...mapLineupIntent(nearbyTypes),
-    };
-    // Google set stays nearest-N distance. Lineup only reorders the Mesita
-    // ring, including the empty-Nearby fallback.
-    const merged = (
-      wantGoogleNearby && googleForMerge.length > 0
-        ? catalog
-        : reorderListedLanes(catalog, lineupOpts)
-    ).slice(0, limit);
-    const places = withFamilyKeysList(
-      merged.flatMap((item) => {
-        if (item.kind === "listed") {
-          const row = stripGooglePlaceId(item.row);
-          return [{
-            ...row,
-            distance_km: roundedKm(lat, lng, row.lat, row.lng),
-          }];
-        }
-        // Never a stub for a gid Mesita owns (claimOwnedHits above).
-        const out = resolveGoogleItem(item.hit, claim);
-        if (out.kind === "drop") return [];
-        if (out.kind === "mesita") {
-          const row = stripGooglePlaceId(out.row);
-          return [{
-            ...row,
-            distance_km: roundedKm(lat, lng, row.lat, row.lng),
-          }];
-        }
-        return [googleStub(
-          item.hit,
-          roundedKm(lat, lng, item.hit.lat, item.hit.lng),
-        )];
-      }) as Array<{
-        name?: string | null;
-        google_name?: string | null;
-        category?: string | null;
-      }>,
-    );
-    // One line, because every failure mode of the Places scope is a WRONG
-    // SET rather than an error: a scope-skewed client, an operator who
-    // switched Google off, and a spent IP quota all look identical to a
-    // thin catalog from the outside. `googleFillOn` and `quotaAllowed`
-    // separate "the guest asked for Google and we chose not to" from "the
-    // guest asked for Google and there was none" three weeks after ship.
-    console.log(JSON.stringify({
-      fn: "consumer-web-list-places",
-      mode: "nearby",
-      scope: placesScope,
-      googleFillOn: googleFill,
-      quotaAllowed: wantGoogleNearby ? googleHits.length > 0 : null,
-      mesitaRows: mesitaRows.length,
-      googleHits: googleHits.length,
-      returned: places.length,
-      limit,
-    }));
+    )
+      .slice(0, limit)
+      .flatMap((item) => item.kind === "listed" ? [item.row] : [])
+      .map((row) => ({
+        ...row,
+        distance_km: roundedKm(lat, lng, row.lat, row.lng),
+      }));
     return json({
       ok: true,
-      places,
+      places: withFamilyKeysList(listed),
       mode: "nearby",
       reloadMinKm: cfg.map.reloadMinKm,
       reloadMinSec: cfg.map.reloadMinSec,

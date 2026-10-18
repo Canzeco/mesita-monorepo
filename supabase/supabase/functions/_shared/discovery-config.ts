@@ -72,15 +72,19 @@ import { bool, num } from "./config-coerce.ts";
 export type SignalParams = Record<SignalKey, SignalParamBag>;
 
 /**
- * Catalog Search exponents. One profile for every rail.
- * Family picks the rail, so it is not in this vector. Enriched scores
- * (MESITA-2292): it leads every rail without keeping a Created place out.
- * Timing is out.
+ * Catalog ranking: the shared engine's Mesita Selected profile, on the Map
+ * and on the Feed's Mesita Selected and family rails alike (MESITA-2302).
+ * Family picks the rail, so it is not in this vector. Timing is out.
  *
- * STORED KEYS vs SCORED KEYS. `catalogScore` multiplies only
- * `CATALOG_LIVE_RANK_KEYS`. Name, Description, and Selected stay on the blob
- * so a save does not drop a stored value, and they are not applied: there is
- * no name query, no description vector, and no per-place Selected value.
+ * STORED KEYS vs SCORED KEYS. `catalogScore` (via `selectMesitaSelected`) raises only
+ * `CATALOG_LIVE_RANK_KEYS`. Name, Description,
+ * Selected, Enriched and Randomness stay on the blob so a save drops
+ * nothing, and they are not applied: there is no name query, no
+ * description vector, no per-place Selected value; Enriched is the GATE of
+ * the Selected scope — every row carries it, so it ranks lexicographically
+ * first and is constant inside; Randomness is pinned to 0 because the Map
+ * is a pin field and Map and Feed share one order (a shuffled pin is a
+ * moved pin).
  */
 export const CATALOG_RANK_KEYS = [
   "name",
@@ -93,12 +97,11 @@ export const CATALOG_RANK_KEYS = [
 ] as const;
 export type CatalogRankKey = (typeof CATALOG_RANK_KEYS)[number];
 
-/** The signals `catalogScore` actually raises. A zero drops that signal. */
+/** The signals `catalogScore` actually raises. A zero drops
+ *  that signal; both at zero is refused on save (CATALOG_ALL_ZERO_ERROR). */
 export const CATALOG_LIVE_RANK_KEYS = [
   "proximity",
-  "enriched",
   "popularity",
-  "randomness",
 ] as const satisfies readonly CatalogRankKey[];
 export type CatalogLiveRankKey = (typeof CATALOG_LIVE_RANK_KEYS)[number];
 
@@ -106,9 +109,9 @@ export const CATALOG_ALL_ZERO_ERROR =
   "At least one Catalog signal must have a weight above zero.";
 
 /**
- * Enriched ships at 2 beside Proximity 1 and Popularity 1: a relative
- * exponent of 0.5, so a Created place scores 0.15^0.5 ≈ 0.39 of an
- * enriched twin. It leads; it does not filter.
+ * Proximity 1 and Popularity 1 are the live pair (a relative exponent of
+ * 0.5 each). Enriched stays stored at 2 for an old blob's sake; the
+ * Selected scope no longer raises it — the gate is the signal.
  */
 export const DEFAULT_CATALOG_RANKING: Record<CatalogRankKey, number> = {
   name: 0,
