@@ -4,14 +4,12 @@ import { describe, expect, it } from "vitest";
 
 import type { CatalogRail, Place } from "@/lib/api/places";
 import {
-  favoritePlaces,
-  FAVORITES_CHIP,
   GOOGLE_RAIL_KEY,
   MESITA_RAIL_KEY,
   placesChips,
 } from "@/components/consumer/home/CatalogRails";
 
-// Pato (MESITA-2366, MESITA-2367): Places is a category column — Favorites · Mesita ·
+// Pato (MESITA-2366, MESITA-2367, MESITA-2368): Places is a category column — Mesita ·
 // Google · Location, then the families — beside ONE column of the chosen
 // set. The server's rails are unchanged; a chip picks which rail the grid shows.
 const src = readFileSync(
@@ -28,21 +26,20 @@ const RAILS: CatalogRail[] = [
 ];
 
 describe("the Places chip row (MESITA-2366)", () => {
-  it("leads Favorites · Mesita · Google, then every family in server order", () => {
+  it("leads Mesita · Google, then every family in server order (Favorites is a tab, MESITA-2368)", () => {
     expect(placesChips(RAILS).map((c) => c.label)).toEqual([
-      "Favorites",
       "Mesita",
       "Google",
       "Coffee",
       "Breakfast",
     ]);
-    expect(placesChips(RAILS)[3].emoji).toBe("☕");
+    expect(placesChips(RAILS)[2].emoji).toBe("☕");
   });
 
   it("puts the Location control after Google, before the families", () => {
-    expect(src).toContain("chips.slice(0, 3).map");
-    expect(src.indexOf('"Location"')).toBeGreaterThan(src.indexOf("chips.slice(0, 3).map"));
-    expect(src.indexOf('"Location"')).toBeLessThan(src.indexOf("chips.slice(3).map"));
+    expect(src).toContain("chips.slice(0, 2).map");
+    expect(src.indexOf('"Location"')).toBeGreaterThan(src.indexOf("chips.slice(0, 2).map"));
+    expect(src.indexOf('"Location"')).toBeLessThan(src.indexOf("chips.slice(2).map"));
   });
 
   it("is a left column, one third wide, scrolling on its own, and opens on Mesita (MESITA-2367)", () => {
@@ -60,14 +57,6 @@ describe("the Places grid (MESITA-2366)", () => {
     expect(src).toContain("w-2/3 flex-col overflow-y-auto");
     expect(src).not.toContain("writing-mode");
     expect(src).not.toContain("data-band");
-  });
-
-  it("Favorites resolves saves against the live rails first, then the previews", () => {
-    const previews = new Map([["old", place("old")], ["m1", { ...place("m1"), name: "stale" }]]);
-    const out = favoritePlaces(new Set(["m1", "old", "gone"]), RAILS, previews);
-    expect(out.map((p) => p.id)).toEqual(["m1", "old"]);
-    expect(out[0].name).toBe("m1");
-    expect(FAVORITES_CHIP).toBe("favorites");
   });
 
   it("uses semantic tokens only", () => {

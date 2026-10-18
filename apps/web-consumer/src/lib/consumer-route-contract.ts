@@ -15,9 +15,9 @@ export const CONSUMER_ROUTES = {
   // the one search bar + Filters. `/discover/search` and `/discover/map` are
   // redirect SOURCES for the bookmarks those addresses shipped under.
   search: "/search",
-  // DISCOVER — Home's mode-tabs namespace. Three modes, matching ModeTabs's
-  // three columns exactly: Places · Social · Chat (Pato, MESITA-2366; Favs
-  // folded into Places as its Favorites chip).
+  // DISCOVER — Home's mode-tabs namespace. Four modes, matching ModeTabs's
+  // four columns exactly: Places · Social · Chat · Favorites (Pato,
+  // MESITA-2368; Favorites lives at the Favs address it always had).
   //
   // THE SWIPE ENGINE IS GONE (MESITA-2328): its EF, its ranking library and
   // its `discovery_config.swipe` slice retired together. The stored key was
@@ -32,6 +32,7 @@ export const CONSUMER_ROUTES = {
     places: "/discover/places",
     social: "/discover/social",
     chat: "/discover/chat",
+    favs: "/discover/favs",
   },
   // PLACES LEADS (MESITA-2166): the default is the first pill.
   // route-structure T5b pins first-pill-is-default.
@@ -127,8 +128,6 @@ export const CONSUMER_ROUTES = {
     getTheApp: "/get-the-app",
     // Catalog's address, off the rail again (MESITA-2140).
     discoverFeed: "/discover/feed",
-    // Favs, folded into Places' Favorites chip (MESITA-2366).
-    discoverFavs: "/discover/favs",
     notifications: "/notifications",
     inboxMine: "/inbox/my-activity",
     inboxGlobal: "/inbox/global-activity",

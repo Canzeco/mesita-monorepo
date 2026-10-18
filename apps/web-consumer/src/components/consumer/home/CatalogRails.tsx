@@ -4,17 +4,18 @@
 // grid, MESITA-2366).
 //
 //   ┌──────────┬────────────────────┐
-//   │Favorites │                    │   left third: the categories, one per
-//   │▌Mesita   │       square       │   row, scrolling on its own; the chosen
-//   │ Google   │        tile        │   row is white, bold, an ink bar on its
-//   │ Location │                    │   left edge
+//   │▌Mesita   │                    │   left third: the categories, one per
+//   │ Google   │       square       │   row, scrolling on its own; the chosen
+//   │ Location │        tile        │   row is white, bold, an ink bar on its
+//   │          │                    │   left edge
 //   │ ☕ Coffee ├────────────────────┤
 //   │ 🥐 Brkfst │       square       │   right two thirds: the chosen set, ONE
 //   │  …       │        tile        │   square tile per row, scrolling on its own
 //
 // Mesita is the Mesita Selected rail, Google the Google Places rail, a family
 // row that family's rail — the server's rails unchanged; the row only picks
-// which one shows. Favorites is the guest's saves. Location is not a set: it
+// which one shows. Favorites is its own Home tab again (MESITA-2368), not a
+// row here. Location is not a set: it
 // is the location control, and the Google set fills once location is held
 // (`useUserLocation` also asks on mount). No search bar. The request sends
 // no predicates, so a saved scope can never keep cutting this list.
@@ -26,7 +27,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Compass, Heart, Navigation } from "lucide-react";
+import { Compass, Navigation } from "lucide-react";
 import { apiListCatalog, type CatalogRail, type Place } from "@/lib/api/places";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { trackEvent } from "@/lib/analytics/track";
@@ -39,7 +40,6 @@ import { withUserDistance } from "@/lib/place-distance";
 import { onPlaceCreated } from "@/lib/place-created-event";
 import { useOpenGooglePlace } from "@/lib/use-open-google-place";
 import {
-  readSavedPlacePreviews,
   upsertSavedPlacePreview,
   useSavedPlaces,
 } from "@/lib/saved-places";
@@ -53,7 +53,6 @@ import { placesFeed } from "@/lib/catalog-feed";
 /** The server's rail keys for the two sets that lead the chip row. */
 export const MESITA_RAIL_KEY = "mesita_selected";
 export const GOOGLE_RAIL_KEY = "google_places";
-export const FAVORITES_CHIP = "favorites";
 
 /** One square tile per row, 2px apart (MESITA-2367). */
 const PLACES_LIST = "grid grid-cols-1 content-start gap-0.5";
@@ -63,7 +62,7 @@ const ROW_BASE =
 const ROW_ON = "bg-card text-foreground font-semibold";
 const ROW_OFF = "text-foreground hover:bg-card/60";
 
-/** The category column's order: Favorites · Mesita · Google · (Location) · families. */
+/** The category column's order: Mesita · Google · (Location) · families. */
 export function placesChips(rails: readonly CatalogRail[]): {
   key: string;
   label: string;
@@ -73,7 +72,6 @@ export function placesChips(rails: readonly CatalogRail[]): {
     (r) => r.key !== MESITA_RAIL_KEY && r.key !== GOOGLE_RAIL_KEY,
   );
   return [
-    { key: FAVORITES_CHIP, label: "Favorites" },
     { key: MESITA_RAIL_KEY, label: "Mesita" },
     { key: GOOGLE_RAIL_KEY, label: "Google" },
     ...families.map((r) => ({
@@ -84,27 +82,10 @@ export function placesChips(rails: readonly CatalogRail[]): {
   ];
 }
 
-/** Saved places, newest save last as stored, resolved against the live
- *  rails first (live data wins) and the saved previews second. */
-export function favoritePlaces(
-  savedIds: ReadonlySet<string>,
-  rails: readonly CatalogRail[],
-  previews: ReadonlyMap<string, Place>,
-): Place[] {
-  const live = new Map<string, Place>();
-  for (const rail of rails) for (const p of rail.places) live.set(p.id, p);
-  const out: Place[] = [];
-  for (const id of savedIds) {
-    const place = live.get(id) ?? previews.get(id);
-    if (place) out.push(place);
-  }
-  return out;
-}
-
 export function CatalogRails() {
   const supabase = useBrowserSupabase();
   const coords = useUserLocation();
-  const { savedIds, hydrated, setSaved } = useSavedPlaces();
+  const { savedIds, setSaved } = useSavedPlaces();
   const openGooglePlace = useOpenGooglePlace();
   const [rails, setRails] = useState<CatalogRail[] | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -157,10 +138,6 @@ export function CatalogRails() {
   const [chip, setChip] = useState<string>(MESITA_RAIL_KEY);
   const locating = useUserLocationLocating();
   const locate = useLocateUser();
-  // Saved previews are browser-only; read once per mount, after hydration.
-  const [previews] = useState<Map<string, Place>>(() =>
-    typeof window === "undefined" ? new Map() : readSavedPlacePreviews<Place>(),
-  );
 
   const toggleSave = (place: Place, saved: boolean) => {
     if (saved) {
@@ -189,9 +166,7 @@ export function CatalogRails() {
             aria-hidden
           />
         ) : null}
-        {c.key === FAVORITES_CHIP ? (
-          <Heart className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
-        ) : c.emoji ? (
+        {c.emoji ? (
           <span className="shrink-0" aria-hidden>
             {c.emoji}
           </span>
@@ -208,7 +183,7 @@ export function CatalogRails() {
       data-places-categories
     >
       <ul role="list">
-        {chips.slice(0, 3).map(categoryRow)}
+        {chips.slice(0, 2).map(categoryRow)}
         <li>
           <button
             type="button"
@@ -223,7 +198,7 @@ export function CatalogRails() {
             {coords !== null ? "Near you" : locating ? "Locating…" : "Location"}
           </button>
         </li>
-        {chips.slice(3).map(categoryRow)}
+        {chips.slice(2).map(categoryRow)}
       </ul>
     </nav>
   );
@@ -259,7 +234,7 @@ export function CatalogRails() {
     );
   }
 
-  if (rails.length === 0 && chip !== FAVORITES_CHIP) {
+  if (rails.length === 0) {
     return shell(
       <EmptyState
         icon={Compass}
@@ -270,20 +245,10 @@ export function CatalogRails() {
   }
 
   const shown: Place[] =
-    chip === FAVORITES_CHIP
-      ? hydrated
-        ? favoritePlaces(savedIds, shownRails, previews)
-        : []
-      : (shownRails.find((r) => r.key === chip)?.places ?? []);
+    shownRails.find((r) => r.key === chip)?.places ?? [];
 
   const empty =
-    chip === FAVORITES_CHIP ? (
-      <EmptyState
-        icon={Heart}
-        title="Nothing saved yet"
-        description="Tap the heart on a place to keep it here."
-      />
-    ) : chip === GOOGLE_RAIL_KEY && coords === null ? (
+    chip === GOOGLE_RAIL_KEY && coords === null ? (
       <EmptyState
         icon={Navigation}
         title="Turn on location"
