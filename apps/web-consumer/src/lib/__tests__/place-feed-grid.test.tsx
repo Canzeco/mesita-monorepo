@@ -120,6 +120,10 @@ describe("Places is family rails", () => {
     expect(rails).not.toContain("grid-cols-2");
     expect(rails).not.toContain("FavoriteTile");
     expect(rails).not.toContain("ArrowUpDown");
+    // The rail's name runs vertically up the left of its cards (MESITA-2350).
+    expect(rails).toContain("[writing-mode:vertical-rl]");
+    expect(rails).toContain("rotate-180");
+    expect(rails).toContain("data-rail-name");
     // One square card, half photo, half white band (MESITA-2344).
     expect(tile).toContain("aspect-square");
     expect(tile).not.toContain("aspect-[3/2]");
