@@ -6,14 +6,14 @@
 //   ┌────────────────┬─────────────────────┐   location alone (MESITA-2405),
 //   │ 👥 Social       │                     │   written to
 //   │ ❤️ Favorites    │       square        │   lib/active-location.ts and
-//   │▌✨ Featured     │        tile         │   read here.
+//   │▌✨ All          │        tile         │   read here.
 //   │ ──────────────  │                     │
 //   │ ☕ Coffee    ↕  │                     │
 //
-// Left quarter (Pato, MESITA-2411): Social (Soon), Favorites and Featured
+// Left quarter (Pato, MESITA-2411): Social (Soon), Favorites and All
 // (the default: every place) PINNED above a rule; under it one row per
 // family, and only that list scrolls. The chosen row is white, bold, an ink bar on its left edge.
-// Featured is the server's ONE ranked Area pool (MESITA-2379/2384): Google
+// All is the server's ONE ranked Area pool (MESITA-2379/2384): Google
 // and Mesita places merged, scored and ranked there; this screen pages it
 // (20 tiles at a time, more on scroll) and a family row filters it on each
 // place's `area.familyKeys` — the Family gate never moves a score, so the
@@ -71,7 +71,7 @@ import { cn, errMsg } from "@/lib/utils";
 import { placesFeed } from "@/lib/catalog-feed";
 import { AreaDiagnostics } from "./AreaDiagnostics";
 
-/** The server's rail keys for the two sets Featured mixes. */
+/** The server's rail keys for the two sources the All row mixes. */
 export const MESITA_RAIL_KEY = "mesita_selected";
 export const GOOGLE_RAIL_KEY = "google_places";
 
@@ -84,17 +84,17 @@ const ROW_BASE =
 const ROW_ON = "bg-card text-foreground font-semibold";
 const ROW_OFF = "text-foreground hover:bg-card/60";
 
-/** The column's default row: every place, one list (MESITA-2383; it was All). */
-export const FEATURED_CHIP = "featured";
+/** The column's default row: every place, one list (MESITA-2383, MESITA-2416). */
+export const ALL_CHIP = "all";
 /** The guest's saved places (MESITA-2383; it was Home's Favorites tab). */
 export const FAVORITES_CHIP = "favorites";
 /** Social, Soon (MESITA-2168) — a row since MESITA-2405; it was a Home pill. */
 export const SOCIAL_CHIP = "social";
 
-/** The column: Social · Favorites · Featured, a rule, then every guest
+/** The column: Social · Favorites · All, a rule, then every guest
  *  family (MESITA-2383, MESITA-2384, MESITA-2411). Everything through
- *  FEATURED_CHIP is pinned; the families after it scroll. Google Places and Mesita Selected are not guest choices
- *  (MESITA-2381): they are the sources Featured mixes. A family with
+ *  ALL_CHIP is pinned; the families after it scroll. Google Places and Mesita Selected are not guest choices
+ *  (MESITA-2381): they are the sources the All row mixes. A family with
  *  nothing here says so rather than hiding. */
 export function placesChips(): {
   key: string;
@@ -106,7 +106,7 @@ export function placesChips(): {
   return [
     { key: SOCIAL_CHIP, label: "Social", emoji: "👥", soon: true },
     { key: FAVORITES_CHIP, label: "Favorites", emoji: "❤️" },
-    { key: FEATURED_CHIP, label: "Featured", emoji: "✨" },
+    { key: ALL_CHIP, label: "All", emoji: "✨" },
     ...FILTERABLE_PLACE_FAMILIES.map((f) => ({
       key: f.key as string,
       label: f.label,
@@ -115,7 +115,7 @@ export function placesChips(): {
   ];
 }
 
-/** Social, Favorites, Featured: the pinned head of the column (MESITA-2411). */
+/** Social, Favorites, All: the pinned head of the column (MESITA-2411). */
 export const PINNED_CHIPS = 3;
 
 /** Tiles drawn per page; the next page appends on scroll (MESITA-2384). */
@@ -126,12 +126,12 @@ export const PLACES_PAGE = 20;
  *  it always was. */
 export function poolPlaces(pool: AreaPool, chip: string): Place[] {
   if (pool.shape === "unified") {
-    return chip === FEATURED_CHIP
+    return chip === ALL_CHIP
       ? pool.places
       : pool.places.filter((p) => p.area?.familyKeys.includes(chip));
   }
   const rails = placesFeed(pool.rails);
-  return chip === FEATURED_CHIP
+  return chip === ALL_CHIP
     ? allPlaces(rails)
     : (rails.find((r) => r.key === chip)?.places ?? []);
 }
@@ -233,7 +233,7 @@ export function CatalogRails() {
     [],
   );
 
-  const [chip, setChip] = useState<string>(FEATURED_CHIP);
+  const [chip, setChip] = useState<string>(ALL_CHIP);
   // Paging after ranking: the pool is whole; the screen draws it a page at
   // a time and the sentinel under the last tile asks for the next.
   const [pages, setPages] = useState({ key: "", n: 1 });
@@ -259,7 +259,7 @@ export function CatalogRails() {
   const locate = useLocateUser();
 
   // Saved previews re-read whenever the saved set changes, so a heart
-  // tapped on Featured shows up under Favorites at once.
+  // tapped on All shows up under Favorites at once.
   const favorites = useMemo(
     () => favoritePlaces(savedIds, readSavedPlacePreviews<Place>()),
     [savedIds],
@@ -352,7 +352,7 @@ export function CatalogRails() {
       aria-label="Places"
       data-places-categories
     >
-      {/* Pinned: Social · Favorites · Featured never scroll (MESITA-2411). */}
+      {/* Pinned: Social · Favorites · All never scroll (MESITA-2411). */}
       <ul role="list" aria-label="Yours" className="shrink-0" data-places-pinned>
         {chips.slice(0, PINNED_CHIPS).map(categoryRow)}
       </ul>
@@ -477,14 +477,14 @@ export function CatalogRails() {
 
   const label = chips.find((c) => c.key === chip)?.label ?? "Places";
   const empty =
-    chip === FEATURED_CHIP && from === null ? (
+    chip === ALL_CHIP && from === null ? (
       <EmptyState
         icon={Navigation}
         title="Turn on location"
         description="Places near you show up once Mesita knows where you are."
         action={{ label: "Use my location", onClick: locate }}
       />
-    ) : chip === FEATURED_CHIP ? (
+    ) : chip === ALL_CHIP ? (
       <EmptyState
         icon={Compass}
         title="No places here yet"
