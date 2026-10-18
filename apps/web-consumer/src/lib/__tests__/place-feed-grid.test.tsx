@@ -132,9 +132,9 @@ describe("Places is family rails", () => {
     // The temporary size switch has four stops (MESITA-2340, MESITA-2352).
     expect(rails).toContain('CARD_SIZES = ["1.5", "1.75", "2", "2.5"]');
     expect(rails).toContain("w-[calc((100%-1rem)/1.75)]");
-    // …in its own tinted column with a hairline and room before the cards
-    // (MESITA-2351).
-    expect(rails).toContain("bg-muted/60 border-border relative w-10 shrink-0 border-r");
+    // …in its own column with a hairline and room before the cards
+    // (MESITA-2351), on the same surface as the cards (MESITA-2355).
+    expect(rails).toContain('className="border-border relative w-10 shrink-0 border-r"');
     expect(rails).toContain("scrollbar-hide ml-3 flex");
     // One square card, half photo, half white band (MESITA-2344).
     expect(tile).toContain("aspect-square");

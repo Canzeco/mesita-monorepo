@@ -2,10 +2,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-// Pato (MESITA-2308): the Feed's rails sit in three subtly tinted bands with
-// a hairline between them — by POSITION, so the rails' renaming
-// (MESITA-2302) changes nothing here.
-describe("the Feed's rails sit in three tinted bands (MESITA-2308)", () => {
+// The Feed's rails group into three bands by POSITION (MESITA-2308), so the
+// rails' renaming (MESITA-2302) changes nothing here. Since MESITA-2355 every
+// band is on the one card surface; hairlines alone divide them.
+describe("the Feed's rails sit in three bands on one surface (MESITA-2308, MESITA-2355)", () => {
   const src = readFileSync(
     join(__dirname, "../../components/consumer/home/CatalogRails.tsx"),
     "utf8",
@@ -14,12 +14,13 @@ describe("the Feed's rails sit in three tinted bands (MESITA-2308)", () => {
   const bandB = src.indexOf('data-band="b"');
   const bandC = src.indexOf('data-band="c"');
 
-  it("tints the first rail deepest, the second lighter, the rest on the card", () => {
-    expect(src).toContain('className="bg-muted/50" data-band="a"');
-    expect(src).toContain('className="bg-muted/25 border-border border-t" data-band="b"');
+  it("puts every band on the one card surface, hairlines only (MESITA-2355)", () => {
+    expect(src).toContain('<div data-band="a">');
+    expect(src).toContain('className="border-border border-t" data-band="b"');
     expect(src).toContain(
-      'className="bg-card border-border divide-border flex flex-col divide-y border-t"',
+      'className="border-border divide-border flex flex-col divide-y border-t border-b"',
     );
+    expect(src).not.toMatch(/bg-muted\/\d+/);
     expect(bandA).toBeGreaterThan(0);
     expect(bandB).toBeGreaterThan(bandA);
     expect(bandC).toBeGreaterThan(bandB);
