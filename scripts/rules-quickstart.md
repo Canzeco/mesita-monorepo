@@ -1,14 +1,16 @@
 # Mesita — agent quickstart (you're ~90% correct after this)
 
-**Notion is the library; it wins on any conflict.** This block mirrors [**Rules**](https://www.notion.so/Rules-3d9a9bf37a5280aaab2ed8af665485f7) §0 (`stamp: v5 2026-10-10`; unequal stamps are drift). **Rules = the law** (how change is allowed). **📚 [Docs](https://www.notion.so/Docs-3bfa9bf37a52801e891ec3407d717273) = the knowledge**, one flat page per domain. **Code = this repo.** Boot cards (this block, `AGENTS.md`, package `CLAUDE.md`, skills) mirror §0 and package law into the repo, never knowledge. Linear is the ledger, not a source of truth. **Rules beat Docs.** Two lifecycles: Code → SADLC (monorepo). Docs → KADLC. Changing this Rules tree is not a third lifecycle — issue + Pato for constitution, then SADLC if boot or a gate changed. SADLC / KADLC = Software / Knowledge Agentic Development Life Cycle. Mixed completes every Integrate. Fetch Rules, [SADLC](https://www.notion.so/3d9a9bf37a52800986a7f7f1363e2700), [KADLC](https://www.notion.so/3d9a9bf37a5280f18aa3f73ed6ab8edf) and [Markdowns](https://www.notion.so/3d9a9bf37a52803ebe4cf73bf300f1a3) only; the Map is Rules §4. The retired law pages are in the Trash.
+**Notion is the library; it wins on any conflict.** **📜 [Rules](https://www.notion.so/Rules-3d9a9bf37a5280aaab2ed8af665485f7) = the law** (how change is allowed). **📚 [Docs](https://www.notion.so/Docs-3bfa9bf37a52801e891ec3407d717273) = the knowledge**, one flat page per domain. **Code = this repo.** **Linear = the ledger**, not a source of truth. Boot cards (the root `CLAUDE.md`, every `AGENTS.md`, package `CLAUDE.md`, skills) carry §0 and package law, never knowledge.
 
-**The repo.** `Canzeco/mesita-monorepo` is the whole product: `apps/{web-admin,web-consumer,web-landing}` + `supabase/` + `assets/`. The six former standalone repos are frozen. Package-specific rules: that package's `CLAUDE.md`.
+**Routing.** Code → [SADLC](https://www.notion.so/3d9a9bf37a52800986a7f7f1363e2700), Docs → [KADLC](https://www.notion.so/3d9a9bf37a5280f18aa3f73ed6ab8edf) (Software / Knowledge Agentic Development Life Cycle). Mixed completes every Integrate. Changing the Rules tree is not a third lifecycle: an issue; Pato for constitution, §2 constraints and I-1…I-10; `decision:` for adapter rows; then SADLC the same session if §0 or a gate changed. Fetch Rules, SADLC, KADLC and [Markdowns](https://www.notion.so/3d9a9bf37a52803ebe4cf73bf300f1a3) only; the Map is Rules §4. The retired law pages are in the Trash; never fetch them.
+
+**The repo.** `Canzeco/mesita-monorepo` is the whole product: `apps/{web-admin,web-consumer,web-landing}` + `packages/place-profile` + `supabase/` + `render/` + `assets/`. Package law: that package's `CLAUDE.md`.
 
 **The blackboard.** Agents never talk to each other. **Linear** (team Mesita, `MESITA-`) carries intent — issues + comments ONLY; Linear documents and Claude Artifacts are prohibited. **git/GitHub** carries the work — branches and squash PRs; `Closes MESITA-<id>` is the join.
 
-**The lock.** Every repo, Notion, or cloud (schema/EF) write has an issue (I-1). Claim = In Progress + one claim line (I-6). Workspace = a checkout a live claim names: one per code issue, none for Rules/Docs-only.
+**The lock.** Claim = In Progress + one claim line (I-6). Workspace = a checkout a live claim names: one per code issue, none for Rules/Docs-only. Issue header: Domain (Rules · Code · Docs · Mixed, also the label) · Footprint (paths, schema/EF, or `notion:<32hex>`) · Done (the named Integrates).
 
-**The loop.** `deno task boot` → pick unblocked, footprint-disjoint → `deno task worktree add MESITA-<id> <slug>` (`--adopt .` for the checkout you launched in) → enter the path → In Progress + the printed claim line → Docs first, small commits, push early → `deno task worktree pr` then `gh pr ready` then `gh pr merge --squash` with `Closes MESITA-<id>` → `deno task worktree remove` from a lobby → rewrite Docs. Never push to `main`. Never write in the shared checkout (I-4).
+**The loop.** `deno task boot` → pick unblocked, footprint-disjoint → `deno task worktree add MESITA-<id> <slug>` (`--adopt .` for the checkout you launched in) → enter the path → In Progress + the printed claim line → Docs first, small commits, push early → `deno task worktree pr` then `gh pr ready` then `gh pr merge --squash` with `Closes MESITA-<id>` once the required checks pass → `deno task worktree remove` from a lobby (`leave` for a launch checkout) → rewrite Docs. Never push to `main`. Never write in the shared checkout (I-4).
 
 **The invariants**
 - I-1 Every repo, Notion, or cloud (schema/EF) write has an issue, in a project. Pure Q&A needs none.
@@ -22,12 +24,12 @@
 - I-9 Finish clean at landing; verify by observed state.
 - I-10 Landed = a merged PR for the tip; only landed, clean, inactive workspaces are swept.
 
-**ALWAYS:** reply in English · clients call Edge Functions, never the DB · no local web dev servers (Vercel after merge) · admin-console configs bind · generated files are never hand-edited · the repo holds no knowledge markdown.
-
-**Generated output is never hand-edited.** `AGENTS.md` ← sibling `CLAUDE.md` (`deno task sync-rules`) · brand outputs ← `assets/brand/brand.json`. Edit `scripts/rules-quickstart.md` or a `CLAUDE.md`, then `deno task sync-rules`.
+**ALWAYS:** reply in English · clients call Edge Functions, never the DB · the EF name is the ACL · no local web dev servers (Vercel after merge) · admin-console configs bind · generated files are never hand-edited (`AGENTS.md` ← its `CLAUDE.md` via `deno task sync-rules`; brand outputs ← `assets/brand/brand.json` via `deno task sync-brand`) · the repo holds no knowledge markdown.
 
 **NEVER ask.** Reversible → decide, log `decision:`, ship (I-7).
 
-**Redeye.** When Pato writes `activate Redeye` — any interface, local or cloud — read `scripts/redeye.md` and obey it until he says stop: no question of any kind, every change committed and its PR merged at once, then the next issue. Mode 6; the picker's five are not it.
+**Redeye.** A prompt from Pato that begins with `activate Redeye` arms mode 6 for 24 hours; a cloud session arms it at start. Then obey `scripts/redeye.md` until he says stop: no question of any kind, every change committed and merged at once, then the next issue.
 
-**Hierarchy:** Pato's live instruction > the Linear issue > Rules > Docs > memory.
+**Hierarchy:** Pato's live instruction > the Linear issue > Rules > Docs > memory. Pato is the only human.
+
+**Mirror.** Rules §0 and `scripts/rules-quickstart.md` below its title are one text, at most 700 words, copied by hand; `deno task sync-rules` then writes it into the root `CLAUDE.md`. Both carry `stamp: v6 2026-10-18`; unequal stamps are drift.
