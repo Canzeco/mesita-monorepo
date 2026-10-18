@@ -113,3 +113,35 @@ describe("per-column weight saves cannot reach each other", () => {
     expect(sent.config?.weightsByMode).toEqual(live.weightsByMode);
   });
 });
+
+describe("the Chat box saves the prompt and nothing else", () => {
+  it("writes chat, leaves the Map and the Catalog ranking as they were", async () => {
+    const live = liveConfig();
+    const sent = armed(live);
+    const edited: DiscoveryConfig = {
+      ...live,
+      chat: { prompt: "Be brief." },
+      map: { ...live.map, radiusKm: 3 },
+      catalog: { ...live.catalog, ranking: { ...live.catalog.ranking, proximity: 4 } },
+    };
+    await updateDiscoveryConfig(edited, ["chat"]);
+    expect(sent.config?.chat.prompt).toBe("Be brief.");
+    expect(sent.config?.map).toEqual(live.map);
+    expect(sent.config?.catalog).toEqual(live.catalog);
+  });
+
+  it("a Places save writes both ranking columns and not the prompt", async () => {
+    const live = liveConfig();
+    const sent = armed(live);
+    const edited: DiscoveryConfig = {
+      ...live,
+      chat: { prompt: "changed" },
+      weightsByMode: { ...live.weightsByMode, map: { ...live.weightsByMode.map, popularity: 3 } },
+      catalog: { ...live.catalog, ranking: { ...live.catalog.ranking, popularity: 2.5 } },
+    };
+    await updateDiscoveryConfig(edited, ["weightsMap", "catalogRanking"]);
+    expect(sent.config?.weightsByMode.map.popularity).toBe(3);
+    expect(sent.config?.catalog.ranking.popularity).toBe(2.5);
+    expect(sent.config?.chat).toEqual(live.chat);
+  });
+});

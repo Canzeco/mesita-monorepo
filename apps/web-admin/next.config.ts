@@ -57,16 +57,26 @@ const nextConfig: NextConfig = {
         destination: "/filters-config/modes",
         permanent: true,
       },
-      // `module` is retired as a Discovery noun; the subpage is Sources now.
-      // An operator's bookmark still lands on the same boxes.
+      // Sources and Matrix retired into the Modes boxes (MESITA-2303), and
+      // `module` before them. An operator's bookmark still lands, one hop.
+      {
+        source: "/filters-config/sources",
+        destination: "/filters-config/modes",
+        permanent: false,
+      },
+      {
+        source: "/filters-config/matrix",
+        destination: "/filters-config/modes",
+        permanent: false,
+      },
       {
         source: "/filters-config/modules",
-        destination: "/filters-config/sources",
+        destination: "/filters-config/modes",
         permanent: true,
       },
       {
         source: "/filters-config/modules/:path*",
-        destination: "/filters-config/sources",
+        destination: "/filters-config/modes",
         permanent: true,
       },
       // Catalog is a mode on Modes. The old tab still lands there.

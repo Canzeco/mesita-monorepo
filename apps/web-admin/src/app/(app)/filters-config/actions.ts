@@ -55,7 +55,9 @@ export type DiscoverySlice =
   | "swipe"
   | "signals"
   // The Catalog page. One profile, written once, shared by the seven lists.
-  | "catalogRanking";
+  | "catalogRanking"
+  // Discovery › Modes › Chat: the Memo prompt (MESITA-2303).
+  | "chat";
 
 export async function updateDiscoveryConfig(
   config: DiscoveryConfig,
@@ -98,6 +100,7 @@ export async function updateDiscoveryConfig(
     // must not drop it.
     weights: keys.has("signals") ? config.weights : live.config.weights,
     params: keys.has("signals") ? config.params : live.config.params,
+    chat: keys.has("chat") ? config.chat : live.config.chat,
     catalog: keys.has("catalogRanking")
       ? { ...live.config.catalog, ranking: config.catalog.ranking }
       : live.config.catalog,

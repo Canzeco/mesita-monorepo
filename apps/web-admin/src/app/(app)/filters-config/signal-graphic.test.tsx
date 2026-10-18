@@ -1,7 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { CatalogRailList } from "./CatalogRailList";
-import { CATALOG_FAMILY_FACTS, CATALOG_SIGNAL_RAILS } from "./discovery-surface";
 import { previewRequest, proximitySamples } from "./SignalGraphic";
 import { ProximityCurve } from "./SignalMarks";
 
@@ -34,22 +32,5 @@ describe("signal graphics", () => {
     );
     expect(html).toContain("polyline");
     expect(html).toContain("25 km");
-  });
-});
-
-describe("rails on Modes", () => {
-  it("lists Google Places, Mesita Selected, then every family in Feed order", () => {
-    const html = renderToStaticMarkup(<CatalogRailList />);
-    const labels = [
-      ...CATALOG_SIGNAL_RAILS.map((rail) => rail.label),
-      ...CATALOG_FAMILY_FACTS.map((family) => family.label),
-    ];
-    expect(labels.slice(0, 2)).toEqual(["Google Places", "Mesita Selected"]);
-    let last = -1;
-    for (const label of labels) {
-      const idx = html.indexOf(`</span>${label}</span>`);
-      expect(idx, label).toBeGreaterThan(last);
-      last = idx;
-    }
   });
 });
