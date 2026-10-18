@@ -277,6 +277,9 @@ export type ConsumerSearchArgs = {
   sessionToken?: string;
   lat?: number | null;
   lng?: number | null;
+  /** Single Place › Find: Word by Admin's caps, not the consumer bar's
+   *  (MESITA-2322). Only `admin-web-suggest-places` sets it. */
+  admin?: boolean;
   /** Default fast — pickers and older clients stay Autocomplete. */
   mode?: SuggestPlacesMode | string | null;
   /**
@@ -475,22 +478,35 @@ export async function runConsumerSearchLane(
   // The caller opts in (the consumer bar only); the operator can switch
   // Locations off for it on Discovery › Word (MESITA-2319).
   const locations = args.locations === true && cfg.name.locations;
+  // Word by Admin swaps in its own caps: Autocomplete rows for `fast`,
+  // Mesita name rows for `mesita` (Text Search is the Find page's own call).
+  const name = args.admin === true
+    ? {
+      ...cfg.name,
+      fast: {
+        ...cfg.name.fast,
+        count: cfg.name.admin.autoCount,
+        googleCount: cfg.name.admin.autoCount,
+      },
+    }
+    : cfg.name;
 
   const predictions = mode === "mesita"
     // Pay: the Mesita name embeddings alone. No Google lane, no Google bill.
     ? await runMesitaNameSearch(
       admin,
-      cfg.name,
+      name,
       cfg.general,
       input,
       origin,
+      args.admin === true ? cfg.name.admin.mesitaCount : mesitaNameCap(cfg.name.deep),
     )
     : mode === "deep"
     ? await runDeepSearch(
       admin,
       apiKey,
       cfg.map,
-      cfg.name,
+      name,
       cfg.general,
       input,
       sessionToken,
@@ -501,7 +517,7 @@ export async function runConsumerSearchLane(
       admin,
       apiKey,
       cfg.map,
-      cfg.name,
+      name,
       cfg.general,
       input,
       sessionToken,
@@ -518,6 +534,9 @@ export async function runConsumerSearchLane(
     predictions: predictions.map(toWire),
     caller: callerName,
     mode,
+    // Word's idle seconds: the consumer bar waits this long before it
+    // searches (MESITA-2322). A client cannot read app_config.
+    idleSec: cfg.name.idleSec,
   });
 }
 
@@ -716,6 +735,7 @@ async function runMesitaNameSearch(
   general: GeneralConfig,
   input: string,
   origin: { lat: number; lng: number } | null,
+  cap: number = mesitaNameCap(name.deep),
 ): Promise<LaneItem[]> {
   const openaiKey = (Deno.env.get("OPENAI_KEY") ?? "").trim();
   if (!openaiKey) return [];
@@ -729,7 +749,7 @@ async function runMesitaNameSearch(
     queryVec,
     { origin, random: Math.random },
   );
-  return takeListedLane(ordered, mesitaNameCap(name.deep));
+  return takeListedLane(ordered, cap);
 }
 
 export function toWire(item: LaneItem) {
