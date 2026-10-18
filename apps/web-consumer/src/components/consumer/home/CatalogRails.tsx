@@ -30,18 +30,13 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { EmptyState } from "@/components/shared";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { CatalogTile } from "./CatalogTile";
-import { cn, errMsg } from "@/lib/utils";
+import { errMsg } from "@/lib/utils";
 import { placesFeed } from "@/lib/catalog-feed";
 
-// One card size, picked by geometry (Pato, MESITA-2360): two cards sit
-// symmetric on the screen — the gap between them on the centre line — and
-// the third card peeks in exactly as wide as the name column on the left.
-// The column is 40px (its hairline inside, border-box) and every gap is 6px
-// (MESITA-2358), so on a screen W wide a card is W/2 − 49px; in the
-// scroller's content box (W − 52px) that is 50% − 23px. Holds at every
-// width, which no fixed "2.x cards" can. It replaced the try-out size
-// slider (MESITA-2340/2352/2356).
-const cardWidth = "w-[calc(50%-23px)]";
+// A rail is an Instagram grid (Pato, MESITA-2364): three full-bleed square
+// tiles across, 2px gaps, no padding, wrapping to a second row — no sideways
+// scroll. It replaced the symmetric sideways cards (MESITA-2360).
+const RAIL_GRID = "grid min-w-0 flex-1 grid-cols-3 content-start gap-0.5";
 
 export function CatalogRails() {
   const supabase = useBrowserSupabase();
@@ -136,15 +131,9 @@ export function CatalogRails() {
             <div className="border-border flex w-10 shrink-0 justify-center border-r py-6">
               <Skeleton className="w-4 rounded-none" />
             </div>
-            <div className="flex min-w-0 flex-1 gap-1.5 overflow-hidden p-1.5">
+            <div className={RAIL_GRID}>
               {Array.from({ length: 3 }, (_, j) => (
-                <Skeleton
-                  key={j}
-                  className={cn(
-                    "border-border aspect-square shrink-0 rounded-none border",
-                    cardWidth,
-                  )}
-                />
+                <Skeleton key={j} className="aspect-square rounded-none" />
               ))}
             </div>
           </div>
@@ -171,13 +160,8 @@ export function CatalogRails() {
   //
   // The rail's name runs up the left edge of its cards, read bottom to top
   // (Pato's sketch, MESITA-2350): a narrow column the height of the row,
-  // the name truncated to it, then the sideways card scroller. A hairline
-  // on the column's right (MESITA-2351) splits name from cards. ONE gap,
-  // 6px, everywhere in the grid (Pato, MESITA-2358): between cards, card to
-  // the rail lines above and below, card to the name line, and after the
-  // last card — the scroller's `p-1.5` and `gap-1.5`. The padding lives on
-  // the scroller, never around the rail, so the name line runs edge to edge
-  // between the rail lines (MESITA-2354).
+  // the name truncated to it, then the rail's Instagram grid (MESITA-2364).
+  // A hairline on the column's right (MESITA-2351) splits name from tiles.
   const renderRail = (rail: CatalogRail) => (
     <section
       key={rail.key}
@@ -208,7 +192,7 @@ export function CatalogRails() {
         <ul
           role="list"
           aria-label={rail.label}
-          className="scrollbar-hide flex min-w-0 flex-1 gap-1.5 overflow-x-auto overscroll-x-contain p-1.5"
+          className={RAIL_GRID}
         >
           {rail.places.map((place) => {
             const located = withUserDistance(place, coords);
@@ -220,7 +204,6 @@ export function CatalogRails() {
                 saved={saved}
                 onToggle={() => toggleSave(place, saved)}
                 onOpenGoogle={() => openGooglePlace(place)}
-                className={cn(cardWidth, "shrink-0")}
               />
             );
           })}

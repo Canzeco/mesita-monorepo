@@ -85,31 +85,22 @@ describe("a Google-only card's image is a placeholder, never a photo (MESITA-229
   });
 });
 
-describe("the card is one square: photo half, info half (MESITA-2344, MESITA-2360)", () => {
-  it("is aspect-square with an h-1/2 photo over an h-1/2 band", () => {
-    const html = tile({ photos: ["https://example.com/a.jpg"] });
+describe("the tile is an Instagram grid square (MESITA-2364)", () => {
+  it("fills the square with the photo and lays the info over a light gradient", () => {
+    const html = tile({ photos: ["https://example.com/a.jpg"], price_level: 2 });
     expect(html).toContain("aspect-square");
-    expect(html).not.toContain("aspect-[3/2]");
-    expect(html.match(/h-1\/2/g)?.length).toBe(2);
-    expect(html).not.toContain("h-2/3");
-    expect(html).not.toContain("h-1/3");
+    expect(html.match(/<img/g)?.length).toBe(1);
+    expect(html).toContain("data-tile-info");
+    expect(html).toContain("from-paper/90");
+    expect(html).not.toContain("from-foreground/80");
+    expect(html).not.toContain("-scale-y-100");
+    expect(html).not.toMatch(/rounded-(lg|xl|2xl)/);
     expect(html.indexOf("<img")).toBeLessThan(html.indexOf(">Casa<"));
   });
-});
 
-describe("the info band is the photo's reflection under 50% ink (MESITA-2363)", () => {
-  it("draws the image again, flipped, under a 50% ink layer, with paper text", () => {
-    const html = tile({ photos: ["https://example.com/a.jpg"] });
-    expect(html.match(/<img/g)?.length).toBe(2);
-    expect(html).toContain("-scale-y-100");
-    expect(html).toContain("bg-foreground/50");
-    expect(html).toContain("data-card-reflection");
-    expect(html).toContain("text-paper");
-  });
-
-  it("a Google card reflects its emoji tile, still with no photo", () => {
+  it("a Google card fills the square with its emoji tile, still no photo", () => {
     const html = tile({ id: "g:ChIJx", googleOnly: true, family_keys: ["tacos"] });
     expect(html).not.toContain("<img");
-    expect(html.match(/data-placeholder="emoji"/g)?.length).toBe(2);
+    expect(html.match(/data-placeholder="emoji"/g)?.length).toBe(1);
   });
 });
