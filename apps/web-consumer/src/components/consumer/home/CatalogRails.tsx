@@ -16,7 +16,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
   type ReactNode,
 } from "react";
 import { Compass, Navigation } from "lucide-react";
@@ -38,32 +37,18 @@ import { Skeleton } from "@/components/shared/Skeleton";
 import { CatalogTile } from "./CatalogTile";
 import { cn, errMsg } from "@/lib/utils";
 import { placesFeed } from "@/lib/catalog-feed";
-import { useStoredString } from "@/lib/local-store";
 
-// TEMPORARY (Pato, MESITA-2340): a try-out control for how many cards fit
-// across the screen. A continuous slider since MESITA-2356 (it was four
-// stops, MESITA-2352): 1.25 to 3 cards, default 2.5. The width rides one CSS
-// variable, `--cards`, set on the rails' root, so cards and skeletons follow
-// as it moves. Remove the slider once a size is picked.
-const CARDS_MIN = 1.25;
-const CARDS_MAX = 3;
-const CARDS_STEP = 0.05;
-const CARDS_DEFAULT = 2.5;
-const CARD_SIZE_KEY = "mesita:feed-card-size";
-const cardWidth = "w-[calc((100%-1rem)/var(--cards))]";
-
-export function readCardsPerScreen(value: string): number {
-  const n = Number.parseFloat(value);
-  if (!Number.isFinite(n)) return CARDS_DEFAULT;
-  return Math.min(CARDS_MAX, Math.max(CARDS_MIN, n));
-}
+// One card size, picked by geometry (Pato, MESITA-2360): two cards sit
+// symmetric on the screen — the gap between them on the centre line — and
+// the third card peeks in exactly as wide as the name column on the left.
+// The column is 40px (its hairline inside, border-box) and every gap is 6px
+// (MESITA-2358), so on a screen W wide a card is W/2 − 49px; in the
+// scroller's content box (W − 52px) that is 50% − 23px. Holds at every
+// width, which no fixed "2.x cards" can. It replaced the try-out size
+// slider (MESITA-2340/2352/2356).
+const cardWidth = "w-[calc(50%-23px)]";
 
 export function CatalogRails() {
-  const [storedSize, setCardSize] = useStoredString(
-    CARD_SIZE_KEY,
-    String(CARDS_DEFAULT),
-  );
-  const cardsPerScreen = readCardsPerScreen(storedSize);
   const supabase = useBrowserSupabase();
   const coords = useUserLocation();
   const locating = useUserLocationLocating();
@@ -148,22 +133,6 @@ export function CatalogRails() {
               : "Use my location"}
         </span>
       </button>
-      <label className="border-border bg-card flex h-11 w-[42%] shrink-0 items-center gap-2 rounded-full border px-3">
-        <span className="sr-only">Cards per screen</span>
-        <input
-          type="range"
-          min={CARDS_MIN}
-          max={CARDS_MAX}
-          step={CARDS_STEP}
-          value={cardsPerScreen}
-          onChange={(e) => setCardSize(e.target.value)}
-          className="accent-foreground h-11 min-w-0 flex-1 cursor-pointer"
-          data-card-size-slider
-        />
-        <span className="type-label text-foreground w-10 shrink-0 text-right font-semibold tabular-nums">
-          {cardsPerScreen.toFixed(2).replace(/0$/, "")}×
-        </span>
-      </label>
     </div>
   );
 
@@ -181,10 +150,7 @@ export function CatalogRails() {
   };
 
   const shell = (body: ReactNode) => (
-    <div
-      className="flex min-h-0 flex-1 flex-col"
-      style={{ "--cards": cardsPerScreen } as CSSProperties}
-    >
+    <div className="flex min-h-0 flex-1 flex-col">
       {locationStrip}
       {body}
     </div>
