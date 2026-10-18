@@ -56,6 +56,7 @@ const NEEDS = {
   runs: "actions: read",
   pulls: "pull-requests: read",
   checks: "checks: read",
+  contents: "contents: read",
   functions: "SUPABASE_ACCESS_TOKEN, or `supabase login` locally",
   git: "a full clone of origin/main (actions/checkout fetch-depth: 0)",
 };
@@ -146,10 +147,20 @@ export function parseRequired(text: string, where: string): string[] {
   return list;
 }
 
-/** .github/required-checks.json as of a commit; null when the file did not exist there yet. */
-async function requiredAt(io: Io, rev: string): Promise<string[] | null> {
-  const text = await fileAt(io, rev, ".github/required-checks.json");
-  return text === null ? null : parseRequired(text, `.github/required-checks.json at ${rev.slice(0, 7)}`);
+/**
+ * .github/required-checks.json on a PR's own branch; null when the branch declared none. A merged
+ * branch's head is not in a clone, so this reads the contents API. The names hold `·`, so the
+ * base64 is decoded as UTF-8, not as one character per byte.
+ */
+async function requiredAtHead(io: Io, sha: string): Promise<string[] | null> {
+  const path = `repos/${REPO}/contents/.github/required-checks.json?ref=${sha}`;
+  const got = await io.github(path);
+  if (!got.ok && got.status === 404) return null;
+  if (!got.ok) throw new Blind({ endpoint: `GET /${path}`, status: got.status, permission: NEEDS.contents, message: got.message });
+  const content = (got.data as { content?: unknown } | null)?.content;
+  if (typeof content !== "string") throw new Error(`${path} returned no file content`);
+  const bytes = Uint8Array.from(atob(content.replace(/\s/g, "")), (c) => c.charCodeAt(0));
+  return parseRequired(new TextDecoder().decode(bytes), `.github/required-checks.json at ${sha.slice(0, 7)}`);
 }
 
 /** Every check run on a commit, past the 100 a page holds. */
@@ -257,8 +268,10 @@ async function checkRequired(io: Io): Promise<Omit<CheckResult, "check">> {
 
 /**
  * Each of the last merges passed every required check it owed. A name is owed when the ruleset
- * requires it now AND the merge's own .github/required-checks.json listed it, so a check added
- * later never fails an older PR. A miss means a bypass, or a check renamed under the ruleset.
+ * requires it now AND the PR's own branch declared it in .github/required-checks.json. A branch
+ * cut before a check existed never ran its job, even when it merged after main declared it, so a
+ * check added later never fails an older PR. A miss means a bypass, or a check renamed under the
+ * ruleset.
  */
 async function checkMerged(io: Io): Promise<Omit<CheckResult, "check">> {
   const enforced = rulesetChecks(await gh(io, RULESET, NEEDS.ruleset));
@@ -271,7 +284,7 @@ async function checkMerged(io: Io): Promise<Omit<CheckResult, "check">> {
       findings.push({ code: `PA-NO-PR:${sha.slice(0, 7)}`, detail: `${sha.slice(0, 7)} is on main without a merged PR (I-2: main moves only by squash PR)` });
       continue;
     }
-    const declared = await requiredAt(io, sha);
+    const declared = await requiredAtHead(io, pr.head.sha);
     const owed = enforced.filter((n) => declared?.includes(n));
     if (owed.length === 0) continue;
     const runs = (await checkRunsOf(io, pr.head.sha)).filter((r) => r.app?.slug === "github-actions");

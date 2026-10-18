@@ -121,6 +121,13 @@ function ioFor(w: World): Io & { calls: string[] } {
       const merge = w.merges.find((x) => x.sha === m![1])!;
       return Promise.resolve(ok(merge.pr === null ? [] : [{ number: merge.pr, merge_commit_sha: merge.sha, head: { sha: merge.head }, created_at: "2026-10-18T21:00:00Z" }]));
     }
+    if ((m = /^repos\/Canzeco\/mesita-monorepo\/contents\/\.github\/required-checks\.json\?ref=(\w+)$/.exec(path))) {
+      // The contents API answers base64 of the file's UTF-8 bytes, wrapped at 60 characters.
+      const declared = w.merges.find((x) => x.head === m![1])!.required;
+      if (declared === null) return Promise.resolve({ ok: false, status: 404, message: "gh: Not Found (HTTP 404)" });
+      const b64 = btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(declared, null, 2))));
+      return Promise.resolve(ok({ encoding: "base64", content: b64.replace(/(.{60})/g, "$1\n") }));
+    }
     if ((m = /^repos\/Canzeco\/mesita-monorepo\/commits\/(\w+)\/check-runs\?per_page=100&page=1$/.exec(path))) {
       const runs = w.merges.find((x) => x.head === m![1])!.runs;
       return Promise.resolve(ok({ total_count: runs.length, check_runs: runs }));
@@ -139,10 +146,6 @@ function ioFor(w: World): Io & { calls: string[] } {
     if (a === "rev-parse --short origin/main") return Promise.resolve(out("0b374f12\n"));
     if (a === "show origin/main:.github/required-checks.json") return Promise.resolve(out(JSON.stringify(w.required)));
     if (a === "log --first-parent -n5 --format=%H origin/main") return Promise.resolve(out(w.merges.map((x) => x.sha).join("\n") + "\n"));
-    if ((m = /^show (\w+):\.github\/required-checks\.json$/.exec(a))) {
-      const req = w.merges.find((x) => x.sha === m![1])?.required;
-      return Promise.resolve(req ? out(JSON.stringify(req)) : missing(".github/required-checks.json"));
-    }
     if (a === "ls-tree --name-only origin/main:.github/workflows") return Promise.resolve(out([...Object.keys(w.workflows), "pipeline-audit.yml"].join("\n")));
     if (a === `ls-tree -d --name-only origin/main:${F}`) return Promise.resolve(out(["_shared", ...w.folders].join("\n")));
     if ((m = new RegExp(`^log -1 --no-renames --diff-filter=D --format=%ct origin/main -- ${F}/(.+)$`).exec(a))) {
@@ -200,6 +203,8 @@ const CASES: [string, (w: World) => void, string][] = [
   ["the ruleset requires a name no job reports", (w) => w.ruleset.push("Cursor Bugbot"), "PA-MISSING-CHECK:Cursor Bugbot"],
   ["a declared check the ruleset does not enforce", (w) => (w.ruleset = w.ruleset.filter((n) => n !== "deno check")), "PA-NOT-ENFORCED:deno check"],
   ["a merge whose required check never reported", (w) => (w.merges[1].runs = w.merges[1].runs.filter((c) => c.name !== "deno check")), "PA-MERGED-WITHOUT:deno check"],
+  // A name with `·`: a branch file decoded byte by byte would match no ruleset name and owe nothing.
+  ["a merge whose lane check never reported", (w) => (w.merges[1].runs = w.merges[1].runs.filter((c) => !c.name.startsWith("web-admin"))), "PA-MERGED-WITHOUT:web-admin · lint · typecheck · test · build"],
   ["a merge whose required check's latest run failed", (w) => w.merges[0].runs.push(check(99, "PR closes its issue", "failure")), "PA-MERGED-WITHOUT:PR closes its issue"],
   ["a commit on main with no PR", (w) => (w.merges[1].pr = null), "PA-NO-PR:ff84fcf"],
   ["a workflow red on main", (w) => w.workflows["web.yml"].main.splice(1, 0, run("failure", "User", "push")), "PA-RED-MAIN:web"],
@@ -228,14 +233,23 @@ for (const [name, mutate, code] of CASES) {
 
 // ── What does not count ─────────────────────────────────────────────────────
 
-Deno.test("a merge owes only the checks its own required-checks.json listed", async () => {
+Deno.test("a merge owes only the checks its own branch declared", async () => {
   const w = world();
-  // Merged before web-admin's check was declared, and before the file existed at all.
+  // #2401's branch was cut before web-admin's check existed. #2386 (2026-10-18) merged two minutes
+  // after main created the file, from a branch that never had it: it ran none of those jobs.
   w.merges[0].required = REQUIRED.filter((n) => !n.startsWith("web-admin"));
   w.merges[0].runs = w.merges[0].runs.filter((c) => !c.name.startsWith("web-admin"));
   w.merges[1].required = null;
   w.merges[1].runs = [];
   assertEquals(codes(await audit(ioFor(w), {})), []);
+});
+
+Deno.test("a branch file the API cannot read is unknown, not owed-nothing", async () => {
+  const w = world();
+  w.failGithub["repos/Canzeco/mesita-monorepo/contents/.github/required-checks.json?ref=8c1d22aa"] = { ok: false, status: 403, message: "gh: Resource not accessible by integration (HTTP 403)" };
+  const r = await audit(ioFor(w), {});
+  assertEquals(codes(r), ["PA-UNKNOWN:merged-prs"]);
+  assertStringIncludes(r.rows[0].detail, "needs contents: read");
 });
 
 Deno.test("a function imported for types only did not change when its import did", async () => {
