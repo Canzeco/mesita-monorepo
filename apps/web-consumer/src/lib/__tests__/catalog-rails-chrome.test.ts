@@ -8,11 +8,10 @@ describe("Places has no chrome but its chip row (MESITA-2298, MESITA-2362, MESIT
     "utf8",
   );
 
-  it("draws no Filters pill and no location bar; Location is a chip (MESITA-2366)", () => {
+  it("draws no Filters pill and no location control of its own (MESITA-2401: the header's)", () => {
     expect(src).toContain("const coords = useUserLocation();");
-    expect(src).toContain("if (coords === null) locate();");
-    expect(src).toContain('"Use my location"');
-    expect(src).toContain('"Current location"');
+    expect(src).toContain('action={{ label: "Use my location", onClick: locate }}');
+    expect(src).not.toContain("data-places-location-bar");
     expect(src).not.toContain("locationStrip");
     expect(src).not.toContain("SlidersHorizontal");
     expect(src).not.toContain("Filter places");
