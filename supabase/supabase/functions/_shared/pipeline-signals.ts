@@ -20,29 +20,18 @@ const clamp01 = (n: number) => (n <= 0 ? 0 : n >= 1 ? 1 : n);
 // ── Proximity ─────────────────────────────────────────────────────────────
 
 /**
- * PROVISIONAL, awaiting calibration: the distance at which Proximity scores
- * one half. 4.1 km is where the curve this replaces (logarithmic, Max km 25,
- * knee 1 km, the live values on 2026-10-18) crossed 0.5, kept so the
- * cut-over does not move the midpoint. It is not an empirical finding.
+ * proximity(d) = 1 − d ÷ radius (MESITA-2347): 1 at the anchor, 0 at the
+ * edge of the radius that made the place a candidate, linear between. The
+ * radius IS the parameter, so Proximity's reach is the same at every zoom
+ * and there is no half distance to calibrate. A distance that is not a
+ * number cannot be placed, so it scores 0; a radius that is not positive
+ * makes every place score 0 except the anchor itself.
  */
-export const PROXIMITY_HALF_DISTANCE_KM_DEFAULT = 4.1;
-export const PROXIMITY_HALF_DISTANCE_KM_MIN = 0.1;
-export const PROXIMITY_HALF_DISTANCE_KM_MAX = 50;
-
-/**
- * proximity(d) = 2^(−d / halfDistance): 1 at the anchor, 0.5 at
- * halfDistance, 0.25 at twice it, never negative. Raw distance never reaches
- * a score; the radius that decides who is a candidate stays separate. A
- * distance that is not a number cannot be placed, so it scores 0, the same
- * as a place with no coordinates; an infinite one is infinitely far.
- */
-export function proximityFromDistance(distanceKm: number, halfDistanceKm: number): number {
-  const half = Number.isFinite(halfDistanceKm) && halfDistanceKm > 0
-    ? halfDistanceKm
-    : PROXIMITY_HALF_DISTANCE_KM_DEFAULT;
+export function proximityFromDistance(distanceKm: number, radiusKm: number): number {
   if (Number.isNaN(distanceKm) || distanceKm === Infinity) return 0;
   if (distanceKm <= 0) return 1;
-  return clamp01(Math.pow(2, -distanceKm / half));
+  if (!(Number.isFinite(radiusKm) && radiusKm > 0)) return 0;
+  return clamp01(1 - distanceKm / radiusKm);
 }
 
 /**
@@ -53,50 +42,44 @@ export function proximityFromDistance(distanceKm: number, halfDistanceKm: number
 export function proximity(
   candidate: { lat?: number | null; lng?: number | null },
   anchor: { lat: number; lng: number } | null,
-  halfDistanceKm: number,
+  radiusKm: number,
 ): number {
   if (!anchor) return 1;
   if (typeof candidate.lat !== "number" || typeof candidate.lng !== "number") return 0;
   const km = haversineKm(anchor.lat, anchor.lng, candidate.lat, candidate.lng);
-  return Number.isFinite(km) ? proximityFromDistance(km, halfDistanceKm) : 0;
+  return Number.isFinite(km) ? proximityFromDistance(km, radiusKm) : 0;
 }
 
 // ── Popularity ────────────────────────────────────────────────────────────
 
-/**
- * PROVISIONAL, awaiting calibration: Popularity reaches 1 at this many Google
- * reviews at this rating. The spec's reference is a market p95; on
- * 2026-10-18 only 6 live places carried both numbers, too few for a
- * percentile, so the reference is an explicit, editable anchor instead.
- */
-export const POPULARITY_REFERENCE_RATING_DEFAULT = 4.5;
-export const POPULARITY_REFERENCE_REVIEWS_DEFAULT = 1000;
-
-/** ln(1 + rating × reviewCount): the raw, unbounded volume-and-quality mass.
- *  A value that is not a finite number counts as 0, never NaN. */
-export function rawPopularity(rating: number, reviewCount: number): number {
-  const r = Number.isFinite(rating) ? Math.max(0, rating) : 0;
-  const n = Number.isFinite(reviewCount) ? Math.max(0, reviewCount) : 0;
-  return Math.log1p(r * n);
-}
+/** Reviews for half credit: Popularity's volume term is ½ at this many
+ *  Google reviews. The operator's number (`params.popularity.halfReviews`). */
+export const POPULARITY_HALF_REVIEWS_DEFAULT = 100;
+export const POPULARITY_HALF_REVIEWS_MIN = 1;
+export const POPULARITY_HALF_REVIEWS_MAX = 100_000;
 
 /**
- * popularity = clamp(raw / reference, 0, 1), reference = raw at the anchor,
- * so it multiplies with Proximity on the same 0..1 scale. Missing data: no
- * rating or no review count → 0 — an unrated place sorts last, and there is
- * deliberately no new-place prior.
+ * popularity = (rating ÷ 5) × reviews ÷ (reviews + halfReviews)
+ * (MESITA-2347). Rating counts linearly — a 3★ place is 60% of a 5★ one
+ * at any volume — and volume saturates: ½ credit at `halfReviews`, never 1.
+ * 0..1 by construction. Missing data: no rating or no review count → 0,
+ * and there is deliberately no new-place prior; under the Area score's
+ * weighted sum that demotes the place, it never deletes it.
  */
 export function popularity(
   candidate: { rating?: number | null; reviewCount?: number | null },
-  reference: { rating: number; reviews: number },
+  halfReviews: number,
 ): number {
   const r = candidate.rating;
   const n = candidate.reviewCount;
   if (typeof r !== "number" || typeof n !== "number") return 0;
   if (!Number.isFinite(r) || !Number.isFinite(n)) return 0;
-  const ref = rawPopularity(reference.rating, reference.reviews);
-  if (!(ref > 0)) return 0;
-  return clamp01(rawPopularity(r, n) / ref);
+  const k = Number.isFinite(halfReviews) && halfReviews > 0
+    ? halfReviews
+    : POPULARITY_HALF_REVIEWS_DEFAULT;
+  const rating = clamp01(Math.max(0, r) / 5);
+  const count = Math.max(0, n);
+  return clamp01(rating * (count / (count + k)));
 }
 
 // ── Name ──────────────────────────────────────────────────────────────────

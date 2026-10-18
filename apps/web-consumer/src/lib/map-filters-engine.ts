@@ -1,5 +1,5 @@
 // Map filters — Search only. Places scope + Families + Google Reviews.
-// How many is operator `map.pinCount`; the circle is operator `map.radiusKm`.
+// How many is operator the scope's cap (`map.googlePlaces` / `map.mesitaPlaces`); the circle is operator `map.radiusKm`.
 //
 // TWO SCOPES (MESITA-2298), and the guest picks one by name:
 //

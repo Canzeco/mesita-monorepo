@@ -16,7 +16,7 @@ import {
 import { FILTERABLE_PLACE_FAMILIES, type FamilyKey } from "@/lib/place-families";
 
 // v6: v5 held `resultLimit` (How many). That stop is operator
-// `map.pinCount` again; this key holds Family, Places scope and
+// the scope's cap (`map.googlePlaces` / `map.mesitaPlaces`) again; this key holds Family, Places scope and
 // Popularity. Bumping rather than widening the parser drops a forgotten
 // How many from a v5 session instead of pretending it is still a guest
 // knob. sessionStorage, so the cost of the bump is one forgotten sheet state.

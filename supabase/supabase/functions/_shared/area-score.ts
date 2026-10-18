@@ -1,15 +1,20 @@
-// The Area pipeline's gates and score (MESITA-2327).
+// The Area pipeline's gates and score (MESITA-2327, reshaped by MESITA-2347).
 //
-//   finalScore = familyGate × selectedGate × proximity × popularity
+//   finalScore = familyGate × selectedGate
+//                × (Proximity × Pw + Popularity × Qw) ÷ (Pw + Qw)
 //
 // Gates are binary eligibility (0 or 1) and stay separate from the
 // continuous signals, so diagnostics can say WHY a place is out (a gate)
-// apart from why it is low (a signal). Both signals carry exponent 1 and no
-// weight. A place a gate closes is dropped, not ranked at 0, so it never
-// sorts behind an eligible one. Ties break on distance, then id, so the
-// order is deterministic.
+// apart from why it is low (a signal). The two signals combine as a WEIGHTED
+// SUM, so a place missing one number (a Mesita place Google does not count
+// yet) is demoted, never zeroed; the weights are the operator's two numbers
+// (0..10 each, `params.balance`) and the sum is divided by their total so
+// the score stays 0..1 whatever they are. Both weights 0 = every eligible
+// place ties and distance alone orders. A place a gate closes is dropped,
+// not ranked at 0, so it never sorts behind an eligible one. Ties break on
+// distance, then id, so the order is deterministic.
 
-import { proximity, popularity } from "./pipeline-signals.ts";
+import { popularity, proximity } from "./pipeline-signals.ts";
 import { haversineKm } from "./geo.ts";
 
 /** What the guest asked of the Area pipeline. */
@@ -20,8 +25,12 @@ export type AreaContext = {
   families: readonly string[];
   /** The Selected gate is active only for the Mesita Selected scope. */
   selectedOnly: boolean;
-  halfDistanceKm: number;
-  popularityReference: { rating: number; reviews: number };
+  /** The radius that made the candidates: Proximity is 0 at its edge. */
+  radiusKm: number;
+  /** Popularity's volume term is ½ at this many reviews. */
+  halfReviews: number;
+  /** The operator's two weights, 0..10 each. */
+  balance: { proximity: number; popularity: number };
 };
 
 /** One candidate, normalized from whichever source produced it. */
@@ -62,6 +71,19 @@ export function selectedGate(selected: boolean, selectedOnly: boolean): 0 | 1 {
   return !selectedOnly || selected ? 1 : 0;
 }
 
+/** The weighted sum of the two signals, 0..1; 0 when both weights are 0. */
+export function weightedArea(
+  prox: number,
+  pop: number,
+  balance: { proximity: number; popularity: number },
+): number {
+  const pw = Number.isFinite(balance.proximity) ? Math.max(0, balance.proximity) : 0;
+  const qw = Number.isFinite(balance.popularity) ? Math.max(0, balance.popularity) : 0;
+  const total = pw + qw;
+  if (!(total > 0)) return 0;
+  return (prox * pw + pop * qw) / total;
+}
+
 export type AreaScore = {
   score: number;
   gates: { family: 0 | 1; selected: 0 | 1 };
@@ -75,13 +97,13 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
     family: familyGate(c.familyKeys, ctx.families),
     selected: selectedGate(c.selected, ctx.selectedOnly),
   };
-  const prox = proximity(c, ctx.anchor, ctx.halfDistanceKm);
-  const pop = popularity(c, ctx.popularityReference);
+  const prox = proximity(c, ctx.anchor, ctx.radiusKm);
+  const pop = popularity(c, ctx.halfReviews);
   const km = ctx.anchor && typeof c.lat === "number" && typeof c.lng === "number"
     ? haversineKm(ctx.anchor.lat, ctx.anchor.lng, c.lat, c.lng)
     : null;
   return {
-    score: gates.family * gates.selected * prox * pop,
+    score: gates.family * gates.selected * weightedArea(prox, pop, ctx.balance),
     gates,
     proximity: prox,
     popularity: pop,

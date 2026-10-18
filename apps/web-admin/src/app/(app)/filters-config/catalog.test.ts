@@ -48,13 +48,14 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
       coerceConfig({
         params: {
           proximity: { maxKm: 30, halfDistanceKm: 6 },
-          popularity: { priorRating: 4.2, referenceRating: 4, referenceReviews: 500 },
+          popularity: { priorRating: 4.2, referenceRating: 4, referenceReviews: 500, halfReviews: 250 },
+          balance: { proximity: 8 },
           timing: { closedFloor: 0.2 },
         },
       }).params,
     ).toEqual({
-      proximity: { halfDistanceKm: 6 },
-      popularity: { referenceRating: 4, referenceReviews: 500 },
+      popularity: { halfReviews: 250 },
+      balance: { proximity: 8, popularity: 5 },
     });
   });
 
@@ -62,13 +63,13 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
     expect(
       coerceConfig({
         params: {
-          proximity: { halfDistanceKm: 0.01 },
-          popularity: { referenceRating: 9, referenceReviews: 12.6 },
+          popularity: { halfReviews: 0 },
+          balance: { proximity: 99, popularity: 3.6 },
         },
       }).params,
     ).toEqual({
-      proximity: { halfDistanceKm: 0.1 },
-      popularity: { referenceRating: 5, referenceReviews: 13 },
+      popularity: { halfReviews: 1 },
+      balance: { proximity: 10, popularity: 4 },
     });
   });
 

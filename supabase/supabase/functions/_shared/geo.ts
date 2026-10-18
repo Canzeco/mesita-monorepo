@@ -38,7 +38,7 @@ export function radiusBoundingBox(
 export const NEARBY_DEFAULT_RADIUS_KM = 500;
 export const NEARBY_MAX_RADIUS_KM = 2000;
 /** The Mesita Selected pool's scan cap before the Area score ranks it; the
- *  answer still slices to `map.pinCount`. */
+ *  answer still slices to the scope's cap (`map.googlePlaces` / `map.mesitaPlaces`). */
 export const NEARBY_SCAN_LIMIT = 1000;
 /** Google Nearby Search (New) caps the circle at 50 km. */
 export const NEARBY_RADIUS_KM = 50;

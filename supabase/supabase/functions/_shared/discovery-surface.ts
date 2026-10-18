@@ -176,24 +176,24 @@ export const DISCOVERY_SIGNALS: readonly DiscoverySignalFact[] = [
   {
     key: "proximity",
     label: "Proximity",
-    formula: "2^(−distance ÷ half distance)",
+    formula: "1 − distance ÷ radius",
     requires: ["coordinates"],
     query: "The area's anchor: the device, a city, a pin or the map's centre.",
     computation: "runtime",
     cost: "Local arithmetic, free.",
     missing: "No anchor: 1 for every place (abstains). No coordinates: 0.",
-    normalization: "0..1 by construction: 1 at the anchor, ½ at the half distance, ¼ at twice it.",
+    normalization: "0..1 by construction: 1 at the anchor, ½ halfway to the edge, 0 at the edge of the radius — the same at every zoom, so the radius is its only number.",
   },
   {
     key: "popularity",
     label: "Popularity",
-    formula: "clamp(ln(1 + rating × reviews) ÷ ln(1 + reference rating × reference reviews), 0, 1)",
+    formula: "(rating ÷ 5) × reviews ÷ (reviews + reviews for half credit)",
     requires: ["rating", "review_count"],
     query: "Nothing.",
     computation: "runtime",
     cost: "Local arithmetic over stored numbers, free.",
-    missing: "No rating or no review count: 0. There is no new-place prior.",
-    normalization: "Divided by the reference's raw value and clamped to 0..1, so it multiplies with Proximity on the same scale.",
+    missing: "No rating or no review count: 0. There is no new-place prior; under the weighted sum that lowers the place, it never removes it.",
+    normalization: "0..1 by construction: rating counts linearly (a 3★ place is 60% of a 5★ one) and volume saturates, ½ at the half-credit count, never 1.",
   },
 ];
 
@@ -285,7 +285,7 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     sources: ["google_nearby", "mesita_places"],
     signals: ["proximity", "popularity"],
     gates: ["selected", "family"],
-    scoring: "Family × Selected × Proximity × Popularity. Exponents 1, no weights; ties break on distance.",
+    scoring: "Family × Selected × (Proximity × its weight + Popularity × its weight) ÷ (the weights' sum). The operator's two weights, 0–10; ties break on distance.",
     keepsOrder: [],
     rules: [
       "Closed places never show (Discovery › General's active check).",

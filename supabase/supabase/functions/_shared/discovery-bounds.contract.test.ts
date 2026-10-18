@@ -4,11 +4,8 @@
 // admin field can never disagree on what a value may be.
 import { assertEquals } from "jsr:@std/assert@1";
 import { DEEP_LIMIT_MAX, DEEP_LIMIT_MIN, DEFAULT_DEEP, SIGNAL_PARAM_BOUNDS } from "./discovery-config.ts";
-import {
-  POPULARITY_REFERENCE_RATING_DEFAULT,
-  POPULARITY_REFERENCE_REVIEWS_DEFAULT,
-  PROXIMITY_HALF_DISTANCE_KM_DEFAULT,
-} from "./pipeline-signals.ts";
+import { POPULARITY_HALF_REVIEWS_DEFAULT } from "./pipeline-signals.ts";
+import { AREA_WEIGHT_DEFAULT } from "./discovery-config.ts";
 
 const admin = await Deno.readTextFile(
   new URL("../../../../apps/web-admin/src/app/(app)/filters-config/catalog.ts", import.meta.url),
@@ -27,18 +24,16 @@ Deno.test("Deep box bounds and defaults match the server", () => {
   assertEquals(m ? { limit: Number(m[1]), minSimilarity: Number(m[2]) } : null, DEFAULT_DEEP);
 });
 
-Deno.test("Area box bounds and provisional defaults match the server", () => {
-  assertEquals(constant("HALF_DISTANCE_KM_MIN"), SIGNAL_PARAM_BOUNDS.halfDistanceKm.min);
-  assertEquals(constant("HALF_DISTANCE_KM_MAX"), SIGNAL_PARAM_BOUNDS.halfDistanceKm.max);
-  assertEquals(constant("REFERENCE_RATING_MIN"), SIGNAL_PARAM_BOUNDS.referenceRating.min);
-  assertEquals(constant("REFERENCE_RATING_MAX"), SIGNAL_PARAM_BOUNDS.referenceRating.max);
-  assertEquals(constant("REFERENCE_REVIEWS_MIN"), SIGNAL_PARAM_BOUNDS.referenceReviews.min);
-  assertEquals(constant("REFERENCE_REVIEWS_MAX"), SIGNAL_PARAM_BOUNDS.referenceReviews.max);
+Deno.test("Area box bounds and defaults match the server (MESITA-2347)", () => {
+  assertEquals(constant("HALF_REVIEWS_MIN"), SIGNAL_PARAM_BOUNDS.halfReviews.min);
+  assertEquals(constant("HALF_REVIEWS_MAX"), SIGNAL_PARAM_BOUNDS.halfReviews.max);
+  assertEquals(constant("AREA_WEIGHT_MIN"), SIGNAL_PARAM_BOUNDS.weight.min);
+  assertEquals(constant("AREA_WEIGHT_MAX"), SIGNAL_PARAM_BOUNDS.weight.max);
   const d = admin.match(
-    /proximity: \{ halfDistanceKm: ([0-9.]+) \},\s*popularity: \{ referenceRating: ([0-9.]+), referenceReviews: ([0-9_]+) \}/,
+    /popularity: \{ halfReviews: ([0-9_]+) \},\s*balance: \{ proximity: (\d+), popularity: (\d+) \}/,
   );
   assertEquals(
-    d ? [Number(d[1]), Number(d[2]), Number(d[3].replaceAll("_", ""))] : null,
-    [PROXIMITY_HALF_DISTANCE_KM_DEFAULT, POPULARITY_REFERENCE_RATING_DEFAULT, POPULARITY_REFERENCE_REVIEWS_DEFAULT],
+    d ? [Number(d[1].replaceAll("_", "")), Number(d[2]), Number(d[3])] : null,
+    [POPULARITY_HALF_REVIEWS_DEFAULT, AREA_WEIGHT_DEFAULT, AREA_WEIGHT_DEFAULT],
   );
 });

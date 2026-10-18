@@ -1,14 +1,23 @@
-// The Area score and its gates (MESITA-2327).
-import { assertAlmostEquals, assertEquals } from "jsr:@std/assert@1";
-import { type AreaCandidate, type AreaContext, areaScore, familyGate, rankArea, selectedGate } from "./area-score.ts";
+// The Area score and its gates (MESITA-2327; weighted sum since MESITA-2347).
+import { assert, assertAlmostEquals, assertEquals } from "jsr:@std/assert@1";
+import {
+  type AreaCandidate,
+  type AreaContext,
+  areaScore,
+  familyGate,
+  rankArea,
+  selectedGate,
+  weightedArea,
+} from "./area-score.ts";
 
 const ANCHOR = { lat: 19.43, lng: -99.13 };
 const CTX: AreaContext = {
   anchor: ANCHOR,
   families: [],
   selectedOnly: false,
-  halfDistanceKm: 4,
-  popularityReference: { rating: 4.5, reviews: 1000 },
+  radiusKm: 8,
+  halfReviews: 100,
+  balance: { proximity: 5, popularity: 5 },
 };
 const cand = (over: Partial<AreaCandidate> = {}): AreaCandidate => ({
   id: "a",
@@ -21,11 +30,29 @@ const cand = (over: Partial<AreaCandidate> = {}): AreaCandidate => ({
   ...over,
 });
 
-Deno.test("score = family × selected × proximity × popularity, exponents 1, no weights", () => {
+Deno.test("score = family × selected × (proximity × Pw + popularity × Qw) ÷ (Pw + Qw)", () => {
   const s = areaScore(cand({ rating: 4.0, reviewCount: 100 }), CTX);
-  assertAlmostEquals(s.score, s.proximity * s.popularity, 1e-12);
+  assertAlmostEquals(s.score, (s.proximity * 5 + s.popularity * 5) / 10, 1e-12);
   assertEquals(s.gates, { family: 1, selected: 1 });
   assertEquals(s.proximity, 1);
+  assertAlmostEquals(s.popularity, 0.4, 1e-12);
+});
+
+Deno.test("the weights are the operator's: one at 0 hands the order to the other", () => {
+  assertAlmostEquals(weightedArea(0.2, 0.9, { proximity: 10, popularity: 0 }), 0.2, 1e-12);
+  assertAlmostEquals(weightedArea(0.2, 0.9, { proximity: 0, popularity: 10 }), 0.9, 1e-12);
+  assertAlmostEquals(weightedArea(0.2, 0.9, { proximity: 3, popularity: 1 }), 0.375, 1e-12);
+  // Both 0: every place ties at 0 and distance orders (rankArea's tie-break).
+  assertEquals(weightedArea(0.2, 0.9, { proximity: 0, popularity: 0 }), 0);
+  assertEquals(weightedArea(1, 1, { proximity: Number.NaN, popularity: -3 }), 0);
+});
+
+Deno.test("a missing number demotes, never deletes: an unrated place 50 m away still ranks above a loved one at the edge", () => {
+  const unrated = cand({ id: "unrated", rating: null, reviewCount: null, lat: ANCHOR.lat + 0.05 / 111.195 });
+  const edge = cand({ id: "edge", rating: 4.9, reviewCount: 5000, lat: ANCHOR.lat + 7.9 / 111.195 });
+  const ranked = rankArea([edge, unrated], (c) => c, CTX);
+  assertEquals(ranked.map((r) => r.item.id), ["unrated", "edge"]);
+  assert(ranked[0].area.score > 0.45);
 });
 
 Deno.test("family gate: open with no ask; exact family match; unknown family is out when asked", () => {
@@ -65,16 +92,16 @@ Deno.test("ties break on distance, then id: deterministic", () => {
   assertEquals(ranked.map((r) => r.item.id), ["a", "b", "far"]);
 });
 
-// ── MESITA-2338: the product formula, not just the order ───────────────────
+// ── MESITA-2338: the formula itself, not just the order ────────────────────
 
-Deno.test("the score at the half distance is exactly ½ × popularity (a product, no weights)", () => {
-  // 4 km north of the anchor with a 4 km half distance.
+Deno.test("halfway to the edge Proximity is exactly ½, and the score is the mean of the two at equal weights", () => {
+  // 4 km north of the anchor on an 8 km radius.
   const c = cand({ lat: ANCHOR.lat + 4 / 111.195, rating: 4.0, reviewCount: 100 });
   const s = areaScore(c, CTX);
   assertAlmostEquals(s.proximity, 0.5, 1e-3);
-  assertAlmostEquals(s.score, 0.5 * s.popularity, 1e-3);
-  // Popularity alone or a sum would not give this.
-  assertEquals(Math.abs(s.score - s.popularity) > 0.1, true);
+  assertAlmostEquals(s.score, (0.5 + 0.4) / 2, 1e-3);
+  // A product would give 0.2; popularity alone 0.4.
+  assertEquals(Math.abs(s.score - s.proximity * s.popularity) > 0.1, true);
 });
 
 Deno.test("a closed gate zeroes the score itself, not only the ranking", () => {

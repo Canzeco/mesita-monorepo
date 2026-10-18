@@ -113,25 +113,26 @@ type SectionCase = {
 
 const CASES: Record<string, SectionCase> = {
   discovery: {
-    // The Area box's Save (MESITA-2327): Proximity's half distance.
-    valid: { config: { params: { proximity: { halfDistanceKm: 6 } } } },
+    // The Area box's Save (MESITA-2347): Popularity's reviews for half credit.
+    valid: { config: { params: { popularity: { halfReviews: 250 } } } },
     assertSaved: (saved) => {
       const c = saved.config as Row;
-      assertEquals(((c.params as Row).proximity as Row).halfDistanceKm, 6);
+      assertEquals(((c.params as Row).popularity as Row).halfReviews, 250);
       assert(c.map && typeof c.map === "object", "map missing");
     },
-    // Coerced, not stored as sent: 999 km lands clamped at the 50 km ceiling,
-    // and a retired key (the Swipe deck's `weights`, MESITA-2328) is dropped.
+    // Coerced, not stored as sent: a weight of 99 lands clamped at 10, and a
+    // retired TOP-LEVEL key (the Swipe deck's `weights`, MESITA-2328) is
+    // dropped — the live weights sit under `params.balance`.
     invalid: {
       config: {
-        params: { proximity: { halfDistanceKm: 999 } },
-        weights: { proximity: 2 },
+        params: { balance: { proximity: 99 } },
+        balance: { proximity: 2 },
       },
     },
     refuse: {
       clamped: (saved) => {
         const c = saved.config as Row;
-        assertEquals(((c.params as Row).proximity as Row).halfDistanceKm, 50);
+        assertEquals(((c.params as Row).balance as Row).proximity, 10);
         assertEquals("weights" in c, false);
       },
     },

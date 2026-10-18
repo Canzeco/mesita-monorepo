@@ -63,16 +63,16 @@ Deno.test("the admin EF asks for Word by Admin's caps; the lane returns idleSec"
   assertEquals(lane.includes("cfg.name.admin.mesitaCount"), true);
 });
 
-Deno.test("an old blob with no Area params reads the provisional defaults (MESITA-2327)", () => {
+Deno.test("an old blob with no Area params reads the defaults (MESITA-2327, MESITA-2347)", () => {
   const cfg = normalizeDiscoveryConfig({
     params: { proximity: { maxKm: 25, kneeKm: 1, missingGeo: 0.35 }, popularity: { confidence: 60 } },
     catalog: { ranking: { proximity: 1, popularity: 1 } },
   });
-  assertEquals(cfg.params.proximity.halfDistanceKm, 4.1);
-  assertEquals(cfg.params.popularity.referenceRating, 4.5);
-  assertEquals(cfg.params.popularity.referenceReviews, 1000);
-  // The retired deck's numbers and the Catalog ranking are dropped (MESITA-2328).
-  assertEquals("maxKm" in cfg.params.proximity, false);
+  assertEquals(cfg.params.popularity.halfReviews, 100);
+  assertEquals(cfg.params.balance, { proximity: 5, popularity: 5 });
+  // The retired deck's numbers and the Catalog ranking are dropped (MESITA-2328);
+  // Proximity has no bag of its own any more — the radius is its parameter.
+  assertEquals("proximity" in cfg.params, false);
   assertEquals("confidence" in cfg.params.popularity, false);
   assertEquals("ranking" in cfg.catalog, false);
 });
@@ -80,13 +80,13 @@ Deno.test("an old blob with no Area params reads the provisional defaults (MESIT
 Deno.test("Area params clamp to their bounds", () => {
   const cfg = normalizeDiscoveryConfig({
     params: {
-      proximity: { halfDistanceKm: 0.01 },
-      popularity: { referenceRating: 9, referenceReviews: 0 },
+      popularity: { halfReviews: 0 },
+      balance: { proximity: 99, popularity: -4 },
     },
   });
-  assertEquals(cfg.params.proximity.halfDistanceKm, 0.1);
-  assertEquals(cfg.params.popularity.referenceRating, 5);
-  assertEquals(cfg.params.popularity.referenceReviews, 1);
+  assertEquals(cfg.params.popularity.halfReviews, 1);
+  assertEquals(cfg.params.balance, { proximity: 10, popularity: 0 });
+  assertEquals(normalizeDiscoveryConfig({ params: { balance: { proximity: 3.6 } } }).params.balance.proximity, 4);
 });
 
 Deno.test("Deep: limit 5 and no floor by default; both clamp", () => {

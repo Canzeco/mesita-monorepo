@@ -29,7 +29,8 @@
 //   selected  `selectedPoolQuery` + `selectMesitaSelected` — enriched, ready,
 //             active rows inside the same radius, ranked by the Area score;
 //             no review floor of any kind.
-// How many is operator `map.pinCount` (Google is at most one call's 20); the
+// How many is the scope's own operator cap (MESITA-2347): `map.googlePlaces`
+// for Google (at most one call's 20), `map.mesitaPlaces` for Selected; the
 // circle is `map.radiusKm`; a client sets neither. Absent and retired scope
 // words land on `selected`.
 //
@@ -165,8 +166,9 @@ Deno.serve(async (req) => {
 
   // The engine (area-pipeline.ts) applies the active check and the reviews
   // floors. Google fill is client opt-in AND operator googleFill AND at
-  // least one family on. HOW MANY PINS is `map.pinCount`; Google hands back
-  // at most 20 per call and the engine never widens (MESITA-2298). The
+  // least one family on. HOW MANY is the scope's cap (`map.googlePlaces` /
+  // `map.mesitaPlaces`, MESITA-2347); Google hands back at most 20 per call
+  // and the engine never widens (MESITA-2298). The
   // guest's Google Reviews stop (`minReviews`) cuts Google hits after
   // Google's response, never as a Nearby API param.
   const efEnv = readEFEnv();
@@ -174,10 +176,12 @@ Deno.serve(async (req) => {
     ? await loadDiscoveryConfig(adminClient(efEnv.env))
     : DISCOVERY_DEFAULTS;
   // A caller that names its own cap keeps it; one that names none (web
-  // Search) takes the operator's `map.pinCount`.
+  // Search) takes the operator's cap FOR THE SCOPE IT ASKED (MESITA-2347):
+  // Google places are bought, Mesita places are read, so each has its own.
+  const operatorCap = placesScope === "google" ? cfg.map.googlePlaces : cfg.map.mesitaPlaces;
   const limit = typeof body.limit === "number"
     ? clampIntRange(body.limit, 1, MAX_LIMIT)
-    : clampIntRange(cfg.map.pinCount, 1, MAX_LIMIT);
+    : clampIntRange(operatorCap, 1, MAX_LIMIT);
   // A GUEST PILL OUTRANKS THE FULL BATTERY, deliberately (MESITA-1685). The
   // pill IS the guest's question. With no pill, Nearby asks for every guest
   // family. Stored family switches are not read. The operator still holds
