@@ -86,13 +86,13 @@ describe("a Google-only card's image is a placeholder, never a photo (MESITA-229
 });
 
 describe("the tile is an Instagram grid square (MESITA-2364)", () => {
-  it("fills the square with the photo and lays the info over an ink gradient", () => {
+  it("fills the square with the photo and lays the info over a light gradient", () => {
     const html = tile({ photos: ["https://example.com/a.jpg"], price_level: 2 });
     expect(html).toContain("aspect-square");
     expect(html.match(/<img/g)?.length).toBe(1);
     expect(html).toContain("data-tile-info");
-    expect(html).toContain("from-foreground/80");
-    expect(html).toContain("text-paper");
+    expect(html).toContain("from-paper/90");
+    expect(html).not.toContain("from-foreground/80");
     expect(html).not.toContain("-scale-y-100");
     expect(html).not.toMatch(/rounded-(lg|xl|2xl)/);
     expect(html.indexOf("<img")).toBeLessThan(html.indexOf(">Casa<"));

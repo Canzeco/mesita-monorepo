@@ -67,7 +67,7 @@ function readableKind(place: Place): string | null {
 /**
  * One place in a rail, as an Instagram grid tile (Pato, MESITA-2364): the
  * square photo edge to edge, the name and price · category · stars over an
- * ink gradient at its foot, the save heart top right. No zone. An enriched
+ * light gradient at its foot, the save heart top right. No zone. An enriched
  * place wears the Enriched mark after its name
  * (MESITA-2296). Favs does not use this tile. A Google-only card opens its
  * profile through `onOpenGoogle` and has no save heart: only a Mesita place
@@ -98,7 +98,8 @@ export function CatalogTile({
 
   // An Instagram grid tile (Pato, MESITA-2364): the photo — or the Google
   // card's emoji tile — fills the square edge to edge, no border, no radius.
-  // The info lies on an ink gradient at the bottom; the heart sits top right.
+  // The info lies on a light paper gradient at the bottom, dark text (Pato,
+  // MESITA-2364: "try light instead of dark"); the heart sits top right.
   return (
     <li className={cn("relative aspect-square min-w-0 overflow-hidden", className)}>
       <TileLink
@@ -132,22 +133,22 @@ export function CatalogTile({
           )}
         </div>
         <div
-          className="from-foreground/80 absolute inset-x-0 bottom-0 bg-gradient-to-t to-transparent px-1.5 pt-6 pb-1.5"
+          className="from-paper/90 via-paper/70 absolute inset-x-0 bottom-0 bg-gradient-to-t to-transparent px-1.5 pt-6 pb-1.5"
           data-tile-info
         >
-          <p className="font-display text-paper flex min-w-0 items-center gap-1 text-xs leading-tight font-semibold tracking-tight">
+          <p className="font-display text-foreground flex min-w-0 items-center gap-1 text-xs leading-tight font-semibold tracking-tight">
             <span className="truncate">{place.name}</span>
             {isEnrichedPlace(place) ? (
               <EnrichedBadge className="h-3 w-3 shrink-0" />
             ) : null}
           </p>
           {meta || ratingLabel ? (
-            <p className="text-paper/80 mt-0.5 flex min-w-0 items-center gap-1 text-xs leading-tight">
+            <p className="text-muted-foreground mt-0.5 flex min-w-0 items-center gap-1 text-xs leading-tight">
               {meta ? <span className="truncate">{meta}</span> : null}
               {ratingLabel ? (
                 <span className="inline-flex shrink-0 items-center gap-0.5">
                   {meta ? <span aria-hidden>·</span> : null}
-                  <Star className="fill-paper text-paper h-3 w-3" />
+                  <Star className="fill-foreground text-foreground h-3 w-3" />
                   {ratingLabel}
                 </span>
               ) : null}
@@ -164,11 +165,11 @@ export function CatalogTile({
           }
           className="absolute top-0 right-0 flex h-11 w-11 items-start justify-end p-1.5"
         >
-          <span className="bg-foreground/40 flex h-6 w-6 items-center justify-center rounded-full">
+          <span className="bg-paper/80 flex h-6 w-6 items-center justify-center rounded-full">
             <Heart
               className={cn(
                 "h-3.5 w-3.5",
-                saved ? "fill-paper text-paper" : "text-paper",
+                saved ? "fill-foreground text-foreground" : "text-foreground",
               )}
             />
           </span>
