@@ -62,8 +62,8 @@ describe("the Places column (MESITA-2383)", () => {
     expect(src).not.toContain("nearbyZones");
   });
 
-  it("is a left column, one third wide, scrolling on its own, and opens on Featured", () => {
-    expect(src).toContain("bg-muted scrollbar-hide w-1/3 shrink-0 overflow-y-auto");
+  it("is a left column, a quarter wide (MESITA-2385), scrolling on its own, and opens on Featured", () => {
+    expect(src).toContain("bg-muted scrollbar-hide w-1/4 shrink-0 overflow-y-auto");
     expect(src).toContain("useState<string>(FEATURED_CHIP)");
     // The chosen row: white, bold, an ink bar on its left edge.
     expect(src).toContain('const ROW_ON = "bg-card text-foreground font-semibold";');
@@ -105,9 +105,9 @@ describe("the location bar and sheet (MESITA-2383)", () => {
 });
 
 describe("the Places grid (MESITA-2366)", () => {
-  it("is the right two thirds, one square tile per row with 6px room around, scrolling on its own", () => {
+  it("is the right three quarters, one square tile per row with 6px room around, scrolling on its own", () => {
     expect(src).toContain('const PLACES_LIST = "grid grid-cols-1 content-start gap-1.5 px-1.5 pt-1.5";');
-    expect(src).toContain("w-2/3 flex-col overflow-y-auto");
+    expect(src).toContain("w-3/4 flex-col overflow-y-auto");
     expect(src).not.toContain("writing-mode");
     expect(src).not.toContain("data-band");
   });
