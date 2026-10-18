@@ -10,7 +10,7 @@
 
 import { assert, assertEquals, assertStringIncludes } from "@std/assert";
 import { dirname, fromFileUrl, join } from "@std/path";
-import { parse as parseYaml } from "jsr:@std/yaml@1";
+import { parse as parseYaml } from "@std/yaml";
 
 import {
   budgetsFor,
@@ -216,11 +216,11 @@ Deno.test("groupSkillDocs skips symlinks — gstack skills live in another repo"
 });
 
 Deno.test("skillBudgetCheck defaults, overrides, and is inclusive at the limit", () => {
-  const [name, ceiling] = Object.entries(SKILL_BUDGETS)[0];
+  const overrides = { "big-skill": 3000 };
   assertEquals(skillBudgetCheck("fresh-skill", DEFAULT_SKILL_WORD_BUDGET).over, false);
   assertEquals(skillBudgetCheck("fresh-skill", DEFAULT_SKILL_WORD_BUDGET + 1).over, true);
-  assertEquals(skillBudgetCheck(name, ceiling).over, false, "at its own ceiling");
-  assertEquals(skillBudgetCheck(name, ceiling + 1).over, true);
+  assertEquals(skillBudgetCheck("big-skill", 3000, overrides).over, false, "at its own ceiling");
+  assertEquals(skillBudgetCheck("big-skill", 3001, overrides).over, true);
   assertEquals(skillBudgetCheck("doctor", 1).label, `${SKILLS_DIR}doctor/`);
 });
 

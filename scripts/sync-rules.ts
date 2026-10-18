@@ -111,11 +111,9 @@ export function unbudgetedGithubCardMessage(path: string): string {
 }
 
 // ── Skill budgets (Rules §0) ────────────────────────────────────────────────
-// `.claude/` is allowlisted wholesale (MD_ALLOW_DIRS below), so every file in
-// it was allowlisted and therefore never measured. That made the repo's single
-// largest knowledge file — .claude/skills/doctor/SKILL.md — the one surface the
-// budget law could not reach. A docs folder growing back under a different name
-// is still a docs folder.
+// `.claude/` is allowlisted wholesale (MD_ALLOW_DIRS below), so without this a
+// skill would be the one markdown file the budget law cannot reach. A docs
+// folder growing back under a different name is still a docs folder.
 //
 // A skill is a PROCEDURE, not law: ordered steps, queries, thresholds, report
 // shapes. It legitimately runs longer than a package CLAUDE.md, so it gets its
@@ -129,21 +127,7 @@ export const DEFAULT_SKILL_WORD_BUDGET = 1500;
 // Explicit ceilings, same rule as TARGETS: keyed by skill name, each naming why
 // it needs one. Raising a number here is a visible line in the diff, which is
 // the whole point — a budget nobody sees being raised is not a budget.
-export const SKILL_BUDGETS: Record<string, number> = {
-  // Nine audit scopes, each carrying its own queries, thresholds and report
-  // shape, plus the weekly Scope 9 run (MESITA-1214). Sized 2026-08-23 against
-  // the real file, not guessed.
-  //
-  // 4350 → 4550 on 2026-09-08 (MESITA-1707), and this is the raise that budget
-  // is designed to make visible rather than prevent. MESITA-1704 took the whole
-  // consumer catalog down for a day and Doctor read healthy through it, because
-  // every check it had asserted CONFIGURATION and none exercised a read. The
-  // 200 words bought are scope 1.6: the catalog query that proves each
-  // client-readable security_invoker view is still readable by the roles that
-  // reach it. Funding it by deleting another audit scope would have been the
-  // worse trade — a smaller file that misses more.
-  doctor: 4550,
-};
+export const SKILL_BUDGETS: Record<string, number> = {};
 
 /** The one tokenizer, so every budget is measured the same way. */
 export function countWords(text: string): number {
@@ -369,8 +353,8 @@ export function groupSkillDocs(files: LsFile[]): Map<string, string[]> {
   return bySkill;
 }
 
-export function skillBudgetCheck(name: string, words: number): BudgetCheck {
-  const budget = SKILL_BUDGETS[name] ?? DEFAULT_SKILL_WORD_BUDGET;
+export function skillBudgetCheck(name: string, words: number, budgets: Record<string, number> = SKILL_BUDGETS): BudgetCheck {
+  const budget = budgets[name] ?? DEFAULT_SKILL_WORD_BUDGET;
   return { label: `${SKILLS_DIR}${name}/`, words, budget, over: words > budget };
 }
 
