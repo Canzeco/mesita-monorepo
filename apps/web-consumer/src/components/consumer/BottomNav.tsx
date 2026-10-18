@@ -106,8 +106,7 @@ export function BottomNav() {
       // hard-nav place PAGE from the intercepted place MODAL, which share it.
       data-shell-nav=""
       className={cn(
-        // Dark bar (Pato, MESITA-2357): the brand ink is the surface.
-        "border-foreground bg-foreground text-paper shrink-0 border-t px-0.5 pt-2",
+        "border-border bg-card/95 shrink-0 border-t px-0.5 pt-2 backdrop-blur",
         Z_BOTTOM_NAV,
       )}
     >
@@ -123,16 +122,18 @@ export function BottomNav() {
               }}
               className={cn(
                 "type-meta relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 font-medium transition",
-                active ? "text-paper" : "text-paper/55 hover:text-paper",
+                active
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               {active && (
-                <span className="bg-paper absolute -top-2 left-1/2 h-0.5 w-6 -translate-x-1/2 rounded-full" />
+                <span className="bg-primary absolute -top-2 left-1/2 h-0.5 w-6 -translate-x-1/2 rounded-full" />
               )}
               <span
                 className={cn(
                   "relative flex h-8 w-8 items-center justify-center rounded-full transition",
-                  active && "bg-paper/15 ring-paper/25 ring-1",
+                  active && "bg-primary/10 ring-primary/20 ring-1",
                 )}
               >
                 <Icon
@@ -140,11 +141,10 @@ export function BottomNav() {
                   strokeWidth={active ? 2.25 : 1.75}
                 />
                 {/* The tag is a quiet grey chip, sentence case, cut from the
-                    glyph by a ring the colour of the bar: the solid-ink
-                    uppercase pill out-shouted every label in the bar (Pato,
-                    MESITA-2079). */}
+                    glyph by a card-colour ring: the solid-ink uppercase pill
+                    out-shouted every label in the bar (Pato, MESITA-2079). */}
                 {soon && (
-                  <span className="bg-paper/15 text-paper/80 ring-foreground type-meta absolute -top-0.5 left-[calc(100%-8px)] flex h-4 items-center rounded-full px-1.5 leading-none font-semibold whitespace-nowrap ring-2">
+                  <span className="bg-muted text-muted-foreground ring-card type-meta absolute -top-0.5 left-[calc(100%-8px)] flex h-4 items-center rounded-full px-1.5 leading-none font-semibold whitespace-nowrap ring-2">
                     Soon
                   </span>
                 )}
@@ -154,7 +154,7 @@ export function BottomNav() {
           );
         })}
       </div>
-      <div className="bg-paper/30 mx-auto mt-1.5 mb-1 h-1 w-32 rounded-full" />
+      <div className="bg-foreground/20 mx-auto mt-1.5 mb-1 h-1 w-32 rounded-full" />
     </nav>
   );
 }
