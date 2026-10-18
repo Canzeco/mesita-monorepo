@@ -71,8 +71,6 @@ import { toast } from "@/lib/toast";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import { mapFilterCount } from "@/lib/map-filters-engine";
 import { useMapFilters } from "@/lib/use-map-filters";
 import {
   buildSearchMapPins,
@@ -92,7 +90,6 @@ import { SearchResultsPanel } from "./SearchResultsPanel";
 import type { AddState } from "./add-state";
 import { SearchRailOverlay } from "./search-catalog-overlays";
 import { SearchLocateButton } from "./SearchLocateButton";
-import { SearchMapFilters } from "./SearchMapFilters";
 import {
   anchorPlaceFromPrediction,
   anchorSurvivesReload,
@@ -190,11 +187,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // The bottom rail can be dismissed (X on the counter) to clear the map;
   // it reopens via the floating reopen pill or by tapping any pin.
   const [railCollapsed, setRailCollapsed] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  // Filters, the disc at the right of the top row. Places scope, Families
-  // and Google Reviews ride this store and the nearby call. How many is
-  // operator the scope's cap (`map.googlePlaces` / `map.mesitaPlaces`), the circle operator `map.radiusKm`. The server
-  // is the one selector — this component never recuts the catalog.
+  // The family chips (All, or one family) ride this store and the nearby
+  // call. How many, the circle and the Google reviews minimum are the
+  // operator's (Admin › Discovery). The server is the one selector — this
+  // component never recuts the catalog.
   const filters = useMapFilters();
   const location = userLocation;
   // The location disc at the LEFT of the top row recentres on the guest.
@@ -372,7 +368,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           supabase,
           nextCenter,
           filters.familyKeys,
-          filters.minReviews,
         );
         if (gen !== viewportGen.current) return;
         lastFetchedCenter.current = nextCenter;
@@ -397,7 +392,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     },
     // `markViewport` left this list with the search-open guard that used to
     // call it here — the overlay is gone, so a viewport load always loads.
-    [filters.familyKeys, filters.minReviews, supabase],
+    [filters.familyKeys, supabase],
   );
 
   const scheduleOrLoad = useCallback(
@@ -830,12 +825,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
             placeholder="Search places by name…"
           />
         }
-        filterCount={mapFilterCount(filters)}
-        onOpenFilters={() => setFiltersOpen(true)}
       >
-        {/* RESULTS DROP UNDER THE BAR, the way every autocomplete does: the
-          header's own column (bar, chips, then this) keeps them stacked
-          with no top offset to keep in sync.
+        {/* RESULTS DROP UNDER THE BAR, the way every autocomplete does, and
+          COVER the chip row (Pato, MESITA-2417): the header anchors them on
+          the chips' box, so there is no top offset to keep in sync.
 
           THE OLD REGRESSION WAS A FIXED HEIGHT, not the top anchor. A panel that
           claimed 70% of the viewport whether it held two rows or ten is what
@@ -909,17 +902,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
             }}
           />
         )}
-
-        <LocalSheet
-          open={filtersOpen}
-          onClose={() => setFiltersOpen(false)}
-          ariaLabel="Filters"
-        >
-          <SearchMapFilters
-            onClose={() => setFiltersOpen(false)}
-            count={catalogLoading ? null : catalog.length}
-          />
-        </LocalSheet>
       </div>
     </div>
   );

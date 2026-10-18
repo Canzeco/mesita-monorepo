@@ -6,8 +6,9 @@
 // Places ⊃ Mesita Places ⊃ Mesita Enriched Places): Google Places is what
 // Nearby returned inside `map.radiusKm`, a Mesita owner painting its hit;
 // Mesita Selected is the enriched, ready rows. Type batteries ride the
-// Google call only. Floors exclude. The guest Google Reviews floor cuts
-// Google hits only, after Google answers (`guestReviewFloor`). Name Google
+// Google call only. Floors exclude. The Google reviews minimum is the
+// operator's alone, `map.googleMinReviews` (MESITA-2417: the guest sheet is
+// gone), on Google hits after Google answers (`area-pipeline.ts`). Name Google
 // categories live on discovery_config.name. `googleFill` gates Nearby.
 //
 // `minPopularity` reads the Area pipeline's Popularity (pipeline-signals.ts,
@@ -23,7 +24,6 @@ import {
 } from "./discovery-config.ts";
 import { nearbyTypesForSupers } from "./google-type-super.ts";
 import { popularity, POPULARITY_HALF_REVIEWS_DEFAULT } from "./pipeline-signals.ts";
-import type { NearbyHit, PlacesScope } from "./nearby-places.ts";
 import { type EligibilityResult, familiesForGoogleType } from "./sourcing.ts";
 import { familiesForAtlasCategory } from "./place-taxonomy.ts";
 
@@ -33,37 +33,6 @@ export type ListedMapRow = {
   google_review_count?: number | null;
 };
 
-/**
- * Guest Google Reviews — Map mode only (MESITA-1790). A Discovery-mode
- * artificial filter: Google review-COUNT floor applied AFTER Google's
- * response, never as a Nearby API param, never a refill, and never to
- * Mesita Selected (MESITA-2298). Stops match the Filters sheet: 10+ · 100+ ·
- * 1,000+ (Pato set the minimum at 10+, MESITA-2336, so the Google Places
- * scope never admits a hit with fewer than 10 reviews). A silent client gets
- * the sheet's default, 100+; a 0 or any value under 10 lands on 10+.
- */
-export const MAP_MIN_REVIEW_STOPS = [10, 100, 1000] as const;
-export type MapMinReviews = (typeof MAP_MIN_REVIEW_STOPS)[number];
-export const MAP_MIN_REVIEWS_DEFAULT: MapMinReviews = 100;
-
-export function parseMapMinReviews(value: unknown): MapMinReviews {
-  if (value === undefined || value === null) return MAP_MIN_REVIEWS_DEFAULT;
-  const n = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(n)) return MAP_MIN_REVIEWS_DEFAULT;
-  if (n <= MAP_MIN_REVIEW_STOPS[0]) return MAP_MIN_REVIEW_STOPS[0];
-  let best: MapMinReviews =
-    MAP_MIN_REVIEW_STOPS[MAP_MIN_REVIEW_STOPS.length - 1];
-  let bestD = Number.POSITIVE_INFINITY;
-  for (const stop of MAP_MIN_REVIEW_STOPS) {
-    const d = Math.abs(stop - n);
-    if (d < bestD || (d === bestD && stop > best)) {
-      best = stop;
-      bestD = d;
-    }
-  }
-  return best;
-}
-
 /** Unknown does not clear a floor that is on — same reading as General. */
 export function clearsMinReviews(
   count: number | null | undefined,
@@ -71,39 +40,6 @@ export function clearsMinReviews(
 ): boolean {
   if (!(min > 0)) return true;
   return typeof count === "number" && Number.isFinite(count) && count >= min;
-}
-
-/**
- * THE ONLY way a caller obtains the guest's review floor (MESITA-2298 §2).
- * Google Places: the sheet's stop, applied after Google answers on
- * `hit.reviewCount` (`clearsMinReviews`); a silent client gets the
- * default, 100+. Mesita Selected: ALWAYS 0 — no review floor of any kind
- * gates a Selected row, so by construction no branch can grow one.
- */
-export function guestReviewFloor(
-  scope: PlacesScope,
-  raw: unknown,
-): MapMinReviews | 0 {
-  return scope === "google" ? parseMapMinReviews(raw) : 0;
-}
-
-/**
- * The guest Google Reviews floor cuts GOOGLE HITS ONLY, after Google's
- * response (MESITA-2298 §2, MESITA-2305): a Mesita Selected row is never
- * gated by it, whatever the scope — the listed lane passes through as is.
- */
-export function admitGuestMinReviews<T extends ListedMapRow>(
-  listed: T[],
-  google: NearbyHit[],
-  minReviews: number,
-): { listed: T[]; google: NearbyHit[] } {
-  if (!(minReviews > 0)) return { listed, google };
-  return {
-    listed,
-    google: google.filter((hit) =>
-      clearsMinReviews(hit.reviewCount, minReviews)
-    ),
-  };
 }
 
 /** Every guest family. Stored switches do not turn a family off. */

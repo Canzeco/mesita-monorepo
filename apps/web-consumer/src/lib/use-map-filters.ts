@@ -1,16 +1,11 @@
 "use client";
 
-// Search-map filter store: Families and Google Reviews. A persisted v6
-// blob's `placesScope` (MESITA-2298) is ignored since MESITA-2384: the guest
-// never picks a source.
+// Search-map filter store: the family chips, All or one family. A persisted
+// v6 blob's `placesScope` (MESITA-2298) and `minReviews` (MESITA-2417, the
+// operator's now) are ignored.
 
 import { useSyncExternalStore } from "react";
-import {
-  clampMinReviews,
-  MAP_FILTER_DEFAULTS,
-  type MapFilters,
-  type MapMinReviews,
-} from "@/lib/map-filters-engine";
+import { MAP_FILTER_DEFAULTS, type MapFilters } from "@/lib/map-filters-engine";
 import { FILTERABLE_PLACE_FAMILIES, type FamilyKey } from "@/lib/place-families";
 
 // v6: v5 held `resultLimit` (How many). That stop is operator
@@ -41,7 +36,6 @@ function readPersisted(): MapFilters {
               typeof k === "string" && KNOWN_FAMILY_KEYS.has(k),
           ).slice(0, 1)
         : [],
-      minReviews: clampMinReviews(parsed.minReviews),
     };
   } catch {
     return MAP_FILTER_DEFAULTS;
@@ -75,16 +69,6 @@ function patchMapFilters(partial: Partial<MapFilters>) {
   state = { ...state, ...partial };
   persist();
   emit();
-}
-
-export function resetMapFilters() {
-  state = MAP_FILTER_DEFAULTS;
-  persist();
-  emit();
-}
-
-export function setMapMinReviews(minReviews: MapMinReviews) {
-  patchMapFilters({ minReviews: clampMinReviews(minReviews) });
 }
 
 /** ONE family at a time, or All (Pato, MESITA-2412: "only enable to select

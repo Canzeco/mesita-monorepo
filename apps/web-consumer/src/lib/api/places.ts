@@ -140,7 +140,6 @@ export async function apiFetchNearbyCatalog(
   client: SupabaseClient,
   center: { lat: number; lng: number },
   familyKeys: readonly string[] = [],
-  minReviews = 100,
 ): Promise<ViewportPlaces> {
   const data = await invokeEF<{
     places: Place[];
@@ -149,7 +148,6 @@ export async function apiFetchNearbyCatalog(
   }>(client, "consumer-web-list-places", {
     google: true,
     familyKeys: [...familyKeys],
-    minReviews,
     lat: center.lat,
     lng: center.lng,
   });
