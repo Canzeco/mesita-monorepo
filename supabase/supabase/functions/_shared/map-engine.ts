@@ -67,11 +67,12 @@ export function listedMapFilters(
  * Guest Google Reviews — Map mode only (MESITA-1790). A Discovery-mode
  * artificial filter: Google review-COUNT floor applied AFTER Google's
  * response, never as a Nearby API param, never a refill, and never to
- * Mesita Selected (MESITA-2298). Stops match the Filters sheet; a silent
- * client gets the sheet's default, 100+. 0 = no extra guest cut; operator
- * floors still bind underneath.
+ * Mesita Selected (MESITA-2298). Stops match the Filters sheet: 10+ · 100+ ·
+ * 1,000+ (Pato set the minimum at 10+, MESITA-2336, so the Google Places
+ * scope never admits a hit with fewer than 10 reviews). A silent client gets
+ * the sheet's default, 100+; a 0 or any value under 10 lands on 10+.
  */
-export const MAP_MIN_REVIEW_STOPS = [0, 10, 100, 1000] as const;
+export const MAP_MIN_REVIEW_STOPS = [10, 100, 1000] as const;
 export type MapMinReviews = (typeof MAP_MIN_REVIEW_STOPS)[number];
 export const MAP_MIN_REVIEWS_DEFAULT: MapMinReviews = 100;
 
@@ -79,7 +80,7 @@ export function parseMapMinReviews(value: unknown): MapMinReviews {
   if (value === undefined || value === null) return MAP_MIN_REVIEWS_DEFAULT;
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n)) return MAP_MIN_REVIEWS_DEFAULT;
-  if (n <= 0) return 0;
+  if (n <= MAP_MIN_REVIEW_STOPS[0]) return MAP_MIN_REVIEW_STOPS[0];
   let best: MapMinReviews =
     MAP_MIN_REVIEW_STOPS[MAP_MIN_REVIEW_STOPS.length - 1];
   let bestD = Number.POSITIVE_INFINITY;
@@ -112,7 +113,7 @@ export function clearsMinReviews(
 export function guestReviewFloor(
   scope: PlacesScope,
   raw: unknown,
-): MapMinReviews {
+): MapMinReviews | 0 {
   return scope === "google" ? parseMapMinReviews(raw) : 0;
 }
 

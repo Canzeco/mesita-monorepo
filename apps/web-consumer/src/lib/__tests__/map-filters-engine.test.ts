@@ -114,17 +114,17 @@ describe("mapFilterCount", () => {
       ),
     ).toBe(1);
     expect(mapFilterCount(filters({ minReviews: 100 }))).toBe(0);
-    expect(mapFilterCount(filters({ minReviews: 0 }))).toBe(1);
+    expect(mapFilterCount(filters({ minReviews: 10 }))).toBe(1);
     expect(mapFilterCount(filters({ minReviews: 1000 }))).toBe(1);
     expect(MAP_FILTER_DEFAULTS.minReviews).toBe(100);
     expect(MAP_FILTER_DEFAULTS).not.toHaveProperty("resultLimit");
   });
 });
 
-describe("Google Reviews — 0+ / 10+ / 100+ / 1,000+, default 100+ (MESITA-2298)", () => {
-  it("only those four stops, nothing in between; 10K+ is gone", () => {
-    expect(MAP_MIN_REVIEW_STOPS).toEqual([0, 10, 100, 1000]);
-    expect(clampMinReviews(0)).toBe(0);
+describe("Google Reviews — 10+ / 100+ / 1,000+, default 100+ (MESITA-2298, MESITA-2336)", () => {
+  it("only those three stops, nothing in between; 0+ and 10K+ are gone", () => {
+    expect(MAP_MIN_REVIEW_STOPS).toEqual([10, 100, 1000]);
+    expect(clampMinReviews(0)).toBe(10);
     expect(clampMinReviews(10)).toBe(10);
     expect(clampMinReviews(100)).toBe(100);
     expect(clampMinReviews(1000)).toBe(1000);
@@ -134,13 +134,14 @@ describe("Google Reviews — 0+ / 10+ / 100+ / 1,000+, default 100+ (MESITA-2298
     expect(clampMinReviews(55)).toBe(100);
     expect(clampMinReviews(500)).toBe(100);
     expect(clampMinReviews(550)).toBe(1000);
-    expect(clampMinReviews(-4)).toBe(0);
+    expect(clampMinReviews(-4)).toBe(10);
   });
 
-  it("an absent or unreadable value is the default, 100+; a stored 0 stays 0+", () => {
+  it("an absent or unreadable value is the default, 100+; a stored 0 (the retired 0+) lands on 10+", () => {
     expect(clampMinReviews(undefined)).toBe(100);
     expect(clampMinReviews("x")).toBe(100);
-    expect(clampMinReviews("0")).toBe(0);
+    expect(clampMinReviews("0")).toBe(10);
+    expect(clampMinReviews(0)).toBe(10);
   });
 });
 

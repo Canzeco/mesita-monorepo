@@ -7,13 +7,12 @@ import {
 } from "@/lib/map-filters-engine";
 import { cn } from "@/lib/utils";
 
-// Google Reviews — exclusive 0+ / 10+ / 100+ / 1,000+ Google reviews,
-// default 100+ (MESITA-2298). A count of people, never stars. Applied by
+// Google Reviews — exclusive 10+ / 100+ / 1,000+ Google reviews, default
+// 100+ (MESITA-2298; no 0+ since MESITA-2336). A count of people, never stars. Applied by
 // Mesita after Google answers, never as a Nearby API param, and never to
 // Mesita Selected.
 
 const STOP_LABEL: Record<MapMinReviews, string> = {
-  0: "0+",
   10: "10+",
   100: "100+",
   1000: "1,000+",
@@ -67,11 +66,7 @@ export function SearchPopularity({
               type="button"
               role="radio"
               aria-checked={active}
-              aria-label={
-                stop === 0
-                  ? "Any number of Google reviews"
-                  : `At least ${stop.toLocaleString()} Google reviews`
-              }
+              aria-label={`At least ${stop.toLocaleString()} Google reviews`}
               onClick={() => onMinReviews(stop)}
               className={cn(
                 "inline-flex min-h-9 flex-1 items-center justify-center px-1 text-center type-meta whitespace-nowrap tabular-nums transition",
