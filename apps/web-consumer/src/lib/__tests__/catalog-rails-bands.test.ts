@@ -11,8 +11,8 @@ import {
   placesChips,
 } from "@/components/consumer/home/CatalogRails";
 
-// Pato (MESITA-2366): Places is ONE horizontal chip row — Favorites · Mesita ·
-// Google · Location, then the families — over ONE 2-column grid of the chosen
+// Pato (MESITA-2366, MESITA-2367): Places is a category column — Favorites · Mesita ·
+// Google · Location, then the families — beside ONE column of the chosen
 // set. The server's rails are unchanged; a chip picks which rail the grid shows.
 const src = readFileSync(
   join(__dirname, "../../components/consumer/home/CatalogRails.tsx"),
@@ -45,15 +45,19 @@ describe("the Places chip row (MESITA-2366)", () => {
     expect(src.indexOf('"Location"')).toBeLessThan(src.indexOf("chips.slice(3).map"));
   });
 
-  it("scrolls sideways and opens on Mesita", () => {
-    expect(src).toContain("scrollbar-hide flex shrink-0 gap-1.5 overflow-x-auto");
+  it("is a left column, one third wide, scrolling on its own, and opens on Mesita (MESITA-2367)", () => {
+    expect(src).toContain("bg-muted scrollbar-hide w-1/3 shrink-0 overflow-y-auto");
     expect(src).toContain("useState<string>(MESITA_RAIL_KEY)");
+    // The chosen row: white, bold, an ink bar on its left edge.
+    expect(src).toContain('const ROW_ON = "bg-card text-foreground font-semibold";');
+    expect(src).toContain("bg-foreground absolute inset-y-0 left-0 w-[3px]");
   });
 });
 
 describe("the Places grid (MESITA-2366)", () => {
-  it("is two square tiles per row, 2px apart, and no vertical rail name", () => {
-    expect(src).toContain('const PLACES_GRID = "grid grid-cols-2 content-start gap-0.5";');
+  it("is the right two thirds, one square tile per row, scrolling on its own (MESITA-2367)", () => {
+    expect(src).toContain('const PLACES_LIST = "grid grid-cols-1 content-start gap-0.5";');
+    expect(src).toContain("w-2/3 flex-col overflow-y-auto");
     expect(src).not.toContain("writing-mode");
     expect(src).not.toContain("data-band");
   });
