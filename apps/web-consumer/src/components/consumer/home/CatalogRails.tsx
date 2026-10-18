@@ -8,7 +8,7 @@
 //   │ ⌖ Tecnologico                      ⌄ │  the active location, full width;
 //   ├────────────────┬─────────────────────┤  a tap opens the location sheet
 //   │ ❤️ Favorites    │                     │
-//   │▌✨ Featured     │       square        │  left third: Favorites, Featured
+//   │▌✨ Featured     │       square        │  left quarter: Favorites, Featured
 //   │ ☕ Coffee       │        tile         │  (the default: every place), then
 //   │ 🥐 Breakfast    │                     │  one row per family. The chosen
 //   │                │                     │  row is white, bold, an ink bar on
@@ -386,7 +386,7 @@ export function CatalogRails() {
 
   const categories = (
     <nav
-      className="bg-muted scrollbar-hide w-1/3 shrink-0 overflow-y-auto overscroll-y-contain"
+      className="bg-muted scrollbar-hide w-1/4 shrink-0 overflow-y-auto overscroll-y-contain"
       aria-label="Places"
       data-places-categories
     >
@@ -395,13 +395,13 @@ export function CatalogRails() {
   );
 
   // Header line → location bar → the split; every state draws in the right
-  // two thirds, which scrolls on its own.
+  // three quarters, which scrolls on its own.
   const shell = (inner: ReactNode) => (
     <div className="flex min-h-0 flex-1 flex-col">
       {locationBar}
       <div className="flex min-h-0 flex-1">
         {categories}
-        <div className="bg-card scrollbar-hide flex min-h-0 w-2/3 flex-col overflow-y-auto overscroll-y-contain">
+        <div className="bg-card scrollbar-hide flex min-h-0 w-3/4 flex-col overflow-y-auto overscroll-y-contain">
           {inner}
         </div>
       </div>
