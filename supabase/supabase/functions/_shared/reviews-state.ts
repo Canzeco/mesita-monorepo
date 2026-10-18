@@ -1,8 +1,10 @@
 // Reviews numbers (MESITA-2189). Google stars, the review count, and the
 // two follower counts are not enrichment facts and are not typed on Profile.
 // The verifier in review-sources.ts is the only writer. Create and Enrich
-// strip them off the gathered place; Third puts back whatever the verifier
-// stored on gathered.sources.reviews.
+// strip them off the gathered place; Create then stores Google's two from
+// the Details call that minted the row, through the verifier's own patch
+// (MESITA-2306); Third puts back whatever the verifier stored on
+// gathered.sources.reviews.
 
 export const REVIEWS_TILE_COLUMNS = [
   "google_stars_overall",
