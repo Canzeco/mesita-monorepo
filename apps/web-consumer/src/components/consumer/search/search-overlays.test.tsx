@@ -192,7 +192,8 @@ describe("SearchFilterRow", () => {
     expect(rest).toContain("shrink-0");
 
     const header = read("SearchHeader.tsx");
-    expect(header).toContain('<div className="min-w-0 flex-1">{bar}</div>');
+    expect(header).toContain('<div className="pointer-events-auto min-w-0 flex-1">{bar}</div>');
+    expect(header).toContain('<div className="pointer-events-auto shrink-0">{locate}</div>');
     expect(header).toContain('<div className="flex min-w-0 items-center gap-2 px-2 pt-2.5 pb-2">');
   });
 });
@@ -236,14 +237,17 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
     // MESITA-2409: the header carries the row (locate, bar, Ask AI) and the
     // horizontal chips (Filters, All, families); the map sits under it.
     expect(src).toContain("<SearchHeader");
-    expect(src.indexOf("<SearchHeader")).toBeLessThan(src.indexOf("<SearchMap"));
     expect(src).not.toContain("<SearchFilterRow");
     expect(src.indexOf("<SearchLocateButton")).toBeGreaterThan(-1);
     expect(src.indexOf("<SearchLocateButton")).toBeLessThan(src.indexOf("<SearchBar"));
     const header = read("SearchHeader.tsx");
     expect(header).toContain('variant="chip"');
     expect(header).toContain("FILTERABLE_PLACE_FAMILIES.map");
-    expect(header).toContain("toggleMapFamily(family.key)");
+    expect(header).toContain("selectMapFamily(family.key)");
+    // It floats over the map (MESITA-2412): absolute, no band, no hairline.
+    expect(header).toContain('"pointer-events-none absolute inset-x-0 top-0 z-30 flex flex-col"');
+    expect(header).not.toMatch(/\bborder-b\b/);
+    expect(src.indexOf("<SearchMap")).toBeLessThan(src.indexOf("<SearchHeader"));
     expect(header).toContain("overflow-x-auto");
     expect(header.indexOf("<SearchFilterRow")).toBeLessThan(header.indexOf("FILTERABLE_PLACE_FAMILIES.map"));
     expect(src).toContain("recentreOnGuest");
@@ -383,12 +387,13 @@ describe("Search results drop from the bar, not from the bottom", () => {
   // the browser does that arithmetic.
   it("renders the results inside the top overlay column, not docked bottom", () => {
     const src = read("SearchClient.tsx");
-    const overlay = src.slice(src.indexOf("absolute inset-x-3 top-3"));
+    // Since MESITA-2412 the top column IS the floating header: the panel is
+    // its child, reached before the header closes and before the rail.
+    const overlay = src.slice(src.indexOf("<SearchHeader"));
     const results = overlay.indexOf("<SearchResultsPanel");
-    const closes = overlay.indexOf("<SearchRailOverlay");
     expect(results).toBeGreaterThan(-1);
-    // The panel is reached before the rail, i.e. still inside the top column.
-    expect(results).toBeLessThan(closes);
+    expect(results).toBeLessThan(overlay.indexOf("</SearchHeader>"));
+    expect(results).toBeLessThan(overlay.indexOf("<SearchRailOverlay"));
     expect(src).not.toContain("inset-x-0 bottom-0 z-20");
   });
 

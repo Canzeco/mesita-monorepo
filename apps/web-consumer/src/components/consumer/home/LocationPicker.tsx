@@ -89,13 +89,15 @@ export function LocationPicker() {
         onClick={() => setPicking(true)}
         aria-haspopup="dialog"
         aria-label={`Location: ${label}. Change location`}
-        className="border-border bg-card text-foreground hover:bg-muted flex h-10 w-full min-w-0 items-center gap-1.5 rounded-full border px-3 text-left text-xs font-semibold transition active:scale-[0.98]"
+        className="border-border bg-card text-foreground hover:bg-muted relative flex h-10 w-full min-w-0 items-center justify-center gap-1.5 rounded-full border px-8 text-xs font-semibold transition active:scale-[0.98]"
         data-home-location
       >
+        {/* Pin and name centred (Pato, MESITA-2412); the chevron keeps the
+            right edge, and px-8 keeps a long name clear of it. */}
         <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
-        <span className="min-w-0 flex-1 truncate">{label}</span>
+        <span className="min-w-0 truncate">{label}</span>
         <ChevronDown
-          className="text-muted-foreground h-3.5 w-3.5 shrink-0"
+          className="text-muted-foreground absolute top-1/2 right-3 h-3.5 w-3.5 shrink-0 -translate-y-1/2"
           strokeWidth={2}
           aria-hidden
         />
