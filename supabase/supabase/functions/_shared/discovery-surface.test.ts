@@ -53,11 +53,9 @@ Deno.test("every pipeline signal is fed by one of its own sources (derived from 
   }
   assertEquals(sourcesFeedingSignal("area", "proximity"), ["google_nearby", "mesita_places"]);
   assertEquals(sourcesFeedingSignal("deep", "description_similarity"), ["mesita_places"]);
-  assertEquals(sourcesFeedingSignal("name", "name_similarity"), [
-    "google_autocomplete",
-    "google_text",
-    "mesita_places",
-  ]);
+  // Google rows keep Google's order in the Name pipeline: no signal scores
+  // them, so neither Google source is derived as feeding Name (MESITA-2338).
+  assertEquals(sourcesFeedingSignal("name", "name_similarity"), ["mesita_places"]);
   // Autocomplete answers with no coordinates, so it can never feed Proximity.
   assertEquals(sourceProvides("google_autocomplete", ["coordinates"]), false);
 });
@@ -93,4 +91,39 @@ Deno.test("the call sites match the model", async () => {
   assert(chat.includes("runDeepPipeline("));
   // No weights on Area: the blend and the lineup are gone from it.
   assertEquals(/rankByBlend|weightsForMode|mapLineupWeights|catalogScore/.test(area), false);
+});
+
+// ── MESITA-2338: every definition the spec asks for, and honest relations ──
+
+Deno.test("every signal states computation, cost, missing data and normalization", () => {
+  for (const sig of DISCOVERY_SIGNALS) {
+    assert(sig.requires.length > 0, sig.key);
+    assert(sig.query.length > 0, sig.key);
+    assert(["runtime", "precomputed", "hybrid"].includes(sig.computation), sig.key);
+    assert(sig.cost.length > 0 && sig.missing.length > 0 && sig.normalization.length > 0, sig.key);
+    assert(pipelinesUsingSignal(sig.key).length > 0, sig.key);
+  }
+});
+
+Deno.test("a source a pipeline keeps in its own order is one of its sources and feeds nothing", () => {
+  for (const p of DISCOVERY_PIPELINES) {
+    for (const s of p.keepsOrder) {
+      assert(p.sources.includes(s), `${p.key}/${s}`);
+      for (const sig of p.signals) {
+        assertEquals(sourcesFeedingSignal(p.key, sig).includes(s), false, `${p.key}/${s}/${sig}`);
+      }
+    }
+  }
+});
+
+Deno.test("every pipeline discloses its always-on rules; the Name type rule is one of them", () => {
+  for (const p of DISCOVERY_PIPELINES) assert(p.rules.length > 0, p.key);
+  const name = DISCOVERY_PIPELINES.find((p) => p.key === "name")!;
+  assert(name.rules.some((r) => r.includes("Google type")));
+  assertEquals(name.gates.length, 0);
+});
+
+Deno.test("Deep's evidence (the About) is a field Mesita Places Search declares", () => {
+  const mesita = DISCOVERY_SOURCES.find((s) => s.key === "mesita_places")!;
+  assert(mesita.provides.includes("about"));
 });

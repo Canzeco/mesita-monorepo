@@ -54,7 +54,7 @@ export function ResultSummary({
                 className="text-foreground/60 hover:text-foreground inline-flex items-center gap-1 type-eyebrow"
               >
                 <SlidersHorizontal className="h-3 w-3" />
-                Discovery › Map
+                Discovery › place rules
               </Link>
               {result.minRating > 0 && (
                 <span className="bg-background/70 text-foreground/80 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-medium">

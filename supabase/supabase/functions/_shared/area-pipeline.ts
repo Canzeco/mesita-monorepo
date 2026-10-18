@@ -35,6 +35,7 @@ import { applyGeneralGateQuery, clearsGeneralGate } from "./discovery-general-ga
 import type { FilterableQuery } from "./discovery-filters.ts";
 import { clearsMinReviews } from "./map-engine.ts";
 import { familiesForPlace } from "./place-taxonomy.ts";
+import { familiesForGoogleType, nearbyExcludedTypesForFamilies } from "./sourcing.ts";
 import { type AreaCandidate, type AreaContext, rankArea } from "./area-score.ts";
 import {
   POPULARITY_REFERENCE_RATING_DEFAULT,
@@ -86,6 +87,27 @@ export type OwnedRow = Record<string, unknown> & {
 };
 
 const numOrNull = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+
+/**
+ * A Google hit Mesita owns, as an Area candidate (MESITA-2338). It is the
+ * same Google listing, so its rating and review count come from the hit —
+ * the numbers eligibility already judged — and fall back to the stored ones
+ * only when the hit lacks them; a Mesita row with null stored numbers must
+ * not score Popularity 0 against Google-only stubs carrying the real ones.
+ * Its families are Mesita's own; only when Mesita does not know them (none,
+ * or `undefined`) does the type Google returned it for decide, so the Family
+ * gate keeps a place Google typed into the requested family.
+ */
+export function ownedCandidate(row: Record<string, unknown>, hit: NearbyHit): AreaCandidate {
+  const base = mesitaCandidate(row);
+  const known = base.familyKeys.filter((f) => f && f !== "undefined");
+  return {
+    ...base,
+    rating: numOrNull(hit.rating) ?? base.rating,
+    reviewCount: numOrNull(hit.reviewCount) ?? base.reviewCount,
+    familyKeys: known.length > 0 ? base.familyKeys : familiesForGoogleType(hit.primaryType),
+  };
+}
 
 /** A Mesita row as an Area candidate. */
 export function mesitaCandidate(row: Record<string, unknown>): AreaCandidate {
@@ -170,11 +192,15 @@ export async function selectGooglePlaces<T extends OwnedRow>(
     return { places: [], hits: 0 };
   }
 
+  // The Family gate pushed down exactly: a general type's precise subtypes
+  // that belong to no requested family never come back to be thrown away.
+  const excludedTypes = nearbyExcludedTypesForFamilies(types, deps.families ?? []);
   // A warm cell spends nothing, not even a ledger row.
-  const hits = peekCachedNearbyPlaces(center, types, radiusKm) ??
+  const hits = peekCachedNearbyPlaces(center, types, radiusKm, excludedTypes) ??
     await searchNearbyPlaces(apiKey, center, {
       types,
       radiusKm,
+      excludedTypes,
       beforeFanout: deps.consumeQuota,
     });
 
@@ -204,7 +230,7 @@ export async function selectGooglePlaces<T extends OwnedRow>(
     if (row) {
       const { google_place_id: _gid, ...rest } = row;
       return {
-        candidate: mesitaCandidate(row),
+        candidate: ownedCandidate(row, hit),
         place: {
           ...rest,
           distance_km: roundedKm(center, row.lat, row.lng) ?? km,
@@ -254,10 +280,12 @@ export function selectMesitaSelected<T extends Record<string, unknown>>(
   opts: SelectedOpts,
 ): Array<T & { distance_km: number | null }> {
   const { center } = opts;
+  // The radius cut reads the exact distance, the same as the Google scope's;
+  // only the distance shown on the card is rounded.
   const inside = rows.filter((row) => {
     if (!center) return true;
-    const km = roundedKm(center, numOrNull(row.lat), numOrNull(row.lng));
-    return km !== null && km <= opts.radiusKm;
+    const km = haversineKm(center.lat, center.lng, numOrNull(row.lat), numOrNull(row.lng));
+    return Number.isFinite(km) && km <= opts.radiusKm;
   });
   const ranked = rankArea(inside, mesitaCandidate, {
     anchor: center,
@@ -279,6 +307,7 @@ export type SelectedPoolQuery<Q> =
   & {
     not: (col: string, op: string, val: unknown) => Q;
     overlaps: (col: string, val: string[]) => Q;
+    order: (col: string, opts?: { ascending?: boolean }) => Q;
   };
 
 /** A supabase-js select, seen structurally: what the two EFs hand
@@ -312,5 +341,7 @@ export function selectedPoolQuery<Q extends SelectedPoolQuery<Q>>(
       nearbyBbox(opts.center.lat, opts.center.lng, opts.radiusKm),
     );
   }
-  return q;
+  // A capped pool must be the same slice every time: without an order,
+  // Postgres may hand back any N rows once the area holds more than the cap.
+  return q.order("id", { ascending: true });
 }

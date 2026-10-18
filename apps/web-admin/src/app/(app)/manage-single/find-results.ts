@@ -74,7 +74,8 @@ export type SourceResult<T> = { status: "ok"; data: T } | { status: "error"; err
 
 export type TextSearchResult = {
   places: PlaceLite[];
-  /** Discovery › Map floors the backend applied (0 = off) and what they hid. */
+  /** The stored Google floors (map.minRating/minReviews, 0 = off) and the place
+   *  types the backend applied, and what they hid. */
   minRating: number;
   minUserRatingCount: number;
   filteredOutCount: number;
@@ -265,7 +266,7 @@ export function mergeFindResults(input: FindInputs): FindResult {
       const floors = floorsLabel(t.minRating, t.minUserRatingCount);
       notes.push({
         tone: "muted",
-        text: `Discovery › Map hid ${t.filteredOutCount} Text Search result${t.filteredOutCount === 1 ? "" : "s"}${floors ? ` (${floors})` : ""}.`,
+        text: `Discovery's place rules hid ${t.filteredOutCount} Text Search result${t.filteredOutCount === 1 ? "" : "s"}${floors ? ` (${floors})` : ""}.`,
       });
     }
     if (t.mesitaLookupError) {

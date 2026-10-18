@@ -4,10 +4,12 @@ import {
   FEED_GOOGLE_TYPES,
   type GoogleSelectionDeps,
   type OwnedRow,
+  ownedCandidate,
   selectedPoolQuery,
   selectGooglePlaces,
   selectMesitaSelected,
 } from "./area-pipeline.ts";
+import { nearbyExcludedTypesForFamilies } from "./sourcing.ts";
 import { DISCOVERY_DEFAULTS } from "./discovery-config.ts";
 
 const CENTER = { lat: 25.67, lng: -100.3 };
@@ -20,6 +22,7 @@ type GPlace = {
   photo?: string;
   rating?: number;
   reviews?: number;
+  type?: string;
 };
 
 function gPlace(p: GPlace) {
@@ -31,7 +34,7 @@ function gPlace(p: GPlace) {
     rating: p.rating ?? 4.5,
     userRatingCount: p.reviews ?? 150,
     businessStatus: p.status ?? "OPERATIONAL",
-    primaryType: "restaurant",
+    primaryType: p.type ?? "restaurant",
     ...(p.openNow === undefined
       ? {}
       : { currentOpeningHours: { openNow: p.openNow } }),
@@ -432,6 +435,7 @@ Deno.test("selectedPoolQuery: Enriched gate, General, ready, families and the ra
     not: (c: string, op: string, v: unknown) => (seen.push(`not ${c} ${op} ${v}`), q),
     or: (f: string) => (seen.push(`or ${f}`), q),
     overlaps: (c: string, v: string[]) => (seen.push(`overlaps ${c} ${v}`), q),
+    order: (c: string, o?: { ascending?: boolean }) => (seen.push(`order ${c} ${o?.ascending}`), q),
   };
   selectedPoolQuery(q, DISCOVERY_DEFAULTS, {
     center: CENTER,
@@ -443,6 +447,8 @@ Deno.test("selectedPoolQuery: Enriched gate, General, ready, families and the ra
   assert(seen.includes("overlaps family_keys coffee"));
   assert(seen.some((s) => s.startsWith("gte lat")));
   assertEquals(seen.some((s) => s.includes("google_review_count")), false);
+  // A capped pool is the same slice every time (MESITA-2338).
+  assertEquals(seen[seen.length - 1], "order id true");
 });
 
 Deno.test("google: the operator's floor cuts Google hits; the higher floor wins (MESITA-2319)", async () => {
@@ -474,6 +480,7 @@ Deno.test("Area keeps only General's active check: the Name pipeline's reviews f
     not: (c: string, op: string, v: unknown) => (seen.push(`not ${c} ${op} ${v}`), q),
     or: (f: string) => (seen.push(`or ${f}`), q),
     overlaps: (c: string, v: string[]) => (seen.push(`overlaps ${c} ${v}`), q),
+    order: (c: string, o?: { ascending?: boolean }) => (seen.push(`order ${c} ${o?.ascending}`), q),
   };
   const general = { ...DISCOVERY_DEFAULTS.general, minReviews: 500 };
   selectedPoolQuery(q, { general }, { center: null, radiusKm: 5 });
@@ -485,5 +492,147 @@ Deno.test("Area keeps only General's active check: the Name pipeline's reviews f
     assertEquals(ids(out.places), ["g:thin"]);
   } finally {
     g.restore();
+  }
+});
+
+// ── MESITA-2338: the audit's Area fixes ─────────────────────────────────────
+
+const OWNED_BASE: OwnedRow = {
+  id: "mesita-1",
+  google_place_id: "mine",
+  lat: 25.6701,
+  lng: CENTER.lng,
+  enriched_at: "2026-01-01T00:00:00Z",
+  content_state: "ready",
+};
+
+Deno.test("google: an owned hit is scored on Google's numbers when its stored ones are missing", async () => {
+  reset();
+  // The owned place is the nearest and the most loved on Google, but its
+  // Mesita row has no stored stars or count. It must rank first, not sink to
+  // the bottom on Popularity 0 and fall off the Feed's five.
+  const g = stubGoogle([
+    { id: "mine", lat: 25.6701, rating: 4.8, reviews: 3000 },
+    ...Array.from({ length: 6 }, (_, i) => ({ id: `g${i}`, lat: 25.672 + i * 0.001, rating: 4.2, reviews: 200 })),
+  ]);
+  try {
+    const { d } = deps({
+      lookupOwned: () =>
+        Promise.resolve([{ ...OWNED_BASE, google_stars_overall: null, google_review_count: null }]),
+    });
+    const out = await selectGooglePlaces(d);
+    assertEquals(out.places.length, 5);
+    assertEquals(out.places[0].id, "mesita-1");
+  } finally {
+    g.restore();
+  }
+});
+
+Deno.test("ownedCandidate: the hit's numbers first, the stored ones as fallback", () => {
+  const hit = {
+    placeId: "mine",
+    name: "x",
+    address: "",
+    lat: 1,
+    lng: 1,
+    rating: 4.8,
+    reviewCount: 3000,
+    primaryType: "restaurant",
+    businessStatus: "OPERATIONAL",
+    openNow: null,
+  };
+  const stored = { ...OWNED_BASE, google_stars_overall: 3.1, google_review_count: 12 };
+  const a = ownedCandidate(stored, hit);
+  assertEquals([a.rating, a.reviewCount], [4.8, 3000]);
+  const b = ownedCandidate(stored, { ...hit, rating: null, reviewCount: null });
+  assertEquals([b.rating, b.reviewCount], [3.1, 12]);
+});
+
+Deno.test("google: an owned hit whose Mesita family is unknown keeps the family Google typed it into", async () => {
+  reset();
+  const g = stubGoogle([
+    { id: "mine", lat: 25.6701, type: "restaurant" },
+    { id: "other", lat: 25.672, type: "restaurant" },
+  ]);
+  try {
+    const tacosRow = { ...OWNED_BASE, google_place_id: "other", id: "mesita-tacos", family_keys: ["tacos"] };
+    const { d } = deps({
+      families: ["dinner"],
+      types: ["restaurant"],
+      lookupOwned: () => Promise.resolve([{ ...OWNED_BASE, family_keys: ["undefined"] }, tacosRow]),
+    });
+    const out = await selectGooglePlaces(d);
+    // Unknown on Mesita, `restaurant` on Google → Dinner: kept. A row Mesita
+    // knows is Tacos stays Tacos and is cut under Dinner, as in Selected.
+    assertEquals(ids(out.places), ["mesita-1"]);
+  } finally {
+    g.restore();
+  }
+});
+
+Deno.test("nearbyExcludedTypesForFamilies: Dinner excludes the precise restaurants of other families", () => {
+  const ex = nearbyExcludedTypesForFamilies(["restaurant"], ["dinner"]);
+  for (const t of ["mexican_restaurant", "pizza_restaurant", "sushi_restaurant", "hamburger_restaurant"]) {
+    assert(ex.includes(t), t);
+  }
+  assertEquals(ex.includes("restaurant"), false);
+  assert(ex.length <= 50);
+  // No family asked: no exclusion, the call is unchanged.
+  assertEquals(nearbyExcludedTypesForFamilies(FEED_GOOGLE_TYPES, []), []);
+  // Asking Dinner and Tacos keeps Mexican.
+  assertEquals(
+    nearbyExcludedTypesForFamilies(["restaurant", "mexican_restaurant"], ["dinner", "tacos"])
+      .includes("mexican_restaurant"),
+    false,
+  );
+});
+
+Deno.test("google: a family pill sends excludedPrimaryTypes; no pill sends none", async () => {
+  reset();
+  const g = stubGoogle([{ id: "a", lat: 25.6701 }]);
+  try {
+    await selectGooglePlaces(deps({ families: ["dinner"], types: ["restaurant"] }).d);
+    const body = JSON.parse(nearbyCalls(g.calls)[0].body ?? "{}");
+    assertEquals(body.includedPrimaryTypes, ["restaurant"]);
+    assert(Array.isArray(body.excludedPrimaryTypes));
+    assert(body.excludedPrimaryTypes.includes("mexican_restaurant"));
+    reset();
+    await selectGooglePlaces(deps().d);
+    const plain = JSON.parse(nearbyCalls(g.calls)[1].body ?? "{}");
+    assertEquals("excludedPrimaryTypes" in plain, false);
+  } finally {
+    g.restore();
+  }
+});
+
+Deno.test("selected: the radius cut reads the exact distance, not the rounded one", () => {
+  // 5.04 km shows as 5.0 km but is outside a 5 km radius.
+  const row = {
+    id: "edge",
+    lat: CENTER.lat + 5.04 / 111.195,
+    lng: CENTER.lng,
+    enriched_at: "2026-01-01T00:00:00Z",
+    content_state: "ready",
+    google_stars_overall: 4.5,
+    google_review_count: 100,
+    family_keys: ["dinner"],
+  };
+  assertEquals(
+    selectMesitaSelected([row], { center: CENTER, radiusKm: 5, params: DISCOVERY_DEFAULTS.params }).length,
+    0,
+  );
+});
+
+Deno.test("Area never embeds: no Area file calls an embedding or a vector signal", async () => {
+  for (const file of [
+    "./area-pipeline.ts",
+    "./area-score.ts",
+    "../consumer-web-list-places/index.ts",
+    "../consumer-web-list-catalog/index.ts",
+  ]) {
+    const src = await Deno.readTextFile(new URL(file, import.meta.url));
+    for (const banned of ["embedSingle", "embeddings-http", "descriptionSimilarity", "nameSimilarity"]) {
+      assertEquals(src.includes(banned), false, `${file}: ${banned}`);
+    }
   }
 });

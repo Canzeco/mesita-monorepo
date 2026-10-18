@@ -145,12 +145,12 @@ describe("mergeFindResults", () => {
     expect(r.rows.length).toBeGreaterThan(0);
   });
 
-  it("carries Discovery › Map's hidden count and the Mesita-lookup error in the notes", () => {
+  it("carries Discovery's place-rules hidden count and the Mesita-lookup error in the notes", () => {
     const r = mergeFindResults(
       inputs({ text: text([lite({})], { filteredOutCount: 4, minRating: 4, minUserRatingCount: 50, mesitaLookupError: "timeout" }) }),
     );
     expect(r.notes.map((n) => n.text)).toEqual([
-      "Discovery › Map hid 4 Text Search results (rating ≥ 4, reviews ≥ 50).",
+      "Discovery's place rules hid 4 Text Search results (rating ≥ 4, reviews ≥ 50).",
       "Text Search's Mesita lookup failed (timeout); On Mesita reads the catalogue and the Mesita searches only.",
     ]);
   });

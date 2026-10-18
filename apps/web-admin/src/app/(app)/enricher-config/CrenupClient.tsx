@@ -216,9 +216,9 @@ export function CrenupClient({
                         href={DISCOVERY_MAP_HREF}
                         className="text-foreground underline underline-offset-2"
                       >
-                        Discovery › Map
+                        Discovery&apos;s place rules
                       </Link>{" "}
-                      decides whether the add is allowed.
+                      decide whether the add is allowed: only Mesita&apos;s place types.
                     </>
                   ),
                 },

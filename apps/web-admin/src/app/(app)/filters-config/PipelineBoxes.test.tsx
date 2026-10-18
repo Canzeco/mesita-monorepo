@@ -158,3 +158,29 @@ describe("the boxes' controls", () => {
     expect(html).toContain("Chat Agent prompt (Don Memo)");
   });
 });
+
+describe("the boxes tell the runtime's truth (MESITA-2338)", () => {
+  it("every box lists its always-on rules; Name's include Mesita's place types", () => {
+    const [nameAdmin, name, area, deep] = boxes();
+    for (const box of [nameAdmin, name, area, deep]) expect(box).toContain(">Always-on rules<");
+    expect(name).toContain("A Google row must have a Google type of one of the fifteen families");
+    expect(area).toContain("Inside the radius");
+  });
+
+  it("Name says Google rows keep Google's order and derives Name as fed by Mesita only", () => {
+    const name = boxes()[1];
+    expect(name).toContain("Its rows keep Google Autocomplete&#x27;s own order");
+    expect(name).toContain("Fed by Mesita Places Search.");
+  });
+
+  it("each signal shows its computation, normalization and the pipelines using it", () => {
+    const area = boxes()[2];
+    expect(area).toContain("Normalization:");
+    expect(area).toContain("Computed at request time");
+    expect(area).toContain("Used by Area.");
+  });
+
+  it("Name by Admin shows Find's own ordering, not the guest bar's", () => {
+    expect(boxes()[0]).toContain("Rows found by more sources come first");
+  });
+});

@@ -27,6 +27,39 @@ export function familiesForGoogleType(
   return families.filter((key) => key !== "undefined");
 }
 
+/** Google's cap on `excludedPrimaryTypes` in one Nearby request. */
+const NEARBY_EXCLUDED_CAP = 50;
+
+/**
+ * The Family gate pushed down EXACTLY (MESITA-2338). A family's Nearby
+ * battery can be a general type (Dinner sends `restaurant`), and Google then
+ * returns its precise subtypes too (`mexican_restaurant`, `pizza_restaurant`)
+ * — types that belong to another family, which the gate would throw away
+ * after the one billed call. This lists every Table A type in the same coarse
+ * group as an included type that maps to none of the requested families, for
+ * Nearby's `excludedPrimaryTypes`. Empty when no family is requested.
+ */
+export function nearbyExcludedTypesForFamilies(
+  includedTypes: readonly string[],
+  families: readonly string[],
+): string[] {
+  if (families.length === 0 || includedTypes.length === 0) return [];
+  const included = new Set(includedTypes);
+  const groups = new Set(
+    includedTypes.map((t) => GOOGLE_TYPE_SUPER[t] ?? superForGoogleType(t)).filter(
+      (g): g is NonNullable<typeof g> => Boolean(g) && g !== "undefined",
+    ),
+  );
+  const out: string[] = [];
+  for (const [type, group] of Object.entries(GOOGLE_TYPE_SUPER)) {
+    if (!groups.has(group) || included.has(type)) continue;
+    const fams = familiesForGoogleType(type);
+    if (fams.some((f) => families.includes(f))) continue;
+    out.push(type);
+  }
+  return out.sort().slice(0, NEARBY_EXCLUDED_CAP);
+}
+
 type GeoOrigin = { lat: number; lng: number };
 
 /** CLDR / ISO-3166-1 alpha-2. Empty = omit Google's optional country params. */

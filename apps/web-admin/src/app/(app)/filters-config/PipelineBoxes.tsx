@@ -47,13 +47,22 @@ import { PipelineBox } from "./PipelineBox";
 const ICON = "h-5 w-5";
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
+/** What each box's Save writes (actions.ts `DiscoverySlice`). Exported so
+ *  actions.test.ts proves exactly these sets cannot reach each other. */
+export const BOX_SLICES = {
+  nameAdmin: ["nameAdmin"],
+  name: ["nameDeep", "nameLocations", "nameIdle", "general"],
+  area: ["map", "catalogRows", "areaSignals"],
+  deep: ["deep", "chat"],
+} as const satisfies Record<string, readonly DiscoverySlice[]>;
+
 function useDiscoveryEditor(seed: ConfigSeed<DiscoveryConfig>) {
   return useConfigEditor({ ...seed, load: getDiscoveryConfig });
 }
 
 type Editor = ReturnType<typeof useDiscoveryEditor>;
 
-function Save({ editor, dirty, slices }: { editor: Editor; dirty: boolean; slices: DiscoverySlice[] }) {
+function Save({ editor, dirty, slices }: { editor: Editor; dirty: boolean; slices: readonly DiscoverySlice[] }) {
   const { pending, ok, loadBlocked, error, updatedAt, saveWith } = editor;
   return (
     <>
@@ -64,7 +73,7 @@ function Save({ editor, dirty, slices }: { editor: Editor; dirty: boolean; slice
         pending={pending}
         dirty={dirty}
         ok={ok && !dirty}
-        onClick={() => saveWith((c) => updateDiscoveryConfig(c, slices))}
+        onClick={() => saveWith((c) => updateDiscoveryConfig(c, [...slices]))}
         loadError={loadBlocked ? error : null}
       />
     </>
@@ -119,13 +128,17 @@ export function NameAdminBox(seed: ConfigSeed<DiscoveryConfig>) {
       callers={["Admin Single Place › Find"]}
       explanation={
         <p>
-          The Name pipeline as an admin runs it. An admin types a name; the
-          sources run together and merge into one list with duplicates
-          removed. Locations are never shown here. With the last option on,
-          the page opens listing every Mesita place, as an empty search.
+          The Name pipeline as an admin runs it. An admin types a name;
+          Autocomplete and the Mesita rows run through the guest bar&apos;s
+          lane, with its rules. The Text Search column is Find&apos;s own
+          call: it applies Mesita&apos;s place types but not Discovery ›
+          General&apos;s active check or reviews floor. Locations are never
+          shown here. With the last option on, the page opens listing every
+          Mesita place, as an empty search.
         </p>
       }
-      save={<Save editor={editor} dirty={dirty} slices={["nameAdmin"]} />}
+      scoring="Rows found by more sources come first, then Text Search rank, then Autocomplete rank, then Name. Duplicates merge."
+      save={<Save editor={editor} dirty={dirty} slices={BOX_SLICES.nameAdmin} />}
     >
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <NumberField
@@ -200,12 +213,14 @@ export function NameBox(seed: ConfigSeed<DiscoveryConfig>) {
           region) shows with a location icon, and picking one moves the map.
           Picking a place moves the map there and makes it the first card.
           Neither gate applies: a place Mesita has created is findable by
-          name before its profile is written. Closed places never show, and
-          the reviews floor below cuts every row.
+          name before its profile is written. The always-on rules below
+          still hold: closed places never show, a Google row must be one of
+          Mesita&apos;s place types, and the reviews floor below cuts every
+          row.
         </p>
       }
       save={
-        <Save editor={editor} dirty={dirty} slices={["nameDeep", "nameLocations", "nameIdle", "general"]} />
+        <Save editor={editor} dirty={dirty} slices={BOX_SLICES.name} />
       }
     >
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -262,9 +277,9 @@ export function NameBox(seed: ConfigSeed<DiscoveryConfig>) {
       </div>
       <p className="text-muted-foreground type-meta">
         0 rows turns a source off. The reviews floor counts people, never
-        stars, cuts Google and Mesita rows here and in admin Find, never the
-        Area pipeline, and 0 is off. A Mesita row needs a Name score of 0.4
-        or more.
+        stars, cuts Google and Mesita rows of the guest bar and of admin
+        Find&apos;s Autocomplete and Mesita columns, never the Area pipeline,
+        and 0 is off. A Mesita row needs a Name score of 0.4 or more.
       </p>
     </PipelineBox>
   );
@@ -303,8 +318,9 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             Places around an anchor: the device, a picked city, a searched
             destination, a dropped pin or the map&apos;s centre. The radius
             decides who is a candidate; the score orders them. The guest picks
-            one scope: <strong>Google Places</strong> (every place inside the
-            radius, a place already on Mesita shown as its Mesita row) or{" "}
+            one scope: <strong>Google Places</strong> (the nearest places one
+            Google call returns inside the radius, at most 20, a place already
+            on Mesita shown as its Mesita row) or{" "}
             <strong>Mesita Selected</strong> (only places Mesita has written a
             profile for).
           </p>
@@ -315,7 +331,7 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           </p>
         </>
       }
-      save={<Save editor={editor} dirty={dirty} slices={["map", "catalogRows", "areaSignals"]} />}
+      save={<Save editor={editor} dirty={dirty} slices={BOX_SLICES.area} />}
     >
       <Group title="Candidates and signals">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -475,7 +491,7 @@ export function DeepBox(seed: ConfigSeed<DiscoveryConfig>) {
           on Models.
         </p>
       }
-      save={<Save editor={editor} dirty={dirty} slices={["deep", "chat"]} />}
+      save={<Save editor={editor} dirty={dirty} slices={BOX_SLICES.deep} />}
     >
       <div className="grid gap-3 sm:grid-cols-2">
         <NumberField

@@ -1,8 +1,10 @@
 // One Discovery pipeline box (MESITA-2327). Every box on the page is the same
-// card: who runs it, Explanation, then its Sources, Signals and Gates drawn
-// straight from the model (discovery-surface.ts, the runtime's twin), then
-// Parameters and Save. Which source feeds which signal is DERIVED from the
-// sources' declared fields (`sourcesFeedingSignal`), never typed here.
+// card: who runs it, Explanation, then its Sources, Signals, Gates and
+// always-on Rules drawn straight from the model (discovery-surface.ts, the
+// runtime's twin), then Scoring, Parameters and Save. Which source feeds
+// which signal is DERIVED from the sources' declared fields
+// (`sourcesFeedingSignal`), never typed here; a source whose rows keep their
+// own order feeds none (MESITA-2338).
 
 import { KnobState } from "@/components/admin-ui/config";
 import {
@@ -10,10 +12,20 @@ import {
   DISCOVERY_PIPELINES,
   type DiscoveryPipelineKey,
   gateByKey,
+  pipelinesUsingSignal,
   signalByKey,
   sourceByKey,
   sourcesFeedingSignal,
 } from "./discovery-surface";
+
+const COMPUTATION: Record<"runtime" | "precomputed" | "hybrid", string> = {
+  runtime: "Computed at request time",
+  precomputed: "Precomputed",
+  hybrid: "Precomputed place side, computed at request time",
+};
+
+const pipelineLabel = (key: DiscoveryPipelineKey) =>
+  DISCOVERY_PIPELINES.find((p) => p.key === key)?.label ?? key;
 
 function Part({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -35,6 +47,7 @@ export function PipelineBox({
   icon,
   callers,
   explanation,
+  scoring,
   children,
   save,
 }: {
@@ -45,6 +58,9 @@ export function PipelineBox({
   /** Who runs this box's configuration; defaults to the pipeline's callers. */
   callers?: readonly string[];
   explanation: React.ReactNode;
+  /** Overrides the pipeline's Scoring line when this caller orders rows its
+   *  own way (admin Find). */
+  scoring?: string;
   /** The Parameters part. */
   children: React.ReactNode;
   /** The Save part. */
@@ -93,6 +109,11 @@ export function PipelineBox({
                 <span className="text-muted-foreground type-meta">
                   Gives {s.provides.map((f) => DISCOVERY_FIELD_LABELS[f]).join(" · ")}
                 </span>
+                {p.keepsOrder.includes(key) ? (
+                  <span className="text-muted-foreground type-meta">
+                    Its rows keep {s.label}&apos;s own order; no signal scores them.
+                  </span>
+                ) : null}
               </li>
             );
           })}
@@ -108,9 +129,16 @@ export function PipelineBox({
               <li key={key} className="flex flex-col gap-0.5 text-sm">
                 <span className="font-semibold">{sig.label}</span>
                 <code className="bg-muted w-fit rounded-md px-2 py-0.5 text-xs">{sig.formula}</code>
+                <span className="text-muted-foreground">
+                  Reads {sig.requires.map((f) => DISCOVERY_FIELD_LABELS[f]).join(" · ")} · asks{" "}
+                  {sig.query}
+                </span>
                 <span className="text-muted-foreground">Missing data: {sig.missing}</span>
+                <span className="text-muted-foreground">Normalization: {sig.normalization}</span>
                 <span className="text-muted-foreground type-meta">
-                  {sig.cost} Fed by {fed.map(sourceLabel).join(" · ")}.
+                  {COMPUTATION[sig.computation]}. {sig.cost} Fed by{" "}
+                  {fed.map(sourceLabel).join(" · ")}. Used by{" "}
+                  {pipelinesUsingSignal(key).map(pipelineLabel).join(" · ")}.
                 </span>
               </li>
             );
@@ -145,8 +173,16 @@ export function PipelineBox({
         </Part>
       ) : null}
 
+      <Part label="Always-on rules">
+        <ul className="flex flex-col gap-1.5 text-sm">
+          {p.rules.map((rule) => (
+            <li key={rule}>{rule}</li>
+          ))}
+        </ul>
+      </Part>
+
       <Part label="Scoring">
-        <p className="text-sm">{p.scoring}</p>
+        <p className="text-sm">{scoring ?? p.scoring}</p>
       </Part>
 
       <Part label="Parameters">{children}</Part>

@@ -144,6 +144,7 @@ async function searchNearbyOnce(
   center: { lat: number; lng: number },
   radiusM: number,
   includedPrimaryTypes: string[],
+  excludedPrimaryTypes: string[] = [],
 ): Promise<NearbyOnce> {
   const r = await fetch(GOOGLE_PLACES_NEARBY_URL, {
     method: "POST",
@@ -156,6 +157,7 @@ async function searchNearbyOnce(
       maxResultCount: GOOGLE_NEARBY_MAX,
       rankPreference: "DISTANCE",
       includedPrimaryTypes,
+      ...(excludedPrimaryTypes.length > 0 ? { excludedPrimaryTypes } : null),
       locationRestriction: {
         circle: {
           center: { latitude: center.lat, longitude: center.lng },
@@ -205,12 +207,14 @@ export function peekCachedNearbyPlaces(
   center: { lat: number; lng: number },
   types?: readonly string[],
   radiusKm?: number,
+  excludedTypes: readonly string[] = [],
 ): NearbyHit[] | null {
   const hit = nearbyCache.get(
     nearbyCellKey(
       center,
       resolveNearbyTypes(types),
       nearbyRadiusMetres(radiusKm),
+      excludedTypes,
     ),
   );
   if (hit && Date.now() - hit.at < NEARBY_CACHE_MS) return hit.hits;
@@ -225,6 +229,11 @@ export type SearchNearbyOpts = {
   /** The operator's circle (`map.radiusKm`, MESITA-2298 §3). Omit = 50 km.
    *  Part of the cache cell: two radii are two answers. */
   radiusKm?: number;
+  /** Nearby `excludedPrimaryTypes` (MESITA-2338): the precise subtypes of
+   *  an included general type that belong to no requested family, so the
+   *  Family gate's pushdown is exact (Dinner sends `restaurant` and
+   *  excludes `mexican_restaurant`). Part of the cache cell. */
+  excludedTypes?: readonly string[];
   /**
    * Called once, right before the ONE billed Nearby call (MESITA-1700): the
    * ledger behind this hook counts what Google charges for. `false` skips
@@ -241,10 +250,12 @@ function nearbyCellKey(
   center: { lat: number; lng: number },
   types: readonly string[] = NEARBY_TYPE_KEYS,
   radiusM: number = nearbyRadiusMetres(),
+  excludedTypes: readonly string[] = [],
 ): string {
-  return `${center.lat.toFixed(2)},${center.lng.toFixed(2)}:${
+  const base = `${center.lat.toFixed(2)},${center.lng.toFixed(2)}:${
     nearbyTypesKey(types)
   }:r${radiusM}`;
+  return excludedTypes.length > 0 ? `${base}:x${nearbyTypesKey(excludedTypes)}` : base;
 }
 
 const SUPER_SEARCH_TYPE_SET = new Set<string>(
@@ -273,7 +284,8 @@ export async function searchNearbyPlaces(
   const beforeFanout = opts.beforeFanout;
   const types = resolveNearbyTypes(opts.types);
   if (types.length === 0) return [];
-  const key = nearbyCellKey(center, types, radius);
+  const excluded = (opts.excludedTypes ?? []).filter((t) => !types.includes(t));
+  const key = nearbyCellKey(center, types, radius, excluded);
   const hit = nearbyCache.get(key);
   const now = Date.now();
   if (hit && now - hit.at < NEARBY_CACHE_MS) return hit.hits;
@@ -299,7 +311,7 @@ export async function searchNearbyPlaces(
     }
     googleFanoutAt.push(Date.now());
 
-    const batch = await searchNearbyOnce(apiKey, center, radius, [...types]);
+    const batch = await searchNearbyOnce(apiKey, center, radius, [...types], excluded);
     if (!batch.ok) {
       resolveRun([]);
       return [];

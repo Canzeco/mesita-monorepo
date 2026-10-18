@@ -459,7 +459,7 @@ async function peekGoogle(
     const place = data.uniquePlaces.find((p) => p.id === googleId) ?? data.uniquePlaces[0] ?? null;
     return {
       place,
-      note: place ? null : "Google returned nothing for this ID — or the Discovery › Map floors removed it.",
+      note: place ? null : "Google returned nothing for this ID — or Discovery's place rules (Mesita's place types, a stored Google floor) removed it.",
     };
   } catch (err) {
     return { place: null, note: err instanceof Error ? err.message : String(err) };

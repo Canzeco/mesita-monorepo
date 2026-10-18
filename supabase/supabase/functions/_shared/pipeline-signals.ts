@@ -32,11 +32,16 @@ export const PROXIMITY_HALF_DISTANCE_KM_MAX = 50;
 /**
  * proximity(d) = 2^(−d / halfDistance): 1 at the anchor, 0.5 at
  * halfDistance, 0.25 at twice it, never negative. Raw distance never reaches
- * a score; the radius that decides who is a candidate stays separate.
+ * a score; the radius that decides who is a candidate stays separate. A
+ * distance that is not a number cannot be placed, so it scores 0, the same
+ * as a place with no coordinates; an infinite one is infinitely far.
  */
 export function proximityFromDistance(distanceKm: number, halfDistanceKm: number): number {
-  const half = halfDistanceKm > 0 ? halfDistanceKm : PROXIMITY_HALF_DISTANCE_KM_DEFAULT;
-  if (!Number.isFinite(distanceKm) || distanceKm <= 0) return 1;
+  const half = Number.isFinite(halfDistanceKm) && halfDistanceKm > 0
+    ? halfDistanceKm
+    : PROXIMITY_HALF_DISTANCE_KM_DEFAULT;
+  if (Number.isNaN(distanceKm) || distanceKm === Infinity) return 0;
+  if (distanceKm <= 0) return 1;
   return clamp01(Math.pow(2, -distanceKm / half));
 }
 
@@ -67,9 +72,12 @@ export function proximity(
 export const POPULARITY_REFERENCE_RATING_DEFAULT = 4.5;
 export const POPULARITY_REFERENCE_REVIEWS_DEFAULT = 1000;
 
-/** ln(1 + rating × reviewCount): the raw, unbounded volume-and-quality mass. */
+/** ln(1 + rating × reviewCount): the raw, unbounded volume-and-quality mass.
+ *  A value that is not a finite number counts as 0, never NaN. */
 export function rawPopularity(rating: number, reviewCount: number): number {
-  return Math.log1p(Math.max(0, rating) * Math.max(0, reviewCount));
+  const r = Number.isFinite(rating) ? Math.max(0, rating) : 0;
+  const n = Number.isFinite(reviewCount) ? Math.max(0, reviewCount) : 0;
+  return Math.log1p(r * n);
 }
 
 /**
@@ -85,6 +93,7 @@ export function popularity(
   const r = candidate.rating;
   const n = candidate.reviewCount;
   if (typeof r !== "number" || typeof n !== "number") return 0;
+  if (!Number.isFinite(r) || !Number.isFinite(n)) return 0;
   const ref = rawPopularity(reference.rating, reference.reviews);
   if (!(ref > 0)) return 0;
   return clamp01(rawPopularity(r, n) / ref);
@@ -92,13 +101,15 @@ export function popularity(
 
 // ── Name ──────────────────────────────────────────────────────────────────
 
-/** Diacritics off, lowercase, punctuation to spaces, single spaces. */
+/** Diacritics off, lowercase, punctuation to spaces, single spaces. Letters
+ *  and digits of every script survive (寿司, Кафе, مقهى), so a name outside
+ *  Latin still matches itself. */
 export function normalizeName(s: string): string {
   return s
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/\p{M}+/gu, "")
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
 }
 
