@@ -27,10 +27,13 @@
 // is a camera destination: coordinates + viewport resolve on pick, never
 // per keystroke, and the viewport picks the zoom.
 //
-// The from-Google preview sheet and the Add flow are NOT search chrome. The
-// catalog itself carries Google-only places (the grey pins), so a pin or
-// rail-card tap reaches them through handleOpenPlace, and `heldOverlay` still
-// stashes a prediction between the select tap and the open.
+// A Google-only result has no preview sheet and no Add button (MESITA-2298):
+// its SECOND tap (pin or rail card) is the explicit open — get-or-create on
+// the Google Place ID, then the profile. The catalog itself carries
+// Google-only places (the grey pins), so a pin or rail-card tap reaches
+// that through handleOpenPlace, and `heldOverlay` still stashes a
+// prediction between the select tap and the open. No photo is fetched for
+// a Google-only card, here or anywhere.
 //
 // Composition:
 //   • Base: SearchMap fills the body (red Mesita Places, gray Google, blue
@@ -83,7 +86,6 @@ import {
   type SearchMapPin,
   type ViewportBox,
 } from "./SearchMap";
-import { GooglePlaceSheet } from "./GooglePlaceSheet";
 import { SearchBar } from "./SearchBar";
 import { SearchFilterRow } from "./SearchFilterRow";
 import { SearchResultsPanel } from "./SearchResultsPanel";
@@ -175,14 +177,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     {},
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  // Overlay pin first-tap stash so a later tap can still open (profile or
-  // Google sheet) after the suggest list is gone. Holds Google and overlay-only
-  // Mesita predictions — keyed on pin.id.
+  // Overlay pin first-tap stash so a later tap can still open (the profile,
+  // through get-or-create for a Google-only row) after the suggest list is
+  // gone. Holds Google and overlay-only Mesita predictions — keyed on pin.id.
   const [heldOverlay, setHeldOverlay] = useState<PlacePrediction | null>(null);
-  // From-Google preview sheet. `preview` survives the close (only `open`
-  // flips) so the exit transition doesn't blank the panel mid-slide.
-  const [preview, setPreview] = useState<PlacePrediction | null>(null);
-  const [previewOpen, setPreviewOpen] = useState(false);
   // 0-based position of the card nearest the rail's scroll start (shown
   // 1-based) — powers the "3 / 12 places" pager so the horizontal rail
   // reads as browsable.
@@ -571,33 +569,65 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     [addedProfiles, catalog, resetSearchSession, router],
   );
 
-  // Pin / rail-card SECOND tap on a from-Google row → the not-on-Mesita
-  // preview sheet (the Add flow lives there). The bar pick never lands
-  // here any more — it anchors, and the sheet moved to this second tap.
-  const openGooglePreview = (prediction: PlacePrediction) => {
+  // Get-or-create (MESITA-2298): the explicit open is the ONLY call that
+  // creates a Mesita Place. A held Google Place ID comes back `created:
+  // false` and opens as is; a new one is live immediately, ugly, and waits
+  // for votes on the Enrich tab. Nothing creates on render or on a pin tap.
+  // Reached only from `openGoogleOnly`.
+  const openGoogleProfile = useCallback(
+    (prediction: PlacePrediction) => {
+      if (addStates[prediction.placeId] === "adding") return;
+      resetSearchSession();
+      setAddStates((s) => ({ ...s, [prediction.placeId]: "adding" }));
+      void (async () => {
+        try {
+          const created = await apiCreateProject(supabase, {
+            placeId: prediction.placeId,
+          });
+          const dest = created.place.slug || created.place.id;
+          setAddStates((s) => ({ ...s, [prediction.placeId]: "added" }));
+          if (dest) {
+            setAddedProfiles((s) => ({
+              ...s,
+              [prediction.placeId]: dest,
+            }));
+          }
+          if (created.created !== false) {
+            toast.success(
+              `${prediction.mainText} is on Mesita. Vote to enrich its profile.`,
+            );
+          }
+          if (dest) router.push(placeHref(dest));
+        } catch (err) {
+          setAddStates((s) => {
+            const next = { ...s };
+            delete next[prediction.placeId];
+            return next;
+          });
+          toast.error(errMsg(err, "Couldn't open that place right now."));
+        }
+      })();
+    },
+    [addStates, resetSearchSession, router, supabase],
+  );
+
+  // Pin / rail-card SECOND tap on a from-Google row = THE EXPLICIT OPEN
+  // (MESITA-2298): a row this session already opened goes straight to its
+  // profile; a Mesita row opens as Mesita; a Google-only row runs
+  // get-or-create and opens. No preview, no photo, no Add button. The bar
+  // pick never lands here — it anchors.
+  const openGoogleOnly = (prediction: PlacePrediction) => {
     const fromAdd = addedProfiles[prediction.placeId];
     if (fromAdd) {
       resetSearchSession();
       router.push(placeHref(fromAdd));
       return;
     }
-    if (addStates[prediction.placeId] === "added") {
-      const match =
-        catalog.find((p) => p.google_place_id === prediction.placeId) ??
-        matchPredictionToPlace(prediction, catalog);
-      if (match) {
-        resetSearchSession();
-        router.push(placeHref(match.slug || match.id));
-        return;
-      }
-    }
     if (predictionOnMesita(prediction)) {
       openMesitaProfileFromPrediction(prediction);
       return;
     }
-    resetSearchSession();
-    setPreview(prediction);
-    setPreviewOpen(true);
+    openGoogleProfile(prediction);
   };
 
   // One pick = one camera move + one forced reload + (for a Place) card
@@ -697,7 +727,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const handleOpenPlace = (place: Place) => {
     const google = googlePredictionFromPlace(place);
     if (google) {
-      openGooglePreview(google);
+      openGoogleOnly(google);
       return;
     }
     router.push(placeHref(place.slug || place.id));
@@ -729,7 +759,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     });
     switch (action) {
       case "open-google":
-        if (prediction) openGooglePreview(prediction);
+        if (prediction) openGoogleOnly(prediction);
         return;
       case "open-catalog":
         if (place) handleOpenPlace(place);
@@ -760,48 +790,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         return;
     }
   };
-
-  // Get-or-create (MESITA-2298): the explicit open is the ONLY call that
-  // creates a Mesita Place. A held Google Place ID comes back `created:
-  // false` and opens as is; a new one is live immediately, ugly, and waits
-  // for votes on the Enrich tab. Nothing creates on render or on a pin tap.
-  const handleAdd = useCallback(
-    (prediction: PlacePrediction) => {
-      if (addStates[prediction.placeId]) return;
-      resetSearchSession();
-      setAddStates((s) => ({ ...s, [prediction.placeId]: "adding" }));
-      void (async () => {
-        try {
-          const created = await apiCreateProject(supabase, {
-            placeId: prediction.placeId,
-          });
-          const dest = created.place.slug || created.place.id;
-          setAddStates((s) => ({ ...s, [prediction.placeId]: "added" }));
-          if (dest) {
-            setAddedProfiles((s) => ({
-              ...s,
-              [prediction.placeId]: dest,
-            }));
-          }
-          setPreviewOpen(false);
-          if (created.created !== false) {
-            toast.success(
-              `${prediction.mainText} is on Mesita. Vote to enrich its profile.`,
-            );
-          }
-          if (dest) router.push(placeHref(dest));
-        } catch (err) {
-          setAddStates((s) => {
-            const next = { ...s };
-            delete next[prediction.placeId];
-            return next;
-          });
-          toast.error(errMsg(err, "Couldn't add that place right now."));
-        }
-      })();
-    },
-    [addStates, resetSearchSession, router, supabase],
-  );
 
   const handleRailScroll = () => {
     const el = railScrollRef.current;
@@ -953,9 +941,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         />
       )}
 
-      {/* From-Google preview + Add. NOT search chrome: the catalog carries
-          Google-only places (grey pins), so a pin or rail-card tap reaches
-          this through handleOpenPlace. It outlived the search bar. */}
       <LocalSheet
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
@@ -967,15 +952,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           scopeCounts={scopeCounts}
         />
       </LocalSheet>
-
-      <GooglePlaceSheet
-        open={previewOpen}
-        prediction={preview}
-        addState={preview ? addStates[preview.placeId] : undefined}
-        apiKey={apiKey}
-        onAdd={handleAdd}
-        onClose={() => setPreviewOpen(false)}
-      />
     </div>
   );
 }

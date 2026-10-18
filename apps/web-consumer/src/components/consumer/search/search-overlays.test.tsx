@@ -853,30 +853,29 @@ describe("catalogIsStale", () => {
   });
 });
 
-describe("GooglePlaceSheet loads the first Places photo on open only", () => {
-  it("uses Places (New) Details + one photo, never a map-wide prefetch", () => {
-    const sheet = read("GooglePlaceSheet.tsx");
-    expect(sheet).toContain("fetchGooglePlacePreview");
-    expect(sheet).toMatch(/if \(!open \|\| !prediction \|\| !apiKey\) return/);
-    expect(sheet).toContain("h-44");
-    expect(sheet).toContain("referrerPolicy");
-    expect(sheet).toContain("setHero");
-    expect(sheet).toContain("mergeGooglePlacePreview");
-    expect(sheet).toContain("settleGooglePlaceCache");
-    expect(read("../../../lib/google-place-preview.ts")).toContain(
-      "importLibrary",
+describe("a Google-only result opens through get-or-create, never a preview or a photo (MESITA-2298)", () => {
+  it("has no preview sheet, no client-side Places call, and one create call site", () => {
+    const client = read("SearchClient.tsx");
+    expect(client).toContain("openGoogleOnly");
+    expect(client).toContain("openGoogleProfile");
+    expect(client).not.toContain("GooglePlaceSheet");
+    expect(client).not.toContain("fetchGooglePlacePreview");
+    expect(client).not.toContain("setPreviewOpen");
+    expect(client).not.toContain("places.googleapis.com");
+    // The ONE place that creates: inside openGoogleProfile, reached only
+    // from the explicit open. The import line is the other occurrence.
+    expect(client.match(/apiCreateProject\(/g)?.length).toBe(1);
+    const open = client.slice(
+      client.indexOf("const openGoogleProfile"),
+      client.indexOf("const openGoogleOnly"),
     );
-    expect(read("../../../lib/google-place-preview.ts")).toMatch(
-      /fromRest = await previewFromRest[\s\S]*catch/,
-    );
-    expect(read("../../../lib/google-place-preview.ts")).toContain(
-      "PlacesService",
-    );
-    expect(read("../../../lib/google-place-preview.ts")).toContain(
-      "isDisplayablePlacePhoto",
-    );
-    expect(read("SearchClient.tsx")).not.toContain("places.googleapis.com");
-    expect(read("SearchClient.tsx")).not.toContain("fetchGooglePlacePreview");
+    expect(open).toContain("apiCreateProject(");
+    for (const gone of ["GooglePlaceSheet.tsx"]) {
+      expect(existsSync(join(SEARCH_DIR, gone)), gone).toBe(false);
+    }
+    expect(
+      existsSync(join(SEARCH_DIR, "../../../lib/google-place-preview.ts")),
+    ).toBe(false);
     expect(read("SearchRailCard.tsx")).not.toContain("places.googleapis.com");
   });
 });
@@ -900,16 +899,16 @@ describe("every searchbar pick anchors the map (MESITA-1405)", () => {
       /anchorMapTo[\s\S]{0,400}forceNextLoad\.current = true/,
     );
     expect(client).toContain("cameraAnchor={anchor?.camera ?? null}");
-    // The modal and the Google sheet moved to the SECOND tap — the pin /
+    // The modal and the Google-only open moved to the SECOND tap — the pin /
     // rail-card open paths — and stayed off the bar pick.
-    expect(client).toContain("openGooglePreview");
+    expect(client).toContain("openGoogleOnly");
     expect(client).toContain("openMesitaProfileFromPrediction");
     const barPick = client.slice(
       client.indexOf("const handleBarPick"),
       client.indexOf("const handleOpenPlace"),
     );
-    expect(barPick).not.toContain("openGooglePreview");
-    expect(barPick).not.toContain("setPreviewOpen");
+    expect(barPick).not.toContain("openGoogleOnly");
+    expect(barPick).not.toContain("openGoogleProfile");
     // The no-coordinates Mesita row keeps the direct-open fallback; that
     // is the only router.push a bar pick may reach.
     expect(barPick.match(/router\.push/g)?.length).toBe(1);
