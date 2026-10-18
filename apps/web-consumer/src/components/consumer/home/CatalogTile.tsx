@@ -156,7 +156,7 @@ export function CatalogTile({
   // ONE square (Pato, MESITA-2369, MESITA-2373): the photo is the top 60%,
   // fully shown and centred — nothing lies over it. The bottom 40% is its
   // REFLECTION: a 60%-tall copy flipped so its foot meets the photo's foot,
-  // under a 65% paper layer, four rows on it in dark text. No border, no
+  // under an 80% paper layer, four rows on it in dark text. No border, no
   // radius; the heart sits at the right of the name row.
   return (
     <li className={cn("relative aspect-square min-w-0 overflow-hidden", className)}>
@@ -171,7 +171,7 @@ export function CatalogTile({
           {media()}
         </div>
         {/* The reflection: bottom 40%, the photo mirrored from its foot under
-            65% paper (MESITA-2374), four rows spread to fill it (MESITA-2373). */}
+            80% paper (MESITA-2375), four rows spread to fill it (MESITA-2373). */}
         <div
           className="absolute inset-x-0 bottom-0 h-[40%] overflow-hidden"
           data-tile-info
@@ -184,7 +184,7 @@ export function CatalogTile({
             {media()}
           </div>
           <div
-            className="bg-paper/65 absolute inset-0 backdrop-blur-sm"
+            className="bg-paper/80 absolute inset-0 backdrop-blur-sm"
             aria-hidden
           />
           <div className="text-foreground relative flex h-full flex-col justify-evenly px-3 py-1.5">
