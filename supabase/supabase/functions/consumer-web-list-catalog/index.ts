@@ -1,18 +1,18 @@
 // Supabase Edge Function — consumer-web-list-catalog (product caller)
 //
-// The CATALOG engine, on the shared discovery engine (MESITA-2302,
-// `_shared/nearby-selection.ts`). One round trip, three kinds of rail:
-//   1. Google Places — `selectGooglePlaces`, the Map's Google scope: ONE
-//      Nearby Search (New) call inside `map.radiusKm` around the guest,
-//      eligibility after Google answers (General · Map floors · the central
-//      Google Reviews floor, default 100+), Mesita rows winning their own
-//      google_place_id, Google-only cards with no photo. Needs
-//      `{ google: true, lat, lng }`, the operator's `map.googleFill`, a key
-//      and the per-IP ledger; any refusal omits the rail.
-//   2. Mesita Selected — `selectMesitaSelected`, the Map's Selected scope:
-//      enriched, ready rows inside the same radius, ranked on
-//      `catalog.ranking`. Without a location, the whole capped pool, ranked
-//      on popularity alone.
+// The Feed: the Catalog VIEW of the Area pipeline (MESITA-2302, MESITA-2327,
+// `_shared/area-pipeline.ts`). One round trip, three kinds of rail:
+//   1. Google Places — `selectGooglePlaces`, the Google scope: ONE Nearby
+//      Search (New) call inside `map.radiusKm` around the guest, eligibility
+//      after Google answers (active · the central Google Reviews floor,
+//      default 100+, or the operator's, whichever is higher), Mesita rows
+//      winning their own google_place_id, Google-only cards with no photo.
+//      Needs `{ google: true, lat, lng }`, the operator's `map.googleFill`,
+//      a key and the per-IP ledger; any refusal omits the rail.
+//   2. Mesita Selected — `selectMesitaSelected`, the Selected gate on:
+//      enriched, ready rows inside the same radius. Without a location, the
+//      whole capped pool (Proximity abstains, Popularity alone orders).
+// Both ranked by the Area score: proximity × popularity.
 //   3. One rail per guest family, Mesita Selected places only.
 // At most `catalog.railCap` places per rail (default 5); empty rails are omitted. Right Now, Universal
 // and the guest deck filters are gone: the Feed sends none.
@@ -52,7 +52,7 @@ import {
   selectedPoolQuery,
   selectGooglePlaces,
   selectMesitaSelected,
-} from "../_shared/nearby-selection.ts";
+} from "../_shared/area-pipeline.ts";
 
 const POOL_CAP = 1000;
 
@@ -108,16 +108,12 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: error.message }, 502);
   }
 
-  const now = new Date();
   const selected = selectMesitaSelected(
     wirePlaces((data ?? []) as unknown as PlaceProfileRow[]),
     {
       center,
       radiusKm,
-      ranking: cfg.catalog.ranking,
       params: cfg.params,
-      map: cfg.map,
-      now,
     },
   );
 
@@ -133,7 +129,6 @@ Deno.serve(async (req) => {
       minReviews: guestReviewFloor("google", body.minReviews),
       limit: cfg.catalog.railCap,
       cfg,
-      now,
       consumeQuota: async () => {
         const ipHash = await hashConnectingIp(req, env.serviceKey);
         return (await consumeNearbyGoogleQuota(admin, ipHash)).allow;

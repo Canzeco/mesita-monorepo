@@ -16,8 +16,8 @@
 //   { lat, lng, limit? } — listed nearby (no `google: true`). Closest N of
 //     Mesita Selected. Never a Google call, never a stub.
 //   { google: true, lat, lng, placesScope, familyKeys, minReviews } — web
-//     Search, on the SHARED DISCOVERY ENGINE (MESITA-2302,
-//     `_shared/nearby-selection.ts`), one scope at a time:
+//     Search, a view of the AREA PIPELINE (MESITA-2302, MESITA-2327,
+//     `_shared/area-pipeline.ts`), one scope at a time:
 //       google    `selectGooglePlaces` — ONE Nearby Search (New) call inside
 //                 the operator's `map.radiusKm`; General gate, Map floors
 //                 and the guest Google Reviews floor cut AFTER Google
@@ -93,7 +93,7 @@ import {
   selectedPoolQuery,
   selectGooglePlaces,
   selectMesitaSelected,
-} from "../_shared/nearby-selection.ts";
+} from "../_shared/area-pipeline.ts";
 import { consumeNearbyGoogleQuota } from "../_shared/nearby-google-quota.ts";
 import { hashConnectingIp } from "../_shared/connecting-ip.ts";
 import { readGooglePlacesKey } from "../_shared/google-places.ts";
@@ -249,6 +249,7 @@ Deno.serve(async (req) => {
         center,
         radiusKm,
         types: googleFill ? nearbyTypes : [],
+        families: guestSupers,
         minReviews: guestReviewFloor(placesScope, rawMinReviews),
         limit: Math.min(limit, GOOGLE_NEARBY_MAX),
         cfg,
@@ -304,9 +305,7 @@ Deno.serve(async (req) => {
           center,
           radiusKm,
           families: guestSupers,
-          ranking: cfg.catalog.ranking,
           params: cfg.params,
-          map: cfg.map,
           limit,
         },
       );
