@@ -28,6 +28,8 @@ import { useConfigEditor, type ConfigSeed } from "@/components/admin-ui/use-conf
 import { formatShortDate } from "@/lib/format";
 import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
 import {
+  CATALOG_RAIL_CAP_MAX,
+  CATALOG_RAIL_CAP_MIN,
   GOOGLE_PULL_STOPS,
   MAP_RADIUS_KM_MAX,
   MAP_RADIUS_KM_MIN,
@@ -47,7 +49,7 @@ import {
   type CatalogLiveRankKey,
 } from "./catalog-shares";
 import { modeSignalState } from "./discovery-matrix";
-import { CATALOG_FAMILY_FACTS, CATALOG_RAIL_CAP, CATALOG_SIGNAL_RAILS } from "./discovery-surface";
+import { CATALOG_FAMILY_FACTS, CATALOG_SIGNAL_RAILS } from "./discovery-surface";
 import { ModeBox, NotWiredParam } from "./ModeBox";
 
 const NOT_READ = "Nothing reads this yet";
@@ -101,7 +103,9 @@ export function WordBox(seed: ConfigSeed<DiscoveryConfig>) {
   const { cfg, setCfg, saved, setOk, pending, error, loadBlocked, ok, updatedAt, saveWith } =
     useDiscoveryEditor(seed);
   const dirty =
-    !same(cfg.name.deep, saved.name.deep) || !same(cfg.general, saved.general);
+    !same(cfg.name.deep, saved.name.deep) ||
+    cfg.name.locations !== saved.name.locations ||
+    !same(cfg.general, saved.general);
   const off = pending || loadBlocked;
   const deep = (p: Partial<DiscoveryConfig["name"]["deep"]>) => {
     setOk(false);
@@ -139,7 +143,7 @@ export function WordBox(seed: ConfigSeed<DiscoveryConfig>) {
             pending={pending}
             dirty={dirty}
             ok={ok && !dirty}
-            onClick={() => saveWith((c) => updateDiscoveryConfig(c, ["nameDeep", "general"]))}
+            onClick={() => saveWith((c) => updateDiscoveryConfig(c, ["nameDeep", "nameLocations", "general"]))}
             loadError={loadBlocked ? error : null}
           />
         </>
@@ -188,7 +192,18 @@ export function WordBox(seed: ConfigSeed<DiscoveryConfig>) {
             onClick={() => general({ requireActive: !cfg.general.requireActive })}
           />
         </div>
-        <NotWiredParam label="Show Locations" reason={NOT_READ} />
+        <div className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4">
+          <span className="text-sm font-medium">Show Locations</span>
+          <Switch
+            on={cfg.name.locations}
+            pending={off}
+            label="Show Locations"
+            onClick={() => {
+              setOk(false);
+              setCfg((c) => ({ ...c, name: { ...c.name, locations: !c.name.locations } }));
+            }}
+          />
+        </div>
       </div>
       <p className="text-muted-foreground type-meta">
         Minimum Google reviews counts people, never stars. 0 is off.
@@ -266,7 +281,14 @@ export function MapBox(seed: ConfigSeed<DiscoveryConfig>) {
             ))}
           </div>
         </ChoiceField>
-        <NotWiredParam label="Minimum number of Google reviews" reason={NOT_READ} />
+        <NumberField
+          label="Minimum number of Google reviews"
+          value={map.googleMinReviews}
+          min={0}
+          max={100_000}
+          disabled={off}
+          onChange={(googleMinReviews) => patch({ googleMinReviews })}
+        />
         <ChoiceField icon={<RefreshCw className="mt-0.5 h-4 w-4 shrink-0" />} label="Reload after" hint="The camera must move this far AND wait this long.">
           <div className="flex flex-wrap gap-2">
             {MAP_RELOAD_PAIRS.map((pair) => (
@@ -283,7 +305,9 @@ export function MapBox(seed: ConfigSeed<DiscoveryConfig>) {
         </ChoiceField>
       </div>
       <p className="text-muted-foreground type-meta">
-        The radius is the Feed&apos;s too. Guests never set it.
+        The radius and the reviews floor are the Feed&apos;s too. The floor
+        counts people, never stars, and cuts Google places only: the higher of
+        it and the guest&apos;s own stop wins. 0 is off.
       </p>
     </ModeBox>
   );
@@ -338,7 +362,8 @@ export function PlacesBox(seed: ConfigSeed<DiscoveryConfig>) {
     useDiscoveryEditor(seed);
   const dirty =
     !same(cfg.weightsByMode.map, saved.weightsByMode.map) ||
-    !same(cfg.catalog.ranking, saved.catalog.ranking);
+    !same(cfg.catalog.ranking, saved.catalog.ranking) ||
+    cfg.catalog.railCap !== saved.catalog.railCap;
   const allZero = catalogLiveWeightsAllZero(cfg.catalog.ranking);
   const off = pending || loadBlocked;
   const setGoogle = (key: SignalKey, v: number) => {
@@ -367,7 +392,8 @@ export function PlacesBox(seed: ConfigSeed<DiscoveryConfig>) {
           Mesita Selected members. One engine orders every row and the Map:
           the radius picks the set, the weights below sort it, distance breaks
           ties. Weights differ by scope, never by view. Google appears in row
-          one only, and only row one has the 100+ Google reviews floor. A
+          one only, and only row one has a Google reviews floor: 100+, or the
+          Map&apos;s, whichever is higher. A
           Google-only card draws its family emoji, never a photo. A row with
           nothing in it is hidden.
         </p>
@@ -389,17 +415,26 @@ export function PlacesBox(seed: ConfigSeed<DiscoveryConfig>) {
             dirty={dirty && !allZero}
             ok={ok && !dirty}
             onClick={() =>
-              saveWith((c) => updateDiscoveryConfig(c, ["weightsMap", "catalogRanking"]))
+              saveWith((c) => updateDiscoveryConfig(c, ["weightsMap", "catalogRanking", "catalogRows"]))
             }
             loadError={loadBlocked ? error : null}
           />
         </>
       }
     >
-      <NotWiredParam
-        label={`Places per row (${CATALOG_RAIL_CAP} today)`}
-        reason="Fixed in the engine"
-      />
+      <div className="max-w-xs">
+        <NumberField
+          label="Places per row"
+          value={cfg.catalog.railCap}
+          min={CATALOG_RAIL_CAP_MIN}
+          max={CATALOG_RAIL_CAP_MAX}
+          disabled={off}
+          onChange={(railCap) => {
+            setOk(false);
+            setCfg((c) => ({ ...c, catalog: { ...c.catalog, railCap } }));
+          }}
+        />
+      </div>
       <div>
         <p className="text-muted-foreground type-meta mb-2 font-semibold">Rows, in order</p>
         <ul className="flex flex-wrap gap-2" aria-label="Feed rows">

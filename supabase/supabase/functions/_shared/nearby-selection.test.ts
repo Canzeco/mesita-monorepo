@@ -409,3 +409,23 @@ Deno.test("selectedPoolQuery: Enriched gate, General, ready, families and the ra
   assert(seen.some((s) => s.startsWith("gte lat")));
   assertEquals(seen.some((s) => s.includes("google_review_count")), false);
 });
+
+Deno.test("google: the operator's floor cuts Google hits; the higher floor wins (MESITA-2319)", async () => {
+  reset();
+  const g = stubGoogle([
+    { id: "thin", lat: 25.6701, reviews: 150 },
+    { id: "loved", lat: 25.672, reviews: 900 },
+  ]);
+  try {
+    const cfg = { ...DISCOVERY_DEFAULTS, map: { ...DISCOVERY_DEFAULTS.map, googleMinReviews: 500 } };
+    const out = await selectGooglePlaces(deps({ cfg, minReviews: 100 }).d);
+    assertEquals(ids(out.places), ["g:loved"]);
+  } finally {
+    g.restore();
+  }
+});
+
+Deno.test("selected: the operator's Google floor never touches Mesita Selected", () => {
+  const out = selectMesitaSelected([mrow("thin", { google_review_count: 2 })], selOpts);
+  assertEquals(ids(out), ["thin"]);
+});

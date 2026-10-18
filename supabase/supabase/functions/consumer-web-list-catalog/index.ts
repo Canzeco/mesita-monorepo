@@ -14,7 +14,7 @@
 //      `catalog.ranking`. Without a location, the whole capped pool, ranked
 //      on popularity alone.
 //   3. One rail per guest family, Mesita Selected places only.
-// At most 5 places per rail; empty rails are omitted. Right Now, Universal
+// At most `catalog.railCap` places per rail (default 5); empty rails are omitted. Right Now, Universal
 // and the guest deck filters are gone: the Feed sends none.
 //
 // Local:  supabase functions serve consumer-web-list-catalog
@@ -35,7 +35,6 @@ import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
 import { DISCOVERY_EXTRA_COLUMNS } from "../_shared/discovery-place.ts";
 import {
   buildCatalogRails,
-  CATALOG_RAIL_CAP,
   type CatalogListPlace,
 } from "../_shared/catalog-rank.ts";
 import { decideNearby, wantsGoogleFill } from "../_shared/geo.ts";
@@ -132,7 +131,7 @@ Deno.serve(async (req) => {
       radiusKm,
       types: FEED_GOOGLE_TYPES,
       minReviews: guestReviewFloor("google", body.minReviews),
-      limit: CATALOG_RAIL_CAP,
+      limit: cfg.catalog.railCap,
       cfg,
       now,
       consumeQuota: async () => {
@@ -156,7 +155,7 @@ Deno.serve(async (req) => {
       },
     })
     : { places: [], hits: 0 };
-  const rails = buildCatalogRails(google.places, selected);
+  const rails = buildCatalogRails(google.places, selected, cfg.catalog.railCap);
 
   return json({
     ok: true,

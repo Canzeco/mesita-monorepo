@@ -9,7 +9,7 @@ Deno.test("list-catalog: both lists come from the shared engine", () => {
   assert(src.includes("selectGooglePlaces<OwnedRow>("));
   assert(src.includes("selectedPoolQuery("));
   assert(src.includes("selectMesitaSelected("));
-  assert(src.includes("buildCatalogRails(google.places, selected)"));
+  assert(src.includes("buildCatalogRails(google.places, selected, cfg.catalog.railCap)"));
 });
 
 Deno.test("list-catalog: Right Now, Universal and predicates are gone", () => {

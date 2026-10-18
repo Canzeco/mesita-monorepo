@@ -472,7 +472,9 @@ export async function runConsumerSearchLane(
   const origin = originOf(args.lat, args.lng);
   const cfg = await loadDiscoveryConfig(admin);
   const mode = resolveMode(args.mode);
-  const locations = args.locations === true;
+  // The caller opts in (the consumer bar only); the operator can switch
+  // Locations off for it on Discovery › Word (MESITA-2319).
+  const locations = args.locations === true && cfg.name.locations;
 
   const predictions = mode === "mesita"
     // Pay: the Mesita name embeddings alone. No Google lane, no Google bill.

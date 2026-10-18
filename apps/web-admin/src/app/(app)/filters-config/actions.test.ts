@@ -145,3 +145,29 @@ describe("the Chat box saves the prompt and nothing else", () => {
     expect(sent.config?.chat).toEqual(live.chat);
   });
 });
+
+describe("MESITA-2319 slices", () => {
+  it("nameLocations writes the switch and leaves the deep caps", async () => {
+    const live = liveConfig();
+    const sent = armed(live);
+    const edited: DiscoveryConfig = {
+      ...live,
+      name: { ...live.name, locations: false, deep: { ...live.name.deep, autoCount: 9 } },
+    };
+    await updateDiscoveryConfig(edited, ["nameLocations"]);
+    expect(sent.config?.name.locations).toBe(false);
+    expect(sent.config?.name.deep).toEqual(live.name.deep);
+  });
+
+  it("catalogRows writes railCap and leaves the ranking", async () => {
+    const live = liveConfig();
+    const sent = armed(live);
+    const edited: DiscoveryConfig = {
+      ...live,
+      catalog: { ...live.catalog, railCap: 7, ranking: { ...live.catalog.ranking, proximity: 4 } },
+    };
+    await updateDiscoveryConfig(edited, ["catalogRows"]);
+    expect(sent.config?.catalog.railCap).toBe(7);
+    expect(sent.config?.catalog.ranking).toEqual(live.catalog.ranking);
+  });
+});

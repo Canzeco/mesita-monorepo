@@ -129,6 +129,12 @@ export type CatalogConfig = {
   /** Vibe-query rails, sampled from the code-defined bank (not Atlas slugs). */
   generatedCount: number;
   placesPerRail: number;
+  /**
+   * Places per Feed row (MESITA-2319): every rail, Google Places included.
+   * A new key on purpose: the stored `placesPerRail` is a retired era's 8,
+   * and reading it would have widened every rail past the 5 the Feed shows.
+   */
+  railCap: number;
   /** Seed category must have at least this many listed places. */
   minSeedPlaces: number;
   /** Shared Catalog Search profile. Every guest family list reads this one vector. */
@@ -278,6 +284,13 @@ export type MapConfig = {
    * is Google's Nearby circle cap (50 km). One decimal.
    */
   radiusKm: number;
+  /**
+   * The operator's Google reviews floor on GOOGLE HITS ONLY (MESITA-2319):
+   * people, never stars, cut after Google answers, on the Map's Google scope
+   * and the Feed's Google Places rail alike. The guest's own stop still
+   * applies; the higher of the two wins. 0 is off. Never a Mesita floor.
+   */
+  googleMinReviews: number;
 };
 
 /**
@@ -305,6 +318,9 @@ export type NameDeepConfig = {
 export type NameConfig = {
   fast: NameFastConfig;
   deep: NameDeepConfig;
+  /** Word's Locations (cities, regions) from Autocomplete, consumer bar
+   *  only (MESITA-2319). The admin caller never shows them. */
+  locations: boolean;
 };
 
 /** Discovery-wide knobs. Only values that apply across engines belong here. */
@@ -554,12 +570,19 @@ export const DEFAULT_MAP: MapConfig = {
   supers: DEFAULT_MAP_SUPERS,
   pinCount: GOOGLE_PULL_DEFAULT,
   radiusKm: MAP_RADIUS_KM_DEFAULT,
+  googleMinReviews: 0,
 };
+
+/** `catalog.railCap` bounds and default: the Feed shows 5 per row. */
+export const CATALOG_RAIL_CAP_DEFAULT = 5;
+export const CATALOG_RAIL_CAP_MIN = 1;
+export const CATALOG_RAIL_CAP_MAX = 10;
 
 export const DEFAULT_CATALOG: CatalogConfig = {
   seedCount: 8,
   generatedCount: 8,
   placesPerRail: 8,
+  railCap: CATALOG_RAIL_CAP_DEFAULT,
   minSeedPlaces: 2,
   ranking: { ...DEFAULT_CATALOG_RANKING },
 };
@@ -580,6 +603,7 @@ export const DEFAULT_NAME_DEEP: NameDeepConfig = {
 export const DEFAULT_NAME: NameConfig = {
   fast: DEFAULT_NAME_FAST,
   deep: DEFAULT_NAME_DEEP,
+  locations: true,
 };
 
 export const DEFAULT_GENERAL: GeneralConfig = {
@@ -770,6 +794,14 @@ export function normalizeCatalogConfig(raw: unknown): CatalogConfig {
         CATALOG_PLACES_PER_RAIL_MAX,
       ),
     ),
+    railCap: Math.round(
+      num(
+        r.railCap,
+        DEFAULT_CATALOG.railCap,
+        CATALOG_RAIL_CAP_MIN,
+        CATALOG_RAIL_CAP_MAX,
+      ),
+    ),
     minSeedPlaces: Math.round(
       num(
         r.minSeedPlaces,
@@ -877,6 +909,7 @@ export function normalizeNameConfig(raw: unknown): NameConfig {
       ),
       supers: normalizeSuperParams(deep.supers),
     },
+    locations: bool(r.locations, DEFAULT_NAME.locations),
   };
 }
 
@@ -946,6 +979,9 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
         MAP_RADIUS_KM_MAX,
       ) * 10,
     ) / 10,
+    googleMinReviews: Math.round(
+      num(r.googleMinReviews, DEFAULT_MAP.googleMinReviews, 0, 100_000),
+    ),
   };
 }
 
