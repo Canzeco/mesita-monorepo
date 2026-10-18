@@ -124,6 +124,10 @@ describe("Places is family rails", () => {
     expect(rails).toContain("[writing-mode:vertical-rl]");
     expect(rails).toContain("rotate-180");
     expect(rails).toContain("data-rail-name");
+    // …in its own tinted column with a hairline and room before the cards
+    // (MESITA-2351).
+    expect(rails).toContain("bg-muted/60 border-border relative w-10 shrink-0 border-r");
+    expect(rails).toContain("scrollbar-hide ml-3 flex");
     // One square card, half photo, half white band (MESITA-2344).
     expect(tile).toContain("aspect-square");
     expect(tile).not.toContain("aspect-[3/2]");
