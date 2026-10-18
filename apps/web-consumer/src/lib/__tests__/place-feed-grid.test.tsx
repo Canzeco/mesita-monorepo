@@ -115,7 +115,7 @@ describe("Places is one grid", () => {
     const rails = read("components/consumer/home/CatalogRails.tsx");
     const tile = read("components/consumer/home/CatalogTile.tsx");
     expect(rails).toContain("placesFeed");
-    expect(rails).toContain('const PLACES_LIST = "grid grid-cols-1 content-start gap-0.5";');
+    expect(rails).toContain('const PLACES_LIST = "grid grid-cols-1 content-start gap-1.5 px-1.5 pt-1.5";');
     expect(rails).not.toContain("cardWidth");
     expect(rails).not.toContain("FavoriteTile");
     expect(rails).not.toContain("ArrowUpDown");
