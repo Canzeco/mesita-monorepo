@@ -147,7 +147,7 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
   });
 
   it("the header's location is a bordered pill: pin, name, chevron, opening the sheet", () => {
-    expect(picker).toContain("border-border bg-card text-foreground hover:bg-muted flex h-10 w-full min-w-0 items-center gap-1.5 rounded-full border px-3");
+    expect(picker).toContain("border-border bg-card text-foreground hover:bg-muted relative flex h-10 w-full min-w-0 items-center justify-center gap-1.5 rounded-full border px-8");
     expect(picker).toContain("<MapPin");
     expect(picker).toContain("<ChevronDown");
     expect(picker).toContain('aria-haspopup="dialog"');
