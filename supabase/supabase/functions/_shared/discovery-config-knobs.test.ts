@@ -5,6 +5,8 @@ import {
   CATALOG_RAIL_CAP_DEFAULT,
   normalizeCatalogConfig,
   normalizeMapConfig,
+  normalizeDeepConfig,
+  normalizeDiscoveryConfig,
   normalizeNameConfig,
 } from "./discovery-config.ts";
 
@@ -59,4 +61,35 @@ Deno.test("the admin EF asks for Word by Admin's caps; the lane returns idleSec"
   assertEquals(consumerEf.includes("admin: true"), false);
   assertEquals(lane.includes("idleSec: cfg.name.idleSec"), true);
   assertEquals(lane.includes("cfg.name.admin.mesitaCount"), true);
+});
+
+Deno.test("an old blob with no Area params reads the provisional defaults (MESITA-2327)", () => {
+  const cfg = normalizeDiscoveryConfig({
+    params: { proximity: { maxKm: 25, kneeKm: 1, missingGeo: 0.35 }, popularity: { confidence: 60 } },
+    catalog: { ranking: { proximity: 1, popularity: 1 } },
+  });
+  assertEquals(cfg.params.proximity.halfDistanceKm, 4.1);
+  assertEquals(cfg.params.popularity.referenceRating, 4.5);
+  assertEquals(cfg.params.popularity.referenceReviews, 1000);
+  // The retired deck's numbers still parse; the Catalog ranking does not.
+  assertEquals(cfg.params.proximity.maxKm, 25);
+  assertEquals("ranking" in cfg.catalog, false);
+});
+
+Deno.test("Area params clamp to their bounds", () => {
+  const cfg = normalizeDiscoveryConfig({
+    params: {
+      proximity: { halfDistanceKm: 0.01 },
+      popularity: { referenceRating: 9, referenceReviews: 0 },
+    },
+  });
+  assertEquals(cfg.params.proximity.halfDistanceKm, 0.1);
+  assertEquals(cfg.params.popularity.referenceRating, 5);
+  assertEquals(cfg.params.popularity.referenceReviews, 1);
+});
+
+Deno.test("Deep: limit 5 and no floor by default; both clamp", () => {
+  assertEquals(normalizeDeepConfig(undefined), { limit: 5, minSimilarity: 0 });
+  assertEquals(normalizeDeepConfig({ limit: 99, minSimilarity: 1.7 }), { limit: 20, minSimilarity: 1 });
+  assertEquals(normalizeDiscoveryConfig({}).deep, { limit: 5, minSimilarity: 0 });
 });

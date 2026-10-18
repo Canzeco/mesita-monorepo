@@ -1,47 +1,96 @@
-import { assertEquals } from "jsr:@std/assert@1";
+// The Discovery model (MESITA-2327) against itself and against the call
+// sites: five sources, three pipelines, four signals, two gates, and no
+// relationship the engines do not have.
+import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
-  DISCOVERY_MODE_SOURCES,
+  DISCOVERY_GATES,
+  DISCOVERY_PIPELINES,
+  DISCOVERY_SIGNALS,
   DISCOVERY_SOURCES,
-  modesCallingSource,
+  pipelinesUsingGate,
+  pipelinesUsingSignal,
+  pipelinesUsingSource,
+  sourceProvides,
+  sourcesFeedingSignal,
 } from "./discovery-surface.ts";
 
 const root = new URL("../../", import.meta.url);
+const text = (rel: string) => Deno.readTextFile(new URL(rel, root));
 
-async function text(rel: string): Promise<string> {
-  return await Deno.readTextFile(new URL(rel, root));
-}
+Deno.test("the model is Pato's: five sources, Name · Area · Deep, four signals, two gates", () => {
+  assertEquals(DISCOVERY_SOURCES.map((s) => s.label), [
+    "Google Autocomplete",
+    "Google Text Search",
+    "Google Nearby Search",
+    "Mesita Places Search",
+    "Mesita Social Search",
+  ]);
+  assertEquals(DISCOVERY_PIPELINES.map((p) => p.label), ["Name", "Area", "Deep"]);
+  assertEquals(DISCOVERY_SIGNALS.map((s) => s.label), ["Name", "Description", "Proximity", "Popularity"]);
+  assertEquals(DISCOVERY_GATES.map((g) => g.label), ["Selected", "Family"]);
+  assertEquals(pipelinesUsingSignal("proximity"), ["area"]);
+  assertEquals(pipelinesUsingSignal("popularity"), ["area"]);
+  assertEquals(pipelinesUsingSignal("name_similarity"), ["name"]);
+  assertEquals(pipelinesUsingSignal("description_similarity"), ["deep"]);
+  assertEquals(pipelinesUsingGate("selected"), ["area"]);
+  assertEquals(pipelinesUsingGate("family"), ["area"]);
+});
 
-Deno.test("surface routing matches the engines that actually retrieve", async () => {
-  const lane = await text("functions/_shared/consumer-search-lane.ts");
-  const map = await text("functions/consumer-web-list-places/index.ts");
-  const catalog = await text("functions/consumer-web-list-catalog/index.ts");
-  const swipe = await text("functions/consumer-web-recommend-swipe/index.ts");
-  const chat = await text("functions/consumer-web-ask-memo/index.ts");
+Deno.test("views and collections are not pipelines; the Chat Agent is a caller, never a source", () => {
+  const labels = DISCOVERY_PIPELINES.map((p) => p.label.toLowerCase());
+  for (const notAPipeline of ["catalog", "map", "favorites", "chat", "search"]) {
+    assertEquals(labels.some((l) => l.includes(notAPipeline)), false, notAPipeline);
+  }
+  assertEquals(DISCOVERY_PIPELINES.find((p) => p.key === "deep")?.callers, ["Chat (Don Memo)"]);
+  assertEquals(DISCOVERY_SOURCES.some((s) => /chat|exa|perplexity|provider/i.test(s.label)), false);
+});
 
-  assertEquals(lane.includes("searchNearbyPlaces"), false);
-  assertEquals(lane.includes("autocomplete"), true);
-  assertEquals(lane.includes("fetchEmbedPool"), true);
-  // Map and the Feed buy Google through the one shared engine (MESITA-2302).
-  assertEquals(map.includes("selectGooglePlaces"), true);
-  assertEquals(catalog.includes("selectGooglePlaces"), true);
-  assertEquals(catalog.includes("buildCatalogRails"), true);
-  assertEquals(swipe.includes("buildCatalogRails"), false);
-  assertEquals(swipe.includes('.from("profiles")'), true);
-  assertEquals(chat.includes("searchNearbyPlaces"), false);
-  assertEquals(chat.includes("searchText"), false);
-
-  assertEquals(DISCOVERY_MODE_SOURCES.word, [
+Deno.test("every pipeline signal is fed by one of its own sources (derived from fields)", () => {
+  for (const p of DISCOVERY_PIPELINES) {
+    for (const sig of p.signals) {
+      assert(sourcesFeedingSignal(p.key, sig).length > 0, `${p.key}/${sig}`);
+    }
+  }
+  assertEquals(sourcesFeedingSignal("area", "proximity"), ["google_nearby", "mesita_places"]);
+  assertEquals(sourcesFeedingSignal("deep", "description_similarity"), ["mesita_places"]);
+  assertEquals(sourcesFeedingSignal("name", "name_similarity"), [
     "google_autocomplete",
     "google_text",
-    "mesita_name",
+    "mesita_places",
   ]);
-  assertEquals(DISCOVERY_MODE_SOURCES.map, ["google_nearby", "mesita_nearby"]);
-  assertEquals(DISCOVERY_MODE_SOURCES.catalog, ["mesita_catalog"]);
-  assertEquals(DISCOVERY_MODE_SOURCES.chat, []);
-  assertEquals(DISCOVERY_MODE_SOURCES.favorites, []);
-  assertEquals(modesCallingSource("mesita_social"), []);
-  assertEquals(
-    DISCOVERY_SOURCES.find((s) => s.key === "mesita_social")?.availability,
-    "unavailable",
-  );
+  // Autocomplete answers with no coordinates, so it can never feed Proximity.
+  assertEquals(sourceProvides("google_autocomplete", ["coordinates"]), false);
+});
+
+Deno.test("every gate pushdown names a source that provides the gate's field", () => {
+  for (const g of DISCOVERY_GATES) {
+    for (const s of g.pushdown) assert(sourceProvides(s, g.requires), `${g.key}/${s}`);
+  }
+  assertEquals(pipelinesUsingSource("mesita_social"), ["deep"]);
+  assertEquals(DISCOVERY_SOURCES.find((s) => s.key === "mesita_social")?.live, false);
+});
+
+Deno.test("the call sites match the model", async () => {
+  const name = await text("functions/_shared/consumer-search-lane.ts");
+  const area = await text("functions/_shared/area-pipeline.ts");
+  const deep = await text("functions/_shared/deep-pipeline.ts");
+  const map = await text("functions/consumer-web-list-places/index.ts");
+  const feed = await text("functions/consumer-web-list-catalog/index.ts");
+  const chat = await text("functions/consumer-web-ask-memo/index.ts");
+
+  // Name: Autocomplete · Text Search · Mesita Places, ranked by the Name signal.
+  assert(name.includes("fetchAutocomplete") && name.includes("fetchTextSearch") && name.includes("fetchEmbedPool"));
+  assert(name.includes("nameSimilarity"));
+  assertEquals(name.includes("searchNearbyPlaces"), false);
+  // Area: Nearby · Mesita Places, the Area score; Map and the Feed are its views.
+  assert(area.includes("searchNearbyPlaces") && area.includes("selectedPoolQuery") && area.includes("rankArea"));
+  assert(map.includes("selectGooglePlaces") && map.includes("selectMesitaSelected"));
+  assert(feed.includes("selectGooglePlaces") && feed.includes("selectMesitaSelected"));
+  // Deep: Mesita Places by Description, and nothing Google.
+  assert(deep.includes("descriptionSimilarity"));
+  assertEquals(/searchNearbyPlaces|fetchTextSearch|fetchAutocomplete/.test(deep), false);
+  // Chat calls the Deep pipeline and no source.
+  assert(chat.includes("runDeepPipeline("));
+  // No weights on Area: the blend and the lineup are gone from it.
+  assertEquals(/rankByBlend|weightsForMode|mapLineupWeights|catalogScore/.test(area), false);
 });

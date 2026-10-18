@@ -93,7 +93,8 @@ Deno.test(
     // Not vacuous: if the regex ever stops matching, this line goes red.
     assertEquals(callers.has("word"), false);
     assertEquals(callers.has("swipe"), true);
-    assertEquals(callers.has("map"), true);
+    // The Area pipeline has no weights (MESITA-2327): Map lost its column.
+    assertEquals(callers.has("map"), false);
 
     for (const mode of WEIGHTED_MODE_KEYS) {
       assertEquals(callers.has(mode), true, `${mode} has no live caller`);

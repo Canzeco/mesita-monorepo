@@ -7,7 +7,7 @@ import {
   selectedPoolQuery,
   selectGooglePlaces,
   selectMesitaSelected,
-} from "./nearby-selection.ts";
+} from "./area-pipeline.ts";
 import { DISCOVERY_DEFAULTS } from "./discovery-config.ts";
 
 const CENTER = { lat: 25.67, lng: -100.3 };
@@ -191,15 +191,17 @@ Deno.test("google: a hit Mesita owns goes out as that row, once (dedup by gid)",
   }
 });
 
-Deno.test("google: popularity ranks, distance breaks ties, open-now boosts", async () => {
+Deno.test("google: the Area score is proximity × popularity; distance breaks ties", async () => {
   reset();
+  // near-quiet: proximity ≈ 1 × popularity ln(331)/ln(4501) ≈ 0.69.
+  // far-loved (1.1 km): proximity 2^(−1.11/4.1) ≈ 0.83 × popularity 1.
   const g = stubGoogle([
     { id: "near-quiet", lat: 25.6701, rating: 3.0, reviews: 110 },
-    { id: "far-loved", lat: 25.69, rating: 4.9, reviews: 5000 },
+    { id: "far-loved", lat: 25.68, rating: 4.9, reviews: 5000 },
   ]);
   try {
     const out = await selectGooglePlaces(deps().d);
-    assertEquals(ids(out.places)[0], "g:far-loved");
+    assertEquals(ids(out.places), ["g:far-loved", "g:near-quiet"]);
   } finally {
     g.restore();
   }
@@ -214,16 +216,32 @@ Deno.test("google: popularity ranks, distance breaks ties, open-now boosts", asy
   } finally {
     tie.restore();
   }
+});
+
+Deno.test("google: open now no longer reorders (Area reads Proximity and Popularity only)", async () => {
   reset();
-  const open = stubGoogle([
-    { id: "closed", lat: 25.6701, openNow: false },
-    { id: "open", lat: 25.6702, openNow: true },
+  const g = stubGoogle([
+    { id: "closed-near", lat: 25.6701, openNow: false },
+    { id: "open-far", lat: 25.6702, openNow: true },
   ]);
   try {
     const out = await selectGooglePlaces(deps().d);
-    assertEquals(ids(out.places)[0], "g:open");
+    assertEquals(ids(out.places), ["g:closed-near", "g:open-far"]);
   } finally {
-    open.restore();
+    g.restore();
+  }
+});
+
+Deno.test("google: the Family gate drops a hit outside the requested families", async () => {
+  reset();
+  const g = stubGoogle([{ id: "a-restaurant", lat: 25.6701 }]);
+  try {
+    const out = await selectGooglePlaces(deps({ families: ["coffee"] }).d);
+    assertEquals(out.places, []);
+    const all = await selectGooglePlaces(deps({ families: [] }).d);
+    assertEquals(ids(all.places), ["g:a-restaurant"]);
+  } finally {
+    g.restore();
   }
 });
 
@@ -335,7 +353,6 @@ function mrow(id: string, over: Record<string, unknown> = {}) {
 const selOpts = {
   center: CENTER,
   radiusKm: 10,
-  ranking: DISCOVERY_DEFAULTS.catalog.ranking,
   params: DISCOVERY_DEFAULTS.params,
 };
 
@@ -356,12 +373,13 @@ Deno.test("selected: has no review floor — a two-review place is kept", () => 
   assertEquals(ids(out), ["thin"]);
 });
 
-Deno.test("selected: popularity and proximity rank; distance breaks ties", () => {
+Deno.test("selected: proximity × popularity ranks; the nearer twin first", () => {
   const out = selectMesitaSelected([
     mrow("far-twin", { lat: CENTER.lat + 0.02 }),
     mrow("near-twin", { lat: CENTER.lat + 0.001 }),
-  ], { ...selOpts, ranking: { ...selOpts.ranking, proximity: 0 } });
+  ], selOpts);
   assertEquals(ids(out), ["near-twin", "far-twin"]);
+  // quiet: 1 × ln(16.5)/ln(4501) ≈ 0.33; loved at 1.1 km: 0.83 × 1.
   const loved = selectMesitaSelected([
     mrow("quiet", { google_stars_overall: 3.1, google_review_count: 5 }),
     mrow("loved", {
@@ -369,8 +387,25 @@ Deno.test("selected: popularity and proximity rank; distance breaks ties", () =>
       google_stars_overall: 4.9,
       google_review_count: 3000,
     }),
-  ], { ...selOpts, ranking: { ...selOpts.ranking, proximity: 0 } });
+  ], selOpts);
   assertEquals(ids(loved), ["loved", "quiet"]);
+});
+
+Deno.test("selected: the half distance is the operator's (params.proximity.halfDistanceKm)", () => {
+  const rows = [
+    mrow("near-quiet", { lat: CENTER.lat + 0.001, google_stars_overall: 4.0, google_review_count: 100 }),
+    mrow("far-loved", { lat: CENTER.lat + 0.05, google_stars_overall: 4.9, google_review_count: 4000 }),
+  ];
+  const tight = {
+    ...selOpts,
+    params: { ...selOpts.params, proximity: { ...selOpts.params.proximity, halfDistanceKm: 0.5 } },
+  };
+  const loose = {
+    ...selOpts,
+    params: { ...selOpts.params, proximity: { ...selOpts.params.proximity, halfDistanceKm: 40 } },
+  };
+  assertEquals(ids(selectMesitaSelected(rows, tight))[0], "near-quiet");
+  assertEquals(ids(selectMesitaSelected(rows, loose))[0], "far-loved");
 });
 
 Deno.test("selected: guest families cut, and no centre means no radius", () => {
@@ -428,4 +463,27 @@ Deno.test("google: the operator's floor cuts Google hits; the higher floor wins 
 Deno.test("selected: the operator's Google floor never touches Mesita Selected", () => {
   const out = selectMesitaSelected([mrow("thin", { google_review_count: 2 })], selOpts);
   assertEquals(ids(out), ["thin"]);
+});
+
+Deno.test("Area keeps only General's active check: the Name pipeline's reviews floor never cuts it", async () => {
+  const seen: string[] = [];
+  const q = {
+    eq: (c: string, v: unknown) => (seen.push(`eq ${c} ${v}`), q),
+    gte: (c: string, v: unknown) => (seen.push(`gte ${c} ${v}`), q),
+    lte: (c: string, v: unknown) => (seen.push(`lte ${c} ${v}`), q),
+    not: (c: string, op: string, v: unknown) => (seen.push(`not ${c} ${op} ${v}`), q),
+    or: (f: string) => (seen.push(`or ${f}`), q),
+    overlaps: (c: string, v: string[]) => (seen.push(`overlaps ${c} ${v}`), q),
+  };
+  const general = { ...DISCOVERY_DEFAULTS.general, minReviews: 500 };
+  selectedPoolQuery(q, { general }, { center: null, radiusKm: 5 });
+  assertEquals(seen.some((s) => s.includes("google_review_count")), false);
+  reset();
+  const g = stubGoogle([{ id: "thin", lat: 25.6701, reviews: 12 }]);
+  try {
+    const out = await selectGooglePlaces(deps({ cfg: { ...DISCOVERY_DEFAULTS, general } }).d);
+    assertEquals(ids(out.places), ["g:thin"]);
+  } finally {
+    g.restore();
+  }
 });

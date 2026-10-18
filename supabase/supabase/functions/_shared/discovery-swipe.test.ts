@@ -149,13 +149,12 @@ Deno.test("recommend-swipe ranks with the Swipe mask, not the old sum", async ()
   assertEquals(src.includes("swipeLineupWeights(cfg.weights)"), false);
 });
 
-Deno.test("swipeLineupWeights reads the stored Scroll column, and Map's cannot reach it", () => {
+Deno.test("swipeLineupWeights reads the stored Scroll column", () => {
   const tuned = {
     ...DISCOVERY_DEFAULTS,
     weightsByMode: {
       ...DISCOVERY_DEFAULTS.weightsByMode,
       swipe: { ...DISCOVERY_DEFAULTS.weightsByMode.swipe, proximity: 2.5 },
-      map: { ...DISCOVERY_DEFAULTS.weightsByMode.map, proximity: 0.25 },
     },
   };
   assertEquals(swipeLineupWeights(tuned).proximity, 2.5);

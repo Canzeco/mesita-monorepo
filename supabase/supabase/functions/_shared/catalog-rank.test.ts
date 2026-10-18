@@ -3,17 +3,9 @@ import { CATALOG_FAMILY_SLUGS } from "./catalog-families.ts";
 import {
   catalogAdmitted,
   type CatalogListPlace,
-  catalogScore,
   CATALOG_RAIL_CAP,
   buildCatalogRails,
 } from "./catalog-rank.ts";
-import {
-  DEFAULT_CATALOG_RANKING,
-  DEFAULT_SIGNAL_PARAMS,
-} from "./discovery-config.ts";
-import type { SignalPlace } from "./discovery-signals.ts";
-
-const guest = { lat: 19.4326, lng: -99.1332 };
 
 function row(
   id: string,
@@ -25,19 +17,6 @@ function row(
     family_keys: families,
     enriched_at: "2026-01-01T00:00:00Z",
     content_state: "ready",
-    ...over,
-  };
-}
-
-function place(over: Partial<SignalPlace> = {}): SignalPlace {
-  return {
-    lat: guest.lat,
-    lng: guest.lng,
-    hours: null,
-    category: null,
-    embedding: null,
-    rating: 4.2,
-    user_ratings_total: 60,
     ...over,
   };
 }
@@ -133,78 +112,6 @@ Deno.test("the enriched ring requires enriched and ready", () => {
     }),
     false,
   );
-});
-
-Deno.test("Enriched at weight 0 leaves Created and enriched to the other signals", () => {
-  const created = place({ enriched: false, rating: 4.9, user_ratings_total: 900 });
-  const written = place({ enriched: true, rating: 3.2, user_ratings_total: 10 });
-  const ranking = { ...DEFAULT_CATALOG_RANKING, enriched: 0 };
-  assertEquals(
-    catalogScore(created, ranking, DEFAULT_SIGNAL_PARAMS, guest) >
-      catalogScore(written, ranking, DEFAULT_SIGNAL_PARAMS, guest),
-    true,
-  );
-});
-
-Deno.test("proportional Catalog weights score the same", () => {
-  const here = place({
-    lat: guest.lat + 0.02,
-    rating: 4.8,
-    user_ratings_total: 400,
-  });
-  const base = {
-    ...DEFAULT_CATALOG_RANKING,
-    proximity: 1,
-    enriched: 2,
-    popularity: 3,
-    randomness: 0,
-  };
-  const doubled = { ...base, proximity: 2, enriched: 4, popularity: 6 };
-  assertEquals(
-    catalogScore(here, base, DEFAULT_SIGNAL_PARAMS, guest),
-    catalogScore(here, doubled, DEFAULT_SIGNAL_PARAMS, guest),
-  );
-});
-
-Deno.test("a zero Catalog weight drops that signal", () => {
-  const quiet = place({ rating: 3.1, user_ratings_total: 5 });
-  const loved = place({ rating: 4.9, user_ratings_total: 800 });
-  const off = {
-    ...DEFAULT_CATALOG_RANKING,
-    proximity: 0,
-    enriched: 0,
-    popularity: 0,
-    randomness: 0,
-  };
-  assertEquals(
-    catalogScore(quiet, off, DEFAULT_SIGNAL_PARAMS, guest),
-    catalogScore(loved, off, DEFAULT_SIGNAL_PARAMS, guest),
-  );
-  const on = { ...off, popularity: 2 };
-  assertEquals(
-    catalogScore(loved, on, DEFAULT_SIGNAL_PARAMS, guest) >
-      catalogScore(quiet, on, DEFAULT_SIGNAL_PARAMS, guest),
-    true,
-  );
-});
-
-Deno.test("a zero name would tie; abstaining does not", () => {
-  const a = place({ lat: guest.lat + 0.05 });
-  const b = place();
-  const withName = catalogScore(
-    b,
-    { ...DEFAULT_CATALOG_RANKING, proximity: 0, enriched: 0, popularity: 0, name: 4 },
-    DEFAULT_SIGNAL_PARAMS,
-    guest,
-  );
-  const without = catalogScore(
-    a,
-    { ...DEFAULT_CATALOG_RANKING, proximity: 0, enriched: 0, popularity: 0, name: 0 },
-    DEFAULT_SIGNAL_PARAMS,
-    guest,
-  );
-  assertEquals(withName, 1);
-  assertEquals(without, 1);
 });
 
 Deno.test("the operator's places per row caps every rail (MESITA-2319)", () => {

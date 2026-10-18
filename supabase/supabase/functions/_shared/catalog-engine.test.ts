@@ -50,27 +50,11 @@ Deno.test("normalizeCatalogConfig clamps and defaults", () => {
   assertEquals(normalizeCatalogConfig(null), DEFAULT_CATALOG);
   assertEquals(normalizeCatalogConfig({ seedCount: 99, placesPerRail: 1 }).seedCount, 20);
   assertEquals(normalizeCatalogConfig({ placesPerRail: 1 }).placesPerRail, 4);
-  assertEquals(normalizeCatalogConfig(null).ranking, {
-    name: 0,
-    description: 1,
-    proximity: 1,
-    enriched: 2,
-    popularity: 1,
-    selected: 1,
-    randomness: 0,
-  });
-  assertEquals(
-    normalizeCatalogConfig({ ranking: { name: 9, randomness: -1, proximity: 1.256 } }).ranking,
-    {
-      name: 4,
-      description: 1,
-      proximity: 1.26,
-      enriched: 2,
-      popularity: 1,
-      selected: 1,
-      randomness: 0,
-    },
-  );
+  // The Catalog ranking vector is gone (MESITA-2327): Area scores by
+  // proximity × popularity with no weights, and an old blob's ranking is
+  // dropped on the next save.
+  assertEquals("ranking" in normalizeCatalogConfig({ ranking: { proximity: 3 } }), false);
+
 });
 
 Deno.test("sliceSeedPlaces samples one Atlas slug", () => {

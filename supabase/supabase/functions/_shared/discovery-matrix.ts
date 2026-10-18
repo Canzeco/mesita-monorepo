@@ -86,15 +86,15 @@ export const DISCOVERY_MODE_SIGNAL_ZERO: Partial<
  * its mask is still `["name"]`. A one-factor product `s^w` is a monotone
  * transform of `s`, so a Word column would be a knob that changes nothing.
  *
- *   map     ranks only on the no-Google-fill branch (`willReorder` in
- *           consumer-web-list-places/index.ts) — CONDITIONALLY real, and the
- *           console card says so.
  *   swipe   always ranks. Every Scroll deck goes through it.
  *
  * Catalog ranks on its own profile, Chat and Favorites have no engine, and Favorites'
  * mask is empty besides — none of them calls this function at all.
  */
-export const WEIGHTED_MODE_KEYS = ["map", "swipe"] as const;
+// Map's column retired with its reader (MESITA-2327): the Area pipeline
+// scores proximity × popularity with no weights. Only the retired deck's
+// column remains, for its EF.
+export const WEIGHTED_MODE_KEYS = ["swipe"] as const;
 
 export type WeightedModeKey = (typeof WEIGHTED_MODE_KEYS)[number];
 

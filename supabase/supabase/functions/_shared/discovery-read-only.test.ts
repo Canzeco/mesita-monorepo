@@ -7,7 +7,11 @@ import { assertEquals } from "jsr:@std/assert@1";
 const FILES = [
   "../consumer-web-list-places/index.ts",
   "../consumer-web-list-catalog/index.ts",
-  "./nearby-selection.ts",
+  "./area-pipeline.ts",
+  "./area-score.ts",
+  "./pipeline-signals.ts",
+  "./deep-pipeline.ts",
+  "../consumer-web-ask-memo/index.ts",
   "./catalog-rank.ts",
 ];
 
