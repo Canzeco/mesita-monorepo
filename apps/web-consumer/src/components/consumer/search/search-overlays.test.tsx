@@ -879,14 +879,20 @@ describe("a Google-only result opens through get-or-create, never a preview or a
     expect(client).not.toContain("fetchGooglePlacePreview");
     expect(client).not.toContain("setPreviewOpen");
     expect(client).not.toContain("places.googleapis.com");
-    // The ONE place that creates: inside openGoogleProfile, reached only
-    // from the explicit open. The import line is the other occurrence.
-    expect(client.match(/apiCreateProject\(/g)?.length).toBe(1);
+    // The explicit open goes to the opening screen at once (MESITA-2311);
+    // Search itself never creates. The ONE place that creates is the opening
+    // screen's getOrCreateGooglePlace, reached only from that screen.
+    expect(client).not.toContain("apiCreateProject(");
     const open = client.slice(
       client.indexOf("const openGoogleProfile"),
       client.indexOf("const openGoogleOnly"),
     );
-    expect(open).toContain("apiCreateProject(");
+    expect(open).toContain("googleOpenHref(");
+    const opener = readFileSync(
+      join(SEARCH_DIR, "../../../lib/use-open-google-place.ts"),
+      "utf8",
+    );
+    expect(opener.match(/apiCreateProject\(/g)?.length).toBe(1);
     // One tap never creates: a Google-only open needs the RAW selection to
     // match, else the tap selects (MESITA-2305).
     const openPlace = client.slice(

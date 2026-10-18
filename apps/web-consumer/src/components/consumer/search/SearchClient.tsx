@@ -55,7 +55,6 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import type { Place } from "@/lib/api/places";
 import { apiFetchNearbyCatalog } from "@/lib/api/places";
 import {
-  apiCreateProject,
   apiResolveLocationAnchor,
   apiSuggestPlaces,
   type PlacePrediction,
@@ -67,6 +66,7 @@ import {
 } from "@/lib/use-user-location";
 import { MONTERREY_CENTER } from "@/lib/map-defaults";
 import { placeHref } from "@/lib/place-route";
+import { googleOpenHref } from "@/lib/use-open-google-place";
 import { toast } from "@/lib/toast";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
@@ -171,11 +171,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const railRefs = useRef(new Map<string, HTMLElement | null>());
   const railScrollRef = useRef<HTMLDivElement | null>(null);
 
-  const [addStates, setAddStates] = useState<Record<string, AddState>>({});
-  /** Google placeId → Mesita slug/id after Add to Mesita succeeds. */
-  const [addedProfiles, setAddedProfiles] = useState<Record<string, string>>(
-    {},
-  );
+  // The opening screen owns get-or-create now (MESITA-2311), so these stay
+  // empty: no Search row is mid-add, and a re-tap goes back through it.
+  const [addStates] = useState<Record<string, AddState>>({});
+  const [addedProfiles] = useState<Record<string, string>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Overlay pin first-tap stash so a later tap can still open (the profile,
   // through get-or-create for a Google-only row) after the suggest list is
@@ -584,42 +583,15 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // creates a Mesita Place. A held Google Place ID comes back `created:
   // false` and opens as is; a new one is live immediately, ugly, and waits
   // for votes on the Enrich tab. Nothing creates on render or on a pin tap.
-  // Reached only from `openGoogleOnly`.
+  // Reached only from `openGoogleOnly`. The tap goes to the opening screen at
+  // once (MESITA-2311): it shows the name and a spinner while get-or-create
+  // runs there, then becomes the profile.
   const openGoogleProfile = useCallback(
     (prediction: PlacePrediction) => {
-      if (addStates[prediction.placeId] === "adding") return;
       resetSearchSession();
-      setAddStates((s) => ({ ...s, [prediction.placeId]: "adding" }));
-      void (async () => {
-        try {
-          const created = await apiCreateProject(supabase, {
-            placeId: prediction.placeId,
-          });
-          const dest = created.place.slug || created.place.id;
-          setAddStates((s) => ({ ...s, [prediction.placeId]: "added" }));
-          if (dest) {
-            setAddedProfiles((s) => ({
-              ...s,
-              [prediction.placeId]: dest,
-            }));
-          }
-          if (created.created !== false) {
-            toast.success(
-              `${prediction.mainText} is on Mesita. Vote to enrich its profile.`,
-            );
-          }
-          if (dest) router.push(placeHref(dest));
-        } catch (err) {
-          setAddStates((s) => {
-            const next = { ...s };
-            delete next[prediction.placeId];
-            return next;
-          });
-          toast.error(errMsg(err, "Couldn't open that place right now."));
-        }
-      })();
+      router.push(googleOpenHref(prediction.placeId, prediction.mainText));
     },
-    [addStates, resetSearchSession, router, supabase],
+    [resetSearchSession, router],
   );
 
   // Pin / rail-card SECOND tap on a from-Google row = THE EXPLICIT OPEN

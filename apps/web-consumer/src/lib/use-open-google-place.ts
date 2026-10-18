@@ -6,14 +6,19 @@
 // id creates the ugly profile, then the profile route opens. Nothing here
 // runs on render, on a pin tap, on scroll or on a prefetch; a card calls it
 // from a deliberate tap only.
+//
+// The tap navigates AT ONCE to the opening screen (MESITA-2311): the guest
+// sees the place's name and a spinner while get-or-create runs there, instead
+// of waiting on the card they tapped. `getOrCreateGooglePlace` is that
+// screen's one call; it shares one request per Google Place ID, so a remount
+// (React's dev double effect, a fast re-tap) never creates twice.
 
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { useRouter } from "next/navigation";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { apiCreateProject } from "@/lib/api/place-search";
 import { placeHref } from "@/lib/place-route";
-import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { toast } from "@/lib/toast";
-import { errMsg } from "@/lib/utils";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 export type GoogleOnlyPlace = {
   name: string;
@@ -27,30 +32,42 @@ export function googlePlaceIdOf(place: GoogleOnlyPlace): string | null {
   return gid && gid.trim() ? gid : null;
 }
 
+/** The opening screen for a Google Place ID; the name rides along for the header. */
+export function googleOpenHref(gid: string, name: string): string {
+  const q = name.trim() ? `?name=${encodeURIComponent(name.trim())}` : "";
+  return `${CONSUMER_ROUTES.place.prefix}open/${encodeURIComponent(gid)}${q}`;
+}
+
 export function useOpenGooglePlace(): (place: GoogleOnlyPlace) => void {
-  const supabase = useBrowserSupabase();
   const router = useRouter();
-  const inFlight = useRef<Set<string>>(new Set());
   return useCallback(
     (place: GoogleOnlyPlace) => {
       const gid = googlePlaceIdOf(place);
-      if (!gid || inFlight.current.has(gid)) return;
-      inFlight.current.add(gid);
-      void (async () => {
-        try {
-          const opened = await apiCreateProject(supabase, { placeId: gid });
-          const dest = opened.place.slug || opened.place.id;
-          if (opened.created !== false) {
-            toast.success(`${place.name} is on Mesita. Vote to enrich its profile.`);
-          }
-          if (dest) router.push(placeHref(dest));
-        } catch (err) {
-          toast.error(errMsg(err, "Couldn't open that place right now."));
-        } finally {
-          inFlight.current.delete(gid);
-        }
-      })();
+      if (!gid) return;
+      router.push(googleOpenHref(gid, place.name));
     },
-    [router, supabase],
+    [router],
   );
+}
+
+export type OpenedGooglePlace = { href: string; created: boolean };
+
+const inFlight = new Map<string, Promise<OpenedGooglePlace>>();
+
+/** Get-or-create once per Google Place ID; resolves to the profile route. */
+export function getOrCreateGooglePlace(
+  supabase: SupabaseClient,
+  gid: string,
+): Promise<OpenedGooglePlace> {
+  const pending = inFlight.get(gid);
+  if (pending) return pending;
+  const run = apiCreateProject(supabase, { placeId: gid })
+    .then((opened) => {
+      const dest = opened.place.slug || opened.place.id;
+      if (!dest) throw new Error("Couldn't open that place right now.");
+      return { href: placeHref(dest), created: opened.created !== false };
+    })
+    .finally(() => inFlight.delete(gid));
+  inFlight.set(gid, run);
+  return run;
 }
