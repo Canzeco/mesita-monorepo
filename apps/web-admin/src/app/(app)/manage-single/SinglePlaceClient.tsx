@@ -26,7 +26,7 @@ import {
 import { StatePill } from "@/app/(app)/manage-multiple/PlaceFacts";
 import { StateIcon, type BatchRowState } from "@/app/(app)/manage-multiple/StateIcon";
 import { CopyIdButton, ReadField, SectionCard } from "@/components/admin-ui/manage";
-import type { EnrichDepth } from "@/lib/enrich-depth";
+import { enrichLabel, type EnrichDepth } from "@/lib/enrich-depth";
 import { placeTabHref } from "@/lib/place-tabs";
 import type { PlaceLite, SearchErrorResponse, SearchResponse } from "@/lib/places-types";
 import {
@@ -276,10 +276,10 @@ export function SinglePlaceClient({
     const id = row.mesitaId ?? (row.googleId ? added.get(row.googleId) : undefined);
     if (!id || enrichFlight.current.has(id)) return;
     if (row.placeHit?.enriching === true || enrichingIds.has(id)) return;
-    const label = depth === "quick" ? "Quick" : "Full";
+    const label = enrichLabel(depth);
     if (row.placeHit?.enriched) {
       const ok = window.confirm(
-        `This place is already enriched. Run ${label} enrich again?`,
+        `This place is already enriched. Run ${label} again?`,
       );
       if (!ok) return;
     }
@@ -515,7 +515,7 @@ export function AbsentCard({
       </div>
       <p className="text-muted-foreground mt-4 text-xs">
         Create mints the place from its Google Place ID and opens it. Quick and
-        Full enrich, and the rest, live on the place.
+        Deep Enrich, and the rest, live on the place.
         {view.note ? ` ${view.note}` : ""}
       </p>
       {note ? (

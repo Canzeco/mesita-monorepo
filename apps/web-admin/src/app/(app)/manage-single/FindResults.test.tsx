@@ -119,8 +119,8 @@ describe("Find › one table", () => {
     expect(html).not.toContain(">Instagram Found<");
     expect(html).not.toContain(">Facebook Found<");
     expect(html).toContain(">Open<");
-    expect(html).toContain(">Quick<");
-    expect(html).toContain(">Full<");
+    expect(html).toContain(">Fast Enrich<");
+    expect(html).toContain(">Deep Enrich<");
     expect(html).not.toContain(">On Mesita<");
     expect(html).toContain(">Mesita</span>");
     expect(html).toContain("Mesita only. Google was not asked.");
@@ -176,8 +176,8 @@ describe("Find › one table", () => {
     const html = render(OK);
     expect(html).toContain('href="/manage-single/mesita-a/profile"');
     expect(html).toContain('aria-label="Open Café Nin"');
-    expect(html).toContain('aria-label="Quick enrich Café Nin"');
-    expect(html).toContain('aria-label="Full enrich Café Nin"');
+    expect(html).toContain('aria-label="Fast Enrich Café Nin"');
+    expect(html).toContain('aria-label="Deep Enrich Café Nin"');
     expect(html).toContain("visited:text-(--brand-pink-900)");
     expect(html).toContain('aria-label="Create Dos Amores Brunch &amp; Meal on Mesita"');
     expect(html).toContain(">Create<");
@@ -284,8 +284,8 @@ describe("Find › one table", () => {
 
   it("a held place offers Enrich, and a Google-only place does not", () => {
     const held = render({ rows: [HELD], failed: [], notes: [] });
-    expect(held).toContain('aria-label="Quick enrich Café Nin"');
-    expect(held).toContain('aria-label="Full enrich Café Nin"');
+    expect(held).toContain('aria-label="Fast Enrich Café Nin"');
+    expect(held).toContain('aria-label="Deep Enrich Café Nin"');
     expect(held).not.toContain(">On Mesita<");
     const google = render({ rows: [NEW], failed: [], notes: [] });
     expect(google).toContain(">Create<");
@@ -302,8 +302,8 @@ describe("Find › one table", () => {
     expect(html).toContain('aria-label="Enriching Café Nin"');
     expect(html).toContain('aria-busy="true"');
     expect(html).toContain(">Open<");
-    expect(html).not.toContain('aria-label="Quick enrich Café Nin"');
-    expect(html).not.toContain('aria-label="Full enrich Café Nin"');
+    expect(html).not.toContain('aria-label="Fast Enrich Café Nin"');
+    expect(html).not.toContain('aria-label="Deep Enrich Café Nin"');
   });
 
   it("Starting… is the click still in flight", () => {
@@ -322,8 +322,8 @@ describe("Find › one table", () => {
       { enrichErrors: { "mesita-a": "Render refused the run" } },
     );
     expect(html).toContain("Render refused the run");
-    expect(html).toContain('aria-label="Quick enrich Café Nin"');
-    expect(html).toContain('aria-label="Full enrich Café Nin"');
+    expect(html).toContain('aria-label="Fast Enrich Café Nin"');
+    expect(html).toContain('aria-label="Deep Enrich Café Nin"');
   });
 
   it("folds the sources into one line for a phone", () => {
