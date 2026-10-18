@@ -39,13 +39,30 @@ export function nearbyRadiusMetres(radiusKm?: number): number {
   return Math.min(50_000, Math.max(50, Math.round(km * 1000)));
 }
 const NEARBY_CACHE_MS = 15_000;
-/** THE ONE field mask, Search and Feed alike: what rendering and ranking
- *  need, nothing else. `rating` and `userRatingCount` already bill the
- *  Enterprise SKU, so `currentOpeningHours.openNow` (the timing signal's
- *  one fact for a row with no stored hours) adds no spend. Never a photo
- *  field: an ephemeral Google card draws its family emoji (MESITA-2298 §6). */
-const NEARBY_FIELD_MASK =
-  "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.businessStatus,places.primaryType,places.currentOpeningHours.openNow";
+/** THE ONE field mask, Search and Feed alike: everything a Google-only card
+ *  and its opening profile show (MESITA-2313), nothing else. `rating` and
+ *  `userRatingCount` already bill the Enterprise SKU, so the other
+ *  Enterprise fields (price, open now, phone, website) and the Pro ones
+ *  (readable type, short address, Maps link) add no spend. Never a photo
+ *  field: an ephemeral Google card draws its family emoji (MESITA-2298 §6),
+ *  and never an Atmosphere field (reviews, summaries), a dearer SKU. */
+export const NEARBY_FIELD_MASK = [
+  "places.id",
+  "places.displayName",
+  "places.formattedAddress",
+  "places.shortFormattedAddress",
+  "places.location",
+  "places.rating",
+  "places.userRatingCount",
+  "places.businessStatus",
+  "places.primaryType",
+  "places.primaryTypeDisplayName",
+  "places.priceLevel",
+  "places.currentOpeningHours.openNow",
+  "places.googleMapsUri",
+  "places.internationalPhoneNumber",
+  "places.websiteUri",
+].join(",");
 
 export type NearbyHit = {
   placeId: string;
@@ -60,6 +77,15 @@ export type NearbyHit = {
   reviewCount: number | null;
   /** Google's `currentOpeningHours.openNow`; null when Google did not say. */
   openNow: boolean | null;
+  /** Google's readable type (`primaryTypeDisplayName.text`), e.g. "Sports bar". */
+  typeLabel?: string | null;
+  /** Google's `priceLevel` enum (`PRICE_LEVEL_MODERATE`), raw. */
+  priceLevel?: string | null;
+  /** `shortFormattedAddress`: street and area, without city and country. */
+  shortAddress?: string | null;
+  mapsUri?: string | null;
+  phone?: string | null;
+  website?: string | null;
 };
 
 type NearbyOnce =
@@ -107,7 +133,13 @@ async function searchNearbyOnce(
       userRatingCount?: number;
       businessStatus?: string;
       primaryType?: string;
+      primaryTypeDisplayName?: { text?: string };
+      priceLevel?: string;
+      shortFormattedAddress?: string;
       currentOpeningHours?: { openNow?: boolean };
+      googleMapsUri?: string;
+      internationalPhoneNumber?: string;
+      websiteUri?: string;
     }>;
   };
   const hits = (data.places ?? [])
@@ -133,6 +165,12 @@ async function searchNearbyOnce(
         openNow: typeof p.currentOpeningHours?.openNow === "boolean"
           ? p.currentOpeningHours.openNow
           : null,
+        typeLabel: p.primaryTypeDisplayName?.text?.trim() || null,
+        priceLevel: p.priceLevel ?? null,
+        shortAddress: p.shortFormattedAddress?.trim() || null,
+        mapsUri: p.googleMapsUri ?? null,
+        phone: p.internationalPhoneNumber?.trim() || null,
+        website: p.websiteUri ?? null,
       };
     })
     .filter((p) => p.placeId && p.name);

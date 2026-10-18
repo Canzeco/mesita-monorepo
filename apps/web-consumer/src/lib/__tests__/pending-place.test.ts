@@ -38,6 +38,32 @@ describe("the first draft of the profile", () => {
     expect(detail.is_enriched).toBe(false);
   });
 
+  it("shows everything the Google card carries: label, price, open now, links (MESITA-2313)", () => {
+    const detail = pendingPlaceDetail(
+      "ChIJb",
+      {
+        name: "La Cantina",
+        category: "sports_bar",
+        category_label: "Sports bar",
+        price_level: 3,
+        open_now: true,
+        phone: "+52 55 1234 5678",
+        website_url: "https://cantina.example",
+        google_maps_url: "https://maps.google.com/?cid=1",
+        google_stars_overall: 4.6,
+        google_review_count: 812,
+      },
+      "",
+      NO_GOOGLE_PLACE_FACTS,
+    );
+    expect(detail.category.toLowerCase()).toBe("sports bar");
+    expect(detail.price_level).toBe(3);
+    expect(detail.open_now).toBe(true);
+    expect(detail.google.count).toBe(812);
+    expect(JSON.stringify(detail)).toContain("https://maps.google.com/?cid=1");
+    expect(JSON.stringify(detail)).toContain("+52 55 1234 5678");
+  });
+
   it("falls back to the tap's name, then Google's, on a deep link with no card", () => {
     const fromTap = pendingPlaceDetail("ChIJx", null, "Doña Tota", NO_GOOGLE_PLACE_FACTS);
     expect(fromTap.name).toBe("Doña Tota");
