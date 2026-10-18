@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { ModeTabs } from "@/components/consumer/ModeTabs";
 
-// Home's rail — Places is the catalog (MESITA-2254), Favorites the saved
-// grid (MESITA-2368); Social and Chat stay Soon (MESITA-2168). The rail is drawn HERE, not in the route-group
+// Home's rail — Places is the catalog (MESITA-2254), with Favorites a row of
+// its column (MESITA-2383); Social and Chat stay Soon (MESITA-2168). The rail is drawn HERE, not in the route-group
 // layout above, so Search (its own bottom tab, outside /discover) never gets
 // a rail over its map.
 //

@@ -103,7 +103,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         places: "/discover/places",
         social: "/discover/social",
         chat: "/discover/chat",
-        favs: "/discover/favs",
       },
       // Default IS the first pill (MESITA-1609/1615); Swipe leads since
       // MESITA-2142.
@@ -137,6 +136,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         discoverCatalog: "/discover/catalog",
         discoverScroll: "/discover/scroll",
         discoverSwipe: "/discover/swipe",
+        discoverFavs: "/discover/favs",
         // The Second Stage tab and everything under it. All land on `pay`.
         newVisit: "/new-visit",
         newVisitWallet: "/new-visit/wallet",
@@ -301,7 +301,6 @@ describe("isModalContractPath (intercepted detail overlays)", () => {
     "/discover/places",
     "/discover/social",
     "/discover/chat",
-    "/discover/favs",
     "/search",
     "/pay",
     "/reservations",
@@ -398,6 +397,7 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       // Scroll (MESITA-2163) and Swipe (MESITA-2166), off the rail.
       { source: "/discover/scroll", destination: "/discover/places", permanent: true },
       { source: "/discover/swipe", destination: "/discover/places", permanent: true },
+      { source: "/discover/favs", destination: "/discover/places", permanent: true },
       // The Saved tab and the /saved/place dual path (MESITA-1585).
       { source: "/saved", destination: "/me", permanent: true },
       { source: "/saved/reservations", destination: "/me/reservations", permanent: true },
@@ -441,7 +441,7 @@ describe("middleware auth wall (shouldGate)", () => {
     "/discover/places",
     "/discover/social",
     "/discover/chat",
-    "/discover/favs",
+    "/discover/favs", // 308s to Places (MESITA-2383)
     "/search",
     "/place/abc",
     "/onboard",

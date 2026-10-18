@@ -12,7 +12,7 @@ import { reconcileConsumerLocalOwner } from "@/lib/consumer-local-reset";
 //
 // The reconcile runs in a useState initializer (not an effect) so the wipe
 // lands during this component's render — before the children subtree that reads
-// the saved set (FavoritesList, SwipeDeck) mounts and hydrates from storage.
+// the saved set (Places' Favorites row) mounts and hydrates from storage.
 // That avoids a one-frame flash of the previous consumer's places. The check is
 // idempotent, so StrictMode's double-invoke in dev is harmless. The (shell)
 // layout unmounts on every auth change (sign-out redirects out of the shell),

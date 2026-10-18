@@ -1,24 +1,27 @@
 "use client";
 
-// Places — a Temu-style split (Pato, MESITA-2367).
+// Places — a Temu-style split under one location bar (Pato, MESITA-2367,
+// MESITA-2383).
 //
-//   ┌────────────────┬────────────────────┐
-//   │ ➤ Current loc. │                    │   left third, two groups:
-//   │ ⚑ Home         │       square       │   WHERE — current location, the
-//   │▌⌖ Tecnologico  │        tile        │   guest's saved locations
-//   │ + Add location │                    │   (MESITA-2380), the nearby zones
-//   │                │                    │   (MESITA-2378), Add location;
-//   │ ────────────── ├────────────────────┤   then WHAT — All and the
-//   │▌🍽️ All          │       square       │   families (MESITA-2381). The
-//   │ ☕ Coffee       │        tile        │   chosen row is white, bold, an
-//   │ 🥐 Breakfast    │                    │   ink bar on its left edge.
+//   Places · Social · Chat                 Home's header (ModeTabs)
+//   ┌──────────────────────────────────────┐
+//   │ ⌖ Tecnologico                      ⌄ │  the active location, full width;
+//   ├────────────────┬─────────────────────┤  a tap opens the location sheet
+//   │ ❤️ Favorites    │                     │
+//   │▌✨ Featured     │       square        │  left third: Favorites, Featured
+//   │ ☕ Coffee       │        tile         │  (the default: every place), then
+//   │ 🥐 Breakfast    │                     │  one row per family. The chosen
+//   │                │                     │  row is white, bold, an ink bar on
+//                                            its left edge.
 //
-// Picking a zone reloads the catalog from that zone's centre. All mixes
-// Mesita Selected and Google places (they are sources, no longer guest
-// choices); a family row shows that family's rail. Favorites is its own Home
-// tab (MESITA-2368). `useUserLocation` also asks for location on mount. No
-// search bar. The request sends no predicates, so a saved scope can never
-// keep cutting this list.
+// The location sheet lists Current location, the guest's saved locations
+// (MESITA-2380) and Add location; picking one reloads the catalog from it.
+// Featured mixes Mesita Selected and Google places (they are sources, not
+// guest choices); a family row shows that family's rail; Favorites shows the
+// guest's saved places in the same tiles (it was Home's fourth tab,
+// MESITA-2368). `useUserLocation` asks for location on mount. No search bar.
+// The request sends no predicates, so a saved scope can never keep cutting
+// this list.
 
 import {
   useEffect,
@@ -27,7 +30,16 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Bookmark, Compass, MapPin, Navigation, Plus, X } from "lucide-react";
+import {
+  Bookmark,
+  ChevronDown,
+  Compass,
+  Heart,
+  MapPin,
+  Navigation,
+  Plus,
+  X,
+} from "lucide-react";
 import { apiListCatalog, type CatalogRail, type Place } from "@/lib/api/places";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { trackEvent } from "@/lib/analytics/track";
@@ -40,22 +52,28 @@ import { withUserDistance } from "@/lib/place-distance";
 import { onPlaceCreated } from "@/lib/place-created-event";
 import { useOpenGooglePlace } from "@/lib/use-open-google-place";
 import {
+  readSavedPlacePreviews,
+  removeSavedPlacePreview,
   upsertSavedPlacePreview,
   useSavedPlaces,
 } from "@/lib/saved-places";
+import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
+import { toast } from "@/lib/toast";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { EmptyState } from "@/components/shared";
 import { Skeleton } from "@/components/shared/Skeleton";
+import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { CatalogTile } from "./CatalogTile";
 import { AddLocationSheet } from "./AddLocationSheet";
 import {
   removeSavedLocation,
   useSavedLocations,
 } from "@/lib/saved-locations";
-import { cn, errMsg, haversineKm } from "@/lib/utils";
+import { cn, errMsg } from "@/lib/utils";
 import { placesFeed } from "@/lib/catalog-feed";
 
-/** The server's rail keys for the two sets that lead the chip row. */
+/** The server's rail keys for the two sets Featured mixes. */
 export const MESITA_RAIL_KEY = "mesita_selected";
 export const GOOGLE_RAIL_KEY = "google_places";
 
@@ -68,12 +86,14 @@ const ROW_BASE =
 const ROW_ON = "bg-card text-foreground font-semibold";
 const ROW_OFF = "text-foreground hover:bg-card/60";
 
-/** The families group's default row: every place, one list (MESITA-2381). */
-export const ALL_CHIP = "all";
+/** The column's default row: every place, one list (MESITA-2383; it was All). */
+export const FEATURED_CHIP = "featured";
+/** The guest's saved places (MESITA-2383; it was Home's Favorites tab). */
+export const FAVORITES_CHIP = "favorites";
 
-/** The families group: All, then one row per guest family. Google Places
- *  and Mesita Selected are no longer guest choices (Pato, MESITA-2381):
- *  they are the sources All mixes. */
+/** The column: Favorites, Featured, then one row per guest family. Google
+ *  Places and Mesita Selected are not guest choices (MESITA-2381): they are
+ *  the sources Featured mixes. */
 export function placesChips(rails: readonly CatalogRail[]): {
   key: string;
   label: string;
@@ -83,7 +103,8 @@ export function placesChips(rails: readonly CatalogRail[]): {
     (r) => r.key !== MESITA_RAIL_KEY && r.key !== GOOGLE_RAIL_KEY,
   );
   return [
-    { key: ALL_CHIP, label: "All", emoji: "🍽️" },
+    { key: FAVORITES_CHIP, label: "Favorites", emoji: "❤️" },
+    { key: FEATURED_CHIP, label: "Featured", emoji: "✨" },
     ...families.map((r) => ({
       key: r.key,
       label: r.label,
@@ -92,8 +113,8 @@ export function placesChips(rails: readonly CatalogRail[]): {
   ];
 }
 
-/** All: Mesita Selected first, then Google places, each place once. The app
- *  merges the two rails until the server ranks one feed (MESITA-2379). */
+/** Featured: Mesita Selected first, then Google places, each place once. The
+ *  app merges the two rails until the server ranks one feed (MESITA-2384). */
 export function allPlaces(rails: readonly CatalogRail[]): Place[] {
   const seen = new Set<string>();
   const out: Place[] = [];
@@ -107,63 +128,32 @@ export function allPlaces(rails: readonly CatalogRail[]): Place[] {
   return out;
 }
 
-/** A zone the guest can search from: the mean position of the loaded
- *  places that carry it (MESITA-2378). */
-export type PlacesZone = { name: string; lat: number; lng: number; count: number };
-
-/** Up to `n` zones from the loaded places — nearest to the guest first, or
- *  the busiest first without a location. Each place counts once. */
-export function nearbyZones(
-  rails: readonly CatalogRail[],
-  here: { lat: number; lng: number } | null,
-  n = 3,
-): PlacesZone[] {
-  const seen = new Set<string>();
-  const acc = new Map<string, { name: string; lat: number; lng: number; count: number }>();
-  for (const rail of rails) {
-    for (const p of rail.places) {
-      if (seen.has(p.id)) continue;
-      seen.add(p.id);
-      const name = p.zone?.trim();
-      if (!name || typeof p.lat !== "number" || typeof p.lng !== "number") continue;
-      const key = name.toLowerCase();
-      const z = acc.get(key) ?? { name, lat: 0, lng: 0, count: 0 };
-      z.lat += p.lat;
-      z.lng += p.lng;
-      z.count += 1;
-      acc.set(key, z);
-    }
-  }
-  const zones = [...acc.values()].map((z) => ({
-    name: z.name,
-    lat: z.lat / z.count,
-    lng: z.lng / z.count,
-    count: z.count,
-  }));
-  zones.sort((a, b) =>
-    here
-      ? haversineKm(here.lat, here.lng, a.lat, a.lng) -
-        haversineKm(here.lat, here.lng, b.lat, b.lng)
-      : b.count - a.count || a.name.localeCompare(b.name),
-  );
-  return zones.slice(0, n);
+/** Saved places, newest save first, from their stored previews. */
+export function favoritePlaces(
+  savedIds: ReadonlySet<string>,
+  previews: ReadonlyMap<string, Place>,
+): Place[] {
+  return [...savedIds]
+    .reverse()
+    .map((id) => previews.get(id))
+    .filter((p): p is Place => p != null)
+    .map((p) => enrichPlaceOverview(p));
 }
+
+type Origin = { key: string; name: string; lat: number; lng: number } | null;
 
 export function CatalogRails() {
   const supabase = useBrowserSupabase();
   const coords = useUserLocation();
-  const { savedIds, setSaved } = useSavedPlaces();
+  const { savedIds, hydrated, setSaved } = useSavedPlaces();
   const openGooglePlace = useOpenGooglePlace();
   const [rails, setRails] = useState<CatalogRail[] | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  // Location first, then category (Pato, MESITA-2378): null = the guest's
-  // current location; a zone or a saved location = search from that point.
-  const [origin, setOrigin] = useState<{ key: string; lat: number; lng: number } | null>(null);
+  // null = the guest's current location; a saved location = search from it.
+  const [origin, setOrigin] = useState<Origin>(null);
   const savedLocations = useSavedLocations();
+  const [picking, setPicking] = useState(false);
   const [adding, setAdding] = useState(false);
-  // The zone list is taken from current-location loads only, so picking a
-  // zone never reshuffles the list under the guest's finger.
-  const [zones, setZones] = useState<PlacesZone[]>([]);
   const from = origin ?? coords;
   const requestKey =
     from === null ? "" : `${from.lat.toFixed(3)},${from.lng.toFixed(3)}`;
@@ -186,7 +176,6 @@ export function CatalogRails() {
         const next = await apiListCatalog(supabase, from);
         if (cancelled || mine !== seq) return;
         setRails(next);
-        if (origin === null) setZones(nearbyZones(next, coords));
         setFetchError(null);
       } catch (err) {
         if (cancelled || mine !== seq || mode === "keep") return;
@@ -212,13 +201,28 @@ export function CatalogRails() {
   useEffect(() => onPlaceCreated(() => reload.current()), []);
 
   const shownRails = useMemo(() => placesFeed(rails ?? []), [rails]);
-  const [chip, setChip] = useState<string>(ALL_CHIP);
+  const [chip, setChip] = useState<string>(FEATURED_CHIP);
   const locating = useUserLocationLocating();
   const locate = useLocateUser();
+
+  // Saved previews re-read whenever the saved set changes, so a heart
+  // tapped on Featured shows up under Favorites at once.
+  const favorites = useMemo(
+    () => favoritePlaces(savedIds, readSavedPlacePreviews<Place>()),
+    [savedIds],
+  );
 
   const toggleSave = (place: Place, saved: boolean) => {
     if (saved) {
       setSaved(place.id, false);
+      removeSavedPlacePreview(place.id);
+      toast.action("Removed from saved", {
+        label: "Undo",
+        onClick: () => {
+          upsertSavedPlacePreview(place);
+          setSaved(place.id, true);
+        },
+      });
       return;
     }
     upsertSavedPlacePreview(place);
@@ -228,6 +232,132 @@ export function CatalogRails() {
       place_id: place.id,
     });
   };
+
+  const locationLabel =
+    origin?.name ??
+    (coords !== null
+      ? "Current location"
+      : locating
+        ? "Locating…"
+        : "Use my location");
+
+  // THE LOCATION BAR (MESITA-2383): one full-width line between Home's
+  // header and the split, showing only where Places searches from. Quiet
+  // gray, a slightly stronger line under it, no shadow.
+  const locationBar = (
+    <button
+      type="button"
+      onClick={() => setPicking(true)}
+      aria-haspopup="dialog"
+      aria-label={`Location: ${locationLabel}. Change location`}
+      className="bg-muted border-foreground/15 text-foreground flex w-full shrink-0 items-center gap-2 border-b px-3 py-2.5 text-left text-sm font-semibold"
+      data-places-location-bar
+    >
+      <MapPin className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+      <span className="min-w-0 flex-1 truncate">{locationLabel}</span>
+      <ChevronDown
+        className="text-muted-foreground h-4 w-4 shrink-0"
+        strokeWidth={2}
+        aria-hidden
+      />
+    </button>
+  );
+
+  const sheetRow = (row: {
+    key: string;
+    label: string;
+    icon: ReactNode;
+    selected: boolean;
+    onClick: () => void;
+    muted?: boolean;
+    onRemove?: () => void;
+  }) => (
+    <li key={row.key} className="relative">
+      <button
+        type="button"
+        onClick={row.onClick}
+        aria-pressed={row.selected}
+        className={cn(
+          "flex w-full items-center gap-3 py-3.5 pr-10 text-left text-sm transition",
+          row.selected ? "font-semibold" : "hover:bg-muted",
+          row.muted && !row.selected && "text-muted-foreground",
+        )}
+      >
+        {row.icon}
+        <span className="min-w-0 truncate">{row.label}</span>
+      </button>
+      {row.onRemove ? (
+        <button
+          type="button"
+          onClick={row.onRemove}
+          aria-label={`Remove ${row.label}`}
+          className="text-muted-foreground hover:text-foreground absolute inset-y-0 right-0 flex w-9 items-center justify-center"
+          data-places-remove-location
+        >
+          <X className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+        </button>
+      ) : null}
+    </li>
+  );
+
+  const ICON = "h-4 w-4 shrink-0";
+  const locationSheet = (
+    <LocalSheet open={picking} onClose={() => setPicking(false)} ariaLabel="Location">
+      <div className={SHEET_BODY_CLASS} data-places-location-sheet>
+        <h2 className={SHEET_TITLE_CLASS}>Location</h2>
+        <ul role="list" aria-label="Location" className="divide-border mt-2 divide-y" data-places-location>
+          {sheetRow({
+            key: "here",
+            label:
+              coords !== null
+                ? "Current location"
+                : locating
+                  ? "Locating…"
+                  : "Use my location",
+            icon: <Navigation className={ICON} strokeWidth={2.25} aria-hidden />,
+            selected: origin === null && coords !== null,
+            muted: coords === null,
+            onClick: () => {
+              setOrigin(null);
+              if (coords === null) locate();
+              setPicking(false);
+            },
+          })}
+          {savedLocations.map((l) =>
+            sheetRow({
+              key: `saved:${l.id}`,
+              label: l.name,
+              icon: <Bookmark className={ICON} strokeWidth={2.25} aria-hidden />,
+              selected: origin?.key === `saved:${l.id}`,
+              onClick: () => {
+                setOrigin({ key: `saved:${l.id}`, name: l.name, lat: l.lat, lng: l.lng });
+                setPicking(false);
+              },
+              // Removing the active location falls back to Current location.
+              onRemove: () => {
+                removeSavedLocation(l.id);
+                if (origin?.key === `saved:${l.id}`) setOrigin(null);
+              },
+            }),
+          )}
+          <li>
+            <button
+              type="button"
+              onClick={() => {
+                setPicking(false);
+                setAdding(true);
+              }}
+              className="hover:bg-muted flex w-full items-center gap-3 py-3.5 text-left text-sm transition"
+              data-places-add-location
+            >
+              <Plus className={ICON} strokeWidth={2.25} aria-hidden />
+              <span>Add location</span>
+            </button>
+          </li>
+        </ul>
+      </div>
+    </LocalSheet>
+  );
 
   const categoryRow = (c: { key: string; label: string; emoji?: string }) => (
     <li key={c.key}>
@@ -253,136 +383,81 @@ export function CatalogRails() {
     </li>
   );
   const chips = placesChips(shownRails);
-  const pickRow = (row: {
-    key: string;
-    label: string;
-    icon: ReactNode;
-    selected: boolean;
-    onClick: () => void;
-    muted?: boolean;
-    /** A saved location's remove control, shown while it is chosen. */
-    onRemove?: () => void;
-  }) => (
-    <li key={row.key} className="relative">
-      <button
-        type="button"
-        onClick={row.onClick}
-        aria-pressed={row.selected}
-        className={cn(
-          ROW_BASE,
-          row.selected ? ROW_ON : ROW_OFF,
-          row.muted && !row.selected && "text-muted-foreground",
-        )}
-      >
-        {row.selected ? (
-          <span
-            className="bg-foreground absolute inset-y-0 left-0 w-[3px]"
-            aria-hidden
-          />
-        ) : null}
-        {row.icon}
-        <span className={cn("min-w-0 break-words", row.onRemove && row.selected && "pr-6")}>
-          {row.label}
-        </span>
-      </button>
-      {row.onRemove && row.selected ? (
-        <button
-          type="button"
-          onClick={row.onRemove}
-          aria-label={`Remove ${row.label}`}
-          className="text-muted-foreground hover:text-foreground absolute inset-y-0 right-0 flex w-9 items-center justify-center"
-          data-places-remove-location
-        >
-          <X className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-        </button>
-      ) : null}
-    </li>
-  );
 
-  // Two single-select groups, a hairline between (Pato, MESITA-2378):
-  // where to search from, then what to show.
   const categories = (
     <nav
       className="bg-muted scrollbar-hide w-1/3 shrink-0 overflow-y-auto overscroll-y-contain"
       aria-label="Places"
       data-places-categories
     >
-      <ul role="list" aria-label="Location" data-places-location>
-        {pickRow({
-          key: "here",
-          label:
-            coords !== null
-              ? "Current location"
-              : locating
-                ? "Locating…"
-                : "Use my location",
-          icon: (
-            <Navigation className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
-          ),
-          selected: origin === null && coords !== null,
-          muted: coords === null,
-          onClick: () => {
-            setOrigin(null);
-            if (coords === null) locate();
-          },
-        })}
-        {savedLocations.map((l) =>
-          pickRow({
-            key: `saved:${l.id}`,
-            label: l.name,
-            icon: <Bookmark className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />,
-            selected: origin?.key === `saved:${l.id}`,
-            onClick: () => setOrigin({ key: `saved:${l.id}`, lat: l.lat, lng: l.lng }),
-            onRemove: () => {
-              removeSavedLocation(l.id);
-              setOrigin(null);
-            },
-          }),
-        )}
-        {zones.map((z) =>
-          pickRow({
-            key: `zone:${z.name}`,
-            label: z.name,
-            icon: <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />,
-            selected: origin?.key === `zone:${z.name}`,
-            onClick: () => setOrigin({ key: `zone:${z.name}`, lat: z.lat, lng: z.lng }),
-          }),
-        )}
-        {/* Add location, at the bottom (Pato, MESITA-2381): search or take
-            where you stand, name it, and Places searches from it
-            (MESITA-2380). */}
-        <li>
-          <button
-            type="button"
-            onClick={() => setAdding(true)}
-            className={cn(ROW_BASE, ROW_OFF)}
-            data-places-add-location
-          >
-            <Plus className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
-            <span className="min-w-0 break-words">Add location</span>
-          </button>
-        </li>
-      </ul>
-      <div className="border-border mx-3 border-t" aria-hidden />
       <ul role="list" aria-label="Families">{chips.map(categoryRow)}</ul>
+    </nav>
+  );
+
+  // Header line → location bar → the split; every state draws in the right
+  // two thirds, which scrolls on its own.
+  const shell = (inner: ReactNode) => (
+    <div className="flex min-h-0 flex-1 flex-col">
+      {locationBar}
+      <div className="flex min-h-0 flex-1">
+        {categories}
+        <div className="bg-card scrollbar-hide flex min-h-0 w-2/3 flex-col overflow-y-auto overscroll-y-contain">
+          {inner}
+        </div>
+      </div>
+      {locationSheet}
       <AddLocationSheet
         open={adding}
         onClose={() => setAdding(false)}
         here={coords}
-        onSaved={(l) => setOrigin({ key: `saved:${l.id}`, lat: l.lat, lng: l.lng })}
+        onSaved={(l) =>
+          setOrigin({ key: `saved:${l.id}`, name: l.name, lat: l.lat, lng: l.lng })
+        }
       />
-    </nav>
-  );
-
-  // The right two thirds scrolls on its own; every state draws inside it.
-  const shell = (inner: ReactNode) => (
-    <div className="flex min-h-0 flex-1">
-      {categories}
-      <div className="bg-card scrollbar-hide flex min-h-0 w-2/3 flex-col overflow-y-auto overscroll-y-contain">
-        {inner}
-      </div>
     </div>
   );
+
+  const tiles = (list: readonly Place[], label: string) => (
+    <div className="pb-6">
+      <ul role="list" aria-label={label} className={PLACES_LIST}>
+        {list.map((place) => {
+          const located = withUserDistance(place, coords);
+          const saved = savedIds.has(place.id);
+          return (
+            <CatalogTile
+              key={place.id}
+              place={located}
+              saved={saved}
+              onToggle={() => toggleSave(place, saved)}
+              onOpenGoogle={() => openGooglePlace(place)}
+            />
+          );
+        })}
+      </ul>
+    </div>
+  );
+
+  // Favorites never waits on the catalog: the saves are local.
+  if (chip === FAVORITES_CHIP) {
+    if (!hydrated) {
+      return shell(
+        <div className={PLACES_LIST}>
+          <Skeleton className="aspect-square rounded-none" />
+        </div>,
+      );
+    }
+    return shell(
+      favorites.length === 0 ? (
+        <EmptyState
+          icon={Heart}
+          title="Nothing saved yet"
+          description="Tap the heart on a place and it lands here."
+        />
+      ) : (
+        tiles(favorites, "Favorites")
+      ),
+    );
+  }
 
   if (fetchError) {
     return shell(
@@ -416,12 +491,12 @@ export function CatalogRails() {
   }
 
   const shown: Place[] =
-    chip === ALL_CHIP
+    chip === FEATURED_CHIP
       ? allPlaces(shownRails)
       : (shownRails.find((r) => r.key === chip)?.places ?? []);
 
   const empty =
-    chip === ALL_CHIP && coords === null ? (
+    chip === FEATURED_CHIP && from === null ? (
       <EmptyState
         icon={Navigation}
         title="Turn on location"
@@ -432,31 +507,13 @@ export function CatalogRails() {
       <EmptyState
         icon={Compass}
         title="No places here yet"
-        description="Try another chip, or check back soon."
+        description="Try another family, or another location."
       />
     );
 
   return shell(
-    shown.length === 0 ? (
-      empty
-    ) : (
-      <div className="pb-6">
-        <ul role="list" aria-label={chips.find((c) => c.key === chip)?.label} className={PLACES_LIST}>
-          {shown.map((place) => {
-            const located = withUserDistance(place, coords);
-            const saved = savedIds.has(place.id);
-            return (
-              <CatalogTile
-                key={place.id}
-                place={located}
-                saved={saved}
-                onToggle={() => toggleSave(place, saved)}
-                onOpenGoogle={() => openGooglePlace(place)}
-              />
-            );
-          })}
-        </ul>
-      </div>
-    ),
+    shown.length === 0
+      ? empty
+      : tiles(shown, chips.find((c) => c.key === chip)?.label ?? "Places"),
   );
 }
