@@ -89,7 +89,7 @@ export function LocationPicker() {
         onClick={() => setPicking(true)}
         aria-haspopup="dialog"
         aria-label={`Location: ${label}. Change location`}
-        className="border-border bg-background text-foreground hover:bg-muted flex h-10 w-full min-w-0 items-center gap-1.5 rounded-full border px-3 text-left text-xs font-semibold transition active:scale-[0.98]"
+        className="border-border bg-card text-foreground hover:bg-muted flex h-10 w-full min-w-0 items-center gap-1.5 rounded-full border px-3 text-left text-xs font-semibold transition active:scale-[0.98]"
         data-home-location
       >
         <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />

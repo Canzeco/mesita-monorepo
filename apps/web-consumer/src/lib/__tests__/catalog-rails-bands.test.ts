@@ -42,6 +42,9 @@ describe("the Places column (MESITA-2383)", () => {
     expect(placesChips().map((c) => c.key).slice(0, 3)).toEqual([SOCIAL_CHIP, FAVORITES_CHIP, FEATURED_CHIP]);
     expect(src).toContain('c.key === FAVORITES_CHIP ? (');
     expect(src).toContain("data-places-rule");
+    // Social is the one Soon row and reads different (MESITA-2408).
+    expect(placesChips().filter((c) => c.soon).map((c) => c.key)).toEqual([SOCIAL_CHIP]);
+    expect(src).toContain('c.soon && chip !== c.key && "text-muted-foreground"');
     expect(placesChips().map((c) => c.key)).not.toContain(GOOGLE_RAIL_KEY);
     expect(placesChips().map((c) => c.key)).not.toContain(MESITA_RAIL_KEY);
   });
@@ -139,7 +142,7 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
   });
 
   it("the header's location is a bordered pill: pin, name, chevron, opening the sheet", () => {
-    expect(picker).toContain("border-border bg-background text-foreground hover:bg-muted flex h-10 w-full min-w-0 items-center gap-1.5 rounded-full border px-3");
+    expect(picker).toContain("border-border bg-card text-foreground hover:bg-muted flex h-10 w-full min-w-0 items-center gap-1.5 rounded-full border px-3");
     expect(picker).toContain("<MapPin");
     expect(picker).toContain("<ChevronDown");
     expect(picker).toContain('aria-haspopup="dialog"');
@@ -166,9 +169,11 @@ describe("the Places grid (MESITA-2366)", () => {
     expect(src).not.toContain("data-band");
   });
 
-  it("draws a clear line between Home's header and the body (MESITA-2381)", () => {
+  // No line under the header; it wears the bottom bar's white (MESITA-2408).
+  it("paints Home's header the bottom bar's white, with no line under it", () => {
     const tabs = readFileSync(join(__dirname, "../../components/consumer/ModeTabs.tsx"), "utf8");
-    expect(tabs).toContain("border-foreground/20 bg-background/90 sticky top-0 z-20 shrink-0 border-b-2");
+    expect(tabs).toContain('"bg-card/95 sticky top-0 z-20 shrink-0 backdrop-blur"');
+    expect(tabs).not.toContain("border-b-2");
   });
 
   it("uses semantic tokens only", () => {

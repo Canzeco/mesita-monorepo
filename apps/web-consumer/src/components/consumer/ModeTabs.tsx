@@ -58,9 +58,9 @@ export const SEARCH_MODES: Mode[] = [
   { href: CONSUMER_ROUTES.searchChat, label: "Chat", Icon: Sparkles, soon: true },
 ];
 
-// The line under the tabs is stronger than a hairline (Pato, MESITA-2381):
-// header and body read as two menus. The right half holds one control:
-// Home's location, Search's Filters.
+// No line under the header (Pato, MESITA-2408, reversing MESITA-2381): it
+// wears the bottom bar's white (`bg-card/95`), so the two bars frame the body.
+// The right half holds Search's Filters.
 export function TabHeader({
   modes,
   label,
@@ -89,7 +89,7 @@ export function TabHeader({
   const active = "bg-primary text-primary-foreground shadow-glow";
 
   return (
-    <div className="border-foreground/20 bg-background/90 sticky top-0 z-20 shrink-0 border-b-2 backdrop-blur-xl">
+    <div className="bg-card/95 sticky top-0 z-20 shrink-0 backdrop-blur">
       <div className="grid grid-cols-2 gap-2 px-2" data-tab-header>
         {/* pt-3 clears the Soon chip: it hangs 8px above the pill, and
             overflow-x-auto clips anything past the padding edge. */}
@@ -141,7 +141,7 @@ export function TabHeader({
  *  Favorites are rows of the catalog's column now. Same strip as Search's. */
 export function ModeTabs() {
   return (
-    <div className="border-foreground/20 bg-background/90 sticky top-0 z-20 shrink-0 border-b-2 backdrop-blur-xl">
+    <div className="bg-card/95 sticky top-0 z-20 shrink-0 backdrop-blur">
       <div className="px-2 py-2.5" data-home-header>
         <LocationPicker />
       </div>

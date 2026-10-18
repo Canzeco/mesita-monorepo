@@ -47,7 +47,7 @@ export function SearchFilterRow({
       aria-pressed={applied}
       className={
         variant === "header"
-          ? "border-border bg-background text-foreground hover:bg-muted relative flex h-10 w-10 shrink-0 border items-center justify-center rounded-full transition active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40"
+          ? "border-border bg-card text-foreground hover:bg-muted relative flex h-10 w-10 shrink-0 border items-center justify-center rounded-full transition active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40"
           : "shadow-elev border-border bg-card/95 text-foreground relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border backdrop-blur-xl transition active:scale-[0.97]"
       }
       data-search-filters
