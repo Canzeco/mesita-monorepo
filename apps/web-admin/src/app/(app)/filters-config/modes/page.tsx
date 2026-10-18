@@ -13,7 +13,7 @@ import {
 export function DiscoveryModesView({ seed }: { seed: ConfigSeed<DiscoveryConfig> }) {
   return (
     <div className="flex flex-col gap-6">
-      <WordAdminBox />
+      <WordAdminBox {...seed} />
       <WordBox {...seed} />
       <MapBox {...seed} />
       <PlacesBox {...seed} />

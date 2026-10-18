@@ -310,10 +310,9 @@ describe("Search map's top row is location, the query bar and the Filters disc",
       existsSync(join(SEARCH_DIR, "../../../lib/use-discovery-filters.ts")),
     ).toBe(false);
     const suggestArgs = [
-      ...src.matchAll(/apiSuggestPlaces\(([\s\S]*?)\);/g),
+      ...src.matchAll(/apiSuggestPlacesWithIdle\(([\s\S]*?)\);/g),
     ].map((m) => m[1]);
-    expect(suggestArgs).toHaveLength(2);
-    expect(suggestArgs.join("\n")).toContain('"fast"');
+    expect(suggestArgs).toHaveLength(1);
     expect(suggestArgs.join("\n")).toContain('"deep"');
     for (const args of suggestArgs) expect(args).not.toContain("filters");
     const loading = read("../../../app/(shell)/(discovery)/search/loading.tsx");
@@ -787,23 +786,20 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
   });
 });
 
-describe("Name search is Fast while typing and Deep after idle", () => {
-  // Back on the map: Search IS the map and owns the only typed search on
-  // Discover. Home carries no bar, so there is exactly one suggest caller.
-  it("calls suggest-places twice: Autocomplete then Deep 3+3+3", () => {
+describe("Name search is ONE search after Word's idle seconds (MESITA-2322)", () => {
+  it("calls suggest-places once, Deep, after the EF's idle wait", () => {
     const src = read("SearchClient.tsx");
-    expect(src).toContain("FAST_DEBOUNCE_MS");
-    expect(src).toContain("DEEP_IDLE_MS");
-    expect(src).toContain('"fast"');
+    expect(src).toContain("DEFAULT_IDLE_MS");
+    expect(src).toContain("idleMsRef.current");
     expect(src).toContain('"deep"');
-    expect(src).not.toContain("SUGGEST_DEBOUNCE_MS");
+    expect(src).not.toContain('"fast"');
+    expect(src).not.toContain("FAST_DEBOUNCE_MS");
+    expect(src).not.toContain("DEEP_IDLE_MS");
   });
 
-  it("keeps Fast when Deep returns an empty list", () => {
+  it("takes the idle seconds from every answer", () => {
     const src = read("SearchClient.tsx");
-    expect(src).toContain("Empty Deep keeps Fast");
-    expect(src).toMatch(/if \(rows\.length > 0\) \{\s*deepSettled = true/);
-    expect(src).toContain("Keep Fast results if Deep fails.");
+    expect(src).toMatch(/if \(idleSec !== null\) idleMsRef\.current = Math\.round\(idleSec \* 1000\)/);
   });
 });
 

@@ -47,9 +47,22 @@ describe("Discovery › Modes (MESITA-2303)", () => {
   });
 
   it("a knob nothing reads shows Not wired and stores no value", () => {
-    const html = renderToStaticMarkup(<WordAdminBox />);
-    expect(html.match(/Not wired/g)?.length).toBe(4);
-    expect(html).not.toContain("<input");
+    // Only Chat's Description Search and Social's source remain unread.
+    const html = modes();
+    expect(html.match(/Not wired/g)?.length).toBe(2);
+  });
+
+  it("Word by Admin is four live controls (MESITA-2322)", () => {
+    const html = renderToStaticMarkup(<WordAdminBox {...seed} />);
+    expect(html).not.toContain("Not wired");
+    for (const label of [
+      "Max Autocomplete rows",
+      "Max Text Search rows",
+      "Max Mesita name rows",
+      "Show results on an empty query",
+    ]) {
+      expect(html).toContain(label);
+    }
   });
 
   it("Word binds the deep caps and the General gate", () => {
@@ -57,8 +70,9 @@ describe("Discovery › Modes (MESITA-2303)", () => {
     expect(html).toContain("Max Autocomplete rows");
     expect(html).toContain("Only active places");
     expect(html).toContain("Minimum number of Google reviews");
-    expect(html.match(/Not wired/g)?.length).toBe(1);
+    expect(html).not.toContain("Not wired");
     expect(html).toContain('aria-label="Show Locations"');
+    expect(html).toContain("Seconds without typing before the search runs");
   });
 });
 

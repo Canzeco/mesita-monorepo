@@ -342,9 +342,29 @@ export async function apiSuggestPlaces(
   origin?: { lat: number; lng: number } | null,
   mode: SuggestPlacesMode = "fast",
 ): Promise<PlacePrediction[]> {
+  const { predictions } = await apiSuggestPlacesWithIdle(
+    client,
+    input,
+    sessionToken,
+    origin,
+    mode,
+  );
+  return predictions;
+}
+
+/** The same call, plus Word's idle seconds from Discovery › Word
+ *  (`name.idleSec`, MESITA-2322): the bar waits that long before it
+ *  searches. Null when the EF did not say (an older EF). */
+export async function apiSuggestPlacesWithIdle(
+  client: SupabaseClient,
+  input: string,
+  sessionToken: string,
+  origin?: { lat: number; lng: number } | null,
+  mode: SuggestPlacesMode = "fast",
+): Promise<{ predictions: PlacePrediction[]; idleSec: number | null }> {
   const trimmed = input.trim();
-  if (trimmed.length < 2) return [];
-  const { predictions } = await invokeEF<{ predictions: PlacePrediction[] }>(
+  if (trimmed.length < 2) return { predictions: [], idleSec: null };
+  const data = await invokeEF<{ predictions: PlacePrediction[]; idleSec?: unknown }>(
     client,
     "consumer-web-suggest-places",
     {
@@ -354,7 +374,10 @@ export async function apiSuggestPlaces(
       ...(origin ? { lat: origin.lat, lng: origin.lng } : {}),
     },
   );
-  return predictions;
+  const idle = typeof data.idleSec === "number" && Number.isFinite(data.idleSec)
+    ? data.idleSec
+    : null;
+  return { predictions: data.predictions ?? [], idleSec: idle };
 }
 
 // Legacy rows may carry http:// photos. Next.js Image rejects them and

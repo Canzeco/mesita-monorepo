@@ -65,6 +65,17 @@ export type NameConfig = {
   deep: NameDeepConfig;
   /** Word's Locations on the consumer bar (MESITA-2319). */
   locations: boolean;
+  /** Word's idle seconds before the one search runs (MESITA-2322). */
+  idleSec: number;
+  /** Word by Admin: Single Place › Find's caps (MESITA-2322). */
+  admin: NameAdminConfig;
+};
+
+export type NameAdminConfig = {
+  autoCount: number;
+  textCount: number;
+  mesitaCount: number;
+  emptyQuery: boolean;
 };
 
 /**
@@ -403,10 +414,25 @@ const DEFAULT_NAME_DEEP: NameDeepConfig = {
   supers: DEFAULT_MAP_SUPERS,
 };
 
+/** Mirrors NAME_IDLE_SEC_* / NAME_ADMIN_* in _shared/discovery-config.ts. */
+export const NAME_IDLE_SEC_MIN = 0.3;
+export const NAME_IDLE_SEC_MAX = 5;
+export const NAME_ADMIN_TEXT_MAX = 20;
+export const NAME_ADMIN_MESITA_MAX = 10;
+
+export const DEFAULT_NAME_ADMIN: NameAdminConfig = {
+  autoCount: 0,
+  textCount: NAME_ADMIN_TEXT_MAX,
+  mesitaCount: NAME_ADMIN_MESITA_MAX,
+  emptyQuery: true,
+};
+
 export const DEFAULT_NAME: NameConfig = {
   fast: DEFAULT_NAME_FAST,
   deep: DEFAULT_NAME_DEEP,
   locations: true,
+  idleSec: 1,
+  admin: DEFAULT_NAME_ADMIN,
 };
 
 export const DEFAULT_GENERAL: GeneralConfig = {
@@ -875,6 +901,22 @@ function coerceName(raw: unknown): NameConfig {
       supers: coerceSuperParams(deep.supers),
     },
     locations: typeof n.locations === "boolean" ? n.locations : DEFAULT_NAME.locations,
+    idleSec:
+      Math.round(num(n.idleSec, DEFAULT_NAME.idleSec, NAME_IDLE_SEC_MIN, NAME_IDLE_SEC_MAX) * 10) /
+      10,
+    admin: coerceNameAdmin(n.admin),
+  };
+}
+
+function coerceNameAdmin(raw: unknown): NameAdminConfig {
+  const a = (raw ?? {}) as Record<string, unknown>;
+  return {
+    autoCount: Math.round(num(a.autoCount, DEFAULT_NAME_ADMIN.autoCount, 0, NAME_LANE_COUNT_MAX)),
+    textCount: Math.round(num(a.textCount, DEFAULT_NAME_ADMIN.textCount, 1, NAME_ADMIN_TEXT_MAX)),
+    mesitaCount: Math.round(
+      num(a.mesitaCount, DEFAULT_NAME_ADMIN.mesitaCount, 1, NAME_ADMIN_MESITA_MAX),
+    ),
+    emptyQuery: typeof a.emptyQuery === "boolean" ? a.emptyQuery : DEFAULT_NAME_ADMIN.emptyQuery,
   };
 }
 

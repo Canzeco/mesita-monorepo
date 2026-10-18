@@ -60,7 +60,10 @@ export type DiscoverySlice =
   | "chat"
   // Word's Locations switch and Places' rows-per-rail (MESITA-2319).
   | "nameLocations"
-  | "catalogRows";
+  | "catalogRows"
+  // Word's idle seconds and Word by Admin's caps (MESITA-2322).
+  | "nameIdle"
+  | "nameAdmin";
 
 export async function updateDiscoveryConfig(
   config: DiscoveryConfig,
@@ -90,6 +93,8 @@ export async function updateDiscoveryConfig(
       locations: keys.has("nameLocations")
         ? config.name.locations
         : live.config.name.locations,
+      idleSec: keys.has("nameIdle") ? config.name.idleSec : live.config.name.idleSec,
+      admin: keys.has("nameAdmin") ? config.name.admin : live.config.name.admin,
     },
     swipe: keys.has("swipe")
       ? { ...config.swipe, savedAt: new Date().toISOString() }

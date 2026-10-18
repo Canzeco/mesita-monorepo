@@ -92,13 +92,3 @@ export function ModeBox({
     </section>
   );
 }
-
-/** A parameter the box names that nothing reads yet: no stored value. */
-export function NotWiredParam({ label, reason }: { label: string; reason: string }) {
-  return (
-    <div className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
-      <span className="text-sm font-medium leading-snug">{label}</span>
-      <KnobState kind="not-wired" reason={reason} />
-    </div>
-  );
-}

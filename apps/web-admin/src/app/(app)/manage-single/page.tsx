@@ -1,5 +1,7 @@
 import { PageContainer, PageHeader } from "@/components/PageContainer";
 import { getAtlasSettings } from "../enricher-config/actions";
+import { getDiscoveryConfig } from "../filters-config/actions";
+import { DEFAULT_NAME_ADMIN } from "../filters-config/catalog";
 import { SinglePlaceClient } from "./SinglePlaceClient";
 
 // Manage › Single Place — the picker. One box finds a place by Google Place
@@ -15,7 +17,13 @@ import { SinglePlaceClient } from "./SinglePlaceClient";
 export const dynamic = "force-dynamic";
 
 export default async function ManageSinglePlacePage() {
-  const settings = await getAtlasSettings();
+  const [settings, discovery] = await Promise.all([
+    getAtlasSettings(),
+    getDiscoveryConfig(),
+  ]);
+  // Discovery › Word by Admin (MESITA-2322); a failed read keeps Find's
+  // defaults, which are its behaviour before the knobs existed.
+  const find = discovery.ok ? discovery.config.name.admin : DEFAULT_NAME_ADMIN;
   const createOnOpen = settings.ok
     ? settings.data.atlasCreateOnOpenAdmin !== false
     : true;
@@ -27,7 +35,7 @@ export default async function ManageSinglePlacePage() {
         description="Every place Mesita holds. Press Enter to search."
       />
       <div className="mt-6 sm:mt-8">
-        <SinglePlaceClient createOnOpen={createOnOpen} />
+        <SinglePlaceClient createOnOpen={createOnOpen} find={find} />
       </div>
     </PageContainer>
   );
