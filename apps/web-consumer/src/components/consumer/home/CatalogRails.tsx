@@ -1,21 +1,16 @@
 "use client";
 
-// Places — a Temu-style split under one location bar (Pato, MESITA-2367,
-// MESITA-2383).
+// Places — a Temu-style split (Pato, MESITA-2367) under Home's header.
 //
-//   Places · Social · Chat                 Home's header (ModeTabs)
-//   ┌──────────────────────────────────────┐
-//   │ ⌖ Tecnologico                      ⌄ │  the active location, full width;
-//   ├────────────────┬─────────────────────┤  a tap opens the location sheet
-//   │ ❤️ Favorites    │                     │
-//   │▌✨ Featured     │       square        │  left quarter: Favorites, Featured
-//   │ ☕ Coffee       │        tile         │  (the default: every place), then
-//   │ 🥐 Breakfast    │                     │  one row per family. The chosen
-//   │                │                     │  row is white, bold, an ink bar on
-//                                            its left edge.
+//   [ Places ][ Social ] (⌖ Tecnologico ⌄)   Home's header (ModeTabs): the
+//   ┌────────────────┬─────────────────────┐   location is its right half
+//   │ ❤️ Favorites    │                     │   (MESITA-2401), written to
+//   │▌✨ Featured     │       square        │   lib/active-location.ts and
+//   │ ☕ Coffee       │        tile         │   read here.
+//   │ 🥐 Breakfast    │                     │
 //
-// The location sheet lists Current location, the guest's saved locations
-// (MESITA-2380) and Add location; picking one reloads the catalog from it.
+// Left quarter: Favorites, Featured (the default: every place), then one row
+// per family. The chosen row is white, bold, an ink bar on its left edge.
 // Featured is the server's ONE ranked Area pool (MESITA-2379/2384): Google
 // and Mesita places merged, scored and ranked there; this screen pages it
 // (20 tiles at a time, more on scroll) and a family row filters it on each
@@ -36,16 +31,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import {
-  Bookmark,
-  ChevronDown,
-  Compass,
-  Heart,
-  MapPin,
-  Navigation,
-  Plus,
-  X,
-} from "lucide-react";
+import { Compass, Heart, Navigation } from "lucide-react";
 import {
   apiListAreaPool,
   type AreaPool,
@@ -61,11 +47,7 @@ import {
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { trackEvent } from "@/lib/analytics/track";
-import {
-  useLocateUser,
-  useUserLocation,
-  useUserLocationLocating,
-} from "@/lib/use-user-location";
+import { useLocateUser, useUserLocation } from "@/lib/use-user-location";
 import { withUserDistance } from "@/lib/place-distance";
 import { onPlaceCreated } from "@/lib/place-created-event";
 import { useOpenGooglePlace } from "@/lib/use-open-google-place";
@@ -80,14 +62,8 @@ import { toast } from "@/lib/toast";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { EmptyState } from "@/components/shared";
 import { Skeleton } from "@/components/shared/Skeleton";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { CatalogTile } from "./CatalogTile";
-import { AddLocationSheet } from "./AddLocationSheet";
-import {
-  removeSavedLocation,
-  useSavedLocations,
-} from "@/lib/saved-locations";
+import { useActiveLocation } from "@/lib/active-location";
 import { cn, errMsg } from "@/lib/utils";
 import { placesFeed } from "@/lib/catalog-feed";
 import { AreaDiagnostics } from "./AreaDiagnostics";
@@ -176,13 +152,6 @@ export function favoritePlaces(
     .map((p) => enrichPlaceOverview(p));
 }
 
-type Origin = {
-  key: string;
-  name: string;
-  lat: number;
-  lng: number;
-  bounds?: { low: { lat: number; lng: number }; high: { lat: number; lng: number } };
-} | null;
 
 export function CatalogRails() {
   const supabase = useBrowserSupabase();
@@ -192,10 +161,7 @@ export function CatalogRails() {
   const [pool, setPool] = useState<AreaPool | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   // null = the guest's current location; a saved location = search from it.
-  const [origin, setOrigin] = useState<Origin>(null);
-  const savedLocations = useSavedLocations();
-  const [picking, setPicking] = useState(false);
-  const [adding, setAdding] = useState(false);
+  const origin = useActiveLocation();
   const from = origin ?? coords;
   const requestKey = areaPoolKey(origin ?? coords);
   // The running load's background reload: the rails on screen stay until
@@ -278,7 +244,6 @@ export function CatalogRails() {
     io.observe(el);
     return () => io.disconnect();
   }, [hasMore, pageKey, pageCount]);
-  const locating = useUserLocationLocating();
   const locate = useLocateUser();
 
   // Saved previews re-read whenever the saved set changes, so a heart
@@ -317,132 +282,6 @@ export function CatalogRails() {
     });
   };
 
-  const locationLabel =
-    origin?.name ??
-    (coords !== null
-      ? "Current location"
-      : locating
-        ? "Locating…"
-        : "Use my location");
-
-  // THE LOCATION BAR (MESITA-2383): one full-width line between Home's
-  // header and the split, showing only where Places searches from. Quiet
-  // gray, a slightly stronger line under it, no shadow.
-  const locationBar = (
-    <button
-      type="button"
-      onClick={() => setPicking(true)}
-      aria-haspopup="dialog"
-      aria-label={`Location: ${locationLabel}. Change location`}
-      className="bg-muted border-foreground/15 text-foreground flex w-full shrink-0 items-center gap-2 border-b px-3 py-2.5 text-left text-sm font-semibold"
-      data-places-location-bar
-    >
-      <MapPin className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-      <span className="min-w-0 flex-1 truncate">{locationLabel}</span>
-      <ChevronDown
-        className="text-muted-foreground h-4 w-4 shrink-0"
-        strokeWidth={2}
-        aria-hidden
-      />
-    </button>
-  );
-
-  const sheetRow = (row: {
-    key: string;
-    label: string;
-    icon: ReactNode;
-    selected: boolean;
-    onClick: () => void;
-    muted?: boolean;
-    onRemove?: () => void;
-  }) => (
-    <li key={row.key} className="relative">
-      <button
-        type="button"
-        onClick={row.onClick}
-        aria-pressed={row.selected}
-        className={cn(
-          "flex w-full items-center gap-3 py-3.5 pr-10 text-left text-sm transition",
-          row.selected ? "font-semibold" : "hover:bg-muted",
-          row.muted && !row.selected && "text-muted-foreground",
-        )}
-      >
-        {row.icon}
-        <span className="min-w-0 truncate">{row.label}</span>
-      </button>
-      {row.onRemove ? (
-        <button
-          type="button"
-          onClick={row.onRemove}
-          aria-label={`Remove ${row.label}`}
-          className="text-muted-foreground hover:text-foreground absolute inset-y-0 right-0 flex w-9 items-center justify-center"
-          data-places-remove-location
-        >
-          <X className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-        </button>
-      ) : null}
-    </li>
-  );
-
-  const ICON = "h-4 w-4 shrink-0";
-  const locationSheet = (
-    <LocalSheet open={picking} onClose={() => setPicking(false)} ariaLabel="Location">
-      <div className={SHEET_BODY_CLASS} data-places-location-sheet>
-        <h2 className={SHEET_TITLE_CLASS}>Location</h2>
-        <ul role="list" aria-label="Location" className="divide-border mt-2 divide-y" data-places-location>
-          {sheetRow({
-            key: "here",
-            label:
-              coords !== null
-                ? "Current location"
-                : locating
-                  ? "Locating…"
-                  : "Use my location",
-            icon: <Navigation className={ICON} strokeWidth={2.25} aria-hidden />,
-            selected: origin === null && coords !== null,
-            muted: coords === null,
-            onClick: () => {
-              setOrigin(null);
-              if (coords === null) locate();
-              setPicking(false);
-            },
-          })}
-          {savedLocations.map((l) =>
-            sheetRow({
-              key: `saved:${l.id}`,
-              label: l.name,
-              icon: <Bookmark className={ICON} strokeWidth={2.25} aria-hidden />,
-              selected: origin?.key === `saved:${l.id}`,
-              onClick: () => {
-                setOrigin({ key: `saved:${l.id}`, name: l.name, lat: l.lat, lng: l.lng, bounds: l.bounds });
-                setPicking(false);
-              },
-              // Removing the active location falls back to Current location.
-              onRemove: () => {
-                removeSavedLocation(l.id);
-                if (origin?.key === `saved:${l.id}`) setOrigin(null);
-              },
-            }),
-          )}
-          <li>
-            <button
-              type="button"
-              onClick={() => {
-                setPicking(false);
-                setAdding(true);
-              }}
-              className="hover:bg-muted flex w-full items-center gap-3 py-3.5 text-left text-sm transition"
-              data-places-add-location
-            >
-              <Plus className={ICON} strokeWidth={2.25} aria-hidden />
-              <span>Add location</span>
-            </button>
-          </li>
-        </ul>
-      </div>
-    </LocalSheet>
-  );
-
   const categoryRow = (c: { key: string; label: string; emoji?: string }) => (
     <li key={c.key}>
       <button
@@ -478,26 +317,16 @@ export function CatalogRails() {
     </nav>
   );
 
-  // Header line → location bar → the split; every state draws in the right
-  // three quarters, which scrolls on its own.
+  // Home's header (location in its right half, MESITA-2401) → the split;
+  // every state draws in the right three quarters, which scrolls on its own.
   const shell = (inner: ReactNode) => (
     <div className="flex min-h-0 flex-1 flex-col">
-      {locationBar}
       <div className="flex min-h-0 flex-1">
         {categories}
         <div className="bg-card scrollbar-hide flex min-h-0 w-3/4 flex-col overflow-y-auto overscroll-y-contain">
           {inner}
         </div>
       </div>
-      {locationSheet}
-      <AddLocationSheet
-        open={adding}
-        onClose={() => setAdding(false)}
-        here={coords}
-        onSaved={(l) =>
-          setOrigin({ key: `saved:${l.id}`, name: l.name, lat: l.lat, lng: l.lng, bounds: l.bounds })
-        }
-      />
     </div>
   );
 

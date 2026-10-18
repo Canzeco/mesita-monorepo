@@ -120,37 +120,37 @@ describe("the Places column (MESITA-2383)", () => {
   });
 });
 
-describe("the location bar and sheet (MESITA-2383)", () => {
-  it("sits above the split, full width, gray, a line under it, no shadow", () => {
-    const shell = src.slice(src.indexOf("const shell = ("), src.indexOf("const tiles = ("));
-    expect(shell.indexOf("{locationBar}")).toBeLessThan(shell.indexOf("{categories}"));
-    expect(src).toContain(
-      'className="bg-muted border-foreground/15 text-foreground flex w-full shrink-0 items-center gap-2 border-b px-3 py-2.5 text-left text-sm font-semibold"',
-    );
-    const bar = src.slice(src.indexOf("const locationBar = ("), src.indexOf("const sheetRow = ("));
-    expect(bar).not.toContain("shadow");
-    expect(bar).toContain("<MapPin");
-    expect(bar).toContain("<ChevronDown");
-    expect(bar).toContain("onClick={() => setPicking(true)}");
+describe("the location lives in Home's header (MESITA-2401)", () => {
+  const picker = readFileSync(
+    join(__dirname, "../../components/consumer/home/LocationPicker.tsx"),
+    "utf8",
+  );
+
+  it("Places draws no location bar or sheet; it reads the shared active location", () => {
+    expect(src).not.toContain("data-places-location-bar");
+    expect(src).not.toContain("<LocalSheet");
+    expect(src).toContain("const origin = useActiveLocation();");
+    expect(src).toContain("const from = origin ?? coords;");
+    expect(src).toContain("apiListAreaPool(supabase, from)");
   });
 
-  it("opens a sheet: Current location, the saved locations, then Add location", () => {
-    const sheet = src.slice(src.indexOf("const locationSheet = ("), src.indexOf("const categoryRow = ("));
-    expect(sheet).toContain("<LocalSheet open={picking}");
-    expect(sheet.indexOf('"Current location"')).toBeLessThan(sheet.indexOf("savedLocations.map((l)"));
-    expect(sheet.indexOf("savedLocations.map((l)")).toBeLessThan(sheet.indexOf("data-places-add-location"));
-    expect(sheet).toContain("setAdding(true)");
-    expect(src).toContain("<AddLocationSheet");
+  it("the header's location is a pill: pin, name, chevron, opening the sheet", () => {
+    expect(picker).toContain("bg-muted/60 text-foreground hover:bg-muted flex w-full min-w-0 items-center gap-1.5 rounded-full px-3 py-2");
+    expect(picker).toContain("<MapPin");
+    expect(picker).toContain("<ChevronDown");
+    expect(picker).toContain('aria-haspopup="dialog"');
+    expect(picker).toContain("onClick={() => setPicking(true)}");
+  });
+
+  it("the sheet: Current location, the saved locations, then Add location", () => {
+    expect(picker.indexOf("label: locationLabel(null")).toBeLessThan(picker.indexOf("savedLocations.map((l)"));
+    expect(picker.indexOf("savedLocations.map((l)")).toBeLessThan(picker.indexOf("data-places-add-location"));
+    expect(picker).toContain("<AddLocationSheet");
+    expect(picker).toContain("bounds: l.bounds");
   });
 
   it("removing the active saved location falls back to Current location", () => {
-    expect(src).toContain("if (origin?.key === `saved:${l.id}`) setOrigin(null);");
-  });
-
-  it("searches from the picked location; a saved area sends its bounds", () => {
-    expect(src).toContain("const from = origin ?? coords;");
-    expect(src).toContain("apiListAreaPool(supabase, from)");
-    expect(src).toContain("bounds: l.bounds");
+    expect(picker).toContain("if (active?.key === `saved:${l.id}`) setActiveLocation(null);");
   });
 });
 
