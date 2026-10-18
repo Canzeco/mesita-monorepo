@@ -264,13 +264,9 @@ describe("T5 — exactly one tab lights per surface", () => {
 
   const MATRIX: [string, string][] = [
     ["/discover/places", "Home"],
-    ["/discover/social", "Home"],
     ["/search/chat", "Search"],
     ["/place/abc", "Home"],
     ["/search", "Search"],
-    // The Places test tab (MESITA-2402). "/places" starts with "/place", so
-    // Home matches "/place/" — this row holds that.
-    ["/places", "Places"],
     // Pay is one page and lights its own tab there.
     ["/pay", "Pay"],
     // Me's pages, and the one detail route it still owns: a reservation is
@@ -329,12 +325,12 @@ describe("T5 — exactly one tab lights per surface", () => {
   });
 });
 
-// The bar is Home · Search · Places · Pay (Soon) · Me (Pato, MESITA-2076:
-// "BOTTOM BAR MUST ONLY BE. Home. Search. Pay(Soon). Me."; Places is a test
-// tab, MESITA-2402), and Pay is a LINK like the other four — its page is the Soon state. Two things
+// The bar is Home · Search · Pay (Soon) · Me (Pato, MESITA-2076: "BOTTOM BAR
+// MUST ONLY BE. Home. Search. Pay(Soon). Me."), and Pay is a LINK like the
+// other three — its page is the Soon state. Two things
 // MESITA-1119 cared about are unchanged below: no class stamped into Me, and
 // no Agents tab.
-describe("the bar is Home · Search · Places · Pay (Soon) · Me", () => {
+describe("the bar is Home · Search · Pay (Soon) · Me", () => {
   async function renderNav(pathname: string): Promise<string> {
     vi.resetModules();
     vi.doMock("next/navigation", () => ({
@@ -350,8 +346,8 @@ describe("the bar is Home · Search · Places · Pay (Soon) · Me", () => {
     return [...html.matchAll(/text-center">([^<]+)</g)].map((m) => m[1]);
   }
 
-  it("is exactly Home · Search · Places · Pay · Me", async () => {
-    expect(await tabLabels()).toEqual(["Home", "Search", "Places", "Pay", "Me"]);
+  it("is exactly Home · Search · Pay · Me", async () => {
+    expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Me"]);
   });
 
   it("keeps Wallet, Visit and Order off the bar", async () => {
@@ -361,12 +357,12 @@ describe("the bar is Home · Search · Places · Pay (Soon) · Me", () => {
     expect(labels).not.toContain("Order");
   });
 
-  // Five <a> tabs, no <button>: Pay navigates to its page like every other
+  // Four <a> tabs, no <button>: Pay navigates to its page like every other
   // tab, and it is the only one tagged Soon — exactly once.
-  it("draws five links, Pay among them with one Soon tag and no button", async () => {
+  it("draws four links, Pay among them with one Soon tag and no button", async () => {
     const html = await renderNav("/search");
     const anchors = html.split("<a ").slice(1);
-    expect(anchors).toHaveLength(5);
+    expect(anchors).toHaveLength(4);
     expect(html.includes("<button")).toBe(false);
     const pay = anchors.find((a) => /text-center">Pay</.test(a));
     expect(pay).toBeDefined();
@@ -391,7 +387,6 @@ describe("the bar is Home · Search · Places · Pay (Soon) · Me", () => {
     expect(hrefs).toEqual([
       CONSUMER_ROUTES.discoverDefault,
       CONSUMER_ROUTES.search,
-      CONSUMER_ROUTES.places,
       CONSUMER_ROUTES.pay,
       CONSUMER_ROUTES.me,
     ]);
@@ -404,56 +399,53 @@ describe("the bar is Home · Search · Places · Pay (Soon) · Me", () => {
   });
 });
 
-// ── T5b — Home's supporting rail ───────────────────────────────────────────
-// A rail whose href stops matching its own pathname lights NOTHING, and
-// neither tsc nor the build nor any other test notices — the row just quietly
-// loses its selected state. This pins ORDER, COUNT, the width budget, and
-// that every pill is a real page.
-//
-// The order is Pato's (MESITA-2401): "Home has Places and Social" — Favorites
-// is a row of the Places column, Chat a pill of the Search tab.
-// MESITA-2301 restored the Places label after MESITA-2285 had renamed it Feed.
-describe("T5b — Home's supporting rail", () => {
-  it("is exactly Places · Social, and Search's is Search · Chat", async () => {
-    const { HOME_MODES, SEARCH_MODES } = await import("@/components/consumer/ModeTabs");
-    expect(HOME_MODES.map((m) => m.label)).toEqual(["Places", "Social"]);
-    expect(SEARCH_MODES.map((m) => m.label)).toEqual(["Search", "Chat"]);
-    expect(SEARCH_MODES.map((m) => m.href)).toEqual([CONSUMER_ROUTES.search, CONSUMER_ROUTES.searchChat]);
+// ── T5b — Home's header and Search's header ────────────────────────────────
+// HOME'S HEADER IS THE LOCATION ALONE (Pato, MESITA-2405: "The top bar is
+// just to select the location. thats it."). Social and Favorites are rows of
+// the catalog's column; Home has no pills. Search's header is locate · bar ·
+// Ask AI over a row of family chips (MESITA-2409).
+describe("T5b — Home's header and Search's header", () => {
+  it("Home's header is the location picker and nothing else", () => {
+    const tabs = readFileSync(join(COMPONENTS, "ModeTabs.tsx"), "utf8");
+    expect(tabs).toMatch(/data-home-header>\s*<LocationPicker \/>\s*<\/div>/);
+    expect(tabs).not.toContain("HOME_MODES");
+    const layout = readFileSync(
+      join(SHELL, "(discovery)", "discover", "layout.tsx"),
+      "utf8",
+    );
+    expect(layout).toContain("<ModeTabs />");
   });
 
-  // Places is the catalog (Pato, MESITA-2254), Favorites one of its rows
-  // (MESITA-2383). Social and Chat stay Soon (MESITA-2168): their pages stay
-  // the Soon empty state — Memo does not mount.
-  it("Places is live; Social and Chat stay Soon", async () => {
-    const { HOME_MODES, SEARCH_MODES } = await import("@/components/consumer/ModeTabs");
-    expect(HOME_MODES.map((m) => Boolean(m.soon))).toEqual([false, true]);
-    expect(SEARCH_MODES.map((m) => Boolean(m.soon))).toEqual([false, true]);
+  // Search's header (MESITA-2409): locate · bar · Ask AI, then family chips.
+  // Ask AI lands on /search/chat, the Soon page with a way back.
+  it("Search's header is locate · bar · Ask AI, and Ask AI is a real Soon page", () => {
+    const header = readFileSync(join(COMPONENTS, "search", "SearchHeader.tsx"), "utf8");
+    expect(header).toContain("href={CONSUMER_ROUTES.searchChat}");
+    expect(header).toMatch(/\{locate\}\s*<div className="min-w-0 flex-1">\{bar\}<\/div>\s*<Link/);
+    expect(header).toContain("Ask AI");
+    expect(new Set(allPages().map(pageUrl))).toContain(CONSUMER_ROUTES.searchChat);
     const chat = readFileSync(join(SHELL, "(discovery)", "search", "chat", "page.tsx"), "utf8");
     expect(chat).toContain("HomeSoon");
-    expect(chat).toContain("<SearchHeader />");
+    expect(chat).toContain("href={CONSUMER_ROUTES.search}");
     expect(chat).not.toMatch(/<AskAiTab/);
-    const rail = readFileSync(join(COMPONENTS, "ModeTabs.tsx"), "utf8");
-    expect(rail).toMatch(/>\s*Soon\s*</);
+  });
+
+  // Home is ONE page: the catalog. Social is its Soon row (MESITA-2405).
+  it("Home lands on the catalog, its one page under discover", () => {
+    expect(CONSUMER_ROUTES.discoverDefault).toBe(CONSUMER_ROUTES.discoverTabs.places);
+    expect(Object.values(CONSUMER_ROUTES.discoverTabs)).toEqual(["/discover/places"]);
     const places = readFileSync(
       join(SHELL, "(discovery)", "discover", "places", "page.tsx"),
       "utf8",
     );
     expect(places).toContain("<CatalogRails");
     expect(places).not.toContain("HomeSoon");
-    for (const seg of ["social"]) {
-      const page = readFileSync(
-        join(SHELL, "(discovery)", "discover", seg, "page.tsx"),
-        "utf8",
-      );
-      expect(page, seg).toContain("HomeSoon");
-      expect(page, seg).not.toMatch(/<CatalogRails|<AskAiTab/);
-    }
+    const rails = readFileSync(join(COMPONENTS, "home", "CatalogRails.tsx"), "utf8");
+    expect(rails).toContain("<HomeSoon");
     const soon = readFileSync(join(COMPONENTS, "home", "HomeSoon.tsx"), "utf8");
     expect(soon).toContain("is coming soon");
   });
 
-  // Swipe (MESITA-2166), Scroll (MESITA-2163) and Catalog's old Feed address
-  // left the rail: no page, one hop to Places, the default.
   // Chat left Home for the Search tab (MESITA-2401): no page, one hop.
   it("/discover/chat has no page and 308s to /search/chat", async () => {
     const hop = (await nextConfig.redirects!()).find((r) => r.source === "/discover/chat");
@@ -461,19 +453,11 @@ describe("T5b — Home's supporting rail", () => {
     expect(existsSync(join(SHELL, "(discovery)", "discover", "chat", "page.tsx"))).toBe(false);
   });
 
-  it("the header's right half: Home's location, Search's Filters (MESITA-2401)", () => {
-    const tabs = readFileSync(join(COMPONENTS, "ModeTabs.tsx"), "utf8");
-    expect(tabs).toContain('className="grid grid-cols-2 gap-2 px-2" data-tab-header');
-    expect(tabs).toContain('aside={<LocationPicker />}');
-    const header = readFileSync(join(COMPONENTS, "search", "SearchHeader.tsx"), "utf8");
-    expect(header).toContain('variant="header"');
-  });
-
-  it.each(["swipe", "scroll", "feed", "favs"])(
-    "/discover/%s has no page and 308s to Places",
+  // Swipe (MESITA-2166), Scroll (MESITA-2163), Catalog's old Feed address,
+  // Favorites (MESITA-2383) and Social (MESITA-2405) left the header.
+  it.each(["swipe", "scroll", "feed", "favs", "social"])(
+    "/discover/%s has no page and 308s to Home",
     async (seg) => {
-      const { HOME_MODES } = await import("@/components/consumer/ModeTabs");
-      expect(HOME_MODES.map((m) => m.href)).not.toContain(`/discover/${seg}`);
       const hop = (await nextConfig.redirects!()).find(
         (r) => r.source === `/discover/${seg}`,
       );
@@ -484,94 +468,11 @@ describe("T5b — Home's supporting rail", () => {
     },
   );
 
-  // The width budget, as an assertion rather than a comment. `auto-cols-fr`
-  // sizes every column to the WIDEST pill, so the track is N x widest plus
-  // (N-1) x 4px of gaps, and it has to fit 359px (375 frame less px-2).
-  //
-  it("keeps every Home label inside the 359px track", async () => {
-    const { HOME_MODES } = await import("@/components/consumer/ModeTabs");
-    const navSrc = readFileSync(join(COMPONENTS, "ModeTabs.tsx"), "utf8");
-    // Match the class strings themselves, not the words anywhere in the file.
-    expect(navSrc).toContain('"text-xs flex items-center');
-    expect(navSrc).toContain('className="h-3.5 w-3.5 shrink-0"');
-    const TEXT_PX: Record<string, number> = {
-      Home: 34.2,
-      // Estimated from Inter 600 advance widths at 12px, rounded up
-      // (MESITA-2166); four columns leave ~90px of slack either way.
-      Places: 38.3,
-      // Inter 600's hmtx at 12px, rounded up (MESITA-2285).
-      Feed: 28.8,
-      Social: 36.7,
-      // Inter 600's hmtx at 12px (MESITA-2142).
-      Swipe: 35.6,
-      // Inter 600's hmtx at 12px, the same table as the rest (MESITA-2134).
-      Catalog: 44.8,
-      // Measured off the live site's Inter 600 at 12px (MESITA-2081), the
-      // same probe that reads Home at 34.15 and Search at 40.75.
-      Scroll: 33.0,
-      Search: 40.9,
-      Chat: 27.3,
-      Favs: 27.6,
-      // Inter 600 at 12px, ~6.2px a glyph (MESITA-2368).
-      Favorites: 55.9,
-      Pay: 21.7,
-    };
-    const widest = Math.max(
-      ...HOME_MODES.map((m) => {
-        const text = TEXT_PX[m.label];
-        expect(
-          text,
-          `unmeasured label "${m.label}" — measure it at 12px`,
-        ).toBeTypeOf("number");
-        return text + 26;
-      }),
-    );
-    // The pills own the LEFT HALF of the row since MESITA-2401: (359 - 8) / 2.
-    expect(
-      widest * HOME_MODES.length + (HOME_MODES.length - 1) * 4,
-    ).toBeLessThanOrEqual(175.5);
-  });
-
-  // Every pill is a LIVE page — never a redirect source, which would cost a
-  // hop and light no pill while it ran.
-  it("every pill href is a real page, one each", async () => {
-    const { HOME_MODES } = await import("@/components/consumer/ModeTabs");
-    const pages = new Set(allPages().map(pageUrl));
-    const hrefs = HOME_MODES.map((m) => m.href);
-    for (const href of hrefs) expect(pages, href).toContain(href);
-    expect(new Set(HOME_MODES.map((m) => m.href)).size).toBe(HOME_MODES.length);
-    // The two /discover pills are exactly the contract's discoverTabs.
-    expect(
-      HOME_MODES.map((m) => m.href).filter((h) => h.startsWith("/discover/")),
-    ).toEqual(Object.values(CONSUMER_ROUTES.discoverTabs));
-  });
-
-  // First pill is the default, the property this rail has preserved since
-  // MESITA-1609. Home's bottom-tab href is the rail's first href.
-  it("lands Home on its leading pill", async () => {
-    const { HOME_MODES } = await import("@/components/consumer/ModeTabs");
-    expect(CONSUMER_ROUTES.discoverDefault).toBe(
-      CONSUMER_ROUTES.discoverTabs.places,
-    );
-    expect(HOME_MODES[0].href).toBe(CONSUMER_ROUTES.discoverDefault);
-    expect(HOME_MODES[0].label).toBe("Places");
-  });
-
-  it("every Home pill's page lives under discover", () => {
-    for (const rel of [
-      ["discover", "places"],
-      ["discover", "social"],
-    ]) {
-      expect(
-        existsSync(join(SHELL, "(discovery)", ...rel, "page.tsx")),
-        rel.join("/"),
-      ).toBe(true);
-    }
-    const layout = readFileSync(
-      join(SHELL, "(discovery)", "discover", "layout.tsx"),
-      "utf8",
-    );
-    expect(layout).toContain("<ModeTabs />");
+  // The Places test tab (MESITA-2402) is deleted (MESITA-2405).
+  it("/places has no page and 308s to Home", async () => {
+    const hop = (await nextConfig.redirects!()).find((r) => r.source === "/places");
+    expect(hop?.destination).toBe(CONSUMER_ROUTES.discoverDefault);
+    expect(existsSync(join(SHELL, "(discovery)", "places", "page.tsx"))).toBe(false);
   });
 });
 

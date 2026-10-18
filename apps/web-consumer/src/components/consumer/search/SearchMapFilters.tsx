@@ -6,7 +6,7 @@ import {
   clearMapFamilies,
   resetMapFilters,
   setMapMinReviews,
-  toggleMapFamily,
+  selectMapFamily,
   useMapFilters,
 } from "@/lib/use-map-filters";
 import {
@@ -21,9 +21,9 @@ import { SearchPopularity } from "./SearchPopularity";
 // 2026-10-17, MESITA-2298; the Places source switch left in MESITA-2384 —
 // the guest never picks a source):
 //
-//   Families        All Families (the default: no family cut) or any set of
-//                   the fifteen; the server turns the set into the union of
-//                   their Google types.
+//   Families        All Families (the default: no family cut) or ONE of the
+//                   fifteen (MESITA-2412); the server turns it into its
+//                   Google types.
 //   Google Reviews  the review-count floor, 10+ / 100+ / 1,000+,
 //                   default 100+; applied to Google hits after Google
 //                   answers, never as a Nearby API param, never to a Mesita
@@ -62,7 +62,7 @@ export function SearchMapFilters({
                 <Pill
                   key={family.key}
                   active={filters.familyKeys.includes(family.key)}
-                  onClick={() => toggleMapFamily(family.key)}
+                  onClick={() => selectMapFamily(family.key)}
                 >
                   <span aria-hidden>{family.emoji}</span> {family.label}
                 </Pill>

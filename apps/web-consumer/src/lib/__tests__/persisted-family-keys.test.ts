@@ -56,12 +56,10 @@ describe("persisted familyKeys hydrate from the filterable fifteen", () => {
     );
 
     const mod = await import("@/lib/use-map-filters");
-    mod.toggleMapFamily("dinner");
+    mod.selectMapFamily("dinner");
 
-    expect(persistedFamilyKeys(store, MAP_KEY)).toEqual([
-      "coffee",
-      "dinner",
-    ]);
+    // One family at a time (MESITA-2412): picking Dinner replaces Coffee.
+    expect(persistedFamilyKeys(store, MAP_KEY)).toEqual(["dinner"]);
   });
 
   it("keeps every key the Map sheet still renders", async () => {
@@ -73,11 +71,11 @@ describe("persisted familyKeys hydrate from the filterable fifteen", () => {
     );
 
     const mod = await import("@/lib/use-map-filters");
-    mod.toggleMapFamily("dinner");
+    mod.selectMapFamily("dinner");
 
-    expect(persistedFamilyKeys(store, MAP_KEY)).toEqual(
-      all.filter((k) => k !== "dinner"),
-    );
+    // A stored set from before the one-family rule reads as its first key;
+    // picking another replaces it.
+    expect(persistedFamilyKeys(store, MAP_KEY)).toEqual(["dinner"]);
   });
 
   it("drops a stored scope word: the guest never picks a source (MESITA-2384)", async () => {
@@ -87,7 +85,7 @@ describe("persisted familyKeys hydrate from the filterable fifteen", () => {
     );
 
     const mod = await import("@/lib/use-map-filters");
-    mod.toggleMapFamily("dinner");
+    mod.selectMapFamily("dinner");
 
     const raw = JSON.parse(store.get(MAP_KEY)!) as {
       placesScope?: string;

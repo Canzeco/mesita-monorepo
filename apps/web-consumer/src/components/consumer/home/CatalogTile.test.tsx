@@ -95,7 +95,7 @@ describe("the tile: photo on top, its light reflection below (MESITA-2369, MESIT
     expect(html.match(/<img/g)?.length).toBe(2);
     expect(html).toContain("bg-paper/80");
     expect(html).not.toContain("bg-foreground/50");
-    expect(html).not.toMatch(/rounded-(lg|xl|2xl)/);
+    expect(html).not.toMatch(/rounded-(xl|2xl)/);
     expect(html.indexOf("<img")).toBeLessThan(html.indexOf(">Casa<"));
   });
 

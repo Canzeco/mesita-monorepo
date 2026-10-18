@@ -1,7 +1,7 @@
 import { assert, assertEquals } from "@std/assert";
-import { dirname, fromFileUrl, join } from "@std/path";
+import { dirname, fromFileUrl } from "@std/path";
 
-import { extractHumanStrings, scanPackageCards, scanVocabulary } from "./vocabulary-ratchet.ts";
+import { extractHumanStrings, scanPackageCards, scanSource, scanVocabulary } from "./vocabulary-ratchet.ts";
 
 const repoRoot = dirname(dirname(fromFileUrl(import.meta.url)));
 
@@ -36,4 +36,12 @@ Deno.test("planted Crenup in a string would fail", () => {
   const src = `const t = "Crenup";`;
   const hits = extractHumanStrings(src);
   assert(hits.some((h) => /\bCrenup\b/.test(h.text)));
+});
+
+Deno.test("Second Stage words fail in UI copy; a family's membership does not", () => {
+  const tokens = (src: string) => scanSource("apps/web-admin/src/x.tsx", src).map((v) => v.token);
+  assertEquals(tokens(`const a = "Get a promo code";`), ["promo"]);
+  assertEquals(tokens(`export const B = () => <p>Mesita membership</p>;`), ["membership"]);
+  assertEquals(tokens(`const c = "Family membership lives on Atlas";`), []);
+  assertEquals(tokens(`// a promo in a comment is not copy\nconst d = "Promoting a place";`), []);
 });

@@ -39,7 +39,7 @@ function readPersisted(): MapFilters {
         ? (parsed.familyKeys as unknown[]).filter(
             (k): k is FamilyKey =>
               typeof k === "string" && KNOWN_FAMILY_KEYS.has(k),
-          )
+          ).slice(0, 1)
         : [],
       minReviews: clampMinReviews(parsed.minReviews),
     };
@@ -87,11 +87,11 @@ export function setMapMinReviews(minReviews: MapMinReviews) {
   patchMapFilters({ minReviews: clampMinReviews(minReviews) });
 }
 
-export function toggleMapFamily(key: FamilyKey) {
+/** ONE family at a time, or All (Pato, MESITA-2412: "only enable to select
+ *  one family at any time (or All)"). Picking the chosen one again is All. */
+export function selectMapFamily(key: FamilyKey) {
   patchMapFilters({
-    familyKeys: state.familyKeys.includes(key)
-      ? state.familyKeys.filter((k) => k !== key)
-      : [...state.familyKeys, key],
+    familyKeys: state.familyKeys.length === 1 && state.familyKeys[0] === key ? [] : [key],
   });
 }
 

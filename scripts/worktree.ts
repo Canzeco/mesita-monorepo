@@ -914,7 +914,9 @@ export async function pr(env: Env, opts: { docs?: string } = {}): Promise<string
     }
     return [`adopted PR #${p.number} on ${branch}${p.isDraft ? " (draft: run gh pr ready before merging)" : ""}; body carries Closes ${issue} and ${docsLine}`];
   }
-  const subject = (await gitOk(env, cwd, "log", "-1", "--format=%s")).trim();
+  // The title is the squash commit's subject. After `git merge origin/main` the tip is the merge, and plain
+  // `--no-merges` would name main's newest commit when that is newer than ours: only origin/main..HEAD is ours.
+  const subject = (await gitOk(env, cwd, "log", "-1", "--no-merges", "--format=%s", "origin/main..HEAD")).trim() || issue;
   const created = await env.runner("gh", ["pr", "create", "--head", branch, "--title", subject, "--body", withJoin("", issue, docsLine)], { cwd });
   if (created.code !== 0) throw new GhError(created.stderr.trim());
   return [`opened ${created.stdout.trim()} on ${branch}; body carries Closes ${issue} and ${docsLine}`];

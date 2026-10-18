@@ -1,10 +1,11 @@
 "use client";
 
-// Home's location control (Pato, MESITA-2401): the right half of Home's
-// header row — a pill with a pin, the active location's name and a quiet
-// chevron. A tap opens the location sheet: Current location, the guest's
-// saved locations (each removable) and Add location (MESITA-2380). The
-// choice lives in `lib/active-location.ts`, which Places reads.
+// Home's location control — the whole of Home's header (Pato, MESITA-2405:
+// "The top bar is just to select the location. thats it."): a full-width
+// bordered pill with a pin, the active location's name and a quiet chevron.
+// A tap opens the location sheet: Current location, the guest's saved
+// locations (each removable) and Add location (MESITA-2380). The choice
+// lives in `lib/active-location.ts`, which Home's catalog reads.
 
 import { useState, type ReactNode } from "react";
 import { Bookmark, ChevronDown, MapPin, Navigation, Plus, X } from "lucide-react";
@@ -33,8 +34,7 @@ export function locationLabel(
 
 const ICON = "h-4 w-4 shrink-0";
 
-/** `compact`: a 44px disc with the pin alone — Places' header (MESITA-2402). */
-export function LocationPicker({ compact = false }: { compact?: boolean } = {}) {
+export function LocationPicker() {
   const coords = useUserLocation();
   const locating = useUserLocationLocating();
   const locate = useLocateUser();
@@ -83,37 +83,25 @@ export function LocationPicker({ compact = false }: { compact?: boolean } = {}) 
 
   return (
     <>
-      {/* The resting pill's look, so the header reads as one strip. */}
-      {compact ? (
-        <button
-          type="button"
-          onClick={() => setPicking(true)}
-          aria-haspopup="dialog"
-          aria-label={`Location: ${label}. Change location`}
-          title={label}
-          className="border-border bg-card/95 shadow-elev text-foreground hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition active:scale-[0.98]"
-          data-home-location
-        >
-          <MapPin className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-        </button>
-      ) : (
+      {/* Home's whole header: the location, full width (MESITA-2405). */}
       <button
         type="button"
         onClick={() => setPicking(true)}
         aria-haspopup="dialog"
         aria-label={`Location: ${label}. Change location`}
-        className="bg-muted/60 text-foreground hover:bg-muted flex w-full min-w-0 items-center gap-1.5 rounded-full px-3 py-2 text-left text-xs font-semibold transition active:scale-[0.98]"
+        className="border-border bg-card text-foreground hover:bg-muted relative flex h-10 w-full min-w-0 items-center justify-center gap-1.5 rounded-full border px-8 text-xs font-semibold transition active:scale-[0.98]"
         data-home-location
       >
+        {/* Pin and name centred (Pato, MESITA-2412); the chevron keeps the
+            right edge, and px-8 keeps a long name clear of it. */}
         <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
-        <span className="min-w-0 flex-1 truncate">{label}</span>
+        <span className="min-w-0 truncate">{label}</span>
         <ChevronDown
-          className="text-muted-foreground h-3.5 w-3.5 shrink-0"
+          className="text-muted-foreground absolute top-1/2 right-3 h-3.5 w-3.5 shrink-0 -translate-y-1/2"
           strokeWidth={2}
           aria-hidden
         />
       </button>
-      )}
 
       <LocalSheet open={picking} onClose={() => setPicking(false)} ariaLabel="Location">
         <div className={SHEET_BODY_CLASS} data-places-location-sheet>

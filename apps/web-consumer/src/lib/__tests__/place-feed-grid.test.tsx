@@ -23,9 +23,10 @@ describe("Places is one grid", () => {
     expect(rails).not.toContain("FavoriteTile");
     expect(rails).not.toContain("ArrowUpDown");
     expect(rails).not.toContain('type="range"');
-    // The tile: full-bleed square, no border, no radius.
-    expect(tile).toContain("relative aspect-square min-w-0 overflow-hidden");
-    expect(tile).not.toMatch(/rounded-(lg|xl|2xl)/);
+    // The tile: a square, no border, a small radius (Pato, MESITA-2409
+    // "just a bit", then MESITA-2413 "a bit more rounded").
+    expect(tile).toContain("relative aspect-square min-w-0 overflow-hidden rounded-lg");
+    expect(tile).not.toMatch(/rounded-(xl|2xl)/);
     expect(tile).not.toContain("border-border");
     expect(tile).toContain("formatRating");
     expect(tile).not.toContain("place.zone");
@@ -47,7 +48,6 @@ describe("Discovery invents no places", () => {
 
   it.each([
     ["Places", "components/consumer/home/CatalogRails.tsx"],
-    ["Social", "app/(shell)/(discovery)/discover/social/page.tsx"],
     ["the place lookup", "lib/api/places.ts"],
   ])("%s ships no mock deck", (_label, rel) => {
     const src = read(rel);

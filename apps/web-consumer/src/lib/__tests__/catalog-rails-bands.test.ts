@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 import type { CatalogRail, Place } from "@/lib/api/places";
 import {
   FAVORITES_CHIP,
+  PINNED_CHIPS,
+  SOCIAL_CHIP,
   poolPlaces,
   PLACES_PAGE,
   favoritePlaces,
@@ -31,13 +33,23 @@ const RAILS: CatalogRail[] = [
 ];
 
 describe("the Places column (MESITA-2383)", () => {
-  it("is Favorites, Featured, then every guest family — no source rows (MESITA-2384)", () => {
+  // Social · Favorites · Featured pinned, a rule, then the families, which
+  // alone scroll (MESITA-2411).
+  it("is Social, Favorites, Featured, then every guest family — no source rows (MESITA-2384)", () => {
     const labels = placesChips().map((c) => c.label);
-    expect(labels.slice(0, 2)).toEqual(["Favorites", "Featured"]);
+    expect(labels.slice(0, 3)).toEqual(["Social", "Favorites", "Featured"]);
     expect(labels).toContain("Coffee");
     expect(labels).toContain("Breakfast");
     expect(labels).not.toContain("Undefined");
-    expect(placesChips().map((c) => c.key).slice(0, 2)).toEqual([FAVORITES_CHIP, FEATURED_CHIP]);
+    expect(placesChips().map((c) => c.key).slice(0, 3)).toEqual([SOCIAL_CHIP, FAVORITES_CHIP, FEATURED_CHIP]);
+    expect(PINNED_CHIPS).toBe(3);
+    expect(src).toContain("chips.slice(0, PINNED_CHIPS).map(categoryRow)");
+    expect(src).toContain("chips.slice(PINNED_CHIPS).map(categoryRow)");
+    expect(src).toContain("data-places-rule");
+    expect(src).toContain('className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-y-contain"');
+    // Social is the one Soon row and reads different (MESITA-2408).
+    expect(placesChips().filter((c) => c.soon).map((c) => c.key)).toEqual([SOCIAL_CHIP]);
+    expect(src).toContain('c.soon && chip !== c.key && "text-muted-foreground"');
     expect(placesChips().map((c) => c.key)).not.toContain(GOOGLE_RAIL_KEY);
     expect(placesChips().map((c) => c.key)).not.toContain(MESITA_RAIL_KEY);
   });
@@ -111,8 +123,8 @@ describe("the Places column (MESITA-2383)", () => {
     expect(src).not.toContain("nearbyZones");
   });
 
-  it("is a left column, a quarter wide (MESITA-2385), scrolling on its own, and opens on Featured", () => {
-    expect(src).toContain("bg-muted scrollbar-hide w-1/4 shrink-0 overflow-y-auto");
+  it("is a left column, a quarter wide (MESITA-2385), and opens on Featured", () => {
+    expect(src).toContain("bg-muted flex w-1/4 shrink-0 flex-col");
     expect(src).toContain("useState<string>(FEATURED_CHIP)");
     // The chosen row: white, bold, an ink bar on its left edge.
     expect(src).toContain('const ROW_ON = "bg-card text-foreground font-semibold";');
@@ -134,8 +146,8 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
     expect(src).toContain("apiListAreaPool(supabase, from)");
   });
 
-  it("the header's location is a pill: pin, name, chevron, opening the sheet", () => {
-    expect(picker).toContain("bg-muted/60 text-foreground hover:bg-muted flex w-full min-w-0 items-center gap-1.5 rounded-full px-3 py-2");
+  it("the header's location is a bordered pill: pin, name, chevron, opening the sheet", () => {
+    expect(picker).toContain("border-border bg-card text-foreground hover:bg-muted relative flex h-10 w-full min-w-0 items-center justify-center gap-1.5 rounded-full border px-8");
     expect(picker).toContain("<MapPin");
     expect(picker).toContain("<ChevronDown");
     expect(picker).toContain('aria-haspopup="dialog"');
@@ -162,9 +174,12 @@ describe("the Places grid (MESITA-2366)", () => {
     expect(src).not.toContain("data-band");
   });
 
-  it("draws a clear line between Home's header and the body (MESITA-2381)", () => {
+  // The bottom bar's white and its hairline (MESITA-2408, MESITA-2409:
+  // "a super thin light gray line … just as in menu"), never the old 2px rule.
+  it("paints Home's header the bottom bar's white, with the bar's hairline under it", () => {
     const tabs = readFileSync(join(__dirname, "../../components/consumer/ModeTabs.tsx"), "utf8");
-    expect(tabs).toContain("border-foreground/20 bg-background/90 sticky top-0 z-20 shrink-0 border-b-2");
+    expect(tabs).toContain('"border-border bg-card/95 sticky top-0 z-20 shrink-0 border-b backdrop-blur"');
+    expect(tabs).not.toContain("border-b-2");
   });
 
   it("uses semantic tokens only", () => {
