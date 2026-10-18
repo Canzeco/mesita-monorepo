@@ -33,7 +33,8 @@ export function locationLabel(
 
 const ICON = "h-4 w-4 shrink-0";
 
-export function LocationPicker() {
+/** `compact`: a 44px disc with the pin alone — Places' header (MESITA-2402). */
+export function LocationPicker({ compact = false }: { compact?: boolean } = {}) {
   const coords = useUserLocation();
   const locating = useUserLocationLocating();
   const locate = useLocateUser();
@@ -83,6 +84,19 @@ export function LocationPicker() {
   return (
     <>
       {/* The resting pill's look, so the header reads as one strip. */}
+      {compact ? (
+        <button
+          type="button"
+          onClick={() => setPicking(true)}
+          aria-haspopup="dialog"
+          aria-label={`Location: ${label}. Change location`}
+          title={label}
+          className="border-border bg-card/95 shadow-elev text-foreground hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition active:scale-[0.98]"
+          data-home-location
+        >
+          <MapPin className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+        </button>
+      ) : (
       <button
         type="button"
         onClick={() => setPicking(true)}
@@ -99,6 +113,7 @@ export function LocationPicker() {
           aria-hidden
         />
       </button>
+      )}
 
       <LocalSheet open={picking} onClose={() => setPicking(false)} ariaLabel="Location">
         <div className={SHEET_BODY_CLASS} data-places-location-sheet>

@@ -5,7 +5,7 @@ import { Z_BOTTOM_NAV } from "@/lib/z-index";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ComponentType } from "react";
-import { QrCode, Search, User } from "lucide-react";
+import { LayoutGrid, QrCode, Search, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { cn } from "@/lib/utils";
 import {
@@ -17,10 +17,10 @@ import { barePath } from "@/lib/surface";
 import { trackEvent } from "@/lib/analytics/track";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 
-// FOUR tabs, in this order (Pato, MESITA-2076 — "BOTTOM BAR MUST ONLY BE.
-// Home. Search. Pay(Soon). Me."):
+// FIVE tabs, in this order (Pato, MESITA-2076 — "BOTTOM BAR MUST ONLY BE.
+// Home. Search. Pay(Soon). Me."; Places added as a test, MESITA-2402):
 //
-//   Home · Search · Pay (Soon) · Me
+//   Home · Search · Places · Pay (Soon) · Me
 //
 //   PAY IS ONE PAGE, THE SOON STATE (Pato, MESITA-2087: "Keep pay but delete
 //   everything else. just the empty page with soon."). The tab is a plain
@@ -62,7 +62,8 @@ const ITEMS: Item[] = [
     matchPrefixes: [
       CONSUMER_ROUTES.discoverTabs.places,
       CONSUMER_ROUTES.discoverTabs.social,
-      CONSUMER_ROUTE_PREFIX.place,
+      // "/place/", never "/place": the bare prefix also matches /places.
+      CONSUMER_ROUTES.place.prefix,
     ],
   },
   {
@@ -70,6 +71,13 @@ const ITEMS: Item[] = [
     Icon: Search,
     label: "Search",
     matchPrefixes: [CONSUMER_ROUTES.search],
+  },
+  {
+    // Home's catalog + Search's map in one view — a test (MESITA-2402).
+    href: CONSUMER_ROUTES.places,
+    Icon: LayoutGrid,
+    label: "Places",
+    matchPrefixes: [CONSUMER_ROUTES.places],
   },
   {
     href: CONSUMER_ROUTES.pay,
