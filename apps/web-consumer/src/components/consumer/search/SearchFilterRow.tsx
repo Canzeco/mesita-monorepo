@@ -2,7 +2,7 @@
 
 import { SlidersHorizontal } from "lucide-react";
 
-import { cn } from "@/lib/utils";
+import { ActiveDot } from "./ActiveDot";
 
 // The Filters control, TOP RIGHT, BESIDE THE BAR: a 44px disc wearing the
 // sliders icon and nothing else (Pato, 2026-10-17: "don't mention filters
@@ -18,9 +18,10 @@ import { cn } from "@/lib/utils";
 // wrapper or a missing `shrink-0` here produces. Neither is cosmetic;
 // `search-overlays.test.tsx` pins both.
 //
-// Applied goes primary-filled with the count as a corner badge: the state
-// is legible before the sheet opens. The accessible name carries the word
-// the disc no longer prints.
+// Applied wears the brand-red dot on its corner (MESITA-2304), the same
+// mark the location disc wears for a held fix; the disc itself stays the
+// bar's neutral chrome. The accessible name carries the word the disc no
+// longer prints, and the count.
 export function SearchFilterRow({
   count,
   onOpenFilters,
@@ -36,28 +37,14 @@ export function SearchFilterRow({
       aria-label={applied ? `Filters, ${count} applied` : "Filters"}
       aria-haspopup="dialog"
       aria-pressed={applied}
-      className={cn(
-        "shadow-elev relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border backdrop-blur-xl transition active:scale-[0.97]",
-        applied
-          ? "border-primary bg-primary text-primary-foreground shadow-glow"
-          : "border-border bg-card/95 text-foreground",
-      )}
+      className="shadow-elev border-border bg-card/95 text-foreground relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border backdrop-blur-xl transition active:scale-[0.97]"
     >
       <SlidersHorizontal
         className="h-5 w-5 shrink-0"
         strokeWidth={2.25}
         aria-hidden
       />
-      {applied && (
-        <span
-          className={cn(
-            "type-label absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 px-1 leading-none font-bold tabular-nums",
-            "border-background bg-foreground text-paper",
-          )}
-        >
-          {count}
-        </span>
-      )}
+      {applied ? <ActiveDot /> : null}
     </button>
   );
 }
