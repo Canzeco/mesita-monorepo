@@ -545,7 +545,9 @@ const PROBES: ProbeSpec[] = [
   {
     id: "stripe",
     label: "Stripe",
-    impact: "Business plans + consumer Premium subscriptions",
+    // Same words as KNOWN_PROBES in web-admin billing-test/catalog.ts: the
+    // console shows this EF's impact over its own whenever a probe returns.
+    impact: "Key still stored. No First Stage screen charges it.",
     envKeys: [...STRIPE_SECRET_KEY_NAMES, ...STRIPE_PUBLISHABLE_KEY_NAMES],
     run: async (keys) => {
       // STRIPE_MODE picks WHICH key, and the other universe's key is never a
