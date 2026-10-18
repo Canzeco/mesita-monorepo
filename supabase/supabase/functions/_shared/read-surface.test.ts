@@ -188,6 +188,9 @@ const PROFILES_READ_ALLOWLIST = [
   // The Deep pipeline's Mesita Places Search: id, name, About and the summary
   // vector of active, ready places (MESITA-2327).
   "_shared/deep-pipeline.ts",
+  // Area's Mesita Selected scope for the Chat Agent: the same pool query the
+  // Map and the Feed run (MESITA-2339).
+  "_shared/area-pipeline.ts",
   "_shared/place-embeddings.ts",
   "_shared/place-requests.ts",
   "_shared/place-slug.ts",

@@ -26,6 +26,7 @@
 // No photo field is ever asked for an ephemeral card, and nothing here
 // writes a row.
 
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { CATALOG_FAMILY_SLUGS } from "./catalog-families.ts";
 import { nearbyTypesForSupers } from "./google-type-super.ts";
 import { catalogAdmitted } from "./catalog-rank.ts";
@@ -347,4 +348,42 @@ export function selectedPoolQuery<Q extends SelectedPoolQuery<Q>>(
   // A capped pool must be the same slice every time: without an order,
   // Postgres may hand back any N rows once the area holds more than the cap.
   return q.order("id", { ascending: true });
+}
+
+/** What a non-view caller needs of a Selected place, About included. */
+const AREA_SELECTED_COLUMNS =
+  "id, slug, name, address, lat, lng, family_keys, google_stars_overall, google_review_count, description, enriched_at, content_state";
+/** The Selected pool cap for a non-view caller: a few answers, not a map. */
+const AREA_SELECTED_POOL = 300;
+
+/**
+ * The Area pipeline's Mesita Selected scope for a caller that is not a view
+ * — the Chat Agent (MESITA-2339). The same pool query (gates pushed down)
+ * and the same ranking the Map's and the Feed's Selected scope use, around
+ * the guest's location when there is one. No Google call. Null on error.
+ */
+export async function areaSelectedPlaces(
+  admin: SupabaseClient,
+  cfg: Pick<DiscoveryConfig, "general" | "map" | "params">,
+  opts: { center: Center | null; families: readonly string[]; limit: number },
+): Promise<Array<Record<string, unknown> & { distance_km: number | null }> | null> {
+  const { data, error } = await selectedPoolQuery(
+    admin
+      .from("profiles")
+      .select(AREA_SELECTED_COLUMNS)
+      .eq("state", "active") as unknown as PoolBuilder,
+    cfg,
+    { center: opts.center, radiusKm: cfg.map.radiusKm, families: opts.families },
+  ).limit(AREA_SELECTED_POOL);
+  if (error) {
+    console.error("[area-pipeline] selected:", error.message);
+    return null;
+  }
+  return selectMesitaSelected((data ?? []) as Record<string, unknown>[], {
+    center: opts.center,
+    radiusKm: cfg.map.radiusKm,
+    families: opts.families,
+    params: cfg.params,
+    limit: opts.limit,
+  });
 }

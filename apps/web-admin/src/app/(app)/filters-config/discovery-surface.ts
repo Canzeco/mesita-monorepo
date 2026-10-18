@@ -273,7 +273,7 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
       "A Google row must have a Google type of one of the fifteen families, the only places Mesita can hold (hotels, shops and schools never show), and clear the stored Google floors (map.minRating, minReviews, minPopularity; 0 is off and no box edits them).",
       "Discovery › General's reviews floor (people, never stars; 0 is off) cuts Google and Mesita rows.",
     ],
-    callers: ["The guest's Search bar", "Admin Single Place › Find"],
+    callers: ["The guest's Search bar", "Admin Single Place › Find", "Chat (Don Memo)"],
   },
   {
     key: "area",
@@ -289,7 +289,7 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
       "Inside the radius: it decides who is a candidate and never scores.",
       "Google Places scope only: the guest's Google Reviews stop (10+ · 100+ · 1,000+, default 100+) or the operator's floor, whichever is higher. Mesita Selected has no review floor.",
     ],
-    callers: ["Map (the Search tab)", "Catalog (Home's Feed)"],
+    callers: ["Map (the Search tab)", "Catalog (Home's Feed)", "Chat (Don Memo)"],
   },
   {
     key: "deep",

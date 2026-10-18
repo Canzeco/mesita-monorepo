@@ -1,6 +1,7 @@
 // The Deep pipeline (MESITA-2327): lazy, Description-ranked, Chat-facing.
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { deepContextForChat, type DeepRow, runDeepPipeline } from "./deep-pipeline.ts";
+import { type DeepRow, runDeepPipeline } from "./deep-pipeline.ts";
+import { chatContextForModel } from "./chat-agent.ts";
 import { SYSTEM_PROMPT } from "./memo-prompt.ts";
 
 const row = (id: string, embedding: unknown, over: Partial<DeepRow> = {}): DeepRow => ({
@@ -74,15 +75,6 @@ Deno.test("deep fails soft: no vector or no pool is an empty answer", async () =
   assertEquals((await runDeepPipeline(deps(null).d)).places, []);
 });
 
-Deno.test("chat context names only Deep's places, best first", async () => {
-  const { d } = deps([row("exact", [1, 0])]);
-  const out = await runDeepPipeline(d);
-  const ctx = deepContextForChat(out.places);
-  assert(ctx.includes("1. EXACT"));
-  assert(ctx.includes("never invent"));
-  assertEquals(deepContextForChat([]), "");
-});
-
 Deno.test("the Chat Agent calls the Deep pipeline, never a source", async () => {
   const chat = await Deno.readTextFile(new URL("../consumer-web-ask-memo/index.ts", import.meta.url));
   assert(chat.includes("runDeepPipeline("));
@@ -92,6 +84,10 @@ Deno.test("the Chat Agent calls the Deep pipeline, never a source", async () => 
     "fetchTextSearch",
     "fetchAutocomplete",
     "embedSingle",
+    // The Google-backed wrappers too: Chat names only Mesita places.
+    "selectGooglePlaces",
+    "runConsumerSearchLane",
+    "searchNearby",
   ]) {
     assertEquals(chat.includes(source), false, source);
   }
@@ -110,7 +106,9 @@ Deno.test("the persona allows recommending from Deep's list and never contradict
   assertEquals(SYSTEM_PROMPT.includes("Do not pretend you queried Mesita"), false);
   assertEquals(SYSTEM_PROMPT.includes("cannot look up Google Places, Perplexity, the Mesita catalog"), false);
   assert(SYSTEM_PROMPT.includes("only from that list"));
-  assert(deepContextForChat([{
+  // The context the model really gets (MESITA-2339) says Mesita looked the
+  // places up, matching the persona.
+  assert(chatContextForModel([{
     id: "a",
     slug: null,
     name: "A",
@@ -118,19 +116,23 @@ Deno.test("the persona allows recommending from Deep's list and never contradict
     familyKeys: [],
     rating: null,
     reviewCount: null,
-    similarity: 0.9,
     about: null,
-  }]).includes("Mesita looked these up"));
+    distanceKm: null,
+    why: "deep",
+  }], { hasAnchor: false }).includes("Mesita looked these places up"));
 });
 
-Deno.test("Memo's only database client feeds the config read and the Deep pipeline", async () => {
+Deno.test("Memo's only database client feeds the config read and the three pipelines", async () => {
   const chat = await Deno.readTextFile(new URL("../consumer-web-ask-memo/index.ts", import.meta.url));
   const uses = chat.match(/adminClient\(/g) ?? [];
   assertEquals(uses.length, 1);
-  const fn = chat.slice(chat.indexOf("async function deepPlacesFor"));
+  const fn = chat.slice(chat.indexOf("async function chatPlacesFor"));
   assert(fn.includes("adminClient(env)"));
   assert(fn.includes("loadDiscoveryConfig(admin)"));
-  assert(fn.includes("deepDepsFor(admin,"));
+  // The client reaches data only through the pipeline modules (MESITA-2339).
+  assert(chat.includes("nameMesitaPlaces(admin,"));
+  assert(chat.includes("areaSelectedPlaces(admin,"));
+  assert(chat.includes("deepDepsFor(admin,"));
   // Any member call, however the chain is wrapped (imports read `from "…"`).
   assertEquals(/\.\s*(from|rpc)\s*\(/.test(chat), false);
   assertEquals(chat.includes("createClient("), false);
