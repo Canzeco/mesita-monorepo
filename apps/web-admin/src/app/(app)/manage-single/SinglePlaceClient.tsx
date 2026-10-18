@@ -22,6 +22,7 @@ import {
   enrichPlace,
   searchPlacesByGoogleIds,
   type PlaceHit,
+  type SuggestHit,
 } from "@/app/(app)/manage-multiple/actions";
 import { StatePill } from "@/app/(app)/manage-multiple/PlaceFacts";
 import { StateIcon, type BatchRowState } from "@/app/(app)/manage-multiple/StateIcon";
@@ -39,9 +40,11 @@ import {
 import {
   loadCatalogSource,
   loadCatalogueWithTotal,
+  searchAutocompleteSource,
   searchNameSource,
   searchTextSource,
 } from "./find-sources";
+import { DEFAULT_NAME_ADMIN, type NameAdminConfig } from "../filters-config/catalog";
 import { FindResults, type RowNote } from "./FindResults";
 import { classifyLookup, googleMapsPlaceHref } from "./single-place-lookup";
 
@@ -56,9 +59,14 @@ type Note = { state: BatchRowState; text: string };
 
 export function SinglePlaceClient({
   createOnOpen = true,
+  find: findCaps = DEFAULT_NAME_ADMIN,
 }: {
   /** Creation › "Create the profile on open · admin app" (MESITA-2298). */
   createOnOpen?: boolean;
+  /** Discovery › Word by Admin (MESITA-2322). Mesita name rows are capped
+   *  server-side; Autocomplete rows, Text Search rows and the empty query
+   *  are read here. */
+  find?: NameAdminConfig;
 } = {}) {
   const router = useRouter();
   const [text, setText] = useState("");
@@ -96,7 +104,10 @@ export function SinglePlaceClient({
     findSeq.current += 1;
     setRowNotes({});
     try {
-      if (lookup.kind === "empty") await findCatalogue();
+      if (lookup.kind === "empty") {
+        if (findCaps.emptyQuery) await findCatalogue();
+        else setView(null);
+      }
       else if (lookup.kind === "google_place_id") await findByGoogleId(lookup.id);
       else await findByName(lookup.query);
     } catch (err) {
@@ -140,7 +151,7 @@ export function SinglePlaceClient({
 
   useEffect(() => {
     findSeq.current += 1;
-    void findCatalogue();
+    if (findCaps.emptyQuery) void findCatalogue();
     // Mount only. The list loads without locking the field. Enter is the
     // deep search; an empty submit calls findCatalogue itself.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -169,10 +180,13 @@ export function SinglePlaceClient({
     const catalogue: Promise<SourceResult<PlaceHit[]>> = catalog
       ? Promise.resolve({ status: "ok", data: catalog })
       : loadCatalogSource();
-    const [all, name, textSearch] = await Promise.all([
+    const [all, name, textSearch, autocomplete] = await Promise.all([
       catalogue,
       searchNameSource(query),
-      searchTextSource(query),
+      searchTextSource(query, findCaps.textCount),
+      findCaps.autoCount > 0
+        ? searchAutocompleteSource(query)
+        : Promise.resolve<SourceResult<SuggestHit[]>>({ status: "ok", data: [] }),
     ]);
     if (findSeq.current !== seq) return;
     if (all.status === "ok") setCatalog(all.data);
@@ -185,7 +199,7 @@ export function SinglePlaceClient({
         catalogue: { status: "ok", data: [] },
         catalog: all.status === "ok" ? all.data : [],
         name,
-        autocomplete: { status: "ok", data: [] },
+        autocomplete,
         text: textSearch,
       }),
     });

@@ -13,7 +13,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
 
-export { apiSuggestPlaces, type PlacePrediction } from "./places";
+export {
+  apiSuggestPlaces,
+  apiSuggestPlacesWithIdle,
+  type PlacePrediction,
+} from "./places";
 
 /** Where a picked Location lands the camera; viewport decides the zoom. */
 export type LocationAnchor = {

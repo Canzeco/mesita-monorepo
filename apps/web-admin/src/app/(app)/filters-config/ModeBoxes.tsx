@@ -34,6 +34,10 @@ import {
   MAP_RADIUS_KM_MAX,
   MAP_RADIUS_KM_MIN,
   MAP_RELOAD_PAIRS,
+  NAME_ADMIN_MESITA_MAX,
+  NAME_ADMIN_TEXT_MAX,
+  NAME_IDLE_SEC_MAX,
+  NAME_IDLE_SEC_MIN,
   NAME_LANE_COUNT_MAX,
   SIGNALS,
   WEIGHT_MAX,
@@ -50,9 +54,8 @@ import {
 } from "./catalog-shares";
 import { modeSignalState } from "./discovery-matrix";
 import { CATALOG_FAMILY_FACTS, CATALOG_SIGNAL_RAILS } from "./discovery-surface";
-import { ModeBox, NotWiredParam } from "./ModeBox";
+import { ModeBox } from "./ModeBox";
 
-const NOT_READ = "Nothing reads this yet";
 const ICON = "h-5 w-5";
 
 function useDiscoveryEditor(seed: ConfigSeed<DiscoveryConfig>) {
@@ -68,7 +71,16 @@ function Saved({ at }: { at: string | null }) {
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
 // 1 ─ Word by Admin ───────────────────────────────────────────────────────
-export function WordAdminBox() {
+export function WordAdminBox(seed: ConfigSeed<DiscoveryConfig>) {
+  const { cfg, setCfg, saved, setOk, pending, error, loadBlocked, ok, updatedAt, saveWith } =
+    useDiscoveryEditor(seed);
+  const dirty = !same(cfg.name.admin, saved.name.admin);
+  const off = pending || loadBlocked;
+  const a = cfg.name.admin;
+  const patch = (p: Partial<DiscoveryConfig["name"]["admin"]>) => {
+    setOk(false);
+    setCfg((c) => ({ ...c, name: { ...c.name, admin: { ...c.name.admin, ...p } } }));
+  };
   return (
     <ModeBox
       id="s-word-admin"
@@ -76,10 +88,11 @@ export function WordAdminBox() {
       title="Word by Admin"
       explanation={
         <p>
-          Single Place › Find. An admin types a name; the three searches run
+          Single Place › Find. An admin types a name; the searches run
           together and merge into one list with duplicates removed. Google rows
           keep Google&apos;s order; Mesita rows are ordered by name match.
-          Locations are never shown here.
+          Locations are never shown here. With the last option on, the page
+          opens listing every Mesita place, as an empty search.
         </p>
       }
       sources={[
@@ -87,13 +100,58 @@ export function WordAdminBox() {
         { name: "Google Places Text Search", returns: "Google Places matching the query" },
         { name: "Mesita Places Name Search", returns: "Mesita Places whose name matches" },
       ]}
+      save={
+        <>
+          <Saved at={updatedAt} />
+          <SaveRow
+            pending={pending}
+            dirty={dirty}
+            ok={ok && !dirty}
+            onClick={() => saveWith((c) => updateDiscoveryConfig(c, ["nameAdmin"]))}
+            loadError={loadBlocked ? error : null}
+          />
+        </>
+      }
     >
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <NotWiredParam label="Max Autocomplete rows" reason={NOT_READ} />
-        <NotWiredParam label="Max Text Search rows" reason={NOT_READ} />
-        <NotWiredParam label="Max Mesita name rows (at most 10)" reason={NOT_READ} />
-        <NotWiredParam label="Show results on an empty query" reason={NOT_READ} />
+        <NumberField
+          label="Max Autocomplete rows"
+          value={a.autoCount}
+          min={0}
+          max={NAME_LANE_COUNT_MAX}
+          disabled={off}
+          onChange={(autoCount) => patch({ autoCount })}
+        />
+        <NumberField
+          label="Max Text Search rows"
+          value={a.textCount}
+          min={1}
+          max={NAME_ADMIN_TEXT_MAX}
+          disabled={off}
+          onChange={(textCount) => patch({ textCount })}
+        />
+        <NumberField
+          label="Max Mesita name rows"
+          value={a.mesitaCount}
+          min={1}
+          max={NAME_ADMIN_MESITA_MAX}
+          disabled={off}
+          onChange={(mesitaCount) => patch({ mesitaCount })}
+        />
+        <div className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4">
+          <span className="text-sm font-medium">Show results on an empty query</span>
+          <Switch
+            on={a.emptyQuery}
+            pending={off}
+            label="Show results on an empty query"
+            onClick={() => patch({ emptyQuery: !a.emptyQuery })}
+          />
+        </div>
       </div>
+      <p className="text-muted-foreground type-meta">
+        0 Autocomplete rows means Find does not call Autocomplete. Mesita name
+        rows stop at {NAME_ADMIN_MESITA_MAX}.
+      </p>
     </ModeBox>
   );
 }
@@ -105,6 +163,7 @@ export function WordBox(seed: ConfigSeed<DiscoveryConfig>) {
   const dirty =
     !same(cfg.name.deep, saved.name.deep) ||
     cfg.name.locations !== saved.name.locations ||
+    cfg.name.idleSec !== saved.name.idleSec ||
     !same(cfg.general, saved.general);
   const off = pending || loadBlocked;
   const deep = (p: Partial<DiscoveryConfig["name"]["deep"]>) => {
@@ -122,7 +181,8 @@ export function WordBox(seed: ConfigSeed<DiscoveryConfig>) {
       title="Word"
       explanation={
         <p>
-          The guest&apos;s Search bar. The three searches run together and
+          The guest&apos;s Search bar, one search: it runs once the guest has
+          stopped typing for the seconds below. The three searches run together and
           merge into one list with duplicates removed. Google rows keep
           Google&apos;s order; Mesita rows are ordered by name match. A
           Location (a city, a region) shows with a location icon, and picking
@@ -143,14 +203,25 @@ export function WordBox(seed: ConfigSeed<DiscoveryConfig>) {
             pending={pending}
             dirty={dirty}
             ok={ok && !dirty}
-            onClick={() => saveWith((c) => updateDiscoveryConfig(c, ["nameDeep", "nameLocations", "general"]))}
+            onClick={() => saveWith((c) => updateDiscoveryConfig(c, ["nameDeep", "nameLocations", "nameIdle", "general"]))}
             loadError={loadBlocked ? error : null}
           />
         </>
       }
     >
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <NotWiredParam label="Seconds without typing before the search runs" reason={NOT_READ} />
+        <NumberField
+          label="Seconds without typing before the search runs"
+          value={cfg.name.idleSec}
+          min={NAME_IDLE_SEC_MIN}
+          max={NAME_IDLE_SEC_MAX}
+          decimals
+          disabled={off}
+          onChange={(idleSec) => {
+            setOk(false);
+            setCfg((c) => ({ ...c, name: { ...c.name, idleSec } }));
+          }}
+        />
         <NumberField
           label="Max Autocomplete rows"
           value={cfg.name.deep.autoCount}

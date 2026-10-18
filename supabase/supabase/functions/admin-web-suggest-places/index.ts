@@ -46,5 +46,7 @@ Deno.serve(async (req) => {
     input: body.input,
     sessionToken: body.sessionToken,
     mode: typeof body.mode === "string" ? body.mode : "deep",
+    // Word by Admin's caps (MESITA-2322), never the consumer bar's.
+    admin: true,
   });
 });

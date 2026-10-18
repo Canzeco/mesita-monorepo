@@ -56,7 +56,7 @@ import type { Place } from "@/lib/api/places";
 import { apiFetchNearbyCatalog } from "@/lib/api/places";
 import {
   apiResolveLocationAnchor,
-  apiSuggestPlaces,
+  apiSuggestPlacesWithIdle,
   type PlacePrediction,
 } from "@/lib/api/place-search";
 import {
@@ -114,11 +114,11 @@ import {
   withDistances,
 } from "./search-utils";
 
-// Fast (Autocomplete) while typing, Deep once the guest stops. Deep only
-// REPLACES Fast when it actually has rows — an empty Deep would blank a list
-// the guest is already reading.
-const FAST_DEBOUNCE_MS = 300;
-const DEEP_IDLE_MS = 1000;
+// Word is ONE search (MESITA-2322): Deep (Autocomplete · Text Search ·
+// Mesita names) once the guest has stopped typing for Discovery › Word's
+// idle seconds. The EF returns that number with every answer; until the
+// first answer the bar waits DEFAULT_IDLE_MS.
+const DEFAULT_IDLE_MS = 1000;
 const MIN_QUERY = 2;
 
 /**
@@ -169,6 +169,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // results panel is dismissed, scoping each autocomplete run properly.
   const openGooglePlace = useOpenGooglePlace();
   const sessionTokenRef = useRef(newSessionToken());
+  // Word's idle wait, refreshed from every answer (MESITA-2322).
+  const idleMsRef = useRef(DEFAULT_IDLE_MS);
   const railRefs = useRef(new Map<string, HTMLElement | null>());
   const railScrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -302,61 +304,33 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   useEffect(() => {
     if (trimmedQuery.length < MIN_QUERY) return;
     let cancelled = false;
-    let deepSettled = false;
     const token = sessionTokenRef.current;
 
-    const fast = window.setTimeout(async () => {
+    const search = window.setTimeout(async () => {
       try {
-        const rows = await apiSuggestPlaces(
-          supabase,
-          trimmedQuery,
-          token,
-          searchOrigin,
-          "fast",
-        );
-        if (cancelled || deepSettled) return;
-        setPredictions(rows);
-        setSearchError(null);
-        // Empty Fast keeps `searching` true so Deep can fill without the list
-        // flashing "no matches" in between.
-        if (rows.length > 0) setSearching(false);
-      } catch (err) {
-        if (cancelled || deepSettled) return;
-        setPredictions([]);
-        setSearchError(errMsg(err, "Search failed — try again."));
-        setSearching(false);
-      }
-    }, FAST_DEBOUNCE_MS);
-
-    const deep = window.setTimeout(async () => {
-      try {
-        const rows = await apiSuggestPlaces(
+        const { predictions: rows, idleSec } = await apiSuggestPlacesWithIdle(
           supabase,
           trimmedQuery,
           token,
           searchOrigin,
           "deep",
         );
+        if (idleSec !== null) idleMsRef.current = Math.round(idleSec * 1000);
         if (cancelled) return;
-        // Empty Deep keeps Fast — Deep only REPLACES the list when it has
-        // rows, so a slower, better query can never blank one the guest is
-        // already reading.
-        if (rows.length > 0) {
-          deepSettled = true;
-          setPredictions(rows);
-          setSearchError(null);
-        }
+        setPredictions(rows);
+        setSearchError(null);
         setSearching(false);
-      } catch {
-        // Keep Fast results if Deep fails. A worse list beats no list.
-        if (!cancelled) setSearching(false);
+      } catch (err) {
+        if (cancelled) return;
+        setPredictions([]);
+        setSearchError(errMsg(err, "Search failed — try again."));
+        setSearching(false);
       }
-    }, DEEP_IDLE_MS);
+    }, idleMsRef.current);
 
     return () => {
       cancelled = true;
-      window.clearTimeout(fast);
-      window.clearTimeout(deep);
+      window.clearTimeout(search);
     };
   }, [supabase, trimmedQuery, searchOrigin, searchNonce]);
 

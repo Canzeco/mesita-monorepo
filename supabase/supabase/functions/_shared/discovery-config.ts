@@ -321,6 +321,22 @@ export type NameConfig = {
   /** Word's Locations (cities, regions) from Autocomplete, consumer bar
    *  only (MESITA-2319). The admin caller never shows them. */
   locations: boolean;
+  /** Word is ONE search (MESITA-2322): the consumer bar runs Deep once the
+   *  guest has stopped typing this many seconds. The EF returns it. */
+  idleSec: number;
+  /** Word by Admin: Single Place › Find's own caps (MESITA-2322). */
+  admin: NameAdminConfig;
+};
+
+export type NameAdminConfig = {
+  /** Autocomplete rows. 0 = Find does not call Autocomplete. */
+  autoCount: number;
+  /** Text Search rows (one page, at most 20). */
+  textCount: number;
+  /** Mesita name rows, at most 10. */
+  mesitaCount: number;
+  /** The page opens listing the Mesita catalogue, as an empty search. */
+  emptyQuery: boolean;
 };
 
 /** Discovery-wide knobs. Only values that apply across engines belong here. */
@@ -600,10 +616,27 @@ export const DEFAULT_NAME_DEEP: NameDeepConfig = {
   supers: DEFAULT_MAP_SUPERS,
 };
 
+/** Word's idle bounds (seconds). */
+export const NAME_IDLE_SEC_MIN = 0.3;
+export const NAME_IDLE_SEC_MAX = 5;
+export const NAME_ADMIN_TEXT_MAX = 20;
+export const NAME_ADMIN_MESITA_MAX = 10;
+
+/** Find's behaviour before these knobs existed: no Autocomplete, a Text
+ *  Search page of 20, 10 Mesita names, the catalogue on an empty query. */
+export const DEFAULT_NAME_ADMIN: NameAdminConfig = {
+  autoCount: 0,
+  textCount: NAME_ADMIN_TEXT_MAX,
+  mesitaCount: NAME_ADMIN_MESITA_MAX,
+  emptyQuery: true,
+};
+
 export const DEFAULT_NAME: NameConfig = {
   fast: DEFAULT_NAME_FAST,
   deep: DEFAULT_NAME_DEEP,
   locations: true,
+  idleSec: 1,
+  admin: DEFAULT_NAME_ADMIN,
 };
 
 export const DEFAULT_GENERAL: GeneralConfig = {
@@ -910,6 +943,26 @@ export function normalizeNameConfig(raw: unknown): NameConfig {
       supers: normalizeSuperParams(deep.supers),
     },
     locations: bool(r.locations, DEFAULT_NAME.locations),
+    idleSec: Math.round(
+      num(r.idleSec, DEFAULT_NAME.idleSec, NAME_IDLE_SEC_MIN, NAME_IDLE_SEC_MAX) * 10,
+    ) / 10,
+    admin: normalizeNameAdmin(r.admin),
+  };
+}
+
+function normalizeNameAdmin(raw: unknown): NameAdminConfig {
+  const a = (raw ?? {}) as Record<string, unknown>;
+  return {
+    autoCount: Math.round(
+      num(a.autoCount, DEFAULT_NAME_ADMIN.autoCount, 0, NAME_LANE_COUNT_MAX),
+    ),
+    textCount: Math.round(
+      num(a.textCount, DEFAULT_NAME_ADMIN.textCount, 1, NAME_ADMIN_TEXT_MAX),
+    ),
+    mesitaCount: Math.round(
+      num(a.mesitaCount, DEFAULT_NAME_ADMIN.mesitaCount, 1, NAME_ADMIN_MESITA_MAX),
+    ),
+    emptyQuery: bool(a.emptyQuery, DEFAULT_NAME_ADMIN.emptyQuery),
   };
 }
 

@@ -64,7 +64,10 @@ export async function searchAutocompleteSource(
 /** Google Places Text Search: one page through the route Multiple Places ›
  *  Google Search uses, so Discovery › Map's floors apply here as everywhere
  *  and the note line can say how many they hid. */
-export async function searchTextSource(query: string): Promise<SourceResult<TextSearchResult>> {
+export async function searchTextSource(
+  query: string,
+  maxResults: number = GOOGLE_NAME_RESULTS,
+): Promise<SourceResult<TextSearchResult>> {
   try {
     const res = await fetch("/api/bulk-search", {
       method: "POST",
@@ -73,7 +76,7 @@ export async function searchTextSource(query: string): Promise<SourceResult<Text
         queries: [query],
         placeIds: [],
         regionCode: "",
-        maxResultsPerQuery: GOOGLE_NAME_RESULTS,
+        maxResultsPerQuery: maxResults,
       }),
     });
     const data: SearchResponse | SearchErrorResponse = await res.json();
