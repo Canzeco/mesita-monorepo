@@ -385,8 +385,10 @@ export function parsePlacesScope(value: unknown): PlacesScope {
  * scope fires Nearby — and callers gate that call on `googleCount > 0`,
  * never on the scope name, so there is one place to change and no literal
  * to miss. Google hands back at most 20 per call and the engine never asks
- * twice (MESITA-2298), so the Google lane is at most 20; the caller slices
- * the merged union back to N, so max pins = N, never the sum.
+ * twice (MESITA-2298), so the Google lane is at most 20 and, with hits in
+ * hand, the Google scope IS those hits (MESITA-2310); `mesitaCount` caps
+ * the Mesita set the empty-Nearby fallback shows. The caller slices the
+ * result back to N, so max pins = N, never the sum.
  */
 export function lanesForPlacesScope(
   scope: PlacesScope,
@@ -429,10 +431,11 @@ export function isMesitaListedRow(row: {
 }
 
 /**
- * Which Mesita rows a scope admits. The rings NEST, so a wider ring never
- * shows FEWER Mesita places: `google` keeps exactly the `mesita` ring's rows
- * and only adds Google ones alongside them, and `enriched` is the `mesita`
- * ring cut to the rows an Enrich run completed.
+ * Which Mesita rows a scope admits. `enriched` is the `mesita` ring cut to
+ * the rows an Enrich run completed. `google` admits the same rows as
+ * `mesita` but SHOWS only the ones Google returned, as their owners
+ * (`mergeNearbyCatalog`, MESITA-2310): Mesita Selected is a subset of
+ * Google Places, never a lane beside it.
  */
 export function admitsScopeRow(
   scope: PlacesScope,
@@ -568,29 +571,16 @@ export function mergeNearbyCatalog<T extends MesitaNearbyRow>(
         byGid.set(row.google_place_id, row);
       }
     }
-    const merged: Array<NearbyMerged<T>> = hits.map((hit) => {
+    // The Google scope is what Google returned: its nearest hits, each one
+    // Mesita owns going out as that row. A Mesita place Google did not
+    // return is not in this scope — no backfill up to `mesitaCount`, so a
+    // far red pin never sits beside the gray cluster (MESITA-2310; Pato:
+    // Mesita Selected is a subset of Google Places, never a lane beside it).
+    return hits.map((hit) => {
       const row = byGid.get(hit.placeId);
       if (row) return { kind: "listed" as const, row };
       return { kind: "google" as const, hit };
     });
-    // pinCount (`mesitaCount`) caps the painted union. googlePull only limits
-    // what we buy from Google; Mesita listed rows backfill the rest.
-    const usedIds = new Set(
-      merged.flatMap((item) => item.kind === "listed" ? [item.row.id] : []),
-    );
-    const remaining = lanes.mesitaCount - merged.length;
-    if (remaining > 0) {
-      for (
-        const row of takeClosest(
-          inMesita.filter((r) => !usedIds.has(r.id)),
-          center,
-          remaining,
-        )
-      ) {
-        merged.push({ kind: "listed" as const, row });
-      }
-    }
-    return merged;
   }
 
   return takeClosest(inMesita, center, lanes.mesitaCount).map((row) => ({
