@@ -1,8 +1,8 @@
 "use client";
 
-// Search-map filter store. Isolated from Discovery (Swipe): narrowing
-// Places scope, Family or Popularity on the map never touches
-// the deck.
+// Search-map filter store: Places scope, Families and Google Reviews.
+// The parser maps the retired scope words a persisted v6 blob may carry
+// (MESITA-2298), so the key does not bump.
 
 import { useSyncExternalStore } from "react";
 import {
@@ -21,7 +21,7 @@ import { FILTERABLE_PLACE_FAMILIES, type FamilyKey } from "@/lib/place-families"
 // How many from a v5 session instead of pretending it is still a guest
 // knob. sessionStorage, so the cost of the bump is one forgotten sheet state.
 const STORAGE_KEY = "mesita_map_filters_v6";
-// Hydrate from the FILTERABLE seven, not all eight.
+// Hydrate from the FILTERABLE fifteen, never `undefined`.
 // A persisted key the sheet no longer renders is a filter the guest cannot
 // see or clear (MESITA-1857).
 const KNOWN_FAMILY_KEYS = new Set<string>(
@@ -100,6 +100,11 @@ export function toggleMapFamily(key: FamilyKey) {
       ? state.familyKeys.filter((k) => k !== key)
       : [...state.familyKeys, key],
   });
+}
+
+/** All Families: no family cut at all, the default (MESITA-2298). */
+export function clearMapFamilies() {
+  patchMapFilters({ familyKeys: [] });
 }
 
 export function useMapFilters(): MapFilters {

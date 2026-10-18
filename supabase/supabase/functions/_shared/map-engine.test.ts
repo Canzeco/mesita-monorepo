@@ -19,6 +19,8 @@ import {
   googleHitClearsMapFloors,
   listedClearsMapPopularity,
   listedMapFilters,
+  MAP_MIN_REVIEW_STOPS,
+  MAP_MIN_REVIEWS_DEFAULT,
   mapShouldFillGoogle,
   parseMapMinReviews,
   primaryTypeClearsMapTypes,
@@ -49,7 +51,10 @@ Deno.test("defaults admit everything and ask Google for every guest family", () 
   assertEquals(mapShouldFillGoogle(false, MAP), false);
   assertEquals(googleHitClearsMapFloors(hit({ rating: null }), MAP), true);
   assertEquals(
-    listedClearsMapPopularity({ google_stars_overall: null, google_review_count: null }, MAP),
+    listedClearsMapPopularity({
+      google_stars_overall: null,
+      google_review_count: null,
+    }, MAP),
     true,
   );
 });
@@ -74,24 +79,26 @@ Deno.test("googleFill off skips Nearby; a stored family switch does not", () => 
 });
 
 Deno.test("listed Map filters take the stricter of global filters and Map floors", () => {
-  const global = { ...DISCOVERY_DEFAULTS.filters, minRating: 3, minReviews: 10 };
+  const global = {
+    ...DISCOVERY_DEFAULTS.filters,
+    minRating: 3,
+    minReviews: 10,
+  };
   assertEquals(
     listedMapFilters(global, { ...MAP, minRating: 4, minReviews: 5 }),
     { ...global, minRating: 4, minReviews: 10 },
   );
 });
 
-Deno.test("listed Map filters: only the Enriched ring runs the Enriched gate (MESITA-2158)", () => {
+Deno.test("listed Map filters: the Selected pool always runs the Enriched gate (MESITA-2298)", () => {
+  // Mesita Selected IS the enriched, ready set today; a Created row is not
+  // Selected and no guest scope shows it, so the gate ignores the global
+  // toggle here.
   const global = { ...DISCOVERY_DEFAULTS.filters, requireReady: true };
   assertEquals(listedMapFilters(global, MAP).requireReady, true);
-  assertEquals(listedMapFilters(global, MAP, "enriched").requireReady, true);
-  assertEquals(listedMapFilters(global, MAP, "mesita").requireReady, false);
-  assertEquals(listedMapFilters(global, MAP, "google").requireReady, false);
-  // An operator who switched the gate off keeps it off on the inner ring too.
   assertEquals(
-    listedMapFilters({ ...global, requireReady: false }, MAP, "enriched")
-      .requireReady,
-    false,
+    listedMapFilters({ ...global, requireReady: false }, MAP).requireReady,
+    true,
   );
 });
 
@@ -110,11 +117,17 @@ Deno.test("minPopularity uses popularity() — unrated listed miss a high floor"
   // Default popularity() on an unrated row is the prior stretched to ~0.6.
   const high = { ...MAP, minPopularity: 0.7 };
   assertEquals(
-    listedClearsMapPopularity({ google_stars_overall: null, google_review_count: 0 }, high),
+    listedClearsMapPopularity({
+      google_stars_overall: null,
+      google_review_count: 0,
+    }, high),
     false,
   );
   assertEquals(
-    listedClearsMapPopularity({ google_stars_overall: 4.8, google_review_count: 200 }, high),
+    listedClearsMapPopularity({
+      google_stars_overall: 4.8,
+      google_review_count: 200,
+    }, high),
     true,
   );
 });
@@ -122,8 +135,18 @@ Deno.test("minPopularity uses popularity() — unrated listed miss a high floor"
 Deno.test("admitMapCatalog still admits Google for a listed place that missed popularity", () => {
   const map = { ...MAP, minPopularity: 0.7 };
   const listed = [
-    { id: "weak", google_place_id: "ChIJ-weak", google_stars_overall: null, google_review_count: 0 },
-    { id: "strong", google_place_id: "ChIJ-strong", google_stars_overall: 4.8, google_review_count: 200 },
+    {
+      id: "weak",
+      google_place_id: "ChIJ-weak",
+      google_stars_overall: null,
+      google_review_count: 0,
+    },
+    {
+      id: "strong",
+      google_place_id: "ChIJ-strong",
+      google_stars_overall: 4.8,
+      google_review_count: 200,
+    },
   ];
   const google = [
     hit({ placeId: "ChIJ-weak", rating: 4.9 }),
@@ -210,7 +233,10 @@ Deno.test("admitSwipeCatalog ignores stored family switches", () => {
     { id: "rest", category: "restaurant" },
     { id: "club", category: "night_club" },
   ];
-  assertEquals(admitSwipeCatalog(listed, barsOnly).map((r) => r.id), ["rest", "club"]);
+  assertEquals(admitSwipeCatalog(listed, barsOnly).map((r) => r.id), [
+    "rest",
+    "club",
+  ]);
 });
 
 Deno.test("Atlas leftover slugs admit via Super membership, not Google type", () => {
@@ -220,11 +246,21 @@ Deno.test("Atlas leftover slugs admit via Super membership, not Google type", ()
   assertEquals(primaryTypeClearsMapTypes("gas_station", MAP), false);
 });
 
-Deno.test("guest Popularity snaps to 0/10/100/1000/10000 and unknown fails a floor", () => {
-  assertEquals(parseMapMinReviews(undefined), 0);
+Deno.test("guest Google Reviews snaps to 0/10/100/1000, silence is 100+, unknown fails a floor", () => {
+  // The sheet's default is 100+ (MESITA-2298): a client that says nothing
+  // gets it; a client that says 0 means "any number of reviews".
+  assertEquals(MAP_MIN_REVIEWS_DEFAULT, 100);
+  assertEquals(parseMapMinReviews(undefined), 100);
+  assertEquals(parseMapMinReviews(null), 100);
+  assertEquals(parseMapMinReviews("x"), 100);
+  assertEquals(parseMapMinReviews(0), 0);
+  assertEquals(parseMapMinReviews("0"), 0);
   assertEquals(parseMapMinReviews(-1), 0);
   assertEquals(parseMapMinReviews(10), 10);
   assertEquals(parseMapMinReviews(55), 100);
+  // The 10K+ stop is gone (MESITA-2298): an old client's value lands on 1,000.
+  assertEquals(parseMapMinReviews(10000), 1000);
+  assertEquals(MAP_MIN_REVIEW_STOPS, [0, 10, 100, 1000]);
   assertEquals(clearsMinReviews(null, 0), true);
   assertEquals(clearsMinReviews(null, 10), false);
   assertEquals(clearsMinReviews(9, 10), false);

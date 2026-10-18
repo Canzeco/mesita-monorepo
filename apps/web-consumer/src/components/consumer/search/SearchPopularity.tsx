@@ -7,18 +7,16 @@ import {
 } from "@/lib/map-filters-engine";
 import { cn } from "@/lib/utils";
 
-// Popularity — exclusive 0 / 10 / 100 / 1k / 10k Google reviews.
-// Guest copy (MESITA-1805): 0 / 10+ / 100+ / 1K+ / 10K+. Discovery-mode
-// artificial filter (Pato, 2026-09-12): the Map mode drops trash AFTER the
-// catalog is assembled, never as a Nearby API param. 0 is any. How many
-// (pin cap) is operator config, not this.
+// Google Reviews — exclusive 0+ / 10+ / 100+ / 1,000+ Google reviews,
+// default 100+ (MESITA-2298). A count of people, never stars. Applied by
+// Mesita after Google answers, never as a Nearby API param, and never to
+// Mesita Selected.
 
 const STOP_LABEL: Record<MapMinReviews, string> = {
-  0: "0",
+  0: "0+",
   10: "10+",
   100: "100+",
-  1000: "1K+",
-  10000: "10K+",
+  1000: "1,000+",
 };
 
 export function SearchPopularity({
@@ -56,7 +54,7 @@ export function SearchPopularity({
     <div className="flex flex-col">
       <div
         role="radiogroup"
-        aria-label="Minimum number of Google reviews"
+        aria-label="Google Reviews"
         aria-orientation="horizontal"
         onKeyDown={onKeyDown}
         className="border-border flex overflow-hidden rounded-xl border"
@@ -71,7 +69,7 @@ export function SearchPopularity({
               aria-checked={active}
               aria-label={
                 stop === 0
-                  ? "Any Google reviews"
+                  ? "Any number of Google reviews"
                   : `At least ${stop.toLocaleString()} Google reviews`
               }
               onClick={() => onMinReviews(stop)}

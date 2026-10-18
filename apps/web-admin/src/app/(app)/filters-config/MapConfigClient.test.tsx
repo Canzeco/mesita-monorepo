@@ -36,18 +36,21 @@ describe("Map reload pairs", () => {
     expect(html).toContain("How many pins");
     expect(html).not.toContain("How many pins is the guest");
     for (const stop of ["20", "40", "60"]) expect(html).toContain(stop);
-    // The console must say what the sets ARE, not just name them: an
-    // operator reading "Mesita Places" would price it at every row. The
-    // chain and its gate are both stated (Pato, 2026-09-05).
-    expect(html).toContain("Three nested sets");
-    expect(html).toContain("Google Places ⊃ Mesita Places ⊃ Mesita Enriched Places");
-    expect(html).toContain("Mesita Enriched Places");
+    // Two guest scopes, by name (MESITA-2298): the console says what each
+    // IS, and the word Enriched is not the guest's.
+    expect(html).toContain("Scopes");
+    expect(html).toContain("Google Places");
+    expect(html).toContain("Mesita Selected");
+    expect(html).not.toContain("Three nested sets");
+    expect(html).not.toContain("Mesita Enriched Places");
     expect(html).not.toContain("Mesita Partner Places");
-    expect(html).toContain("Enrichment gates the inner ring");
+    expect(html).not.toContain("Enrichment gates the inner ring");
     expect(html).toContain("never a");
-    expect(html).toContain("Places sets");
-    expect(html).toContain("Closest N of the selected set");
-    expect(html).toContain("Lineup ranks listed pins only when Google adds none");
+    // The one Nearby radius, the operator's, defaulting to Google's 50 km cap.
+    expect(html).toContain("Radius (km)");
+    expect(html).toMatch(/type="number"[^>]*value="50"/);
+    expect(html).toContain("the nearest N of the guest");
+    expect(html).not.toContain("Lineup ranks listed pins only when Google adds none");
     expect(html).not.toContain("Listed pins then Lineup");
     expect(html).toContain("Reload after");
     expect(html).toContain("AND wait this long");

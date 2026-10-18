@@ -27,6 +27,9 @@ export type CrenupSettings = {
   discoverOpentableN: number;
   discoverUbereatsN: number;
   requestThreshold: number;
+  /** Create the profile on open — one switch per app (MESITA-2298). */
+  createOnOpenConsumer: boolean;
+  createOnOpenAdmin: boolean;
 };
 
 const clampN = (v: number, lo: number, hi: number) =>

@@ -4,7 +4,8 @@ import type { Place } from "@/lib/api/places";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { getOpeningStateLabel } from "@/lib/place-state";
 import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
-import { cn, firstInitial, formatKm, formatRating } from "@/lib/utils";
+import { cardPhoto, placePlaceholder } from "@/lib/place-placeholder";
+import { cn, formatKm, formatRating } from "@/lib/utils";
 
 /** Every catalog rail card is this tall. Missing subtitle / meta / hours
  *  must not shrink a neighbor — the peek strip has to line up, and the
@@ -25,7 +26,8 @@ export function RailCard({
   onSelect: () => void;
   onOpen: () => void;
 }) {
-  const photo = place.photos[0];
+  const photo = cardPhoto(place);
+  const placeholder = placePlaceholder(place);
   const category = resolvePlaceCategoryName({
     categoryLabel: place.category_label,
     category: place.category,
@@ -62,8 +64,12 @@ export function RailCard({
             className="border-0 object-cover outline-none"
           />
         ) : (
-          <span className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-lg font-bold text-white">
-            {firstInitial(place.name)}
+          <span
+            className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-lg font-bold text-white"
+            data-placeholder={placeholder.kind}
+            aria-hidden
+          >
+            {placeholder.text}
           </span>
         )}
       </div>

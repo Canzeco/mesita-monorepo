@@ -36,17 +36,16 @@ export type DiscoverySlice =
   | "filters"
   | "map"
   // Narrow map slices (MESITA-1681, widened by MESITA-1695). Families
-  // (Configurations › Atlas), Google Nearby's floor, and Google Nearby's
-  // pull all write `map`. Whole-slice saves from those seeds mean the last
-  // Save wipes the others, so each writes only its own fields. `map` stays
-  // for the Map mode box, which owns the rest.
+  // (Configurations › Atlas) and Google Nearby's floor both write `map`.
+  // Whole-slice saves from those seeds mean the last Save wipes the others,
+  // so each writes only its own fields. `map` stays for the Map mode box,
+  // which owns the rest (the Nearby pull knob retired with MESITA-2298).
   | "mapSupers"
   | "mapFloors"
-  | "mapPull"
   // Narrow weight slices (MESITA-1859). The weights table on Discovery Modes
   // has ONE SAVE PER COLUMN, and `weights` and `params` both ride the single
   // `signals` slice below — so a per-column save of the whole slice would be
-  // the mapSupers/mapFloors/mapPull incident again, one floor up: saving Map
+  // the mapSupers/mapFloors incident again, one floor up: saving Map
   // would silently revert Scroll and the signal params. Each column writes
   // only its own mode key.
   | "weightsMap"
@@ -79,7 +78,6 @@ export async function updateDiscoveryConfig(
       ...(keys.has("mapFloors")
         ? { minRating: config.map.minRating, minReviews: config.map.minReviews }
         : null),
-      ...(keys.has("mapPull") ? { googlePull: config.map.googlePull } : null),
     },
     name: {
       fast: keys.has("nameFast") ? config.name.fast : live.config.name.fast,

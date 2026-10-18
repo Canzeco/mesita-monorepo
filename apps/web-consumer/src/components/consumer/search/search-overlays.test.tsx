@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { RailCard } from "@/components/consumer/search/SearchRailCard";
 import { SearchResultsPanel } from "@/components/consumer/search/SearchResultsPanel";
 import { SearchFilterRow } from "@/components/consumer/search/SearchFilterRow";
+import { SearchLocateButton } from "@/components/consumer/search/SearchLocateButton";
 import {
   buildSearchMapPins,
   locationTypeLabel,
@@ -146,18 +147,19 @@ describe("Search map catalog auto-reloads after distance and time", () => {
 });
 
 describe("SearchFilterRow", () => {
-  // A THIRD OF THE ROW, LABELLED (Pato, MESITA-1797: "must be one third"),
-  // restoring MESITA-1627 after MESITA-1790's disc overwrote it.
-  it("takes a third of the row, labelled, and goes primary-filled when on", () => {
+  // A 44px DISC, ICON ONLY (Pato, 2026-10-17: "don't mention filters as
+  // text, just the filters icon is enough and universal"), retiring the
+  // labelled third of MESITA-1797. The word lives in the accessible name.
+  it("is an icon-only disc that goes primary-filled when on", () => {
     const rest = renderToStaticMarkup(
       <SearchFilterRow count={0} onOpenFilters={() => {}} />,
     );
     expect(rest).toContain("lucide-sliders-horizontal");
-    expect(rest).toContain("Filter places");
-    expect(rest).toMatch(/>\s*Filters\s*</);
-    expect(rest).toContain("basis-1/3");
-    expect(rest).not.toContain("h-11 w-11");
-    expect(rest).toContain("h-11");
+    expect(rest).toContain('aria-label="Filters"');
+    expect(rest).not.toMatch(/>\s*Filters\s*</);
+    expect(rest).not.toContain("Filter places");
+    expect(rest).not.toContain("basis-1/3");
+    expect(rest).toContain("h-11 w-11");
     expect(rest).toContain("rounded-full");
     expect(rest).toContain("border-border");
     expect(rest).toContain("bg-card/95");
@@ -191,11 +193,44 @@ describe("SearchFilterRow", () => {
   });
 });
 
-describe("Search map's top row is the query bar plus labelled Filters", () => {
-  it("puts Filters at the top right, with no client-side recut", () => {
+describe("SearchLocateButton", () => {
+  // THE LOCATION DISC, TOP LEFT (Pato, 2026-10-17: "Location Searchbar
+  // Filters … location at the left"). Icon only; the name says what a tap
+  // does: ask for a fix, or recentre on the one the map has.
+  it("is an icon-only disc whose name follows the fix", () => {
+    const ask = renderToStaticMarkup(
+      <SearchLocateButton located={false} locating={false} onClick={() => {}} />,
+    );
+    expect(ask).toContain("lucide-locate-fixed");
+    expect(ask).toContain('aria-label="Use my location"');
+    expect(ask).toContain("h-11 w-11");
+    expect(ask).toContain("shrink-0");
+    expect(ask).toContain("rounded-full");
+    expect(ask).toContain("shadow-elev");
+    expect(ask).not.toMatch(/>\s*Use my location\s*</);
+    const home = renderToStaticMarkup(
+      <SearchLocateButton located locating={false} onClick={() => {}} />,
+    );
+    expect(home).toContain('aria-label="Recentre on your location"');
+    const busy = renderToStaticMarkup(
+      <SearchLocateButton located={false} locating onClick={() => {}} />,
+    );
+    expect(busy).toContain('aria-label="Locating"');
+    expect(busy).toContain("disabled");
+  });
+});
+
+describe("Search map's top row is location, the query bar and the Filters disc", () => {
+  it("puts location at the left and Filters at the right, with no client-side recut", () => {
     const src = read("SearchClient.tsx");
     const overlays = read("search-catalog-overlays.tsx");
     expect(src).toContain("SearchFilterRow");
+    // Location disc, then the bar, then Filters — in that order in the row.
+    const row = src.slice(src.indexOf('<div className="flex min-w-0 items-center gap-2">'));
+    expect(row.indexOf("<SearchLocateButton")).toBeGreaterThan(-1);
+    expect(row.indexOf("<SearchLocateButton")).toBeLessThan(row.indexOf("<SearchBar"));
+    expect(row.indexOf("<SearchBar")).toBeLessThan(row.indexOf("<SearchFilterRow"));
+    expect(src).toContain("recentreOnGuest");
     expect(src).toContain("SearchMapFilters");
     expect(src).toContain("catalogLoading ? null : catalog.length");
     expect(src).toContain("useMapFilters");
@@ -208,20 +243,37 @@ describe("Search map's top row is the query bar plus labelled Filters", () => {
     expect(src).toMatch(/from "@\/lib\/map-filters-engine"/);
     for (const present of [
       "SearchFilterRow.tsx",
+      "SearchLocateButton.tsx",
       "SearchMapFilters.tsx",
       "SearchPlacesScope.tsx",
       "SearchPopularity.tsx",
     ]) {
       expect(existsSync(join(SEARCH_DIR, present)), present).toBe(true);
     }
+    // The sheet: Places, then Families, then Google Reviews (Pato,
+    // 2026-10-17); Google Places and Mesita Selected are the two scopes, and
+    // the word Enriched never reaches the guest here (MESITA-2298).
     const sheet = read("SearchMapFilters.tsx");
+    const scope = read("SearchPlacesScope.tsx");
     const popularity = read("SearchPopularity.tsx");
-    expect(sheet).toContain('label="Minimum number of Google reviews"');
+    expect(sheet).toContain('label="Places"');
+    expect(sheet).toContain('label="Families"');
+    expect(sheet).toContain('label="Google Reviews"');
+    expect(sheet.indexOf('label="Places"')).toBeLessThan(sheet.indexOf('label="Families"'));
+    expect(sheet.indexOf('label="Families"')).toBeLessThan(sheet.indexOf('label="Google Reviews"'));
+    expect(sheet).not.toContain("Minimum number of Google reviews");
+    expect(sheet).toContain("All Families");
+    expect(sheet).toContain("clearMapFamilies");
     expect(sheet).not.toContain('label="Popularity"');
+    for (const file of [sheet, scope, popularity]) {
+      expect(file).not.toMatch(/Enriched/);
+    }
+    expect(popularity).toContain('aria-label="Google Reviews"');
+    expect(popularity).toContain('"0+"');
     expect(popularity).toContain('"10+"');
     expect(popularity).toContain('"100+"');
-    expect(popularity).toContain('"1K+"');
-    expect(popularity).toContain('"10K+"');
+    expect(popularity).toContain('"1,000+"');
+    expect(popularity).not.toContain('"10K+"');
     for (const gone of ["SearchResultLimit.tsx", "SearchCategoryRow.tsx"]) {
       expect(existsSync(join(SEARCH_DIR, gone)), gone).toBe(false);
     }
@@ -239,7 +291,7 @@ describe("Search map's top row is the query bar plus labelled Filters", () => {
     expect(src).not.toContain("DiscoveryFilters");
     expect(
       existsSync(join(SEARCH_DIR, "../../../lib/use-discovery-filters.ts")),
-    ).toBe(true);
+    ).toBe(false);
     const suggestArgs = [
       ...src.matchAll(/apiSuggestPlaces\(([\s\S]*?)\);/g),
     ].map((m) => m[1]);
@@ -249,7 +301,8 @@ describe("Search map's top row is the query bar plus labelled Filters", () => {
     for (const args of suggestArgs) expect(args).not.toContain("filters");
     const loading = read("../../../app/(shell)/(discovery)/search/loading.tsx");
     expect(loading).toContain("flex min-w-0 items-center gap-2");
-    expect(loading).toContain("basis-1/3");
+    expect(loading).not.toContain("basis-1/3");
+    expect(loading.split("h-11 w-11 shrink-0").length - 1).toBe(2);
     expect(loading).not.toContain("h-12 w-12");
   });
 
@@ -800,30 +853,29 @@ describe("catalogIsStale", () => {
   });
 });
 
-describe("GooglePlaceSheet loads the first Places photo on open only", () => {
-  it("uses Places (New) Details + one photo, never a map-wide prefetch", () => {
-    const sheet = read("GooglePlaceSheet.tsx");
-    expect(sheet).toContain("fetchGooglePlacePreview");
-    expect(sheet).toMatch(/if \(!open \|\| !prediction \|\| !apiKey\) return/);
-    expect(sheet).toContain("h-44");
-    expect(sheet).toContain("referrerPolicy");
-    expect(sheet).toContain("setHero");
-    expect(sheet).toContain("mergeGooglePlacePreview");
-    expect(sheet).toContain("settleGooglePlaceCache");
-    expect(read("../../../lib/google-place-preview.ts")).toContain(
-      "importLibrary",
+describe("a Google-only result opens through get-or-create, never a preview or a photo (MESITA-2298)", () => {
+  it("has no preview sheet, no client-side Places call, and one create call site", () => {
+    const client = read("SearchClient.tsx");
+    expect(client).toContain("openGoogleOnly");
+    expect(client).toContain("openGoogleProfile");
+    expect(client).not.toContain("GooglePlaceSheet");
+    expect(client).not.toContain("fetchGooglePlacePreview");
+    expect(client).not.toContain("setPreviewOpen");
+    expect(client).not.toContain("places.googleapis.com");
+    // The ONE place that creates: inside openGoogleProfile, reached only
+    // from the explicit open. The import line is the other occurrence.
+    expect(client.match(/apiCreateProject\(/g)?.length).toBe(1);
+    const open = client.slice(
+      client.indexOf("const openGoogleProfile"),
+      client.indexOf("const openGoogleOnly"),
     );
-    expect(read("../../../lib/google-place-preview.ts")).toMatch(
-      /fromRest = await previewFromRest[\s\S]*catch/,
-    );
-    expect(read("../../../lib/google-place-preview.ts")).toContain(
-      "PlacesService",
-    );
-    expect(read("../../../lib/google-place-preview.ts")).toContain(
-      "isDisplayablePlacePhoto",
-    );
-    expect(read("SearchClient.tsx")).not.toContain("places.googleapis.com");
-    expect(read("SearchClient.tsx")).not.toContain("fetchGooglePlacePreview");
+    expect(open).toContain("apiCreateProject(");
+    for (const gone of ["GooglePlaceSheet.tsx"]) {
+      expect(existsSync(join(SEARCH_DIR, gone)), gone).toBe(false);
+    }
+    expect(
+      existsSync(join(SEARCH_DIR, "../../../lib/google-place-preview.ts")),
+    ).toBe(false);
     expect(read("SearchRailCard.tsx")).not.toContain("places.googleapis.com");
   });
 });
@@ -847,16 +899,16 @@ describe("every searchbar pick anchors the map (MESITA-1405)", () => {
       /anchorMapTo[\s\S]{0,400}forceNextLoad\.current = true/,
     );
     expect(client).toContain("cameraAnchor={anchor?.camera ?? null}");
-    // The modal and the Google sheet moved to the SECOND tap — the pin /
+    // The modal and the Google-only open moved to the SECOND tap — the pin /
     // rail-card open paths — and stayed off the bar pick.
-    expect(client).toContain("openGooglePreview");
+    expect(client).toContain("openGoogleOnly");
     expect(client).toContain("openMesitaProfileFromPrediction");
     const barPick = client.slice(
       client.indexOf("const handleBarPick"),
       client.indexOf("const handleOpenPlace"),
     );
-    expect(barPick).not.toContain("openGooglePreview");
-    expect(barPick).not.toContain("setPreviewOpen");
+    expect(barPick).not.toContain("openGoogleOnly");
+    expect(barPick).not.toContain("openGoogleProfile");
     // The no-coordinates Mesita row keeps the direct-open fallback; that
     // is the only router.push a bar pick may reach.
     expect(barPick.match(/router\.push/g)?.length).toBe(1);
@@ -959,7 +1011,7 @@ describe("a Location wears the location icon, never a place tone (MESITA-1404)",
     expect(html).not.toContain("From Google");
   });
 
-  it("speaks a Created place as a profile that is not enriched yet (MESITA-2154)", () => {
+  it("speaks a Created place as a basic profile, never as not-enriched (MESITA-2154, MESITA-2298)", () => {
     const html = renderToStaticMarkup(
       <SearchResultsPanel
         query="strana"
@@ -987,9 +1039,10 @@ describe("a Location wears the location icon, never a place tone (MESITA-1404)",
         onPick={() => {}}
       />,
     );
-    expect(html).toContain("Strana, Monterrey, Mesita profile, not enriched yet");
-    expect(html).toContain("Casa, Monterrey, Mesita profile");
+    expect(html).toContain("Strana, Monterrey, Basic Mesita profile");
+    expect(html).toContain("Casa, Monterrey, Mesita Selected");
     expect(html).not.toContain("No profile yet");
+    expect(html).not.toMatch(/enriched/i);
   });
 
   it("branches on kind BEFORE the tone function is asked anything", () => {

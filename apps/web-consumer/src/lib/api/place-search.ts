@@ -45,7 +45,9 @@ export async function apiResolveLocationAnchor(
 
 type CreatedProject = {
   ok: boolean;
-  /** The freshly created ugly profile (ready, not Enriched). */
+  /** False when Mesita already held this Google Place ID: the row opens as is. */
+  created?: boolean;
+  /** The ugly profile (ready, not Enriched), created now or already there. */
   place: { id: string; slug: string; name: string; state: string };
 };
 

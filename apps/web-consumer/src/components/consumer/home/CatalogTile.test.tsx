@@ -32,19 +32,18 @@ describe("the Enriched mark on a catalog card", () => {
   });
 });
 
-describe("a Google-only card (Right Now from Google)", () => {
-  it("opens Google Maps in a new tab, never a Mesita page", () => {
+describe("a Google-only card opens its profile, never Google Maps (MESITA-2298)", () => {
+  it("is a button that hands the explicit open to the parent", () => {
     const html = tile({
       id: "g:ChIJx",
       slug: "ChIJx",
       google_place_id: "ChIJx",
       googleOnly: true,
     });
-    expect(html).toContain(
-      'href="https://www.google.com/maps/search/?api=1&amp;query=Casa&amp;query_place_id=ChIJx"',
-    );
-    expect(html).toContain('target="_blank"');
+    expect(html).not.toContain("google.com/maps");
+    expect(html).not.toContain('target="_blank"');
     expect(html).not.toContain('href="/place/');
+    expect(html).toContain('aria-label="Open Casa"');
   });
 
   it("has no save heart", () => {
@@ -55,7 +54,33 @@ describe("a Google-only card (Right Now from Google)", () => {
 
   it("a Mesita card still links to its page and can be saved", () => {
     const html = tile({});
-    expect(html).not.toContain("google.com/maps");
+    expect(html).toContain('href="/place/casa"');
+    expect(html).not.toContain('aria-label="Open Casa"');
     expect(html).toContain("Save Casa");
+  });
+});
+
+describe("a Google-only card's image is a placeholder, never a photo (MESITA-2298)", () => {
+  it("draws the family emoji and ignores any photo on the wire", () => {
+    const html = tile({
+      id: "g:ChIJx",
+      googleOnly: true,
+      family_keys: ["tacos"],
+      photos: ["https://lh3.googleusercontent.com/p"],
+    });
+    expect(html).not.toContain("<img");
+    expect(html).toContain('data-placeholder="emoji"');
+    expect(html).toContain("🌮");
+  });
+
+  it("falls back to the initial when no family resolves", () => {
+    const html = tile({ id: "g:ChIJx", googleOnly: true, family_keys: [] });
+    expect(html).toContain('data-placeholder="initial"');
+    expect(html).toContain(">C<");
+  });
+
+  it("a Mesita place still shows its stored photo", () => {
+    const html = tile({ photos: ["https://example.com/a.jpg"] });
+    expect(html).toContain("<img");
   });
 });

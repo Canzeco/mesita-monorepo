@@ -17,6 +17,7 @@
 //   saveImagesToStorage (boolean)
 //   discover{Website,Instagram,Facebook,Opentable,Ubereats}N (0–10)
 //   imageAnalysisPrompt / imageSortingPrompt
+//   createOnOpenConsumer / createOnOpenAdmin (boolean, MESITA-2298)
 //
 // READ-MERGE-WRITE of the jsonb (same lost-update accept as verification: one
 // super-admin). enrichment_triggers stays its own column, and this is the one
@@ -59,6 +60,8 @@ type Body = {
   discoverOpentableN?: number;
   discoverUbereatsN?: number;
   requestThreshold?: number;
+  createOnOpenConsumer?: boolean;
+  createOnOpenAdmin?: boolean;
 };
 
 // Two tiers since MESITA-2126. "high" is still ACCEPTED on write and stored as
@@ -253,6 +256,21 @@ export async function writeEnricherSection(
     const n = intInRange(body.requestThreshold, 1, 100);
     if (n === null) return jsonError("requestThreshold must be an integer 1-100", 400);
     next.atlasRequestThreshold = n;
+    blobTouched = true;
+  }
+
+  if (body.createOnOpenConsumer !== undefined) {
+    if (typeof body.createOnOpenConsumer !== "boolean") {
+      return jsonError("createOnOpenConsumer must be a boolean", 400);
+    }
+    next.atlasCreateOnOpenConsumer = body.createOnOpenConsumer;
+    blobTouched = true;
+  }
+  if (body.createOnOpenAdmin !== undefined) {
+    if (typeof body.createOnOpenAdmin !== "boolean") {
+      return jsonError("createOnOpenAdmin must be a boolean", 400);
+    }
+    next.atlasCreateOnOpenAdmin = body.createOnOpenAdmin;
     blobTouched = true;
   }
 

@@ -364,12 +364,18 @@ type CreatePlaceErrorBody = {
 
 export async function createPlaceFromGooglePlaceId(
   placeId: string,
+  opts: {
+    /** The create an OPEN caused (a Google-only row's name on Find): the EF
+     *  gates it on Creation › "Create the profile on open · admin app". */
+    onOpen?: boolean;
+  } = {},
 ): Promise<CreatePlaceResult> {
   const id = (placeId ?? "").toString().trim();
   if (!id) return { ok: false, error: "Empty Place ID" };
 
   const r = await efInvoke<CreatePlaceResponse>("admin-web-create-place", {
     placeId: id,
+    ...(opts.onOpen ? { onOpen: true } : {}),
   });
   if (!r.ok) {
     // Duplicate error responses carry an `existing` object.

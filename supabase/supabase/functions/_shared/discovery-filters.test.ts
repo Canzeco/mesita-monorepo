@@ -370,29 +370,31 @@ Deno.test("map.pinCount is the operator's How many, snapped to a stop", () => {
   assertEquals(pins(30), 20);
   assertEquals(pins(9_000), 60);
   assertEquals(pins("plenty"), 20);
-  // It is NOT googlePull. One caps the pins, the other caps how many Google
-  // rows we pay for, and a blob that sets one must not move the other.
-  const one = normalizeDiscoveryConfig({ map: { pinCount: 60 } }).map;
-  assertEquals(one.pinCount, 60);
-  assertEquals(one.googlePull, 20);
-  const other = normalizeDiscoveryConfig({ map: { googlePull: 60 } }).map;
-  assertEquals(other.pinCount, 20);
-  assertEquals(other.googlePull, 60);
 });
 
-Deno.test("googlePull snaps to 20 / 40 / 60 and defaults to one request", () => {
-  // 20 is one Google call. 40 and 60 are 2 and 3 BILLED calls, so a free
-  // number here would be a spend leak — the blob only ever holds a stop.
-  const pull = (raw: unknown) =>
-    normalizeDiscoveryConfig({ map: { googlePull: raw } }).map.googlePull;
-  assertEquals(normalizeDiscoveryConfig({}).map.googlePull, 20);
-  assertEquals(pull(20), 20);
-  assertEquals(pull(40), 40);
-  assertEquals(pull(60), 60);
-  assertEquals(pull(37), 40);
-  assertEquals(pull(1000), 60);
-  assertEquals(pull(-5), 20);
-  assertEquals(pull("nonsense"), 20);
+Deno.test("map.googlePull is retired: an old blob's key is dropped on normalize (MESITA-2298)", () => {
+  // One Nearby Search (New) call per request, 20 places, never widened — the
+  // Legacy 40/60 pull is gone, so the normalizer rebuilds `map` without it
+  // and the next save drops it from the blob.
+  const map = normalizeDiscoveryConfig({ map: { googlePull: 60 } }).map;
+  assertEquals("googlePull" in map, false);
+  assertEquals(map.pinCount, 20);
+  assertEquals("googlePull" in DISCOVERY_DEFAULTS.map, false);
+});
+
+Deno.test("map.radiusKm is the one Nearby radius: default 50, clamped 1..50, one decimal", () => {
+  // Shared by the Map and the Feed's Google Places and Mesita Selected rails
+  // (MESITA-2298). The operator's number; a guest never sends it. 50 km is
+  // Google's Nearby circle cap, so the knob cannot ask for more.
+  const radius = (raw: unknown) =>
+    normalizeDiscoveryConfig({ map: { radiusKm: raw } }).map.radiusKm;
+  assertEquals(normalizeDiscoveryConfig({}).map.radiusKm, 50);
+  assertEquals(DISCOVERY_DEFAULTS.map.radiusKm, 50);
+  assertEquals(radius(0.2), 1);
+  assertEquals(radius(999), 50);
+  assertEquals(radius(12.34), 12.3);
+  assertEquals(radius(7), 7);
+  assertEquals(radius("far"), 50);
 });
 
 Deno.test("name knobs default Fast 5 and Deep 3+3+3 on an old blob and clamp", () => {

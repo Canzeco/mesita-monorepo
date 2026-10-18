@@ -1,8 +1,8 @@
 import { Skeleton } from "@/components/shared";
 
 // /search Suspense fallback. Mirror SearchClient's silhouette: full-bleed
-// map, query pill + Filters button, catalog rail. Family lives
-// in the Filters sheet, not on the chrome.
+// map, the top row (location disc · query pill · Filters disc), catalog
+// rail. Families live in the Filters sheet, not on the chrome.
 
 export default function SearchLoading() {
   return (
@@ -11,8 +11,9 @@ export default function SearchLoading() {
 
       <div className="absolute inset-x-3 top-3">
         <div className="flex min-w-0 items-center gap-2">
-          <Skeleton className="bg-card/95 shadow-elev h-12 min-w-0 flex-1 rounded-full" />
-          <Skeleton className="bg-card/95 h-12 shrink-0 basis-1/3 rounded-full" />
+          <Skeleton className="bg-card/95 shadow-elev h-11 w-11 shrink-0 rounded-full" />
+          <Skeleton className="bg-card/95 shadow-elev h-11 min-w-0 flex-1 rounded-full" />
+          <Skeleton className="bg-card/95 shadow-elev h-11 w-11 shrink-0 rounded-full" />
         </div>
       </div>
 

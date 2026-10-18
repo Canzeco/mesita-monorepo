@@ -9,42 +9,46 @@ import type { Place } from "@/lib/api/places";
 import { isEnrichedPlace } from "@/lib/place-enriched";
 import { placeHref } from "@/lib/place-route";
 import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
-import { cn, firstInitial, formatRating } from "@/lib/utils";
+import {
+  cardPhoto,
+  isGoogleOnlyPlace,
+  placePlaceholder,
+} from "@/lib/place-placeholder";
+import { cn, formatRating } from "@/lib/utils";
 
 /**
- * A Google-only card (Feed › Right Now, MESITA-2295) has no Mesita page, so
- * its tap opens the place on Google Maps in a new tab.
+ * A Google-only card has no Mesita page yet. Its tap is the explicit open
+ * (MESITA-2298): the parent's `onOpenGoogle` runs get-or-create on the
+ * Google Place ID and routes to the profile. Never a link, never a prefetch,
+ * never Google Maps.
  */
-export function googleMapsHref(place: Place): string | null {
-  if (!place.googleOnly && !place.from_google) return null;
-  const gid = place.google_place_id ?? place.slug;
-  if (!gid) return null;
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-    place.name,
-  )}&query_place_id=${encodeURIComponent(gid)}`;
-}
-
 function TileLink({
   href,
-  external,
+  google,
+  onOpen,
+  label,
   className,
   children,
 }: {
   href: string;
-  external: boolean;
+  /** A Google-only card is a button, never a link to a page it has no row for. */
+  google: boolean;
+  /** The parent's explicit open for that button. */
+  onOpen?: () => void;
+  label: string;
   className: string;
   children: ReactNode;
 }) {
-  if (external) {
+  if (google) {
     return (
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={className}
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={`Open ${label}`}
+        className={`${className} w-full text-left`}
       >
         {children}
-      </a>
+      </button>
     );
   }
   return (
@@ -65,23 +69,28 @@ function readableKind(place: Place): string | null {
  * photo, the name with the save heart beside it, then price, the Google
  * category, and the Google stars. No zone. The row is about 2.5 of
  * these wide. An enriched place wears the Enriched mark after its name
- * (MESITA-2296). Favs does not use this tile. A Google-only card opens
- * Google Maps and has no save heart: only a Mesita place can be saved.
+ * (MESITA-2296). Favs does not use this tile. A Google-only card opens its
+ * profile through `onOpenGoogle` and has no save heart: only a Mesita place
+ * can be saved.
  */
 export function CatalogTile({
   place,
   saved,
   onToggle,
+  onOpenGoogle,
   className,
 }: {
   place: Place;
   saved: boolean;
   onToggle: () => void;
+  /** The explicit open for a Google-only card (get-or-create, then route). */
+  onOpenGoogle?: () => void;
   className?: string;
 }) {
-  const photo = place.photos[0];
-  const google = googleMapsHref(place);
-  const href = google ?? placeHref(place.slug || place.id);
+  const photo = cardPhoto(place);
+  const placeholder = placePlaceholder(place);
+  const google = isGoogleOnlyPlace(place);
+  const href = placeHref(place.slug || place.id);
   const priceLabel = formatPlacePriceLevelSymbols(place.price_level);
   const kind = readableKind(place);
   const ratingLabel = formatRating(place.google_rating);
@@ -92,7 +101,9 @@ export function CatalogTile({
       <div className="bg-card border-border overflow-hidden rounded-2xl border">
         <TileLink
           href={href}
-          external={google !== null}
+          google={google}
+          onOpen={onOpenGoogle}
+          label={place.name}
           className="focus-visible:ring-primary block outline-none focus-visible:ring-2 focus-visible:ring-inset"
         >
           <div className="bg-muted relative aspect-[3/2] w-full overflow-hidden">
@@ -105,9 +116,15 @@ export function CatalogTile({
                 className="object-cover"
               />
             ) : (
-              <div className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-white/90">
-                <span className="font-display text-3xl font-bold tracking-tight">
-                  {firstInitial(place.name)}
+              <div
+                className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-white/90"
+                data-placeholder={placeholder.kind}
+              >
+                <span
+                  className="font-display text-3xl font-bold tracking-tight"
+                  aria-hidden
+                >
+                  {placeholder.text}
                 </span>
               </div>
             )}
@@ -116,7 +133,9 @@ export function CatalogTile({
         <div className="flex items-center pr-0.5 pl-2.5">
           <TileLink
             href={href}
-            external={google !== null}
+            google={google}
+            onOpen={onOpenGoogle}
+            label={place.name}
             className="focus-visible:ring-primary min-w-0 flex-1 py-2 outline-none focus-visible:ring-2 focus-visible:ring-inset"
           >
             <p className="font-display text-foreground flex min-w-0 items-center gap-1 text-sm leading-tight font-semibold tracking-tight">

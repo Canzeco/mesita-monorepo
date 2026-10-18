@@ -7,7 +7,7 @@
 //
 // This is not hypothetical. It already happened one floor down: three boxes on
 // Search Sources all wrote the `map` slice, and the fix was to split it into
-// mapSupers / mapFloors / mapPull. `updateDiscoveryConfig` merges per-mode for
+// mapSupers / mapFloors. `updateDiscoveryConfig` merges per-mode for
 // the same reason, and these tests are the merge's only guard — nothing about
 // a lost column fails a type check.
 

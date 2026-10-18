@@ -311,7 +311,6 @@ async function findSwallowedReads(): Promise<string[]> {
 const SWALLOWED_TODAY = [
   "_shared/agent-tools.ts",
   "_shared/config-section-reservations.ts",
-  "_shared/create-place.ts",
   "_shared/place-slug.ts",
   "_shared/reservation-places.ts",
   "_shared/save-place.ts",

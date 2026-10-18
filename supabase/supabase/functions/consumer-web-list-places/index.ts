@@ -56,15 +56,27 @@
 // Deploy: supabase functions deploy consumer-web-list-places
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { clampIntRange, corsPreflight, json, rejectUnlessMethods, readJsonOr } from "../_shared/http.ts";
-import { adminClient, anonClient, readAnonEnv, readEFEnv } from "../_shared/auth.ts";
+import {
+  clampIntRange,
+  corsPreflight,
+  json,
+  readJsonOr,
+  rejectUnlessMethods,
+} from "../_shared/http.ts";
+import {
+  adminClient,
+  anonClient,
+  readAnonEnv,
+  readEFEnv,
+} from "../_shared/auth.ts";
 import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
 import { withFamilyKeysList } from "../_shared/place-family-keys.ts";
 import { nearbyTypesForSupers } from "../_shared/google-type-super.ts";
-import { familiesForPlace, readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
 import {
-  loadDiscoveryConfig,
-} from "../_shared/discovery-config.ts";
+  familiesForPlace,
+  readGuestFamilyKeys,
+} from "../_shared/place-taxonomy.ts";
+import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
 import { DISCOVERY_DEFAULTS } from "../_shared/discovery-config.ts";
 import { applyDiscoveryFilters } from "../_shared/discovery-filters.ts";
 import {
@@ -83,9 +95,9 @@ import {
   applyBboxPredicate,
   decideNearby,
   haversineKm,
-  nearbyBbox,
   NEARBY_RADIUS_KM,
   NEARBY_SCAN_LIMIT,
+  nearbyBbox,
   wantsGoogleFill,
 } from "../_shared/geo.ts";
 import {
@@ -93,13 +105,13 @@ import {
   claimOwnedHits,
   lanesForPlacesScope,
   mergeNearbyCatalog,
+  type NearbyHit,
   parsePlacesScope,
   peekCachedNearbyPlaces,
   PLACES_SCOPE_DEFAULT,
+  type PlacesScope,
   resolveGoogleItem,
   searchNearbyPlaces,
-  type NearbyHit,
-  type PlacesScope,
 } from "../_shared/nearby-places.ts";
 import {
   mapLineupIntent,
@@ -226,10 +238,10 @@ Deno.serve(async (req) => {
   // Nearby uses its own large radius + closest N of the selected Places
   // set. Pay / Home GET callers keep global filters only. Google
   // fill is client opt-in AND operator googleFill AND at least one Super on.
-  // HOW MANY PINS is `map.pinCount`; HOW MANY GOOGLE ROWS WE BUY is
-  // `map.googlePull` (MESITA-1695). Two questions, two knobs. Guest
-  // Popularity (`minReviews`) is a Discovery-mode floor on top, never a
-  // Nearby API param.
+  // HOW MANY PINS is `map.pinCount`; Google hands back at most 20 per call
+  // and the engine never widens (MESITA-2298). Guest Google Reviews
+  // (`minReviews`) is a Discovery-mode floor on top, applied after Google's
+  // response, never a Nearby API param.
   const efEnv = readEFEnv();
   const cfg = efEnv.ok
     ? await loadDiscoveryConfig(adminClient(efEnv.env))
@@ -256,10 +268,10 @@ Deno.serve(async (req) => {
     : enabledNearbyTypes(cfg.map);
   const googleFill = mapShouldFillGoogle(clientGoogle, cfg.map) &&
     nearbyTypes.length > 0;
-  // Only the inner ring runs the Enriched gate; the two wider rings admit
-  // Created rows and are cut to a ready profile instead (`readyOnMap`).
+  // The Mesita lane is Mesita Selected: the Enriched gate is always on
+  // (MESITA-2298); `readyOnMap` keeps the ready cut in SQL either way.
   const filters = isNearby
-    ? listedMapFilters(cfg.filters, cfg.map, placesScope)
+    ? listedMapFilters(cfg.filters, cfg.map)
     : cfg.filters;
   // Mesita Places = listed (RLS) + `content_state = 'ready'`, on EVERY ring:
   // the inner ring's gate already carries it, and `admitsScopeRow` re-checks
@@ -328,7 +340,7 @@ Deno.serve(async (req) => {
     const { lat, lng } = nearbyDecision;
     const center = { lat, lng };
     const scanRows = (data ?? []) as unknown as CardRow[];
-    const lanes = lanesForPlacesScope(placesScope, limit, cfg.map.googlePull);
+    const lanes = lanesForPlacesScope(placesScope, limit);
     let mesitaRows = scanRows.filter((row) => admitsScopeRow(placesScope, row));
     if (guestSupers.length > 0) {
       mesitaRows = mesitaRows.filter((row) =>
@@ -343,7 +355,8 @@ Deno.serve(async (req) => {
         guestMinReviews,
       );
       const inRadius = admitted.listed.filter((row) =>
-        haversineKm(lat, lng, row.lat ?? null, row.lng ?? null) <= nearbyRadiusKm
+        haversineKm(lat, lng, row.lat ?? null, row.lng ?? null) <=
+          nearbyRadiusKm
       );
       const listed = mergeNearbyCatalog(
         inRadius,
@@ -372,7 +385,7 @@ Deno.serve(async (req) => {
     const wantGoogleNearby = lanes.googleCount > 0;
     const gmp = readGooglePlacesKey();
     if (wantGoogleNearby && gmp.ok) {
-      const cached = peekCachedNearbyPlaces(center, nearbyTypes, cfg.map.googlePull);
+      const cached = peekCachedNearbyPlaces(center, nearbyTypes);
       if (cached) {
         googleHits = cached;
       } else if (efEnv.ok) {
@@ -383,8 +396,7 @@ Deno.serve(async (req) => {
         const ipHash = await hashConnectingIp(req, efEnv.env.serviceKey);
         googleHits = await searchNearbyPlaces(gmp.key, center, {
           types: nearbyTypes,
-          // 20 is one request; 40 and 60 are 2 and 3, split by battery.
-          pull: cfg.map.googlePull,
+          // ONE Nearby Search (New) call, 20 places, never widened (MESITA-2298).
           beforeFanout: () =>
             consumeNearbyGoogleQuota(adminClient(efEnv.env), ipHash).then(
               (quota) => quota.allow,
@@ -407,17 +419,23 @@ Deno.serve(async (req) => {
     // ring cuts: a Created place that fails the General gate, a Map floor,
     // the guest's Popularity or the Super overlap on stored family_keys
     // (door synthesis can leave `['undefined']`) would fall through to a
-    // stub whose "Add to Mesita" 409s `place_already_exists`. MESITA-2154.
+    // stub whose open would only resolve to the row Mesita holds. MESITA-2154.
     let ownedRows: CardRow[] = [];
     if (missing.length > 0) {
-      const owned = await (supabase.from("profiles").select(selectCols) as unknown as {
-        in: (
-          col: string,
-          vals: string[],
-        ) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>;
-      }).in("google_place_id", missing);
+      const owned =
+        await (supabase.from("profiles").select(selectCols) as unknown as {
+          in: (
+            col: string,
+            vals: string[],
+          ) => PromiseLike<
+            { data: unknown[] | null; error: { message: string } | null }
+          >;
+        }).in("google_place_id", missing);
       if (owned.error) {
-        console.error("[consumer-web-list-places] owned gid lookup:", owned.error.message);
+        console.error(
+          "[consumer-web-list-places] owned gid lookup:",
+          owned.error.message,
+        );
       } else {
         ownedRows = (owned.data ?? []) as CardRow[];
       }
@@ -455,7 +473,9 @@ Deno.serve(async (req) => {
         in: (
           col: string,
           vals: string[],
-        ) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>;
+        ) => PromiseLike<
+          { data: unknown[] | null; error: { message: string } | null }
+        >;
       }).in("google_place_id", ringOwnedGids);
       if (!extra.error && extra.data) {
         const seen = new Set(mesitaRows.map((row) => row.id));
