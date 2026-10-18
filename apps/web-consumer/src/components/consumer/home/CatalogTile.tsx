@@ -95,8 +95,10 @@ export function CatalogTile({
   // The same real-data mapper the detail Overview reads (MESITA-2371): stars,
   // review count, price range, open state, zone — a missing cell hides.
   const o = enrichPlaceOverview(place);
+  // "MX$200–300 per person" truncated the row; the tile keeps the range.
   const priceLabel =
-    o.price_range ?? formatPlacePriceLevelSymbols(place.price_level);
+    o.price_range?.replace(/\s*per person$/i, "") ??
+    formatPlacePriceLevelSymbols(place.price_level);
   const kind = readableKind(place);
   const ratingLabel = formatRating(o.google_rating);
   const reviews =
@@ -110,16 +112,16 @@ export function CatalogTile({
         ? `Open · until ${o.closes_at}`
         : "Open now"
       : o.open_now === false
-        ? o.opens_at
-          ? `Closed · opens ${o.opens_at}`
-          : "Closed"
+        ? "Closed"
         : null;
   const distance =
     typeof place.distance_km === "number" && place.distance_km > 0
       ? formatKm(place.distance_km)
       : null;
-  const kindLine = [kind, zone].filter(Boolean).join(" · ");
-  const whenLine = [openLine, distance].filter(Boolean).join(" · ");
+  // At most three rows (Pato, MESITA-2372): name; stars · price · distance;
+  // category · zone · open state.
+  const factsLine = [priceLabel, distance].filter(Boolean).join(" · ");
+  const kindLine = [kind, zone, openLine].filter(Boolean).join(" · ");
 
 
   // The photo, or the Google card's emoji tile. Drawn twice: filling the
@@ -165,10 +167,11 @@ export function CatalogTile({
         className="focus-visible:ring-primary absolute inset-0 block outline-none focus-visible:ring-2 focus-visible:ring-inset"
       >
         <div className="bg-muted absolute inset-0">{media(false)}</div>
-        {/* The info band: the photo's reflection under 50% ink, four rows
-            of real facts (MESITA-2369, MESITA-2371). */}
+        {/* The info band: the photo's reflection under 50% ink across the
+            bottom 40%, three rows spread to fill it (MESITA-2369,
+            MESITA-2372). */}
         <div
-          className="absolute inset-x-0 bottom-0 h-1/2 overflow-hidden"
+          className="absolute inset-x-0 bottom-0 h-[40%] overflow-hidden"
           data-tile-info
         >
           <div className="absolute inset-0" aria-hidden>
@@ -178,14 +181,14 @@ export function CatalogTile({
             className="bg-foreground/50 absolute inset-0 backdrop-blur-sm"
             aria-hidden
           />
-          <div className="text-paper relative flex h-full flex-col justify-center gap-1 px-3">
+          <div className="text-paper relative flex h-full flex-col justify-evenly px-3 py-1.5">
             <p className="font-display flex min-w-0 items-center gap-1 text-base leading-tight font-semibold tracking-tight">
               <span className="truncate">{place.name}</span>
               {isEnrichedPlace(place) ? (
                 <EnrichedBadge className="h-4 w-4 shrink-0" />
               ) : null}
             </p>
-            {ratingLabel || priceLabel ? (
+            {ratingLabel || factsLine ? (
               <p className="flex min-w-0 items-center gap-1.5 text-sm leading-tight font-medium">
                 {ratingLabel ? (
                   <span className="inline-flex shrink-0 items-center gap-1">
@@ -196,22 +199,12 @@ export function CatalogTile({
                     ) : null}
                   </span>
                 ) : null}
-                {ratingLabel && priceLabel ? <span aria-hidden>·</span> : null}
-                {priceLabel ? <span className="truncate">{priceLabel}</span> : null}
+                {ratingLabel && factsLine ? <span aria-hidden>·</span> : null}
+                {factsLine ? <span className="truncate">{factsLine}</span> : null}
               </p>
             ) : null}
             {kindLine ? (
               <p className="text-paper/85 truncate text-sm leading-tight">{kindLine}</p>
-            ) : null}
-            {whenLine ? (
-              <p
-                className={cn(
-                  "truncate text-sm leading-tight",
-                  o.open_now === true ? "text-paper font-medium" : "text-paper/85",
-                )}
-              >
-                {whenLine}
-              </p>
             ) : null}
           </div>
         </div>
