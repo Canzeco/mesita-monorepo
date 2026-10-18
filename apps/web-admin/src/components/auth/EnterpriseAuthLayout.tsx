@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { Database, Eye, ShieldCheck, Wrench } from "lucide-react";
+import { Database, ShieldCheck, Wrench } from "lucide-react";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
 
 // Two-column enterprise auth shell for the admin subdomain.
 //
 //   - Left  (50% on lg+, hidden on mobile): branded marketing column
-//           with admin-specific tone (allowlist, MFA, audit, ops tools).
+//           naming only what the console has (allowlist, catalog tools,
+//           danger zone). Verification is Second Stage, so no card for it.
 //   - Right (50% on lg+, full width on mobile): auth surface — Google
 //           sign-in is the only option; everything else flows through
 //           the super_admins allowlist.
@@ -64,7 +65,7 @@ function LandingPane() {
         <h2 className="font-display max-w-[20ch] text-4xl leading-[1.05] font-semibold tracking-[-0.02em] xl:text-5xl">
           Internal operations console.
         </h2>
-        <ul className="grid grid-cols-1 gap-3.5 xl:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-3.5">
           <ValueProp
             Icon={ShieldCheck}
             title="Allowlisted only"
@@ -76,14 +77,9 @@ function LandingPane() {
             blurb="Create, update, bulk-edit, search, and inspect place rows without leaving the shell."
           />
           <ValueProp
-            Icon={Eye}
-            title="Verification queue"
-            blurb="Review ownership claims, approve / reject, and audit every decision after the fact."
-          />
-          <ValueProp
             Icon={Wrench}
             title="Safe danger zone"
-            blurb="Database resets and other destructive actions require explicit typed confirmation."
+            blurb="Database resets need typed confirmation; deleting places asks first."
           />
         </ul>
       </div>
