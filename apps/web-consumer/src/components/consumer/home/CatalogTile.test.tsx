@@ -86,13 +86,13 @@ describe("a Google-only card's image is a placeholder, never a photo (MESITA-229
 });
 
 describe("the tile is one square with a reflection band (MESITA-2364, MESITA-2369)", () => {
-  it("fills the square with the photo; the bottom half is its reflection under 50% ink", () => {
+  it("fills the square with the photo; the bottom 40% is its reflection under 50% ink", () => {
     const html = tile({ photos: ["https://example.com/a.jpg"], price_level: 2 });
     expect(html).toContain("relative aspect-square min-w-0 overflow-hidden");
     expect(html.match(/<img/g)?.length).toBe(2);
     expect(html).toContain("-scale-y-100");
     expect(html).toContain("bg-foreground/50");
-    expect(html).toContain("absolute inset-x-0 bottom-0 h-1/2 overflow-hidden");
+    expect(html).toContain("absolute inset-x-0 bottom-0 h-[40%] overflow-hidden");
     expect(html).toContain("text-paper");
     expect(html).not.toContain("bg-gradient-to-t");
     expect(html).not.toMatch(/rounded-(lg|xl|2xl)/);
@@ -107,7 +107,7 @@ describe("the tile is one square with a reflection band (MESITA-2364, MESITA-236
 });
 
 describe("the tile shows far more, all real (MESITA-2371)", () => {
-  it("prints stars + reviews, price range, category · zone, open state · distance", () => {
+  it("prints stars + reviews, price, distance, category · zone · open state in three rows", () => {
     const html = tile({
       price_level: 2,
       currency: "MXN",
@@ -121,9 +121,12 @@ describe("the tile shows far more, all real (MESITA-2371)", () => {
     } as Partial<Place>);
     expect(html).toContain("4.6");
     expect(html).toContain("(812)");
-    expect(html).toContain("Cafe · Tecnológico");
-    expect(html).toContain("Open · until 02:00");
+    // Three rows at most (MESITA-2372): stars · price · distance, then
+    // category · zone · open state.
     expect(html).toContain("1.4 km");
+    expect(html).toContain("Cafe · Tecnológico · Open · until 02:00");
+    expect(html.match(/<p /g)?.length).toBeLessThanOrEqual(3);
+    expect(html).not.toContain("per person");
   });
 
   it("hides what the place does not have — no invented cells", () => {
