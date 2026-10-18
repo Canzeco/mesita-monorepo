@@ -86,14 +86,14 @@ describe("a Google-only card's image is a placeholder, never a photo (MESITA-229
 });
 
 describe("the tile: photo on top, its light reflection below (MESITA-2369, MESITA-2373)", () => {
-  it("shows the photo on the top 60%, uncovered, and mirrors it from its foot under 50% paper", () => {
+  it("shows the photo on the top 60%, uncovered, and mirrors it from its foot under 65% paper", () => {
     const html = tile({ photos: ["https://example.com/a.jpg"], price_level: 2 });
     expect(html).toContain("relative aspect-square min-w-0 overflow-hidden");
     expect(html).toContain("absolute inset-x-0 top-0 h-[60%] overflow-hidden");
     expect(html).toContain("absolute inset-x-0 bottom-0 h-[40%] overflow-hidden");
     expect(html).toContain("absolute inset-x-0 top-0 h-[150%] -scale-y-100");
     expect(html.match(/<img/g)?.length).toBe(2);
-    expect(html).toContain("bg-paper/50");
+    expect(html).toContain("bg-paper/65");
     expect(html).not.toContain("bg-foreground/50");
     expect(html).not.toMatch(/rounded-(lg|xl|2xl)/);
     expect(html.indexOf("<img")).toBeLessThan(html.indexOf(">Casa<"));
@@ -107,7 +107,7 @@ describe("the tile: photo on top, its light reflection below (MESITA-2369, MESIT
 });
 
 describe("the tile shows far more, all real (MESITA-2371)", () => {
-  it("prints stars + reviews, price, category · zone, open state · distance in four rows", () => {
+  it("prints price · category, zone · time, stars · distance in Pato's order", () => {
     const html = tile({
       price_level: 2,
       currency: "MXN",
@@ -121,10 +121,13 @@ describe("the tile shows far more, all real (MESITA-2371)", () => {
     } as Partial<Place>);
     expect(html).toContain("4.6");
     expect(html).toContain("(812)");
-    // Four rows (MESITA-2373): name; stars · price; category · zone;
-    // open state · distance.
-    expect(html).toContain("Cafe · Tecnológico");
-    expect(html).toContain("Open · until 02:00 · 1.4 km");
+    // Pato's order (MESITA-2374): name; price · category; zone · time;
+    // stars · distance.
+    expect(html).toMatch(/· Cafe</);
+    expect(html).toContain("Tecnológico · Open · until 02:00");
+    expect(html).toContain("1.4 km");
+    expect(html.indexOf("Cafe<")).toBeLessThan(html.indexOf("Tecnológico"));
+    expect(html.indexOf("Tecnológico")).toBeLessThan(html.indexOf("(812)"));
     expect(html.match(/<p /g)?.length).toBeLessThanOrEqual(4);
     expect(html).not.toContain("per person");
   });
@@ -135,5 +138,15 @@ describe("the tile shows far more, all real (MESITA-2371)", () => {
     expect(html).not.toContain("Closed");
     expect(html).not.toContain(" km");
     expect(html).not.toContain("(0)");
+  });
+});
+
+describe("the Save heart sits at the right of the name row (MESITA-2374)", () => {
+  it("is placed at the band's top-right, outside the tile link", () => {
+    const html = tile({});
+    expect(html).toContain("absolute top-[60%] right-0 flex h-11 w-11");
+    // A sibling of the link, never inside it.
+    const link = html.slice(html.indexOf("<a "), html.indexOf("</a>"));
+    expect(link).not.toContain("data-tile-save");
   });
 });
