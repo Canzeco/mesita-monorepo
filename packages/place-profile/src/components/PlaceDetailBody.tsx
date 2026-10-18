@@ -24,7 +24,7 @@ import { DatesBox, LinksBox, TagsBox } from "./place-detail/tags-links-meta";
 // Everything here SCROLLS:
 //
 //   1. Profile summary — name in page chrome; photo + Google/Instagram/
-//      Facebook (that count row hides on Reviews); swipe-style tags; then
+//      Facebook (on every tab, MESITA-2334); swipe-style tags; then
 //      Save · Contact · Share, then Reserve · Pay (Soon) (MESITA-2321; no pinned bar).
 //   2. The sticky strip, Overview · Reviews · Menu (Soon) · Rewards (Soon),
 //      for every place (MESITA-2332). Not Enriched: Overview opens with the
@@ -52,11 +52,7 @@ export function PlaceDetailBody({
     // pb-4 gives the last section breathing room above whatever footer
     // (nav) the parent layout renders below the scroll area.
     <div className="flex flex-col pb-4">
-      <ProfileSummary
-        place={place}
-        actions={actions}
-        showChannelStats={tab !== "reviews"}
-      />
+      <ProfileSummary place={place} actions={actions} />
       <div className="flex flex-col gap-3 px-4">
         <PlaceTabBar tab={tab} onChange={setTab} />
           {tab === "place" && (

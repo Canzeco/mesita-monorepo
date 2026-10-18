@@ -1,5 +1,5 @@
 import type { PlaceDetail } from "./place-detail";
-import { FALLBACK_IANA_TZ, WEEK_KEYS } from "./lib/place-time";
+import { WEEK_KEYS } from "./lib/place-time";
 
 // Loose row type — the EF returns the full place projection; helpers read it
 // defensively because enrichment leaves many columns empty.
@@ -100,8 +100,10 @@ export function derivePriceRange(row: Row): string {
 
 // Derives live open/closed state from the weekly `hours` jsonb in the place's
 // IANA timezone. Handles split shifts and overnight ranges (close <= open =>
-// closes the next day). Falls back to closed/empty when hours or tz are
-// missing/unparseable — never throws.
+// closes the next day). Unknown — `open_now: null`, empty opens/closes — when
+// hours or the timezone are missing or unparseable (MESITA-2331): a guess in a
+// fallback zone printed wrong times, and "no hours" read as "Closed". Never
+// throws.
 //
 // Exported so the deck/catalog card deriver (lib/adapters/enrich-overview.ts)
 // computes open/closed exactly the same way as the detail modal — one
@@ -109,15 +111,16 @@ export function derivePriceRange(row: Row): string {
 export function computeOpenState(
   hours: unknown,
   tz: string | undefined,
-): { open_now: boolean; opens_at: string; closes_at: string } {
-  const fallback = { open_now: false, opens_at: "", closes_at: "" };
+): { open_now: boolean | null; opens_at: string; closes_at: string } {
+  const fallback = { open_now: null, opens_at: "", closes_at: "" };
   const h = obj(hours);
   if (Object.keys(h).length === 0) return fallback;
+  if (!tz || !tz.trim()) return fallback;
   let dayIdx: number;
   let nowMin: number;
   try {
     const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: tz ?? FALLBACK_IANA_TZ,
+      timeZone: tz,
       weekday: "short",
       hour: "2-digit",
       minute: "2-digit",
@@ -208,6 +211,8 @@ export function opensOnDay(
 export function hoursTable(hours: unknown): PlaceDetail["hours_table"] {
   const h = obj(hours);
   const out: PlaceDetail["hours_table"] = [];
+  // No hours at all is unknown, not seven days "Closed" (MESITA-2331).
+  if (Object.keys(h).length === 0) return out;
   for (const day of DAY_ORDER) {
     const ranges = arr<HourRange>(h[day]);
     if (ranges.length === 0) {

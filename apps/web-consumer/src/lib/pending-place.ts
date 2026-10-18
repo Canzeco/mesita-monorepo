@@ -100,15 +100,11 @@ export function pendingPlaceDetail(
     request_count: 0,
     created_at: card?.created_at ?? new Date().toISOString(),
   };
+  // A Google card has no timezone, so the mapper reads Google's own
+  // open-now from the card's `open_now` (MESITA-2313, MESITA-2331).
   const detail = placeRowToDetail(row as Parameters<typeof placeRowToDetail>[0]);
-  // A Google card has no stored hours, so the profile's open state reads
-  // Google's own open-now from the card instead (MESITA-2313).
-  const googleOpen = !card?.hours && typeof card?.open_now === "boolean"
-    ? card.open_now
-    : null;
   return {
     ...detail,
     distance_km: card?.distance_km ?? detail.distance_km,
-    ...(googleOpen === null ? {} : { open_now: googleOpen }),
   };
 }
