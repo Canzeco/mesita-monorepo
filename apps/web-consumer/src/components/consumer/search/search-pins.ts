@@ -1,9 +1,16 @@
 // The pin tone is the coloured point, on the results rows AND the map pins.
 // THE LAW, three nested sets (Pato, 2026-10-12, MESITA-2158):
 //
-//   enriched  red    an Enrich run completed (`enriched_at` set)
-//   mesita    ink    our own place, not enriched yet (a Created place)
+//   enriched  red    an Enrich run completed (`enriched_at` set): Mesita Selected
+//   mesita    gray   our own place, not enriched yet (a Created place)
 //   google    gray   a Google row Mesita does not hold
+//
+// THREE COLOURS ON THE MAP AND NO MORE (Pato, 2026-10-18, MESITA-2316): red
+// is Mesita Selected, blue is the guest's own location, gray is everything
+// else — a Created profile wears Google's gray until an Enrich run
+// completes; the brand-ink middle tone is gone. The `mesita` tone survives
+// as a FACT, not a colour: its row says "Basic Mesita profile" and opens its
+// own profile, while a Google-only row opens through the opening screen.
 //
 // The sets still nest — Google Places ⊃ Mesita Places ⊃ Mesita Enriched
 // Places — and each tone is the NARROWEST ring the place sits in. The
@@ -26,13 +33,12 @@
 import {
   MAP_ENRICHED_PIN_COLOR,
   MAP_GOOGLE_PIN_COLOR,
-  MAP_MESITA_PIN_COLOR,
   MAP_PIN_STROKE_COLOR,
   MAP_SELECTED_PIN_COLOR,
 } from "@/lib/map-defaults";
 import { isEnrichedPlace } from "@/lib/place-enriched";
 
-/** The tone IS the narrowest ring: red, ink or gray. */
+/** The tone IS the narrowest ring; only `enriched` draws red. */
 export type PinTone = "enriched" | "mesita" | "google";
 
 /** On Mesita per EF — mesitaId/slug win over a stale not_in_mesita state. */
@@ -57,7 +63,8 @@ export function catalogPlaceOnMesita(place: {
 
 const TONE_COLORS: Record<PinTone, string> = {
   enriched: MAP_ENRICHED_PIN_COLOR,
-  mesita: MAP_MESITA_PIN_COLOR,
+  // A Created profile is gray like a Google row until it is enriched.
+  mesita: MAP_GOOGLE_PIN_COLOR,
   google: MAP_GOOGLE_PIN_COLOR,
 };
 
@@ -89,8 +96,8 @@ export function locationTypeLabel(locationType?: string | null): string {
 }
 
 /** Name-lane rows. No column fallback on this wire, so a Mesita row
- *  without `enriched` reads as ink, never red: understating beats promising
- *  a profile that is not there. Off Mesita is gray. */
+ *  without `enriched` reads as `mesita` (gray), never red: understating
+ *  beats promising a profile that is not there. Off Mesita is gray too. */
 export function predictionPinTone(item: {
   state?: string | null;
   enriched?: boolean | null;
@@ -155,8 +162,9 @@ export function overlayPinDecision(input: {
 }
 
 /** Map/catalog rows: a Google stub is gray, a Mesita row nobody has
- *  enriched yet is ink, an enriched one red. Same rule as the ring counts
- *  (`placeSearchScope`), so a dot and its ring cannot disagree. */
+ *  enriched yet is gray too (its own tone, `mesita`), an enriched one red.
+ *  Same rule as the ring counts (`placeSearchScope`), so a dot and its ring
+ *  cannot disagree. */
 export function placePinTone(place: {
   googleOnly?: boolean;
   from_google?: boolean;

@@ -5,7 +5,6 @@ import { placeSearchScope } from "@/lib/map-filters-engine";
 import {
   MAP_GOOGLE_PIN_COLOR,
   MAP_ENRICHED_PIN_COLOR,
-  MAP_MESITA_PIN_COLOR,
   MAP_PIN_HIT_SIZE,
   MAP_PIN_STROKE_COLOR,
   MAP_PLACE_PIN_RADIUS,
@@ -103,26 +102,19 @@ describe("pin tones — enriched > mesita > google", () => {
     ).toBe("mesita");
   });
 
-  it("uses red for enriched, brand ink for Mesita, gray for Google", () => {
+  it("uses red for Mesita Selected and gray for everything else (MESITA-2316)", () => {
     expect(pinToneColor("enriched")).toBe(MAP_ENRICHED_PIN_COLOR);
-    expect(pinToneColor("mesita")).toBe(MAP_MESITA_PIN_COLOR);
+    // A Created profile is gray like a Google row until it is enriched.
+    expect(pinToneColor("mesita")).toBe(MAP_GOOGLE_PIN_COLOR);
     expect(pinToneColor("google")).toBe(MAP_GOOGLE_PIN_COLOR);
     expect(MAP_ENRICHED_PIN_COLOR).toBe("#ff2357");
-    // assets/brand/brand.json › brand-ink.
-    expect(MAP_MESITA_PIN_COLOR).toBe("#331019");
     expect(MAP_GOOGLE_PIN_COLOR).toBe("#9ca3af");
-    expect(
-      new Set([
-        MAP_ENRICHED_PIN_COLOR,
-        MAP_MESITA_PIN_COLOR,
-        MAP_GOOGLE_PIN_COLOR,
-      ]).size,
-    ).toBe(3);
+    expect(MAP_ENRICHED_PIN_COLOR).not.toBe(MAP_GOOGLE_PIN_COLOR);
   });
 
   it("keeps the tone fill and rings the selected pin black", () => {
     expect(pinFillColor("enriched")).toBe(MAP_ENRICHED_PIN_COLOR);
-    expect(pinFillColor("mesita")).toBe(MAP_MESITA_PIN_COLOR);
+    expect(pinFillColor("mesita")).toBe(MAP_GOOGLE_PIN_COLOR);
     expect(pinFillColor("google")).toBe(MAP_GOOGLE_PIN_COLOR);
     expect(pinStrokeColor(false)).toBe("#ffffff");
     expect(pinStrokeColor(true)).toBe("#111111");
