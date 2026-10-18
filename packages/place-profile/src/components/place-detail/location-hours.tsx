@@ -5,7 +5,6 @@ import { Clock, MapPin } from "lucide-react";
 
 import type { PlaceActions } from "../../actions";
 import type { PlaceDetail } from "../../place-detail";
-import { FALLBACK_IANA_TZ } from "../../lib/place-time";
 import { buildUberDropoffUrl } from "../../lib/uber-link";
 import { cn, formatDistanceKm } from "../../lib/format";
 
@@ -103,10 +102,10 @@ export function LocationBox({
 // ── Time (hours) ────────────────────────────────────────────────────────
 
 /** Full weekday name in the place timezone — matches hours_table.day. */
-function todayWeekdayLabel(tz: string | undefined): string {
+function todayWeekdayLabel(tz: string): string {
   try {
     return new Intl.DateTimeFormat("en-US", {
-      timeZone: tz ?? FALLBACK_IANA_TZ,
+      timeZone: tz,
       weekday: "long",
     }).format(new Date());
   } catch {
@@ -160,12 +159,13 @@ function HoursDayRow({
 
 export function HoursBox({ place }: { place: PlaceDetail }) {
   // decision: Pato — Time below Location (full-width stack); keep timezone
-  const today = todayWeekdayLabel(place.timezone);
-  const stateDetail = place.open_now
+  // No timezone, no "today": the device's day can be the wrong one.
+  const today = place.timezone ? todayWeekdayLabel(place.timezone) : "";
+  const stateDetail = place.open_now === true
     ? place.closes_at
       ? `until ${place.closes_at}`
       : null
-    : place.opens_at
+    : place.open_now === false && place.opens_at
       ? `opens ${place.opens_at}`
       : null;
   const tz = place.timezone || undefined;
@@ -183,22 +183,26 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
         ) : undefined
       }
     >
-      <p className="text-xs leading-snug">
-        <span
-          className={cn(
-            "font-semibold",
-            place.open_now ? "text-foreground" : "text-muted-foreground",
+      {/* Unknown open state says nothing: no hours is not "Closed"
+          (MESITA-2331). */}
+      {place.open_now !== null && (
+        <p className="text-xs leading-snug">
+          <span
+            className={cn(
+              "font-semibold",
+              place.open_now ? "text-foreground" : "text-muted-foreground",
+            )}
+          >
+            {place.open_now ? "Open" : "Closed"}
+          </span>
+          {stateDetail && (
+            <>
+              <span className="text-muted-foreground"> · </span>
+              <span className="text-foreground/80">{stateDetail}</span>
+            </>
           )}
-        >
-          {place.open_now ? "Open" : "Closed"}
-        </span>
-        {stateDetail && (
-          <>
-            <span className="text-muted-foreground"> · </span>
-            <span className="text-foreground/80">{stateDetail}</span>
-          </>
-        )}
-      </p>
+        </p>
+      )}
       {place.hours_table.length > 0 && (
         <ul className="border-border overflow-hidden rounded-xl border">
           {place.hours_table.map((row) => (

@@ -63,7 +63,10 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
     price_range: derivePriceRange(row),
     currency,
     distance_km: 0,
-    open_now: openState.open_now,
+    // Without stored hours or a timezone, a Google-only draft still carries
+    // Google's own open-now (MESITA-2313); otherwise unknown stays null.
+    open_now: openState.open_now ??
+      (typeof row.open_now === "boolean" ? row.open_now : null),
     opens_at: openState.opens_at,
     closes_at: openState.closes_at || (str(row.closes_at) ?? ""),
     timezone: str(row.timezone) ?? "",

@@ -24,7 +24,8 @@ export type PlaceDetail = {
   // without parsing price_range.
   currency: string;
   distance_km: number;
-  open_now: boolean;
+  /** null = unknown (no hours, or no timezone and no word from Google). */
+  open_now: boolean | null;
   opens_at: string;
   closes_at: string;
   timezone: string;
