@@ -1,398 +1,105 @@
 ---
 name: doctor
-description: Daily read-only health + congruence audit of the Mesita stack (Supabase DB, Edge Functions, configs, repo, deploys, ledger). Publishes the dated report as a Linear ISSUE (closed on creation) and files P0/P1 findings as separate Linear issues. Never fixes anything, never writes repo files. Linear documents are prohibited.
+description: Weekly read-only audit of the Mesita stack — the database, config, deploy, Docs and claim checks the pipeline-audit workflow cannot run. Publishes a dated Linear issue (Done on creation), files P0/P1 findings as issues, never fixes anything.
 ---
 
-# Doctor — daily stack audit
+# Doctor — weekly stack audit
 
-You are **Doctor**: a read-only diagnostician for the Mesita stack. You run every day,
-sweep a fixed list of scopes, find **incongruences** (two sources of truth that disagree)
-and **decay** (things that were healthy and no longer are), and write one report.
+A read-only diagnostician for First Stage: the three `apps/web-*` and `supabase/`. Once a week, find **incongruences** (two sources of truth that disagree) and **decay** (healthy last week, not now), and write one report.
+
+The mechanical checks are not yours: `scripts/pipeline-audit.ts` runs every Monday in `.github/workflows/pipeline-audit.yml`, and 1.1 reads its last run. Never repeat them.
 
 ## Hard rules
 
-1. **READ-ONLY.** No `INSERT`/`UPDATE`/`DELETE`/DDL, no EF deploys, no migrations, no
-   `supabase db push`, no writes to `app_config`, no config edits, no code fixes, no
-   `main` pushes, **no repo files — the repo carries no reports** (Rules §0 markdown law).
-   If a fix is obvious, describe it in the report — do not apply it.
-   The only writes you are allowed: Linear issues and comments — **Linear documents
-   are PROHIBITED** (the ledger is issues + comments only; Pato, 2026-08-16).
-2. **Evidence or it didn't happen.** Every finding carries the query, command, or file:line
-   that produced it, plus the two values that disagree. No "looks like", no inference from
-   memory, no findings copied from a previous report without re-running the check.
-3. **Cloud is a singleton.** One Supabase project. Comparisons are always
-   `live cloud` vs `origin/main`, never vs your working tree.
-4. **Diff against yesterday.** Load the previous report. Classify every finding as
-   `NEW` / `PERSISTING (n days)` / `RESOLVED`. A report with no diff section is incomplete.
-5. **Never ask.** Ambiguity → make the call, state the assumption in the report, keep going.
-6. **Budget.** Target ≤ 25 min. Scopes are ordered by value; if you run long, cut from the
-   bottom and say explicitly in the report which scopes were skipped. Silent truncation is
-   a bug — a skipped scope reads as "healthy" and that's a lie.
+1. **Read-only.** SELECT only. Write nothing but Linear issues and comments (never documents); an obvious fix goes in the report, unapplied.
+2. **Evidence.** Each finding carries the query, command or `file:line` behind it and the two values that disagree. Re-run last week's findings, never copy them.
+3. **Cloud is a singleton** (I-5): compare the live cloud with `origin/main`, never a working tree.
+4. **Diff against last week:** each finding is `NEW`, `PERSISTING (n weeks)` or `RESOLVED`.
+5. **Never ask.** Make the call, state the assumption, keep going.
+6. **30 minutes.** Cut from the bottom and name each skipped scope. A scope whose connector is missing is `SKIPPED (connector unavailable)`, never `OK`.
 
-## Inputs
+Inputs: `origin/main` (fetch first), Supabase MCP (SELECT only), Linear (team Mesita), Notion (📜 Rules, 📚 Docs), Vercel MCP, `gh`.
 
-- Repo: `Canzeco/mesita-monorepo` at `origin/main` (fetch first; never audit a dirty tree).
-- Supabase: MCP (`list_tables`, `list_edge_functions`, `get_edge_function`, `list_migrations`,
-  `get_advisors`, `get_logs`, `execute_sql` — **SELECT only**).
-- Linear: team Mesita (`MESITA-`).
-- Vercel MCP: 3 projects (mesita-web-admin, mesita-web-consumer, mesita-web-landing).
-- GitHub via `gh`.
-- Notion MCP: 📜 **Rules** (§0–§3 + SADLC · KADLC) and 📚 **Docs** (14 flat domain
-  pages). **Scope 9 only.** No connector → Scope 9 is `SKIPPED (connector unavailable)`,
-  never `OK` — a scope that reads as healthy because it never ran is the bug it exists to catch.
+## Scope 1 — Pipeline and knowledge · P1
 
-## Standard
+1.1 **Pipeline audit.** `gh run list --workflow pipeline-audit.yml --branch main --limit 1`: older than 8 days or not a pass is a finding; copy its unaccepted codes. It reads the required checks live from the ruleset, so never state a count.
+1.2 **Stamp.** Rules §0's Mirror line against `scripts/rules-quickstart.md`, both `stamp: v<N> <date>`. Unequal is drift: put the exact corrected text in the issue.
+1.3 **Mirror.** Merged PRs of the last 7 days with `Docs: notion:<id>`: a page last edited before the merge is "Mirror missing". `Docs: none — <why>` is OK; a `handoff` is `TRACKED` until 7 days old.
+1.4 **Claims** (I-6). In Progress issues idle over 24 h. From the shared checkout, `deno task worktree sweep` (dry run): `sweepable` rows, the `json:` counts, and every `origin-json` claim whose issue is not In Progress, or the reverse.
+1.5 **Docs against code.** Each 📚 Docs domain page against the code it names: every disagreeing claim, with `file:line` and both values. Index links resolve, one page per domain. Drift the page declares, or an open issue names, is `TRACKED`.
+1.6 **Vocabulary.** The banned list on 📚 Docs › Vocabulary, swept across the repo (not `supabase/supabase/migrations/`, frozen history) and the Docs pages.
 
-Do **not** invent a health standard for the generic-Postgres part — import one:
-**Supabase Advisors** (`get_advisors` security + performance) is the baseline for Scope 2,
-plus the classic pg checks listed there. Scopes 3–6 are Mesita-specific and defined below;
-they exist because no off-the-shelf linter knows our invariants.
+## Scope 2 — Backend congruence · P0
 
----
+2.1 **Migration ledger.** `list_migrations` against `supabase/supabase/migrations/`: a file with no row, or a row with no file (applied off-repo, the dangerous one).
+2.2 **Schema drift.** A live table, column, view, function or policy no migration creates.
+2.3 **Applied, not live.** A ledger row records intent, not execution. Derive the data-only migrations each run (an `update` or `insert into public.` that creates nothing) and re-check the values they assert; confirm a moved column or renamed table first. P0 when a shipped surface advertises the value.
+2.4 **Reset coverage.** `admin_reset_database` still reads `public.admin_reset_preserve` and asserts its survivors (`app_config`, `super_admins`, the vocabularies) before truncating; every registry row is a real base table; every other base table is wiped.
+2.5 **Client-readable views must read.** A `security_invoker` view is only as readable as its body; `profiles` must stay `security_invoker = true`. Any row is a P0:
 
-# The scopes
+```sql
+select role_name, v.relname as view, d.refobjid::regclass::text as base, a.attname
+  from unnest(array['anon','authenticated']) as role_name
+  cross join pg_class v
+  join pg_namespace n on n.oid = v.relnamespace and n.nspname = 'public'
+  join pg_rewrite r on r.ev_class = v.oid
+  join pg_depend d on d.objid = r.oid and d.classid = 'pg_rewrite'::regclass
+  join pg_attribute a on a.attrelid = d.refobjid and a.attnum = d.refobjsubid
+ where v.relkind = 'v' and v.reloptions @> array['security_invoker=true']
+   and d.refobjid <> v.oid and d.refobjsubid > 0
+   and has_table_privilege(role_name, v.oid, 'SELECT')
+   and not has_column_privilege(role_name, d.refobjid, a.attnum, 'SELECT');
+```
 
-Each check: run it, record `OK` / `FINDING` / `SKIPPED (reason)`. Never leave a check blank.
+2.6 **Hand deploys.** A function updated in the cloud after the last push to `main` skipped the integration: diff its body (`get_edge_function`) against `origin/main`.
 
-Scopes 1–8 are the daily sweep. **Scope 9 is weekly and runs alone** (own budget, own
-report) so knowledge never competes with the P0 backend checks for the 25-minute target.
+## Scope 3 — Postgres health · P1
 
-## Scope 1 — Backend congruence (cloud == repo) · **P0 by default**
+3.1 **Advisors.** `get_advisors`, security and performance: every lint, with its object.
+3.2 **RLS.** RLS on for every `public` table; no policy grants `anon` more than intended. RLS with no policy is the deliberate function-only lockdown (`supabase/CLAUDE.md`), not a finding.
+3.3 **Stored bodies.** `extensions.plpgsql_check_function_tb` over every `public` plpgsql function, triggers against their table (`pg_trigger.tgrelid`): any `error` or `fatal` row is a P0. It misses `EXECUTE` strings, `LANGUAGE sql` and cron commands, so after a rename or drop grep `pg_proc.prosrc` and `cron.job.command` for the old name.
+3.4 **Schedulers.** From `cron.job_run_details`, each active job's failures and last success over the last day. All runs failed, or no success inside three times its cadence, is a P0.
+3.5 **Hygiene** (P2). Unindexed foreign keys, unused or duplicate indexes, dead tuples, the `pg_stat_statements` top 20, `idle in transaction` over 5 minutes, extensions in `public`.
 
-The singleton rule is the one that silently breaks. Check it first.
+## Scope 4 — Data integrity · P1
 
-1.1 **Edge Functions inventory.** `list_edge_functions` vs `supabase/supabase/functions/*`.
-    Report: in repo not deployed · deployed not in repo (ghosts) · name mismatches.
-1.2 **EF body drift.** For every EF, `get_edge_function` vs the repo source. Flag any where
-    cloud ≠ repo. Two known killers: (a) a deploy that shipped a **stub** over real code,
-    (b) a deploy from clean main that **reverted cloud-only** edits (EFs bundle their own
-    `_shared/*`). Both look fine in the dashboard.
-1.3 **Migration ledger.** `list_migrations` vs `supabase/supabase/migrations/*`.
-    Flag: file with no ledger row (unapplied) · ledger row with no file (applied off-repo,
-    the dangerous one) · version ordering anomalies. A ledger row proves a version was
-    STAMPED, never that its SQL ran. Whether the statements actually landed is 3.11.
-1.4 **Schema drift.** Live tables/columns/enums/views/functions vs what the migrations
-    reconstruct. Any object in the DB that no migration creates = drift.
-1.5 **`admin_reset_database` / `admin_reset_preserve` coverage.** Survivors are DATA in
-    `public.admin_reset_preserve` (read at run time — not an inlined array). Check:
-    (a) live function body still `SELECT`s from `admin_reset_preserve` and still asserts the
-    required core (`app_config`, `super_admins`, `place_categories`, `place_families`,
-    `place_tags`, `consumer_code_counter`) before
-    truncate; (b) every row in `admin_reset_preserve` names a real `public` base table;
-    (c) required admin-config survivors are present in the registry (`app_config`,
-    `super_admins` at minimum); (d) every *other* public base table is in
-    the wipe set (new operational tables must NOT land in the registry by accident). A
-    CREATE OR REPLACE that re-inlines a stale keep-list is a P0 — the function must read
-    the registry. (The old `preserved_media_assets:true` return flag is gone — do not
-    re-report it.)
-1.6 **Client-readable views must actually READ.** A `security_invoker` view is only as
-    readable as its BODY: the invoking role is re-checked against every relation and
-    column the body touches, so one appended column can 42501 a view whose own grants
-    never changed. `profiles` died this way (MESITA-1704) while the flag check and 2.3
-    both read healthy — they catch `anon` having *more* than intended, this catches
-    *less*. Catalog-derived, SELECT-only. **Any row is a P0** (Postgres names the first
-    failing relation, never the column):
+4.1 **Orphans.** Rows pointing at a deleted place, profile or reservation.
+4.2 **Taxonomy.** Every category, family and tag value is in `place_categories`, `place_families` or `place_tags`.
+4.3 **Places.** Coordinates inside Mexico, parseable hours, a `google_place_id`, and no `google_place_id` or name-and-location pair on two places.
+4.4 **Media.** References that 404 in `place-images`, `menu-images` or `menu-pdfs`; objects nothing references; a file in the wrong bucket.
+4.5 **Enrichment.** Places stuck in `content_state = generating`; runs with no terminal state.
 
-    ```sql
-    select role_name, v.relname as view, d.refobjid::regclass::text as base, a.attname
-      from unnest(array['anon','authenticated']) as role_name
-      cross join pg_class v
-      join pg_namespace n on n.oid = v.relnamespace and n.nspname = 'public'
-      join pg_rewrite r on r.ev_class = v.oid
-      join pg_depend d on d.objid = r.oid and d.classid = 'pg_rewrite'::regclass
-      join pg_attribute a on a.attrelid = d.refobjid and a.attnum = d.refobjsubid
-     where v.relkind = 'v' and v.reloptions @> array['security_invoker=true']
-       and d.refobjid <> v.oid and d.refobjsubid > 0
-       and has_table_privilege(role_name, v.oid, 'SELECT')
-       and not has_column_privilege(role_name, d.refobjid, a.attnum, 'SELECT');
-    ```
+## Scope 5 — Config and boundaries · P1
 
-1.7 **Known-intentional exceptions** — assert they still hold, and report if flipped:
-    `profiles` (the view, renamed from `projects_view`) must be `security_invoker = true`.
-    (`places.manual_priority` was once an exception; MESITA-1055 dropped the column,
-    so its absence is correct — do not report it as missing.)
+5.1 **Config pages** (`CONFIGURATIONS_NAV` in `apps/web-admin/src/components/Sidebar.tsx`; never copy it here). Per page: the `app_config` blob matches its readers' shape (a reader silently falling back to defaults is the commonest invisible bug); every field has a reader; no code constant overrides a field, the rate card included (`enricher-config/cost-model.ts` against `_shared/enrich-config.ts`); saving waits on `loadError`.
+5.2 **Clients never touch the database.** No `supabase.from(` or `.rpc(` in app code.
+5.3 **Callers.** Each function's prefix is a caller on 📚 Docs › Functions; natural callers may call artificial ones, never the reverse; a function nothing calls, or a call to a missing function, is a finding.
 
-## Scope 2 — Postgres health (imported standard) · P1
+## Scope 6 — Deploys and runtime · P2
 
-2.1 **Advisors — security.** `get_advisors(type: security)`. Every lint, with the object.
-2.2 **Advisors — performance.** `get_advisors(type: performance)`.
-2.3 **RLS coverage.** Every table in `public`: RLS enabled? at least one policy? any policy
-    granting `anon` more than intended? Tables with RLS on and *zero* policies (silently
-    dead to clients) are their own finding.
-2.4 **Indexes.** Unindexed FKs · unused indexes (`idx_scan = 0`, age-qualified) · duplicate
-    indexes · invalid indexes.
-2.5 **Bloat & vacuum.** Dead tuples ratio, last autovacuum/autoanalyze age, top-20 tables
-    and indexes by size, week-over-week growth.
-2.6 **Query health.** `pg_stat_statements` top-20 by total time and by mean time; seq scans
-    on tables over ~50k rows.
-2.7 **Connections.** Pool saturation, `idle in transaction` older than 5 min, long-running
-    queries, lock waits.
-2.8 **Extensions.** Anything installed into `public`, version drift.
-2.9 **Plan ceilings.** DB size, storage size, EF count vs the plan cap (the 100-EF free-plan
-    cap has already caused a total deploy blackout — track headroom, not just the number).
-2.10 **Stored-body staleness (plpgsql_check).** The extension is installed (schema
-    `extensions`; it is the engine behind `supabase db lint`). Sweep every `public`
-    PL/pgSQL body against the live catalog — any `error`/`fatal` row is a **P0**: that
-    function is broken in prod right now (a rename that skips rebuilding dependent
-    bodies is invisible until execution; this is how the 2026-08 enrichment dispatcher
-    died silently). Plain functions:
-    `select p.proname, c.lineno, c.message from pg_proc p join pg_namespace n on n.oid = p.pronamespace cross join lateral extensions.plpgsql_check_function_tb(p.oid) c where n.nspname = 'public' and p.prolang = (select oid from pg_language where lanname = 'plpgsql') and p.prorettype <> 'trigger'::regtype and c.level in ('error','fatal')`
-    Trigger functions (checked against each relation they fire on):
-    `select t.tgrelid::regclass, p.proname, c.lineno, c.message from pg_trigger t join pg_proc p on p.oid = t.tgfoid join pg_namespace n on n.oid = p.pronamespace cross join lateral extensions.plpgsql_check_function_tb(p.oid, t.tgrelid) c where not t.tgisinternal and n.nspname = 'public' and c.level in ('error','fatal')`
-    Known blindspot, by design: dynamic SQL (`EXECUTE` strings, e.g. admin_reset's
-    truncate) is not validated — the same class of blindspot as EF query strings
-    vs `deno check`. `LANGUAGE sql` functions are also outside plpgsql_check.
-    **Cover the blindspot with a second query, and run it after ANY rename or drop**
-    (MESITA-1191). plpgsql_check parses; this one only greps, so it sees exactly what the
-    parser cannot — `EXECUTE` strings, `LANGUAGE sql` bodies, non-`public` schemas, and the
-    cron commands that are text to Postgres and were invisible during the 2026-08 outage.
-    Substitute the OLD name for the pattern; a hit means a stored body still names something
-    that no longer exists:
-    `with needle as (select '%OLD_NAME%'::text as pat) select 'function' as kind, n.nspname::text as where_, p.proname::text as name, l.lanname::text as lang from pg_proc p join pg_namespace n on n.oid = p.pronamespace join pg_language l on l.oid = p.prolang cross join needle where p.prosrc ilike needle.pat and n.nspname not in ('pg_catalog','information_schema') union all select 'cron_job', 'cron', j.jobname::text, 'command' from cron.job j cross join needle where j.command ilike needle.pat order by 1,2,3`
-    Over-reports on substring hits — read them, do not count them. CI does not run a
-    shadow-DB `supabase db lint` (MESITA-1191 D3b).
+6.1 **Vercel.** The three projects (web-admin, web-consumer, web-landing) point at `Canzeco/mesita-monorepo`, Root Directory `apps/web-<app>`, "skip unaffected" on; last production deploy green; build and runtime errors.
+6.2 **Env parity.** Each app's keys against its Vercel project; every `Deno.env.get(...)` against the Supabase secrets. Names only, never values.
+6.3 **Dependencies.** Lockfile against manifest, overrides outside `pnpm-workspace.yaml`, known-vulnerable packages.
+6.4 **Logs.** Error rate and new error signatures per function; OTP failure spikes.
+6.5 **Vendors.** Error rates and credit headroom for Google Places, Firecrawl, Perplexity, Apify, Twilio and ElevenLabs: an exhausted credit shows up as bad data.
 
-## Scope 3 — Data integrity / incongruences · P1
+## Scope 7 — Ledger · P3
 
-The business-truth layer. These are the "and shit" checks — pairs of facts that must agree.
+7.1 Merged PRs whose `Closes MESITA-…` issue is still open.
+7.2 Open issues missing a Domain label, a `Footprint:` line, a `Done:` line or a project.
+7.3 Open issues whose premise is already false.
 
-3.1 **Identity chain.** `places.id == projects.id == editor projectId`. Any break = P0.
-    Orphans in both directions.
-3.2 **Orphans & dangling refs.** Rows referencing deleted accounts, places, projects,
-    consumers, members. Reservations/rewards/events pointing at nothing.
-3.3 **Taxonomy congruence.** Every `category` ∈ the canonical 100 · every tag ∈ the canonical
-    200 · all snake_case · no free-text leakage.
-3.4 **Nomenclature lock.** `places.state` ∈ `place_state`, `places.content_state` ∈
-    `content_state`, `reservation_tickets.state` ∈ `reservation_state`; a value outside
-    its enum or a stray text column re-introducing plan/class/partner is a finding.
-3.5 **Reservations shape.** `products.reservations` = primary `{channel, value}` + `fallbacks[]`;
-    shape is load-bearing. Channels must be members of the order in
-    `app_config.reservations_config`. Malformed blobs, empty primaries, unknown channels.
-3.6 **Geo / time congruence.** lat+lng present and inside plausible MX bounds · `city` matches
-    Google locality · `zone` matches neighborhood/sublocality · hours stored place-local and
-    parseable · `google_place_id` present on `places` where expected.
-3.7 **Duplicates.** Same `google_place_id` on two places · near-duplicate name+geo clusters.
-3.8 **Media ↔ storage.** DB image/PDF references that 404 in the bucket · bucket objects no
-    row references (orphan cost) · file in the wrong bucket for its MIME
-    (`place-images` / `menu-images` / `menu-pdfs`).
-3.9 **Counters & queues.** `place_creation_attempts` vs the 20/24h consumer quota ·
-    `scheduled_project_creations` leak · `place_enrichment_events` unbounded growth.
-3.10 **Enrichment state machine.** Places stuck mid-pipeline beyond a sane TTL · step/tier
-    values regressing · enrichment rows with no terminal state.
+## Procedure
 
-3.11 **Ledger says applied, live says otherwise.** A ledger row records INTENT, not execution:
-    the "MCP apply + stamped row" fallback can register a version whose SQL never ran
-    (MESITA-1169 — `20260817110000_class_reach_thresholds` sat in the remote ledger while
-    `influencer` still read 2000, under a consumer app already advertising "1,000+"). Skipped
-    DDL breaks loudly at the next query; a skipped **data-only** migration is silent forever,
-    which is why this is its own check and not part of 1.3.
-    **Derive the set, never keep a list here:** migrations whose body matches
-    `update|insert into public.` and which create no table or function. For each, read the
-    values it asserts and re-check them against live. The set grows with every config
-    migration, so re-derive each run — an enumerated list in this file would rot into a
-    false all-clear.
-    Two traps before calling drift, both hit on the 2026-08-23 sweep: the column may have
-    MOVED (`classes.price_cents` → `consumer_plans`, `20260818093000`) and the table may have
-    been RENAMED (`app_settings` → `app_config`). Confirm the destination holds the value
-    before reporting a miss. An assertion against a table that no longer exists is history,
-    not a finding.
-    Severity: **P0** when a shipped surface already advertises the asserted value — the DB is
-    breaking a promise the product has made to a guest. Otherwise P1.
+1. Fetch, then audit `origin/main`.
+2. Last week's report is the newest Linear issue `Doctor — YYYY-MM-DD` (team Mesita, project Ops & maintenance, Done included); none means `BASELINE`.
+3. Run scopes 1–7, in parallel inside each. Each finding: check, severity, both values, evidence, one-line fix, blast radius.
+4. Re-run every P0 and P1; drop what does not reproduce.
+5. Publish the report as this week's issue, Done in the same call.
+6. File each new P0 or P1 as `doctor: <symptom>`; when an open issue covers it, comment there.
+7. Print the verdict, the P0/P1 list and what resolved.
 
-## Scope 4 — Config enforcement ("unenforced config = bug") · P1
-
-For each admin config page, in the sidebar's product-flow order. **Read the set
-from code, never from this file:** `CONFIGURATIONS_NAV` in
-`apps/web-admin/src/components/Sidebar.tsx` is the SoT, and it is exported for
-exactly this reason (MESITA-1225).
-
-Never copy the list here. Not config pages: any route whose body is a
-`permanentRedirect` (grep, do not list). Known shims: `/adea-config`, `/db-config`,
-`/models-config`. `/aura-*` is retired (stale
-doc, not a missing page). `agents_config` is EF-managed with no page yet.
-`scoring_config` was Lineup (MESITA-1048) — no reader is a 4.3 finding, not a page.
-
-4.1 **Blob exists and parses** in `app_config`, and validates against the TS schema the
-    admin page and the consuming EFs expect (e.g. `discovery_config` is read through
-    `normalizeDiscoveryConfig`; the admin Discovery page and the EFs must agree on its shape).
-4.2 **Shape skew.** Stored blob shape older/newer than its reader → the reader is silently
-    falling back to defaults. This is the single most common invisible bug class here.
-4.3 **Dead knobs.** Every field in the blob: grep for a reader in EFs/apps. No reader = dead knob.
-4.4 **Hardcoded overrides.** Constants in code that duplicate a config field — config says X,
-    code does Y. Include the rate card (`cost-model.ts` ↔ `enrich-config.ts`).
-4.5 **Load-failure gating.** Config pages must gate `dirty` on `loadError` and never re-fetch
-    on mount (whole-blob save would clobber). Flag regressions.
-
-## Scope 5 — Callers, agents & boundaries · P2
-
-5.1 **EF naming.** `<caller>-<verb>-<name>`; caller prefix ∈ the registered set
-    (`admin` · `consumer` · `eleven` · `enricher` · `supabase` · `_shared`; retired:
-    `twilio` · `business` · `staff` · `check` · `validate` · `stripe` · `gift`). Count prefixes from
-    `supabase/supabase/functions/*` — do not keep a census here. Reservationist ships as
-    `eleven-a{1–4}` / `eleven-agent`, not `reservationist-agent`.
-5.2 **Direction rule.** Natural callers may invoke artificial callers, never the reverse.
-5.3 **Clients never touch the DB.** Grep app code for direct `supabase.from(` / `.rpc(`
-    outside sanctioned layers. Include stale-table names (`businesses` / `units` / `venues` →
-    `projects` / `places`; no compat views, so a stale `.from()` 500s in prod). `managers`
-    is dropped too (MESITA-2091).
-5.4 **Dead & missing EFs.** Deployed EF with no caller anywhere in the repo · EF invoked by
-    app code that does not exist or is not deployed (includes half-renamed slugs where the
-    deployed app still calls the old name — do not report those as deletable).
-
-## Scope 6 — Repo & IT hygiene · P2
-
-6.1 **Generated instruction files.** `deno task sync-rules:check` must pass — every
-    `AGENTS.md` is generated from its sibling `CLAUDE.md`.
-6.2 **Typecheck + lint, every package**, not only the ones a path-filtered CI would run.
-    Cross-app breaks land silently here; check both web apps.
-6.3 **Dependency hygiene.** Lockfile ↔ manifest drift · pnpm overrides living in
-    `package.json` instead of `pnpm-workspace.yaml` (pnpm 10+ ignores the former) ·
-    known-vulnerable deps · Node/pnpm version pins.
-6.4 **Env parity.** Required env keys per app vs what each Vercel project has ·
-    every `Deno.env.get(...)` in EFs vs the Supabase secrets that exist ·
-    `vault.secrets` names must not match n8n / serper / tripadvisor (MESITA-709).
-    Names only — **never read, print, or log a secret value.**
-6.5 **Vercel wiring.** Both projects → `Canzeco/mesita-monorepo`, Root Directory
-    `apps/web-<app>`, "skip unaffected" on, last production deploy green. A wrong Git
-    connection produces a *silent no-deploy*, which is why this is checked daily.
-6.6 **Build/runtime errors.** Latest deploy build logs + runtime errors per project.
-6.7 **Git surface.** Open PRs older than 7 days, branches whose issue is already closed,
-    and the fleet: run `deno task worktree sweep` (dry-run) from the shared checkout and
-    report its table, *sweepable* rows, and `json:` (8.1 reads that object). The doctor
-    **never deletes**. A one-entry `git worktree list` is no fleet on this host:
-    `SKIPPED`, never OK.
-6.8 **CI budget.** Actions minutes headroom, red workflows on main. `main-protection`
-    requires `closes.yml`; the five gates (`deno lint · test` · `deno check` ·
-    `pgTAP · schema invariants` · `instruction files in sync` · `brand assets in sync`)
-    become required only once they run unfiltered — a skipped required check blocks
-    as Expected.
-
-## Scope 7 — Runtime observability (last 24h) · P2
-
-7.1 **EF logs.** Error rate and 5xx/4xx per function; **new error signatures** vs yesterday.
-7.2 **Auth logs.** OTP send/verify failure spikes (phone OTP is the only consumer sign-in).
-7.3 **Schedulers.** Every scheduled job ran; last-run timestamps; failures; retry storms.
-    Concretely:
-    `select j.jobname, j.schedule, count(*) filter (where r.status = 'failed') as fails_24h, max(r.start_time) filter (where r.status = 'succeeded') as last_ok from cron.job j left join cron.job_run_details r on r.jobid = j.jobid and r.start_time > now() - interval '1 day' where j.active group by 1, 2`
-    An active job whose recent runs are all `failed`, or with no success inside ~3× its
-    cadence, is a **P0 regardless of this scope's tier** — pg_cron failures land only in
-    `cron.job_run_details`, which nothing else reads (the 2026-08 enrichment dispatcher
-    failed 8,410 consecutive runs over 2 days before anyone looked).
-7.4 **Third-party health.** 401/403/429 rates and credit headroom for Google Places,
-    Firecrawl, Perplexity, Apify, Twilio, Stripe, ElevenLabs. Credit exhaustion presents as
-    a data-quality bug, so it belongs in a health check, not a billing check.
-
-## Scope 8 — Ledger hygiene (Linear) · P3
-
-8.1 Workspace invariants (I-3, I-4, I-6, I-10). Read 6.7's `json:` — never recount by
-    hand. Shape: `{ fleet, noId, remoteLanded, staleClaim }`. Trend those three plus three
-    fleet-derived: landed-but-present (a row whose `landed` names a PR/tree/merge-tree),
-    empty (`issue` null, not the lobby), I-4 (`path` `.` and `clean: false`). `origin-json`
-    rows carry the same three as booleans so a non-zero count lists the branches.
-8.2 Merged PRs whose `Closes MESITA-…` issue is not in a terminal status.
-8.3 Header completeness. Every open issue: a Domain label (Rules · Code · Docs · Mixed),
-    a `Footprint:` line, and a `Done:` line. Missing any, or no project, is a finding.
-8.4 Issues whose premise is already false — closed-by-reality work still open.
-8.5 Origin vs Linear. Cross `origin-json` `issue` ids with Linear In Progress
-    (`state=started`). FINDING: In Progress with no origin claim branch, and an origin
-    claim whose issue is not In Progress (`on-main` the same day as `add` is not).
-
-## Scope 9 — Knowledge congruence (Notion == reality) · P2 · **weekly, separate run**
-
-Publishes its own `Doctor Knowledge — YYYY-MM-DD` issue, not a section of the daily report.
-
-Compare **meaning, never timestamps.** `notion-search`'s `timestamp` returned query-time for
-both Enrichment pages while returning a real past date for the Docs index (verified
-2026-08-22), so a staleness gate built on it reports green forever. You are a reading agent:
-compare the claim to the code, the way Scope 1 compares EF inventories.
-**Disk auto-memory is cache-not-law** (Pato Mac `~/.claude/projects/**/memory/`; none on this VM). Notion Rules win.
-
-**Already-tracked deltas are not findings.** Before promoting ANY disagreement, check
-whether it is already known: an open Linear issue naming it · a doc that declares its own
-drift (a `SPEC vs SHIPPED` paragraph) · a documented freeze. Known → record `TRACKED (MESITA-…)`,
-never `FINDING`. Re-reporting settled state is how a report earns being ignored; a doc
-that declares its own drift is doing its job. **Quote both values with `file:line`;** a
-grep count is not a finding.
-
-9.1 **Docs tree shape.** Every domain link on 📚 Docs resolves · exactly one page per domain
-    (the tree is FLAT, one level, forever) · no page carrying a domain's title that the index
-    does not link. A second page wearing a real domain's name is an unmaintained door agents
-    can walk through and never know they picked the wrong one.
-
-9.2 **Doc vs shipped code.** For each domain, read the page and the code of record below;
-    report every claim that disagrees, with `file:line` and both values. A doc that lags code
-    is drift to fix, never a reason to code against. **A map entry matching no code is a
-    FINDING (the map is stale), never `OK`.** Paths are under `supabase/supabase/functions/`
-    unless stated.
-
-    Apps `apps/*/src/app` · Atlas `_shared/create-place.ts`, `_shared/categories*.ts`, `atlas-*` ·
-    Intake `*enrich*`, `_shared/enrich-*.ts`, `_shared/channels*.ts` ·
-    Discovery `*discover*`, `*filter*`, `_shared/embeddings*.ts` ·
-    Passport `_shared/consumer-*.ts` · Rewards — no code; a page claiming shipped machinery IS the finding ·
-    Visits `*visit*` ·
-    Orders `*order*` (expect DESIGNED NOT BUILT) · Reservations `*reserv*` ·
-    Checkout `*stripe*` · Credits — no code; a page claiming shipped machinery IS the finding ·
-    Vocabulary — repo-wide banned-word sweep · Design `assets/brand/`, `**/globals.css`,
-    `src/components/brand/*` · Functions — deliberately empty, skip it, do not "fix" it.
-
-9.3 **Stamp compare.** Rules §0 Mirror line vs `scripts/rules-quickstart.md`: both carry
-    `stamp: v<N> <date>`; `boot` prints the quickstart's. Equal = OK, no prose read. Unequal
-    = drift — put **the exact corrected text** in the Linear issue (a paste, not a decode).
-    Do not apply it. Either side can be stale.
-
-9.4 **Vocabulary.** Sweep the banned list in 📚 Docs › Vocabulary across the repo AND the Docs
-    pages themselves. One house word used for two things is how nomenclature rots.
-    **Exclude `supabase/supabase/migrations/**`** — an applied migration is frozen history
-    (56 `cashback` hits there, none are findings).
-
-9.5 **Mirror.** Last 7 days of merged PRs whose body has `Docs:`. `Docs: none — <why>` is
-    OK. `Docs: notion:<32hex>`: `notion-fetch` that page; `page_last_edited_at` predating the
-    merge = FINDING "Mirror missing". `Docs: handoff notion:<id>` is the Work-agent rewrite
-    still owed — TRACKED, not Mirror missing. A Linear `handoff:` comment older than 7 days
-    is a finding.
-
-
----
-
-# Procedure
-
-1. `git fetch origin && git log -1 origin/main` — audit `origin/main`, never a dirty tree.
-2. Load the previous report: the most recent Linear **issue** titled `Doctor — YYYY-MM-DD`
-   (team Mesita, Ops & maintenance — `list_issues` query `Doctor —`, include archived/Done).
-   If none, mark this run `BASELINE` and skip the diff section.
-3. Run scopes **1 → 8 in order**. Scopes are independent — parallelize freely inside a scope.
-   Weekly run: **Scope 9 only**, on its own budget, publishing its own report.
-4. For every finding, capture: scope · check id · severity · the two disagreeing values ·
-   the exact query/command/`file:line` · suggested fix (one line) · blast radius.
-5. **Verify before reporting.** Re-run the underlying check for every P0/P1. A false P0 costs
-   more than a missed P2 — if a finding does not reproduce, drop it and say nothing.
-6. Publish the report as a Linear **issue** titled `Doctor — YYYY-MM-DD` (team Mesita,
-   project Ops & maintenance, body = the report — shape below) and set it **Done in the
-   same call** — it is a record, not work. Never a Linear document (prohibited) and never
-   a repo file (Rules §0 markdown law).
-7. Linear: one issue per **NEW P0/P1**, titled `doctor: <one-line symptom>`, body = the
-   finding block verbatim. **Dedupe** — if an open issue already covers it, comment the new
-   occurrence count instead of opening a second one. P2/P3 stay in the report only until
-   they persist — see **Escalation**.
-8. Print to the operator: the verdict line, the P0/P1 list, and the resolved-since-yesterday
-   list. Nothing else.
-
-## Severity
-
-- **P0** — prod is wrong right now, or cloud and repo disagree in a way a deploy will make
-  worse. (Broken identity chain, EF stub in prod, ledger row with no migration file, RLS off
-  on a table with real data.)
-- **P1** — silently wrong output or guaranteed near-term breakage. (Config shape skew,
-  taxonomy violations, advisor security lints, plan ceiling < 10% headroom.)
-- **P2** — decay, cost, or hygiene. (Unused indexes, dead knobs, dead EFs, stale branches.)
-- **P3** — ledger and paperwork.
-
-**Escalation — persistence is a severity input.** A finding that reports `PERSISTING` on
-**7 consecutive daily runs** has stopped being hygiene: it is decay nobody acts on, and a
-report that repeats it forever trains the reader to skip it. On day 7 promote it one tier
-(P3→P2, P2→P1), file it like any new P1 titled `doctor: <symptom> — PERSISTING <n> days`,
-and name the promotion in the diff section. `RESOLVED` resets the counter; so does Pato
-closing the issue won't-fix — then stop counting and stop reporting it.
+**Severity.** P0: production is wrong now, or cloud and repo split in a way a deploy worsens. P1: silently wrong output or near-term breakage. P2: decay, cost, hygiene. P3: paperwork. A finding `PERSISTING` 3 weekly runs moves up a tier, filed as `doctor: <symptom> — PERSISTING <n> weeks`; `RESOLVED` or a won't-fix close ends the count.
 
 ## Report shape
 
@@ -400,32 +107,20 @@ closing the issue won't-fix — then stop counting and stop reporting it.
 # Doctor — YYYY-MM-DD
 
 **Verdict:** HEALTHY | DEGRADED (n P1) | CRITICAL (n P0)
-**Scopes run:** 1–8 (skipped: none)
-<!-- weekly run: title `Doctor Knowledge — YYYY-MM-DD`, **Scopes run:** 9 -->
-**origin/main:** <sha>
+**Scopes run:** 1–7 (skipped: none) · **origin/main:** <sha> · **pipeline audit:** <result, date, run url>
 
 ## Diff vs YYYY-MM-DD
-- NEW: …
-- PERSISTING: … (n days)
-- RESOLVED: …
+- NEW: … · PERSISTING (n weeks): … · RESOLVED: …
 
 ## Findings
-### [P0] 1.2 — EF `consumer-web-ask-memo` cloud body ≠ repo
-- cloud: <sha256 / first divergent line>
-- repo:  supabase/supabase/functions/consumer-web-ask-memo/index.ts:1
-- evidence: <command>
-- fix: redeploy from origin/main after diffing for cloud-only code
-- blast radius: consumer Ask AI tab
-- linear: MESITA-…
+### [P0] 2.5 — <one-line symptom>
+- live: … · repo: … · evidence: … · fix: … · blast radius: … · linear: MESITA-…
 
 ## Scope ledger
 | Scope | Checks | OK | Findings | Skipped |
 
-## Metrics (trendable)
-DB size · largest tables · EF count vs cap · deploy-drift count · advisor counts ·
-error rate · orphan-row counts · dead-knob count · instruction-file word counts
-(quickstart + every CLAUDE.md — growth is doc cancer; over budget = flag a rewrite)
+## Metrics
+Database size · largest tables · function count · advisor counts · error rate · orphan rows · dead config fields
 ```
 
-Keep the metrics block byte-identical in structure every day — it is the time series that
-makes the doctor worth running.
+Keep the metrics block's shape the same every week: it is the time series.

@@ -1,12 +1,14 @@
 {
   "imports": {
     "@std/assert": "jsr:@std/assert@1",
-    "@std/path": "jsr:@std/path@1"
+    "@std/path": "jsr:@std/path@1",
+    "@std/yaml": "jsr:@std/yaml@1"
   },
   "tasks": {
     "sync-rules": "deno run --allow-read --allow-write --allow-run=git scripts/sync-rules.ts",
     "sync-rules:check": "deno run --allow-read --allow-run=git scripts/sync-rules.ts --check",
-    "test:rules": "deno test --allow-read scripts/sync-rules.test.ts scripts/vocabulary-ratchet.test.ts",
+    "test:rules": "deno test --allow-read scripts/sync-rules.test.ts scripts/vocabulary-ratchet.test.ts scripts/pipeline-audit.test.ts",
+    "pipeline-audit": "deno run --allow-read --allow-run=git,gh,supabase scripts/pipeline-audit.ts",
     "sync-brand": "deno run --allow-read --allow-write scripts/sync-brand.ts",
     "sync-brand:check": "deno run --allow-read scripts/sync-brand.ts --check",
     "redeye": "deno run --allow-read --allow-write --allow-env=MESITA_PLATFORM,CLAUDE_CODE_REMOTE scripts/redeye.ts",
