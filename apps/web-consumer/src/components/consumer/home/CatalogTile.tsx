@@ -67,7 +67,7 @@ function readableKind(place: Place): string | null {
 /**
  * One place in a rail, as an Instagram grid tile (Pato, MESITA-2364): the
  * square photo edge to edge, the name and price · category · stars over an
- * light gradient at its foot, the save heart top right. No zone. An enriched
+ * solid white band at its foot, the save heart top right. No zone. An enriched
  * place wears the Enriched mark after its name
  * (MESITA-2296). Favs does not use this tile. A Google-only card opens its
  * profile through `onOpenGoogle` and has no save heart: only a Mesita place
@@ -98,8 +98,9 @@ export function CatalogTile({
 
   // An Instagram grid tile (Pato, MESITA-2364): the photo — or the Google
   // card's emoji tile — fills the square edge to edge, no border, no radius.
-  // The info lies on a light paper gradient at the bottom, dark text (Pato,
-  // MESITA-2364: "try light instead of dark"); the heart sits top right.
+  // The info lies on a solid white band at the foot, dark text — no
+  // gradient (Pato, MESITA-2365: "either transparent or completely white");
+  // the heart sits top right.
   return (
     <li className={cn("relative aspect-square min-w-0 overflow-hidden", className)}>
       <TileLink
@@ -133,7 +134,7 @@ export function CatalogTile({
           )}
         </div>
         <div
-          className="from-paper/90 via-paper/70 absolute inset-x-0 bottom-0 bg-gradient-to-t to-transparent px-1.5 pt-6 pb-1.5"
+          className="bg-card absolute inset-x-0 bottom-0 px-1.5 py-1"
           data-tile-info
         >
           <p className="font-display text-foreground flex min-w-0 items-center gap-1 text-xs leading-tight font-semibold tracking-tight">
@@ -165,7 +166,7 @@ export function CatalogTile({
           }
           className="absolute top-0 right-0 flex h-11 w-11 items-start justify-end p-1.5"
         >
-          <span className="bg-paper/80 flex h-6 w-6 items-center justify-center rounded-full">
+          <span className="bg-card flex h-6 w-6 items-center justify-center rounded-full">
             <Heart
               className={cn(
                 "h-3.5 w-3.5",
