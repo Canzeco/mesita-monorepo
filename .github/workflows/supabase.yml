@@ -39,8 +39,8 @@ defaults:
 
 jobs:
   # Decides once whether a PR touches what this suite reads, so the three jobs
-  # below need no checkout and diff of their own. Every other event (push to
-  # main, the nightly run, a dispatch) runs everything.
+  # below need no diff of their own. Every other event (push to main, the
+  # nightly run, a dispatch) runs everything.
   changes:
     name: detect supabase changes
     runs-on: ubuntu-latest
