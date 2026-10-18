@@ -4,6 +4,7 @@ import {
   filterMembershipRows,
   googleCategoryLabel,
   guestFamilyColumns,
+  inNoFamily,
   type MembershipFamily,
   type MembershipRow,
 } from "./membership-matrix";
@@ -56,5 +57,13 @@ describe("filterMembershipRows", () => {
     expect(filterMembershipRows(rows, "gas_station").map((row) => row.slug)).toEqual([
       "gas_station",
     ]);
+  });
+});
+
+describe("inNoFamily", () => {
+  it("is on only when a category sits in no guest family", () => {
+    expect(inNoFamily(rows[0])).toBe(false);
+    expect(inNoFamily(rows[2])).toBe(true);
+    expect(inNoFamily({ slug: "car_repair", familyKeys: ["undefined"] })).toBe(true);
   });
 });

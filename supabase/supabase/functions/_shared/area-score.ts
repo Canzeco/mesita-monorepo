@@ -46,19 +46,21 @@ export type AreaCandidate = {
 };
 
 /**
- * Family gate: 1 when no family is requested, else 1 iff the candidate
- * belongs to a requested family. Missing/unknown policy: a candidate with no
- * known family (none, or only "undefined") is OUT whenever a family is
- * requested — it cannot be shown to answer the ask. Sources may push the
- * family down into their query (Nearby's primary types, Mesita's
- * family_keys); this gate re-checks so every source obeys the same rule.
+ * Family gate: a candidate with no guest family (none, or only "undefined")
+ * is always OUT (MESITA-2382). Many Google categories sit in no family — a
+ * mechanic, a church, a hotel — and they are not Mesita places with or
+ * without a pill. With no family requested, any guest family passes; with
+ * one, the candidate must belong to a requested family. Sources may push the
+ * family down into their query (Nearby's primary types and exclusions,
+ * Mesita's family_keys); this gate re-checks so every source obeys the rule.
  */
 export function familyGate(
   candidateFamilies: readonly string[],
   requested: readonly string[],
 ): 0 | 1 {
-  if (requested.length === 0) return 1;
   const known = candidateFamilies.filter((f) => f && f !== "undefined");
+  if (known.length === 0) return 0;
+  if (requested.length === 0) return 1;
   return known.some((f) => requested.includes(f)) ? 1 : 0;
 }
 
