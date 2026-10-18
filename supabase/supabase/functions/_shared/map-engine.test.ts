@@ -191,21 +191,27 @@ Deno.test("Atlas leftover slugs admit via Super membership, not Google type", ()
   assertEquals(primaryTypeClearsMapTypes("gas_station", MAP), false);
 });
 
-Deno.test("guest Google Reviews snaps to 0/10/100/1000, silence is 100+, unknown fails a floor", () => {
+Deno.test("guest Google Reviews snaps to 10/100/1000, silence is 100+, unknown fails a floor", () => {
   // The sheet's default is 100+ (MESITA-2298): a client that says nothing
-  // gets it; a client that says 0 means "any number of reviews".
+  // gets it. The minimum is 10+ (MESITA-2336): a client that still says 0
+  // (the retired 0+) lands on 10+, never on "any number of reviews".
   assertEquals(MAP_MIN_REVIEWS_DEFAULT, 100);
   assertEquals(parseMapMinReviews(undefined), 100);
   assertEquals(parseMapMinReviews(null), 100);
   assertEquals(parseMapMinReviews("x"), 100);
-  assertEquals(parseMapMinReviews(0), 0);
-  assertEquals(parseMapMinReviews("0"), 0);
-  assertEquals(parseMapMinReviews(-1), 0);
+  assertEquals(parseMapMinReviews(0), 10);
+  assertEquals(parseMapMinReviews("0"), 10);
+  assertEquals(parseMapMinReviews(-1), 10);
+  assertEquals(parseMapMinReviews(5), 10);
   assertEquals(parseMapMinReviews(10), 10);
   assertEquals(parseMapMinReviews(55), 100);
   // The 10K+ stop is gone (MESITA-2298): an old client's value lands on 1,000.
   assertEquals(parseMapMinReviews(10000), 1000);
-  assertEquals(MAP_MIN_REVIEW_STOPS, [0, 10, 100, 1000]);
+  assertEquals(MAP_MIN_REVIEW_STOPS, [10, 100, 1000]);
+  // Mesita Selected still has no review floor of any kind.
+  assertEquals(guestReviewFloor("selected", 0), 0);
+  assertEquals(guestReviewFloor("selected", 1000), 0);
+  assertEquals(guestReviewFloor("google", 0), 10);
   assertEquals(clearsMinReviews(null, 0), true);
   assertEquals(clearsMinReviews(null, 10), false);
   assertEquals(clearsMinReviews(9, 10), false);
@@ -234,7 +240,8 @@ Deno.test("guestReviewFloor: the Selected scope has no floor, the Google scope s
   // Google Places: the sheet's stop, snapped; silence is the sheet's default.
   assertEquals(guestReviewFloor("google", 1000), 1000);
   assertEquals(guestReviewFloor("google", 10000), 1000);
-  assertEquals(guestReviewFloor("google", 0), 0);
+  // The minimum stop is 10+ (MESITA-2336): a 0 is never "any reviews".
+  assertEquals(guestReviewFloor("google", 0), 10);
   assertEquals(guestReviewFloor("google", undefined), MAP_MIN_REVIEWS_DEFAULT);
   assertEquals(guestReviewFloor("google", undefined), 100);
 });
