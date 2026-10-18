@@ -31,10 +31,9 @@ describe("the Feed's rails sit in three tinted bands (MESITA-2308)", () => {
     expect(src).toContain("{restRails.map((rail) => (");
   });
 
-  it("the places count sits on band A's tint, above the first rail", () => {
-    const count = src.indexOf("{summary.total} {summary.total === 1");
-    expect(count).toBeGreaterThan(bandA);
-    expect(count).toBeLessThan(src.indexOf("renderRail(firstRail)"));
+  it("draws no places count above the rails (MESITA-2354)", () => {
+    expect(src).not.toContain("summary.total");
+    expect(src).not.toContain("summarizeCatalog");
   });
 
   it("draws a hairline above every family rail too (MESITA-2353)", () => {

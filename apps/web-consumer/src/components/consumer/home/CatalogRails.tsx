@@ -32,7 +32,6 @@ import { CatalogTile } from "./CatalogTile";
 import { cn, errMsg } from "@/lib/utils";
 import { placesFeed } from "@/lib/catalog-feed";
 import { useStoredString } from "@/lib/local-store";
-import { summarizeCatalog } from "@/lib/catalog-summary";
 
 // TEMPORARY (Pato, MESITA-2340): a try-out switch for how many cards fit
 // across the screen — 1.5, 1.75 (MESITA-2352), 2 or 2.5 (today's size). Literal class strings so
@@ -110,7 +109,6 @@ export function CatalogRails() {
   // (MESITA-2307).
   useEffect(() => onPlaceCreated(() => reload.current()), []);
 
-  const summary = useMemo(() => summarizeCatalog(rails ?? []), [rails]);
   const shownRails = useMemo(() => placesFeed(rails ?? []), [rails]);
 
   const locationStrip = (
@@ -236,8 +234,8 @@ export function CatalogRails() {
   // Three bands by POSITION (Pato, MESITA-2308): the first rail on the
   // deepest tint, the second lighter, every rail after it on the card
   // surface, a hairline between bands — a super subtle division that
-  // survives the rails' renaming (MESITA-2302). The "N places" line sits on
-  // band A's tint. Semantic tokens only.
+  // survives the rails' renaming (MESITA-2302). No places count above the rails (Pato, MESITA-2354). Semantic
+  // tokens only.
   // The rail's name runs up the left edge of its cards, read bottom to top
   // (Pato's sketch, MESITA-2350): a narrow column the height of the row,
   // the name truncated to it, then the sideways card scroller. The column
@@ -300,10 +298,6 @@ export function CatalogRails() {
   return shell(
     <div className="bg-card scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain">
       <div className="bg-muted/50" data-band="a">
-        <p className="type-body text-muted-foreground px-3 py-2.5 tabular-nums">
-          {summary.total} {summary.total === 1 ? "place" : "places"}
-          {summary.openNow > 0 ? ` · ${summary.openNow} open now` : ""}
-        </p>
         {firstRail ? renderRail(firstRail) : null}
       </div>
       {secondRail ? (
