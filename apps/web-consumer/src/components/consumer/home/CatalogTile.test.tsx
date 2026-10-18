@@ -85,14 +85,14 @@ describe("a Google-only card's image is a placeholder, never a photo (MESITA-229
   });
 });
 
-describe("the card is one square: photo two thirds, white band one third (MESITA-2344, MESITA-2348)", () => {
-  it("is aspect-square with an h-2/3 photo over an h-1/3 band", () => {
+describe("the card is one square: photo half, info half (MESITA-2344, MESITA-2360)", () => {
+  it("is aspect-square with an h-1/2 photo over an h-1/2 band", () => {
     const html = tile({ photos: ["https://example.com/a.jpg"] });
     expect(html).toContain("aspect-square");
     expect(html).not.toContain("aspect-[3/2]");
-    expect(html).toContain("h-2/3");
-    expect(html).toContain("h-1/3");
-    expect(html).not.toContain("h-1/2");
+    expect(html.match(/h-1\/2/g)?.length).toBe(2);
+    expect(html).not.toContain("h-2/3");
+    expect(html).not.toContain("h-1/3");
     expect(html.indexOf("<img")).toBeLessThan(html.indexOf(">Casa<"));
   });
 });

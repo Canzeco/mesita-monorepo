@@ -128,12 +128,9 @@ describe("Places is family rails", () => {
     expect(rails.indexOf("data-rail-emoji")).toBeLessThan(
       rails.indexOf("min-h-0 rotate-180 truncate"),
     );
-    // The temporary size control is a continuous slider (MESITA-2356):
-    // 1.25 to 3 cards, the width riding one CSS variable.
-    expect(rails).toContain('type="range"');
-    expect(rails).toContain("const CARDS_MIN = 1.25;");
-    expect(rails).toContain("const CARDS_MAX = 3;");
-    expect(rails).toContain("w-[calc((100%-1rem)/var(--cards))]");
+    // One symmetric card size, no try-out control (MESITA-2360).
+    expect(rails).toContain('const cardWidth = "w-[calc(50%-23px)]";');
+    expect(rails).not.toContain('type="range"');
     expect(rails).not.toContain("CARD_SIZES");
     // …in its own column with a hairline and room before the cards
     // (MESITA-2351), on the same surface as the cards (MESITA-2355).
