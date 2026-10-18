@@ -7,10 +7,7 @@ import { Spinner } from "../Spinner";
 import type { PlaceDetail } from "../../place-detail";
 import { formatPlacePriceChip } from "../../lib/place-price";
 import { getOpeningStateLabel } from "../../lib/place-state";
-import {
-  cn,
-  formatDistanceKm,
-} from "../../lib/format";
+import { cn, formatDistanceKm } from "../../lib/format";
 
 import { profileChannelStats } from "./channel-stats";
 import { channelStatIcon } from "./channel-stat-icons";
@@ -26,18 +23,17 @@ import {
 export function ProfileSummary({
   place,
   actions,
-  showChannelStats = true,
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
-  /** Google stars and the Instagram / Facebook counts. Off on Reviews. */
-  showChannelStats?: boolean;
 }) {
   // decision: Pato — name in header; photo · Google · IG · Facebook; then
   // swipe-style tags: category · price · zone · distance · hours (MESITA-561).
   // decision: Pato (2026-10-16) — normal buttons in this header, in order:
-  // Save · Contact · Share. The pinned action pair below is Reserve · Pay (Soon).
+  // Save · Contact · Share, then Reserve · Pay (Soon) (MESITA-2321, no pinned bar).
   // Save is not an action button and is not Soon.
+  // decision: Pato (2026-10-18, MESITA-2334) — the trio shows on every tab,
+  // Reviews included; the header never changes between tabs.
   // decision: Pato (live, 2026-08-03) — the stat trio is the three OUTSIDE
   // channels: Google · Instagram · Facebook, laid out like an Instagram
   // profile's posts · followers · following.
@@ -60,21 +56,19 @@ export function ProfileSummary({
     <section className="border-border bg-card flex flex-col gap-3 border-b px-4 pt-3 pb-4">
       <div className="flex items-center gap-4">
         <ProfilePhoto place={place} />
-        {showChannelStats && (
-          <div className="grid min-w-0 flex-1 grid-cols-3 gap-1">
-            {stats.map((stat) => (
-              <ProfileStat
-                key={stat.key}
-                value={stat.value}
-                detail={stat.detail}
-                label={stat.label}
-                icon={channelStatIcon(stat)}
-                mention={stat.mention}
-                name={stat.name}
-              />
-            ))}
-          </div>
-        )}
+        <div className="grid min-w-0 flex-1 grid-cols-3 gap-1">
+          {stats.map((stat) => (
+            <ProfileStat
+              key={stat.key}
+              value={stat.value}
+              detail={stat.detail}
+              label={stat.label}
+              icon={channelStatIcon(stat)}
+              mention={stat.mention}
+              name={stat.name}
+            />
+          ))}
+        </div>
       </div>
 
       {/* decision: Pato — when the Enricher is still building the profile an
