@@ -11,13 +11,14 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 // The profile's five buttons, Instagram-profile style (Pato, MESITA-2321):
 //   Save · Contact · Share
 //   Reserve · Pay (Soon)
-// No pinned bottom bar any more. Small gray buttons like Instagram's Follow /
-// Message; Reserve is the one dark button. Live behavior (bookmark, contact
+// No pinned bottom bar any more. Gray buttons like Instagram's Follow /
+// Message, 44px tall (the touch-target minimum, MESITA-2324); Reserve is the
+// one dark button. Live behavior (bookmark, contact
 // sheet, share sheet, reservation sheet) stays in the consumer and arrives
 // as callbacks; a missing callback leaves its button visible and inert, so
 // the rows never change shape.
 const btn =
-  "inline-flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 type-label font-semibold whitespace-nowrap transition active:scale-[0.99]";
+  "inline-flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 type-label font-semibold whitespace-nowrap transition active:scale-[0.99]";
 const grayBtn = cn(btn, "bg-muted text-foreground hover:bg-muted/70");
 
 export function ProfileActions({

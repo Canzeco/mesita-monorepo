@@ -39,7 +39,7 @@ export function PlaceCreatingPanel({
             <button
               type="button"
               onClick={onRetry}
-              className="bg-foreground text-paper mt-4 rounded-full px-5 py-2.5 text-sm font-semibold"
+              className="bg-foreground text-paper mt-4 min-h-11 rounded-full px-5 py-2.5 text-sm font-semibold"
             >
               Try again
             </button>

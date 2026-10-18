@@ -32,13 +32,13 @@ export function PlaceProfile({
         <button
           type="button"
           aria-label="Back"
-          className="bg-card text-foreground border-border hover:bg-muted flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition"
+          className="bg-card text-foreground border-border hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border transition"
           {...(onBack ? { onClick: onBack } : inertButtonProps(false))}
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
         <PlaceDetailTitle placeName={place.name} enriched={place.is_enriched} />
-        <div className="h-9 w-9 shrink-0" aria-hidden />
+        <div className="h-11 w-11 shrink-0" aria-hidden />
       </header>
       <div
         className="min-h-0 flex-1 overflow-y-auto"
