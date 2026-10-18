@@ -807,31 +807,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {/* Search's header (Pato, MESITA-2409): location disc · query bar ·
-        Ask AI, then the horizontal family chips. The pair that keeps the
-        disc visible: `min-w-0 flex-1` on the bar, `shrink-0` on the disc. */}
-      <SearchHeader
-        locate={
-          <SearchLocateButton
-            located={location !== null}
-            locating={locating}
-            onClick={recentreOnGuest}
-          />
-        }
-        bar={
-          <SearchBar
-            query={query}
-            showClear={query.length > 0}
-            onQueryChange={updateQuery}
-            onFocus={() => setBarFocused(true)}
-            onBlur={() => setBarFocused(false)}
-            onClear={() => updateQuery("")}
-            placeholder="Search places by name…"
-          />
-        }
-        filterCount={mapFilterCount(filters)}
-        onOpenFilters={() => setFiltersOpen(true)}
-      />
       <div className="relative min-h-0 flex-1 overflow-hidden">
         {/* Base layer — pins are the nearby catalog after Places scope + Family. */}
         <SearchMap
@@ -852,12 +827,35 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           onUserViewport={onUserViewport}
         />
 
-        {/* Floating top overlay — the bar's results and the load error, over
-          the map's top edge, right under the header's chips. */}
-        <div className="absolute inset-x-3 top-3 z-30 flex flex-col gap-2">
+        {/* Search's header FLOATS OVER THE MAP (Pato, MESITA-2409/2412):
+          location disc · query bar · Ask AI, then the family chips, then the
+          bar's results and the load error. The pair that keeps the disc
+          visible: `min-w-0 flex-1` on the bar, `shrink-0` on the disc. */}
+        <SearchHeader
+          locate={
+            <SearchLocateButton
+              located={location !== null}
+              locating={locating}
+              onClick={recentreOnGuest}
+            />
+          }
+          bar={
+            <SearchBar
+              query={query}
+              showClear={query.length > 0}
+              onQueryChange={updateQuery}
+              onFocus={() => setBarFocused(true)}
+              onBlur={() => setBarFocused(false)}
+              onClear={() => updateQuery("")}
+              placeholder="Search places by name…"
+            />
+          }
+          filterCount={mapFilterCount(filters)}
+          onOpenFilters={() => setFiltersOpen(true)}
+        >
           {/* RESULTS DROP UNDER THE BAR, the way every autocomplete does: the
-            header (bar, chips) above, the list at the map's top edge right
-            beneath it (MESITA-2409 moved the bar up into the header).
+            header's own column (bar, chips, then this) keeps them stacked
+            with no top offset to keep in sync.
 
             THE OLD REGRESSION WAS A FIXED HEIGHT, not the top anchor. A panel that
             claimed 70% of the viewport whether it held two rows or ten is what
@@ -888,7 +886,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
               {fetchError}
             </p>
           )}
-        </div>
+        </SearchHeader>
 
         {/* The catalog rail steps aside for the whole of search mode: its cards
           are the nearby catalog, not the results, so showing both would be two
