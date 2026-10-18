@@ -183,51 +183,72 @@ export function CatalogRails() {
     );
   }
 
+  // Three bands by POSITION (Pato, MESITA-2308): the first rail on the
+  // deepest tint, the second lighter, every rail after it on the card
+  // surface, a hairline between bands — a super subtle division that
+  // survives the rails' renaming (MESITA-2302). The "N places" line sits on
+  // band A's tint. Semantic tokens only.
+  const renderRail = (rail: CatalogRail) => (
+    <section key={rail.key} aria-labelledby={`${rail.key}-heading`}>
+      <h2
+        id={`${rail.key}-heading`}
+        className="font-display text-foreground px-3 text-sm font-semibold tracking-tight"
+      >
+        {rail.emoji && rail.emoji !== "·" ? (
+          <span className="mr-1.5" aria-hidden>
+            {rail.emoji}
+          </span>
+        ) : null}
+        {rail.label}
+      </h2>
+      {rail.places.length > 0 ? (
+        <ul
+          role="list"
+          aria-label={rail.label}
+          className="scrollbar-hide mt-2 flex gap-2 overflow-x-auto overscroll-x-contain pl-3"
+        >
+          {rail.places.map((place) => {
+            const located = withUserDistance(place, coords);
+            const saved = savedIds.has(place.id);
+            return (
+              <CatalogTile
+                key={place.id}
+                place={located}
+                saved={saved}
+                onToggle={() => toggleSave(place, saved)}
+                onOpenGoogle={() => openGooglePlace(place)}
+                className="w-[calc((100%-1rem)/2.5)] shrink-0"
+              />
+            );
+          })}
+        </ul>
+      ) : null}
+    </section>
+  );
+  const [firstRail, secondRail, ...restRails] = shownRails;
+
   return shell(
     <div className="bg-card scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain">
-      <p className="type-body text-muted-foreground px-3 py-2.5 tabular-nums">
-        {summary.total} {summary.total === 1 ? "place" : "places"}
-        {summary.openNow > 0 ? ` · ${summary.openNow} open now` : ""}
-      </p>
-      <div className="flex flex-col gap-4 pb-4">
-        {shownRails.map((rail) => (
-          <section key={rail.key} aria-labelledby={`${rail.key}-heading`}>
-            <h2
-              id={`${rail.key}-heading`}
-              className="font-display text-foreground px-3 text-sm font-semibold tracking-tight"
-            >
-              {rail.emoji && rail.emoji !== "·" ? (
-                <span className="mr-1.5" aria-hidden>
-                  {rail.emoji}
-                </span>
-              ) : null}
-              {rail.label}
-            </h2>
-            {rail.places.length > 0 ? (
-              <ul
-                role="list"
-                aria-label={rail.label}
-                className="scrollbar-hide mt-2 flex gap-2 overflow-x-auto overscroll-x-contain pl-3"
-              >
-                {rail.places.map((place) => {
-                  const located = withUserDistance(place, coords);
-                  const saved = savedIds.has(place.id);
-                  return (
-                    <CatalogTile
-                      key={place.id}
-                      place={located}
-                      saved={saved}
-                      onToggle={() => toggleSave(place, saved)}
-                      onOpenGoogle={() => openGooglePlace(place)}
-                      className="w-[calc((100%-1rem)/2.5)] shrink-0"
-                    />
-                  );
-                })}
-              </ul>
-            ) : null}
-          </section>
-        ))}
+      <div className="bg-muted/50 pb-3" data-band="a">
+        <p className="type-body text-muted-foreground px-3 py-2.5 tabular-nums">
+          {summary.total} {summary.total === 1 ? "place" : "places"}
+          {summary.openNow > 0 ? ` · ${summary.openNow} open now` : ""}
+        </p>
+        {firstRail ? renderRail(firstRail) : null}
       </div>
+      {secondRail ? (
+        <div className="bg-muted/25 border-border border-t py-3" data-band="b">
+          {renderRail(secondRail)}
+        </div>
+      ) : null}
+      {restRails.length > 0 ? (
+        <div
+          className="bg-card border-border flex flex-col gap-4 border-t py-3 pb-4"
+          data-band="c"
+        >
+          {restRails.map(renderRail)}
+        </div>
+      ) : null}
     </div>,
   );
 }
