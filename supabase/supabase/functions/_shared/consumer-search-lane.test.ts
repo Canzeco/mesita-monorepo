@@ -4,14 +4,14 @@ import {
   MESITA_NAME_MIN_CAP,
   mesitaNameCap,
   resolveMode,
-  admitNameFloor,
   applyResolvedMesitaName,
   classifyPredictionKind,
   deepModuleFlags,
   laneDedupeKeys,
   locationTypeOf,
   mergeNameDeepQueries,
-  orderDeepLineup,
+  NAME_MIN_LEXICAL,
+  rankMesitaByName,
   takeFastLane,
   toWire,
   weaveStampedAutocomplete,
@@ -189,7 +189,6 @@ Deno.test("deepModuleFlags: which Deep modules fire", () => {
     mesitaCount: 3,
     googleCount: 3,
     typesOn: true,
-    hasOpenai: true,
   };
   const cases: Array<
     [string, Partial<typeof on>, ReturnType<typeof deepModuleFlags>]
@@ -209,7 +208,7 @@ Deno.test("deepModuleFlags: which Deep modules fire", () => {
       wantText: true,
       wantMesita: true,
     }],
-    ["no OpenAI skips Lineup", { hasOpenai: false }, {
+    ["mesitaCount 0 skips the Mesita lane", { mesitaCount: 0 }, {
       wantAuto: true,
       wantText: true,
       wantMesita: false,
@@ -255,35 +254,42 @@ const QUERY = [1, 0];
 const BEST = listed("best", "Best", [1, 0]);
 const WORSE = listed("worse", "Worse", [0.8, 0.6]);
 
-/** Coins that never fire. A draw of 1 sits above every flip probability. */
-const HOLD = () => 1;
-
-Deno.test("orderDeepLineup: a better cosine ranks first", () => {
-  const pool = [WORSE, BEST];
-  assertEquals(orderDeepLineup(pool, QUERY, { random: HOLD }).map((r) => r.id), [
-    "best",
-    "worse",
-  ]);
-});
-
-Deno.test("orderDeepLineup: an unenriched place is out, popularity breaks a cosine tie", () => {
-  const hi = listed("hi", "Hi", QUERY);
-  hi.google_stars_overall = 4.8;
-  hi.google_review_count = 2000;
-  const lo = listed("lo", "Lo", QUERY);
-  lo.google_stars_overall = 4.2;
-  lo.google_review_count = 8;
-  const un = listed("un", "Un", QUERY, null, "ready");
+Deno.test("Name signal: a better name cosine ranks first", () => {
   assertEquals(
-    orderDeepLineup([un, lo, hi], QUERY, { random: HOLD }).map((r) => r.id),
-    ["hi", "lo"],
+    rankMesitaByName([WORSE, BEST], { text: "best", vector: QUERY }).map((r) => r.id),
+    ["best", "worse"],
   );
 });
 
-Deno.test("admitNameFloor uses raw cosine, not remapped name()", () => {
+Deno.test("Name signal alone: no Selected gate and no popularity, so a Created place is findable", () => {
+  const created = listed("un", "Un", QUERY, null, "ready");
+  const loved = listed("lo", "Lo", [0.8, 0.6]);
+  loved.google_stars_overall = 4.9;
+  loved.google_review_count = 5000;
+  assertEquals(
+    rankMesitaByName([loved, created], { text: "un", vector: QUERY }).map((r) => r.id),
+    ["un", "lo"],
+  );
+});
+
+Deno.test("Name signal floors: raw cosine below 0.4 is out", () => {
   const below = listed("low", "Low", [0.2, 0.98]);
-  const out = admitNameFloor([BEST, below], QUERY, 0.4);
-  assertEquals(out.map((r) => r.id), ["best"]);
+  assertEquals(rankMesitaByName([BEST, below], { text: "best", vector: QUERY }).map((r) => r.id), ["best"]);
+});
+
+Deno.test("Name signal missing data: no embedding or no query vector falls back to lexical", () => {
+  const unembedded = { ...listed("tacos", "Tacos el Güero", [1, 0]), name_embedding: null };
+  const other = { ...listed("sushi", "Sushi Roll", [1, 0]), name_embedding: null };
+  assertEquals(
+    rankMesitaByName([other, unembedded], { text: "tacos", vector: QUERY }).map((r) => r.id),
+    ["tacos"],
+  );
+  // No OpenAI key at all: the whole lane runs lexical.
+  assertEquals(
+    rankMesitaByName([BEST, WORSE], { text: "Worse", vector: null }).map((r) => r.id),
+    ["worse"],
+  );
+  assertEquals(NAME_MIN_LEXICAL, 0.4);
 });
 
 Deno.test("Deep source never calls searchNearbyPlaces", async () => {
@@ -293,9 +299,9 @@ Deno.test("Deep source never calls searchNearbyPlaces", async () => {
   assertEquals(src.includes("searchNearbyPlaces"), false);
   assertEquals(src.includes("applyPlacesCallerRegion"), false);
   assertEquals(src.includes("includedRegionCodes"), false);
-  assertEquals(src.includes("rankPlacesSearch"), true);
+  assertEquals(src.includes("rankPlacesSearch"), false);
   assertEquals(src.includes("rankByBlend"), false);
-  assertEquals(src.includes("queryNameVector"), true);
+  assertEquals(src.includes("rankMesitaByName(embedPool, { text: input, vector: queryVec })"), true);
 });
 
 Deno.test("mergeNameDeepQueries: overflow Mesita in Text stays; later Mesita skips it", () => {

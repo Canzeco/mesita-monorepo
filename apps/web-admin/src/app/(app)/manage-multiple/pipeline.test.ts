@@ -167,7 +167,7 @@ describe("Google Search is a bar, not a parameter panel", () => {
     expect(constants).toContain('{ label: "1", value: 1 }');
     expect(searchTab).toContain("DISCOVERY_MAP_HREF");
     expect(readFileSync(join(here, "../filters-config/nav.ts"), "utf8")).toContain(
-      "/filters-config/modes#s-map",
+      "/filters-config#s-area",
     );
     expect(searchTab).not.toContain("SearchParametersSection");
     expect(searchTab).not.toContain("minRating");

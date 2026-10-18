@@ -1,5 +1,8 @@
-// Consumer Search name-bar: Fast Search (Autocomplete) while typing, Deep
-// Search after idle.
+// THE NAME PIPELINE (MESITA-2327): resolve a place by its name. Sources:
+// Google Autocomplete · Google Text Search · Mesita Places Search. Signal:
+// Name (`nameSimilarity`, pipeline-signals.ts). No gate, no weight. The
+// consumer bar runs it once after the guest stops typing (MESITA-2322); the
+// modes below are this one pipeline's callers and passes.
 //
 // THREE NAME BARS RUN THIS LANE: consumer Search, admin Manage Single Place
 // (admin-web-suggest-places, mode deep), and — from MESITA-1874 until
@@ -16,16 +19,16 @@
 // earlier query keeps the slot. Order:
 //   1. Google Autocomplete (autoCount)
 //   2. Google Text Search (googleCount)
-//   3. Mesita Places — six search signals (mesitaCount)
+//   3. Mesita Places — the Name signal (mesitaCount)
 // Never Nearby Search. Guest pin biases Autocomplete / Text / name match.
 // Discovery > General runs LAST on both modes: whatever a Google query
 // returned, and whatever Mesita row it resolved to, has to clear Active +
 // the review floor (discovery-general-gate.ts). It cuts on-Mesita rows too --
 // an operator who switched Active off meant it.
 // A Google hit that resolves to Mesita stays in its Google query; later
-// Mesita queries skip it. The Mesita lane itself ranks with
-// places-search-signals.ts (name, family, proximity, enriched, popularity,
-// then the two tile coins). It does not read the word-mode blend.
+// Mesita queries skip it. The Mesita lane ranks by the Name signal alone
+// (`rankMesitaByName`): name-embedding cosine, or the lexical fallback for a
+// row or a request without a vector.
 // Word answers with TWO entities (MESITA-1403): Places are places,
 // Locations are regions/cities. Autocomplete returns both in one call;
 // classification reads `types` off rows the response already carries —
@@ -66,13 +69,9 @@ import {
 import { evaluatePlaceForMap } from "./map-engine.ts";
 import { embedSingle } from "./embeddings-http.ts";
 import { resolveEmbeddingModel } from "./embeddings.ts";
-import {
-  cosineSim,
-  parseVector,
-} from "./embeddings-vector.ts";
 import { isEnrichedPlace } from "./place-family-keys.ts";
-import { haversineKm, radiusBoundingBox } from "./geo.ts";
-import { rankPlacesSearch } from "./places-search-signals.ts";
+import { radiusBoundingBox } from "./geo.ts";
+import { nameSimilarity } from "./pipeline-signals.ts";
 import {
   type GooglePlaceListing,
   NEARBY_FIELD_MASK,
@@ -365,68 +364,37 @@ export function applyResolvedMesitaName(
   };
 }
 
-/** Raw name cosine on `places.name_embedding`. Floor is not remapped `name()`. */
-export function admitNameFloor(
-  rows: ListedRow[],
-  queryVec: number[],
-  minCosine: number,
-): ListedRow[] {
-  const out: ListedRow[] = [];
-  for (const row of rows) {
-    const vec = parseVector(row.name_embedding);
-    const score = vec && vec.length === queryVec.length
-      ? cosineSim(vec, queryVec)
-      : -1;
-    if (score < minCosine) continue;
-    if (!String(row.name ?? "").trim()) continue;
-    out.push(row);
-  }
-  return out;
-}
-
-/** Guest pin, optional family ask, and an injectable coin for the two tile swaps. */
-export type MesitaPlacesOrder = {
-  origin?: { lat: number; lng: number } | null;
-  families?: string[] | null;
-  /** Returns [0, 1). Omitted → Math.random. */
-  random?: () => number;
-};
+/** The lexical fallback's floor: trigram Dice 0.4 is about one shared word
+ *  (pipeline-signals.ts `lexicalNameSimilarity`). */
+export const NAME_MIN_LEXICAL = 0.4;
 
 /**
- * Mesita Places order. Name, proximity, and popularity rank. Family and
- * Enriched gate. Then the top tile and the bottom tile may swap with their
- * one neighbor. Ties keep incoming order.
+ * The Name pipeline's Mesita order (MESITA-2327): the Name signal alone
+ * (`nameSimilarity`) — the cosine of precomputed name embeddings against the
+ * one query vector, or, where either vector is missing, the lexical
+ * fallback. Each method has its own admission floor. No gate, no weight:
+ * a Created place is findable by its name like any other. Ties break on
+ * name, then id, so the order is deterministic.
  */
-export function orderDeepLineup(
-  admitted: ListedRow[],
-  queryNameVector: number[],
-  order: MesitaPlacesOrder = {},
+export function rankMesitaByName(
+  rows: ListedRow[],
+  query: { text: string; vector: number[] | null },
 ): ListedRow[] {
-  const origin = order.origin ?? null;
-  const hasGuestGeo = origin != null;
-  return rankPlacesSearch(
-    admitted,
-    (row) => {
-      const vec = parseVector(row.name_embedding);
-      const cosine = vec && vec.length === queryNameVector.length
-        ? cosineSim(vec, queryNameVector)
-        : -1;
-      const km = hasGuestGeo &&
-          typeof row.lat === "number" && typeof row.lng === "number"
-        ? haversineKm(origin.lat, origin.lng, row.lat, row.lng)
-        : null;
-      return {
-        cosine,
-        familyKeys: row.family_keys,
-        km,
-        enriched: isEnrichedPlace(row),
-        stars: row.google_stars_overall ?? null,
-        reviews: row.google_review_count,
-      };
-    },
-    { families: order.families, hasGuestGeo },
-    order.random,
-  );
+  return rows
+    .filter((row) => String(row.name ?? "").trim())
+    .map((row) => ({
+      row,
+      sim: nameSimilarity(query, { name: row.name, nameEmbedding: row.name_embedding }),
+    }))
+    .filter(({ sim }) =>
+      sim.score >= (sim.method === "embedding" ? NAME_MIN_COSINE : NAME_MIN_LEXICAL)
+    )
+    .sort((a, b) =>
+      b.sim.score - a.sim.score ||
+      String(a.row.name).localeCompare(String(b.row.name)) ||
+      a.row.id.localeCompare(b.row.id)
+    )
+    .map(({ row }) => row);
 }
 
 function takeListedLane(rows: ListedRow[], cap: number): LaneItem[] {
@@ -634,18 +602,19 @@ function takeLane(items: LaneItem[], cap: number): LaneItem[] {
   return items.slice(0, cap);
 }
 
-/** Which Deep modules fire. Types off skip Google modules. No OpenAI skips Lineup. */
+/** Which Deep modules fire. Types off skip the Google modules. The Mesita
+ *  lane needs no OpenAI key: without a query vector the Name signal falls
+ *  back to lexical similarity (MESITA-2327). */
 export function deepModuleFlags(args: {
   autoCount: number;
   mesitaCount: number;
   googleCount: number;
   typesOn: boolean;
-  hasOpenai: boolean;
 }): { wantAuto: boolean; wantText: boolean; wantMesita: boolean } {
   return {
     wantAuto: args.autoCount > 0 && args.typesOn,
     wantText: args.googleCount > 0 && args.typesOn,
-    wantMesita: args.mesitaCount > 0 && args.hasOpenai,
+    wantMesita: args.mesitaCount > 0,
   };
 }
 
@@ -669,7 +638,6 @@ async function runDeepSearch(
     mesitaCount: deep.mesitaCount,
     googleCount: deep.googleCount,
     typesOn,
-    hasOpenai: Boolean(openaiKey),
   });
 
   const [googleAuto, googleText, embedPool, queryVec] = await Promise.all([
@@ -710,11 +678,8 @@ async function runDeepSearch(
     ),
   ]);
 
-  const admitted = queryVec
-    ? admitNameFloor(embedPool, queryVec, NAME_MIN_COSINE)
-    : [];
-  const ordered = queryVec
-    ? orderDeepLineup(admitted, queryVec, { origin, random: Math.random })
+  const ordered = wantMesita
+    ? rankMesitaByName(embedPool, { text: input, vector: queryVec })
     : [];
   const lineupMesita = deep.mesitaCount > 0
     ? takeListedLane(ordered, deep.mesitaCount)
@@ -747,17 +712,11 @@ async function runMesitaNameSearch(
   cap: number = mesitaNameCap(name.deep),
 ): Promise<LaneItem[]> {
   const openaiKey = (Deno.env.get("OPENAI_KEY") ?? "").trim();
-  if (!openaiKey) return [];
   const [embedPool, queryVec] = await Promise.all([
     fetchEmbedPool(admin, origin, general),
     embedQueryVector(admin, input, openaiKey),
   ]);
-  if (!queryVec) return [];
-  const ordered = orderDeepLineup(
-    admitNameFloor(embedPool, queryVec, NAME_MIN_COSINE),
-    queryVec,
-    { origin, random: Math.random },
-  );
+  const ordered = rankMesitaByName(embedPool, { text: input, vector: queryVec });
   return takeListedLane(ordered, cap);
 }
 
@@ -846,8 +805,7 @@ async function fetchEmbedPool(
     .select(EMBED_COLUMNS)
     // Listed = `active`; `lead` is a dead label (MESITA-2144) that a filter
     // must not name once the enum drops it — Postgres would 22P02 the read.
-    .eq("state", "active")
-    .not("name_embedding", "is", null);
+    .eq("state", "active");
   let query = applyGeneralGateQuery(
     base as unknown as GeneralGateQuery,
     general,

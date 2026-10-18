@@ -68,60 +68,15 @@ import {
   type WeightedModeKey,
 } from "./discovery-matrix.ts";
 import { bool, num } from "./config-coerce.ts";
+import {
+  POPULARITY_REFERENCE_RATING_DEFAULT,
+  POPULARITY_REFERENCE_REVIEWS_DEFAULT,
+  PROXIMITY_HALF_DISTANCE_KM_DEFAULT,
+  PROXIMITY_HALF_DISTANCE_KM_MAX,
+  PROXIMITY_HALF_DISTANCE_KM_MIN,
+} from "./pipeline-signals.ts";
 
 export type SignalParams = Record<SignalKey, SignalParamBag>;
-
-/**
- * Catalog ranking: the shared engine's Mesita Selected profile, on the Map
- * and on the Feed's Mesita Selected and family rails alike (MESITA-2302).
- * Family picks the rail, so it is not in this vector. Timing is out.
- *
- * STORED KEYS vs SCORED KEYS. `catalogScore` (via `selectMesitaSelected`) raises only
- * `CATALOG_LIVE_RANK_KEYS`. Name, Description,
- * Selected, Enriched and Randomness stay on the blob so a save drops
- * nothing, and they are not applied: there is no name query, no
- * description vector, no per-place Selected value; Enriched is the GATE of
- * the Selected scope — every row carries it, so it ranks lexicographically
- * first and is constant inside; Randomness is pinned to 0 because the Map
- * is a pin field and Map and Feed share one order (a shuffled pin is a
- * moved pin).
- */
-export const CATALOG_RANK_KEYS = [
-  "name",
-  "description",
-  "proximity",
-  "enriched",
-  "popularity",
-  "selected",
-  "randomness",
-] as const;
-export type CatalogRankKey = (typeof CATALOG_RANK_KEYS)[number];
-
-/** The signals `catalogScore` actually raises. A zero drops
- *  that signal; both at zero is refused on save (CATALOG_ALL_ZERO_ERROR). */
-export const CATALOG_LIVE_RANK_KEYS = [
-  "proximity",
-  "popularity",
-] as const satisfies readonly CatalogRankKey[];
-export type CatalogLiveRankKey = (typeof CATALOG_LIVE_RANK_KEYS)[number];
-
-export const CATALOG_ALL_ZERO_ERROR =
-  "At least one Catalog signal must have a weight above zero.";
-
-/**
- * Proximity 1 and Popularity 1 are the live pair (a relative exponent of
- * 0.5 each). Enriched stays stored at 2 for an old blob's sake; the
- * Selected scope no longer raises it — the gate is the signal.
- */
-export const DEFAULT_CATALOG_RANKING: Record<CatalogRankKey, number> = {
-  name: 0,
-  description: 1,
-  proximity: 1,
-  enriched: 2,
-  popularity: 1,
-  selected: 1,
-  randomness: 0,
-};
 
 export type CatalogConfig = {
   /** Atlas category rails that currently have inventory. */
@@ -137,37 +92,21 @@ export type CatalogConfig = {
   railCap: number;
   /** Seed category must have at least this many listed places. */
   minSeedPlaces: number;
-  /** Shared Catalog Search profile. Every guest family list reads this one vector. */
-  ranking: Record<CatalogRankKey, number>;
 };
 
 /**
- * Relative exponents for the signals Catalog actually scores.
- * A proportional change of every nonzero weight returns the same vector,
- * so it cannot reorder. Zero stays zero and is left out of the sum.
+ * The Deep pipeline (MESITA-2327): open-ended discovery over Mesita Places by
+ * the Description signal, called by Chat. `limit` caps the places handed to
+ * Chat; `minSimilarity` is a floor on the Description score (0 = off).
  */
-export function catalogRelativeExponents(
-  ranking: Record<CatalogRankKey, number>,
-): Record<CatalogLiveRankKey, number> {
-  const out = {} as Record<CatalogLiveRankKey, number>;
-  let sum = 0;
-  for (const key of CATALOG_LIVE_RANK_KEYS) {
-    const w = ranking[key];
-    if (typeof w === "number" && Number.isFinite(w) && w > 0) sum += w;
-  }
-  for (const key of CATALOG_LIVE_RANK_KEYS) {
-    const w = ranking[key];
-    const on = typeof w === "number" && Number.isFinite(w) && w > 0;
-    out[key] = sum > 0 && on ? w / sum : 0;
-  }
-  return out;
-}
+export type DeepConfig = {
+  limit: number;
+  minSimilarity: number;
+};
 
-export function catalogLiveWeightsAllZero(
-  ranking: Record<CatalogRankKey, number>,
-): boolean {
-  return CATALOG_LIVE_RANK_KEYS.every((key) => !(ranking[key] > 0));
-}
+export const DEEP_LIMIT_MIN = 1;
+export const DEEP_LIMIT_MAX = 20;
+export const DEFAULT_DEEP: DeepConfig = { limit: 5, minSimilarity: 0 };
 
 /**
  * Google Nearby primary types the map asks for. Off = absent from the
@@ -400,6 +339,7 @@ export type DiscoveryConfig = {
   catalog: CatalogConfig;
   map: MapConfig;
   name: NameConfig;
+  deep: DeepConfig;
   chat: { prompt: string };
   swipe: SwipeConfig;
 };
@@ -600,7 +540,6 @@ export const DEFAULT_CATALOG: CatalogConfig = {
   placesPerRail: 8,
   railCap: CATALOG_RAIL_CAP_DEFAULT,
   minSeedPlaces: 2,
-  ranking: { ...DEFAULT_CATALOG_RANKING },
 };
 
 export const DEFAULT_NAME_FAST: NameFastConfig = {
@@ -664,6 +603,9 @@ export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
     maxKm: PROXIMITY_MAX_KM,
     kneeKm: PROXIMITY_KNEE_KM,
     missingGeo: 0.35,
+    // The Area pipeline's Proximity (pipeline-signals.ts): provisional,
+    // awaiting calibration. maxKm/kneeKm/missingGeo serve the retired deck.
+    halfDistanceKm: PROXIMITY_HALF_DISTANCE_KM_DEFAULT,
   },
   timing: {
     openShare: TIMING_OPEN_SHARE,
@@ -684,6 +626,10 @@ export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
     priorRating: POPULARITY_PRIOR_RATING,
     confidence: POPULARITY_CONFIDENCE,
     floorRating: POPULARITY_FLOOR_RATING,
+    // The Area pipeline's Popularity reference (pipeline-signals.ts):
+    // provisional, awaiting calibration. The three above serve the retired deck.
+    referenceRating: POPULARITY_REFERENCE_RATING_DEFAULT,
+    referenceReviews: POPULARITY_REFERENCE_REVIEWS_DEFAULT,
   },
   // Zero params since MESITA-2144. `unembedded` was never a console knob and
   // the live blob only ever stored NAME_UNEMBEDDED itself, which `name`
@@ -705,6 +651,11 @@ export const SIGNAL_PARAM_BOUNDS: Record<
     maxKm: { min: 1, max: 200, decimals: 1 },
     kneeKm: { min: 0.1, max: 25, decimals: 2 },
     missingGeo: { min: 0, max: 1, decimals: 2 },
+    halfDistanceKm: {
+      min: PROXIMITY_HALF_DISTANCE_KM_MIN,
+      max: PROXIMITY_HALF_DISTANCE_KM_MAX,
+      decimals: 1,
+    },
   },
   timing: {
     openShare: { min: 0, max: 1, decimals: 2 },
@@ -725,6 +676,8 @@ export const SIGNAL_PARAM_BOUNDS: Record<
     priorRating: { min: 0, max: 5, decimals: 2 },
     confidence: { min: 1, max: 1000, decimals: 0 },
     floorRating: { min: 0, max: 4.9, decimals: 2 },
+    referenceRating: { min: 1, max: 5, decimals: 1 },
+    referenceReviews: { min: 1, max: 1_000_000, decimals: 0 },
   },
   name: {},
   enriched: {},
@@ -794,19 +747,10 @@ export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
   catalog: DEFAULT_CATALOG,
   map: DEFAULT_MAP,
   name: DEFAULT_NAME,
+  deep: DEFAULT_DEEP,
   chat: { prompt: "" },
   swipe: DEFAULT_SWIPE,
 };
-
-function normalizeCatalogRanking(raw: unknown): Record<CatalogRankKey, number> {
-  const r = (raw ?? {}) as Record<string, unknown>;
-  const out = {} as Record<CatalogRankKey, number>;
-  for (const key of CATALOG_RANK_KEYS) {
-    const v = num(r[key], DEFAULT_CATALOG_RANKING[key], WEIGHT_MIN, WEIGHT_MAX);
-    out[key] = Math.round(v * 100) / 100;
-  }
-  return out;
-}
 
 export function normalizeCatalogConfig(raw: unknown): CatalogConfig {
   const r = (raw ?? {}) as Record<string, unknown>;
@@ -843,7 +787,14 @@ export function normalizeCatalogConfig(raw: unknown): CatalogConfig {
         CATALOG_MIN_SEED_PLACES_MAX,
       ),
     ),
-    ranking: normalizeCatalogRanking(r.ranking),
+  };
+}
+
+export function normalizeDeepConfig(raw: unknown): DeepConfig {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  return {
+    limit: Math.round(num(r.limit, DEFAULT_DEEP.limit, DEEP_LIMIT_MIN, DEEP_LIMIT_MAX)),
+    minSimilarity: Math.round(num(r.minSimilarity, DEFAULT_DEEP.minSimilarity, 0, 1) * 100) / 100,
   };
 }
 
@@ -1244,6 +1195,7 @@ export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
     catalog: normalizeCatalogConfig(r.catalog),
     map: normalizeMapConfig(r.map),
     name: normalizeNameConfig(r.name),
+    deep: normalizeDeepConfig(r.deep),
     chat: {
       prompt: normalizeChatPrompt(
         ((r.chat ?? {}) as Record<string, unknown>).prompt,

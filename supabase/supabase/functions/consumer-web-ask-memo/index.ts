@@ -1,16 +1,25 @@
 // consumer-web-ask-memo — Memo, the consumer Chat concierge.
 //
 // Stateless OpenAI turn (MESITA-1337): the client resends the Discovery
-// system prompt plus the full thread on every message. No Places, Perplexity,
-// catalog, or consumer-context tools this pass — those return as named APIs
-// later. Memo still holds no database client: greeting / prompt / model come
-// from supabase-edgefunc-get-memo-config (which reads discovery_config.chat).
+// system prompt plus the full thread on every message. THE CHAT AGENT SITS
+// ABOVE THE PIPELINES (MESITA-2327): before the model answers, it runs the
+// Deep pipeline on the guest's message and hands the model those places as
+// context (`related` on the wire). It never calls a source itself. Passive:
+// nothing here writes. Greeting / prompt / model come from
+// supabase-edgefunc-get-memo-config (which reads discovery_config.chat).
 //
 // Secrets: OPENAI_KEY. Never leaves Supabase.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
-import { readEFEnv } from "../_shared/auth.ts";
+import { adminClient, readEFEnv } from "../_shared/auth.ts";
+import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
+import {
+  type DeepPlace,
+  deepContextForChat,
+  deepDepsFor,
+  runDeepPipeline,
+} from "../_shared/deep-pipeline.ts";
 import { resolveMemoSystemPrompt } from "../_shared/memo-prompt.ts";
 import { createMemoData } from "../_shared/memo-data.ts";
 import { DEFAULT_MODELS_CONFIG } from "../_shared/models-config.ts";
@@ -60,11 +69,17 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "Ask me something first." }, 400);
   }
 
-  const cfg = await configPromise;
+  const openaiKey = Deno.env.get("OPENAI_KEY") ?? "";
+  const [cfg, related] = await Promise.all([
+    configPromise,
+    deepPlacesFor(env, query, openaiKey),
+  ]);
+  const system = resolveMemoSystemPrompt(cfg.instructions);
+  const context = deepContextForChat(related);
   const answer = await completeChatTurn({
-    openaiKey: Deno.env.get("OPENAI_KEY") ?? "",
+    openaiKey,
     model: (cfg.model ?? DEFAULT_MODELS_CONFIG.memo.model!).trim(),
-    system: resolveMemoSystemPrompt(cfg.instructions),
+    system: context ? `${system}\n\n${context}` : system,
     history: sanitizeChatHistory(body.history),
     query,
   });
@@ -74,6 +89,28 @@ Deno.serve(async (req) => {
     greeting: cfg.greeting,
     answer: toPlainText(answer && answer.length > 0 ? answer : LINE_DROPPED),
     predictions: [],
-    related: [],
+    related: related.map((p) => ({ id: p.id, slug: p.slug, name: p.name, similarity: p.similarity })),
   });
 });
+
+/** The Deep pipeline for this turn. Best effort: a pipeline failure leaves
+ *  Chat answering from its prompt alone, never a failed turn. */
+async function deepPlacesFor(
+  env: Parameters<typeof adminClient>[0],
+  query: string,
+  openaiKey: string,
+): Promise<DeepPlace[]> {
+  try {
+    const admin = adminClient(env);
+    const discovery = await loadDiscoveryConfig(admin);
+    const result = await runDeepPipeline({
+      query,
+      config: discovery.deep,
+      ...deepDepsFor(admin, discovery.general, openaiKey),
+    });
+    return result.places;
+  } catch (err) {
+    console.error("[consumer-web-ask-memo] deep:", err instanceof Error ? err.message : err);
+    return [];
+  }
+}

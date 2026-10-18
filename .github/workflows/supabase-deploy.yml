@@ -275,6 +275,9 @@ jobs:
             supabase-edgefunc-recall-places
             supabase-edgefunc-search-places
             supabase-edgefunc-get-consumer-context
+            # The Signals subpage's graphics; Discovery is one page of
+            # pipeline boxes now (MESITA-2327).
+            admin-web-preview-signals
           )
           listed=$(supabase functions list --project-ref yjalywfzdelacdzccpgb)
           echo "$listed"

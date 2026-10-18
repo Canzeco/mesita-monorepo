@@ -34,63 +34,22 @@ const nextConfig: NextConfig = {
     },
   },
   async redirects() {
-    return [
-      // Memo has no editor (in-code defaults). Discovery Chat subroutes died
-      // with MESITA-1182. Bookmarks land on Discovery.
-      {
-        source: "/memo-config",
-        destination: "/filters-config/modes",
-        permanent: true,
-      },
-      {
-        source: "/memo-config/:path*",
-        destination: "/filters-config/modes",
-        permanent: true,
-      },
-      {
-        source: "/filters-config/chat",
-        destination: "/filters-config/modes",
-        permanent: true,
-      },
-      {
-        source: "/filters-config/chat/:path*",
-        destination: "/filters-config/modes",
-        permanent: true,
-      },
-      // Sources and Matrix retired into the Modes boxes (MESITA-2303), and
-      // `module` before them. An operator's bookmark still lands, one hop.
-      {
-        source: "/filters-config/sources",
-        destination: "/filters-config/modes",
-        permanent: false,
-      },
-      {
-        source: "/filters-config/matrix",
-        destination: "/filters-config/modes",
-        permanent: false,
-      },
-      {
-        source: "/filters-config/modules",
-        destination: "/filters-config/modes",
-        permanent: true,
-      },
-      {
-        source: "/filters-config/modules/:path*",
-        destination: "/filters-config/modes",
-        permanent: true,
-      },
-      // Catalog is a mode on Modes. The old tab still lands there.
-      {
-        source: "/filters-config/catalog",
-        destination: "/filters-config/modes",
-        permanent: false,
-      },
-      {
-        source: "/filters-config/catalog/:path*",
-        destination: "/filters-config/modes",
-        permanent: false,
-      },
+    // Discovery is ONE page since MESITA-2327. Every retired subpage, and the
+    // Memo editor before them, lands on it in one hop.
+    const retired = [
+      "/memo-config",
+      "/filters-config/modes",
+      "/filters-config/signals",
+      "/filters-config/sources",
+      "/filters-config/matrix",
+      "/filters-config/modules",
+      "/filters-config/catalog",
+      "/filters-config/chat",
     ];
+    return retired.flatMap((source) => [
+      { source, destination: "/filters-config", permanent: false },
+      { source: `${source}/:path*`, destination: "/filters-config", permanent: false },
+    ]);
   },
 };
 

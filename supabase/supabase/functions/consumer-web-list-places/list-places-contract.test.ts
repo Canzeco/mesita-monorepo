@@ -1,5 +1,5 @@
 // consumer-web-list-places on the shared engine (MESITA-2302). Source pins
-// for the wiring the engine's own behavioural suite (nearby-selection.test)
+// for the wiring the engine's own behavioural suite (area-pipeline.test)
 // cannot see: which function each scope calls, the one circle, and that no
 // review floor can reach the Selected path.
 import { assert, assertEquals } from "jsr:@std/assert@1";

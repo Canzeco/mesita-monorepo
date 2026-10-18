@@ -38,30 +38,24 @@ export type DiscoverySlice =
   // Narrow map slices (MESITA-1681, widened by MESITA-1695). Families
   // (Configurations › Atlas) and Google Nearby's floor both write `map`.
   // Whole-slice saves from those seeds mean the last Save wipes the others,
-  // so each writes only its own fields. `map` stays for the Map mode box,
-  // which owns the rest (the Nearby pull knob retired with MESITA-2298).
+  // so each writes only its own fields. `map` stays for the Area box, which
+  // owns the rest (the Nearby pull knob retired with MESITA-2298).
   | "mapSupers"
   | "mapFloors"
-  // Narrow weight slices (MESITA-1859). The weights table on Discovery Modes
-  // has ONE SAVE PER COLUMN, and `weights` and `params` both ride the single
-  // `signals` slice below — so a per-column save of the whole slice would be
-  // the mapSupers/mapFloors incident again, one floor up: saving Map
-  // would silently revert Scroll and the signal params. Each column writes
-  // only its own mode key.
-  | "weightsMap"
-  | "weightsScroll"
   | "nameFast"
   | "nameDeep"
   | "swipe"
-  | "signals"
-  // The Catalog page. One profile, written once, shared by the seven lists.
-  | "catalogRanking"
-  // Discovery › Modes › Chat: the Memo prompt (MESITA-2303).
+  // The Chat Agent's prompt (MESITA-2303), on the Deep box since MESITA-2327.
   | "chat"
-  // Word's Locations switch and Places' rows-per-rail (MESITA-2319).
+  // The Area box's Proximity half distance and Popularity reference, and the
+  // Deep box (MESITA-2327). Narrow on purpose: `params` also carries the
+  // retired deck's numbers, which no box may overwrite.
+  | "areaSignals"
+  | "deep"
+  // Name's Locations switch and the Feed's places per row (MESITA-2319).
   | "nameLocations"
   | "catalogRows"
-  // Word's idle seconds and Word by Admin's caps (MESITA-2322).
+  // Name's idle seconds and Name by Admin's caps (MESITA-2322).
   | "nameIdle"
   | "nameAdmin";
 
@@ -99,22 +93,29 @@ export async function updateDiscoveryConfig(
     swipe: keys.has("swipe")
       ? { ...config.swipe, savedAt: new Date().toISOString() }
       : live.config.swipe,
-    // Per-mode, never whole-slice: `weightsMap` touches `map` and nothing
-    // else, so the two columns cannot overwrite each other.
-    weightsByMode: {
-      ...live.config.weightsByMode,
-      ...(keys.has("weightsMap") ? { map: config.weightsByMode.map } : null),
-      ...(keys.has("weightsScroll") ? { swipe: config.weightsByMode.swipe } : null),
-    },
-    // The global vector stays on `signals`. No console edits it directly any
-    // more — it is Word's vector and the per-mode fallback — but a params save
-    // must not drop it.
-    weights: keys.has("signals") ? config.weights : live.config.weights,
-    params: keys.has("signals") ? config.params : live.config.params,
+    // No box edits weights any more (MESITA-2327): the stored vectors ride
+    // through untouched for the retired deck.
+    weightsByMode: live.config.weightsByMode,
+    weights: live.config.weights,
+    // Only the Area pipeline's two numbers move; every other param stands.
+    params: keys.has("areaSignals")
+      ? {
+        ...live.config.params,
+        proximity: {
+          ...live.config.params.proximity,
+          halfDistanceKm: config.params.proximity.halfDistanceKm,
+        },
+        popularity: {
+          ...live.config.params.popularity,
+          referenceRating: config.params.popularity.referenceRating,
+          referenceReviews: config.params.popularity.referenceReviews,
+        },
+      }
+      : live.config.params,
+    deep: keys.has("deep") ? config.deep : live.config.deep,
     chat: keys.has("chat") ? config.chat : live.config.chat,
     catalog: {
       ...live.config.catalog,
-      ...(keys.has("catalogRanking") ? { ranking: config.catalog.ranking } : null),
       ...(keys.has("catalogRows") ? { railCap: config.catalog.railCap } : null),
     },
   };
@@ -124,30 +125,4 @@ export async function updateDiscoveryConfig(
   );
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, config: coerceConfig(r.data.config), updatedAt: r.data.updatedAt ?? null };
-}
-
-
-// Signals graphics (MESITA-2297). Every score comes from the live signal
-// functions inside admin-web-preview-signals; the console restates no curve.
-export type SignalPreviewRow = { label: string; score: number; note: string };
-export type SignalPreviewCurvePoint = { km: number; score: number };
-
-export type SignalPreviewRequest = {
-  signal: "name" | "proximity" | "timing" | "family" | "popularity" | "enrichment" | "randomness";
-  maxKm?: number;
-  samplesKm?: number[];
-  closedFloor?: number;
-  query?: string;
-  names?: string[];
-};
-
-export async function previewDiscoverySignal(
-  body: SignalPreviewRequest,
-): Promise<ActionResult<{ rows: SignalPreviewRow[]; curve?: SignalPreviewCurvePoint[] }>> {
-  const r = await efInvoke<{ rows?: SignalPreviewRow[]; curve?: SignalPreviewCurvePoint[] }>(
-    "admin-web-preview-signals",
-    body,
-  );
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, rows: r.data.rows ?? [], curve: r.data.curve };
 }

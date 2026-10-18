@@ -7,30 +7,13 @@
 // At most 5 places per rail; empty rails are omitted. Right Now and
 // Universal are gone.
 //
-// Family picks the rail; it does not score. Timing is not in this profile.
-// catalogScore multiplies only the Catalog ranking's live keys (proximity,
-// popularity: Enriched is the gate, Randomness is pinned to 0), raised to
-// RELATIVE exponents (weight / sum of the nonzero live weights). Name,
-// description, selected, enriched and randomness may still sit on the
-// stored blob; this function does not read them. Weight 0 drops a live
-// signal. Both at 0 leaves every place at 1 (incoming order). A save of
-// that vector is rejected before it is stored.
+// Family picks the rail; it does not score. Both lists arrive already
+// ranked by the Area pipeline's score (area-score.ts: proximity ×
+// popularity, MESITA-2327); this file only cuts them into rails.
 
 import { FAMILIES } from "./place-taxonomy.ts";
-import {
-  popularity,
-  proximity,
-  type SignalIntent,
-  type SignalPlace,
-} from "./discovery-signals.ts";
 import { isEnrichedPlace } from "./place-family-keys.ts";
-import {
-  CATALOG_RAIL_CAP_DEFAULT,
-  type CatalogLiveRankKey,
-  type CatalogRankKey,
-  catalogRelativeExponents,
-  type SignalParams,
-} from "./discovery-config.ts";
+import { CATALOG_RAIL_CAP_DEFAULT } from "./discovery-config.ts";
 
 export type CatalogListPlace = Record<string, unknown> & {
   id: string;
@@ -64,28 +47,6 @@ export function placeBelongsToFamily(
   family: string,
 ): boolean {
   return Array.isArray(familyKeys) && familyKeys.includes(family);
-}
-
-/**
- * Score one admitted place. Abstentions return null from the signal and
- * are skipped; a real 0 (proximity past its radius) still multiplies.
- */
-export function catalogScore(
-  place: SignalPlace,
-  ranking: Record<CatalogRankKey, number>,
-  params: SignalParams,
-  intent: SignalIntent,
-): number {
-  let score = 1;
-  const relative = catalogRelativeExponents(ranking);
-  const apply = (key: CatalogLiveRankKey, value: number | null) => {
-    const w = relative[key];
-    if (!(w > 0) || value == null || !Number.isFinite(value)) return;
-    score *= Math.pow(Math.max(0, value), w);
-  };
-  apply("proximity", proximity(place, intent, params.proximity));
-  apply("popularity", popularity(place, undefined, params.popularity));
-  return score;
 }
 
 /** Rail 1's key and words. */

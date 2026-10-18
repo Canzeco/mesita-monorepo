@@ -167,7 +167,6 @@ Deno.test("every Record<SignalKey, ...> map in this package has full key coverag
     DEFAULT_SIGNAL_PARAMS,
     SIGNAL_PARAM_BOUNDS,
     "DISCOVERY_DEFAULTS.weights": DISCOVERY_DEFAULTS.weights,
-    "DISCOVERY_DEFAULTS.weightsByMode.map": DISCOVERY_DEFAULTS.weightsByMode.map,
     "DISCOVERY_DEFAULTS.weightsByMode.swipe":
       DISCOVERY_DEFAULTS.weightsByMode.swipe,
   };
@@ -270,7 +269,6 @@ Deno.test("the live blob, mesita_level and partnered included, still loads and s
   // `mesita_level` lands on Enriched, and the operator's other numbers stand.
   assertEquals(cfg.weights.enriched, 2);
   assertEquals(cfg.weights.proximity, 1.25);
-  assertEquals(cfg.weightsByMode.map.proximity, 0.5);
   assertEquals(cfg.weightsByMode.swipe.timing, 1.5);
   assertEquals(cfg.params.proximity.maxKm, 30);
   assertEquals(cfg.name.deep.mesitaCount, 4);
@@ -346,17 +344,14 @@ Deno.test("a stored params.mesita_level is not read at all — weights fold, par
 
 Deno.test("a per-mode exponent round-trips, clamped to that signal's ceiling", () => {
   const cfg = normalizeDiscoveryConfig({
-    weightsByMode: { map: { proximity: 2, enriched: 4 } },
+    weightsByMode: { swipe: { proximity: 2, enriched: 4 }, map: { proximity: 3 } },
   });
-  assertEquals(cfg.weightsByMode.map.proximity, 2);
+  assertEquals(cfg.weightsByMode.swipe.proximity, 2);
   // Enriched's ceiling is 2, not the uniform 4 — enrichment may not become a
   // filter from the console, on any mode.
-  assertEquals(cfg.weightsByMode.map.enriched, 2);
-  // Scroll is untouched by a Map-only blob.
-  assertEquals(
-    cfg.weightsByMode.swipe,
-    DISCOVERY_DEFAULTS.weightsByMode.swipe,
-  );
+  assertEquals(cfg.weightsByMode.swipe.enriched, 2);
+  // Map's column retired with its reader (MESITA-2327): a stored one drops.
+  assertEquals("map" in cfg.weightsByMode, false);
   // Rounded to two decimals, or the admin field (step 0.05) would leave the
   // page permanently dirty against its own saved value.
   assertEquals(
@@ -402,7 +397,7 @@ Deno.test("an unrelated Save does not lose a per-mode exponent", () => {
   const first = normalizeDiscoveryConfig(stored);
   const afterSave = normalizeDiscoveryConfig({ ...first, chat: { prompt: "after" } });
   assertEquals(afterSave.weightsByMode.swipe.proximity, 2.25);
-  assertEquals(afterSave.weightsByMode.map.timing, 0.5);
+  assertEquals("map" in afterSave.weightsByMode, false);
   assertEquals(afterSave.chat.prompt, "after");
 });
 

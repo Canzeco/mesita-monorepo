@@ -185,6 +185,9 @@ Deno.test("PLACE PROFILE READ: no new raw reader of place_profiles outside the a
 const PROFILES_READ_ALLOWLIST = [
   "_shared/consumer-search-lane.ts",
   "_shared/create-place.ts",
+  // The Deep pipeline's Mesita Places Search: id, name, About and the summary
+  // vector of active, ready places (MESITA-2327).
+  "_shared/deep-pipeline.ts",
   "_shared/place-embeddings.ts",
   "_shared/place-requests.ts",
   "_shared/place-slug.ts",
