@@ -1,6 +1,7 @@
 // The Google-only card (`googleOnly: true`): a Nearby hit Mesita does not
-// own, in the catalog card shape. Search's gray pin and Feed › Right Now
-// (MESITA-2295) send the same stub, so the client routes both the same way.
+// own, in the catalog card shape. Search's gray pin, the Map's Google
+// scope and the Feed's Google Places rail send the same stub, so the
+// client routes all of them the same way (MESITA-2298, MESITA-2302).
 
 import { familiesForGoogleType } from "./sourcing.ts";
 import type { NearbyHit } from "./nearby-places.ts";
@@ -23,6 +24,9 @@ export function googleStub(hit: NearbyHit, distanceKm: number | null): Record<st
     timezone: null,
     closes_at: null,
     hours: null,
+    // Google's `currentOpeningHours.openNow`: the one fact the timing
+    // signal may read for a row with no stored hours (a boost, never a cut).
+    open_now: hit.openNow,
     phone: null,
     pitch: null,
     story: null,

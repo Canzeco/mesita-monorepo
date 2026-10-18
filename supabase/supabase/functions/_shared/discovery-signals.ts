@@ -139,6 +139,12 @@ export type SignalPlace = {
    * credit: an unstated enrichment is not an enriched place.
    */
   enriched?: boolean;
+  /**
+   * Google's open-now for a row with no stored hours (a Nearby stub's
+   * `open_now`, MESITA-2302). Timing reads it only when `hours` give no
+   * answer; absent or null abstains.
+   */
+  openNow?: boolean | null;
 };
 
 /** What the CALLER wants. Every field is optional; an absent one abstains. */
@@ -256,7 +262,11 @@ export function timing(
 
   const openShare = clamp01(pnum(params, "openShare", TIMING_OPEN_SHARE));
   const closedFloor = clamp01(pnum(params, "closedFloor", TIMING_CLOSED_FLOOR));
-  const open = isOpenAt(place.hours, clock.weekday, clock.minutes);
+  // Stored hours answer first; Google's open-now stands in only when they
+  // give no answer, so an ephemeral card can earn the open boost.
+  const stored = isOpenAt(place.hours, clock.weekday, clock.minutes);
+  const open = stored ??
+    (typeof place.openNow === "boolean" ? place.openNow : null);
   const openPart = open === null ? NEUTRAL : open ? 1 : closedFloor;
   const dayPart = daypartScore(clock.hour, params);
 

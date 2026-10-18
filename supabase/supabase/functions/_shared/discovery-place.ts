@@ -62,6 +62,11 @@ function nOrNull(v: unknown): number | null {
  * synthesized Google row is still excluded by name: consumer-web-list-places
  * builds it with `googleOnly: true` on a hit Mesita has never touched, and
  * it must never take the enriched multiplier whatever else it carries.
+ *
+ * `openNow` is the stub's `open_now` (Google's currentOpeningHours.openNow,
+ * MESITA-2302): the one fact Timing may read when a row has no stored
+ * hours. A Mesita row carries none, so it reads null and Timing keeps
+ * answering from `hours`.
  */
 export function toSignalPlace(row: Record<string, unknown>): SignalPlace {
   return {
@@ -72,6 +77,7 @@ export function toSignalPlace(row: Record<string, unknown>): SignalPlace {
     family_keys: Array.isArray(row.family_keys) ? (row.family_keys as string[]) : null,
     rating: nOrNull(row.google_stars_overall),
     user_ratings_total: nOrNull(row.google_review_count),
+    openNow: typeof row.open_now === "boolean" ? row.open_now : null,
     embedding: row.embedding,
     enriched: row.googleOnly === true ? false : isEnrichedPlace(row as {
       enriched_at?: string | null;

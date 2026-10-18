@@ -1,12 +1,14 @@
 // Map hyperparameters — Discovery › Map (`discovery_config.map`).
 //
 // Search allowlist for guest map, admin Google Search, Create, and Name
-// Google (Fast Autocomplete + Deep Text Search) via Map floors. Nearby
-// catalog is closest N of the selected Places set — three nested sets
-// (MESITA-2158): Google Places ⊃ Mesita Places ⊃ Mesita Enriched Places.
-// Inner membership paints; it does not add pins. Type batteries
-// ride the Google call only. Floors exclude. Name Google categories live
-// on discovery_config.name. googleFill AND googleCount > 0 gate Nearby.
+// Google (Fast Autocomplete + Deep Text Search) via Map floors. The guest
+// has TWO SCOPES (MESITA-2298) over the three internal sets (Google
+// Places ⊃ Mesita Places ⊃ Mesita Enriched Places): Google Places is what
+// Nearby returned inside `map.radiusKm`, a Mesita owner painting its hit;
+// Mesita Selected is the enriched, ready rows. Type batteries ride the
+// Google call only. Floors exclude. The guest Google Reviews floor cuts
+// Google hits only, after Google answers (`guestReviewFloor`). Name Google
+// categories live on discovery_config.name. `googleFill` gates Nearby.
 //
 // Swipe listed admission uses the same type batteries + floors (Pato:
 // only Mesita restaurants/partners+listed, never Google-only / types
@@ -26,7 +28,7 @@ import {
   type SignalParamBag,
   type SignalPlace,
 } from "./discovery-signals.ts";
-import type { NearbyHit } from "./nearby-places.ts";
+import type { NearbyHit, PlacesScope } from "./nearby-places.ts";
 import { type EligibilityResult, familiesForGoogleType } from "./sourcing.ts";
 import { familiesForAtlasCategory } from "./place-taxonomy.ts";
 
@@ -109,6 +111,20 @@ export function clearsMinReviews(
 ): boolean {
   if (!(min > 0)) return true;
   return typeof count === "number" && Number.isFinite(count) && count >= min;
+}
+
+/**
+ * THE ONLY way a caller obtains the guest's review floor (MESITA-2298 §2).
+ * Google Places: the sheet's stop, applied after Google answers on
+ * `hit.reviewCount` (`clearsMinReviews`); a silent client gets the
+ * default, 100+. Mesita Selected: ALWAYS 0 — no review floor of any kind
+ * gates a Selected row, so by construction no branch can grow one.
+ */
+export function guestReviewFloor(
+  scope: PlacesScope,
+  raw: unknown,
+): MapMinReviews {
+  return scope === "google" ? parseMapMinReviews(raw) : 0;
 }
 
 /**

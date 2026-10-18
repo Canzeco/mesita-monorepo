@@ -4,8 +4,8 @@
 // join and isolate budget), the same per-IP ledger (`beforeFanout`), the same
 // Mesita-wins dedupe (`claimOwnedHits` + `mergeNearbyCatalog`) and the same
 // Google-only card (`googleStub`). The differences are small:
-//   - the mask adds `currentOpeningHours.openNow`, in its own cell cached
-//     RIGHT_NOW_CACHE_MS (Search's mask and 15 s cell stay);
+//   - the ONE Nearby mask already carries `currentOpeningHours.openNow`,
+//     so Right Now shares Search's cell (MESITA-2302);
 //   - the 15 guest families' types, one call of 20;
 //   - only `openNow === true` and `OPERATIONAL`, nearest first, 5;
 //   - no photo: a Google-only card draws its family emoji (MESITA-2298),
@@ -74,12 +74,11 @@ export async function rightNowGooglePlaces<T extends RightNowOwnedRow>(
   if (!apiKey || !center) return null;
 
   // A warm cell spends nothing, not even a ledger row.
-  const hits = peekCachedNearbyPlaces(center, RIGHT_NOW_TYPES, true) ??
+  const hits = peekCachedNearbyPlaces(center, RIGHT_NOW_TYPES) ??
     await searchNearbyPlaces(apiKey, center, {
-    types: RIGHT_NOW_TYPES,
-    rightNow: true,
-    beforeFanout: deps.consumeQuota,
-  });
+      types: RIGHT_NOW_TYPES,
+      beforeFanout: deps.consumeQuota,
+    });
 
   const open = hits.filter((hit) =>
     hit.openNow === true && hit.businessStatus === "OPERATIONAL"

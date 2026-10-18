@@ -7,6 +7,7 @@ import {
 } from "./discovery-place.ts";
 import { PLACE_PUBLIC_COLUMNS } from "./place-columns.ts";
 import { popularity } from "./discovery-signals.ts";
+import { googleStub } from "./google-stub.ts";
 
 /** A row shaped the way `profiles` actually returns one. */
 const ROW: Record<string, unknown> = {
@@ -51,6 +52,34 @@ Deno.test("toSignalPlace maps Google's column names onto the signal contract", (
   assertEquals(p.category, "taqueria");
   assertEquals(p.family_keys, ["food"]);
   assertEquals(p.embedding, "[0.1,0.2]");
+  // A Mesita row carries no `open_now`: Timing keeps answering from `hours`.
+  assertEquals(p.openNow, null);
+  assertEquals(toSignalPlace({ ...ROW, open_now: true }).openNow, true);
+  assertEquals(toSignalPlace({ ...ROW, open_now: false }).openNow, false);
+  assertEquals(toSignalPlace({ ...ROW, open_now: "yes" }).openNow, null);
+});
+
+Deno.test("a Google stub carries open_now into the projection and is never enriched (MESITA-2302)", () => {
+  const stub = googleStub({
+    placeId: "ChIJ-g",
+    name: "G",
+    address: "",
+    lat: 25.67,
+    lng: -100.3,
+    rating: 4.4,
+    primaryType: "cafe",
+    businessStatus: "OPERATIONAL",
+    reviewCount: 120,
+    openNow: false,
+  }, 0.3);
+  assertEquals(stub.open_now, false);
+  assertEquals(stub.googleOnly, true);
+  const p = toSignalPlace(stub);
+  assertEquals(p.openNow, false);
+  assertEquals(p.enriched, false);
+  assertEquals(p.hours, null);
+  assertEquals(p.rating, 4.4);
+  assertEquals(p.user_ratings_total, 120);
 });
 
 Deno.test("a mapped row moves Popularity off the prior — the dead-signal guard", () => {

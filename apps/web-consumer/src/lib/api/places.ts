@@ -258,7 +258,10 @@ export type CatalogRail = {
   places: Place[];
 };
 
-/** Home › Places rails — Right Now, Universal, then one rail per family. */
+/**
+ * Home › Feed rails — Google Places, Mesita Selected, then one rail per
+ * family (Selected only).
+ */
 export async function apiListCatalog(
   client: SupabaseClient,
   origin?: { lat: number; lng: number } | null,
@@ -267,8 +270,8 @@ export async function apiListCatalog(
     client,
     "consumer-web-list-catalog",
     {
-      // `google: true` asks for Right Now from Google (MESITA-2295), as
-      // Search's opt-in; without a location the EF keeps it on Mesita.
+      // `google: true` lets rail 1 buy Google Places (as Search's opt-in);
+      // without a location the EF omits rail 1.
       ...(origin ? { lat: origin.lat, lng: origin.lng, google: true } : {}),
     },
   );

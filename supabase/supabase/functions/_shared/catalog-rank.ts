@@ -5,21 +5,19 @@
 // now instead (MESITA-2295, `withGoogleRightNow`); the Mesita one is the
 // fallback.
 //
-// Family picks the rail; it does not score. Enriched still scores. Timing is not
-// in this profile. catalogScore multiplies only proximity, enriched,
-// popularity, and randomness, and it raises them to RELATIVE exponents
-// (weight / sum of the nonzero live weights). Name, description, and
-// selected may still sit on the stored blob; this function does not read
-// them. Weight 0 drops a live signal. All four at 0 leaves every place at
-// 1 (incoming order).
+// Family picks the rail; it does not score. Timing is not in this profile.
+// catalogScore multiplies only the Catalog ranking's live keys (proximity,
+// popularity — MESITA-2302: Enriched is the gate, Randomness is pinned to
+// 0), raised to RELATIVE exponents (weight / sum of the nonzero live
+// weights). Name, description, selected, enriched and randomness may still
+// sit on the stored blob; this function does not read them. Weight 0 drops
+// a live signal. Both at 0 leaves every place at 1 (incoming order).
 // A save of that vector is rejected before it is stored.
 
 import { FAMILIES } from "./place-taxonomy.ts";
 import {
-  enriched,
   popularity,
   proximity,
-  randomness,
   type SignalIntent,
   type SignalPlace,
 } from "./discovery-signals.ts";
@@ -84,11 +82,7 @@ export function catalogScore(
     score *= Math.pow(Math.max(0, value), w);
   };
   apply("proximity", proximity(place, intent, params.proximity));
-  apply("enriched", enriched(place));
   apply("popularity", popularity(place, undefined, params.popularity));
-  if (relative.randomness > 0) {
-    apply("randomness", randomness(place, intent));
-  }
   return score;
 }
 

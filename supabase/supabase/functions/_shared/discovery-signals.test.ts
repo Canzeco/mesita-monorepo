@@ -188,6 +188,27 @@ Deno.test("timing abstains on the open half when there are no usable hours", () 
   assertEquals(unknown, open);
 });
 
+Deno.test("timing: Google's openNow stands in when stored hours give no answer (MESITA-2302)", () => {
+  const open = timing(place({ hours: HOURS_ALWAYS }), { now: MIDDAY });
+  const closed = timing(place({ hours: HOURS_NEVER }), { now: MIDDAY });
+  const unknown = timing(place({ hours: null }), { now: MIDDAY });
+  // A Nearby stub has no hours; Google's open-now is the one fact it has.
+  // Open earns the open half in full, closed the closedFloor — a boost,
+  // never a cut (the closed place still scores above 0).
+  const stubOpen = timing(place({ hours: null, openNow: true }), { now: MIDDAY });
+  const stubShut = timing(place({ hours: null, openNow: false }), { now: MIDDAY });
+  assertEquals(stubOpen, open);
+  assertEquals(stubShut, closed);
+  assert(stubShut < stubOpen && stubShut > 0);
+  // Null or absent abstains on the open half, exactly as no hours did.
+  assertEquals(timing(place({ hours: null, openNow: null }), { now: MIDDAY }), unknown);
+  assertEquals(timing(place({ hours: null }), { now: MIDDAY }), unknown);
+  // Stored hours win: a row Mesita knows is closed stays closed, and one it
+  // knows is open stays open, whatever Google's flag says.
+  assertEquals(timing(place({ hours: HOURS_NEVER, openNow: true }), { now: MIDDAY }), closed);
+  assertEquals(timing(place({ hours: HOURS_ALWAYS, openNow: false }), { now: MIDDAY }), open);
+});
+
 Deno.test("daypart is coarse but ordered: dead hours lose to meal windows", () => {
   assert(daypartScore(4) < daypartScore(9));
   assert(daypartScore(9) <= daypartScore(13));

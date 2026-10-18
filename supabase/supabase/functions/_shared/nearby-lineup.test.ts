@@ -6,7 +6,6 @@ import {
   reorderListedLanes,
 } from "./nearby-lineup.ts";
 import {
-  lanesForPlacesScope,
   mergeNearbyCatalog,
   type NearbyHit,
   type NearbyLaneCaps,
@@ -27,6 +26,7 @@ function hit(over: Partial<NearbyHit> & Pick<NearbyHit, "placeId" | "name">): Ne
     primaryType: "restaurant",
     businessStatus: "OPERATIONAL",
     reviewCount: null,
+    openNow: null,
     ...over,
   };
 }
@@ -213,13 +213,10 @@ Deno.test("list-places googleFill reorders; lat/lng-only does not", async () => 
   // Behavioural, not source-text: the old assertion pinned the literal
   // `searchPower >= 2` and was satisfiable by whatever the file happened to
   // say, so forgetting to update a second copy of that literal stayed green.
-  // The Google call is gated on the CAP now, and lanesForPlacesScope is the
-  // one place that decides it.
+  // The Google call is gated on the CAP now, computed once from the scope.
   assertEquals(googleBranch.includes("wantGoogleNearby && googleForMerge.length > 0"), true);
   assertEquals(src.includes("lanes.googleCount > 0"), true);
   assertEquals(src.includes("searchPower >="), false);
-  assertEquals(lanesForPlacesScope("mesita", 60).googleCount, 0);
-  assertEquals(lanesForPlacesScope("google", 60).googleCount > 0, true);
   const listedOnly = src.slice(
     src.indexOf("if (!googleFill)"),
     src.indexOf("let googleHits"),

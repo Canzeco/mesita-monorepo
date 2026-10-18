@@ -102,10 +102,12 @@ import {
 } from "../_shared/geo.ts";
 import {
   admitsScopeRow,
+  CATALOG_NEARBY_HARD_MAX,
   claimOwnedHits,
-  lanesForPlacesScope,
+  GOOGLE_NEARBY_MAX,
   mergeNearbyCatalog,
   type NearbyHit,
+  type NearbyLaneCaps,
   parsePlacesScope,
   peekCachedNearbyPlaces,
   PLACES_SCOPE_DEFAULT,
@@ -341,7 +343,15 @@ Deno.serve(async (req) => {
     const { lat, lng } = nearbyDecision;
     const center = { lat, lng };
     const scanRows = (data ?? []) as unknown as CardRow[];
-    const lanes = lanesForPlacesScope(placesScope, limit);
+    // Lane caps from `limit` (operator `map.pinCount`): only the Google
+    // scope opens the Google lane, at most one Nearby call's 20.
+    const laneCap = Math.min(CATALOG_NEARBY_HARD_MAX, limit);
+    const lanes: NearbyLaneCaps = {
+      mesitaCount: laneCap,
+      googleCount: placesScope === "google"
+        ? Math.min(laneCap, GOOGLE_NEARBY_MAX)
+        : 0,
+    };
     let mesitaRows = scanRows.filter((row) => admitsScopeRow(placesScope, row));
     if (guestSupers.length > 0) {
       mesitaRows = mesitaRows.filter((row) =>
@@ -390,7 +400,6 @@ Deno.serve(async (req) => {
       const cached = peekCachedNearbyPlaces(
         center,
         nearbyTypes,
-        false,
         nearbyRadiusKm,
       );
       if (cached) {
