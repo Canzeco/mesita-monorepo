@@ -23,9 +23,9 @@ import { ActiveDot } from "./ActiveDot";
 // bar's neutral chrome. The accessible name carries the word the disc no
 // longer prints, and the count.
 //
-// Since MESITA-2401 it sits at the right edge of Search's HEADER
-// (`variant="header"`): bordered like Home's location, the segmented
-// track's height (MESITA-2404), no shadow. Without `onOpenFilters` (Search › Chat) it is disabled in place.
+// Since MESITA-2409 it leads Search's horizontal chip row (`variant="chip"`):
+// the chips' 32px height, bordered, no shadow. Without `onOpenFilters` it is
+// disabled in place.
 export function SearchFilterRow({
   count,
   onOpenFilters,
@@ -33,7 +33,7 @@ export function SearchFilterRow({
 }: {
   count: number;
   onOpenFilters?: () => void;
-  variant?: "floating" | "header";
+  variant?: "floating" | "chip";
 }) {
   const applied = count > 0;
   const disabled = !onOpenFilters;
@@ -46,14 +46,14 @@ export function SearchFilterRow({
       aria-haspopup="dialog"
       aria-pressed={applied}
       className={
-        variant === "header"
-          ? "border-border bg-card text-foreground hover:bg-muted relative flex h-10 w-10 shrink-0 border items-center justify-center rounded-full transition active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40"
+        variant === "chip"
+          ? "border-border bg-card text-foreground hover:bg-muted relative flex h-8 w-10 shrink-0 border items-center justify-center rounded-full transition active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40"
           : "shadow-elev border-border bg-card/95 text-foreground relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border backdrop-blur-xl transition active:scale-[0.97]"
       }
       data-search-filters
     >
       <SlidersHorizontal
-        className="h-5 w-5 shrink-0"
+        className={variant === "chip" ? "h-4 w-4 shrink-0" : "h-5 w-5 shrink-0"}
         strokeWidth={2.25}
         aria-hidden
       />

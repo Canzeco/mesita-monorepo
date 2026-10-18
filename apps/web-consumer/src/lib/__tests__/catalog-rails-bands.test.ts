@@ -169,10 +169,11 @@ describe("the Places grid (MESITA-2366)", () => {
     expect(src).not.toContain("data-band");
   });
 
-  // No line under the header; it wears the bottom bar's white (MESITA-2408).
-  it("paints Home's header the bottom bar's white, with no line under it", () => {
+  // The bottom bar's white and its hairline (MESITA-2408, MESITA-2409:
+  // "a super thin light gray line … just as in menu"), never the old 2px rule.
+  it("paints Home's header the bottom bar's white, with the bar's hairline under it", () => {
     const tabs = readFileSync(join(__dirname, "../../components/consumer/ModeTabs.tsx"), "utf8");
-    expect(tabs).toContain('"bg-card/95 sticky top-0 z-20 shrink-0 backdrop-blur"');
+    expect(tabs).toContain('"border-border bg-card/95 sticky top-0 z-20 shrink-0 border-b backdrop-blur"');
     expect(tabs).not.toContain("border-b-2");
   });
 
