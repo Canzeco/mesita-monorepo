@@ -6,12 +6,13 @@
 //   ┌────────────────┬─────────────────────┐   location alone (MESITA-2405),
 //   │ 👥 Social       │                     │   written to
 //   │ ❤️ Favorites    │       square        │   lib/active-location.ts and
-//   │ ──────────────  │        tile         │   read here.
-//   │▌✨ Featured     │                     │
-//   │ ☕ Coffee       │                     │
+//   │▌✨ Featured     │        tile         │   read here.
+//   │ ──────────────  │                     │
+//   │ ☕ Coffee    ↕  │                     │
 //
-// Left quarter (Pato, MESITA-2405): Social (Soon) and Favorites, a rule,
-// then Featured (the default: every place) and one row per family. The chosen row is white, bold, an ink bar on its left edge.
+// Left quarter (Pato, MESITA-2411): Social (Soon), Favorites and Featured
+// (the default: every place) PINNED above a rule; under it one row per
+// family, and only that list scrolls. The chosen row is white, bold, an ink bar on its left edge.
 // Featured is the server's ONE ranked Area pool (MESITA-2379/2384): Google
 // and Mesita places merged, scored and ranked there; this screen pages it
 // (20 tiles at a time, more on scroll) and a family row filters it on each
@@ -90,9 +91,9 @@ export const FAVORITES_CHIP = "favorites";
 /** Social, Soon (MESITA-2168) — a row since MESITA-2405; it was a Home pill. */
 export const SOCIAL_CHIP = "social";
 
-/** The column: Social · Favorites, a rule, then Featured and every guest
- *  family (MESITA-2383, MESITA-2384, MESITA-2405). The rule falls after
- *  FAVORITES_CHIP. Google Places and Mesita Selected are not guest choices
+/** The column: Social · Favorites · Featured, a rule, then every guest
+ *  family (MESITA-2383, MESITA-2384, MESITA-2411). Everything through
+ *  FEATURED_CHIP is pinned; the families after it scroll. Google Places and Mesita Selected are not guest choices
  *  (MESITA-2381): they are the sources Featured mixes. A family with
  *  nothing here says so rather than hiding. */
 export function placesChips(): {
@@ -113,6 +114,9 @@ export function placesChips(): {
     })),
   ];
 }
+
+/** Social, Favorites, Featured: the pinned head of the column (MESITA-2411). */
+export const PINNED_CHIPS = 3;
 
 /** Tiles drawn per page; the next page appends on scroll (MESITA-2384). */
 export const PLACES_PAGE = 20;
@@ -344,26 +348,27 @@ export function CatalogRails() {
 
   const categories = (
     <nav
-      className="bg-muted scrollbar-hide w-1/4 shrink-0 overflow-y-auto overscroll-y-contain"
+      className="bg-muted flex w-1/4 shrink-0 flex-col"
       aria-label="Places"
       data-places-categories
     >
-      <ul role="list" aria-label="Families">
-        {chips.map((c) =>
-          c.key === FAVORITES_CHIP ? (
-            <Fragment key={c.key}>
-              {categoryRow(c)}
-              <li
-                role="separator"
-                aria-hidden
-                className="border-foreground/15 mx-3 my-1 border-t"
-                data-places-rule
-              />
-            </Fragment>
-          ) : (
-            categoryRow(c)
-          ),
-        )}
+      {/* Pinned: Social · Favorites · Featured never scroll (MESITA-2411). */}
+      <ul role="list" aria-label="Yours" className="shrink-0" data-places-pinned>
+        {chips.slice(0, PINNED_CHIPS).map(categoryRow)}
+      </ul>
+      <div
+        role="separator"
+        aria-hidden
+        className="border-foreground/15 mx-3 my-1 shrink-0 border-t"
+        data-places-rule
+      />
+      <ul
+        role="list"
+        aria-label="Families"
+        className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
+        data-places-families
+      >
+        {chips.slice(PINNED_CHIPS).map(categoryRow)}
       </ul>
     </nav>
   );
