@@ -261,7 +261,7 @@ export function evaluatePlaceForMap(
     return {
       eligible: false,
       code: "family_not_eligible",
-      reason: "This kind of place isn't in Discovery › Map.",
+      reason: "This kind of place isn't one of Mesita's place types (Discovery's place rules).",
     };
   }
   if (

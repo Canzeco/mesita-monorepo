@@ -636,3 +636,10 @@ Deno.test("Area never embeds: no Area file calls an embedding or a vector signal
     }
   }
 });
+
+Deno.test("nearbyExcludedTypesForFamilies: only a general parent brings subtypes; a precise pill excludes nothing", () => {
+  assertEquals(nearbyExcludedTypesForFamilies(["pizza_restaurant"], ["pizza"]), []);
+  assertEquals(nearbyExcludedTypesForFamilies(["sushi_restaurant"], ["sushi"]), []);
+  // Dinner's parent also reaches restaurant subtypes filed in other groups.
+  assert(nearbyExcludedTypesForFamilies(["restaurant"], ["dinner"]).includes("dessert_restaurant"));
+});

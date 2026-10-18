@@ -30,14 +30,33 @@ export function familiesForGoogleType(
 /** Google's cap on `excludedPrimaryTypes` in one Nearby request. */
 const NEARBY_EXCLUDED_CAP = 50;
 
+/** Battery types Google treats as general parents: asked for, Nearby also
+ *  returns their more specific subtypes. Only these need exclusions; a
+ *  precise type (`pizza_restaurant`) brings back nothing else. */
+const NEARBY_GENERAL_PARENTS = new Set([
+  "restaurant",
+  "cafe",
+  "bar",
+  "bakery",
+  "night_club",
+  "tourist_attraction",
+]);
+
 /**
- * The Family gate pushed down EXACTLY (MESITA-2338). A family's Nearby
- * battery can be a general type (Dinner sends `restaurant`), and Google then
+ * The Family gate pushed down (MESITA-2338). A family's Nearby battery can
+ * be a general parent type (Dinner sends `restaurant`), and Google then
  * returns its precise subtypes too (`mexican_restaurant`, `pizza_restaurant`)
- * — types that belong to another family, which the gate would throw away
- * after the one billed call. This lists every Table A type in the same coarse
- * group as an included type that maps to none of the requested families, for
- * Nearby's `excludedPrimaryTypes`. Empty when no family is requested.
+ * — types the gate throws away after the one billed call, leaving a thin
+ * answer. For each included general parent this lists the Table A types in
+ * its coarse group (and, for `restaurant`, every `*_restaurant`) that map to
+ * none of the requested families, for Nearby's `excludedPrimaryTypes`.
+ * Empty when no family is requested or no general parent is included.
+ *
+ * Known edge, accepted: a Mesita-owned place whose Mesita family differs
+ * from its Google type's family (filed under Dinner, typed
+ * `mexican_restaurant`) is not returned under Dinner in the Google Places
+ * scope; it still shows under Dinner in Mesita Selected. Today every live
+ * category is the Google type, so the two agree.
  */
 export function nearbyExcludedTypesForFamilies(
   includedTypes: readonly string[],
@@ -45,14 +64,18 @@ export function nearbyExcludedTypesForFamilies(
 ): string[] {
   if (families.length === 0 || includedTypes.length === 0) return [];
   const included = new Set(includedTypes);
+  const parents = includedTypes.filter((t) => NEARBY_GENERAL_PARENTS.has(t));
+  if (parents.length === 0) return [];
   const groups = new Set(
-    includedTypes.map((t) => GOOGLE_TYPE_SUPER[t] ?? superForGoogleType(t)).filter(
+    parents.map((t) => GOOGLE_TYPE_SUPER[t] ?? superForGoogleType(t)).filter(
       (g): g is NonNullable<typeof g> => Boolean(g) && g !== "undefined",
     ),
   );
+  const restaurantParent = parents.includes("restaurant");
   const out: string[] = [];
   for (const [type, group] of Object.entries(GOOGLE_TYPE_SUPER)) {
-    if (!groups.has(group) || included.has(type)) continue;
+    const subtype = groups.has(group) || (restaurantParent && type.endsWith("_restaurant"));
+    if (!subtype || included.has(type)) continue;
     const fams = familiesForGoogleType(type);
     if (fams.some((f) => families.includes(f))) continue;
     out.push(type);

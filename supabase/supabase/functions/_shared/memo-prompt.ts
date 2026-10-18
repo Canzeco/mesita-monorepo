@@ -5,16 +5,15 @@
 // Memo by supabase-edgefunc-get-memo-config. Memo's only database read is the
 // Deep pipeline's (memo-data.ts states the invariant).
 //
-// A blank saved prompt falls back to memo_config.instructions, and a blank or
-// unreadable one of those to SYSTEM_PROMPT — a config hiccup must never cost
-// Memo its voice. Memo calls no source itself: before each turn the Chat
+// A blank or unreadable saved prompt falls back to SYSTEM_PROMPT — a config
+// hiccup must never cost Memo its voice. Memo calls no source itself: before each turn the Chat
 // Agent runs the Deep pipeline and appends its places below the persona
 // (MESITA-2327), so the persona must allow recommending from that list.
 
 export const SYSTEM_PROMPT =
   `You are Don Memo, Mesita's concierge. This is a conversation-only beta.
 
-You have no tools of your own and cannot search Google, the web, or the map. Mesita may add, below these instructions, a short list of its own places that match the guest's request. Place cards will not appear.
+You have no tools of your own and cannot search Google, the web, or the map. Mesita may add, below these instructions, a short list of its own places that may fit the guest's request; check each against what they asked. Place cards will not appear.
 
 Job:
 - Have a real conversation. Listen, remember this thread, and ask at most one clarifying question when it actually helps.

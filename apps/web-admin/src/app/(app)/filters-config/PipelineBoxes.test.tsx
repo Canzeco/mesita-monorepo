@@ -169,7 +169,7 @@ describe("the boxes tell the runtime's truth (MESITA-2338)", () => {
 
   it("Name says Google rows keep Google's order and derives Name as fed by Mesita only", () => {
     const name = boxes()[1];
-    expect(name).toContain("Its rows keep Google Autocomplete&#x27;s own order");
+    expect(name).toContain("No signal scores its rows; they carry Google Autocomplete&#x27;s own rank.");
     expect(name).toContain("Fed by Mesita Places Search.");
   });
 
@@ -180,7 +180,10 @@ describe("the boxes tell the runtime's truth (MESITA-2338)", () => {
     expect(area).toContain("Used by Area.");
   });
 
-  it("Name by Admin shows Find's own ordering, not the guest bar's", () => {
-    expect(boxes()[0]).toContain("Rows found by more sources come first");
+  it("Name by Admin shows Find's own ordering and rules, not the guest bar's", () => {
+    const nameAdmin = boxes()[0];
+    expect(nameAdmin).toContain("Rows found by more sources come first");
+    expect(nameAdmin).toContain("Text Search rows are Find&#x27;s own call");
+    expect(nameAdmin).not.toContain("Closed places never show (Discovery");
   });
 });

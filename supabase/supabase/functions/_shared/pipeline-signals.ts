@@ -101,15 +101,18 @@ export function popularity(
 
 // ── Name ──────────────────────────────────────────────────────────────────
 
-/** Diacritics off, lowercase, punctuation to spaces, single spaces. Letters
- *  and digits of every script survive (寿司, Кафе, مقهى), so a name outside
- *  Latin still matches itself. */
+/** Latin diacritics off (Café = Cafe), lowercase, punctuation to spaces,
+ *  single spaces. Letters, marks and digits of every other script survive
+ *  (寿司, Кафе, カフェ ≠ ガフェ), so a name outside Latin still matches itself
+ *  and only itself. Spanish ordinals fold (1ª = 1a). */
 export function normalizeName(s: string): string {
   return s
+    .replace(/ª/g, "a")
+    .replace(/º/g, "o")
     .normalize("NFD")
-    .replace(/\p{M}+/gu, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .replace(/[^\p{L}\p{M}\p{N}]+/gu, " ")
     .trim();
 }
 

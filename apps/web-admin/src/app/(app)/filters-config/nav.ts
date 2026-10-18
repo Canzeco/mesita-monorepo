@@ -12,6 +12,7 @@ export const FILTERS_PARENT = {
 
 // Deep link from Crenup, Manage Multiple and Single Place: what Google
 // Search, Create and Find may admit is Discovery's place rules — Mesita's
-// place types (and the stored Google floors, 0 = off, which no box edits) —
-// listed under the Name Pipeline box's always-on rules (MESITA-2338).
+// place types and the stored Google floors (map.minRating, minReviews,
+// minPopularity; 0 = off, no box edits them) — stated in the Name Pipeline
+// box's always-on rules (MESITA-2338).
 export const DISCOVERY_MAP_HREF = "/filters-config#s-name" as const;

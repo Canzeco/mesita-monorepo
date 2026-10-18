@@ -138,6 +138,10 @@ export function NameAdminBox(seed: ConfigSeed<DiscoveryConfig>) {
         </p>
       }
       scoring="Rows found by more sources come first, then Text Search rank, then Autocomplete rank, then Name. Duplicates merge."
+      rules={[
+        "Autocomplete and Mesita rows follow the guest bar's rules: closed places never show, Discovery › General's reviews floor cuts them, and a Google row must be one of Mesita's place types.",
+        "Text Search rows are Find's own call: Mesita's place types and the stored Google floors (map.minRating, minReviews, minPopularity; 0 is off and no box edits them), not Discovery › General.",
+      ]}
       save={<Save editor={editor} dirty={dirty} slices={BOX_SLICES.nameAdmin} />}
     >
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -524,7 +528,8 @@ export function DeepBox(seed: ConfigSeed<DiscoveryConfig>) {
         }}
       />
       <p className="text-muted-foreground type-meta">
-        0 keeps every place with a summary. Events (Mesita Social Search) join
+        0 keeps every place with a summary. An empty prompt uses Mesita&apos;s
+        default persona, kept in code. Events (Mesita Social Search) join
         when an engine retrieves them.
       </p>
     </PipelineBox>

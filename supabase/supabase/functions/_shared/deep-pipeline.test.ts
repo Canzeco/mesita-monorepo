@@ -131,5 +131,7 @@ Deno.test("Memo's only database client feeds the config read and the Deep pipeli
   assert(fn.includes("adminClient(env)"));
   assert(fn.includes("loadDiscoveryConfig(admin)"));
   assert(fn.includes("deepDepsFor(admin,"));
-  assertEquals(/admin\.(from|rpc)\(/.test(chat), false);
+  // Any member call, however the chain is wrapped (imports read `from "…"`).
+  assertEquals(/\.\s*(from|rpc)\s*\(/.test(chat), false);
+  assertEquals(chat.includes("createClient("), false);
 });

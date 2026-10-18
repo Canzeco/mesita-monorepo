@@ -270,7 +270,7 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     keepsOrder: ["google_autocomplete", "google_text"],
     rules: [
       "Closed places never show (Discovery › General's active check).",
-      "A Google row must have a Google type of one of the fifteen families, the only places Mesita can hold: hotels, shops and schools never show.",
+      "A Google row must have a Google type of one of the fifteen families, the only places Mesita can hold (hotels, shops and schools never show), and clear the stored Google floors (map.minRating, minReviews, minPopularity; 0 is off and no box edits them).",
       "Discovery › General's reviews floor (people, never stars; 0 is off) cuts Google and Mesita rows.",
     ],
     callers: ["The guest's Search bar", "Admin Single Place › Find"],

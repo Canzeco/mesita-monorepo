@@ -110,3 +110,10 @@ Deno.test("name: letters of every script survive normalization", () => {
   assertEquals(lexicalNameSimilarity("寿司", "寿司"), 1);
   assert(lexicalNameSimilarity("Кафе", "Кафе Пушкин") >= 0.8);
 });
+
+Deno.test("name: other scripts keep their marks, so different names never collide", () => {
+  assert(normalizeName("カフェ") !== normalizeName("ガフェ"));
+  assert(normalizeName("कमल") !== normalizeName("कमाल"));
+  assertEquals(normalizeName("Café"), normalizeName("Cafe"));
+  assertEquals(normalizeName("La 1ª Taquería"), "la 1a taqueria");
+});

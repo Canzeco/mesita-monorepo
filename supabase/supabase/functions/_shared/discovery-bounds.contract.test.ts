@@ -34,7 +34,11 @@ Deno.test("Area box bounds and provisional defaults match the server", () => {
   assertEquals(constant("REFERENCE_RATING_MAX"), SIGNAL_PARAM_BOUNDS.referenceRating.max);
   assertEquals(constant("REFERENCE_REVIEWS_MIN"), SIGNAL_PARAM_BOUNDS.referenceReviews.min);
   assertEquals(constant("REFERENCE_REVIEWS_MAX"), SIGNAL_PARAM_BOUNDS.referenceReviews.max);
-  assertEquals(admin.includes(`halfDistanceKm: ${PROXIMITY_HALF_DISTANCE_KM_DEFAULT}`), true);
-  assertEquals(admin.includes(`referenceRating: ${POPULARITY_REFERENCE_RATING_DEFAULT}`), true);
-  assertEquals(admin.includes(`referenceReviews: ${POPULARITY_REFERENCE_REVIEWS_DEFAULT}`), true);
+  const d = admin.match(
+    /proximity: \{ halfDistanceKm: ([0-9.]+) \},\s*popularity: \{ referenceRating: ([0-9.]+), referenceReviews: ([0-9_]+) \}/,
+  );
+  assertEquals(
+    d ? [Number(d[1]), Number(d[2]), Number(d[3].replaceAll("_", ""))] : null,
+    [PROXIMITY_HALF_DISTANCE_KM_DEFAULT, POPULARITY_REFERENCE_RATING_DEFAULT, POPULARITY_REFERENCE_REVIEWS_DEFAULT],
+  );
 });

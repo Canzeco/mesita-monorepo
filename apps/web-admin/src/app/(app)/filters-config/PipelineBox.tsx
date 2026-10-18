@@ -48,6 +48,7 @@ export function PipelineBox({
   callers,
   explanation,
   scoring,
+  rules,
   children,
   save,
 }: {
@@ -61,6 +62,9 @@ export function PipelineBox({
   /** Overrides the pipeline's Scoring line when this caller orders rows its
    *  own way (admin Find). */
   scoring?: string;
+  /** Overrides the pipeline's always-on rules when this caller applies
+   *  different ones (admin Find's Text Search column). */
+  rules?: readonly string[];
   /** The Parameters part. */
   children: React.ReactNode;
   /** The Save part. */
@@ -111,7 +115,7 @@ export function PipelineBox({
                 </span>
                 {p.keepsOrder.includes(key) ? (
                   <span className="text-muted-foreground type-meta">
-                    Its rows keep {s.label}&apos;s own order; no signal scores them.
+                    No signal scores its rows; they carry {s.label}&apos;s own rank.
                   </span>
                 ) : null}
               </li>
@@ -175,7 +179,7 @@ export function PipelineBox({
 
       <Part label="Always-on rules">
         <ul className="flex flex-col gap-1.5 text-sm">
-          {p.rules.map((rule) => (
+          {(rules ?? p.rules).map((rule) => (
             <li key={rule}>{rule}</li>
           ))}
         </ul>
