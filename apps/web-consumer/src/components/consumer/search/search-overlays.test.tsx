@@ -1135,6 +1135,42 @@ describe("anchor helpers", () => {
     expect(stub.photos).toEqual([]);
   });
 
+  it("a Google-only Text Search pick's draft carries its card (MESITA-2325)", () => {
+    const stub = anchorPlaceFromPrediction({
+      ...GOOGLE_PICK,
+      card: {
+        id: "g:other",
+        category: "taco_restaurant",
+        category_label: "Taco restaurant",
+        price_level: 1,
+        google_stars_overall: 4.7,
+        google_review_count: 320,
+        open_now: true,
+        phone: "+52 81 1234 5678",
+        google_maps_url: "https://maps.google.com/?cid=9",
+        lat: 0,
+        lng: 0,
+      },
+    })!;
+    expect(stub.id).toBe("g:ChIJx");
+    expect(stub.lat).toBe(GOOGLE_PICK.lat);
+    expect(stub.category_label).toBe("Taco restaurant");
+    expect(stub.price_level).toBe(1);
+    expect(stub.google_review_count).toBe(320);
+    expect(stub.open_now).toBe(true);
+    expect(stub.phone).toBe("+52 81 1234 5678");
+    expect(stub.google_maps_url).toBe("https://maps.google.com/?cid=9");
+  });
+
+  it("a Mesita row ignores any card", () => {
+    const row = anchorPlaceFromPrediction({
+      ...GOOGLE_PICK,
+      mesitaId: "m-1",
+      card: { category_label: "Should not show" },
+    })!;
+    expect(row.category_label).toBeNull();
+  });
+
   it("anchorPlaceFromPrediction keeps Mesita identity for stamped rows", () => {
     const row = anchorPlaceFromPrediction({
       ...GOOGLE_PICK,

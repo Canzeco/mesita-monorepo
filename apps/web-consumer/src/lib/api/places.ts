@@ -304,6 +304,9 @@ export type PlacePrediction = {
   mainText: string;
   secondaryText: string;
   state: PlacePredictionState;
+  /** A Google-only Text Search row's card, the same stub Nearby sends
+   *  (MESITA-2325): readable type, price, stars, open now, links. */
+  card?: Partial<Place>;
   /** Server's answer: did an Enrich run complete (`enriched_at` set)? No
    *  column fallback on this lane, so an older payload reads as
    *  not-enriched (gray understates). */

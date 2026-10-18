@@ -471,3 +471,21 @@ Deno.test("admin's place picker runs the deep lane, places only", async () => {
   // list whose every row offers Create.
   assertEquals(code.includes("locations"), false);
 });
+
+Deno.test("toWire: a Text Search card rides Google-only rows, never a Mesita one (MESITA-2325)", () => {
+  const card = { id: "g:t1", category_label: "Sports bar", price_level: 2 };
+  assertEquals(toWire(item({ placeId: "t1", mainText: "Bar", card })).card, card);
+  assertEquals(
+    "card" in toWire(item({ placeId: "t1", mainText: "Bar", card, mesitaId: "m1" })),
+    false,
+  );
+  assertEquals("card" in toWire(item({ placeId: "a1", mainText: "Auto" })), false);
+});
+
+Deno.test("Text Search asks for the listing mask and builds its card with googleStub", async () => {
+  const src = await Deno.readTextFile(new URL("./consumer-search-lane.ts", import.meta.url));
+  const fn = src.slice(src.indexOf("async function fetchTextSearch("));
+  assertEquals(fn.includes('"X-Goog-FieldMask": NEARBY_FIELD_MASK'), true);
+  assertEquals(fn.includes("nearbyHitFromPlace(p)"), true);
+  assertEquals(fn.includes("card: googleStub(hit, null)"), true);
+});

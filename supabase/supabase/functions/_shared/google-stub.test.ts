@@ -1,7 +1,7 @@
 // A Google-only card carries everything the Nearby mask returns (MESITA-2313).
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { googleStub, humanizeGoogleType } from "./google-stub.ts";
-import { NEARBY_FIELD_MASK, type NearbyHit } from "./nearby-places.ts";
+import { NEARBY_FIELD_MASK, type NearbyHit, nearbyHitFromPlace } from "./nearby-places.ts";
 
 const HIT: NearbyHit = {
   placeId: "ChIJ-bar",
@@ -68,4 +68,25 @@ Deno.test("mask: asks for every card field, never a photo or an Atmosphere field
   for (const dear of ["photos", "reviews", "editorialSummary", "generativeSummary"]) {
     assertEquals(NEARBY_FIELD_MASK.includes(dear), false, dear);
   }
+});
+
+Deno.test("one parser: a listing place becomes the same hit for Nearby and Text Search", () => {
+  const hit = nearbyHitFromPlace({
+    id: "places/ChIJ-bar",
+    displayName: { text: "La Cantina" },
+    formattedAddress: HIT.address,
+    shortFormattedAddress: " Av. Siempre Viva 742, Roma Nte. ",
+    location: { latitude: 19.41, longitude: -99.16 },
+    rating: 4.6,
+    userRatingCount: 812,
+    businessStatus: "OPERATIONAL",
+    primaryType: "sports_bar",
+    primaryTypeDisplayName: { text: "Sports bar" },
+    priceLevel: "PRICE_LEVEL_MODERATE",
+    currentOpeningHours: { openNow: true },
+    googleMapsUri: "https://maps.google.com/?cid=1",
+    internationalPhoneNumber: "+52 55 1234 5678",
+    websiteUri: "https://cantina.example",
+  });
+  assertEquals(hit, HIT);
 });

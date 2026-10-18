@@ -73,6 +73,12 @@ import {
 import { isEnrichedPlace } from "./place-family-keys.ts";
 import { haversineKm, radiusBoundingBox } from "./geo.ts";
 import { rankPlacesSearch } from "./places-search-signals.ts";
+import {
+  type GooglePlaceListing,
+  NEARBY_FIELD_MASK,
+  nearbyHitFromPlace,
+} from "./nearby-places.ts";
+import { googleStub } from "./google-stub.ts";
 
 export const NAME_MIN_COSINE = 0.4;
 /** Pay has no Google fallback, so its lane never collapses to nothing. */
@@ -134,6 +140,9 @@ export type LaneItem = {
   /** Discovery > General inputs. Never sent to the client. */
   businessStatus?: string | null;
   reviewCount?: number | null;
+  /** Text Search rows: the Google-only card (`googleStub`). Sent only while
+   *  the row is not on Mesita (MESITA-2325). */
+  card?: Record<string, unknown>;
 };
 
 // Autocomplete (New) marks regions, cities and areas with these types.
@@ -771,6 +780,7 @@ export function toWire(item: LaneItem) {
     ...(item.mesitaSlug ? { mesitaSlug: item.mesitaSlug } : {}),
     ...(item.lat != null ? { lat: item.lat } : {}),
     ...(item.lng != null ? { lng: item.lng } : {}),
+    ...(item.card && !item.mesitaId ? { card: item.card } : {}),
   };
 }
 // businessStatus / reviewCount are deliberately NOT on the wire. They are
@@ -940,8 +950,10 @@ async function fetchTextSearch(
       headers: {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": apiKey,
-        "X-Goog-FieldMask":
-          "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.businessStatus,places.primaryType",
+        // Nearby's listing mask (MESITA-2325): Text Search bills the same
+        // Pro/Enterprise tiers, and `rating` already puts the call on
+        // Enterprise, so the card's other fields add no spend.
+        "X-Goog-FieldMask": NEARBY_FIELD_MASK,
       },
       body: JSON.stringify(body),
     });
@@ -960,48 +972,29 @@ async function fetchTextSearch(
     );
     return [];
   }
-  const data = (await r.json()) as {
-    places?: Array<{
-      id?: string;
-      displayName?: { text?: string };
-      formattedAddress?: string;
-      location?: { latitude?: number; longitude?: number };
-      rating?: number;
-      userRatingCount?: number;
-      businessStatus?: string;
-      primaryType?: string;
-    }>;
-  };
+  const data = (await r.json()) as { places?: GooglePlaceListing[] };
   const out: LaneItem[] = [];
   for (const p of data.places ?? []) {
-    if (!p.id || !p.displayName?.text) continue;
-    const lat = typeof p.location?.latitude === "number"
-      ? p.location.latitude
-      : null;
-    const lng = typeof p.location?.longitude === "number"
-      ? p.location.longitude
-      : null;
+    const hit = nearbyHitFromPlace(p);
+    if (!hit.placeId || !hit.name) continue;
     const eligible = evaluatePlaceForMap(gate, {
-      primaryType: p.primaryType ?? null,
-      rating: typeof p.rating === "number" ? p.rating : null,
-      reviewCount: typeof p.userRatingCount === "number"
-        ? p.userRatingCount
-        : null,
+      primaryType: hit.primaryType,
+      rating: hit.rating,
+      reviewCount: hit.reviewCount,
     }).eligible;
     if (!eligible) continue;
     out.push({
-      placeId: stripPlacesPrefix(p.id),
-      mainText: p.displayName.text,
-      secondaryText: p.formattedAddress ?? "",
+      placeId: hit.placeId,
+      mainText: hit.name,
+      secondaryText: hit.address,
       state: "not_in_mesita",
-      lat,
-      lng,
-      businessStatus: typeof p.businessStatus === "string"
-        ? p.businessStatus
-        : null,
-      reviewCount: typeof p.userRatingCount === "number"
-        ? p.userRatingCount
-        : null,
+      lat: hit.lat,
+      lng: hit.lng,
+      businessStatus: hit.businessStatus,
+      reviewCount: hit.reviewCount,
+      // The same Google-only card Nearby sends, so a typed pick opens a
+      // draft as rich as a Feed card's (MESITA-2325).
+      card: googleStub(hit, null),
     });
     if (out.length >= limit) break;
   }
