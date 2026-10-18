@@ -84,6 +84,8 @@ export const HOME_MODES: Mode[] = [
   },
 ];
 
+// The line under the tabs is stronger than a hairline (Pato, MESITA-2381):
+// header and body read as two menus.
 export function ModeTabs() {
   const pathname = barePath(usePathname() ?? "/");
   const supabase = useBrowserSupabase();
@@ -102,7 +104,7 @@ export function ModeTabs() {
   const active = "bg-primary text-primary-foreground shadow-glow";
 
   return (
-    <div className="border-border bg-background/90 sticky top-0 z-20 shrink-0 border-b backdrop-blur-xl">
+    <div className="border-foreground/20 bg-background/90 sticky top-0 z-20 shrink-0 border-b-2 backdrop-blur-xl">
       {/* pt-3 clears the Soon chip: it hangs 8px above the pill, and
           overflow-x-auto clips anything past the padding edge. */}
       <div className="scrollbar-hide overflow-x-auto px-2 pt-3 pb-2.5">
