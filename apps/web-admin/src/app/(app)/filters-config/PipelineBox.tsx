@@ -65,13 +65,42 @@ export function PipelineBox({
   /** Overrides the pipeline's always-on rules when this caller applies
    *  different ones (admin Find's Text Search column). */
   rules?: readonly string[];
-  /** The Parameters part. */
-  children: React.ReactNode;
+  /** The Parameters part (none when the pipeline is not live). */
+  children?: React.ReactNode;
   /** The Save part. */
   save?: React.ReactNode;
 }) {
   const p = DISCOVERY_PIPELINES.find((x) => x.key === pipeline);
   if (!p) return null;
+  if (!p.live) {
+    // Soon (MESITA-2345): the title, one line and the chip. Its controls are
+    // deleted from the markup, not hidden (the ConfigSoon rule).
+    return (
+      <section
+        id={id}
+        aria-labelledby={`${id}-title`}
+        className="border-border bg-card scroll-mt-16 overflow-hidden rounded-2xl border border-dashed"
+      >
+        <div className="flex items-center gap-3 px-4 py-4 sm:px-6">
+          <span
+            aria-hidden
+            className="bg-muted/60 text-muted-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+          >
+            {icon}
+          </span>
+          <div className="min-w-0">
+            <h2 id={`${id}-title`} className="font-display text-lg font-semibold tracking-tight">
+              {title}{" "}
+              <span className="bg-muted text-muted-foreground ml-1 rounded-full px-2 py-0.5 align-middle type-meta font-bold tracking-wider uppercase">
+                Soon
+              </span>
+            </h2>
+            <div className="text-muted-foreground type-meta">{explanation}</div>
+          </div>
+        </div>
+      </section>
+    );
+  }
   return (
     <section
       id={id}

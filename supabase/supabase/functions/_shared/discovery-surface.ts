@@ -255,6 +255,9 @@ export type DiscoveryPipelineFact = {
   rules: readonly string[];
   /** Who runs it: views, a bar, or the Chat Agent. Never a pipeline. */
   callers: readonly string[];
+  /** False while no guest reaches it (its caller is a Soon screen): the
+   *  admin draws its box as Soon, with no controls. */
+  live: boolean;
 };
 
 export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
@@ -273,6 +276,7 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
       "Discovery › General's reviews floor (people, never stars; 0 is off) cuts Google and Mesita rows.",
     ],
     callers: ["The guest's Search bar", "Admin Single Place › Find", "Chat (Don Memo)"],
+    live: true,
   },
   {
     key: "area",
@@ -289,6 +293,7 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
       "Google Places scope only: the guest's Google Reviews stop (10+ · 100+ · 1,000+, default 100+) or the operator's floor, whichever is higher. Mesita Selected has no review floor.",
     ],
     callers: ["Map (the Search tab)", "Catalog (Home's Feed)", "Chat (Don Memo)"],
+    live: true,
   },
   {
     key: "deep",
@@ -304,6 +309,8 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
       "Only ready profiles with a summary vector can be judged; the rest are left out.",
     ],
     callers: ["Chat (Don Memo)"],
+    // Home's Chat pill is a Soon page: no guest reaches Deep (MESITA-2345).
+    live: false,
   },
 ];
 

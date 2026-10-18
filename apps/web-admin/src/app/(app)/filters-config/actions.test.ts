@@ -127,7 +127,8 @@ describe("the Deep box", () => {
   it("writes Deep and the Chat prompt; leaves the Area and Name fields", async () => {
     const live = liveConfig();
     const sent = armed(live);
-    await updateDiscoveryConfig(editedEverywhere(live), [...BOX_SLICES.deep]);
+    // No box saves Deep since MESITA-2345 (Soon); the slices stay safe.
+    await updateDiscoveryConfig(editedEverywhere(live), ["deep", "chat"]);
     expect(sent.config?.deep).toEqual({ limit: 9, minSimilarity: 0.3 });
     expect(sent.config?.chat.prompt).toBe("Be brief.");
     expect(sent.config?.map).toEqual(live.map);
@@ -179,7 +180,8 @@ describe("the Name boxes", () => {
 
 describe("the boxes' slices", () => {
   it("are the four boxes, each with its own slices, none shared", () => {
-    expect(Object.keys(BOX_SLICES)).toEqual(["nameAdmin", "name", "area", "deep"]);
+    // Deep is Soon (MESITA-2345): three boxes save.
+    expect(Object.keys(BOX_SLICES)).toEqual(["nameAdmin", "name", "area"]);
     const all = Object.values(BOX_SLICES).flat();
     expect(new Set(all).size).toBe(all.length);
   });
