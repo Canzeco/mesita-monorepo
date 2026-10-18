@@ -64,9 +64,6 @@ const STATE_GROUPS = [
 
 export const rowNameId = (i: number) => `find-row-name-${i}`;
 
-/** Quick is the lighter action, so it stays an outline. Full is filled. */
-const QUICK_PILL_CLASS = `border-border text-foreground hover:border-foreground/40 inline-flex items-center gap-1.5 rounded-full border bg-card px-3.5 py-1.5 text-xs font-semibold transition disabled:opacity-60 ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
-
 const NO_IDS: ReadonlySet<string> = new Set();
 const NO_ERRORS: Readonly<Record<string, string>> = {};
 
@@ -554,7 +551,9 @@ function ActionCell({
                   disabled={disabled}
                   title={action.title}
                   aria-label={`${action.label} enrich ${row.name}`}
-                  className={`${action.depth === "quick" ? QUICK_PILL_CLASS : PILL_BUTTON_CLASS} whitespace-nowrap`}
+                  /* decision: Pato (2026-10-17, MESITA-2318) — Open · Quick ·
+                     Full are one colour; Quick is no longer an outline. */
+                  className={`${PILL_BUTTON_CLASS} whitespace-nowrap`}
                 >
                   {action.label}
                 </button>

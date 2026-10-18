@@ -119,3 +119,20 @@ describe("factOn enriched — an Enrich run completed (MESITA-2154)", () => {
     ).toBe(false);
   });
 });
+
+describe("factOn selected — Mesita Selected, the Map/Feed set (MESITA-2318)", () => {
+  const selected = {
+    ...GAP_FIXTURE,
+    enriched: true,
+    content_state: "ready",
+    listed: true,
+  } as PlaceHit;
+  it("is Enriched, ready and switched on", () => {
+    expect(factOn(selected, "selected")).toBe(true);
+  });
+  it("is not a Created place, a run in flight, or a Disabled place", () => {
+    expect(factOn({ ...selected, enriched: false }, "selected")).toBe(false);
+    expect(factOn({ ...selected, content_state: "generating" }, "selected")).toBe(false);
+    expect(factOn({ ...selected, listed: false }, "selected")).toBe(false);
+  });
+});
