@@ -14,14 +14,15 @@ const reviews = readFileSync(join(here, "ReviewsStateCard.tsx"), "utf8");
 const rowNames = (src: string) =>
   [...src.matchAll(/<StateRow\s+name="([^"]+)"/g)].map((m) => m[1]);
 
-describe("the six states of a place", () => {
-  it("Profile States prints Created · Pulsing · Requested · Enriching · Enriched · Disabled", () => {
+describe("the seven states of a place", () => {
+  it("Profile States prints Created · Pulsing · Requested · Enriching · Enriched · Selected · Disabled", () => {
     expect(rowNames(general)).toEqual([
       "Created",
       "Pulsing",
       "Requested",
       "Enriching",
       "Enriched",
+      "Selected",
       "Disabled",
     ]);
     expect(general).toContain('title="Profile States"');

@@ -29,8 +29,10 @@ import { DatesBox, LinksBox, TagsBox } from "./place-detail/tags-links-meta";
 //   2. Not Enriched: the vote panel, straight under the summary — no strip
 //      with one lone "Enrich" tab (MESITA-2315); while a Google-only profile
 //      is being created, the Creating panel sits there instead
-//      (MESITA-2307). Enriched: the sticky strip, Overview · Reviews ·
-//      Menu (Soon) · Rewards (Soon).
+//      (MESITA-2307). Under it, Google's own reviews — the up-to-5 the
+//      Details call at create stored — as the same flat list, still no
+//      strip (MESITA-2317). Enriched: the sticky strip, Overview · Reviews ·
+//      Menu (Soon) · Rewards (Soon), Reviews then holding Apify's 100.
 //   3. The active tab's boxes.
 
 export function PlaceDetailBody({
@@ -80,6 +82,11 @@ export function PlaceDetailBody({
           error={actions?.request?.error ?? null}
           onRequest={actions?.onRequest}
         />
+      )}
+      {!place.is_enriched && place.google_reviews.length > 0 && (
+        <div className="px-4 pt-3">
+          <GoogleReviewsBox place={place} />
+        </div>
       )}
       {place.is_enriched && (
         <div className="flex flex-col gap-3 px-4">
