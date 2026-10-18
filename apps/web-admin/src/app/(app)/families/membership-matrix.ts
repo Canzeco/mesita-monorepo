@@ -28,6 +28,11 @@ export function cellOn(row: MembershipRow, familySlug: string): boolean {
   return row.familyKeys.includes(familySlug);
 }
 
+/** No guest family: a valid answer, not a gap. These never reach a guest (MESITA-2382). */
+export function inNoFamily(row: MembershipRow): boolean {
+  return !row.familyKeys.some((key) => key && key !== "undefined");
+}
+
 /** The column shows spaces. Search must hit that label and the stored slug. */
 export function googleTypeHaystack(slug: string): string {
   return `${slug.replaceAll("_", " ")} ${slug}`;

@@ -12,6 +12,17 @@ Deno.test("familiesForGoogleType: a gastropub is dinner and drinks", () => {
   assertEquals(familiesForGoogleType("gas_station"), []);
 });
 
+Deno.test("familiesForGoogleType: a place that is not a trip sits in no family (MESITA-2382)", async () => {
+  const sql = await Deno.readTextFile(
+    new URL("../../migrations/20261018200000_atlas_loose_types_no_family.sql", import.meta.url),
+  );
+  const slugs = [...sql.matchAll(/^\s+'([a-z_]+)',?$/gm)].map((m) => m[1]);
+  assertEquals(slugs.length, 23);
+  for (const slug of [...slugs, "car_repair", "church", "hotel"]) {
+    assertEquals(familiesForGoogleType(slug), [], slug);
+  }
+});
+
 Deno.test("familiesForGoogleType accepts the _restaurant alias", () => {
   assertEquals(familiesForGoogleType("fine_dining"), ["dinner"]);
   assertEquals(familiesForGoogleType("FINE_DINING"), ["dinner"]);

@@ -587,8 +587,10 @@ Deno.test("nearbyExcludedTypesForFamilies: Dinner excludes the precise restauran
   }
   assertEquals(ex.includes("restaurant"), false);
   assert(ex.length <= 50);
-  // No family asked: no exclusion, the call is unchanged.
-  assertEquals(nearbyExcludedTypesForFamilies(FEED_GOOGLE_TYPES, []), []);
+  // No family asked: only the restaurant-group types that sit in no family are cut.
+  const all = nearbyExcludedTypesForFamilies(["restaurant"], []);
+  assert(all.includes("meal_delivery"));
+  for (const t of ["mexican_restaurant", "pizza_restaurant", "restaurant"]) assertEquals(all.includes(t), false, t);
   // Asking Dinner and Tacos keeps Mexican.
   assertEquals(
     nearbyExcludedTypesForFamilies(["restaurant", "mexican_restaurant"], ["dinner", "tacos"])
@@ -597,7 +599,13 @@ Deno.test("nearbyExcludedTypesForFamilies: Dinner excludes the precise restauran
   );
 });
 
-Deno.test("google: a family pill sends excludedPrimaryTypes; no pill sends none", async () => {
+Deno.test("nearbyExcludedTypesForFamilies: no pill still cuts the subtypes that sit in no family (MESITA-2382)", () => {
+  const ex = nearbyExcludedTypesForFamilies(["tourist_attraction"], []);
+  for (const t of ["event_venue", "marina", "plaza"]) assert(ex.includes(t), t);
+  for (const t of ["zoo", "amusement_park", "tourist_attraction"]) assertEquals(ex.includes(t), false, t);
+});
+
+Deno.test("google: a family pill sends excludedPrimaryTypes; a precise type with no pill sends none", async () => {
   reset();
   const g = stubGoogle([{ id: "a", lat: 25.6701 }]);
   try {
@@ -607,7 +615,7 @@ Deno.test("google: a family pill sends excludedPrimaryTypes; no pill sends none"
     assert(Array.isArray(body.excludedPrimaryTypes));
     assert(body.excludedPrimaryTypes.includes("mexican_restaurant"));
     reset();
-    await selectGooglePlaces(deps().d);
+    await selectGooglePlaces(deps({ types: ["pizza_restaurant"] }).d);
     const plain = JSON.parse(nearbyCalls(g.calls)[1].body ?? "{}");
     assertEquals("excludedPrimaryTypes" in plain, false);
   } finally {
