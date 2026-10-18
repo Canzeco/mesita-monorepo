@@ -22,22 +22,35 @@ import { ActiveDot } from "./ActiveDot";
 // mark the location disc wears for a held fix; the disc itself stays the
 // bar's neutral chrome. The accessible name carries the word the disc no
 // longer prints, and the count.
+//
+// Since MESITA-2401 it sits at the right edge of Search's HEADER
+// (`variant="header"`): the pills' resting grey, a pill's height, no
+// shadow. Without `onOpenFilters` (Search › Chat) it is disabled in place.
 export function SearchFilterRow({
   count,
   onOpenFilters,
+  variant = "floating",
 }: {
   count: number;
-  onOpenFilters: () => void;
+  onOpenFilters?: () => void;
+  variant?: "floating" | "header";
 }) {
   const applied = count > 0;
+  const disabled = !onOpenFilters;
   return (
     <button
       type="button"
       onClick={onOpenFilters}
-      aria-label={applied ? `Filters, ${count} applied` : "Filters"}
+      disabled={disabled}
+      aria-label={disabled ? "Filters (not for Chat yet)" : applied ? `Filters, ${count} applied` : "Filters"}
       aria-haspopup="dialog"
       aria-pressed={applied}
-      className="shadow-elev border-border bg-card/95 text-foreground relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border backdrop-blur-xl transition active:scale-[0.97]"
+      className={
+        variant === "header"
+          ? "bg-muted/60 text-foreground hover:bg-muted relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40"
+          : "shadow-elev border-border bg-card/95 text-foreground relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border backdrop-blur-xl transition active:scale-[0.97]"
+      }
+      data-search-filters
     >
       <SlidersHorizontal
         className="h-5 w-5 shrink-0"

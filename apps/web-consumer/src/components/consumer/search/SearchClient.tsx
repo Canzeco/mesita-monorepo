@@ -87,7 +87,7 @@ import {
   type ViewportBox,
 } from "./SearchMap";
 import { SearchBar } from "./SearchBar";
-import { SearchFilterRow } from "./SearchFilterRow";
+import { SearchHeader } from "./SearchHeader";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import type { AddState } from "./add-state";
 import { SearchRailOverlay } from "./search-catalog-overlays";
@@ -806,54 +806,57 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   }, [railCollapsed, railSelectedId, catalog, railIndex]);
 
   return (
-    <div className="relative min-h-0 flex-1 overflow-hidden">
-      {/* Base layer — pins are the nearby catalog after Places scope + Family. */}
-      <SearchMap
-        apiKey={apiKey}
-        places={catalog}
-        userLocation={userLocation}
-        viewCenter={center}
-        selectedId={railSelectedId}
-        pins={searchPins}
-        cameraAnchor={anchor?.camera ?? null}
-        // The RAW selection — a tap, a scroll, a bar pick. railSelectedId
-        // adds the card-0 fallback, which rings but must never pan.
-        panTargetId={selectedId}
-        onSelectPlace={handleSelectPlace}
-        onOpenPlace={handleOpenPlace}
-        onSelectPin={handleSelectPin}
-        onFirstViewport={onFirstViewport}
-        onUserViewport={onUserViewport}
+    <div className="flex min-h-0 flex-1 flex-col">
+      {/* Search's header (MESITA-2401): Search · Chat, Filters at the right. */}
+      <SearchHeader
+        filterCount={mapFilterCount(filters)}
+        onOpenFilters={() => setFiltersOpen(true)}
       />
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        {/* Base layer — pins are the nearby catalog after Places scope + Family. */}
+        <SearchMap
+          apiKey={apiKey}
+          places={catalog}
+          userLocation={userLocation}
+          viewCenter={center}
+          selectedId={railSelectedId}
+          pins={searchPins}
+          cameraAnchor={anchor?.camera ?? null}
+          // The RAW selection — a tap, a scroll, a bar pick. railSelectedId
+          // adds the card-0 fallback, which rings but must never pan.
+          panTargetId={selectedId}
+          onSelectPlace={handleSelectPlace}
+          onOpenPlace={handleOpenPlace}
+          onSelectPin={handleSelectPin}
+          onFirstViewport={onFirstViewport}
+          onUserViewport={onUserViewport}
+        />
 
-      {/* Floating top overlay — location disc · query bar · Filters disc
-          (Pato, 2026-10-17). The pair that keeps the discs visible:
-          `min-w-0 flex-1` on the bar, `shrink-0` on each disc. */}
-      <div className="absolute inset-x-3 top-3 z-30 flex flex-col gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <SearchLocateButton
-            located={location !== null}
-            locating={locating}
-            onClick={recentreOnGuest}
-          />
-          <div className="min-w-0 flex-1">
-            <SearchBar
-              query={query}
-              showClear={query.length > 0}
-              onQueryChange={updateQuery}
-              onFocus={() => setBarFocused(true)}
-              onBlur={() => setBarFocused(false)}
-              onClear={() => updateQuery("")}
-              placeholder="Search places by name…"
+        {/* Floating top overlay — location disc · query bar (Pato,
+          2026-10-17; Filters moved up into the header, MESITA-2401). The
+          pair that keeps the disc visible: `min-w-0 flex-1` on the bar,
+          `shrink-0` on the disc. */}
+        <div className="absolute inset-x-3 top-3 z-30 flex flex-col gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <SearchLocateButton
+              located={location !== null}
+              locating={locating}
+              onClick={recentreOnGuest}
             />
+            <div className="min-w-0 flex-1">
+              <SearchBar
+                query={query}
+                showClear={query.length > 0}
+                onQueryChange={updateQuery}
+                onFocus={() => setBarFocused(true)}
+                onBlur={() => setBarFocused(false)}
+                onClear={() => updateQuery("")}
+                placeholder="Search places by name…"
+              />
+            </div>
           </div>
-          <SearchFilterRow
-            count={mapFilterCount(filters)}
-            onOpenFilters={() => setFiltersOpen(true)}
-          />
-        </div>
 
-        {/* RESULTS DROP FROM THE BAR, the way every autocomplete does and the
+          {/* RESULTS DROP FROM THE BAR, the way every autocomplete does and the
             way the old standalone Search page stacked them: header band, then
             the list directly beneath it. Nesting them in this same flex column
             is what guarantees that — no top offset to keep in sync with the
@@ -864,65 +867,66 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
             covered the map. `max-h` sizes to content, so three results take a
             third of the screen and the pins stay visible underneath — the
             overlays test pins the absence of a fixed height. */}
-        {querying && (
-          <div className="border-border bg-card/95 shadow-elev flex max-h-[55dvh] min-h-0 flex-col overflow-hidden rounded-2xl border backdrop-blur-xl">
-            <SearchResultsPanel
-              query={query}
-              searching={searching}
-              searchError={searchError}
-              predictions={predictions}
-              addStates={addStates}
-              onPick={handleBarPick}
-              onClearSearch={() => updateQuery("")}
-              onRetry={() => {
-                setSearchError(null);
-                setSearching(true);
-                setSearchNonce((n) => n + 1);
-              }}
-            />
-          </div>
-        )}
+          {querying && (
+            <div className="border-border bg-card/95 shadow-elev flex max-h-[55dvh] min-h-0 flex-col overflow-hidden rounded-2xl border backdrop-blur-xl">
+              <SearchResultsPanel
+                query={query}
+                searching={searching}
+                searchError={searchError}
+                predictions={predictions}
+                addStates={addStates}
+                onPick={handleBarPick}
+                onClearSearch={() => updateQuery("")}
+                onRetry={() => {
+                  setSearchError(null);
+                  setSearching(true);
+                  setSearchNonce((n) => n + 1);
+                }}
+              />
+            </div>
+          )}
 
-        {fetchError && (
-          <p className={cn(ERROR_BOX_CLASS, "rounded-xl backdrop-blur")}>
-            {fetchError}
-          </p>
-        )}
-      </div>
+          {fetchError && (
+            <p className={cn(ERROR_BOX_CLASS, "rounded-xl backdrop-blur")}>
+              {fetchError}
+            </p>
+          )}
+        </div>
 
-      {/* The catalog rail steps aside for the whole of search mode: its cards
+        {/* The catalog rail steps aside for the whole of search mode: its cards
           are the nearby catalog, not the results, so showing both would be two
           lists answering different questions at once — and on a phone the
           keyboard is already covering the half of the map they shared. */}
-      {!searchMode && (
-        <SearchRailOverlay
-          places={catalog}
-          catalogLoading={catalogLoading}
-          railCollapsed={railCollapsed}
-          railIndex={railIndex}
-          selectedId={railSelectedId}
-          railScrollRef={railScrollRef}
-          onShowRail={() => setRailCollapsed(false)}
-          onHideRail={() => setRailCollapsed(true)}
-          onRailScroll={handleRailScroll}
-          onSelectPlace={handleSelectPlace}
-          onOpenPlace={handleOpenPlace}
-          setRailCardRef={(placeId, el) => {
-            railRefs.current.set(placeId, el);
-          }}
-        />
-      )}
+        {!searchMode && (
+          <SearchRailOverlay
+            places={catalog}
+            catalogLoading={catalogLoading}
+            railCollapsed={railCollapsed}
+            railIndex={railIndex}
+            selectedId={railSelectedId}
+            railScrollRef={railScrollRef}
+            onShowRail={() => setRailCollapsed(false)}
+            onHideRail={() => setRailCollapsed(true)}
+            onRailScroll={handleRailScroll}
+            onSelectPlace={handleSelectPlace}
+            onOpenPlace={handleOpenPlace}
+            setRailCardRef={(placeId, el) => {
+              railRefs.current.set(placeId, el);
+            }}
+          />
+        )}
 
-      <LocalSheet
-        open={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
-        ariaLabel="Filters"
-      >
-        <SearchMapFilters
+        <LocalSheet
+          open={filtersOpen}
           onClose={() => setFiltersOpen(false)}
-          count={catalogLoading ? null : catalog.length}
-        />
-      </LocalSheet>
+          ariaLabel="Filters"
+        >
+          <SearchMapFilters
+            onClose={() => setFiltersOpen(false)}
+            count={catalogLoading ? null : catalog.length}
+          />
+        </LocalSheet>
+      </div>
     </div>
   );
 }

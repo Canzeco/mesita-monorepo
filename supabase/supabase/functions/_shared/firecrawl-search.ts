@@ -1,4 +1,4 @@
-// Firecrawl web search (v2 /search, the same endpoint linklab uses).
+// Firecrawl web search (v2 /search).
 // Returns result URLs best-first; [] on any failure, which is logged.
 
 const SEARCH_URL = "https://api.firecrawl.dev/v2/search";

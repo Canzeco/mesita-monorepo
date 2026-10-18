@@ -233,12 +233,17 @@ describe("Search map's top row is location, the query bar and the Filters disc",
   it("puts location at the left and Filters at the right, with no client-side recut", () => {
     const src = read("SearchClient.tsx");
     const overlays = read("search-catalog-overlays.tsx");
-    expect(src).toContain("SearchFilterRow");
-    // Location disc, then the bar, then Filters — in that order in the row.
+    // Filters moved up into Search's header (MESITA-2401), the right edge;
+    // the map's row is the location disc, then the bar.
+    expect(src).toContain("<SearchHeader");
+    expect(src.indexOf("<SearchHeader")).toBeLessThan(src.indexOf("<SearchMap"));
+    expect(src).not.toContain("<SearchFilterRow");
     const row = src.slice(src.indexOf('<div className="flex min-w-0 items-center gap-2">'));
     expect(row.indexOf("<SearchLocateButton")).toBeGreaterThan(-1);
     expect(row.indexOf("<SearchLocateButton")).toBeLessThan(row.indexOf("<SearchBar"));
-    expect(row.indexOf("<SearchBar")).toBeLessThan(row.indexOf("<SearchFilterRow"));
+    const header = read("SearchHeader.tsx");
+    expect(header).toContain("SEARCH_MODES");
+    expect(header).toContain('variant="header"');
     expect(src).toContain("recentreOnGuest");
     // Recentre reloads when the catalog was fetched elsewhere (MESITA-2305).
     const recentre = src.slice(
@@ -316,7 +321,9 @@ describe("Search map's top row is location, the query bar and the Filters disc",
     const loading = read("../../../app/(shell)/(discovery)/search/loading.tsx");
     expect(loading).toContain("flex min-w-0 items-center gap-2");
     expect(loading).not.toContain("basis-1/3");
-    expect(loading.split("h-11 w-11 shrink-0").length - 1).toBe(2);
+    // One 44px disc on the map row (location); Filters sits in the header.
+    expect(loading.split("h-11 w-11 shrink-0").length - 1).toBe(1);
+    expect(loading).toContain("h-8 w-8 rounded-full");
     expect(loading).not.toContain("h-12 w-12");
   });
 

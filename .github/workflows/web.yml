@@ -1,0 +1,113 @@
+name: web
+
+# The three apps and the shared place profile, one required check each. The
+# apps install packages/place-profile as a file: dependency, so a change there
+# runs web-admin and web-consumer too.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web-admin/**"
+      - "apps/web-consumer/**"
+      - "apps/web-landing/**"
+      - "packages/place-profile/**"
+      - ".github/workflows/web.yml"
+      - ".github/actions/pnpm-check/**"
+  # Every PR runs this workflow; the `changes` job decides which checks have
+  # anything to do.
+  pull_request: {}
+
+concurrency:
+  group: web-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The filter decides on a push to main too (against the commit before the
+  # push), so one app's merge does not build the other two.
+  changes:
+    name: detect web changes
+    runs-on: ubuntu-latest
+    outputs:
+      web-admin: ${{ steps.filter.outputs.web-admin }}
+      web-consumer: ${{ steps.filter.outputs.web-consumer }}
+      web-landing: ${{ steps.filter.outputs.web-landing }}
+      place-profile: ${{ steps.filter.outputs.place-profile }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3.0.4
+        id: filter
+        with:
+          filters: |
+            web-admin:
+              - 'apps/web-admin/**'
+              - 'packages/place-profile/**'
+              - '.github/workflows/web.yml'
+              - '.github/actions/pnpm-check/**'
+            web-consumer:
+              - 'apps/web-consumer/**'
+              - 'packages/place-profile/**'
+              - '.github/workflows/web.yml'
+              - '.github/actions/pnpm-check/**'
+            web-landing:
+              - 'apps/web-landing/**'
+              - '.github/workflows/web.yml'
+              - '.github/actions/pnpm-check/**'
+            place-profile:
+              - 'packages/place-profile/**'
+              - 'apps/web-consumer/package.json'
+              - 'apps/web-consumer/pnpm-lock.yaml'
+              - '.github/workflows/web.yml'
+              - '.github/actions/pnpm-check/**'
+
+  # Each check is SKIPPED when its paths did not change, which merges. If
+  # `changes` fails, its outputs are empty, not 'false', and every check runs.
+  web-admin:
+    name: web-admin · lint · typecheck · test · build
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.web-admin != 'false' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/pnpm-check
+        with:
+          dir: apps/web-admin
+          scripts: lint typecheck test build
+
+  web-consumer:
+    name: web-consumer · lint · typecheck · test · build
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.web-consumer != 'false' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/pnpm-check
+        with:
+          dir: apps/web-consumer
+          scripts: lint typecheck test build
+
+  web-landing:
+    name: web-landing · lint · typecheck · test · build
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.web-landing != 'false' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/pnpm-check
+        with:
+          dir: apps/web-landing
+          scripts: lint typecheck test build
+
+  # The package's tsconfig.json and vitest.config.ts resolve React, Next and
+  # friends from apps/web-consumer/node_modules, so web-consumer installs first.
+  place-profile:
+    name: place-profile · typecheck · test
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.place-profile != 'false' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/pnpm-check
+        with:
+          install-first: apps/web-consumer
+          dir: packages/place-profile
+          scripts: typecheck test

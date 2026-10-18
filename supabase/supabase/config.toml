@@ -105,19 +105,12 @@ enabled = true
 port = 54327
 backend = "postgres"
 
-[experimental]
-orioledb_version = ""
-s3_host = "env(S3_HOST)"
-s3_region = "env(S3_REGION)"
-s3_access_key = "env(S3_ACCESS_KEY)"
-s3_secret_key = "env(S3_SECRET_KEY)"
-
 # Per-function overrides. Naming rule: <caller>-<origin>-<verb>-<noun> (e.g.
 # admin-web-create-place, consumer-web-list-places). The closed caller set is
-# consumer · admin · eleven · supabase (MESITA-2090; the enricher prefix
-# arrives with MESITA-2121).
-# All functions verify the JWT except the truly public catalog reads, which
-# rely on RLS to gate visibility instead.
+# consumer · admin · enricher · eleven · supabase.
+# Every function verifies the JWT except the three public consumer ones (the
+# catalog reads, which RLS gates, and Memo) and the two enricher endpoints
+# Render calls with ENRICH_WRITE_KEY.
 
 # --- Sign-in (post-signin housekeeping) ---
 #
