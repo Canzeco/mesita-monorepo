@@ -48,6 +48,8 @@ jobs:
       changed: ${{ github.event_name != 'pull_request' && 'true' || steps.filter.outputs.supabase }}
     steps:
       - uses: actions/checkout@v4
+      - name: Forced failure (temporary proof of the gate; reverted before merge)
+        run: exit 1
       - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3.0.4
         id: filter
         with:
