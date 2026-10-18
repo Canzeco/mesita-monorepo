@@ -455,3 +455,43 @@ Deno.test("searchNearbyPlaces: one call, charged once, and a quota denial caches
   }
 });
 
+
+Deno.test("searchNearbyPlaces: a Google 5xx is retried once, then the hits land (MESITA-2361)", async () => {
+  __resetNearbyGoogleCacheForTests();
+  let n = 0;
+  const orig = globalThis.fetch;
+  globalThis.fetch = () => {
+    n++;
+    return Promise.resolve(
+      n === 1
+        ? new Response("{\"error\":{\"status\":\"INTERNAL\"}}", { status: 500 })
+        : new Response(OK_BODY, { status: 200, headers: { "Content-Type": "application/json" } }),
+    );
+  };
+  try {
+    const hits = await searchNearbyPlaces("k", CENTER);
+    assertEquals(n, 2);
+    assertEquals(hits.map((h) => h.placeId), ["ChIJ-ok"]);
+  } finally {
+    globalThis.fetch = orig;
+    __resetNearbyGoogleCacheForTests();
+  }
+});
+
+Deno.test("searchNearbyPlaces: a 4xx is never retried (MESITA-2361)", async () => {
+  __resetNearbyGoogleCacheForTests();
+  let n = 0;
+  const orig = globalThis.fetch;
+  globalThis.fetch = () => {
+    n++;
+    return Promise.resolve(new Response("{}", { status: 400 }));
+  };
+  try {
+    const hits = await searchNearbyPlaces("k", CENTER);
+    assertEquals(n, 1);
+    assertEquals(hits, []);
+  } finally {
+    globalThis.fetch = orig;
+    __resetNearbyGoogleCacheForTests();
+  }
+});
