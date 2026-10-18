@@ -27,7 +27,7 @@ const page = () =>
       <NameAdminBox {...seed} />
       <NameBox {...seed} />
       <AreaBox {...seed} />
-      <DeepBox {...seed} />
+      <DeepBox />
     </>,
   );
 const boxes = () => page().split("<section ").slice(1);
@@ -36,16 +36,17 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
   it("is Name by Admin, Name, Area, Deep, in that order", () => {
     const html = page();
     let last = -1;
-    for (const title of ["Name Pipeline by Admin", "Name Pipeline", "Area Pipeline", "Deep Pipeline"]) {
-      const at = html.indexOf(`>${title}</h2>`);
+    // Deep's title carries its Soon chip inside the heading.
+    for (const title of [">Name Pipeline by Admin</h2>", ">Name Pipeline</h2>", ">Area Pipeline</h2>", ">Deep Pipeline "]) {
+      const at = html.indexOf(title);
       expect(at, title).toBeGreaterThan(last);
       last = at;
     }
     expect(boxes()).toHaveLength(4);
   });
 
-  it("every box is the same card: Explanation, Sources, Signals, Scoring, Parameters", () => {
-    for (const box of boxes()) {
+  it("every live box is the same card: Explanation, Sources, Signals, Scoring, Parameters", () => {
+    for (const box of boxes().slice(0, 3)) {
       const parts = ["Explanation", "Sources", "Signals", "Scoring", "Parameters"].map((p) =>
         box.indexOf(`>${p}<`),
       );
@@ -55,14 +56,14 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
   });
 
   it("only the Area box shows Gates, and both of them", () => {
-    const [nameAdmin, name, area, deep] = boxes();
-    for (const box of [nameAdmin, name, deep]) expect(box).not.toContain(">Gates<");
+    const [nameAdmin, name, area] = boxes();
+    for (const box of [nameAdmin, name]) expect(box).not.toContain(">Gates<");
     expect(area).toContain(">Gates<");
     for (const gate of DISCOVERY_GATES) expect(area).toContain(gate.rule);
   });
 
   it("names each pipeline's signals with their formula and missing-data policy", () => {
-    const [, name, area, deep] = boxes();
+    const [, name, area] = boxes();
     const has = (box: string, key: string) => {
       const s = DISCOVERY_SIGNALS.find((x) => x.key === key)!;
       // renderToStaticMarkup escapes text; compare on a fragment with no
@@ -73,9 +74,7 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
     has(name, "name_similarity");
     has(area, "proximity");
     has(area, "popularity");
-    has(deep, "description_similarity");
     expect(name).not.toContain(">Proximity<");
-    expect(deep).not.toContain(">Popularity<");
   });
 
   it("'Fed by' is derived from the sources' fields, never typed", () => {
@@ -86,17 +85,15 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
     expect(area).toContain(`Fed by ${sourceByKey("google_nearby").label} · ${sourceByKey("mesita_places").label}.`);
   });
 
-  it("only Mesita Social Search shows Not wired", () => {
-    const html = page();
-    expect(html.match(/Not wired/g)?.length).toBe(1);
-    expect(boxes()[3]).toContain("Not wired");
+  it("nothing on the page shows Not wired: the only unwired source sits in the Soon Deep box", () => {
+    expect(page()).not.toContain("Not wired");
   });
 
   it("carries no weight inputs and no subpage tabs", () => {
-    // 3 Name by Admin + 5 Name + 6 Area + 2 Deep. A weight column would add
-    // a number input per signal.
+    // 3 Name by Admin + 5 Name + 6 Area; Deep is Soon. A weight column would
+    // add a number input per signal.
     const html = page();
-    expect(html.match(/type="number"/g)?.length).toBe(16);
+    expect(html.match(/type="number"/g)?.length).toBe(14);
     expect(html).not.toContain("Modes");
     expect(html).not.toContain('role="tablist"');
   });
@@ -151,18 +148,21 @@ describe("the boxes' controls", () => {
     }
   });
 
-  it("Deep: limit, floor and the Chat Agent prompt", () => {
-    const html = render(<DeepBox {...seed} />);
-    expect(html).toContain("Places handed to Chat");
-    expect(html).toContain("Minimum Description score (0 to 1)");
-    expect(html).toContain("Chat Agent prompt (Don Memo)");
+  it("Deep is Soon: title, one line and the chip, its controls deleted from the markup (MESITA-2345)", () => {
+    const html = render(<DeepBox />);
+    expect(html).toContain(">Deep Pipeline");
+    expect(html).toContain("Soon");
+    expect(html).toContain('id="s-deep"');
+    for (const gone of ["Places handed to Chat", "Minimum Description score", "Chat Agent prompt", "<textarea", 'type="number"', ">Save<", ">Sources<", ">Signals<"]) {
+      expect(html).not.toContain(gone);
+    }
   });
 });
 
 describe("the boxes tell the runtime's truth (MESITA-2338)", () => {
   it("every box lists its always-on rules; Name's include Mesita's place types", () => {
-    const [nameAdmin, name, area, deep] = boxes();
-    for (const box of [nameAdmin, name, area, deep]) expect(box).toContain(">Always-on rules<");
+    const [nameAdmin, name, area] = boxes();
+    for (const box of [nameAdmin, name, area]) expect(box).toContain(">Always-on rules<");
     expect(name).toContain("A Google row must have a Google type of one of the fifteen families");
     expect(area).toContain("Inside the radius");
   });

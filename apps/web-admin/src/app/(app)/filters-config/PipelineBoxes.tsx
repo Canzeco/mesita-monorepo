@@ -13,7 +13,6 @@ import {
   NumberField,
   SaveRow,
   Switch,
-  TextAreaField,
 } from "@/components/admin-ui/config";
 import { useConfigEditor, type ConfigSeed } from "@/components/admin-ui/use-config-editor";
 import { formatShortDate } from "@/lib/format";
@@ -21,8 +20,6 @@ import { getDiscoveryConfig, updateDiscoveryConfig, type DiscoverySlice } from "
 import {
   CATALOG_RAIL_CAP_MAX,
   CATALOG_RAIL_CAP_MIN,
-  DEEP_LIMIT_MAX,
-  DEEP_LIMIT_MIN,
   GENERAL_MIN_REVIEWS_MAX,
   GOOGLE_PULL_STOPS,
   HALF_DISTANCE_KM_MAX,
@@ -53,7 +50,6 @@ export const BOX_SLICES = {
   nameAdmin: ["nameAdmin"],
   name: ["nameDeep", "nameLocations", "nameIdle", "general"],
   area: ["map", "catalogRows", "areaSignals"],
-  deep: ["deep", "chat"],
 } as const satisfies Record<string, readonly DiscoverySlice[]>;
 
 function useDiscoveryEditor(seed: ConfigSeed<DiscoveryConfig>) {
@@ -469,71 +465,16 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
 }
 
 // 4 ─ Deep Pipeline ────────────────────────────────────────────────────────
-export function DeepBox(seed: ConfigSeed<DiscoveryConfig>) {
-  const editor = useDiscoveryEditor(seed);
-  const { cfg, setCfg, saved, setOk, pending, loadBlocked } = editor;
-  const off = pending || loadBlocked;
-  const deep = (p: Partial<DiscoveryConfig["deep"]>) => {
-    setOk(false);
-    setCfg((c) => ({ ...c, deep: { ...c.deep, ...p } }));
-  };
-  const dirty = !same(cfg.deep, saved.deep) || !same(cfg.chat, saved.chat);
+// Soon (MESITA-2345): Deep's only caller is Chat, and no guest reaches Chat
+// yet. Its stored settings stay on the blob; the box has no controls.
+export function DeepBox() {
   return (
     <PipelineBox
       id="s-deep"
       pipeline="deep"
       title="Deep Pipeline"
       icon={<Sparkles className={ICON} />}
-      explanation={
-        <p>
-          Open-ended discovery in the guest&apos;s own words: &ldquo;an
-          intimate jazz bar for a second date&rdquo;. The Chat Agent sits above
-          the pipelines: it reads the guest&apos;s intent once, then calls Name
-          for a place they name, Area (Mesita Selected around them) for
-          families or &ldquo;near me&rdquo;, and Deep for the qualities they
-          describe, and answers only from the places those return. It never
-          calls a source itself. Deep embeds the guest&apos;s request once,
-          only when it runs; Name embeds the place name the guest gives; Area
-          embeds nothing. The model is chosen on Models.
-        </p>
-      }
-      save={<Save editor={editor} dirty={dirty} slices={BOX_SLICES.deep} />}
-    >
-      <div className="grid gap-3 sm:grid-cols-2">
-        <NumberField
-          label="Places handed to Chat"
-          value={cfg.deep.limit}
-          min={DEEP_LIMIT_MIN}
-          max={DEEP_LIMIT_MAX}
-          disabled={off}
-          onChange={(limit) => deep({ limit })}
-        />
-        <NumberField
-          label="Minimum Description score (0 to 1)"
-          value={cfg.deep.minSimilarity}
-          min={0}
-          max={1}
-          decimals
-          disabled={off}
-          onChange={(minSimilarity) => deep({ minSimilarity })}
-        />
-      </div>
-      <TextAreaField
-        label="Chat Agent prompt (Don Memo)"
-        value={cfg.chat.prompt}
-        rows={8}
-        maxLength={12_000}
-        disabled={off}
-        onChange={(prompt) => {
-          setOk(false);
-          setCfg((c) => ({ ...c, chat: { prompt } }));
-        }}
-      />
-      <p className="text-muted-foreground type-meta">
-        0 keeps every place with a summary. An empty prompt uses Mesita&apos;s
-        default persona, kept in code. Events (Mesita Social Search) join
-        when an engine retrieves them.
-      </p>
-    </PipelineBox>
+      explanation="Open-ended discovery for Chat (Don Memo). No guest reaches Chat yet."
+    />
   );
 }

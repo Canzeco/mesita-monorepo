@@ -23,7 +23,7 @@ export default async function DiscoveryPage() {
         <NameAdminBox {...seed} />
         <NameBox {...seed} />
         <AreaBox {...seed} />
-        <DeepBox {...seed} />
+        <DeepBox />
       </div>
     </ConfigPageLayout>
   );

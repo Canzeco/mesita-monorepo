@@ -129,3 +129,8 @@ Deno.test("Deep's evidence (the About) is a field Mesita Places Search declares"
   const mesita = DISCOVERY_SOURCES.find((s) => s.key === "mesita_places")!;
   assert(mesita.provides.includes("about"));
 });
+
+Deno.test("Deep is not live while no guest reaches Chat; Name and Area are (MESITA-2345)", () => {
+  const live = Object.fromEntries(DISCOVERY_PIPELINES.map((p) => [p.key, p.live]));
+  assertEquals(live, { name: true, area: true, deep: false });
+});
