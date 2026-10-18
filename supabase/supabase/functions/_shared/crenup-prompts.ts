@@ -32,15 +32,17 @@ import {
   buildFamilyInput,
   FAMILY_INSTRUCTIONS,
 } from "./infer-families.ts";
+import { CRENUP_STEP_META, type CrenupStep } from "./crenup-ladder.ts";
 
 /** One prompt-bearing step, as the console renders it. */
 export type CrenupPrompt = {
   /** Stable id for the console's anchor + test pinning. */
   key: string;
   /**
-   * Which Crenup function this prompt belongs to — a pointer into Docs › Crenup
-   * §A's numbering, never a numbering of its own. `null` for a step that runs
-   * inside another function rather than owning a row.
+   * Which Enricher step this prompt belongs to — a pointer into Docs › Create ·
+   * Enrich · Edit §A's numbering, read off the ladder (`stepOf`), never a
+   * numbering of its own. `null` for a step that runs inside another function
+   * rather than owning a row.
    */
   fn: string | null;
   /** The named agent, when the step has one. Scout and Resolver are the two. */
@@ -72,10 +74,16 @@ const PLACE = {
   category: "{category}",
 };
 
+/** "2 · Serp": the ladder's own number and label, so a renumbering cannot leave this behind. */
+function stepOf(step: CrenupStep): string {
+  const { index, label } = CRENUP_STEP_META[step];
+  return `${index} · ${label}`;
+}
+
 function scoutPrompt(): CrenupPrompt {
   return {
     key: "scout",
-    fn: "3 · Serp",
+    fn: stepOf("serp"),
     agent: "Scout",
     label: "SERP Summary",
     vendor: "Perplexity Agent",
@@ -101,7 +109,7 @@ function resolverPrompt(): CrenupPrompt {
   );
   return {
     key: "resolver",
-    fn: "4 · Links",
+    fn: stepOf("links"),
     agent: "Resolver",
     label: "Review & Select Links",
     vendor: "Firecrawl Search, then Perplexity Agent",
@@ -129,7 +137,7 @@ function resolverPrompt(): CrenupPrompt {
 function presentationPrompt(): CrenupPrompt {
   return {
     key: "presentation",
-    fn: "9 · Description",
+    fn: stepOf("description"),
     agent: null,
     label: "Presentation synthesis",
     vendor: "OpenAI",
@@ -138,7 +146,7 @@ function presentationPrompt(): CrenupPrompt {
       "Synthesis quality setting on Models. It does NOT browse — it may use only " +
       "the source material the earlier functions gathered.",
     writes:
-      "The Presentation (places.description), the machine summary that the " +
+      "The Presentation (place_profiles.description), the machine summary that the " +
       "Embedding step vectorises, mesita_name, zone, city and the rest of the " +
       "profile shape.",
     instructions: PRESENTATION_INSTRUCTIONS,
