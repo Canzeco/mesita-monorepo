@@ -84,6 +84,9 @@ describe("the open, the create and the Feed", () => {
     expect(emit).toBeGreaterThan(create);
     expect(replace).toBeGreaterThan(emit);
     expect(screen).toContain("creating={creating}");
+    // A hard-loaded page loads the real profile as a page, never as a
+    // modal over itself with no Back to pop.
+    expect(screen).toContain('if (variant === "page") window.location.replace(opened.href)');
     expect(screen).toContain("<PlaceDetailModalShell place={place}>");
     expect(screen).toContain("fetchGooglePlaceFacts(places, gid)");
     for (const page of [

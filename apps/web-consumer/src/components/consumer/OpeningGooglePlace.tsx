@@ -148,7 +148,12 @@ function OpeningBody({
         if (opened.created) {
           toast.success(`${card?.name ?? name ?? "This place"} is on Mesita. Vote to enrich its profile.`);
         }
-        router.replace(opened.href);
+        // The slide-over replaces itself in place. A hard-loaded page must
+        // load the real profile as a page: a soft replace from here lets the
+        // (.)place intercept paint the profile as a modal over this screen,
+        // with no history entry for its Back to pop.
+        if (variant === "page") window.location.replace(opened.href);
+        else router.replace(opened.href);
       } catch (err) {
         if (live) setError(errMsg(err, "Couldn't open that place right now."));
       }
@@ -158,7 +163,7 @@ function OpeningBody({
     };
     // The draft's name only decorates the toast; a retry is `attempt`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gid, router, supabase, attempt]);
+  }, [gid, router, supabase, variant, attempt]);
 
   const retry = useCallback(() => {
     setError(null);
