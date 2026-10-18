@@ -1,15 +1,14 @@
 "use client";
 
-// Places — All, then one rail per guest family. A card is wide
-// enough that about 2.5 fit, so the next one peeks and the row reads
-// as a scroll. The gap above a row is the family name. An empty
-// family is the name only. Favs keeps its own rounded tile.
+// Places — Google Places, Mesita Selected, then one rail per guest family,
+// each a sideways row of cards with its name running up the left edge.
 //
-// No Filters bar (MESITA-2298, Pato: "remove filters bar at the top, just
-// leave something for the location"). The strip above the rails holds one
-// control, Use my location; the request sends no predicates, so a saved
-// scope can never keep cutting this list. Search keeps its own Filters.
-// Location, when the browser has it, ranks proximity.
+// No chrome above the rails: no Filters bar (MESITA-2298) and, since
+// MESITA-2362, no location bar either (Pato: "maybe remove it").
+// `useUserLocation` asks the browser on mount, so the Google Places rail
+// fills once location is granted and hides without it. The request sends
+// no predicates, so a saved scope can never keep cutting this list. Search
+// keeps its own Filters and its location disc.
 
 import {
   useEffect,
@@ -18,15 +17,11 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Compass, Navigation } from "lucide-react";
+import { Compass } from "lucide-react";
 import { apiListCatalog, type CatalogRail, type Place } from "@/lib/api/places";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { trackEvent } from "@/lib/analytics/track";
-import {
-  useLocateUser,
-  useUserLocation,
-  useUserLocationLocating,
-} from "@/lib/use-user-location";
+import { useUserLocation } from "@/lib/use-user-location";
 import { withUserDistance } from "@/lib/place-distance";
 import { onPlaceCreated } from "@/lib/place-created-event";
 import { useOpenGooglePlace } from "@/lib/use-open-google-place";
@@ -51,8 +46,6 @@ const cardWidth = "w-[calc(50%-23px)]";
 export function CatalogRails() {
   const supabase = useBrowserSupabase();
   const coords = useUserLocation();
-  const locating = useUserLocationLocating();
-  const locate = useLocateUser();
   const { savedIds, setSaved } = useSavedPlaces();
   const openGooglePlace = useOpenGooglePlace();
   const [rails, setRails] = useState<CatalogRail[] | null>(null);
@@ -104,37 +97,6 @@ export function CatalogRails() {
 
   const shownRails = useMemo(() => placesFeed(rails ?? []), [rails]);
 
-  const locationStrip = (
-    <div className="border-border bg-background/90 flex shrink-0 items-center gap-2 border-b px-4 py-2.5 backdrop-blur-xl">
-      <button
-        type="button"
-        onClick={locate}
-        disabled={coords !== null || locating}
-        aria-label={
-          coords !== null
-            ? "Using your location"
-            : locating
-              ? "Locating"
-              : "Use my location"
-        }
-        className={cn(
-          "flex h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full border px-3 text-sm font-semibold transition",
-          coords !== null
-            ? "border-border bg-card text-muted-foreground"
-            : "shadow-elev border-border bg-card/95 text-foreground backdrop-blur-xl active:scale-[0.98] disabled:opacity-60",
-        )}
-      >
-        <Navigation className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-        <span className="truncate">
-          {coords !== null
-            ? "Near you"
-            : locating
-              ? "Locating…"
-              : "Use my location"}
-        </span>
-      </button>
-    </div>
-  );
 
   const toggleSave = (place: Place, saved: boolean) => {
     if (saved) {
@@ -151,7 +113,6 @@ export function CatalogRails() {
 
   const shell = (body: ReactNode) => (
     <div className="flex min-h-0 flex-1 flex-col">
-      {locationStrip}
       {body}
     </div>
   );
