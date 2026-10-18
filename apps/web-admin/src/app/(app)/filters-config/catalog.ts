@@ -13,9 +13,9 @@
 // `engines`, the `swipe` slice and the deck's numbers on `params`. They are
 // dropped on the next Save, never renamed.
 //
-// Operator filters still live on the blob (consumer-web-list-places reads
-// them), so a whole-blob Save carries them through. They have no knobs on
-// this page.
+// RETIRED WITH LIST-PLACES' LISTED LANES (MESITA-2337): the operator
+// `filters`. Nothing read them once those lanes went; dropped on the next
+// Save, like the deck's keys.
 
 import { num } from "@/lib/config-coerce";
 
@@ -75,7 +75,6 @@ export type GeneralConfig = {
 
 export type DiscoveryConfig = {
   params: SignalParams;
-  filters: DiscoveryFilters;
   general: GeneralConfig;
   catalog: CatalogConfig;
   map: MapConfig;
@@ -139,7 +138,7 @@ const GOOGLE_PULL_DEFAULT = 20;
 export const MAP_RADIUS_KM_MIN = 1;
 export const MAP_RADIUS_KM_MAX = 50;
 const MAP_RADIUS_KM_DEFAULT = 50;
-/** Same ceiling as filters.minReviews — one reviewer floor reads like another. */
+/** Same ceiling as map.minReviews — one reviewer floor reads like another. */
 export const GENERAL_MIN_REVIEWS_MAX = 100_000;
 
 export type MapConfig = {
@@ -192,19 +191,8 @@ export const SUPER_FIELDS: {
   { key: "feel_better", label: "Feel better", emoji: "💆", battery: ["spa", "beauty_salon", "hair_salon", "massage"] },
 ];
 
-export type DiscoveryFilters = {
-  /** The Enriched gate — `enriched_at IS NOT NULL` AND `content_state =
-   *  'ready'` (MESITA-2154). The stored key keeps its old name: renaming it
-   *  would reset the operator's value. */
-  requireReady: boolean;
-  minRating: number;
-  minReviews: number;
-  maxDistanceKm: number;
-};
-
-/** Google stars top out at 5. Exported since MESITA-1667 gave `filters` a box. */
+/** Google stars top out at 5: the ceiling of `map.minRating`. */
 export const MIN_RATING_MAX = 5;
-const MAX_DISTANCE_KM_MAX = 200;
 const CATALOG_COUNT_MAX = 20;
 const CATALOG_PLACES_PER_RAIL_MIN = 4;
 const CATALOG_PLACES_PER_RAIL_MAX = 20;
@@ -341,7 +329,6 @@ const DEFAULT_SIGNAL_PARAMS: SignalParams = {
 
 export const DEFAULT_CONFIG: DiscoveryConfig = {
   params: DEFAULT_SIGNAL_PARAMS,
-  filters: { requireReady: true, minRating: 0, minReviews: 0, maxDistanceKm: 0 },
   general: DEFAULT_GENERAL,
   catalog: DEFAULT_CATALOG,
   map: DEFAULT_MAP,
@@ -398,28 +385,14 @@ function coerceParams(raw: unknown): SignalParams {
 /**
  * Tolerant read of whatever the EF returned, rebuilt key by key exactly like
  * `normalizeDiscoveryConfig`: a retired key (`weights`, `weightsByMode`,
- * `engines`, `swipe`, MESITA-2328) is not carried into the next Save.
+ * `engines`, `swipe`, MESITA-2328; `filters`, MESITA-2337) is not carried
+ * into the next Save.
  */
 export function coerceConfig(raw: unknown): DiscoveryConfig {
   const r = (raw ?? {}) as Record<string, unknown>;
-  const f = (r.filters ?? {}) as Record<string, unknown>;
 
   return {
     params: coerceParams(r.params),
-    filters: {
-      requireReady: typeof f.requireReady === "boolean"
-        ? f.requireReady
-        : DEFAULT_CONFIG.filters.requireReady,
-      // One decimal: Google stars are one-decimal values, and a floor landing
-      // at 4.300000000000001 would leave the page permanently dirty.
-      minRating: Math.round(
-        num(f.minRating, DEFAULT_CONFIG.filters.minRating, 0, MIN_RATING_MAX) * 10,
-      ) / 10,
-      minReviews: Math.round(num(f.minReviews, DEFAULT_CONFIG.filters.minReviews, 0, 100_000)),
-      maxDistanceKm: Math.round(
-        num(f.maxDistanceKm, DEFAULT_CONFIG.filters.maxDistanceKm, 0, MAX_DISTANCE_KM_MAX),
-      ),
-    },
     general: coerceGeneral(r.general),
     catalog: coerceCatalog(r.catalog),
     map: coerceMap(r.map),

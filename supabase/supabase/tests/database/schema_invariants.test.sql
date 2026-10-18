@@ -1357,7 +1357,14 @@ select ok(
       and models_config #> '{memo,perplexity}' is null
       and not (memo_config ?| array['provider', 'openaiModel', 'webGrounding', 'perplexityModel'])
       and not (discovery_config ?| array['social', 'slotting'])
-      and discovery_config #> '{weights,summary}' is null
+      -- MESITA-2337: the deck's keys (MESITA-2328), `catalog.ranking`
+      -- (MESITA-2327) and the operator `filters` have no reader.
+      and not (discovery_config ?| array['filters', 'swipe', 'engines', 'weights', 'weightsByMode'])
+      and discovery_config #> '{catalog,ranking}' is null
+      and (coalesce(discovery_config -> 'params', '{}'::jsonb) - 'proximity' - 'popularity') = '{}'::jsonb
+      and (coalesce(discovery_config #> '{params,proximity}', '{}'::jsonb) - 'halfDistanceKm') = '{}'::jsonb
+      and (coalesce(discovery_config #> '{params,popularity}', '{}'::jsonb)
+             - 'referenceRating' - 'referenceReviews') = '{}'::jsonb
       and not (enrichment_config ? 'atlasPerRunCostCapUsd')
      from public.app_config where id = 1),
   'no dead app_config key survives'

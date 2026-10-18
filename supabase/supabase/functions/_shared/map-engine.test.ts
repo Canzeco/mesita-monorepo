@@ -11,14 +11,11 @@ const supersAllOff = (): Record<SuperParamKey, boolean> =>
 import { nearbyTypesForSupers } from "./google-type-super.ts";
 import {
   admitGuestMinReviews,
-  admitMapCatalog,
   clearsMinReviews,
   enabledNearbyTypes,
   evaluatePlaceForMap,
-  googleHitClearsMapFloors,
   guestReviewFloor,
   listedClearsMapPopularity,
-  listedMapFilters,
   MAP_MIN_REVIEW_STOPS,
   MAP_MIN_REVIEWS_DEFAULT,
   mapShouldFillGoogle,
@@ -50,7 +47,6 @@ Deno.test("defaults admit everything and ask Google for every guest family", () 
   assertEquals(new Set(enabledNearbyTypes(MAP)), all);
   assertEquals(mapShouldFillGoogle(true, MAP), true);
   assertEquals(mapShouldFillGoogle(false, MAP), false);
-  assertEquals(googleHitClearsMapFloors(hit({ rating: null }), MAP), true);
   assertEquals(
     listedClearsMapPopularity({
       google_stars_overall: null,
@@ -77,41 +73,6 @@ Deno.test("googleFill off skips Nearby; a stored family switch does not", () => 
     })),
     all,
   );
-});
-
-Deno.test("listed Map filters take the stricter of global filters and Map floors", () => {
-  const global = {
-    ...DISCOVERY_DEFAULTS.filters,
-    minRating: 3,
-    minReviews: 10,
-  };
-  assertEquals(
-    listedMapFilters(global, { ...MAP, minRating: 4, minReviews: 5 }),
-    { ...global, minRating: 4, minReviews: 10 },
-  );
-});
-
-Deno.test("listed Map filters: the Selected pool always runs the Enriched gate (MESITA-2298)", () => {
-  // Mesita Selected IS the enriched, ready set today; a Created row is not
-  // Selected and no guest scope shows it, so the gate ignores the global
-  // toggle here.
-  const global = { ...DISCOVERY_DEFAULTS.filters, requireReady: true };
-  assertEquals(listedMapFilters(global, MAP).requireReady, true);
-  assertEquals(
-    listedMapFilters({ ...global, requireReady: false }, MAP).requireReady,
-    true,
-  );
-});
-
-Deno.test("unrated Google stubs drop when a rating or popularity floor is on", () => {
-  const rated = { ...MAP, minRating: 3.5 };
-  assertEquals(googleHitClearsMapFloors(hit({ rating: null }), rated), false);
-  assertEquals(googleHitClearsMapFloors(hit({ rating: 3.4 }), rated), false);
-  assertEquals(googleHitClearsMapFloors(hit({ rating: 3.5 }), rated), true);
-
-  const pop = { ...MAP, minPopularity: 0.1 };
-  assertEquals(googleHitClearsMapFloors(hit({ rating: null }), pop), false);
-  assertEquals(googleHitClearsMapFloors(hit({ rating: 4.2 }), pop), true);
 });
 
 Deno.test("minPopularity reads the Area pipeline's Popularity — unrated scores 0 (MESITA-2328)", () => {
@@ -149,31 +110,6 @@ Deno.test("minPopularity reads the Area pipeline's Popularity — unrated scores
     ),
     true,
   );
-});
-
-Deno.test("admitMapCatalog still admits Google for a listed place that missed popularity", () => {
-  const map = { ...MAP, minPopularity: 0.7 };
-  const listed = [
-    {
-      id: "weak",
-      google_place_id: "ChIJ-weak",
-      google_stars_overall: null,
-      google_review_count: 0,
-    },
-    {
-      id: "strong",
-      google_place_id: "ChIJ-strong",
-      google_stars_overall: 4.8,
-      google_review_count: 200,
-    },
-  ];
-  const google = [
-    hit({ placeId: "ChIJ-weak", rating: 4.9 }),
-    hit({ placeId: "ChIJ-only", rating: 4.6 }),
-  ];
-  const got = admitMapCatalog(listed, google, map);
-  assertEquals(got.listed.map((r) => r.id), ["strong"]);
-  assertEquals(got.google.map((h) => h.placeId), ["ChIJ-weak", "ChIJ-only"]);
 });
 
 Deno.test("evaluatePlaceForMap admits a dinner place when Dinner is on", () => {

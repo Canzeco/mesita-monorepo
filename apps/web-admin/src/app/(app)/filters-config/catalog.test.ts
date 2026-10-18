@@ -72,12 +72,11 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
     });
   });
 
-  it("filters stay: consumer-web-list-places still reads them", () => {
-    expect(coerceConfig(LIVE_BLOB).filters).toEqual(LIVE_BLOB.filters);
-    expect(coerceConfig({ filters: { minRating: 4.26, minReviews: -5 } }).filters).toMatchObject({
-      minRating: 4.3,
-      minReviews: 0,
-    });
+  it("filters go too: list-places' listed lanes were their last reader (MESITA-2337)", () => {
+    expect(coerceConfig(LIVE_BLOB)).not.toHaveProperty("filters");
+    expect(coerceConfig({ filters: { minRating: 4.26, minReviews: -5 } })).not.toHaveProperty(
+      "filters",
+    );
   });
 
   it("the Mode × Entity × Pool × Source twin is deleted, not parked", () => {

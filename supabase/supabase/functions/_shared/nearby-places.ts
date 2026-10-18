@@ -11,24 +11,21 @@
 // `mesita` and `partners` parse to `selected`, never to a paid call.
 // ONE POST per cache-miss cell (center · types · radius): maxResultCount
 // 20, DISTANCE, the family-derived primary types, the ONE field mask;
-// never a second page, never a wider circle. Mesita wins its gid
-// (`claimOwnedHits`, `mergeNearbyCatalog`, `resolveGoogleItem`).
+// never a second page, never a wider circle. Mesita wins its gid in the
+// Area pipeline (`selectGooglePlaces`, area-pipeline.ts).
 
 import {
   classifyGoogleError,
   GOOGLE_PLACES_NEARBY_URL,
   stripPlacesPrefix,
 } from "./google-places.ts";
-import { haversineKm, NEARBY_RADIUS_KM, takeClosest } from "./geo.ts";
+import { NEARBY_RADIUS_KM } from "./geo.ts";
 import { GOOGLE_SEARCH_TYPES } from "./google-type-super.ts";
 import { NEARBY_TYPE_KEYS } from "./discovery-config.ts";
-import { isPlaceEnriched, isPlaceProfileReady } from "./place-state.ts";
 
 /** Nearby Search (New) caps one POST at maxResultCount 20 with no page
  *  token, and the engine never asks twice (MESITA-2298). */
 export const GOOGLE_NEARBY_MAX = 20;
-/** The largest `map.pinCount` stop; the merge's default Mesita cap. */
-export const CATALOG_NEARBY_HARD_MAX = 60;
 /** The operator's circle, in metres, clamped to what Nearby accepts
  *  (50 m .. 50 km). `map.radiusKm` is 1..50; a bad value reads as 50 km. */
 export function nearbyRadiusMetres(radiusKm?: number): number {
@@ -335,22 +332,6 @@ export async function searchNearbyPlaces(
   }
 }
 
-export type MesitaNearbyRow = {
-  id: string;
-  google_place_id?: string | null;
-  lat?: number | null;
-  lng?: number | null;
-};
-
-export type NearbyLaneCaps = {
-  mesitaCount: number;
-  googleCount: number;
-};
-
-export type NearbyMerged<T> =
-  | { kind: "listed"; row: T }
-  | { kind: "google"; hit: NearbyHit };
-
 /**
  * THE GUEST'S TWO WORDS (MESITA-2298) over the three internal sets
  * (Google Places ⊃ Mesita Places ⊃ Mesita Enriched Places):
@@ -395,190 +376,4 @@ export function parsePlacesScope(value: unknown): PlacesScope {
     return value >= 2 ? "google" : "selected";
   }
   return PLACES_SCOPE_DEFAULT;
-}
-
-/**
- * The inner ring's half of the gate: enriched profile, not a Created stub.
- * "Red is EARNED by enrichment" (Pato, 2026-09-05).
- *
- * Enriched = an Enrich run completed = `enriched_at` set (MESITA-2154) — the
- * same {@link isPlaceEnriched} every reader uses. A Created place is
- * `content_state = 'ready'` with a null stamp: in Mesita Places, never in
- * Mesita Enriched Places.
- */
-export function isEnrichedListedRow(row: {
-  enriched_at?: string | null;
-}): boolean {
-  return isPlaceEnriched(row.enriched_at);
-}
-
-/**
- * Mesita Places: a listed row (RLS already limits the read to
- * `state = 'active'`) whose profile can be shown now — `content_state =
- * 'ready'`, which Create saves too. Enriched or not.
- */
-export function isMesitaListedRow(row: {
-  content_state?: string | null;
-}): boolean {
-  return isPlaceProfileReady(row.content_state);
-}
-
-/**
- * Which Mesita rows a scope admits. Google Places admits every ready Mesita
- * row that owns a hit (a Created profile draws gray, an enriched one red)
- * and SHOWS only the ones Google returned, as their owners
- * (`mergeNearbyCatalog`, MESITA-2310). Mesita Selected admits enriched
- * rows only: a subset of Google Places, never a lane beside it.
- */
-export function admitsScopeRow(
-  scope: PlacesScope,
-  row: { content_state?: string | null; enriched_at?: string | null },
-): boolean {
-  if (!isMesitaListedRow(row)) return false;
-  return scope === "selected" ? isEnrichedListedRow(row) : true;
-}
-
-/** The row fields {@link claimOwnedHits} reads. */
-export type OwnedNearbyRow = {
-  google_place_id?: string | null;
-  enriched_at?: string | null;
-};
-
-/** What {@link claimOwnedHits} decided about the Google hits Mesita owns. */
-export type OwnedHitClaim<T> = {
-  /** The hits that may merge: Google-only ones, the ring's own, Created ones. */
-  hits: NearbyHit[];
-  /** Created (not enriched) rows a ring cut left out: each paints its hit,
-   *  as a Mesita row, in the hit's slot. */
-  paintByGid: Map<string, T>;
-  /** Every google_place_id a Mesita row carries, ring and owned alike. */
-  ownedGids: Set<string>;
-};
-
-function gidOf(row: OwnedNearbyRow): string | null {
-  const gid = row.google_place_id?.trim();
-  return gid ? gid : null;
-}
-
-/**
- * A Google hit Mesita already owns is NEVER sent as a `g:` stub (MESITA-2154).
- *
- * A stub's explicit open runs consumer-web-create-place as get-or-create
- * (MESITA-2298 §5): an owned gid answers `created: false` and opens the row
- * Mesita holds. The map must agree before the tap — the row is a Mesita
- * place, with its photo, its vote and its colour — so a hit whose
- * google_place_id a listed Mesita row carries resolves one of three ways:
- *
- *   ring   the row is in the scope's Mesita rows (on Google Places that is
- *          every ready Mesita row, Created ones included — MESITA-2158):
- *          the hit passes and merge pairs it with the row.
- *   paint  the row is NOT enriched (a Created place) and a ring cut left it
- *          out: the hit passes and goes out as that Mesita row, ink, in the
- *          hit's slot. Created places stay reachable here, with the guest
- *          Enrich vote, whatever their stored family_keys or review count
- *          say — the hit already cleared the Google-side cuts.
- *   drop   the row IS enriched but a ring cut left it out (the General gate,
- *          a Map floor, the guest's Popularity or Super on stored keys, a
- *          profile that is not ready): the hit is removed, so every red row
- *          on the map has passed every ring cut.
- *
- * `owned` must come from an UNFILTERED google_place_id lookup (RLS already
- * limits it to listed rows): a lookup that carries the ring cuts is exactly
- * how a cut Created row used to fall through to a stub.
- */
-export function claimOwnedHits<T extends OwnedNearbyRow>(
-  hits: readonly NearbyHit[],
-  owned: readonly T[],
-  ring: readonly T[],
-): OwnedHitClaim<T> {
-  const ringGids = new Set<string>();
-  for (const row of ring) {
-    const gid = gidOf(row);
-    if (gid) ringGids.add(gid);
-  }
-  const ownedGids = new Set(ringGids);
-  const paintByGid = new Map<string, T>();
-  const dropGids = new Set<string>();
-  for (const row of owned) {
-    const gid = gidOf(row);
-    if (!gid) continue;
-    ownedGids.add(gid);
-    if (ringGids.has(gid)) continue;
-    if (!isPlaceEnriched(row.enriched_at)) {
-      if (!paintByGid.has(gid)) paintByGid.set(gid, row);
-      dropGids.delete(gid);
-    } else if (!paintByGid.has(gid)) {
-      dropGids.add(gid);
-    }
-  }
-  return {
-    hits: hits.filter((hit) => !dropGids.has(hit.placeId)),
-    paintByGid,
-    ownedGids,
-  };
-}
-
-/** How one merged `google` item goes out on the wire. */
-export type GoogleItemRow<T> =
-  | { kind: "mesita"; row: T }
-  | { kind: "stub" }
-  | { kind: "drop" };
-
-/**
- * The last word on a merged `google` item: its painting Created row, else a
- * stub — unless Mesita owns the gid, in which case it is dropped. That last
- * case is a ring row that a later JS cut removed after {@link claimOwnedHits}
- * let its hit through; it still must not become a stub.
- */
-export function resolveGoogleItem<T>(
-  hit: NearbyHit,
-  claim: OwnedHitClaim<T>,
-): GoogleItemRow<T> {
-  const painted = claim.paintByGid.get(hit.placeId);
-  if (painted) return { kind: "mesita", row: painted };
-  if (claim.ownedGids.has(hit.placeId)) return { kind: "drop" };
-  return { kind: "stub" };
-}
-
-export function mergeNearbyCatalog<T extends MesitaNearbyRow>(
-  mesita: T[],
-  google: NearbyHit[],
-  center: { lat: number; lng: number },
-  lanes: NearbyLaneCaps = {
-    mesitaCount: CATALOG_NEARBY_HARD_MAX,
-    googleCount: GOOGLE_NEARBY_MAX,
-  },
-  radiusKm: number = NEARBY_RADIUS_KM,
-): Array<NearbyMerged<T>> {
-  const inCircle = (lat: number | null, lng: number | null) =>
-    haversineKm(center.lat, center.lng, lat, lng) <= radiusKm;
-  const inMesita = mesita.filter((row) =>
-    inCircle(row.lat ?? null, row.lng ?? null)
-  );
-  const inGoogle = google.filter((hit) => inCircle(hit.lat, hit.lng));
-
-  if (lanes.googleCount > 0 && inGoogle.length > 0) {
-    const hits = takeClosest(inGoogle, center, lanes.googleCount);
-    const byGid = new Map<string, T>();
-    for (const row of inMesita) {
-      if (row.google_place_id && !byGid.has(row.google_place_id)) {
-        byGid.set(row.google_place_id, row);
-      }
-    }
-    // The Google scope is what Google returned: its nearest hits, each one
-    // Mesita owns going out as that row. A Mesita place Google did not
-    // return is not in this scope — no backfill up to `mesitaCount`, so a
-    // far red pin never sits beside the gray cluster (MESITA-2310; Pato:
-    // Mesita Selected is a subset of Google Places, never a lane beside it).
-    return hits.map((hit) => {
-      const row = byGid.get(hit.placeId);
-      if (row) return { kind: "listed" as const, row };
-      return { kind: "google" as const, hit };
-    });
-  }
-
-  return takeClosest(inMesita, center, lanes.mesitaCount).map((row) => ({
-    kind: "listed" as const,
-    row,
-  }));
 }

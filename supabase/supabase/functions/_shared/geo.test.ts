@@ -7,8 +7,6 @@ import {
   nearbyBbox,
   NEARBY_DEFAULT_RADIUS_KM,
   NEARBY_RADIUS_KM,
-  sortByDistance,
-  takeClosest,
   type BboxQuery,
 } from "./geo.ts";
 
@@ -75,7 +73,7 @@ Deno.test("decideNearby: nearby true is still lat+lng, not a third flag", () => 
   );
 });
 
-Deno.test("wantsGoogleFill: listed-only lat+lng stays off", () => {
+Deno.test("wantsGoogleFill: a bare lat+lng is not web Search", () => {
   assertEquals(wantsGoogleFill({ lat: 25.67, lng: -100.3 }), false);
   assertEquals(wantsGoogleFill({ google: true, lat: 25.67, lng: -100.3 }), true);
   assertEquals(wantsGoogleFill({ nearby: true, lat: 25.67, lng: -100.3 }), true);
@@ -87,31 +85,11 @@ Deno.test("nearbyBbox is city-scale, not a camera rectangle", () => {
   assertEquals(box.east - box.west > 4, true);
 });
 
-Deno.test("sortByDistance puts the nearest pin first", () => {
+Deno.test("haversineKm: near is near, far is far, missing is infinitely far", () => {
   const origin = { lat: 25.6714, lng: -100.3094 };
-  const rows = [
-    { id: "far", lat: 19.43, lng: -99.13 },
-    { id: "near", lat: 25.66, lng: -100.31 },
-    { id: "mid", lat: 25.8, lng: -100.4 },
-  ];
-  const ordered = sortByDistance(rows, origin.lat, origin.lng);
-  assertEquals(ordered.map((r) => r.id), ["near", "mid", "far"]);
-  assertEquals(
-    haversineKm(origin.lat, origin.lng, 25.66, -100.31) < 5,
-    true,
-  );
-});
-
-Deno.test("takeClosest: product cap 50, nearest first", () => {
-  const rows = Array.from({ length: 80 }, (_, i) => ({
-    id: i,
-    lat: 25.67 + i * 0.01,
-    lng: -100.3,
-  }));
-  const got = takeClosest(rows, { lat: 25.67, lng: -100.3 }, 50);
-  assertEquals(got.length, 50);
-  assertEquals(got[0].id, 0);
-  assertEquals(got[49].id, 49);
+  assertEquals(haversineKm(origin.lat, origin.lng, 25.66, -100.31) < 5, true);
+  assertEquals(haversineKm(origin.lat, origin.lng, 19.43, -99.13) > 700, true);
+  assertEquals(haversineKm(origin.lat, origin.lng, null, -100.31), Number.POSITIVE_INFINITY);
 });
 
 Deno.test("nearbyBbox: 50 km around Monterrey stays inside the clamp", () => {

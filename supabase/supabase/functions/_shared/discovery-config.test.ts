@@ -1,6 +1,7 @@
 // MESITA-2328 — the Swipe deck and the seven-signal library retired, and the
 // blob keys only they read went with them: `weights`, `weightsByMode`,
 // `engines`, the `swipe` slice and the deck's numbers on `params`.
+// MESITA-2337 — list-places' listed lanes retired, and `filters` with them.
 //
 // Both normalizers rebuild the blob key by key, so a retired key is dropped
 // on the next save. The two halves of that promise are pinned here: the live
@@ -23,7 +24,7 @@ const CATALOG_SRC = Deno.readTextFileSync(
   ),
 );
 
-/** `app_config.discovery_config` as stored on 2026-10-18, before this change. */
+/** `app_config.discovery_config` as stored on 2026-10-18, before MESITA-2328. */
 const LIVE_BLOB_2026_10_18 = {
   map: {
     supers: { restaurants: true, cafes_bakeries: true, bars_nightlife: true },
@@ -76,14 +77,15 @@ const LIVE_BLOB_2026_10_18 = {
   chat: { prompt: "Be Memo." },
 };
 
-const LIVE_KEYS = ["catalog", "chat", "deep", "filters", "general", "map", "name", "params"];
-const RETIRED_KEYS = ["weights", "weightsByMode", "engines", "swipe"];
+const LIVE_KEYS = ["catalog", "chat", "deep", "general", "map", "name", "params"];
+const RETIRED_KEYS = ["weights", "weightsByMode", "engines", "swipe", "filters"];
 
-Deno.test("the live blob loads: the deck's keys drop, every live value stands", () => {
+Deno.test("the live blob loads: the retired keys drop, every live value stands", () => {
   const cfg = normalizeDiscoveryConfig(LIVE_BLOB_2026_10_18);
   assertEquals(Object.keys(cfg).sort(), LIVE_KEYS);
-  // `filters` survives: consumer-web-list-places still reads it.
-  assertEquals(cfg.filters, LIVE_BLOB_2026_10_18.filters);
+  for (const dead of RETIRED_KEYS) {
+    assertEquals(dead in cfg, false, dead);
+  }
   assertEquals(cfg.general, LIVE_BLOB_2026_10_18.general);
   assertEquals(cfg.map.pinCount, 60);
   assertEquals(cfg.map.reloadMinKm, 0.25);
@@ -101,7 +103,6 @@ Deno.test("an unrelated Save does not resurrect a retired key", () => {
     assertEquals(dead in afterSave, false, dead);
   }
   assertEquals(afterSave.chat.prompt, "after");
-  assertEquals(afterSave.filters, first.filters);
 });
 
 Deno.test("garbage never throws: loadDiscoveryConfig would swallow it into defaults", () => {
@@ -153,7 +154,7 @@ Deno.test("both normalizers carry the same top-level keys", () => {
   assertEquals(Object.keys(DISCOVERY_DEFAULTS).sort(), LIVE_KEYS);
 });
 
-Deno.test("the admin twin rebuilds none of the deck's keys", () => {
+Deno.test("the admin twin rebuilds none of the retired keys", () => {
   // Code only: the file's own comments name what retired, on purpose.
   const code = CATALOG_SRC
     .replace(/\/\*[\s\S]*?\*\//g, "")
@@ -166,6 +167,8 @@ Deno.test("the admin twin rebuilds none of the deck's keys", () => {
       "weightsByMode",
       "engines",
       "swipe",
+      "filters",
+      "DiscoveryFilters",
       "WEIGHTED_MODE_KEYS",
       "WIRED_ENGINE_KEYS",
       "SIGNAL_KEYS",
@@ -187,4 +190,188 @@ Deno.test("the admin twin mirrors the Area params' bounds", () => {
   assertEquals(constant("REFERENCE_RATING_MAX"), SIGNAL_PARAM_BOUNDS.referenceRating.max);
   assertEquals(constant("REFERENCE_REVIEWS_MIN"), SIGNAL_PARAM_BOUNDS.referenceReviews.min);
   assertEquals(constant("REFERENCE_REVIEWS_MAX"), SIGNAL_PARAM_BOUNDS.referenceReviews.max);
+});
+
+// ── The normalizer, key by key ───────────────────────────────────────────────
+
+Deno.test("an early-migration blob reads back with every live section defaulted", () => {
+  // What an early migration stored: weights + slotting only. Both retired.
+  const old = {
+    weights: { proximity: 2, timing: 1, category: 1, popularity: 1, summary: 1, randomness: 0.35 },
+    slotting: { enabled: true, everyNth: 7 },
+  };
+  const cfg = normalizeDiscoveryConfig(old);
+  const keys = cfg as unknown as Record<string, unknown>;
+  assertEquals("weights" in keys, false);
+  assertEquals("slotting" in keys, false);
+  // ...and the live sections arrive at their defaults rather than undefined.
+  assertEquals(cfg.params, DISCOVERY_DEFAULTS.params);
+  assertEquals(cfg.catalog, DISCOVERY_DEFAULTS.catalog);
+  assertEquals(cfg.map, DISCOVERY_DEFAULTS.map);
+  assertEquals(cfg.name, DISCOVERY_DEFAULTS.name);
+  assertEquals(cfg.chat, DISCOVERY_DEFAULTS.chat);
+});
+
+// THE SWIPE DECK RETIRED (MESITA-2328), and every key only it read went with
+// it. A blob that still carries them must come back WITHOUT them, or the next
+// Save writes them straight back. `swipe` is dropped, never renamed.
+Deno.test("the deck's slices do not survive a normalize: swipe, engines, weights, weightsByMode", () => {
+  const cfg = normalizeDiscoveryConfig({
+    swipe: { radiusKm: 7, closingBufferMin: 30, minReviews: 1, savedAt: null },
+    engines: { swipe: { ranked: false } },
+    weights: { proximity: 1.5, mesita_level: 2, partnership: 2 },
+    weightsByMode: { swipe: { timing: 1.5 }, map: { proximity: 0.5 } },
+  }) as unknown as Record<string, unknown>;
+  for (const dead of ["swipe", "engines", "weights", "weightsByMode"]) {
+    assertEquals(dead in cfg, false, dead);
+  }
+});
+
+// What the live blob still stores under `params` (2026-10-18): the deck's
+// shape numbers on seven bags. Only the Area pipeline's three numbers are
+// read now; the rest must not come back, or the next Save writes it back.
+Deno.test("the deck's param bags and numbers do not survive a normalize", () => {
+  const cfg = normalizeDiscoveryConfig({
+    params: {
+      name: {},
+      timing: { dawn: 0.55, openShare: 0.7, closedFloor: 0.2 },
+      category: { miss: 0.1, exact: 1, family: 0.55 },
+      proximity: { maxKm: 25, kneeKm: 1, missingGeo: 0.35, halfDistanceKm: 6 },
+      popularity: { confidence: 60, floorRating: 3, priorRating: 4.2, referenceReviews: 500 },
+      randomness: {},
+      summary: { unembedded: 0.4 },
+      mesita_level: {},
+    },
+  });
+  assertEquals(cfg.params, {
+    proximity: { halfDistanceKm: 6 },
+    popularity: {
+      referenceRating: DISCOVERY_DEFAULTS.params.popularity.referenceRating,
+      referenceReviews: 500,
+    },
+  });
+});
+
+// The tentative Social engine's box had no reader (MESITA-2144). A blob that
+// still carries it must come back without it, like `slotting` before it.
+Deno.test("the retired social box does not survive a normalize", () => {
+  const cfg = normalizeDiscoveryConfig({
+    social: { seedCount: 6, generatedCount: 6, eventsPerRail: 8, minSeedEvents: 1, horizonDays: 14 },
+  });
+  assertEquals("social" in cfg, false);
+});
+
+Deno.test("chat.prompt round-trips, truncates, and garbage becomes blank", () => {
+  assertEquals(normalizeDiscoveryConfig({ chat: { prompt: "  Be Memo.  " } }).chat.prompt, "  Be Memo.  ");
+  assertEquals(normalizeDiscoveryConfig({}).chat.prompt, "");
+  assertEquals(normalizeDiscoveryConfig({ chat: { prompt: 12 } }).chat.prompt, "");
+  const tooLong = "x".repeat(12_001);
+  assertEquals(normalizeDiscoveryConfig({ chat: { prompt: tooLong } }).chat.prompt.length, 12_000);
+});
+
+Deno.test("map knobs default on an old blob and clamp", () => {
+  const missing = normalizeDiscoveryConfig({ weights: {}, slotting: {} });
+  assertEquals(missing.map, DISCOVERY_DEFAULTS.map);
+  const clamped = normalizeDiscoveryConfig({
+    map: {
+      minRating: 9,
+      minReviews: -2,
+      minPopularity: 4,
+      reloadMinKm: 99,
+      reloadMinSec: 40,
+      googleFill: "yes",
+      supers: { restaurants: false },
+    },
+  });
+  assertEquals(clamped.map.minRating, 5);
+  assertEquals(clamped.map.minReviews, 0);
+  assertEquals(clamped.map.minPopularity, 1);
+  assertEquals(clamped.map.reloadMinKm, 4);
+  assertEquals(clamped.map.reloadMinSec, 15);
+  const legacyReload = normalizeDiscoveryConfig({
+    map: { reloadMinKm: 0.4, reloadMinSec: 2 },
+  });
+  assertEquals(legacyReload.map.reloadMinKm, 0.5);
+  assertEquals(legacyReload.map.reloadMinSec, 2);
+  assertEquals(clamped.map.googleFill, true);
+  assertEquals(clamped.map.supers.coffee, true);
+  assertEquals(clamped.map.supers.dinner, true);
+  assertEquals("restaurants" in clamped.map.supers, false);
+});
+
+Deno.test("map.pinCount is the operator's How many, snapped to a stop", () => {
+  // MESITA-1699 took the Search Filters sheet off the consumer app, so the
+  // number that was the guest's since 2026-08-29 lives here. It caps BOTH
+  // lanes and the merged union, so max pins = pinCount, never the sum.
+  const pins = (raw: unknown) =>
+    normalizeDiscoveryConfig({ map: { pinCount: raw } }).map.pinCount;
+  assertEquals(normalizeDiscoveryConfig({}).map.pinCount, 20);
+  assertEquals(pins(40), 40);
+  assertEquals(pins(60), 60);
+  assertEquals(pins(29), 20);
+  assertEquals(pins(31), 40);
+  // A tie snaps DOWN, so a hand-edited blob costs less than it asked for
+  // rather than more — this number is what the map bills Google against.
+  assertEquals(pins(30), 20);
+  assertEquals(pins(9_000), 60);
+  assertEquals(pins("plenty"), 20);
+});
+
+Deno.test("map.googlePull is retired: an old blob's key is dropped on normalize (MESITA-2298)", () => {
+  // One Nearby Search (New) call per request, 20 places, never widened — the
+  // Legacy 40/60 pull is gone, so the normalizer rebuilds `map` without it
+  // and the next save drops it from the blob.
+  const map = normalizeDiscoveryConfig({ map: { googlePull: 60 } }).map;
+  assertEquals("googlePull" in map, false);
+  assertEquals(map.pinCount, 20);
+  assertEquals("googlePull" in DISCOVERY_DEFAULTS.map, false);
+});
+
+Deno.test("map.radiusKm is the one Nearby radius: default 50, clamped 1..50, one decimal", () => {
+  // Shared by the Map and the Feed's Google Places and Mesita Selected rails
+  // (MESITA-2298). The operator's number; a guest never sends it. 50 km is
+  // Google's Nearby circle cap, so the knob cannot ask for more.
+  const radius = (raw: unknown) =>
+    normalizeDiscoveryConfig({ map: { radiusKm: raw } }).map.radiusKm;
+  assertEquals(normalizeDiscoveryConfig({}).map.radiusKm, 50);
+  assertEquals(DISCOVERY_DEFAULTS.map.radiusKm, 50);
+  assertEquals(radius(0.2), 1);
+  assertEquals(radius(999), 50);
+  assertEquals(radius(12.34), 12.3);
+  assertEquals(radius(7), 7);
+  assertEquals(radius("far"), 50);
+});
+
+Deno.test("name knobs default Fast 5 and Deep 3+3+3 on an old blob and clamp", () => {
+  const missing = normalizeDiscoveryConfig({ weights: {}, slotting: {} });
+  assertEquals(missing.name, DISCOVERY_DEFAULTS.name);
+  assertEquals(missing.name.fast.count, 5);
+  assertEquals(missing.name.fast.googleCount, 5);
+  assertEquals(missing.name.deep, {
+    mesitaCount: 3,
+    autoCount: 3,
+    googleCount: 3,
+    supers: DISCOVERY_DEFAULTS.map.supers,
+  });
+  const clamped = normalizeDiscoveryConfig({
+    name: {
+      fast: { count: 99, supers: { restaurants: false } },
+      deep: { partnerCount: 5, mesitaCount: 7.2, googleCount: 40, autoCount: 0 },
+    },
+  });
+  assertEquals(clamped.name.fast.count, 20);
+  assertEquals(clamped.name.fast.supers.coffee, true);
+  assertEquals(clamped.name.fast.supers.dinner, true);
+  assertEquals("restaurants" in clamped.name.fast.supers, false);
+  // The retired Deep partners cap does not survive a read.
+  assertEquals("partnerCount" in clamped.name.deep, false);
+  assertEquals(clamped.name.deep.mesitaCount, 7);
+  assertEquals(clamped.name.deep.googleCount, 20);
+  assertEquals(clamped.name.deep.autoCount, 0);
+  assertEquals(clamped.name.fast.googleCount, 20);
+  const missingAuto = normalizeDiscoveryConfig({
+    name: { deep: { googleCount: 40 } },
+  });
+  assertEquals(missingAuto.name.deep.autoCount, 3);
+  assertEquals(missingAuto.name.deep.googleCount, 20);
 });
