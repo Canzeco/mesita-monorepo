@@ -5,7 +5,7 @@ import {
   type CatalogListPlace,
   catalogScore,
   CATALOG_RAIL_CAP,
-  rankCatalogRails,
+  buildCatalogRails,
 } from "./catalog-rank.ts";
 import {
   DEFAULT_CATALOG_RANKING,
@@ -42,132 +42,82 @@ function place(over: Partial<SignalPlace> = {}): SignalPlace {
   };
 }
 
-// 2026-10-17 15:00 UTC is Saturday morning on Mexico City's local clock.
-const NOON_SAT = new Date("2026-10-17T15:00:00Z");
-const at = { ...guest, now: NOON_SAT };
-const ALWAYS = Object.fromEntries(
-  ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
-    .map((d) => [d, [{ open: "00:00", close: "24:00" }]]),
-);
-const NEVER_SAT = { ...ALWAYS, saturday: [] };
-
-function rails(rows: CatalogListPlace[], places: SignalPlace[], intent = at) {
-  return rankCatalogRails(
-    rows,
-    places,
-    DEFAULT_CATALOG_RANKING,
-    DEFAULT_SIGNAL_PARAMS,
-    intent,
-  );
-}
-
-const ids = (list: { places: CatalogListPlace[] } | undefined) =>
+const ids = (list: { places: Array<Record<string, unknown>> } | undefined) =>
   list?.places.map((p) => p.id);
 
-Deno.test("rails run Right Now, Universal, then families in catalog order", () => {
-  const rows = [
-    row("cafe", ["coffee"]),
-    row("both", ["dinner", "drinks"]),
-    row("only-undefined", ["undefined"]),
-  ];
-  const out = rails(rows, rows.map(() => place({ hours: ALWAYS })));
-  const families = CATALOG_FAMILY_SLUGS.filter((f) =>
-    ["coffee", "dinner", "drinks"].includes(f)
-  );
-  assertEquals(out.map((r) => r.key), ["right_now", "universal", ...families]);
-  assertEquals(out[0].label, "Right Now");
-  assertEquals(out[0].emoji, "🕒");
-  assertEquals(out[1].label, "Universal");
-  assertEquals(out[1].emoji, "✨");
+const stub = (id: string) => ({
+  id: `g:${id}`,
+  googleOnly: true,
+  enriched_at: null,
+  content_state: "ready",
+  family_keys: ["dinner"],
+});
+
+Deno.test("rails run Google Places, Mesita Selected, then families in catalog order", () => {
+  const selected = CATALOG_FAMILY_SLUGS.map((slug) => row(slug, [slug]));
+  const out = buildCatalogRails([stub("a")], selected);
+  assertEquals(out.map((r) => r.key), [
+    "google_places",
+    "mesita_selected",
+    ...CATALOG_FAMILY_SLUGS,
+  ]);
+  assertEquals(out[0].label, "Google Places");
+  assertEquals(out[1].label, "Mesita Selected");
   assertEquals(out.slice(0, 2).every((r) => r.source === "signal"), true);
   assertEquals(out.slice(2).every((r) => r.source === "family"), true);
-  assertEquals(out.find((r) => r.key === "coffee")!.emoji, "☕");
+});
+
+Deno.test("Google appears in rail 1 only", () => {
+  const out = buildCatalogRails([stub("a"), stub("b")], [row("m", ["dinner"])]);
+  for (const rail of out.slice(1)) {
+    assertEquals(rail.places.some((p) => String(p.id).startsWith("g:")), false);
+  }
+  assertEquals(ids(out[0]), ["g:a", "g:b"]);
+});
+
+Deno.test("a Google stub or a Created row handed in as Selected is refused", () => {
+  const created = row("created", ["dinner"], { enriched_at: null });
+  const out = buildCatalogRails(
+    [],
+    [stub("x") as unknown as CatalogListPlace, created, row("ok", ["dinner"])],
+  );
+  assertEquals(ids(out.find((r) => r.key === "mesita_selected")), ["ok"]);
+  assertEquals(ids(out.find((r) => r.key === "dinner")), ["ok"]);
 });
 
 Deno.test("a dual-family place is in both family rails; undefined is none", () => {
-  const rows = [row("both", ["dinner", "drinks"]), row("u", ["undefined"])];
-  const out = rails(rows, rows.map(() => place()));
+  const out = buildCatalogRails([], [
+    row("both", ["dinner", "drinks"]),
+    row("lost", ["undefined"]),
+  ]);
   assertEquals(ids(out.find((r) => r.key === "dinner")), ["both"]);
   assertEquals(ids(out.find((r) => r.key === "drinks")), ["both"]);
   assertEquals(out.some((r) => r.key === "undefined"), false);
-  assertEquals(ids(out.find((r) => r.key === "universal"))!.sort(), [
-    "both",
-    "u",
+});
+
+Deno.test("every rail caps at 5 and keeps the engine's order", () => {
+  const google = Array.from({ length: 8 }, (_, i) => stub(`g${i}`));
+  const selected = Array.from({ length: 8 }, (_, i) => row(`s${i}`, ["coffee"]));
+  const out = buildCatalogRails(google, selected);
+  for (const rail of out) assertEquals(rail.places.length, CATALOG_RAIL_CAP);
+  assertEquals(ids(out.find((r) => r.key === "coffee")), [
+    "s0",
+    "s1",
+    "s2",
+    "s3",
+    "s4",
   ]);
 });
 
-Deno.test("Right Now admits an open Created place and drops closed or no-hours", () => {
-  const rows = [
-    row("created-open", ["dinner"], { enriched_at: null }),
-    row("closed", ["dinner"]),
-    row("no-hours", ["dinner"]),
-    row("busy", ["dinner"], { content_state: "generating" }),
-  ];
-  const out = rails(rows, [
-    place({ hours: ALWAYS }),
-    place({ hours: NEVER_SAT }),
-    place({ hours: null }),
-    place({ hours: ALWAYS }),
-  ]);
-  assertEquals(ids(out.find((r) => r.key === "right_now")), ["created-open"]);
+Deno.test("empty rails are omitted; nothing in leaves no rails", () => {
+  assertEquals(buildCatalogRails([], []), []);
   assertEquals(
-    ids(out.find((r) => r.key === "universal"))!.includes("created-open"),
-    false,
+    buildCatalogRails([], [row("c", ["coffee"])]).map((r) => r.key),
+    ["mesita_selected", "coffee"],
   );
-});
-
-Deno.test("Right Now sorts by proximity, then popularity", () => {
-  const rows = [row("far", []), row("quiet", []), row("loved", [])];
-  const out = rails(rows, [
-    place({ hours: ALWAYS, lat: guest.lat + 0.08, rating: 5, user_ratings_total: 999 }),
-    place({ hours: ALWAYS, rating: 3.2, user_ratings_total: 10 }),
-    place({ hours: ALWAYS, rating: 4.9, user_ratings_total: 900 }),
-  ]);
-  assertEquals(ids(out[0]), ["loved", "quiet", "far"]);
-});
-
-Deno.test("Right Now is absent when nothing is open", () => {
-  const rows = [row("a", ["coffee"]), row("b", ["coffee"])];
-  const out = rails(rows, [place({ hours: NEVER_SAT }), place()]);
-  assertEquals(out.map((r) => r.key), ["universal", "coffee"]);
-});
-
-Deno.test("every rail caps at 5; Universal and families are enriched-only", () => {
-  const n = CATALOG_RAIL_CAP + 5;
-  const rows = [
-    ...Array.from({ length: n }, (_, i) => row(`e${i}`, ["coffee"])),
-    row("created", ["coffee"], { enriched_at: null }),
-  ];
-  const out = rails(rows, rows.map(() => place({ hours: ALWAYS })));
-  const universal = out.find((r) => r.key === "universal")!;
-  assertEquals(CATALOG_RAIL_CAP, 5);
-  assertEquals(universal.places.length, CATALOG_RAIL_CAP);
-  assertEquals(ids(universal)!.includes("created"), false);
-  const coffee = out.find((r) => r.key === "coffee")!;
-  assertEquals(coffee.places.length, CATALOG_RAIL_CAP);
-  assertEquals(ids(coffee)!.includes("created"), false);
-  assertEquals(out[0].places.length, CATALOG_RAIL_CAP);
-});
-
-Deno.test("a short rail shows what it has", () => {
-  const rows = [row("a", ["coffee"]), row("b", ["coffee"])];
-  const out = rails(rows, rows.map(() => place({ hours: ALWAYS })));
-  for (const r of out) assertEquals(r.places.length, 2);
-});
-
-Deno.test("families are enriched-only and an empty family is omitted", () => {
-  const rows = [
-    row("raw", ["dinner"], { enriched_at: null }),
-    row("cafe", ["coffee"]),
-  ];
-  const out = rails(rows, [place(), place()]);
-  assertEquals(out.map((r) => r.key), ["universal", "coffee"]);
-});
-
-Deno.test("no enriched place and nothing open leaves no rails", () => {
   assertEquals(
-    rails([row("raw", ["dinner"], { enriched_at: null })], [place()]),
-    [],
+    buildCatalogRails([stub("a")], []).map((r) => r.key),
+    ["google_places"],
   );
 });
 
@@ -183,14 +133,6 @@ Deno.test("the enriched ring requires enriched and ready", () => {
     }),
     false,
   );
-});
-
-Deno.test("an enriched place leads at the default weights in Universal", () => {
-  const rows = [row("far", ["dinner"]), row("near", ["dinner"])];
-  const out = rails(rows, [place({ lat: guest.lat + 0.08 }), place()]);
-  for (const key of ["universal", "dinner"]) {
-    assertEquals(ids(out.find((r) => r.key === key)), ["near", "far"]);
-  }
 });
 
 Deno.test("Enriched at weight 0 leaves Created and enriched to the other signals", () => {

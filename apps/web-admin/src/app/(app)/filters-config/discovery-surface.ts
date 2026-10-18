@@ -212,13 +212,12 @@ export const CATALOG_FAMILY_FACTS: readonly { key: string; label: string; emoji:
   { key: "feel_better", label: "Feel better", emoji: "💆" },
 ];
 
-// The Feed's rails, top to bottom (consumer-web-list-catalog,
-// `_shared/catalog-rank.ts`): the two signal rails, then one rail per guest
-// family in CATALOG_FAMILY_FACTS order, enriched members only. Right Now is
-// Google places open now when the guest shares a location (MESITA-2295),
-// the Mesita one otherwise. Every rail
-// stops at CATALOG_RAIL_CAP and an empty rail is omitted. The supabase
-// contract test pins these against what rankCatalogRails returns.
+// The Feed's rails, top to bottom (consumer-web-list-catalog on the shared
+// engine, `_shared/nearby-selection.ts` + `_shared/catalog-rank.ts`,
+// MESITA-2302): Google Places, Mesita Selected, then one rail per guest
+// family in CATALOG_FAMILY_FACTS order, Mesita Selected members only. Every
+// rail stops at CATALOG_RAIL_CAP and an empty rail is omitted. The supabase
+// contract test pins these against what buildCatalogRails returns.
 export const CATALOG_RAIL_CAP = 5;
 
 export const CATALOG_SIGNAL_RAILS: readonly {
@@ -229,20 +228,20 @@ export const CATALOG_SIGNAL_RAILS: readonly {
   order: string;
 }[] = [
   {
-    key: "right_now",
-    label: "Right Now",
-    emoji: "🕒",
+    key: "google_places",
+    label: "Google Places",
+    emoji: "📍",
     holds:
-      "Every Google place open now near the guest (Nearby, Search's per-IP budget, ~1 km cells cached 5 min); a Mesita place wins its own Google id. Without a location, Google fill off, or no budget: every ready Mesita place open now on its own clock.",
-    order:
-      "Google: nearest first. Mesita fallback: nearest first, then Popularity.",
+      "The Map's Google scope: one Nearby call inside Radius (km) around the guest, after General, the Map floors and 100+ Google reviews; a Mesita place wins its own Google id. Needs a location, Google fill on and budget; otherwise the rail is omitted. The only rail Google appears in.",
+    order: "The Map column (Popularity leads, open now may boost), distance breaks ties.",
   },
   {
-    key: "universal",
-    label: "Universal",
+    key: "mesita_selected",
+    label: "Mesita Selected",
     emoji: "✨",
-    holds: "Every Mesita Enriched Place.",
-    order: "Catalog score.",
+    holds:
+      "The Map's Selected scope: every enriched, ready Mesita place inside Radius (km). No review floor.",
+    order: "Catalog ranking (Proximity, Popularity), distance breaks ties.",
   },
 ];
 

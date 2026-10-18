@@ -19,8 +19,7 @@ import {
   DISCOVERY_SOURCE_KEYS as adminSourceKeys,
   DISCOVERY_SOURCES as adminSources,
 } from "../../../../apps/web-admin/src/app/(app)/filters-config/discovery-surface.ts";
-import { CATALOG_RAIL_CAP, rankCatalogRails } from "./catalog-rank.ts";
-import { DEFAULT_SIGNAL_PARAMS } from "./discovery-config.ts";
+import { buildCatalogRails, CATALOG_RAIL_CAP } from "./catalog-rank.ts";
 import {
   CATALOG_ALL_ZERO_ERROR,
   catalogRelativeExponents,
@@ -59,41 +58,16 @@ Deno.test("admin Catalog shares match the scorer", () => {
   );
 });
 
-Deno.test("admin Rails list the rails rankCatalogRails builds", () => {
+Deno.test("admin Rails list the rails buildCatalogRails builds", () => {
   assertEquals(adminRailCap, CATALOG_RAIL_CAP);
-  const always = Object.fromEntries(
-    [
-      "sunday",
-      "monday",
-      "tuesday",
-      "wednesday",
-      "thursday",
-      "friday",
-      "saturday",
-    ]
-      .map((d) => [d, [{ open: "00:00", close: "24:00" }]]),
-  );
-  const rows = [{
+  const selected = [{
     id: "a",
     family_keys: CATALOG_FAMILY_FACTS.map((f) => f.key),
     enriched_at: "2026-01-01T00:00:00Z",
     content_state: "ready",
   }];
-  const guest = { lat: 19.4326, lng: -99.1332 };
-  const rails = rankCatalogRails(
-    rows,
-    [{
-      ...guest,
-      hours: always,
-      category: null,
-      embedding: null,
-      rating: 4.2,
-      user_ratings_total: 60,
-    }],
-    DEFAULT_CATALOG_RANKING,
-    DEFAULT_SIGNAL_PARAMS,
-    { ...guest, now: new Date("2026-10-17T15:00:00Z") },
-  );
+  const google = [{ id: "g:x", googleOnly: true }];
+  const rails = buildCatalogRails(google, selected);
   assertEquals(
     rails.map((r) => ({ key: r.key, label: r.label, emoji: r.emoji })),
     [

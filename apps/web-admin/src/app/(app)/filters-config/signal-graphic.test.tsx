@@ -38,13 +38,13 @@ describe("signal graphics", () => {
 });
 
 describe("rails on Modes", () => {
-  it("lists Right Now, Universal, then every family in Feed order", () => {
+  it("lists Google Places, Mesita Selected, then every family in Feed order", () => {
     const html = renderToStaticMarkup(<CatalogRailList />);
     const labels = [
       ...CATALOG_SIGNAL_RAILS.map((rail) => rail.label),
       ...CATALOG_FAMILY_FACTS.map((family) => family.label),
     ];
-    expect(labels.slice(0, 2)).toEqual(["Right Now", "Universal"]);
+    expect(labels.slice(0, 2)).toEqual(["Google Places", "Mesita Selected"]);
     let last = -1;
     for (const label of labels) {
       const idx = html.indexOf(`</span>${label}</span>`);

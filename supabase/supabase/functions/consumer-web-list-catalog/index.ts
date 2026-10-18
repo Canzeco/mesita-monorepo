@@ -15,7 +15,7 @@
 //      on popularity alone.
 //   3. One rail per guest family, Mesita Selected places only.
 // At most 5 places per rail; empty rails are omitted. Right Now, Universal
-// and the guest predicates are gone: the Feed sends none.
+// and the guest deck filters are gone: the Feed sends none.
 //
 // Local:  supabase functions serve consumer-web-list-catalog
 // Deploy: supabase functions deploy consumer-web-list-catalog
