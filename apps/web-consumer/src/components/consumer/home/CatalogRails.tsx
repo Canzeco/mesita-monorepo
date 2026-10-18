@@ -31,7 +31,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Compass, Heart, Navigation } from "lucide-react";
+import { Compass, Heart, LayoutGrid, Map as MapIcon, Navigation } from "lucide-react";
+import { useRouter } from "next/navigation";
 import {
   apiListAreaPool,
   type AreaPool,
@@ -67,6 +68,9 @@ import { useActiveLocation } from "@/lib/active-location";
 import { cn, errMsg } from "@/lib/utils";
 import { placesFeed } from "@/lib/catalog-feed";
 import { AreaDiagnostics } from "./AreaDiagnostics";
+import { SearchMap } from "@/components/consumer/search/SearchMap";
+import { isGoogleOnlyPlace } from "@/lib/place-placeholder";
+import { placeHref } from "@/lib/place-route";
 
 /** The server's rail keys for the two sets Featured mixes. */
 export const MESITA_RAIL_KEY = "mesita_selected";
@@ -153,7 +157,30 @@ export function favoritePlaces(
 }
 
 
-export function CatalogRails() {
+/** A place whose name holds every word of the query (Places tab, MESITA-2402). */
+export function matchesQuery(place: Pick<Place, "name">, query: string): boolean {
+  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const name = place.name.toLowerCase();
+  return words.every((w) => name.includes(w));
+}
+
+const VIEW_PILL =
+  "text-xs flex items-center justify-center gap-1 rounded-full px-1 py-2 font-semibold whitespace-nowrap transition active:scale-[0.98]";
+
+/**
+ * Home's Places mounts this bare. The Places TAB (MESITA-2402, a test)
+ * passes `query` (its header's search bar, filtering by name) and
+ * `mapApiKey`, which heads the right pane with Catalog | Map: the same list,
+ * as tiles or as pins.
+ */
+export function CatalogRails({
+  query = "",
+  mapApiKey,
+}: { query?: string; mapApiKey?: string } = {}) {
+  const router = useRouter();
+  const withMap = mapApiKey !== undefined;
+  const [view, setView] = useState<"catalog" | "map">("catalog");
+  const [pinId, setPinId] = useState<string | null>(null);
   const supabase = useBrowserSupabase();
   const coords = useUserLocation();
   const { savedIds, hydrated, setSaved } = useSavedPlaces();
@@ -229,8 +256,11 @@ export function CatalogRails() {
   const pageCount = pages.key === pageKey ? pages.n : 1;
   const sentinel = useRef<HTMLLIElement | null>(null);
   const shown: Place[] = useMemo(
-    () => (pool ? poolPlaces(pool, chip) : []),
-    [pool, chip],
+    () =>
+      pool
+        ? poolPlaces(pool, chip).filter((p) => matchesQuery(p, query))
+        : [],
+    [pool, chip, query],
   );
   const hasMore = shown.length > pageCount * PLACES_PAGE;
   useEffect(() => {
@@ -249,8 +279,11 @@ export function CatalogRails() {
   // Saved previews re-read whenever the saved set changes, so a heart
   // tapped on Featured shows up under Favorites at once.
   const favorites = useMemo(
-    () => favoritePlaces(savedIds, readSavedPlacePreviews<Place>()),
-    [savedIds],
+    () =>
+      favoritePlaces(savedIds, readSavedPlacePreviews<Place>()).filter((p) =>
+        matchesQuery(p, query),
+      ),
+    [savedIds, query],
   );
 
   /** What the events say about a tile: its source, rank and final score. */
@@ -319,13 +352,95 @@ export function CatalogRails() {
 
   // Home's header (location in its right half, MESITA-2401) → the split;
   // every state draws in the right three quarters, which scrolls on its own.
+  const scroller = (inner: ReactNode) => (
+    <div className="bg-card scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain">
+      {inner}
+    </div>
+  );
+
+  // The map pane: the row's list as pins. First tap selects, a second tap on
+  // the same pin opens (Search's gesture); a Google-only pin opens through
+  // get-or-create, a Mesita pin routes to its profile.
+  const openFromMap = (place: Place) => {
+    if (isGoogleOnlyPlace(place)) openGooglePlace(place);
+    else router.push(placeHref(place.slug || place.id));
+  };
+  const mapPane = () => {
+    const list = chip === FAVORITES_CHIP ? favorites : shown;
+    const picked = list.find((p) => p.id === pinId) ?? null;
+    return (
+      <div className="relative min-h-0 flex-1 overflow-hidden" data-places-map>
+        <SearchMap
+          apiKey={mapApiKey ?? ""}
+          places={list}
+          userLocation={coords}
+          viewCenter={from}
+          selectedId={pinId}
+          panTargetId={pinId}
+          onSelectPlace={(p) => setPinId(p.id)}
+          onOpenPlace={openFromMap}
+        />
+        {picked ? (
+          <button
+            type="button"
+            onClick={() => openFromMap(picked)}
+            className="bg-card/95 shadow-elev border-border absolute inset-x-2 bottom-2 z-10 flex min-w-0 items-center justify-between gap-2 rounded-2xl border px-3 py-2.5 text-left text-xs font-semibold backdrop-blur"
+          >
+            <span className="min-w-0 truncate">{picked.name}</span>
+            <span className="text-muted-foreground shrink-0 font-medium">Open</span>
+          </button>
+        ) : null}
+      </div>
+    );
+  };
+
+  const viewSwitch = (
+    <div
+      className="bg-card border-foreground/20 grid shrink-0 grid-cols-2 gap-1 border-b-2 px-1.5 py-1.5"
+      role="tablist"
+      aria-label="View"
+      data-places-view
+    >
+      {(
+        [
+          { key: "catalog", label: "Catalog", Icon: LayoutGrid },
+          { key: "map", label: "Map", Icon: MapIcon },
+        ] as const
+      ).map(({ key, label: viewLabel, Icon }) => (
+        <button
+          key={key}
+          type="button"
+          role="tab"
+          aria-selected={view === key}
+          onClick={() => setView(key)}
+          className={cn(
+            VIEW_PILL,
+            view === key
+              ? "bg-primary text-primary-foreground shadow-glow"
+              : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground",
+          )}
+        >
+          <Icon className="h-3.5 w-3.5 shrink-0" strokeWidth={2.2} />
+          <span>{viewLabel}</span>
+        </button>
+      ))}
+    </div>
+  );
+
   const shell = (inner: ReactNode) => (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex min-h-0 flex-1">
         {categories}
-        <div className="bg-card scrollbar-hide flex min-h-0 w-3/4 flex-col overflow-y-auto overscroll-y-contain">
-          {inner}
-        </div>
+        {withMap ? (
+          <div className="bg-card flex min-h-0 w-3/4 flex-col">
+            {viewSwitch}
+            {view === "map" ? mapPane() : scroller(inner)}
+          </div>
+        ) : (
+          <div className="bg-card scrollbar-hide flex min-h-0 w-3/4 flex-col overflow-y-auto overscroll-y-contain">
+            {inner}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -375,7 +490,13 @@ export function CatalogRails() {
       );
     }
     return shell(
-      favorites.length === 0 ? (
+      favorites.length === 0 && query.trim() ? (
+        <EmptyState
+          icon={Heart}
+          title={`No "${query.trim()}" in Favorites`}
+          description="Try another name."
+        />
+      ) : favorites.length === 0 ? (
         <EmptyState
           icon={Heart}
           title="Nothing saved yet"
@@ -410,7 +531,13 @@ export function CatalogRails() {
 
   const label = chips.find((c) => c.key === chip)?.label ?? "Places";
   const empty =
-    chip === FEATURED_CHIP && from === null ? (
+    query.trim() ? (
+      <EmptyState
+        icon={Compass}
+        title={`No "${query.trim()}" in ${label}`}
+        description="Try another name, or another family."
+      />
+    ) : chip === FEATURED_CHIP && from === null ? (
       <EmptyState
         icon={Navigation}
         title="Turn on location"
