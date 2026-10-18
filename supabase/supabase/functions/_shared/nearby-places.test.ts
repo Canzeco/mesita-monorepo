@@ -2,12 +2,10 @@ import { assertEquals } from "jsr:@std/assert@1";
 import { NEARBY_TYPE_KEYS } from "./discovery-config.ts";
 import {
   __resetNearbyGoogleCacheForTests,
-  __setLegacyPageTokenDelayForTests,
   CATALOG_NEARBY_HARD_MAX,
   claimOwnedHits,
   GOOGLE_FANOUT_MAX,
   GOOGLE_NEARBY_MAX,
-  nearbyCallCount,
   parsePlacesScope,
   admitsScopeRow,
   isEnrichedListedRow,
@@ -767,95 +765,6 @@ Deno.test("claimOwnedHits: rows without a google_place_id claim nothing", () => 
 
 
 // MESITA-1695 / MESITA-1796: the operator picks 20 / 40 / 60 as max Google
-// input. Google bills Nearby in pages of 20; 40 and 60 are 2 and 3 billed
-// calls over the same query (Legacy next_page_token), not type-slice fan-out.
-Deno.test("nearbyCallCount: a stop is a page count, and never exceeds 3", () => {
-  assertEquals(nearbyCallCount(undefined), 1);
-  assertEquals(nearbyCallCount(20), 1);
-  assertEquals(nearbyCallCount(40), 2);
-  assertEquals(nearbyCallCount(60), 3);
-  // Junk cannot buy a fourth call.
-  assertEquals(nearbyCallCount(1_000), 3);
-  assertEquals(nearbyCallCount(0), 1);
-  assertEquals(nearbyCallCount(-5), 1);
-});
-
-Deno.test("searchNearbyPlaces: pull 60 paginates Legacy and dedupes the union", async () => {
-  __resetNearbyGoogleCacheForTests();
-  let n = 0;
-  const orig = globalThis.fetch;
-  globalThis.fetch = (input: string | URL | Request) => {
-    n++;
-    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-    if (url.includes("nearbysearch/json")) {
-      const page = url.includes("pagetoken=page2") ? 2 : url.includes("pagetoken=page1") ? 1 : 0;
-      const placeId = page === 0 ? "ChIJ-ok" : page === 1 ? "ChIJ-p1" : "ChIJ-p2";
-      return Promise.resolve(
-        new Response(JSON.stringify({
-          status: "OK",
-          results: [{
-            place_id: placeId,
-            name: `Place ${page}`,
-            vicinity: "1 Main",
-            geometry: { location: { lat: 25.67 + page * 0.001, lng: -100.3 } },
-            types: ["restaurant"],
-          }],
-          next_page_token: page < 2 ? `page${page + 1}` : undefined,
-        }), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-      );
-    }
-    return Promise.resolve(new Response("unexpected", { status: 500 }));
-  };
-  try {
-    __setLegacyPageTokenDelayForTests(0);
-    const hits = await searchNearbyPlaces("k", CENTER, {
-      types: ["restaurant", "cafe", "bakery"],
-      pull: 60,
-    });
-    assertEquals(n, 3);
-    assertEquals(hits.length, 3);
-    assertEquals(hits.map((h) => h.placeId), ["ChIJ-ok", "ChIJ-p1", "ChIJ-p2"]);
-  } finally {
-    globalThis.fetch = orig;
-    __resetNearbyGoogleCacheForTests();
-  }
-});
-
-Deno.test("searchNearbyPlaces: the pull is part of the cache cell", async () => {
-  __resetNearbyGoogleCacheForTests();
-  let n = 0;
-  const orig = globalThis.fetch;
-  globalThis.fetch = () => {
-    n++;
-    return Promise.resolve(
-      new Response(OK_BODY, {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
-  };
-  try {
-    await searchNearbyPlaces("k", CENTER, { types: ["restaurant"], pull: 20 });
-    assertEquals(n, 1);
-    // Same cell, same types, warm — no second bill.
-    await searchNearbyPlaces("k", CENTER, { types: ["restaurant"], pull: 20 });
-    assertEquals(n, 1);
-    assertEquals(
-      peekCachedNearbyPlaces(CENTER, ["restaurant"], 20)?.length,
-      1,
-    );
-    // A 20-row cell is NOT an answer to a 60 pull, so it must not be served
-    // as one: the operator raised the stop to get more places.
-    assertEquals(peekCachedNearbyPlaces(CENTER, ["restaurant"], 60), null);
-  } finally {
-    globalThis.fetch = orig;
-    __resetNearbyGoogleCacheForTests();
-  }
-});
-
 Deno.test("mergeNearbyCatalog: Google pull backfills with Mesita up to pinCount", () => {
   const mesitaOnly = Array.from({ length: 40 }, (_, i) => ({
     id: `m${i}`,
@@ -876,137 +785,60 @@ Deno.test("mergeNearbyCatalog: Google pull backfills with Mesita up to pinCount"
   assertEquals(got.filter((x) => x.kind === "listed").length, 40);
 });
 
-Deno.test("lanesForPlacesScope: the Google lane cap follows the operator pull", () => {
-  // The guest's How many still caps pins; the operator's pull caps what we
-  // buy. 60 pins with a 20 pull is 20 Google rows, exactly as before.
+Deno.test("lanesForPlacesScope: the Google lane is one Nearby call, never a pull (MESITA-2298)", () => {
+  // pinCount still caps pins; Google hands back at most 20 per call and the
+  // engine never asks twice, so 60 pins is 20 Google rows at most.
   assertEquals(lanesForPlacesScope("google", 60).googleCount, GOOGLE_NEARBY_MAX);
-  assertEquals(lanesForPlacesScope("google", 60, 60).googleCount, 60);
-  assertEquals(lanesForPlacesScope("google", 20, 60).googleCount, 20);
-  assertEquals(lanesForPlacesScope("mesita", 60, 60).googleCount, 0);
+  assertEquals(lanesForPlacesScope("google", 20).googleCount, 20);
+  assertEquals(lanesForPlacesScope("google", 10).googleCount, 10);
+  assertEquals(lanesForPlacesScope("enriched", 60).googleCount, 0);
+  assertEquals(lanesForPlacesScope("mesita", 60).googleCount, 0);
 });
 
-
-const LEGACY_OK_BODY = (placeId = "ChIJ-ok", next?: string) =>
-  JSON.stringify({
-    status: "OK",
-    results: [{
-      place_id: placeId,
-      name: "Ok Cafe",
-      vicinity: "1 Main",
-      geometry: { location: { lat: 25.67, lng: -100.3 } },
-      types: ["restaurant"],
-    }],
-    next_page_token: next,
-  });
-
-// MESITA-1700, both halves. Pagination must not cache a short answer, and the
-// quota ledger counts billed pages, not pulls.
-Deno.test("searchNearbyPlaces: a partial pull is NOT cached", async () => {
+Deno.test("searchNearbyPlaces: one call, charged once, and a quota denial caches nothing (MESITA-2298)", async () => {
   __resetNearbyGoogleCacheForTests();
-  let n = 0;
   const orig = globalThis.fetch;
-  globalThis.fetch = (input: string | URL | Request) => {
-    n++;
-    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-    if (!url.includes("nearbysearch/json")) {
-      return Promise.resolve(new Response("unexpected", { status: 500 }));
-    }
-    const page = url.includes("pagetoken=page1") ? 1 : 0;
-    if (page === 1) return Promise.resolve(new Response("boom", { status: 500 }));
-    return Promise.resolve(
-      new Response(LEGACY_OK_BODY(`ChIJ-${page}`, "page1"), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
-  };
-  try {
-    __setLegacyPageTokenDelayForTests(0);
-    const types = ["restaurant", "cafe", "bakery"];
-    const first = await searchNearbyPlaces("k", CENTER, { types, pull: 60 });
-    assertEquals(n, 2);
-    assertEquals(first.length, 1);
-    assertEquals(peekCachedNearbyPlaces(CENTER, types, 60), null);
-    await searchNearbyPlaces("k", CENTER, { types, pull: 60 });
-    assertEquals(n, 4);
-  } finally {
-    globalThis.fetch = orig;
-    __resetNearbyGoogleCacheForTests();
-  }
-});
-
-Deno.test("searchNearbyPlaces: the quota is charged per BILLED CALL", async () => {
-  __resetNearbyGoogleCacheForTests();
   let calls = 0;
   let charges = 0;
-  const orig = globalThis.fetch;
   globalThis.fetch = (input: string | URL | Request) => {
-    calls++;
-    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-    if (!url.includes("nearbysearch/json")) {
-      return Promise.resolve(new Response("unexpected", { status: 500 }));
-    }
-    const next = calls < 3 ? `page${calls}` : undefined;
+    calls += 1;
+    const url = String(input instanceof Request ? input.url : input);
+    assertEquals(url.includes("maps.googleapis.com/maps/api/place/nearbysearch"), false);
     return Promise.resolve(
-      new Response(LEGACY_OK_BODY(`ChIJ-${calls}`, next), {
+      new Response(JSON.stringify({ places: [{ id: "ChIJ-one", displayName: { text: "One" } }] }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       }),
     );
   };
   try {
-    __setLegacyPageTokenDelayForTests(0);
-    await searchNearbyPlaces("k", CENTER, {
-      types: ["restaurant", "cafe", "bakery"],
-      pull: 60,
-      beforeFanout: () => {
-        charges++;
-        return Promise.resolve(true);
-      },
+    const types = ["restaurant", "cafe", "bakery"];
+    // Denied: no Google call, nothing cached, the next request asks again.
+    const denied = await searchNearbyPlaces("k", CENTER, {
+      types,
+      beforeFanout: () => Promise.resolve(++charges > 1),
     });
-    assertEquals(calls, 3);
-    assertEquals(charges, 3);
-  } finally {
-    globalThis.fetch = orig;
-    __resetNearbyGoogleCacheForTests();
-  }
-});
-
-Deno.test("searchNearbyPlaces: a mid-pull quota denial truncates, keeps, and does not cache", async () => {
-  __resetNearbyGoogleCacheForTests();
-  let calls = 0;
-  let charges = 0;
-  const orig = globalThis.fetch;
-  globalThis.fetch = (input: string | URL | Request) => {
-    calls++;
-    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-    if (!url.includes("nearbysearch/json")) {
-      return Promise.resolve(new Response("unexpected", { status: 500 }));
-    }
-    return Promise.resolve(
-      new Response(LEGACY_OK_BODY("ChIJ-ok", "page1"), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
-  };
-  try {
-    __setLegacyPageTokenDelayForTests(0);
-    const types = ["restaurant", "cafe", "bakery"];
+    assertEquals(denied, []);
+    assertEquals(calls, 0);
+    assertEquals(peekCachedNearbyPlaces(CENTER, types), null);
+    // Allowed: exactly one billed call for the cell, then the cell is warm.
     const hits = await searchNearbyPlaces("k", CENTER, {
       types,
-      pull: 60,
-      beforeFanout: () => Promise.resolve(++charges === 1),
+      beforeFanout: () => Promise.resolve(++charges > 1),
     });
+    assertEquals(hits.length, 1);
     assertEquals(calls, 1);
     assertEquals(charges, 2);
-    assertEquals(hits.length, 1);
-    assertEquals(peekCachedNearbyPlaces(CENTER, types, 60), null);
+    assertEquals(peekCachedNearbyPlaces(CENTER, types)?.length, 1);
+    await searchNearbyPlaces("k", CENTER, { types, beforeFanout: () => Promise.resolve(++charges > 1) });
+    assertEquals(calls, 1);
+    assertEquals(charges, 2);
   } finally {
     globalThis.fetch = orig;
     __resetNearbyGoogleCacheForTests();
   }
 });
+
 
 Deno.test("list-places admits every Mesita row through the scope, on the scoped filters (MESITA-2158)", async () => {
   const src = await Deno.readTextFile(

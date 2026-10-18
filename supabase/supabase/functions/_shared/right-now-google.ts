@@ -6,7 +6,7 @@
 // Google-only card (`googleStub`). The differences are small:
 //   - the mask adds `currentOpeningHours.openNow`, in its own cell cached
 //     RIGHT_NOW_CACHE_MS (Search's mask and 15 s cell stay);
-//   - the 15 guest families' types, pull 20, one call;
+//   - the 15 guest families' types, one call of 20;
 //   - only `openNow === true` and `OPERATIONAL`, nearest first, 5;
 //   - no photo: a Google-only card draws its family emoji (MESITA-2298),
 //     so no `/media` call is ever made for a card.
@@ -21,7 +21,6 @@ import { googleStub } from "./google-stub.ts";
 import { haversineKm } from "./geo.ts";
 import {
   claimOwnedHits,
-  GOOGLE_NEARBY_MAX,
   mergeNearbyCatalog,
   peekCachedNearbyPlaces,
   resolveGoogleItem,
@@ -75,12 +74,8 @@ export async function rightNowGooglePlaces<T extends RightNowOwnedRow>(
   if (!apiKey || !center) return null;
 
   // A warm cell spends nothing, not even a ledger row.
-  const hits = peekCachedNearbyPlaces(
-    center,
-    RIGHT_NOW_TYPES,
-    GOOGLE_NEARBY_MAX,
-    true,
-  ) ?? await searchNearbyPlaces(apiKey, center, {
+  const hits = peekCachedNearbyPlaces(center, RIGHT_NOW_TYPES, true) ??
+    await searchNearbyPlaces(apiKey, center, {
     types: RIGHT_NOW_TYPES,
     rightNow: true,
     beforeFanout: deps.consumeQuota,
