@@ -44,12 +44,19 @@ describe("the Feed's rails sit in three bands on one surface (MESITA-2308, MESIT
   });
 
   it("keeps the cards a little closer together (MESITA-2353)", () => {
-    expect(src).toContain("scrollbar-hide ml-3 flex min-w-0 flex-1 gap-1.5 overflow-x-auto");
+    expect(src).toContain("scrollbar-hide flex min-w-0 flex-1 gap-1.5 overflow-x-auto");
   });
 
   it("pads the card row, not the rail, so the name column meets both hairlines (MESITA-2354)", () => {
-    expect(src).toContain("overflow-x-auto overscroll-x-contain py-3");
-    expect(src).not.toMatch(/data-band="[abc]"[^>]*py-3/);
+    expect(src).toContain("overflow-x-auto overscroll-x-contain p-1.5");
+    expect(src).not.toMatch(/data-band="[abc]"[^>]*py-/);
+  });
+
+  it("uses one 6px gap between cards and to every line (MESITA-2358)", () => {
+    // gap-1.5 between cards and p-1.5 to the lines: the same 6px.
+    expect(src).toContain("gap-1.5 overflow-x-auto overscroll-x-contain p-1.5");
+    expect(src).toContain("gap-1.5 overflow-hidden p-1.5");
+    expect(src).not.toContain("ml-3 flex");
   });
 
   it("uses semantic tokens only", () => {

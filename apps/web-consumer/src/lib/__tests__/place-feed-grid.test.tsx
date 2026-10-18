@@ -138,7 +138,7 @@ describe("Places is family rails", () => {
     // …in its own column with a hairline and room before the cards
     // (MESITA-2351), on the same surface as the cards (MESITA-2355).
     expect(rails).toContain('className="border-border relative w-10 shrink-0 border-r"');
-    expect(rails).toContain("scrollbar-hide ml-3 flex");
+    expect(rails).toContain("scrollbar-hide flex min-w-0 flex-1 gap-1.5");
     // One square card, half photo, half white band (MESITA-2344).
     expect(tile).toContain("aspect-square");
     expect(tile).not.toContain("aspect-[3/2]");
