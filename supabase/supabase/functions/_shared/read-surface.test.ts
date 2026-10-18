@@ -205,6 +205,8 @@ const PROFILES_READ_ALLOWLIST = [
   "consumer-web-get-place/index.ts",
   "consumer-web-list-catalog/index.ts",
   "consumer-web-list-places/index.ts",
+  // The Area pool's owned-row lookup by google_place_id, for both views (MESITA-2379).
+  "_shared/area-deps.ts",
   "supabase-edgefunc-discover-places/index.ts",
   // Stop reads content_state and enriched_at, and only to turn enriching off (MESITA-2221).
   "enricher-edgefunc-write-place/index.ts",

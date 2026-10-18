@@ -4,8 +4,8 @@
 # safety nets — each package's own .gitignore is the real authority
 node_modules/
 .pnpm-store/
-# env files .worktreeinclude seeds outlive a deleted package's own .gitignore
-# (#2117 committed three from apps/web-business + apps/mobile-consumer)
+# env files carry secrets: ignored here too, so one stays untracked even where no package
+# .gitignore covers it (.worktreeinclude seeds them into every worktree)
 .env
 .env.*
 !.env.example
@@ -15,20 +15,8 @@ node_modules/
 .claude/settings.local.json
 .claude/.redeye-backup.json
 
-# agent worktrees parked inside the repo
-.worktrees/
+# gstack's per-repo scratch
 .gstack/
 
-# gstack runtime links (install script symlinks these into the committed
-# .cursor/skills/gstack/ tree so skill preambles' GSTACK_ROOT resolves bins;
-# never commit absolute VM/Mac symlinks)
-.cursor/skills/gstack/bin
-.cursor/skills/gstack/browse
-.cursor/skills/gstack/review
-.cursor/skills/gstack/gstack-upgrade
-.cursor/skills/gstack/ETHOS.md
-.cursor/skills/gstack/design
-.cursor/skills/gstack/VERSION
-
-# Claude Code worktree fleet (Rules I-3): never tracked, seeded from .worktreeinclude
+# the Claude Code desktop app's launch worktrees: never tracked, seeded from .worktreeinclude
 .claude/worktrees/

@@ -1,0 +1,62 @@
+name: render
+
+# The Render enrichment workflow deploys from main on every push, so its tests
+# gate the PR. Its own install root, on npm: Render's build command is
+# `npm install`.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "render/**"
+      - ".github/workflows/render.yml"
+  # Every PR runs this workflow; the `changes` job decides whether the check
+  # has anything to do.
+  pull_request: {}
+
+concurrency:
+  group: render-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: detect render changes
+    runs-on: ubuntu-latest
+    outputs:
+      render: ${{ github.event_name != 'pull_request' && 'true' || steps.filter.outputs.render }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3.0.4
+        id: filter
+        with:
+          filters: |
+            render:
+              - 'render/**'
+              - '.github/workflows/render.yml'
+
+  # SKIPPED when the PR touches nothing under render/, which merges. If
+  # `changes` fails, its output is empty, not 'false', and the check runs.
+  test:
+    name: render · test
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.render != 'false' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: render
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: render/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      # The script globs src/**/*.test.ts, so a new test file always runs.
+      - name: Test
+        run: npm test

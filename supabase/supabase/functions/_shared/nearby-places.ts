@@ -9,10 +9,12 @@
 //             Nearby, no review floor.
 // `PlacesScope` has exactly those two words; the retired `enriched`,
 // `mesita` and `partners` parse to `selected`, never to a paid call.
-// ONE POST per cache-miss cell (center · types · radius): maxResultCount
-// 20, DISTANCE, the family-derived primary types, the ONE field mask;
-// never a second page, never a wider circle. Mesita wins its gid in the
-// Area pipeline (`selectGooglePlaces`, area-pipeline.ts).
+// ONE POST per cache-miss cell (center · types · radius · rank): maxResultCount
+// 20, the family-derived primary types, the ONE field mask. Nearby Search
+// (New) has no pages, so the Area pipeline's 40 and 60 Google candidates are
+// two or three DIFFERENT calls (rank preference and circle differ, so each
+// is its own cell), never a second page (MESITA-2379). Mesita wins its gid
+// in the Area pipeline (`selectAreaPool`, area-pipeline.ts).
 
 import {
   classifyGoogleError,
@@ -24,7 +26,7 @@ import { GOOGLE_SEARCH_TYPES } from "./google-type-super.ts";
 import { NEARBY_TYPE_KEYS } from "./discovery-config.ts";
 
 /** Nearby Search (New) caps one POST at maxResultCount 20 with no page
- *  token, and the engine never asks twice (MESITA-2298). */
+ *  token (MESITA-2298); more candidates take more, different calls. */
 export const GOOGLE_NEARBY_MAX = 20;
 /** The operator's circle, in metres, clamped to what Nearby accepts
  *  (50 m .. 50 km). `map.radiusKm` is 1..50; a bad value reads as 50 km. */
@@ -132,6 +134,9 @@ export function nearbyHitFromPlace(p: GooglePlaceListing): NearbyHit {
   };
 }
 
+/** Nearby's two orders: nearest first, or Google's prominence. */
+export type NearbyRank = "DISTANCE" | "POPULARITY";
+
 type NearbyOnce =
   | { ok: true; hits: NearbyHit[] }
   | { ok: false };
@@ -148,6 +153,7 @@ async function searchNearbyOnce(
   radiusM: number,
   includedPrimaryTypes: string[],
   excludedPrimaryTypes: string[] = [],
+  rankPreference: NearbyRank = "DISTANCE",
 ): Promise<NearbyOnce> {
   const post = () =>
     fetch(GOOGLE_PLACES_NEARBY_URL, {
@@ -159,7 +165,7 @@ async function searchNearbyOnce(
       },
       body: JSON.stringify({
         maxResultCount: GOOGLE_NEARBY_MAX,
-        rankPreference: "DISTANCE",
+        rankPreference,
         includedPrimaryTypes,
         ...(excludedPrimaryTypes.length > 0 ? { excludedPrimaryTypes } : null),
         locationRestriction: {
@@ -206,7 +212,7 @@ const nearbyInflight = new Map<string, Promise<NearbyHit[]>>();
 /** Per-isolate cap on Google Nearby calls (one Search per cache-miss cell).
  *  Isolates do not share this; it still bounds one spray against a warm
  *  isolate. */
-export const GOOGLE_FANOUT_MAX = 20;
+export const GOOGLE_FANOUT_MAX = 60;
 export const GOOGLE_FANOUT_WINDOW_MS = 60_000;
 let googleFanoutAt: number[] = [];
 
@@ -222,14 +228,20 @@ export function __resetNearbyGoogleCacheForTests(): void {
   googleFanoutAt = [];
 }
 
+/** The cell's shape beyond centre · types · radius: Nearby's order, and
+ *  whether the centre keys at 5 decimals (the Area fan-out's circles, whose
+ *  centres can sit inside one 2-decimal cell, MESITA-2379) or at 2. */
+export type NearbyCellShape = { rankPreference?: NearbyRank; preciseCell?: boolean };
+
 /** Warm 15s cell hit, or null. Callers peek first so a cache hit does not
- *  consume the shared IP quota — only a miss meters, then fan-out. Types and
- *  radius must match the search that filled the cell. */
+ *  consume the shared IP quota — only a miss meters, then fan-out. Types,
+ *  radius, rank and precision must match the search that filled the cell. */
 export function peekCachedNearbyPlaces(
   center: { lat: number; lng: number },
   types?: readonly string[],
   radiusKm?: number,
   excludedTypes: readonly string[] = [],
+  shape: NearbyCellShape = {},
 ): NearbyHit[] | null {
   const hit = nearbyCache.get(
     nearbyCellKey(
@@ -237,6 +249,7 @@ export function peekCachedNearbyPlaces(
       resolveNearbyTypes(types),
       nearbyRadiusMetres(radiusKm),
       excludedTypes,
+      shape,
     ),
   );
   if (hit && Date.now() - hit.at < NEARBY_CACHE_MS) return hit.hits;
@@ -262,7 +275,7 @@ export type SearchNearbyOpts = {
    * Google for this cell; nothing is cached.
    */
   beforeFanout?: () => Promise<boolean>;
-};
+} & NearbyCellShape;
 
 function nearbyTypesKey(types: readonly string[]): string {
   return [...types].sort().join(",") || "none";
@@ -273,10 +286,13 @@ function nearbyCellKey(
   types: readonly string[] = NEARBY_TYPE_KEYS,
   radiusM: number = nearbyRadiusMetres(),
   excludedTypes: readonly string[] = [],
+  shape: NearbyCellShape = {},
 ): string {
-  const base = `${center.lat.toFixed(2)},${center.lng.toFixed(2)}:${
+  const dp = shape.preciseCell ? 5 : 2;
+  const rank = shape.rankPreference ?? "DISTANCE";
+  const base = `${center.lat.toFixed(dp)},${center.lng.toFixed(dp)}:${
     nearbyTypesKey(types)
-  }:r${radiusM}`;
+  }:r${radiusM}:${rank}`;
   return excludedTypes.length > 0 ? `${base}:x${nearbyTypesKey(excludedTypes)}` : base;
 }
 
@@ -289,30 +305,47 @@ function resolveNearbyTypes(types?: readonly string[]): readonly string[] {
   return types.filter((t) => SUPER_SEARCH_TYPE_SET.has(t));
 }
 
-/** The nearest Google places around `center`: ONE Nearby Search (New) POST
- *  with every enabled primary type, maxResultCount 20, DISTANCE rank
- *  (MESITA-2298). Never a second page, never a wider circle. Same ~1 km cell
- *  reuses a successful 15s result. HTTP / parse failures are returned
- *  (Mesita still shows) but never cached. Concurrent same-cell pans share one
- *  in-flight call. Each isolate also caps cache-miss calls (20 / 60s). Shared
- *  IP quota is `beforeFanout` (nearby-google-quota.ts), charged once per
- *  billed call. */
+/** What one Nearby request did: billed and answered, answered from a warm
+ *  cell, refused by the ledger or the isolate cap, or failed at Google. */
+export type NearbyOutcome = "billed" | "cached" | "refused" | "failed" | "none";
+
+/** The Google places around `center`: ONE Nearby Search (New) POST with the
+ *  primary types, maxResultCount 20, the asked rank (DISTANCE unless
+ *  POPULARITY), inside the circle (MESITA-2298). Never a second page. The
+ *  same cell reuses a successful 15s result. HTTP / parse failures are
+ *  returned (Mesita still shows) but never cached. Concurrent same-cell calls
+ *  share one in-flight request. Each isolate also caps cache-miss calls
+ *  (60 / 60s). Shared IP quota is `beforeFanout` (nearby-google-quota.ts),
+ *  charged once per billed call. */
 export async function searchNearbyPlaces(
   apiKey: string,
   center: { lat: number; lng: number },
   opts: SearchNearbyOpts = {},
 ): Promise<NearbyHit[]> {
+  return (await searchNearbyPlacesOutcome(apiKey, center, opts)).hits;
+}
+
+/** `searchNearbyPlaces` with what happened, for the Area pipeline's log. */
+export async function searchNearbyPlacesOutcome(
+  apiKey: string,
+  center: { lat: number; lng: number },
+  opts: SearchNearbyOpts = {},
+): Promise<{ hits: NearbyHit[]; outcome: NearbyOutcome }> {
   const radius = nearbyRadiusMetres(opts.radiusKm);
   const beforeFanout = opts.beforeFanout;
   const types = resolveNearbyTypes(opts.types);
-  if (types.length === 0) return [];
+  if (types.length === 0) return { hits: [], outcome: "none" };
   const excluded = (opts.excludedTypes ?? []).filter((t) => !types.includes(t));
-  const key = nearbyCellKey(center, types, radius, excluded);
+  const rank = opts.rankPreference ?? "DISTANCE";
+  const key = nearbyCellKey(center, types, radius, excluded, {
+    rankPreference: rank,
+    preciseCell: opts.preciseCell,
+  });
   const hit = nearbyCache.get(key);
   const now = Date.now();
-  if (hit && now - hit.at < NEARBY_CACHE_MS) return hit.hits;
+  if (hit && now - hit.at < NEARBY_CACHE_MS) return { hits: hit.hits, outcome: "cached" };
   const pending = nearbyInflight.get(key);
-  if (pending) return pending;
+  if (pending) return { hits: await pending, outcome: "cached" };
 
   let resolveRun: (hits: NearbyHit[]) => void = () => {};
   const placeholder = new Promise<NearbyHit[]>((resolve) => {
@@ -325,18 +358,18 @@ export async function searchNearbyPlaces(
     if (googleFanoutAt.length >= GOOGLE_FANOUT_MAX) {
       console.warn("[nearby] isolate Google fan-out budget exhausted");
       resolveRun([]);
-      return [];
+      return { hits: [], outcome: "refused" };
     }
     if (beforeFanout && !(await beforeFanout())) {
       resolveRun([]);
-      return [];
+      return { hits: [], outcome: "refused" };
     }
     googleFanoutAt.push(Date.now());
 
-    const batch = await searchNearbyOnce(apiKey, center, radius, [...types], excluded);
+    const batch = await searchNearbyOnce(apiKey, center, radius, [...types], excluded, rank);
     if (!batch.ok) {
       resolveRun([]);
-      return [];
+      return { hits: [], outcome: "failed" };
     }
     const seen = new Set<string>();
     const hits: NearbyHit[] = [];
@@ -348,7 +381,7 @@ export async function searchNearbyPlaces(
 
     nearbyCache.set(key, { at: Date.now(), hits });
     resolveRun(hits);
-    return hits;
+    return { hits, outcome: "billed" };
   } catch (err) {
     resolveRun([]);
     throw err;

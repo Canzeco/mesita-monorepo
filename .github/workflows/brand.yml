@@ -12,10 +12,8 @@ on:
       - "scripts/sync-brand.ts"
       - "deno.json"
       - ".github/workflows/brand.yml"
-  # Unfiltered on `pull_request` (MESITA-1576): a required check a path
-  # filter skips never reports, and branch protection blocks a PR on an
-  # "Expected" check that will never arrive. The `changes` job below decides
-  # per-PR whether there's anything to check.
+  # Every PR runs this workflow; the `changes` job decides whether the check
+  # has anything to do.
   pull_request: {}
 
 concurrency:
@@ -27,10 +25,10 @@ jobs:
     name: detect brand-scoped changes
     runs-on: ubuntu-latest
     outputs:
-      changed: ${{ github.event_name != 'pull_request' || steps.filter.outputs.brand == 'true' }}
+      changed: ${{ github.event_name != 'pull_request' && 'true' || steps.filter.outputs.brand }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3.0.4
         id: filter
         with:
           filters: |
@@ -44,29 +42,19 @@ jobs:
               - 'deno.json'
               - '.github/workflows/brand.yml'
 
+  # SKIPPED when the PR touches nothing brand-scoped, which merges. If
+  # `changes` fails, its output is empty, not 'false', and the check runs.
   check:
     name: brand assets in sync
     needs: changes
-    # THE JOB ITSELF MUST NEVER BE `if:`-GATED (MESITA-1679 fix). A job-level
-    # `if:` that evaluates false means the job does not run AT ALL and posts
-    # NO check run — so a PR that touches no brand-scoped path never gets a
-    # "brand assets in sync" status, and branch protection blocks it forever
-    # on a required check that will never arrive. That is exactly the
-    # "Expected check that will never arrive" failure mode the comment on
-    # `pull_request: {}` above already names — MESITA-1576 fixed the TRIGGER
-    # (unfiltered on pull_request) but left this job-level `if:` re-creating
-    # the identical bug one level down. Gating each STEP instead keeps the
-    # job always green-and-reporting while still doing real work only when
-    # something brand-scoped changed.
+    if: ${{ !cancelled() && needs.changes.outputs.changed != 'false' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        if: needs.changes.outputs.changed == 'true'
         uses: actions/checkout@v4
 
       - name: Install Deno
-        if: needs.changes.outputs.changed == 'true'
-        uses: denoland/setup-deno@v2
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
         with:
           deno-version: v2.9.1
 
@@ -78,5 +66,4 @@ jobs:
       # png/ and pdf/ are NOT checked: they come from
       # scripts/render-brand-raster.mjs, which needs a local browser.
       - name: Check
-        if: needs.changes.outputs.changed == 'true'
         run: deno task sync-brand:check

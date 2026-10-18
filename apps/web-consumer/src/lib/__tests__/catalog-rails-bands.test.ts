@@ -4,16 +4,19 @@ import { describe, expect, it } from "vitest";
 
 import type { CatalogRail, Place } from "@/lib/api/places";
 import {
-  allPlaces,
-  nearbyZones,
+  FAVORITES_CHIP,
+  poolPlaces,
+  PLACES_PAGE,
+  favoritePlaces,
+  FEATURED_CHIP,
   GOOGLE_RAIL_KEY,
   MESITA_RAIL_KEY,
   placesChips,
 } from "@/components/consumer/home/CatalogRails";
 
-// Pato (MESITA-2366, MESITA-2367, MESITA-2368): Places is a category column — Mesita ·
-// Google · Location, then the families — beside ONE column of the chosen
-// set. The server's rails are unchanged; a chip picks which rail the grid shows.
+// Pato (MESITA-2367, MESITA-2383): Places is one location bar over a split —
+// a column of Favorites · Featured · families beside ONE column of the chosen
+// set. The server's rails are unchanged; a row picks which rail shows.
 const src = readFileSync(
   join(__dirname, "../../components/consumer/home/CatalogRails.tsx"),
   "utf8",
@@ -27,44 +30,134 @@ const RAILS: CatalogRail[] = [
   { key: "breakfast", label: "Breakfast", emoji: "🥐", source: "family", places: [place("m2")] },
 ];
 
-describe("the Places chip row (MESITA-2366)", () => {
-  it("is All, then every family in server order — no source rows (MESITA-2381)", () => {
-    expect(placesChips(RAILS).map((c) => c.label)).toEqual(["All", "Coffee", "Breakfast"]);
-    expect(placesChips(RAILS).map((c) => c.key)).not.toContain(GOOGLE_RAIL_KEY);
-    expect(placesChips(RAILS).map((c) => c.key)).not.toContain(MESITA_RAIL_KEY);
+describe("the Places column (MESITA-2383)", () => {
+  it("is Favorites, Featured, then every guest family — no source rows (MESITA-2384)", () => {
+    const labels = placesChips().map((c) => c.label);
+    expect(labels.slice(0, 2)).toEqual(["Favorites", "Featured"]);
+    expect(labels).toContain("Coffee");
+    expect(labels).toContain("Breakfast");
+    expect(labels).not.toContain("Undefined");
+    expect(placesChips().map((c) => c.key).slice(0, 2)).toEqual([FAVORITES_CHIP, FEATURED_CHIP]);
+    expect(placesChips().map((c) => c.key)).not.toContain(GOOGLE_RAIL_KEY);
+    expect(placesChips().map((c) => c.key)).not.toContain(MESITA_RAIL_KEY);
   });
 
-  it("All mixes Mesita Selected first, then Google places, each once", () => {
-    expect(allPlaces(RAILS).map((p) => p.id)).toEqual(["m1", "g1"]);
+  it("Featured is the server's pool in its order; a family filters it on area.familyKeys", () => {
+    const area = (familyKeys: string[], final: number) => ({
+      familyKeys,
+      gates: { family: 1 as const, territory: null, radius: 1 as const, active: 1 as const, ready: null, reviews: 1 as const },
+      signals: { proximity: 1, popularity: 0.5 },
+      selected: 1,
+      source: "selected" as const,
+      base: final,
+      final,
+      formula: "point" as const,
+    });
+    const pool = {
+      shape: "unified" as const,
+      kind: "point" as const,
+      places: [
+        { ...place("a"), area: area(["coffee"], 0.9) },
+        { ...place("b"), area: area(["dinner"], 0.8) },
+        // The card says breakfast; the gate read coffee — the server wins.
+        { ...place("c"), family_keys: ["breakfast"], area: area(["coffee"], 0.7) },
+      ],
+    };
+    expect(poolPlaces(pool, FEATURED_CHIP).map((p) => p.id)).toEqual(["a", "b", "c"]);
+    expect(poolPlaces(pool, "coffee").map((p) => p.id)).toEqual(["a", "c"]);
+    expect(poolPlaces(pool, "breakfast")).toEqual([]);
   });
 
-  it("puts WHERE above WHAT: a location group, a hairline, then the categories (MESITA-2378)", () => {
-    expect(src).toContain('aria-label="Location" data-places-location');
-    expect(src).toContain('aria-label="Families"');
-    expect(src.indexOf("data-places-location")).toBeLessThan(src.indexOf('aria-label="Families"'));
-    // Add location sits at the bottom of the location group (MESITA-2381).
-    expect(src.indexOf("data-places-add-location")).toBeGreaterThan(src.indexOf("zones.map((z)"));
-    expect(src.indexOf("data-places-add-location")).toBeLessThan(src.indexOf('aria-label="Families"'));
-    expect(src).toContain('"Current location"');
-    expect(src).toContain('"Use my location"');
-    // Picking a zone searches from its centre.
-    expect(src).toContain("const from = origin ?? coords;");
-    expect(src).toContain("apiListCatalog(supabase, from)");
+  it("an Edge Function still on the legacy rails is drawn as before", () => {
+    const legacy = { shape: "legacy" as const, rails: RAILS };
+    expect(poolPlaces(legacy, FEATURED_CHIP).map((p) => p.id)).toEqual(["m1", "g1"]);
+    expect(poolPlaces(legacy, "coffee").map((p) => p.id)).toEqual(["m1"]);
+    expect(src).toContain("catalog_shape_legacy");
   });
 
-  it("is a left column, one third wide, scrolling on its own, and opens on All (MESITA-2367, MESITA-2381)", () => {
-    expect(src).toContain("bg-muted scrollbar-hide w-1/3 shrink-0 overflow-y-auto");
-    expect(src).toContain("useState<string>(ALL_CHIP)");
+  it("pages after ranking: 20 at a time, a sentinel asks for more, no request", () => {
+    expect(PLACES_PAGE).toBe(20);
+    expect(src).toContain("list.slice(0, pageCount * PLACES_PAGE)");
+    expect(src).toContain("data-places-more");
+    expect(src).toContain("new IntersectionObserver(");
+    // A kept pool paints without a request.
+    expect(src).toContain("const kept = readAreaPool(requestKey);");
+    expect(src).toContain('if (!kept) void fetchPool("fresh");');
+  });
+
+  it("a family with nothing here says so", () => {
+    expect(src).toContain("title={`Nothing in ${label} here yet`}");
+  });
+
+  it("each tile carries the temporary breakdown, and its events carry source, rank and final", () => {
+    expect(src).toContain("<AreaDiagnostics area={place.area} />");
+    expect(src).toContain('trackEvent(supabase, "home_card_open"');
+    expect(src).toContain("...tileFacts(place, rank)");
+  });
+
+  it("Favorites lists saves newest first and skips a save with no preview", () => {
+    const previews = new Map([
+      ["a", place("a")],
+      ["b", place("b")],
+    ]);
+    expect(favoritePlaces(new Set(["a", "gone", "b"]), previews).map((p) => p.id)).toEqual(["b", "a"]);
+  });
+
+  it("holds no location rows: the column is categories only", () => {
+    const nav = src.slice(src.indexOf("const categories = ("), src.indexOf("const shell = ("));
+    expect(nav).toContain('aria-label="Families"');
+    expect(nav).not.toContain("savedLocations");
+    expect(nav).not.toContain("data-places-add-location");
+    expect(src).not.toContain("nearbyZones");
+  });
+
+  it("is a left column, a quarter wide (MESITA-2385), scrolling on its own, and opens on Featured", () => {
+    expect(src).toContain("bg-muted scrollbar-hide w-1/4 shrink-0 overflow-y-auto");
+    expect(src).toContain("useState<string>(FEATURED_CHIP)");
     // The chosen row: white, bold, an ink bar on its left edge.
     expect(src).toContain('const ROW_ON = "bg-card text-foreground font-semibold";');
     expect(src).toContain("bg-foreground absolute inset-y-0 left-0 w-[3px]");
   });
 });
 
+describe("the location lives in Home's header (MESITA-2401)", () => {
+  const picker = readFileSync(
+    join(__dirname, "../../components/consumer/home/LocationPicker.tsx"),
+    "utf8",
+  );
+
+  it("Places draws no location bar or sheet; it reads the shared active location", () => {
+    expect(src).not.toContain("data-places-location-bar");
+    expect(src).not.toContain("<LocalSheet");
+    expect(src).toContain("const origin = useActiveLocation();");
+    expect(src).toContain("const from = origin ?? coords;");
+    expect(src).toContain("apiListAreaPool(supabase, from)");
+  });
+
+  it("the header's location is a pill: pin, name, chevron, opening the sheet", () => {
+    expect(picker).toContain("bg-muted/60 text-foreground hover:bg-muted flex w-full min-w-0 items-center gap-1.5 rounded-full px-3 py-2");
+    expect(picker).toContain("<MapPin");
+    expect(picker).toContain("<ChevronDown");
+    expect(picker).toContain('aria-haspopup="dialog"');
+    expect(picker).toContain("onClick={() => setPicking(true)}");
+  });
+
+  it("the sheet: Current location, the saved locations, then Add location", () => {
+    expect(picker.indexOf("label: locationLabel(null")).toBeLessThan(picker.indexOf("savedLocations.map((l)"));
+    expect(picker.indexOf("savedLocations.map((l)")).toBeLessThan(picker.indexOf("data-places-add-location"));
+    expect(picker).toContain("<AddLocationSheet");
+    expect(picker).toContain("bounds: l.bounds");
+  });
+
+  it("removing the active saved location falls back to Current location", () => {
+    expect(picker).toContain("if (active?.key === `saved:${l.id}`) setActiveLocation(null);");
+  });
+});
+
 describe("the Places grid (MESITA-2366)", () => {
-  it("is the right two thirds, one square tile per row with 6px room around, scrolling on its own (MESITA-2367, MESITA-2370)", () => {
+  it("is the right three quarters, one square tile per row with 6px room around, scrolling on its own", () => {
     expect(src).toContain('const PLACES_LIST = "grid grid-cols-1 content-start gap-1.5 px-1.5 pt-1.5";');
-    expect(src).toContain("w-2/3 flex-col overflow-y-auto");
+    expect(src).toContain("w-3/4 flex-col overflow-y-auto");
     expect(src).not.toContain("writing-mode");
     expect(src).not.toContain("data-band");
   });
@@ -76,46 +169,5 @@ describe("the Places grid (MESITA-2366)", () => {
 
   it("uses semantic tokens only", () => {
     expect(src).not.toMatch(/bg-(zinc|gray|neutral|white)/);
-  });
-});
-
-describe("the three nearby zones (MESITA-2378)", () => {
-  const at = (id: string, zone: string | null, lat: number, lng: number): Place =>
-    ({ id, name: id, zone, lat, lng }) as Place;
-  const rails: CatalogRail[] = [
-    {
-      key: MESITA_RAIL_KEY,
-      label: "Mesita Selected",
-      source: "signal",
-      places: [
-        at("a", "Tecnologico", 25.65, -100.29),
-        at("b", "Tecnologico", 25.66, -100.29),
-        at("c", "Del Valle", 25.65, -100.36),
-        at("d", "Centro", 25.67, -100.31),
-        at("e", "Cumbres", 25.73, -100.4),
-        at("f", null, 25.7, -100.3),
-      ],
-    },
-    // The same place on a family rail counts once.
-    { key: "coffee", label: "Coffee", source: "family", places: [at("a", "Tecnologico", 25.65, -100.29)] },
-  ];
-
-  it("takes the three nearest to the guest, each centred on its places", () => {
-    const zones = nearbyZones(rails, { lat: 25.651, lng: -100.29 });
-    expect(zones.map((z) => z.name)).toEqual(["Tecnologico", "Centro", "Del Valle"]);
-    expect(zones[0].count).toBe(2);
-    expect(zones[0].lat).toBeCloseTo(25.655, 3);
-  });
-
-  it("without a location, takes the busiest, then by name", () => {
-    expect(nearbyZones(rails, null).map((z) => z.name)).toEqual([
-      "Tecnologico",
-      "Centro",
-      "Cumbres",
-    ]);
-  });
-
-  it("is empty when no place carries a zone", () => {
-    expect(nearbyZones([{ ...rails[0], places: [at("x", null, 1, 1)] }], null)).toEqual([]);
   });
 });

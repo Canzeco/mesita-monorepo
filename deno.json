@@ -11,7 +11,7 @@
     "sync-brand:check": "deno run --allow-read scripts/sync-brand.ts --check",
     "redeye": "deno run --allow-read --allow-write --allow-env=MESITA_PLATFORM,CLAUDE_CODE_REMOTE scripts/redeye.ts",
     "test:redeye": "deno test --allow-read scripts/redeye.test.ts",
-    "boot": "deno run --allow-read --allow-write --allow-run=git,gh,bash --allow-env=HOME,CLAUDE_CODE_REMOTE,CLAUDE_CODE_REMOTE_SESSION_ID,MESITA_PLATFORM,MESITA_SESSION --allow-sys=hostname scripts/worktree.ts boot",
+    "boot": "deno task worktree boot",
     "worktree": "deno run --allow-read --allow-write --allow-run=git,gh,bash --allow-env=HOME,CLAUDE_CODE_REMOTE,CLAUDE_CODE_REMOTE_SESSION_ID,MESITA_PLATFORM,MESITA_SESSION --allow-sys=hostname scripts/worktree.ts",
     "test:worktree": "deno test --allow-read --allow-write --allow-run=git,bash --allow-env=HOME,TMPDIR --allow-sys=hostname scripts/worktree.test.ts"
   }

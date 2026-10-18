@@ -206,6 +206,16 @@ export function PipelineBox({
         </Part>
       ) : null}
 
+      {p.factors.length > 0 ? (
+        <Part label="Factors">
+          <ul className="flex flex-col gap-1.5 text-sm">
+            {p.factors.map((factor) => (
+              <li key={factor}>{factor}</li>
+            ))}
+          </ul>
+        </Part>
+      ) : null}
+
       <Part label="Always-on rules">
         <ul className="flex flex-col gap-1.5 text-sm">
           {(rules ?? p.rules).map((rule) => (

@@ -6,7 +6,9 @@
 //
 // Search rides Word's lane (consumer-web-suggest-places, fast Autocomplete):
 // a Location row has no coordinates until one anchor resolve on pick; a
-// place row may already carry them.
+// place row may already carry them. A REGION pick (a city, a neighbourhood,
+// a postcode) whose anchor has a viewport saves an AREA with that rectangle;
+// a place, a street address or "where I stand" saves a POINT (MESITA-2383).
 
 import { useEffect, useRef, useState } from "react";
 import { Loader2, MapPin, Navigation, Search } from "lucide-react";
@@ -17,7 +19,11 @@ import {
   type PlacePrediction,
 } from "@/lib/api/place-search";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { addSavedLocation, type SavedLocation } from "@/lib/saved-locations";
+import {
+  addSavedLocation,
+  type LocationBounds,
+  type SavedLocation,
+} from "@/lib/saved-locations";
 import { newSessionToken } from "@/components/consumer/search/search-utils";
 import {
   ERROR_BOX_CLASS,
@@ -28,7 +34,20 @@ import {
 } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 
-type Picked = { name: string; lat: number; lng: number };
+type Picked = {
+  name: string;
+  lat: number;
+  lng: number;
+  bounds?: LocationBounds | null;
+};
+
+/** Google types that name a region, not a spot (MESITA-2383). */
+const REGION_TYPE = /^(locality|sublocality(_level_\d)?|neighborhood|colloquial_area|administrative_area_level_\d|postal_code)$/;
+
+/** True when the pick is a region and should save as an area. */
+export function isRegionPick(row: Pick<PlacePrediction, "kind" | "locationType">): boolean {
+  return row.kind === "location" && REGION_TYPE.test(row.locationType ?? "");
+}
 
 const RESULT_ROW =
   "hover:bg-muted flex w-full items-center gap-3 px-1 py-3 text-left transition";
@@ -103,7 +122,12 @@ export function AddLocationSheet({
     setResolving(row.placeId);
     try {
       const anchor = await apiResolveLocationAnchor(supabase, row.placeId);
-      setPicked({ name: row.mainText, lat: anchor.lat, lng: anchor.lng });
+      setPicked({
+        name: row.mainText,
+        lat: anchor.lat,
+        lng: anchor.lng,
+        bounds: isRegionPick(row) ? anchor.viewport : null,
+      });
       setName(row.mainText);
     } catch (err) {
       setError(errMsg(err, "Couldn't open that location right now."));

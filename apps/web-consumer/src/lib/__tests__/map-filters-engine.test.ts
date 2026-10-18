@@ -3,15 +3,11 @@ import type { Place } from "@/lib/api/places";
 import { PLACE_FAMILIES } from "@/lib/place-families";
 import {
   clampMinReviews,
-  MAP_PLACES_SCOPE_DEFAULT,
   MAP_FILTER_DEFAULTS,
   MAP_MIN_REVIEW_STOPS,
-  MAP_SEARCH_STOPS,
   mapFilterCount,
   mapFiltersAreActive,
-  parsePlacesScope,
   placeSearchScope,
-  placesScopeCounts,
   type MapFilters,
 } from "@/lib/map-filters-engine";
 
@@ -49,70 +45,20 @@ describe("placeSearchScope", () => {
   });
 });
 
-describe("placesScopeCounts", () => {
-  const enriched = place({ id: "e", enriched: true });
-  const stub = place({ id: "g:x", googleOnly: true });
-
-  it("counts cumulatively: the sets nest, selected ≤ google", () => {
-    const counts = placesScopeCounts([enriched, stub, enriched]);
-    expect(counts).toEqual({ selected: 2, google: 3 });
-    expect(counts.selected).toBeLessThanOrEqual(counts.google);
-  });
-
-  it("is zero everywhere on an empty catalog", () => {
-    expect(placesScopeCounts([])).toEqual({ selected: 0, google: 0 });
-  });
-});
-
-describe("places scope", () => {
-  it("is two stops, Google Places then Mesita Selected, and never says Enriched", () => {
-    expect(MAP_SEARCH_STOPS.map((s) => s.key)).toEqual(["google", "selected"]);
-    expect(MAP_SEARCH_STOPS.map((s) => s.tick)).toEqual([
-      "Google Places",
-      "Mesita Selected",
-    ]);
-    for (const stop of MAP_SEARCH_STOPS) {
-      expect(stop.ring).toBe(stop.key);
-      expect(`${stop.tick} ${stop.label} ${stop.hint}`).not.toMatch(/enriched/i);
-    }
-  });
-
-  it("resolves anything unknown to Mesita Selected", () => {
-    expect(MAP_PLACES_SCOPE_DEFAULT).toBe("selected");
-    expect(parsePlacesScope(undefined)).toBe("selected");
-    expect(parsePlacesScope(null)).toBe("selected");
-    expect(parsePlacesScope("GOOGLE")).toBe("google");
-    expect(parsePlacesScope(" Selected ")).toBe("selected");
-    // The retired paid ring, still in a persisted v6 blob, lands on the
-    // default — never on a wider set.
-    expect(parsePlacesScope("partners")).toBe("selected");
-  });
-
-  it("maps the retired words and ordinals a persisted blob may carry", () => {
-    expect(parsePlacesScope("enriched")).toBe("selected");
-    expect(parsePlacesScope(" Mesita ")).toBe("selected");
-    expect(parsePlacesScope(1)).toBe("selected");
-    expect(parsePlacesScope("1")).toBe("selected");
-    expect(parsePlacesScope(0)).toBe("selected");
-    expect(parsePlacesScope(2)).toBe("google");
-    expect(parsePlacesScope(3)).toBe("google");
+describe("no source switch (MESITA-2384)", () => {
+  it("the filters hold Families and Google Reviews only", () => {
+    expect(Object.keys(MAP_FILTER_DEFAULTS).sort()).toEqual(["familyKeys", "minReviews"]);
   });
 });
 
 describe("mapFilterCount", () => {
-  it("defaults to Mesita Selected with no filter counted", () => {
-    expect(MAP_FILTER_DEFAULTS.placesScope).toBe("selected");
+  it("defaults to no filter counted", () => {
     expect(mapFiltersAreActive(filters())).toBe(false);
     expect(mapFilterCount(filters())).toBe(0);
   });
 
-  it("counts leaving the default scope, each Family, or a Google Reviews stop as one filter", () => {
-    expect(mapFilterCount(filters({ placesScope: "google" }))).toBe(1);
-    expect(
-      mapFilterCount(
-        filters({ placesScope: "selected", familyKeys: ["dinner"] }),
-      ),
-    ).toBe(1);
+  it("counts each Family or a Google Reviews stop as one filter", () => {
+    expect(mapFilterCount(filters({ familyKeys: ["dinner"] }))).toBe(1);
     expect(mapFilterCount(filters({ minReviews: 100 }))).toBe(0);
     expect(mapFilterCount(filters({ minReviews: 10 }))).toBe(1);
     expect(mapFilterCount(filters({ minReviews: 1000 }))).toBe(1);

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Apply pending migrations to the linked Supabase project and
-# regenerate TypeScript types into @mesita/supabase-contract (mesita monorepo).
+# Apply pending migrations to the linked Supabase project and regenerate the
+# committed TypeScript types (regen-types.sh).
 #
 # Since MESITA-2075 a merge to main applies migrations on its own: the
 # Supabase GitHub integration (Deploy to production, working dir `supabase`)
@@ -11,10 +11,9 @@
 # Run from the supabase/ package root (mesita-monorepo):
 #   ./scripts/deploy.sh
 #
-# Edge Functions are deployed individually (or via `supabase functions
-# deploy <name>`) when their code actually changes — we don't redeploy
-# every EF (~137 folders) on every push. The deploy step lives in CI /
-# per-EF commits.
+# Edge Functions are not this script's job: the integration deploys every
+# function declared in config.toml on each push to main, and
+# .github/workflows/supabase-deploy.yml deletes the retired ones.
 
 set -euo pipefail
 
@@ -34,20 +33,16 @@ else
 echo "▶ Pushing pending migrations ..."
 if ! supabase db push --include-all; then
   echo ""
-  echo "⚠ db push failed (migration history drift)."
-  echo "  If production schema is already correct, run once:"
-  echo "    ./scripts/sync-migration-history.sh"
-  echo "  Then re-run ./scripts/deploy.sh"
+  echo "⚠ db push failed. Read the error above before retrying; to compare the"
+  echo "  migration history with the files: supabase migration list --linked"
   echo "  Or skip push and only regen types: SKIP_DB_PUSH=1 ./scripts/deploy.sh"
   exit 1
 fi
 fi
 
 # Types are copied into each app package that keeps a generated
-# `database.types.ts` (today web-consumer only; web-admin keeps none).
-# See regen-types.sh — same step, callable on its own after a cloud-side
-# migration that didn't go through this script (e.g. Supabase MCP
-# `apply_migration`), so types don't drift between deploys (MESITA-1546).
+# `database.types.ts` (regen-types.sh lists them). regen-types.sh is the same
+# step on its own, for a schema change this script did not make.
 bash scripts/regen-types.sh
 
 echo ""

@@ -66,8 +66,6 @@ const SMALL_ROLES = ["type-label", "type-meta"];
  *  matching fails loudly and gets re-judged rather than silently covering
  *  whatever now sits on that line. */
 const LABEL_BY_CONTENT: Record<string, string> = {
-  "components/consumer/home/FavoriteTile.tsx:130":
-    "the rating row inside the MEASURED 4:3+4:3 tile (Docs › Design §D); its sibling category line is type-label too, and 13px here would outrank it",
   "components/consumer/search/SearchRailCard.tsx:87":
     "the rail card's meta row sits in a fixed h-4/leading-4 line box — 13px does not fit a 16px box, and this is a figure row anyway",
 };
@@ -114,10 +112,10 @@ describe("prose does not wear a label role", () => {
   it("finds paragraphs to check at all (guards the regex itself)", () => {
     // A regex that silently stops matching would make this suite pass by
     // finding nothing — the exact failure `vacuous-route-tests` is named for.
-    // The app carries ~130 literal-class paragraphs; the floor sits well
-    // under that and well over zero.
+    // The app carries ~100 literal-class paragraphs (MESITA-2383 deleted the
+    // Favs grid's); the floor sits under that and well over zero.
     const all = files.flatMap(proseTags);
-    expect(all.length).toBeGreaterThan(100);
+    expect(all.length).toBeGreaterThan(80);
     expect(all.some((p) => p.classes.includes("type-body"))).toBe(true);
   });
 

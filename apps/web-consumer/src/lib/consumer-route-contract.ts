@@ -15,9 +15,12 @@ export const CONSUMER_ROUTES = {
   // the one search bar + Filters. `/discover/search` and `/discover/map` are
   // redirect SOURCES for the bookmarks those addresses shipped under.
   search: "/search",
-  // DISCOVER — Home's mode-tabs namespace. Four modes, matching ModeTabs's
-  // four columns exactly: Places · Social · Chat · Favorites (Pato,
-  // MESITA-2368; Favorites lives at the Favs address it always had).
+  // Search's second pill (Pato, MESITA-2401: "Search, Chat, Filters"): Chat,
+  // Soon for now. Chat left Home; /discover/chat 308s here.
+  searchChat: "/search/chat",
+  // DISCOVER — Home's mode-tabs namespace. Two modes, matching Home's two
+  // pills exactly: Places · Social (Pato, MESITA-2401). Favorites is a row of
+  // the Places column (/discover/favs 308s to Places); Chat moved to Search.
   //
   // THE SWIPE ENGINE IS GONE (MESITA-2328): its EF, its ranking library and
   // its `discovery_config.swipe` slice retired together. The stored key was
@@ -31,8 +34,6 @@ export const CONSUMER_ROUTES = {
   discoverTabs: {
     places: "/discover/places",
     social: "/discover/social",
-    chat: "/discover/chat",
-    favs: "/discover/favs",
   },
   // PLACES LEADS (MESITA-2166): the default is the first pill.
   // route-structure T5b pins first-pill-is-default.
@@ -88,6 +89,10 @@ export const CONSUMER_ROUTES = {
     // Scroll's feed (MESITA-2163) and Swipe's card stack (MESITA-2166).
     discoverScroll: "/discover/scroll",
     discoverSwipe: "/discover/swipe",
+    // Favorites left Home's rail for the Places column (MESITA-2383).
+    discoverFavs: "/discover/favs",
+    // Chat left Home for the Search tab (MESITA-2401).
+    discoverChat: "/discover/chat",
     // The Second Stage tab and everything under it (MESITA-2087). The QR
     // place list, THE TICKET, Wallet with Buy · Gift · Redeem · balance,
     // standalone Credits, the Order tab, the public gift landing, and every

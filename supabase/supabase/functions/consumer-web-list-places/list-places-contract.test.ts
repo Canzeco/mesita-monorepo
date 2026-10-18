@@ -1,28 +1,29 @@
-// consumer-web-list-places on the shared engine (MESITA-2302). Source pins
-// for the wiring the engine's own behavioural suite (area-pipeline.test)
-// cannot see: which function each scope calls, the one circle, that no
-// review floor can reach the Selected path, and that web Search's call is
-// the only one it answers (MESITA-2337).
+// consumer-web-list-places on the shared engine (MESITA-2302, one pool since
+// MESITA-2379). Source pins for the wiring the engine's own behavioural suite
+// (area-pipeline.test) cannot see: the one pool at a point, one Google call,
+// the one circle, and that web Search's call is the only one it answers
+// (MESITA-2337).
 import { assert, assertEquals } from "jsr:@std/assert@1";
 
 const src = await Deno.readTextFile(new URL("./index.ts", import.meta.url));
 const anchor = src.indexOf("const center = { lat: nearbyDecision.lat");
 const webBranch = anchor >= 0 ? src.slice(anchor) : "";
 
-Deno.test("list-places: the Google scope is selectGooglePlaces, Selected is the pool query + selectMesitaSelected", () => {
+Deno.test("list-places: the Map is a point view of the one Area pool, one Google call", () => {
   assert(webBranch.length > 0);
-  const google = webBranch.slice(0, webBranch.indexOf("} else {"));
-  const selected = webBranch.slice(webBranch.indexOf("} else {"));
-  assert(google.includes("selectGooglePlaces<OwnedRow>("));
-  assert(selected.includes("selectedPoolQuery("));
-  assert(selected.includes("selectMesitaSelected("));
-  assertEquals(selected.includes("selectGooglePlaces"), false);
+  assert(webBranch.includes("selectAreaPool<OwnedRow>("));
+  assert(webBranch.includes('location: { kind: "point", anchor: center, radiusKm }'));
+  assert(webBranch.includes("googleCalls: googleFill ? 1 : 0"));
+  assert(webBranch.includes("selectedOnly: false"));
+  // The guest never picks a source.
+  assertEquals(src.includes("parsePlacesScope"), false);
+  for (const gone of ["selectGooglePlaces", "selectMesitaSelected"]) {
+    assertEquals(src.includes(gone), false, gone);
+  }
 });
 
-Deno.test("list-places: the review floor comes from guestReviewFloor alone, never on Selected", () => {
-  const selected = webBranch.slice(webBranch.indexOf("} else {"));
-  assertEquals(/minReviews|ReviewFloor|google_review_count/.test(selected), false);
-  assert(webBranch.includes("guestReviewFloor(placesScope, rawMinReviews)"));
+Deno.test("list-places: the review floor comes from guestReviewFloor alone, on Google hits", () => {
+  assert(webBranch.includes('guestReviewFloor("google", rawMinReviews)'));
   assertEquals(src.includes("parseMapMinReviews"), false);
 });
 
@@ -33,7 +34,7 @@ Deno.test("list-places: the one circle is map.radiusKm; no client radius, no con
 });
 
 Deno.test("list-places: the old merge-and-paint branch is gone", () => {
-  for (const gone of ["reorderListedLanes", "claimOwnedHits", "googleStub("]) {
+  for (const gone of ["reorderListedLanes", "claimOwnedHits", "googleStub(", "parsePlacesScope"]) {
     assertEquals(src.includes(gone), false, gone);
   }
 });

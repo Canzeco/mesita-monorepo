@@ -50,7 +50,10 @@ const NEARBY_GENERAL_PARENTS = new Set([
  * answer. For each included general parent this lists the Table A types in
  * its coarse group (and, for `restaurant`, every `*_restaurant`) that map to
  * none of the requested families, for Nearby's `excludedPrimaryTypes`.
- * Empty when no family is requested or no general parent is included.
+ * No family requested means every guest family (MESITA-2382): the subtypes
+ * that sit in no family (churches, hotels, shops under `tourist_attraction`)
+ * are excluded so "All" is not spent on places the gate throws away.
+ * Empty when no general parent is included.
  *
  * Known edge, accepted: a Mesita-owned place whose Mesita family differs
  * from its Google type's family (filed under Dinner, typed
@@ -62,7 +65,7 @@ export function nearbyExcludedTypesForFamilies(
   includedTypes: readonly string[],
   families: readonly string[],
 ): string[] {
-  if (families.length === 0 || includedTypes.length === 0) return [];
+  if (includedTypes.length === 0) return [];
   const included = new Set(includedTypes);
   const parents = includedTypes.filter((t) => NEARBY_GENERAL_PARENTS.has(t));
   if (parents.length === 0) return [];
@@ -77,7 +80,8 @@ export function nearbyExcludedTypesForFamilies(
     const subtype = groups.has(group) || (restaurantParent && type.endsWith("_restaurant"));
     if (!subtype || included.has(type)) continue;
     const fams = familiesForGoogleType(type);
-    if (fams.some((f) => families.includes(f))) continue;
+    const kept = families.length === 0 ? fams.length > 0 : fams.some((f) => families.includes(f));
+    if (kept) continue;
     out.push(type);
   }
   return out.sort().slice(0, NEARBY_EXCLUDED_CAP);

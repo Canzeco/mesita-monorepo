@@ -108,14 +108,16 @@ describe("the Area box", () => {
     });
   });
 
-  it("writes map, railCap and the two params; leaves Name, Deep and the prompt", async () => {
+  it("writes map and the two params; leaves railCap, Name, Deep and the prompt (MESITA-2379)", async () => {
     const live = liveConfig();
     const sent = armed(live);
     await updateDiscoveryConfig(editedEverywhere(live), [...BOX_SLICES.area]);
     expect(sent.config?.map.radiusKm).toBe(3);
     expect(sent.config?.map.googlePlaces).toBe(20);
     expect(sent.config?.map.mesitaPlaces).toBe(60);
-    expect(sent.config?.catalog.railCap).toBe(7);
+    // Places per row left the page with the Feed rows; the legacy rails
+    // keep the stored value until the legacy path is removed.
+    expect(sent.config?.catalog.railCap).toBe(live.catalog.railCap);
     expect(sent.config?.catalog.seedCount).toBe(live.catalog.seedCount);
     expect(sent.config?.name).toEqual(live.name);
     expect(sent.config?.general).toEqual(live.general);

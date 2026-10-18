@@ -1,15 +1,14 @@
-// Catalog Search — the Feed's rails (MESITA-2302), top to bottom:
-//   1. Google Places — `selectGooglePlaces`, the Map's Google scope on the
-//      Feed: Google appears here and nowhere else, and only this rail may
-//      use the central reviews floor.
-//   2. Mesita Selected — `selectMesitaSelected`, the Map's Selected scope.
+// The LEGACY Feed rails (MESITA-2302), kept only for a consumer build that
+// does not send `unified` (MESITA-2379), top to bottom:
+//   1. Google Places — the one ranked pool's places that are not Mesita
+//      Selected.
+//   2. Mesita Selected — the pool's Selected places.
 //   3. One rail per guest family, holding Mesita Selected places only.
-// At most 5 places per rail; empty rails are omitted. Right Now and
-// Universal are gone.
+// At most `catalog.railCap` places per rail; empty rails are omitted.
 //
 // Family picks the rail; it does not score. Both lists arrive already
-// ranked by the Area pipeline's score (area-score.ts: proximity ×
-// popularity, MESITA-2327); this file only cuts them into rails.
+// ranked by the Area pool (`selectAreaPool`); this file only cuts them into
+// rails. Removed with the legacy wire.
 
 import { FAMILIES } from "./place-taxonomy.ts";
 import { isEnrichedPlace } from "./place-family-keys.ts";

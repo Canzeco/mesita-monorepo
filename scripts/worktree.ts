@@ -20,8 +20,8 @@
 // new interface needs no line of code here. A `*-cloud` token means the fresh clone IS the
 // workspace: `add MESITA-<id> <slug> --adopt .` claims the main worktree itself (never a nested
 // worktree), the claim line reads worktree=cloud:<session>, and boot / sweep / repair-lobby stop
-// treating the clone as the shared checkout. CLAUDE_CODE_REMOTE=true still means
-// claude-code-cloud. Locally the main worktree is the lobby and stays unclaimable.
+// treating the clone as the shared checkout. CLAUDE_CODE_REMOTE=true means claude-code-cloud.
+// Locally the main worktree is the lobby and stays unclaimable.
 //
 // The pushed branch is the fleet-wide lock (I-6): `add` pushes the claim branch to origin the
 // moment it exists — empty, at origin/main, when no work has started — so every host and every
@@ -29,9 +29,8 @@
 // reprints this workspace's claim line; `sweep` deletes landed origin branches past the lease and
 // reports id-less ones. Linear stays the ledger people read; the branch is what machines read.
 //
-// Claims are `git config --worktree` keys, which git refuses in a multi-worktree repo until
-// extensions.worktreeConfig is on; every command turns it on first (the one repair that
-// made the claim step work at all outside the test fixture).
+// A claim is the `mesita` section of the workspace's `git config --worktree`, which git refuses
+// in a multi-worktree repo until extensions.worktreeConfig is on; every command turns it on first.
 //
 // git and gh only, through argv arrays (never a shell), plus bash for scripts/preflight.sh,
 // the write gate every hook shares. Linear is the agent's job: this script prints the
@@ -98,13 +97,13 @@ export const SWEPT_TTL_MS = 30 * 24 * 60 * 60 * 1000; // refs/swept/ live 30 day
 export const PRUNABLE_REFUSAL = 3; // more than this many prunable entries = the repo moved
 export const HISTORY_DEPTH = 20;
 export const ANCESTOR_BOUND = 1000;
-// The fleet lives BESIDE the checkout, not inside it (MESITA-1770), one folder per code surface
-// (MESITA-1777): `<parent of main>/worktrees/<platform>/<name>`, the platform being the token of the
-// claim (claude-code, codex, cursor, …). Visible in Finder; a surface that keeps its own worktrees
-// elsewhere (Conductor) is aliased beside the platform folders. Worktrees still at the fleet root
-// or in the legacy location inside the repo are scanned by sweep until they drain.
+// `add` files a workspace BESIDE the checkout, one folder per code surface: `<parent of
+// main>/worktrees/<platform>/<name>`, the platform being the claim's token (claude-code, codex,
+// cursor, …), so the fleet is visible in Finder. The Claude Code desktop app launches every
+// session in a worktree of its own INSIDE the checkout, `.claude/worktrees/<name>` (gitignored),
+// which `add --adopt .` claims where it stands. Sweep scans both folders.
 export const FLEET_DIR = "worktrees";
-export const LEGACY_FLEET_DIR = ".claude/worktrees";
+export const LAUNCH_DIR = ".claude/worktrees";
 export function fleetDirOf(main: string): string {
   return join(dirname(main), FLEET_DIR);
 }
@@ -119,7 +118,6 @@ export const DRAFT_POLL_MS = 10_000;
 export const PLATFORM_PREFIX: Record<string, string> = {
   "claude-code": "claude",
   "claude-code-cloud": "claude",
-  codex: "agent",
   cursor: "cursor",
   "cursor-cloud": "cursor",
 };
@@ -149,7 +147,7 @@ export function declaredPlatform(get: (key: string) => string | undefined): stri
 
 /**
  * Cloud mode: MESITA_PLATFORM=<token>-cloud (with MESITA_SESSION) is the contract any interface
- * meets; CLAUDE_CODE_REMOTE=true still means claude-code-cloud. A declared token wins.
+ * meets; CLAUDE_CODE_REMOTE=true means claude-code-cloud. A declared token wins.
  */
 export function cloudFromEnv(get: (key: string) => string | undefined): Cloud | null {
   const declared = declaredPlatform(get);
@@ -159,9 +157,9 @@ export function cloudFromEnv(get: (key: string) => string | undefined): Cloud | 
 }
 
 /**
- * A path as boot and the claim line print it: relative to the Mesita folder (the checkout's
- * parent) — `worktrees/<name>` for a fleet worktree, `.claude/worktrees/<name>` for a legacy
- * one still inside the checkout — and absolute anywhere else (a Cursor-mode or Conductor worktree).
+ * A path as boot and the claim line print it: `worktrees/<platform>/<name>` for a fleet worktree
+ * (relative to the checkout's parent), `.claude/worktrees/<name>` for a desktop launch worktree
+ * (relative to the checkout), and absolute anywhere else (a Cursor-mode worktree).
  */
 export function showPath(main: string, path: string): string {
   const inMain = relative(main, path);
@@ -342,8 +340,8 @@ export async function listFleet(env: Env, anyCwd: string): Promise<Row[]> {
 
 /**
  * `git config --worktree` is fatal in a repo with several worktrees until extensions.worktreeConfig
- * is on, and nothing turns it on by itself: without this, `add` created the worktree and then died
- * on the claim step (no config, no lock, no claim line). core.worktree, when set, moves into the
+ * is on, and nothing turns it on by itself: without this, `add` would make the worktree and then
+ * die on the claim step (no config, no lock, no claim line). core.worktree, when set, moves into the
  * main worktree's own file as git's manual prescribes; core.bare=false applies to every worktree
  * either way. Idempotent.
  */
@@ -379,7 +377,7 @@ async function liveClaimOf(env: Env, row: Row): Promise<string | null> {
 /**
  * The claim a checkout carries: the live config, else the id its branch names (harness or
  * hand-made branches). The fallback lets `add` re-attach a loose branch; it is not a live
- * claim — boot must not say "claimed by" from it (MESITA-1761).
+ * claim, so boot never says "claimed by" from it (a branch keeps its id after `leave`).
  */
 async function claimOf(env: Env, row: Row): Promise<string | null> {
   return await liveClaimOf(env, row) ?? issueFromBranch(row.branch);
@@ -662,7 +660,6 @@ async function claimWorkspace(env: Env, main: string, path: string, issue: strin
   const now = env.now();
   await gitOk(env, path, "config", "--worktree", "mesita.issue", issue);
   await gitOk(env, path, "config", "--worktree", "mesita.platform", platform);
-  await gitOk(env, path, "config", "--worktree", "mesita.claimedAt", now.toISOString());
   await gitOk(env, path, "config", "--worktree", "mesita.host", env.host);
   await gitOk(env, path, "config", "--worktree", "mesita.footprint", footprint || "none");
   if (path === main) {
@@ -742,7 +739,7 @@ export async function add(env: Env, args: { id: string; slug?: string; platform?
       if (target === main) {
         throw new WtError("NOT A LOBBY", `this clone is claimed by ${existing}`, "a cloud clone serves one issue; a second issue is a second session", "finish or hand off the first issue here, and start another session for the second", "I-3");
       }
-      // A claim whose PR merged and whose tree is clean is a lobby nobody cleared (MESITA-1577): clear it and go on. A tip still on main is a live claim with no work yet, never adopted over.
+      // A claim whose PR merged and whose tree is clean is a lobby nobody cleared: clear it and go on. A tip still on main is a live claim with no work yet, never adopted over.
       const { landed } = await classifyLanded(env, main, row.head, row.branch);
       const merged = isLanded(landed) && landed!.kind !== "on-main";
       if (!merged || !(await isClean(env, target))) {
@@ -888,7 +885,9 @@ export async function pr(env: Env, opts: { docs?: string } = {}): Promise<string
   try {
     open = JSON.parse(listed.stdout);
   } catch { /* treated as none */ }
-  if (open.length === 0 && branch.startsWith("claude/")) {
+  if (open.length === 0 && env.cloud && branch.startsWith("claude/")) {
+    // Claude Code's cloud harness opens a draft PR for its own branch: wait for it, so pr adopts
+    // that one instead of opening a second. Nothing opens one locally, so nothing waits there.
     // Bounded by attempts, not the wall clock: an injected instant sleeper must not spin.
     const attempts = Math.ceil(DRAFT_WAIT_MS / DRAFT_POLL_MS);
     for (let i = 0; i < attempts && open.length === 0; i++) {
@@ -970,8 +969,9 @@ export async function remove(env: Env, id: string): Promise<string[]> {
 
 // ── leave (LEAVE for a launch worktree: clear the claim, keep the checkout) ─────
 
+/** The claim is the whole `mesita` section, so every key goes, whatever version of this script wrote it. */
 async function clearClaim(env: Env, path: string): Promise<void> {
-  for (const key of ["mesita.issue", "mesita.platform", "mesita.claimedAt", "mesita.host", "mesita.session", "mesita.footprint"]) await git(env, path, "config", "--worktree", "--unset", key);
+  await git(env, path, "config", "--worktree", "--remove-section", "mesita");
 }
 
 /** A landed, clean workspace gives its claim and lock back and stays on disk as a lobby (I-9); idempotent. */
@@ -1002,9 +1002,9 @@ export async function sweep(env: Env, opts: { apply: boolean }): Promise<{ lines
   const lines: string[] = [];
   for (const n of await repairLobby(env, main, { apply: opts.apply })) lines.push(n);
   // Orphans present on disk but unregistered: repair before anything prunes. The fleet root holds
-  // one folder per platform (an unregistered directory without a .git link), registered stragglers
-  // from before MESITA-1777, and Finder aliases (symlinks, never directories here); the legacy
-  // folder inside the checkout is flat.
+  // one folder per platform (a directory without a .git link, scanned one level down); a worktree
+  // sitting at the root itself is scanned as one; anything that is not a directory (a file, a
+  // symlink) is skipped. The desktop app's launch folder inside the checkout is flat.
   let registered = await listFleet(env, main);
   const known = new Set(registered.map((r) => r.path));
   const unregistered: string[] = [];
@@ -1020,7 +1020,7 @@ export async function sweep(env: Env, opts: { apply: boolean }): Promise<{ lines
     } catch { /* no such folder yet */ }
   };
   await scan(fleetDirOf(main), true);
-  await scan(join(main, LEGACY_FLEET_DIR), false);
+  await scan(join(main, LAUNCH_DIR), false);
   for (const p of unregistered) {
     const rep = await git(env, main, "worktree", "repair", p);
     if (rep.code === 0 && rep.stderr.trim() === "" || (await listFleet(env, main)).some((r) => r.path === p)) {
@@ -1171,7 +1171,7 @@ export function originTable(claims: OriginClaim[], now: Date, leaseMs: number = 
   return lines.join("\n");
 }
 
-/** Flags the doctor reads off each origin-json row (MESITA-1754). `on-main` is a live claim with no work, not remote-landed. */
+/** Flags the doctor reads off each origin-json row. `on-main` is a live claim with no work, not remote-landed. */
 export function originFlags(c: OriginClaim, now: Date, leaseMs: number = LEASE_MS): { noId: boolean; remoteLanded: boolean; staleClaim: boolean } {
   const idle = c.date ? now.getTime() - c.date.getTime() >= leaseMs : false;
   const kind = c.landed?.kind;
@@ -1249,7 +1249,7 @@ export async function boot(env: Env): Promise<string[]> {
     lines.push("next: one Linear read for live claims, then PICK");
     return lines;
   }
-  // A legacy worktree still lives inside the shared checkout, so the shared row prefix-matches it: the most specific path wins.
+  // A desktop launch worktree lives inside the shared checkout, so the shared row prefix-matches it: the most specific path wins.
   const here = rows.filter((r) => cwd === r.path || cwd.startsWith(r.path + "/")).sort((a, b) => b.path.length - a.path.length)[0];
   const liveClaim = here && here.path !== main ? await liveClaimOf(env, here) : null;
   const namedIssue = here && here.path !== main ? issueFromBranch(here.branch) : null;
@@ -1297,8 +1297,8 @@ export const defaultRunner: Runner = async (cmd, args, opts) => {
 };
 
 /**
- * A stable four-hex host id. Deno.hostname() follows the DHCP name on macOS and changed twice
- * in one day (MESITA-1583), so the first value computed is pinned in $HOME/.config/mesita/host-id
+ * A stable four-hex host id. Deno.hostname() follows the DHCP name on macOS, which can change
+ * several times a day, so the first value computed is pinned in $HOME/.config/mesita/host-id
  * and every later call returns the pinned one. A missing or unwritable home still hashes the
  * hostname, which joins consistently within one run.
  */

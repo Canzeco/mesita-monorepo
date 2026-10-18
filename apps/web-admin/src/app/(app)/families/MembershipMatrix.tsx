@@ -7,6 +7,7 @@ import {
   filterMembershipRows,
   googleCategoryLabel,
   guestFamilyColumns,
+  inNoFamily,
   type MembershipFamily,
   type MembershipRow,
 } from "./membership-matrix";
@@ -30,7 +31,7 @@ export function MembershipMatrix({
   const [query, setQuery] = useState("");
   const columns = useMemo(() => guestFamilyColumns(families), [families]);
   const visible = useMemo(() => filterMembershipRows(rows, query), [rows, query]);
-  const inAFamily = rows.filter((row) => row.familyKeys.length > 0).length;
+  const inNone = rows.filter(inNoFamily).length;
 
   return (
     <section className="border-border bg-card mt-8 overflow-hidden rounded-2xl border">
@@ -40,9 +41,9 @@ export function MembershipMatrix({
           <span className="text-muted-foreground ml-2 font-normal">{rows.length}</span>
         </h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          {columns.length} guest families · {inAFamily} in a family ·{" "}
-          {rows.length - inAFamily} in none. A filled square means that category sits
-          in that family.
+          {columns.length} guest families · {rows.length - inNone} in a family ·{" "}
+          {inNone} in no family. A filled square means that category sits in that
+          family. No family is a real answer: those places never show to a guest.
         </p>
         <input
           value={query}
@@ -59,6 +60,7 @@ export function MembershipMatrix({
             {columns.map((family) => (
               <col key={family.slug} />
             ))}
+            <col />
           </colgroup>
           <thead>
             <tr>
@@ -80,13 +82,23 @@ export function MembershipMatrix({
                   </span>
                 </th>
               ))}
+              <th className="border-border bg-muted/40 sticky top-0 z-20 border-b border-l p-0 align-bottom">
+                <span className="flex h-36 flex-col items-center justify-end gap-1 pb-2">
+                  <span className="text-base leading-none" aria-hidden>
+                    ∅
+                  </span>
+                  <span className="type-label leading-none font-medium whitespace-nowrap [writing-mode:vertical-rl] rotate-180">
+                    No family
+                  </span>
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody>
             {visible.length === 0 ? (
               <tr>
                 <td
-                  colSpan={columns.length + 1}
+                  colSpan={columns.length + 2}
                   className="text-muted-foreground px-3 py-4"
                 >
                   No matching categories.
@@ -123,6 +135,17 @@ export function MembershipMatrix({
                         </td>
                       );
                     })}
+                    <td
+                      className={`border-border border-b border-l p-0 text-center align-middle ${paint}`}
+                      aria-label={`${row.slug} ${inNoFamily(row) ? "in" : "not in"} no family`}
+                    >
+                      {inNoFamily(row) ? (
+                        <span
+                          aria-hidden
+                          className="border-foreground mx-auto block size-2.5 rounded-[2px] border"
+                        />
+                      ) : null}
+                    </td>
                   </tr>
                 );
               })

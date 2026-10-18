@@ -73,6 +73,7 @@ function liveAddresses(): Set<string> {
   return new Set([
     CONSUMER_ROUTES.onboard,
     CONSUMER_ROUTES.search,
+    CONSUMER_ROUTES.searchChat,
     CONSUMER_ROUTES.discover,
     ...Object.values(CONSUMER_ROUTES.discoverTabs),
     CONSUMER_ROUTES.pay,
@@ -91,6 +92,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // /discover. See the legacy block below for the /discover/search entry
       // that replaced it as a redirect source.
       search: "/search",
+      searchChat: "/search/chat",
       // SEGMENTS MATCH LABELS here, the exception in this codebase: the tab
       // moved to /discover precisely so each typed mode could be a real
       // segment.
@@ -102,8 +104,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       discoverTabs: {
         places: "/discover/places",
         social: "/discover/social",
-        chat: "/discover/chat",
-        favs: "/discover/favs",
       },
       // Default IS the first pill (MESITA-1609/1615); Swipe leads since
       // MESITA-2142.
@@ -137,6 +137,8 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         discoverCatalog: "/discover/catalog",
         discoverScroll: "/discover/scroll",
         discoverSwipe: "/discover/swipe",
+        discoverFavs: "/discover/favs",
+        discoverChat: "/discover/chat",
         // The Second Stage tab and everything under it. All land on `pay`.
         newVisit: "/new-visit",
         newVisitWallet: "/new-visit/wallet",
@@ -300,9 +302,8 @@ describe("isModalContractPath (intercepted detail overlays)", () => {
     "/onboard",
     "/discover/places",
     "/discover/social",
-    "/discover/chat",
-    "/discover/favs",
     "/search",
+    "/search/chat",
     "/pay",
     "/reservations",
     "/me",
@@ -398,6 +399,8 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       // Scroll (MESITA-2163) and Swipe (MESITA-2166), off the rail.
       { source: "/discover/scroll", destination: "/discover/places", permanent: true },
       { source: "/discover/swipe", destination: "/discover/places", permanent: true },
+      { source: "/discover/favs", destination: "/discover/places", permanent: true },
+      { source: "/discover/chat", destination: "/search/chat", permanent: true },
       // The Saved tab and the /saved/place dual path (MESITA-1585).
       { source: "/saved", destination: "/me", permanent: true },
       { source: "/saved/reservations", destination: "/me/reservations", permanent: true },
@@ -440,8 +443,8 @@ describe("middleware auth wall (shouldGate)", () => {
     "/",
     "/discover/places",
     "/discover/social",
-    "/discover/chat",
-    "/discover/favs",
+    "/discover/chat", // 308s to /search/chat (MESITA-2401)
+    "/discover/favs", // 308s to Places (MESITA-2383)
     "/search",
     "/place/abc",
     "/onboard",

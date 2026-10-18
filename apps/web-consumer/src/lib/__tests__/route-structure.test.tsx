@@ -265,8 +265,7 @@ describe("T5 — exactly one tab lights per surface", () => {
   const MATRIX: [string, string][] = [
     ["/discover/places", "Home"],
     ["/discover/social", "Home"],
-    ["/discover/chat", "Home"],
-    ["/discover/favs", "Home"],
+    ["/search/chat", "Search"],
     ["/place/abc", "Home"],
     ["/search", "Search"],
     // Pay is one page and lights its own tab there.
@@ -407,36 +406,28 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
 // loses its selected state. This pins ORDER, COUNT, the width budget, and
 // that every pill is a real page.
 //
-// The order is Pato's (MESITA-2368): "Places, Social, Chat, Favorites".
+// The order is Pato's (MESITA-2401): "Home has Places and Social" — Favorites
+// is a row of the Places column, Chat a pill of the Search tab.
 // MESITA-2301 restored the Places label after MESITA-2285 had renamed it Feed.
 describe("T5b — Home's supporting rail", () => {
-  it("is exactly Places · Social · Chat · Favorites", async () => {
-    const { HOME_MODES } = await import("@/components/consumer/ModeTabs");
-    expect(HOME_MODES.map((m) => m.label)).toEqual([
-      "Places",
-      "Social",
-      "Chat",
-      "Favorites",
-    ]);
+  it("is exactly Places · Social, and Search's is Search · Chat", async () => {
+    const { HOME_MODES, SEARCH_MODES } = await import("@/components/consumer/ModeTabs");
+    expect(HOME_MODES.map((m) => m.label)).toEqual(["Places", "Social"]);
+    expect(SEARCH_MODES.map((m) => m.label)).toEqual(["Search", "Chat"]);
+    expect(SEARCH_MODES.map((m) => m.href)).toEqual([CONSUMER_ROUTES.search, CONSUMER_ROUTES.searchChat]);
   });
 
-  // Places is the catalog (Pato, MESITA-2254); Favorites is the live saved
-  // grid (MESITA-2368). Social and Chat stay Soon (MESITA-2168): their pages
-  // stay the Soon empty state — Memo does not mount.
-  it("Places and Favorites are live; Social and Chat stay Soon", async () => {
-    const { HOME_MODES } = await import("@/components/consumer/ModeTabs");
-    expect(HOME_MODES.map((m) => Boolean(m.soon))).toEqual([
-      false,
-      true,
-      true,
-      false,
-    ]);
-    const favs = readFileSync(
-      join(SHELL, "(discovery)", "discover", "favs", "page.tsx"),
-      "utf8",
-    );
-    expect(favs).toContain("<FavoritesList");
-    expect(favs).not.toContain("HomeSoon");
+  // Places is the catalog (Pato, MESITA-2254), Favorites one of its rows
+  // (MESITA-2383). Social and Chat stay Soon (MESITA-2168): their pages stay
+  // the Soon empty state — Memo does not mount.
+  it("Places is live; Social and Chat stay Soon", async () => {
+    const { HOME_MODES, SEARCH_MODES } = await import("@/components/consumer/ModeTabs");
+    expect(HOME_MODES.map((m) => Boolean(m.soon))).toEqual([false, true]);
+    expect(SEARCH_MODES.map((m) => Boolean(m.soon))).toEqual([false, true]);
+    const chat = readFileSync(join(SHELL, "(discovery)", "search", "chat", "page.tsx"), "utf8");
+    expect(chat).toContain("HomeSoon");
+    expect(chat).toContain("<SearchHeader />");
+    expect(chat).not.toMatch(/<AskAiTab/);
     const rail = readFileSync(join(COMPONENTS, "ModeTabs.tsx"), "utf8");
     expect(rail).toMatch(/>\s*Soon\s*</);
     const places = readFileSync(
@@ -445,13 +436,13 @@ describe("T5b — Home's supporting rail", () => {
     );
     expect(places).toContain("<CatalogRails");
     expect(places).not.toContain("HomeSoon");
-    for (const seg of ["social", "chat"]) {
+    for (const seg of ["social"]) {
       const page = readFileSync(
         join(SHELL, "(discovery)", "discover", seg, "page.tsx"),
         "utf8",
       );
       expect(page, seg).toContain("HomeSoon");
-      expect(page, seg).not.toMatch(/<CatalogRails|<AskAiTab|<FavoritesList/);
+      expect(page, seg).not.toMatch(/<CatalogRails|<AskAiTab/);
     }
     const soon = readFileSync(join(COMPONENTS, "home", "HomeSoon.tsx"), "utf8");
     expect(soon).toContain("is coming soon");
@@ -459,7 +450,22 @@ describe("T5b — Home's supporting rail", () => {
 
   // Swipe (MESITA-2166), Scroll (MESITA-2163) and Catalog's old Feed address
   // left the rail: no page, one hop to Places, the default.
-  it.each(["swipe", "scroll", "feed"])(
+  // Chat left Home for the Search tab (MESITA-2401): no page, one hop.
+  it("/discover/chat has no page and 308s to /search/chat", async () => {
+    const hop = (await nextConfig.redirects!()).find((r) => r.source === "/discover/chat");
+    expect(hop?.destination).toBe(CONSUMER_ROUTES.searchChat);
+    expect(existsSync(join(SHELL, "(discovery)", "discover", "chat", "page.tsx"))).toBe(false);
+  });
+
+  it("the header's right half: Home's location, Search's Filters (MESITA-2401)", () => {
+    const tabs = readFileSync(join(COMPONENTS, "ModeTabs.tsx"), "utf8");
+    expect(tabs).toContain('className="grid grid-cols-2 gap-2 px-2" data-tab-header');
+    expect(tabs).toContain('aside={<LocationPicker />}');
+    const header = readFileSync(join(COMPONENTS, "search", "SearchHeader.tsx"), "utf8");
+    expect(header).toContain('variant="header"');
+  });
+
+  it.each(["swipe", "scroll", "feed", "favs"])(
     "/discover/%s has no page and 308s to Places",
     async (seg) => {
       const { HOME_MODES } = await import("@/components/consumer/ModeTabs");
@@ -516,9 +522,10 @@ describe("T5b — Home's supporting rail", () => {
         return text + 26;
       }),
     );
+    // The pills own the LEFT HALF of the row since MESITA-2401: (359 - 8) / 2.
     expect(
       widest * HOME_MODES.length + (HOME_MODES.length - 1) * 4,
-    ).toBeLessThanOrEqual(359);
+    ).toBeLessThanOrEqual(175.5);
   });
 
   // Every pill is a LIVE page — never a redirect source, which would cost a
@@ -529,7 +536,7 @@ describe("T5b — Home's supporting rail", () => {
     const hrefs = HOME_MODES.map((m) => m.href);
     for (const href of hrefs) expect(pages, href).toContain(href);
     expect(new Set(HOME_MODES.map((m) => m.href)).size).toBe(HOME_MODES.length);
-    // The four /discover pills are exactly the contract's discoverTabs.
+    // The two /discover pills are exactly the contract's discoverTabs.
     expect(
       HOME_MODES.map((m) => m.href).filter((h) => h.startsWith("/discover/")),
     ).toEqual(Object.values(CONSUMER_ROUTES.discoverTabs));
@@ -550,8 +557,6 @@ describe("T5b — Home's supporting rail", () => {
     for (const rel of [
       ["discover", "places"],
       ["discover", "social"],
-      ["discover", "chat"],
-      ["discover", "favs"],
     ]) {
       expect(
         existsSync(join(SHELL, "(discovery)", ...rel, "page.tsx")),
