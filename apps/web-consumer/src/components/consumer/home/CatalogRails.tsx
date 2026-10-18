@@ -141,7 +141,7 @@ export function CatalogRails() {
                 <Skeleton
                   key={j}
                   className={cn(
-                    "border-border aspect-square shrink-0 rounded-lg border",
+                    "border-border aspect-square shrink-0 rounded-none border",
                     cardWidth,
                   )}
                 />
