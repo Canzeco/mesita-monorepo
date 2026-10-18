@@ -1,15 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Place } from "@/lib/api/places";
 import { PLACE_FAMILIES } from "@/lib/place-families";
-import {
-  clampMinReviews,
-  MAP_FILTER_DEFAULTS,
-  MAP_MIN_REVIEW_STOPS,
-  mapFilterCount,
-  mapFiltersAreActive,
-  placeSearchScope,
-  type MapFilters,
-} from "@/lib/map-filters-engine";
+import { MAP_FILTER_DEFAULTS, placeSearchScope } from "@/lib/map-filters-engine";
 
 function place(over: Partial<Place> = {}): Place {
   return {
@@ -19,10 +11,6 @@ function place(over: Partial<Place> = {}): Place {
     category: null,
     ...over,
   } as Place;
-}
-
-function filters(over: Partial<MapFilters> = {}): MapFilters {
-  return { ...MAP_FILTER_DEFAULTS, ...over };
 }
 
 describe("placeSearchScope", () => {
@@ -45,49 +33,10 @@ describe("placeSearchScope", () => {
   });
 });
 
-describe("no source switch (MESITA-2384)", () => {
-  it("the filters hold Families and Google Reviews only", () => {
-    expect(Object.keys(MAP_FILTER_DEFAULTS).sort()).toEqual(["familyKeys", "minReviews"]);
-  });
-});
-
-describe("mapFilterCount", () => {
-  it("defaults to no filter counted", () => {
-    expect(mapFiltersAreActive(filters())).toBe(false);
-    expect(mapFilterCount(filters())).toBe(0);
-  });
-
-  it("counts each Family or a Google Reviews stop as one filter", () => {
-    expect(mapFilterCount(filters({ familyKeys: ["dinner"] }))).toBe(1);
-    expect(mapFilterCount(filters({ minReviews: 100 }))).toBe(0);
-    expect(mapFilterCount(filters({ minReviews: 10 }))).toBe(1);
-    expect(mapFilterCount(filters({ minReviews: 1000 }))).toBe(1);
-    expect(MAP_FILTER_DEFAULTS.minReviews).toBe(100);
-    expect(MAP_FILTER_DEFAULTS).not.toHaveProperty("resultLimit");
-  });
-});
-
-describe("Google Reviews — 10+ / 100+ / 1,000+, default 100+ (MESITA-2298, MESITA-2336)", () => {
-  it("only those three stops, nothing in between; 0+ and 10K+ are gone", () => {
-    expect(MAP_MIN_REVIEW_STOPS).toEqual([10, 100, 1000]);
-    expect(clampMinReviews(0)).toBe(10);
-    expect(clampMinReviews(10)).toBe(10);
-    expect(clampMinReviews(100)).toBe(100);
-    expect(clampMinReviews(1000)).toBe(1000);
-    expect(clampMinReviews(10000)).toBe(1000);
-    expect(clampMinReviews(5)).toBe(10);
-    expect(clampMinReviews(50)).toBe(10);
-    expect(clampMinReviews(55)).toBe(100);
-    expect(clampMinReviews(500)).toBe(100);
-    expect(clampMinReviews(550)).toBe(1000);
-    expect(clampMinReviews(-4)).toBe(10);
-  });
-
-  it("an absent or unreadable value is the default, 100+; a stored 0 (the retired 0+) lands on 10+", () => {
-    expect(clampMinReviews(undefined)).toBe(100);
-    expect(clampMinReviews("x")).toBe(100);
-    expect(clampMinReviews("0")).toBe(10);
-    expect(clampMinReviews(0)).toBe(10);
+describe("the family chips are the only guest filter (MESITA-2384, MESITA-2417)", () => {
+  it("holds family keys alone: no source, no How many, no Google reviews stop", () => {
+    expect(Object.keys(MAP_FILTER_DEFAULTS)).toEqual(["familyKeys"]);
+    expect(MAP_FILTER_DEFAULTS.familyKeys).toEqual([]);
   });
 });
 

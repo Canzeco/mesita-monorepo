@@ -13,7 +13,7 @@
 // read here would look like it worked while enforcing nothing. A config that
 // silently falls back is not enforced, which is the house definition of a bug.
 //
-// ONE REQUEST SHAPE — POST { google: true, lat, lng, familyKeys, minReviews }:
+// ONE REQUEST SHAPE — POST { google: true, lat, lng, familyKeys }:
 // web Search, the Map view of the AREA PIPELINE (MESITA-2302, MESITA-2327,
 // one pool since MESITA-2379, `_shared/area-pipeline.ts`). The Map is always
 // a POINT (the camera centre) inside the operator's `map.radiusKm`, and it
@@ -21,7 +21,7 @@
 // deduped, gated, scored, × Selected, ranked — with its own budget: ONE
 // Nearby call per load (the reload throttle `map.reloadMinKm` /
 // `map.reloadMinSec` bounds the spend), the guest's family pills pushed down
-// to Nearby types, the guest's Google Reviews stop on Google hits, and
+// to Nearby types, the operator's `map.googleMinReviews` on Google hits, and
 // `map.mesitaPlaces` Mesita candidates. The guest never picks a source: a
 // stale `placesScope` is ignored.
 //
@@ -55,7 +55,6 @@ import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
 import { DISCOVERY_DEFAULTS } from "../_shared/discovery-config.ts";
 import {
   enabledNearbyTypes,
-  guestReviewFloor,
   mapShouldFillGoogle,
 } from "../_shared/map-engine.ts";
 import {
@@ -83,7 +82,8 @@ type ListBody = {
   /** Ignored (the pre-2026-09-05 ordinal of the same). */
   searchPower?: number;
   familyKeys?: unknown;
-  /** Guest Popularity stop. Discovery-mode, not a Nearby API param. */
+  /** Ignored since MESITA-2417: the Google reviews minimum is the
+   *  operator's, `map.googleMinReviews`. */
   minReviews?: unknown;
   lat?: number;
   lng?: number;
@@ -141,7 +141,6 @@ Deno.serve(async (req) => {
     }, 400);
   }
   const guestSupers = readGuestFamilyKeys(body.familyKeys);
-  const rawMinReviews: unknown = body.minReviews;
 
   const efEnv = readEFEnv();
   const cfg = efEnv.ok
@@ -173,7 +172,6 @@ Deno.serve(async (req) => {
     families: guestSupers,
     types: googleFill ? nearbyTypes : [],
     googleCalls: googleFill ? 1 : 0,
-    minReviews: guestReviewFloor("google", rawMinReviews),
     mesitaLimit: cfg.map.mesitaPlaces,
     mesitaRows: (pool.data ?? []) as OwnedRow[],
     cfg,

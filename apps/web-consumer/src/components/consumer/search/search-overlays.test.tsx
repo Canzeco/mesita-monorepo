@@ -5,7 +5,6 @@ import { describe, expect, it } from "vitest";
 
 import { RailCard } from "@/components/consumer/search/SearchRailCard";
 import { SearchResultsPanel } from "@/components/consumer/search/SearchResultsPanel";
-import { SearchFilterRow } from "@/components/consumer/search/SearchFilterRow";
 import { SearchLocateButton } from "@/components/consumer/search/SearchLocateButton";
 import {
   buildSearchMapPins,
@@ -77,12 +76,12 @@ describe("SearchBar", () => {
 describe("Search map catalog auto-reloads after distance and time", () => {
   it("loads the operator's How many, not an SSR 200 dump", () => {
     expect(read("SearchClient.tsx")).toContain("apiFetchNearbyCatalog");
-    // How many stays the operator's. The guest posts Family and Google
-    // Reviews; the source is never the guest's (MESITA-2384).
+    // How many, the source and the Google reviews minimum are the
+    // operator's (MESITA-2384, MESITA-2417); the guest posts the family.
     expect(read("SearchClient.tsx")).not.toContain("resultLimit");
     expect(read("SearchClient.tsx")).not.toContain("placesScope");
     expect(read("SearchClient.tsx")).toContain("familyKeys");
-    expect(read("SearchClient.tsx")).toContain("minReviews");
+    expect(read("SearchClient.tsx")).not.toContain("minReviews");
     expect(read("SearchClient.tsx")).toContain("onFirstViewport");
     expect(read("SearchClient.tsx")).toContain("shouldReloadNearbyCatalog");
     expect(read("SearchClient.tsx")).toContain("scheduleOrLoad");
@@ -146,54 +145,15 @@ describe("Search map catalog auto-reloads after distance and time", () => {
   });
 });
 
-describe("SearchFilterRow", () => {
-  // A 44px DISC, ICON ONLY (Pato, 2026-10-17: "don't mention filters as
-  // text, just the filters icon is enough and universal"), retiring the
-  // labelled third of MESITA-1797. The word lives in the accessible name;
-  // applied is a brand-red dot on the corner (MESITA-2304), never a fill.
-  it("is an icon-only disc that wears the red dot when on", () => {
-    const rest = renderToStaticMarkup(
-      <SearchFilterRow count={0} onOpenFilters={() => {}} />,
-    );
-    expect(rest).toContain("lucide-sliders-horizontal");
-    expect(rest).toContain('aria-label="Filters"');
-    expect(rest).not.toMatch(/>\s*Filters\s*</);
-    expect(rest).not.toContain("Filter places");
-    expect(rest).not.toContain("basis-1/3");
-    expect(rest).not.toContain('data-active="true"');
-    expect(rest).toContain("h-11 w-11");
-    expect(rest).toContain("rounded-full");
-    expect(rest).toContain("border-border");
-    expect(rest).toContain("bg-card/95");
-    expect(rest).toContain("shadow-elev");
-    expect(rest).not.toContain("bg-primary ");
-    expect(rest).not.toContain("Restaurants");
-    expect(rest).not.toContain("Bars");
-    expect(rest).not.toContain("Now");
-
-    const on = renderToStaticMarkup(
-      <SearchFilterRow count={3} onOpenFilters={() => {}} />,
-    );
-    expect(on).toContain('aria-label="Filters, 3 applied"');
-    expect(on).toContain('data-active="true"');
-    expect(on).toContain("bg-primary");
-    expect(on).not.toContain("text-primary-foreground");
-    expect(on).not.toContain(">3<");
-    expect(read("SearchFilterRow.tsx")).not.toContain("PLACE_FAMILIES");
-  });
-
+describe("the bar cannot squeeze its neighbours out", () => {
   // THE ANTI-DISAPPEARING PAIR. Flex resolves an overflowing row by shrinking
-  // whichever child can shrink. Drop `shrink-0` here and the bar squeezes
-  // this control toward zero width while it is still in the DOM.
-  it("cannot be squeezed out by the bar beside it", () => {
-    const rest = renderToStaticMarkup(
-      <SearchFilterRow count={0} onOpenFilters={() => {}} />,
-    );
-    expect(rest).toContain("shrink-0");
-
+  // whichever child can shrink: `min-w-0 flex-1` on the bar, `shrink-0` on
+  // the discs and Ask AI beside it.
+  it("keeps min-w-0 on the bar and shrink-0 on Ask AI", () => {
     const header = read("SearchHeader.tsx");
     expect(header).toContain('<div className="min-w-0 flex-1">{bar}</div>');
     expect(header).toContain('<div className="flex min-w-0 items-center gap-2 px-2 pt-2.5 pb-2">');
+    expect(header).toContain("flex h-11 shrink-0 items-center gap-1.5 rounded-full border px-3.5");
   });
 });
 
@@ -230,17 +190,22 @@ describe("SearchLocateButton", () => {
 });
 
 describe("Search's header is location · the query bar · Ask AI, then family chips", () => {
-  it("puts location at the left, Filters first in the chip row, with no client-side recut", () => {
+  it("puts location at the left, All first in the chip row, no Filters, no client-side recut", () => {
     const src = read("SearchClient.tsx");
     const overlays = read("search-catalog-overlays.tsx");
     // MESITA-2409: the header carries the row (locate, bar, Ask AI) and the
-    // horizontal chips (Filters, All, families); the map sits under it.
+    // horizontal chips (All, families); the map sits under it. No Filters
+    // disc, no sheet (Pato, MESITA-2417: "Its just all and thats it").
     expect(src).toContain("<SearchHeader");
     expect(src).not.toContain("<SearchFilterRow");
     expect(src.indexOf("<SearchLocateButton")).toBeGreaterThan(-1);
     expect(src.indexOf("<SearchLocateButton")).toBeLessThan(src.indexOf("<SearchBar"));
     const header = read("SearchHeader.tsx");
-    expect(header).toContain('variant="chip"');
+    expect(header).not.toContain("SearchFilterRow");
+    expect(header).not.toContain("SlidersHorizontal");
+    // All wears an emoji like every family (MESITA-2417).
+    expect(header).toContain("<span aria-hidden>{ALL_EMOJI}</span>");
+    expect(header.indexOf("{ALL_EMOJI}")).toBeLessThan(header.indexOf("FILTERABLE_PLACE_FAMILIES.map"));
     expect(header).toContain("FILTERABLE_PLACE_FAMILIES.map");
     expect(header).toContain("selectMapFamily(family.key)");
     // A white band above the map with a hairline (MESITA-2413; it floated
@@ -248,9 +213,12 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
     expect(header).toContain('"border-border bg-card/95 relative z-30 shrink-0 border-b backdrop-blur"');
     expect(src.indexOf("<SearchHeader")).toBeLessThan(src.indexOf("<SearchMap"));
     expect(header).toContain('"flex h-11 shrink-0 items-center');
-    expect(header).toContain("absolute inset-x-3 top-full mt-3");
+    // The bar's results COVER the chip row (MESITA-2417): anchored at the
+    // top of the chips' box, above them.
+    expect(header).toContain("absolute inset-x-2 top-0 z-10");
+    expect(header).not.toContain("top-full");
+    expect(header.indexOf("data-search-chips")).toBeLessThan(header.indexOf("data-search-over-chips"));
     expect(header).toContain("overflow-x-auto");
-    expect(header.indexOf("<SearchFilterRow")).toBeLessThan(header.indexOf("FILTERABLE_PLACE_FAMILIES.map"));
     expect(src).toContain("recentreOnGuest");
     // Recentre reloads when the catalog was fetched elsewhere (MESITA-2305).
     const recentre = src.slice(
@@ -260,46 +228,22 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
     expect(recentre).toContain("catalogIsStale(lastFetchedCenter.current, location)");
     expect(recentre).toContain("forceNextLoad.current = true");
     expect(recentre).toContain("setHomeNonce");
-    expect(src).toContain("SearchMapFilters");
-    expect(src).toContain("catalogLoading ? null : catalog.length");
+    expect(src).not.toContain("SearchMapFilters");
+    expect(src).not.toContain("filtersOpen");
     expect(src).toContain("useMapFilters");
-    expect(src).toContain("mapFilterCount");
     expect(src).toContain("<SearchBar");
-    // The SERVER is the one selector — SearchClient posts the three
-    // params and paints what comes back.
+    // The SERVER is the one selector — SearchClient posts the family and
+    // paints what comes back.
     expect(src).not.toMatch(/takeMapResultLimit\(/);
-    expect(src).toMatch(/from "@\/lib\/map-filters-engine"/);
-    for (const present of [
+    expect(existsSync(join(SEARCH_DIR, "SearchLocateButton.tsx"))).toBe(true);
+    for (const gone of [
       "SearchFilterRow.tsx",
-      "SearchLocateButton.tsx",
       "SearchMapFilters.tsx",
       "SearchPopularity.tsx",
+      "SearchPlacesScope.tsx",
     ]) {
-      expect(existsSync(join(SEARCH_DIR, present)), present).toBe(true);
+      expect(existsSync(join(SEARCH_DIR, gone)), gone).toBe(false);
     }
-    expect(existsSync(join(SEARCH_DIR, "SearchPlacesScope.tsx"))).toBe(false);
-    // The sheet: Families, then Google Reviews; the Places source switch is
-    // gone (MESITA-2384), and the word Enriched never reaches the guest.
-    const sheet = read("SearchMapFilters.tsx");
-    const popularity = read("SearchPopularity.tsx");
-    expect(sheet).not.toContain('label="Places"');
-    expect(sheet).not.toContain("SearchPlacesScope");
-    expect(sheet).toContain('label="Families"');
-    expect(sheet).toContain('label="Google Reviews"');
-    expect(sheet.indexOf('label="Families"')).toBeLessThan(sheet.indexOf('label="Google Reviews"'));
-    expect(sheet).not.toContain("Minimum number of Google reviews");
-    expect(sheet).toContain("All Families");
-    expect(sheet).toContain("clearMapFamilies");
-    expect(sheet).not.toContain('label="Popularity"');
-    for (const file of [sheet, popularity]) {
-      expect(file).not.toMatch(/Enriched/);
-    }
-    expect(popularity).toContain('aria-label="Google Reviews"');
-    expect(popularity).not.toContain('"0+"');
-    expect(popularity).toContain('"10+"');
-    expect(popularity).toContain('"100+"');
-    expect(popularity).toContain('"1,000+"');
-    expect(popularity).not.toContain('"10K+"');
     for (const gone of ["SearchResultLimit.tsx", "SearchCategoryRow.tsx"]) {
       expect(existsSync(join(SEARCH_DIR, gone)), gone).toBe(false);
     }
@@ -327,9 +271,10 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
     const loading = read("../../../app/(shell)/(discovery)/search/loading.tsx");
     expect(loading).toContain("flex min-w-0 items-center gap-2");
     expect(loading).not.toContain("basis-1/3");
-    // One 44px disc on the map row (location); Filters sits in the header.
+    // The header's silhouette: one 44px disc (location), the bar, Ask AI,
+    // then the chip row; no Filters disc (MESITA-2417).
     expect(loading.split("h-11 w-11 shrink-0").length - 1).toBe(1);
-    expect(loading).toContain("h-8 w-8 rounded-full");
+    expect(loading).toContain("data-search-loading-chips");
     expect(loading).not.toContain("h-12 w-12");
   });
 

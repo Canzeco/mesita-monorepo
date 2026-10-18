@@ -78,7 +78,7 @@ describe("persisted familyKeys hydrate from the filterable fifteen", () => {
     expect(persistedFamilyKeys(store, MAP_KEY)).toEqual(["dinner"]);
   });
 
-  it("drops a stored scope word: the guest never picks a source (MESITA-2384)", async () => {
+  it("drops a stored scope word and reviews stop: both are the operator's (MESITA-2384, MESITA-2417)", async () => {
     store.set(
       MAP_KEY,
       JSON.stringify({ familyKeys: [], placesScope: "enriched", minReviews: 10000 }),
@@ -89,9 +89,9 @@ describe("persisted familyKeys hydrate from the filterable fifteen", () => {
 
     const raw = JSON.parse(store.get(MAP_KEY)!) as {
       placesScope?: string;
-      minReviews: number;
+      minReviews?: number;
     };
     expect(raw.placesScope).toBeUndefined();
-    expect(raw.minReviews).toBe(1000);
+    expect(raw.minReviews).toBeUndefined();
   });
 });

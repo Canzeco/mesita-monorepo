@@ -105,7 +105,6 @@ function deps(over: DepsOver = {}) {
     families: [],
     types: FEED_GOOGLE_TYPES,
     googleCalls: 1,
-    minReviews: 0,
     mesitaLimit: 20,
     mesitaRows: [],
     cfg: DISCOVERY_DEFAULTS,
@@ -147,14 +146,15 @@ Deno.test("google: ONE Nearby call inside the operator's radius, mask with openN
   }
 });
 
-Deno.test("google: the guest review floor cuts after Google answers, never a refill", async () => {
+Deno.test("google: the operator's review minimum cuts after Google answers, never a refill", async () => {
   reset();
   const g = stubGoogle([
     { id: "thin", lat: 25.6701, reviews: 12 },
     { id: "loved", lat: 25.672, reviews: 900 },
   ]);
   try {
-    const { d } = deps({ minReviews: 100 });
+    const cfg = { ...DISCOVERY_DEFAULTS, map: { ...DISCOVERY_DEFAULTS.map, googleMinReviews: 100 } };
+    const { d } = deps({ cfg });
     const out = await selectAreaPool(d);
     assertEquals(ids(out.places), ["g:loved"]);
     assertEquals(nearbyCalls(g.calls).length, 1);
@@ -476,7 +476,7 @@ Deno.test("selectedPoolQuery: Enriched gate, General, ready, families and the ra
   assertEquals(seen[seen.length - 1], "order id true");
 });
 
-Deno.test("google: the operator's floor cuts Google hits; the higher floor wins (MESITA-2319)", async () => {
+Deno.test("google: the operator's floor alone cuts Google hits; no guest stop (MESITA-2319, MESITA-2417)", async () => {
   reset();
   const g = stubGoogle([
     { id: "thin", lat: 25.6701, reviews: 150 },
@@ -484,7 +484,7 @@ Deno.test("google: the operator's floor cuts Google hits; the higher floor wins 
   ]);
   try {
     const cfg = { ...DISCOVERY_DEFAULTS, map: { ...DISCOVERY_DEFAULTS.map, googleMinReviews: 500 } };
-    const out = await selectAreaPool(deps({ cfg, minReviews: 100 }).d);
+    const out = await selectAreaPool(deps({ cfg }).d);
     assertEquals(ids(out.places), ["g:loved"]);
   } finally {
     g.restore();

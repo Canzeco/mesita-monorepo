@@ -313,9 +313,6 @@ export type AreaPoolDeps<T extends OwnedRow> = {
   types: readonly string[];
   /** 0–3 Nearby calls (`googleCallsForStop`); 0 = no Google. */
   googleCalls: number;
-  /** The guest's Google Reviews stop; `map.googleMinReviews` also applies,
-   *  the higher one cuts. Google hits only. */
-  minReviews: number;
   /** The Mesita candidates kept after ranking (`map.mesitaPlaces`). */
   mesitaLimit: number;
   /** The caller's Mesita read (gates pushed down, `selectedPoolQuery`). */
@@ -400,7 +397,8 @@ async function googleItems<T extends OwnedRow>(
   const eligible = eligibleGoogleHits(
     hits,
     location,
-    Math.max(deps.minReviews, deps.cfg.map.googleMinReviews ?? 0),
+    // The operator's minimum alone (MESITA-2417): no guest stop.
+    deps.cfg.map.googleMinReviews ?? 0,
     deps.cfg,
   );
   if (eligible.length === 0) return [];
