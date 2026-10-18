@@ -51,11 +51,10 @@ export function reviewTimeMs(date: string): number {
 }
 
 /**
- * Segmented sort control. Generic over the option list so a box declares
- * the sorts that make sense for its own content.
- *
- * Options stay on one row: at four the labels are already tight on a 360px
- * screen, so keep sets to three or four short words.
+ * Inline sort row (MESITA-2309): plain words, the chosen one a filled ink
+ * pill, no grey track around them. Generic over the option list so a list
+ * declares the sorts that make sense for its own content. Keep sets to three
+ * or four short words so they stay on one row at 360px.
  */
 function SortChips<K extends string>({
   sort,
@@ -69,11 +68,7 @@ function SortChips<K extends string>({
   label: string;
 }) {
   return (
-    <div
-      className="bg-muted/60 flex gap-1 rounded-xl p-1"
-      role="group"
-      aria-label={label}
-    >
+    <div className="flex items-center gap-1" role="group" aria-label={label}>
       {options.map((mode) => (
         <button
           key={mode.key}
@@ -81,10 +76,10 @@ function SortChips<K extends string>({
           onClick={() => onSort(mode.key)}
           aria-pressed={sort === mode.key}
           className={cn(
-            "min-w-0 flex-1 truncate rounded-lg px-1 py-1.5 text-xs font-semibold transition",
+            "rounded-full px-3 py-1.5 text-xs font-semibold transition",
             sort === mode.key
-              ? "bg-card text-foreground shadow-rest"
-              : "text-muted-foreground",
+              ? "bg-foreground text-paper"
+              : "text-muted-foreground hover:text-foreground",
           )}
         >
           {mode.label}

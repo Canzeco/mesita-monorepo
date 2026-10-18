@@ -9,9 +9,9 @@ import type { PlaceDetail } from "../place-detail";
 // One Google review card. Lives in its own client file because the
 // long-quote read-more toggle needs state.
 //
-//   [Avatar] [Name + date]                          [Google logo]
-//   ★★★★★
-//   "Quote..." (truncated)
+//   [Avatar] [Name]                                 [Google logo]
+//   ★★★★★  date
+//   Quote... (truncated)
 //   [Read more]                                     (when truncated)
 //   [Photo thumbnail]                               (when present)
 
@@ -25,18 +25,22 @@ export function ReviewCard({
   const [expanded, setExpanded] = useState(false);
   const isLong = review.quote.length > LONG_QUOTE_THRESHOLD;
   return (
-    <article className="bg-background flex w-full flex-col gap-3 rounded-2xl p-4">
+    <article className="flex w-full flex-col gap-2">
       <Header
         avatar={
-          <div className="bg-muted text-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold">
+          <div className="bg-muted text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold">
             {firstInitial(review.author)}
           </div>
         }
         name={review.author}
-        sub={formatReviewDate(review.date)}
-        sourceLogo={<GoogleLogo />}
+        sourceLogo={<GoogleLogo compact />}
       />
-      <StarRow rating={review.rating} />
+      <div className="flex items-center gap-2">
+        <StarRow rating={review.rating} />
+        <span className="text-muted-foreground type-label">
+          {formatReviewDate(review.date)}
+        </span>
+      </div>
       <Quote
         text={review.quote}
         truncated={isLong && !expanded}
