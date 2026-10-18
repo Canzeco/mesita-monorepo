@@ -31,9 +31,31 @@ import { Skeleton } from "@/components/shared/Skeleton";
 import { CatalogTile } from "./CatalogTile";
 import { cn, errMsg } from "@/lib/utils";
 import { placesFeed } from "@/lib/catalog-feed";
+import { useStoredString } from "@/lib/local-store";
 import { summarizeCatalog } from "@/lib/catalog-summary";
 
+// TEMPORARY (Pato, MESITA-2340): a try-out switch for how many cards fit
+// across the screen — 1.5, 2 or 2.5 (today's size). Literal class strings so
+// Tailwind keeps them. Remove the switch once a size is picked.
+const CARD_SIZES = ["1.5", "2", "2.5"] as const;
+type CardSize = (typeof CARD_SIZES)[number];
+const CARD_WIDTH: Record<CardSize, string> = {
+  "1.5": "w-[calc((100%-1rem)/1.5)]",
+  "2": "w-[calc((100%-1rem)/2)]",
+  "2.5": "w-[calc((100%-1rem)/2.5)]",
+};
+const CARD_SIZE_KEY = "mesita:feed-card-size";
+
+function readCardSize(value: string): CardSize {
+  return (CARD_SIZES as readonly string[]).includes(value)
+    ? (value as CardSize)
+    : "2.5";
+}
+
 export function CatalogRails() {
+  const [storedSize, setCardSize] = useStoredString(CARD_SIZE_KEY, "2.5");
+  const cardSize = readCardSize(storedSize);
+  const cardWidth = CARD_WIDTH[cardSize];
   const supabase = useBrowserSupabase();
   const coords = useUserLocation();
   const locating = useUserLocationLocating();
@@ -91,7 +113,7 @@ export function CatalogRails() {
   const shownRails = useMemo(() => placesFeed(rails ?? []), [rails]);
 
   const locationStrip = (
-    <div className="border-border bg-background/90 shrink-0 border-b px-4 py-2.5 backdrop-blur-xl">
+    <div className="border-border bg-background/90 flex shrink-0 items-center gap-2 border-b px-4 py-2.5 backdrop-blur-xl">
       <button
         type="button"
         onClick={locate}
@@ -104,7 +126,7 @@ export function CatalogRails() {
               : "Use my location"
         }
         className={cn(
-          "flex h-11 w-full items-center justify-center gap-1.5 rounded-full border px-3 text-sm font-semibold transition",
+          "flex h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full border px-3 text-sm font-semibold transition",
           coords !== null
             ? "border-border bg-card text-muted-foreground"
             : "shadow-elev border-border bg-card/95 text-foreground backdrop-blur-xl active:scale-[0.98] disabled:opacity-60",
@@ -119,6 +141,28 @@ export function CatalogRails() {
               : "Use my location"}
         </span>
       </button>
+      <div
+        role="group"
+        aria-label="Card size"
+        className="border-border bg-card flex h-11 shrink-0 items-center gap-0.5 rounded-full border p-1"
+      >
+        {CARD_SIZES.map((size) => (
+          <button
+            key={size}
+            type="button"
+            onClick={() => setCardSize(size)}
+            aria-pressed={cardSize === size}
+            className={cn(
+              "type-label h-full rounded-full px-2.5 font-semibold tabular-nums transition",
+              cardSize === size
+                ? "bg-foreground text-paper"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {size}×
+          </button>
+        ))}
+      </div>
     </div>
   );
 
@@ -163,7 +207,10 @@ export function CatalogRails() {
               {Array.from({ length: 3 }, (_, j) => (
                 <Skeleton
                   key={j}
-                  className="border-border aspect-[4/3] w-[calc((100%-1rem)/2.5)] shrink-0 rounded-2xl border"
+                  className={cn(
+                    "border-border aspect-[4/3] shrink-0 rounded-2xl border",
+                    cardWidth,
+                  )}
                 />
               ))}
             </div>
@@ -217,7 +264,7 @@ export function CatalogRails() {
                 saved={saved}
                 onToggle={() => toggleSave(place, saved)}
                 onOpenGoogle={() => openGooglePlace(place)}
-                className="w-[calc((100%-1rem)/2.5)] shrink-0"
+                className={cn(cardWidth, "shrink-0")}
               />
             );
           })}
