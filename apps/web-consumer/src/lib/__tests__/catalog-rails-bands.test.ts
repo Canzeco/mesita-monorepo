@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { CatalogRail, Place } from "@/lib/api/places";
 import {
   FAVORITES_CHIP,
+  PINNED_CHIPS,
   SOCIAL_CHIP,
   poolPlaces,
   PLACES_PAGE,
@@ -32,7 +33,8 @@ const RAILS: CatalogRail[] = [
 ];
 
 describe("the Places column (MESITA-2383)", () => {
-  // Social · Favorites, a rule, then Featured and the families (MESITA-2405).
+  // Social · Favorites · Featured pinned, a rule, then the families, which
+  // alone scroll (MESITA-2411).
   it("is Social, Favorites, Featured, then every guest family — no source rows (MESITA-2384)", () => {
     const labels = placesChips().map((c) => c.label);
     expect(labels.slice(0, 3)).toEqual(["Social", "Favorites", "Featured"]);
@@ -40,8 +42,11 @@ describe("the Places column (MESITA-2383)", () => {
     expect(labels).toContain("Breakfast");
     expect(labels).not.toContain("Undefined");
     expect(placesChips().map((c) => c.key).slice(0, 3)).toEqual([SOCIAL_CHIP, FAVORITES_CHIP, FEATURED_CHIP]);
-    expect(src).toContain('c.key === FAVORITES_CHIP ? (');
+    expect(PINNED_CHIPS).toBe(3);
+    expect(src).toContain("chips.slice(0, PINNED_CHIPS).map(categoryRow)");
+    expect(src).toContain("chips.slice(PINNED_CHIPS).map(categoryRow)");
     expect(src).toContain("data-places-rule");
+    expect(src).toContain('className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-y-contain"');
     // Social is the one Soon row and reads different (MESITA-2408).
     expect(placesChips().filter((c) => c.soon).map((c) => c.key)).toEqual([SOCIAL_CHIP]);
     expect(src).toContain('c.soon && chip !== c.key && "text-muted-foreground"');
@@ -118,8 +123,8 @@ describe("the Places column (MESITA-2383)", () => {
     expect(src).not.toContain("nearbyZones");
   });
 
-  it("is a left column, a quarter wide (MESITA-2385), scrolling on its own, and opens on Featured", () => {
-    expect(src).toContain("bg-muted scrollbar-hide w-1/4 shrink-0 overflow-y-auto");
+  it("is a left column, a quarter wide (MESITA-2385), and opens on Featured", () => {
+    expect(src).toContain("bg-muted flex w-1/4 shrink-0 flex-col");
     expect(src).toContain("useState<string>(FEATURED_CHIP)");
     // The chosen row: white, bold, an ink bar on its left edge.
     expect(src).toContain('const ROW_ON = "bg-card text-foreground font-semibold";');
