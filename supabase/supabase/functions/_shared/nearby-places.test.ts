@@ -814,7 +814,7 @@ Deno.test("claimOwnedHits: rows without a google_place_id claim nothing", () => 
 
 
 // MESITA-1695 / MESITA-1796: the operator picks 20 / 40 / 60 as max Google
-Deno.test("mergeNearbyCatalog: Google pull backfills with Mesita up to pinCount", () => {
+Deno.test("mergeNearbyCatalog: the Google set never backfills with Mesita rows Google did not return (MESITA-2310)", () => {
   const mesitaOnly = Array.from({ length: 40 }, (_, i) => ({
     id: `m${i}`,
     plan: "free",
@@ -829,9 +829,29 @@ Deno.test("mergeNearbyCatalog: Google pull backfills with Mesita up to pinCount"
     mesitaCount: 60,
     googleCount: 20,
   });
-  assertEquals(got.length, 60);
-  assertEquals(got.filter((x) => x.kind === "google").length, 20);
-  assertEquals(got.filter((x) => x.kind === "listed").length, 40);
+  assertEquals(got.length, 20);
+  assertEquals(got.every((x) => x.kind === "google"), true);
+});
+
+Deno.test("mergeNearbyCatalog: a Mesita place Google returned paints its hit; one it did not return is absent (MESITA-2310)", () => {
+  const mesita = [
+    { id: "near-owned", google_place_id: "ChIJ-near", lat: 25.6701, lng: -100.3001 },
+    // 1.6 km out, inside the radius, not among Google's hits: the far red pin.
+    { id: "far-owned", google_place_id: "ChIJ-far", lat: 25.684, lng: -100.31 },
+  ];
+  const google = [
+    nearbyHit("ChIJ-g1", 25.67005, -100.30005),
+    nearbyHit("ChIJ-near", 25.6701, -100.3001, "restaurant"),
+    nearbyHit("ChIJ-g2", 25.6702, -100.3002),
+  ];
+  const got = mergeNearbyCatalog(mesita, google, CENTER, {
+    mesitaCount: 20,
+    googleCount: 20,
+  });
+  assertEquals(
+    got.map((x) => x.kind === "listed" ? x.row.id : x.hit.placeId),
+    ["ChIJ-g1", "near-owned", "ChIJ-g2"],
+  );
 });
 
 Deno.test("lanesForPlacesScope: the Google lane is one Nearby call, never a pull (MESITA-2298)", () => {
