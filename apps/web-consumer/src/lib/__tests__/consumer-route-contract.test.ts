@@ -93,6 +93,8 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // that replaced it as a redirect source.
       search: "/search",
       searchChat: "/search/chat",
+      // The Places test tab: catalog + map in one view (MESITA-2402).
+      places: "/places",
       // SEGMENTS MATCH LABELS here, the exception in this codebase: the tab
       // moved to /discover precisely so each typed mode could be a real
       // segment.

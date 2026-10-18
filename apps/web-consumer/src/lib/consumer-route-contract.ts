@@ -18,6 +18,10 @@ export const CONSUMER_ROUTES = {
   // Search's second pill (Pato, MESITA-2401: "Search, Chat, Filters"): Chat,
   // Soon for now. Chat left Home; /discover/chat 308s here.
   searchChat: "/search/chat",
+  // PLACES — a TEST tab (Pato, MESITA-2402): Home's catalog and Search's map
+  // in one view. Header Location · search · AI; the right pane switches
+  // Catalog | Map. Home and Search stay as they are beside it.
+  places: "/places",
   // DISCOVER — Home's mode-tabs namespace. Two modes, matching Home's two
   // pills exactly: Places · Social (Pato, MESITA-2401). Favorites is a row of
   // the Places column (/discover/favs 308s to Places); Chat moved to Search.

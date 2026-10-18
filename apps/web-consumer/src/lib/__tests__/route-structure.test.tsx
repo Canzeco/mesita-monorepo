@@ -268,6 +268,9 @@ describe("T5 — exactly one tab lights per surface", () => {
     ["/search/chat", "Search"],
     ["/place/abc", "Home"],
     ["/search", "Search"],
+    // The Places test tab (MESITA-2402). "/places" starts with "/place", so
+    // Home matches "/place/" — this row holds that.
+    ["/places", "Places"],
     // Pay is one page and lights its own tab there.
     ["/pay", "Pay"],
     // Me's pages, and the one detail route it still owns: a reservation is
@@ -326,12 +329,12 @@ describe("T5 — exactly one tab lights per surface", () => {
   });
 });
 
-// The bar is Home · Search · Pay (Soon) · Me (Pato, MESITA-2076: "BOTTOM BAR
-// MUST ONLY BE. Home. Search. Pay(Soon). Me."), and Pay is a LINK like the
-// other three — its page is the Soon state. Two things
+// The bar is Home · Search · Places · Pay (Soon) · Me (Pato, MESITA-2076:
+// "BOTTOM BAR MUST ONLY BE. Home. Search. Pay(Soon). Me."; Places is a test
+// tab, MESITA-2402), and Pay is a LINK like the other four — its page is the Soon state. Two things
 // MESITA-1119 cared about are unchanged below: no class stamped into Me, and
 // no Agents tab.
-describe("the bar is Home · Search · Pay (Soon) · Me", () => {
+describe("the bar is Home · Search · Places · Pay (Soon) · Me", () => {
   async function renderNav(pathname: string): Promise<string> {
     vi.resetModules();
     vi.doMock("next/navigation", () => ({
@@ -347,8 +350,8 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
     return [...html.matchAll(/text-center">([^<]+)</g)].map((m) => m[1]);
   }
 
-  it("is exactly Home · Search · Pay · Me", async () => {
-    expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Me"]);
+  it("is exactly Home · Search · Places · Pay · Me", async () => {
+    expect(await tabLabels()).toEqual(["Home", "Search", "Places", "Pay", "Me"]);
   });
 
   it("keeps Wallet, Visit and Order off the bar", async () => {
@@ -358,12 +361,12 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
     expect(labels).not.toContain("Order");
   });
 
-  // Four <a> tabs, no <button>: Pay navigates to its page like every other
+  // Five <a> tabs, no <button>: Pay navigates to its page like every other
   // tab, and it is the only one tagged Soon — exactly once.
-  it("draws four links, Pay among them with one Soon tag and no button", async () => {
+  it("draws five links, Pay among them with one Soon tag and no button", async () => {
     const html = await renderNav("/search");
     const anchors = html.split("<a ").slice(1);
-    expect(anchors).toHaveLength(4);
+    expect(anchors).toHaveLength(5);
     expect(html.includes("<button")).toBe(false);
     const pay = anchors.find((a) => /text-center">Pay</.test(a));
     expect(pay).toBeDefined();
@@ -388,6 +391,7 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
     expect(hrefs).toEqual([
       CONSUMER_ROUTES.discoverDefault,
       CONSUMER_ROUTES.search,
+      CONSUMER_ROUTES.places,
       CONSUMER_ROUTES.pay,
       CONSUMER_ROUTES.me,
     ]);
