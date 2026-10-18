@@ -92,16 +92,39 @@ async function gatedCommit(cwd: string, rel: string, msg: string): Promise<Exec>
   return await defaultRunner("git", ["-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "-m", msg], { cwd });
 }
 
-/** The Claude Code PreToolUse hook, fed the stdin contract the harness uses. */
-async function claudeHook(input: Record<string, unknown>, env: Record<string, string> = {}): Promise<Exec> {
-  const c = new Deno.Command("bash", { args: [PREFLIGHT_SH, "claude"], stdin: "piped", stdout: "piped", stderr: "piped", env });
+/**
+ * `scripts/preflight.sh <mode>` fed `stdin`. `path` replaces PATH inside the gate, so a test can
+ * take the JSON readers away: bash starts by name (the suite's one bash grant) and re-execs itself.
+ */
+async function gate(mode: string, stdin: string, env: Record<string, string> = {}, opts: { cwd?: string; path?: string } = {}): Promise<Exec> {
+  const args = opts.path ? ["-c", 'PATH="$1" exec bash "$2" "$3"', "_", opts.path, PREFLIGHT_SH, mode] : [PREFLIGHT_SH, mode];
+  const c = new Deno.Command("bash", { args, cwd: opts.cwd, stdin: "piped", stdout: "piped", stderr: "piped", env });
   const child = c.spawn();
   const w = child.stdin.getWriter();
-  await w.write(new TextEncoder().encode(JSON.stringify(input)));
+  await w.write(new TextEncoder().encode(stdin));
   await w.close();
   const o = await child.output();
   const dec = new TextDecoder();
   return { code: o.code, stdout: dec.decode(o.stdout), stderr: dec.decode(o.stderr) };
+}
+
+/** The Claude Code PreToolUse hook, fed the stdin contract the harness uses. */
+async function claudeHook(input: Record<string, unknown>, env: Record<string, string> = {}, opts: { cwd?: string; path?: string } = {}): Promise<Exec> {
+  return await gate("claude", JSON.stringify(input), env, opts);
+}
+
+/** A PATH holding only the tools the gate runs, plus `reader`; null when this host has no such reader. */
+async function gatePath(tmp: string, reader?: "jq" | "deno" | "python3"): Promise<string | null> {
+  const tools = ["bash", "git", "dirname", "basename", "sed", "grep", "head", "tr", "cat", "mkdir", "chmod", ...(reader ? [reader] : [])];
+  const found = await defaultRunner("bash", ["-c", 'for t in "$@"; do command -v "$t" || exit 1; done', "_", ...tools]);
+  if (found.code !== 0) {
+    if (!reader) throw new Error(`the gate's own tools are missing on this host: ${found.stdout}`);
+    return null;
+  }
+  const bin = await Deno.makeTempDir({ dir: tmp, prefix: `bin-${reader ?? "no-reader"}-` });
+  const paths = found.stdout.trim().split("\n");
+  for (let i = 0; i < tools.length; i++) await Deno.symlink(paths[i], join(bin, tools[i]));
+  return bin;
 }
 
 async function makeFixture(): Promise<Fixture> {
@@ -259,6 +282,7 @@ Deno.test("add creates a claimed, seeded, locked workspace under the main worktr
   assertEquals(await Deno.readTextFile(join(path, "apps/web/.env.local")), "SECRET=1\n");
   assertEquals(await git(path, "config", "--worktree", "--get", "mesita.issue"), "MESITA-7");
   assertEquals(await git(path, "config", "--worktree", "--get", "mesita.host"), "t3st");
+  assertEquals((await defaultRunner("git", ["config", "--worktree", "--get", "mesita.claimedAt"], { cwd: path })).code, 1, "the claim time lives in the lock reason, never a second copy");
   const list = parseWorktreeList(await git(f.main, "worktree", "list", "--porcelain", "-z"));
   const row = list.find((r) => r.path.endsWith("MESITA-7-seven"))!;
   assert(row.locked && parseLock(row.lockReason).ours);
@@ -424,10 +448,14 @@ Deno.test("preflight refuses the shared checkout and an unclaimed worktree, pass
 
 Deno.test("the pre-commit hook add installs refuses a commit in the shared checkout and lets the claimed workspace commit", async () => {
   const f = await makeFixture();
+  // The hook runs the committing checkout's own copy of the gate, so the fixture tracks one, like every real branch.
+  await commitFile(f.main, "scripts/preflight.sh", await Deno.readTextFile(PREFLIGHT_SH), "track the gate");
+  await git(f.main, "push", "-q", "origin", "main");
   const env = makeEnv(f);
   await add(env, { id: "MESITA-60", slug: "sixty" });
   const hook = await Deno.readTextFile(join(f.main, ".git", "hooks", "pre-commit"));
   assertStringIncludes(hook, "mesita preflight");
+  assert(!hook.includes(PREFLIGHT_SH), "the hook names no absolute path: a removed checkout's copy is never run");
   const lobby = await gatedCommit(f.main, "lobby.txt", "work in the lobby");
   assertEquals(lobby.code, 1);
   assertStringIncludes(lobby.stderr, "PREFLIGHT REFUSED commit");
@@ -478,6 +506,56 @@ Deno.test("the Claude Code hook on a cloud clone: refused until the clone is cla
   await add(makeEnv(f, { cwd: clone, cloud: CLOUD }), { id: "MESITA-80", slug: "cloud", adopt: "." });
   const allowed = await claudeHook({ cwd: clone, tool_name: "Write", tool_input: { file_path: join(clone, "x.ts") } }, { CLAUDE_CODE_REMOTE: "true" });
   assertEquals(allowed.code, 0, allowed.stderr);
+});
+
+Deno.test("the Claude Code hook reads its payload with jq, deno or python3, and with none refuses a named file instead of judging the cwd", async () => {
+  const f = await makeFixture();
+  await add(makeEnv(f), { id: "MESITA-71", slug: "readers" });
+  const ws = await Deno.realPath(join(platformDirOf(f.main, "claude-code"), "MESITA-71-readers"));
+  const intoLobby = { cwd: ws, tool_name: "Edit", tool_input: { file_path: join(f.main, "README") } };
+  const intoWorkspace = { cwd: ws, tool_name: "Write", tool_input: { file_path: join(ws, "apps", "new.ts") } };
+  let readers = 0;
+  for (const reader of ["jq", "deno", "python3"] as const) {
+    const path = await gatePath(f.tmp, reader);
+    if (!path) continue; // this host lacks the reader; the next one still runs
+    readers++;
+    const lobby = await claudeHook(intoLobby, {}, { cwd: ws, path });
+    assertEquals(lobby.code, 2, `${reader}: ${lobby.stderr}`);
+    assertStringIncludes(lobby.stderr, "SHARED CHECKOUT", reader);
+    const own = await claudeHook(intoWorkspace, {}, { cwd: ws, path });
+    assertEquals(own.code, 0, `${reader}: ${own.stderr}`);
+  }
+  assert(readers > 0, "no JSON reader on this host, so no reader path ran");
+  // No reader: the hook runs from a claimed workspace, so judging the cwd would let the lobby write through.
+  const none = (await gatePath(f.tmp))!;
+  const blind = await claudeHook(intoLobby, {}, { cwd: ws, path: none });
+  assertEquals(blind.code, 2, blind.stderr);
+  assertStringIncludes(blind.stderr, "the payload names a file this host could not read");
+  assertStringIncludes(blind.stderr, "preflight: cannot read the tool payload (no jq, no deno): brew install jq / apt-get install -y jq, or npm install -g deno@2.9.1");
+  assertEquals((await claudeHook(intoWorkspace, {}, { cwd: ws, path: none })).code, 2, "unread, even a workspace write is refused: its file is unknown");
+  const started = await gate("session-start", "", { MESITA_CLOUD: "0" }, { cwd: ws, path: none });
+  assertStringIncludes(started.stdout, "preflight: NO JSON READER: no jq, no deno, no python3 on this host");
+  assertStringIncludes(started.stdout, `ok: workspace ${ws} claimed by MESITA-71`, "the warning does not replace the verdict");
+  // A reader that deno is not (session-start would run deno task redeye --auto in the fixture).
+  const quiet = await gatePath(f.tmp, "jq") ?? await gatePath(f.tmp, "python3");
+  if (quiet) assert(!(await gate("session-start", "", { MESITA_CLOUD: "0" }, { cwd: ws, path: quiet })).stdout.includes("NO JSON READER"));
+});
+
+Deno.test("the Cursor hook denies git commit and push outside a claimed workspace, allows them inside, and with no reader denies them unread", async () => {
+  const f = await makeFixture();
+  await add(makeEnv(f), { id: "MESITA-72", slug: "cursor" });
+  const ws = await Deno.realPath(join(platformDirOf(f.main, "claude-code"), "MESITA-72-cursor"));
+  const run = async (command: string, cwd: string, path?: string) => (await gate("cursor", JSON.stringify({ command, cwd, workspace_roots: [cwd] }), {}, { path })).stdout.trim();
+  assertEquals(await run("ls -la", f.main), '{"permission":"allow"}', "only git verbs that write are gated");
+  const lobby = await run("git commit -m x", f.main);
+  assertStringIncludes(lobby, '"permission":"deny"');
+  assertStringIncludes(lobby, "SHARED CHECKOUT");
+  assertEquals(await run("git push -u origin HEAD", ws), '{"permission":"allow"}');
+  const none = (await gatePath(f.tmp))!;
+  const blind = await run("git push -u origin HEAD", ws, none);
+  assertStringIncludes(blind, '"permission":"deny"');
+  assertStringIncludes(blind, "cannot read the tool payload (no jq, no deno)");
+  assertEquals(await run("ls -la", ws, none), '{"permission":"allow"}', "unread, a payload with no guarded verb still runs");
 });
 
 // ── classifyLanded (I-10) ───────────────────────────────────────────────────
@@ -719,6 +797,36 @@ Deno.test("pr adopts an open PR and adds Closes and Docs, or creates one with bo
   await assertRejects(() => pr(makeEnv(f, { cwd: f.main })), WtError, "NO ISSUE");
 });
 
+Deno.test("pr waits for the harness's draft PR only in a cloud session; a local claude/ branch opens its PR without sleeping", async () => {
+  const f = await makeFixture();
+  await add(makeEnv(f), { id: "MESITA-32", slug: "local" });
+  const path = join(platformDirOf(f.main, "claude-code"), "MESITA-32-local");
+  await commitFile(path, "l.txt", "l\n", "local subject");
+  f.ghOverride = (args) => {
+    if (args[0] === "pr" && args[1] === "list") return { code: 0, stdout: "[]", stderr: "" };
+    if (args[0] === "pr" && args[1] === "create") return { code: 0, stdout: "https://github.com/x/y/pull/46", stderr: "" };
+    return undefined;
+  };
+  let sleeps = 0;
+  const local = { ...makeEnv(f, { cwd: path }), sleep: () => Promise.resolve(void sleeps++) };
+  assertStringIncludes((await pr(local, { docs: "none: tooling" })).join("\n"), "opened https://github.com/x/y/pull/46");
+  assertEquals(sleeps, 0, "nothing opens a draft locally, so nothing waits");
+
+  const clone = await makeClone(f);
+  await add(makeEnv(f, { cwd: clone, cloud: CLOUD }), { id: "MESITA-33", slug: "cloud", adopt: "." });
+  await commitFile(clone, "c.txt", "c\n", "cloud subject");
+  let lists = 0;
+  f.ghOverride = (args) => {
+    if (args[0] === "pr" && args[1] === "list") return { code: 0, stdout: ++lists < 3 ? "[]" : JSON.stringify([{ number: 47, body: "", isDraft: true }]), stderr: "" };
+    if (args[0] === "pr" && args[1] === "edit") return { code: 0, stdout: "", stderr: "" };
+    return undefined;
+  };
+  const cloud = { ...makeEnv(f, { cwd: clone, cloud: CLOUD }), sleep: () => Promise.resolve(void sleeps++) };
+  assertStringIncludes((await pr(cloud, { docs: "none: tooling" })).join("\n"), "adopted PR #47 on claude/MESITA-33-cloud (draft");
+  assertEquals(sleeps, 2, "the cloud session waited until the harness draft appeared, then adopted it");
+  assert(!f.calls.some((c) => c[0] === "pr" && c[1] === "create" && c.includes("claude/MESITA-33-cloud")), "no second PR beside the draft");
+});
+
 Deno.test("docsLineFrom accepts the three shapes, refuses the rest, and withJoin keeps an author's own Docs line", () => {
   assertEquals(docsLineFrom("scripts/,notion:3bfa9bf37a52816eaa9dc2d7b8b74525"), "Docs: notion:3bfa9bf37a52816eaa9dc2d7b8b74525");
   assertEquals(docsLineFrom("none", "notion:3bfa9bf37a52816eaa9dc2d7b8b74525, notion:3bfa9bf37a5281078acdc6b9e61b0cf2"), "Docs: notion:3bfa9bf37a52816eaa9dc2d7b8b74525,notion:3bfa9bf37a5281078acdc6b9e61b0cf2");
@@ -803,9 +911,10 @@ Deno.test("leave clears a landed claim and keeps the checkout; adopt over a land
   f.prsByOid.set(tip, [{ number: 1, merged: true, headRefOid: tip }]);
   const where = (await boot(makeEnv(f, { cwd: path }))).join("\n");
   assertStringIncludes(where, "MESITA-1 landed, a lobby once its claim is cleared");
+  await git(path, "config", "--worktree", "mesita.claimedAt", "2026-09-01T00:00:00.000Z"); // a key older claims carry
   const left = (await leave(env, "MESITA-1")).join("\n");
   assertStringIncludes(left, "left worktrees/claude-code/MESITA-1-one");
-  assertEquals((await git(path, "config", "--worktree", "--get", "mesita.issue").catch(() => "")).trim(), "");
+  assertEquals((await defaultRunner("git", ["config", "--worktree", "--get-regexp", "^mesita\\."], { cwd: path })).code, 1, "leave clears the whole claim, keys from older claims included");
   assert(!(await git(f.main, "worktree", "list", "--porcelain")).includes("locked"), "leave unlocks");
   const afterLeave = (await boot(makeEnv(f, { cwd: path }))).join("\n");
   assertStringIncludes(afterLeave, "a lobby on a branch that still names MESITA-1 (landed / no work yet): adopt it for the next issue");
@@ -824,7 +933,7 @@ Deno.test("leave clears a landed claim and keeps the checkout; adopt over a land
   assertStringIncludes(again, "renamed branch claude/MESITA-2-two → claude/MESITA-3-three");
 });
 
-Deno.test("after leave, boot treats a leftover branch-id as a lobby, not a live claim (MESITA-1761)", async () => {
+Deno.test("after leave, boot treats a leftover branch-id as a lobby, not a live claim", async () => {
   const f = await makeFixture();
   const env = makeEnv(f);
   await add(env, { id: "MESITA-60", slug: "left" });
@@ -932,8 +1041,8 @@ Deno.test("originFlags: noId vs remoteLanded vs staleClaim are the three doctor 
 
 Deno.test("MESITA_PLATFORM declares the interface: a *-cloud token is cloud mode, a declared token wins, unknown tokens earn the agent prefix", () => {
   const env = (vars: Record<string, string>) => (k: string) => vars[k];
-  assertEquals(cloudFromEnv(env({ MESITA_PLATFORM: "oz-cloud", MESITA_SESSION: "run_1" })), { platform: "oz-cloud", session: "run_1" });
-  assertEquals(cloudFromEnv(env({ MESITA_PLATFORM: "oz-cloud" })), { platform: "oz-cloud", session: null });
+  assertEquals(cloudFromEnv(env({ MESITA_PLATFORM: "cursor-cloud", MESITA_SESSION: "bc_1" })), { platform: "cursor-cloud", session: "bc_1" });
+  assertEquals(cloudFromEnv(env({ MESITA_PLATFORM: "opencode-cloud" })), { platform: "opencode-cloud", session: null });
   assertEquals(cloudFromEnv(env({ MESITA_PLATFORM: "codex" })), null, "a local token is not cloud mode");
   assertEquals(cloudFromEnv(env({ MESITA_PLATFORM: "cursor-cloud", CLAUDE_CODE_REMOTE: "true" }))?.platform, "cursor-cloud", "the declared token wins");
   assertEquals(cloudFromEnv(env({ CLAUDE_CODE_REMOTE: "true", CLAUDE_CODE_REMOTE_SESSION_ID: "cse_1" })), { platform: "claude-code-cloud", session: "cse_1" });
@@ -941,7 +1050,8 @@ Deno.test("MESITA_PLATFORM declares the interface: a *-cloud token is cloud mode
   assertEquals(declaredPlatform(env({})), null);
   assertEquals(prefixFor("cursor"), "cursor");
   assertEquals(prefixFor("claude-code-cloud"), "claude");
-  assertEquals(prefixFor("oz-cloud"), "agent");
+  assertEquals(prefixFor("codex"), "agent", "codex earns agent/ like any token without its own prefix");
+  assertEquals(prefixFor("opencode-cloud"), "agent");
   assertEquals(prefixFor("opencode"), "agent");
   try {
     prefixFor("Bad Token");
@@ -954,21 +1064,21 @@ Deno.test("MESITA_PLATFORM declares the interface: a *-cloud token is cloud mode
   assertEquals(showPath("/a/b", "/a/x/y"), "/a/x/y");
   assertEquals(showPath("/a/b", "/a/worktrees/c"), "worktrees/c", "a fleet worktree prints fleet-relative");
   assertEquals(showPath("/a/b", "/a/worktrees/codex/c"), "worktrees/codex/c", "a platform folder is part of the printed path");
-  assertEquals(showPath("/a/b", "/a/b/.claude/worktrees/d"), ".claude/worktrees/d", "a legacy worktree still prints repo-relative");
+  assertEquals(showPath("/a/b", "/a/b/.claude/worktrees/d"), ".claude/worktrees/d", "a desktop launch worktree prints repo-relative");
 });
 
 Deno.test("an undeclared cloud interface claims its clone with its own token and the agent prefix, and the write gate accepts it from MESITA_PLATFORM alone", async () => {
   const f = await makeFixture();
   const clone = await makeClone(f, "claude/random-task-9z9z9z");
-  const refused = await claudeHook({ cwd: clone, tool_name: "Write", tool_input: { file_path: join(clone, "x.ts") } }, { MESITA_PLATFORM: "oz-cloud", MESITA_SESSION: "run_7" });
+  const refused = await claudeHook({ cwd: clone, tool_name: "Write", tool_input: { file_path: join(clone, "x.ts") } }, { MESITA_PLATFORM: "opencode-cloud", MESITA_SESSION: "run_7" });
   assertEquals(refused.code, 2);
   assertStringIncludes(refused.stderr, "UNCLAIMED CLONE");
-  const env = makeEnv(f, { cwd: clone, cloud: { platform: "oz-cloud", session: "run_7" } });
-  const out = (await add(env, { id: "MESITA-90", slug: "oz", adopt: "." })).join("\n");
-  assertStringIncludes(out, "renamed branch claude/random-task-9z9z9z → agent/MESITA-90-oz");
-  assertStringIncludes(out, "claimed platform=oz-cloud host=t3st branch=agent/MESITA-90-oz worktree=cloud:run_7 footprint=none");
+  const env = makeEnv(f, { cwd: clone, cloud: { platform: "opencode-cloud", session: "run_7" } });
+  const out = (await add(env, { id: "MESITA-90", slug: "oc", adopt: "." })).join("\n");
+  assertStringIncludes(out, "renamed branch claude/random-task-9z9z9z → agent/MESITA-90-oc");
+  assertStringIncludes(out, "claimed platform=opencode-cloud host=t3st branch=agent/MESITA-90-oc worktree=cloud:run_7 footprint=none");
   assertStringIncludes(out, "ok: cloud clone");
-  const allowed = await claudeHook({ cwd: clone, tool_name: "Write", tool_input: { file_path: join(clone, "x.ts") } }, { MESITA_PLATFORM: "oz-cloud" });
+  const allowed = await claudeHook({ cwd: clone, tool_name: "Write", tool_input: { file_path: join(clone, "x.ts") } }, { MESITA_PLATFORM: "opencode-cloud" });
   assertEquals(allowed.code, 0, allowed.stderr);
   // A local interface that only declares itself: no --platform, still the agent prefix.
   const local = makeEnv(f);
@@ -978,15 +1088,14 @@ Deno.test("an undeclared cloud interface claims its clone with its own token and
   await assertRejects(() => add(makeEnv(f), { id: "MESITA-92", slug: "bad", platform: "Bad Token" }), WtError, "INVALID PLATFORM");
 });
 
-Deno.test("sweep: a platform folder and a Finder alias at the fleet root are never orphans; a stray directory inside a platform folder is", async () => {
+Deno.test("sweep: a platform folder at the fleet root is never an orphan; a stray directory inside a platform folder is", async () => {
   const f = await makeFixture();
   await Deno.mkdir(platformDirOf(f.main, "claude-code"), { recursive: true });
-  await Deno.symlink(await Deno.makeTempDir(), join(fleetDirOf(f.main), "conductor"));
   await Deno.mkdir(join(platformDirOf(f.main, "codex"), "ghost"), { recursive: true });
   await rawWorktree(f, "straggler", "claude/straggler");
   const res = await sweep(makeEnv(f), { apply: false });
   const flagged = res.lines.filter((l) => /ORPHAN|repaired/.test(l)).join("\n");
-  assert(!/claude-code\b|conductor/.test(flagged), `platform folder and alias are not orphans:\n${flagged}`);
+  assert(!/claude-code\b/.test(flagged), `a platform folder is not an orphan:\n${flagged}`);
   assertStringIncludes(flagged, "ORPHAN: worktrees/codex/ghost");
   assertStringIncludes(res.json, `"path":"worktrees/straggler"`, "a registered worktree at the fleet root stays in the table");
   assert(await Deno.stat(platformDirOf(f.main, "claude-code")), "the empty platform folder survives");
