@@ -1,8 +1,11 @@
 // State — two boxes (Pato, 2026-08-25 · Profile States + Enrichment Steps, 2026-10-13).
 //
-//   PROFILE STATES (6)  One box (Pato, 2026-10-13, MESITA-2176):
+//   PROFILE STATES (7)  One box (Pato, 2026-10-13, MESITA-2176):
 //                 Created · Pulsing (Google active) · Requested ·
-//                 Enriching · Enriched · Disabled.
+//                 Enriching · Enriched · Selected · Disabled.
+//                 Selected (MESITA-2318) is Mesita Selected — the set the
+//                 Map and Feed rail read: Enriched, ready and not Disabled.
+//                 Derived, never stored, so it cannot disagree with the rail.
 //                 All are bools (`true` / `false`) except Requested, the
 //                 guest request count, 0…n — not a Yes/No. Disabled is the
 //                 operator's off switch (places.state is not active), the
@@ -66,7 +69,7 @@ export function requestCountChip(requestCount: unknown): string {
   return n === "unknown" ? "?" : String(n);
 }
 
-/** The six profile states, in the order the Profile States box prints them.
+/** The seven profile states, in the order the Profile States box prints them.
  *  Verified · Owned · Partnered · Rewards · Mesita Pay · Mesita Credits left
  *  with the MVP First Stage cut (MESITA-2106, MESITA-2115): nobody holds,
  *  proves, pays or redeems yet. Wire key `seeded` stays; the label is Created. */
@@ -76,6 +79,7 @@ export const GENERAL_STATE_FACTS = [
   { key: "requested", label: "Requested" },
   { key: "enriching", label: "Enriching" },
   { key: "enriched", label: "Enriched" },
+  { key: "selected", label: "Selected" },
   { key: "disabled", label: "Disabled" },
 ] as const;
 

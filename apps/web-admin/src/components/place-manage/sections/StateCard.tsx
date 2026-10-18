@@ -181,6 +181,19 @@ export function StateCard({ place }: { place: AdminPlace }) {
       : requestCount === 0
         ? "No guest has requested this profile."
         : `${requestCount} guest request${requestCount === 1 ? "" : "s"}.`;
+  // Mesita Selected (MESITA-2318): the set the Map and the Feed's Mesita
+  // Selected rail read — Enriched, ready, and switched on. Derived from
+  // the three facts above, so it can never disagree with them.
+  const selected: boolean | "unknown" =
+    disabled === "unknown"
+      ? "unknown"
+      : enriched === true && contentState === "ready" && disabled === false;
+  const selectedDetail =
+    selected === "unknown"
+      ? "Couldn't read the place's state."
+      : selected
+        ? "In Mesita Selected — the Map and the Feed show it to guests."
+        : "Not in Mesita Selected: it needs a completed Enrich run, a ready profile, and Disabled off.";
   const enrichingDetail = enriching
     ? "A run is in progress. Nothing is saved until the profile is finished."
     : "No run is in progress.";
@@ -221,6 +234,12 @@ export function StateCard({ place }: { place: AdminPlace }) {
           on={enriched === true}
           chip={stateBoolChip(enriched)}
           detail={enrichedDetail}
+        />
+        <StateRow
+          name="Selected"
+          on={selected === true}
+          chip={stateBoolChip(selected)}
+          detail={selectedDetail}
         />
         <StateRow
           name="Disabled"
