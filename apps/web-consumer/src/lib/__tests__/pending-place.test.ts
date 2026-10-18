@@ -125,9 +125,10 @@ describe("the open, the create and the Feed", () => {
 
   it("the Feed reloads behind the modal and keeps its rails meanwhile", () => {
     const rails = read("../../components/consumer/home/CatalogRails.tsx");
-    expect(rails).toContain("onPlaceCreated(() => reload.current())");
-    expect(rails).toContain('fetchRails("keep")');
+    // The kept pools are stale once a place is created (MESITA-2384).
+    expect(rails).toContain("clearAreaPools();\n        reload.current();");
+    expect(rails).toContain('fetchPool("keep")');
     expect(rails).toContain('mode === "keep") return;');
-    expect(rails).toContain("apiListCatalog(supabase, from)");
+    expect(rails).toContain("apiListAreaPool(supabase, from)");
   });
 });

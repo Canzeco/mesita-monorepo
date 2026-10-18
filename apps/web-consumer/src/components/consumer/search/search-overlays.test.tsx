@@ -77,11 +77,10 @@ describe("SearchBar", () => {
 describe("Search map catalog auto-reloads after distance and time", () => {
   it("loads the operator's How many, not an SSR 200 dump", () => {
     expect(read("SearchClient.tsx")).toContain("apiFetchNearbyCatalog");
-    // How many stays the operator's per-scope cap. The guest posts Places scope,
-    // Family and Popularity; a guest cap here would be a second
-    // answer to the scope's cap.
+    // How many stays the operator's. The guest posts Family and Google
+    // Reviews; the source is never the guest's (MESITA-2384).
     expect(read("SearchClient.tsx")).not.toContain("resultLimit");
-    expect(read("SearchClient.tsx")).toContain("placesScope");
+    expect(read("SearchClient.tsx")).not.toContain("placesScope");
     expect(read("SearchClient.tsx")).toContain("familyKeys");
     expect(read("SearchClient.tsx")).toContain("minReviews");
     expect(read("SearchClient.tsx")).toContain("onFirstViewport");
@@ -234,12 +233,17 @@ describe("Search map's top row is location, the query bar and the Filters disc",
   it("puts location at the left and Filters at the right, with no client-side recut", () => {
     const src = read("SearchClient.tsx");
     const overlays = read("search-catalog-overlays.tsx");
-    expect(src).toContain("SearchFilterRow");
-    // Location disc, then the bar, then Filters — in that order in the row.
+    // Filters moved up into Search's header (MESITA-2401), the right edge;
+    // the map's row is the location disc, then the bar.
+    expect(src).toContain("<SearchHeader");
+    expect(src.indexOf("<SearchHeader")).toBeLessThan(src.indexOf("<SearchMap"));
+    expect(src).not.toContain("<SearchFilterRow");
     const row = src.slice(src.indexOf('<div className="flex min-w-0 items-center gap-2">'));
     expect(row.indexOf("<SearchLocateButton")).toBeGreaterThan(-1);
     expect(row.indexOf("<SearchLocateButton")).toBeLessThan(row.indexOf("<SearchBar"));
-    expect(row.indexOf("<SearchBar")).toBeLessThan(row.indexOf("<SearchFilterRow"));
+    const header = read("SearchHeader.tsx");
+    expect(header).toContain("SEARCH_MODES");
+    expect(header).toContain('variant="header"');
     expect(src).toContain("recentreOnGuest");
     // Recentre reloads when the catalog was fetched elsewhere (MESITA-2305).
     const recentre = src.slice(
@@ -263,27 +267,25 @@ describe("Search map's top row is location, the query bar and the Filters disc",
       "SearchFilterRow.tsx",
       "SearchLocateButton.tsx",
       "SearchMapFilters.tsx",
-      "SearchPlacesScope.tsx",
       "SearchPopularity.tsx",
     ]) {
       expect(existsSync(join(SEARCH_DIR, present)), present).toBe(true);
     }
-    // The sheet: Places, then Families, then Google Reviews (Pato,
-    // 2026-10-17); Google Places and Mesita Selected are the two scopes, and
-    // the word Enriched never reaches the guest here (MESITA-2298).
+    expect(existsSync(join(SEARCH_DIR, "SearchPlacesScope.tsx"))).toBe(false);
+    // The sheet: Families, then Google Reviews; the Places source switch is
+    // gone (MESITA-2384), and the word Enriched never reaches the guest.
     const sheet = read("SearchMapFilters.tsx");
-    const scope = read("SearchPlacesScope.tsx");
     const popularity = read("SearchPopularity.tsx");
-    expect(sheet).toContain('label="Places"');
+    expect(sheet).not.toContain('label="Places"');
+    expect(sheet).not.toContain("SearchPlacesScope");
     expect(sheet).toContain('label="Families"');
     expect(sheet).toContain('label="Google Reviews"');
-    expect(sheet.indexOf('label="Places"')).toBeLessThan(sheet.indexOf('label="Families"'));
     expect(sheet.indexOf('label="Families"')).toBeLessThan(sheet.indexOf('label="Google Reviews"'));
     expect(sheet).not.toContain("Minimum number of Google reviews");
     expect(sheet).toContain("All Families");
     expect(sheet).toContain("clearMapFamilies");
     expect(sheet).not.toContain('label="Popularity"');
-    for (const file of [sheet, scope, popularity]) {
+    for (const file of [sheet, popularity]) {
       expect(file).not.toMatch(/Enriched/);
     }
     expect(popularity).toContain('aria-label="Google Reviews"');
@@ -319,7 +321,9 @@ describe("Search map's top row is location, the query bar and the Filters disc",
     const loading = read("../../../app/(shell)/(discovery)/search/loading.tsx");
     expect(loading).toContain("flex min-w-0 items-center gap-2");
     expect(loading).not.toContain("basis-1/3");
-    expect(loading.split("h-11 w-11 shrink-0").length - 1).toBe(2);
+    // One 44px disc on the map row (location); Filters sits in the header.
+    expect(loading.split("h-11 w-11 shrink-0").length - 1).toBe(1);
+    expect(loading).toContain("h-8 w-8 rounded-full");
     expect(loading).not.toContain("h-12 w-12");
   });
 

@@ -80,7 +80,7 @@ describe("persisted familyKeys hydrate from the filterable fifteen", () => {
     );
   });
 
-  it("maps a stored scope word the sheet retired onto Mesita Selected (MESITA-2298)", async () => {
+  it("drops a stored scope word: the guest never picks a source (MESITA-2384)", async () => {
     store.set(
       MAP_KEY,
       JSON.stringify({ familyKeys: [], placesScope: "enriched", minReviews: 10000 }),
@@ -90,10 +90,10 @@ describe("persisted familyKeys hydrate from the filterable fifteen", () => {
     mod.toggleMapFamily("dinner");
 
     const raw = JSON.parse(store.get(MAP_KEY)!) as {
-      placesScope: string;
+      placesScope?: string;
       minReviews: number;
     };
-    expect(raw.placesScope).toBe("selected");
+    expect(raw.placesScope).toBeUndefined();
     expect(raw.minReviews).toBe(1000);
   });
 });

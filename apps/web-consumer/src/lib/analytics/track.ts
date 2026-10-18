@@ -11,10 +11,12 @@ export type AnalyticsEvent =
   // BottomNav, every tab tap.
   | "nav_tab_tap"
   // MESITA-1697 — Home's modes. `nav_tab_tap` fires from BottomNav only, so
-  // every in-Home switch was invisible until this. `home_card_open` (Reserve
-  // from a Home card) left with Swipe in MESITA-2166 — no Home card carries
-  // Reserve now; the EF still accepts it.
+  // every in-Home switch was invisible until this. `home_card_open` came back
+  // as the Places tile tap (MESITA-2384).
   | "home_mode_view"
+  // Places tile taps and saves carry source, rank and final score
+  // (MESITA-2384), so the Selected factor's effect can be measured.
+  | "home_card_open"
   | "home_card_save";
 
 /**

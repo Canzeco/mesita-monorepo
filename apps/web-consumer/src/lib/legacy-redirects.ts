@@ -10,7 +10,7 @@
 // A REDIRECT WHOSE SOURCE IS A LIVE ROUTE SHADOWS IT ENTIRELY — the page
 // never renders and typecheck, build and the whole vitest suite stay green.
 // Nothing here may name /pay, /discover/places,
-// /discover/social, /discover/chat, /search, /me or any live /me/<box>.
+// /discover/social, /search, /search/chat, /me or any live /me/<box>.
 //
 // BARE ONLY. next.config.ts serves every entry twice: as written, and as a
 // `/:surface(web|mob)` twin that keeps the guest's surface. Next runs
@@ -117,7 +117,7 @@ export const LEGACY_REDIRECTS: Redirect[] = [
     permanent: true,
   },
   // SCROLL (MESITA-2163) AND SWIPE (MESITA-2166) LEFT HOME'S RAIL: Home is
-  // Places · Social · Chat (MESITA-2383).
+  // Places · Social (MESITA-2401).
   {
     source: "/discover/scroll",
     destination: "/discover/places",
@@ -132,6 +132,12 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   {
     source: "/discover/favs",
     destination: "/discover/places",
+    permanent: true,
+  },
+  // CHAT LEFT HOME FOR THE SEARCH TAB (MESITA-2401).
+  {
+    source: "/discover/chat",
+    destination: "/search/chat",
     permanent: true,
   },
   // The Saved tab (reservations, favorites) and the /saved/place dual
