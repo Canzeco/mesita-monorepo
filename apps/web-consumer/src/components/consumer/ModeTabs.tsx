@@ -97,12 +97,13 @@ export function ModeTabs() {
 
   const base =
     "text-xs flex items-center justify-center gap-1 rounded-full px-1 py-2 font-semibold whitespace-nowrap transition active:scale-[0.98]";
+  // Dark row (Pato, MESITA-2357): the active pill inverts to paper.
   const resting =
-    "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground";
-  const active = "bg-primary text-primary-foreground shadow-glow";
+    "bg-paper/10 text-paper/70 hover:bg-paper/15 hover:text-paper";
+  const active = "bg-paper text-foreground";
 
   return (
-    <div className="border-border bg-background/90 sticky top-0 z-20 shrink-0 border-b backdrop-blur-xl">
+    <div className="border-foreground bg-foreground sticky top-0 z-20 shrink-0 border-b">
       {/* pt-3 clears the Soon chip: it hangs 8px above the pill, and
           overflow-x-auto clips anything past the padding edge. */}
       <div className="scrollbar-hide overflow-x-auto px-2 pt-3 pb-2.5">
@@ -126,7 +127,7 @@ export function ModeTabs() {
                 className={cn(base, "relative", isActive ? active : resting)}
               >
                 {soon && (
-                  <span className="bg-muted text-muted-foreground ring-card type-meta pointer-events-none absolute -top-2 left-1/2 z-10 flex h-4 -translate-x-1/2 items-center rounded-full px-1.5 leading-none font-semibold whitespace-nowrap ring-2">
+                  <span className="bg-paper/15 text-paper/80 ring-foreground type-meta pointer-events-none absolute -top-2 left-1/2 z-10 flex h-4 -translate-x-1/2 items-center rounded-full px-1.5 leading-none font-semibold whitespace-nowrap ring-2">
                     Soon
                   </span>
                 )}
