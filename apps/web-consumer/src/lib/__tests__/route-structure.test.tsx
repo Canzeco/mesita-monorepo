@@ -407,24 +407,24 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
 // loses its selected state. This pins ORDER, COUNT, the width budget, and
 // that every pill is a real page.
 //
-// The order is Pato's (MESITA-2166): "Places. Social. Chat. Favs." The first
-// pill reads Feed since MESITA-2285; its route is still /discover/places.
+// The order is Pato's (MESITA-2166): "Places. Social. Chat. Favs." MESITA-2301
+// restored the Places label after MESITA-2285 had renamed it Feed.
 describe("T5b — Home's supporting rail", () => {
-  it("is exactly Feed · Social · Chat · Favs", async () => {
+  it("is exactly Places · Social · Chat · Favs", async () => {
     const { HOME_MODES } = await import("@/components/consumer/ModeRail");
     expect(HOME_MODES.map((m) => m.label)).toEqual([
-      "Feed",
+      "Places",
       "Social",
       "Chat",
       "Favs",
     ]);
   });
 
-  // Feed is the catalog (Pato, MESITA-2254). Social, Chat and Favs stay
+  // Places is the catalog (Pato, MESITA-2254). Social, Chat and Favs stay
   // Soon (MESITA-2168): the chip is one site in the rail, drawn for those
   // three. Their pages stay the Soon empty state — Memo and the saved grid
   // do not mount.
-  it("Feed is the catalog; Social, Chat and Favs stay Soon", async () => {
+  it("Places is the catalog; Social, Chat and Favs stay Soon", async () => {
     const { HOME_MODES } = await import("@/components/consumer/ModeRail");
     expect(HOME_MODES.map((m) => Boolean(m.soon))).toEqual([
       false,
@@ -536,7 +536,7 @@ describe("T5b — Home's supporting rail", () => {
       CONSUMER_ROUTES.discoverTabs.places,
     );
     expect(HOME_MODES[0].href).toBe(CONSUMER_ROUTES.discoverDefault);
-    expect(HOME_MODES[0].label).toBe("Feed");
+    expect(HOME_MODES[0].label).toBe("Places");
   });
 
   it("every Home pill's page lives under discover", () => {
