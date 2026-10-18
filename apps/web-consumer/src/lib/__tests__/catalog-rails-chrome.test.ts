@@ -10,8 +10,9 @@ describe("Places has no chrome but its chip row (MESITA-2298, MESITA-2362, MESIT
 
   it("draws no Filters pill and no location bar; Location is a chip (MESITA-2366)", () => {
     expect(src).toContain("const coords = useUserLocation();");
-    expect(src).toContain("onClick={locate}");
+    expect(src).toContain("if (coords === null) locate();");
     expect(src).toContain('"Use my location"');
+    expect(src).toContain('"Current location"');
     expect(src).not.toContain("locationStrip");
     expect(src).not.toContain("SlidersHorizontal");
     expect(src).not.toContain("Filter places");
@@ -19,7 +20,7 @@ describe("Places has no chrome but its chip row (MESITA-2298, MESITA-2362, MESIT
   });
 
   it("sends no predicates, so a saved scope cannot keep cutting the list", () => {
-    expect(src).toContain("apiListCatalog(supabase, coords)");
+    expect(src).toContain("apiListCatalog(supabase, from)");
     expect(src).not.toContain("toDiscoveryPredicatesWire");
     expect(src).not.toContain("useDiscoveryFilters");
   });

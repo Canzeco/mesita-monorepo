@@ -12,6 +12,10 @@
 //   │ 🥐 Brkfst │       square       │   right two thirds: the chosen set, ONE
 //   │  …       │        tile        │   square tile per row, scrolling on its own
 //
+// The left column is two groups (MESITA-2378): WHERE — current location or
+// one of three nearby zones, which reloads the catalog from that zone's
+// centre — then WHAT, the category rows below a hairline.
+//
 // Mesita is the Mesita Selected rail, Google the Google Places rail, a family
 // row that family's rail — the server's rails unchanged; the row only picks
 // which one shows. Favorites is its own Home tab again (MESITA-2368), not a
@@ -27,7 +31,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Compass, Navigation } from "lucide-react";
+import { Compass, MapPin, Navigation } from "lucide-react";
 import { apiListCatalog, type CatalogRail, type Place } from "@/lib/api/places";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { trackEvent } from "@/lib/analytics/track";
@@ -47,7 +51,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { EmptyState } from "@/components/shared";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { CatalogTile } from "./CatalogTile";
-import { cn, errMsg } from "@/lib/utils";
+import { cn, errMsg, haversineKm } from "@/lib/utils";
 import { placesFeed } from "@/lib/catalog-feed";
 
 /** The server's rail keys for the two sets that lead the chip row. */
@@ -84,6 +88,48 @@ export function placesChips(rails: readonly CatalogRail[]): {
   ];
 }
 
+/** A zone the guest can search from: the mean position of the loaded
+ *  places that carry it (MESITA-2378). */
+export type PlacesZone = { name: string; lat: number; lng: number; count: number };
+
+/** Up to `n` zones from the loaded places — nearest to the guest first, or
+ *  the busiest first without a location. Each place counts once. */
+export function nearbyZones(
+  rails: readonly CatalogRail[],
+  here: { lat: number; lng: number } | null,
+  n = 3,
+): PlacesZone[] {
+  const seen = new Set<string>();
+  const acc = new Map<string, { name: string; lat: number; lng: number; count: number }>();
+  for (const rail of rails) {
+    for (const p of rail.places) {
+      if (seen.has(p.id)) continue;
+      seen.add(p.id);
+      const name = p.zone?.trim();
+      if (!name || typeof p.lat !== "number" || typeof p.lng !== "number") continue;
+      const key = name.toLowerCase();
+      const z = acc.get(key) ?? { name, lat: 0, lng: 0, count: 0 };
+      z.lat += p.lat;
+      z.lng += p.lng;
+      z.count += 1;
+      acc.set(key, z);
+    }
+  }
+  const zones = [...acc.values()].map((z) => ({
+    name: z.name,
+    lat: z.lat / z.count,
+    lng: z.lng / z.count,
+    count: z.count,
+  }));
+  zones.sort((a, b) =>
+    here
+      ? haversineKm(here.lat, here.lng, a.lat, a.lng) -
+        haversineKm(here.lat, here.lng, b.lat, b.lng)
+      : b.count - a.count || a.name.localeCompare(b.name),
+  );
+  return zones.slice(0, n);
+}
+
 export function CatalogRails() {
   const supabase = useBrowserSupabase();
   const coords = useUserLocation();
@@ -91,8 +137,15 @@ export function CatalogRails() {
   const openGooglePlace = useOpenGooglePlace();
   const [rails, setRails] = useState<CatalogRail[] | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  // Location first, then category (Pato, MESITA-2378): null = the guest's
+  // current location; a zone = search from that zone's centre.
+  const [origin, setOrigin] = useState<PlacesZone | null>(null);
+  // The zone list is taken from current-location loads only, so picking a
+  // zone never reshuffles the list under the guest's finger.
+  const [zones, setZones] = useState<PlacesZone[]>([]);
+  const from = origin ?? coords;
   const requestKey =
-    coords === null ? "" : `${coords.lat.toFixed(3)},${coords.lng.toFixed(3)}`;
+    from === null ? "" : `${from.lat.toFixed(3)},${from.lng.toFixed(3)}`;
   // The running load's background reload: the rails on screen stay until
   // the new ones land, and an error never replaces a good feed.
   const reload = useRef<() => void>(() => {});
@@ -109,9 +162,10 @@ export function CatalogRails() {
     const fetchRails = async (mode: "fresh" | "keep") => {
       const mine = ++seq;
       try {
-        const next = await apiListCatalog(supabase, coords);
+        const next = await apiListCatalog(supabase, from);
         if (cancelled || mine !== seq) return;
         setRails(next);
+        if (origin === null) setZones(nearbyZones(next, coords));
         setFetchError(null);
       } catch (err) {
         if (cancelled || mine !== seq || mode === "keep") return;
@@ -178,30 +232,76 @@ export function CatalogRails() {
     </li>
   );
   const chips = placesChips(shownRails);
+  const pickRow = (row: {
+    key: string;
+    label: string;
+    icon: ReactNode;
+    selected: boolean;
+    onClick: () => void;
+    muted?: boolean;
+  }) => (
+    <li key={row.key}>
+      <button
+        type="button"
+        onClick={row.onClick}
+        aria-pressed={row.selected}
+        className={cn(
+          ROW_BASE,
+          row.selected ? ROW_ON : ROW_OFF,
+          row.muted && !row.selected && "text-muted-foreground",
+        )}
+      >
+        {row.selected ? (
+          <span
+            className="bg-foreground absolute inset-y-0 left-0 w-[3px]"
+            aria-hidden
+          />
+        ) : null}
+        {row.icon}
+        <span className="min-w-0 break-words">{row.label}</span>
+      </button>
+    </li>
+  );
+
+  // Two single-select groups, a hairline between (Pato, MESITA-2378):
+  // where to search from, then what to show.
   const categories = (
     <nav
       className="bg-muted scrollbar-hide w-1/3 shrink-0 overflow-y-auto overscroll-y-contain"
       aria-label="Places"
       data-places-categories
     >
-      {/* The location control is its own bar, pinned at the top of the
-          column (Pato, MESITA-2377): a control, not a category row. */}
-      <button
-        type="button"
-        onClick={locate}
-        disabled={coords !== null || locating}
-        className={cn(
-          "bg-card border-border sticky top-0 z-10 flex w-full items-center gap-1.5 border-b px-3 py-3 text-left text-xs leading-tight font-semibold",
-          coords !== null ? "text-muted-foreground" : "text-foreground",
+      <ul role="list" aria-label="Location" data-places-location>
+        {pickRow({
+          key: "here",
+          label:
+            coords !== null
+              ? "Current location"
+              : locating
+                ? "Locating…"
+                : "Use my location",
+          icon: (
+            <Navigation className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
+          ),
+          selected: origin === null && coords !== null,
+          muted: coords === null,
+          onClick: () => {
+            setOrigin(null);
+            if (coords === null) locate();
+          },
+        })}
+        {zones.map((z) =>
+          pickRow({
+            key: `zone:${z.name}`,
+            label: z.name,
+            icon: <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />,
+            selected: origin?.name === z.name,
+            onClick: () => setOrigin(z),
+          }),
         )}
-        data-places-location
-      >
-        <Navigation className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
-        <span className="truncate">
-          {coords !== null ? "Near you" : locating ? "Locating…" : "Use my location"}
-        </span>
-      </button>
-      <ul role="list">{chips.map(categoryRow)}</ul>
+      </ul>
+      <div className="border-border mx-3 border-t" aria-hidden />
+      <ul role="list" aria-label="Category">{chips.map(categoryRow)}</ul>
     </nav>
   );
 
