@@ -70,6 +70,17 @@ describe("member preview edges", () => {
     expect(html).not.toContain('aria-label="Reviews"');
   });
 
+  it("puts all five buttons in the header and no pinned bar (MESITA-2321)", () => {
+    const html = renderToStaticMarkup(<PlaceProfile place={detail()} />);
+    for (const label of [">Save<", ">Contact<", ">Share<", "Reserve a table", "Pay, Soon"]) {
+      expect(html).toContain(label);
+    }
+    // The old pinned band (border-t + backdrop-blur under the scroller) is gone.
+    expect(html).not.toContain("backdrop-blur");
+    expect(html).toContain("grid grid-cols-3 gap-2");
+    expect(html).toContain("grid grid-cols-2 gap-2");
+  });
+
   it("keeps Google, Instagram, and Facebook when the socials are empty", () => {
     const html = renderToStaticMarkup(
       <PlaceProfile

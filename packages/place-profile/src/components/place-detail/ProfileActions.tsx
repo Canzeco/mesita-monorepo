@@ -1,15 +1,25 @@
 "use client";
 
-import { Heart, Phone, Share2 } from "lucide-react";
+import { CalendarCheck, Heart, Phone, QrCode, Share2 } from "lucide-react";
 
 import type { PlaceActions } from "../../actions";
 import { inertButtonProps } from "../../actions";
 import type { PlaceDetail } from "../../place-detail";
 import { cn } from "../../lib/format";
+import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 
-// Save · Contact · Share. Live behavior (bookmark, contact sheet, share
-// sheet) stays in the consumer and arrives as callbacks. Missing callbacks
-// leave the buttons visible and inert.
+// The profile's five buttons, Instagram-profile style (Pato, MESITA-2321):
+//   Save · Contact · Share
+//   Reserve · Pay (Soon)
+// No pinned bottom bar any more. Small gray buttons like Instagram's Follow /
+// Message; Reserve is the one dark button. Live behavior (bookmark, contact
+// sheet, share sheet, reservation sheet) stays in the consumer and arrives
+// as callbacks; a missing callback leaves its button visible and inert, so
+// the rows never change shape.
+const btn =
+  "inline-flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 type-label font-semibold whitespace-nowrap transition active:scale-[0.99]";
+const grayBtn = cn(btn, "bg-muted text-foreground hover:bg-muted/70");
+
 export function ProfileActions({
   place,
   actions,
@@ -24,59 +34,84 @@ export function ProfileActions({
   const onSave = actions?.onSave;
   const onContact = actions?.onContact;
   const onShare = actions?.onShare;
-
-  // Instagram profile buttons: filled muted, no border (MESITA-2315).
-  const outlineBtn =
-    "bg-muted text-foreground hover:bg-muted/70 inline-flex h-10 items-center justify-center gap-1.5 rounded-lg type-body font-semibold whitespace-nowrap transition active:scale-[0.99]";
+  const onReserve = actions?.onReserve;
+  const reserveLive = isReserveActionEnabled(place) && Boolean(onReserve);
 
   return (
-    <div className={cn("grid grid-cols-3 gap-2", className)}>
-      <button
-        type="button"
-        {...(onSave
-          ? { onClick: onSave, "aria-pressed": saved }
-          : inertButtonProps(false))}
-        aria-label={saved ? "Remove from saved" : "Save place"}
-        className={cn(
-          outlineBtn,
-          saved &&
-            "shadow-danger bg-destructive text-white hover:bg-destructive",
-        )}
-      >
-        <Heart
-          className={cn("h-4 w-4 shrink-0", saved && "fill-current")}
-          strokeWidth={2.25}
-        />
-        {saved ? "Saved" : "Save"}
-      </button>
-      <button
-        type="button"
-        {...(onContact
-          ? { onClick: onContact, "aria-haspopup": "dialog" as const }
-          : inertButtonProps(false))}
-        className={outlineBtn}
-      >
-        {hasWhatsApp ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src="/channels/whatsapp.svg"
-            alt=""
-            aria-hidden
-            className="h-4 w-4 shrink-0"
+    <div className={cn("flex flex-col gap-2", className)}>
+      <div className="grid grid-cols-3 gap-2">
+        <button
+          type="button"
+          {...(onSave
+            ? { onClick: onSave, "aria-pressed": saved }
+            : inertButtonProps(false))}
+          aria-label={saved ? "Remove from saved" : "Save place"}
+          className={cn(
+            grayBtn,
+            saved &&
+              "shadow-danger bg-destructive text-white hover:bg-destructive",
+          )}
+        >
+          <Heart
+            className={cn("h-4 w-4 shrink-0", saved && "fill-current")}
+            strokeWidth={2.25}
           />
-        ) : (
-          <Phone className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-        )}
-        Contact
-      </button>
-      <button
-        type="button"
-        {...(onShare ? { onClick: onShare } : inertButtonProps(false))}
-        className={outlineBtn}
-      >
-        <Share2 className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-        Share
-      </button>
+          {saved ? "Saved" : "Save"}
+        </button>
+        <button
+          type="button"
+          {...(onContact
+            ? { onClick: onContact, "aria-haspopup": "dialog" as const }
+            : inertButtonProps(false))}
+          className={grayBtn}
+        >
+          {hasWhatsApp ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src="/channels/whatsapp.svg"
+              alt=""
+              aria-hidden
+              className="h-4 w-4 shrink-0"
+            />
+          ) : (
+            <Phone className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+          )}
+          Contact
+        </button>
+        <button
+          type="button"
+          {...(onShare ? { onClick: onShare } : inertButtonProps(false))}
+          className={grayBtn}
+        >
+          <Share2 className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+          Share
+        </button>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          {...(reserveLive
+            ? { onClick: onReserve, "aria-haspopup": "dialog" as const }
+            : inertButtonProps(false))}
+          aria-label="Reserve a table"
+          className={cn(btn, "bg-foreground text-paper hover:opacity-90")}
+        >
+          <CalendarCheck className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+          Reserve
+        </button>
+        <button
+          type="button"
+          {...inertButtonProps(false)}
+          aria-label="Pay, Soon"
+          className={grayBtn}
+        >
+          <QrCode className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+          Pay
+          <span className="bg-card text-muted-foreground type-meta rounded-full px-1.5 py-0.5 leading-none font-semibold">
+            Soon
+          </span>
+        </button>
+      </div>
     </div>
   );
 }
