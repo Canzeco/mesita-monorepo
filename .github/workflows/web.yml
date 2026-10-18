@@ -33,8 +33,8 @@ jobs:
       web-landing: ${{ steps.filter.outputs.web-landing }}
       place-profile: ${{ steps.filter.outputs.place-profile }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3.0.4
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
           filters: |
@@ -67,7 +67,7 @@ jobs:
     if: ${{ !cancelled() && needs.changes.outputs.web-admin != 'false' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/pnpm-check
         with:
           dir: apps/web-admin
@@ -79,7 +79,7 @@ jobs:
     if: ${{ !cancelled() && needs.changes.outputs.web-consumer != 'false' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/pnpm-check
         with:
           dir: apps/web-consumer
@@ -91,7 +91,7 @@ jobs:
     if: ${{ !cancelled() && needs.changes.outputs.web-landing != 'false' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/pnpm-check
         with:
           dir: apps/web-landing
@@ -105,7 +105,7 @@ jobs:
     if: ${{ !cancelled() && needs.changes.outputs.place-profile != 'false' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/pnpm-check
         with:
           install-first: apps/web-consumer
