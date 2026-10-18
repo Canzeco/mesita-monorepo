@@ -241,7 +241,7 @@ export const TARGETS: Target[] = [
   { label: "root", dir: repoRoot, quickstart: true, budget: 218 },
   { label: "apps/web-admin", dir: join(repoRoot, "apps", "web-admin"), quickstart: false, budget: 205 },
   // The widest app: the route contract, the overlay primitives and the auth wall.
-  { label: "apps/web-consumer", dir: join(repoRoot, "apps", "web-consumer"), quickstart: false, budget: 283 },
+  { label: "apps/web-consumer", dir: join(repoRoot, "apps", "web-consumer"), quickstart: false, budget: 297 },
   { label: "apps/web-landing", dir: join(repoRoot, "apps", "web-landing"), quickstart: false, budget: 104 },
   // The deploy path, the ACL and the RLS rules no test pins.
   { label: "supabase", dir: join(repoRoot, "supabase"), quickstart: false, budget: 351 },
