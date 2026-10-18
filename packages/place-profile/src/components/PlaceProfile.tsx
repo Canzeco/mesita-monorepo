@@ -2,7 +2,7 @@
 
 import { ArrowLeft } from "lucide-react";
 
-import type { PlaceActions } from "../actions";
+import type { PlaceActions, PlaceCreatingView } from "../actions";
 import { inertButtonProps } from "../actions";
 import type { PlaceDetail } from "../place-detail";
 import { PlaceActionBar } from "./place-detail/PlaceActionBar";
@@ -17,12 +17,15 @@ export function PlaceProfile({
   onBack,
   scrollLabel,
   actions,
+  creating,
 }: {
   place: PlaceDetail;
   onBack?: () => void;
   /** When set, the scroll region is in the tab order under this name. */
   scrollLabel?: string;
   actions?: PlaceActions;
+  /** A Google-only profile being created (MESITA-2307). */
+  creating?: PlaceCreatingView | null;
 }) {
   return (
     <div className="bg-background relative flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -43,7 +46,7 @@ export function PlaceProfile({
         tabIndex={scrollLabel ? 0 : undefined}
         aria-label={scrollLabel}
       >
-        <PlaceDetailBody place={place} actions={actions} />
+        <PlaceDetailBody place={place} actions={actions} creating={creating} />
       </div>
       <PlaceActionBar place={place} onReserve={actions?.onReserve} />
     </div>

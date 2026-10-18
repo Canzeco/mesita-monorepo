@@ -66,7 +66,7 @@ import {
 } from "@/lib/use-user-location";
 import { MONTERREY_CENTER } from "@/lib/map-defaults";
 import { placeHref } from "@/lib/place-route";
-import { googleOpenHref } from "@/lib/use-open-google-place";
+import { useOpenGooglePlace } from "@/lib/use-open-google-place";
 import { toast } from "@/lib/toast";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
@@ -167,6 +167,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // session spans the keystrokes up to ONE selection — so the token is
   // regenerated after every selection (Info / Add tap) and whenever the
   // results panel is dismissed, scoping each autocomplete run properly.
+  const openGooglePlace = useOpenGooglePlace();
   const sessionTokenRef = useRef(newSessionToken());
   const railRefs = useRef(new Map<string, HTMLElement | null>());
   const railScrollRef = useRef<HTMLDivElement | null>(null);
@@ -584,14 +585,23 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // false` and opens as is; a new one is live immediately, ugly, and waits
   // for votes on the Enrich tab. Nothing creates on render or on a pin tap.
   // Reached only from `openGoogleOnly`. The tap goes to the opening screen at
-  // once (MESITA-2311): it shows the name and a spinner while get-or-create
-  // runs there, then becomes the profile.
+  // once (MESITA-2311), which draws the card the guest tapped as the profile
+  // with Google's photo and "Creating profile" in the body while
+  // get-or-create runs there, then becomes the profile (MESITA-2307). The
+  // catalog row rides along when the open came from a pin or a rail card;
+  // a bare prediction carries its name and address.
   const openGoogleProfile = useCallback(
-    (prediction: PlacePrediction) => {
+    (prediction: PlacePrediction, card?: Place) => {
       resetSearchSession();
-      router.push(googleOpenHref(prediction.placeId, prediction.mainText));
+      openGooglePlace(
+        card ?? {
+          name: prediction.mainText,
+          google_place_id: prediction.placeId,
+          address: prediction.secondaryText || null,
+        },
+      );
     },
-    [resetSearchSession, router],
+    [openGooglePlace, resetSearchSession],
   );
 
   // Pin / rail-card SECOND tap on a from-Google row = THE EXPLICIT OPEN
@@ -599,7 +609,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // profile; a Mesita row opens as Mesita; a Google-only row runs
   // get-or-create and opens. No preview, no photo, no Add button. The bar
   // pick never lands here — it anchors.
-  const openGoogleOnly = (prediction: PlacePrediction) => {
+  const openGoogleOnly = (prediction: PlacePrediction, card?: Place) => {
     const fromAdd = addedProfiles[prediction.placeId];
     if (fromAdd) {
       resetSearchSession();
@@ -610,7 +620,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       openMesitaProfileFromPrediction(prediction);
       return;
     }
-    openGoogleProfile(prediction);
+    openGoogleProfile(prediction, card);
   };
 
   // One pick = one camera move + one forced reload + (for a Place) card
@@ -719,7 +729,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         handleSelectPlace(place);
         return;
       }
-      openGoogleOnly(google);
+      openGoogleOnly(google, place);
       return;
     }
     router.push(placeHref(place.slug || place.id));

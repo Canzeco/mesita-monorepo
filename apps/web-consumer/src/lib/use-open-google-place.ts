@@ -12,6 +12,10 @@
 // of waiting on the card they tapped. `getOrCreateGooglePlace` is that
 // screen's one call; it shares one request per Google Place ID, so a remount
 // (React's dev double effect, a fast re-tap) never creates twice.
+//
+// The card the guest tapped rides along (MESITA-2307): it is stashed here and
+// the opening screen draws it as the profile's first draft — name, category,
+// stars, address, distance — with Google's photo, while the create runs.
 
 import { useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -19,9 +23,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { apiCreateProject } from "@/lib/api/place-search";
 import { placeHref } from "@/lib/place-route";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { type PendingPlaceCard, stashPendingPlace } from "@/lib/pending-place";
 
-export type GoogleOnlyPlace = {
-  name: string;
+export type GoogleOnlyPlace = PendingPlaceCard & {
   slug?: string | null;
   google_place_id?: string | null;
 };
@@ -44,6 +48,7 @@ export function useOpenGooglePlace(): (place: GoogleOnlyPlace) => void {
     (place: GoogleOnlyPlace) => {
       const gid = googlePlaceIdOf(place);
       if (!gid) return;
+      stashPendingPlace(gid, place);
       router.push(googleOpenHref(gid, place.name));
     },
     [router],

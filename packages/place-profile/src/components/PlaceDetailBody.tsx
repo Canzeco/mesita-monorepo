@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import type { PlaceActions } from "../actions";
+import type { PlaceActions, PlaceCreatingView } from "../actions";
 import { AboutBox } from "./AboutBox";
 import type { PlaceDetail } from "../place-detail";
 
@@ -11,6 +11,7 @@ import { PopularTimesBox } from "./place-detail/popular-times";
 import { MediaBox } from "./place-detail/media";
 import { ProfileSummary } from "./place-detail/profile-summary";
 import { GoogleReviewsBox } from "./place-detail/reviews";
+import { PlaceCreatingPanel } from "./place-detail/PlaceCreatingPanel";
 import { PlaceRequestPanelView } from "./place-detail/PlaceRequestPanel";
 import { PlaceTabBar, type PlaceTab } from "./place-detail/tabs";
 import { SoonScreen } from "./place-detail/soon-screen";
@@ -26,16 +27,22 @@ import { DatesBox, LinksBox, TagsBox } from "./place-detail/tags-links-meta";
 //      Facebook (that count row hides on Reviews); swipe-style tags; then
 //      Save · Contact · Share. Reserve · Pay (Soon) are pinned below.
 //   2. Not Enriched: the vote panel, straight under the summary — no strip
-//      with one lone "Enrich" tab (MESITA-2315). Enriched: the sticky strip,
-//      Overview · Reviews · Menu (Soon) · Rewards (Soon).
+//      with one lone "Enrich" tab (MESITA-2315); while a Google-only profile
+//      is being created, the Creating panel sits there instead
+//      (MESITA-2307). Enriched: the sticky strip, Overview · Reviews ·
+//      Menu (Soon) · Rewards (Soon).
 //   3. The active tab's boxes.
 
 export function PlaceDetailBody({
   place,
   actions,
+  creating,
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
+  /** Set while a Google-only profile is being created: the Enrich slot
+   *  spins instead of asking for votes (MESITA-2307). */
+  creating?: PlaceCreatingView | null;
 }) {
   const [tab, setTab] = useState<PlaceTab>(
     place.is_enriched ? "place" : "enrich",
@@ -60,7 +67,10 @@ export function PlaceDetailBody({
         actions={actions}
         showChannelStats={activeTab !== "reviews"}
       />
-      {!place.is_enriched && (
+      {!place.is_enriched && creating && (
+        <PlaceCreatingPanel error={creating.error} onRetry={creating.onRetry} />
+      )}
+      {!place.is_enriched && !creating && (
         <PlaceRequestPanelView
           count={actions?.request?.count ?? place.request_count}
           threshold={actions?.request?.threshold ?? place.request_threshold}

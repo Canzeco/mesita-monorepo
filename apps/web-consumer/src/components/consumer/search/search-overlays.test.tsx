@@ -887,7 +887,9 @@ describe("a Google-only result opens through get-or-create, never a preview or a
       client.indexOf("const openGoogleProfile"),
       client.indexOf("const openGoogleOnly"),
     );
-    expect(open).toContain("googleOpenHref(");
+    // The card rides along: the opening screen draws it as the profile's
+    // first draft (MESITA-2307).
+    expect(open).toContain("openGooglePlace(");
     const opener = readFileSync(
       join(SEARCH_DIR, "../../../lib/use-open-google-place.ts"),
       "utf8",
@@ -902,7 +904,7 @@ describe("a Google-only result opens through get-or-create, never a preview or a
     expect(openPlace).toContain("if (selectedId !== place.id)");
     expect(openPlace).toContain("handleSelectPlace(place)");
     expect(openPlace.indexOf("if (selectedId !== place.id)")).toBeLessThan(
-      openPlace.indexOf("openGoogleOnly(google)"),
+      openPlace.indexOf("openGoogleOnly(google, place)"),
     );
     for (const gone of ["GooglePlaceSheet.tsx"]) {
       expect(existsSync(join(SEARCH_DIR, gone)), gone).toBe(false);

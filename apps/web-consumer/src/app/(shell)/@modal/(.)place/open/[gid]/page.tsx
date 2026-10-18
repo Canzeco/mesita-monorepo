@@ -16,6 +16,7 @@ export default async function OpeningGooglePlaceModal({
     <OpeningGooglePlace
       gid={decodeURIComponent(gid)}
       name={typeof name === "string" ? name : ""}
+      apiKey={process.env.NEXT_PUBLIC_GMP_KEY ?? ""}
       variant="modal"
     />
   );

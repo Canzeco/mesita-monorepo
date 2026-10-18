@@ -13,6 +13,15 @@ export type PlaceRequestView = {
   error: string | null;
 };
 
+/** The profile is on screen before Mesita holds it — a Google-only card the
+ *  guest opened (MESITA-2307). The Enrich slot says the profile is being
+ *  created, or why it could not be. */
+export type PlaceCreatingView = {
+  error: string | null;
+  /** Runs the create again after a refusal; absent, the panel only says why. */
+  onRetry?: () => void;
+};
+
 /** Optional member actions. A missing callback renders the control and does
  *  not run it. The consumer passes the live ones; admin passes none. */
 export type PlaceActions = {
