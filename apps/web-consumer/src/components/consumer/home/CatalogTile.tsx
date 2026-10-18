@@ -67,8 +67,9 @@ function readableKind(place: Place): string | null {
 
 /**
  * One place, as one square tile (Pato, MESITA-2364, MESITA-2373): the photo
- * on the top 60%, its light reflection below carrying four rows — name;
- * stars · price; category · zone; open state · distance — the heart top right. No zone. An
+ * on the top 60%, its light reflection below carrying four rows — name with
+ * the heart at its right; price · category; zone · open state; stars ·
+ * distance (MESITA-2374). No zone. An
  * enriched place wears the Enriched mark after its name
  * (MESITA-2296). Favs does not use this tile. A Google-only card opens its
  * profile through `onOpenGoogle` and has no save heart: only a Mesita place
@@ -122,13 +123,11 @@ export function CatalogTile({
       : null;
   // Four rows (Pato, MESITA-2373, after three in MESITA-2372): name;
   // stars · price; category · zone; open state · distance.
-  const factsLine = priceLabel ?? "";
-  const kindLine = [kind, zone].filter(Boolean).join(" · ");
-  const whenLine = [openLine, distance].filter(Boolean).join(" · ");
+  // Pato's order (MESITA-2374): Name (+ Save at the right) · Price,
+  // Category · Zone, Time · Stars (and distance).
+  const priceKind = [priceLabel, kind].filter(Boolean).join(" · ");
+  const zoneTime = [zone, openLine].filter(Boolean).join(" · ");
 
-
-  // The photo, or the Google card's emoji tile. Drawn twice: filling the
-  // square, and flipped inside the info band as its reflection.
   // The photo, or the Google card's emoji tile. Drawn twice: on the top
   // 60%, and flipped from its foot as the reflection below it.
   const media = () =>
@@ -157,8 +156,8 @@ export function CatalogTile({
   // ONE square (Pato, MESITA-2369, MESITA-2373): the photo is the top 60%,
   // fully shown and centred — nothing lies over it. The bottom 40% is its
   // REFLECTION: a 60%-tall copy flipped so its foot meets the photo's foot,
-  // under a 50% paper layer, the three rows on it in dark text. No border,
-  // no radius; the heart sits top right.
+  // under a 50% paper layer, four rows on it in dark text. No border, no
+  // radius; the heart sits at the right of the name row.
   return (
     <li className={cn("relative aspect-square min-w-0 overflow-hidden", className)}>
       <TileLink
@@ -172,7 +171,7 @@ export function CatalogTile({
           {media()}
         </div>
         {/* The reflection: bottom 40%, the photo mirrored from its foot under
-            50% paper, four rows spread to fill it (MESITA-2373). */}
+            50% paper, four rows spread to fill it (MESITA-2373, MESITA-2374). */}
         <div
           className="absolute inset-x-0 bottom-0 h-[40%] overflow-hidden"
           data-tile-info
@@ -189,16 +188,27 @@ export function CatalogTile({
             aria-hidden
           />
           <div className="text-foreground relative flex h-full flex-col justify-evenly px-3 py-1.5">
-            <p className="font-display flex min-w-0 items-center gap-1 text-base leading-tight font-semibold tracking-tight">
+            <p
+              className={cn(
+                "font-display flex min-w-0 items-center gap-1 text-base leading-tight font-semibold tracking-tight",
+                !google && "pr-9",
+              )}
+            >
               <span className="truncate">{place.name}</span>
               {isEnrichedPlace(place) ? (
                 <EnrichedBadge className="h-4 w-4 shrink-0" />
               ) : null}
             </p>
-            {ratingLabel || factsLine ? (
-              <p className="flex min-w-0 items-center gap-1.5 text-sm leading-tight font-medium">
+            {priceKind ? (
+              <p className="truncate text-sm leading-tight font-medium">{priceKind}</p>
+            ) : null}
+            {zoneTime ? (
+              <p className="text-muted-foreground truncate text-sm leading-tight">{zoneTime}</p>
+            ) : null}
+            {ratingLabel || distance ? (
+              <p className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-sm leading-tight">
                 {ratingLabel ? (
-                  <span className="inline-flex shrink-0 items-center gap-1">
+                  <span className="text-foreground inline-flex shrink-0 items-center gap-1 font-medium">
                     <Star className="fill-foreground text-foreground h-3.5 w-3.5" />
                     {ratingLabel}
                     {reviews ? (
@@ -206,15 +216,9 @@ export function CatalogTile({
                     ) : null}
                   </span>
                 ) : null}
-                {ratingLabel && factsLine ? <span aria-hidden>·</span> : null}
-                {factsLine ? <span className="truncate">{factsLine}</span> : null}
+                {ratingLabel && distance ? <span aria-hidden>·</span> : null}
+                {distance ? <span className="truncate">{distance}</span> : null}
               </p>
-            ) : null}
-            {kindLine ? (
-              <p className="text-muted-foreground truncate text-sm leading-tight">{kindLine}</p>
-            ) : null}
-            {whenLine ? (
-              <p className="text-muted-foreground truncate text-sm leading-tight">{whenLine}</p>
             ) : null}
           </div>
         </div>
@@ -226,16 +230,17 @@ export function CatalogTile({
           aria-label={
             saved ? `Remove ${place.name} from saved` : `Save ${place.name}`
           }
-          className="absolute top-0 right-0 flex h-11 w-11 items-start justify-end p-1.5"
+          // The Save heart sits at the right of the name row (Pato,
+          // MESITA-2374), a sibling of the tile link so a tap never navigates.
+          className="absolute top-[60%] right-0 flex h-11 w-11 items-center justify-center"
+          data-tile-save
         >
-          <span className="bg-card flex h-6 w-6 items-center justify-center rounded-full">
-            <Heart
-              className={cn(
-                "h-3.5 w-3.5",
-                saved ? "fill-foreground text-foreground" : "text-foreground",
-              )}
-            />
-          </span>
+          <Heart
+            className={cn(
+              "h-5 w-5",
+              saved ? "fill-foreground text-foreground" : "text-foreground",
+            )}
+          />
         </button>
       )}
     </li>
