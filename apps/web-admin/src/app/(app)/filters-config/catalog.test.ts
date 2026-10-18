@@ -126,9 +126,14 @@ describe("Discovery function APIs", () => {
       "Google Places Nearby Search",
       "Mesita Places Nearby Search",
     ]);
-    // Browse and Flexible are gone (MESITA-2195). Catalog is the one door:
-    // Places Catalog for places, Social Catalog for events.
+    // The Feed buys Google Nearby for rail 1 (Google Places) and reads the
+    // Mesita Nearby pool for its Mesita Selected and family rails when the
+    // guest shares a location, the catalog otherwise (MESITA-2298 §7).
+    // Browse and Flexible are gone (MESITA-2195): Places Catalog is for
+    // places, Social Catalog for events.
     expect(DISCOVERY_MODE_SOURCES.catalog).toEqual([
+      "Google Places Nearby Search",
+      "Mesita Places Nearby Search",
       "Mesita Places Catalog Search",
     ]);
     expect(DISCOVERY_MODE_SOURCES.swipe).toEqual(["Mesita Places Catalog Search"]);
@@ -207,45 +212,39 @@ describe("Discovery function APIs", () => {
     expect(modeReturnsEntity("map", "social")).toBe(false);
   });
 
-  it("three nested place types: Map picks the ring, Catalog and Scroll need enrichment", () => {
-    // The band IS `Google Places ⊃ Mesita Places ⊃ Mesita Enriched Places`
-    // from nearby-places.ts, in that order (MESITA-2158). `listed` retired at
-    // MESITA-1856: a row existing is not a gate any mode runs.
-    expect(DISCOVERY_POOLS.map((p) => p.key)).toEqual([
-      "google",
-      "mesita",
-      "enriched",
-    ]);
+  it("two guest scopes: Google Places and Mesita Selected", () => {
+    // The band IS `PlacesScope = "google" | "selected"` from nearby-places.ts
+    // (MESITA-2298). The middle ring (Mesita Places) and the word Enriched
+    // are the code's, never a scope a guest picks: a Created row rides inside
+    // Google Places as a painted hit, the gray pin.
+    expect(DISCOVERY_POOLS.map((p) => p.key)).toEqual(["google", "selected"]);
     expect(DISCOVERY_POOLS.map((p) => p.label)).toEqual([
       "Google Places",
-      "Mesita Places",
-      "Mesita Enriched Places",
+      "Mesita Selected",
     ]);
-    // Map is the one mode whose GUEST picks the ring — PlacesScope is
-    // exactly these three, and admitsScopeRow cuts only the inner one to
-    // enriched rows.
+    for (const pool of DISCOVERY_POOLS) {
+      expect(pool.label, pool.key).not.toMatch(/Enriched/);
+    }
+    // Map is the one mode whose GUEST picks the scope; the Feed serves both
+    // (rail 1 Google Places, rail 2 Mesita Selected, then the families).
     expect(modeRequiresPool("map", "google")).toBe(true);
-    expect(modeRequiresPool("map", "mesita")).toBe(true);
-    expect(modeRequiresPool("map", "enriched")).toBe(true);
-    // requireReady defaults true and Scroll hardcodes it, and requireReady
-    // IS the Enriched gate (`enriched_at IS NOT NULL` AND `content_state =
-    // 'ready'`, MESITA-2154).
+    expect(modeRequiresPool("map", "selected")).toBe(true);
     expect(modeRequiresPool("catalog", "google")).toBe(true);
-    expect(modeRequiresPool("catalog", "mesita")).toBe(true);
-    expect(modeRequiresPool("catalog", "enriched")).toBe(true);
-    expect(modeRequiresPool("swipe", "google")).toBe(true);
-    expect(modeRequiresPool("swipe", "enriched")).toBe(true);
+    expect(modeRequiresPool("catalog", "selected")).toBe(true);
+    // Scroll hardcodes requireReady, which IS the Selected gate
+    // (`enriched_at IS NOT NULL` AND `content_state = 'ready'`, MESITA-2154).
+    expect(modeRequiresPool("swipe", "selected")).toBe(true);
+    expect(modeRequiresPool("swipe", "google")).toBe(false);
     // A bookmark is always a Google-sourced place, and it is NOT gated on
-    // enrichment: Create stubs get bookmarked too.
+    // enrichment: Created profiles get bookmarked too.
     expect(modeRequiresPool("favorites", "google")).toBe(true);
-    expect(modeRequiresPool("favorites", "mesita")).toBe(false);
-    expect(modeRequiresPool("favorites", "enriched")).toBe(false);
-    // Word and Chat answer from whatever came back; no ring gate at all.
+    expect(modeRequiresPool("favorites", "selected")).toBe(false);
+    // Word and Chat answer from whatever came back; no scope gate at all.
     for (const pool of DISCOVERY_POOLS) {
       expect(modeRequiresPool("word", pool.key), pool.key).toBe(false);
       expect(modeRequiresPool("chat", pool.key), pool.key).toBe(false);
     }
-    // No row is dead: every place type is required by at least one mode.
+    // No row is dead: every scope is required by at least one mode.
     for (const pool of DISCOVERY_POOLS) {
       expect(
         DISCOVERY_MODE_KEYS.some((mode) => modeRequiresPool(mode, pool.key)),

@@ -40,11 +40,11 @@ export function CatalogRankingClient({
       <SectionCard
         icon={<GalleryHorizontal className="text-primary h-4 w-4" />}
         title="Ranking"
-        subtitle="One profile for every rail. Weights are relative: doubling every number does not change the order. Zero turns that signal off."
+        subtitle="Mesita Selected's profile, on the Map and on the Feed. Weights are relative: doubling every number does not change the order. Zero turns that signal off."
         state={
           <KnobState
             kind="enforced"
-            reason="The catalog engine ranks every family list with this profile"
+            reason="Shared engine · the Mesita Selected scope on Map and Feed reads this profile"
           />
         }
       >
@@ -53,7 +53,7 @@ export function CatalogRankingClient({
             {error}
           </p>
         ) : null}
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
           {CATALOG_LIVE_RANK_KEYS.map((key) => {
             const copy = CATALOG_LIVE_SIGNAL_COPY[key];
             return (
@@ -84,10 +84,10 @@ export function CatalogRankingClient({
           })}
         </div>
         <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-          Every ready Mesita place enters, enriched or not. Enriched ranks
-          an enriched place ahead of a Created one; it does not keep the
-          Created one out. Family only chooses which rail a place is in.
-          This page does not edit family membership.
+          Every place here is Mesita Selected (enriched, ready): Popularity
+          ranks, Proximity is a soft penalty. Enriched is the gate, not a
+          weight, and Randomness is zero — a shuffled pin is a moved pin.
+          Google Places rank with the Map column.
         </p>
         {allZero ? (
           <p className="text-destructive mt-3 text-sm" role="alert">
@@ -122,8 +122,8 @@ export function CatalogRankingClient({
           Family lists
         </h2>
         <p className="text-muted-foreground text-sm leading-relaxed">
-          Every list uses the profile above. Family is a filter. Undefined is
-          not a list.
+          Every rail uses the profile above. Family is a filter. Google Places
+          is never a family rail.
         </p>
         <ul className="border-border divide-border bg-card divide-y overflow-hidden rounded-2xl border">
           {CATALOG_FAMILY_FACTS.map((family) => (

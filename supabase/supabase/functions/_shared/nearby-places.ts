@@ -1,18 +1,18 @@
-// Map catalog = the nearest N of the guest's one scope, then paint.
-// TWO GUEST SCOPES (MESITA-2298) over the three nested sets
+// Google Nearby + the guest's scope words (MESITA-2298, MESITA-2302).
+// TWO GUEST SCOPES over the three internal sets
 // (Google Places ⊃ Mesita Places ⊃ Mesita Enriched Places):
-//   enriched  Mesita Selected — the nearest N enriched Mesita rows. No
-//             Google Nearby.
-//   google    Google Places — every Selected row plus the nearest Nearby
-//             hits. A hit that is Mesita is painted, not added as a second
-//             pin. Max pins = N, never the sum of the lanes.
-//   (`mesita`, the Created-rows ring, has no guest word any more; the
-//   parser lands it on `enriched`.)
-// N is operator `map.pinCount`. ONE Nearby Search (New) call per cache-miss
-// cell: maxResultCount 20, DISTANCE, the enabled primary types, inside the
-// operator's radius; never a second page, never a wider circle. Empty
-// Nearby (quota skip) falls back to the Mesita set. Only the Google scope
-// fires Nearby, and callers gate that on the lane cap.
+//   google    Google Places — what ONE Nearby Search (New) call returned
+//             inside the operator's radius. A hit Mesita owns goes out as
+//             that Mesita row (ready, enriched or not); the rest are stubs.
+//             No Mesita backfill: a place Google did not return is absent.
+//   selected  Mesita Selected — the enriched, ready Mesita rows. No Google
+//             Nearby, no review floor.
+// `PlacesScope` has exactly those two words; the retired `enriched`,
+// `mesita` and `partners` parse to `selected`, never to a paid call.
+// ONE POST per cache-miss cell (center · types · radius): maxResultCount
+// 20, DISTANCE, the family-derived primary types, the ONE field mask;
+// never a second page, never a wider circle. Mesita wins its gid
+// (`claimOwnedHits`, `mergeNearbyCatalog`, `resolveGoogleItem`).
 
 import {
   classifyGoogleError,
@@ -27,9 +27,8 @@ import { isPlaceEnriched, isPlaceProfileReady } from "./place-state.ts";
 /** Nearby Search (New) caps one POST at maxResultCount 20 with no page
  *  token, and the engine never asks twice (MESITA-2298). */
 export const GOOGLE_NEARBY_MAX = 20;
-/** The largest How many stop. Every lane cap clamps to it. */
+/** The largest `map.pinCount` stop; the merge's default Mesita cap. */
 export const CATALOG_NEARBY_HARD_MAX = 60;
-export const GOOGLE_NEARBY_RADIUS_M = NEARBY_RADIUS_KM * 1000;
 /** The operator's circle, in metres, clamped to what Nearby accepts
  *  (50 m .. 50 km). `map.radiusKm` is 1..50; a bad value reads as 50 km. */
 export function nearbyRadiusMetres(radiusKm?: number): number {
@@ -40,15 +39,13 @@ export function nearbyRadiusMetres(radiusKm?: number): number {
   return Math.min(50_000, Math.max(50, Math.round(km * 1000)));
 }
 const NEARBY_CACHE_MS = 15_000;
-/** Feed › Right Now's cell TTL (MESITA-2295). "Open now" moves slowly, so a
- *  cell is reused for minutes, not Search's 15 s. */
-export const RIGHT_NOW_CACHE_MS = 5 * 60_000;
+/** THE ONE field mask, Search and Feed alike: what rendering and ranking
+ *  need, nothing else. `rating` and `userRatingCount` already bill the
+ *  Enterprise SKU, so `currentOpeningHours.openNow` (the timing signal's
+ *  one fact for a row with no stored hours) adds no spend. Never a photo
+ *  field: an ephemeral Google card draws its family emoji (MESITA-2298 §6). */
 const NEARBY_FIELD_MASK =
-  "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.businessStatus,places.primaryType";
-/** Right Now's mask: Search's, plus open-now. Never a photo field: a card
- *  for an ephemeral Google result draws a placeholder (MESITA-2298). */
-const RIGHT_NOW_FIELD_MASK =
-  `${NEARBY_FIELD_MASK},places.currentOpeningHours.openNow`;
+  "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.businessStatus,places.primaryType,places.currentOpeningHours.openNow";
 
 export type NearbyHit = {
   placeId: string;
@@ -61,8 +58,8 @@ export type NearbyHit = {
   /** Google's own label. Feeds Discovery › General's post-Google wipe. */
   businessStatus: string | null;
   reviewCount: number | null;
-  /** Right Now only: Google's `currentOpeningHours.openNow`. */
-  openNow?: boolean | null;
+  /** Google's `currentOpeningHours.openNow`; null when Google did not say. */
+  openNow: boolean | null;
 };
 
 type NearbyOnce =
@@ -74,14 +71,13 @@ async function searchNearbyOnce(
   center: { lat: number; lng: number },
   radiusM: number,
   includedPrimaryTypes: string[],
-  rightNow = false,
 ): Promise<NearbyOnce> {
   const r = await fetch(GOOGLE_PLACES_NEARBY_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask": rightNow ? RIGHT_NOW_FIELD_MASK : NEARBY_FIELD_MASK,
+      "X-Goog-FieldMask": NEARBY_FIELD_MASK,
     },
     body: JSON.stringify({
       maxResultCount: GOOGLE_NEARBY_MAX,
@@ -134,13 +130,9 @@ async function searchNearbyOnce(
         reviewCount: typeof p.userRatingCount === "number"
           ? p.userRatingCount
           : null,
-        ...(rightNow
-          ? {
-            openNow: typeof p.currentOpeningHours?.openNow === "boolean"
-              ? p.currentOpeningHours.openNow
-              : null,
-          }
-          : {}),
+        openNow: typeof p.currentOpeningHours?.openNow === "boolean"
+          ? p.currentOpeningHours.openNow
+          : null,
       };
     })
     .filter((p) => p.placeId && p.name);
@@ -168,52 +160,39 @@ export function __resetNearbyGoogleCacheForTests(): void {
   googleFanoutAt = [];
 }
 
-/** Warm 15s cell hit, or null. List-places uses this so a cache hit does not
- *  consume the shared IP quota — only a miss meters, then fan-out. Types must
- *  match the search that filled the cell. */
+/** Warm 15s cell hit, or null. Callers peek first so a cache hit does not
+ *  consume the shared IP quota — only a miss meters, then fan-out. Types and
+ *  radius must match the search that filled the cell. */
 export function peekCachedNearbyPlaces(
   center: { lat: number; lng: number },
   types?: readonly string[],
-  rightNow = false,
   radiusKm?: number,
 ): NearbyHit[] | null {
   const hit = nearbyCache.get(
     nearbyCellKey(
       center,
       resolveNearbyTypes(types),
-      rightNow,
       nearbyRadiusMetres(radiusKm),
     ),
   );
-  if (hit && Date.now() - hit.at < nearbyCacheMs(rightNow)) return hit.hits;
+  if (hit && Date.now() - hit.at < NEARBY_CACHE_MS) return hit.hits;
   return null;
 }
 
-function nearbyCacheMs(rightNow: boolean): number {
-  return rightNow ? RIGHT_NOW_CACHE_MS : NEARBY_CACHE_MS;
-}
-
 export type SearchNearbyOpts = {
-  /** Nearby primary types. Omit = the five F&B batteries. Empty = no
-   *  Google call. Super-driven search may send GOOGLE_SEARCH_TYPES
-   *  (spa, museum, park, …) beyond the five. */
+  /** Nearby primary types (`includedPrimaryTypes`): the guest's families'
+   *  batteries, or every guest family's when omitted (NEARBY_TYPE_KEYS).
+   *  Empty = no Google call. */
   types?: readonly string[];
+  /** The operator's circle (`map.radiusKm`, MESITA-2298 §3). Omit = 50 km.
+   *  Part of the cache cell: two radii are two answers. */
+  radiusKm?: number;
   /**
    * Called once, right before the ONE billed Nearby call (MESITA-1700): the
    * ledger behind this hook counts what Google charges for. `false` skips
    * Google for this cell; nothing is cached.
    */
   beforeFanout?: () => Promise<boolean>;
-  /** The operator's circle (`map.radiusKm`, MESITA-2298 §3). Omit = 50 km.
-   *  Part of the cache cell: two radii are two answers. */
-  radiusKm?: number;
-  /**
-   * Feed › Right Now (MESITA-2295): the one New POST, whose mask
-   * adds `currentOpeningHours.openNow` + `photos`, cached in its own cell
-   * for RIGHT_NOW_CACHE_MS. Search never sets it, so its mask, SKU and 15 s
-   * cell are untouched.
-   */
-  rightNow?: boolean;
 };
 
 function nearbyTypesKey(types: readonly string[]): string {
@@ -223,12 +202,11 @@ function nearbyTypesKey(types: readonly string[]): string {
 function nearbyCellKey(
   center: { lat: number; lng: number },
   types: readonly string[] = NEARBY_TYPE_KEYS,
-  rightNow = false,
-  radiusM: number = GOOGLE_NEARBY_RADIUS_M,
+  radiusM: number = nearbyRadiusMetres(),
 ): string {
   return `${center.lat.toFixed(2)},${center.lng.toFixed(2)}:${
     nearbyTypesKey(types)
-  }:r${radiusM}${rightNow ? ":now" : ""}`;
+  }:r${radiusM}`;
 }
 
 const SUPER_SEARCH_TYPE_SET = new Set<string>(
@@ -257,11 +235,10 @@ export async function searchNearbyPlaces(
   const beforeFanout = opts.beforeFanout;
   const types = resolveNearbyTypes(opts.types);
   if (types.length === 0) return [];
-  const rightNow = opts.rightNow === true;
-  const key = nearbyCellKey(center, types, rightNow, radius);
+  const key = nearbyCellKey(center, types, radius);
   const hit = nearbyCache.get(key);
   const now = Date.now();
-  if (hit && now - hit.at < nearbyCacheMs(rightNow)) return hit.hits;
+  if (hit && now - hit.at < NEARBY_CACHE_MS) return hit.hits;
   const pending = nearbyInflight.get(key);
   if (pending) return pending;
 
@@ -284,13 +261,7 @@ export async function searchNearbyPlaces(
     }
     googleFanoutAt.push(Date.now());
 
-    const batch = await searchNearbyOnce(
-      apiKey,
-      center,
-      radius,
-      [...types],
-      rightNow,
-    );
+    const batch = await searchNearbyOnce(apiKey, center, radius, [...types]);
     if (!batch.ok) {
       resolveRun([]);
       return [];
@@ -331,77 +302,49 @@ export type NearbyMerged<T> =
   | { kind: "google"; hit: NearbyHit };
 
 /**
- * THREE NESTED SETS (MESITA-2158):
+ * THE GUEST'S TWO WORDS (MESITA-2298) over the three internal sets
+ * (Google Places ⊃ Mesita Places ⊃ Mesita Enriched Places):
  *
- *   Google Places  ⊃  Mesita Places  ⊃  Mesita Enriched Places
- *      gray              ink                 red
+ *   google    Google Places — Nearby's hits; a Mesita row that owns one
+ *             (ready, enriched or not) goes out as itself.
+ *   selected  Mesita Selected — the enriched, ready rows. Free: no Google.
  *
- * The wire carries the set by NAME, never by an ordinal. A caller that
- * posts no scope must be safe on its own, and an ordinal whose meaning
- * moved would narrow it silently. Unknown and absent alike resolve to
- * `mesita`, the widest Mesita ring. `enriched` is the inner ring's word;
- * a client from before it existed sends `mesita` and now gets the wider
- * set, Created places included, which is harmless.
- *
- * Legacy numerics keep their OLD shipped meanings (1 = Mesita, 2 = Google,
- * 3 = Google) so a client deployed before this EF still gets the set it
- * asked for. Vercel and the Edge Functions deploy on separate paths, so
- * that skew window is real, not hypothetical.
+ * The wire carries the scope by NAME. A third word fails to compile here,
+ * so no caller can ask for a set a guest cannot see. Absent, unknown and
+ * the retired words (`enriched`, `mesita`, `partners`) all land on
+ * `selected`, never on a paid call. Legacy ordinals keep their shipped
+ * meanings (>= 2 = Google, lower = Mesita): Vercel and the Edge Functions
+ * deploy on separate paths, so that skew window is real.
  */
-export type PlacesScope = "enriched" | "mesita" | "google";
+export type PlacesScope = "google" | "selected";
 
-/**
- * The guest has two scopes (MESITA-2298): `google` (Google Places) and
- * `selected` (Mesita Selected = the enriched, ready set, `enriched` here).
- * The retired `mesita` word and the absent value both land on Selected:
- * there is no Created-rows scope a guest can ask for any more.
- */
-export const PLACES_SCOPE_DEFAULT: PlacesScope = "enriched";
+export const PLACES_SCOPE_DEFAULT: PlacesScope = "selected";
 
-const PLACES_SCOPES: readonly PlacesScope[] = ["enriched", "mesita", "google"];
+const PLACES_SCOPES: readonly PlacesScope[] = ["google", "selected"];
+const RETIRED_SCOPE_WORDS: readonly string[] = [
+  "enriched",
+  "mesita",
+  "partners",
+];
 
 export function parsePlacesScope(value: unknown): PlacesScope {
   if (typeof value === "string") {
     const key = value.trim().toLowerCase();
-    if (key === "selected" || key === "mesita") return "enriched";
     if ((PLACES_SCOPES as readonly string[]).includes(key)) {
       return key as PlacesScope;
     }
+    if (RETIRED_SCOPE_WORDS.includes(key)) return "selected";
     // A legacy numeric arriving as a string reads the same as the number.
     const legacy = Number(key);
     if (Number.isFinite(legacy) && key.length > 0) {
-      return legacy >= 2 ? "google" : PLACES_SCOPE_DEFAULT;
+      return legacy >= 2 ? "google" : "selected";
     }
     return PLACES_SCOPE_DEFAULT;
   }
   if (typeof value === "number" && Number.isFinite(value)) {
-    return value >= 2 ? "google" : PLACES_SCOPE_DEFAULT;
+    return value >= 2 ? "google" : "selected";
   }
   return PLACES_SCOPE_DEFAULT;
-}
-
-/**
- * Lane caps come from operator `map.pinCount` (`limit`). Only the Google
- * scope fires Nearby — and callers gate that call on `googleCount > 0`,
- * never on the scope name, so there is one place to change and no literal
- * to miss. Google hands back at most 20 per call and the engine never asks
- * twice (MESITA-2298), so the Google lane is at most 20 and, with hits in
- * hand, the Google scope IS those hits (MESITA-2310); `mesitaCount` caps
- * the Mesita set the empty-Nearby fallback shows. The caller slices the
- * result back to N, so max pins = N, never the sum.
- */
-export function lanesForPlacesScope(
-  scope: PlacesScope,
-  limit: number,
-): NearbyLaneCaps {
-  const n = Math.max(
-    0,
-    Math.min(CATALOG_NEARBY_HARD_MAX, Math.round(Number(limit) || 0)),
-  );
-  return {
-    mesitaCount: n,
-    googleCount: scope === "google" ? Math.min(n, GOOGLE_NEARBY_MAX) : 0,
-  };
 }
 
 /**
@@ -431,18 +374,18 @@ export function isMesitaListedRow(row: {
 }
 
 /**
- * Which Mesita rows a scope admits. `enriched` is the `mesita` ring cut to
- * the rows an Enrich run completed. `google` admits the same rows as
- * `mesita` but SHOWS only the ones Google returned, as their owners
- * (`mergeNearbyCatalog`, MESITA-2310): Mesita Selected is a subset of
- * Google Places, never a lane beside it.
+ * Which Mesita rows a scope admits. Google Places admits every ready Mesita
+ * row that owns a hit (a Created profile draws gray, an enriched one red)
+ * and SHOWS only the ones Google returned, as their owners
+ * (`mergeNearbyCatalog`, MESITA-2310). Mesita Selected admits enriched
+ * rows only: a subset of Google Places, never a lane beside it.
  */
 export function admitsScopeRow(
   scope: PlacesScope,
   row: { content_state?: string | null; enriched_at?: string | null },
 ): boolean {
   if (!isMesitaListedRow(row)) return false;
-  return scope === "enriched" ? isEnrichedListedRow(row) : true;
+  return scope === "selected" ? isEnrichedListedRow(row) : true;
 }
 
 /** The row fields {@link claimOwnedHits} reads. */
@@ -470,13 +413,14 @@ function gidOf(row: OwnedNearbyRow): string | null {
 /**
  * A Google hit Mesita already owns is NEVER sent as a `g:` stub (MESITA-2154).
  *
- * The stub's "Add to Mesita" button posts consumer-web-create-place, which
- * 409s `place_already_exists` for a google_place_id Mesita holds, and the
- * guest gets a toast instead of the place. So a hit whose google_place_id a
- * listed Mesita row carries resolves one of three ways:
+ * A stub's explicit open runs consumer-web-create-place as get-or-create
+ * (MESITA-2298 §5): an owned gid answers `created: false` and opens the row
+ * Mesita holds. The map must agree before the tap — the row is a Mesita
+ * place, with its photo, its vote and its colour — so a hit whose
+ * google_place_id a listed Mesita row carries resolves one of three ways:
  *
- *   ring   the row is in the scope's Mesita rows (on the Google ring that
- *          is every ready Mesita row, Created ones included — MESITA-2158):
+ *   ring   the row is in the scope's Mesita rows (on Google Places that is
+ *          every ready Mesita row, Created ones included — MESITA-2158):
  *          the hit passes and merge pairs it with the row.
  *   paint  the row is NOT enriched (a Created place) and a ring cut left it
  *          out: the hit passes and goes out as that Mesita row, ink, in the
@@ -550,10 +494,10 @@ export function mergeNearbyCatalog<T extends MesitaNearbyRow>(
   mesita: T[],
   google: NearbyHit[],
   center: { lat: number; lng: number },
-  lanes: NearbyLaneCaps = lanesForPlacesScope(
-    "google",
-    CATALOG_NEARBY_HARD_MAX,
-  ),
+  lanes: NearbyLaneCaps = {
+    mesitaCount: CATALOG_NEARBY_HARD_MAX,
+    googleCount: GOOGLE_NEARBY_MAX,
+  },
   radiusKm: number = NEARBY_RADIUS_KM,
 ): Array<NearbyMerged<T>> {
   const inCircle = (lat: number | null, lng: number | null) =>
