@@ -108,42 +108,34 @@ describe("one place-grid geometry, shared", () => {
   });
 });
 
-// Places is one horizontal row per family. About 2.5 cards show, so the
-// next card peeks. Favs stays on the rounded 4:3 tile.
+// Places is one Instagram grid per rail (MESITA-2364): three square tiles
+// across, 2px gaps, wrapping — no sideways scroll. Favs stays on its tile.
 describe("Places is family rails", () => {
-  it("scrolls sideways at 2.5 cards and does not fill the row", () => {
+  it("lays each rail out as a 3-column Instagram grid beside its name", () => {
     const rails = read("components/consumer/home/CatalogRails.tsx");
     const tile = read("components/consumer/home/CatalogTile.tsx");
     expect(rails).toContain("placesFeed");
-    expect(rails).toContain("overflow-x-auto");
-    expect(rails).not.toContain("grid-cols-2");
+    expect(rails).toContain(
+      'const RAIL_GRID = "grid min-w-0 flex-1 grid-cols-3 content-start gap-0.5";',
+    );
+    expect(rails).not.toContain("overflow-x-auto");
+    expect(rails).not.toContain("cardWidth");
     expect(rails).not.toContain("FavoriteTile");
     expect(rails).not.toContain("ArrowUpDown");
-    // The rail's name runs vertically up the left of its cards (MESITA-2350).
+    // The rail's name runs vertically up the left (MESITA-2350), its emoji
+    // upright above it (MESITA-2354), in a column with a hairline (MESITA-2351).
     expect(rails).toContain("[writing-mode:vertical-rl]");
     expect(rails).toContain("rotate-180");
     expect(rails).toContain("data-rail-name");
-    // The emoji sits upright above the name, outside the rotated span
-    // (MESITA-2354).
     expect(rails.indexOf("data-rail-emoji")).toBeLessThan(
       rails.indexOf("min-h-0 rotate-180 truncate"),
     );
-    // One symmetric card size, no try-out control (MESITA-2360).
-    expect(rails).toContain('const cardWidth = "w-[calc(50%-23px)]";');
-    expect(rails).not.toContain('type="range"');
-    expect(rails).not.toContain("CARD_SIZES");
-    // …in its own column with a hairline and room before the cards
-    // (MESITA-2351), on the same surface as the cards (MESITA-2355).
     expect(rails).toContain('className="border-border relative w-10 shrink-0 border-r"');
-    expect(rails).toContain("scrollbar-hide flex min-w-0 flex-1 gap-1.5");
-    // One square card, half photo, half white band (MESITA-2344).
-    expect(tile).toContain("aspect-square");
-    expect(tile).not.toContain("aspect-[3/2]");
-    // Square corners (Pato, MESITA-2363: "not rounded borders").
-    expect(rails).toContain("aspect-square shrink-0 rounded-none");
-    expect(tile).toContain("flex aspect-square flex-col overflow-hidden border");
+    expect(rails).not.toContain('type="range"');
+    // The tile: full-bleed square, no border, no radius.
+    expect(tile).toContain("relative aspect-square min-w-0 overflow-hidden");
     expect(tile).not.toMatch(/rounded-(lg|xl|2xl)/);
-    expect(tile).toContain("border-border");
+    expect(tile).not.toContain("border-border");
     expect(tile).toContain("formatRating");
     expect(tile).not.toContain("place.zone");
     expect(tile).not.toContain("aspect-[1/2]");
