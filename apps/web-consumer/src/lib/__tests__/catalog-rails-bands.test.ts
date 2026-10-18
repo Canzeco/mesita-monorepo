@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import type { CatalogRail, Place } from "@/lib/api/places";
 import {
+  nearbyZones,
   GOOGLE_RAIL_KEY,
   MESITA_RAIL_KEY,
   placesChips,
@@ -36,11 +37,15 @@ describe("the Places chip row (MESITA-2366)", () => {
     expect(placesChips(RAILS).map((c) => c.emoji)).toEqual(["📍", "⭐", "☕", "🥐"]);
   });
 
-  it("pins the location control as its own bar above the categories (MESITA-2377)", () => {
-    expect(src).toContain("data-places-location");
-    expect(src).toContain("bg-card border-border sticky top-0 z-10");
-    expect(src.indexOf("data-places-location")).toBeLessThan(src.indexOf("chips.map(categoryRow)"));
+  it("puts WHERE above WHAT: a location group, a hairline, then the categories (MESITA-2378)", () => {
+    expect(src).toContain('aria-label="Location" data-places-location');
+    expect(src).toContain('aria-label="Category"');
+    expect(src.indexOf("data-places-location")).toBeLessThan(src.indexOf('aria-label="Category"'));
+    expect(src).toContain('"Current location"');
     expect(src).toContain('"Use my location"');
+    // Picking a zone searches from its centre.
+    expect(src).toContain("const from = origin ?? coords;");
+    expect(src).toContain("apiListCatalog(supabase, from)");
   });
 
   it("is a left column, one third wide, scrolling on its own, and opens on Mesita (MESITA-2367)", () => {
@@ -62,5 +67,46 @@ describe("the Places grid (MESITA-2366)", () => {
 
   it("uses semantic tokens only", () => {
     expect(src).not.toMatch(/bg-(zinc|gray|neutral|white)/);
+  });
+});
+
+describe("the three nearby zones (MESITA-2378)", () => {
+  const at = (id: string, zone: string | null, lat: number, lng: number): Place =>
+    ({ id, name: id, zone, lat, lng }) as Place;
+  const rails: CatalogRail[] = [
+    {
+      key: MESITA_RAIL_KEY,
+      label: "Mesita Selected",
+      source: "signal",
+      places: [
+        at("a", "Tecnologico", 25.65, -100.29),
+        at("b", "Tecnologico", 25.66, -100.29),
+        at("c", "Del Valle", 25.65, -100.36),
+        at("d", "Centro", 25.67, -100.31),
+        at("e", "Cumbres", 25.73, -100.4),
+        at("f", null, 25.7, -100.3),
+      ],
+    },
+    // The same place on a family rail counts once.
+    { key: "coffee", label: "Coffee", source: "family", places: [at("a", "Tecnologico", 25.65, -100.29)] },
+  ];
+
+  it("takes the three nearest to the guest, each centred on its places", () => {
+    const zones = nearbyZones(rails, { lat: 25.651, lng: -100.29 });
+    expect(zones.map((z) => z.name)).toEqual(["Tecnologico", "Centro", "Del Valle"]);
+    expect(zones[0].count).toBe(2);
+    expect(zones[0].lat).toBeCloseTo(25.655, 3);
+  });
+
+  it("without a location, takes the busiest, then by name", () => {
+    expect(nearbyZones(rails, null).map((z) => z.name)).toEqual([
+      "Tecnologico",
+      "Centro",
+      "Cumbres",
+    ]);
+  });
+
+  it("is empty when no place carries a zone", () => {
+    expect(nearbyZones([{ ...rails[0], places: [at("x", null, 1, 1)] }], null)).toEqual([]);
   });
 });

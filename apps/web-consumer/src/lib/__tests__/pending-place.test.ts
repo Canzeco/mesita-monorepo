@@ -128,6 +128,6 @@ describe("the open, the create and the Feed", () => {
     expect(rails).toContain("onPlaceCreated(() => reload.current())");
     expect(rails).toContain('fetchRails("keep")');
     expect(rails).toContain('mode === "keep") return;');
-    expect(rails).toContain("apiListCatalog(supabase, coords)");
+    expect(rails).toContain("apiListCatalog(supabase, from)");
   });
 });
