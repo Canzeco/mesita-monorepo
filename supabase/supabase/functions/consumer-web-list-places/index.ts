@@ -202,7 +202,7 @@ Deno.serve(async (req) => {
   }
 
   // Nearby pool admission: global operator filters plus Map floors
-  // (`discovery_config.map`). Swipe's maxDistanceKm is never applied here —
+  // (`discovery_config.map`). `filters.maxDistanceKm` is never applied here —
   // Nearby uses its own large radius + closest N of the selected Places
   // set. Pay / Home GET callers keep global filters only. Google
   // fill is client opt-in AND operator googleFill AND at least one Super on.

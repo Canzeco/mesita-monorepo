@@ -32,7 +32,6 @@ import { stripInternal } from "../_shared/place-pool-shape.ts";
 import type { PlaceProfileRow } from "../_shared/place-pool-shape.ts";
 import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
 import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
-import { DISCOVERY_EXTRA_COLUMNS } from "../_shared/discovery-place.ts";
 import {
   buildCatalogRails,
   type CatalogListPlace,
@@ -94,10 +93,12 @@ Deno.serve(async (req) => {
     : null;
   const radiusKm = cfg.map.radiusKm;
 
+  // Card columns only: no Area signal reads the summary vector, so the pool
+  // does not select it (MESITA-2328).
   const { data, error } = await selectedPoolQuery(
     admin
       .from("profiles")
-      .select(`${PLACE_CARD_COLUMNS}, ${DISCOVERY_EXTRA_COLUMNS}`)
+      .select(PLACE_CARD_COLUMNS)
       .eq("state", "active") as unknown as PoolBuilder,
     cfg,
     { center, radiusKm },

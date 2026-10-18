@@ -1,12 +1,12 @@
-// The shared place shape and two tiny helpers used by the place-reading
-// EFs (consumer-web-recommend-swipe, consumer-web-list-catalog). Was
-// `recommender-pool-shape.ts` until MESITA-1048.
+// The Feed's place shape and the helper that makes a row safe to return
+// (consumer-web-list-catalog). Was `recommender-pool-shape.ts` until
+// MESITA-1048.
 
 import type { WeeklyHours } from "./local-time.ts";
 import { withFamilyKeys } from "./place-family-keys.ts";
 
-// Shape of a candidate place row: the public place projection plus the one
-// internal column the pool still carries, `embedding`. stripInternal drops it
+// Shape of a candidate place row: the public place projection. `embedding`
+// is the one internal column a pool could carry; stripInternal drops it
 // before the row crosses back over the wire to a client.
 export type PlaceProfileRow = {
   id: string;
@@ -32,16 +32,10 @@ export type PlaceProfileRow = {
   city: string | null;
   photos: string[] | null;
   [key: string]: unknown;
-  // Paid OpenAI vector. Read by Catalog's cosine rank and the swipe summary's
-  // `embedded` count; never returned to a client.
-  embedding: unknown | null;
+  // Paid OpenAI vector. No pool selects it since its last reader, the Swipe
+  // deck, retired (MESITA-2328); never returned to a client.
+  embedding?: unknown | null;
 };
-
-export function clampPositive(v: unknown, def: number, max: number): number {
-  const n = typeof v === "number" ? v : Number(v);
-  if (!Number.isFinite(n) || n <= 0) return def;
-  return Math.min(n, max);
-}
 
 // TWO jobs, both load-bearing — do not "simplify" this away:
 //   1. Drops the internal `embedding` column so the row is safe to return to a

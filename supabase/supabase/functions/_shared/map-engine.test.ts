@@ -12,7 +12,6 @@ import { nearbyTypesForSupers } from "./google-type-super.ts";
 import {
   admitGuestMinReviews,
   admitMapCatalog,
-  admitSwipeCatalog,
   clearsMinReviews,
   enabledNearbyTypes,
   evaluatePlaceForMap,
@@ -115,8 +114,9 @@ Deno.test("unrated Google stubs drop when a rating or popularity floor is on", (
   assertEquals(googleHitClearsMapFloors(hit({ rating: 4.2 }), pop), true);
 });
 
-Deno.test("minPopularity uses popularity() — unrated listed miss a high floor", () => {
-  // Default popularity() on an unrated row is the prior stretched to ~0.6.
+Deno.test("minPopularity reads the Area pipeline's Popularity — unrated scores 0 (MESITA-2328)", () => {
+  // ln(1 + 4.8 × 200) / ln(1 + 4.5 × 1000) ≈ 0.82 against the default
+  // reference; an unrated row scores 0, so any floor above 0 drops it.
   const high = { ...MAP, minPopularity: 0.7 };
   assertEquals(
     listedClearsMapPopularity({
@@ -130,6 +130,23 @@ Deno.test("minPopularity uses popularity() — unrated listed miss a high floor"
       google_stars_overall: 4.8,
       google_review_count: 200,
     }, high),
+    true,
+  );
+  assertEquals(
+    listedClearsMapPopularity({
+      google_stars_overall: null,
+      google_review_count: null,
+    }, { ...MAP, minPopularity: 0.01 }),
+    false,
+  );
+  // The operator's reference moves the score: a 100-review reference makes
+  // the same place a full 1.
+  assertEquals(
+    listedClearsMapPopularity(
+      { google_stars_overall: 4.5, google_review_count: 100 },
+      { ...MAP, minPopularity: 0.99 },
+      { referenceRating: 4.5, referenceReviews: 100 },
+    ),
     true,
   );
 });
@@ -214,31 +231,21 @@ Deno.test("evaluatePlaceForMap ignores stored family switches and still applies 
   if (!low.eligible) assertEquals(low.code, "below_min_rating");
 });
 
-Deno.test("admitSwipeCatalog keeps listed F&B and spas, drops hotels, never Google", () => {
-  const listed = [
-    { id: "rest", category: "thai_restaurant" },
-    { id: "bar", category: "bar" },
-    { id: "hotel", category: "hotel" },
-    { id: "spa", category: "spa" },
-    { id: "unk", category: "undefined" },
-  ];
-  const got = admitSwipeCatalog(listed, MAP);
-  assertEquals(got.map((r) => r.id), ["rest", "bar", "spa", "unk"]);
+Deno.test("Map types admit F&B, bars and spas, and drop hotels", () => {
+  const admits = (category: string) => primaryTypeClearsMapTypes(category, MAP);
+  assertEquals(
+    ["thai_restaurant", "bar", "hotel", "spa", "undefined"].filter(admits),
+    ["thai_restaurant", "bar", "spa", "undefined"],
+  );
 });
 
-Deno.test("admitSwipeCatalog ignores stored family switches", () => {
+Deno.test("Map types ignore stored family switches", () => {
   const barsOnly = {
     ...MAP,
     supers: { ...supersAllOff(), night_out: true },
   };
-  const listed = [
-    { id: "rest", category: "restaurant" },
-    { id: "club", category: "night_club" },
-  ];
-  assertEquals(admitSwipeCatalog(listed, barsOnly).map((r) => r.id), [
-    "rest",
-    "club",
-  ]);
+  assertEquals(primaryTypeClearsMapTypes("restaurant", barsOnly), true);
+  assertEquals(primaryTypeClearsMapTypes("night_club", barsOnly), true);
 });
 
 Deno.test("Atlas leftover slugs admit via Super membership, not Google type", () => {

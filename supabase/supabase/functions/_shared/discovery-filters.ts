@@ -12,10 +12,14 @@
 // These are OPERATOR pool policy: catalog-wide admission rules a guest never
 // sees, cannot express, and cannot override.
 //
-// EVERY FILTER IS A QUERY PREDICATE. The pool is capped (POOL_CAP) before
-// anything ranks, so a filter applied after the fetch does not narrow the
-// catalog — it thins the deck the guest actually receives. Push it into the
-// WHERE clause or leave it out of this module.
+// EVERY FILTER IS A QUERY PREDICATE. A pool is capped before anything ranks,
+// so a filter applied after the fetch does not narrow the catalog — it thins
+// the page the guest actually receives. Push it into the WHERE clause or
+// leave it out of this module.
+//
+// The one reader left is consumer-web-list-places' listed lanes, which pass
+// no guest location, so `maxDistanceKm` boxes nothing since the Swipe deck
+// retired (MESITA-2328).
 //
 // The one honest exception is the exact-distance trim, and it is marked as
 // such below.

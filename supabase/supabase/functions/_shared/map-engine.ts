@@ -10,12 +10,16 @@
 // Google hits only, after Google answers (`guestReviewFloor`). Name Google
 // categories live on discovery_config.name. `googleFill` gates Nearby.
 //
-// Swipe listed admission uses the same type batteries + floors (Pato:
-// only Mesita restaurants/partners+listed, never Google-only / types
-// Map would not show). Pay / Home catalog keep `discovery_config.filters`.
+// `minPopularity` reads the Area pipeline's Popularity (pipeline-signals.ts)
+// since the old seven-signal library retired (MESITA-2328). Listed rows
+// without a Google ask keep `discovery_config.filters`.
 // A SIGNAL DEMOTES; a MAP FLOOR EXCLUDES.
 
-import type { DiscoveryFilters, MapConfig } from "./discovery-config.ts";
+import type {
+  DiscoveryFilters,
+  MapConfig,
+  SignalParams,
+} from "./discovery-config.ts";
 import {
   NEARBY_TYPE_KEYS,
   type NearbyTypeKey,
@@ -25,9 +29,9 @@ import {
 import { nearbyTypesForSupers } from "./google-type-super.ts";
 import {
   popularity,
-  type SignalParamBag,
-  type SignalPlace,
-} from "./discovery-signals.ts";
+  POPULARITY_REFERENCE_RATING_DEFAULT,
+  POPULARITY_REFERENCE_REVIEWS_DEFAULT,
+} from "./pipeline-signals.ts";
 import type { NearbyHit, PlacesScope } from "./nearby-places.ts";
 import { type EligibilityResult, familiesForGoogleType } from "./sourcing.ts";
 import { familiesForAtlasCategory } from "./place-taxonomy.ts";
@@ -37,21 +41,6 @@ export type ListedMapRow = {
   google_stars_overall?: number | null;
   google_review_count?: number | null;
 };
-
-function popPlace(
-  rating: number | null,
-  reviews: number | null,
-): SignalPlace {
-  return {
-    lat: null,
-    lng: null,
-    hours: null,
-    category: null,
-    rating,
-    user_ratings_total: reviews,
-    embedding: null,
-  };
-}
 
 /**
  * Stricter of global operator filters and Map floors, for the Mesita
@@ -168,19 +157,27 @@ export function mapShouldFillGoogle(
   return clientOptIn && map.googleFill && enabledNearbyTypes(map).length > 0;
 }
 
+/**
+ * The Map popularity floor, on the Area pipeline's Popularity: 0..1 against
+ * the operator's reference (`params.popularity`). An unrated place scores 0,
+ * so any floor above 0 drops it, the same reading as a Google stub.
+ */
 export function listedClearsMapPopularity(
   place: ListedMapRow,
   map: MapConfig,
-  params?: SignalParamBag,
+  reference?: SignalParams["popularity"],
 ): boolean {
   if (!(map.minPopularity > 0)) return true;
   const score = popularity(
-    popPlace(
-      place.google_stars_overall ?? null,
-      place.google_review_count ?? null,
-    ),
-    undefined,
-    params,
+    {
+      rating: place.google_stars_overall ?? null,
+      reviewCount: place.google_review_count ?? null,
+    },
+    {
+      rating: reference?.referenceRating ?? POPULARITY_REFERENCE_RATING_DEFAULT,
+      reviews: reference?.referenceReviews ??
+        POPULARITY_REFERENCE_REVIEWS_DEFAULT,
+    },
   );
   return score >= map.minPopularity;
 }
@@ -216,34 +213,15 @@ export function admitMapCatalog<T extends ListedMapRow>(
   listed: T[],
   google: NearbyHit[],
   map: MapConfig,
-  params?: SignalParamBag,
+  reference?: SignalParams["popularity"],
 ): { listed: T[]; google: NearbyHit[] } {
   const admittedListed = listed.filter((row) =>
-    listedClearsMapPopularity(row, map, params)
+    listedClearsMapPopularity(row, map, reference)
   );
   const admittedGoogle = google.filter((hit) =>
     googleHitClearsMapFloors(hit, map)
   );
   return { listed: admittedListed, google: admittedGoogle };
-}
-
-/**
- * Swipe pool: listed Mesita rows that clear Map types + popularity.
- * Never takes Google hits; Swipe does not fill.
- */
-export type SwipeListedRow = ListedMapRow & {
-  category?: string | null;
-};
-
-export function admitSwipeCatalog<T extends SwipeListedRow>(
-  listed: T[],
-  map: MapConfig,
-  params?: SignalParamBag,
-): T[] {
-  const typed = listed.filter((row) =>
-    primaryTypeClearsMapTypes(row.category, map)
-  );
-  return admitMapCatalog(typed, [], map, params).listed;
 }
 
 export type MapPlaceSignals = {
