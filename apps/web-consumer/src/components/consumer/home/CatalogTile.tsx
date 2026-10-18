@@ -65,10 +65,10 @@ function readableKind(place: Place): string | null {
 }
 
 /**
- * One place in a rail, as an Instagram grid tile (Pato, MESITA-2364): the
- * square photo edge to edge, the name and price · category · stars over an
- * solid white band at its foot, the save heart top right. No zone. An enriched
- * place wears the Enriched mark after its name
+ * One place, as one square tile (Pato, MESITA-2364, MESITA-2369): the photo
+ * edge to edge, the name and price · category · stars on a see-through
+ * reflection band across its foot, the heart top right. No zone. An
+ * enriched place wears the Enriched mark after its name
  * (MESITA-2296). Favs does not use this tile. A Google-only card opens its
  * profile through `onOpenGoogle` and has no save heart: only a Mesita place
  * can be saved.
@@ -96,11 +96,39 @@ export function CatalogTile({
   const ratingLabel = formatRating(place.google_rating);
   const meta = [priceLabel, kind].filter(Boolean).join(" · ");
 
-  // An Instagram grid tile (Pato, MESITA-2364): the photo — or the Google
-  // card's emoji tile — fills the square edge to edge, no border, no radius.
-  // The info lies on a solid white band at the foot, dark text — no
-  // gradient (Pato, MESITA-2365: "either transparent or completely white");
-  // the heart sits top right.
+  // The photo, or the Google card's emoji tile. Drawn twice: filling the
+  // square, and flipped inside the info band as its reflection.
+  const media = (mirrored: boolean) =>
+    photo ? (
+      <Image
+        src={photo}
+        alt=""
+        fill
+        sizes="(max-width: 448px) 66vw, 300px"
+        className={cn("object-cover", mirrored && "-scale-y-100")}
+      />
+    ) : (
+      <div
+        className={cn(
+          "bg-pink-gradient absolute inset-0 flex items-center justify-center text-white/90",
+          mirrored && "-scale-y-100",
+        )}
+        data-placeholder={placeholder.kind}
+      >
+        <span
+          className="font-display text-3xl font-bold tracking-tight"
+          aria-hidden
+        >
+          {placeholder.text}
+        </span>
+      </div>
+    );
+
+  // ONE square (Pato, MESITA-2369): the photo fills it edge to edge, cropped
+  // as needed — no border, no radius. The bottom third is the photo's
+  // reflection under a 50% ink layer, so the info reads as part of the
+  // square, not a box under it (the solid white band of MESITA-2365 read as
+  // two parts). The heart sits top right.
   return (
     <li className={cn("relative aspect-square min-w-0 overflow-hidden", className)}>
       <TileLink
@@ -110,51 +138,38 @@ export function CatalogTile({
         label={place.name}
         className="focus-visible:ring-primary absolute inset-0 block outline-none focus-visible:ring-2 focus-visible:ring-inset"
       >
-        <div className="bg-muted absolute inset-0">
-          {photo ? (
-            <Image
-              src={photo}
-              alt=""
-              fill
-              sizes="(max-width: 448px) 30vw, 150px"
-              className="object-cover"
-            />
-          ) : (
-            <div
-              className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-white/90"
-              data-placeholder={placeholder.kind}
-            >
-              <span
-                className="font-display text-3xl font-bold tracking-tight"
-                aria-hidden
-              >
-                {placeholder.text}
-              </span>
-            </div>
-          )}
-        </div>
+        <div className="bg-muted absolute inset-0">{media(false)}</div>
         <div
-          className="bg-card absolute inset-x-0 bottom-0 px-1.5 py-1"
+          className="absolute inset-x-0 bottom-0 h-1/3 overflow-hidden"
           data-tile-info
         >
-          <p className="font-display text-foreground flex min-w-0 items-center gap-1 text-xs leading-tight font-semibold tracking-tight">
-            <span className="truncate">{place.name}</span>
-            {isEnrichedPlace(place) ? (
-              <EnrichedBadge className="h-3 w-3 shrink-0" />
-            ) : null}
-          </p>
-          {meta || ratingLabel ? (
-            <p className="text-muted-foreground mt-0.5 flex min-w-0 items-center gap-1 text-xs leading-tight">
-              {meta ? <span className="truncate">{meta}</span> : null}
-              {ratingLabel ? (
-                <span className="inline-flex shrink-0 items-center gap-0.5">
-                  {meta ? <span aria-hidden>·</span> : null}
-                  <Star className="fill-foreground text-foreground h-3 w-3" />
-                  {ratingLabel}
-                </span>
+          <div className="absolute inset-0" aria-hidden>
+            {media(true)}
+          </div>
+          <div
+            className="bg-foreground/50 absolute inset-0 backdrop-blur-sm"
+            aria-hidden
+          />
+          <div className="relative flex h-full flex-col justify-center px-2.5">
+            <p className="font-display text-paper flex min-w-0 items-center gap-1 text-sm leading-tight font-semibold tracking-tight">
+              <span className="truncate">{place.name}</span>
+              {isEnrichedPlace(place) ? (
+                <EnrichedBadge className="h-3.5 w-3.5 shrink-0" />
               ) : null}
             </p>
-          ) : null}
+            {meta || ratingLabel ? (
+              <p className="text-paper/80 mt-0.5 flex min-w-0 items-center gap-1 text-xs leading-tight">
+                {meta ? <span className="truncate">{meta}</span> : null}
+                {ratingLabel ? (
+                  <span className="inline-flex shrink-0 items-center gap-0.5">
+                    {meta ? <span aria-hidden>·</span> : null}
+                    <Star className="fill-paper text-paper h-3 w-3" />
+                    {ratingLabel}
+                  </span>
+                ) : null}
+              </p>
+            ) : null}
+          </div>
         </div>
       </TileLink>
       {google ? null : (

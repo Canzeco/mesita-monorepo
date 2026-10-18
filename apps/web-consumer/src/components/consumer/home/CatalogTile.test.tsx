@@ -85,23 +85,23 @@ describe("a Google-only card's image is a placeholder, never a photo (MESITA-229
   });
 });
 
-describe("the tile is an Instagram grid square (MESITA-2364)", () => {
-  it("fills the square with the photo and lays the info on a solid white band", () => {
+describe("the tile is one square with a reflection band (MESITA-2364, MESITA-2369)", () => {
+  it("fills the square with the photo; the bottom third is its reflection under 50% ink", () => {
     const html = tile({ photos: ["https://example.com/a.jpg"], price_level: 2 });
-    expect(html).toContain("aspect-square");
-    expect(html.match(/<img/g)?.length).toBe(1);
-    expect(html).toContain("data-tile-info");
-    // A solid white band, no gradient (MESITA-2365).
-    expect(html).toContain('class="bg-card absolute inset-x-0 bottom-0 px-1.5 py-1"');
+    expect(html).toContain("relative aspect-square min-w-0 overflow-hidden");
+    expect(html.match(/<img/g)?.length).toBe(2);
+    expect(html).toContain("-scale-y-100");
+    expect(html).toContain("bg-foreground/50");
+    expect(html).toContain("absolute inset-x-0 bottom-0 h-1/3 overflow-hidden");
+    expect(html).toContain("text-paper");
     expect(html).not.toContain("bg-gradient-to-t");
-    expect(html).not.toContain("-scale-y-100");
     expect(html).not.toMatch(/rounded-(lg|xl|2xl)/);
     expect(html.indexOf("<img")).toBeLessThan(html.indexOf(">Casa<"));
   });
 
-  it("a Google card fills the square with its emoji tile, still no photo", () => {
+  it("a Google card reflects its emoji tile, still with no photo", () => {
     const html = tile({ id: "g:ChIJx", googleOnly: true, family_keys: ["tacos"] });
     expect(html).not.toContain("<img");
-    expect(html.match(/data-placeholder="emoji"/g)?.length).toBe(1);
+    expect(html.match(/data-placeholder="emoji"/g)?.length).toBe(2);
   });
 });
