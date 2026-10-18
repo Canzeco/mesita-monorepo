@@ -99,9 +99,11 @@ export function placesChips(): {
   key: string;
   label: string;
   emoji?: string;
+  /** Social: not built yet (MESITA-2168). */
+  soon?: boolean;
 }[] {
   return [
-    { key: SOCIAL_CHIP, label: "Social", emoji: "👥" },
+    { key: SOCIAL_CHIP, label: "Social", emoji: "👥", soon: true },
     { key: FAVORITES_CHIP, label: "Favorites", emoji: "❤️" },
     { key: FEATURED_CHIP, label: "Featured", emoji: "✨" },
     ...FILTERABLE_PLACE_FAMILIES.map((f) => ({
@@ -288,13 +290,26 @@ export function CatalogRails() {
     });
   };
 
-  const categoryRow = (c: { key: string; label: string; emoji?: string }) => (
+  // A Soon row reads different (Pato, MESITA-2408): its label muted at rest,
+  // a quiet "Soon" under it. The column is a quarter wide, so the tag stacks
+  // rather than sitting beside the label.
+  const categoryRow = (c: {
+    key: string;
+    label: string;
+    emoji?: string;
+    soon?: boolean;
+  }) => (
     <li key={c.key}>
       <button
         type="button"
         onClick={() => setChip(c.key)}
         aria-pressed={chip === c.key}
-        className={cn(ROW_BASE, chip === c.key ? ROW_ON : ROW_OFF)}
+        className={cn(
+          ROW_BASE,
+          chip === c.key ? ROW_ON : ROW_OFF,
+          c.soon && chip !== c.key && "text-muted-foreground",
+        )}
+        data-places-soon={c.soon ? "" : undefined}
       >
         {chip === c.key ? (
           <span
@@ -307,7 +322,16 @@ export function CatalogRails() {
             {c.emoji}
           </span>
         ) : null}
-        <span className="min-w-0 break-words">{c.label}</span>
+        {c.soon ? (
+          <span className="flex min-w-0 flex-col">
+            <span className="break-words">{c.label}</span>
+            <span className="text-muted-foreground type-meta font-medium tracking-wide uppercase">
+              Soon
+            </span>
+          </span>
+        ) : (
+          <span className="min-w-0 break-words">{c.label}</span>
+        )}
       </button>
     </li>
   );
