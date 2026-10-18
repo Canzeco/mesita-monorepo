@@ -52,8 +52,8 @@ describe("the Places chip row (MESITA-2366)", () => {
 });
 
 describe("the Places grid (MESITA-2366)", () => {
-  it("is the right two thirds, one square tile per row, scrolling on its own (MESITA-2367)", () => {
-    expect(src).toContain('const PLACES_LIST = "grid grid-cols-1 content-start gap-0.5";');
+  it("is the right two thirds, one square tile per row with 6px room around, scrolling on its own (MESITA-2367, MESITA-2370)", () => {
+    expect(src).toContain('const PLACES_LIST = "grid grid-cols-1 content-start gap-1.5 px-1.5 pt-1.5";');
     expect(src).toContain("w-2/3 flex-col overflow-y-auto");
     expect(src).not.toContain("writing-mode");
     expect(src).not.toContain("data-band");

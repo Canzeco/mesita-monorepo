@@ -54,8 +54,9 @@ import { placesFeed } from "@/lib/catalog-feed";
 export const MESITA_RAIL_KEY = "mesita_selected";
 export const GOOGLE_RAIL_KEY = "google_places";
 
-/** One square tile per row, 2px apart (MESITA-2367). */
-const PLACES_LIST = "grid grid-cols-1 content-start gap-0.5";
+/** One square tile per row (MESITA-2367), 6px of room above, left and right
+ *  and between tiles — one space size (Pato, MESITA-2370). */
+const PLACES_LIST = "grid grid-cols-1 content-start gap-1.5 px-1.5 pt-1.5";
 
 const ROW_BASE =
   "relative flex w-full items-center gap-1.5 px-3 py-3.5 text-left text-sm leading-tight transition";
