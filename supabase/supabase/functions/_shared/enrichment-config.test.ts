@@ -34,8 +34,26 @@ Deno.test("normalizeEnrichmentConfig: live-shaped blob round-trips", () => {
     atlasDiscoverOpentableN: 3,
     atlasDiscoverUbereatsN: 3,
     atlasRequestThreshold: 5,
+    atlasCreateOnOpenConsumer: true,
+    atlasCreateOnOpenAdmin: false,
   };
   assertEquals(normalizeEnrichmentConfig(live), live);
+});
+
+Deno.test("normalizeEnrichmentConfig: Create-on-open is one switch per app, on unless stored false (MESITA-2298)", () => {
+  assertEquals(DEFAULT_ENRICHMENT_CONFIG.atlasCreateOnOpenConsumer, true);
+  assertEquals(DEFAULT_ENRICHMENT_CONFIG.atlasCreateOnOpenAdmin, true);
+  // An old blob without the keys keeps today's behavior: opens create.
+  const old = normalizeEnrichmentConfig({ atlasRequestThreshold: 5 });
+  assertEquals(old.atlasCreateOnOpenConsumer, true);
+  assertEquals(old.atlasCreateOnOpenAdmin, true);
+  // Only a stored `false` turns one off; garbage is not "off".
+  const off = normalizeEnrichmentConfig({
+    atlasCreateOnOpenConsumer: false,
+    atlasCreateOnOpenAdmin: "no",
+  });
+  assertEquals(off.atlasCreateOnOpenConsumer, false);
+  assertEquals(off.atlasCreateOnOpenAdmin, true);
 });
 
 Deno.test("normalizeEnrichmentConfig: out-of-range ints clamp to the old CHECKs", () => {

@@ -25,6 +25,8 @@ const seed: CrenupSettings = {
   discoverOpentableN: 3,
   discoverUbereatsN: 0,
   requestThreshold: 5,
+  createOnOpenConsumer: true,
+  createOnOpenAdmin: true,
 };
 
 describe("clampFunnel", () => {

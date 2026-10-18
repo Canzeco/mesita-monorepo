@@ -18,6 +18,7 @@ import {
   Collapsible,
   NumberField,
   SectionCard,
+  Switch,
   TextAreaField,
 } from "@/components/admin-ui/config";
 import { chipsFor, flowTagFor } from "./crenup-steps";
@@ -59,6 +60,31 @@ const CREATE_BOX_HREF = "/manage-multiple#create";
 
 const MAX_DISCOVERY_CANDIDATES = 10;
 
+
+/** One Create-on-open switch (MESITA-2298): the label, the hint, the toggle. */
+function CreateOnOpenRow({
+  label,
+  hint,
+  on,
+  pending,
+  onToggle,
+}: {
+  label: string;
+  hint: string;
+  on: boolean;
+  pending: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="border-border bg-card flex items-center justify-between gap-4 rounded-xl border px-3 py-2.5">
+      <div className="min-w-0">
+        <p className="text-sm font-medium leading-snug">{label}</p>
+        <p className="text-muted-foreground mt-0.5 type-meta">{hint}</p>
+      </div>
+      <Switch on={on} pending={pending} onClick={onToggle} label={label} />
+    </div>
+  );
+}
 
 export function CrenupClient({
   view,
@@ -122,6 +148,8 @@ export function CrenupClient({
         discoverOpentableN: settings.discoverOpentableN,
         discoverUbereatsN: settings.discoverUbereatsN,
         requestThreshold: settings.requestThreshold,
+        createOnOpenConsumer: settings.createOnOpenConsumer,
+        createOnOpenAdmin: settings.createOnOpenAdmin,
       });
       if (r.ok) {
         setSavedSettings(settings);
@@ -233,6 +261,34 @@ export function CrenupClient({
                 Auto-enrich after this many Enrich-tab votes. Admin Enrich skips
                 the wait.
               </p>
+              <div className="mt-4 flex flex-col gap-3">
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  A Google result in a list is not a profile. Browsing the map,
+                  the Feed or a search list never creates one; tapping a pin or
+                  seeing a card never creates one. Opening the full profile
+                  does: Mesita looks the place up by its Google Place ID and
+                  creates its Mesita Place if none exists. Each app has its own
+                  switch.
+                </p>
+                <CreateOnOpenRow
+                  label="Create the profile on open · consumer app"
+                  hint="A guest opens a Google-only place from Map, the Feed, or Word."
+                  on={settings.createOnOpenConsumer}
+                  pending={pending}
+                  onToggle={() =>
+                    patch({ createOnOpenConsumer: !settings.createOnOpenConsumer })
+                  }
+                />
+                <CreateOnOpenRow
+                  label="Create the profile on open · admin app"
+                  hint="An admin opens a Google-only row from Single Place › Find."
+                  on={settings.createOnOpenAdmin}
+                  pending={pending}
+                  onToggle={() =>
+                    patch({ createOnOpenAdmin: !settings.createOnOpenAdmin })
+                  }
+                />
+              </div>
               {/* This page CONFIGURES Create; it does not run it. The door is
                   Multiple Places › Create, same idiom as the Models section's jump. */}
               <p className="text-muted-foreground mt-3 text-sm">

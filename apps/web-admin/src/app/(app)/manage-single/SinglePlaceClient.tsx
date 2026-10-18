@@ -54,7 +54,12 @@ export type View =
 
 type Note = { state: BatchRowState; text: string };
 
-export function SinglePlaceClient() {
+export function SinglePlaceClient({
+  createOnOpen = true,
+}: {
+  /** Creation › "Create the profile on open · admin app" (MESITA-2298). */
+  createOnOpen?: boolean;
+} = {}) {
   const router = useRouter();
   const [text, setText] = useState("");
   const [busy, setBusy] = useState<"find" | "create" | null>(null);
@@ -235,6 +240,36 @@ export function SinglePlaceClient() {
     setRowNotes((n) => ({ ...n, [googleId]: rowNote }));
   }
 
+  /** With Create-on-open on (Configurations › Creation), a Google-only row's
+   *  name creates the place and opens it, the way a guest's tap does
+   *  (MESITA-2298). The EF re-checks the switch. */
+  async function openGoogleRow(row: FindRow) {
+    const googleId = row.googleId;
+    if (!googleId || isBusy || rowNotes[googleId]?.state === "running") return;
+    setRowNotes((n) => ({ ...n, [googleId]: { state: "running", text: "Opening…" } }));
+    let rowNote: RowNote;
+    let openId: string | null = null;
+    try {
+      const r = await createPlaceFromGooglePlaceId(googleId, { onOpen: true });
+      if (r.ok) {
+        setAdded((m) => new Map(m).set(googleId, r.placeId));
+        setCatalog(null);
+        setCatalogTotal(null);
+        openId = r.placeId;
+        rowNote = {
+          state: r.alreadyExisted ? "existed" : "ok",
+          text: r.alreadyExisted ? "Already on Mesita" : "Created · not enriched",
+        };
+      } else {
+        rowNote = { state: "error", text: r.error };
+      }
+    } catch (err) {
+      rowNote = { state: "error", text: err instanceof Error ? err.message : "Unexpected error" };
+    }
+    setRowNotes((n) => ({ ...n, [googleId]: rowNote }));
+    if (openId) open(openId);
+  }
+
   /** Same Enrich as the Admin card. Starting… while the call is in flight,
    *  then Enriching. A second click does nothing. Failure puts the verbs back. */
   async function enrichRow(row: FindRow, depth: EnrichDepth) {
@@ -371,6 +406,7 @@ export function SinglePlaceClient() {
             disabled={isBusy}
             variant={view.variant}
             onOpen={(row) => void openRow(row)}
+            onOpenGoogle={createOnOpen ? (row) => void openGoogleRow(row) : undefined}
             onAdd={(row) => void addRow(row)}
             onEnrich={(row, depth) => void enrichRow(row, depth)}
             startingIds={startingIds}

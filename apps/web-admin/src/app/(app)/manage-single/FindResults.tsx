@@ -90,6 +90,7 @@ export function FindResults({
   notes,
   disabled,
   onOpen,
+  onOpenGoogle,
   onAdd,
   onEnrich,
   startingIds = NO_IDS,
@@ -104,6 +105,10 @@ export function FindResults({
   notes: Readonly<Record<string, RowNote>>;
   disabled: boolean;
   onOpen: (row: FindRow) => void;
+  /** Set when Creation › Create-on-open (admin app) is on: a Google-only
+   *  row's name creates the place and opens it (MESITA-2298). Unset, the
+   *  name links to Google Maps and only the Create button mints. */
+  onOpenGoogle?: (row: FindRow) => void;
   onAdd: (row: FindRow) => void;
   onEnrich?: (row: FindRow, depth: EnrichDepth) => void;
   /** Mesita ids whose Enrich click has not been accepted yet. */
@@ -231,7 +236,13 @@ export function FindResults({
                     <span className="mb-1 inline-flex sm:hidden">
                       <HeldCell row={row} />
                     </span>
-                    <NameCell row={row} id={rowNameId(i)} disabled={disabled} onOpen={onOpen} />
+                    <NameCell
+                      row={row}
+                      id={rowNameId(i)}
+                      disabled={disabled}
+                      onOpen={onOpen}
+                      onOpenGoogle={onOpenGoogle}
+                    />
                     {row.address ? (
                       <span className="text-muted-foreground block truncate type-label">
                         {row.address}
@@ -330,11 +341,13 @@ function NameCell({
   id,
   disabled,
   onOpen,
+  onOpenGoogle,
 }: {
   row: FindRow;
   id: string;
   disabled: boolean;
   onOpen: (row: FindRow) => void;
+  onOpenGoogle?: (row: FindRow) => void;
 }) {
   const name =
     "block truncate font-medium underline underline-offset-4 text-(--brand-pink-text) decoration-(--brand-pink-text) visited:text-(--brand-pink-900) visited:decoration-(--brand-pink-900) " +
@@ -354,6 +367,21 @@ function NameCell({
         type="button"
         disabled={disabled}
         onClick={() => onOpen(row)}
+        className={`${name} max-w-full text-left disabled:opacity-60`}
+      >
+        {row.name}
+      </button>
+    );
+  }
+  if (row.googleId && onOpenGoogle) {
+    // Create on open (MESITA-2298): the name mints the place and opens it.
+    return (
+      <button
+        id={id}
+        type="button"
+        disabled={disabled}
+        onClick={() => onOpenGoogle(row)}
+        aria-label={`Open ${row.name} on Mesita`}
         className={`${name} max-w-full text-left disabled:opacity-60`}
       >
         {row.name}

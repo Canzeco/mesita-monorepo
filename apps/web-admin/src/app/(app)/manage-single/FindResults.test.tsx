@@ -191,6 +191,25 @@ describe("Find › one table", () => {
     expect(html).toContain('target="_blank"');
   });
 
+  it("with Create-on-open on, a Google-only row's name creates and opens it (MESITA-2298)", () => {
+    const html = renderToStaticMarkup(
+      <FindResults
+        query="q"
+        result={OK}
+        added={new Map()}
+        notes={{}}
+        disabled={false}
+        onOpen={() => {}}
+        onOpenGoogle={() => {}}
+        onAdd={() => {}}
+      />,
+    );
+    expect(html).toContain('aria-label="Open Dos Amores Brunch &amp; Meal on Mesita"');
+    expect(html).not.toContain("opens Google Maps in a new tab");
+    // The explicit Create button stays beside it.
+    expect(html).toContain('aria-label="Create Dos Amores Brunch &amp; Meal on Mesita"');
+  });
+
   it("draws general state columns, and Found stays off the table", () => {
     const html = render({
       rows: [

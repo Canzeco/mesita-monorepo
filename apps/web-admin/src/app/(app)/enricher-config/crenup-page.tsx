@@ -32,6 +32,8 @@ const SETTINGS_FALLBACK: CrenupSettings = {
   discoverOpentableN: 3,
   discoverUbereatsN: 0,
   requestThreshold: 5,
+  createOnOpenConsumer: true,
+  createOnOpenAdmin: true,
 };
 
 const TITLE: Record<CrenupView, string> = {
@@ -70,6 +72,8 @@ export async function CrenupPage({ view }: { view: CrenupView }) {
               discoverOpentableN: settings.data.atlasDiscoverOpentableN,
               discoverUbereatsN: settings.data.atlasDiscoverUbereatsN,
               requestThreshold: settings.data.atlasRequestThreshold ?? 5,
+              createOnOpenConsumer: settings.data.atlasCreateOnOpenConsumer !== false,
+              createOnOpenAdmin: settings.data.atlasCreateOnOpenAdmin !== false,
             }
           : SETTINGS_FALLBACK
       }

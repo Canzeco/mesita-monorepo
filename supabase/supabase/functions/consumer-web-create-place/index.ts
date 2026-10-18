@@ -7,6 +7,8 @@
 // runs the shared core and answers 201 with `created: true`:
 //   1. authenticate the consumer,
 //   2. look the id up; an existing row opens at once,
+//   2b. Configurations › Creation › "Create the profile on open · consumer
+//       app" must be on, else 403 `create_on_open_off` (no quota, no Google),
 //   3. createMinimalPlace (_shared/create-place.ts): dedupe → Google spine →
 //      save ready + enriched_at null. Does NOT seed Enricher. Guests vote
 //      on the Enrich tab; the Crenup threshold queues Enricher 1–8.
@@ -32,6 +34,8 @@ import {
   openedExistingPlace,
 } from "../_shared/create-place.ts";
 import { consumeConsumerCreateQuota } from "../_shared/create-quota.ts";
+import { normalizeEnrichmentConfig } from "../_shared/enrichment-config.ts";
+import { readAppConfig } from "../_shared/write-config.ts";
 
 type Body = { googlePlaceId?: string };
 
@@ -61,6 +65,28 @@ Deno.serve(async (req) => {
   // Get: a place Mesita holds opens without spending quota or Google money.
   const existing = await findPlaceByGooglePlaceId(admin, googlePlaceId);
   if (existing) return json(openedExistingPlace(existing), 200);
+
+  // The operator's switch, read before any spend: off means a Google-only
+  // result stays Google's when a guest opens it.
+  const creation = await readAppConfig(
+    admin,
+    "enrichment_config",
+    "enrichment_config_read",
+  );
+  if (!creation.ok) return creation.response;
+  const createOnOpen = normalizeEnrichmentConfig(
+    creation.row?.enrichment_config,
+  ).atlasCreateOnOpenConsumer;
+  if (!createOnOpen) {
+    return json(
+      {
+        ok: false,
+        code: "create_on_open_off",
+        error: "This place isn't on Mesita yet.",
+      },
+      403,
+    );
+  }
 
   // Per-consumer rolling 24 h quota — every CREATE attempt is metered BEFORE
   // any Google spend (create-quota.ts has the abuse rationale).

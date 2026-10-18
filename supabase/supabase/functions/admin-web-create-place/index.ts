@@ -7,6 +7,12 @@
 // Enrich / Create+Enrich is a second call; guests vote on the Enrich tab.
 // Core: createMinimalPlace (_shared/create-place.ts), which never seeds Enricher.
 //
+// `onOpen: true` marks a create that an OPEN caused (a Google-only row's
+// name on Single Place › Find, MESITA-2298): Configurations › Creation ›
+// "Create the profile on open · admin app" gates it with 403
+// `create_on_open_off`. The explicit Create button sends no flag and is
+// never gated.
+//
 // Roles are simple now: admins create from the admin app via THIS function.
 // business-web-create-place retired with web-business (MESITA-2090).
 //
@@ -26,8 +32,10 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv, requireSuperAdmin } from "../_shared/auth.ts";
 import { createMinimalPlace } from "../_shared/create-place.ts";
+import { normalizeEnrichmentConfig } from "../_shared/enrichment-config.ts";
+import { readAppConfig } from "../_shared/write-config.ts";
 
-type Body = { placeId?: string };
+type Body = { placeId?: string; onOpen?: boolean };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -50,6 +58,28 @@ Deno.serve(async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const placeId = (bodyRes.body.placeId ?? "").toString().trim();
   if (!placeId) return json({ ok: false, error: "placeId is required" }, 400);
+
+  if (bodyRes.body.onOpen === true) {
+    const creation = await readAppConfig(
+      admin,
+      "enrichment_config",
+      "enrichment_config_read",
+    );
+    if (!creation.ok) return creation.response;
+    const createOnOpen = normalizeEnrichmentConfig(
+      creation.row?.enrichment_config,
+    ).atlasCreateOnOpenAdmin;
+    if (!createOnOpen) {
+      return json(
+        {
+          ok: false,
+          code: "create_on_open_off",
+          error: "Create on open is off for the admin app (Configurations › Creation).",
+        },
+        403,
+      );
+    }
+  }
 
   const created = await createMinimalPlace({
     admin,

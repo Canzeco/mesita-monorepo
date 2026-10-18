@@ -60,6 +60,8 @@ type AtlasConfigResponse = {
   atlasDiscoverOpentableN: number;
   atlasDiscoverUbereatsN: number;
   atlasRequestThreshold: number;
+  atlasCreateOnOpenConsumer: boolean;
+  atlasCreateOnOpenAdmin: boolean;
   updatedAt: string | null;
 };
 
@@ -101,6 +103,8 @@ export async function updateAtlasConfig(patch: {
   discoverOpentableN?: number;
   discoverUbereatsN?: number;
   requestThreshold?: number;
+  createOnOpenConsumer?: boolean;
+  createOnOpenAdmin?: boolean;
 }): Promise<UpdateAtlasConfigResult> {
   const r = await efInvoke<AtlasConfigResponse>(
     "admin-web-update-config",

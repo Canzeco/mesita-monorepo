@@ -56,6 +56,15 @@ export type EnrichmentConfig = {
   atlasDiscoverUbereatsN: number;
   /** Consumer Requests: auto-enrich when request_count reaches this. */
   atlasRequestThreshold: number;
+  /**
+   * CREATE ON OPEN (MESITA-2298): opening a Google-only result's full
+   * profile is the one thing that mints a Mesita Place — one switch per app.
+   * Off, the consumer app's open answers 403 `create_on_open_off` and the
+   * admin app's Find row keeps its Google Maps link; an explicit admin
+   * Create is never gated.
+   */
+  atlasCreateOnOpenConsumer: boolean;
+  atlasCreateOnOpenAdmin: boolean;
 };
 
 export const DEFAULT_ENRICHMENT_CONFIG: EnrichmentConfig = {
@@ -79,6 +88,8 @@ export const DEFAULT_ENRICHMENT_CONFIG: EnrichmentConfig = {
   atlasDiscoverOpentableN: 3,
   atlasDiscoverUbereatsN: 2,
   atlasRequestThreshold: 5,
+  atlasCreateOnOpenConsumer: true,
+  atlasCreateOnOpenAdmin: true,
 };
 
 function intIn(v: unknown, min: number, max: number, fallback: number): number {
@@ -133,5 +144,7 @@ export function normalizeEnrichmentConfig(raw: unknown): EnrichmentConfig {
     atlasDiscoverOpentableN: intIn(r.atlasDiscoverOpentableN, 0, 10, d.atlasDiscoverOpentableN),
     atlasDiscoverUbereatsN: intIn(r.atlasDiscoverUbereatsN, 0, 10, d.atlasDiscoverUbereatsN),
     atlasRequestThreshold: intIn(r.atlasRequestThreshold, 1, 100, d.atlasRequestThreshold),
+    atlasCreateOnOpenConsumer: r.atlasCreateOnOpenConsumer !== false,
+    atlasCreateOnOpenAdmin: r.atlasCreateOnOpenAdmin !== false,
   };
 }
