@@ -26,14 +26,14 @@ const RAILS: CatalogRail[] = [
 ];
 
 describe("the Places chip row (MESITA-2366)", () => {
-  it("leads Mesita · Google, then every family in server order (Favorites is a tab, MESITA-2368)", () => {
+  it("leads Google Places · Mesita Featured, then every family in server order (MESITA-2368)", () => {
     expect(placesChips(RAILS).map((c) => c.label)).toEqual([
-      "Mesita",
-      "Google",
+      "Google Places",
+      "Mesita Featured",
       "Coffee",
       "Breakfast",
     ]);
-    expect(placesChips(RAILS)[2].emoji).toBe("☕");
+    expect(placesChips(RAILS).map((c) => c.emoji)).toEqual(["📍", "⭐", "☕", "🥐"]);
   });
 
   it("puts the Location control after Google, before the families", () => {

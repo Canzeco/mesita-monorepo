@@ -62,7 +62,8 @@ const ROW_BASE =
 const ROW_ON = "bg-card text-foreground font-semibold";
 const ROW_OFF = "text-foreground hover:bg-card/60";
 
-/** The category column's order: Mesita · Google · (Location) · families. */
+/** The category column: 📍 Google Places · ⭐ Mesita Featured · (🧭 Location)
+ *  · families — every row an emoji, like the families (Pato, MESITA-2368). */
 export function placesChips(rails: readonly CatalogRail[]): {
   key: string;
   label: string;
@@ -72,8 +73,8 @@ export function placesChips(rails: readonly CatalogRail[]): {
     (r) => r.key !== MESITA_RAIL_KEY && r.key !== GOOGLE_RAIL_KEY,
   );
   return [
-    { key: MESITA_RAIL_KEY, label: "Mesita" },
-    { key: GOOGLE_RAIL_KEY, label: "Google" },
+    { key: GOOGLE_RAIL_KEY, label: "Google Places", emoji: "📍" },
+    { key: MESITA_RAIL_KEY, label: "Mesita Featured", emoji: "⭐" },
     ...families.map((r) => ({
       key: r.key,
       label: r.label,
@@ -194,7 +195,9 @@ export function CatalogRails() {
               coords !== null ? "text-muted-foreground" : "text-foreground",
             )}
           >
-            <Navigation className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
+            <span className="shrink-0" aria-hidden>
+              🧭
+            </span>
             {coords !== null ? "Near you" : locating ? "Locating…" : "Location"}
           </button>
         </li>
