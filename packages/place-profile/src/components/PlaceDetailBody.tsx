@@ -25,7 +25,7 @@ import { DatesBox, LinksBox, TagsBox } from "./place-detail/tags-links-meta";
 //
 //   1. Profile summary — name in page chrome; photo + Google/Instagram/
 //      Facebook (that count row hides on Reviews); swipe-style tags; then
-//      Save · Contact · Share. Reserve · Pay (Soon) are pinned below.
+//      Save · Contact · Share, then Reserve · Pay (Soon) (MESITA-2321; no pinned bar).
 //   2. Not Enriched: the vote panel, straight under the summary — no strip
 //      with one lone "Enrich" tab (MESITA-2315); while a Google-only profile
 //      is being created, the Creating panel sits there instead

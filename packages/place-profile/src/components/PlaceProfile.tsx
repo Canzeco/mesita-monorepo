@@ -5,7 +5,6 @@ import { ArrowLeft } from "lucide-react";
 import type { PlaceActions, PlaceCreatingView } from "../actions";
 import { inertButtonProps } from "../actions";
 import type { PlaceDetail } from "../place-detail";
-import { PlaceActionBar } from "./place-detail/PlaceActionBar";
 import { PlaceDetailBody } from "./PlaceDetailBody";
 import { PlaceDetailTitle } from "./PlaceDetailTitle";
 
@@ -48,7 +47,6 @@ export function PlaceProfile({
       >
         <PlaceDetailBody place={place} actions={actions} creating={creating} />
       </div>
-      <PlaceActionBar place={place} onReserve={actions?.onReserve} />
     </div>
   );
 }

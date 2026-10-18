@@ -9,7 +9,7 @@ export function MemberPlaceModal({ place }: { place: PlaceDetail }) {
   const { actions, sheets } = useMemberPlaceActions(place);
   return (
     <>
-      <PlaceDetailModalShell place={place} onReserve={actions.onReserve}>
+      <PlaceDetailModalShell place={place}>
         <PlaceDetailBody place={place} actions={actions} />
       </PlaceDetailModalShell>
       {sheets}
