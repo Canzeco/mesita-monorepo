@@ -103,7 +103,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         places: "/discover/places",
         social: "/discover/social",
         chat: "/discover/chat",
-        favs: "/discover/favs",
       },
       // Default IS the first pill (MESITA-1609/1615); Swipe leads since
       // MESITA-2142.
@@ -167,6 +166,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         subscribe: "/subscribe/premium",
         getTheApp: "/get-the-app",
         discoverFeed: "/discover/feed",
+        discoverFavs: "/discover/favs",
         notifications: "/notifications",
         inboxMine: "/inbox/my-activity",
         inboxGlobal: "/inbox/global-activity",
@@ -395,6 +395,8 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       { source: "/discover/home", destination: "/discover/places", permanent: true },
       { source: "/discover/catalog", destination: "/discover/places", permanent: true },
       { source: "/discover/feed", destination: "/discover/places", permanent: true },
+      // Favs, folded into Places' Favorites chip (MESITA-2366).
+      { source: "/discover/favs", destination: "/discover/places", permanent: true },
       // Scroll (MESITA-2163) and Swipe (MESITA-2166), off the rail.
       { source: "/discover/scroll", destination: "/discover/places", permanent: true },
       { source: "/discover/swipe", destination: "/discover/places", permanent: true },

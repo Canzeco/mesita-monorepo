@@ -2,53 +2,68 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-// The Feed's rails group into three bands by POSITION (MESITA-2308), so the
-// rails' renaming (MESITA-2302) changes nothing here. Since MESITA-2355 every
-// band is on the one card surface; hairlines alone divide them.
-describe("the Feed's rails sit in three bands on one surface (MESITA-2308, MESITA-2355)", () => {
-  const src = readFileSync(
-    join(__dirname, "../../components/consumer/home/CatalogRails.tsx"),
-    "utf8",
-  );
-  const bandA = src.indexOf('data-band="a"');
-  const bandB = src.indexOf('data-band="b"');
-  const bandC = src.indexOf('data-band="c"');
+import type { CatalogRail, Place } from "@/lib/api/places";
+import {
+  favoritePlaces,
+  FAVORITES_CHIP,
+  GOOGLE_RAIL_KEY,
+  MESITA_RAIL_KEY,
+  placesChips,
+} from "@/components/consumer/home/CatalogRails";
 
-  it("puts every band on the one card surface, hairlines only (MESITA-2355)", () => {
-    expect(src).toContain('<div data-band="a">');
-    expect(src).toContain('className="border-border border-t" data-band="b"');
-    expect(src).toContain(
-      'className="border-border divide-border flex flex-col divide-y border-t border-b"',
-    );
-    expect(src).not.toMatch(/bg-muted\/\d+/);
-    expect(bandA).toBeGreaterThan(0);
-    expect(bandB).toBeGreaterThan(bandA);
-    expect(bandC).toBeGreaterThan(bandB);
+// Pato (MESITA-2366): Places is ONE horizontal chip row — Favorites · Mesita ·
+// Google · Location, then the families — over ONE 2-column grid of the chosen
+// set. The server's rails are unchanged; a chip picks which rail the grid shows.
+const src = readFileSync(
+  join(__dirname, "../../components/consumer/home/CatalogRails.tsx"),
+  "utf8",
+);
+
+const place = (id: string): Place => ({ id, name: id }) as Place;
+const RAILS: CatalogRail[] = [
+  { key: GOOGLE_RAIL_KEY, label: "Google Places", emoji: "📍", source: "signal", places: [place("g1")] },
+  { key: MESITA_RAIL_KEY, label: "Mesita Selected", emoji: "✨", source: "signal", places: [place("m1")] },
+  { key: "coffee", label: "Coffee", emoji: "☕", source: "family", places: [place("m1")] },
+  { key: "breakfast", label: "Breakfast", emoji: "🥐", source: "family", places: [place("m2")] },
+];
+
+describe("the Places chip row (MESITA-2366)", () => {
+  it("leads Favorites · Mesita · Google, then every family in server order", () => {
+    expect(placesChips(RAILS).map((c) => c.label)).toEqual([
+      "Favorites",
+      "Mesita",
+      "Google",
+      "Coffee",
+      "Breakfast",
+    ]);
+    expect(placesChips(RAILS)[3].emoji).toBe("☕");
   });
 
-  it("groups by position: the first rail, the second, every rail after", () => {
-    expect(src).toContain("const [firstRail, secondRail, ...restRails] = shownRails;");
-    expect(src).toContain("{firstRail ? renderRail(firstRail) : null}");
-    expect(src).toContain("{restRails.map((rail) => (");
+  it("puts the Location control after Google, before the families", () => {
+    expect(src).toContain("chips.slice(0, 3).map");
+    expect(src.indexOf('"Location"')).toBeGreaterThan(src.indexOf("chips.slice(0, 3).map"));
+    expect(src.indexOf('"Location"')).toBeLessThan(src.indexOf("chips.slice(3).map"));
   });
 
-  it("draws no places count above the rails (MESITA-2354)", () => {
-    expect(src).not.toContain("summary.total");
-    expect(src).not.toContain("summarizeCatalog");
+  it("scrolls sideways and opens on Mesita", () => {
+    expect(src).toContain("scrollbar-hide flex shrink-0 gap-1.5 overflow-x-auto");
+    expect(src).toContain("useState<string>(MESITA_RAIL_KEY)");
+  });
+});
+
+describe("the Places grid (MESITA-2366)", () => {
+  it("is two square tiles per row, 2px apart, and no vertical rail name", () => {
+    expect(src).toContain('const PLACES_GRID = "grid grid-cols-2 content-start gap-0.5";');
+    expect(src).not.toContain("writing-mode");
+    expect(src).not.toContain("data-band");
   });
 
-  it("draws a hairline above every family rail too (MESITA-2353)", () => {
-    const c = src.slice(bandC);
-    expect(c).toContain("<div key={rail.key}>");
-    expect(c).toContain("{renderRail(rail)}");
-  });
-
-  it("puts no padding around a rail, so the name column meets both hairlines (MESITA-2354)", () => {
-    expect(src).not.toMatch(/data-band="[abc]"[^>]*py-/);
-  });
-
-  it("lays tiles out on Instagram's 2px grid (MESITA-2364)", () => {
-    expect(src).toContain("grid-cols-3 content-start gap-0.5");
+  it("Favorites resolves saves against the live rails first, then the previews", () => {
+    const previews = new Map([["old", place("old")], ["m1", { ...place("m1"), name: "stale" }]]);
+    const out = favoritePlaces(new Set(["m1", "old", "gone"]), RAILS, previews);
+    expect(out.map((p) => p.id)).toEqual(["m1", "old"]);
+    expect(out[0].name).toBe("m1");
+    expect(FAVORITES_CHIP).toBe("favorites");
   });
 
   it("uses semantic tokens only", () => {
