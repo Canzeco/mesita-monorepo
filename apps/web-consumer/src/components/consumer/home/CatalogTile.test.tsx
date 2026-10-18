@@ -85,16 +85,16 @@ describe("a Google-only card's image is a placeholder, never a photo (MESITA-229
   });
 });
 
-describe("the tile is one square with a reflection band (MESITA-2364, MESITA-2369)", () => {
-  it("fills the square with the photo; the bottom 40% is its reflection under 50% ink", () => {
+describe("the tile: photo on top, its light reflection below (MESITA-2369, MESITA-2373)", () => {
+  it("shows the photo on the top 60%, uncovered, and mirrors it from its foot under 50% paper", () => {
     const html = tile({ photos: ["https://example.com/a.jpg"], price_level: 2 });
     expect(html).toContain("relative aspect-square min-w-0 overflow-hidden");
-    expect(html.match(/<img/g)?.length).toBe(2);
-    expect(html).toContain("-scale-y-100");
-    expect(html).toContain("bg-foreground/50");
+    expect(html).toContain("absolute inset-x-0 top-0 h-[60%] overflow-hidden");
     expect(html).toContain("absolute inset-x-0 bottom-0 h-[40%] overflow-hidden");
-    expect(html).toContain("text-paper");
-    expect(html).not.toContain("bg-gradient-to-t");
+    expect(html).toContain("absolute inset-x-0 top-0 h-[150%] -scale-y-100");
+    expect(html.match(/<img/g)?.length).toBe(2);
+    expect(html).toContain("bg-paper/50");
+    expect(html).not.toContain("bg-foreground/50");
     expect(html).not.toMatch(/rounded-(lg|xl|2xl)/);
     expect(html.indexOf("<img")).toBeLessThan(html.indexOf(">Casa<"));
   });
@@ -107,7 +107,7 @@ describe("the tile is one square with a reflection band (MESITA-2364, MESITA-236
 });
 
 describe("the tile shows far more, all real (MESITA-2371)", () => {
-  it("prints stars + reviews, price, distance, category · zone · open state in three rows", () => {
+  it("prints stars + reviews, price, category · zone, open state · distance in four rows", () => {
     const html = tile({
       price_level: 2,
       currency: "MXN",
@@ -121,11 +121,11 @@ describe("the tile shows far more, all real (MESITA-2371)", () => {
     } as Partial<Place>);
     expect(html).toContain("4.6");
     expect(html).toContain("(812)");
-    // Three rows at most (MESITA-2372): stars · price · distance, then
-    // category · zone · open state.
-    expect(html).toContain("1.4 km");
-    expect(html).toContain("Cafe · Tecnológico · Open · until 02:00");
-    expect(html.match(/<p /g)?.length).toBeLessThanOrEqual(3);
+    // Four rows (MESITA-2373): name; stars · price; category · zone;
+    // open state · distance.
+    expect(html).toContain("Cafe · Tecnológico");
+    expect(html).toContain("Open · until 02:00 · 1.4 km");
+    expect(html.match(/<p /g)?.length).toBeLessThanOrEqual(4);
     expect(html).not.toContain("per person");
   });
 

@@ -59,7 +59,7 @@ export const GOOGLE_RAIL_KEY = "google_places";
 const PLACES_LIST = "grid grid-cols-1 content-start gap-1.5 px-1.5 pt-1.5";
 
 const ROW_BASE =
-  "relative flex w-full items-center gap-1.5 px-3 py-3.5 text-left text-sm leading-tight transition";
+  "relative flex w-full items-center gap-1.5 px-3 py-3.5 text-left text-xs leading-tight transition";
 const ROW_ON = "bg-card text-foreground font-semibold";
 const ROW_OFF = "text-foreground hover:bg-card/60";
 
