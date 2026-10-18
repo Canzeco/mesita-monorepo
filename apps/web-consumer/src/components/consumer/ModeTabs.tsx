@@ -3,8 +3,12 @@
 // Home's and Search's header row (MESITA-2401) — pills on the left half, one
 // control on the right half:
 //
-//   Home     [ Places ][ Social·Soon ] (⌖ Tecnologico ⌄)   location = 50%
-//   Search   [ Search ][ Chat·Soon ]                  (⚲)  Filters at the right
+//   Home     ( Places | Social·Soon )  [⌖ Tecnologico ⌄]   location = 50%
+//   Search   ( Search | Chat·Soon )                   (⚲)  Filters at the right
+//
+// ONE SEGMENTED CONTROL (Pato, MESITA-2404): the pills share a single muted
+// track with no border between them — the active segment is the filled one.
+// The location beside it is the same height with a border instead of a fill.
 //
 // PLACES IS THE CATALOG (Pato, MESITA-2254). MESITA-2301 restored the label
 // after MESITA-2285 had renamed it Feed. Favorites left the header for the
@@ -32,8 +36,8 @@
 //   Search   40.9      66.9   <- widest on Search
 //   Chat     27.3      53.3
 //
-// Two columns in a half (175.5px of 359 less one 8px gap): 2 x 66.9 + 4 =
-// 137.8. Fits. The icon is 14px (chrome 26) and the label stays at 12px
+// Two columns in a half (175.5px of 359 less one 8px gap): 2 x 66.9 + 8
+// (the track's p-1) = 141.8. Fits. The icon is 14px (chrome 26) and the label stays at 12px
 // (`text-xs`). route-structure.test.tsx T5b holds this arithmetic.
 
 import { useEffect, useRef, type ReactNode } from "react";
@@ -102,10 +106,11 @@ export function TabHeader({
     activeRef.current?.scrollIntoView({ inline: "nearest", block: "nearest" });
   }, [pathname]);
 
+  // Segments carry no fill at rest: the track is the button, the active
+  // segment the only filled thing inside it.
   const base =
-    "text-xs flex items-center justify-center gap-1 rounded-full px-1 py-2 font-semibold whitespace-nowrap transition active:scale-[0.98]";
-  const resting =
-    "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground";
+    "text-xs flex h-full items-center justify-center gap-1 rounded-full px-1 font-semibold whitespace-nowrap transition active:scale-[0.98]";
+  const resting = "text-muted-foreground hover:text-foreground";
   const active = "bg-primary text-primary-foreground shadow-glow";
 
   return (
@@ -114,7 +119,10 @@ export function TabHeader({
         {/* pt-3 clears the Soon chip: it hangs 8px above the pill, and
             overflow-x-auto clips anything past the padding edge. */}
         <nav aria-label={label} className="scrollbar-hide min-w-0 overflow-x-auto pt-3 pb-2.5">
-          <div className="grid w-max min-w-full auto-cols-fr grid-flow-col items-center gap-1">
+          <div
+            className="bg-muted/60 grid h-10 w-max min-w-full auto-cols-fr grid-flow-col items-center rounded-full p-1"
+            data-tab-segments
+          >
             {modes.map(({ href, label: modeLabel, Icon, soon }) => {
               // EXACT match, never startsWith: nothing under one pill's href
               // may light it.

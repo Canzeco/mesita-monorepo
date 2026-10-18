@@ -24,8 +24,8 @@ import { ActiveDot } from "./ActiveDot";
 // longer prints, and the count.
 //
 // Since MESITA-2401 it sits at the right edge of Search's HEADER
-// (`variant="header"`): the pills' resting grey, a pill's height, no
-// shadow. Without `onOpenFilters` (Search › Chat) it is disabled in place.
+// (`variant="header"`): bordered like Home's location, the segmented
+// track's height (MESITA-2404), no shadow. Without `onOpenFilters` (Search › Chat) it is disabled in place.
 export function SearchFilterRow({
   count,
   onOpenFilters,
@@ -47,7 +47,7 @@ export function SearchFilterRow({
       aria-pressed={applied}
       className={
         variant === "header"
-          ? "bg-muted/60 text-foreground hover:bg-muted relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40"
+          ? "border-border bg-background text-foreground hover:bg-muted relative flex h-10 w-10 shrink-0 border items-center justify-center rounded-full transition active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40"
           : "shadow-elev border-border bg-card/95 text-foreground relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border backdrop-blur-xl transition active:scale-[0.97]"
       }
       data-search-filters

@@ -485,14 +485,15 @@ describe("T5b — Home's supporting rail", () => {
   );
 
   // The width budget, as an assertion rather than a comment. `auto-cols-fr`
-  // sizes every column to the WIDEST pill, so the track is N x widest plus
-  // (N-1) x 4px of gaps, and it has to fit 359px (375 frame less px-2).
+  // sizes every column to the WIDEST pill; since MESITA-2404 the segments
+  // touch (no gap) inside one track with p-1, so the track is N x widest + 8.
   //
   it("keeps every Home label inside the 359px track", async () => {
     const { HOME_MODES } = await import("@/components/consumer/ModeTabs");
     const navSrc = readFileSync(join(COMPONENTS, "ModeTabs.tsx"), "utf8");
     // Match the class strings themselves, not the words anywhere in the file.
-    expect(navSrc).toContain('"text-xs flex items-center');
+    expect(navSrc).toContain('"text-xs flex h-full items-center');
+    expect(navSrc).toContain("rounded-full p-1");
     expect(navSrc).toContain('className="h-3.5 w-3.5 shrink-0"');
     const TEXT_PX: Record<string, number> = {
       Home: 34.2,
@@ -528,7 +529,7 @@ describe("T5b — Home's supporting rail", () => {
     );
     // The pills own the LEFT HALF of the row since MESITA-2401: (359 - 8) / 2.
     expect(
-      widest * HOME_MODES.length + (HOME_MODES.length - 1) * 4,
+      widest * HOME_MODES.length + 8,
     ).toBeLessThanOrEqual(175.5);
   });
 
