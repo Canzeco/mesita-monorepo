@@ -136,6 +136,12 @@ type NearbyOnce =
   | { ok: true; hits: NearbyHit[] }
   | { ok: false };
 
+/** One retry on a Google 5xx or a network throw (MESITA-2361): a single
+ *  transient Google 500 hid the whole Google Places rail. The retry rides
+ *  the one metered attempt for the cell; a 4xx is the request's fault and
+ *  never retried. */
+export const NEARBY_RETRY_DELAY_MS = 250;
+
 async function searchNearbyOnce(
   apiKey: string,
   center: { lat: number; lng: number },
@@ -143,30 +149,49 @@ async function searchNearbyOnce(
   includedPrimaryTypes: string[],
   excludedPrimaryTypes: string[] = [],
 ): Promise<NearbyOnce> {
-  const r = await fetch(GOOGLE_PLACES_NEARBY_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask": NEARBY_FIELD_MASK,
-    },
-    body: JSON.stringify({
-      maxResultCount: GOOGLE_NEARBY_MAX,
-      rankPreference: "DISTANCE",
-      includedPrimaryTypes,
-      ...(excludedPrimaryTypes.length > 0 ? { excludedPrimaryTypes } : null),
-      locationRestriction: {
-        circle: {
-          center: { latitude: center.lat, longitude: center.lng },
-          radius: Math.min(50_000, Math.max(50, radiusM)),
-        },
+  const post = () =>
+    fetch(GOOGLE_PLACES_NEARBY_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": NEARBY_FIELD_MASK,
       },
-    }),
-  });
+      body: JSON.stringify({
+        maxResultCount: GOOGLE_NEARBY_MAX,
+        rankPreference: "DISTANCE",
+        includedPrimaryTypes,
+        ...(excludedPrimaryTypes.length > 0 ? { excludedPrimaryTypes } : null),
+        locationRestriction: {
+          circle: {
+            center: { latitude: center.lat, longitude: center.lng },
+            radius: Math.min(50_000, Math.max(50, radiusM)),
+          },
+        },
+      }),
+    });
+  let r: Response;
+  try {
+    r = await post();
+  } catch (err) {
+    console.error("[nearby] Google searchNearby threw; retrying once", String(err));
+    await new Promise((res) => setTimeout(res, NEARBY_RETRY_DELAY_MS));
+    r = await post();
+  }
+  if (r.status >= 500) {
+    const text = await r.text();
+    console.error(
+      "[nearby] Google searchNearby 5xx; retrying once",
+      r.status,
+      text.slice(0, 300),
+    );
+    await new Promise((res) => setTimeout(res, NEARBY_RETRY_DELAY_MS));
+    r = await post();
+  }
   if (!r.ok) {
     const text = await r.text();
     const code = classifyGoogleError(r.status, text);
-    console.error("[nearby] Google searchNearby failed", code, r.status);
+    console.error("[nearby] Google searchNearby failed", code, r.status, text.slice(0, 300));
     return { ok: false };
   }
   const data = (await r.json()) as { places?: GooglePlaceListing[] };
