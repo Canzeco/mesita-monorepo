@@ -870,8 +870,8 @@ describe("catalogIsStale", () => {
   });
 });
 
-describe("a Google-only result opens its profile at once, never a preview or a photo here (MESITA-2298, MESITA-2307)", () => {
-  it("has no preview sheet, no client-side Places call, and no create call of its own", () => {
+describe("a Google-only result opens through get-or-create, never a preview or a photo (MESITA-2298)", () => {
+  it("has no preview sheet, no client-side Places call, and one create call site", () => {
     const client = read("SearchClient.tsx");
     expect(client).toContain("openGoogleOnly");
     expect(client).toContain("openGoogleProfile");
@@ -879,16 +879,22 @@ describe("a Google-only result opens its profile at once, never a preview or a p
     expect(client).not.toContain("fetchGooglePlacePreview");
     expect(client).not.toContain("setPreviewOpen");
     expect(client).not.toContain("places.googleapis.com");
-    // Nothing here creates: the explicit open navigates at once to the
-    // pending profile, and PendingPlaceScreen is the ONE create call site
-    // (MESITA-2307). The card the guest sees rides along as the first draft.
-    expect(client).not.toContain("apiCreateProject");
+    // The explicit open goes to the opening screen at once (MESITA-2311);
+    // Search itself never creates. The ONE place that creates is the opening
+    // screen's getOrCreateGooglePlace, reached only from that screen.
+    expect(client).not.toContain("apiCreateProject(");
     const open = client.slice(
       client.indexOf("const openGoogleProfile"),
       client.indexOf("const openGoogleOnly"),
     );
+    // The card rides along: the opening screen draws it as the profile's
+    // first draft (MESITA-2307).
     expect(open).toContain("openGooglePlace(");
-    expect(open).not.toContain("await ");
+    const opener = readFileSync(
+      join(SEARCH_DIR, "../../../lib/use-open-google-place.ts"),
+      "utf8",
+    );
+    expect(opener.match(/apiCreateProject\(/g)?.length).toBe(1);
     // One tap never creates: a Google-only open needs the RAW selection to
     // match, else the tap selects (MESITA-2305).
     const openPlace = client.slice(

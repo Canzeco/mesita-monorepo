@@ -20,5 +20,13 @@ describe("the Enrich slot while a Google-only profile is being created (MESITA-2
     expect(html).toContain("permanently closed");
     expect(html).toContain('data-creating="failed"');
     expect(html).not.toContain('aria-label="Creating profile"');
+    expect(html).not.toContain("Try again");
+  });
+
+  it("offers Try again when the screen can run the create again", () => {
+    const html = renderToStaticMarkup(
+      <PlaceCreatingPanel error="Over quota." onRetry={() => {}} />,
+    );
+    expect(html).toContain("Try again");
   });
 });

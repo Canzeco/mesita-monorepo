@@ -66,9 +66,9 @@ import {
 } from "@/lib/use-user-location";
 import { MONTERREY_CENTER } from "@/lib/map-defaults";
 import { placeHref } from "@/lib/place-route";
+import { useOpenGooglePlace } from "@/lib/use-open-google-place";
 import { toast } from "@/lib/toast";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
-import { useOpenGooglePlace } from "@/lib/use-open-google-place";
 import { cn, errMsg } from "@/lib/utils";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
@@ -149,11 +149,6 @@ function googlePredictionFromPlace(place: Place): PlacePrediction | null {
   };
 }
 
-// No card is ever "adding" now: a Google-only open navigates at once and
-// PendingPlaceScreen awaits the create (MESITA-2307). The panels keep their
-// prop until the spinner leaves them.
-const NO_ADD_STATES: Record<string, AddState> = {};
-
 export function SearchClient({ apiKey }: { apiKey: string }) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
@@ -177,7 +172,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const railRefs = useRef(new Map<string, HTMLElement | null>());
   const railScrollRef = useRef<HTMLDivElement | null>(null);
 
-  const addStates = NO_ADD_STATES;
+  // The opening screen owns get-or-create now (MESITA-2311), so these stay
+  // empty: no Search row is mid-add, and a re-tap goes back through it.
+  const [addStates] = useState<Record<string, AddState>>({});
+  const [addedProfiles] = useState<Record<string, string>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Overlay pin first-tap stash so a later tap can still open (the profile,
   // through get-or-create for a Google-only row) after the suggest list is
@@ -560,6 +558,11 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const openMesitaProfileFromPrediction = useCallback(
     (prediction: PlacePrediction) => {
       resetSearchSession();
+      const fromAdd = addedProfiles[prediction.placeId];
+      if (fromAdd) {
+        router.push(placeHref(fromAdd));
+        return;
+      }
       const direct = prediction.mesitaSlug ?? prediction.mesitaId;
       if (direct) {
         router.push(placeHref(direct));
@@ -574,16 +577,19 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         "This place is on Mesita but isn't in the map snapshot yet — opening it from search is coming soon.",
       );
     },
-    [catalog, resetSearchSession, router],
+    [addedProfiles, catalog, resetSearchSession, router],
   );
 
-  // The explicit open (MESITA-2298, MESITA-2307): the profile opens AT ONCE
-  // on /place/g:<id>, drawn from the card the guest already sees, while
-  // PendingPlaceScreen runs and awaits consumer-web-create-place
-  // (get-or-create) — the ONLY call that creates a Mesita Place. A held id
-  // comes back as is; a new one is live, ugly, and waits for votes on the
-  // Enrich tab. Nothing creates on render or on a pin tap. Reached only
-  // from `openGoogleOnly`.
+  // Get-or-create (MESITA-2298): the explicit open is the ONLY call that
+  // creates a Mesita Place. A held Google Place ID comes back `created:
+  // false` and opens as is; a new one is live immediately, ugly, and waits
+  // for votes on the Enrich tab. Nothing creates on render or on a pin tap.
+  // Reached only from `openGoogleOnly`. The tap goes to the opening screen at
+  // once (MESITA-2311), which draws the card the guest tapped as the profile
+  // with Google's photo and "Creating profile" in the body while
+  // get-or-create runs there, then becomes the profile (MESITA-2307). The
+  // catalog row rides along when the open came from a pin or a rail card;
+  // a bare prediction carries its name and address.
   const openGoogleProfile = useCallback(
     (prediction: PlacePrediction, card?: Place) => {
       resetSearchSession();
@@ -604,6 +610,12 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // get-or-create and opens. No preview, no photo, no Add button. The bar
   // pick never lands here — it anchors.
   const openGoogleOnly = (prediction: PlacePrediction, card?: Place) => {
+    const fromAdd = addedProfiles[prediction.placeId];
+    if (fromAdd) {
+      resetSearchSession();
+      router.push(placeHref(fromAdd));
+      return;
+    }
     if (predictionOnMesita(prediction)) {
       openMesitaProfileFromPrediction(prediction);
       return;

@@ -18,6 +18,8 @@ export type PlaceRequestView = {
  *  created, or why it could not be. */
 export type PlaceCreatingView = {
   error: string | null;
+  /** Runs the create again after a refusal; absent, the panel only says why. */
+  onRetry?: () => void;
 };
 
 /** Optional member actions. A missing callback renders the control and does

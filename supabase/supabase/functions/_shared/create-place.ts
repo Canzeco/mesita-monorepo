@@ -56,6 +56,27 @@ import { reportCrenupSteps, stepDone, stepFailed } from "./crenup-report.ts";
 import { loadDiscoveryConfig } from "./discovery-config.ts";
 import { evaluatePlaceForMap } from "./map-engine.ts";
 import { omitReviewsTileColumns } from "./reviews-state.ts";
+import { googleMetricsFromDetails, reviewSourcePatch } from "./review-sources.ts";
+/** The Google numbers a create stores: the same patch a Reviews reload
+ *  writes (`google_found` + stars + count), built from the Details response
+ *  already in hand. Found is true because Details answered; a listing with
+ *  no rating stores nulls under a true flag, as the verifier does
+ *  (MESITA-2306). */
+export function googleReviewsAtCreate(
+  basics: { google_stars_overall?: unknown; google_review_count?: unknown },
+): Record<string, unknown> {
+  return reviewSourcePatch({
+    source: "google",
+    result: {
+      found: true,
+      metrics: googleMetricsFromDetails({
+        rating: basics.google_stars_overall,
+        userRatingCount: basics.google_review_count,
+      }),
+    },
+  });
+}
+
 export type CreatedPlace = {
   id: string;
   slug: string;
@@ -235,11 +256,15 @@ export async function createMinimalPlace(opts: {
   }
 
   // Category is Google's primary type, already on basics. The profiles view
-  // derives the family rails from that category. The map gate above already
-  // read the live Google rating. The stored tile columns stay empty until
-  // the Reviews reload (MESITA-2183).
-  const place: Record<string, unknown> = omitReviewsTileColumns({
-    ...basicsRes.basics,
+  // derives the family rails from that category. The tile columns are the
+  // verifier's (MESITA-2189): strip whatever rode in on basics, then store
+  // Google's own two through the verifier's patch — the Details call that
+  // minted this row IS the first Reviews verification, so a new profile
+  // reads its stars and review count at once (MESITA-2306). The Instagram
+  // and Facebook counts stay empty until a Reviews reload.
+  const place: Record<string, unknown> = {
+    ...omitReviewsTileColumns({ ...basicsRes.basics }),
+    ...googleReviewsAtCreate(basicsRes.basics),
     // Operating (MESITA-1239). businessStatus rides the envelope, not `basics`,
     // so the spread above does not carry it. Stored verbatim: reaching here
     // means it is not CLOSED_PERMANENTLY (refused above), but OPERATIONAL,
@@ -250,7 +275,7 @@ export async function createMinimalPlace(opts: {
     business_state_at: basicsRes.businessStatus
       ? new Date().toISOString()
       : null,
-  });
+  };
 
   // ── 2) Persist the minimal rows (in-process). The mint lands 'ready' with
   // enriched_at null — the ugly profile is viewable; Enriched stays no until

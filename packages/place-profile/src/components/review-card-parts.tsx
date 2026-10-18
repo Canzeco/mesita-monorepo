@@ -10,7 +10,7 @@ export function Header({
 }: {
   avatar: React.ReactNode;
   name: string;
-  sub: string;
+  sub?: string;
   sourceLogo: React.ReactNode;
 }) {
   return (
@@ -18,7 +18,9 @@ export function Header({
       {avatar}
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">{name}</p>
-        <p className="text-muted-foreground type-label truncate">{sub}</p>
+        {sub ? (
+          <p className="text-muted-foreground type-label truncate">{sub}</p>
+        ) : null}
       </div>
       {sourceLogo}
     </div>
@@ -59,7 +61,7 @@ export function Quote({
           truncated && "line-clamp-4",
         )}
       >
-        “{text}”
+        {text}
       </p>
       {onExpand && (
         <button

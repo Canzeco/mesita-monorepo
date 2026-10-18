@@ -6,8 +6,8 @@ export const PLACE_CREATED_EVENT = "mesita:place-created";
 
 export type PlaceCreatedDetail = {
   googlePlaceId: string;
-  id: string;
-  slug: string;
+  /** The real profile's route. */
+  href: string;
   created: boolean;
 };
 

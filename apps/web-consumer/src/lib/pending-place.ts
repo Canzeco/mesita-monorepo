@@ -7,7 +7,10 @@ import type { Place } from "@/lib/api/places";
 import { placeRowToDetail } from "@/lib/adapters/place-to-detail";
 import type { GooglePlaceFacts } from "@/lib/google-place-photo";
 import type { PlaceDetail } from "@/lib/place-detail";
-import { PENDING_PLACE_PREFIX } from "@/lib/place-route";
+
+/** The draft's id wears the catalog stub's own prefix, so nothing that keys
+ *  on a Mesita id (favorites, votes) can mistake it for a row. */
+export const PENDING_PLACE_PREFIX = "g:";
 
 /** What a Google-only card knows: the catalog stub's own columns, the name
  *  the one thing a card always has. */
@@ -74,9 +77,11 @@ export function clearPendingPlace(gid: string): void {
 export function pendingPlaceDetail(
   gid: string,
   card: PendingPlaceCard | null,
+  fallbackName: string,
   google: GooglePlaceFacts,
 ): PlaceDetail {
-  const name = card?.name ?? google.name ?? "New place";
+  const name = card?.name ?? (fallbackName.trim() || null) ?? google.name ??
+    "New place";
   const row: Record<string, unknown> = {
     ...card,
     id: `${PENDING_PLACE_PREFIX}${gid}`,

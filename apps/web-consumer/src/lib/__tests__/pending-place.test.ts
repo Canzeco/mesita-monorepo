@@ -4,42 +4,14 @@ import { describe, expect, it } from "vitest";
 
 import { NO_GOOGLE_PLACE_FACTS, isDisplayablePlacePhoto } from "../google-place-photo";
 import { parsePendingPlace, pendingPlaceDetail } from "../pending-place";
-import {
-  pendingPlaceGid,
-  pendingPlaceHref,
-  toCanonicalPlaceHrefOrNull,
-} from "../place-route";
 
-// A Google-only card opens its profile at once (MESITA-2307): the route
-// carries the Google Place ID, the screen draws the card as the profile
-// with Google's photo, awaits the create, then replaces the URL with the
-// real profile; the Feed underneath reloads.
+// A Google-only card opens its profile at once (MESITA-2307): the tap
+// stashes the card and goes to the opening screen, which draws the card as
+// the profile with Google's photo and "Creating profile" in the body, awaits
+// the create, then replaces the route with the real profile; the Feed
+// underneath reloads.
 
 const read = (rel: string) => readFileSync(join(__dirname, rel), "utf8");
-
-describe("the pending place route", () => {
-  it("wears the catalog stub's own prefix and round-trips the id", () => {
-    expect(pendingPlaceHref("ChIJx")).toBe("/place/g:ChIJx");
-    expect(pendingPlaceGid("g:ChIJx")).toBe("ChIJx");
-    expect(pendingPlaceGid("casa")).toBeNull();
-    expect(pendingPlaceGid("g:")).toBeNull();
-    expect(toCanonicalPlaceHrefOrNull("g:ChIJx")).toBe("/place/g:ChIJx");
-  });
-
-  it("both place pages branch on it before any row fetch", () => {
-    for (const page of [
-      "../../app/(shell)/place/[id]/page.tsx",
-      "../../app/(shell)/@modal/(.)place/[id]/page.tsx",
-    ]) {
-      const src = read(page);
-      const branch = src.indexOf("pendingPlaceGid(id)");
-      const fetch = src.indexOf("apiFetchPlaceDetail(supabase, id)");
-      expect(branch, page).toBeGreaterThan(0);
-      expect(fetch, page).toBeGreaterThan(branch);
-      expect(src).toContain("<PendingPlaceScreen");
-    }
-  });
-});
 
 describe("the first draft of the profile", () => {
   it("is the card's facts, Google's photo, not Enriched", () => {
@@ -54,6 +26,7 @@ describe("the first draft of the profile", () => {
         google_count: 120,
         distance_km: 0.3,
       },
+      "",
       { ...NO_GOOGLE_PLACE_FACTS, photoUrl: "https://lh3.googleusercontent.com/p" },
     );
     expect(detail.id).toBe("g:ChIJx");
@@ -65,14 +38,16 @@ describe("the first draft of the profile", () => {
     expect(detail.is_enriched).toBe(false);
   });
 
-  it("falls back to Google's name and address on a deep link with no card", () => {
-    const detail = pendingPlaceDetail("ChIJx", null, {
+  it("falls back to the tap's name, then Google's, on a deep link with no card", () => {
+    const fromTap = pendingPlaceDetail("ChIJx", null, "Doña Tota", NO_GOOGLE_PLACE_FACTS);
+    expect(fromTap.name).toBe("Doña Tota");
+    const fromGoogle = pendingPlaceDetail("ChIJx", null, " ", {
       name: "Señor Latino Tec",
       address: "Tec",
       photoUrl: null,
     });
-    expect(detail.name).toBe("Señor Latino Tec");
-    expect(detail.photos).toEqual([]);
+    expect(fromGoogle.name).toBe("Señor Latino Tec");
+    expect(fromGoogle.photos).toEqual([]);
   });
 
   it("reads only a stash that carries a name", () => {
@@ -90,23 +65,33 @@ describe("the first draft of the profile", () => {
 });
 
 describe("the open, the create and the Feed", () => {
-  it("a tap opens the pending route at once and creates nothing itself", () => {
+  it("a tap stashes the card and opens the opening screen at once", () => {
     const hook = read("../use-open-google-place.ts");
-    expect(hook).toContain("stashPendingPlace(gid, place)");
-    expect(hook).toContain("router.push(pendingPlaceHref(gid))");
-    expect(hook).not.toContain("apiCreateProject");
+    const tap = hook.slice(
+      hook.indexOf("export function useOpenGooglePlace"),
+      hook.indexOf("export type OpenedGooglePlace"),
+    );
+    expect(tap).toContain("stashPendingPlace(gid, place)");
+    expect(tap).toContain("router.push(googleOpenHref(gid, place.name))");
   });
 
-  it("the screen awaits the create, tells the Feed, then shows the real profile", () => {
-    const screen = read("../../components/consumer/PendingPlaceScreen.tsx");
-    const create = screen.indexOf("await apiCreateProject(supabase, { placeId: gid })");
+  it("the opening screen draws the profile, awaits the create, tells the Feed, then shows the real profile", () => {
+    const screen = read("../../components/consumer/OpeningGooglePlace.tsx");
+    const create = screen.indexOf("await getOrCreateGooglePlace(supabase, gid)");
     const emit = screen.indexOf("emitPlaceCreated({");
-    const replace = screen.indexOf("router.replace(placeHref(dest))");
+    const replace = screen.indexOf("router.replace(opened.href)");
     expect(create).toBeGreaterThan(0);
     expect(emit).toBeGreaterThan(create);
     expect(replace).toBeGreaterThan(emit);
     expect(screen).toContain("creating={creating}");
     expect(screen).toContain("<PlaceDetailModalShell place={place}>");
+    expect(screen).toContain("fetchGooglePlaceFacts(places, gid)");
+    for (const page of [
+      "../../app/(shell)/place/open/[gid]/page.tsx",
+      "../../app/(shell)/@modal/(.)place/open/[gid]/page.tsx",
+    ]) {
+      expect(read(page), page).toContain("apiKey={process.env.NEXT_PUBLIC_GMP_KEY");
+    }
   });
 
   it("the Feed reloads behind the modal and keeps its rails meanwhile", () => {

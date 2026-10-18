@@ -9,7 +9,13 @@ import { Spinner } from "../Spinner";
 // (MESITA-2307): the guest sees Google's profile at once, and this panel
 // says Mesita is saving it. Nothing to vote on yet — the place is not on
 // Mesita until the create lands; then the real profile takes over.
-export function PlaceCreatingPanel({ error }: { error: string | null }) {
+export function PlaceCreatingPanel({
+  error,
+  onRetry,
+}: {
+  error: string | null;
+  onRetry?: () => void;
+}) {
   return (
     <section
       className="border-border bg-card shadow-elev overflow-hidden rounded-2xl border"
@@ -27,9 +33,20 @@ export function PlaceCreatingPanel({ error }: { error: string | null }) {
           {error ? "Couldn't create this profile" : "Creating profile"}
         </h3>
         {error ? (
-          <p className={`${ERROR_BOX_CLASS} mx-auto mt-3 max-w-[36ch] text-left`}>
-            {error}
-          </p>
+          <>
+            <p className={`${ERROR_BOX_CLASS} mx-auto mt-3 max-w-[36ch] text-left`}>
+              {error}
+            </p>
+            {onRetry && (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="bg-foreground text-paper mt-4 rounded-full px-5 py-2.5 text-sm font-semibold"
+              >
+                Try again
+              </button>
+            )}
+          </>
         ) : (
           <p className="text-muted-foreground mx-auto mt-2 max-w-[32ch] text-sm leading-relaxed">
             A few seconds. Google&apos;s profile is on screen while Mesita

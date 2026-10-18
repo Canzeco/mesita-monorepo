@@ -1,13 +1,15 @@
 "use client";
 
-// A Google-only card's profile, on screen before Mesita holds the place
-// (MESITA-2307). The route is /place/g:<googlePlaceId>. The card the guest
-// tapped is the profile's first draft; Google's photo lands when the client
-// has it; the Enrich slot says "Creating profile" while
-// consumer-web-create-place (get-or-create) runs; when it lands, the Feed
-// underneath reloads and the URL is replaced with the real profile. A
-// refusal keeps Google's profile on screen and says why. No vote, no Save,
-// no Reserve until the place is on Mesita.
+// The opening screen (MESITA-2311, MESITA-2307): a Google-only place the
+// guest tapped, on screen at once as its profile. The card the guest tapped
+// is the profile's first draft (the stash `useOpenGooglePlace` left); Google's
+// photo lands when the client has it; the Enrich slot says "Creating
+// profile" while get-or-create runs; when it lands, the Feed underneath
+// reloads and this route is replaced by the real profile. A refusal keeps
+// Google's profile on screen and says why, with Try again. It creates from
+// a client effect only, after a deliberate tap navigated here: never on the
+// server, never on a prefetch. No vote, no Save, no Reserve until the place
+// is on Mesita.
 
 import {
   useCallback,
@@ -20,7 +22,6 @@ import { useRouter } from "next/navigation";
 import { APIProvider, useMapsLibrary } from "@vis.gl/react-google-maps";
 import { PlaceDetailBody, PlaceProfile } from "@mesita/place-profile";
 import { PlaceDetailModalShell } from "@/components/consumer/PlaceDetailModalShell";
-import { apiCreateProject } from "@/lib/api/place-search";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import {
   fetchGooglePlaceFacts,
@@ -35,38 +36,53 @@ import {
   readPendingPlaceRaw,
 } from "@/lib/pending-place";
 import { emitPlaceCreated } from "@/lib/place-created-event";
-import { placeHref } from "@/lib/place-route";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
+import { toast } from "@/lib/toast";
+import { getOrCreateGooglePlace } from "@/lib/use-open-google-place";
 import { errMsg } from "@/lib/utils";
 
-type Variant = "page" | "modal";
+type Variant = "modal" | "page";
 
-export function PendingPlaceScreen({
+export function OpeningGooglePlace({
   gid,
+  name,
   apiKey,
   variant,
 }: {
   gid: string;
+  /** The name the tap sent along; the stashed card's name wins when present. */
+  name: string;
+  /** The browser Maps key; empty means no Google photo, the create still runs. */
   apiKey: string;
+  /** "modal" inside the place slide-over, "page" on a hard load. */
   variant: Variant;
 }) {
   // One APIProvider per screen: the Feed has no map, so nothing else loads
   // Maps JS there; on Search the loader is a singleton and this is a no-op.
-  // No key: the first draft keeps the initial placeholder, the create
-  // still runs.
-  if (!apiKey) return <PendingPlaceBody gid={gid} variant={variant} places={null} />;
+  if (!apiKey) {
+    return <OpeningBody gid={gid} name={name} variant={variant} places={null} />;
+  }
   return (
     <APIProvider apiKey={apiKey} libraries={["places"]}>
-      <PendingPlaceWithMaps gid={gid} variant={variant} />
+      <OpeningWithMaps gid={gid} name={name} variant={variant} />
     </APIProvider>
   );
 }
 
-function PendingPlaceWithMaps({ gid, variant }: { gid: string; variant: Variant }) {
+function OpeningWithMaps({
+  gid,
+  name,
+  variant,
+}: {
+  gid: string;
+  name: string;
+  variant: Variant;
+}) {
   const places = useMapsLibrary("places");
   return (
-    <PendingPlaceBody
+    <OpeningBody
       gid={gid}
+      name={name}
       variant={variant}
       places={places as unknown as PlacesLibraryLike | null}
     />
@@ -75,12 +91,14 @@ function PendingPlaceWithMaps({ gid, variant }: { gid: string; variant: Variant 
 
 const subscribeNever = () => () => {};
 
-function PendingPlaceBody({
+function OpeningBody({
   gid,
+  name,
   variant,
   places,
 }: {
   gid: string;
+  name: string;
   variant: Variant;
   places: PlacesLibraryLike | null;
 }) {
@@ -96,59 +114,62 @@ function PendingPlaceBody({
   const card = useMemo(() => parsePendingPlace(raw), [raw]);
   const [facts, setFacts] = useState<GooglePlaceFacts>(NO_GOOGLE_PLACE_FACTS);
   const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   // Google's photo (and the name and address for a deep link with no
   // card): one Details call, only now that the guest opened the profile.
   useEffect(() => {
     if (!places) return;
-    let cancelled = false;
+    let live = true;
     void (async () => {
       try {
         const got = await fetchGooglePlaceFacts(places, gid);
-        if (!cancelled) setFacts(got);
+        if (live) setFacts(got);
       } catch (err) {
-        console.error("[pending-place] google facts:", err);
+        console.error("[opening-place] google facts:", err);
       }
     })();
     return () => {
-      cancelled = true;
+      live = false;
     };
   }, [gid, places]);
 
-  // The create, awaited. Landed: the Feed underneath reloads its rails and
-  // the URL becomes the real profile (mirrored photo, Google stars). A
-  // second mount of the same id is a get, so a repeat costs nothing.
+  // The create, awaited: one shared request per Google Place ID. Landed, the
+  // Feed underneath reloads its rails and this route becomes the real
+  // profile (mirrored photo, Google stars).
   useEffect(() => {
-    let cancelled = false;
+    let live = true;
     void (async () => {
       try {
-        const opened = await apiCreateProject(supabase, { placeId: gid });
-        const dest = opened.place.slug || opened.place.id;
+        const opened = await getOrCreateGooglePlace(supabase, gid);
         clearPendingPlace(gid);
-        emitPlaceCreated({
-          googlePlaceId: gid,
-          id: opened.place.id,
-          slug: opened.place.slug,
-          created: opened.created !== false,
-        });
-        if (!cancelled && dest) router.replace(placeHref(dest));
-      } catch (err) {
-        if (!cancelled) {
-          setError(errMsg(err, "Couldn't create this profile right now."));
+        emitPlaceCreated({ googlePlaceId: gid, href: opened.href, created: opened.created });
+        if (!live) return;
+        if (opened.created) {
+          toast.success(`${card?.name ?? name ?? "This place"} is on Mesita. Vote to enrich its profile.`);
         }
+        router.replace(opened.href);
+      } catch (err) {
+        if (live) setError(errMsg(err, "Couldn't open that place right now."));
       }
     })();
     return () => {
-      cancelled = true;
+      live = false;
     };
-  }, [gid, router, supabase]);
+    // The draft's name only decorates the toast; a retry is `attempt`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gid, router, supabase, attempt]);
 
-  const place = useMemo(() => pendingPlaceDetail(gid, card, facts), [
-    gid,
-    card,
-    facts,
-  ]);
-  const creating = useMemo(() => ({ error }), [error]);
+  const retry = useCallback(() => {
+    setError(null);
+    setAttempt((n) => n + 1);
+  }, []);
+
+  const place = useMemo(
+    () => pendingPlaceDetail(gid, card, name, facts),
+    [gid, card, name, facts],
+  );
+  const creating = useMemo(() => ({ error, onRetry: retry }), [error, retry]);
   const onBack = useCallback(() => {
     if (typeof window !== "undefined" && window.history.length > 1) {
       router.back();

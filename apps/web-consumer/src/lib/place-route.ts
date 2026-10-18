@@ -31,23 +31,6 @@ export function placeHref(idOrSlug: string): string {
   return placePath(idOrSlug);
 }
 
-// A Google-only card opens before Mesita holds the place (MESITA-2307): the
-// route carries the Google Place ID under this prefix — the same prefix the
-// catalog stub's id already wears — the screen builds the profile on the
-// client and awaits the create, then replaces the URL with the real slug.
-export const PENDING_PLACE_PREFIX = "g:";
-
-export function pendingPlaceHref(googlePlaceId: string): string {
-  return placeHref(`${PENDING_PLACE_PREFIX}${googlePlaceId}`);
-}
-
-/** The Google Place ID a pending place route carries, else null. */
-export function pendingPlaceGid(idOrSlug: string): string | null {
-  if (!idOrSlug.startsWith(PENDING_PLACE_PREFIX)) return null;
-  const gid = idOrSlug.slice(PENDING_PLACE_PREFIX.length).trim();
-  return gid ? gid : null;
-}
-
 // Fallback href for a place-detail route whose place resolved to null
 // (consumer-web-get-place 404 — a deleted / reset-away row, a stale
 // localStorage favorite, an old bookmark).

@@ -66,7 +66,7 @@ export function PlaceDetailBody({
           enriched={place.is_enriched}
         />
         {activeTab === "enrich" && !place.is_enriched && creating && (
-          <PlaceCreatingPanel error={creating.error} />
+          <PlaceCreatingPanel error={creating.error} onRetry={creating.onRetry} />
         )}
         {activeTab === "enrich" && !place.is_enriched && !creating && (
           <PlaceRequestPanelView

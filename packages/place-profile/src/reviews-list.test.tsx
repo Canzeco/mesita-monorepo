@@ -75,7 +75,7 @@ describe("Reviews is a vertical list", () => {
     mount();
     const overview = document.body.textContent ?? "";
     expect(overview).toContain("3.8");
-    expect(overview).toContain("484 Google");
+    expect(overview).toContain("3.8 ★ (484)");
     expect(overview).toContain("4.3K");
     expect(overview).toContain("8.9K");
     expect(overview).toContain("A short presentation");
@@ -87,7 +87,7 @@ describe("Reviews is a vertical list", () => {
     clickNamed("Reviews");
     const reviews = document.body.textContent ?? "";
     expect(reviews).not.toContain("3.8");
-    expect(reviews).not.toContain("484 Google");
+    expect(reviews).not.toContain("3.8 ★ (484)");
     expect(reviews).not.toContain("4.3K");
     expect(reviews).not.toContain("8.9K");
     expect(reviews).not.toContain("Google Summary");
