@@ -1,21 +1,23 @@
 "use client";
 
-// Places — one chip row, one grid (Pato, MESITA-2366).
+// Places — a Temu-style split (Pato, MESITA-2367; it was a chip row over a
+// grid, MESITA-2366).
 //
-//   [Favorites] [Mesita] [Google] [Location] [☕ Coffee] [🥐 Breakfast] …
-//   ┌────────┬────────┐
-//   │  tile  │  tile  │   two square tiles per row, filling the width,
-//   ├────────┼────────┤   2px apart (the Instagram grid, MESITA-2364)
-//   │  tile  │  tile  │
+//   ┌──────────┬────────────────────┐
+//   │Favorites │                    │   left third: the categories, one per
+//   │▌Mesita   │       square       │   row, scrolling on its own; the chosen
+//   │ Google   │        tile        │   row is white, bold, an ink bar on its
+//   │ Location │                    │   left edge
+//   │ ☕ Coffee ├────────────────────┤
+//   │ 🥐 Brkfst │       square       │   right two thirds: the chosen set, ONE
+//   │  …       │        tile        │   square tile per row, scrolling on its own
 //
-// The chip row scrolls sideways and is single-select. Mesita is the Mesita
-// Selected rail, Google the Google Places rail, a family chip that family's
-// rail — the server's rails unchanged; the chip only picks which one the
-// grid shows. Favorites is the guest's saves (Favs left Home's tabs and
-// lives here now). Location is not a set: it is the location control, and
-// the Google set fills once location is held (`useUserLocation` also asks
-// on mount). The request sends no predicates, so a saved scope can never
-// keep cutting this list. Search keeps its own Filters and location disc.
+// Mesita is the Mesita Selected rail, Google the Google Places rail, a family
+// row that family's rail — the server's rails unchanged; the row only picks
+// which one shows. Favorites is the guest's saves. Location is not a set: it
+// is the location control, and the Google set fills once location is held
+// (`useUserLocation` also asks on mount). No search bar. The request sends
+// no predicates, so a saved scope can never keep cutting this list.
 
 import {
   useEffect,
@@ -53,15 +55,15 @@ export const MESITA_RAIL_KEY = "mesita_selected";
 export const GOOGLE_RAIL_KEY = "google_places";
 export const FAVORITES_CHIP = "favorites";
 
-/** Two square tiles per row, filling the width, 2px apart. */
-const PLACES_GRID = "grid grid-cols-2 content-start gap-0.5";
+/** One square tile per row, 2px apart (MESITA-2367). */
+const PLACES_LIST = "grid grid-cols-1 content-start gap-0.5";
 
-const CHIP_BASE =
-  "flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-semibold whitespace-nowrap transition active:scale-[0.98]";
-const CHIP_ON = "bg-foreground text-paper";
-const CHIP_OFF = "bg-muted text-foreground hover:bg-muted/80";
+const ROW_BASE =
+  "relative flex w-full items-center gap-1.5 px-3 py-3.5 text-left text-sm leading-tight transition";
+const ROW_ON = "bg-card text-foreground font-semibold";
+const ROW_OFF = "text-foreground hover:bg-card/60";
 
-/** The chip row's order: Favorites · Mesita · Google · (Location) · families. */
+/** The category column's order: Favorites · Mesita · Google · (Location) · families. */
 export function placesChips(rails: readonly CatalogRail[]): {
   key: string;
   label: string;
@@ -173,62 +175,69 @@ export function CatalogRails() {
     });
   };
 
-  const chips = placesChips(shownRails);
-  const chipRow = (
-    <div
-      className="border-border scrollbar-hide flex shrink-0 gap-1.5 overflow-x-auto overscroll-x-contain border-b px-2 py-2"
-      role="toolbar"
-      aria-label="Places"
-      data-places-chips
-    >
-      {chips.slice(0, 3).map((c) => (
-        <button
-          key={c.key}
-          type="button"
-          onClick={() => setChip(c.key)}
-          aria-pressed={chip === c.key}
-          className={cn(CHIP_BASE, chip === c.key ? CHIP_ON : CHIP_OFF)}
-        >
-          {c.key === FAVORITES_CHIP ? (
-            <Heart className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-          ) : null}
-          {c.label}
-        </button>
-      ))}
+  const categoryRow = (c: { key: string; label: string; emoji?: string }) => (
+    <li key={c.key}>
       <button
         type="button"
-        onClick={locate}
-        disabled={coords !== null || locating}
-        className={cn(
-          CHIP_BASE,
-          "border-border border bg-transparent",
-          coords !== null ? "text-muted-foreground" : "text-foreground",
-        )}
+        onClick={() => setChip(c.key)}
+        aria-pressed={chip === c.key}
+        className={cn(ROW_BASE, chip === c.key ? ROW_ON : ROW_OFF)}
       >
-        <Navigation className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-        {coords !== null ? "Near you" : locating ? "Locating…" : "Location"}
+        {chip === c.key ? (
+          <span
+            className="bg-foreground absolute inset-y-0 left-0 w-[3px]"
+            aria-hidden
+          />
+        ) : null}
+        {c.key === FAVORITES_CHIP ? (
+          <Heart className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
+        ) : c.emoji ? (
+          <span className="shrink-0" aria-hidden>
+            {c.emoji}
+          </span>
+        ) : null}
+        <span className="min-w-0 break-words">{c.label}</span>
       </button>
-      {chips.slice(3).map((c) => (
-        <button
-          key={c.key}
-          type="button"
-          onClick={() => setChip(c.key)}
-          aria-pressed={chip === c.key}
-          className={cn(CHIP_BASE, chip === c.key ? CHIP_ON : CHIP_OFF)}
-        >
-          {c.emoji ? <span aria-hidden>{c.emoji}</span> : null}
-          {c.label}
-        </button>
-      ))}
+    </li>
+  );
+  const chips = placesChips(shownRails);
+  const categories = (
+    <nav
+      className="bg-muted scrollbar-hide w-1/3 shrink-0 overflow-y-auto overscroll-y-contain"
+      aria-label="Places"
+      data-places-categories
+    >
+      <ul role="list">
+        {chips.slice(0, 3).map(categoryRow)}
+        <li>
+          <button
+            type="button"
+            onClick={locate}
+            disabled={coords !== null || locating}
+            className={cn(
+              ROW_BASE,
+              coords !== null ? "text-muted-foreground" : "text-foreground",
+            )}
+          >
+            <Navigation className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
+            {coords !== null ? "Near you" : locating ? "Locating…" : "Location"}
+          </button>
+        </li>
+        {chips.slice(3).map(categoryRow)}
+      </ul>
+    </nav>
+  );
+
+  // The right two thirds scrolls on its own; every state draws inside it.
+  const shell = (inner: ReactNode) => (
+    <div className="flex min-h-0 flex-1">
+      {categories}
+      <div className="bg-card scrollbar-hide flex min-h-0 w-2/3 flex-col overflow-y-auto overscroll-y-contain">
+        {inner}
+      </div>
     </div>
   );
 
-  const shell = (inner: ReactNode) => (
-    <div className="flex min-h-0 flex-1 flex-col">
-      {chipRow}
-      {inner}
-    </div>
-  );
   if (fetchError) {
     return shell(
       <EmptyState
@@ -242,8 +251,8 @@ export function CatalogRails() {
 
   if (rails === null) {
     return shell(
-      <div className={cn(PLACES_GRID, "min-h-0 flex-1 overflow-hidden")}>
-        {Array.from({ length: 6 }, (_, i) => (
+      <div className={PLACES_LIST}>
+        {Array.from({ length: 3 }, (_, i) => (
           <Skeleton key={i} className="aspect-square rounded-none" />
         ))}
       </div>,
@@ -293,8 +302,8 @@ export function CatalogRails() {
     shown.length === 0 ? (
       empty
     ) : (
-      <div className="bg-card scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-y-contain pb-6">
-        <ul role="list" aria-label={chips.find((c) => c.key === chip)?.label} className={PLACES_GRID}>
+      <div className="pb-6">
+        <ul role="list" aria-label={chips.find((c) => c.key === chip)?.label} className={PLACES_LIST}>
           {shown.map((place) => {
             const located = withUserDistance(place, coords);
             const saved = savedIds.has(place.id);

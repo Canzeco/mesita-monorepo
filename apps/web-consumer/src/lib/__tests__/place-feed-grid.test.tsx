@@ -108,14 +108,14 @@ describe("one place-grid geometry, shared", () => {
   });
 });
 
-// Places is ONE 2-column grid under a chip row (MESITA-2366): two square
-// tiles per row, 2px gaps, no sideways scroll. Favs stays on its tile.
+// Places is a split (MESITA-2367): categories left, ONE column of square
+// tiles right, 2px gaps. Favs stays on its tile.
 describe("Places is one grid", () => {
-  it("lays the chosen set out two tiles per row", () => {
+  it("lays the chosen set out one square tile per row (MESITA-2367)", () => {
     const rails = read("components/consumer/home/CatalogRails.tsx");
     const tile = read("components/consumer/home/CatalogTile.tsx");
     expect(rails).toContain("placesFeed");
-    expect(rails).toContain('const PLACES_GRID = "grid grid-cols-2 content-start gap-0.5";');
+    expect(rails).toContain('const PLACES_LIST = "grid grid-cols-1 content-start gap-0.5";');
     expect(rails).not.toContain("cardWidth");
     expect(rails).not.toContain("FavoriteTile");
     expect(rails).not.toContain("ArrowUpDown");
