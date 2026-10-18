@@ -6,21 +6,16 @@ on:
     paths:
       - "supabase/**"
       - ".github/workflows/supabase.yml"
-  # Unfiltered on `pull_request` (MESITA-1576): a required check that a path
-  # filter skips never reports, and branch protection blocks a PR on an
-  # "Expected" check that will never arrive. The `changes` job below decides
-  # per-PR whether there's anything to check; a PR outside `supabase/**` gets
-  # a cheap skip that still reports, so the name is always there to require.
+  # Every PR runs this workflow; the `changes` job decides whether the jobs
+  # below have anything to do.
   pull_request: {}
-  # MESITA-1379. This suite can go red with NO commit touching it, and the
-  # path filters above mean nothing would run to find out — main reads green
-  # while it is broken, and the next PR to touch supabase/** inherits the red.
-  # Two ways that happens here and nowhere else in this repo:
+  # This suite can go red with NO commit touching it, and the path filters
+  # above mean nothing would run to find out: main reads green while it is
+  # broken, and the next PR to touch supabase/** inherits the red. Two ways
+  # that happens here and nowhere else in this repo:
   #   · these EFs import jsr:/npm:/https: UNPINNED by design (see the lint
   #     exclusions below), so an upstream release can break them on its own;
-  #   · a date-relative fixture can simply come due — a `promo_paused_until`
-  #     ten days past a FROZEN `NOW` turned place-promoting.test.ts red on
-  #     2026-08-31 and stayed invisible until an unrelated PR ran this job.
+  #   · a date-relative fixture can simply come due against a frozen `NOW`.
   # Every apps/web-* package pins through a lockfile and cannot drift this
   # way, so the clock-driven run belongs on this one package, not repo-wide.
   # Off-peak minute: GitHub queues :00 heavily. Note GitHub disables cron on
@@ -43,48 +38,47 @@ defaults:
     working-directory: supabase/supabase/functions
 
 jobs:
-  # MESITA-1576: decides once whether this event touches supabase/** so the
-  # three jobs below can report a real (not "Expected") status on every PR
-  # without re-running the checkout+diff themselves. `push` to main never
-  # skips — main-protection only cares about `pull_request`, and `changed`
-  # here always resolves 'true' for a push (no `base` to diff against).
+  # Decides once whether a PR touches what this suite reads, so the three jobs
+  # below need no checkout and diff of their own. Every other event (push to
+  # main, the nightly run, a dispatch) runs everything.
   changes:
     name: detect supabase changes
     runs-on: ubuntu-latest
     outputs:
-      changed: ${{ github.event_name != 'pull_request' || steps.filter.outputs.supabase == 'true' }}
+      changed: ${{ github.event_name != 'pull_request' && 'true' || steps.filter.outputs.supabase }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3.0.4
         id: filter
         with:
           filters: |
             supabase:
               - 'supabase/**'
               - '.github/workflows/supabase.yml'
-              # MESITA-1857. Tests in this suite STRING-SCAN the two apps —
+              # Tests in this suite STRING-SCAN the two apps:
               # `config-section-callers.test.ts` reads web-admin's source,
-              # `place-families-parity.test.ts` reads web-consumer's family twin
-              # and forbids the pre-MESITA-1857 family vocabulary across both,
-              # and `ef-caller-acl.test.ts` checks every EF call site. A filter
-              # of 'supabase/**' alone means a PR that touches only apps/**
-              # skips the job that would catch it, which is how the (since
-              # deleted) mobile family list drifted from the catalog unnoticed.
-              # Anything a supabase test reads belongs in this filter.
+              # `place-families-parity.test.ts` reads web-consumer's family
+              # twin and forbids the retired family vocabulary across both,
+              # and `ef-caller-acl.test.ts` checks every EF call site. A PR
+              # that touches only apps/** must still run them. Anything a
+              # supabase test reads belongs in this filter.
               - 'apps/web-admin/src/**'
               - 'apps/web-consumer/src/**'
 
+  # The three jobs below are SKIPPED when the PR touches nothing in the filter,
+  # which merges. If `changes` fails, its output is empty, not 'false', and
+  # they run.
   check:
     name: deno lint · test
     needs: changes
-    if: needs.changes.outputs.changed == 'true'
+    if: ${{ !cancelled() && needs.changes.outputs.changed != 'false' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Install Deno
-        uses: denoland/setup-deno@v2
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
         with:
           deno-version: v2.9.1
 
@@ -100,15 +94,12 @@ jobs:
 
       # `supabase functions deploy` builds its list from config.toml's
       # [functions.*] blocks, NOT from the folders on disk, and aborts the whole
-      # run on the first block whose entrypoint is missing — every function
-      # after it is skipped. Three orphan blocks left behind by two EF deletions
-      # (#1170, #1171) froze prod EFs across four merges before anyone noticed
-      # (MESITA-1286), because the deploy job is the only place that reads them
-      # and it runs after the merge. So the check runs on the PR.
+      # run on the first block whose entrypoint is missing: every function after
+      # it is skipped. The deploy runs after the merge, so the check runs on the
+      # PR (MESITA-1286).
       #
       # One direction only: a folder with no block is fine (config defaults
-      # apply). Deleting an EF is THREE deletions — the folder, this block, and
-      # the cloud function.
+      # apply).
       - name: Every declared function has a folder
         working-directory: supabase/supabase
         run: |
@@ -122,36 +113,27 @@ jobs:
             exit 1
           fi
 
-  # The instruction-file sync check (scripts/sync-rules.ts --check) lives in
-  # the root `rules` workflow (.github/workflows/rules.yml) since
-  # MESITA-456 — one checkout now covers the whole monorepo.
-
   # Full type-check of every edge function against its remote (jsr/npm/https)
-  # imports.
-  #
-  # This was non-blocking, on the reasoning that a registry hiccup should not
-  # block a merge. That protected nothing: the `test` job above is blocking and
-  # resolves the same remote imports, so a registry outage already fails CI. All
-  # the exemption bought was a job that sat red on main for weeks, at which point
-  # it could no longer distinguish "you broke it" from "it was already broken" —
-  # and #924 shipped a contract change past it that took every create path down
-  # for 11 days (MESITA-1139). A gate nobody can read is not a gate. Blocking.
+  # imports. Blocking: the `check` job above resolves the same remote imports,
+  # so a registry outage fails CI either way, and a check that sits red on main
+  # can no longer tell "you broke it" from "it was already broken"
+  # (MESITA-1139).
   #
   # Scope is the whole `supabase` package, not just `functions/` — the step below
   # overrides the job default. `scripts/` imports freely from `functions/_shared`,
   # so a sweep that deletes an export there breaks a script that CI would
-  # otherwise never load (that is how two linklab runners sat broken for weeks).
+  # otherwise never load.
   typecheck:
     name: deno check
     needs: changes
-    if: needs.changes.outputs.changed == 'true'
+    if: ${{ !cancelled() && needs.changes.outputs.changed != 'false' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Install Deno
-        uses: denoland/setup-deno@v2
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
         with:
           deno-version: v2.9.1
 
@@ -161,41 +143,26 @@ jobs:
 
   # SQL invariants against a database built from every migration.
   #
-  # The Deno suite never opens Postgres, so until this job every schema
-  # guarantee was convention: `profiles` keeps security_invoker, `places.name`
+  # The Deno suite never opens Postgres, so without this job every schema
+  # guarantee is convention: `profiles` keeps security_invoker, `places.name`
   # stays generated, `admin_reset_database` finds its survivors registered.
-  # Migrations carry DO-block assertions (the 5A posture from /plan-eng-review
-  # 2026-08-09, Issue 5) but they only see the world at the moment they run.
-  # The failure that actually happened is the one they cannot see:
-  # 20260712040000 dropped security_invoker off a projects_view rebuild and it
-  # went unnoticed until an audit. This job runs after the LAST migration, so
-  # it sees the schema that ships (MESITA-1050).
+  # Migrations carry DO-block assertions, but they only see the world at the
+  # moment they run; this job runs after the LAST migration, so it sees the
+  # schema that ships (MESITA-1050). pgTAP also reads public pg_proc.prosrc for
+  # retired column names, which covers LANGUAGE sql and EXECUTE text inside
+  # function bodies (MESITA-1720).
   #
   # Blocking. If Postgres will not come up, the migration set is broken and
   # that IS the finding — merging past it deploys the same breakage. Do not
   # add continue-on-error (MESITA-1139).
   #
   # Cost: `-x` drops every container except Postgres (and auth, which the CLI
-  # always starts). Path-filtered to `supabase/**`, so a web-only PR never
-  # pays for it.
-  #
-  # MESITA-1191 D3b: this job is NOT `supabase db lint` on a shadow DB. That
-  # would reverse the settled CI-cost posture. plpgsql_check + the generic
-  # OLD_NAME grep (EXECUTE strings, non-public schemas, cron.job.command)
-  # stay doctor 2.10 — a daily sweep, not a shadow-DB lint. MESITA-1720 is
-  # the PR-gate half for the class of bug that actually shipped: pgTAP reads
-  # public pg_proc.prosrc for retired column names (project_id / ticket_code),
-  # which covers LANGUAGE sql and EXECUTE text inside those bodies.
-  #
-  # MESITA-1296: when these jobs report, main-protection should require
-  # `deno lint · test`, `deno check`, `pgTAP · schema invariants`, plus
-  # `instruction files in sync` and `brand assets in sync`. Unreported
-  # path-filtered checks must not block. The GitHub token on this runner
-  # cannot PUT the ruleset (403); the law is the names, the click is residue.
+  # always starts), and a PR outside the filter never pays for it. Not
+  # `supabase db lint` on a shadow DB, for the same cost reason.
   schema:
     name: pgTAP · schema invariants
     needs: changes
-    if: needs.changes.outputs.changed == 'true'
+    if: ${{ !cancelled() && needs.changes.outputs.changed != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -203,10 +170,9 @@ jobs:
         uses: actions/checkout@v4
 
       # Pinned: resolving "latest" costs an unauthenticated GitHub API call,
-      # rate-limited per runner IP, and already failed this job once
-      # (run 32626825469).
+      # rate-limited per runner IP.
       - name: Install Supabase CLI
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
         with:
           version: 2.100.0
 

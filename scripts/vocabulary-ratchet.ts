@@ -21,6 +21,7 @@ const UI_ROOTS = [
   "apps/web-admin/src",
   "apps/web-consumer/src",
   "apps/web-landing/src",
+  "packages/place-profile/src",
 ] as const;
 
 const CARD_PATHS = [
