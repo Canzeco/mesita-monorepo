@@ -36,10 +36,11 @@ describe("the Places chip row (MESITA-2366)", () => {
     expect(placesChips(RAILS).map((c) => c.emoji)).toEqual(["📍", "⭐", "☕", "🥐"]);
   });
 
-  it("puts the Location control after Google, before the families", () => {
-    expect(src).toContain("chips.slice(0, 2).map");
-    expect(src.indexOf('"Location"')).toBeGreaterThan(src.indexOf("chips.slice(0, 2).map"));
-    expect(src.indexOf('"Location"')).toBeLessThan(src.indexOf("chips.slice(2).map"));
+  it("pins the location control as its own bar above the categories (MESITA-2377)", () => {
+    expect(src).toContain("data-places-location");
+    expect(src).toContain("bg-card border-border sticky top-0 z-10");
+    expect(src.indexOf("data-places-location")).toBeLessThan(src.indexOf("chips.map(categoryRow)"));
+    expect(src).toContain('"Use my location"');
   });
 
   it("is a left column, one third wide, scrolling on its own, and opens on Mesita (MESITA-2367)", () => {
