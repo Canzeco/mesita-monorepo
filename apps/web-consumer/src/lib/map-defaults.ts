@@ -112,14 +112,13 @@ export function mapPinIcon(fillColor: string, strokeColor: string) {
 //
 //   Google Places ⊃ Mesita Places ⊃ Mesita Enriched Places
 //
-// Red is EARNED by enrichment. A Created place is ours and can be shown, so
-// it no longer wears Google's gray — it wears the brand ink
-// (`assets/brand/brand.json` › brand-ink), and turns red when an Enrich run
-// completes.
+// Red is EARNED by enrichment: Mesita Selected. Everything else on the map
+// is gray — a Google row and a Created place alike; the brand-ink middle
+// tone is gone (Pato, 2026-10-18, MESITA-2316). A Created place turns red
+// when an Enrich run completes.
 //
 // Blue is the guest's current location and is never a place pin.
 export const MAP_ENRICHED_PIN_COLOR = "#ff2357";
-export const MAP_MESITA_PIN_COLOR = "#331019";
 export const MAP_GOOGLE_PIN_COLOR = "#9ca3af";
 export const MAP_USER_LOCATION_PIN_COLOR = "#2563eb";
 
