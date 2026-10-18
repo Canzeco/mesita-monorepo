@@ -55,11 +55,11 @@ export type Place = {
 
   // ── Overview parity (optional) ────────────────────────────────────
   //
-  // The swipe / catalog cards used to show only what's strictly on the
+  // The catalog cards used to show only what's strictly on the
   // places row (name, category, price_level, closes_at).
-  // The "all info on the tinder card too" checkpoint widens that to
+  // The "all info on the card too" checkpoint widens that to
   // mirror the place-detail overview grid. Every field below is
-  // optional because the recommend-swipe / list-places EFs don't return
+  // optional because the list-catalog / list-places EFs don't return
   // them yet — the card hides cells when the field is null/undefined,
   // so the contract degrades cleanly until the EF starts populating
   // them (sourced from Google Places + cached on the row).
@@ -111,34 +111,9 @@ export type Place = {
   google_place_id?: string | null;
 };
 
-// Discover surfaces (swipe + catalog) go through dedicated EFs. The deck EF
-// ranks the catalog behind the shared signal library (MESITA-1196) and, given
-// `predicates`, cuts its pool with the guest's filters BEFORE ranking
-// (MESITA-1153) — so a narrow filter searches the catalog instead of thinning a
-// slice of it. The helpers below are thin invokers; the selection logic lives
-// in the EFs so we can iterate on it without redeploying the web app.
-type RecommendDeckInput = {
-  lat?: number;
-  lng?: number;
-  limit?: number;
-  /** The deck's predicates (the deck is unmounted; the EF still reads them). */
-  predicates?: { familyKeys: string[]; placesScope: string; minReviews: number };
-};
-type RecommendDeckResponse = {
-  deck: Place[];
-};
-export async function apiFetchPublicPlaces(
-  client: SupabaseClient,
-  limit = 50,
-): Promise<Place[]> {
-  const { places } = await invokeEF<{ places: Place[] }>(
-    client,
-    "consumer-web-list-places",
-    { limit },
-  );
-  return places.map(stripInsecurePhotos);
-}
-
+// Discover surfaces (the Search map, Home's Feed) go through dedicated EFs.
+// The helpers below are thin invokers; the selection logic lives in the EFs
+// (the Area pipeline) so we can iterate on it without redeploying the web app.
 /** The wire word for a Places scope (MESITA-2298): Google Places or Mesita
  *  Selected. The server also reads the retired `enriched`/`mesita` words. */
 type PlacesScopeWire = "google" | "selected";
@@ -238,18 +213,6 @@ export async function apiRequestPlace(
     placeId,
   });
 }
-export async function apiRecommendDeck(
-  client: SupabaseClient,
-  input: RecommendDeckInput = {},
-): Promise<RecommendDeckResponse> {
-  const data = await invokeEF<RecommendDeckResponse>(
-    client,
-    "consumer-web-recommend-swipe",
-    input,
-  );
-  return { deck: data.deck.map(stripInsecurePhotos) };
-}
-
 export type CatalogRail = {
   key: string;
   label: string;

@@ -18,13 +18,9 @@ export const CONSUMER_ROUTES = {
   // DISCOVER — Home's mode-tabs namespace. Four modes, matching ModeTabs's
   // four columns exactly: Places · Social · Chat · Favs (Pato, MESITA-2166).
   //
-  // THE ENGINE KEY IS STILL `swipe`, AND THAT IS DELIBERATE. `swipe` is a
-  // persisted key in `app_config.discovery_config`, the only entry in
-  // WIRED_ENGINE_KEYS, a row in discovery-matrix.ts and its hand-mirrored
-  // admin twin, and the mask for weightsForMode("swipe"). Renaming it would
-  // make loadDiscoveryConfig read `undefined` and silently fall back to
-  // DEFAULT_SWIPE, discarding every operator-tuned radius in the live config
-  // — and the two code twins pin EACH OTHER, so it would go green.
+  // THE SWIPE ENGINE IS GONE (MESITA-2328): its EF, its ranking library and
+  // its `discovery_config.swipe` slice retired together. The stored key was
+  // dropped by the normalizers, never renamed.
   //
   // HOME'S RAIL IS PLACES · SOCIAL · CHAT · FAVS (Pato, 2026-10-12,
   // MESITA-2166: "no swipe nor scroll for the moment. Kill them."). Places is

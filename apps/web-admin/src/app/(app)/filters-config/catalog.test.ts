@@ -9,269 +9,85 @@ import {
   DEFAULT_GENERAL,
   DEFAULT_MAP,
   DEFAULT_NAME,
-  DEFAULT_SWIPE,
-  DISCOVERY_ENTITIES,
-  DISCOVERY_MODE_KEYS,
-  DISCOVERY_MODE_SOURCES,
-  DISCOVERY_POOLS,
-  DISCOVERY_SOURCES,
-  DISCOVERY_SOURCES_NO_CALLER,
   GOOGLE_PULL_STOPS,
-  modeCallsSource,
-  modeRequiresPool,
-  modeReturnsEntity,
-  modeSignalState,
-  resetLegacySignalWarnings,
   SUPER_FIELDS,
-  SIGNAL_KEYS,
-  SIGNAL_WEIGHT_MAX,
-  SIGNALS,
   snapMapReloadPair,
-  WEIGHT_MAX,
-  WEIGHT_MIN,
-  WEIGHTED_MODE_KEYS,
-  weightMaxFor,
 } from "./catalog";
 
-describe("Discovery function APIs", () => {
-  it("only maxKm and closedFloor are extra operator knobs", () => {
-    expect(
-      SIGNALS.flatMap((s) => s.fields.map((f) => `${s.key}.${f.key}`)),
-    ).toEqual(["proximity.maxKm", "timing.closedFloor"]);
-  });
+// `app_config.discovery_config` as stored on 2026-10-18 (trimmed): the
+// retired deck's keys beside the live ones. The EF twin pins the same blob.
+const LIVE_BLOB = {
+  swipe: { savedAt: null, radiusKm: 5, minReviews: 1, closingBufferMin: 30 },
+  engines: { swipe: { ranked: true } },
+  weights: { name: 1, timing: 1, proximity: 1, randomness: 0.35, mesita_level: 1 },
+  params: {
+    name: {},
+    timing: { dawn: 0.55, openShare: 0.7, closedFloor: 0.2 },
+    category: { miss: 0.1, exact: 1, family: 0.55 },
+    proximity: { maxKm: 25, kneeKm: 1, missingGeo: 0.35 },
+    popularity: { confidence: 60, floorRating: 3, priorRating: 4.2 },
+    randomness: {},
+  },
+  filters: { minRating: 0, minReviews: 0, requireReady: true, maxDistanceKm: 0 },
+  general: { minReviews: 0, requireActive: true },
+  chat: { prompt: "Be Memo." },
+};
 
-  it("library order is section 8.3 — asked-for, then world, then us, then the tie-break", () => {
-    // The blend is a product of s^w, so the table order cannot move a score.
-    expect([...SIGNAL_KEYS]).toEqual([
-      "name",
-      "category",
-      "proximity",
-      "timing",
-      "enriched",
-      "popularity",
-      "randomness",
-    ]);
-  });
-
-  it("only Scroll keeps a weight column", () => {
-    // A mode earns one when it has a live weightsForMode caller AND a mask
-    // over more than one signal. Map lost its caller with MESITA-2327: the
-    // Area pipeline multiplies Proximity × Popularity with no weights. The
-    // EF twin's contract test asserts the same, because the keys are PERSISTED.
-    expect([...WEIGHTED_MODE_KEYS]).toEqual(["swipe"]);
-    for (const mode of WEIGHTED_MODE_KEYS) {
-      expect(DISCOVERY_MODE_KEYS).toContain(mode);
+describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
+  it("coerceConfig drops swipe, engines, weights and weightsByMode", () => {
+    const cfg = coerceConfig({ ...LIVE_BLOB, weightsByMode: { swipe: { timing: 1.5 } } });
+    for (const dead of ["swipe", "engines", "weights", "weightsByMode"]) {
+      expect(cfg).not.toHaveProperty(dead);
     }
+    expect(Object.keys(cfg).sort()).toEqual(Object.keys(DEFAULT_CONFIG).sort());
   });
 
-  it("a per-mode column round-trips, clamps, and seeds from the blob's own vector", () => {
-    const tuned = coerceConfig({
-      weightsByMode: { swipe: { proximity: 2, enriched: 4 }, map: { proximity: 3 } },
+  it("params keeps only the Area pipeline's three numbers", () => {
+    expect(coerceConfig(LIVE_BLOB).params).toEqual(DEFAULT_CONFIG.params);
+    expect(
+      coerceConfig({
+        params: {
+          proximity: { maxKm: 30, halfDistanceKm: 6 },
+          popularity: { priorRating: 4.2, referenceRating: 4, referenceReviews: 500 },
+          timing: { closedFloor: 0.2 },
+        },
+      }).params,
+    ).toEqual({
+      proximity: { halfDistanceKm: 6 },
+      popularity: { referenceRating: 4, referenceReviews: 500 },
     });
-    expect(tuned.weightsByMode.swipe.proximity).toBe(2);
-    // Enriched caps at 2, not the uniform 4, on every mode.
-    expect(tuned.weightsByMode.swipe.enriched).toBe(2);
-    // The retired Map column is dropped on read, so the next Save prunes it.
-    expect(tuned.weightsByMode).not.toHaveProperty("map");
+  });
 
-    // THE MIGRATION. The live blob has hand-tuned GLOBAL exponents and no
-    // per-mode bag at all. Seeding a missing column from DEFAULT_CONFIG would
-    // revert every one of them the first time this page loaded, silently.
-    const legacy = coerceConfig({ weights: { proximity: 1.5 } });
-    for (const mode of WEIGHTED_MODE_KEYS) {
-      expect(legacy.weightsByMode[mode], mode).toEqual(legacy.weights);
-      expect(legacy.weightsByMode[mode].proximity, mode).toBe(1.5);
-    }
-    // Two decimals, or the 0.05-step field leaves the page permanently dirty.
+  it("the Area params clamp to their bounds, at their own decimals", () => {
     expect(
-      coerceConfig({ weightsByMode: { swipe: { timing: 1.7000000000000002 } } })
-        .weightsByMode.swipe.timing,
-    ).toBe(1.7);
-    // Below the floor clamps up, not to NaN — a non-finite exponent would
-    // turn the WHOLE signal off in the blend, scoring every place exactly 1.
-    expect(
-      coerceConfig({ weightsByMode: { swipe: { timing: -3, category: "x" } } })
-        .weightsByMode.swipe,
-    ).toMatchObject({ timing: WEIGHT_MIN, category: DEFAULT_CONFIG.weights.category });
-    // A mode nothing ranks is not stored at all.
-    expect(
-      Object.keys(coerceConfig({ weightsByMode: { word: { name: 3 } } }).weightsByMode).sort(),
-    ).toEqual([...WEIGHTED_MODE_KEYS].sort());
+      coerceConfig({
+        params: {
+          proximity: { halfDistanceKm: 0.01 },
+          popularity: { referenceRating: 9, referenceReviews: 12.6 },
+        },
+      }).params,
+    ).toEqual({
+      proximity: { halfDistanceKm: 0.1 },
+      popularity: { referenceRating: 5, referenceReviews: 13 },
+    });
   });
 
-  it("seven sources and a locked mode → source matrix", () => {
-    expect([...DISCOVERY_MODE_KEYS]).toEqual([
-      "word",
-      "map",
-      "catalog",
-      "swipe",
-      "chat",
-      "favorites",
-    ]);
-    expect([...DISCOVERY_SOURCES]).toEqual([
-      "Google Places Autocomplete Search",
-      "Google Places Text Search",
-      "Google Places Nearby Search",
-      "Mesita Places Name Search",
-      "Mesita Places Nearby Search",
-      "Mesita Places Catalog Search",
-      "Mesita Social Catalog Search",
-    ]);
-    expect(DISCOVERY_MODE_SOURCES.word).toEqual([
-      "Google Places Autocomplete Search",
-      "Google Places Text Search",
-      "Mesita Places Name Search",
-    ]);
-    expect(DISCOVERY_MODE_SOURCES.map).toEqual([
-      "Google Places Nearby Search",
-      "Mesita Places Nearby Search",
-    ]);
-    // The Feed buys Google Nearby for rail 1 (Google Places) and reads the
-    // Mesita Nearby pool for its Mesita Selected and family rails when the
-    // guest shares a location, the catalog otherwise (MESITA-2298 §7).
-    // Browse and Flexible are gone (MESITA-2195): Places Catalog is for
-    // places, Social Catalog for events.
-    expect(DISCOVERY_MODE_SOURCES.catalog).toEqual([
-      "Google Places Nearby Search",
-      "Mesita Places Nearby Search",
-      "Mesita Places Catalog Search",
-    ]);
-    expect(DISCOVERY_MODE_SOURCES.swipe).toEqual(["Mesita Places Catalog Search"]);
-    expect(DISCOVERY_MODE_SOURCES.chat).toEqual([]);
-    expect(DISCOVERY_MODE_SOURCES.favorites).toEqual([]);
-    // The pin biases Autocomplete and Text Search; a bias is not a call.
-    expect(modeCallsSource("word", "Google Places Nearby Search")).toBe(false);
-    // Perplexity was on the old module list twice and is not retrieval we do.
-    expect(DISCOVERY_SOURCES.some((s) => s.includes("Perplexity"))).toBe(false);
-    // A Source has a caller, or it is NAMED as one that has none. An empty
-    // row is allowed; an empty row nobody declared is a mode list that lost
-    // a source by accident.
-    expect([...DISCOVERY_SOURCES_NO_CALLER]).toEqual([
-      "Mesita Social Catalog Search",
-    ]);
-    for (const source of DISCOVERY_SOURCES) {
-      const called = DISCOVERY_MODE_KEYS.some((mode) =>
-        modeCallsSource(mode, source),
-      );
-      const declaredCallerless = (
-        DISCOVERY_SOURCES_NO_CALLER as readonly string[]
-      ).includes(source);
-      expect(called, source).toBe(!declaredCallerless);
-    }
-    for (const source of DISCOVERY_SOURCES_NO_CALLER) {
-      expect(
-        (DISCOVERY_SOURCES as readonly string[]).includes(source),
-        source,
-      ).toBe(true);
-    }
+  it("filters stay: consumer-web-list-places still reads them", () => {
+    expect(coerceConfig(LIVE_BLOB).filters).toEqual(LIVE_BLOB.filters);
+    expect(coerceConfig({ filters: { minRating: 4.26, minReviews: -5 } }).filters).toMatchObject({
+      minRating: 4.3,
+      minReviews: 0,
+    });
   });
 
-  // DISCOVERY_MODE_SOURCES is `as const` with no type annotation, so a mode
-  // list may name a string that is in no source list and still compile — the
-  // mode would just call nothing. The test above walks sources → modes; this
-  // one walks modes → sources, which is the direction the Socials rename
-  // could have broken silently (MESITA-1856).
-  it("no mode names a source that does not exist", () => {
-    for (const mode of DISCOVERY_MODE_KEYS) {
-      for (const source of DISCOVERY_MODE_SOURCES[mode] as readonly string[]) {
-        expect(
-          (DISCOVERY_SOURCES as readonly string[]).includes(source),
-          `${mode} → ${source}`,
-        ).toBe(true);
-      }
+  it("the Mode × Entity × Pool × Source twin is deleted, not parked", () => {
+    for (const gone of ["discovery-matrix.ts", "source-floor-copy.ts"]) {
+      expect(existsSync(join(__dirname, gone))).toBe(false);
     }
   });
+});
 
-  // The three bands live only in discovery-matrix.ts, so these literals are
-  // their one pin.
-  it("result entities are Locations · Places · Socials, in that order", () => {
-    expect(DISCOVERY_ENTITIES.map((e) => e.key)).toEqual([
-      "location",
-      "place",
-      "social",
-    ]);
-    expect(DISCOVERY_ENTITIES.map((e) => e.label)).toEqual([
-      "Locations",
-      "Places",
-      "Socials",
-    ]);
-    for (const mode of DISCOVERY_MODE_KEYS) {
-      expect(modeReturnsEntity(mode, "place"), mode).toBe(mode !== "chat");
-      expect(modeReturnsEntity(mode, "location"), mode).toBe(
-        modeCallsSource(mode, "Google Places Autocomplete Search"),
-      );
-      // An entity comes from a source: the modes that answer with a Social
-      // are exactly the modes that call Social Catalog. It stays Soon until
-      // an events engine exists.
-      expect(modeReturnsEntity(mode, "social"), mode).toBe(
-        modeCallsSource(mode, "Mesita Social Catalog Search"),
-      );
-    }
-    expect(modeReturnsEntity("catalog", "social")).toBe(false);
-    expect(modeReturnsEntity("chat", "social")).toBe(false);
-    expect(modeReturnsEntity("map", "social")).toBe(false);
-  });
-
-  it("two guest scopes: Google Places and Mesita Selected", () => {
-    // The band IS `PlacesScope = "google" | "selected"` from nearby-places.ts
-    // (MESITA-2298). The middle ring (Mesita Places) and the word Enriched
-    // are the code's, never a scope a guest picks: a Created row rides inside
-    // Google Places as a painted hit, the gray pin.
-    expect(DISCOVERY_POOLS.map((p) => p.key)).toEqual(["google", "selected"]);
-    expect(DISCOVERY_POOLS.map((p) => p.label)).toEqual([
-      "Google Places",
-      "Mesita Selected",
-    ]);
-    for (const pool of DISCOVERY_POOLS) {
-      expect(pool.label, pool.key).not.toMatch(/Enriched/);
-    }
-    // Map is the one mode whose GUEST picks the scope; the Feed serves both
-    // (rail 1 Google Places, rail 2 Mesita Selected, then the families).
-    expect(modeRequiresPool("map", "google")).toBe(true);
-    expect(modeRequiresPool("map", "selected")).toBe(true);
-    expect(modeRequiresPool("catalog", "google")).toBe(true);
-    expect(modeRequiresPool("catalog", "selected")).toBe(true);
-    // Scroll hardcodes requireReady, which IS the Selected gate
-    // (`enriched_at IS NOT NULL` AND `content_state = 'ready'`, MESITA-2154).
-    expect(modeRequiresPool("swipe", "selected")).toBe(true);
-    expect(modeRequiresPool("swipe", "google")).toBe(false);
-    // A bookmark is always a Google-sourced place, and it is NOT gated on
-    // enrichment: Created profiles get bookmarked too.
-    expect(modeRequiresPool("favorites", "google")).toBe(true);
-    expect(modeRequiresPool("favorites", "selected")).toBe(false);
-    // Word and Chat answer from whatever came back; no scope gate at all.
-    for (const pool of DISCOVERY_POOLS) {
-      expect(modeRequiresPool("word", pool.key), pool.key).toBe(false);
-      expect(modeRequiresPool("chat", pool.key), pool.key).toBe(false);
-    }
-    // No row is dead: every scope is required by at least one mode.
-    for (const pool of DISCOVERY_POOLS) {
-      expect(
-        DISCOVERY_MODE_KEYS.some((mode) => modeRequiresPool(mode, pool.key)),
-        pool.key,
-      ).toBe(true);
-    }
-  });
-
-  it("signals light Word Name, Chat Name, Map without Randomness", () => {
-    expect(modeSignalState("word", "name")).toBe("on");
-    expect(modeSignalState("chat", "name")).toBe("on");
-    expect(modeSignalState("chat", "randomness")).toBe("off");
-    expect(modeSignalState("map", "proximity")).toBe("on");
-    expect(modeSignalState("map", "randomness")).toBe("zero");
-    expect(modeSignalState("swipe", "randomness")).toBe("on");
-    // Every mode Level was on for reads Enriched, and no mode gains it.
-    expect(modeSignalState("catalog", "enriched")).toBe("on");
-    expect(modeSignalState("map", "enriched")).toBe("on");
-    expect(modeSignalState("swipe", "enriched")).toBe("on");
-    expect(modeSignalState("chat", "enriched")).toBe("on");
-    expect(modeSignalState("word", "enriched")).toBe("off");
-    expect(modeSignalState("favorites", "proximity")).toBe("off");
-    expect(
-      SIGNAL_KEYS.every((key) => modeSignalState("favorites", key) === "off"),
-    ).toBe(true);
-  });
-
+describe("coerceConfig", () => {
   it("coerceConfig defaults catalog on an old blob", () => {
     expect(coerceConfig({ weights: {}, slotting: {} }).catalog).toEqual(DEFAULT_CATALOG);
     expect(coerceConfig({ catalog: { seedCount: 99 } }).catalog.seedCount).toBe(20);
@@ -311,37 +127,6 @@ describe("Discovery function APIs", () => {
       social: { seedCount: 6, generatedCount: 6, eventsPerRail: 8, minSeedEvents: 1, horizonDays: 14 },
     });
     expect(cfg).not.toHaveProperty("social");
-  });
-
-  it("coerceConfig drops the retired param bags and Name's unembedded (MESITA-2144)", () => {
-    // What the live blob still stores under `params`. A bag this page keeps
-    // is a bag the next whole-blob Save writes back over the strip migration.
-    const cfg = coerceConfig({
-      params: {
-        summary: { unembedded: 0.4 },
-        name: { unembedded: 0.4 },
-        mesita_level: {},
-        proximity: { maxKm: 30 },
-      },
-    });
-    expect(cfg.params).not.toHaveProperty("summary");
-    expect(cfg.params).not.toHaveProperty("mesita_level");
-    expect(cfg.params.name).toEqual({});
-    expect(Object.keys(cfg.params).sort()).toEqual([...SIGNAL_KEYS].sort());
-    expect(cfg.params.proximity.maxKm).toBe(30);
-  });
-
-  it("coerceConfig defaults swipe on an old blob and clamps knobs", () => {
-    expect(coerceConfig({ weights: {}, slotting: {} }).swipe).toEqual(DEFAULT_SWIPE);
-    expect(
-      coerceConfig({
-        swipe: { radiusKm: 99, minReviews: -2, closingBufferMin: 999 },
-      }).swipe,
-    ).toMatchObject({
-      radiusKm: 50,
-      minReviews: 0,
-      closingBufferMin: 180,
-    });
   });
 
   it("the category param is fifteen families", () => {
@@ -430,124 +215,5 @@ describe("Discovery page box order", () => {
     }
     expect(nextConfig).toContain('destination: "/filters-config"');
     expect(nextConfig).not.toMatch(/destination: "\/filters-config\/[a-z]/);
-  });
-});
-
-// ── MESITA-1858: the cap and the deploy window ─────────────────────────────
-
-describe("Mesita Level is Enriched", () => {
-  it("carries the Enriched cap BY NAME, in a map that is never empty", () => {
-    // A loop over an empty map asserts nothing, so the cap is pinned by name.
-    expect(Object.keys(SIGNAL_WEIGHT_MAX).length).toBeGreaterThan(0);
-    expect(weightMaxFor("enriched")).toBe(2);
-    expect(weightMaxFor("proximity")).toBe(WEIGHT_MAX);
-  });
-
-  it("clamps a console write above the cap instead of accepting it", () => {
-    const cfg = coerceConfig({ weights: { enriched: 4, proximity: 4 } });
-    expect(cfg.weights.enriched).toBe(2);
-    expect(cfg.weights.proximity).toBe(4);
-  });
-
-  it("every Record<SignalKey, …> map on this page has full key coverage", () => {
-    // A missing DEFAULT_SIGNAL_PARAMS entry on the EF side throws a TypeError
-    // that `loadDiscoveryConfig` swallows, returning DISCOVERY_DEFAULTS for
-    // the whole config on every request. Same shape of hazard here.
-    const expected = [...SIGNAL_KEYS].sort();
-    expect(Object.keys(DEFAULT_CONFIG.weights).sort()).toEqual(expected);
-    expect(Object.keys(DEFAULT_CONFIG.params).sort()).toEqual(expected);
-    expect(SIGNALS.map((s) => s.key).sort()).toEqual(expected);
-  });
-
-  it("reads mesita_level as a deprecated alias, onto Enriched", () => {
-    resetLegacySignalWarnings();
-    const cfg = coerceConfig({ weights: { mesita_level: 2 } });
-    expect(cfg.weights.enriched).toBe(2);
-  });
-
-  it("lets an explicitly-set new key win over the alias", () => {
-    resetLegacySignalWarnings();
-    const cfg = coerceConfig({
-      weights: { mesita_level: 2, enriched: 1.25 },
-    });
-    expect(cfg.weights.enriched).toBe(1.25);
-  });
-
-  it("loads a blob that still carries partnered, slotting and partnerCount", () => {
-    // The shape a blob saved before this signal list carries. The stored
-    // `partnered` exponent stays on the global vector as inert storage (the
-    // deploy window below); no rebuilt branch keeps it.
-    resetLegacySignalWarnings();
-    const original = console.warn;
-    console.warn = () => {};
-    let cfg: ReturnType<typeof coerceConfig>;
-    try {
-      cfg = coerceConfig({
-        weights: { mesita_level: 2, partnered: 1.5, proximity: 1.25 },
-        weightsByMode: { map: { partnered: 2, proximity: 0.5 } },
-        params: { partnered: {} },
-        slotting: { enabled: true, everyNth: 5 },
-        name: { deep: { partnerCount: 3, mesitaCount: 4 } },
-      });
-    } finally {
-      console.warn = original;
-    }
-    expect(cfg.weights.enriched).toBe(2);
-    expect(cfg.weights).toHaveProperty("partnered", 1.5);
-    // The Map column retired with MESITA-2327 (Area has no weights): a stored
-    // one is dropped, and Swipe keeps a full vector.
-    expect(cfg.weightsByMode).not.toHaveProperty("map");
-    expect(Object.keys(cfg.weightsByMode.swipe).sort()).toEqual([...SIGNAL_KEYS].sort());
-    expect(Object.keys(cfg.params).sort()).toEqual([...SIGNAL_KEYS].sort());
-    expect(cfg).not.toHaveProperty("slotting");
-    expect(cfg.name.deep).not.toHaveProperty("partnerCount");
-    expect(cfg.name.deep.mesitaCount).toBe(4);
-  });
-
-  it("PRESERVES an unknown weight key — the deploy-window mitigation", () => {
-    // This page auto-deploys on merge; the Edge Functions deploy by hand. In
-    // between, a whole-blob Save from here must not evict a key the EF side
-    // is about to need. A rebuild-from-SIGNAL_KEYS would have done exactly
-    // that, and the still-old EF would read a set 2 back as the default 1.
-    resetLegacySignalWarnings();
-    const cfg = coerceConfig({ weights: { mesita_level: 2, proximity: 1.5 } });
-    expect(cfg.weights).toHaveProperty("mesita_level", 2);
-    expect(cfg.weights.proximity).toBe(1.5);
-  });
-
-  it("survives an unrelated Save — save the Chat prompt, diff the weights", () => {
-    // The literal failure: Vercel ships, the operator saves the Chat prompt,
-    // and the save path is `weights: live.config.weights` where `live.config`
-    // is a coerceConfig of whatever the EF returned. So a round-trip is what
-    // a save does to the weights map.
-    resetLegacySignalWarnings();
-    const live = coerceConfig({
-      weights: { mesita_level: 2, proximity: 1.5 },
-      chat: { prompt: "before" },
-    });
-    const afterSave = coerceConfig({ ...live, chat: { prompt: "after" } });
-    expect(afterSave.weights).toEqual(live.weights);
-    expect(afterSave.weights).toHaveProperty("mesita_level", 2);
-    expect(afterSave.chat.prompt).toBe("after");
-  });
-
-  it("logs ONCE, structured, when a legacy key is folded", () => {
-    resetLegacySignalWarnings();
-    const seen: unknown[][] = [];
-    const original = console.warn;
-    console.warn = (...args: unknown[]) => void seen.push(args);
-    try {
-      coerceConfig({ weights: { mesita_level: 2 } });
-      coerceConfig({ weights: { mesita_level: 2 } });
-    } finally {
-      console.warn = original;
-    }
-    expect(seen).toHaveLength(1);
-    expect(seen[0][0]).toBe("[filters-config] legacy signal key");
-    expect(seen[0][1]).toMatchObject({
-      key: "mesita_level",
-      value: 2,
-      foldedTo: ["enriched"],
-    });
   });
 });

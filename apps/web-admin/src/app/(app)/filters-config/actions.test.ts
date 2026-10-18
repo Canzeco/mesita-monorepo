@@ -23,12 +23,8 @@ const mockInvoke = vi.mocked(efInvoke);
 function liveConfig(): DiscoveryConfig {
   return coerceConfig({
     ...DEFAULT_CONFIG,
-    weights: { ...DEFAULT_CONFIG.weights, proximity: 1.4 },
-    weightsByMode: { swipe: { ...DEFAULT_CONFIG.weightsByMode.swipe, proximity: 3 } },
-    params: {
-      ...DEFAULT_CONFIG.params,
-      proximity: { maxKm: 11, kneeKm: 2, missingGeo: 0.5, halfDistanceKm: 4.1 },
-    },
+    params: { ...DEFAULT_CONFIG.params, proximity: { halfDistanceKm: 4.1 } },
+    filters: { ...DEFAULT_CONFIG.filters, minRating: 3.5 },
     chat: { prompt: "live prompt" },
   });
 }
@@ -50,18 +46,11 @@ function armed(live: DiscoveryConfig) {
 function editedEverywhere(live: DiscoveryConfig): DiscoveryConfig {
   return {
     ...live,
-    weights: { ...live.weights, proximity: 0 },
-    weightsByMode: { swipe: { ...live.weightsByMode.swipe, proximity: 0.1 } },
     params: {
-      ...live.params,
-      proximity: { ...live.params.proximity, maxKm: 1, halfDistanceKm: 2.5 },
-      popularity: {
-        ...live.params.popularity,
-        priorRating: 1,
-        referenceRating: 4,
-        referenceReviews: 500,
-      },
+      proximity: { halfDistanceKm: 2.5 },
+      popularity: { referenceRating: 4, referenceReviews: 500 },
     },
+    filters: { ...live.filters, minRating: 1 },
     map: { ...live.map, radiusKm: 3, pinCount: 20 },
     catalog: { ...live.catalog, railCap: 7, seedCount: 99 },
     name: {
@@ -88,28 +77,35 @@ const ALL_BOX_SLICES: DiscoverySlice[][] = [
   ["deep", "chat"],
 ];
 
-describe("no box writes the weights (Area has none since MESITA-2327)", () => {
-  it.each(ALL_BOX_SLICES)("saving %s leaves both stored weight vectors", async (...slices) => {
+describe("no box writes the operator filters (list-places reads them)", () => {
+  it.each(ALL_BOX_SLICES)("saving %s leaves the stored filters", async (...slices) => {
     const live = liveConfig();
     const sent = armed(live);
     await updateDiscoveryConfig(editedEverywhere(live), slices);
-    expect(sent.config?.weights).toEqual(live.weights);
-    expect(sent.config?.weightsByMode).toEqual(live.weightsByMode);
+    expect(sent.config?.filters).toEqual(live.filters);
+  });
+});
+
+describe("no Save sends a key the Swipe deck retired (MESITA-2328)", () => {
+  it.each(ALL_BOX_SLICES)("saving %s sends none of them", async (...slices) => {
+    const live = liveConfig();
+    const sent = armed(live);
+    await updateDiscoveryConfig(editedEverywhere(live), slices);
+    for (const dead of ["swipe", "engines", "weights", "weightsByMode"]) {
+      expect(sent.config).not.toHaveProperty(dead);
+    }
   });
 });
 
 describe("the Area box", () => {
-  it("moves the half distance and the Popularity reference, no other param", async () => {
+  it("moves the half distance and the Popularity reference", async () => {
     const live = liveConfig();
     const sent = armed(live);
     await updateDiscoveryConfig(editedEverywhere(live), ["areaSignals"]);
-    expect(sent.config?.params.proximity.halfDistanceKm).toBe(2.5);
-    expect(sent.config?.params.proximity.maxKm).toBe(11);
-    expect(sent.config?.params.popularity.referenceRating).toBe(4);
-    expect(sent.config?.params.popularity.referenceReviews).toBe(500);
-    expect(sent.config?.params.popularity.priorRating).toBe(live.params.popularity.priorRating);
-    expect(sent.config?.params.timing).toEqual(live.params.timing);
-    expect(sent.config?.params.category).toEqual(live.params.category);
+    expect(sent.config?.params).toEqual({
+      proximity: { halfDistanceKm: 2.5 },
+      popularity: { referenceRating: 4, referenceReviews: 500 },
+    });
   });
 
   it("writes map, railCap and the two params; leaves Name, Deep and the prompt", async () => {

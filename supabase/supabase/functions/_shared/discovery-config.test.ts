@@ -111,6 +111,30 @@ Deno.test("garbage never throws: loadDiscoveryConfig would swallow it into defau
   }
 });
 
+// ── The deck itself ──────────────────────────────────────────────────────────
+
+Deno.test("the deck's EF and library are gone, and the cloud copy is on the leftover list", async () => {
+  const exists = (rel: string) => {
+    try {
+      Deno.statSync(new URL(rel, import.meta.url));
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  assertEquals(exists("../consumer-web-recommend-swipe/"), false);
+  for (const lib of ["signals", "blend", "swipe", "predicates", "matrix", "place"]) {
+    assertEquals(exists(`./discovery-${lib}.ts`), false, `discovery-${lib}.ts is back`);
+  }
+  const toml = await Deno.readTextFile(new URL("../../config.toml", import.meta.url));
+  assertEquals(toml.includes("[functions.consumer-web-recommend-swipe]"), false);
+  // `functions deploy` only adds: this line is what deletes it from the cloud.
+  const deploy = await Deno.readTextFile(
+    new URL("../../../../.github/workflows/supabase-deploy.yml", import.meta.url),
+  );
+  assert(/^\s+consumer-web-recommend-swipe$/m.test(deploy), "not on the leftover list");
+});
+
 // ── The admin twin, in lockstep ─────────────────────────────────────────────
 //
 // catalog.ts cannot be imported here (its `@/` alias is Next's), so these
@@ -130,8 +154,24 @@ Deno.test("both normalizers carry the same top-level keys", () => {
 });
 
 Deno.test("the admin twin rebuilds none of the deck's keys", () => {
-  for (const dead of ["weightsByMode", "WEIGHTED_MODE_KEYS", "WIRED_ENGINE_KEYS", "coerceSwipe", "SIGNAL_KEYS"]) {
-    assertEquals(CATALOG_SRC.includes(dead), false, `catalog.ts still names ${dead}`);
+  // Code only: the file's own comments name what retired, on purpose.
+  const code = CATALOG_SRC
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .split("\n")
+    .map((l) => l.replace(/\/\/.*$/, ""))
+    .join("\n");
+  for (
+    const dead of [
+      "weights",
+      "weightsByMode",
+      "engines",
+      "swipe",
+      "WEIGHTED_MODE_KEYS",
+      "WIRED_ENGINE_KEYS",
+      "SIGNAL_KEYS",
+    ]
+  ) {
+    assertEquals(new RegExp(`\\b${dead}\\b`).test(code), false, `catalog.ts still names ${dead}`);
   }
 });
 

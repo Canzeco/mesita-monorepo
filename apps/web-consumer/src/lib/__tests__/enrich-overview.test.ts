@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import type { Place } from "@/lib/api/places";
 
-// Pins the Enriching signal for swipe / catalog cards.
-// consumer-web-recommend-swipe already returns content_state via
-// PLACE_PUBLIC_COLUMNS; enrichPlaceOverview must
+// Pins the Enriching signal for catalog cards.
+// consumer-web-list-catalog already returns content_state via
+// PLACE_CARD_COLUMNS; enrichPlaceOverview must
 // map it to is_enriching so a card can say the profile is still being built
 // (parity with place detail). Regressions here hide the chip on newly created
 // places.
