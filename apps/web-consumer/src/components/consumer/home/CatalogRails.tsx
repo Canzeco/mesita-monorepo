@@ -35,12 +35,13 @@ import { useStoredString } from "@/lib/local-store";
 import { summarizeCatalog } from "@/lib/catalog-summary";
 
 // TEMPORARY (Pato, MESITA-2340): a try-out switch for how many cards fit
-// across the screen — 1.5, 2 or 2.5 (today's size). Literal class strings so
+// across the screen — 1.5, 1.75 (MESITA-2352), 2 or 2.5 (today's size). Literal class strings so
 // Tailwind keeps them. Remove the switch once a size is picked.
-const CARD_SIZES = ["1.5", "2", "2.5"] as const;
+const CARD_SIZES = ["1.5", "1.75", "2", "2.5"] as const;
 type CardSize = (typeof CARD_SIZES)[number];
 const CARD_WIDTH: Record<CardSize, string> = {
   "1.5": "w-[calc((100%-1rem)/1.5)]",
+  "1.75": "w-[calc((100%-1rem)/1.75)]",
   "2": "w-[calc((100%-1rem)/2)]",
   "2.5": "w-[calc((100%-1rem)/2.5)]",
 };

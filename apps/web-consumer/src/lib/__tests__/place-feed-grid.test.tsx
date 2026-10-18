@@ -124,6 +124,9 @@ describe("Places is family rails", () => {
     expect(rails).toContain("[writing-mode:vertical-rl]");
     expect(rails).toContain("rotate-180");
     expect(rails).toContain("data-rail-name");
+    // The temporary size switch has four stops (MESITA-2340, MESITA-2352).
+    expect(rails).toContain('CARD_SIZES = ["1.5", "1.75", "2", "2.5"]');
+    expect(rails).toContain("w-[calc((100%-1rem)/1.75)]");
     // …in its own tinted column with a hairline and room before the cards
     // (MESITA-2351).
     expect(rails).toContain("bg-muted/60 border-border relative w-10 shrink-0 border-r");
