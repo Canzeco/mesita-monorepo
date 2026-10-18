@@ -72,7 +72,7 @@ import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import { mapFilterCount, placesScopeCounts } from "@/lib/map-filters-engine";
+import { mapFilterCount } from "@/lib/map-filters-engine";
 import { useMapFilters } from "@/lib/use-map-filters";
 import {
   buildSearchMapPins,
@@ -234,9 +234,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       : null;
     return prependAnchorPlace(nearby, anchorRow);
   }, [nearby, anchor, distanceCenter]);
-  // Each scope's count is cumulative — the sets nest, so a Mesita row
-  // counts in Google Places too.
-  const scopeCounts = useMemo(() => placesScopeCounts(nearby), [nearby]);
   // TYPED SEARCH LIVES HERE, on the map. A found place needs somewhere to
   // land, and on a bare list it lands nowhere.
   //
@@ -374,7 +371,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         const result = await apiFetchNearbyCatalog(
           supabase,
           nextCenter,
-          filters.placesScope,
           filters.familyKeys,
           filters.minReviews,
         );
@@ -401,7 +397,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     },
     // `markViewport` left this list with the search-open guard that used to
     // call it here — the overlay is gone, so a viewport load always loads.
-    [filters.placesScope, filters.familyKeys, filters.minReviews, supabase],
+    [filters.familyKeys, filters.minReviews, supabase],
   );
 
   const scheduleOrLoad = useCallback(
@@ -478,14 +474,14 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   useEffect(() => () => clearPendingReload(), [clearPendingReload]);
 
-  // Places scope, Family and Popularity all change the Nearby
-  // engine. How many stays the operator's per-scope cap. The query bar never
-  // reads these filters.
+  // Family and Google Reviews change the Area pool (`loadViewport` changes
+  // with them). How many stays the operator's. The query bar never reads
+  // these filters.
   useEffect(() => {
     if (!lastFetchedCenter.current || !lastBoxRef.current) return;
     clearPendingReload();
     void loadViewport(lastBoxRef.current);
-  }, [clearPendingReload, filters.placesScope, loadViewport]);
+  }, [clearPendingReload, loadViewport]);
 
   const locationKey = location ? `${location.lat},${location.lng}` : null;
 
@@ -925,7 +921,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         <SearchMapFilters
           onClose={() => setFiltersOpen(false)}
           count={catalogLoading ? null : catalog.length}
-          scopeCounts={scopeCounts}
         />
       </LocalSheet>
     </div>

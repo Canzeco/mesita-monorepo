@@ -1,8 +1,8 @@
 "use client";
 
-// Search-map filter store: Places scope, Families and Google Reviews.
-// The parser maps the retired scope words a persisted v6 blob may carry
-// (MESITA-2298), so the key does not bump.
+// Search-map filter store: Families and Google Reviews. A persisted v6
+// blob's `placesScope` (MESITA-2298) is ignored since MESITA-2384: the guest
+// never picks a source.
 
 import { useSyncExternalStore } from "react";
 import {
@@ -10,8 +10,6 @@ import {
   MAP_FILTER_DEFAULTS,
   type MapFilters,
   type MapMinReviews,
-  type MapPlacesScope,
-  parsePlacesScope,
 } from "@/lib/map-filters-engine";
 import { FILTERABLE_PLACE_FAMILIES, type FamilyKey } from "@/lib/place-families";
 
@@ -37,7 +35,6 @@ function readPersisted(): MapFilters {
       Record<keyof MapFilters, unknown>
     >;
     return {
-      placesScope: parsePlacesScope(parsed.placesScope),
       familyKeys: Array.isArray(parsed.familyKeys)
         ? (parsed.familyKeys as unknown[]).filter(
             (k): k is FamilyKey =>
@@ -84,10 +81,6 @@ export function resetMapFilters() {
   state = MAP_FILTER_DEFAULTS;
   persist();
   emit();
-}
-
-export function setMapPlacesScope(scope: MapPlacesScope) {
-  patchMapFilters({ placesScope: parsePlacesScope(scope) });
 }
 
 export function setMapMinReviews(minReviews: MapMinReviews) {

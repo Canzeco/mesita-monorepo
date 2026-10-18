@@ -83,6 +83,9 @@ export type Place = {
   is_enriching?: boolean;
   /** Catalog-only: Google Nearby hit that is not a Mesita row yet. */
   googleOnly?: boolean;
+  /** The Area pipeline's breakdown for this place, computed by the server
+   *  (MESITA-2379); only the one-pool Feed wire carries it. */
+  area?: AreaDiagnostics;
   /** Alias shipped on Google Nearby stubs (`from_google`). */
   from_google?: boolean;
   // Generic product payload. Menus are carried in products.menu.
@@ -116,7 +119,6 @@ export type Place = {
 // (the Area pipeline) so we can iterate on it without redeploying the web app.
 /** The wire word for a Places scope (MESITA-2298): Google Places or Mesita
  *  Selected. The server also reads the retired `enriched`/`mesita` words. */
-type PlacesScopeWire = "google" | "selected";
 
 type ViewportPlaces = {
   places: Place[];
@@ -125,19 +127,18 @@ type ViewportPlaces = {
 };
 
 /**
- * Search map catalog: closest N around a camera, inside the operator's
- * radius.
+ * Search map catalog: the Area pool around a camera, inside the operator's
+ * radius (MESITA-2379: Google and Mesita places in one ranked set; the
+ * guest never picks a source).
  *
- * Web Search posts Places scope, Families and Google Reviews; it never
- * posts a radius (operator `map.radiusKm`) or a count (operator
- * the scope's cap (`map.googlePlaces` / `map.mesitaPlaces`)). `google: true` is not the scope — it is web Search
- * saying it CAN render a Google-only stub, and the EF refuses a call
- * without it (MESITA-2337).
+ * Web Search posts Families and Google Reviews; it never posts a radius
+ * (operator `map.radiusKm`) or a count (operator `map.mesitaPlaces`, one
+ * Google call per load). `google: true` is web Search saying it CAN render
+ * a Google-only stub, and the EF refuses a call without it (MESITA-2337).
  */
 export async function apiFetchNearbyCatalog(
   client: SupabaseClient,
   center: { lat: number; lng: number },
-  placesScope: PlacesScopeWire = "selected",
   familyKeys: readonly string[] = [],
   minReviews = 100,
 ): Promise<ViewportPlaces> {
@@ -147,7 +148,6 @@ export async function apiFetchNearbyCatalog(
     reloadMinSec?: number;
   }>(client, "consumer-web-list-places", {
     google: true,
-    placesScope,
     familyKeys: [...familyKeys],
     minReviews,
     lat: center.lat,
@@ -213,6 +213,88 @@ export async function apiRequestPlace(
     placeId,
   });
 }
+/** The server's Area breakdown for one place (MESITA-2379). `null` is
+ *  "n/a", never 0; the client never recomputes any of it. */
+export type AreaDiagnostics = {
+  /** The families the Family gate read. */
+  familyKeys: string[];
+  gates: {
+    family: 0 | 1;
+    territory: 0 | 1 | null;
+    radius: 0 | 1 | null;
+    active: 1;
+    ready: 1 | null;
+    reviews: 1 | null;
+  };
+  signals: { proximity: number | null; popularity: number | null };
+  selected: number;
+  source: "selected" | "mesita" | "google";
+  base: number;
+  final: number;
+  formula: "point" | "area" | "none";
+};
+
+/** Where Places searches from: a point, or a saved area's rectangle. */
+export type AreaOrigin = {
+  lat: number;
+  lng: number;
+  bounds?: { low: { lat: number; lng: number }; high: { lat: number; lng: number } };
+};
+
+/** The Feed's answer: the one ranked pool, or — from an Edge Function that
+ *  predates MESITA-2379 — the old rails. */
+export type AreaPool =
+  | { shape: "unified"; kind: "point" | "area" | "none"; places: Place[] }
+  | { shape: "legacy"; rails: CatalogRail[] };
+
+function cleanPlace(place: Place): Place {
+  return stripInsecurePhotos({
+    ...place,
+    photos: Array.isArray(place.photos) ? place.photos : [],
+  });
+}
+
+/**
+ * Places' one ranked Area pool (MESITA-2384): Google and Mesita places the
+ * server merged, scored and ranked. The client pages it and filters
+ * families on each place's `area.familyKeys`; the order is the server's.
+ * A legacy rails answer is passed through so the screen can still draw it.
+ */
+export async function apiListAreaPool(
+  client: SupabaseClient,
+  origin: AreaOrigin | null,
+): Promise<AreaPool> {
+  const data = await invokeEF<{
+    places?: Place[];
+    location?: { kind?: "point" | "area" | "none" };
+    rails?: CatalogRail[];
+  }>(client, "consumer-web-list-catalog", {
+    unified: true,
+    ...(origin
+      ? {
+          lat: origin.lat,
+          lng: origin.lng,
+          google: true,
+          ...(origin.bounds ? { bounds: origin.bounds } : {}),
+        }
+      : {}),
+  });
+  if (Array.isArray(data.places)) {
+    return {
+      shape: "unified",
+      kind: data.location?.kind ?? (origin ? "point" : "none"),
+      places: data.places.map(cleanPlace),
+    };
+  }
+  return {
+    shape: "legacy",
+    rails: (data.rails ?? []).map((rail) => ({
+      ...rail,
+      places: (rail.places ?? []).map(cleanPlace),
+    })),
+  };
+}
+
 export type CatalogRail = {
   key: string;
   label: string;
@@ -221,33 +303,6 @@ export type CatalogRail = {
   places: Place[];
 };
 
-/**
- * Home › Feed rails — Google Places, Mesita Selected, then one rail per
- * family (Selected only).
- */
-export async function apiListCatalog(
-  client: SupabaseClient,
-  origin?: { lat: number; lng: number } | null,
-): Promise<CatalogRail[]> {
-  const data = await invokeEF<{ rails: CatalogRail[] }>(
-    client,
-    "consumer-web-list-catalog",
-    {
-      // `google: true` lets rail 1 buy Google Places (as Search's opt-in);
-      // without a location the EF omits rail 1.
-      ...(origin ? { lat: origin.lat, lng: origin.lng, google: true } : {}),
-    },
-  );
-  return (data.rails ?? []).map((rail) => ({
-    ...rail,
-    places: (rail.places ?? []).map((place) =>
-      stripInsecurePhotos({
-        ...place,
-        photos: Array.isArray(place.photos) ? place.photos : [],
-      }),
-    ),
-  }));
-}
 
 // Per-row state mirrored from atlas-suggest-places — the server's words,
 // kept verbatim because they are the wire:

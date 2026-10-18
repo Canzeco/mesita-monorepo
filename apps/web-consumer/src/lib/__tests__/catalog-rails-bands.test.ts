@@ -4,8 +4,9 @@ import { describe, expect, it } from "vitest";
 
 import type { CatalogRail, Place } from "@/lib/api/places";
 import {
-  allPlaces,
   FAVORITES_CHIP,
+  poolPlaces,
+  PLACES_PAGE,
   favoritePlaces,
   FEATURED_CHIP,
   GOOGLE_RAIL_KEY,
@@ -30,20 +31,68 @@ const RAILS: CatalogRail[] = [
 ];
 
 describe("the Places column (MESITA-2383)", () => {
-  it("is Favorites, Featured, then every family in server order — no source rows", () => {
-    expect(placesChips(RAILS).map((c) => c.label)).toEqual([
-      "Favorites",
-      "Featured",
-      "Coffee",
-      "Breakfast",
-    ]);
-    expect(placesChips(RAILS).map((c) => c.key).slice(0, 2)).toEqual([FAVORITES_CHIP, FEATURED_CHIP]);
-    expect(placesChips(RAILS).map((c) => c.key)).not.toContain(GOOGLE_RAIL_KEY);
-    expect(placesChips(RAILS).map((c) => c.key)).not.toContain(MESITA_RAIL_KEY);
+  it("is Favorites, Featured, then every guest family — no source rows (MESITA-2384)", () => {
+    const labels = placesChips().map((c) => c.label);
+    expect(labels.slice(0, 2)).toEqual(["Favorites", "Featured"]);
+    expect(labels).toContain("Coffee");
+    expect(labels).toContain("Breakfast");
+    expect(labels).not.toContain("Undefined");
+    expect(placesChips().map((c) => c.key).slice(0, 2)).toEqual([FAVORITES_CHIP, FEATURED_CHIP]);
+    expect(placesChips().map((c) => c.key)).not.toContain(GOOGLE_RAIL_KEY);
+    expect(placesChips().map((c) => c.key)).not.toContain(MESITA_RAIL_KEY);
   });
 
-  it("Featured mixes Mesita Selected first, then Google places, each once", () => {
-    expect(allPlaces(RAILS).map((p) => p.id)).toEqual(["m1", "g1"]);
+  it("Featured is the server's pool in its order; a family filters it on area.familyKeys", () => {
+    const area = (familyKeys: string[], final: number) => ({
+      familyKeys,
+      gates: { family: 1 as const, territory: null, radius: 1 as const, active: 1 as const, ready: null, reviews: 1 as const },
+      signals: { proximity: 1, popularity: 0.5 },
+      selected: 1,
+      source: "selected" as const,
+      base: final,
+      final,
+      formula: "point" as const,
+    });
+    const pool = {
+      shape: "unified" as const,
+      kind: "point" as const,
+      places: [
+        { ...place("a"), area: area(["coffee"], 0.9) },
+        { ...place("b"), area: area(["dinner"], 0.8) },
+        // The card says breakfast; the gate read coffee — the server wins.
+        { ...place("c"), family_keys: ["breakfast"], area: area(["coffee"], 0.7) },
+      ],
+    };
+    expect(poolPlaces(pool, FEATURED_CHIP).map((p) => p.id)).toEqual(["a", "b", "c"]);
+    expect(poolPlaces(pool, "coffee").map((p) => p.id)).toEqual(["a", "c"]);
+    expect(poolPlaces(pool, "breakfast")).toEqual([]);
+  });
+
+  it("an Edge Function still on the legacy rails is drawn as before", () => {
+    const legacy = { shape: "legacy" as const, rails: RAILS };
+    expect(poolPlaces(legacy, FEATURED_CHIP).map((p) => p.id)).toEqual(["m1", "g1"]);
+    expect(poolPlaces(legacy, "coffee").map((p) => p.id)).toEqual(["m1"]);
+    expect(src).toContain("catalog_shape_legacy");
+  });
+
+  it("pages after ranking: 20 at a time, a sentinel asks for more, no request", () => {
+    expect(PLACES_PAGE).toBe(20);
+    expect(src).toContain("list.slice(0, pageCount * PLACES_PAGE)");
+    expect(src).toContain("data-places-more");
+    expect(src).toContain("new IntersectionObserver(");
+    // A kept pool paints without a request.
+    expect(src).toContain("const kept = readAreaPool(requestKey);");
+    expect(src).toContain('if (!kept) void fetchPool("fresh");');
+  });
+
+  it("a family with nothing here says so", () => {
+    expect(src).toContain("title={`Nothing in ${label} here yet`}");
+  });
+
+  it("each tile carries the temporary breakdown, and its events carry source, rank and final", () => {
+    expect(src).toContain("<AreaDiagnostics area={place.area} />");
+    expect(src).toContain('trackEvent(supabase, "home_card_open"');
+    expect(src).toContain("...tileFacts(place, rank)");
   });
 
   it("Favorites lists saves newest first and skips a save with no preview", () => {
@@ -98,9 +147,10 @@ describe("the location bar and sheet (MESITA-2383)", () => {
     expect(src).toContain("if (origin?.key === `saved:${l.id}`) setOrigin(null);");
   });
 
-  it("searches from the picked location", () => {
+  it("searches from the picked location; a saved area sends its bounds", () => {
     expect(src).toContain("const from = origin ?? coords;");
-    expect(src).toContain("apiListCatalog(supabase, from)");
+    expect(src).toContain("apiListAreaPool(supabase, from)");
+    expect(src).toContain("bounds: l.bounds");
   });
 });
 
