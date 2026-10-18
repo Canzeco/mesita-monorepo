@@ -2,10 +2,10 @@
 
 // Home's top rail — one row of pills over /discover/*:
 //
-//   Home    Feed · Social · Chat · Favs          (MESITA-2166, MESITA-2285)
+//   Home    Places · Social · Chat · Favs        (MESITA-2166)
 //
-// FEED IS THE CATALOG (Pato, MESITA-2254). The pill reads Feed (MESITA-2285);
-// its route is still /discover/places. Social, Chat and Favs stay Soon
+// PLACES IS THE CATALOG (Pato, MESITA-2254). MESITA-2301 restored the label
+// after MESITA-2285 had renamed it Feed. Social, Chat and Favs stay Soon
 // (MESITA-2168) and wear Pay's chip. The chip sits above the pill, so it adds
 // no width and the 359px budget holds.
 //
@@ -25,12 +25,12 @@
 //
 //   label    text@12   + 26px chrome
 //   -------  --------  -------------
-//   Feed     28.8      54.8   (MESITA-2285)
-//   Social   36.7      62.7   <- widest
+//   Places   38.3      64.3   <- widest (MESITA-2166)
+//   Social   36.7      62.7
 //   Chat     27.3      53.3
 //   Favs     27.6      53.6
 //
-// Four columns: 4 x 62.7 + 12 = 262.8 of 359px. Fits, with room to spare.
+// Four columns: 4 x 64.3 + 12 = 269.2 of 359px. Fits, with room to spare.
 // The icon is 14px (chrome 26) rather than the 16px of MESITA-1697: the
 // budget was set when the row held five pills, and the label stays at 12px
 // (`text-xs`) so the pills read the same whatever the count.
@@ -50,18 +50,18 @@ type Mode = {
   href: string;
   label: string;
   Icon: LucideIcon;
-  // Social, Chat and Favs (MESITA-2168). Feed has no chip: it is the catalog.
+  // Social, Chat and Favs (MESITA-2168). Places has no chip: it is the catalog.
   soon?: boolean;
 };
 
 // THE ORDER IS PATO'S (MESITA-2166: "Places. Social. Chat. Favs. (Like
-// that)"); the first pill was renamed Feed (MESITA-2285). Feed leads and is
-// the tab's default: the tab href is CONSUMER_ROUTES.discoverDefault, which
-// is Feed's href. Swipe and Scroll are legacy 308s to it.
+// that)"). Places leads and is the tab's default: the tab href is
+// CONSUMER_ROUTES.discoverDefault, which is Places' href. Swipe and Scroll
+// are legacy 308s to Places.
 export const HOME_MODES: Mode[] = [
   {
     href: CONSUMER_ROUTES.discoverTabs.places,
-    label: "Feed",
+    label: "Places",
     Icon: Store,
   },
   {

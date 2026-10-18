@@ -5,10 +5,10 @@ import {
   Bell,
   CalendarCheck,
   Gem,
-  Instagram,
   Settings as SettingsIcon,
   UserRound,
 } from "lucide-react";
+import { Instagram } from "@/components/shared/instagram-icon";
 import { errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
