@@ -30,6 +30,15 @@ export const GOOGLE_NEARBY_MAX = 20;
 /** The largest How many stop. Every lane cap clamps to it. */
 export const CATALOG_NEARBY_HARD_MAX = 60;
 export const GOOGLE_NEARBY_RADIUS_M = NEARBY_RADIUS_KM * 1000;
+/** The operator's circle, in metres, clamped to what Nearby accepts
+ *  (50 m .. 50 km). `map.radiusKm` is 1..50; a bad value reads as 50 km. */
+export function nearbyRadiusMetres(radiusKm?: number): number {
+  const km = typeof radiusKm === "number" && Number.isFinite(radiusKm) &&
+      radiusKm > 0
+    ? radiusKm
+    : NEARBY_RADIUS_KM;
+  return Math.min(50_000, Math.max(50, Math.round(km * 1000)));
+}
 const NEARBY_CACHE_MS = 15_000;
 /** Feed › Right Now's cell TTL (MESITA-2295). "Open now" moves slowly, so a
  *  cell is reused for minutes, not Search's 15 s. */
@@ -166,9 +175,15 @@ export function peekCachedNearbyPlaces(
   center: { lat: number; lng: number },
   types?: readonly string[],
   rightNow = false,
+  radiusKm?: number,
 ): NearbyHit[] | null {
   const hit = nearbyCache.get(
-    nearbyCellKey(center, resolveNearbyTypes(types), rightNow),
+    nearbyCellKey(
+      center,
+      resolveNearbyTypes(types),
+      rightNow,
+      nearbyRadiusMetres(radiusKm),
+    ),
   );
   if (hit && Date.now() - hit.at < nearbyCacheMs(rightNow)) return hit.hits;
   return null;
@@ -189,6 +204,9 @@ export type SearchNearbyOpts = {
    * Google for this cell; nothing is cached.
    */
   beforeFanout?: () => Promise<boolean>;
+  /** The operator's circle (`map.radiusKm`, MESITA-2298 §3). Omit = 50 km.
+   *  Part of the cache cell: two radii are two answers. */
+  radiusKm?: number;
   /**
    * Feed › Right Now (MESITA-2295): the one New POST, whose mask
    * adds `currentOpeningHours.openNow` + `photos`, cached in its own cell
@@ -206,10 +224,11 @@ function nearbyCellKey(
   center: { lat: number; lng: number },
   types: readonly string[] = NEARBY_TYPE_KEYS,
   rightNow = false,
+  radiusM: number = GOOGLE_NEARBY_RADIUS_M,
 ): string {
   return `${center.lat.toFixed(2)},${center.lng.toFixed(2)}:${
     nearbyTypesKey(types)
-  }${rightNow ? ":now" : ""}`;
+  }:r${radiusM}${rightNow ? ":now" : ""}`;
 }
 
 const SUPER_SEARCH_TYPE_SET = new Set<string>(
@@ -234,12 +253,12 @@ export async function searchNearbyPlaces(
   center: { lat: number; lng: number },
   opts: SearchNearbyOpts = {},
 ): Promise<NearbyHit[]> {
-  const radius = GOOGLE_NEARBY_RADIUS_M;
+  const radius = nearbyRadiusMetres(opts.radiusKm);
   const beforeFanout = opts.beforeFanout;
   const types = resolveNearbyTypes(opts.types);
   if (types.length === 0) return [];
   const rightNow = opts.rightNow === true;
-  const key = nearbyCellKey(center, types, rightNow);
+  const key = nearbyCellKey(center, types, rightNow, radius);
   const hit = nearbyCache.get(key);
   const now = Date.now();
   if (hit && now - hit.at < nearbyCacheMs(rightNow)) return hit.hits;
@@ -532,9 +551,10 @@ export function mergeNearbyCatalog<T extends MesitaNearbyRow>(
     "google",
     CATALOG_NEARBY_HARD_MAX,
   ),
+  radiusKm: number = NEARBY_RADIUS_KM,
 ): Array<NearbyMerged<T>> {
   const inCircle = (lat: number | null, lng: number | null) =>
-    haversineKm(center.lat, center.lng, lat, lng) <= NEARBY_RADIUS_KM;
+    haversineKm(center.lat, center.lng, lat, lng) <= radiusKm;
   const inMesita = mesita.filter((row) =>
     inCircle(row.lat ?? null, row.lng ?? null)
   );

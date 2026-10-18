@@ -271,7 +271,9 @@ Deno.test("guest Google Reviews snaps to 0/10/100/1000, silence is 100+, unknown
   ];
   const google = [hit({ reviewCount: 4 }), hit({ reviewCount: 200 })];
   const got = admitGuestMinReviews(listed, google, 10);
-  assertEquals(got.listed.map((r) => r.google_review_count), [100]);
+  // The floor is Google's cut only: a Mesita Selected row with 3 reviews
+  // stays on the map (MESITA-2305).
+  assertEquals(got.listed.map((r) => r.google_review_count), [3, 100]);
   assertEquals(got.google.map((h) => h.reviewCount), [200]);
   const passthrough = admitGuestMinReviews(listed, google, 0);
   assertEquals(passthrough.listed.length, 2);

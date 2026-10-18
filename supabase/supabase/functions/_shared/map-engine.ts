@@ -111,6 +111,11 @@ export function clearsMinReviews(
   return typeof count === "number" && Number.isFinite(count) && count >= min;
 }
 
+/**
+ * The guest Google Reviews floor cuts GOOGLE HITS ONLY, after Google's
+ * response (MESITA-2298 §2, MESITA-2305): a Mesita Selected row is never
+ * gated by it, whatever the scope — the listed lane passes through as is.
+ */
 export function admitGuestMinReviews<T extends ListedMapRow>(
   listed: T[],
   google: NearbyHit[],
@@ -118,9 +123,7 @@ export function admitGuestMinReviews<T extends ListedMapRow>(
 ): { listed: T[]; google: NearbyHit[] } {
   if (!(minReviews > 0)) return { listed, google };
   return {
-    listed: listed.filter((row) =>
-      clearsMinReviews(row.google_review_count, minReviews)
-    ),
+    listed,
     google: google.filter((hit) =>
       clearsMinReviews(hit.reviewCount, minReviews)
     ),

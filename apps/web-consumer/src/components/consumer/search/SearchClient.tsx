@@ -207,10 +207,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         : null,
     [location, homeNonce],
   );
-  const recentreOnGuest = useCallback(() => {
-    if (location) setHomeNonce((n) => n + 1);
-    else locate();
-  }, [location, locate]);
 
   // EVERY searchbar pick anchors the map (MESITA-1405): camera to the
   // coordinates, catalog reload there, chosen Place as card ONE. Cleared
@@ -539,6 +535,21 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     }
   }, [locationKey]);
 
+  // The location disc (MESITA-2298): with a fix, recentre on the guest and,
+  // when the catalog was fetched elsewhere, reload there — the pan is
+  // programmatic, and a programmatic idle only loads when this flag is up
+  // (the same rule a late GPS fix uses, MESITA-2305). Without a fix, ask.
+  const recentreOnGuest = useCallback(() => {
+    if (!location) {
+      locate();
+      return;
+    }
+    if (catalogIsStale(lastFetchedCenter.current, location)) {
+      forceNextLoad.current = true;
+    }
+    setHomeNonce((n) => n + 1);
+  }, [location, locate]);
+
   // End the current Places autocomplete session and mint the next one.
   const resetSearchSession = useCallback(() => {
     sessionTokenRef.current = newSessionToken();
@@ -727,6 +738,15 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const handleOpenPlace = (place: Place) => {
     const google = googlePredictionFromPlace(place);
     if (google) {
+      // The explicit open is the SECOND tap on a pin or card the guest
+      // chose (MESITA-2298 §5). `railSelectedId` also carries the card-0
+      // fallback nobody tapped, so a first tap there reads as an open to
+      // the map and the rail; for a Google-only row that tap must only
+      // select — a create on one tap is what the spec forbids (MESITA-2305).
+      if (selectedId !== place.id) {
+        handleSelectPlace(place);
+        return;
+      }
       openGoogleOnly(google);
       return;
     }
