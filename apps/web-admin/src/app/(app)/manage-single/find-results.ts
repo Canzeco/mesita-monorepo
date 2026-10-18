@@ -48,8 +48,8 @@ export const FIND_SOURCES: readonly {
  *  Search, then Catalogue (D3). */
 const TIE_ORDER: readonly FindSource[] = ["text", "autocomplete", "name", "catalogue"];
 
-/** Rows shown before "Show N more" (D6). */
-export const FIND_FIRST_ROWS = 20;
+/** Rows per page (MESITA-2335: 50, Previous · Next). */
+export const FIND_PAGE_ROWS = 50;
 
 /** Enrichment Steps columns: the Enrich pass, 1–8. Seed stays off. */
 export const ENRICHMENT_COLUMNS = CRENUP_STEPS.filter((step) =>

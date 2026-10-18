@@ -15,9 +15,9 @@ import { usePlaceContext } from "../PlaceContext";
 import { formatAbsoluteUtc } from "@/lib/format";
 import { isEnriching } from "../place-header-state";
 
-// Enrichment — Quick or Full. This is not a scheduler (Pato, 2026-08-25).
+// Enrichment — Weak or Strong. This is not a scheduler (Pato, 2026-08-25).
 // Cadence and mode chips lived here and made a press look like config.
-// Quick is Google's record. Full is the whole enrichment.
+// Weak is Google's record. Strong is the whole enrichment.
 //
 // The live run STATE stays in the chrome. This box only queues.
 
@@ -118,8 +118,8 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
               {enrichState?.last_enriched_at
                 ? formatAbsoluteUtc(enrichState.last_enriched_at)
                 : "never"}
-              . Result: {enrichState?.error ? "Error" : status}. Quick reads
-              Google and stops. Full also finds links, Instagram, reviews, and
+              . Result: {enrichState?.error ? "Error" : status}. Weak Enrich
+              reads Google and stops. Strong Enrich also finds links, Instagram, reviews, and
               writes the description.
             </p>
           )}
