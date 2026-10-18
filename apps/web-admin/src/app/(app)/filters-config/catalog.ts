@@ -6,11 +6,11 @@
 // signal is a code change in both packages — deliberately, because a signal
 // nobody wrote has nothing to score.
 //
-// Live HTML: four subpages — Sources, Modes, Catalog, Matrix. The index
-// opens Sources. Mode, source, and routing facts live in discovery-surface.ts,
-// which is a tested copy of the Edge Function surface. Catalog weights are
-// the three signals catalogScore multiplies. Map and Swipe exponents stay
-// on Modes. Routing is fixed. Family membership stays on Atlas.
+// Live HTML: ONE page, four pipeline boxes (MESITA-2327). Source, pipeline,
+// signal and gate facts live in discovery-surface.ts, a tested copy of the
+// Edge Function model. The Area pipeline has no weights; only the retired
+// Scroll deck keeps a stored exponent column, which no box edits. Family
+// membership stays on Atlas.
 //   SIGNALS   seven earned signals: Name · Family · Proximity · Timing ·
 //             Enriched · Popularity · Randomness. None reads money.
 //             Partnership and Promotion merged into Mesita Level and Social
@@ -117,32 +117,25 @@ export type DiscoveryConfig = {
   catalog: CatalogConfig;
   map: MapConfig;
   name: NameConfig;
+  deep: DeepConfig;
   chat: { prompt: string };
   swipe: SwipeConfig;
 };
 
-/** Mirrors CATALOG_RANK_KEYS in _shared/discovery-config.ts. One shared profile. */
-export const CATALOG_RANK_KEYS = [
-  "name",
-  "description",
-  "proximity",
-  "enriched",
-  "popularity",
-  "selected",
-  "randomness",
-] as const;
-export type CatalogRankKey = (typeof CATALOG_RANK_KEYS)[number];
+/** Mirrors DeepConfig in _shared/discovery-config.ts (MESITA-2327). */
+export type DeepConfig = { limit: number; minSimilarity: number };
+export const DEEP_LIMIT_MIN = 1;
+export const DEEP_LIMIT_MAX = 20;
+export const DEFAULT_DEEP: DeepConfig = { limit: 5, minSimilarity: 0 };
 
-/** Mirrors DEFAULT_CATALOG_RANKING in _shared/discovery-config.ts. Name ships off; Enriched ships at 2. */
-export const DEFAULT_CATALOG_RANKING: Record<CatalogRankKey, number> = {
-  name: 0,
-  description: 1,
-  proximity: 1,
-  enriched: 2,
-  popularity: 1,
-  selected: 1,
-  randomness: 0,
-};
+/** Mirrors the Area params' bounds and provisional defaults in
+ *  _shared/pipeline-signals.ts and discovery-config.ts (MESITA-2327). */
+export const HALF_DISTANCE_KM_MIN = 0.1;
+export const HALF_DISTANCE_KM_MAX = 50;
+export const REFERENCE_RATING_MIN = 1;
+export const REFERENCE_RATING_MAX = 5;
+export const REFERENCE_REVIEWS_MIN = 1;
+export const REFERENCE_REVIEWS_MAX = 1_000_000;
 
 export type CatalogConfig = {
   seedCount: number;
@@ -151,7 +144,6 @@ export type CatalogConfig = {
   /** Places per Feed row (MESITA-2319). Mirrors `catalog.railCap`. */
   railCap: number;
   minSeedPlaces: number;
-  ranking: Record<CatalogRankKey, number>;
 };
 
 // Mirrors SUPER_PARAM_KEYS in _shared/discovery-config.ts, itself pinned to
@@ -278,7 +270,8 @@ type WiredEngineKey = (typeof WIRED_ENGINE_KEYS)[number];
  * The EF twin's own contract test asserts both halves. These are PERSISTED
  * keys: `swipe` is the stored key and Scroll is only its label.
  */
-export const WEIGHTED_MODE_KEYS = ["map", "swipe"] as const;
+// Map's column retired with its reader (MESITA-2327); the retired deck keeps its own.
+export const WEIGHTED_MODE_KEYS = ["swipe"] as const;
 export type WeightedModeKey = (typeof WEIGHTED_MODE_KEYS)[number];
 
 /** Mirrors WEIGHT_MIN / WEIGHT_MAX in _shared/discovery-config.ts. */
@@ -363,7 +356,6 @@ export const DEFAULT_CATALOG: CatalogConfig = {
   placesPerRail: 8,
   railCap: CATALOG_RAIL_CAP_DEFAULT,
   minSeedPlaces: 2,
-  ranking: { ...DEFAULT_CATALOG_RANKING },
 };
 
 // The three supers the strip always asked for stay on; the four it could not
@@ -449,7 +441,7 @@ export const DEFAULT_SWIPE: SwipeConfig = {
 
 /** Mirrors DISCOVERY_DEFAULTS. Used only as the seed on a failed load. */
 const DEFAULT_SIGNAL_PARAMS: SignalParams = {
-  proximity: { maxKm: 25, kneeKm: 1, missingGeo: 0.35 },
+  proximity: { maxKm: 25, kneeKm: 1, missingGeo: 0.35, halfDistanceKm: 4.1 },
   timing: {
     openShare: 0.7,
     closedFloor: 0.2,
@@ -461,7 +453,13 @@ const DEFAULT_SIGNAL_PARAMS: SignalParams = {
     late: 0.5,
   },
   category: { exact: 1, family: 0.55, miss: 0.1 },
-  popularity: { priorRating: 4.2, confidence: 60, floorRating: 3 },
+  popularity: {
+    priorRating: 4.2,
+    confidence: 60,
+    floorRating: 3,
+    referenceRating: 4.5,
+    referenceReviews: 1000,
+  },
   // Zero params since MESITA-2144: `unembedded` was never a knob, and `name`
   // falls back to its own 0.4 in _shared/discovery-signals.ts.
   name: {},
@@ -502,6 +500,7 @@ export const DEFAULT_CONFIG: DiscoveryConfig = {
   catalog: DEFAULT_CATALOG,
   map: DEFAULT_MAP,
   name: DEFAULT_NAME,
+  deep: DEFAULT_DEEP,
   chat: { prompt: "" },
   swipe: DEFAULT_SWIPE,
 };
@@ -517,6 +516,10 @@ const ZERO_ONE = (key: string, label: string): ParamField => ({
 
 /** Ranges for shape numbers that stay in the blob but are not console knobs. */
 const HIDDEN_FIELD: Record<string, Pick<ParamField, "min" | "max" | "step">> = {
+  // The Area pipeline's two numbers (MESITA-2327), edited on the Area box.
+  halfDistanceKm: { min: HALF_DISTANCE_KM_MIN, max: HALF_DISTANCE_KM_MAX, step: 0.5 },
+  referenceRating: { min: REFERENCE_RATING_MIN, max: REFERENCE_RATING_MAX, step: 0.5 },
+  referenceReviews: { min: REFERENCE_REVIEWS_MIN, max: REFERENCE_REVIEWS_MAX, step: 1 },
   kneeKm: { min: 0.1, max: 25, step: 0.1 },
   missingGeo: { min: 0, max: 1, step: 0.05 },
   openShare: { min: 0, max: 1, step: 0.05 },
@@ -762,6 +765,7 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
     catalog: coerceCatalog(r.catalog),
     map: coerceMap(r.map),
     name: coerceName(r.name),
+    deep: coerceDeep(r.deep),
     chat: {
       prompt: typeof (r.chat as { prompt?: unknown } | undefined)?.prompt === "string"
         ? (r.chat as { prompt: string }).prompt.slice(0, CHAT_PROMPT_MAX)
@@ -796,15 +800,6 @@ function coerceSwipe(raw: unknown): SwipeConfig {
   };
 }
 
-function coerceCatalogRanking(raw: unknown): Record<CatalogRankKey, number> {
-  const r = (raw ?? {}) as Record<string, unknown>;
-  const out = {} as Record<CatalogRankKey, number>;
-  for (const key of CATALOG_RANK_KEYS) {
-    const v = num(r[key], DEFAULT_CATALOG_RANKING[key], WEIGHT_MIN, WEIGHT_MAX);
-    out[key] = Math.round(v * 100) / 100;
-  }
-  return out;
-}
 
 function coerceCatalog(raw: unknown): CatalogConfig {
   const c = (raw ?? {}) as Record<string, unknown>;
@@ -827,7 +822,6 @@ function coerceCatalog(raw: unknown): CatalogConfig {
     minSeedPlaces: Math.round(
       num(c.minSeedPlaces, DEFAULT_CATALOG.minSeedPlaces, 1, CATALOG_MIN_SEED_PLACES_MAX),
     ),
-    ranking: coerceCatalogRanking(c.ranking),
   };
 }
 
@@ -870,6 +864,14 @@ function coerceGeneral(raw: unknown): GeneralConfig {
     minReviews: Math.round(
       num(g.minReviews, DEFAULT_GENERAL.minReviews, 0, GENERAL_MIN_REVIEWS_MAX),
     ),
+  };
+}
+
+function coerceDeep(raw: unknown): DeepConfig {
+  const d = (raw ?? {}) as Record<string, unknown>;
+  return {
+    limit: Math.round(num(d.limit, DEFAULT_DEEP.limit, DEEP_LIMIT_MIN, DEEP_LIMIT_MAX)),
+    minSimilarity: Math.round(num(d.minSimilarity, DEFAULT_DEEP.minSimilarity, 0, 1) * 100) / 100,
   };
 }
 

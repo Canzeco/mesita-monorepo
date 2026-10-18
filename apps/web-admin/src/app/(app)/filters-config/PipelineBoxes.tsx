@@ -1,0 +1,516 @@
+"use client";
+
+// Discovery: ONE page, four boxes (MESITA-2327): Name Pipeline by Admin ·
+// Name Pipeline · Area Pipeline · Deep Pipeline. Each box is a PipelineBox
+// and saves only its own slices, so two boxes can never overwrite each other.
+// Catalog and Map are views of the Area pipeline, so their knobs sit in the
+// Area box; the Chat Agent is Deep's caller, so its prompt sits in the Deep box.
+
+import { Hash, MapPin, RefreshCw, Rows3, ScanSearch, Search, Sparkles } from "lucide-react";
+import {
+  ChoiceField,
+  ChoicePill,
+  NumberField,
+  SaveRow,
+  Switch,
+  TextAreaField,
+} from "@/components/admin-ui/config";
+import { useConfigEditor, type ConfigSeed } from "@/components/admin-ui/use-config-editor";
+import { formatShortDate } from "@/lib/format";
+import { getDiscoveryConfig, updateDiscoveryConfig, type DiscoverySlice } from "./actions";
+import {
+  CATALOG_RAIL_CAP_MAX,
+  CATALOG_RAIL_CAP_MIN,
+  DEEP_LIMIT_MAX,
+  DEEP_LIMIT_MIN,
+  GENERAL_MIN_REVIEWS_MAX,
+  GOOGLE_PULL_STOPS,
+  HALF_DISTANCE_KM_MAX,
+  HALF_DISTANCE_KM_MIN,
+  MAP_RADIUS_KM_MAX,
+  MAP_RADIUS_KM_MIN,
+  MAP_RELOAD_PAIRS,
+  NAME_ADMIN_MESITA_MAX,
+  NAME_ADMIN_TEXT_MAX,
+  NAME_IDLE_SEC_MAX,
+  NAME_IDLE_SEC_MIN,
+  NAME_LANE_COUNT_MAX,
+  REFERENCE_RATING_MAX,
+  REFERENCE_RATING_MIN,
+  REFERENCE_REVIEWS_MAX,
+  REFERENCE_REVIEWS_MIN,
+  type DiscoveryConfig,
+} from "./catalog";
+import { CATALOG_FAMILY_FACTS, CATALOG_SIGNAL_RAILS } from "./discovery-surface";
+import { PipelineBox } from "./PipelineBox";
+
+const ICON = "h-5 w-5";
+const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
+function useDiscoveryEditor(seed: ConfigSeed<DiscoveryConfig>) {
+  return useConfigEditor({ ...seed, load: getDiscoveryConfig });
+}
+
+type Editor = ReturnType<typeof useDiscoveryEditor>;
+
+function Save({ editor, dirty, slices }: { editor: Editor; dirty: boolean; slices: DiscoverySlice[] }) {
+  const { pending, ok, loadBlocked, error, updatedAt, saveWith } = editor;
+  return (
+    <>
+      {updatedAt ? (
+        <p className="text-muted-foreground mt-4 type-meta">Last saved {formatShortDate(updatedAt)}</p>
+      ) : null}
+      <SaveRow
+        pending={pending}
+        dirty={dirty}
+        ok={ok && !dirty}
+        onClick={() => saveWith((c) => updateDiscoveryConfig(c, slices))}
+        loadError={loadBlocked ? error : null}
+      />
+    </>
+  );
+}
+
+function SwitchRow({
+  label,
+  on,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  on: boolean;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <div className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4">
+      <span className="text-sm font-medium">{label}</span>
+      <Switch on={on} pending={disabled} label={label} onClick={onClick} />
+    </div>
+  );
+}
+
+function Group({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-sm font-semibold">{title}</p>
+      {children}
+    </div>
+  );
+}
+
+// 1 ─ Name Pipeline by Admin ──────────────────────────────────────────────
+export function NameAdminBox(seed: ConfigSeed<DiscoveryConfig>) {
+  const editor = useDiscoveryEditor(seed);
+  const { cfg, setCfg, saved, setOk, pending, loadBlocked } = editor;
+  const off = pending || loadBlocked;
+  const a = cfg.name.admin;
+  const patch = (p: Partial<DiscoveryConfig["name"]["admin"]>) => {
+    setOk(false);
+    setCfg((c) => ({ ...c, name: { ...c.name, admin: { ...c.name.admin, ...p } } }));
+  };
+  const dirty = !same(cfg.name.admin, saved.name.admin);
+  return (
+    <PipelineBox
+      id="s-name-admin"
+      pipeline="name"
+      title="Name Pipeline by Admin"
+      icon={<ScanSearch className={ICON} />}
+      callers={["Admin Single Place › Find"]}
+      explanation={
+        <p>
+          The Name pipeline as an admin runs it. An admin types a name; the
+          sources run together and merge into one list with duplicates
+          removed. Locations are never shown here. With the last option on,
+          the page opens listing every Mesita place, as an empty search.
+        </p>
+      }
+      save={<Save editor={editor} dirty={dirty} slices={["nameAdmin"]} />}
+    >
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <NumberField
+          label="Max Autocomplete rows"
+          value={a.autoCount}
+          min={0}
+          max={NAME_LANE_COUNT_MAX}
+          disabled={off}
+          onChange={(autoCount) => patch({ autoCount })}
+        />
+        <NumberField
+          label="Max Text Search rows"
+          value={a.textCount}
+          min={1}
+          max={NAME_ADMIN_TEXT_MAX}
+          disabled={off}
+          onChange={(textCount) => patch({ textCount })}
+        />
+        <NumberField
+          label="Max Mesita rows"
+          value={a.mesitaCount}
+          min={1}
+          max={NAME_ADMIN_MESITA_MAX}
+          disabled={off}
+          onChange={(mesitaCount) => patch({ mesitaCount })}
+        />
+        <SwitchRow
+          label="Show results on an empty query"
+          on={a.emptyQuery}
+          disabled={off}
+          onClick={() => patch({ emptyQuery: !a.emptyQuery })}
+        />
+      </div>
+      <p className="text-muted-foreground type-meta">
+        0 Autocomplete rows means Find does not call Autocomplete. Mesita rows
+        stop at {NAME_ADMIN_MESITA_MAX}.
+      </p>
+    </PipelineBox>
+  );
+}
+
+// 2 ─ Name Pipeline ────────────────────────────────────────────────────────
+export function NameBox(seed: ConfigSeed<DiscoveryConfig>) {
+  const editor = useDiscoveryEditor(seed);
+  const { cfg, setCfg, saved, setOk, pending, loadBlocked } = editor;
+  const off = pending || loadBlocked;
+  const name = (p: Partial<DiscoveryConfig["name"]>) => {
+    setOk(false);
+    setCfg((c) => ({ ...c, name: { ...c.name, ...p } }));
+  };
+  const deep = (p: Partial<DiscoveryConfig["name"]["deep"]>) => {
+    setOk(false);
+    setCfg((c) => ({ ...c, name: { ...c.name, deep: { ...c.name.deep, ...p } } }));
+  };
+  const dirty =
+    !same(cfg.name.deep, saved.name.deep) ||
+    cfg.name.locations !== saved.name.locations ||
+    cfg.name.idleSec !== saved.name.idleSec ||
+    !same(cfg.general, saved.general);
+  return (
+    <PipelineBox
+      id="s-name"
+      pipeline="name"
+      title="Name Pipeline"
+      icon={<Search className={ICON} />}
+      callers={["The guest's Search bar"]}
+      explanation={
+        <p>
+          The guest knows which place they want. The search runs once they
+          stop typing for the seconds below; the sources run together and
+          merge into one list with duplicates removed. A Location (a city, a
+          region) shows with a location icon, and picking one moves the map.
+          Picking a place moves the map there and makes it the first card.
+          Neither gate applies: a place Mesita has created is findable by
+          name before its profile is written. Closed places never show, and
+          the reviews floor below cuts every row.
+        </p>
+      }
+      save={
+        <Save editor={editor} dirty={dirty} slices={["nameDeep", "nameLocations", "nameIdle", "general"]} />
+      }
+    >
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <NumberField
+          label="Seconds without typing before the search runs"
+          value={cfg.name.idleSec}
+          min={NAME_IDLE_SEC_MIN}
+          max={NAME_IDLE_SEC_MAX}
+          decimals
+          disabled={off}
+          onChange={(idleSec) => name({ idleSec })}
+        />
+        <NumberField
+          label="Max Autocomplete rows"
+          value={cfg.name.deep.autoCount}
+          min={0}
+          max={NAME_LANE_COUNT_MAX}
+          disabled={off}
+          onChange={(autoCount) => deep({ autoCount })}
+        />
+        <NumberField
+          label="Max Text Search rows"
+          value={cfg.name.deep.googleCount}
+          min={0}
+          max={NAME_LANE_COUNT_MAX}
+          disabled={off}
+          onChange={(googleCount) => deep({ googleCount })}
+        />
+        <NumberField
+          label="Max Mesita rows"
+          value={cfg.name.deep.mesitaCount}
+          min={0}
+          max={NAME_LANE_COUNT_MAX}
+          disabled={off}
+          onChange={(mesitaCount) => deep({ mesitaCount })}
+        />
+        <NumberField
+          label="Minimum number of Google reviews"
+          value={cfg.general.minReviews}
+          min={0}
+          max={GENERAL_MIN_REVIEWS_MAX}
+          disabled={off}
+          onChange={(minReviews) => {
+            setOk(false);
+            setCfg((c) => ({ ...c, general: { ...c.general, minReviews } }));
+          }}
+        />
+        <SwitchRow
+          label="Show Locations"
+          on={cfg.name.locations}
+          disabled={off}
+          onClick={() => name({ locations: !cfg.name.locations })}
+        />
+      </div>
+      <p className="text-muted-foreground type-meta">
+        0 rows turns a source off. The reviews floor counts people, never
+        stars, cuts Google and Mesita rows here and in admin Find, never the
+        Area pipeline, and 0 is off. A Mesita row needs a Name score of 0.4
+        or more.
+      </p>
+    </PipelineBox>
+  );
+}
+
+// 3 ─ Area Pipeline ────────────────────────────────────────────────────────
+export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
+  const editor = useDiscoveryEditor(seed);
+  const { cfg, setCfg, saved, setOk, pending, loadBlocked } = editor;
+  const off = pending || loadBlocked;
+  const map = (p: Partial<DiscoveryConfig["map"]>) => {
+    setOk(false);
+    setCfg((c) => ({ ...c, map: { ...c.map, ...p } }));
+  };
+  const prox = cfg.params.proximity;
+  const pop = cfg.params.popularity;
+  const setParam = (signal: "proximity" | "popularity", key: string, v: number) => {
+    setOk(false);
+    setCfg((c) => ({ ...c, params: { ...c.params, [signal]: { ...c.params[signal], [key]: v } } }));
+  };
+  const dirty =
+    !same(cfg.map, saved.map) ||
+    cfg.catalog.railCap !== saved.catalog.railCap ||
+    prox.halfDistanceKm !== saved.params.proximity.halfDistanceKm ||
+    pop.referenceRating !== saved.params.popularity.referenceRating ||
+    pop.referenceReviews !== saved.params.popularity.referenceReviews;
+  return (
+    <PipelineBox
+      id="s-area"
+      pipeline="area"
+      title="Area Pipeline"
+      icon={<MapPin className={ICON} />}
+      explanation={
+        <>
+          <p>
+            Places around an anchor: the device, a picked city, a searched
+            destination, a dropped pin or the map&apos;s centre. The radius
+            decides who is a candidate; the score orders them. The guest picks
+            one scope: <strong>Google Places</strong> (every place inside the
+            radius, a place already on Mesita shown as its Mesita row) or{" "}
+            <strong>Mesita Selected</strong> (only places Mesita has written a
+            profile for).
+          </p>
+          <p className="mt-2">
+            The Map and the Feed are two views of this one pipeline, so they
+            always agree. Proximity and Popularity carry no weights: neither
+            can be turned up or down, only calibrated below.
+          </p>
+        </>
+      }
+      save={<Save editor={editor} dirty={dirty} slices={["map", "catalogRows", "areaSignals"]} />}
+    >
+      <Group title="Candidates and signals">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <NumberField
+            label="Radius (km)"
+            value={cfg.map.radiusKm}
+            min={MAP_RADIUS_KM_MIN}
+            max={MAP_RADIUS_KM_MAX}
+            decimals
+            disabled={off}
+            onChange={(radiusKm) => map({ radiusKm })}
+          />
+          <NumberField
+            label="Proximity half distance (km)"
+            value={prox.halfDistanceKm}
+            min={HALF_DISTANCE_KM_MIN}
+            max={HALF_DISTANCE_KM_MAX}
+            decimals
+            disabled={off}
+            onChange={(v) => setParam("proximity", "halfDistanceKm", v)}
+          />
+          <NumberField
+            label="Minimum number of Google reviews"
+            value={cfg.map.googleMinReviews}
+            min={0}
+            max={GENERAL_MIN_REVIEWS_MAX}
+            disabled={off}
+            onChange={(googleMinReviews) => map({ googleMinReviews })}
+          />
+          <NumberField
+            label="Popularity reference rating"
+            value={pop.referenceRating}
+            min={REFERENCE_RATING_MIN}
+            max={REFERENCE_RATING_MAX}
+            decimals
+            disabled={off}
+            onChange={(v) => setParam("popularity", "referenceRating", v)}
+          />
+          <NumberField
+            label="Popularity reference reviews"
+            value={pop.referenceReviews}
+            min={REFERENCE_REVIEWS_MIN}
+            max={REFERENCE_REVIEWS_MAX}
+            disabled={off}
+            onChange={(v) => setParam("popularity", "referenceReviews", v)}
+          />
+        </div>
+        <p className="text-muted-foreground type-meta">
+          Proximity is ½ at the half distance and ¼ at twice it. Popularity
+          reaches 1 at the reference rating × reference reviews. Both are
+          provisional (4.1 km, 4.5★ × 1,000) until calibrated on real
+          traffic. The reviews floor counts people, cuts Google Places only,
+          and 0 is off.
+        </p>
+      </Group>
+      <Group title="Map view (the Search tab)">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <ChoiceField
+            icon={<Hash className="mt-0.5 h-4 w-4 shrink-0" />}
+            label="How many pins"
+            hint="Google answers at most 20 per call."
+          >
+            <div className="flex flex-wrap gap-2">
+              {GOOGLE_PULL_STOPS.map((stop) => (
+                <ChoicePill
+                  key={stop}
+                  active={cfg.map.pinCount === stop}
+                  disabled={off}
+                  onClick={() => map({ pinCount: stop })}
+                >
+                  {stop}
+                </ChoicePill>
+              ))}
+            </div>
+          </ChoiceField>
+          <ChoiceField
+            icon={<RefreshCw className="mt-0.5 h-4 w-4 shrink-0" />}
+            label="Reload after"
+            hint="The camera must move this far AND wait this long."
+          >
+            <div className="flex flex-wrap gap-2">
+              {MAP_RELOAD_PAIRS.map((pair) => (
+                <ChoicePill
+                  key={`${pair.km}-${pair.sec}`}
+                  active={cfg.map.reloadMinKm === pair.km && cfg.map.reloadMinSec === pair.sec}
+                  disabled={off}
+                  onClick={() => map({ reloadMinKm: pair.km, reloadMinSec: pair.sec })}
+                >
+                  {pair.km} km · {pair.sec}s
+                </ChoicePill>
+              ))}
+            </div>
+          </ChoiceField>
+        </div>
+      </Group>
+      <Group title="Catalog view (Home's Feed)">
+        <div className="max-w-xs">
+          <NumberField
+            icon={<Rows3 className="mt-0.5 h-4 w-4 shrink-0" />}
+            label="Places per row"
+            value={cfg.catalog.railCap}
+            min={CATALOG_RAIL_CAP_MIN}
+            max={CATALOG_RAIL_CAP_MAX}
+            disabled={off}
+            onChange={(railCap) => {
+              setOk(false);
+              setCfg((c) => ({ ...c, catalog: { ...c.catalog, railCap } }));
+            }}
+          />
+        </div>
+        <ul className="flex flex-wrap gap-2" aria-label="Feed rows">
+          {CATALOG_SIGNAL_RAILS.map((rail) => (
+            <li key={rail.key} className="border-foreground rounded-full border px-3 py-1 text-sm font-semibold">
+              <span aria-hidden>{rail.emoji}</span> {rail.label}
+            </li>
+          ))}
+          {CATALOG_FAMILY_FACTS.map((family) => (
+            <li key={family.key} className="border-border rounded-full border px-3 py-1 text-sm">
+              <span aria-hidden>{family.emoji}</span> {family.label}
+            </li>
+          ))}
+        </ul>
+        <p className="text-muted-foreground type-meta">
+          Row one is the Google Places scope, row two the Mesita Selected
+          scope, then one row per family (the Family gate) with its Mesita
+          Selected members. A row with nothing in it is hidden.
+        </p>
+      </Group>
+    </PipelineBox>
+  );
+}
+
+// 4 ─ Deep Pipeline ────────────────────────────────────────────────────────
+export function DeepBox(seed: ConfigSeed<DiscoveryConfig>) {
+  const editor = useDiscoveryEditor(seed);
+  const { cfg, setCfg, saved, setOk, pending, loadBlocked } = editor;
+  const off = pending || loadBlocked;
+  const deep = (p: Partial<DiscoveryConfig["deep"]>) => {
+    setOk(false);
+    setCfg((c) => ({ ...c, deep: { ...c.deep, ...p } }));
+  };
+  const dirty = !same(cfg.deep, saved.deep) || !same(cfg.chat, saved.chat);
+  return (
+    <PipelineBox
+      id="s-deep"
+      pipeline="deep"
+      title="Deep Pipeline"
+      icon={<Sparkles className={ICON} />}
+      explanation={
+        <p>
+          Open-ended discovery in the guest&apos;s own words: &ldquo;an
+          intimate jazz bar for a second date&rdquo;. The Chat Agent sits above
+          the pipelines: it sends the request here, gets back the best
+          matching Mesita places with their About, and answers from that list.
+          It never calls a source itself. The request is embedded once, only
+          when Chat asks; no other pipeline pays for it. The model is chosen
+          on Models.
+        </p>
+      }
+      save={<Save editor={editor} dirty={dirty} slices={["deep", "chat"]} />}
+    >
+      <div className="grid gap-3 sm:grid-cols-2">
+        <NumberField
+          label="Places handed to Chat"
+          value={cfg.deep.limit}
+          min={DEEP_LIMIT_MIN}
+          max={DEEP_LIMIT_MAX}
+          disabled={off}
+          onChange={(limit) => deep({ limit })}
+        />
+        <NumberField
+          label="Minimum Description score (0 to 1)"
+          value={cfg.deep.minSimilarity}
+          min={0}
+          max={1}
+          decimals
+          disabled={off}
+          onChange={(minSimilarity) => deep({ minSimilarity })}
+        />
+      </div>
+      <TextAreaField
+        label="Chat Agent prompt (Don Memo)"
+        value={cfg.chat.prompt}
+        rows={8}
+        maxLength={12_000}
+        disabled={off}
+        onChange={(prompt) => {
+          setOk(false);
+          setCfg((c) => ({ ...c, chat: { prompt } }));
+        }}
+      />
+      <p className="text-muted-foreground type-meta">
+        0 keeps every place with a summary. Events (Mesita Social Search) join
+        when an engine retrieves them.
+      </p>
+    </PipelineBox>
+  );
+}

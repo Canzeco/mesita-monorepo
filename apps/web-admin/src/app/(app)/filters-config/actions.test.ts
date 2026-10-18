@@ -1,22 +1,20 @@
-// THE BUG THIS PR EXISTS TO PREVENT (MESITA-1859).
+// THE BUG THESE TESTS EXIST TO PREVENT (MESITA-1859, rewritten for the four
+// pipeline boxes of MESITA-2327).
 //
-// The weights table has ONE SAVE PER COLUMN, and `weights` and `params` both
-// ride the single `signals` slice. A per-column save that wrote
-// a whole slice would therefore mean the last Save wins and the rest is gone —
-// silently, with a green "Saved" under it.
-//
-// This is not hypothetical. It already happened one floor down: three boxes on
-// Search Sources all wrote the `map` slice, and the fix was to split it into
-// mapSupers / mapFloors. `updateDiscoveryConfig` merges per-mode for
-// the same reason, and these tests are the merge's only guard — nothing about
-// a lost column fails a type check.
+// Every box on Discovery seeds from the same config and saves only its own
+// slices. A box that wrote a whole slice it does not own would mean the last
+// Save wins and the rest is gone — silently, with a green "Saved" under it.
+// It already happened once: three boxes all wrote the `map` slice, and the
+// fix was to split it into mapSupers / mapFloors. `updateDiscoveryConfig`
+// merges per slice for that reason, and these tests are the merge's only
+// guard — nothing about a lost field fails a type check.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/supabase-ef", () => ({ efInvoke: vi.fn() }));
 
 import { efInvoke } from "@/lib/supabase-ef";
-import { updateDiscoveryConfig } from "./actions";
+import { updateDiscoveryConfig, type DiscoverySlice } from "./actions";
 import { coerceConfig, DEFAULT_CONFIG, type DiscoveryConfig } from "./catalog";
 
 const mockInvoke = vi.mocked(efInvoke);
@@ -26,11 +24,12 @@ function liveConfig(): DiscoveryConfig {
   return coerceConfig({
     ...DEFAULT_CONFIG,
     weights: { ...DEFAULT_CONFIG.weights, proximity: 1.4 },
-    weightsByMode: {
-      map: { ...DEFAULT_CONFIG.weightsByMode.map, proximity: 0.4 },
-      swipe: { ...DEFAULT_CONFIG.weightsByMode.swipe, proximity: 3 },
+    weightsByMode: { swipe: { ...DEFAULT_CONFIG.weightsByMode.swipe, proximity: 3 } },
+    params: {
+      ...DEFAULT_CONFIG.params,
+      proximity: { maxKm: 11, kneeKm: 2, missingGeo: 0.5, halfDistanceKm: 4.1 },
     },
-    params: { ...DEFAULT_CONFIG.params, proximity: { maxKm: 11, kneeKm: 2, missingGeo: 0.5 } },
+    chat: { prompt: "live prompt" },
   });
 }
 
@@ -47,127 +46,142 @@ function armed(live: DiscoveryConfig) {
   return sent;
 }
 
+/** A console copy with every box's fields edited at once. */
+function editedEverywhere(live: DiscoveryConfig): DiscoveryConfig {
+  return {
+    ...live,
+    weights: { ...live.weights, proximity: 0 },
+    weightsByMode: { swipe: { ...live.weightsByMode.swipe, proximity: 0.1 } },
+    params: {
+      ...live.params,
+      proximity: { ...live.params.proximity, maxKm: 1, halfDistanceKm: 2.5 },
+      popularity: {
+        ...live.params.popularity,
+        priorRating: 1,
+        referenceRating: 4,
+        referenceReviews: 500,
+      },
+    },
+    map: { ...live.map, radiusKm: 3, pinCount: 20 },
+    catalog: { ...live.catalog, railCap: 7, seedCount: 99 },
+    name: {
+      ...live.name,
+      locations: !live.name.locations,
+      idleSec: 2.5,
+      deep: { ...live.name.deep, autoCount: 9 },
+      admin: { ...live.name.admin, textCount: 3 },
+    },
+    general: { ...live.general, minReviews: 40 },
+    deep: { limit: 9, minSimilarity: 0.3 },
+    chat: { prompt: "Be brief." },
+  };
+}
+
 beforeEach(() => {
   mockInvoke.mockReset();
 });
 
-describe("per-column weight saves cannot reach each other", () => {
-  it("saving Map leaves Scroll, the global vector and the params untouched", async () => {
+const ALL_BOX_SLICES: DiscoverySlice[][] = [
+  ["nameAdmin"],
+  ["nameDeep", "nameLocations", "nameIdle", "general"],
+  ["map", "catalogRows", "areaSignals"],
+  ["deep", "chat"],
+];
+
+describe("no box writes the weights (Area has none since MESITA-2327)", () => {
+  it.each(ALL_BOX_SLICES)("saving %s leaves both stored weight vectors", async (...slices) => {
     const live = liveConfig();
     const sent = armed(live);
-    // The console's in-memory config has BOTH columns edited — only the one
-    // whose Save was pressed may land.
-    const edited: DiscoveryConfig = {
-      ...live,
-      weights: { ...live.weights, proximity: 0 },
-      weightsByMode: {
-        map: { ...live.weightsByMode.map, proximity: 2 },
-        swipe: { ...live.weightsByMode.swipe, proximity: 0.1 },
-      },
-      params: { ...live.params, proximity: { maxKm: 1, kneeKm: 1, missingGeo: 0 } },
-    };
-
-    await updateDiscoveryConfig(edited, ["weightsMap"]);
-
-    expect(sent.config?.weightsByMode.map.proximity).toBe(2);
-    expect(sent.config?.weightsByMode.swipe).toEqual(live.weightsByMode.swipe);
+    await updateDiscoveryConfig(editedEverywhere(live), slices);
     expect(sent.config?.weights).toEqual(live.weights);
-    expect(sent.config?.params).toEqual(live.params);
-  });
-
-  it("and the reverse — saving Scroll leaves Map exactly as it was", async () => {
-    const live = liveConfig();
-    const sent = armed(live);
-    const edited: DiscoveryConfig = {
-      ...live,
-      weightsByMode: {
-        map: { ...live.weightsByMode.map, proximity: 2 },
-        swipe: { ...live.weightsByMode.swipe, proximity: 0.1 },
-      },
-    };
-
-    await updateDiscoveryConfig(edited, ["weightsScroll"]);
-
-    expect(sent.config?.weightsByMode.swipe.proximity).toBe(0.1);
-    expect(sent.config?.weightsByMode.map).toEqual(live.weightsByMode.map);
-    expect(sent.config?.weightsByMode.map.proximity).toBe(0.4);
-  });
-
-  it("a Signals save cannot move either column", async () => {
-    // The params card still writes the `signals` slice, and it holds a whole
-    // config object — so the columns have to survive its Save too.
-    const live = liveConfig();
-    const sent = armed(live);
-    const edited: DiscoveryConfig = {
-      ...live,
-      weightsByMode: {
-        map: { ...live.weightsByMode.map, proximity: 2 },
-        swipe: { ...live.weightsByMode.swipe, proximity: 0.1 },
-      },
-      params: { ...live.params, proximity: { maxKm: 3, kneeKm: 1, missingGeo: 0.1 } },
-    };
-
-    await updateDiscoveryConfig(edited, ["signals"]);
-
-    expect(sent.config?.params.proximity.maxKm).toBe(3);
     expect(sent.config?.weightsByMode).toEqual(live.weightsByMode);
   });
 });
 
-describe("the Chat box saves the prompt and nothing else", () => {
-  it("writes chat, leaves the Map and the Catalog ranking as they were", async () => {
+describe("the Area box", () => {
+  it("moves the half distance and the Popularity reference, no other param", async () => {
     const live = liveConfig();
     const sent = armed(live);
-    const edited: DiscoveryConfig = {
-      ...live,
-      chat: { prompt: "Be brief." },
-      map: { ...live.map, radiusKm: 3 },
-      catalog: { ...live.catalog, ranking: { ...live.catalog.ranking, proximity: 4 } },
-    };
-    await updateDiscoveryConfig(edited, ["chat"]);
-    expect(sent.config?.chat.prompt).toBe("Be brief.");
-    expect(sent.config?.map).toEqual(live.map);
-    expect(sent.config?.catalog).toEqual(live.catalog);
+    await updateDiscoveryConfig(editedEverywhere(live), ["areaSignals"]);
+    expect(sent.config?.params.proximity.halfDistanceKm).toBe(2.5);
+    expect(sent.config?.params.proximity.maxKm).toBe(11);
+    expect(sent.config?.params.popularity.referenceRating).toBe(4);
+    expect(sent.config?.params.popularity.referenceReviews).toBe(500);
+    expect(sent.config?.params.popularity.priorRating).toBe(live.params.popularity.priorRating);
+    expect(sent.config?.params.timing).toEqual(live.params.timing);
+    expect(sent.config?.params.category).toEqual(live.params.category);
   });
 
-  it("a Places save writes both ranking columns and not the prompt", async () => {
+  it("writes map, railCap and the two params; leaves Name, Deep and the prompt", async () => {
     const live = liveConfig();
     const sent = armed(live);
-    const edited: DiscoveryConfig = {
-      ...live,
-      chat: { prompt: "changed" },
-      weightsByMode: { ...live.weightsByMode, map: { ...live.weightsByMode.map, popularity: 3 } },
-      catalog: { ...live.catalog, ranking: { ...live.catalog.ranking, popularity: 2.5 } },
-    };
-    await updateDiscoveryConfig(edited, ["weightsMap", "catalogRanking"]);
-    expect(sent.config?.weightsByMode.map.popularity).toBe(3);
-    expect(sent.config?.catalog.ranking.popularity).toBe(2.5);
+    await updateDiscoveryConfig(editedEverywhere(live), ["map", "catalogRows", "areaSignals"]);
+    expect(sent.config?.map.radiusKm).toBe(3);
+    expect(sent.config?.map.pinCount).toBe(20);
+    expect(sent.config?.catalog.railCap).toBe(7);
+    expect(sent.config?.catalog.seedCount).toBe(live.catalog.seedCount);
+    expect(sent.config?.name).toEqual(live.name);
+    expect(sent.config?.general).toEqual(live.general);
+    expect(sent.config?.deep).toEqual(live.deep);
     expect(sent.config?.chat).toEqual(live.chat);
   });
 });
 
-describe("MESITA-2319 slices", () => {
-  it("nameLocations writes the switch and leaves the deep caps", async () => {
+describe("the Deep box", () => {
+  it("writes Deep and the Chat prompt; leaves the Area and Name fields", async () => {
     const live = liveConfig();
     const sent = armed(live);
-    const edited: DiscoveryConfig = {
-      ...live,
-      name: { ...live.name, locations: false, deep: { ...live.name.deep, autoCount: 9 } },
-    };
-    await updateDiscoveryConfig(edited, ["nameLocations"]);
-    expect(sent.config?.name.locations).toBe(false);
-    expect(sent.config?.name.deep).toEqual(live.name.deep);
+    await updateDiscoveryConfig(editedEverywhere(live), ["deep", "chat"]);
+    expect(sent.config?.deep).toEqual({ limit: 9, minSimilarity: 0.3 });
+    expect(sent.config?.chat.prompt).toBe("Be brief.");
+    expect(sent.config?.map).toEqual(live.map);
+    expect(sent.config?.catalog).toEqual(live.catalog);
+    expect(sent.config?.params).toEqual(live.params);
+    expect(sent.config?.name).toEqual(live.name);
   });
 
-  it("catalogRows writes railCap and leaves the ranking", async () => {
+  it("a Deep-only save leaves the prompt", async () => {
     const live = liveConfig();
     const sent = armed(live);
-    const edited: DiscoveryConfig = {
-      ...live,
-      catalog: { ...live.catalog, railCap: 7, ranking: { ...live.catalog.ranking, proximity: 4 } },
-    };
-    await updateDiscoveryConfig(edited, ["catalogRows"]);
-    expect(sent.config?.catalog.railCap).toBe(7);
-    expect(sent.config?.catalog.ranking).toEqual(live.catalog.ranking);
+    await updateDiscoveryConfig(editedEverywhere(live), ["deep"]);
+    expect(sent.config?.deep.limit).toBe(9);
+    expect(sent.config?.chat).toEqual(live.chat);
+  });
+});
+
+describe("the Name boxes", () => {
+  it("nameLocations writes the switch and leaves the caps", async () => {
+    const live = liveConfig();
+    const sent = armed(live);
+    await updateDiscoveryConfig(editedEverywhere(live), ["nameLocations"]);
+    expect(sent.config?.name.locations).toBe(!live.name.locations);
+    expect(sent.config?.name.deep).toEqual(live.name.deep);
+    expect(sent.config?.name.idleSec).toBe(live.name.idleSec);
+  });
+
+  it("the Name box writes its four slices and not admin Find's caps", async () => {
+    const live = liveConfig();
+    const sent = armed(live);
+    await updateDiscoveryConfig(editedEverywhere(live), [
+      "nameDeep",
+      "nameLocations",
+      "nameIdle",
+      "general",
+    ]);
+    expect(sent.config?.name.idleSec).toBe(2.5);
+    expect(sent.config?.name.deep.autoCount).toBe(9);
+    expect(sent.config?.general.minReviews).toBe(40);
+    expect(sent.config?.name.admin).toEqual(live.name.admin);
+    expect(sent.config?.map).toEqual(live.map);
+  });
+
+  it("Name by Admin writes its caps and nothing the guest's bar reads", async () => {
+    const live = liveConfig();
+    const sent = armed(live);
+    await updateDiscoveryConfig(editedEverywhere(live), ["nameAdmin"]);
+    expect(sent.config?.name.admin.textCount).toBe(3);
+    expect(sent.config?.name.deep).toEqual(live.name.deep);
+    expect(sent.config?.name.idleSec).toBe(live.name.idleSec);
+    expect(sent.config?.general).toEqual(live.general);
   });
 });

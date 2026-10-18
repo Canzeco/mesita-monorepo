@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import {
@@ -53,13 +53,12 @@ describe("Discovery function APIs", () => {
     ]);
   });
 
-  it("only Map and Scroll earn a weight column", () => {
+  it("only Scroll keeps a weight column", () => {
     // A mode earns one when it has a live weightsForMode caller AND a mask
-    // over one signal. Word satisfies the first and fails the second — a
-    // one-factor Π s^w is a monotone transform, so its exponent provably
-    // cannot reorder. The EF twin's contract test asserts both halves; this
-    // side just has to agree with it, because the keys are PERSISTED.
-    expect([...WEIGHTED_MODE_KEYS]).toEqual(["map", "swipe"]);
+    // over more than one signal. Map lost its caller with MESITA-2327: the
+    // Area pipeline multiplies Proximity × Popularity with no weights. The
+    // EF twin's contract test asserts the same, because the keys are PERSISTED.
+    expect([...WEIGHTED_MODE_KEYS]).toEqual(["swipe"]);
     for (const mode of WEIGHTED_MODE_KEYS) {
       expect(DISCOVERY_MODE_KEYS).toContain(mode);
     }
@@ -67,12 +66,13 @@ describe("Discovery function APIs", () => {
 
   it("a per-mode column round-trips, clamps, and seeds from the blob's own vector", () => {
     const tuned = coerceConfig({
-      weightsByMode: { map: { proximity: 2, enriched: 4 } },
+      weightsByMode: { swipe: { proximity: 2, enriched: 4 }, map: { proximity: 3 } },
     });
-    expect(tuned.weightsByMode.map.proximity).toBe(2);
+    expect(tuned.weightsByMode.swipe.proximity).toBe(2);
     // Enriched caps at 2, not the uniform 4, on every mode.
-    expect(tuned.weightsByMode.map.enriched).toBe(2);
-    expect(tuned.weightsByMode.swipe).toEqual(DEFAULT_CONFIG.weights);
+    expect(tuned.weightsByMode.swipe.enriched).toBe(2);
+    // The retired Map column is dropped on read, so the next Save prunes it.
+    expect(tuned.weightsByMode).not.toHaveProperty("map");
 
     // THE MIGRATION. The live blob has hand-tuned GLOBAL exponents and no
     // per-mode bag at all. Seeding a missing column from DEFAULT_CONFIG would
@@ -406,34 +406,30 @@ describe("Discovery function APIs", () => {
 });
 
 describe("Discovery page box order", () => {
-  it("is two subpages — Modes, then Signals (MESITA-2303)", () => {
+  it("is ONE page of four pipeline boxes, no subpages (MESITA-2327)", () => {
     const page = readFileSync(join(__dirname, "page.tsx"), "utf8");
-    const layout = readFileSync(join(__dirname, "layout.tsx"), "utf8");
     const nav = readFileSync(join(__dirname, "nav.ts"), "utf8");
     const nextConfig = readFileSync(
       join(__dirname, "../../../../next.config.ts"),
       "utf8",
     );
-    const modesAt = nav.indexOf('label: "Modes"');
-    const signalsAt = nav.indexOf('label: "Signals"');
-    expect(modesAt).toBeGreaterThan(-1);
-    expect(modesAt).toBeLessThan(signalsAt);
-    for (const gone of ['label: "Sources"', 'label: "Matrix"', 'label: "Catalog"']) {
-      expect(nav).not.toContain(gone);
+    const order = ["<NameAdminBox", "<NameBox", "<AreaBox", "<DeepBox"].map((tag) =>
+      page.indexOf(tag),
+    );
+    expect(order.every((at) => at > -1)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(page).not.toContain("redirect(");
+    for (const gone of ["layout.tsx", "modes", "signals", "discovery-route.tsx"]) {
+      expect(existsSync(join(__dirname, gone))).toBe(false);
     }
-    expect(nav).toContain("/filters-config/modes#s-map");
-    expect(nav).toContain('"/filters-config/modes#s-catalog"');
-    expect(layout).toContain("DiscoveryChrome");
-    expect(layout).toContain("DiscoveryPanels");
-    expect(layout).not.toContain("SearchSourcesView");
-    expect(layout).not.toContain("DiscoveryMatrixView");
-    expect(page).toContain("redirect(DISCOVERY_TABS[0].href)");
+    expect(nav).not.toContain("DISCOVERY_TABS");
+    expect(nav).toContain('"/filters-config#s-area"');
     // Every retired subpage keeps an operator's bookmark alive, one hop.
-    for (const old of ["sources", "matrix", "modules", "catalog", "chat"]) {
-      expect(nextConfig).toContain(`source: "/filters-config/${old}"`);
+    for (const old of ["modes", "signals", "sources", "matrix", "modules", "catalog", "chat"]) {
+      expect(nextConfig).toContain(`"/filters-config/${old}"`);
     }
-    expect(nextConfig).not.toContain('destination: "/filters-config/sources"');
-    expect(nextConfig).not.toContain('destination: "/filters-config/matrix"');
+    expect(nextConfig).toContain('destination: "/filters-config"');
+    expect(nextConfig).not.toMatch(/destination: "\/filters-config\/[a-z]/);
   });
 });
 
@@ -461,14 +457,6 @@ describe("Mesita Level is Enriched", () => {
     expect(Object.keys(DEFAULT_CONFIG.weights).sort()).toEqual(expected);
     expect(Object.keys(DEFAULT_CONFIG.params).sort()).toEqual(expected);
     expect(SIGNALS.map((s) => s.key).sort()).toEqual(expected);
-    // And the icon map the Signals page renders, read as source: a missing
-    // key there is a card with no icon, not a type error, because ICONS is
-    // declared Record<SignalKey, …> in a file this test cannot import.
-    const client = readFileSync(join(__dirname, "SignalsConfigClient.tsx"), "utf8");
-    const icons = client.slice(client.indexOf("const ICONS"));
-    for (const key of SIGNAL_KEYS) {
-      expect(icons.slice(0, icons.indexOf("};"))).toContain(`${key}:`);
-    }
   });
 
   it("reads mesita_level as a deprecated alias, onto Enriched", () => {
@@ -506,8 +494,10 @@ describe("Mesita Level is Enriched", () => {
     }
     expect(cfg.weights.enriched).toBe(2);
     expect(cfg.weights).toHaveProperty("partnered", 1.5);
-    expect(cfg.weightsByMode.map.proximity).toBe(0.5);
-    expect(Object.keys(cfg.weightsByMode.map).sort()).toEqual([...SIGNAL_KEYS].sort());
+    // The Map column retired with MESITA-2327 (Area has no weights): a stored
+    // one is dropped, and Swipe keeps a full vector.
+    expect(cfg.weightsByMode).not.toHaveProperty("map");
+    expect(Object.keys(cfg.weightsByMode.swipe).sort()).toEqual([...SIGNAL_KEYS].sort());
     expect(Object.keys(cfg.params).sort()).toEqual([...SIGNAL_KEYS].sort());
     expect(cfg).not.toHaveProperty("slotting");
     expect(cfg.name.deep).not.toHaveProperty("partnerCount");
