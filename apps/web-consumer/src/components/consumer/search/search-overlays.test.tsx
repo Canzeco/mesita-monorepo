@@ -192,8 +192,7 @@ describe("SearchFilterRow", () => {
     expect(rest).toContain("shrink-0");
 
     const header = read("SearchHeader.tsx");
-    expect(header).toContain('<div className="pointer-events-auto min-w-0 flex-1">{bar}</div>');
-    expect(header).toContain('<div className="pointer-events-auto shrink-0">{locate}</div>');
+    expect(header).toContain('<div className="min-w-0 flex-1">{bar}</div>');
     expect(header).toContain('<div className="flex min-w-0 items-center gap-2 px-2 pt-2.5 pb-2">');
   });
 });
@@ -244,10 +243,12 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
     expect(header).toContain('variant="chip"');
     expect(header).toContain("FILTERABLE_PLACE_FAMILIES.map");
     expect(header).toContain("selectMapFamily(family.key)");
-    // It floats over the map (MESITA-2412): absolute, no band, no hairline.
-    expect(header).toContain('"pointer-events-none absolute inset-x-0 top-0 z-30 flex flex-col"');
-    expect(header).not.toMatch(/\bborder-b\b/);
-    expect(src.indexOf("<SearchMap")).toBeLessThan(src.indexOf("<SearchHeader"));
+    // A white band above the map with a hairline (MESITA-2413; it floated
+    // for MESITA-2412), every control the bar's 44px.
+    expect(header).toContain('"border-border bg-card/95 relative z-30 shrink-0 border-b backdrop-blur"');
+    expect(src.indexOf("<SearchHeader")).toBeLessThan(src.indexOf("<SearchMap"));
+    expect(header).toContain('"flex h-11 shrink-0 items-center');
+    expect(header).toContain("absolute inset-x-3 top-full mt-3");
     expect(header).toContain("overflow-x-auto");
     expect(header.indexOf("<SearchFilterRow")).toBeLessThan(header.indexOf("FILTERABLE_PLACE_FAMILIES.map"));
     expect(src).toContain("recentreOnGuest");

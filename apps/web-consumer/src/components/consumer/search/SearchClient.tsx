@@ -807,6 +807,66 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {/* Search's header, a white band over the map (Pato, MESITA-2409/2413):
+        location disc · query bar · Ask AI, then the family chips; the bar's
+        results and the load error hang over the map's top edge. The pair that keeps the disc
+        visible: `min-w-0 flex-1` on the bar, `shrink-0` on the disc. */}
+      <SearchHeader
+        locate={
+          <SearchLocateButton
+            located={location !== null}
+            locating={locating}
+            onClick={recentreOnGuest}
+          />
+        }
+        bar={
+          <SearchBar
+            query={query}
+            showClear={query.length > 0}
+            onQueryChange={updateQuery}
+            onFocus={() => setBarFocused(true)}
+            onBlur={() => setBarFocused(false)}
+            onClear={() => updateQuery("")}
+            placeholder="Search places by name…"
+          />
+        }
+        filterCount={mapFilterCount(filters)}
+        onOpenFilters={() => setFiltersOpen(true)}
+      >
+        {/* RESULTS DROP UNDER THE BAR, the way every autocomplete does: the
+          header's own column (bar, chips, then this) keeps them stacked
+          with no top offset to keep in sync.
+
+          THE OLD REGRESSION WAS A FIXED HEIGHT, not the top anchor. A panel that
+          claimed 70% of the viewport whether it held two rows or ten is what
+          covered the map. `max-h` sizes to content, so three results take a
+          third of the screen and the pins stay visible underneath — the
+          overlays test pins the absence of a fixed height. */}
+        {querying && (
+          <div className="border-border bg-card/95 shadow-elev flex max-h-[55dvh] min-h-0 flex-col overflow-hidden rounded-2xl border backdrop-blur-xl">
+            <SearchResultsPanel
+              query={query}
+              searching={searching}
+              searchError={searchError}
+              predictions={predictions}
+              addStates={addStates}
+              onPick={handleBarPick}
+              onClearSearch={() => updateQuery("")}
+              onRetry={() => {
+                setSearchError(null);
+                setSearching(true);
+                setSearchNonce((n) => n + 1);
+              }}
+            />
+          </div>
+        )}
+
+        {fetchError && (
+          <p className={cn(ERROR_BOX_CLASS, "rounded-xl backdrop-blur")}>
+            {fetchError}
+          </p>
+        )}
+      </SearchHeader>
       <div className="relative min-h-0 flex-1 overflow-hidden">
         {/* Base layer — pins are the nearby catalog after Places scope + Family. */}
         <SearchMap
@@ -826,67 +886,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           onFirstViewport={onFirstViewport}
           onUserViewport={onUserViewport}
         />
-
-        {/* Search's header FLOATS OVER THE MAP (Pato, MESITA-2409/2412):
-          location disc · query bar · Ask AI, then the family chips, then the
-          bar's results and the load error. The pair that keeps the disc
-          visible: `min-w-0 flex-1` on the bar, `shrink-0` on the disc. */}
-        <SearchHeader
-          locate={
-            <SearchLocateButton
-              located={location !== null}
-              locating={locating}
-              onClick={recentreOnGuest}
-            />
-          }
-          bar={
-            <SearchBar
-              query={query}
-              showClear={query.length > 0}
-              onQueryChange={updateQuery}
-              onFocus={() => setBarFocused(true)}
-              onBlur={() => setBarFocused(false)}
-              onClear={() => updateQuery("")}
-              placeholder="Search places by name…"
-            />
-          }
-          filterCount={mapFilterCount(filters)}
-          onOpenFilters={() => setFiltersOpen(true)}
-        >
-          {/* RESULTS DROP UNDER THE BAR, the way every autocomplete does: the
-            header's own column (bar, chips, then this) keeps them stacked
-            with no top offset to keep in sync.
-
-            THE OLD REGRESSION WAS A FIXED HEIGHT, not the top anchor. A panel that
-            claimed 70% of the viewport whether it held two rows or ten is what
-            covered the map. `max-h` sizes to content, so three results take a
-            third of the screen and the pins stay visible underneath — the
-            overlays test pins the absence of a fixed height. */}
-          {querying && (
-            <div className="border-border bg-card/95 shadow-elev flex max-h-[55dvh] min-h-0 flex-col overflow-hidden rounded-2xl border backdrop-blur-xl">
-              <SearchResultsPanel
-                query={query}
-                searching={searching}
-                searchError={searchError}
-                predictions={predictions}
-                addStates={addStates}
-                onPick={handleBarPick}
-                onClearSearch={() => updateQuery("")}
-                onRetry={() => {
-                  setSearchError(null);
-                  setSearching(true);
-                  setSearchNonce((n) => n + 1);
-                }}
-              />
-            </div>
-          )}
-
-          {fetchError && (
-            <p className={cn(ERROR_BOX_CLASS, "rounded-xl backdrop-blur")}>
-              {fetchError}
-            </p>
-          )}
-        </SearchHeader>
 
         {/* The catalog rail steps aside for the whole of search mode: its cards
           are the nearby catalog, not the results, so showing both would be two

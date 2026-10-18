@@ -437,7 +437,7 @@ export function CatalogRails() {
     if (!hydrated) {
       return shell(
         <div className={PLACES_LIST}>
-          <Skeleton className="aspect-square rounded-md" />
+          <Skeleton className="aspect-square rounded-lg" />
         </div>,
       );
     }
@@ -469,7 +469,7 @@ export function CatalogRails() {
     return shell(
       <div className={PLACES_LIST}>
         {Array.from({ length: 3 }, (_, i) => (
-          <Skeleton key={i} className="aspect-square rounded-md" />
+          <Skeleton key={i} className="aspect-square rounded-lg" />
         ))}
       </div>,
     );
