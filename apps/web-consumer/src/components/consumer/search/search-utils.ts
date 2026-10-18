@@ -72,27 +72,31 @@ export function anchorPlaceFromPrediction(
     return null;
   }
   const onMesita = Boolean(prediction.mesitaId);
+  // A Google-only Text Search pick carries the Nearby stub (MESITA-2325):
+  // its facts fill the draft; identity and coordinates stay the pick's.
+  const card: Partial<Place> = onMesita ? {} : (prediction.card ?? {});
   return {
+    ...card,
     id: onMesita ? prediction.mesitaId! : `g:${prediction.placeId}`,
     slug: onMesita
       ? (prediction.mesitaSlug ?? prediction.mesitaId!)
       : prediction.placeId,
     google_place_id: prediction.placeId || null,
     name: prediction.mainText,
-    category: null,
-    category_label: null,
-    price_level: null,
+    category: card.category ?? null,
+    category_label: card.category_label ?? null,
+    price_level: card.price_level ?? null,
     currency: "MXN",
     enriched: prediction.enriched ?? false,
     lat: prediction.lat,
     lng: prediction.lng,
-    address: prediction.secondaryText || null,
+    address: card.address ?? (prediction.secondaryText || null),
     closes_at: null,
-    phone: null,
+    phone: card.phone ?? null,
     pitch: null,
     story: null,
     photos: [],
-    website_url: null,
+    website_url: card.website_url ?? null,
     instagram_url: null,
     facebook_url: null,
     whatsapp_url: null,
@@ -103,7 +107,7 @@ export function anchorPlaceFromPrediction(
     threads_url: null,
     reddit_url: null,
     didi_food_url: null,
-    google_maps_url: null,
+    google_maps_url: card.google_maps_url ?? null,
     created_at: new Date(0).toISOString(),
     ...(onMesita ? {} : { googleOnly: true, from_google: true }),
   } as Place;

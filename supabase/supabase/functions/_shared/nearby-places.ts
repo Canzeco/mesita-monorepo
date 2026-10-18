@@ -88,6 +88,53 @@ export type NearbyHit = {
   website?: string | null;
 };
 
+/** One place as the listing mask returns it, Nearby and Text Search alike. */
+export type GooglePlaceListing = {
+  id?: string;
+  displayName?: { text?: string };
+  formattedAddress?: string;
+  location?: { latitude?: number; longitude?: number };
+  rating?: number;
+  userRatingCount?: number;
+  businessStatus?: string;
+  primaryType?: string;
+  primaryTypeDisplayName?: { text?: string };
+  priceLevel?: string;
+  shortFormattedAddress?: string;
+  currentOpeningHours?: { openNow?: boolean };
+  googleMapsUri?: string;
+  internationalPhoneNumber?: string;
+  websiteUri?: string;
+};
+
+/** THE parser for the listing mask (MESITA-2313, MESITA-2325): Nearby and
+ *  Text Search both hand their places here, so a Google-only card carries
+ *  the same facts whichever search found it. */
+export function nearbyHitFromPlace(p: GooglePlaceListing): NearbyHit {
+  const lat = p.location?.latitude;
+  const lng = p.location?.longitude;
+  return {
+    placeId: stripPlacesPrefix(p.id ?? ""),
+    name: p.displayName?.text ?? "",
+    address: p.formattedAddress ?? "",
+    lat: typeof lat === "number" ? lat : null,
+    lng: typeof lng === "number" ? lng : null,
+    rating: typeof p.rating === "number" ? p.rating : null,
+    primaryType: p.primaryType ?? null,
+    businessStatus: typeof p.businessStatus === "string" ? p.businessStatus : null,
+    reviewCount: typeof p.userRatingCount === "number" ? p.userRatingCount : null,
+    openNow: typeof p.currentOpeningHours?.openNow === "boolean"
+      ? p.currentOpeningHours.openNow
+      : null,
+    typeLabel: p.primaryTypeDisplayName?.text?.trim() || null,
+    priceLevel: p.priceLevel ?? null,
+    shortAddress: p.shortFormattedAddress?.trim() || null,
+    mapsUri: p.googleMapsUri ?? null,
+    phone: p.internationalPhoneNumber?.trim() || null,
+    website: p.websiteUri ?? null,
+  };
+}
+
 type NearbyOnce =
   | { ok: true; hits: NearbyHit[] }
   | { ok: false };
@@ -123,56 +170,9 @@ async function searchNearbyOnce(
     console.error("[nearby] Google searchNearby failed", code, r.status);
     return { ok: false };
   }
-  const data = (await r.json()) as {
-    places?: Array<{
-      id?: string;
-      displayName?: { text?: string };
-      formattedAddress?: string;
-      location?: { latitude?: number; longitude?: number };
-      rating?: number;
-      userRatingCount?: number;
-      businessStatus?: string;
-      primaryType?: string;
-      primaryTypeDisplayName?: { text?: string };
-      priceLevel?: string;
-      shortFormattedAddress?: string;
-      currentOpeningHours?: { openNow?: boolean };
-      googleMapsUri?: string;
-      internationalPhoneNumber?: string;
-      websiteUri?: string;
-    }>;
-  };
+  const data = (await r.json()) as { places?: GooglePlaceListing[] };
   const hits = (data.places ?? [])
-    .map((p): NearbyHit => {
-      const raw = p.id ?? "";
-      const placeId = stripPlacesPrefix(raw);
-      const lat = p.location?.latitude;
-      const lng = p.location?.longitude;
-      return {
-        placeId,
-        name: p.displayName?.text ?? "",
-        address: p.formattedAddress ?? "",
-        lat: typeof lat === "number" ? lat : null,
-        lng: typeof lng === "number" ? lng : null,
-        rating: typeof p.rating === "number" ? p.rating : null,
-        primaryType: p.primaryType ?? null,
-        businessStatus: typeof p.businessStatus === "string"
-          ? p.businessStatus
-          : null,
-        reviewCount: typeof p.userRatingCount === "number"
-          ? p.userRatingCount
-          : null,
-        openNow: typeof p.currentOpeningHours?.openNow === "boolean"
-          ? p.currentOpeningHours.openNow
-          : null,
-        typeLabel: p.primaryTypeDisplayName?.text?.trim() || null,
-        priceLevel: p.priceLevel ?? null,
-        shortAddress: p.shortFormattedAddress?.trim() || null,
-        mapsUri: p.googleMapsUri ?? null,
-        phone: p.internationalPhoneNumber?.trim() || null,
-        website: p.websiteUri ?? null,
-      };
-    })
+    .map(nearbyHitFromPlace)
     .filter((p) => p.placeId && p.name);
   return { ok: true, hits };
 }
