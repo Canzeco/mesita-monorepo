@@ -155,15 +155,14 @@ export const SUPER_PARAM_KEYS = [
 export type SuperParamKey = (typeof SUPER_PARAM_KEYS)[number];
 
 /**
- * Map pool policy. The guest's one scope (Google Places or Mesita Selected,
- * MESITA-2298) inside `radiusKm`, capped by THAT SCOPE'S number
- * (MESITA-2347): `googlePlaces` is what Mesita buys from Nearby Search
- * (New), `mesitaPlaces` is a free read of our own rows. The Mesita Selected
- * set is NOT a subset of the Google places bought — every Mesita place is in
- * Google's universe, but a Selected place 3 km away can be absent from
- * Google's nearest 20 — so the two caps are independent. Operator numbers
- * since MESITA-1699 — the guest's Filters sheet is gone and its controls
- * live here and on Search Sources. Floors still exclude; 0 = off.
+ * The Area pool's policy (MESITA-2379): Google candidates and Mesita
+ * candidates contribute independently to ONE merged, deduped, gated, ranked
+ * pool inside `radiusKm` (a point) or a saved area's bounds.
+ * `googlePlaces` is what Mesita buys from Nearby Search (New);
+ * `mesitaPlaces` is a free read of our own rows. There is no total: the two
+ * counts are independent. Operator numbers since MESITA-1699 — the guest's
+ * Filters sheet is gone and its controls live here. Floors still exclude;
+ * 0 = off.
  */
 export type MapConfig = {
   minRating: number;
@@ -176,26 +175,27 @@ export type MapConfig = {
   googleFill: boolean;
   supers: Record<SuperParamKey, boolean>;
   /**
-   * The Google Places scope's cap: 20, 40 or 60 (`GOOGLE_PULL_STOPS`) —
+   * Google candidates on the Feed: 20, 40 or 60 (`GOOGLE_PULL_STOPS`) —
    * places Mesita BUYS. Nearby Search (New) hands back at most 20 per call
-   * and the engine makes one call (MESITA-2298), so today the engine spends
-   * `min(googlePlaces, 20)`; 40 and 60 are stored but inert until a fan-out
-   * (2–3 calls per load) is wired and paid for.
+   * and has no pages, so 20/40/60 are 1/2/3 different billed calls
+   * (`googleCallsForStop`, MESITA-2379); duplicates count once. The Map buys
+   * one call per load whatever this says.
    */
   googlePlaces: number;
-  /** The Mesita Selected scope's cap: 20, 40 or 60, a free read of our rows. */
+  /** Mesita candidates: 20, 40 or 60, the best by score of a free read of
+   *  our ready rows. */
   mesitaPlaces: number;
   /**
    * THE ONE NEARBY RADIUS (km), shared by the Map and the Feed's Google
-   * Places and Mesita Selected rails (MESITA-2298). The operator's number; a
+   * Places and Mesita Selected candidates (MESITA-2298). The operator's number; a
    * guest never sets it. `MAP_RADIUS_KM_MIN`..`MAP_RADIUS_KM_MAX` — the max
    * is Google's Nearby circle cap (50 km). One decimal.
    */
   radiusKm: number;
   /**
    * The operator's Google reviews floor on GOOGLE HITS ONLY (MESITA-2319):
-   * people, never stars, cut after Google answers, on the Map's Google scope
-   * and the Feed's Google Places rail alike. The guest's own stop still
+   * people, never stars, cut after Google answers, on the Map's and the
+   * Feed's Google candidates alike. The guest's own stop still
    * applies; the higher of the two wins. 0 is off. Never a Mesita floor.
    */
   googleMinReviews: number;
@@ -320,8 +320,8 @@ export const NAME_MESITA_COUNT_DEFAULT = 3;
 export const NAME_GOOGLE_COUNT_DEFAULT = 3;
 /**
  * The three stops `map.googlePlaces` and `map.mesitaPlaces` offer. Google
- * itself hands back at most 20 per Nearby Search (New) call and the engine
- * never widens (MESITA-2298), so above 20 only Mesita Selected paints more.
+ * hands back at most 20 per Nearby Search (New) call, so 40 and 60 Google
+ * candidates are two and three calls (MESITA-2379).
  */
 export const GOOGLE_PULL_STOPS = [20, 40, 60] as const;
 export const GOOGLE_PULL_DEFAULT = 20;
@@ -527,7 +527,7 @@ export function normalizeSuperParams(
   return out;
 }
 
-/** A scope cap: 20, 40 or 60 — snapped to the nearest stop, never a free number. */
+/** A source count: 20, 40 or 60 — snapped to the nearest stop, never a free number. */
 export function normalizeGooglePull(raw: unknown): number {
   const n = num(
     raw,

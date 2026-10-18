@@ -13,26 +13,17 @@
 // read here would look like it worked while enforcing nothing. A config that
 // silently falls back is not enforced, which is the house definition of a bug.
 //
-// ONE REQUEST SHAPE — POST { google: true, lat, lng, placesScope,
-// familyKeys, minReviews }: web Search, the Map view of the AREA PIPELINE
-// (MESITA-2302, MESITA-2327, `_shared/area-pipeline.ts`), one scope at a
-// time:
-//   google    `selectGooglePlaces` — ONE Nearby Search (New) call, or a warm
-//             cell, inside the operator's `map.radiusKm` for the families'
-//             primary types. After Google answers: inside the radius,
-//             Discovery › General's active check, and the higher of the
-//             guest's Google Reviews stop and `map.googleMinReviews`. A hit a
-//             ready Mesita row owns goes out as that row, the rest as
-//             Google-only stubs, ranked by the Area score. No Mesita backfill
-//             and no fallback to Selected: Google off, no key, a quota
-//             refusal or an error is an empty answer.
-//   selected  `selectedPoolQuery` + `selectMesitaSelected` — enriched, ready,
-//             active rows inside the same radius, ranked by the Area score;
-//             no review floor of any kind.
-// How many is the scope's own operator cap (MESITA-2347): `map.googlePlaces`
-// for Google (at most one call's 20), `map.mesitaPlaces` for Selected; the
-// circle is `map.radiusKm`; a client sets neither. Absent and retired scope
-// words land on `selected`.
+// ONE REQUEST SHAPE — POST { google: true, lat, lng, familyKeys, minReviews }:
+// web Search, the Map view of the AREA PIPELINE (MESITA-2302, MESITA-2327,
+// one pool since MESITA-2379, `_shared/area-pipeline.ts`). The Map is always
+// a POINT (the camera centre) inside the operator's `map.radiusKm`, and it
+// shows the same merged pool as the Feed — Google and Mesita candidates
+// deduped, gated, scored, × Selected, ranked — with its own budget: ONE
+// Nearby call per load (the reload throttle `map.reloadMinKm` /
+// `map.reloadMinSec` bounds the spend), the guest's family pills pushed down
+// to Nearby types, the guest's Google Reviews stop on Google hits, and
+// `map.mesitaPlaces` Mesita candidates. The guest never picks a source: a
+// stale `placesScope` is ignored.
 //
 // Anything else is refused: a GET is 405, a POST without `google: true` or
 // without a lat/lng pair is 400. The listed `{ lat, lng }` lane and the
@@ -73,18 +64,12 @@ import {
   wantsGoogleFill,
 } from "../_shared/geo.ts";
 import {
-  GOOGLE_NEARBY_MAX,
-  parsePlacesScope,
-} from "../_shared/nearby-places.ts";
-import {
   type OwnedRow,
   type PoolBuilder,
+  selectAreaPool,
   selectedPoolQuery,
-  selectGooglePlaces,
-  selectMesitaSelected,
 } from "../_shared/area-pipeline.ts";
-import { consumeNearbyGoogleQuota } from "../_shared/nearby-google-quota.ts";
-import { hashConnectingIp } from "../_shared/connecting-ip.ts";
+import { areaQuota, ownedLookup } from "../_shared/area-deps.ts";
 import { readGooglePlacesKey } from "../_shared/google-places.ts";
 
 const MAX_LIMIT = 200;
@@ -93,8 +78,9 @@ type ListBody = {
   limit?: number;
   nearby?: boolean;
   google?: boolean;
+  /** Ignored since MESITA-2379: the guest never picks a source. */
   placesScope?: unknown;
-  /** Legacy ordinal wire (pre-2026-09-05 clients). */
+  /** Ignored (the pre-2026-09-05 ordinal of the same). */
   searchPower?: number;
   familyKeys?: unknown;
   /** Guest Popularity stop. Discovery-mode, not a Nearby API param. */
@@ -154,34 +140,13 @@ Deno.serve(async (req) => {
       code: "web_search_only",
     }, 400);
   }
-  // The named wire wins; a legacy client's ordinal is the fallback. Silence
-  // is the Google scope, web Search's own default.
-  const scopeFromClient = body.placesScope !== undefined ||
-    body.searchPower !== undefined;
-  const placesScope = scopeFromClient
-    ? parsePlacesScope(body.placesScope ?? body.searchPower)
-    : "google";
   const guestSupers = readGuestFamilyKeys(body.familyKeys);
   const rawMinReviews: unknown = body.minReviews;
 
-  // The engine (area-pipeline.ts) applies the active check and the reviews
-  // floors. Google fill is client opt-in AND operator googleFill AND at
-  // least one family on. HOW MANY is the scope's cap (`map.googlePlaces` /
-  // `map.mesitaPlaces`, MESITA-2347); Google hands back at most 20 per call
-  // and the engine never widens (MESITA-2298). The
-  // guest's Google Reviews stop (`minReviews`) cuts Google hits after
-  // Google's response, never as a Nearby API param.
   const efEnv = readEFEnv();
   const cfg = efEnv.ok
     ? await loadDiscoveryConfig(adminClient(efEnv.env))
     : DISCOVERY_DEFAULTS;
-  // A caller that names its own cap keeps it; one that names none (web
-  // Search) takes the operator's cap FOR THE SCOPE IT ASKED (MESITA-2347):
-  // Google places are bought, Mesita places are read, so each has its own.
-  const operatorCap = placesScope === "google" ? cfg.map.googlePlaces : cfg.map.mesitaPlaces;
-  const limit = typeof body.limit === "number"
-    ? clampIntRange(body.limit, 1, MAX_LIMIT)
-    : clampIntRange(operatorCap, 1, MAX_LIMIT);
   // A GUEST PILL OUTRANKS THE FULL BATTERY, deliberately (MESITA-1685). The
   // pill IS the guest's question. With no pill, Nearby asks for every guest
   // family. Stored family switches are not read. The operator still holds
@@ -191,97 +156,52 @@ Deno.serve(async (req) => {
     : enabledNearbyTypes(cfg.map);
   const googleFill = mapShouldFillGoogle(true, cfg.map) &&
     nearbyTypes.length > 0;
-  // WEB SEARCH: the shared engine answers, one scope at a time.
   const center = { lat: nearbyDecision.lat, lng: nearbyDecision.lng };
   const radiusKm = cfg.map.radiusKm;
-  let places: Array<Record<string, unknown>> = [];
-  let googleHits: number | null = null;
-  if (placesScope === "google") {
-    const gmp = googleFill ? readGooglePlacesKey() : null;
-    const selection = await selectGooglePlaces<OwnedRow>({
-      apiKey: gmp?.ok && efEnv.ok ? gmp.key : null,
-      center,
-      radiusKm,
-      types: googleFill ? nearbyTypes : [],
-      families: guestSupers,
-      minReviews: guestReviewFloor(placesScope, rawMinReviews),
-      limit: Math.min(limit, GOOGLE_NEARBY_MAX),
-      cfg,
-      consumeQuota: async () => {
-        if (!efEnv.ok) return false;
-        // Identity is CF-Connecting-IP / rightmost XFF, never the
-        // spoofable leftmost hop; only a billed miss mints a row.
-        const ipHash = await hashConnectingIp(req, efEnv.env.serviceKey);
-        const quota = await consumeNearbyGoogleQuota(
-          adminClient(efEnv.env),
-          ipHash,
-        );
-        return quota.allow;
-      },
-      // ONE lookup by google_place_id, ready rows only (RLS limits it to
-      // listed rows), the same set the Feed's lookup reads: a hit a ready
-      // Mesita row owns goes out as that row, never a stub (MESITA-2154). An
-      // owned row that is not ready stays a stub, and its tap's get-or-create
-      // opens the Mesita place.
-      lookupOwned: async (gids) => {
-        const owned = await (supabase
-          .from("profiles")
-          .select(`${PLACE_CARD_COLUMNS}, google_place_id`)
-          .eq("content_state", "ready") as unknown as {
-            in: (
-              col: string,
-              vals: string[],
-            ) => PromiseLike<
-              { data: unknown[] | null; error: { message: string } | null }
-            >;
-          }).in("google_place_id", gids);
-        if (owned.error) {
-          console.error(
-            "[consumer-web-list-places] owned gid lookup:",
-            owned.error.message,
-          );
-          return null;
-        }
-        return (owned.data ?? []) as OwnedRow[];
-      },
-    });
-    places = selection.places;
-    googleHits = selection.hits;
-  } else {
-    const pool = await selectedPoolQuery(
-      supabase.from("profiles").select(PLACE_CARD_COLUMNS) as unknown as PoolBuilder,
-      cfg,
-      { center, radiusKm, families: guestSupers },
-    ).limit(NEARBY_SCAN_LIMIT);
-    if (pool.error) {
-      return json({ ok: false, error: pool.error.message }, 500);
-    }
-    places = selectMesitaSelected(
-      (pool.data ?? []) as Array<Record<string, unknown>>,
-      {
-        center,
-        radiusKm,
-        families: guestSupers,
-        params: cfg.params,
-        limit,
-      },
-    );
+  const pool = await selectedPoolQuery(
+    supabase.from("profiles").select(PLACE_CARD_COLUMNS) as unknown as PoolBuilder,
+    cfg,
+    { center, radiusKm, families: guestSupers, selectedOnly: false },
+  ).limit(NEARBY_SCAN_LIMIT);
+  if (pool.error) {
+    return json({ ok: false, error: pool.error.message }, 500);
   }
-  // One line, because every failure mode of a scope is a WRONG SET rather
-  // than an error: a skewed client, Google switched off and a spent quota
-  // all look like a thin catalog from the outside.
+  const gmp = googleFill ? readGooglePlacesKey() : null;
+  const area = await selectAreaPool<OwnedRow>({
+    apiKey: gmp?.ok && efEnv.ok ? gmp.key : null,
+    location: { kind: "point", anchor: center, radiusKm },
+    families: guestSupers,
+    types: googleFill ? nearbyTypes : [],
+    googleCalls: googleFill ? 1 : 0,
+    minReviews: guestReviewFloor("google", rawMinReviews),
+    mesitaLimit: cfg.map.mesitaPlaces,
+    mesitaRows: (pool.data ?? []) as OwnedRow[],
+    cfg,
+    consumeQuota: efEnv.ok
+      ? areaQuota(req, adminClient(efEnv.env), efEnv.env.serviceKey)
+      : () => Promise.resolve(false),
+    // ONE lookup by google_place_id, ready rows only (RLS limits it to
+    // listed rows): a hit a ready Mesita row owns goes out as that row,
+    // never a stub (MESITA-2154). An owned row that is not ready stays a
+    // stub, and its tap's get-or-create opens the Mesita place.
+    lookupOwned: ownedLookup(supabase, PLACE_CARD_COLUMNS, "consumer-web-list-places"),
+  });
+  // A caller that names its own cap keeps it.
+  const places = typeof body.limit === "number"
+    ? area.places.slice(0, clampIntRange(body.limit, 1, MAX_LIMIT))
+    : area.places;
+  // One line, because every failure mode is a WRONG SET rather than an
+  // error: Google switched off and a spent quota look like a thin map.
   console.log(JSON.stringify({
     fn: "consumer-web-list-places",
     mode: "nearby",
-    scope: placesScope,
     googleFillOn: googleFill,
-    googleHits,
+    ...area.summary,
     returned: places.length,
-    limit,
   }));
   return json({
     ok: true,
-    places: withFamilyKeysList(places as CardRow[]),
+    places: withFamilyKeysList(places.map(({ area: _a, ...p }) => p) as CardRow[]),
     mode: "nearby",
     reloadMinKm: cfg.map.reloadMinKm,
     reloadMinSec: cfg.map.reloadMinSec,

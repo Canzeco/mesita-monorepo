@@ -85,7 +85,7 @@ Deno.test("the Chat Agent calls the Deep pipeline, never a source", async () => 
     "fetchAutocomplete",
     "embedSingle",
     // The Google-backed wrappers too: Chat names only Mesita places.
-    "selectGooglePlaces",
+    "selectAreaPool",
     "runConsumerSearchLane",
     "searchNearby",
   ]) {

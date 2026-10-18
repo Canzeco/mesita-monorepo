@@ -4,12 +4,13 @@
 // rail facts at the bottom are the console's own.
 //
 // What Discovery IS (MESITA-2327): five Sources, three Pipelines, four
-// Signals, two Gates, and who uses whom.
+// Signals, two Gates, one factor, and who uses whom.
 //
 //   Source    a callable retrieval unit with declared output fields
 //   Pipeline  orchestrates sources, gates and signals (Name · Area · Deep)
 //   Signal    a continuous score in 0..1
 //   Gate      a binary eligibility check (0 or 1)
+//   Factor    a multiplier on the score: it orders, never excludes
 //
 // Catalog and Map are VIEWS of Area, not pipelines; Favorites is a saved
 // collection; the Chat Agent sits above the pipelines and calls Deep, never a
@@ -179,10 +180,10 @@ export const DISCOVERY_SIGNALS: readonly DiscoverySignalFact[] = [
     label: "Proximity",
     formula: "1 − distance ÷ radius",
     requires: ["coordinates"],
-    query: "The area's anchor: the device, a city, a pin or the map's centre.",
+    query: "A point location: the device, a saved address, a dropped pin or the map's centre.",
     computation: "runtime",
     cost: "Local arithmetic, free.",
-    missing: "No anchor: 1 for every place (abstains). No coordinates: 0.",
+    missing: "An area location or no location: not used (n/a). No coordinates: 0.",
     normalization: "0..1 by construction: 1 at the anchor, ½ halfway to the edge, 0 at the edge of the radius — the same at every zoom, so the radius is its only number.",
   },
   {
@@ -193,12 +194,12 @@ export const DISCOVERY_SIGNALS: readonly DiscoverySignalFact[] = [
     query: "Nothing.",
     computation: "runtime",
     cost: "Local arithmetic over stored numbers, free.",
-    missing: "No rating or no review count: 0. There is no new-place prior; under the weighted sum that lowers the place, it never removes it.",
+    missing: "No rating or no review count: 0 (shown as n/a). There is no new-place prior; that lowers the place, it never removes it.",
     normalization: "0..1 by construction: rating counts linearly (a 3★ place is 60% of a 5★ one) and volume saturates, ½ at the half-credit count, never 1.",
   },
 ];
 
-export const DISCOVERY_GATE_KEYS = ["selected", "family"] as const;
+export const DISCOVERY_GATE_KEYS = ["family", "territory"] as const;
 export type DiscoveryGateKey = (typeof DISCOVERY_GATE_KEYS)[number];
 
 export type DiscoveryGateFact = {
@@ -216,16 +217,6 @@ export type DiscoveryGateFact = {
 
 export const DISCOVERY_GATES: readonly DiscoveryGateFact[] = [
   {
-    key: "selected",
-    label: "Selected",
-    rule: "1 when the place is Mesita Selected (an Enrich run completed and the profile is ready), else 0.",
-    kind: "intrinsic",
-    requires: ["selected"],
-    when: "Only in the Mesita Selected scope; the Google Places scope admits every place.",
-    missing: "Unknown is not Selected: 0.",
-    pushdown: ["mesita_places"],
-  },
-  {
     key: "family",
     label: "Family",
     rule: "1 when the place belongs to a requested family; 1 for every place when none is requested.",
@@ -234,6 +225,16 @@ export const DISCOVERY_GATES: readonly DiscoveryGateFact[] = [
     when: "When the guest picks families on the map, or a Feed row is a family.",
     missing: "No known family while a family is requested: 0.",
     pushdown: ["google_nearby", "mesita_places"],
+  },
+  {
+    key: "territory",
+    label: "Territory",
+    rule: "1 when the place is inside the bounds of the saved area, else 0. No centre, no distance.",
+    kind: "query",
+    requires: ["coordinates"],
+    when: "Only when the location is an area (a city, a neighbourhood, a postcode); a point location uses Proximity and its radius instead.",
+    missing: "No coordinates: 0.",
+    pushdown: ["mesita_places"],
   },
 ];
 
@@ -248,6 +249,8 @@ export type DiscoveryPipelineFact = {
   signals: readonly DiscoverySignalKey[];
   gates: readonly DiscoveryGateKey[];
   scoring: string;
+  /** Multipliers on the score that never exclude (the Selected factor). */
+  factors: readonly string[];
   /** Sources whose rows keep the source's own order: no signal scores them,
    *  so none is derived as feeding a signal. */
   keepsOrder: readonly DiscoverySourceKey[];
@@ -269,6 +272,7 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     sources: ["google_autocomplete", "google_text", "mesita_places"],
     signals: ["name_similarity"],
     gates: [],
+    factors: [],
     scoring: "Google rows keep Google's order; Mesita rows are ordered by Name. Duplicates merge.",
     keepsOrder: ["google_autocomplete", "google_text"],
     rules: [
@@ -282,16 +286,22 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
   {
     key: "area",
     label: "Area",
-    purpose: "Places around an anchor: the device, a picked city, a searched destination, a dropped pin or the map's centre.",
+    purpose: "Places around a location: a point (the device, a saved address, a dropped pin or the map's centre) or an area (a saved city, neighbourhood or postcode).",
     sources: ["google_nearby", "mesita_places"],
     signals: ["proximity", "popularity"],
-    gates: ["selected", "family"],
-    scoring: "Family × Selected × (Proximity × its weight + Popularity × its weight) ÷ (the weights' sum). The operator's two weights, 0–10; ties break on distance.",
+    gates: ["family", "territory"],
+    factors: [
+      "Selected: × 1.0 for a Mesita Selected place (an Enrich run completed and the profile is ready — curation, never payment), × 0.3 for every other place. Fixed, so a strong Google-only place can still outrank a weak Selected one.",
+    ],
+    scoring: "A point: (Proximity × its weight + Popularity × its weight) ÷ (the weights' sum) × Selected. An area: Territory × Popularity × Selected. No location: Popularity × Selected. The operator's two weights, 0–10; ties break on distance (a point), then id.",
     keepsOrder: [],
     rules: [
-      "Closed places never show (Discovery › General's active check).",
-      "Inside the radius: it decides who is a candidate and never scores.",
-      "Google Places scope only: the guest's Google Reviews stop (10+ · 100+ · 1,000+, default 100+) or the operator's floor, whichever is higher. Mesita Selected has no review floor.",
+      "Google and Mesita candidates contribute independently to one pool, deduped by Google Place ID (a Mesita place wins its own Google id), gated, scored and ranked before any page is cut. The guest never picks a source.",
+      "A point location uses Proximity and the radius; an area location uses Territory. Never both.",
+      "Closed places never show (Discovery › General's active check). Mesita rows must be ready.",
+      "Inside the radius (a point): it decides who is a candidate and never scores.",
+      "Google hits only: the guest's Google Reviews stop (10+ · 100+ · 1,000+, default 100+) or the operator's floor, whichever is higher. Mesita rows have no review floor.",
+      "Chat reads Mesita Selected places only.",
     ],
     callers: ["Map (the Search tab)", "Catalog (Home's Feed)", "Chat (Don Memo)"],
     live: true,
@@ -303,6 +313,7 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     sources: ["mesita_places", "mesita_social"],
     signals: ["description_similarity"],
     gates: [],
+    factors: [],
     scoring: "Description, best first; ties break on name.",
     keepsOrder: [],
     rules: [
@@ -386,34 +397,18 @@ export const CATALOG_FAMILY_FACTS: readonly { key: string; label: string; emoji:
   { key: "feel_better", label: "Feel better", emoji: "💆" },
 ];
 
-// The Feed's rows, top to bottom: the Catalog view of the Area pipeline
-// (consumer-web-list-catalog, `_shared/area-pipeline.ts` +
-// `_shared/catalog-rank.ts`): Google Places, Mesita Selected, then one row
-// per guest family in CATALOG_FAMILY_FACTS order, Mesita Selected members
-// only. Every row stops at the operator's Places per row and an empty row is
-// omitted. The supabase contract test pins these against buildCatalogRails.
+// The legacy Feed rows (MESITA-2379): an old consumer build that does not
+// send `unified` still gets rails cut from the one ranked pool — Google
+// Places (the non-Selected places), Mesita Selected, then one row per guest
+// family, Selected members only. The Admin page no longer draws them; the
+// supabase contract test pins these against buildCatalogRails until the
+// legacy path is removed.
 
 export const CATALOG_SIGNAL_RAILS: readonly {
   key: string;
   label: string;
   emoji: string;
-  holds: string;
-  order: string;
 }[] = [
-  {
-    key: "google_places",
-    label: "Google Places",
-    emoji: "📍",
-    holds:
-      "The Google Places scope around the guest: one Nearby call inside the radius, 100+ Google reviews or the operator's floor; a Mesita place wins its own Google id. Needs a location, Google fill on and budget, else the row hides. The only row Google appears in.",
-    order: "The Area score: Proximity and Popularity, weighted.",
-  },
-  {
-    key: "mesita_selected",
-    label: "Mesita Selected",
-    emoji: "✨",
-    holds:
-      "The Mesita Selected scope: every Selected place inside the radius. No review floor.",
-    order: "The Area score: Proximity and Popularity, weighted.",
-  },
+  { key: "google_places", label: "Google Places", emoji: "📍" },
+  { key: "mesita_selected", label: "Mesita Selected", emoji: "✨" },
 ];

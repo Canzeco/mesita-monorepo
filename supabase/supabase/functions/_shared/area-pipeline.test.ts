@@ -1,13 +1,18 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { __resetNearbyGoogleCacheForTests } from "./nearby-places.ts";
 import {
+  type AreaPoolDeps,
+  areaFanoutCircles,
   FEED_GOOGLE_TYPES,
-  type GoogleSelectionDeps,
+  googleCallsForStop,
   type OwnedRow,
   ownedCandidate,
+  parseAreaBounds,
+  resolveAreaLocation,
+  selectAreaPool,
   selectedPoolQuery,
-  selectGooglePlaces,
   selectMesitaSelected,
+  snapCenter,
 } from "./area-pipeline.ts";
 import { nearbyExcludedTypesForFamilies } from "./sourcing.ts";
 import { DISCOVERY_DEFAULTS } from "./discovery-config.ts";
@@ -84,16 +89,25 @@ function reset() {
   __resetNearbyGoogleCacheForTests();
 }
 
-function deps(over: Partial<GoogleSelectionDeps<OwnedRow>> = {}) {
+type DepsOver = Partial<AreaPoolDeps<OwnedRow>> & {
+  /** Shorthands for a point location around CENTER. */
+  center?: { lat: number; lng: number } | null;
+  radiusKm?: number;
+};
+
+function deps(over: DepsOver = {}) {
   let quotaCalls = 0;
   const lookups: string[][] = [];
-  const d: GoogleSelectionDeps<OwnedRow> = {
+  const { center = CENTER, radiusKm = 50, ...rest } = over;
+  const d: AreaPoolDeps<OwnedRow> = {
     apiKey: "k",
-    center: CENTER,
-    radiusKm: 50,
+    location: center ? { kind: "point", anchor: center, radiusKm } : { kind: "none" },
+    families: [],
     types: FEED_GOOGLE_TYPES,
+    googleCalls: 1,
     minReviews: 0,
-    limit: 5,
+    mesitaLimit: 20,
+    mesitaRows: [],
     cfg: DISCOVERY_DEFAULTS,
     consumeQuota: () => {
       quotaCalls++;
@@ -103,7 +117,7 @@ function deps(over: Partial<GoogleSelectionDeps<OwnedRow>> = {}) {
       lookups.push(gids);
       return Promise.resolve([] as OwnedRow[]);
     },
-    ...over,
+    ...rest,
   };
   return { d, quota: () => quotaCalls, lookups };
 }
@@ -118,7 +132,7 @@ Deno.test("google: ONE Nearby call inside the operator's radius, mask with openN
   const g = stubGoogle([{ id: "a", lat: 25.671 }]);
   try {
     const { d } = deps({ radiusKm: 12.5 });
-    await selectGooglePlaces(d);
+    await selectAreaPool(d);
     const calls = nearbyCalls(g.calls);
     assertEquals(calls.length, 1);
     assert(calls[0].mask!.includes("places.currentOpeningHours.openNow"));
@@ -141,7 +155,7 @@ Deno.test("google: the guest review floor cuts after Google answers, never a ref
   ]);
   try {
     const { d } = deps({ minReviews: 100 });
-    const out = await selectGooglePlaces(d);
+    const out = await selectAreaPool(d);
     assertEquals(ids(out.places), ["g:loved"]);
     assertEquals(nearbyCalls(g.calls).length, 1);
   } finally {
@@ -156,7 +170,7 @@ Deno.test("google: General gate drops a closed business", async () => {
     { id: "live", lat: 25.672 },
   ]);
   try {
-    const out = await selectGooglePlaces(deps().d);
+    const out = await selectAreaPool(deps().d);
     assertEquals(ids(out.places), ["g:live"]);
   } finally {
     g.restore();
@@ -184,7 +198,7 @@ Deno.test("google: a hit Mesita owns goes out as that row, once (dedup by gid)",
         return Promise.resolve([owned, { ...owned, id: "dupe" }]);
       },
     });
-    const out = await selectGooglePlaces(d);
+    const out = await selectAreaPool(d);
     assertEquals(new Set(ids(out.places)), new Set(["mesita-1", "g:theirs"]));
     assertEquals(lookups.length, 1);
     const mesita = out.places.find((p) => p.id === "mesita-1")!;
@@ -203,7 +217,7 @@ Deno.test("google: the Area score is proximity × popularity; distance breaks ti
     { id: "far-loved", lat: 25.68, rating: 4.9, reviews: 5000 },
   ]);
   try {
-    const out = await selectGooglePlaces(deps().d);
+    const out = await selectAreaPool(deps().d);
     assertEquals(ids(out.places), ["g:far-loved", "g:near-quiet"]);
   } finally {
     g.restore();
@@ -214,7 +228,7 @@ Deno.test("google: the Area score is proximity × popularity; distance breaks ti
     { id: "near", lat: 25.6702 },
   ]);
   try {
-    const out = await selectGooglePlaces(deps().d);
+    const out = await selectAreaPool(deps().d);
     assertEquals(ids(out.places), ["g:near", "g:far"]);
   } finally {
     tie.restore();
@@ -228,7 +242,7 @@ Deno.test("google: open now no longer reorders (Area reads Proximity and Popular
     { id: "open-far", lat: 25.6702, openNow: true },
   ]);
   try {
-    const out = await selectGooglePlaces(deps().d);
+    const out = await selectAreaPool(deps().d);
     assertEquals(ids(out.places), ["g:closed-near", "g:open-far"]);
   } finally {
     g.restore();
@@ -239,23 +253,24 @@ Deno.test("google: the Family gate drops a hit outside the requested families", 
   reset();
   const g = stubGoogle([{ id: "a-restaurant", lat: 25.6701 }]);
   try {
-    const out = await selectGooglePlaces(deps({ families: ["coffee"] }).d);
+    const out = await selectAreaPool(deps({ families: ["coffee"] }).d);
     assertEquals(out.places, []);
-    const all = await selectGooglePlaces(deps({ families: [] }).d);
+    const all = await selectAreaPool(deps({ families: [] }).d);
     assertEquals(ids(all.places), ["g:a-restaurant"]);
   } finally {
     g.restore();
   }
 });
 
-Deno.test("google: at most `limit`", async () => {
+Deno.test("google: the pool is not cut to a rail — every eligible hit comes back, ranked", async () => {
   reset();
   const g = stubGoogle(
     Array.from({ length: 12 }, (_, i) => ({ id: `p${i}`, lat: 25.6701 + i / 1e4 })),
   );
   try {
-    const out = await selectGooglePlaces(deps({ limit: 5 }).d);
-    assertEquals(out.places.length, 5);
+    const out = await selectAreaPool(deps().d);
+    assertEquals(out.places.length, 12);
+    assertEquals(out.summary.returned, 12);
   } finally {
     g.restore();
   }
@@ -267,7 +282,7 @@ Deno.test("google: no key, no centre or no types makes no call and returns nothi
   try {
     for (const over of [{ apiKey: null }, { center: null }, { types: [] }]) {
       const { d, quota } = deps(over);
-      const out = await selectGooglePlaces(d);
+      const out = await selectAreaPool(d);
       assertEquals(out.places, []);
       assertEquals(quota(), 0);
     }
@@ -282,7 +297,7 @@ Deno.test("google: a quota refusal is empty — never Mesita rows under the Goog
   const g = stubGoogle([{ id: "a", lat: 25.6701 }]);
   try {
     const { d, lookups } = deps({ consumeQuota: () => Promise.resolve(false) });
-    const out = await selectGooglePlaces(d);
+    const out = await selectAreaPool(d);
     assertEquals(out.places, []);
     assertEquals(nearbyCalls(g.calls).length, 0);
     assertEquals(lookups.length, 0);
@@ -295,13 +310,13 @@ Deno.test("google: a Google error is empty and not cached", async () => {
   reset();
   const g = stubGoogle([{ id: "a", lat: 25.6701 }], 500);
   try {
-    assertEquals((await selectGooglePlaces(deps().d)).places, []);
+    assertEquals((await selectAreaPool(deps().d)).places, []);
   } finally {
     g.restore();
   }
   const ok = stubGoogle([{ id: "a", lat: 25.6701 }]);
   try {
-    assertEquals(ids((await selectGooglePlaces(deps().d)).places), ["g:a"]);
+    assertEquals(ids((await selectAreaPool(deps().d)).places), ["g:a"]);
     assertEquals(nearbyCalls(ok.calls).length, 1);
   } finally {
     ok.restore();
@@ -312,7 +327,7 @@ Deno.test("google: an owned-row lookup error fails closed (no stub may shadow a 
   reset();
   const g = stubGoogle([{ id: "a", lat: 25.6701 }]);
   try {
-    const out = await selectGooglePlaces(
+    const out = await selectAreaPool(
       deps({ lookupOwned: () => Promise.resolve(null) }).d,
     );
     assertEquals(out.places, []);
@@ -325,9 +340,9 @@ Deno.test("google: a warm cell makes no Google call and spends no quota", async 
   reset();
   const g = stubGoogle([{ id: "a", lat: 25.6701 }]);
   try {
-    await selectGooglePlaces(deps().d);
+    await selectAreaPool(deps().d);
     const second = deps();
-    const out = await selectGooglePlaces(second.d);
+    const out = await selectAreaPool(second.d);
     assertEquals(ids(out.places), ["g:a"]);
     assertEquals(nearbyCalls(g.calls).length, 1);
     assertEquals(second.quota(), 0);
@@ -469,7 +484,7 @@ Deno.test("google: the operator's floor cuts Google hits; the higher floor wins 
   ]);
   try {
     const cfg = { ...DISCOVERY_DEFAULTS, map: { ...DISCOVERY_DEFAULTS.map, googleMinReviews: 500 } };
-    const out = await selectGooglePlaces(deps({ cfg, minReviews: 100 }).d);
+    const out = await selectAreaPool(deps({ cfg, minReviews: 100 }).d);
     assertEquals(ids(out.places), ["g:loved"]);
   } finally {
     g.restore();
@@ -498,7 +513,7 @@ Deno.test("Area keeps only General's active check: the Name pipeline's reviews f
   reset();
   const g = stubGoogle([{ id: "thin", lat: 25.6701, reviews: 12 }]);
   try {
-    const out = await selectGooglePlaces(deps({ cfg: { ...DISCOVERY_DEFAULTS, general } }).d);
+    const out = await selectAreaPool(deps({ cfg: { ...DISCOVERY_DEFAULTS, general } }).d);
     assertEquals(ids(out.places), ["g:thin"]);
   } finally {
     g.restore();
@@ -530,8 +545,7 @@ Deno.test("google: an owned hit is scored on Google's numbers when its stored on
       lookupOwned: () =>
         Promise.resolve([{ ...OWNED_BASE, google_stars_overall: null, google_review_count: null }]),
     });
-    const out = await selectGooglePlaces(d);
-    assertEquals(out.places.length, 5);
+    const out = await selectAreaPool(d);
     assertEquals(out.places[0].id, "mesita-1");
   } finally {
     g.restore();
@@ -571,7 +585,7 @@ Deno.test("google: an owned hit whose Mesita family is unknown keeps the family 
       types: ["restaurant"],
       lookupOwned: () => Promise.resolve([{ ...OWNED_BASE, family_keys: ["undefined"] }, tacosRow]),
     });
-    const out = await selectGooglePlaces(d);
+    const out = await selectAreaPool(d);
     // Unknown on Mesita, `restaurant` on Google → Dinner: kept. A row Mesita
     // knows is Tacos stays Tacos and is cut under Dinner, as in Selected.
     assertEquals(ids(out.places), ["mesita-1"]);
@@ -609,13 +623,13 @@ Deno.test("google: a family pill sends excludedPrimaryTypes; a precise type with
   reset();
   const g = stubGoogle([{ id: "a", lat: 25.6701 }]);
   try {
-    await selectGooglePlaces(deps({ families: ["dinner"], types: ["restaurant"] }).d);
+    await selectAreaPool(deps({ families: ["dinner"], types: ["restaurant"] }).d);
     const body = JSON.parse(nearbyCalls(g.calls)[0].body ?? "{}");
     assertEquals(body.includedPrimaryTypes, ["restaurant"]);
     assert(Array.isArray(body.excludedPrimaryTypes));
     assert(body.excludedPrimaryTypes.includes("mexican_restaurant"));
     reset();
-    await selectGooglePlaces(deps({ types: ["pizza_restaurant"] }).d);
+    await selectAreaPool(deps({ types: ["pizza_restaurant"] }).d);
     const plain = JSON.parse(nearbyCalls(g.calls)[1].body ?? "{}");
     assertEquals("excludedPrimaryTypes" in plain, false);
   } finally {
@@ -660,4 +674,244 @@ Deno.test("nearbyExcludedTypesForFamilies: only a general parent brings subtypes
   assertEquals(nearbyExcludedTypesForFamilies(["sushi_restaurant"], ["sushi"]), []);
   // Dinner's parent also reaches restaurant subtypes filed in other groups.
   assert(nearbyExcludedTypesForFamilies(["restaurant"], ["dinner"]).includes("dessert_restaurant"));
+});
+
+// ── MESITA-2379: one pool ───────────────────────────────────────────────────
+
+const bodies = (calls: Call[]) => nearbyCalls(calls).map((c) => JSON.parse(c.body!));
+
+Deno.test("googleCallsForStop: 20/40/60 → 1/2/3 calls", () => {
+  assertEquals([20, 40, 60, 0, 999, Number.NaN].map(googleCallsForStop), [1, 2, 3, 1, 3, 1]);
+});
+
+Deno.test("fan-out: 40 and 60 make 2 and 3 DIFFERENT Nearby calls, never a second page", async () => {
+  for (const calls of [2, 3]) {
+    reset();
+    const g = stubGoogle([{ id: "a", lat: 25.6701 }]);
+    try {
+      const { d, quota } = deps({ googleCalls: calls, radiusKm: 8 });
+      const out = await selectAreaPool(d);
+      const sent = bodies(g.calls);
+      assertEquals(sent.length, calls);
+      assertEquals(new Set(sent.map((b) => JSON.stringify(b))).size, calls);
+      assertEquals(sent[0].rankPreference, "DISTANCE");
+      assertEquals(sent[1].rankPreference, "POPULARITY");
+      if (calls === 3) assertEquals(sent[2].locationRestriction.circle.radius, 4000);
+      assertEquals(quota(), calls);
+      assertEquals(out.summary.googleBilled, calls);
+      // The same place from every call is one candidate.
+      assertEquals(ids(out.places), ["g:a"]);
+    } finally {
+      g.restore();
+    }
+  }
+});
+
+Deno.test("fan-out: one refused call adds nothing; the others still count (quota partial)", async () => {
+  reset();
+  const g = stubGoogle([{ id: "a", lat: 25.6701 }]);
+  try {
+    let n = 0;
+    const { d } = deps({ googleCalls: 3, consumeQuota: () => Promise.resolve(++n !== 2) });
+    const out = await selectAreaPool(d);
+    assertEquals(nearbyCalls(g.calls).length, 2);
+    assertEquals(out.summary.quota, "partial");
+    assertEquals(out.summary.googleRefused, 1);
+    assertEquals(ids(out.places), ["g:a"]);
+  } finally {
+    g.restore();
+  }
+});
+
+Deno.test("fan-out: every call refused is quota refused and buys nothing", async () => {
+  reset();
+  const g = stubGoogle([{ id: "a", lat: 25.6701 }]);
+  try {
+    const { d } = deps({ googleCalls: 2, consumeQuota: () => Promise.resolve(false) });
+    const out = await selectAreaPool(d);
+    assertEquals(out.summary.quota, "refused");
+    assertEquals(out.places, []);
+  } finally {
+    g.restore();
+  }
+});
+
+Deno.test("the server snaps a point to ~110 m for retrieval; Proximity reads the raw centre", async () => {
+  assertEquals(snapCenter({ lat: 25.67049, lng: -100.30012 }), { lat: 25.67, lng: -100.3 });
+  reset();
+  const g = stubGoogle([{ id: "a", lat: 25.675 }]);
+  try {
+    const near = await selectAreaPool(deps({ center: { lat: 25.67001, lng: CENTER.lng }, radiusKm: 2 }).d);
+    const far = await selectAreaPool(deps({ center: { lat: 25.66999, lng: CENTER.lng }, radiusKm: 2 }).d);
+    // Same snapped cell: the second request is answered warm.
+    assertEquals(nearbyCalls(g.calls).length, 1);
+    assert(near.places[0].area.signals.proximity! > far.places[0].area.signals.proximity!);
+  } finally {
+    g.restore();
+  }
+});
+
+Deno.test("area: every call ranks POPULARITY; bounds under 1 km still make 3 distinct calls", async () => {
+  reset();
+  const g = stubGoogle([{ id: "in", lat: 25.6705 }, { id: "out", lat: 25.69 }]);
+  try {
+    const bounds = { low: { lat: 25.668, lng: -100.302 }, high: { lat: 25.673, lng: -100.298 } };
+    const { d } = deps({ location: { kind: "area", bounds }, googleCalls: 3 });
+    const out = await selectAreaPool(d);
+    const sent = bodies(g.calls);
+    assertEquals(sent.length, 3);
+    assertEquals(sent.every((b) => b.rankPreference === "POPULARITY"), true);
+    assertEquals(new Set(sent.map((b) => JSON.stringify(b.locationRestriction))).size, 3);
+    // Territory gate: the hit outside the rectangle never comes back.
+    assertEquals(ids(out.places), ["g:in"]);
+    assertEquals(out.places[0].area.formula, "area");
+    assertEquals(out.places[0].area.gates.territory, 1);
+    assertEquals(out.places[0].distance_km, null);
+  } finally {
+    g.restore();
+  }
+});
+
+Deno.test("areaFanoutCircles: halves split across the longer side", () => {
+  const wide = areaFanoutCircles(
+    { kind: "area", bounds: { low: { lat: 0, lng: 0 }, high: { lat: 0.1, lng: 0.4 } } },
+    3,
+  );
+  assert(wide[1].center.lng < wide[2].center.lng);
+  assertEquals(wide[1].center.lat, wide[2].center.lat);
+  assertEquals(areaFanoutCircles({ kind: "none" }, 3), []);
+});
+
+Deno.test("parseAreaBounds: valid, inverted, partial and oversized", () => {
+  const ok = { low: { lat: 25.6, lng: -100.4 }, high: { lat: 25.7, lng: -100.3 } };
+  assertEquals(parseAreaBounds(ok), ok);
+  assertEquals(parseAreaBounds({ low: ok.high, high: ok.low }), null);
+  assertEquals(parseAreaBounds({ low: ok.low }), null);
+  assertEquals(parseAreaBounds({ low: { lat: 0, lng: 0 }, high: { lat: 2, lng: 2 } }), null);
+  assertEquals(parseAreaBounds("x"), null);
+  // Invalid bounds fall back to the point, then to none.
+  assertEquals(resolveAreaLocation({ low: ok.high, high: ok.low }, CENTER, 5).kind, "point");
+  assertEquals(resolveAreaLocation(null, null, 5).kind, "none");
+  assertEquals(resolveAreaLocation(ok, CENTER, 5).kind, "area");
+});
+
+Deno.test("merge: an owned hit and the same Mesita row are ONE candidate, scored on the hit", async () => {
+  reset();
+  const g = stubGoogle([{ id: "mine", lat: 25.6701, rating: 4.9, reviews: 4000 }]);
+  try {
+    const row = { ...OWNED_BASE, google_stars_overall: 3.0, google_review_count: 5, family_keys: ["dinner"] };
+    const { d } = deps({ mesitaRows: [row], lookupOwned: () => Promise.resolve([row]) });
+    const out = await selectAreaPool(d);
+    assertEquals(ids(out.places), ["mesita-1"]);
+    assertEquals(out.places[0].area.source, "selected");
+    assertEquals(out.places[0].area.gates.reviews, 1);
+    assertEquals(out.places[0].area.gates.ready, 1);
+    // The card keeps its own facts…
+    assertEquals(out.places[0].google_stars_overall, 3.0);
+  } finally {
+    g.restore();
+  }
+});
+
+Deno.test("merge: a ready owned row missing a fact borrows the hit's", async () => {
+  reset();
+  const g = stubGoogle([{ id: "mine", lat: 25.6701, rating: 4.6, reviews: 800 }]);
+  try {
+    const row = { ...OWNED_BASE, google_stars_overall: null, google_review_count: null };
+    const out = await selectAreaPool(deps({ lookupOwned: () => Promise.resolve([row]) }).d);
+    assertEquals(out.places[0].google_stars_overall, 4.6);
+    assertEquals(out.places[0].google_review_count, 800);
+    assertEquals("google_place_id" in out.places[0], false);
+  } finally {
+    g.restore();
+  }
+});
+
+Deno.test("merge: a Google hit owned by a row OUTSIDE the Mesita candidates still renders as that row", async () => {
+  reset();
+  const g = stubGoogle([{ id: "mine", lat: 25.6701 }]);
+  try {
+    // The Mesita read never returned the owner (past the cap, or another family).
+    const out = await selectAreaPool(deps({ mesitaRows: [], lookupOwned: () => Promise.resolve([OWNED_BASE]) }).d);
+    assertEquals(ids(out.places), ["mesita-1"]);
+    assertEquals(out.places.some((p) => String(p.id).startsWith("g:")), false);
+  } finally {
+    g.restore();
+  }
+});
+
+Deno.test("merge: Google and Mesita candidates rank in ONE order, Selected × 1.0 and the rest × 0.3", async () => {
+  reset();
+  const g = stubGoogle([
+    { id: "loved", lat: 25.6701, rating: 4.9, reviews: 9000 },
+    { id: "meh", lat: 25.6702, rating: 3.0, reviews: 20 },
+  ]);
+  try {
+    const selected = mrow("sel", { lat: 25.6702, google_stars_overall: 4.0, google_review_count: 200 });
+    const created = mrow("created", { enriched_at: null, lat: 25.6702, google_stars_overall: 4.9, google_review_count: 9000 });
+    const out = await selectAreaPool(deps({ mesitaRows: [selected, created] }).d);
+    assertEquals(ids(out.places)[0], "sel");
+    const byId = Object.fromEntries(out.places.map((p) => [p.id, p.area]));
+    assertEquals(byId["sel"].selected, 1);
+    assertEquals(byId["created"].source, "mesita");
+    assertEquals(byId["created"].selected, 0.3);
+    assertEquals(byId["g:loved"].source, "google");
+    for (const a of Object.values(byId)) {
+      assertEquals(Math.abs(a.final - a.base * a.selected) < 1e-12, true);
+    }
+    // The order is the final score's, whatever the source.
+    const finals = out.places.map((p) => p.area.final);
+    assertEquals(finals, [...finals].sort((a, b) => b - a));
+    assertEquals(out.summary.mesita, 2);
+    assertEquals(out.summary.google, 2);
+  } finally {
+    g.restore();
+  }
+});
+
+Deno.test("mesitaLimit keeps the top Mesita candidates by score, not the first rows read", async () => {
+  const rows = [
+    mrow("weak", { google_stars_overall: 2.0, google_review_count: 3 }),
+    mrow("strong", { google_stars_overall: 4.9, google_review_count: 3000 }),
+  ];
+  const out = await selectAreaPool(deps({ apiKey: null, mesitaRows: rows, mesitaLimit: 1 }).d);
+  assertEquals(ids(out.places), ["strong"]);
+});
+
+Deno.test("no location: Mesita only, Popularity × selected, no Google call", async () => {
+  reset();
+  const g = stubGoogle([{ id: "a", lat: 25.6701 }]);
+  try {
+    const out = await selectAreaPool(deps({ center: null, mesitaRows: [mrow("far", { lat: 40 })] }).d);
+    assertEquals(nearbyCalls(g.calls).length, 0);
+    assertEquals(ids(out.places), ["far"]);
+    assertEquals(out.places[0].area.formula, "none");
+    assertEquals(out.places[0].area.signals.proximity, null);
+  } finally {
+    g.restore();
+  }
+});
+
+Deno.test("selectedPoolQuery: the Feed and the Map drop the Selected SQL filter; an area reads its bounds", () => {
+  const seen: string[] = [];
+  const q = {
+    eq: (c: string, v: unknown) => (seen.push(`eq ${c} ${v}`), q),
+    gte: (c: string, v: unknown) => (seen.push(`gte ${c} ${v}`), q),
+    lte: (c: string, v: unknown) => (seen.push(`lte ${c} ${v}`), q),
+    not: (c: string, op: string, v: unknown) => (seen.push(`not ${c} ${op} ${v}`), q),
+    or: (f: string) => (seen.push(`or ${f}`), q),
+    overlaps: (c: string, v: string[]) => (seen.push(`overlaps ${c} ${v}`), q),
+    order: (c: string, o?: { ascending?: boolean }) => (seen.push(`order ${c} ${o?.ascending}`), q),
+  };
+  selectedPoolQuery(q, DISCOVERY_DEFAULTS, {
+    center: CENTER,
+    radiusKm: 5,
+    bounds: { low: { lat: 25.6, lng: -100.4 }, high: { lat: 25.7, lng: -100.3 } },
+    selectedOnly: false,
+  });
+  assertEquals(seen.includes("not enriched_at is null"), false);
+  assert(seen.includes("eq content_state ready"));
+  assert(seen.includes("gte lat 25.6"));
+  assert(seen.includes("lte lng -100.3"));
+  assertEquals(seen[seen.length - 1], "order id true");
 });

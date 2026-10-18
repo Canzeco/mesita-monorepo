@@ -6,7 +6,7 @@
 // Catalog and Map are views of the Area pipeline, so their knobs sit in the
 // Area box; the Chat Agent is Deep's caller, so its prompt sits in the Deep box.
 
-import { Hash, MapPin, RefreshCw, Rows3, ScanSearch, Search, Sparkles } from "lucide-react";
+import { Hash, MapPin, RefreshCw, ScanSearch, Search, Sparkles } from "lucide-react";
 import {
   ChoiceField,
   ChoicePill,
@@ -18,8 +18,6 @@ import { useConfigEditor, type ConfigSeed } from "@/components/admin-ui/use-conf
 import { formatShortDate } from "@/lib/format";
 import { getDiscoveryConfig, updateDiscoveryConfig, type DiscoverySlice } from "./actions";
 import {
-  CATALOG_RAIL_CAP_MAX,
-  CATALOG_RAIL_CAP_MIN,
   GENERAL_MIN_REVIEWS_MAX,
   AREA_WEIGHT_MAX,
   AREA_WEIGHT_MIN,
@@ -36,7 +34,6 @@ import {
   NAME_LANE_COUNT_MAX,
   type DiscoveryConfig,
 } from "./catalog";
-import { CATALOG_FAMILY_FACTS, CATALOG_SIGNAL_RAILS } from "./discovery-surface";
 import { PipelineBox } from "./PipelineBox";
 
 const ICON = "h-5 w-5";
@@ -47,7 +44,7 @@ const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 export const BOX_SLICES = {
   nameAdmin: ["nameAdmin"],
   name: ["nameDeep", "nameLocations", "nameIdle", "general"],
-  area: ["map", "catalogRows", "areaSignals"],
+  area: ["map", "areaSignals"],
 } as const satisfies Record<string, readonly DiscoverySlice[]>;
 
 function useDiscoveryEditor(seed: ConfigSeed<DiscoveryConfig>) {
@@ -297,10 +294,7 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
     setOk(false);
     setCfg((c) => ({ ...c, params: { ...c.params, [bag]: { ...c.params[bag], [key]: v } } }));
   };
-  const dirty =
-    !same(cfg.map, saved.map) ||
-    cfg.catalog.railCap !== saved.catalog.railCap ||
-    !same(params, saved.params);
+  const dirty = !same(cfg.map, saved.map) || !same(params, saved.params);
   return (
     <PipelineBox
       id="s-area"
@@ -310,22 +304,19 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
       explanation={
         <>
           <p>
-            Places around an anchor: the device, a picked city, a searched
-            destination, a dropped pin or the map&apos;s centre. The radius
-            decides who is a candidate; the score orders them. The guest picks
-            one scope, and each scope has its own cap:{" "}
-            <strong>Google Places</strong> (the nearest places one Google call
-            returns inside the radius — places Mesita buys; a place already on
-            Mesita shown as its Mesita row) or <strong>Mesita Selected</strong>{" "}
-            (only places Mesita has written a profile for — a free read of our
-            own rows). The Mesita set is not a subset of the Google places
-            bought: a Selected place 3 km away can be absent from Google&apos;s
-            nearest 20.
+            Places around a location: a <strong>point</strong> (the device, a
+            saved address, the map&apos;s centre) ranks by Proximity inside the
+            radius; an <strong>area</strong> (a saved city, neighbourhood or
+            postcode) keeps only what is inside its bounds (Territory) and
+            ranks by Popularity. Google candidates and Mesita candidates
+            contribute independently to one pool: merged, deduped by Google
+            Place ID, gated, scored, multiplied by the Selected factor and
+            ranked before any page is cut. The source is never a guest filter.
           </p>
           <p className="mt-2">
-            The Map and the Feed are two views of this one pipeline, so they
-            always agree. Proximity and Popularity add up with the two weights
-            below: a missing number lowers a place, it never removes it.
+            The Map and the Feed are two views of this one pipeline. Proximity
+            and Popularity add up with the two weights below: a missing number
+            lowers a place, it never removes it.
           </p>
         </>
       }
@@ -381,22 +372,22 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           (reviews + half credit): a 3★ place is 60% of a 5★ one, and volume
           earns half credit at that many reviews. The score is Proximity ×
           its weight + Popularity × its weight; 0 turns a signal off. The
-          reviews floor counts people, cuts Google Places only, and 0 is off.
+          reviews floor counts people, cuts Google hits only, and 0 is off.
         </p>
       </Group>
-      <Group title="Map view (the Search tab)">
+      <Group title="Candidates per source">
         <div className="grid gap-3 sm:grid-cols-2">
           <ChoiceField
             icon={<Hash className="mt-0.5 h-4 w-4 shrink-0" />}
-            label="Google places"
-            hint="Places Mesita buys. One Nearby call answers 20; 40 and 60 wait for a 2–3-call fan-out."
+            label="Google candidates"
+            hint="Places Mesita buys for the Feed: up to 1 / 2 / 3 billed Nearby calls (20 · 40 · 60; duplicates across calls count once). The Map buys one call per load."
           >
             <div className="flex flex-wrap gap-2">
               {GOOGLE_PULL_STOPS.map((stop) => (
                 <ChoicePill
                   key={stop}
                   active={cfg.map.googlePlaces === stop}
-                  disabled={off || stop > 20}
+                  disabled={off}
                   onClick={() => map({ googlePlaces: stop })}
                 >
                   {stop}
@@ -406,8 +397,8 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           </ChoiceField>
           <ChoiceField
             icon={<Hash className="mt-0.5 h-4 w-4 shrink-0" />}
-            label="Mesita places"
-            hint="Places Mesita reads from its own rows, free."
+            label="Mesita candidates"
+            hint="Ready Mesita places read from our own rows, free: the best this many by score join the pool."
           >
             <div className="flex flex-wrap gap-2">
               {GOOGLE_PULL_STOPS.map((stop) => (
@@ -422,6 +413,10 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
               ))}
             </div>
           </ChoiceField>
+        </div>
+      </Group>
+      <Group title="Map view (the Search tab)">
+        <div className="grid gap-3 sm:grid-cols-2">
           <ChoiceField
             icon={<RefreshCw className="mt-0.5 h-4 w-4 shrink-0" />}
             label="Reload after"
@@ -441,39 +436,6 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             </div>
           </ChoiceField>
         </div>
-      </Group>
-      <Group title="Catalog view (Home's Feed)">
-        <div className="max-w-xs">
-          <NumberField
-            icon={<Rows3 className="mt-0.5 h-4 w-4 shrink-0" />}
-            label="Places per row"
-            value={cfg.catalog.railCap}
-            min={CATALOG_RAIL_CAP_MIN}
-            max={CATALOG_RAIL_CAP_MAX}
-            disabled={off}
-            onChange={(railCap) => {
-              setOk(false);
-              setCfg((c) => ({ ...c, catalog: { ...c.catalog, railCap } }));
-            }}
-          />
-        </div>
-        <ul className="flex flex-wrap gap-2" aria-label="Feed rows">
-          {CATALOG_SIGNAL_RAILS.map((rail) => (
-            <li key={rail.key} className="border-foreground rounded-full border px-3 py-1 text-sm font-semibold">
-              <span aria-hidden>{rail.emoji}</span> {rail.label}
-            </li>
-          ))}
-          {CATALOG_FAMILY_FACTS.map((family) => (
-            <li key={family.key} className="border-border rounded-full border px-3 py-1 text-sm">
-              <span aria-hidden>{family.emoji}</span> {family.label}
-            </li>
-          ))}
-        </ul>
-        <p className="text-muted-foreground type-meta">
-          Row one is the Google Places scope, row two the Mesita Selected
-          scope, then one row per family (the Family gate) with its Mesita
-          Selected members. A row with nothing in it is hidden.
-        </p>
       </Group>
     </PipelineBox>
   );
