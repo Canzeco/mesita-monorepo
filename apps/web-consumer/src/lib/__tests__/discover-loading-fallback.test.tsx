@@ -22,7 +22,7 @@ describe("Home's loading fallback", () => {
     );
     expect(layout).not.toContain("DiscoverFallback");
     expect(layout).not.toContain("HomeDeckBoundary");
-    expect(layout).toContain("<ModeRail />");
+    expect(layout).toContain("<ModeTabs />");
     expect(layout).toContain("{children}");
   });
 });
