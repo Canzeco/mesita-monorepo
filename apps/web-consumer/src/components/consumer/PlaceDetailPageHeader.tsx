@@ -57,12 +57,12 @@ export function PlaceDetailPageHeader({
         type="button"
         onClick={onBack}
         aria-label="Back"
-        className="bg-card text-foreground border-border hover:bg-muted flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition"
+        className="bg-card text-foreground border-border hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border transition"
       >
         <ArrowLeft className="h-4 w-4" />
       </button>
       <PlaceDetailTitle placeName={placeName} />
-      <div className="h-9 w-9 shrink-0" aria-hidden />
+      <div className="h-11 w-11 shrink-0" aria-hidden />
     </header>
   );
 }

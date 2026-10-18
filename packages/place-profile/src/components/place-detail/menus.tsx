@@ -103,7 +103,7 @@ function ProductRow({
       <button
         type="button"
         {...(onView ? { onClick: onView } : inertButtonProps(false))}
-        className="bg-foreground text-paper inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition hover:opacity-90 active:scale-[0.97]"
+        className="bg-foreground text-paper inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full px-4 text-xs font-semibold transition hover:opacity-90 active:scale-[0.97]"
       >
         View
         <ChevronRight className="h-3.5 w-3.5" />
