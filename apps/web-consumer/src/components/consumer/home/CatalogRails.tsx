@@ -198,10 +198,10 @@ export function CatalogRails() {
 
   if (rails === null) {
     return shell(
-      <div className="bg-card scrollbar-hide flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-y-contain pt-3">
+      <div className="bg-card scrollbar-hide divide-border flex min-h-0 flex-1 flex-col divide-y overflow-y-auto overscroll-y-contain">
         {Array.from({ length: 2 }, (_, i) => (
           <div key={i} className="flex items-stretch">
-            <div className="bg-muted/60 border-border flex w-10 shrink-0 justify-center border-r py-6">
+            <div className="border-border flex w-10 shrink-0 justify-center border-r py-6">
               <Skeleton className="w-4 rounded-none" />
             </div>
             <div className="ml-3 flex min-w-0 flex-1 gap-1.5 overflow-hidden">
@@ -231,18 +231,19 @@ export function CatalogRails() {
     );
   }
 
-  // Three bands by POSITION (Pato, MESITA-2308): the first rail on the
-  // deepest tint, the second lighter, every rail after it on the card
-  // surface, a hairline between bands — a super subtle division that
-  // survives the rails' renaming (MESITA-2302). No places count above the rails (Pato, MESITA-2354). Semantic
-  // tokens only.
+  // Three bands by POSITION (MESITA-2308), now all on the one card
+  // surface (Pato, MESITA-2355: "use same background color"): only the
+  // hairlines divide — one above every rail, one right of each name. The
+  // band wrappers stay so a tint is one class away. No places count
+  // (MESITA-2354). Semantic tokens only.
+  //
   // The rail's name runs up the left edge of its cards, read bottom to top
   // (Pato's sketch, MESITA-2350): a narrow column the height of the row,
-  // the name truncated to it, then the sideways card scroller. The column
-  // wears its own tint and a hairline, with room before the cards
-  // (MESITA-2351), so name and cards read as two parts. The row's vertical
-  // padding lives on the card scroller, never around the rail, so the
-  // tinted column runs edge to edge between the hairlines (MESITA-2354).
+  // the name truncated to it, then the sideways card scroller. A hairline
+  // on the column's right and room before the cards (MESITA-2351) split
+  // name from cards. The row's vertical padding lives on the card scroller,
+  // never around the rail, so that line runs edge to edge between the rail
+  // lines (MESITA-2354).
   const renderRail = (rail: CatalogRail) => (
     <section
       key={rail.key}
@@ -250,7 +251,7 @@ export function CatalogRails() {
       className="flex items-stretch"
     >
       <div
-        className="bg-muted/60 border-border relative w-10 shrink-0 border-r"
+        className="border-border relative w-10 shrink-0 border-r"
         data-rail-name
       >
         <h2
@@ -296,19 +297,19 @@ export function CatalogRails() {
   const [firstRail, secondRail, ...restRails] = shownRails;
 
   return shell(
-    <div className="bg-card scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain">
-      <div className="bg-muted/50" data-band="a">
+    <div className="bg-card scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain pb-6">
+      <div data-band="a">
         {firstRail ? renderRail(firstRail) : null}
       </div>
       {secondRail ? (
-        <div className="bg-muted/25 border-border border-t" data-band="b">
+        <div className="border-border border-t" data-band="b">
           {renderRail(secondRail)}
         </div>
       ) : null}
       {restRails.length > 0 ? (
         // Every family rail has its own hairline too (Pato, MESITA-2353).
         <div
-          className="bg-card border-border divide-border flex flex-col divide-y border-t"
+          className="border-border divide-border flex flex-col divide-y border-t border-b"
           data-band="c"
         >
           {restRails.map((rail) => (
