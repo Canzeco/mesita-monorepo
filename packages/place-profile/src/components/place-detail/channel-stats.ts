@@ -61,24 +61,23 @@ function googleStat(
  * slots as an Instagram profile's posts · followers · following.
  * A zero stays "0". No link says "Not connected". A link with no number
  * says "No count". The icon is drawn either way.
+ *
+ * Google reads the way Maps does, stars then the review count on one line:
+ * "4.9 ★ (13.8K)" (Pato, MESITA-2312). The label under it is just "Google".
  */
 export function profileChannelStats(place: PlaceDetail): ChannelStat[] {
   const googleRating = formatRating(place.google.rating);
   const googleCount = place.google.count;
+  const count =
+    googleCount != null ? formatCompactCount(googleCount, false) : null;
   const google =
     googleRating != null
       ? googleStat(
           place,
-          googleRating,
-          googleCount != null
-            ? `${formatCompactCount(googleCount, false)} Google`
-            : "Google",
-        )
-      : googleStat(
-          place,
-          googleCount != null ? formatCompactCount(googleCount, false) : null,
+          count != null ? `${googleRating} ★ (${count})` : `${googleRating} ★`,
           "Google",
-        );
+        )
+      : googleStat(place, count != null ? `(${count})` : null, "Google");
 
   return [
     google,
@@ -96,4 +95,3 @@ export function profileChannelStats(place: PlaceDetail): ChannelStat[] {
     ),
   ];
 }
-
