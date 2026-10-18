@@ -4,7 +4,7 @@
 // walks the folders that exist and flags a call from the wrong app. It cannot
 // see a call to a function that no longer exists: retiring a folder that an
 // app still invokes passes lint, typecheck and every other test, and the
-// deploy job's `leftover` step then deletes it from the cloud. That is how
+// supabase-deploy.yml cleanup then deletes it from the cloud. That is how
 // Testing › Billing → admin-web-check-api-health would have shipped broken.
 //
 // So: every quoted `<actor>-web-<verb>` string in a surviving app's source must

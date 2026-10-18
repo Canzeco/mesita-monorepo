@@ -3,12 +3,9 @@
 # Regenerate the committed `database.types.ts` for every app that keeps one,
 # from the LINKED project's live schema — no db push, no deploy.
 #
-# Why this exists (MESITA-1546): `deploy.sh` only regenerates types as a side
-# effect of a by-hand deploy. A migration applied straight to the cloud (e.g.
-# via the Supabase MCP `apply_migration` tool, without running deploy.sh)
-# leaves every app's committed types stale until someone remembers to deploy.
-# Run this script right after ANY cloud-side schema change, migration-file
-# push included, so the drift window stays a single session:
+# deploy.sh runs it after its repair push. Run it on its own whenever the
+# linked project's schema changes some other way (the integration applying a
+# merged migration), so the committed types match the live schema:
 #
 #   ./scripts/regen-types.sh
 #
@@ -25,9 +22,8 @@ set -euo pipefail
 
 PROJECT_REF="yjalywfzdelacdzccpgb"
 
-# Every app that keeps a committed types file. deploy.sh calls this script, so
-# this list is the only one. web-admin keeps none (MESITA-2089 deleted
-# web-business, the other holder).
+# Every app that keeps a committed types file (web-admin and web-landing keep
+# none). deploy.sh calls this script, so this list is the only one.
 WEB_REPOS=(
   "../apps/web-consumer"
 )

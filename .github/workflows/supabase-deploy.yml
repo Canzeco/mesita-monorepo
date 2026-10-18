@@ -1,22 +1,14 @@
 name: supabase deploy
 
-# Deploy Edge Functions to the singleton Supabase project on every merge to
-# main that touches them. Without this, prod EFs silently drift behind main
-# until someone hand-redeploys — which has bitten us repeatedly (whole batches
-# of admin/consumer/business functions left weeks stale on old _shared code).
-#
-# Deploys ALL functions (not just changed dirs) because nearly every function
-# bundles files from _shared/, so a single _shared change can stale dozens of
-# functions at once — a full deploy is the only way to guarantee cloud == repo.
-# `supabase functions deploy` honours each function's verify_jwt from
-# config.toml, so webhooks/public endpoints keep their intended auth posture.
-#
-# The Supabase GitHub integration (Deploy to production, MESITA-2075) also
-# applies migrations and deploys the config.toml functions on merge. This job
-# stays: it is the only place retired slugs get deleted from the cloud.
+# The Supabase GitHub integration (Deploy to production, MESITA-2075) is the
+# one deployer: on every push to main it applies new migrations and deploys
+# every function declared in supabase/supabase/config.toml. Deploying only
+# ever adds, so this workflow does the other half: it deletes the cloud
+# functions whose folder is gone from main. supabase/scripts/cleanup-retired-efs.sh
+# decides which (3 days after the folder's deletion, at most 5 per run).
 #
 # REQUIRES repo secret SUPABASE_ACCESS_TOKEN (Settings → Secrets and variables
-# → Actions). Runs only on main, after supabase CI (lint · test) has gated the PR.
+# → Actions).
 
 on:
   push:
@@ -24,282 +16,66 @@ on:
     paths:
       - "supabase/supabase/functions/**"
       - "supabase/supabase/config.toml"
+      - "supabase/scripts/cleanup-retired-efs.sh"
       - ".github/workflows/supabase-deploy.yml"
+  # A folder deleted from main becomes deletable 3 days later, whether or not
+  # another supabase merge comes along to run this.
+  schedule:
+    - cron: "23 7 * * 1"
+  workflow_dispatch:
+    inputs:
+      max_delete:
+        description: Most slugs this run may delete (the script refuses above it)
+        type: number
+        default: 5
+      dry_run:
+        description: Print what qualifies and delete nothing
+        type: boolean
+        default: false
 
 concurrency:
   group: supabase-deploy
   cancel-in-progress: false
 
-defaults:
-  run:
-    working-directory: supabase
-
 jobs:
-  deploy:
-    name: deploy edge functions
+  cleanup:
+    name: delete retired edge functions
+    # The job holds the access token, so it never runs a branch's script.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # the commit comment that announces a deletion
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # The 3-day wait reads each folder's deletion date from history.
+          fetch-depth: 0
+          filter: blob:none
 
       - name: Install Supabase CLI
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
         with:
-          version: latest
+          version: 2.100.0
 
-      - name: Deploy all edge functions
-        run: supabase functions deploy --project-ref yjalywfzdelacdzccpgb
+      - name: Delete retired functions
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          MAX_DELETE: ${{ inputs.max_delete }}
+          DRY_RUN: ${{ inputs.dry_run && 'yes' || '' }}
+          CLEANUP_DELETED_FILE: ${{ runner.temp }}/deleted.txt
+        run: supabase/scripts/cleanup-retired-efs.sh ${DRY_RUN:+--dry-run}
 
-      # MESITA-1117: staff callers are validate-web-*. MCP cannot delete a
-      # function, so the old check-web-* names stayed live as 410 stubs after
-      # the repo pin. This job has SUPABASE_ACCESS_TOKEN; delete is the third
-      # of the three deletions (folder · config.toml · cloud). Idempotent:
-      # a name already gone is a skip, not a failure. check-web-submit-bill
-      # was removed earlier (MESITA-1093).
-      # MESITA-1362: Crenup Sourcing get/update EFs — unread after Map became
-      # the Search/Add gate.
-      # MESITA-1728: the nineteen admin config functions MESITA-1724 collapsed
-      # into admin-web-get-config + admin-web-update-config. They were left OUT
-      # of this list on purpose for one cycle as a rollback window: deleting a
-      # folder does not touch the cloud, so reverting the client half alone
-      # would have restored the old behaviour. The window is closed now.
-      # MESITA-1722: the three pre-monorepo ghosts. These never had a folder
-      # or a config block in this repo at all, so nothing but this list can
-      # reach them.
-      # MESITA-1723: four functions with no caller left. `functions deploy`
-      # only ever ADDS, so a folder deleted in the repo stays callable in the
-      # cloud forever unless its slug is named here — the third of the three
-      # deletions, same as every entry above.
-      # MESITA-1889: the two entitlement doors the org Mesita Membership
-      # replaced. business-web-set-org-partnership coupled `partnered` and
-      # `mesita_pay_enabled` into one write; business-web-change-subscription
-      # sold a per-place Verified subscription no app called.
-      # MESITA-2090: the two business-web functions admin's Single Place still
-      # called were renamed to admin-web-get-overview / admin-web-update-place
-      # when the business console was deleted (MVP First Stage). A rename is a
-      # new folder plus the old slug here, or the business name stays callable.
-      # The same PR retires the 109 functions no First Stage caller reaches:
-      # every remaining business-web-*, all validate-web-*, the Stripe webhook,
-      # gift-web-preview-code, and the consumer/admin functions with no caller
-      # left (credits, tickets, cards, connectors, consumer-mcp, claims,
-      # verification, notifications). Callers are now consumer · admin ·
-      # eleven · supabase only.
-      # MESITA-2136: no caller left (memo's recall/search/context legs).
-      # consumer-web-ask-memo became a stateless OpenAI turn and only
-      # supabase-edgefunc-get-memo-config still serves it.
-      # THE LOOKUP MATCHES THE WHOLE SLUG CELL. `supabase functions list`
-      # prints a `|`-separated table; the old `grep -Fqw` treated a hyphen as a
-      # word boundary, so a retired slug also matched any live slug it was a
-      # hyphen-bounded prefix of (business-web-create-place inside
-      # business-web-create-place-api-key), `functions delete` then failed on
-      # the absent name and `set -e` aborted the step. The cell match below
-      # cannot; _shared/leftover-efs.test.ts pins it.
-      - name: Delete leftover retired functions
+      - name: Announce deletions on the commit
+        if: always()
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          DELETED_FILE: ${{ runner.temp }}/deleted.txt
         run: |
           set -euo pipefail
-          leftover=(
-            supabase-edgefunc-bench-resolver
-            check-web-get-ticket
-            check-web-mark-paid
-            check-web-scan-ticket
-            check-web-approve-ticket
-            check-web-request-fix
-            check-web-poll-ticket
-            check-web-validate-ticket
-            admin-web-get-sourcing-config
-            admin-web-update-sourcing-config
-            admin-web-get-config-sample
-            business-web-list-categories
-            business-web-list-tags
-            business-web-list-reservations
-            admin-web-review-refund-request
-            business-web-request-refund
-            business-web-update-cfdi
-            admin-web-get-controls-config
-            admin-web-get-discovery-config
-            admin-web-get-models-config
-            admin-web-get-ojo-config
-            admin-web-get-orders-config
-            admin-web-get-reservations-config
-            admin-web-get-rewards-config
-            admin-web-get-verification-config
-            admin-web-get-visits-config
-            admin-web-update-controls-config
-            admin-web-update-discovery-config
-            admin-web-update-enricher-config
-            admin-web-update-models-config
-            admin-web-update-ojo-config
-            admin-web-update-orders-config
-            admin-web-update-reservations-config
-            admin-web-update-rewards-config
-            admin-web-update-verification-config
-            admin-web-update-visits-config
-            business-web-accept-org-invite
-            business-web-add-org-member
-            business-web-change-subscription
-            business-web-create-organization
-            business-web-list-org-members
-            business-web-list-organizations
-            business-web-remove-org-member
-            business-web-set-org-partnership
-            business-web-update-org-member-role
-            business-web-update-organization
-            business-web-get-overview
-            business-web-update-place
-            admin-web-ask-memo
-            admin-web-decide-place-claim
-            admin-web-decide-verification
-            admin-web-find-place
-            admin-web-get-credits-spend-report
-            admin-web-get-place-activity
-            admin-web-get-place-payment-account
-            admin-web-get-place-verification
-            admin-web-grant-class
-            admin-web-list-credit-liability
-            admin-web-list-notifications
-            admin-web-list-place-claims
-            admin-web-list-verifications
-            admin-web-mint-invite-codes
-            admin-web-refund-credit-lot
-            admin-web-review-ticket-report
-            admin-web-set-place-enrichment
-            admin-web-set-place-rails
-            admin-web-set-place-verified
-            admin-web-set-plan
-            business-web-accept-invite
-            business-web-cancel-ticket
-            business-web-claim-place
-            business-web-confirm-reservation
-            business-web-create-manager
-            business-web-create-place-api-key
-            business-web-create-place
-            business-web-find-place
-            business-web-get-atlas-fields
-            business-web-get-identity
-            business-web-get-manager
-            business-web-get-payment-account
-            business-web-get-payment-dashboard-link
-            business-web-get-performance
-            business-web-get-place
-            business-web-get-verification
-            business-web-invite-member
-            business-web-list-members
-            business-web-list-place-api-keys
-            business-web-list-places
-            business-web-list-reviews
-            business-web-list-tickets
-            business-web-manage-membership
-            business-web-mark-ticket-paid
-            business-web-record-strike
-            business-web-release-place
-            business-web-remove-member
-            business-web-request-manual-review
-            business-web-revoke-place-api-key
-            business-web-send-email-otp
-            business-web-send-phone-otp
-            business-web-set-check-pin
-            business-web-set-partnership
-            business-web-set-place-rails
-            business-web-signin-email
-            business-web-start-membership
-            business-web-start-payment-onboarding
-            business-web-suggest-places
-            business-web-suggest-promo
-            business-web-update-legal-identity
-            business-web-update-member-role
-            business-web-verify-email-otp
-            business-web-verify-phone-otp
-            business-web-verify-place
-            consumer-mcp
-            consumer-web-add-card
-            consumer-web-add-favorite
-            consumer-web-apply-ticket-credits
-            consumer-web-buy-credits
-            consumer-web-cancel-credit-gift
-            consumer-web-cancel-ticket
-            consumer-web-claim-invite-code
-            consumer-web-create-connector
-            consumer-web-create-subscription
-            consumer-web-create-ticket
-            consumer-web-get-controls-config
-            consumer-web-get-discount-quote
-            consumer-web-get-metrics
-            consumer-web-get-place-activity
-            consumer-web-get-ticket
-            consumer-web-gift-credits
-            consumer-web-list-cards
-            consumer-web-list-connectors
-            consumer-web-list-credit-balances
-            consumer-web-list-credit-gifts
-            consumer-web-list-credit-places
-            consumer-web-list-favorites
-            consumer-web-list-tickets
-            consumer-web-redeem-credit-gift
-            consumer-web-remove-card
-            consumer-web-report-ticket
-            consumer-web-revoke-connector
-            consumer-web-schedule-place-creation
-            consumer-web-select-ticket-payment
-            consumer-web-set-default-card
-            consumer-web-submit-review
-            consumer-web-submit-story
-            consumer-web-submit-ticket-bill
-            consumer-web-submit-ticket-review
-            consumer-web-submit-ticket-total
-            gift-web-preview-code
-            stripe-webhook-handle-event
-            validate-web-approve-ticket
-            validate-web-get-ticket
-            validate-web-mark-paid
-            validate-web-poll-ticket
-            validate-web-request-fix
-            validate-web-scan-ticket
-            validate-web-validate-ticket
-            staff-web-benchmark-link-strategies
-            supabase-cron-enrich-place-research
-            supabase-cron-enrich-place-analysis
-            supabase-cron-enrich-place-contents
-            # The poller appends first/second/third. These earlier suffixes
-            # are deleted from the cloud (MESITA-2204).
-            enricher-cron-enrich-place-research
-            enricher-cron-enrich-place-analysis
-            enricher-cron-enrich-place-contents
-            enricher-cron-enrich-place-gather
-            enricher-cron-enrich-place-photos
-            enricher-cron-enrich-place-write
-            supabase-edgefunc-store-place-images
-            supabase-edgefunc-recall-places
-            supabase-edgefunc-search-places
-            supabase-edgefunc-get-consumer-context
-            # The Signals subpage's graphics; Discovery is one page of
-            # pipeline boxes now (MESITA-2327).
-            admin-web-preview-signals
-            # The Swipe deck, no caller since MESITA-2166; its seven-signal
-            # library went with it (MESITA-2328).
-            consumer-web-recommend-swipe
-          )
-          listed=$(supabase functions list --project-ref yjalywfzdelacdzccpgb)
-          echo "$listed"
-          for fn in "${leftover[@]}"; do
-            if echo "$listed" | grep -Eq "\\|[[:space:]]*${fn}[[:space:]]*\\|"; then
-              echo "deleting $fn"
-              # The registry can list a function whose blob is already gone
-              # (a concurrent deploy, or a stale entry): delete then answers
-              # "does not exist". That is the goal state, not a failure.
-              if ! out=$(supabase functions delete "$fn" --project-ref yjalywfzdelacdzccpgb --yes 2>&1); then
-                if echo "$out" | grep -q "does not exist"; then
-                  echo "$fn already gone"
-                  continue
-                fi
-                echo "$out"
-                exit 1
-              fi
-              echo "$out"
-            else
-              echo "$fn already absent"
-            fi
-          done
+          [ -s "$DELETED_FILE" ] || exit 0
+          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          slugs=$(sed 's/.*/`&`/' "$DELETED_FILE" | paste -sd ' ' -)
+          gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments" \
+            -f body="Deleted from the cloud by [supabase deploy]($run_url): $slugs. Their folders left main at least 3 days ago." \
+            >/dev/null

@@ -117,7 +117,7 @@ Deno.test("garbage never throws: loadDiscoveryConfig would swallow it into defau
 
 // ── The deck itself ──────────────────────────────────────────────────────────
 
-Deno.test("the deck's EF and library are gone, and the cloud copy is on the leftover list", async () => {
+Deno.test("the deck's EF and library are gone", async () => {
   const exists = (rel: string) => {
     try {
       Deno.statSync(new URL(rel, import.meta.url));
@@ -132,11 +132,6 @@ Deno.test("the deck's EF and library are gone, and the cloud copy is on the left
   }
   const toml = await Deno.readTextFile(new URL("../../config.toml", import.meta.url));
   assertEquals(toml.includes("[functions.consumer-web-recommend-swipe]"), false);
-  // `functions deploy` only adds: this line is what deletes it from the cloud.
-  const deploy = await Deno.readTextFile(
-    new URL("../../../../.github/workflows/supabase-deploy.yml", import.meta.url),
-  );
-  assert(/^\s+consumer-web-recommend-swipe$/m.test(deploy), "not on the leftover list");
 });
 
 // ── The admin twin, in lockstep ─────────────────────────────────────────────
