@@ -1,28 +1,23 @@
 "use client";
 
-// Places — a Temu-style split (Pato, MESITA-2367; it was a chip row over a
-// grid, MESITA-2366).
+// Places — a Temu-style split (Pato, MESITA-2367).
 //
-//   ┌──────────┬────────────────────┐
-//   │▌Mesita   │                    │   left third: the categories, one per
-//   │ Google   │       square       │   row, scrolling on its own; the chosen
-//   │ Location │        tile        │   row is white, bold, an ink bar on its
-//   │          │                    │   left edge
-//   │ ☕ Coffee ├────────────────────┤
-//   │ 🥐 Brkfst │       square       │   right two thirds: the chosen set, ONE
-//   │  …       │        tile        │   square tile per row, scrolling on its own
+//   ┌────────────────┬────────────────────┐
+//   │ ➤ Current loc. │                    │   left third, two groups:
+//   │▌⌖ Tecnologico  │       square       │   WHERE — current location, the
+//   │ ⌖ Del Valle    │        tile        │   nearby zones (MESITA-2378), and
+//   │ + Add location │                    │   Add location at the bottom;
+//   │ ────────────── ├────────────────────┤   then WHAT — All and the
+//   │▌🍽️ All          │       square       │   families (MESITA-2381). The
+//   │ ☕ Coffee       │        tile        │   chosen row is white, bold, an
+//   │ 🥐 Breakfast    │                    │   ink bar on its left edge.
 //
-// The left column is two groups (MESITA-2378): WHERE — current location or
-// one of three nearby zones, which reloads the catalog from that zone's
-// centre — then WHAT, the category rows below a hairline.
-//
-// Mesita is the Mesita Selected rail, Google the Google Places rail, a family
-// row that family's rail — the server's rails unchanged; the row only picks
-// which one shows. Favorites is its own Home tab again (MESITA-2368), not a
-// row here. Location is not a set: it
-// is the location control, and the Google set fills once location is held
-// (`useUserLocation` also asks on mount). No search bar. The request sends
-// no predicates, so a saved scope can never keep cutting this list.
+// Picking a zone reloads the catalog from that zone's centre. All mixes
+// Mesita Selected and Google places (they are sources, no longer guest
+// choices); a family row shows that family's rail. Favorites is its own Home
+// tab (MESITA-2368). `useUserLocation` also asks for location on mount. No
+// search bar. The request sends no predicates, so a saved scope can never
+// keep cutting this list.
 
 import {
   useEffect,
@@ -31,7 +26,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Compass, MapPin, Navigation } from "lucide-react";
+import { Compass, MapPin, Navigation, Plus } from "lucide-react";
 import { apiListCatalog, type CatalogRail, type Place } from "@/lib/api/places";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { trackEvent } from "@/lib/analytics/track";
@@ -67,8 +62,12 @@ const ROW_BASE =
 const ROW_ON = "bg-card text-foreground font-semibold";
 const ROW_OFF = "text-foreground hover:bg-card/60";
 
-/** The category column: 📍 Google Places · ⭐ Mesita Featured · (🧭 Location)
- *  · families — every row an emoji, like the families (Pato, MESITA-2368). */
+/** The families group's default row: every place, one list (MESITA-2381). */
+export const ALL_CHIP = "all";
+
+/** The families group: All, then one row per guest family. Google Places
+ *  and Mesita Selected are no longer guest choices (Pato, MESITA-2381):
+ *  they are the sources All mixes. */
 export function placesChips(rails: readonly CatalogRail[]): {
   key: string;
   label: string;
@@ -78,14 +77,28 @@ export function placesChips(rails: readonly CatalogRail[]): {
     (r) => r.key !== MESITA_RAIL_KEY && r.key !== GOOGLE_RAIL_KEY,
   );
   return [
-    { key: GOOGLE_RAIL_KEY, label: "Google Places", emoji: "📍" },
-    { key: MESITA_RAIL_KEY, label: "Mesita Featured", emoji: "⭐" },
+    { key: ALL_CHIP, label: "All", emoji: "🍽️" },
     ...families.map((r) => ({
       key: r.key,
       label: r.label,
       emoji: r.emoji && r.emoji !== "·" ? r.emoji : undefined,
     })),
   ];
+}
+
+/** All: Mesita Selected first, then Google places, each place once. The app
+ *  merges the two rails until the server ranks one feed (MESITA-2379). */
+export function allPlaces(rails: readonly CatalogRail[]): Place[] {
+  const seen = new Set<string>();
+  const out: Place[] = [];
+  for (const key of [MESITA_RAIL_KEY, GOOGLE_RAIL_KEY]) {
+    for (const p of rails.find((r) => r.key === key)?.places ?? []) {
+      if (seen.has(p.id)) continue;
+      seen.add(p.id);
+      out.push(p);
+    }
+  }
+  return out;
 }
 
 /** A zone the guest can search from: the mean position of the loaded
@@ -191,7 +204,7 @@ export function CatalogRails() {
   useEffect(() => onPlaceCreated(() => reload.current()), []);
 
   const shownRails = useMemo(() => placesFeed(rails ?? []), [rails]);
-  const [chip, setChip] = useState<string>(MESITA_RAIL_KEY);
+  const [chip, setChip] = useState<string>(ALL_CHIP);
   const locating = useUserLocationLocating();
   const locate = useLocateUser();
 
@@ -299,9 +312,25 @@ export function CatalogRails() {
             onClick: () => setOrigin(z),
           }),
         )}
+        {/* Add location, at the bottom (Pato, MESITA-2381). Saved areas are
+            their own issue (MESITA-2380); until then the row wears Soon. */}
+        <li>
+          <button
+            type="button"
+            disabled
+            className={cn(ROW_BASE, "text-muted-foreground")}
+            data-places-add-location
+          >
+            <Plus className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
+            <span className="min-w-0 break-words">Add location</span>
+            <span className="bg-card text-muted-foreground type-meta ml-auto shrink-0 rounded-full px-1.5 leading-4 font-semibold">
+              Soon
+            </span>
+          </button>
+        </li>
       </ul>
       <div className="border-border mx-3 border-t" aria-hidden />
-      <ul role="list" aria-label="Category">{chips.map(categoryRow)}</ul>
+      <ul role="list" aria-label="Families">{chips.map(categoryRow)}</ul>
     </nav>
   );
 
@@ -347,14 +376,16 @@ export function CatalogRails() {
   }
 
   const shown: Place[] =
-    shownRails.find((r) => r.key === chip)?.places ?? [];
+    chip === ALL_CHIP
+      ? allPlaces(shownRails)
+      : (shownRails.find((r) => r.key === chip)?.places ?? []);
 
   const empty =
-    chip === GOOGLE_RAIL_KEY && coords === null ? (
+    chip === ALL_CHIP && coords === null ? (
       <EmptyState
         icon={Navigation}
         title="Turn on location"
-        description="Google places near you show up once Mesita knows where you are."
+        description="Places near you show up once Mesita knows where you are."
         action={{ label: "Use my location", onClick: locate }}
       />
     ) : (

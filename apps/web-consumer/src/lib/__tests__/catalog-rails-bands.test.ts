@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import type { CatalogRail, Place } from "@/lib/api/places";
 import {
+  allPlaces,
   nearbyZones,
   GOOGLE_RAIL_KEY,
   MESITA_RAIL_KEY,
@@ -27,20 +28,23 @@ const RAILS: CatalogRail[] = [
 ];
 
 describe("the Places chip row (MESITA-2366)", () => {
-  it("leads Google Places · Mesita Featured, then every family in server order (MESITA-2368)", () => {
-    expect(placesChips(RAILS).map((c) => c.label)).toEqual([
-      "Google Places",
-      "Mesita Featured",
-      "Coffee",
-      "Breakfast",
-    ]);
-    expect(placesChips(RAILS).map((c) => c.emoji)).toEqual(["📍", "⭐", "☕", "🥐"]);
+  it("is All, then every family in server order — no source rows (MESITA-2381)", () => {
+    expect(placesChips(RAILS).map((c) => c.label)).toEqual(["All", "Coffee", "Breakfast"]);
+    expect(placesChips(RAILS).map((c) => c.key)).not.toContain(GOOGLE_RAIL_KEY);
+    expect(placesChips(RAILS).map((c) => c.key)).not.toContain(MESITA_RAIL_KEY);
+  });
+
+  it("All mixes Mesita Selected first, then Google places, each once", () => {
+    expect(allPlaces(RAILS).map((p) => p.id)).toEqual(["m1", "g1"]);
   });
 
   it("puts WHERE above WHAT: a location group, a hairline, then the categories (MESITA-2378)", () => {
     expect(src).toContain('aria-label="Location" data-places-location');
-    expect(src).toContain('aria-label="Category"');
-    expect(src.indexOf("data-places-location")).toBeLessThan(src.indexOf('aria-label="Category"'));
+    expect(src).toContain('aria-label="Families"');
+    expect(src.indexOf("data-places-location")).toBeLessThan(src.indexOf('aria-label="Families"'));
+    // Add location sits at the bottom of the location group (MESITA-2381).
+    expect(src.indexOf("data-places-add-location")).toBeGreaterThan(src.indexOf("zones.map((z)"));
+    expect(src.indexOf("data-places-add-location")).toBeLessThan(src.indexOf('aria-label="Families"'));
     expect(src).toContain('"Current location"');
     expect(src).toContain('"Use my location"');
     // Picking a zone searches from its centre.
@@ -48,9 +52,9 @@ describe("the Places chip row (MESITA-2366)", () => {
     expect(src).toContain("apiListCatalog(supabase, from)");
   });
 
-  it("is a left column, one third wide, scrolling on its own, and opens on Mesita (MESITA-2367)", () => {
+  it("is a left column, one third wide, scrolling on its own, and opens on All (MESITA-2367, MESITA-2381)", () => {
     expect(src).toContain("bg-muted scrollbar-hide w-1/3 shrink-0 overflow-y-auto");
-    expect(src).toContain("useState<string>(MESITA_RAIL_KEY)");
+    expect(src).toContain("useState<string>(ALL_CHIP)");
     // The chosen row: white, bold, an ink bar on its left edge.
     expect(src).toContain('const ROW_ON = "bg-card text-foreground font-semibold";');
     expect(src).toContain("bg-foreground absolute inset-y-0 left-0 w-[3px]");
@@ -63,6 +67,11 @@ describe("the Places grid (MESITA-2366)", () => {
     expect(src).toContain("w-2/3 flex-col overflow-y-auto");
     expect(src).not.toContain("writing-mode");
     expect(src).not.toContain("data-band");
+  });
+
+  it("draws a clear line between Home's header and the body (MESITA-2381)", () => {
+    const tabs = readFileSync(join(__dirname, "../../components/consumer/ModeTabs.tsx"), "utf8");
+    expect(tabs).toContain("border-foreground/20 bg-background/90 sticky top-0 z-20 shrink-0 border-b-2");
   });
 
   it("uses semantic tokens only", () => {
