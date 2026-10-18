@@ -25,6 +25,7 @@ import {
 } from "./discovery-signals.ts";
 import { isEnrichedPlace } from "./place-family-keys.ts";
 import {
+  CATALOG_RAIL_CAP_DEFAULT,
   type CatalogLiveRankKey,
   type CatalogRankKey,
   catalogRelativeExponents,
@@ -45,8 +46,8 @@ export type CatalogRail<T> = {
   places: T[];
 };
 
-/** Every rail carries at most this many places. */
-export const CATALOG_RAIL_CAP = 5;
+/** The default places per rail; the operator's `catalog.railCap` wins. */
+export const CATALOG_RAIL_CAP = CATALOG_RAIL_CAP_DEFAULT;
 
 const GUEST_FAMILIES = FAMILIES.filter((f) => f.slug !== "undefined");
 
@@ -113,13 +114,14 @@ export function buildCatalogRails<
 >(
   google: readonly G[],
   selected: readonly S[],
+  cap: number = CATALOG_RAIL_CAP,
 ): CatalogRail<G | S>[] {
   const rails: CatalogRail<G | S>[] = [];
   if (google.length > 0) {
     rails.push({
       ...GOOGLE_PLACES_RAIL,
       source: "signal",
-      places: google.slice(0, CATALOG_RAIL_CAP),
+      places: google.slice(0, cap),
     });
   }
   const admitted = selected.filter((row) => catalogAdmitted(row));
@@ -127,7 +129,7 @@ export function buildCatalogRails<
     rails.push({
       ...MESITA_SELECTED_RAIL,
       source: "signal",
-      places: admitted.slice(0, CATALOG_RAIL_CAP),
+      places: admitted.slice(0, cap),
     });
   }
   for (const family of GUEST_FAMILIES) {
@@ -140,7 +142,7 @@ export function buildCatalogRails<
       label: family.label,
       emoji: family.emoji,
       source: "family",
-      places: members.slice(0, CATALOG_RAIL_CAP),
+      places: members.slice(0, cap),
     });
   }
   return rails;

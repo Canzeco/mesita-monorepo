@@ -154,11 +154,12 @@ export async function selectGooglePlaces<T extends OwnedRow>(
       beforeFanout: deps.consumeQuota,
     });
 
+  // The guest's stop and the operator's floor: the higher one cuts.
   const eligible = eligibleGoogleHits(
     hits,
     center,
     radiusKm,
-    deps.minReviews,
+    Math.max(deps.minReviews, deps.cfg.map.googleMinReviews ?? 0),
     deps.cfg,
   );
   if (eligible.length === 0) return { places: [], hits: hits.length };

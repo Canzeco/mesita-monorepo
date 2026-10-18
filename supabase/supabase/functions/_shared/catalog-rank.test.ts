@@ -206,3 +206,11 @@ Deno.test("a zero name would tie; abstaining does not", () => {
   assertEquals(withName, 1);
   assertEquals(without, 1);
 });
+
+Deno.test("the operator's places per row caps every rail (MESITA-2319)", () => {
+  const google = Array.from({ length: 8 }, (_, i) => stub(`g${i}`));
+  const selected = Array.from({ length: 8 }, (_, i) => row(`s${i}`, ["coffee"]));
+  for (const rail of buildCatalogRails(google, selected, 3)) {
+    assertEquals(rail.places.length, 3);
+  }
+});
