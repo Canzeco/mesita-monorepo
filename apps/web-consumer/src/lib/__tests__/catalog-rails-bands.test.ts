@@ -17,7 +17,9 @@ describe("the Feed's rails sit in three tinted bands (MESITA-2308)", () => {
   it("tints the first rail deepest, the second lighter, the rest on the card", () => {
     expect(src).toContain('className="bg-muted/50 pb-3" data-band="a"');
     expect(src).toContain('className="bg-muted/25 border-border border-t py-3" data-band="b"');
-    expect(src).toContain('className="bg-card border-border flex flex-col gap-4 border-t py-3 pb-4"');
+    expect(src).toContain(
+      'className="bg-card border-border divide-border flex flex-col divide-y border-t pb-1"',
+    );
     expect(bandA).toBeGreaterThan(0);
     expect(bandB).toBeGreaterThan(bandA);
     expect(bandC).toBeGreaterThan(bandB);
@@ -26,13 +28,23 @@ describe("the Feed's rails sit in three tinted bands (MESITA-2308)", () => {
   it("groups by position: the first rail, the second, every rail after", () => {
     expect(src).toContain("const [firstRail, secondRail, ...restRails] = shownRails;");
     expect(src).toContain("{firstRail ? renderRail(firstRail) : null}");
-    expect(src).toContain("{restRails.map(renderRail)}");
+    expect(src).toContain("{restRails.map((rail) => (");
   });
 
   it("the places count sits on band A's tint, above the first rail", () => {
     const count = src.indexOf("{summary.total} {summary.total === 1");
     expect(count).toBeGreaterThan(bandA);
     expect(count).toBeLessThan(src.indexOf("renderRail(firstRail)"));
+  });
+
+  it("draws a hairline above every family rail too (MESITA-2353)", () => {
+    const c = src.slice(bandC);
+    expect(c).toContain('<div key={rail.key} className="py-3">');
+    expect(c).toContain("{renderRail(rail)}");
+  });
+
+  it("keeps the cards a little closer together (MESITA-2353)", () => {
+    expect(src).toContain("scrollbar-hide ml-3 flex min-w-0 flex-1 gap-1.5 overflow-x-auto");
   });
 
   it("uses semantic tokens only", () => {
