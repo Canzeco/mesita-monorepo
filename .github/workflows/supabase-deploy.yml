@@ -47,7 +47,7 @@ jobs:
       contents: write # the commit comment that announces a deletion
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # The 3-day wait reads each folder's deletion date from history.
           fetch-depth: 0
