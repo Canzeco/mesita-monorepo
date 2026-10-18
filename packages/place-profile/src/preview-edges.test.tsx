@@ -41,6 +41,35 @@ describe("member preview edges", () => {
     expect(html).not.toContain("Community votes");
   });
 
+  it("lists Google's create-time reviews under the vote panel, no strip", () => {
+    const html = renderToStaticMarkup(
+      <PlaceProfile
+        place={detail({
+          enriched_at: null,
+          is_enriched: false,
+          google_review_count: 412,
+          google_reviews: [
+            { author: "Ana", rating: 5, quote: "Great coffee", date: "a week ago" },
+            { author: "Luis", rating: 3, quote: "Slow line", date: "2 weeks ago" },
+          ],
+        })}
+      />,
+    );
+    // MESITA-2317: the up-to-5 Details reviews show before any Enrich.
+    expect(html).toContain('aria-label="Reviews"');
+    expect(html).toContain("Great coffee");
+    expect(html).toContain("Slow line");
+    expect(html.indexOf("Vote to enrich")).toBeLessThan(html.indexOf("Great coffee"));
+    expect(html).not.toContain('aria-label="Place sections"');
+  });
+
+  it("draws no reviews list for an unenriched place Google gave none", () => {
+    const html = renderToStaticMarkup(
+      <PlaceProfile place={detail({ enriched_at: null, is_enriched: false })} />,
+    );
+    expect(html).not.toContain('aria-label="Reviews"');
+  });
+
   it("keeps Google, Instagram, and Facebook when the socials are empty", () => {
     const html = renderToStaticMarkup(
       <PlaceProfile
