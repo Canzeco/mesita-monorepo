@@ -14,19 +14,21 @@
 // silently falls back is not enforced, which is the house definition of a bug.
 //
 // ONE REQUEST SHAPE — POST { google: true, lat, lng, placesScope,
-// familyKeys, minReviews }: web Search, a view of the AREA PIPELINE
+// familyKeys, minReviews }: web Search, the Map view of the AREA PIPELINE
 // (MESITA-2302, MESITA-2327, `_shared/area-pipeline.ts`), one scope at a
 // time:
-//   google    `selectGooglePlaces` — ONE Nearby Search (New) call inside the
-//             operator's `map.radiusKm`; General gate, Map floors and the
-//             guest Google Reviews floor cut AFTER Google answers; a hit
-//             Mesita owns goes out as that row, the rest as Google-only
-//             stubs; ranked on the Map column. No Mesita backfill and no
-//             fallback to Selected: Google off, no key, a quota refusal or an
-//             error is an empty answer.
-//   selected  `selectedPoolQuery` + `selectMesitaSelected` — enriched, ready
-//             rows inside the same radius, ranked by the Area score; no
-//             review floor of any kind.
+//   google    `selectGooglePlaces` — ONE Nearby Search (New) call, or a warm
+//             cell, inside the operator's `map.radiusKm` for the families'
+//             primary types. After Google answers: inside the radius,
+//             Discovery › General's active check, and the higher of the
+//             guest's Google Reviews stop and `map.googleMinReviews`. A hit a
+//             ready Mesita row owns goes out as that row, the rest as
+//             Google-only stubs, ranked by the Area score. No Mesita backfill
+//             and no fallback to Selected: Google off, no key, a quota
+//             refusal or an error is an empty answer.
+//   selected  `selectedPoolQuery` + `selectMesitaSelected` — enriched, ready,
+//             active rows inside the same radius, ranked by the Area score;
+//             no review floor of any kind.
 // How many is operator `map.pinCount` (Google is at most one call's 20); the
 // circle is `map.radiusKm`; a client sets neither. Absent and retired scope
 // words land on `selected`.
@@ -161,12 +163,12 @@ Deno.serve(async (req) => {
   const guestSupers = readGuestFamilyKeys(body.familyKeys);
   const rawMinReviews: unknown = body.minReviews;
 
-  // Map floors (`discovery_config.map`) and Discovery › General cut inside
-  // the engine. Google fill is client opt-in AND operator googleFill AND at
+  // The engine (area-pipeline.ts) applies the active check and the reviews
+  // floors. Google fill is client opt-in AND operator googleFill AND at
   // least one family on. HOW MANY PINS is `map.pinCount`; Google hands back
-  // at most 20 per call and the engine never widens (MESITA-2298). Guest
-  // Google Reviews (`minReviews`) is a Discovery-mode floor on top, applied
-  // after Google's response, never a Nearby API param.
+  // at most 20 per call and the engine never widens (MESITA-2298). The
+  // guest's Google Reviews stop (`minReviews`) cuts Google hits after
+  // Google's response, never as a Nearby API param.
   const efEnv = readEFEnv();
   const cfg = efEnv.ok
     ? await loadDiscoveryConfig(adminClient(efEnv.env))
@@ -212,8 +214,11 @@ Deno.serve(async (req) => {
         );
         return quota.allow;
       },
-      // ONE unfiltered lookup by google_place_id (RLS limits it to listed
-      // rows): a hit Mesita owns is never a stub (MESITA-2154).
+      // ONE lookup by google_place_id, ready rows only (RLS limits it to
+      // listed rows), the same set the Feed's lookup reads: a hit a ready
+      // Mesita row owns goes out as that row, never a stub (MESITA-2154). An
+      // owned row that is not ready stays a stub, and its tap's get-or-create
+      // opens the Mesita place.
       lookupOwned: async (gids) => {
         const owned = await (supabase
           .from("profiles")
