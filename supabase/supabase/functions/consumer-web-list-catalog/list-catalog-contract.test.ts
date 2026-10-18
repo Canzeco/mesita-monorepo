@@ -1,15 +1,24 @@
-// consumer-web-list-catalog on the shared engine (MESITA-2302): rails Google
-// Places · Mesita Selected · families. Right Now, Universal, the guest
-// predicates and the old ranker are gone; the engine draws both lists.
+// consumer-web-list-catalog on the Area pipeline's one pool (MESITA-2379):
+// Google and Mesita candidates merged and ranked by `selectAreaPool`; the
+// client pages the pool. The legacy rails are cut from the same pool.
 import { assert, assertEquals } from "jsr:@std/assert@1";
 
 const src = await Deno.readTextFile(new URL("./index.ts", import.meta.url));
 
-Deno.test("list-catalog: both lists come from the shared engine", () => {
-  assert(src.includes("selectGooglePlaces<OwnedRow>("));
+Deno.test("list-catalog: one pool from the shared engine, both wires", () => {
+  assert(src.includes("selectAreaPool<OwnedRow>("));
   assert(src.includes("selectedPoolQuery("));
-  assert(src.includes("selectMesitaSelected("));
-  assert(src.includes("buildCatalogRails(google.places, selected, cfg.catalog.railCap)"));
+  assert(src.includes("selectedOnly: false"));
+  assert(src.includes("const unified = body.unified === true;"));
+  assert(src.includes("location: { kind: location.kind }"));
+  // Legacy rails come from the same ranked pool, split by source.
+  assert(src.includes("buildCatalogRails("));
+  assert(src.includes('pool.places.filter((p) => p.area.source === "selected")'));
+  // The one-pool wire buys the operator's stop; the legacy wire one call.
+  assert(src.includes("unified ? googleCallsForStop(cfg.map.googlePlaces) : 1"));
+  for (const gone of ["selectGooglePlaces", "selectMesitaSelected"]) {
+    assertEquals(src.includes(gone), false, gone);
+  }
 });
 
 Deno.test("list-catalog: Right Now, Universal and predicates are gone", () => {
@@ -26,10 +35,14 @@ Deno.test("list-catalog: Right Now, Universal and predicates are gone", () => {
   }
 });
 
-Deno.test("list-catalog: one circle, and only rail 1 takes the reviews floor", () => {
+Deno.test("list-catalog: one circle; only Google hits take the reviews floor", () => {
   assert(src.includes("const radiusKm = cfg.map.radiusKm;"));
   assertEquals(src.includes("nearbyDecision.radiusKm"), false);
   assertEquals(src.includes("NEARBY_RADIUS_KM"), false);
   assertEquals(src.match(/guestReviewFloor\(/g)?.length, 1);
   assert(src.includes('guestReviewFloor("google", body.minReviews)'));
+});
+
+Deno.test("list-catalog: only the one-pool wire may ask for an area", () => {
+  assert(src.includes("resolveAreaLocation(unified ? body.bounds : null, center, radiusKm)"));
 });

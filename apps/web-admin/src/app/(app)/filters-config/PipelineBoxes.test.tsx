@@ -2,8 +2,6 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { DEFAULT_CONFIG } from "./catalog";
 import {
-  CATALOG_FAMILY_FACTS,
-  CATALOG_SIGNAL_RAILS,
   DISCOVERY_GATES,
   DISCOVERY_SIGNALS,
   sourceByKey,
@@ -90,10 +88,10 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
   });
 
   it("carries no weight inputs and no subpage tabs", () => {
-    // 3 Name by Admin + 5 Name + 6 Area; Deep is Soon. A weight column would
-    // add a number input per signal.
+    // 3 Name by Admin + 5 Name + 5 Area (Places per row left, MESITA-2379);
+    // Deep is Soon. A weight column would add a number input per signal.
     const html = page();
-    expect(html.match(/type="number"/g)?.length).toBe(14);
+    expect(html.match(/type="number"/g)?.length).toBe(13);
     expect(html).not.toContain("Modes");
     expect(html).not.toContain('role="tablist"');
   });
@@ -120,40 +118,47 @@ describe("the boxes' controls", () => {
     expect(html).not.toContain("Only active places");
   });
 
-  it("Area: radius, the three numbers, the two caps, both views (MESITA-2347)", () => {
+  it("Area: radius, the three numbers, two source counts, no total and no Feed rows (MESITA-2379)", () => {
     const html = render(<AreaBox {...seed} />);
     for (const label of [
       "Radius (km)",
       "Reviews for half credit",
       "Proximity weight",
       "Popularity weight",
-      "Google places",
-      "Mesita places",
+      "Google candidates",
+      "Mesita candidates",
       "Reload after",
-      "Places per row",
     ]) {
       expect(html).toContain(label);
     }
-    for (const dead of ["half distance", "reference rating", "reference reviews", "How many pins"]) {
-      expect(html).not.toContain(dead);
+    for (const dead of [
+      "half distance",
+      "reference rating",
+      "reference reviews",
+      "How many pins",
+      "Places per row",
+      'aria-label="Feed rows"',
+      "Total",
+      "The guest picks",
+      "scope",
+      "subset",
+    ]) {
+      expect(html, dead).not.toContain(dead);
     }
     expect(html).toContain('value="100"');
     expect(html).toContain('value="5"');
-    // Google places above 20 are not bought yet: the pills exist, disabled.
-    const google = html.slice(html.indexOf("Google places"), html.indexOf("Mesita places"));
-    expect(google.match(/<button[^>]*disabled=""[^>]*>(40|60)<\/button>/g)?.length).toBe(2);
-    expect(google).not.toMatch(/<button[^>]*disabled=""[^>]*>20<\/button>/);
+    // 40 and 60 are bought now: every Google stop is a live pill.
+    const google = html.slice(html.indexOf("Places Mesita buys for the Feed"), html.indexOf("Ready Mesita places read"));
+    expect(google).toContain("up to 1 / 2 / 3 billed Nearby calls");
+    expect(google.match(/<button[^>]*disabled=""[^>]*>(20|40|60)<\/button>/g)).toBeNull();
   });
 
-  it("Area lists Google Places, Mesita Selected, then every family in Feed order", () => {
+  it("Area draws its gates, its factor and the point/area rule", () => {
     const html = render(<AreaBox {...seed} />);
-    const list = html.slice(html.indexOf('aria-label="Feed rows"'));
-    let last = -1;
-    for (const label of [...CATALOG_SIGNAL_RAILS, ...CATALOG_FAMILY_FACTS].map((r) => r.label)) {
-      const at = list.indexOf(` ${label}</li>`);
-      expect(at, label).toBeGreaterThan(last);
-      last = at;
+    for (const text of ["Family", "Territory", "Factors", "× 1.0", "× 0.3", "Chat reads Mesita Selected places only."]) {
+      expect(html, text).toContain(text);
     }
+    expect(html).toContain("A point location uses Proximity and the radius; an area location uses Territory. Never both.");
   });
 
   it("Deep is Soon: title, one line and the chip, its controls deleted from the markup (MESITA-2345)", () => {

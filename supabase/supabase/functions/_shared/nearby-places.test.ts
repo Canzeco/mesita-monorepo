@@ -367,7 +367,8 @@ Deno.test("searchNearbyPlaces: isolate budget skip does not call beforeFanout", 
     for (let i = 0; i < GOOGLE_FANOUT_MAX; i++) {
       await searchNearbyPlaces("k", { lat: 10 + i, lng: -100.3 });
     }
-    const got = await searchNearbyPlaces("k", { lat: 40, lng: -100.3 }, {
+    // A cell none of the warm-up calls filled (they span lat 10..10+cap).
+    const got = await searchNearbyPlaces("k", { lat: -40, lng: -100.3 }, {
       beforeFanout: () => {
         gates++;
         return Promise.resolve(true);

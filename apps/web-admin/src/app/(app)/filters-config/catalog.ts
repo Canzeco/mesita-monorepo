@@ -153,12 +153,11 @@ export type MapConfig = {
   googleFill: boolean;
   supers: Record<SuperParamKey, boolean>;
   /**
-   * 20 / 40 / 60 — the Google Places scope's cap, places Mesita BUYS. The
-   * engine spends one Nearby call (20) today; 40 and 60 are stored but
-   * inert until a fan-out is wired and paid for (MESITA-2347).
+   * 20 / 40 / 60 — Google candidates on the Feed, places Mesita BUYS: 1/2/3
+   * billed Nearby calls (MESITA-2379). The Map buys one call per load.
    */
   googlePlaces: number;
-  /** 20 / 40 / 60 — the Mesita Selected scope's cap, a free read. */
+  /** 20 / 40 / 60 — Mesita candidates, a free read of our ready rows. */
   mesitaPlaces: number;
   /**
    * The one Nearby radius (km), shared by the Map and the Feed's Google

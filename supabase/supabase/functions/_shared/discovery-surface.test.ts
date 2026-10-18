@@ -27,12 +27,12 @@ Deno.test("the model is Pato's: five sources, Name · Area · Deep, four signals
   ]);
   assertEquals(DISCOVERY_PIPELINES.map((p) => p.label), ["Name", "Area", "Deep"]);
   assertEquals(DISCOVERY_SIGNALS.map((s) => s.label), ["Name", "Description", "Proximity", "Popularity"]);
-  assertEquals(DISCOVERY_GATES.map((g) => g.label), ["Selected", "Family"]);
+  assertEquals(DISCOVERY_GATES.map((g) => g.label), ["Family", "Territory"]);
   assertEquals(pipelinesUsingSignal("proximity"), ["area"]);
   assertEquals(pipelinesUsingSignal("popularity"), ["area"]);
   assertEquals(pipelinesUsingSignal("name_similarity"), ["name"]);
   assertEquals(pipelinesUsingSignal("description_similarity"), ["deep"]);
-  assertEquals(pipelinesUsingGate("selected"), ["area"]);
+  assertEquals(pipelinesUsingGate("territory"), ["area"]);
   assertEquals(pipelinesUsingGate("family"), ["area"]);
 });
 
@@ -84,8 +84,8 @@ Deno.test("the call sites match the model", async () => {
   assertEquals(name.includes("searchNearbyPlaces"), false);
   // Area: Nearby · Mesita Places, the Area score; Map and the Feed are its views.
   assert(area.includes("searchNearbyPlaces") && area.includes("selectedPoolQuery") && area.includes("rankArea"));
-  assert(map.includes("selectGooglePlaces") && map.includes("selectMesitaSelected"));
-  assert(feed.includes("selectGooglePlaces") && feed.includes("selectMesitaSelected"));
+  assert(map.includes("selectAreaPool") && feed.includes("selectAreaPool"));
+  assertEquals(/selectGooglePlaces|selectMesitaSelected/.test(map + feed), false);
   // Deep: Mesita Places by Description, and nothing Google.
   assert(deep.includes("descriptionSimilarity"));
   assertEquals(/searchNearbyPlaces|fetchTextSearch|fetchAutocomplete/.test(deep), false);
@@ -133,4 +133,26 @@ Deno.test("Deep's evidence (the About) is a field Mesita Places Search declares"
 Deno.test("Deep is not live while no guest reaches Chat; Name and Area are (MESITA-2345)", () => {
   const live = Object.fromEntries(DISCOVERY_PIPELINES.map((p) => [p.key, p.live]));
   assertEquals(live, { name: true, area: true, deep: false });
+});
+
+// ── MESITA-2379: one pool; Selected is a factor ──────────────────────────────
+
+Deno.test("Area: Family and Territory gate, Selected is a factor, Chat reads Selected only", () => {
+  const area = DISCOVERY_PIPELINES.find((p) => p.key === "area")!;
+  assertEquals(area.gates, ["family", "territory"]);
+  assertEquals(area.factors.length, 1);
+  assert(area.factors[0].includes("1.0") && area.factors[0].includes("0.3"));
+  assert(area.factors[0].includes("never payment"));
+  assert(area.rules.includes("Chat reads Mesita Selected places only."));
+  assert(area.callers.includes("Chat (Don Memo)"));
+  for (const stale of ["scope", "subset", "rail"]) {
+    assertEquals(JSON.stringify(area).toLowerCase().includes(stale), false, stale);
+  }
+});
+
+Deno.test("the Selected factor the model states is the one the score uses", async () => {
+  const { SELECTED_FACTOR } = await import("./area-score.ts");
+  const area = DISCOVERY_PIPELINES.find((p) => p.key === "area")!;
+  assert(area.factors[0].includes(`× ${SELECTED_FACTOR.selected.toFixed(1)}`));
+  assert(area.factors[0].includes(`× ${SELECTED_FACTOR.other}`));
 });
