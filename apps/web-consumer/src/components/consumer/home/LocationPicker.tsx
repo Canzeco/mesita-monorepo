@@ -1,8 +1,8 @@
 "use client";
 
 // Home's location control (Pato, MESITA-2401): the right half of Home's
-// header row — a pill with a pin, the active location's name and a quiet
-// chevron. A tap opens the location sheet: Current location, the guest's
+// header row — a bordered pill with a pin, the active location's name and a
+// quiet chevron, as tall as the Places | Social track beside it (MESITA-2404). A tap opens the location sheet: Current location, the guest's
 // saved locations (each removable) and Add location (MESITA-2380). The
 // choice lives in `lib/active-location.ts`, which Places reads.
 
@@ -83,7 +83,7 @@ export function LocationPicker({ compact = false }: { compact?: boolean } = {}) 
 
   return (
     <>
-      {/* The resting pill's look, so the header reads as one strip. */}
+      {/* Bordered, not filled: it sits beside the segmented track. */}
       {compact ? (
         <button
           type="button"
@@ -102,7 +102,7 @@ export function LocationPicker({ compact = false }: { compact?: boolean } = {}) 
         onClick={() => setPicking(true)}
         aria-haspopup="dialog"
         aria-label={`Location: ${label}. Change location`}
-        className="bg-muted/60 text-foreground hover:bg-muted flex w-full min-w-0 items-center gap-1.5 rounded-full px-3 py-2 text-left text-xs font-semibold transition active:scale-[0.98]"
+        className="border-border bg-background text-foreground hover:bg-muted flex h-10 w-full min-w-0 items-center gap-1.5 rounded-full border px-3 text-left text-xs font-semibold transition active:scale-[0.98]"
         data-home-location
       >
         <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />

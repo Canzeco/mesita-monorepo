@@ -134,8 +134,8 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
     expect(src).toContain("apiListAreaPool(supabase, from)");
   });
 
-  it("the header's location is a pill: pin, name, chevron, opening the sheet", () => {
-    expect(picker).toContain("bg-muted/60 text-foreground hover:bg-muted flex w-full min-w-0 items-center gap-1.5 rounded-full px-3 py-2");
+  it("the header's location is a bordered pill: pin, name, chevron, opening the sheet", () => {
+    expect(picker).toContain("border-border bg-background text-foreground hover:bg-muted flex h-10 w-full min-w-0 items-center gap-1.5 rounded-full border px-3");
     expect(picker).toContain("<MapPin");
     expect(picker).toContain("<ChevronDown");
     expect(picker).toContain('aria-haspopup="dialog"');
