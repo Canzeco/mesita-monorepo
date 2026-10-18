@@ -66,9 +66,9 @@ function readableKind(place: Place): string | null {
 }
 
 /**
- * One place, as one square tile (Pato, MESITA-2364, MESITA-2369): the photo
- * edge to edge, the name and price · category · stars on a see-through
- * reflection band across its foot, the heart top right. No zone. An
+ * One place, as one square tile (Pato, MESITA-2364, MESITA-2373): the photo
+ * on the top 60%, its light reflection below carrying four rows — name;
+ * stars · price; category · zone; open state · distance — the heart top right. No zone. An
  * enriched place wears the Enriched mark after its name
  * (MESITA-2296). Favs does not use this tile. A Google-only card opens its
  * profile through `onOpenGoogle` and has no save heart: only a Mesita place
@@ -112,16 +112,19 @@ export function CatalogTile({
         ? `Open · until ${o.closes_at}`
         : "Open now"
       : o.open_now === false
-        ? "Closed"
+        ? o.opens_at
+          ? `Closed · opens ${o.opens_at}`
+          : "Closed"
         : null;
   const distance =
     typeof place.distance_km === "number" && place.distance_km > 0
       ? formatKm(place.distance_km)
       : null;
-  // At most three rows (Pato, MESITA-2372): name; stars · price · distance;
-  // category · zone · open state.
-  const factsLine = [priceLabel, distance].filter(Boolean).join(" · ");
-  const kindLine = [kind, zone, openLine].filter(Boolean).join(" · ");
+  // Four rows (Pato, MESITA-2373, after three in MESITA-2372): name;
+  // stars · price; category · zone; open state · distance.
+  const factsLine = priceLabel ?? "";
+  const kindLine = [kind, zone].filter(Boolean).join(" · ");
+  const whenLine = [openLine, distance].filter(Boolean).join(" · ");
 
 
   // The photo, or the Google card's emoji tile. Drawn twice: filling the
@@ -169,7 +172,7 @@ export function CatalogTile({
           {media()}
         </div>
         {/* The reflection: bottom 40%, the photo mirrored from its foot under
-            50% paper, three rows spread to fill it (MESITA-2372, MESITA-2373). */}
+            50% paper, four rows spread to fill it (MESITA-2373). */}
         <div
           className="absolute inset-x-0 bottom-0 h-[40%] overflow-hidden"
           data-tile-info
@@ -209,6 +212,9 @@ export function CatalogTile({
             ) : null}
             {kindLine ? (
               <p className="text-muted-foreground truncate text-sm leading-tight">{kindLine}</p>
+            ) : null}
+            {whenLine ? (
+              <p className="text-muted-foreground truncate text-sm leading-tight">{whenLine}</p>
             ) : null}
           </div>
         </div>

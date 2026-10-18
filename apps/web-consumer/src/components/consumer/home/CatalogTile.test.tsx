@@ -107,7 +107,7 @@ describe("the tile: photo on top, its light reflection below (MESITA-2369, MESIT
 });
 
 describe("the tile shows far more, all real (MESITA-2371)", () => {
-  it("prints stars + reviews, price, distance, category · zone · open state in three rows", () => {
+  it("prints stars + reviews, price, category · zone, open state · distance in four rows", () => {
     const html = tile({
       price_level: 2,
       currency: "MXN",
@@ -121,11 +121,11 @@ describe("the tile shows far more, all real (MESITA-2371)", () => {
     } as Partial<Place>);
     expect(html).toContain("4.6");
     expect(html).toContain("(812)");
-    // Three rows at most (MESITA-2372): stars · price · distance, then
-    // category · zone · open state.
-    expect(html).toContain("1.4 km");
-    expect(html).toContain("Cafe · Tecnológico · Open · until 02:00");
-    expect(html.match(/<p /g)?.length).toBeLessThanOrEqual(3);
+    // Four rows (MESITA-2373): name; stars · price; category · zone;
+    // open state · distance.
+    expect(html).toContain("Cafe · Tecnológico");
+    expect(html).toContain("Open · until 02:00 · 1.4 km");
+    expect(html.match(/<p /g)?.length).toBeLessThanOrEqual(4);
     expect(html).not.toContain("per person");
   });
 
