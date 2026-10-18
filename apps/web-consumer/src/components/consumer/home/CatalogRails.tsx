@@ -242,7 +242,9 @@ export function CatalogRails() {
   // (Pato's sketch, MESITA-2350): a narrow column the height of the row,
   // the name truncated to it, then the sideways card scroller. The column
   // wears its own tint and a hairline, with room before the cards
-  // (MESITA-2351), so name and cards read as two parts.
+  // (MESITA-2351), so name and cards read as two parts. The row's vertical
+  // padding lives on the card scroller, never around the rail, so the
+  // tinted column runs edge to edge between the hairlines (MESITA-2354).
   const renderRail = (rail: CatalogRail) => (
     <section
       key={rail.key}
@@ -255,14 +257,16 @@ export function CatalogRails() {
       >
         <h2
           id={`${rail.key}-heading`}
-          className="font-display text-foreground absolute inset-0 flex items-center justify-center overflow-hidden text-sm font-semibold tracking-tight"
+          className="font-display text-foreground absolute inset-0 flex flex-col items-center justify-center gap-1.5 overflow-hidden text-sm font-semibold tracking-tight"
         >
-          <span className="max-h-full rotate-180 truncate [writing-mode:vertical-rl]">
-            {rail.emoji && rail.emoji !== "·" ? (
-              <span className="mb-1.5" aria-hidden>
-                {rail.emoji}
-              </span>
-            ) : null}
+          {/* The emoji sits upright on top of the name, never rotated
+              (Pato, MESITA-2354). */}
+          {rail.emoji && rail.emoji !== "·" ? (
+            <span className="shrink-0" aria-hidden data-rail-emoji>
+              {rail.emoji}
+            </span>
+          ) : null}
+          <span className="min-h-0 rotate-180 truncate [writing-mode:vertical-rl]">
             {rail.label}
           </span>
         </h2>
@@ -271,7 +275,7 @@ export function CatalogRails() {
         <ul
           role="list"
           aria-label={rail.label}
-          className="scrollbar-hide ml-3 flex min-w-0 flex-1 gap-1.5 overflow-x-auto overscroll-x-contain"
+          className="scrollbar-hide ml-3 flex min-w-0 flex-1 gap-1.5 overflow-x-auto overscroll-x-contain py-3"
         >
           {rail.places.map((place) => {
             const located = withUserDistance(place, coords);
@@ -295,7 +299,7 @@ export function CatalogRails() {
 
   return shell(
     <div className="bg-card scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain">
-      <div className="bg-muted/50 pb-3" data-band="a">
+      <div className="bg-muted/50" data-band="a">
         <p className="type-body text-muted-foreground px-3 py-2.5 tabular-nums">
           {summary.total} {summary.total === 1 ? "place" : "places"}
           {summary.openNow > 0 ? ` · ${summary.openNow} open now` : ""}
@@ -303,18 +307,18 @@ export function CatalogRails() {
         {firstRail ? renderRail(firstRail) : null}
       </div>
       {secondRail ? (
-        <div className="bg-muted/25 border-border border-t py-3" data-band="b">
+        <div className="bg-muted/25 border-border border-t" data-band="b">
           {renderRail(secondRail)}
         </div>
       ) : null}
       {restRails.length > 0 ? (
         // Every family rail has its own hairline too (Pato, MESITA-2353).
         <div
-          className="bg-card border-border divide-border flex flex-col divide-y border-t pb-1"
+          className="bg-card border-border divide-border flex flex-col divide-y border-t"
           data-band="c"
         >
           {restRails.map((rail) => (
-            <div key={rail.key} className="py-3">
+            <div key={rail.key}>
               {renderRail(rail)}
             </div>
           ))}

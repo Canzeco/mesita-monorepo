@@ -15,10 +15,10 @@ describe("the Feed's rails sit in three tinted bands (MESITA-2308)", () => {
   const bandC = src.indexOf('data-band="c"');
 
   it("tints the first rail deepest, the second lighter, the rest on the card", () => {
-    expect(src).toContain('className="bg-muted/50 pb-3" data-band="a"');
-    expect(src).toContain('className="bg-muted/25 border-border border-t py-3" data-band="b"');
+    expect(src).toContain('className="bg-muted/50" data-band="a"');
+    expect(src).toContain('className="bg-muted/25 border-border border-t" data-band="b"');
     expect(src).toContain(
-      'className="bg-card border-border divide-border flex flex-col divide-y border-t pb-1"',
+      'className="bg-card border-border divide-border flex flex-col divide-y border-t"',
     );
     expect(bandA).toBeGreaterThan(0);
     expect(bandB).toBeGreaterThan(bandA);
@@ -39,12 +39,17 @@ describe("the Feed's rails sit in three tinted bands (MESITA-2308)", () => {
 
   it("draws a hairline above every family rail too (MESITA-2353)", () => {
     const c = src.slice(bandC);
-    expect(c).toContain('<div key={rail.key} className="py-3">');
+    expect(c).toContain("<div key={rail.key}>");
     expect(c).toContain("{renderRail(rail)}");
   });
 
   it("keeps the cards a little closer together (MESITA-2353)", () => {
     expect(src).toContain("scrollbar-hide ml-3 flex min-w-0 flex-1 gap-1.5 overflow-x-auto");
+  });
+
+  it("pads the card row, not the rail, so the name column meets both hairlines (MESITA-2354)", () => {
+    expect(src).toContain("overflow-x-auto overscroll-x-contain py-3");
+    expect(src).not.toMatch(/data-band="[abc]"[^>]*py-3/);
   });
 
   it("uses semantic tokens only", () => {

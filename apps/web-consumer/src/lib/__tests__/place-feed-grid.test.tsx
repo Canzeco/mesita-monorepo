@@ -124,6 +124,11 @@ describe("Places is family rails", () => {
     expect(rails).toContain("[writing-mode:vertical-rl]");
     expect(rails).toContain("rotate-180");
     expect(rails).toContain("data-rail-name");
+    // The emoji sits upright above the name, outside the rotated span
+    // (MESITA-2354).
+    expect(rails.indexOf("data-rail-emoji")).toBeLessThan(
+      rails.indexOf("min-h-0 rotate-180 truncate"),
+    );
     // The temporary size switch has four stops (MESITA-2340, MESITA-2352).
     expect(rails).toContain('CARD_SIZES = ["1.5", "1.75", "2", "2.5"]');
     expect(rails).toContain("w-[calc((100%-1rem)/1.75)]");
