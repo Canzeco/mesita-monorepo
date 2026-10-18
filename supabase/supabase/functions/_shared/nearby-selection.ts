@@ -279,6 +279,15 @@ export type SelectedPoolQuery<Q> =
   & BboxQuery<Q>
   & { overlaps: (col: string, val: string[]) => Q };
 
+/** A supabase-js select, seen structurally: what the two EFs hand
+ *  `selectedPoolQuery` (the full generic type is too deep to infer). */
+export interface PoolBuilder extends SelectedPoolQuery<PoolBuilder> {
+  limit: (n: number) => PromiseLike<{
+    data: unknown[] | null;
+    error: { message: string } | null;
+  }>;
+}
+
 /**
  * The Mesita Selected pool in SQL, the same on the Map and the Feed: the
  * operator filters with the Enriched gate forced on (`listedMapFilters`),
