@@ -184,26 +184,24 @@ export function CatalogRails() {
       aria-label="Places"
       data-places-categories
     >
-      <ul role="list">
-        {chips.slice(0, 2).map(categoryRow)}
-        <li>
-          <button
-            type="button"
-            onClick={locate}
-            disabled={coords !== null || locating}
-            className={cn(
-              ROW_BASE,
-              coords !== null ? "text-muted-foreground" : "text-foreground",
-            )}
-          >
-            <span className="shrink-0" aria-hidden>
-              🧭
-            </span>
-            {coords !== null ? "Near you" : locating ? "Locating…" : "Location"}
-          </button>
-        </li>
-        {chips.slice(2).map(categoryRow)}
-      </ul>
+      {/* The location control is its own bar, pinned at the top of the
+          column (Pato, MESITA-2377): a control, not a category row. */}
+      <button
+        type="button"
+        onClick={locate}
+        disabled={coords !== null || locating}
+        className={cn(
+          "bg-card border-border sticky top-0 z-10 flex w-full items-center gap-1.5 border-b px-3 py-3 text-left text-xs leading-tight font-semibold",
+          coords !== null ? "text-muted-foreground" : "text-foreground",
+        )}
+        data-places-location
+      >
+        <Navigation className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
+        <span className="truncate">
+          {coords !== null ? "Near you" : locating ? "Locating…" : "Use my location"}
+        </span>
+      </button>
+      <ul role="list">{chips.map(categoryRow)}</ul>
     </nav>
   );
 
