@@ -96,7 +96,7 @@ describe("admin member preview", () => {
     expect(html).not.toContain("Families");
   });
 
-  it("is Enrich-only with no photos and a long name", () => {
+  it("keeps the four sections, the vote atop Overview, with no photos and a long name", () => {
     const name = "Taquería de los Compadres del Centro Histórico de la Ciudad";
     const detail = memberPreviewDetail(
       place({
@@ -114,8 +114,9 @@ describe("admin member preview", () => {
     expect(detail.photos).toEqual([]);
     const html = renderToStaticMarkup(<PlaceProfile place={detail} />);
     expect(html).toContain(name);
-    expect(html).toContain("Enrich");
-    expect(html).not.toContain("Overview");
+    expect(html).toContain('aria-label="Place sections"');
+    expect(html).toContain("Overview");
+    expect(html).toContain("Vote to enrich");
     expect(html).not.toContain("<a ");
   });
 
