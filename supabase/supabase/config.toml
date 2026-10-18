@@ -369,6 +369,10 @@ verify_jwt = true
 [functions.admin-web-list-logs]
 verify_jwt = true
 
+# Google-only opens and how they ended (MESITA-2323). Super-admin only.
+[functions.admin-web-list-place-opens]
+verify_jwt = true
+
 [functions.admin-web-grant-admin]
 verify_jwt = true
 

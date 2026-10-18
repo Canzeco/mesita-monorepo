@@ -1,6 +1,7 @@
 import { ConfigPageLayout } from "@/components/ConfigPageLayout";
 import { normalizeTier } from "@/lib/synthesis-quality";
-import { getAtlasSettings } from "./actions";
+import { getAtlasSettings, listPlaceOpens } from "./actions";
+import { PlaceOpensCard } from "./PlaceOpensCard";
 import { CrenupClient } from "./CrenupClient";
 import type { CrenupView } from "./SectionStrip";
 import { type CrenupSettings } from "./crenup-guards";
@@ -42,7 +43,10 @@ const TITLE: Record<CrenupView, string> = {
 };
 
 export async function CrenupPage({ view }: { view: CrenupView }) {
-  const settings = await getAtlasSettings();
+  const [settings, opens] = await Promise.all([
+    getAtlasSettings(),
+    view === "creation" ? listPlaceOpens() : Promise.resolve(null),
+  ]);
 
   return (
     <ConfigPageLayout eyebrow={`Operations · ${TITLE[view]}`} title={TITLE[view]}>
@@ -83,6 +87,11 @@ export async function CrenupPage({ view }: { view: CrenupView }) {
       // prompt the console invented would be worse than one it cannot show.
       prompts={settings.ok ? (settings.data.crenupPromptsMeta ?? []) : []}
     />
+    {opens ? (
+      <div className="mt-6">
+        <PlaceOpensCard report={opens} />
+      </div>
+    ) : null}
     </ConfigPageLayout>
   );
 }

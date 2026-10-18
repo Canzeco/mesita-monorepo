@@ -113,3 +113,33 @@ export async function updateAtlasConfig(patch: {
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data };
 }
+
+// ─── Google-only opens (MESITA-2323) ───────────────────────────────────────
+// Every explicit open of a Google-only result through consumer-web-create-
+// place, and how it ended. Read-only; the ledger lives in the EF's table.
+
+export type PlaceOpenOutcome = "existing" | "created" | "refused" | "failed";
+
+export type PlaceOpensReport = {
+  windowDays: number;
+  capped: boolean;
+  summary: {
+    opens: number;
+    byOutcome: Record<PlaceOpenOutcome, number>;
+    places: number;
+    profileRate: number;
+    repeated: Array<{
+      googlePlaceId: string;
+      opens: number;
+      created: boolean;
+      placeId: string | null;
+    }>;
+  };
+  names: Record<string, string>;
+};
+
+export async function listPlaceOpens(): Promise<ActionResult<PlaceOpensReport>> {
+  const r = await efInvoke<PlaceOpensReport>("admin-web-list-place-opens", {});
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, ...r.data };
+}
