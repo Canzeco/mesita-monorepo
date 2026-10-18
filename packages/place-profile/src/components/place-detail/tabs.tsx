@@ -5,10 +5,11 @@ import { cn } from "../../lib/format";
 // The KEYS are addresses (and map to places.products); only the LABELS are
 // the words a guest reads. "Menu", never "Products" (Pato 2026-08-22;
 // singular, Pato 2026-10-16).
-// Enrich is first and only while the place is not Enriched (MESITA-1364).
 // decision: Pato (2026-10-16) — Menu and Rewards wear Soon. Rewards is the
 // fourth screen. Both are the same strip on admin Preview and consumer.
-export type PlaceTab = "enrich" | "place" | "reviews" | "products" | "rewards";
+// Every place has the four, Enriched or not; the Enrich vote is the top of
+// Overview, never a tab of its own (MESITA-2332).
+export type PlaceTab = "place" | "reviews" | "products" | "rewards";
 
 export type PlaceTabDef = {
   key: PlaceTab;
@@ -23,34 +24,25 @@ const CORE_TABS = [
   { key: "rewards", label: "Rewards", soon: true },
 ] as const satisfies ReadonlyArray<PlaceTabDef>;
 
-const ENRICH_TAB = { key: "enrich", label: "Enrich" } as const satisfies PlaceTabDef;
-
-export function placeTabs(enriched: boolean): readonly PlaceTabDef[] {
-  // Unenriched: Enrich only. The four screens wait until the place is
-  // Enriched (Pato, live 2026-08-29).
-  return enriched ? CORE_TABS : [ENRICH_TAB];
+export function placeTabs(): readonly PlaceTabDef[] {
+  return CORE_TABS;
 }
 
 export function PlaceTabBar({
   tab,
   onChange,
-  enriched,
 }: {
   tab: PlaceTab;
   onChange: (t: PlaceTab) => void;
-  enriched: boolean;
 }) {
-  const tabs = placeTabs(enriched);
+  const tabs = placeTabs();
   return (
     // Sticky to the top of the scroll container so the tabs stay reachable
     // while the user is deep in a tab's content. Solid bg-card (no
     // translucency) so the strip matches the name header and scrolled
     // content can't bleed through. The page wash stays below the strip.
     <nav
-      className={cn(
-        "bg-card border-border sticky top-0 z-20 -mx-4 grid border-b px-1",
-        enriched ? "grid-cols-4" : "grid-cols-1",
-      )}
+      className="bg-card border-border sticky top-0 z-20 -mx-4 grid grid-cols-4 border-b px-1"
       aria-label="Place sections"
     >
       {tabs.map((t) => {
@@ -68,17 +60,15 @@ export function PlaceTabBar({
                 : "text-muted-foreground hover:text-foreground border-transparent",
             )}
           >
-            {enriched && (
-              <span
-                aria-hidden={t.soon ? undefined : true}
-                className={cn(
-                  "type-meta bg-muted text-muted-foreground rounded-full px-1.5 leading-none font-semibold",
-                  t.soon ? "visible" : "invisible",
-                )}
-              >
-                Soon
-              </span>
-            )}
+            <span
+              aria-hidden={t.soon ? undefined : true}
+              className={cn(
+                "type-meta bg-muted text-muted-foreground rounded-full px-1.5 leading-none font-semibold",
+                t.soon ? "visible" : "invisible",
+              )}
+            >
+              Soon
+            </span>
             {t.label}
           </button>
         );

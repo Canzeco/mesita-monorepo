@@ -26,35 +26,23 @@ describe("vote progress copy", () => {
   });
 });
 
-describe("Enrich tab gate", () => {
-  it("is Enrich-only until Enriched, then the three core tabs", () => {
-    expect(placeTabs(false).map((t) => t.label)).toEqual(["Enrich"]);
-    expect(placeTabs(true).map((t) => t.label)).toEqual([
+describe("section strip", () => {
+  it("is the four sections for every place, Enrich never a tab (MESITA-2332)", () => {
+    expect(placeTabs().map((t) => t.label)).toEqual([
       "Overview",
       "Reviews",
       "Menu",
       "Rewards",
     ]);
-    expect(placeTabs(true).filter((t) => t.soon).map((t) => t.label)).toEqual([
+    expect(placeTabs().filter((t) => t.soon).map((t) => t.label)).toEqual([
       "Menu",
       "Rewards",
     ]);
   });
 
-  it("renders Enrich and not the core tabs on the unenriched strip", () => {
+  it("renders the four sections with Soon on Menu and Rewards", () => {
     const html = renderToStaticMarkup(
-      <PlaceTabBar tab="enrich" onChange={() => {}} enriched={false} />,
-    );
-    expect(html).toContain("Enrich");
-    expect(html).toContain("grid-cols-1");
-    expect(html).not.toContain("Overview");
-    expect(html).not.toContain("Reviews");
-    expect(html).not.toContain("Menu");
-  });
-
-  it("renders the three core tabs and not Enrich once Enriched", () => {
-    const html = renderToStaticMarkup(
-      <PlaceTabBar tab="place" onChange={() => {}} enriched={true} />,
+      <PlaceTabBar tab="place" onChange={() => {}} />,
     );
     expect(html).toContain("Overview");
     expect(html).toContain("Reviews");

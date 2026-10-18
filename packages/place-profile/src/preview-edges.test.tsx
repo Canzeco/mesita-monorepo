@@ -28,20 +28,23 @@ describe("member preview edges", () => {
     expect(html).not.toContain("Phone emulator");
   });
 
-  it("shows only Enrich when the place is not enriched", () => {
+  it("keeps the four sections when not enriched, the vote atop Overview (MESITA-2332)", () => {
     const html = renderToStaticMarkup(
       <PlaceProfile place={detail({ enriched_at: null, is_enriched: false })} />,
     );
-    expect(html).toContain("Enrich");
-    expect(html).not.toContain("Overview");
-    expect(html).not.toContain("Rewards");
+    expect(html).toContain('aria-label="Place sections"');
+    for (const label of ["Overview", "Reviews", "Menu", "Rewards"]) {
+      expect(html).toContain(label);
+    }
+    expect(html).not.toContain(">Enrich<");
     expect(html).toContain("Vote to enrich");
-    // No strip with one lone tab (MESITA-2315).
-    expect(html).not.toContain('aria-label="Place sections"');
+    expect(html.indexOf('aria-label="Place sections"')).toBeLessThan(
+      html.indexOf("Vote to enrich"),
+    );
     expect(html).not.toContain("Community votes");
   });
 
-  it("lists Google's create-time reviews under the vote panel, no strip", () => {
+  it("keeps Google's create-time reviews on the Reviews tab, not under the vote", () => {
     const html = renderToStaticMarkup(
       <PlaceProfile
         place={detail({
@@ -55,12 +58,10 @@ describe("member preview edges", () => {
         })}
       />,
     );
-    // MESITA-2317: the up-to-5 Details reviews show before any Enrich.
-    expect(html).toContain('aria-label="Reviews"');
-    expect(html).toContain("Great coffee");
-    expect(html).toContain("Slow line");
-    expect(html.indexOf("Vote to enrich")).toBeLessThan(html.indexOf("Great coffee"));
-    expect(html).not.toContain('aria-label="Place sections"');
+    // MESITA-2332: Overview opens; the Details reviews wait on Reviews.
+    expect(html).toContain("Vote to enrich");
+    expect(html).not.toContain("Great coffee");
+    expect(html).toContain('aria-label="Place sections"');
   });
 
   it("draws no reviews list for an unenriched place Google gave none", () => {
