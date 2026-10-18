@@ -24,7 +24,7 @@ import { ActiveDot } from "./ActiveDot";
 // longer prints, and the count.
 //
 // Since MESITA-2409 it leads Search's horizontal chip row (`variant="chip"`):
-// the chips' 32px height, bordered, no shadow. Without `onOpenFilters` it is
+// the chips' 44px height (the bar's, MESITA-2413), bordered, no shadow. Without `onOpenFilters` it is
 // disabled in place.
 export function SearchFilterRow({
   count,
@@ -47,7 +47,7 @@ export function SearchFilterRow({
       aria-pressed={applied}
       className={
         variant === "chip"
-          ? "border-border bg-card text-foreground hover:bg-muted relative flex h-8 w-10 shrink-0 border items-center justify-center rounded-full transition active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40"
+          ? "border-border bg-card text-foreground hover:bg-muted relative flex h-11 w-11 shrink-0 border items-center justify-center rounded-full transition active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40"
           : "shadow-elev border-border bg-card/95 text-foreground relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border backdrop-blur-xl transition active:scale-[0.97]"
       }
       data-search-filters

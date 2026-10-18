@@ -421,7 +421,7 @@ describe("T5b — Home's header and Search's header", () => {
   it("Search's header is locate · bar · Ask AI, and Ask AI is a real Soon page", () => {
     const header = readFileSync(join(COMPONENTS, "search", "SearchHeader.tsx"), "utf8");
     expect(header).toContain("href={CONSUMER_ROUTES.searchChat}");
-    expect(header).toMatch(/\{locate\}<\/div>\s*<div className="pointer-events-auto min-w-0 flex-1">\{bar\}<\/div>\s*<Link/);
+    expect(header).toMatch(/\{locate\}\s*<div className="min-w-0 flex-1">\{bar\}<\/div>\s*<Link/);
     expect(header).toContain("Ask AI");
     expect(new Set(allPages().map(pageUrl))).toContain(CONSUMER_ROUTES.searchChat);
     const chat = readFileSync(join(SHELL, "(discovery)", "search", "chat", "page.tsx"), "utf8");
