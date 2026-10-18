@@ -12,7 +12,7 @@
 // Location, when the browser has it, ranks proximity.
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Compass, LocateFixed } from "lucide-react";
+import { Compass, Navigation } from "lucide-react";
 import { apiListCatalog, type CatalogRail, type Place } from "@/lib/api/places";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { trackEvent } from "@/lib/analytics/track";
@@ -92,7 +92,7 @@ export function CatalogRails() {
             : "shadow-elev border-border bg-card/95 text-foreground backdrop-blur-xl active:scale-[0.98] disabled:opacity-60",
         )}
       >
-        <LocateFixed className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+        <Navigation className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
         <span className="truncate">
           {coords !== null
             ? "Near you"

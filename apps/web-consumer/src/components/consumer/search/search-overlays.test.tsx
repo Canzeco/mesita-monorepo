@@ -149,8 +149,9 @@ describe("Search map catalog auto-reloads after distance and time", () => {
 describe("SearchFilterRow", () => {
   // A 44px DISC, ICON ONLY (Pato, 2026-10-17: "don't mention filters as
   // text, just the filters icon is enough and universal"), retiring the
-  // labelled third of MESITA-1797. The word lives in the accessible name.
-  it("is an icon-only disc that goes primary-filled when on", () => {
+  // labelled third of MESITA-1797. The word lives in the accessible name;
+  // applied is a brand-red dot on the corner (MESITA-2304), never a fill.
+  it("is an icon-only disc that wears the red dot when on", () => {
     const rest = renderToStaticMarkup(
       <SearchFilterRow count={0} onOpenFilters={() => {}} />,
     );
@@ -159,6 +160,7 @@ describe("SearchFilterRow", () => {
     expect(rest).not.toMatch(/>\s*Filters\s*</);
     expect(rest).not.toContain("Filter places");
     expect(rest).not.toContain("basis-1/3");
+    expect(rest).not.toContain('data-active="true"');
     expect(rest).toContain("h-11 w-11");
     expect(rest).toContain("rounded-full");
     expect(rest).toContain("border-border");
@@ -172,9 +174,11 @@ describe("SearchFilterRow", () => {
     const on = renderToStaticMarkup(
       <SearchFilterRow count={3} onOpenFilters={() => {}} />,
     );
-    expect(on).toContain("3 applied");
+    expect(on).toContain('aria-label="Filters, 3 applied"');
+    expect(on).toContain('data-active="true"');
     expect(on).toContain("bg-primary");
-    expect(on).toContain(">3<");
+    expect(on).not.toContain("text-primary-foreground");
+    expect(on).not.toContain(">3<");
     expect(read("SearchFilterRow.tsx")).not.toContain("PLACE_FAMILIES");
   });
 
@@ -195,13 +199,16 @@ describe("SearchFilterRow", () => {
 
 describe("SearchLocateButton", () => {
   // THE LOCATION DISC, TOP LEFT (Pato, 2026-10-17: "Location Searchbar
-  // Filters … location at the left"). Icon only; the name says what a tap
-  // does: ask for a fix, or recentre on the one the map has.
-  it("is an icon-only disc whose name follows the fix", () => {
+  // Filters … location at the left"). The navigation arrow, icon only; the
+  // name says what a tap does: ask for a fix, or recentre on the one the
+  // map has. A held fix wears the red dot (MESITA-2304).
+  it("is an icon-only arrow disc whose name follows the fix", () => {
     const ask = renderToStaticMarkup(
       <SearchLocateButton located={false} locating={false} onClick={() => {}} />,
     );
-    expect(ask).toContain("lucide-locate-fixed");
+    expect(ask).toContain("lucide-navigation");
+    expect(ask).not.toContain("lucide-locate-fixed");
+    expect(ask).not.toContain('data-active="true"');
     expect(ask).toContain('aria-label="Use my location"');
     expect(ask).toContain("h-11 w-11");
     expect(ask).toContain("shrink-0");
@@ -212,6 +219,8 @@ describe("SearchLocateButton", () => {
       <SearchLocateButton located locating={false} onClick={() => {}} />,
     );
     expect(home).toContain('aria-label="Recentre on your location"');
+    expect(home).toContain('data-active="true"');
+    expect(home).toContain("bg-primary");
     const busy = renderToStaticMarkup(
       <SearchLocateButton located={false} locating onClick={() => {}} />,
     );
