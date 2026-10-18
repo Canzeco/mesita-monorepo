@@ -31,8 +31,11 @@ import { nearbyTypesForSupers } from "./google-type-super.ts";
 import { catalogAdmitted } from "./catalog-rank.ts";
 import { googleStub } from "./google-stub.ts";
 import { applyBboxPredicate, type BboxQuery, haversineKm, nearbyBbox } from "./geo.ts";
-import { applyGeneralGateQuery, clearsGeneralGate } from "./discovery-general-gate.ts";
-import type { FilterableQuery } from "./discovery-filters.ts";
+import {
+  applyGeneralGateQuery,
+  clearsGeneralGate,
+  type FilterableQuery,
+} from "./discovery-general-gate.ts";
 import { clearsMinReviews } from "./map-engine.ts";
 import { familiesForPlace } from "./place-taxonomy.ts";
 import { type AreaCandidate, type AreaContext, rankArea } from "./area-score.ts";

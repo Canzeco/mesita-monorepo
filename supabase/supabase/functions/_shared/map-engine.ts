@@ -11,15 +11,10 @@
 // categories live on discovery_config.name. `googleFill` gates Nearby.
 //
 // `minPopularity` reads the Area pipeline's Popularity (pipeline-signals.ts)
-// since the old seven-signal library retired (MESITA-2328). Listed rows
-// without a Google ask keep `discovery_config.filters`.
+// since the old seven-signal library retired (MESITA-2328).
 // A SIGNAL DEMOTES; a MAP FLOOR EXCLUDES.
 
-import type {
-  DiscoveryFilters,
-  MapConfig,
-  SignalParams,
-} from "./discovery-config.ts";
+import type { MapConfig, SignalParams } from "./discovery-config.ts";
 import {
   NEARBY_TYPE_KEYS,
   type NearbyTypeKey,
@@ -41,27 +36,6 @@ export type ListedMapRow = {
   google_stars_overall?: number | null;
   google_review_count?: number | null;
 };
-
-/**
- * Stricter of global operator filters and Map floors, for the Mesita
- * Selected query (MESITA-2298).
- *
- * `requireReady` is the Enriched gate (`enriched_at IS NOT NULL` AND
- * `content_state = 'ready'`). Mesita Selected IS that set today, so the
- * gate is always on here whatever the global toggle says: a Created row is
- * not Selected, and a guest has no scope that would show it.
- */
-export function listedMapFilters(
-  global: DiscoveryFilters,
-  map: MapConfig,
-): DiscoveryFilters {
-  return {
-    ...global,
-    requireReady: true,
-    minRating: Math.max(global.minRating, map.minRating),
-    minReviews: Math.max(global.minReviews, map.minReviews),
-  };
-}
 
 /**
  * Guest Google Reviews — Map mode only (MESITA-1790). A Discovery-mode
@@ -180,48 +154,6 @@ export function listedClearsMapPopularity(
     },
   );
   return score >= map.minPopularity;
-}
-
-/**
- * MAP FLOORS ONLY. `minReviews` and a numeric `minPopularity` still do not
- * apply here: the Nearby mask now carries `userRatingCount` (Discovery ›
- * General's wipe needs it), but the Map box's review floor stayed a
- * Text-Search/Details question and widening it silently would change what
- * the Map returns without an operator asking. Discovery › General is the
- * knob that cuts Nearby on reviews.
- * A rating or popularity floor still excludes an unrated stub — those are
- * the empty yellow pins. minRating compares the Nearby star field.
- */
-export function googleHitClearsMapFloors(
-  hit: NearbyHit,
-  map: MapConfig,
-): boolean {
-  if (map.minRating > 0) {
-    if (hit.rating == null || hit.rating < map.minRating) return false;
-  }
-  if (map.minPopularity > 0 && hit.rating == null) return false;
-  return true;
-}
-
-/**
- * Drop listed rows that miss minPopularity. Google Nearby stays nearest-N
- * and does not shrink because a Place ID is Mesita-related — merge drops
- * only IDs that already won a Partner or Mesita slot. Google hits still
- * have to clear Map floors.
- */
-export function admitMapCatalog<T extends ListedMapRow>(
-  listed: T[],
-  google: NearbyHit[],
-  map: MapConfig,
-  reference?: SignalParams["popularity"],
-): { listed: T[]; google: NearbyHit[] } {
-  const admittedListed = listed.filter((row) =>
-    listedClearsMapPopularity(row, map, reference)
-  );
-  const admittedGoogle = google.filter((hit) =>
-    googleHitClearsMapFloors(hit, map)
-  );
-  return { listed: admittedListed, google: admittedGoogle };
 }
 
 export type MapPlaceSignals = {

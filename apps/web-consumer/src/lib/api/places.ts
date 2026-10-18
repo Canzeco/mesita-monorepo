@@ -131,8 +131,8 @@ type ViewportPlaces = {
  * Web Search posts Places scope, Families and Google Reviews; it never
  * posts a radius (operator `map.radiusKm`) or a count (operator
  * `map.pinCount`). `google: true` is not the scope — it is web Search
- * saying it CAN render a Google-only stub; a caller that omits it gets
- * listed rows.
+ * saying it CAN render a Google-only stub, and the EF refuses a call
+ * without it (MESITA-2337).
  */
 export async function apiFetchNearbyCatalog(
   client: SupabaseClient,

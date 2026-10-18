@@ -37,8 +37,8 @@ export function radiusBoundingBox(
 /** Search map default: big enough that a city camera never yields 4 pins. */
 export const NEARBY_DEFAULT_RADIUS_KM = 500;
 export const NEARBY_MAX_RADIUS_KM = 2000;
-/** Internal scan before distance-sort. Response still slices to 20 Mesita
- *  (listed-only) or 20+20 union (Google fill). */
+/** The Mesita Selected pool's scan cap before the Area score ranks it; the
+ *  answer still slices to `map.pinCount`. */
 export const NEARBY_SCAN_LIMIT = 1000;
 /** Google Nearby Search (New) caps the circle at 50 km. */
 export const NEARBY_RADIUS_KM = 50;
@@ -90,8 +90,8 @@ export function decideNearby(body: Record<string, unknown>): NearbyDecision {
   return { mode: "ok", lat, lng, radiusKm };
 }
 
-/** Web Search catalog opt-in. Bare `{ lat, lng }` stays listed-only so
- *  mobile Search does not receive Google stubs it cannot open. */
+/** Web Search's tell: it can render a Google-only stub. list-places answers
+ *  nothing without it (MESITA-2337). */
 export function wantsGoogleFill(body: Record<string, unknown>): boolean {
   return body.google === true || body.google === "true" ||
     body.nearby === true || body.nearby === "true";
@@ -109,25 +109,6 @@ export function nearbyBbox(
     west: wrapLng(lng - lngDelta),
     east: wrapLng(lng + lngDelta),
   };
-}
-
-export function sortByDistance<T extends { lat?: number | null; lng?: number | null }>(
-  rows: T[],
-  lat: number,
-  lng: number,
-): T[] {
-  return [...rows].sort((a, b) =>
-    haversineKm(lat, lng, a.lat ?? null, a.lng ?? null) -
-    haversineKm(lat, lng, b.lat ?? null, b.lng ?? null)
-  );
-}
-
-export function takeClosest<T extends { lat?: number | null; lng?: number | null }>(
-  rows: T[],
-  center: { lat: number; lng: number },
-  limit: number,
-): T[] {
-  return sortByDistance(rows, center.lat, center.lng).slice(0, limit);
 }
 
 /** Rectangle only — never haversine-trim the corners. west > east is dateline. */

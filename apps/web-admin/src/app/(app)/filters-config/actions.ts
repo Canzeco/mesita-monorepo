@@ -33,7 +33,6 @@ type UpdateDiscoveryConfigResult = ActionResult<{
 
 export type DiscoverySlice =
   | "general"
-  | "filters"
   | "map"
   // Narrow map slices (MESITA-1681, widened by MESITA-1695). Families
   // (Configurations › Atlas) and Google Nearby's floor both write `map`.
@@ -67,9 +66,6 @@ export async function updateDiscoveryConfig(
   const next: DiscoveryConfig = {
     ...live.config,
     general: keys.has("general") ? config.general : live.config.general,
-    // The operator floor for the listed Mesita pool (consumer-web-list-places'
-    // listed lanes). No box edits it; it rides through every Save.
-    filters: keys.has("filters") ? config.filters : live.config.filters,
     map: {
       ...(keys.has("map") ? config.map : live.config.map),
       ...(keys.has("mapSupers") ? { supers: config.map.supers } : null),

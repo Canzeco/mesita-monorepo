@@ -6,11 +6,9 @@
 // Mesita rows those results resolve to. EVERY LANE THAT QUERIES GOOGLE reads
 // it: Fast, Deep, Map, and admin's suggest.
 //
-// It is not every MODE, and the difference has bitten a reader already.
-// Catalog, Swipe and the Pay / Home branch of list-places draw from
-// the listed Mesita pool and never call Google, so there is nothing here for
-// them to wipe; `discovery_config.filters` is their floor. list-places gates
-// this behind `if (isNearby)` on purpose and says so at the call site.
+// It is not every half everywhere. The Area pipeline (Map and the Feed)
+// reads only the active half (`activeOnly` in area-pipeline.ts):
+// `general.minReviews` cuts the Name pipeline, never Area (MESITA-2327).
 //
 // IT IS A FILTER, NOT A SIGNAL — it excludes, it never demotes. The Map box
 // (`discovery_config.map`) keeps its own floors and stays Map-only; these two
@@ -25,13 +23,20 @@
 // back from search. That was the bug.
 //
 // UNKNOWN DOES NOT CLEAR THE GATE. A null business_state or a null review
-// count fails whichever knob is on. Same reading as `applyDiscoveryFilters`:
-// a floor asks a place to PROVE it clears the bar, and a place with nothing
-// to show has not. It is also the only reading that makes "only active
+// count fails whichever knob is on. Same reading as every Mesita floor: a
+// floor asks a place to PROVE it clears the bar, and a place with nothing to
+// show has not. It is also the only reading that makes "only active
 // places" true rather than "active places, plus the ones we couldn't check".
 
 import type { GeneralConfig } from "./discovery-config.ts";
-import type { FilterableQuery } from "./discovery-filters.ts";
+
+/** The subset of a PostgREST builder a WHERE-clause gate uses. Kept
+ *  structural so it is testable without a client. */
+export type FilterableQuery<T> = {
+  eq: (col: string, val: unknown) => T;
+  gte: (col: string, val: unknown) => T;
+  lte: (col: string, val: unknown) => T;
+};
 
 /** The Pulsing state (`business_state`). Google's own label, verbatim. */
 export const OPERATIONAL = "OPERATIONAL";
@@ -67,16 +72,17 @@ export function clearsGeneralGate(
 /**
  * A PostgREST builder, structurally. EF clients carry no `Database` generic,
  * so an ADMIN client's inferred builder type blows TS's instantiation depth
- * the moment it rides a generic helper (the anon client is fine — that is why
- * `applyDiscoveryFilters` never hit this). Callers on the admin client cast
- * to this once, at the query boundary, and cast the result back.
+ * the moment it rides a generic helper (the anon client is fine). Callers on
+ * the admin client cast to this once, at the query boundary, and cast the
+ * result back.
  */
 export interface GeneralGateQuery extends FilterableQuery<GeneralGateQuery> {}
 
 /**
- * The same gate as a WHERE clause, for the listed lanes that fetch their own
- * rows. Pushed into the query so a capped pool is not thinned after the fact
- * (the rule `discovery-filters.ts` states and this module keeps).
+ * The same gate as a WHERE clause, for the lanes that fetch their own rows.
+ * Pushed into the query because a pool is capped before anything ranks: a
+ * cut applied after the fetch does not narrow the catalog, it thins the page
+ * the guest receives.
  */
 export function applyGeneralGateQuery<T extends FilterableQuery<T>>(
   query: T,

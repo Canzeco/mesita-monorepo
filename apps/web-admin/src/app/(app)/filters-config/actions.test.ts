@@ -24,9 +24,20 @@ function liveConfig(): DiscoveryConfig {
   return coerceConfig({
     ...DEFAULT_CONFIG,
     params: { ...DEFAULT_CONFIG.params, proximity: { halfDistanceKm: 4.1 } },
-    filters: { ...DEFAULT_CONFIG.filters, minRating: 3.5 },
     chat: { prompt: "live prompt" },
   });
+}
+
+/** The stored row as the EF hands it back, retired keys and all. */
+function storedBlob(live: DiscoveryConfig): DiscoveryConfig {
+  return {
+    ...live,
+    filters: { requireReady: true, minRating: 3.5, minReviews: 0, maxDistanceKm: 0 },
+    swipe: { radiusKm: 5, minReviews: 1 },
+    engines: { swipe: { ranked: true } },
+    weights: { proximity: 1 },
+    weightsByMode: { map: { proximity: 0.5 } },
+  } as unknown as DiscoveryConfig;
 }
 
 /** Captures the blob the console tried to write. */
@@ -50,7 +61,6 @@ function editedEverywhere(live: DiscoveryConfig): DiscoveryConfig {
       proximity: { halfDistanceKm: 2.5 },
       popularity: { referenceRating: 4, referenceReviews: 500 },
     },
-    filters: { ...live.filters, minRating: 1 },
     map: { ...live.map, radiusKm: 3, pinCount: 20 },
     catalog: { ...live.catalog, railCap: 7, seedCount: 99 },
     name: {
@@ -77,21 +87,13 @@ const ALL_BOX_SLICES: DiscoverySlice[][] = [
   ["deep", "chat"],
 ];
 
-describe("no box writes the operator filters (list-places reads them)", () => {
-  it.each(ALL_BOX_SLICES)("saving %s leaves the stored filters", async (...slices) => {
-    const live = liveConfig();
-    const sent = armed(live);
-    await updateDiscoveryConfig(editedEverywhere(live), slices);
-    expect(sent.config?.filters).toEqual(live.filters);
-  });
-});
-
-describe("no Save sends a key the Swipe deck retired (MESITA-2328)", () => {
+describe("no Save sends a retired key (MESITA-2328, MESITA-2337)", () => {
   it.each(ALL_BOX_SLICES)("saving %s sends none of them", async (...slices) => {
     const live = liveConfig();
-    const sent = armed(live);
+    const sent = armed(storedBlob(live));
     await updateDiscoveryConfig(editedEverywhere(live), slices);
-    for (const dead of ["swipe", "engines", "weights", "weightsByMode"]) {
+    expect(sent.config).toBeDefined();
+    for (const dead of ["swipe", "engines", "weights", "weightsByMode", "filters"]) {
       expect(sent.config).not.toHaveProperty(dead);
     }
   });

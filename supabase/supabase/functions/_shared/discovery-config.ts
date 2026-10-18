@@ -1,17 +1,13 @@
 // Discovery config — the operator's half of the Discovery model (Docs ›
 // Discovery, MESITA-2327).
 //
-// Keys: params · filters · general · catalog · map · name · deep · chat.
+// Keys: params · general · catalog · map · name · deep · chat.
 // Admin: one page, four pipeline boxes (Name by Admin · Name · Area · Deep);
 // each box saves only its own slices.
 //
 //   params     the Area pipeline's calibration: Proximity's half distance
 //              and Popularity's reference (pipeline-signals.ts). The Area box
 //              edits all three numbers.
-//   filters    what may ENTER the listed pool at all, pushed into the WHERE
-//              clause (discovery-filters.ts). consumer-web-list-places still
-//              reads it on its listed-nearby and newest-first lanes. No box
-//              edits it; a whole-blob Save carries it through.
 //   general    Discovery-wide. requireActive + minReviews — the post-Google
 //              wipe (discovery-general-gate.ts). The category param is NOT
 //              here: it is `supers` on each Google-calling engine (MESITA-1695).
@@ -24,12 +20,10 @@
 // save instead of lingering in jsonb. `swipe` was a persisted key: it is
 // dropped, never renamed.
 //
-// FILTERS ARE NOT THE TORN-DOWN FILTER SURFACE. MESITA-1183 deleted a
-// GUEST-facing one — "what may a guest exclude" — and that tombstone stands.
-// These are OPERATOR pool policy: catalog-wide admission rules a guest never
-// sees and cannot express. THIS BLOB DELIBERATELY DOES NOT INHERIT
-// `filters_config`: that column was dropped in MESITA-1183 and its shape
-// encoded the old six-filter-module model.
+// RETIRED WITH LIST-PLACES' LISTED LANES (MESITA-2337): `filters`, the
+// operator floor of the listed Mesita pool. Its last readers were the
+// `{ lat, lng }` lane without `google: true` and the newest-first lane; the
+// Area pipeline gates Selected itself (`selectedPoolQuery`).
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { bool, num } from "./config-coerce.ts";
@@ -266,7 +260,6 @@ export type GeneralConfig = {
 
 export type DiscoveryConfig = {
   params: SignalParams;
-  filters: DiscoveryFilters;
   general: GeneralConfig;
   catalog: CatalogConfig;
   map: MapConfig;
@@ -278,34 +271,8 @@ export type DiscoveryConfig = {
 /** Ceiling for discovery_config.chat.prompt. The console textarea matches it. */
 export const CHAT_PROMPT_MAX = 12_000;
 
-/**
- * Pool admission. EVERY ONE OF THESE MUST BE EXPRESSIBLE AS A QUERY PREDICATE.
- *
- * That is not a style preference. A pool is capped before anything ranks, so
- * a filter applied AFTER the fetch does not narrow the catalog — it thins the
- * page the guest actually receives, silently. Anything that cannot be pushed
- * into the WHERE clause does not belong in this box.
- */
-export type DiscoveryFilters = {
-  /**
-   * The Enriched gate: `enriched_at IS NOT NULL` (an Enrich run completed)
-   * AND `content_state = 'ready'` (the profile can be shown now) —
-   * MESITA-2154. It was `content_state = 'ready'` alone (MESITA-1228), which
-   * a Created place also carries. The key keeps its old name: renaming a
-   * stored key silently resets the operator's value to the default.
-   */
-  requireReady: boolean;
-  /** Google stars floor. 0 = off. Above 0 EXCLUDES unrated places — see below. */
-  minRating: number;
-  /** Google review-count floor. 0 = off. */
-  minReviews: number;
-  /** Hard radius in km. 0 = off, and off is the default — see below. */
-  maxDistanceKm: number;
-};
-
+/** Google stars top out at 5: the ceiling of `map.minRating`. */
 export const MIN_RATING_MAX = 5;
-/** A radius past this is not a filter, it is the whole catalog. */
-export const MAX_DISTANCE_KM_MAX = 200;
 
 export const CATALOG_COUNT_MAX = 20;
 export const CATALOG_PLACES_PER_RAIL_MIN = 4;
@@ -359,7 +326,7 @@ export const GOOGLE_PULL_DEFAULT = 20;
 export const MAP_RADIUS_KM_MIN = 1;
 export const MAP_RADIUS_KM_MAX = 50;
 export const MAP_RADIUS_KM_DEFAULT = 50;
-/** Same ceiling as filters.minReviews — one review floor reads like another. */
+/** Same ceiling as map.minReviews — one review floor reads like another. */
 export const GENERAL_MIN_REVIEWS_MAX = 100_000;
 
 /**
@@ -486,22 +453,6 @@ export const SIGNAL_PARAM_BOUNDS = {
 
 export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
   params: DEFAULT_SIGNAL_PARAMS,
-  /**
-   * `requireReady` (the Enriched gate) ships ON because it is the product
-   * promise: a listed pool holds only Enriched places (MESITA-2154 made the
-   * predicate match the promise).
-   *
-   * The quality floors ship OFF: they also exclude places with NO rating at
-   * all, which in a young catalog is most of them. `maxDistanceKm` ships OFF
-   * too: it exists for the operator who genuinely wants a city boundary, not
-   * as the default way distance is handled.
-   */
-  filters: {
-    requireReady: true,
-    minRating: 0,
-    minReviews: 0,
-    maxDistanceKm: 0,
-  },
   general: DEFAULT_GENERAL,
   catalog: DEFAULT_CATALOG,
   map: DEFAULT_MAP,
@@ -761,47 +712,14 @@ export function normalizeSignalParams(raw: unknown): SignalParams {
 /**
  * Tolerant read: any missing or invalid key falls back to its default, and
  * the blob is rebuilt key by key, so a retired key (`weights`,
- * `weightsByMode`, `engines`, `swipe`, MESITA-2328) is dropped on the next
- * save rather than lingering in jsonb forever.
+ * `weightsByMode`, `engines`, `swipe`, MESITA-2328; `filters`, MESITA-2337)
+ * is dropped on the next save rather than lingering in jsonb forever.
  */
 export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
   const r = (raw ?? {}) as Record<string, unknown>;
-  const rawFilters = (r.filters ?? {}) as Record<string, unknown>;
 
   return {
     params: normalizeSignalParams(r.params),
-    filters: {
-      requireReady: bool(
-        rawFilters.requireReady,
-        DISCOVERY_DEFAULTS.filters.requireReady,
-      ),
-      // Rounded to one decimal: Google stars are one-decimal values, and a
-      // floor of 4.300000000000001 would leave the page permanently dirty.
-      minRating: Math.round(
-        num(
-          rawFilters.minRating,
-          DISCOVERY_DEFAULTS.filters.minRating,
-          0,
-          MIN_RATING_MAX,
-        ) * 10,
-      ) / 10,
-      minReviews: Math.round(
-        num(
-          rawFilters.minReviews,
-          DISCOVERY_DEFAULTS.filters.minReviews,
-          0,
-          100_000,
-        ),
-      ),
-      maxDistanceKm: Math.round(
-        num(
-          rawFilters.maxDistanceKm,
-          DISCOVERY_DEFAULTS.filters.maxDistanceKm,
-          0,
-          MAX_DISTANCE_KM_MAX,
-        ),
-      ),
-    },
     general: normalizeGeneralConfig(r.general),
     catalog: normalizeCatalogConfig(r.catalog),
     map: normalizeMapConfig(r.map),

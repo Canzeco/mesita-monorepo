@@ -47,23 +47,19 @@ describe("isEnrichedPlace — an Enrich run completed (MESITA-2154)", () => {
     expect(rule).toContain("enrichedAt");
     expect(rule).not.toContain("content_state");
 
-    // The consumer wire `enriched` and the Map ring both delegate to it.
+    // The consumer wire `enriched` delegates to it.
     const wire = fnBody(
       readFileSync(join(SHARED, "place-family-keys.ts"), "utf8"),
       "export function isEnrichedPlace",
     );
     expect(wire).toContain("isPlaceEnriched(");
     expect(wire).not.toContain("content_state");
-    const ring = fnBody(
-      readFileSync(join(SHARED, "nearby-places.ts"), "utf8"),
-      "export function isEnrichedListedRow",
-    );
-    expect(ring).toContain("isPlaceEnriched(");
-    expect(ring).not.toContain("content_state");
 
-    // The Discovery filter (Swipe, Catalog, Map's query) cuts on the stamp.
-    const filters = readFileSync(join(SHARED, "discovery-filters.ts"), "utf8");
-    expect(filters).toContain('q.not("enriched_at", "is", null)');
-    expect(filters).not.toContain('q.eq("content_state", "ready")');
+    // The Mesita Selected pool (Map and the Feed) cuts on the stamp in SQL.
+    const pool = fnBody(
+      readFileSync(join(SHARED, "area-pipeline.ts"), "utf8"),
+      "export function selectedPoolQuery",
+    );
+    expect(pool).toContain('.not("enriched_at", "is", null)');
   });
 });
