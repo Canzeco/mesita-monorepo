@@ -286,7 +286,7 @@ describe("Search map's top row is location, the query bar and the Filters disc",
       expect(file).not.toMatch(/Enriched/);
     }
     expect(popularity).toContain('aria-label="Google Reviews"');
-    expect(popularity).toContain('"0+"');
+    expect(popularity).not.toContain('"0+"');
     expect(popularity).toContain('"10+"');
     expect(popularity).toContain('"100+"');
     expect(popularity).toContain('"1,000+"');
