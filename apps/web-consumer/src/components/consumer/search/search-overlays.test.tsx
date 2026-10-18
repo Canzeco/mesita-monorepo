@@ -410,7 +410,7 @@ describe("Search results drop from the bar, not from the bottom", () => {
 
   // MESITA-1616: Search moved to its own route, so `barFocused` became LOCAL
   // state, not a context shared with a sibling mode rail. Home's rail
-  // (ModeRail, drawn by discover/layout.tsx) never coordinates with the bar.
+  // (ModeTabs, drawn by discover/layout.tsx) never coordinates with the bar.
   // This pins that the old cross-component coordination
   // (DiscoverChromeProvider) is gone, not just unused, so it can't quietly
   // regrow without a deliberate edit here.
@@ -422,7 +422,7 @@ describe("Search results drop from the bar, not from the bottom", () => {
     expect(src).toContain("useState(false)");
     expect(src).not.toContain("useDiscoverChrome");
 
-    const nav = read("../ModeRail.tsx");
+    const nav = read("../ModeTabs.tsx");
     expect(nav).not.toContain("useDiscoverChrome");
     expect(nav).not.toContain("barFocused");
 

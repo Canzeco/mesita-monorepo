@@ -411,7 +411,7 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
 // restored the Places label after MESITA-2285 had renamed it Feed.
 describe("T5b — Home's supporting rail", () => {
   it("is exactly Places · Social · Chat · Favs", async () => {
-    const { HOME_MODES } = await import("@/components/consumer/ModeRail");
+    const { HOME_MODES } = await import("@/components/consumer/ModeTabs");
     expect(HOME_MODES.map((m) => m.label)).toEqual([
       "Places",
       "Social",
@@ -425,14 +425,14 @@ describe("T5b — Home's supporting rail", () => {
   // three. Their pages stay the Soon empty state — Memo and the saved grid
   // do not mount.
   it("Places is the catalog; Social, Chat and Favs stay Soon", async () => {
-    const { HOME_MODES } = await import("@/components/consumer/ModeRail");
+    const { HOME_MODES } = await import("@/components/consumer/ModeTabs");
     expect(HOME_MODES.map((m) => Boolean(m.soon))).toEqual([
       false,
       true,
       true,
       true,
     ]);
-    const rail = readFileSync(join(COMPONENTS, "ModeRail.tsx"), "utf8");
+    const rail = readFileSync(join(COMPONENTS, "ModeTabs.tsx"), "utf8");
     expect(rail).toMatch(/>\s*Soon\s*</);
     const places = readFileSync(
       join(SHELL, "(discovery)", "discover", "places", "page.tsx"),
@@ -457,7 +457,7 @@ describe("T5b — Home's supporting rail", () => {
   it.each(["swipe", "scroll", "feed"])(
     "/discover/%s has no page and 308s to Places",
     async (seg) => {
-      const { HOME_MODES } = await import("@/components/consumer/ModeRail");
+      const { HOME_MODES } = await import("@/components/consumer/ModeTabs");
       expect(HOME_MODES.map((m) => m.href)).not.toContain(`/discover/${seg}`);
       const hop = (await nextConfig.redirects!()).find(
         (r) => r.source === `/discover/${seg}`,
@@ -474,8 +474,8 @@ describe("T5b — Home's supporting rail", () => {
   // (N-1) x 4px of gaps, and it has to fit 359px (375 frame less px-2).
   //
   it("keeps every Home label inside the 359px track", async () => {
-    const { HOME_MODES } = await import("@/components/consumer/ModeRail");
-    const navSrc = readFileSync(join(COMPONENTS, "ModeRail.tsx"), "utf8");
+    const { HOME_MODES } = await import("@/components/consumer/ModeTabs");
+    const navSrc = readFileSync(join(COMPONENTS, "ModeTabs.tsx"), "utf8");
     // Match the class strings themselves, not the words anywhere in the file.
     expect(navSrc).toContain('"text-xs flex items-center');
     expect(navSrc).toContain('className="h-3.5 w-3.5 shrink-0"');
@@ -517,7 +517,7 @@ describe("T5b — Home's supporting rail", () => {
   // Every pill is a LIVE page — never a redirect source, which would cost a
   // hop and light no pill while it ran.
   it("every pill href is a real page, one each", async () => {
-    const { HOME_MODES } = await import("@/components/consumer/ModeRail");
+    const { HOME_MODES } = await import("@/components/consumer/ModeTabs");
     const pages = new Set(allPages().map(pageUrl));
     const hrefs = HOME_MODES.map((m) => m.href);
     for (const href of hrefs) expect(pages, href).toContain(href);
@@ -531,7 +531,7 @@ describe("T5b — Home's supporting rail", () => {
   // First pill is the default, the property this rail has preserved since
   // MESITA-1609. Home's bottom-tab href is the rail's first href.
   it("lands Home on its leading pill", async () => {
-    const { HOME_MODES } = await import("@/components/consumer/ModeRail");
+    const { HOME_MODES } = await import("@/components/consumer/ModeTabs");
     expect(CONSUMER_ROUTES.discoverDefault).toBe(
       CONSUMER_ROUTES.discoverTabs.places,
     );
@@ -555,7 +555,7 @@ describe("T5b — Home's supporting rail", () => {
       join(SHELL, "(discovery)", "discover", "layout.tsx"),
       "utf8",
     );
-    expect(layout).toContain("<ModeRail />");
+    expect(layout).toContain("<ModeTabs />");
   });
 });
 

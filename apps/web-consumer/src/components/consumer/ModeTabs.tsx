@@ -1,6 +1,6 @@
 "use client";
 
-// Home's top rail — one row of pills over /discover/*:
+// Home's mode tabs — one row of pills over /discover/*:
 //
 //   Home    Places · Social · Chat · Favs        (MESITA-2166)
 //
@@ -12,7 +12,7 @@
 // It was DiscoverModeNav. It is drawn by app/(shell)/(discovery)/discover/
 // layout.tsx, so the pills share one frame and one deck fetch, and
 // Search — its own bottom tab since MESITA-2055 — sits outside it with no
-// rail painting over the map (the MESITA-1616 bug cannot return).
+// tabs painting over the map (the MESITA-1616 bug cannot return).
 //
 // EVERY PILL IS AN EQUAL COLUMN: `grid-flow-col auto-cols-fr` on a
 // `w-max min-w-full` track. At rest min-w-full stretches the track to the
@@ -84,7 +84,7 @@ export const HOME_MODES: Mode[] = [
   },
 ];
 
-export function ModeRail() {
+export function ModeTabs() {
   const pathname = barePath(usePathname() ?? "/");
   const supabase = useBrowserSupabase();
   const activeRef = useRef<HTMLAnchorElement | null>(null);

@@ -15,7 +15,7 @@ export const CONSUMER_ROUTES = {
   // the one search bar + Filters. `/discover/search` and `/discover/map` are
   // redirect SOURCES for the bookmarks those addresses shipped under.
   search: "/search",
-  // DISCOVER — Home's mode-rail namespace. Four modes, matching ModeRail's
+  // DISCOVER — Home's mode-tabs namespace. Four modes, matching ModeTabs's
   // four columns exactly: Places · Social · Chat · Favs (Pato, MESITA-2166).
   //
   // THE ENGINE KEY IS STILL `swipe`, AND THAT IS DELIBERATE. `swipe` is a

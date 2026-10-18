@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ModeRail } from "@/components/consumer/ModeRail";
+import { ModeTabs } from "@/components/consumer/ModeTabs";
 
 // Home's rail — Places is the catalog (MESITA-2254); Social, Chat and Favs
 // stay Soon (MESITA-2168). The rail is drawn HERE, not in the route-group
@@ -15,7 +15,7 @@ import { ModeRail } from "@/components/consumer/ModeRail";
 export default function DiscoverLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <ModeRail />
+      <ModeTabs />
       {children}
     </div>
   );
