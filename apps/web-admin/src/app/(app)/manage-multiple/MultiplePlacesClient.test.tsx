@@ -44,7 +44,7 @@ describe("Multiple Places renders five boxes (MESITA-2096)", () => {
 
   it("puts Create, Enrich and Enable · Disable · Delete in their own boxes", () => {
     expect(buttons(box("create"))).toEqual(["Create"]);
-    expect(buttons(box("enrich"))).toEqual(["Fast Enrich", "Deep Enrich"]);
+    expect(buttons(box("enrich"))).toEqual(["Weak Enrich", "Strong Enrich"]);
     expect(buttons(box("update"))).toEqual(["Enable", "Disable", "Delete"]);
   });
 

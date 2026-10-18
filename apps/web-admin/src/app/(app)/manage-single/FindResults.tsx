@@ -3,7 +3,8 @@
 // Single Place › Find › the one results table (MESITA-2124, MESITA-2181,
 // MESITA-2187, MESITA-2188). A row per place. The first column says whether
 // Mesita holds it or it is Google only — the first fact to read. Then the
-// states — General States — then, on a word, Name Search and Google.
+// states, then, on a word, Name Search and Google. 50 rows a page
+// (MESITA-2335); no group header over the states.
 // Reviews stay off this table (MESITA-2222). The action sits at the row end.
 // Drawn once both have settled, so no row ever moves under the cursor.
 //
@@ -31,7 +32,7 @@ import {
   TOUCH_TARGET_CLASS,
 } from "@/lib/ui-classes";
 import {
-  FIND_FIRST_ROWS,
+  FIND_PAGE_ROWS,
   WORD_RANK_COLUMNS,
   type FindResult,
   type FindRow,
@@ -57,10 +58,6 @@ const PIN_HELD_HEAD = `hidden sticky left-0 w-36 min-w-36 max-w-36 sm:table-cell
 const PIN_PLACE_HEAD = `sticky left-0 sm:left-36 ${PIN_HEAD_BG}`;
 const PIN_HELD_CELL = `hidden sticky left-0 w-36 min-w-36 max-w-36 sm:table-cell ${PIN_CELL_BG}`;
 const PIN_PLACE_CELL = `sticky left-0 sm:left-36 ${PIN_CELL_BG}`;
-
-const STATE_GROUPS = [
-  { label: "General States", span: GENERAL_STATE_FACTS.length },
-] as const;
 
 export const rowNameId = (i: number) => `find-row-name-${i}`;
 
@@ -117,10 +114,13 @@ export function FindResults({
   /** `catalogue` is the empty search: Mesita places only, no rank columns. */
   variant?: "search" | "catalogue";
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [pageIndex, setPageIndex] = useState(0);
   const rows = result.rows.map((row) => withAdd(row, added));
-  const shown = expanded ? rows : rows.slice(0, FIND_FIRST_ROWS);
-  const more = rows.length - shown.length;
+  const pages = Math.max(1, Math.ceil(rows.length / FIND_PAGE_ROWS));
+  // A new result can be shorter than the page we were on.
+  const page = Math.min(pageIndex, pages - 1);
+  const first = page * FIND_PAGE_ROWS;
+  const shown = rows.slice(first, first + FIND_PAGE_ROWS);
   const failed = new Set(result.failed);
   const ranks = variant === "search";
   const colSpan =
@@ -154,41 +154,37 @@ export function FindResults({
           <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
             <caption className="sr-only">
               {ranks
-                ? `Places matching “${query}”, with general states, and where Name Search and Google ranked them`
-                : "Every place on Mesita, with general states"}
+                ? `Places matching “${query}”, with their states, and where Name Search and Google ranked them`
+                : "Every place on Mesita, with its states"}
             </caption>
             <thead>
               <tr className={HEAD_ROW}>
                 <th
-                  rowSpan={2}
-                  scope="col"
+                                    scope="col"
                   className={`px-3 py-3 text-center align-bottom font-semibold ${PIN_HELD_HEAD}`}
                 >
                   On
                 </th>
                 <th
-                  rowSpan={2}
-                  scope="col"
+                                    scope="col"
                   className={`px-4 py-3 align-bottom font-semibold ${PIN_PLACE_HEAD}`}
                 >
                   Place
                 </th>
-                {STATE_GROUPS.map((g) => (
+                {GENERAL_STATE_FACTS.map((f) => (
                   <th
-                    key={g.label}
-                    colSpan={g.span}
-                    scope="colgroup"
-                    className="px-3 pt-3 pb-1 text-center font-semibold whitespace-nowrap"
+                    key={f.key}
+                    scope="col"
+                    className="px-3 py-3 text-center align-bottom font-semibold whitespace-nowrap"
                   >
-                    {g.label}
+                    {f.label}
                   </th>
                 ))}
                 {ranks
                   ? WORD_RANK_COLUMNS.map((s, i) => (
                       <th
                         key={s.key}
-                        rowSpan={2}
-                        scope="col"
+                                                scope="col"
                         className={
                           "hidden px-3 py-3 text-center align-bottom font-semibold whitespace-nowrap sm:table-cell " +
                           (i === 0 ? GROUP_EDGE : "")
@@ -204,20 +200,9 @@ export function FindResults({
                       </th>
                     ))
                   : null}
-                <th rowSpan={2} scope="col" className="px-4 py-3">
+                <th scope="col" className="px-4 py-3">
                   <span className="sr-only">Action</span>
                 </th>
-              </tr>
-              <tr className={HEAD_ROW}>
-                {GENERAL_STATE_FACTS.map((f) => (
-                  <th
-                    key={f.key}
-                    scope="col"
-                    className="px-3 pb-3 text-center font-semibold whitespace-nowrap"
-                  >
-                    {f.label}
-                  </th>
-                ))}
               </tr>
             </thead>
             <tbody>
@@ -235,7 +220,7 @@ export function FindResults({
                     </span>
                     <NameCell
                       row={row}
-                      id={rowNameId(i)}
+                      id={rowNameId(first + i)}
                       disabled={disabled}
                       onOpen={onOpen}
                       onOpenGoogle={onOpenGoogle}
@@ -282,22 +267,23 @@ export function FindResults({
                   </td>
                 </tr>
               ))}
-              {more > 0 ? (
+              {pages > 1 ? (
                 <tr className={ROW_DIVIDERS}>
                   <td colSpan={colSpan} className="px-4 py-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setExpanded(true);
-                        // The first newly shown row takes focus once it exists.
+                    <Pager
+                      page={page}
+                      pages={pages}
+                      first={first}
+                      count={shown.length}
+                      total={rows.length}
+                      onPage={(next) => {
+                        setPageIndex(next);
+                        // The new page's first row takes focus once it exists.
                         requestAnimationFrame(() =>
-                          document.getElementById(rowNameId(FIND_FIRST_ROWS))?.focus(),
+                          document.getElementById(rowNameId(next * FIND_PAGE_ROWS))?.focus(),
                         );
                       }}
-                      className={`text-muted-foreground hover:text-foreground type-label font-semibold transition ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`}
-                    >
-                      Show {more} more
-                    </button>
+                    />
                   </td>
                 </tr>
               ) : null}
@@ -307,6 +293,48 @@ export function FindResults({
       </div>
       <NoteLines notes={result.notes} />
     </>
+  );
+}
+
+/** Previous · "51–100 of 240" · Next, under the last row. */
+function Pager({
+  page,
+  pages,
+  first,
+  count,
+  total,
+  onPage,
+}: {
+  page: number;
+  pages: number;
+  first: number;
+  count: number;
+  total: number;
+  onPage: (page: number) => void;
+}) {
+  const button = `text-muted-foreground hover:text-foreground disabled:text-muted-foreground/40 type-label font-semibold transition disabled:cursor-not-allowed ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
+  return (
+    <nav aria-label="Pages" className="flex items-center gap-4">
+      <button
+        type="button"
+        disabled={page === 0}
+        onClick={() => onPage(page - 1)}
+        className={button}
+      >
+        Previous
+      </button>
+      <span className="text-muted-foreground type-label tabular-nums">
+        {first + 1}–{first + count} of {total}
+      </span>
+      <button
+        type="button"
+        disabled={page >= pages - 1}
+        onClick={() => onPage(page + 1)}
+        className={button}
+      >
+        Next
+      </button>
+    </nav>
   );
 }
 
@@ -531,8 +559,8 @@ function ActionCell({
   return (
     <div className="flex flex-col items-end gap-1.5">
       {row.held ? (
-        /* decision: Pato (2026-10-17, MESITA-2320) — Open · Fast Enrich ·
-           Deep Enrich sit on one line, one pill style. */
+        /* decision: Pato (2026-10-17, MESITA-2320) — Open · Weak Enrich ·
+           Strong Enrich sit on one line, one pill style. */
         <span className="inline-flex flex-nowrap items-center justify-end gap-1.5">
           <button
             type="button"
