@@ -1,9 +1,15 @@
-// The Area pipeline's gates, signals and Selected factor (MESITA-2327,
-// weighted sum since MESITA-2347, one pool since MESITA-2379).
+// The Area pipeline's gates, signals and Selected factor (MESITA-2327; one
+// pool since MESITA-2379; the weights table since MESITA-2428).
 //
-//   point location   final = (Proximity × Pw + Popularity × Qw) ÷ (Pw + Qw) × selected
-//   area location    final = territory × Popularity × selected
-//   no location      final = Popularity × selected
+//   point location   final = Proximity^a × (Popularity × selected)^b
+//   area location    final = territory × (Popularity × selected)^b
+//   no location      final = (Popularity × selected)^b
+//
+// (a, b) is one row of the operator's weights table, picked by the guest's
+// mode: Nearby, Popular or Family (`params.modes`). Geometric weights, so
+// within one mode only the ratio a : b changes the order; 0 turns a signal
+// off (x^0 = 1). Selected lives INSIDE Popularity (Pato, MESITA-2428): it
+// rides Popularity's exponent, so a mode that ignores Popularity ignores it.
 //
 // Gates are binary eligibility (0 or 1) and stay separate from the
 // continuous signals, so diagnostics can say WHY a place is out (a gate)
@@ -14,9 +20,9 @@
 //
 // Selected is a FACTOR, not a gate (Pato, 2026-10-18): a Mesita Selected
 // place (an Enrich run completed and the profile is ready — curation, never
-// payment) keeps its score, every other candidate keeps 0.3 of it. Fixed
-// constants, so a strong Google-only place can still outrank a weak Selected
-// one. Ties break on distance (a point only), then id.
+// payment) multiplies Popularity by 1, every other candidate by 0.3, before
+// the exponent. Fixed constants, so a strong Google-only place can still
+// outrank a weak Selected one. Ties break on distance (a point only), then id.
 
 import { popularity, proximity } from "./pipeline-signals.ts";
 import { haversineKm } from "./geo.ts";
@@ -51,8 +57,8 @@ export type AreaContext = {
   families: readonly string[];
   /** Popularity's volume term is ½ at this many reviews. */
   halfReviews: number;
-  /** The operator's two weights, 0..10 each (point locations). */
-  balance: { proximity: number; popularity: number };
+  /** The mode's two exponents, one row of the weights table. */
+  weights: AreaWeights;
 };
 
 /** One candidate, normalized from whichever source produced it. */
@@ -112,37 +118,26 @@ export function territoryGate(
     : 0;
 }
 
-/** The guest's Near/Popular toggle (MESITA-2425). A point location only:
- *  an area or no location already ranks on Popularity alone. */
-export type AreaPrefer = "near" | "popular";
+/** The guest's mode (MESITA-2428): Nearby and Popular are every family,
+ *  Family is one family. Each picks one row of the weights table. */
+export const AREA_MODES = ["nearby", "popular", "family"] as const;
+export type AreaMode = (typeof AREA_MODES)[number];
 
-/** Anything but "popular" is Near, the default. */
-export function readAreaPrefer(v: unknown): AreaPrefer {
-  return v === "popular" ? "popular" : "near";
+/** One row of the weights table: the two exponents. */
+export type AreaWeights = { proximity: number; popularity: number };
+
+/** The wire's `prefer` (MESITA-2425): "popular" and "family" name their
+ *  mode; anything else, "near" included, is Nearby. */
+export function readAreaMode(v: unknown): AreaMode {
+  return v === "popular" ? "popular" : v === "family" ? "family" : "nearby";
 }
 
-/** Near keeps the operator's two weights; Popular turns Proximity off
- *  inside the same radius (a Popularity weight of 0 counts as 1). */
-export function balanceForPrefer(
-  prefer: AreaPrefer,
-  balance: { proximity: number; popularity: number },
-): { proximity: number; popularity: number } {
-  if (prefer === "near") return balance;
-  const qw = Number.isFinite(balance.popularity) ? balance.popularity : 0;
-  return { proximity: 0, popularity: qw > 0 ? qw : 1 };
-}
-
-/** The weighted sum of the two signals, 0..1; 0 when both weights are 0. */
-export function weightedArea(
-  prox: number,
-  pop: number,
-  balance: { proximity: number; popularity: number },
-): number {
-  const pw = Number.isFinite(balance.proximity) ? Math.max(0, balance.proximity) : 0;
-  const qw = Number.isFinite(balance.popularity) ? Math.max(0, balance.popularity) : 0;
-  const total = pw + qw;
-  if (!(total > 0)) return 0;
-  return (prox * pw + pop * qw) / total;
+/** x^w with the table's guards: a missing or negative exponent is 0 (the
+ *  signal is off), and 0^0 is 1. */
+function weighted(x: number, w: number): number {
+  const e = Number.isFinite(w) ? Math.max(0, w) : 0;
+  if (e === 0) return 1;
+  return Math.pow(Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0)), e);
 }
 
 /** Popularity, or null when the place has no rating or no review count. */
@@ -168,7 +163,11 @@ export type AreaDiagnostics = {
   signals: { proximity: number | null; popularity: number | null };
   selected: 1 | 0.3;
   source: AreaSource;
+  /** The mode's exponents (MESITA-2428). */
+  weights: AreaWeights;
+  /** Proximity^a × Popularity^b (× territory), before Selected. */
   base: number;
+  /** base × selected^b. */
   final: number;
   formula: "point" | "area" | "none";
 };
@@ -190,11 +189,13 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
     : null;
   const territory = loc.kind === "area" ? territoryGate(c, loc.bounds) : null;
   const prox = loc.kind === "point" ? proximity(c, loc.anchor, loc.radiusKm) : null;
+  const w = ctx.weights;
+  const popPart = weighted(popN, w.popularity);
   const base = loc.kind === "point"
-    ? weightedArea(prox ?? 0, popN, ctx.balance)
+    ? weighted(prox ?? 0, w.proximity) * popPart
     : loc.kind === "area"
-    ? (territory ?? 0) * popN
-    : popN;
+    ? (territory ?? 0) * popPart
+    : popPart;
   const factor = selectedFactor(c.source);
   const open = family === 1 && radius !== 0 && territory !== 0;
   return {
@@ -210,8 +211,9 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
     signals: { proximity: prox, popularity: pop },
     selected: factor,
     source: c.source,
+    weights: { proximity: w.proximity, popularity: w.popularity },
     base: open ? base : 0,
-    final: open ? base * factor : 0,
+    final: open ? base * weighted(factor, w.popularity) : 0,
     formula: loc.kind,
     distanceKm: km,
   };

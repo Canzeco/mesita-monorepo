@@ -410,18 +410,18 @@ Deno.test("selected: the Area score ranks; the nearer twin first", () => {
   assertEquals(ids(loved), ["loved", "quiet"]);
 });
 
-Deno.test("selected: the weights are the operator's (params.balance), MESITA-2347", () => {
+Deno.test("selected: the weights are the operator's (params.modes.nearby, MESITA-2428)", () => {
   const rows = [
     mrow("near-quiet", { lat: CENTER.lat + 0.001, google_stars_overall: 4.0, google_review_count: 100 }),
     mrow("far-loved", { lat: CENTER.lat + 0.05, google_stars_overall: 4.9, google_review_count: 4000 }),
   ];
   const distance = {
     ...selOpts,
-    params: { ...selOpts.params, balance: { proximity: 10, popularity: 0 } },
+    params: { ...selOpts.params, modes: { ...DISCOVERY_DEFAULTS.params.modes, nearby: { proximity: 1, popularity: 0 } } },
   };
   const proven = {
     ...selOpts,
-    params: { ...selOpts.params, balance: { proximity: 0, popularity: 10 } },
+    params: { ...selOpts.params, modes: { ...DISCOVERY_DEFAULTS.params.modes, nearby: { proximity: 0, popularity: 1 } } },
   };
   assertEquals(ids(selectMesitaSelected(rows, distance))[0], "near-quiet");
   assertEquals(ids(selectMesitaSelected(rows, proven))[0], "far-loved");

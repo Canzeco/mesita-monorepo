@@ -5,8 +5,8 @@
 // Admin: one page, four pipeline boxes (Name by Admin · Name · Area · Deep);
 // each box saves only its own slices.
 //
-//   params     the Area pipeline's three numbers: Popularity's reviews for
-//              half credit and the two weights of the weighted sum
+//   params     the Area pipeline's numbers: Popularity's reviews for half
+//              credit and the weights table, two exponents per mode
 //              (pipeline-signals.ts, area-score.ts). The Area box edits them.
 //   general    Discovery-wide. requireActive + minReviews — the post-Google
 //              wipe (discovery-general-gate.ts). The category param is NOT
@@ -27,6 +27,7 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { bool, num } from "./config-coerce.ts";
+import { AREA_MODES, type AreaMode, type AreaWeights } from "./area-score.ts";
 import {
   POPULARITY_HALF_REVIEWS_DEFAULT,
   POPULARITY_HALF_REVIEWS_MAX,
@@ -34,18 +35,25 @@ import {
 } from "./pipeline-signals.ts";
 
 /**
- * The Area pipeline's three numbers (MESITA-2347), the only ones `params`
- * carries: Popularity's reviews-for-half-credit and the two weights of the
- * weighted sum. Proximity has no number of its own — `map.radiusKm` is it.
+ * The Area pipeline's numbers, the only ones `params` carries: Popularity's
+ * reviews-for-half-credit and the weights table (MESITA-2428), two
+ * exponents per mode. Proximity has no number of its own — `map.radiusKm`
+ * is it. `balance`, the two linear weights it replaced, is dropped.
  */
 export type SignalParams = {
   popularity: { halfReviews: number };
-  balance: { proximity: number; popularity: number };
+  modes: Record<AreaMode, AreaWeights>;
 };
-/** The two weights' range: whole numbers, 0 turns a signal off. */
+/** An exponent's range, two decimals (the field steps by 0.25); 0 turns a signal off. */
 export const AREA_WEIGHT_MIN = 0;
-export const AREA_WEIGHT_MAX = 10;
-export const AREA_WEIGHT_DEFAULT = 5;
+export const AREA_WEIGHT_MAX = 5;
+/** The table's defaults (Pato, MESITA-2428): Nearby puts distance first,
+ *  Popular puts popularity first, Family weighs both alike. */
+export const DEFAULT_AREA_MODES: Record<AreaMode, AreaWeights> = {
+  nearby: { proximity: 2, popularity: 1 },
+  popular: { proximity: 1, popularity: 2 },
+  family: { proximity: 1, popularity: 1 },
+};
 
 export type CatalogConfig = {
   /** Atlas category rails that currently have inventory. */
@@ -435,7 +443,7 @@ export const DEFAULT_GENERAL: GeneralConfig = {
 /** The Area pipeline's three numbers. A blob with no `params` reads these. */
 export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
   popularity: { halfReviews: POPULARITY_HALF_REVIEWS_DEFAULT },
-  balance: { proximity: AREA_WEIGHT_DEFAULT, popularity: AREA_WEIGHT_DEFAULT },
+  modes: DEFAULT_AREA_MODES,
 };
 
 /** Legal ranges for the three numbers the Area box edits. */
@@ -445,7 +453,7 @@ export const SIGNAL_PARAM_BOUNDS = {
     max: POPULARITY_HALF_REVIEWS_MAX,
     decimals: 0,
   },
-  weight: { min: AREA_WEIGHT_MIN, max: AREA_WEIGHT_MAX, decimals: 0 },
+  weight: { min: AREA_WEIGHT_MIN, max: AREA_WEIGHT_MAX, decimals: 2 },
 } as const;
 
 export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
@@ -680,13 +688,13 @@ function boundedParam(
  * The Area pipeline's three numbers. Rebuilt field by field, so a stored bag
  * from the retired deck (maxKm, kneeKm, timing, category, priorRating, …)
  * or the retired calibration (proximity.halfDistanceKm,
- * popularity.referenceRating/referenceReviews, MESITA-2347) is dropped on
- * the next save.
+ * popularity.referenceRating/referenceReviews, MESITA-2347) or the linear
+ * `balance` (MESITA-2428) is dropped on the next save.
  */
 export function normalizeSignalParams(raw: unknown): SignalParams {
   const r = (raw ?? {}) as Record<string, unknown>;
   const pop = (r.popularity ?? {}) as Record<string, unknown>;
-  const b = (r.balance ?? {}) as Record<string, unknown>;
+  const m = (r.modes ?? {}) as Record<string, unknown>;
   const d = DEFAULT_SIGNAL_PARAMS;
   return {
     popularity: {
@@ -696,10 +704,14 @@ export function normalizeSignalParams(raw: unknown): SignalParams {
         SIGNAL_PARAM_BOUNDS.halfReviews,
       ),
     },
-    balance: {
-      proximity: boundedParam(b.proximity, d.balance.proximity, SIGNAL_PARAM_BOUNDS.weight),
-      popularity: boundedParam(b.popularity, d.balance.popularity, SIGNAL_PARAM_BOUNDS.weight),
-    },
+    modes: Object.fromEntries(AREA_MODES.map((mode) => {
+      const row = (m[mode] ?? {}) as Record<string, unknown>;
+      const dr = d.modes[mode];
+      return [mode, {
+        proximity: boundedParam(row.proximity, dr.proximity, SIGNAL_PARAM_BOUNDS.weight),
+        popularity: boundedParam(row.popularity, dr.popularity, SIGNAL_PARAM_BOUNDS.weight),
+      }];
+    })) as Record<AreaMode, AreaWeights>,
   };
 }
 

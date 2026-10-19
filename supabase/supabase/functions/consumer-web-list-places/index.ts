@@ -68,7 +68,7 @@ import {
   selectAreaPool,
   selectedPoolQuery,
 } from "../_shared/area-pipeline.ts";
-import { readAreaPrefer } from "../_shared/area-score.ts";
+import { readAreaMode } from "../_shared/area-score.ts";
 import { areaQuota, ownedLookup } from "../_shared/area-deps.ts";
 import { readGooglePlacesKey } from "../_shared/google-places.ts";
 
@@ -88,7 +88,7 @@ type ListBody = {
   minReviews?: unknown;
   lat?: number;
   lng?: number;
-  radiusKm?: number;  /** The guest's Near/Popular toggle (MESITA-2425); absent = Near. */
+  radiusKm?: number;  /** The guest's mode: near (Nearby) · popular · family (MESITA-2428). */
   prefer?: unknown;
 };
 
@@ -185,7 +185,7 @@ Deno.serve(async (req) => {
     // never a stub (MESITA-2154). An owned row that is not ready stays a
     // stub, and its tap's get-or-create opens the Mesita place.
     lookupOwned: ownedLookup(supabase, PLACE_CARD_COLUMNS, "consumer-web-list-places"),
-    prefer: readAreaPrefer(body.prefer),
+    mode: readAreaMode(body.prefer),
   });
   // A caller that names its own cap keeps it.
   const places = typeof body.limit === "number"
@@ -197,7 +197,7 @@ Deno.serve(async (req) => {
     fn: "consumer-web-list-places",
     mode: "nearby",
     googleFillOn: googleFill,
-    prefer: readAreaPrefer(body.prefer),
+    areaMode: guestSupers.length > 0 ? "family" : readAreaMode(body.prefer),
     ...area.summary,
     returned: places.length,
   }));

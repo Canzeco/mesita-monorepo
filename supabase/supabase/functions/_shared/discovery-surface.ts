@@ -290,9 +290,9 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     signals: ["proximity", "popularity"],
     gates: ["family", "territory"],
     factors: [
-      "Selected: × 1.0 for a Mesita Selected place (an Enrich run completed and the profile is ready — curation, never payment), × 0.3 for every other place. Fixed, so a strong Google-only place can still outrank a weak Selected one.",
+      "Selected: × 1.0 for a Mesita Selected place (an Enrich run completed and the profile is ready — curation, never payment), × 0.3 for every other place, inside Popularity, so it is raised to Popularity's exponent (MESITA-2428). Fixed, so a strong Google-only place can still outrank a weak Selected one.",
     ],
-    scoring: "A point: (Proximity × its weight + Popularity × its weight) ÷ (the weights' sum) × Selected. An area: Territory × Popularity × Selected. No location: Popularity × Selected. The operator's two weights, 0–10; ties break on distance (a point), then id.",
+    scoring: "A point: Proximity^a × (Popularity × Selected)^b. An area: Territory × (Popularity × Selected)^b. No location: (Popularity × Selected)^b. (a, b) is the guest's mode's row of the weights table (Nearby · Popular · Family, exponents 0–5, MESITA-2428); ties break on distance (a point), then id.",
     keepsOrder: [],
     rules: [
       "Google and Mesita candidates contribute independently to one pool, deduped by Google Place ID (a Mesita place wins its own Google id), gated, scored and ranked before any page is cut. The guest never picks a source.",

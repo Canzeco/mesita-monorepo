@@ -53,8 +53,7 @@ import {
   type AreaBounds,
   type AreaCandidate,
   type AreaContext,
-  type AreaPrefer,
-  balanceForPrefer,
+  type AreaMode,
   type AreaDiagnostics,
   type AreaLocation,
   type AreaSource,
@@ -65,7 +64,7 @@ import {
 } from "./area-score.ts";
 import { POPULARITY_HALF_REVIEWS_DEFAULT } from "./pipeline-signals.ts";
 import {
-  AREA_WEIGHT_DEFAULT,
+  DEFAULT_AREA_MODES,
   type DiscoveryConfig,
   type GeneralConfig,
   type SignalParams,
@@ -84,17 +83,20 @@ export const FEED_GOOGLE_TYPES: readonly string[] = nearbyTypesForSupers(
   CATALOG_FAMILY_SLUGS,
 );
 
-/** Popularity's reviews-for-half-credit and the two weights, from the blob. */
-export function areaSignalParams(params: SignalParams): Pick<
-  AreaContext,
-  "halfReviews" | "balance"
-> {
+/** Popularity's reviews-for-half-credit and the mode's row of the weights
+ *  table (MESITA-2428), from the blob. */
+export function areaSignalParams(
+  params: SignalParams,
+  mode: AreaMode = "nearby",
+): Pick<AreaContext, "halfReviews" | "weights"> {
   const num = (v: unknown, d: number) => (typeof v === "number" && Number.isFinite(v) ? v : d);
+  const row = params.modes?.[mode];
+  const d = DEFAULT_AREA_MODES[mode];
   return {
     halfReviews: num(params.popularity?.halfReviews, POPULARITY_HALF_REVIEWS_DEFAULT),
-    balance: {
-      proximity: num(params.balance?.proximity, AREA_WEIGHT_DEFAULT),
-      popularity: num(params.balance?.popularity, AREA_WEIGHT_DEFAULT),
+    weights: {
+      proximity: num(row?.proximity, d.proximity),
+      popularity: num(row?.popularity, d.popularity),
     },
   };
 }
@@ -241,8 +243,8 @@ function circleAround(b: AreaBounds, rank: NearbyRank): NearbyCircle {
 /**
  * The Google calls for a location, at most `calls` (1–3). A point: the
  * nearest 20 in the circle, then Google's most prominent 20 in it, then the
- * most prominent in the inner half-radius circle (Popular swaps the first
- * two). An area: every call ranks
+ * most prominent in the inner half-radius circle (the Popular mode swaps
+ * the first two). An area: every call ranks
  * POPULARITY (no centre bias) — the circle around the bounds, then the
  * circles around its two halves, split across the longer side. The circles
  * are retrieval geometry only; nothing scores against their centres.
@@ -250,7 +252,7 @@ function circleAround(b: AreaBounds, rank: NearbyRank): NearbyCircle {
 export function areaFanoutCircles(
   location: AreaLocation,
   calls: number,
-  prefer: AreaPrefer = "near",
+  mode: AreaMode = "nearby",
 ): NearbyCircle[] {
   const n = Math.max(0, Math.min(3, Math.floor(calls)));
   if (location.kind === "point") {
@@ -260,7 +262,7 @@ export function areaFanoutCircles(
     const inner = { center: c, radiusKm: location.radiusKm / 2, rank: "POPULARITY" as const };
     // Popular (MESITA-2425) asks for the prominent 20 first, so a one-call
     // map is not left ranking the nearest 20 by Popularity.
-    return (prefer === "popular" ? [prominent, nearest, inner] : [nearest, prominent, inner])
+    return (mode === "popular" ? [prominent, nearest, inner] : [nearest, prominent, inner])
       .slice(0, n);
   }
   if (location.kind === "area") {
@@ -331,8 +333,9 @@ export type AreaPoolDeps<T extends OwnedRow> = {
   consumeQuota: () => Promise<boolean>;
   /** Ready Mesita rows holding these google ids; null on error. */
   lookupOwned: (gids: string[]) => Promise<T[] | null>;
-  /** The guest's Near/Popular toggle; absent = Near (MESITA-2425). */
-  prefer?: AreaPrefer;
+  /** The guest's mode (MESITA-2428); absent = Nearby, or Family when
+   *  families are requested. */
+  mode?: AreaMode;
 };
 
 export type AreaPoolPlace = Record<string, unknown> & { id: string; area: AreaDiagnostics };
@@ -375,7 +378,7 @@ async function googleItems<T extends OwnedRow>(
   summary: AreaPoolSummary,
 ): Promise<PoolItem[]> {
   const { apiKey, location, types } = deps;
-  const circles = apiKey && types.length > 0 ? areaFanoutCircles(location, deps.googleCalls, deps.prefer) : [];
+  const circles = apiKey && types.length > 0 ? areaFanoutCircles(location, deps.googleCalls, areaMode(deps)) : [];
   if (circles.length === 0) return [];
   // The Family gate pushed down exactly: a general type's precise subtypes
   // that belong to no requested family never come back to be thrown away.
@@ -429,6 +432,12 @@ async function googleItems<T extends OwnedRow>(
   });
 }
 
+/** A requested family is the Family mode whatever the caller sent: every
+ *  family shares that row of the table (MESITA-2428). */
+export function areaMode(deps: { mode?: AreaMode; families: readonly string[] }): AreaMode {
+  return deps.families.length > 0 ? "family" : deps.mode ?? "nearby";
+}
+
 /**
  * The Area pool: Google and Mesita candidates merged, deduped, gated,
  * scored and ranked globally, every place carrying its `area` breakdown.
@@ -448,12 +457,10 @@ export async function selectAreaPool<T extends OwnedRow>(
     mesita: 0,
     returned: 0,
   };
-  const params = areaSignalParams(deps.cfg.params);
   const ctx: AreaContext = {
     location: deps.location,
     families: deps.families,
-    ...params,
-    balance: balanceForPrefer(deps.prefer ?? "near", params.balance),
+    ...areaSignalParams(deps.cfg.params, areaMode(deps)),
   };
   const fromGoogle = await googleItems(deps, summary);
 

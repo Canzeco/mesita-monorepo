@@ -69,7 +69,11 @@ Deno.test("an old blob with no Area params reads the defaults (MESITA-2327, MESI
     catalog: { ranking: { proximity: 1, popularity: 1 } },
   });
   assertEquals(cfg.params.popularity.halfReviews, 100);
-  assertEquals(cfg.params.balance, { proximity: 5, popularity: 5 });
+  assertEquals(cfg.params.modes, {
+    nearby: { proximity: 2, popularity: 1 },
+    popular: { proximity: 1, popularity: 2 },
+    family: { proximity: 1, popularity: 1 },
+  });
   // The retired deck's numbers and the Catalog ranking are dropped (MESITA-2328);
   // Proximity has no bag of its own any more — the radius is its parameter.
   assertEquals("proximity" in cfg.params, false);
@@ -77,16 +81,19 @@ Deno.test("an old blob with no Area params reads the defaults (MESITA-2327, MESI
   assertEquals("ranking" in cfg.catalog, false);
 });
 
-Deno.test("Area params clamp to their bounds", () => {
+Deno.test("Area params clamp to their bounds; the weights table at two decimals (MESITA-2428)", () => {
   const cfg = normalizeDiscoveryConfig({
     params: {
       popularity: { halfReviews: 0 },
-      balance: { proximity: 99, popularity: -4 },
+      modes: { nearby: { proximity: 99, popularity: -4 }, popular: { popularity: 1.234 } },
+      balance: { proximity: 7 },
     },
   });
   assertEquals(cfg.params.popularity.halfReviews, 1);
-  assertEquals(cfg.params.balance, { proximity: 10, popularity: 0 });
-  assertEquals(normalizeDiscoveryConfig({ params: { balance: { proximity: 3.6 } } }).params.balance.proximity, 4);
+  assertEquals(cfg.params.modes.nearby, { proximity: 5, popularity: 0 });
+  assertEquals(cfg.params.modes.popular, { proximity: 1, popularity: 1.23 });
+  assertEquals(cfg.params.modes.family, { proximity: 1, popularity: 1 });
+  assertEquals("balance" in cfg.params, false);
 });
 
 Deno.test("Deep: limit 5 and no floor by default; both clamp", () => {
