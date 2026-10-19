@@ -23,10 +23,11 @@ describe("Places is one grid", () => {
     expect(rails).not.toContain("FavoriteTile");
     expect(rails).not.toContain("ArrowUpDown");
     expect(rails).not.toContain('type="range"');
-    // The tile: a square, no border, a small radius (Pato, MESITA-2409
-    // "just a bit", then MESITA-2413 "a bit more rounded").
+    // The tile: a square, no border, clearly rounded (Pato, MESITA-2409
+    // "just a bit", MESITA-2413 "a bit more", MESITA-2423 "make the borders
+    // rounded").
     expect(tile).toContain("relative aspect-square min-w-0 overflow-hidden rounded-2xl");
-    expect(tile).not.toMatch(/rounded-(xl|2xl)/);
+    expect(tile).not.toMatch(/rounded-(sm|md|lg|xl|3xl)\b/);
     expect(tile).not.toContain("border-border");
     expect(tile).toContain("formatRating");
     expect(tile).not.toContain("place.zone");
