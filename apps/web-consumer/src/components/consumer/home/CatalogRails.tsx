@@ -5,7 +5,7 @@
 //   [⌖ Tecnologico                       ⌄]   Home's header (ModeTabs) is the
 //   ┌────────────────┬─────────────────────┐   location alone (MESITA-2405),
 //   │ 👥 Social       │                     │   written to
-//   │ 🔖 Saved        │       square        │   lib/active-location.ts and
+//   │ ❤️ Saved        │       square        │   lib/active-location.ts and
 //   │▌✨ All          │        tile         │   read here.
 //   │ ──────────────  │                     │
 //   │ ☕ Coffee    ↕  │                     │
@@ -127,9 +127,10 @@ export function placesChips(): {
     // Social is not built yet (MESITA-2168): its pane says Soon, the row
     // does not (Pato, MESITA-2418: the tag "looks like shit").
     { key: SOCIAL_CHIP, label: "Social", emoji: "👥" },
-    // Saved, not Favorites, and Nearby, not Near (Pato, MESITA-2427):
+    // Saved, not Favorites, and Nearby, not Near (Pato, MESITA-2427); the
+    // heart stays, matching the tile's save button (MESITA-2430):
     // beside Nearby and Popular, "Favorites" read as Mesita's picks.
-    { key: SAVED_CHIP, label: "Saved", emoji: "🔖" },
+    { key: SAVED_CHIP, label: "Saved", emoji: "❤️" },
     { key: NEAR_CHIP, label: "Nearby", emoji: "📍" },
     { key: POPULAR_CHIP, label: "Popular", emoji: "⭐" },
     ...FILTERABLE_PLACE_FAMILIES.map((f) => ({
