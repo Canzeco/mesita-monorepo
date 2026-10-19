@@ -1,7 +1,7 @@
 // The Area score, its gates and the Selected factor (MESITA-2327; weighted
 // sum since MESITA-2347; one pool, Territory and the factor since
 // MESITA-2379).
-import { assert, assertAlmostEquals, assertEquals } from "jsr:@std/assert@1";
+import { assertAlmostEquals, assertEquals } from "jsr:@std/assert@1";
 import {
   type AreaCandidate,
   type AreaContext,
@@ -150,6 +150,31 @@ Deno.test("a missing number sinks a place to the bottom, never off the list (MES
   const ranked = rankArea([unrated, edge], (c) => c, CTX);
   assertEquals(ranked.map((r) => r.item.id), ["edge", "unrated"]);
   assertEquals(ranked[1].area.final, 0);
+});
+
+Deno.test("family gate: no family is always out; any family with no ask; exact match when asked", () => {
+  assertEquals(familyGate([], []), 0);
+  assertEquals(familyGate(["undefined"], []), 0);
+  assertEquals(familyGate(["go_out"], []), 1);
+  assertEquals(familyGate(["dinner"], ["dinner", "drinks"]), 1);
+  assertEquals(familyGate(["coffee"], ["dinner"]), 0);
+  assertEquals(familyGate([], ["dinner"]), 0);
+  assertEquals(familyGate(["undefined"], ["dinner"]), 0);
+});
+
+Deno.test("a closed gate drops the candidate instead of ranking it at 0", () => {
+  const ranked = rankArea(
+    [cand({ id: "in" }), cand({ id: "out", familyKeys: ["coffee"] }), cand({ id: "far", lat: ANCHOR.lat + 0.2 })],
+    (c) => c,
+    { ...CTX, families: ["dinner"] },
+  );
+  assertEquals(ranked.map((r) => r.item.id), ["in"]);
+});
+
+Deno.test("a closed gate zeroes the score itself, not only the ranking", () => {
+  assertEquals(areaScore(cand({ familyKeys: ["coffee"] }), { ...CTX, families: ["dinner"] }).final, 0);
+  assertEquals(areaScore(cand({ lat: ANCHOR.lat + 0.2 }), CTX).gates.radius, 0);
+  assertEquals(areaScore(cand({ lat: ANCHOR.lat + 0.2 }), CTX).final, 0);
 });
 
 Deno.test("ties break on distance, then id: deterministic", () => {
