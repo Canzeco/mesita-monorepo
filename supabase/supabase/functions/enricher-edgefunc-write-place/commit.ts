@@ -4,6 +4,7 @@
 
 import type { PhotoAnalysis } from "../_shared/photo-analysis.ts";
 import { readPhotoAnalyses } from "../_shared/photo-analysis.ts";
+import { readTaskSteps, type TaskSteps } from "./steps.ts";
 
 export type EnrichmentCommit =
   | {
@@ -13,6 +14,10 @@ export type EnrichmentCommit =
     mirrorPhotos: boolean;
     photoAnalyses: PhotoAnalysis[];
     baseUpdatedAt: string | null;
+    /** The Scout's and Links' own reports, Strong only. */
+    steps: TaskSteps;
+    /** The Scout's read: grounding for the Presentation, never a column. */
+    serpSummary: string | null;
   }
   | { ok: false; error: string };
 
@@ -35,6 +40,8 @@ export function enrichmentCommit(body: unknown): EnrichmentCommit {
     mirrorPhotos?: unknown;
     photoAnalyses?: unknown;
     baseUpdatedAt?: unknown;
+    steps?: unknown;
+    serpSummary?: unknown;
   };
   const placeId = typeof raw.placeId === "string" ? raw.placeId.trim() : "";
   if (!placeId) return { ok: false, error: "placeId is required" };
@@ -56,5 +63,17 @@ export function enrichmentCommit(body: unknown): EnrichmentCommit {
   const baseUpdatedAt = typeof raw.baseUpdatedAt === "string" && raw.baseUpdatedAt.trim()
     ? raw.baseUpdatedAt.trim()
     : null;
-  return { ok: true, placeId, patch, mirrorPhotos, photoAnalyses, baseUpdatedAt };
+  const serpSummary = typeof raw.serpSummary === "string" && raw.serpSummary.trim()
+    ? raw.serpSummary.trim()
+    : null;
+  return {
+    ok: true,
+    placeId,
+    patch,
+    mirrorPhotos,
+    photoAnalyses,
+    baseUpdatedAt,
+    steps: readTaskSteps(raw.steps),
+    serpSummary,
+  };
 }

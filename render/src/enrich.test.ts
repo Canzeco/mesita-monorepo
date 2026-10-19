@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { isQuickEnrich, quickPatch, stampOverwrite } from "./enrich.ts";
+import { isPermanentlyClosed, isQuickEnrich, quickPatch, stampOverwrite } from "./enrich.ts";
 
 test("only an explicit quick job skips the paid enrichment", () => {
   assert.equal(isQuickEnrich({ placeId: "p", googlePlaceId: "g", depth: "quick" }), true);
@@ -56,4 +56,30 @@ test("quick keeps Google's own summary when it has one", () => {
   });
   assert.equal(patch.description, "A dining room.");
   assert.equal("photos" in patch, false);
+});
+
+test("only Google's CLOSED_PERMANENTLY stops the run at Details", () => {
+  assert.equal(isPermanentlyClosed({ businessStatus: "CLOSED_PERMANENTLY" }), true);
+  assert.equal(isPermanentlyClosed({ businessStatus: " closed_permanently " }), true);
+  assert.equal(isPermanentlyClosed({ businessStatus: "CLOSED_TEMPORARILY" }), false);
+  assert.equal(isPermanentlyClosed({ businessStatus: "OPERATIONAL" }), false);
+  assert.equal(isPermanentlyClosed({}), false);
+});
+
+test("the halt comes right after Place Details, before any paid step", () => {
+  const src = readFileSync(new URL("./enrich.ts", import.meta.url), "utf8");
+  const full = src.slice(src.indexOf("export async function buildEnrichment"));
+  const halt = full.indexOf("if (isPermanentlyClosed(details)) return { closed: true };");
+  assert.ok(halt > full.indexOf("await fetchGooglePlace("));
+  for (const paid of ["fetchTimezone(", "scoutPlace(", "discoverLinks(", "fetchDraftSync(", "fetchInstagramPosts(", "rankGallery(", "embedPair("]) {
+    assert.ok(full.indexOf(paid) > halt, `${paid} runs after the halt`);
+  }
+});
+
+test("Strong runs the Scout before Links and hands its read to the Resolver", () => {
+  const src = readFileSync(new URL("./enrich.ts", import.meta.url), "utf8");
+  const full = src.slice(src.indexOf("export async function buildEnrichment"), src.indexOf("async function buildQuickEnrichment"));
+  assert.ok(full.indexOf("scoutPlace(") < full.indexOf("discoverLinks("));
+  assert.match(full, /context: scout\?\.summary \?\? null/);
+  assert.equal(src.slice(src.indexOf("async function buildQuickEnrichment")).includes("scoutPlace("), false);
 });

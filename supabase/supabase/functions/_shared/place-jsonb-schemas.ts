@@ -12,7 +12,9 @@ export const GoogleReviewSchema = object({
 });
 export const GoogleReviewsSchema = array(GoogleReviewSchema);
 
-// Mirrors PROFILE_SCHEMA.properties.popular_times, enrich-synthesis.ts.
+// The column's shape, one { day, range } per day (the guest card's Busiest
+// line). Nothing writes it since MESITA-2420 retired the synthesis guess; a
+// write that ever comes back is validated here.
 export const PopularTimesEntrySchema = object({
   day: str(),
   range: str(),

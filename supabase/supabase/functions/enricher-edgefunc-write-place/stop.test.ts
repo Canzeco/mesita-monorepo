@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { contentStateAfterStop, enrichmentStop } from "./stop.ts";
+import { closedListingPatch, contentStateAfterStop, enrichmentStop } from "./stop.ts";
 
 Deno.test("a stop is place id only", () => {
   assertEquals(enrichmentStop({ placeId: " place-1 ", stop: true }), {
@@ -31,4 +31,20 @@ Deno.test("a stop turns enriching off and leaves a finished write alone", () => 
     contentStateAfterStop({ content_state: "failed", enriched_at: null }),
     null,
   );
+});
+
+Deno.test("the liveness halt is a stop that records Google's closed listing", () => {
+  assertEquals(enrichmentStop({ placeId: "place-1", stop: true, closed: true }), {
+    kind: "stop",
+    placeId: "place-1",
+    closed: true,
+  });
+  assertEquals(enrichmentStop({ placeId: "place-1", stop: true, closed: "yes" }), {
+    kind: "stop",
+    placeId: "place-1",
+  });
+  assertEquals(closedListingPatch("2026-10-19T00:00:00Z"), {
+    business_state: "CLOSED_PERMANENTLY",
+    business_state_at: "2026-10-19T00:00:00Z",
+  });
 });

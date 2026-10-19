@@ -329,7 +329,7 @@ export function CrenupClient({
           <SectionCard
             icon={<RefreshCw className="text-secondary h-4 w-4" />}
             title="Enrich"
-            subtitle="Eight steps. One tick each — none await a nested run."
+            subtitle="One Render task per place. Strong runs 1–8; Weak skips 2 and 3."
             state={<Tag>$$ · Apify · Firecrawl · Perplexity</Tag>}
           >
             <FlowPanel
@@ -342,7 +342,7 @@ export function CrenupClient({
                 {
                   term: "Stops",
                   detail:
-                    "Infrastructure failure or permanently closed. Absence still reaches 8.",
+                    "Google failing, or a listing Google calls permanently closed. Any other failed step is stamped and the profile still lands; absence still reaches 8.",
                 },
               ]}
               steps={chipsFor("enrich")}

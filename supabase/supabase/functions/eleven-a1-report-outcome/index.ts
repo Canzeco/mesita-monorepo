@@ -26,18 +26,10 @@
 // and counter_offer mean the place answered (channel works), unreachable is
 // documented and implemented as retryable (voicemail, IVR, "call back later").
 // Firing on those would burn the cooldown window on a channel that isn't
-// actually broken. Best-effort: a seeding failure here never fails the
+// actually broken. The trigger buys only the Google refetch, which runs past
+// the response (_shared/google-refetch.ts, MESITA-2420): the agent is mid-call
+// and does not wait on Google. Best-effort: a refetch failure never fails the
 // caller's outcome report.
-//
-// KNOWN LIMITATION, accepted rather than fixed here: the research stage EF
-// (enricher-cron-enrich-place-research) REPLACES `place_research.gathered`
-// wholesale with only what the run's subprocesses collected — it does not
-// merge against the prior value. A subprocesses=["google"]-only run on a place
-// that was previously fully enriched would therefore drop its other gathered
-// pieces (reviews, serp, social, images), not just refresh the phone. This is
-// pre-existing architecture, not introduced here, and out of scope for one
-// emitter — flagged on MESITA-1189 for whoever schedules the fix. Harmless
-// today: production holds 0 places with any research history.
 //
 // Deploy: supabase functions deploy eleven-a1-report-outcome
 
@@ -48,7 +40,8 @@ import { cleanNote, requireAgentSecret, ticketByCode } from "../_shared/agent-to
 import { normalizeAlternatives } from "../_shared/reservation-alternatives.ts";
 import { writeReservation } from "../_shared/reservation-doc.ts";
 import { loadEnrichmentTriggers, subprocessesFor } from "../_shared/enrich-triggers.ts";
-import { seedPlaceResearch } from "../_shared/enrich-pipeline-stage.ts";
+import { refetchGoogleAfterWrongNumber } from "../_shared/google-refetch.ts";
+import { runInBackground } from "../_shared/background.ts";
 
 const VERDICTS = [
   "confirmed",
@@ -124,7 +117,7 @@ Deno.serve(async (req) => {
   if (!write.ok) return json({ ok: false, error: write.error }, 500);
 
   if (verdict === "wrong_number") {
-    await emitOnReservationFailed(admin, ticket.project_id);
+    runInBackground(emitOnReservationFailed(admin, ticket.project_id));
   }
 
   return json({ ok: true, recorded: { reference_code: ticket.reference_code, verdict, alternatives } });
@@ -141,21 +134,19 @@ async function emitOnReservationFailed(
     const subprocesses = subprocessesFor(triggers, "on_reservation_failed");
     if (subprocesses.length === 0) return; // trigger disabled in the matrix
 
-    const { data: place } = await admin
-      .from("place_profiles")
-      .select("google_place_id")
-      .eq("id", projectId)
-      .maybeSingle();
-    const googlePlaceId = (place?.google_place_id ?? "").toString().trim();
-    if (!googlePlaceId) return; // no identity spine to refetch from
-
-    await seedPlaceResearch(admin, projectId, googlePlaceId, "eleven-a1-report-outcome", {
-      trigger: "on_reservation_failed",
+    const result = await refetchGoogleAfterWrongNumber(admin, projectId, {
+      seededBy: "eleven-a1-report-outcome",
       subprocesses,
       cooldownHours: triggers.on_reservation_failed.cooldownHours,
     });
-  } catch {
+    if (!result.ran && result.reason === "error") {
+      console.error(`[eleven-a1-report-outcome] Google refetch: ${result.error ?? "failed"}`);
+    }
+  } catch (err) {
     // Enrichment is a side effect of reporting a wrong number, never a
-    // condition of it — swallow and let the outcome write stand.
+    // condition of it — log and let the outcome write stand.
+    console.error(
+      `[eleven-a1-report-outcome] Google refetch: ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
 }

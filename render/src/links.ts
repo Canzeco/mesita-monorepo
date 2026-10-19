@@ -2,9 +2,12 @@
 // Firecrawl Search is the only source. The Resolver (the Perplexity Agent the
 // Enrichment page shows) picks one URL per field, and a URL outside that
 // Firecrawl pool is dropped. A count of 0 does not search that source.
-// Google's own link is left alone.
+// Google's own link is left alone. The Scout's read, when Strong ran it, is
+// the Resolver's background on the place: never the source of a URL.
 
 import { channelFromUrl, type GoogleChannel } from "./channels.ts";
+import { callAgent } from "./perplexity.ts";
+import { completed, failed, type StepReport } from "./steps.ts";
 
 export const LINK_FIELDS = [
   "website_url",
@@ -35,9 +38,6 @@ const SEARCH_TERM: Record<LinkField, string> = {
   opentable_url: "opentable",
   uber_eats_url: "uber eats",
 };
-
-const AGENT_URL = "https://api.perplexity.ai/v1/agent";
-const AGENT_TIMEOUT_MS = 45_000;
 
 type FetchImpl = typeof fetch;
 
@@ -102,31 +102,49 @@ export function confirmedLink(field: LinkField, pool: string[], answer: unknown)
   return pool.find((item) => sameOfficialUrl(item, valid)) ?? null;
 }
 
-export async function discoverOfficialLinks(opts: {
+type DiscoverOptions = {
   name: string;
   city: string | null;
   have: Partial<Record<LinkField, string | null>>;
   counts?: LinkCounts;
   preset?: string;
   instructions?: string;
+  /** The Scout's read of the place, when Strong ran it. */
+  context?: string | null;
   firecrawlKey?: string;
   perplexityKey?: string;
   fetchImpl?: FetchImpl;
-}): Promise<Partial<Record<LinkField, string>>> {
+};
+
+export async function discoverOfficialLinks(opts: DiscoverOptions): Promise<Partial<Record<LinkField, string>>> {
+  return (await discoverLinks(opts)).links;
+}
+
+/** The links found, and step 3's outcome: finding nothing is a result, a
+ *  vendor that did not answer is a failure. */
+export async function discoverLinks(opts: DiscoverOptions): Promise<{
+  links: Partial<Record<LinkField, string>>;
+  report: StepReport;
+}> {
   const firecrawlKey = opts.firecrawlKey?.trim() ?? "";
   const perplexityKey = opts.perplexityKey?.trim() ?? "";
   const counts = linkCounts(opts.counts);
   const missing = LINK_FIELDS.filter((field) => !opts.have[field] && counts[field] > 0);
-  if (!missing.length) return {};
+  if (!missing.length) return { links: {}, report: completed("Every link was already known; nothing to look for.") };
   if (!firecrawlKey || !perplexityKey) {
     console.error("[links] Firecrawl and Perplexity are both required; no new links");
-    return {};
+    return { links: {}, report: failed("Render is missing FIRECRAWL_KEY or PERPLEXITY_KEY, so no link was looked for.") };
   }
   const fetchImpl = opts.fetchImpl ?? fetch;
   try {
-    const pools = await gatherPools(fetchImpl, firecrawlKey, opts.name, opts.city, missing, counts);
+    const gathered = await gatherPools(fetchImpl, firecrawlKey, opts.name, opts.city, missing, counts);
+    const pools = gathered.pools;
     const judgedFields = missing.filter((field) => (pools[field] ?? []).length > 0);
-    if (!judgedFields.length) return {};
+    if (!judgedFields.length) {
+      return gathered.failed === missing.length
+        ? { links: {}, report: failed("Firecrawl Search did not answer.") }
+        : { links: {}, report: completed("Firecrawl found no candidate links.") };
+    }
     const judged = await judgePools(
       fetchImpl,
       perplexityKey,
@@ -137,8 +155,9 @@ export async function discoverOfficialLinks(opts: {
       opts.preset?.trim() || "pro-search",
       opts.instructions?.trim() ||
         "You are a meticulous reviewer that resolves a place's OWN official online channels. Never fabricate a URL.",
+      opts.context?.trim() ?? "",
     );
-    if (!judged) return {};
+    if (!judged) return { links: {}, report: failed("The Resolver did not answer.") };
     const found: Partial<Record<LinkField, string>> = {};
     for (const field of judgedFields) {
       const pool = pools[field] ?? [];
@@ -146,11 +165,15 @@ export async function discoverOfficialLinks(opts: {
         citedLink(field, pool, judged.hitUrls);
       if (url) found[field] = url;
     }
-    return found;
+    const count = Object.keys(found).length;
+    return {
+      links: found,
+      report: completed(count ? `Found ${count} new link(s).` : "The Resolver kept no candidate."),
+    };
   } catch (err) {
     const why = err instanceof Error ? err.message : String(err);
     console.error(`[links] ${why.slice(0, 200)}`);
-    return {};
+    return { links: {}, report: failed(`Link discovery stopped: ${why.slice(0, 160)}`) };
   }
 }
 
@@ -171,16 +194,16 @@ async function gatherPools(
   city: string | null,
   fields: LinkField[],
   counts: Record<LinkField, number>,
-): Promise<Partial<Record<LinkField, string[]>>> {
+): Promise<{ pools: Partial<Record<LinkField, string[]>>; failed: number }> {
   const scope = [name, city ?? ""].map((part) => part.trim()).filter(Boolean).join(" ");
   const runs = await Promise.all(fields.map((field) =>
     firecrawlSearch(fetchImpl, apiKey, `${scope} ${SEARCH_TERM[field]}`, counts[field])
   ));
   const pools: Partial<Record<LinkField, string[]>> = {};
   fields.forEach((field, index) => {
-    pools[field] = poolFromUrls(field, runs[index]);
+    pools[field] = poolFromUrls(field, runs[index].urls);
   });
-  return pools;
+  return { pools, failed: runs.filter((run) => !run.ok).length };
 }
 
 async function firecrawlSearch(
@@ -188,7 +211,7 @@ async function firecrawlSearch(
   apiKey: string,
   query: string,
   limit: number,
-): Promise<string[]> {
+): Promise<{ urls: string[]; ok: boolean }> {
   for (let attempt = 0; attempt < 2; attempt++) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 20000);
@@ -206,20 +229,20 @@ async function firecrawlSearch(
       if (!res.ok) {
         const body = (await res.text().catch(() => "")).slice(0, 200);
         console.error(`[links] firecrawl ${res.status} ${body}`);
-        return [];
+        return { urls: [], ok: false };
       }
-      return urlsFromFirecrawl(await res.json());
+      return { urls: urlsFromFirecrawl(await res.json()), ok: true };
     } catch (err) {
       const why = ctrl.signal.aborted
         ? "timeout after 20000ms"
         : (err instanceof Error ? err.message : String(err)).slice(0, 200);
       console.error(`[links] firecrawl ${why}`);
-      return [];
+      return { urls: [], ok: false };
     } finally {
       clearTimeout(timer);
     }
   }
-  return [];
+  return { urls: [], ok: false };
 }
 
 export function urlsFromFirecrawl(payload: unknown): string[] {
@@ -239,6 +262,16 @@ export function urlsFromFirecrawl(payload: unknown): string[] {
     .filter(Boolean);
 }
 
+// The background line is the console's own wording (buildResolverInput in
+// supabase/.../_shared/enrich-channel-discovery.ts), so a read the Scout
+// bought lands in the Resolver's message the way admin Enrichment shows it.
+export function resolverBackground(context: string): string {
+  const text = context.trim();
+  return text
+    ? `Background on the place (soft web context — never the source of a URL):\n${text.slice(0, 600)}\n\n`
+    : "";
+}
+
 async function judgePools(
   fetchImpl: FetchImpl,
   apiKey: string,
@@ -248,6 +281,7 @@ async function judgePools(
   fields: LinkField[],
   preset: string,
   instructions: string,
+  context: string,
 ): Promise<{ answer: Record<string, unknown>; hitUrls: string[] } | null> {
   const properties: Record<string, { type: string[] }> = {};
   for (const field of fields) properties[field] = { type: ["string", "null"] };
@@ -258,86 +292,24 @@ async function judgePools(
   }).join("\n");
   const input =
     `Review and select the official channels for the place "${name}"${where}.\n\n` +
+    resolverBackground(context) +
     `Candidate URLs found by search — review each and pick the correct one when present:\n${lists}\n\n` +
     "Return strict JSON. Each value is one URL from that field's list, or null. Never invent a URL.";
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), AGENT_TIMEOUT_MS);
-  try {
-    const res = await fetchImpl(AGENT_URL, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        input,
-        preset,
-        instructions,
-        max_steps: 10,
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            schema: {
-              type: "object",
-              additionalProperties: false,
-              properties,
-              required: fields,
-            },
-          },
-        },
-      }),
-      signal: ctrl.signal,
-    });
-    if (!res.ok) {
-      const body = (await res.text().catch(() => "")).slice(0, 200);
-      console.error(`[links] perplexity ${res.status} ${body}`);
-      return null;
-    }
-    return agentResult(await res.json());
-  } catch (err) {
-    const why = ctrl.signal.aborted
-      ? `timeout after ${AGENT_TIMEOUT_MS}ms`
-      : (err instanceof Error ? err.message : String(err)).slice(0, 200);
-    console.error(`[links] perplexity ${why}`);
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-function agentResult(payload: unknown): { answer: Record<string, unknown>; hitUrls: string[] } {
-  const output = payload && typeof payload === "object"
-    ? (payload as { output?: { type?: string; content?: { text?: string; annotations?: { url?: unknown }[] }[] }[] }).output
-    : undefined;
-  let text = "";
-  const hitUrls: string[] = [];
-  for (const item of output ?? []) {
-    if (item?.type !== "message" || !Array.isArray(item.content)) continue;
-    for (const part of item.content) {
-      if (typeof part?.text === "string") text += part.text;
-      for (const note of part?.annotations ?? []) {
-        if (note && typeof note.url === "string") hitUrls.push(note.url);
-      }
-    }
-  }
-  return { answer: parseJsonObject(text) ?? {}, hitUrls };
-}
-
-function parseJsonObject(text: string): Record<string, unknown> | null {
-  const trimmed = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```$/, "").trim();
-  const tryParse = (value: string): Record<string, unknown> | null => {
-    try {
-      const parsed = JSON.parse(value) as unknown;
-      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-        ? parsed as Record<string, unknown>
-        : null;
-    } catch {
-      return null;
-    }
-  };
-  return tryParse(trimmed) ?? (() => {
-    const start = trimmed.indexOf("{");
-    const end = trimmed.lastIndexOf("}");
-    if (start < 0 || end <= start) return null;
-    return tryParse(trimmed.slice(start, end + 1));
-  })();
+  return await callAgent({
+    apiKey,
+    input,
+    instructions,
+    preset,
+    maxSteps: 10,
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      properties,
+      required: fields,
+    },
+    tag: "links",
+    fetchImpl,
+  });
 }
 
 function delay(ms: number): Promise<void> {

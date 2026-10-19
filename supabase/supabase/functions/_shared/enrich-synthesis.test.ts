@@ -6,6 +6,7 @@ import {
   applyProfileToUpdate,
   asProfileText,
   formatDescriptionParagraphs,
+  PRESENTATION_INSTRUCTIONS,
   type ProfileResult,
 } from "./enrich-synthesis.ts";
 
@@ -57,11 +58,22 @@ Deno.test("applyProfileToUpdate: happy path unchanged (trimmed, capped, typed)",
   applyProfileToUpdate(update, {
     description: "  Un lugar con historia.  ",
     zone: "San Pedro",
-    popular_times: [{ day: "Fri", range: "8-11pm" }],
   } as ProfileResult);
   assertEquals(update.description, "Un lugar con historia.");
   assertEquals("zone" in update, false);
-  assertEquals(update.popular_times, [{ day: "Fri", range: "8-11pm" }]);
+});
+
+// MESITA-2420: the model could only guess busy hours from review text, and
+// the guest card says "From Google". The prompt no longer asks, and a stale
+// reply that still carries them writes nothing.
+Deno.test("synthesis neither asks for nor writes popular times", () => {
+  const update: Record<string, unknown> = {};
+  applyProfileToUpdate(update, {
+    description: "Un lugar.",
+    popular_times: [{ day: "Fri", range: "8-11pm" }],
+  } as ProfileResult);
+  assertEquals("popular_times" in update, false);
+  assertEquals(PRESENTATION_INSTRUCTIONS.includes("popular_times"), false);
 });
 
 // MESITA-2144: the editorial blurb stays in the LLM schema as classifier

@@ -236,17 +236,16 @@ export type TriggerRow = {
   /**
    * Minimum hours between two runs of this trigger for the same place.
    *
-   * STAGED (MESITA-1184), and labelled here because an unenforced config is a
-   * bug. The mechanism is real and atomic — `open_place_enrichment_run`
-   * compares this against `max(started_at)` for the pair under an advisory
-   * lock — but every caller alive today passes 0 deliberately: `manual` is
-   * explicit operator intent and the vote threshold is its own gate. So the
-   * number round-trips and reaches no enforcement site.
+   * ENFORCED for the one event-driven emitter: the wrong-number refetch
+   * (_shared/google-refetch.ts) passes on_reservation_failed's window to
+   * `open_place_enrichment_run`, which compares it against `max(started_at)`
+   * for the pair under an advisory lock. The other rows have no emitter, so
+   * their numbers round-trip and reach no enforcement site; admin Enrich and
+   * the vote door start Render runs and open no run row (a press is explicit
+   * intent, and the vote threshold is its own gate).
    *
-   * It stops being staged when the first event-driven emitter lands
-   * (MESITA-1189) and passes it. The console draws no cooldown control; the
-   * whole-blob save is what keeps this field alive across writes, which
-   * `enrich-triggers.test.ts` pins.
+   * The console draws no cooldown control; the whole-blob save is what keeps
+   * this field alive across writes, which `enrich-triggers.test.ts` pins.
    */
   cooldownHours: number;
   subprocesses: Record<SubprocessKey, boolean>;
@@ -382,11 +381,11 @@ export function wants(
 
 /**
  * Does a run with this purchase stamp `enriched_at`, THE Enriched fact
- * (MESITA-2154)? Only when it paid for synthesis. Votes, admin Enrich and
- * every manual mode buy everything (`null`), so they stamp; the
- * wrong-number refetch (`on_reservation_failed`) buys only `google`, so it
- * must not turn a Created place into an Enriched one. The contents stage
- * is the one writer and it asks only this.
+ * (MESITA-2154)? Only when it paid for synthesis. The wrong-number refetch
+ * (`on_reservation_failed`) buys only `google`, so it must not turn a Created
+ * place into an Enriched one: _shared/google-refetch.ts never writes it. The
+ * paused contents stage asks only this; Render's one write stamps it on every
+ * Enrich, and admin Enrich and the vote door buy everything.
  */
 export function stampsEnrichedAt(stored: unknown): boolean {
   return wants(stored, "synthesis");

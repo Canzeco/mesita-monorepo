@@ -90,8 +90,9 @@ Deno.test("TRIGGER_META: exactly the rows some code reads are marked live", () =
   //                 follower refresh / the re-embed (MESITA-1188). It is the
   //                 one reader that WITHHOLDS work instead of scheduling it,
   //                 which is why it is live without being an emitter.
-  //   on_reservation_failed — eleven-a1-report-outcome resolves it and seeds
-  //                 a Google-only refetch on a "wrong_number" verdict, the one
+  //   on_reservation_failed — eleven-a1-report-outcome resolves it and runs
+  //                 the Google-only refetch (_shared/google-refetch.ts,
+  //                 MESITA-2420) on a "wrong_number" verdict, the one
   //                 terminal, unambiguous signal the stored channel is stale
   //                 (MESITA-1189). declined/counter_offer/confirmed mean the
   //                 channel worked; unreachable is documented as retryable.

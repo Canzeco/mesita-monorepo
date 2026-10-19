@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(129);
+select plan(130);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -628,6 +628,19 @@ select ok(
        and column_name = 'request_count'
   ),
   'public.profiles exposes request_count'
+);
+
+-- MESITA-2420. A vote at the threshold starts an Enrich run on Render, and the
+-- run's one write refuses a profile whose updated_at moved after it started.
+-- A vote bumps request_count alone, so it must not stamp updated_at, or one
+-- more guest voting mid-run throws the run's profile away.
+select ok(
+  (select pg_get_triggerdef(t.oid) ~ 'WHEN .*old\.request_count IS DISTINCT FROM new\.request_count'
+     from pg_trigger t
+    where t.tgrelid = 'public.place_profiles'::regclass
+      and t.tgname = 'place_profiles_set_updated_at'
+      and not t.tgisinternal),
+  'a vote (request_count alone) does not stamp place_profiles.updated_at'
 );
 
 select has_table(

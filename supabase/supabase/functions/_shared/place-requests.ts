@@ -1,13 +1,15 @@
-// Votes — consumer demand for Enricher on an already-created ugly profile.
+// Votes — consumer demand for an Enrich run on a Created profile.
 //
 // Create mints a viewable profile (content_state ready, enriched_at null).
-// Enriched is `places.enriched_at`. Guests vote on the Enrich tab. When
-// request_count reaches Crenup atlasRequestThreshold, seed Enricher.
-// Admin Enrich / Create+Enrich never calls this door — that is the bypass.
+// Enriched is `place_profiles.enriched_at`. Guests vote on the Enrich tab.
+// When request_count reaches Creation's Vote threshold (atlasRequestThreshold)
+// this door starts the same Render run admin Enrich starts: Strong, Overwrite
+// off (_shared/enrich-start.ts). Admin Enrich never calls this door — that is
+// the bypass.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { normalizeEnrichmentConfig } from "./enrichment-config.ts";
-import { seedPlaceResearch } from "./enrich-pipeline.ts";
+import { startEnrichment } from "./enrich-start.ts";
 import {
   isPlaceEnriched,
   isPlaceEnriching,
@@ -178,33 +180,23 @@ export async function applyPlaceRequest(
     const googlePlaceId = String(
       (place as { google_place_id?: unknown }).google_place_id ?? "",
     ).trim();
-    // The vote already counted. A missing spine cannot seed Crenup; Admin
-    // adds the id later. Do not fail the request after incrementing.
+    // The vote already counted, so nothing below fails the request. A missing
+    // spine cannot be enriched (Admin adds the id later). The claim loses to a
+    // run already in flight (another guest's vote). A refused start is logged
+    // and the place goes back to ready or failed, so the next vote retries.
     if (googlePlaceId) {
-      const seed = await seedPlaceResearch(
-        admin,
-        opts.placeId,
-        googlePlaceId,
-        opts.callerName,
-        {
-          trigger: "manual",
-          subprocesses: null,
-          cooldownHours: 0,
-          actorUserId: opts.consumerId,
-          keepPayloads: true,
-          meta: { source: "consumer_request", fill: true, overwrite: [] },
-        },
-      );
-      if (seed.ok) {
+      const started = await startEnrichment(admin, {
+        placeIds: [opts.placeId],
+        depth: "full",
+        overwrite: false,
+        claim: true,
+      });
+      if (started.ok) {
         enrichmentTriggered = true;
-      } else if (seed.blocked === "already_open") {
-        enrichmentTriggered = false;
-      } else {
-        return {
-          ok: false,
-          status: 500,
-          error: seed.error ?? "Failed to queue enrichment",
-        };
+      } else if (started.blocked !== "enriching") {
+        console.error(
+          `[${opts.callerName}] the vote did not start an Enrich run: ${started.error}`,
+        );
       }
     }
   }
