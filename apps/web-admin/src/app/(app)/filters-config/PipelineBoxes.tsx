@@ -135,7 +135,7 @@ export function NameAdminBox(seed: ConfigSeed<DiscoveryConfig>) {
       scoring="Rows found by more sources come first, then Text Search rank, then Autocomplete rank, then Name. Duplicates merge."
       rules={[
         "Autocomplete and Mesita rows follow the guest bar's rules: closed places never show, Discovery › General's reviews floor cuts them, and a Google row must be one of Mesita's place types.",
-        "Text Search rows are Find's own call: Mesita's place types and the stored Google floors (map.minRating, minReviews, minPopularity; 0 is off and no box edits them), not Discovery › General.",
+        "Text Search rows are Find's own call: Mesita's place types and the old stored Google floors on rating, reviews and popularity (0 is off; no box edits them), not Discovery › General.",
       ]}
       save={<Save editor={editor} dirty={dirty} slices={BOX_SLICES.nameAdmin} />}
     >
@@ -332,7 +332,7 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             ranked before any page is cut. The source is never a guest filter.
           </p>
           <p className="mt-2">
-            The Map and the Feed are two views of this one pipeline. The guest&apos;s
+            The Map (the Search tab) and the Catalog (Home&apos;s Places) are two views of this one pipeline. The guest&apos;s
             mode (Nearby, Popular or one family) reads one row of the weights
             table: score = Proximity<sup>a</sup> ×
             (Popularity × Selected)<sup>b</sup>.
@@ -406,7 +406,7 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           <ChoiceField
             icon={<Hash className="mt-0.5 h-4 w-4 shrink-0" />}
             label="Google candidates"
-            hint="Places Mesita buys for the Feed: up to 1 / 2 / 3 billed Nearby calls (20 · 40 · 60; duplicates across calls count once). The Map buys one call per load."
+            hint="Places Mesita buys for Home's catalog: up to 1 / 2 / 3 billed Nearby calls (20 · 40 · 60; duplicates across calls count once). The Map buys one call per load."
           >
             <div className="flex flex-wrap gap-2">
               {GOOGLE_PULL_STOPS.map((stop) => (
@@ -485,7 +485,7 @@ export function DeepBox() {
 const MODE_ROWS: { mode: AreaMode; label: string; hint: string }[] = [
   { mode: "nearby", label: "📍 Nearby", hint: "every family, distance first" },
   { mode: "popular", label: "⭐ Popular", hint: "every family, popularity first" },
-  { mode: "family", label: "Family", hint: "one family, every family alike" },
+  { mode: "family", label: "Family", hint: "one family, both signals alike; every family shares this row" },
 ];
 
 /** The weights table (MESITA-2428): rows are the guest's modes, columns the
