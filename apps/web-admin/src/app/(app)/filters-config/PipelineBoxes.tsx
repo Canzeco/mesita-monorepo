@@ -24,6 +24,8 @@ import {
   GOOGLE_PULL_STOPS,
   HALF_REVIEWS_MAX,
   HALF_REVIEWS_MIN,
+  REACH_KM_MAX,
+  REACH_KM_MIN,
   MAP_RADIUS_KM_MAX,
   MAP_RADIUS_KM_MIN,
   MAP_RELOAD_PAIRS,
@@ -296,6 +298,10 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
     setOk(false);
     setCfg((c) => ({ ...c, params: { ...c.params, popularity: { halfReviews } } }));
   };
+  const setReachKm = (reachKm: number) => {
+    setOk(false);
+    setCfg((c) => ({ ...c, params: { ...c.params, proximity: { reachKm } } }));
+  };
   const setWeight = (mode: AreaMode, signal: keyof AreaWeights, v: number) => {
     setOk(false);
     setCfg((c) => ({
@@ -317,8 +323,8 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
         <>
           <p>
             Places around a location: a <strong>point</strong> (the device, a
-            saved address, the map&apos;s centre) ranks by Proximity inside the
-            radius; an <strong>area</strong> (a saved city, neighbourhood or
+            saved address, the map&apos;s centre) takes candidates inside the
+            radius and ranks them by Proximity over its reach; an <strong>area</strong> (a saved city, neighbourhood or
             postcode) keeps only what is inside its bounds (Territory) and
             ranks by Popularity. Google candidates and Mesita candidates
             contribute independently to one pool: merged, deduped by Google
@@ -364,8 +370,9 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           />
         </div>
         <p className="text-muted-foreground type-meta">
-          Proximity is 1 at the anchor and 0 at the edge of the radius, so the
-          radius is its only number. Popularity is rating ÷ 5 × reviews ÷
+          The radius decides who is a candidate and never scores. Proximity
+          is 1 at the anchor, ½ at half the reach and 0 at the reach and
+          beyond. Popularity is rating ÷ 5 × reviews ÷
           (reviews + half credit) × Selected (1 for a Mesita Selected place,
           0.3 for every other): a 3★ place is 60% of a 5★ one, and volume
           earns half credit at that many reviews. The reviews floor counts
@@ -373,6 +380,17 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
         </p>
       </Group>
       <Group title="Weights table">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <NumberField
+            label="Proximity reach (km)"
+            value={params.proximity.reachKm}
+            min={REACH_KM_MIN}
+            max={REACH_KM_MAX}
+            decimals
+            disabled={off}
+            onChange={setReachKm}
+          />
+        </div>
         <AreaWeightsTable modes={params.modes} disabled={off} onChange={setWeight} />
         <p className="text-muted-foreground type-meta">
           Each cell is an exponent: score = Proximity<sup>a</sup> × (Popularity

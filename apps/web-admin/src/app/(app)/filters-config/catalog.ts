@@ -26,12 +26,14 @@ export type AreaMode = (typeof AREA_MODES)[number];
 export type AreaWeights = { proximity: number; popularity: number };
 
 /**
- * The Area pipeline's numbers: Popularity's reviews for half credit and the
- * weights table, two exponents per mode (MESITA-2428). Proximity has no
- * number of its own — `map.radiusKm` is it. Mirrors SignalParams in
+ * The Area pipeline's numbers: Proximity's reach (MESITA-2431), Popularity's
+ * reviews for half credit and the weights table, two exponents per mode
+ * (MESITA-2428). The reach is not `map.radiusKm`: the radius decides who is
+ * a candidate, the reach scores distance. Mirrors SignalParams in
  * _shared/discovery-config.ts.
  */
 export type SignalParams = {
+  proximity: { reachKm: number };
   popularity: { halfReviews: number };
   modes: Record<AreaMode, AreaWeights>;
 };
@@ -99,6 +101,10 @@ export const DEFAULT_DEEP: DeepConfig = { limit: 5, minSimilarity: 0 };
 
 /** Mirrors the Area params' bounds and defaults in
  *  _shared/pipeline-signals.ts and discovery-config.ts (MESITA-2347). */
+/** Proximity's reach (km), one decimal. Mirrors PROXIMITY_REACH_KM_*. */
+export const REACH_KM_MIN = 1;
+export const REACH_KM_MAX = 50;
+export const REACH_KM_DEFAULT = 15;
 export const HALF_REVIEWS_MIN = 1;
 export const HALF_REVIEWS_MAX = 100_000;
 export const AREA_WEIGHT_MIN = 0;
@@ -341,6 +347,7 @@ export const DEFAULT_AREA_MODES: Record<AreaMode, AreaWeights> = {
   family: { proximity: 1, popularity: 1 },
 };
 const DEFAULT_SIGNAL_PARAMS: SignalParams = {
+  proximity: { reachKm: REACH_KM_DEFAULT },
   popularity: { halfReviews: 100 },
   modes: DEFAULT_AREA_MODES,
 };
@@ -362,7 +369,7 @@ function bounded(raw: unknown, fallback: number, min: number, max: number, decim
 }
 
 /**
- * The Area pipeline's three numbers. Mirrors `normalizeSignalParams`: rebuilt
+ * The Area pipeline's numbers. Mirrors `normalizeSignalParams`: rebuilt
  * field by field, so the retired deck's bags (maxKm, timing, category,
  * priorRating, …), the retired calibration (halfDistanceKm,
  * referenceRating/Reviews, MESITA-2347) and the linear `balance`
@@ -370,10 +377,14 @@ function bounded(raw: unknown, fallback: number, min: number, max: number, decim
  */
 function coerceParams(raw: unknown): SignalParams {
   const r = (raw ?? {}) as Record<string, unknown>;
+  const prox = (r.proximity ?? {}) as Record<string, unknown>;
   const pop = (r.popularity ?? {}) as Record<string, unknown>;
   const m = (r.modes ?? {}) as Record<string, unknown>;
   const d = DEFAULT_SIGNAL_PARAMS;
   return {
+    proximity: {
+      reachKm: bounded(prox.reachKm, d.proximity.reachKm, REACH_KM_MIN, REACH_KM_MAX, 1),
+    },
     popularity: {
       halfReviews: bounded(pop.halfReviews, d.popularity.halfReviews, HALF_REVIEWS_MIN, HALF_REVIEWS_MAX, 0),
     },

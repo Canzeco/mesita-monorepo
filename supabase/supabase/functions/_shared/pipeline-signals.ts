@@ -19,19 +19,24 @@ const clamp01 = (n: number) => (n <= 0 ? 0 : n >= 1 ? 1 : n);
 
 // ── Proximity ─────────────────────────────────────────────────────────────
 
+/** Proximity's reach: the operator's number (`params.proximity.reachKm`,
+ *  MESITA-2431). Apart from `map.radiusKm`, which only decides who is a
+ *  candidate: a 50 km radius scored a whole city between 0.7 and 1. */
+export const PROXIMITY_REACH_KM_DEFAULT = 15;
+export const PROXIMITY_REACH_KM_MIN = 1;
+export const PROXIMITY_REACH_KM_MAX = 50;
+
 /**
- * proximity(d) = 1 − d ÷ radius (MESITA-2347): 1 at the anchor, 0 at the
- * edge of the radius that made the place a candidate, linear between. The
- * radius IS the parameter, so Proximity's reach is the same at every zoom
- * and there is no half distance to calibrate. A distance that is not a
- * number cannot be placed, so it scores 0; a radius that is not positive
- * makes every place score 0 except the anchor itself.
+ * proximity(d) = 1 − d ÷ reach (MESITA-2347, reach MESITA-2431): 1 at the
+ * anchor, ½ at half the reach, 0 at the reach and beyond, linear between.
+ * A distance that is not a number cannot be placed, so it scores 0; a reach
+ * that is not positive makes every place score 0 except the anchor itself.
  */
-export function proximityFromDistance(distanceKm: number, radiusKm: number): number {
+export function proximityFromDistance(distanceKm: number, reachKm: number): number {
   if (Number.isNaN(distanceKm) || distanceKm === Infinity) return 0;
   if (distanceKm <= 0) return 1;
-  if (!(Number.isFinite(radiusKm) && radiusKm > 0)) return 0;
-  return clamp01(1 - distanceKm / radiusKm);
+  if (!(Number.isFinite(reachKm) && reachKm > 0)) return 0;
+  return clamp01(1 - distanceKm / reachKm);
 }
 
 /**
@@ -42,12 +47,12 @@ export function proximityFromDistance(distanceKm: number, radiusKm: number): num
 export function proximity(
   candidate: { lat?: number | null; lng?: number | null },
   anchor: { lat: number; lng: number } | null,
-  radiusKm: number,
+  reachKm: number,
 ): number {
   if (!anchor) return 1;
   if (typeof candidate.lat !== "number" || typeof candidate.lng !== "number") return 0;
   const km = haversineKm(anchor.lat, anchor.lng, candidate.lat, candidate.lng);
-  return Number.isFinite(km) ? proximityFromDistance(km, radiusKm) : 0;
+  return Number.isFinite(km) ? proximityFromDistance(km, reachKm) : 0;
 }
 
 // ── Popularity ────────────────────────────────────────────────────────────

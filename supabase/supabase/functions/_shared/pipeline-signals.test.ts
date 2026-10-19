@@ -13,7 +13,7 @@ import {
 
 const K = POPULARITY_HALF_REVIEWS_DEFAULT;
 
-Deno.test("proximity: linear — 1 at the anchor, ½ at half the radius, 0 at the edge, never below 0 (MESITA-2347)", () => {
+Deno.test("proximity: linear — 1 at the anchor, ½ at half the reach, 0 at the reach, never below 0 (MESITA-2347, MESITA-2431)", () => {
   const r = 10;
   assertEquals(proximityFromDistance(0, r), 1);
   assertAlmostEquals(proximityFromDistance(r / 2, r), 0.5, 1e-12);
@@ -23,8 +23,8 @@ Deno.test("proximity: linear — 1 at the anchor, ½ at half the radius, 0 at th
   assert(proximityFromDistance(1, r) < 1);
 });
 
-Deno.test("proximity: the radius is the parameter, so the balance is the same at every zoom", () => {
-  // Halfway to the edge scores ½ on a 1 km viewport and on a 50 km one alike.
+Deno.test("proximity: the reach is the parameter, ½ at half of it whatever its size", () => {
+  // Half the reach scores ½ on a 1 km reach and on a 50 km one alike.
   assertAlmostEquals(proximityFromDistance(0.5, 1), 0.5, 1e-12);
   assertAlmostEquals(proximityFromDistance(25, 50), 0.5, 1e-12);
 });

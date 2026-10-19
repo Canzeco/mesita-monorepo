@@ -248,9 +248,11 @@ Deno.test("the deck's param bags and numbers do not survive a normalize", () => 
     },
   });
   // The retired calibration (halfDistanceKm, referenceRating/Reviews,
-  // MESITA-2347) goes with the deck's bags; only the three live numbers stay.
+  // MESITA-2347) goes with the deck's bags; only the live numbers stay, and
+  // Proximity's reach reads its default (MESITA-2431).
   // The linear `balance` goes too (MESITA-2428): the table replaced it.
   assertEquals(cfg.params, {
+    proximity: { reachKm: 15 },
     popularity: { halfReviews: 250 },
     modes: DISCOVERY_DEFAULTS.params.modes,
   });

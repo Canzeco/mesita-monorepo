@@ -57,6 +57,8 @@ export type AreaContext = {
   families: readonly string[];
   /** Popularity's volume term is ½ at this many reviews. */
   halfReviews: number;
+  /** Proximity is 0 at this distance (km), apart from the radius. */
+  reachKm: number;
   /** The mode's two exponents, one row of the weights table. */
   weights: AreaWeights;
 };
@@ -188,7 +190,7 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
     ? (km !== null && km <= loc.radiusKm ? 1 : 0)
     : null;
   const territory = loc.kind === "area" ? territoryGate(c, loc.bounds) : null;
-  const prox = loc.kind === "point" ? proximity(c, loc.anchor, loc.radiusKm) : null;
+  const prox = loc.kind === "point" ? proximity(c, loc.anchor, ctx.reachKm) : null;
   const w = ctx.weights;
   const popPart = weighted(popN, w.popularity);
   const base = loc.kind === "point"

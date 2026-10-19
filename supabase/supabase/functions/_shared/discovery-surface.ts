@@ -177,13 +177,13 @@ export const DISCOVERY_SIGNALS: readonly DiscoverySignalFact[] = [
   {
     key: "proximity",
     label: "Proximity",
-    formula: "1 − distance ÷ radius",
+    formula: "1 − distance ÷ reach",
     requires: ["coordinates"],
     query: "A point location: the device, a saved address, a dropped pin or the map's centre.",
     computation: "runtime",
     cost: "Local arithmetic, free.",
     missing: "An area location or no location: not used (n/a). No coordinates: 0.",
-    normalization: "0..1 by construction: 1 at the anchor, ½ halfway to the edge, 0 at the edge of the radius — the same at every zoom, so the radius is its only number.",
+    normalization: "0..1 by construction: 1 at the anchor, ½ at half the reach, 0 at the reach and beyond. The reach is its only number, apart from the radius, which only decides who is a candidate.",
   },
   {
     key: "popularity",
