@@ -35,12 +35,12 @@ Deno.test("list-catalog: Right Now, Universal and predicates are gone", () => {
   }
 });
 
-Deno.test("list-catalog: one circle; only Google hits take the reviews floor", () => {
+Deno.test("list-catalog: one circle; no guest review stop (MESITA-2417)", () => {
   assert(src.includes("const radiusKm = cfg.map.radiusKm;"));
   assertEquals(src.includes("nearbyDecision.radiusKm"), false);
   assertEquals(src.includes("NEARBY_RADIUS_KM"), false);
-  assertEquals(src.match(/guestReviewFloor\(/g)?.length, 1);
-  assert(src.includes('guestReviewFloor("google", body.minReviews)'));
+  assertEquals(src.includes("guestReviewFloor"), false);
+  assertEquals(src.includes("body.minReviews"), false);
 });
 
 Deno.test("list-catalog: only the one-pool wire may ask for an area", () => {

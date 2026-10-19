@@ -10,7 +10,7 @@
 //   │ ──────────────  │                     │
 //   │ ☕ Coffee    ↕  │                     │
 //
-// Left quarter (Pato, MESITA-2411): Social (Soon), Favorites and All
+// Left quarter (Pato, MESITA-2411): Social, Favorites and All
 // (the default: every place) PINNED above a rule; under it one row per
 // family, and only that list scrolls. The chosen row is white, bold, an ink bar on its left edge.
 // All is the server's ONE ranked Area pool (MESITA-2379/2384): Google
@@ -100,11 +100,11 @@ export function placesChips(): {
   key: string;
   label: string;
   emoji?: string;
-  /** Social: not built yet (MESITA-2168). */
-  soon?: boolean;
 }[] {
   return [
-    { key: SOCIAL_CHIP, label: "Social", emoji: "👥", soon: true },
+    // Social is not built yet (MESITA-2168): its pane says Soon, the row
+    // does not (Pato, MESITA-2418: the tag "looks like shit").
+    { key: SOCIAL_CHIP, label: "Social", emoji: "👥" },
     { key: FAVORITES_CHIP, label: "Favorites", emoji: "❤️" },
     { key: ALL_CHIP, label: "All", emoji: "✨" },
     ...FILTERABLE_PLACE_FAMILIES.map((f) => ({
@@ -294,14 +294,12 @@ export function CatalogRails() {
     });
   };
 
-  // A Soon row reads different (Pato, MESITA-2408): its label muted at rest,
-  // a quiet "Soon" under it. The column is a quarter wide, so the tag stacks
-  // rather than sitting beside the label.
+  // Every row reads the same: emoji + label. Social wore a muted label and
+  // a "Soon" tag (MESITA-2408) until Pato cut it (MESITA-2418).
   const categoryRow = (c: {
     key: string;
     label: string;
     emoji?: string;
-    soon?: boolean;
   }) => (
     <li key={c.key}>
       <button
@@ -313,12 +311,7 @@ export function CatalogRails() {
           setChip(c.key);
         }}
         aria-pressed={chip === c.key}
-        className={cn(
-          ROW_BASE,
-          chip === c.key ? ROW_ON : ROW_OFF,
-          c.soon && chip !== c.key && "text-muted-foreground",
-        )}
-        data-places-soon={c.soon ? "" : undefined}
+        className={cn(ROW_BASE, chip === c.key ? ROW_ON : ROW_OFF)}
       >
         {chip === c.key ? (
           <span
@@ -331,16 +324,7 @@ export function CatalogRails() {
             {c.emoji}
           </span>
         ) : null}
-        {c.soon ? (
-          <span className="flex min-w-0 flex-col">
-            <span className="break-words">{c.label}</span>
-            <span className="text-muted-foreground type-meta font-medium tracking-wide uppercase">
-              Soon
-            </span>
-          </span>
-        ) : (
-          <span className="min-w-0 break-words">{c.label}</span>
-        )}
+        <span className="min-w-0 break-words">{c.label}</span>
       </button>
     </li>
   );

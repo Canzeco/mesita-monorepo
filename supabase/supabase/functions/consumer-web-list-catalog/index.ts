@@ -10,16 +10,15 @@
 // `area.familyKeys` (the gate never moves a score, so the order holds), so a
 // family change or a later page never re-pays Google.
 //
-// Request: POST { unified: true, google: true, lat, lng, bounds?, minReviews? }
+// Request: POST { unified: true, google: true, lat, lng, bounds? }
 //   bounds    a saved AREA's rectangle {low, high} (valid → Territory, no
 //             Proximity); otherwise lat/lng make a POINT inside
 //             `map.radiusKm`; neither = no location (Mesita only,
 //             Popularity alone).
 //   google    the client can render a Google-only stub; the operator's
 //             `map.googleFill`, a key and the per-IP ledger also decide.
-//   minReviews the central Google Reviews stop for Google hits (absent =
-//             100+); the operator's `map.googleMinReviews` too, the higher
-//             cuts. Never a Mesita floor.
+//   The Google reviews minimum is the operator's `map.googleMinReviews`
+//   alone (MESITA-2417), on Google hits; never a Mesita floor.
 // Response (unified): { ok, location: { kind }, places: [... { area }],
 //   summary }. QUOTA: one load spends up to 3 of the per-IP 45 Nearby calls
 //   a minute (about 15 cold loads per IP per minute); a partly refused
@@ -49,7 +48,6 @@ import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
 import { buildCatalogRails } from "../_shared/catalog-rank.ts";
 import { decideNearby, wantsGoogleFill } from "../_shared/geo.ts";
 import {
-  guestReviewFloor,
   mapShouldFillGoogle,
 } from "../_shared/map-engine.ts";
 import { readGooglePlacesKey } from "../_shared/google-places.ts";
@@ -74,7 +72,7 @@ type Body = {
   bounds?: unknown;
   /** The client can render a Google-only stub. */
   google?: boolean;
-  /** The central Google Reviews floor for Google hits (absent = 100+). */
+  /** Ignored since MESITA-2417: `map.googleMinReviews` is the minimum. */
   minReviews?: unknown;
   /** The one-pool wire (MESITA-2379); absent = the legacy rails. */
   unified?: boolean;
@@ -141,7 +139,6 @@ Deno.serve(async (req) => {
     families: [],
     types: googleOn ? FEED_GOOGLE_TYPES : [],
     googleCalls: googleOn ? (unified ? googleCallsForStop(cfg.map.googlePlaces) : 1) : 0,
-    minReviews: guestReviewFloor("google", body.minReviews),
     mesitaLimit: cfg.map.mesitaPlaces,
     mesitaRows,
     cfg,

@@ -47,9 +47,11 @@ describe("the Places column (MESITA-2383)", () => {
     expect(src).toContain("chips.slice(PINNED_CHIPS).map(categoryRow)");
     expect(src).toContain("data-places-rule");
     expect(src).toContain('className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-y-contain"');
-    // Social is the one Soon row and reads different (MESITA-2408).
-    expect(placesChips().filter((c) => c.soon).map((c) => c.key)).toEqual([SOCIAL_CHIP]);
-    expect(src).toContain('c.soon && chip !== c.key && "text-muted-foreground"');
+    // Social's row reads like every row: no Soon tag, no muted label
+    // (MESITA-2418); its pane still says Soon.
+    expect(placesChips()[0]).toEqual({ key: SOCIAL_CHIP, label: "Social", emoji: "👥" });
+    expect(src).not.toContain("c.soon");
+    expect(src).not.toContain("data-places-soon");
     expect(placesChips().map((c) => c.key)).not.toContain(GOOGLE_RAIL_KEY);
     expect(placesChips().map((c) => c.key)).not.toContain(MESITA_RAIL_KEY);
   });

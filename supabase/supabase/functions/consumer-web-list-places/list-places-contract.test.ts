@@ -22,9 +22,10 @@ Deno.test("list-places: the Map is a point view of the one Area pool, one Google
   }
 });
 
-Deno.test("list-places: the review floor comes from guestReviewFloor alone, on Google hits", () => {
-  assert(webBranch.includes('guestReviewFloor("google", rawMinReviews)'));
+Deno.test("list-places: no guest review stop; the operator's map.googleMinReviews is the minimum (MESITA-2417)", () => {
+  assertEquals(src.includes("guestReviewFloor"), false);
   assertEquals(src.includes("parseMapMinReviews"), false);
+  assertEquals(src.includes("body.minReviews"), false);
 });
 
 Deno.test("list-places: the one circle is map.radiusKm; no client radius, no constant", () => {
