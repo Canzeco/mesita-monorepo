@@ -88,7 +88,7 @@ describe("a Google-only card's image is a placeholder, never a photo (MESITA-229
 describe("the tile: photo on top, its light reflection below (MESITA-2369, MESITA-2373)", () => {
   it("shows the photo on the top 60%, uncovered, and mirrors it from its foot under 80% paper", () => {
     const html = tile({ photos: ["https://example.com/a.jpg"], price_level: 2 });
-    expect(html).toContain("relative aspect-square min-w-0 overflow-hidden");
+    expect(html).toContain("relative isolate aspect-square min-w-0 overflow-hidden");
     expect(html).toContain("absolute inset-x-0 top-0 h-[60%] overflow-hidden");
     expect(html).toContain("absolute inset-x-0 bottom-0 h-[40%] overflow-hidden");
     expect(html).toContain("absolute inset-x-0 top-0 h-[150%] -scale-y-100");
