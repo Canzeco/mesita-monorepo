@@ -4,12 +4,12 @@ import { describe, expect, it } from "vitest";
 
 import type { CatalogRail, Place } from "@/lib/api/places";
 import {
-  FAVORITES_CHIP,
+  SAVED_CHIP,
   PINNED_CHIPS,
   SOCIAL_CHIP,
   poolPlaces,
   PLACES_PAGE,
-  favoritePlaces,
+  savedPlaceList,
   NEAR_CHIP,
   POPULAR_CHIP,
   GOOGLE_RAIL_KEY,
@@ -37,13 +37,13 @@ describe("the Places column (MESITA-2383)", () => {
   // Social, a rule, Favorites · Near · Popular pinned, a rule, then the
   // families (MESITA-2426), which
   // alone scroll (MESITA-2411).
-  it("is Social, Favorites, Near, Popular, then every guest family — no source rows (MESITA-2384, MESITA-2426)", () => {
+  it("is Social, Saved, Nearby, Popular, then every guest family — no source rows (MESITA-2384, MESITA-2426)", () => {
     const labels = placesChips().map((c) => c.label);
-    expect(labels.slice(0, 4)).toEqual(["Social", "Favorites", "Near", "Popular"]);
+    expect(labels.slice(0, 4)).toEqual(["Social", "Saved", "Nearby", "Popular"]);
     expect(labels).toContain("Coffee");
     expect(labels).toContain("Breakfast");
     expect(labels).not.toContain("Undefined");
-    expect(placesChips().map((c) => c.key).slice(0, 4)).toEqual([SOCIAL_CHIP, FAVORITES_CHIP, NEAR_CHIP, POPULAR_CHIP]);
+    expect(placesChips().map((c) => c.key).slice(0, 4)).toEqual([SOCIAL_CHIP, SAVED_CHIP, NEAR_CHIP, POPULAR_CHIP]);
     expect(PINNED_CHIPS).toBe(4);
     expect(src).toContain("chips.slice(0, 1).map(categoryRow)");
     expect(src).toContain("chips.slice(1, PINNED_CHIPS).map(categoryRow)");
@@ -113,12 +113,12 @@ describe("the Places column (MESITA-2383)", () => {
     expect(src).toContain("...tileFacts(place, rank)");
   });
 
-  it("Favorites lists saves newest first and skips a save with no preview", () => {
+  it("Saved lists saves newest first and skips a save with no preview", () => {
     const previews = new Map([
       ["a", place("a")],
       ["b", place("b")],
     ]);
-    expect(favoritePlaces(new Set(["a", "gone", "b"]), previews).map((p) => p.id)).toEqual(["b", "a"]);
+    expect(savedPlaceList(new Set(["a", "gone", "b"]), previews).map((p) => p.id)).toEqual(["b", "a"]);
   });
 
   it("holds no location rows: the column is categories only", () => {

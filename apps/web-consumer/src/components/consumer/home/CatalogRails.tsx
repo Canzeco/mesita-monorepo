@@ -5,12 +5,12 @@
 //   [⌖ Tecnologico                       ⌄]   Home's header (ModeTabs) is the
 //   ┌────────────────┬─────────────────────┐   location alone (MESITA-2405),
 //   │ 👥 Social       │                     │   written to
-//   │ ❤️ Favorites    │       square        │   lib/active-location.ts and
+//   │ 🔖 Saved        │       square        │   lib/active-location.ts and
 //   │▌✨ All          │        tile         │   read here.
 //   │ ──────────────  │                     │
 //   │ ☕ Coffee    ↕  │                     │
 //
-// Left quarter (Pato, MESITA-2411): Social, Favorites and All
+// Left quarter (Pato, MESITA-2411): Social, Saved, Nearby and Popular
 // (the default: every place) PINNED above a rule; under it one row per
 // family, and only that list scrolls. The chosen row is white, bold, an ink bar on its left edge.
 // All is the server's ONE ranked Area pool (MESITA-2379/2384): Google
@@ -18,7 +18,7 @@
 // (20 tiles at a time, more on scroll) and a family row filters it on each
 // place's `area.familyKeys` — the Family gate never moves a score, so the
 // order stays the server's and a family change spends nothing. Each
-// location's pool is kept ten minutes (lib/area-pool-cache.ts). Favorites
+// location's pool is kept ten minutes (lib/area-pool-cache.ts). Saved
 // shows the guest's saved places in the same tiles (it was Home's fourth
 // tab, MESITA-2368). Under each tile, TEMPORARILY, the server's score
 // breakdown (AreaDiagnostics.tsx). `useUserLocation` asks for location on mount. No search bar.
@@ -100,12 +100,12 @@ export function isEveryFamily(chip: string): boolean {
 export function chipPrefer(chip: string): "near" | "popular" {
   return chip === POPULAR_CHIP ? "popular" : "near";
 }
-/** The guest's saved places (MESITA-2383; it was Home's Favorites tab). */
-export const FAVORITES_CHIP = "favorites";
+/** The guest's saved places (MESITA-2383; Home's Favorites tab, then row, Saved since MESITA-2427). */
+export const SAVED_CHIP = "saved";
 /** Social, Soon (MESITA-2168) — a row since MESITA-2405; it was a Home pill. */
 export const SOCIAL_CHIP = "social";
 
-/** The column: Social · Favorites · Near · Popular, a rule, then every
+/** The column: Social · Saved · Nearby · Popular, a rule, then every
  *  guest family (MESITA-2383, MESITA-2384, MESITA-2411, MESITA-2426).
  *  Everything through POPULAR_CHIP is pinned; the families after it scroll.
  *  Google Places and Mesita Selected are not guest choices (MESITA-2381):
@@ -120,8 +120,10 @@ export function placesChips(): {
     // Social is not built yet (MESITA-2168): its pane says Soon, the row
     // does not (Pato, MESITA-2418: the tag "looks like shit").
     { key: SOCIAL_CHIP, label: "Social", emoji: "👥" },
-    { key: FAVORITES_CHIP, label: "Favorites", emoji: "❤️" },
-    { key: NEAR_CHIP, label: "Near", emoji: "📍" },
+    // Saved, not Favorites, and Nearby, not Near (Pato, MESITA-2427):
+    // beside Nearby and Popular, "Favorites" read as Mesita's picks.
+    { key: SAVED_CHIP, label: "Saved", emoji: "🔖" },
+    { key: NEAR_CHIP, label: "Nearby", emoji: "📍" },
     { key: POPULAR_CHIP, label: "Popular", emoji: "⭐" },
     ...FILTERABLE_PLACE_FAMILIES.map((f) => ({
       key: f.key as string,
@@ -131,7 +133,7 @@ export function placesChips(): {
   ];
 }
 
-/** Social, Favorites, Near, Popular: the pinned head of the column
+/** Social, Saved, Nearby, Popular: the pinned head of the column
  *  (MESITA-2411, MESITA-2426). */
 export const PINNED_CHIPS = 4;
 
@@ -170,7 +172,7 @@ export function allPlaces(rails: readonly CatalogRail[]): Place[] {
 }
 
 /** Saved places, newest save first, from their stored previews. */
-export function favoritePlaces(
+export function savedPlaceList(
   savedIds: ReadonlySet<string>,
   previews: ReadonlyMap<string, Place>,
 ): Place[] {
@@ -283,9 +285,9 @@ export function CatalogRails() {
   const locate = useLocateUser();
 
   // Saved previews re-read whenever the saved set changes, so a heart
-  // tapped on All shows up under Favorites at once.
-  const favorites = useMemo(
-    () => favoritePlaces(savedIds, readSavedPlacePreviews<Place>()),
+  // tapped anywhere shows up under Saved at once.
+  const savedList = useMemo(
+    () => savedPlaceList(savedIds, readSavedPlacePreviews<Place>()),
     [savedIds],
   );
 
@@ -357,7 +359,7 @@ export function CatalogRails() {
       aria-label="Places"
       data-places-categories
     >
-      {/* Pinned: Social, then Favorites · Near · Popular, never scroll
+      {/* Pinned: Social, then Saved · Nearby · Popular, never scroll
           (MESITA-2411). */}
       <ul
         role="list"
@@ -367,7 +369,7 @@ export function CatalogRails() {
       >
         {chips.slice(0, 1).map(categoryRow)}
       </ul>
-      {/* Two rules (Pato, MESITA-2426): Social │ Favorites · Near ·
+      {/* Two rules (Pato, MESITA-2426): Social │ Saved · Nearby ·
           Popular │ the families. */}
       <div
         role="separator"
@@ -459,8 +461,8 @@ export function CatalogRails() {
     );
   }
 
-  // Favorites never waits on the catalog: the saves are local.
-  if (chip === FAVORITES_CHIP) {
+  // Saved never waits on the catalog: the saves are local.
+  if (chip === SAVED_CHIP) {
     if (!hydrated) {
       return shell(
         <div className={PLACES_LIST}>
@@ -469,14 +471,14 @@ export function CatalogRails() {
       );
     }
     return shell(
-      favorites.length === 0 ? (
+      savedList.length === 0 ? (
         <EmptyState
           icon={Heart}
           title="Nothing saved yet"
           description="Tap the heart on a place and it lands here."
         />
       ) : (
-        tiles(favorites, "Favorites", false)
+        tiles(savedList, "Saved", false)
       ),
     );
   }
