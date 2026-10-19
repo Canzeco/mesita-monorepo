@@ -1,7 +1,13 @@
 import { assert, assertEquals } from "@std/assert";
-import { dirname, fromFileUrl } from "@std/path";
+import { dirname, fromFileUrl, globToRegExp, join } from "@std/path";
 
-import { extractHumanStrings, scanPackageCards, scanSource, scanVocabulary } from "./vocabulary-ratchet.ts";
+import {
+  extractHumanStrings,
+  SCAN_ROOTS,
+  scanPackageCards,
+  scanSource,
+  scanVocabulary,
+} from "./vocabulary-ratchet.ts";
 
 const repoRoot = dirname(dirname(fromFileUrl(import.meta.url)));
 
@@ -44,4 +50,29 @@ Deno.test("Second Stage words fail in UI copy; a family's membership does not", 
   assertEquals(tokens(`export const B = () => <p>Mesita membership</p>;`), ["membership"]);
   assertEquals(tokens(`const c = "Family membership lives on Atlas";`), []);
   assertEquals(tokens(`// a promo in a comment is not copy\nconst d = "Promoting a place";`), []);
+});
+
+Deno.test("a violation reports its own line, comments above it included", () => {
+  const src = `// one\n/* two\n   three */\nconst a = "Get a promo";\n`;
+  assertEquals(scanSource("supabase/supabase/functions/x/index.ts", src).map((v) => v.line), [4]);
+});
+
+Deno.test("Edge Function strings are scanned: they reach the console and the guest", () => {
+  assert(SCAN_ROOTS.includes("supabase/supabase/functions"));
+});
+
+Deno.test("every scan root exists, and rules.yml runs on it (push paths and the changes filter)", async () => {
+  // scanVocabulary skips a missing root without a word, and a root the
+  // workflow does not trigger on is never scanned in CI: either way the gate
+  // reports green because it never ran.
+  const yml = await Deno.readTextFile(join(repoRoot, ".github", "workflows", "rules.yml"));
+  const [triggers, jobs] = yml.split(/^jobs:$/m);
+  const globsIn = (text: string) =>
+    [...text.matchAll(/^\s*- ["']([^"']+)["']\s*$/gm)].map((m) => globToRegExp(m[1]));
+  for (const root of SCAN_ROOTS) {
+    assert(Deno.statSync(join(repoRoot, root)).isDirectory, `${root} is not a directory`);
+    const file = `${root}/x.ts`;
+    assert(globsIn(triggers).some((re) => re.test(file)), `rules.yml push paths miss ${root}`);
+    assert(globsIn(jobs).some((re) => re.test(file)), `rules.yml's changes filter misses ${root}`);
+  }
 });

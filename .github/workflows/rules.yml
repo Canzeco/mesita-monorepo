@@ -11,8 +11,9 @@ name: rules
 # that must not slip through unrun.
 #
 # So do the sources the vocabulary ratchet scans (apps/*/src,
-# packages/*/src) and the files `deno task test:rules` pins: the workflows
-# and .github/required-checks.json.
+# packages/*/src, supabase/supabase/functions: SCAN_ROOTS, which
+# vocabulary-ratchet.test.ts holds to both filters below) and the files
+# `deno task test:rules` pins: the workflows and .github/required-checks.json.
 #
 # The extension lists below MUST match MD_SCAN_GLOBS and FORBIDDEN_ASSET_GLOBS
 # in scripts/sync-rules.ts — an extension the script scans but this filter omits
@@ -41,6 +42,7 @@ on:
       - "scripts/**"
       - "apps/*/src/**"
       - "packages/*/src/**"
+      - "supabase/supabase/functions/**"
       - "deno.json"
       - ".github/workflows/**"
       - ".github/required-checks.json"
@@ -80,6 +82,7 @@ jobs:
               - 'scripts/**'
               - 'apps/*/src/**'
               - 'packages/*/src/**'
+              - 'supabase/supabase/functions/**'
               - 'deno.json'
               - '.github/workflows/**'
               - '.github/required-checks.json'

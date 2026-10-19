@@ -38,7 +38,20 @@ Deno.test("the two named agents are Scout and Resolver, and nothing else is name
   const named = crenupPromptsMeta()
     .filter((p) => p.agent)
     .map((p) => `${p.agent}@${p.fn}`);
-  assertEquals(named, ["Scout@3 · Serp", "Resolver@4 · Links"]);
+  assertEquals(named, ["Scout@2 · Serp", "Resolver@3 · Links"]);
+});
+
+Deno.test("each prompt points at the step Docs › Create · Enrich · Edit §A numbers it", () => {
+  // Literal on purpose: a ladder renumbering must fail here, so the Docs
+  // numbering moves in the same PR.
+  const fnByKey = Object.fromEntries(crenupPromptsMeta().map((p) => [p.key, p.fn]));
+  assertEquals(fnByKey, {
+    scout: "2 · Serp",
+    resolver: "3 · Links",
+    category: null,
+    family: null,
+    presentation: "7 · Description",
+  });
 });
 
 Deno.test("every entry names its vendor and carries a non-empty prompt", () => {

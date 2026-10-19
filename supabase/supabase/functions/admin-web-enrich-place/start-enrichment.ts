@@ -86,8 +86,10 @@ export function enrichmentKnobs(cfg: KnobSource): EnrichmentKnobs {
   };
 }
 
-/** The only write before the profile exists. The proxy sets it after Render
- *  accepts the run, and returns. Render writes the profile once, at the end. */
+/** The only write before the profile exists. The proxy sets it before it
+ *  calls Render, and turns it off again if Render refuses the run: ready when
+ *  the place was enriched before, failed when it never was. Render writes the
+ *  profile once, at the end. */
 export const ENRICHING_PATCH = { content_state: "generating" } as const;
 
 /** The live secret is RENDER_KEY. RENDER_API_KEY is the older name. */

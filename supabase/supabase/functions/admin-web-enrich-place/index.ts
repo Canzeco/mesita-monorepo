@@ -2,8 +2,10 @@
 //
 // Direct execute. One place starts enrich single place. A list starts
 // enrich multiple places once. Render decides how many places run at once.
-// Nothing here waits on the run. When Render accepts it, this marks each
-// place enriching and returns. The profile is written once, at the end.
+// Nothing here waits on the run. Before it calls Render, this marks each
+// place enriching (content_state = generating). If Render refuses the run,
+// a place still generating goes back to ready when it was enriched before
+// and to failed when it never was. The profile is written once, at the end.
 //
 // Internal enricher control — super-admin gated, admin console only.
 

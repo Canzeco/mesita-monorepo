@@ -1,5 +1,9 @@
 // Docs › Vocabulary ratchet — banned tokens in human-facing strings and cards.
 // Run via deno task test:rules (vocabulary-ratchet.test.ts).
+//
+// The Edge Functions are scanned like the apps (MESITA-2414): their strings
+// reach screens — a probe's impact line, the prompt meta, error text — and
+// an EF string wins over the console's own copy when both exist.
 
 import { join, relative } from "@std/path";
 
@@ -17,11 +21,13 @@ const DELETED_SLUGS = [
   "mobile-business",
 ] as const;
 
-const UI_ROOTS = [
+/** Every tree whose strings are scanned. rules.yml must trigger on each (the test checks). */
+export const SCAN_ROOTS = [
   "apps/web-admin/src",
   "apps/web-consumer/src",
   "apps/web-landing/src",
   "packages/place-profile/src",
+  "supabase/supabase/functions",
 ] as const;
 
 const CARD_PATHS = [
@@ -34,23 +40,27 @@ const CARD_PATHS = [
 const SKIP_FILE = /\.(test|spec)\.(ts|tsx)$/;
 const RATCHET_SELF = /vocabulary-ratchet/;
 
-/** Strip line and block comments without touching string contents (approximate). */
+/** Blank out line and block comments without touching string contents (approximate).
+ *  Comment characters become spaces and newlines stay, so an index into the
+ *  result is an index into the source and a violation reports its real line. */
 export function stripComments(source: string): string {
   let out = "";
   let i = 0;
   const n = source.length;
+  const blankTo = (end: number) => {
+    for (; i < end; i++) out += source[i] === "\n" ? "\n" : " ";
+  };
   while (i < n) {
     const ch = source[i];
     const next = source[i + 1];
     if (ch === "/" && next === "/") {
-      i += 2;
-      while (i < n && source[i] !== "\n") i++;
+      const eol = source.indexOf("\n", i);
+      blankTo(eol === -1 ? n : eol);
       continue;
     }
     if (ch === "/" && next === "*") {
-      i += 2;
-      while (i < n - 1 && !(source[i] === "*" && source[i + 1] === "/")) i++;
-      i += 2;
+      const close = source.indexOf("*/", i + 2);
+      blankTo(close === -1 ? n : close + 2);
       continue;
     }
     if (ch === '"' || ch === "'" || ch === "`") {
@@ -163,7 +173,7 @@ function isCrenupIdentifierPath(relPath: string): boolean {
     relPath.includes("filters-config/catalog.ts");
 }
 
-function scanUiFile(repoRoot: string, relPath: string): Violation[] {
+function scanFile(repoRoot: string, relPath: string): Violation[] {
   if (SKIP_FILE.test(relPath) || RATCHET_SELF.test(relPath)) return [];
   const abs = join(repoRoot, relPath);
   let source: string;
@@ -175,7 +185,7 @@ function scanUiFile(repoRoot: string, relPath: string): Violation[] {
   return scanSource(relPath, source);
 }
 
-/** Every banned token in one UI file's human-facing strings. */
+/** Every banned token in one scanned file's human-facing strings. */
 export function scanSource(relPath: string, source: string): Violation[] {
   const violations: Violation[] = [];
   const strings = extractHumanStrings(source);
@@ -270,13 +280,13 @@ export function scanPackageCards(repoRoot: string): Violation[] {
 
 export async function scanVocabulary(repoRoot: string): Promise<Violation[]> {
   const violations: Violation[] = [...scanPackageCards(repoRoot)];
-  for (const root of UI_ROOTS) {
+  for (const root of SCAN_ROOTS) {
     const absRoot = join(repoRoot, root);
     try {
       const files = await walkTsFiles(absRoot);
       for (const abs of files) {
         const rel = relative(repoRoot, abs);
-        violations.push(...scanUiFile(repoRoot, rel));
+        violations.push(...scanFile(repoRoot, rel));
       }
     } catch {
       // missing package root in partial checkouts
