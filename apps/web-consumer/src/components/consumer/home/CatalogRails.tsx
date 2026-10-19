@@ -50,7 +50,11 @@ import {
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { trackEvent } from "@/lib/analytics/track";
-import { useLocateUser, useUserLocation } from "@/lib/use-user-location";
+import {
+  useLocateUser,
+  useUserLocation,
+  useUserLocationSettled,
+} from "@/lib/use-user-location";
 import { withUserDistance } from "@/lib/place-distance";
 import { onPlaceCreated } from "@/lib/place-created-event";
 import { useOpenGooglePlace } from "@/lib/use-open-google-place";
@@ -208,11 +212,19 @@ export function CatalogRails() {
   const [chip, setChip] = useState<string>(NEAR_CHIP);
   const [prefer, setPrefer] = useState<AreaPrefer>("near");
   const requestKey = `${areaPoolKey(origin ?? coords)}|${prefer}`;
+  // NEARBY NEEDS A LOCATION (Pato, MESITA-2436: "you are not computing
+  // stuff correctly"). With no fix and no saved location the server has no
+  // Proximity, so Nearby would come back ranked on Popularity alone: Popular
+  // in disguise. It asks for a location instead and spends no request.
+  // Popular and the family rows still answer without one.
+  const nearbyNeedsLocation = prefer === "near" && from === null;
+  const locationSettled = useUserLocationSettled();
   // The running load's background reload: the rails on screen stay until
   // the new ones land, and an error never replaces a good feed.
   const reload = useRef<() => void>(() => {});
 
   useEffect(() => {
+    if (nearbyNeedsLocation) return;
     let cancelled = false;
     // The newest request wins; an older response is dropped.
     let seq = 0;
@@ -495,6 +507,27 @@ export function CatalogRails() {
     );
   }
 
+  const turnOnLocation = (
+    <EmptyState
+      icon={Navigation}
+      title="Turn on location"
+      description="Places near you show up once Mesita knows where you are."
+      action={{ label: "Use my location", onClick: locate }}
+    />
+  );
+
+  if (chip === NEAR_CHIP && nearbyNeedsLocation) {
+    return shell(
+      locationSettled ? (
+        turnOnLocation
+      ) : (
+        <div className={PLACES_LIST} data-places-locating>
+          <Skeleton className="aspect-square rounded-2xl" />
+        </div>
+      ),
+    );
+  }
+
   if (fetchError) {
     return shell(
       <EmptyState
@@ -519,12 +552,7 @@ export function CatalogRails() {
   const label = chips.find((c) => c.key === chip)?.label ?? "Places";
   const empty =
     isEveryFamily(chip) && from === null ? (
-      <EmptyState
-        icon={Navigation}
-        title="Turn on location"
-        description="Places near you show up once Mesita knows where you are."
-        action={{ label: "Use my location", onClick: locate }}
-      />
+      turnOnLocation
     ) : isEveryFamily(chip) ? (
       <EmptyState
         icon={Compass}
