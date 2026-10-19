@@ -203,11 +203,15 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
     const header = read("SearchHeader.tsx");
     expect(header).not.toContain("SearchFilterRow");
     expect(header).not.toContain("SlidersHorizontal");
-    // All wears an emoji like every family (MESITA-2417).
-    expect(header).toContain("<span aria-hidden>{ALL_EMOJI}</span>");
-    expect(header.indexOf("{ALL_EMOJI}")).toBeLessThan(header.indexOf("FILTERABLE_PLACE_FAMILIES.map"));
+    // Near and Popular replaced All, each with its emoji, before the
+    // hairline and the families (MESITA-2426).
+    expect(header).toContain("EVERY_FAMILY_CHIPS.map");
+    expect(header).toContain('{ prefer: "popular", emoji: "⭐", label: "Popular" }');
+    expect(header).not.toContain("ALL_EMOJI");
+    expect(header.indexOf("EVERY_FAMILY_CHIPS.map")).toBeLessThan(header.indexOf("FILTERABLE_PLACE_FAMILIES.map"));
     expect(header).toContain("FILTERABLE_PLACE_FAMILIES.map");
     expect(header).toContain("selectMapFamily(family.key)");
+    expect(header).toContain('setAreaPrefer("near");');
     // A white band above the map with a hairline (MESITA-2413; it floated
     // for MESITA-2412), every control the bar's 44px.
     expect(header).toContain('"border-border bg-card/95 relative z-30 shrink-0 border-b backdrop-blur"');

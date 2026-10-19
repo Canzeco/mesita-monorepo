@@ -1,7 +1,8 @@
 "use client";
 
-// The guest's Near/Popular toggle (MESITA-2425): one choice shared by the
-// Search map and Home › Places, sent as the server-side `prefer`. Near (the
+// Search's Near/Popular pick (MESITA-2425; two chips since MESITA-2426,
+// which replaced All), sent as the server-side `prefer`. Home's Near and
+// Popular rows are its own column state. Near (the
 // default) ranks on the operator's Proximity/Popularity balance; Popular
 // ranks on Popularity alone inside the same radius. A device preference,
 // like the toggles consumer-local-reset leaves alone, so localStorage.
@@ -46,11 +47,6 @@ export function setAreaPrefer(next: AreaPrefer) {
     // ignore storage failures
   }
   for (const listener of listeners) listener();
-}
-
-/** One tap flips it. */
-export function toggleAreaPrefer() {
-  setAreaPrefer(current() === "near" ? "popular" : "near");
 }
 
 export function useAreaPrefer(): AreaPrefer {

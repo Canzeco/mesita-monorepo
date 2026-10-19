@@ -70,8 +70,6 @@ import { useActiveLocation } from "@/lib/active-location";
 import { cn, errMsg } from "@/lib/utils";
 import { placesFeed } from "@/lib/catalog-feed";
 import { AreaDiagnostics } from "./AreaDiagnostics";
-import { AreaPreferChip } from "@/components/consumer/AreaPreferChip";
-import { useAreaPrefer } from "@/lib/use-area-prefer";
 
 /** The server's rail keys for the two sources the All row mixes. */
 export const MESITA_RAIL_KEY = "mesita_selected";
@@ -87,16 +85,31 @@ const ROW_ON = "bg-card text-foreground font-semibold";
 const ROW_OFF = "text-foreground hover:bg-card/60";
 
 /** The column's default row: every place, one list (MESITA-2383, MESITA-2416). */
-export const ALL_CHIP = "all";
+/** Every family, ranked Near: the operator's Proximity/Popularity balance
+ *  (MESITA-2426; Near and Popular replaced All). */
+export const NEAR_CHIP = "near";
+/** Every family, ranked on Popularity alone inside the same radius. */
+export const POPULAR_CHIP = "popular";
+
+/** Near and Popular are every family; any other row is one family. */
+export function isEveryFamily(chip: string): boolean {
+  return chip === NEAR_CHIP || chip === POPULAR_CHIP;
+}
+
+/** What the row asks the server to rank by: a family ranks Near. */
+export function chipPrefer(chip: string): "near" | "popular" {
+  return chip === POPULAR_CHIP ? "popular" : "near";
+}
 /** The guest's saved places (MESITA-2383; it was Home's Favorites tab). */
 export const FAVORITES_CHIP = "favorites";
 /** Social, Soon (MESITA-2168) — a row since MESITA-2405; it was a Home pill. */
 export const SOCIAL_CHIP = "social";
 
-/** The column: Social · Favorites · All, a rule, then every guest
- *  family (MESITA-2383, MESITA-2384, MESITA-2411). Everything through
- *  ALL_CHIP is pinned; the families after it scroll. Google Places and Mesita Selected are not guest choices
- *  (MESITA-2381): they are the sources the All row mixes. A family with
+/** The column: Social · Favorites · Near · Popular, a rule, then every
+ *  guest family (MESITA-2383, MESITA-2384, MESITA-2411, MESITA-2426).
+ *  Everything through POPULAR_CHIP is pinned; the families after it scroll.
+ *  Google Places and Mesita Selected are not guest choices (MESITA-2381):
+ *  they are the sources Near and Popular mix. A family with
  *  nothing here says so rather than hiding. */
 export function placesChips(): {
   key: string;
@@ -108,7 +121,8 @@ export function placesChips(): {
     // does not (Pato, MESITA-2418: the tag "looks like shit").
     { key: SOCIAL_CHIP, label: "Social", emoji: "👥" },
     { key: FAVORITES_CHIP, label: "Favorites", emoji: "❤️" },
-    { key: ALL_CHIP, label: "All", emoji: "✨" },
+    { key: NEAR_CHIP, label: "Near", emoji: "📍" },
+    { key: POPULAR_CHIP, label: "Popular", emoji: "⭐" },
     ...FILTERABLE_PLACE_FAMILIES.map((f) => ({
       key: f.key as string,
       label: f.label,
@@ -117,8 +131,9 @@ export function placesChips(): {
   ];
 }
 
-/** Social, Favorites, All: the pinned head of the column (MESITA-2411). */
-export const PINNED_CHIPS = 3;
+/** Social, Favorites, Near, Popular: the pinned head of the column
+ *  (MESITA-2411, MESITA-2426). */
+export const PINNED_CHIPS = 4;
 
 /** Tiles drawn per page; the next page appends on scroll (MESITA-2384). */
 export const PLACES_PAGE = 20;
@@ -128,12 +143,12 @@ export const PLACES_PAGE = 20;
  *  it always was. */
 export function poolPlaces(pool: AreaPool, chip: string): Place[] {
   if (pool.shape === "unified") {
-    return chip === ALL_CHIP
+    return isEveryFamily(chip)
       ? pool.places
       : pool.places.filter((p) => p.area?.familyKeys.includes(chip));
   }
   const rails = placesFeed(pool.rails);
-  return chip === ALL_CHIP
+  return isEveryFamily(chip)
     ? allPlaces(rails)
     : (rails.find((r) => r.key === chip)?.places ?? []);
 }
@@ -166,7 +181,6 @@ export function favoritePlaces(
     .map((p) => enrichPlaceOverview(p));
 }
 
-
 export function CatalogRails() {
   const supabase = useBrowserSupabase();
   const coords = useUserLocation();
@@ -177,8 +191,10 @@ export function CatalogRails() {
   // null = the guest's current location; a saved location = search from it.
   const origin = useActiveLocation();
   const from = origin ?? coords;
-  // Near/Popular (MESITA-2425) is part of the question, so part of the key.
-  const prefer = useAreaPrefer();
+  // Near/Popular (MESITA-2425) is part of the question, so part of the key;
+  // the row picks it (MESITA-2426), and every family row asks Near.
+  const [chip, setChip] = useState<string>(NEAR_CHIP);
+  const prefer = chipPrefer(chip);
   const requestKey = `${areaPoolKey(origin ?? coords)}|${prefer}`;
   // The running load's background reload: the rails on screen stay until
   // the new ones land, and an error never replaces a good feed.
@@ -202,7 +218,9 @@ export function CatalogRails() {
         if (cancelled || mine !== seq) return;
         if (next.shape === "legacy" && !legacyShapeLogged) {
           legacyShapeLogged = true;
-          console.warn("[places] catalog_shape_legacy: the Feed EF answered rails");
+          console.warn(
+            "[places] catalog_shape_legacy: the Feed EF answered rails",
+          );
         }
         writeAreaPool(requestKey, next);
         setPool(next);
@@ -237,7 +255,6 @@ export function CatalogRails() {
     [],
   );
 
-  const [chip, setChip] = useState<string>(ALL_CHIP);
   // Paging after ranking: the pool is whole; the screen draws it a page at
   // a time and the sentinel under the last tile asks for the next.
   const [pages, setPages] = useState({ key: "", n: 1 });
@@ -254,7 +271,10 @@ export function CatalogRails() {
     if (!el || !hasMore || typeof IntersectionObserver === "undefined") return;
     const io = new IntersectionObserver((entries) => {
       if (entries.some((e) => e.isIntersecting)) {
-        setPages((p) => ({ key: pageKey, n: (p.key === pageKey ? p.n : 1) + 1 }));
+        setPages((p) => ({
+          key: pageKey,
+          n: (p.key === pageKey ? p.n : 1) + 1,
+        }));
       }
     });
     io.observe(el);
@@ -300,18 +320,15 @@ export function CatalogRails() {
 
   // Every row reads the same: emoji + label. Social wore a muted label and
   // a "Soon" tag (MESITA-2408) until Pato cut it (MESITA-2418).
-  const categoryRow = (c: {
-    key: string;
-    label: string;
-    emoji?: string;
-  }) => (
+  const categoryRow = (c: { key: string; label: string; emoji?: string }) => (
     <li key={c.key}>
       <button
         type="button"
         onClick={() => {
           // The in-Home switch (`nav_tab_tap` is BottomNav's): since
           // MESITA-2409 Home's modes are this column's rows.
-          if (chip !== c.key) trackEvent(supabase, "home_mode_view", { mode: c.label });
+          if (chip !== c.key)
+            trackEvent(supabase, "home_mode_view", { mode: c.label });
           setChip(c.key);
         }}
         aria-pressed={chip === c.key}
@@ -340,9 +357,31 @@ export function CatalogRails() {
       aria-label="Places"
       data-places-categories
     >
-      {/* Pinned: Social · Favorites · All never scroll (MESITA-2411). */}
-      <ul role="list" aria-label="Yours" className="shrink-0" data-places-pinned>
-        {chips.slice(0, PINNED_CHIPS).map(categoryRow)}
+      {/* Pinned: Social, then Favorites · Near · Popular, never scroll
+          (MESITA-2411). */}
+      <ul
+        role="list"
+        aria-label="Social"
+        className="shrink-0"
+        data-places-pinned
+      >
+        {chips.slice(0, 1).map(categoryRow)}
+      </ul>
+      {/* Two rules (Pato, MESITA-2426): Social │ Favorites · Near ·
+          Popular │ the families. */}
+      <div
+        role="separator"
+        aria-hidden
+        className="border-foreground/15 mx-3 my-1 shrink-0 border-t"
+        data-places-rule
+      />
+      <ul
+        role="list"
+        aria-label="Yours"
+        className="shrink-0"
+        data-places-pinned
+      >
+        {chips.slice(1, PINNED_CHIPS).map(categoryRow)}
       </ul>
       <div
         role="separator"
@@ -376,16 +415,8 @@ export function CatalogRails() {
 
   const tiles = (list: readonly Place[], label: string, paged: boolean) => {
     const page = paged ? list.slice(0, pageCount * PLACES_PAGE) : list;
-    // Near/Popular reads only a point location: an area or no location is
-    // already Popularity alone, so the chip would do nothing (MESITA-2425).
-    const preferOn = paged && pool?.shape === "unified" && pool.kind === "point";
     return (
       <div className="pb-6">
-        {preferOn ? (
-          <div className="bg-card/95 sticky top-0 z-10 flex px-1.5 pt-1.5 backdrop-blur" data-places-prefer>
-            <AreaPreferChip />
-          </div>
-        ) : null}
         <ul role="list" aria-label={label} className={PLACES_LIST}>
           {page.map((place, i) => {
             const located = withUserDistance(place, coords);
@@ -473,14 +504,14 @@ export function CatalogRails() {
 
   const label = chips.find((c) => c.key === chip)?.label ?? "Places";
   const empty =
-    chip === ALL_CHIP && from === null ? (
+    isEveryFamily(chip) && from === null ? (
       <EmptyState
         icon={Navigation}
         title="Turn on location"
         description="Places near you show up once Mesita knows where you are."
         action={{ label: "Use my location", onClick: locate }}
       />
-    ) : chip === ALL_CHIP ? (
+    ) : isEveryFamily(chip) ? (
       <EmptyState
         icon={Compass}
         title="No places here yet"

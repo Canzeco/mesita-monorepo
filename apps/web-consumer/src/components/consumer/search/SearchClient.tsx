@@ -193,7 +193,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // operator's (Admin › Discovery). The server is the one selector — this
   // component never recuts the catalog.
   const filters = useMapFilters();
-  const prefer = useAreaPrefer();
+  // A family ranks Near; Popular is every family only (MESITA-2426).
+  const storedPrefer = useAreaPrefer();
+  const prefer = filters.familyKeys.length > 0 ? "near" : storedPrefer;
   const location = userLocation;
   // The location disc at the LEFT of the top row recentres on the guest.
   // `Recentre` keys on the coords OBJECT, so a tap mints a fresh one and
