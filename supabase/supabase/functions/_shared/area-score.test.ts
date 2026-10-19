@@ -6,8 +6,10 @@ import {
   type AreaCandidate,
   type AreaContext,
   areaScore,
+  balanceForPrefer,
   familyGate,
   rankArea,
+  readAreaPrefer,
   SELECTED_FACTOR,
   selectedFactor,
   territoryGate,
@@ -205,4 +207,21 @@ Deno.test("non-finite numbers never reach the sort", () => {
   );
   for (const r of ranked) assertEquals(Number.isFinite(r.area.final), true, r.item.id);
   assertEquals(ranked[0].item.id, "ok");
+});
+
+Deno.test("Near/Popular (MESITA-2425): Near keeps the operator's weights, Popular drops Proximity", () => {
+  assertEquals(readAreaPrefer("popular"), "popular");
+  assertEquals(readAreaPrefer("near"), "near");
+  assertEquals(readAreaPrefer(undefined), "near");
+  assertEquals(readAreaPrefer("POPULAR"), "near");
+  const op = { proximity: 7, popularity: 3 };
+  assertEquals(balanceForPrefer("near", op), op);
+  assertEquals(balanceForPrefer("popular", op), { proximity: 0, popularity: 3 });
+  assertEquals(balanceForPrefer("popular", { proximity: 5, popularity: 0 }), { proximity: 0, popularity: 1 });
+  // Popular ranks a far, loved place over a near, unknown one inside the radius.
+  const near: AreaCandidate = { id: "near", lat: ANCHOR.lat, lng: ANCHOR.lng, rating: 3.5, reviewCount: 5, familyKeys: ["dinner"], source: "google" };
+  const far: AreaCandidate = { id: "far", lat: ANCHOR.lat + 0.05, lng: ANCHOR.lng, rating: 4.8, reviewCount: 3000, familyKeys: ["dinner"], source: "google" };
+  const ctx = (prefer: "near" | "popular"): AreaContext => ({ ...CTX, balance: balanceForPrefer(prefer, op) });
+  assertEquals(rankArea([near, far], (c) => c, ctx("popular"))[0].item.id, "far");
+  assertEquals(rankArea([near, far], (c) => c, ctx("near"))[0].item.id, "near");
 });
