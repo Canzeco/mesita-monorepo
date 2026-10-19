@@ -11,7 +11,7 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
-import { renderApiKey } from "../admin-web-enrich-place/start-enrichment.ts";
+import { renderApiKey } from "../_shared/enrich-start.ts";
 import {
   pickEnrichmentWorkflow,
   readLogPage,

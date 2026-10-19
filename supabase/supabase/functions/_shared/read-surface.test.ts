@@ -161,13 +161,13 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "_shared/crenup-report.ts",
   "_shared/field-correction-writer.ts", // read enrichment_sources before pin merge (MESITA-2029)
   "_shared/enrich-fill.ts", // enrichment jsonb only, to see which ladder steps already completed (MESITA-2178)
-  "admin-web-enrich-place/index.ts",
+  "_shared/enrich-start.ts", // the saved profile an Enrich run reads back, and its updated_at (MESITA-2420)
+  "_shared/google-refetch.ts", // the phone, endpoint and pins the wrong-number refetch compares (MESITA-2420)
   "admin-web-search-places/index.ts",
   "admin-web-get-overview/index.ts",
   "admin-web-reload-place-reviews/index.ts",
   "consumer-web-confirm-reservation/index.ts",
   "consumer-web-create-reservation/index.ts", // reservations_enabled gate before the insert (MESITA-2156)
-  "eleven-a1-report-outcome/index.ts",
   "eleven-a2-confirm-reservation/index.ts",
   "eleven-a4-cancel-reservation/index.ts",
   "eleven-a4-find-reservation/index.ts",
@@ -210,6 +210,8 @@ const PROFILES_READ_ALLOWLIST = [
   "supabase-edgefunc-discover-places/index.ts",
   // Stop reads content_state and enriched_at, and only to turn enriching off (MESITA-2221).
   "enricher-edgefunc-write-place/index.ts",
+  // A refused Enrich start reads content_state and enriched_at to turn enriching off (MESITA-2420).
+  "_shared/enrich-start.ts",
 ];
 
 Deno.test("PROFILES READ: no new raw reader of profiles outside the allowlist", async () => {
@@ -217,6 +219,7 @@ Deno.test("PROFILES READ: no new raw reader of profiles outside the allowlist", 
 });
 
 const PLACES_READ_ALLOWLIST = [
+  "_shared/google-refetch.ts", // content_state only: no refetch while an Enrich is in flight (MESITA-2420)
   "_shared/reservation-places.ts",
   "admin-web-delete-place/index.ts",
   "admin-web-get-place-enrichment/index.ts",
@@ -324,7 +327,6 @@ const SWALLOWED_TODAY = [
   "_shared/reservation-places.ts",
   "_shared/save-place.ts",
   "consumer-web-confirm-reservation/index.ts",
-  "eleven-a1-report-outcome/index.ts",
   "eleven-a2-confirm-reservation/index.ts",
   "eleven-a3-verify-caller/index.ts",
   "eleven-a4-cancel-reservation/index.ts",

@@ -1,6 +1,9 @@
-// The one enrichment commit fills the Presentation, one Category, and Tags.
-// The classifiers already live in _shared. This module only decides which
-// of those results may land, then the write commits them with the rest.
+// The one enrichment commit fills the Presentation, one Category, and Tags,
+// and hands back the Mesita Name the same synthesis inferred, which lands
+// only through _shared/mesita-name-door.ts. The classifiers already live in
+// _shared. This module only decides which of those results may land, then
+// the write commits them with the rest. The Scout's read, when Strong bought
+// one, is the SERP slot; Google's own summary is the fallback.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { fetchPlaceCategories } from "../_shared/categories.ts";
@@ -12,6 +15,7 @@ import {
   synthesisModelFor,
 } from "../_shared/enrich-synthesis.ts";
 import { humanizeCategorySlug } from "../_shared/parse-utils.ts";
+import { findAddressComponent } from "../_shared/enrich-google-basics-normalizers.ts";
 import { keepAtlasValues } from "../_shared/place-taxonomy.ts";
 import { fetchPlaceTags, inferPlaceTags } from "../_shared/tags.ts";
 import { loadModelsConfig } from "../_shared/models-config.ts";
@@ -79,11 +83,31 @@ function textField(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
+/** Zone and city for the franchise rule: the saved value, else Google's
+ *  structured address on the same patch, the way Create derives them. */
+export function branchAnchor(patch: Record<string, unknown>): { zone: string | null; city: string | null } {
+  const address = patch.google_address;
+  const components = address && typeof address === "object" && !Array.isArray(address)
+    ? (address as { addressComponents?: unknown }).addressComponents
+    : undefined;
+  const list = Array.isArray(components) ? components as { types?: string[]; longText?: string }[] : undefined;
+  return {
+    zone: textField(patch.zone) || findAddressComponent(list, ["neighborhood", "sublocality_level_1", "sublocality"]),
+    city: textField(patch.city) || findAddressComponent(list, ["locality", "administrative_area_level_2"]),
+  };
+}
+
 function overwriteOn(patch: Record<string, unknown>): boolean {
   const sync = patch.source_sync;
   if (!sync || typeof sync !== "object" || Array.isArray(sync)) return false;
   return (sync as { overwrite?: unknown }).overwrite === true;
 }
+
+export type FilledProfile = {
+  patch: Record<string, unknown>;
+  /** The synthesis's clean display name, for the Mesita Name door. */
+  mesitaName: string | null;
+};
 
 /**
  * Asks the existing classifiers for a Presentation, one Category, and Tags.
@@ -93,13 +117,14 @@ export async function fillAtlasProfile(
   admin: SupabaseClient,
   placeId: string,
   patch: Record<string, unknown>,
-): Promise<Record<string, unknown>> {
+  grounding: { serpSummary: string | null } = { serpSummary: null },
+): Promise<FilledProfile> {
   try {
-    return await fillAtlasProfileInner(admin, placeId, patch);
+    return await fillAtlasProfileInner(admin, placeId, patch, grounding);
   } catch (err) {
     const why = err instanceof Error ? err.message : String(err);
     console.error(`[enrich] profile synthesis skipped: ${why}`);
-    return patch;
+    return { patch, mesitaName: null };
   }
 }
 
@@ -107,9 +132,10 @@ async function fillAtlasProfileInner(
   admin: SupabaseClient,
   _placeId: string,
   patch: Record<string, unknown>,
-): Promise<Record<string, unknown>> {
+  grounding: { serpSummary: string | null },
+): Promise<FilledProfile> {
   const openaiKey = Deno.env.get("OPENAI_KEY")?.trim() ?? "";
-  if (!openaiKey) return patch;
+  if (!openaiKey) return { patch, mesitaName: null };
 
   const [categories, tagVocabulary, models, cfg] = await Promise.all([
     fetchPlaceCategories(admin),
@@ -120,9 +146,12 @@ async function fillAtlasProfileInner(
   const name = textField(patch.google_name) || textField(patch.mesita_name);
   const address = textField(patch.address);
   const googleSummary = textField(patch.pitch) || textField(patch.story) || textField(patch.description);
+  const webRead = textField(grounding.serpSummary) || googleSummary;
   const reviews = reviewQuotes(patch.google_reviews);
 
   let presentation: string | null = null;
+  let mesitaName: string | null = null;
+  const anchor = branchAnchor(patch);
   if (name) {
     const { parsed } = await synthesizeProfile({
       openaiKey,
@@ -130,14 +159,18 @@ async function fillAtlasProfileInner(
       name,
       locationLine: address,
       category: textField(patch.category) || null,
+      // The franchise rule's anchor: a chain branch is named brand + zone.
+      zone: anchor.zone,
+      city: anchor.city,
       igBio: "",
       googleReviewsText: reviews,
-      serpSummary: googleSummary || null,
+      serpSummary: webRead || null,
     });
     if (parsed) {
       const drafted: Record<string, unknown> = {};
       applyProfileToUpdate(drafted, parsed);
       presentation = textField(drafted.description) || null;
+      mesitaName = textField(parsed.mesita_name) || null;
     }
   }
   if (!presentation && googleSummary) presentation = capPresentation(googleSummary);
@@ -153,7 +186,7 @@ async function fillAtlasProfileInner(
     category,
     description: presentation,
     googleReviewsText: reviews,
-    serpSummary: googleSummary || null,
+    serpSummary: webRead || null,
   }, models.enricherModel);
   const kept = keepAtlasValues({
     category,
@@ -162,11 +195,14 @@ async function fillAtlasProfileInner(
     tagVocabulary: tagVocabulary.map((item) => item.slug),
   });
 
-  return mergeSynthesizedProfile({
-    overwrite: overwriteOn(patch),
-    patch,
-    presentation,
-    category: kept.category,
-    tags: kept.tags,
-  });
+  return {
+    patch: mergeSynthesizedProfile({
+      overwrite: overwriteOn(patch),
+      patch,
+      presentation,
+      category: kept.category,
+      tags: kept.tags,
+    }),
+    mesitaName,
+  };
 }

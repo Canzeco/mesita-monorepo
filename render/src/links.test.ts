@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   confirmedLink,
+  discoverLinks,
   discoverOfficialLinks,
   poolFromUrls,
+  resolverBackground,
   urlsFromFirecrawl,
   validateLink,
 } from "./links.ts";
@@ -220,4 +222,83 @@ test("missing vendor keys write no links and make no request", async () => {
     },
   });
   assert.deepEqual(found, {});
+});
+
+test("the Scout's read reaches the Resolver as background, in the console's words", async () => {
+  let judgedInput = "";
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const body = JSON.parse(String(init?.body ?? "{}")) as { input?: string };
+    if (String(input).includes("firecrawl")) {
+      return Response.json({ data: { web: [{ url: "https://www.instagram.com/pujol" }] } });
+    }
+    judgedInput = body.input ?? "";
+    return Response.json({
+      output: [{ type: "message", content: [{ text: JSON.stringify({ instagram_url: "https://www.instagram.com/pujol" }) }] }],
+    });
+  };
+  const out = await discoverLinks({
+    name: "Pujol",
+    city: "Mexico City",
+    have: {},
+    counts: { website_url: 0, instagram_url: 7, facebook_url: 0, opentable_url: 0, uber_eats_url: 0 },
+    context: "A tasting-menu landmark in Polanco.",
+    firecrawlKey: "fc",
+    perplexityKey: "px",
+    fetchImpl,
+  });
+  assert.equal(out.links.instagram_url, "https://www.instagram.com/pujol");
+  assert.equal(out.report.state, "completed");
+  assert.ok(judgedInput.includes(resolverBackground("A tasting-menu landmark in Polanco.")));
+  assert.equal(resolverBackground("  "), "");
+});
+
+test("Links reports absence as a result and a silent vendor as a failure", async () => {
+  const empty = await discoverLinks({
+    name: "Pujol",
+    city: null,
+    have: {},
+    firecrawlKey: "fc",
+    perplexityKey: "px",
+    fetchImpl: async () => Response.json({ data: { web: [] } }),
+  });
+  assert.equal(empty.report.state, "completed");
+
+  const firecrawlDown = await discoverLinks({
+    name: "Pujol",
+    city: null,
+    have: {},
+    firecrawlKey: "fc",
+    perplexityKey: "px",
+    fetchImpl: async () => new Response("down", { status: 500 }),
+  });
+  assert.equal(firecrawlDown.report.state, "failed");
+
+  const resolverDown = await discoverLinks({
+    name: "Pujol",
+    city: null,
+    have: {},
+    firecrawlKey: "fc",
+    perplexityKey: "px",
+    fetchImpl: async (input) =>
+      String(input).includes("firecrawl")
+        ? Response.json({ data: { web: [{ url: "https://www.pujol.com.mx/" }] } })
+        : new Response("busy", { status: 503 }),
+  });
+  assert.equal(resolverDown.report.state, "failed");
+
+  const known = await discoverLinks({
+    name: "Pujol",
+    city: null,
+    have: {
+      website_url: "https://pujol.com.mx",
+      instagram_url: "https://www.instagram.com/pujol",
+      facebook_url: "https://www.facebook.com/pujol",
+      opentable_url: "https://www.opentable.com/r/pujol",
+      uber_eats_url: "https://www.ubereats.com/mx/store/pujol/abc",
+    },
+  });
+  assert.equal(known.report.state, "completed");
+
+  const noKeys = await discoverLinks({ name: "Pujol", city: null, have: {} });
+  assert.equal(noKeys.report.state, "failed");
 });

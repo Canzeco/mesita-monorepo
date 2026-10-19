@@ -1,7 +1,8 @@
 /**
- * The brand-red dot on a top-row disc's corner: location held, or a filter
- * applied (Pato, 2026-10-17, MESITA-2304). Decorative — the disc's
- * accessible name carries the fact. `data-active` is the test's handle.
+ * The dot on a top-row disc's corner: location held, or a filter applied
+ * (Pato, 2026-10-17, MESITA-2304). It paints `bg-primary`, which is ink on
+ * the consumer app, not brand red. Decorative — the disc's accessible name
+ * carries the fact. `data-active` is the test's handle.
  */
 export function ActiveDot() {
   return (

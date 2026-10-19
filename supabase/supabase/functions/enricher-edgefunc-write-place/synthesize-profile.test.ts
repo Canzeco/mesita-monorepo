@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { capPresentation, mergeSynthesizedProfile, reviewQuotes } from "./synthesize-profile.ts";
+import { branchAnchor, capPresentation, mergeSynthesizedProfile, reviewQuotes } from "./synthesize-profile.ts";
 
 Deno.test("a presentation longer than 500 characters is cut there", () => {
   const text = "a".repeat(800);
@@ -66,4 +66,23 @@ Deno.test("overwrite on replaces the presentation, the category, and the tags", 
   assertEquals(next.description, "Vibrant nightclub.");
   assertEquals(next.category, "nightclub");
   assertEquals(next.tags, ["dj"]);
+});
+
+Deno.test("the franchise anchor is the saved zone and city, else Google's structured address", () => {
+  assertEquals(branchAnchor({ zone: "Polanco", city: "Ciudad de México" }), {
+    zone: "Polanco",
+    city: "Ciudad de México",
+  });
+  assertEquals(
+    branchAnchor({
+      google_address: {
+        addressComponents: [
+          { types: ["sublocality_level_1", "sublocality"], longText: "Roma Nte." },
+          { types: ["locality", "political"], longText: "Ciudad de México" },
+        ],
+      },
+    }),
+    { zone: "Roma Nte.", city: "Ciudad de México" },
+  );
+  assertEquals(branchAnchor({}), { zone: null, city: null });
 });

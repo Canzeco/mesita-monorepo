@@ -1,6 +1,7 @@
 // Render talks to one Edge Function. It does not open the database.
 
 import type { PhotoAnalysis } from "./images.ts";
+import type { RanSteps } from "./steps.ts";
 
 const WRITE_FUNCTION = "enricher-edgefunc-write-place";
 
@@ -8,12 +9,34 @@ export function writePlaceUrl(supabaseUrl: string): string {
   return `${supabaseUrl.replace(/\/$/, "")}/functions/v1/${WRITE_FUNCTION}`;
 }
 
+/** The one commit body. Steps and the Scout's read ride beside the profile:
+ *  the write stamps the steps, and the read grounds the Presentation. */
+export function commitBody(
+  placeId: string,
+  built: {
+    patch: Record<string, unknown>;
+    mirrorPhotos: boolean;
+    photoAnalyses: PhotoAnalysis[];
+    steps: RanSteps;
+    serpSummary: string | null;
+  },
+  baseUpdatedAt?: string | null,
+): Record<string, unknown> {
+  return {
+    placeId,
+    patch: built.patch,
+    mirrorPhotos: built.mirrorPhotos,
+    ...(baseUpdatedAt ? { baseUpdatedAt } : {}),
+    ...(built.photoAnalyses.length > 0 ? { photoAnalyses: built.photoAnalyses } : {}),
+    ...(Object.keys(built.steps).length > 0 ? { steps: built.steps } : {}),
+    ...(built.serpSummary ? { serpSummary: built.serpSummary } : {}),
+  };
+}
+
 export async function writeFinishedPlace(
   placeId: string,
-  patch: Record<string, unknown>,
-  mirrorPhotos = true,
+  built: Parameters<typeof commitBody>[1],
   baseUpdatedAt?: string | null,
-  photoAnalyses: PhotoAnalysis[] = [],
 ): Promise<{ placeId: string }> {
   const supabaseUrl = process.env.SUPABASE_URL?.trim() ?? "";
   const writeKey = process.env.ENRICH_WRITE_KEY?.trim() ?? "";
@@ -27,13 +50,7 @@ export async function writeFinishedPlace(
       Authorization: `Bearer ${writeKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      placeId,
-      patch,
-      mirrorPhotos,
-      ...(baseUpdatedAt ? { baseUpdatedAt } : {}),
-      ...(photoAnalyses.length > 0 ? { photoAnalyses } : {}),
-    }),
+    body: JSON.stringify(commitBody(placeId, built, baseUpdatedAt)),
   });
   const body = await res.json().catch(() => null) as { ok?: boolean; error?: string } | null;
   if (!res.ok || !body?.ok) {
@@ -43,12 +60,17 @@ export async function writeFinishedPlace(
 }
 
 // Sent before a failed task exits. The function turns enriching off. A
-// failure here must not replace the error that failed the run.
-export function stopEnrichingBody(placeId: string): { placeId: string; stop: true } {
-  return { placeId, stop: true };
+// failure here must not replace the error that failed the run. `closed` is
+// the liveness halt: the function also records Google's CLOSED_PERMANENTLY and
+// stamps Details failed with that reason.
+export function stopEnrichingBody(
+  placeId: string,
+  opts: { closed?: boolean } = {},
+): { placeId: string; stop: true; closed?: true } {
+  return opts.closed ? { placeId, stop: true, closed: true } : { placeId, stop: true };
 }
 
-export async function stopEnriching(placeId: string): Promise<void> {
+export async function stopEnriching(placeId: string, opts: { closed?: boolean } = {}): Promise<void> {
   const id = placeId.trim();
   const supabaseUrl = process.env.SUPABASE_URL?.trim() ?? "";
   const writeKey = process.env.ENRICH_WRITE_KEY?.trim() ?? "";
@@ -63,7 +85,7 @@ export async function stopEnriching(placeId: string): Promise<void> {
         Authorization: `Bearer ${writeKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(stopEnrichingBody(id)),
+      body: JSON.stringify(stopEnrichingBody(id, opts)),
       signal: ctrl.signal,
     });
     if (!res.ok) {

@@ -16,9 +16,11 @@ import {
   type ImageKnobs,
   type PhotoAnalysis,
 } from "./images.ts";
-import { discoverOfficialLinks, linkCounts, type LinkField } from "./links.ts";
+import { discoverLinks, linkCounts, type LinkField } from "./links.ts";
 import { fetchDraftSync } from "./draft-sync.ts";
 import { applyOverwrite } from "./fill-existing.ts";
+import { scoutPlace } from "./scout.ts";
+import type { RanSteps } from "./steps.ts";
 
 // Paid vendor calls must not be replayed by the platform.
 export const NO_RETRY = { maxRetries: 0, waitDurationMs: 1000, backoffScaling: 1 };
@@ -33,6 +35,7 @@ export type EnrichmentKnobs = {
   discoverOpentableN?: number;
   discoverUbereatsN?: number;
   perplexityPreset?: string;
+  scoutInstructions?: string;
   resolverInstructions?: string;
   gatherGoogleImages?: number;
   gatherInstagramDepth?: number;
@@ -61,6 +64,9 @@ export type EnrichJob = {
   /** Profile at the moment enriching was marked. The write refuses a newer row. */
   baseUpdatedAt?: string | null;
   saved?: Record<string, unknown>;
+  /** The Scout's message for this place, built by the Edge Function. Strong
+   *  runs the Scout with it; a job without one skips step 2. */
+  scoutInput?: string;
 };
 
 export function isQuickEnrich(job: EnrichJob): boolean {
@@ -68,20 +74,35 @@ export function isQuickEnrich(job: EnrichJob): boolean {
 }
 
 export type BuiltEnrichment = {
+  closed?: false;
   patch: Record<string, unknown>;
   mirrorPhotos: boolean;
   photoAnalyses: PhotoAnalysis[];
+  /** Steps whose outcome only the task saw (the Scout and Links, Strong only). */
+  steps: RanSteps;
+  /** The Scout's read: the write's Presentation grounds on it. Never a column. */
+  serpSummary: string | null;
 };
 
-// A finished place is the Google spine, the official links Firecrawl sourced and
-// the Resolver kept, the gallery the Enrichment page asked for, the 100 newest
-// Google reviews from Apify, and a description of at most 500 characters.
-// The description is Google's own summary when it has one, otherwise one
-// written from those facts. The write then fills one Atlas category and
-// Atlas tags, and replaces an empty presentation with the synthesized one.
-// Anything short of a finished profile throws before the write. Places
-// itself never supplies the review list: it returns five.
-export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment> {
+/** A listing Google calls permanently closed. The run stops at Details. */
+export type ClosedListing = { closed: true };
+
+/** Liveness, step 1's subprocess: read off the same Place Details response. */
+export function isPermanentlyClosed(details: { businessStatus?: string }): boolean {
+  return details.businessStatus?.trim().toUpperCase() === "CLOSED_PERMANENTLY";
+}
+
+// A finished place is the Google spine, the Scout's read of the web, the
+// official links Firecrawl sourced and the Resolver kept, the gallery the
+// Enrichment page asked for, the 100 newest Google reviews from Apify, and a
+// description of at most 500 characters. The description is Google's own
+// summary when it has one, otherwise one written from those facts. The write
+// then fills one Atlas category and Atlas tags, and replaces an empty
+// presentation with the synthesized one. A listing Google calls permanently
+// closed stops right after Details, before any paid step. Anything else short
+// of a finished profile throws before the write. Places itself never supplies
+// the review list: it returns five.
+export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment | ClosedListing> {
   const googlePlaceId = job.googlePlaceId?.trim() ?? "";
   if (!job.placeId?.trim() || !googlePlaceId) {
     throw new Error("Enrichment needs a place id and a Google place id.");
@@ -90,6 +111,7 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment> 
   if (!googleKey) throw new Error("Render is missing GMP_KEY");
 
   const details = await fetchGooglePlace(googlePlaceId, googleKey);
+  if (isPermanentlyClosed(details)) return { closed: true };
   const spine = profileFromGoogle(details, googlePlaceId);
   if (!spine.ok) throw new Error(spine.error);
   const lat = spine.patch.lat;
@@ -128,7 +150,15 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment> 
       if (savedUrl) spine.patch[key] = savedUrl;
     }
   }
-  const links = await discoverOfficialLinks({
+  const scout = job.scoutInput?.trim()
+    ? await scoutPlace({
+      input: job.scoutInput,
+      instructions: knobs.scoutInstructions,
+      preset: knobs.perplexityPreset,
+      perplexityKey: process.env.PERPLEXITY_KEY,
+    })
+    : null;
+  const discovered = await discoverLinks({
     name,
     city,
     have: {
@@ -141,9 +171,11 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment> 
     counts,
     preset: knobs.perplexityPreset,
     instructions: knobs.resolverInstructions,
+    context: scout?.summary ?? null,
     firecrawlKey: process.env.FIRECRAWL_KEY,
     perplexityKey: process.env.PERPLEXITY_KEY,
   });
+  const links = discovered.links;
   for (const [key, url] of Object.entries(links) as [LinkField, string][]) {
     spine.patch[key] = url;
   }
@@ -209,10 +241,14 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment> 
     );
     if (fields) Object.assign(patch, fields);
   }
+  const steps: RanSteps = { links: discovered.report };
+  if (scout) steps.serp = scout.report;
   return {
     patch: stampOverwrite(patch, overwrite),
     mirrorPhotos: knobs.saveImagesToStorage !== false,
     photoAnalyses: photos.analyses,
+    steps,
+    serpSummary: scout?.summary ?? null,
   };
 }
 
@@ -311,6 +347,8 @@ async function buildQuickEnrichment(opts: {
     patch: stampOverwrite(merged, opts.overwrite),
     mirrorPhotos: opts.knobs.saveImagesToStorage !== false,
     photoAnalyses: [],
+    steps: {},
+    serpSummary: null,
   };
 }
 

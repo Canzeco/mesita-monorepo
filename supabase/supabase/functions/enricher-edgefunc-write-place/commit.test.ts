@@ -61,3 +61,17 @@ Deno.test("anything short of a finished profile writes nothing", () => {
   assertEquals(enrichmentCommit({ placeId: "  ", patch: { content_state: "ready", phone: "x" } }).ok, false);
   assertEquals(enrichmentCommit(null).ok, false);
 });
+
+Deno.test("the task's step reports and the Scout's read ride on the commit", () => {
+  const got = enrichmentCommit({
+    placeId: "place-1",
+    patch: { content_state: "ready", phone: "x" },
+    steps: { serp: { state: "completed", detail: "The Scout wrote 40 words of web context." } },
+    serpSummary: "  A tasting menu.  ",
+  });
+  assertEquals(got.ok && got.steps, { serp: { state: "completed", detail: "The Scout wrote 40 words of web context." } });
+  assertEquals(got.ok && got.serpSummary, "A tasting menu.");
+  const bare = enrichmentCommit({ placeId: "place-1", patch: { content_state: "ready", phone: "x" } });
+  assertEquals(bare.ok && bare.steps, {});
+  assertEquals(bare.ok && bare.serpSummary, null);
+});

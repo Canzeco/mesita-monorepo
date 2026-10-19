@@ -1,9 +1,10 @@
 // Supabase Edge Function — consumer-web-request-place
 //
-// Signed-in consumer requests a usable Mesita profile for a Listed place
-// that is not yet Enriched. One request per consumer per place. When the
-// count reaches Crenup atlasRequestThreshold, seed the existing Enricher
-// pipeline. Admin create/enrich never goes through this door.
+// Signed-in consumer votes for an Enrich run on a Listed place that is not
+// yet Enriched. One vote per consumer per place. When the count reaches
+// Creation's Vote threshold (atlasRequestThreshold), the door starts the
+// Render run admin Enrich starts (_shared/place-requests.ts). Admin
+// create/enrich never goes through this door.
 //
 // Local:  supabase functions serve consumer-web-request-place
 // Deploy: supabase functions deploy consumer-web-request-place

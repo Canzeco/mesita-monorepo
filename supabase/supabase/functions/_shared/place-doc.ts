@@ -577,6 +577,8 @@ export type PlaceWriteArgs =
     selectMode?: SelectMode;
     /** Match only a row still in this content_state. A row that already left it is not written. */
     onlyWhile?: "generating";
+    /** Match only a row NOT in this content_state: a claim that loses to a run already in flight. */
+    unlessWhile?: "generating";
   }
   | {
     table: "profiles";
@@ -651,6 +653,9 @@ export async function writePlace(
   let updateBuilder = admin.from(args.table).update(validated.patch).eq("id", args.id);
   if ("onlyWhile" in args && args.onlyWhile) {
     updateBuilder = updateBuilder.eq("content_state", args.onlyWhile);
+  }
+  if ("unlessWhile" in args && args.unlessWhile) {
+    updateBuilder = updateBuilder.neq("content_state", args.unlessWhile);
   }
   if (args.select) {
     const withSelect = updateBuilder.select(args.select);

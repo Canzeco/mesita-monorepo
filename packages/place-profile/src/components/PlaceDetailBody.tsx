@@ -18,9 +18,10 @@ import { SoonScreen } from "./place-detail/soon-screen";
 import { DatesBox, LinksBox, TagsBox } from "./place-detail/tags-links-meta";
 
 // Pure presentation for the place detail surface, laid out like an
-// Instagram profile. Callers render their own top bar above this and the
-// pinned action bar below it. Optional callbacks keep Reserve, vote, menus,
-// and links live; omitting them leaves those controls visible and inert.
+// Instagram profile. Callers render their own top bar above this; there is
+// no pinned action bar below it. Optional callbacks keep Reserve, vote,
+// menus, and links live; omitting them leaves those controls visible and
+// inert.
 // Everything here SCROLLS:
 //
 //   1. Profile summary — name in page chrome; photo + Google/Instagram/

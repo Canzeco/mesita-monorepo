@@ -1,6 +1,15 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { RESOLVER_INSTRUCTIONS } from "../_shared/enrich-channel-discovery.ts";
-import { ENRICHING_PATCH, enrichDepthOf, enrichmentKnobs, enrichmentRun, renderApiKey } from "./start-enrichment.ts";
+import { RESOLVER_INSTRUCTIONS } from "./enrich-channel-discovery.ts";
+import { buildScoutInput, SCOUT_INSTRUCTIONS } from "./enrich-serp.ts";
+import {
+  contentStateAfterRefusal,
+  ENRICHING_PATCH,
+  enrichDepthOf,
+  enrichmentKnobs,
+  enrichmentRun,
+  renderApiKey,
+  scoutInputFor,
+} from "./enrich-start.ts";
 
 const ONE = { placeId: "place-1", googlePlaceId: "ChIJ-1" };
 const TWO = { placeId: "place-2", googlePlaceId: "ChIJ-2" };
@@ -30,7 +39,7 @@ Deno.test("the Render key is the secret that exists", () => {
   assertEquals(renderApiKey({ get: () => undefined }), "");
 });
 
-Deno.test("the Enrichment page rides on the job", () => {
+Deno.test("the Enrichment page rides on the job, with the Scout and Resolver texts the console shows", () => {
   const knobs = enrichmentKnobs({
     discoverCandidates: {
       website_url: 5,
@@ -56,7 +65,34 @@ Deno.test("the Enrichment page rides on the job", () => {
   assertEquals(knobs.visionModel, "gpt-4o-mini");
   assertEquals(knobs.sortModel, "gpt-4o");
   assertEquals(knobs.resolverInstructions, RESOLVER_INSTRUCTIONS);
+  assertEquals(knobs.scoutInstructions, SCOUT_INSTRUCTIONS);
   assertEquals(knobs.imageAnalysisPrompt, "describe the room");
+});
+
+Deno.test("the Scout's message is the console's builder over the saved place", () => {
+  const saved = {
+    name: "Contramar",
+    google_name: "Contramar Roma",
+    address: "Durango 200, Roma Nte., CDMX",
+    category: "seafood_restaurant",
+    category_label: "Seafood Restaurant",
+  };
+  assertEquals(
+    scoutInputFor(saved),
+    buildScoutInput({
+      name: "Contramar",
+      locationLine: "Durango 200, Roma Nte., CDMX",
+      category: "Seafood Restaurant",
+    }),
+  );
+});
+
+Deno.test("the Scout's message falls back to the Google name and drops an undefined category", () => {
+  assertEquals(
+    scoutInputFor({ name: null, google_name: "Bar X", address: "", category: "undefined" }),
+    buildScoutInput({ name: "Bar X", locationLine: "", category: null }),
+  );
+  assertEquals(scoutInputFor({ name: "", google_name: "" }), null);
 });
 
 Deno.test("quick is the only short run; anything else is full", () => {
@@ -71,4 +107,10 @@ Deno.test("a list starts enrich multiple places", () => {
     task: "mesita-monorepo/enrich-multiple-places",
     input: [[ONE, TWO]],
   });
+});
+
+Deno.test("a refused start turns enriching off: ready when enriched before, failed when never", () => {
+  assertEquals(contentStateAfterRefusal({ content_state: "generating", enriched_at: "2026-10-01T00:00:00Z" }), "ready");
+  assertEquals(contentStateAfterRefusal({ content_state: "generating", enriched_at: null }), "failed");
+  assertEquals(contentStateAfterRefusal({ content_state: "ready", enriched_at: null }), null);
 });

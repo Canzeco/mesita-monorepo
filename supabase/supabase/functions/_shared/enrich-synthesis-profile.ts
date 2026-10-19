@@ -1,5 +1,4 @@
 import { ENRICH_DESCRIPTION_MAX } from "./enrich-config.ts";
-import { PopularTimesSchema } from "./place-jsonb-schemas.ts";
 
 export type ProfileResult = {
   zone?: string | null;
@@ -18,6 +17,7 @@ export type ProfileResult = {
    * applyProfileToUpdate — only the mesita-name-door may land it (gate D2).
    */
   mesita_name?: string | null;
+  /** Retired (MESITA-2420). A stale reply may still carry it; it is never applied. */
   popular_times?: unknown[] | null;
 };
 
@@ -99,15 +99,6 @@ export function applyProfileToUpdate(
   }
   // products.menu is no longer synthesised — the website (its only source) is no
   // longer scraped. Existing menus on the place are left untouched.
-  // MESITA-1247: validate before it lands on the row. json_object mode only
-  // *describes* the schema to the model — it can and does return off-type or
-  // extra fields — so a malformed blob is dropped rather than trusted, per
-  // this function's own rule above ("only sets a field when synthesis
-  // actually produced a USABLE value" — a shape the validator rejects isn't
-  // usable). Writes back the ORIGINAL parsed value on success, not the
-  // schema's normalized output.
-  if (Array.isArray(parsed.popular_times) && parsed.popular_times.length > 0) {
-    const validated = PopularTimesSchema.parse(parsed.popular_times);
-    if (validated.ok) update.popular_times = parsed.popular_times;
-  }
+  // popular_times is not synthesised either (MESITA-2420): the model could only
+  // guess busy hours from review text, under a card that says "From Google".
 }

@@ -10,11 +10,12 @@ import { Box } from "./box";
 
 // ── Popular times (MESITA-2135) ─────────────────────────────────────────
 //
-// Back from the deleted mobile app's PopularTimesCard. Enrichment writes
-// `place_profiles.popular_times` as one { day, range } per day (the busy
-// window Google reports), so the box is a day picker over that range. The
-// mobile card also drew hourly bars; nothing writes bars today, so they
-// render only when a row carries them, and never as invented zeros.
+// Back from the deleted mobile app's PopularTimesCard. The box is a day
+// picker over `place_profiles.popular_times`, one { day, range } per day.
+// Nothing writes that column today: MESITA-2420 retired the synthesis guess,
+// which read busy hours off review text under a "From Google" label. So the
+// box renders only when a row carries the shape, and hourly bars only when a
+// row carries them, never as invented zeros.
 
 const dayKey = (day: string) => day.trim().slice(0, 3).toLowerCase();
 

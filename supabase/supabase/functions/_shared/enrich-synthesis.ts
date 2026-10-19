@@ -30,16 +30,8 @@ const PROFILE_SCHEMA = {
     editorial_summary: { type: ["string", "null"] },
     description: { type: ["string", "null"] },
     mesita_name: { type: ["string", "null"] },
-    popular_times: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          day: { type: "string" },
-          range: { type: "string" },
-        },
-      },
-    },
+    // No popular_times (MESITA-2420): a guess from review text is not
+    // Google's busy hours, and the guest card says "From Google".
   },
 } as const;
 
