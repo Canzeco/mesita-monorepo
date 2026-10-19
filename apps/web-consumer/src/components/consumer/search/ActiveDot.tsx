@@ -1,5 +1,5 @@
 /**
- * The dot on a top-row disc's corner: location held, or a filter applied
+ * The dot on the locate disc's corner: the guest's location is held
  * (Pato, 2026-10-17, MESITA-2304). It paints `bg-primary`, which is ink on
  * the consumer app, not brand red. Decorative — the disc's accessible name
  * carries the fact. `data-active` is the test's handle.

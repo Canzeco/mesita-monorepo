@@ -37,6 +37,22 @@ function read(name: string): string {
   return readFileSync(join(SEARCH_DIR, name), "utf8");
 }
 
+// CLASS TOKENS ONE AT A TIME (MESITA-2433). A whole class string breaks when
+// prettier-plugin-tailwindcss reorders it; each token is the intent, and a
+// failure names the one that is missing.
+function expectTokens(text: string, tokens: string[], where: string): void {
+  for (const token of tokens) {
+    expect(text, `${where}: missing ${token}`).toContain(token);
+  }
+}
+
+/** The string literal assigned to `export const <name> =` in a source file. */
+function constValue(src: string, name: string): string {
+  const match = src.match(new RegExp(`export const ${name} =\\s*"([^"]*)"`));
+  expect(match, `no export const ${name}`).not.toBeNull();
+  return match![1];
+}
+
 // Docs › Design §D + Docs › Apps §A: Search is the map plus a results panel whose
 // HEIGHT FITS CONTENT. A fixed tall empty panel (h-[70%] and friends) is the
 // named regression — short lists must leave the map visible below.
@@ -70,6 +86,49 @@ describe("SearchBar", () => {
     expect(html).toContain('spellCheck="false"');
     // WebKit draws its own X on a search input, one pill away from ours.
     expect(html).not.toContain('type="search"');
+  });
+
+  // ONE HEADER OUTLINE (MESITA-2433): flat, no shadow, a dark border while
+  // focused; the short default placeholder; a fixed accessible name (not the
+  // placeholder with its ellipsis).
+  it("is flat, focuses with a dark border and names itself Search places", () => {
+    const html = renderToStaticMarkup(
+      <SearchBar
+        query=""
+        showClear={false}
+        onQueryChange={() => {}}
+        onClear={() => {}}
+      />,
+    );
+    expect(html).not.toContain("shadow-elev");
+    expect(html).not.toContain("backdrop-blur");
+    expectTokens(
+      html,
+      ["focus-within:border-foreground", "text-sm", "font-medium", "h-11"],
+      "SearchBar",
+    );
+    expect(html).toContain('placeholder="Search places…"');
+    expect(html).toContain('aria-label="Search places"');
+    const typed = renderToStaticMarkup(
+      <SearchBar
+        query="tacos"
+        showClear
+        onQueryChange={() => {}}
+        onClear={() => {}}
+      />,
+    );
+    expect(typed).toContain('aria-label="Clear search"');
+    expectTokens(typed, ["focus-visible:text-foreground"], "clear X");
+  });
+
+  it("is used with its default placeholder on Search", () => {
+    const src = read("SearchClient.tsx");
+    const bar = src.slice(
+      src.indexOf("<SearchBar"),
+      src.indexOf("/>", src.indexOf("<SearchBar")),
+    );
+    expect(bar.length).toBeGreaterThan(0);
+    expect(bar).not.toContain("placeholder=");
   });
 });
 
@@ -149,11 +208,102 @@ describe("the bar cannot squeeze its neighbours out", () => {
   // THE ANTI-DISAPPEARING PAIR. Flex resolves an overflowing row by shrinking
   // whichever child can shrink: `min-w-0 flex-1` on the bar, `shrink-0` on
   // the discs and Ask AI beside it.
-  it("keeps min-w-0 on the bar and shrink-0 on Ask AI", () => {
+  it("keeps min-w-0 on the bar and shrink-0 on both discs", () => {
     const header = read("SearchHeader.tsx");
     expect(header).toContain('<div className="min-w-0 flex-1">{bar}</div>');
-    expect(header).toContain('<div className="flex min-w-0 items-center gap-2 px-2 pt-2.5 pb-2">');
-    expect(header).toContain("flex h-11 shrink-0 items-center gap-1.5 rounded-full border px-3.5");
+    const row = header.match(
+      /<div className="(flex min-w-0 items-center[^"]*)">\s*\{locate\}/,
+    );
+    expect(row, "the bar's row").not.toBeNull();
+    expectTokens(row![1], ["gap-2", "px-3", "pt-2", "pb-2"], "bar's row");
+    const disc = constValue(read("header-classes.ts"), "HEADER_DISC");
+    expectTokens(
+      disc,
+      ["h-11", "w-11", "shrink-0", "rounded-full"],
+      "HEADER_DISC",
+    );
+  });
+});
+
+describe("Search's header is one token set (MESITA-2433)", () => {
+  // Pato: "location must be kinda symmetrical to ask ai, and search bar font
+  // must be same… make it cleaner". Two equal discs around the bar, text-sm
+  // everywhere, flat outlines, a dark border on keyboard focus.
+  it("draws Ask AI as the same icon disc as locate", () => {
+    const header = read("SearchHeader.tsx");
+    const start = header.indexOf("<Link");
+    const end = header.indexOf("</Link>", start);
+    const askAi = header.slice(start, end);
+    // A guard first: an empty slice would pass every negative check below.
+    expect(askAi.length).toBeGreaterThan(0);
+    expect(askAi).toContain("data-search-ask-ai");
+    expect(askAi).toContain('aria-label="Ask AI"');
+    expect(askAi).toContain("className={HEADER_DISC}");
+    expect(askAi).toContain("<Sparkles");
+    expect(askAi).not.toContain("<span>Ask AI</span>");
+    expect(askAi).not.toContain("shadow-elev");
+    // Both discs come from one string, so they can't drift apart.
+    for (const file of ["SearchHeader.tsx", "SearchLocateButton.tsx"]) {
+      expect(read(file), file).toContain("HEADER_DISC");
+      expect(read(file), file).toContain("header-classes");
+    }
+  });
+
+  it("gives every control one outline, one type size and a focus border", () => {
+    const classes = read("header-classes.ts");
+    const disc = constValue(classes, "HEADER_DISC");
+    const chip = constValue(classes, "CHIP");
+    const chipOn = constValue(classes, "CHIP_ON");
+    const chipOff = constValue(classes, "CHIP_OFF");
+    expectTokens(
+      disc,
+      [
+        "border-border",
+        "bg-card",
+        "hover:bg-muted",
+        "focus-visible:border-foreground",
+      ],
+      "HEADER_DISC",
+    );
+    expectTokens(
+      chip,
+      [
+        "h-11",
+        "shrink-0",
+        "items-center",
+        "text-sm",
+        "font-semibold",
+        "gap-1.5",
+        "px-3.5",
+        "focus-visible:border-foreground",
+      ],
+      "CHIP",
+    );
+    // An ink chip hides a dark border, and the nav's overflow clips an outer
+    // ring: the selected chip focuses with an inset ring.
+    expectTokens(
+      chipOn,
+      ["bg-primary", "focus-visible:ring-2", "focus-visible:ring-inset"],
+      "CHIP_ON",
+    );
+    expectTokens(
+      chipOff,
+      ["border-border", "bg-card", "hover:bg-muted"],
+      "CHIP_OFF",
+    );
+    for (const value of [disc, chip, chipOn, chipOff]) {
+      expect(value).not.toContain("shadow-elev");
+      expect(value).not.toContain("text-xs");
+    }
+    const nav = read("SearchHeader.tsx").match(
+      /className="(scrollbar-hide[^"]*)"/,
+    );
+    expect(nav, "the chip row").not.toBeNull();
+    expectTokens(
+      nav![1],
+      ["gap-2", "px-3", "pb-2", "overflow-x-auto"],
+      "chip row",
+    );
   });
 });
 
@@ -161,19 +311,33 @@ describe("SearchLocateButton", () => {
   // THE LOCATION DISC, TOP LEFT (Pato, 2026-10-17: "Location Searchbar
   // Filters … location at the left"). The navigation arrow, icon only; the
   // name says what a tap does: ask for a fix, or recentre on the one the
-  // map has. A held fix wears the red dot (MESITA-2304).
+  // map has. A held fix wears the dot (MESITA-2304). Flat like every header
+  // control, no shadow (MESITA-2433).
   it("is an icon-only arrow disc whose name follows the fix", () => {
     const ask = renderToStaticMarkup(
-      <SearchLocateButton located={false} locating={false} onClick={() => {}} />,
+      <SearchLocateButton
+        located={false}
+        locating={false}
+        onClick={() => {}}
+      />,
     );
     expect(ask).toContain("lucide-navigation");
     expect(ask).not.toContain("lucide-locate-fixed");
     expect(ask).not.toContain('data-active="true"');
     expect(ask).toContain('aria-label="Use my location"');
-    expect(ask).toContain("h-11 w-11");
-    expect(ask).toContain("shrink-0");
-    expect(ask).toContain("rounded-full");
-    expect(ask).toContain("shadow-elev");
+    expectTokens(
+      ask,
+      [
+        "h-11",
+        "w-11",
+        "shrink-0",
+        "rounded-full",
+        "focus-visible:border-foreground",
+      ],
+      "locate disc",
+    );
+    expect(ask).not.toContain("shadow-elev");
+    expect(ask).not.toContain("backdrop-blur");
     expect(ask).not.toMatch(/>\s*Use my location\s*</);
     const home = renderToStaticMarkup(
       <SearchLocateButton located locating={false} onClick={() => {}} />,
@@ -186,42 +350,71 @@ describe("SearchLocateButton", () => {
     );
     expect(busy).toContain('aria-label="Locating"');
     expect(busy).toContain("disabled");
+    // No hover tint while it is locating and disabled.
+    expectTokens(busy, ["disabled:hover:bg-card"], "busy locate disc");
   });
 });
 
 describe("Search's header is location · the query bar · Ask AI, then family chips", () => {
-  it("puts location at the left, All first in the chip row, no Filters, no client-side recut", () => {
+  it("puts location at the left, Nearby and Popular first in the chip row, no Filters, no client-side recut", () => {
     const src = read("SearchClient.tsx");
     const overlays = read("search-catalog-overlays.tsx");
     // MESITA-2409: the header carries the row (locate, bar, Ask AI) and the
-    // horizontal chips (All, families); the map sits under it. No Filters
+    // horizontal chips (Nearby, Popular, families); the map sits under it. No Filters
     // disc, no sheet (Pato, MESITA-2417: "Its just all and thats it").
     expect(src).toContain("<SearchHeader");
     expect(src).not.toContain("<SearchFilterRow");
     expect(src.indexOf("<SearchLocateButton")).toBeGreaterThan(-1);
-    expect(src.indexOf("<SearchLocateButton")).toBeLessThan(src.indexOf("<SearchBar"));
+    expect(src.indexOf("<SearchLocateButton")).toBeLessThan(
+      src.indexOf("<SearchBar"),
+    );
     const header = read("SearchHeader.tsx");
     expect(header).not.toContain("SearchFilterRow");
     expect(header).not.toContain("SlidersHorizontal");
     // Near and Popular replaced All, each with its emoji, before the
     // hairline and the families (MESITA-2426).
     expect(header).toContain("EVERY_FAMILY_CHIPS.map");
-    expect(header).toContain('{ prefer: "popular", emoji: "⭐", label: "Popular" }');
+    expect(header).toContain(
+      '{ prefer: "popular", emoji: "⭐", label: "Popular" }',
+    );
     expect(header).not.toContain("ALL_EMOJI");
-    expect(header.indexOf("EVERY_FAMILY_CHIPS.map")).toBeLessThan(header.indexOf("FILTERABLE_PLACE_FAMILIES.map"));
+    expect(header.indexOf("EVERY_FAMILY_CHIPS.map")).toBeLessThan(
+      header.indexOf("FILTERABLE_PLACE_FAMILIES.map"),
+    );
     expect(header).toContain("FILTERABLE_PLACE_FAMILIES.map");
     expect(header).toContain("selectMapFamily(family.key)");
     expect(header).toContain('setAreaPrefer("near");');
     // A white band above the map with a hairline (MESITA-2413; it floated
     // for MESITA-2412), every control the bar's 44px.
-    expect(header).toContain('"border-border bg-card/95 relative z-30 shrink-0 border-b backdrop-blur"');
-    expect(src.indexOf("<SearchHeader")).toBeLessThan(src.indexOf("<SearchMap"));
-    expect(header).toContain('"flex h-11 shrink-0 items-center');
+    expect(header).toContain(
+      '"border-border bg-card/95 relative z-30 shrink-0 border-b backdrop-blur"',
+    );
+    expect(src.indexOf("<SearchHeader")).toBeLessThan(
+      src.indexOf("<SearchMap"),
+    );
+    // Every chip is the bar's 44px; the chip style lives in header-classes.ts.
+    expect(header).toContain("cn(CHIP, on ? CHIP_ON : CHIP_OFF)");
+    expectTokens(
+      constValue(read("header-classes.ts"), "CHIP"),
+      ["h-11", "shrink-0", "items-center"],
+      "CHIP",
+    );
     // The bar's results COVER the chip row (MESITA-2417): anchored at the
-    // top of the chips' box, above them.
-    expect(header).toContain("absolute inset-x-2 top-0 z-10");
+    // top of the chips' box, above them, inside the same 12px gutter.
+    const over = header.match(
+      /className="(absolute [^"]*)"\s*data-search-over-chips/,
+    );
+    expect(over, "the results box").not.toBeNull();
+    expectTokens(
+      over![1],
+      ["absolute", "inset-x-3", "top-0", "z-10"],
+      "results box",
+    );
+    expect(over![1]).not.toContain("inset-x-2");
     expect(header).not.toContain("top-full");
-    expect(header.indexOf("data-search-chips")).toBeLessThan(header.indexOf("data-search-over-chips"));
+    expect(header.indexOf("data-search-chips")).toBeLessThan(
+      header.indexOf("data-search-over-chips"),
+    );
     expect(header).toContain("overflow-x-auto");
     expect(src).toContain("recentreOnGuest");
     // Recentre reloads when the catalog was fetched elsewhere (MESITA-2305).
@@ -229,7 +422,9 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
       src.indexOf("const recentreOnGuest"),
       src.indexOf("const resetSearchSession"),
     );
-    expect(recentre).toContain("catalogIsStale(lastFetchedCenter.current, location)");
+    expect(recentre).toContain(
+      "catalogIsStale(lastFetchedCenter.current, location)",
+    );
     expect(recentre).toContain("forceNextLoad.current = true");
     expect(recentre).toContain("setHomeNonce");
     expect(src).not.toContain("SearchMapFilters");
@@ -275,9 +470,12 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
     const loading = read("../../../app/(shell)/(discovery)/search/loading.tsx");
     expect(loading).toContain("flex min-w-0 items-center gap-2");
     expect(loading).not.toContain("basis-1/3");
-    // The header's silhouette: one 44px disc (location), the bar, Ask AI,
-    // then the chip row; no Filters disc (MESITA-2417).
-    expect(loading.split("h-11 w-11 shrink-0").length - 1).toBe(1);
+    // The header's silhouette: two 44px discs (location, Ask AI) around the
+    // bar, then the chip row; no Filters disc (MESITA-2417, MESITA-2433).
+    // Counted by a marker attribute, not a class substring.
+    expect(loading.match(/data-skeleton-disc/g) ?? []).toHaveLength(2);
+    expect(loading).toContain("h-11 w-11");
+    expect(loading).toContain("bg-card/95");
     expect(loading).toContain("data-search-loading-chips");
     expect(loading).not.toContain("h-12 w-12");
   });
@@ -760,7 +958,9 @@ describe("Name search is ONE search after Word's idle seconds (MESITA-2322)", ()
 
   it("takes the idle seconds from every answer", () => {
     const src = read("SearchClient.tsx");
-    expect(src).toMatch(/if \(idleSec !== null\) idleMsRef\.current = Math\.round\(idleSec \* 1000\)/);
+    expect(src).toMatch(
+      /if \(idleSec !== null\) idleMsRef\.current = Math\.round\(idleSec \* 1000\)/,
+    );
   });
 });
 

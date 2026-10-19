@@ -4,13 +4,14 @@ import { Navigation } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { ActiveDot } from "./ActiveDot";
+import { HEADER_DISC } from "./header-classes";
 
 // The map's location control, TOP LEFT (Pato, 2026-10-17: "Location
 // Searchbar Filters … location at the left"). A 44px disc wearing the
-// navigation arrow and nothing else — the bar's chrome, like the Filters
-// disc on the other side. A brand-red dot on its corner says the guest's
-// fix is held (MESITA-2304); the Filters disc wears the same dot when a
-// filter is applied, so the two discs speak one language.
+// navigation arrow and nothing else, mirrored by the Ask AI disc on the
+// other side of the bar: both are HEADER_DISC, so the two can't drift apart
+// (MESITA-2433). A dot on its corner says the guest's fix is held
+// (MESITA-2304). No hover tint while it is locating and disabled.
 //
 // One tap, two meanings: with no fix yet it asks the browser for one (the
 // permission prompt is the browser's); with a fix it recentres the camera
@@ -38,13 +39,14 @@ export function SearchLocateButton({
             : "Use my location"
       }
       className={cn(
-        "shadow-elev relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border backdrop-blur-xl transition active:scale-[0.97] disabled:opacity-60",
-        "border-border bg-card/95 text-foreground",
+        "relative",
+        HEADER_DISC,
+        "disabled:hover:bg-card disabled:opacity-60",
       )}
     >
       <Navigation
-        className={cn("h-5 w-5 shrink-0", locating && "animate-pulse")}
-        strokeWidth={2.25}
+        className={cn("h-4 w-4 shrink-0", locating && "animate-pulse")}
+        strokeWidth={2}
         aria-hidden
       />
       {located ? <ActiveDot /> : null}
