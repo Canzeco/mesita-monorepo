@@ -26,7 +26,12 @@ describe("Places is one grid", () => {
     // The tile: a square, no border, clearly rounded (Pato, MESITA-2409
     // "just a bit", MESITA-2413 "a bit more", MESITA-2423 "make the borders
     // rounded").
-    expect(tile).toContain("relative aspect-square min-w-0 overflow-hidden rounded-2xl");
+    expect(tile).toContain("relative isolate aspect-square min-w-0 overflow-hidden rounded-2xl");
+    // A backdrop-blur layer escapes its parent's rounded clip: the photo, the
+    // band and the blur layer round themselves (MESITA-2429).
+    expect(tile).toContain("h-[60%] overflow-hidden rounded-t-2xl");
+    expect(tile).toContain("h-[40%] overflow-hidden rounded-b-2xl");
+    expect(tile).toContain("bg-paper/80 absolute inset-0 rounded-b-2xl backdrop-blur-sm");
     expect(tile).not.toMatch(/rounded-(sm|md|lg|xl|3xl)\b/);
     expect(tile).not.toContain("border-border");
     expect(tile).toContain("formatRating");
