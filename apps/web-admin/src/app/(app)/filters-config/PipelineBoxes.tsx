@@ -32,6 +32,8 @@ import {
   NAME_IDLE_SEC_MAX,
   NAME_IDLE_SEC_MIN,
   NAME_LANE_COUNT_MAX,
+  type AreaMode,
+  type AreaWeights,
   type DiscoveryConfig,
 } from "./catalog";
 import { PipelineBox } from "./PipelineBox";
@@ -290,9 +292,19 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
     setCfg((c) => ({ ...c, map: { ...c.map, ...p } }));
   };
   const params = cfg.params;
-  const setParam = (bag: "popularity" | "balance", key: string, v: number) => {
+  const setHalfReviews = (halfReviews: number) => {
     setOk(false);
-    setCfg((c) => ({ ...c, params: { ...c.params, [bag]: { ...c.params[bag], [key]: v } } }));
+    setCfg((c) => ({ ...c, params: { ...c.params, popularity: { halfReviews } } }));
+  };
+  const setWeight = (mode: AreaMode, signal: keyof AreaWeights, v: number) => {
+    setOk(false);
+    setCfg((c) => ({
+      ...c,
+      params: {
+        ...c.params,
+        modes: { ...c.params.modes, [mode]: { ...c.params.modes[mode], [signal]: v } },
+      },
+    }));
   };
   const dirty = !same(cfg.map, saved.map) || !same(params, saved.params);
   return (
@@ -314,9 +326,10 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             ranked before any page is cut. The source is never a guest filter.
           </p>
           <p className="mt-2">
-            The Map and the Feed are two views of this one pipeline. Proximity
-            and Popularity add up with the two weights below: a missing number
-            lowers a place, it never removes it.
+            The Map and the Feed are two views of this one pipeline. The guest&apos;s
+            mode (Nearby, Popular or one family) reads one row of the weights
+            table: score = Proximity<sup>a</sup> ×
+            (Popularity × Selected)<sup>b</sup>.
           </p>
         </>
       }
@@ -347,32 +360,27 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             min={HALF_REVIEWS_MIN}
             max={HALF_REVIEWS_MAX}
             disabled={off}
-            onChange={(v) => setParam("popularity", "halfReviews", v)}
-          />
-          <NumberField
-            label="Proximity weight"
-            value={params.balance.proximity}
-            min={AREA_WEIGHT_MIN}
-            max={AREA_WEIGHT_MAX}
-            disabled={off}
-            onChange={(v) => setParam("balance", "proximity", v)}
-          />
-          <NumberField
-            label="Popularity weight"
-            value={params.balance.popularity}
-            min={AREA_WEIGHT_MIN}
-            max={AREA_WEIGHT_MAX}
-            disabled={off}
-            onChange={(v) => setParam("balance", "popularity", v)}
+            onChange={setHalfReviews}
           />
         </div>
         <p className="text-muted-foreground type-meta">
           Proximity is 1 at the anchor and 0 at the edge of the radius, so the
           radius is its only number. Popularity is rating ÷ 5 × reviews ÷
-          (reviews + half credit): a 3★ place is 60% of a 5★ one, and volume
-          earns half credit at that many reviews. The score is Proximity ×
-          its weight + Popularity × its weight; 0 turns a signal off. The
-          reviews floor counts people, cuts Google hits only, and 0 is off.
+          (reviews + half credit) × Selected (1 for a Mesita Selected place,
+          0.3 for every other): a 3★ place is 60% of a 5★ one, and volume
+          earns half credit at that many reviews. The reviews floor counts
+          people, cuts Google hits only, and 0 is off.
+        </p>
+      </Group>
+      <Group title="Weights table">
+        <AreaWeightsTable modes={params.modes} disabled={off} onChange={setWeight} />
+        <p className="text-muted-foreground type-meta">
+          Each cell is an exponent: score = Proximity<sup>a</sup> × (Popularity
+          × Selected)<sup>b</sup>. 0 turns a signal off for that mode; within a
+          mode only the ratio a : b changes the order (2 · 1 ranks like 4 · 2).
+          Every family shares the Family row. A saved city or area has no
+          Proximity, so it reads b alone. A place with no Google numbers has
+          Popularity 0, so it sinks to the bottom unless b is 0.
         </p>
       </Group>
       <Group title="Candidates per source">
@@ -453,5 +461,70 @@ export function DeepBox() {
       icon={<Sparkles className={ICON} />}
       explanation="Open-ended discovery for Chat (Don Memo). No guest reaches Chat yet."
     />
+  );
+}
+
+const MODE_ROWS: { mode: AreaMode; label: string; hint: string }[] = [
+  { mode: "nearby", label: "📍 Nearby", hint: "every family, distance first" },
+  { mode: "popular", label: "⭐ Popular", hint: "every family, popularity first" },
+  { mode: "family", label: "Family", hint: "one family, every family alike" },
+];
+
+/** The weights table (MESITA-2428): rows are the guest's modes, columns the
+ *  two signals, each cell an exponent. */
+function AreaWeightsTable({
+  modes,
+  disabled,
+  onChange,
+}: {
+  modes: Record<AreaMode, AreaWeights>;
+  disabled: boolean;
+  onChange: (mode: AreaMode, signal: keyof AreaWeights, v: number) => void;
+}) {
+  const cell = (mode: AreaMode, signal: keyof AreaWeights) => (
+    <td className="px-2 py-1.5">
+      <input
+        type="number"
+        inputMode="decimal"
+        aria-label={`${mode} ${signal} exponent`}
+        min={AREA_WEIGHT_MIN}
+        max={AREA_WEIGHT_MAX}
+        step={0.25}
+        value={modes[mode][signal]}
+        disabled={disabled}
+        onChange={(e) => {
+          const raw = Number(e.target.value);
+          if (Number.isNaN(raw)) return;
+          const n = Math.round(raw * 100) / 100;
+          onChange(mode, signal, Math.max(AREA_WEIGHT_MIN, Math.min(AREA_WEIGHT_MAX, n)));
+        }}
+        className="border-border bg-card focus:border-foreground h-9 w-24 rounded-lg border px-3 text-right text-sm tabular-nums outline-none disabled:opacity-50"
+      />
+    </td>
+  );
+  return (
+    <div className="border-border overflow-x-auto rounded-lg border" data-area-weights>
+      <table className="w-full text-sm">
+        <thead className="bg-muted/50 text-left">
+          <tr>
+            <th className="px-3 py-2 font-medium">Mode</th>
+            <th className="px-2 py-2 font-medium">Proximity (a)</th>
+            <th className="px-2 py-2 font-medium">Popularity × Selected (b)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {MODE_ROWS.map((r) => (
+            <tr key={r.mode} className="border-border border-t">
+              <th className="px-3 py-1.5 text-left font-medium">
+                {r.label}
+                <span className="text-muted-foreground block text-xs font-normal">{r.hint}</span>
+              </th>
+              {cell(r.mode, "proximity")}
+              {cell(r.mode, "popularity")}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

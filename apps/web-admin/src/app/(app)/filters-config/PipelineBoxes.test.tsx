@@ -87,11 +87,12 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
     expect(page()).not.toContain("Not wired");
   });
 
-  it("carries no weight inputs and no subpage tabs", () => {
-    // 3 Name by Admin + 5 Name + 5 Area (Places per row left, MESITA-2379);
-    // Deep is Soon. A weight column would add a number input per signal.
+  it("carries the one weights table and no subpage tabs", () => {
+    // 3 Name by Admin + 5 Name + 3 Area + the Area weights table's 6
+    // (MESITA-2428: three modes × two signals); Deep is Soon.
     const html = page();
-    expect(html.match(/type="number"/g)?.length).toBe(13);
+    expect(html.match(/type="number"/g)?.length).toBe(17);
+    expect(html.match(/data-area-weights/g)?.length).toBe(1);
     expect(html).not.toContain("Modes");
     expect(html).not.toContain('role="tablist"');
   });
@@ -118,13 +119,17 @@ describe("the boxes' controls", () => {
     expect(html).not.toContain("Only active places");
   });
 
-  it("Area: radius, the three numbers, two source counts, no total and no Feed rows (MESITA-2379)", () => {
+  it("Area: radius, half credit, the weights table, two source counts, no total and no Feed rows (MESITA-2379, MESITA-2428)", () => {
     const html = render(<AreaBox {...seed} />);
     for (const label of [
       "Radius (km)",
       "Reviews for half credit",
-      "Proximity weight",
-      "Popularity weight",
+      "Weights table",
+      "📍 Nearby",
+      "⭐ Popular",
+      "Family",
+      "Proximity (a)",
+      "Popularity × Selected (b)",
       "Google candidates",
       "Mesita candidates",
       "Reload after",
@@ -136,6 +141,8 @@ describe("the boxes' controls", () => {
       "reference rating",
       "reference reviews",
       "How many pins",
+      "Proximity weight",
+      "Popularity weight",
       "Places per row",
       'aria-label="Feed rows"',
       "Total",
@@ -146,7 +153,8 @@ describe("the boxes' controls", () => {
       expect(html, dead).not.toContain(dead);
     }
     expect(html).toContain('value="100"');
-    expect(html).toContain('value="5"');
+    // The weights table's defaults (MESITA-2428): Nearby 2 · 1, Popular 1 · 2.
+    expect(html).toContain('value="2"');
     // 40 and 60 are bought now: every Google stop is a live pill.
     const google = html.slice(html.indexOf("Places Mesita buys for the Feed"), html.indexOf("Ready Mesita places read"));
     expect(google).toContain("up to 1 / 2 / 3 billed Nearby calls");

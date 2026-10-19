@@ -19,15 +19,21 @@
 
 import { num } from "@/lib/config-coerce";
 
+/** The guest's three modes, one row of the weights table each
+ *  (MESITA-2428). Mirrors AREA_MODES in _shared/area-score.ts. */
+export const AREA_MODES = ["nearby", "popular", "family"] as const;
+export type AreaMode = (typeof AREA_MODES)[number];
+export type AreaWeights = { proximity: number; popularity: number };
+
 /**
- * The Area pipeline's three numbers (MESITA-2347): Popularity's reviews for
- * half credit and the two weights of the weighted sum. Proximity has no
+ * The Area pipeline's numbers: Popularity's reviews for half credit and the
+ * weights table, two exponents per mode (MESITA-2428). Proximity has no
  * number of its own — `map.radiusKm` is it. Mirrors SignalParams in
  * _shared/discovery-config.ts.
  */
 export type SignalParams = {
   popularity: { halfReviews: number };
-  balance: { proximity: number; popularity: number };
+  modes: Record<AreaMode, AreaWeights>;
 };
 
 export type NameFastConfig = {
@@ -96,7 +102,7 @@ export const DEFAULT_DEEP: DeepConfig = { limit: 5, minSimilarity: 0 };
 export const HALF_REVIEWS_MIN = 1;
 export const HALF_REVIEWS_MAX = 100_000;
 export const AREA_WEIGHT_MIN = 0;
-export const AREA_WEIGHT_MAX = 10;
+export const AREA_WEIGHT_MAX = 5;
 
 export type CatalogConfig = {
   seedCount: number;
@@ -328,10 +334,15 @@ export const DEFAULT_GENERAL: GeneralConfig = {
   minReviews: 0,
 };
 
-/** Mirrors DEFAULT_SIGNAL_PARAMS: the Area pipeline's three numbers. */
+/** Mirrors DEFAULT_AREA_MODES and DEFAULT_SIGNAL_PARAMS. */
+export const DEFAULT_AREA_MODES: Record<AreaMode, AreaWeights> = {
+  nearby: { proximity: 2, popularity: 1 },
+  popular: { proximity: 1, popularity: 2 },
+  family: { proximity: 1, popularity: 1 },
+};
 const DEFAULT_SIGNAL_PARAMS: SignalParams = {
   popularity: { halfReviews: 100 },
-  balance: { proximity: 5, popularity: 5 },
+  modes: DEFAULT_AREA_MODES,
 };
 
 export const DEFAULT_CONFIG: DiscoveryConfig = {
@@ -353,22 +364,32 @@ function bounded(raw: unknown, fallback: number, min: number, max: number, decim
 /**
  * The Area pipeline's three numbers. Mirrors `normalizeSignalParams`: rebuilt
  * field by field, so the retired deck's bags (maxKm, timing, category,
- * priorRating, …) and the retired calibration (halfDistanceKm,
- * referenceRating/Reviews, MESITA-2347) are dropped on the next Save.
+ * priorRating, …), the retired calibration (halfDistanceKm,
+ * referenceRating/Reviews, MESITA-2347) and the linear `balance`
+ * (MESITA-2428) are dropped on the next Save.
  */
 function coerceParams(raw: unknown): SignalParams {
   const r = (raw ?? {}) as Record<string, unknown>;
   const pop = (r.popularity ?? {}) as Record<string, unknown>;
-  const b = (r.balance ?? {}) as Record<string, unknown>;
+  const m = (r.modes ?? {}) as Record<string, unknown>;
   const d = DEFAULT_SIGNAL_PARAMS;
   return {
     popularity: {
       halfReviews: bounded(pop.halfReviews, d.popularity.halfReviews, HALF_REVIEWS_MIN, HALF_REVIEWS_MAX, 0),
     },
-    balance: {
-      proximity: bounded(b.proximity, d.balance.proximity, AREA_WEIGHT_MIN, AREA_WEIGHT_MAX, 0),
-      popularity: bounded(b.popularity, d.balance.popularity, AREA_WEIGHT_MIN, AREA_WEIGHT_MAX, 0),
-    },
+    modes: Object.fromEntries(
+      AREA_MODES.map((mode) => {
+        const row = (m[mode] ?? {}) as Record<string, unknown>;
+        const dr = d.modes[mode];
+        return [
+          mode,
+          {
+            proximity: bounded(row.proximity, dr.proximity, AREA_WEIGHT_MIN, AREA_WEIGHT_MAX, 2),
+            popularity: bounded(row.popularity, dr.popularity, AREA_WEIGHT_MIN, AREA_WEIGHT_MAX, 2),
+          },
+        ];
+      }),
+    ) as Record<AreaMode, AreaWeights>,
   };
 }
 
