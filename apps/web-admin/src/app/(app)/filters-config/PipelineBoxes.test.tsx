@@ -159,7 +159,7 @@ describe("the boxes' controls", () => {
     // The weights table's defaults (MESITA-2428): Nearby 2 · 1, Popular 1 · 2.
     expect(html).toContain('value="2"');
     // 40 and 60 are bought now: every Google stop is a live pill.
-    const google = html.slice(html.indexOf("Places Mesita buys for the Feed"), html.indexOf("Ready Mesita places read"));
+    const google = html.slice(html.indexOf("Places Mesita buys for Home&#x27;s catalog"), html.indexOf("Ready Mesita places read"));
     expect(google).toContain("up to 1 / 2 / 3 billed Nearby calls");
     expect(google.match(/<button[^>]*disabled=""[^>]*>(20|40|60)<\/button>/g)).toBeNull();
   });

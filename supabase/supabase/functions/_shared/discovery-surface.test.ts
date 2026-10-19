@@ -82,7 +82,7 @@ Deno.test("the call sites match the model", async () => {
   assert(name.includes("fetchAutocomplete") && name.includes("fetchTextSearch") && name.includes("fetchEmbedPool"));
   assert(name.includes("nameSimilarity"));
   assertEquals(name.includes("searchNearbyPlaces"), false);
-  // Area: Nearby · Mesita Places, the Area score; Map and the Feed are its views.
+  // Area: Nearby · Mesita Places, the Area score; Map and the Catalog are its views.
   assert(area.includes("searchNearbyPlaces") && area.includes("selectedPoolQuery") && area.includes("rankArea"));
   assert(map.includes("selectAreaPool") && feed.includes("selectAreaPool"));
   assertEquals(/selectGooglePlaces|selectMesitaSelected/.test(map + feed), false);

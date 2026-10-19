@@ -12,7 +12,7 @@
 //   Gate      a binary eligibility check (0 or 1)
 //   Factor    a multiplier on the score: it orders, never excludes
 //
-// Catalog and Map are VIEWS of Area, not pipelines; Favorites is a saved
+// Catalog and Map are VIEWS of Area, not pipelines; Saved is a saved
 // collection; the Chat Agent sits above the pipelines and calls Deep, never a
 // source. Which source can feed which signal or gate is DERIVED from the
 // declared fields, never kept as a second map.
@@ -180,7 +180,7 @@ export const DISCOVERY_SIGNALS: readonly DiscoverySignalFact[] = [
     label: "Proximity",
     formula: "1 − distance ÷ reach",
     requires: ["coordinates"],
-    query: "A point location: the device, a saved address, a dropped pin or the map's centre.",
+    query: "A point location: the device, a saved address or the map's centre.",
     computation: "runtime",
     cost: "Local arithmetic, free.",
     missing: "An area location or no location: not used (n/a). No coordinates: 0.",
@@ -222,7 +222,7 @@ export const DISCOVERY_GATES: readonly DiscoveryGateFact[] = [
     rule: "1 when the place belongs to a requested family; 1 for every place when none is requested.",
     kind: "query",
     requires: ["family"],
-    when: "When the guest picks families on the map, or a Feed row is a family.",
+    when: "When the guest picks one family: a chip on the Search map or a family row on Home (the Family mode).",
     missing: "No known family while a family is requested: 0.",
     pushdown: ["google_nearby", "mesita_places"],
   },
@@ -277,7 +277,7 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     keepsOrder: ["google_autocomplete", "google_text"],
     rules: [
       "Closed places never show (Discovery › General's active check).",
-      "A Google row must have a Google type of one of the fifteen families, the only places Mesita can hold (hotels, shops and schools never show), and clear the stored Google floors (map.minRating, minReviews, minPopularity; 0 is off and no box edits them).",
+      "A Google row must have a Google type of one of the fifteen families, the only places Mesita can hold (hotels, shops and schools never show), and clear the old stored Google floors on rating, reviews and popularity (0 is off; no box edits them).",
       "Discovery › General's reviews floor (people, never stars; 0 is off) cuts Google and Mesita rows.",
     ],
     callers: ["The guest's Search bar", "Admin Single Place › Find", "Chat (Don Memo)"],
@@ -286,7 +286,7 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
   {
     key: "area",
     label: "Area",
-    purpose: "Places around a location: a point (the device, a saved address, a dropped pin or the map's centre) or an area (a saved city, neighbourhood or postcode).",
+    purpose: "Places around a location: a point (the device, a saved address or the map's centre) or an area (a saved city, neighbourhood or postcode).",
     sources: ["google_nearby", "mesita_places"],
     signals: ["proximity", "popularity"],
     gates: ["family", "territory"],
@@ -300,10 +300,10 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
       "A point location uses Proximity and the radius; an area location uses Territory. Never both.",
       "Closed places never show (Discovery › General's active check). Mesita rows must be ready.",
       "Inside the radius (a point): it decides who is a candidate and never scores.",
-      "Google hits only: the guest's Google Reviews stop (10+ · 100+ · 1,000+, default 100+) or the operator's floor, whichever is higher. Mesita rows have no review floor.",
+      "Google hits only: the operator's Minimum number of Google reviews (below); the guest has no reviews filter (MESITA-2417). Mesita rows have no review floor.",
       "Chat reads Mesita Selected places only.",
     ],
-    callers: ["Map (the Search tab)", "Catalog (Home's Feed)", "Chat (Don Memo)"],
+    callers: ["Map (the Search tab)", "Catalog (Home's Places)", "Chat (Don Memo)"],
     live: true,
   },
   {
