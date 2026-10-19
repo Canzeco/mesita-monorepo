@@ -25,7 +25,7 @@ describe("Places is one grid", () => {
     expect(rails).not.toContain('type="range"');
     // The tile: a square, no border, a small radius (Pato, MESITA-2409
     // "just a bit", then MESITA-2413 "a bit more rounded").
-    expect(tile).toContain("relative aspect-square min-w-0 overflow-hidden rounded-lg");
+    expect(tile).toContain("relative aspect-square min-w-0 overflow-hidden rounded-2xl");
     expect(tile).not.toMatch(/rounded-(xl|2xl)/);
     expect(tile).not.toContain("border-border");
     expect(tile).toContain("formatRating");
