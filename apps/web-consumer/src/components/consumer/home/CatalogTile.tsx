@@ -166,9 +166,12 @@ export function CatalogTile({
   // fully shown and centred — nothing lies over it. The bottom 40% is its
   // REFLECTION: a 60%-tall copy flipped so its foot meets the photo's foot,
   // under an 80% paper layer, four rows on it in dark text. No border; the
-  // corners are rounded-2xl. The heart sits at the right of the name row.
+  // corners are rounded-2xl — and the photo, the band and its blur layer
+  // carry the same radius themselves, because a backdrop-blur layer escapes
+  // its parent's rounded clip and painted the bottom corners square
+  // (MESITA-2429). The heart sits at the right of the name row.
   return (
-    <li className={cn("relative aspect-square min-w-0 overflow-hidden rounded-2xl", className)}>
+    <li className={cn("relative isolate aspect-square min-w-0 overflow-hidden rounded-2xl", className)}>
       <TileLink
         href={href}
         google={google}
@@ -177,13 +180,13 @@ export function CatalogTile({
         label={place.name}
         className="focus-visible:ring-primary absolute inset-0 block outline-none focus-visible:ring-2 focus-visible:ring-inset"
       >
-        <div className="bg-muted absolute inset-x-0 top-0 h-[60%] overflow-hidden">
+        <div className="bg-muted absolute inset-x-0 top-0 h-[60%] overflow-hidden rounded-t-2xl">
           {media()}
         </div>
         {/* The reflection: bottom 40%, the photo mirrored from its foot under
             80% paper (MESITA-2375), four rows spread to fill it (MESITA-2373). */}
         <div
-          className="absolute inset-x-0 bottom-0 h-[40%] overflow-hidden"
+          className="absolute inset-x-0 bottom-0 h-[40%] overflow-hidden rounded-b-2xl"
           data-tile-info
         >
           <div
@@ -194,7 +197,7 @@ export function CatalogTile({
             {media()}
           </div>
           <div
-            className="bg-paper/80 absolute inset-0 backdrop-blur-sm"
+            className="bg-paper/80 absolute inset-0 rounded-b-2xl backdrop-blur-sm"
             aria-hidden
           />
           <div className="text-foreground relative flex h-full flex-col justify-evenly px-3 py-1.5">
