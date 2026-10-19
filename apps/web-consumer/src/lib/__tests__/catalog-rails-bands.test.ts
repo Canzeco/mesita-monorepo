@@ -10,14 +10,15 @@ import {
   poolPlaces,
   PLACES_PAGE,
   favoritePlaces,
-  ALL_CHIP,
+  NEAR_CHIP,
+  POPULAR_CHIP,
   GOOGLE_RAIL_KEY,
   MESITA_RAIL_KEY,
   placesChips,
 } from "@/components/consumer/home/CatalogRails";
 
 // Pato (MESITA-2367, MESITA-2383): Places is one location bar over a split —
-// a column of Favorites · All · families beside ONE column of the chosen
+// a column of Favorites · Near · Popular · families beside ONE column of the chosen
 // set. The server's rails are unchanged; a row picks which rail shows.
 const src = readFileSync(
   join(__dirname, "../../components/consumer/home/CatalogRails.tsx"),
@@ -33,17 +34,20 @@ const RAILS: CatalogRail[] = [
 ];
 
 describe("the Places column (MESITA-2383)", () => {
-  // Social · Favorites · All pinned, a rule, then the families, which
+  // Social, a rule, Favorites · Near · Popular pinned, a rule, then the
+  // families (MESITA-2426), which
   // alone scroll (MESITA-2411).
-  it("is Social, Favorites, All, then every guest family — no source rows (MESITA-2384)", () => {
+  it("is Social, Favorites, Near, Popular, then every guest family — no source rows (MESITA-2384, MESITA-2426)", () => {
     const labels = placesChips().map((c) => c.label);
-    expect(labels.slice(0, 3)).toEqual(["Social", "Favorites", "All"]);
+    expect(labels.slice(0, 4)).toEqual(["Social", "Favorites", "Near", "Popular"]);
     expect(labels).toContain("Coffee");
     expect(labels).toContain("Breakfast");
     expect(labels).not.toContain("Undefined");
-    expect(placesChips().map((c) => c.key).slice(0, 3)).toEqual([SOCIAL_CHIP, FAVORITES_CHIP, ALL_CHIP]);
-    expect(PINNED_CHIPS).toBe(3);
-    expect(src).toContain("chips.slice(0, PINNED_CHIPS).map(categoryRow)");
+    expect(placesChips().map((c) => c.key).slice(0, 4)).toEqual([SOCIAL_CHIP, FAVORITES_CHIP, NEAR_CHIP, POPULAR_CHIP]);
+    expect(PINNED_CHIPS).toBe(4);
+    expect(src).toContain("chips.slice(0, 1).map(categoryRow)");
+    expect(src).toContain("chips.slice(1, PINNED_CHIPS).map(categoryRow)");
+    expect(src.match(/data-places-rule/g)?.length).toBe(2);
     expect(src).toContain("chips.slice(PINNED_CHIPS).map(categoryRow)");
     expect(src).toContain("data-places-rule");
     expect(src).toContain('className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-y-contain"');
@@ -56,7 +60,7 @@ describe("the Places column (MESITA-2383)", () => {
     expect(placesChips().map((c) => c.key)).not.toContain(MESITA_RAIL_KEY);
   });
 
-  it("All is the server's pool in its order; a family filters it on area.familyKeys", () => {
+  it("Near and Popular are the server's pool in its order; a family filters it on area.familyKeys", () => {
     const area = (familyKeys: string[], final: number) => ({
       familyKeys,
       gates: { family: 1 as const, territory: null, radius: 1 as const, active: 1 as const, ready: null, reviews: 1 as const },
@@ -77,14 +81,14 @@ describe("the Places column (MESITA-2383)", () => {
         { ...place("c"), family_keys: ["breakfast"], area: area(["coffee"], 0.7) },
       ],
     };
-    expect(poolPlaces(pool, ALL_CHIP).map((p) => p.id)).toEqual(["a", "b", "c"]);
+    expect(poolPlaces(pool, POPULAR_CHIP).map((p) => p.id)).toEqual(["a", "b", "c"]);
     expect(poolPlaces(pool, "coffee").map((p) => p.id)).toEqual(["a", "c"]);
     expect(poolPlaces(pool, "breakfast")).toEqual([]);
   });
 
   it("an Edge Function still on the legacy rails is drawn as before", () => {
     const legacy = { shape: "legacy" as const, rails: RAILS };
-    expect(poolPlaces(legacy, ALL_CHIP).map((p) => p.id)).toEqual(["m1", "g1"]);
+    expect(poolPlaces(legacy, NEAR_CHIP).map((p) => p.id)).toEqual(["m1", "g1"]);
     expect(poolPlaces(legacy, "coffee").map((p) => p.id)).toEqual(["m1"]);
     expect(src).toContain("catalog_shape_legacy");
   });
@@ -125,9 +129,9 @@ describe("the Places column (MESITA-2383)", () => {
     expect(src).not.toContain("nearbyZones");
   });
 
-  it("is a left column, a quarter wide (MESITA-2385), and opens on All", () => {
+  it("is a left column, a quarter wide (MESITA-2385), and opens on Near (MESITA-2426)", () => {
     expect(src).toContain("bg-muted flex w-1/4 shrink-0 flex-col");
-    expect(src).toContain("useState<string>(ALL_CHIP)");
+    expect(src).toContain("useState<string>(NEAR_CHIP)");
     // The chosen row: white, bold, an ink bar on its left edge.
     expect(src).toContain('const ROW_ON = "bg-card text-foreground font-semibold";');
     expect(src).toContain("bg-foreground absolute inset-y-0 left-0 w-[3px]");
