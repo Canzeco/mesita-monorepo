@@ -3,7 +3,7 @@
 // Search's header (Pato, MESITA-2409 — OpenTable's shape):
 //
 //   ( ⌖ ) [ ⚲ Search places by name…     ] ( ✦ Ask AI )   ┐ a white band,
-//   (🌎 All) (☕ Coffee) (🥐 Breakfast) (🍕 Pizza) …        ┘ hairline under
+//   (⭐ All) (☕ Coffee) (🥐 Breakfast) (🍕 Pizza) …        ┘ hairline under
 //   ─────────────────── map ───────────────────────────
 //
 // The bar's row: the locate disc, the query bar, Ask AI (→ Search › Chat,
@@ -36,8 +36,9 @@ const CHIP =
   "flex h-11 shrink-0 items-center gap-1 rounded-full border px-3 text-xs font-semibold whitespace-nowrap transition active:scale-[0.97]";
 const CHIP_ON = "border-primary bg-primary text-primary-foreground";
 const CHIP_OFF = "border-border bg-card text-foreground hover:bg-muted";
-/** All wears an emoji like every family chip (Pato, MESITA-2417). */
-export const ALL_EMOJI = "🌎";
+/** All wears an emoji like every family chip (Pato, MESITA-2417); a star,
+ *  not the globe (Pato, MESITA-2422: "maybe use a star or something"). */
+export const ALL_EMOJI = "⭐";
 
 export function SearchHeader({
   locate,
