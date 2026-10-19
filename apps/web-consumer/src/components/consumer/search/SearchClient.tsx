@@ -828,7 +828,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
             onFocus={() => setBarFocused(true)}
             onBlur={() => setBarFocused(false)}
             onClear={() => updateQuery("")}
-            placeholder="Search places by name…"
           />
         }
       >

@@ -3,9 +3,10 @@
 import type { RefObject } from "react";
 import { Search, X } from "lucide-react";
 
-// The Search map's query field — the one search bar in the app. Query
-// field only: Places scope + Family + Popularity live in the Filters sheet,
-// opened as a labelled third of the row beside this.
+// The Search map's query field — the one search bar in the app, between the
+// locate and Ask AI discs. Query field only: the chip row under it picks
+// Nearby, Popular or a family (MESITA-2426). Same outline as every header
+// control (header-classes.ts): flat, no shadow, a dark border while focused.
 type SearchBarProps = {
   query: string;
   showClear: boolean;
@@ -30,10 +31,10 @@ export function SearchBar({
   inputRef,
 }: SearchBarProps) {
   // h-11, NOT h-12: 44px is the touch-target floor, so this is as short as the
-  // bar goes. It matched the filter pill that used to sit beside it — two pills
-  // of different heights in one row read as a misalignment.
+  // bar goes, and the two discs beside it match — two heights in one row read
+  // as a misalignment.
   return (
-    <div className="border-border bg-card/95 shadow-elev flex h-11 shrink-0 items-center rounded-full border pl-4 backdrop-blur-xl">
+    <div className="border-border bg-card focus-within:border-foreground flex h-11 shrink-0 items-center rounded-full border pl-4 transition-colors">
       <Search className="text-muted-foreground h-4 w-4 shrink-0" />
       <input
         ref={inputRef}
@@ -52,7 +53,9 @@ export function SearchBar({
           }
         }}
         placeholder={placeholder}
-        aria-label={placeholder}
+        // A fixed name, not the placeholder: a screen reader should not read
+        // "Search places dot dot dot" (MESITA-2433).
+        aria-label="Search places"
         // THE MOBILE KEYBOARD, told what this field is. Place names are not
         // prose: iOS otherwise capitalises the first letter, autocorrects
         // "Tec" to "Tech" mid-query, and floats the QuickType strip ("I ·
@@ -67,14 +70,14 @@ export function SearchBar({
         autoCorrect="off"
         autoComplete="off"
         spellCheck={false}
-        className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent px-3 text-sm outline-none"
+        className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent px-3 text-sm font-medium outline-none"
       />
       {showClear && (
         <button
           type="button"
           onClick={onClear}
           aria-label="Clear search"
-          className="text-muted-foreground hover:text-foreground flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition"
+          className="text-muted-foreground hover:text-foreground focus-visible:text-foreground flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition outline-none"
         >
           <X className="h-4 w-4" />
         </button>

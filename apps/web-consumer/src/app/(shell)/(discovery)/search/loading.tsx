@@ -1,21 +1,28 @@
 import { Skeleton } from "@/components/shared";
 
-// /search Suspense fallback. Mirror SearchHeader's silhouette: a white band
-// with the row (location disc · query bar · Ask AI) and the chip row (All,
-// then the families; no Filters disc, MESITA-2417), then the map and its
-// catalog rail.
+// /search Suspense fallback. Mirror SearchHeader's silhouette (MESITA-2433):
+// the band, then the row (a disc · the query bar · a disc; the test counts
+// the two disc markers) and the chip row (Nearby, Popular, then the families),
+// then the map and its catalog rail.
 
 export default function SearchLoading() {
   return (
     <div className="flex h-full min-h-0 w-full flex-col">
-      <div className="border-border bg-card shrink-0 border-b">
-        <div className="flex min-w-0 items-center gap-2 px-2 pt-2.5 pb-2">
-          <Skeleton className="h-11 w-11 shrink-0 rounded-full" />
+      <div className="border-border bg-card/95 shrink-0 border-b backdrop-blur">
+        <div className="flex min-w-0 items-center gap-2 px-3 pt-2 pb-2">
+          <div className="shrink-0" data-skeleton-disc>
+            <Skeleton className="h-11 w-11 rounded-full" />
+          </div>
           <Skeleton className="h-11 min-w-0 flex-1 rounded-full" />
-          <Skeleton className="h-11 w-24 shrink-0 rounded-full" />
+          <div className="shrink-0" data-skeleton-disc>
+            <Skeleton className="h-11 w-11 rounded-full" />
+          </div>
         </div>
-        <div className="flex gap-1.5 overflow-hidden px-2 pb-2.5" data-search-loading-chips>
-          <Skeleton className="h-11 w-16 shrink-0 rounded-full" />
+        <div
+          className="flex gap-2 overflow-hidden px-3 pb-2"
+          data-search-loading-chips
+        >
+          <Skeleton className="h-11 w-24 shrink-0 rounded-full" />
           <Skeleton className="h-11 w-24 shrink-0 rounded-full" />
           <Skeleton className="h-11 w-28 shrink-0 rounded-full" />
           <Skeleton className="h-11 w-28 shrink-0 rounded-full" />

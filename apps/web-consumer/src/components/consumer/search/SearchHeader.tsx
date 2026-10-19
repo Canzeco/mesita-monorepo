@@ -2,12 +2,14 @@
 
 // Search's header (Pato, MESITA-2409 — OpenTable's shape):
 //
-//   ( ⌖ ) [ ⚲ Search places by name…     ] ( ✦ Ask AI )   ┐ a white band,
-//   (📍 Nearby) (⭐ Popular) │ (☕ Coffee) (🥐 Breakfast) … ┘ hairline under
+//   ( ⌖ ) [ ⚲ Search places…  ] ( ✦ )   ┐ a white band,
+//   (📍 Nearby) (⭐ Popular) │ (☕ Coffee) (🥐 Breakfast) …   ┘ hairline under
 //   ─────────────────── map ───────────────────────────
 //
-// The bar's row: the locate disc, the query bar, Ask AI (→ Search › Chat,
-// Soon). Under it one horizontal chip row: Nearby and Popular, a hairline,
+// The bar's row: the locate disc, the query bar, the Ask AI disc (→ Search ›
+// Chat, Soon) — two equal 44px discs around the bar (Pato, MESITA-2433: "location
+// must be kinda symmetrical to ask ai"). One token set for every control lives
+// in header-classes.ts. Under it one horizontal chip row: Nearby and Popular, a hairline,
 // then every family, each with its emoji (Pato, MESITA-2426: they replaced
 // All). ONE pick at a time: Near is every family ranked Near, Popular every
 // family ranked Popular, a family is that family ranked Near. Sent as the
@@ -34,11 +36,8 @@ import {
 import { setAreaPrefer, useAreaPrefer } from "@/lib/use-area-prefer";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { cn } from "@/lib/utils";
+import { CHIP, CHIP_OFF, CHIP_ON, HEADER_DISC } from "./header-classes";
 
-const CHIP =
-  "flex h-11 shrink-0 items-center gap-1 rounded-full border px-3 text-xs font-semibold whitespace-nowrap transition active:scale-[0.97]";
-const CHIP_ON = "border-primary bg-primary text-primary-foreground";
-const CHIP_OFF = "border-border bg-card text-foreground hover:bg-muted";
 /** Near and Popular, which replaced All (Pato, MESITA-2426). Popular wears
  *  the star All wore (MESITA-2422). */
 export const EVERY_FAMILY_CHIPS = [
@@ -66,26 +65,23 @@ export function SearchHeader({
       className="border-border bg-card/95 relative z-30 shrink-0 border-b backdrop-blur"
       data-search-header
     >
-      <div className="flex min-w-0 items-center gap-2 px-2 pt-2.5 pb-2">
+      <div className="flex min-w-0 items-center gap-2 px-3 pt-2 pb-2">
         {locate}
         <div className="min-w-0 flex-1">{bar}</div>
         <Link
           href={CONSUMER_ROUTES.searchChat}
-          className="border-border bg-card text-foreground hover:bg-muted flex h-11 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition active:scale-[0.97]"
+          aria-label="Ask AI"
+          title="Ask AI"
+          className={HEADER_DISC}
           data-search-ask-ai
         >
-          <Sparkles
-            className="h-4 w-4 shrink-0"
-            strokeWidth={2.25}
-            aria-hidden
-          />
-          <span>Ask AI</span>
+          <Sparkles className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
         </Link>
       </div>
       <div className="relative">
         <nav
           aria-label="Families"
-          className="scrollbar-hide flex items-center gap-1.5 overflow-x-auto overscroll-x-contain px-2 pb-2.5"
+          className="scrollbar-hide flex items-center gap-2 overflow-x-auto overscroll-x-contain px-3 pb-2"
           data-search-chips
         >
           {EVERY_FAMILY_CHIPS.map((c) => {
@@ -132,7 +128,7 @@ export function SearchHeader({
         </nav>
         {children ? (
           <div
-            className="absolute inset-x-2 top-0 z-10 flex flex-col gap-2"
+            className="absolute inset-x-3 top-0 z-10 flex flex-col gap-2"
             data-search-over-chips
           >
             {children}
