@@ -4,11 +4,13 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  turnOnLocationCopy,
   chipPrefer,
   isEveryFamily,
   NEAR_CHIP,
   POPULAR_CHIP,
 } from "@/components/consumer/home/CatalogRails";
+import { locationErrorFromCode } from "@/lib/use-user-location";
 
 const src = (p: string) => readFileSync(join(__dirname, "..", "..", p), "utf8");
 
@@ -72,6 +74,28 @@ describe("Near and Popular", () => {
     // No geolocation at all still settles: `asked` is set before the check.
     expect(hook.indexOf("asked = true;")).toBeLessThan(
       hook.indexOf("!navigator.geolocation"),
+    );
+  });
+
+  // MESITA-2437: "fix use my location". A refused or failed ask used to be
+  // dropped, so the button looked dead; now the state says why.
+  it("a failed ask says why, and the button becomes Try again", () => {
+    expect(locationErrorFromCode(1)).toBe("denied");
+    expect(locationErrorFromCode(2)).toBe("unavailable");
+    expect(locationErrorFromCode(3)).toBe("timeout");
+    expect(turnOnLocationCopy(null)).toMatchObject({
+      title: "Turn on location",
+      action: "Use my location",
+    });
+    expect(turnOnLocationCopy("denied").title).toBe("Location is blocked");
+    expect(turnOnLocationCopy("denied").description).toContain("site settings");
+    expect(turnOnLocationCopy("unavailable").description).toContain("Location Services");
+    for (const e of ["denied", "unavailable", "timeout", "unsupported"] as const)
+      expect(turnOnLocationCopy(e).action).toBe("Try again");
+    const hook = src("lib/use-user-location.ts");
+    expect(hook).toContain("errorState = locationErrorFromCode(err.code);");
+    expect(src("components/consumer/home/CatalogRails.tsx")).toContain(
+      "turnOnLocationCopy(locationError)",
     );
   });
 });

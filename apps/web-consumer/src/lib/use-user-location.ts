@@ -4,6 +4,17 @@ import { useCallback, useEffect, useState } from "react";
 
 export type Coords = { lat: number; lng: number };
 
+/** Why the last ask brought no fix (MESITA-2437): the browser blocked the
+ *  site (1), the device could not find itself (2, e.g. a Mac whose Location
+ *  Services are off for the browser), it took too long (3), or there is no
+ *  geolocation at all. A dropped error read as a dead button. */
+export type LocationError = "denied" | "unavailable" | "timeout" | "unsupported";
+
+/** GeolocationPositionError.code → our reason. */
+export function locationErrorFromCode(code: number): LocationError {
+  return code === 1 ? "denied" : code === 3 ? "timeout" : "unavailable";
+}
+
 const GEO_OPTS: PositionOptions = {
   enableHighAccuracy: false,
   timeout: 8000,
@@ -12,6 +23,7 @@ const GEO_OPTS: PositionOptions = {
 
 let coordsState: Coords | null = null;
 let locatingState = false;
+let errorState: LocationError | null = null;
 let asked = false;
 const listeners = new Set<() => void>();
 
@@ -22,10 +34,12 @@ function emit() {
 function requestUserLocation(): Promise<Coords | null> {
   asked = true;
   if (typeof navigator === "undefined" || !navigator.geolocation) {
+    errorState = "unsupported";
     emit();
     return Promise.resolve(null);
   }
   locatingState = true;
+  errorState = null;
   emit();
   return new Promise((resolve) => {
     navigator.geolocation.getCurrentPosition(
@@ -35,11 +49,13 @@ function requestUserLocation(): Promise<Coords | null> {
           lng: pos.coords.longitude,
         };
         locatingState = false;
+        errorState = null;
         emit();
         resolve(coordsState);
       },
-      () => {
+      (err) => {
         locatingState = false;
+        errorState = locationErrorFromCode(err.code);
         emit();
         resolve(null);
       },
@@ -81,6 +97,13 @@ export function useUserLocationSettled(): boolean {
   const [settled, setSettled] = useState(read);
   useEffect(() => subscribe(() => setSettled(read())), []);
   return settled;
+}
+
+/** The last ask's failure, or null (none yet, or a fix). */
+export function useUserLocationError(): LocationError | null {
+  const [error, setError] = useState(errorState);
+  useEffect(() => subscribe(() => setError(errorState)), []);
+  return error;
 }
 
 export function useLocateUser(): () => void {
