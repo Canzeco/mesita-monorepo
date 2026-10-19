@@ -41,4 +41,37 @@ describe("Near and Popular", () => {
       "|${prefer}`",
     );
   });
+
+  // MESITA-2436: with no fix and no saved location the server has no
+  // Proximity, so a Nearby pool would be Popularity alone. Nearby asks for a
+  // location instead, spends no request, and waits for the browser's first
+  // answer before saying so (no flash of "Turn on location" on load).
+  it("Nearby with no location asks for one and spends no request", () => {
+    const rails = src("components/consumer/home/CatalogRails.tsx");
+    expect(rails).toContain(
+      'const nearbyNeedsLocation = prefer === "near" && from === null;',
+    );
+    const effect = rails.slice(rails.indexOf("useEffect(() => {\n    if (nearbyNeedsLocation) return;"));
+    expect(effect.length).toBeGreaterThan(0);
+    expect(effect.indexOf("if (nearbyNeedsLocation) return;")).toBeLessThan(
+      effect.indexOf("apiListAreaPool("),
+    );
+    const branch = rails.slice(
+      rails.indexOf("if (chip === NEAR_CHIP && nearbyNeedsLocation)"),
+      rails.indexOf("if (fetchError)"),
+    );
+    expect(branch).toContain("locationSettled ?");
+    expect(branch).toContain("turnOnLocation");
+    expect(rails.indexOf("if (chip === NEAR_CHIP && nearbyNeedsLocation)")).toBeLessThan(
+      rails.indexOf("if (pool === null)"),
+    );
+    // Popular still answers without a location (Popularity by design).
+    expect(rails).not.toMatch(/prefer === "popular" && from === null/);
+    const hook = src("lib/use-user-location.ts");
+    expect(hook).toContain("export function useUserLocationSettled()");
+    // No geolocation at all still settles: `asked` is set before the check.
+    expect(hook.indexOf("asked = true;")).toBeLessThan(
+      hook.indexOf("!navigator.geolocation"),
+    );
+  });
 });

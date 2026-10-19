@@ -20,10 +20,11 @@ function emit() {
 }
 
 function requestUserLocation(): Promise<Coords | null> {
+  asked = true;
   if (typeof navigator === "undefined" || !navigator.geolocation) {
+    emit();
     return Promise.resolve(null);
   }
-  asked = true;
   locatingState = true;
   emit();
   return new Promise((resolve) => {
@@ -71,6 +72,15 @@ export function useUserLocationLocating(): boolean {
   const [locating, setLocating] = useState(locatingState);
   useEffect(() => subscribe(() => setLocating(locatingState)), []);
   return locating;
+}
+
+/** True once the first ask has answered (a fix, a refusal or no
+ *  geolocation at all): before that, no fix means "not yet", not "none". */
+export function useUserLocationSettled(): boolean {
+  const read = () => asked && !locatingState;
+  const [settled, setSettled] = useState(read);
+  useEffect(() => subscribe(() => setSettled(read())), []);
+  return settled;
 }
 
 export function useLocateUser(): () => void {
