@@ -20,15 +20,19 @@ describe("Near and Popular", () => {
     );
   });
 
-  it("are every family; a family row ranks Near", () => {
+  it("are every family; a family row asks the Family mode (MESITA-2428)", () => {
     expect(isEveryFamily(NEAR_CHIP)).toBe(true);
     expect(isEveryFamily(POPULAR_CHIP)).toBe(true);
     expect(isEveryFamily("coffee")).toBe(false);
     expect(chipPrefer(POPULAR_CHIP)).toBe("popular");
     expect(chipPrefer(NEAR_CHIP)).toBe("near");
-    expect(chipPrefer("coffee")).toBe("near");
+    expect(chipPrefer("coffee")).toBe("family");
     expect(src("components/consumer/search/SearchClient.tsx")).toContain(
-      'filters.familyKeys.length > 0 ? "near" : storedPrefer',
+      'filters.familyKeys.length > 0 ? "family" : storedPrefer',
+    );
+    // Social and Saved read no pool, so they never change the request.
+    expect(src("components/consumer/home/CatalogRails.tsx")).toMatch(
+      /if \(c\.key !== SOCIAL_CHIP && c\.key !== SAVED_CHIP\)\s+setPrefer\(chipPrefer\(c\.key\)\);/,
     );
   });
 

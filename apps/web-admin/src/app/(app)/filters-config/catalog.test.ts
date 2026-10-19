@@ -42,7 +42,7 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
     expect(Object.keys(cfg).sort()).toEqual(Object.keys(DEFAULT_CONFIG).sort());
   });
 
-  it("params keeps only the Area pipeline's three numbers", () => {
+  it("params keeps only half credit and the weights table; the linear balance is dropped (MESITA-2428)", () => {
     expect(coerceConfig(LIVE_BLOB).params).toEqual(DEFAULT_CONFIG.params);
     expect(
       coerceConfig({
@@ -50,12 +50,13 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
           proximity: { maxKm: 30, halfDistanceKm: 6 },
           popularity: { priorRating: 4.2, referenceRating: 4, referenceReviews: 500, halfReviews: 250 },
           balance: { proximity: 8 },
+          modes: { popular: { proximity: 0.5 } },
           timing: { closedFloor: 0.2 },
         },
       }).params,
     ).toEqual({
       popularity: { halfReviews: 250 },
-      balance: { proximity: 8, popularity: 5 },
+      modes: { ...DEFAULT_CONFIG.params.modes, popular: { proximity: 0.5, popularity: 2 } },
     });
   });
 
@@ -64,12 +65,16 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
       coerceConfig({
         params: {
           popularity: { halfReviews: 0 },
-          balance: { proximity: 99, popularity: 3.6 },
+          modes: { nearby: { proximity: 99, popularity: 1.234 }, family: { proximity: -2 } },
         },
       }).params,
     ).toEqual({
       popularity: { halfReviews: 1 },
-      balance: { proximity: 10, popularity: 4 },
+      modes: {
+        ...DEFAULT_CONFIG.params.modes,
+        nearby: { proximity: 5, popularity: 1.23 },
+        family: { proximity: 0, popularity: 1 },
+      },
     });
   });
 

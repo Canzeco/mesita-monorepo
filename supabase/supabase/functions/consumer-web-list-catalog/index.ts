@@ -61,7 +61,7 @@ import {
   selectAreaPool,
   selectedPoolQuery,
 } from "../_shared/area-pipeline.ts";
-import { readAreaPrefer } from "../_shared/area-score.ts";
+import { readAreaMode } from "../_shared/area-score.ts";
 import { areaQuota, ownedLookup } from "../_shared/area-deps.ts";
 
 const POOL_CAP = 1000;
@@ -76,7 +76,7 @@ type Body = {
   /** Ignored since MESITA-2417: `map.googleMinReviews` is the minimum. */
   minReviews?: unknown;
   /** The one-pool wire (MESITA-2379); absent = the legacy rails. */
-  unified?: boolean;  /** The guest's Near/Popular toggle (MESITA-2425); absent = Near. */
+  unified?: boolean;  /** The guest's mode: near (Nearby) · popular · family (MESITA-2428). */
   prefer?: unknown;
 };
 
@@ -146,7 +146,7 @@ Deno.serve(async (req) => {
     cfg,
     consumeQuota: areaQuota(req, admin, env.serviceKey),
     lookupOwned: ownedLookup(admin, PLACE_CARD_COLUMNS, "list-catalog", wirePlaces),
-    prefer: readAreaPrefer(body.prefer),
+    mode: readAreaMode(body.prefer),
   });
 
   // One line, because every failure mode here is a WRONG SET rather than an
@@ -156,7 +156,7 @@ Deno.serve(async (req) => {
     fn: "consumer-web-list-catalog",
     wire: unified ? "unified" : "legacy",
     location: location.kind,
-    prefer: readAreaPrefer(body.prefer),
+    areaMode: readAreaMode(body.prefer),
     ...pool.summary,
     mesitaRead: mesitaRows.length,
     mesitaCapped: mesitaRows.length >= POOL_CAP,

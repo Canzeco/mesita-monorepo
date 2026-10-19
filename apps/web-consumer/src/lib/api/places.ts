@@ -140,7 +140,7 @@ export async function apiFetchNearbyCatalog(
   client: SupabaseClient,
   center: { lat: number; lng: number },
   familyKeys: readonly string[] = [],
-  prefer: "near" | "popular" = "near",
+  prefer: AreaPrefer = "near",
 ): Promise<ViewportPlaces> {
   const data = await invokeEF<{
     places: Place[];
@@ -229,16 +229,24 @@ export type AreaDiagnostics = {
   signals: { proximity: number | null; popularity: number | null };
   selected: number;
   source: "selected" | "mesita" | "google";
+  /** The mode's exponents (MESITA-2428); absent from an older EF. */
+  weights?: { proximity: number; popularity: number };
   base: number;
   final: number;
   formula: "point" | "area" | "none";
 };
 
+/** The guest's mode on the wire (MESITA-2428): near is Nearby. */
+export type AreaPrefer = "near" | "popular" | "family";
+
 /** Where Places searches from: a point, or a saved area's rectangle. */
 export type AreaOrigin = {
   lat: number;
   lng: number;
-  bounds?: { low: { lat: number; lng: number }; high: { lat: number; lng: number } };
+  bounds?: {
+    low: { lat: number; lng: number };
+    high: { lat: number; lng: number };
+  };
 };
 
 /** The Feed's answer: the one ranked pool, or — from an Edge Function that
@@ -263,7 +271,7 @@ function cleanPlace(place: Place): Place {
 export async function apiListAreaPool(
   client: SupabaseClient,
   origin: AreaOrigin | null,
-  prefer: "near" | "popular" = "near",
+  prefer: AreaPrefer = "near",
 ): Promise<AreaPool> {
   const data = await invokeEF<{
     places?: Place[];
@@ -304,7 +312,6 @@ export type CatalogRail = {
   source: "signal" | "family" | "seed" | "generated";
   places: Place[];
 };
-
 
 // Per-row state mirrored from atlas-suggest-places — the server's words,
 // kept verbatim because they are the wire:
@@ -387,19 +394,19 @@ export async function apiSuggestPlacesWithIdle(
 ): Promise<{ predictions: PlacePrediction[]; idleSec: number | null }> {
   const trimmed = input.trim();
   if (trimmed.length < 2) return { predictions: [], idleSec: null };
-  const data = await invokeEF<{ predictions: PlacePrediction[]; idleSec?: unknown }>(
-    client,
-    "consumer-web-suggest-places",
-    {
-      input: trimmed,
-      sessionToken,
-      mode,
-      ...(origin ? { lat: origin.lat, lng: origin.lng } : {}),
-    },
-  );
-  const idle = typeof data.idleSec === "number" && Number.isFinite(data.idleSec)
-    ? data.idleSec
-    : null;
+  const data = await invokeEF<{
+    predictions: PlacePrediction[];
+    idleSec?: unknown;
+  }>(client, "consumer-web-suggest-places", {
+    input: trimmed,
+    sessionToken,
+    mode,
+    ...(origin ? { lat: origin.lat, lng: origin.lng } : {}),
+  });
+  const idle =
+    typeof data.idleSec === "number" && Number.isFinite(data.idleSec)
+      ? data.idleSec
+      : null;
   return { predictions: data.predictions ?? [], idleSec: idle };
 }
 

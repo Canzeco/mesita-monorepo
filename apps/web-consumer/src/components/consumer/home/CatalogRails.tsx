@@ -39,6 +39,7 @@ import {
   type AreaPool,
   type CatalogRail,
   type Place,
+  type AreaPrefer,
 } from "@/lib/api/places";
 import {
   areaPoolKey,
@@ -96,9 +97,15 @@ export function isEveryFamily(chip: string): boolean {
   return chip === NEAR_CHIP || chip === POPULAR_CHIP;
 }
 
-/** What the row asks the server to rank by: a family ranks Near. */
-export function chipPrefer(chip: string): "near" | "popular" {
-  return chip === POPULAR_CHIP ? "popular" : "near";
+/** What the row asks the server to rank by (MESITA-2428): Nearby,
+ *  Popular, or a family row's Family mode — every family shares one Family
+ *  pool, which the row then filters. */
+export function chipPrefer(chip: string): AreaPrefer {
+  return chip === POPULAR_CHIP
+    ? "popular"
+    : chip === NEAR_CHIP
+      ? "near"
+      : "family";
 }
 /** The guest's saved places (MESITA-2383; Home's Favorites tab, then row, Saved since MESITA-2427). */
 export const SAVED_CHIP = "saved";
@@ -194,9 +201,11 @@ export function CatalogRails() {
   const origin = useActiveLocation();
   const from = origin ?? coords;
   // Near/Popular (MESITA-2425) is part of the question, so part of the key;
-  // the row picks it (MESITA-2426), and every family row asks Near.
+  // the row picks it (MESITA-2426), and every family row asks Family
+  // (MESITA-2428). Social and Saved read no pool, so they keep the last
+  // pool row's prefer and never spend a request.
   const [chip, setChip] = useState<string>(NEAR_CHIP);
-  const prefer = chipPrefer(chip);
+  const [prefer, setPrefer] = useState<AreaPrefer>("near");
   const requestKey = `${areaPoolKey(origin ?? coords)}|${prefer}`;
   // The running load's background reload: the rails on screen stay until
   // the new ones land, and an error never replaces a good feed.
@@ -332,6 +341,8 @@ export function CatalogRails() {
           if (chip !== c.key)
             trackEvent(supabase, "home_mode_view", { mode: c.label });
           setChip(c.key);
+          if (c.key !== SOCIAL_CHIP && c.key !== SAVED_CHIP)
+            setPrefer(chipPrefer(c.key));
         }}
         aria-pressed={chip === c.key}
         className={cn(ROW_BASE, chip === c.key ? ROW_ON : ROW_OFF)}

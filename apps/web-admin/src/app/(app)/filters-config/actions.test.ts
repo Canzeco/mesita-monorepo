@@ -60,7 +60,11 @@ function editedEverywhere(live: DiscoveryConfig): DiscoveryConfig {
     ...live,
     params: {
       popularity: { halfReviews: 250 },
-      balance: { proximity: 7, popularity: 3 },
+      modes: {
+        nearby: { proximity: 3, popularity: 1 },
+        popular: { proximity: 0.5, popularity: 2.5 },
+        family: { proximity: 1, popularity: 1.25 },
+      },
     },
     map: { ...live.map, radiusKm: 3, googlePlaces: 20, mesitaPlaces: 60 },
     catalog: { ...live.catalog, railCap: 7, seedCount: 99 },
@@ -94,17 +98,22 @@ describe("no Save sends a retired key (MESITA-2328, MESITA-2337)", () => {
     for (const dead of ["swipe", "engines", "weights", "weightsByMode", "filters"]) {
       expect(sent.config).not.toHaveProperty(dead);
     }
+    expect(sent.config?.params).not.toHaveProperty("balance");
   });
 });
 
 describe("the Area box", () => {
-  it("moves the half-credit count and the two weights", async () => {
+  it("moves the half-credit count and the weights table (MESITA-2428)", async () => {
     const live = liveConfig();
     const sent = armed(live);
     await updateDiscoveryConfig(editedEverywhere(live), ["areaSignals"]);
     expect(sent.config?.params).toEqual({
       popularity: { halfReviews: 250 },
-      balance: { proximity: 7, popularity: 3 },
+      modes: {
+        nearby: { proximity: 3, popularity: 1 },
+        popular: { proximity: 0.5, popularity: 2.5 },
+        family: { proximity: 1, popularity: 1.25 },
+      },
     });
   });
 

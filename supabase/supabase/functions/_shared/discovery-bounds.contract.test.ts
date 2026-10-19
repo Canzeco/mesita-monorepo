@@ -5,7 +5,7 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import { DEEP_LIMIT_MAX, DEEP_LIMIT_MIN, DEFAULT_DEEP, SIGNAL_PARAM_BOUNDS } from "./discovery-config.ts";
 import { POPULARITY_HALF_REVIEWS_DEFAULT } from "./pipeline-signals.ts";
-import { AREA_WEIGHT_DEFAULT } from "./discovery-config.ts";
+import { DEFAULT_AREA_MODES } from "./discovery-config.ts";
 
 const admin = await Deno.readTextFile(
   new URL("../../../../apps/web-admin/src/app/(app)/filters-config/catalog.ts", import.meta.url),
@@ -24,16 +24,15 @@ Deno.test("Deep box bounds and defaults match the server", () => {
   assertEquals(m ? { limit: Number(m[1]), minSimilarity: Number(m[2]) } : null, DEFAULT_DEEP);
 });
 
-Deno.test("Area box bounds and defaults match the server (MESITA-2347)", () => {
+Deno.test("Area box bounds and defaults match the server (MESITA-2347, the weights table MESITA-2428)", () => {
   assertEquals(constant("HALF_REVIEWS_MIN"), SIGNAL_PARAM_BOUNDS.halfReviews.min);
   assertEquals(constant("HALF_REVIEWS_MAX"), SIGNAL_PARAM_BOUNDS.halfReviews.max);
   assertEquals(constant("AREA_WEIGHT_MIN"), SIGNAL_PARAM_BOUNDS.weight.min);
   assertEquals(constant("AREA_WEIGHT_MAX"), SIGNAL_PARAM_BOUNDS.weight.max);
-  const d = admin.match(
-    /popularity: \{ halfReviews: ([0-9_]+) \},\s*balance: \{ proximity: (\d+), popularity: (\d+) \}/,
-  );
-  assertEquals(
-    d ? [Number(d[1].replaceAll("_", "")), Number(d[2]), Number(d[3])] : null,
-    [POPULARITY_HALF_REVIEWS_DEFAULT, AREA_WEIGHT_DEFAULT, AREA_WEIGHT_DEFAULT],
-  );
+  const half = admin.match(/popularity: \{ halfReviews: ([0-9_]+) \},\s*modes: DEFAULT_AREA_MODES,/);
+  assertEquals(half ? Number(half[1].replaceAll("_", "")) : null, POPULARITY_HALF_REVIEWS_DEFAULT);
+  for (const [mode, w] of Object.entries(DEFAULT_AREA_MODES)) {
+    const row = admin.match(new RegExp(`${mode}: \\{ proximity: ([0-9.]+), popularity: ([0-9.]+) \\}`));
+    assertEquals(row ? { proximity: Number(row[1]), popularity: Number(row[2]) } : null, w, mode);
+  }
 });
