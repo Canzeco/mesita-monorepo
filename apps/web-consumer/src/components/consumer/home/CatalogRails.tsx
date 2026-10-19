@@ -53,7 +53,9 @@ import { trackEvent } from "@/lib/analytics/track";
 import {
   useLocateUser,
   useUserLocation,
+  useUserLocationError,
   useUserLocationSettled,
+  type LocationError,
 } from "@/lib/use-user-location";
 import { withUserDistance } from "@/lib/place-distance";
 import { onPlaceCreated } from "@/lib/place-created-event";
@@ -195,6 +197,50 @@ export function savedPlaceList(
     .map((p) => enrichPlaceOverview(p));
 }
 
+/** Home's no-location state (MESITA-2437): what happened and what to do,
+ *  so a refused or failed ask never reads as a dead button. */
+export function turnOnLocationCopy(error: LocationError | null): {
+  title: string;
+  description: string;
+  action: string;
+} {
+  switch (error) {
+    case "denied":
+      return {
+        title: "Location is blocked",
+        description:
+          "Your browser is blocking location for Mesita. Allow it in the site settings (the icon left of the address), then try again.",
+        action: "Try again",
+      };
+    case "unavailable":
+      return {
+        title: "Couldn't find you",
+        description:
+          "Your device didn't give a location. On a Mac, turn on Location Services for your browser in System Settings › Privacy & Security, then try again.",
+        action: "Try again",
+      };
+    case "timeout":
+      return {
+        title: "Couldn't find you",
+        description: "Finding your location took too long. Try again.",
+        action: "Try again",
+      };
+    case "unsupported":
+      return {
+        title: "No location here",
+        description:
+          "This browser can't share a location. Pick a saved location at the top.",
+        action: "Try again",
+      };
+    default:
+      return {
+        title: "Turn on location",
+        description: "Places near you show up once Mesita knows where you are.",
+        action: "Use my location",
+      };
+  }
+}
+
 export function CatalogRails() {
   const supabase = useBrowserSupabase();
   const coords = useUserLocation();
@@ -219,6 +265,7 @@ export function CatalogRails() {
   // Popular and the family rows still answer without one.
   const nearbyNeedsLocation = prefer === "near" && from === null;
   const locationSettled = useUserLocationSettled();
+  const locationError = useUserLocationError();
   // The running load's background reload: the rails on screen stay until
   // the new ones land, and an error never replaces a good feed.
   const reload = useRef<() => void>(() => {});
@@ -507,12 +554,13 @@ export function CatalogRails() {
     );
   }
 
+  const noLocation = turnOnLocationCopy(locationError);
   const turnOnLocation = (
     <EmptyState
       icon={Navigation}
-      title="Turn on location"
-      description="Places near you show up once Mesita knows where you are."
-      action={{ label: "Use my location", onClick: locate }}
+      title={noLocation.title}
+      description={noLocation.description}
+      action={{ label: noLocation.action, onClick: locate }}
     />
   );
 
