@@ -62,7 +62,10 @@ import {
   rankArea,
   territoryGate,
 } from "./area-score.ts";
-import { POPULARITY_HALF_REVIEWS_DEFAULT } from "./pipeline-signals.ts";
+import {
+  POPULARITY_HALF_REVIEWS_DEFAULT,
+  PROXIMITY_REACH_KM_DEFAULT,
+} from "./pipeline-signals.ts";
 import {
   DEFAULT_AREA_MODES,
   type DiscoveryConfig,
@@ -83,17 +86,18 @@ export const FEED_GOOGLE_TYPES: readonly string[] = nearbyTypesForSupers(
   CATALOG_FAMILY_SLUGS,
 );
 
-/** Popularity's reviews-for-half-credit and the mode's row of the weights
- *  table (MESITA-2428), from the blob. */
+/** Popularity's reviews-for-half-credit, Proximity's reach (MESITA-2431)
+ *  and the mode's row of the weights table (MESITA-2428), from the blob. */
 export function areaSignalParams(
   params: SignalParams,
   mode: AreaMode = "nearby",
-): Pick<AreaContext, "halfReviews" | "weights"> {
+): Pick<AreaContext, "halfReviews" | "reachKm" | "weights"> {
   const num = (v: unknown, d: number) => (typeof v === "number" && Number.isFinite(v) ? v : d);
   const row = params.modes?.[mode];
   const d = DEFAULT_AREA_MODES[mode];
   return {
     halfReviews: num(params.popularity?.halfReviews, POPULARITY_HALF_REVIEWS_DEFAULT),
+    reachKm: num(params.proximity?.reachKm, PROXIMITY_REACH_KM_DEFAULT),
     weights: {
       proximity: num(row?.proximity, d.proximity),
       popularity: num(row?.popularity, d.popularity),

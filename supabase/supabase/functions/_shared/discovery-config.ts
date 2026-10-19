@@ -32,15 +32,20 @@ import {
   POPULARITY_HALF_REVIEWS_DEFAULT,
   POPULARITY_HALF_REVIEWS_MAX,
   POPULARITY_HALF_REVIEWS_MIN,
+  PROXIMITY_REACH_KM_DEFAULT,
+  PROXIMITY_REACH_KM_MAX,
+  PROXIMITY_REACH_KM_MIN,
 } from "./pipeline-signals.ts";
 
 /**
- * The Area pipeline's numbers, the only ones `params` carries: Popularity's
- * reviews-for-half-credit and the weights table (MESITA-2428), two
- * exponents per mode. Proximity has no number of its own — `map.radiusKm`
- * is it. `balance`, the two linear weights it replaced, is dropped.
+ * The Area pipeline's numbers, the only ones `params` carries: Proximity's
+ * reach (MESITA-2431), Popularity's reviews-for-half-credit and the weights
+ * table (MESITA-2428), two exponents per mode. The reach is NOT
+ * `map.radiusKm`: the radius decides who is a candidate, the reach scores
+ * distance. `balance`, the two linear weights the table replaced, is dropped.
  */
 export type SignalParams = {
+  proximity: { reachKm: number };
   popularity: { halfReviews: number };
   modes: Record<AreaMode, AreaWeights>;
 };
@@ -440,14 +445,20 @@ export const DEFAULT_GENERAL: GeneralConfig = {
   minReviews: 0,
 };
 
-/** The Area pipeline's three numbers. A blob with no `params` reads these. */
+/** The Area pipeline's numbers. A blob with no `params` reads these. */
 export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
+  proximity: { reachKm: PROXIMITY_REACH_KM_DEFAULT },
   popularity: { halfReviews: POPULARITY_HALF_REVIEWS_DEFAULT },
   modes: DEFAULT_AREA_MODES,
 };
 
-/** Legal ranges for the three numbers the Area box edits. */
+/** Legal ranges for the numbers the Area box edits. */
 export const SIGNAL_PARAM_BOUNDS = {
+  reachKm: {
+    min: PROXIMITY_REACH_KM_MIN,
+    max: PROXIMITY_REACH_KM_MAX,
+    decimals: 1,
+  },
   halfReviews: {
     min: POPULARITY_HALF_REVIEWS_MIN,
     max: POPULARITY_HALF_REVIEWS_MAX,
@@ -685,7 +696,7 @@ function boundedParam(
 }
 
 /**
- * The Area pipeline's three numbers. Rebuilt field by field, so a stored bag
+ * The Area pipeline's numbers. Rebuilt field by field, so a stored bag
  * from the retired deck (maxKm, kneeKm, timing, category, priorRating, …)
  * or the retired calibration (proximity.halfDistanceKm,
  * popularity.referenceRating/referenceReviews, MESITA-2347) or the linear
@@ -693,10 +704,14 @@ function boundedParam(
  */
 export function normalizeSignalParams(raw: unknown): SignalParams {
   const r = (raw ?? {}) as Record<string, unknown>;
+  const prox = (r.proximity ?? {}) as Record<string, unknown>;
   const pop = (r.popularity ?? {}) as Record<string, unknown>;
   const m = (r.modes ?? {}) as Record<string, unknown>;
   const d = DEFAULT_SIGNAL_PARAMS;
   return {
+    proximity: {
+      reachKm: boundedParam(prox.reachKm, d.proximity.reachKm, SIGNAL_PARAM_BOUNDS.reachKm),
+    },
     popularity: {
       halfReviews: boundedParam(
         pop.halfReviews,

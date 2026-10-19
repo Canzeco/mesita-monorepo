@@ -113,11 +113,13 @@ type SectionCase = {
 
 const CASES: Record<string, SectionCase> = {
   discovery: {
-    // The Area box's Save (MESITA-2347): Popularity's reviews for half credit.
-    valid: { config: { params: { popularity: { halfReviews: 250 } } } },
+    // The Area box's Save (MESITA-2347): Popularity's reviews for half credit
+    // and Proximity's reach (MESITA-2431).
+    valid: { config: { params: { popularity: { halfReviews: 250 }, proximity: { reachKm: 12.5 } } } },
     assertSaved: (saved) => {
       const c = saved.config as Row;
       assertEquals(((c.params as Row).popularity as Row).halfReviews, 250);
+      assertEquals(((c.params as Row).proximity as Row).reachKm, 12.5);
       assert(c.map && typeof c.map === "object", "map missing");
     },
     // Coerced, not stored as sent: an exponent of 99 lands clamped at 5, and

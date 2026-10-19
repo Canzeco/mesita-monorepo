@@ -42,7 +42,7 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
     expect(Object.keys(cfg).sort()).toEqual(Object.keys(DEFAULT_CONFIG).sort());
   });
 
-  it("params keeps only half credit and the weights table; the linear balance is dropped (MESITA-2428)", () => {
+  it("params keeps only the reach, half credit and the weights table; the linear balance is dropped (MESITA-2428, MESITA-2431)", () => {
     expect(coerceConfig(LIVE_BLOB).params).toEqual(DEFAULT_CONFIG.params);
     expect(
       coerceConfig({
@@ -55,6 +55,7 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
         },
       }).params,
     ).toEqual({
+      proximity: { reachKm: 15 },
       popularity: { halfReviews: 250 },
       modes: { ...DEFAULT_CONFIG.params.modes, popular: { proximity: 0.5, popularity: 2 } },
     });
@@ -64,11 +65,13 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
     expect(
       coerceConfig({
         params: {
+          proximity: { reachKm: 12.34 },
           popularity: { halfReviews: 0 },
           modes: { nearby: { proximity: 99, popularity: 1.234 }, family: { proximity: -2 } },
         },
       }).params,
     ).toEqual({
+      proximity: { reachKm: 12.3 },
       popularity: { halfReviews: 1 },
       modes: {
         ...DEFAULT_CONFIG.params.modes,
@@ -76,6 +79,10 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
         family: { proximity: 0, popularity: 1 },
       },
     });
+    const reach = (v: unknown) => coerceConfig({ params: { proximity: { reachKm: v } } }).params.proximity.reachKm;
+    expect(reach(0.2)).toBe(1);
+    expect(reach(999)).toBe(50);
+    expect(reach("far")).toBe(15);
   });
 
   it("filters go too: list-places' listed lanes were their last reader (MESITA-2337)", () => {

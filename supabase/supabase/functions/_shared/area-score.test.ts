@@ -19,6 +19,7 @@ const CTX: AreaContext = {
   location: { kind: "point", anchor: ANCHOR, radiusKm: 8 },
   families: [],
   halfReviews: 100,
+  reachKm: 8,
   weights: { proximity: 1, popularity: 1 },
 };
 const BOUNDS = { low: { lat: 19.4, lng: -99.2 }, high: { lat: 19.5, lng: -99.1 } };
@@ -234,4 +235,31 @@ Deno.test("the mode (MESITA-2428): near · popular · family on the wire; Nearby
     rankArea([near, far], (c) => c, { ...CTX, weights: { proximity, popularity } })[0].item.id;
   assertEquals(first(2, 1), "near");
   assertEquals(first(1, 2), "far");
+});
+
+// MESITA-2431: Proximity scores over its own reach, not the candidate radius.
+// Live was a 50 km radius scoring a city between 0.7 and 1, so Nearby put a
+// 4.6★ place 6 km away ahead of a 4.0★ one 0.5 km away.
+Deno.test("Proximity reads the reach, not the radius (MESITA-2431)", () => {
+  const MTY = { lat: 25.65, lng: -100.29 };
+  const kmLat = (km: number) => MTY.lat + km / 111.2;
+  const close = cand({ id: "close", lat: kmLat(0.5), lng: MTY.lng, rating: 4.0, reviewCount: 300 });
+  const big = cand({ id: "big", lat: kmLat(6), lng: MTY.lng, rating: 4.6, reviewCount: 3000 });
+  const ctx = (reachKm: number, proximity: number, popularity: number): AreaContext => ({
+    ...CTX,
+    location: { kind: "point", anchor: MTY, radiusKm: 50 },
+    reachKm,
+    weights: { proximity, popularity },
+  });
+  const first = (c: AreaContext) => rankArea([big, close], (x) => x, c)[0].item.id;
+  // The radius still decides who is a candidate; the reach only scores.
+  const at = areaScore(big, ctx(15, 1, 1));
+  assertEquals(at.gates.radius, 1);
+  assertAlmostEquals(at.signals.proximity ?? -1, 1 - 6 / 15, 1e-2);
+  assertEquals(areaScore(cand({ lat: kmLat(20), lng: MTY.lng }), ctx(15, 1, 1)).signals.proximity, 0);
+  // Reach 15: Nearby leads with the close place, Popular still pulls the big name.
+  assertEquals(first(ctx(15, 2, 1)), "close");
+  assertEquals(first(ctx(15, 1, 2)), "big");
+  // Reach = the 50 km radius (the old behaviour): Nearby lost the close place.
+  assertEquals(first(ctx(50, 2, 1)), "big");
 });

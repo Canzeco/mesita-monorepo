@@ -4,7 +4,7 @@
 // admin field can never disagree on what a value may be.
 import { assertEquals } from "jsr:@std/assert@1";
 import { DEEP_LIMIT_MAX, DEEP_LIMIT_MIN, DEFAULT_DEEP, SIGNAL_PARAM_BOUNDS } from "./discovery-config.ts";
-import { POPULARITY_HALF_REVIEWS_DEFAULT } from "./pipeline-signals.ts";
+import { POPULARITY_HALF_REVIEWS_DEFAULT, PROXIMITY_REACH_KM_DEFAULT } from "./pipeline-signals.ts";
 import { DEFAULT_AREA_MODES } from "./discovery-config.ts";
 
 const admin = await Deno.readTextFile(
@@ -27,6 +27,9 @@ Deno.test("Deep box bounds and defaults match the server", () => {
 Deno.test("Area box bounds and defaults match the server (MESITA-2347, the weights table MESITA-2428)", () => {
   assertEquals(constant("HALF_REVIEWS_MIN"), SIGNAL_PARAM_BOUNDS.halfReviews.min);
   assertEquals(constant("HALF_REVIEWS_MAX"), SIGNAL_PARAM_BOUNDS.halfReviews.max);
+  assertEquals(constant("REACH_KM_MIN"), SIGNAL_PARAM_BOUNDS.reachKm.min);
+  assertEquals(constant("REACH_KM_MAX"), SIGNAL_PARAM_BOUNDS.reachKm.max);
+  assertEquals(constant("REACH_KM_DEFAULT"), PROXIMITY_REACH_KM_DEFAULT);
   assertEquals(constant("AREA_WEIGHT_MIN"), SIGNAL_PARAM_BOUNDS.weight.min);
   assertEquals(constant("AREA_WEIGHT_MAX"), SIGNAL_PARAM_BOUNDS.weight.max);
   const half = admin.match(/popularity: \{ halfReviews: ([0-9_]+) \},\s*modes: DEFAULT_AREA_MODES,/);

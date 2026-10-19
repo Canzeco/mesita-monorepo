@@ -1374,10 +1374,12 @@ select ok(
       -- (MESITA-2327) and the operator `filters` have no reader.
       and not (discovery_config ?| array['filters', 'swipe', 'engines', 'weights', 'weightsByMode'])
       and discovery_config #> '{catalog,ranking}' is null
-      and (coalesce(discovery_config -> 'params', '{}'::jsonb) - 'proximity' - 'popularity') = '{}'::jsonb
-      and (coalesce(discovery_config #> '{params,proximity}', '{}'::jsonb) - 'halfDistanceKm') = '{}'::jsonb
-      and (coalesce(discovery_config #> '{params,popularity}', '{}'::jsonb)
-             - 'referenceRating' - 'referenceReviews') = '{}'::jsonb
+      -- MESITA-2431: `params` holds only what normalizeSignalParams reads;
+      -- the first calibration's keys (MESITA-2347) are gone from the row.
+      and (coalesce(discovery_config -> 'params', '{}'::jsonb)
+             - 'proximity' - 'popularity' - 'modes') = '{}'::jsonb
+      and (coalesce(discovery_config #> '{params,proximity}', '{}'::jsonb) - 'reachKm') = '{}'::jsonb
+      and (coalesce(discovery_config #> '{params,popularity}', '{}'::jsonb) - 'halfReviews') = '{}'::jsonb
       and not (enrichment_config ? 'atlasPerRunCostCapUsd')
      from public.app_config where id = 1),
   'no dead app_config key survives'

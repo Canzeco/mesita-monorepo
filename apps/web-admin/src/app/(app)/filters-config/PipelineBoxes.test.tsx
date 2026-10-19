@@ -88,10 +88,10 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
   });
 
   it("carries the one weights table and no subpage tabs", () => {
-    // 3 Name by Admin + 5 Name + 3 Area + the Area weights table's 6
-    // (MESITA-2428: three modes × two signals); Deep is Soon.
+    // 3 Name by Admin + 5 Name + 4 Area (the reach, MESITA-2431) + the Area
+    // weights table's 6 (MESITA-2428: three modes × two signals); Deep is Soon.
     const html = page();
-    expect(html.match(/type="number"/g)?.length).toBe(17);
+    expect(html.match(/type="number"/g)?.length).toBe(18);
     expect(html.match(/data-area-weights/g)?.length).toBe(1);
     expect(html).not.toContain("Modes");
     expect(html).not.toContain('role="tablist"');
@@ -119,10 +119,11 @@ describe("the boxes' controls", () => {
     expect(html).not.toContain("Only active places");
   });
 
-  it("Area: radius, half credit, the weights table, two source counts, no total and no Feed rows (MESITA-2379, MESITA-2428)", () => {
+  it("Area: radius, reach, half credit, the weights table, two source counts, no total and no Feed rows (MESITA-2379, MESITA-2428, MESITA-2431)", () => {
     const html = render(<AreaBox {...seed} />);
     for (const label of [
       "Radius (km)",
+      "Proximity reach (km)",
       "Reviews for half credit",
       "Weights table",
       "📍 Nearby",
@@ -153,6 +154,8 @@ describe("the boxes' controls", () => {
       expect(html, dead).not.toContain(dead);
     }
     expect(html).toContain('value="100"');
+    // Proximity's reach defaults to 15 km, apart from the 50 km radius (MESITA-2431).
+    expect(html).toContain('value="15"');
     // The weights table's defaults (MESITA-2428): Nearby 2 · 1, Popular 1 · 2.
     expect(html).toContain('value="2"');
     // 40 and 60 are bought now: every Google stop is a live pill.
