@@ -166,7 +166,7 @@ export function CatalogTile({
   // fully shown and centred — nothing lies over it. The bottom 40% is its
   // REFLECTION: a 60%-tall copy flipped so its foot meets the photo's foot,
   // under an 80% paper layer, four rows on it in dark text. No border; the
-  // corners are rounded-lg. The heart sits at the right of the name row.
+  // corners are rounded-2xl. The heart sits at the right of the name row.
   return (
     <li className={cn("relative aspect-square min-w-0 overflow-hidden rounded-2xl", className)}>
       <TileLink
