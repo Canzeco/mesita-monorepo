@@ -112,6 +112,26 @@ export function territoryGate(
     : 0;
 }
 
+/** The guest's Near/Popular toggle (MESITA-2425). A point location only:
+ *  an area or no location already ranks on Popularity alone. */
+export type AreaPrefer = "near" | "popular";
+
+/** Anything but "popular" is Near, the default. */
+export function readAreaPrefer(v: unknown): AreaPrefer {
+  return v === "popular" ? "popular" : "near";
+}
+
+/** Near keeps the operator's two weights; Popular turns Proximity off
+ *  inside the same radius (a Popularity weight of 0 counts as 1). */
+export function balanceForPrefer(
+  prefer: AreaPrefer,
+  balance: { proximity: number; popularity: number },
+): { proximity: number; popularity: number } {
+  if (prefer === "near") return balance;
+  const qw = Number.isFinite(balance.popularity) ? balance.popularity : 0;
+  return { proximity: 0, popularity: qw > 0 ? qw : 1 };
+}
+
 /** The weighted sum of the two signals, 0..1; 0 when both weights are 0. */
 export function weightedArea(
   prox: number,

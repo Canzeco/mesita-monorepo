@@ -782,6 +782,13 @@ Deno.test("areaFanoutCircles: halves split across the longer side", () => {
   assertEquals(areaFanoutCircles({ kind: "none" }, 3), []);
 });
 
+Deno.test("areaFanoutCircles: Popular asks Google for the prominent 20 first (MESITA-2425)", () => {
+  const point = { kind: "point" as const, anchor: { lat: 19.43, lng: -99.13 }, radiusKm: 8 };
+  assertEquals(areaFanoutCircles(point, 1).map((c) => c.rank), ["DISTANCE"]);
+  assertEquals(areaFanoutCircles(point, 1, "popular").map((c) => c.rank), ["POPULARITY"]);
+  assertEquals(areaFanoutCircles(point, 2, "popular").map((c) => c.rank), ["POPULARITY", "DISTANCE"]);
+});
+
 Deno.test("parseAreaBounds: valid, inverted, partial and oversized", () => {
   const ok = { low: { lat: 25.6, lng: -100.4 }, high: { lat: 25.7, lng: -100.3 } };
   assertEquals(parseAreaBounds(ok), ok);

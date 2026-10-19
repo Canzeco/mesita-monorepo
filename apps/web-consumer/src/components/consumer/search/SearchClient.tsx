@@ -72,6 +72,7 @@ import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { useMapFilters } from "@/lib/use-map-filters";
+import { useAreaPrefer } from "@/lib/use-area-prefer";
 import {
   buildSearchMapPins,
   catalogPlaceOnMesita,
@@ -192,6 +193,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // operator's (Admin › Discovery). The server is the one selector — this
   // component never recuts the catalog.
   const filters = useMapFilters();
+  const prefer = useAreaPrefer();
   const location = userLocation;
   // The location disc at the LEFT of the top row recentres on the guest.
   // `Recentre` keys on the coords OBJECT, so a tap mints a fresh one and
@@ -368,6 +370,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           supabase,
           nextCenter,
           filters.familyKeys,
+          prefer,
         );
         if (gen !== viewportGen.current) return;
         lastFetchedCenter.current = nextCenter;
@@ -392,7 +395,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     },
     // `markViewport` left this list with the search-open guard that used to
     // call it here — the overlay is gone, so a viewport load always loads.
-    [filters.familyKeys, supabase],
+    [filters.familyKeys, prefer, supabase],
   );
 
   const scheduleOrLoad = useCallback(
@@ -469,7 +472,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   useEffect(() => () => clearPendingReload(), [clearPendingReload]);
 
-  // Family and Google Reviews change the Area pool (`loadViewport` changes
+  // Family and Near/Popular change the Area pool (`loadViewport` changes
   // with them). How many stays the operator's. The query bar never reads
   // these filters.
   useEffect(() => {
