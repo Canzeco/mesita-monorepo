@@ -18,18 +18,26 @@ function gate(v: 0 | 1 | null): string {
   return v === null ? "n/a" : String(v);
 }
 
-/** The compact expression for the place's formula. */
+/** An exponent, as short as it reads: 2, 1.5, 0.25. */
+function exp(n: number | undefined): string {
+  return typeof n === "number" && Number.isFinite(n) ? String(n) : "?";
+}
+
+/** The compact expression for the place's formula (MESITA-2428:
+ *  Proximity^a × (Popularity × selected)^b). */
 export function diagExpression(a: Area): string {
-  const sel = diagNumber(a.selected);
   const fin = diagNumber(a.final);
-  if (a.formula === "area") {
-    return `area ${gate(a.gates.territory)} × popularity ${diagNumber(a.signals.popularity)} × selected ${sel} = ${fin}`;
-  }
-  return `base ${diagNumber(a.base)} × selected ${sel} = ${fin}`;
+  const b = exp(a.weights?.popularity);
+  const pop = `(popularity ${diagNumber(a.signals.popularity)} × selected ${diagNumber(a.selected)})^${b}`;
+  if (a.formula === "area")
+    return `area ${gate(a.gates.territory)} × ${pop} = ${fin}`;
+  if (a.formula === "none") return `${pop} = ${fin}`;
+  return `proximity ${diagNumber(a.signals.proximity)}^${exp(a.weights?.proximity)} × ${pop} = ${fin}`;
 }
 
 export function AreaDiagnostics({ area }: { area: Area }) {
-  const families = area.familyKeys.length > 0 ? area.familyKeys.join(", ") : "none";
+  const families =
+    area.familyKeys.length > 0 ? area.familyKeys.join(", ") : "none";
   return (
     <li
       className="bg-muted text-muted-foreground type-meta rounded-lg px-2 py-1.5 font-mono leading-snug"
@@ -39,13 +47,20 @@ export function AreaDiagnostics({ area }: { area: Area }) {
       <p className="text-foreground font-semibold">{diagExpression(area)}</p>
       <p>
         {area.source} · family {gate(area.gates.family)} ({families})
-        {area.gates.territory !== null ? ` · in area ${gate(area.gates.territory)}` : ""}
-        {area.gates.radius !== null ? ` · radius ${gate(area.gates.radius)}` : ""}
+        {area.gates.territory !== null
+          ? ` · in area ${gate(area.gates.territory)}`
+          : ""}
+        {area.gates.radius !== null
+          ? ` · radius ${gate(area.gates.radius)}`
+          : ""}
         {` · ready ${gate(area.gates.ready)} · reviews ${gate(area.gates.reviews)}`}
       </p>
       <p>
-        {area.formula === "point" ? `proximity ${diagNumber(area.signals.proximity)} · ` : ""}
-        popularity {diagNumber(area.signals.popularity)} · selected ×{diagNumber(area.selected)}
+        {area.formula === "point"
+          ? `proximity ${diagNumber(area.signals.proximity)} · `
+          : ""}
+        popularity {diagNumber(area.signals.popularity)} · selected ×
+        {diagNumber(area.selected)}
       </p>
     </li>
   );
