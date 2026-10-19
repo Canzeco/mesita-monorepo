@@ -3,11 +3,11 @@
 // Search's header (Pato, MESITA-2409 — OpenTable's shape):
 //
 //   ( ⌖ ) [ ⚲ Search places by name…     ] ( ✦ Ask AI )   ┐ a white band,
-//   (📍 Near) (⭐ Popular) │ (☕ Coffee) (🥐 Breakfast) … ┘ hairline under
+//   (📍 Nearby) (⭐ Popular) │ (☕ Coffee) (🥐 Breakfast) … ┘ hairline under
 //   ─────────────────── map ───────────────────────────
 //
 // The bar's row: the locate disc, the query bar, Ask AI (→ Search › Chat,
-// Soon). Under it one horizontal chip row: Near and Popular, a hairline,
+// Soon). Under it one horizontal chip row: Nearby and Popular, a hairline,
 // then every family, each with its emoji (Pato, MESITA-2426: they replaced
 // All). ONE pick at a time: Near is every family ranked Near, Popular every
 // family ranked Popular, a family is that family ranked Near. Sent as the
@@ -42,7 +42,7 @@ const CHIP_OFF = "border-border bg-card text-foreground hover:bg-muted";
 /** Near and Popular, which replaced All (Pato, MESITA-2426). Popular wears
  *  the star All wore (MESITA-2422). */
 export const EVERY_FAMILY_CHIPS = [
-  { prefer: "near", emoji: "📍", label: "Near" },
+  { prefer: "near", emoji: "📍", label: "Nearby" },
   { prefer: "popular", emoji: "⭐", label: "Popular" },
 ] as const;
 
