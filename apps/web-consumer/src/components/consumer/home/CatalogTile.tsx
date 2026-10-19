@@ -168,7 +168,7 @@ export function CatalogTile({
   // under an 80% paper layer, four rows on it in dark text. No border, no
   // radius; the heart sits at the right of the name row.
   return (
-    <li className={cn("relative aspect-square min-w-0 overflow-hidden rounded-lg", className)}>
+    <li className={cn("relative aspect-square min-w-0 overflow-hidden rounded-2xl", className)}>
       <TileLink
         href={href}
         google={google}
