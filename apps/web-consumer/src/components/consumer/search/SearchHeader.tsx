@@ -3,11 +3,12 @@
 // Search's header (Pato, MESITA-2409 — OpenTable's shape):
 //
 //   ( ⌖ ) [ ⚲ Search places by name…     ] ( ✦ Ask AI )   ┐ a white band,
-//   (⭐ All) (☕ Coffee) (🥐 Breakfast) (🍕 Pizza) …        ┘ hairline under
+//   (📍 Near ⇄) │ (⭐ All) (☕ Coffee) (🥐 Breakfast) …   ┘ hairline under
 //   ─────────────────── map ───────────────────────────
 //
 // The bar's row: the locate disc, the query bar, Ask AI (→ Search › Chat,
-// Soon). Under it one horizontal chip row: All, then every family, each
+// Soon). Under it one horizontal chip row: the Near/Popular toggle
+// (MESITA-2425) and a hairline, then All, then every family, each
 // with its emoji. ONE family at a time, or All (Pato, MESITA-2412), sent as
 // the server-side `familyKeys`. There is no Filters disc and no sheet (Pato,
 // MESITA-2417: "Its just all and thats it"); the Google reviews minimum is
@@ -29,6 +30,7 @@ import {
   selectMapFamily,
   useMapFilters,
 } from "@/lib/use-map-filters";
+import { AreaPreferChip } from "@/components/consumer/AreaPreferChip";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { cn } from "@/lib/utils";
 
@@ -80,6 +82,8 @@ export function SearchHeader({
           className="scrollbar-hide flex items-center gap-1.5 overflow-x-auto overscroll-x-contain px-2 pb-2.5"
           data-search-chips
         >
+          <AreaPreferChip />
+          <span aria-hidden className="bg-border mx-0.5 h-6 w-px shrink-0" />
           <button
             type="button"
             onClick={clearMapFamilies}

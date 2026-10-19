@@ -129,6 +129,6 @@ describe("the open, the create and the Feed", () => {
     expect(rails).toContain("clearAreaPools();\n        reload.current();");
     expect(rails).toContain('fetchPool("keep")');
     expect(rails).toContain('mode === "keep") return;');
-    expect(rails).toContain("apiListAreaPool(supabase, from)");
+    expect(rails).toContain("apiListAreaPool(supabase, from, prefer)");
   });
 });

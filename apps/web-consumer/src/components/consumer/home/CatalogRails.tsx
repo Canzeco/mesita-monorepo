@@ -70,6 +70,8 @@ import { useActiveLocation } from "@/lib/active-location";
 import { cn, errMsg } from "@/lib/utils";
 import { placesFeed } from "@/lib/catalog-feed";
 import { AreaDiagnostics } from "./AreaDiagnostics";
+import { AreaPreferChip } from "@/components/consumer/AreaPreferChip";
+import { useAreaPrefer } from "@/lib/use-area-prefer";
 
 /** The server's rail keys for the two sources the All row mixes. */
 export const MESITA_RAIL_KEY = "mesita_selected";
@@ -175,7 +177,9 @@ export function CatalogRails() {
   // null = the guest's current location; a saved location = search from it.
   const origin = useActiveLocation();
   const from = origin ?? coords;
-  const requestKey = areaPoolKey(origin ?? coords);
+  // Near/Popular (MESITA-2425) is part of the question, so part of the key.
+  const prefer = useAreaPrefer();
+  const requestKey = `${areaPoolKey(origin ?? coords)}|${prefer}`;
   // The running load's background reload: the rails on screen stay until
   // the new ones land, and an error never replaces a good feed.
   const reload = useRef<() => void>(() => {});
@@ -194,7 +198,7 @@ export function CatalogRails() {
     const fetchPool = async (mode: "fresh" | "keep") => {
       const mine = ++seq;
       try {
-        const next = await apiListAreaPool(supabase, from);
+        const next = await apiListAreaPool(supabase, from, prefer);
         if (cancelled || mine !== seq) return;
         if (next.shape === "legacy" && !legacyShapeLogged) {
           legacyShapeLogged = true;
@@ -372,8 +376,16 @@ export function CatalogRails() {
 
   const tiles = (list: readonly Place[], label: string, paged: boolean) => {
     const page = paged ? list.slice(0, pageCount * PLACES_PAGE) : list;
+    // Near/Popular reads only a point location: an area or no location is
+    // already Popularity alone, so the chip would do nothing (MESITA-2425).
+    const preferOn = paged && pool?.shape === "unified" && pool.kind === "point";
     return (
       <div className="pb-6">
+        {preferOn ? (
+          <div className="bg-card/95 sticky top-0 z-10 flex px-1.5 pt-1.5 backdrop-blur" data-places-prefer>
+            <AreaPreferChip />
+          </div>
+        ) : null}
         <ul role="list" aria-label={label} className={PLACES_LIST}>
           {page.map((place, i) => {
             const located = withUserDistance(place, coords);

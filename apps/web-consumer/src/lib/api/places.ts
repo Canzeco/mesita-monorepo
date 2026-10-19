@@ -131,7 +131,7 @@ type ViewportPlaces = {
  * radius (MESITA-2379: Google and Mesita places in one ranked set; the
  * guest never picks a source).
  *
- * Web Search posts Families and Google Reviews; it never posts a radius
+ * Web Search posts Families and Near/Popular (MESITA-2425); it never posts a radius
  * (operator `map.radiusKm`) or a count (operator `map.mesitaPlaces`, one
  * Google call per load). `google: true` is web Search saying it CAN render
  * a Google-only stub, and the EF refuses a call without it (MESITA-2337).
@@ -140,6 +140,7 @@ export async function apiFetchNearbyCatalog(
   client: SupabaseClient,
   center: { lat: number; lng: number },
   familyKeys: readonly string[] = [],
+  prefer: "near" | "popular" = "near",
 ): Promise<ViewportPlaces> {
   const data = await invokeEF<{
     places: Place[];
@@ -148,6 +149,7 @@ export async function apiFetchNearbyCatalog(
   }>(client, "consumer-web-list-places", {
     google: true,
     familyKeys: [...familyKeys],
+    prefer,
     lat: center.lat,
     lng: center.lng,
   });
@@ -261,6 +263,7 @@ function cleanPlace(place: Place): Place {
 export async function apiListAreaPool(
   client: SupabaseClient,
   origin: AreaOrigin | null,
+  prefer: "near" | "popular" = "near",
 ): Promise<AreaPool> {
   const data = await invokeEF<{
     places?: Place[];
@@ -268,6 +271,7 @@ export async function apiListAreaPool(
     rails?: CatalogRail[];
   }>(client, "consumer-web-list-catalog", {
     unified: true,
+    prefer,
     ...(origin
       ? {
           lat: origin.lat,

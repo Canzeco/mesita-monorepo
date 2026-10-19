@@ -145,7 +145,7 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
     expect(src).not.toContain("<LocalSheet");
     expect(src).toContain("const origin = useActiveLocation();");
     expect(src).toContain("const from = origin ?? coords;");
-    expect(src).toContain("apiListAreaPool(supabase, from)");
+    expect(src).toContain("apiListAreaPool(supabase, from, prefer)");
   });
 
   it("the header's location is a bordered pill: pin, name, chevron, opening the sheet", () => {
