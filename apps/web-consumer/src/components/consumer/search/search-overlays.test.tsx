@@ -23,6 +23,9 @@ import {
   prependAnchorPlace,
   railCenterIndex,
   viewportCenter,
+  viewportSight,
+  centerForSight,
+  SIGHT_Y,
 } from "@/components/consumer/search/search-utils";
 import type { Place } from "@/lib/api/places";
 import type { PlacePrediction } from "@/lib/api/place-search";
@@ -190,7 +193,7 @@ describe("Search map catalog reloads once the map is still (MESITA-2440)", () =>
   it("rebases lastFetchedCenter on rail or pin pans so those meters do not accrue", () => {
     const src = read("SearchClient.tsx");
     expect(src).toMatch(
-      /if \(meta\.programmatic\) \{[\s\S]*lastFetchedCenter\.current = viewportCenter\(box\)/,
+      /if \(meta\.programmatic\) \{[\s\S]*lastFetchedCenter\.current = viewportSight\(box\)/,
     );
     expect(src).toContain("cannot accumulate toward reload");
     expect(src).toContain("Only the guest's own moves count as travel");
@@ -672,6 +675,38 @@ describe("viewportCenter", () => {
     });
     expect(wrap.lat).toBeCloseTo(0.1);
     expect(wrap.lng).toBeCloseTo(180);
+  });
+});
+
+describe("the sight sits 40% down the map (MESITA-2448)", () => {
+  // Pato: "put the cruz more at the top … the carousel is taking some
+  // space at the bottom". One constant for the crosshair, the load point
+  // and a camera centre.
+  const VIEW = { south: 25.66, west: -100.33, north: 25.68, east: -100.31 };
+
+  it("is above the centre, and a centre built for it lands under it", () => {
+    expect(SIGHT_Y).toBe(0.4);
+    const sight = viewportSight(VIEW);
+    expect(sight.lat).toBeGreaterThan(viewportCenter(VIEW).lat);
+    expect(sight.lat).toBeCloseTo(25.672, 3);
+    const target = { lat: 25.7, lng: -100.3 };
+    const centre = centerForSight(VIEW, target);
+    const height = VIEW.north - VIEW.south;
+    const moved = {
+      south: centre.lat - height / 2,
+      north: centre.lat + height / 2,
+      west: centre.lng - 0.01,
+      east: centre.lng + 0.01,
+    };
+    expect(viewportSight(moved).lat).toBeCloseTo(target.lat, 4);
+  });
+
+  it("draws the crosshair there and loads from there", () => {
+    const map = read("SearchMap.tsx");
+    expect(map).toContain("style={{ top: `${SIGHT_Y * 100}%` }}");
+    const client = read("SearchClient.tsx");
+    expect(client).not.toContain("viewportCenter(");
+    expect(client).toContain("loadAt(viewportSight(box))");
   });
 });
 

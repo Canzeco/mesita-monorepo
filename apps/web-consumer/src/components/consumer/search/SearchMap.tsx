@@ -31,6 +31,7 @@ import {
 } from "@/lib/map-defaults";
 import type { Coords } from "@/lib/use-user-location";
 import { cameraStep, type CameraIntent } from "./camera-intent";
+import { SIGHT_Y } from "./search-utils";
 import {
   pinFillColor,
   pinStrokeColor,
@@ -199,13 +200,16 @@ export function mapFingerIsDown(): boolean {
   return fingerOnMap;
 }
 
-/** Screen-fixed sight at the canvas center — the catalog fetch point.
- *  Plus + primary dot only. No ring: that read as a measured radius. */
+/** Screen-fixed sight SIGHT_Y down the canvas (40%, above the rail;
+ *  MESITA-2448) — the catalog fetch point. Plus + primary dot only. No
+ *  ring: that read as a measured radius. */
 function SearchMapReticle() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute inset-0 z-[15] flex items-center justify-center"
+      className="pointer-events-none absolute inset-x-0 z-[15] flex -translate-y-1/2 justify-center"
+      style={{ top: `${SIGHT_Y * 100}%` }}
+      data-search-sight
     >
       <div className="relative h-3.5 w-3.5">
         <div className="bg-foreground absolute top-1/2 left-1/2 h-3.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full" />

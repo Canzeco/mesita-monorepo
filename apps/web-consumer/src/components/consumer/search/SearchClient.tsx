@@ -117,7 +117,7 @@ import {
   newSessionToken,
   prependAnchorPlace,
   railCenterIndex,
-  viewportCenter,
+  viewportSight,
   withDistances,
 } from "./search-utils";
 
@@ -444,7 +444,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       pendingReload.current = null;
       const box = lastBoxRef.current;
       if (!box) return;
-      const next = viewportCenter(box);
+      const next = viewportSight(box);
       if (!idleReloadDue(lastFetchedCenter.current, next)) return;
       void loadAt(next);
     };
@@ -454,7 +454,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const onFirstViewport = useCallback(
     (box: ViewportBox) => {
       lastBoxRef.current = box;
-      void loadAt(viewportCenter(box));
+      void loadAt(viewportSight(box));
     },
     [loadAt],
   );
@@ -467,12 +467,12 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         // not travel. Rebase the km origin so click-by-click catalog
         // browsing cannot accumulate toward reload; an ask that needed a
         // new catalog already loaded it at its target.
-        lastFetchedCenter.current = viewportCenter(box);
+        lastFetchedCenter.current = viewportSight(box);
         clearPendingReload();
         return;
       }
       userMovedRef.current = true;
-      if (!idleReloadDue(lastFetchedCenter.current, viewportCenter(box))) {
+      if (!idleReloadDue(lastFetchedCenter.current, viewportSight(box))) {
         clearPendingReload();
         return;
       }
@@ -489,7 +489,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   useEffect(() => {
     if (!lastFetchedCenter.current || !lastBoxRef.current) return;
     clearPendingReload();
-    void loadAt(viewportCenter(lastBoxRef.current));
+    void loadAt(viewportSight(lastBoxRef.current));
   }, [clearPendingReload, loadAt]);
 
   // A GPS FIX MOVES THE BLUE DOT, NOT THE MAP (MESITA-2440). Only the fix
