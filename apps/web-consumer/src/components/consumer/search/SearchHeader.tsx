@@ -7,7 +7,7 @@
 //   ─────────────────── map ───────────────────────────
 //
 // The bar's row: the locate disc, the query bar, the Ask AI disc (→ Search ›
-// Chat, Soon) — two equal 44px discs around the bar (Pato, MESITA-2433: "location
+// Chat, Soon) — two equal 40px discs around the bar (Pato, MESITA-2433: "location
 // must be kinda symmetrical to ask ai"). One token set for every control lives
 // in header-classes.ts. Under it one horizontal chip row: Nearby and Popular, a hairline,
 // then every family, each with its emoji (Pato, MESITA-2426: they replaced
@@ -18,8 +18,8 @@
 // the operator's, Admin › Discovery › Area.
 //
 // A WHITE BAND, like Home's header and the bottom bar (Pato, MESITA-2413:
-// "return to the white background" — it floated for MESITA-2412). Every
-// control is h-11: the disc, the bar, Ask AI and every chip. `children`
+// "return to the white background" — it floated for MESITA-2412). The bar row
+// is h-10 (disc, bar, Ask AI), the chips h-8 (MESITA-2443). `children`
 // (the bar's results, the load error) COVER the chip row and run on over the
 // map (`absolute top-0` on the chips' box; Pato, MESITA-2417: "the searchbar
 // results must cover the categories").
@@ -65,7 +65,7 @@ export function SearchHeader({
       className="border-border bg-card/95 relative z-30 shrink-0 border-b backdrop-blur"
       data-search-header
     >
-      <div className="flex min-w-0 items-center gap-2 px-3 pt-2 pb-2">
+      <div className="flex min-w-0 items-center gap-2 px-3 pt-2 pb-1.5">
         {locate}
         <div className="min-w-0 flex-1">{bar}</div>
         <Link
