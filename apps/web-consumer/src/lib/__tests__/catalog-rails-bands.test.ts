@@ -148,7 +148,8 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
     expect(src).not.toContain("data-places-location-bar");
     expect(src).not.toContain("<LocalSheet");
     expect(src).toContain("const origin = useActiveLocation();");
-    expect(src).toContain("const from = origin ?? coords;");
+    // A saved location, else the fix, else the city's centre (MESITA-2472).
+    expect(src).toContain("const from = origin ?? coords ?? (onCityFallback ? MONTERREY_CENTER : null);");
     expect(src).toContain("apiListAreaPool(supabase, from, prefer, families)");
   });
 
