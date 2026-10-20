@@ -433,12 +433,20 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
     expectTokens(band![1], ["border-border", "bg-card", "border-b"], "band");
     expect(band![1]).not.toContain("bg-card/");
     const chipBand = header.match(
-      /className="([^"]*)"\s*data-search-chip-band/,
+      /className=\{cn\("([^"]*)", !chipsHidden && "([^"]*)"\)\}\s*data-search-chip-band/,
     );
     expect(chipBand, "the chip band").not.toBeNull();
     expectTokens(chipBand![1], ["relative"], "chip band");
-    // A full-width hairline splits the bar's row from the chips (MESITA-2479).
-    expectTokens(chipBand![1], ["border-border", "border-t"], "chip band line");
+    // A full-width hairline splits the bar's row from the chips (MESITA-2479),
+    // drawn only while the chips are (MESITA-2487).
+    expectTokens(chipBand![2], ["border-border", "border-t"], "chip band line");
+    // The chips are not drawn while the bar queries (MESITA-2487), and each
+    // group opens on its clay bar, no grey divider.
+    expect(header).toContain("{chipsHidden ? null : (");
+    expect(src).toContain("chipsHidden={querying}");
+    expect(header).toContain('data-chip-group="around"');
+    expect(header).toContain('data-chip-group="families"');
+    expect(header).not.toContain("bg-border mx-0.5 h-6 w-px");
     expect(chipBand![1]).not.toContain("bg-muted");
     expect(chipBand![1].split(/\s+/)).not.toContain("border-b");
     expect(chipBand![1]).not.toContain("absolute");
@@ -456,10 +464,10 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
       ["h-9", "shrink-0", "items-center"],
       "CHIP",
     );
-    // The bar's results COVER the chip row (MESITA-2417): anchored at the
-    // top of the chips' box, above them, inside the same 12px gutter.
+    // The bar's results hang under the bar's row, inside the same 12px
+    // gutter; the chips are hidden then (MESITA-2487, was MESITA-2417).
     const over = header.match(
-      /className="(absolute [^"]*)"\s*data-search-over-chips/,
+      /className=\{cn\(\s*"(absolute [^"]*)",\s*chipsHidden && "pt-2",\s*\)\}\s*data-search-over-chips/,
     );
     expect(over, "the results box").not.toBeNull();
     expectTokens(

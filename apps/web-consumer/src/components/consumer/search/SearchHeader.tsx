@@ -56,15 +56,28 @@ export const EVERY_FAMILY_CHIPS = [
  *  on — BottomNav's pair. */
 const CHIP_ICON = "h-4 w-4 shrink-0";
 
+/** Each chip group opens on a 3px clay bar, the Home rail's colours
+ *  (Pato, MESITA-2484/2487): blue for Nearby · Popular, purple for the
+ *  families. Literal classes, so Tailwind sees them. */
+export const CHIP_GROUP_MARK = {
+  around: "h-6 w-[3px] shrink-0 rounded-full bg-[oklch(0.66_0.06_245)]",
+  families: "h-6 w-[3px] shrink-0 rounded-full bg-[oklch(0.64_0.07_310)]",
+} as const;
+
 export function SearchHeader({
   locate,
   bar,
+  chipsHidden = false,
   children,
 }: {
   /** The locate disc, at the left of the bar's row. */
   locate: ReactNode;
   /** The query bar; it takes what the two buttons leave. */
   bar: ReactNode;
+  /** While the bar is querying the chip row is not drawn (Pato,
+   *  MESITA-2487: "make the bar of categories disappear when searching");
+   *  the results then hang just under the bar's row. */
+  chipsHidden?: boolean;
   /** Over the chips: the bar's results, the load error. */
   children?: ReactNode;
 }) {
@@ -99,65 +112,82 @@ export function SearchHeader({
           <span>Ask AI</span>
         </Link>
       </div>
-      <div className="border-border relative border-t" data-search-chip-band>
-        <nav
-          aria-label="Families"
-          className="scrollbar-hide flex items-center gap-2 overflow-x-auto overscroll-x-contain px-3 py-2.5"
-          data-search-chips
-        >
-          {EVERY_FAMILY_CHIPS.map((c) => {
-            const on = everyFamily && prefer === c.prefer;
-            return (
-              <button
-                key={c.prefer}
-                type="button"
-                onClick={() => {
-                  clearMapFamilies();
-                  setAreaPrefer(c.prefer);
-                }}
-                aria-pressed={on}
-                className={cn(CHIP, on ? CHIP_ON : CHIP_OFF)}
-                data-area-prefer={c.prefer}
-              >
-                <FamilyIcon
-                  name={c.prefer}
-                  className={CHIP_ICON}
-                  strokeWidth={on ? 2.25 : 1.75}
-                />
-                <span>{c.label}</span>
-              </button>
-            );
-          })}
-          <span aria-hidden className="bg-border mx-0.5 h-6 w-px shrink-0" />
-          {FILTERABLE_PLACE_FAMILIES.map((family) => {
-            const on =
-              filters.familyKeys.length === 1 &&
-              filters.familyKeys[0] === family.key;
-            return (
-              <button
-                key={family.key}
-                type="button"
-                onClick={() => {
-                  // A family ranks Near; picking it again is Near.
-                  setAreaPrefer("near");
-                  selectMapFamily(family.key);
-                }}
-                aria-pressed={on}
-                className={cn(CHIP, on ? CHIP_ON : CHIP_OFF)}
-              >
-                <FamilyIcon
-                  name={family.key}
-                  className={CHIP_ICON}
-                  strokeWidth={on ? 2.25 : 1.75}
-                />
-                <span>{family.label}</span>
-              </button>
-            );
-          })}
-        </nav>
+      <div
+        className={cn("relative", !chipsHidden && "border-border border-t")}
+        data-search-chip-band
+      >
+        {chipsHidden ? null : (
+          <nav
+            aria-label="Families"
+            className="scrollbar-hide flex items-center gap-2 overflow-x-auto overscroll-x-contain px-3 py-2.5"
+            data-search-chips
+          >
+            <span
+              aria-hidden
+              className={CHIP_GROUP_MARK.around}
+              data-chip-group="around"
+            />
+            {EVERY_FAMILY_CHIPS.map((c) => {
+              const on = everyFamily && prefer === c.prefer;
+              return (
+                <button
+                  key={c.prefer}
+                  type="button"
+                  onClick={() => {
+                    clearMapFamilies();
+                    setAreaPrefer(c.prefer);
+                  }}
+                  aria-pressed={on}
+                  className={cn(CHIP, on ? CHIP_ON : CHIP_OFF)}
+                  data-area-prefer={c.prefer}
+                >
+                  <FamilyIcon
+                    name={c.prefer}
+                    className={CHIP_ICON}
+                    strokeWidth={on ? 2.25 : 1.75}
+                  />
+                  <span>{c.label}</span>
+                </button>
+              );
+            })}
+            <span
+              aria-hidden
+              className={cn(CHIP_GROUP_MARK.families, "ml-1")}
+              data-chip-group="families"
+            />
+            {FILTERABLE_PLACE_FAMILIES.map((family) => {
+              const on =
+                filters.familyKeys.length === 1 &&
+                filters.familyKeys[0] === family.key;
+              return (
+                <button
+                  key={family.key}
+                  type="button"
+                  onClick={() => {
+                    // A family ranks Near; picking it again is Near.
+                    setAreaPrefer("near");
+                    selectMapFamily(family.key);
+                  }}
+                  aria-pressed={on}
+                  className={cn(CHIP, on ? CHIP_ON : CHIP_OFF)}
+                >
+                  <FamilyIcon
+                    name={family.key}
+                    className={CHIP_ICON}
+                    strokeWidth={on ? 2.25 : 1.75}
+                  />
+                  <span>{family.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        )}
         {children ? (
           <div
-            className="absolute inset-x-3 top-0 z-10 flex flex-col gap-2"
+            className={cn(
+              "absolute inset-x-3 top-0 z-10 flex flex-col gap-2",
+              chipsHidden && "pt-2",
+            )}
             data-search-over-chips
           >
             {children}
