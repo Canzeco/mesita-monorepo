@@ -10,13 +10,14 @@ Deno.test("OpenTable scope: every attraction sits in no family (MESITA-2438)", (
   }
 });
 
-Deno.test("Go out keeps only what a guest books a slot at: karaoke on Google's side", () => {
-  const onGoOut = Object.keys(GOOGLE_TYPE_SUPER).filter((t) => familiesForGoogleType(t).includes("go_out"));
-  assertEquals(onGoOut, ["karaoke"]);
+Deno.test("Go out folded into Night out: karaoke is Night out alone (MESITA-2486)", () => {
+  const onGoOut = Object.keys(GOOGLE_TYPE_SUPER).filter((t) => (familiesForGoogleType(t) as string[]).includes("go_out"));
+  assertEquals(onGoOut, []);
+  assertEquals(familiesForGoogleType("karaoke"), ["night_out"]);
   // No unlisted culture or experiences type falls back onto a rail.
   for (const [slug, coarse] of Object.entries(GOOGLE_TYPE_SUPER)) {
     if (coarse !== "culture_arts" && coarse !== "experiences") continue;
-    for (const f of familiesForGoogleType(slug)) assertEquals(["go_out", "night_out"].includes(f), false, `${slug} → ${f}`);
+    for (const f of familiesForGoogleType(slug)) assertEquals(f === "night_out", false, `${slug} → ${f}`);
   }
 });
 
