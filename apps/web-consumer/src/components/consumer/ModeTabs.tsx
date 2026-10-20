@@ -3,7 +3,7 @@
 // Home's header (Pato, MESITA-2405: "The top bar is just to select the
 // location. thats it."):
 //
-//              📍 Tecnologico ⌄              (MESITA-2456)
+//            ( 📍 Tecnologico ⌄ )            (MESITA-2459: an oval)
 //
 // Social and Favorites are rows of the catalog's column (CatalogRails).
 // White like the bottom bar, its hairline under it (MESITA-2409). Home draws it

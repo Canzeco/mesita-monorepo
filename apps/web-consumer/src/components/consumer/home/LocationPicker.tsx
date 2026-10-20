@@ -1,10 +1,12 @@
 "use client";
 
 // Home's location control — the whole of Home's header (Pato, MESITA-2405:
-// "The top bar is just to select the location. thats it."): one slim
-// centred line, a pin, the active location's name and a quiet chevron, no
-// border (MESITA-2456: "just put the location"; it was a bordered pill, then
-// a chip row with discs, MESITA-2452..2454).
+// "The top bar is just to select the location. thats it."): one centred
+// oval hugging a pin, the active location's name and a quiet chevron
+// (MESITA-2459: "inside a … oval … it must indicate change"). It wears
+// Search's pill token (HEADER_PILL), so both tabs' header controls match.
+// History: a full-width bordered bar (MESITA-2405), a chip row with discs
+// (MESITA-2452..2454), a borderless line (MESITA-2456).
 // A tap opens the location sheet: Current location, the guest's saved
 // locations (each removable) and Add location (MESITA-2380). The choice
 // lives in `lib/active-location.ts`, which Home's catalog reads.
@@ -28,6 +30,7 @@ import {
 import { removeSavedLocation, useSavedLocations } from "@/lib/saved-locations";
 import { setActiveLocation, useActiveLocation } from "@/lib/active-location";
 import { cn } from "@/lib/utils";
+import { HEADER_PILL } from "@/components/consumer/search/header-classes";
 import { AddLocationSheet } from "./AddLocationSheet";
 
 /** What the pill says: the saved name, or the state of the device fix. */
@@ -92,17 +95,17 @@ export function LocationPicker() {
 
   return (
     <>
-      {/* Home's whole header: the location line (MESITA-2405, MESITA-2456). */}
+      {/* Home's whole header: the location oval (MESITA-2405, MESITA-2459). */}
       <button
         type="button"
         onClick={() => setPicking(true)}
         aria-haspopup="dialog"
         aria-label={`Location: ${label}. Change location`}
-        className="text-foreground hover:bg-muted mx-auto flex h-9 max-w-full min-w-0 items-center justify-center gap-1 rounded-full px-3 text-sm font-semibold transition active:scale-[0.98]"
+        className={cn(HEADER_PILL, "mx-auto max-w-full min-w-0 justify-center")}
         data-home-location
       >
-        {/* One slim line, centred: pin, name, chevron (Pato, MESITA-2456:
-            "just put the location"); no border, no discs. */}
+        {/* One oval, centred and sized to its content: pin, name, chevron
+            (MESITA-2459). No discs; the name truncates. */}
         <MapPin className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
         <span className="min-w-0 truncate">{label}</span>
         <ChevronDown

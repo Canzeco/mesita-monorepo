@@ -152,9 +152,12 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
     expect(src).toContain("apiListAreaPool(supabase, from, prefer, families)");
   });
 
-  // MESITA-2456: one slim centred line, no border (it was a bordered pill).
-  it("the header's location is one slim line: pin, name, chevron, opening the sheet", () => {
-    expect(picker).toContain("text-foreground hover:bg-muted mx-auto flex h-9 max-w-full min-w-0 items-center justify-center gap-1");
+  // MESITA-2459: one centred oval in Search's pill token, so it reads as a
+  // control (it was a borderless line, MESITA-2456). Never the old
+  // full-width h-10 bar (MESITA-2405).
+  it("the header's location is one oval: pin, name, chevron, opening the sheet", () => {
+    expect(picker).toContain('className={cn(HEADER_PILL, "mx-auto max-w-full min-w-0 justify-center")}');
+    expect(picker).toContain('import { HEADER_PILL } from "@/components/consumer/search/header-classes";');
     expect(picker).not.toContain("border-border bg-card text-foreground hover:bg-muted relative flex h-10");
     expect(picker).toContain("<MapPin");
     expect(picker).toContain("<ChevronDown");
