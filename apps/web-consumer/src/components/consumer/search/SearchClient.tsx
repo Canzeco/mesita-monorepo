@@ -207,9 +207,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // 1-based) — powers the "3 / 12 places" pager so the horizontal rail
   // reads as browsable.
   const [railIndex, setRailIndex] = useState(0);
-  // The bottom rail can be dismissed (X on the counter) to clear the map;
-  // it reopens via the floating reopen pill or by tapping any pin.
-  const [railCollapsed, setRailCollapsed] = useState(false);
   // The family chips (none, or one family) ride this store and the
   // catalog call. How many and the Google reviews minimum are the
   // operator's (Admin › Discovery); how wide is the visible map
@@ -398,15 +395,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   useEffect(() => {
     locationRef.current = location;
   }, [location]);
-  // MESITA-2504 debug: the circle the last load gated on, drawn on the map
-  // (one object per load, so the overlay redraws only when a load lands).
-  const loadedCircle = useMemo(
-    () =>
-      loadCoords?.radiusKm
-        ? { center: loadCoords.sent, radiusKm: loadCoords.radiusKm }
-        : null,
-    [loadCoords],
-  );
 
   // A load asks for the centre AND the visible map (MESITA-2499): the zoom
   // decides how wide the set is. `box` null = the centre inside the
@@ -682,7 +670,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     if (place) {
       setHeldOverlay(null);
       centerOnSelect.current = true;
-      setRailCollapsed(false);
       setSelectedId(place.id);
     } else {
       // A Location has no card: drop any lingering explicit selection so
@@ -881,7 +868,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         centerOnSelect.current = true;
         if (place) {
           setHeldOverlay(googlePredictionFromPlace(place));
-          setRailCollapsed(false);
           setSelectedId(place.id);
           revealSelection("pin", place);
         } else {
@@ -907,12 +893,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   };
 
   // Pin or rail-card tap → highlight + scroll the rail to the matching
-  // card. Tapping a pin also reopens the rail if it was dismissed. The map
-  // pans only when the place is off-screen (camera-intent.ts).
+  // card. The map pans only when the place is off-screen (camera-intent.ts).
   const handleSelectPlace = (place: Place) => {
     setHeldOverlay(googlePredictionFromPlace(place));
     centerOnSelect.current = true;
-    setRailCollapsed(false);
     setSelectedId(place.id);
     revealSelection("card", place);
   };
@@ -927,13 +911,12 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // Skip when the pager already names that card — scroll itself selected
   // it, and scrollIntoView would fight the flick.
   //
-  // A TAP overrides that guard (Pato, 2026-08-29). Opening a collapsed
-  // rail leaves railIndex stale at 0, so `idx === railIndex` was true for
-  // card 0 and the tap scrolled nothing: the guest tapped a pin and the
-  // carousel did not move. `centerOnSelect` marks the tap, survives the
-  // render, and is cleared once honoured.
+  // A TAP overrides that guard (Pato, 2026-08-29): a stale railIndex at 0
+  // made `idx === railIndex` true for card 0 and the tap scrolled nothing.
+  // `centerOnSelect` marks the tap, survives the render, and is cleared
+  // once honoured.
   useEffect(() => {
-    if (railCollapsed || !railSelectedId) return;
+    if (!railSelectedId) return;
     const idx = catalog.findIndex((p) => p.id === railSelectedId);
     if (!shouldCenterRailCard(idx, railIndex, centerOnSelect.current)) return;
     centerOnSelect.current = false;
@@ -942,7 +925,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       inline: "center",
       block: "nearest",
     });
-  }, [railCollapsed, railSelectedId, catalog, railIndex]);
+  }, [railSelectedId, catalog, railIndex]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -1012,7 +995,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           userLocation={userLocation}
           selectedId={railSelectedId}
           pins={searchPins}
-          loadedCircle={loadedCircle}
+          searching={catalogLoading}
           // The camera moves on intents only; railSelectedId (and its card-0
           // fallback) rings a pin and never pans.
           cameraIntent={cameraIntent}
@@ -1034,12 +1017,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         <SearchRailOverlay
           places={catalog}
           catalogLoading={catalogLoading}
-          railCollapsed={railCollapsed}
           railIndex={railIndex}
           selectedId={railSelectedId}
           railScrollRef={railScrollRef}
-          onShowRail={() => setRailCollapsed(false)}
-          onHideRail={() => setRailCollapsed(true)}
           onRailScroll={handleRailScroll}
           onSelectPlace={handleSelectPlace}
           onOpenPlace={handleOpenPlace}

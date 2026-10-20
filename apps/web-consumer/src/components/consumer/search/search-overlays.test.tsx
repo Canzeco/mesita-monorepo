@@ -796,12 +796,9 @@ const RAIL_PLACE = {
 } as Place;
 
 const railProps = {
-  railCollapsed: false,
   railIndex: 0,
   selectedId: null as string | null,
   railScrollRef: { current: null },
-  onShowRail: () => {},
-  onHideRail: () => {},
   onRailScroll: () => {},
   onSelectPlace: () => {},
   onOpenPlace: () => {},
@@ -997,22 +994,22 @@ describe("rail center is the selected place", () => {
 
   it("an overlay pin never opens the rail — it has no card there", () => {
     const client = read("SearchClient.tsx");
-    // select-google / select-mesita-overlay must NOT setRailCollapsed(false):
+    // select-google / select-mesita-overlay select the pin, never a card:
     // defaultRailSelection would fall back to card 0 and the guest who
-    // tapped B would watch A light up.
+    // tapped B would watch A light up. The rail can no longer be hidden
+    // (MESITA-2508), so nothing anywhere reopens it.
     const overlay = client.slice(
       client.indexOf('case "select-google"'),
       client.indexOf('case "select-mesita-catalog"'),
     );
     expect(overlay).toContain("setSelectedId(pin.id)");
-    expect(overlay).not.toContain("setRailCollapsed(false)");
-    // A catalog pin still opens it and asks for the centring.
+    expect(client).not.toContain("setRailCollapsed");
+    // A catalog pin asks for the centring.
     const catalogCase = client.slice(
       client.indexOf('case "select-mesita-catalog"'),
       client.indexOf('case "noop"'),
     );
     expect(catalogCase).toContain("centerOnSelect.current = true");
-    expect(catalogCase).toContain("setRailCollapsed(false)");
   });
 
   it("defaultRailSelection keeps a live id and falls back to the first card", () => {
@@ -1466,17 +1463,27 @@ describe("the screen radius is drawn and its weights read out (MESITA-2504)", ()
     expect(overlays).toContain("const score = selected?.score;");
   });
 
-  it("the map draws the loaded circle, unclickable, from the server's radius", () => {
+  // MESITA-2508 (Pato: "keep the circle, but make it doted … and move it
+  // realative to the cruz"): the circle is the sight's own dashed ring,
+  // screen-fixed on the cross, as wide as the map (the screen radius,
+  // MESITA-2507), pulsing while a load is in flight.
+  it("the search ring rides the cross: dashed, map-wide, pulsing while loading", () => {
     const client = read("SearchClient.tsx");
     const map = read("SearchMap.tsx");
     expect(client).toContain("radiusKm: result.radiusKm ?? null,");
-    expect(client).toContain("{ center: loadCoords.sent, radiusKm: loadCoords.radiusKm }");
-    expect(client).toContain("loadedCircle={loadedCircle}");
+    expect(client).toContain("searching={catalogLoading}");
     expect(client).toContain("<SearchDebugCoords {...loadCoords} selected={selectedPlace} />");
-    expect(map).toContain("{loadedCircle && <LoadedCircleOverlay circle={loadedCircle} />}");
-    expect(map).toContain("radius: radiusKm * 1000,");
-    expect(map).toContain("clickable: false,");
-    expect(map).toContain("return () => ring.setMap(null);");
+    const reticle = map.slice(map.indexOf("function SearchMapReticle"));
+    expect(reticle).toContain("data-search-ring");
+    expect(reticle).toContain("aspect-square w-full");
+    expect(reticle).toContain("rounded-full border-[1.5px] border-dashed");
+    expect(reticle).toContain('searching && "animate-pulse"');
+    expect(map).toContain("<SearchMapReticle searching={searching} />");
+    // The map-anchored circle is gone.
+    for (const gone of ["LoadedCircleOverlay", "loadedCircle", "google.maps.Circle", "maps.Circle"]) {
+      expect(map, gone).not.toContain(gone);
+      expect(client, gone).not.toContain(gone);
+    }
   });
 });
 
@@ -1503,13 +1510,11 @@ describe("the rail is a solid white band under the map (MESITA-2506)", () => {
       <SearchRailOverlay {...railProps} places={[RAIL_PLACE]} />,
     );
     expect(withCards).toContain("data-search-rail-cards");
-    expect(withCards).toContain("Hide places");
-    // Hidden or empty: no band, only the floating pill.
-    const hidden = renderToStaticMarkup(
-      <SearchRailOverlay {...railProps} places={[RAIL_PLACE]} railCollapsed />,
-    );
-    expect(hidden).not.toContain("data-search-rail-cards");
-    expect(hidden).toContain("Show 1 place");
+    // The rail cannot be hidden (Pato, MESITA-2508: "keep it always").
+    expect(withCards).not.toContain("Hide places");
+    expect(overlay).not.toContain("railCollapsed");
+    expect(overlay).not.toContain("Show ${places.length}");
+    // Empty: no band, only the floating note.
     const empty = renderToStaticMarkup(
       <SearchRailOverlay {...railProps} places={[]} />,
     );

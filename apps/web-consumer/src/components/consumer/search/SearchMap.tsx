@@ -15,7 +15,6 @@ import {
   Marker,
   useApiLoadingStatus,
   useMap,
-  useMapsLibrary,
 } from "@vis.gl/react-google-maps";
 import type { Place } from "@/lib/api/places";
 import { Skeleton, Spinner } from "@/components/shared";
@@ -31,6 +30,7 @@ import {
   mapPinIcon,
 } from "@/lib/map-defaults";
 import type { Coords } from "@/lib/use-user-location";
+import { cn } from "@/lib/utils";
 import { cameraStep, type CameraIntent } from "./camera-intent";
 import { SIGHT_Y } from "./search-utils";
 import {
@@ -107,17 +107,13 @@ function readViewportBox(map: MapInstance): ViewportBox | null {
   };
 }
 
-/** The circle the last load searched (MESITA-2504 debug): the cross it was
- *  centred on and the screen radius the server answered with. */
-export type LoadedCircle = { center: Coords; radiusKm: number };
-
 export function SearchMap({
   apiKey,
   places,
   userLocation,
   selectedId,
   pins,
-  loadedCircle,
+  searching = false,
   cameraIntent,
   onTapPlacePin,
   onSelectPin,
@@ -130,8 +126,8 @@ export function SearchMap({
   userLocation: Coords | null;
   selectedId: string | null;
   pins?: SearchMapPin[] | null;
-  /** Drawn on the map: the circle the last load gated on (MESITA-2504). */
-  loadedCircle?: LoadedCircle | null;
+  /** A catalog load is in flight: the search ring pulses (MESITA-2508). */
+  searching?: boolean;
   /**
    * The ONLY way the page moves the camera (MESITA-2440): an explicit ask
    * — first load, the location disc, a tap, a bar pick. `selectedId` only
@@ -175,7 +171,6 @@ export function SearchMap({
           userLocation={userLocation}
           selectedId={selectedId}
           pins={pins}
-          loadedCircle={loadedCircle}
           cameraIntent={cameraIntent}
           onTapPlacePin={onTapPlacePin}
           onSelectPin={onSelectPin}
@@ -186,7 +181,7 @@ export function SearchMap({
         />
         {!mapReady && <MapLoadingVeil />}
       </APIProvider>
-      {mapReady && <SearchMapReticle />}
+      {mapReady && <SearchMapReticle searching={searching} />}
     </div>
   );
 }
@@ -221,10 +216,15 @@ export function mapFingerIsDown(): boolean {
   return fingerOnMap;
 }
 
-/** Screen-fixed sight SIGHT_Y down the canvas (45%, above the rail;
- *  MESITA-2448, MESITA-2505) — the catalog fetch point. Plus + primary dot only. No
- *  ring: that read as a measured radius. */
-function SearchMapReticle() {
+/** Screen-fixed sight SIGHT_Y down the canvas (45%; MESITA-2448,
+ *  MESITA-2505) — the catalog fetch point: the plus, its dot, and THE
+ *  SEARCH RING (Pato, MESITA-2508: "keep the circle, but make it doted …
+ *  and move it realative to the cruz … it must feel more dynamic"). The ring
+ *  is the circle the next load searches — diameter = the map's width, the
+ *  server's screen radius (MESITA-2507) — dashed, riding the cross while the
+ *  guest pans; the map outside it is shaded a touch, and it pulses while a
+ *  load is in flight. */
+function SearchMapReticle({ searching }: { searching: boolean }) {
   return (
     <div
       aria-hidden
@@ -232,6 +232,13 @@ function SearchMapReticle() {
       style={{ top: `${SIGHT_Y * 100}%` }}
       data-search-sight
     >
+      <div
+        className={cn(
+          "border-foreground/45 absolute top-1/2 left-1/2 aspect-square w-full -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] border-dashed shadow-[0_0_0_200vmax_rgb(0_0_0/0.04)]",
+          searching && "animate-pulse",
+        )}
+        data-search-ring
+      />
       <div className="relative h-3.5 w-3.5">
         <div className="bg-foreground absolute top-1/2 left-1/2 h-3.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full" />
         <div className="bg-foreground absolute top-1/2 left-1/2 h-0.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full" />
@@ -277,7 +284,6 @@ function SearchMapCanvas({
   userLocation,
   selectedId,
   pins,
-  loadedCircle,
   cameraIntent,
   onTapPlacePin,
   onSelectPin,
@@ -290,7 +296,6 @@ function SearchMapCanvas({
   userLocation: Coords | null;
   selectedId: string | null;
   pins?: SearchMapPin[] | null;
-  loadedCircle?: LoadedCircle | null;
   cameraIntent?: CameraIntent | null;
   /** A catalog pin was tapped; the page counts the taps (select · fly ·
    *  open, MESITA-2488). */
@@ -363,7 +368,6 @@ function SearchMapCanvas({
               onClick={() => onTapPlacePin(place)}
             />
           ))}
-      {loadedCircle && <LoadedCircleOverlay circle={loadedCircle} />}
       {cameraIntent && <CameraDirector intent={cameraIntent} />}
       <ViewportReporter
         onFirst={onFirstViewport}
@@ -372,31 +376,6 @@ function SearchMapCanvas({
       />
     </Map>
   );
-}
-
-// MESITA-2504 debug (Pato: "draw a radious across my crusie just to make
-// sure the cruise is working"): the circle the last load gated on, an ink
-// outline with no fill and no clicks, so the pins under it still tap.
-// Remove with the readout when Pato says the map is verified.
-function LoadedCircleOverlay({ circle }: { circle: LoadedCircle }) {
-  const map = useMap();
-  const maps = useMapsLibrary("maps");
-  const { center, radiusKm } = circle;
-  useEffect(() => {
-    if (!map || !maps) return;
-    const ring = new maps.Circle({
-      map,
-      center,
-      radius: radiusKm * 1000,
-      strokeColor: "#111111",
-      strokeOpacity: 0.6,
-      strokeWeight: 1.5,
-      fillOpacity: 0,
-      clickable: false,
-    });
-    return () => ring.setMap(null);
-  }, [map, maps, center, radiusKm]);
-  return null;
 }
 
 function ViewportReporter({
