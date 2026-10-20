@@ -19,7 +19,7 @@
 // activity list (SocialFeed) fills the right three quarters. It opened its own
 // page, /discover/social, from MESITA-2442 until then.
 //
-// Left quarter (Pato, MESITA-2411): Social, Saved, Nearby and Popular
+// Left quarter (Pato, MESITA-2411): Saved, Social, Nearby and Popular
 // (the default: every place) PINNED above a rule; under it one row per
 // family, and only that list scrolls. The chosen row is white, bold, an ink bar on its left edge.
 // Nearby and Popular are the server's ONE ranked Area pool (MESITA-2379/2384):
@@ -138,13 +138,14 @@ export const SOCIAL_CHIP = "social";
  *  nothing here says so rather than hiding. */
 export function placesChips(): { key: string; label: string }[] {
   return [
+    // Saved first, then Social (Pato, MESITA-2490). Saved, not Favorites,
+    // and Nearby, not Near (Pato, MESITA-2427); the heart stays, matching
+    // the tile's save button (MESITA-2430): beside Nearby and Popular,
+    // "Favorites" read as Mesita's picks.
+    { key: SAVED_CHIP, label: "Saved" },
     // Social's feed draws in the right pane (MESITA-2474); no "Soon" tag
     // ever (Pato, MESITA-2418: the tag "looks like shit").
     { key: SOCIAL_CHIP, label: "Social" },
-    // Saved, not Favorites, and Nearby, not Near (Pato, MESITA-2427); the
-    // heart stays, matching the tile's save button (MESITA-2430):
-    // beside Nearby and Popular, "Favorites" read as Mesita's picks.
-    { key: SAVED_CHIP, label: "Saved" },
     { key: NEAR_CHIP, label: "Nearby" },
     { key: POPULAR_CHIP, label: "Popular" },
     ...FILTERABLE_PLACE_FAMILIES.map((f) => ({
@@ -154,19 +155,18 @@ export function placesChips(): { key: string; label: string }[] {
   ];
 }
 
-/** Social, Saved, Nearby, Popular: the pinned head of the column
- *  (MESITA-2411, MESITA-2426). */
+/** Saved, Social, Nearby, Popular: the pinned head of the column
+ *  (MESITA-2411, MESITA-2426, MESITA-2490). */
 export const PINNED_CHIPS = 4;
-/** Social and Saved: the guest's own group, above Nearby · Popular
- *  (MESITA-2484). */
-export const YOURS_CHIPS = 2;
 
 /** Each group's stripe down the rail's left edge (Pato, MESITA-2484: "just
- *  one line at the left … really subtle"): 3px of muted clay, red · blue ·
- *  purple. An inset shadow, so the chosen row's white face and ink bar paint
- *  over it, and on the scrolling families list it stays put. */
+ *  one line at the left … really subtle"); four groups, four muted clays
+ *  (MESITA-2490): Saved red · Social sage · Nearby and Popular blue · the
+ *  families purple. 3px, an inset shadow, so the chosen row's white face and
+ *  ink bar paint over it, and on the scrolling families list it stays put. */
 export const GROUP_STRIPE = {
-  yours: "shadow-[inset_3px_0_0_oklch(0.68_0.09_35)]",
+  saved: "shadow-[inset_3px_0_0_oklch(0.68_0.09_35)]",
+  social: "shadow-[inset_3px_0_0_oklch(0.7_0.07_150)]",
   around: "shadow-[inset_3px_0_0_oklch(0.66_0.06_245)]",
   families: "shadow-[inset_3px_0_0_oklch(0.64_0.07_310)]",
 } as const;
@@ -438,17 +438,27 @@ export function CatalogRails() {
       aria-label="Places"
       data-places-categories
     >
-      {/* Three groups, each marked by its clay stripe, 8px apart; no rules
-          (Pato, MESITA-2484): Social · Saved │ Nearby · Popular │ the
-          families. The first two are pinned and never scroll (MESITA-2411). */}
+      {/* Four groups, each marked by its clay stripe, 8px apart; no rules
+          (Pato, MESITA-2484, MESITA-2490): Saved │ Social │ Nearby ·
+          Popular │ the families. The first three are pinned and never scroll
+          (MESITA-2411). */}
       <ul
         role="list"
-        aria-label="Yours"
-        className={cn("shrink-0", GROUP_STRIPE.yours)}
+        aria-label="Saved"
+        className={cn("shrink-0", GROUP_STRIPE.saved)}
         data-places-pinned
-        data-places-group="yours"
+        data-places-group="saved"
       >
-        {chips.slice(0, YOURS_CHIPS).map(categoryRow)}
+        {chips.slice(0, 1).map(categoryRow)}
+      </ul>
+      <ul
+        role="list"
+        aria-label="Social"
+        className={cn("mt-2 shrink-0", GROUP_STRIPE.social)}
+        data-places-pinned
+        data-places-group="social"
+      >
+        {chips.slice(1, 2).map(categoryRow)}
       </ul>
       <ul
         role="list"
@@ -457,7 +467,7 @@ export function CatalogRails() {
         data-places-pinned
         data-places-group="around"
       >
-        {chips.slice(YOURS_CHIPS, PINNED_CHIPS).map(categoryRow)}
+        {chips.slice(2, PINNED_CHIPS).map(categoryRow)}
       </ul>
       <ul
         role="list"
