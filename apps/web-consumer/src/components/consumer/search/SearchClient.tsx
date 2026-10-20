@@ -106,7 +106,11 @@ import { SearchBar } from "./SearchBar";
 import { SearchHeader } from "./SearchHeader";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import type { AddState } from "./add-state";
-import { SearchRailOverlay } from "./search-catalog-overlays";
+import {
+  SearchDebugCoords,
+  SearchRailOverlay,
+  type LoadCoords,
+} from "./search-catalog-overlays";
 import { SearchLocateButton } from "./SearchLocateButton";
 import {
   anchorPlaceFromPrediction,
@@ -162,20 +166,6 @@ function googlePredictionFromPlace(place: Place): PlacePrediction | null {
     lat: place.lat,
     lng: place.lng,
   };
-}
-
-// MESITA-2497: development-stage check of the map — after every catalog
-// load, the cross, the blue dot and the centre sent to list-places.
-function toastLoadCoords(
-  cross: Coords | null,
-  you: Coords | null,
-  sent: Coords,
-) {
-  const fmt = (c: Coords | null) =>
-    c ? `${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}` : "no fix";
-  toast(`Cross: ${fmt(cross)}\nYou: ${fmt(you)}\nLoaded at: ${fmt(sent)}`, {
-    durationMs: 8000,
-  });
 }
 
 export function SearchClient({ apiKey }: { apiKey: string }) {
@@ -402,8 +392,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     lastBoxRef.current = box;
   }, []);
 
-  // MESITA-2497 debug toast: the blue dot read through a ref, so a GPS fix
-  // never changes `loadAt` (its identity change refetches the catalog).
+  // MESITA-2497/2498 debug readout: the blue dot read through a ref, so a
+  // GPS fix never changes `loadAt` (its identity change refetches the
+  // catalog).
+  const [loadCoords, setLoadCoords] = useState<LoadCoords | null>(null);
   const locationRef = useRef(location);
   useEffect(() => {
     locationRef.current = location;
@@ -428,11 +420,11 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           clampReloadIdleSec(result.reloadIdleSec) * 1000;
         setCameraCenter(nextCenter);
         setPlaces(result.places);
-        toastLoadCoords(
-          lastBoxRef.current ? viewportSight(lastBoxRef.current) : null,
-          locationRef.current,
-          nextCenter,
-        );
+        setLoadCoords({
+          cross: lastBoxRef.current ? viewportSight(lastBoxRef.current) : null,
+          you: locationRef.current,
+          sent: nextCenter,
+        });
         // A reload centered away from the anchored place ends the anchor —
         // the guest moved on. The pick's own forced load (and a filter
         // refetch at the same spot) lands ON the place, so it survives. A
@@ -1032,6 +1024,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
             setRailCardRef={(placeId, el) => {
               railRefs.current.set(placeId, el);
             }}
+            debug={loadCoords && <SearchDebugCoords {...loadCoords} />}
           />
         )}
       </div>
