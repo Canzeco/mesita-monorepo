@@ -128,7 +128,7 @@ export type CatalogConfig = {
 
 // Mirrors SUPER_PARAM_KEYS in _shared/discovery-config.ts, itself pinned to
 // the taxonomy by google-type-super.test.ts. The operator's category param is
-// the SUPER, not Google's slug (MESITA-1695): fifteen switches (thirteen since MESITA-2468) in Google's
+// the SUPER, not Google's slug (MESITA-1695): fifteen switches (twelve since MESITA-2486) in Google's
 // vocabulary, capped by an ordered "first N", is what let four whole families
 // sit invisibly off. Order is the guest's — FAMILIES sort_order.
 export const SUPER_PARAM_KEYS = [
@@ -144,7 +144,6 @@ export const SUPER_PARAM_KEYS = [
   "sweet",
   "drinks",
   "night_out",
-  "go_out",
 ] as const;
 export type SuperParamKey = (typeof SUPER_PARAM_KEYS)[number];
 
@@ -412,14 +411,6 @@ export const SUPER_FIELDS: {
       "live_music_venue",
     ],
   },
-  {
-    key: "go_out",
-    label: "Go out",
-    emoji: "🎟️",
-    battery: [
-      "karaoke",
-    ],
-  },
 ];
 
 /** Google stars top out at 5: the ceiling of `map.minRating`. */
@@ -495,7 +486,6 @@ const DEFAULT_MAP_SUPERS: Record<SuperParamKey, boolean> = {
   sweet: true,
   drinks: true,
   night_out: true,
-  go_out: false,
 };
 
 export const DEFAULT_MAP: MapConfig = {

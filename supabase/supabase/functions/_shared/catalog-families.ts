@@ -1,4 +1,4 @@
-// The guest catalog is these thirteen families. Not twelve, not fourteen.
+// The guest catalog is these twelve families. Not eleven, not thirteen.
 // Undefined is the leftover and is not a rail.
 //
 // SCOPE (MESITA-2438, Pato 2026-10-19: "This is not Tudu, is Mesita. More
@@ -11,6 +11,10 @@
 // gyms" + "i neither want barber shops nor fucking spas"): the Move and
 // Feel better rails are gone. Gyms, studios, courts, pools, spas, salons,
 // barbers and tattoo studios sit in NO family (`NOT_SOCIAL_TYPES`).
+//
+// ONE NIGHT RAIL (MESITA-2486, Pato 2026-10-19: "merge"): Go out folded
+// into Night out. Karaoke, escape rooms, billiards and board-game cafés are
+// Night out; a board-game café is Coffee first, Night out second.
 //
 // PRIMARY AND SECONDARY. A Google type's row below lists its families
 // PRIMARY FIRST: a cafe is Coffee first, Breakfast second; a brewpub is
@@ -42,7 +46,6 @@ export const CATALOG_FAMILY_SLUGS = [
   "sweet",
   "drinks",
   "night_out",
-  "go_out",
 ] as const;
 
 export type CatalogFamilySlug = (typeof CATALOG_FAMILY_SLUGS)[number];
@@ -66,7 +69,6 @@ export const CATALOG_FAMILIES: readonly {
   { slug: "sweet", label: "Sweet", emoji: "🍰", sort_order: 10 },
   { slug: "drinks", label: "Drinks", emoji: "🍸", sort_order: 11 },
   { slug: "night_out", label: "Night out", emoji: "🌙", sort_order: 12 },
-  { slug: "go_out", label: "Go out", emoji: "🎟️", sort_order: 13 },
   { slug: "undefined", label: "Undefined", emoji: "·", sort_order: 999 },
 ];
 
@@ -93,7 +95,6 @@ export const CATALOG_LEAD_TYPES: Record<CatalogFamilySlug, string> = {
   sweet: "bakery",
   drinks: "bar",
   night_out: "night_club",
-  go_out: "karaoke",
 };
 
 /**
@@ -297,12 +298,12 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   hookah_bar: ["drinks"],
   night_club: ["night_out"],
   dance_hall: ["night_out"],
-  karaoke: ["night_out", "go_out"],
+  karaoke: ["night_out"],
   comedy_club: ["night_out"],
   live_music_venue: ["night_out"],
-  escape_room: ["go_out"],
-  billiards: ["go_out"],
-  board_game_cafe: ["coffee", "go_out"],
+  escape_room: ["night_out"],
+  billiards: ["night_out"],
+  board_game_cafe: ["coffee", "night_out"],
   // No family (MESITA-2382): a place, not a trip a guest picks.
   ...Object.fromEntries(ATTRACTION_TYPES.map((t) => [t, ["undefined"] as const])),
   ...Object.fromEntries(NOT_SOCIAL_TYPES.map((t) => [t, ["undefined"] as const])),

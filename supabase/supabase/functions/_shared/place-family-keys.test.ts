@@ -16,8 +16,8 @@ Deno.test("withFamilyKeys keeps the derived mapping and does not invent one", ()
   assertEquals(out.id, "1");
   assertEquals(withFamilyKeys({ category: "mexican" }).family_keys, ["undefined"]);
   assertEquals(
-    withFamilyKeys({ category: "karaoke", family_keys: ["night_out", "go_out"] }).family_keys,
-    ["night_out", "go_out"],
+    withFamilyKeys({ category: "karaoke", family_keys: ["drinks", "night_out"] }).family_keys,
+    ["drinks", "night_out"],
   );
 });
 
@@ -59,10 +59,10 @@ Deno.test("withFamilyKeys is TOTAL: undefined category and leftovers land on Und
 Deno.test("withFamilyKeysList maps a list", () => {
   const rows = withFamilyKeysList([
     { category: "cafe", family_keys: ["coffee", "breakfast"] },
-    { category: "museum", family_keys: ["go_out"] },
+    { category: "museum", family_keys: ["night_out"] },
   ]);
   assertEquals(rows[0]?.family_keys, ["coffee", "breakfast"]);
-  assertEquals(rows[1]?.family_keys, ["go_out"]);
+  assertEquals(rows[1]?.family_keys, ["night_out"]);
 });
 
 // THE MEMBERSHIP COLOUR LAW (Pato, 2026-08-29): enriched > everything else.

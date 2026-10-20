@@ -99,8 +99,8 @@ export const DEEP_LIMIT_MAX = 20;
 export const DEFAULT_DEEP: DeepConfig = { limit: 5, minSimilarity: 0 };
 
 /**
- * THE OPERATOR'S CATEGORY PARAM (Pato, 2026-09-08, MESITA-1695): the thirteen
- * guest families, in `FAMILIES` sort order — the same thirteen, in the same
+ * THE OPERATOR'S CATEGORY PARAM (Pato, 2026-09-08, MESITA-1695): the twelve
+ * guest families, in `FAMILIES` sort order — the same twelve, in the same
  * order, the guest sees as pills on the Filters sheet.
  *
  * Google's own type slugs are not a param. Twenty-two switches asked the
@@ -126,7 +126,6 @@ export const SUPER_PARAM_KEYS = [
   "sweet",
   "drinks",
   "night_out",
-  "go_out",
 ] as const;
 export type SuperParamKey = (typeof SUPER_PARAM_KEYS)[number];
 
@@ -330,7 +329,6 @@ export const DEFAULT_MAP_SUPERS: Record<SuperParamKey, boolean> = {
   sweet: true,
   drinks: true,
   night_out: true,
-  go_out: false,
 };
 
 /** How many pins is the GUEST's question (How many, on the Filters sheet),

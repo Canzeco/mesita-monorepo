@@ -23,7 +23,6 @@ import {
   Sandwich,
   Soup,
   Star,
-  Ticket,
   Users,
   Utensils,
   UtensilsCrossed,
@@ -84,7 +83,6 @@ export const FAMILY_ICONS: Readonly<Record<string, LineIcon>> = {
   sweet: CakeSlice,
   drinks: Martini,
   night_out: Moon,
-  go_out: Ticket,
 };
 
 /** The icon for a row, chip or family key; Utensils when it has none. */

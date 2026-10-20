@@ -10,8 +10,8 @@ import {
   sanitizeFamilyKeys,
 } from "./place-taxonomy.ts";
 
-Deno.test("place family catalog is thirteen guest families, Undefined last", () => {
-  assertEquals(FAMILIES.length, 14);
+Deno.test("place family catalog is twelve guest families, Undefined last", () => {
+  assertEquals(FAMILIES.length, 13);
   assertEquals(FAMILIES.map((s) => s.slug), [
     "coffee",
     "breakfast",
@@ -25,7 +25,6 @@ Deno.test("place family catalog is thirteen guest families, Undefined last", () 
     "sweet",
     "drinks",
     "night_out",
-    "go_out",
     "undefined",
   ]);
   const last = FAMILIES[FAMILIES.length - 1]!;
@@ -34,7 +33,7 @@ Deno.test("place family catalog is thirteen guest families, Undefined last", () 
   assertEquals(last.sort_order, 999);
 });
 
-Deno.test("every Atlas category maps onto the thirteen; five sit on two", () => {
+Deno.test("every Atlas category maps onto the twelve; four sit on two", () => {
   const slugs = Object.keys(ATLAS_CATEGORY_FAMILIES);
   assertEquals(slugs.length, 101);
   assertEquals(slugs.includes("undefined"), true);
@@ -53,7 +52,6 @@ Deno.test("every Atlas category maps onto the thirteen; five sit on two", () => 
     "board_game_cafe",
     "cafe",
     "coffee_shop",
-    "karaoke",
   ]);
   assertEquals(covered.has("undefined"), true);
   assertEquals(covered.has("pizza"), true);
@@ -64,7 +62,7 @@ Deno.test("a cafe is coffee and breakfast; a pizzeria is only pizza", () => {
   assertEquals(familiesForAtlasCategory("breakfast"), ["breakfast"]);
   assertEquals(familiesForAtlasCategory("brunch"), ["breakfast"]);
   assertEquals(familiesForAtlasCategory("cafe"), ["coffee", "breakfast"]);
-  assertEquals(familiesForAtlasCategory("karaoke"), ["night_out", "go_out"]);
+  assertEquals(familiesForAtlasCategory("karaoke"), ["night_out"]);
   assertEquals(familiesForAtlasCategory("winery"), ["drinks"]);
   assertEquals(familiesForAtlasCategory("pizza"), ["pizza"]);
   // An attraction is in no family (MESITA-2438).
@@ -122,12 +120,12 @@ Deno.test("familiesForPlace is TOTAL — no place is ever pill-less", () => {
 Deno.test("resolveEnrichedFamilyKeys ignores a family the model invented", () => {
   const mapping = {
     mexican: ["tacos"],
-    karaoke: ["night_out", "go_out"],
+    board_game_cafe: ["coffee", "night_out"],
   };
   assertEquals(resolveEnrichedFamilyKeys("mexican", ["dinner"], mapping), ["tacos"]);
   assertEquals(
-    resolveEnrichedFamilyKeys("karaoke", ["invented_family"], mapping),
-    ["night_out", "go_out"],
+    resolveEnrichedFamilyKeys("board_game_cafe", ["invented_family"], mapping),
+    ["coffee", "night_out"],
   );
   assertEquals(resolveEnrichedFamilyKeys("mexican", ["dinner"]), ["undefined"]);
   assertEquals(resolveEnrichedFamilyKeys("leftover_slug", ["dinner"]), ["undefined"]);
@@ -157,12 +155,12 @@ Deno.test("keepAtlasValues drops a category and tags Atlas does not define", () 
 
 Deno.test("sanitizeFamilyKeys drops junk, dedupes, keeps more than two, catalog order", () => {
   assertEquals(
-    sanitizeFamilyKeys(["go_out", "dinner", "dinner", "nope"]),
-    ["dinner", "go_out"],
+    sanitizeFamilyKeys(["night_out", "dinner", "dinner", "nope", "go_out"]),
+    ["dinner", "night_out"],
   );
   assertEquals(
-    sanitizeFamilyKeys(["go_out", "night_out", "dinner"]),
-    ["dinner", "night_out", "go_out"],
+    sanitizeFamilyKeys(["night_out", "drinks", "dinner"]),
+    ["dinner", "drinks", "night_out"],
   );
   assertEquals(sanitizeFamilyKeys(["a", "b", "c"]), []);
   assertEquals(sanitizeFamilyKeys(null), []);
@@ -175,8 +173,8 @@ Deno.test("undefined never rides along with a real family", () => {
 
 Deno.test("readGuestFamilyKeys keeps every selected family pill", () => {
   assertEquals(
-    readGuestFamilyKeys(["go_out", "dinner", "dinner", "nope", "move"]),
-    ["dinner", "go_out"],
+    readGuestFamilyKeys(["night_out", "dinner", "dinner", "nope", "move", "go_out"]),
+    ["dinner", "night_out"],
   );
   assertEquals(readGuestFamilyKeys(["feel_better"]), []);
   assertEquals(readGuestFamilyKeys(["undefined"]), ["undefined"]);

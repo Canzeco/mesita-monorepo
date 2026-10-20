@@ -179,7 +179,7 @@ Deno.test("a missing number sinks a place to the bottom, never off the list (MES
 Deno.test("family gate: no family is always out; any family with no ask; exact match when asked", () => {
   assertEquals(familyGate([], []), 0);
   assertEquals(familyGate(["undefined"], []), 0);
-  assertEquals(familyGate(["go_out"], []), 1);
+  assertEquals(familyGate(["night_out"], []), 1);
   assertEquals(familyGate(["dinner"], ["dinner", "drinks"]), 1);
   assertEquals(familyGate(["coffee"], ["dinner"]), 0);
   assertEquals(familyGate([], ["dinner"]), 0);

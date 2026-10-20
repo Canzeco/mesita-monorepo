@@ -691,8 +691,8 @@ select has_table(
 
 select is(
   (select count(*)::bigint from public.place_families),
-  14::bigint,
-  'place family catalog is thirteen guest families plus Undefined (MESITA-2468)'
+  13::bigint,
+  'place family catalog is twelve guest families plus Undefined (MESITA-2486)'
 );
 
 select is(
@@ -704,9 +704,9 @@ select is(
 select is(
   (select array_agg(slug order by sort_order) from public.place_families),
   array['coffee','breakfast','quick_bite','pizza','tacos','sushi','burgers',
-        'noodles','dinner','sweet','drinks','night_out','go_out',
+        'noodles','dinner','sweet','drinks','night_out',
         'undefined']::text[],
-  'family catalog order is the thirteen guest rails, Undefined last'
+  'family catalog order is the twelve guest rails, Undefined last'
 );
 
 select is(
@@ -717,15 +717,15 @@ select is(
 
 select is(
   (select family_keys from public.place_categories where slug = 'karaoke'),
-  array['night_out','go_out']::text[],
-  'karaoke is a night out and something to do'
+  array['night_out']::text[],
+  'karaoke is a night out (MESITA-2486)'
 );
 
 select is(
   (select array_agg(slug order by slug) from public.place_categories
-    where 'go_out' = any(family_keys)),
+    where 'night_out' = any(family_keys) and slug <> 'night_club'),
   array['billiards','board_game_cafe','escape_room','karaoke']::text[],
-  'Go out holds only what a guest books a slot at: no attraction (MESITA-2438)'
+  'Night out took Go out whole and holds no attraction (MESITA-2438, MESITA-2486)'
 );
 
 select is(
@@ -737,8 +737,8 @@ select is(
 select is(
   (select count(*)::bigint from public.place_categories
     where cardinality(family_keys) = 2),
-  5::bigint,
-  'five categories sit on two families'
+  4::bigint,
+  'four categories sit on two families (karaoke left Go out, MESITA-2486)'
 );
 
 select is(
@@ -915,7 +915,7 @@ select throws_ok(
 
 select lives_ok(
   $$update public.place_categories
-       set family_keys = array['dinner', 'coffee', 'drinks', 'go_out']
+       set family_keys = array['dinner', 'coffee', 'drinks', 'night_out']
      where slug = 'mesita_1857_probe'$$,
   'a category can belong to more than two families'
 );
@@ -934,7 +934,7 @@ select is(
 select is(
   (select family_keys from public.profiles
     where id = '00000000-0000-4000-8000-0000000fa111'),
-  array['dinner', 'coffee', 'drinks', 'go_out']::text[],
+  array['dinner', 'coffee', 'drinks', 'night_out']::text[],
   'the catalog view reads the four-family mapping'
 );
 

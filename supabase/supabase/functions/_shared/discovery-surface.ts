@@ -289,7 +289,7 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     keepsOrder: ["google_autocomplete", "google_text"],
     rules: [
       "Closed places never show (Discovery › General's active check).",
-      "A Google row must have a Google type of one of the thirteen families, the only places Mesita can hold (hotels, shops and schools never show), and clear the old stored Google floors on rating, reviews and popularity (0 is off; no box edits them).",
+      "A Google row must have a Google type of one of the twelve families, the only places Mesita can hold (hotels, shops and schools never show), and clear the old stored Google floors on rating, reviews and popularity (0 is off; no box edits them).",
       "Discovery › General's reviews floor (people, never stars; 0 is off) cuts Google and Mesita rows.",
     ],
     callers: ["The guest's Search bar", "Admin Single Place › Find", "Chat (Don Memo)"],
@@ -402,5 +402,4 @@ export const CATALOG_FAMILY_FACTS: readonly { key: string; label: string; emoji:
   { key: "sweet", label: "Sweet", emoji: "🍰" },
   { key: "drinks", label: "Drinks", emoji: "🍸" },
   { key: "night_out", label: "Night out", emoji: "🌙" },
-  { key: "go_out", label: "Go out", emoji: "🎟️" },
 ];
