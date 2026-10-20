@@ -400,21 +400,14 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
 });
 
 // ── T5b — Home's header and Search's header ────────────────────────────────
-// BOTH HEADERS ARE ONE ROW: location · bar · Ask AI (Pato, MESITA-2447: "use
-// the same searchbar here"; it was the location alone, MESITA-2405). Search
-// adds a row of family chips (MESITA-2409); Home's column lists them, so
-// Home has no chips. Social and Favorites are rows of the catalog's column.
+// HOME'S HEADER IS THE LOCATION ALONE (Pato, MESITA-2405: "The top bar is
+// just to select the location. thats it."). Social and Favorites are rows of
+// the catalog's column; Home has no pills. Search's header is locate · bar ·
+// Ask AI over a row of family chips (MESITA-2409).
 describe("T5b — Home's header and Search's header", () => {
-  // MESITA-2447 replaced the location-only header with Search's row.
-  it("Home's header is Search's row: location · bar · Ask AI", () => {
+  it("Home's header is the location picker and nothing else", () => {
     const tabs = readFileSync(join(COMPONENTS, "ModeTabs.tsx"), "utf8");
-    expect(tabs).toMatch(
-      /<LocationPicker \/>\s*<div className="min-w-0 flex-1">\s*<SearchBar[\s\S]*?<\/div>\s*<AskAiDisc \/>/,
-    );
-    expect(tabs).toContain("flex min-w-0 items-center gap-2 px-3 pt-2 pb-2");
-    // The bar opens Search, focused: one search surface.
-    expect(tabs).toContain("router.push(`${CONSUMER_ROUTES.search}?focus=1`)");
-    expect(tabs).not.toContain("data-search-chips");
+    expect(tabs).toMatch(/data-home-header>\s*<LocationPicker \/>\s*<\/div>/);
     expect(tabs).not.toContain("HOME_MODES");
     const layout = readFileSync(
       join(SHELL, "(discovery)", "discover", "layout.tsx"),
@@ -427,10 +420,9 @@ describe("T5b — Home's header and Search's header", () => {
   // Ask AI lands on /search/chat, the Soon page with a way back.
   it("Search's header is locate · bar · Ask AI, and Ask AI is a real Soon page", () => {
     const header = readFileSync(join(COMPONENTS, "search", "SearchHeader.tsx"), "utf8");
-    const askAi = readFileSync(join(COMPONENTS, "search", "AskAiDisc.tsx"), "utf8");
-    expect(askAi).toContain("href={CONSUMER_ROUTES.searchChat}");
-    expect(askAi).toContain("Ask AI");
-    expect(header).toMatch(/\{locate\}\s*<div className="min-w-0 flex-1">\{bar\}<\/div>\s*<AskAiDisc \/>/);
+    expect(header).toContain("href={CONSUMER_ROUTES.searchChat}");
+    expect(header).toMatch(/\{locate\}\s*<div className="min-w-0 flex-1">\{bar\}<\/div>\s*<Link/);
+    expect(header).toContain("Ask AI");
     expect(new Set(allPages().map(pageUrl))).toContain(CONSUMER_ROUTES.searchChat);
     const chat = readFileSync(join(SHELL, "(discovery)", "search", "chat", "page.tsx"), "utf8");
     expect(chat).toContain("HomeSoon");

@@ -1,13 +1,14 @@
 "use client";
 
-// Home's location control: the left disc of Home's header (Pato, MESITA-2447:
-// "Location, Searchbar, Ask AI"; it was the whole header, MESITA-2405).
-// The arrow for the device fix, a pin for a saved location. A tap opens the location sheet: Current location, the guest's saved
+// Home's location control — the whole of Home's header (Pato, MESITA-2405:
+// "The top bar is just to select the location. thats it."): a full-width
+// bordered pill with a pin, the active location's name and a quiet chevron.
+// A tap opens the location sheet: Current location, the guest's saved
 // locations (each removable) and Add location (MESITA-2380). The choice
 // lives in `lib/active-location.ts`, which Home's catalog reads.
 
 import { useState, type ReactNode } from "react";
-import { Bookmark, MapPin, Navigation, Plus, X } from "lucide-react";
+import { Bookmark, ChevronDown, MapPin, Navigation, Plus, X } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import {
@@ -18,8 +19,6 @@ import {
 import { removeSavedLocation, useSavedLocations } from "@/lib/saved-locations";
 import { setActiveLocation, useActiveLocation } from "@/lib/active-location";
 import { cn } from "@/lib/utils";
-import { ActiveDot } from "../search/ActiveDot";
-import { HEADER_DISC } from "../search/header-classes";
 import { AddLocationSheet } from "./AddLocationSheet";
 
 /** What the pill says: the saved name, or the state of the device fix. */
@@ -84,49 +83,34 @@ export function LocationPicker() {
 
   return (
     <>
-      {/* The left disc of Home's header (MESITA-2447: "Location, Searchbar,
-          Ask AI"), Search's locate disc in shape. A tap opens the location
-          sheet; the dot says a location is held. */}
+      {/* Home's whole header: the location, full width (MESITA-2405). */}
       <button
         type="button"
         onClick={() => setPicking(true)}
         aria-haspopup="dialog"
         aria-label={`Location: ${label}. Change location`}
-        title={label}
-        className={cn("relative", HEADER_DISC)}
+        className="border-border bg-card text-foreground hover:bg-muted relative flex h-10 w-full min-w-0 items-center justify-center gap-1.5 rounded-full border px-8 text-xs font-semibold transition active:scale-[0.98]"
         data-home-location
       >
-        {active ? (
-          <MapPin className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
-        ) : (
-          <Navigation
-            className={cn("h-4 w-4 shrink-0", locating && "animate-pulse")}
-            strokeWidth={2}
-            aria-hidden
-          />
-        )}
-        {active || coords ? <ActiveDot /> : null}
+        {/* Pin and name centred (Pato, MESITA-2412); the chevron keeps the
+            right edge, and px-8 keeps a long name clear of it. */}
+        <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
+        <span className="min-w-0 truncate">{label}</span>
+        <ChevronDown
+          className="text-muted-foreground absolute top-1/2 right-3 h-3.5 w-3.5 shrink-0 -translate-y-1/2"
+          strokeWidth={2}
+          aria-hidden
+        />
       </button>
 
-      <LocalSheet
-        open={picking}
-        onClose={() => setPicking(false)}
-        ariaLabel="Location"
-      >
+      <LocalSheet open={picking} onClose={() => setPicking(false)} ariaLabel="Location">
         <div className={SHEET_BODY_CLASS} data-places-location-sheet>
           <h2 className={SHEET_TITLE_CLASS}>Location</h2>
-          <ul
-            role="list"
-            aria-label="Location"
-            className="divide-border mt-2 divide-y"
-            data-places-location
-          >
+          <ul role="list" aria-label="Location" className="divide-border mt-2 divide-y" data-places-location>
             {row({
               key: "here",
               label: locationLabel(null, coords !== null, locating),
-              icon: (
-                <Navigation className={ICON} strokeWidth={2.25} aria-hidden />
-              ),
+              icon: <Navigation className={ICON} strokeWidth={2.25} aria-hidden />,
               selected: active === null && coords !== null,
               muted: coords === null,
               onClick: () => {
@@ -139,18 +123,10 @@ export function LocationPicker() {
               row({
                 key: `saved:${l.id}`,
                 label: l.name,
-                icon: (
-                  <Bookmark className={ICON} strokeWidth={2.25} aria-hidden />
-                ),
+                icon: <Bookmark className={ICON} strokeWidth={2.25} aria-hidden />,
                 selected: active?.key === `saved:${l.id}`,
                 onClick: () => {
-                  setActiveLocation({
-                    key: `saved:${l.id}`,
-                    name: l.name,
-                    lat: l.lat,
-                    lng: l.lng,
-                    bounds: l.bounds,
-                  });
+                  setActiveLocation({ key: `saved:${l.id}`, name: l.name, lat: l.lat, lng: l.lng, bounds: l.bounds });
                   setPicking(false);
                 },
                 // Removing the active location falls back to Current location.
@@ -183,13 +159,7 @@ export function LocationPicker() {
         onClose={() => setAdding(false)}
         here={coords}
         onSaved={(l) =>
-          setActiveLocation({
-            key: `saved:${l.id}`,
-            name: l.name,
-            lat: l.lat,
-            lng: l.lng,
-            bounds: l.bounds,
-          })
+          setActiveLocation({ key: `saved:${l.id}`, name: l.name, lat: l.lat, lng: l.lng, bounds: l.bounds })
         }
       />
     </>
