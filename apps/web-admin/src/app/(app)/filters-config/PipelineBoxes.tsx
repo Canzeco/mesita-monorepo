@@ -329,10 +329,11 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
         <>
           <p>
             Places around a location: a <strong>point</strong> (the device, a
-            saved address, the map&apos;s centre) takes candidates inside the
-            radius and ranks them by Proximity over its reach; an <strong>area</strong> (a saved city, neighbourhood or
-            postcode) keeps only what is inside its bounds (Territory) and
-            ranks by Popularity. Google candidates and Mesita candidates
+            saved pin, the map&apos;s centre) takes candidates inside the
+            radius and ranks them by Proximity over its reach; a <strong>rectangle</strong> (the map&apos;s visible box)
+            keeps only what is inside it (Map box) and ranks by Popularity.
+            Saved areas (a city, neighbourhood or postcode) were retired
+            2026-10-20: Home always asks from a point. Google candidates and Mesita candidates
             contribute independently to one pool: merged, deduped by Google
             Place ID, gated, scored and ranked before any page is cut. The source is never a guest filter.
           </p>

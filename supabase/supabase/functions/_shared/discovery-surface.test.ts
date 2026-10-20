@@ -27,7 +27,7 @@ Deno.test("the model is Pato's: five sources, Name · Area · Deep, five signals
   ]);
   assertEquals(DISCOVERY_PIPELINES.map((p) => p.label), ["Name", "Area", "Deep"]);
   assertEquals(DISCOVERY_SIGNALS.map((s) => s.label), ["Name", "Description", "Proximity", "Popularity", "Selected"]);
-  assertEquals(DISCOVERY_GATES.map((g) => g.label), ["Family", "Territory"]);
+  assertEquals(DISCOVERY_GATES.map((g) => g.label), ["Family", "Map box"]);
   assertEquals(pipelinesUsingSignal("proximity"), ["area"]);
   assertEquals(pipelinesUsingSignal("popularity"), ["area"]);
   assertEquals(pipelinesUsingSignal("selected"), ["area"]);
@@ -138,7 +138,7 @@ Deno.test("Deep is not live while no guest reaches Chat; Name and Area are (MESI
 
 // ── MESITA-2379: one pool; MESITA-2439: Selected is its own signal ───────────
 
-Deno.test("Area: Family and Territory gate, Selected is a signal with its own exponent, Chat reads Selected only", () => {
+Deno.test("Area: Family and Map box gate, Selected is a signal with its own exponent, Chat reads Selected only", () => {
   const area = DISCOVERY_PIPELINES.find((p) => p.key === "area")!;
   assertEquals(area.gates, ["family", "territory"]);
   assertEquals(area.signals, ["proximity", "popularity", "selected"]);

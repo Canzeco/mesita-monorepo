@@ -173,10 +173,11 @@ describe("the boxes' controls", () => {
 
   it("Area draws its gates, Selected as its third signal and the point/area rule (MESITA-2439)", () => {
     const html = render(<AreaBox {...seed} />);
-    for (const text of ["Family", "Territory", "1.0 for a Mesita Selected place", "0.3 for every other place", "Selected<sup>c</sup>", "Chat reads Mesita Selected places only."]) {
+    for (const text of ["Family", "Map box", "1.0 for a Mesita Selected place", "0.3 for every other place", "Selected<sup>c</sup>", "Chat reads Mesita Selected places only."]) {
       expect(html, text).toContain(text);
     }
-    expect(html).toContain("A point location uses Proximity and the radius; an area location uses Territory. Never both.");
+    expect(html).toContain("A point location uses Proximity and the radius; a rectangle uses the Map box gate. Never both.");
+    expect(html).not.toContain("Territory");
   });
 
   it("Deep is Soon: title, one line and the chip, its controls deleted from the markup (MESITA-2345)", () => {
