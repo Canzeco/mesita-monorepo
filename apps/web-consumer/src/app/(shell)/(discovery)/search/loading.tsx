@@ -9,23 +9,23 @@ export default function SearchLoading() {
   return (
     <div className="flex h-full min-h-0 w-full flex-col">
       <div className="border-border bg-card/95 shrink-0 border-b backdrop-blur">
-        <div className="flex min-w-0 items-center gap-2 px-3 pt-2 pb-2">
+        <div className="flex min-w-0 items-center gap-2 px-3 pt-2 pb-1.5">
           <div className="shrink-0" data-skeleton-disc>
-            <Skeleton className="h-11 w-11 rounded-full" />
+            <Skeleton className="h-10 w-10 rounded-full" />
           </div>
-          <Skeleton className="h-11 min-w-0 flex-1 rounded-full" />
+          <Skeleton className="h-10 min-w-0 flex-1 rounded-full" />
           <div className="shrink-0" data-skeleton-disc>
-            <Skeleton className="h-11 w-11 rounded-full" />
+            <Skeleton className="h-10 w-10 rounded-full" />
           </div>
         </div>
         <div
           className="flex gap-2 overflow-hidden px-3 pb-2"
           data-search-loading-chips
         >
-          <Skeleton className="h-11 w-24 shrink-0 rounded-full" />
-          <Skeleton className="h-11 w-24 shrink-0 rounded-full" />
-          <Skeleton className="h-11 w-28 shrink-0 rounded-full" />
-          <Skeleton className="h-11 w-28 shrink-0 rounded-full" />
+          <Skeleton className="h-8 w-24 shrink-0 rounded-full" />
+          <Skeleton className="h-8 w-24 shrink-0 rounded-full" />
+          <Skeleton className="h-8 w-28 shrink-0 rounded-full" />
+          <Skeleton className="h-8 w-28 shrink-0 rounded-full" />
         </div>
       </div>
       <div className="relative min-h-0 w-full flex-1 overflow-hidden">

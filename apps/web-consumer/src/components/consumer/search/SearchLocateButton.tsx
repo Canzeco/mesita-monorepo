@@ -7,7 +7,7 @@ import { ActiveDot } from "./ActiveDot";
 import { HEADER_DISC } from "./header-classes";
 
 // The map's location control, TOP LEFT (Pato, 2026-10-17: "Location
-// Searchbar Filters … location at the left"). A 44px disc wearing the
+// Searchbar Filters … location at the left"). A 40px disc wearing the
 // navigation arrow and nothing else, mirrored by the Ask AI disc on the
 // other side of the bar: both are HEADER_DISC, so the two can't drift apart
 // (MESITA-2433). A dot on its corner says the guest's fix is held
