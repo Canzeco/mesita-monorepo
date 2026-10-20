@@ -10,6 +10,8 @@ export type UpdateProfileBody = {
   // Public URL of a photo the caller already uploaded to consumer-avatars
   // (MESITA-953). null/"" clears. Foreign hosts are rejected.
   avatar_url?: string | null;
+  // Social v1 (MESITA-2442): Show my activity (Me › Settings).
+  show_activity?: boolean;
 };
 
 export const AVATAR_BUCKET = "consumer-avatars";
@@ -205,6 +207,15 @@ export function buildProfilePatch(
   if (body.sex !== undefined) patch.sex = fields.sex;
   if (body.birthday !== undefined) patch.birthday = fields.birthday;
   if (body.avatar_url !== undefined) patch.avatar_url = fields.avatarUrl ?? null;
+  if (body.show_activity !== undefined) {
+    if (typeof body.show_activity !== "boolean") {
+      return {
+        ok: false,
+        response: json({ ok: false, error: "show_activity must be a boolean" }, 400),
+      };
+    }
+    patch.show_activity = body.show_activity;
+  }
 
   if (Object.keys(patch).length === 0) {
     return {

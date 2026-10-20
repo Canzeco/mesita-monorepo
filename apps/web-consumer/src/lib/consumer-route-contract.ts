@@ -18,9 +18,9 @@ export const CONSUMER_ROUTES = {
   // Search's second pill (Pato, MESITA-2401: "Search, Chat, Filters"): Chat,
   // Soon for now. Chat left Home; /discover/chat 308s here.
   searchChat: "/search/chat",
-  // DISCOVER — Home's namespace. ONE page since MESITA-2405: Home's header
-  // is the location alone and Social is a row of the catalog's column
-  // (/discover/social 308s to Places), as Favorites is. Favorites is a row of
+  // DISCOVER — Home's namespace: Home's header is the location alone
+  // (MESITA-2405). Social is a row of the catalog's column that OPENS its own
+  // full-height feed, /discover/social (MESITA-2442). Favorites is a row of
   // the Places column (/discover/favs 308s to Places); Chat moved to Search.
   //
   // THE SWIPE ENGINE IS GONE (MESITA-2328): its EF, its ranking library and
@@ -38,6 +38,9 @@ export const CONSUMER_ROUTES = {
   // PLACES LEADS (MESITA-2166): the default is the first pill.
   // route-structure T5b pins first-pill-is-default.
   discoverDefault: "/discover/places",
+  // Social v1 (MESITA-2442): the feed Home's Social row opens. It was a
+  // legacy 308 to Places from MESITA-2405 until this page existed.
+  discoverSocial: "/discover/social",
   place: {
     prefix: "/place/",
   },
@@ -93,9 +96,7 @@ export const CONSUMER_ROUTES = {
     discoverFavs: "/discover/favs",
     // Chat left Home for the Search tab (MESITA-2401).
     discoverChat: "/discover/chat",
-    // Social left Home's header for the catalog's column, and the Places
-    // test tab (MESITA-2402) was deleted (MESITA-2405).
-    discoverSocial: "/discover/social",
+    // The Places test tab (MESITA-2402) was deleted (MESITA-2405).
     places: "/places",
     // The Second Stage tab and everything under it (MESITA-2087). The QR
     // place list, THE TICKET, Wallet with Buy · Gift · Redeem · balance,

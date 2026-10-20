@@ -53,6 +53,8 @@ export type ConsumerDoc = {
   avatar_url: string | null;
   instagram_handle: string | null;
   instagram_followers_count: number | null;
+  // Social v1 (MESITA-2442): Show my activity. Default true in the DB.
+  show_activity: boolean;
   created_at: string;
   deleted_at: string | null;
 };
@@ -71,6 +73,7 @@ export const CONSUMER_PATCH_KEYS = [
   "avatar_url",
   "instagram_handle",
   "instagram_followers_count",
+  "show_activity",
   "deleted_at",
 ] as const satisfies readonly (keyof Omit<ConsumerDoc, "id" | "created_at">)[];
 
@@ -197,6 +200,13 @@ export function validateConsumerPatch(
       };
     }
     patch.instagram_followers_count = v as number | null;
+  }
+  if ("show_activity" in raw) {
+    const v = raw.show_activity;
+    if (typeof v !== "boolean") {
+      return { ok: false, error: "show_activity must be a boolean" };
+    }
+    patch.show_activity = v;
   }
   if ("deleted_at" in raw) {
     const v = raw.deleted_at;

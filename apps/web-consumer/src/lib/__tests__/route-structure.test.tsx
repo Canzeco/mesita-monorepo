@@ -430,7 +430,8 @@ describe("T5b — Home's header and Search's header", () => {
     expect(chat).not.toMatch(/<AskAiTab/);
   });
 
-  // Home is ONE page: the catalog. Social is its Soon row (MESITA-2405).
+  // Home is ONE page: the catalog. Its Social row opens the feed at
+  // /discover/social (MESITA-2442), so no pane of Home is Soon.
   it("Home lands on the catalog, its one page under discover", () => {
     expect(CONSUMER_ROUTES.discoverDefault).toBe(CONSUMER_ROUTES.discoverTabs.places);
     expect(Object.values(CONSUMER_ROUTES.discoverTabs)).toEqual(["/discover/places"]);
@@ -441,7 +442,13 @@ describe("T5b — Home's header and Search's header", () => {
     expect(places).toContain("<CatalogRails");
     expect(places).not.toContain("HomeSoon");
     const rails = readFileSync(join(COMPONENTS, "home", "CatalogRails.tsx"), "utf8");
-    expect(rails).toContain("<HomeSoon");
+    expect(rails).not.toContain("<HomeSoon");
+    expect(rails).toContain("router.push(CONSUMER_ROUTES.discoverSocial)");
+    const social = readFileSync(
+      join(SHELL, "(discovery)", "discover", "social", "page.tsx"),
+      "utf8",
+    );
+    expect(social).toContain("<SocialFeed");
     const soon = readFileSync(join(COMPONENTS, "home", "HomeSoon.tsx"), "utf8");
     expect(soon).toContain("is coming soon");
   });
@@ -454,8 +461,9 @@ describe("T5b — Home's header and Search's header", () => {
   });
 
   // Swipe (MESITA-2166), Scroll (MESITA-2163), Catalog's old Feed address,
-  // Favorites (MESITA-2383) and Social (MESITA-2405) left the header.
-  it.each(["swipe", "scroll", "feed", "favs", "social"])(
+  // and Favorites (MESITA-2383) left the header. Social came back as its
+  // own page (MESITA-2442).
+  it.each(["swipe", "scroll", "feed", "favs"])(
     "/discover/%s has no page and 308s to Home",
     async (seg) => {
       const hop = (await nextConfig.redirects!()).find(

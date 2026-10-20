@@ -196,6 +196,9 @@ const PROFILES_READ_ALLOWLIST = [
   "_shared/place-slug.ts",
   "_shared/save-place.ts",
   "admin-web-delete-place/index.ts",
+  // Social v1 (MESITA-2442): the place cards behind the feed and Saved,
+  // through the browse view so RLS keeps unlisted places out.
+  "consumer-web-list-activity/index.ts",
   "admin-web-search-places/index.ts",
   "admin-web-set-place-active/index.ts",
   "admin-web-set-place-listed/index.ts",

@@ -9,6 +9,8 @@ export {
   requestProgressLabel,
   requestProgressMeta,
 } from "./components/place-detail/PlaceRequestPanel";
+export { SocialLine } from "./components/place-detail/social-line";
+export type { SocialFace } from "./components/place-detail/social-line";
 export { PopularTimesBox } from "./components/place-detail/popular-times";
 export type {
   PlaceActions,

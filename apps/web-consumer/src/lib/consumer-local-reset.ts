@@ -1,11 +1,11 @@
 // Consumer-scoped local data reconciliation.
 //
-// Favorites (`mesita:saved-places` + `mesita:saved-place-previews`) and saved
-// locations (`mesita:saved-locations`, MESITA-2380) are stored
-// in the browser — there is no EF behind them yet (see the consumer app
-// CLAUDE.md: "Favorites = localStorage, not an EF"). Because that state lives
-// in localStorage, it survives BOTH a consumer sign-out AND a server-side
-// admin database reset wipe. So a
+// Saved places (`mesita:saved-places` + `mesita:saved-place-previews`) and
+// saved locations (`mesita:saved-locations`, MESITA-2380) are stored in the
+// browser. Saved places are a CACHE of the server's `saved` activity since
+// MESITA-2442; saved locations have no EF behind them. Because that state
+// lives in localStorage, it survives BOTH a consumer sign-out AND a
+// server-side admin database reset wipe. So a
 // second consumer signing in on the same browser — or the same operator
 // re-creating an account after a reset — would otherwise inherit the previous
 // consumer's saved places (stale rows from the old data).

@@ -30,11 +30,12 @@ import {
   StoredSelectRow,
   StoredToggleRow,
 } from "@/components/consumer/me/settings-rows";
+import { ShowActivityRow } from "@/components/consumer/me/ShowActivityRow";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // Device-level preferences, grouped. Every toggle and select persists to
-// localStorage; the only server writes on this page are Delete account and
-// Sign out.
+// localStorage; the server writes on this page are Show my activity
+// (Privacy, MESITA-2442), Delete account and Sign out.
 
 const PREF_KEYS = {
   push: "mesita:notif:push",
@@ -116,6 +117,11 @@ export function SettingsModal() {
               options={CITY_OPTIONS}
               defaultValue="cdmx"
             />
+          </SettingsGroup>
+
+          {/* Social v1 (MESITA-2442): whether you appear in Social. */}
+          <SettingsGroup title="Privacy">
+            <ShowActivityRow />
           </SettingsGroup>
 
           {/* Contact is the only door to a human. Support, below, is legal. */}
