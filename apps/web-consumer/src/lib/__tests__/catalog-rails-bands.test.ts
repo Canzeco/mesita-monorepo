@@ -193,11 +193,15 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
   it("the sheet: the search field, then Current location and the saved locations (MESITA-2464)", () => {
     expect(picker.indexOf("data-places-location-search")).toBeLessThan(picker.indexOf("label: locationLabel(null"));
     expect(picker.indexOf("label: locationLabel(null")).toBeLessThan(picker.indexOf("savedLocations.map((l)"));
-    expect(picker).toContain("bounds: l.bounds");
+    // A saved location is a pin (MESITA-2501): the sheet never passes a
+    // rectangle on.
+    expect(picker).not.toContain("bounds: l.bounds");
   });
 
   it("removing the active saved location falls back to Current location", () => {
-    expect(picker).toContain("if (active?.key === `saved:${l.id}`) setActiveLocation(null);");
+    // Remove lives in the pin picker's edit screen since MESITA-2501.
+    const pin = readFileSync(join(__dirname, "../../components/consumer/home/PinPicker.tsx"), "utf8");
+    expect(pin).toContain("if (activeKey === savedLocationKey(entry.id)) setActiveLocation(null);");
   });
 });
 

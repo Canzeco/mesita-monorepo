@@ -21,6 +21,7 @@
 
 import { Outfit } from "next/font/google";
 import { LocationPicker } from "@/components/consumer/home/LocationPicker";
+import { useSavedLocationBackfill } from "@/lib/use-saved-location-backfill";
 
 const wordmarkFont = Outfit({ subsets: ["latin"], weight: "700" });
 
@@ -31,6 +32,9 @@ export const HOME_WORDMARK_CLASS =
 /** Home's header: the name, then the location picker (MESITA-2470).
  *  Ink on white: the consumer app is achromatic (MESITA-2480). */
 export function ModeTabs() {
+  // Saved pins still waiting for their names get them here, once per Home
+  // visit (MESITA-2501), whether or not the sheet opens.
+  useSavedLocationBackfill();
   return (
     <div className="border-border bg-card/95 sticky top-0 z-20 shrink-0 border-b backdrop-blur">
       <div className="flex h-[52px] items-center gap-3 px-4" data-home-header>

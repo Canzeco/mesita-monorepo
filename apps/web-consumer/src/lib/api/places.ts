@@ -239,7 +239,9 @@ export type AreaDiagnostics = {
   primaryFamily?: string | null;
   gates: {
     family: 0 | 1;
-    territory: 0 | 1 | null;
+    /** The rectangle gate: Search's visible map only (MESITA-2499); Home
+     *  always asks from a point, so its pool never carries one. */
+    territory?: 0 | 1 | null;
     radius: 0 | 1 | null;
     active: 1;
     ready: 1 | null;
@@ -259,15 +261,9 @@ export type AreaDiagnostics = {
 /** The guest's mode on the wire (MESITA-2428): near is Nearby. */
 export type AreaPrefer = "near" | "popular" | "family";
 
-/** Where Places searches from: a point, or a saved area's rectangle. */
-export type AreaOrigin = {
-  lat: number;
-  lng: number;
-  bounds?: {
-    low: { lat: number; lng: number };
-    high: { lat: number; lng: number };
-  };
-};
+/** Where Places searches from: always a point (MESITA-2501) — the device, a
+ *  confirmed saved pin, or the city's centre. Saved areas are gone. */
+export type AreaOrigin = { lat: number; lng: number };
 
 /** The Feed's answer: the one ranked pool, or — from an Edge Function that
  *  predates MESITA-2379 — the old rails. */
@@ -304,14 +300,7 @@ export async function apiListAreaPool(
     unified: true,
     prefer,
     ...(familyKeys.length > 0 ? { familyKeys: [...familyKeys] } : {}),
-    ...(origin
-      ? {
-          lat: origin.lat,
-          lng: origin.lng,
-          google: true,
-          ...(origin.bounds ? { bounds: origin.bounds } : {}),
-        }
-      : {}),
+    ...(origin ? { lat: origin.lat, lng: origin.lng, google: true } : {}),
   });
   if (Array.isArray(data.places)) {
     return {

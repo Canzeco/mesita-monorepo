@@ -28,9 +28,9 @@ function exp(n: number | undefined): string {
 export function diagExpression(a: Area): string {
   const fin = diagNumber(a.final);
   const rest = `popularity ${diagNumber(a.signals.popularity)}^${exp(a.weights?.popularity)} × selected ${diagNumber(a.selected)}^${exp(a.weights?.selected)}`;
-  if (a.formula === "area")
-    return `area ${gate(a.gates.territory)} × ${rest} = ${fin}`;
-  if (a.formula === "none") return `${rest} = ${fin}`;
+  // Home asks from a point or nothing (MESITA-2501); anything but a point
+  // has no Proximity term.
+  if (a.formula !== "point") return `${rest} = ${fin}`;
   return `proximity ${diagNumber(a.signals.proximity)}^${exp(a.weights?.proximity)} × ${rest} = ${fin}`;
 }
 
@@ -46,9 +46,6 @@ export function AreaDiagnostics({ area }: { area: Area }) {
       <p className="text-foreground font-semibold">{diagExpression(area)}</p>
       <p>
         {area.source} · family {gate(area.gates.family)} ({families})
-        {area.gates.territory !== null
-          ? ` · in area ${gate(area.gates.territory)}`
-          : ""}
         {area.gates.radius !== null
           ? ` · radius ${gate(area.gates.radius)}`
           : ""}
