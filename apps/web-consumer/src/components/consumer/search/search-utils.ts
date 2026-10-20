@@ -181,6 +181,46 @@ export function anchorViewportBounds(
 }
 
 /**
+ * Where the map's sight sits, as a share of the map's height from its top
+ * (Pato, MESITA-2448: "put the cruz more at the top … the carousel is
+ * taking some space at the bottom"). The crosshair draws here, every
+ * viewport load is centred here, and a camera centre puts its target here.
+ */
+export const SIGHT_Y = 0.4;
+
+const mercatorY = (lat: number) =>
+  Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
+const latOfMercatorY = (y: number) =>
+  ((2 * Math.atan(Math.exp(y)) - Math.PI / 2) * 180) / Math.PI;
+
+/** The point under the sight: SIGHT_Y down the view, Mercator-exact. */
+export function viewportSight(box: {
+  south: number;
+  west: number;
+  north: number;
+  east: number;
+}): { lat: number; lng: number } {
+  const { lng } = viewportCenter(box);
+  const north = mercatorY(box.north);
+  const south = mercatorY(box.south);
+  return { lat: latOfMercatorY(north - (north - south) * SIGHT_Y), lng };
+}
+
+/** The camera centre that puts `target` under the sight, for a view `scale`
+ *  times as tall as `box` (a zoom change halves or doubles it). */
+export function centerForSight(
+  box: { south: number; north: number },
+  target: { lat: number; lng: number },
+  scale = 1,
+): { lat: number; lng: number } {
+  const span = (mercatorY(box.north) - mercatorY(box.south)) * scale;
+  return {
+    lat: latOfMercatorY(mercatorY(target.lat) - span * (0.5 - SIGHT_Y)),
+    lng: target.lng,
+  };
+}
+
+/**
  * Camera center of a map viewport. west > east is the dateline wrap.
  */
 export function viewportCenter(box: {

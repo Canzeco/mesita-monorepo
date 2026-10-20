@@ -117,7 +117,7 @@ import {
   newSessionToken,
   prependAnchorPlace,
   railCenterIndex,
-  viewportCenter,
+  viewportSight,
   withDistances,
 } from "./search-utils";
 
@@ -230,6 +230,21 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // The location disc was tapped with no fix yet: the fix that answers it
   // centres the map.
   const locateAskedRef = useRef(false);
+
+  // Home's header bar opens Search with `?focus=1` (MESITA-2447): focus this
+  // bar once, then drop the flag so a reload or Back does not refocus it.
+  const barInputRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("focus") !== "1") return;
+    barInputRef.current?.focus();
+    url.searchParams.delete("focus");
+    window.history.replaceState(
+      window.history.state,
+      "",
+      url.pathname + url.search,
+    );
+  }, []);
 
   // EVERY searchbar pick anchors the map (MESITA-1405): camera to the
   // coordinates, catalog reload there, chosen Place as card ONE. Cleared
@@ -429,7 +444,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       pendingReload.current = null;
       const box = lastBoxRef.current;
       if (!box) return;
-      const next = viewportCenter(box);
+      const next = viewportSight(box);
       if (!idleReloadDue(lastFetchedCenter.current, next)) return;
       void loadAt(next);
     };
@@ -439,7 +454,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const onFirstViewport = useCallback(
     (box: ViewportBox) => {
       lastBoxRef.current = box;
-      void loadAt(viewportCenter(box));
+      void loadAt(viewportSight(box));
     },
     [loadAt],
   );
@@ -452,12 +467,12 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         // not travel. Rebase the km origin so click-by-click catalog
         // browsing cannot accumulate toward reload; an ask that needed a
         // new catalog already loaded it at its target.
-        lastFetchedCenter.current = viewportCenter(box);
+        lastFetchedCenter.current = viewportSight(box);
         clearPendingReload();
         return;
       }
       userMovedRef.current = true;
-      if (!idleReloadDue(lastFetchedCenter.current, viewportCenter(box))) {
+      if (!idleReloadDue(lastFetchedCenter.current, viewportSight(box))) {
         clearPendingReload();
         return;
       }
@@ -474,7 +489,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   useEffect(() => {
     if (!lastFetchedCenter.current || !lastBoxRef.current) return;
     clearPendingReload();
-    void loadAt(viewportCenter(lastBoxRef.current));
+    void loadAt(viewportSight(lastBoxRef.current));
   }, [clearPendingReload, loadAt]);
 
   // A GPS FIX MOVES THE BLUE DOT, NOT THE MAP (MESITA-2440). Only the fix
@@ -875,6 +890,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
             onFocus={() => setBarFocused(true)}
             onBlur={() => setBarFocused(false)}
             onClear={() => updateQuery("")}
+            inputRef={barInputRef}
           />
         }
       >

@@ -25,8 +25,6 @@
 // results must cover the categories").
 
 import type { ReactNode } from "react";
-import Link from "next/link";
-import { Sparkles } from "lucide-react";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import {
   clearMapFamilies,
@@ -34,9 +32,9 @@ import {
   useMapFilters,
 } from "@/lib/use-map-filters";
 import { setAreaPrefer, useAreaPrefer } from "@/lib/use-area-prefer";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { cn } from "@/lib/utils";
-import { CHIP, CHIP_OFF, CHIP_ON, HEADER_DISC } from "./header-classes";
+import { AskAiDisc } from "./AskAiDisc";
+import { CHIP, CHIP_OFF, CHIP_ON } from "./header-classes";
 
 /** Near and Popular, which replaced All (Pato, MESITA-2426). Popular wears
  *  the star All wore (MESITA-2422). */
@@ -68,15 +66,7 @@ export function SearchHeader({
       <div className="flex min-w-0 items-center gap-2 px-3 pt-2 pb-1.5">
         {locate}
         <div className="min-w-0 flex-1">{bar}</div>
-        <Link
-          href={CONSUMER_ROUTES.searchChat}
-          aria-label="Ask AI"
-          title="Ask AI"
-          className={HEADER_DISC}
-          data-search-ask-ai
-        >
-          <Sparkles className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
-        </Link>
+        <AskAiDisc />
       </div>
       <div className="relative">
         <nav
