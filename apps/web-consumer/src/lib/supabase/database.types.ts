@@ -93,6 +93,21 @@ export type Database = {
         }
         Relationships: []
       }
+      catalog_membership: {
+        Row: {
+          family_keys: string[]
+          slug: string
+        }
+        Insert: {
+          family_keys: string[]
+          slug: string
+        }
+        Update: {
+          family_keys?: string[]
+          slug?: string
+        }
+        Relationships: []
+      }
       consumer_analytics_events: {
         Row: {
           consumer_id: string | null
@@ -179,6 +194,7 @@ export type Database = {
           last_name: string | null
           phone: string | null
           sex: string | null
+          show_activity: boolean
         }
         Insert: {
           avatar_url?: string | null
@@ -194,6 +210,7 @@ export type Database = {
           last_name?: string | null
           phone?: string | null
           sex?: string | null
+          show_activity?: boolean
         }
         Update: {
           avatar_url?: string | null
@@ -209,6 +226,7 @@ export type Database = {
           last_name?: string | null
           phone?: string | null
           sex?: string | null
+          show_activity?: boolean
         }
         Relationships: []
       }
@@ -229,6 +247,42 @@ export type Database = {
           ip_hash?: string
         }
         Relationships: []
+      }
+      place_activity: {
+        Row: {
+          consumer_id: string
+          created_at: string
+          kind: string
+          place_id: string
+        }
+        Insert: {
+          consumer_id: string
+          created_at?: string
+          kind: string
+          place_id: string
+        }
+        Update: {
+          consumer_id?: string
+          created_at?: string
+          kind?: string
+          place_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_activity_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_activity_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       place_categories: {
         Row: {
@@ -502,6 +556,39 @@ export type Database = {
           },
         ]
       }
+      place_open_events: {
+        Row: {
+          caller: string
+          code: string | null
+          consumer_id: string | null
+          created_at: string
+          google_place_id: string
+          id: number
+          outcome: string
+          place_id: string | null
+        }
+        Insert: {
+          caller: string
+          code?: string | null
+          consumer_id?: string | null
+          created_at?: string
+          google_place_id: string
+          id?: never
+          outcome: string
+          place_id?: string | null
+        }
+        Update: {
+          caller?: string
+          code?: string | null
+          consumer_id?: string | null
+          created_at?: string
+          google_place_id?: string
+          id?: never
+          outcome?: string
+          place_id?: string | null
+        }
+        Relationships: []
+      }
       place_profiles: {
         Row: {
           address: string | null
@@ -524,6 +611,7 @@ export type Database = {
           facebook_found: boolean
           facebook_url: string | null
           family_keys: string[] | null
+          google_address: Json | null
           google_found: boolean
           google_maps_url: string | null
           google_name: string | null
@@ -558,6 +646,7 @@ export type Database = {
           reservation_target: string | null
           reservations_enabled: boolean
           resy_url: string | null
+          source_sync: Json | null
           story: string | null
           tags: string[]
           threads_url: string | null
@@ -590,6 +679,7 @@ export type Database = {
           facebook_found?: boolean
           facebook_url?: string | null
           family_keys?: string[] | null
+          google_address?: Json | null
           google_found?: boolean
           google_maps_url?: string | null
           google_name?: string | null
@@ -624,6 +714,7 @@ export type Database = {
           reservation_target?: string | null
           reservations_enabled?: boolean
           resy_url?: string | null
+          source_sync?: Json | null
           story?: string | null
           tags?: string[]
           threads_url?: string | null
@@ -656,6 +747,7 @@ export type Database = {
           facebook_found?: boolean
           facebook_url?: string | null
           family_keys?: string[] | null
+          google_address?: Json | null
           google_found?: boolean
           google_maps_url?: string | null
           google_name?: string | null
@@ -690,6 +782,7 @@ export type Database = {
           reservation_target?: string | null
           reservations_enabled?: boolean
           resy_url?: string | null
+          source_sync?: Json | null
           story?: string | null
           tags?: string[]
           threads_url?: string | null
@@ -1118,6 +1211,7 @@ export type Database = {
           facebook_followers: number | null
           facebook_url: string | null
           family_keys: string[] | null
+          google_address: Json | null
           google_maps_url: string | null
           google_name: string | null
           google_place_id: string | null
@@ -1151,6 +1245,7 @@ export type Database = {
           reservations_enabled: boolean | null
           resy_url: string | null
           slug: string | null
+          source_sync: Json | null
           state: Database["public"]["Enums"]["place_state"] | null
           story: string | null
           tags: string[] | null
@@ -1202,6 +1297,7 @@ export type Database = {
         Returns: boolean
       }
       close_stale_place_enrichment_runs: { Args: never; Returns: number }
+      families_for_category: { Args: { cat: string }; Returns: string[] }
       generate_consumer_code: { Args: never; Returns: string }
       is_super_admin: { Args: never; Returns: boolean }
       open_place_enrichment_run: {
@@ -1220,6 +1316,36 @@ export type Database = {
           retry_after: string
           run_id: string
         }[]
+      }
+      place_activity_feed: {
+        Args: { p_limit?: number }
+        Returns: {
+          avatar_url: string
+          consumer_id: string
+          created_at: string
+          first_name: string
+          instagram_followers_count: number
+          instagram_handle: string
+          kind: string
+          place_id: string
+        }[]
+      }
+      place_activity_people: {
+        Args: { p_limit?: number; p_place_id: string }
+        Returns: {
+          avatar_url: string
+          consumer_id: string
+          created_at: string
+          first_name: string
+          instagram_followers_count: number
+          instagram_handle: string
+          kind: string
+          total: number
+        }[]
+      }
+      place_activity_visible: {
+        Args: { c: Database["public"]["Tables"]["consumers"]["Row"] }
+        Returns: boolean
       }
       run_place_enrichment_stages: { Args: never; Returns: number }
       seed_place_categories: { Args: never; Returns: undefined }
