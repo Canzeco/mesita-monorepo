@@ -432,8 +432,8 @@ describe("T5b — Home's header and Search's header", () => {
     expect(chat).not.toMatch(/<AskAiTab/);
   });
 
-  // Home is ONE page: the catalog. Its Social row opens the feed at
-  // /discover/social (MESITA-2442), so no pane of Home is Soon.
+  // Home is ONE page: the catalog. Its Social row draws the feed in the
+  // right pane, never a page (MESITA-2474), so no pane of Home is Soon.
   it("Home lands on the catalog, its one page under discover", () => {
     expect(CONSUMER_ROUTES.discoverDefault).toBe(CONSUMER_ROUTES.discoverTabs.places);
     expect(Object.values(CONSUMER_ROUTES.discoverTabs)).toEqual(["/discover/places"]);
@@ -445,12 +445,9 @@ describe("T5b — Home's header and Search's header", () => {
     expect(places).not.toContain("HomeSoon");
     const rails = readFileSync(join(COMPONENTS, "home", "CatalogRails.tsx"), "utf8");
     expect(rails).not.toContain("<HomeSoon");
-    expect(rails).toContain("router.push(CONSUMER_ROUTES.discoverSocial)");
-    const social = readFileSync(
-      join(SHELL, "(discovery)", "discover", "social", "page.tsx"),
-      "utf8",
-    );
-    expect(social).toContain("<SocialFeed");
+    expect(rails).toContain("if (chip === SOCIAL_CHIP) return shell(<SocialFeed />);");
+    expect(rails).not.toContain("router.push");
+    expect(new Set(allPages().map(pageUrl))).not.toContain("/discover/social");
     const soon = readFileSync(join(COMPONENTS, "home", "HomeSoon.tsx"), "utf8");
     expect(soon).toContain("is coming soon");
   });

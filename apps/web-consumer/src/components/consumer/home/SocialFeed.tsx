@@ -1,6 +1,8 @@
 "use client";
 
 // Home › Social (MESITA-2442): where members go. Activity, not reviews.
+// It draws in Home's right pane when the Social row is chosen (MESITA-2474);
+// the row is its title, so it has no header and no scroller of its own.
 //
 //   (P) Perdón @perdon · 12.4K                     2h
 //       went to Contramar                    [photo]
@@ -14,7 +16,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import {
   apiListActivityFeed,
   type ActivityFeedItem,
@@ -26,7 +28,6 @@ import { useUserLocation } from "@/lib/use-user-location";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { placeHref } from "@/lib/place-route";
 import { cardPhoto } from "@/lib/place-placeholder";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { EmptyState } from "@/components/shared";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { errMsg, firstInitial, formatCompactCount } from "@/lib/utils";
@@ -144,49 +145,38 @@ export function SocialFeed() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase, fromKey]);
 
+  if (state.status === "loading") {
+    return (
+      <div className="flex flex-col gap-3 p-4" data-social-loading>
+        {Array.from({ length: 4 }, (_, i) => (
+          <Skeleton key={i} className="h-16 rounded-xl" />
+        ))}
+      </div>
+    );
+  }
+  if (state.status === "error") {
+    return (
+      <EmptyState
+        icon={Users}
+        title="Couldn't load Social"
+        description={state.message}
+      />
+    );
+  }
+  if (state.items.length === 0) {
+    return (
+      <EmptyState
+        icon={Users}
+        title="No activity yet"
+        description="When members with Instagram save a place, open one, or tap I went, it shows up here."
+      />
+    );
+  }
   return (
-    <div className="bg-card flex min-h-0 flex-1 flex-col">
-      <div className="border-border flex shrink-0 items-center gap-2 border-b px-2 py-2">
-        <Link
-          href={CONSUMER_ROUTES.discoverDefault}
-          aria-label="Back to Home"
-          className="hover:bg-muted flex h-11 w-11 items-center justify-center rounded-full transition"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <h1 className="font-display text-lg font-semibold tracking-tight">
-          Social
-        </h1>
-      </div>
-      <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain">
-        {state.status === "loading" ? (
-          <div className="flex flex-col gap-3 p-4" data-social-loading>
-            {Array.from({ length: 4 }, (_, i) => (
-              <Skeleton key={i} className="h-16 rounded-xl" />
-            ))}
-          </div>
-        ) : state.status === "error" ? (
-          <EmptyState
-            icon={Users}
-            title="Couldn't load Social"
-            description={state.message}
-            action={{ label: "Try again", href: CONSUMER_ROUTES.discoverSocial }}
-          />
-        ) : state.items.length === 0 ? (
-          <EmptyState
-            icon={Users}
-            title="No activity yet"
-            description="When members with Instagram save a place, open one, or tap I went, it shows up here."
-            action={{ label: "Find a place", href: CONSUMER_ROUTES.discoverDefault }}
-          />
-        ) : (
-          <ul role="list" aria-label="Social" className="divide-border divide-y pb-6">
-            {state.items.map((item) => (
-              <FeedRow key={`${item.placeId}|${item.kind}`} item={item} />
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
+    <ul role="list" aria-label="Social" className="divide-border divide-y pb-6">
+      {state.items.map((item) => (
+        <FeedRow key={`${item.placeId}|${item.kind}`} item={item} />
+      ))}
+    </ul>
   );
 }
