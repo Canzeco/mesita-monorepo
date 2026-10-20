@@ -152,17 +152,26 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
     expect(src).toContain("apiListAreaPool(supabase, from, prefer, families)");
   });
 
-  // MESITA-2452: the pill and its sheet became one scrolling chip row.
-  it("the header's location is a scrolling chip row in Search's chip tokens, no sheet", () => {
-    expect(picker).toContain("scrollbar-hide flex items-center gap-2 overflow-x-auto");
-    expect(picker).toContain("cn(CHIP, hereOn ? CHIP_ON : CHIP_OFF)");
+  // MESITA-2452: the pill and its sheet became chips; MESITA-2453 pinned
+  // Current location and Add as discs around the scrolling saved chips.
+  it("pins Current location and Add as discs around the scrolling saved chips, no sheet", () => {
+    expect(picker).toContain("scrollbar-hide flex min-w-0 flex-1 items-center gap-2 overflow-x-auto");
+    const here = picker.indexOf("data-home-location");
+    const scroll = picker.indexOf("data-places-location");
+    const add = picker.indexOf("data-places-add-location");
+    expect(here).toBeLessThan(scroll);
+    expect(scroll).toBeLessThan(add);
+    // Both pinned controls are Search's disc, outside the scroller.
+    expect(picker.match(/HEADER_DISC/g)?.length).toBeGreaterThanOrEqual(3);
+    expect(picker.slice(scroll, add)).toContain("</nav>");
+    expect(picker).toContain("cn(CHIP, CHIP_OFF)");
     expect(picker).toContain('from "@/components/consumer/search/header-classes"');
     expect(picker).not.toContain("<LocalSheet");
     expect(picker).not.toContain("<ChevronDown");
   });
 
   it("the chips: Current location, the saved locations, then Add", () => {
-    expect(picker.indexOf("locationLabel(null, coords !== null, locating)")).toBeLessThan(
+    expect(picker.indexOf("data-home-location")).toBeLessThan(
       picker.indexOf("savedLocations.map((l)"),
     );
     expect(picker.indexOf("savedLocations.map((l)")).toBeLessThan(picker.indexOf("data-places-add-location"));
