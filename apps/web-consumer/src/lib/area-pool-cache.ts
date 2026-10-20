@@ -13,7 +13,9 @@ export function areaPoolKey(
   origin: { key?: string; lat: number; lng: number } | null,
 ): string {
   if (!origin) return "none";
-  if (origin.key) return origin.key;
+  // A saved pin keys by its id AND where it stands (MESITA-2501): moving the
+  // pin is a new question, a renamed pin is not.
+  if (origin.key) return `${origin.key}@${origin.lat.toFixed(4)},${origin.lng.toFixed(4)}`;
   return `current:${origin.lat.toFixed(2)},${origin.lng.toFixed(2)}`;
 }
 

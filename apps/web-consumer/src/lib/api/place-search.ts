@@ -132,3 +132,26 @@ export async function apiReverseGeocode(
     return null;
   }
 }
+
+/** What Google says about a saved location's pin (MESITA-2501). */
+export type PinNames = { suggestedName: string | null; formattedAddress: string | null };
+
+/**
+ * Name a pin the guest is placing (MESITA-2500/2501): the colonia (else the
+ * municipio, else "city, state") and the street, at the server's ~11 m pin
+ * snap. Throws an `EFError` whose `code` says whether to try again
+ * (`classifyThrown` in `lib/pin-picker-state.ts`); an answer with neither
+ * name is the terminal `no_area_name`.
+ */
+export async function apiReverseGeocodePin(
+  client: SupabaseClient,
+  point: { lat: number; lng: number },
+): Promise<PinNames> {
+  const res = await invokeEF<{ suggestedName?: unknown; formattedAddress?: unknown }>(
+    client,
+    "consumer-web-reverse-geocode",
+    { lat: point.lat, lng: point.lng, precision: "pin" },
+  );
+  const text = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
+  return { suggestedName: text(res.suggestedName), formattedAddress: text(res.formattedAddress) };
+}

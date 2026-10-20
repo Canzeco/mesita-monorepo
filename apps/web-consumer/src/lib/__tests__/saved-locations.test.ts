@@ -1,104 +1,183 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   addSavedLocation,
   clearSavedLocationsLocal,
-  isLocationBounds,
+  confirmedPatch,
+  displayName,
+  evictionFor,
+  getSavedLocations,
+  patchSavedLocationInPlace,
+  readStoredLocations,
   removeSavedLocation,
+  SAVED_LOCATION_FALLBACK,
   SAVED_LOCATIONS_MAX,
+  updateSavedLocation,
+  type SavedLocationInput,
 } from "@/lib/saved-locations";
-import { isRegionPick } from "@/lib/location-pick";
+import { resolveActiveLocation, savedLocationKey } from "@/lib/active-location";
 
-// Pato (MESITA-2380): Add location saves the guest's own named points; Places
-// searches from the one picked. They live in this browser, like Favorites.
+// Pato (MESITA-2380): the guest's own named points, in this browser, like
+// Favorites. Since MESITA-2501 every one is a pin the guest confirmed on a
+// map, named from that pin.
 const reset = readFileSync(join(__dirname, "../consumer-local-reset.ts"), "utf8");
-const pickSrc = readFileSync(join(__dirname, "../location-pick.ts"), "utf8");
 
-// Node has no window: the store runs in memory, which is all this pins.
-describe("saved locations (MESITA-2380)", () => {
+const pin = (over: Partial<SavedLocationInput> = {}): SavedLocationInput => ({
+  lat: 25.6514,
+  lng: -100.2895,
+  suggestedName: "Tecnológico",
+  customName: null,
+  formattedAddress: "Avenida Eugenio Garza Sada 2501",
+  nameEdited: false,
+  needsName: false,
+  ...over,
+});
+
+// Node has no window: the store runs in memory, which is all most cases pin.
+describe("saved locations are confirmed pins (MESITA-2501)", () => {
   beforeEach(() => clearSavedLocationsLocal());
 
-  it("saves newest first, trims the name, and replaces a same-name save", () => {
-    const a = addSavedLocation({ name: " Home ", lat: 25.6, lng: -100.3 });
-    expect(a.name).toBe("Home");
-    const b = addSavedLocation({ name: "Office", lat: 25.7, lng: -100.4 });
-    const c = addSavedLocation({ name: "home", lat: 1, lng: 2 });
-    expect([b.id, c.id]).not.toContain(a.id);
-    removeSavedLocation(c.id);
-    removeSavedLocation(b.id);
-    // a was replaced by c, so nothing is left.
-    expect(addSavedLocation({ name: "x", lat: 0, lng: 0 }).name).toBe("x");
+  it("shows the guest's name, else Google's, else Saved location", () => {
+    expect(displayName({ customName: "Casa", suggestedName: "Tecnológico" })).toBe("Casa");
+    expect(displayName({ customName: null, suggestedName: "Tecnológico" })).toBe("Tecnológico");
+    expect(displayName({ customName: null, suggestedName: null })).toBe(SAVED_LOCATION_FALLBACK);
   });
 
-  it("keeps at most SAVED_LOCATIONS_MAX", () => {
-    const ids = Array.from({ length: SAVED_LOCATIONS_MAX + 2 }, (_, i) =>
-      addSavedLocation({ name: `L${i}`, lat: i, lng: i }).id,
-    );
-    expect(new Set(ids).size).toBe(ids.length);
+  it("saves newest first; two pins with the same name are both kept", () => {
+    const a = addSavedLocation(pin({ customName: "Oficina", nameEdited: true }), null, 1000);
+    const b = addSavedLocation(pin({ lat: 25.7, customName: "Oficina", nameEdited: true }), null, 2000);
+    expect(a?.kept).toBe(true);
+    const list = getSavedLocations();
+    expect(list.map((l) => l.id)).toEqual([b!.location.id, a!.location.id]);
+    expect(list.every((l) => l.name === "Oficina")).toBe(true);
+    // Named from the pin when it is saved; a pin saved before Google
+    // answered waits for the backfill.
+    expect(a!.location.namedAt).toBe(1000);
+    expect(addSavedLocation(pin({ needsName: true }))!.location.namedAt).toBeNull();
+  });
+
+  it("a ninth save drops the oldest pin without a custom name, never the active one", () => {
+    const ids: string[] = [];
+    for (let i = 0; i < SAVED_LOCATIONS_MAX; i++) ids.push(addSavedLocation(pin({ lat: i }))!.location.id);
+    const oldest = ids[0];
+    const second = ids[1];
+    // The oldest is active: the next-oldest makes room.
+    addSavedLocation(pin({ lat: 99 }), oldest);
+    const after = getSavedLocations().map((l) => l.id);
+    expect(after).toHaveLength(SAVED_LOCATIONS_MAX);
+    expect(after).toContain(oldest);
+    expect(after).not.toContain(second);
+  });
+
+  it("eight named pins leave no room: the save waits until one is removed", () => {
+    for (let i = 0; i < SAVED_LOCATIONS_MAX; i++) addSavedLocation(pin({ lat: i, customName: `P${i}`, nameEdited: true }));
+    expect(evictionFor(getSavedLocations(), null)).toBeUndefined();
+    expect(addSavedLocation(pin())).toBeNull();
+    removeSavedLocation(getSavedLocations()[0].id);
+    expect(evictionFor(getSavedLocations(), null)).toBeNull();
+  });
+
+  it("an edit keeps the id and moves to the front; a backfill keeps the order", () => {
+    const a = addSavedLocation(pin({ lat: 1 }))!.location;
+    const b = addSavedLocation(pin({ lat: 2 }))!.location;
+    const edited = updateSavedLocation(a.id, { customName: "Casa", nameEdited: true });
+    expect(edited?.location.id).toBe(a.id);
+    expect(edited?.location.name).toBe("Casa");
+    expect(getSavedLocations().map((l) => l.id)).toEqual([a.id, b.id]);
+    patchSavedLocationInPlace(b.id, { suggestedName: "Roma" });
+    expect(getSavedLocations().map((l) => l.id)).toEqual([a.id, b.id]);
+    expect(getSavedLocations()[1].name).toBe("Roma");
+  });
+
+  it("confirming a pin clears the legacy flags and stamps when Google named it", () => {
+    const patch = confirmedPatch(pin(), 5000);
+    expect(patch).toMatchObject({ unconfirmed: false, legacyName: null, namedAt: 5000, needsName: false });
+    expect(confirmedPatch(pin({ needsName: true }), 5000).namedAt).toBeNull();
   });
 
   it("is wiped when a different guest signs in, like Favorites", () => {
     expect(reset).toContain("clearSavedLocationsLocal();");
   });
+});
 
-  it("reads an entry stored before kinds as a point; valid bounds make an area", () => {
-    const point = addSavedLocation({ name: "Home", lat: 25.6, lng: -100.3 });
-    expect(point.kind).toBe("point");
-    expect(point.bounds).toBeUndefined();
-    const area = addSavedLocation({
+describe("entries stored before confirmed pins", () => {
+  it("an old area reads as an UNCONFIRMED point at its own lat/lng, its name kept for 'Was:'", () => {
+    const [old] = readStoredLocations([
+      {
+        id: "a1",
+        name: "San Pedro",
+        lat: 25.65,
+        lng: -101.12,
+        kind: "area",
+        bounds: { low: { lat: 25.6, lng: -101.2 }, high: { lat: 25.7, lng: -101.0 } },
+      },
+    ]);
+    expect(old).toMatchObject({
+      id: "a1",
+      lat: 25.65,
+      lng: -101.12,
+      kind: "point",
+      suggestedName: "San Pedro",
+      customName: null,
+      legacyName: "San Pedro",
+      needsName: true,
+      unconfirmed: true,
+      nameEdited: false,
+    });
+    expect(old).not.toHaveProperty("bounds");
+  });
+
+  it("a new entry round-trips; anything without a pin is dropped", () => {
+    const stored = readStoredLocations([
+      { id: "n1", lat: 1, lng: 2, suggestedName: "Roma", customName: "Casa", formattedAddress: null, nameEdited: true, namedAt: 9, needsName: false, unconfirmed: false, legacyName: null },
+      { id: "x", name: "No pin" },
+      "junk",
+    ]);
+    expect(stored).toHaveLength(1);
+    expect(stored[0]).toMatchObject({ name: "Casa", namedAt: 9, unconfirmed: false });
+  });
+
+  it("an unconfirmed entry never drives Home: the active key falls back to current location", () => {
+    const [old] = readStoredLocations([{ id: "a1", name: "San Pedro", lat: 1, lng: 2, kind: "point" }]);
+    expect(resolveActiveLocation(savedLocationKey("a1"), [old])).toBeNull();
+    const confirmed = { ...old, unconfirmed: false };
+    expect(resolveActiveLocation(savedLocationKey("a1"), [confirmed])).toEqual({
+      key: "saved:a1",
       name: "San Pedro",
-      lat: 25.66,
-      lng: -100.4,
-      bounds: { low: { lat: 25.6, lng: -100.45 }, high: { lat: 25.7, lng: -100.35 } },
-    });
-    expect(area.kind).toBe("area");
-    expect(area.bounds?.high.lat).toBe(25.7);
-    // An inverted rectangle is no area.
-    const bad = addSavedLocation({
-      name: "Bad",
       lat: 1,
-      lng: 1,
-      bounds: { low: { lat: 2, lng: 2 }, high: { lat: 1, lng: 1 } },
+      lng: 2,
     });
-    expect(bad.kind).toBe("point");
-    expect(isLocationBounds({ low: { lat: 0, lng: 0 } })).toBe(false);
+    expect(resolveActiveLocation("saved:gone", [confirmed])).toBeNull();
+    expect(resolveActiveLocation(null, [confirmed])).toBeNull();
+  });
+});
+
+describe("a browser that refuses to keep the list", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    clearSavedLocationsLocal();
   });
 
-  it("saves a region pick as an area, anything else as a point (MESITA-2383)", () => {
-    expect(isRegionPick({ kind: "location", locationType: "locality" })).toBe(true);
-    expect(isRegionPick({ kind: "location", locationType: "sublocality_level_1" })).toBe(true);
-    expect(isRegionPick({ kind: "location", locationType: "neighborhood" })).toBe(true);
-    expect(isRegionPick({ kind: "location", locationType: "postal_code" })).toBe(true);
-    // A street address comes back as a Location row too; it is a point.
-    expect(isRegionPick({ kind: "location", locationType: "street_address" })).toBe(false);
-    expect(isRegionPick({ kind: "location", locationType: "route" })).toBe(false);
-    expect(isRegionPick({ kind: "place", locationType: "locality" })).toBe(false);
-    expect(pickSrc).toContain("bounds: isRegionPick(row) ? anchor.viewport : null");
-  });
-
-  // MESITA-2464: the search lives in the location sheet itself; a pick is
-  // resolved, saved under its Google name and made active in one tap. The
-  // separate Add location sheet and its naming step are gone.
-  it("searches locations right in the sheet; a pick is saved and chosen at once", () => {
-    const picker = readFileSync(
-      join(__dirname, "../../components/consumer/home/LocationPicker.tsx"),
-      "utf8",
-    );
-    expect(picker).toContain("savedLocations.map((l)");
-    expect(picker).toContain("data-places-location-search");
-    expect(picker).toContain(
-      "const loc = addSavedLocation(await resolveLocationPick(supabase, r));",
-    );
-    expect(picker).toContain("setActiveLocation(activeFrom(loc));");
-    expect(picker.indexOf("data-places-location-search")).toBeLessThan(
-      picker.indexOf("savedLocations.map((l)"),
-    );
-    expect(picker).not.toContain("AddLocationSheet");
-    expect(picker).not.toContain("data-places-add-location");
-    expect(
-      existsSync(join(__dirname, "../../components/consumer/home/AddLocationSheet.tsx")),
-    ).toBe(false);
+  it("reports the save as not kept, and a second save of the same pin updates it", () => {
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: () => null,
+        removeItem: () => {},
+        setItem: () => {
+          throw new Error("QuotaExceededError");
+        },
+      },
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    });
+    clearSavedLocationsLocal();
+    const first = addSavedLocation(pin());
+    expect(first?.kept).toBe(false);
+    // The picker keeps the id and updates instead of adding a duplicate.
+    updateSavedLocation(first!.location.id, confirmedPatch(pin({ customName: "Casa", nameEdited: true })));
+    expect(getSavedLocations()).toHaveLength(1);
+    expect(getSavedLocations()[0].name).toBe("Casa");
   });
 });

@@ -47,7 +47,7 @@ describe("AreaDiagnostics (temporary)", () => {
     expect(html).toContain("data-area-diagnostics");
   });
 
-  it("an area reads area × popularity^b × selected^c = final, and never says Territory", () => {
+  it("anything but a point has no Proximity and no zone gate (MESITA-2501)", () => {
     const area: Area = {
       ...base,
       gates: { ...base.gates, territory: 1, radius: null },
@@ -59,18 +59,25 @@ describe("AreaDiagnostics (temporary)", () => {
       formula: "area",
       weights: { proximity: 1, popularity: 1, selected: 1 },
     };
-    expect(diagExpression(area)).toBe("area 1 × popularity 0.40^1 × selected 0.30^1 = 0.12");
+    expect(diagExpression(area)).toBe("popularity 0.40^1 × selected 0.30^1 = 0.12");
     const html = renderToStaticMarkup(<AreaDiagnostics area={area} />);
-    expect(html).toContain("in area 1");
+    expect(html).not.toContain("in area");
     expect(html).not.toContain("proximity");
     expect(html).not.toMatch(/territory/i);
+    // An EF from after MESITA-2500 sends no territory gate at all.
+    const { territory: _gone, ...gates } = base.gates;
+    expect(renderToStaticMarkup(<AreaDiagnostics area={{ ...base, gates }} />)).toContain("radius 1");
   });
 });
 
 describe("the per-location pool cache", () => {
-  it("keys a saved location by id, current location by ~1 km cell, none without a location", () => {
+  it("keys a saved pin by id and spot, current location by ~1 km cell, none without a location", () => {
     expect(areaPoolKey(null)).toBe("none");
-    expect(areaPoolKey({ key: "saved:x", lat: 1, lng: 2 })).toBe("saved:x");
+    expect(areaPoolKey({ key: "saved:x", lat: 1, lng: 2 })).toBe("saved:x@1.0000,2.0000");
+    // A moved pin is a new question (MESITA-2501); a renamed one is not.
+    expect(areaPoolKey({ key: "saved:x", lat: 1.0005, lng: 2 })).not.toBe(
+      areaPoolKey({ key: "saved:x", lat: 1, lng: 2 }),
+    );
     expect(areaPoolKey({ lat: 25.6512, lng: -100.2891 })).toBe("current:25.65,-100.29");
     expect(areaPoolKey({ lat: 25.6538, lng: -100.2899 })).toBe("current:25.65,-100.29");
   });

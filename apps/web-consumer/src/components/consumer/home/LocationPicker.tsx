@@ -11,16 +11,14 @@
 // History: plain text (MESITA-2473), a full-width bordered bar (MESITA-2405), a chip row with discs
 // (MESITA-2452..2454), a borderless line (MESITA-2456), an oval
 // (MESITA-2459), beside the logo (MESITA-2470).
-// A tap opens the location sheet (MESITA-2464: "the direct search bar of
-// locations"): a search field on top, then Current location and the guest's
-// saved locations (each removable). Typing swaps that list for matches; a
-// tap resolves the match (a region saves an AREA, anything else a POINT,
-// lib/location-pick.ts), keeps it under its Google name, makes it the active
-// location and closes: one step, no naming screen (the separate Add location
-// sheet of MESITA-2380 is gone). Before typing, "Around you" lists the areas
-// the guest stands in (MESITA-2471, Instagram's Add location: neighbourhood,
-// district, city from consumer-web-reverse-geocode); a tap saves the area
-// with its rectangle and makes it active. The choice lives in
+//
+// A tap opens the location sheet (MESITA-2464): a search field on top, then
+// Current location, "Around you" (MESITA-2471: the areas the guest stands
+// in) and the guest's saved locations. EVERY SAVED LOCATION IS A CONFIRMED
+// PIN (Pato, 2026-10-20, MESITA-2501): a match, an "Around you" row, a
+// saved row's pencil and an old unconfirmed entry all open the pin picker
+// (`PinPicker.tsx`) in the same sheet; nothing is saved until the guest
+// confirms the pin. Saved areas (MESITA-2383) are gone. The choice lives in
 // `lib/active-location.ts`, which Home's catalog reads.
 
 import { useEffect, useState, type ReactNode } from "react";
@@ -30,8 +28,8 @@ import {
   Loader2,
   MapPin,
   Navigation,
+  Pencil,
   Search,
-  X,
 } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
@@ -45,19 +43,26 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { useHere } from "@/lib/use-here-name";
 import type { NearbyArea } from "@/lib/api/place-search";
 import { newSessionToken } from "@/components/consumer/search/search-utils";
-import { resolveLocationPick } from "@/lib/location-pick";
+import { aroundYouCamera, pickCamera, type PickerCamera } from "@/lib/location-pick";
+import { MONTERREY_CENTER } from "@/lib/map-defaults";
 import {
   useLocateUser,
   useUserLocation,
   useUserLocationLocating,
 } from "@/lib/use-user-location";
 import {
-  addSavedLocation,
-  removeSavedLocation,
+  displayName,
+  evictionFor,
   useSavedLocations,
   type SavedLocation,
 } from "@/lib/saved-locations";
-import { setActiveLocation, useActiveLocation } from "@/lib/active-location";
+import {
+  savedLocationKey,
+  setActiveLocation,
+  useActiveLocation,
+  useActiveLocationKey,
+} from "@/lib/active-location";
+import { PinPicker, type PinPickerMode } from "@/components/consumer/home/PinPicker";
 import { cn, errMsg } from "@/lib/utils";
 
 /** Home's location control (MESITA-2480): a 36px rounded box on the white
@@ -89,31 +94,30 @@ const AREA_LEVEL_WORD: Record<NearbyArea["level"], string> = {
 };
 
 /** "Around you" (MESITA-2471, Instagram's Add location): the areas around
- *  the guest, minus any already saved under the same name. */
+ *  the guest, minus any already saved under the same display name. */
 export function aroundYouRows(
   areas: readonly NearbyArea[],
-  saved: readonly { name: string }[],
+  saved: readonly Pick<SavedLocation, "customName" | "suggestedName">[],
 ): NearbyArea[] {
-  const savedNames = new Set(saved.map((l) => l.name.trim().toLowerCase()));
+  const savedNames = new Set(saved.map((l) => displayName(l).trim().toLowerCase()));
   return areas.filter((a) => !savedNames.has(a.name.trim().toLowerCase()));
 }
 
-/** A saved location as the active one. */
-function activeFrom(l: SavedLocation) {
-  return {
-    key: `saved:${l.id}`,
-    name: l.name,
-    lat: l.lat,
-    lng: l.lng,
-    bounds: l.bounds,
-  };
-}
+/** A saved pin reopened in the picker. */
+const SAVED_PIN_ZOOM = 16;
+
+type PickerTarget = {
+  mode: PinPickerMode;
+  camera: PickerCamera;
+  entry: SavedLocation | null;
+};
 
 export function LocationPicker() {
   const coords = useUserLocation();
   const locating = useUserLocationLocating();
   const locate = useLocateUser();
   const active = useActiveLocation();
+  const activeKey = useActiveLocationKey();
   const savedLocations = useSavedLocations();
   const supabase = useBrowserSupabase();
   const [picking, setPicking] = useState(false);
@@ -122,6 +126,7 @@ export function LocationPicker() {
   const [searching, setSearching] = useState(false);
   const [resolving, setResolving] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [picker, setPicker] = useState<PickerTarget | null>(null);
   // Google bills Autocomplete per session: one token until a pick or close.
   const [token, setToken] = useState(newSessionToken);
   const label = locationLabel(active, coords !== null, locating);
@@ -132,8 +137,12 @@ export function LocationPicker() {
   const hereName = here.name;
   const aroundYou = aroundYouRows(here.areas, savedLocations);
   const typing = query.trim().length >= 2;
+  const activeId = activeKey?.startsWith("saved:") ? activeKey.slice(6) : null;
+  const listFull = evictionFor(savedLocations, activeId) === undefined;
 
-  // Search after a short pause; the newest query wins.
+  // Search after a short pause; the newest query wins. With no fix the
+  // search leans on Monterrey (MESITA-2501): an unbiased "San Pedro" once
+  // came back as San Pedro, Coahuila.
   useEffect(() => {
     const q = query.trim();
     if (q.length < 2) return;
@@ -141,7 +150,7 @@ export function LocationPicker() {
     const t = setTimeout(async () => {
       setSearching(true);
       try {
-        const rows = await apiSuggestPlaces(supabase, q, token, coords);
+        const rows = await apiSuggestPlaces(supabase, q, token, coords ?? MONTERREY_CENTER);
         if (!cancelled) {
           setResults(rows.slice(0, 8));
           setError(null);
@@ -162,6 +171,7 @@ export function LocationPicker() {
 
   const close = () => {
     setPicking(false);
+    setPicker(null);
     setQuery("");
     setResults([]);
     setError(null);
@@ -169,15 +179,19 @@ export function LocationPicker() {
     setToken(newSessionToken());
   };
 
+  /** Back from the picker: to the results (query kept) or the list. */
+  const back = () => setPicker(null);
+
   const pick = async (r: PlacePrediction) => {
     setError(null);
     setResolving(r.placeId);
     try {
-      const loc = addSavedLocation(await resolveLocationPick(supabase, r));
-      setActiveLocation(activeFrom(loc));
-      close();
+      setPicker({ mode: "new", camera: await pickCamera(supabase, r), entry: null });
     } catch (err) {
-      setError(errMsg(err, "Couldn't open that location right now."));
+      console.warn("[pin-picker] anchor_failed", {
+        code: err && typeof err === "object" && "code" in err ? (err as { code: unknown }).code : null,
+      });
+      setError("Couldn't open that place");
     } finally {
       setResolving(null);
       // Google bills a session per pick; the next search starts a new one.
@@ -185,14 +199,18 @@ export function LocationPicker() {
     }
   };
 
+  const openSaved = (l: SavedLocation, mode: PinPickerMode) =>
+    setPicker({ mode, camera: { center: { lat: l.lat, lng: l.lng }, zoom: SAVED_PIN_ZOOM }, entry: l });
+
   const row = (r: {
     key: string;
     label: string;
+    detail?: string | null;
     icon: ReactNode;
     selected: boolean;
     onClick: () => void;
     muted?: boolean;
-    onRemove?: () => void;
+    trailing?: ReactNode;
   }) => (
     <li key={r.key} className="relative">
       <button
@@ -200,25 +218,20 @@ export function LocationPicker() {
         onClick={r.onClick}
         aria-pressed={r.selected}
         className={cn(
-          "flex w-full items-center gap-3 py-3.5 pr-10 text-left text-sm transition",
+          "flex w-full items-center gap-3 py-3.5 pr-12 text-left text-sm transition",
           r.selected ? "font-semibold" : "hover:bg-muted",
           r.muted && !r.selected && "text-muted-foreground",
         )}
       >
         {r.icon}
-        <span className="min-w-0 truncate">{r.label}</span>
+        <span className="min-w-0">
+          <span className="block truncate">{r.label}</span>
+          {r.detail ? (
+            <span className="text-muted-foreground block truncate text-xs font-normal">{r.detail}</span>
+          ) : null}
+        </span>
       </button>
-      {r.onRemove ? (
-        <button
-          type="button"
-          onClick={r.onRemove}
-          aria-label={`Remove ${r.label}`}
-          className="text-muted-foreground hover:text-foreground absolute inset-y-0 right-0 flex w-9 items-center justify-center"
-          data-places-remove-location
-        >
-          <X className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-        </button>
-      ) : null}
+      {r.trailing}
     </li>
   );
 
@@ -244,7 +257,21 @@ export function LocationPicker() {
         />
       </button>
 
-      <LocalSheet open={picking} onClose={close} ariaLabel="Location">
+      {/* While the pin picker is open, the backdrop and Escape act as Back:
+          they never close the sheet and drop the pin. */}
+      <LocalSheet open={picking} onClose={picker ? back : close} ariaLabel="Location">
+        {picker ? (
+          <PinPicker
+            key={`${picker.mode}:${picker.entry?.id ?? ""}:${picker.camera.center.lat},${picker.camera.center.lng}`}
+            mode={picker.mode}
+            camera={picker.camera}
+            entry={picker.entry}
+            activeKey={activeKey}
+            listFull={listFull}
+            onBack={back}
+            onDone={close}
+          />
+        ) : (
         <div className={SHEET_BODY_CLASS} data-places-location-sheet>
           <h2 className={SHEET_TITLE_CLASS}>Location</h2>
           <label className="relative mt-3 block">
@@ -340,11 +367,7 @@ export function LocationPicker() {
               <li key={`around:${a.name}`}>
                 <button
                   type="button"
-                  onClick={() => {
-                    const loc = addSavedLocation(a);
-                    setActiveLocation(activeFrom(loc));
-                    close();
-                  }}
+                  onClick={() => setPicker({ mode: "new", camera: aroundYouCamera(a), entry: null })}
                   className="hover:bg-muted flex w-full items-center gap-3 py-3 text-left transition"
                   data-places-around-area
                 >
@@ -358,26 +381,48 @@ export function LocationPicker() {
             ))}
             {savedLocations.map((l) =>
               row({
-                key: `saved:${l.id}`,
-                label: l.name,
+                key: savedLocationKey(l.id),
+                label: displayName(l),
+                detail: l.formattedAddress,
                 icon: (
                   <Bookmark className={ICON} strokeWidth={2.25} aria-hidden />
                 ),
-                selected: active?.key === `saved:${l.id}`,
+                selected: activeKey === savedLocationKey(l.id) && !l.unconfirmed,
+                muted: l.unconfirmed,
+                // An old entry no one confirmed on a map opens the picker
+                // first; it never drives a search before that.
                 onClick: () => {
-                  setActiveLocation(activeFrom(l));
+                  if (l.unconfirmed) {
+                    openSaved(l, "confirm");
+                    return;
+                  }
+                  setActiveLocation(savedLocationKey(l.id));
                   close();
                 },
-                // Removing the active location falls back to Current location.
-                onRemove: () => {
-                  removeSavedLocation(l.id);
-                  if (active?.key === `saved:${l.id}`) setActiveLocation(null);
-                },
+                trailing: l.unconfirmed ? (
+                  <span
+                    className="bg-muted text-foreground pointer-events-none absolute inset-y-0 right-0 my-auto flex h-7 items-center rounded-full px-3 text-xs font-semibold"
+                    data-places-confirm-location
+                  >
+                    Confirm
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => openSaved(l, "edit")}
+                    aria-label={`Edit ${displayName(l)}`}
+                    className="text-muted-foreground hover:text-foreground absolute inset-y-0 right-0 flex w-11 items-center justify-center"
+                    data-places-edit-location
+                  >
+                    <Pencil className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+                  </button>
+                ),
               }),
             )}
           </ul>
           )}
         </div>
+        )}
       </LocalSheet>
     </>
   );
