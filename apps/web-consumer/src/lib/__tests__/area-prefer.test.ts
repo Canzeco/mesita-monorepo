@@ -4,7 +4,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-  turnOnLocationCopy,
+  CITY_FALLBACK,
+  cityFallbackBar,
   chipFamilies,
   chipPrefer,
   isEveryFamily,
@@ -60,58 +61,41 @@ describe("Near and Popular", () => {
     );
   });
 
-  // MESITA-2436: with no fix and no saved location the server has no
-  // Proximity, so a Nearby pool would be Popularity alone. Nearby asks for a
-  // location instead, spends no request, and waits for the browser's first
-  // answer before saying so (no flash of "Turn on location" on load).
-  it("Nearby with no location asks for one and spends no request", () => {
+  // MESITA-2472 (Pato: the full-pane "Couldn't find you" "looks like …
+  // shit"): no location is not a dead end. With no fix and no saved
+  // location, once the browser has answered, every row ranks around the
+  // city's centre (the Search map's fallback) under one slim bar; before it
+  // answers, a skeleton and no request.
+  it("no location ranks around Monterrey under a slim bar, never a dead end", () => {
     const rails = src("components/consumer/home/CatalogRails.tsx");
     expect(rails).toContain(
-      'const nearbyNeedsLocation = prefer === "near" && from === null;',
+      "const onCityFallback = origin === null && coords === null && locationSettled;",
     );
-    const effect = rails.slice(rails.indexOf("useEffect(() => {\n    if (nearbyNeedsLocation) return;"));
-    expect(effect.length).toBeGreaterThan(0);
-    expect(effect.indexOf("if (nearbyNeedsLocation) return;")).toBeLessThan(
+    expect(rails).toContain(
+      "const from = origin ?? coords ?? (onCityFallback ? MONTERREY_CENTER : null);",
+    );
+    expect(rails).toContain("const requestKey = `${areaPoolKey(from)}|${prefer}${");
+    const effect = rails.slice(rails.indexOf("useEffect(() => {\n    // Until the browser answers"));
+    expect(effect.indexOf("if (waitingForFix) return;")).toBeGreaterThan(-1);
+    expect(effect.indexOf("if (waitingForFix) return;")).toBeLessThan(
       effect.indexOf("apiListAreaPool("),
     );
-    const branch = rails.slice(
-      rails.indexOf("if (chip === NEAR_CHIP && nearbyNeedsLocation)"),
-      rails.indexOf("if (fetchError)"),
-    );
-    expect(branch).toContain("locationSettled ?");
-    expect(branch).toContain("turnOnLocation");
-    expect(rails.indexOf("if (chip === NEAR_CHIP && nearbyNeedsLocation)")).toBeLessThan(
-      rails.indexOf("if (pool === null)"),
-    );
-    // Popular still answers without a location (Popularity by design).
-    expect(rails).not.toMatch(/prefer === "popular" && from === null/);
+    expect(rails).toContain("{cityBar}");
+    expect(rails).not.toContain("turnOnLocation");
+    expect(rails).not.toContain("Couldn't find you");
+    expect(CITY_FALLBACK.name).toBe("Monterrey");
+    expect(cityFallbackBar(null)).toBe("Showing Monterrey");
+    expect(cityFallbackBar("denied")).toBe("Location is off · Showing Monterrey");
+    expect(cityFallbackBar("unavailable")).toBe("Location is off · Showing Monterrey");
     const hook = src("lib/use-user-location.ts");
     expect(hook).toContain("export function useUserLocationSettled()");
     // No geolocation at all still settles: `asked` is set before the check.
     expect(hook.indexOf("asked = true;")).toBeLessThan(
       hook.indexOf("!navigator.geolocation"),
     );
-  });
-
-  // MESITA-2437: "fix use my location". A refused or failed ask used to be
-  // dropped, so the button looked dead; now the state says why.
-  it("a failed ask says why, and the button becomes Try again", () => {
     expect(locationErrorFromCode(1)).toBe("denied");
     expect(locationErrorFromCode(2)).toBe("unavailable");
     expect(locationErrorFromCode(3)).toBe("timeout");
-    expect(turnOnLocationCopy(null)).toMatchObject({
-      title: "Turn on location",
-      action: "Use my location",
-    });
-    expect(turnOnLocationCopy("denied").title).toBe("Location is blocked");
-    expect(turnOnLocationCopy("denied").description).toContain("site settings");
-    expect(turnOnLocationCopy("unavailable").description).toContain("Location Services");
-    for (const e of ["denied", "unavailable", "timeout", "unsupported"] as const)
-      expect(turnOnLocationCopy(e).action).toBe("Try again");
-    const hook = src("lib/use-user-location.ts");
     expect(hook).toContain("errorState = locationErrorFromCode(err.code);");
-    expect(src("components/consumer/home/CatalogRails.tsx")).toContain(
-      "turnOnLocationCopy(locationError)",
-    );
   });
 });

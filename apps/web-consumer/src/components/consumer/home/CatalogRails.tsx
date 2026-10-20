@@ -38,7 +38,8 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import { Compass, Heart, Navigation } from "lucide-react";
+import { Compass, Heart, MapPin } from "lucide-react";
+import { MONTERREY_CENTER } from "@/lib/map-defaults";
 import {
   apiListAreaPool,
   type AreaPool,
@@ -208,48 +209,17 @@ export function savedPlaceList(
     .map((p) => enrichPlaceOverview(p));
 }
 
-/** Home's no-location state (MESITA-2437): what happened and what to do,
- *  so a refused or failed ask never reads as a dead button. */
-export function turnOnLocationCopy(error: LocationError | null): {
-  title: string;
-  description: string;
-  action: string;
-} {
-  switch (error) {
-    case "denied":
-      return {
-        title: "Location is blocked",
-        description:
-          "Your browser is blocking location for Mesita. Allow it in the site settings (the icon left of the address), then try again.",
-        action: "Try again",
-      };
-    case "unavailable":
-      return {
-        title: "Couldn't find you",
-        description:
-          "Your device didn't give a location. On a Mac, turn on Location Services for your browser in System Settings › Privacy & Security, then try again.",
-        action: "Try again",
-      };
-    case "timeout":
-      return {
-        title: "Couldn't find you",
-        description: "Finding your location took too long. Try again.",
-        action: "Try again",
-      };
-    case "unsupported":
-      return {
-        title: "No location here",
-        description:
-          "This browser can't share a location. Pick a saved location at the top.",
-        action: "Try again",
-      };
-    default:
-      return {
-        title: "Turn on location",
-        description: "Places near you show up once Mesita knows where you are.",
-        action: "Use my location",
-      };
-  }
+/** NO LOCATION IS NOT A DEAD END (Pato, MESITA-2472: the full-pane "Couldn't
+ *  find you" with a paragraph of instructions "looks like … shit"). With no
+ *  fix and no saved location, every row ranks around the city's centre, the
+ *  Search map's own fallback, and one slim bar above the tiles says so. The
+ *  last ask's failure only picks the bar's words. */
+export const CITY_FALLBACK = { name: "Monterrey", ...MONTERREY_CENTER } as const;
+
+export function cityFallbackBar(error: LocationError | null): string {
+  return error === null
+    ? `Showing ${CITY_FALLBACK.name}`
+    : `Location is off · Showing ${CITY_FALLBACK.name}`;
 }
 
 export function CatalogRails() {
@@ -262,7 +232,13 @@ export function CatalogRails() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   // null = the guest's current location; a saved location = search from it.
   const origin = useActiveLocation();
-  const from = origin ?? coords;
+  const locationSettled = useUserLocationSettled();
+  const locationError = useUserLocationError();
+  // No fix and no saved location, once the browser has answered: the city's
+  // centre (MESITA-2472). Before it answers: nothing yet (a skeleton).
+  const onCityFallback = origin === null && coords === null && locationSettled;
+  const from = origin ?? coords ?? (onCityFallback ? MONTERREY_CENTER : null);
+  const waitingForFix = origin === null && coords === null && !locationSettled;
   // Near/Popular (MESITA-2425) is part of the question, so part of the key;
   // the row picks it (MESITA-2426), and every family row asks Family
   // (MESITA-2428). Social and Saved read no pool, so they keep the last
@@ -272,23 +248,16 @@ export function CatalogRails() {
   // The family the pool was asked for (MESITA-2438): a family row's own,
   // none for Nearby and Popular.
   const [families, setFamilies] = useState<string[]>([]);
-  const requestKey = `${areaPoolKey(origin ?? coords)}|${prefer}${
+  const requestKey = `${areaPoolKey(from)}|${prefer}${
     families.length > 0 ? `:${families.join(",")}` : ""
   }`;
-  // NEARBY NEEDS A LOCATION (Pato, MESITA-2436: "you are not computing
-  // stuff correctly"). With no fix and no saved location the server has no
-  // Proximity, so Nearby would come back ranked on Popularity alone: Popular
-  // in disguise. It asks for a location instead and spends no request.
-  // Popular and the family rows still answer without one.
-  const nearbyNeedsLocation = prefer === "near" && from === null;
-  const locationSettled = useUserLocationSettled();
-  const locationError = useUserLocationError();
   // The running load's background reload: the rails on screen stay until
   // the new ones land, and an error never replaces a good feed.
   const reload = useRef<() => void>(() => {});
 
   useEffect(() => {
-    if (nearbyNeedsLocation) return;
+    // Until the browser answers there is no point to rank from yet.
+    if (waitingForFix) return;
     let cancelled = false;
     // The newest request wins; an older response is dropped.
     let seq = 0;
@@ -567,25 +536,29 @@ export function CatalogRails() {
     );
   }
 
-  const noLocation = turnOnLocationCopy(locationError);
-  const turnOnLocation = (
-    <EmptyState
-      icon={Navigation}
-      title={noLocation.title}
-      description={noLocation.description}
-      action={{ label: noLocation.action, onClick: locate }}
-    />
-  );
+  // One slim line above the tiles, never a full-pane state (MESITA-2472).
+  const cityBar = onCityFallback ? (
+    <div
+      className="text-muted-foreground flex items-center gap-1.5 px-3 pt-2.5 pb-1 text-xs"
+      data-places-city-fallback
+    >
+      <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
+      <span className="min-w-0 truncate">{cityFallbackBar(locationError)}</span>
+      <button
+        type="button"
+        onClick={locate}
+        className="text-foreground ml-auto shrink-0 font-semibold underline-offset-2 hover:underline"
+      >
+        Use my location
+      </button>
+    </div>
+  ) : null;
 
-  if (chip === NEAR_CHIP && nearbyNeedsLocation) {
+  if (waitingForFix) {
     return shell(
-      locationSettled ? (
-        turnOnLocation
-      ) : (
-        <div className={PLACES_LIST} data-places-locating>
-          <Skeleton className="aspect-square rounded-2xl" />
-        </div>
-      ),
+      <div className={PLACES_LIST} data-places-locating>
+        <Skeleton className="aspect-square rounded-2xl" />
+      </div>,
     );
   }
 
@@ -612,9 +585,7 @@ export function CatalogRails() {
 
   const label = chips.find((c) => c.key === chip)?.label ?? "Places";
   const empty =
-    isEveryFamily(chip) && from === null ? (
-      turnOnLocation
-    ) : isEveryFamily(chip) ? (
+    isEveryFamily(chip) ? (
       <EmptyState
         icon={Compass}
         title="No places here yet"
@@ -628,5 +599,10 @@ export function CatalogRails() {
       />
     );
 
-  return shell(shown.length === 0 ? empty : tiles(shown, label, true));
+  return shell(
+    <>
+      {cityBar}
+      {shown.length === 0 ? empty : tiles(shown, label, true)}
+    </>,
+  );
 }
