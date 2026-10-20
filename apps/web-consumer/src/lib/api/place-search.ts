@@ -76,24 +76,59 @@ export async function apiCreateProject(
   );
 }
 
+/** An area around the guest (MESITA-2471): a row under "Around you". */
+export type NearbyArea = {
+  name: string;
+  level: "neighborhood" | "district" | "city";
+  lat: number;
+  lng: number;
+  bounds: { low: { lat: number; lng: number }; high: { lat: number; lng: number } };
+};
+
+/** Where the guest stands: the neighbourhood's name and the areas around. */
+export type HereAnswer = { name: string | null; areas: NearbyArea[] };
+
+const LEVELS = new Set(["neighborhood", "district", "city"]);
+
+function isNearbyArea(a: unknown): a is NearbyArea {
+  if (!a || typeof a !== "object") return false;
+  const o = a as Record<string, unknown>;
+  const b = o.bounds as NearbyArea["bounds"] | undefined;
+  return (
+    typeof o.name === "string" &&
+    !!o.name.trim() &&
+    LEVELS.has(o.level as string) &&
+    Number.isFinite(o.lat) &&
+    Number.isFinite(o.lng) &&
+    !!b &&
+    Number.isFinite(b.low?.lat) &&
+    Number.isFinite(b.low?.lng) &&
+    Number.isFinite(b.high?.lat) &&
+    Number.isFinite(b.high?.lng)
+  );
+}
+
 /**
- * The neighbourhood the guest stands in, for Home's Current location row
- * (MESITA-2466). One Geocoding call per ~110 m point on the server; the
- * caller keeps the answer for the visit. Null when Google has no name.
+ * Where the guest stands, for Home's location sheet (MESITA-2466,
+ * MESITA-2471): the neighbourhood for the Current location row and the
+ * areas for "Around you". One Geocoding call per ~110 m point on the
+ * server; the caller keeps the answer for the visit. Null when Google had
+ * nothing or the call failed: a nicety, never an error in the sheet.
  */
 export async function apiReverseGeocode(
   client: SupabaseClient,
   point: { lat: number; lng: number },
-): Promise<string | null> {
+): Promise<HereAnswer | null> {
   try {
-    const { name } = await invokeEF<{ name: string }>(
+    const res = await invokeEF<{ name?: unknown; areas?: unknown }>(
       client,
       "consumer-web-reverse-geocode",
       { lat: point.lat, lng: point.lng },
     );
-    return typeof name === "string" && name.trim() ? name.trim() : null;
+    const name = typeof res.name === "string" && res.name.trim() ? res.name.trim() : null;
+    const areas = Array.isArray(res.areas) ? res.areas.filter(isNearbyArea) : [];
+    return name || areas.length > 0 ? { name, areas } : null;
   } catch {
-    // A name is a nicety: no name, never an error on the row.
     return null;
   }
 }

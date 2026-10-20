@@ -2,8 +2,10 @@
 //
 // Home's location sheet names where the guest stands (MESITA-2466): the
 // Current location row reads "Current location · Tecnológico". POST
-// `{ lat, lng }` → `{ ok: true, name }` (the most local of neighbourhood ·
-// sublocality · city) or `{ ok: false, code }`.
+// `{ lat, lng }` → `{ ok: true, name, areas }` (the most local of
+// neighbourhood · sublocality · city, and the sheet's "Around you" rows,
+// MESITA-2471: each area with its rectangle, from the same answer) or
+// `{ ok: false, code }`.
 //
 // One Google Geocoding (reverse) call per point snapped to ~110 m; repeats
 // in this isolate come from the cache below, and the client keeps each
@@ -21,15 +23,21 @@ import { readEFEnv } from "../_shared/auth.ts";
 import { readGooglePlacesKey } from "../_shared/google-places.ts";
 import {
   geocodeStatus,
+  type NearbyArea,
   pickAreaName,
+  pickNearbyAreas,
   pointKey,
   readPoint,
   reverseGeocodeUrl,
   snapPoint,
 } from "../_shared/reverse-geocode.ts";
 
-/** Snapped point → name (null = Google had none). Bounded, oldest out. */
-const cache = new Map<string, string | null>();
+/** What one snapped point answers: the name (null = Google had none) and
+ *  the areas around it. */
+type Answer = { name: string | null; areas: NearbyArea[] };
+
+/** Snapped point → answer. Bounded, oldest out. */
+const cache = new Map<string, Answer>();
 const CACHE_MAX = 2000;
 const GOOGLE_TIMEOUT_MS = 4000;
 
@@ -48,7 +56,8 @@ Deno.serve(async (req) => {
 
   const snapped = snapPoint(point.lat, point.lng);
   const key = pointKey(snapped);
-  if (cache.has(key)) return reply(cache.get(key) ?? null);
+  const kept = cache.get(key);
+  if (kept) return reply(kept);
 
   const keyRes = readGooglePlacesKey();
   if (!keyRes.ok) return keyRes.response;
@@ -78,17 +87,17 @@ Deno.serve(async (req) => {
     return json({ ok: false, code: `google_${status.toLowerCase()}` });
   }
 
-  const name = pickAreaName(payload);
+  const answer: Answer = { name: pickAreaName(payload), areas: pickNearbyAreas(payload) };
   if (cache.size >= CACHE_MAX) {
     const oldest = cache.keys().next().value;
     if (oldest !== undefined) cache.delete(oldest);
   }
-  cache.set(key, name);
-  return reply(name);
+  cache.set(key, answer);
+  return reply(answer);
 });
 
-function reply(name: string | null): Response {
-  return name
-    ? json({ ok: true, name })
+function reply({ name, areas }: Answer): Response {
+  return name || areas.length > 0
+    ? json({ ok: true, name, areas })
     : json({ ok: false, code: "no_area_name" });
 }
