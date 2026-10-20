@@ -3,6 +3,7 @@
 // Search's header (Pato, MESITA-2409 — OpenTable's shape):
 //
 //   ( ⌖ ) [ ⚲ Search places…  ] ( ✦ )   one white band …
+//   ─────────────────── hairline ──────────────────────
 //   (📍 Nearby) (⭐ Popular) │ (☕ Coffee) (🥐 Breakfast) …   … one hairline under
 //   ─────────────────── map ───────────────────────────
 //
@@ -73,8 +74,10 @@ export function SearchHeader({
       {/* ONE white band for the bar's row AND the chips, one hairline under
           both (Pato, MESITA-2469: Apple Maps / Instagram); the grey chip band
           of MESITA-2462 is gone. Controls are grey fills, so they read on
-          the white. */}
-      <div className="flex min-w-0 items-center gap-2 px-3 pt-2 pb-2">
+          the white. A full-width hairline splits the two rows, each with
+          10px above and below (Pato, MESITA-2479: "top box, line, bottom
+          box"). */}
+      <div className="flex min-w-0 items-center gap-2 px-3 py-2.5">
         {locate}
         <div className="min-w-0 flex-1">{bar}</div>
         <Link
@@ -90,10 +93,10 @@ export function SearchHeader({
           <span>Ask AI</span>
         </Link>
       </div>
-      <div className="relative" data-search-chip-band>
+      <div className="border-border relative border-t" data-search-chip-band>
         <nav
           aria-label="Families"
-          className="scrollbar-hide flex items-center gap-2 overflow-x-auto overscroll-x-contain px-3 pt-0 pb-2"
+          className="scrollbar-hide flex items-center gap-2 overflow-x-auto overscroll-x-contain px-3 py-2.5"
           data-search-chips
         >
           {EVERY_FAMILY_CHIPS.map((c) => {
