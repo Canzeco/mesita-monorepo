@@ -157,8 +157,18 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
   // control (it was a borderless line, MESITA-2456). Never the old
   // full-width h-10 bar (MESITA-2405).
   it("the header's location is one oval: pin, name, chevron, opening the sheet", () => {
-    expect(picker).toContain('className={cn(HEADER_PILL, "ml-auto max-w-full min-w-0 justify-center")}');
-    expect(picker).toContain('import { HEADER_PILL } from "@/components/consumer/search/header-classes";');
+    // MESITA-2473 ("A · Quiet"): plain text, no fill, no outline, a 44px
+    // target; the 22px logo sits beside it in one 52px row.
+    expect(picker).toContain("className={HOME_LOCATION_CLASS}");
+    expect(picker).not.toContain("HEADER_PILL");
+    const tokens = (picker.match(/HOME_LOCATION_CLASS =\s*"([^"]*)"/)?.[1] ?? "").split(/\s+/);
+    expect(tokens).toContain("h-11");
+    // No resting fill and no outline (a hover or focus wash is fine).
+    for (const resting of ["border", "bg-muted", "bg-card", "shadow-elev"])
+      expect(tokens, resting).not.toContain(resting);
+    const tabs = readFileSync(join(__dirname, "../../components/consumer/ModeTabs.tsx"), "utf8");
+    expect(tabs).toContain('className="flex h-[52px] items-center gap-3 px-4" data-home-header');
+    expect(tabs).toContain('className="text-foreground h-[22px] w-auto shrink-0"');
     expect(picker).not.toContain("border-border bg-card text-foreground hover:bg-muted relative flex h-10");
     expect(picker).toContain("<MapPin");
     expect(picker).toContain("<ChevronDown");

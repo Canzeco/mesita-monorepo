@@ -408,7 +408,7 @@ describe("T5b — Home's header and Search's header", () => {
   it("Home's header is the Mesita logo, then the location picker, and nothing else", () => {
     const tabs = readFileSync(join(COMPONENTS, "ModeTabs.tsx"), "utf8");
     expect(tabs).toMatch(
-      /data-home-header>\s*<MesitaLogo className="text-foreground h-7 w-auto shrink-0" \/>\s*<LocationPicker \/>\s*<\/div>/,
+      /data-home-header>\s*<MesitaLogo className="text-foreground h-\[22px\] w-auto shrink-0" \/>\s*<LocationPicker \/>\s*<\/div>/,
     );
     expect(tabs).not.toContain("HOME_MODES");
     const layout = readFileSync(
