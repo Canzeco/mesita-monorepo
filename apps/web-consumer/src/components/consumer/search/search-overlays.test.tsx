@@ -419,28 +419,28 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
     expect(header).toContain("FILTERABLE_PLACE_FAMILIES.map");
     expect(header).toContain("selectMapFamily(family.key)");
     expect(header).toContain('setAreaPrefer("near");');
-    // A white band with a hairline holds the bar's row alone (MESITA-2413,
-    // MESITA-2450); the chip row floats over the map under it with no
-    // background, 8px down. Every control h-9 (MESITA-2445).
+    // A white band with a hairline holds the bar's row (MESITA-2413); the
+    // chip row sits in its own solid grey band under it, never floating on
+    // the map (MESITA-2462). Every control h-9 (MESITA-2445).
     expect(header).toContain(
       'className="relative z-30 shrink-0" data-search-header',
     );
     const band = header.match(/className="([^"]*)"\s*data-search-band/);
     expect(band, "the band").not.toBeNull();
     expectTokens(band![1], ["border-border", "bg-card/95", "border-b"], "band");
-    expect(header.indexOf("data-search-band")).toBeLessThan(
-      header.indexOf("{bar}"),
+    const chipBand = header.match(
+      /className="([^"]*)"\s*data-search-chip-band/,
     );
-    const float = header.match(/className="([^"]*)"\s*data-search-chips-float/);
-    expect(float, "the floating chip row").not.toBeNull();
+    expect(chipBand, "the chip band").not.toBeNull();
     expectTokens(
-      float![1],
-      ["absolute", "inset-x-0", "top-full"],
-      "chip float",
+      chipBand![1],
+      ["bg-muted", "border-b", "relative"],
+      "chip band",
     );
-    expect(float![1]).not.toContain("bg-");
+    expect(chipBand![1]).not.toContain("absolute");
+    expect(header).not.toContain("data-search-chips-float");
     expect(header.indexOf("{bar}")).toBeLessThan(
-      header.indexOf("data-search-chips-float"),
+      header.indexOf("data-search-chip-band"),
     );
     expect(src.indexOf("<SearchHeader")).toBeLessThan(
       src.indexOf("<SearchMap"),
