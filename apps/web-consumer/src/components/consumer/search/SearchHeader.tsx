@@ -75,7 +75,8 @@ export function SearchHeader({
           className={HEADER_DISC}
           data-search-ask-ai
         >
-          <Sparkles className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
+          {/* h-5: Sparkles reads smaller than the locate arrow at one size (Pato, MESITA-2446: "the ask AI button must be bigger"). */}
+          <Sparkles className="h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
         </Link>
       </div>
       <div className="relative">

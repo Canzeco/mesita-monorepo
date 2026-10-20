@@ -255,6 +255,7 @@ describe("Search's header is one token set (MESITA-2433)", () => {
     expect(askAi).toContain('aria-label="Ask AI"');
     expect(askAi).toContain("className={HEADER_DISC}");
     expect(askAi).toContain("<Sparkles");
+    expect(askAi).toContain('<Sparkles className="h-5 w-5');
     expect(askAi).not.toContain("<span>Ask AI</span>");
     expect(askAi).not.toContain("shadow-elev");
     // Both discs come from one string, so they can't drift apart.
