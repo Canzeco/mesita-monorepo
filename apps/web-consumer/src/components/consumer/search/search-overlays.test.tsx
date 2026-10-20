@@ -100,7 +100,7 @@ describe("SearchBar", () => {
     expect(html).not.toContain("backdrop-blur");
     expectTokens(
       html,
-      ["focus-within:border-foreground", "text-sm", "font-medium", "h-10"],
+      ["focus-within:border-foreground", "text-sm", "font-medium", "h-9"],
       "SearchBar",
     );
     expect(html).toContain('placeholder="Search places…"');
@@ -234,7 +234,7 @@ describe("the bar cannot squeeze its neighbours out", () => {
     const disc = constValue(read("header-classes.ts"), "HEADER_DISC");
     expectTokens(
       disc,
-      ["h-10", "w-10", "shrink-0", "rounded-full"],
+      ["h-9", "w-9", "shrink-0", "rounded-full"],
       "HEADER_DISC",
     );
   });
@@ -283,7 +283,7 @@ describe("Search's header is one token set (MESITA-2433)", () => {
     expectTokens(
       chip,
       [
-        "h-8",
+        "h-9",
         "shrink-0",
         "items-center",
         "text-sm",
@@ -343,8 +343,8 @@ describe("SearchLocateButton", () => {
     expectTokens(
       ask,
       [
-        "h-10",
-        "w-10",
+        "h-9",
+        "w-9",
         "shrink-0",
         "rounded-full",
         "focus-visible:border-foreground",
@@ -400,18 +400,18 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
     expect(header).toContain("selectMapFamily(family.key)");
     expect(header).toContain('setAreaPrefer("near");');
     // A white band above the map with a hairline (MESITA-2413; it floated
-    // for MESITA-2412), the bar row h-10, the chips h-8 (MESITA-2443).
+    // for MESITA-2412), every control h-9 (MESITA-2445).
     expect(header).toContain(
       '"border-border bg-card/95 relative z-30 shrink-0 border-b backdrop-blur"',
     );
     expect(src.indexOf("<SearchHeader")).toBeLessThan(
       src.indexOf("<SearchMap"),
     );
-    // Every chip is h-8 (MESITA-2443); the chip style lives in header-classes.ts.
+    // Every chip is the bar.s h-9 (MESITA-2445); the chip style lives in header-classes.ts.
     expect(header).toContain("cn(CHIP, on ? CHIP_ON : CHIP_OFF)");
     expectTokens(
       constValue(read("header-classes.ts"), "CHIP"),
-      ["h-8", "shrink-0", "items-center"],
+      ["h-9", "shrink-0", "items-center"],
       "CHIP",
     );
     // The bar's results COVER the chip row (MESITA-2417): anchored at the
@@ -488,11 +488,11 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
     const loading = read("../../../app/(shell)/(discovery)/search/loading.tsx");
     expect(loading).toContain("flex min-w-0 items-center gap-2");
     expect(loading).not.toContain("basis-1/3");
-    // The header's silhouette: two 40px discs (location, Ask AI) around the
+    // The header's silhouette: two 36px discs (location, Ask AI) around the
     // bar, then the chip row; no Filters disc (MESITA-2417, MESITA-2433).
     // Counted by a marker attribute, not a class substring.
     expect(loading.match(/data-skeleton-disc/g) ?? []).toHaveLength(2);
-    expect(loading).toContain("h-10 w-10");
+    expect(loading).toContain("h-9 w-9");
     expect(loading).toContain("bg-card/95");
     expect(loading).toContain("data-search-loading-chips");
     expect(loading).not.toContain("h-12 w-12");

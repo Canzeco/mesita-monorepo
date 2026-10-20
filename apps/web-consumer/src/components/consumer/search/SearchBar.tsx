@@ -30,10 +30,10 @@ export function SearchBar({
   placeholder = "Search places…",
   inputRef,
 }: SearchBarProps) {
-  // h-10 (MESITA-2443: the header was too tall); the two discs beside it
+  // h-9, like every header control (MESITA-2445); the discs and chips
   // match — two heights in one row read as a misalignment.
   return (
-    <div className="border-border bg-card focus-within:border-foreground flex h-10 shrink-0 items-center rounded-full border pl-4 transition-colors">
+    <div className="border-border bg-card focus-within:border-foreground flex h-9 shrink-0 items-center rounded-full border pl-4 transition-colors">
       <Search className="text-muted-foreground h-4 w-4 shrink-0" />
       <input
         ref={inputRef}
@@ -76,7 +76,7 @@ export function SearchBar({
           type="button"
           onClick={onClear}
           aria-label="Clear search"
-          className="text-muted-foreground hover:text-foreground focus-visible:text-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition outline-none"
+          className="text-muted-foreground hover:text-foreground focus-visible:text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition outline-none"
         >
           <X className="h-4 w-4" />
         </button>
