@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronLeft, Sparkles } from "lucide-react";
+import { BotMessageSquare, ChevronLeft } from "lucide-react";
 import { HomeSoon } from "@/components/consumer/home/HomeSoon";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
@@ -20,7 +20,7 @@ export default function SearchChatPage() {
         </Link>
       </div>
       <HomeSoon
-        icon={Sparkles}
+        icon={BotMessageSquare}
         name="Ask AI"
         description="Asking Don Memo lands here shortly — thanks for waiting."
       />

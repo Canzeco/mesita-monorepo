@@ -262,7 +262,8 @@ describe("Search's header is one token set (MESITA-2433)", () => {
     expect(askAi.length).toBeGreaterThan(0);
     expect(askAi).toContain("data-search-ask-ai");
     expect(askAi).toContain("className={HEADER_PILL}");
-    expect(askAi).toContain("<Sparkles");
+    expect(askAi).toContain("<BotMessageSquare"); // MESITA-2457: not Sparkles
+    expect(askAi).not.toContain("<Sparkles");
     expect(askAi).toContain("<span>Ask AI</span>");
     expect(askAi).not.toContain("shadow-elev");
     expectTokens(
