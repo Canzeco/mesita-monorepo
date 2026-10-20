@@ -400,14 +400,16 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
 });
 
 // ── T5b — Home's header and Search's header ────────────────────────────────
-// HOME'S HEADER IS THE LOCATION ALONE (Pato, MESITA-2405: "The top bar is
-// just to select the location. thats it."). Social and Favorites are rows of
-// the catalog's column; Home has no pills. Search's header is locate · bar ·
+// HOME'S HEADER IS THE LOGO AND THE LOCATION (MESITA-2405: the location is its
+// only control; MESITA-2470: the Mesita logo beside it, for brand identity).
+// Social and Favorites are rows of the catalog's column; Home has no pills. Search's header is locate · bar ·
 // Ask AI over a row of family chips (MESITA-2409).
 describe("T5b — Home's header and Search's header", () => {
-  it("Home's header is the location picker and nothing else", () => {
+  it("Home's header is the Mesita logo, then the location picker, and nothing else", () => {
     const tabs = readFileSync(join(COMPONENTS, "ModeTabs.tsx"), "utf8");
-    expect(tabs).toMatch(/data-home-header>\s*<LocationPicker \/>\s*<\/div>/);
+    expect(tabs).toMatch(
+      /data-home-header>\s*<MesitaLogo className="text-foreground h-7 w-auto shrink-0" \/>\s*<LocationPicker \/>\s*<\/div>/,
+    );
     expect(tabs).not.toContain("HOME_MODES");
     const layout = readFileSync(
       join(SHELL, "(discovery)", "discover", "layout.tsx"),
