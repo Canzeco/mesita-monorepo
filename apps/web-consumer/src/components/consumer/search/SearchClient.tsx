@@ -865,6 +865,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         results and the load error hang over the map's top edge. The pair that keeps the disc
         visible: `min-w-0 flex-1` on the bar, `shrink-0` on the disc. */}
       <SearchHeader
+        chipsHidden={querying}
         locate={
           <SearchLocateButton
             located={location !== null}
@@ -883,9 +884,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           />
         }
       >
-        {/* RESULTS DROP UNDER THE BAR, the way every autocomplete does, and
-          COVER the chip row (Pato, MESITA-2417): the header anchors them on
-          the chips' box, so there is no top offset to keep in sync.
+        {/* RESULTS DROP UNDER THE BAR, the way every autocomplete does; the
+          chip row is not drawn while querying (Pato, MESITA-2487, was
+          MESITA-2417's "cover the chips"), so they hang just under the bar.
 
           THE OLD REGRESSION WAS A FIXED HEIGHT, not the top anchor. A panel that
           claimed 70% of the viewport whether it held two rows or ten is what
