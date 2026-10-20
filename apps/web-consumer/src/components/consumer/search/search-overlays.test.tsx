@@ -251,7 +251,9 @@ describe("Search's header is one token set (MESITA-2433)", () => {
   // Pato: "location must be kinda symmetrical to ask ai, and search bar font
   // must be same… make it cleaner". Two equal discs around the bar, text-sm
   // everywhere, flat outlines, a dark border on keyboard focus.
-  it("draws Ask AI as the same icon disc as locate", () => {
+  // MESITA-2455: Ask AI is a labelled pill now, wider than the disc, in the
+  // same outline and height.
+  it("draws Ask AI as a labelled pill with the disc's outline and height", () => {
     const header = read("SearchHeader.tsx");
     const start = header.indexOf("<Link");
     const end = header.indexOf("</Link>", start);
@@ -259,17 +261,23 @@ describe("Search's header is one token set (MESITA-2433)", () => {
     // A guard first: an empty slice would pass every negative check below.
     expect(askAi.length).toBeGreaterThan(0);
     expect(askAi).toContain("data-search-ask-ai");
-    expect(askAi).toContain('aria-label="Ask AI"');
-    expect(askAi).toContain("className={HEADER_DISC}");
+    expect(askAi).toContain("className={HEADER_PILL}");
     expect(askAi).toContain("<Sparkles");
-    expect(askAi).toMatch(/<Sparkles\s+className="h-5 w-5/);
-    expect(askAi).not.toContain("<span>Ask AI</span>");
+    expect(askAi).toContain("<span>Ask AI</span>");
     expect(askAi).not.toContain("shadow-elev");
-    // Both discs come from one string, so they can't drift apart.
-    for (const file of ["SearchHeader.tsx", "SearchLocateButton.tsx"]) {
-      expect(read(file), file).toContain("HEADER_DISC");
-      expect(read(file), file).toContain("header-classes");
-    }
+    expectTokens(
+      constValue(read("header-classes.ts"), "HEADER_PILL"),
+      [
+        "h-9",
+        "rounded-full",
+        "border",
+        "px-3",
+        "text-sm",
+        "focus-visible:border-foreground",
+      ],
+      "HEADER_PILL",
+    );
+    expect(read("SearchLocateButton.tsx")).toContain("HEADER_DISC");
   });
 
   it("gives every control one outline, one type size and a focus border", () => {
@@ -517,7 +525,7 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
     const loading = read("../../../app/(shell)/(discovery)/search/loading.tsx");
     expect(loading).toContain("flex min-w-0 items-center gap-2");
     expect(loading).not.toContain("basis-1/3");
-    // The header's silhouette: two 36px discs (location, Ask AI) around the
+    // The header's silhouette: a 36px disc (location) and the Ask AI pill around the
     // bar, then the chip row; no Filters disc (MESITA-2417, MESITA-2433).
     // Counted by a marker attribute, not a class substring.
     expect(loading.match(/data-skeleton-disc/g) ?? []).toHaveLength(2);

@@ -16,7 +16,7 @@ export default function SearchLoading() {
           </div>
           <Skeleton className="h-9 min-w-0 flex-1 rounded-full" />
           <div className="shrink-0" data-skeleton-disc>
-            <Skeleton className="h-9 w-9 rounded-full" />
+            <Skeleton className="h-9 w-24 rounded-full" />
           </div>
         </div>
       </div>
