@@ -6,6 +6,8 @@ import type { CatalogRail, Place } from "@/lib/api/places";
 import {
   SAVED_CHIP,
   PINNED_CHIPS,
+  YOURS_CHIPS,
+  GROUP_STRIPE,
   SOCIAL_CHIP,
   poolPlaces,
   PLACES_PAGE,
@@ -45,14 +47,19 @@ describe("the Places column (MESITA-2383)", () => {
     expect(labels).not.toContain("Undefined");
     expect(placesChips().map((c) => c.key).slice(0, 4)).toEqual([SOCIAL_CHIP, SAVED_CHIP, NEAR_CHIP, POPULAR_CHIP]);
     expect(PINNED_CHIPS).toBe(4);
-    expect(src).toContain("chips.slice(0, 1).map(categoryRow)");
-    expect(src).toContain("chips.slice(1, PINNED_CHIPS).map(categoryRow)");
-    expect(src.match(/data-places-rule/g)?.length).toBe(2);
-    // The rules read darker than a hairline (MESITA-2481).
-    expect(src.match(/border-foreground\/30 mx-3 my-1 shrink-0 border-t/g)?.length).toBe(2);
+    // Three groups (MESITA-2484): Social · Saved │ Nearby · Popular │ the
+    // families, each with its clay stripe; the rules are gone.
+    expect(YOURS_CHIPS).toBe(2);
+    expect(src).toContain("chips.slice(0, YOURS_CHIPS).map(categoryRow)");
+    expect(src).toContain("chips.slice(YOURS_CHIPS, PINNED_CHIPS).map(categoryRow)");
+    expect(src).not.toContain("data-places-rule");
+    for (const g of ["yours", "around", "families"]) {
+      expect(src).toContain(`data-places-group="${g}"`);
+      expect(src).toContain(`GROUP_STRIPE.${g}`);
+      expect(GROUP_STRIPE[g as keyof typeof GROUP_STRIPE]).toMatch(/^shadow-\[inset_3px_0_0_oklch\(/);
+    }
     expect(src).toContain("chips.slice(PINNED_CHIPS).map(categoryRow)");
-    expect(src).toContain("data-places-rule");
-    expect(src).toContain('className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-y-contain"');
+    expect(src).toContain('"scrollbar-hide mt-2 min-h-0 flex-1 overflow-y-auto overscroll-y-contain"');
     // Social's row reads like every row: no Soon tag, no muted label
     // (MESITA-2418); its pane still says Soon.
     expect(placesChips()[0]).toEqual({ key: SOCIAL_CHIP, label: "Social" });
