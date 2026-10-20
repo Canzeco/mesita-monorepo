@@ -81,7 +81,7 @@ describe("saved locations (MESITA-2380)", () => {
     expect(sheet).toContain("bounds: isRegionPick(row) ? anchor.viewport : null");
   });
 
-  it("lists saved locations in the header's location sheet; Add location opens the add sheet", () => {
+  it("lists saved locations as header chips; Add opens the add sheet", () => {
     const picker = readFileSync(
       join(__dirname, "../../components/consumer/home/LocationPicker.tsx"),
       "utf8",

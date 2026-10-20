@@ -152,23 +152,29 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
     expect(src).toContain("apiListAreaPool(supabase, from, prefer, families)");
   });
 
-  it("the header's location is a bordered pill: pin, name, chevron, opening the sheet", () => {
-    expect(picker).toContain("border-border bg-card text-foreground hover:bg-muted relative flex h-10 w-full min-w-0 items-center justify-center gap-1.5 rounded-full border px-8");
-    expect(picker).toContain("<MapPin");
-    expect(picker).toContain("<ChevronDown");
-    expect(picker).toContain('aria-haspopup="dialog"');
-    expect(picker).toContain("onClick={() => setPicking(true)}");
+  // MESITA-2452: the pill and its sheet became one scrolling chip row.
+  it("the header's location is a scrolling chip row in Search's chip tokens, no sheet", () => {
+    expect(picker).toContain("scrollbar-hide flex items-center gap-2 overflow-x-auto");
+    expect(picker).toContain("cn(CHIP, hereOn ? CHIP_ON : CHIP_OFF)");
+    expect(picker).toContain('from "@/components/consumer/search/header-classes"');
+    expect(picker).not.toContain("<LocalSheet");
+    expect(picker).not.toContain("<ChevronDown");
   });
 
-  it("the sheet: Current location, the saved locations, then Add location", () => {
-    expect(picker.indexOf("label: locationLabel(null")).toBeLessThan(picker.indexOf("savedLocations.map((l)"));
+  it("the chips: Current location, the saved locations, then Add", () => {
+    expect(picker.indexOf("locationLabel(null, coords !== null, locating)")).toBeLessThan(
+      picker.indexOf("savedLocations.map((l)"),
+    );
     expect(picker.indexOf("savedLocations.map((l)")).toBeLessThan(picker.indexOf("data-places-add-location"));
     expect(picker).toContain("<AddLocationSheet");
     expect(picker).toContain("bounds: l.bounds");
+    // Current location with no fix asks for one.
+    expect(picker).toContain("if (coords === null) locate();");
   });
 
   it("removing the active saved location falls back to Current location", () => {
-    expect(picker).toContain("if (active?.key === `saved:${l.id}`) setActiveLocation(null);");
+    expect(picker).toMatch(/removeSavedLocation\(l\.id\);\s*setActiveLocation\(null\);/);
+    expect(picker).toContain("data-places-remove-location");
   });
 });
 
