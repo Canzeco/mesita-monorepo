@@ -16,6 +16,7 @@ import {
   Fish,
   Hamburger,
   Heart,
+  LayoutGrid,
   MapPin,
   Martini,
   Moon,
@@ -64,9 +65,11 @@ export function Taco({
 /** A family with no icon of its own. */
 export const FALLBACK_FAMILY_ICON: LineIcon = Utensils;
 
-/** Every row and chip key the guest sees → its line icon. Social, Saved,
- *  Nearby and Popular by their chip keys; families by their family key. */
+/** Every row and chip key the guest sees → its line icon. Search's All
+ *  (MESITA-2502), Home's Social, Saved, Nearby and Popular by their chip
+ *  keys; families by their family key. */
 export const FAMILY_ICONS: Readonly<Record<string, LineIcon>> = {
+  all: LayoutGrid,
   social: Users,
   saved: Heart,
   near: MapPin,

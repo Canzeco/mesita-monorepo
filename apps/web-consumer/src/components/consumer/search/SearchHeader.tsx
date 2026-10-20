@@ -4,19 +4,21 @@
 //
 //   ( ⌖ ) [ ⚲ Search places…  ] ( ✦ )   one white band …
 //   ─────────────────── hairline ──────────────────────
-//   │ (○ Coffee) (○ Breakfast) (○ Quick bite) …         … one hairline under
+//   │ (▦ All) (○ Coffee) (○ Breakfast) (○ Quick bite) … … one hairline under
 //   ─────────────────── map ───────────────────────────
 //
 // The bar's row: the locate disc, the query bar, the Ask AI pill (→ Search ›
 // Chat, Soon) — two equal 36px discs around the bar (Pato, MESITA-2433: "location
 // must be kinda symmetrical to ask ai"). One token set for every control lives
-// in header-classes.ts. Under it one horizontal chip row: every family, each
-// with its line icon (MESITA-2478: line icons, not emoji — "emojis uses color
-// and that takes attention"). NO NEARBY, NO POPULAR (Pato, MESITA-2499: "its
-// all based on the map … the zoom is decided by the map"): the map is the
-// where, so the set is the visible map ranked best first, and a chip is only
-// the what. ONE family at a time; tapping the lit one again clears it (every
-// family). Sent as the server-side `familyKeys`. There is no Filters disc and
+// in header-classes.ts. Under it one horizontal chip row: All, then every
+// family, each with its line icon (MESITA-2478: line icons, not emoji —
+// "emojis uses color and that takes attention"). NO NEARBY, NO POPULAR (Pato,
+// MESITA-2499: "its all based on the map … the zoom is decided by the map";
+// MESITA-2502: "its only All and then all the famileis. easy peasy"): the map
+// is the where, so the set is the visible map ranked best first, and a chip
+// is only the what. ONE pick at a time: All is every family (lit when none is
+// picked); tapping the lit family again also goes back to All. Sent as the
+// server-side `familyKeys`. There is no Filters disc and
 // no sheet (Pato, MESITA-2417: "Its just all and thats it"); the Google
 // reviews minimum is the operator's, Admin › Discovery › Area.
 //
@@ -36,7 +38,11 @@ import Link from "next/link";
 import { BotMessageSquare } from "lucide-react";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import { FamilyIcon } from "@/lib/family-icons";
-import { selectMapFamily, useMapFilters } from "@/lib/use-map-filters";
+import {
+  clearMapFamilies,
+  selectMapFamily,
+  useMapFilters,
+} from "@/lib/use-map-filters";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { cn } from "@/lib/utils";
 import { CHIP, CHIP_OFF, CHIP_ON, HEADER_PILL } from "./header-classes";
@@ -70,6 +76,7 @@ export function SearchHeader({
   children?: ReactNode;
 }) {
   const filters = useMapFilters();
+  const everyFamily = filters.familyKeys.length === 0;
   return (
     <div
       className="border-border bg-card relative z-30 shrink-0 border-b"
@@ -113,6 +120,20 @@ export function SearchHeader({
               className={CHIP_GROUP_MARK.families}
               data-chip-group="families"
             />
+            <button
+              type="button"
+              onClick={clearMapFamilies}
+              aria-pressed={everyFamily}
+              className={cn(CHIP, everyFamily ? CHIP_ON : CHIP_OFF)}
+              data-search-chip-all
+            >
+              <FamilyIcon
+                name="all"
+                className={CHIP_ICON}
+                strokeWidth={everyFamily ? 2.25 : 1.75}
+              />
+              <span>All</span>
+            </button>
             {FILTERABLE_PLACE_FAMILIES.map((family) => {
               const on =
                 filters.familyKeys.length === 1 &&
@@ -121,7 +142,7 @@ export function SearchHeader({
                 <button
                   key={family.key}
                   type="button"
-                  // Picking the lit family again clears it: every family.
+                  // Picking the lit family again goes back to All.
                   onClick={() => selectMapFamily(family.key)}
                   aria-pressed={on}
                   className={cn(CHIP, on ? CHIP_ON : CHIP_OFF)}
