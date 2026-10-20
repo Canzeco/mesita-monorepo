@@ -141,7 +141,8 @@ describe("Search map catalog reloads once the map is still (MESITA-2440)", () =>
     expect(read("SearchClient.tsx")).toContain("familyKeys");
     expect(read("SearchClient.tsx")).not.toContain("minReviews");
     expect(read("SearchClient.tsx")).toContain("onFirstViewport");
-    expect(read("SearchClient.tsx")).toContain("idleReloadDue");
+    expect(read("SearchClient.tsx")).toContain("reloadWaitMs");
+    expect(read("SearchClient.tsx")).not.toContain("idleReloadDue");
     expect(read("SearchClient.tsx")).toContain("armIdleReload");
     expect(read("SearchClient.tsx")).not.toContain("handleSearchHere");
     expect(read("SearchClient.tsx")).not.toContain("SearchHereButton");
@@ -164,9 +165,13 @@ describe("Search map catalog reloads once the map is still (MESITA-2440)", () =>
     expect(read("../../../lib/api/places.ts")).toContain("reloadIdleSec");
   });
 
-  it("arms one idle timer per guest move; any camera move cancels it", () => {
+  it("arms one timer per guest move, timed from the last reload; any camera move cancels it", () => {
     const src = read("SearchClient.tsx");
-    expect(src).toContain("setTimeout(fire, reloadIdleMsRef.current)");
+    // MESITA-2451: the gap counts from the last reload, not the last move.
+    expect(src).toMatch(
+      /reloadWaitMs\(\s*lastLoadAtRef\.current,\s*Date\.now\(\),\s*reloadIdleMsRef\.current,?\s*\)/,
+    );
+    expect(src).toContain("lastLoadAtRef.current = Date.now();");
     expect(src).toContain("clampReloadIdleSec(result.reloadIdleSec)");
     expect(src).toContain("markViewport(box)");
     expect(src).toMatch(
@@ -190,13 +195,12 @@ describe("Search map catalog reloads once the map is still (MESITA-2440)", () =>
     expect(map).toContain('window.addEventListener("pointerup", up, true)');
   });
 
-  it("rebases lastFetchedCenter on rail or pin pans so those meters do not accrue", () => {
+  it("a pan the page made never reloads; only the guest's own moves do", () => {
     const src = read("SearchClient.tsx");
     expect(src).toMatch(
-      /if \(meta\.programmatic\) \{[\s\S]*lastFetchedCenter\.current = viewportSight\(box\)/,
+      /if \(meta\.programmatic\) \{[\s\S]*clearPendingReload\(\);\s*return;/,
     );
-    expect(src).toContain("cannot accumulate toward reload");
-    expect(src).toContain("Only the guest's own moves count as travel");
+    expect(src).toContain("Only the guest's own moves");
   });
 
   it("spends the programmatic flag on the idle that ends the move", () => {
@@ -406,16 +410,26 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
     // A white band with a hairline holds the bar's row alone (MESITA-2413,
     // MESITA-2450); the chip row floats over the map under it with no
     // background, 8px down. Every control h-9 (MESITA-2445).
-    expect(header).toContain('className="relative z-30 shrink-0" data-search-header');
+    expect(header).toContain(
+      'className="relative z-30 shrink-0" data-search-header',
+    );
     const band = header.match(/className="([^"]*)"\s*data-search-band/);
     expect(band, "the band").not.toBeNull();
     expectTokens(band![1], ["border-border", "bg-card/95", "border-b"], "band");
-    expect(header.indexOf("data-search-band")).toBeLessThan(header.indexOf("{bar}"));
+    expect(header.indexOf("data-search-band")).toBeLessThan(
+      header.indexOf("{bar}"),
+    );
     const float = header.match(/className="([^"]*)"\s*data-search-chips-float/);
     expect(float, "the floating chip row").not.toBeNull();
-    expectTokens(float![1], ["absolute", "inset-x-0", "top-full"], "chip float");
+    expectTokens(
+      float![1],
+      ["absolute", "inset-x-0", "top-full"],
+      "chip float",
+    );
     expect(float![1]).not.toContain("bg-");
-    expect(header.indexOf("{bar}")).toBeLessThan(header.indexOf("data-search-chips-float"));
+    expect(header.indexOf("{bar}")).toBeLessThan(
+      header.indexOf("data-search-chips-float"),
+    );
     expect(src.indexOf("<SearchHeader")).toBeLessThan(
       src.indexOf("<SearchMap"),
     );

@@ -43,10 +43,10 @@
 //     third: Family, Places scope, Popularity). How many is
 //     operator the scope's cap (`map.googlePlaces` / `map.mesitaPlaces`).
 //   • Bottom overlay: the catalog rail around the camera, hidden while
-//     querying. Closest first. A guest move reloads once the map has been
-//     still for reloadIdleSec and travelled RELOAD_MIN_KM (MESITA-2440).
-//     Only the guest's own moves count as travel — a tap's reveal pan
-//     rebases the km origin so click-by-click browsing cannot add up. The
+//     querying. Closest first. A guest move reloads when the map comes to
+//     rest, at most once every reloadIdleSec counted from the last reload,
+//     with no distance gate (MESITA-2451). Only the guest's own moves
+//     reload — a tap's reveal pan, the disc and a bar pick do not. The
 //     rail's centre card is always the selected pin.
 //
 // THE CAMERA NEVER TELEPORTS (MESITA-2440): it moves only on an explicit
@@ -94,7 +94,7 @@ import {
 import {
   clampReloadIdleSec,
   gpsFixMovesCamera,
-  idleReloadDue,
+  reloadWaitMs,
   RELOAD_IDLE_SEC_DEFAULT,
   selectionMovesCamera,
   type CameraIntent,
@@ -127,6 +127,8 @@ import {
 // first answer the bar waits DEFAULT_IDLE_MS.
 const DEFAULT_IDLE_MS = 1000;
 const MIN_QUERY = 2;
+/** A due reload under a resting finger checks again this often. */
+const FINGER_RECHECK_MS = 250;
 
 /**
  * A live searchbar pick (MESITA-1405). `place` is the chosen place for card
@@ -363,6 +365,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // a fix landing mid-flight compares against the load already coming.
   const lastFetchedCenter = useRef<{ lat: number; lng: number } | null>(null);
   const reloadIdleMsRef = useRef(RELOAD_IDLE_SEC_DEFAULT * 1000);
+  // When the last catalog load left (Date.now()): the reload throttle
+  // counts from here, not from the last move (MESITA-2451).
+  const lastLoadAtRef = useRef<number | null>(null);
   const pendingReload = useRef<ReturnType<typeof setTimeout> | null>(null);
   // A tap picked the card, so centre it even when the pager still names
   // it. A flick never sets this — scrollIntoView would fight the finger.
@@ -381,6 +386,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const loadAt = useCallback(
     async (nextCenter: Coords) => {
       lastFetchedCenter.current = nextCenter;
+      lastLoadAtRef.current = Date.now();
       const gen = ++viewportGen.current;
       setCatalogLoading(true);
       setFetchError(null);
@@ -415,25 +421,29 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     [filters.familyKeys, prefer, supabase],
   );
 
-  // RELOAD ONCE THE MAP IS STILL (MESITA-2440, Pato: "reload after x
-  // seconds without moving"). A guest move arms one timer; any camera move
-  // cancels it (SearchMap's onCameraMoveStart) and the idle that ends that
-  // move arms it again. A finger resting on the map defers it.
+  // RELOAD WHEN THE MAP COMES TO REST, AT MOST ONCE EVERY reloadIdleSec
+  // FROM THE LAST RELOAD (Pato, MESITA-2451: "if more than n seconds have
+  // happened since last reload"). No distance gate. A guest move's idle
+  // arms one timer for the rest of the gap (none left: at once); any
+  // camera move cancels it (SearchMap's onCameraMoveStart) and the idle
+  // that ends that move arms it again. A finger resting on the map defers
+  // it until the finger lifts.
   const armIdleReload = useCallback(() => {
     clearPendingReload();
     const fire = () => {
       if (mapFingerIsDown()) {
-        pendingReload.current = setTimeout(fire, reloadIdleMsRef.current);
+        pendingReload.current = setTimeout(fire, FINGER_RECHECK_MS);
         return;
       }
       pendingReload.current = null;
       const box = lastBoxRef.current;
       if (!box) return;
-      const next = viewportSight(box);
-      if (!idleReloadDue(lastFetchedCenter.current, next)) return;
-      void loadAt(next);
+      void loadAt(viewportSight(box));
     };
-    pendingReload.current = setTimeout(fire, reloadIdleMsRef.current);
+    pendingReload.current = setTimeout(
+      fire,
+      reloadWaitMs(lastLoadAtRef.current, Date.now(), reloadIdleMsRef.current),
+    );
   }, [clearPendingReload, loadAt]);
 
   const onFirstViewport = useCallback(
@@ -449,18 +459,13 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       markViewport(box);
       if (meta.programmatic) {
         // A move the page made (a tap's reveal, the disc, a bar pick) does
-        // not travel. Rebase the km origin so click-by-click catalog
-        // browsing cannot accumulate toward reload; an ask that needed a
-        // new catalog already loaded it at its target.
+        // not reload; an ask that needed a new catalog already loaded it at
+        // its target. Rebase the origin the GPS staleness check reads.
         lastFetchedCenter.current = viewportSight(box);
         clearPendingReload();
         return;
       }
       userMovedRef.current = true;
-      if (!idleReloadDue(lastFetchedCenter.current, viewportSight(box))) {
-        clearPendingReload();
-        return;
-      }
       armIdleReload();
     },
     [armIdleReload, clearPendingReload, markViewport],
