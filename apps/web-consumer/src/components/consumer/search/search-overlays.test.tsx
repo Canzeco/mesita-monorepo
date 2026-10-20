@@ -281,7 +281,7 @@ describe("Search's header is one token set (MESITA-2433)", () => {
     expect(read("SearchLocateButton.tsx")).toContain("HEADER_DISC");
   });
 
-  it("gives every control one outline, one type size and a focus border", () => {
+  it("gives every control one grey fill, no outline, one type size and a focus border (MESITA-2469)", () => {
     const classes = read("header-classes.ts");
     const disc = constValue(classes, "HEADER_DISC");
     const chip = constValue(classes, "CHIP");
@@ -290,9 +290,9 @@ describe("Search's header is one token set (MESITA-2433)", () => {
     expectTokens(
       disc,
       [
-        "border-border",
-        "bg-card",
-        "hover:bg-muted",
+        "border-transparent",
+        "bg-muted",
+        "hover:bg-border",
         "focus-visible:border-foreground",
       ],
       "HEADER_DISC",
@@ -320,10 +320,11 @@ describe("Search's header is one token set (MESITA-2433)", () => {
     );
     expectTokens(
       chipOff,
-      ["border-border", "bg-card", "hover:bg-muted"],
+      ["border-transparent", "bg-muted", "hover:bg-border"],
       "CHIP_OFF",
     );
     for (const value of [disc, chip, chipOn, chipOff]) {
+      expect(value).not.toContain("border-border");
       expect(value).not.toContain("shadow-elev");
       expect(value).not.toContain("text-xs");
     }
@@ -333,7 +334,7 @@ describe("Search's header is one token set (MESITA-2433)", () => {
     expect(nav, "the chip row").not.toBeNull();
     expectTokens(
       nav![1],
-      ["gap-2", "px-3", "pt-2", "pb-2", "overflow-x-auto"],
+      ["gap-2", "px-3", "pt-0", "pb-2", "overflow-x-auto"],
       "chip row",
     );
   });
@@ -356,7 +357,7 @@ describe("SearchLocateButton", () => {
     // The "my location" target (MESITA-2454), ink until a fix is held.
     expect(ask).toContain("lucide-locate-fixed");
     expect(ask).not.toContain("lucide-navigation");
-    expect(ask).not.toContain("#2563eb");
+    expect(ask).not.toContain("#007aff");
     expect(ask).not.toContain('data-active="true"');
     expect(ask).toContain('aria-label="Use my location"');
     expectTokens(
@@ -379,14 +380,14 @@ describe("SearchLocateButton", () => {
     expect(home).toContain('aria-label="Recentre on your location"');
     expect(home).toContain('data-active="true"');
     // A held fix turns the target the map's you-are-here blue.
-    expect(home).toContain("color:#2563eb");
+    expect(home).toContain("color:#007aff");
     const busy = renderToStaticMarkup(
       <SearchLocateButton located={false} locating onClick={() => {}} />,
     );
     expect(busy).toContain('aria-label="Locating"');
     expect(busy).toContain("disabled");
     // No hover tint while it is locating and disabled.
-    expectTokens(busy, ["disabled:hover:bg-card"], "busy locate disc");
+    expectTokens(busy, ["disabled:hover:bg-muted"], "busy locate disc");
   });
 });
 
@@ -419,24 +420,22 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
     expect(header).toContain("FILTERABLE_PLACE_FAMILIES.map");
     expect(header).toContain("selectMapFamily(family.key)");
     expect(header).toContain('setAreaPrefer("near");');
-    // A white band with a hairline holds the bar's row (MESITA-2413); the
-    // chip row sits in its own solid grey band under it, never floating on
-    // the map (MESITA-2462). Every control h-9 (MESITA-2445).
-    expect(header).toContain(
-      'className="relative z-30 shrink-0" data-search-header',
+    // ONE solid white band with one hairline holds the bar's row AND the
+    // chip row (MESITA-2413, MESITA-2469); the chips never float on the map
+    // (MESITA-2462). Every control h-9 (MESITA-2445).
+    const band = header.match(
+      /className="([^"]*)"\s*data-search-header\s*data-search-band/,
     );
-    const band = header.match(/className="([^"]*)"\s*data-search-band/);
     expect(band, "the band").not.toBeNull();
-    expectTokens(band![1], ["border-border", "bg-card/95", "border-b"], "band");
+    expectTokens(band![1], ["border-border", "bg-card", "border-b"], "band");
+    expect(band![1]).not.toContain("bg-card/");
     const chipBand = header.match(
       /className="([^"]*)"\s*data-search-chip-band/,
     );
     expect(chipBand, "the chip band").not.toBeNull();
-    expectTokens(
-      chipBand![1],
-      ["bg-muted", "border-b", "relative"],
-      "chip band",
-    );
+    expectTokens(chipBand![1], ["relative"], "chip band");
+    expect(chipBand![1]).not.toContain("bg-muted");
+    expect(chipBand![1]).not.toContain("border-b");
     expect(chipBand![1]).not.toContain("absolute");
     expect(header).not.toContain("data-search-chips-float");
     expect(header.indexOf("{bar}")).toBeLessThan(
@@ -1204,7 +1203,7 @@ describe("a Location wears the location icon, never a place tone (MESITA-1404)",
     expect(html).toContain("No profile yet");
     // Exactly ONE place dot renders — the city carries none, so the two
     // semantics never share a mark (no third colour, no shared gray).
-    expect(html.match(/background-color:#9ca3af/g)?.length).toBe(1);
+    expect(html.match(/background-color:#a3a3a3/g)?.length).toBe(1);
     // No source labels, no badge, no section header — the icon says it.
     expect(html).not.toContain(">City<");
     expect(html).not.toContain(">Location<");

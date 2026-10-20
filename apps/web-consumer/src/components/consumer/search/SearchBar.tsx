@@ -31,9 +31,11 @@ export function SearchBar({
   inputRef,
 }: SearchBarProps) {
   // h-9, like every header control (MESITA-2445); the discs and chips
-  // match — two heights in one row read as a misalignment.
+  // match — two heights in one row read as a misalignment. A grey fill with
+  // no outline, iOS's and Instagram's search field (MESITA-2469); typing
+  // darkens the border.
   return (
-    <div className="border-border bg-card focus-within:border-foreground flex h-9 shrink-0 items-center rounded-full border pl-4 transition-colors">
+    <div className="bg-muted focus-within:border-foreground flex h-9 shrink-0 items-center rounded-full border border-transparent pl-4 transition-colors">
       <Search className="text-muted-foreground h-4 w-4 shrink-0" />
       <input
         ref={inputRef}
