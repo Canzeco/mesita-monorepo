@@ -3,8 +3,8 @@
 // Search's header (Pato, MESITA-2409 — OpenTable's shape):
 //
 //   ( ⌖ ) [ ⚲ Search places…  ] ( ✦ )   a white band, hairline under
+//   (📍 Nearby) (⭐ Popular) │ (☕ Coffee) (🥐 Breakfast) …   a grey band, hairline under
 //   ─────────────────── map ───────────────────────────
-//   (📍 Nearby) (⭐ Popular) │ (☕ Coffee) (🥐 Breakfast) …   floating on it
 //
 // The bar's row: the locate disc, the query bar, the Ask AI pill (→ Search ›
 // Chat, Soon) — two equal 36px discs around the bar (Pato, MESITA-2433: "location
@@ -18,11 +18,13 @@
 // the operator's, Admin › Discovery › Area.
 //
 // A WHITE BAND for the bar's row, like Home's header and the bottom bar
-// (Pato, MESITA-2413); the chip row floats over the map with no band behind
-// it (MESITA-2450: white on white "looks weird"), ~17px under the bar. Every
+// (Pato, MESITA-2413), then a SOLID GREY BAND for the chip row (MESITA-2462:
+// "i don't like a transparent scrolling at all"; white on white "looks weird",
+// MESITA-2450, so the chips' band differs from the bar's). Nothing floats on
+// the map. Every
 // control is h-9: the discs, the bar and every chip (MESITA-2445). `children`
 // (the bar's results, the load error) COVER the chip row and run on over the
-// map (`absolute top-0` on the floating chips' box; Pato, MESITA-2417: "the searchbar
+// map (`absolute top-0` on the chip band's box; Pato, MESITA-2417: "the searchbar
 // results must cover the categories").
 
 import type { ReactNode } from "react";
@@ -85,10 +87,13 @@ export function SearchHeader({
           </Link>
         </div>
       </div>
-      {/* The chips float over the map's top edge with no band behind them
-          (Pato, MESITA-2450: "try using the catalog bar without background"),
-          each chip its own white fill, 8px under the band. */}
-      <div className="absolute inset-x-0 top-full" data-search-chips-float>
+      {/* The chips' own solid band, grey under the white bar row (Pato,
+          MESITA-2462: no transparent row over the map); each chip keeps its
+          white fill so it reads on the grey. */}
+      <div
+        className="border-border bg-muted relative border-b"
+        data-search-chip-band
+      >
         <nav
           aria-label="Families"
           className="scrollbar-hide flex items-center gap-2 overflow-x-auto overscroll-x-contain px-3 pt-2 pb-2"
