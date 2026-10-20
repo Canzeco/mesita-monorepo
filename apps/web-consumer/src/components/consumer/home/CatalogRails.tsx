@@ -4,11 +4,15 @@
 //
 //   [⌖ Tecnologico                       ⌄]   Home's header (ModeTabs) is the
 //   ┌────────────────┬─────────────────────┐   location alone (MESITA-2405),
-//   │ 👥 Social       │                     │   written to
-//   │ ❤️ Saved        │       square        │   lib/active-location.ts and
-//   │▌✨ All          │        tile         │   read here.
+//   │ ⚇ Social        │                     │   written to
+//   │ ○ Saved         │       square        │   lib/active-location.ts and
+//   │▌⌖ Nearby        │        tile         │   read here.
 //   │ ──────────────  │                     │
-//   │ ☕ Coffee    ↕  │                     │
+//   │ ○ Coffee     ↕  │                     │
+//
+// Every row's mark is a monochrome line icon (lib/family-icons.tsx), never
+// an emoji (Pato, MESITA-2478: "emojis uses color and that takes
+// attention"); the chosen row's stroke is heavier, like BottomNav's.
 //
 // Social DRAWS IN THE RIGHT PANE (Pato, MESITA-2474: "social must be on the
 // same feed. don't change page"): the row is chosen like Saved and the
@@ -55,6 +59,7 @@ import {
   writeAreaPool,
 } from "@/lib/area-pool-cache";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
+import { FamilyIcon } from "@/lib/family-icons";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { trackEvent } from "@/lib/analytics/track";
 import {
@@ -131,25 +136,20 @@ export const SOCIAL_CHIP = "social";
  *  Google Places and Mesita Selected are not guest choices (MESITA-2381):
  *  they are the sources Near and Popular mix. A family with
  *  nothing here says so rather than hiding. */
-export function placesChips(): {
-  key: string;
-  label: string;
-  emoji?: string;
-}[] {
+export function placesChips(): { key: string; label: string }[] {
   return [
     // Social's feed draws in the right pane (MESITA-2474); no "Soon" tag
     // ever (Pato, MESITA-2418: the tag "looks like shit").
-    { key: SOCIAL_CHIP, label: "Social", emoji: "👥" },
+    { key: SOCIAL_CHIP, label: "Social" },
     // Saved, not Favorites, and Nearby, not Near (Pato, MESITA-2427); the
     // heart stays, matching the tile's save button (MESITA-2430):
     // beside Nearby and Popular, "Favorites" read as Mesita's picks.
-    { key: SAVED_CHIP, label: "Saved", emoji: "❤️" },
-    { key: NEAR_CHIP, label: "Nearby", emoji: "📍" },
-    { key: POPULAR_CHIP, label: "Popular", emoji: "⭐" },
+    { key: SAVED_CHIP, label: "Saved" },
+    { key: NEAR_CHIP, label: "Nearby" },
+    { key: POPULAR_CHIP, label: "Popular" },
     ...FILTERABLE_PLACE_FAMILIES.map((f) => ({
       key: f.key as string,
       label: f.label,
-      emoji: f.emoji,
     })),
   ];
 }
@@ -302,7 +302,7 @@ export function CatalogRails() {
   // A Google-only card the guest opened is a Mesita place once the create
   // lands (PendingPlaceScreen says so). This Feed sits under the place
   // modal and nothing else refetches it: reload behind the modal and the
-  // card comes back with its photo and its link, never the emoji stub
+  // card comes back with its photo and its link, never the icon stub
   // (MESITA-2307).
   useEffect(
     () =>
@@ -376,9 +376,10 @@ export function CatalogRails() {
     });
   };
 
-  // Every row reads the same: emoji + label. Social wore a muted label and
-  // a "Soon" tag (MESITA-2408) until Pato cut it (MESITA-2418).
-  const categoryRow = (c: { key: string; label: string; emoji?: string }) => (
+  // Every row reads the same: line icon + label (the icon was an emoji until
+  // MESITA-2478). Social wore a muted label and a "Soon" tag (MESITA-2408)
+  // until Pato cut it (MESITA-2418).
+  const categoryRow = (c: { key: string; label: string }) => (
     <li key={c.key}>
       <button
         type="button"
@@ -402,11 +403,13 @@ export function CatalogRails() {
             aria-hidden
           />
         ) : null}
-        {c.emoji ? (
-          <span className="shrink-0" aria-hidden>
-            {c.emoji}
-          </span>
-        ) : null}
+        {/* A line icon, never an emoji (MESITA-2478): 1.75 stroke, 2.25
+            when chosen, BottomNav's pair. */}
+        <FamilyIcon
+          name={c.key}
+          className="h-4 w-4 shrink-0"
+          strokeWidth={chip === c.key ? 2.25 : 1.75}
+        />
         <span className="min-w-0 break-words">{c.label}</span>
       </button>
     </li>

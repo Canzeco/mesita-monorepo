@@ -15,6 +15,7 @@ import {
   placePlaceholder,
 } from "@/lib/place-placeholder";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
+import { FamilyIcon } from "@/lib/family-icons";
 import { cn, formatCompactCount, formatKm, formatRating } from "@/lib/utils";
 
 /**
@@ -137,7 +138,8 @@ export function CatalogTile({
   const priceKind = [priceLabel, kind].filter(Boolean).join(" · ");
   const zoneTime = [zone, openLine].filter(Boolean).join(" · ");
 
-  // The photo, or the Google card's emoji tile. Drawn twice: on the top
+  // The photo, or the Google card's family icon (a line icon, never the
+  // emoji: MESITA-2478). Drawn twice: on the top
   // 60%, and flipped from its foot as the reflection below it.
   const media = () =>
     photo ? (
@@ -153,12 +155,16 @@ export function CatalogTile({
         className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-white/90"
         data-placeholder={placeholder.kind}
       >
-        <span
-          className="font-display text-3xl font-bold tracking-tight"
-          aria-hidden
-        >
-          {placeholder.text}
-        </span>
+        {placeholder.kind === "family" ? (
+          <FamilyIcon name={placeholder.family} className="h-10 w-10" />
+        ) : (
+          <span
+            className="font-display text-3xl font-bold tracking-tight"
+            aria-hidden
+          >
+            {placeholder.text}
+          </span>
+        )}
       </div>
     );
 
