@@ -229,8 +229,9 @@ export type AreaDiagnostics = {
   signals: { proximity: number | null; popularity: number | null };
   selected: number;
   source: "selected" | "mesita" | "google";
-  /** The mode's exponents (MESITA-2428); absent from an older EF. */
-  weights?: { proximity: number; popularity: number };
+  /** The mode's exponents (MESITA-2428; `selected` since MESITA-2439);
+   *  absent from an older EF. */
+  weights?: { proximity: number; popularity: number; selected?: number };
   base: number;
   final: number;
   formula: "point" | "area" | "none";

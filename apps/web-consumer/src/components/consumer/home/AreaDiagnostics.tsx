@@ -23,16 +23,15 @@ function exp(n: number | undefined): string {
   return typeof n === "number" && Number.isFinite(n) ? String(n) : "?";
 }
 
-/** The compact expression for the place's formula (MESITA-2428:
- *  Proximity^a × (Popularity × selected)^b). */
+/** The compact expression for the place's formula (MESITA-2439:
+ *  Proximity^a × Popularity^b × Selected^c, three separate signals). */
 export function diagExpression(a: Area): string {
   const fin = diagNumber(a.final);
-  const b = exp(a.weights?.popularity);
-  const pop = `(popularity ${diagNumber(a.signals.popularity)} × selected ${diagNumber(a.selected)})^${b}`;
+  const rest = `popularity ${diagNumber(a.signals.popularity)}^${exp(a.weights?.popularity)} × selected ${diagNumber(a.selected)}^${exp(a.weights?.selected)}`;
   if (a.formula === "area")
-    return `area ${gate(a.gates.territory)} × ${pop} = ${fin}`;
-  if (a.formula === "none") return `${pop} = ${fin}`;
-  return `proximity ${diagNumber(a.signals.proximity)}^${exp(a.weights?.proximity)} × ${pop} = ${fin}`;
+    return `area ${gate(a.gates.territory)} × ${rest} = ${fin}`;
+  if (a.formula === "none") return `${rest} = ${fin}`;
+  return `proximity ${diagNumber(a.signals.proximity)}^${exp(a.weights?.proximity)} × ${rest} = ${fin}`;
 }
 
 export function AreaDiagnostics({ area }: { area: Area }) {
@@ -59,7 +58,7 @@ export function AreaDiagnostics({ area }: { area: Area }) {
         {area.formula === "point"
           ? `proximity ${diagNumber(area.signals.proximity)} · `
           : ""}
-        popularity {diagNumber(area.signals.popularity)} · selected ×
+        popularity {diagNumber(area.signals.popularity)} · selected{" "}
         {diagNumber(area.selected)}
       </p>
     </li>

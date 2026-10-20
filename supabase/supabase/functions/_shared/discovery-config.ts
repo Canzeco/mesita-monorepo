@@ -27,7 +27,7 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { bool, num } from "./config-coerce.ts";
-import { AREA_MODES, type AreaMode, type AreaWeights } from "./area-score.ts";
+import { AREA_MODES, type AreaMode, type AreaWeights, SELECTED_FACTOR } from "./area-score.ts";
 import {
   POPULARITY_HALF_REVIEWS_DEFAULT,
   POPULARITY_HALF_REVIEWS_MAX,
@@ -39,25 +39,33 @@ import {
 
 /**
  * The Area pipeline's numbers, the only ones `params` carries: Proximity's
- * reach (MESITA-2431), Popularity's reviews-for-half-credit and the weights
- * table (MESITA-2428), two exponents per mode. The reach is NOT
+ * reach (MESITA-2431), Popularity's reviews-for-half-credit, Selected's
+ * value for a non-Selected place and the weights table (MESITA-2428), three
+ * exponents per mode (Selected's since MESITA-2439). The reach is NOT
  * `map.radiusKm`: the radius decides who is a candidate, the reach scores
  * distance. `balance`, the two linear weights the table replaced, is dropped.
  */
 export type SignalParams = {
   proximity: { reachKm: number };
   popularity: { halfReviews: number };
+  selected: { otherFactor: number };
   modes: Record<AreaMode, AreaWeights>;
 };
+/** Selected's value for a non-Selected place (MESITA-2439): above 0, so
+ *  Selected stays a signal and never becomes a gate; at most 1. */
+export const SELECTED_OTHER_MIN = 0.01;
+export const SELECTED_OTHER_MAX = 1;
 /** An exponent's range, two decimals (the field steps by 0.25); 0 turns a signal off. */
 export const AREA_WEIGHT_MIN = 0;
 export const AREA_WEIGHT_MAX = 5;
-/** The table's defaults (Pato, MESITA-2428): Nearby puts distance first,
- *  Popular puts popularity first, Family weighs both alike. */
+/** The table's defaults, audited on live CDMX and Tec pools (MESITA-2439):
+ *  Nearby a4 keeps its top 10 within ~1.2 km, Popular b3 keeps its top 10
+ *  at 4.3★+ with 300+ reviews, Family weighs all three alike. A stored row
+ *  without `selected` reads 1. */
 export const DEFAULT_AREA_MODES: Record<AreaMode, AreaWeights> = {
-  nearby: { proximity: 2, popularity: 1 },
-  popular: { proximity: 1, popularity: 2 },
-  family: { proximity: 1, popularity: 1 },
+  nearby: { proximity: 4, popularity: 1, selected: 1 },
+  popular: { proximity: 1, popularity: 3, selected: 1 },
+  family: { proximity: 1, popularity: 1, selected: 1 },
 };
 
 export type CatalogConfig = {
@@ -449,6 +457,7 @@ export const DEFAULT_GENERAL: GeneralConfig = {
 export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
   proximity: { reachKm: PROXIMITY_REACH_KM_DEFAULT },
   popularity: { halfReviews: POPULARITY_HALF_REVIEWS_DEFAULT },
+  selected: { otherFactor: SELECTED_FACTOR.other },
   modes: DEFAULT_AREA_MODES,
 };
 
@@ -464,6 +473,7 @@ export const SIGNAL_PARAM_BOUNDS = {
     max: POPULARITY_HALF_REVIEWS_MAX,
     decimals: 0,
   },
+  selectedOther: { min: SELECTED_OTHER_MIN, max: SELECTED_OTHER_MAX, decimals: 2 },
   weight: { min: AREA_WEIGHT_MIN, max: AREA_WEIGHT_MAX, decimals: 2 },
 } as const;
 
@@ -706,6 +716,7 @@ export function normalizeSignalParams(raw: unknown): SignalParams {
   const r = (raw ?? {}) as Record<string, unknown>;
   const prox = (r.proximity ?? {}) as Record<string, unknown>;
   const pop = (r.popularity ?? {}) as Record<string, unknown>;
+  const sel = (r.selected ?? {}) as Record<string, unknown>;
   const m = (r.modes ?? {}) as Record<string, unknown>;
   const d = DEFAULT_SIGNAL_PARAMS;
   return {
@@ -719,12 +730,20 @@ export function normalizeSignalParams(raw: unknown): SignalParams {
         SIGNAL_PARAM_BOUNDS.halfReviews,
       ),
     },
+    selected: {
+      otherFactor: boundedParam(
+        sel.otherFactor,
+        d.selected.otherFactor,
+        SIGNAL_PARAM_BOUNDS.selectedOther,
+      ),
+    },
     modes: Object.fromEntries(AREA_MODES.map((mode) => {
       const row = (m[mode] ?? {}) as Record<string, unknown>;
       const dr = d.modes[mode];
       return [mode, {
         proximity: boundedParam(row.proximity, dr.proximity, SIGNAL_PARAM_BOUNDS.weight),
         popularity: boundedParam(row.popularity, dr.popularity, SIGNAL_PARAM_BOUNDS.weight),
+        selected: boundedParam(row.selected, dr.selected, SIGNAL_PARAM_BOUNDS.weight),
       }];
     })) as Record<AreaMode, AreaWeights>,
   };

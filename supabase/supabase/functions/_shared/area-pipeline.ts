@@ -60,6 +60,7 @@ import {
   knownFamilies,
   type LatLng,
   rankArea,
+  SELECTED_FACTOR,
   territoryGate,
 } from "./area-score.ts";
 import {
@@ -86,12 +87,13 @@ export const FEED_GOOGLE_TYPES: readonly string[] = nearbyTypesForSupers(
   CATALOG_FAMILY_SLUGS,
 );
 
-/** Popularity's reviews-for-half-credit, Proximity's reach (MESITA-2431)
- *  and the mode's row of the weights table (MESITA-2428), from the blob. */
+/** Popularity's reviews-for-half-credit, Proximity's reach (MESITA-2431),
+ *  Selected's non-Selected value and the mode's row of the weights table
+ *  (MESITA-2428, MESITA-2439), from the blob. */
 export function areaSignalParams(
   params: SignalParams,
   mode: AreaMode = "nearby",
-): Pick<AreaContext, "halfReviews" | "reachKm" | "weights"> {
+): Pick<AreaContext, "halfReviews" | "reachKm" | "weights" | "selectedOther"> {
   const num = (v: unknown, d: number) => (typeof v === "number" && Number.isFinite(v) ? v : d);
   const row = params.modes?.[mode];
   const d = DEFAULT_AREA_MODES[mode];
@@ -101,7 +103,9 @@ export function areaSignalParams(
     weights: {
       proximity: num(row?.proximity, d.proximity),
       popularity: num(row?.popularity, d.popularity),
+      selected: num(row?.selected, d.selected),
     },
+    selectedOther: num(params.selected?.otherFactor, SELECTED_FACTOR.other),
   };
 }
 

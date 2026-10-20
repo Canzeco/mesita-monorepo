@@ -70,10 +70,11 @@ Deno.test("an old blob with no Area params reads the defaults (MESITA-2327, MESI
   });
   assertEquals(cfg.params.popularity.halfReviews, 100);
   assertEquals(cfg.params.modes, {
-    nearby: { proximity: 2, popularity: 1 },
-    popular: { proximity: 1, popularity: 2 },
-    family: { proximity: 1, popularity: 1 },
+    nearby: { proximity: 4, popularity: 1, selected: 1 },
+    popular: { proximity: 1, popularity: 3, selected: 1 },
+    family: { proximity: 1, popularity: 1, selected: 1 },
   });
+  assertEquals(cfg.params.selected, { otherFactor: 0.3 });
   // The retired deck's numbers and the Catalog ranking are dropped (MESITA-2328);
   // Proximity's bag holds only its reach (MESITA-2431), at the default.
   assertEquals(cfg.params.proximity, { reachKm: 15 });
@@ -94,10 +95,37 @@ Deno.test("Area params clamp to their bounds; the weights table at two decimals 
   assertEquals(normalizeDiscoveryConfig({ params: { proximity: { reachKm: 99 } } }).params.proximity.reachKm, 50);
   assertEquals(normalizeDiscoveryConfig({ params: { proximity: { reachKm: 12.34 } } }).params.proximity.reachKm, 12.3);
   assertEquals(cfg.params.popularity.halfReviews, 1);
-  assertEquals(cfg.params.modes.nearby, { proximity: 5, popularity: 0 });
-  assertEquals(cfg.params.modes.popular, { proximity: 1, popularity: 1.23 });
-  assertEquals(cfg.params.modes.family, { proximity: 1, popularity: 1 });
+  assertEquals(cfg.params.modes.nearby, { proximity: 5, popularity: 0, selected: 1 });
+  assertEquals(cfg.params.modes.popular, { proximity: 1, popularity: 1.23, selected: 1 });
+  assertEquals(cfg.params.modes.family, { proximity: 1, popularity: 1, selected: 1 });
   assertEquals("balance" in cfg.params, false);
+});
+
+Deno.test("Selected is its own column and its own number (MESITA-2439): a stored row without it keeps its a and b", () => {
+  // The live row before MESITA-2439: two exponents per mode, no `selected`.
+  const old = normalizeDiscoveryConfig({
+    params: { modes: { nearby: { proximity: 3, popularity: 1 }, popular: { proximity: 1, popularity: 3 } } },
+  });
+  assertEquals(old.params.modes.nearby, { proximity: 3, popularity: 1, selected: 1 });
+  assertEquals(old.params.modes.popular, { proximity: 1, popularity: 3, selected: 1 });
+  assertEquals(old.params.selected.otherFactor, 0.3);
+  const cfg = normalizeDiscoveryConfig({
+    params: {
+      selected: { otherFactor: 0 },
+      modes: { family: { proximity: 1, popularity: 1, selected: 9 } },
+    },
+  });
+  // Never 0: Selected stays a signal, never a gate.
+  assertEquals(cfg.params.selected.otherFactor, 0.01);
+  assertEquals(cfg.params.modes.family.selected, 5);
+  assertEquals(
+    normalizeDiscoveryConfig({ params: { selected: { otherFactor: 0.456 } } }).params.selected.otherFactor,
+    0.46,
+  );
+  assertEquals(
+    normalizeDiscoveryConfig({ params: { selected: { otherFactor: 3 } } }).params.selected.otherFactor,
+    1,
+  );
 });
 
 Deno.test("Deep: limit 5 and no floor by default; both clamp", () => {

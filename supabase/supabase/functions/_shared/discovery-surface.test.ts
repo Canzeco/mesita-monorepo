@@ -1,5 +1,5 @@
 // The Discovery model (MESITA-2327) against itself and against the call
-// sites: five sources, three pipelines, four signals, two gates, and no
+// sites: five sources, three pipelines, five signals, two gates, and no
 // relationship the engines do not have.
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
@@ -17,7 +17,7 @@ import {
 const root = new URL("../../", import.meta.url);
 const text = (rel: string) => Deno.readTextFile(new URL(rel, root));
 
-Deno.test("the model is Pato's: five sources, Name · Area · Deep, four signals, two gates", () => {
+Deno.test("the model is Pato's: five sources, Name · Area · Deep, five signals, two gates", () => {
   assertEquals(DISCOVERY_SOURCES.map((s) => s.label), [
     "Google Autocomplete",
     "Google Text Search",
@@ -26,10 +26,11 @@ Deno.test("the model is Pato's: five sources, Name · Area · Deep, four signals
     "Mesita Social Search",
   ]);
   assertEquals(DISCOVERY_PIPELINES.map((p) => p.label), ["Name", "Area", "Deep"]);
-  assertEquals(DISCOVERY_SIGNALS.map((s) => s.label), ["Name", "Description", "Proximity", "Popularity"]);
+  assertEquals(DISCOVERY_SIGNALS.map((s) => s.label), ["Name", "Description", "Proximity", "Popularity", "Selected"]);
   assertEquals(DISCOVERY_GATES.map((g) => g.label), ["Family", "Territory"]);
   assertEquals(pipelinesUsingSignal("proximity"), ["area"]);
   assertEquals(pipelinesUsingSignal("popularity"), ["area"]);
+  assertEquals(pipelinesUsingSignal("selected"), ["area"]);
   assertEquals(pipelinesUsingSignal("name_similarity"), ["name"]);
   assertEquals(pipelinesUsingSignal("description_similarity"), ["deep"]);
   assertEquals(pipelinesUsingGate("territory"), ["area"]);
@@ -135,14 +136,17 @@ Deno.test("Deep is not live while no guest reaches Chat; Name and Area are (MESI
   assertEquals(live, { name: true, area: true, deep: false });
 });
 
-// ── MESITA-2379: one pool; Selected is a factor ──────────────────────────────
+// ── MESITA-2379: one pool; MESITA-2439: Selected is its own signal ───────────
 
-Deno.test("Area: Family and Territory gate, Selected is a factor, Chat reads Selected only", () => {
+Deno.test("Area: Family and Territory gate, Selected is a signal with its own exponent, Chat reads Selected only", () => {
   const area = DISCOVERY_PIPELINES.find((p) => p.key === "area")!;
   assertEquals(area.gates, ["family", "territory"]);
-  assertEquals(area.factors.length, 1);
-  assert(area.factors[0].includes("1.0") && area.factors[0].includes("0.3"));
-  assert(area.factors[0].includes("never payment"));
+  assertEquals(area.signals, ["proximity", "popularity", "selected"]);
+  assertEquals(area.factors, []);
+  assert(area.scoring.includes("Proximity^a × Popularity^b × Selected^c"));
+  assertEquals(area.scoring.includes("(Popularity × Selected)"), false);
+  // Only Mesita Places knows Selected; a Google row reads the other value.
+  assertEquals(sourcesFeedingSignal("area", "selected"), ["mesita_places"]);
   assert(area.rules.includes("Chat reads Mesita Selected places only."));
   assert(area.callers.includes("Chat (Don Memo)"));
   for (const stale of ["scope", "subset", "rail"]) {
@@ -150,9 +154,10 @@ Deno.test("Area: Family and Territory gate, Selected is a factor, Chat reads Sel
   }
 });
 
-Deno.test("the Selected factor the model states is the one the score uses", async () => {
+Deno.test("the Selected values the model states are the ones the score uses", async () => {
   const { SELECTED_FACTOR } = await import("./area-score.ts");
-  const area = DISCOVERY_PIPELINES.find((p) => p.key === "area")!;
-  assert(area.factors[0].includes(`× ${SELECTED_FACTOR.selected.toFixed(1)}`));
-  assert(area.factors[0].includes(`× ${SELECTED_FACTOR.other}`));
+  const sel = DISCOVERY_SIGNALS.find((s) => s.key === "selected")!;
+  assert(sel.formula.includes(`${SELECTED_FACTOR.selected.toFixed(1)} for a Mesita Selected place`));
+  assert(sel.formula.includes(`${SELECTED_FACTOR.other} for every other place`));
+  assert(sel.formula.includes("never payment"));
 });

@@ -10,7 +10,8 @@
 //   Pipeline  orchestrates sources, gates and signals (Name · Area · Deep)
 //   Signal    a continuous score in 0..1
 //   Gate      a binary eligibility check (0 or 1)
-//   Factor    a multiplier on the score: it orders, never excludes
+//   Factor    a multiplier on the score: it orders, never excludes (none
+//             since Selected became a signal, MESITA-2439)
 //
 // Catalog and Map are VIEWS of Area, not pipelines; Saved is a saved
 // collection; the Chat Agent sits above the pipelines and calls Deep, never a
@@ -134,6 +135,7 @@ export const DISCOVERY_SIGNAL_KEYS = [
   "description_similarity",
   "proximity",
   "popularity",
+  "selected",
 ] as const;
 export type DiscoverySignalKey = (typeof DISCOVERY_SIGNAL_KEYS)[number];
 
@@ -196,6 +198,17 @@ export const DISCOVERY_SIGNALS: readonly DiscoverySignalFact[] = [
     cost: "Local arithmetic over stored numbers, free.",
     missing: "No rating or no review count: 0 (shown as n/a). There is no new-place prior; that lowers the place, it never removes it.",
     normalization: "0..1 by construction: rating counts linearly (a 3★ place is 60% of a 5★ one) and volume saturates, ½ at the half-credit count, never 1.",
+  },
+  {
+    key: "selected",
+    label: "Selected",
+    formula: "1.0 for a Mesita Selected place (an Enrich run completed and the profile is ready — curation, never payment); 0.3 for every other place",
+    requires: ["selected"],
+    query: "Nothing.",
+    computation: "runtime",
+    cost: "A stored fact, free.",
+    missing: "Not Mesita Selected (a Google-only place, or a Mesita row no Enrich run has completed): the operator's value for every other place (default 0.3), never 0.",
+    normalization: "Already 0..1. Its own exponent per mode since MESITA-2439 (it used to ride Popularity's), so a strong Google-only place can still outrank a weak Selected one.",
   },
 ];
 
@@ -288,12 +301,10 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     label: "Area",
     purpose: "Places around a location: a point (the device, a saved address or the map's centre) or an area (a saved city, neighbourhood or postcode).",
     sources: ["google_nearby", "mesita_places"],
-    signals: ["proximity", "popularity"],
+    signals: ["proximity", "popularity", "selected"],
     gates: ["family", "territory"],
-    factors: [
-      "Selected: × 1.0 for a Mesita Selected place (an Enrich run completed and the profile is ready — curation, never payment), × 0.3 for every other place, inside Popularity, so it is raised to Popularity's exponent (MESITA-2428). Fixed, so a strong Google-only place can still outrank a weak Selected one.",
-    ],
-    scoring: "A point: Proximity^a × (Popularity × Selected)^b. An area: Territory × (Popularity × Selected)^b. No location: (Popularity × Selected)^b. (a, b) is the guest's mode's row of the weights table (Nearby · Popular · Family, exponents 0–5, MESITA-2428); ties break on distance (a point), then id.",
+    factors: [],
+    scoring: "A point: Proximity^a × Popularity^b × Selected^c. An area: Territory × Popularity^b × Selected^c. No location: Popularity^b × Selected^c. (a, b, c) is the guest's mode's row of the weights table (Nearby · Popular · Family, exponents 0–5, MESITA-2428; Selected's own column since MESITA-2439); ties break on distance (a point), then id.",
     keepsOrder: [],
     rules: [
       "Google and Mesita candidates contribute independently to one pool, deduped by Google Place ID (a Mesita place wins its own Google id), gated, scored and ranked before any page is cut. The guest never picks a source.",
