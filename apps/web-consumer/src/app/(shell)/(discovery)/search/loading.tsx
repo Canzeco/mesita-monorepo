@@ -2,14 +2,15 @@ import { Skeleton } from "@/components/shared";
 
 // /search Suspense fallback. Mirror SearchHeader's silhouette (MESITA-2433):
 // the band, then the row (a disc · the query bar · a disc; the test counts
-// the two disc markers) and the chip row (Nearby, Popular, then the families),
-// then the map and its catalog rail.
+// the two disc markers), then the map with the chip row (Nearby, Popular,
+// then the families) floating on its top edge (MESITA-2450) and its
+// catalog rail.
 
 export default function SearchLoading() {
   return (
     <div className="flex h-full min-h-0 w-full flex-col">
       <div className="border-border bg-card/95 shrink-0 border-b backdrop-blur">
-        <div className="flex min-w-0 items-center gap-2 px-3 pt-2 pb-1.5">
+        <div className="flex min-w-0 items-center gap-2 px-3 pt-2 pb-2">
           <div className="shrink-0" data-skeleton-disc>
             <Skeleton className="h-9 w-9 rounded-full" />
           </div>
@@ -18,8 +19,11 @@ export default function SearchLoading() {
             <Skeleton className="h-9 w-9 rounded-full" />
           </div>
         </div>
+      </div>
+      <div className="relative min-h-0 w-full flex-1 overflow-hidden">
+        <Skeleton className="absolute inset-0 rounded-none" />
         <div
-          className="flex gap-2 overflow-hidden px-3 pb-2"
+          className="absolute inset-x-0 top-0 z-10 flex gap-2 overflow-hidden px-3 pt-2"
           data-search-loading-chips
         >
           <Skeleton className="h-9 w-24 shrink-0 rounded-full" />
@@ -27,9 +31,6 @@ export default function SearchLoading() {
           <Skeleton className="h-9 w-28 shrink-0 rounded-full" />
           <Skeleton className="h-9 w-28 shrink-0 rounded-full" />
         </div>
-      </div>
-      <div className="relative min-h-0 w-full flex-1 overflow-hidden">
-        <Skeleton className="absolute inset-0 rounded-none" />
 
         <div className="absolute inset-x-3 bottom-3">
           <div className="mb-2 flex justify-center">

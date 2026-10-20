@@ -2,9 +2,9 @@
 
 // Search's header (Pato, MESITA-2409 — OpenTable's shape):
 //
-//   ( ⌖ ) [ ⚲ Search places…  ] ( ✦ )   ┐ a white band,
-//   (📍 Nearby) (⭐ Popular) │ (☕ Coffee) (🥐 Breakfast) …   ┘ hairline under
+//   ( ⌖ ) [ ⚲ Search places…  ] ( ✦ )   a white band, hairline under
 //   ─────────────────── map ───────────────────────────
+//   (📍 Nearby) (⭐ Popular) │ (☕ Coffee) (🥐 Breakfast) …   floating on it
 //
 // The bar's row: the locate disc, the query bar, the Ask AI disc (→ Search ›
 // Chat, Soon) — two equal 36px discs around the bar (Pato, MESITA-2433: "location
@@ -17,11 +17,12 @@
 // MESITA-2417: "Its just all and thats it"); the Google reviews minimum is
 // the operator's, Admin › Discovery › Area.
 //
-// A WHITE BAND, like Home's header and the bottom bar (Pato, MESITA-2413:
-// "return to the white background" — it floated for MESITA-2412). Every
+// A WHITE BAND for the bar's row, like Home's header and the bottom bar
+// (Pato, MESITA-2413); the chip row floats over the map with no band behind
+// it (MESITA-2450: white on white "looks weird"), ~17px under the bar. Every
 // control is h-9: the discs, the bar and every chip (MESITA-2445). `children`
 // (the bar's results, the load error) COVER the chip row and run on over the
-// map (`absolute top-0` on the chips' box; Pato, MESITA-2417: "the searchbar
+// map (`absolute top-0` on the floating chips' box; Pato, MESITA-2417: "the searchbar
 // results must cover the categories").
 
 import type { ReactNode } from "react";
@@ -61,28 +62,38 @@ export function SearchHeader({
   const prefer = useAreaPrefer();
   const everyFamily = filters.familyKeys.length === 0;
   return (
-    <div
-      className="border-border bg-card/95 relative z-30 shrink-0 border-b backdrop-blur"
-      data-search-header
-    >
-      <div className="flex min-w-0 items-center gap-2 px-3 pt-2 pb-1.5">
-        {locate}
-        <div className="min-w-0 flex-1">{bar}</div>
-        <Link
-          href={CONSUMER_ROUTES.searchChat}
-          aria-label="Ask AI"
-          title="Ask AI"
-          className={HEADER_DISC}
-          data-search-ask-ai
-        >
-          {/* h-5: Sparkles reads smaller than the locate arrow at one size (Pato, MESITA-2446: "the ask AI button must be bigger"). */}
-          <Sparkles className="h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
-        </Link>
+    <div className="relative z-30 shrink-0" data-search-header>
+      {/* The white band holds the bar's row alone (MESITA-2450). */}
+      <div
+        className="border-border bg-card/95 border-b backdrop-blur"
+        data-search-band
+      >
+        <div className="flex min-w-0 items-center gap-2 px-3 pt-2 pb-2">
+          {locate}
+          <div className="min-w-0 flex-1">{bar}</div>
+          <Link
+            href={CONSUMER_ROUTES.searchChat}
+            aria-label="Ask AI"
+            title="Ask AI"
+            className={HEADER_DISC}
+            data-search-ask-ai
+          >
+            {/* h-5: Sparkles reads smaller than the locate arrow at one size (Pato, MESITA-2446: "the ask AI button must be bigger"). */}
+            <Sparkles
+              className="h-5 w-5 shrink-0"
+              strokeWidth={2}
+              aria-hidden
+            />
+          </Link>
+        </div>
       </div>
-      <div className="relative">
+      {/* The chips float over the map's top edge with no band behind them
+          (Pato, MESITA-2450: "try using the catalog bar without background"),
+          each chip its own white fill, 8px under the band. */}
+      <div className="absolute inset-x-0 top-full" data-search-chips-float>
         <nav
           aria-label="Families"
-          className="scrollbar-hide flex items-center gap-2 overflow-x-auto overscroll-x-contain px-3 pb-2"
+          className="scrollbar-hide flex items-center gap-2 overflow-x-auto overscroll-x-contain px-3 pt-2 pb-2"
           data-search-chips
         >
           {EVERY_FAMILY_CHIPS.map((c) => {

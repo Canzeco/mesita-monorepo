@@ -233,7 +233,7 @@ describe("the bar cannot squeeze its neighbours out", () => {
       /<div className="(flex min-w-0 items-center[^"]*)">\s*\{locate\}/,
     );
     expect(row, "the bar's row").not.toBeNull();
-    expectTokens(row![1], ["gap-2", "px-3", "pt-2", "pb-1.5"], "bar's row");
+    expectTokens(row![1], ["gap-2", "px-3", "pt-2", "pb-2"], "bar's row");
     const disc = constValue(read("header-classes.ts"), "HEADER_DISC");
     expectTokens(
       disc,
@@ -258,7 +258,7 @@ describe("Search's header is one token set (MESITA-2433)", () => {
     expect(askAi).toContain('aria-label="Ask AI"');
     expect(askAi).toContain("className={HEADER_DISC}");
     expect(askAi).toContain("<Sparkles");
-    expect(askAi).toContain('<Sparkles className="h-5 w-5');
+    expect(askAi).toMatch(/<Sparkles\s+className="h-5 w-5/);
     expect(askAi).not.toContain("<span>Ask AI</span>");
     expect(askAi).not.toContain("shadow-elev");
     // Both discs come from one string, so they can't drift apart.
@@ -320,7 +320,7 @@ describe("Search's header is one token set (MESITA-2433)", () => {
     expect(nav, "the chip row").not.toBeNull();
     expectTokens(
       nav![1],
-      ["gap-2", "px-3", "pb-2", "overflow-x-auto"],
+      ["gap-2", "px-3", "pt-2", "pb-2", "overflow-x-auto"],
       "chip row",
     );
   });
@@ -403,11 +403,19 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
     expect(header).toContain("FILTERABLE_PLACE_FAMILIES.map");
     expect(header).toContain("selectMapFamily(family.key)");
     expect(header).toContain('setAreaPrefer("near");');
-    // A white band above the map with a hairline (MESITA-2413; it floated
-    // for MESITA-2412), every control h-9 (MESITA-2445).
-    expect(header).toContain(
-      '"border-border bg-card/95 relative z-30 shrink-0 border-b backdrop-blur"',
-    );
+    // A white band with a hairline holds the bar's row alone (MESITA-2413,
+    // MESITA-2450); the chip row floats over the map under it with no
+    // background, 8px down. Every control h-9 (MESITA-2445).
+    expect(header).toContain('className="relative z-30 shrink-0" data-search-header');
+    const band = header.match(/className="([^"]*)"\s*data-search-band/);
+    expect(band, "the band").not.toBeNull();
+    expectTokens(band![1], ["border-border", "bg-card/95", "border-b"], "band");
+    expect(header.indexOf("data-search-band")).toBeLessThan(header.indexOf("{bar}"));
+    const float = header.match(/className="([^"]*)"\s*data-search-chips-float/);
+    expect(float, "the floating chip row").not.toBeNull();
+    expectTokens(float![1], ["absolute", "inset-x-0", "top-full"], "chip float");
+    expect(float![1]).not.toContain("bg-");
+    expect(header.indexOf("{bar}")).toBeLessThan(header.indexOf("data-search-chips-float"));
     expect(src.indexOf("<SearchHeader")).toBeLessThan(
       src.indexOf("<SearchMap"),
     );
@@ -430,7 +438,7 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
       "results box",
     );
     expect(over![1]).not.toContain("inset-x-2");
-    expect(header).not.toContain("top-full");
+    expect(over![1]).not.toContain("top-full");
     expect(header.indexOf("data-search-chips")).toBeLessThan(
       header.indexOf("data-search-over-chips"),
     );
