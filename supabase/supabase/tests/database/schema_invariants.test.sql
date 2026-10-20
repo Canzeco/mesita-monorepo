@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(132);
+select plan(135);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -613,6 +613,26 @@ select ok(
   not has_table_privilege('anon', 'public.place_requests', 'SELECT')
     and not has_table_privilege('authenticated', 'public.place_requests', 'SELECT'),
   'client roles have no SELECT on place_requests'
+);
+
+-- Social v1 (MESITA-2442): EF-only, and its readers are service_role only.
+select ok(
+  (select relrowsecurity from pg_class
+    where oid = 'public.place_activity'::regclass)
+    and not has_table_privilege('anon', 'public.place_activity', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.place_activity', 'SELECT'),
+  'place_activity is EF-only (RLS on, no client SELECT)'
+);
+
+select ok(
+  not has_function_privilege('authenticated', 'public.place_activity_feed(integer)', 'EXECUTE')
+    and not has_function_privilege('anon', 'public.place_activity_people(uuid, integer)', 'EXECUTE'),
+  'client roles cannot run the Social readers (they name other members)'
+);
+
+select col_default_is(
+  'public', 'consumers', 'show_activity', 'true',
+  'consumers.show_activity defaults on (Show my activity)'
 );
 
 select has_function(

@@ -6,11 +6,11 @@ import type { PlaceDetail } from "@/lib/place-detail";
 import { useMemberPlaceActions } from "@/components/consumer/member-place-actions";
 
 export function MemberPlaceModal({ place }: { place: PlaceDetail }) {
-  const { actions, sheets } = useMemberPlaceActions(place);
+  const { actions, sheets, social } = useMemberPlaceActions(place);
   return (
     <>
       <PlaceDetailModalShell place={place}>
-        <PlaceDetailBody place={place} actions={actions} />
+        <PlaceDetailBody place={place} actions={actions} social={social} />
       </PlaceDetailModalShell>
       {sheets}
     </>

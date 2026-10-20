@@ -1,14 +1,21 @@
 "use client";
 
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type {
   PlaceActions,
   PlaceMenuItem,
   PlaceRequestView,
 } from "@mesita/place-profile";
+import { SocialLine } from "@mesita/place-profile";
 import { MenuViewer } from "@/components/consumer/MenuViewer";
 import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
 import { apiRequestPlace } from "@/lib/api/places";
+import {
+  apiPlaceActivity,
+  apiTrackActivity,
+  isMesitaPlaceId,
+  type PlaceActivity,
+} from "@/lib/api/activity";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useSavedPlaces } from "@/lib/saved-places";
 import { sharePlace } from "@/lib/share-place";
@@ -18,15 +25,21 @@ import { errMsg } from "@/lib/utils";
 
 // One hook per member surface so the body and the Reserve bar share the
 // sheets. The shared renderer stays presentational.
+//
+// Social v1 (MESITA-2442): opening the profile records `viewed`; the line
+// under the title and the guest's own "I went" come from
+// consumer-web-list-activity; "I went" writes `went` on and off.
 export function useMemberPlaceActions(place: PlaceDetail): {
   actions: PlaceActions;
   sheets: ReactNode;
+  social: ReactNode;
 } {
   const { isSaved, toggle } = useSavedPlaces();
   const saved = isSaved(place.id);
   const [reserveOpen, setReserveOpen] = useState(false);
   const [menu, setMenu] = useState<PlaceMenuItem | null>(null);
   const request = usePlaceRequest(place);
+  const activity = usePlaceActivity(place.id);
 
   const onSave = useCallback(() => {
     const nowSaved = !saved;
@@ -46,6 +59,8 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const actions: PlaceActions = {
     onSave,
     saved,
+    onWent: activity.onWent,
+    went: activity.went,
     onShare: () => void sharePlace(place),
     onReserve: () => setReserveOpen(true),
     onRequest: request.onRequest,
@@ -69,7 +84,72 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     </>
   );
 
-  return { actions, sheets };
+  return { actions, sheets, social: activity.social };
+}
+
+function usePlaceActivity(placeId: string): {
+  social: ReactNode;
+  went: boolean;
+  onWent?: () => void;
+} {
+  const getSupabase = useLazyBrowserSupabase();
+  const mesita = isMesitaPlaceId(placeId);
+  const [state, setState] = useState<{
+    placeId: string;
+    activity: PlaceActivity | null;
+  }>({ placeId, activity: null });
+  const [wentOverride, setWentOverride] = useState<{
+    placeId: string;
+    went: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!mesita) return;
+    let cancelled = false;
+    const supabase = getSupabase();
+    // Viewed first, so the guest's own open counts in the line it reads.
+    void apiTrackActivity(supabase, { kind: "viewed", placeId })
+      .catch(() => {})
+      .then(() => apiPlaceActivity(supabase, placeId))
+      .then((activity) => {
+        if (!cancelled) setState({ placeId, activity });
+      })
+      .catch(() => {
+        /* no line is the empty state */
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [placeId, mesita]);
+
+  const activity = state.placeId === placeId ? state.activity : null;
+  const went =
+    wentOverride?.placeId === placeId
+      ? wentOverride.went
+      : (activity?.me.went ?? false);
+
+  const onWent = useCallback(() => {
+    const next = !went;
+    setWentOverride({ placeId, went: next });
+    if (next) toast.success("Marked as went");
+    void apiTrackActivity(getSupabase(), {
+      kind: "went",
+      placeId,
+      on: next,
+    }).catch((e) => {
+      setWentOverride({ placeId, went: !next });
+      toast.error(errMsg(e, "Could not save that."));
+    });
+  }, [getSupabase, placeId, went]);
+
+  const social = activity?.line ? (
+    <SocialLine faces={activity.people} text={activity.line} />
+  ) : null;
+
+  // A Google-only card has no place row yet: no line, and "I went" stays
+  // inert until the profile is created.
+  return mesita ? { social, went, onWent } : { social: null, went: false };
 }
 
 function usePlaceRequest(place: PlaceDetail): {

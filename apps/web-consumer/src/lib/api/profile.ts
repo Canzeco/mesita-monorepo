@@ -25,6 +25,9 @@ export type ConsumerProfile = {
   // Consumer avatar public URL (consumer-avatars bucket). Optional — missing
   // falls back to DefaultAvatar on Me / Personal details (MESITA-880/953).
   avatar_url?: string | null;
+  // Social v1 (MESITA-2442): Show my activity. Absent on an older EF reads
+  // as on (the column defaults true).
+  show_activity?: boolean;
 };
 
 type ConsumerOnboardingInput = {
@@ -46,9 +49,14 @@ type ConsumerAvatarPatch = {
   avatar_url: string | null;
 };
 
+// Show my activity (MESITA-2442), from Me › Settings › Privacy.
+type ConsumerSocialPatch = {
+  show_activity: boolean;
+};
+
 export async function apiUpdateConsumerProfile(
   client: SupabaseClient,
-  input: ConsumerOnboardingInput | ConsumerAvatarPatch,
+  input: ConsumerOnboardingInput | ConsumerAvatarPatch | ConsumerSocialPatch,
 ): Promise<ConsumerProfile> {
   const { consumer } = await invokeEF<{ consumer: ConsumerProfile }>(
     client,

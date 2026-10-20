@@ -140,13 +140,8 @@ export const LEGACY_REDIRECTS: Redirect[] = [
     destination: "/search/chat",
     permanent: true,
   },
-  // SOCIAL BECAME A ROW OF HOME'S COLUMN; THE PLACES TEST TAB DIED
-  // (MESITA-2405). Both land on Home.
-  {
-    source: "/discover/social",
-    destination: "/discover/places",
-    permanent: true,
-  },
+  // THE PLACES TEST TAB DIED (MESITA-2405). /discover/social is a live page
+  // again (Social v1, MESITA-2442).
   { source: "/places", destination: "/discover/places", permanent: true },
   // The Saved tab (reservations, favorites) and the /saved/place dual
   // path (MESITA-1585). One hop each, straight to the canonical surface.

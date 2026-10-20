@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { CalendarCheck, Heart, Navigation, Share2 } from "lucide-react";
+import { CalendarCheck, CircleCheck, Heart, Navigation, Share2 } from "lucide-react";
 
 import type { PlaceActions } from "../../actions";
 import { inertButtonProps } from "../../actions";
@@ -11,7 +11,8 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 import { placeMapsUrl } from "../../lib/maps-url";
 
 // decision: Pato (2026-10-19, MESITA-2441) — OpenTable/Resy actions:
-//   · Save · Share · Directions, an icon row under the title;
+//   · Save · I went · Share · Directions, an icon row under the title
+//     ("I went" is Social v1's third event, MESITA-2442);
 //   · Reserve, the ONE primary CTA, pinned to the bottom of the scroll.
 // Contact and Pay (Soon) are gone; the phone and WhatsApp are in Links.
 // Live behavior arrives as callbacks; a missing callback leaves its button
@@ -23,8 +24,11 @@ function IconAction({
   pressed,
   onClick,
   ariaLabel,
+  pressedClass = "bg-destructive border-destructive text-white",
 }: {
   label: string;
+  /** How the pressed disc looks: the heart is red, "I went" is ink. */
+  pressedClass?: string;
   icon: React.ReactNode;
   pressed?: boolean;
   onClick?: () => void;
@@ -42,7 +46,7 @@ function IconAction({
       <span
         className={cn(
           "border-border text-foreground flex h-11 w-11 items-center justify-center rounded-full border transition group-active:scale-95",
-          pressed && "bg-destructive border-destructive text-white",
+          pressed && pressedClass,
         )}
       >
         {icon}
@@ -60,6 +64,7 @@ export function ProfileActions({
   actions?: PlaceActions;
 }) {
   const saved = actions?.saved === true;
+  const went = actions?.went === true;
   const onOpenLink = actions?.onOpenLink;
   return (
     <div className="flex items-start justify-around gap-2 px-4 pt-4 pb-5">
@@ -74,6 +79,14 @@ export function ProfileActions({
             strokeWidth={2}
           />
         }
+      />
+      <IconAction
+        label="I went"
+        ariaLabel={went ? "Take back I went" : "I went here"}
+        pressed={actions?.onWent ? went : undefined}
+        onClick={actions?.onWent}
+        pressedClass="bg-foreground border-foreground text-paper"
+        icon={<CircleCheck className="h-5 w-5" strokeWidth={2} />}
       />
       <IconAction
         label="Share"

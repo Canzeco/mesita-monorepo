@@ -241,6 +241,13 @@ verify_jwt = true
 [functions.consumer-web-track-event]
 verify_jwt = true
 
+# Social v1 (MESITA-2442): saved · viewed · went, written and read back.
+[functions.consumer-web-track-activity]
+verify_jwt = true
+
+[functions.consumer-web-list-activity]
+verify_jwt = true
+
 # Reservations Agent (the consumer's half; the engine is
 # supabase-edgefunc-reservation-call above).
 [functions.consumer-web-create-reservation]

@@ -15,7 +15,7 @@ export function PlaceDetailPageBody({
   fallbackHref?: string;
 }) {
   const router = useRouter();
-  const { actions, sheets } = useMemberPlaceActions(place);
+  const { actions, sheets, social } = useMemberPlaceActions(place);
   const onBack = useCallback(() => {
     if (typeof window !== "undefined" && window.history.length > 1) {
       router.back();
@@ -27,7 +27,12 @@ export function PlaceDetailPageBody({
   return (
     <div className="bg-background relative flex flex-1 flex-col overflow-hidden">
       <style>{`nav[data-shell-nav]{display:none}`}</style>
-      <PlaceProfile place={place} onBack={onBack} actions={actions} />
+      <PlaceProfile
+        place={place}
+        onBack={onBack}
+        actions={actions}
+        social={social}
+      />
       {sheets}
     </div>
   );

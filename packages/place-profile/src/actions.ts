@@ -27,6 +27,9 @@ export type PlaceCreatingView = {
 export type PlaceActions = {
   onSave?: () => void;
   saved?: boolean;
+  /** "I went" (MESITA-2442): marks a visit; tapping again takes it back. */
+  onWent?: () => void;
+  went?: boolean;
   onShare?: () => void;
   onReserve?: () => void;
   onRequest?: () => void;

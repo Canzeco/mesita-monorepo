@@ -234,6 +234,43 @@ export function StoredToggleRow({
   );
 }
 
+// A toggle whose value lives on the server (Show my activity, MESITA-2442):
+// the caller owns the value and the write.
+export function ServerToggleRow({
+  Icon,
+  tint,
+  label,
+  sub,
+  on,
+  disabled,
+  onToggle,
+}: {
+  Icon: LucideIcon;
+  tint: RowTint;
+  label: string;
+  sub?: string;
+  on: boolean;
+  disabled?: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      disabled={disabled}
+      role="switch"
+      aria-checked={on}
+      className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition disabled:opacity-60"
+    >
+      <IconCircle tint={tint}>
+        <Icon className="h-[18px] w-[18px]" />
+      </IconCircle>
+      <RowText label={label} sub={sub} />
+      <Switch on={on} />
+    </button>
+  );
+}
+
 // ─── Select (language / default location) ─────────────────────────────────
 
 // Device-persisted single-choice row rendered as a styled native <select> on

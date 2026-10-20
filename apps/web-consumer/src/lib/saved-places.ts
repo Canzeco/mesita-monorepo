@@ -3,15 +3,34 @@
 // useSyncExternalStore is the canonical React 18+ pattern for "subscribe
 // to a value outside React" without the setState-in-useEffect anti-pattern.
 //
-// Saving is a BOOKMARK and nothing more, and it lives only in this browser:
-// there is no server-side store for saves. This module is the only thing to
-// swap if one arrives, since the public API (isSaved / toggleSaved / list) is
-// what every caller uses.
+// Saving is a BOOKMARK, and since Social v1 (MESITA-2442) the server holds it:
+// a `saved` row in place_activity. This browser's set is a CACHE: a toggle
+// paints at once and writes through the remote sink (setSavedPlacesRemote,
+// wired by ConsumerLocalDataGuard), and syncSavedPlaces() adopts the server's
+// set on every shell mount. A Google-only card (`g:<id>`) has no place row
+// yet, so its save stays local only.
 
 import { useCallback, useSyncExternalStore } from "react";
 
 const STORAGE_KEY = "mesita:saved-places";
 const PREVIEW_STORAGE_KEY = "mesita:saved-place-previews";
+// Set once this browser's pre-server saves were pushed up (MESITA-2442).
+const SYNCED_KEY = "mesita:saved-places-synced";
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Where a save is written through. Null until the shell wires it. */
+type SavedRemote = (placeId: string, saved: boolean) => void;
+let remote: SavedRemote | null = null;
+
+export function setSavedPlacesRemote(fn: SavedRemote | null): void {
+  remote = fn;
+}
+
+function writeThrough(placeId: string, saved: boolean) {
+  if (remote && UUID_RE.test(placeId)) remote(placeId, saved);
+}
 
 type Listener = () => void;
 
@@ -148,19 +167,26 @@ function toggleSavedPlace(placeId: string): boolean {
   cache = next;
   writeToStorage(cache);
   emit();
+  writeThrough(placeId, nowSaved);
   return nowSaved;
 }
 
 function setPlaceSaved(placeId: string, saved: boolean): void {
+  if (setLocal(placeId, saved)) writeThrough(placeId, saved);
+}
+
+/** The cache alone; true when it changed. */
+function setLocal(placeId: string, saved: boolean): boolean {
   ensureHydrated();
   const has = cache.has(placeId);
-  if (has === saved) return;
+  if (has === saved) return false;
   const next = new Set(cache);
   if (saved) next.add(placeId);
   else next.delete(placeId);
   cache = next;
   writeToStorage(cache);
   emit();
+  return true;
 }
 
 // Forget ONE place — drop it from the saved set and from the preview cache.
@@ -171,7 +197,8 @@ function setPlaceSaved(placeId: string, saved: boolean): void {
 // Both stores are keyed by place id — the set drives the row, the preview map
 // drives its thumbnail/name — so forgetting means clearing both.
 export function forgetSavedPlace(placeId: string): void {
-  setPlaceSaved(placeId, false);
+  // Local only: the place row is gone, and its activity went with it.
+  setLocal(placeId, false);
   removeSavedPlacePreview(placeId);
 }
 
@@ -189,12 +216,68 @@ export function clearSavedPlacesLocal(): void {
     try {
       window.localStorage.removeItem(STORAGE_KEY);
       window.localStorage.removeItem(PREVIEW_STORAGE_KEY);
+      window.localStorage.removeItem(SYNCED_KEY);
     } catch {
       /* private mode — nothing to clear */
     }
   }
   cache = new Set();
   hydrated = true;
+  emit();
+}
+
+/**
+ * Adopt the server's saved set (MESITA-2442). `server` is newest first, with
+ * the cards of the places still listed. The first sync in a browser also
+ * pushes the saves made before the server held them, once. Google-only saves
+ * (not place rows) stay. Never throws: a failed read keeps the cache.
+ */
+export async function syncSavedPlaces<T extends { id: string }>(
+  read: () => Promise<{ ids: string[]; places: T[] }>,
+  push: (placeId: string) => Promise<void>,
+): Promise<void> {
+  if (typeof window === "undefined") return;
+  let server: { ids: string[]; places: T[] };
+  try {
+    server = await read();
+  } catch {
+    return;
+  }
+  ensureHydrated();
+  let firstSync = false;
+  try {
+    firstSync = window.localStorage.getItem(SYNCED_KEY) == null;
+  } catch {
+    /* private mode — treat as synced so nothing is pushed twice */
+  }
+  const onServer = new Set(server.ids);
+  const pushed: string[] = [];
+  if (firstSync) {
+    for (const id of cache) {
+      if (!UUID_RE.test(id) || onServer.has(id)) continue;
+      try {
+        await push(id);
+        pushed.push(id);
+      } catch {
+        /* the place may be gone; it drops out below */
+      }
+    }
+    try {
+      window.localStorage.setItem(SYNCED_KEY, "1");
+    } catch {
+      /* best effort */
+    }
+  }
+  const map = readPreviewStorage<T>();
+  for (const p of server.places) map.set(p.id, p);
+  writePreviewStorage(map);
+  // Insertion order is oldest first (savedPlaceList reverses it).
+  const next = new Set<string>([...server.ids].reverse());
+  for (const id of pushed) next.add(id);
+  for (const id of cache) if (!UUID_RE.test(id)) next.add(id);
+  cache = next;
+  hydrated = true;
+  writeToStorage(cache);
   emit();
 }
 

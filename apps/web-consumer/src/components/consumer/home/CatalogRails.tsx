@@ -10,6 +10,9 @@
 //   │ ──────────────  │                     │
 //   │ ☕ Coffee    ↕  │                     │
 //
+// Social OPENS ITS FEED (MESITA-2442): the row navigates to /discover/social,
+// a full-height list; it never draws in the right pane.
+//
 // Left quarter (Pato, MESITA-2411): Social, Saved, Nearby and Popular
 // (the default: every place) PINNED above a rule; under it one row per
 // family, and only that list scrolls. The chosen row is white, bold, an ink bar on its left edge.
@@ -34,7 +37,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Compass, Heart, Navigation, Users } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Compass, Heart, Navigation } from "lucide-react";
 import {
   apiListAreaPool,
   type AreaPool,
@@ -73,7 +77,6 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { EmptyState } from "@/components/shared";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { CatalogTile } from "./CatalogTile";
-import { HomeSoon } from "./HomeSoon";
 import { useActiveLocation } from "@/lib/active-location";
 import { cn, errMsg } from "@/lib/utils";
 import { placesFeed } from "@/lib/catalog-feed";
@@ -115,7 +118,8 @@ export function chipPrefer(chip: string): AreaPrefer {
 }
 /** The guest's saved places (MESITA-2383; Home's Favorites tab, then row, Saved since MESITA-2427). */
 export const SAVED_CHIP = "saved";
-/** Social, Soon (MESITA-2168) — a row since MESITA-2405; it was a Home pill. */
+/** Social — a row since MESITA-2405 (it was a Home pill); it opens the feed
+ *  at /discover/social (MESITA-2442). */
 export const SOCIAL_CHIP = "social";
 
 /** The column: Social · Saved · Nearby · Popular, a rule, then every
@@ -130,8 +134,8 @@ export function placesChips(): {
   emoji?: string;
 }[] {
   return [
-    // Social is not built yet (MESITA-2168): its pane says Soon, the row
-    // does not (Pato, MESITA-2418: the tag "looks like shit").
+    // Social opens its own page (MESITA-2442); no "Soon" tag ever (Pato,
+    // MESITA-2418: the tag "looks like shit").
     { key: SOCIAL_CHIP, label: "Social", emoji: "👥" },
     // Saved, not Favorites, and Nearby, not Near (Pato, MESITA-2427); the
     // heart stays, matching the tile's save button (MESITA-2430):
@@ -250,6 +254,7 @@ export function turnOnLocationCopy(error: LocationError | null): {
 
 export function CatalogRails() {
   const supabase = useBrowserSupabase();
+  const router = useRouter();
   const coords = useUserLocation();
   const { savedIds, hydrated, setSaved } = useSavedPlaces();
   const openGooglePlace = useOpenGooglePlace();
@@ -408,6 +413,11 @@ export function CatalogRails() {
       <button
         type="button"
         onClick={() => {
+          if (c.key === SOCIAL_CHIP) {
+            trackEvent(supabase, "home_mode_view", { mode: c.label });
+            router.push(CONSUMER_ROUTES.discoverSocial);
+            return;
+          }
           // The in-Home switch (`nav_tab_tap` is BottomNav's): since
           // MESITA-2409 Home's modes are this column's rows.
           if (chip !== c.key)
@@ -534,17 +544,6 @@ export function CatalogRails() {
       </div>
     );
   };
-
-  // Social is Soon: the pane says so, nothing loads (MESITA-2168).
-  if (chip === SOCIAL_CHIP) {
-    return shell(
-      <HomeSoon
-        icon={Users}
-        name="Social"
-        description="Seeing where friends go lands here shortly — thanks for waiting."
-      />,
-    );
-  }
 
   // Saved never waits on the catalog: the saves are local.
   if (chip === SAVED_CHIP) {
