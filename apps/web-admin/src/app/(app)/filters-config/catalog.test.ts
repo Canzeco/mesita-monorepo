@@ -42,7 +42,7 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
     expect(Object.keys(cfg).sort()).toEqual(Object.keys(DEFAULT_CONFIG).sort());
   });
 
-  it("params keeps only the reach, half credit and the weights table; the linear balance is dropped (MESITA-2428, MESITA-2431)", () => {
+  it("params keeps only the reach, half credit, Selected's other value and the weights table; the linear balance is dropped (MESITA-2428, MESITA-2431, MESITA-2439)", () => {
     expect(coerceConfig(LIVE_BLOB).params).toEqual(DEFAULT_CONFIG.params);
     expect(
       coerceConfig({
@@ -57,7 +57,8 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
     ).toEqual({
       proximity: { reachKm: 15 },
       popularity: { halfReviews: 250 },
-      modes: { ...DEFAULT_CONFIG.params.modes, popular: { proximity: 0.5, popularity: 2 } },
+      selected: { otherFactor: 0.3 },
+      modes: { ...DEFAULT_CONFIG.params.modes, popular: { proximity: 0.5, popularity: 3, selected: 1 } },
     });
   });
 
@@ -67,18 +68,24 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
         params: {
           proximity: { reachKm: 12.34 },
           popularity: { halfReviews: 0 },
-          modes: { nearby: { proximity: 99, popularity: 1.234 }, family: { proximity: -2 } },
+          selected: { otherFactor: 0 },
+          modes: { nearby: { proximity: 99, popularity: 1.234 }, family: { proximity: -2, selected: 2.5 } },
         },
       }).params,
     ).toEqual({
       proximity: { reachKm: 12.3 },
       popularity: { halfReviews: 1 },
+      selected: { otherFactor: 0.01 },
       modes: {
         ...DEFAULT_CONFIG.params.modes,
-        nearby: { proximity: 5, popularity: 1.23 },
-        family: { proximity: 0, popularity: 1 },
+        nearby: { proximity: 5, popularity: 1.23, selected: 1 },
+        family: { proximity: 0, popularity: 1, selected: 2.5 },
       },
     });
+    const other = (v: unknown) => coerceConfig({ params: { selected: { otherFactor: v } } }).params.selected.otherFactor;
+    expect(other(0.456)).toBe(0.46);
+    expect(other(7)).toBe(1);
+    expect(other("lots")).toBe(0.3);
     const reach = (v: unknown) => coerceConfig({ params: { proximity: { reachKm: v } } }).params.proximity.reachKm;
     expect(reach(0.2)).toBe(1);
     expect(reach(999)).toBe(50);

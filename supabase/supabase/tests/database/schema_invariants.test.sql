@@ -1389,10 +1389,12 @@ select ok(
       and discovery_config #> '{catalog,ranking}' is null
       -- MESITA-2431: `params` holds only what normalizeSignalParams reads;
       -- the first calibration's keys (MESITA-2347) are gone from the row.
+      -- MESITA-2439 added `selected` (Selected's value for other places).
       and (coalesce(discovery_config -> 'params', '{}'::jsonb)
-             - 'proximity' - 'popularity' - 'modes') = '{}'::jsonb
+             - 'proximity' - 'popularity' - 'selected' - 'modes') = '{}'::jsonb
       and (coalesce(discovery_config #> '{params,proximity}', '{}'::jsonb) - 'reachKm') = '{}'::jsonb
       and (coalesce(discovery_config #> '{params,popularity}', '{}'::jsonb) - 'halfReviews') = '{}'::jsonb
+      and (coalesce(discovery_config #> '{params,selected}', '{}'::jsonb) - 'otherFactor') = '{}'::jsonb
       and not (enrichment_config ? 'atlasPerRunCostCapUsd')
      from public.app_config where id = 1),
   'no dead app_config key survives'

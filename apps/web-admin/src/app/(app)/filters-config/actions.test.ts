@@ -61,10 +61,11 @@ function editedEverywhere(live: DiscoveryConfig): DiscoveryConfig {
     params: {
       proximity: { reachKm: 12.5 },
       popularity: { halfReviews: 250 },
+      selected: { otherFactor: 0.5 },
       modes: {
-        nearby: { proximity: 3, popularity: 1 },
-        popular: { proximity: 0.5, popularity: 2.5 },
-        family: { proximity: 1, popularity: 1.25 },
+        nearby: { proximity: 3, popularity: 1, selected: 2 },
+        popular: { proximity: 0.5, popularity: 2.5, selected: 0.5 },
+        family: { proximity: 1, popularity: 1.25, selected: 1 },
       },
     },
     map: { ...live.map, radiusKm: 3, googlePlaces: 20, mesitaPlaces: 60 },
@@ -111,10 +112,11 @@ describe("the Area box", () => {
     expect(sent.config?.params).toEqual({
       proximity: { reachKm: 12.5 },
       popularity: { halfReviews: 250 },
+      selected: { otherFactor: 0.5 },
       modes: {
-        nearby: { proximity: 3, popularity: 1 },
-        popular: { proximity: 0.5, popularity: 2.5 },
-        family: { proximity: 1, popularity: 1.25 },
+        nearby: { proximity: 3, popularity: 1, selected: 2 },
+        popular: { proximity: 0.5, popularity: 2.5, selected: 0.5 },
+        family: { proximity: 1, popularity: 1.25, selected: 1 },
       },
     });
   });

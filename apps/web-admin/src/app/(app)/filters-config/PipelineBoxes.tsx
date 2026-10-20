@@ -26,6 +26,8 @@ import {
   HALF_REVIEWS_MIN,
   REACH_KM_MAX,
   REACH_KM_MIN,
+  SELECTED_OTHER_MAX,
+  SELECTED_OTHER_MIN,
   MAP_RADIUS_KM_MAX,
   MAP_RADIUS_KM_MIN,
   MAP_RELOAD_PAIRS,
@@ -298,6 +300,10 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
     setOk(false);
     setCfg((c) => ({ ...c, params: { ...c.params, popularity: { halfReviews } } }));
   };
+  const setSelectedOther = (otherFactor: number) => {
+    setOk(false);
+    setCfg((c) => ({ ...c, params: { ...c.params, selected: { otherFactor } } }));
+  };
   const setReachKm = (reachKm: number) => {
     setOk(false);
     setCfg((c) => ({ ...c, params: { ...c.params, proximity: { reachKm } } }));
@@ -328,14 +334,13 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             postcode) keeps only what is inside its bounds (Territory) and
             ranks by Popularity. Google candidates and Mesita candidates
             contribute independently to one pool: merged, deduped by Google
-            Place ID, gated, scored, multiplied by the Selected factor and
-            ranked before any page is cut. The source is never a guest filter.
+            Place ID, gated, scored and ranked before any page is cut. The source is never a guest filter.
           </p>
           <p className="mt-2">
             The Map (the Search tab) and the Catalog (Home&apos;s Places) are two views of this one pipeline. The guest&apos;s
             mode (Nearby, Popular or one family) reads one row of the weights
-            table: score = Proximity<sup>a</sup> ×
-            (Popularity × Selected)<sup>b</sup>.
+            table: score = Proximity<sup>a</sup> × Popularity<sup>b</sup> ×
+            Selected<sup>c</sup>, three separate signals.
           </p>
         </>
       }
@@ -368,15 +373,26 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             disabled={off}
             onChange={setHalfReviews}
           />
+          <NumberField
+            label="Selected for every other place"
+            value={params.selected.otherFactor}
+            min={SELECTED_OTHER_MIN}
+            max={SELECTED_OTHER_MAX}
+            decimals
+            disabled={off}
+            onChange={setSelectedOther}
+          />
         </div>
         <p className="text-muted-foreground type-meta">
           The radius decides who is a candidate and never scores. Proximity
           is 1 at the anchor, ½ at half the reach and 0 at the reach and
           beyond. Popularity is rating ÷ 5 × reviews ÷
-          (reviews + half credit) × Selected (1 for a Mesita Selected place,
-          0.3 for every other): a 3★ place is 60% of a 5★ one, and volume
-          earns half credit at that many reviews. The reviews floor counts
-          people, cuts Google hits only, and 0 is off.
+          (reviews + half credit): a 3★ place is 60% of a 5★ one, and volume
+          earns half credit at that many reviews. Selected is 1 for a Mesita
+          Selected place and the number above (0.01–1) for every other, a
+          Google-only place included; never 0, so it orders and never hides.
+          The reviews floor counts people, cuts Google hits only, and 0 is
+          off.
         </p>
       </Group>
       <Group title="Weights table">
@@ -393,12 +409,13 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
         </div>
         <AreaWeightsTable modes={params.modes} disabled={off} onChange={setWeight} />
         <p className="text-muted-foreground type-meta">
-          Each cell is an exponent: score = Proximity<sup>a</sup> × (Popularity
-          × Selected)<sup>b</sup>. 0 turns a signal off for that mode; within a
-          mode only the ratio a : b changes the order (2 · 1 ranks like 4 · 2).
-          Every family shares the Family row. A saved city or area has no
-          Proximity, so it reads b alone. A place with no Google numbers has
-          Popularity 0, so it sinks to the bottom unless b is 0.
+          Each cell is an exponent: score = Proximity<sup>a</sup> ×
+          Popularity<sup>b</sup> × Selected<sup>c</sup>. 0 turns a signal off
+          for that mode; within a mode only the ratios a : b : c change the
+          order (4 · 1 · 1 ranks like 8 · 2 · 2). Every family shares the
+          Family row. A saved city or area has no Proximity, so it reads b and
+          c alone. A place with no Google numbers has Popularity 0, so it sinks
+          to the bottom unless b is 0.
         </p>
       </Group>
       <Group title="Candidates per source">
@@ -485,11 +502,11 @@ export function DeepBox() {
 const MODE_ROWS: { mode: AreaMode; label: string; hint: string }[] = [
   { mode: "nearby", label: "📍 Nearby", hint: "every family, distance first" },
   { mode: "popular", label: "⭐ Popular", hint: "every family, popularity first" },
-  { mode: "family", label: "Family", hint: "one family, both signals alike; every family shares this row" },
+  { mode: "family", label: "Family", hint: "one family, all three signals alike; every family shares this row" },
 ];
 
 /** The weights table (MESITA-2428): rows are the guest's modes, columns the
- *  two signals, each cell an exponent. */
+ *  three signals (Selected since MESITA-2439), each cell an exponent. */
 function AreaWeightsTable({
   modes,
   disabled,
@@ -527,7 +544,8 @@ function AreaWeightsTable({
           <tr>
             <th className="px-3 py-2 font-medium">Mode</th>
             <th className="px-2 py-2 font-medium">Proximity (a)</th>
-            <th className="px-2 py-2 font-medium">Popularity × Selected (b)</th>
+            <th className="px-2 py-2 font-medium">Popularity (b)</th>
+            <th className="px-2 py-2 font-medium">Selected (c)</th>
           </tr>
         </thead>
         <tbody>
@@ -539,6 +557,7 @@ function AreaWeightsTable({
               </th>
               {cell(r.mode, "proximity")}
               {cell(r.mode, "popularity")}
+              {cell(r.mode, "selected")}
             </tr>
           ))}
         </tbody>

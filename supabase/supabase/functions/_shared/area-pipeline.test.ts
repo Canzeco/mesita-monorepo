@@ -422,11 +422,11 @@ Deno.test("selected: the weights are the operator's (params.modes.nearby, MESITA
   ];
   const distance = {
     ...selOpts,
-    params: { ...selOpts.params, modes: { ...DISCOVERY_DEFAULTS.params.modes, nearby: { proximity: 1, popularity: 0 } } },
+    params: { ...selOpts.params, modes: { ...DISCOVERY_DEFAULTS.params.modes, nearby: { proximity: 1, popularity: 0, selected: 1 } } },
   };
   const proven = {
     ...selOpts,
-    params: { ...selOpts.params, modes: { ...DISCOVERY_DEFAULTS.params.modes, nearby: { proximity: 0, popularity: 1 } } },
+    params: { ...selOpts.params, modes: { ...DISCOVERY_DEFAULTS.params.modes, nearby: { proximity: 0, popularity: 1, selected: 1 } } },
   };
   assertEquals(ids(selectMesitaSelected(rows, distance))[0], "near-quiet");
   assertEquals(ids(selectMesitaSelected(rows, proven))[0], "far-loved");

@@ -23,18 +23,20 @@ import { num } from "@/lib/config-coerce";
  *  (MESITA-2428). Mirrors AREA_MODES in _shared/area-score.ts. */
 export const AREA_MODES = ["nearby", "popular", "family"] as const;
 export type AreaMode = (typeof AREA_MODES)[number];
-export type AreaWeights = { proximity: number; popularity: number };
+/** Three exponents per mode; Selected's since MESITA-2439. */
+export type AreaWeights = { proximity: number; popularity: number; selected: number };
 
 /**
  * The Area pipeline's numbers: Proximity's reach (MESITA-2431), Popularity's
- * reviews for half credit and the weights table, two exponents per mode
- * (MESITA-2428). The reach is not `map.radiusKm`: the radius decides who is
+ * reviews for half credit, Selected's value for every other place and the
+ * weights table, three exponents per mode (MESITA-2428, MESITA-2439). The reach is not `map.radiusKm`: the radius decides who is
  * a candidate, the reach scores distance. Mirrors SignalParams in
  * _shared/discovery-config.ts.
  */
 export type SignalParams = {
   proximity: { reachKm: number };
   popularity: { halfReviews: number };
+  selected: { otherFactor: number };
   modes: Record<AreaMode, AreaWeights>;
 };
 
@@ -109,6 +111,11 @@ export const HALF_REVIEWS_MIN = 1;
 export const HALF_REVIEWS_MAX = 100_000;
 export const AREA_WEIGHT_MIN = 0;
 export const AREA_WEIGHT_MAX = 5;
+/** Selected's value for a non-Selected place, two decimals; never 0 (it
+ *  would turn the signal into a gate). Mirrors SELECTED_OTHER_*. */
+export const SELECTED_OTHER_MIN = 0.01;
+export const SELECTED_OTHER_MAX = 1;
+export const SELECTED_OTHER_DEFAULT = 0.3;
 
 export type CatalogConfig = {
   seedCount: number;
@@ -589,13 +596,14 @@ export const DEFAULT_GENERAL: GeneralConfig = {
 
 /** Mirrors DEFAULT_AREA_MODES and DEFAULT_SIGNAL_PARAMS. */
 export const DEFAULT_AREA_MODES: Record<AreaMode, AreaWeights> = {
-  nearby: { proximity: 2, popularity: 1 },
-  popular: { proximity: 1, popularity: 2 },
-  family: { proximity: 1, popularity: 1 },
+  nearby: { proximity: 4, popularity: 1, selected: 1 },
+  popular: { proximity: 1, popularity: 3, selected: 1 },
+  family: { proximity: 1, popularity: 1, selected: 1 },
 };
 const DEFAULT_SIGNAL_PARAMS: SignalParams = {
   proximity: { reachKm: REACH_KM_DEFAULT },
   popularity: { halfReviews: 100 },
+  selected: { otherFactor: SELECTED_OTHER_DEFAULT },
   modes: DEFAULT_AREA_MODES,
 };
 
@@ -626,6 +634,7 @@ function coerceParams(raw: unknown): SignalParams {
   const r = (raw ?? {}) as Record<string, unknown>;
   const prox = (r.proximity ?? {}) as Record<string, unknown>;
   const pop = (r.popularity ?? {}) as Record<string, unknown>;
+  const sel = (r.selected ?? {}) as Record<string, unknown>;
   const m = (r.modes ?? {}) as Record<string, unknown>;
   const d = DEFAULT_SIGNAL_PARAMS;
   return {
@@ -634,6 +643,9 @@ function coerceParams(raw: unknown): SignalParams {
     },
     popularity: {
       halfReviews: bounded(pop.halfReviews, d.popularity.halfReviews, HALF_REVIEWS_MIN, HALF_REVIEWS_MAX, 0),
+    },
+    selected: {
+      otherFactor: bounded(sel.otherFactor, d.selected.otherFactor, SELECTED_OTHER_MIN, SELECTED_OTHER_MAX, 2),
     },
     modes: Object.fromEntries(
       AREA_MODES.map((mode) => {
@@ -644,6 +656,7 @@ function coerceParams(raw: unknown): SignalParams {
           {
             proximity: bounded(row.proximity, dr.proximity, AREA_WEIGHT_MIN, AREA_WEIGHT_MAX, 2),
             popularity: bounded(row.popularity, dr.popularity, AREA_WEIGHT_MIN, AREA_WEIGHT_MAX, 2),
+            selected: bounded(row.selected, dr.selected, AREA_WEIGHT_MIN, AREA_WEIGHT_MAX, 2),
           },
         ];
       }),

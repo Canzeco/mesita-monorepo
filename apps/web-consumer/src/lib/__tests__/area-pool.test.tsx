@@ -33,9 +33,9 @@ describe("AreaDiagnostics (temporary)", () => {
     expect(diagNumber(0.456)).toBe("0.46");
   });
 
-  it("a point reads proximity^a × (popularity × selected)^b = final (MESITA-2428)", () => {
-    expect(diagExpression({ ...base, weights: { proximity: 2, popularity: 1 } })).toBe(
-      "proximity 0.82^2 × (popularity n/a × selected 1.00)^1 = 0.41",
+  it("a point reads proximity^a × popularity^b × selected^c = final (MESITA-2439)", () => {
+    expect(diagExpression({ ...base, weights: { proximity: 4, popularity: 1, selected: 1 } })).toBe(
+      "proximity 0.82^4 × popularity n/a^1 × selected 1.00^1 = 0.41",
     );
     // An EF from before the weights table sends no exponents.
     expect(diagExpression(base)).toContain("^?");
@@ -47,7 +47,7 @@ describe("AreaDiagnostics (temporary)", () => {
     expect(html).toContain("data-area-diagnostics");
   });
 
-  it("an area reads area × (popularity × selected)^b = final, and never says Territory", () => {
+  it("an area reads area × popularity^b × selected^c = final, and never says Territory", () => {
     const area: Area = {
       ...base,
       gates: { ...base.gates, territory: 1, radius: null },
@@ -57,9 +57,9 @@ describe("AreaDiagnostics (temporary)", () => {
       base: 0.4,
       final: 0.12,
       formula: "area",
-      weights: { proximity: 1, popularity: 1 },
+      weights: { proximity: 1, popularity: 1, selected: 1 },
     };
-    expect(diagExpression(area)).toBe("area 1 × (popularity 0.40 × selected 0.30)^1 = 0.12");
+    expect(diagExpression(area)).toBe("area 1 × popularity 0.40^1 × selected 0.30^1 = 0.12");
     const html = renderToStaticMarkup(<AreaDiagnostics area={area} />);
     expect(html).toContain("in area 1");
     expect(html).not.toContain("proximity");

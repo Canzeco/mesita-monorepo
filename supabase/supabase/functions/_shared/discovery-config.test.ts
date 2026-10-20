@@ -186,6 +186,8 @@ Deno.test("the admin twin mirrors the Area params' bounds", () => {
   assertEquals(constant("HALF_REVIEWS_MAX"), SIGNAL_PARAM_BOUNDS.halfReviews.max);
   assertEquals(constant("AREA_WEIGHT_MIN"), SIGNAL_PARAM_BOUNDS.weight.min);
   assertEquals(constant("AREA_WEIGHT_MAX"), SIGNAL_PARAM_BOUNDS.weight.max);
+  assertEquals(constant("SELECTED_OTHER_MIN"), SIGNAL_PARAM_BOUNDS.selectedOther.min);
+  assertEquals(constant("SELECTED_OTHER_MAX"), SIGNAL_PARAM_BOUNDS.selectedOther.max);
 });
 
 // ── The normalizer, key by key ───────────────────────────────────────────────
@@ -254,6 +256,7 @@ Deno.test("the deck's param bags and numbers do not survive a normalize", () => 
   assertEquals(cfg.params, {
     proximity: { reachKm: 15 },
     popularity: { halfReviews: 250 },
+    selected: { otherFactor: 0.3 },
     modes: DISCOVERY_DEFAULTS.params.modes,
   });
 });

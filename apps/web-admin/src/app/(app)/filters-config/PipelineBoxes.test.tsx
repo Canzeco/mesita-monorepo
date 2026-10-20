@@ -88,10 +88,11 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
   });
 
   it("carries the one weights table and no subpage tabs", () => {
-    // 3 Name by Admin + 5 Name + 4 Area (the reach, MESITA-2431) + the Area
-    // weights table's 6 (MESITA-2428: three modes × two signals); Deep is Soon.
+    // 3 Name by Admin + 5 Name + 5 Area (the reach, MESITA-2431; Selected's
+    // other value, MESITA-2439) + the Area weights table's 9 (three modes ×
+    // three signals, MESITA-2428 and MESITA-2439); Deep is Soon.
     const html = page();
-    expect(html.match(/type="number"/g)?.length).toBe(18);
+    expect(html.match(/type="number"/g)?.length).toBe(22);
     expect(html.match(/data-area-weights/g)?.length).toBe(1);
     expect(html).not.toContain("Modes");
     expect(html).not.toContain('role="tablist"');
@@ -119,7 +120,7 @@ describe("the boxes' controls", () => {
     expect(html).not.toContain("Only active places");
   });
 
-  it("Area: radius, reach, half credit, the weights table, two source counts, no total and no Feed rows (MESITA-2379, MESITA-2428, MESITA-2431)", () => {
+  it("Area: radius, reach, half credit, Selected's other value, the weights table, two source counts, no total and no Feed rows (MESITA-2379, MESITA-2428, MESITA-2431, MESITA-2439)", () => {
     const html = render(<AreaBox {...seed} />);
     for (const label of [
       "Radius (km)",
@@ -129,8 +130,10 @@ describe("the boxes' controls", () => {
       "📍 Nearby",
       "⭐ Popular",
       "Family",
+      "Selected for every other place",
       "Proximity (a)",
-      "Popularity × Selected (b)",
+      "Popularity (b)",
+      "Selected (c)",
       "Google candidates",
       "Mesita candidates",
       "Reload after",
@@ -150,23 +153,27 @@ describe("the boxes' controls", () => {
       "The guest picks",
       "scope",
       "subset",
+      "Popularity × Selected",
+      "Factors",
     ]) {
       expect(html, dead).not.toContain(dead);
     }
     expect(html).toContain('value="100"');
     // Proximity's reach defaults to 15 km, apart from the 50 km radius (MESITA-2431).
     expect(html).toContain('value="15"');
-    // The weights table's defaults (MESITA-2428): Nearby 2 · 1, Popular 1 · 2.
-    expect(html).toContain('value="2"');
+    // The weights table's defaults (MESITA-2439): Nearby 4 · 1 · 1, Popular 1 · 3 · 1.
+    expect(html).toContain('value="4"');
+    expect(html).toContain('value="3"');
+    expect(html).toContain('value="0.3"');
     // 40 and 60 are bought now: every Google stop is a live pill.
     const google = html.slice(html.indexOf("Places Mesita buys for Home&#x27;s catalog"), html.indexOf("Ready Mesita places read"));
     expect(google).toContain("up to 1 / 2 / 3 billed Nearby calls");
     expect(google.match(/<button[^>]*disabled=""[^>]*>(20|40|60)<\/button>/g)).toBeNull();
   });
 
-  it("Area draws its gates, its factor and the point/area rule", () => {
+  it("Area draws its gates, Selected as its third signal and the point/area rule (MESITA-2439)", () => {
     const html = render(<AreaBox {...seed} />);
-    for (const text of ["Family", "Territory", "Factors", "× 1.0", "× 0.3", "Chat reads Mesita Selected places only."]) {
+    for (const text of ["Family", "Territory", "1.0 for a Mesita Selected place", "0.3 for every other place", "Selected<sup>c</sup>", "Chat reads Mesita Selected places only."]) {
       expect(html, text).toContain(text);
     }
     expect(html).toContain("A point location uses Proximity and the radius; an area location uses Territory. Never both.");
