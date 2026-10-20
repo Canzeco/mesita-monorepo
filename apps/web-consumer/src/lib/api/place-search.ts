@@ -75,3 +75,25 @@ export async function apiCreateProject(
     "Couldn't add that place right now.",
   );
 }
+
+/**
+ * The neighbourhood the guest stands in, for Home's Current location row
+ * (MESITA-2466). One Geocoding call per ~110 m point on the server; the
+ * caller keeps the answer for the visit. Null when Google has no name.
+ */
+export async function apiReverseGeocode(
+  client: SupabaseClient,
+  point: { lat: number; lng: number },
+): Promise<string | null> {
+  try {
+    const { name } = await invokeEF<{ name: string }>(
+      client,
+      "consumer-web-reverse-geocode",
+      { lat: point.lat, lng: point.lng },
+    );
+    return typeof name === "string" && name.trim() ? name.trim() : null;
+  } catch {
+    // A name is a nicety: no name, never an error on the row.
+    return null;
+  }
+}

@@ -218,6 +218,10 @@ verify_jwt = true
 [functions.consumer-web-suggest-places]
 verify_jwt = true
 
+# Home's location sheet: the neighbourhood the guest stands in (MESITA-2466).
+[functions.consumer-web-reverse-geocode]
+verify_jwt = true
+
 # The signed-in consumer's own data.
 [functions.consumer-web-get-profile]
 verify_jwt = true

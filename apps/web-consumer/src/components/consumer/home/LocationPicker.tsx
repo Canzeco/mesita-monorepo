@@ -35,6 +35,7 @@ import {
 } from "@/lib/ui-classes";
 import { apiSuggestPlaces, type PlacePrediction } from "@/lib/api/place-search";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
+import { useHereName } from "@/lib/use-here-name";
 import { newSessionToken } from "@/components/consumer/search/search-utils";
 import { resolveLocationPick } from "@/lib/location-pick";
 import {
@@ -52,14 +53,17 @@ import { setActiveLocation, useActiveLocation } from "@/lib/active-location";
 import { cn, errMsg } from "@/lib/utils";
 import { HEADER_PILL } from "@/components/consumer/search/header-classes";
 
-/** What the pill says: the saved name, or the state of the device fix. */
+/** What the pill says: the saved name, or the state of the device fix. The
+ *  sheet's row adds the neighbourhood once known (MESITA-2466): "Current
+ *  location · Distrito Tec"; the header oval never passes one. */
 export function locationLabel(
   active: { name: string } | null,
   hasFix: boolean,
   locating: boolean,
+  hereName: string | null = null,
 ): string {
   if (active) return active.name;
-  if (hasFix) return "Current location";
+  if (hasFix) return hereName ? `Current location · ${hereName}` : "Current location";
   return locating ? "Locating…" : "Use my location";
 }
 
@@ -92,6 +96,8 @@ export function LocationPicker() {
   // Google bills Autocomplete per session: one token until a pick or close.
   const [token, setToken] = useState(newSessionToken);
   const label = locationLabel(active, coords !== null, locating);
+  // Asked only while the sheet is open, once per ~110 m (MESITA-2466).
+  const hereName = useHereName(coords, picking);
   const typing = query.trim().length >= 2;
 
   // Search after a short pause; the newest query wins.
@@ -277,7 +283,7 @@ export function LocationPicker() {
           >
             {row({
               key: "here",
-              label: locationLabel(null, coords !== null, locating),
+              label: locationLabel(null, coords !== null, locating, hereName),
               icon: (
                 <Navigation className={ICON} strokeWidth={2.25} aria-hidden />
               ),
