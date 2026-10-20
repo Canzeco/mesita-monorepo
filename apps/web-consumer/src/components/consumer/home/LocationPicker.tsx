@@ -4,17 +4,19 @@
 // shape (Pato, MESITA-2452 "put locations as scrollable in bar", then
 // MESITA-2453 "the add and the current location must be kinda fixed"):
 //
-//   ( ⌖ ) [ (🔖 Home ×) (🔖 Office) …  scrolls ] ( ＋ )
+//   ( ⌖ )      (🔖 Home ×) (🔖 Office)      ( ＋ )   ← centred
 //
-// Pinned left, the Current location disc: ink while it is the active one,
-// the held-fix dot otherwise; with no fix a tap asks for one. Between, the
-// saved locations scroll (the active one is the ink chip with × to remove
-// it, back to Current location); with none saved, a muted line names the
-// active location. Pinned right, ＋ opens AddLocationSheet. The choice lives
+// Pinned left, the Current location disc: the "my location" target in the
+// map's you-are-here blue (MESITA-2454), filled blue while it is the active
+// one, a blue target when the fix is held, ink with no fix (a tap asks). Between, the
+// saved locations sit centred (scrolling only when they overflow; the
+// active one is the ink chip with × to remove it, back to Current
+// location); with none saved, the active location's name sits centred.
+// Pinned right, ＋ opens AddLocationSheet. The choice lives
 // in `lib/active-location.ts`, which Home's catalog reads.
 
 import { useState } from "react";
-import { Navigation, Plus, X } from "lucide-react";
+import { LocateFixed, Plus, X } from "lucide-react";
 import {
   useLocateUser,
   useUserLocation,
@@ -23,7 +25,7 @@ import {
 import { removeSavedLocation, useSavedLocations } from "@/lib/saved-locations";
 import { setActiveLocation, useActiveLocation } from "@/lib/active-location";
 import { cn } from "@/lib/utils";
-import { ActiveDot } from "@/components/consumer/search/ActiveDot";
+import { MAP_USER_LOCATION_PIN_COLOR } from "@/lib/map-defaults";
 import {
   CHIP,
   CHIP_OFF,
@@ -64,84 +66,102 @@ export function LocationPicker() {
           aria-pressed={hereOn}
           aria-label={locationLabel(null, coords !== null, locating)}
           title={locationLabel(null, coords !== null, locating)}
-          className={cn(
-            "relative",
-            HEADER_DISC,
-            hereOn &&
-              "border-primary bg-primary text-primary-foreground hover:bg-primary",
-          )}
+          className={cn("relative", HEADER_DISC, hereOn && "hover:opacity-90")}
+          style={
+            hereOn
+              ? {
+                  backgroundColor: MAP_USER_LOCATION_PIN_COLOR,
+                  borderColor: MAP_USER_LOCATION_PIN_COLOR,
+                  color: "#fff",
+                }
+              : coords !== null
+                ? { color: MAP_USER_LOCATION_PIN_COLOR }
+                : undefined
+          }
           data-home-location
         >
-          <Navigation
-            className={cn("h-4 w-4 shrink-0", locating && "animate-pulse")}
+          <LocateFixed
+            className={cn(
+              "h-[18px] w-[18px] shrink-0",
+              locating && "animate-pulse",
+            )}
             strokeWidth={2}
             aria-hidden
           />
-          {!hereOn && coords !== null ? <ActiveDot /> : null}
         </button>
         <nav
           aria-label="Saved locations"
           className="scrollbar-hide flex min-w-0 flex-1 items-center gap-2 overflow-x-auto overscroll-x-contain"
           data-places-location
         >
-          {savedLocations.length === 0 ? (
-            <span className="text-muted-foreground truncate px-1 text-sm font-semibold">
-              {locationLabel(active, coords !== null, locating)}
-            </span>
-          ) : null}
-          {savedLocations.map((l) => {
-            const key = `saved:${l.id}`;
-            const pick = () =>
-              setActiveLocation({
-                key,
-                name: l.name,
-                lat: l.lat,
-                lng: l.lng,
-                bounds: l.bounds,
-              });
-            if (active?.key !== key) {
+          {/* CENTRED (Pato, MESITA-2454: "maybe don't make the location
+              scrollable after all, just centered"): w-max + mx-auto centres
+              the chips while they fit and lets them scroll from the left
+              edge once they don't. With none saved, the active location's
+              name sits centred like a title. */}
+          <div className="mx-auto flex w-max items-center gap-2">
+            {savedLocations.length === 0 ? (
+              <span
+                className="text-foreground truncate px-1 text-sm font-semibold"
+                data-home-location-name
+              >
+                {locationLabel(active, coords !== null, locating)}
+              </span>
+            ) : null}
+            {savedLocations.map((l) => {
+              const key = `saved:${l.id}`;
+              const pick = () =>
+                setActiveLocation({
+                  key,
+                  name: l.name,
+                  lat: l.lat,
+                  lng: l.lng,
+                  bounds: l.bounds,
+                });
+              if (active?.key !== key) {
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={pick}
+                    aria-pressed={false}
+                    className={cn(CHIP, CHIP_OFF)}
+                  >
+                    <span aria-hidden>🔖</span>
+                    <span>{l.name}</span>
+                  </button>
+                );
+              }
+              // The active saved chip: its name, then × to remove it. Two
+              // buttons side by side, never one inside the other.
               return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={pick}
-                  aria-pressed={false}
-                  className={cn(CHIP, CHIP_OFF)}
-                >
-                  <span aria-hidden>🔖</span>
-                  <span>{l.name}</span>
-                </button>
+                <div key={key} className={cn(CHIP, CHIP_ON, "pr-1")}>
+                  <button
+                    type="button"
+                    onClick={pick}
+                    aria-pressed
+                    className="flex items-center gap-1.5"
+                  >
+                    <span aria-hidden>🔖</span>
+                    <span>{l.name}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Removing the active location falls back to Current location.
+                      removeSavedLocation(l.id);
+                      setActiveLocation(null);
+                    }}
+                    aria-label={`Remove ${l.name}`}
+                    className="flex h-7 w-7 items-center justify-center rounded-full opacity-80 hover:opacity-100"
+                    data-places-remove-location
+                  >
+                    <X className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+                  </button>
+                </div>
               );
-            }
-            // The active saved chip: its name, then × to remove it. Two
-            // buttons side by side, never one inside the other.
-            return (
-              <div key={key} className={cn(CHIP, CHIP_ON, "pr-1")}>
-                <button
-                  type="button"
-                  onClick={pick}
-                  aria-pressed
-                  className="flex items-center gap-1.5"
-                >
-                  <span aria-hidden>🔖</span>
-                  <span>{l.name}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    // Removing the active location falls back to Current location.
-                    removeSavedLocation(l.id);
-                    setActiveLocation(null);
-                  }}
-                  aria-label={`Remove ${l.name}`}
-                  className="flex h-7 w-7 items-center justify-center rounded-full opacity-80 hover:opacity-100"
-                  data-places-remove-location
-                >
-                  <X className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-                </button>
-              </div>
-            );
-          })}
+            })}
+          </div>
         </nav>
         <button
           type="button"

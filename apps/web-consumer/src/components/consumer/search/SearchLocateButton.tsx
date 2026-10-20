@@ -1,17 +1,19 @@
 "use client";
 
-import { Navigation } from "lucide-react";
+import { LocateFixed } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { ActiveDot } from "./ActiveDot";
+import { MAP_USER_LOCATION_PIN_COLOR } from "@/lib/map-defaults";
 import { HEADER_DISC } from "./header-classes";
 
 // The map's location control, TOP LEFT (Pato, 2026-10-17: "Location
 // Searchbar Filters … location at the left"). A 36px disc wearing the
-// navigation arrow and nothing else, mirrored by the Ask AI disc on the
+// "my location" target and nothing else, mirrored by the Ask AI disc on the
 // other side of the bar: both are HEADER_DISC, so the two can't drift apart
-// (MESITA-2433). A dot on its corner says the guest's fix is held
-// (MESITA-2304). No hover tint while it is locating and disabled.
+// (MESITA-2433). The target turns the map's you-are-here blue once the
+// guest's fix is held (Pato, MESITA-2454: "a better icon for location, or
+// add blue"; it was a black corner dot, MESITA-2304). No hover tint while
+// it is locating and disabled.
 //
 // One tap, two meanings: with no fix yet it asks the browser for one (the
 // permission prompt is the browser's); with a fix it recentres the camera
@@ -30,6 +32,7 @@ export function SearchLocateButton({
       type="button"
       onClick={onClick}
       disabled={locating}
+      data-active={located ? "true" : undefined}
       aria-busy={locating || undefined}
       aria-label={
         locating
@@ -44,12 +47,15 @@ export function SearchLocateButton({
         "disabled:hover:bg-card disabled:opacity-60",
       )}
     >
-      <Navigation
-        className={cn("h-4 w-4 shrink-0", locating && "animate-pulse")}
+      <LocateFixed
+        className={cn(
+          "h-[18px] w-[18px] shrink-0",
+          locating && "animate-pulse",
+        )}
         strokeWidth={2}
+        style={located ? { color: MAP_USER_LOCATION_PIN_COLOR } : undefined}
         aria-hidden
       />
-      {located ? <ActiveDot /> : null}
     </button>
   );
 }

@@ -344,8 +344,10 @@ describe("SearchLocateButton", () => {
         onClick={() => {}}
       />,
     );
-    expect(ask).toContain("lucide-navigation");
-    expect(ask).not.toContain("lucide-locate-fixed");
+    // The "my location" target (MESITA-2454), ink until a fix is held.
+    expect(ask).toContain("lucide-locate-fixed");
+    expect(ask).not.toContain("lucide-navigation");
+    expect(ask).not.toContain("#2563eb");
     expect(ask).not.toContain('data-active="true"');
     expect(ask).toContain('aria-label="Use my location"');
     expectTokens(
@@ -367,7 +369,8 @@ describe("SearchLocateButton", () => {
     );
     expect(home).toContain('aria-label="Recentre on your location"');
     expect(home).toContain('data-active="true"');
-    expect(home).toContain("bg-primary");
+    // A held fix turns the target the map's you-are-here blue.
+    expect(home).toContain("color:#2563eb");
     const busy = renderToStaticMarkup(
       <SearchLocateButton located={false} locating onClick={() => {}} />,
     );
