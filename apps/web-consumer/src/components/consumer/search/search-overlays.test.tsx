@@ -237,7 +237,7 @@ describe("the bar cannot squeeze its neighbours out", () => {
       /<div className="(flex min-w-0 items-center[^"]*)">\s*\{locate\}/,
     );
     expect(row, "the bar's row").not.toBeNull();
-    expectTokens(row![1], ["gap-2", "px-3", "pt-2", "pb-2"], "bar's row");
+    expectTokens(row![1], ["gap-2", "px-3", "py-2.5"], "bar's row");
     const disc = constValue(read("header-classes.ts"), "HEADER_DISC");
     expectTokens(
       disc,
@@ -334,7 +334,7 @@ describe("Search's header is one token set (MESITA-2433)", () => {
     expect(nav, "the chip row").not.toBeNull();
     expectTokens(
       nav![1],
-      ["gap-2", "px-3", "pt-0", "pb-2", "overflow-x-auto"],
+      ["gap-2", "px-3", "py-2.5", "overflow-x-auto"],
       "chip row",
     );
   });
@@ -437,8 +437,10 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
     );
     expect(chipBand, "the chip band").not.toBeNull();
     expectTokens(chipBand![1], ["relative"], "chip band");
+    // A full-width hairline splits the bar's row from the chips (MESITA-2479).
+    expectTokens(chipBand![1], ["border-border", "border-t"], "chip band line");
     expect(chipBand![1]).not.toContain("bg-muted");
-    expect(chipBand![1]).not.toContain("border-b");
+    expect(chipBand![1].split(/\s+/)).not.toContain("border-b");
     expect(chipBand![1]).not.toContain("absolute");
     expect(header).not.toContain("data-search-chips-float");
     expect(header.indexOf("{bar}")).toBeLessThan(
