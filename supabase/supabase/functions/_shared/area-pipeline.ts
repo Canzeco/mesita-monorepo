@@ -252,19 +252,19 @@ export const SCREEN_RADIUS_KM_MIN = 0.05;
 export const SCREEN_RADIUS_KM_MAX = 50;
 
 /**
- * THE SCREEN RADIUS (MESITA-2504): the visible map's half-width and
- * half-height averaged — "not the smaller but neither the larger but the in
- * between" (Pato) — in km, clamped to SCREEN_RADIUS_KM_MIN..MAX. Null when
- * the bounds are missing, inverted or wider than AREA_BOUNDS_MAX_KM (the
- * caller falls back to its operator radius).
+ * THE SCREEN RADIUS (MESITA-2504): half the visible map's width, in km at
+ * its middle latitude, so the circle spans the screen edge to edge (Pato,
+ * MESITA-2507: "make the radious as widht as horiztonally widh"; it was the
+ * average of the half-width and half-height). Clamped to
+ * SCREEN_RADIUS_KM_MIN..MAX. Null when the bounds are missing, inverted or
+ * wider than AREA_BOUNDS_MAX_KM (the caller falls back to its operator
+ * radius).
  */
 export function screenRadiusKm(raw: unknown): number | null {
   const b = parseAreaBounds(raw);
   if (!b) return null;
   const m = mid(b.low, b.high);
-  const halfWidth = haversineKm(m.lat, b.low.lng, m.lat, b.high.lng) / 2;
-  const halfHeight = haversineKm(b.low.lat, m.lng, b.high.lat, m.lng) / 2;
-  const r = (halfWidth + halfHeight) / 2;
+  const r = haversineKm(m.lat, b.low.lng, m.lat, b.high.lng) / 2;
   if (!Number.isFinite(r)) return null;
   return Math.min(SCREEN_RADIUS_KM_MAX, Math.max(SCREEN_RADIUS_KM_MIN, r));
 }

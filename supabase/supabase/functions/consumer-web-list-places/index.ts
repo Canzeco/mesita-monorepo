@@ -19,8 +19,8 @@
 // THE GUEST SEES (MESITA-2499): `bounds` is the visible map, so the zoom
 // decides how wide the set is — a street close, a city wide. THE SCREEN
 // RADIUS (MESITA-2504): the location is a POINT at the cross (`lat`, `lng`,
-// the sight) inside R = the average of the visible half-width and
-// half-height (`screenRadiusKm`). R is a GATE on both sources — Mesita's
+// the sight) inside R = half the visible width (`screenRadiusKm`,
+// MESITA-2507: the circle spans the screen edge to edge). R is a GATE on both sources — Mesita's
 // read is boxed to it and the Radius gate drops what lies past it, Google's
 // one call asks the prominent 20 inside it and eligibility drops the rest
 // (Pato: "I son't want to see stuff beyond my screen"). The score is
