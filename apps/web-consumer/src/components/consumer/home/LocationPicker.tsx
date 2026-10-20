@@ -1,12 +1,13 @@
 "use client";
 
 // Home's location control — the whole of Home's header (Pato, MESITA-2405:
-// "The top bar is just to select the location. thats it."): one centred
-// oval hugging a pin, the active location's name and a quiet chevron
-// (MESITA-2459: "inside a … oval … it must indicate change"). It wears
-// Search's pill token (HEADER_PILL), so both tabs' header controls match.
+// "The top bar is just to select the location. thats it."): since
+// MESITA-2473 (Pato picked "A · Quiet" of four mockups: the grey oval beside
+// the logo "looks like shit") plain text on the header's right — a pin, the
+// active location's name and a muted chevron — no fill, no outline.
 // History: a full-width bordered bar (MESITA-2405), a chip row with discs
-// (MESITA-2452..2454), a borderless line (MESITA-2456).
+// (MESITA-2452..2454), a borderless line (MESITA-2456), an oval
+// (MESITA-2459), beside the logo (MESITA-2470).
 // A tap opens the location sheet (MESITA-2464: "the direct search bar of
 // locations"): a search field on top, then Current location and the guest's
 // saved locations (each removable). Typing swaps that list for matches; a
@@ -55,7 +56,11 @@ import {
 } from "@/lib/saved-locations";
 import { setActiveLocation, useActiveLocation } from "@/lib/active-location";
 import { cn, errMsg } from "@/lib/utils";
-import { HEADER_PILL } from "@/components/consumer/search/header-classes";
+
+/** Home's location control (MESITA-2473): plain text on the header's
+ *  right, no fill and no outline; a 44px tap target with a soft hover wash. */
+export const HOME_LOCATION_CLASS =
+  "text-foreground hover:bg-muted -mr-2 ml-auto flex h-11 max-w-[65%] min-w-0 items-center gap-1 rounded-full px-2 text-sm font-semibold outline-none transition focus-visible:bg-muted active:scale-[0.98]";
 
 /** What the pill says: the saved name, or the state of the device fix. The
  *  sheet's row adds the neighbourhood once known (MESITA-2466): "Current
@@ -216,22 +221,22 @@ export function LocationPicker() {
 
   return (
     <>
-      {/* The header's right side: the location oval, beside the logo (MESITA-2405, MESITA-2459, MESITA-2470). */}
+      {/* The header's right side, beside the logo (MESITA-2473, "A · Quiet"):
+          plain text — pin, name, a muted chevron — with no fill and no
+          outline. The tap target stays 44px tall; the name truncates. */}
       <button
         type="button"
         onClick={() => setPicking(true)}
         aria-haspopup="dialog"
         aria-label={`Location: ${label}. Change location`}
-        className={cn(HEADER_PILL, "ml-auto max-w-full min-w-0 justify-center")}
+        className={HOME_LOCATION_CLASS}
         data-home-location
       >
-        {/* One oval, right-aligned and sized to its content: pin, name, chevron
-            (MESITA-2459). No discs; the name truncates. */}
         <MapPin className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
         <span className="min-w-0 truncate">{label}</span>
         <ChevronDown
-          className="text-muted-foreground h-4 w-4 shrink-0"
-          strokeWidth={2}
+          className="text-muted-foreground h-3.5 w-3.5 shrink-0"
+          strokeWidth={2.25}
           aria-hidden
         />
       </button>
