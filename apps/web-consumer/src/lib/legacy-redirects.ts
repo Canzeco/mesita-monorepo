@@ -9,8 +9,8 @@
 //
 // A REDIRECT WHOSE SOURCE IS A LIVE ROUTE SHADOWS IT ENTIRELY — the page
 // never renders and typecheck, build and the whole vitest suite stay green.
-// Nothing here may name /pay, /discover/places,
-// /search, /search/chat, /me or any live /me/<box>.
+// Nothing here may name /home, /pay, /search, /search/chat, /me or any live
+// /me/<box>.
 //
 // BARE ONLY. next.config.ts serves every entry twice: as written, and as a
 // `/:surface(web|mob)` twin that keeps the guest's surface. Next runs
@@ -26,14 +26,14 @@ export type Redirect = {
 
 export const LEGACY_REDIRECTS: Redirect[] = [
   // Explore era (pre-Home). Straight to the Discover default.
-  { source: "/explore", destination: "/discover/places", permanent: true },
+  { source: "/explore", destination: "/home", permanent: true },
   {
     source: "/explore/swipe",
-    destination: "/discover/places",
+    destination: "/home",
     permanent: true,
   },
-  { source: "/explore/map", destination: "/discover/places", permanent: true },
-  { source: "/explore/add", destination: "/discover/places", permanent: true },
+  { source: "/explore/map", destination: "/home", permanent: true },
+  { source: "/explore/add", destination: "/home", permanent: true },
   {
     source: "/explore/place/:id",
     destination: "/place/:id",
@@ -70,7 +70,7 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   { source: "/subscribe", destination: "/me", permanent: true },
   { source: "/subscribe/:plan", destination: "/me", permanent: true },
   // /web's anonymous "Get the app" screen (MESITA-2137): Home, behind the wall.
-  { source: "/get-the-app", destination: "/discover/places", permanent: true },
+  { source: "/get-the-app", destination: "/home", permanent: true },
   { source: "/me/class/invite", destination: "/me", permanent: true },
   { source: "/me/class", destination: "/me", permanent: true },
   { source: "/me/diamond/invite", destination: "/me", permanent: true },
@@ -87,58 +87,59 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   { source: "/me/help", destination: "/me/settings", permanent: true },
   { source: "/share", destination: "/me", permanent: true },
   { source: "/invite", destination: "/me", permanent: true },
-  // The retired Home hub (2026-09-01). Every leaf 308s straight to the
-  // Discover default. NOTHING HERE MAY CHAIN THROUGH /discover/map OR
-  // /discover/search — both are themselves 308s (below).
-  { source: "/home", destination: "/discover/places", permanent: true },
-  { source: "/home/swipe", destination: "/discover/places", permanent: true },
-  { source: "/home/catalog", destination: "/discover/places", permanent: true },
-  { source: "/home/chat", destination: "/discover/places", permanent: true },
-  { source: "/home/ai", destination: "/discover/places", permanent: true },
-  { source: "/home/social", destination: "/discover/places", permanent: true },
-  { source: "/home/favorites", destination: "/discover/places", permanent: true },
+  // The retired Home hub's leaves (2026-09-01). /home ITSELF is live again
+  // (MESITA-2475), so only the leaves are here. NOTHING HERE MAY CHAIN
+  // THROUGH /discover/map OR /discover/search — both are themselves 308s.
+  { source: "/home/swipe", destination: "/home", permanent: true },
+  { source: "/home/catalog", destination: "/home", permanent: true },
+  { source: "/home/chat", destination: "/home", permanent: true },
+  { source: "/home/ai", destination: "/home", permanent: true },
+  { source: "/home/social", destination: "/home", permanent: true },
+  { source: "/home/favorites", destination: "/home", permanent: true },
   // Search's two addresses under /discover (MESITA-1609 → MESITA-1616),
   // straight to the canonical /search. T7 pins both.
   { source: "/discover/search", destination: "/search", permanent: true },
   { source: "/discover/map", destination: "/search", permanent: true },
+  // HOME IS /home (Pato, MESITA-2475). Its old namespace and default pill.
+  { source: "/discover", destination: "/home", permanent: true },
+  { source: "/discover/places", destination: "/home", permanent: true },
   // Catalog's day as Home, Swipe's week as the default, Catalog's own
-  // segment (MESITA-1697). Every retired Home address forwards to Places,
-  // the default pill.
-  { source: "/discover/home", destination: "/discover/places", permanent: true },
+  // segment (MESITA-1697). Every retired Home address forwards to Home.
+  { source: "/discover/home", destination: "/home", permanent: true },
   {
     source: "/discover/catalog",
-    destination: "/discover/places",
+    destination: "/home",
     permanent: true,
   },
   // CATALOG LEFT HOME'S RAIL AGAIN (MESITA-2140).
   {
     source: "/discover/feed",
-    destination: "/discover/places",
+    destination: "/home",
     permanent: true,
   },
   // SCROLL (MESITA-2163) AND SWIPE (MESITA-2166) LEFT HOME'S RAIL: Home is
   // Places · Social (MESITA-2401).
   {
     source: "/discover/scroll",
-    destination: "/discover/places",
+    destination: "/home",
     permanent: true,
   },
   {
     source: "/discover/swipe",
-    destination: "/discover/places",
+    destination: "/home",
     permanent: true,
   },
   // FAVORITES LEFT HOME'S RAIL FOR THE PLACES COLUMN (MESITA-2383).
   {
     source: "/discover/favs",
-    destination: "/discover/places",
+    destination: "/home",
     permanent: true,
   },
   // SOCIAL IS A PANE OF HOME, NOT A PAGE (MESITA-2474). It was a page from
   // MESITA-2442 until then.
   {
     source: "/discover/social",
-    destination: "/discover/places",
+    destination: "/home",
     permanent: true,
   },
   // CHAT LEFT HOME FOR THE SEARCH TAB (MESITA-2401).
@@ -148,10 +149,13 @@ export const LEGACY_REDIRECTS: Redirect[] = [
     permanent: true,
   },
   // THE PLACES TEST TAB DIED (MESITA-2405).
-  { source: "/places", destination: "/discover/places", permanent: true },
+  { source: "/places", destination: "/home", permanent: true },
   // The Saved tab (reservations, favorites) and the /saved/place dual
   // path (MESITA-1585). One hop each, straight to the canonical surface.
   { source: "/saved", destination: "/me", permanent: true },
+  // The reservations list as a top-level route (a server page until
+  // MESITA-2475).
+  { source: "/reservations", destination: "/me/reservations", permanent: true },
   {
     source: "/saved/reservations",
     destination: "/me/reservations",

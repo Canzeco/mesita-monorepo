@@ -11,7 +11,7 @@
 // (LocationPicker; MESITA-2405 made it the header's only control).
 // Social and Favorites are rows of the catalog's column (CatalogRails).
 // White like the bottom bar, its hairline under it (MESITA-2409). Home draws it
-// from app/(shell)/(discovery)/discover/layout.tsx; Search has its own
+// from app/(shell)/(discovery)/home/layout.tsx; Search has its own
 // header (SearchHeader: locate · bar · Ask AI, then family chips), so
 // Home's never paints over the map (MESITA-1616). It was DiscoverModeNav.
 

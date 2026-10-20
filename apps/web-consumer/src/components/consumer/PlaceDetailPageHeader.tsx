@@ -29,7 +29,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 export function PlaceDetailPageHeader({
   placeId: _placeId,
   placeName,
-  fallbackHref = CONSUMER_ROUTES.discoverDefault,
+  fallbackHref = CONSUMER_ROUTES.home,
 }: {
   placeId: string;
   placeName: string;

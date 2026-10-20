@@ -15,29 +15,20 @@ export const CONSUMER_ROUTES = {
   // the one search bar + Filters. `/discover/search` and `/discover/map` are
   // redirect SOURCES for the bookmarks those addresses shipped under.
   search: "/search",
-  // Search's second pill (Pato, MESITA-2401: "Search, Chat, Filters"): Chat,
-  // Soon for now. Chat left Home; /discover/chat 308s here.
+  // ASK AI (Pato, MESITA-2401; Soon, MESITA-2168). Opened from Search it
+  // floats as a sheet over the map — an @modal intercept, so Search stays
+  // painted under it (Pato, MESITA-2475: "like a modal"); a cold load renders
+  // the full page. /discover/chat 308s here.
   searchChat: "/search/chat",
-  // DISCOVER — Home's namespace: Home's header is the location alone
-  // (MESITA-2405). Social is a row of the catalog's column; its feed draws in
-  // the right pane (MESITA-2474; /discover/social 308s home). Favorites is a row of
-  // the Places column (/discover/favs 308s to Places); Chat moved to Search.
+  // HOME — one page, the catalog (Pato, MESITA-2475: "/home (thats it)").
+  // Social is a row of its column that draws in the right pane (MESITA-2474);
+  // Saved is a row too (MESITA-2383). /discover, /discover/places and every
+  // older Home address 308 here in one hop.
   //
   // THE SWIPE ENGINE IS GONE (MESITA-2328): its EF, its ranking library and
   // its `discovery_config.swipe` slice retired together. The stored key was
   // dropped by the normalizers, never renamed.
-  //
-  // HOME'S RAIL IS PLACES · SOCIAL · CHAT · FAVS (Pato, 2026-10-12,
-  // MESITA-2166: "no swipe nor scroll for the moment. Kill them."). Places is
-  // the live catalog rails (MESITA-2254). Social, Chat and Favs stay Soon
-  // (MESITA-2168). Swipe and Scroll are legacy 308s to Places.
-  discover: "/discover",
-  discoverTabs: {
-    places: "/discover/places",
-  },
-  // PLACES LEADS (MESITA-2166): the default is the first pill.
-  // route-structure T5b pins first-pill-is-default.
-  discoverDefault: "/discover/places",
+  home: "/home",
   place: {
     prefix: "/place/",
   },
@@ -80,6 +71,10 @@ export const CONSUMER_ROUTES = {
     invite: "/invite",
     // The AI mode's route before it was named for what it does.
     homeAi: "/home/ai",
+    // Home's namespace and its default pill, until Home became /home
+    // (MESITA-2475).
+    discover: "/discover",
+    discoverPlaces: "/discover/places",
     // Search's two week-long addresses under /discover (MESITA-1609/1616).
     discoverSearch: "/discover/search",
     discoverMap: "/discover/map",
@@ -142,9 +137,8 @@ export const CONSUMER_ROUTES = {
     inboxGlobal: "/inbox/global-activity",
     inboxMineTab: "/inbox/mine",
     inboxGlobalTab: "/inbox/global",
-    // The reservations LIST as a top-level tab route. The ONE legacy
-    // address answered by a server page, (shell)/reservations/page.tsx,
-    // rather than a next.config entry; the contract test names it as such.
+    // The reservations LIST as a top-level tab route. A server page until
+    // MESITA-2475; a table entry now, like every other.
     reservations: "/reservations",
     // Reservations under /saved, from when that was a tab.
     savedReservations: "/saved/reservations",
@@ -156,9 +150,8 @@ export const CONSUMER_ROUTES = {
 } as const;
 
 export const CONSUMER_ROUTE_PREFIX = {
-  // NO `discover` KEY — BottomNav matches each discoverTabs segment
-  // individually for Home. NO `search` KEY either: Search is an exact
-  // top-level segment with no siblings to disambiguate from.
+  // NO `home` or `search` KEY: each is one exact top-level segment with no
+  // siblings to disambiguate from, so BottomNav matches CONSUMER_ROUTES.
   place: "/place",
   pay: "/pay",
   me: "/me",
@@ -191,6 +184,7 @@ export function reservationPath(id: string): string {
  */
 export function isModalContractPath(pathname: string): boolean {
   return (
+    pathname === CONSUMER_ROUTES.searchChat ||
     pathname.startsWith(CONSUMER_ROUTES.place.prefix) ||
     pathname.startsWith(CONSUMER_ROUTES.legacy.savedPlacePrefix) ||
     pathname.startsWith(CONSUMER_ROUTES.reservation.prefix) ||
