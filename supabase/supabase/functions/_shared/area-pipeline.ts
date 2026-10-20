@@ -274,11 +274,20 @@ function circleAround(b: AreaBounds, rank: NearbyRank): NearbyCircle {
   };
 }
 
+/** Nearby's first Google call: the prominent places this close to the
+ *  anchor (MESITA-2467). The nearest 20 were mostly corner spots under the
+ *  operator's reviews floor (live 100): at La Purísima 19 of 20 dropped and
+ *  the list filled with Mesita rows 8 km away. Prominent places clear the
+ *  floor and still sit around the crosshair. */
+export const NEARBY_INNER_KM = 3;
+
 /**
- * The Google calls for a location, at most `calls` (1–3). A point: the
- * nearest 20 in the circle, then Google's most prominent 20 in it, then the
- * most prominent in the inner half-radius circle (the Popular mode swaps
- * the first two). An area: every call ranks
+ * The Google calls for a location, at most `calls` (1–3). A point in the
+ * Nearby or Family mode: the prominent 20 within NEARBY_INNER_KM of the
+ * anchor, then the nearest 20 in the radius, then the prominent 20 in the
+ * radius (the Map's one call is the first). The Popular mode: the prominent
+ * 20 in the radius, the nearest 20, the prominent in the inner half-radius
+ * circle (MESITA-2425). An area: every call ranks
  * POPULARITY (no centre bias) — the circle around the bounds, then the
  * circles around its two halves, split across the longer side. The circles
  * are retrieval geometry only; nothing scores against their centres.
@@ -296,8 +305,16 @@ export function areaFanoutCircles(
     const inner = { center: c, radiusKm: location.radiusKm / 2, rank: "POPULARITY" as const };
     // Popular (MESITA-2425) asks for the prominent 20 first, so a one-call
     // map is not left ranking the nearest 20 by Popularity.
-    return (mode === "popular" ? [prominent, nearest, inner] : [nearest, prominent, inner])
-      .slice(0, n);
+    if (mode === "popular") return [prominent, nearest, inner].slice(0, n);
+    // Nearby and Family (MESITA-2467): the prominent 20 around the anchor
+    // first, so a one-call map gets places near the crosshair that clear
+    // the reviews floor.
+    const around = {
+      center: c,
+      radiusKm: Math.min(NEARBY_INNER_KM, location.radiusKm),
+      rank: "POPULARITY" as const,
+    };
+    return [around, nearest, prominent].slice(0, n);
   }
   if (location.kind === "area") {
     const b = location.bounds;
