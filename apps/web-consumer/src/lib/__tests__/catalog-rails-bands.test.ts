@@ -160,17 +160,20 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
   });
 
   // MESITA-2476 (Pato: "location must be inside a box or something"): a
-  // rounded box, translucent white on the brand-colour header, beside the
-  // 22px logo in one 52px row. Never the old full-width h-10 bar (MESITA-2405).
+  // rounded box, quiet grey on the white header since MESITA-2480, beside
+  // the name in one 52px row. Never the old full-width h-10 bar (MESITA-2405).
   it("the header's location is one box: pin, name, chevron, opening the sheet", () => {
     expect(picker).toContain("className={HOME_LOCATION_CLASS}");
     expect(picker).not.toContain("HEADER_PILL");
     const tokens = (picker.match(/HOME_LOCATION_CLASS =\s*"([^"]*)"/)?.[1] ?? "").split(/\s+/);
-    for (const t of ["h-9", "rounded-xl", "border", "bg-white/[0.18]", "text-white"])
+    for (const t of ["h-9", "rounded-xl", "border", "bg-muted", "text-foreground"])
       expect(tokens, t).toContain(t);
     const tabs = readFileSync(join(__dirname, "../../components/consumer/ModeTabs.tsx"), "utf8");
     expect(tabs).toContain('className="flex h-[52px] items-center gap-3 px-4" data-home-header');
-    expect(tabs).toContain('className="h-[22px] w-auto shrink-0 text-white"');
+    // No drawn logo for now (MESITA-2480): the word, set in Outfit.
+    expect(tabs).toContain('import { Outfit } from "next/font/google";');
+    expect(tabs).toContain(">\n          Mesita\n        </span>");
+    expect(tabs).not.toContain("MesitaLogo");
     expect(picker).not.toContain("border-border bg-card text-foreground hover:bg-muted relative flex h-10");
     expect(picker).toContain("<MapPin");
     expect(picker).toContain("<ChevronDown");
@@ -197,11 +200,12 @@ describe("the Places grid (MESITA-2366)", () => {
     expect(src).not.toContain("data-band");
   });
 
-  // MESITA-2476 (Pato: "the header must be of other color"): the brand
-  // colour band (it was the bottom bar's white, MESITA-2409), never a 2px rule.
-  it("paints Home's header the brand colour", () => {
+  // The bottom bar's white and its hairline (MESITA-2409). MESITA-2476 tried
+  // the brand pink; Pato sent it back ("keep the white style", MESITA-2480).
+  it("paints Home's header the bottom bar's white, with the bar's hairline under it", () => {
     const tabs = readFileSync(join(__dirname, "../../components/consumer/ModeTabs.tsx"), "utf8");
-    expect(tabs).toContain('"sticky top-0 z-20 shrink-0 bg-[var(--brand-pink-deep)] text-white"');
+    expect(tabs).toContain('"border-border bg-card/95 sticky top-0 z-20 shrink-0 border-b backdrop-blur"');
+    expect(tabs).not.toContain("brand-pink");
     expect(tabs).not.toContain("border-b-2");
   });
 

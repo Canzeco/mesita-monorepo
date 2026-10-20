@@ -3,8 +3,9 @@
 // Home's location control — the whole of Home's header (Pato, MESITA-2405:
 // "The top bar is just to select the location. thats it."): since
 // MESITA-2476 (Pato: "location must be inside a box or something") a
-// rounded box on the header's right — translucent white on the brand-colour
-// band, white text: a pin, the active location's name and a chevron.
+// rounded box on the header's right; MESITA-2480 made it quiet on the white
+// header again: a light grey fill with a hairline, ink text — a pin, the
+// active location's name and a muted chevron.
 // History: plain text (MESITA-2473), a full-width bordered bar (MESITA-2405), a chip row with discs
 // (MESITA-2452..2454), a borderless line (MESITA-2456), an oval
 // (MESITA-2459), beside the logo (MESITA-2470).
@@ -57,10 +58,10 @@ import {
 import { setActiveLocation, useActiveLocation } from "@/lib/active-location";
 import { cn, errMsg } from "@/lib/utils";
 
-/** Home's location control (MESITA-2476): a 36px rounded box, white at 18%
- *  over the brand-colour header with a faint white edge, white text. */
+/** Home's location control (MESITA-2480): a 36px rounded box on the white
+ *  header — the page grey with a hairline, ink text. */
 export const HOME_LOCATION_CLASS =
-  "ml-auto flex h-9 max-w-[65%] min-w-0 items-center gap-1.5 rounded-xl border border-white/25 bg-white/[0.18] px-3 text-sm font-semibold text-white outline-none transition hover:bg-white/25 focus-visible:ring-2 focus-visible:ring-white/70 active:scale-[0.98]";
+  "border-border bg-muted text-foreground hover:bg-border/60 focus-visible:ring-ring ml-auto flex h-9 max-w-[65%] min-w-0 items-center gap-1.5 rounded-xl border px-3 text-sm font-semibold outline-none transition focus-visible:ring-2 active:scale-[0.98]";
 
 /** What the pill says: the saved name, or the state of the device fix. The
  *  sheet's row adds the neighbourhood once known (MESITA-2466): "Current
@@ -235,7 +236,7 @@ export function LocationPicker() {
         <MapPin className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
         <span className="min-w-0 truncate">{label}</span>
         <ChevronDown
-          className="h-3.5 w-3.5 shrink-0 text-white/80"
+          className="text-muted-foreground h-3.5 w-3.5 shrink-0"
           strokeWidth={2.25}
           aria-hidden
         />
