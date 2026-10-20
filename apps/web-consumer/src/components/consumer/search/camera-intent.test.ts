@@ -8,6 +8,7 @@ import {
   isUnderSight,
   RELOAD_IDLE_SEC_DEFAULT,
   reloadWaitMs,
+  sameCamera,
   selectionMovesCamera,
 } from "./camera-intent";
 import { sameCoords } from "@/lib/use-user-location";
@@ -241,5 +242,17 @@ describe("a load asks for the visible map (MESITA-2499)", () => {
     expect(sight.lat).toBeCloseTo(target.lat, 9);
     expect(sight.lng).toBeCloseTo(target.lng, 9);
     expect(boxAtSight(null, target)).toBeNull();
+  });
+});
+
+describe("a resize is not a move (MESITA-2510)", () => {
+  it("the same centre and zoom is the same camera; any change is a move", () => {
+    const cam = { lat: 25.67, lng: -100.31, zoom: 14 };
+    expect(sameCamera(cam, { ...cam })).toBe(true);
+    expect(sameCamera(cam, { ...cam, zoom: 15 })).toBe(false);
+    expect(sameCamera(cam, { ...cam, lat: 25.6701 })).toBe(false);
+    expect(sameCamera(cam, { ...cam, lng: -100.3101 })).toBe(false);
+    expect(sameCamera(null, cam)).toBe(false);
+    expect(sameCamera(cam, null)).toBe(false);
   });
 });

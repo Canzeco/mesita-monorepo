@@ -33,7 +33,7 @@ export default function SearchLoading() {
       <div className="relative min-h-0 w-full flex-1 overflow-hidden">
         <Skeleton className="absolute inset-0 rounded-none" />
       </div>
-      <div className="border-border bg-card flex shrink-0 items-stretch border-t">
+      <div className="border-border bg-card flex h-[10.5rem] shrink-0 items-stretch border-t">
         <div className="border-border flex w-[42%] shrink-0 flex-col gap-1.5 border-r px-2.5 py-2">
           <Skeleton className="h-3.5 w-20" />
           <Skeleton className="h-2.5 w-full" />
