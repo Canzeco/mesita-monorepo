@@ -16,12 +16,7 @@
 // A SIGNAL DEMOTES; a MAP FLOOR EXCLUDES.
 
 import type { MapConfig, SignalParams } from "./discovery-config.ts";
-import {
-  NEARBY_TYPE_KEYS,
-  type NearbyTypeKey,
-  SUPER_PARAM_KEYS,
-  type SuperParamKey,
-} from "./discovery-config.ts";
+import { SUPER_PARAM_KEYS, type SuperParamKey } from "./discovery-config.ts";
 import { nearbyTypesForSupers } from "./google-type-super.ts";
 import { popularity, POPULARITY_HALF_REVIEWS_DEFAULT } from "./pipeline-signals.ts";
 import { type EligibilityResult, familiesForGoogleType } from "./sourcing.ts";
@@ -48,8 +43,8 @@ export function enabledMapSupers(_map: MapConfig): SuperParamKey[] {
 }
 
 /** Their Google batteries, flattened — what one Nearby call asks for. */
-export function enabledNearbyTypes(map: MapConfig): NearbyTypeKey[] {
-  return nearbyTypesForSupers(enabledMapSupers(map)) as NearbyTypeKey[];
+export function enabledNearbyTypes(map: MapConfig): string[] {
+  return nearbyTypesForSupers(enabledMapSupers(map));
 }
 
 /**
@@ -98,13 +93,7 @@ export function primaryTypeClearsMapTypes(
 ): boolean {
   const enabled = new Set(enabledNearbyTypes(map));
   const slug = (primaryType ?? "").trim().toLowerCase();
-  if (
-    slug &&
-    (NEARBY_TYPE_KEYS as readonly string[]).includes(slug) &&
-    enabled.has(slug as NearbyTypeKey)
-  ) {
-    return true;
-  }
+  if (slug && enabled.has(slug)) return true;
   const families = (() => {
     const atlas = familiesForAtlasCategory(primaryType);
     if (atlas.length > 0) return atlas;

@@ -6,7 +6,11 @@
 // hotels, schools, and shops stay ineligible. The CATEGORY side is
 // multi-parent (≤2) in place-taxonomy.ts; the Google side stays exclusive.
 
-import { familiesForCatalogSlug, type FamilyKey } from "./catalog-families.ts";
+import {
+  familiesForCatalogSlug,
+  familiesPrimaryFirst,
+  type FamilyKey,
+} from "./catalog-families.ts";
 import { GOOGLE_TYPE_SUPER, superForGoogleType } from "./google-type-super.ts";
 
 export type { FamilyKey };
@@ -27,6 +31,54 @@ export function familiesForGoogleType(
   return families.filter((key) => key !== "undefined");
 }
 
+/** One Google type's guest families, PRIMARY FIRST (MESITA-2438). */
+function guestFamiliesPrimaryFirst(type: string | null | undefined): FamilyKey[] {
+  const slug = (type ?? "").trim().toLowerCase();
+  if (!slug) return [];
+  const coarse = GOOGLE_TYPE_SUPER[slug] ?? superForGoogleType(slug);
+  return familiesPrimaryFirst(slug, coarse).filter((key) => key !== "undefined");
+}
+
+/** The primary family of a Google `primaryType`; null when it has none. */
+export function primaryFamilyForGoogleType(
+  primaryType: string | null | undefined,
+): FamilyKey | null {
+  return guestFamiliesPrimaryFirst(primaryType)[0] ?? null;
+}
+
+/** Google's umbrella type: every cuisine carries it in `types[]`, so it
+ *  would make every restaurant a secondary Dinner. */
+const SECONDARY_IGNORED = new Set(["restaurant"]);
+/** At most this many secondary families per place. */
+export const SECONDARY_FAMILIES_MAX = 2;
+
+/**
+ * A place's families from Google (MESITA-2438): exactly one PRIMARY, from
+ * its `primaryType`, and 0–2 SECONDARY — the primary type's other
+ * families, then the primary families of its other `types[]`, in Google's
+ * order. A primary type in no family means no families at all: the place
+ * is not a Mesita place, whatever else it is typed.
+ */
+export function placeFamilies(
+  primaryType: string | null | undefined,
+  types: readonly string[] | null | undefined = [],
+): { primary: FamilyKey | null; secondary: FamilyKey[]; keys: FamilyKey[] } {
+  const own = guestFamiliesPrimaryFirst(primaryType);
+  const primary = own[0] ?? null;
+  if (!primary) return { primary: null, secondary: [], keys: [] };
+  const secondary: FamilyKey[] = [];
+  const add = (f: FamilyKey | undefined) => {
+    if (!f || f === primary || secondary.includes(f)) return;
+    if (secondary.length < SECONDARY_FAMILIES_MAX) secondary.push(f);
+  };
+  for (const f of own.slice(1)) add(f);
+  for (const t of types ?? []) {
+    if (SECONDARY_IGNORED.has(t) || t === primaryType) continue;
+    add(guestFamiliesPrimaryFirst(t)[0]);
+  }
+  return { primary, secondary, keys: [primary, ...secondary] };
+}
+
 /** Google's cap on `excludedPrimaryTypes` in one Nearby request. */
 const NEARBY_EXCLUDED_CAP = 50;
 
@@ -39,7 +91,6 @@ const NEARBY_GENERAL_PARENTS = new Set([
   "bar",
   "bakery",
   "night_club",
-  "tourist_attraction",
 ]);
 
 /**
@@ -51,8 +102,8 @@ const NEARBY_GENERAL_PARENTS = new Set([
  * its coarse group (and, for `restaurant`, every `*_restaurant`) that map to
  * none of the requested families, for Nearby's `excludedPrimaryTypes`.
  * No family requested means every guest family (MESITA-2382): the subtypes
- * that sit in no family (churches, hotels, shops under `tourist_attraction`)
- * are excluded so "All" is not spent on places the gate throws away.
+ * that sit in no family (churches, hotels, shops, attractions) are
+ * excluded so "All" is not spent on places the gate throws away.
  * Empty when no general parent is included.
  *
  * Known edge, accepted: a Mesita-owned place whose Mesita family differs

@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { NEARBY_TYPE_KEYS } from "./discovery-config.ts";
+import { EVERY_FAMILY_TYPES } from "./google-type-super.ts";
 import {
   __resetNearbyGoogleCacheForTests,
   GOOGLE_FANOUT_MAX,
@@ -50,7 +50,7 @@ Deno.test("searchNearbyPlaces: one Nearby Search carries every enabled primary t
   try {
     await searchNearbyPlaces("k", CENTER);
     assertEquals(n, 1);
-    assertEquals(body.includedPrimaryTypes, [...NEARBY_TYPE_KEYS]);
+    assertEquals(body.includedPrimaryTypes, [...EVERY_FAMILY_TYPES]);
     assertEquals(body.maxResultCount, GOOGLE_NEARBY_MAX);
     assertEquals(body.rankPreference, "DISTANCE");
     // The operator's circle; 50 km when none is given.

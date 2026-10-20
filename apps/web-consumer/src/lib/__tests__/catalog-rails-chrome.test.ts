@@ -22,7 +22,7 @@ describe("Places has no chrome but its chip row (MESITA-2298, MESITA-2362, MESIT
   });
 
   it("sends no predicates, so a saved scope cannot keep cutting the list", () => {
-    expect(src).toContain("apiListAreaPool(supabase, from, prefer)");
+    expect(src).toContain("apiListAreaPool(supabase, from, prefer, families)");
     expect(src).not.toContain("toDiscoveryPredicatesWire");
     expect(src).not.toContain("useDiscoveryFilters");
   });

@@ -49,7 +49,6 @@ import {
 } from "../_shared/auth.ts";
 import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
 import { withFamilyKeysList } from "../_shared/place-family-keys.ts";
-import { nearbyTypesForSupers } from "../_shared/google-type-super.ts";
 import { readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
 import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
 import { DISCOVERY_DEFAULTS } from "../_shared/discovery-config.ts";
@@ -63,6 +62,7 @@ import {
   wantsGoogleFill,
 } from "../_shared/geo.ts";
 import {
+  areaGoogleTypes,
   type OwnedRow,
   type PoolBuilder,
   selectAreaPool,
@@ -88,7 +88,8 @@ type ListBody = {
   minReviews?: unknown;
   lat?: number;
   lng?: number;
-  radiusKm?: number;  /** The guest's mode: near (Nearby) · popular · family (MESITA-2428). */
+  radiusKm?: number;
+  /** The guest's mode: near (Nearby) · popular · family (MESITA-2428). */
   prefer?: unknown;
 };
 
@@ -153,7 +154,7 @@ Deno.serve(async (req) => {
   // family. Stored family switches are not read. The operator still holds
   // googleFill, the floors, and the rate controls.
   const nearbyTypes = guestSupers.length > 0
-    ? nearbyTypesForSupers(guestSupers)
+    ? areaGoogleTypes(guestSupers)
     : enabledNearbyTypes(cfg.map);
   const googleFill = mapShouldFillGoogle(true, cfg.map) &&
     nearbyTypes.length > 0;

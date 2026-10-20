@@ -151,7 +151,7 @@ describe("coerceConfig", () => {
       new Set(["coffee", "dinner", "sweet", "drinks", "night_out"]),
     );
     expect(
-      new Set(SUPER_FIELDS.filter((f) => on.includes(f.key)).flatMap((f) => f.battery)),
+      new Set(SUPER_FIELDS.filter((f) => on.includes(f.key)).map((f) => f.battery[0])),
     ).toEqual(new Set(["restaurant", "bar", "night_club", "cafe", "bakery"]));
   });
 

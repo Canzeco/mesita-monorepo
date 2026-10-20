@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   turnOnLocationCopy,
+  chipFamilies,
   chipPrefer,
   isEveryFamily,
   NEAR_CHIP,
@@ -34,13 +35,28 @@ describe("Near and Popular", () => {
     );
     // Social and Saved read no pool, so they never change the request.
     expect(src("components/consumer/home/CatalogRails.tsx")).toMatch(
-      /if \(c\.key !== SOCIAL_CHIP && c\.key !== SAVED_CHIP\)\s+setPrefer\(chipPrefer\(c\.key\)\);/,
+      /if \(c\.key !== SOCIAL_CHIP && c\.key !== SAVED_CHIP\) \{\s+setPrefer\(chipPrefer\(c\.key\)\);\s+setFamilies\(chipFamilies\(c\.key\)\);/,
     );
   });
 
-  it("Home keys its pool cache on the prefer", () => {
+  it("Home keys its pool cache on the prefer and the row's family", () => {
+    const rails = src("components/consumer/home/CatalogRails.tsx");
+    expect(rails).toContain("|${prefer}${");
+    expect(rails).toContain('families.length > 0 ? `:${families.join(",")}` : ""');
+  });
+
+  // MESITA-2438: a family row re-asks the server with its own key, so
+  // Google gets that family's type battery instead of the every-family mix
+  // a family row used to filter in the browser.
+  it("a family row asks the server with its family; Nearby and Popular with none", () => {
+    expect(chipFamilies("coffee")).toEqual(["coffee"]);
+    expect(chipFamilies(NEAR_CHIP)).toEqual([]);
+    expect(chipFamilies(POPULAR_CHIP)).toEqual([]);
     expect(src("components/consumer/home/CatalogRails.tsx")).toContain(
-      "|${prefer}`",
+      "apiListAreaPool(supabase, from, prefer, families)",
+    );
+    expect(src("lib/api/places.ts")).toContain(
+      "...(familyKeys.length > 0 ? { familyKeys: [...familyKeys] } : {}),",
     );
   });
 
