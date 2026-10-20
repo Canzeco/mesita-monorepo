@@ -6,6 +6,7 @@ import {
   areaGoogleTypes,
   FEED_GOOGLE_TYPES,
   googleCallsForStop,
+  NEARBY_INNER_KM,
   type OwnedRow,
   ownedCandidate,
   parseAreaBounds,
@@ -143,8 +144,10 @@ Deno.test("google: ONE Nearby call inside the operator's radius, mask with openN
     assertEquals(calls[0].mask!.includes("photos"), false);
     const sent = JSON.parse(calls[0].body!);
     assertEquals(sent.maxResultCount, 20);
-    assertEquals(sent.rankPreference, "DISTANCE");
-    assertEquals(sent.locationRestriction.circle.radius, 12_500);
+    // Nearby's one call: the prominent 20 around the anchor (MESITA-2467),
+    // inside the operator's radius.
+    assertEquals(sent.rankPreference, "POPULARITY");
+    assertEquals(sent.locationRestriction.circle.radius, NEARBY_INNER_KM * 1000);
     assertEquals(g.calls.filter((c) => c.url.includes("/media?")).length, 0);
   } finally {
     g.restore();
@@ -700,9 +703,16 @@ Deno.test("fan-out: 40 and 60 make 2 and 3 DIFFERENT Nearby calls, never a secon
       const sent = bodies(g.calls);
       assertEquals(sent.length, calls);
       assertEquals(new Set(sent.map((b) => JSON.stringify(b))).size, calls);
-      assertEquals(sent[0].rankPreference, "DISTANCE");
-      assertEquals(sent[1].rankPreference, "POPULARITY");
-      if (calls === 3) assertEquals(sent[2].locationRestriction.circle.radius, 4000);
+      // MESITA-2467: around the anchor first, then the nearest 20 and the
+      // prominent 20 in the radius.
+      assertEquals(sent[0].rankPreference, "POPULARITY");
+      assertEquals(sent[0].locationRestriction.circle.radius, NEARBY_INNER_KM * 1000);
+      assertEquals(sent[1].rankPreference, "DISTANCE");
+      assertEquals(sent[1].locationRestriction.circle.radius, 8000);
+      if (calls === 3) {
+        assertEquals(sent[2].rankPreference, "POPULARITY");
+        assertEquals(sent[2].locationRestriction.circle.radius, 8000);
+      }
       assertEquals(quota(), calls);
       assertEquals(out.summary.googleBilled, calls);
       // The same place from every call is one candidate.
@@ -790,9 +800,30 @@ Deno.test("areaFanoutCircles: halves split across the longer side", () => {
 
 Deno.test("areaFanoutCircles: Popular asks Google for the prominent 20 first (MESITA-2425)", () => {
   const point = { kind: "point" as const, anchor: { lat: 19.43, lng: -99.13 }, radiusKm: 8 };
-  assertEquals(areaFanoutCircles(point, 1).map((c) => c.rank), ["DISTANCE"]);
   assertEquals(areaFanoutCircles(point, 1, "popular").map((c) => c.rank), ["POPULARITY"]);
+  assertEquals(areaFanoutCircles(point, 1, "popular")[0].radiusKm, 8);
   assertEquals(areaFanoutCircles(point, 2, "popular").map((c) => c.rank), ["POPULARITY", "DISTANCE"]);
+});
+
+// MESITA-2467 ("near the CRUZ"): the nearest 20 were mostly under the
+// reviews floor (19 of 20 dropped at La Purísima), so Nearby's first call is
+// the prominent 20 within NEARBY_INNER_KM of the anchor: the Map's one call.
+Deno.test("areaFanoutCircles: Nearby and Family ask for the prominent places around the anchor first", () => {
+  const point = { kind: "point" as const, anchor: { lat: 25.7268, lng: -100.2846 }, radiusKm: 50 };
+  for (const mode of ["nearby", "family"] as const) {
+    const one = areaFanoutCircles(point, 1, mode);
+    assertEquals(one.map((c) => [c.rank, c.radiusKm]), [["POPULARITY", NEARBY_INNER_KM]]);
+    assertEquals(one[0].center, snapCenter(point.anchor));
+    assertEquals(
+      areaFanoutCircles(point, 3, mode).map((c) => [c.rank, c.radiusKm]),
+      [["POPULARITY", NEARBY_INNER_KM], ["DISTANCE", 50], ["POPULARITY", 50]],
+    );
+  }
+  // The default mode is Nearby.
+  assertEquals(areaFanoutCircles(point, 1).map((c) => c.rank), ["POPULARITY"]);
+  // A radius smaller than the inner circle caps it.
+  const tight = { ...point, radiusKm: 2 };
+  assertEquals(areaFanoutCircles(tight, 1)[0].radiusKm, 2);
 });
 
 Deno.test("parseAreaBounds: valid, inverted, partial and oversized", () => {
