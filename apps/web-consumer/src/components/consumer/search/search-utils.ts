@@ -116,8 +116,10 @@ export function anchorPlaceFromPrediction(
 /** Same entity? id, then the Google spine (a stub's slug IS the place id). */
 function samePlaceRow(a: Place, b: Place): boolean {
   if (a.id === b.id) return true;
-  const gidA = a.google_place_id ?? (a.googleOnly || a.from_google ? a.slug : null);
-  const gidB = b.google_place_id ?? (b.googleOnly || b.from_google ? b.slug : null);
+  const gidA =
+    a.google_place_id ?? (a.googleOnly || a.from_google ? a.slug : null);
+  const gidB =
+    b.google_place_id ?? (b.googleOnly || b.from_google ? b.slug : null);
   return Boolean(gidA) && gidA === gidB;
 }
 
@@ -197,116 +199,11 @@ export function viewportCenter(box: {
   return { lat, lng };
 }
 
-/** Visible width of a viewport at its center latitude. */
-function viewportWidthKm(box: {
-  south: number;
-  west: number;
-  north: number;
-  east: number;
-}): number {
-  const { lat } = viewportCenter(box);
-  if (box.west <= box.east) {
-    return haversineKm(lat, box.west, lat, box.east);
-  }
-  return (
-    haversineKm(lat, box.west, lat, 180) + haversineKm(lat, -180, lat, box.east)
-  );
-}
-
 /**
- * Default floor matching discovery_config.map.reloadMinKm. A 110 m cell
- * (`toFixed(3)`) is a few pixels when the city is in frame — that was the
- * hypersensitive reload. 0.5 km is the default reload pair with 2 s;
- * zoomed-out views also require 20% of the visible width so a one-pixel
- * nudge never refetches.
- */
-export const CATALOG_RELOAD_MIN_KM = 0.5;
-const CATALOG_RELOAD_SPAN_FRACTION = 0.2;
-const CATALOG_RELOAD_MIN_KM_MIN = 0.2;
-const CATALOG_RELOAD_MIN_KM_MAX = 20;
-/** Default wait matching discovery_config.map.reloadMinSec. */
-export const CATALOG_RELOAD_MIN_SEC = 2;
-const CATALOG_RELOAD_MIN_SEC_MIN = 0.5;
-const CATALOG_RELOAD_MIN_SEC_MAX = 15;
-
-export function clampReloadMinKm(raw: number | undefined): number {
-  if (typeof raw !== "number" || !Number.isFinite(raw)) {
-    return CATALOG_RELOAD_MIN_KM;
-  }
-  return Math.min(
-    CATALOG_RELOAD_MIN_KM_MAX,
-    Math.max(CATALOG_RELOAD_MIN_KM_MIN, raw),
-  );
-}
-
-export function nearbyReloadThresholdKm(
-  spanKm: number,
-  minKm: number,
-): number {
-  const floor = clampReloadMinKm(minKm);
-  const fromSpan =
-    Number.isFinite(spanKm) && spanKm > 0
-      ? spanKm * CATALOG_RELOAD_SPAN_FRACTION
-      : 0;
-  return Math.max(floor, fromSpan);
-}
-
-export function clampReloadMinSec(raw: number | undefined): number {
-  if (typeof raw !== "number" || !Number.isFinite(raw)) {
-    return CATALOG_RELOAD_MIN_SEC;
-  }
-  return Math.min(
-    CATALOG_RELOAD_MIN_SEC_MAX,
-    Math.max(CATALOG_RELOAD_MIN_SEC_MIN, raw),
-  );
-}
-
-export function catalogMovedEnough(
-  lastCenter: { lat: number; lng: number } | null,
-  nextCenter: { lat: number; lng: number },
-  box: { south: number; west: number; north: number; east: number },
-  minKm: number,
-): boolean {
-  if (!lastCenter) return true;
-  const need = nearbyReloadThresholdKm(viewportWidthKm(box), minKm);
-  return (
-    haversineKm(lastCenter.lat, lastCenter.lng, nextCenter.lat, nextCenter.lng) >=
-    need
-  );
-}
-
-function catalogWaitedEnough(
-  fetchedAtMs: number | null,
-  nowMs: number,
-  minSec: number,
-): boolean {
-  if (fetchedAtMs == null) return true;
-  return nowMs - fetchedAtMs >= clampReloadMinSec(minSec) * 1000;
-}
-
-/** First paint always loads. Later idles need BOTH gates: min km AND min wait. */
-export function shouldReloadNearbyCatalog(
-  lastCenter: { lat: number; lng: number } | null,
-  nextCenter: { lat: number; lng: number },
-  box: { south: number; west: number; north: number; east: number },
-  minKm: number,
-  timing: {
-    fetchedAtMs: number | null;
-    nowMs: number;
-    minSec: number;
-  } = { fetchedAtMs: null, nowMs: 0, minSec: 0 },
-): boolean {
-  if (!lastCenter) return true;
-  return (
-    catalogMovedEnough(lastCenter, nextCenter, box, minKm) &&
-    catalogWaitedEnough(timing.fetchedAtMs, timing.nowMs, timing.minSec)
-  );
-}
-
-/**
- * GPS recentre gains weight after a short move. 200 m is a couple of
- * city blocks — enough to ignore idle jitter, small enough that a
- * neighborhood shift is obviously "somewhere else."
+ * Has the guest's fix left the loaded catalog behind? 200 m is a couple
+ * of city blocks — enough to ignore GPS jitter, small enough that a
+ * neighborhood shift is obviously "somewhere else." Read only when the
+ * camera was asked to move there (first load, the location disc).
  */
 const CATALOG_STALE_MIN_KM = 0.2;
 

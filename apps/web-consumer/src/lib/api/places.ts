@@ -124,6 +124,9 @@ type ViewportPlaces = {
   places: Place[];
   reloadMinKm?: number;
   reloadMinSec?: number;
+  /** Seconds the map must be still before a guest move reloads it
+   *  (MESITA-2440). The client defaults to 1.5 s until the EF sends it. */
+  reloadIdleSec?: number;
 };
 
 /**
@@ -146,6 +149,7 @@ export async function apiFetchNearbyCatalog(
     places: Place[];
     reloadMinKm?: number;
     reloadMinSec?: number;
+    reloadIdleSec?: number;
   }>(client, "consumer-web-list-places", {
     google: true,
     familyKeys: [...familyKeys],
@@ -163,6 +167,11 @@ export async function apiFetchNearbyCatalog(
       typeof data.reloadMinSec === "number" &&
       Number.isFinite(data.reloadMinSec)
         ? data.reloadMinSec
+        : undefined,
+    reloadIdleSec:
+      typeof data.reloadIdleSec === "number" &&
+      Number.isFinite(data.reloadIdleSec)
+        ? data.reloadIdleSec
         : undefined,
   };
 }
