@@ -231,6 +231,21 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // centres the map.
   const locateAskedRef = useRef(false);
 
+  // Home's header bar opens Search with `?focus=1` (MESITA-2447): focus this
+  // bar once, then drop the flag so a reload or Back does not refocus it.
+  const barInputRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("focus") !== "1") return;
+    barInputRef.current?.focus();
+    url.searchParams.delete("focus");
+    window.history.replaceState(
+      window.history.state,
+      "",
+      url.pathname + url.search,
+    );
+  }, []);
+
   // EVERY searchbar pick anchors the map (MESITA-1405): camera to the
   // coordinates, catalog reload there, chosen Place as card ONE. Cleared
   // when a reload lands away from the anchored place — the guest moved on.
@@ -875,6 +890,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
             onFocus={() => setBarFocused(true)}
             onBlur={() => setBarFocused(false)}
             onClear={() => updateQuery("")}
+            inputRef={barInputRef}
           />
         }
       >

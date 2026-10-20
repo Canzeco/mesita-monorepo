@@ -152,10 +152,14 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
     expect(src).toContain("apiListAreaPool(supabase, from, prefer, families)");
   });
 
-  it("the header's location is a bordered pill: pin, name, chevron, opening the sheet", () => {
-    expect(picker).toContain("border-border bg-card text-foreground hover:bg-muted relative flex h-10 w-full min-w-0 items-center justify-center gap-1.5 rounded-full border px-8");
+  // MESITA-2447: the pill became the left disc of Search's row.
+  it("the header's location is Search's disc: arrow or pin, a held-location dot, opening the sheet", () => {
+    expect(picker).toContain("HEADER_DISC");
+    expect(picker).toContain("<Navigation");
     expect(picker).toContain("<MapPin");
-    expect(picker).toContain("<ChevronDown");
+    expect(picker).toContain("<ActiveDot />");
+    expect(picker).not.toContain("<ChevronDown");
+    expect(picker).toContain("aria-label={`Location: ${label}. Change location`}");
     expect(picker).toContain('aria-haspopup="dialog"');
     expect(picker).toContain("onClick={() => setPicking(true)}");
   });
