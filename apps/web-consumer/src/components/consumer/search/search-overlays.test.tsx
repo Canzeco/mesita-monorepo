@@ -248,12 +248,10 @@ describe("Search's header is one token set (MESITA-2433)", () => {
   // must be same… make it cleaner". Two equal discs around the bar, text-sm
   // everywhere, flat outlines, a dark border on keyboard focus.
   it("draws Ask AI as the same icon disc as locate", () => {
-    // One AskAiDisc for both headers (MESITA-2447).
-    expect(read("SearchHeader.tsx")).toContain("<AskAiDisc />");
-    const disc = read("AskAiDisc.tsx");
-    const start = disc.indexOf("<Link");
-    const end = disc.indexOf("</Link>", start);
-    const askAi = disc.slice(start, end);
+    const header = read("SearchHeader.tsx");
+    const start = header.indexOf("<Link");
+    const end = header.indexOf("</Link>", start);
+    const askAi = header.slice(start, end);
     // A guard first: an empty slice would pass every negative check below.
     expect(askAi.length).toBeGreaterThan(0);
     expect(askAi).toContain("data-search-ask-ai");
@@ -264,7 +262,7 @@ describe("Search's header is one token set (MESITA-2433)", () => {
     expect(askAi).not.toContain("<span>Ask AI</span>");
     expect(askAi).not.toContain("shadow-elev");
     // Both discs come from one string, so they can't drift apart.
-    for (const file of ["AskAiDisc.tsx", "SearchLocateButton.tsx"]) {
+    for (const file of ["SearchHeader.tsx", "SearchLocateButton.tsx"]) {
       expect(read(file), file).toContain("HEADER_DISC");
       expect(read(file), file).toContain("header-classes");
     }

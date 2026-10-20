@@ -2,8 +2,8 @@
 
 // Home — a Temu-style split (Pato, MESITA-2367) under Home's header.
 //
-//   (⌖) [⚲ Search places…    ] (✦)        Home's header (ModeTabs, MESITA-2447):
-//   ┌────────────────┬─────────────────────┐   its location disc is
+//   [⌖ Tecnologico                       ⌄]   Home's header (ModeTabs) is the
+//   ┌────────────────┬─────────────────────┐   location alone (MESITA-2405),
 //   │ 👥 Social       │                     │   written to
 //   │ ❤️ Saved        │       square        │   lib/active-location.ts and
 //   │▌✨ All          │        tile         │   read here.
