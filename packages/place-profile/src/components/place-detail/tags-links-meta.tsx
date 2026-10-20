@@ -1,6 +1,6 @@
 "use client";
 
-import { Phone } from "lucide-react";
+import { Clock, Link2, Phone, Tags } from "lucide-react";
 
 import type { ComponentType } from "react";
 import type { PlaceActions } from "../../actions";
@@ -11,8 +11,53 @@ import {
   RESERVATION_DEFS,
   REVIEW_DEFS,
 } from "../place-detail-links";
-import { ChannelChips, type ChannelChip } from "./place-link-chips";
-import { Section } from "./section";
+import { Box } from "./box";
+import { ChannelChips, TagChips, type ChannelChip } from "./place-link-chips";
+
+// ── 9. About lives in @/components/consumer/AboutBox (client). ──────────
+
+// ── 10. Tags ────────────────────────────────────────────────────────────
+
+export function TagsBox({ place }: { place: PlaceDetail }) {
+  // Tags only — the curated taxonomy chip cluster (one tint per facet).
+  // The old key/value rows (dining style, dress code, reservations,
+  // payment, parking, good for) were noise here; those facts are being
+  // absorbed into the tag vocabulary itself (Atlas taxonomy v2). The
+  // whole box disappears when the place has no tags.
+  if (place.tags.length === 0) return null;
+  return (
+    <Box title="Mesita Tags" icon={Tags} iconColor="text-muted-foreground">
+      <TagChips tags={place.tags} />
+    </Box>
+  );
+}
+
+function MetaPill({ label }: { label: string }) {
+  // TagChips language — rounded-full, leading 6px dot, soft tint.
+  return (
+    <span className="border-border bg-muted text-foreground inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold">
+      <span className="bg-foreground h-1.5 w-1.5 shrink-0 rounded-full" />
+      {label}
+    </span>
+  );
+}
+
+export function DatesBox({ place }: { place: PlaceDetail }) {
+  // decision: Pato — Created + Updated as Tag-style pills (MESITA-927).
+  // Hide while enriching so we don't double-signal with the Enriching chip.
+  if (place.is_enriching) return null;
+  const created = place.created_label?.trim();
+  const updated = place.updated_label?.trim();
+  if (!created && !updated) return null;
+  return (
+    <Box title="Dates" icon={Clock} iconColor="text-muted-foreground">
+      <div className="flex flex-wrap gap-2">
+        {created && <MetaPill label={`Created · ${created}`} />}
+        {updated && <MetaPill label={`Updated · ${updated}`} />}
+      </div>
+    </Box>
+  );
+}
 
 type ChipIcon = ComponentType<{ className?: string; strokeWidth?: number }>;
 
@@ -46,7 +91,7 @@ function showsExternalAction(key: string, url: string): boolean {
   }
 }
 
-export function LinksSection({
+export function LinksBox({
   place,
   onOpenLink,
 }: {
@@ -99,11 +144,11 @@ export function LinksSection({
       });
   }
   if (chips.length === 0) return null;
-  // The last section of the scroll (MESITA-2441). Soft clay brand tints
-  // (CHANNEL_CLAY) so each chip reads as its app.
+  // decision: light like Location / About — drop the inverted Channels surface.
+  // Soft clay brand tints (CHANNEL_CLAY) so each chip reads as its app.
   return (
-    <Section title="Links">
+    <Box title="Links" icon={Link2} iconColor="text-muted-foreground">
       <ChannelChips chips={chips} onOpenLink={onOpenLink} />
-    </Section>
+    </Box>
   );
 }

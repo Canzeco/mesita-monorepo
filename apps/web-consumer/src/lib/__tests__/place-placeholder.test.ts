@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   cardPhoto,
-  familyEmoji,
+  firstGuestFamily,
   placePlaceholder,
 } from "@/lib/place-placeholder";
 
@@ -14,18 +14,19 @@ describe("a Google-only card never shows a photo (MESITA-2298)", () => {
   });
 });
 
-describe("the placeholder is the family emoji, then the initial", () => {
-  it("resolves the first guest family's emoji", () => {
-    expect(familyEmoji(["coffee"])).toBe("☕");
-    expect(familyEmoji(["undefined", "tacos"])).toBe("🌮");
-    expect(familyEmoji(["undefined"])).toBeNull();
-    expect(familyEmoji(null)).toBeNull();
+describe("the placeholder is the family's line icon, then the initial (MESITA-2478)", () => {
+  it("resolves the first guest family", () => {
+    expect(firstGuestFamily(["coffee"])).toBe("coffee");
+    expect(firstGuestFamily(["undefined", "tacos"])).toBe("tacos");
+    expect(firstGuestFamily(["undefined"])).toBeNull();
+    expect(firstGuestFamily(["nope"])).toBeNull();
+    expect(firstGuestFamily(null)).toBeNull();
   });
 
-  it("a Google-only row with a family draws the emoji", () => {
+  it("a Google-only row with a family draws that family's icon", () => {
     expect(
       placePlaceholder({ name: "Casa", family_keys: ["pizza"], googleOnly: true }),
-    ).toEqual({ kind: "emoji", text: "🍕" });
+    ).toEqual({ kind: "family", family: "pizza" });
   });
 
   it("falls back to the initial when no family resolves, and for Mesita places", () => {

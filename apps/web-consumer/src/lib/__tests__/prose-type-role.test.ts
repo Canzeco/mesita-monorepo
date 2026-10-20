@@ -66,7 +66,7 @@ const SMALL_ROLES = ["type-label", "type-meta"];
  *  matching fails loudly and gets re-judged rather than silently covering
  *  whatever now sits on that line. */
 const LABEL_BY_CONTENT: Record<string, string> = {
-  "components/consumer/search/SearchRailCard.tsx:87":
+  "components/consumer/search/SearchRailCard.tsx:92":
     "the rail card's meta row sits in a fixed h-4/leading-4 line box — 13px does not fit a 16px box, and this is a figure row anyway",
 };
 

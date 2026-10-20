@@ -9,11 +9,9 @@ const SRC = join(__dirname, "../..");
 const read = (p: string) => readFileSync(p, "utf8");
 
 describe("place profile touch targets", () => {
-  it("Save · Share · Directions are 44px and Reserve is 48px (MESITA-2441)", () => {
+  it("the five profile buttons are 44px tall", () => {
     const actions = read(join(PKG, "place-detail/ProfileActions.tsx"));
-    expect(actions).toContain("flex min-h-11 min-w-0 flex-1");
-    expect(actions).toContain("flex h-11 w-11 items-center");
-    expect(actions).toContain("inline-flex h-12 w-full");
+    expect(actions).toContain('"inline-flex h-11 min-w-0');
     expect(actions).not.toMatch(/\bh-(9|10)\b/);
   });
 
@@ -29,8 +27,7 @@ describe("place profile touch targets", () => {
     }
   });
 
-  it("Try again, Menus' View, the Popular times days and the Hours row are 44px", () => {
-    expect(read(join(PKG, "place-detail/location-hours.tsx"))).toContain("min-h-11");
+  it("Try again, Menus' View and the Popular times days are 44px", () => {
     expect(read(join(PKG, "place-detail/PlaceCreatingPanel.tsx"))).toContain("min-h-11");
     expect(read(join(PKG, "place-detail/menus.tsx"))).toContain("min-h-11");
     expect(read(join(PKG, "place-detail/popular-times.tsx"))).toContain("min-h-11");

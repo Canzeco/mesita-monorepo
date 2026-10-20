@@ -61,7 +61,7 @@ describe("a Google-only card opens its profile, never Google Maps (MESITA-2298)"
 });
 
 describe("a Google-only card's image is a placeholder, never a photo (MESITA-2298)", () => {
-  it("draws the family emoji and ignores any photo on the wire", () => {
+  it("draws the family's line icon, not its emoji, and ignores any photo on the wire (MESITA-2478)", () => {
     const html = tile({
       id: "g:ChIJx",
       googleOnly: true,
@@ -69,8 +69,9 @@ describe("a Google-only card's image is a placeholder, never a photo (MESITA-229
       photos: ["https://lh3.googleusercontent.com/p"],
     });
     expect(html).not.toContain("<img");
-    expect(html).toContain('data-placeholder="emoji"');
-    expect(html).toContain("🌮");
+    expect(html).toContain('data-placeholder="family"');
+    expect(html).toContain('stroke="currentColor"');
+    expect(html).not.toContain("🌮");
   });
 
   it("falls back to the initial when no family resolves", () => {
@@ -99,10 +100,10 @@ describe("the tile: photo on top, its light reflection below (MESITA-2369, MESIT
     expect(html.indexOf("<img")).toBeLessThan(html.indexOf(">Casa<"));
   });
 
-  it("a Google card reflects its emoji tile, still with no photo", () => {
+  it("a Google card reflects its icon tile, still with no photo", () => {
     const html = tile({ id: "g:ChIJx", googleOnly: true, family_keys: ["tacos"] });
     expect(html).not.toContain("<img");
-    expect(html.match(/data-placeholder="emoji"/g)?.length).toBe(2);
+    expect(html.match(/data-placeholder="family"/g)?.length).toBe(2);
   });
 });
 

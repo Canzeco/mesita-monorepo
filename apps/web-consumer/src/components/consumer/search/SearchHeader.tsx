@@ -4,15 +4,16 @@
 //
 //   ( ⌖ ) [ ⚲ Search places…  ] ( ✦ )   one white band …
 //   ─────────────────── hairline ──────────────────────
-//   (📍 Nearby) (⭐ Popular) │ (☕ Coffee) (🥐 Breakfast) …   … one hairline under
+//   (⌖ Nearby) (☆ Popular) │ (○ Coffee) (○ Breakfast) …   … one hairline under
 //   ─────────────────── map ───────────────────────────
 //
 // The bar's row: the locate disc, the query bar, the Ask AI pill (→ Search ›
 // Chat, Soon) — two equal 36px discs around the bar (Pato, MESITA-2433: "location
 // must be kinda symmetrical to ask ai"). One token set for every control lives
 // in header-classes.ts. Under it one horizontal chip row: Nearby and Popular, a hairline,
-// then every family, each with its emoji (Pato, MESITA-2426: they replaced
-// All). ONE pick at a time: Near is every family ranked Near, Popular every
+// then every family, each with its line icon (Pato, MESITA-2426: they replaced
+// All; MESITA-2478: line icons, not emoji — "emojis uses color and that
+// takes attention"). ONE pick at a time: Near is every family ranked Near, Popular every
 // family ranked Popular, a family is that family ranked Near. Sent as the
 // server-side `familyKeys` and `prefer` (MESITA-2425). There is no Filters disc and no sheet (Pato,
 // MESITA-2417: "Its just all and thats it"); the Google reviews minimum is
@@ -33,6 +34,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { BotMessageSquare } from "lucide-react";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
+import { FamilyIcon } from "@/lib/family-icons";
 import {
   clearMapFamilies,
   selectMapFamily,
@@ -44,11 +46,15 @@ import { cn } from "@/lib/utils";
 import { CHIP, CHIP_OFF, CHIP_ON, HEADER_PILL } from "./header-classes";
 
 /** Near and Popular, which replaced All (Pato, MESITA-2426). Popular wears
- *  the star All wore (MESITA-2422). */
+ *  the star All wore (MESITA-2422); each icon is FAMILY_ICONS[prefer]. */
 export const EVERY_FAMILY_CHIPS = [
-  { prefer: "near", emoji: "📍", label: "Nearby" },
-  { prefer: "popular", emoji: "⭐", label: "Popular" },
+  { prefer: "near", label: "Nearby" },
+  { prefer: "popular", label: "Popular" },
 ] as const;
+
+/** A chip's line icon, never an emoji (MESITA-2478): 1.75 stroke, 2.25 when
+ *  on — BottomNav's pair. */
+const CHIP_ICON = "h-4 w-4 shrink-0";
 
 export function SearchHeader({
   locate,
@@ -113,7 +119,11 @@ export function SearchHeader({
                 className={cn(CHIP, on ? CHIP_ON : CHIP_OFF)}
                 data-area-prefer={c.prefer}
               >
-                <span aria-hidden>{c.emoji}</span>
+                <FamilyIcon
+                  name={c.prefer}
+                  className={CHIP_ICON}
+                  strokeWidth={on ? 2.25 : 1.75}
+                />
                 <span>{c.label}</span>
               </button>
             );
@@ -135,7 +145,11 @@ export function SearchHeader({
                 aria-pressed={on}
                 className={cn(CHIP, on ? CHIP_ON : CHIP_OFF)}
               >
-                <span aria-hidden>{family.emoji}</span>
+                <FamilyIcon
+                  name={family.key}
+                  className={CHIP_ICON}
+                  strokeWidth={on ? 2.25 : 1.75}
+                />
                 <span>{family.label}</span>
               </button>
             );

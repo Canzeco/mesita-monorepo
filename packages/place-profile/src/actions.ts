@@ -30,6 +30,7 @@ export type PlaceActions = {
   /** "I went" (MESITA-2442): marks a visit; tapping again takes it back. */
   onWent?: () => void;
   went?: boolean;
+  onContact?: () => void;
   onShare?: () => void;
   onReserve?: () => void;
   onRequest?: () => void;

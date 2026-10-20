@@ -11,6 +11,11 @@ export {
 } from "./components/place-detail/PlaceRequestPanel";
 export { SocialLine } from "./components/place-detail/social-line";
 export type { SocialFace } from "./components/place-detail/social-line";
+export {
+  PlaceTabBar,
+  placeTabs,
+  type PlaceTab,
+} from "./components/place-detail/tabs";
 export { PopularTimesBox } from "./components/place-detail/popular-times";
 export type {
   PlaceActions,
