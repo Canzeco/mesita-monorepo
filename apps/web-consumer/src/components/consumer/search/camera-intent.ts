@@ -18,7 +18,7 @@
 
 import { haversineKm } from "@/lib/utils";
 import type { ViewportBox } from "./SearchMap";
-import { viewportCenter } from "./search-utils";
+import { centerForSight, viewportSight } from "./search-utils";
 
 type LatLng = { lat: number; lng: number };
 
@@ -117,21 +117,27 @@ export function cameraStep(
 ): CameraStep {
   if (intent.kind === "fit") return { kind: "fit", bounds: intent.bounds };
   const target = { lat: intent.lat, lng: intent.lng };
+  // The target lands under the sight (SIGHT_Y, MESITA-2448), not the
+  // canvas centre, so it sits above the rail. With no view yet there is no
+  // span to offset by: the centre itself.
+  const under = (scale: number) =>
+    view ? centerForSight(view, target, scale) : target;
   if (intent.kind === "reveal") {
     if (view && isTargetVisible(view, target)) return { kind: "none" };
-    return { kind: "pan", ...target, zoom: null };
+    return { kind: "pan", ...under(1), zoom: null };
   }
   const nextZoom =
     intent.minZoom != null && (zoom == null || zoom < intent.minZoom)
       ? intent.minZoom
       : null;
   if (view && nextZoom == null) {
-    const { lat, lng } = viewportCenter(view);
+    const { lat, lng } = viewportSight(view);
     if (haversineKm(lat, lng, target.lat, target.lng) < SAME_SPOT_KM) {
       return { kind: "none" };
     }
   }
-  return { kind: "pan", ...target, zoom: nextZoom };
+  const scale = nextZoom != null && zoom != null ? 2 ** (zoom - nextZoom) : 1;
+  return { kind: "pan", ...under(scale), zoom: nextZoom };
 }
 
 /** How long the map must be still after a guest move before it reloads. */

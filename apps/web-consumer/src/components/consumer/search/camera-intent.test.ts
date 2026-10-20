@@ -11,6 +11,7 @@ import {
   selectionMovesCamera,
 } from "./camera-intent";
 import { sameCoords } from "@/lib/use-user-location";
+import { centerForSight, viewportSight } from "./search-utils";
 
 // A ~2.2 km × ~2 km view over Monterrey's centre.
 const VIEW = { south: 25.66, west: -100.33, north: 25.68, east: -100.31 };
@@ -96,11 +97,11 @@ describe("cameraStep", () => {
     );
   });
 
-  it("a reveal of an off-screen place pans and keeps the zoom", () => {
+  it("a reveal of an off-screen place pans it under the sight and keeps the zoom", () => {
     const far = { lat: 25.7, lng: -100.3 };
     expect(cameraStep({ gen: 1, kind: "reveal", ...far }, VIEW, 15)).toEqual({
       kind: "pan",
-      ...far,
+      ...centerForSight(VIEW, far),
       zoom: null,
     });
   });
@@ -109,27 +110,30 @@ describe("cameraStep", () => {
     const there = { lat: 25.7, lng: -100.3 };
     expect(cameraStep({ gen: 1, kind: "center", ...there }, VIEW, 11)).toEqual({
       kind: "pan",
-      ...there,
+      ...centerForSight(VIEW, there),
       zoom: null,
     });
   });
 
-  it("a centre already at the centre is a no-op", () => {
-    expect(cameraStep({ gen: 1, kind: "center", ...CENTER }, VIEW, 15)).toEqual(
-      {
-        kind: "none",
-      },
-    );
+  it("a centre already under the sight is a no-op", () => {
+    const sight = viewportSight(VIEW);
+    expect(cameraStep({ gen: 1, kind: "center", ...sight }, VIEW, 15)).toEqual({
+      kind: "none",
+    });
   });
 
   it("the first-load centre zooms in only when the map is further out", () => {
     const fix = { lat: 25.7, lng: -100.3 };
     expect(
       cameraStep({ gen: 1, kind: "center", ...fix, minZoom: 14 }, VIEW, 11),
-    ).toEqual({ kind: "pan", ...fix, zoom: 14 });
+    ).toEqual({
+      kind: "pan",
+      ...centerForSight(VIEW, fix, 2 ** (11 - 14)),
+      zoom: 14,
+    });
     expect(
       cameraStep({ gen: 1, kind: "center", ...fix, minZoom: 14 }, VIEW, 16),
-    ).toEqual({ kind: "pan", ...fix, zoom: null });
+    ).toEqual({ kind: "pan", ...centerForSight(VIEW, fix), zoom: null });
   });
 
   it("a Location fits its viewport", () => {
