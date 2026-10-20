@@ -1,5 +1,5 @@
 import type { ReactNode, RefObject } from "react";
-import { ChevronUp, MapPin, X } from "lucide-react";
+import { MapPin } from "lucide-react";
 
 import type { MapWeights, Place } from "@/lib/api/places";
 import { Skeleton, Spinner } from "@/components/shared";
@@ -122,12 +122,9 @@ export function SearchDebugCoords({
 export function SearchRailOverlay({
   places,
   catalogLoading = false,
-  railCollapsed,
   railIndex,
   selectedId,
   railScrollRef,
-  onShowRail,
-  onHideRail,
   onRailScroll,
   onSelectPlace,
   onOpenPlace,
@@ -136,12 +133,9 @@ export function SearchRailOverlay({
 }: {
   places: Place[];
   catalogLoading?: boolean;
-  railCollapsed: boolean;
   railIndex: number;
   selectedId: string | null;
   railScrollRef: RefObject<HTMLDivElement | null>;
-  onShowRail: () => void;
-  onHideRail: () => void;
   onRailScroll: () => void;
   onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
@@ -155,7 +149,9 @@ export function SearchRailOverlay({
   // the guest's Popularity floor.
 
   const firstLoad = catalogLoading && places.length === 0;
-  const showCards = firstLoad || (places.length > 0 && !railCollapsed);
+  // The rail is always shown while there are places (Pato, MESITA-2508:
+  // "don't make the lcoations shown hiddable. keep it always").
+  const showCards = firstLoad || places.length > 0;
 
   // What floats at the bottom of the map, just above the band: the debug
   // readout, then the loading pill, the counter, the reopen pill or the
@@ -171,31 +167,10 @@ export function SearchRailOverlay({
         </p>
       </div>
     );
-  } else if (railCollapsed) {
-    // Dismissed -> a single floating pill reopens the rail. Tapping any pin
-    // reopens it too (handleSelectPlace).
-    float = (
-      <div className="flex items-center justify-center gap-1.5">
-        <button
-          type="button"
-          onClick={onShowRail}
-          className="border-border bg-card/95 text-foreground shadow-elev flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold tabular-nums backdrop-blur transition active:scale-95"
-        >
-          {catalogLoading ? (
-            <Spinner size="sm" label="Updating nearby places" />
-          ) : (
-            <ChevronUp className="text-primary h-4 w-4" />
-          )}
-          {catalogLoading
-            ? "Updating nearby"
-            : `Show ${places.length} ${places.length === 1 ? "place" : "places"}`}
-        </button>
-      </div>
-    );
   } else {
     float = (
       <div className="flex items-center justify-center gap-1.5">
-        <span className="border-border bg-card/95 text-muted-foreground shadow-rest type-label flex items-center gap-1 rounded-full border py-0.5 pr-1 pl-2.5 font-semibold tabular-nums backdrop-blur">
+        <span className="border-border bg-card/95 text-muted-foreground shadow-rest type-label flex items-center gap-1 rounded-full border py-0.5 pr-2.5 pl-2.5 font-semibold tabular-nums backdrop-blur">
           {catalogLoading ? (
             <Spinner size="sm" label="Updating nearby places" />
           ) : (
@@ -215,15 +190,6 @@ export function SearchRailOverlay({
               {places.length === 1 ? "place" : "places"}
             </span>
           )}
-          <span className="bg-border ml-0.5 h-3.5 w-px" aria-hidden="true" />
-          <button
-            type="button"
-            onClick={onHideRail}
-            aria-label="Hide places"
-            className="text-muted-foreground hover:text-foreground flex h-5 w-5 items-center justify-center rounded-full transition active:scale-90"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
         </span>
       </div>
     );
