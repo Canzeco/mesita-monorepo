@@ -80,14 +80,18 @@ export function ProfileActions({
           />
         }
       />
-      <IconAction
-        label="I went"
-        ariaLabel={went ? "Take back I went" : "I went here"}
-        pressed={actions?.onWent ? went : undefined}
-        onClick={actions?.onWent}
-        pressedClass="bg-foreground border-foreground text-paper"
-        icon={<CircleCheck className="h-5 w-5" strokeWidth={2} />}
-      />
+      {/* Only a Mesita place can be "went"; a Google-only one shows no
+          inert button (MESITA-2460). */}
+      {actions?.onWent ? (
+        <IconAction
+          label="I went"
+          ariaLabel={went ? "Take back I went" : "I went here"}
+          pressed={went}
+          onClick={actions.onWent}
+          pressedClass="bg-foreground border-foreground text-paper"
+          icon={<CircleCheck className="h-5 w-5" strokeWidth={2} />}
+        />
+      ) : null}
       <IconAction
         label="Share"
         onClick={actions?.onShare}

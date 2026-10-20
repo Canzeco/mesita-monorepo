@@ -31,7 +31,8 @@ async function freshStore(seed: Record<string, string>) {
   vi.stubGlobal("window", fake.window);
   vi.resetModules();
   const mod = await import("@/lib/saved-places");
-  const saved = () => JSON.parse(fake.store.get("mesita:saved-places") ?? "[]") as string[];
+  const saved = () =>
+    JSON.parse(fake.store.get("mesita:saved-places") ?? "[]") as string[];
   return { mod, saved };
 }
 
@@ -61,16 +62,18 @@ describe("Saved is server-side", () => {
     const { mod, saved } = await freshStore({
       "mesita:saved-places": JSON.stringify([A]),
     });
-    await mod.syncSavedPlaces(async () => {
-      throw new Error("offline");
-    }, async () => {});
+    await mod.syncSavedPlaces(
+      async () => {
+        throw new Error("offline");
+      },
+      async () => {},
+    );
     expect(saved()).toEqual([A]);
   });
 });
 
 describe("the feed's copy", () => {
   const lead: ActivityPerson = {
-    id: "p",
     name: "Perdón",
     avatarUrl: null,
     handle: "perdon",
@@ -79,10 +82,22 @@ describe("the feed's copy", () => {
   };
 
   it("collapses with a count and keeps the verb", () => {
-    expect(feedSentence({ lead, others: 0, kind: "went" })).toBe("Perdón went to");
-    expect(feedSentence({ lead, others: 1, kind: "saved" })).toBe("Perdón and 1 other saved");
-    expect(feedSentence({ lead, others: 4, kind: "viewed" })).toBe("Perdón and 4 others looked at");
-    expect(feedSentence({ lead: { ...lead, isYou: true }, others: 0, kind: "saved" })).toBe("You saved");
+    expect(feedSentence({ lead, others: 0, kind: "went" })).toBe(
+      "Perdón went to",
+    );
+    expect(feedSentence({ lead, others: 1, kind: "saved" })).toBe(
+      "Perdón and 1 other saved",
+    );
+    expect(feedSentence({ lead, others: 4, kind: "viewed" })).toBe(
+      "Perdón and 4 others looked at",
+    );
+    expect(
+      feedSentence({
+        lead: { ...lead, isYou: true },
+        others: 0,
+        kind: "saved",
+      }),
+    ).toBe("You saved");
   });
 
   it("reads time the short way", () => {
@@ -92,5 +107,21 @@ describe("the feed's copy", () => {
     expect(shortAgo("2026-10-19T10:00:00Z", now)).toBe("2h");
     expect(shortAgo("2026-10-16T12:00:00Z", now)).toBe("3d");
     expect(shortAgo("2026-09-28T12:00:00Z", now)).toBe("3w");
+  });
+});
+
+// MESITA-2460: saves made when they were "only in this browser" are
+// backfilled QUIET, so they never reach the feed.
+describe("the first-sync backfill stays private", () => {
+  it("pushes old saves with quiet: true", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const guard = readFileSync(
+      join(__dirname, "../../components/consumer/ConsumerLocalDataGuard.tsx"),
+      "utf8",
+    );
+    expect(guard).toMatch(
+      /apiTrackActivity\(getSupabase\(\), \{\s*kind: "saved",\s*placeId,\s*quiet: true/,
+    );
   });
 });

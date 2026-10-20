@@ -78,3 +78,22 @@ Deno.test("the profile line", () => {
   assertEquals(socialLine(p, 4), "Perdón and 3 others saw this");
   assertEquals(socialLine(toPerson(row({}), "a"), 3), "You and 2 others saw this");
 });
+
+// MESITA-2460: a member's account id never goes on the wire; the client
+// needs only isYou.
+Deno.test("toPerson carries no account id", () => {
+  const person = toPerson(
+    {
+      consumer_id: "11111111-1111-1111-1111-111111111111",
+      kind: "saved",
+      created_at: "2026-10-19T09:00:00Z",
+      first_name: "Ana",
+      avatar_url: null,
+      instagram_handle: "ana",
+      instagram_followers_count: 10,
+    },
+    "11111111-1111-1111-1111-111111111111",
+  );
+  assertEquals(Object.keys(person).sort(), ["avatarUrl", "followers", "handle", "isYou", "name"]);
+  assertEquals(person.isYou, true);
+});

@@ -23,7 +23,6 @@ export function isMesitaPlaceId(v: unknown): v is string {
 
 /** One person as the feed and the line show them. */
 export type ActivityPerson = {
-  id: string;
   name: string;
   avatarUrl: string | null;
   handle: string | null;
@@ -48,7 +47,6 @@ export function toPerson(row: ActivityRow, viewerId: string): ActivityPerson {
   const first = row.first_name?.trim();
   const handle = row.instagram_handle?.trim() || null;
   return {
-    id: row.consumer_id,
     name: first || (handle ? `@${handle}` : "A member"),
     avatarUrl: row.avatar_url ?? null,
     handle,

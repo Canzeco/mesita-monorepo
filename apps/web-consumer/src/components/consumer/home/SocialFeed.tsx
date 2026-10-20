@@ -85,8 +85,8 @@ function FeedRow({ item }: { item: ActivityFeedItem }) {
         className="hover:bg-muted/60 flex items-start gap-3 px-4 py-3 transition"
       >
         <span className="flex shrink-0 -space-x-3" aria-hidden>
-          {item.people.map((p) => (
-            <Face key={p.id} person={p} size="h-10 w-10" />
+          {item.people.map((p, i) => (
+            <Face key={i} person={p} size="h-10 w-10" />
           ))}
         </span>
         <span className="min-w-0 flex-1">

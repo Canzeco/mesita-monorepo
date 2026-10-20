@@ -2,11 +2,15 @@
 //
 // Social v1 (MESITA-2442): records one of the three events on a Mesita place.
 //
-// Body: { kind: "saved" | "viewed" | "went", place_id: uuid, on?: boolean }
+// Body: { kind: "saved" | "viewed" | "went", place_id: uuid, on?: boolean,
+//         quiet?: boolean }
 //   saved / went  on: true (default) upserts the row, on: false deletes it
 //                 (unsave, take back "I went").
 //   viewed        always an upsert; a re-open moves created_at forward so the
 //                 feed shows the latest look, once per member × place.
+//   quiet         saved only: a backfilled pre-Social save (the first sync in a
+//                 browser, MESITA-2460) — the owner's Saved list reads it, the
+//                 feed and place lines never do. A real tap writes quiet=false.
 // Response: { ok: true, kind, on }
 //
 // A Google-only card (`g:<id>`) is refused: it is not a place row yet, and its
@@ -19,7 +23,7 @@ import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/h
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { isActivityKind, isMesitaPlaceId } from "../_shared/place-activity.ts";
 
-type Body = { kind?: string; place_id?: string; on?: boolean };
+type Body = { kind?: string; place_id?: string; on?: boolean; quiet?: boolean };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -42,6 +46,7 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
   }
   const on = kind === "viewed" ? true : bodyRes.body.on !== false;
+  const quiet = kind === "saved" && bodyRes.body.quiet === true;
 
   const admin = adminClient(envRes.env);
   if (on) {
@@ -51,6 +56,7 @@ Deno.serve(async (req) => {
         place_id: placeId,
         kind,
         created_at: new Date().toISOString(),
+        quiet,
       },
       { onConflict: "consumer_id,place_id,kind" },
     );
