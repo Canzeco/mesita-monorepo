@@ -163,7 +163,7 @@ const lockupBody = (kind: "stacked" | "horizontal", indent = "  ") =>
 
 const ASSETS: { name: string; viewBox: string; body: string; title: string }[] = [
   { name: "mark", viewBox: mark.viewBox, body: markBody(), title: "Mesita" },
-  { name: "wordmark", viewBox: WORDMARK_VIEWBOX, body: wordmarkBody(), title: "mesita." },
+  { name: "wordmark", viewBox: WORDMARK_VIEWBOX, body: wordmarkBody(), title: "mesita" },
   { name: "logo-horizontal", viewBox: lockup.horizontal.viewBox, body: lockupBody("horizontal"), title: "Mesita" },
   { name: "logo-stacked", viewBox: lockup.stacked.viewBox, body: lockupBody("stacked"), title: "Mesita" },
 ];
@@ -298,7 +298,7 @@ const webComponents = (): Record<string, string> => ({
   "MesitaMark.tsx":
     `// ${FILE_NOTICE}\n` +
     `//\n` +
-    `// The Mesita mark (the table M). Inlined rather than <img src="/brand/mark.svg"> so it\n` +
+    `// The Mesita mark (the molcajete). Inlined rather than <img src="/brand/mark.svg"> so it\n` +
     `// inherits text colour and costs no request. Pure JSX — safe in server and\n` +
     `// client components alike.\n` +
     `//\n` +
@@ -327,9 +327,9 @@ const webComponents = (): Record<string, string> => ({
   "MesitaWordmark.tsx":
     `// ${FILE_NOTICE}\n` +
     `//\n` +
-    `// The "mesita." wordmark as outlines, not live text — the logo must not\n` +
+    `// The "mesita" wordmark as outlines, not live text — the logo must not\n` +
     `// reflow if a font fails to load or a user overrides fonts. The letters\n` +
-    `// are Red Hat Display, from ~/Desktop/Mesita/mesita-brand (MESITA-2476).\n` +
+    `// are Red Hat Display, with no dot (MESITA-2480).\n` +
     `export function MesitaWordmark({ className }: { className?: string }) {\n` +
     `  return (\n` +
     `    <svg\n` +
@@ -353,8 +353,8 @@ const webComponents = (): Record<string, string> => ({
     `// proportions between them can never drift.\n` +
     `//\n` +
     `//   "horizontal"  mark beside wordmark. Headers, nav bars, email. The\n` +
-    `//                 mark is the full height; the wordmark's baseline sits on\n` +
-    `//                 the mark's bottom, as in the brand folder's lockup.\n` +
+    `//                 mark is the full height; the wordmark sits low beside\n` +
+    `//                 it, its baseline just above the bowl foot.\n` +
     `//   "stacked"     mark above wordmark. Splash, auth, share cards, print.\n` +
     `//\n` +
     `// Colour comes from \`currentColor\`. On a light surface use the brand pink\n` +
