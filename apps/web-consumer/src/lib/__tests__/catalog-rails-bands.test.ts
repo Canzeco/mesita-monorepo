@@ -166,8 +166,10 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
     expect(picker).toContain("className={HOME_LOCATION_CLASS}");
     expect(picker).not.toContain("HEADER_PILL");
     const tokens = (picker.match(/HOME_LOCATION_CLASS =\s*"([^"]*)"/)?.[1] ?? "").split(/\s+/);
-    for (const t of ["h-9", "rounded-xl", "border", "bg-muted", "text-foreground"])
+    for (const t of ["h-9", "rounded-xl", "border", "bg-border", "text-foreground"])
       expect(tokens, t).toContain(t);
+    // A step darker than the page grey, to stand off the white (MESITA-2483).
+    expect(tokens).not.toContain("bg-muted");
     const tabs = readFileSync(join(__dirname, "../../components/consumer/ModeTabs.tsx"), "utf8");
     expect(tabs).toContain('className="flex h-[52px] items-center gap-3 px-4" data-home-header');
     // No drawn logo for now (MESITA-2480): the word, set in Outfit.
