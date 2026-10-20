@@ -11,7 +11,12 @@ import {
   selectionMovesCamera,
 } from "./camera-intent";
 import { sameCoords } from "@/lib/use-user-location";
-import { centerForSight, viewportSight } from "./search-utils";
+import {
+  boxAtSight,
+  boxBounds,
+  centerForSight,
+  viewportSight,
+} from "./search-utils";
 
 // A ~2.2 km × ~2 km view over Monterrey's centre.
 const VIEW = { south: 25.66, west: -100.33, north: 25.68, east: -100.31 };
@@ -207,5 +212,31 @@ describe("a pin's second tap flies there (MESITA-2488)", () => {
     const want = centerForSight(VIEW, target);
     expect(step.lat).toBeCloseTo(want.lat, 9);
     expect(step.lng).toBeCloseTo(want.lng, 9);
+  });
+});
+
+describe("a load asks for the visible map (MESITA-2499)", () => {
+  it("sends the view as the EF's bounds", () => {
+    expect(boxBounds(VIEW)).toEqual({
+      low: { lat: 25.66, lng: -100.33 },
+      high: { lat: 25.68, lng: -100.31 },
+    });
+  });
+
+  it("sends no bounds without a view, across the dateline, or degenerate", () => {
+    expect(boxBounds(null)).toBeNull();
+    expect(boxBounds({ south: 10, west: 179, north: 11, east: -179 })).toBeNull();
+    expect(boxBounds({ south: 10, west: 5, north: 10, east: 6 })).toBeNull();
+  });
+
+  it("a load ahead of its camera move asks for the view it lands on", () => {
+    const target = { lat: 25.7, lng: -100.4 };
+    const box = boxAtSight(VIEW, target)!;
+    // Same zoom: the same width, and the target under the sight.
+    expect(box.east - box.west).toBeCloseTo(VIEW.east - VIEW.west, 9);
+    const sight = viewportSight(box);
+    expect(sight.lat).toBeCloseTo(target.lat, 9);
+    expect(sight.lng).toBeCloseTo(target.lng, 9);
+    expect(boxAtSight(null, target)).toBeNull();
   });
 });

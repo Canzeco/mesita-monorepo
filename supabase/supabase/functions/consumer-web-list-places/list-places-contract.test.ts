@@ -1,18 +1,21 @@
 // consumer-web-list-places on the shared engine (MESITA-2302, one pool since
 // MESITA-2379). Source pins for the wiring the engine's own behavioural suite
-// (area-pipeline.test) cannot see: the one pool at a point, one Google call,
-// the one circle, and that web Search's call is the only one it answers
-// (MESITA-2337).
+// (area-pipeline.test) cannot see: the one pool on the visible map
+// (MESITA-2499), one Google call, the fallback circle, and that web Search's
+// call is the only one it answers (MESITA-2337).
 import { assert, assertEquals } from "jsr:@std/assert@1";
 
 const src = await Deno.readTextFile(new URL("./index.ts", import.meta.url));
 const anchor = src.indexOf("const center = { lat: nearbyDecision.lat");
 const webBranch = anchor >= 0 ? src.slice(anchor) : "";
 
-Deno.test("list-places: the Map is a point view of the one Area pool, one Google call", () => {
+Deno.test("list-places: the Map is the visible map's view of the one Area pool, one Google call", () => {
   assert(webBranch.length > 0);
   assert(webBranch.includes("selectAreaPool<OwnedRow>("));
-  assert(webBranch.includes('location: { kind: "point", anchor: center, radiusKm }'));
+  // The visible map (MESITA-2499); no bounds falls back to the point.
+  assert(webBranch.includes("const location = resolveAreaLocation(body.bounds, center, radiusKm);"));
+  assert(webBranch.includes('bounds: location.kind === "area" ? location.bounds : null,'));
+  assert(webBranch.includes("    location,\n"));
   assert(webBranch.includes("googleCalls: googleFill ? 1 : 0"));
   assert(webBranch.includes("selectedOnly: false"));
   // The guest never picks a source.
@@ -32,6 +35,12 @@ Deno.test("list-places: the one circle is map.radiusKm; no client radius, no con
   assertEquals(src.includes("nearbyDecision.radiusKm"), false);
   assertEquals(src.includes("NEARBY_RADIUS_KM"), false);
   assert(webBranch.includes("const radiusKm = cfg.map.radiusKm;"));
+});
+
+Deno.test("list-places: best first; the guest's Nearby / Popular is gone (MESITA-2499)", () => {
+  assert(webBranch.includes('const mode: AreaMode = "popular";'));
+  assertEquals(src.includes("readAreaMode("), false);
+  assertEquals(src.includes("body.prefer"), false);
 });
 
 Deno.test("list-places: the old merge-and-paint branch is gone", () => {

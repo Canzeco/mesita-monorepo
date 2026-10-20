@@ -13,17 +13,23 @@
 // read here would look like it worked while enforcing nothing. A config that
 // silently falls back is not enforced, which is the house definition of a bug.
 //
-// ONE REQUEST SHAPE — POST { google: true, lat, lng, familyKeys }:
+// ONE REQUEST SHAPE — POST { google: true, lat, lng, bounds, familyKeys }:
 // web Search, the Map view of the AREA PIPELINE (MESITA-2302, MESITA-2327,
-// one pool since MESITA-2379, `_shared/area-pipeline.ts`). The Map is always
-// a POINT (the camera centre) inside the operator's `map.radiusKm`, and it
+// one pool since MESITA-2379, `_shared/area-pipeline.ts`). THE MAP IS WHAT
+// THE GUEST SEES (MESITA-2499): `bounds` is the visible map, so the zoom
+// decides how wide the set is — a street close, a city wide. Inside it the
+// pool ranks best first: Popularity × Selected, no centre bias (the bounds
+// location's formula), the guest's family chip as the Family gate and mode,
+// otherwise the Popular mode; the guest no longer picks Nearby or Popular,
+// so `prefer` is ignored. No bounds, or a box wider than AREA_BOUNDS_MAX_KM,
+// falls back to the POINT (the camera centre) inside `map.radiusKm`. It
 // shows the same merged pool as the Feed — Google and Mesita candidates
 // deduped, gated, scored, × Selected, ranked — with its own budget: ONE
-// Nearby call per load (the reload throttle `map.reloadMinKm` /
-// `map.reloadMinSec` bounds the spend), the guest's family pills pushed down
-// to Nearby types, the operator's `map.googleMinReviews` on Google hits, and
-// `map.mesitaPlaces` Mesita candidates. The guest never picks a source: a
-// stale `placesScope` is ignored.
+// Nearby call per load (the reload throttle bounds the spend), the guest's
+// family pills pushed down to Nearby types, the operator's
+// `map.googleMinReviews` on Google hits, and `map.mesitaPlaces` Mesita
+// candidates. The guest never picks a source: a stale `placesScope` is
+// ignored.
 //
 // Anything else is refused: a GET is 405, a POST without `google: true` or
 // without a lat/lng pair is 400. The listed `{ lat, lng }` lane and the
@@ -65,10 +71,11 @@ import {
   areaGoogleTypes,
   type OwnedRow,
   type PoolBuilder,
+  resolveAreaLocation,
   selectAreaPool,
   selectedPoolQuery,
 } from "../_shared/area-pipeline.ts";
-import { readAreaMode } from "../_shared/area-score.ts";
+import type { AreaMode } from "../_shared/area-score.ts";
 import { areaQuota, ownedLookup } from "../_shared/area-deps.ts";
 import { readGooglePlacesKey } from "../_shared/google-places.ts";
 
@@ -89,7 +96,9 @@ type ListBody = {
   lat?: number;
   lng?: number;
   radiusKm?: number;
-  /** The guest's mode: near (Nearby) · popular · family (MESITA-2428). */
+  /** The visible map, `{ low, high }` (MESITA-2499). */
+  bounds?: unknown;
+  /** Ignored since MESITA-2499: the mode is the server's. */
   prefer?: unknown;
 };
 
@@ -160,10 +169,19 @@ Deno.serve(async (req) => {
     nearbyTypes.length > 0;
   const center = { lat: nearbyDecision.lat, lng: nearbyDecision.lng };
   const radiusKm = cfg.map.radiusKm;
+  const location = resolveAreaLocation(body.bounds, center, radiusKm);
+  // A family chip is the Family mode (areaMode); every family ranks Popular.
+  const mode: AreaMode = "popular";
   const pool = await selectedPoolQuery(
     supabase.from("profiles").select(PLACE_CARD_COLUMNS) as unknown as PoolBuilder,
     cfg,
-    { center, radiusKm, families: guestSupers, selectedOnly: false },
+    {
+      center: location.kind === "point" ? location.anchor : null,
+      radiusKm,
+      bounds: location.kind === "area" ? location.bounds : null,
+      families: guestSupers,
+      selectedOnly: false,
+    },
   ).limit(NEARBY_SCAN_LIMIT);
   if (pool.error) {
     return json({ ok: false, error: pool.error.message }, 500);
@@ -171,7 +189,7 @@ Deno.serve(async (req) => {
   const gmp = googleFill ? readGooglePlacesKey() : null;
   const area = await selectAreaPool<OwnedRow>({
     apiKey: gmp?.ok && efEnv.ok ? gmp.key : null,
-    location: { kind: "point", anchor: center, radiusKm },
+    location,
     families: guestSupers,
     types: googleFill ? nearbyTypes : [],
     googleCalls: googleFill ? 1 : 0,
@@ -186,7 +204,7 @@ Deno.serve(async (req) => {
     // never a stub (MESITA-2154). An owned row that is not ready stays a
     // stub, and its tap's get-or-create opens the Mesita place.
     lookupOwned: ownedLookup(supabase, PLACE_CARD_COLUMNS, "consumer-web-list-places"),
-    mode: readAreaMode(body.prefer),
+    mode,
   });
   // A caller that names its own cap keeps it.
   const places = typeof body.limit === "number"
@@ -197,8 +215,9 @@ Deno.serve(async (req) => {
   console.log(JSON.stringify({
     fn: "consumer-web-list-places",
     mode: "nearby",
+    location: location.kind,
     googleFillOn: googleFill,
-    areaMode: guestSupers.length > 0 ? "family" : readAreaMode(body.prefer),
+    areaMode: guestSupers.length > 0 ? "family" : mode,
     ...area.summary,
     returned: places.length,
   }));
