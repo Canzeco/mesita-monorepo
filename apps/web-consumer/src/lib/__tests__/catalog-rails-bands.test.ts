@@ -159,7 +159,7 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
 
   // MESITA-2476 (Pato: "location must be inside a box or something"): a
   // rounded box, quiet grey on the white header since MESITA-2480, beside
-  // the 22px logo in one 52px row. Never the old full-width h-10 bar (MESITA-2405).
+  // the name in one 52px row. Never the old full-width h-10 bar (MESITA-2405).
   it("the header's location is one box: pin, name, chevron, opening the sheet", () => {
     expect(picker).toContain("className={HOME_LOCATION_CLASS}");
     expect(picker).not.toContain("HEADER_PILL");
@@ -168,7 +168,10 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
       expect(tokens, t).toContain(t);
     const tabs = readFileSync(join(__dirname, "../../components/consumer/ModeTabs.tsx"), "utf8");
     expect(tabs).toContain('className="flex h-[52px] items-center gap-3 px-4" data-home-header');
-    expect(tabs).toContain('className="text-foreground h-[22px] w-auto shrink-0"');
+    // No drawn logo for now (MESITA-2480): the word, set in Outfit.
+    expect(tabs).toContain('import { Outfit } from "next/font/google";');
+    expect(tabs).toContain(">\n          Mesita\n        </span>");
+    expect(tabs).not.toContain("MesitaLogo");
     expect(picker).not.toContain("border-border bg-card text-foreground hover:bg-muted relative flex h-10");
     expect(picker).toContain("<MapPin");
     expect(picker).toContain("<ChevronDown");

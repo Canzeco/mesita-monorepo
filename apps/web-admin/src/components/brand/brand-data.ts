@@ -48,7 +48,7 @@ export const BRAND_GEOMETRY = {
     horizontalComfortablePx: 80,
     stackedPx: 64,
   },
-  markOpticalCenterPct: 0.64,
+  markOpticalCenterPct: 0.432,
 } as const;
 
 export const BRAND_TYPE = {
