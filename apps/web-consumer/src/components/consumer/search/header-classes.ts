@@ -14,6 +14,12 @@
 export const HEADER_DISC =
   "border-border bg-card text-foreground hover:bg-muted flex h-9 w-9 shrink-0 items-center justify-center rounded-full border outline-none transition focus-visible:border-foreground active:scale-[0.97]";
 
+/** Ask AI at the bar's right end: the disc's outline and height, widened
+ *  into a pill that says what it does (Pato, MESITA-2455: "the ask AI
+ *  button must be wider"; it was a 36px icon disc, MESITA-2433). */
+export const HEADER_PILL =
+  "border-border bg-card text-foreground hover:bg-muted flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm font-semibold whitespace-nowrap outline-none transition focus-visible:border-foreground active:scale-[0.97]";
+
 export const CHIP =
   "flex h-9 shrink-0 items-center gap-1 rounded-full border px-3 text-sm font-semibold whitespace-nowrap transition outline-none focus-visible:border-foreground active:scale-[0.97]";
 /** A dark border is invisible on the ink chip, and the nav's overflow clips

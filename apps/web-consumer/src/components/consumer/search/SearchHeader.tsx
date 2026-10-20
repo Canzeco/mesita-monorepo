@@ -6,7 +6,7 @@
 //   ─────────────────── map ───────────────────────────
 //   (📍 Nearby) (⭐ Popular) │ (☕ Coffee) (🥐 Breakfast) …   floating on it
 //
-// The bar's row: the locate disc, the query bar, the Ask AI disc (→ Search ›
+// The bar's row: the locate disc, the query bar, the Ask AI pill (→ Search ›
 // Chat, Soon) — two equal 36px discs around the bar (Pato, MESITA-2433: "location
 // must be kinda symmetrical to ask ai"). One token set for every control lives
 // in header-classes.ts. Under it one horizontal chip row: Nearby and Popular, a hairline,
@@ -37,7 +37,7 @@ import {
 import { setAreaPrefer, useAreaPrefer } from "@/lib/use-area-prefer";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { cn } from "@/lib/utils";
-import { CHIP, CHIP_OFF, CHIP_ON, HEADER_DISC } from "./header-classes";
+import { CHIP, CHIP_OFF, CHIP_ON, HEADER_PILL } from "./header-classes";
 
 /** Near and Popular, which replaced All (Pato, MESITA-2426). Popular wears
  *  the star All wore (MESITA-2422). */
@@ -73,17 +73,15 @@ export function SearchHeader({
           <div className="min-w-0 flex-1">{bar}</div>
           <Link
             href={CONSUMER_ROUTES.searchChat}
-            aria-label="Ask AI"
-            title="Ask AI"
-            className={HEADER_DISC}
+            className={HEADER_PILL}
             data-search-ask-ai
           >
-            {/* h-5: Sparkles reads smaller than the locate arrow at one size (Pato, MESITA-2446: "the ask AI button must be bigger"). */}
             <Sparkles
-              className="h-5 w-5 shrink-0"
+              className="h-4 w-4 shrink-0"
               strokeWidth={2}
               aria-hidden
             />
+            <span>Ask AI</span>
           </Link>
         </div>
       </div>
