@@ -1044,19 +1044,19 @@ Deno.test("an attraction Google returns is in no family and never shows (MESITA-
 
 // ── The Map's screen radius (MESITA-2504) ───────────────────────────────
 
-Deno.test("screen radius: the average of the visible half-width and half-height", () => {
-  // 0.02° of latitude ≈ 2.224 km tall; 0.02° of longitude at 25.67° ≈ 2.004 km wide.
+Deno.test("screen radius: half the visible width, edge to edge (MESITA-2507)", () => {
+  // 0.02° of longitude at 25.67° ≈ 2.004 km wide.
   const r = screenRadiusKm({
     low: { lat: 25.66, lng: -100.31 },
     high: { lat: 25.68, lng: -100.29 },
   })!;
-  assert(Math.abs(r - (2.224 / 2 + 2.004 / 2) / 2) < 0.01, String(r));
-  // A tall phone screen: between the half-width and the half-height.
+  assert(Math.abs(r - 2.004 / 2) < 0.01, String(r));
+  // A tall phone screen: the height does not move it.
   const tall = screenRadiusKm({
     low: { lat: 25.64, lng: -100.31 },
     high: { lat: 25.7, lng: -100.29 },
   })!;
-  assert(tall > 1.0 && tall < 3.34, String(tall));
+  assert(Math.abs(tall - 2.004 / 2) < 0.01, String(tall));
 });
 
 Deno.test("screen radius: no readable screen is null; a tiny screen is clamped", () => {
