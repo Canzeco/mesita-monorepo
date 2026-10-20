@@ -56,12 +56,12 @@ export const EVERY_FAMILY_CHIPS = [
  *  on — BottomNav's pair. */
 const CHIP_ICON = "h-4 w-4 shrink-0";
 
-/** Each chip group opens on a 3px clay bar, the Home rail's colours
- *  (Pato, MESITA-2484/2487): blue for Nearby · Popular, purple for the
+/** Each chip group opens on a 3px clay bar, the Home rail's two colours
+ *  (Pato, MESITA-2484/2487/2492): red for Nearby · Popular, blue for the
  *  families. Literal classes, so Tailwind sees them. */
 export const CHIP_GROUP_MARK = {
-  around: "h-6 w-[3px] shrink-0 rounded-full bg-[oklch(0.66_0.06_245)]",
-  families: "h-6 w-[3px] shrink-0 rounded-full bg-[oklch(0.64_0.07_310)]",
+  around: "h-6 w-[3px] shrink-0 rounded-full bg-[oklch(0.68_0.09_35)]",
+  families: "h-6 w-[3px] shrink-0 rounded-full bg-[oklch(0.66_0.06_245)]",
 } as const;
 
 export function SearchHeader({
