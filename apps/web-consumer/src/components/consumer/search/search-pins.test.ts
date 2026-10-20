@@ -18,6 +18,7 @@ import {
   pinFillColor,
   pinGesture,
   pinStrokeColor,
+  pinStrokeWeight,
   pinToneColor,
   placePinTone,
   predictionOnMesita,
@@ -69,18 +70,18 @@ describe("pin tones — enriched > mesita > google", () => {
   });
 
   it("paints name-lane rows the same way, ink when the server is silent", () => {
-    expect(
-      predictionPinTone({ state: "web_listed", enriched: true }),
-    ).toBe("enriched");
+    expect(predictionPinTone({ state: "web_listed", enriched: true })).toBe(
+      "enriched",
+    );
     // A Google hit resolving onto a Created stub used to be red.
-    expect(
-      predictionPinTone({ state: "web_listed", enriched: false }),
-    ).toBe("mesita");
+    expect(predictionPinTone({ state: "web_listed", enriched: false })).toBe(
+      "mesita",
+    );
     // Older payload with no `enriched` at all: understate, never overclaim.
     expect(predictionPinTone({ state: "web_listed" })).toBe("mesita");
-    expect(
-      predictionPinTone({ state: "not_in_mesita", enriched: true }),
-    ).toBe("google");
+    expect(predictionPinTone({ state: "not_in_mesita", enriched: true })).toBe(
+      "google",
+    );
   });
 
   it("treats mesitaId as on-Mesita even when state is not_in_mesita", () => {
@@ -112,12 +113,20 @@ describe("pin tones — enriched > mesita > google", () => {
     expect(MAP_ENRICHED_PIN_COLOR).not.toBe(MAP_GOOGLE_PIN_COLOR);
   });
 
-  it("keeps the tone fill and rings the selected pin black", () => {
+  it("rings every place pin dark; selected is the same ring, thicker", () => {
     expect(pinFillColor("enriched")).toBe(MAP_ENRICHED_PIN_COLOR);
     expect(pinFillColor("mesita")).toBe(MAP_GOOGLE_PIN_COLOR);
     expect(pinFillColor("google")).toBe(MAP_GOOGLE_PIN_COLOR);
-    expect(pinStrokeColor(false)).toBe("#ffffff");
+    expect(pinStrokeColor(false)).toBe("#111111");
     expect(pinStrokeColor(true)).toBe("#111111");
+    expect(pinStrokeWeight(true)).toBeGreaterThan(pinStrokeWeight(false));
+    expect(
+      mapPinSvg(
+        MAP_GOOGLE_PIN_COLOR,
+        pinStrokeColor(true),
+        pinStrokeWeight(true),
+      ),
+    ).toContain(`stroke-width="${pinStrokeWeight(true)}"`);
   });
 
   it("opens on a later tap of the same pin, not a timed dblclick", () => {
@@ -129,9 +138,9 @@ describe("pin tones — enriched > mesita > google", () => {
 
 describe("predictionOnMesita", () => {
   it("uses mesitaId/slug over a stale not_in_mesita state", () => {
-    expect(
-      predictionOnMesita({ state: "not_in_mesita", mesitaId: "x" }),
-    ).toBe(true);
+    expect(predictionOnMesita({ state: "not_in_mesita", mesitaId: "x" })).toBe(
+      true,
+    );
     expect(
       predictionOnMesita({ state: "not_in_mesita", mesitaSlug: "slug" }),
     ).toBe(true);
@@ -142,12 +151,10 @@ describe("predictionOnMesita", () => {
 
 describe("catalogPlaceOnMesita", () => {
   it("treats added Google stubs with real ids as on-Mesita", () => {
-    expect(
-      catalogPlaceOnMesita({ id: "uuid", from_google: true }),
-    ).toBe(true);
-    expect(
-      catalogPlaceOnMesita({ id: "g:ChIJ", googleOnly: true }),
-    ).toBe(false);
+    expect(catalogPlaceOnMesita({ id: "uuid", from_google: true })).toBe(true);
+    expect(catalogPlaceOnMesita({ id: "g:ChIJ", googleOnly: true })).toBe(
+      false,
+    );
   });
 });
 

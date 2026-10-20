@@ -92,31 +92,42 @@ export const MAP_MINIMAL_STYLES = [
 
 // One circle for every map pin: place (red/ink/gray) and you-are-here
 // (blue). r=10 — big enough to tap, small enough that a cluster still
-// shows the map. Selected is a black ring only — never a bigger scale.
+// shows the map. Every place pin wears a thin dark ring (Pato, 2026-10-19,
+// MESITA-2482: "dark border, not a white border"); selected is the same
+// ring drawn thicker — never a bigger scale.
 // The visible circle sits in a 44px pad so the hit box is a finger, not
 // the painted disk. Cursor stays default — never the pointing hand.
 export const MAP_PLACE_PIN_RADIUS = 10;
 export const MAP_PIN_HIT_SIZE = 44;
 export const MAP_PIN_CURSOR = "default";
-const MAP_PIN_STROKE_WEIGHT = 1.75;
+export const MAP_PIN_STROKE_WEIGHT = 1.25;
+export const MAP_SELECTED_PIN_STROKE_WEIGHT = 3;
 
 /** SVG for the Search pin: near-invisible full pad + the coloured disk. */
-export function mapPinSvg(fillColor: string, strokeColor: string): string {
+export function mapPinSvg(
+  fillColor: string,
+  strokeColor: string,
+  strokeWeight: number = MAP_PIN_STROKE_WEIGHT,
+): string {
   const size = MAP_PIN_HIT_SIZE;
   const mid = size / 2;
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">` +
     `<circle cx="${mid}" cy="${mid}" r="${mid - 0.5}" fill="#000000" fill-opacity="0.01"/>` +
-    `<circle cx="${mid}" cy="${mid}" r="${MAP_PLACE_PIN_RADIUS}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="${MAP_PIN_STROKE_WEIGHT}"/>` +
+    `<circle cx="${mid}" cy="${mid}" r="${MAP_PLACE_PIN_RADIUS}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="${strokeWeight}"/>` +
     `</svg>`
   );
 }
 
-export function mapPinIcon(fillColor: string, strokeColor: string) {
+export function mapPinIcon(
+  fillColor: string,
+  strokeColor: string,
+  strokeWeight: number = MAP_PIN_STROKE_WEIGHT,
+) {
   const size = MAP_PIN_HIT_SIZE;
   const mid = size / 2;
   return {
-    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(mapPinSvg(fillColor, strokeColor))}`,
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(mapPinSvg(fillColor, strokeColor, strokeWeight))}`,
     scaledSize: { width: size, height: size },
     anchor: { x: mid, y: mid },
   };
@@ -147,6 +158,8 @@ export const MAP_GOOGLE_PIN_COLOR = "#a3a3a3";
 // (MESITA-2469; was Tailwind #2563eb).
 export const MAP_USER_LOCATION_PIN_COLOR = "#007aff";
 
-// Selected pin is a black ring. Fill stays the tone color.
+// Place pins ring dark; selected is the same ink, thicker. Fill stays the
+// tone color. The blue you-are-here dot keeps a white ring (iOS).
 export const MAP_SELECTED_PIN_COLOR = "#111111";
-export const MAP_PIN_STROKE_COLOR = "#ffffff";
+export const MAP_PIN_STROKE_COLOR = "#111111";
+export const MAP_USER_LOCATION_STROKE_COLOR = "#ffffff";

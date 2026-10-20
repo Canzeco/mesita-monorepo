@@ -34,7 +34,9 @@ import {
   MAP_ENRICHED_PIN_COLOR,
   MAP_GOOGLE_PIN_COLOR,
   MAP_PIN_STROKE_COLOR,
+  MAP_PIN_STROKE_WEIGHT,
   MAP_SELECTED_PIN_COLOR,
+  MAP_SELECTED_PIN_STROKE_WEIGHT,
 } from "@/lib/map-defaults";
 import { isEnrichedPlace } from "@/lib/place-enriched";
 
@@ -119,6 +121,11 @@ export function pinFillColor(tone: PinTone): string {
 
 export function pinStrokeColor(selected: boolean): string {
   return selected ? MAP_SELECTED_PIN_COLOR : MAP_PIN_STROKE_COLOR;
+}
+
+/** Selected draws the dark ring thicker; the disk never grows. */
+export function pinStrokeWeight(selected: boolean): number {
+  return selected ? MAP_SELECTED_PIN_STROKE_WEIGHT : MAP_PIN_STROKE_WEIGHT;
 }
 
 /** First tap selects; a later tap on the same pin opens. Not a timed dblclick. */
