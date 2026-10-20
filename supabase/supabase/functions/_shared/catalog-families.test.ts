@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { ATTRACTION_TYPES, familiesPrimaryFirst } from "./catalog-families.ts";
+import { ATTRACTION_TYPES, familiesPrimaryFirst, NOT_SOCIAL_TYPES } from "./catalog-families.ts";
 import { placeFamilies, primaryFamilyForGoogleType, familiesForGoogleType } from "./sourcing.ts";
 import { GOOGLE_TYPE_SUPER } from "./google-type-super.ts";
 
@@ -28,6 +28,28 @@ Deno.test("the migration moves the stored mapping with the code (MESITA-2438)", 
   if (!block) throw new Error("no ATTRACTIONS block in the migration");
   const slugs = [...block[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
   assertEquals(slugs, [...ATTRACTION_TYPES]);
+});
+
+Deno.test("social: no gym, studio, court, spa, salon or barber sits in a family (MESITA-2468)", () => {
+  for (const t of NOT_SOCIAL_TYPES) {
+    assertEquals(familiesForGoogleType(t), [], t);
+    assertEquals(primaryFamilyForGoogleType(t), null, t);
+  }
+  // No unlisted sport or wellness type falls back onto a rail.
+  for (const [slug, coarse] of Object.entries(GOOGLE_TYPE_SUPER)) {
+    if (coarse !== "sports_fitness" && coarse !== "wellness_beauty") continue;
+    assertEquals(familiesForGoogleType(slug), [], slug);
+  }
+});
+
+Deno.test("the migration moves the not-social mapping with the code (MESITA-2468)", async () => {
+  const sql = await Deno.readTextFile(
+    new URL("../../migrations/20261020030000_families_drop_move_feel_better.sql", import.meta.url),
+  );
+  const block = sql.match(/-- NOT SOCIAL\n([\s\S]*?)-- END NOT SOCIAL/);
+  if (!block) throw new Error("no NOT SOCIAL block in the migration");
+  const slugs = [...block[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+  assertEquals(slugs, [...NOT_SOCIAL_TYPES]);
 });
 
 Deno.test("primary first: a row's own order, not the catalog's", () => {

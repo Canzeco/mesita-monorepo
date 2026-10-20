@@ -670,8 +670,8 @@ select has_table(
 
 select is(
   (select count(*)::bigint from public.place_families),
-  16::bigint,
-  'place family catalog is fifteen guest families plus Undefined'
+  14::bigint,
+  'place family catalog is thirteen guest families plus Undefined (MESITA-2468)'
 );
 
 select is(
@@ -684,8 +684,8 @@ select is(
   (select array_agg(slug order by sort_order) from public.place_families),
   array['coffee','breakfast','quick_bite','pizza','tacos','sushi','burgers',
         'noodles','dinner','sweet','drinks','night_out','go_out',
-        'move','feel_better','undefined']::text[],
-  'family catalog order is the fifteen guest rails, Undefined last'
+        'undefined']::text[],
+  'family catalog order is the thirteen guest rails, Undefined last'
 );
 
 select is(
@@ -722,16 +722,17 @@ select is(
 
 select is(
   (select count(*)::bigint from public.place_categories
-    where 'move' = any(family_keys)),
-  12::bigint,
-  'Move holds twelve categories'
+    where family_keys && array['move','feel_better']::text[]),
+  0::bigint,
+  'no category sits on Move or Feel better: both families are gone (MESITA-2468)'
 );
 
 select is(
-  (select count(*)::bigint from public.place_categories
-    where 'feel_better' = any(family_keys)),
-  12::bigint,
-  'Feel better holds twelve categories'
+  (select array_agg(distinct k) from public.place_categories,
+     unnest(family_keys) as k
+    where slug in ('gym','padel_club','spa','barbershop','hair_salon','yoga_studio')),
+  array['undefined']::text[],
+  'a gym, a padel club, a spa, a barbershop, a salon and a yoga studio are in no family (MESITA-2468)'
 );
 
 select is(
@@ -918,7 +919,7 @@ select is(
 
 select lives_ok(
   $$update public.place_categories
-       set family_keys = array['dinner', 'coffee', 'move']
+       set family_keys = array['dinner', 'coffee', 'night_out']
      where slug = 'mesita_1857_probe'$$,
   'the mapping can change again'
 );
@@ -933,7 +934,7 @@ select is(
 select is(
   (select family_keys from public.profiles
     where id = '00000000-0000-4000-8000-0000000fa111'),
-  array['dinner', 'coffee', 'move']::text[],
+  array['dinner', 'coffee', 'night_out']::text[],
   'the catalog view follows the new mapping'
 );
 

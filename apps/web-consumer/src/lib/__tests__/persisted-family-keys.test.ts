@@ -1,4 +1,4 @@
-// The map store hydrates its family list from the fifteen. The Feed has no
+// The map store hydrates its family list from the thirteen. The Feed has no
 // filter store any more (MESITA-2298).
 //
 // `undefined` is the live case: it is a real key in PLACE_FAMILIES, so the old
@@ -44,7 +44,7 @@ afterEach(() => {
   delete (globalThis as { window?: unknown }).window;
 });
 
-describe("persisted familyKeys hydrate from the filterable fifteen", () => {
+describe("persisted familyKeys hydrate from the filterable thirteen", () => {
   it("drops undefined and wellness_spa from a Map session", async () => {
     store.set(
       MAP_KEY,

@@ -1,4 +1,4 @@
-// Fifteen guest families, plus Undefined last. Undefined is not a filter.
+// Thirteen guest families, plus Undefined last. Undefined is not a filter.
 // Each guest family has one emoji. That mark is the rail title and the
 // same mark in the admin console.
 
@@ -16,8 +16,6 @@ export type FamilyKey =
   | "drinks"
   | "night_out"
   | "go_out"
-  | "move"
-  | "feel_better"
   | "undefined";
 
 type PlaceFamily = {
@@ -40,8 +38,6 @@ export const PLACE_FAMILIES: PlaceFamily[] = [
   { key: "drinks", label: "Drinks", emoji: "🍸" },
   { key: "night_out", label: "Night out", emoji: "🌙" },
   { key: "go_out", label: "Go out", emoji: "🎟️" },
-  { key: "move", label: "Move", emoji: "🏃" },
-  { key: "feel_better", label: "Feel better", emoji: "💆" },
   { key: "undefined", label: "Undefined", emoji: "·" },
 ];
 

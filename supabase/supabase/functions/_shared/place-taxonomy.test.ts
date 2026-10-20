@@ -10,8 +10,8 @@ import {
   sanitizeFamilyKeys,
 } from "./place-taxonomy.ts";
 
-Deno.test("place family catalog is fifteen guest families, Undefined last", () => {
-  assertEquals(FAMILIES.length, 16);
+Deno.test("place family catalog is thirteen guest families, Undefined last", () => {
+  assertEquals(FAMILIES.length, 14);
   assertEquals(FAMILIES.map((s) => s.slug), [
     "coffee",
     "breakfast",
@@ -26,8 +26,6 @@ Deno.test("place family catalog is fifteen guest families, Undefined last", () =
     "drinks",
     "night_out",
     "go_out",
-    "move",
-    "feel_better",
     "undefined",
   ]);
   const last = FAMILIES[FAMILIES.length - 1]!;
@@ -36,7 +34,7 @@ Deno.test("place family catalog is fifteen guest families, Undefined last", () =
   assertEquals(last.sort_order, 999);
 });
 
-Deno.test("every Atlas category maps onto the fifteen; five sit on two", () => {
+Deno.test("every Atlas category maps onto the thirteen; five sit on two", () => {
   const slugs = Object.keys(ATLAS_CATEGORY_FAMILIES);
   assertEquals(slugs.length, 101);
   assertEquals(slugs.includes("undefined"), true);
@@ -73,11 +71,11 @@ Deno.test("a cafe is coffee and breakfast; a pizzeria is only pizza", () => {
   assertEquals(familiesForAtlasCategory("movie_theater"), ["undefined"]);
 });
 
-Deno.test("training is Move and a spa is Feel better", () => {
-  assertEquals(familiesForAtlasCategory("gym"), ["move"]);
-  assertEquals(familiesForAtlasCategory("padel_club"), ["move"]);
-  assertEquals(familiesForAtlasCategory("spa"), ["feel_better"]);
-  assertEquals(familiesForAtlasCategory("barbershop"), ["feel_better"]);
+Deno.test("a gym, a padel club, a spa and a barbershop are in no family (MESITA-2468)", () => {
+  assertEquals(familiesForAtlasCategory("gym"), ["undefined"]);
+  assertEquals(familiesForAtlasCategory("padel_club"), ["undefined"]);
+  assertEquals(familiesForAtlasCategory("spa"), ["undefined"]);
+  assertEquals(familiesForAtlasCategory("barbershop"), ["undefined"]);
 });
 
 Deno.test("undefined category maps to family undefined; empty has none", () => {
@@ -163,8 +161,8 @@ Deno.test("sanitizeFamilyKeys drops junk, dedupes, keeps more than two, catalog 
     ["dinner", "go_out"],
   );
   assertEquals(
-    sanitizeFamilyKeys(["feel_better", "move", "dinner"]),
-    ["dinner", "move", "feel_better"],
+    sanitizeFamilyKeys(["go_out", "night_out", "dinner"]),
+    ["dinner", "night_out", "go_out"],
   );
   assertEquals(sanitizeFamilyKeys(["a", "b", "c"]), []);
   assertEquals(sanitizeFamilyKeys(null), []);
@@ -178,8 +176,8 @@ Deno.test("undefined never rides along with a real family", () => {
 Deno.test("readGuestFamilyKeys keeps every selected family pill", () => {
   assertEquals(
     readGuestFamilyKeys(["go_out", "dinner", "dinner", "nope", "move"]),
-    ["dinner", "go_out", "move"],
+    ["dinner", "go_out"],
   );
-  assertEquals(readGuestFamilyKeys(["feel_better"]), ["feel_better"]);
+  assertEquals(readGuestFamilyKeys(["feel_better"]), []);
   assertEquals(readGuestFamilyKeys(["undefined"]), ["undefined"]);
 });
