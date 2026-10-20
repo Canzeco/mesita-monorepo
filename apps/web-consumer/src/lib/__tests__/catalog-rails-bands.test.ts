@@ -48,6 +48,8 @@ describe("the Places column (MESITA-2383)", () => {
     expect(src).toContain("chips.slice(0, 1).map(categoryRow)");
     expect(src).toContain("chips.slice(1, PINNED_CHIPS).map(categoryRow)");
     expect(src.match(/data-places-rule/g)?.length).toBe(2);
+    // The rules read darker than a hairline (MESITA-2481).
+    expect(src.match(/border-foreground\/30 mx-3 my-1 shrink-0 border-t/g)?.length).toBe(2);
     expect(src).toContain("chips.slice(PINNED_CHIPS).map(categoryRow)");
     expect(src).toContain("data-places-rule");
     expect(src).toContain('className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-y-contain"');

@@ -216,7 +216,10 @@ export function savedPlaceList(
  *  fix and no saved location, every row ranks around the city's centre, the
  *  Search map's own fallback, and one slim bar above the tiles says so. The
  *  last ask's failure only picks the bar's words. */
-export const CITY_FALLBACK = { name: "Monterrey", ...MONTERREY_CENTER } as const;
+export const CITY_FALLBACK = {
+  name: "Monterrey",
+  ...MONTERREY_CENTER,
+} as const;
 
 export function cityFallbackBar(error: LocationError | null): string {
   return error === null
@@ -433,11 +436,12 @@ export function CatalogRails() {
         {chips.slice(0, 1).map(categoryRow)}
       </ul>
       {/* Two rules (Pato, MESITA-2426): Social │ Saved · Nearby ·
-          Popular │ the families. */}
+          Popular │ the families. 30% ink, not 15% (Pato, MESITA-2481:
+          "a bit darker"). */}
       <div
         role="separator"
         aria-hidden
-        className="border-foreground/15 mx-3 my-1 shrink-0 border-t"
+        className="border-foreground/30 mx-3 my-1 shrink-0 border-t"
         data-places-rule
       />
       <ul
@@ -451,7 +455,7 @@ export function CatalogRails() {
       <div
         role="separator"
         aria-hidden
-        className="border-foreground/15 mx-3 my-1 shrink-0 border-t"
+        className="border-foreground/30 mx-3 my-1 shrink-0 border-t"
         data-places-rule
       />
       <ul
@@ -586,20 +590,19 @@ export function CatalogRails() {
   }
 
   const label = chips.find((c) => c.key === chip)?.label ?? "Places";
-  const empty =
-    isEveryFamily(chip) ? (
-      <EmptyState
-        icon={Compass}
-        title="No places here yet"
-        description="Try another location, or check back soon."
-      />
-    ) : (
-      <EmptyState
-        icon={Compass}
-        title={`Nothing in ${label} here yet`}
-        description="Try another family, or another location."
-      />
-    );
+  const empty = isEveryFamily(chip) ? (
+    <EmptyState
+      icon={Compass}
+      title="No places here yet"
+      description="Try another location, or check back soon."
+    />
+  ) : (
+    <EmptyState
+      icon={Compass}
+      title={`Nothing in ${label} here yet`}
+      description="Try another family, or another location."
+    />
+  );
 
   return shell(
     <>
