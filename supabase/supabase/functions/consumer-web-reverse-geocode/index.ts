@@ -2,15 +2,30 @@
 //
 // Home's location sheet names where the guest stands (MESITA-2466): the
 // Current location row reads "Current location · Tecnológico". POST
-// `{ lat, lng }` → `{ ok: true, name, areas }` (the most local of
-// neighbourhood · sublocality · city, and the sheet's "Around you" rows,
-// MESITA-2471: each area with its rectangle, from the same answer) or
-// `{ ok: false, code }`.
+// `{ lat, lng }` → `{ ok: true, name, areas, suggestedName, formattedAddress }`
+// (the most local of neighbourhood · sublocality · city, and the sheet's
+// "Around you" rows, MESITA-2471: each area with its rectangle, from the same
+// answer) or `{ ok: false, code }`.
 //
-// One Google Geocoding (reverse) call per point snapped to ~110 m; repeats
-// in this isolate come from the cache below, and the client keeps each
-// answer for the visit. Wire status stays 200: supabase-js's invoke helper
-// swallows non-2xx bodies.
+// A PIN (MESITA-2500): `{ lat, lng, precision: "pin" }` names a saved
+// location's pin while the guest places it on a map. Snapped to ~11 m, one
+// unfiltered Geocoding call, and only for a signed-in guest (the anon JWT is
+// public, and ~11 m cells multiply the distinct calls a script could buy).
+// `suggestedName` is the colonia, else the municipio, else "city, state";
+// `formattedAddress` is "<street> <number>". Any other `precision` answers
+// `bad_precision`.
+//
+// Codes (Docs › Discovery › Reverse geocode codes): `bad_point` and
+// `bad_precision` (the request), `sign_in_required` (a pin without a
+// session), `google_unreachable` / `google_over_query_limit` /
+// `google_unknown_error` (try again later), `google_request_denied` /
+// `google_over_daily_limit` (the key: an operator fix), `no_area_name`
+// (Google had nothing here).
+//
+// One Google Geocoding (reverse) call per snapped point; repeats in this
+// isolate come from the caches below, one per precision, and the client
+// keeps each answer for the visit. Wire status stays 200: supabase-js's
+// invoke helper swallows non-2xx bodies.
 //
 // JWT-protected: clients send the Supabase anon JWT in Authorization.
 //
@@ -19,25 +34,35 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
-import { readEFEnv } from "../_shared/auth.ts";
+import { getOptionalAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { readGooglePlacesKey } from "../_shared/google-places.ts";
 import {
+  cacheKey,
   geocodeStatus,
   type NearbyArea,
   pickAreaName,
+  pickFormattedAddress,
   pickNearbyAreas,
-  pointKey,
+  pickSuggestedName,
+  type Precision,
+  precisionDecimals,
   readPoint,
+  readPrecision,
   reverseGeocodeUrl,
   snapPoint,
 } from "../_shared/reverse-geocode.ts";
 
-/** What one snapped point answers: the name (null = Google had none) and
- *  the areas around it. */
-type Answer = { name: string | null; areas: NearbyArea[] };
+/** What one snapped point answers. Null = Google had none. */
+type Answer = {
+  name: string | null;
+  areas: NearbyArea[];
+  suggestedName: string | null;
+  formattedAddress: string | null;
+};
 
-/** Snapped point → answer. Bounded, oldest out. */
-const cache = new Map<string, Answer>();
+/** Snapped point → answer, one map per precision so pin traffic never pushes
+ *  the header's answers out. Bounded, oldest out. */
+const caches: Record<Precision, Map<string, Answer>> = { std: new Map(), pin: new Map() };
 const CACHE_MAX = 2000;
 const GOOGLE_TIMEOUT_MS = 4000;
 
@@ -49,28 +74,37 @@ Deno.serve(async (req) => {
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
 
-  const bodyRes = await readJson<{ lat?: unknown; lng?: unknown }>(req);
+  const bodyRes = await readJson<{ lat?: unknown; lng?: unknown; precision?: unknown }>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const point = readPoint(bodyRes.body);
   if (!point) return json({ ok: false, code: "bad_point", error: "Send a finite lat and lng." });
+  const precision = readPrecision(bodyRes.body);
+  if (!precision) {
+    return json({ ok: false, code: "bad_precision", error: 'precision must be "pin" or omitted' });
+  }
+  if (precision === "pin") {
+    const { user } = await getOptionalAuthedUser(req, envRes.env);
+    if (!user) return json({ ok: false, code: "sign_in_required", error: "Sign in to name a pin." });
+  }
 
-  const snapped = snapPoint(point.lat, point.lng);
-  const key = pointKey(snapped);
+  const snapped = snapPoint(point.lat, point.lng, precisionDecimals(precision));
+  const key = cacheKey(snapped, precision);
+  const cache = caches[precision];
   const kept = cache.get(key);
-  if (kept) return reply(kept);
+  if (kept) return reply(kept, precision);
 
   const keyRes = readGooglePlacesKey();
   if (!keyRes.ok) return keyRes.response;
 
   let payload: unknown;
   try {
-    const res = await fetch(reverseGeocodeUrl(snapped, keyRes.key), {
+    const res = await fetch(reverseGeocodeUrl(snapped, keyRes.key, precision), {
       signal: AbortSignal.timeout(GOOGLE_TIMEOUT_MS),
     });
     payload = await res.json();
   } catch (err) {
     console.error(
-      "[consumer-web-reverse-geocode] google:",
+      `[consumer-web-reverse-geocode] google (precision ${precision}):`,
       err instanceof Error ? err.message : err,
     );
     return json({ ok: false, code: "google_unreachable" });
@@ -81,23 +115,34 @@ Deno.serve(async (req) => {
     // REQUEST_DENIED means the key lacks the Geocoding API; never cached.
     const message = (payload as { error_message?: unknown })?.error_message;
     console.error(
-      `[consumer-web-reverse-geocode] google status ${status}`,
+      `[consumer-web-reverse-geocode] google status ${status} (precision ${precision})`,
       typeof message === "string" ? message : "",
     );
     return json({ ok: false, code: `google_${status.toLowerCase()}` });
   }
 
-  const answer: Answer = { name: pickAreaName(payload), areas: pickNearbyAreas(payload) };
+  const answer: Answer = {
+    name: pickAreaName(payload),
+    areas: pickNearbyAreas(payload),
+    suggestedName: pickSuggestedName(payload),
+    formattedAddress: pickFormattedAddress(payload),
+  };
   if (cache.size >= CACHE_MAX) {
     const oldest = cache.keys().next().value;
     if (oldest !== undefined) cache.delete(oldest);
   }
   cache.set(key, answer);
-  return reply(answer);
+  return reply(answer, precision);
 });
 
-function reply({ name, areas }: Answer): Response {
-  return name || areas.length > 0
-    ? json({ ok: true, name, areas })
+/** A std answer keeps its MESITA-2466 rule (a name or an area); a pin answer
+ *  is useful with any of its four parts. */
+function reply(answer: Answer, precision: Precision): Response {
+  const { name, areas, suggestedName, formattedAddress } = answer;
+  const useful = precision === "pin"
+    ? Boolean(name || areas.length > 0 || suggestedName || formattedAddress)
+    : Boolean(name || areas.length > 0);
+  return useful
+    ? json({ ok: true, name, areas, suggestedName, formattedAddress })
     : json({ ok: false, code: "no_area_name" });
 }

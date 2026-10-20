@@ -43,6 +43,10 @@ Deno.test("list-catalog: one circle; no guest review stop (MESITA-2417)", () => 
   assertEquals(src.includes("body.minReviews"), false);
 });
 
-Deno.test("list-catalog: only the one-pool wire may ask for an area", () => {
-  assert(src.includes("resolveAreaLocation(unified ? body.bounds : null, center, radiusKm)"));
+Deno.test("list-catalog: Home never reads bounds into the location (MESITA-2500)", () => {
+  assert(src.includes("resolveAreaLocation(null, center, radiusKm)"));
+  assertEquals(src.includes("resolveAreaLocation(unified ? body.bounds"), false);
+  assertEquals(src.includes("location.kind === \"area\" ? location.bounds"), false);
+  // A bounds from an old build is only logged.
+  assert(src.includes('event: "bounds_ignored"'));
 });

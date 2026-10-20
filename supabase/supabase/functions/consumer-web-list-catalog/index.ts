@@ -13,11 +13,12 @@
 // Family gate into the Mesita read, and lists the family's PRIMARY places
 // before its secondary ones. Without it the pool is every family's.
 //
-// Request: POST { unified: true, google: true, lat, lng, bounds?, familyKeys? }
-//   bounds    a saved AREA's rectangle {low, high} (valid → Territory, no
-//             Proximity); otherwise lat/lng make a POINT inside
-//             `map.radiusKm`; neither = no location (Mesita only,
-//             Popularity alone).
+// Request: POST { unified: true, google: true, lat, lng, familyKeys? }
+//   lat/lng   a POINT inside `map.radiusKm`; none = no location (Mesita
+//             only, Popularity alone). Home never asks for an area: saved
+//             areas (Territory) were retired 2026-10-20 (MESITA-2500), so a
+//             `bounds` an old build still sends is ignored and logged as
+//             `bounds_ignored`; drop that log once it stays quiet.
 //   google    the client can render a Google-only stub; the operator's
 //             `map.googleFill`, a key and the per-IP ledger also decide.
 //   The Google reviews minimum is the operator's `map.googleMinReviews`
@@ -73,7 +74,7 @@ const POOL_CAP = 1000;
 type Body = {
   lat?: number;
   lng?: number;
-  /** A saved area's rectangle. */
+  /** Sent by builds from before MESITA-2500; ignored, only logged. */
   bounds?: unknown;
   /** The client can render a Google-only stub. */
   google?: boolean;
@@ -114,8 +115,11 @@ Deno.serve(async (req) => {
   const nearby = decideNearby(body as Record<string, unknown>);
   const center = nearby.mode === "ok" ? { lat: nearby.lat, lng: nearby.lng } : null;
   const radiusKm = cfg.map.radiusKm;
-  // The legacy wire never sent bounds; only the one-pool wire may ask for an area.
-  const location = resolveAreaLocation(unified ? body.bounds : null, center, radiusKm);
+  // Home ranks from a point or nothing (MESITA-2500): saved areas are gone.
+  if (body.bounds !== undefined && body.bounds !== null) {
+    console.log(JSON.stringify({ fn: "consumer-web-list-catalog", event: "bounds_ignored" }));
+  }
+  const location = resolveAreaLocation(null, center, radiusKm);
   // The legacy rails cut every family from one pool; only the one-pool wire
   // may ask for a family.
   const families = unified ? readGuestFamilyKeys(body.familyKeys).filter((f) => f !== "undefined") : [];
@@ -131,7 +135,6 @@ Deno.serve(async (req) => {
     {
       center: location.kind === "point" ? location.anchor : null,
       radiusKm,
-      bounds: location.kind === "area" ? location.bounds : null,
       families,
       selectedOnly: false,
     },

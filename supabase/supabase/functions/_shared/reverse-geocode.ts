@@ -4,20 +4,52 @@
 // location row reads "Current location · Tecnológico". One Google Geocoding
 // call per snapped point: the point is rounded to 3 decimals (~110 m) first,
 // so a guest who has not moved, or many guests on one block, share one call.
+// A `pin` request (MESITA-2500) names a saved location's pin instead: 4
+// decimals, an unfiltered call, and a suggested name plus a street.
 // The pure parts live here; the EF owns the fetch and the isolate cache.
 
 /** Decimals kept before the call: 3 ≈ 110 m of latitude. */
 export const REVERSE_GEOCODE_DECIMALS = 3;
+/** A saved pin (MESITA-2500) is named at 4 decimals (~11 m): at 110 m a pin
+ *  near a colonia's edge could take the neighbouring colonia's name. */
+export const PIN_DECIMALS = 4;
+
+/** Which question a request asks: `std` names where the guest stands (the
+ *  sheet's Current location row and Around you); `pin` names a pin the guest
+ *  is placing on a map (Home's saved locations). */
+export type Precision = "std" | "pin";
+
+/** The body's `precision`: absent = std, "pin" = pin, anything else = null
+ *  (the caller answers `bad_precision`). */
+export function readPrecision(body: { precision?: unknown }): Precision | null {
+  const p = body.precision;
+  if (p === undefined || p === null) return "std";
+  return p === "pin" ? "pin" : null;
+}
+
+export function precisionDecimals(precision: Precision): number {
+  return precision === "pin" ? PIN_DECIMALS : REVERSE_GEOCODE_DECIMALS;
+}
 
 /** The point a call is made (and cached) for. */
-export function snapPoint(lat: number, lng: number): { lat: number; lng: number } {
-  const f = 10 ** REVERSE_GEOCODE_DECIMALS;
+export function snapPoint(
+  lat: number,
+  lng: number,
+  decimals = REVERSE_GEOCODE_DECIMALS,
+): { lat: number; lng: number } {
+  const f = 10 ** decimals;
   return { lat: Math.round(lat * f) / f, lng: Math.round(lng * f) / f };
 }
 
-/** The cache key of a snapped point. */
-export function pointKey(p: { lat: number; lng: number }): string {
-  return `${p.lat.toFixed(REVERSE_GEOCODE_DECIMALS)},${p.lng.toFixed(REVERSE_GEOCODE_DECIMALS)}`;
+/** The `latlng` of a snapped point. */
+export function pointKey(p: { lat: number; lng: number }, decimals = REVERSE_GEOCODE_DECIMALS): string {
+  return `${p.lat.toFixed(decimals)},${p.lng.toFixed(decimals)}`;
+}
+
+/** The isolate cache key: the precision first, so a pin and a std answer for
+ *  the same digits never share an entry (the pin answer is unfiltered). */
+export function cacheKey(p: { lat: number; lng: number }, precision: Precision): string {
+  return `${precision}:${pointKey(p, precisionDecimals(precision))}`;
 }
 
 /** A usable WGS84 point, or null. */
@@ -78,22 +110,105 @@ export function geocodeStatus(payload: unknown): string {
   return typeof s === "string" ? s : "INVALID";
 }
 
-/** The Geocoding reverse URL for a snapped point. */
-export function reverseGeocodeUrl(p: { lat: number; lng: number }, key: string): string {
-  const q = new URLSearchParams({
-    latlng: pointKey(p),
-    result_type: LEVELS.join("|"),
-    language: "es",
-    key,
-  });
+/** The Geocoding reverse URL for a snapped point. `std` asks only for the
+ *  area levels (unchanged since MESITA-2466); `pin` asks for everything, so
+ *  the answer also carries the street, the municipio and the state. */
+export function reverseGeocodeUrl(
+  p: { lat: number; lng: number },
+  key: string,
+  precision: Precision = "std",
+): string {
+  const q = new URLSearchParams({ latlng: pointKey(p, precisionDecimals(precision)) });
+  if (precision === "std") q.set("result_type", LEVELS.join("|"));
+  q.set("language", "es");
+  q.set("key", key);
   return `https://maps.googleapis.com/maps/api/geocode/json?${q.toString()}`;
+}
+
+// ── A pin's names (MESITA-2500) ─────────────────────────────────────────
+// Pato (2026-10-20): a saved location's suggested name is the colonia under
+// the FINAL pin, then the municipality, then city + state, then the client's
+// "Saved location"; its second line is the street. Both come from the same
+// unfiltered answer. `results[0]` is Google's best match for the exact
+// point, so it is read first: later results can belong to the next address
+// or to the colonia across the street.
+
+type Result = { types?: unknown; address_components?: unknown };
+
+function resultsOf(payload: unknown): Result[] {
+  if (!payload || typeof payload !== "object") return [];
+  const results = (payload as { results?: unknown }).results;
+  return Array.isArray(results) ? (results as Result[]) : [];
+}
+
+function componentsOf(r: Result): Component[] {
+  return Array.isArray(r.address_components) ? (r.address_components as Component[]) : [];
+}
+
+function hasType(x: { types?: unknown }, type: string): boolean {
+  return Array.isArray(x.types) && x.types.includes(type);
+}
+
+/** A component's name, unless it is blank or Google's placeholder. */
+function usableName(c: Component | undefined, field: "long_name" | "short_name"): string | null {
+  const v = c?.[field];
+  if (typeof v !== "string") return null;
+  const t = v.trim();
+  return t && !PLACEHOLDER.test(t) ? t : null;
+}
+
+/** The first usable component of `type`: `results[0]` first, then the rest. */
+function firstOfType(
+  results: Result[],
+  type: string,
+  field: "long_name" | "short_name" = "long_name",
+): string | null {
+  for (const r of results) {
+    for (const c of componentsOf(r)) {
+      if (!hasType(c, type)) continue;
+      const n = usableName(c, field);
+      if (n) return n;
+    }
+  }
+  return null;
+}
+
+/** A pin's suggested name: colonia → municipio → "city, state" → null (the
+ *  client then shows "Saved location"). */
+export function pickSuggestedName(payload: unknown): string | null {
+  const results = resultsOf(payload);
+  for (const level of ["neighborhood", "sublocality_level_1", "sublocality"]) {
+    const colonia = firstOfType(results, level);
+    if (colonia) return colonia;
+  }
+  const municipio = firstOfType(results, "administrative_area_level_2");
+  if (municipio) return municipio;
+  const city = firstOfType(results, "locality");
+  const state = firstOfType(results, "administrative_area_level_1", "short_name");
+  return city && state ? `${city}, ${state}` : null;
+}
+
+const ADDRESS_TYPES = ["street_address", "premise", "route"];
+
+/** A pin's street: "<route> <number>", the route alone, or null. Read from
+ *  the first address-like result only, so two neighbouring addresses never
+ *  mix. */
+export function pickFormattedAddress(payload: unknown): string | null {
+  const hit = resultsOf(payload).find((r) => ADDRESS_TYPES.some((t) => hasType(r, t)));
+  if (!hit) return null;
+  const comps = componentsOf(hit);
+  const route = usableName(comps.find((c) => hasType(c, "route")), "long_name");
+  if (!route) return null;
+  const number = usableName(comps.find((c) => hasType(c, "street_number")), "long_name");
+  return number ? `${route} ${number}` : route;
 }
 
 // ── Around you (MESITA-2471) ──────────────────────────────────────────────
 // Instagram's Add location shows places around you before you type. The
 // same Geocoding answer already holds one result per level (neighbourhood,
 // district, city), each with its viewport: those are the sheet's "Around
-// you" rows, at no extra call. A tap saves the row as an AREA.
+// you" rows, at no extra call. Since MESITA-2500 a row is only a starting
+// point for the pin picker; its rectangle frames the camera, never a search.
 
 /** An area around the guest, ready to save as an Area location. */
 export type NearbyArea = {
@@ -106,7 +221,7 @@ export type NearbyArea = {
 
 /** At most this many rows under the search field. */
 export const NEARBY_AREAS_MAX = 4;
-/** The Area pipeline drops a rectangle wider than this (parseAreaBounds). */
+/** An area wider than this is never offered under "Around you". */
 export const NEARBY_AREA_MAX_KM = 100;
 
 const LEVEL_WORD: Record<(typeof LEVELS)[number], NearbyArea["level"]> = {
@@ -135,7 +250,7 @@ function diagonalKm(a: { lat: number; lng: number }, b: { lat: number; lng: numb
 }
 
 /** The areas a Geocoding answer names around the point: most local first,
- *  one per name, no placeholders, none wider than the Area pipeline takes. */
+ *  one per name, no placeholders, none wider than NEARBY_AREA_MAX_KM. */
 export function pickNearbyAreas(payload: unknown): NearbyArea[] {
   if (!payload || typeof payload !== "object") return [];
   const results = (payload as { results?: unknown }).results;
