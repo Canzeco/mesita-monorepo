@@ -334,7 +334,7 @@ describe("Search's header is one token set (MESITA-2433)", () => {
     expect(nav, "the chip row").not.toBeNull();
     expectTokens(
       nav![1],
-      ["gap-2", "px-3", "pt-2.5", "pb-1", "overflow-x-auto"],
+      ["gap-2", "px-3", "py-2.5", "overflow-x-auto"],
       "chip row",
     );
   });
@@ -447,10 +447,6 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
     expect(header).toContain('data-chip-group="around"');
     expect(header).toContain('data-chip-group="families"');
     expect(header).not.toContain("bg-border mx-0.5 h-6 w-px");
-    // The clay line runs UNDER each group, not a bar before it (MESITA-2493).
-    expect(header).toContain("className={CHIP_GROUP_LINE.around}");
-    expect(header).toContain("className={CHIP_GROUP_LINE.families}");
-    expect(header).not.toContain("CHIP_GROUP_MARK");
     expect(chipBand![1]).not.toContain("bg-muted");
     expect(chipBand![1].split(/\s+/)).not.toContain("border-b");
     expect(chipBand![1]).not.toContain("absolute");
