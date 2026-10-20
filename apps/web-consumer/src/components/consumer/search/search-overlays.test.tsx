@@ -392,7 +392,7 @@ describe("SearchLocateButton", () => {
 });
 
 describe("Search's header is location · the query bar · Ask AI, then family chips", () => {
-  it("puts location at the left, only the families in the chip row, no Filters, no client-side recut", () => {
+  it("puts location at the left, All then the families in the chip row, no Filters, no client-side recut", () => {
     const src = read("SearchClient.tsx");
     const overlays = read("search-catalog-overlays.tsx");
     // MESITA-2409: the header carries the row (locate, bar, Ask AI) and the
@@ -407,13 +407,23 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
     const header = read("SearchHeader.tsx");
     expect(header).not.toContain("SearchFilterRow");
     expect(header).not.toContain("SlidersHorizontal");
-    // No Nearby, no Popular (Pato, MESITA-2499): the map is the where, the
-    // chips are only the families, and the lit family tapped again clears
-    // it. Every chip wears a line icon, never an emoji (MESITA-2478).
-    for (const gone of ["EVERY_FAMILY_CHIPS", "setAreaPrefer", "useAreaPrefer", "data-area-prefer", "clearMapFamilies"]) {
+    // No Nearby, no Popular (Pato, MESITA-2499): the map is the where. The
+    // row is All, then the families (MESITA-2502: "its only All and then all
+    // the famileis"); All is lit when no family is, and the lit family
+    // tapped again goes back to All. Every chip wears a line icon, never an
+    // emoji (MESITA-2478).
+    for (const gone of ["EVERY_FAMILY_CHIPS", "setAreaPrefer", "useAreaPrefer", "data-area-prefer", '"near"', '"popular"']) {
       expect(header, gone).not.toContain(gone);
     }
     expect(src).not.toContain("prefer");
+    expect(header).toContain("const everyFamily = filters.familyKeys.length === 0;");
+    expect(header).toContain("onClick={clearMapFamilies}");
+    expect(header).toContain("aria-pressed={everyFamily}");
+    expect(header).toContain('name="all"');
+    expect(header).toContain("<span>All</span>");
+    expect(header.indexOf("data-search-chip-all")).toBeLessThan(
+      header.indexOf("FILTERABLE_PLACE_FAMILIES.map"),
+    );
     expect(header).toContain("name={family.key}");
     expect(header).toContain("strokeWidth={on ? 2.25 : 1.75}");
     expect(header).not.toMatch(/[\p{Emoji_Presentation}\uFE0F]/u);
