@@ -221,8 +221,8 @@ export function mapFingerIsDown(): boolean {
   return fingerOnMap;
 }
 
-/** Screen-fixed sight SIGHT_Y down the canvas (40%, above the rail;
- *  MESITA-2448) — the catalog fetch point. Plus + primary dot only. No
+/** Screen-fixed sight SIGHT_Y down the canvas (45%, above the rail;
+ *  MESITA-2448, MESITA-2505) — the catalog fetch point. Plus + primary dot only. No
  *  ring: that read as a measured radius. */
 function SearchMapReticle() {
   return (

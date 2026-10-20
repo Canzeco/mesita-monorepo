@@ -732,17 +732,18 @@ describe("viewportCenter", () => {
   });
 });
 
-describe("the sight sits 40% down the map (MESITA-2448)", () => {
+describe("the sight sits 45% down the map (MESITA-2448, MESITA-2505)", () => {
   // Pato: "put the cruz more at the top … the carousel is taking some
-  // space at the bottom". One constant for the crosshair, the load point
-  // and a camera centre.
+  // space at the bottom", then (MESITA-2505) "a bit lower, a bit more
+  // vertically centered bust not that much". One constant for the
+  // crosshair, the load point and a camera centre.
   const VIEW = { south: 25.66, west: -100.33, north: 25.68, east: -100.31 };
 
   it("is above the centre, and a centre built for it lands under it", () => {
-    expect(SIGHT_Y).toBe(0.4);
+    expect(SIGHT_Y).toBe(0.45);
     const sight = viewportSight(VIEW);
     expect(sight.lat).toBeGreaterThan(viewportCenter(VIEW).lat);
-    expect(sight.lat).toBeCloseTo(25.672, 3);
+    expect(sight.lat).toBeCloseTo(25.671, 3);
     const target = { lat: 25.7, lng: -100.3 };
     const centre = centerForSight(VIEW, target);
     const height = VIEW.north - VIEW.south;
