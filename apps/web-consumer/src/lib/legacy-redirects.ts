@@ -134,14 +134,20 @@ export const LEGACY_REDIRECTS: Redirect[] = [
     destination: "/discover/places",
     permanent: true,
   },
+  // SOCIAL IS A PANE OF HOME, NOT A PAGE (MESITA-2474). It was a page from
+  // MESITA-2442 until then.
+  {
+    source: "/discover/social",
+    destination: "/discover/places",
+    permanent: true,
+  },
   // CHAT LEFT HOME FOR THE SEARCH TAB (MESITA-2401).
   {
     source: "/discover/chat",
     destination: "/search/chat",
     permanent: true,
   },
-  // THE PLACES TEST TAB DIED (MESITA-2405). /discover/social is a live page
-  // again (Social v1, MESITA-2442).
+  // THE PLACES TEST TAB DIED (MESITA-2405).
   { source: "/places", destination: "/discover/places", permanent: true },
   // The Saved tab (reservations, favorites) and the /saved/place dual
   // path (MESITA-1585). One hop each, straight to the canonical surface.

@@ -108,7 +108,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // Default IS the first pill (MESITA-1609/1615); Swipe leads since
       // MESITA-2142.
       discoverDefault: "/discover/places",
-      discoverSocial: "/discover/social",
       place: { prefix: "/place/" },
       reservation: { prefix: "/reservation/" },
       // PAY IS ONE PAGE, the Soon state (MESITA-2087). No children, no
@@ -139,6 +138,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         discoverScroll: "/discover/scroll",
         discoverSwipe: "/discover/swipe",
         discoverFavs: "/discover/favs",
+        discoverSocial: "/discover/social",
         discoverChat: "/discover/chat",
         places: "/places",
         // The Second Stage tab and everything under it. All land on `pay`.
@@ -402,6 +402,7 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       { source: "/discover/scroll", destination: "/discover/places", permanent: true },
       { source: "/discover/swipe", destination: "/discover/places", permanent: true },
       { source: "/discover/favs", destination: "/discover/places", permanent: true },
+      { source: "/discover/social", destination: "/discover/places", permanent: true },
       { source: "/discover/chat", destination: "/search/chat", permanent: true },
       { source: "/places", destination: "/discover/places", permanent: true },
       // The Saved tab and the /saved/place dual path (MESITA-1585).
@@ -445,7 +446,7 @@ describe("middleware auth wall (shouldGate)", () => {
   const ungatedAtMiddleware = [
     "/",
     "/discover/places",
-    "/discover/social", // the Social feed (MESITA-2442)
+    "/discover/social", // 308s to Places: Social is a pane of Home (MESITA-2474)
     "/discover/chat", // 308s to /search/chat (MESITA-2401)
     "/discover/favs", // 308s to Places (MESITA-2383)
     "/search",

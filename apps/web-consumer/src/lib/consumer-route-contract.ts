@@ -19,8 +19,8 @@ export const CONSUMER_ROUTES = {
   // Soon for now. Chat left Home; /discover/chat 308s here.
   searchChat: "/search/chat",
   // DISCOVER — Home's namespace: Home's header is the location alone
-  // (MESITA-2405). Social is a row of the catalog's column that OPENS its own
-  // full-height feed, /discover/social (MESITA-2442). Favorites is a row of
+  // (MESITA-2405). Social is a row of the catalog's column; its feed draws in
+  // the right pane (MESITA-2474; /discover/social 308s home). Favorites is a row of
   // the Places column (/discover/favs 308s to Places); Chat moved to Search.
   //
   // THE SWIPE ENGINE IS GONE (MESITA-2328): its EF, its ranking library and
@@ -38,9 +38,6 @@ export const CONSUMER_ROUTES = {
   // PLACES LEADS (MESITA-2166): the default is the first pill.
   // route-structure T5b pins first-pill-is-default.
   discoverDefault: "/discover/places",
-  // Social v1 (MESITA-2442): the feed Home's Social row opens. It was a
-  // legacy 308 to Places from MESITA-2405 until this page existed.
-  discoverSocial: "/discover/social",
   place: {
     prefix: "/place/",
   },
@@ -94,6 +91,8 @@ export const CONSUMER_ROUTES = {
     discoverSwipe: "/discover/swipe",
     // Favorites left Home's rail for the Places column (MESITA-2383).
     discoverFavs: "/discover/favs",
+    // Social became a pane of Home, not a page (MESITA-2474).
+    discoverSocial: "/discover/social",
     // Chat left Home for the Search tab (MESITA-2401).
     discoverChat: "/discover/chat",
     // The Places test tab (MESITA-2402) was deleted (MESITA-2405).
