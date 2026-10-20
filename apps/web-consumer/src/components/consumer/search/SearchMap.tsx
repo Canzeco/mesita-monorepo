@@ -3,8 +3,8 @@
 // The Search page's map: base layer only — the light-styled canvas, place
 // pins, the user dot, and pan/zoom behaviour. It carries no page chrome of
 // its own, because the page's floating search bar and catalog rail sit on
-// top of it. Pin taps report up via onSelectPlace so the page can sync the
-// catalog rail instead of opening a preview card.
+// top of it. Pin taps report up (onTapPlacePin / onSelectPin) so the page
+// can count them: select, fly there, open (MESITA-2488).
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MapPin } from "lucide-react";
@@ -62,7 +62,11 @@ function mapsPinIcon(
 
 function placeIcon(tone: PinTone, isSelected: boolean) {
   const weight = pinStrokeWeight(isSelected);
-  return mapsPinIcon(pinFillColor(tone), pinStrokeColor(isSelected), weight);
+  return mapsPinIcon(
+    pinFillColor(tone, isSelected),
+    pinStrokeColor(isSelected),
+    weight,
+  );
 }
 
 function userIcon() {
@@ -109,8 +113,7 @@ export function SearchMap({
   selectedId,
   pins,
   cameraIntent,
-  onSelectPlace,
-  onOpenPlace,
+  onTapPlacePin,
   onSelectPin,
   onFirstViewport,
   onUserViewport,
@@ -128,8 +131,9 @@ export function SearchMap({
    * cannot drag the map around.
    */
   cameraIntent?: CameraIntent | null;
-  onSelectPlace: (place: Place) => void;
-  onOpenPlace: (place: Place) => void;
+  /** A catalog pin was tapped; the page counts the taps (select · fly ·
+   *  open, MESITA-2488). */
+  onTapPlacePin: (place: Place) => void;
   onSelectPin?: (pin: SearchMapPin) => void;
   onFirstViewport?: (box: ViewportBox) => void;
   onUserViewport?: (box: ViewportBox, meta: { programmatic: boolean }) => void;
@@ -164,8 +168,7 @@ export function SearchMap({
           selectedId={selectedId}
           pins={pins}
           cameraIntent={cameraIntent}
-          onSelectPlace={onSelectPlace}
-          onOpenPlace={onOpenPlace}
+          onTapPlacePin={onTapPlacePin}
           onSelectPin={onSelectPin}
           onReady={handleMapReady}
           onFirstViewport={onFirstViewport}
@@ -266,8 +269,7 @@ function SearchMapCanvas({
   selectedId,
   pins,
   cameraIntent,
-  onSelectPlace,
-  onOpenPlace,
+  onTapPlacePin,
   onSelectPin,
   onReady,
   onFirstViewport,
@@ -279,8 +281,9 @@ function SearchMapCanvas({
   selectedId: string | null;
   pins?: SearchMapPin[] | null;
   cameraIntent?: CameraIntent | null;
-  onSelectPlace: (place: Place) => void;
-  onOpenPlace: (place: Place) => void;
+  /** A catalog pin was tapped; the page counts the taps (select · fly ·
+   *  open, MESITA-2488). */
+  onTapPlacePin: (place: Place) => void;
   onSelectPin?: (pin: SearchMapPin) => void;
   onReady: () => void;
   onFirstViewport?: (box: ViewportBox) => void;
@@ -345,12 +348,8 @@ function SearchMapCanvas({
               zIndex={place.id === selectedId ? 10 : 0}
               optimized={false}
               cursor={MAP_PIN_CURSOR}
-              // First tap selects (tone fill + black ring + rail); later tap opens.
-              onClick={() =>
-                place.id === selectedId
-                  ? onOpenPlace(place)
-                  : onSelectPlace(place)
-              }
+              // Select (ink pin + rail) · fly there · open — the page counts.
+              onClick={() => onTapPlacePin(place)}
             />
           ))}
       {cameraIntent && <CameraDirector intent={cameraIntent} />}

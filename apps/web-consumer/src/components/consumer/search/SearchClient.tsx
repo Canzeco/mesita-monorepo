@@ -83,6 +83,7 @@ import {
   buildSearchMapPins,
   catalogPlaceOnMesita,
   overlayPinDecision,
+  pinGesture,
   predictionOnMesita,
 } from "./search-pins";
 import {
@@ -94,6 +95,7 @@ import {
 import {
   clampReloadIdleSec,
   gpsFixMovesCamera,
+  isUnderSight,
   reloadWaitMs,
   RELOAD_IDLE_SEC_DEFAULT,
   selectionMovesCamera,
@@ -372,6 +374,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // A tap picked the card, so centre it even when the pager still names
   // it. A flick never sets this — scrollIntoView would fight the finger.
   const centerOnSelect = useRef(false);
+  // The pin the camera last FLEW to on a second tap (MESITA-2488): its next
+  // tap opens. Cleared the moment the selection moves to anything else.
+  const arrivedRef = useRef<string | null>(null);
 
   const clearPendingReload = useCallback(() => {
     if (pendingReload.current == null) return;
@@ -760,6 +765,41 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     selectedId,
   );
 
+  // A pin's last step before it opens: select it (if the card-0 fallback
+  // only looked selected) and fly the camera there — an animated pan that
+  // sets it under the sight, the guest's zoom untouched (MESITA-2488).
+  const flyToPin = (id: string, at: { lat: number; lng: number }) => {
+    arrivedRef.current = id;
+    setSelectedId(id);
+    askCamera({ kind: "center", lat: at.lat, lng: at.lng });
+  };
+
+  const pinStage = (at: { lat?: number | null; lng?: number | null }) => ({
+    arrivedId: arrivedRef.current,
+    // No coordinates means nowhere to fly: the second tap opens.
+    atSight:
+      typeof at.lat !== "number" || typeof at.lng !== "number"
+        ? true
+        : isUnderSight(lastBoxRef.current, { lat: at.lat, lng: at.lng }),
+  });
+
+  // A catalog pin: select · fly · open. Rail cards keep select · open.
+  const handleTapPlacePin = (place: Place) => {
+    switch (pinGesture(railSelectedId, place.id, pinStage(place))) {
+      case "select":
+        handleSelectPlace(place);
+        return;
+      case "fly":
+        if (typeof place.lat === "number" && typeof place.lng === "number") {
+          flyToPin(place.id, { lat: place.lat, lng: place.lng });
+        }
+        return;
+      case "open":
+        handleOpenPlace(place);
+        return;
+    }
+  };
+
   const handleSelectPin = (pin: SearchMapPin) => {
     // The suggest list was the other source of predictions; with the search
     // bar gone the stash is the only one left. It is still needed: a Google-only
@@ -776,8 +816,12 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       googleOnly: prediction ? !predictionOnMesita(prediction) : false,
       inCatalog: Boolean(place),
       hasOverlay: Boolean(prediction),
+      ...pinStage(pin),
     });
     switch (action) {
+      case "fly":
+        flyToPin(pin.id, pin);
+        return;
       case "open-google":
         if (prediction) openGoogleOnly(prediction);
         return;
@@ -836,6 +880,12 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     setSelectedId(place.id);
     revealSelection("card", place);
   };
+
+  // A fly counts only while its pin stays selected: a rail scroll, another
+  // pin or a bar pick sends the next tap on it back to "select".
+  useEffect(() => {
+    if (arrivedRef.current !== railSelectedId) arrivedRef.current = null;
+  }, [railSelectedId]);
 
   // Center the rail card for the selected place once the rail is on screen.
   // Skip when the pager already names that card — scroll itself selected
@@ -929,8 +979,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           // The camera moves on intents only; railSelectedId (and its card-0
           // fallback) rings a pin and never pans.
           cameraIntent={cameraIntent}
-          onSelectPlace={handleSelectPlace}
-          onOpenPlace={handleOpenPlace}
+          onTapPlacePin={handleTapPlacePin}
           onSelectPin={handleSelectPin}
           onFirstViewport={onFirstViewport}
           onUserViewport={onUserViewport}

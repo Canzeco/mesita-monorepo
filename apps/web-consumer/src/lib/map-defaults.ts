@@ -158,8 +158,11 @@ export const MAP_GOOGLE_PIN_COLOR = "#a3a3a3";
 // (MESITA-2469; was Tailwind #2563eb).
 export const MAP_USER_LOCATION_PIN_COLOR = "#007aff";
 
-// Place pins ring dark; selected is the same ink, thicker. Fill stays the
-// tone color. The blue you-are-here dot keeps a white ring (iOS).
+// Place pins ring dark. A SELECTED pin changes colour (Pato, MESITA-2488:
+// "the selected place changes color"): ink fill, white ring, thicker — so it
+// reads against both the red and the gray. The blue you-are-here dot keeps a
+// white ring (iOS).
 export const MAP_SELECTED_PIN_COLOR = "#111111";
+export const MAP_SELECTED_PIN_STROKE_COLOR = "#ffffff";
 export const MAP_PIN_STROKE_COLOR = "#111111";
 export const MAP_USER_LOCATION_STROKE_COLOR = "#ffffff";
