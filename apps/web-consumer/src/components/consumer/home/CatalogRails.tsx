@@ -160,15 +160,13 @@ export function placesChips(): { key: string; label: string }[] {
 export const PINNED_CHIPS = 4;
 
 /** Each group's stripe down the rail's left edge (Pato, MESITA-2484: "just
- *  one line at the left … really subtle"); four groups, four muted clays
- *  (MESITA-2490): Saved red · Social sage · Nearby and Popular blue · the
- *  families purple. 3px, an inset shadow, so the chosen row's white face and
- *  ink bar paint over it, and on the scrolling families list it stays put. */
+ *  one line at the left … really subtle"). Two groups, two muted clays
+ *  (MESITA-2492): the pinned four red, the families blue. 3px, an inset
+ *  shadow, so the chosen row's white face and ink bar paint over it, and on
+ *  the scrolling families list it stays put. */
 export const GROUP_STRIPE = {
-  saved: "shadow-[inset_3px_0_0_oklch(0.68_0.09_35)]",
-  social: "shadow-[inset_3px_0_0_oklch(0.7_0.07_150)]",
-  around: "shadow-[inset_3px_0_0_oklch(0.66_0.06_245)]",
-  families: "shadow-[inset_3px_0_0_oklch(0.64_0.07_310)]",
+  pinned: "shadow-[inset_3px_0_0_oklch(0.68_0.09_35)]",
+  families: "shadow-[inset_3px_0_0_oklch(0.66_0.06_245)]",
 } as const;
 
 /** Tiles drawn per page; the next page appends on scroll (MESITA-2384). */
@@ -438,36 +436,17 @@ export function CatalogRails() {
       aria-label="Places"
       data-places-categories
     >
-      {/* Four groups, each marked by its clay stripe, 8px apart; no rules
-          (Pato, MESITA-2484, MESITA-2490): Saved │ Social │ Nearby ·
-          Popular │ the families. The first three are pinned and never scroll
-          (MESITA-2411). */}
+      {/* Two groups, one clay stripe each, 8px apart; no rules (Pato,
+          MESITA-2484, MESITA-2492): Saved · Social · Nearby · Popular in red,
+          pinned, never scrolling (MESITA-2411) │ the families in blue. */}
       <ul
         role="list"
-        aria-label="Saved"
-        className={cn("shrink-0", GROUP_STRIPE.saved)}
+        aria-label="Yours"
+        className={cn("shrink-0", GROUP_STRIPE.pinned)}
         data-places-pinned
-        data-places-group="saved"
+        data-places-group="pinned"
       >
-        {chips.slice(0, 1).map(categoryRow)}
-      </ul>
-      <ul
-        role="list"
-        aria-label="Social"
-        className={cn("mt-2 shrink-0", GROUP_STRIPE.social)}
-        data-places-pinned
-        data-places-group="social"
-      >
-        {chips.slice(1, 2).map(categoryRow)}
-      </ul>
-      <ul
-        role="list"
-        aria-label="Around you"
-        className={cn("mt-2 shrink-0", GROUP_STRIPE.around)}
-        data-places-pinned
-        data-places-group="around"
-      >
-        {chips.slice(2, PINNED_CHIPS).map(categoryRow)}
+        {chips.slice(0, PINNED_CHIPS).map(categoryRow)}
       </ul>
       <ul
         role="list"

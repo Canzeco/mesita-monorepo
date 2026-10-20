@@ -47,17 +47,16 @@ describe("the Places column (MESITA-2383)", () => {
     expect(placesChips().map((c) => c.key).slice(0, 4)).toEqual([SAVED_CHIP, SOCIAL_CHIP, NEAR_CHIP, POPULAR_CHIP]);
     expect(PINNED_CHIPS).toBe(4);
     // Each group has its clay stripe; the rules are gone (MESITA-2484).
-    // Four groups since MESITA-2490: Saved │ Social │ Nearby · Popular │ the families.
-    expect(src).toContain("chips.slice(0, 1).map(categoryRow)");
-    expect(src).toContain("chips.slice(1, 2).map(categoryRow)");
-    expect(src).toContain("chips.slice(2, PINNED_CHIPS).map(categoryRow)");
+    // Two groups since MESITA-2492: the pinned four │ the families.
+    expect(src).toContain("chips.slice(0, PINNED_CHIPS).map(categoryRow)");
     expect(src).not.toContain("data-places-rule");
-    for (const g of ["saved", "social", "around", "families"]) {
+    for (const g of ["pinned", "families"]) {
       expect(src).toContain(`data-places-group="${g}"`);
       expect(src).toContain(`GROUP_STRIPE.${g}`);
       expect(GROUP_STRIPE[g as keyof typeof GROUP_STRIPE]).toMatch(/^shadow-\[inset_3px_0_0_oklch\(/);
     }
     expect(src).toContain("chips.slice(PINNED_CHIPS).map(categoryRow)");
+    expect(Object.keys(GROUP_STRIPE)).toEqual(["pinned", "families"]);
     expect(src).toContain('"scrollbar-hide mt-2 min-h-0 flex-1 overflow-y-auto overscroll-y-contain"');
     // Social's row reads like every row: no Soon tag, no muted label
     // (MESITA-2418); its pane still says Soon.
