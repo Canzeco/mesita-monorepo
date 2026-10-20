@@ -25,7 +25,7 @@ import {
   MAP_MINIMAL_STYLES,
   MAP_PIN_CURSOR,
   MAP_PIN_HIT_SIZE,
-  MAP_PIN_STROKE_COLOR,
+  MAP_USER_LOCATION_STROKE_COLOR,
   MAP_USER_LOCATION_PIN_COLOR,
   mapPinIcon,
 } from "@/lib/map-defaults";
@@ -35,6 +35,7 @@ import { SIGHT_Y } from "./search-utils";
 import {
   pinFillColor,
   pinStrokeColor,
+  pinStrokeWeight,
   placePinTone,
   type PinTone,
 } from "./search-pins";
@@ -44,8 +45,12 @@ type MapsCtor = {
   Point: new (x: number, y: number) => { x: number; y: number };
 };
 
-function mapsPinIcon(fillColor: string, strokeColor: string) {
-  const raw = mapPinIcon(fillColor, strokeColor);
+function mapsPinIcon(
+  fillColor: string,
+  strokeColor: string,
+  strokeWeight?: number,
+) {
+  const raw = mapPinIcon(fillColor, strokeColor, strokeWeight);
   const maps = (globalThis as { google?: { maps?: MapsCtor } }).google?.maps;
   if (!maps) return raw;
   return {
@@ -56,11 +61,15 @@ function mapsPinIcon(fillColor: string, strokeColor: string) {
 }
 
 function placeIcon(tone: PinTone, isSelected: boolean) {
-  return mapsPinIcon(pinFillColor(tone), pinStrokeColor(isSelected));
+  const weight = pinStrokeWeight(isSelected);
+  return mapsPinIcon(pinFillColor(tone), pinStrokeColor(isSelected), weight);
 }
 
 function userIcon() {
-  return mapsPinIcon(MAP_USER_LOCATION_PIN_COLOR, MAP_PIN_STROKE_COLOR);
+  return mapsPinIcon(
+    MAP_USER_LOCATION_PIN_COLOR,
+    MAP_USER_LOCATION_STROKE_COLOR,
+  );
 }
 
 export type SearchMapPin = {
