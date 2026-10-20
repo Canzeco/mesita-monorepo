@@ -5,6 +5,7 @@ import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { getOpeningStateLabel } from "@/lib/place-state";
 import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 import { cardPhoto, placePlaceholder } from "@/lib/place-placeholder";
+import { FamilyIcon } from "@/lib/family-icons";
 import { cn, formatKm, formatRating } from "@/lib/utils";
 
 /** Every catalog rail card is this tall. Missing subtitle / meta / hours
@@ -69,7 +70,11 @@ export function RailCard({
             data-placeholder={placeholder.kind}
             aria-hidden
           >
-            {placeholder.text}
+            {placeholder.kind === "family" ? (
+              <FamilyIcon name={placeholder.family} className="h-7 w-7" />
+            ) : (
+              placeholder.text
+            )}
           </span>
         )}
       </div>

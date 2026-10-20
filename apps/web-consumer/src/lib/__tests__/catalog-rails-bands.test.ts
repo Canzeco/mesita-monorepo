@@ -53,7 +53,11 @@ describe("the Places column (MESITA-2383)", () => {
     expect(src).toContain('className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-y-contain"');
     // Social's row reads like every row: no Soon tag, no muted label
     // (MESITA-2418); its pane still says Soon.
-    expect(placesChips()[0]).toEqual({ key: SOCIAL_CHIP, label: "Social", emoji: "👥" });
+    expect(placesChips()[0]).toEqual({ key: SOCIAL_CHIP, label: "Social" });
+    // Every row's mark is a line icon, never an emoji (MESITA-2478).
+    expect(src).toContain("name={c.key}");
+    expect(src).toContain("strokeWidth={chip === c.key ? 2.25 : 1.75}");
+    expect(src).not.toMatch(/[\p{Emoji_Presentation}\uFE0F]/u);
     expect(src).not.toContain("c.soon");
     expect(src).not.toContain("data-places-soon");
     expect(placesChips().map((c) => c.key)).not.toContain(GOOGLE_RAIL_KEY);

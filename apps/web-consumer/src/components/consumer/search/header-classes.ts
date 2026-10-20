@@ -11,7 +11,7 @@
 // still darken it without the control shifting a pixel.
 //
 //   ( ⌖ ) [ ⚲ Search places…  ] ( ✦ )   ← HEADER_DISC · SearchBar · HEADER_DISC
-//   (📍 Nearby) (⭐ Popular) │ (☕ Coffee) …   ← CHIP + CHIP_ON / CHIP_OFF
+//   (⌖ Nearby) (☆ Popular) │ (○ Coffee) …   ← CHIP + CHIP_ON / CHIP_OFF
 //
 // A leaf module with no imports, so Home's header can adopt it later.
 

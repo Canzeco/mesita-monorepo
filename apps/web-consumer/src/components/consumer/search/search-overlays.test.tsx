@@ -407,12 +407,15 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
     const header = read("SearchHeader.tsx");
     expect(header).not.toContain("SearchFilterRow");
     expect(header).not.toContain("SlidersHorizontal");
-    // Near and Popular replaced All, each with its emoji, before the
-    // hairline and the families (MESITA-2426).
+    // Near and Popular replaced All before the hairline and the families
+    // (MESITA-2426); every chip wears a line icon, never an emoji
+    // (MESITA-2478).
     expect(header).toContain("EVERY_FAMILY_CHIPS.map");
-    expect(header).toContain(
-      '{ prefer: "popular", emoji: "⭐", label: "Popular" }',
-    );
+    expect(header).toContain('{ prefer: "popular", label: "Popular" }');
+    expect(header).toContain("name={c.prefer}");
+    expect(header).toContain("name={family.key}");
+    expect(header).toContain("strokeWidth={on ? 2.25 : 1.75}");
+    expect(header).not.toMatch(/[\p{Emoji_Presentation}\uFE0F]/u);
     expect(header).not.toContain("ALL_EMOJI");
     expect(header.indexOf("EVERY_FAMILY_CHIPS.map")).toBeLessThan(
       header.indexOf("FILTERABLE_PLACE_FAMILIES.map"),
