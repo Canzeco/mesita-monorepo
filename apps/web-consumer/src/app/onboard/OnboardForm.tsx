@@ -207,7 +207,7 @@ export function OnboardForm({
       try {
         await apiUpdateConsumerProfile(getSupabase(), patch);
         if (last) {
-          router.push(safeNextPath(next) ?? CONSUMER_ROUTES.discoverDefault);
+          router.push(safeNextPath(next) ?? CONSUMER_ROUTES.home);
           router.refresh();
           return;
         }

@@ -63,7 +63,7 @@ export function BookingsModal() {
             description="Reserve a table from any place and Mesita calls to book it — your bookings show up here."
             action={{
               label: "Find a place",
-              href: CONSUMER_ROUTES.discoverDefault,
+              href: CONSUMER_ROUTES.home,
             }}
           />
         }

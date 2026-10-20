@@ -56,11 +56,11 @@ type Item = {
 const ITEMS: Item[] = [
   {
     // Home is one page; Social and Favorites are rows of it (MESITA-2405).
-    href: CONSUMER_ROUTES.discoverDefault,
+    href: CONSUMER_ROUTES.home,
     Icon: MesitaMark,
     label: "Home",
     matchPrefixes: [
-      CONSUMER_ROUTES.discoverTabs.places,
+      CONSUMER_ROUTES.home,
       CONSUMER_ROUTE_PREFIX.place,
     ],
   },

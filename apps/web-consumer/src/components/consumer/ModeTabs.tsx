@@ -13,7 +13,7 @@
 // with a hairline (MESITA-2409) and the old flame in ink (MESITA-2473).
 // Social and Favorites are rows of the catalog's column (CatalogRails).
 // Home draws it
-// from app/(shell)/(discovery)/discover/layout.tsx; Search has its own
+// from app/(shell)/(discovery)/home/layout.tsx; Search has its own
 // header (SearchHeader: locate · bar · Ask AI, then family chips), so
 // Home's never paints over the map (MESITA-1616). It was DiscoverModeNav.
 

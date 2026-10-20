@@ -3,8 +3,9 @@ import { BotMessageSquare, ChevronLeft } from "lucide-react";
 import { HomeSoon } from "@/components/consumer/home/HomeSoon";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
-// ASK AI — where Search's Ask AI button lands (Pato, MESITA-2409), Soon for
-// the moment (MESITA-2168). Memo stays in AskAiTab; this page does not mount
+// ASK AI, cold-loaded. Search's Ask AI button opens it as a sheet over the
+// map instead (@modal/(.)search/chat, MESITA-2475). Soon for the moment
+// (MESITA-2168). Memo stays in AskAiTab; this page does not mount
 // it. Its header is a way back to Search, white like Search's own.
 export default function SearchChatPage() {
   return (

@@ -263,7 +263,7 @@ describe("T5 — exactly one tab lights per surface", () => {
   }
 
   const MATRIX: [string, string][] = [
-    ["/discover/places", "Home"],
+    ["/home", "Home"],
     ["/search/chat", "Search"],
     ["/place/abc", "Home"],
     ["/search", "Search"],
@@ -385,7 +385,7 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
       (m) => m[1],
     );
     expect(hrefs).toEqual([
-      CONSUMER_ROUTES.discoverDefault,
+      CONSUMER_ROUTES.home,
       CONSUMER_ROUTES.search,
       CONSUMER_ROUTES.pay,
       CONSUMER_ROUTES.me,
@@ -412,14 +412,15 @@ describe("T5b — Home's header and Search's header", () => {
     );
     expect(tabs).not.toContain("HOME_MODES");
     const layout = readFileSync(
-      join(SHELL, "(discovery)", "discover", "layout.tsx"),
+      join(SHELL, "(discovery)", "home", "layout.tsx"),
       "utf8",
     );
     expect(layout).toContain("<ModeTabs />");
   });
 
   // Search's header (MESITA-2409): locate · bar · Ask AI, then family chips.
-  // Ask AI lands on /search/chat, the Soon page with a way back.
+  // Ask AI lands on /search/chat: from Search, a sheet over the map
+  // (MESITA-2475); cold-loaded, the Soon page with a way back.
   it("Search's header is locate · bar · Ask AI, and Ask AI is a real Soon page", () => {
     const header = readFileSync(join(COMPONENTS, "search", "SearchHeader.tsx"), "utf8");
     expect(header).toContain("href={CONSUMER_ROUTES.searchChat}");
@@ -430,15 +431,29 @@ describe("T5b — Home's header and Search's header", () => {
     expect(chat).toContain("HomeSoon");
     expect(chat).toContain("href={CONSUMER_ROUTES.search}");
     expect(chat).not.toMatch(/<AskAiTab/);
+    const sheet = readFileSync(
+      join(SHELL, "@modal", "(.)search", "chat", "layout.tsx"),
+      "utf8",
+    );
+    expect(sheet).toContain("<RouteSheetShell");
+    const sheetPage = readFileSync(
+      join(SHELL, "@modal", "(.)search", "chat", "page.tsx"),
+      "utf8",
+    );
+    expect(sheetPage).toContain("<RouteSheetHeader");
+    expect(sheetPage).toContain("HomeSoon");
   });
 
   // Home is ONE page: the catalog. Its Social row draws the feed in the
   // right pane, never a page (MESITA-2474), so no pane of Home is Soon.
-  it("Home lands on the catalog, its one page under discover", () => {
-    expect(CONSUMER_ROUTES.discoverDefault).toBe(CONSUMER_ROUTES.discoverTabs.places);
-    expect(Object.values(CONSUMER_ROUTES.discoverTabs)).toEqual(["/discover/places"]);
+  it("Home is /home, one page: the catalog (MESITA-2475)", () => {
+    expect(CONSUMER_ROUTES.home).toBe("/home");
+    const pages = new Set(allPages().map(pageUrl));
+    expect(pages).toContain("/home");
+    expect(pages).not.toContain("/discover");
+    expect(pages).not.toContain("/discover/places");
     const places = readFileSync(
-      join(SHELL, "(discovery)", "discover", "places", "page.tsx"),
+      join(SHELL, "(discovery)", "home", "page.tsx"),
       "utf8",
     );
     expect(places).toContain("<CatalogRails");
@@ -460,15 +475,15 @@ describe("T5b — Home's header and Search's header", () => {
   });
 
   // Swipe (MESITA-2166), Scroll (MESITA-2163), Catalog's old Feed address,
-  // and Favorites (MESITA-2383) left the header. Social came back as its
-  // own page (MESITA-2442).
-  it.each(["swipe", "scroll", "feed", "favs"])(
+  // Favorites (MESITA-2383) and Social (MESITA-2474) left; Places itself
+  // became /home (MESITA-2475).
+  it.each(["places", "swipe", "scroll", "feed", "favs", "social"])(
     "/discover/%s has no page and 308s to Home",
     async (seg) => {
       const hop = (await nextConfig.redirects!()).find(
         (r) => r.source === `/discover/${seg}`,
       );
-      expect(hop?.destination).toBe(CONSUMER_ROUTES.discoverTabs.places);
+      expect(hop?.destination).toBe(CONSUMER_ROUTES.home);
       expect(
         existsSync(join(SHELL, "(discovery)", "discover", seg, "page.tsx")),
       ).toBe(false);
@@ -476,9 +491,12 @@ describe("T5b — Home's header and Search's header", () => {
   );
 
   // The Places test tab (MESITA-2402) is deleted (MESITA-2405).
-  it("/places has no page and 308s to Home", async () => {
+  it("/discover and /places have no page and 308 to Home", async () => {
+    const bare = (await nextConfig.redirects!()).find((r) => r.source === "/discover");
+    expect(bare?.destination).toBe(CONSUMER_ROUTES.home);
+    expect(existsSync(join(SHELL, "(discovery)", "discover"))).toBe(false);
     const hop = (await nextConfig.redirects!()).find((r) => r.source === "/places");
-    expect(hop?.destination).toBe(CONSUMER_ROUTES.discoverDefault);
+    expect(hop?.destination).toBe(CONSUMER_ROUTES.home);
     expect(existsSync(join(SHELL, "(discovery)", "places", "page.tsx"))).toBe(false);
   });
 });

@@ -180,7 +180,7 @@ function OpeningBody({
       router.back();
       return;
     }
-    router.replace(CONSUMER_ROUTES.discoverDefault);
+    router.replace(CONSUMER_ROUTES.home);
   }, [router]);
 
   if (variant === "modal") {
