@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type Coords = { lat: number; lng: number };
 
@@ -8,7 +8,8 @@ export type Coords = { lat: number; lng: number };
  *  site (1), the device could not find itself (2, e.g. a Mac whose Location
  *  Services are off for the browser), it took too long (3), or there is no
  *  geolocation at all. A dropped error read as a dead button. */
-export type LocationError = "denied" | "unavailable" | "timeout" | "unsupported";
+export type LocationError =
+  "denied" | "unavailable" | "timeout" | "unsupported";
 
 /** GeolocationPositionError.code → our reason. */
 export function locationErrorFromCode(code: number): LocationError {
@@ -26,9 +27,18 @@ let locatingState = false;
 let errorState: LocationError | null = null;
 let asked = false;
 const listeners = new Set<() => void>();
+// Every fix the browser hands back, the same coordinates included: a page
+// that asked for a fix (the Search location disc) needs the answer even
+// when the guest has not moved (MESITA-2440).
+const fixListeners = new Set<(coords: Coords) => void>();
 
 function emit() {
   for (const listener of listeners) listener();
+}
+
+export function sameCoords(a: Coords | null, b: Coords | null): boolean {
+  if (!a || !b) return a === b;
+  return a.lat === b.lat && a.lng === b.lng;
 }
 
 function requestUserLocation(): Promise<Coords | null> {
@@ -44,14 +54,21 @@ function requestUserLocation(): Promise<Coords | null> {
   return new Promise((resolve) => {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        coordsState = {
+        const next = {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
         };
+        // SAME PLACE, SAME OBJECT (MESITA-2440). A fresh object for the same
+        // coordinates read as a move to every effect keyed on it: the Search
+        // map re-centred on the guest after they had panned away.
+        const fix =
+          coordsState && sameCoords(coordsState, next) ? coordsState : next;
+        coordsState = fix;
         locatingState = false;
         errorState = null;
         emit();
-        resolve(coordsState);
+        for (const listener of fixListeners) listener(fix);
+        resolve(fix);
       },
       (err) => {
         locatingState = false;
@@ -109,5 +126,21 @@ export function useUserLocationError(): LocationError | null {
 export function useLocateUser(): () => void {
   return useCallback(() => {
     void requestUserLocation();
+  }, []);
+}
+
+/** Call `onFix` with every fix that lands from now on. The callback runs
+ *  from the browser's answer, not from a render, so it may set state. */
+export function useOnUserFix(onFix: (coords: Coords) => void): void {
+  const latest = useRef(onFix);
+  useEffect(() => {
+    latest.current = onFix;
+  }, [onFix]);
+  useEffect(() => {
+    const listener = (coords: Coords) => latest.current(coords);
+    fixListeners.add(listener);
+    return () => {
+      fixListeners.delete(listener);
+    };
   }, []);
 }

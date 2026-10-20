@@ -30,6 +30,7 @@ import {
   mapPinIcon,
 } from "@/lib/map-defaults";
 import type { Coords } from "@/lib/use-user-location";
+import { cameraStep, type CameraIntent } from "./camera-intent";
 import {
   pinFillColor,
   pinStrokeColor,
@@ -69,20 +70,6 @@ export type SearchMapPin = {
   tone: PinTone;
 };
 
-/**
- * A searchbar pick's camera request (MESITA-1405). `gen` makes every pick
- * fire — re-picking the same place must pan back even though its lat/lng
- * did not change, which the selection-keyed PanTo cannot do. With
- * `bounds` (a Location's Details viewport) the camera FITS them, so a
- * city opens wide and a neighbourhood close; without, it pans place-style.
- */
-export type CameraAnchor = {
-  gen: number;
-  lat: number;
-  lng: number;
-  bounds?: { south: number; west: number; north: number; east: number } | null;
-};
-
 export type ViewportBox = {
   south: number;
   west: number;
@@ -109,37 +96,35 @@ export function SearchMap({
   apiKey,
   places,
   userLocation,
-  viewCenter,
   selectedId,
   pins,
-  cameraAnchor,
-  panTargetId,
+  cameraIntent,
   onSelectPlace,
   onOpenPlace,
   onSelectPin,
   onFirstViewport,
   onUserViewport,
+  onCameraMoveStart,
 }: {
   apiKey: string;
   places: Place[];
   userLocation: Coords | null;
-  viewCenter: Coords | null;
   selectedId: string | null;
   pins?: SearchMapPin[] | null;
-  cameraAnchor?: CameraAnchor | null;
   /**
-   * The EXPLICIT pick (tap, scroll, bar) the camera may follow. Distinct
-   * from `selectedId`, which also carries defaultRailSelection's card-0
-   * FALLBACK: a fallback rings the card but must never pan — after a
-   * Location anchor fits a whole city, a fallback pan-and-zoom to the
-   * closest place would collapse the view nobody asked to leave.
+   * The ONLY way the page moves the camera (MESITA-2440): an explicit ask
+   * — first load, the location disc, a tap, a bar pick. `selectedId` only
+   * rings a pin; it never pans, so a rail scroll or the card-0 fallback
+   * cannot drag the map around.
    */
-  panTargetId?: string | null;
+  cameraIntent?: CameraIntent | null;
   onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
   onSelectPin?: (pin: SearchMapPin) => void;
   onFirstViewport?: (box: ViewportBox) => void;
   onUserViewport?: (box: ViewportBox, meta: { programmatic: boolean }) => void;
+  /** The camera started moving: a pending reload is cancelled. */
+  onCameraMoveStart?: () => void;
 }) {
   // The Maps SDK bootstrap + first tile paint leave the canvas blank for a
   // beat — hold a muted skeleton veil over it until tiles actually land
@@ -166,17 +151,16 @@ export function SearchMap({
         <SearchMapCanvas
           places={places}
           userLocation={userLocation}
-          viewCenter={viewCenter}
           selectedId={selectedId}
           pins={pins}
-          cameraAnchor={cameraAnchor}
-          panTargetId={panTargetId}
+          cameraIntent={cameraIntent}
           onSelectPlace={onSelectPlace}
           onOpenPlace={onOpenPlace}
           onSelectPin={onSelectPin}
           onReady={handleMapReady}
           onFirstViewport={onFirstViewport}
           onUserViewport={onUserViewport}
+          onCameraMoveStart={onCameraMoveStart}
         />
         {!mapReady && <MapLoadingVeil />}
       </APIProvider>
@@ -185,10 +169,13 @@ export function SearchMap({
   );
 }
 
-/** Rail / pin / GPS pans stay programmatic until a real finger-drag.
- *  A time window leaked: a slow panTo idle fired after 600ms and
- *  counted catalog browsing as travel. dragstart is the only user
- *  gesture that may accrue Reload after. */
+/** A camera move the PAGE made (a tap's reveal, the location disc, a bar
+ *  pick) is programmatic: its idle rebases the reload origin instead of
+ *  counting as travel. The flag is spent by the idle that ends the move, and
+ *  a finger-drag clears it at once — a time window leaked (a slow panTo idle
+ *  fired after 600ms and counted catalog browsing as travel), and a flag
+ *  that only dragstart cleared turned a later pinch-zoom into "programmatic"
+ *  too. Only cameraStep's real moves set it, so a no-op never strands it. */
 let cameraMoveIsProgrammatic = false;
 
 function noteProgrammaticCamera() {
@@ -199,8 +186,17 @@ function noteUserMapDrag() {
   cameraMoveIsProgrammatic = false;
 }
 
-function isProgrammaticIdle() {
-  return cameraMoveIsProgrammatic;
+function takeProgrammaticIdle() {
+  const programmatic = cameraMoveIsProgrammatic;
+  cameraMoveIsProgrammatic = false;
+  return programmatic;
+}
+
+/** A finger (or mouse button) is on the map: no reload fires under it. */
+let fingerOnMap = false;
+
+export function mapFingerIsDown(): boolean {
+  return fingerOnMap;
 }
 
 /** Screen-fixed sight at the canvas center — the catalog fetch point.
@@ -254,49 +250,38 @@ function hasCoords(
 function SearchMapCanvas({
   places,
   userLocation,
-  viewCenter,
   selectedId,
   pins,
-  cameraAnchor,
-  panTargetId,
+  cameraIntent,
   onSelectPlace,
   onOpenPlace,
   onSelectPin,
   onReady,
   onFirstViewport,
   onUserViewport,
+  onCameraMoveStart,
 }: {
   places: Place[];
   userLocation: Coords | null;
-  viewCenter: Coords | null;
   selectedId: string | null;
   pins?: SearchMapPin[] | null;
-  cameraAnchor?: CameraAnchor | null;
-  panTargetId?: string | null;
+  cameraIntent?: CameraIntent | null;
   onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
   onSelectPin?: (pin: SearchMapPin) => void;
   onReady: () => void;
   onFirstViewport?: (box: ViewportBox) => void;
   onUserViewport?: (box: ViewportBox, meta: { programmatic: boolean }) => void;
+  onCameraMoveStart?: () => void;
 }) {
   const located = places.filter(hasCoords);
-  const lookAt = viewCenter ?? userLocation;
-  // The camera follows EXPLICIT picks only. `selectedId` also carries the
-  // defaultRailSelection card-0 fallback, which rings a card without
-  // anybody choosing it — panning on that would snap the view around
-  // after every reload (fatal right after a Location anchor fit a city).
-  const panTarget =
-    pins != null
-      ? (pins.find((p) => p.id === panTargetId) ?? null)
-      : (located.find((p) => p.id === panTargetId) ?? null);
-  const panLat = panTarget?.lat ?? null;
-  const panLng = panTarget?.lng ?? null;
 
   return (
     <Map
-      defaultCenter={lookAt ?? MONTERREY_CENTER}
-      defaultZoom={lookAt ? MAP_USER_ZOOM : MAP_DEFAULT_ZOOM}
+      // Uncontrolled: these are read once, at mount. Every later move is a
+      // CameraIntent the guest asked for.
+      defaultCenter={userLocation ?? MONTERREY_CENTER}
+      defaultZoom={userLocation ? MAP_USER_ZOOM : MAP_DEFAULT_ZOOM}
       gestureHandling="greedy"
       disableDefaultUI
       // `disableDefaultUI` does NOT cover this one. Google keeps a "Keyboard
@@ -355,10 +340,12 @@ function SearchMapCanvas({
               }
             />
           ))}
-      <Recentre target={lookAt} />
-      {cameraAnchor && <AnchorCamera anchor={cameraAnchor} />}
-      {panLat != null && panLng != null && <PanTo lat={panLat} lng={panLng} />}
-      <ViewportReporter onFirst={onFirstViewport} onUser={onUserViewport} />
+      {cameraIntent && <CameraDirector intent={cameraIntent} />}
+      <ViewportReporter
+        onFirst={onFirstViewport}
+        onUser={onUserViewport}
+        onMoveStart={onCameraMoveStart}
+      />
     </Map>
   );
 }
@@ -366,88 +353,88 @@ function SearchMapCanvas({
 function ViewportReporter({
   onFirst,
   onUser,
+  onMoveStart,
 }: {
   onFirst?: (box: ViewportBox) => void;
   onUser?: (box: ViewportBox, meta: { programmatic: boolean }) => void;
+  onMoveStart?: () => void;
 }) {
   const map = useMap();
   const first = useRef(true);
 
   useEffect(() => {
     if (!map) return;
-    const drag = map.addListener("dragstart", noteUserMapDrag);
+    const drag = map.addListener("dragstart", () => {
+      noteUserMapDrag();
+      onMoveStart?.();
+    });
+    // Any camera change — drag, pinch, wheel, an animated pan — cancels a
+    // pending reload; the idle that ends it decides again.
+    const moving = map.addListener("bounds_changed", () => onMoveStart?.());
     const listener = map.addListener("idle", () => {
       const box = readViewportBox(map);
       if (!box) return;
       if (first.current) {
         first.current = false;
+        takeProgrammaticIdle();
         onFirst?.(box);
         return;
       }
-      onUser?.(box, { programmatic: isProgrammaticIdle() });
+      onUser?.(box, { programmatic: takeProgrammaticIdle() });
     });
+    // NO RELOAD UNDER A FINGER: a due reload waits while one rests on the
+    // map (the page re-arms it), and a finger that lifts without moving
+    // leaves it due. Capture phase, because the map's own handlers stop the
+    // event; the lift is read on window, since a finger can leave the map
+    // before it lifts.
+    const div = map.getDiv();
+    const down = () => {
+      fingerOnMap = true;
+    };
+    const up = () => {
+      fingerOnMap = false;
+    };
+    div.addEventListener("pointerdown", down, true);
+    window.addEventListener("pointerup", up, true);
+    window.addEventListener("pointercancel", up, true);
     return () => {
       drag.remove();
+      moving.remove();
       listener.remove();
+      div.removeEventListener("pointerdown", down, true);
+      window.removeEventListener("pointerup", up, true);
+      window.removeEventListener("pointercancel", up, true);
+      fingerOnMap = false;
     };
-  }, [map, onFirst, onUser]);
+  }, [map, onFirst, onUser, onMoveStart]);
 
   return null;
 }
 
-// Shared by Recentre/PanTo: pan to the target, and bump zoom in only if
-// it's currently more zoomed-out than the user-focused level (never zooms
-// the consumer's own framing back out).
-function panAndEnsureZoom(
-  map: NonNullable<ReturnType<typeof useMap>>,
-  target: Coords,
-) {
-  noteProgrammaticCamera();
-  map.panTo(target);
-  if ((map.getZoom() ?? MAP_DEFAULT_ZOOM) < MAP_USER_ZOOM) {
-    map.setZoom(MAP_USER_ZOOM);
-  }
-}
-
-// Pan to the look-at center (filter zone, else the device) once it resolves.
-function Recentre({ target }: { target: Coords | null }) {
-  const map = useMap();
-  useEffect(() => {
-    if (!map || !target) return;
-    panAndEnsureZoom(map, target);
-  }, [map, target]);
-  return null;
-}
-
-// Pan to whichever pin/rail card the consumer just picked. Primitive
-// lat/lng deps (not a fresh object literal) so the effect fires only when
-// the SELECTION changes — re-renders must never fight the user's panning.
-function PanTo({ lat, lng }: { lat: number; lng: number }) {
+// The one place the camera moves. Keyed on the intent OBJECT — each ask is
+// a fresh one (`gen` keeps them distinct), so re-asking the same spot moves
+// again after the guest wandered off, while plain re-renders (the object is
+// state-held, never a literal) fight nobody. `cameraStep` decides: a reveal
+// that is already on screen does nothing, a centre pans (panTo animates
+// when the hop is short, as on Google Maps) and keeps the guest's zoom, a
+// Location fits its viewport.
+function CameraDirector({ intent }: { intent: CameraIntent }) {
   const map = useMap();
   useEffect(() => {
     if (!map) return;
-    panAndEnsureZoom(map, { lat, lng });
-  }, [map, lat, lng]);
-  return null;
-}
-
-// The searchbar pick's camera move. Keyed on the anchor OBJECT — each
-// pick stores a fresh one (`gen` guarantees distinctness), so re-picking
-// the same entity pans back after the guest wandered off, while plain
-// re-renders (the object is state-held, never a literal) fight nobody.
-// A Location fits its own viewport bounds (city wide, neighbourhood
-// close); a Place pans place-style. Both count as programmatic so the
-// idle that follows rebases the km origin instead of accruing travel.
-function AnchorCamera({ anchor }: { anchor: CameraAnchor }) {
-  const map = useMap();
-  useEffect(() => {
-    if (!map) return;
+    const step = cameraStep(
+      intent,
+      readViewportBox(map),
+      map.getZoom() ?? null,
+    );
+    if (step.kind === "none") return;
     noteProgrammaticCamera();
-    if (anchor.bounds) {
-      map.fitBounds(anchor.bounds);
+    if (step.kind === "fit") {
+      map.fitBounds(step.bounds);
       return;
     }
-    panAndEnsureZoom(map, { lat: anchor.lat, lng: anchor.lng });
-  }, [map, anchor]);
+    map.panTo({ lat: step.lat, lng: step.lng });
+    if (step.zoom != null) map.setZoom(step.zoom);
+  }, [map, intent]);
   return null;
 }

@@ -43,11 +43,15 @@
 //     third: Family, Places scope, Popularity). How many is
 //     operator the scope's cap (`map.googlePlaces` / `map.mesitaPlaces`).
 //   • Bottom overlay: the catalog rail around the camera, hidden while
-//     querying. Closest first. A guest pan auto-reloads after reloadMinKm
-//     AND reloadMinSec.
-//     Only a finger-drag on the map counts as travel — rail or pin selection
+//     querying. Closest first. A guest move reloads once the map has been
+//     still for reloadIdleSec and travelled RELOAD_MIN_KM (MESITA-2440).
+//     Only the guest's own moves count as travel — a tap's reveal pan
 //     rebases the km origin so click-by-click browsing cannot add up. The
 //     rail's centre card is always the selected pin.
+//
+// THE CAMERA NEVER TELEPORTS (MESITA-2440): it moves only on an explicit
+// ask, as a CameraIntent — the rules live in camera-intent.ts. A rail
+// scroll rings the pin and leaves the map where the guest put it.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -61,10 +65,12 @@ import {
 } from "@/lib/api/place-search";
 import {
   useLocateUser,
+  useOnUserFix,
   useUserLocation,
   useUserLocationLocating,
+  type Coords,
 } from "@/lib/use-user-location";
-import { MONTERREY_CENTER } from "@/lib/map-defaults";
+import { MAP_USER_ZOOM, MONTERREY_CENTER } from "@/lib/map-defaults";
 import { placeHref } from "@/lib/place-route";
 import { useOpenGooglePlace } from "@/lib/use-open-google-place";
 import { toast } from "@/lib/toast";
@@ -80,11 +86,20 @@ import {
   predictionOnMesita,
 } from "./search-pins";
 import {
+  mapFingerIsDown,
   SearchMap,
-  type CameraAnchor,
   type SearchMapPin,
   type ViewportBox,
 } from "./SearchMap";
+import {
+  clampReloadIdleSec,
+  gpsFixMovesCamera,
+  idleReloadDue,
+  RELOAD_IDLE_SEC_DEFAULT,
+  selectionMovesCamera,
+  type CameraIntent,
+  type SelectionSource,
+} from "./camera-intent";
 import { SearchBar } from "./SearchBar";
 import { SearchHeader } from "./SearchHeader";
 import { SearchResultsPanel } from "./SearchResultsPanel";
@@ -95,19 +110,13 @@ import {
   anchorPlaceFromPrediction,
   anchorSurvivesReload,
   anchorViewportBounds,
-  CATALOG_RELOAD_MIN_KM,
-  CATALOG_RELOAD_MIN_SEC,
   catalogIsStale,
-  catalogMovedEnough,
-  clampReloadMinKm,
-  clampReloadMinSec,
   defaultRailSelection,
   shouldCenterRailCard,
   matchPredictionToPlace,
   newSessionToken,
   prependAnchorPlace,
   railCenterIndex,
-  shouldReloadNearbyCatalog,
   viewportCenter,
   withDistances,
 } from "./search-utils";
@@ -120,14 +129,18 @@ const DEFAULT_IDLE_MS = 1000;
 const MIN_QUERY = 2;
 
 /**
- * A live searchbar pick (MESITA-1405). `camera` is the move the map owes
- * the guest; `place` is the chosen place for card ONE of the carousel —
- * null for a Location, which is a camera destination, never a card.
+ * A live searchbar pick (MESITA-1405). `place` is the chosen place for card
+ * ONE of the carousel — null for a Location, which is a camera destination,
+ * never a card. The camera move itself is a CameraIntent.
  */
 type AnchorPick = {
-  camera: CameraAnchor;
   place: Place | null;
 };
+
+/** Omit over each member of a union, keeping it a union. */
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
+  ? Omit<T, K>
+  : never;
 
 function googlePredictionFromPlace(place: Place): PlacePrediction | null {
   if (!place.googleOnly && !place.from_google) return null;
@@ -198,24 +211,30 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const storedPrefer = useAreaPrefer();
   const prefer = filters.familyKeys.length > 0 ? "family" : storedPrefer;
   const location = userLocation;
-  // The location disc at the LEFT of the top row recentres on the guest.
-  // `Recentre` keys on the coords OBJECT, so a tap mints a fresh one and
-  // pans back even when the fix is the one the map already knows; with no
-  // fix yet the tap asks the browser instead and the fix's arrival pans.
-  const [homeNonce, setHomeNonce] = useState(0);
-  const center = useMemo(
-    () =>
-      location && homeNonce >= 0
-        ? { lat: location.lat, lng: location.lng }
-        : null,
-    [location, homeNonce],
+  // THE ONE CAMERA CHANNEL (MESITA-2440). Every move the guest asked for —
+  // first load, the location disc, a tap, a bar pick — is a fresh intent;
+  // nothing else moves the map. `gen` makes a repeat ask fire again.
+  const [cameraIntent, setCameraIntent] = useState<CameraIntent | null>(null);
+  const cameraGen = useRef(0);
+  const askCamera = useCallback(
+    (intent: DistributiveOmit<CameraIntent, "gen">) => {
+      cameraGen.current += 1;
+      setCameraIntent({ ...intent, gen: cameraGen.current } as CameraIntent);
+    },
+    [],
   );
+  // Has the guest moved the map themselves, or picked from the bar? Then
+  // the first GPS fix no longer gets to centre it.
+  const userMovedRef = useRef(false);
+  const pickedRef = useRef(false);
+  // The location disc was tapped with no fix yet: the fix that answers it
+  // centres the map.
+  const locateAskedRef = useRef(false);
 
   // EVERY searchbar pick anchors the map (MESITA-1405): camera to the
   // coordinates, catalog reload there, chosen Place as card ONE. Cleared
   // when a reload lands away from the anchored place — the guest moved on.
   const [anchor, setAnchor] = useState<AnchorPick | null>(null);
-  const anchorGen = useRef(0);
 
   // Distances follow the camera the catalog was fetched for, so a pan
   // ranks and labels the same nearby set. GPS still recenters the map.
@@ -340,16 +359,14 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   );
 
   const lastBoxRef = useRef<ViewportBox | null>(null);
+  // Where the catalog was last ASKED for — set when the request leaves, so
+  // a fix landing mid-flight compares against the load already coming.
   const lastFetchedCenter = useRef<{ lat: number; lng: number } | null>(null);
-  const lastFetchedAtMs = useRef<number | null>(null);
-  const reloadMinKmRef = useRef(CATALOG_RELOAD_MIN_KM);
-  const reloadMinSecRef = useRef(CATALOG_RELOAD_MIN_SEC);
+  const reloadIdleMsRef = useRef(RELOAD_IDLE_SEC_DEFAULT * 1000);
   const pendingReload = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const forceNextLoad = useRef(false);
   // A tap picked the card, so centre it even when the pager still names
   // it. A flick never sets this — scrollIntoView would fight the finger.
   const centerOnSelect = useRef(false);
-  const seenLocationKey = useRef<string | null>(null);
 
   const clearPendingReload = useCallback(() => {
     if (pendingReload.current == null) return;
@@ -361,10 +378,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     lastBoxRef.current = box;
   }, []);
 
-  const loadViewport = useCallback(
-    async (box: ViewportBox) => {
-      lastBoxRef.current = box;
-      const nextCenter = viewportCenter(box);
+  const loadAt = useCallback(
+    async (nextCenter: Coords) => {
+      lastFetchedCenter.current = nextCenter;
       const gen = ++viewportGen.current;
       setCatalogLoading(true);
       setFetchError(null);
@@ -376,10 +392,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           prefer,
         );
         if (gen !== viewportGen.current) return;
-        lastFetchedCenter.current = nextCenter;
-        lastFetchedAtMs.current = Date.now();
-        reloadMinKmRef.current = clampReloadMinKm(result.reloadMinKm);
-        reloadMinSecRef.current = clampReloadMinSec(result.reloadMinSec);
+        reloadIdleMsRef.current =
+          clampReloadIdleSec(result.reloadIdleSec) * 1000;
         setCameraCenter(nextCenter);
         setPlaces(result.places);
         // A reload centered away from the anchored place ends the anchor —
@@ -401,125 +415,125 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     [filters.familyKeys, prefer, supabase],
   );
 
-  const scheduleOrLoad = useCallback(
-    (box: ViewportBox) => {
-      const next = viewportCenter(box);
-      const now = Date.now();
-      const minKm = reloadMinKmRef.current;
-      const minSec = reloadMinSecRef.current;
-      if (
-        shouldReloadNearbyCatalog(lastFetchedCenter.current, next, box, minKm, {
-          fetchedAtMs: lastFetchedAtMs.current,
-          nowMs: now,
-          minSec,
-        })
-      ) {
-        clearPendingReload();
-        void loadViewport(box);
+  // RELOAD ONCE THE MAP IS STILL (MESITA-2440, Pato: "reload after x
+  // seconds without moving"). A guest move arms one timer; any camera move
+  // cancels it (SearchMap's onCameraMoveStart) and the idle that ends that
+  // move arms it again. A finger resting on the map defers it.
+  const armIdleReload = useCallback(() => {
+    clearPendingReload();
+    const fire = () => {
+      if (mapFingerIsDown()) {
+        pendingReload.current = setTimeout(fire, reloadIdleMsRef.current);
         return;
       }
-      if (
-        catalogMovedEnough(lastFetchedCenter.current, next, box, minKm) &&
-        lastFetchedAtMs.current != null
-      ) {
-        const wait =
-          clampReloadMinSec(minSec) * 1000 - (now - lastFetchedAtMs.current);
-        clearPendingReload();
-        if (wait > 0) {
-          pendingReload.current = setTimeout(() => {
-            pendingReload.current = null;
-            if (!lastBoxRef.current) return;
-            void loadViewport(lastBoxRef.current);
-          }, wait);
-        }
-      } else {
-        clearPendingReload();
-      }
-    },
-    [clearPendingReload, loadViewport],
-  );
+      pendingReload.current = null;
+      const box = lastBoxRef.current;
+      if (!box) return;
+      const next = viewportCenter(box);
+      if (!idleReloadDue(lastFetchedCenter.current, next)) return;
+      void loadAt(next);
+    };
+    pendingReload.current = setTimeout(fire, reloadIdleMsRef.current);
+  }, [clearPendingReload, loadAt]);
 
   const onFirstViewport = useCallback(
     (box: ViewportBox) => {
-      void loadViewport(box);
+      lastBoxRef.current = box;
+      void loadAt(viewportCenter(box));
     },
-    [loadViewport],
+    [loadAt],
   );
 
   const onUserViewport = useCallback(
     (box: ViewportBox, meta: { programmatic: boolean }) => {
       markViewport(box);
       if (meta.programmatic) {
-        // Rail / pin / GPS pans move the camera but do not travel.
-        // Rebase the km origin so click-by-click catalog browsing
-        // cannot accumulate toward reload. Time still starts from
-        // the last real fetch.
+        // A move the page made (a tap's reveal, the disc, a bar pick) does
+        // not travel. Rebase the km origin so click-by-click catalog
+        // browsing cannot accumulate toward reload; an ask that needed a
+        // new catalog already loaded it at its target.
         lastFetchedCenter.current = viewportCenter(box);
         clearPendingReload();
-        if (forceNextLoad.current) {
-          forceNextLoad.current = false;
-          void loadViewport(box);
-        }
         return;
       }
-      if (forceNextLoad.current) {
-        forceNextLoad.current = false;
+      userMovedRef.current = true;
+      if (!idleReloadDue(lastFetchedCenter.current, viewportCenter(box))) {
         clearPendingReload();
-        void loadViewport(box);
         return;
       }
-      scheduleOrLoad(box);
+      armIdleReload();
     },
-    [clearPendingReload, loadViewport, markViewport, scheduleOrLoad],
+    [armIdleReload, clearPendingReload, markViewport],
   );
 
   useEffect(() => () => clearPendingReload(), [clearPendingReload]);
 
-  // Family and Near/Popular change the Area pool (`loadViewport` changes
-  // with them). How many stays the operator's. The query bar never reads
-  // these filters.
+  // Family and Near/Popular change the Area pool (`loadAt` changes with
+  // them). How many stays the operator's. The query bar never reads these
+  // filters.
   useEffect(() => {
     if (!lastFetchedCenter.current || !lastBoxRef.current) return;
     clearPendingReload();
-    void loadViewport(lastBoxRef.current);
-  }, [clearPendingReload, loadViewport]);
+    void loadAt(viewportCenter(lastBoxRef.current));
+  }, [clearPendingReload, loadAt]);
 
-  const locationKey = location ? `${location.lat},${location.lng}` : null;
+  // A GPS FIX MOVES THE BLUE DOT, NOT THE MAP (MESITA-2440). Only the fix
+  // the location disc asked for, or the first one when nothing else has
+  // claimed the camera (first load), centres it — and then the catalog
+  // follows if it was loaded somewhere else. Every later fix is ignored
+  // here: that late fix yanking the camera home was the teleport.
+  const firstFixSeen = useRef(location !== null);
+  useOnUserFix(
+    useCallback(
+      (fix: Coords) => {
+        const firstFix = !firstFixSeen.current;
+        firstFixSeen.current = true;
+        const asked = locateAskedRef.current;
+        locateAskedRef.current = false;
+        if (
+          !gpsFixMovesCamera({
+            asked,
+            firstFix,
+            userMoved: userMovedRef.current,
+            picked: pickedRef.current,
+          })
+        ) {
+          return;
+        }
+        askCamera(
+          asked
+            ? { kind: "center", lat: fix.lat, lng: fix.lng }
+            : {
+                kind: "center",
+                lat: fix.lat,
+                lng: fix.lng,
+                minZoom: MAP_USER_ZOOM,
+              },
+        );
+        if (catalogIsStale(lastFetchedCenter.current, fix)) {
+          clearPendingReload();
+          void loadAt(fix);
+        }
+      },
+      [askCamera, clearPendingReload, loadAt],
+    ),
+  );
 
-  useEffect(() => {
-    if (!locationKey) {
-      seenLocationKey.current = null;
-      return;
-    }
-    if (seenLocationKey.current === locationKey) return;
-
-    const [latRaw, lngRaw] = locationKey.split(",");
-    const next = { lat: Number(latRaw), lng: Number(lngRaw) };
-    const firstFix = seenLocationKey.current == null;
-    seenLocationKey.current = locationKey;
-
-    // First GPS at mount: the first tile idle fetches that camera. A
-    // later fix, or a first fix after the default-city tile already
-    // loaded, reloads once when Recentre settles.
-    if (!firstFix || catalogIsStale(lastFetchedCenter.current, next)) {
-      forceNextLoad.current = true;
-    }
-  }, [locationKey]);
-
-  // The location disc (MESITA-2298): with a fix, recentre on the guest and,
-  // when the catalog was fetched elsewhere, reload there — the pan is
-  // programmatic, and a programmatic idle only loads when this flag is up
-  // (the same rule a late GPS fix uses, MESITA-2305). Without a fix, ask.
+  // The location disc (MESITA-2298): with a fix, centre on the guest
+  // (their zoom stays) and, when the catalog was fetched elsewhere, reload
+  // there. Without a fix, ask — the answer centres (useOnUserFix above).
   const recentreOnGuest = useCallback(() => {
     if (!location) {
+      locateAskedRef.current = true;
       locate();
       return;
     }
+    askCamera({ kind: "center", lat: location.lat, lng: location.lng });
     if (catalogIsStale(lastFetchedCenter.current, location)) {
-      forceNextLoad.current = true;
+      clearPendingReload();
+      void loadAt(location);
     }
-    setHomeNonce((n) => n + 1);
-  }, [location, locate]);
+  }, [askCamera, clearPendingReload, loadAt, location, locate]);
 
   // End the current Places autocomplete session and mint the next one.
   const resetSearchSession = useCallback(() => {
@@ -594,16 +608,33 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     openGoogleProfile(prediction, card);
   };
 
-  // One pick = one camera move + one forced reload + (for a Place) card
-  // ONE. Clearing the query dismisses the results panel, brings the rail
-  // back, and rotates the Places billing session — a pick ends a session.
+  // One pick = one camera move + one reload at the pick + (for a Place)
+  // card ONE. Clearing the query dismisses the results panel, brings the
+  // rail back, and rotates the Places billing session — a pick ends a
+  // session. The reload goes out at once, for the pick's coordinates: the
+  // Area pool is asked by its centre, so it need not wait for the pan.
   const anchorMapTo = (
-    camera: Omit<CameraAnchor, "gen">,
+    camera: {
+      lat: number;
+      lng: number;
+      bounds?: {
+        south: number;
+        west: number;
+        north: number;
+        east: number;
+      } | null;
+    },
     place: Place | null,
   ) => {
-    anchorGen.current += 1;
-    forceNextLoad.current = true;
-    setAnchor({ camera: { ...camera, gen: anchorGen.current }, place });
+    pickedRef.current = true;
+    askCamera(
+      camera.bounds
+        ? { kind: "fit", bounds: camera.bounds }
+        : { kind: "center", lat: camera.lat, lng: camera.lng },
+    );
+    clearPendingReload();
+    void loadAt({ lat: camera.lat, lng: camera.lng });
+    setAnchor({ place });
     if (place) {
       setHeldOverlay(null);
       centerOnSelect.current = true;
@@ -706,6 +737,17 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     router.push(placeHref(place.slug || place.id));
   };
 
+  // A tap asks the camera to REVEAL the place: a pan only if it is
+  // off-screen (or under the rail), never a zoom.
+  const revealSelection = (
+    source: SelectionSource,
+    at: { lat?: number | null; lng?: number | null },
+  ) => {
+    if (!selectionMovesCamera(source)) return;
+    if (typeof at.lat !== "number" || typeof at.lng !== "number") return;
+    askCamera({ kind: "reveal", lat: at.lat, lng: at.lng });
+  };
+
   // Center page is selected even before a tap or flick writes state —
   // first load and a catalog that dropped the old id both light card 0.
   const railSelectedId = defaultRailSelection(
@@ -747,6 +789,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         // guest who tapped B would watch A light up. Ring only.
         if (prediction) setHeldOverlay(prediction);
         setSelectedId(pin.id);
+        revealSelection("pin", pin);
         return;
       case "select-mesita-catalog":
         // A pin gesture, not a bar pick — select the card, never anchor.
@@ -755,6 +798,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           setHeldOverlay(googlePredictionFromPlace(place));
           setRailCollapsed(false);
           setSelectedId(place.id);
+          revealSelection("pin", place);
         } else {
           setHeldOverlay(null);
         }
@@ -772,17 +816,20 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     const next = railCenterIndex(el.scrollLeft, page, catalog.length);
     setRailIndex(next);
     const id = catalog[next]?.id;
+    // A SCROLL RINGS THE PIN, IT NEVER PANS (MESITA-2440): browsing the
+    // rail must not drag the map out from under the guest.
     if (id) setSelectedId(id);
   };
 
-  // Pin tap → highlight + scroll the rail to the matching card. Tapping a
-  // pin also reopens the rail if it was dismissed. The map pans itself via
-  // SearchMap's selectedId.
+  // Pin or rail-card tap → highlight + scroll the rail to the matching
+  // card. Tapping a pin also reopens the rail if it was dismissed. The map
+  // pans only when the place is off-screen (camera-intent.ts).
   const handleSelectPlace = (place: Place) => {
     setHeldOverlay(googlePredictionFromPlace(place));
     centerOnSelect.current = true;
     setRailCollapsed(false);
     setSelectedId(place.id);
+    revealSelection("card", place);
   };
 
   // Center the rail card for the selected place once the rail is on screen.
@@ -871,18 +918,17 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           apiKey={apiKey}
           places={catalog}
           userLocation={userLocation}
-          viewCenter={center}
           selectedId={railSelectedId}
           pins={searchPins}
-          cameraAnchor={anchor?.camera ?? null}
-          // The RAW selection — a tap, a scroll, a bar pick. railSelectedId
-          // adds the card-0 fallback, which rings but must never pan.
-          panTargetId={selectedId}
+          // The camera moves on intents only; railSelectedId (and its card-0
+          // fallback) rings a pin and never pans.
+          cameraIntent={cameraIntent}
           onSelectPlace={handleSelectPlace}
           onOpenPlace={handleOpenPlace}
           onSelectPin={handleSelectPin}
           onFirstViewport={onFirstViewport}
           onUserViewport={onUserViewport}
+          onCameraMoveStart={clearPendingReload}
         />
 
         {/* The catalog rail steps aside for the whole of search mode: its cards

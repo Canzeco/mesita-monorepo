@@ -18,14 +18,10 @@ import {
   anchorSurvivesReload,
   anchorViewportBounds,
   catalogIsStale,
-  clampReloadMinKm,
-  clampReloadMinSec,
   defaultRailSelection,
   shouldCenterRailCard,
-  nearbyReloadThresholdKm,
   prependAnchorPlace,
   railCenterIndex,
-  shouldReloadNearbyCatalog,
   viewportCenter,
 } from "@/components/consumer/search/search-utils";
 import type { Place } from "@/lib/api/places";
@@ -132,7 +128,7 @@ describe("SearchBar", () => {
   });
 });
 
-describe("Search map catalog auto-reloads after distance and time", () => {
+describe("Search map catalog reloads once the map is still (MESITA-2440)", () => {
   it("loads the operator's How many, not an SSR 200 dump", () => {
     expect(read("SearchClient.tsx")).toContain("apiFetchNearbyCatalog");
     // How many, the source and the Google reviews minimum are the
@@ -142,8 +138,8 @@ describe("Search map catalog auto-reloads after distance and time", () => {
     expect(read("SearchClient.tsx")).toContain("familyKeys");
     expect(read("SearchClient.tsx")).not.toContain("minReviews");
     expect(read("SearchClient.tsx")).toContain("onFirstViewport");
-    expect(read("SearchClient.tsx")).toContain("shouldReloadNearbyCatalog");
-    expect(read("SearchClient.tsx")).toContain("scheduleOrLoad");
+    expect(read("SearchClient.tsx")).toContain("idleReloadDue");
+    expect(read("SearchClient.tsx")).toContain("armIdleReload");
     expect(read("SearchClient.tsx")).not.toContain("handleSearchHere");
     expect(read("SearchClient.tsx")).not.toContain("SearchHereButton");
     expect(read("SearchClient.tsx")).not.toContain("VIEWPORT_IDLE_MS");
@@ -162,20 +158,33 @@ describe("Search map catalog auto-reloads after distance and time", () => {
     // render a Google-only stub; the EF refuses a call without it
     // (MESITA-2337).
     expect(read("../../../lib/api/places.ts")).toContain("google: true");
-    expect(read("../../../lib/api/places.ts")).toContain("reloadMinSec");
+    expect(read("../../../lib/api/places.ts")).toContain("reloadIdleSec");
   });
 
-  it("waits the remaining reloadMinSec when the camera already moved far enough", () => {
+  it("arms one idle timer per guest move; any camera move cancels it", () => {
     const src = read("SearchClient.tsx");
-    expect(src).toContain("catalogMovedEnough");
-    expect(src).toContain("setTimeout");
-    expect(src).toContain("reloadMinSec");
+    expect(src).toContain("setTimeout(fire, reloadIdleMsRef.current)");
+    expect(src).toContain("clampReloadIdleSec(result.reloadIdleSec)");
     expect(src).toContain("markViewport(box)");
-    expect(src).toContain("forceNextLoad");
-    expect(src).toContain("meta.programmatic");
     expect(src).toMatch(
-      /if \(meta\.programmatic\) \{[\s\S]*return;[\s\S]*scheduleOrLoad/,
+      /if \(meta\.programmatic\) \{[\s\S]*return;[\s\S]*armIdleReload\(\)/,
     );
+    expect(src).toContain("onCameraMoveStart={clearPendingReload}");
+    const map = read("SearchMap.tsx");
+    expect(map).toContain('addListener("bounds_changed"');
+    // The old distance-AND-time gate is gone, not left half-wired.
+    expect(src).not.toContain("reloadMinSec");
+    expect(src).not.toContain("forceNextLoad");
+  });
+
+  it("never reloads under a finger: the timer re-arms while one is down", () => {
+    const src = read("SearchClient.tsx");
+    expect(src).toMatch(
+      /if \(mapFingerIsDown\(\)\) \{\s*pendingReload\.current = setTimeout\(fire/,
+    );
+    const map = read("SearchMap.tsx");
+    expect(map).toContain('div.addEventListener("pointerdown", down, true)');
+    expect(map).toContain('window.addEventListener("pointerup", up, true)');
   });
 
   it("rebases lastFetchedCenter on rail or pin pans so those meters do not accrue", () => {
@@ -184,23 +193,29 @@ describe("Search map catalog auto-reloads after distance and time", () => {
       /if \(meta\.programmatic\) \{[\s\S]*lastFetchedCenter\.current = viewportCenter\(box\)/,
     );
     expect(src).toContain("cannot accumulate toward reload");
-    expect(src).toContain("Only a finger-drag on the map counts as travel");
+    expect(src).toContain("Only the guest's own moves count as travel");
   });
 
-  it("treats every idle after a rail pan as programmatic until dragstart", () => {
+  it("spends the programmatic flag on the idle that ends the move", () => {
     const src = read("SearchMap.tsx");
     expect(src).toContain("cameraMoveIsProgrammatic");
-    expect(src).toContain("noteUserMapDrag");
-    expect(src).toMatch(/addListener\("dragstart", noteUserMapDrag\)/);
+    expect(src).toContain("function takeProgrammaticIdle");
+    expect(src).toContain("{ programmatic: takeProgrammaticIdle() }");
+    expect(src).toMatch(
+      /addListener\("dragstart", \(\) => \{\s*noteUserMapDrag\(\);/,
+    );
     expect(src).not.toContain("PROGRAMMATIC_IDLE_MS");
     expect(src).not.toContain("programmaticIdleUntil");
   });
 
-  it("reloads once when a later GPS fix lands off the fetched camera", () => {
+  it("a GPS fix moves the dot; only the first or an asked-for fix moves the map", () => {
     const src = read("SearchClient.tsx");
-    expect(src).toContain("firstFix");
-    expect(src).toMatch(/catalogIsStale\(lastFetchedCenter\.current, next\)/);
-    expect(src).toContain("forceNextLoad.current = true");
+    expect(src).toContain("useOnUserFix(");
+    expect(src).toContain("gpsFixMovesCamera({");
+    expect(src).toContain("catalogIsStale(lastFetchedCenter.current, fix)");
+    // Nothing keys the camera on the location object any more.
+    expect(src).not.toContain("viewCenter=");
+    expect(read("SearchMap.tsx")).not.toContain("function Recentre");
   });
 });
 
@@ -425,8 +440,11 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
     expect(recentre).toContain(
       "catalogIsStale(lastFetchedCenter.current, location)",
     );
-    expect(recentre).toContain("forceNextLoad.current = true");
-    expect(recentre).toContain("setHomeNonce");
+    expect(recentre).toContain("void loadAt(location)");
+    expect(recentre).toContain(
+      'askCamera({ kind: "center", lat: location.lat, lng: location.lng })',
+    );
+    expect(recentre).toContain("locateAskedRef.current = true");
     expect(src).not.toContain("SearchMapFilters");
     expect(src).not.toContain("filtersOpen");
     expect(src).toContain("useMapFilters");
@@ -480,10 +498,12 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
     expect(loading).not.toContain("h-12 w-12");
   });
 
-  it("recenters the map on the location param, not only the device", () => {
-    expect(read("SearchClient.tsx")).toMatch(/viewCenter=\{center\}/);
-    expect(read("SearchMap.tsx")).toContain("viewCenter");
-    expect(read("SearchMap.tsx")).toMatch(/Recentre target=\{lookAt\}/);
+  it("moves the camera through one CameraIntent channel", () => {
+    expect(read("SearchClient.tsx")).toContain("cameraIntent={cameraIntent}");
+    expect(read("SearchMap.tsx")).toContain(
+      "<CameraDirector intent={cameraIntent} />",
+    );
+    expect(read("SearchMap.tsx")).not.toContain("panAndEnsureZoom");
   });
 });
 
@@ -649,110 +669,6 @@ describe("viewportCenter", () => {
     });
     expect(wrap.lat).toBeCloseTo(0.1);
     expect(wrap.lng).toBeCloseTo(180);
-  });
-});
-
-describe("shouldReloadNearbyCatalog", () => {
-  const last = { lat: 25.5, lng: -100.3 };
-  const cityBox = {
-    south: 25.4,
-    west: -100.4,
-    north: 25.6,
-    east: -100.2,
-  };
-  const wideBox = {
-    south: 20,
-    west: -110,
-    north: 30,
-    east: -90,
-  };
-
-  it("always loads the first paint", () => {
-    expect(shouldReloadNearbyCatalog(null, last, cityBox, 5)).toBe(true);
-  });
-
-  it("ignores a ~110 m nudge at city zoom", () => {
-    expect(
-      shouldReloadNearbyCatalog(last, { lat: 25.501, lng: -100.3 }, cityBox, 5),
-    ).toBe(false);
-  });
-
-  it("reloads after a neighborhood-scale pan", () => {
-    expect(
-      shouldReloadNearbyCatalog(last, { lat: 25.554, lng: -100.3 }, cityBox, 5),
-    ).toBe(true);
-  });
-
-  it("uses 20% of visible width when zoomed out", () => {
-    expect(nearbyReloadThresholdKm(100, 5)).toBe(20);
-    expect(nearbyReloadThresholdKm(10, 5)).toBe(5);
-    expect(clampReloadMinKm(99)).toBe(20);
-    expect(clampReloadMinKm(0.1)).toBe(0.2);
-    expect(clampReloadMinKm(undefined)).toBe(0.5);
-    expect(clampReloadMinSec(40)).toBe(15);
-    expect(clampReloadMinSec(undefined)).toBe(2);
-    expect(
-      shouldReloadNearbyCatalog(last, { lat: 25.554, lng: -100.3 }, wideBox, 5),
-    ).toBe(false);
-    expect(
-      shouldReloadNearbyCatalog(last, { lat: 25.5, lng: -96 }, wideBox, 5),
-    ).toBe(true);
-  });
-
-  it("reloads after a few blocks at the 0.5 km default", () => {
-    const blockBox = {
-      south: 25.495,
-      west: -100.305,
-      north: 25.505,
-      east: -100.295,
-    };
-    expect(
-      shouldReloadNearbyCatalog(
-        last,
-        { lat: 25.505, lng: -100.3 },
-        blockBox,
-        0.5,
-      ),
-    ).toBe(true);
-    expect(
-      shouldReloadNearbyCatalog(
-        last,
-        { lat: 25.501, lng: -100.3 },
-        blockBox,
-        0.5,
-      ),
-    ).toBe(false);
-  });
-
-  it("needs both a far enough pan and the wait", () => {
-    const far = { lat: 25.554, lng: -100.3 };
-    expect(
-      shouldReloadNearbyCatalog(last, far, cityBox, 5, {
-        fetchedAtMs: 1_000,
-        nowMs: 1_500,
-        minSec: 2,
-      }),
-    ).toBe(false);
-    expect(
-      shouldReloadNearbyCatalog(last, far, cityBox, 5, {
-        fetchedAtMs: 1_000,
-        nowMs: 3_000,
-        minSec: 2,
-      }),
-    ).toBe(true);
-    expect(
-      shouldReloadNearbyCatalog(
-        last,
-        { lat: 25.501, lng: -100.3 },
-        cityBox,
-        5,
-        {
-          fetchedAtMs: 1_000,
-          nowMs: 10_000,
-          minSec: 2,
-        },
-      ),
-    ).toBe(false);
   });
 });
 
@@ -1088,10 +1004,17 @@ describe("every searchbar pick anchors the map (MESITA-1405)", () => {
     expect(client).toContain(
       "anchorMapTo({ lat: anchorRow.lat, lng: anchorRow.lng }, anchorRow)",
     );
-    expect(client).toMatch(
-      /anchorMapTo[\s\S]{0,400}forceNextLoad\.current = true/,
+    const anchor = client.slice(
+      client.indexOf("const anchorMapTo = ("),
+      client.indexOf("const handleBarPick"),
     );
-    expect(client).toContain("cameraAnchor={anchor?.camera ?? null}");
+    expect(anchor).toContain(
+      "void loadAt({ lat: camera.lat, lng: camera.lng })",
+    );
+    expect(anchor).toContain('{ kind: "fit", bounds: camera.bounds }');
+    expect(anchor).toContain(
+      '{ kind: "center", lat: camera.lat, lng: camera.lng }',
+    );
     // The modal and the Google-only open moved to the SECOND tap — the pin /
     // rail-card open paths — and stayed off the bar pick.
     expect(client).toContain("openGoogleOnly");
@@ -1125,9 +1048,11 @@ describe("every searchbar pick anchors the map (MESITA-1405)", () => {
     // The camera side: a bounds anchor FITS (city wide, neighbourhood
     // close); a place anchor pans.
     const map = read("SearchMap.tsx");
-    expect(map).toContain("function AnchorCamera");
-    expect(map).toContain("map.fitBounds(anchor.bounds)");
-    expect(map).toMatch(/AnchorCamera[\s\S]{0,600}noteProgrammaticCamera\(\)/);
+    expect(map).toContain("function CameraDirector");
+    expect(map).toContain("map.fitBounds(step.bounds)");
+    expect(map).toMatch(
+      /CameraDirector[\s\S]{0,800}noteProgrammaticCamera\(\)/,
+    );
   });
 
   it("the card-0 fallback rings but never pans — only explicit picks do", () => {
@@ -1137,9 +1062,21 @@ describe("every searchbar pick anchors the map (MESITA-1405)", () => {
     // defaultRailSelection's fallback would otherwise snap the view to the
     // closest place after every reload — fatal right after a Location
     // anchor fits a whole city.
-    expect(client).toContain("panTargetId={selectedId}");
-    expect(map).toMatch(/<PanTo lat=\{panLat\} lng=\{panLng\}/);
-    expect(map).not.toContain("<PanTo lat={selectedLat}");
+    expect(client).toContain("selectedId={railSelectedId}");
+    expect(map).not.toContain("panTargetId");
+    expect(map).not.toContain("<PanTo");
+    // A rail scroll rings only; a tap reveals.
+    const scroll = client.slice(
+      client.indexOf("const handleRailScroll"),
+      client.indexOf("const handleSelectPlace"),
+    );
+    expect(scroll).not.toContain("revealSelection");
+    expect(scroll).not.toContain("askCamera");
+    const select = client.slice(
+      client.indexOf("const handleSelectPlace"),
+      client.indexOf("useEffect", client.indexOf("const handleSelectPlace")),
+    );
+    expect(select).toContain('revealSelection("card", place)');
     // A Location pick clears the lingering explicit selection too.
     expect(client).toMatch(/\} else \{[\s\S]{0,220}setSelectedId\(null\);/);
   });
