@@ -7,7 +7,10 @@ import { Instagram } from "@/components/shared/instagram-icon";
 import type { ConsumerProfile } from "@/lib/api/profile";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
+import {
+  INSTAGRAM_ICON_GRADIENT_CLASS,
+  PHONE_ICON_BADGE_CLASS,
+} from "@/lib/ui-classes";
 import { cn, formatPhoneDisplay } from "@/lib/utils";
 
 // ─── The identity header (MESITA-1079 v2 · -1619 · -1633 ·
@@ -133,7 +136,7 @@ export function IdentityBar({
                 <span className="truncate">{name}</span>
               </span>
               {/* The Instagram glyph carries its OWN brand gradient — platform
-                  branding, the one colour on this header. */}
+                  branding. The phone's green badge below is its twin. */}
               <Link
                 href={CONSUMER_ROUTES.mePages.instagram}
                 aria-label={`Instagram: ${instagramSummary}`}
@@ -171,7 +174,16 @@ export function IdentityBar({
                   auth.user.phone into consumers.phone on a new account; the
                   chip keeps its slot so the grid never reflows. */}
               <span className={cn(CHIP_CLASS, "col-span-2")}>
-                <Phone className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                {/* Green badge, the Instagram badge's twin (MESITA-2491). */}
+                <span
+                  className={cn(
+                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
+                    PHONE_ICON_BADGE_CLASS,
+                  )}
+                  aria-hidden
+                >
+                  <Phone className="h-3 w-3 text-white" aria-hidden />
+                </span>
                 <span className="truncate">{phoneDisplay}</span>
               </span>
             </div>
