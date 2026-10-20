@@ -247,6 +247,28 @@ export function resolveAreaLocation(
   return { kind: "none" };
 }
 
+/** The screen radius's bounds (km): Google's Nearby circle cap on top. */
+export const SCREEN_RADIUS_KM_MIN = 0.05;
+export const SCREEN_RADIUS_KM_MAX = 50;
+
+/**
+ * THE SCREEN RADIUS (MESITA-2504): the visible map's half-width and
+ * half-height averaged — "not the smaller but neither the larger but the in
+ * between" (Pato) — in km, clamped to SCREEN_RADIUS_KM_MIN..MAX. Null when
+ * the bounds are missing, inverted or wider than AREA_BOUNDS_MAX_KM (the
+ * caller falls back to its operator radius).
+ */
+export function screenRadiusKm(raw: unknown): number | null {
+  const b = parseAreaBounds(raw);
+  if (!b) return null;
+  const m = mid(b.low, b.high);
+  const halfWidth = haversineKm(m.lat, b.low.lng, m.lat, b.high.lng) / 2;
+  const halfHeight = haversineKm(b.low.lat, m.lng, b.high.lat, m.lng) / 2;
+  const r = (halfWidth + halfHeight) / 2;
+  if (!Number.isFinite(r)) return null;
+  return Math.min(SCREEN_RADIUS_KM_MAX, Math.max(SCREEN_RADIUS_KM_MIN, r));
+}
+
 /** `map.googlePlaces` 20/40/60 → 1/2/3 Nearby calls. */
 export function googleCallsForStop(stop: number): number {
   const n = Math.round((Number.isFinite(stop) ? stop : GOOGLE_NEARBY_MAX) / GOOGLE_NEARBY_MAX);
@@ -387,6 +409,12 @@ export type AreaPoolDeps<T extends OwnedRow> = {
   /** The guest's mode (MESITA-2428); absent = Nearby, or Family when
    *  families are requested. */
   mode?: AreaMode;
+  /** The caller's own reach and exponents, over the mode's row (the Map,
+   *  MESITA-2504: reach = the screen radius, Proximity^a × Popularity^1). */
+  signals?: Pick<AreaContext, "reachKm" | "weights">;
+  /** The mode that picks the Google circles, over `areaMode` (the Map asks
+   *  the prominent 20 in its whole radius whatever the chip, MESITA-2504). */
+  fanoutMode?: AreaMode;
 };
 
 /** The breakdown a pool place carries: the score's, plus its primary
@@ -437,7 +465,9 @@ async function googleItems<T extends OwnedRow>(
   summary: AreaPoolSummary,
 ): Promise<PoolItem[]> {
   const { apiKey, location, types } = deps;
-  const circles = apiKey && types.length > 0 ? areaFanoutCircles(location, deps.googleCalls, areaMode(deps)) : [];
+  const circles = apiKey && types.length > 0
+    ? areaFanoutCircles(location, deps.googleCalls, deps.fanoutMode ?? areaMode(deps))
+    : [];
   if (circles.length === 0) return [];
   // The Family gate pushed down exactly: a general type's precise subtypes
   // that belong to no requested family never come back to be thrown away.
@@ -530,6 +560,7 @@ export async function selectAreaPool<T extends OwnedRow>(
     location: deps.location,
     families: deps.families,
     ...areaSignalParams(deps.cfg.params, areaMode(deps)),
+    ...deps.signals,
   };
   const fromGoogle = await googleItems(deps, summary);
 

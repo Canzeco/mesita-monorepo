@@ -1,7 +1,7 @@
 import type { ReactNode, RefObject } from "react";
 import { ChevronUp, MapPin, X } from "lucide-react";
 
-import type { Place } from "@/lib/api/places";
+import type { MapWeights, Place } from "@/lib/api/places";
 import { Skeleton, Spinner } from "@/components/shared";
 import type { Coords } from "@/lib/use-user-location";
 import { cn } from "@/lib/utils";
@@ -53,15 +53,35 @@ export type LoadCoords = {
   cross: Coords | null;
   you: Coords | null;
   sent: Coords;
+  /** The circle the server gated on, km (MESITA-2504). */
+  radiusKm: number | null;
+  /** The exponents it scored with (MESITA-2504). */
+  weights: MapWeights | null;
 };
+
+/** A signal or score for the readout: two decimals, "n/a" when absent. */
+function fmtScore(v: number | null | undefined): string {
+  return typeof v === "number" && Number.isFinite(v) ? v.toFixed(2) : "n/a";
+}
 
 // MESITA-2497/2498: development-stage check of the map, at the bottom of
 // it above the rail (Pato: "display the coordinates at the bottom"). The
 // cross, the blue dot and the centre sent to list-places, as of the last
-// catalog load. Remove when Pato says the map is verified.
-export function SearchDebugCoords({ cross, you, sent }: LoadCoords) {
+// catalog load. MESITA-2504 adds, below and without removing anything, the
+// circle the load gated on, the weights it scored with, and the selected
+// card's proximity · popularity · score, live as the selection moves.
+// Remove when Pato says the map is verified.
+export function SearchDebugCoords({
+  cross,
+  you,
+  sent,
+  radiusKm,
+  weights,
+  selected,
+}: LoadCoords & { selected?: Place | null }) {
   const fmt = (c: Coords | null) =>
     c ? `${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}` : "no fix";
+  const score = selected?.score;
   return (
     <div className="mb-2 flex justify-center">
       <dl className="border-border bg-card/90 text-muted-foreground shadow-rest type-meta grid grid-cols-[auto_auto] gap-x-2 rounded-lg border px-2.5 py-1 font-mono leading-tight tabular-nums backdrop-blur">
@@ -71,6 +91,22 @@ export function SearchDebugCoords({ cross, you, sent }: LoadCoords) {
         <dd className="text-foreground">{fmt(you)}</dd>
         <dt>Loaded at</dt>
         <dd className="text-foreground">{fmt(sent)}</dd>
+        <dt>Radius</dt>
+        <dd className="text-foreground" data-debug-radius>
+          {radiusKm == null ? "n/a" : `${radiusKm.toFixed(2)} km`}
+        </dd>
+        <dt>Weights</dt>
+        <dd className="text-foreground" data-debug-weights>
+          {weights
+            ? `prox^${weights.proximity} · pop^${weights.popularity} · sel^${weights.selected}`
+            : "n/a"}
+        </dd>
+        <dt>Selected</dt>
+        <dd className="text-foreground" data-debug-selected>
+          {score
+            ? `prox ${fmtScore(score.proximity)} · pop ${fmtScore(score.popularity)} · sel ${fmtScore(score.selected)} = ${fmtScore(score.final)}`
+            : "n/a"}
+        </dd>
       </dl>
     </div>
   );

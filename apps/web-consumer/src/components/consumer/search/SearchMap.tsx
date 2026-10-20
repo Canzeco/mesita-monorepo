@@ -15,6 +15,7 @@ import {
   Marker,
   useApiLoadingStatus,
   useMap,
+  useMapsLibrary,
 } from "@vis.gl/react-google-maps";
 import type { Place } from "@/lib/api/places";
 import { Skeleton, Spinner } from "@/components/shared";
@@ -106,12 +107,17 @@ function readViewportBox(map: MapInstance): ViewportBox | null {
   };
 }
 
+/** The circle the last load searched (MESITA-2504 debug): the cross it was
+ *  centred on and the screen radius the server answered with. */
+export type LoadedCircle = { center: Coords; radiusKm: number };
+
 export function SearchMap({
   apiKey,
   places,
   userLocation,
   selectedId,
   pins,
+  loadedCircle,
   cameraIntent,
   onTapPlacePin,
   onSelectPin,
@@ -124,6 +130,8 @@ export function SearchMap({
   userLocation: Coords | null;
   selectedId: string | null;
   pins?: SearchMapPin[] | null;
+  /** Drawn on the map: the circle the last load gated on (MESITA-2504). */
+  loadedCircle?: LoadedCircle | null;
   /**
    * The ONLY way the page moves the camera (MESITA-2440): an explicit ask
    * — first load, the location disc, a tap, a bar pick. `selectedId` only
@@ -167,6 +175,7 @@ export function SearchMap({
           userLocation={userLocation}
           selectedId={selectedId}
           pins={pins}
+          loadedCircle={loadedCircle}
           cameraIntent={cameraIntent}
           onTapPlacePin={onTapPlacePin}
           onSelectPin={onSelectPin}
@@ -268,6 +277,7 @@ function SearchMapCanvas({
   userLocation,
   selectedId,
   pins,
+  loadedCircle,
   cameraIntent,
   onTapPlacePin,
   onSelectPin,
@@ -280,6 +290,7 @@ function SearchMapCanvas({
   userLocation: Coords | null;
   selectedId: string | null;
   pins?: SearchMapPin[] | null;
+  loadedCircle?: LoadedCircle | null;
   cameraIntent?: CameraIntent | null;
   /** A catalog pin was tapped; the page counts the taps (select · fly ·
    *  open, MESITA-2488). */
@@ -352,6 +363,7 @@ function SearchMapCanvas({
               onClick={() => onTapPlacePin(place)}
             />
           ))}
+      {loadedCircle && <LoadedCircleOverlay circle={loadedCircle} />}
       {cameraIntent && <CameraDirector intent={cameraIntent} />}
       <ViewportReporter
         onFirst={onFirstViewport}
@@ -360,6 +372,31 @@ function SearchMapCanvas({
       />
     </Map>
   );
+}
+
+// MESITA-2504 debug (Pato: "draw a radious across my crusie just to make
+// sure the cruise is working"): the circle the last load gated on, an ink
+// outline with no fill and no clicks, so the pins under it still tap.
+// Remove with the readout when Pato says the map is verified.
+function LoadedCircleOverlay({ circle }: { circle: LoadedCircle }) {
+  const map = useMap();
+  const maps = useMapsLibrary("maps");
+  const { center, radiusKm } = circle;
+  useEffect(() => {
+    if (!map || !maps) return;
+    const ring = new maps.Circle({
+      map,
+      center,
+      radius: radiusKm * 1000,
+      strokeColor: "#111111",
+      strokeOpacity: 0.6,
+      strokeWeight: 1.5,
+      fillOpacity: 0,
+      clickable: false,
+    });
+    return () => ring.setMap(null);
+  }, [map, maps, center, radiusKm]);
+  return null;
 }
 
 function ViewportReporter({

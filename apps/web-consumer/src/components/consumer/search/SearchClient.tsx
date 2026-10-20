@@ -398,6 +398,15 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   useEffect(() => {
     locationRef.current = location;
   }, [location]);
+  // MESITA-2504 debug: the circle the last load gated on, drawn on the map
+  // (one object per load, so the overlay redraws only when a load lands).
+  const loadedCircle = useMemo(
+    () =>
+      loadCoords?.radiusKm
+        ? { center: loadCoords.sent, radiusKm: loadCoords.radiusKm }
+        : null,
+    [loadCoords],
+  );
 
   // A load asks for the centre AND the visible map (MESITA-2499): the zoom
   // decides how wide the set is. `box` null = the centre inside the
@@ -425,6 +434,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           cross: lastBoxRef.current ? viewportSight(lastBoxRef.current) : null,
           you: locationRef.current,
           sent: nextCenter,
+          radiusKm: result.radiusKm ?? null,
+          weights: result.weights ?? null,
         });
         // A reload centered away from the anchored place ends the anchor —
         // the guest moved on. The pick's own forced load (and a filter
@@ -787,6 +798,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     catalog.map((p) => p.id),
     selectedId,
   );
+  // The readout's live line (MESITA-2504): the selected card's score.
+  const selectedPlace = catalog.find((p) => p.id === railSelectedId) ?? null;
 
   // A pin's last step before it opens: select it (if the card-0 fallback
   // only looked selected) and fly the camera there — an animated pan that
@@ -999,6 +1012,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           userLocation={userLocation}
           selectedId={railSelectedId}
           pins={searchPins}
+          loadedCircle={loadedCircle}
           // The camera moves on intents only; railSelectedId (and its card-0
           // fallback) rings a pin and never pans.
           cameraIntent={cameraIntent}
@@ -1029,7 +1043,11 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
             setRailCardRef={(placeId, el) => {
               railRefs.current.set(placeId, el);
             }}
-            debug={loadCoords && <SearchDebugCoords {...loadCoords} />}
+            debug={
+              loadCoords && (
+                <SearchDebugCoords {...loadCoords} selected={selectedPlace} />
+              )
+            }
           />
         )}
       </div>

@@ -17,12 +17,20 @@
 // web Search, the Map view of the AREA PIPELINE (MESITA-2302, MESITA-2327,
 // one pool since MESITA-2379, `_shared/area-pipeline.ts`). THE MAP IS WHAT
 // THE GUEST SEES (MESITA-2499): `bounds` is the visible map, so the zoom
-// decides how wide the set is — a street close, a city wide. Inside it the
-// pool ranks best first: Popularity × Selected, no centre bias (the bounds
-// location's formula), the guest's family chip as the Family gate and mode,
-// otherwise the Popular mode; the guest no longer picks Nearby or Popular,
-// so `prefer` is ignored. No bounds, or a box wider than AREA_BOUNDS_MAX_KM,
-// falls back to the POINT (the camera centre) inside `map.radiusKm`. It
+// decides how wide the set is — a street close, a city wide. THE SCREEN
+// RADIUS (MESITA-2504): the location is a POINT at the cross (`lat`, `lng`,
+// the sight) inside R = the average of the visible half-width and
+// half-height (`screenRadiusKm`). R is a GATE on both sources — Mesita's
+// read is boxed to it and the Radius gate drops what lies past it, Google's
+// one call asks the prominent 20 inside it and eligibility drops the rest
+// (Pato: "I son't want to see stuff beyond my screen"). The score is
+// Proximity^a × Popularity^1 × Selected^1 with Proximity's reach = R (1 at
+// the cross, 0 at the edge, the same at every zoom); `a` is the operator's
+// `map.proximityWeight`, the one exponent that moves. The family chip gates;
+// the guest picks no mode, so `prefer` is ignored. No bounds, or a box wider
+// than AREA_BOUNDS_MAX_KM, falls back to the centre inside `map.radiusKm`,
+// scored the same way. The answer carries R, the weights and each place's
+// breakdown for the debug readout (MESITA-2504). It
 // shows the same merged pool as the Feed — Google and Mesita candidates
 // deduped, gated, scored, × Selected, ranked — with its own budget: ONE
 // Nearby call per load (the reload throttle bounds the spend), the guest's
@@ -71,11 +79,11 @@ import {
   areaGoogleTypes,
   type OwnedRow,
   type PoolBuilder,
-  resolveAreaLocation,
+  screenRadiusKm,
   selectAreaPool,
   selectedPoolQuery,
 } from "../_shared/area-pipeline.ts";
-import type { AreaMode } from "../_shared/area-score.ts";
+import type { AreaWeights } from "../_shared/area-score.ts";
 import { areaQuota, ownedLookup } from "../_shared/area-deps.ts";
 import { readGooglePlacesKey } from "../_shared/google-places.ts";
 
@@ -100,6 +108,15 @@ type ListBody = {
   bounds?: unknown;
   /** Ignored since MESITA-2499: the mode is the server's. */
   prefer?: unknown;
+};
+
+/** One place's score, for the debug readout (MESITA-2504): `score`, not
+ *  `area` — the Feed's `area` is the whole breakdown. */
+type WireScore = {
+  proximity: number | null;
+  popularity: number | null;
+  selected: number;
+  final: number;
 };
 
 type CardRow = {
@@ -168,20 +185,20 @@ Deno.serve(async (req) => {
   const googleFill = mapShouldFillGoogle(true, cfg.map) &&
     nearbyTypes.length > 0;
   const center = { lat: nearbyDecision.lat, lng: nearbyDecision.lng };
-  const radiusKm = cfg.map.radiusKm;
-  const location = resolveAreaLocation(body.bounds, center, radiusKm);
-  // A family chip is the Family mode (areaMode); every family ranks Popular.
-  const mode: AreaMode = "popular";
+  // The screen radius, or the operator's when there is no screen to read.
+  const screenKm = screenRadiusKm(body.bounds);
+  const radiusKm = screenKm ?? cfg.map.radiusKm;
+  const location = { kind: "point" as const, anchor: center, radiusKm };
+  // Proximity^a × Popularity^1 × Selected^1, reach = the radius.
+  const weights: AreaWeights = {
+    proximity: cfg.map.proximityWeight,
+    popularity: 1,
+    selected: 1,
+  };
   const pool = await selectedPoolQuery(
     supabase.from("profiles").select(PLACE_CARD_COLUMNS) as unknown as PoolBuilder,
     cfg,
-    {
-      center: location.kind === "point" ? location.anchor : null,
-      radiusKm,
-      bounds: location.kind === "area" ? location.bounds : null,
-      families: guestSupers,
-      selectedOnly: false,
-    },
+    { center, radiusKm, families: guestSupers, selectedOnly: false },
   ).limit(NEARBY_SCAN_LIMIT);
   if (pool.error) {
     return json({ ok: false, error: pool.error.message }, 500);
@@ -204,7 +221,9 @@ Deno.serve(async (req) => {
     // never a stub (MESITA-2154). An owned row that is not ready stays a
     // stub, and its tap's get-or-create opens the Mesita place.
     lookupOwned: ownedLookup(supabase, PLACE_CARD_COLUMNS, "consumer-web-list-places"),
-    mode,
+    signals: { reachKm: radiusKm, weights },
+    // The prominent 20 inside the whole radius, whatever the chip.
+    fanoutMode: "popular",
   });
   // A caller that names its own cap keeps it.
   const places = typeof body.limit === "number"
@@ -215,16 +234,29 @@ Deno.serve(async (req) => {
   console.log(JSON.stringify({
     fn: "consumer-web-list-places",
     mode: "nearby",
-    location: location.kind,
+    radius: screenKm === null ? "operator" : "screen",
+    radiusKm,
+    proximityWeight: weights.proximity,
     googleFillOn: googleFill,
-    areaMode: guestSupers.length > 0 ? "family" : mode,
     ...area.summary,
     returned: places.length,
   }));
   return json({
     ok: true,
-    places: withFamilyKeysList(places.map(({ area: _a, ...p }) => p) as CardRow[]),
+    places: withFamilyKeysList(
+      places.map(({ area: a, ...p }) => ({
+        ...p,
+        score: {
+          proximity: a.signals.proximity,
+          popularity: a.signals.popularity,
+          selected: a.selected,
+          final: a.final,
+        } satisfies WireScore,
+      })) as CardRow[],
+    ),
     mode: "nearby",
+    radiusKm,
+    weights,
     reloadMinKm: cfg.map.reloadMinKm,
     reloadMinSec: cfg.map.reloadMinSec,
   });

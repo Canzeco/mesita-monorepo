@@ -1,7 +1,7 @@
 // consumer-web-list-places on the shared engine (MESITA-2302, one pool since
 // MESITA-2379). Source pins for the wiring the engine's own behavioural suite
-// (area-pipeline.test) cannot see: the one pool on the visible map
-// (MESITA-2499), one Google call, the fallback circle, and that web Search's
+// (area-pipeline.test) cannot see: the one pool inside the screen radius
+// (MESITA-2504), one Google call, the fallback circle, and that web Search's
 // call is the only one it answers (MESITA-2337).
 import { assert, assertEquals } from "jsr:@std/assert@1";
 
@@ -9,13 +9,17 @@ const src = await Deno.readTextFile(new URL("./index.ts", import.meta.url));
 const anchor = src.indexOf("const center = { lat: nearbyDecision.lat");
 const webBranch = anchor >= 0 ? src.slice(anchor) : "";
 
-Deno.test("list-places: the Map is the visible map's view of the one Area pool, one Google call", () => {
+Deno.test("list-places: the Map is the one Area pool inside the screen radius, one Google call", () => {
   assert(webBranch.length > 0);
   assert(webBranch.includes("selectAreaPool<OwnedRow>("));
-  // The visible map (MESITA-2499); no bounds falls back to the point.
-  assert(webBranch.includes("const location = resolveAreaLocation(body.bounds, center, radiusKm);"));
-  assert(webBranch.includes('bounds: location.kind === "area" ? location.bounds : null,'));
+  // A point at the cross inside the screen radius (MESITA-2504): one circle
+  // gates the Mesita read and the Google hits alike.
+  assert(webBranch.includes("const screenKm = screenRadiusKm(body.bounds);"));
+  assert(webBranch.includes('const location = { kind: "point" as const, anchor: center, radiusKm };'));
+  assert(webBranch.includes("{ center, radiusKm, families: guestSupers, selectedOnly: false },"));
   assert(webBranch.includes("    location,\n"));
+  assert(webBranch.includes('fanoutMode: "popular",'));
+  assertEquals(src.includes("resolveAreaLocation"), false);
   assert(webBranch.includes("googleCalls: googleFill ? 1 : 0"));
   assert(webBranch.includes("selectedOnly: false"));
   // The guest never picks a source.
@@ -31,16 +35,30 @@ Deno.test("list-places: no guest review stop; the operator's map.googleMinReview
   assertEquals(src.includes("body.minReviews"), false);
 });
 
-Deno.test("list-places: the one circle is map.radiusKm; no client radius, no constant", () => {
+Deno.test("list-places: the circle is the screen's, else map.radiusKm; no client radius, no constant", () => {
   assertEquals(src.includes("nearbyDecision.radiusKm"), false);
+  assertEquals(src.includes("body.radiusKm"), false);
   assertEquals(src.includes("NEARBY_RADIUS_KM"), false);
-  assert(webBranch.includes("const radiusKm = cfg.map.radiusKm;"));
+  assert(webBranch.includes("const radiusKm = screenKm ?? cfg.map.radiusKm;"));
 });
 
-Deno.test("list-places: best first; the guest's Nearby / Popular is gone (MESITA-2499)", () => {
-  assert(webBranch.includes('const mode: AreaMode = "popular";'));
+Deno.test("list-places: Proximity^a × Popularity^1 × Selected^1, reach = the radius (MESITA-2504)", () => {
+  assert(webBranch.includes("proximity: cfg.map.proximityWeight,"));
+  assert(webBranch.includes("popularity: 1,"));
+  assert(webBranch.includes("selected: 1,"));
+  assert(webBranch.includes("signals: { reachKm: radiusKm, weights },"));
+  // The guest picks no mode (MESITA-2499).
   assertEquals(src.includes("readAreaMode("), false);
   assertEquals(src.includes("body.prefer"), false);
+});
+
+Deno.test("list-places: the answer carries the radius, the weights and each place's score (MESITA-2504)", () => {
+  const answer = webBranch.slice(webBranch.indexOf("return json({\n    ok: true,"));
+  assert(answer.includes("    radiusKm,\n"));
+  assert(answer.includes("    weights,\n"));
+  assert(answer.includes("proximity: a.signals.proximity,"));
+  assert(answer.includes("popularity: a.signals.popularity,"));
+  assert(answer.includes("final: a.final,"));
 });
 
 Deno.test("list-places: the old merge-and-paint branch is gone", () => {

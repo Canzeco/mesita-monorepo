@@ -1448,3 +1448,33 @@ describe("anchor helpers", () => {
     expect(anchorViewportBounds(null)).toBe(null);
   });
 });
+
+// MESITA-2504 (Pato: "draw a radious across my crusie … then, below, in real
+// time, without remobing shit, indicate the weight of the proximity
+// signals"): the circle the last load gated on is drawn, and the readout
+// keeps its three lines and adds Radius, Weights and the selected card's
+// score.
+describe("the screen radius is drawn and its weights read out (MESITA-2504)", () => {
+  it("the readout keeps Cross · You · Loaded at and adds Radius, Weights, Selected", () => {
+    const overlays = read("search-catalog-overlays.tsx");
+    for (const line of ["<dt>Cross</dt>", "<dt>You</dt>", "<dt>Loaded at</dt>", "<dt>Radius</dt>", "<dt>Weights</dt>", "<dt>Selected</dt>"]) {
+      expect(overlays, line).toContain(line);
+    }
+    expect(overlays.indexOf("<dt>Loaded at</dt>")).toBeLessThan(overlays.indexOf("<dt>Radius</dt>"));
+    expect(overlays).toContain("prox^${weights.proximity} · pop^${weights.popularity}");
+    expect(overlays).toContain("const score = selected?.score;");
+  });
+
+  it("the map draws the loaded circle, unclickable, from the server's radius", () => {
+    const client = read("SearchClient.tsx");
+    const map = read("SearchMap.tsx");
+    expect(client).toContain("radiusKm: result.radiusKm ?? null,");
+    expect(client).toContain("{ center: loadCoords.sent, radiusKm: loadCoords.radiusKm }");
+    expect(client).toContain("loadedCircle={loadedCircle}");
+    expect(client).toContain("<SearchDebugCoords {...loadCoords} selected={selectedPlace} />");
+    expect(map).toContain("{loadedCircle && <LoadedCircleOverlay circle={loadedCircle} />}");
+    expect(map).toContain("radius: radiusKm * 1000,");
+    expect(map).toContain("clickable: false,");
+    expect(map).toContain("return () => ring.setMap(null);");
+  });
+});
