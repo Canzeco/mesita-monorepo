@@ -76,13 +76,14 @@ export function gpsFixMovesCamera(fix: {
 /**
  * The share of the map the page's own chrome covers, so a place under it
  * counts as off-screen. Fractions of the viewport's height or width,
- * measured from each edge. The rail's cards have their own band under the
- * map since MESITA-2506, so the bottom keeps only the floating counter pill
- * and the debug readout (it was 0.38 under the floating cards).
+ * measured from each edge. Nothing floats over the map's foot since
+ * MESITA-2509 (the cards, the count and the readout are in the band under
+ * it), so the bottom keeps the same margin as the top (0.38 under the
+ * floating cards, 0.12 under the floating pills).
  */
 export const VIEW_INSETS = {
   top: 0.06,
-  bottom: 0.12,
+  bottom: 0.06,
   left: 0.08,
   right: 0.08,
 } as const;

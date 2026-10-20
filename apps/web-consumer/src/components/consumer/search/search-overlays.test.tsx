@@ -553,7 +553,6 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
     // Counted by a marker attribute, not a class substring.
     expect(loading.match(/data-skeleton-disc/g) ?? []).toHaveLength(2);
     expect(loading).toContain("h-9 w-9");
-    expect(loading).toContain("bg-card/95");
     expect(loading).toContain("data-search-loading-chips");
     expect(loading).not.toContain("h-12 w-12");
   });
@@ -835,22 +834,25 @@ describe("Search catalog reload UI", () => {
 });
 
 describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () => {
-  it("uses 80/10/10 snap pages, not a 288px peek strip or a full-bleed card", () => {
+  it("uses 88/6/6 snap pages in the carousel column, not a 288px peek strip or a full-bleed card", () => {
     const overlay = read("search-catalog-overlays.tsx");
     const card = read("SearchRailCard.tsx");
     const client = read("SearchClient.tsx");
     const loading = read("../../../app/(shell)/(discovery)/search/loading.tsx");
+    // The carousel is the band's right column (MESITA-2509): 88% pages with
+    // 6% pads, and the scroll math reads the same share.
     expect(overlay).toContain("snap-x snap-mandatory");
-    expect(overlay).toContain("w-4/5 shrink-0 snap-center");
-    expect(overlay).toContain("px-3");
-    expect(overlay).toContain("first:ml-[10%] last:mr-[10%]");
+    expect(overlay).toContain("w-[88%] shrink-0 snap-center");
+    expect(overlay).toContain("px-1.5");
+    expect(overlay).toContain("first:ml-[6%] last:mr-[6%]");
+    expect(overlay).toContain("export const RAIL_PAGE_SHARE = 0.88;");
     expect(overlay).not.toContain("w-[288px]");
     expect(overlay).not.toContain("w-full shrink-0 snap-start");
     expect(overlay).not.toMatch(/flex gap-2 overflow-x-auto/);
     expect(card).toContain("flex w-full items-stretch");
     expect(card).toContain("ring-inset");
     expect(card).not.toContain("w-[288px]");
-    expect(client).toContain("el.clientWidth * 0.8");
+    expect(client).toContain("el.clientWidth * RAIL_PAGE_SHARE");
     expect(client).toContain("railCenterIndex");
     expect(client).toContain("setSelectedId(id)");
     expect(client).toContain("defaultRailSelection");
@@ -862,9 +864,9 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
     expect(client).toContain('inline: "center"');
     expect(client).not.toContain("RAIL_STRIDE");
     expect(client).not.toContain("w-[288px]");
-    expect(loading).toContain("w-4/5 shrink-0 snap-center");
-    expect(loading).toContain("px-3");
-    expect(loading).toContain("first:ml-[10%] last:mr-[10%]");
+    expect(loading).toContain("w-[88%] shrink-0 snap-center");
+    expect(loading).toContain("px-1.5");
+    expect(loading).toContain("first:ml-[6%] last:mr-[6%]");
     expect(loading).not.toContain("w-[288px]");
   });
 
@@ -940,13 +942,13 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
     expect(full).toContain("grid-rows-[1.25rem_repeat(3,1rem)]");
   });
 
-  it("renders one 80% skeleton page with 10% side pads, not a 288px strip", () => {
+  it("renders one 88% skeleton page with 6% side pads, not a 288px strip", () => {
     const html = renderToStaticMarkup(
       <SearchRailOverlay {...railProps} places={[]} catalogLoading />,
     );
     expect(html).toContain("Finding nearby");
     expect(html).toContain("snap-center");
-    expect(html).toContain("w-4/5");
+    expect(html).toContain("w-[88%]");
     expect(html).not.toContain("w-[288px]");
   });
 });
@@ -1500,29 +1502,47 @@ describe("the rail is a solid white band under the map (MESITA-2506)", () => {
     expect(client.indexOf("<SearchRailOverlay")).toBeGreaterThan(mapEnd);
   });
 
-  it("the cards are in a solid bg-card band with a top hairline; the pills float above it", () => {
+  // MESITA-2509 (Pato: "bottom box white using 100% width … left side for
+  // the meatadata … right sie for the carosuel and then leave the fucking
+  // map visible"): one full-width band, two columns, nothing on the map.
+  it("one full-width bg-card band: the metadata left, the carousel right, nothing floating", () => {
     const overlay = read("search-catalog-overlays.tsx");
-    expect(overlay).toContain('className="relative z-20 shrink-0"');
-    expect(overlay).toContain('className="border-border bg-card border-t py-2.5"');
-    expect(overlay).toContain("pointer-events-none absolute inset-x-0 bottom-full pb-3");
-    expect(overlay).not.toContain("absolute inset-x-0 bottom-3 z-20");
+    expect(overlay).toContain(
+      'className="border-border bg-card relative z-20 flex shrink-0 items-stretch border-t"',
+    );
+    expect(overlay).toContain("w-[42%]");
+    expect(overlay).toContain("data-search-rail-meta");
+    expect(overlay.indexOf("data-search-rail-meta")).toBeLessThan(
+      overlay.indexOf("data-search-rail-cards"),
+    );
+    // Nothing floats over the map: no absolute float, no pill chrome, no card readout.
+    expect(overlay).not.toContain("bottom-full");
+    expect(overlay).not.toContain("absolute inset-x-0 bottom-3");
+    expect(overlay).not.toContain("rounded-full border py-0.5");
+    expect(overlay).not.toContain("bg-card/90");
+    const client = read("SearchClient.tsx");
+    expect(client).toContain("meta={");
+    expect(client).not.toContain("debug={");
     const withCards = renderToStaticMarkup(
       <SearchRailOverlay {...railProps} places={[RAIL_PLACE]} />,
     );
     expect(withCards).toContain("data-search-rail-cards");
+    expect(withCards).toContain("Cosmo San Pedro");
     // The rail cannot be hidden (Pato, MESITA-2508: "keep it always").
     expect(withCards).not.toContain("Hide places");
     expect(overlay).not.toContain("railCollapsed");
     expect(overlay).not.toContain("Show ${places.length}");
-    // Empty: no band, only the floating note.
+    // Empty: the band stays, the note sits in the carousel column.
     const empty = renderToStaticMarkup(
       <SearchRailOverlay {...railProps} places={[]} />,
     );
-    expect(empty).not.toContain("data-search-rail-cards");
+    expect(empty).toContain("data-search-rail-cards");
+    expect(empty).toContain("No places to show here yet");
   });
 
   it("the route skeleton draws the same band", () => {
     const loading = read("../../../app/(shell)/(discovery)/search/loading.tsx");
-    expect(loading).toContain('className="border-border bg-card shrink-0 border-t py-2.5"');
+    expect(loading).toContain('className="border-border bg-card flex shrink-0 items-stretch border-t"');
+    expect(loading).toContain("w-[42%]");
   });
 });
