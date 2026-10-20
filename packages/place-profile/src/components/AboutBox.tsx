@@ -1,21 +1,18 @@
-// The place's Presentation card. English only (Mesita core). Spanish TMS is
-// later (MESITA-939) — do not show a second language here.
+import type { PlaceDetail } from "../place-detail";
+import { Section } from "./place-detail/section";
+import { TagChips } from "./place-detail/place-link-chips";
+
+// About — the first section of the place scroll (MESITA-2441): the place's
+// story, then its Mesita tags. English only (Mesita core); Spanish TMS is
+// later (MESITA-939).
 //
-// THE HEADING IS "PRESENTATION" (Pato, 2026-09-05) and it carries no place
-// name. It used to read "About <name>", and the name was doing real work: on a
-// page of stacked sections, a bare "ABOUT" would have been read as "about the
-// section directly above it". "Presentation" does not have that ambiguity — it
-// names the thing itself rather than pointing at a subject — so the name
-// became redundant and the `name` prop went with it.
-//
-// THE RENAME STOPS AT THE LABEL. The component, its file and its prop stay
-// AboutBox/`text`, matching how every other label change in this repo is
-// scoped (root CLAUDE.md: a rename never travels into routes, code or
-// columns). `places.description` is untouched.
+// decision: Pato (2026-10-19) — the heading is "About" again. It read
+// "Presentation" (2026-09-05) because a bare ABOUT among stacked boxes
+// looked like it was about the box above; on one titled scroll it is not.
+// The component, file and `places.description` keep their names.
 //
 // The field is capped at 500 characters (MESITA-2248). The full text always
-// renders (MESITA-2262). There is no line-clamp and no Show more / Show less
-// control: a story that cannot exceed 500 characters has nothing worth hiding.
+// renders (MESITA-2262): no line-clamp, no Show more.
 //
 // Enricher Abouts are multi-paragraph (blank-line separated). Normalize
 // to \n\n and render with whitespace-pre-wrap so paragraphs show.
@@ -39,19 +36,23 @@ function formatAboutDisplay(text: string): string {
   return soft.length > 1 ? soft.join("\n\n") : normalized;
 }
 
-const HEADING = "Presentation";
-
-export function AboutBox({ text }: { text: string }) {
+export function AboutBox({
+  text,
+  tags = [],
+}: {
+  text: string;
+  tags?: PlaceDetail["tags"];
+}) {
   const body = formatAboutDisplay(text);
-
+  if (!body && tags.length === 0) return null;
   return (
-    <section className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-4">
-      <h3 className="text-muted-foreground type-meta font-bold tracking-[0.14em] uppercase">
-        {HEADING}
-      </h3>
-      <p className="text-muted-foreground text-base leading-relaxed whitespace-pre-wrap">
-        {body}
-      </p>
-    </section>
+    <Section title="About">
+      {body && (
+        <p className="text-foreground text-base leading-relaxed whitespace-pre-wrap">
+          {body}
+        </p>
+      )}
+      <TagChips tags={tags} />
+    </Section>
   );
 }

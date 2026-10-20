@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { PlaceProfile } from "./components/PlaceProfile";
-import { SoonScreen } from "./components/place-detail/soon-screen";
 import { placeRowToDetail } from "./place-to-detail";
 import type { PlaceDetail } from "./place-detail";
 
@@ -28,23 +27,81 @@ describe("member preview edges", () => {
     expect(html).not.toContain("Phone emulator");
   });
 
-  it("keeps the four sections when not enriched, the vote atop Overview (MESITA-2332)", () => {
+  it("is one scroll: no tab bar and nothing Soon (MESITA-2441)", () => {
+    const html = renderToStaticMarkup(<PlaceProfile place={detail()} />);
+    expect(html).not.toContain('aria-label="Place sections"');
+    expect(html).not.toContain("Overview");
+    expect(html).not.toContain("Rewards");
+    expect(html).not.toContain(">Menu<");
+    expect(html).not.toContain("Soon");
+    expect(html).not.toContain("Pay");
+  });
+
+  it("orders the sections About, Hours, Location, Reviews, Links", () => {
+    const html = renderToStaticMarkup(
+      <PlaceProfile
+        place={detail({
+          description: "A story.",
+          hours: { monday: [{ open: "09:00", close: "17:00" }] },
+          timezone: "America/Mexico_City",
+          address: "Calle 1",
+          lat: 19.4,
+          lng: -99.1,
+          google_reviews: [{ author: "Ana", rating: 5, text: "Great", published: "2026-10-01" }],
+          website_url: "https://example.com",
+        })}
+      />,
+    );
+    const at = (title: string) => html.indexOf(`aria-label="${title}"`);
+    const order = ["About", "Hours", "Location", "Reviews", "Links"].map(at);
+    expect(order.every((i) => i > -1)).toBe(true);
+    expect([...order].sort((x, y) => x - y)).toEqual(order);
+  });
+
+  it("puts the name, then one meta line, under the photos", () => {
+    const html = renderToStaticMarkup(
+      <PlaceProfile
+        place={{
+          ...detail({
+            photos: ["https://example.com/a.jpg", "https://example.com/b.jpg"],
+            price_level: 3,
+            google_stars_overall: 4.6,
+            google_review_count: 14818,
+          }),
+          distance_km: 2.4,
+        }}
+      />,
+    );
+    expect(html.indexOf("aspect-[4/3]")).toBeLessThan(html.indexOf("<h1"));
+    const metaAt = html.indexOf('data-testid="place-meta"');
+    const meta = html.slice(html.indexOf(">", metaAt) + 1);
+    const text = meta.replace(/<[^>]+>/g, "");
+    expect(text).toMatch(/^Restaurant·\$\$\$·2\.4 km·4\.6\(15K\)/);
+  });
+
+  it("leaves the social slot empty until it is passed (MESITA-2442)", () => {
+    expect(renderToStaticMarkup(<PlaceProfile place={detail()} />)).not.toContain(
+      'data-slot="social"',
+    );
+    const html = renderToStaticMarkup(
+      <PlaceProfile place={detail()} social={<span>Perdón and 3 others saw this</span>} />,
+    );
+    const slot = html.indexOf('data-slot="social"');
+    expect(slot).toBeGreaterThan(html.indexOf('data-testid="place-meta"'));
+    expect(slot).toBeLessThan(html.indexOf(">Save<"));
+    expect(html).toContain("Perdón and 3 others saw this");
+  });
+
+  it("puts the Enrich vote under the actions when not enriched (MESITA-2332)", () => {
     const html = renderToStaticMarkup(
       <PlaceProfile place={detail({ enriched_at: null, is_enriched: false })} />,
     );
-    expect(html).toContain('aria-label="Place sections"');
-    for (const label of ["Overview", "Reviews", "Menu", "Rewards"]) {
-      expect(html).toContain(label);
-    }
-    expect(html).not.toContain(">Enrich<");
     expect(html).toContain("Vote to enrich");
-    expect(html.indexOf('aria-label="Place sections"')).toBeLessThan(
-      html.indexOf("Vote to enrich"),
-    );
+    expect(html.indexOf(">Directions<")).toBeLessThan(html.indexOf("Vote to enrich"));
     expect(html).not.toContain("Community votes");
   });
 
-  it("keeps Google's create-time reviews on the Reviews tab, not under the vote", () => {
+  it("shows Google's create-time reviews on the scroll of an unenriched place", () => {
     const html = renderToStaticMarkup(
       <PlaceProfile
         place={detail({
@@ -58,60 +115,38 @@ describe("member preview edges", () => {
         })}
       />,
     );
-    // MESITA-2332: Overview opens; the Details reviews wait on Reviews.
     expect(html).toContain("Vote to enrich");
-    expect(html).not.toContain("Great coffee");
-    expect(html).toContain('aria-label="Place sections"');
+    expect(html).toContain("Great coffee");
+    expect(html.indexOf("Vote to enrich")).toBeLessThan(html.indexOf("Great coffee"));
   });
 
-  it("draws no reviews list for an unenriched place Google gave none", () => {
+  it("draws no Reviews section for a place Google gave none", () => {
     const html = renderToStaticMarkup(
       <PlaceProfile place={detail({ enriched_at: null, is_enriched: false })} />,
     );
     expect(html).not.toContain('aria-label="Reviews"');
   });
 
-  it("puts all five buttons in the header and no pinned bar (MESITA-2321)", () => {
+  it("has Save · Share · Directions as icons and Reserve pinned at the bottom", () => {
     const html = renderToStaticMarkup(<PlaceProfile place={detail()} />);
-    for (const label of [">Save<", ">Contact<", ">Share<", "Reserve a table", "Pay, Soon"]) {
-      expect(html).toContain(label);
-    }
-    // The old pinned band (border-t + backdrop-blur under the scroller) is gone.
-    expect(html).not.toContain("backdrop-blur");
-    expect(html).toContain("grid grid-cols-3 gap-2");
-    expect(html).toContain("grid grid-cols-2 gap-2");
+    const save = html.indexOf(">Save<");
+    const share = html.indexOf(">Share<");
+    const directions = html.indexOf(">Directions<");
+    expect(save).toBeGreaterThan(-1);
+    expect(share).toBeGreaterThan(save);
+    expect(directions).toBeGreaterThan(share);
+    expect(html).not.toContain(">Contact<");
+    const reserve = html.indexOf('aria-label="Reserve a table"');
+    expect(reserve).toBeGreaterThan(directions);
+    expect(html.lastIndexOf("sticky bottom-0", reserve)).toBeGreaterThan(-1);
+    expect(html.match(/aria-label="Reserve a table"/g)).toHaveLength(1);
   });
 
-  it("keeps Google, Instagram, and Facebook when the socials are empty", () => {
+  it("has no Reserve for a place that opted out of bookings", () => {
     const html = renderToStaticMarkup(
-      <PlaceProfile
-        place={detail({
-          google_stars_overall: 3.8,
-          google_review_count: 484,
-        })}
-      />,
+      <PlaceProfile place={detail({ reservations_enabled: false })} />,
     );
-    expect(html).toContain("3.8");
-    expect(html).toContain("3.8 ★ (484)");
-    expect(html).toContain("Instagram, Not connected");
-    expect(html).toContain("Facebook, Not connected");
-    const googleAt = html.indexOf("3.8 ★ (484)");
-    const instagramAt = html.indexOf(">Instagram<");
-    const facebookAt = html.indexOf(">Facebook<");
-    expect(googleAt).toBeGreaterThan(-1);
-    expect(instagramAt).toBeGreaterThan(googleAt);
-    expect(facebookAt).toBeGreaterThan(instagramAt);
-    expect(html).toContain("from-purple-600");
-    expect(html).toContain("bg-[#1877F2]");
-    expect(html).toContain("rounded-full bg-[#EA4335] h-6 w-6");
-    expect(html).toContain("h-[18px] w-[18px]");
-    expect(html).toContain('class="h-3 w-3"');
-    expect(html).toContain("#FFC107");
-    expect(html).toContain(">Not connected<");
-    expect(html).toContain(">Instagram<");
-    expect(html).toContain(">Facebook<");
-    expect(html).not.toContain(">—<");
-    expect(html).not.toContain("Reviews summary");
+    expect(html).not.toContain("Reserve a table");
   });
 
   it("renders a place with no photos", () => {
@@ -119,33 +154,17 @@ describe("member preview edges", () => {
       <PlaceProfile place={detail({ photos: [] })} />,
     );
     expect(html).toContain("Lupita");
-    expect(html).toContain("Overview");
-    const nav = html.slice(html.indexOf("<nav"), html.indexOf(">", html.indexOf("<nav")) + 1);
-    expect(nav).toContain('aria-label="Place sections"');
-    expect(nav).toContain("bg-card");
-    expect(nav).not.toContain("bg-background");
-    const saveAt = html.indexOf(">Save<");
-    const contactAt = html.indexOf(">Contact<");
-    const shareAt = html.indexOf(">Share<");
-    const reserveAt = html.indexOf("Reserve a table");
-    const payAt = html.indexOf("Pay, Soon");
-    expect(saveAt).toBeGreaterThan(-1);
-    expect(contactAt).toBeGreaterThan(saveAt);
-    expect(shareAt).toBeGreaterThan(contactAt);
-    expect(reserveAt).toBeGreaterThan(shareAt);
-    expect(payAt).toBeGreaterThan(reserveAt);
-    expect(html).not.toContain("Save, Soon");
-    expect(html).toContain("Menu");
-    expect(html).not.toContain("Menus");
-    expect(html).toContain("Rewards");
-    expect(html).toContain("Soon");
-    const menuSoon = renderToStaticMarkup(<SoonScreen title="Menu" />);
-    expect(menuSoon).toContain("Menu is coming soon");
-    expect(menuSoon).toContain("Menu at this place lands here shortly.");
-    expect(menuSoon).not.toContain("Menus");
-    expect(renderToStaticMarkup(<SoonScreen title="Rewards" />)).toContain(
-      "Rewards is coming soon",
+    expect(html).toContain("bg-pink-gradient");
+    expect(html).toContain(">Save<");
+  });
+
+  it("draws the map at the place's coordinates, keyless", () => {
+    const html = renderToStaticMarkup(
+      <PlaceProfile place={detail({ address: "Calle 1", lat: 25.6779, lng: -100.3 })} />,
     );
+    expect(html).toContain("https://tile.openstreetmap.org/16/");
+    expect(html).toContain('aria-label="Map of Lupita"');
+    expect(html).toContain("© OpenStreetMap contributors");
   });
 
   it("renders no outbound href when links and callbacks are absent", () => {
@@ -173,14 +192,15 @@ describe("member preview edges", () => {
     expect(html).toContain("3 of 12 votes");
   });
 
-  it("renders the full Presentation with no show-more control", () => {
+  it("renders the full About with no show-more control", () => {
     const capped = "A".repeat(500);
     const overOldClamp = "B".repeat(700);
     for (const text of [capped, overOldClamp]) {
       const html = renderToStaticMarkup(
         <PlaceProfile place={detail({ description: text })} />,
       );
-      expect(html).toContain("Presentation");
+      expect(html).toContain(">About<");
+      expect(html).not.toContain("Presentation");
       expect(html).toContain(text);
       expect(html).not.toContain("Show more");
       expect(html).not.toContain("Show less");

@@ -70,46 +70,30 @@ function clickNamed(label: string) {
   });
 }
 
-describe("Reviews is a vertical list", () => {
-  it("keeps the channel counts on Overview and on Reviews (MESITA-2334)", () => {
+describe("Reviews on the one scroll (MESITA-2441)", () => {
+  it("shows three, newest first, then See all", () => {
     mount();
-    const overview = document.body.textContent ?? "";
-    expect(overview).toContain("3.8");
-    expect(overview).toContain("3.8 ★ (484)");
-    expect(overview).toContain("4.3K");
-    expect(overview).toContain("8.9K");
-    expect(overview).toContain("A short presentation");
-    expect(overview).not.toContain("Show more");
-    expect(overview).toContain("Save");
-    expect(overview).toContain("Contact");
-    expect(overview).toContain("Share");
-
-    clickNamed("Reviews");
-    const reviews = document.body.textContent ?? "";
-    expect(reviews).toContain("3.8 ★ (484)");
-    expect(reviews).toContain("4.3K");
-    expect(reviews).toContain("8.9K");
-    expect(reviews).not.toContain("Google Summary");
-    expect(reviews).not.toContain("Instagram Summary");
-    expect(reviews).not.toContain("Facebook Summary");
-    expect(reviews).toContain("Save");
-    expect(reviews).toContain("Contact");
-    expect(reviews).toContain("Share");
-    expect(reviews).toContain("Newest");
-    expect(reviews).toContain("Highest");
-    expect(reviews).toContain("Lowest");
+    const text = document.body.textContent ?? "";
+    expect(text).toContain("A short presentation");
+    expect(text).toContain("★ 3.8 · 484 reviews");
+    for (const name of ["R1", "R2", "R3"]) expect(text).toContain(name);
+    for (const name of ["R4", "R5", "R6", "R7"]) expect(text).not.toContain(name);
+    expect(text.indexOf("R1")).toBeLessThan(text.indexOf("R3"));
+    expect(text).toContain("See all 7 reviews");
+    expect(text).not.toContain("Newest");
   });
 
-  it("shows a first batch, then Show more reveals the next reviews", () => {
+  it("See all opens the sortable list: a first batch, then Show more", () => {
     mount();
-    clickNamed("Reviews");
+    clickNamed("See all");
     const html = document.body.innerHTML;
-    expect(html).not.toContain("overflow-x-auto");
     expect(html).not.toContain("w-72");
     expect(html).not.toContain("snap-start");
-    expect(html).toContain("flex-col");
 
     let text = document.body.textContent ?? "";
+    expect(text).toContain("Newest");
+    expect(text).toContain("Highest");
+    expect(text).toContain("Lowest");
     for (const name of ["R1", "R2", "R3", "R4", "R5"]) {
       expect(text).toContain(name);
     }

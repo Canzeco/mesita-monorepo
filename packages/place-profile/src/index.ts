@@ -9,11 +9,6 @@ export {
   requestProgressLabel,
   requestProgressMeta,
 } from "./components/place-detail/PlaceRequestPanel";
-export {
-  PlaceTabBar,
-  placeTabs,
-  type PlaceTab,
-} from "./components/place-detail/tabs";
 export { PopularTimesBox } from "./components/place-detail/popular-times";
 export type {
   PlaceActions,

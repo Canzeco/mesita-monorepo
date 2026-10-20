@@ -4,13 +4,63 @@ import { useMemo, useState } from "react";
 
 import { ReviewCard } from "../ReviewCard";
 import type { PlaceDetail } from "../../place-detail";
-import { formatCompactCount } from "../../lib/format";
+import { formatCompactCount, formatRating } from "../../lib/format";
 
 import { type ReviewSort, ReviewSortChips, reviewTimeMs } from "./review-ui";
+import { Section } from "./section";
 
-// decision: Pato (2026-10-16) — the channel counts live in the header and
-// hide while this tab is selected. What remains is Google's reviews, stacked
-// like comments: a first batch, then Show more. Not a sideways carousel.
+// decision: Pato (2026-10-19, MESITA-2441) — on the one scroll, Reviews
+// shows three (newest first), then "See all" opens the full sortable list
+// in place. The tab that held the list is gone.
+
+/** How many reviews the scroll shows before "See all". */
+export const REVIEW_PREVIEW = 3;
+
+function newestFirst(reviews: PlaceDetail["google_reviews"]) {
+  return [...reviews].sort((a, b) => reviewTimeMs(b.date) - reviewTimeMs(a.date));
+}
+
+export function ReviewsSection({ place }: { place: PlaceDetail }) {
+  const [all, setAll] = useState(false);
+  const reviews = place.google_reviews;
+  if (reviews.length === 0) return null;
+  const rating = formatRating(place.google.rating);
+  const total = place.google.count ?? reviews.length;
+  const right = rating
+    ? `★ ${rating} · ${formatCompactCount(total, true)} reviews`
+    : `${formatCompactCount(total, true)} reviews`;
+  return (
+    <Section title="Reviews" right={right}>
+      {all ? (
+        <GoogleReviewsBox place={place} />
+      ) : (
+        <>
+          <ul className="divide-border -mt-1 divide-y">
+            {newestFirst(reviews)
+              .slice(0, REVIEW_PREVIEW)
+              .map((review, i) => (
+                <li key={`google-${review.author}-${review.date}-${i}`} className="py-4">
+                  <ReviewCard review={review} />
+                </li>
+              ))}
+          </ul>
+          {reviews.length > REVIEW_PREVIEW && (
+            <button
+              type="button"
+              onClick={() => setAll(true)}
+              className="border-border text-foreground hover:bg-muted min-h-11 w-full rounded-lg border text-sm font-semibold"
+            >
+              See all {reviews.length} reviews
+            </button>
+          )}
+        </>
+      )}
+    </Section>
+  );
+}
+
+// The full list "See all" opens: Google's reviews stacked like comments, a
+// first batch, then Show more. Not a sideways carousel.
 // Newest / Highest / Lowest stay. Show more reveals more reviews; a long
 // quote still uses its own Read more.
 //
@@ -46,7 +96,7 @@ export function GoogleReviewsBox({ place }: { place: PlaceDetail }) {
 
   if (reviews.length === 0) return null;
   return (
-    <section className="flex flex-col" aria-label="Reviews">
+    <div className="flex flex-col">
       <div className="flex items-center justify-between gap-3 pb-1">
         <ReviewSortChips
           sort={sort}
@@ -56,11 +106,6 @@ export function GoogleReviewsBox({ place }: { place: PlaceDetail }) {
           }}
           label="Sort reviews"
         />
-        {place.google.count != null && (
-          <span className="text-muted-foreground type-label shrink-0 tabular-nums">
-            {formatCompactCount(place.google.count, true)} reviews
-          </span>
-        )}
       </div>
       <ul className="divide-border divide-y">
         {sorted.slice(0, shown).map((review, i) => (
@@ -81,7 +126,7 @@ export function GoogleReviewsBox({ place }: { place: PlaceDetail }) {
           Show more
         </button>
       )}
-    </section>
+    </div>
   );
 }
 

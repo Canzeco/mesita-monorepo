@@ -7,7 +7,6 @@ import type {
   PlaceRequestView,
 } from "@mesita/place-profile";
 import { MenuViewer } from "@/components/consumer/MenuViewer";
-import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
 import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
 import { apiRequestPlace } from "@/lib/api/places";
 import type { PlaceDetail } from "@/lib/place-detail";
@@ -25,7 +24,6 @@ export function useMemberPlaceActions(place: PlaceDetail): {
 } {
   const { isSaved, toggle } = useSavedPlaces();
   const saved = isSaved(place.id);
-  const [contactOpen, setContactOpen] = useState(false);
   const [reserveOpen, setReserveOpen] = useState(false);
   const [menu, setMenu] = useState<PlaceMenuItem | null>(null);
   const request = usePlaceRequest(place);
@@ -48,7 +46,6 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const actions: PlaceActions = {
     onSave,
     saved,
-    onContact: () => setContactOpen(true),
     onShare: () => void sharePlace(place),
     onReserve: () => setReserveOpen(true),
     onRequest: request.onRequest,
@@ -59,11 +56,6 @@ export function useMemberPlaceActions(place: PlaceDetail): {
 
   const sheets = (
     <>
-      <PlaceContactSheet
-        place={place}
-        open={contactOpen}
-        onClose={() => setContactOpen(false)}
-      />
       <ReservationSheet
         place={place}
         open={reserveOpen}

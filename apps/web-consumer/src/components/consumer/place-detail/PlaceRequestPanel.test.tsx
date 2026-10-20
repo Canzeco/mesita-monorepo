@@ -6,7 +6,6 @@ import {
   requestProgressLabel,
   requestProgressMeta,
 } from "./PlaceRequestPanel";
-import { PlaceTabBar, placeTabs } from "./tabs";
 
 describe("vote progress copy", () => {
   it("labels zero, below-threshold and threshold-crossing votes", () => {
@@ -23,35 +22,6 @@ describe("vote progress copy", () => {
       remaining: 0,
       complete: true,
     });
-  });
-});
-
-describe("section strip", () => {
-  it("is the four sections for every place, Enrich never a tab (MESITA-2332)", () => {
-    expect(placeTabs().map((t) => t.label)).toEqual([
-      "Overview",
-      "Reviews",
-      "Menu",
-      "Rewards",
-    ]);
-    expect(placeTabs().filter((t) => t.soon).map((t) => t.label)).toEqual([
-      "Menu",
-      "Rewards",
-    ]);
-  });
-
-  it("renders the four sections with Soon on Menu and Rewards", () => {
-    const html = renderToStaticMarkup(
-      <PlaceTabBar tab="place" onChange={() => {}} />,
-    );
-    expect(html).toContain("Overview");
-    expect(html).toContain("Reviews");
-    expect(html).toContain("Menu");
-    expect(html).not.toContain("Menus");
-    expect(html).toContain("Rewards");
-    expect(html).toContain("Soon");
-    expect(html).toContain("grid-cols-4");
-    expect(html).not.toContain("Enrich");
   });
 });
 
