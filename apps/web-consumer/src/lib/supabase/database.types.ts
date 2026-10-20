@@ -254,18 +254,21 @@ export type Database = {
           created_at: string
           kind: string
           place_id: string
+          quiet: boolean
         }
         Insert: {
           consumer_id: string
           created_at?: string
           kind: string
           place_id: string
+          quiet?: boolean
         }
         Update: {
           consumer_id?: string
           created_at?: string
           kind?: string
           place_id?: string
+          quiet?: boolean
         }
         Relationships: [
           {
