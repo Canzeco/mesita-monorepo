@@ -1,22 +1,25 @@
 "use client";
 
-// Home's location control — the whole of Home's header, in Search's row
-// shape (Pato, MESITA-2452 "put locations as scrollable in bar", then
-// MESITA-2453 "the add and the current location must be kinda fixed"):
-//
-//   ( ⌖ )      (🔖 Home ×) (🔖 Office)      ( ＋ )   ← centred
-//
-// Pinned left, the Current location disc: the "my location" target in the
-// map's you-are-here blue (MESITA-2454), filled blue while it is the active
-// one, a blue target when the fix is held, ink with no fix (a tap asks). Between, the
-// saved locations sit centred (scrolling only when they overflow; the
-// active one is the ink chip with × to remove it, back to Current
-// location); with none saved, the active location's name sits centred.
-// Pinned right, ＋ opens AddLocationSheet. The choice lives
-// in `lib/active-location.ts`, which Home's catalog reads.
+// Home's location control — the whole of Home's header (Pato, MESITA-2405:
+// "The top bar is just to select the location. thats it."): one slim
+// centred line, a pin, the active location's name and a quiet chevron, no
+// border (MESITA-2456: "just put the location"; it was a bordered pill, then
+// a chip row with discs, MESITA-2452..2454).
+// A tap opens the location sheet: Current location, the guest's saved
+// locations (each removable) and Add location (MESITA-2380). The choice
+// lives in `lib/active-location.ts`, which Home's catalog reads.
 
-import { useState } from "react";
-import { LocateFixed, Plus, X } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import {
+  Bookmark,
+  ChevronDown,
+  MapPin,
+  Navigation,
+  Plus,
+  X,
+} from "lucide-react";
+import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import {
   useLocateUser,
   useUserLocation,
@@ -25,16 +28,9 @@ import {
 import { removeSavedLocation, useSavedLocations } from "@/lib/saved-locations";
 import { setActiveLocation, useActiveLocation } from "@/lib/active-location";
 import { cn } from "@/lib/utils";
-import { MAP_USER_LOCATION_PIN_COLOR } from "@/lib/map-defaults";
-import {
-  CHIP,
-  CHIP_OFF,
-  CHIP_ON,
-  HEADER_DISC,
-} from "@/components/consumer/search/header-classes";
 import { AddLocationSheet } from "./AddLocationSheet";
 
-/** What the device-fix chip says: the state of the fix (or a saved name). */
+/** What the pill says: the saved name, or the state of the device fix. */
 export function locationLabel(
   active: { name: string } | null,
   hasFix: boolean,
@@ -45,135 +41,146 @@ export function locationLabel(
   return locating ? "Locating…" : "Use my location";
 }
 
+const ICON = "h-4 w-4 shrink-0";
+
 export function LocationPicker() {
   const coords = useUserLocation();
   const locating = useUserLocationLocating();
   const locate = useLocateUser();
   const active = useActiveLocation();
   const savedLocations = useSavedLocations();
+  const [picking, setPicking] = useState(false);
   const [adding, setAdding] = useState(false);
-  const hereOn = active === null && coords !== null;
+  const label = locationLabel(active, coords !== null, locating);
+
+  const row = (r: {
+    key: string;
+    label: string;
+    icon: ReactNode;
+    selected: boolean;
+    onClick: () => void;
+    muted?: boolean;
+    onRemove?: () => void;
+  }) => (
+    <li key={r.key} className="relative">
+      <button
+        type="button"
+        onClick={r.onClick}
+        aria-pressed={r.selected}
+        className={cn(
+          "flex w-full items-center gap-3 py-3.5 pr-10 text-left text-sm transition",
+          r.selected ? "font-semibold" : "hover:bg-muted",
+          r.muted && !r.selected && "text-muted-foreground",
+        )}
+      >
+        {r.icon}
+        <span className="min-w-0 truncate">{r.label}</span>
+      </button>
+      {r.onRemove ? (
+        <button
+          type="button"
+          onClick={r.onRemove}
+          aria-label={`Remove ${r.label}`}
+          className="text-muted-foreground hover:text-foreground absolute inset-y-0 right-0 flex w-9 items-center justify-center"
+          data-places-remove-location
+        >
+          <X className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+        </button>
+      ) : null}
+    </li>
+  );
 
   return (
     <>
-      <div className="flex min-w-0 items-center gap-2 px-3 py-2">
-        <button
-          type="button"
-          onClick={() => {
-            setActiveLocation(null);
-            if (coords === null) locate();
-          }}
-          aria-pressed={hereOn}
-          aria-label={locationLabel(null, coords !== null, locating)}
-          title={locationLabel(null, coords !== null, locating)}
-          className={cn("relative", HEADER_DISC, hereOn && "hover:opacity-90")}
-          style={
-            hereOn
-              ? {
-                  backgroundColor: MAP_USER_LOCATION_PIN_COLOR,
-                  borderColor: MAP_USER_LOCATION_PIN_COLOR,
-                  color: "#fff",
-                }
-              : coords !== null
-                ? { color: MAP_USER_LOCATION_PIN_COLOR }
-                : undefined
-          }
-          data-home-location
-        >
-          <LocateFixed
-            className={cn(
-              "h-[18px] w-[18px] shrink-0",
-              locating && "animate-pulse",
-            )}
-            strokeWidth={2}
-            aria-hidden
-          />
-        </button>
-        <nav
-          aria-label="Saved locations"
-          className="scrollbar-hide flex min-w-0 flex-1 items-center gap-2 overflow-x-auto overscroll-x-contain"
-          data-places-location
-        >
-          {/* CENTRED (Pato, MESITA-2454: "maybe don't make the location
-              scrollable after all, just centered"): w-max + mx-auto centres
-              the chips while they fit and lets them scroll from the left
-              edge once they don't. With none saved, the active location's
-              name sits centred like a title. */}
-          <div className="mx-auto flex w-max items-center gap-2">
-            {savedLocations.length === 0 ? (
-              <span
-                className="text-foreground truncate px-1 text-sm font-semibold"
-                data-home-location-name
-              >
-                {locationLabel(active, coords !== null, locating)}
-              </span>
-            ) : null}
-            {savedLocations.map((l) => {
-              const key = `saved:${l.id}`;
-              const pick = () =>
-                setActiveLocation({
-                  key,
-                  name: l.name,
-                  lat: l.lat,
-                  lng: l.lng,
-                  bounds: l.bounds,
-                });
-              if (active?.key !== key) {
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={pick}
-                    aria-pressed={false}
-                    className={cn(CHIP, CHIP_OFF)}
-                  >
-                    <span aria-hidden>🔖</span>
-                    <span>{l.name}</span>
-                  </button>
-                );
-              }
-              // The active saved chip: its name, then × to remove it. Two
-              // buttons side by side, never one inside the other.
-              return (
-                <div key={key} className={cn(CHIP, CHIP_ON, "pr-1")}>
-                  <button
-                    type="button"
-                    onClick={pick}
-                    aria-pressed
-                    className="flex items-center gap-1.5"
-                  >
-                    <span aria-hidden>🔖</span>
-                    <span>{l.name}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      // Removing the active location falls back to Current location.
-                      removeSavedLocation(l.id);
-                      setActiveLocation(null);
-                    }}
-                    aria-label={`Remove ${l.name}`}
-                    className="flex h-7 w-7 items-center justify-center rounded-full opacity-80 hover:opacity-100"
-                    data-places-remove-location
-                  >
-                    <X className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-                  </button>
-                </div>
-              );
+      {/* Home's whole header: the location line (MESITA-2405, MESITA-2456). */}
+      <button
+        type="button"
+        onClick={() => setPicking(true)}
+        aria-haspopup="dialog"
+        aria-label={`Location: ${label}. Change location`}
+        className="text-foreground hover:bg-muted mx-auto flex h-9 max-w-full min-w-0 items-center justify-center gap-1 rounded-full px-3 text-sm font-semibold transition active:scale-[0.98]"
+        data-home-location
+      >
+        {/* One slim line, centred: pin, name, chevron (Pato, MESITA-2456:
+            "just put the location"); no border, no discs. */}
+        <MapPin className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+        <span className="min-w-0 truncate">{label}</span>
+        <ChevronDown
+          className="text-muted-foreground h-4 w-4 shrink-0"
+          strokeWidth={2}
+          aria-hidden
+        />
+      </button>
+
+      <LocalSheet
+        open={picking}
+        onClose={() => setPicking(false)}
+        ariaLabel="Location"
+      >
+        <div className={SHEET_BODY_CLASS} data-places-location-sheet>
+          <h2 className={SHEET_TITLE_CLASS}>Location</h2>
+          <ul
+            role="list"
+            aria-label="Location"
+            className="divide-border mt-2 divide-y"
+            data-places-location
+          >
+            {row({
+              key: "here",
+              label: locationLabel(null, coords !== null, locating),
+              icon: (
+                <Navigation className={ICON} strokeWidth={2.25} aria-hidden />
+              ),
+              selected: active === null && coords !== null,
+              muted: coords === null,
+              onClick: () => {
+                setActiveLocation(null);
+                if (coords === null) locate();
+                setPicking(false);
+              },
             })}
-          </div>
-        </nav>
-        <button
-          type="button"
-          onClick={() => setAdding(true)}
-          aria-label="Add location"
-          title="Add location"
-          className={HEADER_DISC}
-          data-places-add-location
-        >
-          <Plus className="h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
-        </button>
-      </div>
+            {savedLocations.map((l) =>
+              row({
+                key: `saved:${l.id}`,
+                label: l.name,
+                icon: (
+                  <Bookmark className={ICON} strokeWidth={2.25} aria-hidden />
+                ),
+                selected: active?.key === `saved:${l.id}`,
+                onClick: () => {
+                  setActiveLocation({
+                    key: `saved:${l.id}`,
+                    name: l.name,
+                    lat: l.lat,
+                    lng: l.lng,
+                    bounds: l.bounds,
+                  });
+                  setPicking(false);
+                },
+                // Removing the active location falls back to Current location.
+                onRemove: () => {
+                  removeSavedLocation(l.id);
+                  if (active?.key === `saved:${l.id}`) setActiveLocation(null);
+                },
+              }),
+            )}
+            <li>
+              <button
+                type="button"
+                onClick={() => {
+                  setPicking(false);
+                  setAdding(true);
+                }}
+                className="hover:bg-muted flex w-full items-center gap-3 py-3.5 text-left text-sm transition"
+                data-places-add-location
+              >
+                <Plus className={ICON} strokeWidth={2.25} aria-hidden />
+                <span>Add location</span>
+              </button>
+            </li>
+          </ul>
+        </div>
+      </LocalSheet>
 
       <AddLocationSheet
         open={adding}
