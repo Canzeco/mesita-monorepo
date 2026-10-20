@@ -448,11 +448,12 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
     // drawn only while the chips are (MESITA-2487).
     expectTokens(chipBand![2], ["border-border", "border-t"], "chip band line");
     // The chips are not drawn while the bar queries (MESITA-2487), and the
-    // families open on their clay bar, no grey divider.
+    // row starts on All: no clay bar (MESITA-2503), no grey divider.
     expect(header).toContain("{chipsHidden ? null : (");
     expect(src).toContain("chipsHidden={querying}");
-    expect(header).not.toContain('data-chip-group="around"');
-    expect(header).toContain('data-chip-group="families"');
+    expect(header).not.toContain("data-chip-group");
+    expect(header).not.toContain("CHIP_GROUP_MARK");
+    expect(header).not.toContain("w-[3px]");
     expect(header).not.toContain("bg-border mx-0.5 h-6 w-px");
     expect(chipBand![1]).not.toContain("bg-muted");
     expect(chipBand![1].split(/\s+/)).not.toContain("border-b");

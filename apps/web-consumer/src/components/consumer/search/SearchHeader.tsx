@@ -4,7 +4,7 @@
 //
 //   ( ⌖ ) [ ⚲ Search places…  ] ( ✦ )   one white band …
 //   ─────────────────── hairline ──────────────────────
-//   │ (▦ All) (○ Coffee) (○ Breakfast) (○ Quick bite) … … one hairline under
+//   (▦ All) (○ Coffee) (○ Breakfast) (○ Quick bite) …   … one hairline under
 //   ─────────────────── map ───────────────────────────
 //
 // The bar's row: the locate disc, the query bar, the Ask AI pill (→ Search ›
@@ -50,13 +50,6 @@ import { CHIP, CHIP_OFF, CHIP_ON, HEADER_PILL } from "./header-classes";
 /** A chip's line icon, never an emoji (MESITA-2478): 1.75 stroke, 2.25 when
  *  on — BottomNav's pair. */
 const CHIP_ICON = "h-4 w-4 shrink-0";
-
-/** The families open on a 3px clay bar, the Home rail's family blue (Pato,
- *  MESITA-2484/2487/2492; the red Nearby · Popular group left with its
- *  chips, MESITA-2499). Literal classes, so Tailwind sees them. */
-export const CHIP_GROUP_MARK = {
-  families: "h-6 w-[3px] shrink-0 rounded-full bg-[oklch(0.66_0.06_245)]",
-} as const;
 
 export function SearchHeader({
   locate,
@@ -115,11 +108,8 @@ export function SearchHeader({
             className="scrollbar-hide flex items-center gap-2 overflow-x-auto overscroll-x-contain px-3 py-2.5"
             data-search-chips
           >
-            <span
-              aria-hidden
-              className={CHIP_GROUP_MARK.families}
-              data-chip-group="families"
-            />
+            {/* The row starts on All, no clay bar before it (Pato,
+                MESITA-2503: "remove … the vertical bluye line"). */}
             <button
               type="button"
               onClick={clearMapFamilies}
