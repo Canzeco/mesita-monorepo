@@ -27,7 +27,6 @@ export type PlaceCreatingView = {
 export type PlaceActions = {
   onSave?: () => void;
   saved?: boolean;
-  onContact?: () => void;
   onShare?: () => void;
   onReserve?: () => void;
   onRequest?: () => void;

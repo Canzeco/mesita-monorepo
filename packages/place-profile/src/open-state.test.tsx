@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { HoursBox } from "./components/place-detail/location-hours";
+import { HoursSection, weekFromToday } from "./components/place-detail/location-hours";
 import { placeRowToDetail } from "./place-to-detail";
 import { computeOpenState } from "./place-to-detail-helpers";
 
@@ -61,29 +61,58 @@ describe("placeRowToDetail open_now", () => {
   });
 });
 
-describe("HoursBox", () => {
+describe("HoursSection", () => {
   it("prints neither Open nor Closed when the state is unknown", () => {
-    const html = renderToStaticMarkup(<HoursBox place={row()} />);
+    const html = renderToStaticMarkup(<HoursSection place={row()} />);
     expect(html).not.toContain(">Closed<");
     expect(html).not.toContain(">Open<");
   });
 
   it("prints Closed only when the place is known to be closed", () => {
-    const html = renderToStaticMarkup(<HoursBox place={row({ open_now: false })} />);
+    const html = renderToStaticMarkup(<HoursSection place={row({ open_now: false })} />);
     expect(html).toContain(">Closed<");
   });
 
   it("highlights no day as today without a timezone", () => {
-    const html = renderToStaticMarkup(<HoursBox place={row({ hours: OPEN_ALWAYS })} />);
+    const html = renderToStaticMarkup(<HoursSection place={row({ hours: OPEN_ALWAYS })} />);
     expect(html).toContain("Monday");
     expect(html).not.toContain("bg-muted/80");
   });
 
   it("highlights today when the place has a timezone", () => {
     const html = renderToStaticMarkup(
-      <HoursBox place={row({ hours: OPEN_ALWAYS, timezone: "America/Mexico_City" })} />,
+      <HoursSection place={row({ hours: OPEN_ALWAYS, timezone: "America/Mexico_City" })} />,
     );
     expect(html).toContain("bg-muted/80");
     expect(html).toContain(">Open<");
+    expect(html).toContain("(today)");
+  });
+
+  it("is collapsible, closed by default (MESITA-2441)", () => {
+    const html = renderToStaticMarkup(
+      <HoursSection place={row({ hours: OPEN_ALWAYS, timezone: "America/Mexico_City" })} />,
+    );
+    expect(html).toContain("<details");
+    expect(html).not.toContain("<details open");
+    expect(html).toContain("Show week");
+  });
+
+  it("draws nothing with no hours and an unknown state", () => {
+    expect(renderToStaticMarkup(<HoursSection place={row()} />)).toBe("");
+  });
+});
+
+describe("weekFromToday", () => {
+  const week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    .map((day) => ({ day, range: "9–5" }));
+
+  it("puts today first and keeps the order after it", () => {
+    expect(weekFromToday(week, "Thursday").map((d) => d.day)).toEqual([
+      "Thursday", "Friday", "Saturday", "Sunday", "Monday", "Tuesday", "Wednesday",
+    ]);
+  });
+
+  it("keeps the stored order when today is unknown", () => {
+    expect(weekFromToday(week, "")).toEqual(week);
   });
 });
