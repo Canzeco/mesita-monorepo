@@ -152,43 +152,25 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
     expect(src).toContain("apiListAreaPool(supabase, from, prefer, families)");
   });
 
-  // MESITA-2452: the pill and its sheet became chips; MESITA-2453 pinned
-  // Current location and Add as discs around the scrolling saved chips.
-  it("pins Current location and Add as discs around the scrolling saved chips, no sheet", () => {
-    expect(picker).toContain("scrollbar-hide flex min-w-0 flex-1 items-center gap-2 overflow-x-auto");
-    const here = picker.indexOf("data-home-location");
-    const scroll = picker.indexOf("data-places-location");
-    const add = picker.indexOf("data-places-add-location");
-    expect(here).toBeLessThan(scroll);
-    expect(scroll).toBeLessThan(add);
-    // Both pinned controls are Search's disc, outside the scroller.
-    expect(picker.match(/HEADER_DISC/g)?.length).toBeGreaterThanOrEqual(3);
-    expect(picker.slice(scroll, add)).toContain("</nav>");
-    expect(picker).toContain("cn(CHIP, CHIP_OFF)");
-    // Centred while it fits, scrolling only on overflow (MESITA-2454).
-    expect(picker).toContain("mx-auto flex w-max items-center gap-2");
-    // Current location is the blue "my location" target (MESITA-2454).
-    expect(picker).toContain("<LocateFixed");
-    expect(picker).toContain("backgroundColor: MAP_USER_LOCATION_PIN_COLOR");
-    expect(picker).toContain('from "@/components/consumer/search/header-classes"');
-    expect(picker).not.toContain("<LocalSheet");
-    expect(picker).not.toContain("<ChevronDown");
+  // MESITA-2456: one slim centred line, no border (it was a bordered pill).
+  it("the header's location is one slim line: pin, name, chevron, opening the sheet", () => {
+    expect(picker).toContain("text-foreground hover:bg-muted mx-auto flex h-9 max-w-full min-w-0 items-center justify-center gap-1");
+    expect(picker).not.toContain("border-border bg-card text-foreground hover:bg-muted relative flex h-10");
+    expect(picker).toContain("<MapPin");
+    expect(picker).toContain("<ChevronDown");
+    expect(picker).toContain('aria-haspopup="dialog"');
+    expect(picker).toContain("onClick={() => setPicking(true)}");
   });
 
-  it("the chips: Current location, the saved locations, then Add", () => {
-    expect(picker.indexOf("data-home-location")).toBeLessThan(
-      picker.indexOf("savedLocations.map((l)"),
-    );
+  it("the sheet: Current location, the saved locations, then Add location", () => {
+    expect(picker.indexOf("label: locationLabel(null")).toBeLessThan(picker.indexOf("savedLocations.map((l)"));
     expect(picker.indexOf("savedLocations.map((l)")).toBeLessThan(picker.indexOf("data-places-add-location"));
     expect(picker).toContain("<AddLocationSheet");
     expect(picker).toContain("bounds: l.bounds");
-    // Current location with no fix asks for one.
-    expect(picker).toContain("if (coords === null) locate();");
   });
 
   it("removing the active saved location falls back to Current location", () => {
-    expect(picker).toMatch(/removeSavedLocation\(l\.id\);\s*setActiveLocation\(null\);/);
-    expect(picker).toContain("data-places-remove-location");
+    expect(picker).toContain("if (active?.key === `saved:${l.id}`) setActiveLocation(null);");
   });
 });
 
