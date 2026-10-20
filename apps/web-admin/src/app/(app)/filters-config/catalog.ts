@@ -128,7 +128,7 @@ export type CatalogConfig = {
 
 // Mirrors SUPER_PARAM_KEYS in _shared/discovery-config.ts, itself pinned to
 // the taxonomy by google-type-super.test.ts. The operator's category param is
-// the SUPER, not Google's slug (MESITA-1695): fifteen switches in Google's
+// the SUPER, not Google's slug (MESITA-1695): fifteen switches (thirteen since MESITA-2468) in Google's
 // vocabulary, capped by an ordered "first N", is what let four whole families
 // sit invisibly off. Order is the guest's — FAMILIES sort_order.
 export const SUPER_PARAM_KEYS = [
@@ -145,8 +145,6 @@ export const SUPER_PARAM_KEYS = [
   "drinks",
   "night_out",
   "go_out",
-  "move",
-  "feel_better",
 ] as const;
 export type SuperParamKey = (typeof SUPER_PARAM_KEYS)[number];
 
@@ -422,45 +420,6 @@ export const SUPER_FIELDS: {
       "karaoke",
     ],
   },
-  {
-    key: "move",
-    label: "Move",
-    emoji: "🏃",
-    battery: [
-      "gym",
-      "adventure_sports_center",
-      "fitness_center",
-      "golf_course",
-      "ice_skating_rink",
-      "indoor_golf_course",
-      "skateboard_park",
-      "sports_activity_location",
-      "sports_club",
-      "sports_coaching",
-      "sports_complex",
-      "sports_school",
-      "swimming_pool",
-      "tennis_court",
-      "yoga_studio",
-    ],
-  },
-  {
-    key: "feel_better",
-    label: "Feel better",
-    emoji: "💆",
-    battery: [
-      "spa",
-      "barber_shop",
-      "beauty_salon",
-      "hair_care",
-      "hair_salon",
-      "massage",
-      "massage_spa",
-      "nail_salon",
-      "sauna",
-      "wellness_center",
-    ],
-  },
 ];
 
 /** Google stars top out at 5: the ceiling of `map.minRating`. */
@@ -537,8 +496,6 @@ const DEFAULT_MAP_SUPERS: Record<SuperParamKey, boolean> = {
   drinks: true,
   night_out: true,
   go_out: false,
-  move: false,
-  feel_better: false,
 };
 
 export const DEFAULT_MAP: MapConfig = {

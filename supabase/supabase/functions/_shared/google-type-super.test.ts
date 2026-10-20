@@ -80,10 +80,19 @@ Deno.test("search batteries stay inside Google's API caps", () => {
   assertEquals(GOOGLE_SEARCH_TYPES.undefined, []);
   assertEquals(nearbyTypesForSupers(["undefined"]), []);
   // One family: its whole battery, in order.
-  assertEquals(nearbyTypesForSupers(["move"]), [...GOOGLE_SEARCH_TYPES.move]);
+  assertEquals(nearbyTypesForSupers(["coffee"]), [...GOOGLE_SEARCH_TYPES.coffee]);
   // Several: round-robin, so each family's lead type comes first.
-  assertEquals(nearbyTypesForSupers(["move", "go_out"]).slice(0, 3), ["gym", "karaoke", GOOGLE_SEARCH_TYPES.move[1]]);
+  assertEquals(nearbyTypesForSupers(["coffee", "go_out"]).slice(0, 3), ["cafe", "karaoke", GOOGLE_SEARCH_TYPES.coffee[1]]);
+  // Move and Feel better are gone (MESITA-2468): their old keys ask for nothing.
+  assertEquals(nearbyTypesForSupers(["move", "feel_better"]), []);
   assertEquals(nearbyTypesForSupers(["other", "nope"]), []);
+});
+
+Deno.test("no gym, studio, spa, salon or barber rides a battery (MESITA-2468)", () => {
+  const all = new Set(Object.values(GOOGLE_SEARCH_TYPES).flat());
+  for (const t of ["gym", "fitness_center", "yoga_studio", "sports_club", "swimming_pool", "spa", "massage", "barber_shop", "hair_salon", "nail_salon", "beauty_salon"]) {
+    assertEquals(all.has(t), false, t);
+  }
 });
 
 Deno.test("no attraction rides a battery (MESITA-2438)", () => {
@@ -97,9 +106,9 @@ Deno.test("every family's battery leads the every-family list, inside Google's 5
   assertEquals(EVERY_FAMILY_TYPES.length, 50);
   assertEquals(new Set(EVERY_FAMILY_TYPES).size, 50);
   const leads = Object.entries(GOOGLE_SEARCH_TYPES).filter(([k]) => k !== "undefined").map(([, v]) => v[0]);
-  assertEquals(EVERY_FAMILY_TYPES.slice(0, 15), leads);
+  assertEquals(EVERY_FAMILY_TYPES.slice(0, 13), leads);
   const covered = Object.values(GOOGLE_SEARCH_TYPES).filter((types) => types.length > 0);
-  assertEquals(covered.length, 15);
+  assertEquals(covered.length, 13);
 });
 
 Deno.test("SUPER_PARAM_KEYS is the guest families, minus the empty battery", () => {
@@ -107,7 +116,7 @@ Deno.test("SUPER_PARAM_KEYS is the guest families, minus the empty battery", () 
     .filter(([, types]) => types.length > 0)
     .map(([slug]) => slug);
   assertEquals(new Set(SUPER_PARAM_KEYS), new Set(withBattery));
-  assertEquals(SUPER_PARAM_KEYS.length, 15);
+  assertEquals(SUPER_PARAM_KEYS.length, 13);
   assertEquals((SUPER_PARAM_KEYS as readonly string[]).includes("undefined"), false);
 });
 

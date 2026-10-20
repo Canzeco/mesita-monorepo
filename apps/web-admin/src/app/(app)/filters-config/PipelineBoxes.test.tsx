@@ -194,7 +194,7 @@ describe("the boxes tell the runtime's truth (MESITA-2338)", () => {
   it("every box lists its always-on rules; Name's include Mesita's place types", () => {
     const [nameAdmin, name, area] = boxes();
     for (const box of [nameAdmin, name, area]) expect(box).toContain(">Always-on rules<");
-    expect(name).toContain("A Google row must have a Google type of one of the fifteen families");
+    expect(name).toContain("A Google row must have a Google type of one of the thirteen families");
     expect(area).toContain("Inside the radius");
   });
 

@@ -14,7 +14,7 @@ import { FILTERABLE_PLACE_FAMILIES, type FamilyKey } from "@/lib/place-families"
 // How many from a v5 session instead of pretending it is still a guest
 // knob. sessionStorage, so the cost of the bump is one forgotten sheet state.
 const STORAGE_KEY = "mesita_map_filters_v6";
-// Hydrate from the FILTERABLE fifteen, never `undefined`.
+// Hydrate from the FILTERABLE thirteen, never `undefined`.
 // A persisted key the sheet no longer renders is a filter the guest cannot
 // see or clear (MESITA-1857).
 const KNOWN_FAMILY_KEYS = new Set<string>(

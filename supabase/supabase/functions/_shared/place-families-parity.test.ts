@@ -124,7 +124,7 @@ Deno.test("the consumer app filters on the seven, never on Undefined", async () 
   );
 });
 
-Deno.test("the map store hydrates from the fifteen", async () => {
+Deno.test("the map store hydrates from the thirteen", async () => {
   // A store that accepts a key its sheet does not render leaves the guest
   // with a filter they can see the effect of and no pill to clear.
   const map = await Deno.readTextFile(

@@ -1,11 +1,16 @@
-// The guest catalog is these fifteen families. Not fourteen, not sixteen.
+// The guest catalog is these thirteen families. Not twelve, not fourteen.
 // Undefined is the leftover and is not a rail.
 //
 // SCOPE (MESITA-2438, Pato 2026-10-19: "This is not Tudu, is Mesita. More
 // OpenTable scope."): a family holds places a guest books a table at or
-// orders at — food, coffee, bars, nightlife — plus the two wellness and
-// sport rails. Tourist attractions, museums, parks, zoos, bowling, cinemas
-// and every similar attraction sit in NO family (`ATTRACTION_TYPES`).
+// orders at — food, coffee, bars, nightlife. Tourist attractions, museums,
+// parks, zoos, bowling, cinemas and every similar attraction sit in NO
+// family (`ATTRACTION_TYPES`).
+//
+// SOCIAL (MESITA-2468, Pato 2026-10-19: "its more social, so fuck the
+// gyms" + "i neither want barber shops nor fucking spas"): the Move and
+// Feel better rails are gone. Gyms, studios, courts, pools, spas, salons,
+// barbers and tattoo studios sit in NO family (`NOT_SOCIAL_TYPES`).
 //
 // PRIMARY AND SECONDARY. A Google type's row below lists its families
 // PRIMARY FIRST: a cafe is Coffee first, Breakfast second; a brewpub is
@@ -38,8 +43,6 @@ export const CATALOG_FAMILY_SLUGS = [
   "drinks",
   "night_out",
   "go_out",
-  "move",
-  "feel_better",
 ] as const;
 
 export type CatalogFamilySlug = (typeof CATALOG_FAMILY_SLUGS)[number];
@@ -64,8 +67,6 @@ export const CATALOG_FAMILIES: readonly {
   { slug: "drinks", label: "Drinks", emoji: "🍸", sort_order: 11 },
   { slug: "night_out", label: "Night out", emoji: "🌙", sort_order: 12 },
   { slug: "go_out", label: "Go out", emoji: "🎟️", sort_order: 13 },
-  { slug: "move", label: "Move", emoji: "🏃", sort_order: 14 },
-  { slug: "feel_better", label: "Feel better", emoji: "💆", sort_order: 15 },
   { slug: "undefined", label: "Undefined", emoji: "·", sort_order: 999 },
 ];
 
@@ -93,8 +94,6 @@ export const CATALOG_LEAD_TYPES: Record<CatalogFamilySlug, string> = {
   drinks: "bar",
   night_out: "night_club",
   go_out: "karaoke",
-  move: "gym",
-  feel_better: "spa",
 };
 
 /**
@@ -164,6 +163,53 @@ export const ATTRACTION_TYPES = [
   "water_park",
   "wildlife_park",
   "zoo",
+] as const;
+
+/**
+ * Not social: sport, fitness, wellness and beauty places, the old Move and
+ * Feel better rails (MESITA-2468). Every one sits in no family; the
+ * migration `20261020030000_families_drop_move_feel_better.sql` moves the
+ * stored mapping with them, and `catalog-families.test.ts` pins the pair.
+ */
+export const NOT_SOCIAL_TYPES = [
+  "gym",
+  "fitness_center",
+  "yoga_studio",
+  "sports_club",
+  "sports_coaching",
+  "sports_complex",
+  "sports_school",
+  "sports_activity_location",
+  "golf_course",
+  "indoor_golf_course",
+  "ice_skating_rink",
+  "swimming_pool",
+  "tennis_court",
+  "adventure_sports_center",
+  "skateboard_park",
+  "padel_club",
+  "tennis_club",
+  "soccer_field",
+  "climbing_gym",
+  "crossfit_box",
+  "pilates_studio",
+  "dance_studio",
+  "martial_arts",
+  "spa",
+  "massage",
+  "massage_spa",
+  "sauna",
+  "wellness_center",
+  "beauty_salon",
+  "hair_salon",
+  "hair_care",
+  "nail_salon",
+  "barber_shop",
+  "barbershop",
+  "temazcal",
+  "hot_springs",
+  "medical_spa",
+  "tattoo_studio",
 ] as const;
 
 const EXPLICIT: Record<string, readonly FamilyKey[]> = {
@@ -259,6 +305,7 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   board_game_cafe: ["coffee", "go_out"],
   // No family (MESITA-2382): a place, not a trip a guest picks.
   ...Object.fromEntries(ATTRACTION_TYPES.map((t) => [t, ["undefined"] as const])),
+  ...Object.fromEntries(NOT_SOCIAL_TYPES.map((t) => [t, ["undefined"] as const])),
   athletic_field: ["undefined"],
   barbecue_area: ["undefined"],
   beautician: ["undefined"],
@@ -289,44 +336,6 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   wedding_venue: ["undefined"],
   internet_cafe: ["undefined"],
   movie_rental: ["undefined"],
-  gym: ["move"],
-  fitness_center: ["move"],
-  yoga_studio: ["move"],
-  sports_club: ["move"],
-  sports_coaching: ["move"],
-  sports_complex: ["move"],
-  sports_school: ["move"],
-  sports_activity_location: ["move"],
-  golf_course: ["move"],
-  indoor_golf_course: ["move"],
-  ice_skating_rink: ["move"],
-  swimming_pool: ["move"],
-  tennis_court: ["move"],
-  adventure_sports_center: ["move"],
-  skateboard_park: ["move"],
-  padel_club: ["move"],
-  tennis_club: ["move"],
-  soccer_field: ["move"],
-  climbing_gym: ["move"],
-  crossfit_box: ["move"],
-  pilates_studio: ["move"],
-  dance_studio: ["move"],
-  martial_arts: ["move"],
-  spa: ["feel_better"],
-  massage: ["feel_better"],
-  massage_spa: ["feel_better"],
-  sauna: ["feel_better"],
-  wellness_center: ["feel_better"],
-  beauty_salon: ["feel_better"],
-  hair_salon: ["feel_better"],
-  hair_care: ["feel_better"],
-  nail_salon: ["feel_better"],
-  barber_shop: ["feel_better"],
-  barbershop: ["feel_better"],
-  temazcal: ["feel_better"],
-  hot_springs: ["feel_better"],
-  medical_spa: ["feel_better"],
-  tattoo_studio: ["feel_better"],
   undefined: ["undefined"],
 };
 
@@ -334,8 +343,10 @@ const COARSE_FALLBACK: Record<string, FamilyKey> = {
   restaurants: "dinner",
   bars_nightlife: "drinks",
   cafes_bakeries: "coffee",
-  sports_fitness: "move",
-  wellness_beauty: "feel_better",
+  // Not social (MESITA-2468): an unlisted sport, fitness, wellness or
+  // beauty type is not a trip Mesita lists either.
+  sports_fitness: "undefined",
+  wellness_beauty: "undefined",
   // Attractions (MESITA-2438): an unlisted culture or experiences type is
   // not a trip Mesita lists.
   culture_arts: "undefined",

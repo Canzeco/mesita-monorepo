@@ -31,7 +31,7 @@ import type { ChatTurn } from "./memo-openai-turn.ts";
 export type ChatIntent = {
   /** A specific place the guest names, as they wrote it. */
   placeName: string | null;
-  /** Guest families they ask for (the fifteen catalog slugs). */
+  /** Guest families they ask for (the thirteen catalog slugs). */
   families: string[];
   /** They mean around themselves ("near me", "close by", "por aquí"). */
   nearby: boolean;
