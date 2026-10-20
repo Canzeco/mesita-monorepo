@@ -107,6 +107,7 @@ import { SearchResultsPanel } from "./SearchResultsPanel";
 import type { AddState } from "./add-state";
 import {
   SearchDebugCoords,
+  RAIL_PAGE_SHARE,
   SearchRailOverlay,
   type LoadCoords,
 } from "./search-catalog-overlays";
@@ -882,7 +883,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const handleRailScroll = () => {
     const el = railScrollRef.current;
     if (!el || catalog.length === 0) return;
-    const page = el.clientWidth * 0.8;
+    const page = el.clientWidth * RAIL_PAGE_SHARE;
     if (page <= 0) return;
     const next = railCenterIndex(el.scrollLeft, page, catalog.length);
     setRailIndex(next);
@@ -1008,7 +1009,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       </div>
 
       {/* The catalog rail is a solid band UNDER the map (MESITA-2506), its
-        pills floating just above it. It steps aside for the whole of search
+        metadata in its left column and the carousel in its right, nothing
+        over the map (MESITA-2509). It steps aside for the whole of search
         mode: its cards are the nearby catalog, not the results, so showing
         both would be two lists answering different questions at once — and on
         a phone the keyboard is already covering the half of the map they
@@ -1026,7 +1028,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           setRailCardRef={(placeId, el) => {
             railRefs.current.set(placeId, el);
           }}
-          debug={
+          meta={
             loadCoords && (
               <SearchDebugCoords {...loadCoords} selected={selectedPlace} />
             )

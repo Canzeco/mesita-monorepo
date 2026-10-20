@@ -3,9 +3,9 @@ import { Skeleton } from "@/components/shared";
 // /search Suspense fallback. Mirror SearchHeader's silhouette (MESITA-2433):
 // the band, then the row (a disc · the query bar · a disc; the test counts
 // the two disc markers), then the chip row (All, then the families) in the
-// SAME white band (MESITA-2469), then the map, then the catalog rail's card
-// in its own white band under it (MESITA-2506), the counter pill floating
-// just above that band.
+// SAME white band (MESITA-2469), then the map with nothing on it, then the
+// full-width white band under it (MESITA-2506, MESITA-2509): the metadata
+// rows on the left, the carousel's card on the right.
 
 export default function SearchLoading() {
   return (
@@ -32,14 +32,16 @@ export default function SearchLoading() {
       </div>
       <div className="relative min-h-0 w-full flex-1 overflow-hidden">
         <Skeleton className="absolute inset-0 rounded-none" />
-
-        <div className="absolute inset-x-3 bottom-3 flex justify-center">
-          <Skeleton className="bg-card/95 h-6 w-24 rounded-full" />
-        </div>
       </div>
-      <div className="border-border bg-card shrink-0 border-t py-2.5">
-        <div className="flex snap-x snap-mandatory overflow-hidden pb-1">
-          <div className="w-4/5 shrink-0 snap-center px-3 first:ml-[10%] last:mr-[10%]">
+      <div className="border-border bg-card flex shrink-0 items-stretch border-t">
+        <div className="border-border flex w-[42%] shrink-0 flex-col gap-1.5 border-r px-2.5 py-2">
+          <Skeleton className="h-3.5 w-20" />
+          <Skeleton className="h-2.5 w-full" />
+          <Skeleton className="h-2.5 w-4/5" />
+          <Skeleton className="h-2.5 w-3/5" />
+        </div>
+        <div className="flex min-w-0 flex-1 snap-x snap-mandatory overflow-hidden py-2.5 pb-3.5">
+          <div className="w-[88%] shrink-0 snap-center px-1.5 first:ml-[6%] last:mr-[6%]">
             <Skeleton className="h-24 w-full rounded-2xl" />
           </div>
         </div>

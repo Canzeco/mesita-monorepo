@@ -72,9 +72,12 @@ describe("isTargetVisible", () => {
     expect(isTargetVisible(VIEW, { lat: 25.67, lng: -100.2 })).toBe(false);
   });
 
-  it("counts a place under the bottom rail as off-screen", () => {
-    // 10% up from the south edge: inside the box, under the rail.
-    expect(isTargetVisible(VIEW, { lat: 25.662, lng: -100.32 })).toBe(false);
+  it("counts a place in the bottom margin as off-screen", () => {
+    // 3% up from the south edge: inside the box, in the 6% margin (nothing
+    // floats over the map's foot since MESITA-2509).
+    expect(isTargetVisible(VIEW, { lat: 25.6606, lng: -100.32 })).toBe(false);
+    // 10% up is visible now that no rail covers it.
+    expect(isTargetVisible(VIEW, { lat: 25.662, lng: -100.32 })).toBe(true);
     expect(
       isTargetVisible(
         VIEW,
