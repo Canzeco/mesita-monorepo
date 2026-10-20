@@ -57,6 +57,8 @@ export async function tombstoneDeletedConsumer(
       deleted_at: now,
       phone: null,
       instagram_handle: null,
+      instagram_followers_count: null,
+      instagram_verified_at: null,
     },
   });
   if (!row.ok) return { ok: false, error: `consumer_tombstone: ${row.error}` };
