@@ -5,6 +5,7 @@ import {
   clampReloadIdleSec,
   gpsFixMovesCamera,
   isTargetVisible,
+  isUnderSight,
   RELOAD_IDLE_SEC_DEFAULT,
   reloadWaitMs,
   selectionMovesCamera,
@@ -177,5 +178,34 @@ describe("sameCoords", () => {
     expect(sameCoords(CENTER, { lat: 25.67, lng: -100.321 })).toBe(false);
     expect(sameCoords(null, null)).toBe(true);
     expect(sameCoords(null, CENTER)).toBe(false);
+  });
+});
+
+describe("a pin's second tap flies there (MESITA-2488)", () => {
+  it("knows when a place already sits under the sight", () => {
+    const sight = viewportSight(VIEW);
+    expect(isUnderSight(VIEW, sight)).toBe(true);
+    expect(
+      isUnderSight(VIEW, { lat: sight.lat + 0.0005, lng: sight.lng }),
+    ).toBe(true);
+    // A quarter of the view away is a real fly.
+    expect(isUnderSight(VIEW, { lat: sight.lat + 0.005, lng: sight.lng })).toBe(
+      false,
+    );
+    expect(isUnderSight(VIEW, { lat: sight.lat, lng: sight.lng + 0.005 })).toBe(
+      false,
+    );
+    expect(isUnderSight(null, sight)).toBe(false);
+  });
+
+  it("the fly is a centre ask: it pans to the sight and keeps the zoom", () => {
+    const target = { lat: 25.675, lng: -100.315 };
+    const step = cameraStep({ gen: 1, kind: "center", ...target }, VIEW, 15);
+    expect(step.kind).toBe("pan");
+    if (step.kind !== "pan") return;
+    expect(step.zoom).toBeNull();
+    const want = centerForSight(VIEW, target);
+    expect(step.lat).toBeCloseTo(want.lat, 9);
+    expect(step.lng).toBeCloseTo(want.lng, 9);
   });
 });

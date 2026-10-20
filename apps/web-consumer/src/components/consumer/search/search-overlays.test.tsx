@@ -549,7 +549,7 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
   });
 });
 
-describe("Search pin two-tap (select then open)", () => {
+describe("Search pin three taps (select, fly, open)", () => {
   it("fills pins with the tone color and rings the selected one", () => {
     expect(read("SearchMap.tsx")).toContain("pinFillColor");
     expect(read("SearchMap.tsx")).toContain("pinStrokeColor");
@@ -563,7 +563,7 @@ describe("Search pin two-tap (select then open)", () => {
     expect(read("../../../lib/map-defaults.ts")).toContain(
       "export function mapPinIcon",
     );
-    expect(read("SearchMap.tsx")).toContain("mapsPinIcon(pinFillColor");
+    expect(read("SearchMap.tsx")).toContain("pinFillColor(tone, isSelected)");
     expect(read("SearchMap.tsx")).toContain("mapPinIcon");
     expect(read("SearchMap.tsx")).toContain("userIcon()");
     expect(read("SearchMap.tsx")).toContain("cursor={MAP_PIN_CURSOR}");

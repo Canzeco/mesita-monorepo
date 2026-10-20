@@ -7,6 +7,8 @@
 //     already moved it or picked something;
 //   • the location disc — centre on the guest;
 //   • a pin or rail-card TAP — pan only when the place is off-screen;
+//   • a pin's SECOND tap — fly there: an animated pan to the sight, zoom
+//     untouched (MESITA-2488);
 //   • a search-bar pick — centre on the place, or fit a Location's viewport.
 // It never moves on a later GPS fix, a rail SCROLL (that only rings the pin)
 // or a catalog reload, and it never changes the zoom the guest chose; the
@@ -104,6 +106,29 @@ export function isTargetVisible(
   if (lng < view.west) lng += 360;
   return (
     lng >= view.west + width * insets.left && lng <= east - width * insets.right
+  );
+}
+
+/** How close to the sight, as a share of the view, counts as "already
+ *  there" for a pin's second tap (MESITA-2488). */
+const UNDER_SIGHT_SHARE = 0.04;
+
+/** Is the target already under the sight? Then a fly would not move. */
+export function isUnderSight(
+  view: ViewportBox | null,
+  target: LatLng,
+): boolean {
+  if (!view) return false;
+  const height = view.north - view.south;
+  const east = view.west <= view.east ? view.east : view.east + 360;
+  const width = east - view.west;
+  if (!(height > 0) || !(width > 0)) return false;
+  const sight = viewportSight(view);
+  let dLng = Math.abs(target.lng - sight.lng);
+  if (dLng > 180) dLng = 360 - dLng;
+  return (
+    Math.abs(target.lat - sight.lat) <= height * UNDER_SIGHT_SHARE &&
+    dLng <= width * UNDER_SIGHT_SHARE
   );
 }
 

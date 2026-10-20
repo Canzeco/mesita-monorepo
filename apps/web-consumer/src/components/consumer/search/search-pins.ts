@@ -28,7 +28,7 @@
 // a payload that predates the field — never `content_state`, which a
 // Created place carries as 'ready'. The one client reader is
 // lib/place-enriched.ts. Hexes live in lib/map-defaults.ts; a selected pin
-// keeps its tone fill and gains a black ring.
+// trades its tone for ink with a white ring (MESITA-2488).
 
 import {
   MAP_ENRICHED_PIN_COLOR,
@@ -36,6 +36,7 @@ import {
   MAP_PIN_STROKE_COLOR,
   MAP_PIN_STROKE_WEIGHT,
   MAP_SELECTED_PIN_COLOR,
+  MAP_SELECTED_PIN_STROKE_COLOR,
   MAP_SELECTED_PIN_STROKE_WEIGHT,
 } from "@/lib/map-defaults";
 import { isEnrichedPlace } from "@/lib/place-enriched";
@@ -114,32 +115,44 @@ export function pinToneColor(tone: PinTone): string {
   return TONE_COLORS[tone];
 }
 
-/** Selection never changes the fill — the ring says selected. */
-export function pinFillColor(tone: PinTone): string {
-  return pinToneColor(tone);
+/** Selection CHANGES the colour (MESITA-2488): the tone gives way to ink. */
+export function pinFillColor(tone: PinTone, selected = false): string {
+  return selected ? MAP_SELECTED_PIN_COLOR : pinToneColor(tone);
 }
 
 export function pinStrokeColor(selected: boolean): string {
-  return selected ? MAP_SELECTED_PIN_COLOR : MAP_PIN_STROKE_COLOR;
+  return selected ? MAP_SELECTED_PIN_STROKE_COLOR : MAP_PIN_STROKE_COLOR;
 }
 
-/** Selected draws the dark ring thicker; the disk never grows. */
+/** Selected draws its (white) ring thicker; the disk never grows. */
 export function pinStrokeWeight(selected: boolean): number {
   return selected ? MAP_SELECTED_PIN_STROKE_WEIGHT : MAP_PIN_STROKE_WEIGHT;
 }
 
-/** First tap selects; a later tap on the same pin opens. Not a timed dblclick. */
+export type PinGesture = "select" | "fly" | "open";
+
+/**
+ * THREE TAPS ON A PIN (Pato, MESITA-2488): the first selects (the pin turns
+ * ink), the second flies the camera there (an animated pan that sets the
+ * place under the sight, zoom untouched), the third opens it. A second tap
+ * that finds the place already under the sight opens at once — a fly that
+ * would not move is a dead tap. Counted taps, never a timed dblclick.
+ */
 export function pinGesture(
   selectedId: string | null,
   pinId: string,
-): "select" | "open" {
-  return selectedId === pinId ? "open" : "select";
+  stage: { arrivedId: string | null; atSight: boolean },
+): PinGesture {
+  if (selectedId !== pinId) return "select";
+  if (stage.arrivedId === pinId || stage.atSight) return "open";
+  return "fly";
 }
 
-/** Overlay map-pin tap. First tap holds (black ring); later tap opens.
+/** Overlay map-pin tap. First tap holds (ink pin); second flies; third opens.
  *  Overlay-only Mesita (not in the catalog snapshot) never opens on select —
  *  stash the prediction and keep the overlay. Google stash is the same hold. */
 type OverlayPinAction =
+  | "fly"
   | "select-google"
   | "select-mesita-catalog"
   | "select-mesita-overlay"
@@ -154,8 +167,12 @@ export function overlayPinDecision(input: {
   googleOnly: boolean;
   inCatalog: boolean;
   hasOverlay: boolean;
+  arrivedId: string | null;
+  atSight: boolean;
 }): OverlayPinAction {
-  const gesture = pinGesture(input.selectedId, input.pinId);
+  const known = input.googleOnly || input.inCatalog || input.hasOverlay;
+  const gesture = pinGesture(input.selectedId, input.pinId, input);
+  if (gesture === "fly") return known ? "fly" : "noop";
   if (gesture === "open") {
     if (input.googleOnly) return "open-google";
     if (input.inCatalog) return "open-catalog";

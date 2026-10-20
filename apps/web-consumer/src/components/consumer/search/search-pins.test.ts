@@ -8,6 +8,7 @@ import {
   MAP_PIN_HIT_SIZE,
   MAP_PIN_STROKE_COLOR,
   MAP_PLACE_PIN_RADIUS,
+  MAP_SELECTED_PIN_COLOR,
   mapPinIcon,
   mapPinSvg,
 } from "@/lib/map-defaults";
@@ -113,12 +114,17 @@ describe("pin tones — enriched > mesita > google", () => {
     expect(MAP_ENRICHED_PIN_COLOR).not.toBe(MAP_GOOGLE_PIN_COLOR);
   });
 
-  it("rings every place pin dark; selected is the same ring, thicker", () => {
+  it("rings every place pin dark; a selected pin CHANGES colour (MESITA-2488)", () => {
     expect(pinFillColor("enriched")).toBe(MAP_ENRICHED_PIN_COLOR);
     expect(pinFillColor("mesita")).toBe(MAP_GOOGLE_PIN_COLOR);
     expect(pinFillColor("google")).toBe(MAP_GOOGLE_PIN_COLOR);
+    // Selected: ink fill, white ring, whatever the tone was.
+    expect(pinFillColor("enriched", true)).toBe(MAP_SELECTED_PIN_COLOR);
+    expect(pinFillColor("google", true)).toBe(MAP_SELECTED_PIN_COLOR);
+    expect(MAP_SELECTED_PIN_COLOR).not.toBe(MAP_ENRICHED_PIN_COLOR);
+    expect(MAP_SELECTED_PIN_COLOR).not.toBe(MAP_GOOGLE_PIN_COLOR);
     expect(pinStrokeColor(false)).toBe("#111111");
-    expect(pinStrokeColor(true)).toBe("#111111");
+    expect(pinStrokeColor(true)).toBe("#ffffff");
     expect(pinStrokeWeight(true)).toBeGreaterThan(pinStrokeWeight(false));
     expect(
       mapPinSvg(
@@ -129,10 +135,26 @@ describe("pin tones — enriched > mesita > google", () => {
     ).toContain(`stroke-width="${pinStrokeWeight(true)}"`);
   });
 
-  it("opens on a later tap of the same pin, not a timed dblclick", () => {
-    expect(pinGesture(null, "a")).toBe("select");
-    expect(pinGesture("b", "a")).toBe("select");
-    expect(pinGesture("a", "a")).toBe("open");
+  it("select, then fly, then open — counted taps, not a timed dblclick", () => {
+    const away = { arrivedId: null, atSight: false };
+    expect(pinGesture(null, "a", away)).toBe("select");
+    expect(pinGesture("b", "a", away)).toBe("select");
+    expect(pinGesture("a", "a", away)).toBe("fly");
+    expect(pinGesture("a", "a", { arrivedId: "a", atSight: false })).toBe(
+      "open",
+    );
+    // A fly to another pin does not count for this one.
+    expect(pinGesture("a", "a", { arrivedId: "b", atSight: false })).toBe(
+      "fly",
+    );
+    // Already under the sight: the fly would not move, so it opens.
+    expect(pinGesture("a", "a", { arrivedId: null, atSight: true })).toBe(
+      "open",
+    );
+    // Not selected yet: select, even under the sight.
+    expect(pinGesture(null, "a", { arrivedId: "a", atSight: true })).toBe(
+      "select",
+    );
   });
 });
 
@@ -163,12 +185,29 @@ describe("overlayPinDecision", () => {
     googleOnly: false,
     inCatalog: false,
     hasOverlay: true,
+    arrivedId: null,
+    atSight: false,
   };
   const googleOverlay = {
     googleOnly: true,
     inCatalog: false,
     hasOverlay: true,
+    arrivedId: null,
+    atSight: false,
   };
+
+  it("flies to a selected pin on its second tap, before it opens", () => {
+    expect(
+      overlayPinDecision({ selectedId: "g1", pinId: "g1", ...googleOverlay }),
+    ).toBe("fly");
+    expect(
+      overlayPinDecision({
+        selectedId: "m-off",
+        pinId: "m-off",
+        ...mesitaOverlay,
+      }),
+    ).toBe("fly");
+  });
 
   it("selects an overlay Mesita pin that is not in the catalog", () => {
     expect(
@@ -186,6 +225,7 @@ describe("overlayPinDecision", () => {
         selectedId: "m-off",
         pinId: "m-off",
         ...mesitaOverlay,
+        arrivedId: "m-off",
       }),
     ).toBe("open-mesita-slug");
   });
@@ -213,6 +253,7 @@ describe("overlayPinDecision", () => {
         selectedId: "g1",
         pinId: "g1",
         ...googleOverlay,
+        arrivedId: "g1",
       }),
     ).toBe("open-google");
   });
@@ -237,7 +278,7 @@ describe("overlayPinDecision", () => {
     ).toBe("select-google");
   });
 
-  it("opens a catalog row on its second tap", () => {
+  it("opens a catalog row on its third tap, once the camera flew there", () => {
     expect(
       overlayPinDecision({
         selectedId: "c1",
@@ -245,6 +286,8 @@ describe("overlayPinDecision", () => {
         googleOnly: false,
         inCatalog: true,
         hasOverlay: false,
+        arrivedId: "c1",
+        atSight: false,
       }),
     ).toBe("open-catalog");
   });
@@ -257,6 +300,19 @@ describe("overlayPinDecision", () => {
         googleOnly: false,
         inCatalog: false,
         hasOverlay: false,
+        arrivedId: "g1",
+        atSight: false,
+      }),
+    ).toBe("noop");
+    expect(
+      overlayPinDecision({
+        selectedId: "g1",
+        pinId: "g1",
+        googleOnly: false,
+        inCatalog: false,
+        hasOverlay: false,
+        arrivedId: null,
+        atSight: false,
       }),
     ).toBe("noop");
   });
