@@ -10,7 +10,6 @@ export type ActivityKind = "saved" | "viewed" | "went";
 /** A member as Social shows them. Only Instagram-connected members who left
  *  Show my activity on ever come back from the server. */
 export type ActivityPerson = {
-  id: string;
   name: string;
   avatarUrl: string | null;
   handle: string | null;
@@ -49,13 +48,19 @@ export function isMesitaPlaceId(id: string): boolean {
 
 export async function apiTrackActivity(
   client: SupabaseClient,
-  input: { kind: ActivityKind; placeId: string; on?: boolean },
+  input: { kind: ActivityKind; placeId: string; on?: boolean; quiet?: boolean },
 ): Promise<void> {
   if (!isMesitaPlaceId(input.placeId)) return;
   await invokeEF<{ kind: ActivityKind; on: boolean }>(
     client,
     "consumer-web-track-activity",
-    { kind: input.kind, place_id: input.placeId, on: input.on ?? true },
+    {
+      kind: input.kind,
+      place_id: input.placeId,
+      on: input.on ?? true,
+      // A backfilled pre-Social save stays out of the feed (MESITA-2460).
+      ...(input.quiet ? { quiet: true } : {}),
+    },
   );
 }
 

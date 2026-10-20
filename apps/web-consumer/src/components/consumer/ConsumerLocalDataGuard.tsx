@@ -39,9 +39,16 @@ export function ConsumerLocalDataGuard({ consumerId }: { consumerId: string }) {
         /* the cache keeps the tap; the next sync settles it */
       });
     });
+    // The first sync's backfill writes QUIET saves: made when saves were
+    // "only in this browser", they never reach the feed (MESITA-2460).
     void syncSavedPlaces<Place>(
       () => apiSavedActivity(getSupabase()),
-      (placeId) => track(placeId, true),
+      (placeId) =>
+        apiTrackActivity(getSupabase(), {
+          kind: "saved",
+          placeId,
+          quiet: true,
+        }),
     );
     return () => setSavedPlacesRemote(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps

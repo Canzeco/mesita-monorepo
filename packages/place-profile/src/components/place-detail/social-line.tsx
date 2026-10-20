@@ -4,8 +4,8 @@
 // others saw this". People first; no counts by verb, no social block inside
 // Reviews. The caller passes what the server said; nobody visible → nothing.
 
+/** No account id: faces are keyed by position (MESITA-2460). */
 export type SocialFace = {
-  id: string;
   name: string;
   avatarUrl: string | null;
 };
@@ -28,18 +28,18 @@ export function SocialLine({
     <p className="text-foreground flex items-center gap-2 pt-1 text-sm" data-testid="social-line">
       {shown.length > 0 ? (
         <span className="flex shrink-0 -space-x-2" aria-hidden>
-          {shown.map((f) =>
+          {shown.map((f, i) =>
             f.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                key={f.id}
+                key={i}
                 src={f.avatarUrl}
                 alt=""
                 className="border-card h-6 w-6 rounded-full border-2 object-cover"
               />
             ) : (
               <span
-                key={f.id}
+                key={i}
                 className="border-card bg-muted text-foreground flex h-6 w-6 items-center justify-center rounded-full border-2 text-[10px] font-semibold"
               >
                 {initial(f.name)}
