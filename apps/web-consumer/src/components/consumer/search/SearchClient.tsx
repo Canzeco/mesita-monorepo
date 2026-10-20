@@ -1022,35 +1022,37 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           onUserViewport={onUserViewport}
           onCameraMoveStart={clearPendingReload}
         />
-
-        {/* The catalog rail steps aside for the whole of search mode: its cards
-          are the nearby catalog, not the results, so showing both would be two
-          lists answering different questions at once — and on a phone the
-          keyboard is already covering the half of the map they shared. */}
-        {!searchMode && (
-          <SearchRailOverlay
-            places={catalog}
-            catalogLoading={catalogLoading}
-            railCollapsed={railCollapsed}
-            railIndex={railIndex}
-            selectedId={railSelectedId}
-            railScrollRef={railScrollRef}
-            onShowRail={() => setRailCollapsed(false)}
-            onHideRail={() => setRailCollapsed(true)}
-            onRailScroll={handleRailScroll}
-            onSelectPlace={handleSelectPlace}
-            onOpenPlace={handleOpenPlace}
-            setRailCardRef={(placeId, el) => {
-              railRefs.current.set(placeId, el);
-            }}
-            debug={
-              loadCoords && (
-                <SearchDebugCoords {...loadCoords} selected={selectedPlace} />
-              )
-            }
-          />
-        )}
       </div>
+
+      {/* The catalog rail is a solid band UNDER the map (MESITA-2506), its
+        pills floating just above it. It steps aside for the whole of search
+        mode: its cards are the nearby catalog, not the results, so showing
+        both would be two lists answering different questions at once — and on
+        a phone the keyboard is already covering the half of the map they
+        shared. */}
+      {!searchMode && (
+        <SearchRailOverlay
+          places={catalog}
+          catalogLoading={catalogLoading}
+          railCollapsed={railCollapsed}
+          railIndex={railIndex}
+          selectedId={railSelectedId}
+          railScrollRef={railScrollRef}
+          onShowRail={() => setRailCollapsed(false)}
+          onHideRail={() => setRailCollapsed(true)}
+          onRailScroll={handleRailScroll}
+          onSelectPlace={handleSelectPlace}
+          onOpenPlace={handleOpenPlace}
+          setRailCardRef={(placeId, el) => {
+            railRefs.current.set(placeId, el);
+          }}
+          debug={
+            loadCoords && (
+              <SearchDebugCoords {...loadCoords} selected={selectedPlace} />
+            )
+          }
+        />
+      )}
     </div>
   );
 }

@@ -1479,3 +1479,45 @@ describe("the screen radius is drawn and its weights read out (MESITA-2504)", ()
     expect(map).toContain("return () => ring.setMap(null);");
   });
 });
+
+// MESITA-2506 (Pato: "just cover the map, like its okey if the places are in
+// white box with a line … the same you did with the searchbar and the
+// categoeris but with the bottom bar"): the cards sit in one solid white band
+// under the map, a hairline on top; the pills float just above it.
+describe("the rail is a solid white band under the map (MESITA-2506)", () => {
+  it("SearchClient draws the band after the map's box, not inside it", () => {
+    const client = read("SearchClient.tsx");
+    const mapBox = client.indexOf('<div className="relative min-h-0 flex-1 overflow-hidden">');
+    const mapEnd = client.indexOf("</div>", client.indexOf("onCameraMoveStart={clearPendingReload}"));
+    expect(mapBox).toBeGreaterThan(-1);
+    expect(client.indexOf("<SearchRailOverlay")).toBeGreaterThan(mapEnd);
+  });
+
+  it("the cards are in a solid bg-card band with a top hairline; the pills float above it", () => {
+    const overlay = read("search-catalog-overlays.tsx");
+    expect(overlay).toContain('className="relative z-20 shrink-0"');
+    expect(overlay).toContain('className="border-border bg-card border-t py-2.5"');
+    expect(overlay).toContain("pointer-events-none absolute inset-x-0 bottom-full pb-3");
+    expect(overlay).not.toContain("absolute inset-x-0 bottom-3 z-20");
+    const withCards = renderToStaticMarkup(
+      <SearchRailOverlay {...railProps} places={[RAIL_PLACE]} />,
+    );
+    expect(withCards).toContain("data-search-rail-cards");
+    expect(withCards).toContain("Hide places");
+    // Hidden or empty: no band, only the floating pill.
+    const hidden = renderToStaticMarkup(
+      <SearchRailOverlay {...railProps} places={[RAIL_PLACE]} railCollapsed />,
+    );
+    expect(hidden).not.toContain("data-search-rail-cards");
+    expect(hidden).toContain("Show 1 place");
+    const empty = renderToStaticMarkup(
+      <SearchRailOverlay {...railProps} places={[]} />,
+    );
+    expect(empty).not.toContain("data-search-rail-cards");
+  });
+
+  it("the route skeleton draws the same band", () => {
+    const loading = read("../../../app/(shell)/(discovery)/search/loading.tsx");
+    expect(loading).toContain('className="border-border bg-card shrink-0 border-t py-2.5"');
+  });
+});
