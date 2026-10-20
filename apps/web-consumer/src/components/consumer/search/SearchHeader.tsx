@@ -4,20 +4,21 @@
 //
 //   ( ⌖ ) [ ⚲ Search places…  ] ( ✦ )   one white band …
 //   ─────────────────── hairline ──────────────────────
-//   (⌖ Nearby) (☆ Popular) │ (○ Coffee) (○ Breakfast) …   … one hairline under
+//   │ (○ Coffee) (○ Breakfast) (○ Quick bite) …         … one hairline under
 //   ─────────────────── map ───────────────────────────
 //
 // The bar's row: the locate disc, the query bar, the Ask AI pill (→ Search ›
 // Chat, Soon) — two equal 36px discs around the bar (Pato, MESITA-2433: "location
 // must be kinda symmetrical to ask ai"). One token set for every control lives
-// in header-classes.ts. Under it one horizontal chip row: Nearby and Popular, a hairline,
-// then every family, each with its line icon (Pato, MESITA-2426: they replaced
-// All; MESITA-2478: line icons, not emoji — "emojis uses color and that
-// takes attention"). ONE pick at a time: Near is every family ranked Near, Popular every
-// family ranked Popular, a family is that family ranked Near. Sent as the
-// server-side `familyKeys` and `prefer` (MESITA-2425). There is no Filters disc and no sheet (Pato,
-// MESITA-2417: "Its just all and thats it"); the Google reviews minimum is
-// the operator's, Admin › Discovery › Area.
+// in header-classes.ts. Under it one horizontal chip row: every family, each
+// with its line icon (MESITA-2478: line icons, not emoji — "emojis uses color
+// and that takes attention"). NO NEARBY, NO POPULAR (Pato, MESITA-2499: "its
+// all based on the map … the zoom is decided by the map"): the map is the
+// where, so the set is the visible map ranked best first, and a chip is only
+// the what. ONE family at a time; tapping the lit one again clears it (every
+// family). Sent as the server-side `familyKeys`. There is no Filters disc and
+// no sheet (Pato, MESITA-2417: "Its just all and thats it"); the Google
+// reviews minimum is the operator's, Admin › Discovery › Area.
 //
 // ONE SOLID WHITE BAND for the bar's row and the chip row, like Home's
 // header and the bottom bar (Pato, MESITA-2413; MESITA-2469 merged the grey
@@ -35,32 +36,19 @@ import Link from "next/link";
 import { BotMessageSquare } from "lucide-react";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import { FamilyIcon } from "@/lib/family-icons";
-import {
-  clearMapFamilies,
-  selectMapFamily,
-  useMapFilters,
-} from "@/lib/use-map-filters";
-import { setAreaPrefer, useAreaPrefer } from "@/lib/use-area-prefer";
+import { selectMapFamily, useMapFilters } from "@/lib/use-map-filters";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { cn } from "@/lib/utils";
 import { CHIP, CHIP_OFF, CHIP_ON, HEADER_PILL } from "./header-classes";
-
-/** Near and Popular, which replaced All (Pato, MESITA-2426). Popular wears
- *  the star All wore (MESITA-2422); each icon is FAMILY_ICONS[prefer]. */
-export const EVERY_FAMILY_CHIPS = [
-  { prefer: "near", label: "Nearby" },
-  { prefer: "popular", label: "Popular" },
-] as const;
 
 /** A chip's line icon, never an emoji (MESITA-2478): 1.75 stroke, 2.25 when
  *  on — BottomNav's pair. */
 const CHIP_ICON = "h-4 w-4 shrink-0";
 
-/** Each chip group opens on a 3px clay bar, the Home rail's two colours
- *  (Pato, MESITA-2484/2487/2492): red for Nearby · Popular, blue for the
- *  families. Literal classes, so Tailwind sees them. */
+/** The families open on a 3px clay bar, the Home rail's family blue (Pato,
+ *  MESITA-2484/2487/2492; the red Nearby · Popular group left with its
+ *  chips, MESITA-2499). Literal classes, so Tailwind sees them. */
 export const CHIP_GROUP_MARK = {
-  around: "h-6 w-[3px] shrink-0 rounded-full bg-[oklch(0.68_0.09_35)]",
   families: "h-6 w-[3px] shrink-0 rounded-full bg-[oklch(0.66_0.06_245)]",
 } as const;
 
@@ -82,8 +70,6 @@ export function SearchHeader({
   children?: ReactNode;
 }) {
   const filters = useMapFilters();
-  const prefer = useAreaPrefer();
-  const everyFamily = filters.familyKeys.length === 0;
   return (
     <div
       className="border-border bg-card relative z-30 shrink-0 border-b"
@@ -124,35 +110,7 @@ export function SearchHeader({
           >
             <span
               aria-hidden
-              className={CHIP_GROUP_MARK.around}
-              data-chip-group="around"
-            />
-            {EVERY_FAMILY_CHIPS.map((c) => {
-              const on = everyFamily && prefer === c.prefer;
-              return (
-                <button
-                  key={c.prefer}
-                  type="button"
-                  onClick={() => {
-                    clearMapFamilies();
-                    setAreaPrefer(c.prefer);
-                  }}
-                  aria-pressed={on}
-                  className={cn(CHIP, on ? CHIP_ON : CHIP_OFF)}
-                  data-area-prefer={c.prefer}
-                >
-                  <FamilyIcon
-                    name={c.prefer}
-                    className={CHIP_ICON}
-                    strokeWidth={on ? 2.25 : 1.75}
-                  />
-                  <span>{c.label}</span>
-                </button>
-              );
-            })}
-            <span
-              aria-hidden
-              className={cn(CHIP_GROUP_MARK.families, "ml-1")}
+              className={CHIP_GROUP_MARK.families}
               data-chip-group="families"
             />
             {FILTERABLE_PLACE_FAMILIES.map((family) => {
@@ -163,11 +121,8 @@ export function SearchHeader({
                 <button
                   key={family.key}
                   type="button"
-                  onClick={() => {
-                    // A family ranks Near; picking it again is Near.
-                    setAreaPrefer("near");
-                    selectMapFamily(family.key);
-                  }}
+                  // Picking the lit family again clears it: every family.
+                  onClick={() => selectMapFamily(family.key)}
                   aria-pressed={on}
                   className={cn(CHIP, on ? CHIP_ON : CHIP_OFF)}
                 >

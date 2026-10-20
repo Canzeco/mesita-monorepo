@@ -129,21 +129,29 @@ type ViewportPlaces = {
   reloadIdleSec?: number;
 };
 
+/** The visible map, as the EF's `bounds` reads it (MESITA-2499). */
+export type MapBounds = {
+  low: { lat: number; lng: number };
+  high: { lat: number; lng: number };
+};
+
 /**
- * Search map catalog: the Area pool around a camera, inside the operator's
- * radius (MESITA-2379: Google and Mesita places in one ranked set; the
- * guest never picks a source).
+ * Search map catalog: the Area pool on the visible map, best first
+ * (MESITA-2499; MESITA-2379: Google and Mesita places in one ranked set;
+ * the guest never picks a source).
  *
- * Web Search posts Families and Near/Popular (MESITA-2425); it never posts a radius
- * (operator `map.radiusKm`) or a count (operator `map.mesitaPlaces`, one
- * Google call per load). `google: true` is web Search saying it CAN render
- * a Google-only stub, and the EF refuses a call without it (MESITA-2337).
+ * Web Search posts the camera centre, the visible `bounds` and Families;
+ * the zoom decides how wide the set is. No bounds (or a box the EF finds
+ * too wide) falls back to the centre inside the operator's `map.radiusKm`.
+ * It never posts a count (operator `map.mesitaPlaces`, one Google call per
+ * load). `google: true` is web Search saying it CAN render a Google-only
+ * stub, and the EF refuses a call without it (MESITA-2337).
  */
 export async function apiFetchNearbyCatalog(
   client: SupabaseClient,
   center: { lat: number; lng: number },
+  bounds: MapBounds | null,
   familyKeys: readonly string[] = [],
-  prefer: AreaPrefer = "near",
 ): Promise<ViewportPlaces> {
   const data = await invokeEF<{
     places: Place[];
@@ -153,9 +161,9 @@ export async function apiFetchNearbyCatalog(
   }>(client, "consumer-web-list-places", {
     google: true,
     familyKeys: [...familyKeys],
-    prefer,
     lat: center.lat,
     lng: center.lng,
+    ...(bounds ? { bounds } : {}),
   });
   return {
     places: (data.places ?? []).map(stripInsecurePhotos),

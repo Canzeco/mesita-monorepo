@@ -2,7 +2,7 @@
 // Places autocomplete billing, prediction↔catalog matching, the anchored
 // searchbar pick, and distance derivation/formatting for the rail cards.
 
-import type { Place } from "@/lib/api/places";
+import type { MapBounds, Place } from "@/lib/api/places";
 import type { LocationAnchor, PlacePrediction } from "@/lib/api/place-search";
 import { haversineKm } from "@/lib/utils";
 
@@ -217,6 +217,38 @@ export function centerForSight(
   return {
     lat: latOfMercatorY(mercatorY(target.lat) - span * (0.5 - SIGHT_Y)),
     lng: target.lng,
+  };
+}
+
+type Box = { south: number; west: number; north: number; east: number };
+
+/** The visible map as the EF's `bounds` (MESITA-2499). Null when the box
+ *  crosses the dateline or is degenerate, which the EF cannot read: that
+ *  load falls back to its centre inside the operator's radius. */
+export function boxBounds(box: Box | null): MapBounds | null {
+  if (!box) return null;
+  const ok = [box.south, box.west, box.north, box.east].every(Number.isFinite);
+  if (!ok || !(box.south < box.north) || !(box.west < box.east)) return null;
+  return {
+    low: { lat: box.south, lng: box.west },
+    high: { lat: box.north, lng: box.east },
+  };
+}
+
+/** The view `box` becomes once `target` sits under the sight at the same
+ *  zoom (MESITA-2499): a load that leaves before its camera move lands (a
+ *  fix, the disc, a place pick) asks for the map the guest is about to see.
+ *  Null across the dateline. */
+export function boxAtSight(box: Box | null, target: { lat: number; lng: number }): Box | null {
+  if (!box || !(box.west < box.east)) return null;
+  const center = centerForSight(box, target);
+  const half = (mercatorY(box.north) - mercatorY(box.south)) / 2;
+  const halfLng = (box.east - box.west) / 2;
+  return {
+    south: latOfMercatorY(mercatorY(center.lat) - half),
+    north: latOfMercatorY(mercatorY(center.lat) + half),
+    west: center.lng - halfLng,
+    east: center.lng + halfLng,
   };
 }
 

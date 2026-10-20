@@ -392,11 +392,11 @@ describe("SearchLocateButton", () => {
 });
 
 describe("Search's header is location · the query bar · Ask AI, then family chips", () => {
-  it("puts location at the left, Nearby and Popular first in the chip row, no Filters, no client-side recut", () => {
+  it("puts location at the left, only the families in the chip row, no Filters, no client-side recut", () => {
     const src = read("SearchClient.tsx");
     const overlays = read("search-catalog-overlays.tsx");
     // MESITA-2409: the header carries the row (locate, bar, Ask AI) and the
-    // horizontal chips (Nearby, Popular, families); the map sits under it. No Filters
+    // horizontal family chips; the map sits under it. No Filters
     // disc, no sheet (Pato, MESITA-2417: "Its just all and thats it").
     expect(src).toContain("<SearchHeader");
     expect(src).not.toContain("<SearchFilterRow");
@@ -407,22 +407,19 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
     const header = read("SearchHeader.tsx");
     expect(header).not.toContain("SearchFilterRow");
     expect(header).not.toContain("SlidersHorizontal");
-    // Near and Popular replaced All before the hairline and the families
-    // (MESITA-2426); every chip wears a line icon, never an emoji
-    // (MESITA-2478).
-    expect(header).toContain("EVERY_FAMILY_CHIPS.map");
-    expect(header).toContain('{ prefer: "popular", label: "Popular" }');
-    expect(header).toContain("name={c.prefer}");
+    // No Nearby, no Popular (Pato, MESITA-2499): the map is the where, the
+    // chips are only the families, and the lit family tapped again clears
+    // it. Every chip wears a line icon, never an emoji (MESITA-2478).
+    for (const gone of ["EVERY_FAMILY_CHIPS", "setAreaPrefer", "useAreaPrefer", "data-area-prefer", "clearMapFamilies"]) {
+      expect(header, gone).not.toContain(gone);
+    }
+    expect(src).not.toContain("prefer");
     expect(header).toContain("name={family.key}");
     expect(header).toContain("strokeWidth={on ? 2.25 : 1.75}");
     expect(header).not.toMatch(/[\p{Emoji_Presentation}\uFE0F]/u);
     expect(header).not.toContain("ALL_EMOJI");
-    expect(header.indexOf("EVERY_FAMILY_CHIPS.map")).toBeLessThan(
-      header.indexOf("FILTERABLE_PLACE_FAMILIES.map"),
-    );
     expect(header).toContain("FILTERABLE_PLACE_FAMILIES.map");
-    expect(header).toContain("selectMapFamily(family.key)");
-    expect(header).toContain('setAreaPrefer("near");');
+    expect(header).toContain("onClick={() => selectMapFamily(family.key)}");
     // ONE solid white band with one hairline holds the bar's row AND the
     // chip row (MESITA-2413, MESITA-2469); the chips never float on the map
     // (MESITA-2462). Every control h-9 (MESITA-2445).
@@ -440,11 +437,11 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
     // A full-width hairline splits the bar's row from the chips (MESITA-2479),
     // drawn only while the chips are (MESITA-2487).
     expectTokens(chipBand![2], ["border-border", "border-t"], "chip band line");
-    // The chips are not drawn while the bar queries (MESITA-2487), and each
-    // group opens on its clay bar, no grey divider.
+    // The chips are not drawn while the bar queries (MESITA-2487), and the
+    // families open on their clay bar, no grey divider.
     expect(header).toContain("{chipsHidden ? null : (");
     expect(src).toContain("chipsHidden={querying}");
-    expect(header).toContain('data-chip-group="around"');
+    expect(header).not.toContain('data-chip-group="around"');
     expect(header).toContain('data-chip-group="families"');
     expect(header).not.toContain("bg-border mx-0.5 h-6 w-px");
     expect(chipBand![1]).not.toContain("bg-muted");
@@ -490,7 +487,9 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
     expect(recentre).toContain(
       "catalogIsStale(lastFetchedCenter.current, location)",
     );
-    expect(recentre).toContain("void loadAt(location)");
+    expect(recentre).toContain(
+      "void loadAt(location, boxAtSight(lastBoxRef.current, location))",
+    );
     expect(recentre).toContain(
       'askCamera({ kind: "center", lat: location.lat, lng: location.lng })',
     );
@@ -750,7 +749,7 @@ describe("the sight sits 40% down the map (MESITA-2448)", () => {
     expect(map).toContain("style={{ top: `${SIGHT_Y * 100}%` }}");
     const client = read("SearchClient.tsx");
     expect(client).not.toContain("viewportCenter(");
-    expect(client).toContain("loadAt(viewportSight(box))");
+    expect(client).toContain("loadAt(viewportSight(box), box)");
   });
 });
 
@@ -1090,8 +1089,11 @@ describe("every searchbar pick anchors the map (MESITA-1405)", () => {
       client.indexOf("const anchorMapTo = ("),
       client.indexOf("const handleBarPick"),
     );
+    // A Location loads the area it fits; a Place, the view it pans to
+    // (MESITA-2499).
+    expect(anchor).toContain("const target = { lat: camera.lat, lng: camera.lng };");
     expect(anchor).toContain(
-      "void loadAt({ lat: camera.lat, lng: camera.lng })",
+      "camera.bounds ?? boxAtSight(lastBoxRef.current, target),",
     );
     expect(anchor).toContain('{ kind: "fit", bounds: camera.bounds }');
     expect(anchor).toContain(

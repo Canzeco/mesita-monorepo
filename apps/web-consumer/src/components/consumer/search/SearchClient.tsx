@@ -39,11 +39,11 @@
 //   • Base: SearchMap fills the body (red Mesita Places, gray Google, blue
 //     user). Catalog pins by default; `searchPins` overlays
 //     the predictions while a query is live.
-//   • Top overlay: the search bar (two thirds) + labelled Filters (one
-//     third: Family, Places scope, Popularity). How many is
-//     operator the scope's cap (`map.googlePlaces` / `map.mesitaPlaces`).
-//   • Bottom overlay: the catalog rail around the camera, hidden while
-//     querying. Closest first. A guest move reloads when the map comes to
+//   • Top overlay: SearchHeader — the bar, then the family chips. How many
+//     is the operator's (`map.mesitaPlaces`, one Google call per load).
+//   • Bottom overlay: the catalog rail for the visible map, hidden while
+//     querying. Best first, in the server's order: the zoom decides how
+//     wide the set is (MESITA-2499). A guest move reloads when the map comes to
 //     rest, at most once every reloadIdleSec counted from the last reload,
 //     with no distance gate (MESITA-2451). Only the guest's own moves
 //     reload — a tap's reveal pan, the disc and a bar pick do not. The
@@ -78,7 +78,6 @@ import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { useMapFilters } from "@/lib/use-map-filters";
-import { useAreaPrefer } from "@/lib/use-area-prefer";
 import {
   buildSearchMapPins,
   catalogPlaceOnMesita,
@@ -116,6 +115,8 @@ import {
   anchorPlaceFromPrediction,
   anchorSurvivesReload,
   anchorViewportBounds,
+  boxAtSight,
+  boxBounds,
   catalogIsStale,
   defaultRailSelection,
   shouldCenterRailCard,
@@ -209,15 +210,12 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // The bottom rail can be dismissed (X on the counter) to clear the map;
   // it reopens via the floating reopen pill or by tapping any pin.
   const [railCollapsed, setRailCollapsed] = useState(false);
-  // The family chips (All, or one family) ride this store and the nearby
-  // call. How many, the circle and the Google reviews minimum are the
-  // operator's (Admin › Discovery). The server is the one selector — this
-  // component never recuts the catalog.
+  // The family chips (none, or one family) ride this store and the
+  // catalog call. How many and the Google reviews minimum are the
+  // operator's (Admin › Discovery); how wide is the visible map
+  // (MESITA-2499). The server is the one selector and ranks best first —
+  // this component never recuts the catalog.
   const filters = useMapFilters();
-  // A family is the Family mode (MESITA-2428); Nearby and Popular are
-  // every family (MESITA-2426).
-  const storedPrefer = useAreaPrefer();
-  const prefer = filters.familyKeys.length > 0 ? "family" : storedPrefer;
   const location = userLocation;
   // THE ONE CAMERA CHANNEL (MESITA-2440). Every move the guest asked for —
   // first load, the location disc, a tap, a bar pick — is a fresh intent;
@@ -401,8 +399,11 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     locationRef.current = location;
   }, [location]);
 
+  // A load asks for the centre AND the visible map (MESITA-2499): the zoom
+  // decides how wide the set is. `box` null = the centre inside the
+  // operator's radius (no view yet, or one across the dateline).
   const loadAt = useCallback(
-    async (nextCenter: Coords) => {
+    async (nextCenter: Coords, box: ViewportBox | null) => {
       lastFetchedCenter.current = nextCenter;
       lastLoadAtRef.current = Date.now();
       const gen = ++viewportGen.current;
@@ -412,8 +413,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         const result = await apiFetchNearbyCatalog(
           supabase,
           nextCenter,
+          boxBounds(box),
           filters.familyKeys,
-          prefer,
         );
         if (gen !== viewportGen.current) return;
         reloadIdleMsRef.current =
@@ -441,7 +442,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     },
     // `markViewport` left this list with the search-open guard that used to
     // call it here — the overlay is gone, so a viewport load always loads.
-    [filters.familyKeys, prefer, supabase],
+    [filters.familyKeys, supabase],
   );
 
   // RELOAD WHEN THE MAP COMES TO REST, AT MOST ONCE EVERY reloadIdleSec
@@ -461,7 +462,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       pendingReload.current = null;
       const box = lastBoxRef.current;
       if (!box) return;
-      void loadAt(viewportSight(box));
+      void loadAt(viewportSight(box), box);
     };
     pendingReload.current = setTimeout(
       fire,
@@ -472,7 +473,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const onFirstViewport = useCallback(
     (box: ViewportBox) => {
       lastBoxRef.current = box;
-      void loadAt(viewportSight(box));
+      void loadAt(viewportSight(box), box);
     },
     [loadAt],
   );
@@ -496,13 +497,12 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   useEffect(() => () => clearPendingReload(), [clearPendingReload]);
 
-  // Family and Near/Popular change the Area pool (`loadAt` changes with
-  // them). How many stays the operator's. The query bar never reads these
-  // filters.
+  // A family chip changes the Area pool (`loadAt` changes with it). How
+  // many stays the operator's. The query bar never reads these filters.
   useEffect(() => {
     if (!lastFetchedCenter.current || !lastBoxRef.current) return;
     clearPendingReload();
-    void loadAt(viewportSight(lastBoxRef.current));
+    void loadAt(viewportSight(lastBoxRef.current), lastBoxRef.current);
   }, [clearPendingReload, loadAt]);
 
   // A GPS FIX MOVES THE BLUE DOT, NOT THE MAP (MESITA-2440). Only the fix
@@ -540,7 +540,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         );
         if (catalogIsStale(lastFetchedCenter.current, fix)) {
           clearPendingReload();
-          void loadAt(fix);
+          void loadAt(fix, boxAtSight(lastBoxRef.current, fix));
         }
       },
       [askCamera, clearPendingReload, loadAt],
@@ -559,7 +559,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     askCamera({ kind: "center", lat: location.lat, lng: location.lng });
     if (catalogIsStale(lastFetchedCenter.current, location)) {
       clearPendingReload();
-      void loadAt(location);
+      void loadAt(location, boxAtSight(lastBoxRef.current, location));
     }
   }, [askCamera, clearPendingReload, loadAt, location, locate]);
 
@@ -639,8 +639,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // One pick = one camera move + one reload at the pick + (for a Place)
   // card ONE. Clearing the query dismisses the results panel, brings the
   // rail back, and rotates the Places billing session — a pick ends a
-  // session. The reload goes out at once, for the pick's coordinates: the
-  // Area pool is asked by its centre, so it need not wait for the pan.
+  // session. The reload goes out at once, for the pick's coordinates and
+  // the view the camera is about to show, so it need not wait for the pan.
   const anchorMapTo = (
     camera: {
       lat: number;
@@ -661,7 +661,12 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         : { kind: "center", lat: camera.lat, lng: camera.lng },
     );
     clearPendingReload();
-    void loadAt({ lat: camera.lat, lng: camera.lng });
+    const target = { lat: camera.lat, lng: camera.lng };
+    // A Location loads the area it fits; a Place, the view it pans to.
+    void loadAt(
+      target,
+      camera.bounds ?? boxAtSight(lastBoxRef.current, target),
+    );
     setAnchor({ place });
     if (place) {
       setHeldOverlay(null);
