@@ -389,3 +389,11 @@ Deno.test("name knobs default Fast 5 and Deep 3+3+3 on an old blob and clamp", (
   assertEquals(missingAuto.name.deep.autoCount, 3);
   assertEquals(missingAuto.name.deep.googleCount, 20);
 });
+
+Deno.test("map.proximityWeight: default 1, clamped 0–5, two decimals (MESITA-2504)", () => {
+  assertEquals(normalizeDiscoveryConfig({}).map.proximityWeight, 1);
+  assertEquals(normalizeDiscoveryConfig({ map: { proximityWeight: 0.456 } }).map.proximityWeight, 0.46);
+  assertEquals(normalizeDiscoveryConfig({ map: { proximityWeight: 9 } }).map.proximityWeight, 5);
+  assertEquals(normalizeDiscoveryConfig({ map: { proximityWeight: -1 } }).map.proximityWeight, 0);
+  assertEquals(normalizeDiscoveryConfig({ map: { proximityWeight: "x" } }).map.proximityWeight, 1);
+});

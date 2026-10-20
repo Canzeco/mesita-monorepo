@@ -174,6 +174,14 @@ export type MapConfig = {
    * applies; the higher of the two wins. 0 is off. Never a Mesita floor.
    */
   googleMinReviews: number;
+  /**
+   * The Map's Proximity exponent `a` (MESITA-2504): the Map scores
+   * Proximity^a × Popularity^1 × Selected^1 inside the screen radius, and
+   * this is the one number that moves (Pato: "Populairty wright is only 1.
+   * the only thing that changes is proximity, it can go below 1 or above
+   * 1"). `MAP_PROXIMITY_WEIGHT_MIN`..`MAX`, two decimals, default 1.
+   */
+  proximityWeight: number;
 };
 
 /**
@@ -304,6 +312,10 @@ export const GOOGLE_PULL_DEFAULT = 20;
 export const MAP_RADIUS_KM_MIN = 1;
 export const MAP_RADIUS_KM_MAX = 50;
 export const MAP_RADIUS_KM_DEFAULT = 50;
+/** `map.proximityWeight` bounds: the weights table's exponent range. */
+export const MAP_PROXIMITY_WEIGHT_MIN = 0;
+export const MAP_PROXIMITY_WEIGHT_MAX = 5;
+export const MAP_PROXIMITY_WEIGHT_DEFAULT = 1;
 /** Same ceiling as map.minReviews — one review floor reads like another. */
 export const GENERAL_MIN_REVIEWS_MAX = 100_000;
 
@@ -345,6 +357,7 @@ export const DEFAULT_MAP: MapConfig = {
   mesitaPlaces: GOOGLE_PULL_DEFAULT,
   radiusKm: MAP_RADIUS_KM_DEFAULT,
   googleMinReviews: 0,
+  proximityWeight: MAP_PROXIMITY_WEIGHT_DEFAULT,
 };
 
 /** `catalog.railCap` bounds and default: the Feed shows 5 per row. */
@@ -643,6 +656,14 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
     googleMinReviews: Math.round(
       num(r.googleMinReviews, DEFAULT_MAP.googleMinReviews, 0, 100_000),
     ),
+    proximityWeight: Math.round(
+      num(
+        r.proximityWeight,
+        DEFAULT_MAP.proximityWeight,
+        MAP_PROXIMITY_WEIGHT_MIN,
+        MAP_PROXIMITY_WEIGHT_MAX,
+      ) * 100,
+    ) / 100,
   };
 }
 

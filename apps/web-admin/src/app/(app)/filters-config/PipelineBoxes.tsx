@@ -28,6 +28,8 @@ import {
   REACH_KM_MIN,
   SELECTED_OTHER_MAX,
   SELECTED_OTHER_MIN,
+  MAP_PROXIMITY_WEIGHT_MAX,
+  MAP_PROXIMITY_WEIGHT_MIN,
   MAP_RADIUS_KM_MAX,
   MAP_RADIUS_KM_MIN,
   MAP_RELOAD_PAIRS,
@@ -330,8 +332,10 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           <p>
             Places around a location: a <strong>point</strong> (the device, a
             saved pin, the map&apos;s centre) takes candidates inside the
-            radius and ranks them by Proximity over its reach; a <strong>rectangle</strong> (the map&apos;s visible box)
-            keeps only what is inside it (Map box) and ranks by Popularity.
+            radius and ranks them by Proximity over its reach. The Map&apos;s point is
+            the cross and its radius is <strong>the screen&apos;s</strong>: the average of
+            the visible half-width and half-height, a gate on Google and Mesita
+            alike, and Proximity&apos;s reach (MESITA-2504).
             Saved areas (a city, neighbourhood or postcode) were retired
             2026-10-20: Home always asks from a point. Google candidates and Mesita candidates
             contribute independently to one pool: merged, deduped by Google
@@ -407,6 +411,15 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             disabled={off}
             onChange={setReachKm}
           />
+          <NumberField
+            label="Map proximity weight (a)"
+            value={cfg.map.proximityWeight}
+            min={MAP_PROXIMITY_WEIGHT_MIN}
+            max={MAP_PROXIMITY_WEIGHT_MAX}
+            decimals
+            disabled={off}
+            onChange={(proximityWeight) => map({ proximityWeight })}
+          />
         </div>
         <AreaWeightsTable modes={params.modes} disabled={off} onChange={setWeight} />
         <p className="text-muted-foreground type-meta">
@@ -414,9 +427,12 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           Popularity<sup>b</sup> × Selected<sup>c</sup>. 0 turns a signal off
           for that mode; within a mode only the ratios a : b : c change the
           order (4 · 1 · 1 ranks like 8 · 2 · 2). Every family shares the
-          Family row. A saved city or area has no Proximity, so it reads b and
-          c alone. A place with no Google numbers has Popularity 0, so it sinks
-          to the bottom unless b is 0.
+          Family row. The Map reads none of the rows: it scores
+          Proximity<sup>a</sup> × Popularity<sup>1</sup> × Selected<sup>1</sup>
+          with a = Map proximity weight (below 1 softens distance, above 1
+          sharpens it) and its reach = the screen radius. A place with no
+          Google numbers has Popularity 0, so it sinks to the bottom unless b
+          is 0.
         </p>
       </Group>
       <Group title="Candidates per source">

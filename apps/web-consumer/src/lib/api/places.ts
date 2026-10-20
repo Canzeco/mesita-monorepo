@@ -86,6 +86,9 @@ export type Place = {
   /** The Area pipeline's breakdown for this place, computed by the server
    *  (MESITA-2379); only the one-pool Feed wire carries it. */
   area?: AreaDiagnostics;
+  /** The Search map's score for this place (MESITA-2504 debug): the two
+   *  signals, the Selected factor and the product. Only list-places sends it. */
+  score?: MapScore;
   /** Alias shipped on Google Nearby stubs (`from_google`). */
   from_google?: boolean;
   // Generic product payload. Menus are carried in products.menu.
@@ -120,8 +123,24 @@ export type Place = {
 /** The wire word for a Places scope (MESITA-2298): Google Places or Mesita
  *  Selected. The server also reads the retired `enriched`/`mesita` words. */
 
+/** One Search map place's score (MESITA-2504). `null` is "n/a", never 0. */
+export type MapScore = {
+  proximity: number | null;
+  popularity: number | null;
+  selected: number;
+  final: number;
+};
+
+/** The exponents the Search map scored with: Proximity^a × Popularity^1 ×
+ *  Selected^1 (MESITA-2504). */
+export type MapWeights = { proximity: number; popularity: number; selected: number };
+
 type ViewportPlaces = {
   places: Place[];
+  /** The circle the server gated on (km): the screen's, else the
+   *  operator's (MESITA-2504). */
+  radiusKm?: number;
+  weights?: MapWeights;
   reloadMinKm?: number;
   reloadMinSec?: number;
   /** Seconds the map must be still before a guest move reloads it
@@ -155,6 +174,8 @@ export async function apiFetchNearbyCatalog(
 ): Promise<ViewportPlaces> {
   const data = await invokeEF<{
     places: Place[];
+    radiusKm?: number;
+    weights?: MapWeights;
     reloadMinKm?: number;
     reloadMinSec?: number;
     reloadIdleSec?: number;
@@ -167,6 +188,11 @@ export async function apiFetchNearbyCatalog(
   });
   return {
     places: (data.places ?? []).map(stripInsecurePhotos),
+    radiusKm:
+      typeof data.radiusKm === "number" && Number.isFinite(data.radiusKm)
+        ? data.radiusKm
+        : undefined,
+    weights: data.weights,
     reloadMinKm:
       typeof data.reloadMinKm === "number" && Number.isFinite(data.reloadMinKm)
         ? data.reloadMinKm

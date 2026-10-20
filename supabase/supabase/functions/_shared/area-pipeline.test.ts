@@ -11,6 +11,9 @@ import {
   ownedCandidate,
   parseAreaBounds,
   resolveAreaLocation,
+  SCREEN_RADIUS_KM_MAX,
+  SCREEN_RADIUS_KM_MIN,
+  screenRadiusKm,
   selectAreaPool,
   selectedPoolQuery,
   selectMesitaSelected,
@@ -1034,6 +1037,60 @@ Deno.test("an attraction Google returns is in no family and never shows (MESITA-
   try {
     const { places } = await selectAreaPool(deps().d);
     assertEquals(ids(places), ["g:bar"]);
+  } finally {
+    g.restore();
+  }
+});
+
+// ── The Map's screen radius (MESITA-2504) ───────────────────────────────
+
+Deno.test("screen radius: the average of the visible half-width and half-height", () => {
+  // 0.02° of latitude ≈ 2.224 km tall; 0.02° of longitude at 25.67° ≈ 2.004 km wide.
+  const r = screenRadiusKm({
+    low: { lat: 25.66, lng: -100.31 },
+    high: { lat: 25.68, lng: -100.29 },
+  })!;
+  assert(Math.abs(r - (2.224 / 2 + 2.004 / 2) / 2) < 0.01, String(r));
+  // A tall phone screen: between the half-width and the half-height.
+  const tall = screenRadiusKm({
+    low: { lat: 25.64, lng: -100.31 },
+    high: { lat: 25.7, lng: -100.29 },
+  })!;
+  assert(tall > 1.0 && tall < 3.34, String(tall));
+});
+
+Deno.test("screen radius: no readable screen is null; a tiny screen is clamped", () => {
+  assertEquals(screenRadiusKm(null), null);
+  assertEquals(screenRadiusKm({ low: { lat: 1, lng: 1 }, high: { lat: 0, lng: 2 } }), null);
+  assertEquals(screenRadiusKm({ low: { lat: 0, lng: 0 }, high: { lat: 2, lng: 2 } }), null);
+  const tiny = screenRadiusKm({
+    low: { lat: 25.67, lng: -100.3 },
+    high: { lat: 25.67001, lng: -100.29999 },
+  });
+  assertEquals(tiny, SCREEN_RADIUS_KM_MIN);
+  assertEquals(SCREEN_RADIUS_KM_MAX, 50);
+});
+
+Deno.test("screen radius: the circle gates Google, Proximity reaches its edge, Popularity^1", async () => {
+  reset();
+  // 1 km circle: inside at ~0.56 km, outside at ~1.67 km.
+  const g = stubGoogle([
+    { id: "inside", lat: 25.675 },
+    { id: "outside", lat: 25.685 },
+  ]);
+  try {
+    const out = await selectAreaPool(deps({
+      radiusKm: 1,
+      signals: { reachKm: 1, weights: { proximity: 2, popularity: 1, selected: 1 } },
+      fanoutMode: "popular",
+    }).d);
+    assertEquals(ids(out.places), ["g:inside"]);
+    const a = out.places[0].area;
+    assert(Math.abs((a.signals.proximity ?? 0) - (1 - 0.556)) < 0.01, String(a.signals.proximity));
+    assertEquals(a.weights, { proximity: 2, popularity: 1, selected: 1 });
+    // final = proximity^2 × popularity^1 × selected^1.
+    const want = (a.signals.proximity ?? 0) ** 2 * (a.signals.popularity ?? 0) * a.selected;
+    assert(Math.abs(a.final - want) < 1e-9);
   } finally {
     g.restore();
   }
