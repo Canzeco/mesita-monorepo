@@ -4,10 +4,9 @@ import {
   cameraStep,
   clampReloadIdleSec,
   gpsFixMovesCamera,
-  idleReloadDue,
   isTargetVisible,
   RELOAD_IDLE_SEC_DEFAULT,
-  RELOAD_MIN_KM,
+  reloadWaitMs,
   selectionMovesCamera,
 } from "./camera-intent";
 import { sameCoords } from "@/lib/use-user-location";
@@ -161,13 +160,14 @@ describe("idle reload", () => {
     expect(clampReloadIdleSec(3)).toBe(3);
   });
 
-  it("reloads after 0.2 km of travel, not after a nudge", () => {
-    expect(RELOAD_MIN_KM).toBe(0.2);
-    expect(idleReloadDue(null, CENTER)).toBe(true);
-    // ~110 m north.
-    expect(idleReloadDue(CENTER, { lat: 25.671, lng: -100.32 })).toBe(false);
-    // ~330 m north.
-    expect(idleReloadDue(CENTER, { lat: 25.673, lng: -100.32 })).toBe(true);
+  // MESITA-2451: "if more than n seconds have happened since last reload".
+  it("times the wait from the last reload, with no distance gate", () => {
+    // No reload yet: at once.
+    expect(reloadWaitMs(null, 10_000, 1500)).toBe(0);
+    // The gap already passed: at once, however short the move.
+    expect(reloadWaitMs(10_000, 12_000, 1500)).toBe(0);
+    // Inside the gap: only the rest of it.
+    expect(reloadWaitMs(10_000, 10_400, 1500)).toBe(1100);
   });
 });
 

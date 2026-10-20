@@ -13,8 +13,9 @@
 // one exception is the first-load fix, which zooms IN to street level when
 // the map still shows the default city.
 //
-// A move the guest made reloads the area once the map has been still for
-// `reloadIdleSec` and the centre travelled at least RELOAD_MIN_KM.
+// A move the guest made reloads the area when the map comes to rest, at
+// most once every `reloadIdleSec`, counted from the LAST RELOAD, not the
+// last move, and with no distance gate (Pato, MESITA-2451).
 
 import { haversineKm } from "@/lib/utils";
 import type { ViewportBox } from "./SearchMap";
@@ -152,22 +153,17 @@ export function clampReloadIdleSec(raw: number | undefined): number {
   return Math.min(RELOAD_IDLE_SEC_MAX, Math.max(RELOAD_IDLE_SEC_MIN, raw));
 }
 
-/** A move shorter than this is a nudge, not somewhere else. */
-export const RELOAD_MIN_KM = 0.2;
-
-/** Is the camera far enough from the last load to owe a reload? */
-export function idleReloadDue(
-  lastCenter: LatLng | null,
-  nextCenter: LatLng,
-  minKm: number = RELOAD_MIN_KM,
-): boolean {
-  if (!lastCenter) return true;
-  return (
-    haversineKm(
-      lastCenter.lat,
-      lastCenter.lng,
-      nextCenter.lat,
-      nextCenter.lng,
-    ) >= minKm
-  );
+/**
+ * How long a guest move waits before it reloads (Pato, MESITA-2451: "if
+ * more than n seconds have happened since last reload"). Counted from the
+ * last reload: none yet, or `minGapMs` already gone, reloads at once;
+ * otherwise it waits out the rest of the gap.
+ */
+export function reloadWaitMs(
+  lastLoadAt: number | null,
+  now: number,
+  minGapMs: number,
+): number {
+  if (lastLoadAt == null) return 0;
+  return Math.max(0, lastLoadAt + minGapMs - now);
 }
