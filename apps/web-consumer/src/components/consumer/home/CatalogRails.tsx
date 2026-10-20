@@ -157,6 +157,19 @@ export function placesChips(): { key: string; label: string }[] {
 /** Social, Saved, Nearby, Popular: the pinned head of the column
  *  (MESITA-2411, MESITA-2426). */
 export const PINNED_CHIPS = 4;
+/** Social and Saved: the guest's own group, above Nearby · Popular
+ *  (MESITA-2484). */
+export const YOURS_CHIPS = 2;
+
+/** Each group's stripe down the rail's left edge (Pato, MESITA-2484: "just
+ *  one line at the left … really subtle"): 3px of muted clay, red · blue ·
+ *  purple. An inset shadow, so the chosen row's white face and ink bar paint
+ *  over it, and on the scrolling families list it stays put. */
+export const GROUP_STRIPE = {
+  yours: "shadow-[inset_3px_0_0_oklch(0.68_0.09_35)]",
+  around: "shadow-[inset_3px_0_0_oklch(0.66_0.06_245)]",
+  families: "shadow-[inset_3px_0_0_oklch(0.64_0.07_310)]",
+} as const;
 
 /** Tiles drawn per page; the next page appends on scroll (MESITA-2384). */
 export const PLACES_PAGE = 20;
@@ -425,44 +438,36 @@ export function CatalogRails() {
       aria-label="Places"
       data-places-categories
     >
-      {/* Pinned: Social, then Saved · Nearby · Popular, never scroll
-          (MESITA-2411). */}
-      <ul
-        role="list"
-        aria-label="Social"
-        className="shrink-0"
-        data-places-pinned
-      >
-        {chips.slice(0, 1).map(categoryRow)}
-      </ul>
-      {/* Two rules (Pato, MESITA-2426): Social │ Saved · Nearby ·
-          Popular │ the families. 30% ink, not 15% (Pato, MESITA-2481:
-          "a bit darker"). */}
-      <div
-        role="separator"
-        aria-hidden
-        className="border-foreground/30 mx-3 my-1 shrink-0 border-t"
-        data-places-rule
-      />
+      {/* Three groups, each marked by its clay stripe, 8px apart; no rules
+          (Pato, MESITA-2484): Social · Saved │ Nearby · Popular │ the
+          families. The first two are pinned and never scroll (MESITA-2411). */}
       <ul
         role="list"
         aria-label="Yours"
-        className="shrink-0"
+        className={cn("shrink-0", GROUP_STRIPE.yours)}
         data-places-pinned
+        data-places-group="yours"
       >
-        {chips.slice(1, PINNED_CHIPS).map(categoryRow)}
+        {chips.slice(0, YOURS_CHIPS).map(categoryRow)}
       </ul>
-      <div
-        role="separator"
-        aria-hidden
-        className="border-foreground/30 mx-3 my-1 shrink-0 border-t"
-        data-places-rule
-      />
+      <ul
+        role="list"
+        aria-label="Around you"
+        className={cn("mt-2 shrink-0", GROUP_STRIPE.around)}
+        data-places-pinned
+        data-places-group="around"
+      >
+        {chips.slice(YOURS_CHIPS, PINNED_CHIPS).map(categoryRow)}
+      </ul>
       <ul
         role="list"
         aria-label="Families"
-        className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
+        className={cn(
+          "scrollbar-hide mt-2 min-h-0 flex-1 overflow-y-auto overscroll-y-contain",
+          GROUP_STRIPE.families,
+        )}
         data-places-families
+        data-places-group="families"
       >
         {chips.slice(PINNED_CHIPS).map(categoryRow)}
       </ul>
