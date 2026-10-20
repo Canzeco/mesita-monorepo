@@ -95,7 +95,9 @@ function CardPortal({ children }: { children: React.ReactNode }) {
 
 // THE SEMI-MODAL, AND THERE IS ONLY ONE (decision: Pato, 2026-08-22).
 //
-// A SHEET IS 80% OF THE CARD. Not "up to" 80% — exactly. Every sheet used to
+// A SHEET IS 88% OF THE CARD. Not "up to" 88% — exactly. (80% until Pato
+// asked for Ask AI "taller, just a bit", MESITA-2489 — one panel, so every
+// sheet rose with it.) Every sheet used to
 // be `max-h` with no floor, so its height was a function of its own copy: the
 // contact sheet opened as a strip, Instagram opened near 85%, and no two
 // sheets in the app agreed on where the top edge lands. Height was carrying
@@ -107,7 +109,7 @@ function CardPortal({ children }: { children: React.ReactNode }) {
 //
 // SHORT CONTENT DOES NOT GET A SHEET. The rule this would otherwise break is
 // "no fixed tall empty panels" (Docs › Design §D) — a three-line confirm in
-// an 80% panel is 60% dead space. So a confirm is not a short sheet: it is a
+// an 88% panel is mostly dead space. So a confirm is not a short sheet: it is a
 // LocalDialog, the centred shape below, which is sized by its content by
 // design. Two shapes, chosen by what the surface IS, never by how long its
 // copy ran.
@@ -115,7 +117,7 @@ function CardPortal({ children }: { children: React.ReactNode }) {
 // Any routed sheet shell must reuse this same panel, because a guest cannot
 // tell a route modal from a state modal and should not have to.
 export const SEMI_MODAL_PANEL_CLASS =
-  "border-border bg-popover shadow-elev relative flex h-[80%] max-h-[80%] min-h-0 flex-col overflow-hidden rounded-t-3xl border-t";
+  "border-border bg-popover shadow-elev relative flex h-[88%] max-h-[88%] min-h-0 flex-col overflow-hidden rounded-t-3xl border-t";
 
 export function LocalSheet({
   open,

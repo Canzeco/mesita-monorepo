@@ -16,7 +16,7 @@ import { barePath } from "@/lib/surface";
 
 // THE ROUTED SHEET: a route modal that rises from the bottom instead of
 // pushing in from the right, so the page under it stays in view (Ask AI over
-// Search's map, MESITA-2475). The panel is LocalSheet's own 80% panel — a
+// Search's map, MESITA-2475). The panel is LocalSheet's own 88% panel — a
 // guest cannot tell a route modal from a state modal and should not have to.
 //
 // Same contracts as SlideOverShell: mount it from the intercepted segment's

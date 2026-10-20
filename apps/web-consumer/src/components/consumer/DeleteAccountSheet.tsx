@@ -14,7 +14,7 @@ import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS, SHEET_CANCEL_BUTTON_CLASS } from "
 // Destructive confirm DIALOG for Settings → Your data → Delete account.
 //
 // A confirm is a dialog, not a sheet (decision: Pato, 2026-08-22). Sheets are
-// a fixed 80% of the card now, and this surface is a paragraph, one field and
+// a fixed 88% of the card now, and this surface is a paragraph, one field and
 // two buttons — in a sheet it would be more than half empty, which is the
 // "fixed tall empty panel" the design law names. The centred dialog is sized
 // by its content, so the question and the two answers sit together with
