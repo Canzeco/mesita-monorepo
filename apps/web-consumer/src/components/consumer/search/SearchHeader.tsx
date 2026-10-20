@@ -27,7 +27,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
+import { BotMessageSquare } from "lucide-react";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import {
   clearMapFamilies,
@@ -76,7 +76,7 @@ export function SearchHeader({
             className={HEADER_PILL}
             data-search-ask-ai
           >
-            <Sparkles
+            <BotMessageSquare
               className="h-4 w-4 shrink-0"
               strokeWidth={2}
               aria-hidden
