@@ -22,8 +22,7 @@ import {
   stripPlacesPrefix,
 } from "./google-places.ts";
 import { NEARBY_RADIUS_KM } from "./geo.ts";
-import { GOOGLE_SEARCH_TYPES } from "./google-type-super.ts";
-import { NEARBY_TYPE_KEYS } from "./discovery-config.ts";
+import { EVERY_FAMILY_TYPES, GOOGLE_SEARCH_TYPES } from "./google-type-super.ts";
 
 /** Nearby Search (New) caps one POST at maxResultCount 20 with no page
  *  token (MESITA-2298); more candidates take more, different calls. */
@@ -56,6 +55,7 @@ export const NEARBY_FIELD_MASK = [
   "places.businessStatus",
   "places.primaryType",
   "places.primaryTypeDisplayName",
+  "places.types",
   "places.priceLevel",
   "places.currentOpeningHours.openNow",
   "places.googleMapsUri",
@@ -71,6 +71,9 @@ export type NearbyHit = {
   lng: number | null;
   rating: number | null;
   primaryType: string | null;
+  /** Google's `types[]`: the place's other types, where its secondary
+   *  families come from (MESITA-2438). Same Pro SKU as `primaryType`. */
+  types?: string[];
   /** Google's own label. Feeds Discovery › General's post-Google wipe. */
   businessStatus: string | null;
   reviewCount: number | null;
@@ -98,6 +101,7 @@ export type GooglePlaceListing = {
   businessStatus?: string;
   primaryType?: string;
   primaryTypeDisplayName?: { text?: string };
+  types?: string[];
   priceLevel?: string;
   shortFormattedAddress?: string;
   currentOpeningHours?: { openNow?: boolean };
@@ -120,6 +124,7 @@ export function nearbyHitFromPlace(p: GooglePlaceListing): NearbyHit {
     lng: typeof lng === "number" ? lng : null,
     rating: typeof p.rating === "number" ? p.rating : null,
     primaryType: p.primaryType ?? null,
+    types: Array.isArray(p.types) ? p.types.filter((t) => typeof t === "string") : [],
     businessStatus: typeof p.businessStatus === "string" ? p.businessStatus : null,
     reviewCount: typeof p.userRatingCount === "number" ? p.userRatingCount : null,
     openNow: typeof p.currentOpeningHours?.openNow === "boolean"
@@ -258,7 +263,7 @@ export function peekCachedNearbyPlaces(
 
 export type SearchNearbyOpts = {
   /** Nearby primary types (`includedPrimaryTypes`): the guest's families'
-   *  batteries, or every guest family's when omitted (NEARBY_TYPE_KEYS).
+   *  batteries, or every guest family's when omitted (EVERY_FAMILY_TYPES).
    *  Empty = no Google call. */
   types?: readonly string[];
   /** The operator's circle (`map.radiusKm`, MESITA-2298 §3). Omit = 50 km.
@@ -283,7 +288,7 @@ function nearbyTypesKey(types: readonly string[]): string {
 
 function nearbyCellKey(
   center: { lat: number; lng: number },
-  types: readonly string[] = NEARBY_TYPE_KEYS,
+  types: readonly string[] = EVERY_FAMILY_TYPES,
   radiusM: number = nearbyRadiusMetres(),
   excludedTypes: readonly string[] = [],
   shape: NearbyCellShape = {},
@@ -301,7 +306,7 @@ const SUPER_SEARCH_TYPE_SET = new Set<string>(
 );
 
 function resolveNearbyTypes(types?: readonly string[]): readonly string[] {
-  if (!types) return NEARBY_TYPE_KEYS;
+  if (!types) return EVERY_FAMILY_TYPES;
   return types.filter((t) => SUPER_SEARCH_TYPE_SET.has(t));
 }
 

@@ -2,9 +2,9 @@ import { assertEquals } from "jsr:@std/assert";
 import {
   DEFAULT_MAP_SUPERS,
   SUPER_PARAM_KEYS,
-  NEARBY_TYPE_KEYS,
 } from "./discovery-config.ts";
 import {
+  EVERY_FAMILY_TYPES,
   GOOGLE_SEARCH_TYPES,
   GOOGLE_TYPE_SUPER,
   nearbyTypesForSupers,
@@ -71,22 +71,33 @@ Deno.test("search batteries stay inside Google's API caps", () => {
       if (!GOOGLE_TYPE_SUPER[t]) throw new Error(`${t} is not a Table A type`);
     }
   }
-  assertEquals(GOOGLE_SEARCH_TYPES.dinner, ["restaurant"]);
+  assertEquals(GOOGLE_SEARCH_TYPES.dinner[0], "restaurant");
+  assertEquals(GOOGLE_SEARCH_TYPES.dinner.length, 50);
+  assertEquals(GOOGLE_SEARCH_TYPES.coffee, [
+    "cafe", "cat_cafe", "coffee_roastery", "coffee_shop", "coffee_stand", "dog_cafe", "juice_shop", "tea_house",
+  ]);
+  assertEquals(GOOGLE_SEARCH_TYPES.go_out, ["karaoke"]);
   assertEquals(GOOGLE_SEARCH_TYPES.undefined, []);
   assertEquals(nearbyTypesForSupers(["undefined"]), []);
-  assertEquals(
-    nearbyTypesForSupers(["move", "go_out"]),
-    [
-      ...GOOGLE_SEARCH_TYPES.move,
-      ...GOOGLE_SEARCH_TYPES.go_out,
-    ],
-  );
+  // One family: its whole battery, in order.
+  assertEquals(nearbyTypesForSupers(["move"]), [...GOOGLE_SEARCH_TYPES.move]);
+  // Several: round-robin, so each family's lead type comes first.
+  assertEquals(nearbyTypesForSupers(["move", "go_out"]).slice(0, 3), ["gym", "karaoke", GOOGLE_SEARCH_TYPES.move[1]]);
   assertEquals(nearbyTypesForSupers(["other", "nope"]), []);
 });
 
-Deno.test("NEARBY_TYPE_KEYS is exactly GOOGLE_SEARCH_TYPES, flattened", () => {
-  const flat = Object.values(GOOGLE_SEARCH_TYPES).flatMap((types) => [...types]);
-  assertEquals([...NEARBY_TYPE_KEYS], flat);
+Deno.test("no attraction rides a battery (MESITA-2438)", () => {
+  const all = new Set(Object.values(GOOGLE_SEARCH_TYPES).flat());
+  for (const t of ["tourist_attraction", "museum", "park", "zoo", "bowling_alley", "movie_theater", "aquarium", "amusement_park"]) {
+    assertEquals(all.has(t), false, t);
+  }
+});
+
+Deno.test("every family's battery leads the every-family list, inside Google's 50", () => {
+  assertEquals(EVERY_FAMILY_TYPES.length, 50);
+  assertEquals(new Set(EVERY_FAMILY_TYPES).size, 50);
+  const leads = Object.entries(GOOGLE_SEARCH_TYPES).filter(([k]) => k !== "undefined").map(([, v]) => v[0]);
+  assertEquals(EVERY_FAMILY_TYPES.slice(0, 15), leads);
   const covered = Object.values(GOOGLE_SEARCH_TYPES).filter((types) => types.length > 0);
   assertEquals(covered.length, 15);
 });
@@ -100,15 +111,15 @@ Deno.test("SUPER_PARAM_KEYS is the guest families, minus the empty battery", () 
   assertEquals((SUPER_PARAM_KEYS as readonly string[]).includes("undefined"), false);
 });
 
-Deno.test("the billed families default on and still send the old Nearby set", () => {
+Deno.test("the billed families default on and still lead with the old Nearby set", () => {
   const on = SUPER_PARAM_KEYS.filter((s) => DEFAULT_MAP_SUPERS[s]);
   assertEquals(
     new Set(on),
     new Set(["coffee", "dinner", "sweet", "drinks", "night_out"]),
   );
-  const flat = on.flatMap((s) => [...GOOGLE_SEARCH_TYPES[s]]);
+  const leads = on.map((s) => GOOGLE_SEARCH_TYPES[s][0]);
   assertEquals(
-    new Set(flat),
+    new Set(leads),
     new Set(["restaurant", "bar", "night_club", "cafe", "bakery"]),
   );
 });

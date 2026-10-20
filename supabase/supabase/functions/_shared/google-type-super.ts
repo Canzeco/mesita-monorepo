@@ -12,14 +12,23 @@
 // picks experiences). Verified against the live Table A reference
 // (478 types) on 2026-08-29; leftovers moved onto Undefined 2026-10-13.
 // Search batteries (`GOOGLE_SEARCH_TYPES`) are the includedPrimaryTypes slugs
-// sent to Nearby. Autocomplete and Text Search send no types.
+// sent to Nearby: since MESITA-2438 each family's FULL list of Table A
+// types — its lead type, the types whose primary family it is, then the
+// types it is a secondary family of — capped at Google's 50. Autocomplete
+// and Text Search send no types.
 //
 // The `*_venue` keys below (event_venue, go_karting_venue, live_music_venue,
 // wedding_venue) are Google's own Table A type slugs, not ours — `venue` is
 // banned in OUR vocabulary (MESITA-1591) but these must match Google's API
 // literally, so they stay as Google spells them.
 
-import { CATALOG_SEARCH_TYPES, isCatalogFamily } from "./catalog-families.ts";
+import {
+  CATALOG_FAMILY_SLUGS,
+  CATALOG_LEAD_TYPES,
+  type FamilyKey,
+  familiesPrimaryFirst,
+  isCatalogFamily,
+} from "./catalog-families.ts";
 
 /** Coarse exclusive bucket. The guest catalog is the fifteen families. */
 export type GuestSuper =
@@ -31,8 +40,6 @@ export type GuestSuper =
   | "experiences"
   | "culture_arts"
   | "undefined";
-
-export const GOOGLE_SEARCH_TYPES = CATALOG_SEARCH_TYPES;
 
 export const GOOGLE_TYPE_SUPER: Readonly<Record<string, GuestSuper>> = {
   "academic_department": "undefined",
@@ -549,18 +556,53 @@ export function superForGoogleType(
   return null;
 }
 
+/** Google's cap on `includedPrimaryTypes` in one Nearby request. */
 const NEARBY_TYPE_CAP = 50;
 
-/** Nearby `includedPrimaryTypes` — union of Super search batteries, max 50. */
+/**
+ * Each family's Nearby battery (MESITA-2438): the lead type, then every
+ * Table A type whose PRIMARY family it is, then every type it is a
+ * SECONDARY family of, alphabetical within each part, capped at 50. A
+ * family row asks Google for exactly this list, so Coffee asks for every
+ * kind of coffee place, not one `cafe`.
+ */
+export const GOOGLE_SEARCH_TYPES: Readonly<Record<FamilyKey, readonly string[]>> = (() => {
+  const out: Partial<Record<FamilyKey, string[]>> = { undefined: [] };
+  const slugs = Object.keys(GOOGLE_TYPE_SUPER).sort();
+  for (const family of CATALOG_FAMILY_SLUGS) {
+    const lead = CATALOG_LEAD_TYPES[family];
+    const primary: string[] = [];
+    const secondary: string[] = [];
+    for (const slug of slugs) {
+      if (slug === lead) continue;
+      const fams = familiesPrimaryFirst(slug, GOOGLE_TYPE_SUPER[slug] ?? null);
+      if (fams[0] === family) primary.push(slug);
+      else if (fams.includes(family)) secondary.push(slug);
+    }
+    out[family] = [lead, ...primary, ...secondary].slice(0, NEARBY_TYPE_CAP);
+  }
+  return out as Record<FamilyKey, string[]>;
+})();
+
+/**
+ * Nearby `includedPrimaryTypes` for the requested families: their
+ * batteries taken ROUND-ROBIN (every family's first type, then every
+ * family's second, …), deduped, capped at 50. One family gets its whole
+ * battery; every family together still carries each one's lead type.
+ */
 export function nearbyTypesForSupers(
   supers: readonly string[],
 ): string[] {
+  const batteries = supers
+    .filter((raw): raw is FamilyKey => isCatalogFamily(raw))
+    .map((f) => GOOGLE_SEARCH_TYPES[f]);
   const out: string[] = [];
   const seen = new Set<string>();
-  for (const raw of supers) {
-    if (!isCatalogFamily(raw)) continue;
-    for (const t of GOOGLE_SEARCH_TYPES[raw]) {
-      if (seen.has(t)) continue;
+  const longest = Math.max(0, ...batteries.map((b) => b.length));
+  for (let i = 0; i < longest; i++) {
+    for (const battery of batteries) {
+      const t = battery[i];
+      if (t === undefined || seen.has(t)) continue;
       seen.add(t);
       out.push(t);
       if (out.length >= NEARBY_TYPE_CAP) return out;
@@ -568,3 +610,10 @@ export function nearbyTypesForSupers(
   }
   return out;
 }
+
+/** Every guest family's Nearby types, round-robin: what a call with no
+ *  family asks Google for (the Feed's Nearby and Popular rows, the Map
+ *  with no pill). */
+export const EVERY_FAMILY_TYPES: readonly string[] = nearbyTypesForSupers(
+  CATALOG_FAMILY_SLUGS,
+);

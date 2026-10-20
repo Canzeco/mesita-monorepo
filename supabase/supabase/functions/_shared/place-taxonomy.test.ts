@@ -69,7 +69,8 @@ Deno.test("a cafe is coffee and breakfast; a pizzeria is only pizza", () => {
   assertEquals(familiesForAtlasCategory("karaoke"), ["night_out", "go_out"]);
   assertEquals(familiesForAtlasCategory("winery"), ["drinks"]);
   assertEquals(familiesForAtlasCategory("pizza"), ["pizza"]);
-  assertEquals(familiesForAtlasCategory("movie_theater"), ["go_out"]);
+  // An attraction is in no family (MESITA-2438).
+  assertEquals(familiesForAtlasCategory("movie_theater"), ["undefined"]);
 });
 
 Deno.test("training is Move and a spa is Feel better", () => {

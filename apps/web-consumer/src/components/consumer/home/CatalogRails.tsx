@@ -13,12 +13,13 @@
 // Left quarter (Pato, MESITA-2411): Social, Saved, Nearby and Popular
 // (the default: every place) PINNED above a rule; under it one row per
 // family, and only that list scrolls. The chosen row is white, bold, an ink bar on its left edge.
-// All is the server's ONE ranked Area pool (MESITA-2379/2384): Google
-// and Mesita places merged, scored and ranked there; this screen pages it
-// (20 tiles at a time, more on scroll) and a family row filters it on each
-// place's `area.familyKeys` — the Family gate never moves a score, so the
-// order stays the server's and a family change spends nothing. Each
-// location's pool is kept ten minutes (lib/area-pool-cache.ts). Saved
+// Nearby and Popular are the server's ONE ranked Area pool (MESITA-2379/2384):
+// Google and Mesita places merged, scored and ranked there; this screen
+// pages it (20 tiles at a time, more on scroll). A family row ASKS ITS OWN
+// QUESTION (MESITA-2438): it sends the family's key, so Google gets that
+// family's full type list and the server lists its primary places before
+// its secondary ones. Each location × row's pool is kept ten minutes
+// (lib/area-pool-cache.ts), so going back to a row spends nothing. Saved
 // shows the guest's saved places in the same tiles (it was Home's fourth
 // tab, MESITA-2368). Under each tile, TEMPORARILY, the server's score
 // breakdown (AreaDiagnostics.tsx). `useUserLocation` asks for location on mount. No search bar.
@@ -104,8 +105,7 @@ export function isEveryFamily(chip: string): boolean {
 }
 
 /** What the row asks the server to rank by (MESITA-2428): Nearby,
- *  Popular, or a family row's Family mode — every family shares one Family
- *  pool, which the row then filters. */
+ *  Popular, or a family row's Family mode. */
 export function chipPrefer(chip: string): AreaPrefer {
   return chip === POPULAR_CHIP
     ? "popular"
@@ -154,9 +154,16 @@ export const PINNED_CHIPS = 4;
 /** Tiles drawn per page; the next page appends on scroll (MESITA-2384). */
 export const PLACES_PAGE = 20;
 
-/** The places a row shows from the pool, in the server's order. A legacy
- *  rails answer (an Edge Function from before MESITA-2379) is read the way
- *  it always was. */
+/** The families a row asks the server for (MESITA-2438): its own key, or
+ *  none for Nearby and Popular (every family). */
+export function chipFamilies(chip: string): string[] {
+  return isEveryFamily(chip) ? [] : [chip];
+}
+
+/** The places a row shows from the pool, in the server's order. A family
+ *  row's pool is already that family's (MESITA-2438); the filter stays as a
+ *  guard for an Edge Function that predates it. A legacy rails answer (an
+ *  Edge Function from before MESITA-2379) is read the way it always was. */
 export function poolPlaces(pool: AreaPool, chip: string): Place[] {
   if (pool.shape === "unified") {
     return isEveryFamily(chip)
@@ -257,7 +264,12 @@ export function CatalogRails() {
   // pool row's prefer and never spend a request.
   const [chip, setChip] = useState<string>(NEAR_CHIP);
   const [prefer, setPrefer] = useState<AreaPrefer>("near");
-  const requestKey = `${areaPoolKey(origin ?? coords)}|${prefer}`;
+  // The family the pool was asked for (MESITA-2438): a family row's own,
+  // none for Nearby and Popular.
+  const [families, setFamilies] = useState<string[]>([]);
+  const requestKey = `${areaPoolKey(origin ?? coords)}|${prefer}${
+    families.length > 0 ? `:${families.join(",")}` : ""
+  }`;
   // NEARBY NEEDS A LOCATION (Pato, MESITA-2436: "you are not computing
   // stuff correctly"). With no fix and no saved location the server has no
   // Proximity, so Nearby would come back ranked on Popularity alone: Popular
@@ -285,7 +297,7 @@ export function CatalogRails() {
     const fetchPool = async (mode: "fresh" | "keep") => {
       const mine = ++seq;
       try {
-        const next = await apiListAreaPool(supabase, from, prefer);
+        const next = await apiListAreaPool(supabase, from, prefer, families);
         if (cancelled || mine !== seq) return;
         if (next.shape === "legacy" && !legacyShapeLogged) {
           legacyShapeLogged = true;
@@ -401,8 +413,10 @@ export function CatalogRails() {
           if (chip !== c.key)
             trackEvent(supabase, "home_mode_view", { mode: c.label });
           setChip(c.key);
-          if (c.key !== SOCIAL_CHIP && c.key !== SAVED_CHIP)
+          if (c.key !== SOCIAL_CHIP && c.key !== SAVED_CHIP) {
             setPrefer(chipPrefer(c.key));
+            setFamilies(chipFamilies(c.key));
+          }
         }}
         aria-pressed={chip === c.key}
         className={cn(ROW_BASE, chip === c.key ? ROW_ON : ROW_OFF)}

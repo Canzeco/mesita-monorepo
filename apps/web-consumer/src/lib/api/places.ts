@@ -216,8 +216,10 @@ export async function apiRequestPlace(
 /** The server's Area breakdown for one place (MESITA-2379). `null` is
  *  "n/a", never 0; the client never recomputes any of it. */
 export type AreaDiagnostics = {
-  /** The families the Family gate read. */
+  /** The families the Family gate read, primary first. */
   familyKeys: string[];
+  /** The place's primary family (MESITA-2438); absent from an older EF. */
+  primaryFamily?: string | null;
   gates: {
     family: 0 | 1;
     territory: 0 | 1 | null;
@@ -264,14 +266,17 @@ function cleanPlace(place: Place): Place {
 
 /**
  * Places' one ranked Area pool (MESITA-2384): Google and Mesita places the
- * server merged, scored and ranked. The client pages it and filters
- * families on each place's `area.familyKeys`; the order is the server's.
- * A legacy rails answer is passed through so the screen can still draw it.
+ * server merged, scored and ranked; the client pages it in the server's
+ * order. `familyKeys` is a family row's question (MESITA-2438): the server
+ * asks Google for that family's full type list and lists its primary
+ * places first. None = every family. A legacy rails answer is passed
+ * through so the screen can still draw it.
  */
 export async function apiListAreaPool(
   client: SupabaseClient,
   origin: AreaOrigin | null,
   prefer: AreaPrefer = "near",
+  familyKeys: readonly string[] = [],
 ): Promise<AreaPool> {
   const data = await invokeEF<{
     places?: Place[];
@@ -280,6 +285,7 @@ export async function apiListAreaPool(
   }>(client, "consumer-web-list-catalog", {
     unified: true,
     prefer,
+    ...(familyKeys.length > 0 ? { familyKeys: [...familyKeys] } : {}),
     ...(origin
       ? {
           lat: origin.lat,

@@ -3,6 +3,7 @@ import { __resetNearbyGoogleCacheForTests } from "./nearby-places.ts";
 import {
   type AreaPoolDeps,
   areaFanoutCircles,
+  areaGoogleTypes,
   FEED_GOOGLE_TYPES,
   googleCallsForStop,
   type OwnedRow,
@@ -15,6 +16,8 @@ import {
   snapCenter,
 } from "./area-pipeline.ts";
 import { nearbyExcludedTypesForFamilies } from "./sourcing.ts";
+import { CATALOG_FAMILY_SLUGS } from "./catalog-families.ts";
+import { GOOGLE_SEARCH_TYPES } from "./google-type-super.ts";
 import { DISCOVERY_DEFAULTS } from "./discovery-config.ts";
 
 const CENTER = { lat: 25.67, lng: -100.3 };
@@ -28,6 +31,7 @@ type GPlace = {
   rating?: number;
   reviews?: number;
   type?: string;
+  types?: string[];
 };
 
 function gPlace(p: GPlace) {
@@ -40,6 +44,7 @@ function gPlace(p: GPlace) {
     userRatingCount: p.reviews ?? 150,
     businessStatus: p.status ?? "OPERATIONAL",
     primaryType: p.type ?? "restaurant",
+    ...(p.types ? { types: p.types } : {}),
     ...(p.openNow === undefined
       ? {}
       : { currentOpeningHours: { openNow: p.openNow } }),
@@ -614,9 +619,10 @@ Deno.test("nearbyExcludedTypesForFamilies: Dinner excludes the precise restauran
 });
 
 Deno.test("nearbyExcludedTypesForFamilies: no pill still cuts the subtypes that sit in no family (MESITA-2382)", () => {
-  const ex = nearbyExcludedTypesForFamilies(["tourist_attraction"], []);
-  for (const t of ["event_venue", "marina", "plaza"]) assert(ex.includes(t), t);
-  for (const t of ["zoo", "amusement_park", "tourist_attraction"]) assertEquals(ex.includes(t), false, t);
+  const ex = nearbyExcludedTypesForFamilies(["restaurant", "cafe"], []);
+  for (const t of ["meal_delivery", "cafeteria"]) assert(ex.includes(t), t);
+  // An attraction is no battery's parent any more (MESITA-2438).
+  assertEquals(nearbyExcludedTypesForFamilies(["tourist_attraction"], []), []);
 });
 
 Deno.test("google: a family pill sends excludedPrimaryTypes; a precise type with no pill sends none", async () => {
@@ -921,4 +927,83 @@ Deno.test("selectedPoolQuery: the Feed and the Map drop the Selected SQL filter;
   assert(seen.includes("gte lat 25.6"));
   assert(seen.includes("lte lng -100.3"));
   assertEquals(seen[seen.length - 1], "order id true");
+});
+
+// ── MESITA-2438: each family asks Google for its own types ──────────────
+
+Deno.test("PINNED: every family's Nearby request body carries that family's full battery (MESITA-2438)", async () => {
+  const g = stubGoogle([]);
+  try {
+    for (const family of CATALOG_FAMILY_SLUGS) {
+      reset();
+      const before = nearbyCalls(g.calls).length;
+      // The same derivation consumer-web-list-catalog and -list-places use.
+      await selectAreaPool(deps({ families: [family], types: areaGoogleTypes([family]) }).d);
+      const sent = nearbyCalls(g.calls).slice(before);
+      assertEquals(sent.length, 1, family);
+      const body = JSON.parse(sent[0].body ?? "{}");
+      const battery = [...GOOGLE_SEARCH_TYPES[family]];
+      assert(battery.length > 0, family);
+      assertEquals(body.includedPrimaryTypes, battery, family);
+      // Never another family's lead type unless it is this family's too.
+      for (const other of CATALOG_FAMILY_SLUGS) {
+        const lead = GOOGLE_SEARCH_TYPES[other][0];
+        if (other !== family && !battery.includes(lead)) {
+          assertEquals(body.includedPrimaryTypes.includes(lead), false, `${family} sent ${lead}`);
+        }
+      }
+    }
+  } finally {
+    g.restore();
+  }
+});
+
+Deno.test("no family requested: the every-family list; a family: never that list", () => {
+  assertEquals(areaGoogleTypes([]), FEED_GOOGLE_TYPES);
+  assertEquals(areaGoogleTypes(["coffee"]), [...GOOGLE_SEARCH_TYPES.coffee]);
+  assert(areaGoogleTypes(["coffee"]).length < FEED_GOOGLE_TYPES.length);
+});
+
+Deno.test("list-catalog sends the row's families to Google, not the every-family list (MESITA-2438)", async () => {
+  const src = await Deno.readTextFile(
+    new URL("../consumer-web-list-catalog/index.ts", import.meta.url),
+  );
+  assert(src.includes("types: googleOn ? areaGoogleTypes(families) : []"));
+  assert(src.includes("readGuestFamilyKeys(body.familyKeys)"));
+  assertEquals(src.includes("families: [],"), false);
+});
+
+Deno.test("a family row lists primary places first, secondary as fill (MESITA-2438)", async () => {
+  reset();
+  // A cafe is Coffee first, Breakfast second; a breakfast spot is Breakfast first.
+  const g = stubGoogle([
+    { id: "cafe", lat: 25.6701, type: "cafe", rating: 5, reviews: 5000 },
+    { id: "brunch", lat: 25.6702, type: "breakfast_restaurant", rating: 3.5, reviews: 120 },
+    { id: "tacos", lat: 25.6703, type: "taco_restaurant", types: ["taco_restaurant", "breakfast_restaurant"], rating: 4.9, reviews: 4000 },
+  ]);
+  try {
+    const { places } = await selectAreaPool(
+      deps({ families: ["breakfast"], types: areaGoogleTypes(["breakfast"]) }).d,
+    );
+    assertEquals(ids(places), ["g:brunch", "g:cafe", "g:tacos"]);
+    assertEquals(places.map((p) => p.area.primaryFamily), ["breakfast", "coffee", "tacos"]);
+    assertEquals(places[2].family_keys, ["tacos", "breakfast"]);
+  } finally {
+    g.restore();
+  }
+});
+
+Deno.test("an attraction Google returns is in no family and never shows (MESITA-2438)", async () => {
+  reset();
+  const g = stubGoogle([
+    { id: "zoo", lat: 25.6701, type: "zoo" },
+    { id: "museum", lat: 25.6702, type: "museum", types: ["museum", "cafe"] },
+    { id: "bar", lat: 25.6703, type: "bar" },
+  ]);
+  try {
+    const { places } = await selectAreaPool(deps().d);
+    assertEquals(ids(places), ["g:bar"]);
+  } finally {
+    g.restore();
+  }
 });

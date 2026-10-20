@@ -91,49 +91,6 @@ export const DEEP_LIMIT_MAX = 20;
 export const DEFAULT_DEEP: DeepConfig = { limit: 5, minSimilarity: 0 };
 
 /**
- * Google Nearby primary types the map asks for. Off = absent from the
- * `includedPrimaryTypes` array, NOT a skipped call: `searchNearbyOnce`
- * (nearby-places.ts) sends ONE POST carrying every enabled type, and Google
- * Places Nearby (New) bills per REQUEST. Twenty-two types cost what five do.
- * These toggles shape one call's RESULT SET; they never change call count.
- *
- * ONE ENTRY PER TYPE IN `GOOGLE_SEARCH_TYPES`, in that object's own order, so
- * the strip covers all SEVEN Families rather than the three it knew
- * when it was five keys long (MESITA-1683). `google-type-super.test.ts` pins
- * this list to that map: the taxonomy is the law, this is its value today.
- *
- * THIS IS THE WIRE LIST, NOT THE PARAM. Since MESITA-1695 the operator toggles
- * SUPERS (`SUPER_PARAM_KEYS`) and the battery is derived by
- * `nearbyTypesForSupers`. Nothing reads this list positionally any more.
- */
-export const NEARBY_TYPE_KEYS = [
-  "cafe",
-  "breakfast_restaurant",
-  "fast_food_restaurant",
-  "pizza_restaurant",
-  "mexican_restaurant",
-  "sushi_restaurant",
-  "hamburger_restaurant",
-  "ramen_restaurant",
-  "restaurant",
-  "bakery",
-  "bar",
-  "night_club",
-  "tourist_attraction",
-  "bowling_alley",
-  "movie_theater",
-  "gym",
-  "fitness_center",
-  "yoga_studio",
-  "sports_club",
-  "spa",
-  "beauty_salon",
-  "hair_salon",
-  "massage",
-] as const;
-export type NearbyTypeKey = (typeof NEARBY_TYPE_KEYS)[number];
-
-/**
  * THE OPERATOR'S CATEGORY PARAM (Pato, 2026-09-08, MESITA-1695): the fifteen
  * guest families, in `FAMILIES` sort order — the same fifteen, in the same
  * order, the guest sees as pills on the Filters sheet.

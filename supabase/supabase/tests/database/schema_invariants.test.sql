@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(130);
+select plan(132);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -678,6 +678,19 @@ select is(
   (select family_keys from public.place_categories where slug = 'karaoke'),
   array['night_out','go_out']::text[],
   'karaoke is a night out and something to do'
+);
+
+select is(
+  (select array_agg(slug order by slug) from public.place_categories
+    where 'go_out' = any(family_keys)),
+  array['billiards','board_game_cafe','escape_room','karaoke']::text[],
+  'Go out holds only what a guest books a slot at: no attraction (MESITA-2438)'
+);
+
+select is(
+  (select family_keys from public.place_categories where slug = 'bakery'),
+  array['sweet','breakfast']::text[],
+  'a bakery is Sweet first, Breakfast second: family_keys is primary first (MESITA-2438)'
 );
 
 select is(

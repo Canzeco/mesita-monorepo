@@ -1,15 +1,28 @@
 // The guest catalog is these fifteen families. Not fourteen, not sixteen.
 // Undefined is the leftover and is not a rail.
 //
+// SCOPE (MESITA-2438, Pato 2026-10-19: "This is not Tudu, is Mesita. More
+// OpenTable scope."): a family holds places a guest books a table at or
+// orders at — food, coffee, bars, nightlife — plus the two wellness and
+// sport rails. Tourist attractions, museums, parks, zoos, bowling, cinemas
+// and every similar attraction sit in NO family (`ATTRACTION_TYPES`).
+//
+// PRIMARY AND SECONDARY. A Google type's row below lists its families
+// PRIMARY FIRST: a cafe is Coffee first, Breakfast second; a brewpub is
+// Drinks first, Dinner second. A place's primary family is its Google
+// `primaryType`'s first family; its secondary families (0–2) are the
+// rest of that row plus the primary families of its other Google `types`
+// (`placeFamilies` in sourcing.ts). A family row lists primary places
+// first and secondary ones as fill.
+//
 // A Google type sits on a family only when that rail is a different trip.
 // A precise rail takes the type off the broader one: a pizzeria is Pizza,
 // not also Dinner. A cafe is Coffee and Breakfast, because those are two trips.
-// Wine sits on Drinks. Live sits on Night out. With kids, Outdoors and Culture sit on Go out.
 //
 // Many Google categories sit in NO family, and that is the right answer, not
-// a gap: a mechanic, a church, a hotel, a plaza, a cafeteria. They are stored
-// as `undefined`, never shown on a guest surface, and never forced onto the
-// nearest rail (MESITA-2382).
+// a gap: a mechanic, a church, a hotel, a plaza, a cafeteria, a museum. They
+// are stored as `undefined`, never shown on a guest surface, and never forced
+// onto the nearest rail (MESITA-2382, MESITA-2438).
 
 export const CATALOG_FAMILY_SLUGS = [
   "coffee",
@@ -62,25 +75,96 @@ export function isCatalogFamily(value: string): value is FamilyKey {
   return FAMILY_SET.has(value);
 }
 
-/** One representative Google type per rail. Nearby sends the ones the operator turned on. */
-export const CATALOG_SEARCH_TYPES: Record<FamilyKey, readonly string[]> = {
-  coffee: ["cafe"],
-  breakfast: ["breakfast_restaurant"],
-  quick_bite: ["fast_food_restaurant"],
-  pizza: ["pizza_restaurant"],
-  tacos: ["mexican_restaurant"],
-  sushi: ["sushi_restaurant"],
-  burgers: ["hamburger_restaurant"],
-  noodles: ["ramen_restaurant"],
-  dinner: ["restaurant"],
-  sweet: ["bakery"],
-  drinks: ["bar"],
-  night_out: ["night_club"],
-  go_out: ["tourist_attraction", "bowling_alley", "movie_theater"],
-  move: ["gym", "fitness_center", "yoga_studio", "sports_club"],
-  feel_better: ["spa", "beauty_salon", "hair_salon", "massage"],
-  undefined: [],
+/** Each rail's lead Google type: first in its Nearby battery, so the
+ *  every-family battery (round-robin, capped at 50) always carries it. The
+ *  full battery is derived from the Table A map (`GOOGLE_SEARCH_TYPES`,
+ *  google-type-super.ts). */
+export const CATALOG_LEAD_TYPES: Record<CatalogFamilySlug, string> = {
+  coffee: "cafe",
+  breakfast: "breakfast_restaurant",
+  quick_bite: "fast_food_restaurant",
+  pizza: "pizza_restaurant",
+  tacos: "mexican_restaurant",
+  sushi: "sushi_restaurant",
+  burgers: "hamburger_restaurant",
+  noodles: "ramen_restaurant",
+  dinner: "restaurant",
+  sweet: "bakery",
+  drinks: "bar",
+  night_out: "night_club",
+  go_out: "karaoke",
+  move: "gym",
+  feel_better: "spa",
 };
+
+/**
+ * Attractions: places a guest visits, not a table they book or an order
+ * they place (MESITA-2438). Every one sits in no family; the migration
+ * `20261020000000_families_opentable_scope.sql` moves the stored mapping
+ * with them, and `catalog-families.test.ts` pins the pair.
+ */
+export const ATTRACTION_TYPES = [
+  "amphitheatre",
+  "amusement_center",
+  "amusement_park",
+  "aquarium",
+  "arcade",
+  "arena",
+  "art_gallery",
+  "art_museum",
+  "art_studio",
+  "auditorium",
+  "axe_throwing",
+  "botanical_garden",
+  "bowling_alley",
+  "casino",
+  "castle",
+  "childrens_camp",
+  "city_park",
+  "concert_hall",
+  "concert_venue",
+  "cultural_center",
+  "cultural_landmark",
+  "cycling_park",
+  "farmers_market",
+  "ferris_wheel",
+  "flea_market",
+  "garden",
+  "go_kart",
+  "go_karting_venue",
+  "hiking_area",
+  "historical_landmark",
+  "historical_place",
+  "history_museum",
+  "indoor_playground",
+  "laser_tag",
+  "market",
+  "mini_golf",
+  "miniature_golf_course",
+  "monument",
+  "movie_theater",
+  "museum",
+  "national_park",
+  "observation_deck",
+  "opera_house",
+  "paintball_center",
+  "park",
+  "performing_arts_theater",
+  "philharmonic_hall",
+  "planetarium",
+  "playground",
+  "roller_coaster",
+  "ski_resort",
+  "stadium",
+  "state_park",
+  "theater",
+  "tourist_attraction",
+  "trampoline_park",
+  "video_arcade",
+  "water_park",
+  "wildlife_park",
+  "zoo",
+] as const;
 
 const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   cafe: ["coffee", "breakfast"],
@@ -170,70 +254,11 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   karaoke: ["night_out", "go_out"],
   comedy_club: ["night_out"],
   live_music_venue: ["night_out"],
-  concert_hall: ["night_out"],
-  amphitheatre: ["night_out"],
-  opera_house: ["night_out"],
-  philharmonic_hall: ["night_out"],
-  concert_venue: ["night_out"],
-  art_gallery: ["go_out"],
-  art_museum: ["go_out"],
-  art_studio: ["go_out"],
-  museum: ["go_out"],
-  history_museum: ["go_out"],
-  performing_arts_theater: ["go_out"],
-  cultural_center: ["go_out"],
-  cultural_landmark: ["go_out"],
-  historical_place: ["go_out"],
-  historical_landmark: ["go_out"],
-  monument: ["go_out"],
-  castle: ["go_out"],
-  auditorium: ["go_out"],
-  theater: ["go_out"],
-  park: ["go_out"],
-  city_park: ["go_out"],
-  national_park: ["go_out"],
-  state_park: ["go_out"],
-  garden: ["go_out"],
-  botanical_garden: ["go_out"],
-  wildlife_park: ["go_out"],
-  hiking_area: ["go_out"],
-  cycling_park: ["go_out"],
-  ski_resort: ["go_out"],
-  zoo: ["go_out"],
-  aquarium: ["go_out"],
-  amusement_park: ["go_out"],
-  water_park: ["go_out"],
-  playground: ["go_out"],
-  indoor_playground: ["go_out"],
-  childrens_camp: ["go_out"],
-  ferris_wheel: ["go_out"],
-  roller_coaster: ["go_out"],
-  movie_theater: ["go_out"],
-  bowling_alley: ["go_out"],
-  video_arcade: ["go_out"],
-  amusement_center: ["go_out"],
-  miniature_golf_course: ["go_out"],
-  go_karting_venue: ["go_out"],
-  paintball_center: ["go_out"],
-  casino: ["go_out"],
-  tourist_attraction: ["go_out"],
-  observation_deck: ["go_out"],
-  planetarium: ["go_out"],
-  arena: ["go_out"],
-  stadium: ["go_out"],
-  farmers_market: ["go_out"],
-  market: ["go_out"],
-  flea_market: ["go_out"],
   escape_room: ["go_out"],
-  arcade: ["go_out"],
   billiards: ["go_out"],
-  mini_golf: ["go_out"],
-  laser_tag: ["go_out"],
-  axe_throwing: ["go_out"],
-  trampoline_park: ["go_out"],
-  go_kart: ["go_out"],
   board_game_cafe: ["coffee", "go_out"],
   // No family (MESITA-2382): a place, not a trip a guest picks.
+  ...Object.fromEntries(ATTRACTION_TYPES.map((t) => [t, ["undefined"] as const])),
   athletic_field: ["undefined"],
   barbecue_area: ["undefined"],
   beautician: ["undefined"],
@@ -311,8 +336,10 @@ const COARSE_FALLBACK: Record<string, FamilyKey> = {
   cafes_bakeries: "coffee",
   sports_fitness: "move",
   wellness_beauty: "feel_better",
-  culture_arts: "go_out",
-  experiences: "go_out",
+  // Attractions (MESITA-2438): an unlisted culture or experiences type is
+  // not a trip Mesita lists.
+  culture_arts: "undefined",
+  experiences: "undefined",
   undefined: "undefined",
 };
 
@@ -334,6 +361,21 @@ export function familiesForCatalogSlug(
 ): FamilyKey[] {
   const explicit = EXPLICIT[slug];
   if (explicit) return inOrder(explicit);
+  if (!coarse) return [];
+  const fallback = COARSE_FALLBACK[coarse];
+  return fallback ? [fallback] : [];
+}
+
+/**
+ * The families for one slug, PRIMARY FIRST (the row's own order, not the
+ * catalog's). Same lookup as `familiesForCatalogSlug`.
+ */
+export function familiesPrimaryFirst(
+  slug: string,
+  coarse: string | null,
+): FamilyKey[] {
+  const explicit = EXPLICIT[slug];
+  if (explicit) return [...explicit];
   if (!coarse) return [];
   const fallback = COARSE_FALLBACK[coarse];
   return fallback ? [fallback] : [];

@@ -6,11 +6,14 @@
 // Nearby calls, `map.googlePlaces`) and Mesita candidates
 // (`map.mesitaPlaces`), dedupes them by Google Place ID, gates, scores,
 // multiplies by the Selected factor and ranks them globally. The client
-// pages the ranked pool and applies the Family gate on each place's
-// `area.familyKeys` (the gate never moves a score, so the order holds), so a
-// family change or a later page never re-pays Google.
+// pages the ranked pool, so a later page never re-pays Google.
 //
-// Request: POST { unified: true, google: true, lat, lng, bounds? }
+// A FAMILY ROW ASKS ITS OWN QUESTION (MESITA-2438): `familyKeys` sends
+// Google that family's full type battery (`areaGoogleTypes`), pushes the
+// Family gate into the Mesita read, and lists the family's PRIMARY places
+// before its secondary ones. Without it the pool is every family's.
+//
+// Request: POST { unified: true, google: true, lat, lng, bounds?, familyKeys? }
 //   bounds    a saved AREA's rectangle {low, high} (valid → Territory, no
 //             Proximity); otherwise lat/lng make a POINT inside
 //             `map.radiusKm`; neither = no location (Mesita only,
@@ -53,7 +56,7 @@ import {
 import { readGooglePlacesKey } from "../_shared/google-places.ts";
 import {
   areaPoolLogFields,
-  FEED_GOOGLE_TYPES,
+  areaGoogleTypes,
   googleCallsForStop,
   type OwnedRow,
   type PoolBuilder,
@@ -62,6 +65,7 @@ import {
   selectedPoolQuery,
 } from "../_shared/area-pipeline.ts";
 import { readAreaMode } from "../_shared/area-score.ts";
+import { readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
 import { areaQuota, ownedLookup } from "../_shared/area-deps.ts";
 
 const POOL_CAP = 1000;
@@ -76,8 +80,11 @@ type Body = {
   /** Ignored since MESITA-2417: `map.googleMinReviews` is the minimum. */
   minReviews?: unknown;
   /** The one-pool wire (MESITA-2379); absent = the legacy rails. */
-  unified?: boolean;  /** The guest's mode: near (Nearby) · popular · family (MESITA-2428). */
+  unified?: boolean;
+  /** The guest's mode: near (Nearby) · popular · family (MESITA-2428). */
   prefer?: unknown;
+  /** The family row's families (MESITA-2438); absent or empty = every family. */
+  familyKeys?: unknown;
 };
 
 function wirePlaces(rows: unknown[]): OwnedRow[] {
@@ -109,6 +116,9 @@ Deno.serve(async (req) => {
   const radiusKm = cfg.map.radiusKm;
   // The legacy wire never sent bounds; only the one-pool wire may ask for an area.
   const location = resolveAreaLocation(unified ? body.bounds : null, center, radiusKm);
+  // The legacy rails cut every family from one pool; only the one-pool wire
+  // may ask for a family.
+  const families = unified ? readGuestFamilyKeys(body.familyKeys).filter((f) => f !== "undefined") : [];
 
   // Card columns only: no Area signal reads the summary vector, so the pool
   // does not select it (MESITA-2328).
@@ -122,6 +132,7 @@ Deno.serve(async (req) => {
       center: location.kind === "point" ? location.anchor : null,
       radiusKm,
       bounds: location.kind === "area" ? location.bounds : null,
+      families,
       selectedOnly: false,
     },
   ).limit(POOL_CAP);
@@ -138,8 +149,8 @@ Deno.serve(async (req) => {
   const pool = await selectAreaPool<OwnedRow>({
     apiKey: gmp?.ok ? gmp.key : null,
     location,
-    families: [],
-    types: googleOn ? FEED_GOOGLE_TYPES : [],
+    families,
+    types: googleOn ? areaGoogleTypes(families) : [],
     googleCalls: googleOn ? (unified ? googleCallsForStop(cfg.map.googlePlaces) : 1) : 0,
     mesitaLimit: cfg.map.mesitaPlaces,
     mesitaRows,
@@ -156,7 +167,8 @@ Deno.serve(async (req) => {
     fn: "consumer-web-list-catalog",
     wire: unified ? "unified" : "legacy",
     location: location.kind,
-    areaMode: readAreaMode(body.prefer),
+    areaMode: families.length > 0 ? "family" : readAreaMode(body.prefer),
+    familyKeys: families,
     ...pool.summary,
     mesitaRead: mesitaRows.length,
     mesitaCapped: mesitaRows.length >= POOL_CAP,

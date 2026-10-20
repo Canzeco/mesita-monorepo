@@ -7,7 +7,7 @@
 // website and the Maps link, so the card and its opening profile show what
 // a Mesita card shows.
 
-import { familiesForGoogleType } from "./sourcing.ts";
+import { placeFamilies } from "./sourcing.ts";
 import { priceLevelFromGoogle } from "./enrich-google-basics-normalizers.ts";
 import type { NearbyHit } from "./nearby-places.ts";
 
@@ -25,7 +25,8 @@ export function googleStub(hit: NearbyHit, distanceKm: number | null): Record<st
     google_place_id: hit.placeId,
     name: hit.name,
     category: hit.primaryType,
-    family_keys: familiesForGoogleType(hit.primaryType),
+    // Primary first, then 0–2 secondary from Google's types[] (MESITA-2438).
+    family_keys: placeFamilies(hit.primaryType, hit.types).keys,
     category_label: hit.typeLabel ?? humanizeGoogleType(hit.primaryType),
     price_level: priceLevelFromGoogle(hit.priceLevel ?? undefined),
     currency: "MXN",

@@ -54,6 +54,7 @@ Deno.test("stub: no label falls back to the humanized slug; no price is null", (
 Deno.test("mask: asks for every card field, never a photo or an Atmosphere field", () => {
   for (const field of [
     "places.primaryTypeDisplayName",
+    "places.types",
     "places.priceLevel",
     "places.shortFormattedAddress",
     "places.currentOpeningHours.openNow",
@@ -82,11 +83,12 @@ Deno.test("one parser: a listing place becomes the same hit for Nearby and Text 
     businessStatus: "OPERATIONAL",
     primaryType: "sports_bar",
     primaryTypeDisplayName: { text: "Sports bar" },
+    types: ["sports_bar", "bar", "point_of_interest"],
     priceLevel: "PRICE_LEVEL_MODERATE",
     currentOpeningHours: { openNow: true },
     googleMapsUri: "https://maps.google.com/?cid=1",
     internationalPhoneNumber: "+52 55 1234 5678",
     websiteUri: "https://cantina.example",
   });
-  assertEquals(hit, HIT);
+  assertEquals(hit, { ...HIT, types: ["sports_bar", "bar", "point_of_interest"] });
 });
