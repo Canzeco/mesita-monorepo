@@ -119,7 +119,10 @@ export function SearchRailOverlay({
           </div>
         ) : (
           <>
-            <div className="mb-2 flex items-center justify-center gap-1.5">
+            {/* The counter and its "Updating nearby" spinner sit a clear
+                step above the card, not on its edge (Pato, MESITA-2465:
+                "move the loading icon a bit to the more top"). */}
+            <div className="mb-4 flex items-center justify-center gap-1.5">
               <span className="border-border bg-card/95 text-muted-foreground shadow-rest type-label flex items-center gap-1 rounded-full border py-0.5 pr-1 pl-2.5 font-semibold tabular-nums backdrop-blur">
                 {catalogLoading ? (
                   <Spinner size="sm" label="Updating nearby places" />
