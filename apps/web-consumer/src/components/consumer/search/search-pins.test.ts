@@ -108,7 +108,7 @@ describe("pin tones — enriched > mesita > google", () => {
     expect(pinToneColor("mesita")).toBe(MAP_GOOGLE_PIN_COLOR);
     expect(pinToneColor("google")).toBe(MAP_GOOGLE_PIN_COLOR);
     expect(MAP_ENRICHED_PIN_COLOR).toBe("#ff2357");
-    expect(MAP_GOOGLE_PIN_COLOR).toBe("#9ca3af");
+    expect(MAP_GOOGLE_PIN_COLOR).toBe("#a3a3a3");
     expect(MAP_ENRICHED_PIN_COLOR).not.toBe(MAP_GOOGLE_PIN_COLOR);
   });
 

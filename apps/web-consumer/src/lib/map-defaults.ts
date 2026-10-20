@@ -6,41 +6,62 @@ export const MONTERREY_CENTER = { lat: 25.6714, lng: -100.3094 } as const;
 export const MAP_DEFAULT_ZOOM = 13;
 export const MAP_USER_ZOOM = 14;
 
-// Light map styling — colour where it matters (blue water, green parks) while
-// still hiding Google's own business pins/labels so Mesita's pins own the
-// canvas. Roads + locality labels stay for orientation. Inline styles work
-// without a mapId.
+// A QUIET MAP (Pato, MESITA-2469: "think the apple or instagram
+// aesthetic"). Apple Maps' trick: the tiles step back so the pins carry the
+// colour. Land is near-white neutral, water a faint grey-blue, parks a
+// whisper of green, roads white with soft grey labels. Google's business
+// pins/labels stay hidden so Mesita's pins own the canvas. Inline styles
+// work without a mapId.
 export const MAP_MINIMAL_STYLES = [
-  // Warm cream land base (the brand wash).
   {
     featureType: "landscape",
     elementType: "geometry",
-    stylers: [{ color: "#f7f2ec" }],
+    stylers: [{ color: "#f4f4f4" }],
   },
-  // Water reads as real water now — a soft blue, not the old near-white
-  // #e9f1f7 that just looked grey.
   {
     featureType: "water",
     elementType: "geometry",
-    stylers: [{ color: "#a9d3ec" }],
+    stylers: [{ color: "#d5dee6" }],
   },
-  // Parks + green space actually look green. The old style blanket-hid every
-  // POI (which also hid parks), so instead we flatten the OTHER poi blobs into
-  // the land base and colour only parks + natural landcover green.
+  {
+    featureType: "water",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#8a99a6" }],
+  },
   {
     featureType: "poi",
     elementType: "geometry",
-    stylers: [{ color: "#f1ece3" }],
+    stylers: [{ color: "#eeeeee" }],
   },
   {
     featureType: "poi.park",
     elementType: "geometry",
-    stylers: [{ color: "#c7e7c7" }],
+    stylers: [{ color: "#e2eadf" }],
   },
   {
     featureType: "landscape.natural.landcover",
     elementType: "geometry",
-    stylers: [{ color: "#dcebd2" }],
+    stylers: [{ color: "#e9ece6" }],
+  },
+  {
+    featureType: "road",
+    elementType: "geometry",
+    stylers: [{ color: "#ffffff" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry",
+    stylers: [{ color: "#e4e4e4" }],
+  },
+  {
+    featureType: "road",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#8e8e8e" }],
+  },
+  {
+    featureType: "administrative",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#737373" }],
   },
   // Hide Google's business pins + all POI text — colour, not label clutter.
   {
@@ -119,8 +140,12 @@ export function mapPinIcon(fillColor: string, strokeColor: string) {
 //
 // Blue is the guest's current location and is never a place pin.
 export const MAP_ENRICHED_PIN_COLOR = "#ff2357";
-export const MAP_GOOGLE_PIN_COLOR = "#9ca3af";
-export const MAP_USER_LOCATION_PIN_COLOR = "#2563eb";
+// Google grey is a TRUE neutral (chroma 0); the old #9ca3af was a cool
+// blue-grey that read as "disabled" on the map (MESITA-2469).
+export const MAP_GOOGLE_PIN_COLOR = "#a3a3a3";
+// iOS systemBlue: the one blue on the screen, and it means "you"
+// (MESITA-2469; was Tailwind #2563eb).
+export const MAP_USER_LOCATION_PIN_COLOR = "#007aff";
 
 // Selected pin is a black ring. Fill stays the tone color.
 export const MAP_SELECTED_PIN_COLOR = "#111111";

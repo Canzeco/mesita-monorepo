@@ -2,8 +2,8 @@
 
 // Search's header (Pato, MESITA-2409 — OpenTable's shape):
 //
-//   ( ⌖ ) [ ⚲ Search places…  ] ( ✦ )   a white band, hairline under
-//   (📍 Nearby) (⭐ Popular) │ (☕ Coffee) (🥐 Breakfast) …   a grey band, hairline under
+//   ( ⌖ ) [ ⚲ Search places…  ] ( ✦ )   one white band …
+//   (📍 Nearby) (⭐ Popular) │ (☕ Coffee) (🥐 Breakfast) …   … one hairline under
 //   ─────────────────── map ───────────────────────────
 //
 // The bar's row: the locate disc, the query bar, the Ask AI pill (→ Search ›
@@ -17,10 +17,11 @@
 // MESITA-2417: "Its just all and thats it"); the Google reviews minimum is
 // the operator's, Admin › Discovery › Area.
 //
-// A WHITE BAND for the bar's row, like Home's header and the bottom bar
-// (Pato, MESITA-2413), then a SOLID GREY BAND for the chip row (MESITA-2462:
-// "i don't like a transparent scrolling at all"; white on white "looks weird",
-// MESITA-2450, so the chips' band differs from the bar's). Nothing floats on
+// ONE SOLID WHITE BAND for the bar's row and the chip row, like Home's
+// header and the bottom bar (Pato, MESITA-2413; MESITA-2469 merged the grey
+// chip band of MESITA-2462 back in). Solid, never translucent (MESITA-2462:
+// "i don't like a transparent scrolling at all"); the controls are grey
+// fills, so white-on-white (MESITA-2450) cannot happen. Nothing floats on
 // the map. Every
 // control is h-9: the discs, the bar and every chip (MESITA-2445). `children`
 // (the bar's results, the load error) COVER the chip row and run on over the
@@ -64,39 +65,35 @@ export function SearchHeader({
   const prefer = useAreaPrefer();
   const everyFamily = filters.familyKeys.length === 0;
   return (
-    <div className="relative z-30 shrink-0" data-search-header>
-      {/* The white band holds the bar's row alone (MESITA-2450). */}
-      <div
-        className="border-border bg-card/95 border-b backdrop-blur"
-        data-search-band
-      >
-        <div className="flex min-w-0 items-center gap-2 px-3 pt-2 pb-2">
-          {locate}
-          <div className="min-w-0 flex-1">{bar}</div>
-          <Link
-            href={CONSUMER_ROUTES.searchChat}
-            className={HEADER_PILL}
-            data-search-ask-ai
-          >
-            <BotMessageSquare
-              className="h-4 w-4 shrink-0"
-              strokeWidth={2}
-              aria-hidden
-            />
-            <span>Ask AI</span>
-          </Link>
-        </div>
+    <div
+      className="border-border bg-card relative z-30 shrink-0 border-b"
+      data-search-header
+      data-search-band
+    >
+      {/* ONE white band for the bar's row AND the chips, one hairline under
+          both (Pato, MESITA-2469: Apple Maps / Instagram); the grey chip band
+          of MESITA-2462 is gone. Controls are grey fills, so they read on
+          the white. */}
+      <div className="flex min-w-0 items-center gap-2 px-3 pt-2 pb-2">
+        {locate}
+        <div className="min-w-0 flex-1">{bar}</div>
+        <Link
+          href={CONSUMER_ROUTES.searchChat}
+          className={HEADER_PILL}
+          data-search-ask-ai
+        >
+          <BotMessageSquare
+            className="h-4 w-4 shrink-0"
+            strokeWidth={2}
+            aria-hidden
+          />
+          <span>Ask AI</span>
+        </Link>
       </div>
-      {/* The chips' own solid band, grey under the white bar row (Pato,
-          MESITA-2462: no transparent row over the map); each chip keeps its
-          white fill so it reads on the grey. */}
-      <div
-        className="border-border bg-muted relative border-b"
-        data-search-chip-band
-      >
+      <div className="relative" data-search-chip-band>
         <nav
           aria-label="Families"
-          className="scrollbar-hide flex items-center gap-2 overflow-x-auto overscroll-x-contain px-3 pt-2 pb-2"
+          className="scrollbar-hide flex items-center gap-2 overflow-x-auto overscroll-x-contain px-3 pt-0 pb-2"
           data-search-chips
         >
           {EVERY_FAMILY_CHIPS.map((c) => {
