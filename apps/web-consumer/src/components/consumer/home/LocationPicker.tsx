@@ -185,16 +185,16 @@ export function LocationPicker() {
 
   return (
     <>
-      {/* Home's whole header: the location oval (MESITA-2405, MESITA-2459). */}
+      {/* The header's right side: the location oval, beside the logo (MESITA-2405, MESITA-2459, MESITA-2470). */}
       <button
         type="button"
         onClick={() => setPicking(true)}
         aria-haspopup="dialog"
         aria-label={`Location: ${label}. Change location`}
-        className={cn(HEADER_PILL, "mx-auto max-w-full min-w-0 justify-center")}
+        className={cn(HEADER_PILL, "ml-auto max-w-full min-w-0 justify-center")}
         data-home-location
       >
-        {/* One oval, centred and sized to its content: pin, name, chevron
+        {/* One oval, right-aligned and sized to its content: pin, name, chevron
             (MESITA-2459). No discs; the name truncates. */}
         <MapPin className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
         <span className="min-w-0 truncate">{label}</span>
