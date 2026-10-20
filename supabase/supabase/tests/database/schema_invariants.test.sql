@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(135);
+select plan(138);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -628,6 +628,27 @@ select ok(
   not has_function_privilege('authenticated', 'public.place_activity_feed(integer)', 'EXECUTE')
     and not has_function_privilege('anon', 'public.place_activity_people(uuid, integer)', 'EXECUTE'),
   'client roles cannot run the Social readers (they name other members)'
+);
+
+-- MESITA-2461: a handle is proved, not typed.
+select ok(
+  (select relrowsecurity from pg_class
+    where oid = 'public.consumer_instagram_claims'::regclass)
+    and not has_table_privilege('anon', 'public.consumer_instagram_claims', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.consumer_instagram_claims', 'SELECT'),
+  'consumer_instagram_claims is EF-only (RLS on, no client SELECT)'
+);
+
+select ok(
+  not has_function_privilege('authenticated', 'public.consumer_instagram_verify(uuid, text, integer)', 'EXECUTE')
+    and not has_function_privilege('anon', 'public.consumer_instagram_verify(uuid, text, integer)', 'EXECUTE'),
+  'client roles cannot stamp a handle verified'
+);
+
+select ok(
+  pg_get_functiondef('public.place_activity_visible(public.consumers)'::regprocedure)
+    like '%instagram_verified_at is not null%',
+  'Social shows only verified Instagram handles'
 );
 
 select col_default_is(

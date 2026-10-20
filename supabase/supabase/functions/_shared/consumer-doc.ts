@@ -53,6 +53,9 @@ export type ConsumerDoc = {
   avatar_url: string | null;
   instagram_handle: string | null;
   instagram_followers_count: number | null;
+  // MESITA-2461: when the handle was proved (code in the bio). The DB CHECK
+  // refuses a handle without it; only consumer_instagram_verify sets both.
+  instagram_verified_at: string | null;
   // Social v1 (MESITA-2442): Show my activity. Default true in the DB.
   show_activity: boolean;
   created_at: string;
@@ -73,6 +76,7 @@ export const CONSUMER_PATCH_KEYS = [
   "avatar_url",
   "instagram_handle",
   "instagram_followers_count",
+  "instagram_verified_at",
   "show_activity",
   "deleted_at",
 ] as const satisfies readonly (keyof Omit<ConsumerDoc, "id" | "created_at">)[];
@@ -200,6 +204,16 @@ export function validateConsumerPatch(
       };
     }
     patch.instagram_followers_count = v as number | null;
+  }
+  if ("instagram_verified_at" in raw) {
+    const v = raw.instagram_verified_at;
+    if (!isNullableString(v)) {
+      return {
+        ok: false,
+        error: "instagram_verified_at must be an ISO timestamp string or null",
+      };
+    }
+    patch.instagram_verified_at = v;
   }
   if ("show_activity" in raw) {
     const v = raw.show_activity;

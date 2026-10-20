@@ -1,25 +1,41 @@
 // Supabase Edge Function — consumer-web-claim-instagram (product caller)
 //
-// Authenticated. Persists the claimed Instagram follower count (and handle
-// when sent) to the consumer row. Instagram is a separate fact and grants
-// nothing (MESITA-2044).
+// Authenticated. Connects an Instagram account by PROOF (MESITA-2461): the
+// member puts a one-time code in their bio and the server reads it there.
+// Before, this EF stored whatever handle and follower count the client sent,
+// and Social showed every handle — anyone could appear as @someone_famous.
+// Instagram is a separate fact and grants nothing (MESITA-2044).
 //
-// Story access follows the connected handle (MESITA-909): claiming Instagram
-// (persisting `instagram_handle`) unlocks the Story action for any guest.
-//
-// Body: { followers: number, handle?: string }
-// Response: { ok: true, followers: number, handle: string | null }
-//
-// `handle` (when sent) is normalized (leading @ stripped, lowercased) and
-// persisted to consumers.instagram_handle so the profile hero/settings can
-// show @handle instead of just the follower count (MESITA-74).
+// Body (two steps):
+//   { action: "start", handle }  → { ok, handle, code }
+//     Issues (or re-issues for the same handle while it is live) the code,
+//     held in consumer_instagram_claims. The account's current handle, if
+//     any, stays until the new one is proved.
+//   { action: "check" }          → { ok, handle, followers }
+//     Scrapes the claimed profile (Apify). Only if the bio holds the code
+//     does consumer_instagram_verify store the handle, the SCRAPED follower
+//     count and instagram_verified_at, taking the handle off any other
+//     account. Failures: 404 no_claim · 410 code_expired · 429 slow_down ·
+//     422 wrong_profile | code_not_in_bio | profile_not_found · 502 scrape.
+// A `followers` field in the body is ignored: the app never says the count.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, jsonError, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { writeConsumer } from "../_shared/consumer-doc.ts";
+import { APIFY_ACTORS, runApifyActor } from "../_shared/apify.ts";
+import { isDeadIgStub } from "../_shared/enrich-instagram-match.ts";
+import {
+  checkWaitMs,
+  claimIsLive,
+  judgeProfile,
+  makeClaimCode,
+  normalizeHandle,
+} from "../_shared/instagram-claim.ts";
 
-type Body = { followers?: number; handle?: string };
+type Body = { action?: string; handle?: string };
+
+// The profile scrape is synchronous; a cold actor takes ~10–20s.
+const SCRAPE_TIMEOUT_MS = 45_000;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -36,27 +52,100 @@ Deno.serve(async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
 
-  const followers = Math.trunc(Number(body.followers));
-  if (!Number.isFinite(followers) || followers < 0) {
-    return json({ ok: false, error: "followers must be a non-negative integer" }, 400);
-  }
-
-  let handle: string | null = null;
-  if (body.handle !== undefined && body.handle !== null) {
-    handle = String(body.handle).trim().replace(/^@/, "").toLowerCase();
-    if (!/^[a-z0-9._]{1,30}$/.test(handle)) {
-      return json({ ok: false, error: "handle must be a valid Instagram username" }, 400);
-    }
-  }
-
   const admin = adminClient(envRes.env);
+  const now = Date.now();
 
-  const patch: Record<string, unknown> = {
-    instagram_followers_count: followers,
-  };
-  if (handle !== null) patch.instagram_handle = handle;
-  const wrote = await writeConsumer(admin, { mode: "update", id: consumerId, patch });
-  if (!wrote.ok) return json({ ok: false, error: wrote.error }, 500);
+  if (body.action === "start") {
+    const handle = normalizeHandle(body.handle);
+    if (!handle) return jsonError("handle must be a valid Instagram username", 400);
 
-  return json({ ok: true, followers, handle });
+    const { data: existing, error: readErr } = await admin
+      .from("consumer_instagram_claims")
+      .select("handle, code, created_at")
+      .eq("consumer_id", consumerId)
+      .maybeSingle();
+    if (readErr) return jsonError(readErr.message, 500);
+    // Same handle, still live: the same code, so a reload never invalidates
+    // a code the member already pasted into their bio.
+    if (existing && existing.handle === handle && claimIsLive(existing.created_at, now)) {
+      return json({ ok: true, handle, code: existing.code });
+    }
+
+    const code = makeClaimCode();
+    const { error } = await admin.from("consumer_instagram_claims").upsert({
+      consumer_id: consumerId,
+      handle,
+      code,
+      created_at: new Date(now).toISOString(),
+      checked_at: null,
+    });
+    if (error) return jsonError(error.message, 500);
+    return json({ ok: true, handle, code });
+  }
+
+  if (body.action === "check") {
+    const { data: claim, error: readErr } = await admin
+      .from("consumer_instagram_claims")
+      .select("handle, code, created_at, checked_at")
+      .eq("consumer_id", consumerId)
+      .maybeSingle();
+    if (readErr) return jsonError(readErr.message, 500);
+    if (!claim) return json({ ok: false, error: "Start again: no code is pending.", code: "no_claim" }, 404);
+    if (!claimIsLive(claim.created_at, now)) {
+      return json({ ok: false, error: "That code expired. Get a new one.", code: "code_expired" }, 410);
+    }
+    const wait = checkWaitMs(claim.checked_at, now);
+    if (wait > 0) {
+      return json({
+        ok: false,
+        error: `Give it ${Math.ceil(wait / 1000)}s and check again.`,
+        code: "slow_down",
+      }, 429);
+    }
+
+    const { error: stampErr } = await admin
+      .from("consumer_instagram_claims")
+      .update({ checked_at: new Date(now).toISOString() })
+      .eq("consumer_id", consumerId);
+    if (stampErr) return jsonError(stampErr.message, 500);
+
+    const apifyKey = Deno.env.get("APIFY_KEY")?.trim();
+    if (!apifyKey) return jsonError("Instagram check is unavailable right now.", 503);
+    const run = await runApifyActor<Record<string, unknown>>(
+      APIFY_ACTORS.instagramProfile,
+      { usernames: [claim.handle] },
+      apifyKey,
+      SCRAPE_TIMEOUT_MS,
+    );
+    if (run.error || !run.items) {
+      console.error("claim-instagram scrape failed", run.status, run.error);
+      return json({ ok: false, error: "Couldn’t reach Instagram — try again.", code: "scrape" }, 502);
+    }
+    const profile = run.items[0];
+    if (!profile || isDeadIgStub(profile)) {
+      return json({
+        ok: false,
+        error: `We couldn’t find @${claim.handle} on Instagram.`,
+        code: "profile_not_found",
+      }, 422);
+    }
+
+    const verdict = judgeProfile(profile, claim);
+    if (!verdict.ok) {
+      const error = verdict.error === "wrong_profile"
+        ? `We couldn’t find @${claim.handle} on Instagram.`
+        : `${claim.code} isn’t in @${claim.handle}’s bio yet.`;
+      return json({ ok: false, error, code: verdict.error }, 422);
+    }
+
+    const { error: verifyErr } = await admin.rpc("consumer_instagram_verify", {
+      p_consumer_id: consumerId,
+      p_handle: claim.handle,
+      p_followers: verdict.followers,
+    });
+    if (verifyErr) return jsonError(verifyErr.message, 500);
+    return json({ ok: true, handle: claim.handle, followers: verdict.followers });
+  }
+
+  return jsonError('action must be "start" or "check"', 400);
 });
