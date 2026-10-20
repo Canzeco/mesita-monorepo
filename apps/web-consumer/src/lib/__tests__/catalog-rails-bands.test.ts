@@ -165,10 +165,9 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
     expect(picker).toContain("onClick={() => setPicking(true)}");
   });
 
-  it("the sheet: Current location, the saved locations, then Add location", () => {
+  it("the sheet: the search field, then Current location and the saved locations (MESITA-2464)", () => {
+    expect(picker.indexOf("data-places-location-search")).toBeLessThan(picker.indexOf("label: locationLabel(null"));
     expect(picker.indexOf("label: locationLabel(null")).toBeLessThan(picker.indexOf("savedLocations.map((l)"));
-    expect(picker.indexOf("savedLocations.map((l)")).toBeLessThan(picker.indexOf("data-places-add-location"));
-    expect(picker).toContain("<AddLocationSheet");
     expect(picker).toContain("bounds: l.bounds");
   });
 

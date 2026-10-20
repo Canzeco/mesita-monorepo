@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -9,15 +9,12 @@ import {
   removeSavedLocation,
   SAVED_LOCATIONS_MAX,
 } from "@/lib/saved-locations";
-import { isRegionPick } from "@/components/consumer/home/AddLocationSheet";
+import { isRegionPick } from "@/lib/location-pick";
 
 // Pato (MESITA-2380): Add location saves the guest's own named points; Places
 // searches from the one picked. They live in this browser, like Favorites.
 const reset = readFileSync(join(__dirname, "../consumer-local-reset.ts"), "utf8");
-const sheet = readFileSync(
-  join(__dirname, "../../components/consumer/home/AddLocationSheet.tsx"),
-  "utf8",
-);
+const pickSrc = readFileSync(join(__dirname, "../location-pick.ts"), "utf8");
 
 // Node has no window: the store runs in memory, which is all this pins.
 describe("saved locations (MESITA-2380)", () => {
@@ -78,17 +75,30 @@ describe("saved locations (MESITA-2380)", () => {
     expect(isRegionPick({ kind: "location", locationType: "street_address" })).toBe(false);
     expect(isRegionPick({ kind: "location", locationType: "route" })).toBe(false);
     expect(isRegionPick({ kind: "place", locationType: "locality" })).toBe(false);
-    expect(sheet).toContain("bounds: isRegionPick(row) ? anchor.viewport : null");
+    expect(pickSrc).toContain("bounds: isRegionPick(row) ? anchor.viewport : null");
   });
 
-  it("lists saved locations in the header's location sheet; Add location opens the add sheet", () => {
+  // MESITA-2464: the search lives in the location sheet itself; a pick is
+  // resolved, saved under its Google name and made active in one tap. The
+  // separate Add location sheet and its naming step are gone.
+  it("searches locations right in the sheet; a pick is saved and chosen at once", () => {
     const picker = readFileSync(
       join(__dirname, "../../components/consumer/home/LocationPicker.tsx"),
       "utf8",
     );
     expect(picker).toContain("savedLocations.map((l)");
-    expect(picker).toContain("setAdding(true)");
-    expect(picker).not.toMatch(/data-places-add-location[\s\S]{0,200}Soon/);
-    expect(picker).toContain("<AddLocationSheet");
+    expect(picker).toContain("data-places-location-search");
+    expect(picker).toContain(
+      "const loc = addSavedLocation(await resolveLocationPick(supabase, r));",
+    );
+    expect(picker).toContain("setActiveLocation(activeFrom(loc));");
+    expect(picker.indexOf("data-places-location-search")).toBeLessThan(
+      picker.indexOf("savedLocations.map((l)"),
+    );
+    expect(picker).not.toContain("AddLocationSheet");
+    expect(picker).not.toContain("data-places-add-location");
+    expect(
+      existsSync(join(__dirname, "../../components/consumer/home/AddLocationSheet.tsx")),
+    ).toBe(false);
   });
 });
