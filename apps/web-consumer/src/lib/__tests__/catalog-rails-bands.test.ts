@@ -165,6 +165,11 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
     expect(picker.match(/HEADER_DISC/g)?.length).toBeGreaterThanOrEqual(3);
     expect(picker.slice(scroll, add)).toContain("</nav>");
     expect(picker).toContain("cn(CHIP, CHIP_OFF)");
+    // Centred while it fits, scrolling only on overflow (MESITA-2454).
+    expect(picker).toContain("mx-auto flex w-max items-center gap-2");
+    // Current location is the blue "my location" target (MESITA-2454).
+    expect(picker).toContain("<LocateFixed");
+    expect(picker).toContain("backgroundColor: MAP_USER_LOCATION_PIN_COLOR");
     expect(picker).toContain('from "@/components/consumer/search/header-classes"');
     expect(picker).not.toContain("<LocalSheet");
     expect(picker).not.toContain("<ChevronDown");
