@@ -114,7 +114,7 @@ function CardPortal({ children }: { children: React.ReactNode }) {
 //
 // Any routed sheet shell must reuse this same panel, because a guest cannot
 // tell a route modal from a state modal and should not have to.
-const SEMI_MODAL_PANEL_CLASS =
+export const SEMI_MODAL_PANEL_CLASS =
   "border-border bg-popover shadow-elev relative flex h-[80%] max-h-[80%] min-h-0 flex-col overflow-hidden rounded-t-3xl border-t";
 
 export function LocalSheet({

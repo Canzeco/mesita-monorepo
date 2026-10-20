@@ -146,7 +146,7 @@ describe("no passive creation: a Mesita Place is minted only on an explicit open
       "app/(shell)/@modal/(.)place/[id]/page.tsx",
       "app/(shell)/place/open/[gid]/page.tsx",
       "app/(shell)/@modal/(.)place/open/[gid]/page.tsx",
-      "app/(shell)/(discovery)/discover/places/page.tsx",
+      "app/(shell)/(discovery)/home/page.tsx",
     ]) {
       const src = code(read(path));
       for (const marker of [

@@ -72,7 +72,7 @@ export default async function ConsumerOnboardPage({
       errMsg(err, "profile fetch failed"),
     );
   }
-  if (onboarded) redirect(nextTarget ?? CONSUMER_ROUTES.discoverDefault);
+  if (onboarded) redirect(nextTarget ?? CONSUMER_ROUTES.home);
 
   // Phone-OTP is the consumer auth method, so the identity is usually a
   // phone; fall back to email for accounts created another way. Surfacing

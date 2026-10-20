@@ -9,7 +9,7 @@ import { useMemberPlaceActions } from "./member-place-actions";
 
 export function PlaceDetailPageBody({
   place,
-  fallbackHref = CONSUMER_ROUTES.discoverDefault,
+  fallbackHref = CONSUMER_ROUTES.home,
 }: {
   place: PlaceDetail;
   fallbackHref?: string;
