@@ -65,9 +65,7 @@ function ToastCard({ t }: { t: Toast }) {
       {Icon && (
         <Icon className={cn("h-4 w-4 shrink-0", iconClass)} strokeWidth={2.5} />
       )}
-      <span className="text-foreground flex-1 leading-snug whitespace-pre-line">
-        {t.message}
-      </span>
+      <span className="text-foreground flex-1 leading-snug">{t.message}</span>
       {t.action && (
         <button
           type="button"

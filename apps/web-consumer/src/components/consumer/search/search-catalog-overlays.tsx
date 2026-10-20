@@ -1,8 +1,9 @@
-import type { RefObject } from "react";
+import type { ReactNode, RefObject } from "react";
 import { ChevronUp, MapPin, X } from "lucide-react";
 
 import type { Place } from "@/lib/api/places";
 import { Skeleton, Spinner } from "@/components/shared";
+import type { Coords } from "@/lib/use-user-location";
 import { cn } from "@/lib/utils";
 
 import { RAIL_CARD_HEIGHT_CLASS, RailCard } from "./SearchRailCard";
@@ -48,6 +49,33 @@ function CatalogRailSkeleton() {
   );
 }
 
+export type LoadCoords = {
+  cross: Coords | null;
+  you: Coords | null;
+  sent: Coords;
+};
+
+// MESITA-2497/2498: development-stage check of the map, at the bottom of
+// it above the rail (Pato: "display the coordinates at the bottom"). The
+// cross, the blue dot and the centre sent to list-places, as of the last
+// catalog load. Remove when Pato says the map is verified.
+export function SearchDebugCoords({ cross, you, sent }: LoadCoords) {
+  const fmt = (c: Coords | null) =>
+    c ? `${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}` : "no fix";
+  return (
+    <div className="mb-2 flex justify-center">
+      <dl className="border-border bg-card/90 text-muted-foreground shadow-rest type-meta grid grid-cols-[auto_auto] gap-x-2 rounded-lg border px-2.5 py-1 font-mono leading-tight tabular-nums backdrop-blur">
+        <dt>Cross</dt>
+        <dd className="text-foreground">{fmt(cross)}</dd>
+        <dt>You</dt>
+        <dd className="text-foreground">{fmt(you)}</dd>
+        <dt>Loaded at</dt>
+        <dd className="text-foreground">{fmt(sent)}</dd>
+      </dl>
+    </div>
+  );
+}
+
 export function SearchRailOverlay({
   places,
   catalogLoading = false,
@@ -61,6 +89,7 @@ export function SearchRailOverlay({
   onSelectPlace,
   onOpenPlace,
   setRailCardRef,
+  debug,
 }: {
   places: Place[];
   catalogLoading?: boolean;
@@ -74,6 +103,8 @@ export function SearchRailOverlay({
   onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
   setRailCardRef: (placeId: string, el: HTMLElement | null) => void;
+  /** Sits on top of the rail, so it rides at the bottom of the map. */
+  debug?: ReactNode;
 }) {
   // Filters live on the top-right disc. Reset on this empty state was
   // the one-tap way out of a cut the guest made; the sheet's own Reset
@@ -87,6 +118,7 @@ export function SearchRailOverlay({
         aria-busy="true"
         aria-live="polite"
       >
+        {debug}
         <CatalogRailSkeleton />
       </div>
     );
@@ -97,6 +129,7 @@ export function SearchRailOverlay({
       className="absolute inset-x-0 bottom-3 z-20"
       aria-busy={catalogLoading}
     >
+      {debug}
       {places.length > 0 ? (
         railCollapsed ? (
           // Dismissed -> a single floating pill reopens the rail. Tapping
