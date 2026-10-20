@@ -14,11 +14,11 @@ import type { PlaceDetail } from "@/lib/place-detail";
 // renders a w-9 spacer for the absent actions slot, so the title stays centered.
 // decision: Pato (MESITA-451, revised) — the "Enriching" state now lives as
 // a chip in the profile summary (PlaceDetailBody), not the title row.
-// decision: Pato (2026-10-19, MESITA-2441) — the body is one OpenTable/Resy
-// scroll; Reserve is sticky to the bottom of the scroll area below.
+// decision: Pato (2026-10-17, MESITA-2321) — all five buttons sit in the
+// profile summary (Save · Contact · Share / Reserve · Pay); no pinned band.
 //   1. SlideOverHeader (shrink-0) — dismiss + place name
 //   2. Scroll area (flex-1 overflow-y-auto) — PlaceDetailBody (ugly
-//      Create profile included, the Enrich vote under the actions).
+//      Create profile included). Enrich is a tab until Enriched.
 
 export function PlaceDetailModalShell({
   children,
@@ -43,7 +43,7 @@ export function PlaceDetailModalShell({
         keeps its default `min-height: auto` (= content size) and grows to
         fit the whole PlaceDetailBody — `overflow-y-auto` then never
         triggers, the page scrolls on the outer body instead, and
-        `position: sticky bottom-0` on Reserve ends up anchored to a
+        `position: sticky top-0` on the tab strip ends up anchored to a
         scroll container that isn't actually scrolling.
       */}
       <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>

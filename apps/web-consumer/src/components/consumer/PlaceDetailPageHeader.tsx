@@ -11,7 +11,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // page goes BACK.
 //
 // decision: Pato (MESITA-392, reverses MESITA-383) — Save moved into the
-// body action row (Save · Share · Directions since MESITA-2441). The header is
+// body action row (Save · Contact · Share since MESITA-1065). The header is
 // just back + centered name now, so a w-9 spacer balances the back button.
 //
 // decision: Pato (MESITA-451, revised) — the "Enriching" state now lives as
