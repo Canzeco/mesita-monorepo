@@ -298,13 +298,13 @@ const webComponents = (): Record<string, string> => ({
   "MesitaMark.tsx":
     `// ${FILE_NOTICE}\n` +
     `//\n` +
-    `// The Mesita flame. Inlined rather than <img src="/brand/mark.svg"> so it\n` +
+    `// The Mesita mark (the table M). Inlined rather than <img src="/brand/mark.svg"> so it\n` +
     `// inherits text colour and costs no request. Pure JSX — safe in server and\n` +
     `// client components alike.\n` +
     `//\n` +
     `// \`strokeWidth\` is accepted and ignored: the bottom nav renders every tab\n` +
     `// glyph through one lucide-shaped signature, and Home uses this mark. The\n` +
-    `// flame is a filled shape, so the prop has no visual effect.\n` +
+    `// mark is a filled shape, so the prop has no visual effect.\n` +
     `export function MesitaMark({\n` +
     `  className,\n` +
     `}: {\n` +
@@ -328,7 +328,8 @@ const webComponents = (): Record<string, string> => ({
     `// ${FILE_NOTICE}\n` +
     `//\n` +
     `// The "mesita." wordmark as outlines, not live text — the logo must not\n` +
-    `// reflow if Fraunces fails to load or a user overrides fonts.\n` +
+    `// reflow if a font fails to load or a user overrides fonts. The letters\n` +
+    `// are Red Hat Display, from ~/Desktop/Mesita/mesita-brand (MESITA-2476).\n` +
     `export function MesitaWordmark({ className }: { className?: string }) {\n` +
     `  return (\n` +
     `    <svg\n` +
@@ -352,9 +353,8 @@ const webComponents = (): Record<string, string> => ({
     `// proportions between them can never drift.\n` +
     `//\n` +
     `//   "horizontal"  mark beside wordmark. Headers, nav bars, email. The\n` +
-    `//                 wordmark's x-height band is centred on the mark's AREA\n` +
-    `//                 centroid (${mark.centroid.y} in a 100-unit mark), because the\n` +
-    `//                 flame is bottom-heavy and box-centring reads low.\n` +
+    `//                 mark is the full height; the wordmark's baseline sits on\n` +
+    `//                 the mark's bottom, as in the brand folder's lockup.\n` +
     `//   "stacked"     mark above wordmark. Splash, auth, share cards, print.\n` +
     `//\n` +
     `// Colour comes from \`currentColor\`. On a light surface use the brand pink\n` +

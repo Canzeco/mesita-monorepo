@@ -153,22 +153,18 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
     expect(src).toContain("apiListAreaPool(supabase, from, prefer, families)");
   });
 
-  // MESITA-2459: one oval in Search's pill token (right of the logo, MESITA-2470), so it reads as a
-  // control (it was a borderless line, MESITA-2456). Never the old
-  // full-width h-10 bar (MESITA-2405).
-  it("the header's location is one oval: pin, name, chevron, opening the sheet", () => {
-    // MESITA-2473 ("A · Quiet"): plain text, no fill, no outline, a 44px
-    // target; the 22px logo sits beside it in one 52px row.
+  // MESITA-2476 (Pato: "location must be inside a box or something"): a
+  // rounded box, translucent white on the brand-colour header, beside the
+  // 22px logo in one 52px row. Never the old full-width h-10 bar (MESITA-2405).
+  it("the header's location is one box: pin, name, chevron, opening the sheet", () => {
     expect(picker).toContain("className={HOME_LOCATION_CLASS}");
     expect(picker).not.toContain("HEADER_PILL");
     const tokens = (picker.match(/HOME_LOCATION_CLASS =\s*"([^"]*)"/)?.[1] ?? "").split(/\s+/);
-    expect(tokens).toContain("h-11");
-    // No resting fill and no outline (a hover or focus wash is fine).
-    for (const resting of ["border", "bg-muted", "bg-card", "shadow-elev"])
-      expect(tokens, resting).not.toContain(resting);
+    for (const t of ["h-9", "rounded-xl", "border", "bg-white/[0.18]", "text-white"])
+      expect(tokens, t).toContain(t);
     const tabs = readFileSync(join(__dirname, "../../components/consumer/ModeTabs.tsx"), "utf8");
     expect(tabs).toContain('className="flex h-[52px] items-center gap-3 px-4" data-home-header');
-    expect(tabs).toContain('className="text-foreground h-[22px] w-auto shrink-0"');
+    expect(tabs).toContain('className="h-[22px] w-auto shrink-0 text-white"');
     expect(picker).not.toContain("border-border bg-card text-foreground hover:bg-muted relative flex h-10");
     expect(picker).toContain("<MapPin");
     expect(picker).toContain("<ChevronDown");
@@ -195,11 +191,11 @@ describe("the Places grid (MESITA-2366)", () => {
     expect(src).not.toContain("data-band");
   });
 
-  // The bottom bar's white and its hairline (MESITA-2408, MESITA-2409:
-  // "a super thin light gray line … just as in menu"), never the old 2px rule.
-  it("paints Home's header the bottom bar's white, with the bar's hairline under it", () => {
+  // MESITA-2476 (Pato: "the header must be of other color"): the brand
+  // colour band (it was the bottom bar's white, MESITA-2409), never a 2px rule.
+  it("paints Home's header the brand colour", () => {
     const tabs = readFileSync(join(__dirname, "../../components/consumer/ModeTabs.tsx"), "utf8");
-    expect(tabs).toContain('"border-border bg-card/95 sticky top-0 z-20 shrink-0 border-b backdrop-blur"');
+    expect(tabs).toContain('"sticky top-0 z-20 shrink-0 bg-[var(--brand-pink-deep)] text-white"');
     expect(tabs).not.toContain("border-b-2");
   });
 
