@@ -13,8 +13,11 @@
 // tap resolves the match (a region saves an AREA, anything else a POINT,
 // lib/location-pick.ts), keeps it under its Google name, makes it the active
 // location and closes: one step, no naming screen (the separate Add location
-// sheet of MESITA-2380 is gone). The choice lives in `lib/active-location.ts`,
-// which Home's catalog reads.
+// sheet of MESITA-2380 is gone). Before typing, "Around you" lists the areas
+// the guest stands in (MESITA-2471, Instagram's Add location: neighbourhood,
+// district, city from consumer-web-reverse-geocode); a tap saves the area
+// with its rectangle and makes it active. The choice lives in
+// `lib/active-location.ts`, which Home's catalog reads.
 
 import { useEffect, useState, type ReactNode } from "react";
 import {
@@ -35,7 +38,8 @@ import {
 } from "@/lib/ui-classes";
 import { apiSuggestPlaces, type PlacePrediction } from "@/lib/api/place-search";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { useHereName } from "@/lib/use-here-name";
+import { useHere } from "@/lib/use-here-name";
+import type { NearbyArea } from "@/lib/api/place-search";
 import { newSessionToken } from "@/components/consumer/search/search-utils";
 import { resolveLocationPick } from "@/lib/location-pick";
 import {
@@ -69,6 +73,23 @@ export function locationLabel(
 
 const ICON = "h-4 w-4 shrink-0";
 
+/** The grey word at the end of an "Around you" row (MESITA-2471). */
+const AREA_LEVEL_WORD: Record<NearbyArea["level"], string> = {
+  neighborhood: "Neighborhood",
+  district: "District",
+  city: "City",
+};
+
+/** "Around you" (MESITA-2471, Instagram's Add location): the areas around
+ *  the guest, minus any already saved under the same name. */
+export function aroundYouRows(
+  areas: readonly NearbyArea[],
+  saved: readonly { name: string }[],
+): NearbyArea[] {
+  const savedNames = new Set(saved.map((l) => l.name.trim().toLowerCase()));
+  return areas.filter((a) => !savedNames.has(a.name.trim().toLowerCase()));
+}
+
 /** A saved location as the active one. */
 function activeFrom(l: SavedLocation) {
   return {
@@ -96,8 +117,12 @@ export function LocationPicker() {
   // Google bills Autocomplete per session: one token until a pick or close.
   const [token, setToken] = useState(newSessionToken);
   const label = locationLabel(active, coords !== null, locating);
-  // Asked only while the sheet is open, once per ~110 m (MESITA-2466).
-  const hereName = useHereName(coords, picking);
+  // Asked only while the sheet is open, once per ~110 m (MESITA-2466): the
+  // neighbourhood for the Current location row and the "Around you" areas
+  // (MESITA-2471). An area already saved shows once, as the saved row.
+  const here = useHere(coords, picking);
+  const hereName = here.name;
+  const aroundYou = aroundYouRows(here.areas, savedLocations);
   const typing = query.trim().length >= 2;
 
   // Search after a short pause; the newest query wins.
@@ -295,6 +320,34 @@ export function LocationPicker() {
                 close();
               },
             })}
+            {aroundYou.length > 0 ? (
+              <li
+                className="text-muted-foreground pt-4 pb-1 text-xs font-semibold"
+                data-places-around-you
+              >
+                Around you
+              </li>
+            ) : null}
+            {aroundYou.map((a) => (
+              <li key={`around:${a.name}`}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const loc = addSavedLocation(a);
+                    setActiveLocation(activeFrom(loc));
+                    close();
+                  }}
+                  className="hover:bg-muted flex w-full items-center gap-3 py-3 text-left transition"
+                  data-places-around-area
+                >
+                  <MapPin className={ICON} strokeWidth={2.25} aria-hidden />
+                  <span className="min-w-0 truncate text-sm">{a.name}</span>
+                  <span className="text-muted-foreground ml-auto shrink-0 text-xs">
+                    {AREA_LEVEL_WORD[a.level]}
+                  </span>
+                </button>
+              </li>
+            ))}
             {savedLocations.map((l) =>
               row({
                 key: `saved:${l.id}`,

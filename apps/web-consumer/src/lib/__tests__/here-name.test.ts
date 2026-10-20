@@ -2,8 +2,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { locationLabel } from "@/components/consumer/home/LocationPicker";
+import { aroundYouRows, locationLabel } from "@/components/consumer/home/LocationPicker";
 import { hereKey } from "@/lib/use-here-name";
+import type { NearbyArea } from "@/lib/api/place-search";
+import { addSavedLocation } from "@/lib/saved-locations";
 
 const read = (p: string) => readFileSync(join(__dirname, "..", "..", p), "utf8");
 
@@ -30,11 +32,41 @@ describe("Current location names the neighbourhood", () => {
 
   it("asks only while the sheet is open, and the header keeps Current location", () => {
     const picker = read("components/consumer/home/LocationPicker.tsx");
-    expect(picker).toContain("const hereName = useHereName(coords, picking);");
+    expect(picker).toContain("const here = useHere(coords, picking);");
+    expect(picker).toContain("const hereName = here.name;");
     expect(picker).toContain("label: locationLabel(null, coords !== null, locating, hereName),");
     expect(picker).toContain("const label = locationLabel(active, coords !== null, locating);");
     const hook = read("lib/use-here-name.ts");
-    expect(hook).toContain("if (!enabled || !coords || !key || readName(key)) return;");
+    expect(hook).toContain("if (!enabled || !coords || !key || readAnswer(key)) return;");
     expect(read("lib/api/place-search.ts")).toContain('"consumer-web-reverse-geocode"');
+  });
+});
+
+// MESITA-2471 ("the instagram location"): before typing, the sheet lists the
+// areas around the guest; a tap saves the area with its rectangle.
+describe("Around you", () => {
+  const area = (name: string): NearbyArea => ({
+    name,
+    level: "city",
+    lat: 25.67,
+    lng: -100.31,
+    bounds: { low: { lat: 25.55, lng: -100.45 }, high: { lat: 25.8, lng: -100.15 } },
+  });
+
+  it("lists the areas, minus any already saved under the same name", () => {
+    const rows = aroundYouRows([area("Distrito Tec"), area("Monterrey")], [{ name: " monterrey " }]);
+    expect(rows.map((a) => a.name)).toEqual(["Distrito Tec"]);
+    expect(aroundYouRows([], [])).toEqual([]);
+  });
+
+  it("a tap saves the area as an AREA and makes it active, under Current location", () => {
+    const picker = read("components/consumer/home/LocationPicker.tsx");
+    expect(picker).toContain("const aroundYou = aroundYouRows(here.areas, savedLocations);");
+    expect(picker).toContain("const loc = addSavedLocation(a);");
+    expect(picker.indexOf('key: "here"')).toBeLessThan(picker.indexOf("data-places-around-you"));
+    expect(picker.indexOf("data-places-around-you")).toBeLessThan(picker.indexOf("savedLocations.map((l)"));
+    // A NearbyArea carries `bounds`, so addSavedLocation stores an area.
+    const saved = addSavedLocation(area("Monterrey"));
+    expect(saved.kind).toBe("area");
   });
 });

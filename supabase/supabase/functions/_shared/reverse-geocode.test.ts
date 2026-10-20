@@ -1,7 +1,9 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import {
   geocodeStatus,
+  NEARBY_AREAS_MAX,
   pickAreaName,
+  pickNearbyAreas,
   pointKey,
   readPoint,
   reverseGeocodeUrl,
@@ -92,4 +94,52 @@ Deno.test("reads Google's status and builds a Spanish, area-only request", () =>
     url.searchParams.get("result_type"),
     "neighborhood|sublocality_level_1|sublocality|locality",
   );
+});
+
+// MESITA-2471: the sheet's "Around you" rows come from the same answer.
+Deno.test("pickNearbyAreas: most local first, one per name, rectangles the Area pipeline takes", () => {
+  const vp = (s: number, w: number, n: number, e: number) => ({
+    southwest: { lat: s, lng: w },
+    northeast: { lat: n, lng: e },
+  });
+  const r = (type: string, name: string, viewport: unknown) => ({
+    types: [type, "political"],
+    address_components: [{ long_name: name, types: [type, "political"] }],
+    geometry: { location: { lat: 25.65, lng: -100.29 }, viewport },
+  });
+  const answer = {
+    status: "OK",
+    results: [
+      r("locality", "Monterrey", vp(25.55, -100.45, 25.8, -100.15)),
+      r("neighborhood", "Distrito Tec", vp(25.64, -100.3, 25.66, -100.28)),
+      r("sublocality_level_1", "Sin Nombre de Col 46", vp(25.6, -100.3, 25.7, -100.2)),
+      r("neighborhood", "distrito tec", vp(25.64, -100.3, 25.66, -100.28)),
+      // Wider than 100 km: the Area pipeline would fall back to a point.
+      r("locality", "Huge", vp(24, -101, 26, -99)),
+      // Inverted rectangle.
+      r("neighborhood", "Broken", vp(25.7, -100.2, 25.6, -100.3)),
+      // Not an area level.
+      r("route", "Av. Eugenio Garza Sada", vp(25.64, -100.3, 25.66, -100.28)),
+    ],
+  };
+  const areas = pickNearbyAreas(answer);
+  assertEquals(areas.map((a) => [a.name, a.level]), [
+    ["Distrito Tec", "neighborhood"],
+    ["Monterrey", "city"],
+  ]);
+  assertEquals(areas[0].bounds, { low: { lat: 25.64, lng: -100.3 }, high: { lat: 25.66, lng: -100.28 } });
+  assertEquals(pickNearbyAreas({ status: "ZERO_RESULTS", results: [] }), []);
+  assertEquals(pickNearbyAreas(null), []);
+});
+
+Deno.test("pickNearbyAreas: at most NEARBY_AREAS_MAX rows", () => {
+  const results = Array.from({ length: 8 }, (_, i) => ({
+    types: ["neighborhood"],
+    address_components: [{ long_name: `N${i}`, types: ["neighborhood"] }],
+    geometry: {
+      location: { lat: 25.65, lng: -100.29 },
+      viewport: { southwest: { lat: 25.64, lng: -100.3 }, northeast: { lat: 25.66, lng: -100.28 } },
+    },
+  }));
+  assertEquals(pickNearbyAreas({ status: "OK", results }).length, NEARBY_AREAS_MAX);
 });

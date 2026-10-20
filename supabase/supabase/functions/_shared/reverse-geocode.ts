@@ -88,3 +88,94 @@ export function reverseGeocodeUrl(p: { lat: number; lng: number }, key: string):
   });
   return `https://maps.googleapis.com/maps/api/geocode/json?${q.toString()}`;
 }
+
+// ── Around you (MESITA-2471) ──────────────────────────────────────────────
+// Instagram's Add location shows places around you before you type. The
+// same Geocoding answer already holds one result per level (neighbourhood,
+// district, city), each with its viewport: those are the sheet's "Around
+// you" rows, at no extra call. A tap saves the row as an AREA.
+
+/** An area around the guest, ready to save as an Area location. */
+export type NearbyArea = {
+  name: string;
+  level: "neighborhood" | "district" | "city";
+  lat: number;
+  lng: number;
+  bounds: { low: { lat: number; lng: number }; high: { lat: number; lng: number } };
+};
+
+/** At most this many rows under the search field. */
+export const NEARBY_AREAS_MAX = 4;
+/** The Area pipeline drops a rectangle wider than this (parseAreaBounds). */
+export const NEARBY_AREA_MAX_KM = 100;
+
+const LEVEL_WORD: Record<(typeof LEVELS)[number], NearbyArea["level"]> = {
+  neighborhood: "neighborhood",
+  sublocality_level_1: "district",
+  sublocality: "district",
+  locality: "city",
+};
+
+function latLng(x: unknown): { lat: number; lng: number } | null {
+  if (!x || typeof x !== "object") return null;
+  const { lat, lng } = x as { lat?: unknown; lng?: unknown };
+  return typeof lat === "number" && Number.isFinite(lat) &&
+      typeof lng === "number" && Number.isFinite(lng)
+    ? { lat, lng }
+    : null;
+}
+
+function diagonalKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad;
+  const dLng = (b.lng - a.lng) * rad;
+  const h = Math.sin(dLat / 2) ** 2 +
+    Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(h));
+}
+
+/** The areas a Geocoding answer names around the point: most local first,
+ *  one per name, no placeholders, none wider than the Area pipeline takes. */
+export function pickNearbyAreas(payload: unknown): NearbyArea[] {
+  if (!payload || typeof payload !== "object") return [];
+  const results = (payload as { results?: unknown }).results;
+  if (!Array.isArray(results)) return [];
+  const found: { area: NearbyArea; rank: number }[] = [];
+  for (const r of results as Record<string, unknown>[]) {
+    const types = Array.isArray(r?.types) ? (r.types as unknown[]) : [];
+    const rank = LEVELS.findIndex((l) => types.includes(l));
+    if (rank < 0) continue;
+    const level = LEVELS[rank];
+    const comps = Array.isArray(r.address_components)
+      ? (r.address_components as Component[])
+      : [];
+    const comp = comps.find(
+      (c) => Array.isArray(c.types) && c.types.includes(level) && typeof c.long_name === "string",
+    );
+    const name = typeof comp?.long_name === "string" ? comp.long_name.trim() : "";
+    if (!name || PLACEHOLDER.test(name)) continue;
+    const geometry = (r.geometry ?? {}) as { location?: unknown; viewport?: unknown };
+    const at = latLng(geometry.location);
+    const vp = (geometry.viewport ?? {}) as { southwest?: unknown; northeast?: unknown };
+    const low = latLng(vp.southwest);
+    const high = latLng(vp.northeast);
+    if (!at || !low || !high) continue;
+    if (!(low.lat < high.lat && low.lng < high.lng)) continue;
+    if (diagonalKm(low, high) > NEARBY_AREA_MAX_KM) continue;
+    found.push({
+      area: { name, level: LEVEL_WORD[level], lat: at.lat, lng: at.lng, bounds: { low, high } },
+      rank,
+    });
+  }
+  found.sort((a, b) => a.rank - b.rank);
+  const seen = new Set<string>();
+  const out: NearbyArea[] = [];
+  for (const { area } of found) {
+    const k = area.name.toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(area);
+    if (out.length >= NEARBY_AREAS_MAX) break;
+  }
+  return out;
+}
