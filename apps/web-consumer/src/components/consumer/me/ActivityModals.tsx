@@ -9,7 +9,8 @@ import { NotificationsClient } from "@/components/consumer/NotificationsClient";
 // (MESITA-1789), so the page carries no section switcher — the guest chose
 // the section by tapping the tile. `/inbox/*` 308s to the hub. It is NOT an
 // @modal intercept. Reservations left Me for the bar's Bookings tab
-// (MESITA-2518, components/consumer/bookings/BookingsPage.tsx).
+// (MESITA-2518), now Saved › Reservations (MESITA-2521,
+// components/consumer/saved/SavedPage.tsx).
 //
 // NOTHING HERE FETCHES. The body authenticates from the session inside
 // its own Edge Function, so this file passes no id down.

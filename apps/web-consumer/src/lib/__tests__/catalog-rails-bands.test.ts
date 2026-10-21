@@ -7,7 +7,6 @@ import {
   SAVED_CHIP,
   HOME_TABS,
   PINNED_CHIPS,
-  GROUP_STRIPE,
   poolPlaces,
   PLACES_PAGE,
   savedPlaceList,
@@ -51,9 +50,11 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
   // MESITA-2519 (Pato: "keep the later view of the failies. its fastwer to
   // browse … LEFT MENU OF FAMILIES"): the horizontal chips went back to the
   // left column, under the tabs.
-  it("Places is the left family column — All, Saved pinned, then every family — beside the tiles", () => {
+  it("Places is the left family column — All, Favorites pinned, then every family — beside the tiles", () => {
     const labels = placesChips().map((c) => c.label);
-    expect(labels.slice(0, 2)).toEqual(["All", "Saved"]);
+    // Favorites, the key still `saved` (MESITA-2521: "rename saved to
+    // favorites everywhere").
+    expect(labels.slice(0, 2)).toEqual(["All", "Favorites"]);
     expect(placesChips().map((c) => c.key).slice(0, 2)).toEqual([ALL_CHIP, SAVED_CHIP]);
     for (const gone of ["Social", "Nearby", "Popular", "Undefined"]) {
       expect(labels, gone).not.toContain(gone);
@@ -68,12 +69,13 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
     expect(PINNED_CHIPS).toBe(2);
     expect(src).toContain("chips.slice(0, PINNED_CHIPS).map(categoryRow)");
     expect(src).toContain("chips.slice(PINNED_CHIPS).map(categoryRow)");
-    // Two clay stripes: the pinned head red, the families blue (MESITA-2492).
-    expect(Object.keys(GROUP_STRIPE)).toEqual(["pinned", "families"]);
+    // Two groups, no colour stripes (Pato, MESITA-2521: "remove the stupid
+    // blue and orange color from the sidebar menu"; MESITA-2492 drew them).
     for (const g of ["pinned", "families"]) {
       expect(src).toContain(`data-places-group="${g}"`);
-      expect(GROUP_STRIPE[g as keyof typeof GROUP_STRIPE]).toMatch(/^shadow-\[inset_3px_0_0_oklch\(/);
     }
+    expect(src).not.toContain("GROUP_STRIPE");
+    expect(src).not.toContain("oklch(");
     // The chosen row: white, bold, an ink bar on its left edge.
     expect(src).toContain('const ROW_ON = "bg-card text-foreground font-semibold";');
     expect(src).toContain("bg-foreground absolute inset-y-0 left-0 w-[3px]");

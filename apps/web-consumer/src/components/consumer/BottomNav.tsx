@@ -5,7 +5,7 @@ import { Z_BOTTOM_NAV } from "@/lib/z-index";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ComponentType } from "react";
-import { CalendarCheck, QrCode, Search, User } from "lucide-react";
+import { Heart, QrCode, Search, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { cn } from "@/lib/utils";
 import {
@@ -19,9 +19,10 @@ import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 
 // FIVE tabs, in this order (Pato, MESITA-2076 — "BOTTOM BAR MUST ONLY BE.
 // Home. Search. Pay(Soon). Me."; MESITA-2518 added Bookings: "add
-// reservations at the bottom, since its one of the main uvps"):
+// reservations at the bottom, since its one of the main uvps"; MESITA-2521
+// renamed it Saved — Favorites | Reservations):
 //
-//   Home · Search · Pay (Soon) · Bookings · Me
+//   Home · Search · Pay (Soon) · Saved · Me
 //
 //   PAY IS ONE PAGE, THE SOON STATE (Pato, MESITA-2087: "Keep pay but delete
 //   everything else. just the empty page with soon."). The tab is a plain
@@ -60,10 +61,7 @@ const ITEMS: Item[] = [
     href: CONSUMER_ROUTES.home,
     Icon: MesitaMark,
     label: "Home",
-    matchPrefixes: [
-      CONSUMER_ROUTES.home,
-      CONSUMER_ROUTE_PREFIX.place,
-    ],
+    matchPrefixes: [CONSUMER_ROUTES.home, CONSUMER_ROUTE_PREFIX.place],
   },
   {
     href: CONSUMER_ROUTES.search,
@@ -79,14 +77,14 @@ const ITEMS: Item[] = [
     soon: true,
   },
   {
-    href: CONSUMER_ROUTES.bookings,
-    Icon: CalendarCheck,
-    label: "Bookings",
-    // The list plus a reservation's detail: /reservation/{id} is reached
+    href: CONSUMER_ROUTES.saved,
+    Icon: Heart,
+    label: "Saved",
+    // The tab plus a reservation's detail: /reservation/{id} is reached
     // from a place AND from the list, and the list is where you land back
     // (MESITA-2518; Me owned it while the list was Me › Reservations).
     matchPrefixes: [
-      CONSUMER_ROUTE_PREFIX.bookings,
+      CONSUMER_ROUTE_PREFIX.saved,
       CONSUMER_RESERVATION_SURFACE_PREFIX,
     ],
   },

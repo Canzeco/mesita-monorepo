@@ -73,7 +73,7 @@ describe("member preview edges", () => {
 
   it("puts all five buttons in the header and no pinned bar (MESITA-2321)", () => {
     const html = renderToStaticMarkup(<PlaceProfile place={detail()} />);
-    for (const label of [">Save<", ">Contact<", ">Share<", "Reserve a table", "Pay, Soon"]) {
+    for (const label of [">Favorite<", ">Contact<", ">Share<", "Reserve a table", "Pay, Soon"]) {
       expect(html).toContain(label);
     }
     // The old pinned band (border-t + backdrop-blur under the scroller) is gone.
@@ -124,7 +124,7 @@ describe("member preview edges", () => {
     expect(nav).toContain('aria-label="Place sections"');
     expect(nav).toContain("bg-card");
     expect(nav).not.toContain("bg-background");
-    const saveAt = html.indexOf(">Save<");
+    const saveAt = html.indexOf(">Favorite<");
     const contactAt = html.indexOf(">Contact<");
     const shareAt = html.indexOf(">Share<");
     const reserveAt = html.indexOf("Reserve a table");

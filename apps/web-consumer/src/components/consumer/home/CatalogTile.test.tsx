@@ -48,7 +48,7 @@ describe("a Google-only card opens its profile, never Google Maps (MESITA-2298)"
 
   it("has no save heart", () => {
     expect(tile({ id: "g:ChIJx", googleOnly: true })).not.toContain(
-      "Save Casa",
+      "Add Casa to favorites",
     );
   });
 
@@ -56,7 +56,7 @@ describe("a Google-only card opens its profile, never Google Maps (MESITA-2298)"
     const html = tile({});
     expect(html).toContain('href="/place/casa"');
     expect(html).not.toContain('aria-label="Open Casa"');
-    expect(html).toContain("Save Casa");
+    expect(html).toContain("Add Casa to favorites");
   });
 });
 

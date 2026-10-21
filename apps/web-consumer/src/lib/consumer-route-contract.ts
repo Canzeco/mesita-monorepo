@@ -32,10 +32,10 @@ export const CONSUMER_ROUTES = {
   place: {
     prefix: "/place/",
   },
-  // The reservations LIST is the bar's Bookings tab (MESITA-2518; it was Me ›
-  // Reservations); the singular DETAIL stays at /reservation/[id] — a
-  // booking is still a reservation.
-  bookings: "/bookings",
+  // The bar's Saved tab (MESITA-2521): Favorites | Reservations. It was the
+  // Bookings tab (MESITA-2518), and before that Me › Reservations; the
+  // singular DETAIL stays at /reservation/[id].
+  saved: "/saved",
   reservation: {
     prefix: "/reservation/",
   },
@@ -143,6 +143,8 @@ export const CONSUMER_ROUTES = {
     reservations: "/reservations",
     // Me › Reservations, until the list became the Bookings tab (MESITA-2518).
     meReservations: "/me/reservations",
+    // The Bookings tab, until it became Saved › Reservations (MESITA-2521).
+    bookings: "/bookings",
     // Reservations under /saved, from when that was a tab.
     savedReservations: "/saved/reservations",
     savedReservationPrefix: "/saved/reservation/",
@@ -157,8 +159,15 @@ export const CONSUMER_ROUTE_PREFIX = {
   // siblings to disambiguate from, so BottomNav matches CONSUMER_ROUTES.
   place: "/place",
   pay: "/pay",
-  bookings: "/bookings",
+  saved: "/saved",
   me: "/me",
+} as const;
+
+/** Each Saved tab's own address (MESITA-2521): a query, not a page, so it
+ *  stays out of CONSUMER_ROUTES. */
+export const SAVED_TAB_HREF = {
+  favorites: "/saved",
+  reservations: "/saved?tab=reservations",
 } as const;
 
 // Matches both the /reservations list and /reservation/[id] details

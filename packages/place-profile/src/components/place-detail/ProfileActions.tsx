@@ -57,7 +57,7 @@ export function ProfileActions({
           {...(onSave
             ? { onClick: onSave, "aria-pressed": saved }
             : inertButtonProps(false))}
-          aria-label={saved ? "Remove from saved" : "Save place"}
+          aria-label={saved ? "Remove from favorites" : "Add to favorites"}
           className={cn(
             grayBtn,
             saved &&
@@ -68,7 +68,7 @@ export function ProfileActions({
             className={cn("h-4 w-4 shrink-0", saved && "fill-current")}
             strokeWidth={2.25}
           />
-          {saved ? "Saved" : "Save"}
+          {saved ? "Favorited" : "Favorite"}
         </button>
         <button
           type="button"

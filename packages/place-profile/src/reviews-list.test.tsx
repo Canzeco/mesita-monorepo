@@ -80,7 +80,7 @@ describe("Reviews is a vertical list", () => {
     expect(overview).toContain("8.9K");
     expect(overview).toContain("A short presentation");
     expect(overview).not.toContain("Show more");
-    expect(overview).toContain("Save");
+    expect(overview).toContain("Favorite");
     expect(overview).toContain("Contact");
     expect(overview).toContain("Share");
 
@@ -92,7 +92,7 @@ describe("Reviews is a vertical list", () => {
     expect(reviews).not.toContain("Google Summary");
     expect(reviews).not.toContain("Instagram Summary");
     expect(reviews).not.toContain("Facebook Summary");
-    expect(reviews).toContain("Save");
+    expect(reviews).toContain("Favorite");
     expect(reviews).toContain("Contact");
     expect(reviews).toContain("Share");
     expect(reviews).toContain("Newest");

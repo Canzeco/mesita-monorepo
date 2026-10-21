@@ -46,8 +46,8 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const onSave = useCallback(() => {
     const nowSaved = !saved;
     toggle(place.id);
-    if (nowSaved) toast.success(`Saved ${place.name}`);
-    else toast(`Removed ${place.name} from saved`);
+    if (nowSaved) toast.success(`Added ${place.name} to favorites`);
+    else toast(`Removed ${place.name} from favorites`);
   }, [place.id, place.name, saved, toggle]);
 
   const onOpenLink = useCallback((url: string) => {

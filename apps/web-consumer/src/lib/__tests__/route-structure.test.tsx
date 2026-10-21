@@ -195,7 +195,8 @@ describe("T4 — every redirect destination resolves", () => {
     const resolves = (dest: string) => {
       if (sources.has(dest)) return true;
       // :id / :tab params in a destination correspond to [id] / [tab] segments.
-      const normalized = dest.replace(/:[a-zA-Z]+/g, "[param]");
+      // A `?tab=` query picks a tab of the page (MESITA-2521).
+      const normalized = dest.split("?")[0].replace(/:[a-zA-Z]+/g, "[param]");
       return pages.some((page) => {
         const p = page.replace(/\[[^\]]+\]/g, "[param]");
         return p === normalized || p === normalized.replace(/\/$/, "");
@@ -269,10 +270,11 @@ describe("T5 — exactly one tab lights per surface", () => {
     ["/search", "Search"],
     // Pay is one page and lights its own tab there.
     ["/pay", "Pay"],
-    // The Bookings tab and the detail route it owns: a reservation is reached
-    // from a place AND from the list (MESITA-2518; Me owned it until then).
-    ["/bookings", "Bookings"],
-    ["/reservation/r1", "Bookings"],
+    // The Saved tab and the detail route it owns: a reservation is reached
+    // from a place AND from the list (MESITA-2518 as Bookings, Saved since
+    // MESITA-2521; Me owned it until then).
+    ["/saved", "Saved"],
+    ["/reservation/r1", "Saved"],
     ["/me", "Me"],
   ];
 
@@ -346,8 +348,8 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
     return [...html.matchAll(/text-center">([^<]+)</g)].map((m) => m[1]);
   }
 
-  it("is exactly Home · Search · Pay · Bookings · Me (MESITA-2518)", async () => {
-    expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Bookings", "Me"]);
+  it("is exactly Home · Search · Pay · Saved · Me (MESITA-2521)", async () => {
+    expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Saved", "Me"]);
   });
 
   it("keeps Wallet, Visit and Order off the bar", async () => {
@@ -388,7 +390,7 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
       CONSUMER_ROUTES.home,
       CONSUMER_ROUTES.search,
       CONSUMER_ROUTES.pay,
-      CONSUMER_ROUTES.bookings,
+      CONSUMER_ROUTES.saved,
       CONSUMER_ROUTES.me,
     ]);
     const redirects = await nextConfig.redirects!();
@@ -515,11 +517,11 @@ describe("T5b — Home's header and Search's header", () => {
 describe("T6 — Activity's sections are pages on Me", () => {
   const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
 
-  it("routes each box to its page: notifications on Me, reservations to the Bookings tab", () => {
+  it("routes each box to its page: notifications on Me, reservations to Saved › Reservations", () => {
     expect(ME).toContain("CONSUMER_ROUTES.mePages.notifications");
     expect(ME).not.toContain("CONSUMER_ROUTES.mePages.visits");
-    // The list is the bar's Bookings tab (MESITA-2518).
-    expect(ME).toContain("CONSUMER_ROUTES.bookings");
+    // The list is the bar's Saved tab, Reservations (MESITA-2518, MESITA-2521).
+    expect(ME).toContain("SAVED_TAB_HREF.reservations");
     expect(ME).not.toContain("CONSUMER_ROUTES.mePages.reservations");
     expect(ME).not.toMatch(/<(AlertsModal|VisitsModal|BookingsModal)\b/);
   });
@@ -697,9 +699,9 @@ describe("T8 — Me's grid is six live cells", () => {
 describe("T7 — every former url still resolves after the move", () => {
   it.each([
     // Both landed on the Reservations SECTION until MESITA-1626 dissolved the
-    // container; the list is the Bookings tab now (MESITA-2518).
-    ["/saved", "/me"],
-    ["/saved/reservations", "/bookings"],
+    // container; the list is Saved › Reservations now (MESITA-2521), and
+    // /saved itself is the live tab again.
+    ["/saved/reservations", "/saved?tab=reservations"],
     ["/saved/reservation/:id", "/reservation/:id"],
     ["/saved/place/:id", "/place/:id"],
   ])(
