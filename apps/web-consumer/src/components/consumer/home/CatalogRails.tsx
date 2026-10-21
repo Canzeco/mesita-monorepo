@@ -321,6 +321,10 @@ export function CatalogRails() {
     () => (pool ? poolPlaces(pool, chip) : []),
     [pool, chip],
   );
+  const samplePlaces: Place[] = useMemo(
+    () => (pool ? poolPlaces(pool, ALL_CHIP) : []),
+    [pool],
+  );
   const hasMore = shown.length > pageCount * PLACES_PAGE;
   useEffect(() => {
     const el = sentinel.current;
@@ -533,7 +537,9 @@ export function CatalogRails() {
   };
 
   // Social reads its own feed, never the catalog (MESITA-2474, MESITA-2517).
-  if (tab === "social") return shell(<SocialFeed />);
+  // Sample Social rows sit on the pool's real places (MESITA-2520).
+  if (tab === "social")
+    return shell(<SocialFeed samplePlaces={samplePlaces} />);
 
   // Saved never waits on the catalog: the saves are local.
   if (chip === SAVED_CHIP) {
