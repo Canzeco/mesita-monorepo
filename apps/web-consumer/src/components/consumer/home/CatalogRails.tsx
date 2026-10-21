@@ -46,7 +46,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Compass, MapPin } from "lucide-react";
+import { Compass } from "lucide-react";
 import { MONTERREY_CENTER } from "@/lib/map-defaults";
 import {
   apiListAreaPool,
@@ -65,11 +65,8 @@ import { FamilyIcon } from "@/lib/family-icons";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { trackEvent } from "@/lib/analytics/track";
 import {
-  useLocateUser,
   useUserLocation,
-  useUserLocationError,
   useUserLocationSettled,
-  type LocationError,
 } from "@/lib/use-user-location";
 import { withUserDistance } from "@/lib/place-distance";
 import { onPlaceCreated } from "@/lib/place-created-event";
@@ -195,21 +192,10 @@ export function savedPlaceList(
     .map((p) => enrichPlaceOverview(p));
 }
 
-/** NO LOCATION IS NOT A DEAD END (Pato, MESITA-2472: the full-pane "Couldn't
- *  find you" with a paragraph of instructions "looks like … shit"). With no
- *  fix and no saved location, every row ranks around the city's centre, the
- *  Search map's own fallback, and one slim bar above the tiles says so. The
- *  last ask's failure only picks the bar's words. */
-export const CITY_FALLBACK = {
-  name: "Monterrey",
-  ...MONTERREY_CENTER,
-} as const;
-
-export function cityFallbackBar(error: LocationError | null): string {
-  return error === null
-    ? `Showing ${CITY_FALLBACK.name}`
-    : `Location is off · Showing ${CITY_FALLBACK.name}`;
-}
+/* NO LOCATION IS NOT A DEAD END (Pato, MESITA-2472): with no fix and no
+ * saved location, every row ranks around the city's centre, the Search
+ * map's own fallback. The header's location box names the city
+ * (MESITA-2587: no bar above the tiles says the location is off). */
 
 export function CatalogRails() {
   const supabase = useBrowserSupabase();
@@ -221,7 +207,6 @@ export function CatalogRails() {
   // null = the guest's current location; a saved location = search from it.
   const origin = useActiveLocation();
   const locationSettled = useUserLocationSettled();
-  const locationError = useUserLocationError();
   // No fix and no saved location, once the browser has answered: the city's
   // centre (MESITA-2472). Before it answers: nothing yet (a skeleton).
   const onCityFallback = origin === null && coords === null && locationSettled;
@@ -328,7 +313,6 @@ export function CatalogRails() {
     io.observe(el);
     return () => io.disconnect();
   }, [hasMore, pageKey, pageCount]);
-  const locate = useLocateUser();
 
   /** What the events say about a tile: its source, rank and final score. */
   const tileFacts = (place: Place, rank: number) => ({
@@ -538,24 +522,6 @@ export function CatalogRails() {
   if (tab === "social")
     return shell(<SocialFeed samplePlaces={samplePlaces} />);
 
-  // One slim line above the tiles, never a full-pane state (MESITA-2472).
-  const cityBar = onCityFallback ? (
-    <div
-      className="text-muted-foreground flex items-center gap-1.5 px-3 pt-2.5 pb-1 text-xs"
-      data-places-city-fallback
-    >
-      <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
-      <span className="min-w-0 truncate">{cityFallbackBar(locationError)}</span>
-      <button
-        type="button"
-        onClick={locate}
-        className="text-foreground ml-auto shrink-0 font-semibold underline-offset-2 hover:underline"
-      >
-        Use my location
-      </button>
-    </div>
-  ) : null;
-
   if (waitingForFix) {
     return shell(
       <div className={PLACES_LIST} data-places-locating>
@@ -601,9 +567,6 @@ export function CatalogRails() {
   );
 
   return shell(
-    <>
-      {cityBar}
-      {shown.length === 0 ? empty : tiles(shown, label, true)}
-    </>,
+    shown.length === 0 ? empty : tiles(shown, label, true),
   );
 }

@@ -2,6 +2,9 @@
 // Monterrey is the launch city; geolocation re-centers when available.
 
 export const MONTERREY_CENTER = { lat: 25.6714, lng: -100.3094 } as const;
+/** What Home's location box says while it ranks around MONTERREY_CENTER
+ *  with no fix and no saved location (MESITA-2587). */
+export const MONTERREY_NAME = "Monterrey";
 
 export const MAP_DEFAULT_ZOOM = 13;
 export const MAP_USER_ZOOM = 14;

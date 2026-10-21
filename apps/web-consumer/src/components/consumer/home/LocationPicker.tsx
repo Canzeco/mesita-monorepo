@@ -27,6 +27,7 @@ import {
   ChevronDown,
   Loader2,
   MapPin,
+  MapPinOff,
   Navigation,
   Pencil,
   Search,
@@ -44,11 +45,12 @@ import { useHere } from "@/lib/use-here-name";
 import type { NearbyArea } from "@/lib/api/place-search";
 import { newSessionToken } from "@/components/consumer/search/search-utils";
 import { aroundYouCamera, pickCamera, type PickerCamera } from "@/lib/location-pick";
-import { MONTERREY_CENTER } from "@/lib/map-defaults";
+import { MONTERREY_CENTER, MONTERREY_NAME } from "@/lib/map-defaults";
 import {
   useLocateUser,
   useUserLocation,
   useUserLocationLocating,
+  useUserLocationSettled,
 } from "@/lib/use-user-location";
 import {
   displayName,
@@ -84,6 +86,20 @@ export function locationLabel(
   return locating ? "Locating…" : "Use my location";
 }
 
+/** The header box (MESITA-2587): once the browser has answered with no fix
+ *  and nothing is saved, Home ranks around Monterrey, so the box says so —
+ *  "Monterrey" behind a crossed-out pin — instead of a bar above the tiles. */
+export function headerLocation(
+  active: { name: string } | null,
+  hasFix: boolean,
+  locating: boolean,
+  settled: boolean,
+): { label: string; off: boolean } {
+  if (!active && !hasFix && !locating && settled)
+    return { label: MONTERREY_NAME, off: true };
+  return { label: locationLabel(active, hasFix, locating), off: false };
+}
+
 const ICON = "h-4 w-4 shrink-0";
 
 /** The grey word at the end of an "Around you" row (MESITA-2471). */
@@ -116,6 +132,7 @@ export function LocationPicker() {
   const coords = useUserLocation();
   const locating = useUserLocationLocating();
   const locate = useLocateUser();
+  const settled = useUserLocationSettled();
   const active = useActiveLocation();
   const activeKey = useActiveLocationKey();
   const savedLocations = useSavedLocations();
@@ -129,7 +146,7 @@ export function LocationPicker() {
   const [picker, setPicker] = useState<PickerTarget | null>(null);
   // Google bills Autocomplete per session: one token until a pick or close.
   const [token, setToken] = useState(newSessionToken);
-  const label = locationLabel(active, coords !== null, locating);
+  const { label, off } = headerLocation(active, coords !== null, locating, settled);
   // Asked only while the sheet is open, once per ~110 m (MESITA-2466): the
   // neighbourhood for the Current location row and the "Around you" areas
   // (MESITA-2471). An area already saved shows once, as the saved row.
@@ -244,11 +261,15 @@ export function LocationPicker() {
         type="button"
         onClick={() => setPicking(true)}
         aria-haspopup="dialog"
-        aria-label={`Location: ${label}. Change location`}
+        aria-label={`Location: ${label}${off ? " (location off)" : ""}. Change location`}
         className={HOME_LOCATION_CLASS}
         data-home-location
       >
-        <MapPin className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+        {off ? (
+          <MapPinOff className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+        ) : (
+          <MapPin className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+        )}
         <span className="min-w-0 truncate">{label}</span>
         <ChevronDown
           className="text-muted-foreground h-3.5 w-3.5 shrink-0"
