@@ -63,20 +63,16 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
     expect(src).toContain('const [tab, setTab] = useState<HomeTab>("places");');
     expect(src).toContain('role="tablist"');
     expect(src).toContain("data-home-tabs");
-    // The chosen tab: bold, its WORD underlined, the line right under the
-    // text — never the tab's width (MESITA-2527) nor the strip's edge
-    // (MESITA-2524), which met the column's chosen row (MESITA-2530).
+    // The chosen tab: bold over a black bar the tab's full width on the
+    // strip's bottom edge (MESITA-2539, as MESITA-2527 drew it; the word
+    // underline of MESITA-2530/2533 is gone).
     expect(src).toContain(
       'on ? "text-foreground font-semibold" : "text-muted-foreground"',
     );
-    // 16px past each end of the word, rounded — longer, never the tab's
-    // width, never on the strip's edge (MESITA-2533).
-    expect(src).toContain(
-      "bg-foreground absolute -inset-x-4 bottom-0 h-0.5 rounded-full",
-    );
-    expect(src).toContain('<span className="relative inline-block pb-1">');
-    expect(src).not.toContain('"relative flex-1 py-3 text-sm transition"');
-    expect(src).not.toContain('<span className="relative inline-block py-3">');
+    expect(src).toContain('"relative flex-1 py-3 text-sm transition"');
+    expect(src).toContain("bg-foreground absolute inset-x-0 bottom-0 h-0.5");
+    expect(src).not.toContain("-inset-x-4");
+    expect(src).not.toContain('<span className="relative inline-block pb-1">');
     expect(src).toContain(
       "return shell(<SocialFeed samplePlaces={samplePlaces} />);",
     );
