@@ -717,9 +717,7 @@ describe("T8 — Me's grid is nine live cells", () => {
   it("Settings is the only door to terms and privacy", () => {
     // Legal moved into Settings with Support (MESITA-2169). One door:
     // the Support page is gone, and nothing else links the policy URLs.
-    // Reading the URL CONSTANTS, not the words "terms"/"privacy": the
-    // Export-my-data row names the privacy@ inbox, which is a different
-    // constant.
+    // Reading the URL CONSTANTS, not the words "terms"/"privacy".
     const dir = join(COMPONENTS, "me");
     const settings = readFileSync(join(dir, "SettingsModal.tsx"), "utf8");
     for (const url of ["MESITA_TERMS_URL", "MESITA_PRIVACY_URL"]) {

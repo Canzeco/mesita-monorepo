@@ -85,18 +85,6 @@ export async function apiFetchConsumerProfile(
   return { consumer };
 }
 
-// ─── Account deletion ────────────────────────────────────────────────────
-
-// consumer-web-delete-account: irreversibly deletes the caller's account —
-// everything hanging off the consumer row first, then the auth user. The
-// session is dead server-side afterwards; callers must locally sign out and
-// hard-navigate.
-export async function apiDeleteConsumerAccount(
-  client: SupabaseClient,
-): Promise<void> {
-  await invokeEF<{ id: string }>(client, "consumer-web-delete-account", {});
-}
-
 // ─── Instagram claim ─────────────────────────────────────────────────────
 
 // consumer-web-claim-instagram (MESITA-2461): a handle is proved, not typed.
