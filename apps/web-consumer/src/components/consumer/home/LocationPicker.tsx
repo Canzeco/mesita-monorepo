@@ -65,10 +65,10 @@ import {
 import { PinPicker, type PinPickerMode } from "@/components/consumer/home/PinPicker";
 import { cn, errMsg } from "@/lib/utils";
 
-/** Home's location control (MESITA-2480): a 36px rounded box on the stone
- *  header (MESITA-2529) — white, no outline, ink text. */
+/** Home's location control (MESITA-2480): a 36px rounded box on the white
+ *  header (MESITA-2531) — the side rail's grey, no outline, ink text. */
 export const HOME_LOCATION_CLASS =
-  "border-transparent bg-card text-foreground hover:bg-muted focus-visible:ring-ring ml-auto flex h-9 max-w-[65%] min-w-0 items-center gap-1.5 rounded-xl border px-3 text-sm font-semibold outline-none transition focus-visible:ring-2 active:scale-[0.98]";
+  "border-transparent bg-muted text-foreground hover:bg-border focus-visible:ring-ring ml-auto flex h-9 max-w-[65%] min-w-0 items-center gap-1.5 rounded-xl border px-3 text-sm font-semibold outline-none transition focus-visible:ring-2 active:scale-[0.98]";
 
 /** What the pill says: the saved name, or the state of the device fix. The
  *  sheet's row adds the neighbourhood once known (MESITA-2466): "Current
