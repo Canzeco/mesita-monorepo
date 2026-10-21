@@ -410,8 +410,13 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
 describe("T5b — Home's header and Search's header", () => {
   it('Home\'s header is the name "Mesita", then the location picker, and nothing else', () => {
     const tabs = readFileSync(join(COMPONENTS, "ModeTabs.tsx"), "utf8");
+    // The ink band (BrandHeader, MESITA-2524) holds the name and the tab's
+    // own control; Home's is the location picker alone.
     expect(tabs).toMatch(
-      /data-home-header>\s*<span[\s\S]*?data-home-wordmark\s*>\s*Mesita\s*<\/span>\s*<LocationPicker \/>\s*<\/div>/,
+      /data-home-header>\s*<span[\s\S]*?data-home-wordmark\s*>\s*Mesita\s*<\/span>\s*\{children\}\s*<\/div>/,
+    );
+    expect(tabs).toMatch(
+      /<BrandHeader>\s*<LocationPicker \/>\s*<\/BrandHeader>/,
     );
     expect(tabs).not.toContain("HOME_MODES");
     const layout = readFileSync(

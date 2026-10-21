@@ -56,8 +56,13 @@ describe("Saved: Favorites | Reservations", () => {
     expect(tabs).not.toMatch(/^["']use client["']/m);
   });
 
-  it("the header says Saved and the Bookings page is gone", () => {
-    expect(PAGE).toMatch(/<h1[^>]*>\s*Saved\s*<\/h1>/);
+  it("has no header, just the tabs, and the Bookings page is gone", () => {
+    // Pato, MESITA-2524: "in the saved page, don't use header, just favorites
+    // and reservations. keep it simple".
+    expect(PAGE).not.toContain("<header");
+    expect(PAGE).not.toContain("<h1");
+    expect(PAGE).not.toContain("BrandHeader");
+    expect(PAGE).toContain('aria-label="Saved"');
     expect(existsSync(join(SRC, "app", "(shell)", "bookings"))).toBe(false);
     expect(existsSync(join(SRC, "app", "(shell)", "saved", "page.tsx"))).toBe(
       true,

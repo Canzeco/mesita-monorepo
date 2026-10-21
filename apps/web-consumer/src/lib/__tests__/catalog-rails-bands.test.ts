@@ -64,11 +64,14 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
     expect(src).toContain('const [tab, setTab] = useState<HomeTab>("places");');
     expect(src).toContain('role="tablist"');
     expect(src).toContain("data-home-tabs");
-    // The chosen tab: bold over an ink underline.
+    // The chosen tab: bold, its word underlined in ink — never a half-wide
+    // bar (MESITA-2524).
     expect(src).toContain(
       'on ? "text-foreground font-semibold" : "text-muted-foreground"',
     );
     expect(src).toContain("bg-foreground absolute inset-x-0 bottom-0 h-0.5");
+    expect(src).toContain('<span className="relative inline-block py-3">');
+    expect(src).not.toContain('"relative flex-1 py-3 text-sm transition"');
     expect(src).toContain(
       "return shell(<SocialFeed samplePlaces={samplePlaces} />);",
     );
@@ -246,12 +249,12 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
       "h-9",
       "rounded-xl",
       "border",
-      "bg-muted",
-      "text-foreground",
+      // White on the ink header (MESITA-2524).
+      "bg-background/15",
+      "text-background",
     ])
       expect(tokens, t).toContain(t);
-    // The chips' grey (MESITA-2485, MESITA-2517): the box matches them.
-    expect(tokens).not.toContain("bg-border");
+    expect(tokens).not.toContain("bg-muted");
     const tabs = readFileSync(
       join(__dirname, "../../components/consumer/ModeTabs.tsx"),
       "utf8",
@@ -261,7 +264,7 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
     );
     // No drawn logo for now (MESITA-2480): the word, set in Outfit.
     expect(tabs).toContain('import { Outfit } from "next/font/google";');
-    expect(tabs).toContain(">\n          Mesita\n        </span>");
+    expect(tabs).toMatch(/data-home-wordmark\s*>\s*Mesita\s*<\/span>/);
     expect(tabs).not.toContain("MesitaLogo");
     expect(picker).not.toContain(
       "border-border bg-card text-foreground hover:bg-muted relative flex h-10",
@@ -308,16 +311,19 @@ describe("the Places grid (MESITA-2366)", () => {
     expect(src).not.toContain("data-band");
   });
 
-  // The bottom bar's white and its hairline (MESITA-2409). MESITA-2476 tried
-  // the brand pink; Pato sent it back ("keep the white style", MESITA-2480).
-  it("paints Home's header the bottom bar's white, with the bar's hairline under it", () => {
+  // Ink, so the white tab band under it reads as its own layer (Pato,
+  // MESITA-2524: "add a higher contrast between top menu and the
+  // places/social selector. maybe dark the top"). It was the bottom bar's
+  // white (MESITA-2409/2480); MESITA-2476's brand pink was sent back.
+  it("paints Home's header ink, the name and the box in white", () => {
     const tabs = readFileSync(
       join(__dirname, "../../components/consumer/ModeTabs.tsx"),
       "utf8",
     );
     expect(tabs).toContain(
-      '"border-border bg-card/95 sticky top-0 z-20 shrink-0 border-b backdrop-blur"',
+      '"bg-foreground text-background sticky top-0 z-20 shrink-0"',
     );
+    expect(tabs).toContain('"text-background shrink-0 text-2xl');
     expect(tabs).not.toContain("brand-pink");
     expect(tabs).not.toContain("border-b-2");
   });

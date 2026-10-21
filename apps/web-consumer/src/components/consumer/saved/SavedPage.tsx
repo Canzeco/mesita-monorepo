@@ -28,9 +28,9 @@ import { cn } from "@/lib/utils";
 // favorites, reservations. In favorites its just a feed of the liked palces
 // while reservations is well, obiusly").
 //
-//   Saved                                  one white header, no back button:
-//   ─────────────────────────────────────  it is a tab, not a Me page
-//        Favorites      │   Reservations   Home's tab band, same classes
+//        Favorites      │   Reservations   no header at all, just the tabs
+//   ━━━━━━━━━━━━━━━━━━━                    (Pato, MESITA-2524: "keep it
+//                                          clean … don't use header")
 //   ━━━━━━━━━━━━━━━━━━━
 //   the liked places, newest first         Home's tiles; the heart unlikes
 //   — or —
@@ -99,11 +99,6 @@ export function SavedPage({ initialTab }: { initialTab: SavedTab }) {
   const [tab, setTab] = useState<SavedTab>(initialTab);
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col" data-saved>
-      <header className="border-border bg-card/95 sticky top-0 z-20 flex h-[52px] shrink-0 items-center border-b px-4 backdrop-blur">
-        <h1 className="font-display text-xl font-semibold tracking-tight">
-          Saved
-        </h1>
-      </header>
       <div
         role="tablist"
         aria-label="Saved"
@@ -125,17 +120,22 @@ export function SavedPage({ initialTab }: { initialTab: SavedTab }) {
                 window.history.replaceState(null, "", SAVED_TAB_HREF[t.key]);
               }}
               className={cn(
-                "relative flex-1 py-3 text-sm transition",
+                "flex-1 text-sm transition",
                 on ? "text-foreground font-semibold" : "text-muted-foreground",
               )}
             >
-              {t.label}
-              {on ? (
-                <span
-                  aria-hidden
-                  className="bg-foreground absolute inset-x-0 bottom-0 h-0.5"
-                />
-              ) : null}
+              {/* The word alone is underlined (Pato, MESITA-2524: "just underline
+                  place but thats it. no more"): a half-wide bar read as the top
+                  of the column's chosen row under it. */}
+              <span className="relative inline-block py-3">
+                {t.label}
+                {on ? (
+                  <span
+                    aria-hidden
+                    className="bg-foreground absolute inset-x-0 bottom-0 h-0.5"
+                  />
+                ) : null}
+              </span>
             </button>
           );
         })}

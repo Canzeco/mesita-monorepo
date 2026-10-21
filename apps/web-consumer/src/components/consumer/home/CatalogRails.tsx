@@ -358,8 +358,8 @@ export function CatalogRails() {
 
   // ONE TAB BAND under Home's header (Pato, MESITA-2517: "another header
   // (Places. Social) … If places, show the horizontal catalog, is social,
-  // show the social feed"): two equal tabs, the chosen one bold over an ink
-  // underline. It replaced the left category column (MESITA-2367).
+  // show the social feed"): two equal tabs, the chosen one bold with its word
+  // underlined in ink (MESITA-2524). It replaced the left category column (MESITA-2367).
   const tabs = (
     <div
       role="tablist"
@@ -381,17 +381,22 @@ export function CatalogRails() {
               setTab(t.key);
             }}
             className={cn(
-              "relative flex-1 py-3 text-sm transition",
+              "flex-1 text-sm transition",
               on ? "text-foreground font-semibold" : "text-muted-foreground",
             )}
           >
-            {t.label}
-            {on ? (
-              <span
-                aria-hidden
-                className="bg-foreground absolute inset-x-0 bottom-0 h-0.5"
-              />
-            ) : null}
+            {/* The word alone is underlined (Pato, MESITA-2524: "just underline
+                place but thats it. no more"): a half-wide bar read as the top
+                of the column's chosen row under it. */}
+            <span className="relative inline-block py-3">
+              {t.label}
+              {on ? (
+                <span
+                  aria-hidden
+                  className="bg-foreground absolute inset-x-0 bottom-0 h-0.5"
+                />
+              ) : null}
+            </span>
           </button>
         );
       })}
