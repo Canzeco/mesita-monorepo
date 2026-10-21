@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Users, Utensils } from "lucide-react";
+import { Flame, Users, Utensils } from "lucide-react";
 import {
   FAMILY_ICONS,
   FALLBACK_FAMILY_ICON,
@@ -25,5 +25,10 @@ describe("family icons (MESITA-2478)", () => {
     expect(FALLBACK_FAMILY_ICON).toBe(Utensils);
     expect(familyIcon("undefined")).toBe(Utensils);
     expect(familyIcon("not_a_family")).toBe(Utensils);
+  });
+
+  // Top wears fire (MESITA-2545: "top use fire icon"); the key stays all.
+  it("draws Top as a flame", () => {
+    expect(FAMILY_ICONS.all).toBe(Flame);
   });
 });

@@ -14,13 +14,13 @@ import {
   Coffee,
   Croissant,
   Fish,
+  Flame,
   Hamburger,
   Heart,
   Martini,
   Moon,
   Pizza,
   Sandwich,
-  TrendingUp,
   Soup,
   Users,
   Utensils,
@@ -67,8 +67,9 @@ export const FALLBACK_FAMILY_ICON: LineIcon = Utensils;
  *  chip, MESITA-2502; Home's row, MESITA-2516), Home's Social and Saved by
  *  their chip keys; families by their family key. */
 export const FAMILY_ICONS: Readonly<Record<string, LineIcon>> = {
-  // Top (MESITA-2534): ranked, not a grid of everything.
-  all: TrendingUp,
+  // Top (MESITA-2534) wears fire (Pato, MESITA-2545: "top use fire icon");
+  // it was a trending-up arrow, before that a grid of everything.
+  all: Flame,
   social: Users,
   saved: Heart,
   coffee: Coffee,
