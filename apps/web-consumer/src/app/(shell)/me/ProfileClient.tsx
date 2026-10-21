@@ -21,7 +21,7 @@ import {
 } from "@/lib/api/profile";
 import { useConsumerIdentity } from "@/lib/identity-context";
 import { instagramSummary, type ConsumerFacts } from "@/lib/consumer-identity";
-import { CONSUMER_ROUTES, SAVED_TAB_HREF } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import {
   CLASS_LABEL,
   PLAN_LABEL,
@@ -166,21 +166,20 @@ export function ProfileClient() {
               Icon={CalendarCheck}
               title="Reservations"
               summary="Upcoming and past"
-              href={SAVED_TAB_HREF.reservations}
+              href={CONSUMER_ROUTES.mePages.reservations}
             />
           </DestGrid>
 
-          {/* Favorites and Reservations are the two doors into the one Saved
-              page, /me/saved, which came in from the bar (MESITA-2561);
-              Favorites was briefly a tile called Saved. Connector is Mesita
-              in an AI assistant; it is not built, so its page says Soon
-              (MESITA-2562). */}
+          {/* Favorites and Reservations are each their own page
+              (MESITA-2565); they were the two tabs of Saved (MESITA-2561).
+              Connector is Mesita in an AI assistant; it is not built, so its
+              page says Soon (MESITA-2562). */}
           <DestGrid>
             <DestTile
               Icon={Heart}
               title="Favorites"
               summary="Places you saved"
-              href={SAVED_TAB_HREF.favorites}
+              href={CONSUMER_ROUTES.mePages.favorites}
             />
             <DestTile
               Icon={Plug}

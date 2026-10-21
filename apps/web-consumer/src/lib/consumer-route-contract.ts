@@ -62,11 +62,12 @@ export const CONSUMER_ROUTES = {
     settings: "/me/settings",
     settingsContact: "/me/settings/contact",
     notifications: "/me/notifications",
-    // Saved — Favorites | Reservations (MESITA-2521). It was the bar's fourth
-    // tab at /saved until Share took that slot and Saved moved under Me
-    // (Pato, MESITA-2561: "move the bottom menu to me and reservations to me
-    // too").
-    saved: "/me/saved",
+    // Favorites and Reservations, each its own page (Pato, MESITA-2565:
+    // "the page and route containing both reservations and saved its gone").
+    // They were the two tabs of Saved (MESITA-2521) at /me/saved
+    // (MESITA-2561), and before that the bar's /saved.
+    favorites: "/me/favorites",
+    reservations: "/me/reservations",
   },
   // Every address that shipped to production and no longer renders a page.
   // Each one has a next.config.ts redirect (route-structure T4 proves the
@@ -148,8 +149,6 @@ export const CONSUMER_ROUTES = {
     // The reservations LIST as a top-level tab route. A server page until
     // MESITA-2475; a table entry now, like every other.
     reservations: "/reservations",
-    // Me › Reservations, until the list became the Bookings tab (MESITA-2518).
-    meReservations: "/me/reservations",
     // The Bookings tab, until it became Saved › Reservations (MESITA-2521).
     bookings: "/bookings",
     // Reservations under /saved, from when that was a tab.
@@ -157,6 +156,9 @@ export const CONSUMER_ROUTES = {
     savedReservationPrefix: "/saved/reservation/",
     // The bar's Saved tab (MESITA-2521), until it moved under Me (MESITA-2561).
     saved: "/saved",
+    // Me › Saved, Favorites | Reservations (MESITA-2561), until each became
+    // its own page (MESITA-2565).
+    meSaved: "/me/saved",
     // Place detail briefly had a dual path under /saved (Favorites-era).
     // Canonical is /place/[id]; this redirects there (MESITA-899).
     savedPlacePrefix: "/saved/place/",
@@ -169,13 +171,6 @@ export const CONSUMER_ROUTE_PREFIX = {
   place: "/place",
   pay: "/pay",
   me: "/me",
-} as const;
-
-/** Each Saved tab's own address (MESITA-2521, under Me since MESITA-2561):
- *  a query, not a page, so it stays out of CONSUMER_ROUTES. */
-export const SAVED_TAB_HREF = {
-  favorites: "/me/saved",
-  reservations: "/me/saved?tab=reservations",
 } as const;
 
 // Matches both the /reservations list and /reservation/[id] details

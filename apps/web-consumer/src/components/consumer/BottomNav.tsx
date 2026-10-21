@@ -110,7 +110,7 @@ const ITEMS: Item[] = [
     Icon: User,
     label: "Me",
     // Me plus a reservation's detail: /reservation/{id} is reached from a
-    // place AND from Me › Saved › Reservations, and that list is where you
+    // place AND from Me › Reservations, and that list is where you
     // land back (MESITA-2561; Saved owned it while Saved was a tab).
     matchPrefixes: [
       CONSUMER_ROUTE_PREFIX.me,

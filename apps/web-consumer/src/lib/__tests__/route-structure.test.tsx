@@ -271,9 +271,10 @@ describe("T5 — exactly one tab lights per surface", () => {
     // Pay is one page and lights its own tab there.
     ["/pay", "Pay"],
     // Me and the detail route it owns: a reservation is reached from a place
-    // AND from Me › Saved › Reservations (MESITA-2561; the Saved tab owned it
-    // from MESITA-2518 until Share took its slot).
-    ["/me/saved", "Me"],
+    // AND from Me › Reservations (MESITA-2565; the Saved tab owned it from
+    // MESITA-2518 until Share took its slot, MESITA-2561).
+    ["/me/favorites", "Me"],
+    ["/me/reservations", "Me"],
     ["/reservation/r1", "Me"],
     ["/me", "Me"],
   ];
@@ -557,14 +558,14 @@ describe("T5b — Home's header and Search's header", () => {
 describe("T6 — Activity's sections are pages on Me", () => {
   const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
 
-  it("routes each box to its page: notifications on Me, reservations to Saved › Reservations", () => {
+  it("routes each box to its page: notifications, reservations and favorites on Me", () => {
     expect(ME).toContain("CONSUMER_ROUTES.mePages.notifications");
     expect(ME).not.toContain("CONSUMER_ROUTES.mePages.visits");
-    // The list is Me › Saved › Reservations (MESITA-2518, MESITA-2521,
-    // MESITA-2561); the Saved cell opens Favorites.
-    expect(ME).toContain("SAVED_TAB_HREF.reservations");
-    expect(ME).toContain("SAVED_TAB_HREF.favorites");
-    expect(ME).not.toContain("CONSUMER_ROUTES.mePages.reservations");
+    // Each its own page again (MESITA-2565); they were Saved's two tabs
+    // (MESITA-2521, MESITA-2561).
+    expect(ME).toContain("CONSUMER_ROUTES.mePages.reservations");
+    expect(ME).toContain("CONSUMER_ROUTES.mePages.favorites");
+    expect(ME).not.toContain("SAVED_TAB_HREF");
     expect(ME).not.toMatch(/<(AlertsModal|VisitsModal|BookingsModal)\b/);
   });
 
@@ -746,10 +747,11 @@ describe("T8 — Me's grid is nine live cells", () => {
 describe("T7 — every former url still resolves after the move", () => {
   it.each([
     // Both landed on the Reservations SECTION until MESITA-1626 dissolved the
-    // container; the list is Me › Saved › Reservations now (MESITA-2521,
-    // MESITA-2561), and /saved itself forwards to /me/saved.
-    ["/saved", "/me/saved"],
-    ["/saved/reservations", "/me/saved?tab=reservations"],
+    // container; the list is Me › Reservations now (MESITA-2565), and /saved
+    // and /me/saved forward to Me › Favorites.
+    ["/saved", "/me/favorites"],
+    ["/me/saved", "/me/favorites"],
+    ["/saved/reservations", "/me/reservations"],
     ["/saved/reservation/:id", "/reservation/:id"],
     ["/saved/place/:id", "/place/:id"],
   ])(

@@ -73,10 +73,10 @@ describe("Discovery invents no places", () => {
   });
 
   // An empty favorites list is a real, meaningful state — you have hearted
-  // nothing. It lives on the Saved tab since MESITA-2522.
+  // nothing. It lives on Me › Favorites (MESITA-2522, MESITA-2565).
   it("Favorites keeps its real empty state (MESITA-2383)", () => {
     const saved = readFileSync(
-      join(__dirname, "../../components/consumer/saved/SavedPage.tsx"),
+      join(__dirname, "../../components/consumer/saved/FavoritesPage.tsx"),
       "utf8",
     );
     expect(saved).toContain("No favorites yet");
