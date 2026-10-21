@@ -104,6 +104,23 @@ describe("the row", () => {
     expect(src).not.toContain("consumer_id");
   });
 
+  // MESITA-2544: a span inside the place link or the person button is
+  // inline and drops its 44px size, so the photo rendered full size. The
+  // boxes are block and their wrappers flex (a browser check measured the
+  // thumbnail at 1600x1067 before, 44x44 after).
+  it("keeps the face and the photo 44px inside their link and button", () => {
+    expect(src).toContain('<span className="relative block h-11 w-11 shrink-0">');
+    expect(src).toContain(
+      '<span className="bg-muted block h-11 w-11 shrink-0 overflow-hidden rounded-md">',
+    );
+    expect(src).toContain(
+      '"focus-visible:ring-ring flex shrink-0 rounded-md outline-none focus-visible:ring-2"',
+    );
+    expect(src).toContain(
+      '"focus-visible:ring-ring flex shrink-0 rounded-full outline-none focus-visible:ring-2"',
+    );
+  });
+
   it("an error offers Try again", () => {
     expect(src).toContain('label: "Try again"');
   });
