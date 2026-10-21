@@ -1,8 +1,9 @@
 "use client";
 
-// Class — partnership status, Regular or VIP (Pato, MESITA-2553). Opened by
-// tapping the Class chip on the guest's own card (Me's header); on Social the
-// chip is a plain fact and opens nothing.
+// Class — partnership status, Regular or VIP (Pato, MESITA-2553). One body,
+// two frames: this sheet, opened by the Class chip on the guest's own card
+// (Me's header), and the /me/class page behind Me's Class tile (MESITA-2562,
+// ClassModal). On Social the chip is a plain fact and opens nothing.
 //
 // CLASS IS NOT PLAN. VIP comes through Mesita's partners (agencies, creator
 // partnerships); it is never bought and never an upgrade to Premium. This sheet
@@ -49,6 +50,43 @@ function ClassRow({
   );
 }
 
+/** Both classes, the guest's marked. Null (the read failed) marks neither and
+ *  adds no Regular note: never a guessed Regular. */
+export function ClassList({ guestClass }: { guestClass: GuestClass | null }) {
+  return (
+    <>
+      <SettingsGroup>
+        <ClassRow
+          title="Regular"
+          icon={<UsersRound className="h-[18px] w-[18px]" />}
+          mine={guestClass === "regular"}
+          subtitle="Every member."
+        />
+        <RowDivider />
+        <ClassRow
+          title="VIP"
+          icon={<Crown className="h-[18px] w-[18px]" />}
+          mine={guestClass === "vip"}
+          subtitle="Through Mesita's partners, like agencies and creator partnerships. Never bought."
+        >
+          <PerkList
+            label="Comes with VIP"
+            items={[{ text: "Special rates at partner venues", soon: true }]}
+          />
+        </ClassRow>
+      </SettingsGroup>
+      {guestClass === "regular" && (
+        <p
+          className="text-muted-foreground type-body mt-3"
+          data-class-regular-note=""
+        >
+          VIP is added by Mesita when you come through a partner.
+        </p>
+      )}
+    </>
+  );
+}
+
 export function ClassSheet({
   open,
   onClose,
@@ -63,32 +101,8 @@ export function ClassSheet({
       <div className={SHEET_BODY_CLASS}>
         <h2 className={SHEET_TITLE_CLASS}>Class</h2>
         <div className="mt-3">
-          <SettingsGroup>
-            <ClassRow
-              title="Regular"
-              icon={<UsersRound className="h-[18px] w-[18px]" />}
-              mine={guestClass === "regular"}
-              subtitle="Every member."
-            />
-            <RowDivider />
-            <ClassRow
-              title="VIP"
-              icon={<Crown className="h-[18px] w-[18px]" />}
-              mine={guestClass === "vip"}
-              subtitle="Through Mesita's partners, like agencies and creator partnerships. Never bought."
-            >
-              <PerkList
-                label="Comes with VIP"
-                items={[{ text: "Special rates at partner venues", soon: true }]}
-              />
-            </ClassRow>
-          </SettingsGroup>
+          <ClassList guestClass={guestClass} />
         </div>
-        {guestClass === "regular" && (
-          <p className="text-muted-foreground type-body mt-3" data-class-regular-note="">
-            VIP is added by Mesita when you come through a partner.
-          </p>
-        )}
       </div>
     </LocalSheet>
   );

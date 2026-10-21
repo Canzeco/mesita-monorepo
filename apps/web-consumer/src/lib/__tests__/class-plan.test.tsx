@@ -4,8 +4,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import { IdentityCard } from "@/components/consumer/IdentityCard";
-import { ClassSheet } from "@/components/consumer/me/ClassSheet";
+import { ClassList, ClassSheet } from "@/components/consumer/me/ClassSheet";
+import { ConnectorModal } from "@/components/consumer/me/ConnectorModal";
 import { toGuestClass, toGuestPlan } from "@/lib/guest-standing";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ back() {}, replace() {} }) }));
 
 // The sheet portals into the page; here it renders in place.
 vi.mock("@/components/consumer/overlay/LocalOverlay", () => ({
@@ -143,5 +146,31 @@ describe("Class and Plan labels", () => {
   it("keeps the axes apart: Plan copy never names Class, Class copy never names a plan", () => {
     expect(strings(PLAN)).not.toMatch(/\b(VIP|Regular|Class)\b/);
     expect(strings(CLASS)).not.toMatch(/"[^"]*\b(Free|Premium|Pro)\b[^"]*"|>[^<]*\b(Free|Premium|Pro)\b[^<]*</);
+  });
+});
+
+// Me's Class tile opens /me/class: the sheet's body in a page (MESITA-2562).
+describe("the Class page body", () => {
+  it("marks neither class when the read failed, and adds no Regular note", () => {
+    const html = renderToStaticMarkup(<ClassList guestClass={null} />);
+    expect(html).toContain('data-class-row="Regular"');
+    expect(html).toContain('data-class-row="VIP"');
+    expect(html).not.toContain("data-class-mine");
+    expect(html).not.toContain("data-class-regular-note");
+  });
+});
+
+// Connector is not built (MESITA-2562): every line Soon, no button, no plan.
+describe("the Connector page", () => {
+  const html = renderToStaticMarkup(<ConnectorModal />);
+  it("promises nothing live", () => {
+    expect(html).toContain("ChatGPT or Claude");
+    const items = html.match(/<li\b/g) ?? [];
+    const soon = html.match(/data-perk-soon/g) ?? [];
+    expect(items.length).toBeGreaterThan(0);
+    expect(soon).toHaveLength(items.length);
+    // The header's Back is the only button.
+    expect(html.match(/<button\b/g)).toHaveLength(1);
+    expect(text(html)).not.toMatch(/Premium|Free|Pro\b/);
   });
 });

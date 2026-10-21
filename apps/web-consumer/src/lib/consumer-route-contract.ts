@@ -56,6 +56,12 @@ export const CONSUMER_ROUTES = {
     // Plan is back as a read-only page: Free and Premium, Premium's new perks Soon
     // (MESITA-2134, MESITA-2553). It left the legacy list the same day.
     plan: "/me/plan",
+    // Class, Regular or VIP, as a page behind Me's Class tile (MESITA-2562);
+    // the header's Class chip opens the same body as a sheet.
+    class: "/me/class",
+    // Use Mesita from an AI assistant (ChatGPT, Claude). Not built: the page
+    // says Soon (MESITA-2562).
+    connector: "/me/connector",
     settings: "/me/settings",
     settingsContact: "/me/settings/contact",
     notifications: "/me/notifications",
@@ -117,8 +123,7 @@ export const CONSUMER_ROUTES = {
     qr: "/qr",
     // Me's Second Stage boxes (MESITA-2087): the class ladder's pages, the
     // Diamond pair, Plan's Premium checkout, Visits, Metrics, Passport.
-    // /me/plan itself is live again (MESITA-2134).
-    meClass: "/me/class",
+    // /me/plan (MESITA-2134) and /me/class (MESITA-2562) are live again.
     meClassInvite: "/me/class/invite",
     meDiamond: "/me/diamond",
     meDiamondInvite: "/me/diamond/invite",
