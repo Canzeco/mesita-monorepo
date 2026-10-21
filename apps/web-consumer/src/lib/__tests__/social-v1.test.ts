@@ -94,23 +94,16 @@ describe("the feed's copy", () => {
     expect(VERB).toEqual({ saved: "liked", went: "visited", viewed: "viewed" });
   });
 
-  it("collapses with a count and keeps the verb, name first", () => {
-    expect(feedSentence({ lead, others: 0, kind: "went" })).toBe(
-      "Perdón visited",
+  // MESITA-2532: one person, one place, one event — never "and N others".
+  it("is one person and a verb, never a count", () => {
+    expect(feedSentence({ person: lead, kind: "went" })).toBe("Perdón visited");
+    expect(feedSentence({ person: lead, kind: "saved" })).toBe("Perdón liked");
+    expect(feedSentence({ person: lead, kind: "viewed" })).toBe(
+      "Perdón viewed",
     );
-    expect(feedSentence({ lead, others: 1, kind: "saved" })).toBe(
-      "Perdón and 1 other liked",
+    expect(feedSentence({ person: { ...lead, isYou: true }, kind: "saved" })).toBe(
+      "You liked",
     );
-    expect(feedSentence({ lead, others: 4, kind: "viewed" })).toBe(
-      "Perdón and 4 others viewed",
-    );
-    expect(
-      feedSentence({
-        lead: { ...lead, isYou: true },
-        others: 0,
-        kind: "saved",
-      }),
-    ).toBe("You liked");
   });
 
   // MESITA-2525: the Instagram glyph replaces the word, so the text is the

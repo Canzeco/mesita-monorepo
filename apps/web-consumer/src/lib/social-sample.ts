@@ -30,21 +30,21 @@ export const SAMPLE_MEMBERS: readonly Member[] = [
   { name: "Santiago", handle: "santi.sp", followers: 1880 },
 ];
 
-/** One row per entry: who, what, how many others, how long ago (minutes). */
+/** One row per entry: who, what, how long ago (minutes). One person, one
+ *  place, one event (MESITA-2532). */
 const SCRIPT: readonly {
   member: number;
   kind: ActivityKind;
-  others: number;
   minutesAgo: number;
 }[] = [
-  { member: 0, kind: "saved", others: 0, minutesAgo: 6 },
-  { member: 1, kind: "went", others: 2, minutesAgo: 24 },
-  { member: 2, kind: "viewed", others: 0, minutesAgo: 51 },
-  { member: 3, kind: "saved", others: 4, minutesAgo: 95 },
-  { member: 4, kind: "went", others: 0, minutesAgo: 180 },
-  { member: 5, kind: "viewed", others: 1, minutesAgo: 320 },
-  { member: 6, kind: "saved", others: 0, minutesAgo: 600 },
-  { member: 7, kind: "went", others: 3, minutesAgo: 1500 },
+  { member: 0, kind: "saved", minutesAgo: 6 },
+  { member: 1, kind: "went", minutesAgo: 24 },
+  { member: 2, kind: "viewed", minutesAgo: 51 },
+  { member: 3, kind: "saved", minutesAgo: 95 },
+  { member: 4, kind: "went", minutesAgo: 180 },
+  { member: 5, kind: "viewed", minutesAgo: 320 },
+  { member: 6, kind: "saved", minutesAgo: 600 },
+  { member: 7, kind: "went", minutesAgo: 1500 },
 ];
 
 function person(m: Member): ActivityPerson {
@@ -66,14 +66,11 @@ export function sampleActivity(
   if (places.length === 0) return [];
   return SCRIPT.map((line, i) => {
     const place = places[i % places.length];
-    const lead = person(SAMPLE_MEMBERS[line.member]);
     return {
       placeId: place.id,
       kind: line.kind,
       at: new Date(now - line.minutesAgo * 60_000).toISOString(),
-      lead,
-      people: [lead],
-      others: line.others,
+      person: person(SAMPLE_MEMBERS[line.member]),
       distanceKm:
         typeof place.distance_km === "number" ? place.distance_km : null,
       place,

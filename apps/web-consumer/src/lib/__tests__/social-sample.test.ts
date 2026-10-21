@@ -39,14 +39,16 @@ describe("sampleActivity", () => {
   it("uses the fixed cast: Instagram usernames, initials, never a photo or You", () => {
     const rows = sampleActivity([place("a")], NOW);
     for (const r of rows) {
-      expect(r.lead.avatarUrl).toBeNull();
-      expect(r.lead.isYou).toBe(false);
+      expect(r.person.avatarUrl).toBeNull();
+      expect(r.person.isYou).toBe(false);
       // Three letters of a cast username, never the whole (MESITA-2522).
-      expect(r.lead.handleHint).toMatch(/^[a-z0-9._]{3}$/);
+      expect(r.person.handleHint).toMatch(/^[a-z0-9._]{3}$/);
       expect(SAMPLE_MEMBERS.map((m) => m.handle.slice(0, 3))).toContain(
-        r.lead.handleHint,
+        r.person.handleHint,
       );
-      expect(r.people).toEqual([r.lead]);
+      // One person, one place, one event (MESITA-2532).
+      expect(Object.keys(r)).not.toContain("others");
+      expect(Object.keys(r)).not.toContain("people");
     }
   });
 

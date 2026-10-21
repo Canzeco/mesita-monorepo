@@ -18,14 +18,13 @@ export type ActivityPerson = {
   isYou: boolean;
 };
 
-/** One feed item: same place + same verb, collapsed. */
+/** One feed item: one member, one place, one verb — never collapsed
+ *  (MESITA-2532). */
 export type ActivityFeedItem = {
   placeId: string;
   kind: ActivityKind;
   at: string;
-  lead: ActivityPerson;
-  people: ActivityPerson[];
-  others: number;
+  person: ActivityPerson;
   distanceKm: number | null;
   place: Place;
 };

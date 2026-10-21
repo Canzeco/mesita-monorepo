@@ -3,10 +3,13 @@
 // Social v1 (MESITA-2442): reads place_activity back, three ways.
 //
 // Body: { scope: "feed", lat?, lng? }
-//   → { items: [{ placeId, kind, at, lead, people, others, distanceKm, place }] }
-//   Home › Social: everyone visible, same place + same verb collapsed
-//   ("Perdón and 4 others saved Contramar"), newest day first and, within a
-//   day, nearer places first. At most FEED_ITEMS items.
+//   → { items: [{ placeId, kind, at, person, distanceKm, place }] }
+//   Home › Social (MESITA-2532, Pato: "is juse one person one place events.
+//   list all the fucking events … uner you radious or near you, just enough
+//   to odn't kill"): every visible event is its own item, never collapsed,
+//   newest first, only places inside the operator's Area circle
+//   (`map.radiusKm`) around the guest's point (no point, no circle). It
+//   reads the FEED_ROWS newest events and returns at most FEED_ITEMS.
 // Body: { scope: "place", place_id }
 //   → { line, people, total, me: { saved, went } }
 //   The place profile's line under the title ("Perdón and 3 others saw this"),
@@ -28,15 +31,16 @@ import { type PlaceCategoryRow, withFamilyKeysList } from "../_shared/place-fami
 import { haversineKm } from "../_shared/geo.ts";
 import {
   type ActivityRow,
-  groupFeed,
+  feedEvents,
   isMesitaPlaceId,
-  orderFeed,
+  nearYou,
   socialLine,
   toPerson,
 } from "../_shared/place-activity.ts";
+import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
-const FEED_ROWS = 200;
+const FEED_ROWS = 500;
 const FEED_ITEMS = 50;
 const LINE_FACES = 5;
 
@@ -82,22 +86,28 @@ Deno.serve(async (req) => {
   const anon = anonClient(envRes.env);
 
   if (body.scope === "feed") {
-    const { data, error } = await admin.rpc("place_activity_feed", { p_limit: FEED_ROWS });
-    if (error) return json({ ok: false, error: `feed: ${error.message}` }, 500);
-    const groups = groupFeed((data ?? []) as ActivityRow[], viewerId);
-    const cardsRes = await readCards(anon, [...new Set(groups.map((g) => g.placeId))]);
+    const [feedRes, cfg] = await Promise.all([
+      admin.rpc("place_activity_feed", { p_limit: FEED_ROWS }),
+      loadDiscoveryConfig(admin),
+    ]);
+    if (feedRes.error) return json({ ok: false, error: `feed: ${feedRes.error.message}` }, 500);
+    const events = feedEvents((feedRes.data ?? []) as ActivityRow[], viewerId);
+    const cardsRes = await readCards(anon, [...new Set(events.map((e) => e.placeId))]);
     if (!cardsRes.ok) return json({ ok: false, error: cardsRes.error }, 500);
     const lat = finite(body.lat);
     const lng = finite(body.lng);
-    const items = groups.flatMap((g) => {
-      const place = cardsRes.cards.get(g.placeId);
+    const hasPoint = lat != null && lng != null;
+    const items = events.flatMap((e) => {
+      const place = cardsRes.cards.get(e.placeId);
       if (!place) return [];
-      const km = lat != null && lng != null
+      const km = hasPoint
         ? haversineKm(lat, lng, finite(place.lat), finite(place.lng))
         : Number.POSITIVE_INFINITY;
-      return [{ ...g, distanceKm: Number.isFinite(km) ? km : null, place }];
+      const distanceKm = Number.isFinite(km) ? km : null;
+      if (!nearYou(distanceKm, cfg.map.radiusKm, hasPoint)) return [];
+      return [{ ...e, distanceKm, place }];
     });
-    return json({ ok: true, items: orderFeed(items, new Date()).slice(0, FEED_ITEMS) });
+    return json({ ok: true, items: items.slice(0, FEED_ITEMS) });
   }
 
   if (body.scope === "place") {

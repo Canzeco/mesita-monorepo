@@ -37,6 +37,14 @@ describe("the row", () => {
     expect(src).toContain('<ul role="list" aria-label="Social"');
   });
 
+  it("never counts others, and stays live while the tab is in view", () => {
+    expect(src).not.toContain(".others");
+    expect(src).not.toContain("feedVerbPhrase");
+    expect(src).toContain("export const LIVE_MS = 30_000;");
+    expect(src).toContain('document.visibilityState === "visible"');
+    expect(src).toContain("window.clearInterval(timer)");
+  });
+
   it("an error offers Try again", () => {
     expect(src).toContain('label: "Try again"');
   });
