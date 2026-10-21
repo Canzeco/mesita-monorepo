@@ -15,14 +15,17 @@ import { cn } from "@/lib/utils";
 // handle hidden as "die•••", MESITA-2522). Never the phone: it is private and
 // lives in Settings.
 //
-// PHOTO LEFT, THEN NAME, THEN ONE ROW OF CHIPS (Pato, MESITA-2574: "the
-// header must be white and smaller shorter"): Instagram, then Class.
+// CENTRED (Pato, MESITA-2592: "make again the profile centralized like the
+// profile picture centralized"): the photo on top, the name under it, then
+// one centred row of chips, Instagram then Class.
 //
-//   (56px)  Diego
-//   (photo) [◎ die••• · 1.2K followers] [♛ VIP]
+//              (64px photo)
+//                 Diego
+//   [◎ die••• · 1.2K followers] [♛ VIP]
 //
-// The chips wrap to a second line when the row runs out; nothing truncates
-// but the Instagram label.
+// The chips wrap to a second centred line when the row runs out; nothing
+// truncates but the name and the Instagram label. It was photo-left with the
+// rows beside it (MESITA-2548, MESITA-2574).
 //
 // NO PLAN ON THE CARD (Pato, MESITA-2576: "don't show the plan here. Only
 // instagram and class."). Plan lives on Me's grid (Me › Plan) and nowhere
@@ -99,7 +102,11 @@ function ClassChip({
       {body}
     </button>
   ) : (
-    <span aria-label={aria} className={className} data-identity-class={guestClass}>
+    <span
+      aria-label={aria}
+      className={className}
+      data-identity-class={guestClass}
+    >
       {body}
     </span>
   );
@@ -121,9 +128,12 @@ export function IdentityCard({
   onClassPress?: () => void;
 }) {
   return (
-    <div className="flex w-full items-center gap-3" data-identity-card>
+    <div
+      className="flex w-full flex-col items-center gap-2 text-center"
+      data-identity-card
+    >
       <span className="bg-border shrink-0 rounded-full p-[1.5px]" aria-hidden>
-        <span className="bg-muted relative block h-14 w-14 overflow-hidden rounded-full">
+        <span className="bg-muted relative block h-16 w-16 overflow-hidden rounded-full">
           {avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -137,7 +147,7 @@ export function IdentityCard({
         </span>
       </span>
 
-      <div className="flex min-w-0 flex-1 flex-col items-start gap-1.5">
+      <div className="flex w-full min-w-0 flex-col items-center gap-1.5">
         <p
           className="text-foreground w-full truncate text-base leading-tight font-semibold"
           data-identity-name
@@ -145,7 +155,10 @@ export function IdentityCard({
           {name}
         </p>
 
-        <div className="flex max-w-full flex-wrap gap-1.5" data-identity-chips>
+        <div
+          className="flex max-w-full flex-wrap justify-center gap-1.5"
+          data-identity-chips
+        >
           {instagram?.href ? (
             <Link
               href={instagram.href}

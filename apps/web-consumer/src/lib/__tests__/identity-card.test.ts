@@ -47,7 +47,11 @@ describe("the identity card", () => {
   // MESITA-2574: photo, name, then one row of chips. MESITA-2576: the row
   // is Instagram and Class only; Plan is a tile on the grid, never a chip.
   it("gets Class from the profile on Me, as a door, and no Plan", () => {
-    expect(CARD).toContain('className="flex w-full items-center gap-3"');
+    // Centred: photo on top, name, then the chips (MESITA-2592).
+    expect(CARD).toContain(
+      'className="flex w-full flex-col items-center gap-2 text-center"',
+    );
+    expect(CARD).toContain("flex-wrap justify-center");
     expect(BAR).toContain("guestClass={guestClass}");
     expect(BAR).toContain("onClassPress=");
     expect(BAR).toContain("<ClassSheet");
@@ -74,7 +78,7 @@ describe("the identity card", () => {
     );
     expect(BAR).not.toContain("bg-border h-2.5");
     expect(BAR).not.toContain("bg-background/95");
-    expect(CARD).toContain("h-14 w-14");
+    expect(CARD).toContain("h-16 w-16");
     expect(CARD).not.toContain("h-20 w-20");
     // Me's Instagram chip carries the follower count once connected.
     expect(BAR).toContain("instagramWithFollowers(");

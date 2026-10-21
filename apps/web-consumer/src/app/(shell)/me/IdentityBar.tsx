@@ -19,8 +19,9 @@ import { toGuestClass } from "@/lib/guest-standing";
 // it lines up with the grid (MESITA-2577 asked for that and made it an inset
 // card; that read as one more tile).
 //
-//   (photo)  name
-//   (photo)  [◎ @handle · 1.2K followers ›] [♛ Regular ›]  (no Plan, MESITA-2576)
+//                 (photo)
+//                  name
+//   [◎ @handle · 1.2K followers ›] [♛ Regular ›]   centred (MESITA-2592)
 //            (MESITA-2574; chips wrap when the row runs out)
 //   ─────── hairline ─────── full-width white bar; content on the 16px edge
 //
@@ -89,14 +90,12 @@ export function IdentityBar({
         {loading ? (
           <>
             {/* The skeleton mirrors the DESTINATION (Docs › Design §D): the
-                59px ringed photo, the name, and one row of chips
-                (MESITA-2574). */}
-            <div className="flex w-full items-center gap-3">
-              <div className="bg-muted h-[59px] w-[59px] shrink-0 animate-pulse rounded-full" />
-              <div className="flex flex-1 flex-col gap-1.5">
-                <div className="bg-muted h-4 w-2/5 animate-pulse rounded-md" />
-                <div className="bg-muted h-7 w-4/5 animate-pulse rounded-full" />
-              </div>
+                centred 67px ringed photo, the name, and one row of chips
+                (MESITA-2592). */}
+            <div className="flex w-full flex-col items-center gap-2">
+              <div className="bg-muted h-[67px] w-[67px] animate-pulse rounded-full" />
+              <div className="bg-muted h-4 w-1/3 animate-pulse rounded-md" />
+              <div className="bg-muted h-7 w-2/3 animate-pulse rounded-full" />
             </div>
           </>
         ) : (
