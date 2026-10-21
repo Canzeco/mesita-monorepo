@@ -11,94 +11,57 @@
 
 export const APP_SHARE_URL = "https://consumer.mesita.ai/";
 
-/** The page's one line under the card. Never sent on its own. */
+/** The page's one line under the title. Never sent on its own. */
 export const APP_SHARE_TEXT =
   "Find great places to eat and book a table with Mesita.";
 
-// THE INVITE CARD (Pato, MESITA-2568: "make a more beautiful card, like it
-// must look like a gift card but without credit … its just a message you
-// sent … multiple styles … keep it simple, meme style"). The guest picks a
-// message and a style; only the MESSAGE travels (plus the link). The style is
-// decoration on this page — no image is sent.
-//
-// EACH STYLE WEARS A MEME PHOTO (Pato, MESITA-2570: "use meme images. use 5.
-// meme images or cats or dogs or whatever … its just for the image"): five
-// Unsplash animals, one per swatch, no people. `tint` is the style's colour
-// as "r g b"; the card fades the photo into it so the headline sits on solid
-// colour. A photo that fails to load leaves the plain style behind.
+// TEN PLAIN CARDS, ONE JOKE EACH (Pato, MESITA-2573: "just a stupid card of
+// mesita with nothing else. keep it simple … 10 different cards/jokes just
+// to share mesita"). It replaced the gift card's photos, styles and message
+// chips (MESITA-2568/2570). The guest swipes to a card; its joke travels,
+// then the link. No image is sent.
 
-/** Meme-style lines the guest picks from. The first is the default. */
-export const SHARE_MESSAGES = [
+/** One joke per card, in swipe order. The first is the default. */
+export const SHARE_JOKES = [
   "Stop asking me where to eat. Use this. 🙄",
   "POV: you finally have dinner plans 🍽️",
   "I found where we're eating. You're welcome.",
   "Table for two? 👀",
-  "Mesita calls the restaurant so you don't have to 📞",
+  "My love language is booking the table.",
+  "Group chat: “where should we eat?” Me: 👇",
   "Main character energy, but make it brunch ✨",
+  "Friends don't let friends eat at sad restaurants.",
+  "Your “idk, you pick” era ends today.",
+  "Hungry? Indecisive? Same. That's why I have Mesita.",
 ] as const;
 
-/** One Unsplash photo by id, sized for the card (2x a phone's width). */
-function unsplash(id: string): string {
-  return `https://images.unsplash.com/photo-${id}?w=800&fit=crop&fm=jpg&q=70`;
+/** What every channel carries: the joke, then the link. */
+export function shareBody(joke: string): string {
+  return `${joke} ${APP_SHARE_URL}`;
 }
 
-/** The card's looks. `background` is CSS; `ink` is the text colour class. */
-export const SHARE_CARD_STYLES = [
-  {
-    id: "pink",
-    label: "Pink",
-    background: "var(--gradient-pink)",
-    ink: "text-white",
-    tint: "23 23 23",
-    photo: unsplash("1533738363-b7f9aef128ce"),
-  },
-  {
-    id: "ink",
-    label: "Ink",
-    background: "linear-gradient(135deg, #2a2a2a, #0a0a0a)",
-    ink: "text-white",
-    tint: "10 10 10",
-    photo: unsplash("1517849845537-4d257902454a"),
-  },
-  {
-    id: "sunset",
-    label: "Sunset",
-    background: "linear-gradient(135deg, #ffb347, #ff5e7e)",
-    ink: "text-white",
-    tint: "255 94 126",
-    photo: unsplash("1537151625747-768eb6cf92b2"),
-  },
-  {
-    id: "lime",
-    label: "Lime",
-    background: "linear-gradient(135deg, #e6fca5, #8ce99a)",
-    ink: "text-neutral-900",
-    tint: "140 233 154",
-    photo: unsplash("1583511655857-d19b40a7a54e"),
-  },
-  {
-    id: "paper",
-    label: "Paper",
-    background: "linear-gradient(135deg, #fffdf7, #f4efe4)",
-    ink: "text-neutral-900",
-    tint: "244 239 228",
-    photo: unsplash("1574158622682-e40e69881006"),
-  },
-] as const;
-
-export type ShareCardStyle = (typeof SHARE_CARD_STYLES)[number];
-
-/** What every channel carries: the chosen message, then the link. */
-export function shareBody(message: string): string {
-  return `${message} ${APP_SHARE_URL}`;
-}
-
-/** One address per channel, each prefilled with the message and the link. */
-export function shareLinks(message: string) {
-  const body = encodeURIComponent(shareBody(message));
+/** One address per channel that can be prefilled with the joke and link. */
+export function shareLinks(joke: string) {
+  const body = encodeURIComponent(shareBody(joke));
   return {
-    whatsapp: `https://wa.me/?text=${body}`,
     sms: `sms:?&body=${body}`,
-    email: `mailto:?subject=${encodeURIComponent("Mesita")}&body=${body}`,
+    whatsapp: `https://wa.me/?text=${body}`,
   } as const;
+}
+
+// INSTAGRAM HAS NO WEB LINK THAT PREFILLS A MESSAGE. The honest version: the
+// tap copies the joke and link, says so, and opens Instagram's inbox (the
+// app, where it is installed) for the guest to paste into a chat.
+export const INSTAGRAM_DM_URL = "https://www.instagram.com/direct/inbox/";
+
+/** The card whose centre sits nearest the row's centre — the one in view. */
+export function nearestCard(center: number, cardCenters: number[]): number {
+  let best = 0;
+  for (let i = 1; i < cardCenters.length; i++) {
+    if (
+      Math.abs(cardCenters[i] - center) < Math.abs(cardCenters[best] - center)
+    )
+      best = i;
+  }
+  return best;
 }
