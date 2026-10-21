@@ -143,10 +143,18 @@ export type MapConfig = {
   minRating: number;
   minReviews: number;
   minPopularity: number;
-  /** Camera must move at least this far (km) before Search refetches Nearby. */
+  /** Stored, read by nothing since MESITA-2451 (the Map has no distance
+   *  gate): kept so the live blob loses no key (MESITA-2444). */
   reloadMinKm: number;
-  /** Wait at least this long (seconds) after a fetch before Search refetches. */
+  /** Stored, read by nothing since MESITA-2451; `reloadIdleSec` replaced it. */
   reloadMinSec: number;
+  /**
+   * The Map reloads when it comes to rest, at most once every this many
+   * seconds counted from the last reload (MESITA-2440, MESITA-2451), sent by
+   * consumer-web-list-places (MESITA-2444). `MAP_RELOAD_IDLE_SEC_MIN`..`MAX`
+   * (the client's own clamp), two decimals, default 1.5.
+   */
+  reloadIdleSec: number;
   googleFill: boolean;
   supers: Record<SuperParamKey, boolean>;
   /**
@@ -316,6 +324,10 @@ export const MAP_RADIUS_KM_DEFAULT = 50;
 export const MAP_PROXIMITY_WEIGHT_MIN = 0;
 export const MAP_PROXIMITY_WEIGHT_MAX = 5;
 export const MAP_PROXIMITY_WEIGHT_DEFAULT = 1;
+/** The Map's reload throttle (s): the consumer clamps to the same 0.5–10. */
+export const MAP_RELOAD_IDLE_SEC_MIN = 0.5;
+export const MAP_RELOAD_IDLE_SEC_MAX = 10;
+export const MAP_RELOAD_IDLE_SEC_DEFAULT = 1.5;
 /** Same ceiling as map.minReviews — one review floor reads like another. */
 export const GENERAL_MIN_REVIEWS_MAX = 100_000;
 
@@ -351,6 +363,7 @@ export const DEFAULT_MAP: MapConfig = {
   minPopularity: 0,
   reloadMinKm: 0.5,
   reloadMinSec: 2,
+  reloadIdleSec: MAP_RELOAD_IDLE_SEC_DEFAULT,
   googleFill: true,
   supers: DEFAULT_MAP_SUPERS,
   googlePlaces: GOOGLE_PULL_DEFAULT,
@@ -637,6 +650,14 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
     ) / 100,
     reloadMinKm: reload.km,
     reloadMinSec: reload.sec,
+    reloadIdleSec: Math.round(
+      num(
+        r.reloadIdleSec,
+        DEFAULT_MAP.reloadIdleSec,
+        MAP_RELOAD_IDLE_SEC_MIN,
+        MAP_RELOAD_IDLE_SEC_MAX,
+      ) * 100,
+    ) / 100,
     googleFill: bool(r.googleFill, DEFAULT_MAP.googleFill),
     supers,
     // Rebuilt key by key: an old blob's `googlePull` (the retired Legacy

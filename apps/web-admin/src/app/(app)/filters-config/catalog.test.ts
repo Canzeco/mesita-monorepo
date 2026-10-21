@@ -134,6 +134,11 @@ describe("coerceConfig", () => {
     expect(
       coerceConfig({ map: { reloadMinKm: 0.4, reloadMinSec: 2 } }).map,
     ).toMatchObject({ reloadMinKm: 0.5, reloadMinSec: 2 });
+    // The live throttle (MESITA-2444): 1.5 s by default, the client's 0.5–10.
+    expect(coerceConfig({}).map.reloadIdleSec).toBe(1.5);
+    expect(coerceConfig({ map: { reloadIdleSec: 0.1 } }).map.reloadIdleSec).toBe(0.5);
+    expect(coerceConfig({ map: { reloadIdleSec: 99 } }).map.reloadIdleSec).toBe(10);
+    expect(coerceConfig({ map: { reloadIdleSec: 2.25 } }).map.reloadIdleSec).toBe(2.25);
     expect(snapMapReloadPair(0.4, 2)).toEqual({ km: 0.5, sec: 2 });
     expect(snapMapReloadPair(99, 40)).toEqual({ km: 4, sec: 15 });
   });

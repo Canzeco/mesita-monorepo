@@ -159,6 +159,10 @@ const MAP_RADIUS_KM_DEFAULT = 50;
 export const MAP_PROXIMITY_WEIGHT_MIN = 0;
 export const MAP_PROXIMITY_WEIGHT_MAX = 5;
 const MAP_PROXIMITY_WEIGHT_DEFAULT = 1;
+/** Mirrors MAP_RELOAD_IDLE_SEC_* in _shared/discovery-config.ts. */
+export const MAP_RELOAD_IDLE_SEC_MIN = 0.5;
+export const MAP_RELOAD_IDLE_SEC_MAX = 10;
+const MAP_RELOAD_IDLE_SEC_DEFAULT = 1.5;
 /** Same ceiling as map.minReviews — one reviewer floor reads like another. */
 export const GENERAL_MIN_REVIEWS_MAX = 100_000;
 
@@ -166,10 +170,13 @@ export type MapConfig = {
   minRating: number;
   minReviews: number;
   minPopularity: number;
-  /** Camera must move at least this far (km) before Search refetches Nearby. */
+  /** Stored, read by nothing since MESITA-2451: no control (MESITA-2444). */
   reloadMinKm: number;
-  /** Wait at least this long (seconds) after a fetch before Search refetches. */
+  /** Stored, read by nothing since MESITA-2451: no control (MESITA-2444). */
   reloadMinSec: number;
+  /** The Map reloads when it rests, at most once every this many seconds
+   *  (MESITA-2444). */
+  reloadIdleSec: number;
   googleFill: boolean;
   supers: Record<SuperParamKey, boolean>;
   /**
@@ -501,6 +508,7 @@ export const DEFAULT_MAP: MapConfig = {
   minPopularity: 0,
   reloadMinKm: 0.5,
   reloadMinSec: 2,
+  reloadIdleSec: MAP_RELOAD_IDLE_SEC_DEFAULT,
   googleFill: true,
   supers: DEFAULT_MAP_SUPERS,
   googlePlaces: GOOGLE_PULL_DEFAULT,
@@ -778,6 +786,10 @@ function coerceMap(raw: unknown): MapConfig {
     ) / 100,
     reloadMinKm: reload.km,
     reloadMinSec: reload.sec,
+    reloadIdleSec:
+      Math.round(
+        num(m.reloadIdleSec, DEFAULT_MAP.reloadIdleSec, MAP_RELOAD_IDLE_SEC_MIN, MAP_RELOAD_IDLE_SEC_MAX) * 100,
+      ) / 100,
     googleFill: typeof m.googleFill === "boolean" ? m.googleFill : DEFAULT_MAP.googleFill,
     supers,
     // Rebuilt key by key: an old blob's `googlePull` (the retired Legacy

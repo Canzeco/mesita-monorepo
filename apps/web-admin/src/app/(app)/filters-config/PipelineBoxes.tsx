@@ -6,7 +6,7 @@
 // Catalog and Map are views of the Area pipeline, ranked one way, so their
 // knobs sit in the Area box; the Chat Agent is Deep's caller, so its prompt sits in the Deep box.
 
-import { Hash, MapPin, RefreshCw, ScanSearch, Search, Sparkles } from "lucide-react";
+import { Hash, MapPin, ScanSearch, Search, Sparkles } from "lucide-react";
 import {
   ChoiceField,
   ChoicePill,
@@ -32,7 +32,8 @@ import {
   MAP_PROXIMITY_WEIGHT_MIN,
   MAP_RADIUS_KM_MAX,
   MAP_RADIUS_KM_MIN,
-  MAP_RELOAD_PAIRS,
+  MAP_RELOAD_IDLE_SEC_MAX,
+  MAP_RELOAD_IDLE_SEC_MIN,
   NAME_ADMIN_MESITA_MAX,
   NAME_ADMIN_TEXT_MAX,
   NAME_IDLE_SEC_MAX,
@@ -473,25 +474,21 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
       </Group>
       <Group title="Map view (the Search tab)">
         <div className="grid gap-3 sm:grid-cols-2">
-          <ChoiceField
-            icon={<RefreshCw className="mt-0.5 h-4 w-4 shrink-0" />}
-            label="Reload after"
-            hint="The camera must move this far AND wait this long."
-          >
-            <div className="flex flex-wrap gap-2">
-              {MAP_RELOAD_PAIRS.map((pair) => (
-                <ChoicePill
-                  key={`${pair.km}-${pair.sec}`}
-                  active={cfg.map.reloadMinKm === pair.km && cfg.map.reloadMinSec === pair.sec}
-                  disabled={off}
-                  onClick={() => map({ reloadMinKm: pair.km, reloadMinSec: pair.sec })}
-                >
-                  {pair.km} km · {pair.sec}s
-                </ChoicePill>
-              ))}
-            </div>
-          </ChoiceField>
+          <NumberField
+            label="Reload after the map rests (s)"
+            value={cfg.map.reloadIdleSec}
+            min={MAP_RELOAD_IDLE_SEC_MIN}
+            max={MAP_RELOAD_IDLE_SEC_MAX}
+            decimals
+            disabled={off}
+            onChange={(reloadIdleSec) => map({ reloadIdleSec })}
+          />
         </div>
+        <p className="text-muted-foreground type-meta">
+          The Search map reloads when the guest stops moving it, at most once
+          every this many seconds counted from the last reload, with no
+          distance gate (MESITA-2451). {MAP_RELOAD_IDLE_SEC_MIN}–{MAP_RELOAD_IDLE_SEC_MAX} s.
+        </p>
       </Group>
       <Group title="Weights table (Chat only)">
         <AreaWeightsTable modes={params.modes} disabled={off} onChange={setWeight} />
