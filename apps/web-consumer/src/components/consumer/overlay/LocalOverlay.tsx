@@ -13,7 +13,7 @@ import { SHEET_GRABBER_CLASS } from "@/lib/ui-classes";
 import { APP_CARD_ID } from "@/components/consumer/MobileFrame";
 
 // State-driven overlays (no route change): bottom sheets and centered
-// dialogs opened by component state — Contact, Delete account, Reserve.
+// dialogs opened by component state — Contact, Coming soon, Reserve.
 // Same motion language as the route modal shell (SlideOverShell).
 //
 // Positioning: by default these PORTAL into the MobileFrame card
