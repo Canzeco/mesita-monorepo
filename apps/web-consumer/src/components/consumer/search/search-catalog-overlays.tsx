@@ -152,41 +152,47 @@ export function SearchRailOverlay({
       data-search-rail-band
     >
       <div
-        className="border-border scrollbar-hide flex w-1/2 min-w-0 shrink-0 flex-col gap-1 overflow-y-auto border-r px-2.5 py-2"
+        className="border-border scrollbar-hide flex w-1/2 min-w-0 shrink-0 flex-col overflow-y-auto border-r px-2.5 py-2"
         data-search-rail-meta
       >
-        <p className="text-muted-foreground type-label flex items-center gap-1 font-semibold tabular-nums">
-          {catalogLoading ? (
-            <Spinner
-              size="sm"
-              label={
-                firstLoad ? "Finding nearby places" : "Updating nearby places"
-              }
-            />
-          ) : (
-            <MapPin className="text-primary h-3 w-3 shrink-0" />
-          )}
-          {firstLoad ? (
-            <span>Finding nearby</span>
-          ) : catalogLoading ? (
-            <span>Updating nearby</span>
-          ) : places.length > 1 ? (
-            <span>
-              {Math.min(railIndex + 1, places.length)} / {places.length}{" "}
-              <span className="text-muted-foreground/70 font-normal">
-                places
+        {/* Centred in the band like the card beside it (Pato, MESITA-2513:
+            "must be veritcally centered. aestehtics matter"). `my-auto` on
+            an inner block, not justify-center on the scroller: a readout
+            taller than the band still scrolls from its first row. */}
+        <div className="my-auto flex flex-col gap-1" data-search-rail-meta-body>
+          <p className="text-muted-foreground type-label flex items-center gap-1 font-semibold tabular-nums">
+            {catalogLoading ? (
+              <Spinner
+                size="sm"
+                label={
+                  firstLoad ? "Finding nearby places" : "Updating nearby places"
+                }
+              />
+            ) : (
+              <MapPin className="text-primary h-3 w-3 shrink-0" />
+            )}
+            {firstLoad ? (
+              <span>Finding nearby</span>
+            ) : catalogLoading ? (
+              <span>Updating nearby</span>
+            ) : places.length > 1 ? (
+              <span>
+                {Math.min(railIndex + 1, places.length)} / {places.length}{" "}
+                <span className="text-muted-foreground/70 font-normal">
+                  places
+                </span>
               </span>
-            </span>
-          ) : (
-            <span>
-              {places.length}{" "}
-              <span className="text-muted-foreground/70 font-normal">
-                {places.length === 1 ? "place" : "places"}
+            ) : (
+              <span>
+                {places.length}{" "}
+                <span className="text-muted-foreground/70 font-normal">
+                  {places.length === 1 ? "place" : "places"}
+                </span>
               </span>
-            </span>
-          )}
-        </p>
-        {meta}
+            )}
+          </p>
+          {meta}
+        </div>
       </div>
       <div
         className="flex min-w-0 flex-1 flex-col justify-center py-2.5"

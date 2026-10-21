@@ -1541,6 +1541,9 @@ describe("the rail is a solid white band under the map (MESITA-2506)", () => {
     );
     expect(overlay).toContain("overflow-y-auto border-r");
     expect(overlay).toContain("flex w-1/2 min-w-0 shrink-0 flex-col");
+    // Centred in the band (MESITA-2513), safely: my-auto inside the scroller.
+    expect(overlay).toContain('className="my-auto flex flex-col gap-1" data-search-rail-meta-body');
+    expect(overlay).not.toMatch(/data-search-rail-meta[^-][\s\S]{0,40}justify-center/);
     expect(overlay).toContain("data-search-rail-meta");
     expect(overlay.indexOf("data-search-rail-meta")).toBeLessThan(
       overlay.indexOf("data-search-rail-cards"),
@@ -1573,7 +1576,7 @@ describe("the rail is a solid white band under the map (MESITA-2506)", () => {
   it("the route skeleton draws the same band", () => {
     const loading = read("../../../app/(shell)/(discovery)/search/loading.tsx");
     expect(loading).toContain('className="border-border bg-card flex h-[10.5rem] shrink-0 items-stretch border-t"');
-    expect(loading).toContain("flex w-1/2 shrink-0 flex-col");
+    expect(loading).toContain("flex w-1/2 shrink-0 flex-col justify-center");
   });
 });
 

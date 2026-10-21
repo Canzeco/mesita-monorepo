@@ -34,7 +34,7 @@ export default function SearchLoading() {
         <Skeleton className="absolute inset-0 rounded-none" />
       </div>
       <div className="border-border bg-card flex h-[10.5rem] shrink-0 items-stretch border-t">
-        <div className="border-border flex w-1/2 shrink-0 flex-col gap-1.5 border-r px-2.5 py-2">
+        <div className="border-border flex w-1/2 shrink-0 flex-col justify-center gap-1.5 border-r px-2.5 py-2">
           <Skeleton className="h-3.5 w-20" />
           <Skeleton className="h-2.5 w-full" />
           <Skeleton className="h-2.5 w-4/5" />
