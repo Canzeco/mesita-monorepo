@@ -5,7 +5,7 @@ import { Z_BOTTOM_NAV } from "@/lib/z-index";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ComponentType } from "react";
-import { QrCode, Search, Share, User } from "lucide-react";
+import { QrCode, Search, Send, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { cn } from "@/lib/utils";
 import {
@@ -98,8 +98,9 @@ const ITEMS: Item[] = [
   },
   {
     kind: "action",
-    // The iOS share glyph, a box with an arrow out of it.
-    Icon: Share,
+    // A paper plane, Instagram's share glyph (Pato, MESITA-2564: "use
+    // different button for share"; it was the iOS box-and-arrow).
+    Icon: Send,
     label: "Share",
     onTap: () => void shareApp(),
   },
