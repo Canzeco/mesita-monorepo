@@ -140,16 +140,19 @@ export function SearchRailOverlay({
   // side for the meatadata … right sie for the carosuel and then leave the
   // fucking map visible"). Nothing floats over the map: the places count
   // heads the metadata, the empty state and the first-load skeleton sit in
-  // the carousel's column. The rail is always shown (MESITA-2508).
+  // the carousel's column. The rail is always shown (MESITA-2508). ONE FIXED
+  // HEIGHT, the metadata scrolling inside it (MESITA-2510): a band that sized
+  // to its rows resized the map on every load, and each resize read as a
+  // move and reloaded again.
   return (
     <div
-      className="border-border bg-card relative z-20 flex shrink-0 items-stretch border-t"
+      className="border-border bg-card relative z-20 flex h-[10.5rem] shrink-0 items-stretch border-t"
       aria-busy={catalogLoading}
       aria-live={firstLoad ? "polite" : undefined}
       data-search-rail-band
     >
       <div
-        className="border-border flex w-[42%] min-w-0 shrink-0 flex-col gap-1 border-r px-2.5 py-2"
+        className="border-border scrollbar-hide flex w-[42%] min-w-0 shrink-0 flex-col gap-1 overflow-y-auto border-r px-2.5 py-2"
         data-search-rail-meta
       >
         <p className="text-muted-foreground type-label flex items-center gap-1 font-semibold tabular-nums">

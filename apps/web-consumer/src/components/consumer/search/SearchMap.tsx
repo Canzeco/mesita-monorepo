@@ -31,7 +31,12 @@ import {
 } from "@/lib/map-defaults";
 import type { Coords } from "@/lib/use-user-location";
 import { cn } from "@/lib/utils";
-import { cameraStep, type CameraIntent } from "./camera-intent";
+import {
+  cameraStep,
+  sameCamera,
+  type CameraIntent,
+  type CameraState,
+} from "./camera-intent";
 import { SIGHT_Y } from "./search-utils";
 import {
   pinFillColor,
@@ -92,6 +97,11 @@ export type ViewportBox = {
   east: number;
 };
 
+/** Why an idle happened: the page moved the camera (`programmatic`), or
+ *  nothing did and the map was only resized (`resized`, MESITA-2510);
+ *  neither is the guest's move. */
+export type ViewportMeta = { programmatic: boolean; resized: boolean };
+
 type MapInstance = NonNullable<ReturnType<typeof useMap>>;
 
 function readViewportBox(map: MapInstance): ViewportBox | null {
@@ -140,7 +150,7 @@ export function SearchMap({
   onTapPlacePin: (place: Place) => void;
   onSelectPin?: (pin: SearchMapPin) => void;
   onFirstViewport?: (box: ViewportBox) => void;
-  onUserViewport?: (box: ViewportBox, meta: { programmatic: boolean }) => void;
+  onUserViewport?: (box: ViewportBox, meta: ViewportMeta) => void;
   /** The camera started moving: a pending reload is cancelled. */
   onCameraMoveStart?: () => void;
 }) {
@@ -314,7 +324,7 @@ function SearchMapCanvas({
   onSelectPin?: (pin: SearchMapPin) => void;
   onReady: () => void;
   onFirstViewport?: (box: ViewportBox) => void;
-  onUserViewport?: (box: ViewportBox, meta: { programmatic: boolean }) => void;
+  onUserViewport?: (box: ViewportBox, meta: ViewportMeta) => void;
   onCameraMoveStart?: () => void;
 }) {
   const located = places.filter(hasCoords);
@@ -395,14 +405,24 @@ function ViewportReporter({
   onMoveStart,
 }: {
   onFirst?: (box: ViewportBox) => void;
-  onUser?: (box: ViewportBox, meta: { programmatic: boolean }) => void;
+  onUser?: (box: ViewportBox, meta: ViewportMeta) => void;
   onMoveStart?: () => void;
 }) {
   const map = useMap();
   const first = useRef(true);
+  // The camera at the last idle: an idle that finds it unchanged is a
+  // resize, never the guest's move (MESITA-2510).
+  const lastCamera = useRef<CameraState | null>(null);
 
   useEffect(() => {
     if (!map) return;
+    const readCamera = (): CameraState | null => {
+      const c = map.getCenter();
+      const zoom = map.getZoom();
+      return c && typeof zoom === "number"
+        ? { lat: c.lat(), lng: c.lng(), zoom }
+        : null;
+    };
     const drag = map.addListener("dragstart", () => {
       noteUserMapDrag();
       onMoveStart?.();
@@ -413,13 +433,20 @@ function ViewportReporter({
     const listener = map.addListener("idle", () => {
       const box = readViewportBox(map);
       if (!box) return;
+      const camera = readCamera();
+      const unmoved = sameCamera(lastCamera.current, camera);
+      lastCamera.current = camera;
       if (first.current) {
         first.current = false;
         takeProgrammaticIdle();
         onFirst?.(box);
         return;
       }
-      onUser?.(box, { programmatic: takeProgrammaticIdle() });
+      // A resize (the band under the map changed height) leaves the camera
+      // where it was: it is not the guest's move — counting it as one looped
+      // a reload every reloadIdleSec with no touch (MESITA-2510).
+      const programmatic = takeProgrammaticIdle();
+      onUser?.(box, { programmatic, resized: !programmatic && unmoved });
     });
     // NO RELOAD UNDER A FINGER: a due reload waits while one rests on the
     // map (the page re-arms it), and a finger that lifts without moving

@@ -90,6 +90,7 @@ import {
   SearchMap,
   type SearchMapPin,
   type ViewportBox,
+  type ViewportMeta,
 } from "./SearchMap";
 import {
   clampReloadIdleSec,
@@ -371,6 +372,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // counts from here, not from the last move (MESITA-2451).
   const lastLoadAtRef = useRef<number | null>(null);
   const pendingReload = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // A guest move whose reload has not left yet (MESITA-2510): a resize's
+  // bounds_changed cancels the timer, and the resize idle re-arms it.
+  const moveUnservedRef = useRef(false);
   // A tap picked the card, so centre it even when the pager still names
   // it. A flick never sets this — scrollIntoView would fight the finger.
   const centerOnSelect = useRef(false);
@@ -404,6 +408,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     async (nextCenter: Coords, box: ViewportBox | null) => {
       lastFetchedCenter.current = nextCenter;
       lastLoadAtRef.current = Date.now();
+      moveUnservedRef.current = false;
       const gen = ++viewportGen.current;
       setCatalogLoading(true);
       setFetchError(null);
@@ -479,8 +484,16 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   );
 
   const onUserViewport = useCallback(
-    (box: ViewportBox, meta: { programmatic: boolean }) => {
+    (box: ViewportBox, meta: ViewportMeta) => {
       markViewport(box);
+      if (meta.resized) {
+        // Nothing moved the camera — the map was resized (MESITA-2510). Not
+        // the guest's move, so it never reloads; but a resize's own
+        // bounds_changed cancelled any pending reload, so a guest move that
+        // has not loaded yet is re-armed.
+        if (moveUnservedRef.current) armIdleReload();
+        return;
+      }
       if (meta.programmatic) {
         // A move the page made (a tap's reveal, the disc, a bar pick) does
         // not reload; an ask that needed a new catalog already loaded it at
@@ -490,6 +503,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         return;
       }
       userMovedRef.current = true;
+      moveUnservedRef.current = true;
       armIdleReload();
     },
     [armIdleReload, clearPendingReload, markViewport],
