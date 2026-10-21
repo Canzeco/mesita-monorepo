@@ -107,7 +107,8 @@ backend = "postgres"
 
 # Per-function overrides. Naming rule: <caller>-<origin>-<verb>-<noun> (e.g.
 # admin-web-create-place, consumer-web-list-places). The closed caller set is
-# consumer · admin · enricher · eleven · supabase.
+# consumer · admin · enricher · eleven · supabase · meta (MESITA-2575: Meta's
+# Instagram webhook).
 # Every function verifies the JWT except the three public consumer ones (the
 # catalog reads, which RLS gates, and Memo) and the two enricher endpoints
 # Render calls with ENRICH_WRITE_KEY.
@@ -181,6 +182,16 @@ verify_jwt = true
 # the function compares Authorization to ENRICH_WRITE_KEY. Render does not
 # hold the service-role key.
 [functions.enricher-edgefunc-write-place]
+verify_jwt = false
+
+# --- Meta (MESITA-2575) ---
+
+# Instagram messaging webhook: a guest proves their Instagram by sending
+# Mesita's account their code. Meta holds no Supabase JWT, so the gateway
+# does not check one: the function checks Meta's X-Hub-Signature-256 against
+# META_IG_APP_SECRET (and the GET handshake against META_IG_VERIFY_TOKEN),
+# and answers 503 until every META_IG_* secret is set.
+[functions.meta-instagram-receive-message]
 verify_jwt = false
 
 # --- Consumer ---

@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(145);
+select plan(146);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -695,6 +695,18 @@ select ok(
     and not has_table_privilege('anon', 'public.consumer_instagram_claims', 'SELECT')
     and not has_table_privilege('authenticated', 'public.consumer_instagram_claims', 'SELECT'),
   'consumer_instagram_claims is EF-only (RLS on, no client SELECT)'
+);
+
+-- MESITA-2575: a DM claim has no handle until Meta names the sender, and the
+-- webhook finds the claim by its code, so a code is unique.
+select ok(
+  (select is_nullable = 'YES' from information_schema.columns
+    where table_schema = 'public' and table_name = 'consumer_instagram_claims'
+      and column_name = 'handle')
+    and exists (select 1 from pg_indexes
+      where schemaname = 'public' and tablename = 'consumer_instagram_claims'
+        and indexdef ilike 'create unique index%(code)%'),
+  'consumer_instagram_claims: handle may be null (DM claim) and code is unique (MESITA-2575)'
 );
 
 select ok(

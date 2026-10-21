@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { BadgeCheck, Copy } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { BadgeCheck, Copy, Send } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { cn, errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
@@ -12,7 +12,13 @@ import { SectionEyebrow } from "@/components/consumer/me/settings-rows";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   apiCheckInstagramClaim,
+  apiInstagramChannel,
+  apiInstagramDmStatus,
   apiStartInstagramClaim,
+  apiStartInstagramDm,
+  dmVerified,
+  type InstagramChannel,
+  type InstagramDmClaim,
 } from "@/lib/api/profile";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useConsumerIdentity } from "@/lib/identity-context";
@@ -31,8 +37,26 @@ import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 // handle — with the follower count IT scraped. This page used to send a
 // fixed 5,000 and an 8-digit "code" nobody checked, so anyone could show up
 // in Social as @someone_famous.
+//
+// BY MESSAGE WHEN IT IS ON (MESITA-2575; Pato: "one simple message and bot").
+// The server says which channel is live. "dm": the guest gets a code, sends
+// it to Mesita's Instagram, and the page waits while Meta tells the server
+// who sent it (handle, followers, photo). No handle to type, nothing in the
+// bio. "bio" (until the Meta secrets are set, or if the channel read fails):
+// the bio-code flow above.
 
 const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
+
+/** How often the page asks whether the message landed, and for how long. */
+const DM_POLL_MS = 3_000;
+const DM_POLL_FOR_MS = 10 * 60_000;
+
+/** The page's success landing: a full reload re-seeds the identity. */
+function landConnected() {
+  window.location.assign(
+    new URL(`${CONSUMER_ROUTES.me}?instagram=success`, window.location.origin),
+  );
+}
 
 const WHY_LINES = [
   `${INSTAGRAM_REACH_FOLLOWERS.toLocaleString("en-US")}+ followers and you're verified on Mesita — free, automatic, and nothing to apply for.`,
@@ -55,6 +79,21 @@ export function InstagramModal() {
   // that brings the form back rather than the form standing open forever.
   const [switching, setSwitching] = useState(false);
   const showForm = !connected || switching;
+  // Which way connecting works today; null while it is being read.
+  const [channel, setChannel] = useState<InstagramChannel | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    apiInstagramChannel(supabase)
+      .then((c) => {
+        if (!cancelled) setChannel(c);
+      })
+      .catch(() => {
+        if (!cancelled) setChannel({ channel: "bio" });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase]);
 
   const canStart = HANDLE_RE.test(handle.trim()) && !busy;
 
@@ -84,12 +123,7 @@ export function InstagramModal() {
       // surface that reads it, and the identity is seeded server-side by the
       // shell layout, so every successful claim re-seeds the same way. A
       // soft `router.back()` left the header chip stale.
-      window.location.assign(
-        new URL(
-          `${CONSUMER_ROUTES.me}?instagram=success`,
-          window.location.origin,
-        ),
-      );
+      landConnected();
     } catch (e) {
       toast(errMsg(e, "Couldn’t check — try again."));
       setBusy(false);
@@ -125,7 +159,15 @@ export function InstagramModal() {
               it is the app arguing with a decision the guest already made. */}
           {!connected && <WhyConnectModule />}
 
-          {showForm && (
+          {showForm && channel === null && (
+            <div className="flex justify-center py-6" aria-busy>
+              <Spinner size="sm" />
+            </div>
+          )}
+
+          {showForm && channel?.channel === "dm" && <ConnectByMessage />}
+
+          {showForm && channel?.channel === "bio" && (
             <ConnectModule
               handle={handle}
               claim={claim}
@@ -173,6 +215,153 @@ function WhyConnectModule() {
         ))}
       </ul>
     </article>
+  );
+}
+
+function ConnectByMessage() {
+  const supabase = useBrowserSupabase();
+  const [claim, setClaim] = useState<InstagramDmClaim | null>(null);
+  const [busy, setBusy] = useState(false);
+  // Polling stops after DM_POLL_FOR_MS; "Check again" restarts it.
+  const [waitingSince, setWaitingSince] = useState<number | null>(null);
+  const [gaveUp, setGaveUp] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!claim || waitingSince === null) return;
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const status = await apiInstagramDmStatus(supabase);
+        if (cancelled) return;
+        if (dmVerified(status, claim.issuedAt)) {
+          landConnected();
+          return;
+        }
+      } catch {
+        /* a failed poll is retried on the next tick */
+      }
+      if (cancelled) return;
+      if (Date.now() - waitingSince > DM_POLL_FOR_MS) {
+        setGaveUp(true);
+        return;
+      }
+      timer.current = setTimeout(tick, DM_POLL_MS);
+    };
+    timer.current = setTimeout(tick, DM_POLL_MS);
+    return () => {
+      cancelled = true;
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, [claim, waitingSince, supabase]);
+
+  async function start() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      setClaim(await apiStartInstagramDm(supabase));
+      setGaveUp(false);
+      setWaitingSince(Date.now());
+    } catch (e) {
+      toast(errMsg(e, "Couldn’t get a code — try again."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function copyCode() {
+    if (!claim) return;
+    try {
+      await navigator.clipboard.writeText(claim.code);
+      toast("Code copied");
+    } catch {
+      toast("Couldn’t copy — type it in instead.");
+    }
+  }
+
+  return (
+    <section
+      className="border-border bg-card rounded-2xl border p-4"
+      data-instagram-connect="dm"
+    >
+      <h3 className="mb-3 text-sm leading-tight font-bold tracking-tight">
+        Connect Instagram
+      </h3>
+      <ol className="flex flex-col gap-3">
+        {[
+          <>Get your code</>,
+          <>
+            Send it to <b>@{claim?.account ?? "mesita"}</b> on Instagram
+          </>,
+          <>We verify you in a few seconds</>,
+        ].map((line, i) => (
+          <li key={i} className="type-body flex items-start gap-3 leading-snug">
+            <span className="bg-secondary/15 text-secondary type-label flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-bold">
+              {i + 1}
+            </span>
+            <span>{line}</span>
+          </li>
+        ))}
+      </ol>
+      {claim ? (
+        <>
+          <button
+            type="button"
+            onClick={copyCode}
+            className="border-border bg-muted/30 mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl border px-5 font-mono text-sm font-semibold tracking-wide"
+          >
+            {claim.code}
+            <Copy className="text-muted-foreground h-4 w-4" />
+          </button>
+          <a
+            href={claim.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => void navigator.clipboard?.writeText(claim.code).catch(() => {})}
+            className="bg-foreground text-background mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold"
+          >
+            <Send className="h-4 w-4" />
+            Send it on Instagram
+          </a>
+          {gaveUp ? (
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                setGaveUp(false);
+                setWaitingSince(Date.now());
+              }}
+              className="mt-2 w-full rounded-xl text-sm font-semibold"
+            >
+              <BadgeCheck className="h-4 w-4" />
+              Check again
+            </Button>
+          ) : (
+            <p
+              className="text-muted-foreground type-body mt-2 flex items-center justify-center gap-2"
+              aria-live="polite"
+            >
+              <Spinner size="sm" />
+              Waiting for your message…
+            </p>
+          )}
+        </>
+      ) : (
+        <Button
+          type="button"
+          size="sm"
+          onClick={start}
+          disabled={busy}
+          className="mt-3 w-full rounded-xl text-sm font-semibold"
+        >
+          {busy && <Spinner size="sm" className="border-white/40 border-t-white" />}
+          Get my code
+        </Button>
+      )}
+      <p className="text-muted-foreground type-body mt-2 text-center">
+        We never ask for your password.
+      </p>
+    </section>
   );
 }
 
