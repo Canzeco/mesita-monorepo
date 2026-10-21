@@ -66,6 +66,6 @@ describe("Discovery invents no places", () => {
 
   // An empty saved list is a real, meaningful state — you have saved nothing.
   it("Favorites keeps its real empty state (MESITA-2383)", () => {
-    expect(rails).toContain("Nothing saved yet");
+    expect(rails).toContain("No favorites yet");
   });
 });

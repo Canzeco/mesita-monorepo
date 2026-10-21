@@ -177,7 +177,12 @@ export function CatalogTile({
   // its parent's rounded clip and painted the bottom corners square
   // (MESITA-2429). The heart sits at the right of the name row.
   return (
-    <li className={cn("relative isolate aspect-square min-w-0 overflow-hidden rounded-2xl", className)}>
+    <li
+      className={cn(
+        "relative isolate aspect-square min-w-0 overflow-hidden rounded-2xl",
+        className,
+      )}
+    >
       <TileLink
         href={href}
         google={google}
@@ -219,10 +224,14 @@ export function CatalogTile({
               ) : null}
             </p>
             {priceKind ? (
-              <p className="truncate text-sm leading-tight font-medium">{priceKind}</p>
+              <p className="truncate text-sm leading-tight font-medium">
+                {priceKind}
+              </p>
             ) : null}
             {zoneTime ? (
-              <p className="text-muted-foreground truncate text-sm leading-tight">{zoneTime}</p>
+              <p className="text-muted-foreground truncate text-sm leading-tight">
+                {zoneTime}
+              </p>
             ) : null}
             {ratingLabel || distance ? (
               <p className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-sm leading-tight">
@@ -231,7 +240,9 @@ export function CatalogTile({
                     <Star className="fill-foreground text-foreground h-3.5 w-3.5" />
                     {ratingLabel}
                     {reviews ? (
-                      <span className="text-muted-foreground font-normal">({reviews})</span>
+                      <span className="text-muted-foreground font-normal">
+                        ({reviews})
+                      </span>
                     ) : null}
                   </span>
                 ) : null}
@@ -247,7 +258,9 @@ export function CatalogTile({
           type="button"
           onClick={onToggle}
           aria-label={
-            saved ? `Remove ${place.name} from saved` : `Save ${place.name}`
+            saved
+              ? `Remove ${place.name} from favorites`
+              : `Add ${place.name} to favorites`
           }
           // The Save heart sits at the right of the name row (Pato,
           // MESITA-2374), a sibling of the tile link so a tap never navigates.

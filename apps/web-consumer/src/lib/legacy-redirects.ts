@@ -150,17 +150,29 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   },
   // THE PLACES TEST TAB DIED (MESITA-2405).
   { source: "/places", destination: "/home", permanent: true },
-  // The Saved tab (reservations, favorites) and the /saved/place dual
-  // path (MESITA-1585). One hop each, straight to the canonical surface.
-  { source: "/saved", destination: "/me", permanent: true },
-  // The reservations list as a top-level route (a server page until
-  // MESITA-2475), and Me › Reservations: the list is the Bookings tab now
-  // (MESITA-2518). One hop each.
-  { source: "/reservations", destination: "/bookings", permanent: true },
-  { source: "/me/reservations", destination: "/bookings", permanent: true },
+  // /saved is a live tab again (MESITA-2521: Favorites | Reservations); its
+  // old /saved/place dual path (MESITA-1585) still forwards below. Every
+  // former address of the reservations LIST — the top-level route (a server
+  // page until MESITA-2475), Me › Reservations, the Bookings tab
+  // (MESITA-2518) — lands on Saved › Reservations in one hop.
+  {
+    source: "/reservations",
+    destination: "/saved?tab=reservations",
+    permanent: true,
+  },
+  {
+    source: "/me/reservations",
+    destination: "/saved?tab=reservations",
+    permanent: true,
+  },
+  {
+    source: "/bookings",
+    destination: "/saved?tab=reservations",
+    permanent: true,
+  },
   {
     source: "/saved/reservations",
-    destination: "/bookings",
+    destination: "/saved?tab=reservations",
     permanent: true,
   },
   {

@@ -17,11 +17,8 @@ import {
   type ConsumerProfile,
 } from "@/lib/api/profile";
 import { useConsumerIdentity } from "@/lib/identity-context";
-import {
-  instagramSummary,
-  type ConsumerFacts,
-} from "@/lib/consumer-identity";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { instagramSummary, type ConsumerFacts } from "@/lib/consumer-identity";
+import { CONSUMER_ROUTES, SAVED_TAB_HREF } from "@/lib/consumer-route-contract";
 import { DestGrid, DestTile } from "./profile-sections";
 import { IdentityBar } from "./IdentityBar";
 
@@ -59,8 +56,7 @@ export function ProfileClient() {
     : {
         ...identity,
         igHandle: profile?.instagram_handle ?? null,
-        igConnected:
-          identity.igConnected || Boolean(profile?.instagram_handle),
+        igConnected: identity.igConnected || Boolean(profile?.instagram_handle),
       };
   const igSummary = instagramSummary(igFacts);
 
@@ -153,7 +149,7 @@ export function ProfileClient() {
               Icon={CalendarCheck}
               title="Reservations"
               summary="Upcoming and past"
-              href={CONSUMER_ROUTES.bookings}
+              href={SAVED_TAB_HREF.reservations}
             />
             <DestTile
               Icon={SettingsIcon}

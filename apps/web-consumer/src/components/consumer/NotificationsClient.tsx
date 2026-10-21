@@ -7,7 +7,7 @@ import {
   fetchConsumerNotifications,
   type ConsumerNotification,
 } from "@/lib/api/notifications";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { SAVED_TAB_HREF } from "@/lib/consumer-route-contract";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 import {
@@ -86,7 +86,7 @@ export function NotificationsClient() {
           title="No notifications yet"
           action={{
             label: "See your reservations",
-            href: CONSUMER_ROUTES.bookings,
+            href: SAVED_TAB_HREF.reservations,
           }}
         />
       )}

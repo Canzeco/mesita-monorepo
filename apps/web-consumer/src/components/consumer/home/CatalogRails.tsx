@@ -10,13 +10,14 @@
 //   ━━━━━━━━━━━━━━━━━                       and read here.
 //   ┌──────────┬──────────────────────┐
 //   │▌▦ All    │                      │
-//   │ ♡ Saved  │     square tile      │
+//   │ ♡ Favor… │     square tile      │
 //   │ ○ Coffee │                      │
 //   │ ○ …   ↕  │                      │
 //
 // Places: the left family column beside the tiles (Pato, MESITA-2519: "keep
-// the later view of the failies. its fastwer to browse") — All and Saved
-// pinned, then every family, scrolling on its own; MESITA-2517 tried a
+// the later view of the failies. its fastwer to browse") — All and
+// Favorites pinned, then every family, scrolling on its own, no colour
+// stripes (MESITA-2521: "we don't need to colors now"); MESITA-2517 tried a
 // horizontal chip row and Pato sent it back. Social: the activity feed
 // (SocialFeed), full width. Every row's mark is a monochrome line icon
 // (lib/family-icons.tsx), never an emoji (Pato, MESITA-2478: "emojis uses
@@ -31,9 +32,9 @@
 // QUESTION (MESITA-2438): it sends the family's key, so Google gets that
 // family's full type list and the server lists its primary places before
 // its secondary ones. Each location × row's pool is kept ten minutes
-// (lib/area-pool-cache.ts), so going back to a row spends nothing. Saved
-// shows the guest's saved places in the same tiles (it was Home's fourth
-// tab, MESITA-2368). Under each tile, TEMPORARILY, the server's score
+// (lib/area-pool-cache.ts), so going back to a row spends nothing.
+// Favorites shows the guest's hearted places in the same tiles (it was
+// Home's fourth tab, MESITA-2368; the bar's Saved tab lists them too). Under each tile, TEMPORARILY, the server's score
 // breakdown (AreaDiagnostics.tsx). `useUserLocation` asks for location on mount. No search bar.
 // The request sends no predicates, so a saved scope can never keep cutting
 // this list.
@@ -115,7 +116,9 @@ export const ALL_CHIP = "all";
 export function isEveryFamily(chip: string): boolean {
   return chip === ALL_CHIP;
 }
-/** The guest's saved places (MESITA-2383; Home's Favorites tab, then row, Saved since MESITA-2427). */
+/** The guest's hearted places (MESITA-2383). The row read Favorites, then
+ *  Saved (MESITA-2427), Favorites again since MESITA-2521; the key is
+ *  stored, so it stays `saved`. */
 export const SAVED_CHIP = "saved";
 /** Home's two tabs (Pato, MESITA-2517: "another header (Places. Social)"). */
 export const HOME_TABS = [
@@ -125,16 +128,15 @@ export const HOME_TABS = [
 export type HomeTab = (typeof HOME_TABS)[number]["key"];
 
 /** The Places tab's left column, top to bottom (MESITA-2519): All and
- *  Saved pinned, then every guest family. Saved is the guest's only list of
- *  saved places. Google Places and Mesita Selected are not guest choices
+ *  Favorites pinned, then every guest family. Google Places and Mesita Selected are not guest choices
  *  (MESITA-2381): they are the sources All mixes. A family with nothing here
  *  says so rather than hiding. */
 export function placesChips(): { key: string; label: string }[] {
   return [
     { key: ALL_CHIP, label: "All" },
-    // Saved, not Favorites (Pato, MESITA-2427); the heart matches the
-    // tile's save button (MESITA-2430).
-    { key: SAVED_CHIP, label: "Saved" },
+    // Favorites (Pato, MESITA-2521: "rename saved to favorites
+    // everywhere"); the heart matches the tile's button (MESITA-2430).
+    { key: SAVED_CHIP, label: "Favorites" },
     ...FILTERABLE_PLACE_FAMILIES.map((f) => ({
       key: f.key as string,
       label: f.label,
@@ -142,17 +144,8 @@ export function placesChips(): { key: string; label: string }[] {
   ];
 }
 
-/** All and Saved: the column's pinned head (MESITA-2411, MESITA-2519). */
+/** All and Favorites: the column's pinned head (MESITA-2411, MESITA-2519). */
 export const PINNED_CHIPS = 2;
-
-/** Each group's stripe down the column's left edge (Pato, MESITA-2484: "just
- *  one line at the left … really subtle"): the pinned head red, the families
- *  blue (MESITA-2492). 3px, an inset shadow, so the chosen row's white face
- *  and ink bar paint over it. */
-export const GROUP_STRIPE = {
-  pinned: "shadow-[inset_3px_0_0_oklch(0.68_0.09_35)]",
-  families: "shadow-[inset_3px_0_0_oklch(0.66_0.06_245)]",
-} as const;
 
 /** Tiles drawn per page; the next page appends on scroll (MESITA-2384). */
 export const PLACES_PAGE = 20;
@@ -342,8 +335,8 @@ export function CatalogRails() {
   }, [hasMore, pageKey, pageCount]);
   const locate = useLocateUser();
 
-  // Saved previews re-read whenever the saved set changes, so a heart
-  // tapped anywhere shows up under Saved at once.
+  // Favorites previews re-read whenever the saved set changes, so a heart
+  // tapped anywhere shows up under Favorites at once.
   const savedList = useMemo(
     () => savedPlaceList(savedIds, readSavedPlacePreviews<Place>()),
     [savedIds],
@@ -360,7 +353,7 @@ export function CatalogRails() {
     if (saved) {
       setSaved(place.id, false);
       removeSavedPlacePreview(place.id);
-      toast.action("Removed from saved", {
+      toast.action("Removed from favorites", {
         label: "Undo",
         onClick: () => {
           upsertSavedPlacePreview(place);
@@ -423,8 +416,10 @@ export function CatalogRails() {
   // THE PLACES TAB'S LEFT COLUMN (Pato, MESITA-2519: "keep the later view of
   // the failies. its fastwer to browse … LEFT MENU OF FAMILIES"): the
   // lateral menu of MESITA-2367 under the tabs of MESITA-2517, which tried a
-  // horizontal chip row. All and Saved pinned on the red clay stripe, then
-  // every family on the blue one, scrolling on its own. Each row a line icon
+  // horizontal chip row. All and Favorites pinned, then every family,
+  // scrolling on its own — no group colours (Pato, MESITA-2521: "remove the
+  // stupid blue and orange color from the sidebar menu"; they were
+  // MESITA-2484/2492). Each row a line icon
   // and a name, never an emoji (MESITA-2478); the chosen row white, bold,
   // an ink bar on its left edge and a heavier stroke.
   const chips = placesChips();
@@ -467,7 +462,7 @@ export function CatalogRails() {
       <ul
         role="list"
         aria-label="Yours"
-        className={cn("shrink-0", GROUP_STRIPE.pinned)}
+        className="shrink-0"
         data-places-group="pinned"
       >
         {chips.slice(0, PINNED_CHIPS).map(categoryRow)}
@@ -475,10 +470,7 @@ export function CatalogRails() {
       <ul
         role="list"
         aria-label="Families"
-        className={cn(
-          "scrollbar-hide mt-2 min-h-0 flex-1 overflow-y-auto overscroll-y-contain",
-          GROUP_STRIPE.families,
-        )}
+        className="scrollbar-hide mt-2 min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
         data-places-group="families"
       >
         {chips.slice(PINNED_CHIPS).map(categoryRow)}
@@ -541,7 +533,7 @@ export function CatalogRails() {
   if (tab === "social")
     return shell(<SocialFeed samplePlaces={samplePlaces} />);
 
-  // Saved never waits on the catalog: the saves are local.
+  // Favorites never waits on the catalog: the hearts are local.
   if (chip === SAVED_CHIP) {
     if (!hydrated) {
       return shell(
@@ -554,11 +546,11 @@ export function CatalogRails() {
       savedList.length === 0 ? (
         <EmptyState
           icon={Heart}
-          title="Nothing saved yet"
+          title="No favorites yet"
           description="Tap the heart on a place and it lands here."
         />
       ) : (
-        tiles(savedList, "Saved", false)
+        tiles(savedList, "Favorites", false)
       ),
     );
   }
