@@ -684,6 +684,19 @@ describe("T8 — Me's grid is nine live cells", () => {
     expect(src).not.toContain("<button");
   });
 
+  // Pato, MESITA-2569: "those gray icons … have a 2010 app aesthetic". The
+  // icon leads in one neutral ink chip; the faint corner outline is gone.
+  it("each cell leads with its icon in one neutral ink chip", () => {
+    const src = readFileSync(join(SHELL, "me", "profile-sections.tsx"), "utf8");
+    expect(src).toContain("data-dest-chip");
+    expect(src).toContain(
+      'className="bg-muted text-foreground mb-2.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px]"',
+    );
+    expect(src).not.toContain("opacity-[0.22]");
+    expect(src).not.toMatch(/absolute right-2\.5 bottom-2/);
+    expect(src).not.toMatch(/\btint\??:/);
+  });
+
   it("the More drawer is gone from the codebase", () => {
     // It held exactly Gift and Share; with both on the page it held nothing,
     // and an empty drawer is worse than none.
