@@ -72,13 +72,32 @@ describe("the row", () => {
   });
 
   // MESITA-2540: one box — the rows in a white card on grey, Refresh centred.
-  it("sits in one white card on a grey pane, with Refresh centred above it", () => {
+  it("sits in one white edge-to-edge band on a grey pane, with Refresh centred above it", () => {
     expect(src).toContain('className="bg-muted flex-1 pb-6"');
     expect(src).toContain(
-      'className="divide-border border-border bg-card mx-3 divide-y overflow-hidden rounded-2xl border"',
+      'className="divide-border border-border bg-card divide-y border-y"',
     );
+    // Edge to edge, an endless feed: no side borders, no rounded card
+    // (MESITA-2542).
+    expect(src).not.toContain("rounded-2xl");
+    expect(src).not.toContain("mx-3");
     expect(src).toContain('<div className="flex justify-center pt-3 pb-2">');
     expect(src).not.toContain('aria-label="Refresh"');
+  });
+
+  // MESITA-2542: the person or the place, never both.
+  it("splits a row: the person opens their sheet here, the place opens its profile", () => {
+    // No link wraps the whole row any more.
+    expect(src).toContain('data-social-row\n');
+    expect(src).not.toMatch(/<Link[^>]*\n\s*[^>]*data-social-row/);
+    expect(src).toContain("onClick={() => onPerson(item)}");
+    expect(src).toContain("data-social-person");
+    expect(src).toContain("data-social-place");
+    expect(src).toContain("<LocalSheet open={open} onClose={onClose}");
+    expect(src).toContain("Recent activity");
+    // Their events are matched without any member id (MESITA-2460).
+    expect(src).toContain("export function personKey(p: ActivityPerson): string {");
+    expect(src).not.toContain("consumer_id");
   });
 
   it("an error offers Try again", () => {

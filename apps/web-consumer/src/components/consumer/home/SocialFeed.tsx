@@ -53,11 +53,19 @@
 // (lib/social-seen.ts) so Home's Social tab can wear a dot for anything
 // newer.
 //
-// ONE BOX (Pato, MESITA-2540: "make a fucking normal box. maybe the reload
-// button somewhere else but centralized … try to improve shit in general"):
-// the pane is light grey and the rows sit in one white rounded card, a
-// grouped list; a centred white "Refresh" pill sits above it, and the
-// "Sample activity" / "Near you" label lines up with the card.
+// ONE WHITE BAND (Pato, MESITA-2540: "make a fucking normal box. maybe the
+// reload button somewhere else but centralized"): the pane is light grey and
+// the rows sit in one white band, EDGE TO EDGE with only a top and bottom
+// hairline, never side borders or a rounded card (MESITA-2542: "don't add
+// lateral borders, its literally an infiite scrolloing"); a centred white
+// "Refresh" pill sits above it.
+//
+// TWO TARGETS PER ROW, never both (Pato, MESITA-2542: "you can click the
+// profile or you can click the palce, but not both. if i click a profile,
+// open a modal … in the same scree. if i click the place, then redirect to
+// place profile"): the face and the bold name open the PERSON SHEET (a
+// LocalSheet on this screen: picture, name, Instagram proof, their recent
+// events here); the bold place name and the photo open the place.
 
 import { useEffect, useMemo, useRef, useState, type SVGProps } from "react";
 import Link from "next/link";
@@ -86,6 +94,8 @@ import { placeHref } from "@/lib/place-route";
 import { cardPhoto, placePlaceholder } from "@/lib/place-placeholder";
 import { FamilyIcon } from "@/lib/family-icons";
 import { EmptyState } from "@/components/shared";
+import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { cn, errMsg, firstInitial } from "@/lib/utils";
 
@@ -184,7 +194,13 @@ function InstagramGlyph(props: SVGProps<SVGSVGElement>) {
 }
 
 /** The member's Instagram picture, or their initial, wearing the verb. */
-function Face({ person, kind }: { person: ActivityPerson; kind: ActivityKind }) {
+function Face({
+  person,
+  kind,
+}: {
+  person: ActivityPerson;
+  kind: ActivityKind;
+}) {
   const Glyph = VERB_ICON[kind];
   return (
     <span className="relative h-11 w-11 shrink-0">
@@ -259,46 +275,161 @@ export const FRESH_MS = 4_000;
 export const PULL_MAX = 72;
 export const PULL_TRIGGER = 56;
 
-function FeedRow({ item, fresh }: { item: ActivityFeedItem; fresh: boolean }) {
+/** One person across the feed's rows: no member id reaches the client
+ *  (MESITA-2460), so name, handle hint and isYou stand in. */
+export function personKey(p: ActivityPerson): string {
+  return `${p.name}|${p.handleHint ?? ""}|${p.isYou ? 1 : 0}`;
+}
+
+const TAP_TEXT =
+  "focus-visible:ring-ring rounded-sm font-semibold underline-offset-2 outline-none hover:underline focus-visible:ring-2";
+
+function FeedRow({
+  item,
+  fresh,
+  onPerson,
+}: {
+  item: ActivityFeedItem;
+  fresh: boolean;
+  onPerson: (item: ActivityFeedItem) => void;
+}) {
   const instagram = feedInstagram(item.person);
   const ago = shortAgo(item.at);
+  const href = placeHref(item.place.slug || item.place.id);
+  const who = feedWho(item.person);
   return (
     <li
-      className={cn("transition-colors duration-1000", fresh && "bg-muted")}
+      className={cn(
+        "flex items-center gap-3 px-4 py-3 transition-colors duration-1000",
+        fresh && "bg-muted",
+      )}
+      data-social-row
       data-social-fresh={fresh || undefined}
     >
-      <Link
-        href={placeHref(item.place.slug || item.place.id)}
-        className="hover:bg-muted/60 focus-visible:bg-muted/60 flex items-center gap-3 px-4 py-3 transition focus-visible:outline-none"
-        data-social-row
+      <button
+        type="button"
+        onClick={() => onPerson(item)}
+        aria-label={`${who}'s profile`}
+        className="focus-visible:ring-ring shrink-0 rounded-full outline-none focus-visible:ring-2"
+        data-social-person
       >
         <Face person={item.person} kind={item.kind} />
-        <div className="min-w-0 flex-1">
-          <p className="text-foreground line-clamp-2 text-sm leading-snug">
-            <span className="font-semibold">{feedWho(item.person)}</span>{" "}
-            {VERB[item.kind]}{" "}
-            <span className="font-semibold">{item.place.name}</span>
-          </p>
-          <p
-            className="text-muted-foreground mt-0.5 flex min-w-0 items-center gap-1 text-xs"
-            data-social-quiet
+      </button>
+      <div className="min-w-0 flex-1">
+        <p className="text-foreground line-clamp-2 text-sm leading-snug">
+          <button
+            type="button"
+            onClick={() => onPerson(item)}
+            className={TAP_TEXT}
           >
-            {instagram ? (
-              <>
-                <InstagramGlyph className="h-3 w-3 shrink-0" />
-                <span className="sr-only">Instagram</span>
-                <span className="truncate" data-social-instagram>
-                  {instagram}
-                </span>
-                <span aria-hidden>·</span>
-              </>
-            ) : null}
-            <span className="shrink-0">{ago}</span>
-          </p>
-        </div>
+            {who}
+          </button>{" "}
+          {VERB[item.kind]}{" "}
+          <Link href={href} className={TAP_TEXT} data-social-place>
+            {item.place.name}
+          </Link>
+        </p>
+        <p
+          className="text-muted-foreground mt-0.5 flex min-w-0 items-center gap-1 text-xs"
+          data-social-quiet
+        >
+          {instagram ? (
+            <>
+              <InstagramGlyph className="h-3 w-3 shrink-0" />
+              <span className="sr-only">Instagram</span>
+              <span className="truncate" data-social-instagram>
+                {instagram}
+              </span>
+              <span aria-hidden>·</span>
+            </>
+          ) : null}
+          <span className="shrink-0">{ago}</span>
+        </p>
+      </div>
+      <Link
+        href={href}
+        aria-label={item.place.name}
+        className="focus-visible:ring-ring shrink-0 rounded-md outline-none focus-visible:ring-2"
+      >
         <Thumb place={item.place} />
       </Link>
     </li>
+  );
+}
+
+/** The person sheet (MESITA-2542): who they are and what they did here, on
+ *  this screen. Their events are the feed's own rows for the same person. */
+function PersonSheet({
+  item,
+  open,
+  rows,
+  onClose,
+}: {
+  item: ActivityFeedItem | null;
+  open: boolean;
+  rows: readonly ActivityFeedItem[];
+  onClose: () => void;
+}) {
+  if (!item) return null;
+  const person = item.person;
+  const who = feedWho(person);
+  const instagram = feedInstagram(person);
+  const key = personKey(person);
+  const theirs = rows.filter((r) => personKey(r.person) === key);
+  return (
+    <LocalSheet open={open} onClose={onClose} ariaLabel={`${who}'s profile`}>
+      <div className={SHEET_BODY_CLASS} data-social-person-sheet>
+        <div className="flex flex-col items-center text-center">
+          {person.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={person.avatarUrl}
+              alt=""
+              className="h-20 w-20 rounded-full object-cover"
+            />
+          ) : (
+            <span className="bg-muted text-foreground flex h-20 w-20 items-center justify-center rounded-full text-2xl font-semibold">
+              {firstInitial(person.name.replace(/^@/, ""))}
+            </span>
+          )}
+          <h2 className={cn(SHEET_TITLE_CLASS, "mt-3")}>{who}</h2>
+          {instagram ? (
+            <p className="text-muted-foreground mt-1 flex items-center gap-1 text-sm">
+              <InstagramGlyph className="h-3.5 w-3.5 shrink-0" />
+              <span className="sr-only">Instagram</span>
+              {instagram}
+            </p>
+          ) : null}
+        </div>
+        <p className="type-meta text-muted-foreground mt-6 mb-1 tracking-[0.08em] uppercase">
+          Recent activity
+        </p>
+        <ul role="list" className="divide-border divide-y">
+          {theirs.map((r, i) => (
+            <li
+              key={`${i}|${r.placeId}|${r.kind}`}
+              className="flex items-center gap-3 py-3"
+            >
+              <Thumb place={r.place} />
+              <p className="text-foreground min-w-0 flex-1 text-sm leading-snug">
+                {VERB[r.kind].replace(/^./, (c) => c.toUpperCase())}{" "}
+                <Link
+                  href={placeHref(r.place.slug || r.place.id)}
+                  className={TAP_TEXT}
+                  onClick={onClose}
+                >
+                  {r.place.name}
+                </Link>
+                <span className="text-muted-foreground">
+                  {" "}
+                  · {shortAgo(r.at)}
+                </span>
+              </p>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </LocalSheet>
   );
 }
 
@@ -306,8 +437,8 @@ function FeedRow({ item, fresh }: { item: ActivityFeedItem; fresh: boolean }) {
 function FeedSkeleton() {
   return (
     <div className="bg-muted flex-1 pt-14" data-social-loading aria-busy>
-      {/* The same white card as the list (MESITA-2540), so nothing jumps. */}
-      <div className="divide-border border-border bg-card mx-3 divide-y overflow-hidden rounded-2xl border">
+      {/* The same white band as the list (MESITA-2542), so nothing jumps. */}
+      <div className="divide-border border-border bg-card divide-y border-y">
         {Array.from({ length: 6 }, (_, i) => (
           <div key={i} className="flex items-center gap-3 px-4 py-3">
             <Skeleton className="h-11 w-11 shrink-0 rounded-full" />
@@ -366,6 +497,10 @@ export function SocialFeed({
   const rootRef = useRef<HTMLDivElement>(null);
   const atTopRef = useRef(true);
   const [pendingNew, setPendingNew] = useState(0);
+  // The person sheet: who is shown, and whether it is open (the item stays
+  // while it slides away).
+  const [personItem, setPersonItem] = useState<ActivityFeedItem | null>(null);
+  const [personOpen, setPersonOpen] = useState(false);
   const [pull, setPull] = useState(0);
   const pullStart = useRef<number | null>(null);
   const scroller = () =>
@@ -545,7 +680,7 @@ export function SocialFeed({
         </button>
       </div>
       <p
-        className="type-meta text-muted-foreground px-7 pb-1.5 tracking-[0.08em] uppercase"
+        className="type-meta text-muted-foreground px-4 pb-1.5 tracking-[0.08em] uppercase"
         data-social-sample={feed.sample || undefined}
       >
         {feed.sample ? "Sample activity" : "Near you"}
@@ -553,16 +688,26 @@ export function SocialFeed({
       <ul
         role="list"
         aria-label="Social"
-        className="divide-border border-border bg-card mx-3 divide-y overflow-hidden rounded-2xl border"
+        className="divide-border border-border bg-card divide-y border-y"
       >
         {feed.rows.map((item, i) => (
           <FeedRow
             key={`${i}|${item.placeId}|${item.kind}`}
             item={item}
             fresh={!feed.sample && fresh.has(eventKey(item))}
+            onPerson={(it) => {
+              setPersonItem(it);
+              setPersonOpen(true);
+            }}
           />
         ))}
       </ul>
+      <PersonSheet
+        item={personItem}
+        open={personOpen}
+        rows={feed.rows}
+        onClose={() => setPersonOpen(false)}
+      />
     </div>
   );
 }
