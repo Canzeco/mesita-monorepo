@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { feedSentence, shortAgo } from "@/components/consumer/home/SocialFeed";
+import {
+  feedName,
+  feedSentence,
+  feedWho,
+  shortAgo,
+  VERB,
+} from "@/components/consumer/home/SocialFeed";
 import type { ActivityPerson } from "@/lib/api/activity";
 
 // Social v1 (MESITA-2442): Saved lives on the server, the browser is a cache;
@@ -81,15 +87,21 @@ describe("the feed's copy", () => {
     isYou: false,
   };
 
-  it("collapses with a count and keeps the verb", () => {
+  // MESITA-2515: old-Instagram rows — the username leads, the name follows
+  // muted; the verbs read liked · visited · viewed over unchanged keys.
+  it("reads liked, visited and viewed over the stored keys", () => {
+    expect(VERB).toEqual({ saved: "liked", went: "visited", viewed: "viewed" });
+  });
+
+  it("collapses with a count and keeps the verb, username first", () => {
     expect(feedSentence({ lead, others: 0, kind: "went" })).toBe(
-      "Perdón went to",
+      "perdon visited",
     );
     expect(feedSentence({ lead, others: 1, kind: "saved" })).toBe(
-      "Perdón and 1 other saved",
+      "perdon and 1 other liked",
     );
     expect(feedSentence({ lead, others: 4, kind: "viewed" })).toBe(
-      "Perdón and 4 others looked at",
+      "perdon and 4 others viewed",
     );
     expect(
       feedSentence({
@@ -97,7 +109,18 @@ describe("the feed's copy", () => {
         others: 0,
         kind: "saved",
       }),
-    ).toBe("You saved");
+    ).toBe("You liked");
+  });
+
+  it("the name follows the username; with no username the name leads", () => {
+    expect(feedWho(lead)).toBe("perdon");
+    expect(feedName(lead)).toBe("Perdón");
+    const noHandle = { ...lead, handle: null };
+    expect(feedWho(noHandle)).toBe("Perdón");
+    expect(feedName(noHandle)).toBeNull();
+    // The server's "@handle" fallback name is not shown twice.
+    expect(feedName({ ...lead, name: "@perdon" })).toBeNull();
+    expect(feedName({ ...lead, isYou: true })).toBeNull();
   });
 
   it("reads time the short way", () => {

@@ -4,11 +4,17 @@
 // It draws in Home's right pane when the Social row is chosen (MESITA-2474);
 // the row is its title, so it has no header and no scroller of its own.
 //
-//   (P) Perdón @perdon · 12.4K                     2h
-//       went to Contramar                    [photo]
+// OLD-INSTAGRAM NOTIFICATIONS (Pato, MESITA-2515: "display the instagram
+// profile of the person and the username and the name just as those old
+// instagram notifications. keep super super simple"):
 //
-// Three verbs only — saved, viewed (opened the profile), went ("I went").
-// Same place + same verb is one item ("Perdón and 4 others saved
+//   (●) perdon Perdón liked Contramar. 2h                  [▢]
+//
+// The member's Instagram picture, then one line: the username (bold), the
+// name (muted), the verb, the place (bold), the time (muted); the place's
+// photo on the right. Three verbs — liked (stored `saved`), visited (stored
+// `went`), viewed (stored `viewed`); the labels changed, never the keys.
+// Same place + same verb is one item ("perdon and 4 others liked
 // Contramar"). The server orders it: newest day first, and within a day the
 // places nearer the guest first. Only Instagram-connected members who left
 // Show my activity on ever appear (consumer-web-list-activity). No activity
@@ -30,12 +36,13 @@ import { placeHref } from "@/lib/place-route";
 import { cardPhoto } from "@/lib/place-placeholder";
 import { EmptyState } from "@/components/shared";
 import { Skeleton } from "@/components/shared/Skeleton";
-import { errMsg, firstInitial, formatCompactCount } from "@/lib/utils";
+import { errMsg, firstInitial } from "@/lib/utils";
 
-const VERB: Record<ActivityKind, string> = {
-  saved: "saved",
-  viewed: "looked at",
-  went: "went to",
+/** The words for the stored kinds (MESITA-2515): the keys never change. */
+export const VERB: Record<ActivityKind, string> = {
+  saved: "liked",
+  viewed: "viewed",
+  went: "visited",
 };
 
 /** "2h", "5m", "3d": the feed's clock. */
@@ -51,26 +58,47 @@ export function shortAgo(iso: string, now = Date.now()): string {
   return `${Math.floor(days / 7)}w`;
 }
 
-/** "Perdón and 4 others saved" / "You went to". */
-export function feedSentence(item: Pick<ActivityFeedItem, "lead" | "others" | "kind">): string {
-  const who = item.lead.isYou ? "You" : item.lead.name;
-  const verb = VERB[item.kind];
-  if (item.others <= 0) return `${who} ${verb}`;
-  return `${who} and ${item.others} ${item.others === 1 ? "other" : "others"} ${verb}`;
+/** Who leads the line: "You", else the Instagram username, else the name. */
+export function feedWho(lead: ActivityPerson): string {
+  if (lead.isYou) return "You";
+  return lead.handle ?? lead.name;
 }
 
-function Face({ person, size }: { person: ActivityPerson; size: string }) {
+/** The muted name after the username — only when the username led and the
+ *  name is a real name, not the "@handle" fallback. */
+export function feedName(lead: ActivityPerson): string | null {
+  if (lead.isYou || !lead.handle) return null;
+  const name = lead.name.trim();
+  return name && !name.startsWith("@") ? name : null;
+}
+
+/** " and 4 others liked" / " visited": the sentence after the name. */
+export function feedVerbPhrase(
+  item: Pick<ActivityFeedItem, "others" | "kind">,
+): string {
+  const verb = VERB[item.kind];
+  if (item.others <= 0) return verb;
+  return `and ${item.others} ${item.others === 1 ? "other" : "others"} ${verb}`;
+}
+
+/** "perdon and 4 others liked" / "You visited". */
+export function feedSentence(
+  item: Pick<ActivityFeedItem, "lead" | "others" | "kind">,
+): string {
+  return `${feedWho(item.lead)} ${feedVerbPhrase(item)}`;
+}
+
+/** The member's Instagram picture, or their initial. */
+function Face({ person }: { person: ActivityPerson }) {
   return person.avatarUrl ? (
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={person.avatarUrl}
       alt=""
-      className={`${size} border-card rounded-full border-2 object-cover`}
+      className="h-11 w-11 shrink-0 rounded-full object-cover"
     />
   ) : (
-    <span
-      className={`${size} border-card bg-muted text-foreground flex items-center justify-center rounded-full border-2 text-xs font-semibold`}
-    >
+    <span className="bg-muted text-foreground flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-semibold">
       {firstInitial(person.name.replace(/^@/, ""))}
     </span>
   );
@@ -78,34 +106,25 @@ function Face({ person, size }: { person: ActivityPerson; size: string }) {
 
 function FeedRow({ item }: { item: ActivityFeedItem }) {
   const photo = cardPhoto(item.place);
-  const lead = item.lead;
+  const name = feedName(item.lead);
   return (
     <li>
       <Link
         href={placeHref(item.place.slug || item.place.id)}
-        className="hover:bg-muted/60 flex items-start gap-3 px-4 py-3 transition"
+        className="hover:bg-muted/60 flex items-center gap-3 px-4 py-3 transition"
+        data-social-row
       >
-        <span className="flex shrink-0 -space-x-3" aria-hidden>
-          {item.people.map((p, i) => (
-            <Face key={i} person={p} size="h-10 w-10" />
-          ))}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="text-muted-foreground type-label block truncate">
-            {lead.handle ? `@${lead.handle}` : lead.name}
-            {lead.followers > 0
-              ? ` · ${formatCompactCount(lead.followers)} followers`
-              : ""}
-          </span>
-          <span className="text-foreground block text-sm leading-snug">
-            {feedSentence(item)}{" "}
-            <span className="font-semibold">{item.place.name}</span>
-          </span>
-          <span className="text-muted-foreground type-label block">
-            {shortAgo(item.at)}
-          </span>
-        </span>
-        <span className="bg-muted h-14 w-14 shrink-0 overflow-hidden rounded-xl">
+        <Face person={item.lead} />
+        <p className="text-foreground min-w-0 flex-1 text-sm leading-snug">
+          <span className="font-semibold">{feedWho(item.lead)}</span>
+          {name ? (
+            <span className="text-muted-foreground"> {name}</span>
+          ) : null}{" "}
+          {feedVerbPhrase(item)}{" "}
+          <span className="font-semibold">{item.place.name}</span>.{" "}
+          <span className="text-muted-foreground">{shortAgo(item.at)}</span>
+        </p>
+        <span className="bg-muted h-11 w-11 shrink-0 overflow-hidden rounded-md">
           {photo ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={photo} alt="" className="h-full w-full object-cover" />
@@ -121,7 +140,9 @@ export function SocialFeed() {
   const coords = useUserLocation();
   const origin = useActiveLocation();
   const from = origin ?? coords;
-  const fromKey = from ? `${from.lat.toFixed(2)},${from.lng.toFixed(2)}` : "none";
+  const fromKey = from
+    ? `${from.lat.toFixed(2)},${from.lng.toFixed(2)}`
+    : "none";
   const [state, setState] = useState<
     | { status: "loading" }
     | { status: "error"; message: string }
@@ -130,13 +151,19 @@ export function SocialFeed() {
 
   useEffect(() => {
     let cancelled = false;
-    apiListActivityFeed(supabase, from ? { lat: from.lat, lng: from.lng } : null)
+    apiListActivityFeed(
+      supabase,
+      from ? { lat: from.lat, lng: from.lng } : null,
+    )
       .then((items) => {
         if (!cancelled) setState({ status: "ready", items });
       })
       .catch((err) => {
         if (!cancelled) {
-          setState({ status: "error", message: errMsg(err, "Couldn't load Social") });
+          setState({
+            status: "error",
+            message: errMsg(err, "Couldn't load Social"),
+          });
         }
       });
     return () => {
@@ -168,7 +195,7 @@ export function SocialFeed() {
       <EmptyState
         icon={Users}
         title="No activity yet"
-        description="When members with Instagram save a place, open one, or tap I went, it shows up here."
+        description="When members with Instagram like, view or visit a place, it shows up here."
       />
     );
   }
