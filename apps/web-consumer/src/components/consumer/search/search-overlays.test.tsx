@@ -1494,7 +1494,7 @@ describe("the screen radius is drawn and its weights read out (MESITA-2504)", ()
     const map = read("SearchMap.tsx");
     expect(client).toContain("radiusKm: result.radiusKm ?? null,");
     expect(client).toContain("searching={catalogLoading}");
-    expect(client).toContain("<SearchDebugCoords {...loadCoords} selected={selectedPlace} />");
+    expect(client).toContain("selected={selectedPlace}");
     const reticle = map.slice(map.indexOf("function SearchMapReticle"));
     expect(reticle).toContain("data-search-ring");
     // The cross's distance to the nearest edge, doubled (MESITA-2511): the
@@ -1540,7 +1540,7 @@ describe("the rail is a solid white band under the map (MESITA-2506)", () => {
       'className="border-border bg-card relative z-20 flex h-[10.5rem] shrink-0 items-stretch border-t"',
     );
     expect(overlay).toContain("overflow-y-auto border-r");
-    expect(overlay).toContain("w-[42%]");
+    expect(overlay).toContain("flex w-1/2 min-w-0 shrink-0 flex-col");
     expect(overlay).toContain("data-search-rail-meta");
     expect(overlay.indexOf("data-search-rail-meta")).toBeLessThan(
       overlay.indexOf("data-search-rail-cards"),
@@ -1573,6 +1573,32 @@ describe("the rail is a solid white band under the map (MESITA-2506)", () => {
   it("the route skeleton draws the same band", () => {
     const loading = read("../../../app/(shell)/(discovery)/search/loading.tsx");
     expect(loading).toContain('className="border-border bg-card flex h-[10.5rem] shrink-0 items-stretch border-t"');
-    expect(loading).toContain("w-[42%]");
+    expect(loading).toContain("flex w-1/2 shrink-0 flex-col");
+  });
+});
+
+// MESITA-2512 (Pato: "make the blue thing in real time … update the coords
+// and all that"): Cross, You and Radius read the view as it is now; Loaded
+// at, Weights and Selected stay as of the last load.
+describe("the readout's Cross, You and Radius are live (MESITA-2512)", () => {
+  it("SearchMap reports the view once a frame on every camera change, never loading", () => {
+    const map = read("SearchMap.tsx");
+    const reporter = map.slice(map.indexOf("function ViewportReporter"));
+    expect(reporter).toContain('const moving = map.addListener("bounds_changed", () => {');
+    expect(reporter).toContain("frame = requestAnimationFrame(() => {");
+    expect(reporter).toContain("if (box) onLive(box);");
+    expect(reporter).toContain("if (frame !== null) cancelAnimationFrame(frame);");
+  });
+
+  it("SearchClient feeds the live rows and keeps the loaded ones", () => {
+    const client = read("SearchClient.tsx");
+    expect(client).toContain("onLiveViewport={setLiveBox}");
+    expect(client).toContain("const liveCross = liveBox ? viewportSight(liveBox) : null;");
+    expect(client).toContain("const liveRadiusKm = viewRadiusKm(liveBox, liveCross);");
+    expect(client).toContain("cross={liveCross ?? loadCoords.cross}");
+    expect(client).toContain("you={location}");
+    expect(client).toContain("radiusKm={liveRadiusKm ?? loadCoords.radiusKm}");
+    // The live box never loads: setLiveBox is all the callback does.
+    expect(client).not.toMatch(/onLiveViewport=\{[^}]*loadAt/);
   });
 });

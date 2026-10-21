@@ -130,6 +130,7 @@ export function SearchMap({
   onFirstViewport,
   onUserViewport,
   onCameraMoveStart,
+  onLiveViewport,
 }: {
   apiKey: string;
   places: Place[];
@@ -153,6 +154,9 @@ export function SearchMap({
   onUserViewport?: (box: ViewportBox, meta: ViewportMeta) => void;
   /** The camera started moving: a pending reload is cancelled. */
   onCameraMoveStart?: () => void;
+  /** Every camera change, once a frame, while dragging too: the view as it
+   *  is now, for the live readout (MESITA-2512). Never loads. */
+  onLiveViewport?: (box: ViewportBox) => void;
 }) {
   // The Maps SDK bootstrap + first tile paint leave the canvas blank for a
   // beat — hold a muted skeleton veil over it until tiles actually land
@@ -190,6 +194,7 @@ export function SearchMap({
           onFirstViewport={onFirstViewport}
           onUserViewport={onUserViewport}
           onCameraMoveStart={onCameraMoveStart}
+          onLiveViewport={onLiveViewport}
         />
         {!mapReady && <MapLoadingVeil />}
       </APIProvider>
@@ -312,6 +317,7 @@ function SearchMapCanvas({
   onFirstViewport,
   onUserViewport,
   onCameraMoveStart,
+  onLiveViewport,
 }: {
   places: Place[];
   userLocation: Coords | null;
@@ -326,6 +332,7 @@ function SearchMapCanvas({
   onFirstViewport?: (box: ViewportBox) => void;
   onUserViewport?: (box: ViewportBox, meta: ViewportMeta) => void;
   onCameraMoveStart?: () => void;
+  onLiveViewport?: (box: ViewportBox) => void;
 }) {
   const located = places.filter(hasCoords);
 
@@ -394,6 +401,7 @@ function SearchMapCanvas({
         onFirst={onFirstViewport}
         onUser={onUserViewport}
         onMoveStart={onCameraMoveStart}
+        onLive={onLiveViewport}
       />
     </Map>
   );
@@ -403,10 +411,12 @@ function ViewportReporter({
   onFirst,
   onUser,
   onMoveStart,
+  onLive,
 }: {
   onFirst?: (box: ViewportBox) => void;
   onUser?: (box: ViewportBox, meta: ViewportMeta) => void;
   onMoveStart?: () => void;
+  onLive?: (box: ViewportBox) => void;
 }) {
   const map = useMap();
   const first = useRef(true);
@@ -428,8 +438,18 @@ function ViewportReporter({
       onMoveStart?.();
     });
     // Any camera change — drag, pinch, wheel, an animated pan — cancels a
-    // pending reload; the idle that ends it decides again.
-    const moving = map.addListener("bounds_changed", () => onMoveStart?.());
+    // pending reload; the idle that ends it decides again. It also feeds
+    // the live readout, once a frame (MESITA-2512).
+    let frame: number | null = null;
+    const moving = map.addListener("bounds_changed", () => {
+      onMoveStart?.();
+      if (!onLive || frame !== null) return;
+      frame = requestAnimationFrame(() => {
+        frame = null;
+        const box = readViewportBox(map);
+        if (box) onLive(box);
+      });
+    });
     const listener = map.addListener("idle", () => {
       const box = readViewportBox(map);
       if (!box) return;
@@ -464,6 +484,7 @@ function ViewportReporter({
     window.addEventListener("pointerup", up, true);
     window.addEventListener("pointercancel", up, true);
     return () => {
+      if (frame !== null) cancelAnimationFrame(frame);
       drag.remove();
       moving.remove();
       listener.remove();
@@ -472,7 +493,7 @@ function ViewportReporter({
       window.removeEventListener("pointercancel", up, true);
       fingerOnMap = false;
     };
-  }, [map, onFirst, onUser, onMoveStart]);
+  }, [map, onFirst, onUser, onMoveStart, onLive]);
 
   return null;
 }

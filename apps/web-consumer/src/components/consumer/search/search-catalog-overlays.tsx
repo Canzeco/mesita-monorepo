@@ -152,7 +152,7 @@ export function SearchRailOverlay({
       data-search-rail-band
     >
       <div
-        className="border-border scrollbar-hide flex w-[42%] min-w-0 shrink-0 flex-col gap-1 overflow-y-auto border-r px-2.5 py-2"
+        className="border-border scrollbar-hide flex w-1/2 min-w-0 shrink-0 flex-col gap-1 overflow-y-auto border-r px-2.5 py-2"
         data-search-rail-meta
       >
         <p className="text-muted-foreground type-label flex items-center gap-1 font-semibold tabular-nums">
