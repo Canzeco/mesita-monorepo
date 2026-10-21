@@ -75,3 +75,33 @@ export async function sharePlace(place: {
   if (copied) toast.success("Link copied");
   else toast.error("Couldn't share this place");
 }
+
+// SHARING THE APP (Pato, MESITA-2561: "just a button to share the app with
+// friends. no credits. no nothing"). The bar's Share tab. Same three
+// outcomes as a place. The link is the app's front door — the sign-in page
+// for a friend, Home for a member — and like a place link it carries
+// NOTHING about the guest: no referral code, no id, no tracking param. The
+// tap itself is counted (nav_tab_tap, tab "Share") by the caller.
+
+const APP_SHARE_TEXT = "Find great places to eat and book a table with Mesita.";
+
+/** Share the app, or copy its link. Never throws and never rejects. */
+export async function shareApp(): Promise<void> {
+  const url =
+    typeof window === "undefined"
+      ? "/"
+      : new URL("/", window.location.origin).toString();
+
+  if (canShareNatively()) {
+    try {
+      await navigator.share({ title: "Mesita", text: APP_SHARE_TEXT, url });
+      return;
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
+    }
+  }
+
+  const copied = await copyToClipboard(url);
+  if (copied) toast.success("Link copied");
+  else toast.error("Couldn't share Mesita");
+}

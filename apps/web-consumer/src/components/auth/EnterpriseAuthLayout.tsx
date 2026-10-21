@@ -100,7 +100,7 @@ function LandingPane() {
           <ValueProp
             Icon={Heart}
             title="Keep what you like"
-            blurb="Heart places as you go and find them again in Saved › Favorites."
+            blurb="Heart places as you go and find them again in Me › Saved."
           />
         </ul>
       </div>

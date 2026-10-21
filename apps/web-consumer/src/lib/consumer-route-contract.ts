@@ -32,10 +32,7 @@ export const CONSUMER_ROUTES = {
   place: {
     prefix: "/place/",
   },
-  // The bar's Saved tab (MESITA-2521): Favorites | Reservations. It was the
-  // Bookings tab (MESITA-2518), and before that Me › Reservations; the
-  // singular DETAIL stays at /reservation/[id].
-  saved: "/saved",
+  // The singular reservation DETAIL; the list is Me › Saved › Reservations.
   reservation: {
     prefix: "/reservation/",
   },
@@ -65,6 +62,11 @@ export const CONSUMER_ROUTES = {
     settings: "/me/settings",
     settingsContact: "/me/settings/contact",
     notifications: "/me/notifications",
+    // Saved — Favorites | Reservations (MESITA-2521). It was the bar's fourth
+    // tab at /saved until Share took that slot and Saved moved under Me
+    // (Pato, MESITA-2561: "move the bottom menu to me and reservations to me
+    // too").
+    saved: "/me/saved",
   },
   // Every address that shipped to production and no longer renders a page.
   // Each one has a next.config.ts redirect (route-structure T4 proves the
@@ -153,6 +155,8 @@ export const CONSUMER_ROUTES = {
     // Reservations under /saved, from when that was a tab.
     savedReservations: "/saved/reservations",
     savedReservationPrefix: "/saved/reservation/",
+    // The bar's Saved tab (MESITA-2521), until it moved under Me (MESITA-2561).
+    saved: "/saved",
     // Place detail briefly had a dual path under /saved (Favorites-era).
     // Canonical is /place/[id]; this redirects there (MESITA-899).
     savedPlacePrefix: "/saved/place/",
@@ -164,15 +168,14 @@ export const CONSUMER_ROUTE_PREFIX = {
   // siblings to disambiguate from, so BottomNav matches CONSUMER_ROUTES.
   place: "/place",
   pay: "/pay",
-  saved: "/saved",
   me: "/me",
 } as const;
 
-/** Each Saved tab's own address (MESITA-2521): a query, not a page, so it
- *  stays out of CONSUMER_ROUTES. */
+/** Each Saved tab's own address (MESITA-2521, under Me since MESITA-2561):
+ *  a query, not a page, so it stays out of CONSUMER_ROUTES. */
 export const SAVED_TAB_HREF = {
-  favorites: "/saved",
-  reservations: "/saved?tab=reservations",
+  favorites: "/me/saved",
+  reservations: "/me/saved?tab=reservations",
 } as const;
 
 // Matches both the /reservations list and /reservation/[id] details

@@ -80,7 +80,6 @@ function liveAddresses(): Set<string> {
     CONSUMER_ROUTES.searchChat,
     CONSUMER_ROUTES.home,
     CONSUMER_ROUTES.pay,
-    CONSUMER_ROUTES.saved,
     CONSUMER_ROUTES.me,
     ...Object.values(CONSUMER_ROUTES.mePages),
     `${CONSUMER_ROUTES.place.prefix}:id`,
@@ -102,9 +101,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // /discover/places are in the legacy block now.
       home: "/home",
       place: { prefix: "/place/" },
-      // The Saved tab: Favorites | Reservations (MESITA-2521; it was the
-      // Bookings tab, MESITA-2518, and before that Me › Reservations).
-      saved: "/saved",
       reservation: { prefix: "/reservation/" },
       // PAY IS ONE PAGE, the Soon state (MESITA-2087). No children, no
       // default, no sections: the tab links here and lights here.
@@ -122,6 +118,9 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         settings: "/me/settings",
         settingsContact: "/me/settings/contact",
         notifications: "/me/notifications",
+        // Saved: Favorites | Reservations (MESITA-2521), under Me since
+        // Share took its bar slot (MESITA-2561).
+        saved: "/me/saved",
       },
       legacy: {
         profile: "/profile",
@@ -178,6 +177,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         meReservations: "/me/reservations",
         bookings: "/bookings",
         savedReservations: "/saved/reservations",
+        saved: "/saved",
         savedReservationPrefix: "/saved/reservation/",
         savedPlacePrefix: "/saved/place/",
       },
@@ -192,7 +192,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // top-level segment with no siblings.
       place: "/place",
       pay: "/pay",
-      saved: "/saved",
+      // NO `saved` key: Saved is a Me page (MESITA-2561), lit by Me's prefix.
       // NO `inbox` key (MESITA-1626): every /inbox address 308s to /me, so
       // the middleware never sees one.
       me: "/me",
@@ -200,8 +200,8 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
     expect(CONSUMER_RESERVATION_SURFACE_PREFIX).toBe("/reservation");
     // Each Saved tab's address: Reservations is a query on the page.
     expect(SAVED_TAB_HREF).toEqual({
-      favorites: "/saved",
-      reservations: "/saved?tab=reservations",
+      favorites: "/me/saved",
+      reservations: "/me/saved?tab=reservations",
     });
   });
 
@@ -332,6 +332,7 @@ describe("isModalContractPath (intercepted detail overlays)", () => {
     "/me/connector",
     "/me/notifications",
     "/me/reservations",
+    "/me/saved",
     "/me/settings",
     "/me/help", // retired; 308s to Settings before it could intercept
     // Second Stage spellings 308 before they could ever intercept.
@@ -440,27 +441,28 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
         permanent: true,
       },
       { source: "/places", destination: "/home", permanent: true },
-      // Every former reservations list → Saved › Reservations (MESITA-2521);
-      // /saved itself is a live tab again. The /saved/place dual path
-      // (MESITA-1585) still forwards.
+      // Saved moved under Me (MESITA-2561); every former reservations list
+      // → Me › Saved › Reservations in one hop (MESITA-2521). The
+      // /saved/place dual path (MESITA-1585) still forwards.
+      { source: "/saved", destination: "/me/saved", permanent: true },
       {
         source: "/reservations",
-        destination: "/saved?tab=reservations",
+        destination: "/me/saved?tab=reservations",
         permanent: true,
       },
       {
         source: "/me/reservations",
-        destination: "/saved?tab=reservations",
+        destination: "/me/saved?tab=reservations",
         permanent: true,
       },
       {
         source: "/bookings",
-        destination: "/saved?tab=reservations",
+        destination: "/me/saved?tab=reservations",
         permanent: true,
       },
       {
         source: "/saved/reservations",
-        destination: "/saved?tab=reservations",
+        destination: "/me/saved?tab=reservations",
         permanent: true,
       },
       {

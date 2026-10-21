@@ -170,9 +170,11 @@ export function ProfileClient() {
             />
           </DestGrid>
 
-          {/* Favorites opens Saved › Favorites, as Reservations opens Saved ›
-              Reservations. Connector is Mesita in an AI assistant; it is not
-              built, so its page says Soon (MESITA-2562). */}
+          {/* Favorites and Reservations are the two doors into the one Saved
+              page, /me/saved, which came in from the bar (MESITA-2561);
+              Favorites was briefly a tile called Saved. Connector is Mesita
+              in an AI assistant; it is not built, so its page says Soon
+              (MESITA-2562). */}
           <DestGrid>
             <DestTile
               Icon={Heart}
