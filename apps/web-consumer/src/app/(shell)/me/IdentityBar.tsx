@@ -12,15 +12,17 @@ import { toGuestClass } from "@/lib/guest-standing";
 // ─── The identity header (MESITA-1079 v2 · -1619 · -1633 ·
 //     -1636 · -1640 · -1646 · -1649 · -1650 · -1652 · -2040 · -2087) ───────
 //
-// A CARD NOW, FIXED (Pato, MESITA-2577: "the header must have the same
-// horizontal margins as the cards below"). It was "not a card … occupying
-// the full width" (MESITA-1652); it is still fixed when the grid scrolls and
-// still holds the photo, name and Instagram.
+// AN APP BAR, NOT A CARD (Pato, MESITA-2582: "this must feel more like a
+// header"; he picked "A · App bar" from a board of three on the real grid).
+// Full width, white, a hairline under it — Instagram's own header — and
+// fixed when the grid scrolls. Its content sits on the tiles' 16px edge, so
+// it lines up with the grid (MESITA-2577 asked for that and made it an inset
+// card; that read as one more tile).
 //
 //   (photo)  name
-//   (photo)  [◎ @handle · 1.2K followers ›] [▭ Free ›] [♛ Regular ›]
+//   (photo)  [◎ @handle · 1.2K followers ›] [♛ Regular ›]  (no Plan, MESITA-2576)
 //            (MESITA-2574; chips wrap when the row runs out)
-//   one white card, 16px in from each edge like the tiles below
+//   ─────── hairline ─────── full-width white bar; content on the 16px edge
 //
 // The card itself is IdentityCard, the same one Social shows for a member
 // (MESITA-2547). NO PHONE: it is private (Pato, MESITA-2547: "that is super
@@ -75,17 +77,14 @@ export function IdentityBar({
     <header
       aria-label="Your Mesita identity"
       aria-busy={loading || undefined}
-      // A WHITE CARD ON THE TILES' MARGINS (Pato, MESITA-2577: "the header
-      // must have the same horizontal margins as the cards below. keep UI
-      // aesthetic"): the tiles' own material — paper, hairline border,
-      // rounded-2xl, shadow-rest, 14px padding — inset 16px (the grid's
-      // px-4) on the grey page. Still short (MESITA-2574). It was a
-      // full-bleed white bar.
-      className="relative shrink-0 px-4 pt-4"
+      // THE APP BAR (MESITA-2582): full-width paper, a hairline under it,
+      // no radius, no shadow. px-4 puts the photo's left edge and the chips
+      // on the tiles' own 16px edge. Still short (MESITA-2574).
+      className="border-border bg-card relative shrink-0 border-b"
     >
       <div
-        className="border-border bg-card shadow-rest relative flex flex-col items-center rounded-2xl border p-3.5"
-        data-identity-header-card
+        className="relative flex flex-col items-center px-4 py-3"
+        data-identity-app-bar
       >
         {loading ? (
           <>
