@@ -46,8 +46,8 @@ const PROTECTED_PREFIXES = [
   // The Pay tab — one page, the Soon state (MESITA-2087). A guest's tab, so
   // it gets the same fast path as Me.
   "/pay",
-  // The Saved tab — favorites and reservations (MESITA-2521; it was the
-  // Bookings tab, which still forwards here).
+  // Saved's old tab address and the Bookings tab before it; both forward
+  // under Me (MESITA-2521, MESITA-2561).
   "/saved",
   "/bookings",
   "/reservations",
