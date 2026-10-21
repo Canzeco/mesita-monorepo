@@ -63,6 +63,11 @@ describe("Saved: Favorites | Reservations", () => {
     expect(PAGE).not.toContain("<h1");
     expect(PAGE).not.toContain("BrandHeader");
     expect(PAGE).toContain('aria-label="Saved"');
+    // Home's tab line: a black bar the tab's full width on the bottom edge
+    // (MESITA-2541, as MESITA-2539), not the word alone.
+    expect(PAGE).toContain('"relative flex-1 py-3 text-sm transition"');
+    expect(PAGE).toContain("bg-foreground absolute inset-x-0 bottom-0 h-0.5");
+    expect(PAGE).not.toContain('<span className="relative inline-block py-3">');
     expect(existsSync(join(SRC, "app", "(shell)", "bookings"))).toBe(false);
     expect(existsSync(join(SRC, "app", "(shell)", "saved", "page.tsx"))).toBe(
       true,
