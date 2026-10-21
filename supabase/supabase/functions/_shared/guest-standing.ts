@@ -1,7 +1,7 @@
 // Manage › Guests (MESITA-2550, MESITA-2553): the pure half of
 // admin-web-list-guests and admin-web-set-guest-standing. An operator finds a
 // guest and sets their Class (regular or VIP, through a partner) and their Plan
-// (free or pro). The two are independent. The admin_set_guest_standing RPC is
+// (free or premium). The two are independent. The admin_set_guest_standing RPC is
 // the only writer; no consumer EF accepts either field.
 
 import {
@@ -144,7 +144,7 @@ export function readStandingBody(
     patch.guestClass = b.guestClass;
   }
   if ("plan" in b) {
-    if (b.plan !== "free" && b.plan !== "pro") {
+    if (b.plan !== "free" && b.plan !== "premium") {
       return {
         ok: false,
         status: 400,

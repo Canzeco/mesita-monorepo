@@ -15,7 +15,7 @@ vi.mock("@/components/consumer/overlay/LocalOverlay", () => ({
 
 const text = (html: string) => html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
 
-// Plan (Free/Pro) and Class (Regular/VIP) are two independent facts
+// Plan (Free/Premium) and Class (Regular/VIP) are two independent facts
 // (Pato, MESITA-2553).
 describe("Class and Plan on the identity card", () => {
   const card = (
@@ -44,9 +44,9 @@ describe("Class and Plan on the identity card", () => {
   });
 
   it("shows the plain defaults too, never a missing chip", () => {
-    const html = card({ guestClass: "regular", plan: "pro" });
+    const html = card({ guestClass: "regular", plan: "premium" });
     expect(html).toContain('aria-label="Class: Regular"');
-    expect(html).toContain('aria-label="Plan: Pro"');
+    expect(html).toContain('aria-label="Plan: Premium"');
   });
 
   it("hides the row when standing is unknown, never a guessed Free", () => {
@@ -56,18 +56,18 @@ describe("Class and Plan on the identity card", () => {
   });
 
   it("makes Class a door on Me, and drops Plan there (MESITA-2559)", () => {
-    const facts = card({ guestClass: "vip", plan: "pro" });
+    const facts = card({ guestClass: "vip", plan: "premium" });
     expect(facts).not.toContain("<button");
     expect(facts).not.toContain("href=");
-    expect(facts).toContain('aria-label="Plan: Pro"');
-    const me = card({ guestClass: "vip", plan: "pro" }, true);
+    expect(facts).toContain('aria-label="Plan: Premium"');
+    const me = card({ guestClass: "vip", plan: "premium" }, true);
     expect(me).toMatch(/<button[^>]*aria-label="Class: VIP"/);
     expect(me).not.toContain("data-identity-plan");
     expect(me).not.toContain("Plan:");
   });
 
   it("reads unknown or retired values as the plain default", () => {
-    expect(toGuestPlan("premium")).toBe("free");
+    expect(toGuestPlan("pro")).toBe("free");
     expect(toGuestPlan(undefined)).toBe("free");
     expect(toGuestClass("diamond")).toBe("regular");
     expect(toGuestClass("vip")).toBe("vip");
@@ -98,7 +98,7 @@ describe("the Class sheet", () => {
 
   it("never names a plan, a price or a buy button", () => {
     const words = text(sheet("regular"));
-    expect(words).not.toMatch(/\b(Free|Pro|Premium|Diamond|Select|Upgrade|Buy)\b/);
+    expect(words).not.toMatch(/\b(Free|Premium|Pro|Diamond|Select|Upgrade|Buy)\b/);
     expect(words).not.toMatch(/\$\s?\d|\d+\s?% off/);
     expect(sheet("regular")).not.toContain("<button");
   });
@@ -127,7 +127,7 @@ describe("Class and Plan labels", () => {
 
   it("uses no retired or invented name", () => {
     for (const [name, src] of Object.entries(FILES)) {
-      expect(strings(src), name).not.toMatch(/Diamond|Premium|Mesita Select|Select tier/);
+      expect(strings(src), name).not.toMatch(/Diamond|\bPro\b|Mesita Select|Select tier/);
     }
   });
 
@@ -142,6 +142,6 @@ describe("Class and Plan labels", () => {
 
   it("keeps the axes apart: Plan copy never names Class, Class copy never names a plan", () => {
     expect(strings(PLAN)).not.toMatch(/\b(VIP|Regular|Class)\b/);
-    expect(strings(CLASS)).not.toMatch(/"[^"]*\b(Free|Pro)\b[^"]*"|>[^<]*\b(Free|Pro)\b[^<]*</);
+    expect(strings(CLASS)).not.toMatch(/"[^"]*\b(Free|Premium|Pro)\b[^"]*"|>[^<]*\b(Free|Premium|Pro)\b[^<]*</);
   });
 });

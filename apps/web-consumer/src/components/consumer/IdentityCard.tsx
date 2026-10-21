@@ -25,13 +25,13 @@ import { cn } from "@/lib/utils";
 //
 //   (80px)  Diego
 //   (photo) [◎ die••• · 1.2K followers]
-//   (     ) [♛ VIP] [▭ Pro]              (Me: [♛ VIP ›] alone)
+//   (     ) [♛ VIP] [▭ Premium]              (Me: [♛ VIP ›] alone)
 //
 // CLASS AND PLAN ARE TWO THINGS (Pato, MESITA-2553). Class is partnership
 // status: Regular or VIP, through a partner, never sold. Plan is the
-// subscription: Free or Pro. Each chip names its own dimension with its own
+// subscription: Free or Premium. Each chip names its own dimension with its own
 // icon (Crown, CreditCard) and aria-label, so the pair never reads as one
-// ladder. Weight marks "special", not rank: VIP filled, Pro outlined, the two
+// ladder. Weight marks "special", not rank: VIP filled, Premium outlined, the two
 // defaults equally muted. No gem anywhere (MESITA-2551). On Me the Class
 // chip is a door (it opens its explainer); on Social both are facts.
 //
@@ -204,7 +204,7 @@ export function IdentityCard({
                 icon={<CreditCard className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />}
                 label={PLAN_LABEL[standing.plan]}
                 dimension="Plan"
-                strong={standing.plan === "pro"}
+                strong={standing.plan === "premium"}
                 filled={false}
                 data={{ "data-identity-plan": standing.plan }}
               />

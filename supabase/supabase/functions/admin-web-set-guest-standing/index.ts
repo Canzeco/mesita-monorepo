@@ -1,7 +1,7 @@
 // Supabase Edge Function — admin-web-set-guest-standing
 //
 // Manage › Guests (MESITA-2550, MESITA-2553). Sets a guest's Class (regular or
-// VIP, through a partner; never sold) and Plan (free or pro), independently,
+// VIP, through a partner; never sold) and Plan (free or premium), independently,
 // and the operator-only note on where a VIP came from. One call to the
 // admin_set_guest_standing RPC does the write: it stamps who set the class
 // and when only when the class actually changes, so two operators can never

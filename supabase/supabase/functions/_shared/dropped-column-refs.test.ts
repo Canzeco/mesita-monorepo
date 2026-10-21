@@ -177,7 +177,7 @@ const LIVE_ELSEWHERE: Record<string, readonly string[]> = {
 /** Dropped by a cut, then added back by a later migration. The cut lists stay
  *  the migrations' own; these come off the scan. */
 const RESTORED: Record<string, readonly string[]> = {
-  // MESITA-2548: consumers.plan is back (free or pro since MESITA-2553).
+  // MESITA-2548: consumers.plan is back (free or premium since MESITA-2560).
   consumers: ["plan"],
 };
 

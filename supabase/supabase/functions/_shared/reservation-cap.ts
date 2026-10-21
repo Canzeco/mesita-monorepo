@@ -3,7 +3,7 @@
 // Every reservation is a real, metered phone call to a place, so one guest
 // gets MONTHLY_RESERVATION_CAP of them per calendar month (UTC); cancelled
 // and test tickets do not count. It is an abuse guard: one number for every
-// guest today. Pro (Me › Plan, MESITA-2553) is promised MORE reservations a
+// guest today. Premium (Me › Plan, MESITA-2553) is promised MORE reservations a
 // month; when a subscription EF exists that lands here as a per-plan cap, and
 // Me › Plan's FREE_RESERVATIONS_PER_MONTH follows it.
 // app_config.reservations_config.unlimitedReservations lifts it for testing.

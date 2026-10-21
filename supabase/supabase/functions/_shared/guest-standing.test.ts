@@ -96,7 +96,7 @@ Deno.test("set body: every refusal has a stable code", () => {
   assertEquals(codeOf(null), "400 invalid_consumer");
   assertEquals(codeOf({ consumerId: ID }), "400 nothing_to_set");
   assertEquals(codeOf({ consumerId: ID, guestClass: "gold" }), "400 invalid_guest_class");
-  assertEquals(codeOf({ consumerId: ID, plan: "premium" }), "400 invalid_plan");
+  assertEquals(codeOf({ consumerId: ID, plan: "pro" }), "400 invalid_plan");
   assertEquals(codeOf({ consumerId: ID, guestClassNote: 5 }), "400 invalid_note");
   assertEquals(codeOf({ consumerId: ID, guestClassNote: "x".repeat(281) }), "400 note_too_long");
 });
@@ -116,10 +116,10 @@ Deno.test("set body: Class, Plan and the note are each optional and independent"
     consumerId: ID,
     patch: { guestClass: "vip", plan: "free" },
   });
-  assertEquals(readStandingBody({ consumerId: ID, plan: "pro" }), {
+  assertEquals(readStandingBody({ consumerId: ID, plan: "premium" }), {
     ok: true,
     consumerId: ID,
-    patch: { plan: "pro" },
+    patch: { plan: "premium" },
   });
   // The note is trimmed; whitespace-only or null clears it; 280 is allowed.
   assertEquals(readStandingBody({ consumerId: ID, guestClassNote: "  Agency  " }), {
@@ -143,7 +143,7 @@ Deno.test("the consumer door cannot write Class, Plan or the VIP audit (MESITA-2
 });
 
 Deno.test("consumer-web-update-profile refuses Plan and Class keys loudly", () => {
-  assertEquals(notWritableKey({ first_name: "Ana", plan: "pro" }), "plan");
+  assertEquals(notWritableKey({ first_name: "Ana", plan: "premium" }), "plan");
   assertEquals(notWritableKey({ guestClass: "vip" }), "guestClass");
   assertEquals(notWritableKey({ guest_class_note: "x" }), "guest_class_note");
   assertEquals(notWritableKey({ first_name: "Ana" }), null);

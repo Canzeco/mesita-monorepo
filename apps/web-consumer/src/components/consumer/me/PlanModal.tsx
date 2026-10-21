@@ -1,6 +1,6 @@
 "use client";
 
-// Plan — the subscription, Free or Pro (MESITA-2134, MESITA-2167, MESITA-2553).
+// Plan — the subscription, Free or Premium (MESITA-2134, MESITA-2167, MESITA-2553).
 // Opened from the Me › Plan tile and from the Plan chip on Me's card.
 //
 // PLAN IS NOT CLASS (Pato, MESITA-2553). Plan is what a guest pays for; Class
@@ -12,10 +12,10 @@
 // failed) neither row claims it, and nothing assumes Free.
 //
 // NO PRICE, NO HYPOTHESIS. Free states today's enforced cap, the live rule
-// (FREE_RESERVATIONS_PER_MONTH). Pro states no number and no price: those are
-// working hypotheses, not decisions. Pro opens with "Everything in Free"
-// (true for a Pro guest today), then its unbuilt perks, each tagged Soon, so a
-// Pro guest is never told their plan does not exist.
+// (FREE_RESERVATIONS_PER_MONTH). Premium states no number and no price: those are
+// working hypotheses, not decisions. Premium opens with "Everything in Free"
+// (true for a Premium guest today), then its unbuilt perks, each tagged Soon, so a
+// Premium guest is never told their plan does not exist.
 
 import { CreditCard, Sparkles } from "lucide-react";
 
@@ -78,12 +78,12 @@ export function PlanModal({ plan }: { plan: GuestPlan | null }) {
         />
         <RowDivider />
         <PlanRow
-          title="Pro"
+          title="Premium"
           subtitle="The paid plan."
           icon={<Sparkles className="h-[18px] w-[18px]" />}
-          tint={plan === "pro" ? "primary" : "muted"}
-          label="Included in Pro"
-          mine={plan === "pro"}
+          tint={plan === "premium" ? "primary" : "muted"}
+          label="Included in Premium"
+          mine={plan === "premium"}
           items={[
             {
               text: `Everything in Free, including ${FREE_RESERVATIONS_PER_MONTH} reservations a month`,
