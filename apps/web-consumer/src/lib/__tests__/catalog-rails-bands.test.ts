@@ -328,7 +328,10 @@ describe("the Places grid (MESITA-2366)", () => {
     );
     expect(tabs).toContain('"text-foreground shrink-0 text-2xl');
     expect(tabs).not.toContain("bg-foreground text-background");
-    expect(src).toContain('className="border-border bg-muted flex shrink-0 border-b"');
+    // The strip: its own grey between the header and the column (MESITA-2530).
+    expect(src).toContain(
+      'className="border-border flex shrink-0 border-b bg-[color-mix(in_oklch,var(--border),var(--muted))]"',
+    );
     expect(tabs).not.toContain("brand-pink");
     expect(tabs).not.toContain("border-b-2");
   });

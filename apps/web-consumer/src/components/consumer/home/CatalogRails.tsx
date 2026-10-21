@@ -364,14 +364,16 @@ export function CatalogRails() {
   // word, that way does not collapses with the lateral bar"). A bar the tab's
   // width (MESITA-2527) or on the strip's edge (MESITA-2524) met the column's
   // chosen row. It replaced the left category column (MESITA-2367).
-  // The strip is the column's grey under the header (Pato, MESITA-2526:
-  // "the places/social selector a bit dark"), so header, tabs and tiles read
-  // as three layers.
+  // The strip is its OWN grey, halfway between the stone header (`--border`)
+  // and the column (`--muted`), so it reads apart from the lateral menu
+  // (Pato, MESITA-2530: "maybe that bar darker, just a bit like a different
+  // white/grat from the laterl menu bar"; MESITA-2526 had given it the
+  // column's grey). Header, strip, column and tiles step dark to light.
   const tabs = (
     <div
       role="tablist"
       aria-label="Home"
-      className="border-border bg-muted flex shrink-0 border-b"
+      className="border-border flex shrink-0 border-b bg-[color-mix(in_oklch,var(--border),var(--muted))]"
       data-home-tabs
     >
       {HOME_TABS.map((t) => {
