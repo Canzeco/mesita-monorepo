@@ -6,7 +6,7 @@
 //   ┌────────────────┬─────────────────────┐   location alone (MESITA-2405),
 //   │ ⚇ Social        │                     │   written to
 //   │ ○ Saved         │       square        │   lib/active-location.ts and
-//   │▌⌖ Nearby        │        tile         │   read here.
+//   │▌▦ All           │        tile         │   read here.
 //   │ ──────────────  │                     │
 //   │ ○ Coffee     ↕  │                     │
 //
@@ -19,10 +19,13 @@
 // activity list (SocialFeed) fills the right three quarters. It opened its own
 // page, /discover/social, from MESITA-2442 until then.
 //
-// Left quarter (Pato, MESITA-2411): Saved, Social, Nearby and Popular
-// (the default: every place) PINNED above a rule; under it one row per
-// family, and only that list scrolls. The chosen row is white, bold, an ink bar on its left edge.
-// Nearby and Popular are the server's ONE ranked Area pool (MESITA-2379/2384):
+// Left quarter (Pato, MESITA-2411): Saved, Social and All (the default:
+// every place) PINNED above a rule; under it one row per family, and only
+// that list scrolls. The chosen row is white, bold, an ink bar on its left
+// edge. All replaced Nearby and Popular (Pato, MESITA-2516: "only keeping
+// All is cleaner. just like in map"): every row is ranked the Map's way,
+// Proximity^a × Popularity^1 × Selected^1. All is the server's ONE ranked
+// Area pool (MESITA-2379/2384):
 // Google and Mesita places merged, scored and ranked there; this screen
 // pages it (20 tiles at a time, more on scroll). A family row ASKS ITS OWN
 // QUESTION (MESITA-2438): it sends the family's key, so Google gets that
@@ -50,7 +53,6 @@ import {
   type AreaPool,
   type CatalogRail,
   type Place,
-  type AreaPrefer,
 } from "@/lib/api/places";
 import {
   areaPoolKey,
@@ -103,26 +105,15 @@ const ROW_BASE =
 const ROW_ON = "bg-card text-foreground font-semibold";
 const ROW_OFF = "text-foreground hover:bg-card/60";
 
-/** The column's default row: every place, one list (MESITA-2383, MESITA-2416). */
-/** Every family, ranked Near: the operator's Proximity/Popularity balance
- *  (MESITA-2426; Near and Popular replaced All). */
-export const NEAR_CHIP = "near";
-/** Every family, ranked on Popularity alone inside the same radius. */
-export const POPULAR_CHIP = "popular";
+/** The column's default row: every place, one list, ranked like the Search
+ *  map (Pato, MESITA-2516: "only keeping All is cleaner. just like in map").
+ *  It replaced Nearby and Popular (MESITA-2426), which were one pool in two
+ *  orders. */
+export const ALL_CHIP = "all";
 
-/** Near and Popular are every family; any other row is one family. */
+/** All is every family; any other row is one family. */
 export function isEveryFamily(chip: string): boolean {
-  return chip === NEAR_CHIP || chip === POPULAR_CHIP;
-}
-
-/** What the row asks the server to rank by (MESITA-2428): Nearby,
- *  Popular, or a family row's Family mode. */
-export function chipPrefer(chip: string): AreaPrefer {
-  return chip === POPULAR_CHIP
-    ? "popular"
-    : chip === NEAR_CHIP
-      ? "near"
-      : "family";
+  return chip === ALL_CHIP;
 }
 /** The guest's saved places (MESITA-2383; Home's Favorites tab, then row, Saved since MESITA-2427). */
 export const SAVED_CHIP = "saved";
@@ -130,24 +121,21 @@ export const SAVED_CHIP = "saved";
  *  the right pane (MESITA-2474). */
 export const SOCIAL_CHIP = "social";
 
-/** The column: Social · Saved · Nearby · Popular, a rule, then every
- *  guest family (MESITA-2383, MESITA-2384, MESITA-2411, MESITA-2426).
- *  Everything through POPULAR_CHIP is pinned; the families after it scroll.
- *  Google Places and Mesita Selected are not guest choices (MESITA-2381):
- *  they are the sources Near and Popular mix. A family with
- *  nothing here says so rather than hiding. */
+/** The column: Saved · Social · All, a rule, then every guest family
+ *  (MESITA-2383, MESITA-2384, MESITA-2411, MESITA-2516). Everything through
+ *  ALL_CHIP is pinned; the families after it scroll. Google Places and
+ *  Mesita Selected are not guest choices (MESITA-2381): they are the sources
+ *  All mixes. A family with nothing here says so rather than hiding. */
 export function placesChips(): { key: string; label: string }[] {
   return [
-    // Saved first, then Social (Pato, MESITA-2490). Saved, not Favorites,
-    // and Nearby, not Near (Pato, MESITA-2427); the heart stays, matching
-    // the tile's save button (MESITA-2430): beside Nearby and Popular,
-    // "Favorites" read as Mesita's picks.
+    // Saved first, then Social (Pato, MESITA-2490). Saved, not Favorites
+    // (Pato, MESITA-2427); the heart stays, matching the tile's save button
+    // (MESITA-2430).
     { key: SAVED_CHIP, label: "Saved" },
     // Social's feed draws in the right pane (MESITA-2474); no "Soon" tag
     // ever (Pato, MESITA-2418: the tag "looks like shit").
     { key: SOCIAL_CHIP, label: "Social" },
-    { key: NEAR_CHIP, label: "Nearby" },
-    { key: POPULAR_CHIP, label: "Popular" },
+    { key: ALL_CHIP, label: "All" },
     ...FILTERABLE_PLACE_FAMILIES.map((f) => ({
       key: f.key as string,
       label: f.label,
@@ -155,9 +143,9 @@ export function placesChips(): { key: string; label: string }[] {
   ];
 }
 
-/** Saved, Social, Nearby, Popular: the pinned head of the column
- *  (MESITA-2411, MESITA-2426, MESITA-2490). */
-export const PINNED_CHIPS = 4;
+/** Saved, Social, All: the pinned head of the column (MESITA-2411,
+ *  MESITA-2490, MESITA-2516). */
+export const PINNED_CHIPS = 3;
 
 /** Each group's stripe down the rail's left edge (Pato, MESITA-2484: "just
  *  one line at the left … really subtle"). Two groups, two muted clays
@@ -173,7 +161,7 @@ export const GROUP_STRIPE = {
 export const PLACES_PAGE = 20;
 
 /** The families a row asks the server for (MESITA-2438): its own key, or
- *  none for Nearby and Popular (every family). */
+ *  none for All (every family). */
 export function chipFamilies(chip: string): string[] {
   return isEveryFamily(chip) ? [] : [chip];
 }
@@ -254,17 +242,15 @@ export function CatalogRails() {
   const onCityFallback = origin === null && coords === null && locationSettled;
   const from = origin ?? coords ?? (onCityFallback ? MONTERREY_CENTER : null);
   const waitingForFix = origin === null && coords === null && !locationSettled;
-  // Near/Popular (MESITA-2425) is part of the question, so part of the key;
-  // the row picks it (MESITA-2426), and every family row asks Family
-  // (MESITA-2428). Social and Saved read no pool, so they keep the last
-  // pool row's prefer and never spend a request.
-  const [chip, setChip] = useState<string>(NEAR_CHIP);
-  const [prefer, setPrefer] = useState<AreaPrefer>("near");
+  // One ranking for every row, the Map's (MESITA-2516): the question is
+  // the place and the family. Social and Saved read no pool, so they keep
+  // the last pool row's family and never spend a request.
+  const [chip, setChip] = useState<string>(ALL_CHIP);
   // The family the pool was asked for (MESITA-2438): a family row's own,
-  // none for Nearby and Popular.
+  // none for All.
   const [families, setFamilies] = useState<string[]>([]);
-  const requestKey = `${areaPoolKey(from)}|${prefer}${
-    families.length > 0 ? `:${families.join(",")}` : ""
+  const requestKey = `${areaPoolKey(from)}|${
+    families.length > 0 ? families.join(",") : ALL_CHIP
   }`;
   // The running load's background reload: the rails on screen stay until
   // the new ones land, and an error never replaces a good feed.
@@ -286,7 +272,7 @@ export function CatalogRails() {
     const fetchPool = async (mode: "fresh" | "keep") => {
       const mine = ++seq;
       try {
-        const next = await apiListAreaPool(supabase, from, prefer, families);
+        const next = await apiListAreaPool(supabase, from, families);
         if (cancelled || mine !== seq) return;
         if (next.shape === "legacy" && !legacyShapeLogged) {
           legacyShapeLogged = true;
@@ -404,7 +390,6 @@ export function CatalogRails() {
             trackEvent(supabase, "home_mode_view", { mode: c.label });
           setChip(c.key);
           if (c.key !== SOCIAL_CHIP && c.key !== SAVED_CHIP) {
-            setPrefer(chipPrefer(c.key));
             setFamilies(chipFamilies(c.key));
           }
         }}
@@ -437,7 +422,7 @@ export function CatalogRails() {
       data-places-categories
     >
       {/* Two groups, one clay stripe each, 8px apart; no rules (Pato,
-          MESITA-2484, MESITA-2492): Saved · Social · Nearby · Popular in red,
+          MESITA-2484, MESITA-2492): Saved · Social · All in red,
           pinned, never scrolling (MESITA-2411) │ the families in blue. */}
       <ul
         role="list"

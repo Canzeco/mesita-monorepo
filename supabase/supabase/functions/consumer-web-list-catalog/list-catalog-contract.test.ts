@@ -5,6 +5,16 @@ import { assert, assertEquals } from "jsr:@std/assert@1";
 
 const src = await Deno.readTextFile(new URL("./index.ts", import.meta.url));
 
+Deno.test("list-catalog: one ranking, the Map's — Proximity^a × Popularity^1 × Selected^1 (MESITA-2516)", () => {
+  assert(src.includes("proximity: cfg.map.proximityWeight,"));
+  assert(src.includes("popularity: 1,"));
+  assert(src.includes("selected: 1,"));
+  assert(src.includes("signals: { reachKm: cfg.params.proximity.reachKm, weights },"));
+  // Home's Nearby / Popular are gone: the guest's mode is never read.
+  assertEquals(src.includes("readAreaMode("), false);
+  assertEquals(src.includes("body.prefer"), false);
+});
+
 Deno.test("list-catalog: one pool from the shared engine, both wires", () => {
   assert(src.includes("selectAreaPool<OwnedRow>("));
   assert(src.includes("selectedPoolQuery("));

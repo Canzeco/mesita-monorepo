@@ -133,7 +133,11 @@ export type MapScore = {
 
 /** The exponents the Search map scored with: Proximity^a × Popularity^1 ×
  *  Selected^1 (MESITA-2504). */
-export type MapWeights = { proximity: number; popularity: number; selected: number };
+export type MapWeights = {
+  proximity: number;
+  popularity: number;
+  selected: number;
+};
 
 type ViewportPlaces = {
   places: Place[];
@@ -284,9 +288,6 @@ export type AreaDiagnostics = {
   formula: "point" | "area" | "none";
 };
 
-/** The guest's mode on the wire (MESITA-2428): near is Nearby. */
-export type AreaPrefer = "near" | "popular" | "family";
-
 /** Where Places searches from: always a point (MESITA-2501) — the device, a
  *  confirmed saved pin, or the city's centre. Saved areas are gone. */
 export type AreaOrigin = { lat: number; lng: number };
@@ -309,13 +310,13 @@ function cleanPlace(place: Place): Place {
  * server merged, scored and ranked; the client pages it in the server's
  * order. `familyKeys` is a family row's question (MESITA-2438): the server
  * asks Google for that family's full type list and lists its primary
- * places first. None = every family. A legacy rails answer is passed
+ * places first. None = every family. One ranking for every row, the
+ * Map's (MESITA-2516): no `prefer`. A legacy rails answer is passed
  * through so the screen can still draw it.
  */
 export async function apiListAreaPool(
   client: SupabaseClient,
   origin: AreaOrigin | null,
-  prefer: AreaPrefer = "near",
   familyKeys: readonly string[] = [],
 ): Promise<AreaPool> {
   const data = await invokeEF<{
@@ -324,7 +325,6 @@ export async function apiListAreaPool(
     rails?: CatalogRail[];
   }>(client, "consumer-web-list-catalog", {
     unified: true,
-    prefer,
     ...(familyKeys.length > 0 ? { familyKeys: [...familyKeys] } : {}),
     ...(origin ? { lat: origin.lat, lng: origin.lng, google: true } : {}),
   });

@@ -11,8 +11,7 @@ import {
   poolPlaces,
   PLACES_PAGE,
   savedPlaceList,
-  NEAR_CHIP,
-  POPULAR_CHIP,
+  ALL_CHIP,
   GOOGLE_RAIL_KEY,
   MESITA_RAIL_KEY,
   placesChips,
@@ -38,14 +37,16 @@ describe("the Places column (MESITA-2383)", () => {
   // Social, a rule, Favorites · Near · Popular pinned, a rule, then the
   // families (MESITA-2426), which
   // alone scroll (MESITA-2411).
-  it("is Saved, Social, Nearby, Popular, then every guest family — no source rows (MESITA-2384, MESITA-2426, MESITA-2490)", () => {
+  it("is Saved, Social, All, then every guest family — no source rows (MESITA-2384, MESITA-2490, MESITA-2516)", () => {
     const labels = placesChips().map((c) => c.label);
-    expect(labels.slice(0, 4)).toEqual(["Saved", "Social", "Nearby", "Popular"]);
+    expect(labels.slice(0, 3)).toEqual(["Saved", "Social", "All"]);
+    expect(labels).not.toContain("Nearby");
+    expect(labels).not.toContain("Popular");
     expect(labels).toContain("Coffee");
     expect(labels).toContain("Breakfast");
     expect(labels).not.toContain("Undefined");
-    expect(placesChips().map((c) => c.key).slice(0, 4)).toEqual([SAVED_CHIP, SOCIAL_CHIP, NEAR_CHIP, POPULAR_CHIP]);
-    expect(PINNED_CHIPS).toBe(4);
+    expect(placesChips().map((c) => c.key).slice(0, 3)).toEqual([SAVED_CHIP, SOCIAL_CHIP, ALL_CHIP]);
+    expect(PINNED_CHIPS).toBe(3);
     // Each group has its clay stripe; the rules are gone (MESITA-2484).
     // Two groups since MESITA-2492: the pinned four │ the families.
     expect(src).toContain("chips.slice(0, PINNED_CHIPS).map(categoryRow)");
@@ -92,14 +93,14 @@ describe("the Places column (MESITA-2383)", () => {
         { ...place("c"), family_keys: ["breakfast"], area: area(["coffee"], 0.7) },
       ],
     };
-    expect(poolPlaces(pool, POPULAR_CHIP).map((p) => p.id)).toEqual(["a", "b", "c"]);
+    expect(poolPlaces(pool, ALL_CHIP).map((p) => p.id)).toEqual(["a", "b", "c"]);
     expect(poolPlaces(pool, "coffee").map((p) => p.id)).toEqual(["a", "c"]);
     expect(poolPlaces(pool, "breakfast")).toEqual([]);
   });
 
   it("an Edge Function still on the legacy rails is drawn as before", () => {
     const legacy = { shape: "legacy" as const, rails: RAILS };
-    expect(poolPlaces(legacy, NEAR_CHIP).map((p) => p.id)).toEqual(["m1", "g1"]);
+    expect(poolPlaces(legacy, ALL_CHIP).map((p) => p.id)).toEqual(["m1", "g1"]);
     expect(poolPlaces(legacy, "coffee").map((p) => p.id)).toEqual(["m1"]);
     expect(src).toContain("catalog_shape_legacy");
   });
@@ -140,9 +141,9 @@ describe("the Places column (MESITA-2383)", () => {
     expect(src).not.toContain("nearbyZones");
   });
 
-  it("is a left column, a quarter wide (MESITA-2385), and opens on Near (MESITA-2426)", () => {
+  it("is a left column, a quarter wide (MESITA-2385), and opens on All (MESITA-2516)", () => {
     expect(src).toContain("bg-muted flex w-1/4 shrink-0 flex-col");
-    expect(src).toContain("useState<string>(NEAR_CHIP)");
+    expect(src).toContain("useState<string>(ALL_CHIP)");
     // The chosen row: white, bold, an ink bar on its left edge.
     expect(src).toContain('const ROW_ON = "bg-card text-foreground font-semibold";');
     expect(src).toContain("bg-foreground absolute inset-y-0 left-0 w-[3px]");
@@ -161,7 +162,7 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
     expect(src).toContain("const origin = useActiveLocation();");
     // A saved location, else the fix, else the city's centre (MESITA-2472).
     expect(src).toContain("const from = origin ?? coords ?? (onCityFallback ? MONTERREY_CENTER : null);");
-    expect(src).toContain("apiListAreaPool(supabase, from, prefer, families)");
+    expect(src).toContain("apiListAreaPool(supabase, from, families)");
   });
 
   // MESITA-2476 (Pato: "location must be inside a box or something"): a

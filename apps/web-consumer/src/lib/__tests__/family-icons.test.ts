@@ -14,7 +14,7 @@ describe("family icons (MESITA-2478)", () => {
     for (const f of FILTERABLE_PLACE_FAMILIES) {
       expect(FAMILY_ICONS[f.key], f.key).toBeDefined();
     }
-    for (const k of ["all", "social", "saved", "near", "popular"]) {
+    for (const k of ["all", "social", "saved"]) {
       expect(FAMILY_ICONS[k], k).toBeDefined();
     }
     expect(familyIcon("social")).toBe(Users);

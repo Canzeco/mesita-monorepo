@@ -8,6 +8,13 @@
 // multiplies by the Selected factor and ranks them globally. The client
 // pages the ranked pool, so a later page never re-pays Google.
 //
+// ONE RANKING, THE MAP'S (Pato, MESITA-2516: "only keeping All is cleaner.
+// just like in map"): Proximity^a × Popularity^1 × Selected^1, a = the
+// operator's `map.proximityWeight` — the same knob as the Map — and
+// Proximity's reach = `params.proximity.reachKm` (Home has no screen to
+// measure). Home's Nearby and Popular rows are gone, so `prefer` is ignored;
+// a family row only gates, ranked the same way.
+//
 // A FAMILY ROW ASKS ITS OWN QUESTION (MESITA-2438): `familyKeys` sends
 // Google that family's full type battery (`areaGoogleTypes`), pushes the
 // Family gate into the Mesita read, and lists the family's PRIMARY places
@@ -65,7 +72,7 @@ import {
   selectAreaPool,
   selectedPoolQuery,
 } from "../_shared/area-pipeline.ts";
-import { readAreaMode } from "../_shared/area-score.ts";
+import type { AreaWeights } from "../_shared/area-score.ts";
 import { readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
 import { areaQuota, ownedLookup } from "../_shared/area-deps.ts";
 
@@ -82,7 +89,7 @@ type Body = {
   minReviews?: unknown;
   /** The one-pool wire (MESITA-2379); absent = the legacy rails. */
   unified?: boolean;
-  /** The guest's mode: near (Nearby) · popular · family (MESITA-2428). */
+  /** Ignored since MESITA-2516: one ranking, the Map's. */
   prefer?: unknown;
   /** The family row's families (MESITA-2438); absent or empty = every family. */
   familyKeys?: unknown;
@@ -146,6 +153,11 @@ Deno.serve(async (req) => {
   }
   const mesitaRows = wirePlaces(data ?? []);
 
+  const weights: AreaWeights = {
+    proximity: cfg.map.proximityWeight,
+    popularity: 1,
+    selected: 1,
+  };
   const googleOn = location.kind !== "none" &&
     mapShouldFillGoogle(wantsGoogleFill(body as Record<string, unknown>), cfg.map);
   const gmp = googleOn ? readGooglePlacesKey() : null;
@@ -160,7 +172,8 @@ Deno.serve(async (req) => {
     cfg,
     consumeQuota: areaQuota(req, admin, env.serviceKey),
     lookupOwned: ownedLookup(admin, PLACE_CARD_COLUMNS, "list-catalog", wirePlaces),
-    mode: readAreaMode(body.prefer),
+    // The Map's ranking (MESITA-2516): Proximity^a × Popularity^1 × Selected^1.
+    signals: { reachKm: cfg.params.proximity.reachKm, weights },
   });
 
   // One line, because every failure mode here is a WRONG SET rather than an
@@ -170,7 +183,7 @@ Deno.serve(async (req) => {
     fn: "consumer-web-list-catalog",
     wire: unified ? "unified" : "legacy",
     location: location.kind,
-    areaMode: families.length > 0 ? "family" : readAreaMode(body.prefer),
+    proximityWeight: weights.proximity,
     familyKeys: families,
     ...pool.summary,
     mesitaRead: mesitaRows.length,
