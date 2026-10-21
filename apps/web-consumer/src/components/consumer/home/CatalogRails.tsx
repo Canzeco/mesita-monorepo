@@ -8,16 +8,19 @@
 //   ─────────────────────────────────────  location alone (MESITA-2405),
 //        Places       │      Social         written to lib/active-location.ts
 //   ━━━━━━━━━━━━━━━━━                       and read here.
-//   (▦ All) (♡ Saved) (○ Coffee) (○ …)  →
-//   ┌─────────────────────────────────┐
-//   │           square tile           │
+//   ┌──────────┬──────────────────────┐
+//   │▌▦ All    │                      │
+//   │ ♡ Saved  │     square tile      │
+//   │ ○ Coffee │                      │
+//   │ ○ …   ↕  │                      │
 //
-// Places: one horizontal chip row like Search's (MESITA-2502) — All, Saved,
-// then every family — over full-width square tiles. Social: the activity
-// feed (SocialFeed), full width. They replaced the left category column
-// (MESITA-2367 to MESITA-2516). Every chip's mark is a monochrome line icon
+// Places: the left family column beside the tiles (Pato, MESITA-2519: "keep
+// the later view of the failies. its fastwer to browse") — All and Saved
+// pinned, then every family, scrolling on its own; MESITA-2517 tried a
+// horizontal chip row and Pato sent it back. Social: the activity feed
+// (SocialFeed), full width. Every row's mark is a monochrome line icon
 // (lib/family-icons.tsx), never an emoji (Pato, MESITA-2478: "emojis uses
-// color and that takes attention"); the chosen chip's stroke is heavier.
+// color and that takes attention"); the chosen row's stroke is heavier.
 //
 // All (the default: every place) is ranked the Map's way (Pato, MESITA-2516:
 // "only keeping All is cleaner. just like in map"), Proximity^a ×
@@ -88,11 +91,6 @@ import { cn, errMsg } from "@/lib/utils";
 import { placesFeed } from "@/lib/catalog-feed";
 import { AreaDiagnostics } from "./AreaDiagnostics";
 import { SocialFeed } from "./SocialFeed";
-import {
-  CHIP,
-  CHIP_OFF,
-  CHIP_ON,
-} from "@/components/consumer/search/header-classes";
 
 /** The server's rail keys for the two sources the All row mixes. */
 export const MESITA_RAIL_KEY = "mesita_selected";
@@ -101,6 +99,11 @@ export const GOOGLE_RAIL_KEY = "google_places";
 /** One square tile per row (MESITA-2367), 6px of room above, left and right
  *  and between tiles — one space size (Pato, MESITA-2370). */
 const PLACES_LIST = "grid grid-cols-1 content-start gap-1.5 px-1.5 pt-1.5";
+
+const ROW_BASE =
+  "relative flex w-full items-center gap-1.5 px-3 py-3.5 text-left text-xs leading-tight transition";
+const ROW_ON = "bg-card text-foreground font-semibold";
+const ROW_OFF = "text-foreground hover:bg-card/60";
 
 /** The column's default row: every place, one list, ranked like the Search
  *  map (Pato, MESITA-2516: "only keeping All is cleaner. just like in map").
@@ -121,11 +124,11 @@ export const HOME_TABS = [
 ] as const;
 export type HomeTab = (typeof HOME_TABS)[number]["key"];
 
-/** The Places tab's chip row, left to right (MESITA-2517): All, Saved, then
- *  every guest family — Search's chips (MESITA-2502) plus Saved, the
- *  guest's only list of saved places. Google Places and Mesita Selected are
- *  not guest choices (MESITA-2381): they are the sources All mixes. A family
- *  with nothing here says so rather than hiding. */
+/** The Places tab's left column, top to bottom (MESITA-2519): All and
+ *  Saved pinned, then every guest family. Saved is the guest's only list of
+ *  saved places. Google Places and Mesita Selected are not guest choices
+ *  (MESITA-2381): they are the sources All mixes. A family with nothing here
+ *  says so rather than hiding. */
 export function placesChips(): { key: string; label: string }[] {
   return [
     { key: ALL_CHIP, label: "All" },
@@ -138,6 +141,18 @@ export function placesChips(): { key: string; label: string }[] {
     })),
   ];
 }
+
+/** All and Saved: the column's pinned head (MESITA-2411, MESITA-2519). */
+export const PINNED_CHIPS = 2;
+
+/** Each group's stripe down the column's left edge (Pato, MESITA-2484: "just
+ *  one line at the left … really subtle"): the pinned head red, the families
+ *  blue (MESITA-2492). 3px, an inset shadow, so the chosen row's white face
+ *  and ink bar paint over it. */
+export const GROUP_STRIPE = {
+  pinned: "shadow-[inset_3px_0_0_oklch(0.68_0.09_35)]",
+  families: "shadow-[inset_3px_0_0_oklch(0.66_0.06_245)]",
+} as const;
 
 /** Tiles drawn per page; the next page appends on scroll (MESITA-2384). */
 export const PLACES_PAGE = 20;
@@ -401,50 +416,83 @@ export function CatalogRails() {
     </div>
   );
 
-  // The Places tab's chips, one horizontal row like Search's (MESITA-2502,
-  // MESITA-2517): line icons, never emoji (MESITA-2478), one pick.
+  // THE PLACES TAB'S LEFT COLUMN (Pato, MESITA-2519: "keep the later view of
+  // the failies. its fastwer to browse … LEFT MENU OF FAMILIES"): the
+  // lateral menu of MESITA-2367 under the tabs of MESITA-2517, which tried a
+  // horizontal chip row. All and Saved pinned on the red clay stripe, then
+  // every family on the blue one, scrolling on its own. Each row a line icon
+  // and a name, never an emoji (MESITA-2478); the chosen row white, bold,
+  // an ink bar on its left edge and a heavier stroke.
   const chips = placesChips();
-  const chipRow = (
-    <nav
-      aria-label="Places"
-      className="border-border bg-card scrollbar-hide flex shrink-0 items-center gap-2 overflow-x-auto overscroll-x-contain border-b px-3 py-2.5"
-      data-places-chips
-    >
-      {chips.map((c) => {
-        const on = chip === c.key;
-        return (
-          <button
-            key={c.key}
-            type="button"
-            onClick={() => {
-              if (!on)
-                trackEvent(supabase, "home_mode_view", { mode: c.label });
-              setChip(c.key);
-              if (c.key !== SAVED_CHIP) setFamilies(chipFamilies(c.key));
-            }}
-            aria-pressed={on}
-            className={cn(CHIP, on ? CHIP_ON : CHIP_OFF)}
-          >
-            <FamilyIcon
-              name={c.key}
-              className="h-4 w-4 shrink-0"
-              strokeWidth={on ? 2.25 : 1.75}
+  const categoryRow = (c: { key: string; label: string }) => {
+    const on = chip === c.key;
+    return (
+      <li key={c.key}>
+        <button
+          type="button"
+          onClick={() => {
+            if (!on) trackEvent(supabase, "home_mode_view", { mode: c.label });
+            setChip(c.key);
+            if (c.key !== SAVED_CHIP) setFamilies(chipFamilies(c.key));
+          }}
+          aria-pressed={on}
+          className={cn(ROW_BASE, on ? ROW_ON : ROW_OFF)}
+        >
+          {on ? (
+            <span
+              className="bg-foreground absolute inset-y-0 left-0 w-[3px]"
+              aria-hidden
             />
-            <span>{c.label}</span>
-          </button>
-        );
-      })}
+          ) : null}
+          <FamilyIcon
+            name={c.key}
+            className="h-4 w-4 shrink-0"
+            strokeWidth={on ? 2.25 : 1.75}
+          />
+          <span className="min-w-0 break-words">{c.label}</span>
+        </button>
+      </li>
+    );
+  };
+  const categories = (
+    <nav
+      className="bg-muted flex w-1/4 shrink-0 flex-col"
+      aria-label="Places"
+      data-places-categories
+    >
+      <ul
+        role="list"
+        aria-label="Yours"
+        className={cn("shrink-0", GROUP_STRIPE.pinned)}
+        data-places-group="pinned"
+      >
+        {chips.slice(0, PINNED_CHIPS).map(categoryRow)}
+      </ul>
+      <ul
+        role="list"
+        aria-label="Families"
+        className={cn(
+          "scrollbar-hide mt-2 min-h-0 flex-1 overflow-y-auto overscroll-y-contain",
+          GROUP_STRIPE.families,
+        )}
+        data-places-group="families"
+      >
+        {chips.slice(PINNED_CHIPS).map(categoryRow)}
+      </ul>
     </nav>
   );
 
   // Home's header (the location alone, MESITA-2405) → the tabs → on Places
-  // the chip row; every state draws full width below, scrolling on its own.
+  // the family column beside the tiles, on Social the feed full width; the
+  // pane scrolls on its own.
   const shell = (inner: ReactNode) => (
     <div className="flex min-h-0 flex-1 flex-col">
       {tabs}
-      {tab === "places" ? chipRow : null}
-      <div className="bg-card scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain">
-        {inner}
+      <div className="flex min-h-0 flex-1">
+        {tab === "places" ? categories : null}
+        <div className="bg-card scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain">
+          {inner}
+        </div>
       </div>
     </div>
   );
