@@ -112,6 +112,7 @@ import { toGuestClass } from "@/lib/guest-standing";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { cn, errMsg, firstInitial } from "@/lib/utils";
 import { approxFollowers } from "@/lib/consumer-identity";
+import { trackEvent } from "@/lib/analytics/track";
 
 // Re-exported: the rounding lives with the identity model (MESITA-2574).
 export { approxFollowers };
@@ -141,17 +142,12 @@ export function feedWho(lead: ActivityPerson): string {
   return lead.name;
 }
 
-/** "per" → "per•••": the username blocked after its first letters. */
-export function maskedHandle(hint: string | null): string | null {
-  return hint ? `${hint}•••` : null;
-}
-
-
-/** The Instagram proof on a row's quiet line ("per••• · 1.2K followers"; the
- *  glyph before it says Instagram), or null without Instagram (or for the
- *  guest's own row). */
+/** The Instagram proof on a row's quiet line ("@perdon · 1.2K followers";
+ *  the glyph before it says Instagram), plain text, never a link, or null
+ *  without a named Instagram (or for the guest's own row). The full handle
+ *  since MESITA-2590 (MESITA-2522 had cut it to "per•••"). */
 export function feedInstagram(lead: ActivityPerson): string | null {
-  const handle = lead.isYou ? null : maskedHandle(lead.handleHint);
+  const handle = lead.isYou || !lead.handle ? null : `@${lead.handle}`;
   if (!handle) return null;
   const followers = approxFollowers(lead.followers);
   return followers ? `${handle} · ${followers} followers` : handle;
@@ -443,11 +439,16 @@ function PersonCard({
   open: boolean;
   onClose: () => void;
 }) {
+  const supabase = useBrowserSupabase();
   const liked = useLikedPlaces(item, open);
   if (!item) return null;
   const person = item.person;
   const who = feedWho(person);
   const instagram = feedInstagram(person);
+  const igUrl =
+    person.handle && !person.isYou
+      ? `https://www.instagram.com/${encodeURIComponent(person.handle)}/`
+      : null;
   return (
     <LocalDialog
       open={open}
@@ -462,6 +463,21 @@ function PersonCard({
           instagram={instagram ? { label: instagram } : null}
           guestClass={toGuestClass(person.guestClass)}
         />
+        {/* Open Instagram (MESITA-2590): a new tab, so Mesita stays open
+            underneath; every tap is counted to measure who leaves. */}
+        {igUrl && (
+          <a
+            href={igUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => trackEvent(supabase, "social_open_instagram", {})}
+            className="border-border hover:bg-muted active:bg-muted mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl border text-sm font-semibold"
+            data-social-open-instagram
+          >
+            <InstagramGlyph className="h-4 w-4" />
+            Open Instagram
+          </a>
+        )}
         <LikedList places={liked} />
       </div>
     </LocalDialog>

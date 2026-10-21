@@ -58,6 +58,9 @@ export type ConsumerDoc = {
   instagram_verified_at: string | null;
   // MESITA-2585: may verifying Instagram set the picture? Default true.
   use_instagram_photo: boolean;
+  // MESITA-2590: Settings › Social › "Show my name in Social", off = true:
+  // the member appears in Social as "A member". place_activity_visible reads it.
+  appear_anonymous: boolean;
   // Not here on purpose: plan, guest_class and the VIP audit columns
   // (MESITA-2553). Their only writer is the admin_set_guest_standing RPC, so
   // this door cannot touch them and rejects them as unknown fields.
@@ -81,6 +84,7 @@ export const CONSUMER_PATCH_KEYS = [
   "instagram_followers_count",
   "instagram_verified_at",
   "use_instagram_photo",
+  "appear_anonymous",
   "deleted_at",
 ] as const satisfies readonly (keyof Omit<ConsumerDoc, "id" | "created_at">)[];
 
@@ -224,6 +228,13 @@ export function validateConsumerPatch(
       return { ok: false, error: "use_instagram_photo must be a boolean" };
     }
     patch.use_instagram_photo = v;
+  }
+  if ("appear_anonymous" in raw) {
+    const v = raw.appear_anonymous;
+    if (typeof v !== "boolean") {
+      return { ok: false, error: "appear_anonymous must be a boolean" };
+    }
+    patch.appear_anonymous = v;
   }
   if ("deleted_at" in raw) {
     const v = raw.deleted_at;

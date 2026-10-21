@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(147);
+select plan(148);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -687,6 +687,16 @@ select ok(
     and not has_function_privilege('authenticated', 'public.admin_set_guest_standing(uuid, text, text, text, boolean, uuid)', 'EXECUTE')
     and not has_function_privilege('anon', 'public.admin_set_guest_standing(uuid, text, text, text, boolean, uuid)', 'EXECUTE'),
   'only the service role can set a guest''s Class and Plan (MESITA-2553)'
+);
+
+-- MESITA-2590: a member can appear as "A member"; the one visibility rule reads it.
+select ok(
+  (select column_default from information_schema.columns
+    where table_schema = 'public' and table_name = 'consumers'
+      and column_name = 'appear_anonymous') = 'false'
+    and pg_get_functiondef('public.place_activity_visible(public.consumers)'::regprocedure)
+      like '%appear_anonymous%',
+  'consumers.appear_anonymous defaults to false and place_activity_visible reads it (MESITA-2590)'
 );
 
 -- MESITA-2461: a handle is proved, not typed.

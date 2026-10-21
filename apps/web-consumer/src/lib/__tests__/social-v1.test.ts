@@ -86,7 +86,7 @@ describe("the feed's copy", () => {
   const lead: ActivityPerson = {
     name: "Perdón",
     avatarUrl: null,
-    handleHint: "per",
+    handle: "perdon",
     followers: 1200,
     isYou: false,
     guestClass: "regular",
@@ -96,7 +96,7 @@ describe("the feed's copy", () => {
 
   // MESITA-2515: old-Instagram rows, the verbs over unchanged keys.
   // MESITA-2567: only liked and viewed; there is no visited.
-  // MESITA-2522: the name leads; the username never shows.
+  // MESITA-2590: the name leads; the full @handle rides on the quiet line.
   it("reads liked and viewed over the stored keys, and nothing else", () => {
     expect(VERB).toEqual({ saved: "liked", viewed: "viewed" });
   });
@@ -114,12 +114,12 @@ describe("the feed's copy", () => {
 
   // MESITA-2525: the Instagram glyph replaces the word, so the text is the
   // proof alone; the time follows it on the quiet line.
-  it("Instagram is social proof: three letters, blocked, and ~followers", () => {
+  it("Instagram is social proof: the full @handle and ~followers (MESITA-2590)", () => {
     expect(feedWho(lead)).toBe("Perdón");
-    expect(feedInstagram(lead)).toBe("per••• · 1.2K followers");
-    expect(feedInstagram({ ...lead, followers: 0 })).toBe("per•••");
+    expect(feedInstagram(lead)).toBe("@perdon · 1.2K followers");
+    expect(feedInstagram({ ...lead, followers: 0 })).toBe("@perdon");
     // Without Instagram, and on the guest's own row: no second line.
-    expect(feedInstagram({ ...lead, handleHint: null })).toBeNull();
+    expect(feedInstagram({ ...lead, handle: null })).toBeNull();
     expect(feedInstagram({ ...lead, isYou: true })).toBeNull();
   });
 
@@ -197,7 +197,7 @@ describe("anonymous members in the feed", () => {
     const anon: ActivityPerson = {
       name: "A member",
       avatarUrl: null,
-      handleHint: null,
+      handle: null,
       followers: 0,
       isYou: false,
       guestClass: "regular",
@@ -227,5 +227,46 @@ describe("a feed row has two zones", () => {
     // One place link per row: the name no longer sits inside the sentence.
     expect(row.match(/<Link/g)).toHaveLength(1);
     expect(row.match(/onClick=\{\(\) => onPerson\(item\)\}/g)).toHaveLength(1);
+  });
+});
+
+// MESITA-2590: the person card opens Instagram in a new tab and counts it;
+// Settings › Social lets a guest appear as "A member".
+describe("full handle, Open Instagram, and the Social name switch", () => {
+  const FEED = readFileSync(
+    join(__dirname, "../../components/consumer/home/SocialFeed.tsx"),
+    "utf8",
+  );
+  const SETTINGS = readFileSync(
+    join(__dirname, "../../components/consumer/me/SettingsModal.tsx"),
+    "utf8",
+  );
+  const SWITCH = readFileSync(
+    join(__dirname, "../../components/consumer/me/SocialNameRow.tsx"),
+    "utf8",
+  );
+
+  it("the card's Open Instagram is a new-tab link to the profile, counted", () => {
+    const card = FEED.slice(FEED.indexOf("function PersonCard("));
+    expect(card).toContain("https://www.instagram.com/${encodeURIComponent(person.handle)}/");
+    expect(card).toContain('target="_blank"');
+    expect(card).toContain('rel="noopener noreferrer"');
+    expect(card).toContain('trackEvent(supabase, "social_open_instagram", {})');
+    // Never on the guest's own card.
+    expect(card).toContain("person.handle && !person.isYou");
+  });
+
+  it("the row's handle is plain text, never a link", () => {
+    const row = FEED.slice(FEED.indexOf("function FeedRow("), FEED.indexOf("/** The person card"));
+    expect(row).not.toContain("instagram.com");
+    expect(row.match(/<a\b/g)).toBeNull();
+  });
+
+  it("Settings › Social: 'Show my name in Social', off means 'A member'", () => {
+    expect(SETTINGS).toContain('<SettingsGroup title="Social">');
+    expect(SETTINGS).toContain("<SocialNameRow />");
+    expect(SWITCH).toContain("Show my name in Social");
+    expect(SWITCH).toContain("appear_anonymous: !next");
+    expect(SWITCH).toContain('role="switch"');
   });
 });

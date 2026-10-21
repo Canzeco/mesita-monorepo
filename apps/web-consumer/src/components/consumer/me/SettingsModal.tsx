@@ -11,15 +11,17 @@ import {
   SettingsLinkRow,
 } from "@/components/consumer/me/settings-rows";
 import { PhoneRow } from "@/components/consumer/me/PhoneRow";
+import { SocialNameRow } from "@/components/consumer/me/SocialNameRow";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // Only rows that do something. Push, Location, Language and Default location
 // saved to localStorage and nothing read them; Export my data was a mailto;
 // Delete account went with them (Pato, MESITA-2589: "remove stupid fake
 // buttons from settings"). The one server write left here is Sign out.
-// There is no Privacy group: connecting Instagram means you show in Social,
-// always (Pato, MESITA-2552: "if you connect your … instagram, is because
-// you want to be seen").
+// Social has one switch, "Show my name in Social" (MESITA-2590): off, you
+// still show, as "A member". Nothing makes a member disappear from Social
+// (MESITA-2552: "if you connect your … instagram, is because you want to be
+// seen").
 
 export function SettingsModal() {
   return (
@@ -37,6 +39,10 @@ export function SettingsModal() {
             label="Contact"
             sub="Talk to us"
           />
+        </SettingsGroup>
+
+        <SettingsGroup title="Social">
+          <SocialNameRow />
         </SettingsGroup>
 
         {/* Sign out is an account control, so it sits with the rest of

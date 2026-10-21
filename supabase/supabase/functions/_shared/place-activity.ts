@@ -31,11 +31,10 @@ export function isMesitaPlaceId(v: unknown): v is string {
 export type ActivityPerson = {
   name: string;
   avatarUrl: string | null;
-  /** The first three letters of the Instagram username, never the whole of
-   *  it (Pato, MESITA-2522: "i don't really want the instagram username since
-   *  it might cause the users to abandond my app … just clicing maybe first 3
-   *  letters"). Null without Instagram. */
-  handleHint: string | null;
+  /** The verified Instagram username, without "@" (MESITA-2590 shows it in
+   *  full; MESITA-2522 had cut it to three letters). Null without a named
+   *  Instagram: an anonymous member never carries one. */
+  handle: string | null;
   followers: number;
   isYou: boolean;
   /** Class: regular or vip, through a partner (MESITA-2553). */
@@ -79,11 +78,10 @@ export function toClass(v: unknown): ConsumerClass {
   return "regular";
 }
 
-/** "perdon" → "per"; a shorter handle keeps one letter. */
-export function handleHint(handle: string | null | undefined): string | null {
+/** "@Perdon " → "perdon", or null. */
+export function cleanHandle(handle: string | null | undefined): string | null {
   const h = handle?.trim().replace(/^@/, "").toLowerCase();
-  if (!h) return null;
-  return h.length > 3 ? h.slice(0, 3) : h.slice(0, 1);
+  return h || null;
 }
 
 /** A row from place_activity_feed / place_activity_people. */
@@ -108,7 +106,7 @@ export function toPerson(row: ActivityRow, viewerId: string): ActivityPerson {
     return {
       name: "A member",
       avatarUrl: null,
-      handleHint: null,
+      handle: null,
       followers: 0,
       isYou,
       guestClass: "regular",
@@ -118,10 +116,10 @@ export function toPerson(row: ActivityRow, viewerId: string): ActivityPerson {
   }
   const first = row.first_name?.trim();
   return {
-    // Never "@handle": the whole username does not leave the server.
+    // The name is the first name, never "@handle"; the handle rides beside it.
     name: first || "A member",
     avatarUrl: row.avatar_url ?? null,
-    handleHint: handleHint(row.instagram_handle),
+    handle: cleanHandle(row.instagram_handle),
     followers: Math.max(
       0,
       Math.trunc(Number(row.instagram_followers_count ?? 0)) || 0,
