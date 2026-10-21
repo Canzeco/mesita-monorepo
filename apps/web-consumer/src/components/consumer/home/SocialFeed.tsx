@@ -100,7 +100,7 @@ import { FamilyIcon } from "@/lib/family-icons";
 import { EmptyState } from "@/components/shared";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { IdentityCard } from "@/components/consumer/IdentityCard";
-import { toGuestClass, toGuestPlan } from "@/lib/guest-standing";
+import { toGuestClass } from "@/lib/guest-standing";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { cn, errMsg, firstInitial } from "@/lib/utils";
 import { approxFollowers } from "@/lib/consumer-identity";
@@ -395,10 +395,7 @@ function PersonCard({
           name={who}
           avatarUrl={person.avatarUrl}
           instagram={instagram ? { label: instagram } : null}
-          standing={{
-            guestClass: toGuestClass(person.guestClass),
-            plan: toGuestPlan(person.plan),
-          }}
+          guestClass={toGuestClass(person.guestClass)}
         />
       </div>
     </LocalDialog>

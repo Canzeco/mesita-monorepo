@@ -18,55 +18,50 @@ vi.mock("@/components/consumer/overlay/LocalOverlay", () => ({
 
 const text = (html: string) => html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
 
-// Plan (Free/Premium) and Class (Regular/VIP) are two independent facts
-// (Pato, MESITA-2553).
-describe("Class and Plan on the identity card", () => {
+// The card shows Instagram and Class only; Plan is a tile on Me's grid,
+// never a chip (Pato, MESITA-2576: "don't show the plan here. Only instagram
+// and class.").
+describe("Class on the identity card, and no Plan", () => {
   const card = (
-    standing: Parameters<typeof IdentityCard>[0]["standing"],
-    doors = false,
+    guestClass: "regular" | "vip" | null,
+    door = false,
   ) =>
     renderToStaticMarkup(
       <IdentityCard
         name="Ana"
         avatarUrl={null}
-        instagram={null}
-        standing={standing}
-        onClassPress={doors ? () => {} : undefined}
-        planHref={doors ? "/me/plan" : undefined}
+        instagram={{ label: "ana••• · 1.2K followers" }}
+        guestClass={guestClass}
+        onClassPress={door ? () => {} : undefined}
       />,
     );
 
-  it("shows Plan, then Class, each named for what it is (MESITA-2574)", () => {
-    const html = card({ guestClass: "vip", plan: "free" });
-    expect(html.indexOf("data-identity-plan")).toBeLessThan(html.indexOf("data-identity-class"));
+  it("shows Instagram, then Class, and never a Plan chip (MESITA-2576)", () => {
+    for (const html of [card("vip"), card("regular"), card("vip", true)]) {
+      expect(html).not.toContain("data-identity-plan");
+      expect(html).not.toContain("lucide-credit-card");
+      expect(text(html)).not.toMatch(/\b(Free|Premium|Plan)\b/);
+    }
+    const html = card("vip");
+    expect(html.indexOf("data-identity-instagram")).toBeLessThan(html.indexOf("data-identity-class"));
     expect(html).toContain('aria-label="Class: VIP"');
-    expect(html).toContain('aria-label="Plan: Free"');
     expect(html).toContain("lucide-crown");
-    expect(html).toContain("lucide-credit-card");
     expect(html).not.toContain("lucide-gem");
   });
 
-  it("shows the plain defaults too, never a missing chip", () => {
-    const html = card({ guestClass: "regular", plan: "premium" });
-    expect(html).toContain('aria-label="Class: Regular"');
-    expect(html).toContain('aria-label="Plan: Premium"');
+  it("shows Regular too, never a missing chip", () => {
+    expect(card("regular")).toContain('aria-label="Class: Regular"');
   });
 
-  it("hides both chips when standing is unknown, never a guessed Free", () => {
+  it("hides Class when it is unknown, never a guessed Regular", () => {
     const html = card(null);
-    expect(html).not.toContain("data-identity-plan");
     expect(html).not.toContain("data-identity-class");
-    expect(text(html)).not.toMatch(/Free|Regular/);
+    expect(text(html)).not.toMatch(/Regular/);
   });
 
-  it("makes both doors on Me — Plan a link, Class a button (MESITA-2574)", () => {
-    const facts = card({ guestClass: "vip", plan: "premium" });
-    expect(facts).not.toContain("<button");
-    expect(facts).not.toContain("href=");
-    expect(facts).toContain('aria-label="Plan: Premium"');
-    const me = card({ guestClass: "vip", plan: "premium" }, true);
-    expect(me).toMatch(/<button[^>]*aria-label="Class: VIP"/);
-    expect(me).toMatch(/<a[^>]*href="\/me\/plan"[^>]*aria-label="Plan: Premium"|<a[^>]*aria-label="Plan: Premium"[^>]*href="\/me\/plan"/);
+  it("makes Class a door on Me and a fact on Social", () => {
+    expect(card("vip")).not.toContain("<button");
+    expect(card("vip", true)).toMatch(/<button[^>]*aria-label="Class: VIP"/);
   });
 
   it("reads unknown or retired values as the plain default", () => {
