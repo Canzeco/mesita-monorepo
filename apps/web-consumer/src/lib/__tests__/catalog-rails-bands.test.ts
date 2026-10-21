@@ -70,7 +70,11 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
     expect(src).toContain(
       'on ? "text-foreground font-semibold" : "text-muted-foreground"',
     );
-    expect(src).toContain("bg-foreground absolute inset-x-0 bottom-0 h-0.5");
+    // 16px past each end of the word, rounded — longer, never the tab's
+    // width, never on the strip's edge (MESITA-2533).
+    expect(src).toContain(
+      "bg-foreground absolute -inset-x-4 bottom-0 h-0.5 rounded-full",
+    );
     expect(src).toContain('<span className="relative inline-block pb-1">');
     expect(src).not.toContain('"relative flex-1 py-3 text-sm transition"');
     expect(src).not.toContain('<span className="relative inline-block py-3">');

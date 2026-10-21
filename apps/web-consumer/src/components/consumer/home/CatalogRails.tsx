@@ -363,7 +363,9 @@ export function CatalogRails() {
   // underline the fuckjing line, not the sction … the line directly below the
   // word, that way does not collapses with the lateral bar"). A bar the tab's
   // width (MESITA-2527) or on the strip's edge (MESITA-2524) met the column's
-  // chosen row. It replaced the left category column (MESITA-2367).
+  // chosen row. The line runs 16px past each end of the word, rounded (Pato,
+  // MESITA-2533: "maybe a larger line, but … should not be at the bottom and
+  // should neber be 100% of the width"). It replaced the left category column (MESITA-2367).
   // The strip is its OWN grey, halfway between the hairline (`--border`) and
   // the column (`--muted`): a bit darker than the lateral menu, under the
   // white header (Pato, MESITA-2530: "maybe that bar darker, just a bit like
@@ -399,7 +401,7 @@ export function CatalogRails() {
               {on ? (
                 <span
                   aria-hidden
-                  className="bg-foreground absolute inset-x-0 bottom-0 h-0.5"
+                  className="bg-foreground absolute -inset-x-4 bottom-0 h-0.5 rounded-full"
                 />
               ) : null}
             </span>
