@@ -57,8 +57,11 @@
 // reload button somewhere else but centralized"): the pane is light grey and
 // the rows sit in one white band, EDGE TO EDGE with only a top and bottom
 // hairline, never side borders or a rounded card (MESITA-2542: "don't add
-// lateral borders, its literally an infiite scrolloing"); a centred white
-// "Refresh" pill sits above it.
+// lateral borders, its literally an infiite scrolloing"). Above it, NO
+// BUTTON: one quiet centred line, "Updated just now · Refresh", the word
+// Refresh the tap target (Pato, MESITA-2543: "that refresh looks vibecoded
+// as fuck", A of a board of four); with the sample it reads "Sample
+// activity · Refresh". Pull to refresh and the live refresh do the rest.
 //
 // TWO TARGETS PER ROW, never both (Pato, MESITA-2542: "you can click the
 // profile or you can click the palce, but not both. if i click a profile,
@@ -258,6 +261,22 @@ function Thumb({ place }: { place: Place }) {
       )}
     </span>
   );
+}
+
+/** The quiet line above the list (MESITA-2543): "Sample activity", or how
+ *  long ago it loaded ("Updated just now", "Updated 3m ago"). */
+export function feedStatus(
+  sample: boolean,
+  updatedAt: number | null,
+  now: number,
+): string {
+  if (sample) return "Sample activity";
+  if (updatedAt == null) return "Updated just now";
+  const ago = shortAgo(
+    new Date(updatedAt).toISOString(),
+    Math.max(now, updatedAt),
+  );
+  return ago === "now" ? "Updated just now" : `Updated ${ago} ago`;
 }
 
 /** One event's identity across refreshes: who, what, where, when. */
@@ -487,6 +506,10 @@ export function SocialFeed({
   // Bumped by Try again and the refresh button: the effect refetches.
   const [attempt, setAttempt] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  // When the list last loaded, and the clock the "Updated …" line reads
+  // against (ticked by the live interval, never read during render).
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
+  const [now, setNow] = useState(0);
   // The events already shown (null before the first load, which glows
   // nothing) and the ones that just arrived.
   const seenRef = useRef<Set<string> | null>(null);
@@ -536,6 +559,9 @@ export function SocialFeed({
               FRESH_MS,
             );
           }
+          const at = Date.now();
+          setUpdatedAt(at);
+          setNow(at);
           setState({ status: "ready", items });
           setRefreshing(false);
         })
@@ -556,6 +582,7 @@ export function SocialFeed({
     load();
     // Live: ask again while the tab is in view (MESITA-2532).
     const timer = window.setInterval(() => {
+      setNow(Date.now());
       if (document.visibilityState === "visible") load();
     }, LIVE_MS);
     return () => {
@@ -663,27 +690,28 @@ export function SocialFeed({
           }}
         />
       </div>
-      <div className="flex justify-center pt-3 pb-2">
-        <button
-          type="button"
-          disabled={refreshing}
-          onClick={refresh}
-          className="border-border bg-card text-foreground hover:bg-background focus-visible:ring-ring flex h-9 items-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition outline-none focus-visible:ring-2 disabled:opacity-70"
-          data-social-refresh
-        >
-          <RotateCw
-            className={cn("h-4 w-4", refreshing && "animate-spin")}
-            strokeWidth={2.25}
-            aria-hidden
-          />
-          {refreshing ? "Refreshing…" : "Refresh"}
-        </button>
-      </div>
       <p
-        className="type-meta text-muted-foreground px-4 pb-1.5 tracking-[0.08em] uppercase"
+        className="text-muted-foreground flex items-center justify-center gap-1 pt-1 pb-1 text-xs"
+        data-social-status
         data-social-sample={feed.sample || undefined}
+        aria-live="polite"
       >
-        {feed.sample ? "Sample activity" : "Near you"}
+        {refreshing ? (
+          <span className="py-3">Refreshing…</span>
+        ) : (
+          <>
+            <span>{feedStatus(feed.sample, updatedAt, now)}</span>
+            <span aria-hidden>·</span>
+            <button
+              type="button"
+              onClick={refresh}
+              className="text-foreground focus-visible:ring-ring rounded-sm py-3 font-semibold outline-none focus-visible:ring-2"
+              data-social-refresh
+            >
+              Refresh
+            </button>
+          </>
+        )}
       </p>
       <ul
         role="list"

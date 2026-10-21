@@ -47,10 +47,12 @@ describe("the row", () => {
 
   // MESITA-2535: a notification stream — a refresh button, new rows glow.
   it("has a refresh button in a header row and lets new rows glow in", () => {
-    expect(src).toContain('{refreshing ? "Refreshing…" : "Refresh"}');
+    // MESITA-2543: no button — "Updated just now · Refresh", the word the
+    // tap target; "Refreshing…" while it loads.
     expect(src).toContain("data-social-refresh");
-    expect(src).toContain('refreshing && "animate-spin"');
-    expect(src).toContain('{feed.sample ? "Sample activity" : "Near you"}');
+    expect(src).toContain("data-social-status");
+    expect(src).toContain("Refreshing…");
+    expect(src).toContain("{feedStatus(feed.sample, updatedAt, now)}");
     expect(src).toContain("export const FRESH_MS = 4_000;");
     expect(src).toContain('fresh && "bg-muted"');
     // The first load glows nothing; the sample never glows.
@@ -81,7 +83,9 @@ describe("the row", () => {
     // (MESITA-2542).
     expect(src).not.toContain("rounded-2xl");
     expect(src).not.toContain("mx-3");
-    expect(src).toContain('<div className="flex justify-center pt-3 pb-2">');
+    // No pill: the stock-button look is gone (MESITA-2543).
+    expect(src).not.toContain('<div className="flex justify-center pt-3 pb-2">');
+    expect(src).not.toContain("rounded-full border px-4");
     expect(src).not.toContain('aria-label="Refresh"');
   });
 
