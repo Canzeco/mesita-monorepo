@@ -1,44 +1,54 @@
 "use client";
 
-import { useSyncExternalStore, type ReactNode } from "react";
+import { useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   ChevronRight,
   Copy,
+  Dices,
   Mail,
   MessageCircle,
   MessageSquare,
-  Send,
   Share,
   type LucideIcon,
 } from "lucide-react";
 
+import { MesitaMark } from "@/components/brand/MesitaMark";
 import {
   IconCircle,
   RowDivider,
+  SectionEyebrow,
   SettingsGroup,
 } from "@/components/consumer/me/settings-rows";
 import {
-  APP_SHARE_LINKS,
   APP_SHARE_TEXT,
   APP_SHARE_URL,
+  SHARE_CARD_STYLES,
+  SHARE_MESSAGES,
+  shareBody,
+  shareLinks,
+  type ShareCardStyle,
 } from "@/lib/share-app";
 import { canShareNatively, copyToClipboard } from "@/lib/share-place";
 import { toast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 
 // SHARE — the bar's fourth tab, a page of its own (Pato, MESITA-2566: "no
-// share create a dedicate page for share. you know."). It was a tap that
-// fired the share sheet and fell back to the clipboard, which on some phones
-// showed "Link copied" and "Couldn't share Mesita" at once.
+// share create a dedicate page for share. you know.").
 //
-//   (plane)  Share Mesita
-//            Find great places to eat and book a table with Mesita.
-//   [ consumer.mesita.ai/                       Copy ]
-//   Share…     the phone's own sheet — only where there is one
-//   WhatsApp · Messages · Email                 each prefilled with the line
-//   Copy link
+//   ┌────────────────────────────────┐
+//   │ M Mesita                INVITE │   the invite card: gift-card shape,
+//   │                                │   no amount, no credit, no code
+//   │ Stop asking me where to eat.   │   (Pato, MESITA-2568: "like it must
+//   │ Use this. 🙄                   │   look like a gift card but without
+//   │ consumer.mesita.ai  No credit. │   credit … meme style")
+//   └────────────────────────────────┘
+//   MESSAGE   [chip] [chip] [chip] … 🎲
+//   STYLE     ● ● ● ● ●
+//   SEND IT   Share… · WhatsApp · Messages · Email · Copy link
 //
-// ONE OUTCOME PER TAP, ONE TOAST AT MOST. Closing the phone's sheet is a
-// decision, not a failure (AbortError, silent). Nothing falls through to a
+// ONLY THE MESSAGE TRAVELS, then the link. The style dresses this page; no
+// image is sent. ONE OUTCOME PER TAP, ONE TOAST AT MOST: closing the phone's
+// sheet is a decision (AbortError, silent), and nothing falls through to a
 // second action. The link carries nothing about the guest (share-app.ts).
 
 const noop = () => () => {};
@@ -46,6 +56,51 @@ const noop = () => () => {};
 /** The phone's share sheet exists. False on the server and on desktop. */
 function useCanShare(): boolean {
   return useSyncExternalStore(noop, canShareNatively, () => false);
+}
+
+function InviteCard({
+  message,
+  look,
+}: {
+  message: string;
+  look: ShareCardStyle;
+}) {
+  return (
+    <div
+      className={cn(
+        "relative aspect-[1.586/1] w-full overflow-hidden rounded-3xl p-5 shadow-lg ring-1 ring-black/5",
+        look.ink,
+      )}
+      style={{ background: look.background }}
+      data-invite-card={look.id}
+    >
+      {/* A big faint mark in the corner: the card's watermark. */}
+      <MesitaMark className="pointer-events-none absolute -right-8 -bottom-10 h-44 w-44 opacity-10" />
+      <div className="relative flex h-full flex-col">
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-1.5 text-sm font-semibold">
+            <MesitaMark className="h-5 w-5" />
+            Mesita
+          </span>
+          <span className="type-meta font-semibold tracking-[0.2em] uppercase opacity-80">
+            Invite
+          </span>
+        </div>
+        <p
+          className="font-display mt-auto line-clamp-3 text-2xl leading-tight font-semibold tracking-tight"
+          data-invite-message
+        >
+          {message}
+        </p>
+        <div className="type-meta mt-3 flex items-center justify-between font-medium opacity-80">
+          <span>
+            {APP_SHARE_URL.replace(/^https:\/\//, "").replace(/\/$/, "")}
+          </span>
+          <span>No credit. Just vibes.</span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function Row({
@@ -116,11 +171,11 @@ async function copyLink() {
   else toast.error("Couldn't copy the link");
 }
 
-async function openShareSheet() {
+async function openShareSheet(message: string) {
   try {
     await navigator.share({
       title: "Mesita",
-      text: APP_SHARE_TEXT,
+      text: message,
       url: APP_SHARE_URL,
     });
   } catch (err) {
@@ -131,42 +186,89 @@ async function openShareSheet() {
 
 export function SharePage() {
   const canShare = useCanShare();
-  const shown = APP_SHARE_URL.replace(/^https:\/\//, "");
+  const [messageIndex, setMessageIndex] = useState(0);
+  const [lookId, setLookId] = useState<ShareCardStyle["id"]>(
+    SHARE_CARD_STYLES[0].id,
+  );
+  const message = SHARE_MESSAGES[messageIndex];
+  const look =
+    SHARE_CARD_STYLES.find((s) => s.id === lookId) ?? SHARE_CARD_STYLES[0];
+  const links = shareLinks(message);
+
+  // 🎲: any other message, never the same one twice in a row.
+  const shuffle = () => {
+    const step = 1 + Math.floor(Math.random() * (SHARE_MESSAGES.length - 1));
+    setMessageIndex((i) => (i + step) % SHARE_MESSAGES.length);
+  };
+
   return (
     <div
-      className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pt-8 pb-8"
+      className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pt-6 pb-8"
       data-share-page
     >
-      <div className="flex flex-col items-center gap-3 text-center">
-        <span
-          className="bg-muted text-foreground flex h-14 w-14 items-center justify-center rounded-2xl"
-          aria-hidden
-        >
-          <Send className="h-6 w-6" />
-        </span>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">
-          Share Mesita
-        </h1>
-        <p className="text-muted-foreground type-body max-w-xs">
-          {APP_SHARE_TEXT}
-        </p>
+      <h1 className="font-display text-2xl font-semibold tracking-tight">
+        Share Mesita
+      </h1>
+      <p className="text-muted-foreground type-body mt-1">{APP_SHARE_TEXT}</p>
+
+      <div className="mt-5">
+        <InviteCard message={message} look={look} />
       </div>
 
-      <div className="border-border bg-card mt-6 flex items-center gap-2 rounded-2xl border py-2 pr-2 pl-4">
-        <span
-          className="min-w-0 flex-1 truncate text-sm font-medium"
-          data-share-link
-        >
-          {shown}
-        </span>
-        <button
-          type="button"
-          onClick={() => void copyLink()}
-          className="bg-foreground text-background flex h-9 shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition active:scale-[0.98]"
-        >
-          <Copy className="h-4 w-4" aria-hidden />
-          Copy
-        </button>
+      <div className="mt-6 flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <SectionEyebrow>Message</SectionEyebrow>
+          <button
+            type="button"
+            onClick={shuffle}
+            aria-label="Another message"
+            className="text-foreground/70 hover:bg-muted flex h-8 items-center gap-1 rounded-full px-2.5 text-xs font-semibold transition"
+            data-share-shuffle
+          >
+            <Dices className="h-4 w-4" aria-hidden />
+            Shuffle
+          </button>
+        </div>
+        <div className="scrollbar-hide -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+          {SHARE_MESSAGES.map((m, i) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setMessageIndex(i)}
+              aria-pressed={i === messageIndex}
+              className={cn(
+                "max-w-[15rem] shrink-0 truncate rounded-full border px-3 py-2 text-sm transition",
+                i === messageIndex
+                  ? "bg-foreground text-background border-transparent font-semibold"
+                  : "border-border bg-card text-foreground hover:bg-muted",
+              )}
+              data-share-message
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-5 flex flex-col gap-2">
+        <SectionEyebrow>Style</SectionEyebrow>
+        <div className="flex gap-3">
+          {SHARE_CARD_STYLES.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => setLookId(s.id)}
+              aria-label={s.label}
+              aria-pressed={s.id === look.id}
+              className={cn(
+                "h-10 w-10 rounded-full ring-1 ring-black/10 transition",
+                s.id === look.id && "ring-foreground ring-2 ring-offset-2",
+              )}
+              style={{ background: s.background }}
+              data-share-style={s.id}
+            />
+          ))}
+        </div>
       </div>
 
       <div className="mt-6">
@@ -177,7 +279,7 @@ export function SharePage() {
                 Icon={Share}
                 label="Share…"
                 sub="Any app on your phone"
-                onClick={() => void openShareSheet()}
+                onClick={() => void openShareSheet(message)}
                 data="sheet"
               />
               <RowDivider />
@@ -186,23 +288,18 @@ export function SharePage() {
           <Row
             Icon={MessageCircle}
             label="WhatsApp"
-            href={APP_SHARE_LINKS.whatsapp}
+            href={links.whatsapp}
             data="whatsapp"
           />
           <RowDivider />
           <Row
             Icon={MessageSquare}
             label="Messages"
-            href={APP_SHARE_LINKS.sms}
+            href={links.sms}
             data="sms"
           />
           <RowDivider />
-          <Row
-            Icon={Mail}
-            label="Email"
-            href={APP_SHARE_LINKS.email}
-            data="email"
-          />
+          <Row Icon={Mail} label="Email" href={links.email} data="email" />
           <RowDivider />
           <Row
             Icon={Copy}
@@ -212,6 +309,13 @@ export function SharePage() {
           />
         </SettingsGroup>
       </div>
+      {/* What the channels above send, said plainly. */}
+      <p
+        className="text-muted-foreground type-body mt-3 text-center"
+        data-share-preview
+      >
+        Sends: “{shareBody(message)}”
+      </p>
     </div>
   );
 }
