@@ -27,11 +27,9 @@ describe("One ranking, no prefer (MESITA-2516)", () => {
   it("All is every family; a family row is that family", () => {
     expect(isEveryFamily(ALL_CHIP)).toBe(true);
     expect(isEveryFamily("coffee")).toBe(false);
-    // Social and Saved read no pool, so they never change the request.
+    // Saved reads no pool, so it never changes the request; Social is a tab.
     const rails = src("components/consumer/home/CatalogRails.tsx");
-    expect(rails).toMatch(
-      /if \(c\.key !== SOCIAL_CHIP && c\.key !== SAVED_CHIP\) \{\s+setFamilies\(chipFamilies\(c\.key\)\);/,
-    );
+    expect(rails).toContain("if (c.key !== SAVED_CHIP) setFamilies(chipFamilies(c.key));");
     for (const gone of ["NEAR_CHIP", "POPULAR_CHIP", "chipPrefer", "setPrefer", "AreaPrefer"]) {
       expect(rails, gone).not.toContain(gone);
     }

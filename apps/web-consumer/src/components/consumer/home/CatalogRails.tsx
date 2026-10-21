@@ -1,33 +1,30 @@
 "use client";
 
-// Home — a Temu-style split (Pato, MESITA-2367) under Home's header.
+// Home — two tabs under Home's header (Pato, MESITA-2517: "header (Mesita
+// location as it is) then another header (Places. Social) … If places, show
+// the horizontal catalog, is social, show the social feed. easy peasy").
 //
-//   [⌖ Tecnologico                       ⌄]   Home's header (ModeTabs) is the
-//   ┌────────────────┬─────────────────────┐   location alone (MESITA-2405),
-//   │ ⚇ Social        │                     │   written to
-//   │ ○ Saved         │       square        │   lib/active-location.ts and
-//   │▌▦ All           │        tile         │   read here.
-//   │ ──────────────  │                     │
-//   │ ○ Coffee     ↕  │                     │
+//   Mesita            [⌖ Tecnologico ⌄]   Home's header (ModeTabs): the
+//   ─────────────────────────────────────  location alone (MESITA-2405),
+//        Places       │      Social         written to lib/active-location.ts
+//   ━━━━━━━━━━━━━━━━━                       and read here.
+//   (▦ All) (♡ Saved) (○ Coffee) (○ …)  →
+//   ┌─────────────────────────────────┐
+//   │           square tile           │
 //
-// Every row's mark is a monochrome line icon (lib/family-icons.tsx), never
-// an emoji (Pato, MESITA-2478: "emojis uses color and that takes
-// attention"); the chosen row's stroke is heavier, like BottomNav's.
+// Places: one horizontal chip row like Search's (MESITA-2502) — All, Saved,
+// then every family — over full-width square tiles. Social: the activity
+// feed (SocialFeed), full width. They replaced the left category column
+// (MESITA-2367 to MESITA-2516). Every chip's mark is a monochrome line icon
+// (lib/family-icons.tsx), never an emoji (Pato, MESITA-2478: "emojis uses
+// color and that takes attention"); the chosen chip's stroke is heavier.
 //
-// Social DRAWS IN THE RIGHT PANE (Pato, MESITA-2474: "social must be on the
-// same feed. don't change page"): the row is chosen like Saved and the
-// activity list (SocialFeed) fills the right three quarters. It opened its own
-// page, /discover/social, from MESITA-2442 until then.
-//
-// Left quarter (Pato, MESITA-2411): Saved, Social and All (the default:
-// every place) PINNED above a rule; under it one row per family, and only
-// that list scrolls. The chosen row is white, bold, an ink bar on its left
-// edge. All replaced Nearby and Popular (Pato, MESITA-2516: "only keeping
-// All is cleaner. just like in map"): every row is ranked the Map's way,
-// Proximity^a × Popularity^1 × Selected^1. All is the server's ONE ranked
-// Area pool (MESITA-2379/2384):
+// All (the default: every place) is ranked the Map's way (Pato, MESITA-2516:
+// "only keeping All is cleaner. just like in map"), Proximity^a ×
+// Popularity^1 × Selected^1, and so is every family chip. All is the
+// server's ONE ranked Area pool (MESITA-2379/2384):
 // Google and Mesita places merged, scored and ranked there; this screen
-// pages it (20 tiles at a time, more on scroll). A family row ASKS ITS OWN
+// pages it (20 tiles at a time, more on scroll). A family chip ASKS ITS OWN
 // QUESTION (MESITA-2438): it sends the family's key, so Google gets that
 // family's full type list and the server lists its primary places before
 // its secondary ones. Each location × row's pool is kept ten minutes
@@ -91,6 +88,11 @@ import { cn, errMsg } from "@/lib/utils";
 import { placesFeed } from "@/lib/catalog-feed";
 import { AreaDiagnostics } from "./AreaDiagnostics";
 import { SocialFeed } from "./SocialFeed";
+import {
+  CHIP,
+  CHIP_OFF,
+  CHIP_ON,
+} from "@/components/consumer/search/header-classes";
 
 /** The server's rail keys for the two sources the All row mixes. */
 export const MESITA_RAIL_KEY = "mesita_selected";
@@ -99,11 +101,6 @@ export const GOOGLE_RAIL_KEY = "google_places";
 /** One square tile per row (MESITA-2367), 6px of room above, left and right
  *  and between tiles — one space size (Pato, MESITA-2370). */
 const PLACES_LIST = "grid grid-cols-1 content-start gap-1.5 px-1.5 pt-1.5";
-
-const ROW_BASE =
-  "relative flex w-full items-center gap-1.5 px-3 py-3.5 text-left text-xs leading-tight transition";
-const ROW_ON = "bg-card text-foreground font-semibold";
-const ROW_OFF = "text-foreground hover:bg-card/60";
 
 /** The column's default row: every place, one list, ranked like the Search
  *  map (Pato, MESITA-2516: "only keeping All is cleaner. just like in map").
@@ -117,45 +114,30 @@ export function isEveryFamily(chip: string): boolean {
 }
 /** The guest's saved places (MESITA-2383; Home's Favorites tab, then row, Saved since MESITA-2427). */
 export const SAVED_CHIP = "saved";
-/** Social — a row since MESITA-2405 (it was a Home pill); its feed draws in
- *  the right pane (MESITA-2474). */
-export const SOCIAL_CHIP = "social";
+/** Home's two tabs (Pato, MESITA-2517: "another header (Places. Social)"). */
+export const HOME_TABS = [
+  { key: "places", label: "Places" },
+  { key: "social", label: "Social" },
+] as const;
+export type HomeTab = (typeof HOME_TABS)[number]["key"];
 
-/** The column: Saved · Social · All, a rule, then every guest family
- *  (MESITA-2383, MESITA-2384, MESITA-2411, MESITA-2516). Everything through
- *  ALL_CHIP is pinned; the families after it scroll. Google Places and
- *  Mesita Selected are not guest choices (MESITA-2381): they are the sources
- *  All mixes. A family with nothing here says so rather than hiding. */
+/** The Places tab's chip row, left to right (MESITA-2517): All, Saved, then
+ *  every guest family — Search's chips (MESITA-2502) plus Saved, the
+ *  guest's only list of saved places. Google Places and Mesita Selected are
+ *  not guest choices (MESITA-2381): they are the sources All mixes. A family
+ *  with nothing here says so rather than hiding. */
 export function placesChips(): { key: string; label: string }[] {
   return [
-    // Saved first, then Social (Pato, MESITA-2490). Saved, not Favorites
-    // (Pato, MESITA-2427); the heart stays, matching the tile's save button
-    // (MESITA-2430).
-    { key: SAVED_CHIP, label: "Saved" },
-    // Social's feed draws in the right pane (MESITA-2474); no "Soon" tag
-    // ever (Pato, MESITA-2418: the tag "looks like shit").
-    { key: SOCIAL_CHIP, label: "Social" },
     { key: ALL_CHIP, label: "All" },
+    // Saved, not Favorites (Pato, MESITA-2427); the heart matches the
+    // tile's save button (MESITA-2430).
+    { key: SAVED_CHIP, label: "Saved" },
     ...FILTERABLE_PLACE_FAMILIES.map((f) => ({
       key: f.key as string,
       label: f.label,
     })),
   ];
 }
-
-/** Saved, Social, All: the pinned head of the column (MESITA-2411,
- *  MESITA-2490, MESITA-2516). */
-export const PINNED_CHIPS = 3;
-
-/** Each group's stripe down the rail's left edge (Pato, MESITA-2484: "just
- *  one line at the left … really subtle"). Two groups, two muted clays
- *  (MESITA-2492): the pinned four red, the families blue. 3px, an inset
- *  shadow, so the chosen row's white face and ink bar paint over it, and on
- *  the scrolling families list it stays put. */
-export const GROUP_STRIPE = {
-  pinned: "shadow-[inset_3px_0_0_oklch(0.68_0.09_35)]",
-  families: "shadow-[inset_3px_0_0_oklch(0.66_0.06_245)]",
-} as const;
 
 /** Tiles drawn per page; the next page appends on scroll (MESITA-2384). */
 export const PLACES_PAGE = 20;
@@ -242,9 +224,10 @@ export function CatalogRails() {
   const onCityFallback = origin === null && coords === null && locationSettled;
   const from = origin ?? coords ?? (onCityFallback ? MONTERREY_CENTER : null);
   const waitingForFix = origin === null && coords === null && !locationSettled;
-  // One ranking for every row, the Map's (MESITA-2516): the question is
-  // the place and the family. Social and Saved read no pool, so they keep
-  // the last pool row's family and never spend a request.
+  // One ranking for every chip, the Map's (MESITA-2516): the question is
+  // the place and the family. Saved and the Social tab read no pool, so they
+  // keep the last pool chip's family and never spend a request.
+  const [tab, setTab] = useState<HomeTab>("places");
   const [chip, setChip] = useState<string>(ALL_CHIP);
   // The family the pool was asked for (MESITA-2438): a family row's own,
   // none for All.
@@ -376,87 +359,92 @@ export function CatalogRails() {
     });
   };
 
-  // Every row reads the same: line icon + label (the icon was an emoji until
-  // MESITA-2478). Social wore a muted label and a "Soon" tag (MESITA-2408)
-  // until Pato cut it (MESITA-2418).
-  const categoryRow = (c: { key: string; label: string }) => (
-    <li key={c.key}>
-      <button
-        type="button"
-        onClick={() => {
-          // The in-Home switch (`nav_tab_tap` is BottomNav's): since
-          // MESITA-2409 Home's modes are this column's rows.
-          if (chip !== c.key)
-            trackEvent(supabase, "home_mode_view", { mode: c.label });
-          setChip(c.key);
-          if (c.key !== SOCIAL_CHIP && c.key !== SAVED_CHIP) {
-            setFamilies(chipFamilies(c.key));
-          }
-        }}
-        aria-pressed={chip === c.key}
-        className={cn(ROW_BASE, chip === c.key ? ROW_ON : ROW_OFF)}
-      >
-        {chip === c.key ? (
-          <span
-            className="bg-foreground absolute inset-y-0 left-0 w-[3px]"
-            aria-hidden
-          />
-        ) : null}
-        {/* A line icon, never an emoji (MESITA-2478): 1.75 stroke, 2.25
-            when chosen, BottomNav's pair. */}
-        <FamilyIcon
-          name={c.key}
-          className="h-4 w-4 shrink-0"
-          strokeWidth={chip === c.key ? 2.25 : 1.75}
-        />
-        <span className="min-w-0 break-words">{c.label}</span>
-      </button>
-    </li>
-  );
-  const chips = placesChips();
-
-  const categories = (
-    <nav
-      className="bg-muted flex w-1/4 shrink-0 flex-col"
-      aria-label="Places"
-      data-places-categories
+  // ONE TAB BAND under Home's header (Pato, MESITA-2517: "another header
+  // (Places. Social) … If places, show the horizontal catalog, is social,
+  // show the social feed"): two equal tabs, the chosen one bold over an ink
+  // underline. It replaced the left category column (MESITA-2367).
+  const tabs = (
+    <div
+      role="tablist"
+      aria-label="Home"
+      className="border-border bg-card flex shrink-0 border-b"
+      data-home-tabs
     >
-      {/* Two groups, one clay stripe each, 8px apart; no rules (Pato,
-          MESITA-2484, MESITA-2492): Saved · Social · All in red,
-          pinned, never scrolling (MESITA-2411) │ the families in blue. */}
-      <ul
-        role="list"
-        aria-label="Yours"
-        className={cn("shrink-0", GROUP_STRIPE.pinned)}
-        data-places-pinned
-        data-places-group="pinned"
-      >
-        {chips.slice(0, PINNED_CHIPS).map(categoryRow)}
-      </ul>
-      <ul
-        role="list"
-        aria-label="Families"
-        className={cn(
-          "scrollbar-hide mt-2 min-h-0 flex-1 overflow-y-auto overscroll-y-contain",
-          GROUP_STRIPE.families,
-        )}
-        data-places-families
-        data-places-group="families"
-      >
-        {chips.slice(PINNED_CHIPS).map(categoryRow)}
-      </ul>
+      {HOME_TABS.map((t) => {
+        const on = tab === t.key;
+        return (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={on}
+            onClick={() => {
+              if (!on)
+                trackEvent(supabase, "home_mode_view", { mode: t.label });
+              setTab(t.key);
+            }}
+            className={cn(
+              "relative flex-1 py-3 text-sm transition",
+              on ? "text-foreground font-semibold" : "text-muted-foreground",
+            )}
+          >
+            {t.label}
+            {on ? (
+              <span
+                aria-hidden
+                className="bg-foreground absolute inset-x-0 bottom-0 h-0.5"
+              />
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  // The Places tab's chips, one horizontal row like Search's (MESITA-2502,
+  // MESITA-2517): line icons, never emoji (MESITA-2478), one pick.
+  const chips = placesChips();
+  const chipRow = (
+    <nav
+      aria-label="Places"
+      className="border-border bg-card scrollbar-hide flex shrink-0 items-center gap-2 overflow-x-auto overscroll-x-contain border-b px-3 py-2.5"
+      data-places-chips
+    >
+      {chips.map((c) => {
+        const on = chip === c.key;
+        return (
+          <button
+            key={c.key}
+            type="button"
+            onClick={() => {
+              if (!on)
+                trackEvent(supabase, "home_mode_view", { mode: c.label });
+              setChip(c.key);
+              if (c.key !== SAVED_CHIP) setFamilies(chipFamilies(c.key));
+            }}
+            aria-pressed={on}
+            className={cn(CHIP, on ? CHIP_ON : CHIP_OFF)}
+          >
+            <FamilyIcon
+              name={c.key}
+              className="h-4 w-4 shrink-0"
+              strokeWidth={on ? 2.25 : 1.75}
+            />
+            <span>{c.label}</span>
+          </button>
+        );
+      })}
     </nav>
   );
 
-  // Home's header (the location alone, MESITA-2405) → the split;
-  // every state draws in the right three quarters, which scrolls on its own.
+  // Home's header (the location alone, MESITA-2405) → the tabs → on Places
+  // the chip row; every state draws full width below, scrolling on its own.
   const shell = (inner: ReactNode) => (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex min-h-0 flex-1">
-        {categories}
-        <div className="bg-card scrollbar-hide flex min-h-0 w-3/4 flex-col overflow-y-auto overscroll-y-contain">
-          {inner}
-        </div>
+      {tabs}
+      {tab === "places" ? chipRow : null}
+      <div className="bg-card scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain">
+        {inner}
       </div>
     </div>
   );
@@ -496,8 +484,8 @@ export function CatalogRails() {
     );
   };
 
-  // Social reads its own feed, never the catalog (MESITA-2474).
-  if (chip === SOCIAL_CHIP) return shell(<SocialFeed />);
+  // Social reads its own feed, never the catalog (MESITA-2474, MESITA-2517).
+  if (tab === "social") return shell(<SocialFeed />);
 
   // Saved never waits on the catalog: the saves are local.
   if (chip === SAVED_CHIP) {
