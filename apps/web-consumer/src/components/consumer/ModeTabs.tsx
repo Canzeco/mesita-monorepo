@@ -6,13 +6,14 @@
 //   Mesita                                 [📍 Tecnologico ⌄]
 //
 // One 52px row, 16px sides, the name on the left, the location on the right
-// (LocationPicker; MESITA-2405 made it the header's only control). WHITE,
-// the name in ink and the box in the quiet grey, with no hairline: the
-// Places | Social strip under it is grey, so the two layers part on their
-// own (Pato, MESITA-2526: "make mesita header white and the places/social
-// selector a bit dark"). MESITA-2524 had tried the other way round, an ink
-// header over white tabs; before that it was white with a hairline
-// (MESITA-2409, MESITA-2480); MESITA-2476's brand pink was sent back.
+// (LocationPicker; MESITA-2405 made it the header's only control). LIGHT
+// STONE: the hairline grey (`bg-border`), one step darker than the Places |
+// Social strip under it, the name in ink and the location in a white box,
+// so header, strip and tiles step from dark to light (Pato, MESITA-2529:
+// "i don't really love the header. try a bit darker background", A of a
+// board of four). It was white over the grey strip (MESITA-2526), ink over
+// white tabs (MESITA-2524), white with a hairline (MESITA-2409,
+// MESITA-2480); MESITA-2476's brand pink was sent back.
 // No logo for now (MESITA-2480, Pato: "just write mesita with a slightly
 // different font that make it look like a logo … dont create logos yet"):
 // the word "Mesita" in Outfit, a geometric sans with a one-storey a,
@@ -30,15 +31,16 @@ import { useSavedLocationBackfill } from "@/lib/use-saved-location-backfill";
 
 const wordmarkFont = Outfit({ subsets: ["latin"], weight: "700" });
 
-/** The band: white, sticky, over the grey tab strip (MESITA-2526). */
+/** The band: light stone, sticky, over the lighter grey tab strip
+ *  (MESITA-2529). */
 export const BRAND_HEADER_CLASS =
-  "bg-card text-foreground sticky top-0 z-20 shrink-0";
+  "bg-border text-foreground sticky top-0 z-20 shrink-0";
 
 /** The header's name, set as type, not a drawn logo (MESITA-2480). */
 export const HOME_WORDMARK_CLASS =
   "text-foreground shrink-0 text-2xl leading-none tracking-[-0.03em] select-none";
 
-/** The white band with the word "Mesita", then the tab's own control (Home:
+/** The stone band with the word "Mesita", then the tab's own control (Home:
  *  the location box). */
 export function BrandHeader({ children }: { children?: ReactNode }) {
   return (
@@ -57,7 +59,7 @@ export function BrandHeader({ children }: { children?: ReactNode }) {
 }
 
 /** Home's header: the name, then the location picker (MESITA-2470).
- *  Achromatic: ink on white (MESITA-2480, MESITA-2526). */
+ *  Achromatic: ink on stone grey (MESITA-2480, MESITA-2529). */
 export function ModeTabs() {
   // Saved pins still waiting for their names get them here, once per Home
   // visit (MESITA-2501), whether or not the sheet opens.

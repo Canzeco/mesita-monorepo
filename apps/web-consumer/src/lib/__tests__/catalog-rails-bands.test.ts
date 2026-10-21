@@ -249,12 +249,13 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
       "h-9",
       "rounded-xl",
       "border",
-      // The quiet grey on the white header (MESITA-2480, MESITA-2526).
-      "bg-muted",
+      // White on the stone header (MESITA-2529).
+      "bg-card",
       "text-foreground",
     ])
       expect(tokens, t).toContain(t);
     expect(tokens).not.toContain("bg-background/15");
+    expect(tokens).not.toContain("bg-muted");
     const tabs = readFileSync(
       join(__dirname, "../../components/consumer/ModeTabs.tsx"),
       "utf8",
@@ -311,17 +312,17 @@ describe("the Places grid (MESITA-2366)", () => {
     expect(src).not.toContain("data-band");
   });
 
-  // White over a grey tab strip (Pato, MESITA-2526: "make mesita header
-  // white and the places/social selector a bit dark"). MESITA-2524 tried an
-  // ink header over white tabs for the same contrast; before that it was the
-  // bottom bar's white (MESITA-2409/2480); MESITA-2476's pink was sent back.
-  it("paints Home's header white with the name in ink, over a grey tab strip", () => {
+  // Light stone (the hairline grey) over the lighter grey tab strip (Pato,
+  // MESITA-2529: "try a bit darker background"). It was white over the strip
+  // (MESITA-2526), ink over white tabs (MESITA-2524), the bottom bar's white
+  // (MESITA-2409/2480); MESITA-2476's pink was sent back.
+  it("paints Home's header stone grey with the name in ink, over a lighter grey tab strip", () => {
     const tabs = readFileSync(
       join(__dirname, "../../components/consumer/ModeTabs.tsx"),
       "utf8",
     );
     expect(tabs).toContain(
-      '"bg-card text-foreground sticky top-0 z-20 shrink-0"',
+      '"bg-border text-foreground sticky top-0 z-20 shrink-0"',
     );
     expect(tabs).toContain('"text-foreground shrink-0 text-2xl');
     expect(tabs).not.toContain("bg-foreground text-background");
