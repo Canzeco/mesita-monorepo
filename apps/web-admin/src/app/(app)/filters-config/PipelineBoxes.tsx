@@ -342,10 +342,10 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             Place ID, gated, scored and ranked before any page is cut. The source is never a guest filter.
           </p>
           <p className="mt-2">
-            The Map (the Search tab) and the Catalog (Home&apos;s Places) are two views of this one pipeline. The guest&apos;s
-            mode (Nearby, Popular or one family) reads one row of the weights
-            table: score = Proximity<sup>a</sup> × Popularity<sup>b</sup> ×
-            Selected<sup>c</sup>, three separate signals.
+            The Map (the Search tab) and the Catalog (Home&apos;s Places) are two views of this one pipeline, ranked one way
+            (MESITA-2516): score = Proximity<sup>a</sup> × Popularity<sup>1</sup> ×
+            Selected<sup>1</sup>, a = Map proximity weight. The weights table
+            below feeds neither view.
           </p>
         </>
       }
@@ -427,10 +427,11 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           Popularity<sup>b</sup> × Selected<sup>c</sup>. 0 turns a signal off
           for that mode; within a mode only the ratios a : b : c change the
           order (4 · 1 · 1 ranks like 8 · 2 · 2). Every family shares the
-          Family row. The Map reads none of the rows: it scores
-          Proximity<sup>a</sup> × Popularity<sup>1</sup> × Selected<sup>1</sup>
-          with a = Map proximity weight (below 1 softens distance, above 1
-          sharpens it) and its reach = the screen radius. A place with no
+          Family row. The Map and the Catalog read none of the rows
+          (MESITA-2516): both score Proximity<sup>a</sup> × Popularity<sup>1</sup> ×
+          Selected<sup>1</sup> with a = Map proximity weight (below 1 softens
+          distance, above 1 sharpens it); the Map&apos;s reach is the screen
+          radius, the Catalog&apos;s the Proximity reach above. A place with no
           Google numbers has Popularity 0, so it sinks to the bottom unless b
           is 0.
         </p>
