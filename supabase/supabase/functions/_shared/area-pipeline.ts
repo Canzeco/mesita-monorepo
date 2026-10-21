@@ -252,19 +252,28 @@ export const SCREEN_RADIUS_KM_MIN = 0.05;
 export const SCREEN_RADIUS_KM_MAX = 50;
 
 /**
- * THE SCREEN RADIUS (MESITA-2504): half the visible map's width, in km at
- * its middle latitude, so the circle spans the screen edge to edge (Pato,
- * MESITA-2507: "make the radious as widht as horiztonally widh"; it was the
- * average of the half-width and half-height). Clamped to
- * SCREEN_RADIUS_KM_MIN..MAX. Null when the bounds are missing, inverted or
- * wider than AREA_BOUNDS_MAX_KM (the caller falls back to its operator
- * radius).
+ * THE SCREEN RADIUS (MESITA-2504): the distance from the cross to the
+ * NEAREST edge of the visible map, in km, so the circle always fits on the
+ * screen whatever its shape (Pato, MESITA-2511: "the radiopus muse be same
+ * size of the smaller radious … horizontal is usually smaller, but not
+ * always"). Measured from the cross itself — it sits 45% down, not in the
+ * middle — and from the box's middle when the cross is missing or off the
+ * box. It was half the width (MESITA-2507), and before that the average of
+ * the half-width and half-height. Clamped to SCREEN_RADIUS_KM_MIN..MAX. Null
+ * when the bounds are missing, inverted or wider than AREA_BOUNDS_MAX_KM
+ * (the caller falls back to its operator radius).
  */
-export function screenRadiusKm(raw: unknown): number | null {
+export function screenRadiusKm(raw: unknown, cross?: LatLng | null): number | null {
   const b = parseAreaBounds(raw);
   if (!b) return null;
-  const m = mid(b.low, b.high);
-  const r = haversineKm(m.lat, b.low.lng, m.lat, b.high.lng) / 2;
+  const inside = cross && territoryGate(cross, b) === 1;
+  const c = inside ? cross : mid(b.low, b.high);
+  const r = Math.min(
+    haversineKm(c.lat, c.lng, c.lat, b.low.lng),
+    haversineKm(c.lat, c.lng, c.lat, b.high.lng),
+    haversineKm(c.lat, c.lng, b.low.lat, c.lng),
+    haversineKm(c.lat, c.lng, b.high.lat, c.lng),
+  );
   if (!Number.isFinite(r)) return null;
   return Math.min(SCREEN_RADIUS_KM_MAX, Math.max(SCREEN_RADIUS_KM_MIN, r));
 }

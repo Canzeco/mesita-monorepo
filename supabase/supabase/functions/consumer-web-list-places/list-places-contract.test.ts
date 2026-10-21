@@ -14,7 +14,7 @@ Deno.test("list-places: the Map is the one Area pool inside the screen radius, o
   assert(webBranch.includes("selectAreaPool<OwnedRow>("));
   // A point at the cross inside the screen radius (MESITA-2504): one circle
   // gates the Mesita read and the Google hits alike.
-  assert(webBranch.includes("const screenKm = screenRadiusKm(body.bounds);"));
+  assert(webBranch.includes("const screenKm = screenRadiusKm(body.bounds, center);"));
   assert(webBranch.includes('const location = { kind: "point" as const, anchor: center, radiusKm };'));
   assert(webBranch.includes("{ center, radiusKm, families: guestSupers, selectedOnly: false },"));
   assert(webBranch.includes("    location,\n"));
