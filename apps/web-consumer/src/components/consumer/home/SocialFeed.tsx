@@ -52,6 +52,12 @@
 // the list down from the top to refresh; what is on screen is marked seen
 // (lib/social-seen.ts) so Home's Social tab can wear a dot for anything
 // newer.
+//
+// ONE BOX (Pato, MESITA-2540: "make a fucking normal box. maybe the reload
+// button somewhere else but centralized … try to improve shit in general"):
+// the pane is light grey and the rows sit in one white rounded card, a
+// grouped list; a centred white "Refresh" pill sits above it, and the
+// "Sample activity" / "Near you" label lines up with the card.
 
 import { useEffect, useMemo, useRef, useState, type SVGProps } from "react";
 import Link from "next/link";
@@ -299,17 +305,20 @@ function FeedRow({ item, fresh }: { item: ActivityFeedItem; fresh: boolean }) {
 /** Loading looks like the rows it waits for. */
 function FeedSkeleton() {
   return (
-    <div className="divide-border divide-y" data-social-loading aria-busy>
-      {Array.from({ length: 6 }, (_, i) => (
-        <div key={i} className="flex items-center gap-3 px-4 py-3">
-          <Skeleton className="h-11 w-11 shrink-0 rounded-full" />
-          <div className="min-w-0 flex-1 space-y-2">
-            <Skeleton className="h-3.5 w-3/5" />
-            <Skeleton className="h-3 w-2/5" />
+    <div className="bg-muted flex-1 pt-14" data-social-loading aria-busy>
+      {/* The same white card as the list (MESITA-2540), so nothing jumps. */}
+      <div className="divide-border border-border bg-card mx-3 divide-y overflow-hidden rounded-2xl border">
+        {Array.from({ length: 6 }, (_, i) => (
+          <div key={i} className="flex items-center gap-3 px-4 py-3">
+            <Skeleton className="h-11 w-11 shrink-0 rounded-full" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <Skeleton className="h-3.5 w-3/5" />
+              <Skeleton className="h-3 w-2/5" />
+            </div>
+            <Skeleton className="h-11 w-11 shrink-0 rounded-md" />
           </div>
-          <Skeleton className="h-11 w-11 shrink-0 rounded-md" />
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
@@ -471,7 +480,7 @@ export function SocialFeed({
   return (
     <div
       ref={rootRef}
-      className="pb-6"
+      className="bg-muted flex-1 pb-6"
       onTouchStart={(e) => {
         const el = scroller();
         pullStart.current =
@@ -519,29 +528,33 @@ export function SocialFeed({
           }}
         />
       </div>
-      <div className="flex items-center justify-between pr-2 pl-4">
-        <p
-          className="type-meta text-muted-foreground tracking-[0.08em] uppercase"
-          data-social-sample={feed.sample || undefined}
-        >
-          {feed.sample ? "Sample activity" : "Near you"}
-        </p>
+      <div className="flex justify-center pt-3 pb-2">
         <button
           type="button"
-          aria-label="Refresh"
           disabled={refreshing}
           onClick={refresh}
-          className="text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring flex h-11 w-11 items-center justify-center rounded-full transition outline-none focus-visible:ring-2"
+          className="border-border bg-card text-foreground hover:bg-background focus-visible:ring-ring flex h-9 items-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition outline-none focus-visible:ring-2 disabled:opacity-70"
           data-social-refresh
         >
           <RotateCw
             className={cn("h-4 w-4", refreshing && "animate-spin")}
-            strokeWidth={2}
+            strokeWidth={2.25}
             aria-hidden
           />
+          {refreshing ? "Refreshing…" : "Refresh"}
         </button>
       </div>
-      <ul role="list" aria-label="Social" className="divide-border divide-y">
+      <p
+        className="type-meta text-muted-foreground px-7 pb-1.5 tracking-[0.08em] uppercase"
+        data-social-sample={feed.sample || undefined}
+      >
+        {feed.sample ? "Sample activity" : "Near you"}
+      </p>
+      <ul
+        role="list"
+        aria-label="Social"
+        className="divide-border border-border bg-card mx-3 divide-y overflow-hidden rounded-2xl border"
+      >
         {feed.rows.map((item, i) => (
           <FeedRow
             key={`${i}|${item.placeId}|${item.kind}`}

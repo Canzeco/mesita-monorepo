@@ -34,7 +34,7 @@ describe("the row", () => {
   it("is one plain list: no day headings", () => {
     expect(src).not.toMatch(/Today|Yesterday|This week|Earlier/);
     expect(src).not.toContain("feedSections");
-    expect(src).toContain('<ul role="list" aria-label="Social"');
+    expect(src).toMatch(/<ul\s+role="list"\s+aria-label="Social"/);
   });
 
   it("never counts others, and stays live while the tab is in view", () => {
@@ -47,7 +47,7 @@ describe("the row", () => {
 
   // MESITA-2535: a notification stream — a refresh button, new rows glow.
   it("has a refresh button in a header row and lets new rows glow in", () => {
-    expect(src).toContain('aria-label="Refresh"');
+    expect(src).toContain('{refreshing ? "Refreshing…" : "Refresh"}');
     expect(src).toContain("data-social-refresh");
     expect(src).toContain('refreshing && "animate-spin"');
     expect(src).toContain('{feed.sample ? "Sample activity" : "Near you"}');
@@ -69,6 +69,16 @@ describe("the row", () => {
     expect(src).toContain("if (pull >= PULL_TRIGGER && !refreshing) refresh();");
     expect(src).toContain("data-social-pull");
     expect(src).toContain("markSocialSeen(items[0]?.at);");
+  });
+
+  // MESITA-2540: one box — the rows in a white card on grey, Refresh centred.
+  it("sits in one white card on a grey pane, with Refresh centred above it", () => {
+    expect(src).toContain('className="bg-muted flex-1 pb-6"');
+    expect(src).toContain(
+      'className="divide-border border-border bg-card mx-3 divide-y overflow-hidden rounded-2xl border"',
+    );
+    expect(src).toContain('<div className="flex justify-center pt-3 pb-2">');
+    expect(src).not.toContain('aria-label="Refresh"');
   });
 
   it("an error offers Try again", () => {
