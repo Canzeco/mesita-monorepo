@@ -6,6 +6,8 @@ import type { CatalogRail, Place } from "@/lib/api/places";
 import {
   SAVED_CHIP,
   HOME_TABS,
+  PINNED_CHIPS,
+  GROUP_STRIPE,
   poolPlaces,
   PLACES_PAGE,
   savedPlaceList,
@@ -46,7 +48,10 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
     expect(src).toContain('if (tab === "social") return shell(<SocialFeed />);');
   });
 
-  it("Places is one horizontal chip row — All, Saved, then every family — no column, no source rows", () => {
+  // MESITA-2519 (Pato: "keep the later view of the failies. its fastwer to
+  // browse … LEFT MENU OF FAMILIES"): the horizontal chips went back to the
+  // left column, under the tabs.
+  it("Places is the left family column — All, Saved pinned, then every family — beside the tiles", () => {
     const labels = placesChips().map((c) => c.label);
     expect(labels.slice(0, 2)).toEqual(["All", "Saved"]);
     expect(placesChips().map((c) => c.key).slice(0, 2)).toEqual([ALL_CHIP, SAVED_CHIP]);
@@ -57,15 +62,26 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
     expect(labels).toContain("Breakfast");
     expect(placesChips().map((c) => c.key)).not.toContain(GOOGLE_RAIL_KEY);
     expect(placesChips().map((c) => c.key)).not.toContain(MESITA_RAIL_KEY);
-    // Search's chips (MESITA-2502): the same classes, one row that scrolls sideways.
-    expect(src).toContain("className={cn(CHIP, on ? CHIP_ON : CHIP_OFF)}");
-    expect(src).toContain("scrollbar-hide flex shrink-0 items-center gap-2 overflow-x-auto");
-    expect(src).toContain('{tab === "places" ? chipRow : null}');
-    // The column and its stripes are gone.
-    for (const gone of ["w-1/4", "w-3/4", "GROUP_STRIPE", "PINNED_CHIPS", "SOCIAL_CHIP", "categoryRow", "data-places-categories"]) {
+    // A quarter-wide column beside the tiles, on the Places tab only.
+    expect(src).toContain('className="bg-muted flex w-1/4 shrink-0 flex-col"');
+    expect(src).toContain('{tab === "places" ? categories : null}');
+    expect(PINNED_CHIPS).toBe(2);
+    expect(src).toContain("chips.slice(0, PINNED_CHIPS).map(categoryRow)");
+    expect(src).toContain("chips.slice(PINNED_CHIPS).map(categoryRow)");
+    // Two clay stripes: the pinned head red, the families blue (MESITA-2492).
+    expect(Object.keys(GROUP_STRIPE)).toEqual(["pinned", "families"]);
+    for (const g of ["pinned", "families"]) {
+      expect(src).toContain(`data-places-group="${g}"`);
+      expect(GROUP_STRIPE[g as keyof typeof GROUP_STRIPE]).toMatch(/^shadow-\[inset_3px_0_0_oklch\(/);
+    }
+    // The chosen row: white, bold, an ink bar on its left edge.
+    expect(src).toContain('const ROW_ON = "bg-card text-foreground font-semibold";');
+    expect(src).toContain("bg-foreground absolute inset-y-0 left-0 w-[3px]");
+    // The horizontal chip row is gone again.
+    for (const gone of ["chipRow", "CHIP_ON", "overflow-x-auto", "SOCIAL_CHIP"]) {
       expect(src, gone).not.toContain(gone);
     }
-    // Every chip's mark is a line icon, never an emoji (MESITA-2478).
+    // Every row's mark is a line icon, never an emoji (MESITA-2478).
     expect(src).toContain("name={c.key}");
     expect(src).toContain("strokeWidth={on ? 2.25 : 1.75}");
     expect(src).not.toMatch(/[\p{Emoji_Presentation}\uFE0F]/u);
