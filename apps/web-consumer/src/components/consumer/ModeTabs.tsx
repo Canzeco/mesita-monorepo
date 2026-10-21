@@ -7,7 +7,7 @@
 //
 // One 52px row, 16px sides, the name on the left, the location on the right
 // (LocationPicker; MESITA-2405 made it the header's only control). WHITE,
-// the name in ink and the box in the quiet grey, no hairline, and the
+// the name in ink and the box in the quiet grey, a hairline under it (MESITA-2538), and the
 // Places | Social strip under it is white too: one light top block, and the
 // darker thing is the family column (Pato, MESITA-2537: "making the header
 // white and the second header also light. and the lateral bark darker").
@@ -30,9 +30,11 @@ import { useSavedLocationBackfill } from "@/lib/use-saved-location-backfill";
 
 const wordmarkFont = Outfit({ subsets: ["latin"], weight: "700" });
 
-/** The band: white, sticky, over the white tab strip (MESITA-2537). */
+/** The band: white, sticky, a hairline under it dividing it from the white
+ *  tab strip, as Search's header divides from its chips (Pato, MESITA-2538:
+ *  "try adding a line dividing mesita header with the other shit"). */
 export const BRAND_HEADER_CLASS =
-  "bg-card text-foreground sticky top-0 z-20 shrink-0";
+  "border-border bg-card text-foreground sticky top-0 z-20 shrink-0 border-b";
 
 /** The header's name, set as type, not a drawn logo (MESITA-2480). */
 export const HOME_WORDMARK_CLASS =

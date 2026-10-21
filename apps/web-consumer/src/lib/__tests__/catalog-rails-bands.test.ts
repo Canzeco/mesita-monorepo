@@ -329,7 +329,8 @@ describe("the Places grid (MESITA-2366)", () => {
       "utf8",
     );
     expect(tabs).toContain(
-      '"bg-card text-foreground sticky top-0 z-20 shrink-0"',
+      // A 1px hairline under it (MESITA-2538), never a 2px rule.
+      '"border-border bg-card text-foreground sticky top-0 z-20 shrink-0 border-b"',
     );
     expect(tabs).toContain('"text-foreground shrink-0 text-2xl');
     expect(tabs).not.toContain("bg-foreground text-background");
