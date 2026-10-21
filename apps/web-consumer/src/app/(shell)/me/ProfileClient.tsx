@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import {
   Bell,
   CalendarCheck,
-  Gem,
+  CreditCard,
   Settings as SettingsIcon,
   UserRound,
 } from "lucide-react";
@@ -130,8 +130,11 @@ export function ProfileClient() {
               profile, instagram, plan, notifications, reservations,
               settings. Three pairs. */}
           <DestGrid>
+            {/* Never the gem: that shape is the class chip on the card above
+                (Pato, MESITA-2551: "DON'T USE THE … DIAMOND ICON. ITS
+                CONFUSING"). Plan is the subscription. */}
             <DestTile
-              Icon={Gem}
+              Icon={CreditCard}
               title="Plan"
               summary="Free"
               href={CONSUMER_ROUTES.mePages.plan}

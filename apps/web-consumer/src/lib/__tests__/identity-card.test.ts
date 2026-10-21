@@ -54,3 +54,14 @@ describe("the identity card", () => {
     expect(FEED).toContain("diamond={person.diamond === true}");
   });
 });
+
+// The gem is the class chip's shape alone (Pato, MESITA-2551: "FOR PLAN
+// DON'T USE THE … DIAMOND ICON. ITS CONFUSING").
+describe("Me's Plan tile", () => {
+  const ME = read("app", "(shell)", "me", "ProfileClient.tsx").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+  it("wears a card, never the gem", () => {
+    const tile = ME.slice(ME.lastIndexOf("<DestTile", ME.indexOf('title="Plan"')), ME.indexOf('title="Plan"'));
+    expect(tile).toContain("Icon={CreditCard}");
+    expect(ME).not.toMatch(/\bGem\b/);
+  });
+});
