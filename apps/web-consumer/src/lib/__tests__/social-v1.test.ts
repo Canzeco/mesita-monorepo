@@ -5,6 +5,7 @@ import {
   feedInstagram,
   feedSentence,
   feedWho,
+  personKey,
   shortAgo,
   VERB,
 } from "@/components/consumer/home/SocialFeed";
@@ -115,6 +116,13 @@ describe("the feed's copy", () => {
     // Without Instagram, and on the guest's own row: no second line.
     expect(feedInstagram({ ...lead, handleHint: null })).toBeNull();
     expect(feedInstagram({ ...lead, isYou: true })).toBeNull();
+  });
+
+  // MESITA-2542: one person across rows, without a member id.
+  it("matches a person by name, handle hint and isYou", () => {
+    expect(personKey(lead)).toBe(personKey({ ...lead, followers: 9 }));
+    expect(personKey(lead)).not.toBe(personKey({ ...lead, handleHint: "pex" }));
+    expect(personKey(lead)).not.toBe(personKey({ ...lead, isYou: true }));
   });
 
   it("rounds followers down to an approximate count", () => {
