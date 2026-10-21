@@ -23,7 +23,8 @@ import { useOpenGooglePlace } from "@/lib/use-open-google-place";
 import { useUserLocation } from "@/lib/use-user-location";
 import { cn } from "@/lib/utils";
 
-// SAVED — the bar's fourth tab, /saved (Pato, MESITA-2521: "rename the
+// SAVED — Me › Saved, /me/saved (MESITA-2561; it was the bar's fourth tab at
+// /saved until Share took the slot). Pato, MESITA-2521: "rename the
 // bookings page to saved and then saved is divided into two things
 // favorites, reservations. In favorites its just a feed of the liked palces
 // while reservations is well, obiusly").
@@ -37,7 +38,7 @@ import { cn } from "@/lib/utils";
 //   upcoming, then past                    ReservationsList
 //
 // It was the Bookings tab (/bookings, MESITA-2518), which forwards to
-// /saved?tab=reservations. Favorites are the guest's hearts — stored as
+// /me/saved?tab=reservations. Favorites are the guest's hearts — stored as
 // `saved` (lib/saved-places.ts), the word on screen is Favorites; the keys
 // never changed. NOTHING HERE FETCHES: the hearts are local (synced by the
 // shell), and the list authenticates inside consumer-web-list-reservations.

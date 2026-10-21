@@ -270,11 +270,11 @@ describe("T5 — exactly one tab lights per surface", () => {
     ["/search", "Search"],
     // Pay is one page and lights its own tab there.
     ["/pay", "Pay"],
-    // The Saved tab and the detail route it owns: a reservation is reached
-    // from a place AND from the list (MESITA-2518 as Bookings, Saved since
-    // MESITA-2521; Me owned it until then).
-    ["/saved", "Saved"],
-    ["/reservation/r1", "Saved"],
+    // Me and the detail route it owns: a reservation is reached from a place
+    // AND from Me › Saved › Reservations (MESITA-2561; the Saved tab owned it
+    // from MESITA-2518 until Share took its slot).
+    ["/me/saved", "Me"],
+    ["/reservation/r1", "Me"],
     ["/me", "Me"],
   ];
 
@@ -348,8 +348,8 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
     return [...html.matchAll(/text-center">([^<]+)</g)].map((m) => m[1]);
   }
 
-  it("is exactly Home · Search · Pay · Saved · Me (MESITA-2521)", async () => {
-    expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Saved", "Me"]);
+  it("is exactly Home · Search · Pay · Share · Me (MESITA-2561)", async () => {
+    expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Share", "Me"]);
   });
 
   it("keeps Wallet, Visit and Order off the bar", async () => {
@@ -359,13 +359,18 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
     expect(labels).not.toContain("Order");
   });
 
-  // Five <a> tabs, no <button>: Pay navigates to its page like every other
-  // tab, and it is the only one tagged Soon — exactly once.
-  it("draws five links, Pay among them with one Soon tag and no button", async () => {
+  // Four <a> tabs and one <button>: Pay navigates to its page like every
+  // other link, and it is the only one tagged Soon — exactly once. Share is
+  // the one button (MESITA-2561): it opens the share sheet, goes nowhere,
+  // never lights, and carries no Soon tag.
+  it("draws four links and the Share button, Pay with the one Soon tag", async () => {
     const html = await renderNav("/search");
     const anchors = html.split("<a ").slice(1);
-    expect(anchors).toHaveLength(5);
-    expect(html.includes("<button")).toBe(false);
+    expect(anchors).toHaveLength(4);
+    const buttons = html.split("<button").slice(1);
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]).toMatch(/text-center">Share</);
+    expect(buttons[0]).not.toMatch(/>Soon</);
     const pay = anchors.find((a) => /text-center">Pay</.test(a));
     expect(pay).toBeDefined();
     expect(pay).toMatch(/>Soon</);
@@ -390,7 +395,6 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
       CONSUMER_ROUTES.home,
       CONSUMER_ROUTES.search,
       CONSUMER_ROUTES.pay,
-      CONSUMER_ROUTES.saved,
       CONSUMER_ROUTES.me,
     ]);
     const redirects = await nextConfig.redirects!();
@@ -550,8 +554,10 @@ describe("T6 — Activity's sections are pages on Me", () => {
   it("routes each box to its page: notifications on Me, reservations to Saved › Reservations", () => {
     expect(ME).toContain("CONSUMER_ROUTES.mePages.notifications");
     expect(ME).not.toContain("CONSUMER_ROUTES.mePages.visits");
-    // The list is the bar's Saved tab, Reservations (MESITA-2518, MESITA-2521).
+    // The list is Me › Saved › Reservations (MESITA-2518, MESITA-2521,
+    // MESITA-2561); the Saved cell opens Favorites.
     expect(ME).toContain("SAVED_TAB_HREF.reservations");
+    expect(ME).toContain("SAVED_TAB_HREF.favorites");
     expect(ME).not.toContain("CONSUMER_ROUTES.mePages.reservations");
     expect(ME).not.toMatch(/<(AlertsModal|VisitsModal|BookingsModal)\b/);
   });
@@ -573,7 +579,7 @@ describe("T6 — Activity's sections are pages on Me", () => {
 // The regression this catches is a tile for a surface that does not exist
 // — `DestTile` has no `soon` prop and its `href` is required, so such a tile
 // would ship as a live Link pointing at nothing.
-describe("T8 — Me's grid is six live cells", () => {
+describe("T8 — Me's grid is seven live cells", () => {
   const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
   /** `<DestTile … title="X">` values, in render order. */
   const gridTitles = (source: string) => {
@@ -585,17 +591,19 @@ describe("T8 — Me's grid is six live cells", () => {
       .filter((t): t is string => Boolean(t));
   };
 
-  it("renders six cells in Pato's order", () => {
+  it("renders seven cells in Pato's order", () => {
     // Pato, MESITA-2134, then MESITA-2169: "move support into settings".
     // PROFILE LEADS (Pato, 2026-09-08): the header states the identity, so
     // the first cell is the one that edits it. Support is a group on
-    // Settings, not a cell.
+    // Settings, not a cell. Saved came in from the bar beside Reservations
+    // (MESITA-2561: "move the bottom menu to me and reservations to me too").
     expect(gridTitles(ME)).toEqual([
       "Profile",
       "Instagram",
+      "Saved",
+      "Reservations",
       "Plan",
       "Notifications",
-      "Reservations",
       "Settings",
     ]);
   });
@@ -623,11 +631,12 @@ describe("T8 — Me's grid is six live cells", () => {
     expect(gridTitles(ME)).not.toContain("Support");
   });
 
-  it("rows are pairs; nothing spans", () => {
-    // Three `DestGrid`s, each a pair. Counting grids and spans SEPARATELY
+  it("rows are pairs but the Settings tail; nothing spans", () => {
+    // Four `DestGrid`s: three pairs, then Settings alone in the left cell
+    // (MESITA-2561 made the count odd). Counting grids and spans SEPARATELY
     // on purpose: a cells-per-grid ratio stays true of any row width.
-    expect([...ME.matchAll(/<DestGrid>/g)]).toHaveLength(3);
-    expect([...ME.matchAll(/<DestTile\b[\s\S]*?\/>/g)]).toHaveLength(6);
+    expect([...ME.matchAll(/<DestGrid>/g)]).toHaveLength(4);
+    expect([...ME.matchAll(/<DestTile\b[\s\S]*?\/>/g)]).toHaveLength(7);
     expect([...ME.matchAll(/^\s*full$/gm)]).toHaveLength(0);
     expect(ME).not.toMatch(/<DestGrid cols=/);
   });
@@ -729,9 +738,10 @@ describe("T8 — Me's grid is six live cells", () => {
 describe("T7 — every former url still resolves after the move", () => {
   it.each([
     // Both landed on the Reservations SECTION until MESITA-1626 dissolved the
-    // container; the list is Saved › Reservations now (MESITA-2521), and
-    // /saved itself is the live tab again.
-    ["/saved/reservations", "/saved?tab=reservations"],
+    // container; the list is Me › Saved › Reservations now (MESITA-2521,
+    // MESITA-2561), and /saved itself forwards to /me/saved.
+    ["/saved", "/me/saved"],
+    ["/saved/reservations", "/me/saved?tab=reservations"],
     ["/saved/reservation/:id", "/reservation/:id"],
     ["/saved/place/:id", "/place/:id"],
   ])(

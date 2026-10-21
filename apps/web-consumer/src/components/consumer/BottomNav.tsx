@@ -5,7 +5,7 @@ import { Z_BOTTOM_NAV } from "@/lib/z-index";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ComponentType } from "react";
-import { Bookmark, QrCode, Search, User } from "lucide-react";
+import { QrCode, Search, Share, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { cn } from "@/lib/utils";
 import {
@@ -14,15 +14,21 @@ import {
   CONSUMER_ROUTE_PREFIX,
 } from "@/lib/consumer-route-contract";
 import { barePath } from "@/lib/surface";
+import { shareApp } from "@/lib/share-place";
 import { trackEvent } from "@/lib/analytics/track";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 
 // FIVE tabs, in this order (Pato, MESITA-2076 — "BOTTOM BAR MUST ONLY BE.
-// Home. Search. Pay(Soon). Me."; MESITA-2518 added Bookings: "add
-// reservations at the bottom, since its one of the main uvps"; MESITA-2521
-// renamed it Saved — Favorites | Reservations):
+// Home. Search. Pay(Soon). Me."; MESITA-2518 added Bookings, MESITA-2521
+// renamed it Saved; MESITA-2561 moved Saved under Me and made the fourth a
+// Share button: "fourth menu item must be a share button. just a share
+// button. no credits. no nothing"):
 //
-//   Home · Search · Pay (Soon) · Saved · Me
+//   Home · Search · Pay (Soon) · Share · Me
+//
+//   SHARE IS A BUTTON, NOT A DESTINATION. It opens the OS share sheet with
+//   the app's link (the clipboard where there is none) and never lights:
+//   nothing on screen changes, so there is no page to say "you are here".
 //
 //   PAY IS ONE PAGE, THE SOON STATE (Pato, MESITA-2087: "Keep pay but delete
 //   everything else. just the empty page with soon."). The tab is a plain
@@ -36,7 +42,8 @@ import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 
 // Every icon is a lucide glyph except Home's, which carries the brand mark.
 // The signature stays wider than LucideIcon so the mark fits.
-type Item = {
+type LinkItem = {
+  kind: "link";
   href: string;
   Icon: ComponentType<{ className?: string; strokeWidth?: number }>;
   label: string;
@@ -55,8 +62,19 @@ type Item = {
   soon?: boolean;
 };
 
+// The one tab that is an action: Share (MESITA-2561).
+type ActionItem = {
+  kind: "action";
+  Icon: ComponentType<{ className?: string; strokeWidth?: number }>;
+  label: string;
+  onTap: () => void;
+};
+
+type Item = LinkItem | ActionItem;
+
 const ITEMS: Item[] = [
   {
+    kind: "link",
     // Home is one page; Social and Favorites are rows of it (MESITA-2405).
     href: CONSUMER_ROUTES.home,
     Icon: MesitaMark,
@@ -64,12 +82,14 @@ const ITEMS: Item[] = [
     matchPrefixes: [CONSUMER_ROUTES.home, CONSUMER_ROUTE_PREFIX.place],
   },
   {
+    kind: "link",
     href: CONSUMER_ROUTES.search,
     Icon: Search,
     label: "Search",
     matchPrefixes: [CONSUMER_ROUTES.search],
   },
   {
+    kind: "link",
     href: CONSUMER_ROUTES.pay,
     Icon: QrCode,
     label: "Pay",
@@ -77,24 +97,24 @@ const ITEMS: Item[] = [
     soon: true,
   },
   {
-    href: CONSUMER_ROUTES.saved,
-    // A bookmark (Pato, MESITA-2522: "for saved in the bottom menu use the
-    // bookmarked icon"); the heart stays the favorite button on a place.
-    Icon: Bookmark,
-    label: "Saved",
-    // The tab plus a reservation's detail: /reservation/{id} is reached
-    // from a place AND from the list, and the list is where you land back
-    // (MESITA-2518; Me owned it while the list was Me › Reservations).
-    matchPrefixes: [
-      CONSUMER_ROUTE_PREFIX.saved,
-      CONSUMER_RESERVATION_SURFACE_PREFIX,
-    ],
+    kind: "action",
+    // The iOS share glyph, a box with an arrow out of it.
+    Icon: Share,
+    label: "Share",
+    onTap: () => void shareApp(),
   },
   {
+    kind: "link",
     href: CONSUMER_ROUTES.me,
     Icon: User,
     label: "Me",
-    matchPrefixes: [CONSUMER_ROUTE_PREFIX.me],
+    // Me plus a reservation's detail: /reservation/{id} is reached from a
+    // place AND from Me › Saved › Reservations, and that list is where you
+    // land back (MESITA-2561; Saved owned it while Saved was a tab).
+    matchPrefixes: [
+      CONSUMER_ROUTE_PREFIX.me,
+      CONSUMER_RESERVATION_SURFACE_PREFIX,
+    ],
   },
 ];
 
@@ -116,22 +136,20 @@ export function BottomNav() {
       )}
     >
       <div className="flex items-end justify-around">
-        {ITEMS.map(({ href, Icon, label, matchPrefixes, soon }) => {
-          const active = matchPrefixes.some((p) => pathname.startsWith(p));
-          return (
-            <Link
-              key={href}
-              href={href}
-              onClick={() => {
-                trackEvent(getSupabase(), "nav_tab_tap", { tab: label });
-              }}
-              className={cn(
-                "type-meta relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 font-medium transition",
-                active
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
+        {ITEMS.map((item) => {
+          const { Icon, label } = item;
+          const active =
+            item.kind === "link" &&
+            item.matchPrefixes.some((p) => pathname.startsWith(p));
+          const soon = item.kind === "link" && item.soon;
+          const className = cn(
+            "type-meta relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 font-medium transition",
+            active
+              ? "text-primary"
+              : "text-muted-foreground hover:text-foreground",
+          );
+          const body = (
+            <>
               {active && (
                 <span className="bg-primary absolute -top-2 left-1/2 h-0.5 w-6 -translate-x-1/2 rounded-full" />
               )}
@@ -155,6 +173,34 @@ export function BottomNav() {
                 )}
               </span>
               <span className="w-full truncate text-center">{label}</span>
+            </>
+          );
+          const track = () => {
+            trackEvent(getSupabase(), "nav_tab_tap", { tab: label });
+          };
+          if (item.kind === "action") {
+            return (
+              <button
+                key={label}
+                type="button"
+                onClick={() => {
+                  track();
+                  item.onTap();
+                }}
+                className={className}
+              >
+                {body}
+              </button>
+            );
+          }
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={track}
+              className={className}
+            >
+              {body}
             </Link>
           );
         })}

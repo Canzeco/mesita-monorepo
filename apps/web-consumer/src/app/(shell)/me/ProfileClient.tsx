@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   Bell,
+  Bookmark,
   CalendarCheck,
   CreditCard,
   Settings as SettingsIcon,
@@ -23,16 +24,19 @@ import { PLAN_LABEL, toGuestPlan } from "@/lib/guest-standing";
 import { DestGrid, DestTile } from "./profile-sections";
 import { IdentityBar } from "./IdentityBar";
 
-// The Me surface — the identity header, then six cells. Support left the
+// The Me surface — the identity header, then seven cells. Support left the
 // grid (Pato, MESITA-2169: "move support into settings") and lives on
-// Settings; the order of the rest is still MESITA-2134:
+// Settings; Saved came in from the bar (Pato, MESITA-2561: "move the bottom
+// menu to me and reservations to me too") and sits beside Reservations, the
+// two doors into the one Saved page:
 //
 //   header         identity + Instagram; the bar IS a door (MESITA-1652)
 //   2              Profile (carries the member number) · Instagram
+//   2              Saved (Favorites) · Reservations
 //   2              Plan · Notifications
-//   2              Reservations · Settings
+//   1              Settings
 //
-// SIX CELLS, AND THAT IS THE WHOLE PAGE. route-structure T8 pins them.
+// SEVEN CELLS, AND THAT IS THE WHOLE PAGE. route-structure T8 pins them.
 //
 // EVERY CELL IS A ROUTE (Pato, MESITA-1789). Sheets over this hub stacked
 // history as overlays. DestTiles Link to /me/<box>.
@@ -127,9 +131,26 @@ export function ProfileClient() {
             />
           </DestGrid>
 
+          {/* What the bar's Saved tab held (MESITA-2561): the hearted places
+              and the reservations, each tile opening its own tab of
+              /me/saved. The bookmark is the old tab's glyph (MESITA-2522). */}
+          <DestGrid>
+            <DestTile
+              Icon={Bookmark}
+              title="Saved"
+              summary="Your favorite places"
+              href={SAVED_TAB_HREF.favorites}
+            />
+            <DestTile
+              Icon={CalendarCheck}
+              title="Reservations"
+              summary="Upcoming and past"
+              href={SAVED_TAB_HREF.reservations}
+            />
+          </DestGrid>
+
           {/* PATO'S ORDER (MESITA-2134), minus Support (MESITA-2169):
-              profile, instagram, plan, notifications, reservations,
-              settings. Three pairs. */}
+              profile, instagram, plan, notifications, settings. */}
           <DestGrid>
             {/* Never the gem: that shape is the class chip on the card above
                 (Pato, MESITA-2551: "DON'T USE THE … DIAMOND ICON. ITS
@@ -150,12 +171,6 @@ export function ProfileClient() {
           </DestGrid>
 
           <DestGrid>
-            <DestTile
-              Icon={CalendarCheck}
-              title="Reservations"
-              summary="Upcoming and past"
-              href={SAVED_TAB_HREF.reservations}
-            />
             <DestTile
               Icon={SettingsIcon}
               title="Settings"

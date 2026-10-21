@@ -44,7 +44,7 @@ describe("Saved: Favorites | Reservations", () => {
   // client component, never CALL one of its exports.
   it("the server page calls nothing from a client module", () => {
     const page = readFileSync(
-      join(SRC, "app", "(shell)", "saved", "page.tsx"),
+      join(SRC, "app", "(shell)", "me", "saved", "page.tsx"),
       "utf8",
     );
     expect(page).not.toMatch(/^["']use client["']/);
@@ -69,8 +69,10 @@ describe("Saved: Favorites | Reservations", () => {
     expect(PAGE).toContain("bg-foreground absolute inset-x-0 bottom-0 h-0.5");
     expect(PAGE).not.toContain('<span className="relative inline-block py-3">');
     expect(existsSync(join(SRC, "app", "(shell)", "bookings"))).toBe(false);
-    expect(existsSync(join(SRC, "app", "(shell)", "saved", "page.tsx"))).toBe(
-      true,
-    );
+    // Saved is a Me page now (MESITA-2561); /saved only forwards.
+    expect(existsSync(join(SRC, "app", "(shell)", "saved"))).toBe(false);
+    expect(
+      existsSync(join(SRC, "app", "(shell)", "me", "saved", "page.tsx")),
+    ).toBe(true);
   });
 });
