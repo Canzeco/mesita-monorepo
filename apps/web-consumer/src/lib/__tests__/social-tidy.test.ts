@@ -53,10 +53,10 @@ describe("the row", () => {
     expect(src).toContain("data-social-refresh");
     expect(src).toContain("data-social-status");
     expect(src).toContain("Refreshing…");
-    expect(src).toContain("{feedStatus(sampleOnly, updatedAt, now)}");
+    expect(src).toContain("{feedStatus(updatedAt, now)}");
     expect(src).toContain("export const FRESH_MS = 4_000;");
     expect(src).toContain('fresh && "bg-muted"');
-    // The first load glows nothing; the sample never glows.
+    // The first load glows nothing.
     expect(src).toContain(
       "const arrived = seen ? keys.filter((k) => !seen.has(k)) : [];",
     );
@@ -121,7 +121,9 @@ describe("the row", () => {
     );
     const list = src.slice(src.indexOf("function LikedList"));
     expect(list).toContain("data-social-liked-place");
-    expect(list.slice(0, list.indexOf("\n}\n"))).not.toMatch(/shortAgo|VERB|viewed/);
+    expect(list.slice(0, list.indexOf("\n}\n"))).not.toMatch(
+      /shortAgo|VERB|viewed/,
+    );
     // No member id ever reaches the client (MESITA-2460).
     expect(src).not.toContain("consumer_id");
   });

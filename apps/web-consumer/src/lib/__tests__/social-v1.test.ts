@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -126,11 +126,10 @@ describe("the feed's copy", () => {
   // MESITA-2543: the quiet line above the list.
   it("says sample, or how long ago the list loaded", () => {
     const t = Date.parse("2026-10-21T06:00:00Z");
-    expect(feedStatus(true, t, t)).toBe("Sample activity");
-    expect(feedStatus(false, null, t)).toBe("Updated just now");
-    expect(feedStatus(false, t, t + 20_000)).toBe("Updated just now");
-    expect(feedStatus(false, t, t + 3 * 60_000)).toBe("Updated 3m ago");
-    expect(feedStatus(false, t, 0)).toBe("Updated just now");
+    expect(feedStatus(null, t)).toBe("Updated just now");
+    expect(feedStatus(t, t + 20_000)).toBe("Updated just now");
+    expect(feedStatus(t, t + 3 * 60_000)).toBe("Updated 3m ago");
+    expect(feedStatus(t, 0)).toBe("Updated just now");
   });
 
   it("rounds followers down to an approximate count", () => {
@@ -204,29 +203,60 @@ describe("anonymous members in the feed", () => {
       plan: "free",
       anonymous: true,
     };
-    expect(feedSentence({ person: anon, kind: "saved" })).toBe("A member liked");
+    expect(feedSentence({ person: anon, kind: "saved" })).toBe(
+      "A member liked",
+    );
     expect(feedInstagram(anon)).toBeNull();
   });
 });
 
-// MESITA-2584: the person and the place are two visibly separate taps.
-describe("a feed row has two zones", () => {
+// MESITA-2591: three things per row — face left, what happened centre,
+// the place's photo right ("thats it").
+describe("a feed row is face, sentence, photo", () => {
   const SRC = readFileSync(
     join(__dirname, "../../components/consumer/home/SocialFeed.tsx"),
     "utf8",
   );
-  const row = SRC.slice(SRC.indexOf("function FeedRow("), SRC.indexOf("/** The person card"));
+  const row = SRC.slice(
+    SRC.indexOf("function FeedRow("),
+    SRC.indexOf("/** The person card"),
+  );
 
-  it("the person is one target on the left, the place its own bordered card on the right", () => {
-    expect(row.indexOf("data-social-person")).toBeLessThan(row.indexOf("data-social-place"));
-    const place = row.slice(row.indexOf("<Link"), row.indexOf("</Link>"));
-    expect(place).toContain("border-border bg-card");
-    expect(place).toContain("<Thumb place={item.place} />");
-    expect(place).toContain("{item.place.name}");
-    expect(place).toContain("<ChevronRight");
-    // One place link per row: the name no longer sits inside the sentence.
-    expect(row.match(/<Link/g)).toHaveLength(1);
+  it("the sentence names the place, the photo alone sits on the right", () => {
+    expect(row).toContain(
+      '<span className="font-semibold">{item.place.name}</span>',
+    );
+    expect(row.indexOf("data-social-person")).toBeLessThan(
+      row.indexOf("data-social-place"),
+    );
+    const place = row.slice(row.indexOf("data-social-place"));
+    expect(place.slice(0, place.indexOf("</Link>"))).toContain(
+      "<Thumb place={item.place} />",
+    );
+    // No bordered place card, no chevron, no second name on the right.
+    expect(row).not.toContain("<ChevronRight");
+    expect(row).not.toContain("border-border bg-card");
+    expect(row.match(/\{item\.place\.name\}/g)).toHaveLength(2); // sentence + aria-label
     expect(row.match(/onClick=\{\(\) => onPerson\(item\)\}/g)).toHaveLength(1);
+  });
+
+  it("an anonymous row opens the place, never a person card", () => {
+    expect(row).toMatch(/\) : \(\s*<Link[\s\S]*data-social-anonymous-row/);
+  });
+});
+
+// MESITA-2591: Social shows no mock data (reverses MESITA-2520's sample).
+describe("Social has no sample", () => {
+  const SRC = readFileSync(
+    join(__dirname, "../../components/consumer/home/SocialFeed.tsx"),
+    "utf8",
+  );
+
+  it("draws only the server's rows", () => {
+    expect(existsSync(join(__dirname, "../social-sample.ts"))).toBe(false);
+    expect(SRC).not.toMatch(
+      /social-sample|sampleActivity|Sample activity|samplePlaces/,
+    );
   });
 });
 
@@ -248,7 +278,9 @@ describe("full handle, Open Instagram, and the Social name switch", () => {
 
   it("the card's Open Instagram is a new-tab link to the profile, counted", () => {
     const card = FEED.slice(FEED.indexOf("function PersonCard("));
-    expect(card).toContain("https://www.instagram.com/${encodeURIComponent(person.handle)}/");
+    expect(card).toContain(
+      "https://www.instagram.com/${encodeURIComponent(person.handle)}/",
+    );
     expect(card).toContain('target="_blank"');
     expect(card).toContain('rel="noopener noreferrer"');
     expect(card).toContain('trackEvent(supabase, "social_open_instagram", {})');
@@ -257,7 +289,10 @@ describe("full handle, Open Instagram, and the Social name switch", () => {
   });
 
   it("the row's handle is plain text, never a link", () => {
-    const row = FEED.slice(FEED.indexOf("function FeedRow("), FEED.indexOf("/** The person card"));
+    const row = FEED.slice(
+      FEED.indexOf("function FeedRow("),
+      FEED.indexOf("/** The person card"),
+    );
     expect(row).not.toContain("instagram.com");
     expect(row.match(/<a\b/g)).toBeNull();
   });
