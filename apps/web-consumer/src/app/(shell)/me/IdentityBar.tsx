@@ -7,7 +7,7 @@ import { IdentityCard } from "@/components/consumer/IdentityCard";
 import { ClassSheet } from "@/components/consumer/me/ClassSheet";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { instagramWithFollowers } from "@/lib/consumer-identity";
-import { toGuestClass } from "@/lib/guest-standing";
+import { toGuestClass, toGuestPlan } from "@/lib/guest-standing";
 
 // ─── The identity header (MESITA-1079 v2 · -1619 · -1633 ·
 //     -1636 · -1640 · -1646 · -1649 · -1650 · -1652 · -2040 · -2087) ───────
@@ -21,7 +21,9 @@ import { toGuestClass } from "@/lib/guest-standing";
 //
 //                 (photo)
 //                  name
-//   [◎ @handle · 1.2K followers ›] [♛ Regular ›]   centred (MESITA-2592)
+//          [◎ @handle · 1.2K followers ›]
+//                  [♛ Regular ›]
+//                   [▭ Free ›]      one fact per line (MESITA-2595)
 //            (MESITA-2574; chips wrap when the row runs out)
 //   ─────── hairline ─────── full-width white bar; content on the 16px edge
 //
@@ -72,6 +74,7 @@ export function IdentityBar({
     "Mesita member";
   const avatarUrl = profile?.avatar_url ?? null;
   const guestClass = profile ? toGuestClass(profile.guest_class) : null;
+  const plan = profile ? toGuestPlan(profile.plan) : null;
   const [classOpen, setClassOpen] = useState(false);
 
   return (
@@ -90,12 +93,14 @@ export function IdentityBar({
         {loading ? (
           <>
             {/* The skeleton mirrors the DESTINATION (Docs › Design §D): the
-                centred 67px ringed photo, the name, and one row of chips
-                (MESITA-2592). */}
+                centred 67px ringed photo, the name, then one chip per line
+                (MESITA-2595). */}
             <div className="flex w-full flex-col items-center gap-2">
               <div className="bg-muted h-[67px] w-[67px] animate-pulse rounded-full" />
               <div className="bg-muted h-4 w-1/3 animate-pulse rounded-md" />
-              <div className="bg-muted h-7 w-2/3 animate-pulse rounded-full" />
+              <div className="bg-muted h-7 w-1/2 animate-pulse rounded-full" />
+              <div className="bg-muted h-7 w-1/4 animate-pulse rounded-full" />
+              <div className="bg-muted h-7 w-1/4 animate-pulse rounded-full" />
             </div>
           </>
         ) : (
@@ -111,11 +116,13 @@ export function IdentityBar({
               ),
               href: CONSUMER_ROUTES.mePages.instagram,
             }}
-            // No profile (the read failed) hides Class: never a guessed
-            // "Regular" (MESITA-2553). No Plan on the card (MESITA-2576):
-            // it is a tile on the grid below.
+            // No profile (the read failed) hides Class and Plan: never a
+            // guessed "Regular" or "Free" (MESITA-2553). Both are doors on Me;
+            // Plan is back on the card (MESITA-2595).
             guestClass={guestClass}
             onClassPress={guestClass ? () => setClassOpen(true) : undefined}
+            plan={plan}
+            planHref={CONSUMER_ROUTES.mePages.plan}
           />
         )}
       </div>

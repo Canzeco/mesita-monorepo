@@ -1,10 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, Crown } from "lucide-react";
+import { ChevronRight, CreditCard, Crown } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
-import { CLASS_LABEL, type GuestClass } from "@/lib/guest-standing";
+import {
+  CLASS_LABEL,
+  PLAN_LABEL,
+  type GuestClass,
+  type GuestPlan,
+} from "@/lib/guest-standing";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
@@ -15,24 +20,26 @@ import { cn } from "@/lib/utils";
 // handle hidden as "die•••", MESITA-2522). Never the phone: it is private and
 // lives in Settings.
 //
-// CENTRED (Pato, MESITA-2592: "make again the profile centralized like the
-// profile picture centralized"): the photo on top, the name under it, then
-// one centred row of chips, Instagram then Class.
+// CENTRED, ONE FACT PER LINE (Pato, MESITA-2592: "make again the profile
+// centralized"; MESITA-2595: "Name at the top / then instagram and
+// instagram followers in one line / then class in one line / then plan in
+// other line"):
 //
 //              (64px photo)
 //                 Diego
-//   [◎ die••• · 1.2K followers] [♛ VIP]
+//      [◎ die••• · 1.2K followers]
+//              [♛ VIP]
+//            [▭ Premium]
 //
-// The chips wrap to a second centred line when the row runs out; nothing
-// truncates but the name and the Instagram label. It was photo-left with the
-// rows beside it (MESITA-2548, MESITA-2574).
+// Nothing truncates but the name and the Instagram label.
 //
-// NO PLAN ON THE CARD (Pato, MESITA-2576: "don't show the plan here. Only
-// instagram and class."). Plan lives on Me's grid (Me › Plan) and nowhere
-// on the card, on Me or on Social. Class is partnership status: Regular or
-// VIP, through a partner, never sold; VIP is filled, Regular muted, and the
-// Crown names the dimension. No gem anywhere (MESITA-2551). On Me the Class
-// chip is a door to its explainer; on Social it is a fact.
+// CLASS AND PLAN ARE TWO THINGS (MESITA-2553). Class is partnership status:
+// Regular or VIP, through a partner, never sold; VIP filled, Regular muted,
+// the Crown names it. Plan is the subscription, Free or Premium, under a
+// card icon (never the gem, MESITA-2551); Premium outlined, Free muted.
+// Plan is back on the card (MESITA-2595 reverses MESITA-2576). On Me both
+// are doors — Class opens its explainer, Plan opens /me/plan; on Social both
+// are facts.
 
 /** One chip, Me's header vocabulary (MESITA-1652). */
 const CHIP_CLASS =
@@ -112,12 +119,53 @@ function ClassChip({
   );
 }
 
+/** The Plan chip: a link on Me (opens /me/plan), a fact on Social. */
+function PlanChip({ plan, href }: { plan: GuestPlan; href?: string }) {
+  const premium = plan === "premium";
+  const label = PLAN_LABEL[plan];
+  const className = cn(
+    CHIP_CLASS,
+    premium ? "border-foreground" : "text-muted-foreground font-medium",
+    href && cn(TAP_TARGET_CLASS, "hover:bg-muted transition"),
+  );
+  const body = (
+    <>
+      <CreditCard
+        className="h-3.5 w-3.5 shrink-0"
+        strokeWidth={2.25}
+        aria-hidden
+      />
+      <span className="truncate">{label}</span>
+      {href && (
+        <ChevronRight className="h-3 w-3 shrink-0 opacity-60" aria-hidden />
+      )}
+    </>
+  );
+  const aria = `Plan: ${label}`;
+  return href ? (
+    <Link
+      href={href}
+      aria-label={aria}
+      className={className}
+      data-identity-plan={plan}
+    >
+      {body}
+    </Link>
+  ) : (
+    <span aria-label={aria} className={className} data-identity-plan={plan}>
+      {body}
+    </span>
+  );
+}
+
 export function IdentityCard({
   name,
   avatarUrl,
   instagram,
   guestClass,
   onClassPress,
+  plan,
+  planHref,
 }: {
   name: string;
   avatarUrl: string | null;
@@ -126,6 +174,10 @@ export function IdentityCard({
   guestClass: GuestClass | null;
   /** Me only: the Class chip opens its explainer. */
   onClassPress?: () => void;
+  /** Null hides the chip: never a guessed "Free". */
+  plan: GuestPlan | null;
+  /** Me only: the Plan chip opens the Plan page. */
+  planHref?: string;
 }) {
   return (
     <div
@@ -155,8 +207,9 @@ export function IdentityCard({
           {name}
         </p>
 
+        {/* One fact per line, centred (MESITA-2595). */}
         <div
-          className="flex max-w-full flex-wrap justify-center gap-1.5"
+          className="flex max-w-full flex-col items-center gap-1.5"
           data-identity-chips
         >
           {instagram?.href ? (
@@ -188,6 +241,8 @@ export function IdentityCard({
           {guestClass && (
             <ClassChip guestClass={guestClass} onPress={onClassPress} />
           )}
+
+          {plan && <PlanChip plan={plan} href={planHref} />}
         </div>
       </div>
     </div>
