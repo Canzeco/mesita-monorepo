@@ -358,18 +358,22 @@ export function CatalogRails() {
 
   // ONE TAB BAND under Home's header (Pato, MESITA-2517: "another header
   // (Places. Social) … If places, show the horizontal catalog, is social,
-  // show the social feed"): two equal tabs, the chosen one bold over an ink
-  // bar the tab's full width (Pato, MESITA-2527: "try the full lenght
-  // selector, as prev, but with current different backgrounds"; MESITA-2524
-  // had underlined the word alone). It replaced the left category column (MESITA-2367).
-  // The strip is the column's grey under the white header (Pato, MESITA-2526:
-  // "the places/social selector a bit dark"), so header, tabs and tiles read
-  // as three layers.
+  // show the social feed"): two equal tabs, the chosen one bold with ITS WORD
+  // UNDERLINED, the line right under the text (Pato, MESITA-2530: "just
+  // underline the fuckjing line, not the sction … the line directly below the
+  // word, that way does not collapses with the lateral bar"). A bar the tab's
+  // width (MESITA-2527) or on the strip's edge (MESITA-2524) met the column's
+  // chosen row. It replaced the left category column (MESITA-2367).
+  // The strip is its OWN grey, halfway between the stone header (`--border`)
+  // and the column (`--muted`), so it reads apart from the lateral menu
+  // (Pato, MESITA-2530: "maybe that bar darker, just a bit like a different
+  // white/grat from the laterl menu bar"; MESITA-2526 had given it the
+  // column's grey). Header, strip, column and tiles step dark to light.
   const tabs = (
     <div
       role="tablist"
       aria-label="Home"
-      className="border-border bg-muted flex shrink-0 border-b"
+      className="border-border flex shrink-0 border-b bg-[color-mix(in_oklch,var(--border),var(--muted))]"
       data-home-tabs
     >
       {HOME_TABS.map((t) => {
@@ -386,17 +390,19 @@ export function CatalogRails() {
               setTab(t.key);
             }}
             className={cn(
-              "relative flex-1 py-3 text-sm transition",
+              "flex-1 py-3 text-sm transition",
               on ? "text-foreground font-semibold" : "text-muted-foreground",
             )}
           >
-            {t.label}
-            {on ? (
-              <span
-                aria-hidden
-                className="bg-foreground absolute inset-x-0 bottom-0 h-0.5"
-              />
-            ) : null}
+            <span className="relative inline-block pb-1">
+              {t.label}
+              {on ? (
+                <span
+                  aria-hidden
+                  className="bg-foreground absolute inset-x-0 bottom-0 h-0.5"
+                />
+              ) : null}
+            </span>
           </button>
         );
       })}

@@ -64,13 +64,15 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
     expect(src).toContain('const [tab, setTab] = useState<HomeTab>("places");');
     expect(src).toContain('role="tablist"');
     expect(src).toContain("data-home-tabs");
-    // The chosen tab: bold over an ink bar the tab's full width (MESITA-2527;
-    // MESITA-2524 had underlined the word alone).
+    // The chosen tab: bold, its WORD underlined, the line right under the
+    // text — never the tab's width (MESITA-2527) nor the strip's edge
+    // (MESITA-2524), which met the column's chosen row (MESITA-2530).
     expect(src).toContain(
       'on ? "text-foreground font-semibold" : "text-muted-foreground"',
     );
     expect(src).toContain("bg-foreground absolute inset-x-0 bottom-0 h-0.5");
-    expect(src).toContain('"relative flex-1 py-3 text-sm transition"');
+    expect(src).toContain('<span className="relative inline-block pb-1">');
+    expect(src).not.toContain('"relative flex-1 py-3 text-sm transition"');
     expect(src).not.toContain('<span className="relative inline-block py-3">');
     expect(src).toContain(
       "return shell(<SocialFeed samplePlaces={samplePlaces} />);",
@@ -326,7 +328,10 @@ describe("the Places grid (MESITA-2366)", () => {
     );
     expect(tabs).toContain('"text-foreground shrink-0 text-2xl');
     expect(tabs).not.toContain("bg-foreground text-background");
-    expect(src).toContain('className="border-border bg-muted flex shrink-0 border-b"');
+    // The strip: its own grey between the header and the column (MESITA-2530).
+    expect(src).toContain(
+      'className="border-border flex shrink-0 border-b bg-[color-mix(in_oklch,var(--border),var(--muted))]"',
+    );
     expect(tabs).not.toContain("brand-pink");
     expect(tabs).not.toContain("border-b-2");
   });
