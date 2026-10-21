@@ -147,6 +147,38 @@ export type Database = {
         }
         Relationships: []
       }
+      consumer_instagram_claims: {
+        Row: {
+          checked_at: string | null
+          code: string
+          consumer_id: string
+          created_at: string
+          handle: string
+        }
+        Insert: {
+          checked_at?: string | null
+          code: string
+          consumer_id: string
+          created_at?: string
+          handle: string
+        }
+        Update: {
+          checked_at?: string | null
+          code?: string
+          consumer_id?: string
+          created_at?: string
+          handle?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consumer_instagram_claims_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: true
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consumer_notifications: {
         Row: {
           consumer_id: string
@@ -186,13 +218,16 @@ export type Database = {
           code: string | null
           created_at: string
           deleted_at: string | null
+          diamond: boolean
           first_name: string | null
           full_name: string | null
           id: string
           instagram_followers_count: number | null
           instagram_handle: string | null
+          instagram_verified_at: string | null
           last_name: string | null
           phone: string | null
+          plan: string
           sex: string | null
           show_activity: boolean
         }
@@ -202,13 +237,16 @@ export type Database = {
           code?: string | null
           created_at?: string
           deleted_at?: string | null
+          diamond?: boolean
           first_name?: string | null
           full_name?: string | null
           id: string
           instagram_followers_count?: number | null
           instagram_handle?: string | null
+          instagram_verified_at?: string | null
           last_name?: string | null
           phone?: string | null
+          plan?: string
           sex?: string | null
           show_activity?: boolean
         }
@@ -218,13 +256,16 @@ export type Database = {
           code?: string | null
           created_at?: string
           deleted_at?: string | null
+          diamond?: boolean
           first_name?: string | null
           full_name?: string | null
           id?: string
           instagram_followers_count?: number | null
           instagram_handle?: string | null
+          instagram_verified_at?: string | null
           last_name?: string | null
           phone?: string | null
+          plan?: string
           sex?: string | null
           show_activity?: boolean
         }
@@ -1300,6 +1341,10 @@ export type Database = {
         Returns: boolean
       }
       close_stale_place_enrichment_runs: { Args: never; Returns: number }
+      consumer_instagram_verify: {
+        Args: { p_consumer_id: string; p_followers: number; p_handle: string }
+        Returns: undefined
+      }
       families_for_category: { Args: { cat: string }; Returns: string[] }
       generate_consumer_code: { Args: never; Returns: string }
       is_super_admin: { Args: never; Returns: boolean }
@@ -1326,11 +1371,13 @@ export type Database = {
           avatar_url: string
           consumer_id: string
           created_at: string
+          diamond: boolean
           first_name: string
           instagram_followers_count: number
           instagram_handle: string
           kind: string
           place_id: string
+          plan: string
         }[]
       }
       place_activity_people: {
@@ -1339,10 +1386,12 @@ export type Database = {
           avatar_url: string
           consumer_id: string
           created_at: string
+          diamond: boolean
           first_name: string
           instagram_followers_count: number
           instagram_handle: string
           kind: string
+          plan: string
           total: number
         }[]
       }
