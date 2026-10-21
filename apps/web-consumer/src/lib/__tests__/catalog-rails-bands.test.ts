@@ -64,14 +64,14 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
     expect(src).toContain('const [tab, setTab] = useState<HomeTab>("places");');
     expect(src).toContain('role="tablist"');
     expect(src).toContain("data-home-tabs");
-    // The chosen tab: bold, its word underlined in ink — never a half-wide
-    // bar (MESITA-2524).
+    // The chosen tab: bold over an ink bar the tab's full width (MESITA-2527;
+    // MESITA-2524 had underlined the word alone).
     expect(src).toContain(
       'on ? "text-foreground font-semibold" : "text-muted-foreground"',
     );
     expect(src).toContain("bg-foreground absolute inset-x-0 bottom-0 h-0.5");
-    expect(src).toContain('<span className="relative inline-block py-3">');
-    expect(src).not.toContain('"relative flex-1 py-3 text-sm transition"');
+    expect(src).toContain('"relative flex-1 py-3 text-sm transition"');
+    expect(src).not.toContain('<span className="relative inline-block py-3">');
     expect(src).toContain(
       "return shell(<SocialFeed samplePlaces={samplePlaces} />);",
     );

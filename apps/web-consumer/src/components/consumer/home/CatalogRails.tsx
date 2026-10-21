@@ -358,8 +358,10 @@ export function CatalogRails() {
 
   // ONE TAB BAND under Home's header (Pato, MESITA-2517: "another header
   // (Places. Social) … If places, show the horizontal catalog, is social,
-  // show the social feed"): two equal tabs, the chosen one bold with its word
-  // underlined in ink (MESITA-2524). It replaced the left category column (MESITA-2367).
+  // show the social feed"): two equal tabs, the chosen one bold over an ink
+  // bar the tab's full width (Pato, MESITA-2527: "try the full lenght
+  // selector, as prev, but with current different backgrounds"; MESITA-2524
+  // had underlined the word alone). It replaced the left category column (MESITA-2367).
   // The strip is the column's grey under the white header (Pato, MESITA-2526:
   // "the places/social selector a bit dark"), so header, tabs and tiles read
   // as three layers.
@@ -384,22 +386,17 @@ export function CatalogRails() {
               setTab(t.key);
             }}
             className={cn(
-              "flex-1 text-sm transition",
+              "relative flex-1 py-3 text-sm transition",
               on ? "text-foreground font-semibold" : "text-muted-foreground",
             )}
           >
-            {/* The word alone is underlined (Pato, MESITA-2524: "just underline
-                place but thats it. no more"): a half-wide bar read as the top
-                of the column's chosen row under it. */}
-            <span className="relative inline-block py-3">
-              {t.label}
-              {on ? (
-                <span
-                  aria-hidden
-                  className="bg-foreground absolute inset-x-0 bottom-0 h-0.5"
-                />
-              ) : null}
-            </span>
+            {t.label}
+            {on ? (
+              <span
+                aria-hidden
+                className="bg-foreground absolute inset-x-0 bottom-0 h-0.5"
+              />
+            ) : null}
           </button>
         );
       })}
