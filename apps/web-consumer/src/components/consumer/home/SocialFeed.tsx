@@ -38,10 +38,25 @@
 // → SAMPLE rows (MESITA-2520, lib/social-sample.ts): made-up members on
 // Home's real places, under one quiet "Sample activity" line, never mixed
 // with real rows; with no places either, the empty state.
+//
+// A NOTIFICATION STREAM (Pato, MESITA-2535: "feel like a notificartions
+// stream but it might also be readable … add an easy refreh button"): a
+// header row says where the list is from ("Near you", or "Sample activity")
+// beside a round refresh button that spins while it loads, and the list
+// stays on screen while it does. After the first load, an event the pane
+// has not shown before glows in a light grey that fades out (FRESH_MS), the
+// way a new notification lands.
 
-import { useEffect, useMemo, useState, type SVGProps } from "react";
+import { useEffect, useMemo, useRef, useState, type SVGProps } from "react";
 import Link from "next/link";
-import { Eye, Heart, MapPin, Users, type LucideIcon } from "lucide-react";
+import {
+  Eye,
+  Heart,
+  MapPin,
+  RotateCw,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import {
   apiListActivityFeed,
   type ActivityFeedItem,
@@ -58,7 +73,7 @@ import { cardPhoto, placePlaceholder } from "@/lib/place-placeholder";
 import { FamilyIcon } from "@/lib/family-icons";
 import { EmptyState } from "@/components/shared";
 import { Skeleton } from "@/components/shared/Skeleton";
-import { errMsg, firstInitial } from "@/lib/utils";
+import { cn, errMsg, firstInitial } from "@/lib/utils";
 
 /** The words for the stored kinds (MESITA-2515): the keys never change. */
 export const VERB: Record<ActivityKind, string> = {
@@ -215,11 +230,24 @@ function Thumb({ place }: { place: Place }) {
   );
 }
 
-function FeedRow({ item }: { item: ActivityFeedItem }) {
+/** One event's identity across refreshes: who, what, where, when. */
+export function eventKey(
+  item: Pick<ActivityFeedItem, "placeId" | "kind" | "at" | "person">,
+): string {
+  return `${item.placeId}|${item.kind}|${item.at}|${item.person.name}`;
+}
+
+/** How long a new event glows before it fades (MESITA-2535). */
+export const FRESH_MS = 4_000;
+
+function FeedRow({ item, fresh }: { item: ActivityFeedItem; fresh: boolean }) {
   const instagram = feedInstagram(item.person);
   const ago = shortAgo(item.at);
   return (
-    <li>
+    <li
+      className={cn("transition-colors duration-1000", fresh && "bg-muted")}
+      data-social-fresh={fresh || undefined}
+    >
       <Link
         href={placeHref(item.place.slug || item.place.id)}
         className="hover:bg-muted/60 focus-visible:bg-muted/60 flex items-center gap-3 px-4 py-3 transition focus-visible:outline-none"
@@ -303,8 +331,14 @@ export function SocialFeed({
     | { status: "error"; message: string }
     | { status: "ready"; items: ActivityFeedItem[] }
   >({ status: "loading" });
-  // Bumped by Try again: the effect refetches.
+  // Bumped by Try again and the refresh button: the effect refetches.
   const [attempt, setAttempt] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  // The events already shown (null before the first load, which glows
+  // nothing) and the ones that just arrived.
+  const seenRef = useRef<Set<string> | null>(null);
+  const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
+  const freshTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     let cancelled = false;
@@ -314,10 +348,25 @@ export function SocialFeed({
         from ? { lat: from.lat, lng: from.lng } : null,
       )
         .then((items) => {
-          if (!cancelled) setState({ status: "ready", items });
+          if (cancelled) return;
+          const keys = items.map(eventKey);
+          const seen = seenRef.current;
+          const arrived = seen ? keys.filter((k) => !seen.has(k)) : [];
+          seenRef.current = new Set([...(seen ?? []), ...keys]);
+          if (arrived.length > 0) {
+            setFresh(new Set(arrived));
+            window.clearTimeout(freshTimer.current);
+            freshTimer.current = window.setTimeout(
+              () => setFresh(new Set()),
+              FRESH_MS,
+            );
+          }
+          setState({ status: "ready", items });
+          setRefreshing(false);
         })
         .catch((err) => {
           if (cancelled) return;
+          setRefreshing(false);
           // A failed refresh keeps the list on screen; only a first load
           // that fails shows the error.
           setState((prev) =>
@@ -340,6 +389,8 @@ export function SocialFeed({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase, fromKey, attempt]);
+
+  useEffect(() => () => window.clearTimeout(freshTimer.current), []);
 
   const feed = useMemo(
     () => feedRows(state.status === "ready" ? state.items : [], samplePlaces),
@@ -374,17 +425,38 @@ export function SocialFeed({
   }
   return (
     <div className="pb-6">
-      {feed.sample ? (
+      <div className="flex items-center justify-between pr-2 pl-4">
         <p
-          className="type-meta text-muted-foreground px-4 pt-3 tracking-[0.08em] uppercase"
-          data-social-sample
+          className="type-meta text-muted-foreground tracking-[0.08em] uppercase"
+          data-social-sample={feed.sample || undefined}
         >
-          Sample activity
+          {feed.sample ? "Sample activity" : "Near you"}
         </p>
-      ) : null}
+        <button
+          type="button"
+          aria-label="Refresh"
+          disabled={refreshing}
+          onClick={() => {
+            setRefreshing(true);
+            setAttempt((n) => n + 1);
+          }}
+          className="text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring flex h-11 w-11 items-center justify-center rounded-full transition outline-none focus-visible:ring-2"
+          data-social-refresh
+        >
+          <RotateCw
+            className={cn("h-4 w-4", refreshing && "animate-spin")}
+            strokeWidth={2}
+            aria-hidden
+          />
+        </button>
+      </div>
       <ul role="list" aria-label="Social" className="divide-border divide-y">
         {feed.rows.map((item, i) => (
-          <FeedRow key={`${i}|${item.placeId}|${item.kind}`} item={item} />
+          <FeedRow
+            key={`${i}|${item.placeId}|${item.kind}`}
+            item={item}
+            fresh={!feed.sample && fresh.has(eventKey(item))}
+          />
         ))}
       </ul>
     </div>
