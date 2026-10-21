@@ -25,7 +25,7 @@ export type ConsumerProfile = {
   // MESITA-2585: may verifying Instagram set the picture? Absent on an older
   // EF reads as on (the column defaults true).
   use_instagram_photo?: boolean;
-  // MESITA-2590: Settings › Social › "Show my name in Social" off = true.
+  // MESITA-2590: Settings › Social › "Public profile" off = true (MESITA-2594 name).
   appear_anonymous?: boolean;
   // Consumer avatar public URL (consumer-avatars bucket). Optional — missing
   // falls back to DefaultAvatar on Me / Personal details (MESITA-880/953).
@@ -62,7 +62,7 @@ type ConsumerInstagramPhotoPatch = {
   use_instagram_photo: boolean;
 };
 
-// "Show my name in Social" in Settings (MESITA-2590). Off = appear as
+// "Public profile" in Settings and Me › Instagram (MESITA-2590, MESITA-2594). Off = appear as
 // "A member".
 type ConsumerAppearAnonymousPatch = {
   appear_anonymous: boolean;

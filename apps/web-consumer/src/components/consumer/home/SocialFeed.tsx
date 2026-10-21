@@ -9,7 +9,7 @@
 // instagram notifications. keep super super simple"):
 //
 //   (●)♥ Perdón liked Contramar                           [▢]
-//        ◎ per••• · 1.2K followers · 2h
+//        ◎ @perdon · 1.2K followers · 2h   (@per*** until you show yours)
 //
 // ONE PLAIN LIST, the time on each row, no day headings (Pato, MESITA-2528:
 // "don't do that of today and yesterday … Just the fucking plain list with
@@ -19,11 +19,10 @@
 // (heart liked, eye viewed), so the list scans without reading.
 // One line: the name (bold), the verb, the place (bold), no period; under
 // it, muted, the Instagram glyph and the member's Instagram as social proof —
-// three letters of the username and an approximate follower count, never
-// the whole username (Pato, MESITA-2522: "i don't really want the
-// instagram username since it might cause the users to abandond my app …
-// mentioing the number of followers because that is all the social proof is
-// about") — then the time. No Instagram → the quiet line is the time alone.
+// the full @handle (MESITA-2590) and an approximate follower count — then
+// the time. You see others' handles only if you show yours (MESITA-2594):
+// without your own Instagram verified and your profile public, the server
+// sends "@per***" instead. No Instagram → the quiet line is the time alone.
 // The place's photo on the right; no photo → the card placeholder (family
 // icon or initial), never an empty box. Two verbs — liked (stored `saved`)
 // and viewed (stored `viewed`); the labels changed, never the keys. There is
@@ -33,9 +32,10 @@
 // events. its readl time uner you radious or near you, just enough to odn't
 // kill"): the server returns every event inside the operator's Area circle
 // around the guest, newest first, at most 50, and the pane refetches every
-// LIVE_MS while the tab is visible. Members with a verified Instagram appear
-// by name; everyone else appears as "A member", with no photo, handle or
-// person card (MESITA-2580: only ~10% connect Instagram). NO MOCK DATA
+// LIVE_MS while the tab is visible. Members with a verified Instagram and a
+// public profile appear by name on what they like; everyone else, and every
+// view (MESITA-2594: a view is never named), appears as "A member", with no
+// photo, handle or person card (MESITA-2580: only ~10% connect Instagram). NO MOCK DATA
 // (Pato, MESITA-2591: "remove mock data"; it reverses MESITA-2520's sample
 // rows): only the server's rows, and with none, the empty state.
 //
@@ -106,6 +106,8 @@ import { toGuestClass } from "@/lib/guest-standing";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { cn, errMsg, firstInitial } from "@/lib/utils";
 import { approxFollowers } from "@/lib/consumer-identity";
+import { useConsumerIdentity } from "@/lib/identity-context";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { trackEvent } from "@/lib/analytics/track";
 
 // Re-exported: the rounding lives with the identity model (MESITA-2574).
@@ -139,7 +141,8 @@ export function feedWho(lead: ActivityPerson): string {
 /** The Instagram proof on a row's quiet line ("@perdon · 1.2K followers";
  *  the glyph before it says Instagram), plain text, never a link, or null
  *  without a named Instagram (or for the guest's own row). The full handle
- *  since MESITA-2590 (MESITA-2522 had cut it to "per•••"). */
+ *  since MESITA-2590, or "@per***" when the viewer does not show their own
+ *  (MESITA-2594; the server masked it). */
 export function feedInstagram(lead: ActivityPerson): string | null {
   const handle = lead.isYou || !lead.handle ? null : `@${lead.handle}`;
   if (!handle) return null;
@@ -411,10 +414,11 @@ function useLikedPlaces(
 /** The person card (MESITA-2546, MESITA-2547, MESITA-2583): the member's
  *  identity card — the same card as the top of Me — floating in the centre
  *  of this screen, appearing and disappearing at once, then the places they
- *  liked in one plain list. Picture, name and Instagram with the handle
- *  hidden ("die••• · 1.2K followers", MESITA-2522); never the phone, never a
- *  view, never a time, no follow (Pato: "just like the user and then the
- *  places they liked and thats it. in one list. not when."). */
+ *  liked in one plain list; never the phone, never a view, never a time, no
+ *  follow (Pato: "just like the user and then the places they liked and
+ *  thats it. in one list. not when."). Mesita first (MESITA-2594): Open
+ *  Instagram is a small link under the list, not the card's main button.
+ *  A masked handle ("per***") has no link; the card says how to see it. */
 function PersonCard({
   item,
   open,
@@ -426,12 +430,13 @@ function PersonCard({
 }) {
   const supabase = useBrowserSupabase();
   const liked = useLikedPlaces(item, open);
+  const { igConnected } = useConsumerIdentity();
   if (!item) return null;
   const person = item.person;
   const who = feedWho(person);
   const instagram = feedInstagram(person);
   const igUrl =
-    person.handle && !person.isYou
+    person.handle && !person.isYou && !person.handleLocked
       ? `https://www.instagram.com/${encodeURIComponent(person.handle)}/`
       : null;
   return (
@@ -448,22 +453,35 @@ function PersonCard({
           instagram={instagram ? { label: instagram } : null}
           guestClass={toGuestClass(person.guestClass)}
         />
+        <LikedList places={liked} />
         {/* Open Instagram (MESITA-2590): a new tab, so Mesita stays open
-            underneath; every tap is counted to measure who leaves. */}
+            underneath; every tap is counted to measure who leaves. Under
+            the list, small (MESITA-2594): the card is Mesita's first. */}
         {igUrl && (
           <a
             href={igUrl}
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => trackEvent(supabase, "social_open_instagram", {})}
-            className="border-border hover:bg-muted active:bg-muted mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl border text-sm font-semibold"
+            className="text-muted-foreground hover:text-foreground mt-3 flex min-h-11 items-center justify-center gap-1.5 text-sm font-medium"
             data-social-open-instagram
           >
-            <InstagramGlyph className="h-4 w-4" />
+            <InstagramGlyph className="h-3.5 w-3.5" />
             Open Instagram
           </a>
         )}
-        <LikedList places={liked} />
+        {/* You see others' Instagram only if you show yours (MESITA-2594). */}
+        {person.handleLocked && !person.isYou && (
+          <Link
+            href={CONSUMER_ROUTES.mePages.instagram}
+            className="text-muted-foreground hover:text-foreground mt-3 flex min-h-11 items-center justify-center gap-1.5 text-center text-sm font-medium underline underline-offset-4"
+            data-social-unlock-instagram
+          >
+            {igConnected
+              ? "Make your profile public to see their Instagram"
+              : "Connect your Instagram to see theirs"}
+          </Link>
+        )}
       </div>
     </LocalDialog>
   );

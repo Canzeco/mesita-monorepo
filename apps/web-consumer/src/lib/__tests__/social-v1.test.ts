@@ -87,6 +87,7 @@ describe("the feed's copy", () => {
     name: "Perdón",
     avatarUrl: null,
     handle: "perdon",
+    handleLocked: false,
     followers: 1200,
     isYou: false,
     guestClass: "regular",
@@ -197,6 +198,7 @@ describe("anonymous members in the feed", () => {
       name: "A member",
       avatarUrl: null,
       handle: null,
+      handleLocked: false,
       followers: 0,
       isYou: false,
       guestClass: "regular",
@@ -275,6 +277,10 @@ describe("full handle, Open Instagram, and the Social name switch", () => {
     join(__dirname, "../../components/consumer/me/SocialNameRow.tsx"),
     "utf8",
   );
+  const INSTAGRAM = readFileSync(
+    join(__dirname, "../../components/consumer/me/InstagramModal.tsx"),
+    "utf8",
+  );
 
   it("the card's Open Instagram is a new-tab link to the profile, counted", () => {
     const card = FEED.slice(FEED.indexOf("function PersonCard("));
@@ -284,8 +290,20 @@ describe("full handle, Open Instagram, and the Social name switch", () => {
     expect(card).toContain('target="_blank"');
     expect(card).toContain('rel="noopener noreferrer"');
     expect(card).toContain('trackEvent(supabase, "social_open_instagram", {})');
-    // Never on the guest's own card.
-    expect(card).toContain("person.handle && !person.isYou");
+    // Never on the guest's own card, never for a masked handle (MESITA-2594).
+    expect(card).toContain(
+      "person.handle && !person.isYou && !person.handleLocked",
+    );
+  });
+
+  // MESITA-2594: you see others' Instagram only if you show yours. The server
+  // masks; the card offers the way to unlock instead of a link.
+  it("a masked handle has no link and says how to see it", () => {
+    const card = FEED.slice(FEED.indexOf("function PersonCard("));
+    expect(card).toContain("data-social-unlock-instagram");
+    expect(card).toContain("CONSUMER_ROUTES.mePages.instagram");
+    expect(card).toContain("Connect your Instagram to see theirs");
+    expect(card).toContain("Make your profile public to see their Instagram");
   });
 
   it("the row's handle is plain text, never a link", () => {
@@ -297,10 +315,12 @@ describe("full handle, Open Instagram, and the Social name switch", () => {
     expect(row.match(/<a\b/g)).toBeNull();
   });
 
-  it("Settings › Social: 'Show my name in Social', off means 'A member'", () => {
+  it("Settings › Social: 'Public profile', off means 'A member'", () => {
     expect(SETTINGS).toContain('<SettingsGroup title="Social">');
     expect(SETTINGS).toContain("<SocialNameRow />");
-    expect(SWITCH).toContain("Show my name in Social");
+    expect(SWITCH).toContain("Public profile");
+    // MESITA-2594: asked again where the member connects Instagram.
+    expect(INSTAGRAM).toContain("<SocialNameRow />");
     expect(SWITCH).toContain("appear_anonymous: !next");
     expect(SWITCH).toContain('role="switch"');
   });

@@ -13,8 +13,13 @@ export type ActivityKind = "saved" | "viewed";
 export type ActivityPerson = {
   name: string;
   avatarUrl: string | null;
-  /** The verified Instagram username, without "@" (MESITA-2590). */
+  /** The verified Instagram username, without "@" (MESITA-2590), or
+   *  "per***" when handleLocked. */
   handle: string | null;
+  /** You see others' Instagram only if you show yours (MESITA-2594): the
+   *  server masked this handle because your own Instagram is not connected
+   *  or your profile is private. Never link it. */
+  handleLocked: boolean;
   followers: number;
   isYou: boolean;
   /** Class and Plan, independent (MESITA-2553). */
@@ -37,7 +42,7 @@ export type ActivityFeedItem = {
 };
 
 export type PlaceActivity = {
-  /** "Perdón and 3 others saw this", or null when nobody visible has. */
+  /** "Perdón and 3 others liked this" (likes only, MESITA-2594), or null. */
   line: string | null;
   people: ActivityPerson[];
   total: number;

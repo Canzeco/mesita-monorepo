@@ -25,7 +25,7 @@ describe("the identity card", () => {
     expect(BAR).not.toContain("formatPhoneDisplay");
   });
 
-  it("is Social's person card, with the handle hidden and no activity feed", () => {
+  it("is Social's person card, with Instagram as a fact and no activity feed", () => {
     expect(FEED).toContain("<IdentityCard");
     expect(FEED).toContain(
       "instagram={instagram ? { label: instagram } : null}",
@@ -37,11 +37,13 @@ describe("the identity card", () => {
     expect(SETTINGS).toContain("<PhoneRow />");
   });
 
-  // MESITA-2552: connecting Instagram means you show in Social, always.
-  it("has no Public profile switch", () => {
+  // MESITA-2552: nothing hides a member from Social. MESITA-2594: the one
+  // switch is "Public profile" (SocialNameRow), and off still shows you, as
+  // "A member"; the old Privacy group and Show my activity stay gone.
+  it("has no switch that hides you from Social", () => {
     expect(SETTINGS).not.toContain("ShowActivityRow");
-    expect(SETTINGS).not.toContain("Public profile");
     expect(SETTINGS).not.toContain('title="Privacy"');
+    expect(SETTINGS).toContain("<SocialNameRow />");
   });
 
   // MESITA-2574: photo, name, then one row of chips. MESITA-2576: the row

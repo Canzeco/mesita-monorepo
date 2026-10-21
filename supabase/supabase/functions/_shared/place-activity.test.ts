@@ -5,7 +5,9 @@ import {
   cleanHandle,
   isActivityKind,
   isMesitaPlaceId,
+  maskHandle,
   nearYou,
+  seesHandles,
   socialLine,
   toPerson,
 } from "./place-activity.ts";
@@ -46,6 +48,36 @@ Deno.test("a named person carries the full handle; the name is never it; the vie
   assertEquals(toPerson(row({}), "a").isYou, true);
   // An anonymous member never carries one, even if the row leaked it.
   assertEquals(toPerson(row({ anonymous: true }), "z").handle, null);
+});
+
+// MESITA-2594: you see others' Instagram only if you show yours.
+Deno.test("a viewer who does not show their Instagram gets masked handles", () => {
+  assertEquals(maskHandle("perdon"), "per***");
+  assertEquals(maskHandle("al"), "al***");
+  const locked = toPerson(row({}), "z", false);
+  assertEquals(locked.handle, "per***");
+  assertEquals(locked.handleLocked, true);
+  assertEquals(locked.followers, 1200);
+  const open = toPerson(row({}), "z", true);
+  assertEquals(open.handle, "perdon");
+  assertEquals(open.handleLocked, false);
+  // Your own handle is never masked to you.
+  assertEquals(toPerson(row({}), "a", false).handle, "perdon");
+  assertEquals(toPerson(row({}), "a", false).handleLocked, false);
+  // No handle, nothing to lock; anonymous stays anonymous.
+  assertEquals(toPerson(row({ instagram_handle: null }), "z", false).handleLocked, false);
+  assertEquals(toPerson(row({ anonymous: true }), "z", false).handle, null);
+  // The feed passes the viewer's standing to every person.
+  assertEquals(feedEvents([row({})], "z", false)[0].person.handle, "per***");
+});
+
+Deno.test("seesHandles: a verified Instagram and a public profile, both", () => {
+  const at = "2026-10-20T00:00:00Z";
+  assertEquals(seesHandles({ instagram_verified_at: at, appear_anonymous: false }), true);
+  assertEquals(seesHandles({ instagram_verified_at: at, appear_anonymous: null }), true);
+  assertEquals(seesHandles({ instagram_verified_at: at, appear_anonymous: true }), false);
+  assertEquals(seesHandles({ instagram_verified_at: null, appear_anonymous: false }), false);
+  assertEquals(seesHandles(null), false);
 });
 
 Deno.test("cleanHandle: lowercase, no @, null when blank", () => {
@@ -102,12 +134,13 @@ Deno.test("near you: inside the circle; no point, no circle", () => {
 Deno.test("the profile line", () => {
   const p = toPerson(row({}), "z");
   assertEquals(socialLine(null, 0), null);
-  assertEquals(socialLine(p, 1), "Perdón saw this");
-  assertEquals(socialLine(p, 2), "Perdón and 1 other saw this");
-  assertEquals(socialLine(p, 4), "Perdón and 3 others saw this");
+  // MESITA-2594: the line counts likes only, so it says so.
+  assertEquals(socialLine(p, 1), "Perdón liked this");
+  assertEquals(socialLine(p, 2), "Perdón and 1 other liked this");
+  assertEquals(socialLine(p, 4), "Perdón and 3 others liked this");
   assertEquals(
     socialLine(toPerson(row({}), "a"), 3),
-    "You and 2 others saw this",
+    "You and 2 others liked this",
   );
 });
 
@@ -132,6 +165,7 @@ Deno.test("toPerson carries no account id", () => {
     "followers",
     "guestClass",
     "handle",
+    "handleLocked",
     "isYou",
     "name",
     "plan",
@@ -162,6 +196,7 @@ Deno.test("an anonymous member is 'A member' and nothing else, even if a field l
     name: "A member",
     avatarUrl: null,
     handle: null,
+    handleLocked: false,
     followers: 0,
     isYou: false,
     guestClass: "regular",
