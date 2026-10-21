@@ -130,6 +130,7 @@ Deno.test("toPerson carries no account id", () => {
     "11111111-1111-1111-1111-111111111111",
   );
   assertEquals(Object.keys(person).sort(), [
+    "anonymous",
     "avatarUrl",
     "followers",
     "guestClass",
@@ -152,4 +153,25 @@ Deno.test("a person carries Class and Plan, plain unless set", () => {
   // Old words and unknown values never show a status the member lacks.
   assertEquals(toPerson(row({ plan: "pro" }), "z").plan, "free");
   assertEquals(toPerson(row({ guest_class: "diamond" }), "z").guestClass, "regular");
+});
+
+// MESITA-2580: a member without Instagram is in the feed, anonymously.
+Deno.test("an anonymous member is 'A member' and nothing else, even if a field leaked", () => {
+  const anon = toPerson(
+    row({ anonymous: true, first_name: "Leak", avatar_url: "https://x/y.jpg", instagram_handle: "leak", instagram_followers_count: 9000, guest_class: "vip" }),
+    "z",
+  );
+  assertEquals(anon, {
+    name: "A member",
+    avatarUrl: null,
+    handleHint: null,
+    followers: 0,
+    isYou: false,
+    guestClass: "regular",
+    plan: "free",
+    anonymous: true,
+  });
+  // The guest's own anonymous row still reads as them.
+  assertEquals(toPerson(row({ anonymous: true, consumer_id: "z" }), "z").isYou, true);
+  assertEquals(toPerson(row({}), "z").anonymous, false);
 });

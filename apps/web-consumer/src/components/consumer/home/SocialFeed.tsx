@@ -33,8 +33,9 @@
 // events. its readl time uner you radious or near you, just enough to odn't
 // kill"): the server returns every event inside the operator's Area circle
 // around the guest, newest first, at most 50, and the pane refetches every
-// LIVE_MS while the tab is visible. Only Instagram-connected members who left
-// Show my activity on ever appear (consumer-web-list-activity). No activity
+// LIVE_MS while the tab is visible. Members with a verified Instagram appear
+// by name; everyone else appears as "A member", with no photo, handle or
+// person card (MESITA-2580: only ~10% connect Instagram). No activity
 // → SAMPLE rows (MESITA-2520, lib/social-sample.ts): made-up members on
 // Home's real places, under one quiet "Sample activity" line, never mixed
 // with real rows; with no places either, the empty state.
@@ -79,6 +80,7 @@ import {
   Eye,
   Heart,
   RotateCw,
+  UserRound,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -199,7 +201,14 @@ function Face({
   const Glyph = VERB_ICON[kind];
   return (
     <span className="relative block h-11 w-11 shrink-0">
-      {person.avatarUrl ? (
+      {person.anonymous && !person.isYou ? (
+        <span
+          className="bg-muted text-muted-foreground flex h-11 w-11 items-center justify-center rounded-full"
+          data-social-anonymous
+        >
+          <UserRound className="h-5 w-5" strokeWidth={2} aria-hidden />
+        </span>
+      ) : person.avatarUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={person.avatarUrl}
@@ -304,6 +313,7 @@ function FeedRow({
   const ago = shortAgo(item.at);
   const href = placeHref(item.place.slug || item.place.id);
   const who = feedWho(item.person);
+  const door = !item.person.anonymous;
   return (
     <li
       className={cn(
@@ -313,24 +323,36 @@ function FeedRow({
       data-social-row
       data-social-fresh={fresh || undefined}
     >
-      <button
-        type="button"
-        onClick={() => onPerson(item)}
-        aria-label={`${who}'s profile`}
-        className="focus-visible:ring-ring flex shrink-0 rounded-full outline-none focus-visible:ring-2"
-        data-social-person
-      >
-        <Face person={item.person} kind={item.kind} />
-      </button>
+      {/* An anonymous member (MESITA-2580) has no person card: the face and
+          name are plain text, and only the place is a door. */}
+      {door ? (
+        <button
+          type="button"
+          onClick={() => onPerson(item)}
+          aria-label={`${who}'s profile`}
+          className="focus-visible:ring-ring flex shrink-0 rounded-full outline-none focus-visible:ring-2"
+          data-social-person
+        >
+          <Face person={item.person} kind={item.kind} />
+        </button>
+      ) : (
+        <span className="flex shrink-0">
+          <Face person={item.person} kind={item.kind} />
+        </span>
+      )}
       <div className="min-w-0 flex-1">
         <p className="text-foreground line-clamp-2 text-sm leading-snug">
-          <button
-            type="button"
-            onClick={() => onPerson(item)}
-            className={TAP_TEXT}
-          >
-            {who}
-          </button>{" "}
+          {door ? (
+            <button
+              type="button"
+              onClick={() => onPerson(item)}
+              className={TAP_TEXT}
+            >
+              {who}
+            </button>
+          ) : (
+            <span className="font-semibold">{who}</span>
+          )}{" "}
           {VERB[item.kind]}{" "}
           <Link href={href} className={TAP_TEXT} data-social-place>
             {item.place.name}

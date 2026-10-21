@@ -69,6 +69,7 @@ function person(m: Member): ActivityPerson {
     isYou: false,
     guestClass: m.guestClass ?? "regular",
     plan: m.plan ?? "free",
+    anonymous: false,
   };
 }
 
