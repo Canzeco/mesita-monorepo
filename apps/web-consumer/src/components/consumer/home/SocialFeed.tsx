@@ -8,11 +8,16 @@
 // profile of the person and the username and the name just as those old
 // instagram notifications. keep super super simple"):
 //
-//   (●) perdon Perdón liked Contramar. 2h                  [▢]
+//   (●) Perdón liked Contramar. 2h                         [▢]
+//       Instagram · per••• · 1.2K followers
 //
-// The member's Instagram picture, then one line: the username (bold), the
-// name (muted), the verb, the place (bold), the time (muted); the place's
-// photo on the right. Three verbs — liked (stored `saved`), visited (stored
+// The member's picture, then one line: the name (bold), the verb, the place
+// (bold), the time (muted); under it, muted, the member's Instagram as social
+// proof — three letters of the username and an approximate follower count,
+// never the whole username (Pato, MESITA-2522: "i don't really want the
+// instagram username since it might cause the users to abandond my app …
+// mentioing the number of followers because that is all the social proof is
+// about"). No Instagram → no second line. The place's photo on the right. Three verbs — liked (stored `saved`), visited (stored
 // `went`), viewed (stored `viewed`); the labels changed, never the keys.
 // Same place + same verb is one item ("perdon and 4 others liked
 // Contramar"). The server orders it: newest day first, and within a day the
@@ -62,18 +67,39 @@ export function shortAgo(iso: string, now = Date.now()): string {
   return `${Math.floor(days / 7)}w`;
 }
 
-/** Who leads the line: "You", else the Instagram username, else the name. */
+/** Who leads the line: "You", else the member's name. */
 export function feedWho(lead: ActivityPerson): string {
   if (lead.isYou) return "You";
-  return lead.handle ?? lead.name;
+  return lead.name;
 }
 
-/** The muted name after the username — only when the username led and the
- *  name is a real name, not the "@handle" fallback. */
-export function feedName(lead: ActivityPerson): string | null {
-  if (lead.isYou || !lead.handle) return null;
-  const name = lead.name.trim();
-  return name && !name.startsWith("@") ? name : null;
+/** "per" → "per•••": the username blocked after its first letters. */
+export function maskedHandle(hint: string | null): string | null {
+  return hint ? `${hint}•••` : null;
+}
+
+/** An approximate follower count: 47 → "40+", 760 → "700+", 4,820 → "4.8K",
+ *  12,400 → "12K", 1,250,000 → "1.2M". Zero or less → null. */
+export function approxFollowers(n: number): string | null {
+  if (!Number.isFinite(n) || n <= 0) return null;
+  if (n < 10) return String(Math.trunc(n));
+  if (n < 100) return `${Math.floor(n / 10) * 10}+`;
+  if (n < 1000) return `${Math.floor(n / 100) * 100}+`;
+  const [div, unit] = n < 1_000_000 ? [1000, "K"] : [1_000_000, "M"];
+  const v = n / div;
+  const shown = v < 10 ? Math.floor(v * 10) / 10 : Math.floor(v);
+  return `${String(shown).replace(/\.0$/, "")}${unit}`;
+}
+
+/** The muted Instagram line under a row, or null without Instagram (or for
+ *  the guest's own row). */
+export function feedInstagram(lead: ActivityPerson): string | null {
+  const handle = lead.isYou ? null : maskedHandle(lead.handleHint);
+  if (!handle) return null;
+  const followers = approxFollowers(lead.followers);
+  return followers
+    ? `Instagram · ${handle} · ${followers} followers`
+    : `Instagram · ${handle}`;
 }
 
 /** " and 4 others liked" / " visited": the sentence after the name. */
@@ -85,7 +111,7 @@ export function feedVerbPhrase(
   return `and ${item.others} ${item.others === 1 ? "other" : "others"} ${verb}`;
 }
 
-/** "perdon and 4 others liked" / "You visited". */
+/** "Perdón and 4 others liked" / "You visited". */
 export function feedSentence(
   item: Pick<ActivityFeedItem, "lead" | "others" | "kind">,
 ): string {
@@ -110,7 +136,7 @@ function Face({ person }: { person: ActivityPerson }) {
 
 function FeedRow({ item }: { item: ActivityFeedItem }) {
   const photo = cardPhoto(item.place);
-  const name = feedName(item.lead);
+  const instagram = feedInstagram(item.lead);
   return (
     <li>
       <Link
@@ -119,15 +145,22 @@ function FeedRow({ item }: { item: ActivityFeedItem }) {
         data-social-row
       >
         <Face person={item.lead} />
-        <p className="text-foreground min-w-0 flex-1 text-sm leading-snug">
-          <span className="font-semibold">{feedWho(item.lead)}</span>
-          {name ? (
-            <span className="text-muted-foreground"> {name}</span>
-          ) : null}{" "}
-          {feedVerbPhrase(item)}{" "}
-          <span className="font-semibold">{item.place.name}</span>.{" "}
-          <span className="text-muted-foreground">{shortAgo(item.at)}</span>
-        </p>
+        <div className="min-w-0 flex-1">
+          <p className="text-foreground text-sm leading-snug">
+            <span className="font-semibold">{feedWho(item.lead)}</span>{" "}
+            {feedVerbPhrase(item)}{" "}
+            <span className="font-semibold">{item.place.name}</span>.{" "}
+            <span className="text-muted-foreground">{shortAgo(item.at)}</span>
+          </p>
+          {instagram ? (
+            <p
+              className="text-muted-foreground mt-0.5 truncate text-xs"
+              data-social-instagram
+            >
+              {instagram}
+            </p>
+          ) : null}
+        </div>
         <span className="bg-muted h-11 w-11 shrink-0 overflow-hidden rounded-md">
           {photo ? (
             // eslint-disable-next-line @next/next/no-img-element

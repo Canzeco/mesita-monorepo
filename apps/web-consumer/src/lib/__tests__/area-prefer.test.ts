@@ -27,17 +27,27 @@ describe("One ranking, no prefer (MESITA-2516)", () => {
   it("All is every family; a family row is that family", () => {
     expect(isEveryFamily(ALL_CHIP)).toBe(true);
     expect(isEveryFamily("coffee")).toBe(false);
-    // Saved reads no pool, so it never changes the request; Social is a tab.
+    // Every row asks for its own families; Social is a tab, and Favorites
+    // left the column (MESITA-2522).
     const rails = src("components/consumer/home/CatalogRails.tsx");
-    expect(rails).toContain("if (c.key !== SAVED_CHIP) setFamilies(chipFamilies(c.key));");
-    for (const gone of ["NEAR_CHIP", "POPULAR_CHIP", "chipPrefer", "setPrefer", "AreaPrefer"]) {
+    expect(rails).toContain("setFamilies(chipFamilies(c.key));");
+    expect(rails).not.toContain("SAVED_CHIP");
+    for (const gone of [
+      "NEAR_CHIP",
+      "POPULAR_CHIP",
+      "chipPrefer",
+      "setPrefer",
+      "AreaPrefer",
+    ]) {
       expect(rails, gone).not.toContain(gone);
     }
   });
 
   it("Home keys its pool cache on the place and the row's family", () => {
     const rails = src("components/consumer/home/CatalogRails.tsx");
-    expect(rails).toContain('families.length > 0 ? families.join(",") : ALL_CHIP');
+    expect(rails).toContain(
+      'families.length > 0 ? families.join(",") : ALL_CHIP',
+    );
   });
 
   // MESITA-2438: a family row re-asks the server with its own key, so
@@ -68,7 +78,9 @@ describe("One ranking, no prefer (MESITA-2516)", () => {
       "const from = origin ?? coords ?? (onCityFallback ? MONTERREY_CENTER : null);",
     );
     expect(rails).toContain("const requestKey = `${areaPoolKey(from)}|${");
-    const effect = rails.slice(rails.indexOf("useEffect(() => {\n    // Until the browser answers"));
+    const effect = rails.slice(
+      rails.indexOf("useEffect(() => {\n    // Until the browser answers"),
+    );
     expect(effect.indexOf("if (waitingForFix) return;")).toBeGreaterThan(-1);
     expect(effect.indexOf("if (waitingForFix) return;")).toBeLessThan(
       effect.indexOf("apiListAreaPool("),
@@ -78,8 +90,12 @@ describe("One ranking, no prefer (MESITA-2516)", () => {
     expect(rails).not.toContain("Couldn't find you");
     expect(CITY_FALLBACK.name).toBe("Monterrey");
     expect(cityFallbackBar(null)).toBe("Showing Monterrey");
-    expect(cityFallbackBar("denied")).toBe("Location is off · Showing Monterrey");
-    expect(cityFallbackBar("unavailable")).toBe("Location is off · Showing Monterrey");
+    expect(cityFallbackBar("denied")).toBe(
+      "Location is off · Showing Monterrey",
+    );
+    expect(cityFallbackBar("unavailable")).toBe(
+      "Location is off · Showing Monterrey",
+    );
     const hook = src("lib/use-user-location.ts");
     expect(hook).toContain("export function useUserLocationSettled()");
     // No geolocation at all still settles: `asked` is set before the check.

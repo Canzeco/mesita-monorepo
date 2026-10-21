@@ -10,14 +10,14 @@
 //   ━━━━━━━━━━━━━━━━━                       and read here.
 //   ┌──────────┬──────────────────────┐
 //   │▌▦ All    │                      │
-//   │ ♡ Favor… │     square tile      │
-//   │ ○ Coffee │                      │
+//   │ ○ Coffee │     square tile      │
 //   │ ○ …   ↕  │                      │
 //
 // Places: the left family column beside the tiles (Pato, MESITA-2519: "keep
-// the later view of the failies. its fastwer to browse") — All and
-// Favorites pinned, then every family, scrolling on its own, no colour
-// stripes (MESITA-2521: "we don't need to colors now"); MESITA-2517 tried a
+// the later view of the failies. its fastwer to browse") — All pinned,
+// then every family, scrolling on its own, no colour stripes (MESITA-2521:
+// "we don't need to colors now"). Favorites left the column for the bar's
+// Saved tab (Pato, MESITA-2522: "remove favorites from this lateral menu"); MESITA-2517 tried a
 // horizontal chip row and Pato sent it back. Social: the activity feed
 // (SocialFeed), full width. Every row's mark is a monochrome line icon
 // (lib/family-icons.tsx), never an emoji (Pato, MESITA-2478: "emojis uses
@@ -32,9 +32,8 @@
 // QUESTION (MESITA-2438): it sends the family's key, so Google gets that
 // family's full type list and the server lists its primary places before
 // its secondary ones. Each location × row's pool is kept ten minutes
-// (lib/area-pool-cache.ts), so going back to a row spends nothing.
-// Favorites shows the guest's hearted places in the same tiles (it was
-// Home's fourth tab, MESITA-2368; the bar's Saved tab lists them too). Under each tile, TEMPORARILY, the server's score
+// (lib/area-pool-cache.ts), so going back to a row spends nothing. Under
+// each tile, TEMPORARILY, the server's score
 // breakdown (AreaDiagnostics.tsx). `useUserLocation` asks for location on mount. No search bar.
 // The request sends no predicates, so a saved scope can never keep cutting
 // this list.
@@ -47,7 +46,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Compass, Heart, MapPin } from "lucide-react";
+import { Compass, MapPin } from "lucide-react";
 import { MONTERREY_CENTER } from "@/lib/map-defaults";
 import {
   apiListAreaPool,
@@ -76,7 +75,6 @@ import { withUserDistance } from "@/lib/place-distance";
 import { onPlaceCreated } from "@/lib/place-created-event";
 import { useOpenGooglePlace } from "@/lib/use-open-google-place";
 import {
-  readSavedPlacePreviews,
   removeSavedPlacePreview,
   upsertSavedPlacePreview,
   useSavedPlaces,
@@ -116,10 +114,6 @@ export const ALL_CHIP = "all";
 export function isEveryFamily(chip: string): boolean {
   return chip === ALL_CHIP;
 }
-/** The guest's hearted places (MESITA-2383). The row read Favorites, then
- *  Saved (MESITA-2427), Favorites again since MESITA-2521; the key is
- *  stored, so it stays `saved`. */
-export const SAVED_CHIP = "saved";
 /** Home's two tabs (Pato, MESITA-2517: "another header (Places. Social)"). */
 export const HOME_TABS = [
   { key: "places", label: "Places" },
@@ -127,16 +121,14 @@ export const HOME_TABS = [
 ] as const;
 export type HomeTab = (typeof HOME_TABS)[number]["key"];
 
-/** The Places tab's left column, top to bottom (MESITA-2519): All and
- *  Favorites pinned, then every guest family. Google Places and Mesita Selected are not guest choices
+/** The Places tab's left column, top to bottom (MESITA-2519): All pinned,
+ *  then every guest family. The guest's hearted places are not a row: they
+ *  live in the bar's Saved tab (MESITA-2522). Google Places and Mesita Selected are not guest choices
  *  (MESITA-2381): they are the sources All mixes. A family with nothing here
  *  says so rather than hiding. */
 export function placesChips(): { key: string; label: string }[] {
   return [
     { key: ALL_CHIP, label: "All" },
-    // Favorites (Pato, MESITA-2521: "rename saved to favorites
-    // everywhere"); the heart matches the tile's button (MESITA-2430).
-    { key: SAVED_CHIP, label: "Favorites" },
     ...FILTERABLE_PLACE_FAMILIES.map((f) => ({
       key: f.key as string,
       label: f.label,
@@ -144,8 +136,8 @@ export function placesChips(): { key: string; label: string }[] {
   ];
 }
 
-/** All and Favorites: the column's pinned head (MESITA-2411, MESITA-2519). */
-export const PINNED_CHIPS = 2;
+/** All: the column's pinned head (MESITA-2411, MESITA-2519, MESITA-2522). */
+export const PINNED_CHIPS = 1;
 
 /** Tiles drawn per page; the next page appends on scroll (MESITA-2384). */
 export const PLACES_PAGE = 20;
@@ -219,7 +211,7 @@ export function cityFallbackBar(error: LocationError | null): string {
 export function CatalogRails() {
   const supabase = useBrowserSupabase();
   const coords = useUserLocation();
-  const { savedIds, hydrated, setSaved } = useSavedPlaces();
+  const { savedIds, setSaved } = useSavedPlaces();
   const openGooglePlace = useOpenGooglePlace();
   const [pool, setPool] = useState<AreaPool | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -335,13 +327,6 @@ export function CatalogRails() {
   }, [hasMore, pageKey, pageCount]);
   const locate = useLocateUser();
 
-  // Favorites previews re-read whenever the saved set changes, so a heart
-  // tapped anywhere shows up under Favorites at once.
-  const savedList = useMemo(
-    () => savedPlaceList(savedIds, readSavedPlacePreviews<Place>()),
-    [savedIds],
-  );
-
   /** What the events say about a tile: its source, rank and final score. */
   const tileFacts = (place: Place, rank: number) => ({
     source: place.area?.source ?? (place.googleOnly ? "google" : "mesita"),
@@ -416,8 +401,7 @@ export function CatalogRails() {
   // THE PLACES TAB'S LEFT COLUMN (Pato, MESITA-2519: "keep the later view of
   // the failies. its fastwer to browse … LEFT MENU OF FAMILIES"): the
   // lateral menu of MESITA-2367 under the tabs of MESITA-2517, which tried a
-  // horizontal chip row. All and Favorites pinned, then every family,
-  // scrolling on its own — no group colours (Pato, MESITA-2521: "remove the
+  // horizontal chip row. All pinned, then every family, scrolling on its own — no group colours (Pato, MESITA-2521: "remove the
   // stupid blue and orange color from the sidebar menu"; they were
   // MESITA-2484/2492). Each row a line icon
   // and a name, never an emoji (MESITA-2478); the chosen row white, bold,
@@ -432,7 +416,7 @@ export function CatalogRails() {
           onClick={() => {
             if (!on) trackEvent(supabase, "home_mode_view", { mode: c.label });
             setChip(c.key);
-            if (c.key !== SAVED_CHIP) setFamilies(chipFamilies(c.key));
+            setFamilies(chipFamilies(c.key));
           }}
           aria-pressed={on}
           className={cn(ROW_BASE, on ? ROW_ON : ROW_OFF)}
@@ -532,28 +516,6 @@ export function CatalogRails() {
   // Sample Social rows sit on the pool's real places (MESITA-2520).
   if (tab === "social")
     return shell(<SocialFeed samplePlaces={samplePlaces} />);
-
-  // Favorites never waits on the catalog: the hearts are local.
-  if (chip === SAVED_CHIP) {
-    if (!hydrated) {
-      return shell(
-        <div className={PLACES_LIST}>
-          <Skeleton className="aspect-square rounded-2xl" />
-        </div>,
-      );
-    }
-    return shell(
-      savedList.length === 0 ? (
-        <EmptyState
-          icon={Heart}
-          title="No favorites yet"
-          description="Tap the heart on a place and it lands here."
-        />
-      ) : (
-        tiles(savedList, "Favorites", false)
-      ),
-    );
-  }
 
   // One slim line above the tiles, never a full-pane state (MESITA-2472).
   const cityBar = onCityFallback ? (

@@ -41,8 +41,11 @@ describe("sampleActivity", () => {
     for (const r of rows) {
       expect(r.lead.avatarUrl).toBeNull();
       expect(r.lead.isYou).toBe(false);
-      expect(r.lead.handle).toMatch(/^[a-z0-9._]+$/);
-      expect(SAMPLE_MEMBERS.map((m) => m.handle)).toContain(r.lead.handle);
+      // Three letters of a cast username, never the whole (MESITA-2522).
+      expect(r.lead.handleHint).toMatch(/^[a-z0-9._]{3}$/);
+      expect(SAMPLE_MEMBERS.map((m) => m.handle.slice(0, 3))).toContain(
+        r.lead.handleHint,
+      );
       expect(r.people).toEqual([r.lead]);
     }
   });

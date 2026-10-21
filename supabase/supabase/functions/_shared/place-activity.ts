@@ -10,10 +10,12 @@ export const ACTIVITY_KINDS = ["saved", "viewed", "went"] as const;
 export type ActivityKind = typeof ACTIVITY_KINDS[number];
 
 export function isActivityKind(v: unknown): v is ActivityKind {
-  return typeof v === "string" && (ACTIVITY_KINDS as readonly string[]).includes(v);
+  return typeof v === "string" &&
+    (ACTIVITY_KINDS as readonly string[]).includes(v);
 }
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Only Mesita places carry activity. A Google-only card (`g:<id>`) is not a
  *  row yet, so its save stays in the browser until the place is created. */
@@ -25,10 +27,21 @@ export function isMesitaPlaceId(v: unknown): v is string {
 export type ActivityPerson = {
   name: string;
   avatarUrl: string | null;
-  handle: string | null;
+  /** The first three letters of the Instagram username, never the whole of
+   *  it (Pato, MESITA-2522: "i don't really want the instagram username since
+   *  it might cause the users to abandond my app … just clicing maybe first 3
+   *  letters"). Null without Instagram. */
+  handleHint: string | null;
   followers: number;
   isYou: boolean;
 };
+
+/** "perdon" → "per"; a shorter handle keeps one letter. */
+export function handleHint(handle: string | null | undefined): string | null {
+  const h = handle?.trim().replace(/^@/, "").toLowerCase();
+  if (!h) return null;
+  return h.length > 3 ? h.slice(0, 3) : h.slice(0, 1);
+}
 
 /** A row from place_activity_feed / place_activity_people. */
 export type ActivityRow = {
@@ -45,12 +58,15 @@ export type ActivityRow = {
 
 export function toPerson(row: ActivityRow, viewerId: string): ActivityPerson {
   const first = row.first_name?.trim();
-  const handle = row.instagram_handle?.trim() || null;
   return {
-    name: first || (handle ? `@${handle}` : "A member"),
+    // Never "@handle": the whole username does not leave the server.
+    name: first || "A member",
     avatarUrl: row.avatar_url ?? null,
-    handle,
-    followers: Math.max(0, Math.trunc(Number(row.instagram_followers_count ?? 0)) || 0),
+    handleHint: handleHint(row.instagram_handle),
+    followers: Math.max(
+      0,
+      Math.trunc(Number(row.instagram_followers_count ?? 0)) || 0,
+    ),
     isYou: row.consumer_id === viewerId,
   };
 }
@@ -69,9 +85,14 @@ export type FeedGroup = {
 
 /** Collapse rows (newest first) into one item per place × verb. The item's
  *  time and lead are its newest row. */
-export function groupFeed(rows: readonly ActivityRow[], viewerId: string): FeedGroup[] {
+export function groupFeed(
+  rows: readonly ActivityRow[],
+  viewerId: string,
+): FeedGroup[] {
   const groups = new Map<string, FeedGroup>();
-  const sorted = [...rows].sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const sorted = [...rows].sort((a, b) =>
+    b.created_at.localeCompare(a.created_at)
+  );
   for (const row of sorted) {
     if (!row.place_id || !isActivityKind(row.kind)) continue;
     const key = `${row.place_id}|${row.kind}`;
@@ -103,7 +124,8 @@ export function orderFeed<T extends { at: string; distanceKm: number | null }>(
   items: readonly T[],
   now: Date,
 ): T[] {
-  const day = (iso: string) => Math.floor((now.getTime() - Date.parse(iso)) / DAY_MS);
+  const day = (iso: string) =>
+    Math.floor((now.getTime() - Date.parse(iso)) / DAY_MS);
   return [...items].sort((a, b) => {
     const d = day(a.at) - day(b.at);
     if (d !== 0) return d;
@@ -116,7 +138,10 @@ export function orderFeed<T extends { at: string; distanceKm: number | null }>(
 
 /** The line under a place's title: "Perdón and 3 others saw this". People
  *  first; null when nobody visible has touched the place. */
-export function socialLine(lead: ActivityPerson | null, total: number): string | null {
+export function socialLine(
+  lead: ActivityPerson | null,
+  total: number,
+): string | null {
   if (!lead || total <= 0) return null;
   const who = lead.isYou ? "You" : lead.name;
   const rest = total - 1;
