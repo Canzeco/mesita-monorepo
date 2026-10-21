@@ -42,6 +42,11 @@ export type ActivityPerson = {
   guestClass: ConsumerClass;
   /** Plan: free or premium, the subscription (MESITA-2553). */
   plan: ConsumerPlan;
+  /** A member without a verified Instagram (MESITA-2580): "A member", no
+   *  photo, handle, followers or Class. place_activity_feed already nulled
+   *  every identifying field in SQL; this only tells the app not to make
+   *  the row a door to a person card. */
+  anonymous: boolean;
 };
 
 /** Plan and Class are independent (Pato, MESITA-2553). */
@@ -93,10 +98,24 @@ export type ActivityRow = {
   instagram_followers_count: number | null;
   guest_class?: string | null;
   plan?: string | null;
+  anonymous?: boolean | null;
   total?: number | string | null;
 };
 
 export function toPerson(row: ActivityRow, viewerId: string): ActivityPerson {
+  const isYou = row.consumer_id === viewerId;
+  if (row.anonymous === true) {
+    return {
+      name: "A member",
+      avatarUrl: null,
+      handleHint: null,
+      followers: 0,
+      isYou,
+      guestClass: "regular",
+      plan: "free",
+      anonymous: true,
+    };
+  }
   const first = row.first_name?.trim();
   return {
     // Never "@handle": the whole username does not leave the server.
@@ -107,9 +126,10 @@ export function toPerson(row: ActivityRow, viewerId: string): ActivityPerson {
       0,
       Math.trunc(Number(row.instagram_followers_count ?? 0)) || 0,
     ),
-    isYou: row.consumer_id === viewerId,
+    isYou,
     guestClass: toClass(row.guest_class),
     plan: toPlan(row.plan),
+    anonymous: false,
   };
 }
 

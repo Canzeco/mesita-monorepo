@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -89,6 +91,7 @@ describe("the feed's copy", () => {
     isYou: false,
     guestClass: "regular",
     plan: "free",
+    anonymous: false,
   };
 
   // MESITA-2515: old-Instagram rows, the verbs over unchanged keys.
@@ -172,5 +175,34 @@ describe("the first-sync backfill stays private", () => {
     expect(guard).toMatch(
       /apiTrackActivity\(getSupabase\(\), \{\s*kind: "saved",\s*placeId,\s*quiet: true/,
     );
+  });
+});
+
+// MESITA-2580: members without Instagram are in the feed as "A member".
+describe("anonymous members in the feed", () => {
+  const FEED_SRC = readFileSync(
+    join(__dirname, "../../components/consumer/home/SocialFeed.tsx"),
+    "utf8",
+  );
+
+  it("draws them with a plain face and no person card", () => {
+    expect(FEED_SRC).toContain("const door = !item.person.anonymous;");
+    expect(FEED_SRC).toContain("data-social-anonymous");
+    expect(FEED_SRC).toMatch(/door \? \(\s*<button[\s\S]*data-social-person/);
+  });
+
+  it("names them 'A member' and shows no Instagram proof", () => {
+    const anon: ActivityPerson = {
+      name: "A member",
+      avatarUrl: null,
+      handleHint: null,
+      followers: 0,
+      isYou: false,
+      guestClass: "regular",
+      plan: "free",
+      anonymous: true,
+    };
+    expect(feedSentence({ person: anon, kind: "saved" })).toBe("A member liked");
+    expect(feedInstagram(anon)).toBeNull();
   });
 });

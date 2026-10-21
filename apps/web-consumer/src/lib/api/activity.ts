@@ -7,9 +7,9 @@ import type { Place } from "./places";
 
 export type ActivityKind = "saved" | "viewed";
 
-/** A member as Social shows them. Only Instagram-connected members who left
- *  Show my activity on ever come back from the server, and never with their
- *  whole username: `handleHint` is its first three letters (MESITA-2522). */
+/** A member as Social shows them: named when they verified Instagram, else
+ *  anonymous (MESITA-2580). Never the whole username: `handleHint` is its
+ *  first three letters (MESITA-2522). */
 export type ActivityPerson = {
   name: string;
   avatarUrl: string | null;
@@ -19,6 +19,9 @@ export type ActivityPerson = {
   /** Class and Plan, independent (MESITA-2553). */
   guestClass: "regular" | "vip";
   plan: "free" | "premium";
+  /** A member without Instagram (MESITA-2580): "A member", no photo,
+   *  handle, followers or Class, and no person card. */
+  anonymous: boolean;
 };
 
 /** One feed item: one member, one place, one verb — never collapsed
