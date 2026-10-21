@@ -12,14 +12,15 @@ import { toGuestClass } from "@/lib/guest-standing";
 // ─── The identity header (MESITA-1079 v2 · -1619 · -1633 ·
 //     -1636 · -1640 · -1646 · -1649 · -1650 · -1652 · -2040 · -2087) ───────
 //
-// IT IS NOT A CARD (Pato, MESITA-1652): "this must be a header, top menu
-// style, occupying the full width and fixed when scrolling. it must contain
-// the photo, name, insta."
+// A CARD NOW, FIXED (Pato, MESITA-2577: "the header must have the same
+// horizontal margins as the cards below"). It was "not a card … occupying
+// the full width" (MESITA-1652); it is still fixed when the grid scrolls and
+// still holds the photo, name and Instagram.
 //
 //   (photo)  name
 //   (photo)  [◎ @handle · 1.2K followers ›] [▭ Free ›] [♛ Regular ›]
 //            (MESITA-2574; chips wrap when the row runs out)
-//   ─────── hairline ─────── (white header on the grey page)
+//   one white card, 16px in from each edge like the tiles below
 //
 // The card itself is IdentityCard, the same one Social shows for a member
 // (MESITA-2547). NO PHONE: it is private (Pato, MESITA-2547: "that is super
@@ -31,7 +32,7 @@ import { toGuestClass } from "@/lib/guest-standing";
 //
 // FIXED BY FLEX, NOT BY `sticky`. Me renders `flex h-full flex-col` around a
 // `flex-1 overflow-y-auto px-4` scroller. This bar is a `shrink-0` SIBLING
-// above that scroller, so it never moves, spans the full width for free, and
+// above that scroller, so it never moves, takes the same px-4 as the grid, and
 // never fights the scroller's own gutter or z-index. `ModeTabs` uses
 // `sticky top-0` because it lives INSIDE its scroller; this one does not have
 // to.
@@ -74,12 +75,18 @@ export function IdentityBar({
     <header
       aria-label="Your Mesita identity"
       aria-busy={loading || undefined}
-      // WHITE AND SHORT (Pato, MESITA-2574: "the header must be white and
-      // smaller shorter"): paper on the grey page, a hairline under it, and
-      // no band. It was the page grey over a 10px band.
-      className="border-border bg-card relative shrink-0 border-b"
+      // A WHITE CARD ON THE TILES' MARGINS (Pato, MESITA-2577: "the header
+      // must have the same horizontal margins as the cards below. keep UI
+      // aesthetic"): the tiles' own material — paper, hairline border,
+      // rounded-2xl, shadow-rest, 14px padding — inset 16px (the grid's
+      // px-4) on the grey page. Still short (MESITA-2574). It was a
+      // full-bleed white bar.
+      className="relative shrink-0 px-4 pt-4"
     >
-      <div className="relative flex flex-col items-center px-4 py-3">
+      <div
+        className="border-border bg-card shadow-rest relative flex flex-col items-center rounded-2xl border p-3.5"
+        data-identity-header-card
+      >
         {loading ? (
           <>
             {/* The skeleton mirrors the DESTINATION (Docs › Design §D): the
