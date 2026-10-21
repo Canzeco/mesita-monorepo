@@ -45,6 +45,19 @@ describe("the row", () => {
     expect(src).toContain("window.clearInterval(timer)");
   });
 
+  // MESITA-2535: a notification stream — a refresh button, new rows glow.
+  it("has a refresh button in a header row and lets new rows glow in", () => {
+    expect(src).toContain('aria-label="Refresh"');
+    expect(src).toContain("data-social-refresh");
+    expect(src).toContain('refreshing && "animate-spin"');
+    expect(src).toContain('{feed.sample ? "Sample activity" : "Near you"}');
+    expect(src).toContain("export const FRESH_MS = 4_000;");
+    expect(src).toContain('fresh && "bg-muted"');
+    // The first load glows nothing; the sample never glows.
+    expect(src).toContain("const arrived = seen ? keys.filter((k) => !seen.has(k)) : [];");
+    expect(src).toContain("fresh={!feed.sample && fresh.has(eventKey(item))}");
+  });
+
   it("an error offers Try again", () => {
     expect(src).toContain('label: "Try again"');
   });
