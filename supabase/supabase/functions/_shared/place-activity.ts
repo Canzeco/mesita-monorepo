@@ -4,7 +4,8 @@
 // consumer × place × kind in public.place_activity. Who may appear (Instagram
 // connected + Show my activity + not deleted) is decided in SQL
 // (place_activity_visible); this module only shapes what those readers return:
-// the feed's collapsed items and their order, and the place profile's line.
+// the feed's events (one row each, newest first, near the guest) and the
+// place profile's line.
 
 export const ACTIVITY_KINDS = ["saved", "viewed", "went"] as const;
 export type ActivityKind = typeof ACTIVITY_KINDS[number];
@@ -71,69 +72,47 @@ export function toPerson(row: ActivityRow, viewerId: string): ActivityPerson {
   };
 }
 
-/** A collapsed feed item: same place + same verb is one item. */
-export type FeedGroup = {
+/** One feed item: one member, one place, one verb (Pato, MESITA-2532:
+ *  "don't mention and Xothers, is juse one person one place events"). No
+ *  collapsing; the client never says "and N others". */
+export type FeedEvent = {
   placeId: string;
   kind: ActivityKind;
   at: string;
-  lead: ActivityPerson;
-  /** Up to three faces, lead first. */
-  people: ActivityPerson[];
-  /** Everyone else who did the same thing here. */
-  others: number;
+  person: ActivityPerson;
 };
 
-/** Collapse rows (newest first) into one item per place × verb. The item's
- *  time and lead are its newest row. */
-export function groupFeed(
+/** Every row is its own event, newest first ("list all the fucking events"),
+ *  by time only. A row with no place or an unknown verb is dropped. */
+export function feedEvents(
   rows: readonly ActivityRow[],
   viewerId: string,
-): FeedGroup[] {
-  const groups = new Map<string, FeedGroup>();
-  const sorted = [...rows].sort((a, b) =>
-    b.created_at.localeCompare(a.created_at)
-  );
-  for (const row of sorted) {
-    if (!row.place_id || !isActivityKind(row.kind)) continue;
-    const key = `${row.place_id}|${row.kind}`;
-    const person = toPerson(row, viewerId);
-    const g = groups.get(key);
-    if (!g) {
-      groups.set(key, {
-        placeId: row.place_id,
-        kind: row.kind,
-        at: row.created_at,
-        lead: person,
-        people: [person],
-        others: 0,
-      });
-      continue;
-    }
-    g.others += 1;
-    if (g.people.length < 3) g.people.push(person);
-  }
-  return [...groups.values()];
+): FeedEvent[] {
+  return [...rows]
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    .flatMap((row) =>
+      row.place_id && isActivityKind(row.kind)
+        ? [{
+          placeId: row.place_id,
+          kind: row.kind,
+          at: row.created_at,
+          person: toPerson(row, viewerId),
+        }]
+        : []
+    );
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-/** Newest first by day; within a day, the nearer place first, then newest.
- *  `distanceKm` is null when the guest's location or the place's is unknown,
- *  and an unknown distance sorts after every known one. */
-export function orderFeed<T extends { at: string; distanceKm: number | null }>(
-  items: readonly T[],
-  now: Date,
-): T[] {
-  const day = (iso: string) =>
-    Math.floor((now.getTime() - Date.parse(iso)) / DAY_MS);
-  return [...items].sort((a, b) => {
-    const d = day(a.at) - day(b.at);
-    if (d !== 0) return d;
-    const da = a.distanceKm ?? Number.POSITIVE_INFINITY;
-    const db = b.distanceKm ?? Number.POSITIVE_INFINITY;
-    if (da !== db) return da - db;
-    return b.at.localeCompare(a.at);
-  });
+/** Near you (MESITA-2532: "uner you radious or near you"): inside the
+ *  operator's Area circle around the guest's point. Without a point there is
+ *  no circle, so everything counts; with one, a place whose distance is
+ *  unknown cannot be shown to be near and is left out. */
+export function nearYou(
+  distanceKm: number | null,
+  radiusKm: number,
+  hasPoint: boolean,
+): boolean {
+  if (!hasPoint) return true;
+  return distanceKm != null && distanceKm <= radiusKm;
 }
 
 /** The line under a place's title: "Perdón and 3 others saw this". People

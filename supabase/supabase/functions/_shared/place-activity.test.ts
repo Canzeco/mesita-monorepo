@@ -1,11 +1,11 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import {
   type ActivityRow,
-  groupFeed,
+  feedEvents,
   handleHint,
   isActivityKind,
   isMesitaPlaceId,
-  orderFeed,
+  nearYou,
   socialLine,
   toPerson,
 } from "./place-activity.ts";
@@ -58,8 +58,9 @@ Deno.test("handleHint: three letters, one for a short handle", () => {
   assertEquals(handleHint(null), null);
 });
 
-Deno.test("same place + same verb collapses, newest leads", () => {
-  const groups = groupFeed(
+// MESITA-2532: one person, one place, one verb per row — never collapsed.
+Deno.test("every row is its own event, newest first, never collapsed", () => {
+  const events = feedEvents(
     [
       row({ consumer_id: "a", created_at: "2026-10-19T09:00:00Z" }),
       row({
@@ -67,37 +68,38 @@ Deno.test("same place + same verb collapses, newest leads", () => {
         first_name: "Ana",
         created_at: "2026-10-19T11:00:00Z",
       }),
-      row({ consumer_id: "c", created_at: "2026-10-19T08:00:00Z" }),
-      row({ consumer_id: "a", kind: "went" }),
-      row({ consumer_id: "a", place_id: P2 }),
+      row({
+        consumer_id: "c",
+        place_id: P2,
+        created_at: "2026-10-18T08:00:00Z",
+      }),
+      row({ consumer_id: "a", kind: "liked" }),
+      row({ consumer_id: "a", place_id: undefined }),
     ],
     "z",
   );
-  assertEquals(groups.length, 3);
-  const saved = groups.find((g) => g.placeId === P1 && g.kind === "saved")!;
-  assertEquals(saved.lead.name, "Ana");
-  assertEquals(saved.others, 2);
-  assertEquals(saved.at, "2026-10-19T11:00:00Z");
-  assertEquals(saved.people.length, 3);
+  assertEquals(events.map((e) => e.person.name), ["Ana", "Perdón", "Perdón"]);
+  assertEquals(events.map((e) => e.at), [
+    "2026-10-19T11:00:00Z",
+    "2026-10-19T09:00:00Z",
+    "2026-10-18T08:00:00Z",
+  ]);
+  assertEquals(events.map((e) => e.placeId), [P1, P1, P2]);
+  assertEquals(Object.keys(events[0]).sort(), [
+    "at",
+    "kind",
+    "person",
+    "placeId",
+  ]);
 });
 
-Deno.test("newest day first; nearby first within a day", () => {
-  const now = new Date("2026-10-19T20:00:00Z");
-  const out = orderFeed(
-    [
-      { id: "old-near", at: "2026-10-17T19:00:00Z", distanceKm: 0.1 },
-      { id: "today-far", at: "2026-10-19T19:00:00Z", distanceKm: 9 },
-      { id: "today-near", at: "2026-10-19T08:00:00Z", distanceKm: 1 },
-      { id: "today-unknown", at: "2026-10-19T19:30:00Z", distanceKm: null },
-    ],
-    now,
-  );
-  assertEquals(out.map((i) => i.id), [
-    "today-near",
-    "today-far",
-    "today-unknown",
-    "old-near",
-  ]);
+Deno.test("near you: inside the circle; no point, no circle", () => {
+  assertEquals(nearYou(3, 5, true), true);
+  assertEquals(nearYou(5, 5, true), true);
+  assertEquals(nearYou(5.1, 5, true), false);
+  assertEquals(nearYou(null, 5, true), false);
+  assertEquals(nearYou(null, 5, false), true);
+  assertEquals(nearYou(900, 5, false), true);
 });
 
 Deno.test("the profile line", () => {

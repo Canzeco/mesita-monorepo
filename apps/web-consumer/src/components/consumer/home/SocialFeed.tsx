@@ -28,9 +28,12 @@
 // icon or initial), never an empty box. Three verbs — liked (stored `saved`),
 // visited (stored `went`), viewed (stored `viewed`); the labels changed,
 // never the keys.
-// Same place + same verb is one item ("perdon and 4 others liked
-// Contramar"). The server orders it: newest day first, and within a day the
-// places nearer the guest first. Only Instagram-connected members who left
+// ONE PERSON, ONE PLACE, ONE EVENT per row, never "and 4 others" (Pato,
+// MESITA-2532: "is juse one person one place events. list all the fucking
+// events. its readl time uner you radious or near you, just enough to odn't
+// kill"): the server returns every event inside the operator's Area circle
+// around the guest, newest first, at most 50, and the pane refetches every
+// LIVE_MS while the tab is visible. Only Instagram-connected members who left
 // Show my activity on ever appear (consumer-web-list-activity). No activity
 // → SAMPLE rows (MESITA-2520, lib/social-sample.ts): made-up members on
 // Home's real places, under one quiet "Sample activity" line, never mixed
@@ -111,21 +114,16 @@ export function feedInstagram(lead: ActivityPerson): string | null {
   return followers ? `${handle} · ${followers} followers` : handle;
 }
 
-/** " and 4 others liked" / " visited": the sentence after the name. */
-export function feedVerbPhrase(
-  item: Pick<ActivityFeedItem, "others" | "kind">,
+/** "Perdón liked" / "You visited": one person, never "and N others". */
+export function feedSentence(
+  item: Pick<ActivityFeedItem, "person" | "kind">,
 ): string {
-  const verb = VERB[item.kind];
-  if (item.others <= 0) return verb;
-  return `and ${item.others} ${item.others === 1 ? "other" : "others"} ${verb}`;
+  return `${feedWho(item.person)} ${VERB[item.kind]}`;
 }
 
-/** "Perdón and 4 others liked" / "You visited". */
-export function feedSentence(
-  item: Pick<ActivityFeedItem, "lead" | "others" | "kind">,
-): string {
-  return `${feedWho(item.lead)} ${feedVerbPhrase(item)}`;
-}
+/** How often the open pane asks again (MESITA-2532: live, "just enough to
+ *  odn't kill"). */
+export const LIVE_MS = 30_000;
 
 /** The verb's badge on the face (MESITA-2525): ink, so the list scans by
  *  shape; the sentence still says the verb for a screen reader. */
@@ -218,7 +216,7 @@ function Thumb({ place }: { place: Place }) {
 }
 
 function FeedRow({ item }: { item: ActivityFeedItem }) {
-  const instagram = feedInstagram(item.lead);
+  const instagram = feedInstagram(item.person);
   const ago = shortAgo(item.at);
   return (
     <li>
@@ -227,11 +225,11 @@ function FeedRow({ item }: { item: ActivityFeedItem }) {
         className="hover:bg-muted/60 focus-visible:bg-muted/60 flex items-center gap-3 px-4 py-3 transition focus-visible:outline-none"
         data-social-row
       >
-        <Face person={item.lead} kind={item.kind} />
+        <Face person={item.person} kind={item.kind} />
         <div className="min-w-0 flex-1">
           <p className="text-foreground line-clamp-2 text-sm leading-snug">
-            <span className="font-semibold">{feedWho(item.lead)}</span>{" "}
-            {feedVerbPhrase(item)}{" "}
+            <span className="font-semibold">{feedWho(item.person)}</span>{" "}
+            {VERB[item.kind]}{" "}
             <span className="font-semibold">{item.place.name}</span>
           </p>
           <p
@@ -310,23 +308,35 @@ export function SocialFeed({
 
   useEffect(() => {
     let cancelled = false;
-    apiListActivityFeed(
-      supabase,
-      from ? { lat: from.lat, lng: from.lng } : null,
-    )
-      .then((items) => {
-        if (!cancelled) setState({ status: "ready", items });
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setState({
-            status: "error",
-            message: errMsg(err, "Couldn't load Social"),
-          });
-        }
-      });
+    const load = () =>
+      apiListActivityFeed(
+        supabase,
+        from ? { lat: from.lat, lng: from.lng } : null,
+      )
+        .then((items) => {
+          if (!cancelled) setState({ status: "ready", items });
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          // A failed refresh keeps the list on screen; only a first load
+          // that fails shows the error.
+          setState((prev) =>
+            prev.status === "ready"
+              ? prev
+              : {
+                  status: "error",
+                  message: errMsg(err, "Couldn't load Social"),
+                },
+          );
+        });
+    load();
+    // Live: ask again while the tab is in view (MESITA-2532).
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") load();
+    }, LIVE_MS);
     return () => {
       cancelled = true;
+      window.clearInterval(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase, fromKey, attempt]);
