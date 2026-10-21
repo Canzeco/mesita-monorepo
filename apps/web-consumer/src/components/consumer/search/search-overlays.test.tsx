@@ -1489,7 +1489,7 @@ describe("the screen radius is drawn and its weights read out (MESITA-2504)", ()
   // realative to the cruz"): the circle is the sight's own dashed ring,
   // screen-fixed on the cross, as wide as the map (the screen radius,
   // MESITA-2507), pulsing while a load is in flight.
-  it("the search ring rides the cross: dashed, map-wide, pulsing while loading", () => {
+  it("the search ring rides the cross: dashed, fits the map, pulsing while loading", () => {
     const client = read("SearchClient.tsx");
     const map = read("SearchMap.tsx");
     expect(client).toContain("radiusKm: result.radiusKm ?? null,");
@@ -1497,7 +1497,15 @@ describe("the screen radius is drawn and its weights read out (MESITA-2504)", ()
     expect(client).toContain("<SearchDebugCoords {...loadCoords} selected={selectedPlace} />");
     const reticle = map.slice(map.indexOf("function SearchMapReticle"));
     expect(reticle).toContain("data-search-ring");
-    expect(reticle).toContain("aspect-square w-full");
+    // The cross's distance to the nearest edge, doubled (MESITA-2511): the
+    // full width or twice the gap to the nearer of top/bottom, read off the
+    // map's size container.
+    expect(reticle).toContain("aspect-square -translate-x-1/2");
+    expect(reticle).toContain("style={{ width: SEARCH_RING_SIZE }}");
+    expect(reticle).not.toContain("aspect-square w-full");
+    expect(map).toContain("Math.round(2 * Math.min(SIGHT_Y, 1 - SIGHT_Y) * 1000) / 10");
+    expect(map).toContain("export const SEARCH_RING_SIZE = `min(100cqw, ${");
+    expect(map).toContain('<div className="[container-type:size] absolute inset-0">');
     expect(reticle).toContain("rounded-full border-[1.5px] border-dashed");
     expect(reticle).toContain('searching && "animate-pulse"');
     expect(map).toContain("<SearchMapReticle searching={searching} />");

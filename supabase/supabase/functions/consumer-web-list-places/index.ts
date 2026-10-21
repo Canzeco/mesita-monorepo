@@ -19,8 +19,9 @@
 // THE GUEST SEES (MESITA-2499): `bounds` is the visible map, so the zoom
 // decides how wide the set is — a street close, a city wide. THE SCREEN
 // RADIUS (MESITA-2504): the location is a POINT at the cross (`lat`, `lng`,
-// the sight) inside R = half the visible width (`screenRadiusKm`,
-// MESITA-2507: the circle spans the screen edge to edge). R is a GATE on both sources — Mesita's
+// the sight) inside R = the cross's distance to the nearest edge of the
+// visible map (`screenRadiusKm`, MESITA-2511: the circle always fits on
+// screen). R is a GATE on both sources — Mesita's
 // read is boxed to it and the Radius gate drops what lies past it, Google's
 // one call asks the prominent 20 inside it and eligibility drops the rest
 // (Pato: "I son't want to see stuff beyond my screen"). The score is
@@ -186,7 +187,7 @@ Deno.serve(async (req) => {
     nearbyTypes.length > 0;
   const center = { lat: nearbyDecision.lat, lng: nearbyDecision.lng };
   // The screen radius, or the operator's when there is no screen to read.
-  const screenKm = screenRadiusKm(body.bounds);
+  const screenKm = screenRadiusKm(body.bounds, center);
   const radiusKm = screenKm ?? cfg.map.radiusKm;
   const location = { kind: "point" as const, anchor: center, radiusKm };
   // Proximity^a × Popularity^1 × Selected^1, reach = the radius.
