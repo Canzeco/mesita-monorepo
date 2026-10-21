@@ -16,17 +16,30 @@ import type {
 } from "@/lib/api/activity";
 import type { Place } from "@/lib/api/places";
 
-type Member = { name: string; handle: string; followers: number };
+type Member = {
+  name: string;
+  handle: string;
+  followers: number;
+  /** A sample shows each state of the card (MESITA-2548). */
+  diamond?: boolean;
+  plan?: "free" | "premium";
+};
 
 /** The sample cast: first names and Instagram-style usernames. */
 export const SAMPLE_MEMBERS: readonly Member[] = [
   { name: "Sofía", handle: "sofi.eats", followers: 4820 },
   { name: "Diego", handle: "diegogarza", followers: 1290 },
-  { name: "Valeria", handle: "vale.mty", followers: 9310 },
+  {
+    name: "Valeria",
+    handle: "vale.mty",
+    followers: 9310,
+    diamond: true,
+    plan: "premium",
+  },
   { name: "Andrés", handle: "andres_tc", followers: 760 },
   { name: "Mariana", handle: "marianaflores", followers: 2140 },
   { name: "Emilio", handle: "emiliocafe", followers: 3380 },
-  { name: "Regina", handle: "regi.brunch", followers: 6050 },
+  { name: "Regina", handle: "regi.brunch", followers: 6050, plan: "premium" },
   { name: "Santiago", handle: "santi.sp", followers: 1880 },
 ];
 
@@ -54,6 +67,8 @@ function person(m: Member): ActivityPerson {
     handleHint: m.handle.slice(0, 3),
     followers: m.followers,
     isYou: false,
+    diamond: m.diamond === true,
+    plan: m.plan ?? "free",
   };
 }
 

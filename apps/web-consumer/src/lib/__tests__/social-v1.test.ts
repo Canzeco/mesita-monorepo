@@ -87,6 +87,8 @@ describe("the feed's copy", () => {
     handleHint: "per",
     followers: 1200,
     isYou: false,
+    diamond: false,
+    plan: "free",
   };
 
   // MESITA-2515: old-Instagram rows, the verbs liked · visited · viewed over

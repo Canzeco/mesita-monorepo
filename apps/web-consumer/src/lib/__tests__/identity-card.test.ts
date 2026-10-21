@@ -43,4 +43,14 @@ describe("the identity card", () => {
     expect(PUBLIC).toContain("show_activity");
     expect(PUBLIC).not.toContain('label="Show my activity"');
   });
+
+  // MESITA-2548: photo left; name, Instagram, then Diamond and Plan.
+  it("shows Diamond yes or no, and the plan, beside the photo", () => {
+    expect(CARD).toContain("data-identity-diamond");
+    expect(CARD).toContain("Not Diamond");
+    expect(CARD).toContain('{plan === "premium" ? "Premium" : "Free"}');
+    expect(CARD).toContain('className="flex w-full items-center gap-4"');
+    expect(BAR).toContain("diamond={profile?.diamond === true}");
+    expect(FEED).toContain("diamond={person.diamond === true}");
+  });
 });

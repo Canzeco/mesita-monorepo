@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Gem } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
@@ -9,23 +9,29 @@ import { cn } from "@/lib/utils";
 
 // ONE IDENTITY CARD (Pato, MESITA-2547: "that card at the top is the card.
 // the card must display all public info from instagram to profile picture
-// to name"): the ringed picture, then the name and Instagram chips. Me's
-// header draws it for the guest (Instagram is a door there); Social's
-// person card draws it for a member (Instagram is a fact, the handle hidden
-// as "die•••", MESITA-2522). Never the phone: it is private and lives in
-// Settings.
+// to name"). Me's header draws it for the guest (Instagram is a door there);
+// Social's person card draws it for a member (Instagram is a fact, the
+// handle hidden as "die•••", MESITA-2522). Never the phone: it is private and
+// lives in Settings.
 //
-//   [80px photo, ringed]
-//   [name]  [instagram]
+// PHOTO LEFT, three rows beside it (Pato, MESITA-2548: "PHOTO NAME / PHOTO
+// INSTA / PHOTO CLASS & PLAN"):
+//
+//   (80px)  Diego
+//   (photo) [◎ die••• · 1.2K followers]
+//   (     ) [◆ Diamond] [Premium]
+//
+// Diamond always shows, yes or no ("is super important to include if its
+// diamond or if its not"); it is granted by hand (MESITA-2044). Plan is Free
+// or Premium.
 
 /** One chip, Me's header vocabulary (MESITA-1652). */
 const CHIP_CLASS =
-  "border-border text-foreground relative inline-flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-full border px-3 text-xs font-semibold";
+  "border-border text-foreground relative inline-flex h-8 max-w-full min-w-0 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold";
 
-/** Grows a chip's tap area to the 44px floor without growing it visually:
- *  36px + 4px a side, half the grid's gap, so neighbours never overlap
+/** Grows a chip's tap area to the 44px floor without growing it visually
  *  (MESITA-1688). */
-const TAP_TARGET_CLASS = "after:absolute after:inset-[-4px] after:content-['']";
+const TAP_TARGET_CLASS = "after:absolute after:inset-[-6px] after:content-['']";
 
 export type IdentityInstagram = {
   /** "@handle", "Connect it", or the hidden "per••• · 1.2K followers". */
@@ -33,6 +39,8 @@ export type IdentityInstagram = {
   /** A door (Me) when set; a plain fact (Social) when not. */
   href?: string;
 };
+
+export type IdentityPlan = "free" | "premium";
 
 function InstagramBadge() {
   return (
@@ -52,17 +60,17 @@ export function IdentityCard({
   name,
   avatarUrl,
   instagram,
-  stacked = false,
+  diamond,
+  plan,
 }: {
   name: string;
   avatarUrl: string | null;
   instagram: IdentityInstagram | null;
-  /** One chip per row, full width: Social's card, where the hidden handle
-   *  and follower count must read whole (MESITA-2547). Me keeps the pair. */
-  stacked?: boolean;
+  diamond: boolean;
+  plan: IdentityPlan;
 }) {
   return (
-    <div className="flex flex-col items-center gap-3.5" data-identity-card>
+    <div className="flex w-full items-center gap-4" data-identity-card>
       <span className="bg-border shrink-0 rounded-full p-[2px]" aria-hidden>
         <span className="bg-background block rounded-full p-[1.5px]">
           <span className="bg-muted relative block h-20 w-20 overflow-hidden rounded-full">
@@ -80,17 +88,14 @@ export function IdentityCard({
         </span>
       </span>
 
-      <div
-        className={cn(
-          "grid w-full gap-2",
-          stacked ? "grid-cols-1" : "grid-cols-2",
-        )}
-      >
-        <span
-          className={cn(CHIP_CLASS, !instagram && !stacked && "col-span-2")}
+      <div className="flex min-w-0 flex-1 flex-col items-start gap-1.5">
+        <p
+          className="text-foreground w-full truncate text-lg leading-tight font-semibold"
+          data-identity-name
         >
-          <span className="truncate">{name}</span>
-        </span>
+          {name}
+        </p>
+
         {instagram?.href ? (
           <Link
             href={instagram.href}
@@ -112,6 +117,41 @@ export function IdentityCard({
             <span className="truncate">{instagram.label}</span>
           </span>
         ) : null}
+
+        <div className="flex flex-wrap gap-1.5" data-identity-standing>
+          {diamond ? (
+            <span
+              className={cn(
+                CHIP_CLASS,
+                "bg-foreground text-background border-transparent",
+              )}
+              data-identity-diamond
+            >
+              <Gem
+                className="h-3.5 w-3.5 shrink-0"
+                strokeWidth={2.25}
+                aria-hidden
+              />
+              Diamond
+            </span>
+          ) : (
+            <span
+              className={cn(CHIP_CLASS, "text-muted-foreground font-medium")}
+              data-identity-diamond="no"
+            >
+              Not Diamond
+            </span>
+          )}
+          <span
+            className={cn(
+              CHIP_CLASS,
+              plan === "premium" ? "" : "text-muted-foreground font-medium",
+            )}
+            data-identity-plan={plan}
+          >
+            {plan === "premium" ? "Premium" : "Free"}
+          </span>
+        </div>
       </div>
     </div>
   );
