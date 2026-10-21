@@ -361,14 +361,10 @@ export function CatalogRails() {
 
   // ONE TAB BAND under Home's header (Pato, MESITA-2517: "another header
   // (Places. Social) … If places, show the horizontal catalog, is social,
-  // show the social feed"): two equal tabs, the chosen one bold with ITS WORD
-  // UNDERLINED, the line right under the text (Pato, MESITA-2530: "just
-  // underline the fuckjing line, not the sction … the line directly below the
-  // word, that way does not collapses with the lateral bar"). A bar the tab's
-  // width (MESITA-2527) or on the strip's edge (MESITA-2524) met the column's
-  // chosen row. The line runs 16px past each end of the word, rounded (Pato,
-  // MESITA-2533: "maybe a larger line, but … should not be at the bottom and
-  // should neber be 100% of the width"). It replaced the left category column (MESITA-2367).
+  // show the social feed"): two equal tabs, the chosen one bold over a BLACK
+  // BAR THE TAB'S FULL WIDTH on the strip's bottom edge (Pato, MESITA-2539:
+  // "maybe make the line full now. black on the bottom. as it was"; MESITA-
+  // 2530/2533 had underlined the word, MESITA-2527 first drew this bar). It replaced the left category column (MESITA-2367).
   // The strip is WHITE like the header, one light top block over the tiles,
   // its hairline the only line; the word's underline marks the tab (Pato,
   // MESITA-2537: "making the header white and the second header also light.
@@ -396,18 +392,18 @@ export function CatalogRails() {
               setTab(t.key);
             }}
             className={cn(
-              "flex-1 py-3 text-sm transition",
+              "relative flex-1 py-3 text-sm transition",
               on ? "text-foreground font-semibold" : "text-muted-foreground",
             )}
           >
-            <span className="relative inline-block pb-1">
+            {on ? (
+              <span
+                aria-hidden
+                className="bg-foreground absolute inset-x-0 bottom-0 h-0.5"
+              />
+            ) : null}
+            <span className="relative inline-block">
               {t.label}
-              {on ? (
-                <span
-                  aria-hidden
-                  className="bg-foreground absolute -inset-x-4 bottom-0 h-0.5 rounded-full"
-                />
-              ) : null}
               {t.key === "social" && socialHasNew ? (
                 <>
                   <span
