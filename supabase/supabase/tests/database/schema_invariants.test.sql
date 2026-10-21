@@ -379,15 +379,16 @@ select is_empty(
 --
 -- MESITA-2091 dropped classes, consumer plans and their subscriptions. What a
 -- consumer row keeps: who they are, their member number, their Instagram,
--- and the tombstone.
+-- and the tombstone. MESITA-2548 brought back two plain facts, `diamond` and
+-- `plan` (free or premium), with no ladder and no Stripe link.
 
 select is_empty(
   $$select column_name from information_schema.columns
      where table_schema = 'public' and table_name = 'consumers'
        and (column_name like 'class\_%' or column_name like 'invitation\_%'
             or column_name like 'privacy\_%'
-            or column_name in ('plan', 'stripe_customer_id'))$$,
-  'consumers keeps no class, plan, invitation, privacy or Stripe column (First Stage has none of them)'
+            or column_name = 'stripe_customer_id')$$,
+  'consumers keeps no class, invitation, privacy or Stripe column (First Stage has none of them)'
 );
 
 select has_column(
