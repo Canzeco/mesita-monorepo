@@ -14,7 +14,6 @@ import {
   CONSUMER_ROUTE_PREFIX,
 } from "@/lib/consumer-route-contract";
 import { barePath } from "@/lib/surface";
-import { shareApp } from "@/lib/share-place";
 import { trackEvent } from "@/lib/analytics/track";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 
@@ -26,13 +25,14 @@ import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 //
 //   Home · Search · Pay (Soon) · Share · Me
 //
-//   SHARE IS A BUTTON, NOT A DESTINATION. It opens the OS share sheet with
-//   the app's link (the clipboard where there is none) and never lights:
-//   nothing on screen changes, so there is no page to say "you are here".
+//   SHARE IS A PAGE (Pato, MESITA-2566: "create a dedicate page for share").
+//   The tab links to /share and lights there; the page holds the link and
+//   the ways to send it. It was a tap that fired the share sheet
+//   (MESITA-2561).
 //
 //   PAY IS ONE PAGE, THE SOON STATE (Pato, MESITA-2087: "Keep pay but delete
 //   everything else. just the empty page with soon."). The tab is a plain
-//   link to /pay like the other three — it lights there — and wears the Soon
+//   link to /pay like the others — it lights there — and wears the Soon
 //   tag so the bar and the page make the same promise.
 //
 // Every tab shows its plain label. A tab label names a DESTINATION; state
@@ -42,8 +42,7 @@ import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 
 // Every icon is a lucide glyph except Home's, which carries the brand mark.
 // The signature stays wider than LucideIcon so the mark fits.
-type LinkItem = {
-  kind: "link";
+type Item = {
   href: string;
   Icon: ComponentType<{ className?: string; strokeWidth?: number }>;
   label: string;
@@ -62,19 +61,8 @@ type LinkItem = {
   soon?: boolean;
 };
 
-// The one tab that is an action: Share (MESITA-2561).
-type ActionItem = {
-  kind: "action";
-  Icon: ComponentType<{ className?: string; strokeWidth?: number }>;
-  label: string;
-  onTap: () => void;
-};
-
-type Item = LinkItem | ActionItem;
-
 const ITEMS: Item[] = [
   {
-    kind: "link",
     // Home is one page; Social and Favorites are rows of it (MESITA-2405).
     href: CONSUMER_ROUTES.home,
     Icon: MesitaMark,
@@ -82,14 +70,12 @@ const ITEMS: Item[] = [
     matchPrefixes: [CONSUMER_ROUTES.home, CONSUMER_ROUTE_PREFIX.place],
   },
   {
-    kind: "link",
     href: CONSUMER_ROUTES.search,
     Icon: Search,
     label: "Search",
     matchPrefixes: [CONSUMER_ROUTES.search],
   },
   {
-    kind: "link",
     href: CONSUMER_ROUTES.pay,
     Icon: QrCode,
     label: "Pay",
@@ -97,15 +83,14 @@ const ITEMS: Item[] = [
     soon: true,
   },
   {
-    kind: "action",
-    // A paper plane, Instagram's share glyph (Pato, MESITA-2564: "use
-    // different button for share"; it was the iOS box-and-arrow).
+    // A paper plane, Instagram's share glyph (MESITA-2564). Its page is the
+    // link and the ways to send it (MESITA-2566).
+    href: CONSUMER_ROUTES.share,
     Icon: Send,
     label: "Share",
-    onTap: () => void shareApp(),
+    matchPrefixes: [CONSUMER_ROUTES.share],
   },
   {
-    kind: "link",
     href: CONSUMER_ROUTES.me,
     Icon: User,
     label: "Me",
@@ -139,10 +124,8 @@ export function BottomNav() {
       <div className="flex items-end justify-around">
         {ITEMS.map((item) => {
           const { Icon, label } = item;
-          const active =
-            item.kind === "link" &&
-            item.matchPrefixes.some((p) => pathname.startsWith(p));
-          const soon = item.kind === "link" && item.soon;
+          const active = item.matchPrefixes.some((p) => pathname.startsWith(p));
+          const soon = item.soon;
           const className = cn(
             "type-meta relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 font-medium transition",
             active
@@ -179,21 +162,6 @@ export function BottomNav() {
           const track = () => {
             trackEvent(getSupabase(), "nav_tab_tap", { tab: label });
           };
-          if (item.kind === "action") {
-            return (
-              <button
-                key={label}
-                type="button"
-                onClick={() => {
-                  track();
-                  item.onTap();
-                }}
-                className={className}
-              >
-                {body}
-              </button>
-            );
-          }
           return (
             <Link
               key={item.href}
