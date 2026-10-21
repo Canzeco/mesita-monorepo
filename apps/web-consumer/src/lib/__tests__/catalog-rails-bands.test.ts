@@ -73,9 +73,7 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
     expect(src).toContain("bg-foreground absolute inset-x-0 bottom-0 h-0.5");
     expect(src).not.toContain("-inset-x-4");
     expect(src).not.toContain('<span className="relative inline-block pb-1">');
-    expect(src).toContain(
-      "return shell(<SocialFeed samplePlaces={samplePlaces} />);",
-    );
+    expect(src).toContain("return shell(<SocialFeed />);");
   });
 
   // MESITA-2519 (Pato: "keep the later view of the failies. its fastwer to
@@ -331,7 +329,9 @@ describe("the Places grid (MESITA-2366)", () => {
     expect(tabs).toContain('"text-foreground shrink-0 text-2xl');
     expect(tabs).not.toContain("bg-foreground text-background");
     // The strip: white like the header, one light top block (MESITA-2537).
-    expect(src).toContain('className="border-border bg-card flex shrink-0 border-b"');
+    expect(src).toContain(
+      'className="border-border bg-card flex shrink-0 border-b"',
+    );
     expect(src).not.toContain("color-mix(");
     expect(tabs).not.toContain("brand-pink");
     expect(tabs).not.toContain("border-b-2");
