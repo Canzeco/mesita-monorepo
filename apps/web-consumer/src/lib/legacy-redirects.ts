@@ -149,32 +149,30 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   },
   // THE PLACES TEST TAB DIED (MESITA-2405).
   { source: "/places", destination: "/home", permanent: true },
-  // Saved lives under Me (MESITA-2561: Favorites | Reservations at
-  // /me/saved); /saved was the bar's tab (MESITA-2521) and its old
-  // /saved/place dual path (MESITA-1585) still forwards below. Every former
-  // address of the reservations LIST — the top-level route (a server page
-  // until MESITA-2475), Me › Reservations, the Bookings tab (MESITA-2518),
-  // Saved's — lands on Me › Saved › Reservations in one hop. Next carries the
-  // query across, so /saved?tab=reservations lands on the same tab.
-  { source: "/saved", destination: "/me/saved", permanent: true },
+  // Favorites and Reservations are each a Me page (MESITA-2565). /saved was
+  // the bar's tab (MESITA-2521) and /me/saved Me's Saved page (MESITA-2561),
+  // Favorites | Reservations; both land on Favorites, and Next carries the
+  // query across, so a held `?tab=reservations` reaches /me/favorites, which
+  // forwards it to /me/reservations. Every former address of the
+  // reservations LIST — the top-level route (a server page until
+  // MESITA-2475), the Bookings tab (MESITA-2518), Saved's — lands on
+  // /me/reservations in one hop. /saved/place keeps its dual-path forward
+  // (MESITA-1585) below.
+  { source: "/saved", destination: "/me/favorites", permanent: true },
+  { source: "/me/saved", destination: "/me/favorites", permanent: true },
   {
     source: "/reservations",
-    destination: "/me/saved?tab=reservations",
-    permanent: true,
-  },
-  {
-    source: "/me/reservations",
-    destination: "/me/saved?tab=reservations",
+    destination: "/me/reservations",
     permanent: true,
   },
   {
     source: "/bookings",
-    destination: "/me/saved?tab=reservations",
+    destination: "/me/reservations",
     permanent: true,
   },
   {
     source: "/saved/reservations",
-    destination: "/me/saved?tab=reservations",
+    destination: "/me/reservations",
     permanent: true,
   },
   {

@@ -5,7 +5,6 @@ import {
   CONSUMER_ROUTES,
   CONSUMER_ROUTE_PREFIX,
   CONSUMER_RESERVATION_SURFACE_PREFIX,
-  SAVED_TAB_HREF,
   isModalContractPath,
   placePath,
   reservationPath,
@@ -118,9 +117,10 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         settings: "/me/settings",
         settingsContact: "/me/settings/contact",
         notifications: "/me/notifications",
-        // Saved: Favorites | Reservations (MESITA-2521), under Me since
-        // Share took its bar slot (MESITA-2561).
-        saved: "/me/saved",
+        // Favorites and Reservations, each its own page (MESITA-2565); they
+        // were Saved's two tabs (MESITA-2521, MESITA-2561).
+        favorites: "/me/favorites",
+        reservations: "/me/reservations",
       },
       legacy: {
         profile: "/profile",
@@ -174,10 +174,10 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         inboxMineTab: "/inbox/mine",
         inboxGlobalTab: "/inbox/global",
         reservations: "/reservations",
-        meReservations: "/me/reservations",
         bookings: "/bookings",
         savedReservations: "/saved/reservations",
         saved: "/saved",
+        meSaved: "/me/saved",
         savedReservationPrefix: "/saved/reservation/",
         savedPlacePrefix: "/saved/place/",
       },
@@ -198,11 +198,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       me: "/me",
     });
     expect(CONSUMER_RESERVATION_SURFACE_PREFIX).toBe("/reservation");
-    // Each Saved tab's address: Reservations is a query on the page.
-    expect(SAVED_TAB_HREF).toEqual({
-      favorites: "/me/saved",
-      reservations: "/me/saved?tab=reservations",
-    });
   });
 
   // Nothing in the legacy block may be a live address: a redirect whose
@@ -332,6 +327,7 @@ describe("isModalContractPath (intercepted detail overlays)", () => {
     "/me/connector",
     "/me/notifications",
     "/me/reservations",
+    "/me/favorites",
     "/me/saved",
     "/me/settings",
     "/me/help", // retired; 308s to Settings before it could intercept
@@ -441,28 +437,25 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
         permanent: true,
       },
       { source: "/places", destination: "/home", permanent: true },
-      // Saved moved under Me (MESITA-2561); every former reservations list
-      // → Me › Saved › Reservations in one hop (MESITA-2521). The
-      // /saved/place dual path (MESITA-1585) still forwards.
-      { source: "/saved", destination: "/me/saved", permanent: true },
+      // Favorites and Reservations are each a Me page (MESITA-2565): /saved
+      // and /me/saved land on Favorites; every former reservations list →
+      // Me › Reservations in one hop. The /saved/place dual path
+      // (MESITA-1585) still forwards.
+      { source: "/saved", destination: "/me/favorites", permanent: true },
+      { source: "/me/saved", destination: "/me/favorites", permanent: true },
       {
         source: "/reservations",
-        destination: "/me/saved?tab=reservations",
-        permanent: true,
-      },
-      {
-        source: "/me/reservations",
-        destination: "/me/saved?tab=reservations",
+        destination: "/me/reservations",
         permanent: true,
       },
       {
         source: "/bookings",
-        destination: "/me/saved?tab=reservations",
+        destination: "/me/reservations",
         permanent: true,
       },
       {
         source: "/saved/reservations",
-        destination: "/me/saved?tab=reservations",
+        destination: "/me/reservations",
         permanent: true,
       },
       {
