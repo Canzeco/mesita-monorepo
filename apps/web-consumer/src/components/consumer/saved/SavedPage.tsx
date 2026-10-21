@@ -120,22 +120,21 @@ export function SavedPage({ initialTab }: { initialTab: SavedTab }) {
                 window.history.replaceState(null, "", SAVED_TAB_HREF[t.key]);
               }}
               className={cn(
-                "flex-1 text-sm transition",
+                "relative flex-1 py-3 text-sm transition",
                 on ? "text-foreground font-semibold" : "text-muted-foreground",
               )}
             >
-              {/* The word alone is underlined (Pato, MESITA-2524: "just underline
-                  place but thats it. no more"): a half-wide bar read as the top
-                  of the column's chosen row under it. */}
-              <span className="relative inline-block py-3">
-                {t.label}
-                {on ? (
-                  <span
-                    aria-hidden
-                    className="bg-foreground absolute inset-x-0 bottom-0 h-0.5"
-                  />
-                ) : null}
-              </span>
+              {/* The same line as Home's tabs (Pato, MESITA-2541: "use also
+                  the underline"): a black bar the tab's full width on the
+                  strip's bottom edge (MESITA-2539). It underlined the word
+                  alone (MESITA-2524). */}
+              {t.label}
+              {on ? (
+                <span
+                  aria-hidden
+                  className="bg-foreground absolute inset-x-0 bottom-0 h-0.5"
+                />
+              ) : null}
             </button>
           );
         })}
