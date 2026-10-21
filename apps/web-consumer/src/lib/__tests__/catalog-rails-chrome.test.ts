@@ -10,9 +10,10 @@ describe("Places has no chrome but its chip row (MESITA-2298, MESITA-2362, MESIT
 
   it("draws no Filters pill and no location control of its own (MESITA-2401: the header's)", () => {
     expect(src).toContain("const coords = useUserLocation();");
-    // No location: one slim bar with a Use my location link (MESITA-2472).
-    expect(src).toContain("data-places-city-fallback");
-    expect(src).toContain("onClick={locate}");
+    // No location: no bar above the tiles; the header box says Monterrey
+    // (MESITA-2587, was MESITA-2472's slim bar).
+    expect(src).not.toContain("data-places-city-fallback");
+    expect(src).not.toContain("useLocateUser");
     expect(src).not.toContain("data-places-location-bar");
     expect(src).not.toContain("locationStrip");
     expect(src).not.toContain("SlidersHorizontal");

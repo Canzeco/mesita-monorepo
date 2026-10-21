@@ -4,13 +4,12 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-  CITY_FALLBACK,
-  cityFallbackBar,
   chipFamilies,
   isEveryFamily,
   ALL_CHIP,
 } from "@/components/consumer/home/CatalogRails";
 import { locationErrorFromCode } from "@/lib/use-user-location";
+import { headerLocation } from "@/components/consumer/home/LocationPicker";
 
 const src = (p: string) => readFileSync(join(__dirname, "..", "..", p), "utf8");
 
@@ -67,9 +66,10 @@ describe("One ranking, no prefer (MESITA-2516)", () => {
   // MESITA-2472 (Pato: the full-pane "Couldn't find you" "looks like …
   // shit"): no location is not a dead end. With no fix and no saved
   // location, once the browser has answered, every row ranks around the
-  // city's centre (the Search map's fallback) under one slim bar; before it
-  // answers, a skeleton and no request.
-  it("no location ranks around Monterrey under a slim bar, never a dead end", () => {
+  // city's centre (the Search map's fallback); before it answers, a
+  // skeleton and no request. MESITA-2587: no bar says so above the tiles —
+  // the header's location box reads "Monterrey" behind a crossed-out pin.
+  it("no location ranks around Monterrey, named in the header box, never a dead end", () => {
     const rails = src("components/consumer/home/CatalogRails.tsx");
     expect(rails).toContain(
       "const onCityFallback = origin === null && coords === null && locationSettled;",
@@ -85,17 +85,28 @@ describe("One ranking, no prefer (MESITA-2516)", () => {
     expect(effect.indexOf("if (waitingForFix) return;")).toBeLessThan(
       effect.indexOf("apiListAreaPool("),
     );
-    expect(rails).toContain("{cityBar}");
+    expect(rails).not.toContain("cityBar");
+    expect(rails).not.toContain("data-places-city-fallback");
+    expect(rails).not.toContain("Location is off");
     expect(rails).not.toContain("turnOnLocation");
     expect(rails).not.toContain("Couldn't find you");
-    expect(CITY_FALLBACK.name).toBe("Monterrey");
-    expect(cityFallbackBar(null)).toBe("Showing Monterrey");
-    expect(cityFallbackBar("denied")).toBe(
-      "Location is off · Showing Monterrey",
-    );
-    expect(cityFallbackBar("unavailable")).toBe(
-      "Location is off · Showing Monterrey",
-    );
+    expect(headerLocation(null, false, false, true)).toEqual({
+      label: "Monterrey",
+      off: true,
+    });
+    expect(headerLocation(null, false, false, false).off).toBe(false);
+    expect(headerLocation(null, false, true, true)).toEqual({
+      label: "Locating…",
+      off: false,
+    });
+    expect(headerLocation(null, true, false, true)).toEqual({
+      label: "Current location",
+      off: false,
+    });
+    expect(headerLocation({ name: "Home" }, false, false, true)).toEqual({
+      label: "Home",
+      off: false,
+    });
     const hook = src("lib/use-user-location.ts");
     expect(hook).toContain("export function useUserLocationSettled()");
     // No geolocation at all still settles: `asked` is set before the check.

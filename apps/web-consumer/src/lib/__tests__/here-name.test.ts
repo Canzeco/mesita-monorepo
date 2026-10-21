@@ -34,7 +34,9 @@ describe("Current location names the neighbourhood", () => {
     expect(picker).toContain("const here = useHere(coords, picking);");
     expect(picker).toContain("const hereName = here.name;");
     expect(picker).toContain("label: locationLabel(null, coords !== null, locating, hereName),");
-    expect(picker).toContain("const label = locationLabel(active, coords !== null, locating);");
+    expect(picker).toContain(
+      "const { label, off } = headerLocation(active, coords !== null, locating, settled);",
+    );
     const hook = read("lib/use-here-name.ts");
     expect(hook).toContain("if (!enabled || !coords || !key || readAnswer(key)) return;");
     expect(read("lib/api/place-search.ts")).toContain('"consumer-web-reverse-geocode"');
