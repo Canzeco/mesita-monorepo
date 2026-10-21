@@ -69,7 +69,8 @@
 // place profile"): the face and the bold name open the PERSON CARD (a
 // centred LocalDialog that appears at once, MESITA-2546: picture, name,
 // Instagram proof, their recent events here); the bold place name and the
-// photo open the place.
+// photo open the place. The card is the member's IDENTITY CARD, the top of
+// Me without the phone (MESITA-2547).
 
 import { useEffect, useMemo, useRef, useState, type SVGProps } from "react";
 import Link from "next/link";
@@ -99,6 +100,7 @@ import { cardPhoto, placePlaceholder } from "@/lib/place-placeholder";
 import { FamilyIcon } from "@/lib/family-icons";
 import { EmptyState } from "@/components/shared";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
+import { IdentityCard } from "@/components/consumer/IdentityCard";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { cn, errMsg, firstInitial } from "@/lib/utils";
 
@@ -296,12 +298,6 @@ export const FRESH_MS = 4_000;
 export const PULL_MAX = 72;
 export const PULL_TRIGGER = 56;
 
-/** One person across the feed's rows: no member id reaches the client
- *  (MESITA-2460), so name, handle hint and isYou stand in. */
-export function personKey(p: ActivityPerson): string {
-  return `${p.name}|${p.handleHint ?? ""}|${p.isYou ? 1 : 0}`;
-}
-
 const TAP_TEXT =
   "focus-visible:ring-ring rounded-sm font-semibold underline-offset-2 outline-none hover:underline focus-visible:ring-2";
 
@@ -378,32 +374,25 @@ function FeedRow({
   );
 }
 
-/** The person card (MESITA-2542, MESITA-2546): who they are and what they
- *  did here, a small card floating in the centre of this screen that
- *  appears and disappears at once (Pato: "maybe just some card like
- *  floating in the center … no animatio"). Their events are the feed's own
- *  rows for the same person. */
-const PERSON_CARD_ROWS = 5;
-
+/** The person card (MESITA-2546, MESITA-2547): the member's identity card —
+ *  the same card as the top of Me — floating in the centre of this screen,
+ *  appearing and disappearing at once. Picture, name and Instagram with the
+ *  handle hidden ("die••• · 1.2K followers", MESITA-2522); never the phone,
+ *  no recent activity, no follow (Pato: "its just like the card with the
+ *  names … and instagram … easy"). */
 function PersonCard({
   item,
   open,
-  rows,
   onClose,
 }: {
   item: ActivityFeedItem | null;
   open: boolean;
-  rows: readonly ActivityFeedItem[];
   onClose: () => void;
 }) {
   if (!item) return null;
   const person = item.person;
   const who = feedWho(person);
   const instagram = feedInstagram(person);
-  const key = personKey(person);
-  const theirs = rows
-    .filter((r) => personKey(r.person) === key)
-    .slice(0, PERSON_CARD_ROWS);
   return (
     <LocalDialog
       open={open}
@@ -412,59 +401,12 @@ function PersonCard({
       instant
     >
       <div className="p-5" data-social-person-card>
-        <div className="flex items-center gap-3">
-          {person.avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={person.avatarUrl}
-              alt=""
-              className="h-14 w-14 shrink-0 rounded-full object-cover"
-            />
-          ) : (
-            <span className="bg-muted text-foreground flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-lg font-semibold">
-              {firstInitial(person.name.replace(/^@/, ""))}
-            </span>
-          )}
-          <div className="min-w-0">
-            <h2 className="text-foreground truncate text-base font-semibold">
-              {who}
-            </h2>
-            {instagram ? (
-              <p className="text-muted-foreground mt-0.5 flex items-center gap-1 text-sm">
-                <InstagramGlyph className="h-3.5 w-3.5 shrink-0" />
-                <span className="sr-only">Instagram</span>
-                <span className="truncate">{instagram}</span>
-              </p>
-            ) : null}
-          </div>
-        </div>
-        <p className="type-meta text-muted-foreground mt-5 mb-1 tracking-[0.08em] uppercase">
-          Recent activity
-        </p>
-        <ul role="list" className="divide-border divide-y">
-          {theirs.map((r, i) => (
-            <li
-              key={`${i}|${r.placeId}|${r.kind}`}
-              className="flex items-center gap-3 py-2.5"
-            >
-              <Thumb place={r.place} />
-              <p className="text-foreground min-w-0 flex-1 text-sm leading-snug">
-                {VERB[r.kind].replace(/^./, (c) => c.toUpperCase())}{" "}
-                <Link
-                  href={placeHref(r.place.slug || r.place.id)}
-                  className={TAP_TEXT}
-                  onClick={onClose}
-                >
-                  {r.place.name}
-                </Link>
-                <span className="text-muted-foreground">
-                  {" "}
-                  · {shortAgo(r.at)}
-                </span>
-              </p>
-            </li>
-          ))}
-        </ul>
+        <IdentityCard
+          name={who}
+          avatarUrl={person.avatarUrl}
+          instagram={instagram ? { label: instagram } : null}
+          stacked
+        />
       </div>
     </LocalDialog>
   );
@@ -751,7 +693,6 @@ export function SocialFeed({
       <PersonCard
         item={personItem}
         open={personOpen}
-        rows={feed.rows}
         onClose={() => setPersonOpen(false)}
       />
     </div>
