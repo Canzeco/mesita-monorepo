@@ -5,7 +5,7 @@ import { Z_BOTTOM_NAV } from "@/lib/z-index";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ComponentType } from "react";
-import { QrCode, Search, Send, User } from "lucide-react";
+import { QrCode, Search, Share2, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { cn } from "@/lib/utils";
 import {
@@ -83,10 +83,12 @@ const ITEMS: Item[] = [
     soon: true,
   },
   {
-    // A paper plane, Instagram's share glyph (MESITA-2564). Its page is the
-    // link and the ways to send it (MESITA-2566).
+    // Three joined dots, THE share glyph (Pato, MESITA-2568: "that share
+    // button looks like messages or dm instagram … it must look as a … share
+    // button"; the paper plane was MESITA-2564). Its page is the invite card
+    // and the ways to send it (MESITA-2566).
     href: CONSUMER_ROUTES.share,
-    Icon: Send,
+    Icon: Share2,
     label: "Share",
     matchPrefixes: [CONSUMER_ROUTES.share],
   },
