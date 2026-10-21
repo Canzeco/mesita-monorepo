@@ -218,9 +218,12 @@ export type Database = {
           code: string | null
           created_at: string
           deleted_at: string | null
-          diamond: boolean
           first_name: string | null
           full_name: string | null
+          guest_class: string
+          guest_class_note: string | null
+          guest_class_set_at: string | null
+          guest_class_set_by: string | null
           id: string
           instagram_followers_count: number | null
           instagram_handle: string | null
@@ -236,9 +239,12 @@ export type Database = {
           code?: string | null
           created_at?: string
           deleted_at?: string | null
-          diamond?: boolean
           first_name?: string | null
           full_name?: string | null
+          guest_class?: string
+          guest_class_note?: string | null
+          guest_class_set_at?: string | null
+          guest_class_set_by?: string | null
           id: string
           instagram_followers_count?: number | null
           instagram_handle?: string | null
@@ -254,9 +260,12 @@ export type Database = {
           code?: string | null
           created_at?: string
           deleted_at?: string | null
-          diamond?: boolean
           first_name?: string | null
           full_name?: string | null
+          guest_class?: string
+          guest_class_note?: string | null
+          guest_class_set_at?: string | null
+          guest_class_set_by?: string | null
           id?: string
           instagram_followers_count?: number | null
           instagram_handle?: string | null
@@ -1316,6 +1325,43 @@ export type Database = {
         }[]
       }
       admin_revoke_admin: { Args: { p_email: string }; Returns: number }
+      admin_set_guest_standing: {
+        Args: {
+          p_actor: string
+          p_consumer: string
+          p_guest_class: string
+          p_note: string
+          p_note_set: boolean
+          p_plan: string
+        }
+        Returns: {
+          avatar_url: string | null
+          birthday: string | null
+          code: string | null
+          created_at: string
+          deleted_at: string | null
+          first_name: string | null
+          full_name: string | null
+          guest_class: string
+          guest_class_note: string | null
+          guest_class_set_at: string | null
+          guest_class_set_by: string | null
+          id: string
+          instagram_followers_count: number | null
+          instagram_handle: string | null
+          instagram_verified_at: string | null
+          last_name: string | null
+          phone: string | null
+          plan: string
+          sex: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "consumers"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       apply_place_request: {
         Args: { p_consumer_id: string; p_place_id: string }
         Returns: {
@@ -1368,8 +1414,8 @@ export type Database = {
           avatar_url: string
           consumer_id: string
           created_at: string
-          diamond: boolean
           first_name: string
+          guest_class: string
           instagram_followers_count: number
           instagram_handle: string
           kind: string
@@ -1383,8 +1429,8 @@ export type Database = {
           avatar_url: string
           consumer_id: string
           created_at: string
-          diamond: boolean
           first_name: string
+          guest_class: string
           instagram_followers_count: number
           instagram_handle: string
           kind: string
