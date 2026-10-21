@@ -134,12 +134,10 @@ describe("the row", () => {
     expect(src).toContain(
       '<span className="bg-muted block h-11 w-11 shrink-0 overflow-hidden rounded-md">',
     );
-    expect(src).toContain(
-      '"focus-visible:ring-ring flex shrink-0 rounded-md outline-none focus-visible:ring-2"',
-    );
-    expect(src).toContain(
-      '"focus-visible:ring-ring flex shrink-0 rounded-full outline-none focus-visible:ring-2"',
-    );
+    // MESITA-2584: the face sits in the person zone and the photo in the
+    // place card; both stay 44px (block boxes, MESITA-2544).
+    expect(src).toContain("data-social-person");
+    expect(src).toContain("data-social-place");
   });
 
   it("an error offers Try again", () => {

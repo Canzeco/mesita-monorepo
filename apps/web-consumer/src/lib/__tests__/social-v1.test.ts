@@ -189,6 +189,8 @@ describe("anonymous members in the feed", () => {
     expect(FEED_SRC).toContain("const door = !item.person.anonymous;");
     expect(FEED_SRC).toContain("data-social-anonymous");
     expect(FEED_SRC).toMatch(/door \? \(\s*<button[\s\S]*data-social-person/);
+    // The plain icon on every anonymous row, the guest's own included.
+    expect(FEED_SRC).toContain("{person.anonymous ? (");
   });
 
   it("names them 'A member' and shows no Instagram proof", () => {
@@ -204,5 +206,26 @@ describe("anonymous members in the feed", () => {
     };
     expect(feedSentence({ person: anon, kind: "saved" })).toBe("A member liked");
     expect(feedInstagram(anon)).toBeNull();
+  });
+});
+
+// MESITA-2584: the person and the place are two visibly separate taps.
+describe("a feed row has two zones", () => {
+  const SRC = readFileSync(
+    join(__dirname, "../../components/consumer/home/SocialFeed.tsx"),
+    "utf8",
+  );
+  const row = SRC.slice(SRC.indexOf("function FeedRow("), SRC.indexOf("/** The person card"));
+
+  it("the person is one target on the left, the place its own bordered card on the right", () => {
+    expect(row.indexOf("data-social-person")).toBeLessThan(row.indexOf("data-social-place"));
+    const place = row.slice(row.indexOf("<Link"), row.indexOf("</Link>"));
+    expect(place).toContain("border-border bg-card");
+    expect(place).toContain("<Thumb place={item.place} />");
+    expect(place).toContain("{item.place.name}");
+    expect(place).toContain("<ChevronRight");
+    // One place link per row: the name no longer sits inside the sentence.
+    expect(row.match(/<Link/g)).toHaveLength(1);
+    expect(row.match(/onClick=\{\(\) => onPerson\(item\)\}/g)).toHaveLength(1);
   });
 });

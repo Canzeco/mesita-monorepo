@@ -81,6 +81,7 @@ import { useEffect, useMemo, useRef, useState, type SVGProps } from "react";
 import Link from "next/link";
 import {
   ArrowUp,
+  ChevronRight,
   Eye,
   Heart,
   RotateCw,
@@ -206,7 +207,7 @@ function Face({
   const Glyph = VERB_ICON[kind];
   return (
     <span className="relative block h-11 w-11 shrink-0">
-      {person.anonymous && !person.isYou ? (
+      {person.anonymous ? (
         <span
           className="bg-muted text-muted-foreground flex h-11 w-11 items-center justify-center rounded-full"
           data-social-anonymous
@@ -302,9 +303,6 @@ export const FRESH_MS = 4_000;
 export const PULL_MAX = 72;
 export const PULL_TRIGGER = 56;
 
-const TAP_TEXT =
-  "focus-visible:ring-ring rounded-sm font-semibold underline-offset-2 outline-none hover:underline focus-visible:ring-2";
-
 function FeedRow({
   item,
   fresh,
@@ -319,51 +317,19 @@ function FeedRow({
   const href = placeHref(item.place.slug || item.place.id);
   const who = feedWho(item.person);
   const door = !item.person.anonymous;
-  return (
-    <li
-      className={cn(
-        "flex items-center gap-3 px-4 py-3 transition-colors duration-1000",
-        fresh && "bg-muted",
-      )}
-      data-social-row
-      data-social-fresh={fresh || undefined}
-    >
-      {/* An anonymous member (MESITA-2580) has no person card: the face and
-          name are plain text, and only the place is a door. */}
-      {door ? (
-        <button
-          type="button"
-          onClick={() => onPerson(item)}
-          aria-label={`${who}'s profile`}
-          className="focus-visible:ring-ring flex shrink-0 rounded-full outline-none focus-visible:ring-2"
-          data-social-person
-        >
-          <Face person={item.person} kind={item.kind} />
-        </button>
-      ) : (
-        <span className="flex shrink-0">
-          <Face person={item.person} kind={item.kind} />
+  // TWO TAPS, TWO ZONES (Pato, MESITA-2584: "clearly visible that left part
+  // … and right part … are two different clicks"). Left: the person — face,
+  // "You viewed", the time — one target that opens the person card (none for
+  // an anonymous member, MESITA-2580). Right: the place as its own bordered
+  // card — photo, name, chevron — one target that opens the place.
+  const person = (
+    <>
+      <Face person={item.person} kind={item.kind} />
+      <span className="min-w-0 flex-1">
+        <span className="text-foreground block truncate text-sm leading-snug">
+          <span className="font-semibold">{who}</span> {VERB[item.kind]}
         </span>
-      )}
-      <div className="min-w-0 flex-1">
-        <p className="text-foreground line-clamp-2 text-sm leading-snug">
-          {door ? (
-            <button
-              type="button"
-              onClick={() => onPerson(item)}
-              className={TAP_TEXT}
-            >
-              {who}
-            </button>
-          ) : (
-            <span className="font-semibold">{who}</span>
-          )}{" "}
-          {VERB[item.kind]}{" "}
-          <Link href={href} className={TAP_TEXT} data-social-place>
-            {item.place.name}
-          </Link>
-        </p>
-        <p
+        <span
           className="text-muted-foreground mt-0.5 flex min-w-0 items-center gap-1 text-xs"
           data-social-quiet
         >
@@ -378,14 +344,47 @@ function FeedRow({
             </>
           ) : null}
           <span className="shrink-0">{ago}</span>
-        </p>
-      </div>
+        </span>
+      </span>
+    </>
+  );
+  return (
+    <li
+      className={cn(
+        "flex items-center gap-2 px-3 py-2.5 transition-colors duration-1000",
+        fresh && "bg-muted",
+      )}
+      data-social-row
+      data-social-fresh={fresh || undefined}
+    >
+      {door ? (
+        <button
+          type="button"
+          onClick={() => onPerson(item)}
+          aria-label={`${who}'s profile`}
+          className="focus-visible:ring-ring hover:bg-muted active:bg-muted flex min-w-0 flex-1 items-center gap-3 rounded-xl p-1 text-left outline-none focus-visible:ring-2"
+          data-social-person
+        >
+          {person}
+        </button>
+      ) : (
+        <span className="flex min-w-0 flex-1 items-center gap-3 p-1">
+          {person}
+        </span>
+      )}
       <Link
         href={href}
-        aria-label={item.place.name}
-        className="focus-visible:ring-ring flex shrink-0 rounded-md outline-none focus-visible:ring-2"
+        className="border-border bg-card focus-visible:ring-ring hover:bg-muted active:bg-muted flex w-[48%] max-w-[200px] shrink-0 items-center gap-2 rounded-xl border p-1.5 outline-none focus-visible:ring-2"
+        data-social-place
       >
         <Thumb place={item.place} />
+        <span className="text-foreground line-clamp-2 min-w-0 flex-1 text-xs leading-snug font-semibold">
+          {item.place.name}
+        </span>
+        <ChevronRight
+          className="text-muted-foreground h-3.5 w-3.5 shrink-0"
+          aria-hidden
+        />
       </Link>
     </li>
   );
