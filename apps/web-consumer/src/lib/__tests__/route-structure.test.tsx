@@ -408,7 +408,7 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
 // Social and Favorites are rows of the catalog's column; Home has no pills. Search's header is locate · bar ·
 // Ask AI over a row of family chips (MESITA-2409).
 describe("T5b — Home's header and Search's header", () => {
-  it("Home's header is the name \"Mesita\", then the location picker, and nothing else", () => {
+  it('Home\'s header is the name "Mesita", then the location picker, and nothing else', () => {
     const tabs = readFileSync(join(COMPONENTS, "ModeTabs.tsx"), "utf8");
     expect(tabs).toMatch(
       /data-home-header>\s*<span[\s\S]*?data-home-wordmark\s*>\s*Mesita\s*<\/span>\s*<LocationPicker \/>\s*<\/div>/,
@@ -425,12 +425,22 @@ describe("T5b — Home's header and Search's header", () => {
   // Ask AI lands on /search/chat: from Search, a sheet over the map
   // (MESITA-2475); cold-loaded, the Soon page with a way back.
   it("Search's header is locate · bar · Ask AI, and Ask AI is a real Soon page", () => {
-    const header = readFileSync(join(COMPONENTS, "search", "SearchHeader.tsx"), "utf8");
+    const header = readFileSync(
+      join(COMPONENTS, "search", "SearchHeader.tsx"),
+      "utf8",
+    );
     expect(header).toContain("href={CONSUMER_ROUTES.searchChat}");
-    expect(header).toMatch(/\{locate\}\s*<div className="min-w-0 flex-1">\{bar\}<\/div>\s*<Link/);
+    expect(header).toMatch(
+      /\{locate\}\s*<div className="min-w-0 flex-1">\{bar\}<\/div>\s*<Link/,
+    );
     expect(header).toContain("Ask AI");
-    expect(new Set(allPages().map(pageUrl))).toContain(CONSUMER_ROUTES.searchChat);
-    const chat = readFileSync(join(SHELL, "(discovery)", "search", "chat", "page.tsx"), "utf8");
+    expect(new Set(allPages().map(pageUrl))).toContain(
+      CONSUMER_ROUTES.searchChat,
+    );
+    const chat = readFileSync(
+      join(SHELL, "(discovery)", "search", "chat", "page.tsx"),
+      "utf8",
+    );
     expect(chat).toContain("HomeSoon");
     expect(chat).toContain("href={CONSUMER_ROUTES.search}");
     expect(chat).not.toMatch(/<AskAiTab/);
@@ -461,9 +471,14 @@ describe("T5b — Home's header and Search's header", () => {
     );
     expect(places).toContain("<CatalogRails");
     expect(places).not.toContain("HomeSoon");
-    const rails = readFileSync(join(COMPONENTS, "home", "CatalogRails.tsx"), "utf8");
+    const rails = readFileSync(
+      join(COMPONENTS, "home", "CatalogRails.tsx"),
+      "utf8",
+    );
     expect(rails).not.toContain("<HomeSoon");
-    expect(rails).toContain('if (tab === "social") return shell(<SocialFeed />);');
+    expect(rails).toContain(
+      "return shell(<SocialFeed samplePlaces={samplePlaces} />);",
+    );
     expect(rails).not.toContain("router.push");
     expect(new Set(allPages().map(pageUrl))).not.toContain("/discover/social");
     const soon = readFileSync(join(COMPONENTS, "home", "HomeSoon.tsx"), "utf8");
@@ -472,9 +487,13 @@ describe("T5b — Home's header and Search's header", () => {
 
   // Chat left Home for the Search tab (MESITA-2401): no page, one hop.
   it("/discover/chat has no page and 308s to /search/chat", async () => {
-    const hop = (await nextConfig.redirects!()).find((r) => r.source === "/discover/chat");
+    const hop = (await nextConfig.redirects!()).find(
+      (r) => r.source === "/discover/chat",
+    );
     expect(hop?.destination).toBe(CONSUMER_ROUTES.searchChat);
-    expect(existsSync(join(SHELL, "(discovery)", "discover", "chat", "page.tsx"))).toBe(false);
+    expect(
+      existsSync(join(SHELL, "(discovery)", "discover", "chat", "page.tsx")),
+    ).toBe(false);
   });
 
   // Swipe (MESITA-2166), Scroll (MESITA-2163), Catalog's old Feed address,
@@ -495,12 +514,18 @@ describe("T5b — Home's header and Search's header", () => {
 
   // The Places test tab (MESITA-2402) is deleted (MESITA-2405).
   it("/discover and /places have no page and 308 to Home", async () => {
-    const bare = (await nextConfig.redirects!()).find((r) => r.source === "/discover");
+    const bare = (await nextConfig.redirects!()).find(
+      (r) => r.source === "/discover",
+    );
     expect(bare?.destination).toBe(CONSUMER_ROUTES.home);
     expect(existsSync(join(SHELL, "(discovery)", "discover"))).toBe(false);
-    const hop = (await nextConfig.redirects!()).find((r) => r.source === "/places");
+    const hop = (await nextConfig.redirects!()).find(
+      (r) => r.source === "/places",
+    );
     expect(hop?.destination).toBe(CONSUMER_ROUTES.home);
-    expect(existsSync(join(SHELL, "(discovery)", "places", "page.tsx"))).toBe(false);
+    expect(existsSync(join(SHELL, "(discovery)", "places", "page.tsx"))).toBe(
+      false,
+    );
   });
 });
 

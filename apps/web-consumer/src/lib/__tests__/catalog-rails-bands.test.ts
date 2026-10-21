@@ -26,10 +26,34 @@ const src = readFileSync(
 
 const place = (id: string): Place => ({ id, name: id }) as Place;
 const RAILS: CatalogRail[] = [
-  { key: GOOGLE_RAIL_KEY, label: "Google Places", emoji: "📍", source: "signal", places: [place("g1")] },
-  { key: MESITA_RAIL_KEY, label: "Mesita Selected", emoji: "✨", source: "signal", places: [place("m1")] },
-  { key: "coffee", label: "Coffee", emoji: "☕", source: "family", places: [place("m1")] },
-  { key: "breakfast", label: "Breakfast", emoji: "🥐", source: "family", places: [place("m2")] },
+  {
+    key: GOOGLE_RAIL_KEY,
+    label: "Google Places",
+    emoji: "📍",
+    source: "signal",
+    places: [place("g1")],
+  },
+  {
+    key: MESITA_RAIL_KEY,
+    label: "Mesita Selected",
+    emoji: "✨",
+    source: "signal",
+    places: [place("m1")],
+  },
+  {
+    key: "coffee",
+    label: "Coffee",
+    emoji: "☕",
+    source: "family",
+    places: [place("m1")],
+  },
+  {
+    key: "breakfast",
+    label: "Breakfast",
+    emoji: "🥐",
+    source: "family",
+    places: [place("m2")],
+  },
 ];
 
 describe("Home's tabs and the Places chips (MESITA-2517)", () => {
@@ -42,9 +66,13 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
     expect(src).toContain('role="tablist"');
     expect(src).toContain("data-home-tabs");
     // The chosen tab: bold over an ink underline.
-    expect(src).toContain('on ? "text-foreground font-semibold" : "text-muted-foreground"');
+    expect(src).toContain(
+      'on ? "text-foreground font-semibold" : "text-muted-foreground"',
+    );
     expect(src).toContain("bg-foreground absolute inset-x-0 bottom-0 h-0.5");
-    expect(src).toContain('if (tab === "social") return shell(<SocialFeed />);');
+    expect(src).toContain(
+      "return shell(<SocialFeed samplePlaces={samplePlaces} />);",
+    );
   });
 
   // MESITA-2519 (Pato: "keep the later view of the failies. its fastwer to
@@ -55,7 +83,11 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
     // Favorites, the key still `saved` (MESITA-2521: "rename saved to
     // favorites everywhere").
     expect(labels.slice(0, 2)).toEqual(["All", "Favorites"]);
-    expect(placesChips().map((c) => c.key).slice(0, 2)).toEqual([ALL_CHIP, SAVED_CHIP]);
+    expect(
+      placesChips()
+        .map((c) => c.key)
+        .slice(0, 2),
+    ).toEqual([ALL_CHIP, SAVED_CHIP]);
     for (const gone of ["Social", "Nearby", "Popular", "Undefined"]) {
       expect(labels, gone).not.toContain(gone);
     }
@@ -77,10 +109,17 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
     expect(src).not.toContain("GROUP_STRIPE");
     expect(src).not.toContain("oklch(");
     // The chosen row: white, bold, an ink bar on its left edge.
-    expect(src).toContain('const ROW_ON = "bg-card text-foreground font-semibold";');
+    expect(src).toContain(
+      'const ROW_ON = "bg-card text-foreground font-semibold";',
+    );
     expect(src).toContain("bg-foreground absolute inset-y-0 left-0 w-[3px]");
     // The horizontal chip row is gone again.
-    for (const gone of ["chipRow", "CHIP_ON", "overflow-x-auto", "SOCIAL_CHIP"]) {
+    for (const gone of [
+      "chipRow",
+      "CHIP_ON",
+      "overflow-x-auto",
+      "SOCIAL_CHIP",
+    ]) {
       expect(src, gone).not.toContain(gone);
     }
     // Every row's mark is a line icon, never an emoji (MESITA-2478).
@@ -92,7 +131,14 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
   it("Near and Popular are the server's pool in its order; a family filters it on area.familyKeys", () => {
     const area = (familyKeys: string[], final: number) => ({
       familyKeys,
-      gates: { family: 1 as const, territory: null, radius: 1 as const, active: 1 as const, ready: null, reviews: 1 as const },
+      gates: {
+        family: 1 as const,
+        territory: null,
+        radius: 1 as const,
+        active: 1 as const,
+        ready: null,
+        reviews: 1 as const,
+      },
       signals: { proximity: 1, popularity: 0.5 },
       selected: 1,
       source: "selected" as const,
@@ -107,10 +153,18 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
         { ...place("a"), area: area(["coffee"], 0.9) },
         { ...place("b"), area: area(["dinner"], 0.8) },
         // The card says breakfast; the gate read coffee — the server wins.
-        { ...place("c"), family_keys: ["breakfast"], area: area(["coffee"], 0.7) },
+        {
+          ...place("c"),
+          family_keys: ["breakfast"],
+          area: area(["coffee"], 0.7),
+        },
       ],
     };
-    expect(poolPlaces(pool, ALL_CHIP).map((p) => p.id)).toEqual(["a", "b", "c"]);
+    expect(poolPlaces(pool, ALL_CHIP).map((p) => p.id)).toEqual([
+      "a",
+      "b",
+      "c",
+    ]);
     expect(poolPlaces(pool, "coffee").map((p) => p.id)).toEqual(["a", "c"]);
     expect(poolPlaces(pool, "breakfast")).toEqual([]);
   });
@@ -147,7 +201,9 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
       ["a", place("a")],
       ["b", place("b")],
     ]);
-    expect(savedPlaceList(new Set(["a", "gone", "b"]), previews).map((p) => p.id)).toEqual(["b", "a"]);
+    expect(
+      savedPlaceList(new Set(["a", "gone", "b"]), previews).map((p) => p.id),
+    ).toEqual(["b", "a"]);
   });
 
   it("holds no location rows and opens on All", () => {
@@ -169,7 +225,9 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
     expect(src).not.toContain("<LocalSheet");
     expect(src).toContain("const origin = useActiveLocation();");
     // A saved location, else the fix, else the city's centre (MESITA-2472).
-    expect(src).toContain("const from = origin ?? coords ?? (onCityFallback ? MONTERREY_CENTER : null);");
+    expect(src).toContain(
+      "const from = origin ?? coords ?? (onCityFallback ? MONTERREY_CENTER : null);",
+    );
     expect(src).toContain("apiListAreaPool(supabase, from, families)");
   });
 
@@ -179,18 +237,33 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
   it("the header's location is one box: pin, name, chevron, opening the sheet", () => {
     expect(picker).toContain("className={HOME_LOCATION_CLASS}");
     expect(picker).not.toContain("HEADER_PILL");
-    const tokens = (picker.match(/HOME_LOCATION_CLASS =\s*"([^"]*)"/)?.[1] ?? "").split(/\s+/);
-    for (const t of ["h-9", "rounded-xl", "border", "bg-muted", "text-foreground"])
+    const tokens = (
+      picker.match(/HOME_LOCATION_CLASS =\s*"([^"]*)"/)?.[1] ?? ""
+    ).split(/\s+/);
+    for (const t of [
+      "h-9",
+      "rounded-xl",
+      "border",
+      "bg-muted",
+      "text-foreground",
+    ])
       expect(tokens, t).toContain(t);
     // The chips' grey (MESITA-2485, MESITA-2517): the box matches them.
     expect(tokens).not.toContain("bg-border");
-    const tabs = readFileSync(join(__dirname, "../../components/consumer/ModeTabs.tsx"), "utf8");
-    expect(tabs).toContain('className="flex h-[52px] items-center gap-3 px-4" data-home-header');
+    const tabs = readFileSync(
+      join(__dirname, "../../components/consumer/ModeTabs.tsx"),
+      "utf8",
+    );
+    expect(tabs).toContain(
+      'className="flex h-[52px] items-center gap-3 px-4" data-home-header',
+    );
     // No drawn logo for now (MESITA-2480): the word, set in Outfit.
     expect(tabs).toContain('import { Outfit } from "next/font/google";');
     expect(tabs).toContain(">\n          Mesita\n        </span>");
     expect(tabs).not.toContain("MesitaLogo");
-    expect(picker).not.toContain("border-border bg-card text-foreground hover:bg-muted relative flex h-10");
+    expect(picker).not.toContain(
+      "border-border bg-card text-foreground hover:bg-muted relative flex h-10",
+    );
     expect(picker).toContain("<MapPin");
     expect(picker).toContain("<ChevronDown");
     expect(picker).toContain('aria-haspopup="dialog"');
@@ -198,8 +271,12 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
   });
 
   it("the sheet: the search field, then Current location and the saved locations (MESITA-2464)", () => {
-    expect(picker.indexOf("data-places-location-search")).toBeLessThan(picker.indexOf("label: locationLabel(null"));
-    expect(picker.indexOf("label: locationLabel(null")).toBeLessThan(picker.indexOf("savedLocations.map((l)"));
+    expect(picker.indexOf("data-places-location-search")).toBeLessThan(
+      picker.indexOf("label: locationLabel(null"),
+    );
+    expect(picker.indexOf("label: locationLabel(null")).toBeLessThan(
+      picker.indexOf("savedLocations.map((l)"),
+    );
     // A saved location is a pin (MESITA-2501): the sheet never passes a
     // rectangle on.
     expect(picker).not.toContain("bounds: l.bounds");
@@ -207,15 +284,24 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
 
   it("removing the active saved location falls back to Current location", () => {
     // Remove lives in the pin picker's edit screen since MESITA-2501.
-    const pin = readFileSync(join(__dirname, "../../components/consumer/home/PinPicker.tsx"), "utf8");
-    expect(pin).toContain("if (activeKey === savedLocationKey(entry.id)) setActiveLocation(null);");
+    const pin = readFileSync(
+      join(__dirname, "../../components/consumer/home/PinPicker.tsx"),
+      "utf8",
+    );
+    expect(pin).toContain(
+      "if (activeKey === savedLocationKey(entry.id)) setActiveLocation(null);",
+    );
   });
 });
 
 describe("the Places grid (MESITA-2366)", () => {
   it("is full width, one square tile per row with 6px room around, scrolling on its own", () => {
-    expect(src).toContain('const PLACES_LIST = "grid grid-cols-1 content-start gap-1.5 px-1.5 pt-1.5";');
-    expect(src).toContain("bg-card scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain");
+    expect(src).toContain(
+      'const PLACES_LIST = "grid grid-cols-1 content-start gap-1.5 px-1.5 pt-1.5";',
+    );
+    expect(src).toContain(
+      "bg-card scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain",
+    );
     expect(src).not.toContain("writing-mode");
     expect(src).not.toContain("data-band");
   });
@@ -223,8 +309,13 @@ describe("the Places grid (MESITA-2366)", () => {
   // The bottom bar's white and its hairline (MESITA-2409). MESITA-2476 tried
   // the brand pink; Pato sent it back ("keep the white style", MESITA-2480).
   it("paints Home's header the bottom bar's white, with the bar's hairline under it", () => {
-    const tabs = readFileSync(join(__dirname, "../../components/consumer/ModeTabs.tsx"), "utf8");
-    expect(tabs).toContain('"border-border bg-card/95 sticky top-0 z-20 shrink-0 border-b backdrop-blur"');
+    const tabs = readFileSync(
+      join(__dirname, "../../components/consumer/ModeTabs.tsx"),
+      "utf8",
+    );
+    expect(tabs).toContain(
+      '"border-border bg-card/95 sticky top-0 z-20 shrink-0 border-b backdrop-blur"',
+    );
     expect(tabs).not.toContain("brand-pink");
     expect(tabs).not.toContain("border-b-2");
   });

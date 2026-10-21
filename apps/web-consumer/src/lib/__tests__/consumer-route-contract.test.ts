@@ -58,7 +58,10 @@ function matches(source: string, address: string): boolean {
 }
 
 /** The entry Next would fire for `address` — the FIRST match, as it does. */
-function firstRedirect(table: Redirect[], address: string): Redirect | undefined {
+function firstRedirect(
+  table: Redirect[],
+  address: string,
+): Redirect | undefined {
   return table.find((r) => matches(r.source, address));
 }
 
@@ -233,7 +236,10 @@ describe("the legacy block and the redirect table are one set", () => {
       // param destination is a param page; a `?tab=` query picks a tab of
       // the page, MESITA-2521.)
       const dest = hit!.destination.split("?")[0].replace(/:[A-Za-z]+/g, ":id");
-      expect(live.has(dest), `legacy.${key} → ${hit!.destination} is not a page`).toBe(true);
+      expect(
+        live.has(dest),
+        `legacy.${key} → ${hit!.destination} is not a page`,
+      ).toBe(true);
     }
   });
 
@@ -255,12 +261,17 @@ describe("the legacy block and the redirect table are one set", () => {
       const exact = source.replace(/\/:[A-Za-z]+\*?$/, "/");
       if (legacy.includes(source)) return true;
       if (source.includes(":") && legacy.includes(exact)) return true;
-      if (source.includes(":") && legacy.includes(exact.replace(/\/$/, ""))) return true;
+      if (source.includes(":") && legacy.includes(exact.replace(/\/$/, "")))
+        return true;
       return ALIASES.some((a) =>
-        a.endsWith("/") ? source.startsWith(a) : source === a || source.startsWith(`${a}/`),
+        a.endsWith("/")
+          ? source.startsWith(a)
+          : source === a || source.startsWith(`${a}/`),
       );
     };
-    expect(table.filter((r) => !spokenFor(r.source)).map((r) => r.source)).toEqual([]);
+    expect(
+      table.filter((r) => !spokenFor(r.source)).map((r) => r.source),
+    ).toEqual([]);
   });
 
   // Pay is the ONE live address every Second Stage spelling lands on. If it
@@ -273,7 +284,10 @@ describe("the legacy block and the redirect table are one set", () => {
     // Every live address, in fact.
     for (const address of liveAddresses()) {
       const concrete = address.replace(/:id$/, "sample");
-      expect(firstRedirect(table, concrete), `${address} is shadowed`).toBeUndefined();
+      expect(
+        firstRedirect(table, concrete),
+        `${address} is shadowed`,
+      ).toBeUndefined();
     }
   });
 });
@@ -345,10 +359,18 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       { source: "/explore/swipe", destination: "/home", permanent: true },
       { source: "/explore/map", destination: "/home", permanent: true },
       { source: "/explore/add", destination: "/home", permanent: true },
-      { source: "/explore/place/:id", destination: "/place/:id", permanent: true },
+      {
+        source: "/explore/place/:id",
+        destination: "/place/:id",
+        permanent: true,
+      },
       // THE SECOND STAGE (MESITA-2087): every address that hung off the
       // centre tab lands on Pay in ONE hop. Deepest sources first.
-      { source: "/new-visit/wallet/:path*", destination: "/pay", permanent: true },
+      {
+        source: "/new-visit/wallet/:path*",
+        destination: "/pay",
+        permanent: true,
+      },
       { source: "/new-visit", destination: "/pay", permanent: true },
       { source: "/wallet/:path*", destination: "/pay", permanent: true },
       { source: "/credits", destination: "/pay", permanent: true },
@@ -375,7 +397,11 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       { source: "/me/diamond/invite", destination: "/me", permanent: true },
       { source: "/me/diamond", destination: "/me", permanent: true },
       { source: "/me/visits", destination: "/me", permanent: true },
-      { source: "/me/settings/metrics", destination: "/me/settings", permanent: true },
+      {
+        source: "/me/settings/metrics",
+        destination: "/me/settings",
+        permanent: true,
+      },
       { source: "/me/passport", destination: "/me/profile", permanent: true },
       { source: "/me/help", destination: "/me/settings", permanent: true },
       { source: "/share", destination: "/me", permanent: true },
@@ -406,19 +432,51 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       { source: "/discover/swipe", destination: "/home", permanent: true },
       { source: "/discover/favs", destination: "/home", permanent: true },
       { source: "/discover/social", destination: "/home", permanent: true },
-      { source: "/discover/chat", destination: "/search/chat", permanent: true },
+      {
+        source: "/discover/chat",
+        destination: "/search/chat",
+        permanent: true,
+      },
       { source: "/places", destination: "/home", permanent: true },
       // Every former reservations list → Saved › Reservations (MESITA-2521);
       // /saved itself is a live tab again. The /saved/place dual path
       // (MESITA-1585) still forwards.
-      { source: "/reservations", destination: "/saved?tab=reservations", permanent: true },
-      { source: "/me/reservations", destination: "/saved?tab=reservations", permanent: true },
-      { source: "/bookings", destination: "/saved?tab=reservations", permanent: true },
-      { source: "/saved/reservations", destination: "/saved?tab=reservations", permanent: true },
-      { source: "/saved/reservation/:id", destination: "/reservation/:id", permanent: true },
-      { source: "/saved/place/:id", destination: "/place/:id", permanent: true },
+      {
+        source: "/reservations",
+        destination: "/saved?tab=reservations",
+        permanent: true,
+      },
+      {
+        source: "/me/reservations",
+        destination: "/saved?tab=reservations",
+        permanent: true,
+      },
+      {
+        source: "/bookings",
+        destination: "/saved?tab=reservations",
+        permanent: true,
+      },
+      {
+        source: "/saved/reservations",
+        destination: "/saved?tab=reservations",
+        permanent: true,
+      },
+      {
+        source: "/saved/reservation/:id",
+        destination: "/reservation/:id",
+        permanent: true,
+      },
+      {
+        source: "/saved/place/:id",
+        destination: "/place/:id",
+        permanent: true,
+      },
       { source: "/profile", destination: "/me/profile", permanent: true },
-      { source: "/notifications", destination: "/me/notifications", permanent: true },
+      {
+        source: "/notifications",
+        destination: "/me/notifications",
+        permanent: true,
+      },
       // ACTIVITY IS GONE AS A CONTAINER (MESITA-1626): /inbox lands on Me in
       // ONE hop. /inbox/credits and /inbox/orders sit ABOVE this and point at
       // Pay — Next takes the first match.
@@ -533,9 +591,10 @@ describe("?next= threading (safeNextPath / withNext)", () => {
     );
     expect(afterAuth).toBe("/auth/post-signin?next=%2Fplace%2Fabc%3Fref%3Dig");
     // …which parks it on /onboard for an unfinished profile…
-    const target = new URL(afterAuth, "https://consumer.mesita.ai").searchParams.get(
-      "next",
-    );
+    const target = new URL(
+      afterAuth,
+      "https://consumer.mesita.ai",
+    ).searchParams.get("next");
     expect(withNext(CONSUMER_ROUTES.onboard, target)).toBe(
       "/onboard?next=%2Fplace%2Fabc%3Fref%3Dig",
     );
