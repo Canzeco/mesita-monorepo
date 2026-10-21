@@ -2,7 +2,7 @@
 
 import { Share2 } from "lucide-react";
 import { SlideOverHeader } from "@/components/consumer/overlay/SlideOverShell";
-import { toast } from "@/lib/toast";
+import { shareOrCopy } from "@/lib/share-place";
 
 // Content chrome for the intercepted /reservation/[id] route. The sliding
 // panel (animation, backdrop, ESC, dismiss via router.back) is
@@ -18,29 +18,18 @@ export function ReservationDetailModalShell({
   children: React.ReactNode;
   placeName: string;
 }) {
+  // The sheet, or a copy of the link: a sheet that fails copies instead of
+  // ending silently (shareOrCopy, MESITA-2581).
   function onShare() {
-    const shareData = {
-      title: `${placeName} on Mesita`,
-      text: `My reservation at ${placeName}`,
-      url: typeof window !== "undefined" ? window.location.href : "",
-    };
-    if (
-      typeof navigator !== "undefined" &&
-      typeof navigator.share === "function"
-    ) {
-      navigator.share(shareData).catch(() => {
-        /* user cancelled — no toast */
-      });
-      return;
-    }
-    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-      navigator.clipboard
-        .writeText(shareData.url)
-        .then(() => toast.success("Link copied to clipboard"))
-        .catch(() => toast.error("Couldn't copy link"));
-      return;
-    }
-    toast.error("Sharing isn't available in this browser");
+    const url = window.location.href;
+    void shareOrCopy(
+      {
+        title: `${placeName} on Mesita`,
+        text: `My reservation at ${placeName}`,
+        url,
+      },
+      { text: url, copied: "Link copied", failed: "Couldn't copy the link" },
+    );
   }
 
   return (
