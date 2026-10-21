@@ -139,6 +139,29 @@ export function SettingsActionRow({
   );
 }
 
+/** A fact, not a door: icon, label, value, no chevron (Settings › Phone,
+ *  MESITA-2547). */
+export function SettingsInfoRow({
+  Icon,
+  tint,
+  label,
+  value,
+}: {
+  Icon: LucideIcon;
+  tint: RowTint;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex w-full items-center gap-3 px-4 py-3">
+      <IconCircle tint={tint}>
+        <Icon className="h-[18px] w-[18px]" />
+      </IconCircle>
+      <RowText label={label} sub={value} />
+    </div>
+  );
+}
+
 export function SettingsLinkRow({
   Icon,
   tint,

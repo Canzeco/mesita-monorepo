@@ -31,6 +31,7 @@ import {
   StoredToggleRow,
 } from "@/components/consumer/me/settings-rows";
 import { ShowActivityRow } from "@/components/consumer/me/ShowActivityRow";
+import { PhoneRow } from "@/components/consumer/me/PhoneRow";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // Device-level preferences, grouped. Every toggle and select persists to
@@ -119,13 +120,17 @@ export function SettingsModal() {
             />
           </SettingsGroup>
 
-          {/* Social v1 (MESITA-2442): whether you appear in Social. */}
+          {/* Social v1 (MESITA-2442): whether you appear in Social — your
+              public profile (MESITA-2547). */}
           <SettingsGroup title="Privacy">
             <ShowActivityRow />
           </SettingsGroup>
 
           {/* Contact is the only door to a human. Support, below, is legal. */}
           <SettingsGroup title="Your account">
+            {/* The login phone left Me's card for here (MESITA-2547). */}
+            <PhoneRow />
+            <RowDivider />
             <SettingsLinkRow
               Icon={MessageSquare}
               tint="muted"

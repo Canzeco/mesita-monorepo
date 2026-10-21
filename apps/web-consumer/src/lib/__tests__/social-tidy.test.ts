@@ -110,11 +110,11 @@ describe("the row", () => {
     expect(src).toMatch(/<LocalDialog[\s\S]{0,120}instant\s*>/);
     expect(src).not.toContain("<LocalSheet");
     expect(src).toContain("data-social-person-card");
-    expect(src).toContain("Recent activity");
-    // Their events are matched without any member id (MESITA-2460).
-    expect(src).toContain(
-      "export function personKey(p: ActivityPerson): string {",
-    );
+    // The card is the member's identity card, no activity list
+    // (MESITA-2547).
+    expect(src).not.toContain("Recent activity");
+    expect(src).toContain("<IdentityCard");
+    // No member id ever reaches the client (MESITA-2460).
     expect(src).not.toContain("consumer_id");
   });
 
