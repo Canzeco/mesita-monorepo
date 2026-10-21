@@ -8,13 +8,14 @@
 // profile of the person and the username and the name just as those old
 // instagram notifications. keep super super simple"):
 //
-//   Today
 //   (●)♥ Perdón liked Contramar                           [▢]
 //        ◎ per••• · 1.2K followers · 2h
 //
+// ONE PLAIN LIST, the time on each row, no day headings (Pato, MESITA-2528:
+// "don't do that of today and yesterday … Just the fucking plain list with
+// time notation. Keep it simple."; MESITA-2525 had grouped by day).
 // TIDY NOTIFICATIONS (MESITA-2525, Pato: "make this more UI friendly … your
-// call"): rows sit under Today · Yesterday · This week · Earlier, by the
-// guest's local day. The member's picture wears the verb as an ink badge
+// call"): the member's picture wears the verb as an ink badge
 // (heart liked, pin visited, eye viewed), so the list scans without reading.
 // One line: the name (bold), the verb, the place (bold), no period; under
 // it, muted, the Instagram glyph and the member's Instagram as social proof —
@@ -35,7 +36,7 @@
 // Home's real places, under one quiet "Sample activity" line, never mixed
 // with real rows; with no places either, the empty state.
 
-import { useEffect, useId, useMemo, useState, type SVGProps } from "react";
+import { useEffect, useMemo, useState, type SVGProps } from "react";
 import Link from "next/link";
 import { Eye, Heart, MapPin, Users, type LucideIcon } from "lucide-react";
 import {
@@ -108,38 +109,6 @@ export function feedInstagram(lead: ActivityPerson): string | null {
   if (!handle) return null;
   const followers = approxFollowers(lead.followers);
   return followers ? `${handle} · ${followers} followers` : handle;
-}
-
-/** The feed's day headings, in the order they draw (MESITA-2525). */
-export const FEED_DAYS = ["Today", "Yesterday", "This week", "Earlier"] as const;
-export type FeedDay = (typeof FEED_DAYS)[number];
-
-function startOfDay(ms: number): number {
-  const d = new Date(ms);
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-}
-
-/** The heading a row sits under, by the guest's local calendar day. */
-export function feedDay(iso: string, now = Date.now()): FeedDay {
-  const at = Date.parse(iso);
-  if (!Number.isFinite(at)) return "Earlier";
-  // Rounded: a DST night makes a calendar day 23 or 25 hours long.
-  const days = Math.round((startOfDay(now) - startOfDay(at)) / 86_400_000);
-  if (days <= 0) return "Today";
-  if (days === 1) return "Yesterday";
-  if (days < 7) return "This week";
-  return "Earlier";
-}
-
-/** The rows under their day headings; within a day, the server's order. */
-export function feedSections(
-  rows: readonly ActivityFeedItem[],
-  now = Date.now(),
-): { day: FeedDay; rows: ActivityFeedItem[] }[] {
-  return FEED_DAYS.map((day) => ({
-    day,
-    rows: rows.filter((row) => feedDay(row.at, now) === day),
-  })).filter((section) => section.rows.length > 0);
 }
 
 /** " and 4 others liked" / " visited": the sentence after the name. */
@@ -338,7 +307,6 @@ export function SocialFeed({
   >({ status: "loading" });
   // Bumped by Try again: the effect refetches.
   const [attempt, setAttempt] = useState(0);
-  const headingId = useId();
 
   useEffect(() => {
     let cancelled = false;
@@ -363,13 +331,10 @@ export function SocialFeed({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase, fromKey, attempt]);
 
-  const feed = useMemo(() => {
-    const { rows, sample } = feedRows(
-      state.status === "ready" ? state.items : [],
-      samplePlaces,
-    );
-    return { rows, sample, sections: feedSections(rows) };
-  }, [state, samplePlaces]);
+  const feed = useMemo(
+    () => feedRows(state.status === "ready" ? state.items : [], samplePlaces),
+    [state, samplePlaces],
+  );
 
   if (state.status === "loading") return <FeedSkeleton />;
   if (state.status === "error") {
@@ -407,27 +372,11 @@ export function SocialFeed({
           Sample activity
         </p>
       ) : null}
-      {feed.sections.map(({ day, rows }) => {
-        const id = `${headingId}-${day.replace(/\s+/g, "-")}`;
-        return (
-          <section key={day} aria-labelledby={id} data-social-day={day}>
-            <h2
-              id={id}
-              className="text-foreground px-4 pt-4 pb-1 text-base font-semibold"
-            >
-              {day}
-            </h2>
-            <ul role="list" className="divide-border divide-y">
-              {rows.map((item, i) => (
-                <FeedRow
-                  key={`${i}|${item.placeId}|${item.kind}`}
-                  item={item}
-                />
-              ))}
-            </ul>
-          </section>
-        );
-      })}
+      <ul role="list" aria-label="Social" className="divide-border divide-y">
+        {feed.rows.map((item, i) => (
+          <FeedRow key={`${i}|${item.placeId}|${item.kind}`} item={item} />
+        ))}
+      </ul>
     </div>
   );
 }
