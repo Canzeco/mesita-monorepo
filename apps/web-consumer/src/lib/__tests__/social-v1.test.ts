@@ -4,6 +4,7 @@ import {
   approxFollowers,
   feedInstagram,
   feedSentence,
+  feedStatus,
   feedWho,
   personKey,
   shortAgo,
@@ -102,9 +103,9 @@ describe("the feed's copy", () => {
     expect(feedSentence({ person: lead, kind: "viewed" })).toBe(
       "Perdón viewed",
     );
-    expect(feedSentence({ person: { ...lead, isYou: true }, kind: "saved" })).toBe(
-      "You liked",
-    );
+    expect(
+      feedSentence({ person: { ...lead, isYou: true }, kind: "saved" }),
+    ).toBe("You liked");
   });
 
   // MESITA-2525: the Instagram glyph replaces the word, so the text is the
@@ -123,6 +124,16 @@ describe("the feed's copy", () => {
     expect(personKey(lead)).toBe(personKey({ ...lead, followers: 9 }));
     expect(personKey(lead)).not.toBe(personKey({ ...lead, handleHint: "pex" }));
     expect(personKey(lead)).not.toBe(personKey({ ...lead, isYou: true }));
+  });
+
+  // MESITA-2543: the quiet line above the list.
+  it("says sample, or how long ago the list loaded", () => {
+    const t = Date.parse("2026-10-21T06:00:00Z");
+    expect(feedStatus(true, t, t)).toBe("Sample activity");
+    expect(feedStatus(false, null, t)).toBe("Updated just now");
+    expect(feedStatus(false, t, t + 20_000)).toBe("Updated just now");
+    expect(feedStatus(false, t, t + 3 * 60_000)).toBe("Updated 3m ago");
+    expect(feedStatus(false, t, 0)).toBe("Updated just now");
   });
 
   it("rounds followers down to an approximate count", () => {
