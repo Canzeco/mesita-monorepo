@@ -3,12 +3,10 @@
 import { useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   ChevronRight,
-  Copy,
   Dices,
-  Mail,
+  Ellipsis,
   MessageCircle,
   MessageSquare,
-  Share,
   type LucideIcon,
 } from "lucide-react";
 
@@ -19,13 +17,18 @@ import {
   SectionEyebrow,
   SettingsGroup,
 } from "@/components/consumer/me/settings-rows";
+import { Instagram } from "@/components/shared/instagram-icon";
 import {
   APP_SHARE_TEXT,
   APP_SHARE_URL,
+  INSTAGRAM_DM_URL,
+  SHARE_CARD_IMAGES,
   SHARE_CARD_STYLES,
   SHARE_MESSAGES,
+  otherIndex,
   shareBody,
   shareLinks,
+  type ShareCardImage,
   type ShareCardStyle,
 } from "@/lib/share-app";
 import { canShareNatively, copyToClipboard } from "@/lib/share-place";
@@ -40,16 +43,17 @@ import { cn } from "@/lib/utils";
 //   │                                │   no amount, no credit, no code
 //   │ Stop asking me where to eat.   │   (Pato, MESITA-2568: "like it must
 //   │ Use this. 🙄                   │   look like a gift card but without
-//   │ consumer.mesita.ai  No credit. │   credit … meme style"), over the
-//   └────────────────────────────────┘   style's meme photo (MESITA-2570)
-//   MESSAGE   [chip] [chip] [chip] … 🎲
-//   STYLE     ● ● ● ● ●                  each swatch = a tint + a photo
-//   SEND IT   Share… · WhatsApp · Messages · Email · Copy link
+//   │ consumer.mesita.ai  No credit. │   credit … meme style"), built from
+//   └────────────────────────────────┘   three params (MESITA-2570)
+//   IMAGE     ▢ ▢ ▢ ▢ ▢ ▢ ▢ ▢ ▢ ▢   🎲   five meme animals, five cities;
+//   MESSAGE   [chip] [chip] [chip] …      🎲 shuffles all three
+//   STYLE     ● ● ● ● ●                  the tint under the words
+//   SEND IT   SMS · Instagram · WhatsApp · Other
 //
-// ONLY THE MESSAGE TRAVELS, then the link. The style and its photo dress this
-// page; no image is sent. ONE OUTCOME PER TAP, ONE TOAST AT MOST: closing the phone's
-// sheet is a decision (AbortError, silent), and nothing falls through to a
-// second action. The link carries nothing about the guest (share-app.ts).
+// ONLY THE MESSAGE TRAVELS, then the link. The image and the style dress this
+// page; no image is sent. ONE OUTCOME PER TAP, ONE TOAST AT MOST: closing the
+// phone's sheet is a decision (AbortError, silent), and nothing falls through
+// to a second action. The link carries nothing about the guest (share-app.ts).
 
 const noop = () => () => {};
 
@@ -67,15 +71,17 @@ function scrim(tint: string): string {
 
 function InviteCard({
   message,
+  image,
   look,
 }: {
   message: string;
+  image: ShareCardImage;
   look: ShareCardStyle;
 }) {
   // A photo that failed stays off; the card is then the plain style. Before
   // hydration, alt="" keeps a broken photo from drawing anything.
   const [failed, setFailed] = useState<ReadonlySet<string>>(new Set());
-  const showPhoto = !failed.has(look.photo);
+  const showPhoto = !failed.has(image.src);
   return (
     <div
       className={cn(
@@ -84,16 +90,17 @@ function InviteCard({
       )}
       style={{ background: look.background }}
       data-invite-card={look.id}
+      data-invite-image={image.id}
     >
       {showPhoto && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          key={look.photo}
-          src={look.photo}
+          key={image.src}
+          src={image.src}
           alt=""
           aria-hidden
           decoding="async"
-          onError={() => setFailed((f) => new Set(f).add(look.photo))}
+          onError={() => setFailed((f) => new Set(f).add(image.src))}
           className="pointer-events-none absolute inset-x-0 top-0 h-[70%] w-full object-cover"
           data-invite-photo
         />
@@ -172,7 +179,9 @@ function Row({
     return (
       <a
         href={href}
-        // WhatsApp opens in a new tab; sms: and mailto: hand off to an app.
+        onClick={onClick}
+        // WhatsApp and Instagram open in a new tab (or their app); sms:
+        // hands off to Messages.
         {...(href.startsWith("https:")
           ? { target: "_blank", rel: "noopener noreferrer" }
           : {})}
@@ -195,9 +204,18 @@ function Row({
   );
 }
 
-async function copyLink() {
-  if (await copyToClipboard(APP_SHARE_URL)) toast.success("Link copied");
-  else toast.error("Couldn't copy the link");
+/** Instagram: the row's link opens the inbox; this copies what to paste. */
+async function copyForInstagram(message: string) {
+  if (await copyToClipboard(shareBody(message)))
+    toast.success("Message copied: paste it in a chat");
+  else toast.error("Couldn't copy the message");
+}
+
+/** Other, where there is no share sheet (desktop): copy, paste anywhere. */
+async function copyMessage(message: string) {
+  if (await copyToClipboard(shareBody(message)))
+    toast.success("Message and link copied");
+  else toast.error("Couldn't copy the message");
 }
 
 async function openShareSheet(message: string) {
@@ -215,19 +233,19 @@ async function openShareSheet(message: string) {
 
 export function SharePage() {
   const canShare = useCanShare();
+  const [imageIndex, setImageIndex] = useState(0);
   const [messageIndex, setMessageIndex] = useState(0);
-  const [lookId, setLookId] = useState<ShareCardStyle["id"]>(
-    SHARE_CARD_STYLES[0].id,
-  );
+  const [styleIndex, setStyleIndex] = useState(0);
+  const image = SHARE_CARD_IMAGES[imageIndex];
   const message = SHARE_MESSAGES[messageIndex];
-  const look =
-    SHARE_CARD_STYLES.find((s) => s.id === lookId) ?? SHARE_CARD_STYLES[0];
+  const look = SHARE_CARD_STYLES[styleIndex];
   const links = shareLinks(message);
 
-  // 🎲: any other message, never the same one twice in a row.
+  // 🎲: a new image, message and style, each different from the last.
   const shuffle = () => {
-    const step = 1 + Math.floor(Math.random() * (SHARE_MESSAGES.length - 1));
-    setMessageIndex((i) => (i + step) % SHARE_MESSAGES.length);
+    setImageIndex((i) => otherIndex(i, SHARE_CARD_IMAGES.length));
+    setMessageIndex((i) => otherIndex(i, SHARE_MESSAGES.length));
+    setStyleIndex((i) => otherIndex(i, SHARE_CARD_STYLES.length));
   };
 
   return (
@@ -241,16 +259,16 @@ export function SharePage() {
       <p className="text-muted-foreground type-body mt-1">{APP_SHARE_TEXT}</p>
 
       <div className="mt-5">
-        <InviteCard message={message} look={look} />
+        <InviteCard message={message} image={image} look={look} />
       </div>
 
       <div className="mt-6 flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <SectionEyebrow>Message</SectionEyebrow>
+          <SectionEyebrow>Image</SectionEyebrow>
           <button
             type="button"
             onClick={shuffle}
-            aria-label="Another message"
+            aria-label="Shuffle the card"
             className="text-foreground/70 hover:bg-muted flex h-8 items-center gap-1 rounded-full px-2.5 text-xs font-semibold transition"
             data-share-shuffle
           >
@@ -258,6 +276,35 @@ export function SharePage() {
             Shuffle
           </button>
         </div>
+        <div className="scrollbar-hide -mx-4 flex gap-2 overflow-x-auto px-4 py-1">
+          {SHARE_CARD_IMAGES.map((img, i) => (
+            <button
+              key={img.id}
+              type="button"
+              onClick={() => setImageIndex(i)}
+              aria-label={img.label}
+              aria-pressed={i === imageIndex}
+              className={cn(
+                "bg-muted h-14 w-14 shrink-0 overflow-hidden rounded-xl ring-1 ring-black/10 transition",
+                i === imageIndex && "ring-foreground ring-2 ring-offset-2",
+              )}
+              data-share-image={img.id}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={img.thumb}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                className="h-full w-full object-cover"
+              />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-5 flex flex-col gap-2">
+        <SectionEyebrow>Message</SectionEyebrow>
         <div className="scrollbar-hide -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
           {SHARE_MESSAGES.map((m, i) => (
             <button
@@ -282,16 +329,16 @@ export function SharePage() {
       <div className="mt-5 flex flex-col gap-2">
         <SectionEyebrow>Style</SectionEyebrow>
         <div className="flex gap-3">
-          {SHARE_CARD_STYLES.map((s) => (
+          {SHARE_CARD_STYLES.map((s, i) => (
             <button
               key={s.id}
               type="button"
-              onClick={() => setLookId(s.id)}
+              onClick={() => setStyleIndex(i)}
               aria-label={s.label}
-              aria-pressed={s.id === look.id}
+              aria-pressed={i === styleIndex}
               className={cn(
                 "h-10 w-10 rounded-full ring-1 ring-black/10 transition",
-                s.id === look.id && "ring-foreground ring-2 ring-offset-2",
+                i === styleIndex && "ring-foreground ring-2 ring-offset-2",
               )}
               style={{ background: s.background }}
               data-share-style={s.id}
@@ -302,18 +349,17 @@ export function SharePage() {
 
       <div className="mt-6">
         <SettingsGroup title="Send it">
-          {canShare && (
-            <>
-              <Row
-                Icon={Share}
-                label="Share…"
-                sub="Any app on your phone"
-                onClick={() => void openShareSheet(message)}
-                data="sheet"
-              />
-              <RowDivider />
-            </>
-          )}
+          <Row Icon={MessageSquare} label="SMS" href={links.sms} data="sms" />
+          <RowDivider />
+          <Row
+            Icon={Instagram}
+            label="Instagram"
+            sub="Copies the message, then opens Instagram"
+            href={INSTAGRAM_DM_URL}
+            onClick={() => void copyForInstagram(message)}
+            data="instagram"
+          />
+          <RowDivider />
           <Row
             Icon={MessageCircle}
             label="WhatsApp"
@@ -322,19 +368,15 @@ export function SharePage() {
           />
           <RowDivider />
           <Row
-            Icon={MessageSquare}
-            label="Messages"
-            href={links.sms}
-            data="sms"
-          />
-          <RowDivider />
-          <Row Icon={Mail} label="Email" href={links.email} data="email" />
-          <RowDivider />
-          <Row
-            Icon={Copy}
-            label="Copy link"
-            onClick={() => void copyLink()}
-            data="copy"
+            Icon={Ellipsis}
+            label="Other"
+            sub={
+              canShare ? "Any app on your phone" : "Copies the message and link"
+            }
+            onClick={() =>
+              void (canShare ? openShareSheet(message) : copyMessage(message))
+            }
+            data="other"
           />
         </SettingsGroup>
       </div>

@@ -6,41 +6,51 @@ import { describe, expect, it } from "vitest";
 import { SharePage } from "@/components/consumer/share/SharePage";
 import {
   APP_SHARE_URL,
+  INSTAGRAM_DM_URL,
+  SHARE_CARD_IMAGES,
   SHARE_CARD_STYLES,
   SHARE_MESSAGES,
+  otherIndex,
   shareLinks,
 } from "@/lib/share-app";
 
 // Share is a page (Pato, MESITA-2566), and its top is an invite card shaped
-// like a gift card — no credit — with meme messages and styles (MESITA-2568).
+// like a gift card — no credit — with meme messages and styles (MESITA-2568),
+// built from three params: an image, a message, a style (MESITA-2570).
 
 const html = renderToStaticMarkup(<SharePage />);
 const decode = (s: string) => decodeURIComponent(s.replace(/&amp;/g, "&"));
 
 describe("the Share page", () => {
-  it("leads with the invite card: the first message, the first style", () => {
+  it("leads with the invite card: the first image, message and style", () => {
     expect(html).toContain(`data-invite-card="${SHARE_CARD_STYLES[0].id}"`);
+    expect(html).toContain(`data-invite-image="${SHARE_CARD_IMAGES[0].id}"`);
     expect(html).toContain("Invite");
     expect(html).toContain("consumer.mesita.ai");
   });
 
-  // Pato, MESITA-2570: "use meme images. use 5". One photo per swatch.
-  it("wears five meme photos, one per style, the first under the first card", () => {
-    const photos = SHARE_CARD_STYLES.map((s) => s.photo);
-    expect(photos).toHaveLength(5);
-    expect(new Set(photos).size).toBe(5);
-    for (const photo of photos) {
-      expect(photo).toMatch(/^https:\/\/images\.unsplash\.com\/photo-[\w-]+\?/);
+  // Pato: "use meme images. use 5 … include certain backgrounds of cities …
+  // imagine you have 10 images".
+  it("offers ten images — five meme animals, five cities — each its own photo", () => {
+    expect(SHARE_CARD_IMAGES).toHaveLength(10);
+    const srcs = SHARE_CARD_IMAGES.map((i) => i.src);
+    expect(new Set(srcs).size).toBe(10);
+    for (const img of SHARE_CARD_IMAGES) {
+      expect(img.src).toMatch(
+        /^https:\/\/images\.unsplash\.com\/photo-[\w-]+\?/,
+      );
+      expect(img.thumb.split("?")[0]).toBe(img.src.split("?")[0]);
     }
-    for (const s of SHARE_CARD_STYLES) {
-      expect(s.tint).toMatch(/^\d{1,3} \d{1,3} \d{1,3}$/);
+    const labels = SHARE_CARD_IMAGES.map((i) => i.label);
+    for (const city of ["San Francisco", "New York", "Miami"]) {
+      expect(labels).toContain(city);
     }
-    const img = html.match(/<img[^>]*data-invite-photo[^>]*>/)?.[0] ?? "";
-    expect(img).toContain(
-      `src="${SHARE_CARD_STYLES[0].photo.replace(/&/g, "&amp;")}"`,
+    const photo = html.match(/<img[^>]*data-invite-photo[^>]*>/)?.[0] ?? "";
+    expect(photo).toContain(
+      `src="${SHARE_CARD_IMAGES[0].src.replace(/&/g, "&amp;")}"`,
     );
     // Decoration: no alt text to read out, nothing drawn if it breaks.
-    expect(img).toContain('alt=""');
+    expect(photo).toContain('alt=""');
     expect(html.match(/data-invite-photo/g)).toHaveLength(1);
   });
 
@@ -52,21 +62,40 @@ describe("the Share page", () => {
     expect(card).not.toMatch(/\$|MX\$|balance|credits?\b(?!\. Just)|code/i);
   });
 
-  it("offers every message and every style, the chosen ones pressed", () => {
+  it("offers every image, message and style, the chosen ones pressed", () => {
+    for (const img of SHARE_CARD_IMAGES) {
+      expect(html).toContain(`data-share-image="${img.id}"`);
+    }
     expect(html.match(/data-share-message/g)).toHaveLength(
       SHARE_MESSAGES.length,
     );
     for (const s of SHARE_CARD_STYLES) {
       expect(html).toContain(`data-share-style="${s.id}"`);
+      expect(s.tint).toMatch(/^\d{1,3} \d{1,3} \d{1,3}$/);
     }
-    expect(html.match(/aria-pressed="true"/g)).toHaveLength(2);
+    expect(html.match(/aria-pressed="true"/g)).toHaveLength(3);
   });
 
-  it("keeps the ways to send it, the phone's sheet only where there is one", () => {
-    for (const row of ["whatsapp", "sms", "email", "copy"]) {
-      expect(html).toContain(`data-share-row="${row}"`);
+  it("shuffles to a different pick every time", () => {
+    for (const length of [SHARE_CARD_IMAGES.length, SHARE_MESSAGES.length]) {
+      for (let current = 0; current < length; current += 1) {
+        for (const r of [0, 0.5, 0.999]) {
+          const next = otherIndex(current, length, () => r);
+          expect(next).not.toBe(current);
+          expect(next).toBeGreaterThanOrEqual(0);
+          expect(next).toBeLessThan(length);
+        }
+      }
     }
-    expect(html).not.toContain('data-share-row="sheet"');
+  });
+
+  // Pato: "for buttons just include SMS Instagram WhatsApp or other button".
+  it("sends it four ways, in order: SMS, Instagram, WhatsApp, Other", () => {
+    const rows = [...html.matchAll(/data-share-row="([^"]+)"/g)].map(
+      (m) => m[1],
+    );
+    expect(rows).toEqual(["sms", "instagram", "whatsapp", "other"]);
+    expect(html).toContain(`href="${INSTAGRAM_DM_URL}"`);
   });
 
   it("sends the chosen message, then the bare front-door link — nothing else", () => {
@@ -81,9 +110,8 @@ describe("the Share page", () => {
     const first = shareLinks(SHARE_MESSAGES[0]);
     expect(first.whatsapp.startsWith("https://wa.me/?text=")).toBe(true);
     expect(first.sms.startsWith("sms:")).toBe(true);
-    expect(first.email.startsWith("mailto:")).toBe(true);
-    // The rendered rows carry the default message.
-    // (Only the row's href is decoded: the card's scrim carries bare "%".)
+    // The rendered rows carry the default message. (Only the row's href is
+    // decoded: the card's scrim carries bare "%".)
     const whatsapp = html.match(/href="(https:\/\/wa\.me\/[^"]*)"/)?.[1] ?? "";
     expect(decode(whatsapp)).toContain(
       `text=${SHARE_MESSAGES[0]} ${APP_SHARE_URL}`,
@@ -102,6 +130,6 @@ describe("the Share page", () => {
       src.indexOf("export function SharePage"),
     );
     expect(sheet).not.toContain("copyToClipboard");
-    expect(sheet).not.toContain("copyLink");
+    expect(sheet).not.toContain("copyMessage");
   });
 });
