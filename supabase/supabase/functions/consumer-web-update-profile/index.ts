@@ -15,6 +15,7 @@ import {
   readEFEnv,
 } from "../_shared/auth.ts";
 import { clean } from "../_shared/input.ts";
+import { isInstagramAvatar } from "../_shared/instagram-avatar.ts";
 import { writeConsumer } from "../_shared/consumer-doc.ts";
 import { accountDeletedResponse, isDeletedConsumer } from "../_shared/delete-history-free.ts";
 import {
@@ -28,7 +29,7 @@ import {
 } from "./update-profile-fields.ts";
 
 const CONSUMER_PROFILE_SELECT =
-  "id, code, full_name, first_name, last_name, sex, birthday, phone, avatar_url, guest_class, plan";
+  "id, code, full_name, first_name, last_name, sex, birthday, phone, avatar_url, use_instagram_photo, guest_class, plan";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -83,7 +84,7 @@ Deno.serve(async (req) => {
   // and a caller may send only one of them (MESITA-1806).
   const existing = await admin
     .from("consumers")
-    .select("id, code, deleted_at, first_name, last_name")
+    .select("id, code, deleted_at, first_name, last_name, avatar_url")
     .eq("id", userId)
     .maybeSingle();
   if (existing.error) {
@@ -129,6 +130,16 @@ Deno.serve(async (req) => {
   });
   if (!built.ok) return built.response;
   const patch = built.patch;
+
+  // Switching "Use my Instagram photo" off takes an Instagram-copied picture
+  // down with it; an uploaded photo stays (MESITA-2585).
+  if (
+    body.use_instagram_photo === false &&
+    body.avatar_url === undefined &&
+    isInstagramAvatar(existing.data?.avatar_url as string | null, userId)
+  ) {
+    patch.avatar_url = null;
+  }
 
   const update = await writeConsumer(admin, {
     mode: "update",

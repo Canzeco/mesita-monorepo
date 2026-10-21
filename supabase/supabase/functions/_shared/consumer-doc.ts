@@ -56,6 +56,8 @@ export type ConsumerDoc = {
   // MESITA-2461: when the handle was proved (code in the bio). The DB CHECK
   // refuses a handle without it; only consumer_instagram_verify sets both.
   instagram_verified_at: string | null;
+  // MESITA-2585: may verifying Instagram set the picture? Default true.
+  use_instagram_photo: boolean;
   // Not here on purpose: plan, guest_class and the VIP audit columns
   // (MESITA-2553). Their only writer is the admin_set_guest_standing RPC, so
   // this door cannot touch them and rejects them as unknown fields.
@@ -78,6 +80,7 @@ export const CONSUMER_PATCH_KEYS = [
   "instagram_handle",
   "instagram_followers_count",
   "instagram_verified_at",
+  "use_instagram_photo",
   "deleted_at",
 ] as const satisfies readonly (keyof Omit<ConsumerDoc, "id" | "created_at">)[];
 
@@ -214,6 +217,13 @@ export function validateConsumerPatch(
       };
     }
     patch.instagram_verified_at = v;
+  }
+  if ("use_instagram_photo" in raw) {
+    const v = raw.use_instagram_photo;
+    if (typeof v !== "boolean") {
+      return { ok: false, error: "use_instagram_photo must be a boolean" };
+    }
+    patch.use_instagram_photo = v;
   }
   if ("deleted_at" in raw) {
     const v = raw.deleted_at;

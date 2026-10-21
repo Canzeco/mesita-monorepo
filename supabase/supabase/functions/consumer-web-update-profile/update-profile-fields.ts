@@ -33,6 +33,8 @@ export type UpdateProfileBody = {
   // Public URL of a photo the caller already uploaded to consumer-avatars
   // (MESITA-953). null/"" clears. Foreign hosts are rejected.
   avatar_url?: string | null;
+  // MESITA-2585: "Use my Instagram photo" on Me › Instagram.
+  use_instagram_photo?: boolean;
 };
 
 export const AVATAR_BUCKET = "consumer-avatars";
@@ -228,6 +230,15 @@ export function buildProfilePatch(
   if (body.sex !== undefined) patch.sex = fields.sex;
   if (body.birthday !== undefined) patch.birthday = fields.birthday;
   if (body.avatar_url !== undefined) patch.avatar_url = fields.avatarUrl ?? null;
+  if (body.use_instagram_photo !== undefined) {
+    if (typeof body.use_instagram_photo !== "boolean") {
+      return {
+        ok: false,
+        response: json({ ok: false, error: "use_instagram_photo must be a boolean" }, 400),
+      };
+    }
+    patch.use_instagram_photo = body.use_instagram_photo;
+  }
 
   if (Object.keys(patch).length === 0) {
     return {

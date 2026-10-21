@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(146);
+select plan(147);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -719,6 +719,11 @@ select ok(
   pg_get_functiondef('public.place_activity_visible(public.consumers)'::regprocedure)
     like '%instagram_verified_at is not null%',
   'Social shows only verified Instagram handles'
+);
+
+select col_default_is(
+  'public', 'consumers', 'use_instagram_photo', 'true',
+  'the Instagram photo is opt-out: on by default (MESITA-2585)'
 );
 
 select hasnt_column(

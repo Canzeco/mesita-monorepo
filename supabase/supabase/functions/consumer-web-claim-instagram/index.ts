@@ -38,7 +38,7 @@ import { corsPreflight, json, jsonError, readJson, rejectUnlessMethods } from ".
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { APIFY_ACTORS, runApifyActor } from "../_shared/apify.ts";
 import { isDeadIgStub } from "../_shared/enrich-instagram-match.ts";
-import { adoptInstagramAvatar } from "../_shared/instagram-avatar.ts";
+import { adoptInstagramAvatar, pickProfilePicUrl } from "../_shared/instagram-avatar.ts";
 import {
   checkWaitMs,
   claimIsLive,
@@ -50,6 +50,9 @@ import { dmLink, readInstagramDmConfig } from "../_shared/instagram-dm.ts";
 import { readInstagramStatus } from "../_shared/consumer-doc.ts";
 
 type Body = { action?: string; handle?: string };
+
+// A photo that was not taken for one of these reasons is not an error.
+const QUIET_PHOTO_REASONS = new Set(["uploaded_photo_kept", "no_photo", "photo_off"]);
 
 // The profile scrape is synchronous; a cold actor takes ~10–20s.
 const SCRAPE_TIMEOUT_MS = 45_000;
@@ -229,8 +232,14 @@ Deno.serve(async (req) => {
     });
     if (verifyErr) return jsonError(verifyErr.message, 500);
 
-    const photo = await adoptInstagramAvatar(admin, envRes.env.url, consumerId, profile, now);
-    if (!photo.ok && photo.reason !== "uploaded_photo_kept" && photo.reason !== "no_photo") {
+    const photo = await adoptInstagramAvatar(
+      admin,
+      envRes.env.url,
+      consumerId,
+      pickProfilePicUrl(profile),
+      now,
+    );
+    if (!photo.ok && !QUIET_PHOTO_REASONS.has(photo.reason)) {
       console.error("claim-instagram photo copy failed", photo.reason);
     }
     return json({ ok: true, handle: claim.handle, followers: verdict.followers, photo: photo.ok });

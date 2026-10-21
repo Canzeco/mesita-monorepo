@@ -204,7 +204,7 @@ export function SettingsLinkRow({
 
 // ─── Toggles ──────────────────────────────────────────────────────────────
 
-function Switch({ on }: { on: boolean }) {
+export function Switch({ on }: { on: boolean }) {
   return (
     <span
       className={cn(

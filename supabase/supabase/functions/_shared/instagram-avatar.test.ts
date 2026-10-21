@@ -4,6 +4,7 @@ import {
   instagramAvatarPath,
   isInstagramAvatar,
   mayReplaceAvatar,
+  photoAllowed,
   pickProfilePicUrl,
 } from "./instagram-avatar.ts";
 
@@ -43,4 +44,11 @@ Deno.test("instagram-avatar: only the bucket's image types are stored", () => {
   assertEquals(avatarExt("image/heic"), null);
   assertEquals(avatarExt("text/html"), null);
   assertEquals(avatarExt(null), null);
+});
+
+Deno.test("instagram-avatar: the photo is opt-out — only an explicit false stops it (MESITA-2585)", () => {
+  assertEquals(photoAllowed(true), true);
+  assertEquals(photoAllowed(undefined), true);
+  assertEquals(photoAllowed(null), true);
+  assertEquals(photoAllowed(false), false);
 });

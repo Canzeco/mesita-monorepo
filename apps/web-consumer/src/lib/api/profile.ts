@@ -22,6 +22,9 @@ export type ConsumerProfile = {
   // The follower count the guest claimed with the handle. Optional so an
   // older EF payload still reads; absent reads as 0.
   instagram_followers_count?: number | null;
+  // MESITA-2585: may verifying Instagram set the picture? Absent on an older
+  // EF reads as on (the column defaults true).
+  use_instagram_photo?: boolean;
   // Consumer avatar public URL (consumer-avatars bucket). Optional — missing
   // falls back to DefaultAvatar on Me / Personal details (MESITA-880/953).
   avatar_url?: string | null;
@@ -51,9 +54,15 @@ type ConsumerAvatarPatch = {
   avatar_url: string | null;
 };
 
+// "Use my Instagram photo" on Me › Instagram (MESITA-2585). Off also takes
+// down a picture that was copied from Instagram.
+type ConsumerInstagramPhotoPatch = {
+  use_instagram_photo: boolean;
+};
+
 export async function apiUpdateConsumerProfile(
   client: SupabaseClient,
-  input: ConsumerOnboardingInput | ConsumerAvatarPatch,
+  input: ConsumerOnboardingInput | ConsumerAvatarPatch | ConsumerInstagramPhotoPatch,
 ): Promise<ConsumerProfile> {
   const { consumer } = await invokeEF<{ consumer: ConsumerProfile }>(
     client,
