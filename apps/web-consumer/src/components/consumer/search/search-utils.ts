@@ -237,6 +237,32 @@ export function boxBounds(box: Box | null): MapBounds | null {
   };
 }
 
+/**
+ * The screen radius the NEXT load would send (MESITA-2512): the cross's
+ * distance to the nearest edge of `box`, km — the client mirror of the
+ * EF's `screenRadiusKm` (MESITA-2511), clamped 0.05–50. Null with no view,
+ * across the dateline, or a cross off the view.
+ */
+export function viewRadiusKm(
+  box: Box | null,
+  cross: { lat: number; lng: number } | null,
+): number | null {
+  if (!boxBounds(box) || !box || !cross) return null;
+  if (
+    cross.lat < box.south || cross.lat > box.north ||
+    cross.lng < box.west || cross.lng > box.east
+  ) {
+    return null;
+  }
+  const r = Math.min(
+    haversineKm(cross.lat, cross.lng, cross.lat, box.west),
+    haversineKm(cross.lat, cross.lng, cross.lat, box.east),
+    haversineKm(cross.lat, cross.lng, box.south, cross.lng),
+    haversineKm(cross.lat, cross.lng, box.north, cross.lng),
+  );
+  return Number.isFinite(r) ? Math.min(50, Math.max(0.05, r)) : null;
+}
+
 /** The view `box` becomes once `target` sits under the sight at the same
  *  zoom (MESITA-2499): a load that leaves before its camera move lands (a
  *  fix, the disc, a place pick) asks for the map the guest is about to see.

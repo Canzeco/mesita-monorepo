@@ -127,6 +127,7 @@ import {
   prependAnchorPlace,
   railCenterIndex,
   viewportSight,
+  viewRadiusKm,
   withDistances,
 } from "./search-utils";
 
@@ -388,8 +389,13 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     pendingReload.current = null;
   }, []);
 
+  // The view as it is now, for the live readout (MESITA-2512): every camera
+  // change, once a frame. It never loads.
+  const [liveBox, setLiveBox] = useState<ViewportBox | null>(null);
+
   const markViewport = useCallback((box: ViewportBox) => {
     lastBoxRef.current = box;
+    setLiveBox(box);
   }, []);
 
   // MESITA-2497/2498 debug readout: the blue dot read through a ref, so a
@@ -802,6 +808,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   );
   // The readout's live line (MESITA-2504): the selected card's score.
   const selectedPlace = catalog.find((p) => p.id === railSelectedId) ?? null;
+  // The readout's live rows (MESITA-2512): the cross on the view as it is
+  // now, and the radius the next load would send from there.
+  const liveCross = liveBox ? viewportSight(liveBox) : null;
+  const liveRadiusKm = viewRadiusKm(liveBox, liveCross);
 
   // A pin's last step before it opens: select it (if the card-0 fallback
   // only looked selected) and fly the camera there — an animated pan that
@@ -1019,6 +1029,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           onFirstViewport={onFirstViewport}
           onUserViewport={onUserViewport}
           onCameraMoveStart={clearPendingReload}
+          onLiveViewport={setLiveBox}
         />
       </div>
 
@@ -1044,7 +1055,15 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           }}
           meta={
             loadCoords && (
-              <SearchDebugCoords {...loadCoords} selected={selectedPlace} />
+              // Live: Cross, You, Radius. As of the last load: Loaded at,
+              // Weights, Selected (MESITA-2512).
+              <SearchDebugCoords
+                {...loadCoords}
+                cross={liveCross ?? loadCoords.cross}
+                you={location}
+                radiusKm={liveRadiusKm ?? loadCoords.radiusKm}
+                selected={selectedPlace}
+              />
             )
           }
         />
