@@ -131,10 +131,21 @@ Deno.test("toPerson carries no account id", () => {
   );
   assertEquals(Object.keys(person).sort(), [
     "avatarUrl",
+    "diamond",
     "followers",
     "handleHint",
     "isYou",
     "name",
+    "plan",
   ]);
   assertEquals(person.isYou, true);
+});
+
+// MESITA-2548: Diamond and Plan ride on the person, plain by default.
+Deno.test("a person carries Diamond and the plan, plain unless set", () => {
+  assertEquals(toPerson(row({}), "z").diamond, false);
+  assertEquals(toPerson(row({}), "z").plan, "free");
+  assertEquals(toPerson(row({ diamond: true, plan: "premium" }), "z").diamond, true);
+  assertEquals(toPerson(row({ diamond: true, plan: "premium" }), "z").plan, "premium");
+  assertEquals(toPerson(row({ plan: "gold" }), "z").plan, "free");
 });

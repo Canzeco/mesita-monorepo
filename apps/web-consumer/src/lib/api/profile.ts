@@ -28,6 +28,10 @@ export type ConsumerProfile = {
   // Social v1 (MESITA-2442): Show my activity. Absent on an older EF reads
   // as on (the column defaults true).
   show_activity?: boolean;
+  // MESITA-2548: Diamond (granted by hand) and the plan, on the identity
+  // card. Absent on an older EF reads as plain: not Diamond, Free.
+  diamond?: boolean;
+  plan?: "free" | "premium";
 };
 
 type ConsumerOnboardingInput = {

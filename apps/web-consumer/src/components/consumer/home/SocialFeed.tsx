@@ -405,7 +405,8 @@ function PersonCard({
           name={who}
           avatarUrl={person.avatarUrl}
           instagram={instagram ? { label: instagram } : null}
-          stacked
+          diamond={person.diamond === true}
+          plan={person.plan === "premium" ? "premium" : "free"}
         />
       </div>
     </LocalDialog>

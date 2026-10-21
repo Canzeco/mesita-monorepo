@@ -11,8 +11,9 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // style, occupying the full width and fixed when scrolling. it must contain
 // the photo, name, insta."
 //
-//   [80px photo, ringed]
-//   [name]  [instagram]
+//   (photo)  name
+//   (photo)  [instagram]
+//   (photo)  [Diamond] [Plan]      (MESITA-2548)
 //   ─────── band ───────
 //
 // The card itself is IdentityCard, the same one Social shows for a member
@@ -71,17 +72,16 @@ export function IdentityBar({
       <div className="relative flex flex-col items-center gap-3.5 px-4 py-4">
         {loading ? (
           <>
-            {/* The skeleton mirrors the DESTINATION (Docs › Design §D): 87px
-                is the real avatar (80 + the 2px ring and 1.5px inset, both
-                sides), and the same two chips at their real 36px. */}
-            <div className="bg-muted h-[87px] w-[87px] shrink-0 animate-pulse rounded-full" />
-            <div className="grid w-full grid-cols-2 gap-2">
-              {Array.from({ length: 2 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="bg-muted h-9 animate-pulse rounded-full"
-                />
-              ))}
+            {/* The skeleton mirrors the DESTINATION (Docs › Design §D): the
+                87px ringed avatar on the left, and the name, Instagram and
+                Diamond · Plan rows beside it (MESITA-2548). */}
+            <div className="flex w-full items-center gap-4">
+              <div className="bg-muted h-[87px] w-[87px] shrink-0 animate-pulse rounded-full" />
+              <div className="flex flex-1 flex-col gap-1.5">
+                <div className="bg-muted h-5 w-2/5 animate-pulse rounded-md" />
+                <div className="bg-muted h-8 w-3/5 animate-pulse rounded-full" />
+                <div className="bg-muted h-8 w-1/2 animate-pulse rounded-full" />
+              </div>
             </div>
           </>
         ) : (
@@ -92,6 +92,8 @@ export function IdentityBar({
               label: instagramSummary,
               href: CONSUMER_ROUTES.mePages.instagram,
             }}
+            diamond={profile?.diamond === true}
+            plan={profile?.plan === "premium" ? "premium" : "free"}
           />
         )}
       </div>

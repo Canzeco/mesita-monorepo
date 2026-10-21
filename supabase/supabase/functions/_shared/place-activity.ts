@@ -35,7 +35,19 @@ export type ActivityPerson = {
   handleHint: string | null;
   followers: number;
   isYou: boolean;
+  /** Diamond, yes or no — granted by hand (MESITA-2044, MESITA-2548). */
+  diamond: boolean;
+  /** The plan, free or premium (MESITA-2548). */
+  plan: ConsumerPlan;
 };
+
+export type ConsumerPlan = "free" | "premium";
+
+/** Anything but "premium" reads as free: the column is checked, but an old
+ *  row or a missing field must never show a plan the member does not have. */
+export function toPlan(v: unknown): ConsumerPlan {
+  return v === "premium" ? "premium" : "free";
+}
 
 /** "perdon" → "per"; a shorter handle keeps one letter. */
 export function handleHint(handle: string | null | undefined): string | null {
@@ -54,6 +66,8 @@ export type ActivityRow = {
   avatar_url: string | null;
   instagram_handle: string | null;
   instagram_followers_count: number | null;
+  diamond?: boolean | null;
+  plan?: string | null;
   total?: number | string | null;
 };
 
@@ -69,6 +83,8 @@ export function toPerson(row: ActivityRow, viewerId: string): ActivityPerson {
       Math.trunc(Number(row.instagram_followers_count ?? 0)) || 0,
     ),
     isYou: row.consumer_id === viewerId,
+    diamond: row.diamond === true,
+    plan: toPlan(row.plan),
   };
 }
 

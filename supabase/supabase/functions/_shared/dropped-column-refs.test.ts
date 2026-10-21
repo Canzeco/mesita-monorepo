@@ -171,6 +171,14 @@ const LIVE_ELSEWHERE: Record<string, readonly string[]> = {
   phone: ["consumers", "place_profiles", "profiles"],
   section: ["place_categories"],
   state: ["place_research", "places", "profiles", "reservation_tickets"],
+  plan: ["consumers"],
+};
+
+/** Dropped by a cut, then added back by a later migration. The cut lists stay
+ *  the migrations' own; these come off the scan. */
+const RESTORED: Record<string, readonly string[]> = {
+  // MESITA-2548: consumers.plan is back, free or premium.
+  consumers: ["plan"],
 };
 
 /** Every dropping table's columns, both cuts merged. */
@@ -178,7 +186,7 @@ const DROPPED_BY_TABLE = new Map<string, Set<string>>();
 for (const list of [DROPPED_COLUMNS, RESIDUE_DROPPED_COLUMNS]) {
   for (const [table, cols] of Object.entries(list)) {
     const set = DROPPED_BY_TABLE.get(table) ?? new Set<string>();
-    for (const col of cols) set.add(col);
+    for (const col of cols) if (!RESTORED[table]?.includes(col)) set.add(col);
     DROPPED_BY_TABLE.set(table, set);
   }
 }
@@ -749,7 +757,7 @@ Deno.test("the scan fires on every shape it claims, and on nothing else", () => 
       `/* .eq("rfc", x) */`,
       `const url = "https://example.com/?plan=free";`,
       `const a = await admin.from("places").select("id, fiscal_type, profile:place_profiles!inner(id, mesita_pay_enabled)");`,
-      `const b = await admin.from("profiles").select(PLACE_LIST).eq("plan", "free");`,
+      `const b = await admin.from("places").select(PLACE_LIST).eq("plan", "free");`,
       `const c = await admin.from("profiles").select(\`\${PLACE_LIST}, yelp_url\`).order("strike_count");`,
       "const d = await admin.from(\"profiles\").select(\"id\").or(`name.ilike.x,partnered.is.true`);",
       `await admin.from("app_config").update({ ojo_config: {}, reservations_config: { plan: 1 } }).eq("id", 1);`,

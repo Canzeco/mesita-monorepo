@@ -16,6 +16,9 @@ export type ActivityPerson = {
   handleHint: string | null;
   followers: number;
   isYou: boolean;
+  /** Diamond, yes or no, and the plan (MESITA-2548). */
+  diamond: boolean;
+  plan: "free" | "premium";
 };
 
 /** One feed item: one member, one place, one verb — never collapsed

@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(138);
+select plan(140);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -379,15 +379,16 @@ select is_empty(
 --
 -- MESITA-2091 dropped classes, consumer plans and their subscriptions. What a
 -- consumer row keeps: who they are, their member number, their Instagram,
--- and the tombstone.
+-- and the tombstone. MESITA-2548 brought back two plain facts, `diamond` and
+-- `plan` (free or premium), with no ladder and no Stripe link.
 
 select is_empty(
   $$select column_name from information_schema.columns
      where table_schema = 'public' and table_name = 'consumers'
        and (column_name like 'class\_%' or column_name like 'invitation\_%'
             or column_name like 'privacy\_%'
-            or column_name in ('plan', 'stripe_customer_id'))$$,
-  'consumers keeps no class, plan, invitation, privacy or Stripe column (First Stage has none of them)'
+            or column_name = 'stripe_customer_id')$$,
+  'consumers keeps no class, invitation, privacy or Stripe column (First Stage has none of them)'
 );
 
 select has_column(
@@ -628,6 +629,24 @@ select ok(
   not has_function_privilege('authenticated', 'public.place_activity_feed(integer)', 'EXECUTE')
     and not has_function_privilege('anon', 'public.place_activity_people(uuid, integer)', 'EXECUTE'),
   'client roles cannot run the Social readers (they name other members)'
+);
+
+-- MESITA-2548: Diamond and Plan, two consumer facts; plain by default.
+select ok(
+  (select column_default from information_schema.columns
+    where table_schema = 'public' and table_name = 'consumers'
+      and column_name = 'diamond') = 'false'
+    and (select column_default from information_schema.columns
+    where table_schema = 'public' and table_name = 'consumers'
+      and column_name = 'plan') like '''free''%',
+  'consumers.diamond defaults to false and consumers.plan to free (MESITA-2548)'
+);
+
+select ok(
+  exists (select 1 from pg_constraint
+           where conname = 'consumers_plan_check'
+             and conrelid = 'public.consumers'::regclass),
+  'consumers.plan is free or premium (MESITA-2548)'
 );
 
 -- MESITA-2461: a handle is proved, not typed.
