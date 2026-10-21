@@ -11,11 +11,14 @@
 //     Issues (or re-issues for the same handle while it is live) the code,
 //     held in consumer_instagram_claims. The account's current handle, if
 //     any, stays until the new one is proved.
-//   { action: "check" }          → { ok, handle, followers }
+//   { action: "check" }          → { ok, handle, followers, photo }
 //     Scrapes the claimed profile (Apify). Only if the bio holds the code
 //     does consumer_instagram_verify store the handle, the SCRAPED follower
 //     count and instagram_verified_at, taking the handle off any other
-//     account. Failures: 404 no_claim · 410 code_expired · 429 slow_down ·
+//     account. Then the profile photo is copied into consumer-avatars and
+//     becomes the avatar unless the guest uploaded one (MESITA-2578,
+//     _shared/instagram-avatar.ts); `photo` says whether it did. A failed
+//     copy never fails the check. Failures: 404 no_claim · 410 code_expired · 429 slow_down ·
 //     422 wrong_profile | code_not_in_bio | profile_not_found · 502 scrape.
 // A `followers` field in the body is ignored: the app never says the count.
 
@@ -24,6 +27,7 @@ import { corsPreflight, json, jsonError, readJson, rejectUnlessMethods } from ".
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { APIFY_ACTORS, runApifyActor } from "../_shared/apify.ts";
 import { isDeadIgStub } from "../_shared/enrich-instagram-match.ts";
+import { adoptInstagramAvatar } from "../_shared/instagram-avatar.ts";
 import {
   checkWaitMs,
   claimIsLive,
@@ -144,7 +148,12 @@ Deno.serve(async (req) => {
       p_followers: verdict.followers,
     });
     if (verifyErr) return jsonError(verifyErr.message, 500);
-    return json({ ok: true, handle: claim.handle, followers: verdict.followers });
+
+    const photo = await adoptInstagramAvatar(admin, envRes.env.url, consumerId, profile, now);
+    if (!photo.ok && photo.reason !== "uploaded_photo_kept" && photo.reason !== "no_photo") {
+      console.error("claim-instagram photo copy failed", photo.reason);
+    }
+    return json({ ok: true, handle: claim.handle, followers: verdict.followers, photo: photo.ok });
   }
 
   return jsonError('action must be "start" or "check"', 400);
