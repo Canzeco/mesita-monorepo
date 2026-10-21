@@ -18,9 +18,11 @@
 // Contramar"). The server orders it: newest day first, and within a day the
 // places nearer the guest first. Only Instagram-connected members who left
 // Show my activity on ever appear (consumer-web-list-activity). No activity
-// → the empty state; there is no mock row.
+// → SAMPLE rows (MESITA-2520, lib/social-sample.ts): made-up members on
+// Home's real places, under one quiet "Sample activity" line, never mixed
+// with real rows; with no places either, the empty state.
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Users } from "lucide-react";
 import {
@@ -29,6 +31,8 @@ import {
   type ActivityKind,
   type ActivityPerson,
 } from "@/lib/api/activity";
+import type { Place } from "@/lib/api/places";
+import { sampleActivity } from "@/lib/social-sample";
 import { useActiveLocation } from "@/lib/active-location";
 import { useUserLocation } from "@/lib/use-user-location";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -135,7 +139,24 @@ function FeedRow({ item }: { item: ActivityFeedItem }) {
   );
 }
 
-export function SocialFeed() {
+/** The rows to draw: the real feed, else the sample over `samplePlaces`
+ *  (MESITA-2520) — never both. */
+export function feedRows(
+  items: ActivityFeedItem[],
+  samplePlaces: readonly Place[],
+  now = Date.now(),
+): { rows: ActivityFeedItem[]; sample: boolean } {
+  if (items.length > 0) return { rows: items, sample: false };
+  const rows = sampleActivity(samplePlaces, now);
+  return { rows, sample: rows.length > 0 };
+}
+
+export function SocialFeed({
+  samplePlaces = [],
+}: {
+  /** Home's All places: the sample's real places while the feed is empty. */
+  samplePlaces?: readonly Place[];
+}) {
   const supabase = useBrowserSupabase();
   const coords = useUserLocation();
   const origin = useActiveLocation();
@@ -172,6 +193,11 @@ export function SocialFeed() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase, fromKey]);
 
+  const feed = useMemo(
+    () => feedRows(state.status === "ready" ? state.items : [], samplePlaces),
+    [state, samplePlaces],
+  );
+
   if (state.status === "loading") {
     return (
       <div className="flex flex-col gap-3 p-4" data-social-loading>
@@ -190,7 +216,7 @@ export function SocialFeed() {
       />
     );
   }
-  if (state.items.length === 0) {
+  if (feed.rows.length === 0) {
     return (
       <EmptyState
         icon={Users}
@@ -200,10 +226,20 @@ export function SocialFeed() {
     );
   }
   return (
-    <ul role="list" aria-label="Social" className="divide-border divide-y pb-6">
-      {state.items.map((item) => (
-        <FeedRow key={`${item.placeId}|${item.kind}`} item={item} />
-      ))}
-    </ul>
+    <div className="pb-6">
+      {feed.sample ? (
+        <p
+          className="type-meta text-muted-foreground px-4 pt-3 tracking-[0.08em] uppercase"
+          data-social-sample
+        >
+          Sample activity
+        </p>
+      ) : null}
+      <ul role="list" aria-label="Social" className="divide-border divide-y">
+        {feed.rows.map((item, i) => (
+          <FeedRow key={`${i}|${item.placeId}|${item.kind}`} item={item} />
+        ))}
+      </ul>
+    </div>
   );
 }
