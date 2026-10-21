@@ -260,15 +260,15 @@ describe("a resize is not a move (MESITA-2510)", () => {
 
 describe("the live readout's radius mirrors the server (MESITA-2512)", () => {
   it("is the cross's distance to the nearest edge of the view", () => {
-    // VIEW is ~2.22 km tall and ~2.0 km wide; the sight sits 45% down, so
-    // its nearest edge is the top (0.45 × 2.224 ≈ 1.0 km) or a side (1.0 km).
+    // VIEW is ~2.22 km tall and ~2.0 km wide; the sight sits in the middle,
+    // so its nearest edge is a side (2.004 / 2 ≈ 1.0 km).
     const cross = viewportSight(VIEW);
     const r = viewRadiusKm(VIEW, cross)!;
-    expect(r).toBeCloseTo(Math.min(0.45 * 2.224, 2.004 / 2), 1);
-    // A wide view: the gap to the top wins.
+    expect(r).toBeCloseTo(Math.min(2.224 / 2, 2.004 / 2), 1);
+    // A wide view: the gap to the top and bottom wins, equal both ways.
     const wide = { south: 25.66, west: -100.36, north: 25.68, east: -100.28 };
     const w = viewRadiusKm(wide, viewportSight(wide))!;
-    expect(w).toBeCloseTo(0.45 * 2.224, 1);
+    expect(w).toBeCloseTo(2.224 / 2, 1);
   });
 
   it("is null with no view, across the dateline, or a cross off the view", () => {
