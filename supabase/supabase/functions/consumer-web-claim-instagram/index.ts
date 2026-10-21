@@ -18,6 +18,17 @@
 //     account. Failures: 404 no_claim · 410 code_expired · 429 slow_down ·
 //     422 wrong_profile | code_not_in_bio | profile_not_found · 502 scrape.
 // A `followers` field in the body is ignored: the app never says the count.
+//
+// BY DM (MESITA-2575), once the Meta secrets are set (readInstagramDmConfig):
+//   { action: "channel" }        → { ok, channel: "dm", account, link } | { ok, channel: "bio" }
+//   { action: "start_dm" }       → { ok, code, account, link, issuedAt }
+//     A DM claim has no handle: the guest sends the code to Mesita's
+//     Instagram and meta-instagram-receive-message learns the handle,
+//     followers and photo from Meta. Re-issues the same code while it is
+//     live. 409 dm_unavailable while the DM channel is off.
+//   { action: "dm_status" }      → { ok, pending, handle, verifiedAt }
+//     The app polls this until the claim is spent (pending false) and the
+//     account's verifiedAt is at or after the code's issuedAt.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, jsonError, readJson, rejectUnlessMethods } from "../_shared/http.ts";
@@ -31,6 +42,8 @@ import {
   makeClaimCode,
   normalizeHandle,
 } from "../_shared/instagram-claim.ts";
+import { dmLink, readInstagramDmConfig } from "../_shared/instagram-dm.ts";
+import { readInstagramStatus } from "../_shared/consumer-doc.ts";
 
 type Body = { action?: string; handle?: string };
 
@@ -54,6 +67,69 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(envRes.env);
   const now = Date.now();
+
+  if (body.action === "channel") {
+    const dm = readInstagramDmConfig();
+    return json(
+      dm
+        ? { ok: true, channel: "dm", account: dm.username, link: dmLink(dm.username) }
+        : { ok: true, channel: "bio" },
+    );
+  }
+
+  if (body.action === "start_dm") {
+    const dm = readInstagramDmConfig();
+    if (!dm) {
+      return json({
+        ok: false,
+        error: "Connecting by message isn’t available yet.",
+        code: "dm_unavailable",
+      }, 409);
+    }
+    const { data: existing, error: readErr } = await admin
+      .from("consumer_instagram_claims")
+      .select("handle, code, created_at")
+      .eq("consumer_id", consumerId)
+      .maybeSingle();
+    if (readErr) return jsonError(readErr.message, 500);
+    const account = dm.username;
+    const link = dmLink(account);
+    // A live DM claim keeps its code, so a reload never strands a code the
+    // guest already sent.
+    if (existing && existing.handle === null && claimIsLive(existing.created_at, now)) {
+      return json({ ok: true, code: existing.code, account, link, issuedAt: existing.created_at });
+    }
+    const code = makeClaimCode();
+    const issuedAt = new Date(now).toISOString();
+    const { error } = await admin.from("consumer_instagram_claims").upsert({
+      consumer_id: consumerId,
+      handle: null,
+      code,
+      created_at: issuedAt,
+      checked_at: null,
+    });
+    if (error) return jsonError(error.message, 500);
+    return json({ ok: true, code, account, link, issuedAt });
+  }
+
+  if (body.action === "dm_status") {
+    const [claimRes, me] = await Promise.all([
+      admin.from("consumer_instagram_claims").select("handle, created_at").eq(
+        "consumer_id",
+        consumerId,
+      ).maybeSingle(),
+      readInstagramStatus(admin, consumerId),
+    ]);
+    if (claimRes.error) return jsonError(claimRes.error.message, 500);
+    if (!me.ok) return jsonError(me.error, 500);
+    const claim = claimRes.data;
+    return json({
+      ok: true,
+      pending: Boolean(claim && claim.handle === null && claimIsLive(claim.created_at, now)),
+      handle: me.handle,
+      verifiedAt: me.verifiedAt,
+    });
+  }
 
   if (body.action === "start") {
     const handle = normalizeHandle(body.handle);
@@ -91,6 +167,10 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (readErr) return jsonError(readErr.message, 500);
     if (!claim) return json({ ok: false, error: "Start again: no code is pending.", code: "no_claim" }, 404);
+    // A DM claim is proved by the message, not by a bio check.
+    if (claim.handle === null) {
+      return json({ ok: false, error: "Send the code to Mesita on Instagram.", code: "dm_claim" }, 409);
+    }
     if (!claimIsLive(claim.created_at, now)) {
       return json({ ok: false, error: "That code expired. Get a new one.", code: "code_expired" }, 410);
     }
@@ -147,5 +227,5 @@ Deno.serve(async (req) => {
     return json({ ok: true, handle: claim.handle, followers: verdict.followers });
   }
 
-  return jsonError('action must be "start" or "check"', 400);
+  return jsonError('action must be "channel", "start_dm", "dm_status", "start" or "check"', 400);
 });

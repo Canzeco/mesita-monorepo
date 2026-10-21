@@ -287,3 +287,26 @@ export async function writeConsumer(
   if (error) return { ok: false, error: error.message, code: error.code };
   return { ok: true, row: null };
 }
+
+// ── readInstagramStatus — what Me › Instagram polls (MESITA-2575) ──────────
+
+/** The guest's proved handle and when it was proved, or nulls. */
+export async function readInstagramStatus(
+  admin: SupabaseClient,
+  consumerId: string,
+): Promise<
+  | { ok: true; handle: string | null; verifiedAt: string | null }
+  | { ok: false; error: string }
+> {
+  const { data, error } = await admin
+    .from("consumers")
+    .select("instagram_handle, instagram_verified_at")
+    .eq("id", consumerId)
+    .maybeSingle();
+  if (error) return { ok: false, error: error.message };
+  return {
+    ok: true,
+    handle: (data?.instagram_handle as string | null) ?? null,
+    verifiedAt: (data?.instagram_verified_at as string | null) ?? null,
+  };
+}

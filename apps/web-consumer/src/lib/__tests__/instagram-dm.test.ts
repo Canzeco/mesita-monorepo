@@ -1,0 +1,46 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+
+import { dmVerified } from "@/lib/api/profile";
+
+// Instagram by DM (MESITA-2575): the guest sends Mesita's Instagram their
+// code; the page waits for the server to say the account was proved.
+describe("connecting Instagram by message", () => {
+  const issuedAt = "2026-10-21T22:00:00Z";
+
+  it("lands only when the claim is spent and the proof is newer than the code", () => {
+    expect(
+      dmVerified({ pending: false, handle: "vale", verifiedAt: "2026-10-21T22:00:05Z" }, issuedAt),
+    ).toBe(true);
+    // Still waiting for the message.
+    expect(
+      dmVerified({ pending: true, handle: "vale", verifiedAt: "2026-10-21T22:00:05Z" }, issuedAt),
+    ).toBe(false);
+    // An older connection is not this one.
+    expect(
+      dmVerified({ pending: false, handle: "vale", verifiedAt: "2026-10-20T10:00:00Z" }, issuedAt),
+    ).toBe(false);
+    // The claim lapsed and nothing was proved.
+    expect(dmVerified({ pending: false, handle: null, verifiedAt: null }, issuedAt)).toBe(false);
+  });
+
+  const PAGE = readFileSync(
+    join(__dirname, "../../components/consumer/me/InstagramModal.tsx"),
+    "utf8",
+  );
+
+  it("asks the server which way works, and falls back to the bio code", () => {
+    expect(PAGE).toContain("apiInstagramChannel(supabase)");
+    expect(PAGE).toContain('setChannel({ channel: "bio" })');
+    expect(PAGE).toContain('channel?.channel === "dm" && <ConnectByMessage />');
+    expect(PAGE).toContain('channel?.channel === "bio" && (');
+  });
+
+  it("never asks for a handle or a bio edit on the message path", () => {
+    const dm = PAGE.slice(PAGE.indexOf("function ConnectByMessage"), PAGE.indexOf("function ConnectModule"));
+    expect(dm).toContain("Send it on Instagram");
+    expect(dm).toContain("claim.link");
+    expect(dm).not.toMatch(/bio|@handle|onHandleChange/);
+  });
+});
