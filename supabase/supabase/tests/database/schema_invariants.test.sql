@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(140);
+select plan(145);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -379,8 +379,9 @@ select is_empty(
 --
 -- MESITA-2091 dropped classes, consumer plans and their subscriptions. What a
 -- consumer row keeps: who they are, their member number, their Instagram,
--- and the tombstone. MESITA-2548 brought back two plain facts, `diamond` and
--- `plan` (free or premium), with no ladder and no Stripe link.
+-- and the tombstone. MESITA-2553 holds two independent facts: `plan` (free or
+-- pro) and `guest_class` (regular or vip), with no ladder and no Stripe link.
+-- `guest_class*` does not match the `class\_%` pattern below on purpose.
 
 select is_empty(
   $$select column_name from information_schema.columns
@@ -631,22 +632,60 @@ select ok(
   'client roles cannot run the Social readers (they name other members)'
 );
 
--- MESITA-2548: Diamond and Plan, two consumer facts; plain by default.
+-- MESITA-2553: Plan (free/pro) and Class (regular/vip), independent; plain by default.
 select ok(
   (select column_default from information_schema.columns
     where table_schema = 'public' and table_name = 'consumers'
-      and column_name = 'diamond') = 'false'
+      and column_name = 'guest_class') like '''regular''%'
     and (select column_default from information_schema.columns
     where table_schema = 'public' and table_name = 'consumers'
       and column_name = 'plan') like '''free''%',
-  'consumers.diamond defaults to false and consumers.plan to free (MESITA-2548)'
+  'consumers.guest_class defaults to regular and consumers.plan to free (MESITA-2553)'
+);
+
+select ok(
+  pg_get_constraintdef((select oid from pg_constraint
+    where conname = 'consumers_plan_check' and conrelid = 'public.consumers'::regclass)) like '%pro%'
+    and pg_get_constraintdef((select oid from pg_constraint
+    where conname = 'consumers_plan_check' and conrelid = 'public.consumers'::regclass)) not like '%premium%',
+  'consumers.plan is free or pro, never premium (MESITA-2553)'
 );
 
 select ok(
   exists (select 1 from pg_constraint
-           where conname = 'consumers_plan_check'
+           where conname = 'consumers_guest_class_check'
              and conrelid = 'public.consumers'::regclass),
-  'consumers.plan is free or premium (MESITA-2548)'
+  'consumers.guest_class is regular or vip (MESITA-2553)'
+);
+
+select is_empty(
+  $$select 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'consumers'
+       and column_name = 'diamond'$$,
+  'consumers has no diamond column (MESITA-2553 replaced it with guest_class)'
+);
+
+select is(
+  (select count(*)::int from information_schema.columns
+    where table_schema = 'public' and table_name = 'consumers'
+      and column_name in ('guest_class_set_at', 'guest_class_set_by', 'guest_class_note')
+      and column_default is null and is_nullable = 'YES'),
+  3,
+  'the VIP audit columns and note exist, nullable, no default (MESITA-2553)'
+);
+
+select ok(
+  pg_get_constraintdef((select oid from pg_constraint
+    where conname = 'consumers_guest_class_note_check'
+      and conrelid = 'public.consumers'::regclass)) like '%280%',
+  'the VIP note is at most 280 characters (MESITA-2553)'
+);
+
+select ok(
+  has_function_privilege('service_role', 'public.admin_set_guest_standing(uuid, text, text, text, boolean, uuid)', 'EXECUTE')
+    and not has_function_privilege('authenticated', 'public.admin_set_guest_standing(uuid, text, text, text, boolean, uuid)', 'EXECUTE')
+    and not has_function_privilege('anon', 'public.admin_set_guest_standing(uuid, text, text, text, boolean, uuid)', 'EXECUTE'),
+  'only the service role can set a guest''s Class and Plan (MESITA-2553)'
 );
 
 -- MESITA-2461: a handle is proved, not typed.

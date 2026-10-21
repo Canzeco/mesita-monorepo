@@ -101,6 +101,7 @@ import { FamilyIcon } from "@/lib/family-icons";
 import { EmptyState } from "@/components/shared";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { IdentityCard } from "@/components/consumer/IdentityCard";
+import { toGuestClass, toGuestPlan } from "@/lib/guest-standing";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { cn, errMsg, firstInitial } from "@/lib/utils";
 
@@ -405,8 +406,10 @@ function PersonCard({
           name={who}
           avatarUrl={person.avatarUrl}
           instagram={instagram ? { label: instagram } : null}
-          diamond={person.diamond === true}
-          plan={person.plan === "premium" ? "premium" : "free"}
+          standing={{
+            guestClass: toGuestClass(person.guestClass),
+            plan: toGuestPlan(person.plan),
+          }}
         />
       </div>
     </LocalDialog>

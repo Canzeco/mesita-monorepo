@@ -1,10 +1,16 @@
 // Supabase Edge Function — admin-web-set-guest-standing
 //
-// Manage › Guests (MESITA-2550). Grants or takes away a guest's Diamond and
-// sets their plan, Free or Premium (MESITA-2548). Diamond is by invitation,
-// so an operator is the only one who sets it: no consumer EF accepts either
-// field. Writes through the consumer door and returns the row as written.
-// Super-admin only.
+// Manage › Guests (MESITA-2550, MESITA-2553). Sets a guest's Class (regular or
+// VIP, through a partner; never sold) and Plan (free or pro), independently,
+// and the operator-only note on where a VIP came from. One call to the
+// admin_set_guest_standing RPC does the write: it stamps who set the class
+// and when only when the class actually changes, so two operators can never
+// record the wrong one. Super-admin only.
+//
+// Errors are { ok: false, code, error } with a stable code and the fix:
+//   400 stale_client · invalid_consumer · invalid_guest_class · invalid_plan ·
+//       invalid_note · note_too_long · nothing_to_set
+//   404 guest_not_found · 409 account_closed · 500 update_failed
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
@@ -14,8 +20,7 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
-import { writeConsumer } from "../_shared/consumer-doc.ts";
-import { GUEST_ROW_SELECT, readStandingBody, toGuestRow } from "../_shared/guest-standing.ts";
+import { readStandingBody, type RawGuest, toGuestRow } from "../_shared/guest-standing.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -35,31 +40,57 @@ Deno.serve(async (req) => {
   const bodyRes = await readJson<unknown>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const parsed = readStandingBody(bodyRes.body);
-  if (!parsed.ok) return json({ ok: false, error: parsed.error }, 400);
-
-  // A closed account keeps its row for history; it is not granted anything.
-  const existing = await admin
-    .from("consumers")
-    .select("id, deleted_at")
-    .eq("id", parsed.consumerId)
-    .maybeSingle();
-  if (existing.error) {
-    return json({ ok: false, error: `read_failed: ${existing.error.message}` }, 500);
+  if (!parsed.ok) {
+    return json({ ok: false, code: parsed.code, error: parsed.error }, parsed.status);
   }
-  if (!existing.data) return json({ ok: false, error: "No such guest" }, 404);
-  if (existing.data.deleted_at) {
-    return json({ ok: false, error: "This account is closed" }, 409);
-  }
+  const { consumerId, patch } = parsed;
 
-  const written = await writeConsumer(admin, {
-    mode: "update",
-    id: parsed.consumerId,
-    patch: parsed.patch,
-    select: GUEST_ROW_SELECT,
+  const written = await admin.rpc("admin_set_guest_standing", {
+    p_consumer: consumerId,
+    p_guest_class: patch.guestClass ?? null,
+    p_plan: patch.plan ?? null,
+    p_note: patch.guestClassNote ?? null,
+    p_note_set: "guestClassNote" in patch,
+    p_actor: authRes.user.id,
   });
-  if (!written.ok) {
-    return json({ ok: false, error: `update_failed: ${written.error}` }, 500);
+  if (written.error) {
+    return json(
+      { ok: false, code: "update_failed", error: `update_failed: ${written.error.message}` },
+      500,
+    );
   }
 
-  return json({ ok: true, guest: toGuestRow(written.row ?? {}) });
+  const row = (Array.isArray(written.data) ? written.data[0] : written.data) as RawGuest | null;
+  if (!row) {
+    // No row back: the id is unknown, or the account is closed (the RPC skips
+    // closed accounts). Tell them apart with one read.
+    const existing = await admin
+      .from("consumers")
+      .select("id, deleted_at")
+      .eq("id", consumerId)
+      .maybeSingle();
+    if (existing.error) {
+      return json(
+        { ok: false, code: "update_failed", error: `read_failed: ${existing.error.message}` },
+        500,
+      );
+    }
+    if (existing.data?.deleted_at) {
+      return json({ ok: false, code: "account_closed", error: "This account is closed" }, 409);
+    }
+    return json({ ok: false, code: "guest_not_found", error: "No such guest" }, 404);
+  }
+
+  console.log("guest_standing_set", JSON.stringify({
+    consumerId,
+    guestClass: patch.guestClass ?? null,
+    plan: patch.plan ?? null,
+    noteChanged: "guestClassNote" in patch,
+  }));
+
+  const me = authRes.user.emailLower;
+  return json({
+    ok: true,
+    guest: toGuestRow(row, (id) => (id === authRes.user.id ? me : null)),
+  });
 });

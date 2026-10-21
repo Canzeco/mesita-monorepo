@@ -28,8 +28,6 @@
 //   - instagram_followers_count, if set, is a non-negative integer — the
 //     exact DB CHECK (0034_consumer_membership, "consumer_instagram_
 //     followers_count >= 0").
-//   - plan, if set, is 'free' | 'premium' — the DB CHECK
-//     (consumers_plan_check, 20261021010000). diamond is a boolean.
 //   - deleted_at, if set, is a timestamp string or null — MESITA-1250:
 //     deletion is a state. Only `_shared/delete-history-free.ts` writes it.
 //
@@ -58,11 +56,9 @@ export type ConsumerDoc = {
   // MESITA-2461: when the handle was proved (code in the bio). The DB CHECK
   // refuses a handle without it; only consumer_instagram_verify sets both.
   instagram_verified_at: string | null;
-  // MESITA-2548: Diamond (yes or no) and the plan. Granted by an operator
-  // through admin-web-set-guest-standing (MESITA-2550); no consumer EF
-  // accepts either.
-  diamond: boolean;
-  plan: "free" | "premium";
+  // Not here on purpose: plan, guest_class and the VIP audit columns
+  // (MESITA-2553). Their only writer is the admin_set_guest_standing RPC, so
+  // this door cannot touch them and rejects them as unknown fields.
   created_at: string;
   deleted_at: string | null;
 };
@@ -82,8 +78,6 @@ export const CONSUMER_PATCH_KEYS = [
   "instagram_handle",
   "instagram_followers_count",
   "instagram_verified_at",
-  "diamond",
-  "plan",
   "deleted_at",
 ] as const satisfies readonly (keyof Omit<ConsumerDoc, "id" | "created_at">)[];
 
@@ -220,20 +214,6 @@ export function validateConsumerPatch(
       };
     }
     patch.instagram_verified_at = v;
-  }
-  if ("diamond" in raw) {
-    const v = raw.diamond;
-    if (typeof v !== "boolean") {
-      return { ok: false, error: "diamond must be a boolean" };
-    }
-    patch.diamond = v;
-  }
-  if ("plan" in raw) {
-    const v = raw.plan;
-    if (v !== "free" && v !== "premium") {
-      return { ok: false, error: "plan must be 'free' or 'premium'" };
-    }
-    patch.plan = v;
   }
   if ("deleted_at" in raw) {
     const v = raw.deleted_at;

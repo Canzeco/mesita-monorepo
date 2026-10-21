@@ -19,6 +19,7 @@ import {
 import { useConsumerIdentity } from "@/lib/identity-context";
 import { instagramSummary, type ConsumerFacts } from "@/lib/consumer-identity";
 import { CONSUMER_ROUTES, SAVED_TAB_HREF } from "@/lib/consumer-route-contract";
+import { PLAN_LABEL, toGuestPlan } from "@/lib/guest-standing";
 import { DestGrid, DestTile } from "./profile-sections";
 import { IdentityBar } from "./IdentityBar";
 
@@ -132,11 +133,12 @@ export function ProfileClient() {
           <DestGrid>
             {/* Never the gem: that shape is the class chip on the card above
                 (Pato, MESITA-2551: "DON'T USE THE … DIAMOND ICON. ITS
-                CONFUSING"). Plan is the subscription. */}
+                CONFUSING"). Plan is the subscription. The summary is the
+                guest's real plan, "…" until it is known (MESITA-2553). */}
             <DestTile
               Icon={CreditCard}
               title="Plan"
-              summary="Free"
+              summary={profile ? PLAN_LABEL[toGuestPlan(profile.plan)] : "…"}
               href={CONSUMER_ROUTES.mePages.plan}
             />
             <DestTile

@@ -20,9 +20,9 @@ type Member = {
   name: string;
   handle: string;
   followers: number;
-  /** A sample shows each state of the card (MESITA-2548). */
-  diamond?: boolean;
-  plan?: "free" | "premium";
+  /** A sample shows each combination of Class and Plan (MESITA-2553). */
+  guestClass?: "regular" | "vip";
+  plan?: "free" | "pro";
 };
 
 /** The sample cast: first names and Instagram-style usernames. */
@@ -33,13 +33,13 @@ export const SAMPLE_MEMBERS: readonly Member[] = [
     name: "Valeria",
     handle: "vale.mty",
     followers: 9310,
-    diamond: true,
-    plan: "premium",
+    guestClass: "vip",
+    plan: "pro",
   },
   { name: "Andrés", handle: "andres_tc", followers: 760 },
   { name: "Mariana", handle: "marianaflores", followers: 2140 },
-  { name: "Emilio", handle: "emiliocafe", followers: 3380 },
-  { name: "Regina", handle: "regi.brunch", followers: 6050, plan: "premium" },
+  { name: "Emilio", handle: "emiliocafe", followers: 3380, guestClass: "vip" },
+  { name: "Regina", handle: "regi.brunch", followers: 6050, plan: "pro" },
   { name: "Santiago", handle: "santi.sp", followers: 1880 },
 ];
 
@@ -67,7 +67,7 @@ function person(m: Member): ActivityPerson {
     handleHint: m.handle.slice(0, 3),
     followers: m.followers,
     isYou: false,
-    diamond: m.diamond === true,
+    guestClass: m.guestClass ?? "regular",
     plan: m.plan ?? "free",
   };
 }

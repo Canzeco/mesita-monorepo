@@ -1,108 +1,100 @@
 "use client";
 
-// Plan — the plan you are on, and what each plan includes (MESITA-2134,
-// MESITA-2167). Opened from the Me › Plan tile.
+// Plan — the subscription, Free or Pro (MESITA-2134, MESITA-2167, MESITA-2553).
+// Opened from the Me › Plan tile and from the Plan chip on Me's card.
 //
-// READ-ONLY BY DESIGN. The Premium checkout left with the subscription Edge
-// Functions in the First Stage cut (MESITA-2090), so there is nothing to buy
-// here today. Every account is on Free, and Premium wears the same "Soon"
-// tag as the Pay tab, so the two make one promise. When a subscription EF
-// exists again, the Premium row becomes the action.
+// PLAN IS NOT CLASS (Pato, MESITA-2553). Plan is what a guest pays for; Class
+// (Regular or VIP) comes through a partner and lives in its own sheet. This
+// page never names Class or VIP, and the Class sheet never names a plan.
 //
-// PREMIUM STATES NO NUMBER AND NO PRICE. "More reservations" is Pato's
-// promise (MESITA-2167); the connector was decided Premium-only in MESITA-266.
-// How many reservations and for how much are not decided, so the page must not
-// invent either. (MESITA-1127's old Premium figures are superseded.) Free's
-// perks are checks because they are true today; Premium's are dots, so a
-// quick scan does not read an unbuilt perk as included.
+// READ-ONLY. There is no checkout yet, so nothing is bought here. The guest's
+// own row says "Your plan."; while the plan is unknown (loading, or the read
+// failed) neither row claims it, and nothing assumes Free.
+//
+// NO PRICE, NO HYPOTHESIS. Free states today's enforced cap, the live rule
+// (FREE_RESERVATIONS_PER_MONTH). Pro states no number and no price: those are
+// working hypotheses, not decisions. Pro opens with "Everything in Free"
+// (true for a Pro guest today), then its unbuilt perks, each tagged Soon, so a
+// Pro guest is never told their plan does not exist.
 
-import { Check, Sparkles } from "lucide-react";
+import { CreditCard, Sparkles } from "lucide-react";
 
 import { MeScreen } from "@/components/consumer/me/MeScreen";
+import { PerkList } from "@/components/consumer/me/perk-list";
+import type { GuestPlan } from "@/lib/guest-standing";
 import { FREE_RESERVATIONS_PER_MONTH } from "@/lib/plan-perks";
 import { IconCircle, RowDivider, SettingsGroup } from "./settings-rows";
 
-function Perks({
+function PlanRow({
+  title,
+  subtitle,
+  icon,
+  tint,
   label,
   items,
-  included,
+  mine,
 }: {
+  title: string;
+  subtitle: string;
+  icon: React.ReactNode;
+  tint: "primary" | "muted";
   label: string;
-  items: string[];
-  included: boolean;
+  items: { text: string; soon?: boolean }[];
+  mine: boolean;
 }) {
   return (
-    <ul role="list" aria-label={label} className="mt-2 flex flex-col gap-2">
-      {items.map((item) => (
-        <li
-          key={item}
-          className="text-foreground type-body flex items-start gap-2"
+    <div className="flex items-start gap-3 px-4 py-3" data-plan-row={title}>
+      <IconCircle tint={tint}>{icon}</IconCircle>
+      <div className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold">{title}</span>
+        <span
+          className="text-muted-foreground type-label block"
+          data-plan-mine={mine ? "" : undefined}
         >
-          {included ? (
-            <Check
-              className="text-muted-foreground mt-0.5 h-3.5 w-3.5 shrink-0"
-              aria-hidden
-            />
-          ) : (
-            <span
-              className="bg-muted-foreground/40 mt-[0.45rem] ml-1 h-1.5 w-1.5 shrink-0 rounded-full"
-              aria-hidden
-            />
-          )}
-          <span>{item}</span>
-        </li>
-      ))}
-    </ul>
+          {mine ? "Your plan." : subtitle}
+        </span>
+        <PerkList label={label} items={items} />
+      </div>
+    </div>
   );
 }
 
-export function PlanModal() {
+export function PlanModal({ plan }: { plan: GuestPlan | null }) {
   return (
     <MeScreen title="Plan">
       <SettingsGroup>
-        <div className="flex items-start gap-3 px-4 py-3">
-          <IconCircle tint="primary">
-            <Check className="h-[18px] w-[18px]" />
-          </IconCircle>
-          <div className="min-w-0 flex-1">
-            <span className="block text-sm font-semibold">Free</span>
-            <span className="text-muted-foreground type-label block">
-              Your plan.
-            </span>
-            <Perks
-              label="Included in Free"
-              included
-              items={[
-                "Browse and save places",
-                "Mesita calls the place to book your table",
-                `${FREE_RESERVATIONS_PER_MONTH} reservations a month`,
-              ]}
-            />
-          </div>
-        </div>
+        <PlanRow
+          title="Free"
+          subtitle="The free plan."
+          icon={<CreditCard className="h-[18px] w-[18px]" />}
+          tint={plan === "free" ? "primary" : "muted"}
+          label="Included in Free"
+          mine={plan === "free"}
+          items={[
+            { text: "Browse and save places" },
+            { text: "Mesita calls the place to book your table" },
+            { text: `${FREE_RESERVATIONS_PER_MONTH} reservations a month` },
+          ]}
+        />
         <RowDivider />
-        <div className="flex items-start gap-3 px-4 py-3">
-          <IconCircle tint="muted">
-            <Sparkles className="h-[18px] w-[18px]" />
-          </IconCircle>
-          <div className="min-w-0 flex-1">
-            <span className="block text-sm font-semibold">Premium</span>
-            <span className="text-muted-foreground type-label block">
-              The paid plan, coming to Mesita.
-            </span>
-            <Perks
-              label="Coming with Premium"
-              included={false}
-              items={[
-                "More reservations every month",
-                "Use Mesita from your AI assistant (MCP connector)",
-              ]}
-            />
-          </div>
-          <span className="bg-muted text-muted-foreground type-meta rounded-full px-2 py-0.5 font-semibold">
-            Soon
-          </span>
-        </div>
+        <PlanRow
+          title="Pro"
+          subtitle="The paid plan."
+          icon={<Sparkles className="h-[18px] w-[18px]" />}
+          tint={plan === "pro" ? "primary" : "muted"}
+          label="Included in Pro"
+          mine={plan === "pro"}
+          items={[
+            {
+              text: `Everything in Free, including ${FREE_RESERVATIONS_PER_MONTH} reservations a month`,
+            },
+            { text: "More reservations every month", soon: true },
+            {
+              text: "Ask your AI assistant, like ChatGPT, to find and book places for you",
+              soon: true,
+            },
+          ]}
+        />
       </SettingsGroup>
     </MeScreen>
   );
