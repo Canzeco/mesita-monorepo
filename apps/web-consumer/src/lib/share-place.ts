@@ -25,7 +25,7 @@ import { toast } from "@/lib/toast";
 // else is the one way this helper could leak something.
 
 /** True when the platform can open a native share sheet. */
-function canShareNatively(): boolean {
+export function canShareNatively(): boolean {
   return typeof navigator !== "undefined" && typeof navigator.share === "function";
 }
 
@@ -36,7 +36,7 @@ function placeShareUrl(idOrSlug: string): string {
   return new URL(path, window.location.origin).toString();
 }
 
-async function copyToClipboard(text: string): Promise<boolean> {
+export async function copyToClipboard(text: string): Promise<boolean> {
   try {
     if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(text);
@@ -74,34 +74,4 @@ export async function sharePlace(place: {
   const copied = await copyToClipboard(url);
   if (copied) toast.success("Link copied");
   else toast.error("Couldn't share this place");
-}
-
-// SHARING THE APP (Pato, MESITA-2561: "just a button to share the app with
-// friends. no credits. no nothing"). The bar's Share tab. Same three
-// outcomes as a place. The link is the app's front door — the sign-in page
-// for a friend, Home for a member — and like a place link it carries
-// NOTHING about the guest: no referral code, no id, no tracking param. The
-// tap itself is counted (nav_tab_tap, tab "Share") by the caller.
-
-const APP_SHARE_TEXT = "Find great places to eat and book a table with Mesita.";
-
-/** Share the app, or copy its link. Never throws and never rejects. */
-export async function shareApp(): Promise<void> {
-  const url =
-    typeof window === "undefined"
-      ? "/"
-      : new URL("/", window.location.origin).toString();
-
-  if (canShareNatively()) {
-    try {
-      await navigator.share({ title: "Mesita", text: APP_SHARE_TEXT, url });
-      return;
-    } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") return;
-    }
-  }
-
-  const copied = await copyToClipboard(url);
-  if (copied) toast.success("Link copied");
-  else toast.error("Couldn't share Mesita");
 }

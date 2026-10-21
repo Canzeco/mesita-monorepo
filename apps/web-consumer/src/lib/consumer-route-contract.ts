@@ -41,6 +41,10 @@ export const CONSUMER_ROUTES = {
   // links here and lights here; nothing hangs underneath. Every former Pay,
   // Visit, Wallet, Credits and Order address 308s to this page.
   pay: "/pay",
+  // SHARE IS A PAGE: the bar's fourth tab, the app's link and the ways to
+  // send it (MESITA-2566). It was the Second Stage referral deck, a legacy
+  // redirect to /me until this.
+  share: "/share",
   // Me is the hub: identity header + three pairs of DestTiles, each a real
   // page under (shell)/me/<box> (MESITA-1789). The `/me/[tab]` catch-all
   // 308s any other one-segment address onto the hub.
@@ -76,8 +80,8 @@ export const CONSUMER_ROUTES = {
   // live belongs here: a redirect whose source is a page shadows the page.
   legacy: {
     profile: "/profile",
-    // The referral Share deck and its older /invite address (MESITA-2087).
-    share: "/share",
+    // The referral deck's older /invite address (MESITA-2087). /share itself
+    // is live again (MESITA-2566).
     invite: "/invite",
     // The AI mode's route before it was named for what it does.
     homeAi: "/home/ai",

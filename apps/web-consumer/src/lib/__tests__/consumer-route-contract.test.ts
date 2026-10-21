@@ -79,6 +79,7 @@ function liveAddresses(): Set<string> {
     CONSUMER_ROUTES.searchChat,
     CONSUMER_ROUTES.home,
     CONSUMER_ROUTES.pay,
+    CONSUMER_ROUTES.share,
     CONSUMER_ROUTES.me,
     ...Object.values(CONSUMER_ROUTES.mePages),
     `${CONSUMER_ROUTES.place.prefix}:id`,
@@ -104,6 +105,8 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // PAY IS ONE PAGE, the Soon state (MESITA-2087). No children, no
       // default, no sections: the tab links here and lights here.
       pay: "/pay",
+      // The Share tab's page (MESITA-2566).
+      share: "/share",
       // Me's six boxes, each a route. NO diamond / diamondInvite / plan /
       // settingsMetrics / visits — those are redirect sources in `legacy`
       // below.
@@ -124,7 +127,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       },
       legacy: {
         profile: "/profile",
-        share: "/share",
         invite: "/invite",
         homeAi: "/home/ai",
         discover: "/discover",
@@ -403,7 +405,6 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       },
       { source: "/me/passport", destination: "/me/profile", permanent: true },
       { source: "/me/help", destination: "/me/settings", permanent: true },
-      { source: "/share", destination: "/me", permanent: true },
       { source: "/invite", destination: "/me", permanent: true },
       // The retired Home hub's leaves (2026-09-01). /home itself is live
       // (MESITA-2475). Never through /discover/map or /discover/search,
@@ -526,7 +527,6 @@ describe("middleware auth wall (shouldGate)", () => {
     "/notifications",
     "/ticket/t1",
     "/invite",
-    "/share",
     "/subscribe",
     "/subscribe/premium",
   ];

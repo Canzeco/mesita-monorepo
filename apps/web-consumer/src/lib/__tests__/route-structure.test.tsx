@@ -268,8 +268,10 @@ describe("T5 — exactly one tab lights per surface", () => {
     ["/search/chat", "Search"],
     ["/place/abc", "Home"],
     ["/search", "Search"],
-    // Pay is one page and lights its own tab there.
+    // Pay is one page and lights its own tab there; so does Share
+    // (MESITA-2566).
     ["/pay", "Pay"],
+    ["/share", "Share"],
     // Me and the detail route it owns: a reservation is reached from a place
     // AND from Me › Reservations (MESITA-2565; the Saved tab owned it from
     // MESITA-2518 until Share took its slot, MESITA-2561).
@@ -313,7 +315,6 @@ describe("T5 — exactly one tab lights per surface", () => {
     "/me/diamond",
     "/me/visits",
     "/me/settings/metrics",
-    "/share",
   ])("%s is a redirect source that resolves in one hop", async (address) => {
     const redirects = await nextConfig.redirects!();
     const hit = redirects.find((r) => matches(r.source, address));
@@ -368,16 +369,16 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
 
   // Four <a> tabs and one <button>: Pay navigates to its page like every
   // other link, and it is the only one tagged Soon — exactly once. Share is
-  // the one button (MESITA-2561): it opens the share sheet, goes nowhere,
-  // never lights, and carries no Soon tag.
-  it("draws four links and the Share button, Pay with the one Soon tag", async () => {
+  // a link to its own page too (MESITA-2566; it was a button that fired the
+  // share sheet, MESITA-2561).
+  it("draws five links and no button, Pay with the one Soon tag", async () => {
     const html = await renderNav("/search");
     const anchors = html.split("<a ").slice(1);
-    expect(anchors).toHaveLength(4);
-    const buttons = html.split("<button").slice(1);
-    expect(buttons).toHaveLength(1);
-    expect(buttons[0]).toMatch(/text-center">Share</);
-    expect(buttons[0]).not.toMatch(/>Soon</);
+    expect(anchors).toHaveLength(5);
+    expect(html.split("<button").slice(1)).toHaveLength(0);
+    const share = anchors.find((a) => /text-center">Share</.test(a));
+    expect(share).toMatch(/href="\/share"/);
+    expect(share).not.toMatch(/>Soon</);
     const pay = anchors.find((a) => /text-center">Pay</.test(a));
     expect(pay).toBeDefined();
     expect(pay).toMatch(/>Soon</);
@@ -402,6 +403,7 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
       CONSUMER_ROUTES.home,
       CONSUMER_ROUTES.search,
       CONSUMER_ROUTES.pay,
+      CONSUMER_ROUTES.share,
       CONSUMER_ROUTES.me,
     ]);
     const redirects = await nextConfig.redirects!();
@@ -807,7 +809,8 @@ describe("T9 — Pay is one page, and the Second Stage trees are gone", () => {
       ["(shell)", "wallet"],
       ["(shell)", "visit"],
       ["(shell)", "order"],
-      ["(shell)", "share"],
+      // NOT ["(shell)", "share"]: the referral deck stays gone, but /share is
+      // the Share tab's own page now (MESITA-2566).
       ["(shell)", "me", "diamond"],
       ["(shell)", "me", "visits"],
       ["(shell)", "me", "settings", "metrics"],

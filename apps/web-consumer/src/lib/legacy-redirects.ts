@@ -84,7 +84,6 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   { source: "/me/passport", destination: "/me/profile", permanent: true },
   // Support (MESITA-2169). Terms and privacy live on Settings.
   { source: "/me/help", destination: "/me/settings", permanent: true },
-  { source: "/share", destination: "/me", permanent: true },
   { source: "/invite", destination: "/me", permanent: true },
   // The retired Home hub's leaves (2026-09-01). /home ITSELF is live again
   // (MESITA-2475), so only the leaves are here. NOTHING HERE MAY CHAIN
