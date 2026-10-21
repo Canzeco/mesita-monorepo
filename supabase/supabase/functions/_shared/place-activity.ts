@@ -37,12 +37,12 @@ export type ActivityPerson = {
   isYou: boolean;
   /** Class: regular or vip, through a partner (MESITA-2553). */
   guestClass: ConsumerClass;
-  /** Plan: free or pro, the subscription (MESITA-2553). */
+  /** Plan: free or premium, the subscription (MESITA-2553). */
   plan: ConsumerPlan;
 };
 
 /** Plan and Class are independent (Pato, MESITA-2553). */
-export type ConsumerPlan = "free" | "pro";
+export type ConsumerPlan = "free" | "premium";
 export type ConsumerClass = "regular" | "vip";
 
 const unknownSeen = new Set<string>();
@@ -56,10 +56,10 @@ function noteUnknown(field: string, v: unknown): void {
   console.warn(`unknown_${field}_value`, JSON.stringify({ value: String(v) }));
 }
 
-/** Anything but "pro" reads as free: an old row or a missing field must never
+/** Anything but "premium" reads as free: an old row or a missing field must never
  *  show a plan the member does not have. */
 export function toPlan(v: unknown): ConsumerPlan {
-  if (v === "pro") return "pro";
+  if (v === "premium") return "premium";
   if (v !== "free") noteUnknown("plan", v);
   return "free";
 }

@@ -4,7 +4,7 @@ import { toGuestPlan, type GuestPlan } from "@/lib/guest-standing";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { errMsg } from "@/lib/utils";
 
-// /me/plan — the plan you are on, Free or Pro (MESITA-2134, MESITA-2553).
+// /me/plan — the plan you are on, Free or Premium (MESITA-2134, MESITA-2553).
 // A failed read shows both plans with neither marked, never a guessed Free.
 export const dynamic = "force-dynamic";
 

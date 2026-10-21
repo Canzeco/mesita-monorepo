@@ -5,7 +5,7 @@ import { efInvoke } from "@/lib/supabase-ef";
 
 // ─── Guests: Class and Plan (MESITA-2550, MESITA-2553) ──────────────────
 
-export type GuestPlan = "free" | "pro";
+export type GuestPlan = "free" | "premium";
 export type GuestClass = "regular" | "vip";
 
 export type GuestRow = {

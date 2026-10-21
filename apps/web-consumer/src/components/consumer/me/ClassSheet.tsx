@@ -5,7 +5,7 @@
 // chip is a plain fact and opens nothing.
 //
 // CLASS IS NOT PLAN. VIP comes through Mesita's partners (agencies, creator
-// partnerships); it is never bought and never an upgrade to Pro. This sheet
+// partnerships); it is never bought and never an upgrade to Premium. This sheet
 // never names a plan, and the Plan page never names Class or VIP. Who
 // qualifies and what the partner rates are is not decided, so nothing here
 // promises either: the one VIP perk is tagged Soon, and a Regular guest gets

@@ -18,7 +18,7 @@ export type ActivityPerson = {
   isYou: boolean;
   /** Class and Plan, independent (MESITA-2553). */
   guestClass: "regular" | "vip";
-  plan: "free" | "pro";
+  plan: "free" | "premium";
 };
 
 /** One feed item: one member, one place, one verb — never collapsed

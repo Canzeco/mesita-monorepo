@@ -147,9 +147,9 @@ Deno.test("a person carries Class and Plan, plain unless set", () => {
   assertEquals(toPerson(row({}), "z").plan, "free");
   const vipFree = toPerson(row({ guest_class: "vip", plan: "free" }), "z");
   assertEquals([vipFree.guestClass, vipFree.plan], ["vip", "free"]);
-  const regularPro = toPerson(row({ guest_class: "regular", plan: "pro" }), "z");
-  assertEquals([regularPro.guestClass, regularPro.plan], ["regular", "pro"]);
+  const regularPremium = toPerson(row({ guest_class: "regular", plan: "premium" }), "z");
+  assertEquals([regularPremium.guestClass, regularPremium.plan], ["regular", "premium"]);
   // Old words and unknown values never show a status the member lacks.
-  assertEquals(toPerson(row({ plan: "premium" }), "z").plan, "free");
+  assertEquals(toPerson(row({ plan: "pro" }), "z").plan, "free");
   assertEquals(toPerson(row({ guest_class: "diamond" }), "z").guestClass, "regular");
 });

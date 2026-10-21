@@ -53,7 +53,7 @@ export const CONSUMER_ROUTES = {
     // Instagram is an identity fact (a handle + the 1,000 bar), independent
     // of anything priced — it stays (Pato, MESITA-2080).
     instagram: "/me/instagram",
-    // Plan is back as a read-only page: Free and Pro, Pro's new perks Soon
+    // Plan is back as a read-only page: Free and Premium, Premium's new perks Soon
     // (MESITA-2134, MESITA-2553). It left the legacy list the same day.
     plan: "/me/plan",
     settings: "/me/settings",

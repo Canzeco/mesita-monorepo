@@ -645,10 +645,10 @@ select ok(
 
 select ok(
   pg_get_constraintdef((select oid from pg_constraint
-    where conname = 'consumers_plan_check' and conrelid = 'public.consumers'::regclass)) like '%pro%'
+    where conname = 'consumers_plan_check' and conrelid = 'public.consumers'::regclass)) like '%premium%'
     and pg_get_constraintdef((select oid from pg_constraint
-    where conname = 'consumers_plan_check' and conrelid = 'public.consumers'::regclass)) not like '%premium%',
-  'consumers.plan is free or pro, never premium (MESITA-2553)'
+    where conname = 'consumers_plan_check' and conrelid = 'public.consumers'::regclass)) not like '%''pro''%',
+  'consumers.plan is free or premium, never pro (MESITA-2560)'
 );
 
 select ok(

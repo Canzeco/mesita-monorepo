@@ -30,13 +30,13 @@ describe("Manage › Guests: Class and Plan (MESITA-2553)", () => {
     expect(html).toContain('aria-label="Class for Valeria Soto"');
     expect(html).toContain('aria-label="Plan for Valeria Soto"');
     expect(html.indexOf("Class for")).toBeLessThan(html.indexOf("Plan for"));
-    for (const label of ["Regular", "VIP", "Free", "Pro"]) expect(html).toContain(label);
+    for (const label of ["Regular", "VIP", "Free", "Premium"]) expect(html).toContain(label);
     expect(html.match(/aria-pressed="true"/g)).toHaveLength(2);
   });
 
   it("marks a VIP with the crown, and shows the note only for VIPs", () => {
     expect(page([base])).not.toContain("data-vip-note");
-    const vip = page([{ ...base, guestClass: "vip", plan: "pro", guestClassNote: "Agency" }]);
+    const vip = page([{ ...base, guestClass: "vip", plan: "premium", guestClassNote: "Agency" }]);
     expect(vip).toContain('aria-label="VIP"');
     expect(vip).toContain("data-vip-note");
     expect(vip).toContain('value="Agency"');
@@ -57,7 +57,7 @@ describe("Manage › Guests: Class and Plan (MESITA-2553)", () => {
     const src = readFileSync(join(__dirname, "GuestsClient.tsx"), "utf8");
     const html = page([{ ...base, guestClass: "vip" }]);
     for (const s of [src, html]) {
-      expect(s).not.toMatch(/Diamond|Premium|Mesita Select/);
+      expect(s).not.toMatch(/Diamond|\bPro\b|Mesita Select/);
       expect(s).not.toMatch(/\$\s?\d|\d+\s?% off/);
     }
     expect(html).toContain("never sold");
