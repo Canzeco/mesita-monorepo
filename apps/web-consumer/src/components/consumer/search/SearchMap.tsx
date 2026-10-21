@@ -241,8 +241,8 @@ export const SEARCH_RING_SIZE = `min(100cqw, ${
   Math.round(2 * Math.min(SIGHT_Y, 1 - SIGHT_Y) * 1000) / 10
 }cqh)`;
 
-/** Screen-fixed sight SIGHT_Y down the canvas (45%; MESITA-2448,
- *  MESITA-2505) — the catalog fetch point: the plus, its dot, and THE
+/** Screen-fixed sight SIGHT_Y down the canvas (the middle; MESITA-2448,
+ *  MESITA-2514) — the catalog fetch point: the plus, its dot, and THE
  *  SEARCH RING (Pato, MESITA-2508: "keep the circle, but make it doted …
  *  and move it realative to the cruz … it must feel more dynamic"). The ring
  *  is the circle the next load searches — the server's screen radius, the

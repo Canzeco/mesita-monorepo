@@ -183,12 +183,14 @@ export function anchorViewportBounds(
 /**
  * Where the map's sight sits, as a share of the map's height from its top
  * (Pato, MESITA-2448: "put the cruz more at the top … the carousel is
- * taking some space at the bottom"); 45% since MESITA-2505 ("move the cruz
- * a bit lower, a bit more vertically centered bust not that much"). The
- * crosshair draws here, every viewport load is centred here, and a camera
- * centre puts its target here.
+ * taking some space at the bottom"); 45% (MESITA-2505); THE MIDDLE since
+ * MESITA-2514 ("circle must be veritcally centered"): the rail has its own
+ * band under the map since MESITA-2506, so nothing covers the bottom, and
+ * the ring's gaps above and below are equal. The crosshair draws here,
+ * every viewport load is centred here, and a camera centre puts its target
+ * here.
  */
-export const SIGHT_Y = 0.45;
+export const SIGHT_Y = 0.5;
 
 const mercatorY = (lat: number) =>
   Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
