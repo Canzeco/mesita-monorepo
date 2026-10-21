@@ -125,17 +125,22 @@ export function SavedPage({ initialTab }: { initialTab: SavedTab }) {
                 window.history.replaceState(null, "", SAVED_TAB_HREF[t.key]);
               }}
               className={cn(
-                "relative flex-1 py-3 text-sm transition",
+                "flex-1 text-sm transition",
                 on ? "text-foreground font-semibold" : "text-muted-foreground",
               )}
             >
-              {t.label}
-              {on ? (
-                <span
-                  aria-hidden
-                  className="bg-foreground absolute inset-x-0 bottom-0 h-0.5"
-                />
-              ) : null}
+              {/* The word alone is underlined (Pato, MESITA-2524: "just underline
+                  place but thats it. no more"): a half-wide bar read as the top
+                  of the column's chosen row under it. */}
+              <span className="relative inline-block py-3">
+                {t.label}
+                {on ? (
+                  <span
+                    aria-hidden
+                    className="bg-foreground absolute inset-x-0 bottom-0 h-0.5"
+                  />
+                ) : null}
+              </span>
             </button>
           );
         })}
