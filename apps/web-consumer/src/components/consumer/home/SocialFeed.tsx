@@ -46,10 +46,17 @@
 // stays on screen while it does. After the first load, an event the pane
 // has not shown before glows in a light grey that fades out (FRESH_MS), the
 // way a new notification lands.
+//
+// LEVEL 1 (MESITA-2536): scrolled down when events arrive → an ink "↑ N
+// new" pill sticks to the top of the pane and takes you up; on touch, pull
+// the list down from the top to refresh; what is on screen is marked seen
+// (lib/social-seen.ts) so Home's Social tab can wear a dot for anything
+// newer.
 
 import { useEffect, useMemo, useRef, useState, type SVGProps } from "react";
 import Link from "next/link";
 import {
+  ArrowUp,
   Eye,
   Heart,
   MapPin,
@@ -65,6 +72,7 @@ import {
 } from "@/lib/api/activity";
 import type { Place } from "@/lib/api/places";
 import { sampleActivity } from "@/lib/social-sample";
+import { markSocialSeen } from "@/lib/social-seen";
 import { useActiveLocation } from "@/lib/active-location";
 import { useUserLocation } from "@/lib/use-user-location";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -240,6 +248,11 @@ export function eventKey(
 /** How long a new event glows before it fades (MESITA-2535). */
 export const FRESH_MS = 4_000;
 
+/** Pull to refresh (MESITA-2536): how far the indicator grows, and how far
+ *  past which letting go refreshes. */
+export const PULL_MAX = 72;
+export const PULL_TRIGGER = 56;
+
 function FeedRow({ item, fresh }: { item: ActivityFeedItem; fresh: boolean }) {
   const instagram = feedInstagram(item.person);
   const ago = shortAgo(item.at);
@@ -339,6 +352,19 @@ export function SocialFeed({
   const seenRef = useRef<Set<string> | null>(null);
   const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
   const freshTimer = useRef<number | undefined>(undefined);
+  // Level 1 (MESITA-2536): the pane's scroller, whether it is at the top,
+  // the events that arrived while it was not, and the pull's distance.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const atTopRef = useRef(true);
+  const [pendingNew, setPendingNew] = useState(0);
+  const [pull, setPull] = useState(0);
+  const pullStart = useRef<number | null>(null);
+  const scroller = () =>
+    rootRef.current?.closest<HTMLElement>("[data-home-scroller]") ?? null;
+  const refresh = () => {
+    setRefreshing(true);
+    setAttempt((n) => n + 1);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -353,6 +379,11 @@ export function SocialFeed({
           const seen = seenRef.current;
           const arrived = seen ? keys.filter((k) => !seen.has(k)) : [];
           seenRef.current = new Set([...(seen ?? []), ...keys]);
+          if (arrived.length > 0 && !atTopRef.current) {
+            setPendingNew((n) => n + arrived.length);
+          }
+          // What is on screen is seen; the tab's dot waits for anything newer.
+          markSocialSeen(items[0]?.at);
           if (arrived.length > 0) {
             setFresh(new Set(arrived));
             window.clearTimeout(freshTimer.current);
@@ -392,6 +423,20 @@ export function SocialFeed({
 
   useEffect(() => () => window.clearTimeout(freshTimer.current), []);
 
+  // Scrolled to the top by hand: the pill has nothing left to say.
+  const ready = state.status === "ready";
+  useEffect(() => {
+    const el = rootRef.current?.closest<HTMLElement>("[data-home-scroller]");
+    if (!el) return;
+    const onScroll = () => {
+      const top = el.scrollTop <= 8;
+      atTopRef.current = top;
+      if (top) setPendingNew(0);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [ready]);
+
   const feed = useMemo(
     () => feedRows(state.status === "ready" ? state.items : [], samplePlaces),
     [state, samplePlaces],
@@ -424,7 +469,56 @@ export function SocialFeed({
     );
   }
   return (
-    <div className="pb-6">
+    <div
+      ref={rootRef}
+      className="pb-6"
+      onTouchStart={(e) => {
+        const el = scroller();
+        pullStart.current =
+          el && el.scrollTop <= 0 ? e.touches[0].clientY : null;
+      }}
+      onTouchMove={(e) => {
+        if (pullStart.current == null) return;
+        const dy = e.touches[0].clientY - pullStart.current;
+        setPull(dy > 0 ? Math.min(dy * 0.5, PULL_MAX) : 0);
+      }}
+      onTouchEnd={() => {
+        if (pull >= PULL_TRIGGER && !refreshing) refresh();
+        pullStart.current = null;
+        setPull(0);
+      }}
+    >
+      {pendingNew > 0 ? (
+        <div className="sticky top-2 z-10 flex h-0 justify-center">
+          <button
+            type="button"
+            onClick={() => {
+              scroller()?.scrollTo({ top: 0, behavior: "smooth" });
+              setPendingNew(0);
+            }}
+            className="bg-foreground text-background flex h-9 items-center gap-1.5 rounded-full px-4 text-sm font-semibold shadow-md"
+            data-social-new-pill
+          >
+            <ArrowUp className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+            {pendingNew} new
+          </button>
+        </div>
+      ) : null}
+      <div
+        aria-hidden
+        className="flex items-end justify-center overflow-hidden transition-[height] duration-150"
+        style={{ height: pull }}
+        data-social-pull
+      >
+        <RotateCw
+          className="text-muted-foreground mb-2 h-5 w-5"
+          strokeWidth={2}
+          style={{
+            transform: `rotate(${pull * 5}deg)`,
+            opacity: Math.min(1, pull / PULL_TRIGGER),
+          }}
+        />
+      </div>
       <div className="flex items-center justify-between pr-2 pl-4">
         <p
           className="type-meta text-muted-foreground tracking-[0.08em] uppercase"
@@ -436,10 +530,7 @@ export function SocialFeed({
           type="button"
           aria-label="Refresh"
           disabled={refreshing}
-          onClick={() => {
-            setRefreshing(true);
-            setAttempt((n) => n + 1);
-          }}
+          onClick={refresh}
           className="text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring flex h-11 w-11 items-center justify-center rounded-full transition outline-none focus-visible:ring-2"
           data-social-refresh
         >
