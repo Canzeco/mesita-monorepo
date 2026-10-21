@@ -154,11 +154,13 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   // path (MESITA-1585). One hop each, straight to the canonical surface.
   { source: "/saved", destination: "/me", permanent: true },
   // The reservations list as a top-level route (a server page until
-  // MESITA-2475).
-  { source: "/reservations", destination: "/me/reservations", permanent: true },
+  // MESITA-2475), and Me › Reservations: the list is the Bookings tab now
+  // (MESITA-2518). One hop each.
+  { source: "/reservations", destination: "/bookings", permanent: true },
+  { source: "/me/reservations", destination: "/bookings", permanent: true },
   {
     source: "/saved/reservations",
-    destination: "/me/reservations",
+    destination: "/bookings",
     permanent: true,
   },
   {

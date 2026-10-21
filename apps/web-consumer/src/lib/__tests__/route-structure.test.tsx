@@ -269,11 +269,11 @@ describe("T5 — exactly one tab lights per surface", () => {
     ["/search", "Search"],
     // Pay is one page and lights its own tab there.
     ["/pay", "Pay"],
-    // Me's pages, and the one detail route it still owns: a reservation is
-    // reached from a place AND from Me › Reservations.
+    // The Bookings tab and the detail route it owns: a reservation is reached
+    // from a place AND from the list (MESITA-2518; Me owned it until then).
+    ["/bookings", "Bookings"],
+    ["/reservation/r1", "Bookings"],
     ["/me", "Me"],
-    ["/me/reservations", "Me"],
-    ["/reservation/r1", "Me"],
   ];
 
   it.each(MATRIX)("%s lights exactly %s", async (path, expected) => {
@@ -346,8 +346,8 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
     return [...html.matchAll(/text-center">([^<]+)</g)].map((m) => m[1]);
   }
 
-  it("is exactly Home · Search · Pay · Me", async () => {
-    expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Me"]);
+  it("is exactly Home · Search · Pay · Bookings · Me (MESITA-2518)", async () => {
+    expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Bookings", "Me"]);
   });
 
   it("keeps Wallet, Visit and Order off the bar", async () => {
@@ -357,12 +357,12 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
     expect(labels).not.toContain("Order");
   });
 
-  // Four <a> tabs, no <button>: Pay navigates to its page like every other
+  // Five <a> tabs, no <button>: Pay navigates to its page like every other
   // tab, and it is the only one tagged Soon — exactly once.
-  it("draws four links, Pay among them with one Soon tag and no button", async () => {
+  it("draws five links, Pay among them with one Soon tag and no button", async () => {
     const html = await renderNav("/search");
     const anchors = html.split("<a ").slice(1);
-    expect(anchors).toHaveLength(4);
+    expect(anchors).toHaveLength(5);
     expect(html.includes("<button")).toBe(false);
     const pay = anchors.find((a) => /text-center">Pay</.test(a));
     expect(pay).toBeDefined();
@@ -388,6 +388,7 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
       CONSUMER_ROUTES.home,
       CONSUMER_ROUTES.search,
       CONSUMER_ROUTES.pay,
+      CONSUMER_ROUTES.bookings,
       CONSUMER_ROUTES.me,
     ]);
     const redirects = await nextConfig.redirects!();
@@ -514,10 +515,12 @@ describe("T5b — Home's header and Search's header", () => {
 describe("T6 — Activity's sections are pages on Me", () => {
   const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
 
-  it("routes each box to its own /me page: notifications · reservations", () => {
+  it("routes each box to its page: notifications on Me, reservations to the Bookings tab", () => {
     expect(ME).toContain("CONSUMER_ROUTES.mePages.notifications");
     expect(ME).not.toContain("CONSUMER_ROUTES.mePages.visits");
-    expect(ME).toContain("CONSUMER_ROUTES.mePages.reservations");
+    // The list is the bar's Bookings tab (MESITA-2518).
+    expect(ME).toContain("CONSUMER_ROUTES.bookings");
+    expect(ME).not.toContain("CONSUMER_ROUTES.mePages.reservations");
     expect(ME).not.toMatch(/<(AlertsModal|VisitsModal|BookingsModal)\b/);
   });
 
@@ -694,9 +697,9 @@ describe("T8 — Me's grid is six live cells", () => {
 describe("T7 — every former url still resolves after the move", () => {
   it.each([
     // Both landed on the Reservations SECTION until MESITA-1626 dissolved the
-    // container; the list is a page on Me now, so Me is where they go.
+    // container; the list is the Bookings tab now (MESITA-2518).
     ["/saved", "/me"],
-    ["/saved/reservations", "/me/reservations"],
+    ["/saved/reservations", "/bookings"],
     ["/saved/reservation/:id", "/reservation/:id"],
     ["/saved/place/:id", "/place/:id"],
   ])(

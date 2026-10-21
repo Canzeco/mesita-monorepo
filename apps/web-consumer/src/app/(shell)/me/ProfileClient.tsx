@@ -153,7 +153,7 @@ export function ProfileClient() {
               Icon={CalendarCheck}
               title="Reservations"
               summary="Upcoming and past"
-              href={CONSUMER_ROUTES.mePages.reservations}
+              href={CONSUMER_ROUTES.bookings}
             />
             <DestTile
               Icon={SettingsIcon}

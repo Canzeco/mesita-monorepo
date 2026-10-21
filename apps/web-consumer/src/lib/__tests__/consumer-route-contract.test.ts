@@ -76,6 +76,7 @@ function liveAddresses(): Set<string> {
     CONSUMER_ROUTES.searchChat,
     CONSUMER_ROUTES.home,
     CONSUMER_ROUTES.pay,
+    CONSUMER_ROUTES.bookings,
     CONSUMER_ROUTES.me,
     ...Object.values(CONSUMER_ROUTES.mePages),
     `${CONSUMER_ROUTES.place.prefix}:id`,
@@ -97,6 +98,9 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // /discover/places are in the legacy block now.
       home: "/home",
       place: { prefix: "/place/" },
+      // The Bookings tab: the reservations list (MESITA-2518; it was Me ›
+      // Reservations).
+      bookings: "/bookings",
       reservation: { prefix: "/reservation/" },
       // PAY IS ONE PAGE, the Soon state (MESITA-2087). No children, no
       // default, no sections: the tab links here and lights here.
@@ -112,7 +116,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         settings: "/me/settings",
         settingsContact: "/me/settings/contact",
         notifications: "/me/notifications",
-        reservations: "/me/reservations",
       },
       legacy: {
         profile: "/profile",
@@ -167,6 +170,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         inboxMineTab: "/inbox/mine",
         inboxGlobalTab: "/inbox/global",
         reservations: "/reservations",
+        meReservations: "/me/reservations",
         savedReservations: "/saved/reservations",
         savedReservationPrefix: "/saved/reservation/",
         savedPlacePrefix: "/saved/place/",
@@ -182,6 +186,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // top-level segment with no siblings.
       place: "/place",
       pay: "/pay",
+      bookings: "/bookings",
       // NO `inbox` key (MESITA-1626): every /inbox address 308s to /me, so
       // the middleware never sees one.
       me: "/me",
@@ -397,8 +402,9 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       { source: "/places", destination: "/home", permanent: true },
       // The Saved tab and the /saved/place dual path (MESITA-1585).
       { source: "/saved", destination: "/me", permanent: true },
-      { source: "/reservations", destination: "/me/reservations", permanent: true },
-      { source: "/saved/reservations", destination: "/me/reservations", permanent: true },
+      { source: "/reservations", destination: "/bookings", permanent: true },
+      { source: "/me/reservations", destination: "/bookings", permanent: true },
+      { source: "/saved/reservations", destination: "/bookings", permanent: true },
       { source: "/saved/reservation/:id", destination: "/reservation/:id", permanent: true },
       { source: "/saved/place/:id", destination: "/place/:id", permanent: true },
       { source: "/profile", destination: "/me/profile", permanent: true },
