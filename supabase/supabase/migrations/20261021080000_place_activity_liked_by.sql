@@ -1,4 +1,6 @@
 -- MESITA-2583: Social's person card lists the places that member liked.
+-- MESITA-2588: renumbered from 20261021070000, a version use_instagram_photo
+-- also took; the ledger kept that one, so this never ran in the cloud.
 --
 -- Pato, 2026-10-21: "the card contains just like the user and then the places
 -- they liked and thats it. in one list. not when." Likes only (`saved`), never
