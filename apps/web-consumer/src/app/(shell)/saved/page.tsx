@@ -1,4 +1,5 @@
-import { SavedPage, savedTabFrom } from "@/components/consumer/saved/SavedPage";
+import { SavedPage } from "@/components/consumer/saved/SavedPage";
+import { savedTabFrom } from "@/lib/saved-tabs";
 
 // /saved — the bar's Saved tab (MESITA-2521): Favorites | Reservations.
 // `?tab=reservations` opens the second; /bookings forwards there.

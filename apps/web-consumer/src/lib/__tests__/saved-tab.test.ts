@@ -2,10 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import {
-  SAVED_TABS,
-  savedTabFrom,
-} from "@/components/consumer/saved/SavedPage";
+import { SAVED_TABS, savedTabFrom } from "@/lib/saved-tabs";
 
 // The bar's Saved tab (Pato, MESITA-2521: "rename the bookings page to saved
 // and then saved is divided into two things favorites, reservations").
@@ -40,6 +37,23 @@ describe("Saved: Favorites | Reservations", () => {
     expect(PAGE).toContain('title="No favorites yet"');
     expect(PAGE).toContain("<ReservationsList");
     expect(PAGE).toContain('title="No reservations yet"');
+  });
+
+  // MESITA-2523: the server page called savedTabFrom out of the "use client"
+  // SavedPage module and every /saved load 500'd. A server page may RENDER a
+  // client component, never CALL one of its exports.
+  it("the server page calls nothing from a client module", () => {
+    const page = readFileSync(
+      join(SRC, "app", "(shell)", "saved", "page.tsx"),
+      "utf8",
+    );
+    expect(page).not.toMatch(/^["']use client["']/);
+    expect(page).toContain('import { savedTabFrom } from "@/lib/saved-tabs";');
+    expect(page).toMatch(
+      /import \{ SavedPage \} from "@\/components\/consumer\/saved\/SavedPage";/,
+    );
+    const tabs = readFileSync(join(SRC, "lib", "saved-tabs.ts"), "utf8");
+    expect(tabs).not.toMatch(/^["']use client["']/m);
   });
 
   it("the header says Saved and the Bookings page is gone", () => {

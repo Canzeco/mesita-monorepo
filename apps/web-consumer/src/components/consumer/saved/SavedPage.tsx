@@ -18,6 +18,7 @@ import {
   useSavedPlaces,
 } from "@/lib/saved-places";
 import { toast } from "@/lib/toast";
+import { SAVED_TABS, type SavedTab } from "@/lib/saved-tabs";
 import { useOpenGooglePlace } from "@/lib/use-open-google-place";
 import { useUserLocation } from "@/lib/use-user-location";
 import { cn } from "@/lib/utils";
@@ -43,18 +44,6 @@ import { cn } from "@/lib/utils";
 //
 // THE PANE IS A FLEX COLUMN, NOT A BLOCK: grow, min-h-0, scroll inside —
 // a block parent collapses EmptyState.
-
-export const SAVED_TABS = [
-  { key: "favorites", label: "Favorites" },
-  { key: "reservations", label: "Reservations" },
-] as const;
-
-export type SavedTab = (typeof SAVED_TABS)[number]["key"];
-
-/** The tab an address asks for: `?tab=reservations`, else Favorites. */
-export function savedTabFrom(param: string | string[] | undefined): SavedTab {
-  return param === "reservations" ? "reservations" : "favorites";
-}
 
 const LIST = "grid grid-cols-1 content-start gap-1.5 px-1.5 pt-1.5 pb-6";
 
