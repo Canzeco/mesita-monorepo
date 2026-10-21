@@ -58,8 +58,6 @@ export type ConsumerDoc = {
   // MESITA-2461: when the handle was proved (code in the bio). The DB CHECK
   // refuses a handle without it; only consumer_instagram_verify sets both.
   instagram_verified_at: string | null;
-  // Social v1 (MESITA-2442): Show my activity. Default true in the DB.
-  show_activity: boolean;
   // MESITA-2548: Diamond (yes or no) and the plan. Granted by an operator
   // through admin-web-set-guest-standing (MESITA-2550); no consumer EF
   // accepts either.
@@ -84,7 +82,6 @@ export const CONSUMER_PATCH_KEYS = [
   "instagram_handle",
   "instagram_followers_count",
   "instagram_verified_at",
-  "show_activity",
   "diamond",
   "plan",
   "deleted_at",
@@ -223,13 +220,6 @@ export function validateConsumerPatch(
       };
     }
     patch.instagram_verified_at = v;
-  }
-  if ("show_activity" in raw) {
-    const v = raw.show_activity;
-    if (typeof v !== "boolean") {
-      return { ok: false, error: "show_activity must be a boolean" };
-    }
-    patch.show_activity = v;
   }
   if ("diamond" in raw) {
     const v = raw.diamond;
