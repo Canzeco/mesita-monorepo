@@ -153,21 +153,21 @@ export type Database = {
           code: string
           consumer_id: string
           created_at: string
-          handle: string
+          handle: string | null
         }
         Insert: {
           checked_at?: string | null
           code: string
           consumer_id: string
           created_at?: string
-          handle: string
+          handle?: string | null
         }
         Update: {
           checked_at?: string | null
           code?: string
           consumer_id?: string
           created_at?: string
-          handle?: string
+          handle?: string | null
         }
         Relationships: [
           {
@@ -232,6 +232,7 @@ export type Database = {
           phone: string | null
           plan: string
           sex: string | null
+          use_instagram_photo: boolean
         }
         Insert: {
           avatar_url?: string | null
@@ -253,6 +254,7 @@ export type Database = {
           phone?: string | null
           plan?: string
           sex?: string | null
+          use_instagram_photo?: boolean
         }
         Update: {
           avatar_url?: string | null
@@ -274,6 +276,7 @@ export type Database = {
           phone?: string | null
           plan?: string
           sex?: string | null
+          use_instagram_photo?: boolean
         }
         Relationships: []
       }
@@ -1354,6 +1357,7 @@ export type Database = {
           phone: string | null
           plan: string
           sex: string | null
+          use_instagram_photo: boolean
         }[]
         SetofOptions: {
           from: "*"
@@ -1411,6 +1415,7 @@ export type Database = {
       place_activity_feed: {
         Args: { p_limit?: number }
         Returns: {
+          anonymous: boolean
           avatar_url: string
           consumer_id: string
           created_at: string
