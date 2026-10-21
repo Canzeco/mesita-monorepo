@@ -36,18 +36,18 @@ import { cn } from "@/lib/utils";
 // share create a dedicate page for share. you know.").
 //
 //   ┌────────────────────────────────┐
-//   │ M Mesita                INVITE │   the invite card: gift-card shape,
+//   │ M Mesita       🐶       INVITE │   the invite card: gift-card shape,
 //   │                                │   no amount, no credit, no code
 //   │ Stop asking me where to eat.   │   (Pato, MESITA-2568: "like it must
 //   │ Use this. 🙄                   │   look like a gift card but without
-//   │ consumer.mesita.ai  No credit. │   credit … meme style")
-//   └────────────────────────────────┘
+//   │ consumer.mesita.ai  No credit. │   credit … meme style"), over the
+//   └────────────────────────────────┘   style's meme photo (MESITA-2570)
 //   MESSAGE   [chip] [chip] [chip] … 🎲
-//   STYLE     ● ● ● ● ●
+//   STYLE     ● ● ● ● ●                  each swatch = a tint + a photo
 //   SEND IT   Share… · WhatsApp · Messages · Email · Copy link
 //
-// ONLY THE MESSAGE TRAVELS, then the link. The style dresses this page; no
-// image is sent. ONE OUTCOME PER TAP, ONE TOAST AT MOST: closing the phone's
+// ONLY THE MESSAGE TRAVELS, then the link. The style and its photo dress this
+// page; no image is sent. ONE OUTCOME PER TAP, ONE TOAST AT MOST: closing the phone's
 // sheet is a decision (AbortError, silent), and nothing falls through to a
 // second action. The link carries nothing about the guest (share-app.ts).
 
@@ -58,6 +58,13 @@ function useCanShare(): boolean {
   return useSyncExternalStore(noop, canShareNatively, () => false);
 }
 
+/** The photo (the card's top 70%) fades into the style's tint: a light veil
+ *  under the top row, clear through the middle, solid from 70% down, under
+ *  the headline and the footer. */
+function scrim(tint: string): string {
+  return `linear-gradient(to bottom, rgb(${tint} / 0.45) 0%, rgb(${tint} / 0) 20%, rgb(${tint} / 0) 44%, rgb(${tint}) 70%)`;
+}
+
 function InviteCard({
   message,
   look,
@@ -65,6 +72,10 @@ function InviteCard({
   message: string;
   look: ShareCardStyle;
 }) {
+  // A photo that failed stays off; the card is then the plain style. Before
+  // hydration, alt="" keeps a broken photo from drawing anything.
+  const [failed, setFailed] = useState<ReadonlySet<string>>(new Set());
+  const showPhoto = !failed.has(look.photo);
   return (
     <div
       className={cn(
@@ -74,6 +85,24 @@ function InviteCard({
       style={{ background: look.background }}
       data-invite-card={look.id}
     >
+      {showPhoto && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          key={look.photo}
+          src={look.photo}
+          alt=""
+          aria-hidden
+          decoding="async"
+          onError={() => setFailed((f) => new Set(f).add(look.photo))}
+          className="pointer-events-none absolute inset-x-0 top-0 h-[70%] w-full object-cover"
+          data-invite-photo
+        />
+      )}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{ background: scrim(look.tint) }}
+        aria-hidden
+      />
       {/* A big faint mark in the corner: the card's watermark. */}
       <MesitaMark className="pointer-events-none absolute -right-8 -bottom-10 h-44 w-44 opacity-10" />
       <div className="relative flex h-full flex-col">
