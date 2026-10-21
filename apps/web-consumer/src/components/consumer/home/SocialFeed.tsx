@@ -35,10 +35,12 @@
 // around the guest, newest first, at most 50, and the pane refetches every
 // LIVE_MS while the tab is visible. Members with a verified Instagram appear
 // by name; everyone else appears as "A member", with no photo, handle or
-// person card (MESITA-2580: only ~10% connect Instagram). No activity
-// → SAMPLE rows (MESITA-2520, lib/social-sample.ts): made-up members on
-// Home's real places, under one quiet "Sample activity" line, never mixed
-// with real rows; with no places either, the empty state.
+// person card (MESITA-2580: only ~10% connect Instagram). No member whose
+// card can open (an empty feed, or only "A member" and You) → SAMPLE rows
+// too (MESITA-2520, lib/social-sample.ts; MESITA-2583, Pato: "keep a mock
+// data in the frontend"): made-up members on Home's real places, AFTER the
+// real rows and under their own quiet "Sample activity" line, never
+// interleaved; with no rows and no places, the empty state.
 //
 // A NOTIFICATION STREAM (Pato, MESITA-2535: "feel like a notificartions
 // stream but it might also be readable … add an easy refreh button"): a
@@ -71,7 +73,9 @@
 // centred LocalDialog that appears at once, MESITA-2546: picture, name,
 // Instagram proof, their recent events here); the bold place name and the
 // photo open the place. The card is the member's IDENTITY CARD, the top of
-// Me without the phone (MESITA-2547).
+// Me without the phone (MESITA-2547), and under it the places they liked
+// (Pato, MESITA-2583: "just like the user and then the places they liked
+// and thats it. in one list. not when."): likes only, never views, no time.
 
 import { useEffect, useMemo, useRef, useState, type SVGProps } from "react";
 import Link from "next/link";
@@ -85,13 +89,14 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import {
+  apiLikedPlaces,
   apiListActivityFeed,
   type ActivityFeedItem,
   type ActivityKind,
   type ActivityPerson,
 } from "@/lib/api/activity";
 import type { Place } from "@/lib/api/places";
-import { sampleActivity } from "@/lib/social-sample";
+import { sampleActivity, type SampleFeedItem } from "@/lib/social-sample";
 import { markSocialSeen } from "@/lib/social-seen";
 import { useActiveLocation } from "@/lib/active-location";
 import { useUserLocation } from "@/lib/use-user-location";
@@ -386,21 +391,60 @@ function FeedRow({
   );
 }
 
-/** The person card (MESITA-2546, MESITA-2547): the member's identity card —
- *  the same card as the top of Me — floating in the centre of this screen,
- *  appearing and disappearing at once. Picture, name and Instagram with the
- *  handle hidden ("die••• · 1.2K followers", MESITA-2522); never the phone,
- *  no recent activity, no follow (Pato: "its just like the card with the
- *  names … and instagram … easy"). */
+/** A feed row as the person card reads it: a sample member carries their
+ *  liked places; a real one is asked for them. */
+type CardItem = ActivityFeedItem & { sampleLiked?: Place[] };
+
+/** The places the card's member liked: the sample's own, else the server's
+ *  for the event the card was opened from (MESITA-2583). Null while it
+ *  loads; a failed read lists nothing rather than guessing. */
+function useLikedPlaces(item: CardItem | null, open: boolean): Place[] | null {
+  const supabase = useBrowserSupabase();
+  const key = item ? eventKey(item) : null;
+  const [loaded, setLoaded] = useState<{ key: string; places: Place[] } | null>(
+    null,
+  );
+  const sample = item?.sampleLiked ?? null;
+  useEffect(() => {
+    if (!open || !item || sample || !key) return;
+    let cancelled = false;
+    apiLikedPlaces(supabase, item)
+      .then((places) => {
+        if (!cancelled) setLoaded({ key, places });
+      })
+      .catch((err) => {
+        console.error(
+          "social_liked_places_failed",
+          errMsg(err, "consumer-web-list-activity failed"),
+        );
+        if (!cancelled) setLoaded({ key, places: [] });
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabase, key, open, sample]);
+  if (sample) return sample;
+  return loaded && loaded.key === key ? loaded.places : null;
+}
+
+/** The person card (MESITA-2546, MESITA-2547, MESITA-2583): the member's
+ *  identity card — the same card as the top of Me — floating in the centre
+ *  of this screen, appearing and disappearing at once, then the places they
+ *  liked in one plain list. Picture, name and Instagram with the handle
+ *  hidden ("die••• · 1.2K followers", MESITA-2522); never the phone, never a
+ *  view, never a time, no follow (Pato: "just like the user and then the
+ *  places they liked and thats it. in one list. not when."). */
 function PersonCard({
   item,
   open,
   onClose,
 }: {
-  item: ActivityFeedItem | null;
+  item: CardItem | null;
   open: boolean;
   onClose: () => void;
 }) {
+  const liked = useLikedPlaces(item, open);
   if (!item) return null;
   const person = item.person;
   const who = feedWho(person);
@@ -419,8 +463,59 @@ function PersonCard({
           instagram={instagram ? { label: instagram } : null}
           guestClass={toGuestClass(person.guestClass)}
         />
+        <LikedList places={liked} />
       </div>
     </LocalDialog>
+  );
+}
+
+/** The card's one list: the places the member liked, each a door to the
+ *  place. Name and photo only — no time, no verb, no distance. */
+function LikedList({ places }: { places: Place[] | null }) {
+  if (places == null) {
+    return (
+      <div className="mt-4 space-y-2" aria-busy data-social-liked-loading>
+        {Array.from({ length: 3 }, (_, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <Skeleton className="h-11 w-11 shrink-0 rounded-md" />
+            <Skeleton className="h-3.5 w-3/5" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (places.length === 0) {
+    return (
+      <p
+        className="text-muted-foreground mt-4 text-center text-sm"
+        data-social-liked-empty
+      >
+        No liked places yet
+      </p>
+    );
+  }
+  return (
+    <ul
+      role="list"
+      aria-label="Liked places"
+      className="divide-border border-border mt-4 max-h-[45vh] divide-y overflow-y-auto border-t"
+      data-social-liked
+    >
+      {places.map((place) => (
+        <li key={place.id}>
+          <Link
+            href={placeHref(place.slug || place.id)}
+            className="focus-visible:ring-ring flex items-center gap-3 py-2.5 outline-none focus-visible:ring-2"
+            data-social-liked-place
+          >
+            <Thumb place={place} />
+            <span className="text-foreground min-w-0 flex-1 truncate text-sm font-semibold">
+              {place.name}
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -445,16 +540,17 @@ function FeedSkeleton() {
   );
 }
 
-/** The rows to draw: the real feed, else the sample over `samplePlaces`
- *  (MESITA-2520) — never both. */
+/** The rows to draw: the real feed, then the sample over `samplePlaces`
+ *  (MESITA-2520) while no real row opens a person card (MESITA-2583) — the
+ *  sample always after the real rows, never interleaved. */
 export function feedRows(
   items: ActivityFeedItem[],
   samplePlaces: readonly Place[],
   now = Date.now(),
-): { rows: ActivityFeedItem[]; sample: boolean } {
-  if (items.length > 0) return { rows: items, sample: false };
-  const rows = sampleActivity(samplePlaces, now);
-  return { rows, sample: rows.length > 0 };
+): { rows: ActivityFeedItem[]; sampleRows: SampleFeedItem[] } {
+  const someoneToOpen = items.some((it) => !it.person.anonymous && !it.person.isYou);
+  if (someoneToOpen) return { rows: items, sampleRows: [] };
+  return { rows: items, sampleRows: sampleActivity(samplePlaces, now) };
 }
 
 export function SocialFeed({
@@ -494,7 +590,7 @@ export function SocialFeed({
   const [pendingNew, setPendingNew] = useState(0);
   // The person sheet: who is shown, and whether it is open (the item stays
   // while it slides away).
-  const [personItem, setPersonItem] = useState<ActivityFeedItem | null>(null);
+  const [personItem, setPersonItem] = useState<CardItem | null>(null);
   const [personOpen, setPersonOpen] = useState(false);
   const [pull, setPull] = useState(0);
   const pullStart = useRef<number | null>(null);
@@ -602,7 +698,13 @@ export function SocialFeed({
       />
     );
   }
-  if (feed.rows.length === 0) {
+  // Only the sample on screen: the status line says so.
+  const sampleOnly = feed.rows.length === 0 && feed.sampleRows.length > 0;
+  const openPerson = (it: CardItem) => {
+    setPersonItem(it);
+    setPersonOpen(true);
+  };
+  if (feed.rows.length === 0 && feed.sampleRows.length === 0) {
     return (
       <EmptyState
         icon={Users}
@@ -665,14 +767,14 @@ export function SocialFeed({
       <p
         className="text-muted-foreground flex items-center justify-center gap-1 pt-1 pb-1 text-xs"
         data-social-status
-        data-social-sample={feed.sample || undefined}
+        data-social-sample={sampleOnly || undefined}
         aria-live="polite"
       >
         {refreshing ? (
           <span className="py-3">Refreshing…</span>
         ) : (
           <>
-            <span>{feedStatus(feed.sample, updatedAt, now)}</span>
+            <span>{feedStatus(sampleOnly, updatedAt, now)}</span>
             <span aria-hidden>·</span>
             <button
               type="button"
@@ -685,23 +787,46 @@ export function SocialFeed({
           </>
         )}
       </p>
-      <ul
-        role="list"
-        aria-label="Social"
-        className="divide-border border-border bg-card divide-y border-y"
-      >
-        {feed.rows.map((item, i) => (
-          <FeedRow
-            key={`${i}|${item.placeId}|${item.kind}`}
-            item={item}
-            fresh={!feed.sample && fresh.has(eventKey(item))}
-            onPerson={(it) => {
-              setPersonItem(it);
-              setPersonOpen(true);
-            }}
-          />
-        ))}
-      </ul>
+      {feed.rows.length > 0 ? (
+        <ul
+          role="list"
+          aria-label="Social"
+          className="divide-border border-border bg-card divide-y border-y"
+        >
+          {feed.rows.map((item, i) => (
+            <FeedRow
+              key={`${i}|${item.placeId}|${item.kind}`}
+              item={item}
+              fresh={fresh.has(eventKey(item))}
+              onPerson={openPerson}
+            />
+          ))}
+        </ul>
+      ) : null}
+      {feed.rows.length > 0 && feed.sampleRows.length > 0 ? (
+        <p
+          className="text-muted-foreground pt-4 pb-1 text-center text-xs"
+          data-social-sample
+        >
+          Sample activity
+        </p>
+      ) : null}
+      {feed.sampleRows.length > 0 ? (
+        <ul
+          role="list"
+          aria-label="Sample activity"
+          className="divide-border border-border bg-card divide-y border-y"
+        >
+          {feed.sampleRows.map((item, i) => (
+            <FeedRow
+              key={`sample|${i}|${item.placeId}|${item.kind}`}
+              item={item}
+              fresh={false}
+              onPerson={() => openPerson(item)}
+            />
+          ))}
+        </ul>
+      ) : null}
       <PersonCard
         item={personItem}
         open={personOpen}

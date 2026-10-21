@@ -5,10 +5,15 @@ import { describe, expect, it } from "vitest";
 import { feedRows } from "@/components/consumer/home/SocialFeed";
 import type { ActivityFeedItem } from "@/lib/api/activity";
 import type { Place } from "@/lib/api/places";
-import { SAMPLE_MEMBERS, sampleActivity } from "@/lib/social-sample";
+import {
+  SAMPLE_MEMBERS,
+  sampleActivity,
+  sampleLiked,
+} from "@/lib/social-sample";
 
 // Social's sample activity (MESITA-2520): made-up members on REAL places,
-// only while the real feed is empty, never mixed with it.
+// while no real row opens a person card (MESITA-2583), always after the real
+// rows, never interleaved.
 
 const NOW = Date.parse("2026-10-20T12:00:00Z");
 
@@ -58,27 +63,58 @@ describe("sampleActivity", () => {
   });
 });
 
-describe("feedRows", () => {
-  const real = sampleActivity([place("r")], NOW).slice(
-    0,
-    1,
-  ) as ActivityFeedItem[];
+describe("sampleLiked (MESITA-2583)", () => {
+  it("gives each member up to four distinct real places", () => {
+    const places = ["a", "b", "c", "d", "e"].map((id) => place(id));
+    const liked = sampleLiked(2, places);
+    expect(liked.map((p) => p.id)).toEqual(["c", "d", "e", "a"]);
+    expect(sampleLiked(0, [place("a")]).map((p) => p.id)).toEqual(["a"]);
+    expect(sampleLiked(0, [])).toEqual([]);
+  });
 
-  it("real activity wins and the sample is gone", () => {
-    expect(feedRows(real, [place("a")], NOW)).toEqual({
-      rows: real,
-      sample: false,
+  it("rides on every sample row, so the card never asks the server", () => {
+    for (const r of sampleActivity([place("a"), place("b")], NOW)) {
+      expect(r.sampleLiked.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("feedRows", () => {
+  const named = sampleActivity([place("r")], NOW).slice(0, 1).map(
+    ({ sampleLiked: _l, ...item }) => item,
+  ) as ActivityFeedItem[];
+  const anon: ActivityFeedItem[] = named.map((it) => ({
+    ...it,
+    person: { ...it.person, name: "A member", anonymous: true },
+  }));
+  const you: ActivityFeedItem[] = named.map((it) => ({
+    ...it,
+    person: { ...it.person, isYou: true },
+  }));
+
+  it("a real member with a card wins and the sample is gone", () => {
+    expect(feedRows(named, [place("a")], NOW)).toEqual({
+      rows: named,
+      sampleRows: [],
     });
+  });
+
+  it("only A member or You → the real rows, then the sample", () => {
+    for (const rows of [anon, you]) {
+      const out = feedRows(rows, [place("a")], NOW);
+      expect(out.rows).toEqual(rows);
+      expect(out.sampleRows.length).toBe(8);
+    }
   });
 
   it("an empty feed shows the sample over the places", () => {
     const out = feedRows([], [place("a")], NOW);
-    expect(out.sample).toBe(true);
-    expect(out.rows.length).toBe(8);
+    expect(out.rows).toEqual([]);
+    expect(out.sampleRows.length).toBe(8);
   });
 
   it("no feed and no places → nothing, so the empty state draws", () => {
-    expect(feedRows([], [], NOW)).toEqual({ rows: [], sample: false });
+    expect(feedRows([], [], NOW)).toEqual({ rows: [], sampleRows: [] });
   });
 
   it("the sample is labelled on screen", () => {
