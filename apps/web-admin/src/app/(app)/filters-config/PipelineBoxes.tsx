@@ -3,8 +3,8 @@
 // Discovery: ONE page, four boxes (MESITA-2327): Name Pipeline by Admin ·
 // Name Pipeline · Area Pipeline · Deep Pipeline. Each box is a PipelineBox
 // and saves only its own slices, so two boxes can never overwrite each other.
-// Catalog and Map are views of the Area pipeline, so their knobs sit in the
-// Area box; the Chat Agent is Deep's caller, so its prompt sits in the Deep box.
+// Catalog and Map are views of the Area pipeline, ranked one way, so their
+// knobs sit in the Area box; the Chat Agent is Deep's caller, so its prompt sits in the Deep box.
 
 import { Hash, MapPin, RefreshCw, ScanSearch, Search, Sparkles } from "lucide-react";
 import {
@@ -330,27 +330,59 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
       explanation={
         <>
           <p>
-            Places around a location: a <strong>point</strong> (the device, a
-            saved pin, the map&apos;s centre) takes candidates inside the
-            radius and ranks them by Proximity over its reach. The Map&apos;s point is
-            the cross and its radius is <strong>the screen&apos;s</strong>: the average of
-            the visible half-width and half-height, a gate on Google and Mesita
-            alike, and Proximity&apos;s reach (MESITA-2504).
-            Saved areas (a city, neighbourhood or postcode) were retired
-            2026-10-20: Home always asks from a point. Google candidates and Mesita candidates
-            contribute independently to one pool: merged, deduped by Google
-            Place ID, gated, scored and ranked before any page is cut. The source is never a guest filter.
+            Places around a <strong>point</strong>: the Map&apos;s cross, the
+            device or a saved pin. The Map&apos;s radius is <strong>the
+            screen&apos;s</strong>: the cross&apos;s distance to the nearest edge
+            of the visible map (MESITA-2511), a gate on Google and Mesita alike
+            and Proximity&apos;s reach, so 1 at the cross and 0 at the circle&apos;s
+            edge mean the same at every zoom. Home&apos;s point (the device or a
+            saved pin) sits inside the radius below. Google candidates and
+            Mesita candidates contribute independently to one pool: merged,
+            deduped by Google Place ID, gated, scored and ranked before any page
+            is cut. The source is never a guest filter.
           </p>
           <p className="mt-2">
-            The Map (the Search tab) and the Catalog (Home&apos;s Places) are two views of this one pipeline, ranked one way
-            (MESITA-2516): score = Proximity<sup>a</sup> × Popularity<sup>1</sup> ×
-            Selected<sup>1</sup>, a = Map proximity weight. The weights table
-            below feeds neither view.
+            The Map (the Search tab) and the Catalog (Home&apos;s Places) rank
+            one way (MESITA-2504, MESITA-2516): score = Proximity<sup>a</sup> ×
+            Popularity<sup>1</sup> × Selected<sup>1</sup>. a is the one exponent
+            that moves; a family chip or row only gates.
           </p>
         </>
       }
       save={<Save editor={editor} dirty={dirty} slices={BOX_SLICES.area} />}
     >
+      <Group title="Ranking (Map and Home)">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <NumberField
+            label="Map proximity weight (a)"
+            value={cfg.map.proximityWeight}
+            min={MAP_PROXIMITY_WEIGHT_MIN}
+            max={MAP_PROXIMITY_WEIGHT_MAX}
+            decimals
+            disabled={off}
+            onChange={(proximityWeight) => map({ proximityWeight })}
+          />
+          <NumberField
+            label="Proximity reach (km)"
+            value={params.proximity.reachKm}
+            min={REACH_KM_MIN}
+            max={REACH_KM_MAX}
+            decimals
+            disabled={off}
+            onChange={setReachKm}
+          />
+        </div>
+        <p className="text-muted-foreground type-meta">
+          a ranks the Map and Home alike: below 1 softens distance, above 1
+          sharpens it, 0 ignores it. Popularity&apos;s and Selected&apos;s
+          exponents are fixed at 1. Proximity is 1 at the point, ½ at half the
+          reach and 0 at the reach and beyond: on the Map the reach is the
+          screen radius, on Home the number above (Home has no screen to
+          measure). A place with no Google numbers has Popularity 0, so it
+          sinks to the bottom; nothing a gate keeps is ever removed by the
+          score.
+        </p>
+      </Group>
       <Group title="Candidates and signals">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <NumberField
@@ -389,51 +421,14 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           />
         </div>
         <p className="text-muted-foreground type-meta">
-          The radius decides who is a candidate and never scores. Proximity
-          is 1 at the anchor, ½ at half the reach and 0 at the reach and
-          beyond. Popularity is rating ÷ 5 × reviews ÷
-          (reviews + half credit): a 3★ place is 60% of a 5★ one, and volume
-          earns half credit at that many reviews. Selected is 1 for a Mesita
-          Selected place and the number above (0.01–1) for every other, a
-          Google-only place included; never 0, so it orders and never hides.
-          The reviews floor counts people, cuts Google hits only, and 0 is
-          off.
-        </p>
-      </Group>
-      <Group title="Weights table">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <NumberField
-            label="Proximity reach (km)"
-            value={params.proximity.reachKm}
-            min={REACH_KM_MIN}
-            max={REACH_KM_MAX}
-            decimals
-            disabled={off}
-            onChange={setReachKm}
-          />
-          <NumberField
-            label="Map proximity weight (a)"
-            value={cfg.map.proximityWeight}
-            min={MAP_PROXIMITY_WEIGHT_MIN}
-            max={MAP_PROXIMITY_WEIGHT_MAX}
-            decimals
-            disabled={off}
-            onChange={(proximityWeight) => map({ proximityWeight })}
-          />
-        </div>
-        <AreaWeightsTable modes={params.modes} disabled={off} onChange={setWeight} />
-        <p className="text-muted-foreground type-meta">
-          Each cell is an exponent: score = Proximity<sup>a</sup> ×
-          Popularity<sup>b</sup> × Selected<sup>c</sup>. 0 turns a signal off
-          for that mode; within a mode only the ratios a : b : c change the
-          order (4 · 1 · 1 ranks like 8 · 2 · 2). Every family shares the
-          Family row. The Map and the Catalog read none of the rows
-          (MESITA-2516): both score Proximity<sup>a</sup> × Popularity<sup>1</sup> ×
-          Selected<sup>1</sup> with a = Map proximity weight (below 1 softens
-          distance, above 1 sharpens it); the Map&apos;s reach is the screen
-          radius, the Catalog&apos;s the Proximity reach above. A place with no
-          Google numbers has Popularity 0, so it sinks to the bottom unless b
-          is 0.
+          The radius is Home&apos;s: it decides who is a candidate and never
+          scores. The Map reads it only when it has no screen to measure (no
+          view yet, or one wider than 100 km). Popularity is rating ÷ 5 ×
+          reviews ÷ (reviews + half credit): a 3★ place is 60% of a 5★ one, and
+          volume earns half credit at that many reviews. Selected is 1 for a
+          Mesita Selected place and the number above (0.01–1) for every other,
+          a Google-only place included; never 0, so it orders and never hides.
+          The reviews floor counts people, cuts Google hits only, and 0 is off.
         </p>
       </Group>
       <Group title="Candidates per source">
@@ -498,6 +493,18 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           </ChoiceField>
         </div>
       </Group>
+      <Group title="Weights table (Chat only)">
+        <AreaWeightsTable modes={params.modes} disabled={off} onChange={setWeight} />
+        <p className="text-muted-foreground type-meta">
+          The Map and Home read none of it. Only Chat&apos;s Selected places
+          read it, the Nearby row, and no guest reaches Chat yet; the Popular
+          and Family rows have no reader since MESITA-2516. Each cell is an
+          exponent: score = Proximity<sup>a</sup> × Popularity<sup>b</sup> ×
+          Selected<sup>c</sup>; 0 turns a signal off, and within a row only
+          the ratios a : b : c change the order (4 · 1 · 1 ranks like 8 · 2 ·
+          2).
+        </p>
+      </Group>
     </PipelineBox>
   );
 }
@@ -518,13 +525,14 @@ export function DeepBox() {
 }
 
 const MODE_ROWS: { mode: AreaMode; label: string; hint: string }[] = [
-  { mode: "nearby", label: "📍 Nearby", hint: "every family, distance first" },
-  { mode: "popular", label: "⭐ Popular", hint: "every family, popularity first" },
-  { mode: "family", label: "Family", hint: "one family, all three signals alike; every family shares this row" },
+  { mode: "nearby", label: "📍 Nearby", hint: "Chat's row" },
+  { mode: "popular", label: "⭐ Popular", hint: "no reader" },
+  { mode: "family", label: "Family", hint: "no reader" },
 ];
 
-/** The weights table (MESITA-2428): rows are the guest's modes, columns the
- *  three signals (Selected since MESITA-2439), each cell an exponent. */
+/** The weights table (MESITA-2428): rows were the guest's modes, columns the
+ *  three signals (Selected since MESITA-2439), each cell an exponent. Since
+ *  MESITA-2516 only Chat's Selected read uses it, its Nearby row. */
 function AreaWeightsTable({
   modes,
   disabled,

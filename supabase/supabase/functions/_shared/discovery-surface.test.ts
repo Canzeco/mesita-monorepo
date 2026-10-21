@@ -27,7 +27,7 @@ Deno.test("the model is Pato's: five sources, Name · Area · Deep, five signals
   ]);
   assertEquals(DISCOVERY_PIPELINES.map((p) => p.label), ["Name", "Area", "Deep"]);
   assertEquals(DISCOVERY_SIGNALS.map((s) => s.label), ["Name", "Description", "Proximity", "Popularity", "Selected"]);
-  assertEquals(DISCOVERY_GATES.map((g) => g.label), ["Family", "Map box"]);
+  assertEquals(DISCOVERY_GATES.map((g) => g.label), ["Family", "Radius"]);
   assertEquals(pipelinesUsingSignal("proximity"), ["area"]);
   assertEquals(pipelinesUsingSignal("popularity"), ["area"]);
   assertEquals(pipelinesUsingSignal("selected"), ["area"]);
@@ -138,13 +138,16 @@ Deno.test("Deep is not live while no guest reaches Chat; Name and Area are (MESI
 
 // ── MESITA-2379: one pool; MESITA-2439: Selected is its own signal ───────────
 
-Deno.test("Area: Family and Map box gate, Selected is a signal with its own exponent, Chat reads Selected only", () => {
+Deno.test("Area: Family and Radius gate, Selected is a signal with its own exponent, Chat reads Selected only", () => {
   const area = DISCOVERY_PIPELINES.find((p) => p.key === "area")!;
   assertEquals(area.gates, ["family", "territory"]);
   assertEquals(area.signals, ["proximity", "popularity", "selected"]);
   assertEquals(area.factors, []);
   assert(area.scoring.includes("Proximity^a × Popularity^b × Selected^c"));
   assertEquals(area.scoring.includes("(Popularity × Selected)"), false);
+  // The views' one ranking (MESITA-2504, MESITA-2516); no rectangle (MESITA-2558).
+  assert(area.scoring.startsWith("The Map and Home: Proximity^a × Popularity^1 × Selected^1"));
+  assertEquals(JSON.stringify(area).includes("rectangle"), false);
   // Only Mesita Places knows Selected; a Google row reads the other value.
   assertEquals(sourcesFeedingSignal("area", "selected"), ["mesita_places"]);
   assert(area.rules.includes("Chat reads Mesita Selected places only."));
