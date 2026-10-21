@@ -107,7 +107,9 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
     expect(placesChips().map((c) => c.key)).not.toContain(GOOGLE_RAIL_KEY);
     expect(placesChips().map((c) => c.key)).not.toContain(MESITA_RAIL_KEY);
     // A quarter-wide column beside the tiles, on the Places tab only.
-    expect(src).toContain('className="bg-muted flex w-1/4 shrink-0 flex-col"');
+    // The column is the darker hairline grey (MESITA-2537: "the lateral bark
+    // darker"); the chosen row stays white.
+    expect(src).toContain('className="bg-border flex w-1/4 shrink-0 flex-col"');
     expect(src).toContain('{tab === "places" ? categories : null}');
     // ONE scrolling list, Top first, no pinned head (MESITA-2534: "don't
     // divide al from the other families"); no colour stripes (MESITA-2521).
@@ -316,11 +318,12 @@ describe("the Places grid (MESITA-2366)", () => {
     expect(src).not.toContain("data-band");
   });
 
-  // White over the darker grey tab strip (Pato, MESITA-2531: "the mesita
+  // White, and the tab strip white too (Pato, MESITA-2537: "making the header
+  // white and the second header also light"; MESITA-2531: "the mesita
   // header white and the place and social a bit darker"). MESITA-2529's stone
   // header was sent back; ink over white tabs (MESITA-2524) too; MESITA-2476's
   // pink was sent back.
-  it("paints Home's header white with the name in ink, over a darker grey tab strip", () => {
+  it("paints Home's header and tab strip white, the name in ink", () => {
     const tabs = readFileSync(
       join(__dirname, "../../components/consumer/ModeTabs.tsx"),
       "utf8",
@@ -330,10 +333,9 @@ describe("the Places grid (MESITA-2366)", () => {
     );
     expect(tabs).toContain('"text-foreground shrink-0 text-2xl');
     expect(tabs).not.toContain("bg-foreground text-background");
-    // The strip: its own grey between the header and the column (MESITA-2530).
-    expect(src).toContain(
-      'className="border-border flex shrink-0 border-b bg-[color-mix(in_oklch,var(--border),var(--muted))]"',
-    );
+    // The strip: white like the header, one light top block (MESITA-2537).
+    expect(src).toContain('className="border-border bg-card flex shrink-0 border-b"');
+    expect(src).not.toContain("color-mix(");
     expect(tabs).not.toContain("brand-pink");
     expect(tabs).not.toContain("border-b-2");
   });
