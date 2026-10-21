@@ -65,10 +65,10 @@ import {
 import { PinPicker, type PinPickerMode } from "@/components/consumer/home/PinPicker";
 import { cn, errMsg } from "@/lib/utils";
 
-/** Home's location control (MESITA-2480): a 36px rounded box on the white
- *  header — the side rail's grey (MESITA-2485), no outline, ink text. */
+/** Home's location control (MESITA-2480): a 36px rounded box on the ink
+ *  header (MESITA-2524) — a faint white fill, no outline, white text. */
 export const HOME_LOCATION_CLASS =
-  "border-transparent bg-muted text-foreground hover:bg-border focus-visible:ring-ring ml-auto flex h-9 max-w-[65%] min-w-0 items-center gap-1.5 rounded-xl border px-3 text-sm font-semibold outline-none transition focus-visible:ring-2 active:scale-[0.98]";
+  "border-transparent bg-background/15 text-background hover:bg-background/25 focus-visible:ring-ring ml-auto flex h-9 max-w-[65%] min-w-0 items-center gap-1.5 rounded-xl border px-3 text-sm font-semibold outline-none transition focus-visible:ring-2 active:scale-[0.98]";
 
 /** What the pill says: the saved name, or the state of the device fix. The
  *  sheet's row adds the neighbourhood once known (MESITA-2466): "Current
@@ -251,7 +251,7 @@ export function LocationPicker() {
         <MapPin className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
         <span className="min-w-0 truncate">{label}</span>
         <ChevronDown
-          className="text-muted-foreground h-3.5 w-3.5 shrink-0"
+          className="text-background/70 h-3.5 w-3.5 shrink-0"
           strokeWidth={2.25}
           aria-hidden
         />
