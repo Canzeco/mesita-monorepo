@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import {
   Bell,
-  Bookmark,
   CalendarCheck,
   CreditCard,
+  Crown,
+  Heart,
+  Plug,
   Settings as SettingsIcon,
   UserRound,
 } from "lucide-react";
@@ -20,23 +22,26 @@ import {
 import { useConsumerIdentity } from "@/lib/identity-context";
 import { instagramSummary, type ConsumerFacts } from "@/lib/consumer-identity";
 import { CONSUMER_ROUTES, SAVED_TAB_HREF } from "@/lib/consumer-route-contract";
-import { PLAN_LABEL, toGuestPlan } from "@/lib/guest-standing";
+import {
+  CLASS_LABEL,
+  PLAN_LABEL,
+  toGuestClass,
+  toGuestPlan,
+} from "@/lib/guest-standing";
 import { DestGrid, DestTile } from "./profile-sections";
 import { IdentityBar } from "./IdentityBar";
 
-// The Me surface — the identity header, then seven cells. Support left the
-// grid (Pato, MESITA-2169: "move support into settings") and lives on
-// Settings; Saved came in from the bar (Pato, MESITA-2561: "move the bottom
-// menu to me and reservations to me too") and sits beside Reservations, the
-// two doors into the one Saved page:
+// The Me surface — the identity header, then nine cells in Pato's order
+// (MESITA-2562; Support left for Settings, MESITA-2169):
 //
 //   header         identity + Instagram; the bar IS a door (MESITA-1652)
 //   2              Profile (carries the member number) · Instagram
-//   2              Saved (Favorites) · Reservations
-//   2              Plan · Notifications
-//   1              Settings
+//   2              Class · Plan
+//   2              Notifications · Reservations
+//   2              Favorites · Connector
+//   1              Settings, alone on the last row
 //
-// SEVEN CELLS, AND THAT IS THE WHOLE PAGE. route-structure T8 pins them.
+// NINE CELLS, AND THAT IS THE WHOLE PAGE. route-structure T8 pins them.
 //
 // EVERY CELL IS A ROUTE (Pato, MESITA-1789). Sheets over this hub stacked
 // history as overlays. DestTiles Link to /me/<box>.
@@ -131,15 +136,31 @@ export function ProfileClient() {
             />
           </DestGrid>
 
-          {/* What the bar's Saved tab held (MESITA-2561): the hearted places
-              and the reservations, each tile opening its own tab of
-              /me/saved. The bookmark is the old tab's glyph (MESITA-2522). */}
+          {/* CLASS BESIDE PLAN (Pato, MESITA-2562): two separate facts
+              (MESITA-2553), each a page. Never the gem on Plan: that shape
+              was the old class chip (MESITA-2551). Each summary is the
+              guest's real value, "…" until it is known. */}
           <DestGrid>
             <DestTile
-              Icon={Bookmark}
-              title="Saved"
-              summary="Your favorite places"
-              href={SAVED_TAB_HREF.favorites}
+              Icon={Crown}
+              title="Class"
+              summary={profile ? CLASS_LABEL[toGuestClass(profile.guest_class)] : "…"}
+              href={CONSUMER_ROUTES.mePages.class}
+            />
+            <DestTile
+              Icon={CreditCard}
+              title="Plan"
+              summary={profile ? PLAN_LABEL[toGuestPlan(profile.plan)] : "…"}
+              href={CONSUMER_ROUTES.mePages.plan}
+            />
+          </DestGrid>
+
+          <DestGrid>
+            <DestTile
+              Icon={Bell}
+              title="Notifications"
+              summary="Bookings and updates"
+              href={CONSUMER_ROUTES.mePages.notifications}
             />
             <DestTile
               Icon={CalendarCheck}
@@ -149,27 +170,28 @@ export function ProfileClient() {
             />
           </DestGrid>
 
-          {/* PATO'S ORDER (MESITA-2134), minus Support (MESITA-2169):
-              profile, instagram, plan, notifications, settings. */}
+          {/* Favorites and Reservations are the two doors into the one Saved
+              page, /me/saved, which came in from the bar (MESITA-2561);
+              Favorites was briefly a tile called Saved. Connector is Mesita
+              in an AI assistant; it is not built, so its page says Soon
+              (MESITA-2562). */}
           <DestGrid>
-            {/* Never the gem: that shape is the class chip on the card above
-                (Pato, MESITA-2551: "DON'T USE THE … DIAMOND ICON. ITS
-                CONFUSING"). Plan is the subscription. The summary is the
-                guest's real plan, "…" until it is known (MESITA-2553). */}
             <DestTile
-              Icon={CreditCard}
-              title="Plan"
-              summary={profile ? PLAN_LABEL[toGuestPlan(profile.plan)] : "…"}
-              href={CONSUMER_ROUTES.mePages.plan}
+              Icon={Heart}
+              title="Favorites"
+              summary="Places you saved"
+              href={SAVED_TAB_HREF.favorites}
             />
             <DestTile
-              Icon={Bell}
-              title="Notifications"
-              summary="Bookings and updates"
-              href={CONSUMER_ROUTES.mePages.notifications}
+              Icon={Plug}
+              title="Connector"
+              summary="ChatGPT, Claude · Soon"
+              href={CONSUMER_ROUTES.mePages.connector}
             />
           </DestGrid>
 
+          {/* Settings closes the page, alone; the cell beside it is empty
+              (Pato, MESITA-2562). */}
           <DestGrid>
             <DestTile
               Icon={SettingsIcon}

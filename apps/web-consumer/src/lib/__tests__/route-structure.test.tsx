@@ -579,7 +579,7 @@ describe("T6 — Activity's sections are pages on Me", () => {
 // The regression this catches is a tile for a surface that does not exist
 // — `DestTile` has no `soon` prop and its `href` is required, so such a tile
 // would ship as a live Link pointing at nothing.
-describe("T8 — Me's grid is seven live cells", () => {
+describe("T8 — Me's grid is nine live cells", () => {
   const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
   /** `<DestTile … title="X">` values, in render order. */
   const gridTitles = (source: string) => {
@@ -591,19 +591,21 @@ describe("T8 — Me's grid is seven live cells", () => {
       .filter((t): t is string => Boolean(t));
   };
 
-  it("renders seven cells in Pato's order", () => {
-    // Pato, MESITA-2134, then MESITA-2169: "move support into settings".
-    // PROFILE LEADS (Pato, 2026-09-08): the header states the identity, so
-    // the first cell is the one that edits it. Support is a group on
-    // Settings, not a cell. Saved came in from the bar beside Reservations
-    // (MESITA-2561: "move the bottom menu to me and reservations to me too").
+  it("renders nine cells in Pato's order", () => {
+    // Pato, MESITA-2562: Profile Instagram / Class Plan / Notifications
+    // Reservations / Favorites Connector / Settings. PROFILE LEADS (Pato,
+    // 2026-09-08): the header states the identity, so the first cell is the
+    // one that edits it. Support is a group on Settings (MESITA-2169).
+    // Favorites is the Saved tile that came in from the bar (MESITA-2561).
     expect(gridTitles(ME)).toEqual([
       "Profile",
       "Instagram",
-      "Saved",
-      "Reservations",
+      "Class",
       "Plan",
       "Notifications",
+      "Reservations",
+      "Favorites",
+      "Connector",
       "Settings",
     ]);
   });
@@ -631,12 +633,12 @@ describe("T8 — Me's grid is seven live cells", () => {
     expect(gridTitles(ME)).not.toContain("Support");
   });
 
-  it("rows are pairs but the Settings tail; nothing spans", () => {
-    // Four `DestGrid`s: three pairs, then Settings alone in the left cell
-    // (MESITA-2561 made the count odd). Counting grids and spans SEPARATELY
-    // on purpose: a cells-per-grid ratio stays true of any row width.
-    expect([...ME.matchAll(/<DestGrid>/g)]).toHaveLength(4);
-    expect([...ME.matchAll(/<DestTile\b[\s\S]*?\/>/g)]).toHaveLength(7);
+  it("rows are pairs, Settings alone last; nothing spans", () => {
+    // Five `DestGrid`s: four pairs, then Settings in the left half of the
+    // last row (MESITA-2562). Counting grids and spans SEPARATELY on
+    // purpose: a cells-per-grid ratio stays true of any row width.
+    expect([...ME.matchAll(/<DestGrid>/g)]).toHaveLength(5);
+    expect([...ME.matchAll(/<DestTile\b[\s\S]*?\/>/g)]).toHaveLength(9);
     expect([...ME.matchAll(/^\s*full$/gm)]).toHaveLength(0);
     expect(ME).not.toMatch(/<DestGrid cols=/);
   });
