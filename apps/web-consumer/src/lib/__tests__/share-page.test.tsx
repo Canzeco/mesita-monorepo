@@ -69,18 +69,26 @@ describe("the Share page", () => {
     );
   });
 
-  // The bug that made this a page: one tap showed "Link copied" AND
-  // "Couldn't share Mesita". Each tap has one outcome now.
-  it("never falls from the share sheet through to the clipboard", () => {
+  // Every button wears its channel's own icon (MESITA-2581: "add the share
+  // icons and all that").
+  it("draws each channel's icon in its own circle", () => {
+    const icons = [...html.matchAll(/data-share-icon="(\w+)"/g)].map(
+      (m) => m[1],
+    );
+    expect(icons).toEqual(["sms", "instagram", "whatsapp", "other"]);
+    expect(html).toContain("bg-[#25D366]");
+    expect(html).toContain("bg-[#34C759]");
+  });
+
+  // Other goes through the one share helper, so a sheet that fails copies
+  // (one toast) instead of ending on an error (MESITA-2581; the outcomes are
+  // pinned in share-place.test.ts and share-cards.test.tsx).
+  it("sends Other through shareOrCopy, not a bare navigator.share", () => {
     const src = readFileSync(
       join(__dirname, "../../components/consumer/share/SharePage.tsx"),
       "utf8",
     );
-    const sheet = src.slice(
-      src.indexOf("async function openShareSheet"),
-      src.indexOf("export function SharePage"),
-    );
-    expect(sheet).not.toContain("copyToClipboard");
-    expect(sheet).not.toContain("copyMessage");
+    expect(src).toContain("shareOrCopy(");
+    expect(src).not.toContain("navigator.share(");
   });
 });

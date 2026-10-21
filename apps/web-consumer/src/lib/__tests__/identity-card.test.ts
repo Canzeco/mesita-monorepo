@@ -62,12 +62,13 @@ describe("the identity card", () => {
   });
 
   // Pato, MESITA-2574: "the header must be white and smaller shorter".
-  it("Me's header is a short white card on the tiles' margins, no band", () => {
-    // MESITA-2577: the tiles' material, inset by the grid's own px-4.
-    expect(BAR).toContain('className="relative shrink-0 px-4 pt-4"');
-    expect(BAR).toContain(
-      'className="border-border bg-card shadow-rest relative flex flex-col items-center rounded-2xl border p-3.5"',
-    );
+  it("Me's header is a short full-width white app bar on the tiles' edge", () => {
+    // MESITA-2582: an app bar, not a card (MESITA-2577's inset card read as
+    // one more tile); content on the grid's own px-4.
+    expect(BAR).toContain('className="border-border bg-card relative shrink-0 border-b"');
+    expect(BAR).toContain('className="relative flex flex-col items-center px-4 py-3"');
+    expect(BAR).not.toContain("rounded-2xl");
+    expect(BAR).not.toContain("shadow-rest");
     expect(read("app", "(shell)", "me", "ProfileClient.tsx")).toContain(
       "overflow-y-auto px-4 pt-3 pb-8",
     );

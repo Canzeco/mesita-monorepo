@@ -1,16 +1,12 @@
 "use client";
 
-import { useRef, useState, useSyncExternalStore } from "react";
-import {
-  Ellipsis,
-  MessageCircle,
-  MessageSquare,
-  type LucideIcon,
-} from "lucide-react";
-
+import { useRef, useState, type MouseEvent } from "react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { SectionEyebrow } from "@/components/consumer/me/settings-rows";
-import { Instagram } from "@/components/shared/instagram-icon";
+import {
+  CHANNEL_ICONS,
+  type ShareChannel,
+} from "@/components/consumer/share/channel-icons";
 import {
   APP_SHARE_TEXT,
   APP_SHARE_URL,
@@ -20,7 +16,7 @@ import {
   shareBody,
   shareLinks,
 } from "@/lib/share-app";
-import { canShareNatively, copyToClipboard } from "@/lib/share-place";
+import { copyToClipboard, shareOrCopy } from "@/lib/share-place";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
@@ -38,15 +34,9 @@ import { cn } from "@/lib/utils";
 //
 // THE CARD IN VIEW IS THE ONE THAT TRAVELS: its joke, then the link. No
 // image is sent. ONE OUTCOME PER TAP, ONE TOAST AT MOST: closing the phone's
-// sheet is a decision (AbortError, silent), and nothing falls through to a
-// second action. The link carries nothing about the guest (share-app.ts).
-
-const noop = () => () => {};
-
-/** The phone's share sheet exists. False on the server and on desktop. */
-function useCanShare(): boolean {
-  return useSyncExternalStore(noop, canShareNatively, () => false);
-}
+// sheet is a decision (AbortError, silent); a sheet that is missing or will
+// not open copies instead, and says so (shareOrCopy, MESITA-2581). The link
+// carries nothing about the guest (share-app.ts).
 
 const LINK_LABEL = APP_SHARE_URL.replace(/^https:\/\//, "").replace(/\/$/, "");
 
@@ -79,24 +69,29 @@ function JokeCard({ joke, index }: { joke: string; index: number }) {
 }
 
 function SendButton({
-  Icon,
   label,
   href,
   onClick,
   data,
 }: {
-  Icon: LucideIcon;
   label: string;
   href?: string;
-  onClick?: () => void;
-  data: string;
+  onClick?: (event: MouseEvent<HTMLElement>) => void;
+  data: ShareChannel;
 }) {
+  const { tint, icon } = CHANNEL_ICONS[data];
   const className =
     "group flex flex-col items-center gap-1.5 text-xs font-semibold";
   const body = (
     <>
-      <span className="bg-card group-hover:bg-muted flex h-14 w-14 items-center justify-center rounded-full shadow-sm ring-1 ring-black/5 transition">
-        <Icon className="h-6 w-6" aria-hidden />
+      <span
+        className={cn(
+          "flex h-14 w-14 items-center justify-center rounded-full shadow-sm transition group-hover:opacity-90 group-active:scale-95",
+          tint,
+        )}
+        data-share-icon={data}
+      >
+        {icon}
       </span>
       {label}
     </>
@@ -130,31 +125,38 @@ function SendButton({
   );
 }
 
-/** Instagram: the button's link opens the inbox; this copies what to paste. */
-async function copyForInstagram(joke: string) {
-  if (await copyToClipboard(shareBody(joke)))
-    toast.success("Message copied: paste it in a chat");
-  else toast.error("Couldn't copy the message");
+/** Opens an outside link in a new tab, or this one where popups are blocked. */
+function openOutside(url: string) {
+  const tab = window.open(url, "_blank");
+  if (tab) tab.opener = null;
+  else window.location.assign(url);
 }
 
-/** Other, where there is no share sheet (desktop): copy, paste anywhere. */
-async function copyMessage(joke: string) {
+/**
+ * Instagram cannot be prefilled from the web, so: copy the joke and link
+ * FIRST (while this page still has focus — a tab opened first makes Chrome
+ * refuse the write), say so, then open the inbox to paste into a chat.
+ */
+async function sendToInstagram(joke: string) {
   if (await copyToClipboard(shareBody(joke)))
-    toast.success("Message and link copied");
-  else toast.error("Couldn't copy the message");
+    toast.success("Copied: paste it in an Instagram chat");
+  else toast.error("Couldn't copy the message: paste it yourself");
+  openOutside(INSTAGRAM_DM_URL);
 }
 
-async function openShareSheet(joke: string) {
-  try {
-    await navigator.share({ title: "Mesita", text: joke, url: APP_SHARE_URL });
-  } catch (err) {
-    if (err instanceof DOMException && err.name === "AbortError") return;
-    toast.error("Couldn't open the share sheet");
-  }
+/** Other: the phone's share sheet, or a copy where there is none. */
+function sendElsewhere(joke: string) {
+  return shareOrCopy(
+    { title: "Mesita", text: joke, url: APP_SHARE_URL },
+    {
+      text: shareBody(joke),
+      copied: "Message and link copied",
+      failed: "Couldn't copy the message",
+    },
+  );
 }
 
 export function SharePage() {
-  const canShare = useCanShare();
   const [index, setIndex] = useState(0);
   const rowRef = useRef<HTMLDivElement>(null);
   const joke = SHARE_JOKES[index];
@@ -228,31 +230,20 @@ export function SharePage() {
       <div className="mt-6 flex flex-col gap-3">
         <SectionEyebrow>Send it</SectionEyebrow>
         <div className="grid grid-cols-4 gap-2">
+          <SendButton label="SMS" href={links.sms} data="sms" />
           <SendButton
-            Icon={MessageSquare}
-            label="SMS"
-            href={links.sms}
-            data="sms"
-          />
-          <SendButton
-            Icon={Instagram}
             label="Instagram"
             href={INSTAGRAM_DM_URL}
-            onClick={() => void copyForInstagram(joke)}
+            onClick={(event) => {
+              event.preventDefault();
+              void sendToInstagram(joke);
+            }}
             data="instagram"
           />
+          <SendButton label="WhatsApp" href={links.whatsapp} data="whatsapp" />
           <SendButton
-            Icon={MessageCircle}
-            label="WhatsApp"
-            href={links.whatsapp}
-            data="whatsapp"
-          />
-          <SendButton
-            Icon={Ellipsis}
             label="Other"
-            onClick={() =>
-              void (canShare ? openShareSheet(joke) : copyMessage(joke))
-            }
+            onClick={() => void sendElsewhere(joke)}
             data="other"
           />
         </div>
