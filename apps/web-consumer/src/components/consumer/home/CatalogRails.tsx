@@ -368,16 +368,15 @@ export function CatalogRails() {
   // chosen row. The line runs 16px past each end of the word, rounded (Pato,
   // MESITA-2533: "maybe a larger line, but … should not be at the bottom and
   // should neber be 100% of the width"). It replaced the left category column (MESITA-2367).
-  // The strip is its OWN grey, halfway between the hairline (`--border`) and
-  // the column (`--muted`): a bit darker than the lateral menu, under the
-  // white header (Pato, MESITA-2530: "maybe that bar darker, just a bit like
-  // a different white/grat from the laterl menu bar"; MESITA-2531: "the
-  // mesita header white and the place and social a bit darker").
+  // The strip is WHITE like the header, one light top block over the tiles,
+  // its hairline the only line; the word's underline marks the tab (Pato,
+  // MESITA-2537: "making the header white and the second header also light.
+  // and the lateral bark darker"; MESITA-2530/2531 had a grey of its own).
   const tabs = (
     <div
       role="tablist"
       aria-label="Home"
-      className="border-border flex shrink-0 border-b bg-[color-mix(in_oklch,var(--border),var(--muted))]"
+      className="border-border bg-card flex shrink-0 border-b"
       data-home-tabs
     >
       {HOME_TABS.map((t) => {
@@ -454,7 +453,7 @@ export function CatalogRails() {
   };
   const categories = (
     <nav
-      className="bg-muted flex w-1/4 shrink-0 flex-col"
+      className="bg-border flex w-1/4 shrink-0 flex-col"
       aria-label="Places"
       data-places-categories
     >

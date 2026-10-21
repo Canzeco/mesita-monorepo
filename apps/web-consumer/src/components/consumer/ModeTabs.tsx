@@ -7,12 +7,12 @@
 //
 // One 52px row, 16px sides, the name on the left, the location on the right
 // (LocationPicker; MESITA-2405 made it the header's only control). WHITE,
-// the name in ink and the box in the quiet grey, no hairline; the darker
-// thing is the Places | Social strip under it (Pato, MESITA-2531: "the
-// mesita header white and the place and social a bit darker"). MESITA-2529
-// tried a stone header and was sent back; before that ink over white tabs
-// (MESITA-2524) and white with a hairline (MESITA-2409, MESITA-2480);
-// MESITA-2476's brand pink was sent back.
+// the name in ink and the box in the quiet grey, no hairline, and the
+// Places | Social strip under it is white too: one light top block, and the
+// darker thing is the family column (Pato, MESITA-2537: "making the header
+// white and the second header also light. and the lateral bark darker").
+// MESITA-2531 had a darker strip, MESITA-2529 a stone header, MESITA-2524
+// ink over white tabs; MESITA-2476's brand pink was sent back.
 // No logo for now (MESITA-2480, Pato: "just write mesita with a slightly
 // different font that make it look like a logo … dont create logos yet"):
 // the word "Mesita" in Outfit, a geometric sans with a one-storey a,
@@ -30,7 +30,7 @@ import { useSavedLocationBackfill } from "@/lib/use-saved-location-backfill";
 
 const wordmarkFont = Outfit({ subsets: ["latin"], weight: "700" });
 
-/** The band: white, sticky, over the darker grey tab strip (MESITA-2531). */
+/** The band: white, sticky, over the white tab strip (MESITA-2537). */
 export const BRAND_HEADER_CLASS =
   "bg-card text-foreground sticky top-0 z-20 shrink-0";
 
