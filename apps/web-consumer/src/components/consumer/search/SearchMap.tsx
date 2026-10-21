@@ -164,7 +164,9 @@ export function SearchMap({
   }
 
   return (
-    <div className="absolute inset-0">
+    // A size container, so the search ring can read the map's height
+    // (cqh) as well as its width (MESITA-2511).
+    <div className="[container-type:size] absolute inset-0">
       <APIProvider apiKey={apiKey} libraries={["places"]}>
         <SearchMapCanvas
           places={places}
@@ -216,14 +218,22 @@ export function mapFingerIsDown(): boolean {
   return fingerOnMap;
 }
 
+/** The search ring's diameter: twice the cross's distance to the nearest
+ *  edge of the map — the full width, or twice the gap to the nearer of top
+ *  and bottom, whichever is smaller (MESITA-2511), the server's screen
+ *  radius on screen. Container units of the map's box. */
+export const SEARCH_RING_SIZE = `min(100cqw, ${
+  Math.round(2 * Math.min(SIGHT_Y, 1 - SIGHT_Y) * 1000) / 10
+}cqh)`;
+
 /** Screen-fixed sight SIGHT_Y down the canvas (45%; MESITA-2448,
  *  MESITA-2505) — the catalog fetch point: the plus, its dot, and THE
  *  SEARCH RING (Pato, MESITA-2508: "keep the circle, but make it doted …
  *  and move it realative to the cruz … it must feel more dynamic"). The ring
- *  is the circle the next load searches — diameter = the map's width, the
- *  server's screen radius (MESITA-2507) — dashed, riding the cross while the
- *  guest pans; the map outside it is shaded a touch, and it pulses while a
- *  load is in flight. */
+ *  is the circle the next load searches — the server's screen radius, the
+ *  cross's distance to the nearest edge, so it always fits on the map
+ *  (MESITA-2511) — dashed, riding the cross while the guest pans; the map
+ *  outside it is shaded a touch, and it pulses while a load is in flight. */
 function SearchMapReticle({ searching }: { searching: boolean }) {
   return (
     <div
@@ -234,9 +244,10 @@ function SearchMapReticle({ searching }: { searching: boolean }) {
     >
       <div
         className={cn(
-          "border-foreground/45 absolute top-1/2 left-1/2 aspect-square w-full -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] border-dashed shadow-[0_0_0_200vmax_rgb(0_0_0/0.04)]",
+          "border-foreground/45 absolute top-1/2 left-1/2 aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] border-dashed shadow-[0_0_0_200vmax_rgb(0_0_0/0.04)]",
           searching && "animate-pulse",
         )}
+        style={{ width: SEARCH_RING_SIZE }}
         data-search-ring
       />
       <div className="relative h-3.5 w-3.5">
