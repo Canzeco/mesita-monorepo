@@ -28,7 +28,7 @@ export function ProfileSummary({
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
-  /** Social v1's line (MESITA-2442): who saved, saw or went, where
+  /** Social v1's line (MESITA-2442): who saved or saw, where
    *  Instagram shows "Followed by". */
   social?: React.ReactNode;
 }) {

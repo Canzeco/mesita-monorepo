@@ -1,11 +1,13 @@
 // Supabase Edge Function — consumer-web-track-activity
 //
-// Social v1 (MESITA-2442): records one of the three events on a Mesita place.
+// Social v1 (MESITA-2442): records one of the two events on a Mesita place.
+// `went` ("I went") is refused for now (MESITA-2567): Social is liked and
+// viewed only.
 //
-// Body: { kind: "saved" | "viewed" | "went", place_id: uuid, on?: boolean,
+// Body: { kind: "saved" | "viewed", place_id: uuid, on?: boolean,
 //         quiet?: boolean }
-//   saved / went  on: true (default) upserts the row, on: false deletes it
-//                 (unsave, take back "I went").
+//   saved         on: true (default) upserts the row, on: false deletes it
+//                 (unsave).
 //   viewed        always an upsert; a re-open moves created_at forward so the
 //                 feed shows the latest look, once per member × place.
 //   quiet         saved only: a backfilled pre-Social save (the first sync in a
@@ -40,7 +42,7 @@ Deno.serve(async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const { kind, place_id: placeId } = bodyRes.body;
   if (!isActivityKind(kind)) {
-    return json({ ok: false, error: "kind must be saved, viewed or went" }, 400);
+    return json({ ok: false, error: "kind must be saved or viewed" }, 400);
   }
   if (!isMesitaPlaceId(placeId)) {
     return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);

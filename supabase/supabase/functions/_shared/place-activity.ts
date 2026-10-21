@@ -1,13 +1,16 @@
-// Social v1 (MESITA-2442): the three events and how they are read back.
+// Social v1 (MESITA-2442): the two events and how they are read back.
 //
-// Activity, not reviews (Pato, 2026-10-19): saved · viewed · went, one row per
-// consumer × place × kind in public.place_activity. Who may appear (Instagram
+// Activity, not reviews (Pato, 2026-10-19): saved · viewed, one row per
+// consumer × place × kind in public.place_activity. There is no `went` for now
+// (Pato, MESITA-2567: "there is no visited. there is only viewed and liked"):
+// it is refused on write and dropped on read; the table's CHECK still allows
+// it, so it can come back without a migration. Who may appear (Instagram
 // connected + Show my activity + not deleted) is decided in SQL
 // (place_activity_visible); this module only shapes what those readers return:
 // the feed's events (one row each, newest first, near the guest) and the
 // place profile's line.
 
-export const ACTIVITY_KINDS = ["saved", "viewed", "went"] as const;
+export const ACTIVITY_KINDS = ["saved", "viewed"] as const;
 export type ActivityKind = typeof ACTIVITY_KINDS[number];
 
 export function isActivityKind(v: unknown): v is ActivityKind {

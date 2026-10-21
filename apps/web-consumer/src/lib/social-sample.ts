@@ -51,13 +51,13 @@ const SCRIPT: readonly {
   minutesAgo: number;
 }[] = [
   { member: 0, kind: "saved", minutesAgo: 6 },
-  { member: 1, kind: "went", minutesAgo: 24 },
+  { member: 1, kind: "viewed", minutesAgo: 24 },
   { member: 2, kind: "viewed", minutesAgo: 51 },
   { member: 3, kind: "saved", minutesAgo: 95 },
-  { member: 4, kind: "went", minutesAgo: 180 },
+  { member: 4, kind: "saved", minutesAgo: 180 },
   { member: 5, kind: "viewed", minutesAgo: 320 },
   { member: 6, kind: "saved", minutesAgo: 600 },
-  { member: 7, kind: "went", minutesAgo: 1500 },
+  { member: 7, kind: "viewed", minutesAgo: 1500 },
 ];
 
 function person(m: Member): ActivityPerson {

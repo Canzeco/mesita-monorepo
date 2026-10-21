@@ -11,9 +11,9 @@
 //   (`map.radiusKm`) around the guest's point (no point, no circle). It
 //   reads the FEED_ROWS newest events and returns at most FEED_ITEMS.
 // Body: { scope: "place", place_id }
-//   → { line, people, total, me: { saved, went } }
+//   → { line, people, total, me: { saved } }
 //   The place profile's line under the title ("Perdón and 3 others saw this"),
-//   up to five faces, and the guest's own saved / went for the action row.
+//   up to five faces, and the guest's own saved for the action row.
 // Body: { scope: "saved" }
 //   → { ids, places }
 //   The guest's saves, newest first: every id (the browser cache adopts them)
@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
       line: socialLine(people[0] ?? null, total),
       people,
       total,
-      me: { saved: mine.has("saved"), went: mine.has("went") },
+      me: { saved: mine.has("saved") },
     });
   }
 

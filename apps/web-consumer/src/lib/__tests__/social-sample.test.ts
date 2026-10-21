@@ -32,7 +32,7 @@ describe("sampleActivity", () => {
     const times = rows.map((r) => Date.parse(r.at));
     expect([...times].sort((x, y) => y - x)).toEqual(times);
     expect(new Set(rows.map((r) => r.kind))).toEqual(
-      new Set(["saved", "viewed", "went"]),
+      new Set(["saved", "viewed"]),
     );
   });
 

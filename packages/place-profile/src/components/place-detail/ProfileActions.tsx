@@ -2,7 +2,6 @@
 
 import {
   CalendarCheck,
-  CircleCheck,
   Heart,
   Phone,
   QrCode,
@@ -17,9 +16,8 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 
 // The profile's five buttons, Instagram-profile style (Pato, MESITA-2321):
 //   Save · Contact · Share
-//   Reserve · I went · Pay (Soon)
-// "I went" is Social v1's third event (MESITA-2442); a Google-only place
-// has no onWent and so no button (MESITA-2460), and the row is two wide.
+//   Reserve · Pay (Soon)
+// There is no "I went" (Pato, MESITA-2567: Social is liked and viewed only).
 // No pinned bottom bar any more. Gray buttons like Instagram's Follow /
 // Message, 44px tall (the touch-target minimum, MESITA-2324); Reserve is the
 // one dark button. Live behavior (bookmark, contact
@@ -44,8 +42,6 @@ export function ProfileActions({
   const onSave = actions?.onSave;
   const onContact = actions?.onContact;
   const onShare = actions?.onShare;
-  const onWent = actions?.onWent;
-  const went = actions?.went === true;
   const onReserve = actions?.onReserve;
   const reserveLive = isReserveActionEnabled(place) && Boolean(onReserve);
 
@@ -99,9 +95,7 @@ export function ProfileActions({
           Share
         </button>
       </div>
-      <div
-        className={cn("grid gap-2", onWent ? "grid-cols-3" : "grid-cols-2")}
-      >
+      <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
           {...(reserveLive
@@ -113,21 +107,6 @@ export function ProfileActions({
           <CalendarCheck className="h-4 w-4 shrink-0" strokeWidth={2.25} />
           Reserve
         </button>
-        {onWent ? (
-          <button
-            type="button"
-            onClick={onWent}
-            aria-pressed={went}
-            aria-label={went ? "Take back I went" : "I went here"}
-            className={cn(
-              grayBtn,
-              went && "bg-foreground text-paper hover:bg-foreground",
-            )}
-          >
-            <CircleCheck className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-            I went
-          </button>
-        ) : null}
         <button
           type="button"
           {...inertButtonProps(false)}
