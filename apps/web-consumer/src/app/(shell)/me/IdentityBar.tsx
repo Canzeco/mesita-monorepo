@@ -7,7 +7,7 @@ import { IdentityCard } from "@/components/consumer/IdentityCard";
 import { ClassSheet } from "@/components/consumer/me/ClassSheet";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { instagramWithFollowers } from "@/lib/consumer-identity";
-import { toGuestClass, toGuestPlan } from "@/lib/guest-standing";
+import { toGuestClass } from "@/lib/guest-standing";
 
 // ─── The identity header (MESITA-1079 v2 · -1619 · -1633 ·
 //     -1636 · -1640 · -1646 · -1649 · -1650 · -1652 · -2040 · -2087) ───────
@@ -67,9 +67,7 @@ export function IdentityBar({
     profile?.full_name ||
     "Mesita member";
   const avatarUrl = profile?.avatar_url ?? null;
-  const standing = profile
-    ? { guestClass: toGuestClass(profile.guest_class), plan: toGuestPlan(profile.plan) }
-    : null;
+  const guestClass = profile ? toGuestClass(profile.guest_class) : null;
   const [classOpen, setClassOpen] = useState(false);
 
   return (
@@ -108,21 +106,20 @@ export function IdentityBar({
               ),
               href: CONSUMER_ROUTES.mePages.instagram,
             }}
-            // No profile (the read failed) hides Plan and Class: never a
-            // guessed "Free" or "Regular" (MESITA-2553).
-            standing={standing}
-            // Both are doors on Me (MESITA-2574 brought Plan back).
-            planHref={CONSUMER_ROUTES.mePages.plan}
-            onClassPress={standing ? () => setClassOpen(true) : undefined}
+            // No profile (the read failed) hides Class: never a guessed
+            // "Regular" (MESITA-2553). No Plan on the card (MESITA-2576):
+            // it is a tile on the grid below.
+            guestClass={guestClass}
+            onClassPress={guestClass ? () => setClassOpen(true) : undefined}
           />
         )}
       </div>
 
-      {standing && (
+      {guestClass && (
         <ClassSheet
           open={classOpen}
           onClose={() => setClassOpen(false)}
-          guestClass={standing.guestClass}
+          guestClass={guestClass}
         />
       )}
     </header>
