@@ -11,7 +11,6 @@ const CARD = read("components", "consumer", "IdentityCard.tsx");
 const BAR = read("app", "(shell)", "me", "IdentityBar.tsx");
 const FEED = read("components", "consumer", "home", "SocialFeed.tsx");
 const SETTINGS = read("components", "consumer", "me", "SettingsModal.tsx");
-const PUBLIC = read("components", "consumer", "me", "ShowActivityRow.tsx");
 
 describe("the identity card", () => {
   it("is picture, name and Instagram — never the phone", () => {
@@ -38,10 +37,11 @@ describe("the identity card", () => {
     expect(SETTINGS).toContain("<PhoneRow />");
   });
 
-  it("calls the Social switch Public profile, on the same stored key", () => {
-    expect(PUBLIC).toContain('label="Public profile"');
-    expect(PUBLIC).toContain("show_activity");
-    expect(PUBLIC).not.toContain('label="Show my activity"');
+  // MESITA-2552: connecting Instagram means you show in Social, always.
+  it("has no Public profile switch", () => {
+    expect(SETTINGS).not.toContain("ShowActivityRow");
+    expect(SETTINGS).not.toContain("Public profile");
+    expect(SETTINGS).not.toContain('title="Privacy"');
   });
 
   // MESITA-2548: photo left; name, Instagram, then Diamond and Plan.

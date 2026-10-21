@@ -229,7 +229,6 @@ export type Database = {
           phone: string | null
           plan: string
           sex: string | null
-          show_activity: boolean
         }
         Insert: {
           avatar_url?: string | null
@@ -248,7 +247,6 @@ export type Database = {
           phone?: string | null
           plan?: string
           sex?: string | null
-          show_activity?: boolean
         }
         Update: {
           avatar_url?: string | null
@@ -267,7 +265,6 @@ export type Database = {
           phone?: string | null
           plan?: string
           sex?: string | null
-          show_activity?: boolean
         }
         Relationships: []
       }

@@ -670,9 +670,9 @@ select ok(
   'Social shows only verified Instagram handles'
 );
 
-select col_default_is(
-  'public', 'consumers', 'show_activity', 'true',
-  'consumers.show_activity defaults on (Show my activity)'
+select hasnt_column(
+  'public', 'consumers', 'show_activity',
+  'no Public profile switch: a verified Instagram always shows in Social (MESITA-2552)'
 );
 
 select has_function(
