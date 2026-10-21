@@ -353,6 +353,12 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
     expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Share", "Me"]);
   });
 
+  it("Share wears the paper plane, not the iOS share box (MESITA-2564)", async () => {
+    const html = await renderNav("/search");
+    expect(html).toContain("lucide-send");
+    expect(html).not.toContain("lucide-share");
+  });
+
   it("keeps Wallet, Visit and Order off the bar", async () => {
     const labels = await tabLabels();
     expect(labels).not.toContain("Wallet");
