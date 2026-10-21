@@ -44,21 +44,31 @@ describe("the identity card", () => {
     expect(SETTINGS).not.toContain('title="Privacy"');
   });
 
-  // MESITA-2553: photo left; name, Instagram, then Class and Plan, two
-  // separate facts. Me passes the Class door and hides Plan (MESITA-2559:
-  // "its just for the social"); Social passes no door and shows both.
-  it("gets Class from the profile on Me, as a door, and no Plan chip", () => {
-    expect(CARD).toContain('className="flex w-full items-center gap-4"');
+  // MESITA-2574: photo, name, then one row — Instagram with followers,
+  // Plan, Class. Me passes both doors; Social passes none and shows both.
+  it("gets Plan and Class from the profile on Me, both as doors", () => {
+    expect(CARD).toContain('className="flex w-full items-center gap-3"');
     expect(BAR).toContain("standing={standing}");
+    expect(BAR).toContain("planHref={CONSUMER_ROUTES.mePages.plan}");
     expect(BAR).toContain("onClassPress=");
-    expect(BAR).toContain("showPlan={false}");
     expect(BAR).toContain("<ClassSheet");
   });
 
   it("shows them on Social as plain facts, never doors", () => {
     expect(FEED).toContain("guestClass: toGuestClass(person.guestClass)");
     expect(FEED).not.toContain("onClassPress");
-    expect(FEED).not.toContain("showPlan");
+    expect(FEED).not.toContain("planHref");
+  });
+
+  // Pato, MESITA-2574: "the header must be white and smaller shorter".
+  it("Me's header is white and short: paper, a hairline, a 56px photo, no band", () => {
+    expect(BAR).toContain('className="border-border bg-card relative shrink-0 border-b"');
+    expect(BAR).not.toContain("bg-border h-2.5");
+    expect(BAR).not.toContain("bg-background/95");
+    expect(CARD).toContain("h-14 w-14");
+    expect(CARD).not.toContain("h-20 w-20");
+    // Me's Instagram chip carries the follower count once connected.
+    expect(BAR).toContain("instagramWithFollowers(");
   });
 });
 

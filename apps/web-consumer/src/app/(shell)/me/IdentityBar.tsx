@@ -6,6 +6,7 @@ import type { ConsumerProfile } from "@/lib/api/profile";
 import { IdentityCard } from "@/components/consumer/IdentityCard";
 import { ClassSheet } from "@/components/consumer/me/ClassSheet";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { instagramWithFollowers } from "@/lib/consumer-identity";
 import { toGuestClass, toGuestPlan } from "@/lib/guest-standing";
 
 // ─── The identity header (MESITA-1079 v2 · -1619 · -1633 ·
@@ -16,17 +17,17 @@ import { toGuestClass, toGuestPlan } from "@/lib/guest-standing";
 // the photo, name, insta."
 //
 //   (photo)  name
-//   (photo)  [instagram]
-//   (photo)  [Class ›]             (Plan is Social's, MESITA-2559)
-//   ─────── band ───────
+//   (photo)  [◎ @handle · 1.2K followers ›] [▭ Free ›] [♛ Regular ›]
+//            (MESITA-2574; chips wrap when the row runs out)
+//   ─────── hairline ─────── (white header on the grey page)
 //
 // The card itself is IdentityCard, the same one Social shows for a member
 // (MESITA-2547). NO PHONE: it is private (Pato, MESITA-2547: "that is super
 // private. remove it from there"); it lives in Settings › Your account.
 //
-// ONE FACT IN THE HEADER: Instagram. The header is neutral for every guest,
-// and the ring and the band are plain structure — a frame around the photo
-// and a rule under the header — not a colour that means something.
+// The header is neutral for every guest: white, and the ring and the hairline
+// are plain structure — a frame around the photo and a rule under the
+// header — not a colour that means something.
 //
 // FIXED BY FLEX, NOT BY `sticky`. Me renders `flex h-full flex-col` around a
 // `flex-1 overflow-y-auto px-4` scroller. This bar is a `shrink-0` SIBLING
@@ -75,20 +76,22 @@ export function IdentityBar({
     <header
       aria-label="Your Mesita identity"
       aria-busy={loading || undefined}
-      className="border-border bg-background/95 relative shrink-0 border-b backdrop-blur-xl"
+      // WHITE AND SHORT (Pato, MESITA-2574: "the header must be white and
+      // smaller shorter"): paper on the grey page, a hairline under it, and
+      // no band. It was the page grey over a 10px band.
+      className="border-border bg-card relative shrink-0 border-b"
     >
-      <div className="relative flex flex-col items-center gap-3.5 px-4 py-4">
+      <div className="relative flex flex-col items-center px-4 py-3">
         {loading ? (
           <>
             {/* The skeleton mirrors the DESTINATION (Docs › Design §D): the
-                87px ringed avatar on the left, and the name, Instagram and
-                Class rows beside it (MESITA-2553, MESITA-2559). */}
-            <div className="flex w-full items-center gap-4">
-              <div className="bg-muted h-[87px] w-[87px] shrink-0 animate-pulse rounded-full" />
+                59px ringed photo, the name, and one row of chips
+                (MESITA-2574). */}
+            <div className="flex w-full items-center gap-3">
+              <div className="bg-muted h-[59px] w-[59px] shrink-0 animate-pulse rounded-full" />
               <div className="flex flex-1 flex-col gap-1.5">
-                <div className="bg-muted h-5 w-2/5 animate-pulse rounded-md" />
-                <div className="bg-muted h-8 w-3/5 animate-pulse rounded-full" />
-                <div className="bg-muted h-8 w-1/3 animate-pulse rounded-full" />
+                <div className="bg-muted h-4 w-2/5 animate-pulse rounded-md" />
+                <div className="bg-muted h-7 w-4/5 animate-pulse rounded-full" />
               </div>
             </div>
           </>
@@ -97,23 +100,24 @@ export function IdentityBar({
             name={name}
             avatarUrl={avatarUrl}
             instagram={{
-              label: instagramSummary,
+              // "@pato · 1.2K followers" once connected (MESITA-2574).
+              label: instagramWithFollowers(
+                instagramSummary,
+                profile?.instagram_followers_count,
+                Boolean(profile?.instagram_handle),
+              ),
               href: CONSUMER_ROUTES.mePages.instagram,
             }}
-            // No profile (the read failed) hides the row: never a guessed
-            // "Free" or "Regular" (MESITA-2553).
+            // No profile (the read failed) hides Plan and Class: never a
+            // guessed "Free" or "Regular" (MESITA-2553).
             standing={standing}
+            // Both are doors on Me (MESITA-2574 brought Plan back).
+            planHref={CONSUMER_ROUTES.mePages.plan}
             onClassPress={standing ? () => setClassOpen(true) : undefined}
-            // Plan is a Social fact; the Plan tile below carries it on Me
-            // (Pato, MESITA-2559: "it looks weird. its just for the social").
-            showPlan={false}
           />
         )}
       </div>
 
-      {/* The band — a full-width rule that closes the header. Structure, not
-          a signal; hidden from assistive tech because it says nothing. */}
-      <div className="bg-border h-2.5 w-full" aria-hidden />
       {standing && (
         <ClassSheet
           open={classOpen}

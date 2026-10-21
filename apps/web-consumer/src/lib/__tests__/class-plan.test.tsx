@@ -32,13 +32,13 @@ describe("Class and Plan on the identity card", () => {
         instagram={null}
         standing={standing}
         onClassPress={doors ? () => {} : undefined}
-        showPlan={!doors}
+        planHref={doors ? "/me/plan" : undefined}
       />,
     );
 
-  it("shows Class, then Plan, each named for what it is", () => {
+  it("shows Plan, then Class, each named for what it is (MESITA-2574)", () => {
     const html = card({ guestClass: "vip", plan: "free" });
-    expect(html.indexOf("data-identity-class")).toBeLessThan(html.indexOf("data-identity-plan"));
+    expect(html.indexOf("data-identity-plan")).toBeLessThan(html.indexOf("data-identity-class"));
     expect(html).toContain('aria-label="Class: VIP"');
     expect(html).toContain('aria-label="Plan: Free"');
     expect(html).toContain("lucide-crown");
@@ -52,21 +52,21 @@ describe("Class and Plan on the identity card", () => {
     expect(html).toContain('aria-label="Plan: Premium"');
   });
 
-  it("hides the row when standing is unknown, never a guessed Free", () => {
+  it("hides both chips when standing is unknown, never a guessed Free", () => {
     const html = card(null);
-    expect(html).not.toContain("data-identity-standing");
+    expect(html).not.toContain("data-identity-plan");
+    expect(html).not.toContain("data-identity-class");
     expect(text(html)).not.toMatch(/Free|Regular/);
   });
 
-  it("makes Class a door on Me, and drops Plan there (MESITA-2559)", () => {
+  it("makes both doors on Me — Plan a link, Class a button (MESITA-2574)", () => {
     const facts = card({ guestClass: "vip", plan: "premium" });
     expect(facts).not.toContain("<button");
     expect(facts).not.toContain("href=");
     expect(facts).toContain('aria-label="Plan: Premium"');
     const me = card({ guestClass: "vip", plan: "premium" }, true);
     expect(me).toMatch(/<button[^>]*aria-label="Class: VIP"/);
-    expect(me).not.toContain("data-identity-plan");
-    expect(me).not.toContain("Plan:");
+    expect(me).toMatch(/<a[^>]*href="\/me\/plan"[^>]*aria-label="Plan: Premium"|<a[^>]*aria-label="Plan: Premium"[^>]*href="\/me\/plan"/);
   });
 
   it("reads unknown or retired values as the plain default", () => {
@@ -172,5 +172,17 @@ describe("the Connector page", () => {
     // The header's Back is the only button.
     expect(html.match(/<button\b/g)).toHaveLength(1);
     expect(text(html)).not.toMatch(/Premium|Free|Pro\b/);
+  });
+});
+
+// Me's Instagram chip: "@handle · 1.2K followers" (MESITA-2574), the same
+// rounding Social uses.
+describe("Instagram with followers", () => {
+  it("adds the rounded count only once connected", async () => {
+    const { instagramWithFollowers } = await import("@/lib/consumer-identity");
+    expect(instagramWithFollowers("@pato", 1290, true)).toBe("@pato · 1.2K followers");
+    expect(instagramWithFollowers("@pato", 0, true)).toBe("@pato");
+    expect(instagramWithFollowers("@pato", null, true)).toBe("@pato");
+    expect(instagramWithFollowers("Connect it", 5000, false)).toBe("Connect it");
   });
 });
