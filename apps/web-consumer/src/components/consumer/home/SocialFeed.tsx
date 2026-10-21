@@ -1,8 +1,8 @@
 "use client";
 
 // Home › Social (MESITA-2442): where members go. Activity, not reviews.
-// It draws in Home's right pane when the Social row is chosen (MESITA-2474);
-// the row is its title, so it has no header and no scroller of its own.
+// It is Home's Social tab, full width (MESITA-2474, MESITA-2517); the tab
+// is its title, so it has no header and no scroller of its own.
 //
 // OLD-INSTAGRAM NOTIFICATIONS (Pato, MESITA-2515: "display the instagram
 // profile of the person and the username and the name just as those old

@@ -5,9 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { CatalogRail, Place } from "@/lib/api/places";
 import {
   SAVED_CHIP,
-  PINNED_CHIPS,
-  GROUP_STRIPE,
-  SOCIAL_CHIP,
+  HOME_TABS,
   poolPlaces,
   PLACES_PAGE,
   savedPlaceList,
@@ -17,9 +15,9 @@ import {
   placesChips,
 } from "@/components/consumer/home/CatalogRails";
 
-// Pato (MESITA-2367, MESITA-2383): Places is one location bar over a split —
-// a column of Favorites · Near · Popular · families beside ONE column of the chosen
-// set. The server's rails are unchanged; a row picks which rail shows.
+// Pato (MESITA-2517): under Home's header, two tabs — Places (a chip row
+// over full-width tiles) and Social (the feed). It was a category column
+// beside the tiles (MESITA-2367 to MESITA-2516).
 const src = readFileSync(
   join(__dirname, "../../components/consumer/home/CatalogRails.tsx"),
   "utf8",
@@ -33,43 +31,44 @@ const RAILS: CatalogRail[] = [
   { key: "breakfast", label: "Breakfast", emoji: "🥐", source: "family", places: [place("m2")] },
 ];
 
-describe("the Places column (MESITA-2383)", () => {
-  // Social, a rule, Favorites · Near · Popular pinned, a rule, then the
-  // families (MESITA-2426), which
-  // alone scroll (MESITA-2411).
-  it("is Saved, Social, All, then every guest family — no source rows (MESITA-2384, MESITA-2490, MESITA-2516)", () => {
+describe("Home's tabs and the Places chips (MESITA-2517)", () => {
+  // Pato: "header (Mesita location as it is) then another header (Places.
+  // Social) … If places, show the horizontal catalog, is social, show the
+  // social feed".
+  it("is two tabs, Places then Social, Places first", () => {
+    expect(HOME_TABS.map((t) => t.label)).toEqual(["Places", "Social"]);
+    expect(src).toContain('const [tab, setTab] = useState<HomeTab>("places");');
+    expect(src).toContain('role="tablist"');
+    expect(src).toContain("data-home-tabs");
+    // The chosen tab: bold over an ink underline.
+    expect(src).toContain('on ? "text-foreground font-semibold" : "text-muted-foreground"');
+    expect(src).toContain("bg-foreground absolute inset-x-0 bottom-0 h-0.5");
+    expect(src).toContain('if (tab === "social") return shell(<SocialFeed />);');
+  });
+
+  it("Places is one horizontal chip row — All, Saved, then every family — no column, no source rows", () => {
     const labels = placesChips().map((c) => c.label);
-    expect(labels.slice(0, 3)).toEqual(["Saved", "Social", "All"]);
-    expect(labels).not.toContain("Nearby");
-    expect(labels).not.toContain("Popular");
+    expect(labels.slice(0, 2)).toEqual(["All", "Saved"]);
+    expect(placesChips().map((c) => c.key).slice(0, 2)).toEqual([ALL_CHIP, SAVED_CHIP]);
+    for (const gone of ["Social", "Nearby", "Popular", "Undefined"]) {
+      expect(labels, gone).not.toContain(gone);
+    }
     expect(labels).toContain("Coffee");
     expect(labels).toContain("Breakfast");
-    expect(labels).not.toContain("Undefined");
-    expect(placesChips().map((c) => c.key).slice(0, 3)).toEqual([SAVED_CHIP, SOCIAL_CHIP, ALL_CHIP]);
-    expect(PINNED_CHIPS).toBe(3);
-    // Each group has its clay stripe; the rules are gone (MESITA-2484).
-    // Two groups since MESITA-2492: the pinned four │ the families.
-    expect(src).toContain("chips.slice(0, PINNED_CHIPS).map(categoryRow)");
-    expect(src).not.toContain("data-places-rule");
-    for (const g of ["pinned", "families"]) {
-      expect(src).toContain(`data-places-group="${g}"`);
-      expect(src).toContain(`GROUP_STRIPE.${g}`);
-      expect(GROUP_STRIPE[g as keyof typeof GROUP_STRIPE]).toMatch(/^shadow-\[inset_3px_0_0_oklch\(/);
-    }
-    expect(src).toContain("chips.slice(PINNED_CHIPS).map(categoryRow)");
-    expect(Object.keys(GROUP_STRIPE)).toEqual(["pinned", "families"]);
-    expect(src).toContain('"scrollbar-hide mt-2 min-h-0 flex-1 overflow-y-auto overscroll-y-contain"');
-    // Social's row reads like every row: no Soon tag, no muted label
-    // (MESITA-2418); its pane still says Soon.
-    expect(placesChips()[1]).toEqual({ key: SOCIAL_CHIP, label: "Social" });
-    // Every row's mark is a line icon, never an emoji (MESITA-2478).
-    expect(src).toContain("name={c.key}");
-    expect(src).toContain("strokeWidth={chip === c.key ? 2.25 : 1.75}");
-    expect(src).not.toMatch(/[\p{Emoji_Presentation}\uFE0F]/u);
-    expect(src).not.toContain("c.soon");
-    expect(src).not.toContain("data-places-soon");
     expect(placesChips().map((c) => c.key)).not.toContain(GOOGLE_RAIL_KEY);
     expect(placesChips().map((c) => c.key)).not.toContain(MESITA_RAIL_KEY);
+    // Search's chips (MESITA-2502): the same classes, one row that scrolls sideways.
+    expect(src).toContain("className={cn(CHIP, on ? CHIP_ON : CHIP_OFF)}");
+    expect(src).toContain("scrollbar-hide flex shrink-0 items-center gap-2 overflow-x-auto");
+    expect(src).toContain('{tab === "places" ? chipRow : null}');
+    // The column and its stripes are gone.
+    for (const gone of ["w-1/4", "w-3/4", "GROUP_STRIPE", "PINNED_CHIPS", "SOCIAL_CHIP", "categoryRow", "data-places-categories"]) {
+      expect(src, gone).not.toContain(gone);
+    }
+    // Every chip's mark is a line icon, never an emoji (MESITA-2478).
+    expect(src).toContain("name={c.key}");
+    expect(src).toContain("strokeWidth={on ? 2.25 : 1.75}");
+    expect(src).not.toMatch(/[\p{Emoji_Presentation}\uFE0F]/u);
   });
 
   it("Near and Popular are the server's pool in its order; a family filters it on area.familyKeys", () => {
@@ -133,20 +132,11 @@ describe("the Places column (MESITA-2383)", () => {
     expect(savedPlaceList(new Set(["a", "gone", "b"]), previews).map((p) => p.id)).toEqual(["b", "a"]);
   });
 
-  it("holds no location rows: the column is categories only", () => {
-    const nav = src.slice(src.indexOf("const categories = ("), src.indexOf("const shell = ("));
-    expect(nav).toContain('aria-label="Families"');
-    expect(nav).not.toContain("savedLocations");
-    expect(nav).not.toContain("data-places-add-location");
+  it("holds no location rows and opens on All", () => {
+    expect(src).not.toContain("savedLocations");
+    expect(src).not.toContain("data-places-add-location");
     expect(src).not.toContain("nearbyZones");
-  });
-
-  it("is a left column, a quarter wide (MESITA-2385), and opens on All (MESITA-2516)", () => {
-    expect(src).toContain("bg-muted flex w-1/4 shrink-0 flex-col");
     expect(src).toContain("useState<string>(ALL_CHIP)");
-    // The chosen row: white, bold, an ink bar on its left edge.
-    expect(src).toContain('const ROW_ON = "bg-card text-foreground font-semibold";');
-    expect(src).toContain("bg-foreground absolute inset-y-0 left-0 w-[3px]");
   });
 });
 
@@ -174,9 +164,7 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
     const tokens = (picker.match(/HOME_LOCATION_CLASS =\s*"([^"]*)"/)?.[1] ?? "").split(/\s+/);
     for (const t of ["h-9", "rounded-xl", "border", "bg-muted", "text-foreground"])
       expect(tokens, t).toContain(t);
-    // The side rail's grey (MESITA-2485): the box and the rail match.
-    const rails = readFileSync(join(__dirname, "../../components/consumer/home/CatalogRails.tsx"), "utf8");
-    expect(rails).toContain('className="bg-muted flex w-1/4 shrink-0 flex-col"');
+    // The chips' grey (MESITA-2485, MESITA-2517): the box matches them.
     expect(tokens).not.toContain("bg-border");
     const tabs = readFileSync(join(__dirname, "../../components/consumer/ModeTabs.tsx"), "utf8");
     expect(tabs).toContain('className="flex h-[52px] items-center gap-3 px-4" data-home-header');
@@ -207,9 +195,9 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
 });
 
 describe("the Places grid (MESITA-2366)", () => {
-  it("is the right three quarters, one square tile per row with 6px room around, scrolling on its own", () => {
+  it("is full width, one square tile per row with 6px room around, scrolling on its own", () => {
     expect(src).toContain('const PLACES_LIST = "grid grid-cols-1 content-start gap-1.5 px-1.5 pt-1.5";');
-    expect(src).toContain("w-3/4 flex-col overflow-y-auto");
+    expect(src).toContain("bg-card scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain");
     expect(src).not.toContain("writing-mode");
     expect(src).not.toContain("data-band");
   });

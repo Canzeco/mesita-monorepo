@@ -460,7 +460,7 @@ describe("T5b — Home's header and Search's header", () => {
     expect(places).not.toContain("HomeSoon");
     const rails = readFileSync(join(COMPONENTS, "home", "CatalogRails.tsx"), "utf8");
     expect(rails).not.toContain("<HomeSoon");
-    expect(rails).toContain("if (chip === SOCIAL_CHIP) return shell(<SocialFeed />);");
+    expect(rails).toContain('if (tab === "social") return shell(<SocialFeed />);');
     expect(rails).not.toContain("router.push");
     expect(new Set(allPages().map(pageUrl))).not.toContain("/discover/social");
     const soon = readFileSync(join(COMPONENTS, "home", "HomeSoon.tsx"), "utf8");
