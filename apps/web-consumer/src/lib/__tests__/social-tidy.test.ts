@@ -56,7 +56,9 @@ describe("the row", () => {
     expect(src).toContain("export const FRESH_MS = 4_000;");
     expect(src).toContain('fresh && "bg-muted"');
     // The first load glows nothing; the sample never glows.
-    expect(src).toContain("const arrived = seen ? keys.filter((k) => !seen.has(k)) : [];");
+    expect(src).toContain(
+      "const arrived = seen ? keys.filter((k) => !seen.has(k)) : [];",
+    );
     expect(src).toContain("fresh={!feed.sample && fresh.has(eventKey(item))}");
   });
 
@@ -65,10 +67,14 @@ describe("the row", () => {
     expect(src).toContain("data-social-new-pill");
     expect(src).toContain("{pendingNew} new");
     expect(src).toContain("if (arrived.length > 0 && !atTopRef.current) {");
-    expect(src).toContain('scroller()?.scrollTo({ top: 0, behavior: "smooth" });');
+    expect(src).toContain(
+      'scroller()?.scrollTo({ top: 0, behavior: "smooth" });',
+    );
     expect(src).toContain("if (top) setPendingNew(0);");
     expect(src).toContain("export const PULL_TRIGGER = 56;");
-    expect(src).toContain("if (pull >= PULL_TRIGGER && !refreshing) refresh();");
+    expect(src).toContain(
+      "if (pull >= PULL_TRIGGER && !refreshing) refresh();",
+    );
     expect(src).toContain("data-social-pull");
     expect(src).toContain("markSocialSeen(items[0]?.at);");
   });
@@ -84,7 +90,9 @@ describe("the row", () => {
     expect(src).not.toContain("rounded-2xl");
     expect(src).not.toContain("mx-3");
     // No pill: the stock-button look is gone (MESITA-2543).
-    expect(src).not.toContain('<div className="flex justify-center pt-3 pb-2">');
+    expect(src).not.toContain(
+      '<div className="flex justify-center pt-3 pb-2">',
+    );
     expect(src).not.toContain("rounded-full border px-4");
     expect(src).not.toContain('aria-label="Refresh"');
   });
@@ -92,15 +100,21 @@ describe("the row", () => {
   // MESITA-2542: the person or the place, never both.
   it("splits a row: the person opens their sheet here, the place opens its profile", () => {
     // No link wraps the whole row any more.
-    expect(src).toContain('data-social-row\n');
+    expect(src).toContain("data-social-row\n");
     expect(src).not.toMatch(/<Link[^>]*\n\s*[^>]*data-social-row/);
     expect(src).toContain("onClick={() => onPerson(item)}");
     expect(src).toContain("data-social-person");
     expect(src).toContain("data-social-place");
-    expect(src).toContain("<LocalSheet open={open} onClose={onClose}");
+    // A centred floating card that appears at once (MESITA-2546), never a
+    // bottom sheet.
+    expect(src).toMatch(/<LocalDialog[\s\S]{0,120}instant\s*>/);
+    expect(src).not.toContain("<LocalSheet");
+    expect(src).toContain("data-social-person-card");
     expect(src).toContain("Recent activity");
     // Their events are matched without any member id (MESITA-2460).
-    expect(src).toContain("export function personKey(p: ActivityPerson): string {");
+    expect(src).toContain(
+      "export function personKey(p: ActivityPerson): string {",
+    );
     expect(src).not.toContain("consumer_id");
   });
 
@@ -109,7 +123,9 @@ describe("the row", () => {
   // boxes are block and their wrappers flex (a browser check measured the
   // thumbnail at 1600x1067 before, 44x44 after).
   it("keeps the face and the photo 44px inside their link and button", () => {
-    expect(src).toContain('<span className="relative block h-11 w-11 shrink-0">');
+    expect(src).toContain(
+      '<span className="relative block h-11 w-11 shrink-0">',
+    );
     expect(src).toContain(
       '<span className="bg-muted block h-11 w-11 shrink-0 overflow-hidden rounded-md">',
     );

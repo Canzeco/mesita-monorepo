@@ -179,13 +179,19 @@ export function LocalDialog({
   onClose,
   children,
   ariaLabel,
+  instant = false,
 }: {
   open: boolean;
   onClose: () => void;
   children: React.ReactNode;
   ariaLabel: string;
+  /** Appear and disappear at once: no fade, no scale, no exit delay
+   *  (Social's person card, MESITA-2546). Off for every other dialog. */
+  instant?: boolean;
 }) {
-  const { mounted, shown } = useLocalPresence(open);
+  const presence = useLocalPresence(open);
+  const mounted = instant ? open : presence.mounted;
+  const shown = instant ? open : presence.shown;
   useEscape(open, onClose);
 
   if (!mounted) return null;
@@ -208,14 +214,16 @@ export function LocalDialog({
           onClick={onClose}
           className={cn(
             OVERLAY_BACKDROP_CLASS,
+            instant && "transition-none",
             shown ? "opacity-100" : "opacity-0",
           )}
         />
         <div
           className={cn(
             "border-border bg-popover shadow-elev relative w-full max-w-sm overflow-hidden rounded-3xl border",
-            "transition-[opacity,transform] duration-300 motion-reduce:transition-none",
-            OVERLAY_EASE,
+            !instant &&
+              "transition-[opacity,transform] duration-300 motion-reduce:transition-none",
+            !instant && OVERLAY_EASE,
             shown ? "scale-100 opacity-100" : "scale-95 opacity-0",
           )}
         >

@@ -66,9 +66,10 @@
 // TWO TARGETS PER ROW, never both (Pato, MESITA-2542: "you can click the
 // profile or you can click the palce, but not both. if i click a profile,
 // open a modal … in the same scree. if i click the place, then redirect to
-// place profile"): the face and the bold name open the PERSON SHEET (a
-// LocalSheet on this screen: picture, name, Instagram proof, their recent
-// events here); the bold place name and the photo open the place.
+// place profile"): the face and the bold name open the PERSON CARD (a
+// centred LocalDialog that appears at once, MESITA-2546: picture, name,
+// Instagram proof, their recent events here); the bold place name and the
+// photo open the place.
 
 import { useEffect, useMemo, useRef, useState, type SVGProps } from "react";
 import Link from "next/link";
@@ -97,8 +98,7 @@ import { placeHref } from "@/lib/place-route";
 import { cardPhoto, placePlaceholder } from "@/lib/place-placeholder";
 import { FamilyIcon } from "@/lib/family-icons";
 import { EmptyState } from "@/components/shared";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
+import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { cn, errMsg, firstInitial } from "@/lib/utils";
 
@@ -378,9 +378,14 @@ function FeedRow({
   );
 }
 
-/** The person sheet (MESITA-2542): who they are and what they did here, on
- *  this screen. Their events are the feed's own rows for the same person. */
-function PersonSheet({
+/** The person card (MESITA-2542, MESITA-2546): who they are and what they
+ *  did here, a small card floating in the centre of this screen that
+ *  appears and disappears at once (Pato: "maybe just some card like
+ *  floating in the center … no animatio"). Their events are the feed's own
+ *  rows for the same person. */
+const PERSON_CARD_ROWS = 5;
+
+function PersonCard({
   item,
   open,
   rows,
@@ -396,40 +401,51 @@ function PersonSheet({
   const who = feedWho(person);
   const instagram = feedInstagram(person);
   const key = personKey(person);
-  const theirs = rows.filter((r) => personKey(r.person) === key);
+  const theirs = rows
+    .filter((r) => personKey(r.person) === key)
+    .slice(0, PERSON_CARD_ROWS);
   return (
-    <LocalSheet open={open} onClose={onClose} ariaLabel={`${who}'s profile`}>
-      <div className={SHEET_BODY_CLASS} data-social-person-sheet>
-        <div className="flex flex-col items-center text-center">
+    <LocalDialog
+      open={open}
+      onClose={onClose}
+      ariaLabel={`${who}'s profile`}
+      instant
+    >
+      <div className="p-5" data-social-person-card>
+        <div className="flex items-center gap-3">
           {person.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={person.avatarUrl}
               alt=""
-              className="h-20 w-20 rounded-full object-cover"
+              className="h-14 w-14 shrink-0 rounded-full object-cover"
             />
           ) : (
-            <span className="bg-muted text-foreground flex h-20 w-20 items-center justify-center rounded-full text-2xl font-semibold">
+            <span className="bg-muted text-foreground flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-lg font-semibold">
               {firstInitial(person.name.replace(/^@/, ""))}
             </span>
           )}
-          <h2 className={cn(SHEET_TITLE_CLASS, "mt-3")}>{who}</h2>
-          {instagram ? (
-            <p className="text-muted-foreground mt-1 flex items-center gap-1 text-sm">
-              <InstagramGlyph className="h-3.5 w-3.5 shrink-0" />
-              <span className="sr-only">Instagram</span>
-              {instagram}
-            </p>
-          ) : null}
+          <div className="min-w-0">
+            <h2 className="text-foreground truncate text-base font-semibold">
+              {who}
+            </h2>
+            {instagram ? (
+              <p className="text-muted-foreground mt-0.5 flex items-center gap-1 text-sm">
+                <InstagramGlyph className="h-3.5 w-3.5 shrink-0" />
+                <span className="sr-only">Instagram</span>
+                <span className="truncate">{instagram}</span>
+              </p>
+            ) : null}
+          </div>
         </div>
-        <p className="type-meta text-muted-foreground mt-6 mb-1 tracking-[0.08em] uppercase">
+        <p className="type-meta text-muted-foreground mt-5 mb-1 tracking-[0.08em] uppercase">
           Recent activity
         </p>
         <ul role="list" className="divide-border divide-y">
           {theirs.map((r, i) => (
             <li
               key={`${i}|${r.placeId}|${r.kind}`}
-              className="flex items-center gap-3 py-3"
+              className="flex items-center gap-3 py-2.5"
             >
               <Thumb place={r.place} />
               <p className="text-foreground min-w-0 flex-1 text-sm leading-snug">
@@ -450,7 +466,7 @@ function PersonSheet({
           ))}
         </ul>
       </div>
-    </LocalSheet>
+    </LocalDialog>
   );
 }
 
@@ -732,7 +748,7 @@ export function SocialFeed({
           />
         ))}
       </ul>
-      <PersonSheet
+      <PersonCard
         item={personItem}
         open={personOpen}
         rows={feed.rows}
