@@ -236,6 +236,10 @@ Deno.test("PLACE ROW READ: no new raw reader of places outside the allowlist", a
 
 const CONSUMER_READ_ALLOWLIST = [
   "_shared/consumer-doc.ts", // THE consumer door
+  // Manage › Guests (MESITA-2550): the guest list and search, and the closed-
+  // account check before a Diamond or plan change. Writes still go through the door.
+  "admin-web-list-guests/index.ts",
+  "admin-web-set-guest-standing/index.ts",
   "consumer-web-create-reservation/index.ts",
   "consumer-web-get-profile/index.ts",
   "consumer-web-signin-phone/index.ts",
