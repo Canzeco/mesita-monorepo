@@ -44,14 +44,20 @@ describe("the identity card", () => {
     expect(SETTINGS).not.toContain('title="Privacy"');
   });
 
-  // MESITA-2548: photo left; name, Instagram, then Diamond and Plan.
-  it("shows Diamond yes or no, and the plan, beside the photo", () => {
-    expect(CARD).toContain("data-identity-diamond");
-    expect(CARD).toContain("Not Diamond");
-    expect(CARD).toContain('{plan === "premium" ? "Premium" : "Free"}');
+  // MESITA-2553: photo left; name, Instagram, then Class and Plan, two
+  // separate facts. Me passes the doors; Social passes none.
+  it("gets Class and Plan from the profile on Me, as doors", () => {
     expect(CARD).toContain('className="flex w-full items-center gap-4"');
-    expect(BAR).toContain("diamond={profile?.diamond === true}");
-    expect(FEED).toContain("diamond={person.diamond === true}");
+    expect(BAR).toContain("standing={standing}");
+    expect(BAR).toContain("onClassPress=");
+    expect(BAR).toContain("planHref={CONSUMER_ROUTES.mePages.plan}");
+    expect(BAR).toContain("<ClassSheet");
+  });
+
+  it("shows them on Social as plain facts, never doors", () => {
+    expect(FEED).toContain("guestClass: toGuestClass(person.guestClass)");
+    expect(FEED).not.toContain("onClassPress");
+    expect(FEED).not.toContain("planHref");
   });
 });
 
@@ -63,5 +69,10 @@ describe("Me's Plan tile", () => {
     const tile = ME.slice(ME.lastIndexOf("<DestTile", ME.indexOf('title="Plan"')), ME.indexOf('title="Plan"'));
     expect(tile).toContain("Icon={CreditCard}");
     expect(ME).not.toMatch(/\bGem\b/);
+  });
+
+  it("names the guest's real plan, never a hardcoded Free (MESITA-2553)", () => {
+    expect(ME).toContain('summary={profile ? PLAN_LABEL[toGuestPlan(profile.plan)] : "…"}');
+    expect(ME).not.toContain('summary="Free"');
   });
 });

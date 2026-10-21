@@ -131,8 +131,8 @@ Deno.test("toPerson carries no account id", () => {
   );
   assertEquals(Object.keys(person).sort(), [
     "avatarUrl",
-    "diamond",
     "followers",
+    "guestClass",
     "handleHint",
     "isYou",
     "name",
@@ -141,11 +141,15 @@ Deno.test("toPerson carries no account id", () => {
   assertEquals(person.isYou, true);
 });
 
-// MESITA-2548: Diamond and Plan ride on the person, plain by default.
-Deno.test("a person carries Diamond and the plan, plain unless set", () => {
-  assertEquals(toPerson(row({}), "z").diamond, false);
+// MESITA-2553: Class and Plan ride on the person, independent, plain by default.
+Deno.test("a person carries Class and Plan, plain unless set", () => {
+  assertEquals(toPerson(row({}), "z").guestClass, "regular");
   assertEquals(toPerson(row({}), "z").plan, "free");
-  assertEquals(toPerson(row({ diamond: true, plan: "premium" }), "z").diamond, true);
-  assertEquals(toPerson(row({ diamond: true, plan: "premium" }), "z").plan, "premium");
-  assertEquals(toPerson(row({ plan: "gold" }), "z").plan, "free");
+  const vipFree = toPerson(row({ guest_class: "vip", plan: "free" }), "z");
+  assertEquals([vipFree.guestClass, vipFree.plan], ["vip", "free"]);
+  const regularPro = toPerson(row({ guest_class: "regular", plan: "pro" }), "z");
+  assertEquals([regularPro.guestClass, regularPro.plan], ["regular", "pro"]);
+  // Old words and unknown values never show a status the member lacks.
+  assertEquals(toPerson(row({ plan: "premium" }), "z").plan, "free");
+  assertEquals(toPerson(row({ guest_class: "diamond" }), "z").guestClass, "regular");
 });

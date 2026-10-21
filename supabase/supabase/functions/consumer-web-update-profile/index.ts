@@ -24,10 +24,11 @@ import {
   parseName,
   parseSex,
   type UpdateProfileBody,
+  notWritableKey,
 } from "./update-profile-fields.ts";
 
 const CONSUMER_PROFILE_SELECT =
-  "id, code, full_name, first_name, last_name, sex, birthday, phone, avatar_url, diamond, plan";
+  "id, code, full_name, first_name, last_name, sex, birthday, phone, avatar_url, guest_class, plan";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -43,6 +44,15 @@ Deno.serve(async (req) => {
   const bodyRes = await readJson<UpdateProfileBody>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
+
+  const blocked = notWritableKey(body);
+  if (blocked) {
+    return json({
+      ok: false,
+      code: "field_not_writable",
+      error: `${blocked} can't be changed from the app`,
+    }, 400);
+  }
 
   const firstName = clean(body.first_name, 60);
   const lastName = clean(body.last_name, 60);

@@ -177,13 +177,19 @@ const LIVE_ELSEWHERE: Record<string, readonly string[]> = {
 /** Dropped by a cut, then added back by a later migration. The cut lists stay
  *  the migrations' own; these come off the scan. */
 const RESTORED: Record<string, readonly string[]> = {
-  // MESITA-2548: consumers.plan is back, free or premium.
+  // MESITA-2548: consumers.plan is back (free or pro since MESITA-2553).
   consumers: ["plan"],
 };
 
-/** Every dropping table's columns, both cuts merged. */
+/** MESITA-2553 — `diamond` gave way to `guest_class` (Plan and Class). Its own
+ *  list, so the two cut lists above stay their migrations' exact ones. */
+const CLASS_PLAN_DROPPED_COLUMNS = {
+  consumers: ["diamond"],
+} as const satisfies Record<string, readonly string[]>;
+
+/** Every dropping table's columns, all cuts merged. */
 const DROPPED_BY_TABLE = new Map<string, Set<string>>();
-for (const list of [DROPPED_COLUMNS, RESIDUE_DROPPED_COLUMNS]) {
+for (const list of [DROPPED_COLUMNS, RESIDUE_DROPPED_COLUMNS, CLASS_PLAN_DROPPED_COLUMNS]) {
   for (const [table, cols] of Object.entries(list)) {
     const set = DROPPED_BY_TABLE.get(table) ?? new Set<string>();
     for (const col of cols) if (!RESTORED[table]?.includes(col)) set.add(col);
@@ -716,6 +722,10 @@ Deno.test("DROPPED_COLUMNS is the migration's list, no more and no less", () => 
   for (const [table, cols] of Object.entries(DROPPED_COLUMNS)) {
     assertEquals(new Set(cols).size, cols.length, `${table} lists a column twice`);
   }
+});
+
+Deno.test("CLASS_PLAN_DROPPED_COLUMNS is the MESITA-2553 drop, no more and no less", () => {
+  assertEquals(CLASS_PLAN_DROPPED_COLUMNS, { consumers: ["diamond"] });
 });
 
 Deno.test("RESIDUE_DROPPED_COLUMNS is the MESITA-2144 cut, no more and no less", () => {

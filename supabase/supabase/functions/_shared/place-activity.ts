@@ -35,18 +35,40 @@ export type ActivityPerson = {
   handleHint: string | null;
   followers: number;
   isYou: boolean;
-  /** Diamond, yes or no — granted by hand (MESITA-2044, MESITA-2548). */
-  diamond: boolean;
-  /** The plan, free or premium (MESITA-2548). */
+  /** Class: regular or vip, through a partner (MESITA-2553). */
+  guestClass: ConsumerClass;
+  /** Plan: free or pro, the subscription (MESITA-2553). */
   plan: ConsumerPlan;
 };
 
-export type ConsumerPlan = "free" | "premium";
+/** Plan and Class are independent (Pato, MESITA-2553). */
+export type ConsumerPlan = "free" | "pro";
+export type ConsumerClass = "regular" | "vip";
 
-/** Anything but "premium" reads as free: the column is checked, but an old
- *  row or a missing field must never show a plan the member does not have. */
+const unknownSeen = new Set<string>();
+
+/** Logs a value the CHECK should have made impossible, once per value. */
+function noteUnknown(field: string, v: unknown): void {
+  if (v == null) return;
+  const key = `${field}:${String(v)}`;
+  if (unknownSeen.has(key)) return;
+  unknownSeen.add(key);
+  console.warn(`unknown_${field}_value`, JSON.stringify({ value: String(v) }));
+}
+
+/** Anything but "pro" reads as free: an old row or a missing field must never
+ *  show a plan the member does not have. */
 export function toPlan(v: unknown): ConsumerPlan {
-  return v === "premium" ? "premium" : "free";
+  if (v === "pro") return "pro";
+  if (v !== "free") noteUnknown("plan", v);
+  return "free";
+}
+
+/** Anything but "vip" reads as regular, for the same reason. */
+export function toClass(v: unknown): ConsumerClass {
+  if (v === "vip") return "vip";
+  if (v !== "regular") noteUnknown("guest_class", v);
+  return "regular";
 }
 
 /** "perdon" → "per"; a shorter handle keeps one letter. */
@@ -66,7 +88,7 @@ export type ActivityRow = {
   avatar_url: string | null;
   instagram_handle: string | null;
   instagram_followers_count: number | null;
-  diamond?: boolean | null;
+  guest_class?: string | null;
   plan?: string | null;
   total?: number | string | null;
 };
@@ -83,7 +105,7 @@ export function toPerson(row: ActivityRow, viewerId: string): ActivityPerson {
       Math.trunc(Number(row.instagram_followers_count ?? 0)) || 0,
     ),
     isYou: row.consumer_id === viewerId,
-    diamond: row.diamond === true,
+    guestClass: toClass(row.guest_class),
     plan: toPlan(row.plan),
   };
 }

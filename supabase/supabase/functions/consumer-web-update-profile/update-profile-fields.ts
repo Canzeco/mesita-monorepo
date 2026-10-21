@@ -1,5 +1,28 @@
 import { json } from "../_shared/http.ts";
 
+/** Keys a guest can never change from the app (MESITA-2553): Plan and Class
+ *  are set by an operator only, through admin_set_guest_standing. A body that
+ *  carries one is refused loudly instead of being silently ignored. */
+export const NOT_WRITABLE_FROM_APP = [
+  "plan",
+  "guestClass",
+  "guest_class",
+  "guestClassNote",
+  "guest_class_note",
+  "guest_class_set_at",
+  "guest_class_set_by",
+  "diamond",
+] as const;
+
+/** The first key in `body` the app may not send, or null. */
+export function notWritableKey(body: unknown): string | null {
+  if (typeof body !== "object" || body === null) return null;
+  for (const key of NOT_WRITABLE_FROM_APP) {
+    if (key in body) return key;
+  }
+  return null;
+}
+
 export type UpdateProfileBody = {
   // full_name is not a request field: this EF joins first_name + last_name
   // to repopulate it for downstream readers.

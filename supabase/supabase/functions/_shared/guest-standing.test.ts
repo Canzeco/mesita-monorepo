@@ -1,10 +1,13 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import { guestSearchFilter, readStandingBody, toGuestRow } from "./guest-standing.ts";
 import { validateConsumerPatch } from "./consumer-doc.ts";
+import { notWritableKey } from "../consumer-web-update-profile/update-profile-fields.ts";
+import type { UpdateProfileBody } from "../consumer-web-update-profile/update-profile-fields.ts";
 
 const ID = "3e170470-7cbf-4275-a5b0-8937beeea9ca";
+const OP = "92468118-9c8e-4602-8367-ad766a9a3111";
 
-Deno.test("guest row: name falls back, the handle shows only when proved, plan defaults to free", () => {
+Deno.test("guest row: name falls back, the handle shows only when proved, plain Class and Plan by default", () => {
   assertEquals(
     toGuestRow({
       id: ID,
@@ -13,7 +16,7 @@ Deno.test("guest row: name falls back, the handle shows only when proved, plan d
       last_name: "Ruiz",
       instagram_handle: "diego",
       instagram_verified_at: null,
-      diamond: null,
+      guest_class: null,
       plan: "gold",
       created_at: "2026-10-21T00:00:00Z",
     }),
@@ -22,21 +25,39 @@ Deno.test("guest row: name falls back, the handle shows only when proved, plan d
       name: "Diego Ruiz",
       code: "0000-0042",
       instagram: null,
-      diamond: false,
+      guestClass: "regular",
       plan: "free",
+      guestClassSetAt: null,
+      guestClassSetByEmail: null,
+      guestClassNote: null,
       createdAt: "2026-10-21T00:00:00Z",
     },
   );
-  const r = toGuestRow({
-    id: ID,
-    full_name: "Valeria Soto",
-    instagram_handle: "vale",
-    instagram_verified_at: "2026-10-01T00:00:00Z",
-    diamond: true,
-    plan: "premium",
-  });
-  assertEquals([r.name, r.instagram, r.diamond, r.plan], ["Valeria Soto", "vale", true, "premium"]);
   assertEquals(toGuestRow({ id: ID }).name, "No name yet");
+});
+
+Deno.test("guest row: Class and Plan are independent; the audit maps the operator to an email", () => {
+  const r = toGuestRow(
+    {
+      id: ID,
+      full_name: "Valeria Soto",
+      instagram_handle: "vale",
+      instagram_verified_at: "2026-10-01T00:00:00Z",
+      guest_class: "vip",
+      plan: "free",
+      guest_class_set_at: "2026-10-21T12:00:00Z",
+      guest_class_set_by: OP,
+      guest_class_note: "Agency partner",
+    },
+    (id) => (id === OP ? "pato@canzeco.com" : null),
+  );
+  assertEquals(
+    [r.name, r.instagram, r.guestClass, r.plan, r.guestClassSetAt, r.guestClassSetByEmail, r.guestClassNote],
+    ["Valeria Soto", "vale", "vip", "free", "2026-10-21T12:00:00Z", "pato@canzeco.com", "Agency partner"],
+  );
+  // An operator who no longer resolves leaves the date and no email.
+  const gone = toGuestRow({ id: ID, guest_class: "vip", guest_class_set_by: OP, guest_class_set_at: "x" });
+  assertEquals([gone.guestClassSetAt, gone.guestClassSetByEmail], ["x", null]);
 });
 
 Deno.test("search filter: nothing to search is no filter", () => {
@@ -63,26 +84,77 @@ Deno.test("search filter: % and _ are literal, not wildcards", () => {
   assertEquals(guestSearchFilter("a_b")!.startsWith(`full_name.ilike."%a\\_b%"`), true);
 });
 
-Deno.test("set body: needs a uuid and at least one well-typed fact", () => {
-  assertEquals(readStandingBody({ diamond: true }).ok, false);
-  assertEquals(readStandingBody({ consumerId: ID }).ok, false);
-  assertEquals(readStandingBody({ consumerId: ID, diamond: "yes" }).ok, false);
-  assertEquals(readStandingBody({ consumerId: ID, plan: "gold" }).ok, false);
-  assertEquals(readStandingBody(null).ok, false);
-  assertEquals(readStandingBody({ consumerId: ID, diamond: true, plan: "premium", phone: "1" }), {
-    ok: true,
-    consumerId: ID,
-    patch: { diamond: true, plan: "premium" },
-  });
-  assertEquals(readStandingBody({ consumerId: ID, plan: "free" }), {
-    ok: true,
-    consumerId: ID,
-    patch: { plan: "free" },
-  });
+/** The code a refused body comes back with. */
+const codeOf = (b: unknown) => {
+  const r = readStandingBody(b);
+  return r.ok ? "ok" : `${r.status} ${r.code}`;
+};
+
+Deno.test("set body: every refusal has a stable code", () => {
+  assertEquals(codeOf({ consumerId: ID, diamond: true }), "400 stale_client");
+  assertEquals(codeOf({ guestClass: "vip" }), "400 invalid_consumer");
+  assertEquals(codeOf(null), "400 invalid_consumer");
+  assertEquals(codeOf({ consumerId: ID }), "400 nothing_to_set");
+  assertEquals(codeOf({ consumerId: ID, guestClass: "gold" }), "400 invalid_guest_class");
+  assertEquals(codeOf({ consumerId: ID, plan: "premium" }), "400 invalid_plan");
+  assertEquals(codeOf({ consumerId: ID, guestClassNote: 5 }), "400 invalid_note");
+  assertEquals(codeOf({ consumerId: ID, guestClassNote: "x".repeat(281) }), "400 note_too_long");
 });
 
-Deno.test("the consumer door takes diamond and plan with their DB shapes", () => {
-  assertEquals(validateConsumerPatch({ diamond: true, plan: "premium" }).ok, true);
-  assertEquals(validateConsumerPatch({ diamond: 1 }).ok, false);
-  assertEquals(validateConsumerPatch({ plan: "pro" }).ok, false);
+Deno.test("set body: the fix is in the message", () => {
+  const r = readStandingBody({ consumerId: ID, guestClass: "gold" });
+  assertEquals(r.ok ? "" : r.error, "guestClass must be 'regular' or 'vip' (got 'gold')");
+  const n = readStandingBody({ consumerId: ID, guestClassNote: "y".repeat(312) });
+  assertEquals(n.ok ? "" : n.error, "guestClassNote is 312 characters; the limit is 280");
+  const s = readStandingBody({ consumerId: ID, diamond: false });
+  assertEquals(s.ok ? "" : s.error, "Admin is out of date. Reload the page.");
 });
+
+Deno.test("set body: Class, Plan and the note are each optional and independent", () => {
+  assertEquals(readStandingBody({ consumerId: ID, guestClass: "vip", plan: "free", phone: "1" }), {
+    ok: true,
+    consumerId: ID,
+    patch: { guestClass: "vip", plan: "free" },
+  });
+  assertEquals(readStandingBody({ consumerId: ID, plan: "pro" }), {
+    ok: true,
+    consumerId: ID,
+    patch: { plan: "pro" },
+  });
+  // The note is trimmed; whitespace-only or null clears it; 280 is allowed.
+  assertEquals(readStandingBody({ consumerId: ID, guestClassNote: "  Agency  " }), {
+    ok: true,
+    consumerId: ID,
+    patch: { guestClassNote: "Agency" },
+  });
+  assertEquals(readStandingBody({ consumerId: ID, guestClassNote: "   " }), {
+    ok: true,
+    consumerId: ID,
+    patch: { guestClassNote: null },
+  });
+  assertEquals(readStandingBody({ consumerId: ID, guestClassNote: "z".repeat(280) }).ok, true);
+});
+
+Deno.test("the consumer door cannot write Class, Plan or the VIP audit (MESITA-2553)", () => {
+  for (const key of ["plan", "guest_class", "guest_class_note", "guest_class_set_at", "diamond"]) {
+    const r = validateConsumerPatch({ [key]: "x" });
+    assertEquals(r.ok ? "accepted" : r.error, `unknown consumer field: ${key}`);
+  }
+});
+
+Deno.test("consumer-web-update-profile refuses Plan and Class keys loudly", () => {
+  assertEquals(notWritableKey({ first_name: "Ana", plan: "pro" }), "plan");
+  assertEquals(notWritableKey({ guestClass: "vip" }), "guestClass");
+  assertEquals(notWritableKey({ guest_class_note: "x" }), "guest_class_note");
+  assertEquals(notWritableKey({ first_name: "Ana" }), null);
+  assertEquals(notWritableKey(null), null);
+});
+
+// Type-level: the body a guest can send has no Plan or Class key.
+type HasKey<T, K extends string> = K extends keyof T ? true : false;
+const _noPlan: HasKey<UpdateProfileBody, "plan"> = false;
+const _noClass: HasKey<UpdateProfileBody, "guest_class"> = false;
+const _noGuestClass: HasKey<UpdateProfileBody, "guestClass"> = false;
+void _noPlan;
+void _noClass;
+void _noGuestClass;

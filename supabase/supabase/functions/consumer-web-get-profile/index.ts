@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
 
   const CONSUMER_PROFILE_SELECT =
-    "id, code, full_name, first_name, last_name, sex, birthday, phone, avatar_url, instagram_handle, instagram_followers_count, diamond, plan, deleted_at";
+    "id, code, full_name, first_name, last_name, sex, birthday, phone, avatar_url, instagram_handle, instagram_followers_count, guest_class, plan, deleted_at";
 
   // Read once. If absent, insert with a generated code and re-read.
   const existing = await admin

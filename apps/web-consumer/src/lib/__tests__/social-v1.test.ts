@@ -87,7 +87,7 @@ describe("the feed's copy", () => {
     handleHint: "per",
     followers: 1200,
     isYou: false,
-    diamond: false,
+    guestClass: "regular",
     plan: "free",
   };
 

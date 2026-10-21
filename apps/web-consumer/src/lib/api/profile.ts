@@ -25,10 +25,11 @@ export type ConsumerProfile = {
   // Consumer avatar public URL (consumer-avatars bucket). Optional — missing
   // falls back to DefaultAvatar on Me / Personal details (MESITA-880/953).
   avatar_url?: string | null;
-  // MESITA-2548: Diamond (granted by hand) and the plan, on the identity
-  // card. Absent on an older EF reads as plain: not Diamond, Free.
-  diamond?: boolean;
-  plan?: "free" | "premium";
+  // MESITA-2553: Class (regular or vip, through a partner) and Plan (free or
+  // pro), two independent facts on the identity card. Set by an operator
+  // only; absent or unknown reads as the plain value (lib/guest-standing).
+  guest_class?: string;
+  plan?: string;
 };
 
 type ConsumerOnboardingInput = {

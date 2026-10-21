@@ -1,9 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, Gem } from "lucide-react";
+import { ChevronRight, CreditCard, Crown } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
+import {
+  CLASS_LABEL,
+  PLAN_LABEL,
+  type GuestClass,
+  type GuestPlan,
+} from "@/lib/guest-standing";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
@@ -19,11 +25,16 @@ import { cn } from "@/lib/utils";
 //
 //   (80px)  Diego
 //   (photo) [◎ die••• · 1.2K followers]
-//   (     ) [◆ Diamond] [Premium]
+//   (     ) [♛ VIP ›] [▭ Pro ›]          (chevrons on Me only)
 //
-// Diamond always shows, yes or no ("is super important to include if its
-// diamond or if its not"); it is granted by hand (MESITA-2044). Plan is Free
-// or Premium.
+// CLASS AND PLAN ARE TWO THINGS (Pato, MESITA-2553). Class is partnership
+// status: Regular or VIP, through a partner, never sold. Plan is the
+// subscription: Free or Pro. Each chip names its own dimension with its own
+// icon (Crown, CreditCard) and aria-label, so the pair never reads as one
+// ladder. Weight marks "special", not rank: VIP filled, Pro outlined, the two
+// defaults equally muted. No gem anywhere (MESITA-2551). On Me the chips are
+// doors (Class opens its explainer, Plan opens /me/plan); on Social they are
+// facts.
 
 /** One chip, Me's header vocabulary (MESITA-1652). */
 const CHIP_CLASS =
@@ -40,7 +51,7 @@ export type IdentityInstagram = {
   href?: string;
 };
 
-export type IdentityPlan = "free" | "premium";
+export type IdentityStanding = { guestClass: GuestClass; plan: GuestPlan };
 
 function InstagramBadge() {
   return (
@@ -56,18 +67,83 @@ function InstagramBadge() {
   );
 }
 
+/** One standing chip: a button (Class on Me), a link (Plan on Me) or a fact. */
+function StandingChip({
+  icon,
+  label,
+  dimension,
+  strong,
+  filled,
+  onPress,
+  href,
+  data,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  dimension: "Class" | "Plan";
+  strong: boolean;
+  filled: boolean;
+  onPress?: () => void;
+  href?: string;
+  data: Record<string, string>;
+}) {
+  const className = cn(
+    CHIP_CLASS,
+    filled
+      ? "bg-foreground text-background border-transparent"
+      : strong
+        ? "border-foreground"
+        : "text-muted-foreground font-medium",
+    (onPress || href) && cn(TAP_TARGET_CLASS, "transition", !filled && "hover:bg-muted"),
+  );
+  const body = (
+    <>
+      {icon}
+      <span className="truncate">{label}</span>
+      {(onPress || href) && (
+        <ChevronRight className="h-3 w-3 shrink-0 opacity-60" aria-hidden />
+      )}
+    </>
+  );
+  const aria = `${dimension}: ${label}`;
+  if (href) {
+    return (
+      <Link href={href} aria-label={aria} className={className} {...data}>
+        {body}
+      </Link>
+    );
+  }
+  if (onPress) {
+    return (
+      <button type="button" onClick={onPress} aria-label={aria} className={className} {...data}>
+        {body}
+      </button>
+    );
+  }
+  return (
+    <span aria-label={aria} className={className} {...data}>
+      {body}
+    </span>
+  );
+}
+
 export function IdentityCard({
   name,
   avatarUrl,
   instagram,
-  diamond,
-  plan,
+  standing,
+  onClassPress,
+  planHref,
 }: {
   name: string;
   avatarUrl: string | null;
   instagram: IdentityInstagram | null;
-  diamond: boolean;
-  plan: IdentityPlan;
+  /** Class and Plan. Null hides the row: never a guessed "Free"/"Regular". */
+  standing: IdentityStanding | null;
+  /** Me only: the Class chip opens its explainer. */
+  onClassPress?: () => void;
+  /** Me only: the Plan chip opens the Plan page. */
+  planHref?: string;
 }) {
   return (
     <div className="flex w-full items-center gap-4" data-identity-card>
@@ -118,40 +194,28 @@ export function IdentityCard({
           </span>
         ) : null}
 
-        <div className="flex flex-wrap gap-1.5" data-identity-standing>
-          {diamond ? (
-            <span
-              className={cn(
-                CHIP_CLASS,
-                "bg-foreground text-background border-transparent",
-              )}
-              data-identity-diamond
-            >
-              <Gem
-                className="h-3.5 w-3.5 shrink-0"
-                strokeWidth={2.25}
-                aria-hidden
-              />
-              Diamond
-            </span>
-          ) : (
-            <span
-              className={cn(CHIP_CLASS, "text-muted-foreground font-medium")}
-              data-identity-diamond="no"
-            >
-              Not Diamond
-            </span>
-          )}
-          <span
-            className={cn(
-              CHIP_CLASS,
-              plan === "premium" ? "" : "text-muted-foreground font-medium",
-            )}
-            data-identity-plan={plan}
-          >
-            {plan === "premium" ? "Premium" : "Free"}
-          </span>
-        </div>
+        {standing && (
+          <div className="flex flex-wrap gap-1.5" data-identity-standing>
+            <StandingChip
+              icon={<Crown className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />}
+              label={CLASS_LABEL[standing.guestClass]}
+              dimension="Class"
+              strong={standing.guestClass === "vip"}
+              filled={standing.guestClass === "vip"}
+              onPress={onClassPress}
+              data={{ "data-identity-class": standing.guestClass }}
+            />
+            <StandingChip
+              icon={<CreditCard className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />}
+              label={PLAN_LABEL[standing.plan]}
+              dimension="Plan"
+              strong={standing.plan === "pro"}
+              filled={false}
+              href={planHref}
+              data={{ "data-identity-plan": standing.plan }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

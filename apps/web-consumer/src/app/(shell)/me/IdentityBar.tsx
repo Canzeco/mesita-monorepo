@@ -1,8 +1,12 @@
 "use client";
 
+import { useState } from "react";
+
 import type { ConsumerProfile } from "@/lib/api/profile";
 import { IdentityCard } from "@/components/consumer/IdentityCard";
+import { ClassSheet } from "@/components/consumer/me/ClassSheet";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { toGuestClass, toGuestPlan } from "@/lib/guest-standing";
 
 // ─── The identity header (MESITA-1079 v2 · -1619 · -1633 ·
 //     -1636 · -1640 · -1646 · -1649 · -1650 · -1652 · -2040 · -2087) ───────
@@ -13,7 +17,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 //
 //   (photo)  name
 //   (photo)  [instagram]
-//   (photo)  [Diamond] [Plan]      (MESITA-2548)
+//   (photo)  [Class ›] [Plan ›]    (MESITA-2553: two separate facts)
 //   ─────── band ───────
 //
 // The card itself is IdentityCard, the same one Social shows for a member
@@ -62,6 +66,10 @@ export function IdentityBar({
     profile?.full_name ||
     "Mesita member";
   const avatarUrl = profile?.avatar_url ?? null;
+  const standing = profile
+    ? { guestClass: toGuestClass(profile.guest_class), plan: toGuestPlan(profile.plan) }
+    : null;
+  const [classOpen, setClassOpen] = useState(false);
 
   return (
     <header
@@ -74,7 +82,7 @@ export function IdentityBar({
           <>
             {/* The skeleton mirrors the DESTINATION (Docs › Design §D): the
                 87px ringed avatar on the left, and the name, Instagram and
-                Diamond · Plan rows beside it (MESITA-2548). */}
+                Class · Plan rows beside it (MESITA-2553). */}
             <div className="flex w-full items-center gap-4">
               <div className="bg-muted h-[87px] w-[87px] shrink-0 animate-pulse rounded-full" />
               <div className="flex flex-1 flex-col gap-1.5">
@@ -92,8 +100,11 @@ export function IdentityBar({
               label: instagramSummary,
               href: CONSUMER_ROUTES.mePages.instagram,
             }}
-            diamond={profile?.diamond === true}
-            plan={profile?.plan === "premium" ? "premium" : "free"}
+            // No profile (the read failed) hides the row: never a guessed
+            // "Free" or "Regular" (MESITA-2553).
+            standing={standing}
+            onClassPress={standing ? () => setClassOpen(true) : undefined}
+            planHref={CONSUMER_ROUTES.mePages.plan}
           />
         )}
       </div>
@@ -101,6 +112,13 @@ export function IdentityBar({
       {/* The band — a full-width rule that closes the header. Structure, not
           a signal; hidden from assistive tech because it says nothing. */}
       <div className="bg-border h-2.5 w-full" aria-hidden />
+      {standing && (
+        <ClassSheet
+          open={classOpen}
+          onClose={() => setClassOpen(false)}
+          guestClass={standing.guestClass}
+        />
+      )}
     </header>
   );
 }
