@@ -113,10 +113,12 @@ describe("the feed's copy", () => {
     ).toBe("You liked");
   });
 
+  // MESITA-2525: the Instagram glyph replaces the word, so the text is the
+  // proof alone; the time follows it on the quiet line.
   it("Instagram is social proof: three letters, blocked, and ~followers", () => {
     expect(feedWho(lead)).toBe("Perdón");
-    expect(feedInstagram(lead)).toBe("Instagram · per••• · 1.2K followers");
-    expect(feedInstagram({ ...lead, followers: 0 })).toBe("Instagram · per•••");
+    expect(feedInstagram(lead)).toBe("per••• · 1.2K followers");
+    expect(feedInstagram({ ...lead, followers: 0 })).toBe("per•••");
     // Without Instagram, and on the guest's own row: no second line.
     expect(feedInstagram({ ...lead, handleHint: null })).toBeNull();
     expect(feedInstagram({ ...lead, isYou: true })).toBeNull();
