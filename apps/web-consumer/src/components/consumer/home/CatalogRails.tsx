@@ -360,11 +360,14 @@ export function CatalogRails() {
   // (Places. Social) … If places, show the horizontal catalog, is social,
   // show the social feed"): two equal tabs, the chosen one bold with its word
   // underlined in ink (MESITA-2524). It replaced the left category column (MESITA-2367).
+  // The strip is the column's grey under the white header (Pato, MESITA-2526:
+  // "the places/social selector a bit dark"), so header, tabs and tiles read
+  // as three layers.
   const tabs = (
     <div
       role="tablist"
       aria-label="Home"
-      className="border-border bg-card flex shrink-0 border-b"
+      className="border-border bg-muted flex shrink-0 border-b"
       data-home-tabs
     >
       {HOME_TABS.map((t) => {
