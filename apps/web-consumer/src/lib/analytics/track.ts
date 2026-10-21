@@ -18,7 +18,9 @@ export type AnalyticsEvent =
   // Places tile taps and saves carry source, rank and final score
   // (MESITA-2384), so the Selected factor's effect can be measured.
   | "home_card_open"
-  | "home_card_save";
+  | "home_card_save"
+  // MESITA-2590 — Social's person card "Open Instagram", to measure leakage.
+  | "social_open_instagram";
 
 /**
  * Fire-and-forget product event. NEVER throws and NEVER awaited by a

@@ -35,6 +35,8 @@ export type UpdateProfileBody = {
   avatar_url?: string | null;
   // MESITA-2585: "Use my Instagram photo" on Me › Instagram.
   use_instagram_photo?: boolean;
+  // MESITA-2590: "Show my name in Social" off = true (appear as "A member").
+  appear_anonymous?: boolean;
 };
 
 export const AVATAR_BUCKET = "consumer-avatars";
@@ -238,6 +240,15 @@ export function buildProfilePatch(
       };
     }
     patch.use_instagram_photo = body.use_instagram_photo;
+  }
+  if (body.appear_anonymous !== undefined) {
+    if (typeof body.appear_anonymous !== "boolean") {
+      return {
+        ok: false,
+        response: json({ ok: false, error: "appear_anonymous must be a boolean" }, 400),
+      };
+    }
+    patch.appear_anonymous = body.appear_anonymous;
   }
 
   if (Object.keys(patch).length === 0) {

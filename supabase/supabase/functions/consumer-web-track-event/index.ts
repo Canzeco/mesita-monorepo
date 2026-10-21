@@ -27,6 +27,9 @@ const ALLOWED_EVENTS = new Set([
   "home_mode_view",
   "home_card_open",
   "home_card_save",
+  // MESITA-2590 — Social's "Open Instagram" on the person card, to measure
+  // how often a guest leaves for Instagram.
+  "social_open_instagram",
 ]);
 
 type Body = { event?: string; payload?: Record<string, unknown> };

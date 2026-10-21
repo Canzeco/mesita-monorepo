@@ -67,7 +67,7 @@ function person(m: Member): ActivityPerson {
   return {
     name: m.name,
     avatarUrl: null,
-    handleHint: m.handle.slice(0, 3),
+    handle: m.handle,
     followers: m.followers,
     isYou: false,
     guestClass: m.guestClass ?? "regular",

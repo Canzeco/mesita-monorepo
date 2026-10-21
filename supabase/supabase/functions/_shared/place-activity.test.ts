@@ -2,7 +2,7 @@ import { assertEquals } from "jsr:@std/assert@1";
 import {
   type ActivityRow,
   feedEvents,
-  handleHint,
+  cleanHandle,
   isActivityKind,
   isMesitaPlaceId,
   nearYou,
@@ -38,24 +38,21 @@ Deno.test("only the two kinds, only Mesita place ids (MESITA-2567: no went)", ()
   assertEquals(isMesitaPlaceId("g:ChIJ123"), false);
 });
 
-Deno.test("a person never carries the whole handle, and the viewer is You", () => {
-  // MESITA-2522: three letters of the username, never the username.
+Deno.test("a named person carries the full handle; the name is never it; the viewer is You", () => {
+  // MESITA-2590: the full username (MESITA-2522 had cut it to three letters).
   assertEquals(toPerson(row({ first_name: null }), "z").name, "A member");
-  assertEquals(toPerson(row({}), "z").handleHint, "per");
-  assertEquals(
-    JSON.stringify(toPerson(row({}), "z")).includes("perdon"),
-    false,
-  );
-  assertEquals(toPerson(row({ instagram_handle: null }), "z").handleHint, null);
+  assertEquals(toPerson(row({}), "z").handle, "perdon");
+  assertEquals(toPerson(row({ instagram_handle: null }), "z").handle, null);
   assertEquals(toPerson(row({}), "a").isYou, true);
+  // An anonymous member never carries one, even if the row leaked it.
+  assertEquals(toPerson(row({ anonymous: true }), "z").handle, null);
 });
 
-Deno.test("handleHint: three letters, one for a short handle", () => {
-  assertEquals(handleHint("Perdon"), "per");
-  assertEquals(handleHint("@ana_mx"), "ana");
-  assertEquals(handleHint("abc"), "a");
-  assertEquals(handleHint("  "), null);
-  assertEquals(handleHint(null), null);
+Deno.test("cleanHandle: lowercase, no @, null when blank", () => {
+  assertEquals(cleanHandle("@Perdon "), "perdon");
+  assertEquals(cleanHandle("ana_mx"), "ana_mx");
+  assertEquals(cleanHandle("  "), null);
+  assertEquals(cleanHandle(null), null);
 });
 
 // MESITA-2532: one person, one place, one verb per row — never collapsed.
@@ -134,7 +131,7 @@ Deno.test("toPerson carries no account id", () => {
     "avatarUrl",
     "followers",
     "guestClass",
-    "handleHint",
+    "handle",
     "isYou",
     "name",
     "plan",
@@ -164,7 +161,7 @@ Deno.test("an anonymous member is 'A member' and nothing else, even if a field l
   assertEquals(anon, {
     name: "A member",
     avatarUrl: null,
-    handleHint: null,
+    handle: null,
     followers: 0,
     isYou: false,
     guestClass: "regular",

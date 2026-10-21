@@ -7,13 +7,14 @@ import type { Place } from "./places";
 
 export type ActivityKind = "saved" | "viewed";
 
-/** A member as Social shows them: named when they verified Instagram, else
- *  anonymous (MESITA-2580). Never the whole username: `handleHint` is its
- *  first three letters (MESITA-2522). */
+/** A member as Social shows them: named, with the full @handle, when they
+ *  verified Instagram and did not choose to appear as "A member"; else
+ *  anonymous (MESITA-2580, MESITA-2590). */
 export type ActivityPerson = {
   name: string;
   avatarUrl: string | null;
-  handleHint: string | null;
+  /** The verified Instagram username, without "@" (MESITA-2590). */
+  handle: string | null;
   followers: number;
   isYou: boolean;
   /** Class and Plan, independent (MESITA-2553). */
