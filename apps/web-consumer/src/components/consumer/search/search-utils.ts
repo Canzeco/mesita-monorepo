@@ -249,8 +249,10 @@ export function viewRadiusKm(
 ): number | null {
   if (!boxBounds(box) || !box || !cross) return null;
   if (
-    cross.lat < box.south || cross.lat > box.north ||
-    cross.lng < box.west || cross.lng > box.east
+    cross.lat < box.south ||
+    cross.lat > box.north ||
+    cross.lng < box.west ||
+    cross.lng > box.east
   ) {
     return null;
   }
@@ -267,7 +269,10 @@ export function viewRadiusKm(
  *  zoom (MESITA-2499): a load that leaves before its camera move lands (a
  *  fix, the disc, a place pick) asks for the map the guest is about to see.
  *  Null across the dateline. */
-export function boxAtSight(box: Box | null, target: { lat: number; lng: number }): Box | null {
+export function boxAtSight(
+  box: Box | null,
+  target: { lat: number; lng: number },
+): Box | null {
   if (!box || !(box.west < box.east)) return null;
   const center = centerForSight(box, target);
   const half = (mercatorY(box.north) - mercatorY(box.south)) / 2;
