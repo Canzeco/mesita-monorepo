@@ -104,7 +104,8 @@ export function ProfileClient() {
         loading={loading}
         instagramSummary={igSummary}
       />
-      <div className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-5 pb-8">
+      {/* pt-3: the header card sits one row-gap (12px) above the tiles. */}
+      <div className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-3 pb-8">
         <div className="flex flex-col gap-3">
           {/* PROFILE LEADS (Pato, 2026-09-08), INSTAGRAM BESIDE IT
               (MESITA-2080). Profile's summary is the MEMBER NUMBER — the
