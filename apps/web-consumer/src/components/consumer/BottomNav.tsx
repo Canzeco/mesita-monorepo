@@ -5,7 +5,7 @@ import { Z_BOTTOM_NAV } from "@/lib/z-index";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ComponentType } from "react";
-import { Heart, QrCode, Search, User } from "lucide-react";
+import { Bookmark, QrCode, Search, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { cn } from "@/lib/utils";
 import {
@@ -78,7 +78,9 @@ const ITEMS: Item[] = [
   },
   {
     href: CONSUMER_ROUTES.saved,
-    Icon: Heart,
+    // A bookmark (Pato, MESITA-2522: "for saved in the bottom menu use the
+    // bookmarked icon"); the heart stays the favorite button on a place.
+    Icon: Bookmark,
     label: "Saved",
     // The tab plus a reservation's detail: /reservation/{id} is reached
     // from a place AND from the list, and the list is where you land back

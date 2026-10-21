@@ -18,7 +18,9 @@ describe("Places is one grid", () => {
     const rails = read("components/consumer/home/CatalogRails.tsx");
     const tile = read("components/consumer/home/CatalogTile.tsx");
     expect(rails).toContain("placesFeed");
-    expect(rails).toContain('const PLACES_LIST = "grid grid-cols-1 content-start gap-1.5 px-1.5 pt-1.5";');
+    expect(rails).toContain(
+      'const PLACES_LIST = "grid grid-cols-1 content-start gap-1.5 px-1.5 pt-1.5";',
+    );
     expect(rails).not.toContain("cardWidth");
     expect(rails).not.toContain("FavoriteTile");
     expect(rails).not.toContain("ArrowUpDown");
@@ -26,12 +28,16 @@ describe("Places is one grid", () => {
     // The tile: a square, no border, clearly rounded (Pato, MESITA-2409
     // "just a bit", MESITA-2413 "a bit more", MESITA-2423 "make the borders
     // rounded").
-    expect(tile).toContain("relative isolate aspect-square min-w-0 overflow-hidden rounded-2xl");
+    expect(tile).toContain(
+      "relative isolate aspect-square min-w-0 overflow-hidden rounded-2xl",
+    );
     // A backdrop-blur layer escapes its parent's rounded clip: the photo, the
     // band and the blur layer round themselves (MESITA-2429).
     expect(tile).toContain("h-[60%] overflow-hidden rounded-t-2xl");
     expect(tile).toContain("h-[40%] overflow-hidden rounded-b-2xl");
-    expect(tile).toContain("bg-paper/80 absolute inset-0 rounded-b-2xl backdrop-blur-sm");
+    expect(tile).toContain(
+      "bg-paper/80 absolute inset-0 rounded-b-2xl backdrop-blur-sm",
+    );
     expect(tile).not.toMatch(/rounded-(sm|md|lg|xl|3xl)\b/);
     expect(tile).not.toContain("border-border");
     expect(tile).toContain("formatRating");
@@ -60,12 +66,20 @@ describe("Discovery invents no places", () => {
     expect(src).not.toContain("FEED_MOCK_PLACES");
     expect(src).not.toContain("mock/feed-places");
     expect(src).not.toContain("lib/mock/");
-    expect(src).not.toMatch(/SCROLL_USES_MOCK|scrollMockPlaces|isMockPlace|mockPlaceDetail/);
+    expect(src).not.toMatch(
+      /SCROLL_USES_MOCK|scrollMockPlaces|isMockPlace|mockPlaceDetail/,
+    );
     expect(src).not.toMatch(/["'`]mock-/);
   });
 
-  // An empty saved list is a real, meaningful state — you have saved nothing.
+  // An empty favorites list is a real, meaningful state — you have hearted
+  // nothing. It lives on the Saved tab since MESITA-2522.
   it("Favorites keeps its real empty state (MESITA-2383)", () => {
-    expect(rails).toContain("No favorites yet");
+    const saved = readFileSync(
+      join(__dirname, "../../components/consumer/saved/SavedPage.tsx"),
+      "utf8",
+    );
+    expect(saved).toContain("No favorites yet");
+    expect(rails).not.toContain("No favorites yet");
   });
 });

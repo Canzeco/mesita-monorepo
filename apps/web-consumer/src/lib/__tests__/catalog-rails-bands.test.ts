@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 
 import type { CatalogRail, Place } from "@/lib/api/places";
 import {
-  SAVED_CHIP,
   HOME_TABS,
   PINNED_CHIPS,
   poolPlaces,
@@ -78,17 +77,20 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
   // MESITA-2519 (Pato: "keep the later view of the failies. its fastwer to
   // browse … LEFT MENU OF FAMILIES"): the horizontal chips went back to the
   // left column, under the tabs.
-  it("Places is the left family column — All, Favorites pinned, then every family — beside the tiles", () => {
+  it("Places is the left family column — All pinned, then every family — beside the tiles", () => {
     const labels = placesChips().map((c) => c.label);
-    // Favorites, the key still `saved` (MESITA-2521: "rename saved to
-    // favorites everywhere").
-    expect(labels.slice(0, 2)).toEqual(["All", "Favorites"]);
-    expect(
-      placesChips()
-        .map((c) => c.key)
-        .slice(0, 2),
-    ).toEqual([ALL_CHIP, SAVED_CHIP]);
-    for (const gone of ["Social", "Nearby", "Popular", "Undefined"]) {
+    // Favorites left the column for the Saved tab (Pato, MESITA-2522:
+    // "remove favorites from this lateral menu").
+    expect(labels[0]).toBe("All");
+    expect(placesChips()[0].key).toBe(ALL_CHIP);
+    for (const gone of [
+      "Favorites",
+      "Saved",
+      "Social",
+      "Nearby",
+      "Popular",
+      "Undefined",
+    ]) {
       expect(labels, gone).not.toContain(gone);
     }
     expect(labels).toContain("Coffee");
@@ -98,7 +100,7 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
     // A quarter-wide column beside the tiles, on the Places tab only.
     expect(src).toContain('className="bg-muted flex w-1/4 shrink-0 flex-col"');
     expect(src).toContain('{tab === "places" ? categories : null}');
-    expect(PINNED_CHIPS).toBe(2);
+    expect(PINNED_CHIPS).toBe(1);
     expect(src).toContain("chips.slice(0, PINNED_CHIPS).map(categoryRow)");
     expect(src).toContain("chips.slice(PINNED_CHIPS).map(categoryRow)");
     // Two groups, no colour stripes (Pato, MESITA-2521: "remove the stupid
@@ -196,7 +198,7 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
     expect(src).toContain("...tileFacts(place, rank)");
   });
 
-  it("Saved lists saves newest first and skips a save with no preview", () => {
+  it("Favorites lists hearts newest first and skips one with no preview", () => {
     const previews = new Map([
       ["a", place("a")],
       ["b", place("b")],

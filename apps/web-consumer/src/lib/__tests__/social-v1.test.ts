@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
-  feedName,
+  approxFollowers,
+  feedInstagram,
   feedSentence,
   feedWho,
   shortAgo,
@@ -82,26 +83,26 @@ describe("the feed's copy", () => {
   const lead: ActivityPerson = {
     name: "Perdón",
     avatarUrl: null,
-    handle: "perdon",
+    handleHint: "per",
     followers: 1200,
     isYou: false,
   };
 
-  // MESITA-2515: old-Instagram rows — the username leads, the name follows
-  // muted; the verbs read liked · visited · viewed over unchanged keys.
+  // MESITA-2515: old-Instagram rows, the verbs liked · visited · viewed over
+  // unchanged keys. MESITA-2522: the name leads; the username never shows.
   it("reads liked, visited and viewed over the stored keys", () => {
     expect(VERB).toEqual({ saved: "liked", went: "visited", viewed: "viewed" });
   });
 
-  it("collapses with a count and keeps the verb, username first", () => {
+  it("collapses with a count and keeps the verb, name first", () => {
     expect(feedSentence({ lead, others: 0, kind: "went" })).toBe(
-      "perdon visited",
+      "Perdón visited",
     );
     expect(feedSentence({ lead, others: 1, kind: "saved" })).toBe(
-      "perdon and 1 other liked",
+      "Perdón and 1 other liked",
     );
     expect(feedSentence({ lead, others: 4, kind: "viewed" })).toBe(
-      "perdon and 4 others viewed",
+      "Perdón and 4 others viewed",
     );
     expect(
       feedSentence({
@@ -112,15 +113,32 @@ describe("the feed's copy", () => {
     ).toBe("You liked");
   });
 
-  it("the name follows the username; with no username the name leads", () => {
-    expect(feedWho(lead)).toBe("perdon");
-    expect(feedName(lead)).toBe("Perdón");
-    const noHandle = { ...lead, handle: null };
-    expect(feedWho(noHandle)).toBe("Perdón");
-    expect(feedName(noHandle)).toBeNull();
-    // The server's "@handle" fallback name is not shown twice.
-    expect(feedName({ ...lead, name: "@perdon" })).toBeNull();
-    expect(feedName({ ...lead, isYou: true })).toBeNull();
+  it("Instagram is social proof: three letters, blocked, and ~followers", () => {
+    expect(feedWho(lead)).toBe("Perdón");
+    expect(feedInstagram(lead)).toBe("Instagram · per••• · 1.2K followers");
+    expect(feedInstagram({ ...lead, followers: 0 })).toBe("Instagram · per•••");
+    // Without Instagram, and on the guest's own row: no second line.
+    expect(feedInstagram({ ...lead, handleHint: null })).toBeNull();
+    expect(feedInstagram({ ...lead, isYou: true })).toBeNull();
+  });
+
+  it("rounds followers down to an approximate count", () => {
+    expect(
+      [0, 7, 47, 760, 999, 1000, 4820, 12_400, 999_999, 1_250_000].map(
+        approxFollowers,
+      ),
+    ).toEqual([
+      null,
+      "7",
+      "40+",
+      "700+",
+      "900+",
+      "1K",
+      "4.8K",
+      "12K",
+      "999K",
+      "1.2M",
+    ]);
   });
 
   it("reads time the short way", () => {

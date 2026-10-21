@@ -8,11 +8,12 @@ import type { Place } from "./places";
 export type ActivityKind = "saved" | "viewed" | "went";
 
 /** A member as Social shows them. Only Instagram-connected members who left
- *  Show my activity on ever come back from the server. */
+ *  Show my activity on ever come back from the server, and never with their
+ *  whole username: `handleHint` is its first three letters (MESITA-2522). */
 export type ActivityPerson = {
   name: string;
   avatarUrl: string | null;
-  handle: string | null;
+  handleHint: string | null;
   followers: number;
   isYou: boolean;
 };
