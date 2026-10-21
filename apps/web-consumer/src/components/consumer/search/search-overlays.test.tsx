@@ -207,12 +207,32 @@ describe("Search map catalog reloads once the map is still (MESITA-2440)", () =>
     const src = read("SearchMap.tsx");
     expect(src).toContain("cameraMoveIsProgrammatic");
     expect(src).toContain("function takeProgrammaticIdle");
-    expect(src).toContain("{ programmatic: takeProgrammaticIdle() }");
+    expect(src).toContain("const programmatic = takeProgrammaticIdle();");
+    expect(src).toContain("onUser?.(box, { programmatic, resized: !programmatic && unmoved });");
     expect(src).toMatch(
       /addListener\("dragstart", \(\) => \{\s*noteUserMapDrag\(\);/,
     );
     expect(src).not.toContain("PROGRAMMATIC_IDLE_MS");
     expect(src).not.toContain("programmaticIdleUntil");
+  });
+
+  // MESITA-2510 (Pato: "you are uplaoading every second eve if i don't
+  // move"): a resize keeps the camera, so its idle is not a move — it never
+  // reloads, and it re-arms a guest move the resize's bounds_changed cancelled.
+  it("a resize idle (camera unchanged) never reloads, and re-arms an unserved move", () => {
+    const map = read("SearchMap.tsx");
+    const client = read("SearchClient.tsx");
+    expect(map).toContain("const unmoved = sameCamera(lastCamera.current, camera);");
+    const handler = client.slice(
+      client.indexOf("const onUserViewport = useCallback("),
+      client.indexOf("useEffect(() => () => clearPendingReload()"),
+    );
+    const resized = handler.slice(handler.indexOf("if (meta.resized) {"), handler.indexOf("if (meta.programmatic) {"));
+    expect(resized).toContain("if (moveUnservedRef.current) armIdleReload();");
+    expect(resized).toContain("return;");
+    expect(resized).not.toContain("loadAt(");
+    expect(handler).toContain("moveUnservedRef.current = true;");
+    expect(client).toMatch(/lastLoadAtRef\.current = Date\.now\(\);\s*moveUnservedRef\.current = false;/);
   });
 
   it("a GPS fix moves the dot; only the first or an asked-for fix moves the map", () => {
@@ -1507,9 +1527,11 @@ describe("the rail is a solid white band under the map (MESITA-2506)", () => {
   // map visible"): one full-width band, two columns, nothing on the map.
   it("one full-width bg-card band: the metadata left, the carousel right, nothing floating", () => {
     const overlay = read("search-catalog-overlays.tsx");
+    // One fixed height (MESITA-2510): the band never resizes the map.
     expect(overlay).toContain(
-      'className="border-border bg-card relative z-20 flex shrink-0 items-stretch border-t"',
+      'className="border-border bg-card relative z-20 flex h-[10.5rem] shrink-0 items-stretch border-t"',
     );
+    expect(overlay).toContain("overflow-y-auto border-r");
     expect(overlay).toContain("w-[42%]");
     expect(overlay).toContain("data-search-rail-meta");
     expect(overlay.indexOf("data-search-rail-meta")).toBeLessThan(
@@ -1542,7 +1564,7 @@ describe("the rail is a solid white band under the map (MESITA-2506)", () => {
 
   it("the route skeleton draws the same band", () => {
     const loading = read("../../../app/(shell)/(discovery)/search/loading.tsx");
-    expect(loading).toContain('className="border-border bg-card flex shrink-0 items-stretch border-t"');
+    expect(loading).toContain('className="border-border bg-card flex h-[10.5rem] shrink-0 items-stretch border-t"');
     expect(loading).toContain("w-[42%]");
   });
 });

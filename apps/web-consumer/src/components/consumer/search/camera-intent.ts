@@ -73,6 +73,28 @@ export function gpsFixMovesCamera(fix: {
   return fix.firstFix && !fix.userMoved && !fix.picked;
 }
 
+/** A camera as the map reports it at idle: its centre and zoom. */
+export type CameraState = { lat: number; lng: number; zoom: number };
+
+/**
+ * Is this idle's camera the last idle's (MESITA-2510)? Then nothing moved
+ * it — the map was resized (the band under it changed height) or a move
+ * was a no-op — and the idle is not the guest's move: it must never reload.
+ * Google keeps the centre and zoom through a resize; any drag, pinch or
+ * wheel changes one of them.
+ */
+export function sameCamera(
+  a: CameraState | null,
+  b: CameraState | null,
+): boolean {
+  if (!a || !b) return false;
+  return (
+    a.zoom === b.zoom &&
+    Math.abs(a.lat - b.lat) < 1e-9 &&
+    Math.abs(a.lng - b.lng) < 1e-9
+  );
+}
+
 /**
  * The share of the map the page's own chrome covers, so a place under it
  * counts as off-screen. Fractions of the viewport's height or width,
