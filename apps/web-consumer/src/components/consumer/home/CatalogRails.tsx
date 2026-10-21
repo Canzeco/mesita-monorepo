@@ -14,7 +14,7 @@
 //   │ ○ …   ↕  │                      │
 //
 // Places: the left family column beside the tiles (Pato, MESITA-2519: "keep
-// the later view of the failies. its fastwer to browse") — All pinned,
+// the later view of the failies. its fastwer to browse") — Top first,
 // then every family, scrolling on its own, no colour stripes (MESITA-2521:
 // "we don't need to colors now"). Favorites left the column for the bar's
 // Saved tab (Pato, MESITA-2522: "remove favorites from this lateral menu"); MESITA-2517 tried a
@@ -109,6 +109,8 @@ const ROW_OFF = "text-foreground hover:bg-card/60";
  *  It replaced Nearby and Popular (MESITA-2426), which were one pool in two
  *  orders. */
 export const ALL_CHIP = "all";
+/** What the guest reads for `all` (MESITA-2534). */
+export const TOP_LABEL = "Top";
 
 /** All is every family; any other row is one family. */
 export function isEveryFamily(chip: string): boolean {
@@ -121,23 +123,23 @@ export const HOME_TABS = [
 ] as const;
 export type HomeTab = (typeof HOME_TABS)[number]["key"];
 
-/** The Places tab's left column, top to bottom (MESITA-2519): All pinned,
+/** The Places tab's left column, top to bottom (MESITA-2519): Top first in one scrolling list (MESITA-2534),
  *  then every guest family. The guest's hearted places are not a row: they
  *  live in the bar's Saved tab (MESITA-2522). Google Places and Mesita Selected are not guest choices
  *  (MESITA-2381): they are the sources All mixes. A family with nothing here
  *  says so rather than hiding. */
 export function placesChips(): { key: string; label: string }[] {
   return [
-    { key: ALL_CHIP, label: "All" },
+    // The word is Top, the key stays `all` (Pato, MESITA-2534: "all is the
+    // wrong word … one might thing that is the sum aof all the other
+    // subests, but not"): it is the best-ranked pool, not every place.
+    { key: ALL_CHIP, label: TOP_LABEL },
     ...FILTERABLE_PLACE_FAMILIES.map((f) => ({
       key: f.key as string,
       label: f.label,
     })),
   ];
 }
-
-/** All: the column's pinned head (MESITA-2411, MESITA-2519, MESITA-2522). */
-export const PINNED_CHIPS = 1;
 
 /** Tiles drawn per page; the next page appends on scroll (MESITA-2384). */
 export const PLACES_PAGE = 20;
@@ -414,7 +416,7 @@ export function CatalogRails() {
   // THE PLACES TAB'S LEFT COLUMN (Pato, MESITA-2519: "keep the later view of
   // the failies. its fastwer to browse … LEFT MENU OF FAMILIES"): the
   // lateral menu of MESITA-2367 under the tabs of MESITA-2517, which tried a
-  // horizontal chip row. All pinned, then every family, scrolling on its own — no group colours (Pato, MESITA-2521: "remove the
+  // horizontal chip row. Top first, then every family, one scrolling list (MESITA-2534) — no group colours (Pato, MESITA-2521: "remove the
   // stupid blue and orange color from the sidebar menu"; they were
   // MESITA-2484/2492). Each row a line icon
   // and a name, never an emoji (MESITA-2478); the chosen row white, bold,
@@ -456,21 +458,16 @@ export function CatalogRails() {
       aria-label="Places"
       data-places-categories
     >
-      <ul
-        role="list"
-        aria-label="Yours"
-        className="shrink-0"
-        data-places-group="pinned"
-      >
-        {chips.slice(0, PINNED_CHIPS).map(categoryRow)}
-      </ul>
+      {/* ONE scrolling list, Top first and the families after it, no
+          pinned head above them (Pato, MESITA-2534: "don't divide al from the
+          other families … now scrollable"). */}
       <ul
         role="list"
         aria-label="Families"
-        className="scrollbar-hide mt-2 min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
+        className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
         data-places-group="families"
       >
-        {chips.slice(PINNED_CHIPS).map(categoryRow)}
+        {chips.map(categoryRow)}
       </ul>
     </nav>
   );

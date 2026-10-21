@@ -440,7 +440,9 @@ describe("Search's header is location · the query bar · Ask AI, then family ch
     expect(header).toContain("onClick={clearMapFamilies}");
     expect(header).toContain("aria-pressed={everyFamily}");
     expect(header).toContain('name="all"');
-    expect(header).toContain("<span>All</span>");
+    // Top, not All (MESITA-2534); the key stays `all`.
+    expect(header).toContain("<span>Top</span>");
+    expect(header).not.toContain("<span>All</span>");
     expect(header.indexOf("data-search-chip-all")).toBeLessThan(
       header.indexOf("FILTERABLE_PLACE_FAMILIES.map"),
     );
