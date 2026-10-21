@@ -17,7 +17,7 @@ import { toGuestClass, toGuestPlan } from "@/lib/guest-standing";
 //
 //   (photo)  name
 //   (photo)  [instagram]
-//   (photo)  [Class ›] [Plan ›]    (MESITA-2553: two separate facts)
+//   (photo)  [Class ›]             (Plan is Social's, MESITA-2559)
 //   ─────── band ───────
 //
 // The card itself is IdentityCard, the same one Social shows for a member
@@ -82,13 +82,13 @@ export function IdentityBar({
           <>
             {/* The skeleton mirrors the DESTINATION (Docs › Design §D): the
                 87px ringed avatar on the left, and the name, Instagram and
-                Class · Plan rows beside it (MESITA-2553). */}
+                Class rows beside it (MESITA-2553, MESITA-2559). */}
             <div className="flex w-full items-center gap-4">
               <div className="bg-muted h-[87px] w-[87px] shrink-0 animate-pulse rounded-full" />
               <div className="flex flex-1 flex-col gap-1.5">
                 <div className="bg-muted h-5 w-2/5 animate-pulse rounded-md" />
                 <div className="bg-muted h-8 w-3/5 animate-pulse rounded-full" />
-                <div className="bg-muted h-8 w-1/2 animate-pulse rounded-full" />
+                <div className="bg-muted h-8 w-1/3 animate-pulse rounded-full" />
               </div>
             </div>
           </>
@@ -104,7 +104,9 @@ export function IdentityBar({
             // "Free" or "Regular" (MESITA-2553).
             standing={standing}
             onClassPress={standing ? () => setClassOpen(true) : undefined}
-            planHref={CONSUMER_ROUTES.mePages.plan}
+            // Plan is a Social fact; the Plan tile below carries it on Me
+            // (Pato, MESITA-2559: "it looks weird. its just for the social").
+            showPlan={false}
           />
         )}
       </div>
