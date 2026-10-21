@@ -25,16 +25,19 @@ import { cn } from "@/lib/utils";
 //
 //   (80px)  Diego
 //   (photo) [◎ die••• · 1.2K followers]
-//   (     ) [♛ VIP ›] [▭ Pro ›]          (chevrons on Me only)
+//   (     ) [♛ VIP] [▭ Pro]              (Me: [♛ VIP ›] alone)
 //
 // CLASS AND PLAN ARE TWO THINGS (Pato, MESITA-2553). Class is partnership
 // status: Regular or VIP, through a partner, never sold. Plan is the
 // subscription: Free or Pro. Each chip names its own dimension with its own
 // icon (Crown, CreditCard) and aria-label, so the pair never reads as one
 // ladder. Weight marks "special", not rank: VIP filled, Pro outlined, the two
-// defaults equally muted. No gem anywhere (MESITA-2551). On Me the chips are
-// doors (Class opens its explainer, Plan opens /me/plan); on Social they are
-// facts.
+// defaults equally muted. No gem anywhere (MESITA-2551). On Me the Class
+// chip is a door (it opens its explainer); on Social both are facts.
+//
+// PLAN IS FOR SOCIAL (Pato, MESITA-2559: "neither show the plan in the
+// profile. it looks weird. its just for the social"). Me passes
+// showPlan={false}: its Plan tile already names the plan and opens /me/plan.
 
 /** One chip, Me's header vocabulary (MESITA-1652). */
 const CHIP_CLASS =
@@ -67,7 +70,7 @@ function InstagramBadge() {
   );
 }
 
-/** One standing chip: a button (Class on Me), a link (Plan on Me) or a fact. */
+/** One standing chip: a button (Class on Me) or a fact. */
 function StandingChip({
   icon,
   label,
@@ -75,7 +78,6 @@ function StandingChip({
   strong,
   filled,
   onPress,
-  href,
   data,
 }: {
   icon: React.ReactNode;
@@ -84,7 +86,6 @@ function StandingChip({
   strong: boolean;
   filled: boolean;
   onPress?: () => void;
-  href?: string;
   data: Record<string, string>;
 }) {
   const className = cn(
@@ -94,25 +95,18 @@ function StandingChip({
       : strong
         ? "border-foreground"
         : "text-muted-foreground font-medium",
-    (onPress || href) && cn(TAP_TARGET_CLASS, "transition", !filled && "hover:bg-muted"),
+    onPress && cn(TAP_TARGET_CLASS, "transition", !filled && "hover:bg-muted"),
   );
   const body = (
     <>
       {icon}
       <span className="truncate">{label}</span>
-      {(onPress || href) && (
+      {onPress && (
         <ChevronRight className="h-3 w-3 shrink-0 opacity-60" aria-hidden />
       )}
     </>
   );
   const aria = `${dimension}: ${label}`;
-  if (href) {
-    return (
-      <Link href={href} aria-label={aria} className={className} {...data}>
-        {body}
-      </Link>
-    );
-  }
   if (onPress) {
     return (
       <button type="button" onClick={onPress} aria-label={aria} className={className} {...data}>
@@ -133,7 +127,7 @@ export function IdentityCard({
   instagram,
   standing,
   onClassPress,
-  planHref,
+  showPlan = true,
 }: {
   name: string;
   avatarUrl: string | null;
@@ -142,8 +136,8 @@ export function IdentityCard({
   standing: IdentityStanding | null;
   /** Me only: the Class chip opens its explainer. */
   onClassPress?: () => void;
-  /** Me only: the Plan chip opens the Plan page. */
-  planHref?: string;
+  /** False on Me: Plan is a Social fact; Me's Plan tile carries it. */
+  showPlan?: boolean;
 }) {
   return (
     <div className="flex w-full items-center gap-4" data-identity-card>
@@ -205,15 +199,16 @@ export function IdentityCard({
               onPress={onClassPress}
               data={{ "data-identity-class": standing.guestClass }}
             />
-            <StandingChip
-              icon={<CreditCard className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />}
-              label={PLAN_LABEL[standing.plan]}
-              dimension="Plan"
-              strong={standing.plan === "pro"}
-              filled={false}
-              href={planHref}
-              data={{ "data-identity-plan": standing.plan }}
-            />
+            {showPlan && (
+              <StandingChip
+                icon={<CreditCard className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />}
+                label={PLAN_LABEL[standing.plan]}
+                dimension="Plan"
+                strong={standing.plan === "pro"}
+                filled={false}
+                data={{ "data-identity-plan": standing.plan }}
+              />
+            )}
           </div>
         )}
       </div>

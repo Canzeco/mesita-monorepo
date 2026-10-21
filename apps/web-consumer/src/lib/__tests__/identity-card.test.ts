@@ -45,19 +45,20 @@ describe("the identity card", () => {
   });
 
   // MESITA-2553: photo left; name, Instagram, then Class and Plan, two
-  // separate facts. Me passes the doors; Social passes none.
-  it("gets Class and Plan from the profile on Me, as doors", () => {
+  // separate facts. Me passes the Class door and hides Plan (MESITA-2559:
+  // "its just for the social"); Social passes no door and shows both.
+  it("gets Class from the profile on Me, as a door, and no Plan chip", () => {
     expect(CARD).toContain('className="flex w-full items-center gap-4"');
     expect(BAR).toContain("standing={standing}");
     expect(BAR).toContain("onClassPress=");
-    expect(BAR).toContain("planHref={CONSUMER_ROUTES.mePages.plan}");
+    expect(BAR).toContain("showPlan={false}");
     expect(BAR).toContain("<ClassSheet");
   });
 
   it("shows them on Social as plain facts, never doors", () => {
     expect(FEED).toContain("guestClass: toGuestClass(person.guestClass)");
     expect(FEED).not.toContain("onClassPress");
-    expect(FEED).not.toContain("planHref");
+    expect(FEED).not.toContain("showPlan");
   });
 });
 

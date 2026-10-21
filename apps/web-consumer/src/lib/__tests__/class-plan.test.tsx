@@ -29,7 +29,7 @@ describe("Class and Plan on the identity card", () => {
         instagram={null}
         standing={standing}
         onClassPress={doors ? () => {} : undefined}
-        planHref={doors ? "/me/plan" : undefined}
+        showPlan={!doors}
       />,
     );
 
@@ -55,13 +55,15 @@ describe("Class and Plan on the identity card", () => {
     expect(text(html)).not.toMatch(/Free|Regular/);
   });
 
-  it("makes them doors only when Me passes them", () => {
+  it("makes Class a door on Me, and drops Plan there (MESITA-2559)", () => {
     const facts = card({ guestClass: "vip", plan: "pro" });
     expect(facts).not.toContain("<button");
     expect(facts).not.toContain("href=");
-    const doors = card({ guestClass: "vip", plan: "pro" }, true);
-    expect(doors).toMatch(/<button[^>]*aria-label="Class: VIP"/);
-    expect(doors).toMatch(/<a[^>]*href="\/me\/plan"[^>]*aria-label="Plan: Pro"|<a[^>]*aria-label="Plan: Pro"[^>]*href="\/me\/plan"/);
+    expect(facts).toContain('aria-label="Plan: Pro"');
+    const me = card({ guestClass: "vip", plan: "pro" }, true);
+    expect(me).toMatch(/<button[^>]*aria-label="Class: VIP"/);
+    expect(me).not.toContain("data-identity-plan");
+    expect(me).not.toContain("Plan:");
   });
 
   it("reads unknown or retired values as the plain default", () => {
