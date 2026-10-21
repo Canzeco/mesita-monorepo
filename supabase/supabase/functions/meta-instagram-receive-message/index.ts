@@ -5,8 +5,9 @@
 // Me › Instagram; this function finds the pending DM claim by that code,
 // asks Meta's User Profile API who sent it (username, follower count,
 // photo), verifies the guest through consumer_instagram_verify, copies the
-// photo into consumer-avatars as the guest's picture, and replies on
-// Instagram. Mesita never messages anyone first.
+// photo into consumer-avatars as the guest's picture unless they switched
+// "Use my Instagram photo" off or uploaded their own (MESITA-2585,
+// _shared/instagram-avatar.ts), and replies on Instagram. Mesita never messages anyone first.
 //
 //   GET   Meta's subscribe handshake: hub.verify_token must match
 //         META_IG_VERIFY_TOKEN; answers hub.challenge.
@@ -33,11 +34,10 @@ import {
   signatureIsValid,
   verifyHandshake,
 } from "../_shared/instagram-dm.ts";
-import { writeConsumer } from "../_shared/consumer-doc.ts";
+import { adoptInstagramAvatar } from "../_shared/instagram-avatar.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 const GRAPH = `https://graph.instagram.com/${META_GRAPH_VERSION}`;
-const AVATAR_BUCKET = "consumer-avatars";
 
 function text(body: string, status: number): Response {
   return new Response(body, { status, headers: { "Content-Type": "text/plain" } });
@@ -65,38 +65,6 @@ async function reply(cfg: InstagramDmConfig, igsid: string, message: string): Pr
     body: JSON.stringify({ recipient: { id: igsid }, message: { text: message } }),
   });
   if (!res.ok) console.error("ig_reply_failed", res.status, (await res.text()).slice(0, 300));
-}
-
-/** The Instagram photo becomes the guest's picture. Meta's URL expires in a
- *  few days, so the bytes are copied; a failure keeps the old picture. */
-async function adoptPhoto(
-  admin: SupabaseClient,
-  supabaseUrl: string,
-  consumerId: string,
-  photoUrl: string,
-): Promise<void> {
-  try {
-    const res = await fetch(photoUrl);
-    if (!res.ok) throw new Error(`photo ${res.status}`);
-    const type = res.headers.get("content-type") ?? "image/jpeg";
-    if (!type.startsWith("image/")) throw new Error(`photo type ${type}`);
-    const path = `${consumerId}/instagram-${Date.now()}.jpg`;
-    const up = await admin.storage.from(AVATAR_BUCKET).upload(
-      path,
-      new Uint8Array(await res.arrayBuffer()),
-      { contentType: type, upsert: true },
-    );
-    if (up.error) throw new Error(up.error.message);
-    const base = supabaseUrl.replace(/\/+$/, "");
-    const written = await writeConsumer(admin, {
-      mode: "update",
-      id: consumerId,
-      patch: { avatar_url: `${base}/storage/v1/object/public/${AVATAR_BUCKET}/${path}` },
-    });
-    if (!written.ok) throw new Error(written.error);
-  } catch (e) {
-    console.error("ig_photo_failed", consumerId, e instanceof Error ? e.message : e);
-  }
 }
 
 async function handle(
@@ -137,8 +105,16 @@ async function handle(
     followers: profile.followers,
     photo: profile.photoUrl !== null,
   }));
-  if (profile.photoUrl) {
-    await adoptPhoto(admin, supabaseUrl, claim.consumer_id, profile.photoUrl);
+  // The shared door (MESITA-2585): only with the guest's switch on, never
+  // over an uploaded photo, JPEG/PNG/WEBP up to the bucket's 2 MiB.
+  const photo = await adoptInstagramAvatar(
+    admin,
+    supabaseUrl,
+    claim.consumer_id,
+    profile.photoUrl,
+  );
+  if (!photo.ok && !["no_photo", "photo_off", "uploaded_photo_kept"].includes(photo.reason)) {
+    console.error("ig_photo_failed", claim.consumer_id, photo.reason);
   }
   await reply(cfg, senderId, DM_REPLY.verified(profile.handle));
 }

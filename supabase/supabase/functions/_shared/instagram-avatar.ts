@@ -11,10 +11,16 @@
 // told apart from a photo the guest uploaded (`{ms}-{uuid}.{ext}`,
 // MESITA-953).
 //
-// THE RULE: the copy becomes `consumers.avatar_url` only when the current
-// avatar is empty or is itself an earlier Instagram copy. An uploaded photo is
-// never replaced. Re-verifying refreshes the copy and removes the older
-// Instagram copies. Best effort: nothing here can fail a verification.
+// THE RULE: the copy becomes `consumers.avatar_url` only when the guest left
+// "Use my Instagram photo" on (consumers.use_instagram_photo, default true,
+// MESITA-2585) AND the current avatar is empty or is itself an earlier
+// Instagram copy. An uploaded photo is never replaced. Re-verifying
+// refreshes the copy and removes the older Instagram copies. Best effort:
+// nothing here can fail a verification.
+//
+// ONE DOOR FOR BOTH PATHS: the bio check (consumer-web-claim-instagram, the
+// Apify scrape's photo) and the DM webhook (meta-instagram-receive-message,
+// Meta's profile_pic) both call adoptInstagramAvatar with the photo's URL.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { writeConsumer } from "./consumer-doc.ts";
@@ -53,6 +59,12 @@ export function mayReplaceAvatar(current: string | null | undefined, consumerId:
   return !current || isInstagramAvatar(current, consumerId);
 }
 
+/** Does the guest's switch allow the Instagram photo? Anything but an
+ *  explicit false is the default, on (MESITA-2585). */
+export function photoAllowed(useInstagramPhoto: unknown): boolean {
+  return useInstagramPhoto !== false;
+}
+
 /** The stored extension for an image content type, or null when the bucket refuses it. */
 export function avatarExt(contentType: string | null): string | null {
   const type = (contentType ?? "").split(";")[0].trim().toLowerCase();
@@ -71,20 +83,23 @@ export async function adoptInstagramAvatar(
   admin: SupabaseClient,
   supabaseUrl: string,
   consumerId: string,
-  profile: Record<string, unknown>,
+  photoUrl: string | null,
   now = Date.now(),
 ): Promise<InstagramAvatarResult> {
   try {
-    const source = pickProfilePicUrl(profile);
+    const source = photoUrl && /^https:\/\//.test(photoUrl.trim()) ? photoUrl.trim() : null;
     if (!source) return { ok: false, reason: "no_photo" };
 
     const { data: row, error: readErr } = await admin
       .from("consumers")
-      .select("avatar_url")
+      .select("avatar_url, use_instagram_photo")
       .eq("id", consumerId)
       .maybeSingle();
     if (readErr) return { ok: false, reason: `read_${readErr.message}` };
-    const current = (row as { avatar_url?: string | null } | null)?.avatar_url ?? null;
+    const r = row as { avatar_url?: string | null; use_instagram_photo?: boolean } | null;
+    // The guest said no: only the handle and followers (MESITA-2585).
+    if (!photoAllowed(r?.use_instagram_photo)) return { ok: false, reason: "photo_off" };
+    const current = r?.avatar_url ?? null;
     // An uploaded photo wins: do not even download.
     if (!mayReplaceAvatar(current, consumerId)) return { ok: false, reason: "uploaded_photo_kept" };
 

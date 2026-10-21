@@ -133,3 +133,28 @@ Deno.test("buildProfilePatch: avatar_url alone", () => {
   if (!res.ok) return;
   assertEquals(res.patch, { avatar_url: url });
 });
+
+const NO_FIELDS = {
+  firstName: null,
+  lastName: null,
+  fullName: null,
+  sex: null,
+  birthday: null,
+};
+
+Deno.test("buildProfilePatch: the Instagram photo switch is written alone (MESITA-2585)", () => {
+  const off = buildProfilePatch({ use_instagram_photo: false }, NO_FIELDS);
+  assertEquals(off.ok, true);
+  if (off.ok) assertEquals(off.patch, { use_instagram_photo: false });
+  const on = buildProfilePatch({ use_instagram_photo: true }, NO_FIELDS);
+  assertEquals(on.ok, true);
+  if (on.ok) assertEquals(on.patch, { use_instagram_photo: true });
+});
+
+Deno.test("buildProfilePatch: a non-boolean Instagram photo switch is a 400", () => {
+  const res = buildProfilePatch(
+    { use_instagram_photo: "no" as unknown as boolean },
+    NO_FIELDS,
+  );
+  assertEquals(res.ok, false);
+});

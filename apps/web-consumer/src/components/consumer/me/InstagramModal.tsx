@@ -1,21 +1,28 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BadgeCheck, Copy, Send } from "lucide-react";
+import { BadgeCheck, Copy, ImageIcon, Send } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { cn, errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { Spinner } from "@/components/shared";
 import { Button } from "@/components/ui/button";
-import { SectionEyebrow } from "@/components/consumer/me/settings-rows";
+import {
+  IconCircle,
+  SectionEyebrow,
+  SettingsGroup,
+  Switch,
+} from "@/components/consumer/me/settings-rows";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   apiCheckInstagramClaim,
+  apiFetchConsumerProfile,
   apiInstagramChannel,
   apiInstagramDmStatus,
   apiStartInstagramClaim,
   apiStartInstagramDm,
+  apiUpdateConsumerProfile,
   dmVerified,
   type InstagramChannel,
   type InstagramDmClaim,
@@ -182,6 +189,10 @@ export function InstagramModal() {
               onCheck={check}
             />
           )}
+
+          {/* Asked on the same screen as the connect (Pato, MESITA-2585:
+              "keep that as default but ask the user"). */}
+          <InstagramPhotoSwitch />
 
           {connected && !switching && (
             <button
@@ -497,5 +508,73 @@ function CurrentConnectionCard() {
         </p>
       </div>
     </div>
+  );
+}
+
+// "USE MY INSTAGRAM PHOTO" (Pato, MESITA-2585: "lets keep that as default but
+// ask the user, they can not activate that if they want. we only get the
+// username and the [followers]"). A server fact (consumers.use_instagram_photo,
+// on by default) that both verify paths read: on, verifying copies the
+// Instagram photo as the picture unless the guest uploaded one (MESITA-2578);
+// off, only the handle and followers are stored, and a picture that came
+// from Instagram is taken down.
+function InstagramPhotoSwitch() {
+  const supabase = useBrowserSupabase();
+  const [on, setOn] = useState<boolean | null>(null);
+  const [pending, setPending] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiFetchConsumerProfile(supabase)
+      .then(({ consumer }) => {
+        if (!cancelled) setOn(consumer.use_instagram_photo !== false);
+      })
+      .catch(() => {
+        if (!cancelled) setOn(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase]);
+
+  const flip = () => {
+    if (on == null || pending) return;
+    const next = !on;
+    setOn(next);
+    setPending(true);
+    apiUpdateConsumerProfile(supabase, { use_instagram_photo: next })
+      .catch((e) => {
+        setOn(!next);
+        toast.error(errMsg(e, "Couldn't change that."));
+      })
+      .finally(() => setPending(false));
+  };
+
+  const shown = on ?? true;
+  return (
+    <SettingsGroup title="Photo">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={shown}
+        disabled={on == null || pending}
+        onClick={flip}
+        className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition disabled:opacity-60"
+        data-instagram-photo-switch
+      >
+        <IconCircle tint="muted">
+          <ImageIcon className="h-[18px] w-[18px]" />
+        </IconCircle>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold">Use my Instagram photo</span>
+          <span className="text-muted-foreground type-label block">
+            {shown
+              ? "Your picture comes from Instagram"
+              : "Only your username and followers"}
+          </span>
+        </span>
+        <Switch on={shown} />
+      </button>
+    </SettingsGroup>
   );
 }
