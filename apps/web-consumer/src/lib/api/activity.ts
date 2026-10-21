@@ -1,5 +1,5 @@
 // Social v1 (MESITA-2442): the two events (saved · viewed; no went since
-// MESITA-2567) and the three ways they are read back. One helper per call, each one Edge Function.
+// MESITA-2567) and the four ways they are read back. One helper per call, each one Edge Function.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
@@ -103,4 +103,24 @@ export async function apiSavedActivity(
     { scope: "saved" },
   );
   return { ids, places };
+}
+
+/** The places the member behind one feed event liked, newest first: Social's
+ *  person card (MESITA-2583). The event names the member, never an id
+ *  (MESITA-2460); an anonymous member's event returns none. */
+export async function apiLikedPlaces(
+  client: SupabaseClient,
+  event: Pick<ActivityFeedItem, "placeId" | "kind" | "at">,
+): Promise<Place[]> {
+  const { places } = await invokeEF<{ places: Place[] }>(
+    client,
+    "consumer-web-list-activity",
+    {
+      scope: "liked",
+      place_id: event.placeId,
+      kind: event.kind,
+      at: event.at,
+    },
+  );
+  return places;
 }

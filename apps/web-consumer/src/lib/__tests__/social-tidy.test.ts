@@ -53,14 +53,14 @@ describe("the row", () => {
     expect(src).toContain("data-social-refresh");
     expect(src).toContain("data-social-status");
     expect(src).toContain("Refreshing…");
-    expect(src).toContain("{feedStatus(feed.sample, updatedAt, now)}");
+    expect(src).toContain("{feedStatus(sampleOnly, updatedAt, now)}");
     expect(src).toContain("export const FRESH_MS = 4_000;");
     expect(src).toContain('fresh && "bg-muted"');
     // The first load glows nothing; the sample never glows.
     expect(src).toContain(
       "const arrived = seen ? keys.filter((k) => !seen.has(k)) : [];",
     );
-    expect(src).toContain("fresh={!feed.sample && fresh.has(eventKey(item))}");
+    expect(src).toContain("fresh={fresh.has(eventKey(item))}");
   });
 
   // MESITA-2536: level 1 — the "N new" pill, pull to refresh, seen marking.
@@ -111,10 +111,14 @@ describe("the row", () => {
     expect(src).toMatch(/<LocalDialog[\s\S]{0,120}instant\s*>/);
     expect(src).not.toContain("<LocalSheet");
     expect(src).toContain("data-social-person-card");
-    // The card is the member's identity card, no activity list
-    // (MESITA-2547).
+    // The card is the member's identity card (MESITA-2547), then the
+    // places they liked in one list: no time, no views (MESITA-2583).
     expect(src).not.toContain("Recent activity");
     expect(src).toContain("<IdentityCard");
+    expect(src).toMatch(/<IdentityCard[\s\S]{0,400}<LikedList places=\{liked\} \/>/);
+    const list = src.slice(src.indexOf("function LikedList"));
+    expect(list).toContain("data-social-liked-place");
+    expect(list.slice(0, list.indexOf("\n}\n"))).not.toMatch(/shortAgo|VERB|viewed/);
     // No member id ever reaches the client (MESITA-2460).
     expect(src).not.toContain("consumer_id");
   });

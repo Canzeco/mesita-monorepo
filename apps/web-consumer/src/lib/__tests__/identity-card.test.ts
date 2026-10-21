@@ -25,7 +25,7 @@ describe("the identity card", () => {
     expect(BAR).not.toContain("formatPhoneDisplay");
   });
 
-  it("is Social's person card, with the handle hidden and no activity", () => {
+  it("is Social's person card, with the handle hidden and no activity feed", () => {
     expect(FEED).toContain("<IdentityCard");
     expect(FEED).toContain(
       "instagram={instagram ? { label: instagram } : null}",

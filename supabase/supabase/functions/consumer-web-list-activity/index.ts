@@ -18,6 +18,13 @@
 //   → { ids, places }
 //   The guest's saves, newest first: every id (the browser cache adopts them)
 //   and the cards of the ones still listed (Home's Saved row).
+// Body: { scope: "liked", place_id, kind, at }
+//   → { places }
+//   Social's person card (MESITA-2583, Pato: "just like the user and then the
+//   places they liked and thats it. in one list. not when."): every place the
+//   member behind that feed event liked, newest first, cards only. The event
+//   names the member because no member id reaches the client (MESITA-2460);
+//   an anonymous member's event returns no places (place_activity_liked_by).
 //
 // Who appears is the SQL's call (place_activity_visible: Instagram connected,
 // Show my activity on, not deleted), never this file's. The guest's own row
@@ -32,6 +39,7 @@ import { haversineKm } from "../_shared/geo.ts";
 import {
   type ActivityRow,
   feedEvents,
+  isActivityKind,
   isMesitaPlaceId,
   nearYou,
   socialLine,
@@ -43,8 +51,16 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 const FEED_ROWS = 500;
 const FEED_ITEMS = 50;
 const LINE_FACES = 5;
+const LIKED_PLACES = 60;
 
-type Body = { scope?: string; place_id?: string; lat?: number; lng?: number };
+type Body = {
+  scope?: string;
+  place_id?: string;
+  kind?: string;
+  at?: string;
+  lat?: number;
+  lng?: number;
+};
 
 type Card = Record<string, unknown> & { id: string; lat?: number | null; lng?: number | null };
 
@@ -156,5 +172,33 @@ Deno.serve(async (req) => {
     return json({ ok: true, ids, places });
   }
 
-  return json({ ok: false, error: "scope must be feed, place or saved" }, 400);
+  if (body.scope === "liked") {
+    const placeId = body.place_id;
+    if (!isMesitaPlaceId(placeId)) {
+      return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
+    }
+    if (!isActivityKind(body.kind)) {
+      return json({ ok: false, error: "kind must be saved or viewed" }, 400);
+    }
+    if (typeof body.at !== "string" || !Number.isFinite(Date.parse(body.at))) {
+      return json({ ok: false, error: "at must be the event's time" }, 400);
+    }
+    const { data, error } = await admin.rpc("place_activity_liked_by", {
+      p_place_id: placeId,
+      p_kind: body.kind,
+      p_at: body.at,
+      p_limit: LIKED_PLACES,
+    });
+    if (error) return json({ ok: false, error: `liked: ${error.message}` }, 500);
+    const ids = ((data ?? []) as { place_id: string }[]).map((r) => r.place_id);
+    const cardsRes = await readCards(anon, ids);
+    if (!cardsRes.ok) return json({ ok: false, error: cardsRes.error }, 500);
+    const places = ids.flatMap((id) => {
+      const c = cardsRes.cards.get(id);
+      return c ? [c] : [];
+    });
+    return json({ ok: true, places });
+  }
+
+  return json({ ok: false, error: "scope must be feed, place, saved or liked" }, 400);
 });
