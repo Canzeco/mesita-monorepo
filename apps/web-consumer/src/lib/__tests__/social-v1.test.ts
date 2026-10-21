@@ -91,15 +91,15 @@ describe("the feed's copy", () => {
     plan: "free",
   };
 
-  // MESITA-2515: old-Instagram rows, the verbs liked · visited · viewed over
-  // unchanged keys. MESITA-2522: the name leads; the username never shows.
-  it("reads liked, visited and viewed over the stored keys", () => {
-    expect(VERB).toEqual({ saved: "liked", went: "visited", viewed: "viewed" });
+  // MESITA-2515: old-Instagram rows, the verbs over unchanged keys.
+  // MESITA-2567: only liked and viewed; there is no visited.
+  // MESITA-2522: the name leads; the username never shows.
+  it("reads liked and viewed over the stored keys, and nothing else", () => {
+    expect(VERB).toEqual({ saved: "liked", viewed: "viewed" });
   });
 
   // MESITA-2532: one person, one place, one event — never "and N others".
   it("is one person and a verb, never a count", () => {
-    expect(feedSentence({ person: lead, kind: "went" })).toBe("Perdón visited");
     expect(feedSentence({ person: lead, kind: "saved" })).toBe("Perdón liked");
     expect(feedSentence({ person: lead, kind: "viewed" })).toBe(
       "Perdón viewed",

@@ -16,7 +16,7 @@
 // time notation. Keep it simple."; MESITA-2525 had grouped by day).
 // TIDY NOTIFICATIONS (MESITA-2525, Pato: "make this more UI friendly … your
 // call"): the member's picture wears the verb as an ink badge
-// (heart liked, pin visited, eye viewed), so the list scans without reading.
+// (heart liked, eye viewed), so the list scans without reading.
 // One line: the name (bold), the verb, the place (bold), no period; under
 // it, muted, the Instagram glyph and the member's Instagram as social proof —
 // three letters of the username and an approximate follower count, never
@@ -25,9 +25,9 @@
 // mentioing the number of followers because that is all the social proof is
 // about") — then the time. No Instagram → the quiet line is the time alone.
 // The place's photo on the right; no photo → the card placeholder (family
-// icon or initial), never an empty box. Three verbs — liked (stored `saved`),
-// visited (stored `went`), viewed (stored `viewed`); the labels changed,
-// never the keys.
+// icon or initial), never an empty box. Two verbs — liked (stored `saved`)
+// and viewed (stored `viewed`); the labels changed, never the keys. There is
+// no visited (Pato, MESITA-2567: "there is only viewed and liked").
 // ONE PERSON, ONE PLACE, ONE EVENT per row, never "and 4 others" (Pato,
 // MESITA-2532: "is juse one person one place events. list all the fucking
 // events. its readl time uner you radious or near you, just enough to odn't
@@ -78,7 +78,6 @@ import {
   ArrowUp,
   Eye,
   Heart,
-  MapPin,
   RotateCw,
   Users,
   type LucideIcon,
@@ -109,7 +108,6 @@ import { cn, errMsg, firstInitial } from "@/lib/utils";
 export const VERB: Record<ActivityKind, string> = {
   saved: "liked",
   viewed: "viewed",
-  went: "visited",
 };
 
 /** "2h", "5m", "3d": the feed's clock. */
@@ -159,7 +157,7 @@ export function feedInstagram(lead: ActivityPerson): string | null {
   return followers ? `${handle} · ${followers} followers` : handle;
 }
 
-/** "Perdón liked" / "You visited": one person, never "and N others". */
+/** "Perdón liked" / "You viewed": one person, never "and N others". */
 export function feedSentence(
   item: Pick<ActivityFeedItem, "person" | "kind">,
 ): string {
@@ -174,7 +172,6 @@ export const LIVE_MS = 30_000;
  *  shape; the sentence still says the verb for a screen reader. */
 const VERB_ICON: Record<ActivityKind, LucideIcon> = {
   saved: Heart,
-  went: MapPin,
   viewed: Eye,
 };
 
@@ -599,7 +596,7 @@ export function SocialFeed({
       <EmptyState
         icon={Users}
         title="No activity yet"
-        description="When members with Instagram like, view or visit a place, it shows up here."
+        description="When members with Instagram like or view a place, it shows up here."
       />
     );
   }

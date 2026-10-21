@@ -82,6 +82,17 @@ describe("member preview edges", () => {
     expect(html).toContain("grid grid-cols-2 gap-2");
   });
 
+  it("has no I went, even with every member action passed (MESITA-2567)", () => {
+    const noop = () => {};
+    const html = renderToStaticMarkup(
+      <PlaceProfile
+        place={detail()}
+        actions={{ onSave: noop, onContact: noop, onShare: noop, onReserve: noop }}
+      />,
+    );
+    expect(html).not.toMatch(/I went|went here/);
+  });
+
   it("keeps Google, Instagram, and Facebook when the socials are empty", () => {
     const html = renderToStaticMarkup(
       <PlaceProfile

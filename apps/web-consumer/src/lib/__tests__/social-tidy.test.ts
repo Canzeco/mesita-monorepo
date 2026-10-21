@@ -14,8 +14,9 @@ describe("the row", () => {
     "utf8",
   );
 
-  it("wears the verb as a badge: heart liked, pin visited, eye viewed", () => {
-    expect(src).toMatch(/saved: Heart,\s+went: MapPin,\s+viewed: Eye,/);
+  it("wears the verb as a badge: heart liked, eye viewed (no visited, MESITA-2567)", () => {
+    expect(src).toMatch(/saved: Heart,\s+viewed: Eye,/);
+    expect(src).not.toMatch(/MapPin|went/);
     expect(src).toContain("data-social-verb={kind}");
   });
 

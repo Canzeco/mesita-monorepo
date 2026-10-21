@@ -27,11 +27,11 @@ function row(over: Partial<ActivityRow>): ActivityRow {
   };
 }
 
-Deno.test("only the three kinds, only Mesita place ids", () => {
+Deno.test("only the two kinds, only Mesita place ids (MESITA-2567: no went)", () => {
   assertEquals(["saved", "viewed", "went", "liked"].map(isActivityKind), [
     true,
     true,
-    true,
+    false,
     false,
   ]);
   assertEquals(isMesitaPlaceId(P1), true);

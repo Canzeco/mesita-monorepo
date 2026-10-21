@@ -28,8 +28,8 @@ import { errMsg } from "@/lib/utils";
 // sheets. The shared renderer stays presentational.
 //
 // Social v1 (MESITA-2442): opening the profile records `viewed`; the line
-// under the title and the guest's own "I went" come from
-// consumer-web-list-activity; "I went" writes `went` on and off.
+// under the title comes from consumer-web-list-activity. There is no
+// "I went" (MESITA-2567: Social is liked and viewed only).
 export function useMemberPlaceActions(place: PlaceDetail): {
   actions: PlaceActions;
   sheets: ReactNode;
@@ -61,8 +61,6 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const actions: PlaceActions = {
     onSave,
     saved,
-    onWent: activity.onWent,
-    went: activity.went,
     onContact: () => setContactOpen(true),
     onShare: () => void sharePlace(place),
     onReserve: () => setReserveOpen(true),
@@ -95,21 +93,13 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   return { actions, sheets, social: activity.social };
 }
 
-function usePlaceActivity(placeId: string): {
-  social: ReactNode;
-  went: boolean;
-  onWent?: () => void;
-} {
+function usePlaceActivity(placeId: string): { social: ReactNode } {
   const getSupabase = useLazyBrowserSupabase();
   const mesita = isMesitaPlaceId(placeId);
   const [state, setState] = useState<{
     placeId: string;
     activity: PlaceActivity | null;
   }>({ placeId, activity: null });
-  const [wentOverride, setWentOverride] = useState<{
-    placeId: string;
-    went: boolean;
-  } | null>(null);
 
   useEffect(() => {
     if (!mesita) return;
@@ -132,32 +122,12 @@ function usePlaceActivity(placeId: string): {
   }, [placeId, mesita]);
 
   const activity = state.placeId === placeId ? state.activity : null;
-  const went =
-    wentOverride?.placeId === placeId
-      ? wentOverride.went
-      : (activity?.me.went ?? false);
-
-  const onWent = useCallback(() => {
-    const next = !went;
-    setWentOverride({ placeId, went: next });
-    if (next) toast.success("Marked as went");
-    void apiTrackActivity(getSupabase(), {
-      kind: "went",
-      placeId,
-      on: next,
-    }).catch((e) => {
-      setWentOverride({ placeId, went: !next });
-      toast.error(errMsg(e, "Could not save that."));
-    });
-  }, [getSupabase, placeId, went]);
-
   const social = activity?.line ? (
     <SocialLine faces={activity.people} text={activity.line} />
   ) : null;
 
-  // A Google-only card has no place row yet: no line, and "I went" stays
-  // inert until the profile is created.
-  return mesita ? { social, went, onWent } : { social: null, went: false };
+  // A Google-only card has no place row yet: no line.
+  return { social: mesita ? social : null };
 }
 
 function usePlaceRequest(place: PlaceDetail): {

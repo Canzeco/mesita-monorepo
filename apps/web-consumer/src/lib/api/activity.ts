@@ -1,11 +1,11 @@
-// Social v1 (MESITA-2442): the three events (saved · viewed · went) and the
-// three ways they are read back. One helper per call, each one Edge Function.
+// Social v1 (MESITA-2442): the two events (saved · viewed; no went since
+// MESITA-2567) and the three ways they are read back. One helper per call, each one Edge Function.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
 import type { Place } from "./places";
 
-export type ActivityKind = "saved" | "viewed" | "went";
+export type ActivityKind = "saved" | "viewed";
 
 /** A member as Social shows them. Only Instagram-connected members who left
  *  Show my activity on ever come back from the server, and never with their
@@ -37,7 +37,7 @@ export type PlaceActivity = {
   line: string | null;
   people: ActivityPerson[];
   total: number;
-  me: { saved: boolean; went: boolean };
+  me: { saved: boolean };
 };
 
 const UUID_RE =
