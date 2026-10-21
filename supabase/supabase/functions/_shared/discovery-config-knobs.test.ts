@@ -24,6 +24,15 @@ Deno.test("googleMinReviews defaults to off and is a whole number of people", ()
   assertEquals(normalizeMapConfig({ googleMinReviews: -3 }).googleMinReviews, 0);
 });
 
+Deno.test("the Map's reload throttle defaults to 1.5 s, bounded like the client's 0.5..10 (MESITA-2444)", () => {
+  assertEquals(normalizeMapConfig({}).reloadIdleSec, 1.5);
+  assertEquals(normalizeMapConfig({ reloadIdleSec: 0.1 }).reloadIdleSec, 0.5);
+  assertEquals(normalizeMapConfig({ reloadIdleSec: 99 }).reloadIdleSec, 10);
+  assertEquals(normalizeMapConfig({ reloadIdleSec: 2.25 }).reloadIdleSec, 2.25);
+  // The dead pair stays stored, untouched (no migration).
+  assertEquals(normalizeMapConfig({ reloadMinKm: 1, reloadMinSec: 4 }).reloadMinKm, 1);
+});
+
 Deno.test("Word's Locations default on; an operator false sticks", () => {
   assertEquals(normalizeNameConfig({}).locations, true);
   assertEquals(normalizeNameConfig({ locations: false }).locations, false);

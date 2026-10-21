@@ -44,6 +44,9 @@ Deno.test("list-places: the circle is the screen's, else map.radiusKm; no client
 
 Deno.test("list-places: Proximity^a × Popularity^1 × Selected^1, reach = the radius (MESITA-2504)", () => {
   assert(webBranch.includes("proximity: cfg.map.proximityWeight,"));
+  // The Map's reload throttle is the operator's (MESITA-2444); the dead pair is not sent.
+  assert(webBranch.includes("reloadIdleSec: cfg.map.reloadIdleSec,"));
+  assertEquals(webBranch.includes("reloadMinKm"), false);
   assert(webBranch.includes("popularity: 1,"));
   assert(webBranch.includes("selected: 1,"));
   assert(webBranch.includes("signals: { reachKm: radiusKm, weights },"));

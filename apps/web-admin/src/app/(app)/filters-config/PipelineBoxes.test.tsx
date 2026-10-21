@@ -91,9 +91,9 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
     // 3 Name by Admin + 5 Name + 6 Area (the reach, MESITA-2431; Selected's
     // other value, MESITA-2439; the Map proximity weight, MESITA-2504) + the
     // Area weights table's 9 (three modes × three signals, MESITA-2428 and
-    // MESITA-2439); Deep is Soon.
+    // MESITA-2439) + the Map's reload seconds (MESITA-2444); Deep is Soon.
     const html = page();
-    expect(html.match(/type="number"/g)?.length).toBe(23);
+    expect(html.match(/type="number"/g)?.length).toBe(24);
     expect(html).toContain("Map proximity weight (a)");
     expect(html.match(/data-area-weights/g)?.length).toBe(1);
     expect(html).not.toContain("Modes");
@@ -138,7 +138,7 @@ describe("the boxes' controls", () => {
       "Selected (c)",
       "Google candidates",
       "Mesita candidates",
-      "Reload after",
+      "Reload after the map rests (s)",
     ]) {
       expect(html).toContain(label);
     }
@@ -157,6 +157,9 @@ describe("the boxes' controls", () => {
       "subset",
       "Popularity × Selected",
       "Factors",
+      // The dead km · s pair (MESITA-2451) has no control (MESITA-2444).
+      "0.5 km · 2s",
+      "move this far",
     ]) {
       expect(html, dead).not.toContain(dead);
     }
