@@ -46,6 +46,8 @@ const PROTECTED_PREFIXES = [
   // The Pay tab — one page, the Soon state (MESITA-2087). A guest's tab, so
   // it gets the same fast path as Me.
   "/pay",
+  // The Bookings tab — the guest's reservations (MESITA-2518).
+  "/bookings",
   "/reservations",
   "/reservation",
 ];

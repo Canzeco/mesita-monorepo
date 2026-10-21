@@ -86,7 +86,7 @@ export function NotificationsClient() {
           title="No notifications yet"
           action={{
             label: "See your reservations",
-            href: CONSUMER_ROUTES.mePages.reservations,
+            href: CONSUMER_ROUTES.bookings,
           }}
         />
       )}

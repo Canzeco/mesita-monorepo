@@ -32,8 +32,10 @@ export const CONSUMER_ROUTES = {
   place: {
     prefix: "/place/",
   },
-  // The reservations LIST is Me › Reservations; the singular DETAIL stays at
-  // /reservation/[id] — a booking is still a reservation.
+  // The reservations LIST is the bar's Bookings tab (MESITA-2518; it was Me ›
+  // Reservations); the singular DETAIL stays at /reservation/[id] — a
+  // booking is still a reservation.
+  bookings: "/bookings",
   reservation: {
     prefix: "/reservation/",
   },
@@ -57,7 +59,6 @@ export const CONSUMER_ROUTES = {
     settings: "/me/settings",
     settingsContact: "/me/settings/contact",
     notifications: "/me/notifications",
-    reservations: "/me/reservations",
   },
   // Every address that shipped to production and no longer renders a page.
   // Each one has a next.config.ts redirect (route-structure T4 proves the
@@ -140,6 +141,8 @@ export const CONSUMER_ROUTES = {
     // The reservations LIST as a top-level tab route. A server page until
     // MESITA-2475; a table entry now, like every other.
     reservations: "/reservations",
+    // Me › Reservations, until the list became the Bookings tab (MESITA-2518).
+    meReservations: "/me/reservations",
     // Reservations under /saved, from when that was a tab.
     savedReservations: "/saved/reservations",
     savedReservationPrefix: "/saved/reservation/",
@@ -154,6 +157,7 @@ export const CONSUMER_ROUTE_PREFIX = {
   // siblings to disambiguate from, so BottomNav matches CONSUMER_ROUTES.
   place: "/place",
   pay: "/pay",
+  bookings: "/bookings",
   me: "/me",
 } as const;
 
