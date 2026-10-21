@@ -173,13 +173,28 @@ describe("the boxes' controls", () => {
     expect(google.match(/<button[^>]*disabled=""[^>]*>(20|40|60)<\/button>/g)).toBeNull();
   });
 
-  it("Area draws its gates, Selected as its third signal and the point/area rule (MESITA-2439)", () => {
+  it("Area draws its gates, Selected as its third signal and no rectangle (MESITA-2439, MESITA-2558)", () => {
     const html = render(<AreaBox {...seed} />);
-    for (const text of ["Family", "Map box", "1.0 for a Mesita Selected place", "0.3 for every other place", "Selected<sup>c</sup>", "Chat reads Mesita Selected places only."]) {
+    for (const text of ["Family", "Radius", "1.0 for a Mesita Selected place", "0.3 for every other place", "Selected<sup>c</sup>", "Chat reads Mesita Selected places only."]) {
       expect(html, text).toContain(text);
     }
-    expect(html).toContain("A point location uses Proximity and the radius; a rectangle uses the Map box gate. Never both.");
+    // No view sends a rectangle since MESITA-2504: the Map box gate is the Radius gate (MESITA-2558).
+    expect(html).not.toContain("Map box");
+    expect(html).not.toContain("a rectangle uses");
     expect(html).not.toContain("Territory");
+  });
+
+  it("Area: the Map and Home's one ranking leads; the weights table is Chat's, last (MESITA-2558)", () => {
+    const html = render(<AreaBox {...seed} />);
+    const ranking = html.indexOf("Ranking (Map and Home)");
+    const table = html.indexOf("Weights table (Chat only)");
+    expect(ranking).toBeGreaterThan(-1);
+    expect(table).toBeGreaterThan(ranking);
+    expect(html.indexOf("Map proximity weight (a)")).toBeLessThan(table);
+    expect(html.indexOf("data-area-weights")).toBeGreaterThan(table);
+    expect(html).toContain("The Map and Home read none of it.");
+    expect(html).toContain("nearest edge");
+    expect(html).not.toContain("average of");
   });
 
   it("Deep is Soon: title, one line and the chip, its controls deleted from the markup (MESITA-2345)", () => {
@@ -198,7 +213,7 @@ describe("the boxes tell the runtime's truth (MESITA-2338)", () => {
     const [nameAdmin, name, area] = boxes();
     for (const box of [nameAdmin, name, area]) expect(box).toContain(">Always-on rules<");
     expect(name).toContain("A Google row must have a Google type of one of the twelve families");
-    expect(area).toContain("Inside the radius");
+    expect(area).toContain("It decides who is a candidate and never scores.");
   });
 
   it("Name says Google rows keep Google's order and derives Name as fed by Mesita only", () => {
