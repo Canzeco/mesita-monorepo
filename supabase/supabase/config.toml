@@ -377,6 +377,14 @@ verify_jwt = true
 [functions.admin-web-revoke-admin]
 verify_jwt = true
 
+# Manage › Guests (MESITA-2550): find a guest, then grant or take away
+# Diamond and set the plan. Super-admin only.
+[functions.admin-web-list-guests]
+verify_jwt = true
+
+[functions.admin-web-set-guest-standing]
+verify_jwt = true
+
 # THE admin config pair (MESITA-1724). Every app_config section the console
 # edits arrives here under `section`, and the no-section read is the Crenup
 # page's own payload. Registry: functions/_shared/config-sections.ts. Both
