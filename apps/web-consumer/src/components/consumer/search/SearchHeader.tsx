@@ -122,7 +122,8 @@ export function SearchHeader({
                 className={CHIP_ICON}
                 strokeWidth={everyFamily ? 2.25 : 1.75}
               />
-              <span>All</span>
+              {/* Top, not All: the best-ranked pool (MESITA-2534). */}
+              <span>Top</span>
             </button>
             {FILTERABLE_PLACE_FAMILIES.map((family) => {
               const on =

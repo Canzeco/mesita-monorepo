@@ -5,7 +5,6 @@ import { describe, expect, it } from "vitest";
 import type { CatalogRail, Place } from "@/lib/api/places";
 import {
   HOME_TABS,
-  PINNED_CHIPS,
   poolPlaces,
   PLACES_PAGE,
   savedPlaceList,
@@ -86,11 +85,12 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
   // MESITA-2519 (Pato: "keep the later view of the failies. its fastwer to
   // browse … LEFT MENU OF FAMILIES"): the horizontal chips went back to the
   // left column, under the tabs.
-  it("Places is the left family column — All pinned, then every family — beside the tiles", () => {
+  it("Places is the left family column — Top, then every family, one scrolling list — beside the tiles", () => {
     const labels = placesChips().map((c) => c.label);
     // Favorites left the column for the Saved tab (Pato, MESITA-2522:
     // "remove favorites from this lateral menu").
-    expect(labels[0]).toBe("All");
+    // The word is Top, the key stays all (MESITA-2534).
+    expect(labels[0]).toBe("Top");
     expect(placesChips()[0].key).toBe(ALL_CHIP);
     for (const gone of [
       "Favorites",
@@ -109,14 +109,12 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
     // A quarter-wide column beside the tiles, on the Places tab only.
     expect(src).toContain('className="bg-muted flex w-1/4 shrink-0 flex-col"');
     expect(src).toContain('{tab === "places" ? categories : null}');
-    expect(PINNED_CHIPS).toBe(1);
-    expect(src).toContain("chips.slice(0, PINNED_CHIPS).map(categoryRow)");
-    expect(src).toContain("chips.slice(PINNED_CHIPS).map(categoryRow)");
-    // Two groups, no colour stripes (Pato, MESITA-2521: "remove the stupid
-    // blue and orange color from the sidebar menu"; MESITA-2492 drew them).
-    for (const g of ["pinned", "families"]) {
-      expect(src).toContain(`data-places-group="${g}"`);
-    }
+    // ONE scrolling list, Top first, no pinned head (MESITA-2534: "don't
+    // divide al from the other families"); no colour stripes (MESITA-2521).
+    expect(src).toContain("{chips.map(categoryRow)}");
+    expect(src).toContain('data-places-group="families"');
+    expect(src).not.toContain('data-places-group="pinned"');
+    expect(src).not.toContain("PINNED_CHIPS");
     expect(src).not.toContain("GROUP_STRIPE");
     expect(src).not.toContain("oklch(");
     // The chosen row: white, bold, an ink bar on its left edge.
