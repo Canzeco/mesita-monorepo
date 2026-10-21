@@ -86,6 +86,7 @@ import { EmptyState } from "@/components/shared";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { CatalogTile } from "./CatalogTile";
 import { useActiveLocation } from "@/lib/active-location";
+import { useSocialHasNew } from "@/lib/use-social-has-new";
 import { cn, errMsg } from "@/lib/utils";
 import { placesFeed } from "@/lib/catalog-feed";
 import { AreaDiagnostics } from "./AreaDiagnostics";
@@ -373,6 +374,8 @@ export function CatalogRails() {
   // white header (Pato, MESITA-2530: "maybe that bar darker, just a bit like
   // a different white/grat from the laterl menu bar"; MESITA-2531: "the
   // mesita header white and the place and social a bit darker").
+  // The Social tab wears a dot while a newer event waits (MESITA-2536).
+  const socialHasNew = useSocialHasNew(tab !== "social");
   const tabs = (
     <div
       role="tablist"
@@ -405,6 +408,16 @@ export function CatalogRails() {
                   aria-hidden
                   className="bg-foreground absolute -inset-x-4 bottom-0 h-0.5 rounded-full"
                 />
+              ) : null}
+              {t.key === "social" && socialHasNew ? (
+                <>
+                  <span
+                    aria-hidden
+                    className="bg-foreground absolute top-0.5 -right-3 h-2 w-2 rounded-full"
+                    data-home-social-dot
+                  />
+                  <span className="sr-only"> · new activity</span>
+                </>
               ) : null}
             </span>
           </button>
@@ -480,7 +493,10 @@ export function CatalogRails() {
       {tabs}
       <div className="flex min-h-0 flex-1">
         {tab === "places" ? categories : null}
-        <div className="bg-card scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain">
+        <div
+          className="bg-card scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain"
+          data-home-scroller
+        >
           {inner}
         </div>
       </div>

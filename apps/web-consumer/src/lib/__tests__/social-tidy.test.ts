@@ -58,6 +58,19 @@ describe("the row", () => {
     expect(src).toContain("fresh={!feed.sample && fresh.has(eventKey(item))}");
   });
 
+  // MESITA-2536: level 1 — the "N new" pill, pull to refresh, seen marking.
+  it("shows an N new pill when scrolled down, pulls to refresh, marks what it shows", () => {
+    expect(src).toContain("data-social-new-pill");
+    expect(src).toContain("{pendingNew} new");
+    expect(src).toContain("if (arrived.length > 0 && !atTopRef.current) {");
+    expect(src).toContain('scroller()?.scrollTo({ top: 0, behavior: "smooth" });');
+    expect(src).toContain("if (top) setPendingNew(0);");
+    expect(src).toContain("export const PULL_TRIGGER = 56;");
+    expect(src).toContain("if (pull >= PULL_TRIGGER && !refreshing) refresh();");
+    expect(src).toContain("data-social-pull");
+    expect(src).toContain("markSocialSeen(items[0]?.at);");
+  });
+
   it("an error offers Try again", () => {
     expect(src).toContain('label: "Try again"');
   });
