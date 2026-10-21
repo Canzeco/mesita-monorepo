@@ -24,13 +24,38 @@ describe("the Share page", () => {
     expect(html).toContain("consumer.mesita.ai");
   });
 
+  // Pato, MESITA-2570: "use meme images. use 5". One photo per swatch.
+  it("wears five meme photos, one per style, the first under the first card", () => {
+    const photos = SHARE_CARD_STYLES.map((s) => s.photo);
+    expect(photos).toHaveLength(5);
+    expect(new Set(photos).size).toBe(5);
+    for (const photo of photos) {
+      expect(photo).toMatch(/^https:\/\/images\.unsplash\.com\/photo-[\w-]+\?/);
+    }
+    for (const s of SHARE_CARD_STYLES) {
+      expect(s.tint).toMatch(/^\d{1,3} \d{1,3} \d{1,3}$/);
+    }
+    const img = html.match(/<img[^>]*data-invite-photo[^>]*>/)?.[0] ?? "";
+    expect(img).toContain(
+      `src="${SHARE_CARD_STYLES[0].photo.replace(/&/g, "&amp;")}"`,
+    );
+    // Decoration: no alt text to read out, nothing drawn if it breaks.
+    expect(img).toContain('alt=""');
+    expect(html.match(/data-invite-photo/g)).toHaveLength(1);
+  });
+
   it("is a gift card without credit: no amount, no balance, no code", () => {
-    const card = html.slice(html.indexOf("data-invite-card"), html.indexOf("data-share-shuffle"));
+    const card = html.slice(
+      html.indexOf("data-invite-card"),
+      html.indexOf("data-share-shuffle"),
+    );
     expect(card).not.toMatch(/\$|MX\$|balance|credits?\b(?!\. Just)|code/i);
   });
 
   it("offers every message and every style, the chosen ones pressed", () => {
-    expect(html.match(/data-share-message/g)).toHaveLength(SHARE_MESSAGES.length);
+    expect(html.match(/data-share-message/g)).toHaveLength(
+      SHARE_MESSAGES.length,
+    );
     for (const s of SHARE_CARD_STYLES) {
       expect(html).toContain(`data-share-style="${s.id}"`);
     }
@@ -58,7 +83,11 @@ describe("the Share page", () => {
     expect(first.sms.startsWith("sms:")).toBe(true);
     expect(first.email.startsWith("mailto:")).toBe(true);
     // The rendered rows carry the default message.
-    expect(decode(html)).toContain(`text=${SHARE_MESSAGES[0]} ${APP_SHARE_URL}`);
+    // (Only the row's href is decoded: the card's scrim carries bare "%".)
+    const whatsapp = html.match(/href="(https:\/\/wa\.me\/[^"]*)"/)?.[1] ?? "";
+    expect(decode(whatsapp)).toContain(
+      `text=${SHARE_MESSAGES[0]} ${APP_SHARE_URL}`,
+    );
   });
 
   // The bug that made this a page: one tap showed "Link copied" AND

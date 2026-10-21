@@ -20,6 +20,12 @@ export const APP_SHARE_TEXT =
 // sent … multiple styles … keep it simple, meme style"). The guest picks a
 // message and a style; only the MESSAGE travels (plus the link). The style is
 // decoration on this page — no image is sent.
+//
+// EACH STYLE WEARS A MEME PHOTO (Pato, MESITA-2570: "use meme images. use 5.
+// meme images or cats or dogs or whatever … its just for the image"): five
+// Unsplash animals, one per swatch, no people. `tint` is the style's colour
+// as "r g b"; the card fades the photo into it so the headline sits on solid
+// colour. A photo that fails to load leaves the plain style behind.
 
 /** Meme-style lines the guest picks from. The first is the default. */
 export const SHARE_MESSAGES = [
@@ -31,6 +37,11 @@ export const SHARE_MESSAGES = [
   "Main character energy, but make it brunch ✨",
 ] as const;
 
+/** One Unsplash photo by id, sized for the card (2x a phone's width). */
+function unsplash(id: string): string {
+  return `https://images.unsplash.com/photo-${id}?w=800&fit=crop&fm=jpg&q=70`;
+}
+
 /** The card's looks. `background` is CSS; `ink` is the text colour class. */
 export const SHARE_CARD_STYLES = [
   {
@@ -38,30 +49,40 @@ export const SHARE_CARD_STYLES = [
     label: "Pink",
     background: "var(--gradient-pink)",
     ink: "text-white",
+    tint: "23 23 23",
+    photo: unsplash("1533738363-b7f9aef128ce"),
   },
   {
     id: "ink",
     label: "Ink",
     background: "linear-gradient(135deg, #2a2a2a, #0a0a0a)",
     ink: "text-white",
+    tint: "10 10 10",
+    photo: unsplash("1517849845537-4d257902454a"),
   },
   {
     id: "sunset",
     label: "Sunset",
     background: "linear-gradient(135deg, #ffb347, #ff5e7e)",
     ink: "text-white",
+    tint: "255 94 126",
+    photo: unsplash("1537151625747-768eb6cf92b2"),
   },
   {
     id: "lime",
     label: "Lime",
     background: "linear-gradient(135deg, #e6fca5, #8ce99a)",
     ink: "text-neutral-900",
+    tint: "140 233 154",
+    photo: unsplash("1583511655857-d19b40a7a54e"),
   },
   {
     id: "paper",
     label: "Paper",
     background: "linear-gradient(135deg, #fffdf7, #f4efe4)",
     ink: "text-neutral-900",
+    tint: "244 239 228",
+    photo: unsplash("1574158622682-e40e69881006"),
   },
 ] as const;
 
