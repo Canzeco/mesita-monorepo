@@ -206,7 +206,7 @@ function Face({
 }) {
   const Glyph = VERB_ICON[kind];
   return (
-    <span className="relative h-11 w-11 shrink-0">
+    <span className="relative block h-11 w-11 shrink-0">
       {person.avatarUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -235,12 +235,14 @@ function Face({
 }
 
 /** The place's photo, else the card placeholder — never an empty box
- *  (a Google-only place never shows a photo, lib/place-placeholder.ts). */
+ *  (a Google-only place never shows a photo, lib/place-placeholder.ts).
+ *  Its box is `block`: inside the row's place link an inline span drops
+ *  its 44px size and the photo renders full size (MESITA-2544). */
 function Thumb({ place }: { place: Place }) {
   const photo = cardPhoto(place);
   if (photo) {
     return (
-      <span className="bg-muted h-11 w-11 shrink-0 overflow-hidden rounded-md">
+      <span className="bg-muted block h-11 w-11 shrink-0 overflow-hidden rounded-md">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={photo} alt="" className="h-full w-full object-cover" />
       </span>
@@ -329,7 +331,7 @@ function FeedRow({
         type="button"
         onClick={() => onPerson(item)}
         aria-label={`${who}'s profile`}
-        className="focus-visible:ring-ring shrink-0 rounded-full outline-none focus-visible:ring-2"
+        className="focus-visible:ring-ring flex shrink-0 rounded-full outline-none focus-visible:ring-2"
         data-social-person
       >
         <Face person={item.person} kind={item.kind} />
@@ -368,7 +370,7 @@ function FeedRow({
       <Link
         href={href}
         aria-label={item.place.name}
-        className="focus-visible:ring-ring shrink-0 rounded-md outline-none focus-visible:ring-2"
+        className="focus-visible:ring-ring flex shrink-0 rounded-md outline-none focus-visible:ring-2"
       >
         <Thumb place={item.place} />
       </Link>
