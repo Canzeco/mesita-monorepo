@@ -249,12 +249,12 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
       "h-9",
       "rounded-xl",
       "border",
-      // White on the ink header (MESITA-2524).
-      "bg-background/15",
-      "text-background",
+      // The quiet grey on the white header (MESITA-2480, MESITA-2526).
+      "bg-muted",
+      "text-foreground",
     ])
       expect(tokens, t).toContain(t);
-    expect(tokens).not.toContain("bg-muted");
+    expect(tokens).not.toContain("bg-background/15");
     const tabs = readFileSync(
       join(__dirname, "../../components/consumer/ModeTabs.tsx"),
       "utf8",
@@ -311,19 +311,21 @@ describe("the Places grid (MESITA-2366)", () => {
     expect(src).not.toContain("data-band");
   });
 
-  // Ink, so the white tab band under it reads as its own layer (Pato,
-  // MESITA-2524: "add a higher contrast between top menu and the
-  // places/social selector. maybe dark the top"). It was the bottom bar's
-  // white (MESITA-2409/2480); MESITA-2476's brand pink was sent back.
-  it("paints Home's header ink, the name and the box in white", () => {
+  // White over a grey tab strip (Pato, MESITA-2526: "make mesita header
+  // white and the places/social selector a bit dark"). MESITA-2524 tried an
+  // ink header over white tabs for the same contrast; before that it was the
+  // bottom bar's white (MESITA-2409/2480); MESITA-2476's pink was sent back.
+  it("paints Home's header white with the name in ink, over a grey tab strip", () => {
     const tabs = readFileSync(
       join(__dirname, "../../components/consumer/ModeTabs.tsx"),
       "utf8",
     );
     expect(tabs).toContain(
-      '"bg-foreground text-background sticky top-0 z-20 shrink-0"',
+      '"bg-card text-foreground sticky top-0 z-20 shrink-0"',
     );
-    expect(tabs).toContain('"text-background shrink-0 text-2xl');
+    expect(tabs).toContain('"text-foreground shrink-0 text-2xl');
+    expect(tabs).not.toContain("bg-foreground text-background");
+    expect(src).toContain('className="border-border bg-muted flex shrink-0 border-b"');
     expect(tabs).not.toContain("brand-pink");
     expect(tabs).not.toContain("border-b-2");
   });
