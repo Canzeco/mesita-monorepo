@@ -26,4 +26,11 @@ describe("Me › Instagram: Use my Instagram photo", () => {
   it("says what off means", () => {
     expect(MODAL).toContain("Only your username and followers");
   });
+
+  // Pato, MESITA-2598: "mention that your mesita profile picture is your
+  // instagram profile picture".
+  it("says the Mesita picture is the Instagram picture", () => {
+    expect(MODAL).toContain("Your Mesita profile picture becomes your Instagram profile picture.");
+    expect(MODAL).toContain("Your Mesita profile picture is your Instagram one");
+  });
 });
