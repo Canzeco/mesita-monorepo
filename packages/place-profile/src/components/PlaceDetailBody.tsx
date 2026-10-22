@@ -2,6 +2,7 @@
 
 import type React from "react";
 import { useState } from "react";
+import { Store } from "lucide-react";
 
 import type { PlaceActions, PlaceCreatingView } from "../actions";
 import { AboutBox } from "./AboutBox";
@@ -13,6 +14,7 @@ import { MediaBox } from "./place-detail/media";
 import { ProfileSummary } from "./place-detail/profile-summary";
 import { GoogleReviewsBox } from "./place-detail/reviews";
 import { PlaceCreateFailedPanel } from "./place-detail/PlaceCreateFailedPanel";
+import { PlaceEmptyScreen } from "./place-detail/empty-screen";
 import { PlaceTabBar, type PlaceTab } from "./place-detail/tabs";
 import { SoonScreen } from "./place-detail/soon-screen";
 import { DatesBox, LinksBox, TagsBox } from "./place-detail/tags-links-meta";
@@ -31,8 +33,10 @@ import { DatesBox, LinksBox, TagsBox } from "./place-detail/tags-links-meta";
 //      Reserve · Directions, then Contact (MESITA-2618/2619/2623; no
 //      pinned bar).
 //   2. The sticky strip, Overview · Reviews · Products (Soon) · Rewards (Soon),
-//      for every place (MESITA-2332). Not Enriched: Overview opens with the
-//      refusal band only when that create was refused; there is no vote
+//      for every place (MESITA-2332). While a Google-only profile is being
+//      created, Overview is one "No overview yet" screen like the other
+//      empty tabs (MESITA-2685), and a refused create shows only the refusal
+//      band; there is no vote
 //      panel (MESITA-2642: visits enrich) — and Reviews holds Google's up-to-5 from
 //      the create-time Details call (MESITA-2317). Enriched: Reviews holds
 //      Apify's 100.
@@ -72,18 +76,31 @@ export function PlaceDetailBody({
       />
       <div className="flex flex-col gap-3 px-4">
         <PlaceTabBar tab={tab} onChange={setTab} />
-          {tab === "place" && (
+          {/* NO EMPTY BOXES WHILE IT IS CREATED (Pato, MESITA-2685: "if a
+              place is being created, better at the bottom write, no
+              overview yet, following the same style of reviews and products
+              and rewards. why showing no data"). The boxes would only show
+              what Mesita does not hold yet. */}
+          {tab === "place" && create && (
+            create.error ? (
+              <div className="-mx-4 -mt-3">
+                <PlaceCreateFailedPanel error={create.error} onRetry={create.onRetry} />
+              </div>
+            ) : (
+              <PlaceEmptyScreen
+                icon={Store}
+                title="No overview yet"
+                line="The overview of this place will show up here."
+              />
+            )
+          )}
+          {tab === "place" && !create && (
             <>
-              {create?.error ? (
-                <div className="-mx-4 -mt-3">
-                  <PlaceCreateFailedPanel error={create.error} onRetry={create.onRetry} />
-                </div>
-              ) : null}
               {/* OVERVIEW'S ORDER (Pato, MESITA-2630): photos ·
                   presentation · location · hours · links · tags, then the
                   Created/Updated dates on admin only. Popular times rides
                   with hours (it draws nothing while nothing writes it,
-                  MESITA-2420). Location then Time stacked, never side by
+                  MESITA-2420). Location then Hours stacked, never side by
                   side (decision: Pato). */}
               <MediaBox place={place} />
               <AboutBox text={place.long_description} />

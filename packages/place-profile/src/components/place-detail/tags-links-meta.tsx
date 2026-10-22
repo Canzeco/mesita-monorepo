@@ -11,8 +11,8 @@ import {
   RESERVATION_DEFS,
   REVIEW_DEFS,
 } from "../place-detail-links";
-import { Box } from "./box";
-import { PLACE_META_CLASS, PLACE_OUTLINE_CHIP_CLASS } from "../../lib/ui";
+import { Box, BoxEmpty } from "./box";
+import { PLACE_OUTLINE_CHIP_CLASS } from "../../lib/ui";
 import { ChannelChips, TagChips, type ChannelChip } from "./place-link-chips";
 
 // ── 9. About lives in @/components/consumer/AboutBox (client). ──────────
@@ -26,13 +26,14 @@ export function TagsBox({ place }: { place: PlaceDetail }) {
   // absorbed into the tag vocabulary itself (Atlas taxonomy v2).
   //
   // THE BOX ALWAYS DRAWS (Pato, MESITA-2619: "tags is missing, put tags even
-  // if not tags yet"): a place with no tags shows one quiet line in the
-  // same box, so every Overview has the same sections in the same order.
+  // if not tags yet"): a place with no tags shows "…" in the same box (it
+  // said "No tags yet." until MESITA-2685, Pato: "same for mesita tags,
+  // write ..."), so every Overview has the same sections in the same order.
   // Until MESITA-2619 the whole box disappeared with the tags.
   return (
     <Box title="Mesita Tags" icon={Tags} iconColor="text-muted-foreground">
       {place.tags.length === 0 ? (
-        <p className={PLACE_META_CLASS}>No tags yet.</p>
+        <BoxEmpty />
       ) : (
         <TagChips tags={place.tags} />
       )}
