@@ -87,15 +87,15 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
     expect(page()).not.toContain("Not wired");
   });
 
-  it("carries the one weights table and no subpage tabs", () => {
-    // 3 Name by Admin + 5 Name + 6 Area (the reach, MESITA-2431; Selected's
-    // other value, MESITA-2439; the Map proximity weight, MESITA-2504) + the
-    // Area weights table's 9 (three modes × three signals, MESITA-2428 and
-    // MESITA-2439) + the Map's reload seconds (MESITA-2444); Deep is Soon.
+  it("carries no weights table and no subpage tabs", () => {
+    // 3 Name by Admin + 5 Name + 6 Area (Home radius, Google reviews minimum,
+    // Proximity weight, Home proximity reach, half credit, Selected's other
+    // value) + the Map's reload seconds (MESITA-2444). The weights table left
+    // the page (MESITA-2603): no guest reaches its only reader, Chat. Deep is Soon.
     const html = page();
-    expect(html.match(/type="number"/g)?.length).toBe(24);
-    expect(html).toContain("Map proximity weight (a)");
-    expect(html.match(/data-area-weights/g)?.length).toBe(1);
+    expect(html.match(/type="number"/g)?.length).toBe(15);
+    expect(html).toContain("Proximity weight (a)");
+    expect(html).not.toContain("data-area-weights");
     expect(html).not.toContain("Modes");
     expect(html).not.toContain('role="tablist"');
   });
@@ -122,22 +122,18 @@ describe("the boxes' controls", () => {
     expect(html).not.toContain("Only active places");
   });
 
-  it("Area: radius, reach, half credit, Selected's other value, the weights table, two source counts, no total and no Feed rows (MESITA-2379, MESITA-2428, MESITA-2431, MESITA-2439)", () => {
+  it("Area: the live params only — Google switch, two source counts, Home radius, reviews minimum, four signal numbers, reload; no weights table, total or Feed rows (MESITA-2603)", () => {
     const html = render(<AreaBox {...seed} />);
     for (const label of [
-      "Radius (km)",
-      "Proximity reach (km)",
+      'aria-label="Buy Google places"',
+      "Google places on Home",
+      "Mesita places",
+      "Home radius (km)",
+      "Minimum Google reviews",
+      "Proximity weight (a)",
+      "Home proximity reach (km)",
       "Reviews for half credit",
-      "Weights table",
-      "📍 Nearby",
-      "⭐ Popular",
-      "Family",
       "Selected for every other place",
-      "Proximity (a)",
-      "Popularity (b)",
-      "Selected (c)",
-      "Google candidates",
-      "Mesita candidates",
       "Reload after the map rests (s)",
     ]) {
       expect(html).toContain(label);
@@ -147,8 +143,15 @@ describe("the boxes' controls", () => {
       "reference rating",
       "reference reviews",
       "How many pins",
-      "Proximity weight",
+      "Map proximity weight",
       "Popularity weight",
+      "Weights table",
+      "📍 Nearby",
+      "⭐ Popular",
+      "Popularity (b)",
+      "Selected (c)",
+      "Google candidates",
+      ">Mesita candidates",
       "Places per row",
       'aria-label="Feed rows"',
       "Total",
@@ -166,38 +169,62 @@ describe("the boxes' controls", () => {
     expect(html).toContain('value="100"');
     // Proximity's reach defaults to 15 km, apart from the 50 km radius (MESITA-2431).
     expect(html).toContain('value="15"');
-    // The weights table's defaults (MESITA-2439): Nearby 4 · 1 · 1, Popular 1 · 3 · 1.
-    expect(html).toContain('value="4"');
-    expect(html).toContain('value="3"');
     expect(html).toContain('value="0.3"');
-    // 40 and 60 are bought now: every Google stop is a live pill.
-    const google = html.slice(html.indexOf("Places Mesita buys for Home&#x27;s catalog"), html.indexOf("Ready Mesita places read"));
-    expect(google).toContain("up to 1 / 2 / 3 billed Nearby calls");
+    // 40 and 60 are bought: every Google stop is a live pill.
+    const google = html.slice(html.indexOf("billed Nearby calls per Home load"), html.indexOf("Ready Mesita places read"));
+    expect(google).toContain("The Map always buys 1 call per load.");
     expect(google.match(/<button[^>]*disabled=""[^>]*>(20|40|60)<\/button>/g)).toBeNull();
   });
 
-  it("Area draws its gates, Selected as its third signal and no rectangle (MESITA-2439, MESITA-2558)", () => {
-    const html = render(<AreaBox {...seed} />);
-    for (const text of ["Family", "Radius", "1.0 for a Mesita Selected place", "0.3 for every other place", "Selected<sup>c</sup>", "Chat reads Mesita Selected places only."]) {
-      expect(html, text).toContain(text);
-    }
-    // No view sends a rectangle since MESITA-2504: the Map box gate is the Radius gate (MESITA-2558).
-    expect(html).not.toContain("Map box");
-    expect(html).not.toContain("a rectangle uses");
-    expect(html).not.toContain("Territory");
+  it("Area: the parameters read Sources, Gates, Signals, Map view, in that order (MESITA-2603)", () => {
+    // The model above has its own Sources / Gates / Signals parts: read the
+    // Parameters only.
+    const full = render(<AreaBox {...seed} />);
+    const html = full.slice(full.indexOf(">Parameters<"));
+    const at = [">Sources</p>", ">Gates</p>", ">Signals</p>", ">Map view (the Search tab)</p>"].map((t) => html.indexOf(t));
+    expect(at.every((i) => i > -1), JSON.stringify(at)).toBe(true);
+    expect([...at].sort((a, b) => a - b)).toEqual(at);
+    expect(html.indexOf("Buy Google places")).toBeLessThan(at[1]);
+    expect(html.indexOf("Home radius (km)")).toBeGreaterThan(at[1]);
+    expect(html.indexOf("Proximity weight (a)")).toBeGreaterThan(at[2]);
   });
 
-  it("Area: the Map and Home's one ranking leads; the weights table is Chat's, last (MESITA-2558)", () => {
+  it("Area: a Home place past the reach but inside the radius is called out with the live numbers", () => {
+    // Defaults: reach 15 km, radius 50 km.
+    expect(render(<AreaBox {...seed} />)).toContain("(now 15–50 km)");
+    const wide = { ...DEFAULT_CONFIG, params: { ...DEFAULT_CONFIG.params, proximity: { reachKm: 50 } } };
+    expect(render(<AreaBox {...seed} initialConfig={wide} />)).not.toContain("(now ");
+  });
+
+  it("Area draws its gates, Selected as its third signal, and no Territory anywhere (MESITA-2439, MESITA-2603)", () => {
     const html = render(<AreaBox {...seed} />);
-    const ranking = html.indexOf("Ranking (Map and Home)");
-    const table = html.indexOf("Weights table (Chat only)");
-    expect(ranking).toBeGreaterThan(-1);
-    expect(table).toBeGreaterThan(ranking);
-    expect(html.indexOf("Map proximity weight (a)")).toBeLessThan(table);
-    expect(html.indexOf("data-area-weights")).toBeGreaterThan(table);
-    expect(html).toContain("The Map and Home read none of it.");
+    for (const text of ["Family", "Radius", "1.0 for a Mesita Selected place", "0.3 for every other place", "Chat reads Mesita Selected places only, inside the Home radius."]) {
+      expect(html, text).toContain(text);
+    }
+    expect(html).not.toContain("Map box");
+    expect(html).not.toContain("a rectangle uses");
+    // Territory is named only to say it is gone.
+    expect(html).toContain("There is no Territory");
+    expect(html).toContain("Territory is gone");
+    expect(html.match(/territory/gi)?.length).toBe(2);
     expect(html).toContain("nearest edge");
     expect(html).not.toContain("average of");
+  });
+
+  it("Area: the Always-on rules state the Google calls, the quota and the fixed numbers (MESITA-2603)", () => {
+    const html = render(<AreaBox {...seed} />);
+    for (const text of [
+      "the Map buys 1 per load, the prominent 20 inside the screen radius",
+      "the prominent 20 within 3 km",
+      "45 Nearby calls a minute",
+      "clamped to 0.05–50 km",
+      "at most 1000 ready rows",
+      "lists its primary places before its secondary ones",
+    ]) {
+      expect(html, text).toContain(text);
+    }
+    expect(html).not.toContain("It only gates");
+    expect(html).not.toContain("one call of 20");
   });
 
   it("Deep is Soon: title, one line and the chip, its controls deleted from the markup (MESITA-2345)", () => {

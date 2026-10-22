@@ -98,7 +98,7 @@ export const DISCOVERY_SOURCES: readonly DiscoverySourceFact[] = [
   {
     key: "google_nearby",
     label: "Google Nearby Search",
-    retrieves: "The closest Google places of the requested families: one call of 20.",
+    retrieves: "Up to 20 Google places of the requested families per call, ranked by prominence or by distance inside a circle.",
     provides: GOOGLE_LISTING,
     live: true,
   },
@@ -186,7 +186,7 @@ export const DISCOVERY_SIGNALS: readonly DiscoverySignalFact[] = [
     computation: "runtime",
     cost: "Local arithmetic, free.",
     missing: "No location: not used (n/a). No coordinates: 0.",
-    normalization: "0..1 by construction: 1 at the anchor, ½ at half the reach, 0 at the reach and beyond. The reach is the screen radius on the Map (the same meaning at every zoom) and the operator's Proximity reach on Home.",
+    normalization: "0..1 by construction: 1 at the anchor, ½ at half the reach, 0 at the reach and beyond. The reach is the screen radius on the Map (the same meaning at every zoom) and the operator's Home proximity reach on Home.",
   },
   {
     key: "popularity",
@@ -212,7 +212,7 @@ export const DISCOVERY_SIGNALS: readonly DiscoverySignalFact[] = [
   },
 ];
 
-export const DISCOVERY_GATE_KEYS = ["family", "territory"] as const;
+export const DISCOVERY_GATE_KEYS = ["family", "radius"] as const;
 export type DiscoveryGateKey = (typeof DISCOVERY_GATE_KEYS)[number];
 
 export type DiscoveryGateFact = {
@@ -235,17 +235,17 @@ export const DISCOVERY_GATES: readonly DiscoveryGateFact[] = [
     rule: "1 when the place belongs to a requested family; 1 for every place when none is requested.",
     kind: "query",
     requires: ["family"],
-    when: "When the guest picks one family: a chip on the Search map or a family row on Home. It only gates: a family ranks the same way as All.",
+    when: "When the guest picks one family: a chip on the Search map or a family row on Home. The family also asks Google for its own place types (never another family's subtypes) and lists its primary places before its secondary ones; the score is the same as All.",
     missing: "No known family while a family is requested: 0.",
     pushdown: ["google_nearby", "mesita_places"],
   },
   {
-    key: "territory",
+    key: "radius",
     label: "Radius",
-    rule: "1 when the place lies inside the radius around the point, else 0: on the Map the screen radius (the distance from the cross to the nearest edge of the visible map), on Home the Radius below. It decides who is a candidate and never scores.",
+    rule: "1 when the place lies inside the radius around the point, else 0: on the Map the screen radius (the distance from the cross to the nearest edge of the visible map), on Home the Home radius below. It decides who is a candidate and never scores.",
     kind: "query",
     requires: ["coordinates"],
-    when: "Every request with a point. No view sends a rectangle since MESITA-2504 (the Map's visible box became its screen radius), and saved areas were retired 2026-10-20 (MESITA-2500): Home sends a point or nothing.",
+    when: "Every request with a point. Territory is gone (MESITA-2500, MESITA-2603): no view searches a rectangle or a saved area, so Home sends a point or nothing.",
     missing: "No coordinates: 0.",
     pushdown: ["google_nearby", "mesita_places"],
   },
@@ -302,15 +302,19 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     purpose: "Places around a point: the Map's cross, the device or a saved pin.",
     sources: ["google_nearby", "mesita_places"],
     signals: ["proximity", "popularity", "selected"],
-    gates: ["family", "territory"],
+    gates: ["family", "radius"],
     factors: [],
-    scoring: "The Map and Home: Proximity^a × Popularity^1 × Selected^1, a = the operator's Map proximity weight (MESITA-2504, MESITA-2516); Proximity's reach is the screen radius on the Map and the Proximity reach on Home. No location: Popularity^1 × Selected^1. Chat alone reads the weights table: Proximity^a × Popularity^b × Selected^c, (a, b, c) its Nearby row. Ties break on distance, then id.",
+    scoring: "The Map and Home: Proximity^a × Popularity^1 × Selected^1, a = the operator's Proximity weight (MESITA-2504, MESITA-2516); Proximity's reach is the screen radius on the Map and the Home proximity reach on Home. No location: Popularity^1 × Selected^1. Chat ranks with the stored Nearby row of the weights table (no box edits it): Proximity^a × Popularity^b × Selected^c. Ties break on distance, then id.",
     keepsOrder: [],
     rules: [
       "Google and Mesita candidates contribute independently to one pool, deduped by Google Place ID (a Mesita place wins its own Google id), gated, scored and ranked before any page is cut. The guest never picks a source.",
       "Closed places never show (Discovery › General's active check). Mesita rows must be ready.",
-      "Google hits only: the operator's Minimum number of Google reviews (below); the guest has no reviews filter (MESITA-2417). Mesita rows have no review floor.",
-      "Chat reads Mesita Selected places only.",
+      "Google hits only: the operator's Minimum Google reviews (below); the guest has no reviews filter (MESITA-2417). Mesita rows have no review floor.",
+      "Google calls: the Map buys 1 per load, the prominent 20 inside the screen radius; Home buys 1 to 3, the prominent 20 within 3 km, then the nearest 20 in the radius, then the prominent 20 in the radius. A place two calls return counts once.",
+      "Google answers live 15 s in the function's memory and are never stored (Google Maps Platform terms). Each guest IP may spend 45 Nearby calls a minute, all guests together 600.",
+      "The screen radius is clamped to 0.05–50 km; a visible map wider than 100 km, or none yet, uses the Home radius instead.",
+      "Mesita's read keeps at most 1000 ready rows in the radius box before scoring.",
+      "Chat reads Mesita Selected places only, inside the Home radius.",
     ],
     callers: ["Map (the Search tab)", "Catalog (Home's Places)", "Chat (Don Memo)"],
     live: true,
