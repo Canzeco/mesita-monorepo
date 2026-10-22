@@ -1,66 +1,63 @@
 import { Skeleton } from "@/components/shared";
+import { CHIP, HEADER_PILL } from "@/components/consumer/search/header-classes";
 import {
-  RAIL_BAND_HEIGHT_CLASS,
-  RAIL_CARD_HEIGHT_CLASS,
-  RAIL_ROW_HEIGHT_CLASS,
-} from "@/components/consumer/search/SearchRailCard";
+  CatalogRailSkeleton,
+  MapVeil,
+  RAIL_FLOAT_CLASS,
+} from "@/components/consumer/search/search-catalog-overlays";
+import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import { cn } from "@/lib/utils";
 
-// /search Suspense fallback. Mirror SearchHeader's silhouette (MESITA-2433):
-// the band, then the row (a disc · the query bar · a disc; the test counts
-// the two disc markers), then the chip row (All, then the families) in the
-// SAME white band (MESITA-2469), then the map with nothing on it, then the
-// full-width white band under it (MESITA-2506, MESITA-2613): the metadata
-// rows on top, the carousel's card under them at full width.
+// /search Suspense fallback: SearchClient's frame, block for block (Pato,
+// MESITA-2701: "the placeholders must be similar to the page you are
+// loading, like the sizes"). SearchHeader's one white band: the bar's row
+// (the 36px locate disc · the query bar · the Ask AI pill) at 10px above
+// and below, a hairline, the chip row (Top, then every family) at 10px
+// above and below, a hairline under both. Then the map under MapVeil, the
+// spinner on the cross, and the carousel floating over the map's foot
+// (MESITA-2670): the same veil and the same first-load row the mounted
+// page draws until its tiles and catalog land, so nothing moves on arrival.
+
+/** A header control's grey block at the control's own size: its token
+ *  classes around its real label and a 16px icon box, kept invisible, so
+ *  the block is the loaded pill's or chip's width; only the block shows. */
+function ControlSkeleton({ token, label }: { token: string; label: string }) {
+  return (
+    <div aria-hidden className={cn(token, "invisible relative")}>
+      <Skeleton className="visible absolute -inset-px rounded-full" />
+      <span className="h-4 w-4 shrink-0" />
+      <span>{label}</span>
+    </div>
+  );
+}
 
 export default function SearchLoading() {
   return (
-    <div className="flex h-full min-h-0 w-full flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <p role="status" className="sr-only">
+        Loading Search
+      </p>
       <div className="border-border bg-card shrink-0 border-b">
-        <div className="flex min-w-0 items-center gap-2 px-3 pt-2 pb-2">
-          <div className="shrink-0" data-skeleton-disc>
-            <Skeleton className="h-9 w-9 rounded-full" />
-          </div>
+        <div className="flex min-w-0 items-center gap-2 px-3 py-2.5">
+          <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
           <Skeleton className="h-9 min-w-0 flex-1 rounded-full" />
-          <div className="shrink-0" data-skeleton-disc>
-            <Skeleton className="h-9 w-24 rounded-full" />
-          </div>
+          <ControlSkeleton token={HEADER_PILL} label="Ask AI" />
         </div>
-        <div
-          className="flex gap-2 overflow-hidden px-3 pb-2"
-          data-search-loading-chips
-        >
-          <Skeleton className="h-9 w-24 shrink-0 rounded-full" />
-          <Skeleton className="h-9 w-24 shrink-0 rounded-full" />
-          <Skeleton className="h-9 w-28 shrink-0 rounded-full" />
-          <Skeleton className="h-9 w-28 shrink-0 rounded-full" />
+        <div className="border-border flex items-center gap-2 overflow-hidden border-t px-3 py-2.5">
+          <ControlSkeleton token={CHIP} label="Top" />
+          {FILTERABLE_PLACE_FAMILIES.map((family) => (
+            <ControlSkeleton
+              key={family.key}
+              token={CHIP}
+              label={family.label}
+            />
+          ))}
         </div>
       </div>
-      <div className="relative min-h-0 w-full flex-1 overflow-hidden">
-        <Skeleton className="absolute inset-0 rounded-none" />
-      </div>
-      <div
-        className={cn(
-          "border-border bg-card flex shrink-0 flex-col border-t",
-          RAIL_BAND_HEIGHT_CLASS,
-        )}
-      >
-        <div className="flex min-h-0 flex-1 flex-col justify-center gap-1.5 px-3 py-2">
-          <Skeleton className="h-3.5 w-20" />
-          <Skeleton className="h-2.5 w-3/5" />
-          <Skeleton className="h-2.5 w-1/2" />
-          <Skeleton className="h-2.5 w-3/5" />
-          <Skeleton className="h-2.5 w-2/5" />
-        </div>
-        <div
-          className={cn(
-            "border-border flex shrink-0 snap-x snap-mandatory items-center overflow-hidden border-t py-2",
-            RAIL_ROW_HEIGHT_CLASS,
-          )}
-        >
-          <div className="w-[88%] shrink-0 snap-center px-1.5 first:ml-[6%] last:mr-[6%]">
-            <Skeleton className={cn("w-full rounded-2xl", RAIL_CARD_HEIGHT_CLASS)} />
-          </div>
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        <MapVeil />
+        <div className={RAIL_FLOAT_CLASS}>
+          <CatalogRailSkeleton />
         </div>
       </div>
     </div>

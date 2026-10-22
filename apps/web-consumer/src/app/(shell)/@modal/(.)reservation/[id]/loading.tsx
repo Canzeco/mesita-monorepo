@@ -1,7 +1,8 @@
-import { SlideOverLoadingSkeleton } from "@/components/consumer/overlay/DetailSkeletons";
+import { ReservationSlideOverSkeleton } from "@/components/consumer/overlay/DetailSkeletons";
 
 // Renders INSIDE the SlideOverShell mounted by layout.tsx — the panel is
-// already sliding in while this skeleton waits for the server data.
+// already sliding in while this silhouette of the reservation waits for the
+// server data (MESITA-2701: the loaded screen's blocks, at their sizes).
 export default function ModalSegmentLoading() {
-  return <SlideOverLoadingSkeleton />;
+  return <ReservationSlideOverSkeleton />;
 }

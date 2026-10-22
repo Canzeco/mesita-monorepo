@@ -17,7 +17,6 @@ import {
   useMap,
 } from "@vis.gl/react-google-maps";
 import type { Place } from "@/lib/api/places";
-import { Skeleton, Spinner } from "@/components/shared";
 import {
   MONTERREY_CENTER,
   MAP_DEFAULT_ZOOM,
@@ -38,6 +37,7 @@ import {
   type CameraState,
 } from "./camera-intent";
 import { SIGHT_Y } from "./search-utils";
+import { MapVeil } from "./search-catalog-overlays";
 import {
   pinFillColor,
   pinStrokeColor,
@@ -274,10 +274,10 @@ function SearchMapReticle({ searching }: { searching: boolean }) {
   );
 }
 
-// Muted skeleton veil that hides the blank canvas until tiles paint.
-// Renders nothing once the SDK reports a load failure — an error state
-// must never sit under an eternal skeleton. z-10 keeps it above the map
-// but below the page's floating search chrome (z-20/z-30).
+// Muted skeleton veil that hides the blank canvas until tiles paint — the
+// same MapVeil search/loading.tsx draws, so the route's skeleton hands over
+// without a move (MESITA-2701). Renders nothing once the SDK reports a load
+// failure — an error state must never sit under an eternal skeleton.
 function MapLoadingVeil() {
   const status = useApiLoadingStatus();
   if (
@@ -286,22 +286,7 @@ function MapLoadingVeil() {
   ) {
     return null;
   }
-  return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 z-10">
-      <Skeleton className="absolute inset-0 rounded-none" />
-      {/* ON THE CROSS (Pato, MESITA-2677: "the loading spin must be aligned
-          with the cross"): SIGHT_Y down, not the map's middle. */}
-      <div
-        className="absolute inset-x-0 flex -translate-y-1/2 justify-center"
-        style={{ top: `${SIGHT_Y * 100}%` }}
-      >
-        <Spinner
-          label="Loading map"
-          className="border-border border-t-primary"
-        />
-      </div>
-    </div>
-  );
+  return <MapVeil />;
 }
 
 function hasCoords(

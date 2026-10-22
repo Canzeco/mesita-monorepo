@@ -7,7 +7,11 @@ import { IdentityCard } from "@/components/consumer/IdentityCard";
 import { ClassSheet } from "@/components/consumer/me/ClassSheet";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { toGuestClass, toGuestPlan } from "@/lib/guest-standing";
-import { cn } from "@/lib/utils";
+import {
+  IDENTITY_BAR_BODY_CLASS,
+  IDENTITY_BAR_CLASS,
+  IdentityCardSkeleton,
+} from "./me-skeletons";
 
 // ─── The identity header (MESITA-1079 v2 · -1619 · -1633 ·
 //     -1636 · -1640 · -1646 · -1649 · -1650 · -1652 · -2040 · -2087) ───────
@@ -86,33 +90,17 @@ export function IdentityBar({
       // THE APP BAR (MESITA-2582): full-width paper, a hairline under it,
       // no radius, no shadow. px-4 puts the photo's left edge and the chips
       // on the tiles' own 16px edge. Still short (MESITA-2574).
-      className="border-border bg-card relative shrink-0 border-b"
+      className={IDENTITY_BAR_CLASS}
     >
-      <div
-        className="relative flex flex-col items-center px-4 py-3"
-        data-identity-app-bar
-      >
+      <div className={IDENTITY_BAR_BODY_CLASS} data-identity-app-bar>
         {loading ? (
-          <>
-            {/* The skeleton mirrors the DESTINATION (Docs › Design §D): the
-                centred 67px ringed photo, then a full-width 36px box, the
-                pair, and a full-width box, one column under 360px
-                (MESITA-2614, reordered MESITA-2621). */}
-            <div className="flex w-full flex-col items-center gap-2">
-              <div className="bg-muted h-[67px] w-[67px] animate-pulse rounded-full" />
-              <div className="grid w-full grid-cols-1 gap-2 min-[360px]:grid-cols-2">
-                {[0, 1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      "bg-muted h-9 w-full animate-pulse rounded-full",
-                      (i === 0 || i === 3) && "col-span-full",
-                    )}
-                  />
-                ))}
-              </div>
-            </div>
-          </>
+          // The skeleton mirrors the DESTINATION (Docs › Design §D): the
+          // 64px photo in its real ring, then the name, the Class · Plan
+          // pair and Instagram (MESITA-2614, MESITA-2621). /me's loading.tsx
+          // draws the same one, so the route fallback and this hand over
+          // without a jump (Pato, MESITA-2701: "the placeholders must be
+          // similar to the page you are loading, like the sizes").
+          <IdentityCardSkeleton />
         ) : (
           <IdentityCard
             name={name}

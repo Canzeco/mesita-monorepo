@@ -4,6 +4,7 @@ import type { Place } from "@/lib/api/places";
 import { isEnrichedPlace } from "@/lib/place-enriched";
 import { cardPhoto, placePlaceholder } from "@/lib/place-placeholder";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/shared";
 import {
   CardActions,
   HoursRow,
@@ -28,11 +29,52 @@ import {
  *  neighbor — the peek strip has to line up, and the square thumb stays the
  *  same size on every page. */
 export const RAIL_CARD_HEIGHT_CLASS = "h-[9.75rem]";
-/** The carousel row around the card: the card, its 8px pads and the 4px
- *  scrollbar gutter, plus 4px of air (MESITA-2510's fixed band). */
-export const RAIL_ROW_HEIGHT_CLASS = "h-[9.875rem]";
-/** The whole band under the map: the readout's 7.5rem and the carousel row. */
-export const RAIL_BAND_HEIGHT_CLASS = "h-[17.375rem]";
+
+/** The card's frame, its text column and where Save · Share sit: one set
+ *  for RailCard and RailCardSkeleton, so the loading card cannot drift
+ *  from the loaded one. */
+const RAIL_CARD_FRAME =
+  "border-border bg-card/95 shadow-elev relative isolate w-full overflow-hidden rounded-2xl border backdrop-blur";
+const RAIL_CARD_TEXT = "flex min-w-0 flex-1 flex-col gap-0.5 px-3 pt-3";
+/** Save · Share under the text column: the left edge is the square photo
+ *  (the 154px inner height) plus the column's 12px. */
+const RAIL_CARD_ACTIONS =
+  "absolute right-3 bottom-3 left-[calc(9.75rem+10px)]";
+
+/** One 20px text row of the card in loading: a bar at the line's type size
+ *  (16px name, 14px facts), centred on the row's line box. */
+function RailRowSkeleton({ bar }: { bar: string }) {
+  return (
+    <div className="flex h-5 items-center">
+      <Skeleton className={bar} />
+    </div>
+  );
+}
+
+/** RailCard while the catalog loads (Pato, MESITA-2701: "the placeholders
+ *  must be similar to the page you are loading, like the sizes"): the same
+ *  frame, the square thumb at the inner height, the four 20px rows (name ·
+ *  $$ category · ★ rating · hours) and Save · Share where CardActions
+ *  sits, so nothing moves when the cards land. */
+export function RailCardSkeleton() {
+  return (
+    <div aria-hidden className={cn(RAIL_CARD_FRAME, RAIL_CARD_HEIGHT_CLASS)}>
+      <div className="absolute inset-0 flex items-stretch">
+        <Skeleton className="aspect-square h-full w-auto shrink-0 rounded-none" />
+        <div className={RAIL_CARD_TEXT}>
+          <RailRowSkeleton bar="h-4 w-3/4" />
+          <RailRowSkeleton bar="h-3.5 w-1/2" />
+          <RailRowSkeleton bar="h-3.5 w-2/5" />
+          <RailRowSkeleton bar="h-3.5 w-3/5" />
+        </div>
+      </div>
+      <div className={cn("grid grid-cols-2 gap-2", RAIL_CARD_ACTIONS)}>
+        <Skeleton className="h-8" />
+        <Skeleton className="h-8" />
+      </div>
+    </div>
+  );
+}
 
 // One floating catalog card on the bottom rail.
 // Two-step tap: the first tap on an unselected card just selects it (highlight +
@@ -75,7 +117,7 @@ export function RailCard({
   return (
     <div
       className={cn(
-        "border-border bg-card/95 shadow-elev relative isolate w-full overflow-hidden rounded-2xl border backdrop-blur",
+        RAIL_CARD_FRAME,
         RAIL_CARD_HEIGHT_CLASS,
         selected && "border-primary ring-primary/30 ring-2 ring-inset",
       )}
@@ -117,7 +159,7 @@ export function RailCard({
             </span>
           )}
         </div>
-        <div className="text-foreground flex min-w-0 flex-1 flex-col gap-0.5 px-3 pt-3">
+        <div className={cn("text-foreground", RAIL_CARD_TEXT)}>
           <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-5 font-semibold tracking-tight">
             <span className="truncate">{place.name}</span>
             {isEnrichedPlace(place) ? <EnrichedBadge /> : null}
@@ -127,14 +169,13 @@ export function RailCard({
           <HoursRow facts={facts} withDistance={withDistance} />
         </div>
       </button>
-      {/* Under the text column: its left edge is the photo (the inner
-          height, 8.25rem) plus the column's 12px, so 9rem. */}
+      {/* Under the text column (RAIL_CARD_ACTIONS). */}
       <CardActions
         name={place.name}
         saved={saved}
         onSave={onSave}
         onShare={onShare}
-        className="absolute right-3 bottom-3 left-[calc(9.75rem+10px)]"
+        className={RAIL_CARD_ACTIONS}
       />
     </div>
   );

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Camera, Copy } from "lucide-react";
 import { BirthdayPicker, Spinner } from "@/components/shared";
+import { Skeleton, SkeletonLine } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
 import { DefaultAvatar } from "@mesita/place-profile";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
@@ -54,6 +55,20 @@ import { ageFromBirthday, cn, errMsg, MIN_SIGNUP_AGE } from "@/lib/utils";
 const MEMBER_NUMBER_LINE =
   "Give this number to staff or support when they ask who you are.";
 
+/** First name, Last name and Sex: the shared input, a notch smaller. One
+ *  string for the fields and their loading boxes (MESITA-2701). */
+const FIELD_CLASS = cn(INPUT_CLASS, "h-auto rounded-lg py-2");
+
+/** A field's box before its value lands: the field's own control, empty,
+ *  disabled and muted. Not a div, because its height comes from the control:
+ *  touch screens draw inputs and selects at 16px (globals.css), so the field
+ *  is 38px on a desktop and about 41px on a phone, and a fixed block would
+ *  match only one of them. */
+const FIELD_SKELETON_CLASS = cn(
+  FIELD_CLASS,
+  "bg-muted pointer-events-none animate-pulse border-transparent opacity-100",
+);
+
 export function EditProfileSheet() {
   const supabase = useBrowserSupabase();
   const [profile, setProfile] = useState<ConsumerProfile | null>(null);
@@ -73,23 +88,109 @@ export function EditProfileSheet() {
     };
   }, [supabase]);
 
-  if (!profile) {
-    return (
-      <MeScreen title="Personal details">
-        <p className="text-muted-foreground text-xs">
-          How you appear across Mesita
-        </p>
-        <div className="bg-muted mx-auto mt-8 h-20 w-20 animate-pulse rounded-full" />
-        <div className="mt-8 flex flex-col gap-3">
-          <div className="bg-muted h-11 animate-pulse rounded-lg" />
-          <div className="bg-muted h-11 animate-pulse rounded-lg" />
-          <div className="bg-muted h-11 animate-pulse rounded-lg" />
-        </div>
-      </MeScreen>
-    );
-  }
+  if (!profile) return <EditProfileSkeleton />;
 
   return <EditProfileForm profile={profile} onProfileChange={setProfile} />;
+}
+
+/** One field's label, the form's own (SheetField, Sex, Birthday). */
+function FieldLabel({ children }: { children: string }) {
+  return (
+    <span className="text-muted-foreground type-label mb-1 block font-medium">
+      {children}
+    </span>
+  );
+}
+
+/**
+ * The form before the profile lands, block for block (Pato, MESITA-2701:
+ * "the placeholders must be similar to the page you are loading, like the
+ * sizes"; "for example in profile the current placeholders are not
+ * similar"). It was a photo disc 32px too low and three 44px bars where the
+ * form has a member-number card, four fields and two buttons.
+ *
+ * The fixed words are drawn as themselves — the caption, the photo hint, the
+ * member-number label and line, the field labels — so they wrap exactly as
+ * the form's do; what the read brings (photo, number, values) and every
+ * control is a block at its box: the 80px photo with the camera badge on its
+ * corner, the 44px copy button, the three fields as their own empty controls
+ * (FIELD_SKELETON_CLASS), the three 52px Birthday parts in their
+ * 1 : 1.6 : 1.2 grid, Cancel (46px) and Save beside it.
+ * /me/profile/loading.tsx draws this same one.
+ */
+export function EditProfileSkeleton() {
+  return (
+    <MeScreen title="Personal details">
+      <p className="text-muted-foreground text-xs">
+        How you appear across Mesita
+      </p>
+
+      <div className="mt-5 flex justify-center">
+        <div className="relative">
+          <Skeleton className="h-20 w-20 rounded-full" />
+          <Skeleton className="border-paper absolute -right-0.5 -bottom-0.5 h-7 w-7 rounded-full border-2" />
+        </div>
+      </div>
+      <p className="text-muted-foreground type-body mt-2 text-center">
+        JPG, PNG, or WEBP · max 2 MB
+      </p>
+
+      <div className="border-border bg-card mt-5 flex items-center gap-3 rounded-2xl border p-4">
+        <div className="min-w-0 flex-1">
+          <span className="text-muted-foreground type-label block font-medium">
+            Member number
+          </span>
+          <SkeletonLine
+            className="font-display text-lg leading-tight"
+            bar="w-32"
+          />
+          <span className="text-muted-foreground mt-1 block text-xs leading-snug">
+            {MEMBER_NUMBER_LINE}
+          </span>
+        </div>
+        <Skeleton className="h-11 w-11 shrink-0 rounded-xl" />
+      </div>
+
+      <div className="mt-5 flex flex-col gap-3" aria-hidden>
+        {["First name", "Last name"].map((label) => (
+          <div key={label}>
+            <FieldLabel>{label}</FieldLabel>
+            <input
+              disabled
+              tabIndex={-1}
+              aria-hidden
+              className={FIELD_SKELETON_CLASS}
+            />
+          </div>
+        ))}
+        <div>
+          <FieldLabel>Sex</FieldLabel>
+          <select
+            disabled
+            tabIndex={-1}
+            aria-hidden
+            className={cn(FIELD_SKELETON_CLASS, "text-transparent")}
+          />
+        </div>
+        <div>
+          <FieldLabel>Birthday</FieldLabel>
+          <div className="grid grid-cols-[1fr_1.6fr_1.2fr] gap-2">
+            <Skeleton className="h-13 rounded-xl" />
+            <Skeleton className="h-13 rounded-xl" />
+            <Skeleton className="h-13 rounded-xl" />
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-8 flex gap-2">
+        <Skeleton className="h-11.5 flex-1" />
+        <Skeleton className="h-11.5 flex-1" />
+      </div>
+      <p role="status" className="sr-only">
+        Loading your details
+      </p>
+    </MeScreen>
+  );
 }
 
 function EditProfileForm({
@@ -310,7 +411,7 @@ function EditProfileForm({
           <select
             value={sex}
             onChange={(e) => setSex(e.target.value)}
-            className={cn(INPUT_CLASS, "h-auto rounded-lg py-2")}
+            className={FIELD_CLASS}
           >
             <option value="">Select</option>
             <option value="female">Female</option>
@@ -373,7 +474,7 @@ function SheetField({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         autoComplete={autoComplete}
-        className={cn(INPUT_CLASS, "h-auto rounded-lg py-2")}
+        className={FIELD_CLASS}
       />
     </label>
   );

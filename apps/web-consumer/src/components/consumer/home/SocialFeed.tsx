@@ -583,13 +583,25 @@ function PersonCard({
  *  either end stays in the card instead of scrolling Home behind it. */
 function HistoryList({ items }: { items: MemberHistoryItem[] | null }) {
   if (items == null) {
+    // The list's own rows (MESITA-2701: "the placeholders must be similar to
+    // the page you are loading, like the sizes"): no top margin, a hairline
+    // between rows, each py-2.5 around the 44px photo, the 14px line and the
+    // 12px time 2px under it.
     return (
-      <div className="mt-3 space-y-2" aria-busy data-social-history-loading>
+      <div
+        className="divide-border divide-y"
+        aria-busy
+        data-social-history-loading
+      >
         {Array.from({ length: 3 }, (_, i) => (
-          <div key={i} className="flex items-center gap-3">
-            <div className="min-w-0 flex-1 space-y-2">
-              <Skeleton className="h-3.5 w-3/5" />
-              <Skeleton className="h-3 w-1/5" />
+          <div key={i} className="flex items-center gap-3 py-2.5">
+            <div className="min-w-0 flex-1">
+              <div className="flex h-5 items-center">
+                <Skeleton className="h-3.5 w-3/5" />
+              </div>
+              <div className="mt-0.5 flex h-4 items-center">
+                <Skeleton className="h-3 w-1/5" />
+              </div>
             </div>
             <Skeleton className="h-11 w-11 shrink-0 rounded-lg" />
           </div>
@@ -638,18 +650,35 @@ function HistoryList({ items }: { items: MemberHistoryItem[] | null }) {
   );
 }
 
-/** Loading looks like the rows it waits for. */
+/** Rows the loading band draws: enough to run past the pane's foot, as a
+ *  full feed does (each row is 68px). */
+const SKELETON_ROWS = 10;
+
+/** Loading is the feed it waits for, block for block (Pato, MESITA-2701:
+ *  "the placeholders must be similar to the page you are loading, like the
+ *  sizes"): the grey pane with its pb-6; the "Updated … · Refresh" line, 48px
+ *  (pt-1 and pb-1 around Refresh's 40px tap row); then the same white band
+ *  as the list (MESITA-2542), each row px-4 py-3 around the 44px face, the
+ *  14px sentence and the 12px quiet line 2px under it, the 44px photo. */
 function FeedSkeleton() {
   return (
-    <div className="bg-background flex-1 pt-14" data-social-loading aria-busy>
-      {/* The same white band as the list (MESITA-2542), so nothing jumps. */}
+    <div className="bg-background flex-1 pb-6" data-social-loading aria-busy>
+      <div className="flex items-center justify-center pt-1 pb-1">
+        <div className="flex h-10 items-center">
+          <Skeleton className="h-3 w-36" />
+        </div>
+      </div>
       <div className="divide-border border-border bg-card divide-y border-y">
-        {Array.from({ length: 6 }, (_, i) => (
+        {Array.from({ length: SKELETON_ROWS }, (_, i) => (
           <div key={i} className="flex items-center gap-3 px-4 py-3">
             <Skeleton className="h-11 w-11 shrink-0 rounded-full" />
-            <div className="min-w-0 flex-1 space-y-2">
-              <Skeleton className="h-3.5 w-3/5" />
-              <Skeleton className="h-3 w-2/5" />
+            <div className="min-w-0 flex-1">
+              <div className="flex h-5 items-center">
+                <Skeleton className="h-3.5 w-3/5" />
+              </div>
+              <div className="mt-0.5 flex h-4 items-center">
+                <Skeleton className="h-3 w-2/5" />
+              </div>
             </div>
             <Skeleton className="h-11 w-11 shrink-0 rounded-lg" />
           </div>

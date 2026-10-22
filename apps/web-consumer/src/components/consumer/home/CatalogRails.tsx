@@ -73,8 +73,8 @@ import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { barePath } from "@/lib/surface";
 import { EmptyState } from "@/components/shared";
-import { Skeleton } from "@/components/shared/Skeleton";
 import { CatalogTile } from "./CatalogTile";
+import { DiscoverFallback, PLACES_LIST } from "./DiscoverFallback";
 import { useActiveLocation } from "@/lib/active-location";
 import { useSocialHasNew } from "@/lib/use-social-has-new";
 import { cn, errMsg } from "@/lib/utils";
@@ -85,9 +85,8 @@ import { SocialFeed } from "./SocialFeed";
 export const MESITA_RAIL_KEY = "mesita_selected";
 export const GOOGLE_RAIL_KEY = "google_places";
 
-/** One square tile per row (MESITA-2367), 6px of room above, left and right
- *  and between tiles — one space size (Pato, MESITA-2370). */
-const PLACES_LIST = "grid grid-cols-1 content-start gap-1.5 px-1.5 pt-1.5";
+// The tile list's classes (PLACES_LIST) live in DiscoverFallback.tsx, beside
+// the skeleton that draws the same column (MESITA-2701).
 
 const ROW_BASE =
   "relative flex w-full items-center gap-1.5 px-3 py-3.5 text-left text-xs leading-tight transition";
@@ -496,13 +495,12 @@ export function CatalogRails() {
   // Social reads its own feed, never the catalog (MESITA-2474, MESITA-2517).
   if (tab === "social") return shell(<SocialFeed />);
 
-  if (waitingForFix) {
-    return shell(
-      <div className={PLACES_LIST} data-places-locating>
-        <Skeleton className="aspect-square rounded-2xl" />
-      </div>,
-    );
-  }
+  // BOTH WAITS DRAW THE TILE COLUMN ITSELF (Pato, MESITA-2701: "the
+  // placeholders must be similar to the page you are loading, like the
+  // sizes"): the same three tile silhouettes, 60/40 with the Save · Share
+  // row, in the list's own pb-6 and gaps (DiscoverFallback.tsx). Locating
+  // drew one bare square before, so it grew to three, then to tiles.
+  if (waitingForFix) return shell(<DiscoverFallback locating />);
 
   if (fetchError) {
     return shell(
@@ -515,15 +513,7 @@ export function CatalogRails() {
     );
   }
 
-  if (pool === null) {
-    return shell(
-      <div className={PLACES_LIST}>
-        {Array.from({ length: 3 }, (_, i) => (
-          <Skeleton key={i} className="aspect-square rounded-2xl" />
-        ))}
-      </div>,
-    );
-  }
+  if (pool === null) return shell(<DiscoverFallback />);
 
   const label = chips.find((c) => c.key === chip)?.label ?? "Places";
   const empty = isEveryFamily(chip) ? (

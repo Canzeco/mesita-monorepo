@@ -3,6 +3,8 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
+import { Skeleton, SkeletonLine } from "@/components/shared/Skeleton";
+import { cn } from "@/lib/utils";
 
 // ─── The destination grid (MESITA-1628) ────────────────────────────────────
 //
@@ -42,6 +44,13 @@ export function DestGrid({ children }: { children: ReactNode }) {
 // `DestTile`: one cell shape, one fill. A count is a SUMMARY LINE on the cell,
 // not a separate material.
 
+// ONE ROW, NOT A STACK (Pato, MESITA-2596: "make these settings boxes a bit
+// shorter, currently too tall. still keep two columns"): the chip sits
+// beside the title and summary, so a tile is ~64px, not ~100. The frame is
+// shared with the loading tile so the two are one box (MESITA-2701).
+const TILE_FRAME =
+  "border-border bg-card shadow-rest relative flex w-full items-center gap-2.5 overflow-hidden rounded-2xl border p-3";
+
 /** One grid cell: a DESTINATION, always a route Link to `/me/<box>`. */
 export function DestTile({
   Icon,
@@ -59,10 +68,10 @@ export function DestTile({
   return (
     <Link
       href={href}
-      // ONE ROW, NOT A STACK (Pato, MESITA-2596: "make these settings boxes
-      // a bit shorter, currently too tall. still keep two columns"): the
-      // chip sits beside the title and summary, so a tile is ~64px, not ~100.
-      className="border-border bg-card shadow-rest hover:bg-muted/40 relative flex w-full items-center gap-2.5 overflow-hidden rounded-2xl border p-3 text-left transition active:scale-[0.98]"
+      className={cn(
+        TILE_FRAME,
+        "hover:bg-muted/40 text-left transition active:scale-[0.98]",
+      )}
     >
       {/* Decorative. The title and summary already say everything, so the
           chip is hidden rather than described. */}
@@ -79,11 +88,9 @@ export function DestTile({
           {title}
         </span>
         {summary === null ? (
-          <span
-            className="bg-muted mt-1.5 block h-3 w-20 max-w-full animate-pulse rounded"
-            aria-hidden
-            data-dest-summary-loading
-          />
+          // On the summary's own 12px snug line, so the tile keeps its
+          // height when the words land (MESITA-2701).
+          <SkeletonLine className="mt-0.5 text-xs leading-snug" bar="w-20" />
         ) : (
           <span className="text-muted-foreground mt-0.5 block text-xs leading-snug">
             {summary}
@@ -91,5 +98,22 @@ export function DestTile({
         )}
       </span>
     </Link>
+  );
+}
+
+/** A tile in /me's loading.tsx (Pato, MESITA-2701: "the placeholders must
+ *  be similar to the page you are loading, like the sizes"): the same frame,
+ *  the 36px chip, and two bars on the title's 14px line and the summary's
+ *  12px snug line. Not a cell: it links nowhere and leaves with the
+ *  fallback. */
+export function DestTileSkeleton() {
+  return (
+    <div aria-hidden className={TILE_FRAME}>
+      <Skeleton className="h-9 w-9 shrink-0 rounded-[11px]" />
+      <span className="min-w-0 flex-1">
+        <SkeletonLine className="text-sm" bar="w-16" />
+        <SkeletonLine className="mt-0.5 text-xs leading-snug" bar="w-24" />
+      </span>
+    </div>
   );
 }

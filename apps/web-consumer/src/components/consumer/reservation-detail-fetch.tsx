@@ -5,7 +5,7 @@ import { CalendarX } from "lucide-react";
 
 import { ReservationDetailBody } from "@/components/consumer/ReservationDetailBody";
 import { ReservationDetailModalShell } from "@/components/consumer/ReservationDetailModalShell";
-import { LoadingFill } from "@/components/shared";
+import { ReservationBodySkeleton } from "@/components/consumer/overlay/DetailSkeletons";
 import { apiListReservations } from "@/lib/api/reservations";
 import type { ReservationItem } from "@/lib/reservation-types";
 import { toReservationItem } from "@/lib/reservations-adapter";
@@ -75,10 +75,15 @@ function ReservationNotFound() {
 
 // Body for the hard-nav /reservation/[id] page — the page supplies its
 // own header around this.
+// WHILE THE ROW LOADS, THE RESERVATION'S SILHOUETTE (Pato, MESITA-2701: "the
+// placeholders must be similar to the page you are loading, like the
+// sizes"): the same ReservationBodySkeleton the route's loading.tsx draws,
+// so the route's placeholder hands straight over to this one and then to
+// the body. It was a centred spinner between the two.
 export function ReservationDetailFetcher({ id }: { id: string }) {
   const { state, reload } = useReservationById(id);
   if (state.state === "loading") {
-    return <LoadingFill label="Loading reservation" />;
+    return <ReservationBodySkeleton />;
   }
   if (state.state === "missing") return <ReservationNotFound />;
   return <ReservationDetailBody r={state.r} onChanged={reload} />;
@@ -93,7 +98,7 @@ export function ReservationDetailModalClient({ id }: { id: string }) {
   return (
     <ReservationDetailModalShell placeName={placeName}>
       {state.state === "loading" ? (
-        <LoadingFill label="Loading reservation" />
+        <ReservationBodySkeleton />
       ) : state.state === "missing" ? (
         <ReservationNotFound />
       ) : (
