@@ -11,26 +11,26 @@ import type { PlaceDetail } from "@/lib/place-detail";
 //
 // THE TOP BAR IS THE PACKAGE'S PlaceTopBar (MESITA-2627), the same
 // Instagram-style bar the direct-link page draws: bare chevron, bold sans
-// name at the left with the Enriched mark before it, three dots that report
-// (MESITA-2684).
+// name at the left with the Enriched mark before it, three dots that open the
+// place's menu (MESITA-2692).
 // Until MESITA-2627 this shell drew SlideOverHeader (a bordered back square
 // and a centred serif name), so a place opened from inside the app never
 // got MESITA-2619's bar. The chevron closes the slide-over.
 // decision: Pato (MESITA-451, revised) — the "Enriching" state lives as a
 // chip in the profile summary (PlaceDetailBody), not the title row.
-//   1. PlaceTopBar (shrink-0) — back · name · report
+//   1. PlaceTopBar (shrink-0) — back · name · ⋯
 //   2. Scroll area (flex-1 overflow-y-auto) — PlaceDetailBody (ugly
 //      Create profile included). Enrich is a tab until Enriched.
 
 export function PlaceDetailModalShell({
   children,
   place,
-  onReport,
+  onMore,
 }: {
   children: React.ReactNode;
   place: PlaceDetail;
-  /** The three dots open Report (MESITA-2684); absent, they are inert. */
-  onReport?: () => void;
+  /** The three dots open the place's menu (MESITA-2692); absent, inert. */
+  onMore?: () => void;
 }) {
   const close = useSlideOverClose();
   return (
@@ -39,7 +39,7 @@ export function PlaceDetailModalShell({
         name={place.name}
         enriched={place.is_enriched}
         onBack={close}
-        onReport={onReport}
+        onMore={onMore}
       />
       {/*
         `min-h-0` is the load-bearing class here: without it, a flex-1 child

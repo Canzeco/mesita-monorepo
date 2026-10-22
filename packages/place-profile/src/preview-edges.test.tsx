@@ -81,7 +81,7 @@ describe("member preview edges", () => {
     // Share is on the first row again (MESITA-2633); the dots report
     // (MESITA-2684).
     expect(html).toContain('aria-label="Share"');
-    expect(html).toContain('aria-label="Report this place"');
+    expect(html).toContain('aria-label="More options"');
     // Reserve is a tile, no times on the profile (MESITA-2633, MESITA-2688):
     // fixed times read as confirmed availability.
     expect(html).toContain('aria-label="Reserve a table"');

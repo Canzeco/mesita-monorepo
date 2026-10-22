@@ -8,6 +8,7 @@ import type {
 import { SocialLine } from "@mesita/place-profile";
 import { MenuViewer } from "@/components/consumer/MenuViewer";
 import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
+import { PlaceMoreSheet } from "@/components/consumer/place-detail/PlaceMoreSheet";
 import { ReportSheet } from "@/components/consumer/place-detail/ReportSheet";
 import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
 import {
@@ -37,6 +38,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const saved = isSaved(place.id);
   const [contactOpen, setContactOpen] = useState(false);
   const [reserveOpen, setReserveOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [menu, setMenu] = useState<PlaceMenuItem | null>(null);
   const activity = usePlaceActivity(place.id);
@@ -61,9 +63,8 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     saved,
     onContact: () => setContactOpen(true),
     onShare: () => void sharePlace(place),
-    // The three dots report (MESITA-2684); a Google-only card is not a place
-    // row yet, so its dots stay inert.
-    onReport: isMesitaPlaceId(place.id) ? () => setReportOpen(true) : undefined,
+    // The three dots open the menu (MESITA-2692).
+    onMore: () => setMoreOpen(true),
     onReserve: () => setReserveOpen(true),
     onOpenMenu: (item) => setMenu(item),
     onOpenLink,
@@ -80,6 +81,17 @@ export function useMemberPlaceActions(place: PlaceDetail): {
         place={place}
         open={reserveOpen}
         onClose={() => setReserveOpen(false)}
+      />
+      <PlaceMoreSheet
+        place={place}
+        open={moreOpen}
+        onClose={() => setMoreOpen(false)}
+        saved={saved}
+        onSave={onSave}
+        // A Google-only card is not a place row yet: nothing to report.
+        onReport={
+          isMesitaPlaceId(place.id) ? () => setReportOpen(true) : undefined
+        }
       />
       <ReportSheet
         place={place}

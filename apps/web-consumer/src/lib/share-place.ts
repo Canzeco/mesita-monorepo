@@ -118,6 +118,16 @@ export async function shareOrCopy(
   return "failed";
 }
 
+/** Copy a place's link, and say so (the ⋯ menu's Copy link, MESITA-2692). */
+export async function copyPlaceLink(place: {
+  id: string;
+  slug?: string | null;
+}): Promise<void> {
+  if (await copyToClipboard(placeShareUrl(place.slug ?? place.id)))
+    toast.success("Link copied");
+  else toast.error("Couldn't copy the link");
+}
+
 /** Share a place, or copy its link. */
 export async function sharePlace(place: {
   id: string;
