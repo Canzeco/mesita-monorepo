@@ -86,19 +86,21 @@ function Dot() {
   );
 }
 
-/** Row two: category · $$ · ★ rating (reviews), the star yellow. */
+/** Row two: $$ · category · ★ rating (reviews) — the price first (Pato,
+ *  MESITA-2674: "price before category, it's easier and faster to see"),
+ *  green; the star yellow. */
 export function KindRow({ facts }: { facts: CardFacts }) {
   if (!facts.kindPrice && !facts.rating) return null;
   return (
     <p className={ROW}>
-      {facts.kind ? <span className="truncate">{facts.kind}</span> : null}
-      {facts.kind && facts.price ? <Dot /> : null}
       {facts.price ? (
         // The price in green (Pato, MESITA-2673: "price tag green").
         <span className="text-fact-price shrink-0 font-semibold">
           {facts.price}
         </span>
       ) : null}
+      {facts.kind && facts.price ? <Dot /> : null}
+      {facts.kind ? <span className="truncate">{facts.kind}</span> : null}
       {facts.kindPrice && facts.rating ? <Dot /> : null}
       {facts.rating ? (
         <span className="inline-flex shrink-0 items-center gap-1">
@@ -110,6 +112,34 @@ export function KindRow({ facts }: { facts: CardFacts }) {
           {facts.reviews ? <span>({facts.reviews})</span> : null}
         </span>
       ) : null}
+    </p>
+  );
+}
+
+/** Search card row two (MESITA-2674): $$ (green) · category. */
+export function PriceKindRow({ facts }: { facts: CardFacts }) {
+  if (!facts.kind && !facts.price) return null;
+  return (
+    <p className={ROW}>
+      {facts.price ? (
+        <span className="text-fact-price shrink-0 font-semibold">
+          {facts.price}
+        </span>
+      ) : null}
+      {facts.kind && facts.price ? <Dot /> : null}
+      {facts.kind ? <span className="truncate">{facts.kind}</span> : null}
+    </p>
+  );
+}
+
+/** Search card row three (MESITA-2674): ★ rating (reviews), the star yellow. */
+export function StarsRow({ facts }: { facts: CardFacts }) {
+  if (!facts.rating) return null;
+  return (
+    <p className={ROW}>
+      <Star className={cn(MARK, "fill-fact-star text-fact-star")} aria-hidden />
+      {facts.rating}
+      {facts.reviews ? <span>({facts.reviews})</span> : null}
     </p>
   );
 }
