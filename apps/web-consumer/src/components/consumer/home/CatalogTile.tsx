@@ -90,6 +90,14 @@ function readableKind(place: Place): string | null {
  * profile through `onOpenGoogle` and has no save heart: only a Mesita place
  * can be saved.
  */
+
+/** Capitalise every word ("opens tomorrow 07:00" → "Opens Tomorrow 07:00"). */
+function titleWords(line: string | null): string | null {
+  return line
+    ? line.replace(/(^|\s)(\p{Ll})/gu, (_, sp, ch) => sp + ch.toUpperCase())
+    : null;
+}
+
 export function CatalogTile({
   place,
   saved,
@@ -128,7 +136,11 @@ export function CatalogTile({
     typeof o.google_count === "number" && o.google_count > 0
       ? formatCompactCount(o.google_count)
       : null;
-  const openLine =
+  // TITLE CASE ON THE HOURS LINE (Pato, MESITA-2665: "leave it camel case,
+  // Opens Tomorrow"): "Closed · Opens Tomorrow 07:00", "Open · Until 02:00".
+  // Every row is full ink now, the review count and hours line included
+  // (MESITA-2665: "that is too light, I cannot read").
+  const openLine = titleWords(
     o.open_now === true
       ? o.closes_at
         ? `Open · until ${o.closes_at}`
@@ -137,7 +149,8 @@ export function CatalogTile({
         ? o.opens_at
           ? `Closed · opens ${o.opens_at}`
           : "Closed"
-        : null;
+        : null,
+  );
   const distance =
     typeof place.distance_km === "number" && place.distance_km > 0
       ? formatKm(place.distance_km)
@@ -279,15 +292,13 @@ export function CatalogTile({
                   <span className="inline-flex shrink-0 items-center gap-1">
                     <Star className="fill-foreground text-foreground h-3.5 w-3.5 shrink-0" />
                     {ratingLabel}
-                    {reviews ? (
-                      <span className="text-muted-foreground">({reviews})</span>
-                    ) : null}
+                    {reviews ? <span>({reviews})</span> : null}
                   </span>
                 ) : null}
               </p>
             ) : null}
             {hoursDistance ? (
-              <p className="text-muted-foreground truncate font-sans text-sm leading-5">
+              <p className="text-foreground truncate font-sans text-sm leading-5">
                 {hoursDistance}
               </p>
             ) : null}
