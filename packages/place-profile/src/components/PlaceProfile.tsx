@@ -20,9 +20,9 @@ import { PlaceTopBar } from "./PlaceTopBar";
 // the three dots at the right edge. It replaced a bordered back square and
 // a centred serif title.
 //
-// decision: the three dots do what Instagram's do first, Share this
-// profile: they open the share sheet (onShare). Share left the action row
-// for it (ProfileActions).
+// The three dots report the place (onReport; Pato, MESITA-2684: "three dots
+// is a button to report"). Until then they shared, twice over with the Share
+// tile in the action row (ProfileActions).
 export function PlaceProfile({
   place,
   onBack,
@@ -51,7 +51,7 @@ export function PlaceProfile({
         name={place.name}
         enriched={place.is_enriched}
         onBack={onBack}
-        onShare={actions?.onShare}
+        onReport={actions?.onReport}
       />
       <div
         className="min-h-0 flex-1 overflow-y-auto"

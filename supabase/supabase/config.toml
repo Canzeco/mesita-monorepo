@@ -256,6 +256,9 @@ verify_jwt = true
 [functions.consumer-web-track-activity]
 verify_jwt = true
 
+[functions.consumer-web-report-place]
+verify_jwt = true
+
 [functions.consumer-web-list-activity]
 verify_jwt = true
 

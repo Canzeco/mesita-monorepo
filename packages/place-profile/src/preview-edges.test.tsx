@@ -78,9 +78,10 @@ describe("member preview edges", () => {
     ]) {
       expect(html).toContain(label);
     }
-    // Share is on the first row again (MESITA-2633); the dots still share.
+    // Share is on the first row again (MESITA-2633); the dots report
+    // (MESITA-2684).
     expect(html).toContain('aria-label="Share"');
-    expect(html).toContain('aria-label="Share this place"');
+    expect(html).toContain('aria-label="Report this place"');
     // One Reserve button, no times on the profile (MESITA-2633): fixed
     // times read as confirmed availability.
     expect(html).toContain("Reserve with Mesita");
