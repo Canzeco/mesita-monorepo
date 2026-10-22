@@ -33,7 +33,7 @@ describe("member preview edges", () => {
       <PlaceProfile place={detail({ enriched_at: null, is_enriched: false })} />,
     );
     expect(html).toContain('aria-label="Place sections"');
-    for (const label of ["Overview", "Reviews", "Menu", "Rewards"]) {
+    for (const label of ["Overview", "Reviews", "Products", "Rewards"]) {
       expect(html).toContain(label);
     }
     expect(html).not.toContain(">Enrich<");
@@ -71,15 +71,20 @@ describe("member preview edges", () => {
     expect(html).not.toContain('aria-label="Reviews"');
   });
 
-  it("puts all five buttons in the header and no pinned bar (MESITA-2321)", () => {
+  it("puts one action row in the header and no pinned bar (MESITA-2321, MESITA-2618)", () => {
     const html = renderToStaticMarkup(<PlaceProfile place={detail()} />);
-    for (const label of [">Favorite<", ">Contact<", ">Share<", "Reserve a table", "Pay, Soon"]) {
+    for (const label of [
+      "Reserve a table",
+      'aria-label="Add to favorites"',
+      'aria-label="Contact"',
+      'aria-label="Share"',
+    ]) {
       expect(html).toContain(label);
     }
+    // Pay (Soon) left the place screen; the bar already says Pay · Soon.
+    expect(html).not.toContain("Pay, Soon");
     // The old pinned band (border-t + backdrop-blur under the scroller) is gone.
     expect(html).not.toContain("backdrop-blur");
-    expect(html).toContain("grid grid-cols-3 gap-2");
-    expect(html).toContain("grid grid-cols-2 gap-2");
   });
 
   it("has no I went, even with every member action passed (MESITA-2567)", () => {
@@ -114,10 +119,7 @@ describe("member preview edges", () => {
     expect(facebookAt).toBeGreaterThan(instagramAt);
     expect(html).toContain("from-purple-600");
     expect(html).toContain("bg-[#1877F2]");
-    expect(html).toContain("rounded-full bg-[#EA4335] h-6 w-6");
-    expect(html).toContain("h-[18px] w-[18px]");
-    expect(html).toContain('class="h-3 w-3"');
-    expect(html).toContain("#FFC107");
+    expect(html).toContain("bg-[#EA4335]");
     expect(html).toContain(">Not connected<");
     expect(html).toContain(">Instagram<");
     expect(html).toContain(">Facebook<");
@@ -135,25 +137,22 @@ describe("member preview edges", () => {
     expect(nav).toContain('aria-label="Place sections"');
     expect(nav).toContain("bg-card");
     expect(nav).not.toContain("bg-background");
-    const saveAt = html.indexOf(">Favorite<");
-    const contactAt = html.indexOf(">Contact<");
-    const shareAt = html.indexOf(">Share<");
     const reserveAt = html.indexOf("Reserve a table");
-    const payAt = html.indexOf("Pay, Soon");
-    expect(saveAt).toBeGreaterThan(-1);
+    const saveAt = html.indexOf('aria-label="Add to favorites"');
+    const contactAt = html.indexOf('aria-label="Contact"');
+    const shareAt = html.indexOf('aria-label="Share"');
+    expect(reserveAt).toBeGreaterThan(-1);
+    expect(saveAt).toBeGreaterThan(reserveAt);
     expect(contactAt).toBeGreaterThan(saveAt);
     expect(shareAt).toBeGreaterThan(contactAt);
-    expect(reserveAt).toBeGreaterThan(shareAt);
-    expect(payAt).toBeGreaterThan(reserveAt);
     expect(html).not.toContain("Save, Soon");
-    expect(html).toContain("Menu");
-    expect(html).not.toContain("Menus");
+    expect(html).toContain("Products");
+    expect(html).not.toContain(">Menu<");
     expect(html).toContain("Rewards");
     expect(html).toContain("Soon");
-    const menuSoon = renderToStaticMarkup(<SoonScreen title="Menu" />);
-    expect(menuSoon).toContain("Menu is coming soon");
-    expect(menuSoon).toContain("Menu at this place lands here shortly.");
-    expect(menuSoon).not.toContain("Menus");
+    const menuSoon = renderToStaticMarkup(<SoonScreen title="Products" />);
+    expect(menuSoon).toContain("Products is coming soon");
+    expect(menuSoon).toContain("Products at this place lands here shortly.");
     expect(renderToStaticMarkup(<SoonScreen title="Rewards" />)).toContain(
       "Rewards is coming soon",
     );

@@ -3,9 +3,10 @@
 import { cn } from "../../lib/format";
 
 // The KEYS are addresses (and map to places.products); only the LABELS are
-// the words a guest reads. "Menu", never "Products" (Pato 2026-08-22;
-// singular, Pato 2026-10-16).
-// decision: Pato (2026-10-16) — Menu and Rewards wear Soon. Rewards is the
+// the words a guest reads. "Products" (Pato, MESITA-2618: "don't call it
+// menu for the moment. call it products. its cleaner"). It was "Menu" from
+// 2026-08-22 to 2026-10-21; he flips this word, so read the live label here.
+// decision: Pato (2026-10-16) — Products and Rewards wear Soon. Rewards is the
 // fourth screen. Both are the same strip on admin Preview and consumer.
 // Every place has the four, Enriched or not; the Enrich vote is the top of
 // Overview, never a tab of its own (MESITA-2332).
@@ -20,7 +21,7 @@ export type PlaceTabDef = {
 const CORE_TABS = [
   { key: "place", label: "Overview" },
   { key: "reviews", label: "Reviews" },
-  { key: "products", label: "Menu", soon: true },
+  { key: "products", label: "Products", soon: true },
   { key: "rewards", label: "Rewards", soon: true },
 ] as const satisfies ReadonlyArray<PlaceTabDef>;
 

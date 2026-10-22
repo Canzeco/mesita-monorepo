@@ -27,8 +27,9 @@ import { DatesBox, LinksBox, TagsBox } from "./place-detail/tags-links-meta";
 //
 //   1. Profile summary — name in page chrome; photo + Google/Instagram/
 //      Facebook (on every tab, MESITA-2334); swipe-style tags; then
-//      Save · Contact · Share, then Reserve · Pay (Soon) (MESITA-2321; no pinned bar).
-//   2. The sticky strip, Overview · Reviews · Menu (Soon) · Rewards (Soon),
+//      one row of actions: Reserve, then Favorite · Contact · Share as
+//      icons (MESITA-2618; no pinned bar).
+//   2. The sticky strip, Overview · Reviews · Products (Soon) · Rewards (Soon),
 //      for every place (MESITA-2332). Not Enriched: Overview opens with the
 //      vote panel — or the Creating panel while a Google-only profile is
 //      being created (MESITA-2307) — and Reviews holds Google's up-to-5 from
@@ -92,7 +93,7 @@ export function PlaceDetailBody({
             </>
           )}
           {tab === "reviews" && <GoogleReviewsBox place={place} />}
-          {tab === "products" && <SoonScreen title="Menu" />}
+          {tab === "products" && <SoonScreen title="Products" />}
           {tab === "rewards" && <SoonScreen title="Rewards" />}
       </div>
     </div>

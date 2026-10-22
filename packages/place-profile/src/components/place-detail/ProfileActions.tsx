@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  CalendarCheck,
-  Heart,
-  Phone,
-  QrCode,
-  Share2,
-} from "lucide-react";
+import { CalendarCheck, Heart, Phone, Share2 } from "lucide-react";
 
 import type { PlaceActions } from "../../actions";
 import { inertButtonProps } from "../../actions";
@@ -14,19 +8,22 @@ import type { PlaceDetail } from "../../place-detail";
 import { cn } from "../../lib/format";
 import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 
-// The profile's five buttons, Instagram-profile style (Pato, MESITA-2321):
-//   Save · Contact · Share
-//   Reserve · Pay (Soon)
-// There is no "I went" (Pato, MESITA-2567: Social is liked and viewed only).
-// No pinned bottom bar any more. Gray buttons like Instagram's Follow /
-// Message, 44px tall (the touch-target minimum, MESITA-2324); Reserve is the
-// one dark button. Live behavior (bookmark, contact
-// sheet, share sheet, reservation sheet) stays in the consumer and arrives
-// as callbacks; a missing callback leaves its button visible and inert, so
-// the rows never change shape.
+// ONE ROW (Pato, MESITA-2618: "i don't like the six buttons there. it looks
+// like shit"): Reserve, the one dark button, takes the width; Favorite,
+// Contact and Share are 44px grey icon squares beside it, the way Maps puts
+// Save and Share next to Directions. Until MESITA-2618 this was two rows,
+// Favorite · Contact · Share over Reserve · Pay (Soon) (MESITA-2321).
+//
+// decision: Pay (Soon) is gone from the place screen. It opened nothing, and
+// the bar already says Pay · Soon (MESITA-2076); a Soon button here was a
+// dead door. There is no "I went" (Pato, MESITA-2567). No pinned bottom bar.
+// 44px tall (the touch-target minimum, MESITA-2324). Live behavior
+// (bookmark, contact sheet, share sheet, reservation sheet) stays in the
+// consumer and arrives as callbacks; a missing callback leaves its button
+// visible and inert, so the row never changes shape.
 const btn =
-  "inline-flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 type-label font-semibold whitespace-nowrap transition active:scale-[0.99]";
-const grayBtn = cn(btn, "bg-muted text-foreground hover:bg-muted/70");
+  "inline-flex h-11 shrink-0 items-center justify-center rounded-lg transition active:scale-[0.99]";
+const iconBtn = cn(btn, "w-11 bg-muted text-foreground hover:bg-muted/70");
 
 export function ProfileActions({
   place,
@@ -46,80 +43,66 @@ export function ProfileActions({
   const reserveLive = isReserveActionEnabled(place) && Boolean(onReserve);
 
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
-      <div className="grid grid-cols-3 gap-2">
-        <button
-          type="button"
-          {...(onSave
-            ? { onClick: onSave, "aria-pressed": saved }
-            : inertButtonProps(false))}
-          aria-label={saved ? "Remove from favorites" : "Add to favorites"}
-          className={cn(
-            grayBtn,
-            saved &&
-              "shadow-danger bg-destructive text-white hover:bg-destructive",
-          )}
-        >
-          <Heart
-            className={cn("h-4 w-4 shrink-0", saved && "fill-current")}
-            strokeWidth={2.25}
+    <div className={cn("flex gap-2", className)}>
+      <button
+        type="button"
+        {...(reserveLive
+          ? { onClick: onReserve, "aria-haspopup": "dialog" as const }
+          : inertButtonProps(false))}
+        aria-label="Reserve a table"
+        className={cn(
+          btn,
+          "bg-foreground text-paper type-label min-w-0 flex-1 gap-1.5 px-2 font-semibold whitespace-nowrap hover:opacity-90",
+        )}
+      >
+        <CalendarCheck className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+        Reserve
+      </button>
+      <button
+        type="button"
+        {...(onSave
+          ? { onClick: onSave, "aria-pressed": saved }
+          : inertButtonProps(false))}
+        aria-label={saved ? "Remove from favorites" : "Add to favorites"}
+        className={cn(
+          iconBtn,
+          saved &&
+            "shadow-danger bg-destructive text-white hover:bg-destructive",
+        )}
+      >
+        <Heart
+          className={cn("h-[18px] w-[18px]", saved && "fill-current")}
+          strokeWidth={2.25}
+        />
+      </button>
+      <button
+        type="button"
+        {...(onContact
+          ? { onClick: onContact, "aria-haspopup": "dialog" as const }
+          : inertButtonProps(false))}
+        aria-label="Contact"
+        className={iconBtn}
+      >
+        {hasWhatsApp ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src="/channels/whatsapp.svg"
+            alt=""
+            aria-hidden
+            className="h-[18px] w-[18px]"
           />
-          {saved ? "Favorited" : "Favorite"}
-        </button>
-        <button
-          type="button"
-          {...(onContact
-            ? { onClick: onContact, "aria-haspopup": "dialog" as const }
-            : inertButtonProps(false))}
-          className={grayBtn}
-        >
-          {hasWhatsApp ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src="/channels/whatsapp.svg"
-              alt=""
-              aria-hidden
-              className="h-4 w-4 shrink-0"
-            />
-          ) : (
-            <Phone className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-          )}
-          Contact
-        </button>
-        <button
-          type="button"
-          {...(onShare ? { onClick: onShare } : inertButtonProps(false))}
-          className={grayBtn}
-        >
-          <Share2 className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-          Share
-        </button>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          {...(reserveLive
-            ? { onClick: onReserve, "aria-haspopup": "dialog" as const }
-            : inertButtonProps(false))}
-          aria-label="Reserve a table"
-          className={cn(btn, "bg-foreground text-paper hover:opacity-90")}
-        >
-          <CalendarCheck className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-          Reserve
-        </button>
-        <button
-          type="button"
-          {...inertButtonProps(false)}
-          aria-label="Pay, Soon"
-          className={grayBtn}
-        >
-          <QrCode className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-          Pay
-          <span className="bg-card text-muted-foreground type-meta rounded-full px-1.5 py-0.5 leading-none font-semibold">
-            Soon
-          </span>
-        </button>
-      </div>
+        ) : (
+          <Phone className="h-[18px] w-[18px]" strokeWidth={2.25} />
+        )}
+      </button>
+      <button
+        type="button"
+        {...(onShare ? { onClick: onShare } : inertButtonProps(false))}
+        aria-label="Share"
+        className={iconBtn}
+      >
+        <Share2 className="h-[18px] w-[18px]" strokeWidth={2.25} />
+      </button>
     </div>
   );
 }

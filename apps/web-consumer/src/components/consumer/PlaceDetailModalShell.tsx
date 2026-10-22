@@ -15,7 +15,8 @@ import type { PlaceDetail } from "@/lib/place-detail";
 // decision: Pato (MESITA-451, revised) — the "Enriching" state now lives as
 // a chip in the profile summary (PlaceDetailBody), not the title row.
 // decision: Pato (2026-10-17, MESITA-2321) — all five buttons sit in the
-// profile summary (Save · Contact · Share / Reserve · Pay); no pinned band.
+// profile summary (Reserve, then Favorite · Contact · Share as icons); no
+// pinned band.
 //   1. SlideOverHeader (shrink-0) — dismiss + place name
 //   2. Scroll area (flex-1 overflow-y-auto) — PlaceDetailBody (ugly
 //      Create profile included). Enrich is a tab until Enriched.

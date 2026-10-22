@@ -4,64 +4,46 @@ import { useMemo, useState } from "react";
 
 import { ReviewCard } from "../ReviewCard";
 import type { PlaceDetail } from "../../place-detail";
-import { formatCompactCount } from "../../lib/format";
-
-import { type ReviewSort, ReviewSortChips, reviewTimeMs } from "./review-ui";
 
 // decision: Pato (2026-10-16) — the channel counts live in the header and
 // hide while this tab is selected. What remains is Google's reviews, stacked
 // like comments: a first batch, then Show more. Not a sideways carousel.
-// Newest / Highest / Lowest stay. Show more reveals more reviews; a long
-// quote still uses its own Read more.
+// Show more reveals more reviews; a long quote still uses its own Read more.
 //
 // decision: Pato (2026-10-18, MESITA-2309) — one flat list on the page, the
 // way Google Maps lists them: no box, no "Google reviews" title (each
 // review's G already says where it came from), no card per review, a
-// hairline between reviews. The sort is a light row above the list.
+// hairline between reviews.
+//
+// THE LIST STARTS AT THE FIRST REVIEW (Pato, MESITA-2618: "remove the stupid
+// sorting of reviews. neither mention the number of reviews ... just show
+// the reviews directly. the number of reviews its already told upside").
+// The Newest · Highest · Lowest chips and the "395 reviews" line are gone:
+// the header's Google column already prints the count ("4.9 ★ (395)"), and
+// the one order is newest first.
 
 /** How many reviews the list shows before the next Show more. */
 export const REVIEW_PAGE = 5;
 
+function reviewTimeMs(date: string): number {
+  const t = Date.parse(date);
+  return Number.isFinite(t) ? t : 0;
+}
+
 export function GoogleReviewsBox({ place }: { place: PlaceDetail }) {
-  const [sort, setSort] = useState<ReviewSort>("newest");
   const [shown, setShown] = useState(REVIEW_PAGE);
   const reviews = place.google_reviews;
-  const sorted = useMemo(() => {
-    const copy = [...reviews];
-    copy.sort((a, b) => {
-      if (sort === "highest") {
-        return (
-          b.rating - a.rating || reviewTimeMs(b.date) - reviewTimeMs(a.date)
-        );
-      }
-      if (sort === "lowest") {
-        return (
-          a.rating - b.rating || reviewTimeMs(b.date) - reviewTimeMs(a.date)
-        );
-      }
-      return reviewTimeMs(b.date) - reviewTimeMs(a.date);
-    });
-    return copy;
-  }, [reviews, sort]);
+  const sorted = useMemo(
+    () =>
+      [...reviews].sort(
+        (a, b) => reviewTimeMs(b.date) - reviewTimeMs(a.date),
+      ),
+    [reviews],
+  );
 
   if (reviews.length === 0) return null;
   return (
     <section className="flex flex-col" aria-label="Reviews">
-      <div className="flex items-center justify-between gap-3 pb-1">
-        <ReviewSortChips
-          sort={sort}
-          onSort={(next) => {
-            if (next !== sort) setShown(REVIEW_PAGE);
-            setSort(next);
-          }}
-          label="Sort reviews"
-        />
-        {place.google.count != null && (
-          <span className="text-muted-foreground type-label shrink-0 tabular-nums">
-            {formatCompactCount(place.google.count, true)} reviews
-          </span>
-        )}
-      </div>
       <ul className="divide-border divide-y">
         {sorted.slice(0, shown).map((review, i) => (
           <li
