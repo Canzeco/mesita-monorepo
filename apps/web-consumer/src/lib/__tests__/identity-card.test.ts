@@ -106,3 +106,11 @@ describe("Me's Plan tile", () => {
     expect(ME).not.toContain('summary="Free"');
   });
 });
+
+// MESITA-2604 (Pato: "remove the > from the name … for the other fields
+// neither include >"): the four boxes draw no chevron, doors or facts.
+describe("the identity boxes", () => {
+  it("draw no chevron", () => {
+    expect(CARD).not.toContain("ChevronRight");
+  });
+});
