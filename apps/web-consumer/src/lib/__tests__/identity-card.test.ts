@@ -53,7 +53,8 @@ describe("the identity card", () => {
     expect(CARD).toContain(
       'className="flex w-full flex-col items-center gap-2 text-center"',
     );
-    expect(CARD).toContain("flex max-w-full flex-col items-center gap-1.5");
+    expect(CARD).toContain("flex w-full max-w-72 min-w-0 flex-col items-stretch gap-2");
+    expect(BAR).toContain("nameHref={CONSUMER_ROUTES.mePages.profile}");
     expect(BAR).toContain("guestClass={guestClass}");
     expect(BAR).toContain("onClassPress=");
     expect(BAR).toContain("<ClassSheet");
@@ -99,7 +100,9 @@ describe("Me's Plan tile", () => {
   });
 
   it("names the guest's real plan, never a hardcoded Free (MESITA-2553)", () => {
-    expect(ME).toContain('summary={profile ? PLAN_LABEL[toGuestPlan(profile.plan)] : "…"}');
+    expect(ME).toContain(
+      'summary={loading ? null : profile ? PLAN_LABEL[toGuestPlan(profile.plan)] : "…"}',
+    );
     expect(ME).not.toContain('summary="Free"');
   });
 });

@@ -688,11 +688,20 @@ describe("T8 — Me's grid is nine live cells", () => {
     const src = readFileSync(join(SHELL, "me", "profile-sections.tsx"), "utf8");
     expect(src).toContain("data-dest-chip");
     expect(src).toContain(
-      'className="bg-muted text-foreground mb-2.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px]"',
+      'className="bg-muted text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px]"',
     );
     expect(src).not.toContain("opacity-[0.22]");
     expect(src).not.toMatch(/absolute right-2\.5 bottom-2/);
     expect(src).not.toMatch(/\btint\??:/);
+  });
+
+  // Pato, MESITA-2596: "make these settings boxes a bit shorter … still keep
+  // two columns". The chip sits beside the text: one row, not a stack.
+  it("each cell is one short row — chip beside the text — in two columns", () => {
+    const src = readFileSync(join(SHELL, "me", "profile-sections.tsx"), "utf8");
+    expect(src).toContain("relative flex w-full items-center gap-2.5 overflow-hidden rounded-2xl border p-3");
+    expect(src).not.toMatch(/relative flex w-full flex-col overflow-hidden rounded-2xl/);
+    expect(src).toContain('className="grid grid-cols-2 items-stretch gap-2"');
   });
 
   it("the More drawer is gone from the codebase", () => {
