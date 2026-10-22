@@ -5,6 +5,7 @@ import {
   Heart,
   Map as MapIcon,
   Phone,
+  QrCode,
   Share2,
   type LucideIcon,
 } from "lucide-react";
@@ -16,30 +17,30 @@ import type { PlaceDetail } from "../../place-detail";
 import { cn } from "../../lib/format";
 import { buildDirectionsUrl } from "../../lib/maps-link";
 import { isReserveActionEnabled } from "../../lib/place-profile-actions";
-import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS } from "../../lib/ui";
 
-// TWO ROWS (Pato, MESITA-2633: "five buttons in one row will look bad, so
-// just use two rows"):
+// TWO ROWS OF TILES (Pato, MESITA-2688: "Mesita Reserve" and "Mesita Pay"
+// as tiles in the same style as the four above them):
 //
-//   [ ♡ Like ] [ ➤ Directions ] [ ✆ Contact ] [ ⇪ Share ]
-//   [ ▣ Reserve with Mesita                             ]
+//   [ ♡ Save ] [ ▱ Directions ] [ ✆ Contact ] [ ⇪ Share ]
+//   [ ▣ Reserve              ] [ ▦ Pay  Soon           ]
 //
-// ROW 1 is four equal grey tiles, icon over a 12px label. Like is the heart
-// (MESITA-2521's favorite, named the way Social names it: "liked"); once
-// hearted only the heart turns red, never the tile (MESITA-2635). Directions opens Google Maps already routing to the
-// place (MESITA-2619). Share is back here; the top bar's dots still share.
+// ROW 1 is four equal grey tiles, icon over a 12px label. Save is the heart
+// (MESITA-2521's favorite); once saved only the heart turns red, never the
+// tile (MESITA-2635). Directions opens Google Maps already routing to the
+// place (MESITA-2619). Share is back here; the top bar's dots report.
 //
-// ROW 2 is ONE ink button, "Reserve with Mesita", full width. NO TIMES ON
-// THE PROFILE (Pato, MESITA-2633: "I would leave a single button, Reserve
-// with Mesita. I wouldn't show fixed hours on the profile because they can be
-// confused with confirmed availability"): the guest picks day, party and a
-// preferred time in the sheet, then the agent calls and confirms. A sliding
-// row of OpenTable-style times lived for one push and never shipped.
+// ROW 2 is the same tiles, two of them: Reserve, then Pay. Reserve replaced
+// the full-width ink "Reserve with Mesita" button (MESITA-2688). NO
+// TIMES ON THE PROFILE (Pato, MESITA-2633: fixed hours "can be confused with
+// confirmed availability"): the guest picks day, party and a preferred time
+// in the sheet, then the agent calls and confirms. Pay is Soon ("pay is as
+// soon but leave it there for the moment"): inert, wearing the consumer
+// bar's grey Soon tag and its QR glyph. MESITA-2618 had taken Pay off.
 //
-// No Pay (MESITA-2618), no "I went" (MESITA-2567), no pinned bar. Every
-// button is 44px or more (MESITA-2324). A missing callback leaves its button
-// visible and inert, so the rows never change shape; a place that turned
-// bookings off has an inert Reserve.
+// No "I went" (MESITA-2567), no pinned bar. Every button is 44px or more
+// (MESITA-2324). A missing callback leaves its button visible and inert, so
+// the rows never change shape; a place that turned bookings off has an inert
+// Reserve.
 
 // THE TILES ARE ONE STEP DARKER THAN --fill (Pato, MESITA-2647: "make the
 // four gray buttons a bit darker, just a bit, minimum"): the border grey at
@@ -177,21 +178,29 @@ export function ProfileActions({
         />
       </div>
 
-      <button
-        type="button"
-        {...(reserveLive
-          ? { onClick: onReserve, "aria-haspopup": "dialog" as const }
-          : inertButtonProps(false))}
-        aria-label="Reserve a table"
-        className={cn(
-          PLACE_BUTTON_CLASS,
-          "bg-foreground text-paper w-full text-sm hover:opacity-90",
-        )}
-        data-profile-actions="reserve"
-      >
-        <CalendarCheck className={PLACE_BUTTON_ICON_CLASS} strokeWidth={2.25} />
-        Reserve with Mesita
-      </button>
+      <div className="grid grid-cols-2 gap-2" data-profile-actions="mesita">
+        <ActionTile
+          Icon={CalendarCheck}
+          label="Reserve"
+          live={reserveLive}
+          onClick={onReserve}
+          ariaLabel="Reserve a table"
+          dialog
+        />
+        <ActionTile label="Pay" live={false} ariaLabel="Pay, Soon">
+          {/* The bar's Soon tag (BottomNav, MESITA-2079): a quiet grey chip
+              inverted to white on the grey tile. */}
+          <span className="relative flex">
+            <QrCode
+              className="h-[18px] w-[18px] shrink-0 opacity-60"
+              strokeWidth={2.25}
+            />
+            <span className="bg-card text-muted-foreground absolute -top-1.5 left-[calc(100%-4px)] flex h-4 items-center rounded-full px-1.5 text-[10px] leading-none font-semibold whitespace-nowrap">
+              Soon
+            </span>
+          </span>
+        </ActionTile>
+      </div>
     </div>
   );
 }

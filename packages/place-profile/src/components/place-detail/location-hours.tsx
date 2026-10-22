@@ -8,8 +8,9 @@ import type { PlaceDetail } from "../../place-detail";
 import { buildUberDropoffUrl } from "../../lib/uber-link";
 import { cn, formatDistanceKm } from "../../lib/format";
 import { PLACE_BODY_CLASS, PLACE_META_CLASS } from "../../lib/ui";
-import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS } from "../../lib/ui";
+import { PLACE_BUTTON_CLASS } from "../../lib/ui";
 
+import { GoogleMapsMark } from "../BrandLogos";
 import { Box, BoxEmpty } from "./box";
 
 // ── 6. Location ─────────────────────────────────────────────────────────
@@ -80,13 +81,8 @@ export function LocationBox({
           onOpenLink={onOpenLink}
           className={cn(PLACE_BUTTON_CLASS, "bg-muted text-foreground hover:bg-muted/70")}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/channels/googlemaps.svg"
-            alt=""
-            aria-hidden
-            className={PLACE_BUTTON_ICON_CLASS}
-          />
+          {/* The header's red G tile, not the red pin (MESITA-2688). */}
+          <GoogleMapsMark />
           Google Maps
         </OutboundLink>
         <OutboundLink

@@ -82,14 +82,14 @@ describe("member preview edges", () => {
     // (MESITA-2684).
     expect(html).toContain('aria-label="Share"');
     expect(html).toContain('aria-label="Report this place"');
-    // One Reserve button, no times on the profile (MESITA-2633): fixed
-    // times read as confirmed availability.
-    expect(html).toContain("Reserve with Mesita");
+    // Reserve is a tile, no times on the profile (MESITA-2633, MESITA-2688):
+    // fixed times read as confirmed availability.
+    expect(html).toContain('aria-label="Reserve a table"');
     expect(html).not.toContain("data-reserve-slot");
     // Directions routes to the place (lib/maps-link.ts).
     expect(html).toContain("google.com/maps/dir/?api=1&amp;destination=");
-    // Pay (Soon) left the place screen; the bar already says Pay · Soon.
-    expect(html).not.toContain("Pay, Soon");
+    // Pay is back as a Soon tile beside Reserve (MESITA-2688).
+    expect(html).toContain('aria-label="Pay, Soon"');
     // The old pinned band (border-t + backdrop-blur under the scroller) is gone.
     expect(html).not.toContain("backdrop-blur");
   });
