@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 // Social's tidy notifications (MESITA-2525, Pato: "make this more UI
-// friendly … your call"): a verb badge on the face, the time on the quiet
+// friendly … your call"): the time on the quiet
 // line, and a placeholder where a place has no photo. ONE PLAIN LIST, no
 // day headings (MESITA-2528, Pato: "Just the fucking plain list with time
 // notation. Keep it simple.").
@@ -14,10 +14,14 @@ describe("the row", () => {
     "utf8",
   );
 
-  it("wears the verb as a badge: heart liked, eye viewed (no visited, MESITA-2567)", () => {
-    expect(src).toMatch(/saved: Heart,\s+viewed: Eye,/);
+  // MESITA-2604 (Pato: "remove the icon expressing the event type … it
+  // looks as a profile characteristic"): the face is the picture alone; the
+  // sentence says the verb. No visited (MESITA-2567).
+  it("puts no verb badge on the face", () => {
+    expect(src).not.toContain("data-social-verb");
+    expect(src).not.toContain("VERB_ICON");
+    expect(src).toContain("function Face({ person }: { person: ActivityPerson })");
     expect(src).not.toMatch(/MapPin|went/);
-    expect(src).toContain("data-social-verb={kind}");
   });
 
   it("never draws an empty photo box: no photo → the card placeholder", () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, CreditCard, Crown, UserRound } from "lucide-react";
+import { CreditCard, Crown, UserRound } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
 import {
@@ -39,7 +39,9 @@ import { cn } from "@/lib/utils";
 // Free) look exactly like the rest: same size, weight and ink (Pato:
 // "standardize the font here"). Only VIP (filled) and Premium (ink border)
 // stand out.
-// Nothing truncates but the name and the Instagram label.
+// Nothing truncates but the name and the Instagram label. No chevrons
+// (Pato, MESITA-2604: "remove the > … just name … it looks really dirty"):
+// a door on Me is still a link, it just does not draw an arrow.
 //
 // CLASS AND PLAN ARE TWO THINGS (MESITA-2553). Class is partnership status:
 // Regular or VIP, through a partner, never sold; VIP filled, Regular muted,
@@ -103,9 +105,6 @@ function ClassChip({
     <>
       <Crown className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
       <span className="truncate">{text}</span>
-      {onPress && (
-        <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-60" aria-hidden />
-      )}
     </>
   );
   const aria = `Class: ${label}`;
@@ -145,9 +144,6 @@ function PlanChip({ plan, href }: { plan: GuestPlan; href?: string }) {
     <>
       <CreditCard className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
       <span className="truncate">{text}</span>
-      {href && (
-        <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-60" aria-hidden />
-      )}
     </>
   );
   const aria = `Plan: ${label}`;
@@ -177,9 +173,6 @@ function NameBox({ name, href }: { name: string; href?: string }) {
     <>
       <UserRound className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
       <span className="truncate">{name}</span>
-      {href && (
-        <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-60" aria-hidden />
-      )}
     </>
   );
   return href ? (
@@ -262,10 +255,6 @@ export function IdentityCard({
           >
             <InstagramBadge />
             <span className="truncate">{instagram.label}</span>
-            <ChevronRight
-              className="h-3.5 w-3.5 shrink-0 opacity-60"
-              aria-hidden
-            />
           </Link>
         ) : instagram ? (
           <span className={CHIP_CLASS} data-identity-instagram>
