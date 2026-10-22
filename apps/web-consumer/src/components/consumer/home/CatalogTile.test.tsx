@@ -152,11 +152,9 @@ describe("the tile shows the header's fields, Pato's order (MESITA-2645)", () =>
   });
 });
 
-describe("the Save heart sits on the photo (MESITA-2645)", () => {
-  it("is on the photo's top-right corner in a glass circle, outside the tile link", () => {
+describe("the Save heart (MESITA-2646)", () => {
+  it("is outside the tile link, so a tap saves and never navigates", () => {
     const html = tile({});
-    expect(html).toContain("absolute top-1 right-1 flex h-11 w-11");
-    expect(html).toContain("bg-media-glass");
     // A sibling of the link, never inside it.
     const link = html.slice(html.indexOf("<a "), html.indexOf("</a>"));
     expect(link).not.toContain("data-tile-save");
