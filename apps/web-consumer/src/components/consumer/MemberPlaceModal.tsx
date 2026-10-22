@@ -4,8 +4,11 @@ import { PlaceDetailBody } from "@mesita/place-profile";
 import { PlaceDetailModalShell } from "@/components/consumer/PlaceDetailModalShell";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useMemberPlaceActions } from "@/components/consumer/member-place-actions";
+import { useMeasuredPlace } from "@/lib/place-distance";
 
-export function MemberPlaceModal({ place }: { place: PlaceDetail }) {
+export function MemberPlaceModal({ place: fetched }: { place: PlaceDetail }) {
+  // The distance after the zone (MESITA-2644).
+  const place = useMeasuredPlace(fetched);
   const { actions, sheets, social } = useMemberPlaceActions(place);
   return (
     <>

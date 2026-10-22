@@ -39,6 +39,7 @@ import { emitPlaceCreated } from "@/lib/place-created-event";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import { getOrCreateGooglePlace } from "@/lib/use-open-google-place";
+import { useMeasuredPlace } from "@/lib/place-distance";
 import { errMsg } from "@/lib/utils";
 
 type Variant = "modal" | "page";
@@ -170,10 +171,12 @@ function OpeningBody({
     setAttempt((n) => n + 1);
   }, []);
 
-  const place = useMemo(
+  const pending = useMemo(
     () => pendingPlaceDetail(gid, card, name, facts),
     [gid, card, name, facts],
   );
+  // The distance after the zone (MESITA-2644).
+  const place = useMeasuredPlace(pending);
   const creating = useMemo(() => ({ error, onRetry: retry }), [error, retry]);
   const onBack = useCallback(() => {
     if (typeof window !== "undefined" && window.history.length > 1) {

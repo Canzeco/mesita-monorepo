@@ -5,15 +5,18 @@ import { useRouter } from "next/navigation";
 import { PlaceProfile } from "@mesita/place-profile";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { useMeasuredPlace } from "@/lib/place-distance";
 import { useMemberPlaceActions } from "./member-place-actions";
 
 export function PlaceDetailPageBody({
-  place,
+  place: fetched,
   fallbackHref = CONSUMER_ROUTES.home,
 }: {
   place: PlaceDetail;
   fallbackHref?: string;
 }) {
+  // The distance after the zone (MESITA-2644).
+  const place = useMeasuredPlace(fetched);
   const router = useRouter();
   const { actions, sheets, social } = useMemberPlaceActions(place);
   const onBack = useCallback(() => {
