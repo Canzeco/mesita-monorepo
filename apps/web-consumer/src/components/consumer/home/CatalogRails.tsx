@@ -98,7 +98,10 @@ export const GOOGLE_RAIL_KEY = "google_places";
 
 /** One square tile per row (MESITA-2367), 6px of room above, left and right
  *  and between tiles — one space size (Pato, MESITA-2370). */
-const PLACES_LIST = "grid grid-cols-1 content-start gap-1.5 px-1.5 pt-1.5";
+// The tiles sit on a darker ground so the white tiles separate (Pato,
+// MESITA-2657: "divide the boxes with a dark background between boxes").
+const PLACES_LIST =
+  "bg-border grid min-h-full grid-cols-1 content-start gap-1.5 px-1.5 pt-1.5 pb-6";
 
 const ROW_BASE =
   "relative flex w-full items-center gap-1.5 px-3 py-3.5 text-left text-xs leading-tight transition";
