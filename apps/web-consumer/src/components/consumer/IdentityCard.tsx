@@ -101,6 +101,21 @@ function InstagramBadge() {
   );
 }
 
+/** The crown in a gold circle, the Instagram badge's shape (Pato,
+ *  MESITA-2693: "inside a circle the regular class crown, just as
+ *  instagram"; a bare gold crown since MESITA-2691), on Regular and VIP
+ *  alike. */
+function ClassBadge() {
+  return (
+    <span
+      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500"
+      aria-hidden
+    >
+      <Crown className="h-3 w-3 text-white" strokeWidth={2.5} aria-hidden />
+    </span>
+  );
+}
+
 /** The Class chip: a button on Me (opens the explainer), a fact on Social. */
 function ClassChip({
   guestClass,
@@ -123,13 +138,7 @@ function ClassChip({
   );
   const body = (
     <>
-      {/* The one colour on the card (Pato, MESITA-2691: "maybe add a color
-          to the crown"): gold, on Regular's paper and VIP's ink alike. */}
-      <Crown
-        className="h-4 w-4 shrink-0 text-amber-500"
-        strokeWidth={2.25}
-        aria-hidden
-      />
+      <ClassBadge />
       <span className="truncate">{text}</span>
     </>
   );
