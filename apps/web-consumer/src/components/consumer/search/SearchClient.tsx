@@ -107,7 +107,6 @@ import { SearchHeader } from "./SearchHeader";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import type { AddState } from "./add-state";
 import {
-  SearchDebugCoords,
   RAIL_PAGE_SHARE,
   SearchRailOverlay,
   type LoadCoords,
@@ -127,7 +126,6 @@ import {
   prependAnchorPlace,
   railCenterIndex,
   viewportSight,
-  viewRadiusKm,
   withDistances,
 } from "./search-utils";
 
@@ -391,7 +389,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   // The view as it is now, for the live readout (MESITA-2512): every camera
   // change, once a frame. It never loads.
-  const [liveBox, setLiveBox] = useState<ViewportBox | null>(null);
+  const [, setLiveBox] = useState<ViewportBox | null>(null);
 
   const markViewport = useCallback((box: ViewportBox) => {
     lastBoxRef.current = box;
@@ -401,7 +399,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // MESITA-2497/2498 debug readout: the blue dot read through a ref, so a
   // GPS fix never changes `loadAt` (its identity change refetches the
   // catalog).
-  const [loadCoords, setLoadCoords] = useState<LoadCoords | null>(null);
+  // The readout is hidden (MESITA-2670); the load still records what it sent.
+  const [, setLoadCoords] = useState<LoadCoords | null>(null);
   const locationRef = useRef(location);
   useEffect(() => {
     locationRef.current = location;
@@ -806,12 +805,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     catalog.map((p) => p.id),
     selectedId,
   );
-  // The readout's live line (MESITA-2504): the selected card's score.
-  const selectedPlace = catalog.find((p) => p.id === railSelectedId) ?? null;
-  // The readout's live rows (MESITA-2512): the cross on the view as it is
-  // now, and the radius the next load would send from there.
-  const liveCross = liveBox ? viewportSight(liveBox) : null;
-  const liveRadiusKm = viewRadiusKm(liveBox, liveCross);
 
   // A pin's last step before it opens: select it (if the card-0 fallback
   // only looked selected) and fly the camera there — an animated pan that
@@ -1031,43 +1024,26 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           onCameraMoveStart={clearPendingReload}
           onLiveViewport={setLiveBox}
         />
+        {/* THE CAROUSEL FLOATS OVER THE MAP (Pato, MESITA-2670: "remove the
+            coordinates box and the background; the carousel must be floating
+            over the map, and the metadata must not be shown"). The band under
+            the map (MESITA-2506/2613) and its readout are gone. Search mode
+            still hides it: its cards are the nearby catalog, not the results. */}
+        {!searchMode && (
+          <SearchRailOverlay
+            places={catalog}
+            catalogLoading={catalogLoading}
+            selectedId={railSelectedId}
+            railScrollRef={railScrollRef}
+            onRailScroll={handleRailScroll}
+            onSelectPlace={handleSelectPlace}
+            onOpenPlace={handleOpenPlace}
+            setRailCardRef={(placeId, el) => {
+              railRefs.current.set(placeId, el);
+            }}
+          />
+        )}
       </div>
-
-      {/* The catalog rail is a solid band UNDER the map (MESITA-2506), the
-        development readout on top and the carousel full-width under it
-        (MESITA-2613; side by side was MESITA-2509), nothing over the map. It steps aside for the whole of search
-        mode: its cards are the nearby catalog, not the results, so showing
-        both would be two lists answering different questions at once — and on
-        a phone the keyboard is already covering the half of the map they
-        shared. */}
-      {!searchMode && (
-        <SearchRailOverlay
-          places={catalog}
-          catalogLoading={catalogLoading}
-          railIndex={railIndex}
-          selectedId={railSelectedId}
-          railScrollRef={railScrollRef}
-          onRailScroll={handleRailScroll}
-          onSelectPlace={handleSelectPlace}
-          onOpenPlace={handleOpenPlace}
-          setRailCardRef={(placeId, el) => {
-            railRefs.current.set(placeId, el);
-          }}
-          meta={
-            loadCoords && (
-              // Live: Cross, You, Radius. As of the last load: Loaded at,
-              // Weights, Selected (MESITA-2512).
-              <SearchDebugCoords
-                {...loadCoords}
-                cross={liveCross ?? loadCoords.cross}
-                you={location}
-                radiusKm={liveRadiusKm ?? loadCoords.radiusKm}
-                selected={selectedPlace}
-              />
-            )
-          }
-        />
-      )}
     </div>
   );
 }

@@ -44,8 +44,9 @@ describe("Search map catalog reloads once the map is still (MESITA-2440)", () =>
     expect(read("SearchMap.tsx")).toContain("noteUserMapDrag");
     expect(read("SearchMap.tsx")).toContain('addListener("dragstart"');
     expect(read("SearchMap.tsx")).not.toContain("PROGRAMMATIC_IDLE_MS");
-    expect(read("search-catalog-overlays.tsx")).toContain("Finding nearby");
-    expect(read("search-catalog-overlays.tsx")).toContain("Updating nearby");
+    // The "Finding / Updating nearby" line left with the readout (MESITA-2670);
+    // a reload dims the floating cards instead.
+    expect(read("search-catalog-overlays.tsx")).toContain("opacity-55");
     expect(read("search-catalog-overlays.tsx")).not.toContain("Search here");
     expect(read("SearchClient.tsx")).toContain("++viewportGen.current");
     expect(read("SearchClient.tsx")).not.toContain("toFixed(3)");
@@ -99,7 +100,9 @@ describe("Search map catalog reloads once the map is still (MESITA-2440)", () =>
     expect(src).toContain("cameraMoveIsProgrammatic");
     expect(src).toContain("function takeProgrammaticIdle");
     expect(src).toContain("const programmatic = takeProgrammaticIdle();");
-    expect(src).toContain("onUser?.(box, { programmatic, resized: !programmatic && unmoved });");
+    expect(src).toContain(
+      "onUser?.(box, { programmatic, resized: !programmatic && unmoved });",
+    );
     expect(src).toMatch(
       /addListener\("dragstart", \(\) => \{\s*noteUserMapDrag\(\);/,
     );
@@ -113,17 +116,24 @@ describe("Search map catalog reloads once the map is still (MESITA-2440)", () =>
   it("a resize idle (camera unchanged) never reloads, and re-arms an unserved move", () => {
     const map = read("SearchMap.tsx");
     const client = read("SearchClient.tsx");
-    expect(map).toContain("const unmoved = sameCamera(lastCamera.current, camera);");
+    expect(map).toContain(
+      "const unmoved = sameCamera(lastCamera.current, camera);",
+    );
     const handler = client.slice(
       client.indexOf("const onUserViewport = useCallback("),
       client.indexOf("useEffect(() => () => clearPendingReload()"),
     );
-    const resized = handler.slice(handler.indexOf("if (meta.resized) {"), handler.indexOf("if (meta.programmatic) {"));
+    const resized = handler.slice(
+      handler.indexOf("if (meta.resized) {"),
+      handler.indexOf("if (meta.programmatic) {"),
+    );
     expect(resized).toContain("if (moveUnservedRef.current) armIdleReload();");
     expect(resized).toContain("return;");
     expect(resized).not.toContain("loadAt(");
     expect(handler).toContain("moveUnservedRef.current = true;");
-    expect(client).toMatch(/lastLoadAtRef\.current = Date\.now\(\);\s*moveUnservedRef\.current = false;/);
+    expect(client).toMatch(
+      /lastLoadAtRef\.current = Date\.now\(\);\s*moveUnservedRef\.current = false;/,
+    );
   });
 
   it("a GPS fix moves the dot; only the first or an asked-for fix moves the map", () => {
@@ -250,7 +260,10 @@ describe("every searchbar pick anchors the map (MESITA-1405)", () => {
     // Data guard: openGoogleOnly/openGoogleProfile end in get-or-create, so a
     // pick routed through them would create a place on a mere selection.
     const client = read("SearchClient.tsx");
-    const barPick = client.slice(client.indexOf("const handleBarPick"), client.indexOf("const handleOpenPlace"));
+    const barPick = client.slice(
+      client.indexOf("const handleBarPick"),
+      client.indexOf("const handleOpenPlace"),
+    );
     expect(barPick).not.toContain("openGoogleOnly");
     expect(barPick).not.toContain("openGoogleProfile");
   });
@@ -472,22 +485,5 @@ describe("anchor helpers", () => {
       }),
     ).toEqual({ south: 19.18, west: -99.32, north: 19.59, east: -98.96 });
     expect(anchorViewportBounds(null)).toBe(null);
-  });
-});
-
-// MESITA-2512 (Pato: "make the blue thing in real time … update the coords
-// and all that"): Cross, You and Radius read the view as it is now; Loaded
-// at, Weights and Selected stay as of the last load.
-describe("the readout's Cross, You and Radius are live (MESITA-2512)", () => {
-  it("SearchClient feeds the live rows and keeps the loaded ones", () => {
-    const client = read("SearchClient.tsx");
-    expect(client).toContain("onLiveViewport={setLiveBox}");
-    expect(client).toContain("const liveCross = liveBox ? viewportSight(liveBox) : null;");
-    expect(client).toContain("const liveRadiusKm = viewRadiusKm(liveBox, liveCross);");
-    expect(client).toContain("cross={liveCross ?? loadCoords.cross}");
-    expect(client).toContain("you={location}");
-    expect(client).toContain("radiusKm={liveRadiusKm ?? loadCoords.radiusKm}");
-    // The live box never loads: setLiveBox is all the callback does.
-    expect(client).not.toMatch(/onLiveViewport=\{[^}]*loadAt/);
   });
 });
