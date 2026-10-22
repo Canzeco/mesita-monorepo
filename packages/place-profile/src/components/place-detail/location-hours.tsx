@@ -175,16 +175,10 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
   // No timezone, no "today": the device's day can be the wrong one.
   //
   // THE BOX IS "HOURS" (Pato, MESITA-2685: "call that box hours or something
-  // like that … time feels too weird"). With no weekly hours it says "…"
-  // ("if nothing yet write ..."), never a lone "Open": the header's facts
-  // row already carries the open state.
-  if (place.hours_table.length === 0) {
-    return (
-      <Box title="Hours" icon={Clock} iconColor="text-muted-foreground">
-        <BoxEmpty />
-      </Box>
-    );
-  }
+  // like that … time feels too weird"). With no weekly hours and no open
+  // state it says "…" ("if nothing yet write ..."). A known open state still
+  // prints with no week: the facts row shows no bare "Open" to fall back on.
+  const empty = place.open_now === null && place.hours_table.length === 0;
   const today = place.timezone ? todayWeekdayLabel(place.timezone) : "";
   const stateDetail = place.open_now === true
     ? place.closes_at
@@ -201,6 +195,7 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
       icon={Clock}
       iconColor="text-muted-foreground"
     >
+      {empty ? <BoxEmpty /> : null}
       {/* Unknown open state says nothing: no hours is not "Closed"
           (MESITA-2331). */}
       {place.open_now !== null && (
@@ -221,11 +216,13 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
           )}
         </p>
       )}
-      <ul className="border-border overflow-hidden rounded-lg border">
-        {place.hours_table.map((row) => (
-          <HoursDayRow key={row.day} row={row} today={today} />
-        ))}
-      </ul>
+      {place.hours_table.length > 0 && (
+        <ul className="border-border overflow-hidden rounded-lg border">
+          {place.hours_table.map((row) => (
+            <HoursDayRow key={row.day} row={row} today={today} />
+          ))}
+        </ul>
+      )}
     </Box>
   );
 }
