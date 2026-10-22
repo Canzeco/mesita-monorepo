@@ -18,6 +18,7 @@
 
 import {
   classifyGoogleError,
+  GOOGLE_PLACES_DETAILS_BASE,
   GOOGLE_PLACES_NEARBY_URL,
   stripPlacesPrefix,
 } from "./google-places.ts";
@@ -37,31 +38,42 @@ export function nearbyRadiusMetres(radiusKm?: number): number {
   return Math.min(50_000, Math.max(50, Math.round(km * 1000)));
 }
 export const NEARBY_CACHE_MS = 15_000;
-/** THE ONE field mask, Search and Feed alike: everything a Google-only card
- *  and its opening profile show (MESITA-2313), nothing else. `rating` and
+/** THE listing fields, one place's worth: everything a Google-only card and
+ *  its opening profile show (MESITA-2313), nothing else. `rating` and
  *  `userRatingCount` already bill the Enterprise SKU, so the other
  *  Enterprise fields (price, open now, phone, website) and the Pro ones
  *  (readable type, short address, Maps link) add no spend. Never a photo
  *  field: an ephemeral Google card draws its family emoji (MESITA-2298 §6),
  *  and never an Atmosphere field (reviews, summaries), a dearer SKU. */
-export const NEARBY_FIELD_MASK = [
-  "places.id",
-  "places.displayName",
-  "places.formattedAddress",
-  "places.shortFormattedAddress",
-  "places.location",
-  "places.rating",
-  "places.userRatingCount",
-  "places.businessStatus",
-  "places.primaryType",
-  "places.primaryTypeDisplayName",
-  "places.types",
-  "places.priceLevel",
-  "places.currentOpeningHours.openNow",
-  "places.googleMapsUri",
-  "places.internationalPhoneNumber",
-  "places.websiteUri",
-].join(",");
+const LISTING_FIELDS = [
+  "id",
+  "displayName",
+  "formattedAddress",
+  "shortFormattedAddress",
+  "location",
+  "rating",
+  "userRatingCount",
+  "businessStatus",
+  "primaryType",
+  "primaryTypeDisplayName",
+  "types",
+  "priceLevel",
+  "googleMapsUri",
+  "internationalPhoneNumber",
+  "websiteUri",
+];
+
+/** THE ONE field mask for a list of places, Search and Feed alike: the
+ *  listing fields, with open now as Google's one boolean. */
+export const NEARBY_FIELD_MASK = [...LISTING_FIELDS, "currentOpeningHours.openNow"]
+  .map((field) => `places.${field}`)
+  .join(",");
+
+/** The same listing for ONE place, a Place Details read (MESITA-2678).
+ *  Opening hours go whole, the Details field the Enricher already asks
+ *  (enrich-google-basics.ts); the parser reads `openNow` off it. Same
+ *  Enterprise SKU. */
+export const DETAILS_LISTING_FIELD_MASK = [...LISTING_FIELDS, "currentOpeningHours"].join(",");
 
 export type NearbyHit = {
   placeId: string;
@@ -137,6 +149,35 @@ export function nearbyHitFromPlace(p: GooglePlaceListing): NearbyHit {
     phone: p.internationalPhoneNumber?.trim() || null,
     website: p.websiteUri ?? null,
   };
+}
+
+/** One Google place's listing, read by Place Details (MESITA-2678): the
+ *  search lane's gate call for a Google-only Autocomplete row, whose answer
+ *  is also the row's card, so a typed pick carries what Nearby and Text
+ *  Search send. The id stays the one asked for, so the card, the dedupe key
+ *  and the opening screen's stash agree. Null on any failure, and a refusal
+ *  logs Google's body: a rejected mask empties every such row. */
+export async function fetchPlaceListing(
+  placeId: string,
+  apiKey: string,
+): Promise<NearbyHit | null> {
+  try {
+    const r = await fetch(`${GOOGLE_PLACES_DETAILS_BASE}/${encodeURIComponent(placeId)}`, {
+      headers: {
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": DETAILS_LISTING_FIELD_MASK,
+      },
+    });
+    if (!r.ok) {
+      const text = await r.text();
+      console.error("[nearby] Google place details", r.status, text.slice(0, 300));
+      return null;
+    }
+    return { ...nearbyHitFromPlace((await r.json()) as GooglePlaceListing), placeId };
+  } catch (err) {
+    console.error("[nearby] Google place details threw", String(err));
+    return null;
+  }
 }
 
 /** Nearby's two orders: nearest first, or Google's prominence. */
