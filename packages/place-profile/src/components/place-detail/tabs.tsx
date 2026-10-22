@@ -61,10 +61,13 @@ export function PlaceTabBar({
               "type-body -mb-px flex items-center justify-center border-b-[3px] px-0.5 py-3 text-center tracking-wide transition",
               // THE SELECTED TAB IS UNMISTAKABLE (Pato, MESITA-2671: "it must
               // be a lot clearer that one screen is selected, it's too
-              // light"): a 3px black underline (2px until MESITA-2675) and a bold ink label, like
-              // Home's Places | Social strip; the rest muted, medium.
+              // light"): a 3px underline (2px until MESITA-2675) and a bold
+              // label; the rest muted, medium. BLUE (Pato, MESITA-2699: "use
+              // blue to highlight overview or the selected section … maybe
+              // its too hidden"): blue-600, the map's guest blue and the
+              // distance arrow's; it was ink like Home's Places | Social.
               active
-                ? "text-foreground border-foreground font-bold"
+                ? "border-blue-600 font-bold text-blue-600"
                 : "text-muted-foreground hover:text-foreground border-transparent font-medium",
             )}
           >
