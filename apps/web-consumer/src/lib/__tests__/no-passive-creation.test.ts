@@ -123,23 +123,21 @@ describe("no passive creation: a Mesita Place is minted only on an explicit open
     expect(tap).not.toContain("getOrCreateGooglePlace");
   });
 
-  it("getOrCreateGooglePlace runs from the opening screen's effect and Home's Like/Share taps only", () => {
+  it("getOrCreateGooglePlace runs from the opening screen's effect and the cards' Save/Share taps only", () => {
     const callers = appCode
       .filter((f) => /(?<!function )\bgetOrCreateGooglePlace\(/.test(f.src))
       .map((f) => f.path)
       .sort();
-    // Home's Google-only Like and Share create on the tap (Pato, MESITA-2663:
-    // "just create the profile and then trigger it") — never on render.
+    // A Google-only card's Save and Share create on the tap (Pato,
+    // MESITA-2663: "just create the profile and then trigger it"), on Home
+    // and Search alike through one hook (MESITA-2668) — never on render.
     expect(callers).toEqual([
       "components/consumer/OpeningGooglePlace.tsx",
-      "components/consumer/home/CatalogRails.tsx",
+      "lib/use-card-save-share.ts",
     ]);
-    const rails = code(read("components/consumer/home/CatalogRails.tsx"));
-    for (const e of callBlocks(rails, "useEffect")) {
-      expect(e).not.toContain("getOrCreateGooglePlace(");
-    }
-    for (const e of callBlocks(rails, "useMemo")) {
-      expect(e).not.toContain("getOrCreateGooglePlace(");
+    const cards = code(read("lib/use-card-save-share.ts"));
+    for (const hook of ["useEffect", "useMemo", "useLayoutEffect"]) {
+      expect(cards, hook).not.toContain(`${hook}(`);
     }
     const screen = read("components/consumer/OpeningGooglePlace.tsx");
     expect(screen.startsWith('"use client"')).toBe(true);
@@ -164,12 +162,10 @@ describe("no passive creation: a Mesita Place is minted only on an explicit open
       "app/(shell)/(discovery)/home/social/page.tsx",
     ]) {
       const src = code(read(path));
-      const rails = path.endsWith("home/CatalogRails.tsx");
       for (const marker of [
         "apiCreateProject",
         "consumer-web-create-place",
-        // Home's Like/Share taps may get-or-create (MESITA-2663, test above).
-        ...(rails ? [] : ["getOrCreateGooglePlace"]),
+        "getOrCreateGooglePlace",
         "prefetch",
       ]) {
         expect(src, `${path} carries ${marker}`).not.toContain(marker);

@@ -3,20 +3,23 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, Share2, Star } from "lucide-react";
 import { EnrichedBadge } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
 import { isEnrichedPlace } from "@/lib/place-enriched";
 import { placeHref } from "@/lib/place-route";
 import { sharePlace } from "@/lib/share-place";
-import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 import {
   cardPhoto,
   isGoogleOnlyPlace,
   placePlaceholder,
 } from "@/lib/place-placeholder";
-import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
-import { cn, formatCompactCount, formatKm, formatRating } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import {
+  CardActions,
+  HoursRow,
+  KindRow,
+  cardFacts,
+} from "@/components/consumer/place-card";
 
 /**
  * A Google-only card has no Mesita page yet. Its tap is the explicit open
@@ -66,36 +69,14 @@ function TileLink({
   );
 }
 
-// The place screen's action tile, on one line (MESITA-2650): 44px, the
-// border grey at 60% (MESITA-2647), rounded-lg, 12px semibold ink.
-// 32px tall to the eye (MESITA-2652: "the buttons must be shorter"); an
-// invisible 6px extension above and below keeps the 44px touch floor.
-const TILE_BUTTON =
-  "bg-border/60 text-foreground hover:bg-border/80 relative flex h-8 after:absolute after:inset-x-0 after:-inset-y-1.5 min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 font-sans text-xs font-semibold transition active:scale-[0.99]";
-
-function readableKind(place: Place): string | null {
-  const raw = place.category_label ?? place.category;
-  if (!raw || raw.trim().toLowerCase() === "undefined") return null;
-  return raw;
-}
-
 /**
  * One place, as one tile (Pato, MESITA-2364, MESITA-2373): the photo on top,
- * its light reflection below carrying three rows — name; category · $$ ·
- * stars; hours · distance (MESITA-2645) — and two buttons, Like and Share
- * (MESITA-2650). An
- * enriched place wears the Enriched mark after its name
- * (MESITA-2296). Favs does not use this tile. A Google-only card opens its
- * profile through `onOpenGoogle` and has no save heart: only a Mesita place
- * can be saved.
+ * a white band below carrying three rows — name; category · $$ · stars;
+ * hours · distance (MESITA-2645) — and two buttons, Save and Share
+ * (MESITA-2650, MESITA-2668). An enriched place wears the Enriched mark
+ * after its name (MESITA-2296). A Google-only card opens its profile
+ * through `onOpenGoogle`; its Save and Share create the place first.
  */
-
-/** Capitalise every word ("opens tomorrow 07:00" → "Opens Tomorrow 07:00"). */
-function titleWords(line: string | null): string | null {
-  return line
-    ? line.replace(/(^|\s)(\p{Ll})/gu, (_, sp, ch) => sp + ch.toUpperCase())
-    : null;
-}
 
 export function CatalogTile({
   place,
@@ -121,44 +102,10 @@ export function CatalogTile({
   const placeholder = placePlaceholder(place);
   const google = isGoogleOnlyPlace(place);
   const href = placeHref(place.slug || place.id);
-  // The same real-data mapper the detail Overview reads (MESITA-2371): stars,
-  // review count, price range, open state — a missing cell hides.
-  const o = enrichPlaceOverview(place);
-  // PRICE FOR DUMMIES, HERE ONLY (Pato, MESITA-2645: "price must be price
-  // range for dummies ($, $$, $$$, $$$$), just here in the home preview"):
-  // the price level as dollar signs, never "MX$200–300" on a tile. The place
-  // screen keeps the range.
-  const priceLabel = formatPlacePriceLevelSymbols(place.price_level);
-  const kind = readableKind(place);
-  const ratingLabel = formatRating(o.google_rating);
-  const reviews =
-    typeof o.google_count === "number" && o.google_count > 0
-      ? formatCompactCount(o.google_count)
-      : null;
-  // TITLE CASE ON THE HOURS LINE (Pato, MESITA-2665: "leave it camel case,
-  // Opens Tomorrow"): "Closed · Opens Tomorrow 07:00", "Open · Until 02:00".
-  // Every row is full ink now, the review count and hours line included
-  // (MESITA-2665: "that is too light, I cannot read").
-  const openLine = titleWords(
-    o.open_now === true
-      ? o.closes_at
-        ? `Open · until ${o.closes_at}`
-        : "Open now"
-      : o.open_now === false
-        ? o.opens_at
-          ? `Closed · opens ${o.opens_at}`
-          : "Closed"
-        : null,
-  );
-  const distance =
-    typeof place.distance_km === "number" && place.distance_km > 0
-      ? formatKm(place.distance_km)
-      : null;
-  // THREE ROWS, PATO'S ORDER (MESITA-2645: "the same fields as in the
-  // header"): name (+ the Enriched mark); category · $$ · stars; hours ·
-  // distance. No zone on the tile. Each cell hides when the place has none.
-  const kindPrice = [kind, priceLabel].filter(Boolean).join(" · ");
-  const hoursDistance = [openLine, distance].filter(Boolean).join(" · ");
+  // The card's facts, shared with the Search card (MESITA-2668): name;
+  // category · $$ · stars; hours · distance. No zone on the tile. Each cell
+  // hides when the place has none.
+  const facts = cardFacts(place);
 
   // The photo, or the category's emoji when there is none (MESITA-2667).
   const media = () =>
@@ -195,6 +142,10 @@ export function CatalogTile({
       </div>
     );
 
+  // SAVE, NOT LIKE (Pato, MESITA-2668: "instead of like use Save as word but
+  // keep the heart"); the clock, the arrow and the star carry colour. The
+  // rows and buttons are place-card.tsx, shared with the Search card.
+  //
   // TWO BIG BUTTONS, LIKE AND SHARE (Pato, MESITA-2650: "add the button to
   // like and the button share; share must be almost everywhere to maximize
   // sharing and the virality of the app").
@@ -265,96 +216,34 @@ export function CatalogTile({
           {/* ONE TYPE SCALE (Pato, MESITA-2645: "standardize fonts and sizes
               and spaces"): the place screen's own (packages/place-profile
               ui.ts). Inter everywhere, two sizes only: the name 16px
-              semibold ink (PLACE_TITLE_CLASS); every other row 14px regular,
-              20px line, ink for the facts, muted for hours · distance. The
-              rows sit centred with one 4px gap and 12px side padding — the
-              same rhythm on every tile. The mark follows the name. */}
-          <div
-            className={cn(
-              "text-foreground relative flex h-full flex-col justify-center gap-0.5 pt-1.5 pl-3",
-              "pr-3 pb-[42px]",
-            )}
-          >
+              semibold ink (PLACE_TITLE_CLASS); every other row 14px regular
+              on a 20px line, full ink (place-card.tsx). 12px side padding;
+              the rows centre in what Save and Share leave (44px: the 32px
+              row and its 12px foot), so the gap over the name and the gap
+              over the buttons match. The mark follows the name. */}
+          <div className="text-foreground relative flex h-full flex-col justify-center gap-0.5 px-3 pb-11">
             <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-5 font-semibold tracking-tight">
               <span className="truncate">{place.name}</span>
               {isEnrichedPlace(place) ? <EnrichedBadge /> : null}
             </p>
-            {kindPrice || ratingLabel ? (
-              <p className="flex min-w-0 items-center gap-1 font-sans text-sm leading-5">
-                {kindPrice ? (
-                  <span className="truncate">{kindPrice}</span>
-                ) : null}
-                {kindPrice && ratingLabel ? (
-                  <span aria-hidden className="shrink-0">
-                    ·
-                  </span>
-                ) : null}
-                {ratingLabel ? (
-                  <span className="inline-flex shrink-0 items-center gap-1">
-                    <Star className="fill-foreground text-foreground h-3.5 w-3.5 shrink-0" />
-                    {ratingLabel}
-                    {reviews ? <span>({reviews})</span> : null}
-                  </span>
-                ) : null}
-              </p>
-            ) : null}
-            {hoursDistance ? (
-              <p className="text-foreground truncate font-sans text-sm leading-5">
-                {hoursDistance}
-              </p>
-            ) : null}
+            <KindRow facts={facts} />
+            <HoursRow facts={facts} />
           </div>
         </div>
       </TileLink>
-      {/* Google-only cards get Like and Share too (Pato, MESITA-2663:
+      {/* Google-only cards get Save and Share too (Pato, MESITA-2663:
           "keep the save and share button even if no profile yet, just
           create the profile and then trigger it"); the parent's handlers
-          get-or-create first. */}
-      {
-        // The place screen's action tiles, smaller row (MESITA-2647's grey):
-        // two equal 32px buttons, icon + label on one line, 12px from the
-        // band's edges. Siblings of the tile link, so a tap never navigates.
-        <div
-          className="absolute inset-x-3 bottom-2 grid grid-cols-2 gap-2"
-          data-tile-actions
-        >
-          <button
-            type="button"
-            onClick={onToggle}
-            aria-label={
-              saved
-                ? `Remove ${place.name} from favorites`
-                : `Add ${place.name} to favorites`
-            }
-            className={TILE_BUTTON}
-            data-tile-save
-          >
-            <Heart
-              className={cn(
-                "h-4 w-4 shrink-0",
-                saved && "fill-destructive text-destructive",
-              )}
-              strokeWidth={2.25}
-              aria-hidden
-            />
-            {saved ? "Liked" : "Like"}
-          </button>
-          <button
-            type="button"
-            onClick={onShare ?? (() => void sharePlace(place))}
-            aria-label={`Share ${place.name}`}
-            className={TILE_BUTTON}
-            data-tile-share
-          >
-            <Share2
-              className="h-4 w-4 shrink-0"
-              strokeWidth={2.25}
-              aria-hidden
-            />
-            Share
-          </button>
-        </div>
-      }
+          get-or-create first. 12px from the tile's sides AND its foot
+          (MESITA-2668: "its not the same vertical margin as horizontal
+          margin"); it was 8px at the foot. */}
+      <CardActions
+        name={place.name}
+        saved={saved}
+        onSave={onToggle}
+        onShare={onShare ?? (() => void sharePlace(place))}
+        className="absolute inset-x-3 bottom-3"
+      />
     </li>
   );
 }

@@ -72,21 +72,9 @@ import {
 } from "@/lib/use-user-location";
 import { withUserDistance } from "@/lib/place-distance";
 import { onPlaceCreated } from "@/lib/place-created-event";
-import {
-  getOrCreateGooglePlace,
-  googleOpenHref,
-  googlePlaceIdOf,
-  useOpenGooglePlace,
-} from "@/lib/use-open-google-place";
-import { isGoogleOnlyPlace } from "@/lib/place-placeholder";
-import { shareOrCopy } from "@/lib/share-place";
-import {
-  removeSavedPlacePreview,
-  upsertSavedPlacePreview,
-  useSavedPlaces,
-} from "@/lib/saved-places";
+import { useOpenGooglePlace } from "@/lib/use-open-google-place";
+import { useCardSaveShare } from "@/lib/use-card-save-share";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
-import { toast } from "@/lib/toast";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { barePath } from "@/lib/surface";
 import { EmptyState } from "@/components/shared";
@@ -219,7 +207,6 @@ export function savedPlaceList(
 export function CatalogRails() {
   const supabase = useBrowserSupabase();
   const coords = useUserLocation();
-  const { savedIds, setSaved } = useSavedPlaces();
   const openGooglePlace = useOpenGooglePlace();
   const [pool, setPool] = useState<AreaPool | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -338,59 +325,16 @@ export function CatalogRails() {
     final: place.area?.final ?? null,
   });
 
-  // GOOGLE-ONLY LIKE AND SHARE (Pato, MESITA-2663: "just create the profile
-  // and then trigger it"). Like get-or-creates on the Google Place ID (the
-  // same door a profile open uses) and saves the created place; the card
-  // remembers the new id so it reads Liked. Share must fire inside the tap
-  // (the OS sheet needs the activation), so it shares the opening link at
-  // once — that screen get-or-creates — and starts the create behind it.
-  const [createdIds, setCreatedIds] = useState<Record<string, string>>({});
-  const likeGoogle = async (place: Place, saved: boolean, rank: number) => {
-    const gid = googlePlaceIdOf(place);
-    if (!gid) return;
-    try {
-      const made = await getOrCreateGooglePlace(supabase, gid);
-      setCreatedIds((m) => ({ ...m, [gid]: made.id }));
-      toggleSave({ ...place, id: made.id, slug: made.slug }, saved, rank);
-    } catch (e) {
-      toast.error(errMsg(e, "Couldn't save that place right now."));
-    }
-  };
-  const shareGoogle = (place: Place) => {
-    const gid = googlePlaceIdOf(place);
-    if (!gid) return;
-    const url = new URL(
-      googleOpenHref(gid, place.name),
-      window.location.origin,
-    ).toString();
-    void shareOrCopy(
-      { title: place.name, url },
-      { text: url, copied: "Link copied", failed: "Couldn't share this place" },
-    );
-    void getOrCreateGooglePlace(supabase, gid).catch(() => {});
-  };
-
-  const toggleSave = (place: Place, saved: boolean, rank = 0) => {
-    if (saved) {
-      setSaved(place.id, false);
-      removeSavedPlacePreview(place.id);
-      toast.action("Removed from favorites", {
-        label: "Undo",
-        onClick: () => {
-          upsertSavedPlacePreview(place);
-          setSaved(place.id, true);
-        },
-      });
-      return;
-    }
-    upsertSavedPlacePreview(place);
-    setSaved(place.id, true);
+  // SAVE AND SHARE ON A TILE (MESITA-2663, MESITA-2668): the shared card
+  // hook, which creates a Google-only place first. A save is a
+  // `home_card_save` with the tile's facts.
+  const cards = useCardSaveShare((place, rank) =>
     trackEvent(supabase, "home_card_save", {
       mode: "places",
       place_id: place.id,
       ...tileFacts(place, rank),
-    });
-  };
+    }),
+  );
 
   // ONE TAB BAND under Home's header (Pato, MESITA-2517: "another header
   // (Places. Social) … If places, show the horizontal catalog, is social,
@@ -537,22 +481,13 @@ export function CatalogRails() {
         <ul role="list" aria-label={label} className={PLACES_LIST}>
           {page.map((place, i) => {
             const located = withUserDistance(place, coords);
-            const google = isGoogleOnlyPlace(place);
-            const gid = google ? googlePlaceIdOf(place) : null;
-            const madeId = gid ? createdIds[gid] : undefined;
-            const saved =
-              savedIds.has(place.id) || (madeId ? savedIds.has(madeId) : false);
             return (
               <Fragment key={place.id}>
                 <CatalogTile
                   place={located}
-                  saved={saved}
-                  onToggle={() =>
-                    google
-                      ? void likeGoogle(place, saved, i + 1)
-                      : toggleSave(place, saved, i + 1)
-                  }
-                  onShare={google ? () => shareGoogle(place) : undefined}
+                  saved={cards.isSaved(place)}
+                  onToggle={() => cards.toggle(place, i + 1)}
+                  onShare={() => cards.share(place)}
                   onOpen={() =>
                     trackEvent(supabase, "home_card_open", {
                       mode: "places",
