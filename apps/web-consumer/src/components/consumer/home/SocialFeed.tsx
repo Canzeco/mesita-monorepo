@@ -15,8 +15,9 @@
 // "don't do that of today and yesterday … Just the fucking plain list with
 // time notation. Keep it simple."; MESITA-2525 had grouped by day).
 // TIDY NOTIFICATIONS (MESITA-2525, Pato: "make this more UI friendly … your
-// call"): the member's picture wears the verb as an ink badge
-// (heart liked, eye viewed), so the list scans without reading.
+// call"). The face is the picture alone: no verb badge (Pato, MESITA-2604:
+// "remove the icon expressing the event type … it looks as a profile
+// characteristic"); the sentence says the verb.
 // One line: the name (bold), the verb, the place (bold), no period; under
 // it, muted, the Instagram glyph and the member's Instagram as social proof —
 // the full @handle (MESITA-2590) and an approximate follower count — then
@@ -77,12 +78,9 @@ import { useEffect, useRef, useState, type SVGProps } from "react";
 import Link from "next/link";
 import {
   ArrowUp,
-  Eye,
-  Heart,
   RotateCw,
   UserRound,
   Users,
-  type LucideIcon,
 } from "lucide-react";
 import {
   apiLikedPlaces,
@@ -161,13 +159,6 @@ export function feedSentence(
  *  odn't kill"). */
 export const LIVE_MS = 30_000;
 
-/** The verb's badge on the face (MESITA-2525): ink, so the list scans by
- *  shape; the sentence still says the verb for a screen reader. */
-const VERB_ICON: Record<ActivityKind, LucideIcon> = {
-  saved: Heart,
-  viewed: Eye,
-};
-
 /** Lucide dropped its brand marks, so Instagram is drawn here in lucide's
  *  own 24px grid, stroke and caps (the way family-icons draws the taco). */
 function InstagramGlyph(props: SVGProps<SVGSVGElement>) {
@@ -189,15 +180,9 @@ function InstagramGlyph(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-/** The member's Instagram picture, or their initial, wearing the verb. */
-function Face({
-  person,
-  kind,
-}: {
-  person: ActivityPerson;
-  kind: ActivityKind;
-}) {
-  const Glyph = VERB_ICON[kind];
+/** The member's Instagram picture, or their initial; never a badge
+ *  (MESITA-2604). */
+function Face({ person }: { person: ActivityPerson }) {
   return (
     <span className="relative block h-11 w-11 shrink-0">
       {person.anonymous ? (
@@ -219,17 +204,6 @@ function Face({
           {firstInitial(person.name.replace(/^@/, ""))}
         </span>
       )}
-      <span
-        aria-hidden
-        className="bg-foreground text-background ring-card absolute -right-1 -bottom-1 flex h-5 w-5 items-center justify-center rounded-full ring-2"
-        data-social-verb={kind}
-      >
-        <Glyph
-          className="h-[11px] w-[11px]"
-          strokeWidth={2.75}
-          fill={kind === "saved" ? "currentColor" : "none"}
-        />
-      </span>
     </span>
   );
 }
@@ -312,7 +286,7 @@ function FeedRow({
   // opens the place.
   const person = (
     <>
-      <Face person={item.person} kind={item.kind} />
+      <Face person={item.person} />
       <span className="min-w-0 flex-1">
         <span className="text-foreground line-clamp-2 text-sm leading-snug">
           <span className="font-semibold">{who}</span> {VERB[item.kind]}{" "}
