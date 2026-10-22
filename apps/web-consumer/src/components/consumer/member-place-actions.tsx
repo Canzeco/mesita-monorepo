@@ -20,7 +20,6 @@ import { useSavedPlaces } from "@/lib/saved-places";
 import { sharePlace } from "@/lib/share-place";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
-import { errMsg } from "@/lib/utils";
 
 // One hook per member surface so the body and the Reserve bar share the
 // sheets. The shared renderer stays presentational.
