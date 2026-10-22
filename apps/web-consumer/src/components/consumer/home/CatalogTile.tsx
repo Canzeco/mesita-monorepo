@@ -208,8 +208,7 @@ export function CatalogTile({
   return (
     <li
       className={cn(
-        // A 1px hairline ring on the darker list ground (MESITA-2657).
-        "ring-foreground/10 relative isolate aspect-square min-w-0 overflow-hidden rounded-2xl ring-1",
+        "relative isolate aspect-square min-w-0 overflow-hidden rounded-2xl",
         className,
       )}
     >
@@ -233,9 +232,9 @@ export function CatalogTile({
             80% paper (MESITA-2375), the three rows centred on it (MESITA-2645). */}
         <div
           className={cn(
-            // A PLAIN WHITE BAND (Pato, MESITA-2657: "I don't really like
-            // the reflection, it doesn't look clean, make that completely
-            // white"): the mirrored photo and its 80% paper + blur retired.
+            // NO REFLECTION (Pato, MESITA-2658: "what actually looks better is
+            // removing the reflection of the place in the box"): a plain
+            // white band. MESITA-2657's ring and darker list ground stay out.
             "bg-paper absolute inset-x-0 bottom-0 overflow-hidden rounded-b-2xl",
             "h-[40%]",
           )}
