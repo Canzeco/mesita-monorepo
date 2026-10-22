@@ -4,8 +4,8 @@ import { Skeleton } from "@/components/shared";
 // the band, then the row (a disc · the query bar · a disc; the test counts
 // the two disc markers), then the chip row (All, then the families) in the
 // SAME white band (MESITA-2469), then the map with nothing on it, then the
-// full-width white band under it (MESITA-2506, MESITA-2509): the metadata
-// rows on the left, the carousel's card on the right.
+// full-width white band under it (MESITA-2506, MESITA-2613): the metadata
+// rows on top, the carousel's card under them at full width.
 
 export default function SearchLoading() {
   return (
@@ -33,14 +33,15 @@ export default function SearchLoading() {
       <div className="relative min-h-0 w-full flex-1 overflow-hidden">
         <Skeleton className="absolute inset-0 rounded-none" />
       </div>
-      <div className="border-border bg-card flex h-[10.5rem] shrink-0 items-stretch border-t">
-        <div className="border-border flex w-1/2 shrink-0 flex-col justify-center gap-1.5 border-r px-2.5 py-2">
+      <div className="border-border bg-card flex h-[15rem] shrink-0 flex-col border-t">
+        <div className="flex min-h-0 flex-1 flex-col justify-center gap-1.5 px-3 py-2">
           <Skeleton className="h-3.5 w-20" />
-          <Skeleton className="h-2.5 w-full" />
-          <Skeleton className="h-2.5 w-4/5" />
           <Skeleton className="h-2.5 w-3/5" />
+          <Skeleton className="h-2.5 w-1/2" />
+          <Skeleton className="h-2.5 w-3/5" />
+          <Skeleton className="h-2.5 w-2/5" />
         </div>
-        <div className="flex min-w-0 flex-1 snap-x snap-mandatory overflow-hidden py-2.5 pb-3.5">
+        <div className="border-border flex h-[7.5rem] shrink-0 snap-x snap-mandatory items-center overflow-hidden border-t py-2">
           <div className="w-[88%] shrink-0 snap-center px-1.5 first:ml-[6%] last:mr-[6%]">
             <Skeleton className="h-24 w-full rounded-2xl" />
           </div>
