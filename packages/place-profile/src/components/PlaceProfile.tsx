@@ -20,9 +20,9 @@ import { PlaceTopBar } from "./PlaceTopBar";
 // the three dots at the right edge. It replaced a bordered back square and
 // a centred serif title.
 //
-// The three dots report the place (onReport; Pato, MESITA-2684: "three dots
-// is a button to report"). Until then they shared, twice over with the Share
-// tile in the action row (ProfileActions).
+// The three dots open the host's menu of the place's actions (onMore; Pato,
+// MESITA-2692: "not only to report"). They reported alone (MESITA-2684) and
+// shared before that, twice over with the Share tile (ProfileActions).
 export function PlaceProfile({
   place,
   onBack,
@@ -51,7 +51,7 @@ export function PlaceProfile({
         name={place.name}
         enriched={place.is_enriched}
         onBack={onBack}
-        onReport={actions?.onReport}
+        onMore={actions?.onMore}
       />
       <div
         className="min-h-0 flex-1 overflow-y-auto"

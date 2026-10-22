@@ -20,8 +20,9 @@ export type PlaceActions = {
   saved?: boolean;
   onContact?: () => void;
   onShare?: () => void;
-  /** The top bar's three dots (MESITA-2684). */
-  onReport?: () => void;
+  /** The top bar's three dots: a menu of the place's actions, Report last
+   *  (MESITA-2692; they opened Report alone, MESITA-2684). */
+  onMore?: () => void;
   onReserve?: () => void;
   onOpenMenu?: (menu: PlaceMenuItem) => void;
   onOpenLink?: (url: string) => void;
