@@ -111,10 +111,9 @@ describe("anonymous members in the feed", () => {
     "utf8",
   );
 
-  it("draws them with a plain face and no person card", () => {
-    expect(FEED_SRC).toContain("const door = !item.person.anonymous;");
+  it("draws them with a plain face; every row opens the person card (MESITA-2609)", () => {
     expect(FEED_SRC).toContain("data-social-anonymous");
-    expect(FEED_SRC).toMatch(/door \? \(\s*<button[\s\S]*data-social-person/);
+    expect(FEED_SRC).not.toContain("data-social-anonymous-row");
     // The plain icon on an anonymous row without a photo (MESITA-2608:
     // the photo shows when the server sends one).
     expect(FEED_SRC).toContain("person.anonymous ? (");
@@ -137,23 +136,6 @@ describe("anonymous members in the feed", () => {
       "A member liked",
     );
     expect(feedInstagram(anon)).toBeNull();
-  });
-});
-
-// MESITA-2591: three things per row — face left, what happened centre,
-// the place's photo right ("thats it").
-describe("a feed row is face, sentence, photo", () => {
-  const SRC = readFileSync(
-    join(__dirname, "../../components/consumer/home/SocialFeed.tsx"),
-    "utf8",
-  );
-  const row = SRC.slice(
-    SRC.indexOf("function FeedRow("),
-    SRC.indexOf("/** The person card"),
-  );
-
-  it("an anonymous row opens the place, never a person card", () => {
-    expect(row).toMatch(/\) : \(\s*<Link[\s\S]*data-social-anonymous-row/);
   });
 });
 

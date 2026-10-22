@@ -19,13 +19,16 @@
 //   → { ids, places }
 //   The guest's saves, newest first: every id (the browser cache adopts them)
 //   and the cards of the ones still listed (Home's Saved row).
-// Body: { scope: "liked", place_id, kind, at }
-//   → { places }
-//   Social's person card (MESITA-2583, Pato: "just like the user and then the
-//   places they liked and thats it. in one list. not when."): every place the
-//   member behind that feed event liked, newest first, cards only. The event
-//   names the member because no member id reaches the client (MESITA-2460);
-//   an anonymous member's event returns no places (place_activity_liked_by).
+// Body: { scope: "history", place_id, kind, at }
+//   → { person, items: [{ placeId, kind, at, place }] }
+//   Social's person card (MESITA-2609, Pato: "a list of notifications of
+//   exactly that user … just all the historic feed scrollable"; it replaces
+//   MESITA-2583's liked-only list): the member behind that feed event, named
+//   by a like's rule (place_activity_visible), and every one of their events,
+//   saved and viewed, newest first, with the place cards. The event names the
+//   member because no member id reaches the client (MESITA-2460); a member who
+//   chose "A member" returns person null and no items
+//   (place_activity_history_by).
 //
 // Who appears is the SQL's call (place_activity_visible: a verified Instagram,
 // Public profile, not deleted; a view is never named, MESITA-2594), never this
@@ -57,7 +60,7 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 const FEED_ROWS = 500;
 const FEED_ITEMS = 50;
 const LINE_FACES = 5;
-const LIKED_PLACES = 60;
+const HISTORY_ROWS = 200;
 
 type Body = {
   scope?: string;
@@ -194,7 +197,7 @@ Deno.serve(async (req) => {
     return json({ ok: true, ids, places });
   }
 
-  if (body.scope === "liked") {
+  if (body.scope === "history") {
     const placeId = body.place_id;
     if (!isMesitaPlaceId(placeId)) {
       return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
@@ -205,22 +208,29 @@ Deno.serve(async (req) => {
     if (typeof body.at !== "string" || !Number.isFinite(Date.parse(body.at))) {
       return json({ ok: false, error: "at must be the event's time" }, 400);
     }
-    const { data, error } = await admin.rpc("place_activity_liked_by", {
-      p_place_id: placeId,
-      p_kind: body.kind,
-      p_at: body.at,
-      p_limit: LIKED_PLACES,
-    });
-    if (error) return json({ ok: false, error: `liked: ${error.message}` }, 500);
-    const ids = ((data ?? []) as { place_id: string }[]).map((r) => r.place_id);
-    const cardsRes = await readCards(anon, ids);
+    const [histRes, canSee] = await Promise.all([
+      admin.rpc("place_activity_history_by", {
+        p_place_id: placeId,
+        p_kind: body.kind,
+        p_at: body.at,
+        p_limit: HISTORY_ROWS,
+      }),
+      viewerSeesHandles(admin, viewerId),
+    ]);
+    if (histRes.error) return json({ ok: false, error: `history: ${histRes.error.message}` }, 500);
+    const rows = (histRes.data ?? []) as ActivityRow[];
+    if (rows.length === 0) return json({ ok: true, person: null, items: [] });
+    // One member, every row the same: the person comes from the first.
+    const person = toPerson(rows[0], viewerId, canSee);
+    const events = feedEvents(rows, viewerId, canSee);
+    const cardsRes = await readCards(anon, [...new Set(events.map((e) => e.placeId))]);
     if (!cardsRes.ok) return json({ ok: false, error: cardsRes.error }, 500);
-    const places = ids.flatMap((id) => {
-      const c = cardsRes.cards.get(id);
-      return c ? [c] : [];
+    const items = events.flatMap((e) => {
+      const place = cardsRes.cards.get(e.placeId);
+      return place ? [{ placeId: e.placeId, kind: e.kind, at: e.at, place }] : [];
     });
-    return json({ ok: true, places });
+    return json({ ok: true, person, items });
   }
 
-  return json({ ok: false, error: "scope must be feed, place, saved or liked" }, 400);
+  return json({ ok: false, error: "scope must be feed, place, saved or history" }, 400);
 });

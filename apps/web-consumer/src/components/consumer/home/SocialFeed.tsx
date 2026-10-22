@@ -75,12 +75,19 @@
 // profile or you can click the palce, but not both. if i click a profile,
 // open a modal … in the same scree. if i click the place, then redirect to
 // place profile"): the face and the sentence open the PERSON CARD (a
-// centred LocalDialog that appears at once, MESITA-2546: picture, name,
-// Instagram proof); the photo on the right opens the place. The card is
-// the member's IDENTITY CARD, the top of Me without the phone
-// (MESITA-2547), and under it the places they liked (Pato, MESITA-2583:
-// "just like the user and then the places they liked and thats it. in one
-// list. not when."): likes only, never views, no time.
+// centred LocalDialog that appears at once, MESITA-2546); the photo on the
+// right opens the place. EVERY ROW IS A DOOR, the guest's own included
+// (Pato, MESITA-2609: "if i press profile link, then open the modal. i can
+// even click my own profile btw"); MESITA-2580 had sent an anonymous row to
+// the place. The card is the member's IDENTITY CARD, the top of Me without
+// the phone (MESITA-2547: photo, name, "Insta: …", Class, Plan), and under
+// it THEIR WHOLE HISTORY, liked and viewed, newest first, scrollable (Pato,
+// MESITA-2609: "a list of notifications of exactly that user … he clicked
+// that or liked that place … just all the historic feed scrollable"; it
+// replaces MESITA-2583's liked-only list). The server names the member by a
+// like's rule, so the card may name a member whose view row did not
+// (decision, MESITA-2609); a member who chose "A member" shows the row's
+// face and no history.
 
 import { useEffect, useRef, useState, type SVGProps } from "react";
 import Link from "next/link";
@@ -88,11 +95,12 @@ import { ArrowUp, Crown, RotateCw, UserRound, Users } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 import {
-  apiLikedPlaces,
   apiListActivityFeed,
+  apiMemberHistory,
   type ActivityFeedItem,
   type ActivityKind,
   type ActivityPerson,
+  type MemberHistoryItem,
 } from "@/lib/api/activity";
 import type { Place } from "@/lib/api/places";
 import { markSocialSeen } from "@/lib/social-seen";
@@ -108,7 +116,10 @@ import { IdentityCard } from "@/components/consumer/IdentityCard";
 import { toGuestClass, toGuestPlan } from "@/lib/guest-standing";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { cn, errMsg, firstInitial } from "@/lib/utils";
-import { approxFollowers } from "@/lib/consumer-identity";
+import {
+  approxFollowers,
+  instagramWithFollowers,
+} from "@/lib/consumer-identity";
 import { useConsumerIdentity } from "@/lib/identity-context";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { trackEvent } from "@/lib/analytics/track";
@@ -326,12 +337,10 @@ function FeedRow({
   const ago = shortAgo(item.at);
   const href = placeHref(item.place.slug || item.place.id);
   const who = feedWho(item.person);
-  const door = !item.person.anonymous;
   // THREE THINGS (Pato, MESITA-2591: "Profile picture at the left, place at
   // the right, what happened in text in the center. thats it."). Face and
-  // sentence are one target: the person card for a named member, the place
-  // for "A member" (MESITA-2580, no card). The photo on the right always
-  // opens the place.
+  // sentence are one target, the person card, on every row (MESITA-2609).
+  // The photo on the right always opens the place.
   const person = (
     <>
       <Face person={item.person} />
@@ -373,25 +382,15 @@ function FeedRow({
       data-social-row
       data-social-fresh={fresh || undefined}
     >
-      {door ? (
-        <button
-          type="button"
-          onClick={() => onPerson(item)}
-          aria-label={`${who}'s profile`}
-          className="focus-visible:ring-ring flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left outline-none focus-visible:ring-2"
-          data-social-person
-        >
-          {person}
-        </button>
-      ) : (
-        <Link
-          href={href}
-          className="focus-visible:ring-ring flex min-w-0 flex-1 items-center gap-3 rounded-lg outline-none focus-visible:ring-2"
-          data-social-anonymous-row
-        >
-          {person}
-        </Link>
-      )}
+      <button
+        type="button"
+        onClick={() => onPerson(item)}
+        aria-label={`${who}'s profile`}
+        className="focus-visible:ring-ring flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left outline-none focus-visible:ring-2"
+        data-social-person
+      >
+        {person}
+      </button>
       <Link
         href={href}
         aria-label={item.place.name}
@@ -407,45 +406,70 @@ function FeedRow({
 /** The places the card's member liked, from the server for the event the
  *  card was opened from (MESITA-2583). Null while it loads; a failed read
  *  lists nothing rather than guessing. */
-function useLikedPlaces(
+type MemberHistory = {
+  person: ActivityPerson | null;
+  items: MemberHistoryItem[];
+};
+
+/** The member behind the open card and their history (MESITA-2609); null
+ *  while it loads. A failed read shows the row's person and no history. */
+function useMemberHistory(
   item: ActivityFeedItem | null,
   open: boolean,
-): Place[] | null {
+): MemberHistory | null {
   const supabase = useBrowserSupabase();
   const key = item ? eventKey(item) : null;
-  const [loaded, setLoaded] = useState<{ key: string; places: Place[] } | null>(
-    null,
-  );
+  const [loaded, setLoaded] = useState<{
+    key: string;
+    history: MemberHistory;
+  } | null>(null);
   useEffect(() => {
     if (!open || !item || !key) return;
     let cancelled = false;
-    apiLikedPlaces(supabase, item)
-      .then((places) => {
-        if (!cancelled) setLoaded({ key, places });
+    apiMemberHistory(supabase, item)
+      .then((history) => {
+        if (!cancelled) setLoaded({ key, history });
       })
       .catch((err) => {
         console.error(
-          "social_liked_places_failed",
+          "social_member_history_failed",
           errMsg(err, "consumer-web-list-activity failed"),
         );
-        if (!cancelled) setLoaded({ key, places: [] });
+        if (!cancelled) {
+          setLoaded({ key, history: { person: null, items: [] } });
+        }
       });
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase, key, open]);
-  return loaded && loaded.key === key ? loaded.places : null;
+  return loaded && loaded.key === key ? loaded.history : null;
 }
 
-/** The person card (MESITA-2546, MESITA-2547, MESITA-2583): the member's
- *  identity card — the same card as the top of Me — floating in the centre
- *  of this screen, appearing and disappearing at once, then the places they
- *  liked in one plain list; never the phone, never a view, never a time, no
- *  follow (Pato: "just like the user and then the places they liked and
- *  thats it. in one list. not when."). Mesita first (MESITA-2594): Open
- *  Instagram is a small link under the list, not the card's main button.
- *  A masked handle ("per***") has no link; the card says how to see it. */
+/** The card's Instagram box, Me's own wording (MESITA-2606): "Insta: @handle
+ *  · 1.2K followers", a masked "Insta: @per***", or "Insta: not connected".
+ *  On your own card the handle shows too. */
+function cardInstagramLabel(person: ActivityPerson): string {
+  if (!person.handle) return "Insta: not connected";
+  return instagramWithFollowers(
+    `Insta: @${person.handle}`,
+    person.followers,
+    true,
+  );
+}
+
+/** The person card (MESITA-2546, MESITA-2547, MESITA-2609): the member's
+ *  identity card — the same card as the top of Me, photo and the four boxes
+ *  — floating in the centre of this screen, appearing and disappearing at
+ *  once, then THEIR WHOLE HISTORY, liked and viewed, newest first, in one
+ *  scrollable list (Pato: "just all the historic feed scrollable"; it was
+ *  the liked places alone, MESITA-2583). Never the phone, no follow. The
+ *  server's person wins over the row's: it is named by a like's rule, so a
+ *  view row's "A member" may open on a name. Mesita first (MESITA-2594):
+ *  Open Instagram is a small link under the list, not the card's main
+ *  button. A masked handle ("per***") has no link; the card says how to see
+ *  it. */
 function PersonCard({
   item,
   open,
@@ -456,12 +480,11 @@ function PersonCard({
   onClose: () => void;
 }) {
   const supabase = useBrowserSupabase();
-  const liked = useLikedPlaces(item, open);
+  const history = useMemberHistory(item, open);
   const { igConnected } = useConsumerIdentity();
   if (!item) return null;
-  const person = item.person;
+  const person = history?.person ?? item.person;
   const who = feedWho(person);
-  const instagram = feedInstagram(person);
   const igUrl =
     person.handle && !person.isYou && !person.handleLocked
       ? `https://www.instagram.com/${encodeURIComponent(person.handle)}/`
@@ -477,11 +500,11 @@ function PersonCard({
         <IdentityCard
           name={who}
           avatarUrl={person.avatarUrl}
-          instagram={instagram ? { label: instagram } : null}
+          instagram={{ label: cardInstagramLabel(person) }}
           guestClass={toGuestClass(person.guestClass)}
           plan={toGuestPlan(person.plan)}
         />
-        <LikedList places={liked} />
+        <HistoryList items={history ? history.items : null} />
         {/* Open Instagram (MESITA-2590): a new tab, so Mesita stays open
             underneath; every tap is counted to measure who leaves. Under
             the list, small (MESITA-2594): the card is Mesita's first. */}
@@ -515,49 +538,60 @@ function PersonCard({
   );
 }
 
-/** The card's one list: the places the member liked, each a door to the
- *  place. Name and photo only — no time, no verb, no distance. */
-function LikedList({ places }: { places: Place[] | null }) {
-  if (places == null) {
+/** The card's one list (MESITA-2609): the member's history, one row per
+ *  event, the feed row's own shape without the face — "liked Contramar",
+ *  the time under it, the place's photo on the right — each a door to the
+ *  place. Scrolls inside the card. */
+function HistoryList({ items }: { items: MemberHistoryItem[] | null }) {
+  if (items == null) {
     return (
-      <div className="mt-4 space-y-2" aria-busy data-social-liked-loading>
+      <div className="mt-4 space-y-2" aria-busy data-social-history-loading>
         {Array.from({ length: 3 }, (_, i) => (
           <div key={i} className="flex items-center gap-3">
+            <div className="min-w-0 flex-1 space-y-2">
+              <Skeleton className="h-3.5 w-3/5" />
+              <Skeleton className="h-3 w-1/5" />
+            </div>
             <Skeleton className="h-11 w-11 shrink-0 rounded-md" />
-            <Skeleton className="h-3.5 w-3/5" />
           </div>
         ))}
       </div>
     );
   }
-  if (places.length === 0) {
+  if (items.length === 0) {
     return (
       <p
         className="text-muted-foreground mt-4 text-center text-sm"
-        data-social-liked-empty
+        data-social-history-empty
       >
-        No liked places yet
+        No activity yet
       </p>
     );
   }
   return (
     <ul
       role="list"
-      aria-label="Liked places"
+      aria-label="Activity"
       className="divide-border border-border mt-4 max-h-[45vh] divide-y overflow-y-auto border-t"
-      data-social-liked
+      data-social-history
     >
-      {places.map((place) => (
-        <li key={place.id}>
+      {items.map((it) => (
+        <li key={`${it.placeId}|${it.kind}|${it.at}`}>
           <Link
-            href={placeHref(place.slug || place.id)}
+            href={placeHref(it.place.slug || it.place.id)}
             className="focus-visible:ring-ring flex items-center gap-3 py-2.5 outline-none focus-visible:ring-2"
-            data-social-liked-place
+            data-social-history-event={it.kind}
           >
-            <Thumb place={place} />
-            <span className="text-foreground min-w-0 flex-1 truncate text-sm font-semibold">
-              {place.name}
+            <span className="min-w-0 flex-1">
+              <span className="text-foreground line-clamp-2 text-sm leading-snug">
+                {VERB[it.kind]}{" "}
+                <span className={LINK_WORD_CLASS}>{it.place.name}</span>
+              </span>
+              <span className="text-muted-foreground mt-0.5 block text-xs">
+                {shortAgo(it.at)}
+              </span>
             </span>
+            <Thumb place={it.place} />
           </Link>
         </li>
       ))}
