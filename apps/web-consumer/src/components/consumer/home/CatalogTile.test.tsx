@@ -19,11 +19,11 @@ function tile(over: Partial<Place>) {
 }
 
 describe("the Enriched mark on a catalog card", () => {
-  it("follows an enriched place's name", () => {
+  it("leads an enriched place's name (MESITA-2624)", () => {
     const html = tile({ enriched: true });
     expect(html).toContain('aria-label="Enriched"');
-    expect(html.indexOf(">Casa<")).toBeLessThan(
-      html.indexOf('aria-label="Enriched"'),
+    expect(html.indexOf('aria-label="Enriched"')).toBeLessThan(
+      html.indexOf(">Casa<"),
     );
   });
 

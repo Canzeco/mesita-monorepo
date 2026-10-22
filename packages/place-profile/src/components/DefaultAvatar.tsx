@@ -20,6 +20,7 @@ import { useId } from "react";
 
 const FIELD = "#dbdbdb";
 const FIGURE = "#ffffff";
+const RING = "#c7c7c7";
 
 export function DefaultAvatar({ className }: { className?: string }) {
   // useId's separators aren't safe inside a url(#…) reference, hence the strip.
@@ -42,6 +43,21 @@ export function DefaultAvatar({ className }: { className?: string }) {
         <circle cx="50" cy="41" r="19.7" fill={FIGURE} />
         <ellipse cx="50" cy="86.5" rx="34.4" ry="19.6" fill={FIGURE} />
       </g>
+      {/* A HAIRLINE RING (Pato, MESITA-2624: "add a really small border,
+          just to separate the white face from the background"): the white
+          shoulders reach the disc's edge, and on a white page they ran into
+          it. One device pixel at any size (non-scaling stroke), the disc's
+          own grey a step darker, drawn over the clip so it closes the
+          circle. */}
+      <circle
+        cx="50"
+        cy="50"
+        r="49.5"
+        fill="none"
+        stroke={RING}
+        strokeWidth={1}
+        vectorEffect="non-scaling-stroke"
+      />
     </svg>
   );
 }
