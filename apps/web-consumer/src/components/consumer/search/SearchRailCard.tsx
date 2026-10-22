@@ -7,7 +7,6 @@ import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { isEnrichedPlace } from "@/lib/place-enriched";
 import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 import { cardPhoto, placePlaceholder } from "@/lib/place-placeholder";
-import { FamilyIcon } from "@/lib/family-icons";
 import { cn, formatCompactCount, formatKm, formatRating } from "@/lib/utils";
 
 /** Every catalog rail card is this tall. Missing subtitle / meta / hours
@@ -104,8 +103,9 @@ export function RailCard({
             data-placeholder={placeholder.kind}
             aria-hidden
           >
-            {placeholder.kind === "family" ? (
-              <FamilyIcon name={placeholder.family} className="h-7 w-7" />
+            {/* The category's emoji, as on the Home tile (MESITA-2667). */}
+            {placeholder.kind === "emoji" ? (
+              <span className="text-4xl leading-none">{placeholder.emoji}</span>
             ) : (
               placeholder.text
             )}

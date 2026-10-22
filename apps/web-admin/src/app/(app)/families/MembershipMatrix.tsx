@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { googleTypeEmoji } from "@mesita/place-profile";
 import { CATALOG_FAMILY_FACTS } from "../filters-config/discovery-surface";
 import {
   cellOn,
@@ -44,6 +45,8 @@ export function MembershipMatrix({
           {columns.length} guest families · {rows.length - inNone} in a family ·{" "}
           {inNone} in no family. A filled square means that category sits in that
           family. No family is a real answer: those places never show to a guest.
+          Each category has its own emoji, drawn on a guest card with no photo; a
+          family&apos;s emoji is a separate mark.
         </p>
         <input
           value={query}
@@ -116,7 +119,12 @@ export function MembershipMatrix({
                       className={`border-border sticky left-0 z-10 border-r border-b px-3 py-1.5 text-left font-normal ${paint}`}
                       title={row.slug}
                     >
-                      <span className="block truncate">{googleCategoryLabel(row.slug)}</span>
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="w-5 shrink-0 text-center" aria-hidden>
+                          {googleTypeEmoji(row.slug)}
+                        </span>
+                        <span className="truncate">{googleCategoryLabel(row.slug)}</span>
+                      </span>
                     </th>
                     {columns.map((family) => {
                       const on = cellOn(row, family.slug);

@@ -16,7 +16,6 @@ import {
   placePlaceholder,
 } from "@/lib/place-placeholder";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
-import { FamilyIcon } from "@/lib/family-icons";
 import { cn, formatCompactCount, formatKm, formatRating } from "@/lib/utils";
 
 /**
@@ -161,9 +160,7 @@ export function CatalogTile({
   const kindPrice = [kind, priceLabel].filter(Boolean).join(" · ");
   const hoursDistance = [openLine, distance].filter(Boolean).join(" · ");
 
-  // The photo, or the Google card's family icon (a line icon, never the
-  // emoji: MESITA-2478). Drawn twice: on the top
-  // 60%, and flipped from its foot as the reflection below it.
+  // The photo, or the category's emoji when there is none (MESITA-2667).
   const media = () =>
     photo ? (
       <Image
@@ -176,13 +173,17 @@ export function CatalogTile({
     ) : (
       <div
         // A LIGHT NO-PHOTO FACE (Pato, MESITA-2664: "if no image ... try a
-        // white background, let's see how it looks"): the light fill with
-        // a muted icon, not the ink gradient. A trial; one revert away.
+        // white background, let's see how it looks"): the light fill, not
+        // the ink gradient. On it, THE CATEGORY'S EMOJI (MESITA-2667:
+        // "instead of displaying that shitty thing display the emoji of the
+        // category"), 48px, in place of the family's line icon.
         className="bg-muted text-muted-foreground absolute inset-0 flex items-center justify-center"
         data-placeholder={placeholder.kind}
       >
-        {placeholder.kind === "family" ? (
-          <FamilyIcon name={placeholder.family} className="h-10 w-10" />
+        {placeholder.kind === "emoji" ? (
+          <span className="text-5xl leading-none select-none" aria-hidden>
+            {placeholder.emoji}
+          </span>
         ) : (
           <span
             className="font-display text-3xl font-bold tracking-tight"
