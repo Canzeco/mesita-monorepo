@@ -31,23 +31,23 @@ describe("section strip", () => {
     expect(placeTabs().map((t) => t.label)).toEqual([
       "Overview",
       "Reviews",
-      "Menu",
+      "Products",
       "Rewards",
     ]);
     expect(placeTabs().filter((t) => t.soon).map((t) => t.label)).toEqual([
-      "Menu",
+      "Products",
       "Rewards",
     ]);
   });
 
-  it("renders the four sections with Soon on Menu and Rewards", () => {
+  it("renders the four sections with Soon on Products and Rewards", () => {
     const html = renderToStaticMarkup(
       <PlaceTabBar tab="place" onChange={() => {}} />,
     );
     expect(html).toContain("Overview");
     expect(html).toContain("Reviews");
-    expect(html).toContain("Menu");
-    expect(html).not.toContain("Menus");
+    expect(html).toContain("Products");
+    expect(html).not.toContain(">Menu<");
     expect(html).toContain("Rewards");
     expect(html).toContain("Soon");
     expect(html).toContain("grid-cols-4");

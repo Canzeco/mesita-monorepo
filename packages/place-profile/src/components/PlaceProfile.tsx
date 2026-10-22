@@ -9,10 +9,11 @@ import type { PlaceDetail } from "../place-detail";
 import { PlaceDetailBody } from "./PlaceDetailBody";
 import { PlaceDetailTitle } from "./PlaceDetailTitle";
 
-// Header, then the scrolling body. There is no pinned bar: Save · Contact ·
-// Share, then Reserve · Pay (Soon), sit in the profile summary (MESITA-2321).
-// The consumer page and the admin phone both render this. Omitted callbacks
-// stay visible and do nothing. Pay is Soon.
+// Header, then the scrolling body. There is no pinned bar: the one action
+// row (Reserve, then Favorite · Contact · Share as icons) sits in the
+// profile summary (MESITA-2321, reshaped MESITA-2618). The consumer page and
+// the admin phone both render this. Omitted callbacks stay visible and do
+// nothing.
 export function PlaceProfile({
   place,
   onBack,

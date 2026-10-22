@@ -2,13 +2,14 @@
 
 import { Gift, Utensils, type LucideIcon } from "lucide-react";
 
-// Menu and Rewards are Soon screens (Pato, 2026-10-16). No next step.
+// Products and Rewards are Soon screens (Pato, 2026-10-16). No next step.
+// Products was Menu until MESITA-2618.
 const ICONS: Record<string, LucideIcon> = {
-  Menu: Utensils,
+  Products: Utensils,
   Rewards: Gift,
 };
 
-export function SoonScreen({ title }: { title: "Menu" | "Rewards" }) {
+export function SoonScreen({ title }: { title: "Products" | "Rewards" }) {
   const Icon = ICONS[title];
   return (
     <div className="flex flex-col items-center px-6 py-16 text-center">

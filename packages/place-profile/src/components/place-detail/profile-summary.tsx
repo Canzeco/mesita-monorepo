@@ -35,7 +35,8 @@ export function ProfileSummary({
   // decision: Pato — name in header; photo · Google · IG · Facebook; then
   // swipe-style tags: category · price · zone · distance · hours (MESITA-561).
   // decision: Pato (2026-10-16) — normal buttons in this header, in order:
-  // Save · Contact · Share, then Reserve · Pay (Soon) (MESITA-2321, no pinned bar).
+  // one action row: Reserve, then Favorite · Contact · Share as icons
+  // (MESITA-2321, reshaped MESITA-2618; no pinned bar).
   // Save is not an action button and is not Soon.
   // decision: Pato (2026-10-18, MESITA-2334) — the trio shows on every tab,
   // Reviews included; the header never changes between tabs.

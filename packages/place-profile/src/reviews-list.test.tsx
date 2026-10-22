@@ -80,9 +80,8 @@ describe("Reviews is a vertical list", () => {
     expect(overview).toContain("8.9K");
     expect(overview).toContain("A short presentation");
     expect(overview).not.toContain("Show more");
-    expect(overview).toContain("Favorite");
-    expect(overview).toContain("Contact");
-    expect(overview).toContain("Share");
+    expect(document.body.innerHTML).toContain("Reserve a table");
+    expect(document.body.innerHTML).toContain('aria-label="Share"');
 
     clickNamed("Reviews");
     const reviews = document.body.textContent ?? "";
@@ -92,12 +91,14 @@ describe("Reviews is a vertical list", () => {
     expect(reviews).not.toContain("Google Summary");
     expect(reviews).not.toContain("Instagram Summary");
     expect(reviews).not.toContain("Facebook Summary");
-    expect(reviews).toContain("Favorite");
-    expect(reviews).toContain("Contact");
-    expect(reviews).toContain("Share");
-    expect(reviews).toContain("Newest");
-    expect(reviews).toContain("Highest");
-    expect(reviews).toContain("Lowest");
+    expect(document.body.innerHTML).toContain("Reserve a table");
+    expect(document.body.innerHTML).toContain('aria-label="Share"');
+    // No sort row and no count above the list (MESITA-2618): the header's
+    // Google column already says how many.
+    expect(reviews).not.toContain("Newest");
+    expect(reviews).not.toContain("Highest");
+    expect(reviews).not.toContain("Lowest");
+    expect(reviews).not.toContain("484 reviews");
   });
 
   it("shows a first batch, then Show more reveals the next reviews", () => {
@@ -122,12 +123,5 @@ describe("Reviews is a vertical list", () => {
     expect(text).toContain("R6");
     expect(text).toContain("R7");
     expect(text).not.toContain("Show more");
-
-    clickNamed("Highest");
-    text = document.body.textContent ?? "";
-    expect(text.indexOf("R5")).toBeGreaterThan(-1);
-    expect(text.indexOf("R5")).toBeLessThan(text.indexOf("R4"));
-    expect(text).not.toContain("R6");
-    expect(text).toContain("Show more");
   });
 });
