@@ -12,13 +12,11 @@ import { SharePage } from "@/components/consumer/share/SharePage";
 import {
   APP_SHARE_URL,
   INSTAGRAM_DM_URL,
-  SHARE_JOKES,
-  nearestCard,
-  shareBody,
+  SHARE_BODY,
+  SHARE_MESSAGE,
 } from "@/lib/share-app";
 
-// Ten plain cards, one joke each (MESITA-2573). The card in view is the one
-// every button sends.
+// One plain card, one message (MESITA-2622); every button sends it.
 
 (
   globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
@@ -47,40 +45,6 @@ function mount(): HTMLElement {
 
 const decode = (s: string | null | undefined) => decodeURIComponent(s ?? "");
 
-describe("the ten cards", () => {
-  it("a dot picks its card, and every button then sends that card's joke", () => {
-    const host = mount();
-    const scrolled = vi.fn();
-    const card = host.querySelector<HTMLElement>('[data-share-card="6"]');
-    if (card) card.scrollIntoView = scrolled;
-    act(() => {
-      host.querySelector<HTMLButtonElement>('[data-share-dot="6"]')?.click();
-    });
-    expect(scrolled).toHaveBeenCalledTimes(1);
-    expect(
-      host.querySelector('[data-share-dot="6"]')?.getAttribute("aria-pressed"),
-    ).toBe("true");
-    const body = shareBody(SHARE_JOKES[6]);
-    for (const row of ["sms", "whatsapp"]) {
-      const href = host
-        .querySelector(`[data-share-row="${row}"]`)
-        ?.getAttribute("href");
-      expect(decode(href)).toContain(body);
-    }
-    expect(host.querySelector("[data-share-preview]")?.textContent).toContain(
-      body,
-    );
-  });
-
-  it("the card in view is the one whose centre is nearest the row's", () => {
-    const centers = [100, 400, 700, 1000];
-    expect(nearestCard(0, centers)).toBe(0);
-    expect(nearestCard(390, centers)).toBe(1);
-    expect(nearestCard(560, centers)).toBe(2);
-    expect(nearestCard(5000, centers)).toBe(3);
-  });
-});
-
 describe("Send it (MESITA-2581: every button does something)", () => {
   function stub(key: string, value: unknown) {
     Object.defineProperty(navigator, key, { value, configurable: true });
@@ -99,28 +63,26 @@ describe("Send it (MESITA-2581: every button does something)", () => {
     });
   }
 
-  it("SMS opens Messages with the joke and link as the body", () => {
+  it("SMS opens Messages with the message and link as the body", () => {
     const host = mount();
     const href = host
       .querySelector('[data-share-row="sms"]')
       ?.getAttribute("href");
     expect(href?.startsWith("sms:?&body=")).toBe(true);
-    expect(decode(href)).toContain(shareBody(SHARE_JOKES[0]));
+    expect(decode(href)).toContain(SHARE_BODY);
   });
 
-  it("WhatsApp opens wa.me with the joke and link, in a new tab", () => {
+  it("WhatsApp opens wa.me with the message and link, in a new tab", () => {
     const host = mount();
     const row = host.querySelector('[data-share-row="whatsapp"]');
     expect(row?.getAttribute("href")?.startsWith("https://wa.me/?text=")).toBe(
       true,
     );
     expect(row?.getAttribute("target")).toBe("_blank");
-    expect(decode(row?.getAttribute("href"))).toContain(
-      shareBody(SHARE_JOKES[0]),
-    );
+    expect(decode(row?.getAttribute("href"))).toContain(SHARE_BODY);
   });
 
-  it("Instagram copies the joke and link FIRST, says so, then opens the inbox", async () => {
+  it("Instagram copies the message and link FIRST, says so, then opens the inbox", async () => {
     const order: string[] = [];
     const writeText = vi.fn(async () => {
       order.push("copy");
@@ -132,14 +94,14 @@ describe("Send it (MESITA-2581: every button does something)", () => {
     });
     const host = mount();
     await tap(host, "instagram");
-    expect(writeText).toHaveBeenCalledWith(shareBody(SHARE_JOKES[0]));
+    expect(writeText).toHaveBeenCalledWith(SHARE_BODY);
     expect(open).toHaveBeenCalledWith(INSTAGRAM_DM_URL, "_blank");
     expect(order).toEqual(["copy", "open"]);
     expect(toast.success).toHaveBeenCalledTimes(1);
     expect(toast.success.mock.calls[0][0]).toMatch(/Instagram/);
   });
 
-  it("Other opens the phone's share sheet with the picked joke and the link", async () => {
+  it("Other opens the phone's share sheet with the message and the link", async () => {
     const share = vi.fn().mockResolvedValue(undefined);
     stub("share", share);
     const writeText = vi.fn();
@@ -148,7 +110,7 @@ describe("Send it (MESITA-2581: every button does something)", () => {
     await tap(host, "other");
     expect(share).toHaveBeenCalledWith({
       title: "Mesita",
-      text: SHARE_JOKES[0],
+      text: SHARE_MESSAGE,
       url: APP_SHARE_URL,
     });
     expect(writeText).not.toHaveBeenCalled();
@@ -167,7 +129,7 @@ describe("Send it (MESITA-2581: every button does something)", () => {
     );
     await tap(host, "other"); // the sheet refuses
     expect(writeText).toHaveBeenCalledTimes(2);
-    expect(writeText).toHaveBeenLastCalledWith(shareBody(SHARE_JOKES[0]));
+    expect(writeText).toHaveBeenLastCalledWith(SHARE_BODY);
     expect(toast.success).toHaveBeenCalledTimes(2);
     expect(toast.error).not.toHaveBeenCalled();
 
