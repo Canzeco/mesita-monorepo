@@ -48,7 +48,13 @@ export function PlaceDetailModalShell({
         `position: sticky top-0` on the tab strip ends up anchored to a
         scroll container that isn't actually scrolling.
       */}
-      <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+      {/* THE GREY GROUND (Pato, MESITA-2662: "keep the slightly gray
+          background in Overview, boxes white"): the slide-over panel is
+          paper, so the scroller paints bg-background like the direct link's
+          PlaceProfile; Overview's cards stay white on it. */}
+      <div className="bg-background min-h-0 flex-1 overflow-y-auto">
+        {children}
+      </div>
     </>
   );
 }
