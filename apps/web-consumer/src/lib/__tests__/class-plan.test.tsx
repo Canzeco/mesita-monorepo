@@ -206,3 +206,20 @@ describe("Instagram with followers", () => {
     expect(instagramWithFollowers("Connect it", 5000, false)).toBe("Connect it");
   });
 });
+
+// Pato: "Class: Regular / Plan: Free (like mention the key val)".
+describe("the Class and Plan boxes say key and value", () => {
+  it("reads Class: X and Plan: Y on the card", () => {
+    const html = renderToStaticMarkup(
+      <IdentityCard
+        name="Ana"
+        avatarUrl={null}
+        instagram={null}
+        guestClass="regular"
+        plan="free"
+      />,
+    );
+    expect(text(html)).toContain("Class: Regular");
+    expect(text(html)).toContain("Plan: Free");
+  });
+});
