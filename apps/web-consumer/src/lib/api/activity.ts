@@ -116,22 +116,31 @@ export async function apiSavedActivity(
   return { ids, places };
 }
 
-/** The places the member behind one feed event liked, newest first: Social's
- *  person card (MESITA-2583). The event names the member, never an id
- *  (MESITA-2460); an anonymous member's event returns none. */
-export async function apiLikedPlaces(
+/** One event in a member's history: what they did, where, when. */
+export type MemberHistoryItem = {
+  placeId: string;
+  kind: ActivityKind;
+  at: string;
+  place: Place;
+};
+
+/** The member behind one feed event and their whole history, liked and
+ *  viewed, newest first: Social's person card (MESITA-2609, replacing
+ *  MESITA-2583's liked-only list). The event names the member, never an id
+ *  (MESITA-2460). The person is named by a like's rule, so the card may name
+ *  a member the row did not; a member who chose "A member" returns null. */
+export async function apiMemberHistory(
   client: SupabaseClient,
   event: Pick<ActivityFeedItem, "placeId" | "kind" | "at">,
-): Promise<Place[]> {
-  const { places } = await invokeEF<{ places: Place[] }>(
-    client,
-    "consumer-web-list-activity",
-    {
-      scope: "liked",
-      place_id: event.placeId,
-      kind: event.kind,
-      at: event.at,
-    },
-  );
-  return places;
+): Promise<{ person: ActivityPerson | null; items: MemberHistoryItem[] }> {
+  const { person, items } = await invokeEF<{
+    person: ActivityPerson | null;
+    items: MemberHistoryItem[];
+  }>(client, "consumer-web-list-activity", {
+    scope: "history",
+    place_id: event.placeId,
+    kind: event.kind,
+    at: event.at,
+  });
+  return { person, items };
 }

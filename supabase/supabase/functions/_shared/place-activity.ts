@@ -53,10 +53,12 @@ export type ActivityPerson = {
    *  Carried on anonymous rows too; the handle itself is not. */
   instagram: boolean;
   /** A member without a verified Instagram (MESITA-2580), or any view
-   *  (MESITA-2594): "A member", no handle or followers, and no door to a
-   *  person card. Since MESITA-2608 the FACE still shows: photo, Class, Plan
-   *  and the Instagram flag come back from SQL on every row of a member who
-   *  did not choose "A member" (appear_anonymous blanks the whole row). */
+   *  (MESITA-2594): "A member", no handle or followers. Since MESITA-2608 the
+   *  FACE still shows: photo, Class, Plan and the Instagram flag come back
+   *  from SQL on every row of a member who did not choose "A member"
+   *  (appear_anonymous blanks the whole row). Every row is a door to the
+   *  person card since MESITA-2609; the card asks place_activity_history_by,
+   *  which names the member by a like's rule. */
   anonymous: boolean;
 };
 
