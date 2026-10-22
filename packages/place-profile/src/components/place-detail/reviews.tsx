@@ -1,9 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { MessageSquare } from "lucide-react";
 
 import { ReviewCard } from "../ReviewCard";
 import type { PlaceDetail } from "../../place-detail";
+import { PlaceEmptyScreen } from "./empty-screen";
 
 // decision: Pato (2026-10-16) — the channel counts live in the header and
 // hide while this tab is selected. What remains is Google's reviews, stacked
@@ -41,7 +43,18 @@ export function GoogleReviewsBox({ place }: { place: PlaceDetail }) {
     [reviews],
   );
 
-  if (reviews.length === 0) return null;
+  // NO REVIEWS YET (Pato, MESITA-2682: "write the frontend in the case a
+  // place doesn't has reviews yet"): the tab used to draw nothing at all.
+  // It is the Soon tabs' empty screen, with a speech bubble.
+  if (reviews.length === 0) {
+    return (
+      <PlaceEmptyScreen
+        icon={MessageSquare}
+        title="No reviews yet"
+        line="Reviews of this place will show up here."
+      />
+    );
+  }
   return (
     <section className="flex flex-col" aria-label="Reviews">
       <ul className="divide-border divide-y">
