@@ -4,11 +4,7 @@ import type React from "react";
 import type { LucideIcon } from "lucide-react";
 
 import { cn } from "../../lib/format";
-import {
-  PLACE_BODY_CLASS,
-  PLACE_META_CLASS,
-  PLACE_TITLE_CLASS,
-} from "../../lib/ui";
+import { PLACE_META_CLASS, PLACE_TITLE_CLASS } from "../../lib/ui";
 
 // ── Box primitive ───────────────────────────────────────────────────────
 
@@ -52,18 +48,6 @@ export function Box({
       )}
       {children}
     </section>
-  );
-}
-
-/** A box with nothing in it yet: one muted ellipsis, read aloud as "Nothing
- *  yet" (Pato, MESITA-2685: "if nothing yet write ..."). Hours, Presentation
- *  and Mesita Tags draw it instead of a blank card or a sentence. */
-export function BoxEmpty() {
-  return (
-    <p className={cn(PLACE_BODY_CLASS, "text-muted-foreground")}>
-      <span aria-hidden>…</span>
-      <span className="sr-only">Nothing yet</span>
-    </p>
   );
 }
 

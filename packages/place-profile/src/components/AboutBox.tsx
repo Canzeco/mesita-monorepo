@@ -1,4 +1,4 @@
-import { Box, BoxEmpty } from "./place-detail/box";
+import { Box } from "./place-detail/box";
 import { PLACE_BODY_CLASS } from "../lib/ui";
 import { cn } from "../lib/format";
 
@@ -47,17 +47,16 @@ const HEADING = "Presentation";
 
 export function AboutBox({ text }: { text: string }) {
   const body = formatAboutDisplay(text);
+  // NO TEXT, NO BOX (Pato, MESITA-2700: "Hide a box entirely when it has
+  // nothing, instead of drawing …"). MESITA-2685 drew a muted "…" here.
+  if (!body) return null;
 
   return (
     // The place scale (MESITA-2636): the shared card and title, prose at
     // 14px ink (it was 16px grey, the one paragraph on the screen at that
-    // size). No text yet draws "…", never a blank card (MESITA-2685).
+    // size).
     <Box title={HEADING}>
-      {body ? (
-        <p className={cn(PLACE_BODY_CLASS, "whitespace-pre-wrap")}>{body}</p>
-      ) : (
-        <BoxEmpty />
-      )}
+      <p className={cn(PLACE_BODY_CLASS, "whitespace-pre-wrap")}>{body}</p>
     </Box>
   );
 }
