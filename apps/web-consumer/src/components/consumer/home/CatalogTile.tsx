@@ -174,7 +174,7 @@ export function CatalogTile({
   // corners are rounded-2xl — and the photo, the band and its blur layer
   // carry the same radius themselves, because a backdrop-blur layer escapes
   // its parent's rounded clip and painted the bottom corners square
-  // (MESITA-2429). The heart sits on the photo's top-right corner.
+  // (MESITA-2429). The heart sits in the band, at its right edge.
   return (
     <li
       className={cn(
@@ -217,7 +217,12 @@ export function CatalogTile({
               20px line, ink for the facts, muted for hours · distance. The
               rows sit centred with one 4px gap and 12px side padding — the
               same rhythm on every tile. The mark follows the name. */}
-          <div className="text-foreground relative flex h-full flex-col justify-center gap-1 px-3">
+          <div
+            className={cn(
+              "text-foreground relative flex h-full flex-col justify-center gap-1 pl-3",
+              google ? "pr-3" : "pr-12",
+            )}
+          >
             <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-6 font-semibold tracking-tight">
               <span className="truncate">{place.name}</span>
               {isEnrichedPlace(place) ? <EnrichedBadge /> : null}
@@ -260,24 +265,24 @@ export function CatalogTile({
               ? `Remove ${place.name} from favorites`
               : `Add ${place.name} to favorites`
           }
-          // SAVE SITS ON THE PHOTO (Pato, MESITA-2645: "button at the same
-          // height of place looks weird"): the photo's top-right corner, a
-          // 36px dark glass circle with a white heart inside a 44px hit
+          // SAVE SITS IN THE WHITE BAND (Pato, MESITA-2646: "i don't like
+          // the like button at the top right at all, put it in the white
+          // box"): its right edge, centred on the band's three rows — never
+          // on the name row alone (MESITA-2645: "button at the same height
+          // of place looks weird"). A plain ink heart, 22px, in a 44px hit
           // area, red-filled once liked (the place screen's Like,
           // MESITA-2635). A sibling of the tile link, so a tap never
-          // navigates.
-          className="absolute top-1 right-1 flex h-11 w-11 items-center justify-center"
+          // navigates; the text column keeps 48px clear for it.
+          className="absolute right-1 bottom-[20%] flex h-11 w-11 translate-y-1/2 items-center justify-center"
           data-tile-save
         >
-          <span className="bg-media-glass text-on-media flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-sm">
-            <Heart
-              className={cn(
-                "h-[18px] w-[18px]",
-                saved && "fill-destructive text-destructive",
-              )}
-              strokeWidth={2.25}
-            />
-          </span>
+          <Heart
+            className={cn(
+              "text-foreground h-[22px] w-[22px]",
+              saved && "fill-destructive text-destructive",
+            )}
+            strokeWidth={2}
+          />
         </button>
       )}
     </li>
