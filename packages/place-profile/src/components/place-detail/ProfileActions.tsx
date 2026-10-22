@@ -3,7 +3,7 @@
 import {
   CalendarCheck,
   Heart,
-  Navigation,
+  Route,
   Phone,
   Share2,
   type LucideIcon,
@@ -132,7 +132,9 @@ export function ProfileActions({
           iconClassName={cn(saved && "fill-current")}
         />
         <ActionTile
-          Icon={Navigation}
+          // A route between two points (Pato, MESITA-2635: "other icon for
+          // directions"); the paper-plane arrow read as send / my location.
+          Icon={Route}
           label="Directions"
           live={Boolean(onOpenLink)}
           onClick={onOpenLink ? () => onOpenLink(directionsUrl) : undefined}
