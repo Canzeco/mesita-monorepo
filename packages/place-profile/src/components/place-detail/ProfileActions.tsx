@@ -3,7 +3,7 @@
 import {
   CalendarCheck,
   Heart,
-  Route,
+  Signpost,
   Phone,
   Share2,
   type LucideIcon,
@@ -131,9 +131,10 @@ export function ProfileActions({
           iconClassName={cn(saved && "fill-destructive text-destructive")}
         />
         <ActionTile
-          // A route between two points (Pato, MESITA-2635: "other icon for
-          // directions"); the paper-plane arrow read as send / my location.
-          Icon={Route}
+          // A signpost (Pato, MESITA-2638: "a more standardized size"): it fills
+          // the 18px box like the heart, phone and share glyphs. Route
+          // (MESITA-2635) read lighter; the paper plane before it read as send.
+          Icon={Signpost}
           label="Directions"
           live={Boolean(onOpenLink)}
           onClick={onOpenLink ? () => onOpenLink(directionsUrl) : undefined}
