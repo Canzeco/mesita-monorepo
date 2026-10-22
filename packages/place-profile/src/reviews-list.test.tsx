@@ -81,7 +81,7 @@ describe("Reviews is a vertical list", () => {
     expect(overview).toContain("A short presentation");
     expect(overview).not.toContain("Show more");
     expect(document.body.innerHTML).toContain("Reserve a table");
-    expect(document.body.innerHTML).toContain('aria-label="Share"');
+    expect(document.body.innerHTML).toContain("Directions in Google Maps");
 
     clickNamed("Reviews");
     const reviews = document.body.textContent ?? "";
@@ -92,7 +92,7 @@ describe("Reviews is a vertical list", () => {
     expect(reviews).not.toContain("Instagram Summary");
     expect(reviews).not.toContain("Facebook Summary");
     expect(document.body.innerHTML).toContain("Reserve a table");
-    expect(document.body.innerHTML).toContain('aria-label="Share"');
+    expect(document.body.innerHTML).toContain("Directions in Google Maps");
     // No sort row and no count above the list (MESITA-2618): the header's
     // Google column already says how many.
     expect(reviews).not.toContain("Newest");

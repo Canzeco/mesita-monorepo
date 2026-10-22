@@ -22,12 +22,21 @@ export function TagsBox({ place }: { place: PlaceDetail }) {
   // Tags only — the curated taxonomy chip cluster (one tint per facet).
   // The old key/value rows (dining style, dress code, reservations,
   // payment, parking, good for) were noise here; those facts are being
-  // absorbed into the tag vocabulary itself (Atlas taxonomy v2). The
-  // whole box disappears when the place has no tags.
-  if (place.tags.length === 0) return null;
+  // absorbed into the tag vocabulary itself (Atlas taxonomy v2).
+  //
+  // THE BOX ALWAYS DRAWS (Pato, MESITA-2619: "tags is missing, put tags even
+  // if not tags yet"): a place with no tags shows one quiet line in the
+  // same box, so every Overview has the same sections in the same order.
+  // Until MESITA-2619 the whole box disappeared with the tags.
   return (
     <Box title="Mesita Tags" icon={Tags} iconColor="text-muted-foreground">
-      <TagChips tags={place.tags} />
+      {place.tags.length === 0 ? (
+        <p className="text-muted-foreground text-xs leading-snug">
+          No tags yet.
+        </p>
+      ) : (
+        <TagChips tags={place.tags} />
+      )}
     </Box>
   );
 }
@@ -146,9 +155,12 @@ export function LinksBox({
   if (chips.length === 0) return null;
   // decision: light like Location / About — drop the inverted Channels surface.
   // Soft clay brand tints (CHANNEL_CLAY) so each chip reads as its app.
+  // TWO COLUMNS OF BUTTONS (Pato, MESITA-2619: "for links make buttons in a
+  // grid with 2 columns"): every link is a full-width cell of one height,
+  // never a wrapping pill cluster that leaves a ragged last row.
   return (
     <Box title="Links" icon={Link2} iconColor="text-muted-foreground">
-      <ChannelChips chips={chips} onOpenLink={onOpenLink} />
+      <ChannelChips chips={chips} onOpenLink={onOpenLink} grid />
     </Box>
   );
 }

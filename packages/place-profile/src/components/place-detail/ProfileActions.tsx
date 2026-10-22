@@ -1,28 +1,37 @@
 "use client";
 
-import { CalendarCheck, Heart, Phone, Share2 } from "lucide-react";
+import { CalendarCheck, Heart, Navigation, Phone } from "lucide-react";
 
 import type { PlaceActions } from "../../actions";
 import { inertButtonProps } from "../../actions";
 import type { PlaceDetail } from "../../place-detail";
 import { cn } from "../../lib/format";
+import { buildDirectionsUrl } from "../../lib/maps-link";
 import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 
 // ONE ROW (Pato, MESITA-2618: "i don't like the six buttons there. it looks
-// like shit"): Reserve, the one dark button, takes the width; Favorite,
-// Contact and Share are 44px grey icon squares beside it, the way Maps puts
-// Save and Share next to Directions. Until MESITA-2618 this was two rows,
-// Favorite · Contact · Share over Reserve · Pay (Soon) (MESITA-2321).
+// like shit"): Reserve, the one dark button, and Directions share the
+// width; Favorite and Contact are 44px grey icon squares beside them.
 //
-// decision: Pay (Soon) is gone from the place screen. It opened nothing, and
-// the bar already says Pay · Soon (MESITA-2076); a Soon button here was a
-// dead door. There is no "I went" (Pato, MESITA-2567). No pinned bottom bar.
-// 44px tall (the touch-target minimum, MESITA-2324). Live behavior
-// (bookmark, contact sheet, share sheet, reservation sheet) stays in the
-// consumer and arrives as callbacks; a missing callback leaves its button
-// visible and inert, so the row never changes shape.
+// DIRECTIONS LEADS WITH MAPS (Pato, MESITA-2619: "add button for location
+// for maps, like google maps. super important"): it opens Google Maps
+// already routing to the place (lib/maps-link.ts), through the consumer's
+// onOpenLink like every outbound link; the admin phone keeps it inert.
+// Share left this row for the three dots in the top bar (PlaceProfile).
+//
+// decision: Pay (Soon) is gone from the place screen (MESITA-2618). It
+// opened nothing, and the bar already says Pay · Soon (MESITA-2076). There
+// is no "I went" (Pato, MESITA-2567). No pinned bottom bar. 44px tall (the
+// touch-target minimum, MESITA-2324). Live behavior (bookmark, contact
+// sheet, reservation sheet) stays in the consumer and arrives as
+// callbacks; a missing callback leaves its button visible and inert, so
+// the row never changes shape.
 const btn =
   "inline-flex h-11 shrink-0 items-center justify-center rounded-lg transition active:scale-[0.99]";
+const wideBtn = cn(
+  btn,
+  "type-label min-w-0 flex-1 gap-1.5 px-2 font-semibold whitespace-nowrap",
+);
 const iconBtn = cn(btn, "w-11 bg-muted text-foreground hover:bg-muted/70");
 
 export function ProfileActions({
@@ -38,9 +47,10 @@ export function ProfileActions({
   const saved = actions?.saved === true;
   const onSave = actions?.onSave;
   const onContact = actions?.onContact;
-  const onShare = actions?.onShare;
+  const onOpenLink = actions?.onOpenLink;
   const onReserve = actions?.onReserve;
   const reserveLive = isReserveActionEnabled(place) && Boolean(onReserve);
+  const directionsUrl = buildDirectionsUrl(place);
 
   return (
     <div className={cn("flex gap-2", className)}>
@@ -50,13 +60,22 @@ export function ProfileActions({
           ? { onClick: onReserve, "aria-haspopup": "dialog" as const }
           : inertButtonProps(false))}
         aria-label="Reserve a table"
-        className={cn(
-          btn,
-          "bg-foreground text-paper type-label min-w-0 flex-1 gap-1.5 px-2 font-semibold whitespace-nowrap hover:opacity-90",
-        )}
+        className={cn(wideBtn, "bg-foreground text-paper hover:opacity-90")}
       >
         <CalendarCheck className="h-4 w-4 shrink-0" strokeWidth={2.25} />
         Reserve
+      </button>
+      <button
+        type="button"
+        {...(onOpenLink
+          ? { onClick: () => onOpenLink(directionsUrl) }
+          : inertButtonProps(false))}
+        aria-label="Directions in Google Maps"
+        data-directions-url={directionsUrl}
+        className={cn(wideBtn, "bg-muted text-foreground hover:bg-muted/70")}
+      >
+        <Navigation className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+        Directions
       </button>
       <button
         type="button"
@@ -94,14 +113,6 @@ export function ProfileActions({
         ) : (
           <Phone className="h-[18px] w-[18px]" strokeWidth={2.25} />
         )}
-      </button>
-      <button
-        type="button"
-        {...(onShare ? { onClick: onShare } : inertButtonProps(false))}
-        aria-label="Share"
-        className={iconBtn}
-      >
-        <Share2 className="h-[18px] w-[18px]" strokeWidth={2.25} />
       </button>
     </div>
   );
