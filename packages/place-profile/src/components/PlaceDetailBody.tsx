@@ -42,6 +42,7 @@ export function PlaceDetailBody({
   actions,
   creating,
   social,
+  showDates = false,
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
@@ -50,6 +51,9 @@ export function PlaceDetailBody({
   creating?: PlaceCreatingView | null;
   /** Social v1's line (MESITA-2442), in the profile summary. */
   social?: React.ReactNode;
+  /** The Created · Updated dates at the foot of Overview: admin only
+   *  (MESITA-2630); the consumer never passes it. */
+  showDates?: boolean;
 }) {
   const [tab, setTab] = useState<PlaceTab>("place");
   return (
@@ -81,15 +85,20 @@ export function PlaceDetailBody({
                   />
                 </div>
               )}
+              {/* OVERVIEW'S ORDER (Pato, MESITA-2630): photos ·
+                  presentation · location · hours · links · tags, then the
+                  Created/Updated dates on admin only. Popular times rides
+                  with hours (it draws nothing while nothing writes it,
+                  MESITA-2420). Location then Time stacked, never side by
+                  side (decision: Pato). */}
               <MediaBox place={place} />
-              {/* decision: Pato — Location first, then Time stacked (not side by side) */}
+              <AboutBox text={place.long_description} />
               <LocationBox place={place} onOpenLink={actions?.onOpenLink} />
               <HoursBox place={place} />
               <PopularTimesBox place={place} />
               <LinksBox place={place} onOpenLink={actions?.onOpenLink} />
-              <AboutBox text={place.long_description} />
               <TagsBox place={place} />
-              <DatesBox place={place} />
+              {showDates ? <DatesBox place={place} /> : null}
             </>
           )}
           {tab === "reviews" && <GoogleReviewsBox place={place} />}

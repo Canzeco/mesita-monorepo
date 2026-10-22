@@ -58,7 +58,12 @@ function MemberPhone({
   const detail = memberPreviewDetail(place, tags);
   return (
     <div className="member-phone border-border mx-auto flex min-h-0 w-full max-w-md flex-1 flex-col overflow-hidden border md:rounded-3xl md:shadow-elev">
-      <PlaceProfile place={detail} scrollLabel="Member profile preview" />
+      <PlaceProfile
+        place={detail}
+        scrollLabel="Member profile preview"
+        // The Created · Updated dates are admin-only (MESITA-2630).
+        showDates
+      />
     </div>
   );
 }
