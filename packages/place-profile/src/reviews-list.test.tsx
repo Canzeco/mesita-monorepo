@@ -104,7 +104,10 @@ describe("Reviews is a vertical list", () => {
   it("shows a first batch, then Show more reveals the next reviews", () => {
     mount();
     clickNamed("Reviews");
-    const html = document.body.innerHTML;
+    // The REVIEWS list never scrolls sideways; the header's Reserve row of
+    // times does, on purpose (MESITA-2633), so look inside the list only.
+    const html =
+      document.querySelector('section[aria-label="Reviews"]')?.outerHTML ?? "";
     expect(html).not.toContain("overflow-x-auto");
     expect(html).not.toContain("w-72");
     expect(html).not.toContain("snap-start");
