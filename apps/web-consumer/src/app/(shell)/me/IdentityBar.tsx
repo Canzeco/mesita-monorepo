@@ -7,6 +7,7 @@ import { IdentityCard } from "@/components/consumer/IdentityCard";
 import { ClassSheet } from "@/components/consumer/me/ClassSheet";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { toGuestClass, toGuestPlan } from "@/lib/guest-standing";
+import { cn } from "@/lib/utils";
 
 // ─── The identity header (MESITA-1079 v2 · -1619 · -1633 ·
 //     -1636 · -1640 · -1646 · -1649 · -1650 · -1652 · -2040 · -2087) ───────
@@ -18,12 +19,10 @@ import { toGuestClass, toGuestPlan } from "@/lib/guest-standing";
 // it lines up with the grid (MESITA-2577 asked for that and made it an inset
 // card; that read as one more tile).
 //
-//                 (photo)
-//                  name
-//          [◎ @handle · 1.2K followers ›]
-//                  [♛ Regular ›]
-//                   [▭ Free ›]      one fact per line (MESITA-2595)
-//            (MESITA-2574; chips wrap when the row runs out)
+//                     (photo)
+//   ( 👤 name                                    )
+//   ( ◎ Insta: @handle · 1.2K followers          )
+//   ( ♛ Class: Regular   ) ( ▭ Plan: Free        )   the pair (MESITA-2614)
 //   ─────── hairline ─────── full-width white bar; content on the 16px edge
 //
 // The card itself is IdentityCard, the same one Social shows for a member
@@ -93,13 +92,21 @@ export function IdentityBar({
         {loading ? (
           <>
             {/* The skeleton mirrors the DESTINATION (Docs › Design §D): the
-                centred 67px ringed photo, then four equal 36px boxes
-                (MESITA-2596). */}
+                centred 67px ringed photo, then two full-width 36px boxes and
+                a pair, one column under 360px (MESITA-2614). */}
             <div className="flex w-full flex-col items-center gap-2">
               <div className="bg-muted h-[67px] w-[67px] animate-pulse rounded-full" />
-              {[0, 1, 2, 3].map((i) => (
-                <div key={i} className="bg-muted h-9 w-full max-w-72 animate-pulse rounded-full" />
-              ))}
+              <div className="grid w-full grid-cols-1 gap-2 min-[360px]:grid-cols-2">
+                {[0, 1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      "bg-muted h-9 w-full animate-pulse rounded-full",
+                      i < 2 && "col-span-full",
+                    )}
+                  />
+                ))}
+              </div>
             </div>
           </>
         ) : (

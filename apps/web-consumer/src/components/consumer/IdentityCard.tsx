@@ -21,18 +21,25 @@ import { cn } from "@/lib/utils";
 // MESITA-2594). Never the phone: it is private and
 // lives in Settings.
 //
-// CENTRED, FOUR EQUAL BOXES (Pato, MESITA-2595/2596: "make the three lines
-// larger, also add the name in those lines, and make them the same
-// horizontal line each horizontal box, four in total: name, instagram,
-// class, plan"):
+// CENTRED, FOUR BOXES IN THREE ROWS (Pato, MESITA-2595/2596 made them four
+// boxes, name · instagram · class · plan; MESITA-2614: "try a different grid
+// for this ... i just don't like it", and he picked "A · Pairs" from a board
+// of four):
 //
-//              (64px photo)
-//   ( 👤 Diego                     )
-//   ( ◎ @diego · 1.2K followers    )
-//   ( ♛ Class: VIP                 )
-//   ( ▭ Plan: Premium              )
+//                  (64px photo)
+//   ( 👤 Diego                                 )
+//   ( ◎ @diego · 1.2K followers                )
+//   ( ♛ Class: VIP      ) ( ▭ Plan: Premium    )
 //
-// One width for all four (the card's width up to 18rem), 36px tall (MESITA-2599:
+// Name and Instagram keep the full width: they are the two strings that get
+// long. Class and Plan share a row, Class left, the same order as the Class ·
+// Plan tile pair below on Me. The column is the full width of the card (no
+// cap), so on Me each half box is exactly one tile column (167px at 375px)
+// and "Plan: Premium" fits. UNDER 360px THE PAIR STACKS: a half box would be
+// 140px at 320px and ellipsize, so there the four boxes are four rows again.
+// Social's person card is this component and gets the same grid.
+//
+// 36px tall (MESITA-2599:
 // "make the boxes a bit shorter"; 40px before), and ONE
 // text style, 14px semibold, in every box (Pato, MESITA-2599: "standardize
 // the size of those letters inside the four boxes"); the defaults (Regular,
@@ -51,10 +58,15 @@ import { cn } from "@/lib/utils";
 // are doors — Class opens its explainer, Plan opens /me/plan; on Social both
 // are facts.
 
-/** One box of the card (MESITA-2596, MESITA-2599): 36px tall, 14px text, the full width
- *  of the box column, so all four boxes share one width. */
+/** One box of the card (MESITA-2596, MESITA-2599): 36px tall, 14px text, the
+ *  full width of its grid cell (MESITA-2614: a whole row for name and
+ *  Instagram, half a row each for Class and Plan). */
 const CHIP_CLASS =
   "border-border text-foreground relative flex h-9 w-full min-w-0 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold";
+
+/** Name and Instagram take the whole row; Class and Plan share one
+ *  (MESITA-2614). */
+const FULL_ROW_CLASS = "col-span-full";
 
 /** Grows a box's tap area to the 44px floor without growing it visually
  *  (MESITA-1688). */
@@ -168,6 +180,7 @@ function PlanChip({ plan, href }: { plan: GuestPlan; href?: string }) {
 function NameBox({ name, href }: { name: string; href?: string }) {
   const className = cn(
     CHIP_CLASS,
+    FULL_ROW_CLASS,
     href && cn(TAP_TARGET_CLASS, "hover:bg-muted transition"),
   );
   const body = (
@@ -236,9 +249,10 @@ export function IdentityCard({
         </span>
       </span>
 
-      {/* Four boxes, one width (MESITA-2596). */}
+      {/* Three rows: name, Instagram, then Class · Plan as a pair; one column
+          under 360px (MESITA-2614). */}
       <div
-        className="flex w-full max-w-72 min-w-0 flex-col items-stretch gap-2"
+        className="grid w-full min-w-0 grid-cols-1 gap-2 min-[360px]:grid-cols-2"
         data-identity-chips
       >
         <NameBox name={name} href={nameHref} />
@@ -249,6 +263,7 @@ export function IdentityCard({
             aria-label={instagram.label}
             className={cn(
               CHIP_CLASS,
+              FULL_ROW_CLASS,
               TAP_TARGET_CLASS,
               "hover:bg-muted transition",
             )}
@@ -258,7 +273,10 @@ export function IdentityCard({
             <span className="truncate">{instagram.label}</span>
           </Link>
         ) : instagram ? (
-          <span className={CHIP_CLASS} data-identity-instagram>
+          <span
+            className={cn(CHIP_CLASS, FULL_ROW_CLASS)}
+            data-identity-instagram
+          >
             <InstagramBadge />
             <span className="sr-only">Instagram:</span>
             <span className="truncate">{instagram.label}</span>
