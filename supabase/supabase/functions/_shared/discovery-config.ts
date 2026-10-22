@@ -132,7 +132,7 @@ export type SuperParamKey = (typeof SUPER_PARAM_KEYS)[number];
 /**
  * The Area pool's policy (MESITA-2379): Google candidates and Mesita
  * candidates contribute independently to ONE merged, deduped, gated, ranked
- * pool inside `radiusKm` (a point) or a saved area's bounds.
+ * pool inside the radius around a point (MESITA-2603: no saved areas).
  * `googlePlaces` is what Mesita buys from Nearby Search (New);
  * `mesitaPlaces` is a free read of our own rows. There is no total: the two
  * counts are independent. Operator numbers since MESITA-1699 — the guest's

@@ -1,17 +1,17 @@
 // The Area score, its gates and the Selected factor (MESITA-2327; weighted
-// sum since MESITA-2347; one pool, Territory and the factor since
-// MESITA-2379).
+// sum since MESITA-2347; one pool and the factor since MESITA-2379; points
+// only since Territory was retired, MESITA-2603).
 import { assertAlmostEquals, assertEquals } from "jsr:@std/assert@1";
 import {
   type AreaCandidate,
   type AreaContext,
   areaScore,
   familyGate,
+  insideBounds,
   rankArea,
   readAreaMode,
   SELECTED_FACTOR,
   selectedFactor,
-  territoryGate,
 } from "./area-score.ts";
 
 const ANCHOR = { lat: 19.43, lng: -99.13 };
@@ -23,7 +23,6 @@ const CTX: AreaContext = {
   weights: { proximity: 1, popularity: 1, selected: 1 },
 };
 const BOUNDS = { low: { lat: 19.4, lng: -99.2 }, high: { lat: 19.5, lng: -99.1 } };
-const AREA: AreaContext = { ...CTX, location: { kind: "area", bounds: BOUNDS } };
 const NONE: AreaContext = { ...CTX, location: { kind: "none" } };
 const cand = (over: Partial<AreaCandidate> = {}): AreaCandidate => ({
   id: "a",
@@ -47,7 +46,8 @@ Deno.test("point: final = Proximity^a × Popularity^b × Selected^c", () => {
   assertAlmostEquals(s.final, s.base, 1e-12);
   assertEquals(s.gates.family, 1);
   assertEquals(s.gates.radius, 1);
-  assertEquals(s.gates.territory, null);
+  // Territory is gone from the breakdown (MESITA-2603).
+  assertEquals(Object.keys(s.gates).sort(), ["active", "family", "radius", "ready", "reviews"]);
 });
 
 Deno.test("Selected is its own signal (MESITA-2439): 1.0 for Mesita Selected, 0.3 for everything else, with its own exponent", () => {
@@ -98,41 +98,15 @@ Deno.test("a strong Google-only place can outrank a weak Selected one", () => {
   assertEquals(twin.map((r) => r.item.id), ["s", "g"]);
 });
 
-Deno.test("area: final = territory × (Popularity × selected)^b; no Proximity, no distance", () => {
-  const inside = areaScore(cand({ lat: 19.45, lng: -99.15, rating: 4.0, reviewCount: 100 }), AREA);
-  assertEquals(inside.formula, "area");
-  assertEquals(inside.gates.territory, 1);
-  assertEquals(inside.gates.radius, null);
-  assertEquals(inside.signals.proximity, null);
-  assertAlmostEquals(inside.final, 0.4, 1e-12);
-  assertEquals(inside.distanceKm, null);
-  const outside = areaScore(cand({ lat: 19.6, lng: -99.15 }), AREA);
-  assertEquals(outside.gates.territory, 0);
-  assertEquals(outside.final, 0);
-});
-
-Deno.test("area ranking ignores the rectangle's centre: ties break on id", () => {
-  const ranked = rankArea(
-    [
-      cand({ id: "b", lat: 19.41, lng: -99.19, rating: null }),
-      cand({ id: "a", lat: 19.45, lng: -99.15, rating: null }),
-      cand({ id: "out", lat: 19.7, lng: -99.15 }),
-    ],
-    (c) => c,
-    AREA,
-  );
-  assertEquals(ranked.map((r) => r.item.id), ["a", "b"]);
-});
-
-Deno.test("territory gate: inside the rectangle, edges included; unknown coordinates are out", () => {
-  assertEquals(territoryGate({ lat: 19.4, lng: -99.2 }, BOUNDS), 1);
-  assertEquals(territoryGate({ lat: 19.5, lng: -99.1 }, BOUNDS), 1);
-  assertEquals(territoryGate({ lat: 19.51, lng: -99.15 }, BOUNDS), 0);
-  assertEquals(territoryGate({ lat: null, lng: -99.15 }, BOUNDS), 0);
+Deno.test("insideBounds (the screen radius's cross check): edges included; unknown coordinates are out", () => {
+  assertEquals(insideBounds({ lat: 19.4, lng: -99.2 }, BOUNDS), true);
+  assertEquals(insideBounds({ lat: 19.5, lng: -99.1 }, BOUNDS), true);
+  assertEquals(insideBounds({ lat: 19.51, lng: -99.15 }, BOUNDS), false);
+  assertEquals(insideBounds({ lat: null, lng: -99.15 }, BOUNDS), false);
   // A rectangle across the antimeridian.
   const wrap = { low: { lat: -10, lng: 170 }, high: { lat: 10, lng: -170 } };
-  assertEquals(territoryGate({ lat: 0, lng: 179 }, wrap), 1);
-  assertEquals(territoryGate({ lat: 0, lng: 0 }, wrap), 0);
+  assertEquals(insideBounds({ lat: 0, lng: 179 }, wrap), true);
+  assertEquals(insideBounds({ lat: 0, lng: 0 }, wrap), false);
 });
 
 Deno.test("no location: final = (Popularity × selected)^b", () => {
@@ -140,7 +114,6 @@ Deno.test("no location: final = (Popularity × selected)^b", () => {
   assertEquals(s.formula, "none");
   assertEquals(s.signals.proximity, null);
   assertEquals(s.gates.radius, null);
-  assertEquals(s.gates.territory, null);
   assertAlmostEquals(s.final, 0.4, 1e-12);
 });
 

@@ -23,6 +23,7 @@ import { nearbyExcludedTypesForFamilies } from "./sourcing.ts";
 import { CATALOG_FAMILY_SLUGS } from "./catalog-families.ts";
 import { GOOGLE_SEARCH_TYPES } from "./google-type-super.ts";
 import { DISCOVERY_DEFAULTS } from "./discovery-config.ts";
+import { nearbyBbox } from "./geo.ts";
 
 const CENTER = { lat: 25.67, lng: -100.3 };
 
@@ -770,34 +771,8 @@ Deno.test("the server snaps a point to ~110 m for retrieval; Proximity reads the
   }
 });
 
-Deno.test("area: every call ranks POPULARITY; bounds under 1 km still make 3 distinct calls", async () => {
-  reset();
-  const g = stubGoogle([{ id: "in", lat: 25.6705 }, { id: "out", lat: 25.69 }]);
-  try {
-    const bounds = { low: { lat: 25.668, lng: -100.302 }, high: { lat: 25.673, lng: -100.298 } };
-    const { d } = deps({ location: { kind: "area", bounds }, googleCalls: 3 });
-    const out = await selectAreaPool(d);
-    const sent = bodies(g.calls);
-    assertEquals(sent.length, 3);
-    assertEquals(sent.every((b) => b.rankPreference === "POPULARITY"), true);
-    assertEquals(new Set(sent.map((b) => JSON.stringify(b.locationRestriction))).size, 3);
-    // Territory gate: the hit outside the rectangle never comes back.
-    assertEquals(ids(out.places), ["g:in"]);
-    assertEquals(out.places[0].area.formula, "area");
-    assertEquals(out.places[0].area.gates.territory, 1);
-    assertEquals(out.places[0].distance_km, null);
-  } finally {
-    g.restore();
-  }
-});
-
-Deno.test("areaFanoutCircles: halves split across the longer side", () => {
-  const wide = areaFanoutCircles(
-    { kind: "area", bounds: { low: { lat: 0, lng: 0 }, high: { lat: 0.1, lng: 0.4 } } },
-    3,
-  );
-  assert(wide[1].center.lng < wide[2].center.lng);
-  assertEquals(wide[1].center.lat, wide[2].center.lat);
+// Territory is retired (MESITA-2500, MESITA-2603): a point or nothing.
+Deno.test("areaFanoutCircles: no point, no Google call", () => {
   assertEquals(areaFanoutCircles({ kind: "none" }, 3), []);
 });
 
@@ -836,10 +811,9 @@ Deno.test("parseAreaBounds: valid, inverted, partial and oversized", () => {
   assertEquals(parseAreaBounds({ low: ok.low }), null);
   assertEquals(parseAreaBounds({ low: { lat: 0, lng: 0 }, high: { lat: 2, lng: 2 } }), null);
   assertEquals(parseAreaBounds("x"), null);
-  // Invalid bounds fall back to the point, then to none.
-  assertEquals(resolveAreaLocation({ low: ok.high, high: ok.low }, CENTER, 5).kind, "point");
-  assertEquals(resolveAreaLocation(null, null, 5).kind, "none");
-  assertEquals(resolveAreaLocation(ok, CENTER, 5).kind, "area");
+  // A centre is a point inside the radius; no centre, no location.
+  assertEquals(resolveAreaLocation(CENTER, 5), { kind: "point", anchor: CENTER, radiusKm: 5 });
+  assertEquals(resolveAreaLocation(null, 5).kind, "none");
 });
 
 Deno.test("merge: an owned hit and the same Mesita row are ONE candidate, scored on the hit", async () => {
@@ -939,7 +913,7 @@ Deno.test("no location: Mesita only, Popularity × selected, no Google call", as
   }
 });
 
-Deno.test("selectedPoolQuery: the Feed and the Map drop the Selected SQL filter; an area reads its bounds", () => {
+Deno.test("selectedPoolQuery: the Feed and the Map drop the Selected SQL filter; a point reads its radius box", () => {
   const seen: string[] = [];
   const q = {
     eq: (c: string, v: unknown) => (seen.push(`eq ${c} ${v}`), q),
@@ -953,13 +927,14 @@ Deno.test("selectedPoolQuery: the Feed and the Map drop the Selected SQL filter;
   selectedPoolQuery(q, DISCOVERY_DEFAULTS, {
     center: CENTER,
     radiusKm: 5,
-    bounds: { low: { lat: 25.6, lng: -100.4 }, high: { lat: 25.7, lng: -100.3 } },
     selectedOnly: false,
   });
   assertEquals(seen.includes("not enriched_at is null"), false);
   assert(seen.includes("eq content_state ready"));
-  assert(seen.includes("gte lat 25.6"));
-  assert(seen.includes("lte lng -100.3"));
+  // The radius box around the point (no rectangle since MESITA-2603).
+  const box = nearbyBbox(CENTER.lat, CENTER.lng, 5);
+  assert(seen.includes(`gte lat ${box.south}`));
+  assert(seen.includes(`lte lng ${box.east}`));
   assertEquals(seen[seen.length - 1], "order id true");
 });
 

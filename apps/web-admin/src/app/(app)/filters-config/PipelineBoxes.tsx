@@ -19,8 +19,6 @@ import { formatShortDate } from "@/lib/format";
 import { getDiscoveryConfig, updateDiscoveryConfig, type DiscoverySlice } from "./actions";
 import {
   GENERAL_MIN_REVIEWS_MAX,
-  AREA_WEIGHT_MAX,
-  AREA_WEIGHT_MIN,
   GOOGLE_PULL_STOPS,
   HALF_REVIEWS_MAX,
   HALF_REVIEWS_MIN,
@@ -39,8 +37,6 @@ import {
   NAME_IDLE_SEC_MAX,
   NAME_IDLE_SEC_MIN,
   NAME_LANE_COUNT_MAX,
-  type AreaMode,
-  type AreaWeights,
   type DiscoveryConfig,
 } from "./catalog";
 import { PipelineBox } from "./PipelineBox";
@@ -311,16 +307,6 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
     setOk(false);
     setCfg((c) => ({ ...c, params: { ...c.params, proximity: { reachKm } } }));
   };
-  const setWeight = (mode: AreaMode, signal: keyof AreaWeights, v: number) => {
-    setOk(false);
-    setCfg((c) => ({
-      ...c,
-      params: {
-        ...c.params,
-        modes: { ...c.params.modes, [mode]: { ...c.params.modes[mode], [signal]: v } },
-      },
-    }));
-  };
   const dirty = !same(cfg.map, saved.map) || !same(params, saved.params);
   return (
     <PipelineBox
@@ -331,63 +317,82 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
       explanation={
         <>
           <p>
-            Places around a <strong>point</strong>: the Map&apos;s cross, the
-            device or a saved pin. The Map&apos;s radius is <strong>the
-            screen&apos;s</strong>: the cross&apos;s distance to the nearest edge
-            of the visible map (MESITA-2511), a gate on Google and Mesita alike
-            and Proximity&apos;s reach, so 1 at the cross and 0 at the circle&apos;s
-            edge mean the same at every zoom. Home&apos;s point (the device or a
-            saved pin) sits inside the radius below. Google candidates and
-            Mesita candidates contribute independently to one pool: merged,
+            Places around a <strong>point</strong>: the Map&apos;s cross, or on
+            Home the device or a saved pin. No point, no Google: Home lists
+            Mesita&apos;s own places by Popularity alone. There is no Territory:
+            no view searches a rectangle or a saved area (MESITA-2500,
+            MESITA-2603). Google and Mesita candidates join one pool: merged,
             deduped by Google Place ID, gated, scored and ranked before any page
             is cut. The source is never a guest filter.
           </p>
           <p className="mt-2">
-            The Map (the Search tab) and the Catalog (Home&apos;s Places) rank
-            one way (MESITA-2504, MESITA-2516): score = Proximity<sup>a</sup> ×
-            Popularity<sup>1</sup> × Selected<sup>1</sup>. a is the one exponent
-            that moves; a family chip or row only gates.
+            The Map (the Search tab) and Home&apos;s Places rank one way
+            (MESITA-2504, MESITA-2516): score = Proximity<sup>a</sup> ×
+            Popularity<sup>1</sup> × Selected<sup>1</sup>. On the Map the radius and Proximity&apos;s
+            reach are the screen&apos;s (the cross&apos;s distance to the nearest
+            edge of the visible map), so 1 at the cross and 0 at the edge mean
+            the same at every zoom. Home has no screen, so it reads the Home
+            radius and the Home proximity reach below.
           </p>
         </>
       }
       save={<Save editor={editor} dirty={dirty} slices={BOX_SLICES.area} />}
     >
-      <Group title="Ranking (Map and Home)">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <NumberField
-            label="Map proximity weight (a)"
-            value={cfg.map.proximityWeight}
-            min={MAP_PROXIMITY_WEIGHT_MIN}
-            max={MAP_PROXIMITY_WEIGHT_MAX}
-            decimals
-            disabled={off}
-            onChange={(proximityWeight) => map({ proximityWeight })}
-          />
-          <NumberField
-            label="Proximity reach (km)"
-            value={params.proximity.reachKm}
-            min={REACH_KM_MIN}
-            max={REACH_KM_MAX}
-            decimals
-            disabled={off}
-            onChange={setReachKm}
-          />
-        </div>
+      <Group title="Sources">
+        <SwitchRow
+          label="Buy Google places"
+          on={cfg.map.googleFill}
+          disabled={off}
+          onClick={() => map({ googleFill: !cfg.map.googleFill })}
+        />
         <p className="text-muted-foreground type-meta">
-          a ranks the Map and Home alike: below 1 softens distance, above 1
-          sharpens it, 0 ignores it. Popularity&apos;s and Selected&apos;s
-          exponents are fixed at 1. Proximity is 1 at the point, ½ at half the
-          reach and 0 at the reach and beyond: on the Map the reach is the
-          screen radius, on Home the number above (Home has no screen to
-          measure). A place with no Google numbers has Popularity 0, so it
-          sinks to the bottom; nothing a gate keeps is ever removed by the
-          score.
+          Off: the Map and Home show Mesita places only and nothing is billed.
+          On: Google Nearby Search fills the pool, within the per-guest quota
+          in the Always-on rules.
         </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <ChoiceField
+            icon={<Hash className="mt-0.5 h-4 w-4 shrink-0" />}
+            label="Google places on Home"
+            hint="20 · 40 · 60 = 1 / 2 / 3 billed Nearby calls per Home load (a place two calls return counts once). The Map always buys 1 call per load."
+          >
+            <div className="flex flex-wrap gap-2">
+              {GOOGLE_PULL_STOPS.map((stop) => (
+                <ChoicePill
+                  key={stop}
+                  active={cfg.map.googlePlaces === stop}
+                  disabled={off}
+                  onClick={() => map({ googlePlaces: stop })}
+                >
+                  {stop}
+                </ChoicePill>
+              ))}
+            </div>
+          </ChoiceField>
+          <ChoiceField
+            icon={<Hash className="mt-0.5 h-4 w-4 shrink-0" />}
+            label="Mesita places"
+            hint="Ready Mesita places read free from our own rows, on the Map and Home: the best this many by score join the pool."
+          >
+            <div className="flex flex-wrap gap-2">
+              {GOOGLE_PULL_STOPS.map((stop) => (
+                <ChoicePill
+                  key={stop}
+                  active={cfg.map.mesitaPlaces === stop}
+                  disabled={off}
+                  onClick={() => map({ mesitaPlaces: stop })}
+                >
+                  {stop}
+                </ChoicePill>
+              ))}
+            </div>
+          </ChoiceField>
+        </div>
       </Group>
-      <Group title="Candidates and signals">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <Group title="Gates">
+        <div className="grid gap-3 sm:grid-cols-2">
           <NumberField
-            label="Radius (km)"
+            label="Home radius (km)"
             value={cfg.map.radiusKm}
             min={MAP_RADIUS_KM_MIN}
             max={MAP_RADIUS_KM_MAX}
@@ -396,12 +401,43 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             onChange={(radiusKm) => map({ radiusKm })}
           />
           <NumberField
-            label="Minimum number of Google reviews"
+            label="Minimum Google reviews"
             value={cfg.map.googleMinReviews}
             min={0}
             max={GENERAL_MIN_REVIEWS_MAX}
             disabled={off}
             onChange={(googleMinReviews) => map({ googleMinReviews })}
+          />
+        </div>
+        <p className="text-muted-foreground type-meta">
+          The Home radius decides who is a candidate around Home&apos;s point
+          and never scores; the Map uses it only when it has no screen to
+          measure (no view yet, or one wider than 100 km), and Chat reads
+          inside it. {MAP_RADIUS_KM_MIN}–{MAP_RADIUS_KM_MAX} km (Google&apos;s
+          circle cap). The reviews minimum counts people, cuts Google places
+          only (never a Mesita row), and 0 is off. Family is the guest&apos;s
+          own chip or row; closed places never show, on every pipeline.
+        </p>
+      </Group>
+      <Group title="Signals">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <NumberField
+            label="Proximity weight (a)"
+            value={cfg.map.proximityWeight}
+            min={MAP_PROXIMITY_WEIGHT_MIN}
+            max={MAP_PROXIMITY_WEIGHT_MAX}
+            decimals
+            disabled={off}
+            onChange={(proximityWeight) => map({ proximityWeight })}
+          />
+          <NumberField
+            label="Home proximity reach (km)"
+            value={params.proximity.reachKm}
+            min={REACH_KM_MIN}
+            max={REACH_KM_MAX}
+            decimals
+            disabled={off}
+            onChange={setReachKm}
           />
           <NumberField
             label="Reviews for half credit"
@@ -422,55 +458,22 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           />
         </div>
         <p className="text-muted-foreground type-meta">
-          The radius is Home&apos;s: it decides who is a candidate and never
-          scores. The Map reads it only when it has no screen to measure (no
-          view yet, or one wider than 100 km). Popularity is rating ÷ 5 ×
-          reviews ÷ (reviews + half credit): a 3★ place is 60% of a 5★ one, and
-          volume earns half credit at that many reviews. Selected is 1 for a
-          Mesita Selected place and the number above (0.01–1) for every other,
-          a Google-only place included; never 0, so it orders and never hides.
-          The reviews floor counts people, cuts Google hits only, and 0 is off.
+          a ranks the Map and Home alike: below 1 softens distance, above 1
+          sharpens it, 0 ignores it; Popularity and Selected keep exponent 1.
+          Proximity is 1 at the point, ½ at half the reach and 0 at the reach
+          and beyond: on the Map the reach is the screen radius, on Home the
+          Home proximity reach. A Home place between the reach and the Home
+          radius scores 0 and is ordered by distance alone
+          {params.proximity.reachKm < cfg.map.radiusKm
+            ? ` (now ${params.proximity.reachKm}–${cfg.map.radiusKm} km)`
+            : ""}
+          . Popularity is rating ÷ 5 × reviews ÷ (reviews + half credit): a 3★
+          place is 60% of a 5★ one, and volume earns half credit at that many
+          reviews; a place with no Google numbers scores 0 and sinks, never
+          disappears. Selected is 1 for a Mesita Selected place and the number
+          above ({SELECTED_OTHER_MIN}–{SELECTED_OTHER_MAX}) for every other, a
+          Google-only place included; never 0, so it orders and never hides.
         </p>
-      </Group>
-      <Group title="Candidates per source">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <ChoiceField
-            icon={<Hash className="mt-0.5 h-4 w-4 shrink-0" />}
-            label="Google candidates"
-            hint="Places Mesita buys for Home's catalog: up to 1 / 2 / 3 billed Nearby calls (20 · 40 · 60; duplicates across calls count once). The Map buys one call per load."
-          >
-            <div className="flex flex-wrap gap-2">
-              {GOOGLE_PULL_STOPS.map((stop) => (
-                <ChoicePill
-                  key={stop}
-                  active={cfg.map.googlePlaces === stop}
-                  disabled={off}
-                  onClick={() => map({ googlePlaces: stop })}
-                >
-                  {stop}
-                </ChoicePill>
-              ))}
-            </div>
-          </ChoiceField>
-          <ChoiceField
-            icon={<Hash className="mt-0.5 h-4 w-4 shrink-0" />}
-            label="Mesita candidates"
-            hint="Ready Mesita places read from our own rows, free: the best this many by score join the pool."
-          >
-            <div className="flex flex-wrap gap-2">
-              {GOOGLE_PULL_STOPS.map((stop) => (
-                <ChoicePill
-                  key={stop}
-                  active={cfg.map.mesitaPlaces === stop}
-                  disabled={off}
-                  onClick={() => map({ mesitaPlaces: stop })}
-                >
-                  {stop}
-                </ChoicePill>
-              ))}
-            </div>
-          </ChoiceField>
-        </div>
       </Group>
       <Group title="Map view (the Search tab)">
         <div className="grid gap-3 sm:grid-cols-2">
@@ -490,18 +493,6 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           distance gate (MESITA-2451). {MAP_RELOAD_IDLE_SEC_MIN}–{MAP_RELOAD_IDLE_SEC_MAX} s.
         </p>
       </Group>
-      <Group title="Weights table (Chat only)">
-        <AreaWeightsTable modes={params.modes} disabled={off} onChange={setWeight} />
-        <p className="text-muted-foreground type-meta">
-          The Map and Home read none of it. Only Chat&apos;s Selected places
-          read it, the Nearby row, and no guest reaches Chat yet; the Popular
-          and Family rows have no reader since MESITA-2516. Each cell is an
-          exponent: score = Proximity<sup>a</sup> × Popularity<sup>b</sup> ×
-          Selected<sup>c</sup>; 0 turns a signal off, and within a row only
-          the ratios a : b : c change the order (4 · 1 · 1 ranks like 8 · 2 ·
-          2).
-        </p>
-      </Group>
     </PipelineBox>
   );
 }
@@ -518,73 +509,5 @@ export function DeepBox() {
       icon={<Sparkles className={ICON} />}
       explanation="Open-ended discovery for Chat (Don Memo). No guest reaches Chat yet."
     />
-  );
-}
-
-const MODE_ROWS: { mode: AreaMode; label: string; hint: string }[] = [
-  { mode: "nearby", label: "📍 Nearby", hint: "Chat's row" },
-  { mode: "popular", label: "⭐ Popular", hint: "no reader" },
-  { mode: "family", label: "Family", hint: "no reader" },
-];
-
-/** The weights table (MESITA-2428): rows were the guest's modes, columns the
- *  three signals (Selected since MESITA-2439), each cell an exponent. Since
- *  MESITA-2516 only Chat's Selected read uses it, its Nearby row. */
-function AreaWeightsTable({
-  modes,
-  disabled,
-  onChange,
-}: {
-  modes: Record<AreaMode, AreaWeights>;
-  disabled: boolean;
-  onChange: (mode: AreaMode, signal: keyof AreaWeights, v: number) => void;
-}) {
-  const cell = (mode: AreaMode, signal: keyof AreaWeights) => (
-    <td className="px-2 py-1.5">
-      <input
-        type="number"
-        inputMode="decimal"
-        aria-label={`${mode} ${signal} exponent`}
-        min={AREA_WEIGHT_MIN}
-        max={AREA_WEIGHT_MAX}
-        step={0.25}
-        value={modes[mode][signal]}
-        disabled={disabled}
-        onChange={(e) => {
-          const raw = Number(e.target.value);
-          if (Number.isNaN(raw)) return;
-          const n = Math.round(raw * 100) / 100;
-          onChange(mode, signal, Math.max(AREA_WEIGHT_MIN, Math.min(AREA_WEIGHT_MAX, n)));
-        }}
-        className="border-border bg-card focus:border-foreground h-9 w-24 rounded-lg border px-3 text-right text-sm tabular-nums outline-none disabled:opacity-50"
-      />
-    </td>
-  );
-  return (
-    <div className="border-border overflow-x-auto rounded-lg border" data-area-weights>
-      <table className="w-full text-sm">
-        <thead className="bg-muted/50 text-left">
-          <tr>
-            <th className="px-3 py-2 font-medium">Mode</th>
-            <th className="px-2 py-2 font-medium">Proximity (a)</th>
-            <th className="px-2 py-2 font-medium">Popularity (b)</th>
-            <th className="px-2 py-2 font-medium">Selected (c)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {MODE_ROWS.map((r) => (
-            <tr key={r.mode} className="border-border border-t">
-              <th className="px-3 py-1.5 text-left font-medium">
-                {r.label}
-                <span className="text-muted-foreground block text-xs font-normal">{r.hint}</span>
-              </th>
-              {cell(r.mode, "proximity")}
-              {cell(r.mode, "popularity")}
-              {cell(r.mode, "selected")}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
   );
 }

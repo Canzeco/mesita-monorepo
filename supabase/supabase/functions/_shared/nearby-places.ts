@@ -36,7 +36,7 @@ export function nearbyRadiusMetres(radiusKm?: number): number {
     : NEARBY_RADIUS_KM;
   return Math.min(50_000, Math.max(50, Math.round(km * 1000)));
 }
-const NEARBY_CACHE_MS = 15_000;
+export const NEARBY_CACHE_MS = 15_000;
 /** THE ONE field mask, Search and Feed alike: everything a Google-only card
  *  and its opening profile show (MESITA-2313), nothing else. `rating` and
  *  `userRatingCount` already bill the Enterprise SKU, so the other

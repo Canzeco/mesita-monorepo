@@ -269,9 +269,8 @@ export type AreaDiagnostics = {
   primaryFamily?: string | null;
   gates: {
     family: 0 | 1;
-    /** The rectangle gate: Search's visible map only (MESITA-2499); Home
-     *  always asks from a point, so its pool never carries one. */
-    territory?: 0 | 1 | null;
+    /** Territory is gone (MESITA-2500, MESITA-2603): Radius is the only
+     *  location gate. */
     radius: 0 | 1 | null;
     active: 1;
     ready: 1 | null;
@@ -285,7 +284,7 @@ export type AreaDiagnostics = {
   weights?: { proximity: number; popularity: number; selected?: number };
   base: number;
   final: number;
-  formula: "point" | "area" | "none";
+  formula: "point" | "none";
 };
 
 /** Where Places searches from: always a point (MESITA-2501) — the device, a
@@ -295,7 +294,7 @@ export type AreaOrigin = { lat: number; lng: number };
 /** The Feed's answer: the one ranked pool, or — from an Edge Function that
  *  predates MESITA-2379 — the old rails. */
 export type AreaPool =
-  | { shape: "unified"; kind: "point" | "area" | "none"; places: Place[] }
+  | { shape: "unified"; kind: "point" | "none"; places: Place[] }
   | { shape: "legacy"; rails: CatalogRail[] };
 
 function cleanPlace(place: Place): Place {
@@ -321,7 +320,7 @@ export async function apiListAreaPool(
 ): Promise<AreaPool> {
   const data = await invokeEF<{
     places?: Place[];
-    location?: { kind?: "point" | "area" | "none" };
+    location?: { kind?: "point" | "none" };
     rails?: CatalogRail[];
   }>(client, "consumer-web-list-catalog", {
     unified: true,

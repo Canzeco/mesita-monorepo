@@ -1,22 +1,24 @@
 // THE AREA PIPELINE (MESITA-2302, reshaped by MESITA-2327, one pool since
-// MESITA-2379). Places relative to a location — a point (the device, a
-// saved address, the map's centre) or an area (a city or a neighbourhood's
-// bounds). The Feed and the Map are VIEWS of Area; they share this one
-// retrieval and ranking, each with its own Google budget.
+// MESITA-2379). Places around a POINT — the Map's cross, the device or a
+// saved pin — or, with no point, Mesita's own places by Popularity alone.
+// Territory (searching a city's or a neighbourhood's rectangle) was retired
+// with saved areas (MESITA-2500, MESITA-2603). Home (the Feed) and the Map
+// are VIEWS of Area; they share this one retrieval and ranking, each with
+// its own Google budget.
 //
 //   Sources  Google Nearby Search · Mesita Places Search
-//   Gates    Family · Radius (a point) · Territory (an area) — and the
-//            operational ones the sources apply: active, ready (Mesita rows),
-//            the Google reviews floor (Google hits)
-//   Signals  Proximity (a point) · Popularity
-//   Factor   Selected: 1.0 Mesita Selected, 0.3 everything else
+//   Gates    Family · Radius — and the operational ones the sources apply:
+//            active, ready (Mesita rows), the Google reviews floor (Google
+//            hits)
+//   Signals  Proximity · Popularity · Selected (1.0 Mesita Selected, the
+//            operator's other value, default 0.3, for everything else)
 //   Score    area-score.ts
 //
 // `selectAreaPool` is the one entry point for the Feed and the Map:
 //   1. Google: 1–3 Nearby calls (`googleCallsForStop`), in parallel, each
 //      its own cell and each metered by the per-IP ledger; a refused or
 //      failed call adds nothing and the others still count. Hits are deduped
-//      by Google Place ID, then judged (inside the location, active, over the
+//      by Google Place ID, then judged (inside the radius, active, over the
 //      reviews floor). Every hit's Place ID is looked up against Mesita: a
 //      ready Mesita row that owns it goes out as that row (scored on the
 //      hit's numbers, card facts borrowed only where the row lacks them);
@@ -60,11 +62,11 @@ import {
   type AreaDiagnostics,
   type AreaLocation,
   type AreaSource,
+  insideBounds,
   knownFamilies,
   type LatLng,
   rankArea,
   SELECTED_FACTOR,
-  territoryGate,
 } from "./area-score.ts";
 import {
   POPULARITY_HALF_REVIEWS_DEFAULT,
@@ -208,8 +210,8 @@ function stubCandidate(stub: Record<string, unknown>, hit: NearbyHit): AreaCandi
 
 // ── Locations ───────────────────────────────────────────────────────────
 
-/** A bounds rectangle wider than this (diagonal, km) is not an area the
- *  guest can mean; the request falls back to its point. */
+/** A visible map wider than this (diagonal, km) has no screen radius: the
+ *  Map falls back to the operator's `map.radiusKm` around its cross. */
 export const AREA_BOUNDS_MAX_KM = 100;
 
 function latLngOrNull(raw: unknown): LatLng | null {
@@ -222,7 +224,7 @@ function latLngOrNull(raw: unknown): LatLng | null {
   return { lat, lng };
 }
 
-/** The client's `bounds`, or null when absent, inverted or too wide. */
+/** The Map's visible `bounds`, or null when absent, inverted or too wide. */
 export function parseAreaBounds(raw: unknown): AreaBounds | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;
@@ -235,14 +237,11 @@ export function parseAreaBounds(raw: unknown): AreaBounds | null {
   return { low, high };
 }
 
-/** Valid bounds make an area; else a centre makes a point; else none. */
+/** A centre makes a point inside the radius; no centre, no location. */
 export function resolveAreaLocation(
-  bounds: unknown,
   center: LatLng | null,
   radiusKm: number,
 ): AreaLocation {
-  const b = parseAreaBounds(bounds);
-  if (b) return { kind: "area", bounds: b };
   if (center) return { kind: "point", anchor: center, radiusKm };
   return { kind: "none" };
 }
@@ -266,7 +265,7 @@ export const SCREEN_RADIUS_KM_MAX = 50;
 export function screenRadiusKm(raw: unknown, cross?: LatLng | null): number | null {
   const b = parseAreaBounds(raw);
   if (!b) return null;
-  const inside = cross && territoryGate(cross, b) === 1;
+  const inside = cross && insideBounds(cross, b);
   const c = inside ? cross : mid(b.low, b.high);
   const r = Math.min(
     haversineKm(c.lat, c.lng, c.lat, b.low.lng),
@@ -296,15 +295,6 @@ function mid(a: LatLng, b: LatLng): LatLng {
   return { lat: (a.lat + b.lat) / 2, lng: (a.lng + b.lng) / 2 };
 }
 
-function circleAround(b: AreaBounds, rank: NearbyRank): NearbyCircle {
-  const half = haversineKm(b.low.lat, b.low.lng, b.high.lat, b.high.lng) / 2;
-  return {
-    center: mid(b.low, b.high),
-    radiusKm: Math.min(50, Math.max(0.05, half)),
-    rank,
-  };
-}
-
 /** Nearby's first Google call: the prominent places this close to the
  *  anchor (MESITA-2467). The nearest 20 were mostly corner spots under the
  *  operator's reviews floor (live 100): at La Purísima 19 of 20 dropped and
@@ -318,10 +308,8 @@ export const NEARBY_INNER_KM = 3;
  * anchor, then the nearest 20 in the radius, then the prominent 20 in the
  * radius (the Map's one call is the first). The Popular mode: the prominent
  * 20 in the radius, the nearest 20, the prominent in the inner half-radius
- * circle (MESITA-2425). An area: every call ranks
- * POPULARITY (no centre bias) — the circle around the bounds, then the
- * circles around its two halves, split across the longer side. The circles
- * are retrieval geometry only; nothing scores against their centres.
+ * circle (MESITA-2425). No point, no call. The circles are retrieval
+ * geometry only; nothing scores against their centres.
  */
 export function areaFanoutCircles(
   location: AreaLocation,
@@ -347,30 +335,15 @@ export function areaFanoutCircles(
     };
     return [around, nearest, prominent].slice(0, n);
   }
-  if (location.kind === "area") {
-    const b = location.bounds;
-    const m = mid(b.low, b.high);
-    const width = haversineKm(m.lat, b.low.lng, m.lat, b.high.lng);
-    const height = haversineKm(b.low.lat, m.lng, b.high.lat, m.lng);
-    const halves: AreaBounds[] = width >= height
-      ? [{ low: b.low, high: { lat: b.high.lat, lng: m.lng } }, { low: { lat: b.low.lat, lng: m.lng }, high: b.high }]
-      : [{ low: b.low, high: { lat: m.lat, lng: b.high.lng } }, { low: { lat: m.lat, lng: b.low.lng }, high: b.high }];
-    return [
-      circleAround(b, "POPULARITY"),
-      circleAround(halves[0], "POPULARITY"),
-      circleAround(halves[1], "POPULARITY"),
-    ].slice(0, n);
-  }
   return [];
 }
 
-/** True when the point sits inside the location (Radius or Territory). */
+/** True when the point sits inside the location's Radius (no point: true). */
 function insideLocation(location: AreaLocation, lat: number | null, lng: number | null): boolean {
   if (location.kind === "point") {
     const km = haversineKm(location.anchor.lat, location.anchor.lng, lat, lng);
     return Number.isFinite(km) && km <= location.radiusKm;
   }
-  if (location.kind === "area") return territoryGate({ lat, lng }, location.bounds) === 1;
   return true;
 }
 
@@ -660,8 +633,8 @@ export interface PoolBuilder extends SelectedPoolQuery<PoolBuilder> {
 /**
  * The Mesita pool in SQL, with the gates PUSHED DOWN so a dense area does
  * not fill the row cap with rows the ranking would drop: ready, active, the
- * requested families, and the location's box (the radius box around a point,
- * or the area's bounds). `selectedOnly` (Chat, the default) also keeps only
+ * requested families, and the radius box around the point (no point, no
+ * box). `selectedOnly` (Chat, the default) also keeps only
  * Mesita Selected rows (an Enrich run completed); the Feed and the Map pass
  * false, because Selected is their factor, not their gate.
  */
@@ -672,7 +645,6 @@ export function selectedPoolQuery<Q extends SelectedPoolQuery<Q>>(
     center: LatLng | null;
     radiusKm: number;
     families?: readonly string[];
-    bounds?: AreaBounds | null;
     selectedOnly?: boolean;
   },
 ): Q {
@@ -682,14 +654,7 @@ export function selectedPoolQuery<Q extends SelectedPoolQuery<Q>>(
   if (opts.families && opts.families.length > 0) {
     q = q.overlaps("family_keys", [...opts.families]);
   }
-  if (opts.bounds) {
-    q = applyBboxPredicate(q, {
-      south: opts.bounds.low.lat,
-      west: opts.bounds.low.lng,
-      north: opts.bounds.high.lat,
-      east: opts.bounds.high.lng,
-    });
-  } else if (opts.center) {
+  if (opts.center) {
     q = applyBboxPredicate(
       q,
       nearbyBbox(opts.center.lat, opts.center.lng, opts.radiusKm),

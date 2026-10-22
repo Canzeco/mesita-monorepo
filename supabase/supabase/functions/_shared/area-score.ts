@@ -1,25 +1,24 @@
 // The Area pipeline's gates and its three signals (MESITA-2327; one pool
 // since MESITA-2379; the weights table since MESITA-2428; Selected its own
-// signal since MESITA-2439).
+// signal since MESITA-2439; points only since Territory was retired,
+// MESITA-2500, MESITA-2603).
 //
 //   point location   final = Proximity^a × Popularity^b × Selected^c
-//   area location    final = territory × Popularity^b × Selected^c
 //   no location      final = Popularity^b × Selected^c
 //
-// (a, b, c) is one row of the operator's weights table, picked by the
-// guest's mode: Nearby, Popular or Family (`params.modes`). Geometric
-// weights, so within one mode only the ratios a : b : c change the order;
-// 0 turns a signal off (x^0 = 1). Selected used to ride INSIDE Popularity's
-// exponent (MESITA-2428), so Popular (b = 2) squared it and Nearby barely
-// felt it; Pato split it out (MESITA-2439): "Proximity. Popularity.
+// (a, b, c) is the caller's: the Map and Home pass (a, 1, 1), a =
+// `map.proximityWeight` (MESITA-2504, MESITA-2516); Chat reads the Nearby
+// row of the operator's weights table (`params.modes`). Geometric weights,
+// so only the ratios a : b : c change the order; 0 turns a signal off
+// (x^0 = 1). Selected used to ride INSIDE Popularity's exponent
+// (MESITA-2428); Pato split it out (MESITA-2439): "Proximity. Popularity.
 // Selected."
 //
 // Gates are binary eligibility (0 or 1) and stay separate from the
 // continuous signals, so diagnostics can say WHY a place is out (a gate)
 // apart from why it is low (a signal). A place a gate closes is dropped, not
-// ranked at 0. Gates: Family (every location), Radius (a point: inside the
-// operator's circle), Territory (an area: inside its bounds). `Territory` is
-// a backend word only; the guest never reads it.
+// ranked at 0. Gates: Family (every location) and Radius (a point: inside
+// the circle — the screen radius on the Map, `map.radiusKm` on Home).
 //
 // Selected is a signal, not a gate (Pato, 2026-10-18): 1 for a Mesita
 // Selected place (an Enrich run completed and the profile is ready —
@@ -49,14 +48,14 @@ export function selectedFactor(
 }
 
 export type LatLng = { lat: number; lng: number };
-/** A rectangle: Google's viewport for a city, a neighbourhood, a postcode. */
+/** A rectangle: the Map's visible box, read only to measure the screen
+ *  radius (MESITA-2511). Never a location: no view searches a rectangle. */
 export type AreaBounds = { low: LatLng; high: LatLng };
 
-/** Where the guest asked from: a point (Proximity), an area (Territory), or
- *  nowhere (Popularity alone). Never both for one location. */
+/** Where the guest asked from: a point (Proximity, inside the Radius), or
+ *  nowhere (Popularity alone). Saved areas died with Territory (MESITA-2500). */
 export type AreaLocation =
   | { kind: "point"; anchor: LatLng; radiusKm: number }
-  | { kind: "area"; bounds: AreaBounds }
   | { kind: "none" };
 
 /** What the guest asked of the Area pipeline. */
@@ -118,17 +117,16 @@ function inLng(lng: number, low: number, high: number): boolean {
   return low <= high ? lng >= low && lng <= high : lng >= low || lng <= high;
 }
 
-/** Territory gate: 1 iff the place sits inside the bounds. */
-export function territoryGate(
+/** True iff the point sits inside the rectangle, edges included: the screen
+ *  radius's "is the cross on screen" check. Geometry, not a gate. */
+export function insideBounds(
   c: { lat: number | null; lng: number | null },
   bounds: AreaBounds,
-): 0 | 1 {
-  if (typeof c.lat !== "number" || typeof c.lng !== "number") return 0;
-  if (!Number.isFinite(c.lat) || !Number.isFinite(c.lng)) return 0;
+): boolean {
+  if (typeof c.lat !== "number" || typeof c.lng !== "number") return false;
+  if (!Number.isFinite(c.lat) || !Number.isFinite(c.lng)) return false;
   return c.lat >= bounds.low.lat && c.lat <= bounds.high.lat &&
-      inLng(c.lng, bounds.low.lng, bounds.high.lng)
-    ? 1
-    : 0;
+    inLng(c.lng, bounds.low.lng, bounds.high.lng);
 }
 
 /** The guest's mode (MESITA-2428): Nearby and Popular are every family,
@@ -167,7 +165,6 @@ export type AreaDiagnostics = {
   familyKeys: string[];
   gates: {
     family: 0 | 1;
-    territory: 0 | 1 | null;
     radius: 0 | 1 | null;
     active: 1;
     ready: 1 | null;
@@ -179,11 +176,11 @@ export type AreaDiagnostics = {
   source: AreaSource;
   /** The mode's exponents (MESITA-2428; `selected` since MESITA-2439). */
   weights: AreaWeights;
-  /** Proximity^a × Popularity^b (× territory), before Selected. */
+  /** Proximity^a × Popularity^b, before Selected. */
   base: number;
   /** base × Selected^c. */
   final: number;
-  formula: "point" | "area" | "none";
+  formula: "point" | "none";
 };
 
 export type AreaScore = AreaDiagnostics & { distanceKm: number | null };
@@ -201,22 +198,16 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
   const radius = loc.kind === "point"
     ? (km !== null && km <= loc.radiusKm ? 1 : 0)
     : null;
-  const territory = loc.kind === "area" ? territoryGate(c, loc.bounds) : null;
   const prox = loc.kind === "point" ? proximity(c, loc.anchor, ctx.reachKm) : null;
   const w = ctx.weights;
   const popPart = weighted(popN, w.popularity);
-  const base = loc.kind === "point"
-    ? weighted(prox ?? 0, w.proximity) * popPart
-    : loc.kind === "area"
-    ? (territory ?? 0) * popPart
-    : popPart;
+  const base = loc.kind === "point" ? weighted(prox ?? 0, w.proximity) * popPart : popPart;
   const factor = selectedFactor(c.source, ctx.selectedOther);
-  const open = family === 1 && radius !== 0 && territory !== 0;
+  const open = family === 1 && radius !== 0;
   return {
     familyKeys: knownFamilies(c.familyKeys),
     gates: {
       family,
-      territory,
       radius,
       active: 1,
       ready: c.ready ?? null,
@@ -233,9 +224,9 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
   };
 }
 
-/** Every gate open: Family, and Radius or Territory when they apply. */
+/** Every gate open: Family, and Radius when there is a point. */
 export function areaGatesOpen(a: AreaDiagnostics): boolean {
-  return a.gates.family === 1 && a.gates.radius !== 0 && a.gates.territory !== 0;
+  return a.gates.family === 1 && a.gates.radius !== 0;
 }
 
 /**

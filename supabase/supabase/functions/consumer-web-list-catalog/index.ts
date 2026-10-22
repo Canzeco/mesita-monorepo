@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
   if (body.bounds !== undefined && body.bounds !== null) {
     console.log(JSON.stringify({ fn: "consumer-web-list-catalog", event: "bounds_ignored" }));
   }
-  const location = resolveAreaLocation(null, center, radiusKm);
+  const location = resolveAreaLocation(center, radiusKm);
   // The legacy rails cut every family from one pool; only the one-pool wire
   // may ask for a family.
   const families = unified ? readGuestFamilyKeys(body.familyKeys).filter((f) => f !== "undefined") : [];
