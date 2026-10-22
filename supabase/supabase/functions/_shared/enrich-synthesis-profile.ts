@@ -1,4 +1,4 @@
-import { ENRICH_DESCRIPTION_MAX } from "./enrich-config.ts";
+import { capPresentation } from "./presentation-cap.ts";
 
 export type ProfileResult = {
   zone?: string | null;
@@ -95,7 +95,8 @@ export function applyProfileToUpdate(
   // Canonical Presentation — English only (MESITA-939). Spanish TMS later.
   const description = asProfileText(parsed.description);
   if (description) {
-    update.description = formatDescriptionParagraphs(description).slice(0, ENRICH_DESCRIPTION_MAX);
+    // Cut at a sentence, never mid-word (MESITA-2641).
+    update.description = capPresentation(formatDescriptionParagraphs(description));
   }
   // products.menu is no longer synthesised — the website (its only source) is no
   // longer scraped. Existing menus on the place are left untouched.

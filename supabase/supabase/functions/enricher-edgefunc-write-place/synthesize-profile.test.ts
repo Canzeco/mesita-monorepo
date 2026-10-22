@@ -1,10 +1,17 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import { branchAnchor, capPresentation, mergeSynthesizedProfile, reviewQuotes } from "./synthesize-profile.ts";
 
-Deno.test("a presentation longer than 500 characters is cut there", () => {
+Deno.test("a presentation longer than 500 characters is cut at a sentence, never mid-word (MESITA-2641)", () => {
+  // No break at all: cut inside the ceiling and close with an ellipsis.
   const text = "a".repeat(800);
   assertEquals(capPresentation(text).length, 500);
+  assertEquals(capPresentation(text).endsWith("…"), true);
   assertEquals(capPresentation("  nightclub  "), "nightclub");
+  // The live case: a 500-character slice landed on "with family o".
+  const long = `${"A fine taco place. ".repeat(26)}Ideal for meals with family or friends.`;
+  const cut = capPresentation(long);
+  assertEquals(cut.length <= 500, true);
+  assertEquals(cut.endsWith("A fine taco place."), true);
 });
 
 Deno.test("review quotes are the text the presentation can read", () => {
