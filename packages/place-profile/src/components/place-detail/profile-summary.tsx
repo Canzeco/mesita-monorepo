@@ -43,9 +43,9 @@ export function ProfileSummary({
   // decision: Pato (live, 2026-08-03) — the stat trio is the three OUTSIDE
   // channels: Google · Instagram · Facebook, laid out like an Instagram
   // profile's posts · followers · following.
-  // decision: Pato (live, 2026-10-16) — a zero stays visible. No link says
-  // "Not connected". A link with no number says "No count". The icon stays
-  // either way; the cell is never blank.
+  // decision: Pato (live, 2026-10-16) — a zero stays visible. No number
+  // shows "-" (MESITA-2647: "don't say not connected and no count … just
+  // say -"). The icon stays either way; the cell is never blank.
   const stats = profileChannelStats(place);
   const priceLabel =
     formatPlacePriceChip({
@@ -77,6 +77,7 @@ export function ProfileSummary({
               label={stat.label}
               icon={channelStatIcon(stat)}
               mention={stat.mention}
+              spokenValue={stat.spoken}
               name={stat.name}
             />
           ))}

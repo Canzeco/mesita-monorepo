@@ -31,14 +31,16 @@ export function ProfilePhoto({ place }: { place: PlaceDetail }) {
 
 /** Instagram-style stat: the network's mark, then a filled number line.
  *  The channel name is read aloud, never printed (MESITA-2623).
- *  Zero is a number. "Not connected" and "No count" sit in the number line
- *  so the column is never a blank gap beside the photo. */
+ *  Zero is a number. No number shows "-" in the number line (MESITA-2647)
+ *  so the column is never a blank gap beside the photo; the screen reader
+ *  hears why ("not connected", "no count"). */
 export function ProfileStat({
   value,
   detail,
   label,
   icon,
   mention = false,
+  spokenValue,
   name,
 }: {
   value: string;
@@ -46,10 +48,13 @@ export function ProfileStat({
   label: string;
   icon?: React.ReactNode;
   mention?: boolean;
+  spokenValue?: string;
   name?: string;
 }) {
   const shown = detail ? `${value} ${detail}` : value;
-  const spoken = mention ? `${name ?? label}, ${value}` : `${shown} ${label}`;
+  const spoken = mention
+    ? `${name ?? label}, ${spokenValue ?? value}`
+    : `${shown} ${label}`;
   return (
     <div
       className="flex min-w-0 flex-col items-center justify-center px-0.5 text-center"
@@ -57,15 +62,15 @@ export function ProfileStat({
     >
       {icon ? <span className="mb-1.5 flex shrink-0">{icon}</span> : null}
       {/* One line, like Maps: "4.9 ★" bold, "(13.8K)" small and muted
-          beside it (MESITA-2315). "Not connected" is muted, not shouted. */}
+          beside it (MESITA-2315). "-" is muted, not shouted. */}
       <span
         className={
           // ONE LINE HEIGHT FOR EVERY COLUMN (MESITA-2623): 24px, so the
           // three labels below sit on one baseline whether the line holds
-          // "4.9 ★ (395)" or "Not connected".
+          // "4.9 ★ (395)" or "-".
           "flex h-6 items-center justify-center leading-none " +
           (mention
-            ? "text-muted-foreground text-xs font-medium whitespace-nowrap"
+            ? "text-muted-foreground text-base font-bold whitespace-nowrap"
             : "text-foreground text-base font-bold whitespace-nowrap tabular-nums")
         }
       >
