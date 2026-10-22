@@ -10,6 +10,10 @@ import { buildDirectionsUrl } from "../../lib/maps-link";
 import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS } from "../../lib/ui";
 
+// THE HEART LEADS THE ROW (Pato, MESITA-2623: "i think saved must be at
+// the left, like saved in instagram"): Favorite, then Reserve · Directions,
+// then Contact.
+//
 // ONE ROW (Pato, MESITA-2618: "i don't like the six buttons there. it looks
 // like shit"): Reserve, the one dark button, and Directions share the
 // width; Favorite and Contact are 44px grey icon squares beside them.
@@ -56,6 +60,23 @@ export function ProfileActions({
     <div className={cn("flex gap-2", className)}>
       <button
         type="button"
+        {...(onSave
+          ? { onClick: onSave, "aria-pressed": saved }
+          : inertButtonProps(false))}
+        aria-label={saved ? "Remove from favorites" : "Add to favorites"}
+        className={cn(
+          iconBtn,
+          saved &&
+            "shadow-danger bg-destructive text-white hover:bg-destructive",
+        )}
+      >
+        <Heart
+          className={cn("h-[18px] w-[18px]", saved && "fill-current")}
+          strokeWidth={2.25}
+        />
+      </button>
+      <button
+        type="button"
         {...(reserveLive
           ? { onClick: onReserve, "aria-haspopup": "dialog" as const }
           : inertButtonProps(false))}
@@ -76,23 +97,6 @@ export function ProfileActions({
       >
         <Navigation className={PLACE_BUTTON_ICON_CLASS} strokeWidth={2.25} />
         Directions
-      </button>
-      <button
-        type="button"
-        {...(onSave
-          ? { onClick: onSave, "aria-pressed": saved }
-          : inertButtonProps(false))}
-        aria-label={saved ? "Remove from favorites" : "Add to favorites"}
-        className={cn(
-          iconBtn,
-          saved &&
-            "shadow-danger bg-destructive text-white hover:bg-destructive",
-        )}
-      >
-        <Heart
-          className={cn("h-[18px] w-[18px]", saved && "fill-current")}
-          strokeWidth={2.25}
-        />
       </button>
       <button
         type="button"

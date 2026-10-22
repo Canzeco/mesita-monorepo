@@ -10,7 +10,7 @@ import { PlaceDetailBody } from "./PlaceDetailBody";
 import { PlaceDetailTitle } from "./PlaceDetailTitle";
 
 // Header, then the scrolling body. There is no pinned bar: the one action
-// row (Reserve · Directions, then Favorite · Contact as icons) sits in the
+// row (the heart, Reserve · Directions, then Contact) sits in the
 // profile summary (MESITA-2321, reshaped MESITA-2618/2619). The consumer
 // page and the admin phone both render this. Omitted callbacks stay visible
 // and do nothing.
