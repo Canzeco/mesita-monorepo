@@ -51,14 +51,17 @@ export function ProfileStat({
       className="flex min-w-0 flex-col items-center justify-center px-0.5 text-center"
       aria-label={spoken}
     >
-      {icon ? <span className="mb-1 flex shrink-0">{icon}</span> : null}
+      {icon ? <span className="mb-1.5 flex shrink-0">{icon}</span> : null}
       {/* One line, like Maps: "4.9 ★" bold, "(13.8K)" small and muted
           beside it (MESITA-2315). "Not connected" is muted, not shouted. */}
       <span
         className={
-          "flex min-h-7 items-center justify-center leading-tight " +
+          // ONE LINE HEIGHT FOR EVERY COLUMN (MESITA-2623): 24px, so the
+          // three labels below sit on one baseline whether the line holds
+          // "4.9 ★ (395)" or "Not connected".
+          "flex h-6 items-center justify-center leading-none " +
           (mention
-            ? "text-muted-foreground type-label text-balance font-medium"
+            ? "text-muted-foreground text-xs font-medium whitespace-nowrap"
             : "text-foreground text-base font-bold whitespace-nowrap tabular-nums")
         }
       >
@@ -69,17 +72,22 @@ export function ProfileStat({
           </span>
         ) : null}
       </span>
-      <span className="text-muted-foreground type-meta mt-0.5 max-w-full truncate leading-tight font-medium">
+      <span className="text-muted-foreground mt-1 max-w-full truncate text-xs leading-tight font-medium">
         {label}
       </span>
     </div>
   );
 }
 
-/** Tag chip: a borderless muted pill on the white summary (MESITA-2315). */
+/** Tag chip: a borderless muted pill on the white summary (MESITA-2315).
+ *  One fixed height, 32px, and 12px side padding (MESITA-2623), so a chip
+ *  with an icon and one without are the same pill. */
+export const PROFILE_CHIP_CLASS =
+  "bg-muted text-foreground inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs whitespace-nowrap tabular-nums";
+
 export function ProfileMetaChip({ children }: { children: React.ReactNode }) {
   return (
-    <span className="bg-muted text-foreground inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs whitespace-nowrap tabular-nums">
+    <span className={PROFILE_CHIP_CLASS}>
       {children}
     </span>
   );
