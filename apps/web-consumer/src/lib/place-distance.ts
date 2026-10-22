@@ -10,21 +10,49 @@
 // need it: Swipe measures the card's chip, Catalog measures the tile's
 // subtitle, and the shared distance filter rings the same center on both.
 
+import { useMemo } from "react";
 import { haversineKm } from "@/lib/utils";
-import type { Coords } from "@/lib/use-user-location";
+import { useUserLocation, type Coords } from "@/lib/use-user-location";
+import { useActiveLocation } from "@/lib/active-location";
 import type { Place } from "@/lib/api/places";
 
+/** Km from `from` to (lat, lng), rounded like every distance chip: one
+ *  decimal under 10 km, whole km above, never below 0.1. Null without
+ *  coordinates on either end. */
+function kmFrom(from: Coords | null, latRaw: unknown, lngRaw: unknown): number | null {
+  if (!from) return null;
+  const lat = toCoord(latRaw);
+  const lng = toCoord(lngRaw);
+  if (lat == null || lng == null) return null;
+  const km = haversineKm(from.lat, from.lng, lat, lng);
+  const rounded = km < 10 ? Math.round(km * 10) / 10 : Math.round(km);
+  return Math.max(rounded, 0.1);
+}
+
 export function withUserDistance(place: Place, coords: Coords | null): Place {
-  if (coords) {
-    const lat = toCoord(place.lat);
-    const lng = toCoord(place.lng);
-    if (lat != null && lng != null) {
-      const km = haversineKm(coords.lat, coords.lng, lat, lng);
-      const rounded = km < 10 ? Math.round(km * 10) / 10 : Math.round(km);
-      return { ...place, distance_km: Math.max(rounded, 0.1) };
-    }
-  }
+  const km = kmFrom(coords, place.lat, place.lng);
+  if (km != null) return { ...place, distance_km: km };
   return place.distance_km != null ? place : { ...place, distance_km: 0 };
+}
+
+/** THE PLACE SCREEN'S DISTANCE (MESITA-2644, Pato: "after zone, distance is
+ *  missing"). get-overview sends no distance, so the facts row's fact after
+ *  the zone never drew. Measured here, before the place reaches
+ *  `@mesita/place-profile`: from the device fix, else Home's chosen saved
+ *  location; with neither the place keeps what it had (a Google card's own
+ *  distance, or none). No city stand-in (MESITA-2626). */
+export function useMeasuredPlace<T extends { lat: number | null; lng: number | null; distance_km: number }>(
+  place: T,
+): T {
+  const fix = useUserLocation();
+  const active = useActiveLocation();
+  const fromLat = fix?.lat ?? active?.lat ?? null;
+  const fromLng = fix ? fix.lng : (active?.lng ?? null);
+  return useMemo(() => {
+    const from = fromLat != null && fromLng != null ? { lat: fromLat, lng: fromLng } : null;
+    const km = kmFrom(from, place.lat, place.lng);
+    return km != null ? { ...place, distance_km: km } : place;
+  }, [place, fromLat, fromLng]);
 }
 
 function toCoord(v: unknown): number | null {
