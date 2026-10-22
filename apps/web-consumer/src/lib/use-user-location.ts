@@ -1,15 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 
 export type Coords = { lat: number; lng: number };
 
 /** Why the last ask brought no fix (MESITA-2437): the browser blocked the
  *  site (1), the device could not find itself (2, e.g. a Mac whose Location
- *  Services are off for the browser), it took too long (3), or there is no
- *  geolocation at all. A dropped error read as a dead button. */
+ *  Services are off for the browser), it took too long (3), there is no
+ *  geolocation at all, or the browser is still waiting on its "allow
+ *  location?" prompt (MESITA-2616). A dropped error read as a dead button. */
 export type LocationError =
-  "denied" | "unavailable" | "timeout" | "unsupported";
+  "denied" | "unavailable" | "timeout" | "unsupported" | "pending";
+
+/** NEVER HANG ON THE PROMPT (MESITA-2616). While the browser's permission
+ *  prompt waits for the guest, `getCurrentPosition` does not answer at all
+ *  (its timeout starts only after permission), and Home waited for that
+ *  answer with a skeleton forever. After this long with no answer the ask
+ *  counts as answered ("pending"); the real answer still wins when it lands. */
+const STALL_MS = 5000;
 
 /** GeolocationPositionError.code → our reason. */
 export function locationErrorFromCode(code: number): LocationError {
@@ -85,7 +93,22 @@ function watchPermission() {
   }
 }
 
-function requestUserLocation(): Promise<Coords | null> {
+/** The store as the hooks read it. */
+export function locationSnapshot(): {
+  coords: Coords | null;
+  locating: boolean;
+  settled: boolean;
+  error: LocationError | null;
+} {
+  return {
+    coords: coordsState,
+    locating: locatingState,
+    settled: asked && !locatingState,
+    error: errorState,
+  };
+}
+
+export function requestUserLocation(): Promise<Coords | null> {
   asked = true;
   if (typeof navigator === "undefined" || !navigator.geolocation) {
     errorState = "unsupported";
@@ -98,8 +121,15 @@ function requestUserLocation(): Promise<Coords | null> {
   locatingState = true;
   errorState = null;
   emit();
+  const stall = setTimeout(() => {
+    if (!locatingState) return;
+    locatingState = false;
+    errorState = "pending";
+    emit();
+  }, STALL_MS);
   inflight = (async () => {
     let answer = await askOnce(GEO_OPTS);
+    clearTimeout(stall);
     // The device could not find itself or took too long: once more, longer,
     // taking any cached fix (MESITA-2615). A refusal is final; no retry.
     if ("error" in answer && (answer.error === "unavailable" || answer.error === "timeout")) {
@@ -136,10 +166,16 @@ function subscribe(listener: () => void): () => void {
   };
 }
 
-export function useUserLocation(): Coords | null {
-  const [coords, setCoords] = useState<Coords | null>(coordsState);
+// EVERY READ THROUGH useSyncExternalStore (MESITA-2616). The hooks used to
+// copy the store into useState at render and subscribe in an effect; the
+// first ask (started by useUserLocation's own effect) emitted before the
+// sibling hooks subscribed, so they kept "not asked": the box read "Use my
+// location" while the browser was in fact locating.
+const serverNull = () => null;
+const serverFalse = () => false;
 
-  useEffect(() => subscribe(() => setCoords(coordsState)), []);
+export function useUserLocation(): Coords | null {
+  const coords = useSyncExternalStore(subscribe, () => locationSnapshot().coords, serverNull);
 
   useEffect(() => {
     if (asked) return;
@@ -150,25 +186,19 @@ export function useUserLocation(): Coords | null {
 }
 
 export function useUserLocationLocating(): boolean {
-  const [locating, setLocating] = useState(locatingState);
-  useEffect(() => subscribe(() => setLocating(locatingState)), []);
-  return locating;
+  return useSyncExternalStore(subscribe, () => locationSnapshot().locating, serverFalse);
 }
 
-/** True once the first ask has answered (a fix, a refusal or no
- *  geolocation at all): before that, no fix means "not yet", not "none". */
+/** True once the first ask has answered (a fix, a refusal, no geolocation
+ *  at all, or no answer within STALL_MS): before that, no fix means "not
+ *  yet", not "none". */
 export function useUserLocationSettled(): boolean {
-  const read = () => asked && !locatingState;
-  const [settled, setSettled] = useState(read);
-  useEffect(() => subscribe(() => setSettled(read())), []);
-  return settled;
+  return useSyncExternalStore(subscribe, () => locationSnapshot().settled, serverFalse);
 }
 
 /** The last ask's failure, or null (none yet, or a fix). */
 export function useUserLocationError(): LocationError | null {
-  const [error, setError] = useState(errorState);
-  useEffect(() => subscribe(() => setError(errorState)), []);
-  return error;
+  return useSyncExternalStore(subscribe, () => locationSnapshot().error, serverNull);
 }
 
 export function useLocateUser(): () => void {
