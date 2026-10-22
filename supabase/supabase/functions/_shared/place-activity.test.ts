@@ -166,6 +166,7 @@ Deno.test("toPerson carries no account id", () => {
     "guestClass",
     "handle",
     "handleLocked",
+    "instagram",
     "isYou",
     "name",
     "plan",
@@ -187,22 +188,35 @@ Deno.test("a person carries Class and Plan, plain unless set", () => {
 });
 
 // MESITA-2580: a member without Instagram is in the feed, anonymously.
-Deno.test("an anonymous member is 'A member' and nothing else, even if a field leaked", () => {
+// MESITA-2608: the face (photo, Class, Plan, the Instagram flag) still shows
+// on an anonymous row; the name, handle and followers never do, even if SQL
+// leaked them.
+Deno.test("an anonymous member is 'A member' with a face but no name, even if a field leaked", () => {
   const anon = toPerson(
-    row({ anonymous: true, first_name: "Leak", avatar_url: "https://x/y.jpg", instagram_handle: "leak", instagram_followers_count: 9000, guest_class: "vip" }),
+    row({ anonymous: true, first_name: "Leak", avatar_url: "https://x/y.jpg", instagram_handle: "leak", instagram_followers_count: 9000, guest_class: "vip", plan: "premium", instagram: true }),
     "z",
   );
   assertEquals(anon, {
     name: "A member",
-    avatarUrl: null,
+    avatarUrl: "https://x/y.jpg",
     handle: null,
     handleLocked: false,
     followers: 0,
     isYou: false,
-    guestClass: "regular",
-    plan: "free",
+    guestClass: "vip",
+    plan: "premium",
+    instagram: true,
     anonymous: true,
   });
+  // A member who chose "A member": SQL blanked the face too, and nothing
+  // here invents one.
+  const chosen = toPerson(row({ anonymous: true, avatar_url: null, guest_class: null, plan: null, instagram: null }), "z");
+  assertEquals(chosen.avatarUrl, null);
+  assertEquals(chosen.guestClass, "regular");
+  assertEquals(chosen.instagram, false);
+  // A named row without the flag (place_activity_people) reads it off the handle.
+  assertEquals(toPerson(row({}), "z").instagram, true);
+  assertEquals(toPerson(row({ instagram_handle: null }), "z").instagram, false);
   // The guest's own anonymous row still reads as them.
   assertEquals(toPerson(row({ anonymous: true, consumer_id: "z" }), "z").isYou, true);
   assertEquals(toPerson(row({}), "z").anonymous, false);

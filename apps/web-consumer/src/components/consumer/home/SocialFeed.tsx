@@ -15,9 +15,17 @@
 // "don't do that of today and yesterday … Just the fucking plain list with
 // time notation. Keep it simple."; MESITA-2525 had grouped by day).
 // TIDY NOTIFICATIONS (MESITA-2525, Pato: "make this more UI friendly … your
-// call"). The face is the picture alone: no verb badge (Pato, MESITA-2604:
-// "remove the icon expressing the event type … it looks as a profile
-// characteristic"); the sentence says the verb.
+// call"). The face wears no verb badge (Pato, MESITA-2604: "remove the icon
+// expressing the event type … it looks as a profile characteristic"); the
+// sentence says the verb. THE FACE IS THE MEMBER'S PICTURE ON EVERY ROW, a
+// view or "A member" included, with two marks in the shape that badge had
+// (Pato, MESITA-2608: "show the profile picture but you must also show if
+// instagram or something … if it is vip, add small bubble at right of
+// profile picture … Remember the bubble you had for the event type. well do
+// the same for the subtype of user"): Instagram bottom-left when verified,
+// a VIP crown bottom-right. The server sends the photo and the marks for
+// every member who did not choose "A member"; the NAME still follows
+// MESITA-2580 and MESITA-2594 below.
 // One line: the name (bold), the verb, the place (bold), no period; under
 // it, muted, the Instagram glyph and the member's Instagram as social proof —
 // the full @handle (MESITA-2590) and an approximate follower count — then
@@ -76,12 +84,9 @@
 
 import { useEffect, useRef, useState, type SVGProps } from "react";
 import Link from "next/link";
-import {
-  ArrowUp,
-  RotateCw,
-  UserRound,
-  Users,
-} from "lucide-react";
+import { ArrowUp, Crown, RotateCw, UserRound, Users } from "lucide-react";
+import { Instagram } from "@/components/shared/instagram-icon";
+import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 import {
   apiLikedPlaces,
   apiListActivityFeed,
@@ -180,28 +185,71 @@ function InstagramGlyph(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-/** The member's Instagram picture, or their initial; never a badge
- *  (MESITA-2604). */
+/** A word in the sentence that names a door (MESITA-2608): bold and
+ *  underlined, the underline thin and a step down so it reads as a link, not
+ *  a strike. */
+const LINK_WORD_CLASS =
+  "font-semibold underline decoration-1 underline-offset-2 decoration-foreground/40";
+
+/** One mark on the face (MESITA-2608): the 20px ringed bubble MESITA-2525's
+ *  verb badge was, now saying what KIND of member this is. */
+const MARK_CLASS =
+  "ring-card absolute -bottom-1 flex h-5 w-5 items-center justify-center rounded-full ring-2";
+
+/** The member's picture when the server has one — on every row since
+ *  MESITA-2608 — else the plain icon for an anonymous row, else their
+ *  initial. No verb badge (MESITA-2604). Two marks: Instagram bottom-left
+ *  when verified, a VIP crown bottom-right (never for Regular, never Plan). */
 function Face({ person }: { person: ActivityPerson }) {
+  const vip = person.guestClass === "vip";
   return (
     <span className="relative block h-11 w-11 shrink-0">
-      {person.anonymous ? (
-        <span
-          className="bg-muted text-muted-foreground flex h-11 w-11 items-center justify-center rounded-full"
-          data-social-anonymous
-        >
-          <UserRound className="h-5 w-5" strokeWidth={2} aria-hidden />
-        </span>
-      ) : person.avatarUrl ? (
+      {person.avatarUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={person.avatarUrl}
           alt=""
           className="h-11 w-11 rounded-full object-cover"
         />
+      ) : person.anonymous ? (
+        <span
+          className="bg-muted text-muted-foreground flex h-11 w-11 items-center justify-center rounded-full"
+          data-social-anonymous
+        >
+          <UserRound className="h-5 w-5" strokeWidth={2} aria-hidden />
+        </span>
       ) : (
         <span className="bg-muted text-foreground flex h-11 w-11 items-center justify-center rounded-full text-sm font-semibold">
           {firstInitial(person.name.replace(/^@/, ""))}
+        </span>
+      )}
+      {person.instagram && (
+        <span
+          aria-hidden
+          className={cn(
+            MARK_CLASS,
+            "-left-1 text-white",
+            INSTAGRAM_ICON_GRADIENT_CLASS,
+          )}
+          data-social-mark="instagram"
+        >
+          <Instagram className="h-[11px] w-[11px]" strokeWidth={2.5} />
+        </span>
+      )}
+      {vip && (
+        <span
+          aria-hidden
+          className={cn(MARK_CLASS, "bg-foreground text-background -right-1")}
+          data-social-mark="vip"
+        >
+          <Crown className="h-[11px] w-[11px]" strokeWidth={2.75} />
+        </span>
+      )}
+      {(person.instagram || vip) && (
+        <span className="sr-only">
+          {[person.instagram ? "On Instagram" : null, vip ? "VIP" : null]
+            .filter(Boolean)
+            .join(", ")}
         </span>
       )}
     </span>
@@ -288,9 +336,14 @@ function FeedRow({
     <>
       <Face person={item.person} />
       <span className="min-w-0 flex-1">
+        {/* THE NAME AND THE PLACE ARE UNDERLINED (Pato, MESITA-2608:
+            "highlight both username and placename, like underline to
+            express that its a link"): the two bold words are the two
+            things a row opens, the person and the place, so they read as
+            links. The verb between them stays plain. */}
         <span className="text-foreground line-clamp-2 text-sm leading-snug">
-          <span className="font-semibold">{who}</span> {VERB[item.kind]}{" "}
-          <span className="font-semibold">{item.place.name}</span>
+          <span className={LINK_WORD_CLASS}>{who}</span> {VERB[item.kind]}{" "}
+          <span className={LINK_WORD_CLASS}>{item.place.name}</span>
         </span>
         <span
           className="text-muted-foreground mt-0.5 flex min-w-0 items-center gap-1 text-xs"
