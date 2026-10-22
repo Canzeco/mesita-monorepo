@@ -50,6 +50,7 @@ import {
   useLocateUser,
   useOnUserFix,
   useUserLocation,
+  useUserLocationApprox,
   useUserLocationError,
   useUserLocationLocating,
   useUserLocationSettled,
@@ -163,6 +164,8 @@ export function LocationPicker() {
   const locate = useLocateUser();
   const settled = useUserLocationSettled();
   const locError = useUserLocationError();
+  // The fix is the network's approximate point (MESITA-2625).
+  const approx = useUserLocationApprox();
   // The guest tapped "Use my location" with no fix: the sheet stays open
   // until the answer lands (MESITA-2615), then closes on a fix.
   const [wantFix, setWantFix] = useState(false);
@@ -417,6 +420,7 @@ export function LocationPicker() {
             {row({
               key: "here",
               label: locationLabel(null, coords !== null, locating, hereName),
+              detail: approx ? "Approximate, from your network" : null,
               icon: locatingHere ? (
                 <Loader2 className={cn(ICON, "animate-spin")} aria-hidden />
               ) : (
