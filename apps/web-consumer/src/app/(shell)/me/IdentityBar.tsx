@@ -93,12 +93,12 @@ export function IdentityBar({
         {loading ? (
           <>
             {/* The skeleton mirrors the DESTINATION (Docs › Design §D): the
-                centred 67px ringed photo, then four equal 40px boxes
+                centred 67px ringed photo, then four equal 36px boxes
                 (MESITA-2596). */}
             <div className="flex w-full flex-col items-center gap-2">
               <div className="bg-muted h-[67px] w-[67px] animate-pulse rounded-full" />
               {[0, 1, 2, 3].map((i) => (
-                <div key={i} className="bg-muted h-10 w-full max-w-72 animate-pulse rounded-full" />
+                <div key={i} className="bg-muted h-9 w-full max-w-72 animate-pulse rounded-full" />
               ))}
             </div>
           </>

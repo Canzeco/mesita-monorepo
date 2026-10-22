@@ -48,9 +48,9 @@ describe("Class and Plan on the identity card", () => {
     expect(name).toBeLessThan(ig);
     expect(ig).toBeLessThan(cls);
     expect(cls).toBeLessThan(plan);
-    // One column of one width; every box fills it, 40px tall.
+    // One column of one width; every box fills it, 36px tall (MESITA-2599).
     expect(html).toContain("flex w-full max-w-72 min-w-0 flex-col items-stretch gap-2");
-    const boxes = html.match(/relative flex h-10 w-full min-w-0/g) ?? [];
+    const boxes = html.match(/relative flex h-9 w-full min-w-0/g) ?? [];
     expect(boxes).toHaveLength(4);
     expect(html).toContain('aria-label="Class: VIP"');
     expect(html).toContain('aria-label="Plan: Premium"');
