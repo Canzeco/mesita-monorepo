@@ -55,16 +55,18 @@ describe("profileChannelStats", () => {
     expect(stats[0]?.detail).toBe("(411)");
     expect(stats[0]?.label).toBe("Google");
     expect(stats[1]).toMatchObject({
-      value: "Not connected",
+      value: "-",
+      spoken: "not connected",
       label: "Instagram",
       mention: true,
     });
     expect(stats[2]).toMatchObject({
-      value: "Not connected",
+      value: "-",
+      spoken: "not connected",
       label: "Facebook",
       mention: true,
     });
-    expect(stats.every((s) => s.value !== "" && s.value !== "—")).toBe(true);
+    expect(stats.every((s) => s.value !== "")).toBe(true);
   });
 
   it("shows a zero instead of hiding it", () => {
@@ -80,7 +82,7 @@ describe("profileChannelStats", () => {
     expect(stats[2]).toMatchObject({ value: "0", label: "Facebook" });
   });
 
-  it("says no count when the link is saved and the number is not", () => {
+  it("shows - (spoken: no count) when the link is saved and the number is not", () => {
     const stats = profileChannelStats(
       basePlace({
         channels: {
@@ -89,7 +91,7 @@ describe("profileChannelStats", () => {
         },
       }),
     );
-    expect(stats[1]).toMatchObject({ value: "No count", label: "Instagram" });
-    expect(stats[2]).toMatchObject({ value: "No count", label: "Facebook" });
+    expect(stats[1]).toMatchObject({ value: "-", spoken: "no count", label: "Instagram" });
+    expect(stats[2]).toMatchObject({ value: "-", spoken: "no count", label: "Facebook" });
   });
 });

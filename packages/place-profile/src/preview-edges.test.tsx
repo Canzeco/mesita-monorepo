@@ -115,8 +115,8 @@ describe("member preview edges", () => {
     );
     expect(html).toContain("3.8");
     expect(html).toContain("3.8 ★ (484)");
-    expect(html).toContain("Instagram, Not connected");
-    expect(html).toContain("Facebook, Not connected");
+    expect(html).toContain("Instagram, not connected");
+    expect(html).toContain("Facebook, not connected");
     const googleAt = html.indexOf("3.8 ★ (484)");
     const instagramAt = html.indexOf(">Instagram<");
     const facebookAt = html.indexOf(">Facebook<");
@@ -126,7 +126,8 @@ describe("member preview edges", () => {
     expect(html).toContain("from-purple-600");
     expect(html).toContain("bg-[#1877F2]");
     expect(html).toContain("bg-[#EA4335]");
-    expect(html).toContain(">Not connected<");
+    expect(html).toContain(">-<");
+    expect(html).not.toContain(">Not connected<");
     expect(html).toContain(">Instagram<");
     expect(html).toContain(">Facebook<");
     expect(html).not.toContain(">—<");

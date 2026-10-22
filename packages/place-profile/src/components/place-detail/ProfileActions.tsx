@@ -41,8 +41,11 @@ import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS } from "../../lib/ui";
 // visible and inert, so the rows never change shape; a place that turned
 // bookings off has an inert Reserve.
 
+// THE TILES ARE ONE STEP DARKER THAN --fill (Pato, MESITA-2647: "make the
+// four gray buttons a bit darker, just a bit, minimum"): the border grey at
+// 60% over the white band ≈ #e9e9e9 (bg-muted is #efefef); hover 80%.
 const tileBtn =
-  "bg-muted text-foreground hover:bg-muted/70 flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1 text-xs font-semibold transition active:scale-[0.99]";
+  "bg-border/60 text-foreground hover:bg-border/80 flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1 text-xs font-semibold transition active:scale-[0.99]";
 
 function ActionTile({
   Icon,

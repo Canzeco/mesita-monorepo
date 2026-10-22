@@ -4,8 +4,10 @@ import { formatCompactCount, formatRating } from "../../lib/format";
 export type ChannelStat = {
   key: "google" | "instagram" | "facebook";
   name: "Google" | "Instagram" | "Facebook";
-  /** Big number, or "Not connected" / "No count" when there is no number. */
+  /** Big number, or "-" when there is no number (MESITA-2647). */
   value: string;
+  /** Read aloud instead of "-": "not connected", "no count", "no rating". */
+  spoken?: string;
   /** Smaller, muted text beside the value on the same line: "(13.8K)". */
   detail?: string;
   label: string;
@@ -13,8 +15,12 @@ export type ChannelStat = {
   mention?: boolean;
 };
 
-const NOT_CONNECTED = "Not connected";
-const NO_COUNT = "No count";
+// ONE MARK FOR "NO NUMBER" (Pato, MESITA-2647: "don't say not connected
+// and no count, use same word or no word, just say -"). The cell shows "-";
+// a screen reader still hears why.
+const NONE = "-";
+const NOT_CONNECTED = "not connected";
+const NO_COUNT = "no count";
 
 function reachStat(
   key: "instagram" | "facebook",
@@ -34,7 +40,8 @@ function reachStat(
   return {
     key,
     name,
-    value: linked ? NO_COUNT : NOT_CONNECTED,
+    value: NONE,
+    spoken: linked ? NO_COUNT : NOT_CONNECTED,
     label: name,
     mention: true,
   };
@@ -55,7 +62,8 @@ function googleStat(
   return {
     key: "google",
     name: "Google",
-    value: linked ? "No rating" : NOT_CONNECTED,
+    value: NONE,
+    spoken: linked ? "no rating" : NOT_CONNECTED,
     label: "Google",
     mention: true,
   };
@@ -64,8 +72,9 @@ function googleStat(
 /**
  * Profile header — always Google · Instagram · Facebook, the same three
  * slots as an Instagram profile's posts · followers · following.
- * A zero stays "0". No link says "Not connected". A link with no number
- * says "No count". The icon is drawn either way.
+ * A zero stays "0". No number at all shows "-" (MESITA-2647); the
+ * screen reader hears "not connected" or "no count". The icon is drawn
+ * either way.
  *
  * Google reads the way Maps does, stars then the review count on one line:
  * "4.9 ★ (13.8K)" (Pato, MESITA-2312). The label under it is just "Google".
