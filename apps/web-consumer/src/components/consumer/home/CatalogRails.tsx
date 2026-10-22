@@ -47,6 +47,8 @@ import {
   type ReactNode,
 } from "react";
 import { Compass } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { MONTERREY_CENTER } from "@/lib/map-defaults";
 import {
   apiListAreaPool,
@@ -79,6 +81,7 @@ import {
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { toast } from "@/lib/toast";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { barePath } from "@/lib/surface";
 import { EmptyState } from "@/components/shared";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { CatalogTile } from "./CatalogTile";
@@ -114,12 +117,22 @@ export const TOP_LABEL = "Top";
 export function isEveryFamily(chip: string): boolean {
   return chip === ALL_CHIP;
 }
-/** Home's two tabs (Pato, MESITA-2517: "another header (Places. Social)"). */
+/** Home's two tabs (Pato, MESITA-2517: "another header (Places. Social)"),
+ *  each its own address (Pato, MESITA-2597: "we should have home/places and
+ *  home/social"). */
 export const HOME_TABS = [
-  { key: "places", label: "Places" },
-  { key: "social", label: "Social" },
+  { key: "places", label: "Places", href: CONSUMER_ROUTES.home },
+  { key: "social", label: "Social", href: CONSUMER_ROUTES.homeSocial },
 ] as const;
 export type HomeTab = (typeof HOME_TABS)[number]["key"];
+
+/** The tab a Home address shows: Social at /home/social, Places anywhere
+ *  else under Home. */
+export function homeTabOf(pathname: string): HomeTab {
+  return barePath(pathname) === CONSUMER_ROUTES.homeSocial
+    ? "social"
+    : "places";
+}
 
 /** The Places tab's left column, top to bottom (MESITA-2519): Top first in one scrolling list (MESITA-2534),
  *  then every guest family. The guest's hearted places are not a row: they
@@ -215,7 +228,9 @@ export function CatalogRails() {
   // One ranking for every chip, the Map's (MESITA-2516): the question is
   // the place and the family. Saved and the Social tab read no pool, so they
   // keep the last pool chip's family and never spend a request.
-  const [tab, setTab] = useState<HomeTab>("places");
+  // The tab is the address (MESITA-2597); this component lives in Home's
+  // layout, so the chip, the pool and the scroll survive a tab switch.
+  const tab = homeTabOf(usePathname() ?? CONSUMER_ROUTES.home);
   const [chip, setChip] = useState<string>(ALL_CHIP);
   // The family the pool was asked for (MESITA-2438): a family row's own,
   // none for All.
@@ -352,8 +367,7 @@ export function CatalogRails() {
   // The Social tab wears a dot while a newer event waits (MESITA-2536).
   const socialHasNew = useSocialHasNew(tab !== "social");
   const tabs = (
-    <div
-      role="tablist"
+    <nav
       aria-label="Home"
       className="border-border bg-card flex shrink-0 border-b"
       data-home-tabs
@@ -361,18 +375,18 @@ export function CatalogRails() {
       {HOME_TABS.map((t) => {
         const on = tab === t.key;
         return (
-          <button
+          <Link
             key={t.key}
-            type="button"
-            role="tab"
-            aria-selected={on}
+            href={t.href}
+            replace
+            scroll={false}
+            aria-current={on ? "page" : undefined}
             onClick={() => {
               if (!on)
                 trackEvent(supabase, "home_mode_view", { mode: t.label });
-              setTab(t.key);
             }}
             className={cn(
-              "relative flex-1 py-3 text-sm transition",
+              "relative flex-1 py-3 text-center text-sm transition",
               on ? "text-foreground font-semibold" : "text-muted-foreground",
             )}
           >
@@ -395,10 +409,10 @@ export function CatalogRails() {
                 </>
               ) : null}
             </span>
-          </button>
+          </Link>
         );
       })}
-    </div>
+    </nav>
   );
 
   // THE PLACES TAB'S LEFT COLUMN (Pato, MESITA-2519: "keep the later view of

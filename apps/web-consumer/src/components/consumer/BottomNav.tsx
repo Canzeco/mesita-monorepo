@@ -63,11 +63,12 @@ type Item = {
 
 const ITEMS: Item[] = [
   {
-    // Home is one page; Social and Favorites are rows of it (MESITA-2405).
+    // Home lands on Places and lights on both its tabs, /home/places and
+    // /home/social (MESITA-2597).
     href: CONSUMER_ROUTES.home,
     Icon: MesitaMark,
     label: "Home",
-    matchPrefixes: [CONSUMER_ROUTES.home, CONSUMER_ROUTE_PREFIX.place],
+    matchPrefixes: [CONSUMER_ROUTE_PREFIX.home, CONSUMER_ROUTE_PREFIX.place],
   },
   {
     href: CONSUMER_ROUTES.search,

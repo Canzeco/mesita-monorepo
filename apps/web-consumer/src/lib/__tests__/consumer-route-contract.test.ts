@@ -78,6 +78,7 @@ function liveAddresses(): Set<string> {
     CONSUMER_ROUTES.search,
     CONSUMER_ROUTES.searchChat,
     CONSUMER_ROUTES.home,
+    CONSUMER_ROUTES.homeSocial,
     CONSUMER_ROUTES.pay,
     CONSUMER_ROUTES.share,
     CONSUMER_ROUTES.me,
@@ -97,9 +98,10 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       search: "/search",
       // Ask AI: a sheet over Search when opened from it (MESITA-2475).
       searchChat: "/search/chat",
-      // HOME IS ONE PAGE AT /home (Pato, MESITA-2475). /discover and
-      // /discover/places are in the legacy block now.
-      home: "/home",
+      // HOME IS TWO TABS, EACH AN ADDRESS (Pato, MESITA-2597). Bare /home,
+      // /discover and /discover/places are in the legacy block now.
+      home: "/home/places",
+      homeSocial: "/home/social",
       place: { prefix: "/place/" },
       reservation: { prefix: "/reservation/" },
       // PAY IS ONE PAGE, the Soon state (MESITA-2087). No children, no
@@ -128,6 +130,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       legacy: {
         profile: "/profile",
         invite: "/invite",
+        homeRoot: "/home",
         homeAi: "/home/ai",
         discover: "/discover",
         discoverPlaces: "/discover/places",
@@ -191,7 +194,9 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // NO `discover` key (MESITA-1609) — Home and Search split that
       // namespace and light DIFFERENT bottom tabs, so BottomNav matches each
       // discoverTabs segment individually instead. NO `search` key: an exact
-      // top-level segment with no siblings.
+      // top-level segment with no siblings. Home's two tabs light it
+      // (MESITA-2597).
+      home: "/home/",
       place: "/place",
       pay: "/pay",
       // NO `saved` key: Saved is a Me page (MESITA-2561), lit by Me's prefix.
@@ -315,6 +320,8 @@ describe("isModalContractPath (intercepted detail overlays)", () => {
     "/",
     "/onboard",
     "/home",
+    "/home/places",
+    "/home/social",
     "/discover/places",
     "/discover/social",
     "/search",
@@ -357,10 +364,14 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
     const redirects = LEGACY_REDIRECTS;
     expect(redirects).toEqual([
       // Explore era (pre-Home). Straight to the Discover default.
-      { source: "/explore", destination: "/home", permanent: true },
-      { source: "/explore/swipe", destination: "/home", permanent: true },
-      { source: "/explore/map", destination: "/home", permanent: true },
-      { source: "/explore/add", destination: "/home", permanent: true },
+      { source: "/explore", destination: "/home/places", permanent: true },
+      {
+        source: "/explore/swipe",
+        destination: "/home/places",
+        permanent: true,
+      },
+      { source: "/explore/map", destination: "/home/places", permanent: true },
+      { source: "/explore/add", destination: "/home/places", permanent: true },
       {
         source: "/explore/place/:id",
         destination: "/place/:id",
@@ -393,7 +404,7 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       // need an entry or they 404.
       { source: "/subscribe", destination: "/me", permanent: true },
       { source: "/subscribe/:plan", destination: "/me", permanent: true },
-      { source: "/get-the-app", destination: "/home", permanent: true },
+      { source: "/get-the-app", destination: "/home/places", permanent: true },
       { source: "/me/class/invite", destination: "/me", permanent: true },
       { source: "/me/diamond/invite", destination: "/me", permanent: true },
       { source: "/me/diamond", destination: "/me", permanent: true },
@@ -406,38 +417,75 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       { source: "/me/passport", destination: "/me/profile", permanent: true },
       { source: "/me/help", destination: "/me/settings", permanent: true },
       { source: "/invite", destination: "/me", permanent: true },
-      // The retired Home hub's leaves (2026-09-01). /home itself is live
+      // The retired Home hub's leaves (2026-09-01), and bare /home since each
+      // tab got its own address (MESITA-2597). /home itself was live
       // (MESITA-2475). Never through /discover/map or /discover/search,
       // which are themselves 308s below.
-      { source: "/home/swipe", destination: "/home", permanent: true },
-      { source: "/home/catalog", destination: "/home", permanent: true },
-      { source: "/home/chat", destination: "/home", permanent: true },
-      { source: "/home/ai", destination: "/home", permanent: true },
-      { source: "/home/social", destination: "/home", permanent: true },
-      { source: "/home/favorites", destination: "/home", permanent: true },
+      { source: "/home", destination: "/home/places", permanent: true },
+      { source: "/home/swipe", destination: "/home/places", permanent: true },
+      { source: "/home/catalog", destination: "/home/places", permanent: true },
+      { source: "/home/chat", destination: "/home/places", permanent: true },
+      { source: "/home/ai", destination: "/home/places", permanent: true },
+      {
+        source: "/home/favorites",
+        destination: "/home/places",
+        permanent: true,
+      },
       // Search's two addresses under /discover (MESITA-1609 → 1616).
       { source: "/discover/search", destination: "/search", permanent: true },
       { source: "/discover/map", destination: "/search", permanent: true },
       // HOME IS /home (MESITA-2475): its old namespace and default pill.
-      { source: "/discover", destination: "/home", permanent: true },
-      { source: "/discover/places", destination: "/home", permanent: true },
+      { source: "/discover", destination: "/home/places", permanent: true },
+      {
+        source: "/discover/places",
+        destination: "/home/places",
+        permanent: true,
+      },
       // Catalog's day as Home, Swipe's week as the default, Catalog's own
       // segment (MESITA-1697), and Catalog's /discover/feed itself, off the
       // rail again (MESITA-2140). All land on Home.
-      { source: "/discover/home", destination: "/home", permanent: true },
-      { source: "/discover/catalog", destination: "/home", permanent: true },
-      { source: "/discover/feed", destination: "/home", permanent: true },
+      {
+        source: "/discover/home",
+        destination: "/home/places",
+        permanent: true,
+      },
+      {
+        source: "/discover/catalog",
+        destination: "/home/places",
+        permanent: true,
+      },
+      {
+        source: "/discover/feed",
+        destination: "/home/places",
+        permanent: true,
+      },
       // Scroll (MESITA-2163) and Swipe (MESITA-2166), off the rail.
-      { source: "/discover/scroll", destination: "/home", permanent: true },
-      { source: "/discover/swipe", destination: "/home", permanent: true },
-      { source: "/discover/favs", destination: "/home", permanent: true },
-      { source: "/discover/social", destination: "/home", permanent: true },
+      {
+        source: "/discover/scroll",
+        destination: "/home/places",
+        permanent: true,
+      },
+      {
+        source: "/discover/swipe",
+        destination: "/home/places",
+        permanent: true,
+      },
+      {
+        source: "/discover/favs",
+        destination: "/home/places",
+        permanent: true,
+      },
+      {
+        source: "/discover/social",
+        destination: "/home/social",
+        permanent: true,
+      },
       {
         source: "/discover/chat",
         destination: "/search/chat",
         permanent: true,
       },
-      { source: "/places", destination: "/home", permanent: true },
+      { source: "/places", destination: "/home/places", permanent: true },
       // Favorites and Reservations are each a Me page (MESITA-2565): /saved
       // and /me/saved land on Favorites; every former reservations list →
       // Me › Reservations in one hop. The /saved/place dual path
@@ -504,9 +552,11 @@ describe("middleware auth wall (shouldGate)", () => {
   // Only "/" and "/onboard" are reachable signed-out.
   const ungatedAtMiddleware = [
     "/",
-    "/home",
-    "/discover/places", // 308s to /home (MESITA-2475)
-    "/discover/social", // 308s to Home: Social is a pane of Home (MESITA-2474)
+    "/home", // 308s to /home/places (MESITA-2597)
+    "/home/places",
+    "/home/social",
+    "/discover/places", // 308s to /home/places
+    "/discover/social", // 308s to /home/social (MESITA-2597)
     "/discover/chat", // 308s to /search/chat (MESITA-2401)
     "/discover/favs", // 308s to Home (MESITA-2383)
     "/search",
