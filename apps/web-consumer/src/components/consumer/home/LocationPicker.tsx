@@ -125,6 +125,8 @@ export const LOCATION_HELP: Record<LocationError, string> = {
     "Your device couldn't find you. Turn on Location Services for your browser, then tap Use my location.",
   timeout: "Finding you took too long. Tap Use my location to try again.",
   unsupported: "This browser can't share your location. Search a place above instead.",
+  pending:
+    "Your browser is waiting for you to allow location. Click Allow beside the address bar; Mesita picks it up by itself.",
 };
 
 const ICON = "h-4 w-4 shrink-0";
