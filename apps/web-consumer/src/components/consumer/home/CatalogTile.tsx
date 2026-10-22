@@ -72,7 +72,7 @@ function TileLink({
 // 32px tall to the eye (MESITA-2652: "the buttons must be shorter"); an
 // invisible 6px extension above and below keeps the 44px touch floor.
 const TILE_BUTTON =
-  "bg-border/60 text-foreground hover:bg-border/80 relative flex h-8 after:absolute after:inset-x-0 after:-inset-y-[3px] min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 font-sans text-xs font-semibold transition active:scale-[0.99]";
+  "bg-border/60 text-foreground hover:bg-border/80 relative flex h-7 after:absolute after:inset-x-0 after:-inset-y-2 min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 font-sans text-xs font-semibold transition active:scale-[0.99]";
 
 function readableKind(place: Place): string | null {
   const raw = place.category_label ?? place.category;
@@ -179,6 +179,12 @@ export function CatalogTile({
   // like and the button share; share must be almost everywhere to maximize
   // sharing and the virality of the app").
   //
+  // PHOTO 60%, CONTENT 40%, FOUR ROWS (Pato, MESITA-2655: "better 40% and
+  // 60%, and use the space for 4 rows"): name; category · $$ · stars;
+  // hours · distance; then Like and Share side by side (28px, 44px hit
+  // area). 20px lines and a 2px gap so the four fit. Supersedes the next
+  // paragraph's 66/34 and stacked buttons.
+  //
   // PHOTO 66%, CONTENT 34% (Pato, MESITA-2654: "image must be 66% of
   // square, the rest 33% is for content"), every tile. The band is too short
   // for a button row under three text rows, so Like and Share stack at its
@@ -217,7 +223,7 @@ export function CatalogTile({
         <div
           className={cn(
             "bg-muted absolute inset-x-0 top-0 overflow-hidden rounded-t-2xl",
-            "h-[66%]",
+            "h-[60%]",
           )}
         >
           {media()}
@@ -227,15 +233,12 @@ export function CatalogTile({
         <div
           className={cn(
             "absolute inset-x-0 bottom-0 overflow-hidden rounded-b-2xl",
-            "h-[34%]",
+            "h-[40%]",
           )}
           data-tile-info
         >
           <div
-            className={cn(
-              "absolute inset-x-0 top-0 -scale-y-100",
-              "h-[194.12%]",
-            )}
+            className={cn("absolute inset-x-0 top-0 -scale-y-100", "h-[150%]")}
             aria-hidden
             data-tile-reflection
           >
@@ -254,11 +257,11 @@ export function CatalogTile({
               same rhythm on every tile. The mark follows the name. */}
           <div
             className={cn(
-              "text-foreground relative flex h-full flex-col justify-center gap-0.5 pl-3",
-              google ? "pr-3" : "pr-[104px]",
+              "text-foreground relative flex h-full flex-col justify-center gap-0.5 pt-1.5 pl-3",
+              google ? "pr-3" : "pr-3 pb-[38px]",
             )}
           >
-            <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-6 font-semibold tracking-tight">
+            <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-5 font-semibold tracking-tight">
               <span className="truncate">{place.name}</span>
               {isEnrichedPlace(place) ? <EnrichedBadge /> : null}
             </p>
@@ -296,7 +299,7 @@ export function CatalogTile({
         // two equal 32px buttons, icon + label on one line, 12px from the
         // band's edges. Siblings of the tile link, so a tap never navigates.
         <div
-          className="absolute right-3 bottom-[17%] flex w-[84px] translate-y-1/2 flex-col gap-1.5"
+          className="absolute inset-x-3 bottom-2 grid grid-cols-2 gap-2"
           data-tile-actions
         >
           <button
