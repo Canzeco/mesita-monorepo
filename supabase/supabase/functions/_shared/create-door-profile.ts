@@ -16,8 +16,9 @@ import { fetchPlaceTags } from "./tags.ts";
 import {
   formatDescriptionParagraphs,
 } from "./enrich-synthesis-profile.ts";
-import { ENRICH_DESCRIPTION_MAX, OPENAI_URL } from "./enrich-config.ts";
+import { OPENAI_URL } from "./enrich-config.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
+import { capPresentation } from "./presentation-cap.ts";
 import { loadModelsConfig } from "./models-config.ts";
 import { reservationsLikelyFromInference } from "./infer-place-reservations.ts";
 
@@ -142,7 +143,7 @@ export async function synthesizeDoorProfile(
     const description = (() => {
       const d = str(parsed.presentation);
       return d
-        ? formatDescriptionParagraphs(d).slice(0, ENRICH_DESCRIPTION_MAX)
+        ? capPresentation(formatDescriptionParagraphs(d))
         : null;
     })();
     const nameMax = ENRICH_FIELD_LIMITS.placeName?.max ?? 80;

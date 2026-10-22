@@ -233,7 +233,22 @@ export async function describeFromFacts(facts: string, apiKey: string): Promise<
 /** Guest Presentation ceiling. Same number as ENRICH_FIELD_LIMITS.description. */
 export const PRESENTATION_MAX = 500;
 
+// Cut at the last full sentence, never mid-word (MESITA-2641). The twin of
+// supabase/_shared/presentation-cap.ts; Render is its own package and cannot
+// import it, so the two change together.
+const SENTENCE_END = /[.!?…](?=[\s"”'’)\]]|$)/g;
+const MIN_KEEP = 0.4;
+
 export function capPresentation(text: string): string | null {
-  const trimmed = text.trim().slice(0, PRESENTATION_MAX);
-  return trimmed || null;
+  const t = text.trim();
+  if (!t) return null;
+  if (t.length <= PRESENTATION_MAX) return t;
+  const head = t.slice(0, PRESENTATION_MAX);
+  let end = -1;
+  for (const m of head.matchAll(SENTENCE_END)) end = (m.index ?? -1) + 1;
+  if (end >= PRESENTATION_MAX * MIN_KEEP) return head.slice(0, end).trimEnd();
+  const room = t.slice(0, PRESENTATION_MAX - 1);
+  const space = room.lastIndexOf(" ");
+  const cut = space >= PRESENTATION_MAX * MIN_KEEP ? room.slice(0, space) : room;
+  return `${cut.replace(/[\s,;:–—-]+$/, "")}…`;
 }

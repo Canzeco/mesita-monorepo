@@ -8,7 +8,7 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { fetchPlaceCategories } from "../_shared/categories.ts";
 import { inferPlaceCategory } from "../_shared/categories-infer.ts";
-import { ENRICH_DESCRIPTION_MAX, loadEnrichConfig } from "../_shared/enrich-config.ts";
+import { loadEnrichConfig } from "../_shared/enrich-config.ts";
 import {
   applyProfileToUpdate,
   synthesizeProfile,
@@ -20,9 +20,10 @@ import { keepAtlasValues } from "../_shared/place-taxonomy.ts";
 import { fetchPlaceTags, inferPlaceTags } from "../_shared/tags.ts";
 import { loadModelsConfig } from "../_shared/models-config.ts";
 
-export function capPresentation(text: string): string {
-  return text.trim().slice(0, ENRICH_DESCRIPTION_MAX);
-}
+// The one sentence-safe cap (MESITA-2641); re-exported for this EF's callers
+// and its test.
+export { capPresentation } from "../_shared/presentation-cap.ts";
+import { capPresentation } from "../_shared/presentation-cap.ts";
 
 export function reviewQuotes(value: unknown): string {
   if (!Array.isArray(value)) return "";
