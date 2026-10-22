@@ -10,7 +10,7 @@ const MODAL = readFileSync(
 );
 const DM = MODAL.slice(
   MODAL.indexOf("function ConnectByMessage"),
-  MODAL.indexOf("function ConnectModule"),
+  MODAL.indexOf("function CurrentConnectionCard"),
 );
 
 describe("Connect Instagram by DM", () => {
@@ -23,8 +23,8 @@ describe("Connect Instagram by DM", () => {
   });
 
   it("gives no code until the handle is a real Instagram username", () => {
-    expect(DM).toContain("disabled={busy || !handleOk}");
-    expect(DM).toContain("if (busy || !handleOk) return;");
+    expect(DM).toContain("disabled={busy || !handleOk || !live}");
+    expect(DM).toContain("if (busy || !handleOk || !live) return;");
   });
 
   it("names the account to send from, and sends no handle to the server", () => {

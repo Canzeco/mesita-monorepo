@@ -30,17 +30,26 @@ describe("connecting Instagram by message", () => {
     "utf8",
   );
 
-  it("asks the server which way works, and falls back to the bio code", () => {
+  // MESITA-2602: the message flow is always the screen; the channel only
+  // says whether it is live or a Soon preview. No bio-code screen.
+  it("always draws the message flow, live only when the channel is dm", () => {
     expect(PAGE).toContain("apiInstagramChannel(supabase)");
-    expect(PAGE).toContain('setChannel({ channel: "bio" })');
-    expect(PAGE).toContain('channel?.channel === "dm" && <ConnectByMessage />');
-    expect(PAGE).toContain('channel?.channel === "bio" && (');
+    expect(PAGE).toContain('<ConnectByMessage live={channel.channel === "dm"} />');
+    expect(PAGE).not.toContain("function ConnectModule");
+    expect(PAGE).not.toMatch(/apiStartInstagramClaim|apiCheckInstagramClaim/);
+  });
+
+  it("is a Soon preview while the channel is off: no code is asked for", () => {
+    const dm = PAGE.slice(PAGE.indexOf("function ConnectByMessage"), PAGE.indexOf("function CurrentConnectionCard"));
+    expect(dm).toContain("disabled={busy || !handleOk || !live}");
+    expect(dm).toContain("if (busy || !handleOk || !live) return;");
+    expect(dm).toContain("Connecting by Instagram message opens soon.");
   });
 
   // MESITA-2599: the message path asks for the @handle (for a clearer flow;
   // the bot still verifies the sender), never for a bio edit.
   it("asks for the @handle, never for a bio edit, on the message path", () => {
-    const dm = PAGE.slice(PAGE.indexOf("function ConnectByMessage"), PAGE.indexOf("function ConnectModule"));
+    const dm = PAGE.slice(PAGE.indexOf("function ConnectByMessage"), PAGE.indexOf("function CurrentConnectionCard"));
     expect(dm).toContain("Send it on Instagram");
     expect(dm).toContain("claim.link");
     expect(dm).toContain("Type your Instagram @handle");

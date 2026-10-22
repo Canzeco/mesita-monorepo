@@ -16,11 +16,9 @@ import {
 } from "@/components/consumer/me/settings-rows";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
-  apiCheckInstagramClaim,
   apiFetchConsumerProfile,
   apiInstagramChannel,
   apiInstagramDmStatus,
-  apiStartInstagramClaim,
   apiStartInstagramDm,
   apiUpdateConsumerProfile,
   dmVerified,
@@ -46,12 +44,14 @@ import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 // fixed 5,000 and an 8-digit "code" nobody checked, so anyone could show up
 // in Social as @someone_famous.
 //
-// BY MESSAGE WHEN IT IS ON (MESITA-2575; Pato: "one simple message and bot").
-// The server says which channel is live. "dm": the guest gets a code, sends
-// it to Mesita's Instagram, and the page waits while Meta tells the server
-// who sent it (handle, followers, photo). No handle to type, nothing in the
-// bio. "bio" (until the Meta secrets are set, or if the channel read fails):
-// the bio-code flow above.
+// BY MESSAGE, ALWAYS SHOWN (MESITA-2575, MESITA-2602; Pato: "not yet the
+// actual backend functionality but keep that UI already designed"). The page
+// always draws the message flow: type your @handle, get a code, send it to
+// Mesita's Instagram, and the page waits while Meta tells the server who sent
+// it. The server says whether that channel is live; until it is (the Meta
+// secrets, MESITA-2579) the flow is a preview — "Get my code" is tagged Soon
+// and nothing is called. The bio-code screen is gone from the page; the
+// server still answers its actions.
 
 const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
 
@@ -77,12 +77,6 @@ export function InstagramModal() {
   const supabase = useBrowserSupabase();
   const identity = useConsumerIdentity();
   const connected = identity.igConnected;
-  const [handle, setHandle] = useState("");
-  // The pending claim: set once the server has issued a code for `handle`.
-  const [claim, setClaim] = useState<{ handle: string; code: string } | null>(
-    null,
-  );
-  const [busy, setBusy] = useState(false);
   // A CONNECTED GUEST IS NOT A PROSPECT (decision: Pato, 2026-08-22). The
   // page used to render the pitch AND the whole connect form under the card
   // that already said "connected". Connected collapses to the account card;
@@ -105,41 +99,6 @@ export function InstagramModal() {
       cancelled = true;
     };
   }, [supabase]);
-
-  const canStart = HANDLE_RE.test(handle.trim()) && !busy;
-
-  async function start() {
-    if (!canStart) return;
-    setBusy(true);
-    try {
-      setClaim(
-        await apiStartInstagramClaim(
-          supabase,
-          handle.trim().replace(/^@/, "").toLowerCase(),
-        ),
-      );
-    } catch (e) {
-      toast(errMsg(e, "Couldn’t get a code — try again."));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function check() {
-    if (!claim || busy) return;
-    setBusy(true);
-    try {
-      await apiCheckInstagramClaim(supabase);
-      // ALWAYS A FULL RELOAD: a connected handle is a new fact on every
-      // surface that reads it, and the identity is seeded server-side by the
-      // shell layout, so every successful claim re-seeds the same way. A
-      // soft `router.back()` left the header chip stale.
-      landConnected();
-    } catch (e) {
-      toast(errMsg(e, "Couldn’t check — try again."));
-      setBusy(false);
-    }
-  }
 
   return (
     <MeScreen title="Instagram">
@@ -176,22 +135,8 @@ export function InstagramModal() {
             </div>
           )}
 
-          {showForm && channel?.channel === "dm" && <ConnectByMessage />}
-
-          {showForm && channel?.channel === "bio" && (
-            <ConnectModule
-              handle={handle}
-              claim={claim}
-              busy={busy}
-              canStart={canStart}
-              onHandleChange={(v) => {
-                setHandle(v);
-                // A different handle needs its own code.
-                setClaim(null);
-              }}
-              onStart={start}
-              onCheck={check}
-            />
+          {showForm && channel !== null && (
+            <ConnectByMessage live={channel.channel === "dm"} />
           )}
 
           {/* Public or private, asked where the member connects (MESITA-2594):
@@ -247,7 +192,7 @@ function WhyConnectModule() {
 // message it can see who sent it, but still ask … it's a clearer UX"). The
 // typed handle only shapes the flow ("Send it from @handle"); the server
 // still verifies whoever actually sent the code.
-function ConnectByMessage() {
+function ConnectByMessage({ live }: { live: boolean }) {
   const supabase = useBrowserSupabase();
   const [handle, setHandle] = useState("");
   const typed = handle.trim().replace(/^@/, "").toLowerCase();
@@ -288,7 +233,7 @@ function ConnectByMessage() {
   }, [claim, waitingSince, supabase]);
 
   async function start() {
-    if (busy || !handleOk) return;
+    if (busy || !handleOk || !live) return;
     setBusy(true);
     try {
       setClaim(await apiStartInstagramDm(supabase));
@@ -402,126 +347,30 @@ function ConnectByMessage() {
           )}
         </>
       ) : (
-        <Button
-          type="button"
-          size="sm"
-          onClick={start}
-          disabled={busy || !handleOk}
-          className="mt-2 w-full rounded-xl text-sm font-semibold"
-        >
-          {busy && <Spinner size="sm" className="border-white/40 border-t-white" />}
-          Get my code
-        </Button>
-      )}
-      <p className="text-muted-foreground type-body mt-2 text-center">
-        We never ask for your password.
-      </p>
-    </section>
-  );
-}
-
-function ConnectModule({
-  handle,
-  claim,
-  busy,
-  canStart,
-  onHandleChange,
-  onStart,
-  onCheck,
-}: {
-  handle: string;
-  claim: { handle: string; code: string } | null;
-  busy: boolean;
-  canStart: boolean;
-  onHandleChange: (v: string) => void;
-  onStart: () => void;
-  onCheck: () => void;
-}) {
-  async function copyCode() {
-    if (!claim) return;
-    try {
-      await navigator.clipboard.writeText(claim.code);
-      toast("Code copied");
-    } catch {
-      toast("Couldn’t copy — type it in instead.");
-    }
-  }
-
-  return (
-    <section className="border-border bg-card rounded-2xl border p-4">
-      {/* `font-bold`, not extrabold: the design law caps weight at two steps
-          (semibold / bold) and a third one on a 14px heading buys nothing. */}
-      <h3 className="mb-3 text-sm leading-tight font-bold tracking-tight">
-        Connect Instagram
-      </h3>
-      <ol className="flex flex-col gap-3">
-        {[
-          <>Type your @handle and get a code</>,
-          <>Add the code anywhere in your Instagram bio</>,
-          <>Tap Check. You can remove the code afterwards</>,
-        ].map((line, i) => (
-          <li key={i} className="type-body flex items-start gap-3 leading-snug">
-            <span className="bg-secondary/15 text-secondary type-label flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-bold">
-              {i + 1}
-            </span>
-            <span>{line}</span>
-          </li>
-        ))}
-      </ol>
-      <label className="text-muted-foreground type-label mt-3 block font-medium">
-        @handle
-      </label>
-      <input
-        value={handle}
-        onChange={(e) => onHandleChange(e.target.value)}
-        placeholder="yourhandle"
-        autoCapitalize="none"
-        autoCorrect="off"
-        spellCheck={false}
-        className="border-border bg-muted/30 placeholder:text-muted-foreground/70 h-12 w-full rounded-xl border px-5 text-center text-sm outline-none"
-        maxLength={31}
-      />
-      {claim ? (
         <>
-          <label className="text-muted-foreground type-label mt-2 block font-medium">
-            Your code for @{claim.handle}
-          </label>
-          <button
-            type="button"
-            onClick={copyCode}
-            className="border-border bg-muted/30 flex h-12 w-full items-center justify-center gap-2 rounded-xl border px-5 font-mono text-sm font-semibold tracking-wide"
-          >
-            {claim.code}
-            <Copy className="text-muted-foreground h-4 w-4" />
-          </button>
           <Button
             type="button"
             size="sm"
-            onClick={onCheck}
-            disabled={busy}
+            onClick={start}
+            disabled={busy || !handleOk || !live}
             className="mt-2 w-full rounded-xl text-sm font-semibold"
+            data-instagram-dm-start
           >
-            {busy ? (
-              <Spinner size="sm" className="border-white/40 border-t-white" />
-            ) : (
-              <BadgeCheck className="h-4 w-4" />
+            {busy && <Spinner size="sm" className="border-white/40 border-t-white" />}
+            Get my code
+            {/* The Meta channel is not on yet (MESITA-2579): a preview. */}
+            {!live && (
+              <span className="bg-background/20 type-meta rounded-full px-1.5 py-0.5 font-semibold">
+                Soon
+              </span>
             )}
-            {busy ? "Checking your bio…" : "Check"}
           </Button>
-        </>
-      ) : (
-        <Button
-          type="button"
-          size="sm"
-          onClick={onStart}
-          disabled={!canStart}
-          className="mt-2 w-full rounded-xl text-sm font-semibold"
-        >
-          {busy && (
-            <Spinner size="sm" className="border-white/40 border-t-white" />
+          {!live && (
+            <p className="text-muted-foreground type-body mt-2 text-center" data-instagram-dm-soon>
+              Connecting by Instagram message opens soon.
+            </p>
           )}
-          Get a code
-        </Button>
+        </>
       )}
       <p className="text-muted-foreground type-body mt-2 text-center">
         We never ask for your password.
