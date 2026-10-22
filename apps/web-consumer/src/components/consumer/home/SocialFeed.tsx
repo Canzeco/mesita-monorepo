@@ -185,6 +185,12 @@ function InstagramGlyph(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** A word in the sentence that names a door (MESITA-2608): bold and
+ *  underlined, the underline thin and a step down so it reads as a link, not
+ *  a strike. */
+const LINK_WORD_CLASS =
+  "font-semibold underline decoration-1 underline-offset-2 decoration-foreground/40";
+
 /** One mark on the face (MESITA-2608): the 20px ringed bubble MESITA-2525's
  *  verb badge was, now saying what KIND of member this is. */
 const MARK_CLASS =
@@ -330,9 +336,14 @@ function FeedRow({
     <>
       <Face person={item.person} />
       <span className="min-w-0 flex-1">
+        {/* THE NAME AND THE PLACE ARE UNDERLINED (Pato, MESITA-2608:
+            "highlight both username and placename, like underline to
+            express that its a link"): the two bold words are the two
+            things a row opens, the person and the place, so they read as
+            links. The verb between them stays plain. */}
         <span className="text-foreground line-clamp-2 text-sm leading-snug">
-          <span className="font-semibold">{who}</span> {VERB[item.kind]}{" "}
-          <span className="font-semibold">{item.place.name}</span>
+          <span className={LINK_WORD_CLASS}>{who}</span> {VERB[item.kind]}{" "}
+          <span className={LINK_WORD_CLASS}>{item.place.name}</span>
         </span>
         <span
           className="text-muted-foreground mt-0.5 flex min-w-0 items-center gap-1 text-xs"
