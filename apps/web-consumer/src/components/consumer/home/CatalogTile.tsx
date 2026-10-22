@@ -173,7 +173,10 @@ export function CatalogTile({
       />
     ) : (
       <div
-        className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-white/90"
+        // A LIGHT NO-PHOTO FACE (Pato, MESITA-2664: "if no image ... try a
+        // white background, let's see how it looks"): the light fill with
+        // a muted icon, not the ink gradient. A trial; one revert away.
+        className="bg-muted text-muted-foreground absolute inset-0 flex items-center justify-center"
         data-placeholder={placeholder.kind}
       >
         {placeholder.kind === "family" ? (
