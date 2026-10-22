@@ -26,7 +26,8 @@ export function ProfilePhoto({ place }: { place: PlaceDetail }) {
   );
 }
 
-/** Instagram-style stat: a filled number line, then the channel name.
+/** Instagram-style stat: the network's mark, then a filled number line.
+ *  The channel name is read aloud, never printed (MESITA-2623).
  *  Zero is a number. "Not connected" and "No count" sit in the number line
  *  so the column is never a blank gap beside the photo. */
 export function ProfileStat({
@@ -72,9 +73,10 @@ export function ProfileStat({
           </span>
         ) : null}
       </span>
-      <span className="text-muted-foreground mt-1 max-w-full truncate text-xs leading-tight font-medium">
-        {label}
-      </span>
+      {/* NO NETWORK NAME UNDER THE NUMBER (Pato, MESITA-2623: "don't mention
+          google instagram facebook with text. its obvious"): the mark above
+          already says which network. The name stays for screen readers. */}
+      <span className="sr-only">{label}</span>
     </div>
   );
 }
