@@ -20,3 +20,4 @@ export type {
   PlaceMenuItem,
 } from "./actions";
 export type { PlaceDetail } from "./place-detail";
+export { GOOGLE_TYPE_EMOJI, googleTypeEmoji } from "./lib/google-type-emoji";

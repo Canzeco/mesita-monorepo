@@ -109,7 +109,6 @@ import { useUserLocation } from "@/lib/use-user-location";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { placeHref } from "@/lib/place-route";
 import { cardPhoto, placePlaceholder } from "@/lib/place-placeholder";
-import { FamilyIcon } from "@/lib/family-icons";
 import { EmptyState } from "@/components/shared";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { IdentityCard } from "@/components/consumer/IdentityCard";
@@ -286,8 +285,10 @@ function Thumb({ place }: { place: Place }) {
       className="bg-muted text-muted-foreground flex h-11 w-11 shrink-0 items-center justify-center rounded-lg"
       data-placeholder={placeholder.kind}
     >
-      {placeholder.kind === "family" ? (
-        <FamilyIcon name={placeholder.family} className="h-5 w-5" />
+      {placeholder.kind === "emoji" ? (
+        <span aria-hidden className="text-2xl leading-none">
+          {placeholder.emoji}
+        </span>
       ) : (
         <span aria-hidden className="text-sm font-semibold">
           {placeholder.text}

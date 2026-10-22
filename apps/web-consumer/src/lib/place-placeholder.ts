@@ -1,27 +1,26 @@
 // The card placeholder for a place with no photo to show (MESITA-2298).
 //
 // A Google-only result is ephemeral: Mesita holds no hero for it and never
-// asks Google for one just because a card rendered, so its card shows the
-// family's line icon (lib/family-icons.tsx; the emoji until MESITA-2478),
-// deterministic from `family_keys`. A Google row with no
-// resolvable family, and a Mesita place with no stored photo, show the
-// name's initial. A Google-only row never shows a photo at all, whatever
-// the wire carried.
+// asks Google for one just because a card rendered, so its card shows a
+// placeholder. So does a Mesita place with no stored photo. The placeholder
+// is the category's own emoji (MESITA-2667, Pato: "instead of displaying that
+// shitty thing display the emoji of the category"): `category` is the Google
+// type on both kinds of row, and `@mesita/place-profile` holds one emoji per
+// type. Not the family's mark: families keep their own emoji and line icons
+// (MESITA-2478). A category Google's table does not hold shows the name's
+// initial. A Google-only row never shows a photo at all, whatever the wire
+// carried.
 
-import { PLACE_FAMILIES, type FamilyKey } from "@/lib/place-families";
+import { googleTypeEmoji } from "@mesita/place-profile";
 import { firstInitial } from "@/lib/utils";
 
 type PlaceholderPlace = {
   name: string;
-  family_keys?: string[] | null;
+  category?: string | null;
   googleOnly?: boolean;
   from_google?: boolean;
   photos?: string[];
 };
-
-const GUEST_FAMILY_KEYS: ReadonlySet<string> = new Set(
-  PLACE_FAMILIES.filter((f) => f.key !== "undefined").map((f) => f.key),
-);
 
 export function isGoogleOnlyPlace(place: {
   googleOnly?: boolean;
@@ -30,26 +29,14 @@ export function isGoogleOnlyPlace(place: {
   return place.googleOnly === true || place.from_google === true;
 }
 
-/** The first guest family's key, or null when none resolves. */
-export function firstGuestFamily(
-  familyKeys: readonly string[] | null | undefined,
-): FamilyKey | null {
-  for (const key of familyKeys ?? []) {
-    if (GUEST_FAMILY_KEYS.has(key)) return key as FamilyKey;
-  }
-  return null;
-}
-
 export type PlacePlaceholder =
-  | { kind: "family"; family: FamilyKey }
+  | { kind: "emoji"; emoji: string }
   | { kind: "initial"; text: string };
 
 /** What the card draws instead of a photo. */
 export function placePlaceholder(place: PlaceholderPlace): PlacePlaceholder {
-  if (isGoogleOnlyPlace(place)) {
-    const family = firstGuestFamily(place.family_keys);
-    if (family) return { kind: "family", family };
-  }
+  const emoji = googleTypeEmoji(place.category);
+  if (emoji) return { kind: "emoji", emoji };
   return { kind: "initial", text: firstInitial(place.name) };
 }
 
