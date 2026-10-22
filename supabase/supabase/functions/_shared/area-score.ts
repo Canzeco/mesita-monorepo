@@ -6,9 +6,9 @@
 //   point location   final = Proximity^a × Popularity^b × Selected^c
 //   no location      final = Popularity^b × Selected^c
 //
-// (a, b, c) is the caller's: the Map and Home pass (a, 1, 1), a =
-// `map.proximityWeight` (MESITA-2504, MESITA-2516); Chat reads the Nearby
-// row of the operator's weights table (`params.modes`). Geometric weights,
+// (a, b, c) is (a, 1, 1) for every caller — the Map, Home and Chat — a =
+// `map.proximityWeight` (MESITA-2504, MESITA-2516; the weights table that
+// ranked Chat went in MESITA-2687). Geometric weights,
 // so only the ratios a : b : c change the order; 0 turns a signal off
 // (x^0 = 1). Selected used to ride INSIDE Popularity's exponent
 // (MESITA-2428); Pato split it out (MESITA-2439): "Proximity. Popularity.
@@ -67,7 +67,7 @@ export type AreaContext = {
   halfReviews: number;
   /** Proximity is 0 at this distance (km), apart from the radius. */
   reachKm: number;
-  /** The mode's three exponents, one row of the weights table. */
+  /** The three exponents: (map.proximityWeight, 1, 1) for every caller. */
   weights: AreaWeights;
   /** Selected's value for a non-Selected candidate; default 0.3. */
   selectedOther?: number;
@@ -130,11 +130,12 @@ export function insideBounds(
 }
 
 /** The guest's mode (MESITA-2428): Nearby and Popular are every family,
- *  Family is one family. Each picks one row of the weights table. */
+ *  Family is one family. It picks the Google circles (`areaFanoutCircles`);
+ *  the weights table it once picked a row of is gone (MESITA-2687). */
 export const AREA_MODES = ["nearby", "popular", "family"] as const;
 export type AreaMode = (typeof AREA_MODES)[number];
 
-/** One row of the weights table: the three exponents (MESITA-2439). */
+/** The three exponents (MESITA-2439). */
 export type AreaWeights = { proximity: number; popularity: number; selected: number };
 
 /** The wire's `prefer` (MESITA-2425): "popular" and "family" name their

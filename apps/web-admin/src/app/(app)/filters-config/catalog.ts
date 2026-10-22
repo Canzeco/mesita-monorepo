@@ -19,17 +19,12 @@
 
 import { num } from "@/lib/config-coerce";
 
-/** The guest's three modes, one row of the weights table each
- *  (MESITA-2428). Mirrors AREA_MODES in _shared/area-score.ts. */
-export const AREA_MODES = ["nearby", "popular", "family"] as const;
-export type AreaMode = (typeof AREA_MODES)[number];
-/** Three exponents per mode; Selected's since MESITA-2439. */
-export type AreaWeights = { proximity: number; popularity: number; selected: number };
-
 /**
  * The Area pipeline's numbers: Proximity's reach (MESITA-2431), Popularity's
- * reviews for half credit, Selected's value for every other place and the
- * weights table, three exponents per mode (MESITA-2428, MESITA-2439). The reach is not `map.radiusKm`: the radius decides who is
+ * reviews for half credit and Selected's value for every other place
+ * (MESITA-2439). The exponents are not here: every caller scores
+ * Proximity^a × Popularity × Selected, a = `map.proximityWeight`
+ * (MESITA-2687). The reach is not `map.radiusKm`: the radius decides who is
  * a candidate, the reach scores distance. Mirrors SignalParams in
  * _shared/discovery-config.ts.
  */
@@ -37,7 +32,6 @@ export type SignalParams = {
   proximity: { reachKm: number };
   popularity: { halfReviews: number };
   selected: { otherFactor: number };
-  modes: Record<AreaMode, AreaWeights>;
 };
 
 export type NameFastConfig = {
@@ -109,8 +103,6 @@ export const REACH_KM_MAX = 50;
 export const REACH_KM_DEFAULT = 15;
 export const HALF_REVIEWS_MIN = 1;
 export const HALF_REVIEWS_MAX = 100_000;
-export const AREA_WEIGHT_MIN = 0;
-export const AREA_WEIGHT_MAX = 5;
 /** Selected's value for a non-Selected place, two decimals; never 0 (it
  *  would turn the signal into a gate). Mirrors SELECTED_OTHER_*. */
 export const SELECTED_OTHER_MIN = 0.01;
@@ -148,13 +140,13 @@ export const SUPER_PARAM_KEYS = [
 export type SuperParamKey = (typeof SUPER_PARAM_KEYS)[number];
 
 /** Mirrors GOOGLE_PULL_STOPS in _shared/discovery-config.ts — the stops of
- *  `map.googlePlaces` and `map.mesitaPlaces`. */
+ *  `map.googlePlaces`, `map.mapGooglePlaces` and `map.mesitaPlaces`. */
 export const GOOGLE_PULL_STOPS = [20, 40, 60] as const;
 const GOOGLE_PULL_DEFAULT = 20;
 /** Mirrors MAP_RADIUS_KM_* in _shared/discovery-config.ts. Max = Google's Nearby circle cap. */
 export const MAP_RADIUS_KM_MIN = 1;
 export const MAP_RADIUS_KM_MAX = 50;
-const MAP_RADIUS_KM_DEFAULT = 50;
+const MAP_RADIUS_KM_DEFAULT = 15;
 /** Mirrors MAP_PROXIMITY_WEIGHT_* in _shared/discovery-config.ts. */
 export const MAP_PROXIMITY_WEIGHT_MIN = 0;
 export const MAP_PROXIMITY_WEIGHT_MAX = 5;
@@ -170,20 +162,18 @@ export type MapConfig = {
   minRating: number;
   minReviews: number;
   minPopularity: number;
-  /** Stored, read by nothing since MESITA-2451: no control (MESITA-2444). */
-  reloadMinKm: number;
-  /** Stored, read by nothing since MESITA-2451: no control (MESITA-2444). */
-  reloadMinSec: number;
   /** The Map reloads when it rests, at most once every this many seconds
    *  (MESITA-2444). */
   reloadIdleSec: number;
   googleFill: boolean;
-  supers: Record<SuperParamKey, boolean>;
   /**
-   * 20 / 40 / 60 — Google candidates on the Feed, places Mesita BUYS: 1/2/3
-   * billed Nearby calls (MESITA-2379). The Map buys one call per load.
+   * 20 / 40 / 60 — Google candidates on Home, places Mesita BUYS: 1/2/3
+   * billed Nearby calls (MESITA-2379).
    */
   googlePlaces: number;
+  /** 20 / 40 / 60 — Google candidates on the Map, per load: 1/2/3 billed
+   *  Nearby calls (MESITA-2687). */
+  mapGooglePlaces: number;
   /** 20 / 40 / 60 — Mesita candidates, a free read of our ready rows. */
   mesitaPlaces: number;
   /**
@@ -434,33 +424,6 @@ const CATALOG_PLACES_PER_RAIL_MIN = 4;
 const CATALOG_PLACES_PER_RAIL_MAX = 20;
 const CATALOG_MIN_SEED_PLACES_MAX = 20;
 const MAP_MIN_POPULARITY_MAX = 1;
-/** Categorical reload pairs. Both must be true. Rail / pin pans do not count. */
-export const MAP_RELOAD_PAIRS = [
-  { km: 0.25, sec: 1 },
-  { km: 0.5, sec: 2 },
-  { km: 1, sec: 4 },
-  { km: 2, sec: 8 },
-  { km: 4, sec: 15 },
-] as const;
-
-export function snapMapReloadPair(
-  km: unknown,
-  sec: unknown,
-): { km: number; sec: number } {
-  const fallback = MAP_RELOAD_PAIRS[1];
-  const k = typeof km === "number" && Number.isFinite(km) ? km : fallback.km;
-  const s = typeof sec === "number" && Number.isFinite(sec) ? sec : fallback.sec;
-  let best: (typeof MAP_RELOAD_PAIRS)[number] = fallback;
-  let bestD = Number.POSITIVE_INFINITY;
-  for (const pair of MAP_RELOAD_PAIRS) {
-    const d = Math.abs(pair.km - k) / 0.25 + Math.abs(pair.sec - s);
-    if (d < bestD) {
-      best = pair;
-      bestD = d;
-    }
-  }
-  return { km: best.km, sec: best.sec };
-}
 /** Map Places-set caps. Mesita max 60; Google Nearby max 20. */
 export const NAME_LANE_COUNT_MAX = 20;
 const NAME_FAST_COUNT_DEFAULT = 5;
@@ -506,12 +469,10 @@ export const DEFAULT_MAP: MapConfig = {
   minRating: 0,
   minReviews: 0,
   minPopularity: 0,
-  reloadMinKm: 0.5,
-  reloadMinSec: 2,
   reloadIdleSec: MAP_RELOAD_IDLE_SEC_DEFAULT,
   googleFill: true,
-  supers: DEFAULT_MAP_SUPERS,
   googlePlaces: GOOGLE_PULL_DEFAULT,
+  mapGooglePlaces: GOOGLE_PULL_DEFAULT,
   mesitaPlaces: GOOGLE_PULL_DEFAULT,
   radiusKm: MAP_RADIUS_KM_DEFAULT,
   googleMinReviews: 0,
@@ -557,17 +518,11 @@ export const DEFAULT_GENERAL: GeneralConfig = {
   minReviews: 0,
 };
 
-/** Mirrors DEFAULT_AREA_MODES and DEFAULT_SIGNAL_PARAMS. */
-export const DEFAULT_AREA_MODES: Record<AreaMode, AreaWeights> = {
-  nearby: { proximity: 4, popularity: 1, selected: 1 },
-  popular: { proximity: 1, popularity: 3, selected: 1 },
-  family: { proximity: 1, popularity: 1, selected: 1 },
-};
+/** Mirrors DEFAULT_SIGNAL_PARAMS. */
 const DEFAULT_SIGNAL_PARAMS: SignalParams = {
   proximity: { reachKm: REACH_KM_DEFAULT },
   popularity: { halfReviews: 100 },
   selected: { otherFactor: SELECTED_OTHER_DEFAULT },
-  modes: DEFAULT_AREA_MODES,
 };
 
 export const DEFAULT_CONFIG: DiscoveryConfig = {
@@ -590,15 +545,15 @@ function bounded(raw: unknown, fallback: number, min: number, max: number, decim
  * The Area pipeline's numbers. Mirrors `normalizeSignalParams`: rebuilt
  * field by field, so the retired deck's bags (maxKm, timing, category,
  * priorRating, …), the retired calibration (halfDistanceKm,
- * referenceRating/Reviews, MESITA-2347) and the linear `balance`
- * (MESITA-2428) are dropped on the next Save.
+ * referenceRating/Reviews, MESITA-2347), the linear `balance`
+ * (MESITA-2428) and the weights table `modes` (MESITA-2687) are dropped on
+ * the next Save.
  */
 function coerceParams(raw: unknown): SignalParams {
   const r = (raw ?? {}) as Record<string, unknown>;
   const prox = (r.proximity ?? {}) as Record<string, unknown>;
   const pop = (r.popularity ?? {}) as Record<string, unknown>;
   const sel = (r.selected ?? {}) as Record<string, unknown>;
-  const m = (r.modes ?? {}) as Record<string, unknown>;
   const d = DEFAULT_SIGNAL_PARAMS;
   return {
     proximity: {
@@ -610,20 +565,6 @@ function coerceParams(raw: unknown): SignalParams {
     selected: {
       otherFactor: bounded(sel.otherFactor, d.selected.otherFactor, SELECTED_OTHER_MIN, SELECTED_OTHER_MAX, 2),
     },
-    modes: Object.fromEntries(
-      AREA_MODES.map((mode) => {
-        const row = (m[mode] ?? {}) as Record<string, unknown>;
-        const dr = d.modes[mode];
-        return [
-          mode,
-          {
-            proximity: bounded(row.proximity, dr.proximity, AREA_WEIGHT_MIN, AREA_WEIGHT_MAX, 2),
-            popularity: bounded(row.popularity, dr.popularity, AREA_WEIGHT_MIN, AREA_WEIGHT_MAX, 2),
-            selected: bounded(row.selected, dr.selected, AREA_WEIGHT_MIN, AREA_WEIGHT_MAX, 2),
-          },
-        ];
-      }),
-    ) as Record<AreaMode, AreaWeights>,
   };
 }
 
@@ -774,8 +715,6 @@ function coerceNameAdmin(raw: unknown): NameAdminConfig {
 
 function coerceMap(raw: unknown): MapConfig {
   const m = (raw ?? {}) as Record<string, unknown>;
-  const supers = coerceSuperParams(m.supers);
-  const reload = snapMapReloadPair(m.reloadMinKm, m.reloadMinSec);
   return {
     minRating: Math.round(
       num(m.minRating, DEFAULT_MAP.minRating, 0, MIN_RATING_MAX) * 10,
@@ -784,19 +723,16 @@ function coerceMap(raw: unknown): MapConfig {
     minPopularity: Math.round(
       num(m.minPopularity, DEFAULT_MAP.minPopularity, 0, MAP_MIN_POPULARITY_MAX) * 100,
     ) / 100,
-    reloadMinKm: reload.km,
-    reloadMinSec: reload.sec,
     reloadIdleSec:
       Math.round(
         num(m.reloadIdleSec, DEFAULT_MAP.reloadIdleSec, MAP_RELOAD_IDLE_SEC_MIN, MAP_RELOAD_IDLE_SEC_MAX) * 100,
       ) / 100,
     googleFill: typeof m.googleFill === "boolean" ? m.googleFill : DEFAULT_MAP.googleFill,
-    supers,
-    // Rebuilt key by key: an old blob's `googlePull` (the retired Legacy
-    // pull, MESITA-2298) and `pinCount` (MESITA-2347) are dropped on the
-    // next save; a stored `pinCount` seeds both caps once.
-    googlePlaces: coerceGooglePull(m.googlePlaces ?? m.pinCount),
-    mesitaPlaces: coerceGooglePull(m.mesitaPlaces ?? m.pinCount),
+    // Rebuilt key by key: a retired key (`googlePull`, `pinCount`, `supers`,
+    // the reload km/sec pair) is dropped on the next save.
+    googlePlaces: coerceGooglePull(m.googlePlaces),
+    mapGooglePlaces: coerceGooglePull(m.mapGooglePlaces),
+    mesitaPlaces: coerceGooglePull(m.mesitaPlaces),
     radiusKm:
       Math.round(
         num(m.radiusKm, DEFAULT_MAP.radiusKm, MAP_RADIUS_KM_MIN, MAP_RADIUS_KM_MAX) * 10,

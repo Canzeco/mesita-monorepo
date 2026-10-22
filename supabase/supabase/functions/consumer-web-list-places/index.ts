@@ -23,7 +23,7 @@
 // visible map (`screenRadiusKm`, MESITA-2511: the circle always fits on
 // screen). R is a GATE on both sources — Mesita's
 // read is boxed to it and the Radius gate drops what lies past it, Google's
-// one call asks the prominent 20 inside it and eligibility drops the rest
+// calls ask the prominent 20 inside it first and eligibility drops the rest
 // (Pato: "I son't want to see stuff beyond my screen"). The score is
 // Proximity^a × Popularity^1 × Selected^1 with Proximity's reach = R (1 at
 // the cross, 0 at the edge, the same at every zoom); `a` is the operator's
@@ -33,8 +33,9 @@
 // scored the same way. The answer carries R, the weights and each place's
 // breakdown for the debug readout (MESITA-2504). It
 // shows the same merged pool as the Feed — Google and Mesita candidates
-// deduped, gated, scored, × Selected, ranked — with its own budget: ONE
-// Nearby call per load (the reload throttle bounds the spend), the guest's
+// deduped, gated, scored, × Selected, ranked — with its own budget: the
+// operator's `map.mapGooglePlaces` (20 · 40 · 60 = 1 / 2 / 3 Nearby calls
+// per load, MESITA-2687; the reload throttle bounds the spend), the guest's
 // family pills pushed down to Nearby types, the operator's
 // `map.googleMinReviews` on Google hits, and `map.mesitaPlaces` Mesita
 // candidates. The guest never picks a source: a stale `placesScope` is
@@ -78,13 +79,14 @@ import {
 } from "../_shared/geo.ts";
 import {
   areaGoogleTypes,
+  areaWeights,
+  googleCallsForStop,
   type OwnedRow,
   type PoolBuilder,
   screenRadiusKm,
   selectAreaPool,
   selectedPoolQuery,
 } from "../_shared/area-pipeline.ts";
-import type { AreaWeights } from "../_shared/area-score.ts";
 import { areaQuota, ownedLookup } from "../_shared/area-deps.ts";
 import { readGooglePlacesKey } from "../_shared/google-places.ts";
 
@@ -191,11 +193,7 @@ Deno.serve(async (req) => {
   const radiusKm = screenKm ?? cfg.map.radiusKm;
   const location = { kind: "point" as const, anchor: center, radiusKm };
   // Proximity^a × Popularity^1 × Selected^1, reach = the radius.
-  const weights: AreaWeights = {
-    proximity: cfg.map.proximityWeight,
-    popularity: 1,
-    selected: 1,
-  };
+  const weights = areaWeights(cfg.map);
   const pool = await selectedPoolQuery(
     supabase.from("profiles").select(PLACE_CARD_COLUMNS) as unknown as PoolBuilder,
     cfg,
@@ -210,7 +208,8 @@ Deno.serve(async (req) => {
     location,
     families: guestSupers,
     types: googleFill ? nearbyTypes : [],
-    googleCalls: googleFill ? 1 : 0,
+    // The operator's Map stop: 20 · 40 · 60 = 1 / 2 / 3 calls (MESITA-2687).
+    googleCalls: googleFill ? googleCallsForStop(cfg.map.mapGooglePlaces) : 0,
     mesitaLimit: cfg.map.mesitaPlaces,
     mesitaRows: (pool.data ?? []) as OwnedRow[],
     cfg,
@@ -223,7 +222,7 @@ Deno.serve(async (req) => {
     // stub, and its tap's get-or-create opens the Mesita place.
     lookupOwned: ownedLookup(supabase, PLACE_CARD_COLUMNS, "consumer-web-list-places"),
     signals: { reachKm: radiusKm, weights },
-    // The prominent 20 inside the whole radius, whatever the chip.
+    // The prominent 20 inside the whole radius first, whatever the chip.
     fanoutMode: "popular",
   });
   // A caller that names its own cap keeps it.

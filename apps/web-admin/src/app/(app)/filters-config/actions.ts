@@ -34,12 +34,9 @@ type UpdateDiscoveryConfigResult = ActionResult<{
 export type DiscoverySlice =
   | "general"
   | "map"
-  // Narrow map slices (MESITA-1681, widened by MESITA-1695). Families
-  // (Configurations › Atlas) and Google Nearby's floor both write `map`.
-  // Whole-slice saves from those seeds mean the last Save wipes the others,
-  // so each writes only its own fields. `map` stays for the Area box, which
-  // owns the rest (the Nearby pull knob retired with MESITA-2298).
-  | "mapSupers"
+  // A narrow map slice (MESITA-1681): Google Nearby's floor writes only
+  // its own fields of `map`. `map` stays for the Area box, which owns the
+  // rest (the Families switches, `mapSupers`, went in MESITA-2687).
   | "mapFloors"
   | "nameFast"
   | "nameDeep"
@@ -68,7 +65,6 @@ export async function updateDiscoveryConfig(
     general: keys.has("general") ? config.general : live.config.general,
     map: {
       ...(keys.has("map") ? config.map : live.config.map),
-      ...(keys.has("mapSupers") ? { supers: config.map.supers } : null),
       ...(keys.has("mapFloors")
         ? { minRating: config.map.minRating, minReviews: config.map.minReviews }
         : null),

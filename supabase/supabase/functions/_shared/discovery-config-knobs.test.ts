@@ -29,8 +29,8 @@ Deno.test("the Map's reload throttle defaults to 1.5 s, bounded like the client'
   assertEquals(normalizeMapConfig({ reloadIdleSec: 0.1 }).reloadIdleSec, 0.5);
   assertEquals(normalizeMapConfig({ reloadIdleSec: 99 }).reloadIdleSec, 10);
   assertEquals(normalizeMapConfig({ reloadIdleSec: 2.25 }).reloadIdleSec, 2.25);
-  // The dead pair stays stored, untouched (no migration).
-  assertEquals(normalizeMapConfig({ reloadMinKm: 1, reloadMinSec: 4 }).reloadMinKm, 1);
+  // The dead pair is dropped on read (MESITA-2687).
+  assertEquals("reloadMinKm" in normalizeMapConfig({ reloadMinKm: 1, reloadMinSec: 4 }), false);
 });
 
 Deno.test("Word's Locations default on; an operator false sticks", () => {
@@ -78,11 +78,6 @@ Deno.test("an old blob with no Area params reads the defaults (MESITA-2327, MESI
     catalog: { ranking: { proximity: 1, popularity: 1 } },
   });
   assertEquals(cfg.params.popularity.halfReviews, 100);
-  assertEquals(cfg.params.modes, {
-    nearby: { proximity: 4, popularity: 1, selected: 1 },
-    popular: { proximity: 1, popularity: 3, selected: 1 },
-    family: { proximity: 1, popularity: 1, selected: 1 },
-  });
   assertEquals(cfg.params.selected, { otherFactor: 0.3 });
   // The retired deck's numbers and the Catalog ranking are dropped (MESITA-2328);
   // Proximity's bag holds only its reach (MESITA-2431), at the default.
@@ -91,7 +86,7 @@ Deno.test("an old blob with no Area params reads the defaults (MESITA-2327, MESI
   assertEquals("ranking" in cfg.catalog, false);
 });
 
-Deno.test("Area params clamp to their bounds; the weights table at two decimals (MESITA-2428)", () => {
+Deno.test("Area params clamp to their bounds; the weights table drops (MESITA-2687)", () => {
   const cfg = normalizeDiscoveryConfig({
     params: {
       proximity: { reachKm: 0.2 },
@@ -104,29 +99,15 @@ Deno.test("Area params clamp to their bounds; the weights table at two decimals 
   assertEquals(normalizeDiscoveryConfig({ params: { proximity: { reachKm: 99 } } }).params.proximity.reachKm, 50);
   assertEquals(normalizeDiscoveryConfig({ params: { proximity: { reachKm: 12.34 } } }).params.proximity.reachKm, 12.3);
   assertEquals(cfg.params.popularity.halfReviews, 1);
-  assertEquals(cfg.params.modes.nearby, { proximity: 5, popularity: 0, selected: 1 });
-  assertEquals(cfg.params.modes.popular, { proximity: 1, popularity: 1.23, selected: 1 });
-  assertEquals(cfg.params.modes.family, { proximity: 1, popularity: 1, selected: 1 });
+  assertEquals("modes" in cfg.params, false);
   assertEquals("balance" in cfg.params, false);
 });
 
-Deno.test("Selected is its own column and its own number (MESITA-2439): a stored row without it keeps its a and b", () => {
-  // The live row before MESITA-2439: two exponents per mode, no `selected`.
-  const old = normalizeDiscoveryConfig({
-    params: { modes: { nearby: { proximity: 3, popularity: 1 }, popular: { proximity: 1, popularity: 3 } } },
-  });
-  assertEquals(old.params.modes.nearby, { proximity: 3, popularity: 1, selected: 1 });
-  assertEquals(old.params.modes.popular, { proximity: 1, popularity: 3, selected: 1 });
-  assertEquals(old.params.selected.otherFactor, 0.3);
-  const cfg = normalizeDiscoveryConfig({
-    params: {
-      selected: { otherFactor: 0 },
-      modes: { family: { proximity: 1, popularity: 1, selected: 9 } },
-    },
-  });
+Deno.test("Selected's number for every other place (MESITA-2439): default 0.3, never 0", () => {
+  assertEquals(normalizeDiscoveryConfig({}).params.selected.otherFactor, 0.3);
+  const cfg = normalizeDiscoveryConfig({ params: { selected: { otherFactor: 0 } } });
   // Never 0: Selected stays a signal, never a gate.
   assertEquals(cfg.params.selected.otherFactor, 0.01);
-  assertEquals(cfg.params.modes.family.selected, 5);
   assertEquals(
     normalizeDiscoveryConfig({ params: { selected: { otherFactor: 0.456 } } }).params.selected.otherFactor,
     0.46,
