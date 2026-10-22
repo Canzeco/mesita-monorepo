@@ -4,7 +4,7 @@ import type React from "react";
 import type { LucideIcon } from "lucide-react";
 
 import type { PlaceDetail } from "../../place-detail";
-import { firstInitial } from "../../lib/format";
+import { cn, firstInitial } from "../../lib/format";
 import { Spinner } from "../Spinner";
 
 export function ProfilePhoto({ place }: { place: PlaceDetail }) {
@@ -109,10 +109,11 @@ export function ProfileStat({
  *  inside boxes but must not look as a button"): a 1px hairline, no fill,
  *  rounded-lg, 32px. Outlined is information; filled is a button, and on
  *  this screen only buttons wear a fill. `strong` inks the icon too (an
- *  open place's clock). */
+ *  open place's clock). `className` overrides the box (Creating's blue). */
 export function ProfileFact({
   icon: Icon,
   strong = false,
+  className,
   children,
   ...rest
 }: {
@@ -122,7 +123,10 @@ export function ProfileFact({
 } & React.LiHTMLAttributes<HTMLLIElement>) {
   return (
     <li
-      className="border-border text-foreground inline-flex h-8 min-w-0 items-center gap-1.5 rounded-lg border px-2.5 text-sm font-medium whitespace-nowrap tabular-nums"
+      className={cn(
+        "border-border text-foreground inline-flex h-8 min-w-0 items-center gap-1.5 rounded-lg border px-2.5 text-sm font-medium whitespace-nowrap tabular-nums",
+        className,
+      )}
       {...rest}
     >
       {Icon ? (
@@ -140,16 +144,35 @@ export function ProfileFact({
   );
 }
 
-/** Work in flight, the first fact of the row: a small spinner with an
- *  emerald top where the icon goes, then the word. Enriching (MESITA-451)
- *  and Creating (MESITA-2679) are both this fact, so they look alike. */
-export function RunningFact({ label }: { label: string }) {
+/** Work in flight, the first fact of the row: a small spinner where the
+ *  icon goes, then the word. Enriching (MESITA-451) is outlined like every
+ *  fact, its spinner topped emerald. CREATING IS `loud` (Pato, MESITA-2682:
+ *  "add some fucking color. it must be noticable"): a solid blue box, the
+ *  map's guest blue (blue-600, #2563eb), the word and the spinner white.
+ *  Red would read as closed and green as open, so blue. Enriching stays
+ *  outlined: on this screen colour goes only where Pato names it. */
+export function RunningFact({
+  label,
+  loud = false,
+}: {
+  label: string;
+  loud?: boolean;
+}) {
   return (
-    <ProfileFact aria-live="polite">
+    <ProfileFact
+      aria-live="polite"
+      className={
+        loud ? "text-paper border-blue-600 bg-blue-600 font-semibold" : undefined
+      }
+    >
       <Spinner
         size="sm"
         label={label}
-        className="border-border h-3.5 w-3.5 border-t-emerald-600"
+        className={
+          loud
+            ? "border-paper/35 border-t-paper h-3.5 w-3.5"
+            : "border-border h-3.5 w-3.5 border-t-emerald-600"
+        }
       />
       {label}
     </ProfileFact>
