@@ -4,9 +4,11 @@
 // consumer × place × kind in public.place_activity. There is no `went` for now
 // (Pato, MESITA-2567: "there is no visited. there is only viewed and liked"):
 // it is refused on write and dropped on read; the table's CHECK still allows
-// it, so it can come back without a migration. Who may appear (Instagram
-// connected + Show my activity + not deleted) is decided in SQL
-// (place_activity_visible); this module only shapes what those readers return:
+// it, so it can come back without a migration. Who may appear (a verified
+// Instagram + Public profile + not deleted, and never for a view, MESITA-2594)
+// is decided in SQL (place_activity_visible and the readers); this module only
+// shapes what those readers return, and masks handles for a viewer who does
+// not show their own (seesHandles):
 // the feed's events (one row each, newest first, near the guest) and the
 // place profile's line.
 
@@ -32,9 +34,15 @@ export type ActivityPerson = {
   name: string;
   avatarUrl: string | null;
   /** The verified Instagram username, without "@" (MESITA-2590 shows it in
-   *  full; MESITA-2522 had cut it to three letters). Null without a named
+   *  full), or masked to "per***" when handleLocked. Null without a named
    *  Instagram: an anonymous member never carries one. */
   handle: string | null;
+  /** The handle is masked because the viewer does not show their own
+   *  (MESITA-2594, Pato: "to see others people instagram, you need to both
+   *  have your instagram connected and have your account in public, else we
+   *  just show the three first letters and the rest is ***"). The full
+   *  handle never left the server; the app offers no Instagram link. */
+  handleLocked: boolean;
   followers: number;
   isYou: boolean;
   /** Class: regular or vip, through a partner (MESITA-2553). */
@@ -78,6 +86,24 @@ export function toClass(v: unknown): ConsumerClass {
   return "regular";
 }
 
+/** "perdon" → "per***": the first three letters, the rest hidden
+ *  (MESITA-2594). Never the length: always three stars. */
+export function maskHandle(handle: string): string {
+  return `${handle.slice(0, 3)}***`;
+}
+
+/** Whether a viewer sees other members' full handles (MESITA-2594): only
+ *  with their own Instagram verified and their profile public. */
+export function seesHandles(
+  viewer: {
+    instagram_verified_at: string | null;
+    appear_anonymous: boolean | null;
+  } | null,
+): boolean {
+  return viewer != null && viewer.instagram_verified_at != null &&
+    viewer.appear_anonymous !== true;
+}
+
 /** "@Perdon " → "perdon", or null. */
 export function cleanHandle(handle: string | null | undefined): string | null {
   const h = handle?.trim().replace(/^@/, "").toLowerCase();
@@ -100,13 +126,18 @@ export type ActivityRow = {
   total?: number | string | null;
 };
 
-export function toPerson(row: ActivityRow, viewerId: string): ActivityPerson {
+export function toPerson(
+  row: ActivityRow,
+  viewerId: string,
+  canSeeHandles = true,
+): ActivityPerson {
   const isYou = row.consumer_id === viewerId;
   if (row.anonymous === true) {
     return {
       name: "A member",
       avatarUrl: null,
       handle: null,
+      handleLocked: false,
       followers: 0,
       isYou,
       guestClass: "regular",
@@ -115,11 +146,15 @@ export function toPerson(row: ActivityRow, viewerId: string): ActivityPerson {
     };
   }
   const first = row.first_name?.trim();
+  const handle = cleanHandle(row.instagram_handle);
+  // Your own handle is never masked to you.
+  const locked = handle != null && !isYou && !canSeeHandles;
   return {
     // The name is the first name, never "@handle"; the handle rides beside it.
     name: first || "A member",
     avatarUrl: row.avatar_url ?? null,
-    handle: cleanHandle(row.instagram_handle),
+    handle: handle && locked ? maskHandle(handle) : handle,
+    handleLocked: locked,
     followers: Math.max(
       0,
       Math.trunc(Number(row.instagram_followers_count ?? 0)) || 0,
@@ -146,6 +181,7 @@ export type FeedEvent = {
 export function feedEvents(
   rows: readonly ActivityRow[],
   viewerId: string,
+  canSeeHandles = true,
 ): FeedEvent[] {
   return [...rows]
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
@@ -155,7 +191,7 @@ export function feedEvents(
           placeId: row.place_id,
           kind: row.kind,
           at: row.created_at,
-          person: toPerson(row, viewerId),
+          person: toPerson(row, viewerId, canSeeHandles),
         }]
         : []
     );
@@ -174,8 +210,9 @@ export function nearYou(
   return distanceKm != null && distanceKm <= radiusKm;
 }
 
-/** The line under a place's title: "Perdón and 3 others saw this". People
- *  first; null when nobody visible has touched the place. */
+/** The line under a place's title: "Perdón and 3 others liked this". Likes
+ *  only (MESITA-2594: a view is never named); null when no named member has
+ *  liked the place. */
 export function socialLine(
   lead: ActivityPerson | null,
   total: number,
@@ -183,6 +220,6 @@ export function socialLine(
   if (!lead || total <= 0) return null;
   const who = lead.isYou ? "You" : lead.name;
   const rest = total - 1;
-  if (rest <= 0) return `${who} saw this`;
-  return `${who} and ${rest} ${rest === 1 ? "other" : "others"} saw this`;
+  if (rest <= 0) return `${who} liked this`;
+  return `${who} and ${rest} ${rest === 1 ? "other" : "others"} liked this`;
 }

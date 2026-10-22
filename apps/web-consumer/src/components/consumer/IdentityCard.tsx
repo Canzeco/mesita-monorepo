@@ -16,8 +16,9 @@ import { cn } from "@/lib/utils";
 // ONE IDENTITY CARD (Pato, MESITA-2547: "that card at the top is the card.
 // the card must display all public info from instagram to profile picture
 // to name"). Me's header draws it for the guest (Instagram is a door there);
-// Social's person card draws it for a member (Instagram is a fact, the
-// handle hidden as "die•••", MESITA-2522). Never the phone: it is private and
+// Social's person card draws it for a member (Instagram is a fact: the full
+// handle, MESITA-2590, or "die***" until the viewer shows their own,
+// MESITA-2594). Never the phone: it is private and
 // lives in Settings.
 //
 // CENTRED, ONE FACT PER LINE (Pato, MESITA-2592: "make again the profile
@@ -27,7 +28,7 @@ import { cn } from "@/lib/utils";
 //
 //              (64px photo)
 //                 Diego
-//      [◎ die••• · 1.2K followers]
+//     [◎ @diego · 1.2K followers]
 //              [♛ VIP]
 //            [▭ Premium]
 //
@@ -51,7 +52,7 @@ const TAP_TARGET_CLASS =
   "after:absolute after:inset-x-[-4px] after:inset-y-[-8px] after:content-['']";
 
 export type IdentityInstagram = {
-  /** "@handle", "Connect it", or the hidden "per••• · 1.2K followers". */
+  /** "@handle", "Connect it", or "@per*** · 1.2K followers" (MESITA-2594). */
   label: string;
   /** A door (Me) when set; a plain fact (Social) when not. */
   href?: string;
