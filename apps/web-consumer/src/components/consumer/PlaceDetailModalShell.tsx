@@ -1,43 +1,44 @@
 "use client";
 
-import { PlaceDetailTitle } from "@mesita/place-profile";
-import { SlideOverHeader } from "@/components/consumer/overlay/SlideOverShell";
+import { PlaceTopBar } from "@mesita/place-profile";
+import { useSlideOverClose } from "@/components/consumer/overlay/SlideOverShell";
 import type { PlaceDetail } from "@/lib/place-detail";
 
 // Content chrome for the intercepted /place/[id] route. The sliding panel
 // itself (enter/exit animation, backdrop, ESC, router.back on dismiss) is
 // SlideOverShell, mounted by the segment's layout.tsx — this component only
-// fills it with the place header and the scrollable body.
+// fills it with the place's top bar and the scrollable body.
 //
-// decision: Pato (MESITA-392, reverses MESITA-383) — Save moved into the
-// body action row; the header is just dismiss + centered name. SlideOverHeader
-// renders a w-9 spacer for the absent actions slot, so the title stays centered.
-// decision: Pato (MESITA-451, revised) — the "Enriching" state now lives as
-// a chip in the profile summary (PlaceDetailBody), not the title row.
-// decision: Pato (2026-10-17, MESITA-2321) — all five buttons sit in the
-// profile summary (Reserve, then Favorite · Contact · Share as icons); no
-// pinned band.
-//   1. SlideOverHeader (shrink-0) — dismiss + place name
+// THE TOP BAR IS THE PACKAGE'S PlaceTopBar (MESITA-2627), the same
+// Instagram-style bar the direct-link page draws: bare chevron, bold sans
+// name at the left with the Enriched mark before it, three dots that share.
+// Until MESITA-2627 this shell drew SlideOverHeader (a bordered back square
+// and a centred serif name), so a place opened from inside the app never
+// got MESITA-2619's bar. The chevron closes the slide-over.
+// decision: Pato (MESITA-451, revised) — the "Enriching" state lives as a
+// chip in the profile summary (PlaceDetailBody), not the title row.
+//   1. PlaceTopBar (shrink-0) — back · name · share
 //   2. Scroll area (flex-1 overflow-y-auto) — PlaceDetailBody (ugly
 //      Create profile included). Enrich is a tab until Enriched.
 
 export function PlaceDetailModalShell({
   children,
   place,
+  onShare,
 }: {
   children: React.ReactNode;
   place: PlaceDetail;
+  /** The three dots open the share sheet; absent, they are inert. */
+  onShare?: () => void;
 }) {
+  const close = useSlideOverClose();
   return (
     <>
-      <SlideOverHeader
-        title={
-          <PlaceDetailTitle
-            placeName={place.name}
-            enriched={place.is_enriched}
-            className="flex-none"
-          />
-        }
+      <PlaceTopBar
+        name={place.name}
+        enriched={place.is_enriched}
+        onBack={close}
+        onShare={onShare}
       />
       {/*
         `min-h-0` is the load-bearing class here: without it, a flex-1 child

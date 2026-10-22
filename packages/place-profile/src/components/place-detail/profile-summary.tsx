@@ -83,23 +83,9 @@ export function ProfileSummary({
         </div>
       </div>
 
-      {/* THE BIO LINE (Pato, MESITA-2623: "mention the google category in
-          the biography"): Google's category, the place's primary type and
-          its display name from Enrich, in grey under the photo the way
-          Instagram prints a business profile's category ("Coffee shop")
-          under its name. It left the chip row, where it was the first chip. */}
-      {place.category && (
-        <p
-          className="text-muted-foreground text-sm leading-snug"
-          data-profile-category
-        >
-          {place.category}
-        </p>
-      )}
-
       {/* decision: Pato — when the Enricher is still building the profile an
           "Enriching" chip leads the row; then price · zone · distance ·
-          hours (the category is the bio line above, MESITA-2623) (swipe-style tags on light surface). MESITA-451:
+          hours (swipe-style tags on light surface). MESITA-451:
           moved here off the header title. */}
       <div className="flex flex-wrap items-center gap-2">
         {place.is_enriching && (
@@ -114,6 +100,14 @@ export function ProfileSummary({
             />
             Enriching
           </span>
+        )}
+        {/* GOOGLE'S CATEGORY LEADS THE CHIPS, IN THE SAME PILL (Pato,
+            MESITA-2627: "category must be in same style"). MESITA-2623 had
+            moved it to a grey bio line under the photo; it is back. */}
+        {place.category && (
+          <ProfileMetaChip>
+            <span className="font-semibold">{place.category}</span>
+          </ProfileMetaChip>
         )}
         {priceLabel && (
           <ProfileMetaChip>
