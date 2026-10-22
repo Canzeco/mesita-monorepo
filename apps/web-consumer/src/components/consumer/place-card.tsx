@@ -27,6 +27,9 @@ function readableKind(place: Place): string | null {
 export type CardFacts = {
   /** "Cafe · $$": category, then the price level as dollar signs. */
   kindPrice: string;
+  /** The category alone, and the $$ alone (green on the card, MESITA-2673). */
+  kind: string | null;
+  price: string | null;
   rating: string | null;
   reviews: string | null;
   /** true open, false closed, null unknown (no hours row). */
@@ -56,6 +59,8 @@ export function cardFacts(place: Place): CardFacts {
         : null;
   return {
     kindPrice: [readableKind(place), price].filter(Boolean).join(" · "),
+    kind: readableKind(place),
+    price: price || null,
     rating: formatRating(o.google_rating),
     reviews:
       typeof o.google_count === "number" && o.google_count > 0
@@ -86,11 +91,21 @@ export function KindRow({ facts }: { facts: CardFacts }) {
   if (!facts.kindPrice && !facts.rating) return null;
   return (
     <p className={ROW}>
-      {facts.kindPrice ? <span className="truncate">{facts.kindPrice}</span> : null}
+      {facts.kind ? <span className="truncate">{facts.kind}</span> : null}
+      {facts.kind && facts.price ? <Dot /> : null}
+      {facts.price ? (
+        // The price in green (Pato, MESITA-2673: "price tag green").
+        <span className="text-fact-price shrink-0 font-semibold">
+          {facts.price}
+        </span>
+      ) : null}
       {facts.kindPrice && facts.rating ? <Dot /> : null}
       {facts.rating ? (
         <span className="inline-flex shrink-0 items-center gap-1">
-          <Star className={cn(MARK, "fill-fact-star text-fact-star")} aria-hidden />
+          <Star
+            className={cn(MARK, "fill-fact-star text-fact-star")}
+            aria-hidden
+          />
           {facts.rating}
           {facts.reviews ? <span>({facts.reviews})</span> : null}
         </span>
@@ -118,7 +133,10 @@ export function HoursRow({
       {facts.hours ? (
         <>
           <Clock
-            className={cn(MARK, facts.open ? "text-fact-open" : "text-fact-closed")}
+            className={cn(
+              MARK,
+              facts.open ? "text-fact-open" : "text-fact-closed",
+            )}
             strokeWidth={2.5}
             aria-hidden
           />
@@ -172,12 +190,17 @@ export function CardActions({
       <button
         type="button"
         onClick={onSave}
-        aria-label={saved ? `Remove ${name} from favorites` : `Add ${name} to favorites`}
+        aria-label={
+          saved ? `Remove ${name} from favorites` : `Add ${name} to favorites`
+        }
         className={CARD_BUTTON}
         data-tile-save
       >
         <Heart
-          className={cn("h-4 w-4 shrink-0", saved && "fill-destructive text-destructive")}
+          className={cn(
+            "h-4 w-4 shrink-0",
+            saved && "fill-destructive text-destructive",
+          )}
           strokeWidth={2.25}
           aria-hidden
         />
