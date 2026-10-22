@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, CreditCard, Crown, UserRound } from "lucide-react";
+import { CreditCard, Crown, UserRound } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
 import {
@@ -29,15 +29,19 @@ import { cn } from "@/lib/utils";
 //              (64px photo)
 //   ( 👤 Diego                     )
 //   ( ◎ @diego · 1.2K followers    )
-//   ( ♛ VIP                        )
-//   ( ▭ Premium                    )
+//   ( ♛ Class: VIP                 )
+//   ( ▭ Plan: Premium              )
 //
 // One width for all four (the card's width up to 18rem), 36px tall (MESITA-2599:
 // "make the boxes a bit shorter"; 40px before), and ONE
 // text style, 14px semibold, in every box (Pato, MESITA-2599: "standardize
 // the size of those letters inside the four boxes"); the defaults (Regular,
-// Free) differ only in their muted colour.
-// Nothing truncates but the name and the Instagram label.
+// Free) look exactly like the rest: same size, weight and ink (Pato:
+// "standardize the font here"). Only VIP (filled) and Premium (ink border)
+// stand out.
+// Nothing truncates but the name and the Instagram label. No chevrons
+// (Pato, MESITA-2604: "remove the > … just name … it looks really dirty"):
+// a door on Me is still a link, it just does not draw an arrow.
 //
 // CLASS AND PLAN ARE TWO THINGS (MESITA-2553). Class is partnership status:
 // Regular or VIP, through a partner, never sold; VIP filled, Regular muted,
@@ -88,20 +92,19 @@ function ClassChip({
 }) {
   const vip = guestClass === "vip";
   const label = CLASS_LABEL[guestClass];
+  // Key and value on the box (Pato: "Class: Regular … mention the key val").
+  const text = `Class: ${label}`;
   const className = cn(
     CHIP_CLASS,
     vip
       ? "bg-foreground text-background border-transparent"
-      : "text-muted-foreground",
+      : "",
     onPress && cn(TAP_TARGET_CLASS, "transition", !vip && "hover:bg-muted"),
   );
   const body = (
     <>
       <Crown className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-      <span className="truncate">{label}</span>
-      {onPress && (
-        <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-60" aria-hidden />
-      )}
+      <span className="truncate">{text}</span>
     </>
   );
   const aria = `Class: ${label}`;
@@ -130,18 +133,17 @@ function ClassChip({
 function PlanChip({ plan, href }: { plan: GuestPlan; href?: string }) {
   const premium = plan === "premium";
   const label = PLAN_LABEL[plan];
+  // Key and value on the box (Pato: "Plan: Free … mention the key val").
+  const text = `Plan: ${label}`;
   const className = cn(
     CHIP_CLASS,
-    premium ? "border-foreground" : "text-muted-foreground",
+    premium && "border-foreground",
     href && cn(TAP_TARGET_CLASS, "hover:bg-muted transition"),
   );
   const body = (
     <>
       <CreditCard className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-      <span className="truncate">{label}</span>
-      {href && (
-        <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-60" aria-hidden />
-      )}
+      <span className="truncate">{text}</span>
     </>
   );
   const aria = `Plan: ${label}`;
@@ -171,9 +173,6 @@ function NameBox({ name, href }: { name: string; href?: string }) {
     <>
       <UserRound className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
       <span className="truncate">{name}</span>
-      {href && (
-        <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-60" aria-hidden />
-      )}
     </>
   );
   return href ? (
@@ -256,10 +255,6 @@ export function IdentityCard({
           >
             <InstagramBadge />
             <span className="truncate">{instagram.label}</span>
-            <ChevronRight
-              className="h-3.5 w-3.5 shrink-0 opacity-60"
-              aria-hidden
-            />
           </Link>
         ) : instagram ? (
           <span className={CHIP_CLASS} data-identity-instagram>

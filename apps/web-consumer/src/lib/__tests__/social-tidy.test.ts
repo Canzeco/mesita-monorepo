@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 // Social's tidy notifications (MESITA-2525, Pato: "make this more UI
-// friendly … your call"): a verb badge on the face, the time on the quiet
+// friendly … your call"): the time on the quiet
 // line, and a placeholder where a place has no photo. ONE PLAIN LIST, no
 // day headings (MESITA-2528, Pato: "Just the fucking plain list with time
 // notation. Keep it simple.").

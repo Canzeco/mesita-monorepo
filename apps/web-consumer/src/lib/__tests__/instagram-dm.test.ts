@@ -31,10 +31,19 @@ describe("connecting Instagram by message", () => {
     "utf8",
   );
 
-  it("asks the server which way works, and falls back to the bio code", () => {
+  // MESITA-2602: the message flow is always the screen; the channel only
+  // says whether it is live or a Soon preview. No bio-code screen.
+  it("always draws the message flow, live only when the channel is dm", () => {
     expect(PAGE).toContain("apiInstagramChannel(supabase)");
-    expect(PAGE).toContain('setChannel({ channel: "bio" })');
-    expect(PAGE).toContain('channel?.channel === "dm" && <ConnectByMessage />');
-    expect(PAGE).toContain('channel?.channel === "bio" && (');
+    expect(PAGE).toContain('<ConnectByMessage live={channel.channel === "dm"} />');
+    expect(PAGE).not.toContain("function ConnectModule");
+    expect(PAGE).not.toMatch(/apiStartInstagramClaim|apiCheckInstagramClaim/);
+  });
+
+  it("is a Soon preview while the channel is off: no code is asked for", () => {
+    const dm = PAGE.slice(PAGE.indexOf("function ConnectByMessage"), PAGE.indexOf("function CurrentConnectionCard"));
+    expect(dm).toContain("disabled={busy || !handleOk || !live}");
+    expect(dm).toContain("if (busy || !handleOk || !live) return;");
+    expect(dm).toContain("Connecting by Instagram message opens soon.");
   });
 });

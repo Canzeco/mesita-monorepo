@@ -99,23 +99,6 @@ export async function apiFetchConsumerProfile(
 
 // ─── Instagram claim ─────────────────────────────────────────────────────
 
-// consumer-web-claim-instagram (MESITA-2461): a handle is proved, not typed.
-// `start` hands back a one-time code for the guest's bio; `check` has the
-// server read the bio and, only if the code is there, store the handle with
-// the follower count it scraped. The app never sends a count; the count
-// against INSTAGRAM_REACH_FOLLOWERS is still what makes the account verified
-// (consumer-identity.ts).
-export async function apiStartInstagramClaim(
-  client: SupabaseClient,
-  handle: string,
-): Promise<{ handle: string; code: string }> {
-  return await invokeEF<{ handle: string; code: string }>(
-    client,
-    "consumer-web-claim-instagram",
-    { action: "start", handle },
-  );
-}
-
 // By DM (MESITA-2575): the guest sends the code to Mesita's Instagram and
 // the server learns the handle, followers and photo from Meta. `channel`
 // says whether that is switched on; until then the bio flow above is used.
@@ -165,14 +148,4 @@ export async function apiInstagramDmStatus(
 export function dmVerified(status: InstagramDmStatus, issuedAt: string): boolean {
   if (status.pending || !status.handle || !status.verifiedAt) return false;
   return Date.parse(status.verifiedAt) >= Date.parse(issuedAt);
-}
-
-export async function apiCheckInstagramClaim(
-  client: SupabaseClient,
-): Promise<{ handle: string; followers: number }> {
-  return await invokeEF<{ handle: string; followers: number }>(
-    client,
-    "consumer-web-claim-instagram",
-    { action: "check" },
-  );
 }
