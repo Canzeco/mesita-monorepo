@@ -57,6 +57,8 @@ export function RailCard({
       : null;
   // TITLE CASE ON THE HOURS LINE (Pato, MESITA-2665: "leave it camel case,
   // Opens Tomorrow"): "Closed · Opens Tomorrow 07:00", "Open · Until 02:00".
+  // Every row is full ink now, the review count and hours line included
+  // (MESITA-2665: "that is too light, I cannot read").
   const openLine = titleWords(
     o.open_now === true
       ? o.closes_at
@@ -128,13 +130,11 @@ export function RailCard({
             <span className="inline-flex shrink-0 items-center gap-1">
               <Star className="fill-foreground text-foreground h-3.5 w-3.5 shrink-0" />
               {ratingLabel}
-              {reviews ? (
-                <span className="text-muted-foreground">({reviews})</span>
-              ) : null}
+              {reviews ? <span>({reviews})</span> : null}
             </span>
           ) : null}
         </p>
-        <p className="text-muted-foreground h-5 truncate text-sm leading-5">
+        <p className="text-foreground h-5 truncate text-sm leading-5">
           {hoursDistance}
         </p>
       </div>
