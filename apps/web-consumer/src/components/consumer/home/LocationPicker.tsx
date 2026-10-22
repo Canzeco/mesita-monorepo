@@ -45,7 +45,7 @@ import { useHere } from "@/lib/use-here-name";
 import type { NearbyArea } from "@/lib/api/place-search";
 import { newSessionToken } from "@/components/consumer/search/search-utils";
 import { aroundYouCamera, pickCamera, type PickerCamera } from "@/lib/location-pick";
-import { MONTERREY_CENTER, MONTERREY_NAME } from "@/lib/map-defaults";
+import { MONTERREY_CENTER } from "@/lib/map-defaults";
 import {
   useLocateUser,
   useUserLocation,
@@ -72,6 +72,15 @@ import { cn, errMsg } from "@/lib/utils";
 export const HOME_LOCATION_CLASS =
   "border-transparent bg-muted text-foreground hover:bg-border focus-visible:ring-ring ml-auto flex h-9 max-w-[65%] min-w-0 items-center gap-1.5 rounded-xl border px-3 text-sm font-semibold outline-none transition focus-visible:ring-2 active:scale-[0.98]";
 
+/** The box's word when Current location is chosen and the device has none. */
+export const NO_LOCATION_LABEL = "No location";
+
+/** The box's colour in that state (MESITA-2610): the app's one status red,
+ *  the Toaster's and ReservationSheet's pairing. Only the colour changes;
+ *  the geometry stays `HOME_LOCATION_CLASS`. */
+export const HOME_LOCATION_OFF_CLASS =
+  "bg-destructive/10 text-destructive hover:bg-destructive/15";
+
 /** What the pill says: the saved name, or the state of the device fix. The
  *  sheet's row adds the neighbourhood once known (MESITA-2466): "Current
  *  location · Distrito Tec"; the header oval never passes one. */
@@ -86,9 +95,12 @@ export function locationLabel(
   return locating ? "Locating…" : "Use my location";
 }
 
-/** The header box (MESITA-2587): once the browser has answered with no fix
- *  and nothing is saved, Home ranks around Monterrey, so the box says so —
- *  "Monterrey" behind a crossed-out pin — instead of a bar above the tiles. */
+/** The header box. Once the browser has answered with no fix and nothing is
+ *  saved, the box says "No location" in red behind a crossed-out pin
+ *  (MESITA-2610, Pato: "if location cannot be shown … mention like no
+ *  location"; it read "Monterrey" under MESITA-2587). Home still ranks
+ *  around the Monterrey centre. A saved location never shows the failure,
+ *  and neither does an ask still in flight or an older fix still held. */
 export function headerLocation(
   active: { name: string } | null,
   hasFix: boolean,
@@ -96,7 +108,7 @@ export function headerLocation(
   settled: boolean,
 ): { label: string; off: boolean } {
   if (!active && !hasFix && !locating && settled)
-    return { label: MONTERREY_NAME, off: true };
+    return { label: NO_LOCATION_LABEL, off: true };
   return { label: locationLabel(active, hasFix, locating), off: false };
 }
 
@@ -261,8 +273,8 @@ export function LocationPicker() {
         type="button"
         onClick={() => setPicking(true)}
         aria-haspopup="dialog"
-        aria-label={`Location: ${label}${off ? " (location off)" : ""}. Change location`}
-        className={HOME_LOCATION_CLASS}
+        aria-label={`Location: ${label}. Change location`}
+        className={cn(HOME_LOCATION_CLASS, off && HOME_LOCATION_OFF_CLASS)}
         data-home-location
       >
         {off ? (
@@ -272,7 +284,7 @@ export function LocationPicker() {
         )}
         <span className="min-w-0 truncate">{label}</span>
         <ChevronDown
-          className="text-muted-foreground h-3.5 w-3.5 shrink-0"
+          className={cn("h-3.5 w-3.5 shrink-0", off ? "text-destructive" : "text-muted-foreground")}
           strokeWidth={2.25}
           aria-hidden
         />
