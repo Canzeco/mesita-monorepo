@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, Star } from "lucide-react";
+import { Heart } from "lucide-react";
 import { EnrichedBadge } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
 import { isEnrichedPlace } from "@/lib/place-enriched";
@@ -16,7 +16,7 @@ import {
 } from "@/lib/place-placeholder";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { FamilyIcon } from "@/lib/family-icons";
-import { cn, formatCompactCount, formatKm, formatRating } from "@/lib/utils";
+import { cn, formatKm } from "@/lib/utils";
 
 /**
  * A Google-only card has no Mesita page yet. Its tap is the explicit open
@@ -74,9 +74,9 @@ function readableKind(place: Place): string | null {
 
 /**
  * One place, as one square tile (Pato, MESITA-2364, MESITA-2373): the photo
- * on the top 60%, its light reflection below carrying four rows — name with
- * the heart at its right; price · category; zone · open state; stars ·
- * distance (MESITA-2374). No zone. An
+ * on the top 60% with the Save heart on its corner, its light reflection
+ * below carrying four rows — name; category · $$; hours; zone · distance
+ * (MESITA-2645). An
  * enriched place wears the Enriched mark after its name
  * (MESITA-2296). Favs does not use this tile. A Google-only card opens its
  * profile through `onOpenGoogle` and has no save heart: only a Mesita place
@@ -106,16 +106,12 @@ export function CatalogTile({
   // The same real-data mapper the detail Overview reads (MESITA-2371): stars,
   // review count, price range, open state, zone — a missing cell hides.
   const o = enrichPlaceOverview(place);
-  // "MX$200–300 per person" truncated the row; the tile keeps the range.
-  const priceLabel =
-    o.price_range?.replace(/\s*per person$/i, "") ??
-    formatPlacePriceLevelSymbols(place.price_level);
+  // PRICE FOR DUMMIES, HERE ONLY (Pato, MESITA-2645: "price must be price
+  // range for dummies ($, $$, $$$, $$$$), just here in the home preview"):
+  // the price level as dollar signs, never "MX$200–300" on a tile. The place
+  // screen keeps the range.
+  const priceLabel = formatPlacePriceLevelSymbols(place.price_level);
   const kind = readableKind(place);
-  const ratingLabel = formatRating(o.google_rating);
-  const reviews =
-    typeof o.google_count === "number" && o.google_count > 0
-      ? formatCompactCount(o.google_count)
-      : null;
   const zone = o.zone?.trim() || null;
   const openLine =
     o.open_now === true
@@ -131,12 +127,12 @@ export function CatalogTile({
     typeof place.distance_km === "number" && place.distance_km > 0
       ? formatKm(place.distance_km)
       : null;
-  // Four rows (Pato, MESITA-2373, after three in MESITA-2372): name;
-  // stars · price; category · zone; open state · distance.
-  // Pato's order (MESITA-2374): Name (+ Save at the right) · Price,
-  // Category · Zone, Time · Stars (and distance).
-  const priceKind = [priceLabel, kind].filter(Boolean).join(" · ");
-  const zoneTime = [zone, openLine].filter(Boolean).join(" · ");
+  // FOUR ROWS, PATO'S ORDER (MESITA-2645: "the same fields as in the
+  // header"): name (+ the Enriched mark); category · $$; hours; zone ·
+  // distance. The stars row left the tile (not in his list; the place
+  // screen keeps them). Each row hides when it has nothing.
+  const kindPrice = [kind, priceLabel].filter(Boolean).join(" · ");
+  const zoneDistance = [zone, distance].filter(Boolean).join(" · ");
 
   // The photo, or the Google card's family icon (a line icon, never the
   // emoji: MESITA-2478). Drawn twice: on the top
@@ -212,43 +208,33 @@ export function CatalogTile({
             aria-hidden
           />
           <div className="text-foreground relative flex h-full flex-col justify-evenly px-3 py-1.5">
-            <p
-              className={cn(
-                "font-display flex min-w-0 items-center gap-1 text-base leading-tight font-semibold tracking-tight",
-                !google && "pr-9",
-              )}
-            >
-              {/* The mark follows the name, 20px (Pato, MESITA-2628: "put
-                  selected at the right better, but make it bigger"); the
-                  name truncates, the mark never does. */}
+            {/* The name has the full width: Save moved onto the photo
+                (MESITA-2645). Inter bold, the place screen's type; the mark
+                follows the name, 20px (MESITA-2628). */}
+            <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-tight font-bold tracking-tight">
               <span className="truncate">{place.name}</span>
               {isEnrichedPlace(place) ? <EnrichedBadge /> : null}
             </p>
-            {priceKind ? (
+            {kindPrice ? (
               <p className="truncate text-sm leading-tight font-medium">
-                {priceKind}
+                {kindPrice}
               </p>
             ) : null}
-            {zoneTime ? (
+            {openLine ? (
+              <p
+                className={cn(
+                  "truncate text-sm leading-tight",
+                  o.open_now === true
+                    ? "text-foreground"
+                    : "text-muted-foreground",
+                )}
+              >
+                {openLine}
+              </p>
+            ) : null}
+            {zoneDistance ? (
               <p className="text-muted-foreground truncate text-sm leading-tight">
-                {zoneTime}
-              </p>
-            ) : null}
-            {ratingLabel || distance ? (
-              <p className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-sm leading-tight">
-                {ratingLabel ? (
-                  <span className="text-foreground inline-flex shrink-0 items-center gap-1 font-medium">
-                    <Star className="fill-foreground text-foreground h-3.5 w-3.5" />
-                    {ratingLabel}
-                    {reviews ? (
-                      <span className="text-muted-foreground font-normal">
-                        ({reviews})
-                      </span>
-                    ) : null}
-                  </span>
-                ) : null}
-                {ratingLabel && distance ? <span aria-hidden>·</span> : null}
-                {distance ? <span className="truncate">{distance}</span> : null}
+                {zoneDistance}
               </p>
             ) : null}
           </div>
@@ -263,17 +249,24 @@ export function CatalogTile({
               ? `Remove ${place.name} from favorites`
               : `Add ${place.name} to favorites`
           }
-          // The Save heart sits at the right of the name row (Pato,
-          // MESITA-2374), a sibling of the tile link so a tap never navigates.
-          className="absolute top-[60%] right-0 flex h-11 w-11 items-center justify-center"
+          // SAVE SITS ON THE PHOTO (Pato, MESITA-2645: "button at the same
+          // height of place looks weird"): the photo's top-right corner, a
+          // 36px dark glass circle with a white heart inside a 44px hit
+          // area, red-filled once liked (the place screen's Like,
+          // MESITA-2635). A sibling of the tile link, so a tap never
+          // navigates.
+          className="absolute top-1 right-1 flex h-11 w-11 items-center justify-center"
           data-tile-save
         >
-          <Heart
-            className={cn(
-              "h-5 w-5",
-              saved ? "fill-foreground text-foreground" : "text-foreground",
-            )}
-          />
+          <span className="bg-media-glass text-on-media flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-sm">
+            <Heart
+              className={cn(
+                "h-[18px] w-[18px]",
+                saved && "fill-destructive text-destructive",
+              )}
+              strokeWidth={2.25}
+            />
+          </span>
         </button>
       )}
     </li>
