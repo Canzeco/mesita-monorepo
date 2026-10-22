@@ -92,14 +92,6 @@ describe("the tile: photo on top, its light reflection below (MESITA-2369, MESIT
       photos: ["https://example.com/a.jpg"],
       price_level: 2,
     });
-    expect(html).toContain(
-      "relative isolate aspect-square min-w-0 overflow-hidden",
-    );
-    expect(html).toContain("absolute inset-x-0 top-0 h-[60%] overflow-hidden");
-    expect(html).toContain(
-      "absolute inset-x-0 bottom-0 h-[40%] overflow-hidden",
-    );
-    expect(html).toContain("absolute inset-x-0 top-0 h-[150%] -scale-y-100");
     expect(html.match(/<img/g)?.length).toBe(2);
     expect(html).toContain("bg-paper/80");
     expect(html).not.toContain("bg-foreground/50");
@@ -152,11 +144,14 @@ describe("the tile shows the header's fields, Pato's order (MESITA-2645)", () =>
   });
 });
 
-describe("the Save heart (MESITA-2646)", () => {
-  it("is outside the tile link, so a tap saves and never navigates", () => {
+describe("Like and Share (MESITA-2650)", () => {
+  it("sit outside the tile link, so a tap likes or shares and never navigates", () => {
     const html = tile({});
+    expect(html).toContain("Share Casa");
+    expect(html).toContain("Add Casa to favorites");
     // A sibling of the link, never inside it.
     const link = html.slice(html.indexOf("<a "), html.indexOf("</a>"));
     expect(link).not.toContain("data-tile-save");
+    expect(link).not.toContain("data-tile-share");
   });
 });

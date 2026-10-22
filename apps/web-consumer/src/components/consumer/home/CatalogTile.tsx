@@ -3,11 +3,12 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, Star } from "lucide-react";
+import { Heart, Share2, Star } from "lucide-react";
 import { EnrichedBadge } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
 import { isEnrichedPlace } from "@/lib/place-enriched";
 import { placeHref } from "@/lib/place-route";
+import { sharePlace } from "@/lib/share-place";
 import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 import {
   cardPhoto,
@@ -66,6 +67,11 @@ function TileLink({
   );
 }
 
+// The place screen's action tile, on one line (MESITA-2650): 44px, the
+// border grey at 60% (MESITA-2647), rounded-lg, 12px semibold ink.
+const TILE_BUTTON =
+  "bg-border/60 text-foreground hover:bg-border/80 flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 font-sans text-xs font-semibold transition active:scale-[0.99]";
+
 function readableKind(place: Place): string | null {
   const raw = place.category_label ?? place.category;
   if (!raw || raw.trim().toLowerCase() === "undefined") return null;
@@ -73,10 +79,10 @@ function readableKind(place: Place): string | null {
 }
 
 /**
- * One place, as one square tile (Pato, MESITA-2364, MESITA-2373): the photo
- * on the top 60% with the Save heart on its corner, its light reflection
- * below carrying three rows — name; category · $$ · stars; hours ·
- * distance (MESITA-2645). An
+ * One place, as one tile (Pato, MESITA-2364, MESITA-2373): the photo on top,
+ * its light reflection below carrying three rows — name; category · $$ ·
+ * stars; hours · distance (MESITA-2645) — and two buttons, Like and Share
+ * (MESITA-2650). An
  * enriched place wears the Enriched mark after its name
  * (MESITA-2296). Favs does not use this tile. A Google-only card opens its
  * profile through `onOpenGoogle` and has no save heart: only a Mesita place
@@ -167,6 +173,13 @@ export function CatalogTile({
       </div>
     );
 
+  // TWO BIG BUTTONS, LIKE AND SHARE (Pato, MESITA-2650: "add the button to
+  // like and the button share; share must be almost everywhere to maximize
+  // sharing and the virality of the app"). They need room, so a Mesita tile
+  // is 5:6 — photo top half (still 5:3), band bottom half — while a
+  // Google-only card, which has no page to share or save, stays the square
+  // below with no buttons.
+  //
   // ONE square (Pato, MESITA-2369, MESITA-2373): the photo is the top 60%,
   // fully shown and centred — nothing lies over it. The bottom 40% is its
   // REFLECTION: a 60%-tall copy flipped so its foot meets the photo's foot,
@@ -174,11 +187,12 @@ export function CatalogTile({
   // corners are rounded-2xl — and the photo, the band and its blur layer
   // carry the same radius themselves, because a backdrop-blur layer escapes
   // its parent's rounded clip and painted the bottom corners square
-  // (MESITA-2429). Save is the band's last row.
+  // (MESITA-2429). Like and Share sit on the band's foot.
   return (
     <li
       className={cn(
-        "relative isolate aspect-square min-w-0 overflow-hidden rounded-2xl",
+        "relative isolate min-w-0 overflow-hidden rounded-2xl",
+        google ? "aspect-square" : "aspect-[5/6]",
         className,
       )}
     >
@@ -190,17 +204,28 @@ export function CatalogTile({
         label={place.name}
         className="focus-visible:ring-primary absolute inset-0 block outline-none focus-visible:ring-2 focus-visible:ring-inset"
       >
-        <div className="bg-muted absolute inset-x-0 top-0 h-[60%] overflow-hidden rounded-t-2xl">
+        <div
+          className={cn(
+            "bg-muted absolute inset-x-0 top-0 overflow-hidden rounded-t-2xl",
+            google ? "h-[60%]" : "h-1/2",
+          )}
+        >
           {media()}
         </div>
         {/* The reflection: bottom 40%, the photo mirrored from its foot under
             80% paper (MESITA-2375), the three rows centred on it (MESITA-2645). */}
         <div
-          className="absolute inset-x-0 bottom-0 h-[40%] overflow-hidden rounded-b-2xl"
+          className={cn(
+            "absolute inset-x-0 bottom-0 overflow-hidden rounded-b-2xl",
+            google ? "h-[40%]" : "h-1/2",
+          )}
           data-tile-info
         >
           <div
-            className="absolute inset-x-0 top-0 h-[150%] -scale-y-100"
+            className={cn(
+              "absolute inset-x-0 top-0 -scale-y-100",
+              google ? "h-[150%]" : "h-full",
+            )}
             aria-hidden
             data-tile-reflection
           >
@@ -220,7 +245,7 @@ export function CatalogTile({
           <div
             className={cn(
               "text-foreground relative flex h-full flex-col justify-center gap-1 pl-3",
-              google ? "pr-3" : "pr-3 pb-8",
+              google ? "pr-3" : "pr-3 pb-[60px]",
             )}
           >
             <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-6 font-semibold tracking-tight">
@@ -257,35 +282,49 @@ export function CatalogTile({
         </div>
       </TileLink>
       {google ? null : (
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-label={
-            saved
-              ? `Remove ${place.name} from favorites`
-              : `Add ${place.name} to favorites`
-          }
-          // SAVE IS THE BAND'S LAST ROW (Pato, MESITA-2648: "add the save
-          // button at the bottom of the four lines"): heart + "Save", 14px,
-          // left-aligned with the text rows, under them; "Saved" with a red
-          // heart once liked (the place screen's Like, MESITA-2635). A 44px
-          // hit area sitting on the band's foot; the text column keeps 32px
-          // clear for it. A sibling of the tile link, so a tap never
-          // navigates. (MESITA-2645 put it on the photo, MESITA-2646 at the
-          // band's right edge.)
-          className="text-foreground absolute bottom-0 left-1 flex h-11 items-center gap-1.5 px-2 font-sans text-sm leading-5 font-medium"
-          data-tile-save
+        // The place screen's action tiles, smaller row (MESITA-2647's grey):
+        // two equal 44px buttons, icon + label on one line, 12px from the
+        // band's edges. Siblings of the tile link, so a tap never navigates.
+        <div
+          className="absolute inset-x-3 bottom-3 grid grid-cols-2 gap-2"
+          data-tile-actions
         >
-          <Heart
-            className={cn(
-              "h-[18px] w-[18px] shrink-0",
-              saved && "fill-destructive text-destructive",
-            )}
-            strokeWidth={2}
-            aria-hidden
-          />
-          {saved ? "Saved" : "Save"}
-        </button>
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-label={
+              saved
+                ? `Remove ${place.name} from favorites`
+                : `Add ${place.name} to favorites`
+            }
+            className={TILE_BUTTON}
+            data-tile-save
+          >
+            <Heart
+              className={cn(
+                "h-4 w-4 shrink-0",
+                saved && "fill-destructive text-destructive",
+              )}
+              strokeWidth={2.25}
+              aria-hidden
+            />
+            {saved ? "Liked" : "Like"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void sharePlace(place)}
+            aria-label={`Share ${place.name}`}
+            className={TILE_BUTTON}
+            data-tile-share
+          >
+            <Share2
+              className="h-4 w-4 shrink-0"
+              strokeWidth={2.25}
+              aria-hidden
+            />
+            Share
+          </button>
+        </div>
       )}
     </li>
   );
