@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Camera, Copy } from "lucide-react";
 import { BirthdayPicker, Spinner } from "@/components/shared";
 import { Button } from "@/components/ui/button";
-import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
+import { DefaultAvatar } from "@mesita/place-profile";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import {
   apiFetchConsumerProfile,

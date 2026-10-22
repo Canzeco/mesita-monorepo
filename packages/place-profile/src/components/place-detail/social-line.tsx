@@ -4,16 +4,13 @@
 // others saw this". People first; no counts by verb, no social block inside
 // Reviews. The caller passes what the server said; nobody visible → nothing.
 
+import { DefaultAvatar } from "../DefaultAvatar";
+
 /** No account id: faces are keyed by position (MESITA-2460). */
 export type SocialFace = {
   name: string;
   avatarUrl: string | null;
 };
-
-function initial(name: string): string {
-  const ch = name.replace(/^@/, "").trim()[0];
-  return ch ? ch.toUpperCase() : "·";
-}
 
 export function SocialLine({
   faces,
@@ -38,11 +35,12 @@ export function SocialLine({
                 className="border-card h-6 w-6 rounded-full border-2 object-cover"
               />
             ) : (
+              // The one no-photo face (MESITA-2620), never an initial.
               <span
                 key={i}
-                className="border-card bg-muted text-foreground flex h-6 w-6 items-center justify-center rounded-full border-2 text-[10px] font-semibold"
+                className="border-card block h-6 w-6 overflow-hidden rounded-full border-2"
               >
-                {initial(f.name)}
+                <DefaultAvatar className="h-full w-full" />
               </span>
             ),
           )}

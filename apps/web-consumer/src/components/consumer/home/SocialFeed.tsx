@@ -90,7 +90,8 @@
 
 import { useEffect, useRef, useState, type SVGProps } from "react";
 import Link from "next/link";
-import { ArrowUp, Crown, RotateCw, UserRound, Users } from "lucide-react";
+import { ArrowUp, Crown, RotateCw, Users } from "lucide-react";
+import { DefaultAvatar } from "@mesita/place-profile";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 import {
@@ -114,7 +115,7 @@ import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { IdentityCard } from "@/components/consumer/IdentityCard";
 import { toGuestClass, toGuestPlan } from "@/lib/guest-standing";
 import { Skeleton } from "@/components/shared/Skeleton";
-import { cn, errMsg, firstInitial } from "@/lib/utils";
+import { cn, errMsg } from "@/lib/utils";
 import {
   approxFollowers,
   instagramWithFollowers,
@@ -207,9 +208,12 @@ const MARK_CLASS =
   "ring-card absolute -bottom-1 flex h-5 w-5 items-center justify-center rounded-full ring-2";
 
 /** The member's picture when the server has one — on every row since
- *  MESITA-2608 — else the plain icon for an anonymous row, else their
- *  initial. No verb badge (MESITA-2604). Two marks: Instagram bottom-left
- *  when verified, a VIP crown bottom-right (never for Regular, never Plan). */
+ *  MESITA-2608 — else THE ONE NO-PHOTO FACE, the same `DefaultAvatar` Me
+ *  draws (MESITA-2620, Pato: "use same icon for me and consumer for
+ *  anonymous as instagram anonymous"); anonymous or not, never an initial,
+ *  never a lucide glyph. No verb badge (MESITA-2604). Two marks: Instagram
+ *  bottom-left when verified, a VIP crown bottom-right (never for Regular,
+ *  never Plan). */
 function Face({ person }: { person: ActivityPerson }) {
   const vip = person.guestClass === "vip";
   return (
@@ -221,16 +225,12 @@ function Face({ person }: { person: ActivityPerson }) {
           alt=""
           className="h-11 w-11 rounded-full object-cover"
         />
-      ) : person.anonymous ? (
-        <span
-          className="bg-muted text-muted-foreground flex h-11 w-11 items-center justify-center rounded-full"
-          data-social-anonymous
-        >
-          <UserRound className="h-5 w-5" strokeWidth={2} aria-hidden />
-        </span>
       ) : (
-        <span className="bg-muted text-foreground flex h-11 w-11 items-center justify-center rounded-full text-sm font-semibold">
-          {firstInitial(person.name.replace(/^@/, ""))}
+        <span
+          className="block h-11 w-11 overflow-hidden rounded-full"
+          data-social-anonymous={person.anonymous ? "" : undefined}
+        >
+          <DefaultAvatar className="h-full w-full" />
         </span>
       )}
       {person.instagram && (
