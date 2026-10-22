@@ -1,12 +1,14 @@
 import Image from "next/image";
 import { Star } from "lucide-react";
+import { EnrichedBadge } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
+import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
-import { getOpeningStateLabel } from "@/lib/place-state";
+import { isEnrichedPlace } from "@/lib/place-enriched";
 import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 import { cardPhoto, placePlaceholder } from "@/lib/place-placeholder";
 import { FamilyIcon } from "@/lib/family-icons";
-import { cn, formatKm, formatRating } from "@/lib/utils";
+import { cn, formatCompactCount, formatKm, formatRating } from "@/lib/utils";
 
 /** Every catalog rail card is this tall. Missing subtitle / meta / hours
  *  must not shrink a neighbor — the peek strip has to line up, and the
@@ -33,14 +35,33 @@ export function RailCard({
     categoryLabel: place.category_label,
     category: place.category,
   });
-  const subtitle = [category, place.zone].filter(Boolean).join(" · ");
-  const openingLabel = getOpeningStateLabel(place);
-  const isOpen = place.open_now === true;
+  // THE HOME TILE'S FACTS, THE HOME TILE'S SCALE (Pato, MESITA-2651: "the
+  // preview must show the same preview information"): name (+ the Enriched
+  // mark); category · $$ · ★ rating (reviews); hours · distance. No zone, as
+  // on the tile (MESITA-2645). Inter, name 16px semibold, the rest 14px.
+  const o = enrichPlaceOverview(place);
   const priceSymbols = formatPlacePriceLevelSymbols(place.price_level);
-  const hasMeta =
-    place.google_rating != null ||
-    priceSymbols != null ||
-    place.distance_km != null;
+  const kindPrice = [category, priceSymbols].filter(Boolean).join(" · ");
+  const ratingLabel = formatRating(o.google_rating);
+  const reviews =
+    typeof o.google_count === "number" && o.google_count > 0
+      ? formatCompactCount(o.google_count)
+      : null;
+  const openLine =
+    o.open_now === true
+      ? o.closes_at
+        ? `Open · until ${o.closes_at}`
+        : "Open now"
+      : o.open_now === false
+        ? o.opens_at
+          ? `Closed · opens ${o.opens_at}`
+          : "Closed"
+        : null;
+  const distance =
+    typeof place.distance_km === "number" && place.distance_km > 0
+      ? formatKm(place.distance_km)
+      : null;
+  const hoursDistance = [openLine, distance].filter(Boolean).join(" · ");
 
   return (
     <button
@@ -78,63 +99,33 @@ export function RailCard({
           </span>
         )}
       </div>
-      {/* Four rows always: name / subtitle / meta / state. Empty rows still
-          occupy the slot so a sparse place is the same box as a full one. */}
-      <div className="grid min-h-0 min-w-0 flex-1 grid-rows-[1.25rem_repeat(3,1rem)] content-center gap-1 py-2 pr-2 pl-2.5">
-        <span className="flex h-5 items-center gap-1">
-          <span className="truncate text-sm leading-5 font-semibold">
-            {place.name}
-          </span>
-        </span>
-        <p className="text-muted-foreground type-label h-4 truncate leading-4">
-          {subtitle}
+      {/* Three rows always, each a fixed slot so a sparse place is the
+          same box as a full one (the rail must line up). */}
+      <div className="grid min-h-0 min-w-0 flex-1 grid-rows-[1.5rem_1.25rem_1.25rem] content-center gap-1 py-2 pr-2 pl-3 font-sans">
+        <p className="flex h-6 min-w-0 items-center gap-1 text-base leading-6 font-semibold tracking-tight">
+          <span className="truncate">{place.name}</span>
+          {isEnrichedPlace(place) ? <EnrichedBadge /> : null}
         </p>
-        <p className="text-muted-foreground type-label flex h-4 items-center gap-1 leading-4">
-          {hasMeta && (
-            <>
-              {place.google_rating != null && (
-                <span className="flex items-center gap-1">
-                  <Star className="h-2.5 w-2.5 shrink-0 fill-foreground text-muted-foreground" />
-                  {formatRating(place.google_rating)}
-                </span>
-              )}
-              {priceSymbols && (
-                <span className="flex items-center gap-1">
-                  {place.google_rating != null && <span>·</span>}
-                  <span>{priceSymbols}</span>
-                </span>
-              )}
-              {place.distance_km != null && (
-                <span className="flex items-center gap-1">
-                  {(place.google_rating != null || priceSymbols != null) && (
-                    <span>·</span>
-                  )}
-                  <span>{formatKm(place.distance_km)}</span>
-                </span>
-              )}
-            </>
-          )}
+        <p className="text-foreground flex h-5 min-w-0 items-center gap-1 text-sm leading-5">
+          {kindPrice ? <span className="truncate">{kindPrice}</span> : null}
+          {kindPrice && ratingLabel ? (
+            <span aria-hidden className="shrink-0">
+              ·
+            </span>
+          ) : null}
+          {ratingLabel ? (
+            <span className="inline-flex shrink-0 items-center gap-1">
+              <Star className="fill-foreground text-foreground h-3.5 w-3.5 shrink-0" />
+              {ratingLabel}
+              {reviews ? (
+                <span className="text-muted-foreground">({reviews})</span>
+              ) : null}
+            </span>
+          ) : null}
         </p>
-        <span className="type-label flex h-4 items-center gap-1.5 leading-4 font-medium">
-          {openingLabel && (
-            <>
-              <span
-                className={cn(
-                  "h-1.5 w-1.5 shrink-0 rounded-full",
-                  isOpen ? "bg-foreground" : "bg-muted-foreground/40",
-                )}
-              />
-              <span
-                className={cn(
-                  "truncate",
-                  isOpen ? "text-foreground" : "text-muted-foreground",
-                )}
-              >
-                {openingLabel}
-              </span>
-            </>
-          )}
-        </span>
+        <p className="text-muted-foreground h-5 truncate text-sm leading-5">
+          {hoursDistance}
+        </p>
       </div>
     </button>
   );
