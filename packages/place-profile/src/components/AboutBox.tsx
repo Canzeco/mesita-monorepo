@@ -1,4 +1,4 @@
-import { Box } from "./place-detail/box";
+import { Box, BoxEmpty } from "./place-detail/box";
 import { PLACE_BODY_CLASS } from "../lib/ui";
 import { cn } from "../lib/format";
 
@@ -51,9 +51,13 @@ export function AboutBox({ text }: { text: string }) {
   return (
     // The place scale (MESITA-2636): the shared card and title, prose at
     // 14px ink (it was 16px grey, the one paragraph on the screen at that
-    // size).
+    // size). No text yet draws "…", never a blank card (MESITA-2685).
     <Box title={HEADING}>
-      <p className={cn(PLACE_BODY_CLASS, "whitespace-pre-wrap")}>{body}</p>
+      {body ? (
+        <p className={cn(PLACE_BODY_CLASS, "whitespace-pre-wrap")}>{body}</p>
+      ) : (
+        <BoxEmpty />
+      )}
     </Box>
   );
 }

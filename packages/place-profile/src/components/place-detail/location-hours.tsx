@@ -10,7 +10,7 @@ import { cn, formatDistanceKm } from "../../lib/format";
 import { PLACE_BODY_CLASS, PLACE_META_CLASS } from "../../lib/ui";
 import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS } from "../../lib/ui";
 
-import { Box } from "./box";
+import { Box, BoxEmpty } from "./box";
 
 // ── 6. Location ─────────────────────────────────────────────────────────
 
@@ -109,7 +109,7 @@ export function LocationBox({
   );
 }
 
-// ── Time (hours) ────────────────────────────────────────────────────────
+// ── Hours ───────────────────────────────────────────────────────────────
 
 /** Full weekday name in the place timezone — matches hours_table.day. */
 function todayWeekdayLabel(tz: string): string {
@@ -132,7 +132,7 @@ function HoursDayRow({
   row: { day: string; range: string };
   today: string;
 }) {
-  // decision: Pato — full weekday on the stacked Time card (short Mon/Tue
+  // decision: Pato — full weekday on the stacked Hours card (short Mon/Tue
   // was only for the old cramped 2-col side-by-side layout).
   const isToday = row.day === today;
   const closed = row.range.toLowerCase() === "closed";
@@ -171,8 +171,20 @@ function HoursDayRow({
 }
 
 export function HoursBox({ place }: { place: PlaceDetail }) {
-  // decision: Pato — Time below Location (full-width stack); keep timezone
+  // decision: Pato — Hours below Location (full-width stack); keep timezone
   // No timezone, no "today": the device's day can be the wrong one.
+  //
+  // THE BOX IS "HOURS" (Pato, MESITA-2685: "call that box hours or something
+  // like that … time feels too weird"). With no weekly hours it says "…"
+  // ("if nothing yet write ..."), never a lone "Open": the header's facts
+  // row already carries the open state.
+  if (place.hours_table.length === 0) {
+    return (
+      <Box title="Hours" icon={Clock} iconColor="text-muted-foreground">
+        <BoxEmpty />
+      </Box>
+    );
+  }
   const today = place.timezone ? todayWeekdayLabel(place.timezone) : "";
   const stateDetail = place.open_now === true
     ? place.closes_at
@@ -185,7 +197,7 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
 
   return (
     <Box
-      title="Time"
+      title="Hours"
       icon={Clock}
       iconColor="text-muted-foreground"
     >
@@ -209,13 +221,11 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
           )}
         </p>
       )}
-      {place.hours_table.length > 0 && (
-        <ul className="border-border overflow-hidden rounded-lg border">
-          {place.hours_table.map((row) => (
-            <HoursDayRow key={row.day} row={row} today={today} />
-          ))}
-        </ul>
-      )}
+      <ul className="border-border overflow-hidden rounded-lg border">
+        {place.hours_table.map((row) => (
+          <HoursDayRow key={row.day} row={row} today={today} />
+        ))}
+      </ul>
     </Box>
   );
 }
