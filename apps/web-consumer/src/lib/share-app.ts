@@ -15,53 +15,27 @@ export const APP_SHARE_URL = "https://consumer.mesita.ai/";
 export const APP_SHARE_TEXT =
   "Find great places to eat and book a table with Mesita.";
 
-// TEN PLAIN CARDS, ONE JOKE EACH (Pato, MESITA-2573: "just a stupid card of
-// mesita with nothing else. keep it simple … 10 different cards/jokes just
-// to share mesita"). It replaced the gift card's photos, styles and message
-// chips (MESITA-2568/2570). The guest swipes to a card; its joke travels,
-// then the link. No image is sent.
+// ONE PLAIN CARD, ONE MESSAGE (Pato, MESITA-2622: "just one card. keep it
+// clearer."). It replaced ten joke cards in a swipe row (MESITA-2573), which
+// replaced the gift card's photos, styles and message chips (MESITA-2568/
+// 2570). The message travels, then the link. No image is sent.
 
-/** One joke per card, in swipe order. The first is the default. */
-export const SHARE_JOKES = [
-  "Stop asking me where to eat. Use this. 🙄",
-  "POV: you finally have dinner plans 🍽️",
-  "I found where we're eating. You're welcome.",
-  "Table for two? 👀",
-  "My love language is booking the table.",
-  "Group chat: “where should we eat?” Me: 👇",
-  "Main character energy, but make it brunch ✨",
-  "Friends don't let friends eat at sad restaurants.",
-  "Your “idk, you pick” era ends today.",
-  "Hungry? Indecisive? Same. That's why I have Mesita.",
-] as const;
+/** The one message the card shows and every button sends. */
+export const SHARE_MESSAGE = "Stop asking me where to eat. Use this. 🙄";
 
-/** What every channel carries: the joke, then the link. */
-export function shareBody(joke: string): string {
-  return `${joke} ${APP_SHARE_URL}`;
-}
+/** What every channel carries: the message, then the link. */
+export const SHARE_BODY = `${SHARE_MESSAGE} ${APP_SHARE_URL}`;
 
-/** One address per channel that can be prefilled with the joke and link. */
-export function shareLinks(joke: string) {
-  const body = encodeURIComponent(shareBody(joke));
+/** One address per channel that can be prefilled with the message and link. */
+export const SHARE_LINKS = (() => {
+  const body = encodeURIComponent(SHARE_BODY);
   return {
     sms: `sms:?&body=${body}`,
     whatsapp: `https://wa.me/?text=${body}`,
   } as const;
-}
+})();
 
 // INSTAGRAM HAS NO WEB LINK THAT PREFILLS A MESSAGE. The honest version: the
-// tap copies the joke and link, says so, and opens Instagram's inbox (the
+// tap copies the message and link, says so, and opens Instagram's inbox (the
 // app, where it is installed) for the guest to paste into a chat.
 export const INSTAGRAM_DM_URL = "https://www.instagram.com/direct/inbox/";
-
-/** The card whose centre sits nearest the row's centre — the one in view. */
-export function nearestCard(center: number, cardCenters: number[]): number {
-  let best = 0;
-  for (let i = 1; i < cardCenters.length; i++) {
-    if (
-      Math.abs(cardCenters[i] - center) < Math.abs(cardCenters[best] - center)
-    )
-      best = i;
-  }
-  return best;
-}
