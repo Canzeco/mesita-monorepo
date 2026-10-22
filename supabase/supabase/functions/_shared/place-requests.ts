@@ -1,11 +1,13 @@
-// Votes — consumer demand for an Enrich run on a Created profile.
+// Visits — consumer demand for an Enrich run on a Created profile.
 //
 // Create mints a viewable profile (content_state ready, enriched_at null).
-// Enriched is `place_profiles.enriched_at`. Guests vote on the Enrich tab.
-// When request_count reaches Creation's Vote threshold (atlasRequestThreshold)
-// this door starts the same Render run admin Enrich starts: Strong, Overwrite
-// off (_shared/enrich-start.ts). Admin Enrich never calls this door — that is
-// the bypass.
+// Enriched is `place_profiles.enriched_at`. Every signed-in guest's visit to a
+// place counts once (apply_place_request; consumer-web-track-activity on
+// `viewed`, MESITA-2642 — it replaced the guest vote). When request_count
+// reaches the enrichment config's "Enrich after N visits"
+// (atlasRequestThreshold) this door starts the same Render run admin Enrich
+// starts: Strong, Overwrite off (_shared/enrich-start.ts). Admin Enrich never
+// calls this door — that is the bypass.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { normalizeEnrichmentConfig } from "./enrichment-config.ts";
@@ -195,7 +197,7 @@ export async function applyPlaceRequest(
         enrichmentTriggered = true;
       } else if (started.blocked !== "enriching") {
         console.error(
-          `[${opts.callerName}] the vote did not start an Enrich run: ${started.error}`,
+          `[${opts.callerName}] the visit did not start an Enrich run: ${started.error}`,
         );
       }
     }

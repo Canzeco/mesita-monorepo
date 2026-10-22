@@ -28,7 +28,7 @@ describe("member preview edges", () => {
     expect(html).not.toContain("Phone emulator");
   });
 
-  it("keeps the four sections when not enriched, the vote atop Overview (MESITA-2332)", () => {
+  it("keeps the four sections when not enriched, with no vote (MESITA-2332, MESITA-2642)", () => {
     const html = renderToStaticMarkup(
       <PlaceProfile place={detail({ enriched_at: null, is_enriched: false })} />,
     );
@@ -37,14 +37,12 @@ describe("member preview edges", () => {
       expect(html).toContain(label);
     }
     expect(html).not.toContain(">Enrich<");
-    expect(html).toContain("Vote to enrich");
-    expect(html.indexOf('aria-label="Place sections"')).toBeLessThan(
-      html.indexOf("Vote to enrich"),
-    );
+    // Visits enrich a place now; the guest never votes (MESITA-2642).
+    expect(html).not.toContain("Vote to enrich");
     expect(html).not.toContain("Community votes");
   });
 
-  it("keeps Google's create-time reviews on the Reviews tab, not under the vote", () => {
+  it("keeps Google's create-time reviews on the Reviews tab, not on Overview", () => {
     const html = renderToStaticMarkup(
       <PlaceProfile
         place={detail({
@@ -59,7 +57,6 @@ describe("member preview edges", () => {
       />,
     );
     // MESITA-2332: Overview opens; the Details reviews wait on Reviews.
-    expect(html).toContain("Vote to enrich");
     expect(html).not.toContain("Great coffee");
     expect(html).toContain('aria-label="Place sections"');
   });
@@ -189,11 +186,11 @@ describe("member preview edges", () => {
     expect(html).not.toContain('role="dialog"');
   });
 
-  it("uses the overview threshold instead of the fallback 5", () => {
+  it("carries the overview threshold, and prints no vote count (MESITA-2642)", () => {
     const place = detail({ request_threshold: 12, request_count: 3, enriched_at: "" });
     expect(place.request_threshold).toBe(12);
     const html = renderToStaticMarkup(<PlaceProfile place={place} />);
-    expect(html).toContain("3 of 12 votes");
+    expect(html).not.toContain("3 of 12");
   });
 
   it("renders the full Presentation with no show-more control", () => {

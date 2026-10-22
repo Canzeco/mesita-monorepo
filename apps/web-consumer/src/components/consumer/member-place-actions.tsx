@@ -4,13 +4,11 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type {
   PlaceActions,
   PlaceMenuItem,
-  PlaceRequestView,
 } from "@mesita/place-profile";
 import { SocialLine } from "@mesita/place-profile";
 import { MenuViewer } from "@/components/consumer/MenuViewer";
 import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
 import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
-import { apiRequestPlace } from "@/lib/api/places";
 import {
   apiPlaceActivity,
   apiTrackActivity,
@@ -40,7 +38,6 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const [contactOpen, setContactOpen] = useState(false);
   const [reserveOpen, setReserveOpen] = useState(false);
   const [menu, setMenu] = useState<PlaceMenuItem | null>(null);
-  const request = usePlaceRequest(place);
   const activity = usePlaceActivity(place.id);
 
   const onSave = useCallback(() => {
@@ -64,10 +61,8 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     onContact: () => setContactOpen(true),
     onShare: () => void sharePlace(place),
     onReserve: () => setReserveOpen(true),
-    onRequest: request.onRequest,
     onOpenMenu: (item) => setMenu(item),
     onOpenLink,
-    request: request.view,
   };
 
   const sheets = (
@@ -130,43 +125,3 @@ function usePlaceActivity(placeId: string): { social: ReactNode } {
   return { social: mesita ? social : null };
 }
 
-function usePlaceRequest(place: PlaceDetail): {
-  view: PlaceRequestView;
-  onRequest: () => void;
-} {
-  const getSupabase = useLazyBrowserSupabase();
-  const [count, setCount] = useState(place.request_count);
-  const [requested, setRequested] = useState(place.requested);
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const onRequest = useCallback(() => {
-    if (pending || requested || place.is_enriching) return;
-    setPending(true);
-    setError(null);
-    void (async () => {
-      try {
-        const supabase = await getSupabase();
-        const result = await apiRequestPlace(supabase, place.id);
-        setCount(result.request_count);
-        setRequested(result.requested);
-      } catch (e) {
-        setError(errMsg(e, "Could not send the vote."));
-      } finally {
-        setPending(false);
-      }
-    })();
-  }, [getSupabase, pending, place.id, place.is_enriching, requested]);
-
-  return {
-    view: {
-      count,
-      threshold: place.request_threshold,
-      requested,
-      enriching: place.is_enriching,
-      pending,
-      error,
-    },
-    onRequest,
-  };
-}
