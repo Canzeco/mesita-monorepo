@@ -37,7 +37,7 @@ export function ReviewCard({
       />
       <div className="flex items-center gap-2">
         <StarRow rating={review.rating} />
-        <span className="text-muted-foreground type-label">
+        <span className="text-muted-foreground text-xs">
           {formatReviewDate(review.date)}
         </span>
       </div>

@@ -1,3 +1,7 @@
+import { Box } from "./place-detail/box";
+import { PLACE_BODY_CLASS } from "../lib/ui";
+import { cn } from "../lib/format";
+
 // The place's Presentation card. English only (Mesita core). Spanish TMS is
 // later (MESITA-939) — do not show a second language here.
 //
@@ -45,13 +49,11 @@ export function AboutBox({ text }: { text: string }) {
   const body = formatAboutDisplay(text);
 
   return (
-    <section className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-4">
-      <h3 className="text-muted-foreground type-meta font-bold tracking-[0.14em] uppercase">
-        {HEADING}
-      </h3>
-      <p className="text-muted-foreground text-base leading-relaxed whitespace-pre-wrap">
-        {body}
-      </p>
-    </section>
+    // The place scale (MESITA-2636): the shared card and title, prose at
+    // 14px ink (it was 16px grey, the one paragraph on the screen at that
+    // size).
+    <Box title={HEADING}>
+      <p className={cn(PLACE_BODY_CLASS, "whitespace-pre-wrap")}>{body}</p>
+    </Box>
   );
 }

@@ -4,7 +4,11 @@ import { Check, Loader2, Sparkles } from "lucide-react";
 
 import { inertButtonProps } from "../../actions";
 import { cn } from "../../lib/format";
-import { ERROR_BOX_CLASS } from "../../lib/ui";
+import {
+  ERROR_BOX_CLASS,
+  PLACE_BUTTON_CLASS,
+  PLACE_SCREEN_TITLE_CLASS,
+} from "../../lib/ui";
 
 export function requestProgressLabel(count: number, threshold: number): string {
   const n = Math.max(0, Math.trunc(count));
@@ -55,10 +59,10 @@ export function PlaceRequestPanelView({
   // (MESITA-2309): no card, no gradient, no box inside a box (MESITA-2315).
   return (
     <section className="bg-card border-border border-b px-6 pt-8 pb-6 text-center">
-      <span className="bg-primary/10 text-primary mx-auto flex h-12 w-12 items-center justify-center rounded-full">
+      <span className="bg-muted text-foreground mx-auto flex h-12 w-12 items-center justify-center rounded-full">
         <Sparkles className="h-6 w-6" strokeWidth={2} />
       </span>
-      <h3 className="font-display mt-4 text-xl font-semibold tracking-tight">
+      <h3 className={cn(PLACE_SCREEN_TITLE_CLASS, "mt-4")}>
         Vote to enrich this place
       </h3>
       <p className="text-muted-foreground mx-auto mt-1.5 max-w-[32ch] text-sm leading-relaxed">
@@ -112,10 +116,13 @@ export function PlaceRequestPanelView({
             ? { onClick: onRequest, disabled: voteDisabled }
             : inertButtonProps(false))}
           className={cn(
-            "mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold whitespace-nowrap transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60",
+            // The place scale's button (MESITA-2636): 44px, rounded-lg,
+            // ink; not the pink-gradient pill.
+            PLACE_BUTTON_CLASS,
+            "mt-5 w-full text-sm disabled:pointer-events-none disabled:opacity-60",
             requested
               ? "bg-muted text-foreground"
-              : "bg-pink-gradient text-white",
+              : "bg-foreground text-paper hover:opacity-90",
           )}
         >
           {pending ? (

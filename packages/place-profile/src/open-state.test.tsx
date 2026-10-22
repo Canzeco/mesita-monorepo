@@ -76,14 +76,14 @@ describe("HoursBox", () => {
   it("highlights no day as today without a timezone", () => {
     const html = renderToStaticMarkup(<HoursBox place={row({ hours: OPEN_ALWAYS })} />);
     expect(html).toContain("Monday");
-    expect(html).not.toContain("bg-muted/80");
+    expect(html).not.toContain("data-today");
   });
 
   it("highlights today when the place has a timezone", () => {
     const html = renderToStaticMarkup(
       <HoursBox place={row({ hours: OPEN_ALWAYS, timezone: "America/Mexico_City" })} />,
     );
-    expect(html).toContain("bg-muted/80");
+    expect(html).toContain("data-today");
     expect(html).toContain(">Open<");
   });
 });

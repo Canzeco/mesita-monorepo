@@ -7,6 +7,7 @@ import type { PlaceActions } from "../../actions";
 import type { PlaceDetail } from "../../place-detail";
 import { buildUberDropoffUrl } from "../../lib/uber-link";
 import { cn, formatDistanceKm } from "../../lib/format";
+import { PLACE_BODY_CLASS, PLACE_META_CLASS } from "../../lib/ui";
 import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS } from "../../lib/ui";
 
 import { Box } from "./box";
@@ -38,33 +39,11 @@ export function LocationBox({
           : undefined
       }
     >
-      <div
-        className="relative aspect-[2/1] overflow-hidden rounded-xl"
-        style={{
-          backgroundColor: "#1d1442",
-          backgroundImage: `
-            linear-gradient(rgba(168, 85, 247, 0.08) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(168, 85, 247, 0.08) 1px, transparent 1px),
-            radial-gradient(circle at 50% 50%, rgba(236, 72, 153, 0.18) 0%, transparent 65%)
-          `,
-          backgroundSize: "24px 24px, 24px 24px, 100% 100%",
-        }}
-      >
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-2">
-          <div className="bg-pink-gradient shadow-glow flex h-9 w-9 items-center justify-center rounded-full">
-            <MapPin
-              className="h-4 w-4 fill-white text-white"
-              strokeWidth={1.5}
-            />
-          </div>
-          <span className="type-label max-w-full truncate rounded-full bg-black/60 px-2.5 py-0.5 font-medium text-white">
-            {place.name}
-          </span>
-        </div>
-      </div>
-      <p className="text-muted-foreground text-xs leading-snug">
-        {place.address}
-      </p>
+      {/* NO DRAWN MAP (Pato, MESITA-2636: "if you are not going to render
+          the map in that box, make it shorter"): it was a purple grid with a
+          pin, not a map, and the screen's only purple. The address, then the
+          two ways to get there. */}
+      {place.address ? <p className={PLACE_BODY_CLASS}>{place.address}</p> : null}
       <div className="grid grid-cols-2 gap-2">
         <OutboundLink
           url={mapsUrl}
@@ -130,14 +109,17 @@ function HoursDayRow({
   return (
     <li
       className={cn(
-        "border-border/50 flex min-w-0 items-center justify-between gap-3 border-b px-3 py-2.5 text-xs leading-tight last:border-b-0",
-        isToday && "bg-muted/80",
+        // 44px rows at 14px, the place scale (MESITA-2636); today on the
+        // grey fill.
+        "border-border flex min-h-11 min-w-0 items-center justify-between gap-3 border-b px-3 text-sm leading-tight last:border-b-0",
+        isToday && "bg-muted",
       )}
+      data-today={isToday ? "" : undefined}
     >
       <span
         className={cn(
-          "shrink-0 font-semibold",
-          isToday ? "text-foreground font-semibold" : "text-muted-foreground",
+          "shrink-0",
+          isToday ? "text-foreground font-semibold" : "text-muted-foreground font-medium",
         )}
       >
         {row.day}
@@ -149,7 +131,7 @@ function HoursDayRow({
             ? "text-muted-foreground"
             : isToday
               ? "font-semibold text-foreground"
-              : "text-foreground/85",
+              : "text-foreground",
         )}
       >
         {row.range}
@@ -176,18 +158,11 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
       title="Time"
       icon={Clock}
       iconColor="text-muted-foreground"
-      right={
-        tz ? (
-          <span className="max-w-[12rem] truncate" title={tz}>
-            {tz}
-          </span>
-        ) : undefined
-      }
     >
       {/* Unknown open state says nothing: no hours is not "Closed"
           (MESITA-2331). */}
       {place.open_now !== null && (
-        <p className="text-xs leading-snug">
+        <p className="text-sm leading-snug">
           <span
             className={cn(
               "font-semibold",
@@ -199,13 +174,13 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
           {stateDetail && (
             <>
               <span className="text-muted-foreground"> · </span>
-              <span className="text-foreground/80">{stateDetail}</span>
+              <span className="text-foreground">{stateDetail}</span>
             </>
           )}
         </p>
       )}
       {place.hours_table.length > 0 && (
-        <ul className="border-border overflow-hidden rounded-xl border">
+        <ul className="border-border overflow-hidden rounded-lg border">
           {place.hours_table.map((row) => (
             <HoursDayRow key={row.day} row={row} today={today} />
           ))}

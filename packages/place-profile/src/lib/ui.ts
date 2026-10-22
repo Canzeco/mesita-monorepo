@@ -13,5 +13,26 @@ export const PLACE_BUTTON_CLASS =
 /** The glyph inside a PLACE_BUTTON_CLASS button. */
 export const PLACE_BUTTON_ICON_CLASS = "h-4 w-4 shrink-0";
 
+/**
+ * THE PLACE PROFILE'S SCALE (Pato, MESITA-2636: "standardize everything
+ * there, the colors the fonts the styles the sizes the spacings"). Inter only
+ * on the place screen (an <h3> would otherwise inherit the app's serif
+ * display face); achromatic (a brand's own logo is the only colour); cards
+ * rounded-2xl with p-4 and 12px inside, everything inside a card rounded-lg.
+ */
+/** A card's title: sentence case, 16px semibold ink. */
+export const PLACE_TITLE_CLASS =
+  "text-foreground font-sans text-base font-semibold tracking-tight";
+/** Prose and primary facts inside a card: 14px ink. */
+export const PLACE_BODY_CLASS = "text-foreground text-sm leading-relaxed";
+/** A secondary line: 12px muted. */
+export const PLACE_META_CLASS = "text-muted-foreground text-xs leading-snug";
+/** Information, never a button: 1px hairline, no fill, 32px. */
+export const PLACE_OUTLINE_CHIP_CLASS =
+  "border-border text-foreground inline-flex h-8 min-w-0 items-center gap-1.5 rounded-lg border px-2.5 text-sm font-medium whitespace-nowrap tabular-nums";
+/** A screen-level title (Soon, vote, creating): Inter 18px semibold. */
+export const PLACE_SCREEN_TITLE_CLASS =
+  "text-foreground font-sans text-lg font-semibold tracking-tight";
+
 export const ERROR_BOX_CLASS =
   "rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive";
