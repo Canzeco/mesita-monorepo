@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils";
 //
 //                  (64px photo)
 //   ( 👤 Diego                                 )
-//   ( ♛ Class: VIP      ) ( ▭ Plan: Premium    )
+//   ( ♛ VIP Class       ) ( ▭ Premium Plan     )
 //   ( ◎ @diego · 1.2K followers                )
 //
 // THE PAIR SITS BETWEEN THE TWO WIDE BOXES (Pato, MESITA-2621: "for more
@@ -41,7 +41,7 @@ import { cn } from "@/lib/utils";
 // long. Class and Plan share a row, Class left, the same order as the Class ·
 // Plan tile pair below on Me. The column is the full width of the card (no
 // cap), so on Me each half box is exactly one tile column (167px at 375px)
-// and "Plan: Premium" fits. UNDER 360px THE PAIR STACKS: a half box would be
+// and "Premium Plan" fits. UNDER 360px THE PAIR STACKS: a half box would be
 // 140px at 320px and ellipsize, so there the four boxes are four rows again.
 // Social's person card is this component and gets the same grid.
 //
@@ -111,8 +111,9 @@ function ClassChip({
 }) {
   const vip = guestClass === "vip";
   const label = CLASS_LABEL[guestClass];
-  // Key and value on the box (Pato: "Class: Regular … mention the key val").
-  const text = `Class: ${label}`;
+  // Value then key, no colon (Pato, MESITA-2691: "Free Plan or Regular
+  // Class but not plan: free not class: regular").
+  const text = `${label} Class`;
   const className = cn(
     CHIP_CLASS,
     vip
@@ -122,11 +123,17 @@ function ClassChip({
   );
   const body = (
     <>
-      <Crown className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+      {/* The one colour on the card (Pato, MESITA-2691: "maybe add a color
+          to the crown"): gold, on Regular's paper and VIP's ink alike. */}
+      <Crown
+        className="h-4 w-4 shrink-0 text-amber-500"
+        strokeWidth={2.25}
+        aria-hidden
+      />
       <span className="truncate">{text}</span>
     </>
   );
-  const aria = `Class: ${label}`;
+  const aria = text;
   return onPress ? (
     <button
       type="button"
@@ -152,8 +159,8 @@ function ClassChip({
 function PlanChip({ plan, href }: { plan: GuestPlan; href?: string }) {
   const premium = plan === "premium";
   const label = PLAN_LABEL[plan];
-  // Key and value on the box (Pato: "Plan: Free … mention the key val").
-  const text = `Plan: ${label}`;
+  // Value then key, as on Class (MESITA-2691).
+  const text = `${label} Plan`;
   const className = cn(
     CHIP_CLASS,
     premium && "border-foreground",
@@ -165,7 +172,7 @@ function PlanChip({ plan, href }: { plan: GuestPlan; href?: string }) {
       <span className="truncate">{text}</span>
     </>
   );
-  const aria = `Plan: ${label}`;
+  const aria = text;
   return href ? (
     <Link
       href={href}
