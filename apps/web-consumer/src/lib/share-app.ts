@@ -39,3 +39,16 @@ export const SHARE_LINKS = (() => {
 // tap copies the message and link, says so, and opens Instagram's inbox (the
 // app, where it is installed) for the guest to paste into a chat.
 export const INSTAGRAM_DM_URL = "https://www.instagram.com/direct/inbox/";
+
+/**
+ * THE MESITA SHARE CARD (MESITA-2639): one image, the standard link-preview
+ * size (1200×630, 1.91:1). The app's og:image and twitter:image, and the card
+ * the Share tab shows, so the guest sees exactly what the recipient's chat
+ * unfurls. Source: scripts/share-card/mesita-og.html.
+ */
+export const SHARE_CARD = {
+  src: "/share/mesita-og.png",
+  width: 1200,
+  height: 630,
+  alt: "Mesita — Discover and reserve. consumer.mesita.ai",
+} as const;

@@ -1,7 +1,6 @@
 "use client";
 
 import type { MouseEvent } from "react";
-import { MesitaMark } from "@/components/brand/MesitaMark";
 import { SectionEyebrow } from "@/components/consumer/me/settings-rows";
 import {
   CHANNEL_ICONS,
@@ -12,6 +11,7 @@ import {
   APP_SHARE_URL,
   INSTAGRAM_DM_URL,
   SHARE_BODY,
+  SHARE_CARD,
   SHARE_LINKS,
   SHARE_MESSAGE,
 } from "@/lib/share-app";
@@ -23,42 +23,36 @@ import { cn } from "@/lib/utils";
 // share create a dedicate page for share. you know.").
 //
 //   ┌──────────────────────────────┐
-//   │ M Mesita                     │   one plain Mesita card, one message
-//   │                              │   (Pato, MESITA-2622: "just one card.
-//   │ Stop asking me where to eat. │   keep it clearer."; it replaced ten
-//   │ Use this. 🙄                 │   cards in a swipe row, MESITA-2573)
-//   │ consumer.mesita.ai           │
+//   │ Mesita                       │   the standard Mesita share card, the
+//   │ Discover and reserve.        │   real 1200×630 link preview
+//   │ ──────────────────────────── │   (MESITA-2639); one card since
+//   │ consumer.mesita.ai           │   MESITA-2622, ten before (MESITA-2573)
 //   └──────────────────────────────┘
 //   SEND IT  (SMS) (Instagram) (WhatsApp) (Other)
 //
-// THE CARD IS WHAT TRAVELS: its message, then the link. No image is sent.
+// WHAT TRAVELS IS THE MESSAGE, THEN THE LINK; the link unfurls into the
+// card above in the recipient's chat (og:image).
 // ONE OUTCOME PER TAP, ONE TOAST AT MOST: closing the phone's sheet is a
 // decision (AbortError, silent); a sheet that is missing or will not open
 // copies instead, and says so (shareOrCopy, MESITA-2581). The link carries
 // nothing about the guest (share-app.ts).
 
-const LINK_LABEL = APP_SHARE_URL.replace(/^https:\/\//, "").replace(/\/$/, "");
-
 function ShareCard() {
+  // THE STANDARD MESITA SHARE CARD (Pato, MESITA-2639: "just use a standard
+  // Mesita share card and use the standard card dimensions"): the real
+  // 1200×630 link preview, the same file every shared link unfurls with
+  // (og:image). It replaced a hand-drawn 4:3 black block with a serif line,
+  // a mock of a preview that did not exist.
   return (
-    <div
-      className="bg-foreground text-paper shadow-elev flex aspect-[4/3] w-full flex-col rounded-3xl p-5"
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={SHARE_CARD.src}
+      width={SHARE_CARD.width}
+      height={SHARE_CARD.height}
+      alt={SHARE_CARD.alt}
+      className="border-border aspect-[1200/630] h-auto w-full rounded-2xl border"
       data-share-card
-    >
-      <span className="flex items-center gap-1.5 text-sm font-semibold">
-        <MesitaMark className="h-5 w-5" />
-        Mesita
-      </span>
-      <p
-        className="font-display mt-auto text-2xl leading-tight font-semibold tracking-tight"
-        data-share-message
-      >
-        {SHARE_MESSAGE}
-      </p>
-      <span className="type-meta mt-3 font-medium opacity-70">
-        {LINK_LABEL}
-      </span>
-    </div>
+    />
   );
 }
 

@@ -8,6 +8,7 @@ import { RouteBadge } from "@/components/consumer/RouteBadge";
 import { SurfacePrefixer } from "@/components/consumer/SurfacePrefixer";
 import { ViewportLock } from "@/components/consumer/ViewportLock";
 import { isSurface } from "@/lib/surface";
+import { SHARE_CARD } from "@/lib/share-app";
 
 const inter = Inter({
   variable: "--font-body",
@@ -70,11 +71,24 @@ export const metadata: Metadata = {
     siteName: "Mesita",
     locale: "en_US",
     type: "website",
+    // THE MESITA SHARE CARD (MESITA-2639): every shared link unfurls with
+    // it; the Share tab shows the same file. A static .png under public/,
+    // so signed-out crawlers reach it past the proxy's matcher. Source and
+    // re-render command: scripts/share-card/mesita-og.html.
+    images: [
+      {
+        url: SHARE_CARD.src,
+        width: SHARE_CARD.width,
+        height: SHARE_CARD.height,
+        alt: SHARE_CARD.alt,
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Mesita",
     description: "Discover. Reserve. Go out.",
+    images: [SHARE_CARD.src],
   },
 };
 
