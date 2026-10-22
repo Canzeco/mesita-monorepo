@@ -17,22 +17,25 @@ import type { PlaceDetail } from "../../place-detail";
 import { cn } from "../../lib/format";
 import { buildDirectionsUrl } from "../../lib/maps-link";
 import { isReserveActionEnabled } from "../../lib/place-profile-actions";
+import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS } from "../../lib/ui";
 
-// TWO ROWS OF TILES (Pato, MESITA-2688: "Mesita Reserve" and "Mesita Pay"
-// as tiles in the same style as the four above them):
+// TWO ROWS (Pato, MESITA-2688: "Mesita Reserve" and "Mesita Pay" beside
+// the four tiles; MESITA-2689 made them the ink button, halved):
 //
 //   [ ♡ Save ] [ ▱ Directions ] [ ✆ Contact ] [ ⇪ Share ]
-//   [ ▣ Reserve              ] [ ▦ Pay  Soon           ]
+//   [ ▣ Mesita Reserve       ] [ ▦ Mesita Pay  Soon    ]
 //
 // ROW 1 is four equal grey tiles, icon over a 12px label. Save is the heart
 // (MESITA-2521's favorite); once saved only the heart turns red, never the
 // tile (MESITA-2635). Directions opens Google Maps already routing to the
 // place (MESITA-2619). Share is back here; the top bar's dots report.
 //
-// ROW 2 is the same tiles, two of them, in INK (Pato, MESITA-2689: "the same
-// black aesthetic and height as the other"): Reserve, then Pay. Reserve replaced
-// the full-width ink "Reserve with Mesita" button (MESITA-2688). NO
-// TIMES ON THE PROFILE (Pato, MESITA-2633: fixed hours "can be confused with
+// ROW 2 is the old Reserve with Mesita button cut in half (Pato, MESITA-2689:
+// "kinda like this button but half and half, but same height and colour"):
+// two 44px ink buttons, icon beside the label, "Mesita Reserve" then
+// "Mesita Pay", dropping "Mesita " when the row is narrow ("only if enough
+// space"). MESITA-2688 had made them grey tiles. NO TIMES ON THE PROFILE
+// (Pato, MESITA-2633: fixed hours "can be confused with
 // confirmed availability"): the guest picks day, party and a preferred time
 // in the sheet, then the agent calls and confirms. Pay is Soon ("pay is as
 // soon but leave it there for the moment"): inert, wearing the consumer
@@ -46,8 +49,11 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 // THE TILES ARE ONE STEP DARKER THAN --fill (Pato, MESITA-2647: "make the
 // four gray buttons a bit darker, just a bit, minimum"): the border grey at
 // 60% over the white band ≈ #e9e9e9 (bg-muted is #efefef); hover 80%.
-// Row 2's Mesita tiles wear the old Reserve with Mesita button's ink.
-const inkTile = "bg-foreground text-paper hover:bg-foreground hover:opacity-90";
+// Row 2 is the old Reserve with Mesita button, cut in two (MESITA-2689).
+const inkButton = cn(
+  PLACE_BUTTON_CLASS,
+  "bg-foreground text-paper w-full text-sm hover:opacity-90",
+);
 const tileBtn =
   "bg-border/60 text-foreground hover:bg-border/80 flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1 text-xs font-semibold transition active:scale-[0.99]";
 
@@ -181,34 +187,42 @@ export function ProfileActions({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-2" data-profile-actions="mesita">
-        <ActionTile
-          Icon={CalendarCheck}
-          label="Reserve"
-          live={reserveLive}
-          onClick={onReserve}
-          ariaLabel="Reserve a table"
-          dialog
-          className={inkTile}
-        />
-        <ActionTile
-          label="Pay"
-          live={false}
-          ariaLabel="Pay, Soon"
-          className={inkTile}
+      {/* @container: the "Mesita " prefix shows only when the row is 20rem
+          or wider (Pato: "only if enough space"), measured on the row, not
+          the viewport, so admin's phone frame reads the same. */}
+      <div
+        className="@container grid grid-cols-2 gap-2"
+        data-profile-actions="mesita"
+      >
+        <button
+          type="button"
+          {...(reserveLive
+            ? { onClick: onReserve, "aria-haspopup": "dialog" as const }
+            : inertButtonProps(false))}
+          aria-label="Reserve a table"
+          className={inkButton}
         >
-          {/* The bar's Soon tag (BottomNav, MESITA-2079): a quiet chip,
-              white on the ink tile. */}
-          <span className="relative flex">
-            <QrCode
-              className="h-[18px] w-[18px] shrink-0 opacity-60"
-              strokeWidth={2.25}
-            />
-            <span className="bg-card text-muted-foreground absolute -top-1.5 left-[calc(100%-4px)] flex h-4 items-center rounded-full px-1.5 text-[10px] leading-none font-semibold whitespace-nowrap">
-              Soon
-            </span>
+          <CalendarCheck className={PLACE_BUTTON_ICON_CLASS} strokeWidth={2.25} />
+          <span className="truncate">
+            <span className="hidden @xs:inline">Mesita </span>Reserve
           </span>
-        </ActionTile>
+        </button>
+        <button
+          type="button"
+          {...inertButtonProps(false)}
+          aria-label="Pay, Soon"
+          className={inkButton}
+        >
+          <QrCode className={PLACE_BUTTON_ICON_CLASS} strokeWidth={2.25} />
+          <span className="truncate">
+            <span className="hidden @xs:inline">Mesita </span>Pay
+          </span>
+          {/* The bar's Soon tag (BottomNav, MESITA-2079): a quiet chip,
+              white on the ink. */}
+          <span className="bg-card text-muted-foreground flex h-4 shrink-0 items-center rounded-full px-1.5 text-[10px] leading-none font-semibold">
+            Soon
+          </span>
+        </button>
       </div>
     </div>
   );
