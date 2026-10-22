@@ -40,7 +40,7 @@ describe("section strip", () => {
     ]);
   });
 
-  it("renders the four sections with Soon on Products and Rewards", () => {
+  it("renders the four sections, no Soon pill in the strip (MESITA-2631)", () => {
     const html = renderToStaticMarkup(
       <PlaceTabBar tab="place" onChange={() => {}} />,
     );
@@ -49,7 +49,7 @@ describe("section strip", () => {
     expect(html).toContain("Products");
     expect(html).not.toContain(">Menu<");
     expect(html).toContain("Rewards");
-    expect(html).toContain("Soon");
+    expect(html).not.toContain("Soon");
     expect(html).toContain("grid-cols-4");
     expect(html).not.toContain("Enrich");
   });
