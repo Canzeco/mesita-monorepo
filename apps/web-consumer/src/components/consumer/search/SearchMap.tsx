@@ -289,7 +289,12 @@ function MapLoadingVeil() {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 z-10">
       <Skeleton className="absolute inset-0 rounded-none" />
-      <div className="absolute inset-0 flex items-center justify-center">
+      {/* ON THE CROSS (Pato, MESITA-2677: "the loading spin must be aligned
+          with the cross"): SIGHT_Y down, not the map's middle. */}
+      <div
+        className="absolute inset-x-0 flex -translate-y-1/2 justify-center"
+        style={{ top: `${SIGHT_Y * 100}%` }}
+      >
         <Spinner
           label="Loading map"
           className="border-border border-t-primary"
