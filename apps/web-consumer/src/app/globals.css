@@ -94,11 +94,16 @@
   --paper: oklch(
     1 0 0
   ); /* #ffffff · cards, sheets, popovers, ink-fill labels */
-  --page: oklch(0.952 0 0); /* #efefef · the ground every card sits on */
-  /* Wells, inputs and hovers are THE PAGE SHOWING THROUGH A CARD, not a fourth
-     light — so a focused input going to `--paper` is the same move as a card
-     lifting off the page. */
-  --fill: var(--page);
+  /* A STEP DARKER (Pato, MESITA-2634: "the background must be a bit darker.
+     overview has white boxes, and then the gray must be darker"): #efefef
+     sat at 1.15:1 under a white card; this is ≈1.27:1, and `--border`
+     (0.891) is still a step darker than it. */
+  --page: oklch(0.925 0 0); /* ≈ #e6e6e6 · the ground every card sits on */
+  /* Wells, inputs, hovers and grey buttons keep the OLD page grey. They were
+     `var(--page)` ("the page showing through a card") until MESITA-2634; a
+     darker ground would have darkened every grey button on the white place
+     header with it, and Pato asked for the ground only. */
+  --fill: oklch(0.952 0 0); /* #efefef */
 
   --background: var(--page);
   --foreground: oklch(0.205 0 0);

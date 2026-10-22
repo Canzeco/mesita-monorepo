@@ -268,8 +268,10 @@
    warm near-white; these tokens apply only inside the frame. */
 .member-phone {
   --paper: oklch(1 0 0);
-  --page: oklch(0.952 0 0);
-  --fill: var(--page);
+  /* Mirrors web-consumer (MESITA-2634): the ground a step darker, the fill
+     at the old grey. */
+  --page: oklch(0.925 0 0);
+  --fill: oklch(0.952 0 0);
   --background: var(--page);
   --foreground: oklch(0.205 0 0);
   --card: var(--paper);
