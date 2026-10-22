@@ -88,10 +88,17 @@ describe("a Google-only card's image is a placeholder, never a photo (MESITA-229
 
 describe("the tile: photo on top, its light reflection below (MESITA-2369, MESITA-2373)", () => {
   it("shows the photo on the top 60%, uncovered, and mirrors it from its foot under 80% paper", () => {
-    const html = tile({ photos: ["https://example.com/a.jpg"], price_level: 2 });
-    expect(html).toContain("relative isolate aspect-square min-w-0 overflow-hidden");
+    const html = tile({
+      photos: ["https://example.com/a.jpg"],
+      price_level: 2,
+    });
+    expect(html).toContain(
+      "relative isolate aspect-square min-w-0 overflow-hidden",
+    );
     expect(html).toContain("absolute inset-x-0 top-0 h-[60%] overflow-hidden");
-    expect(html).toContain("absolute inset-x-0 bottom-0 h-[40%] overflow-hidden");
+    expect(html).toContain(
+      "absolute inset-x-0 bottom-0 h-[40%] overflow-hidden",
+    );
     expect(html).toContain("absolute inset-x-0 top-0 h-[150%] -scale-y-100");
     expect(html.match(/<img/g)?.length).toBe(2);
     expect(html).toContain("bg-paper/80");
@@ -101,14 +108,18 @@ describe("the tile: photo on top, its light reflection below (MESITA-2369, MESIT
   });
 
   it("a Google card reflects its icon tile, still with no photo", () => {
-    const html = tile({ id: "g:ChIJx", googleOnly: true, family_keys: ["tacos"] });
+    const html = tile({
+      id: "g:ChIJx",
+      googleOnly: true,
+      family_keys: ["tacos"],
+    });
     expect(html).not.toContain("<img");
     expect(html.match(/data-placeholder="family"/g)?.length).toBe(2);
   });
 });
 
 describe("the tile shows the header's fields, Pato's order (MESITA-2645)", () => {
-  it("prints name; category · $$; hours; zone · distance — dollar signs, never a peso range", () => {
+  it("prints name; category · $$ · stars; hours · distance — dollar signs, never a peso range, no zone", () => {
     const html = tile({
       price_level: 2,
       currency: "MXN",
@@ -121,15 +132,15 @@ describe("the tile shows the header's fields, Pato's order (MESITA-2645)", () =>
       distance_km: 1.4,
     } as Partial<Place>);
     expect(html).toContain("Cafe · $$<");
-    expect(html).toContain("Open · until 02:00");
-    expect(html).toContain("Tecnológico · 1.4 km");
+    expect(html).toContain("4.6");
+    expect(html).toContain("(812)");
+    expect(html).toContain("Open · until 02:00 · 1.4 km");
     expect(html.indexOf(">Casa<")).toBeLessThan(html.indexOf("Cafe · $$"));
-    expect(html.indexOf("Cafe · $$")).toBeLessThan(html.indexOf("Open · until"));
-    expect(html.indexOf("Open · until")).toBeLessThan(html.indexOf("Tecnológico · 1.4 km"));
+    expect(html.indexOf("Cafe · $$")).toBeLessThan(html.indexOf("(812)"));
+    expect(html.indexOf("(812)")).toBeLessThan(html.indexOf("Open · until"));
     expect(html).not.toContain("MX$");
-    // The stars row left the tile; the place screen keeps them.
-    expect(html).not.toContain("(812)");
-    expect(html.match(/<p /g)?.length).toBeLessThanOrEqual(4);
+    expect(html).not.toContain("Tecnológico");
+    expect(html.match(/<p /g)?.length).toBeLessThanOrEqual(3);
   });
 
   it("hides what the place does not have — no invented cells", () => {
