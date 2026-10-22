@@ -60,7 +60,20 @@ export function ProfileStat({
       className="flex min-w-0 flex-col items-center justify-center px-0.5 text-center"
       aria-label={spoken}
     >
-      {icon ? <span className="mb-1.5 flex shrink-0">{icon}</span> : null}
+      {/* NOT CONNECTED IS GREY (Pato, MESITA-2676: "if no Instagram or no
+          Facebook, the icon must be grey-scale, not colour"): the mark loses
+          its colour and half its weight; a linked channel with no count
+          keeps it. */}
+      {icon ? (
+        <span
+          className={
+            "mb-1.5 flex shrink-0" +
+            (spokenValue === "not connected" ? " opacity-50 grayscale" : "")
+          }
+        >
+          {icon}
+        </span>
+      ) : null}
       {/* One line, like Maps: "4.9 ★" bold, "(13.8K)" small and muted
           beside it (MESITA-2315). "-" is muted, not shouted. */}
       <span
