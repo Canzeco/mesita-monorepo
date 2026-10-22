@@ -208,7 +208,8 @@ export function CatalogTile({
   return (
     <li
       className={cn(
-        "relative isolate aspect-square min-w-0 overflow-hidden rounded-2xl",
+        // A 1px hairline ring on the darker list ground (MESITA-2657).
+        "ring-foreground/10 relative isolate aspect-square min-w-0 overflow-hidden rounded-2xl ring-1",
         className,
       )}
     >
@@ -232,22 +233,14 @@ export function CatalogTile({
             80% paper (MESITA-2375), the three rows centred on it (MESITA-2645). */}
         <div
           className={cn(
-            "absolute inset-x-0 bottom-0 overflow-hidden rounded-b-2xl",
+            // A PLAIN WHITE BAND (Pato, MESITA-2657: "I don't really like
+            // the reflection, it doesn't look clean, make that completely
+            // white"): the mirrored photo and its 80% paper + blur retired.
+            "bg-paper absolute inset-x-0 bottom-0 overflow-hidden rounded-b-2xl",
             "h-[40%]",
           )}
           data-tile-info
         >
-          <div
-            className={cn("absolute inset-x-0 top-0 -scale-y-100", "h-[150%]")}
-            aria-hidden
-            data-tile-reflection
-          >
-            {media()}
-          </div>
-          <div
-            className="bg-paper/80 absolute inset-0 rounded-b-2xl backdrop-blur-sm"
-            aria-hidden
-          />
           {/* ONE TYPE SCALE (Pato, MESITA-2645: "standardize fonts and sizes
               and spaces"): the place screen's own (packages/place-profile
               ui.ts). Inter everywhere, two sizes only: the name 16px
