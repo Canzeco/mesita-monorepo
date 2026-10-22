@@ -100,7 +100,8 @@ export function ProfileSummary({
           the tag, it must kinda look as a first tag before the primary
           category") while Mesita creates a Google-only profile; it replaced
           the Creating band at the top of Overview ("the creating there
-          looks like shit"). */}
+          looks like shit"). Creating is the one fact in solid blue
+          (MESITA-2682: "it must be noticable"). */}
       <div className="flex flex-col gap-3" data-profile-section="facts">
       <ul
         className="flex flex-wrap items-center gap-2"
@@ -108,7 +109,7 @@ export function ProfileSummary({
         data-profile-facts
       >
         {creating ? (
-          <RunningFact label="Creating" />
+          <RunningFact label="Creating" loud />
         ) : place.is_enriching ? (
           <RunningFact label="Enriching" />
         ) : null}
