@@ -82,10 +82,12 @@ export function ProfileStat({
   );
 }
 
-/** One fact in the header's facts row (MESITA-2629): a small muted icon,
- *  then the fact in 14px medium ink. No fill, no pill, no border: it is
- *  information, and on this screen only buttons wear a fill. `strong`
- *  inks the icon too (an open place's clock). */
+/** One fact in the header's facts row: a small muted icon, then the fact
+ *  in 14px medium ink, INSIDE AN OUTLINED BOX (Pato, MESITA-2633: "put them
+ *  inside boxes but must not look as a button"): a 1px hairline, no fill,
+ *  rounded-lg, 32px. Outlined is information; filled is a button, and on
+ *  this screen only buttons wear a fill. `strong` inks the icon too (an
+ *  open place's clock). */
 export function ProfileFact({
   icon: Icon,
   strong = false,
@@ -98,7 +100,7 @@ export function ProfileFact({
 } & React.LiHTMLAttributes<HTMLLIElement>) {
   return (
     <li
-      className="text-foreground inline-flex min-w-0 items-center gap-1.5 text-sm font-medium whitespace-nowrap tabular-nums"
+      className="border-border text-foreground inline-flex h-8 min-w-0 items-center gap-1.5 rounded-lg border px-2.5 text-sm font-medium whitespace-nowrap tabular-nums"
       {...rest}
     >
       {Icon ? (

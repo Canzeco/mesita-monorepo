@@ -5,12 +5,18 @@ import type {
   PlaceActions,
   PlaceMenuItem,
   PlaceRequestView,
+  PlaceReserveSlot,
 } from "@mesita/place-profile";
 import { SocialLine } from "@mesita/place-profile";
 import { MenuViewer } from "@/components/consumer/MenuViewer";
 import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
 import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
 import { apiRequestPlace } from "@/lib/api/places";
+import {
+  nextReserveSlots,
+  parseHoursTable,
+  reserveDayLabel,
+} from "@/lib/reservation-slots";
 import {
   apiPlaceActivity,
   apiTrackActivity,
@@ -39,6 +45,8 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const saved = isSaved(place.id);
   const [contactOpen, setContactOpen] = useState(false);
   const [reserveOpen, setReserveOpen] = useState(false);
+  // The time tapped on the Reserve row; null = Reserve itself (MESITA-2633).
+  const [reserveSeed, setReserveSeed] = useState<PlaceReserveSlot | null>(null);
   const [menu, setMenu] = useState<PlaceMenuItem | null>(null);
   const request = usePlaceRequest(place);
   const activity = usePlaceActivity(place.id);
@@ -58,12 +66,23 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     window.open(url, "_blank", "noopener,noreferrer");
   }, []);
 
+  // THE RESERVE ROW'S NEXT TIMES (MESITA-2633): the first place day with
+  // requestable times left, from the sheet's own slot rules. Recomputed each
+  // render (a handful of strings), so the row never offers a time that has
+  // passed while the screen sat open.
+  const next = nextReserveSlots(parseHoursTable(place.hours_table));
+
   const actions: PlaceActions = {
     onSave,
     saved,
     onContact: () => setContactOpen(true),
     onShare: () => void sharePlace(place),
-    onReserve: () => setReserveOpen(true),
+    onReserve: (slot) => {
+      setReserveSeed(slot ?? null);
+      setReserveOpen(true);
+    },
+    reserveSlots: next?.times.map((time) => ({ date: next.date, time })),
+    reserveDayLabel: next ? reserveDayLabel(next.date) : undefined,
     onRequest: request.onRequest,
     onOpenMenu: (item) => setMenu(item),
     onOpenLink,
@@ -78,9 +97,14 @@ export function useMemberPlaceActions(place: PlaceDetail): {
         onClose={() => setContactOpen(false)}
       />
       <ReservationSheet
+        // A tapped time remounts the sheet so it opens ON that time; Reserve
+        // alone keeps the guest's last pick (MESITA-2633).
+        key={reserveSeed ? `${reserveSeed.date}T${reserveSeed.time}` : "default"}
         place={place}
         open={reserveOpen}
         onClose={() => setReserveOpen(false)}
+        initialDate={reserveSeed?.date}
+        initialTime={reserveSeed?.time}
       />
       <MenuViewer
         open={menu != null}

@@ -59,15 +59,14 @@ export function ProfileSummary({
   return (
     // Full-bleed white band under the top chrome so the summary reads as
     // the page header. The section strip below is the same white surface.
-    // THREE SECTIONS, HAIRLINES BETWEEN (Pato, MESITA-2632, /plan-design-
-    // review: he picked "B · Hairline sections" from a board of four): (1)
-    // photo + the three counts, (2) the facts and the social line, (3) the
-    // action row, each 16px at the sides and 14px top and bottom, divided by
-    // full-width 1px hairlines. The facts float no more, and still wear no
-    // fill: on this screen only buttons do. Inside a section, 8px between
-    // items (stats, buttons); buttons 44px; secondary lines 12px (MESITA-2623).
-    <section className="border-border bg-card divide-border flex flex-col divide-y border-b">
-      <div className="flex items-center gap-3 px-4 py-3.5" data-profile-section="identity">
+    // ONE WHITE BAND, NO DIVIDING LINES (Pato, MESITA-2633: "remove the
+    // lines dividing the profile. it looks like shit"; MESITA-2632's
+    // hairline sections lived one night). Three groups: photo + the three
+    // counts, the facts (outlined boxes) and the social line, then the two
+    // action rows; 16px around the band and between groups, 8px between
+    // items. Only buttons wear a fill (MESITA-2623).
+    <section className="border-border bg-card flex flex-col gap-4 border-b p-4">
+      <div className="flex items-center gap-3" data-profile-section="identity">
         <ProfilePhoto place={place} />
         <div className="grid min-w-0 flex-1 grid-cols-3 gap-2">
           {stats.map((stat) => (
@@ -93,9 +92,9 @@ export function ProfileSummary({
           hours · zone · distance; a missing fact draws nothing, never a
           "- km" (MESITA-2315). While the Enricher builds the profile an
           Enriching fact leads the row (MESITA-451). */}
-      <div className="flex flex-col gap-3 px-4 py-3.5" data-profile-section="facts">
+      <div className="flex flex-col gap-3" data-profile-section="facts">
       <ul
-        className="flex flex-wrap items-center gap-x-4 gap-y-1.5"
+        className="flex flex-wrap items-center gap-2"
         aria-label="About this place"
         data-profile-facts
       >
@@ -133,7 +132,7 @@ export function ProfileSummary({
       {social ? <div data-slot="social">{social}</div> : null}
       </div>
 
-      <div className="px-4 py-3.5" data-profile-section="actions">
+      <div data-profile-section="actions">
         <ProfileActions place={place} actions={actions} />
       </div>
     </section>

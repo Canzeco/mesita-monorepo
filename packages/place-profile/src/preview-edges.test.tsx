@@ -71,7 +71,7 @@ describe("member preview edges", () => {
     expect(html).not.toContain('aria-label="Reviews"');
   });
 
-  it("puts one action row in the header and no pinned bar (MESITA-2321, MESITA-2618)", () => {
+  it("puts two action rows in the header and no pinned bar (MESITA-2321, MESITA-2633)", () => {
     const html = renderToStaticMarkup(<PlaceProfile place={detail()} />);
     for (const label of [
       "Reserve a table",
@@ -81,9 +81,11 @@ describe("member preview edges", () => {
     ]) {
       expect(html).toContain(label);
     }
-    // Share lives in the top bar's three dots (MESITA-2619), not the row.
+    // Share is on the first row again (MESITA-2633); the dots still share.
+    expect(html).toContain('aria-label="Share"');
     expect(html).toContain('aria-label="Share this place"');
-    expect(html).not.toContain('aria-label="Share"');
+    // The admin phone passes no times: Reserve stands alone, no time buttons.
+    expect(html).not.toContain("data-reserve-slot");
     // Directions routes to the place (lib/maps-link.ts).
     expect(html).toContain("google.com/maps/dir/?api=1&amp;destination=");
     // Pay (Soon) left the place screen; the bar already says Pay · Soon.
@@ -146,12 +148,13 @@ describe("member preview edges", () => {
     const directionsAt = html.indexOf("Directions in Google Maps");
     const saveAt = html.indexOf('aria-label="Add to favorites"');
     const contactAt = html.indexOf('aria-label="Contact"');
-    // The heart leads the row (MESITA-2623), then Reserve · Directions,
-    // then Contact.
+    const shareAt = html.indexOf('aria-label="Share"');
+    // Row 1: Like · Directions · Contact · Share; row 2: Reserve (MESITA-2633).
     expect(saveAt).toBeGreaterThan(-1);
-    expect(reserveAt).toBeGreaterThan(saveAt);
-    expect(directionsAt).toBeGreaterThan(reserveAt);
+    expect(directionsAt).toBeGreaterThan(saveAt);
     expect(contactAt).toBeGreaterThan(directionsAt);
+    expect(shareAt).toBeGreaterThan(contactAt);
+    expect(reserveAt).toBeGreaterThan(shareAt);
     expect(html).not.toContain("Save, Soon");
     expect(html).toContain("Products");
     expect(html).not.toContain(">Menu<");
