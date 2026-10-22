@@ -1,6 +1,6 @@
 # apps/web-admin — internal admin console (admin.mesita.ai)
 
-> Read root [`CLAUDE.md`](../../CLAUDE.md) first. Package law only: the tests named here pin the rest, and Notion Docs › Apps describes every page.
+> Read root [`CLAUDE.md`](../../CLAUDE.md) first. Package law only; Notion Docs › Apps describes every page.
 
 - **Light theme, semantic tokens.** New UI takes its chrome from `src/components/admin-ui/`, never a route-local shim. Design map: Notion Docs › Design.
 - **Edge Functions:** `admin-web-*` only, through the `Result`-style helper in `src/lib/supabase-ef.ts`.

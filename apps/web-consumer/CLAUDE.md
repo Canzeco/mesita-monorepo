@@ -1,6 +1,6 @@
 # apps/web-consumer — consumer app (consumer.mesita.ai)
 
-> Read root [`CLAUDE.md`](../../CLAUDE.md) first. Package law only: the tests named here pin the rest, and Notion Docs › Apps describes every screen.
+> Read root [`CLAUDE.md`](../../CLAUDE.md) first. Package law only; Notion Docs › Apps describes every screen.
 
 - **First Stage only.** The Second Stage is deleted, not parked: none of its routes, tiles or EFs come back without Pato. Old addresses live only in `src/lib/consumer-route-contract.ts` › `legacy`, the route source of truth, each one hop through `src/lib/legacy-redirects.ts`; `consumer-route-contract.test.ts` pins the table and that no redirect shadows a live route.
 - **Light theme, semantic tokens** (`bg-card`, `text-foreground`, `border-border`); never a raw dark surface. Design map: Notion Docs › Design.

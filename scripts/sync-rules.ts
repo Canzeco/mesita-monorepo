@@ -233,8 +233,8 @@ export type Target = { label: string; dir: string; quickstart: boolean; budget?:
 
 // `budget` omitted = DEFAULT_PACKAGE_WORD_BUDGET, the ceiling a new package's
 // card starts from. A card is law only: the rules an agent needs before its
-// first edit that no test enforces, plus a one-line pointer to each test that
-// pins the rest. Product description lives in Notion Docs. Every row below is
+// first edit. A test a card names must exist (namedTestProblems); the MVP test
+// rule lives in the root tail (MESITA-2600). Product description lives in Notion Docs. Every row below is
 // ceilingFor() of the 2026-10-18 rewrite (MESITA-2394); one above the default
 // names why.
 export const TARGETS: Target[] = [
@@ -286,6 +286,37 @@ export function findMarkerSpan(text: string): MarkerSpan | null {
 export function rootTail(text: string): string {
   const span = findMarkerSpan(text);
   return span === null ? text : text.slice(span.end + END.length);
+}
+
+// ── Cards: every test a card names must exist ──────────────────────────────
+// A card that points at a deleted test sends the next agent hunting for a file
+// that is gone. Names come in three shapes: a bare basename (`actions.test.ts`),
+// a partial path (`components/Sidebar.test.ts`) and a full path across packages;
+// real paths carry `(app)` and `[id]`, so the whole backticked span is the name.
+const NAMED_TEST = /`([^`\n]+?\.test\.tsx?)`/g;
+
+/** Every backticked `….test.ts(x)` span in a card, in order, deduplicated. */
+export function namedTests(text: string): string[] {
+  return [...new Set([...text.matchAll(NAMED_TEST)].map((m) => m[1]!.replace(/^\.\//, "")))];
+}
+
+/** A name resolves when a tracked path is it, or ends with `/` + it. */
+export function resolvesTo(name: string, tracked: string[]): boolean {
+  return tracked.some((p) => p === name || p.endsWith(`/${name}`));
+}
+
+export function missingTestMessage(card: string, name: string): string {
+  return `${card}: names ${name}, which does not exist; drop the name, keep the rule`;
+}
+
+export function namedTestProblems(cards: Map<string, string>, tracked: string[]): string[] {
+  const problems: string[] = [];
+  for (const [card, text] of cards) {
+    for (const name of namedTests(text)) {
+      if (!resolvesTo(name, tracked)) problems.push(missingTestMessage(card, name));
+    }
+  }
+  return problems;
 }
 
 export type BudgetCheck = { label: string; words: number; budget: number; over: boolean };
@@ -372,6 +403,7 @@ async function main(): Promise<void> {
   const block = `${START}\n${canonical}\n${END}`;
 
   let updated = 0, drifted = 0, failed = 0;
+  const cards = new Map<string, string>();
 
   if (!findStamp(canonical)) {
     console.error(missingStampMessage());
@@ -428,6 +460,8 @@ async function main(): Promise<void> {
     }
     await reconcile(claudePath, nextClaude, `${label}/CLAUDE.md`);
     await reconcile(join(dir, "AGENTS.md"), `${AGENTS_NOTICE}\n${nextClaude}`, `${label}/AGENTS.md`);
+
+    cards.set(`${label}/CLAUDE.md`, nextClaude);
 
     // Budget the file we just wrote, not the one we read.
     for (const b of budgetsFor(target, nextClaude)) {
@@ -535,6 +569,23 @@ async function main(): Promise<void> {
     }
   } catch (err) {
     console.error(`markdown allowlist: could not run git (${err}) — check skipped`);
+    if (check) failed++;
+  }
+
+  try {
+    const ls = new Deno.Command("git", { args: ["ls-files"], cwd: repoRoot, stdout: "piped", stderr: "piped" });
+    const out = await ls.output();
+    if (out.success) {
+      const tracked = new TextDecoder().decode(out.stdout).split("\n").filter(Boolean);
+      const missing = namedTestProblems(cards, tracked);
+      for (const m of missing) console.error(m);
+      failed += missing.length;
+    } else {
+      console.error("named tests: `git ls-files` failed — check skipped (not a git checkout?)");
+      if (check) failed++;
+    }
+  } catch (err) {
+    console.error(`named tests: could not run git (${err}) — check skipped`);
     if (check) failed++;
   }
 
