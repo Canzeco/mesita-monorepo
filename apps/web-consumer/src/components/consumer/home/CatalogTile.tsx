@@ -69,8 +69,10 @@ function TileLink({
 
 // The place screen's action tile, on one line (MESITA-2650): 44px, the
 // border grey at 60% (MESITA-2647), rounded-lg, 12px semibold ink.
+// 32px tall to the eye (MESITA-2652: "the buttons must be shorter"); an
+// invisible 6px extension above and below keeps the 44px touch floor.
 const TILE_BUTTON =
-  "bg-border/60 text-foreground hover:bg-border/80 flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 font-sans text-xs font-semibold transition active:scale-[0.99]";
+  "bg-border/60 text-foreground hover:bg-border/80 relative flex h-8 after:absolute after:inset-x-0 after:-inset-y-1.5 min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 font-sans text-xs font-semibold transition active:scale-[0.99]";
 
 function readableKind(place: Place): string | null {
   const raw = place.category_label ?? place.category;
@@ -175,10 +177,13 @@ export function CatalogTile({
 
   // TWO BIG BUTTONS, LIKE AND SHARE (Pato, MESITA-2650: "add the button to
   // like and the button share; share must be almost everywhere to maximize
-  // sharing and the virality of the app"). They need room, so a Mesita tile
-  // is 5:6 — photo top half (still 5:3), band bottom half — while a
-  // Google-only card, which has no page to share or save, stays the square
-  // below with no buttons.
+  // sharing and the virality of the app").
+  //
+  // EVERY TILE IS SQUARE (MESITA-2652: "the dimensions must be square, and
+  // the buttons shorter"): a Mesita tile gives the photo the top 45% and the
+  // band 55% (the reflection is the photo's height, 45/55 = 81.82% of the
+  // band, so it still mirrors from the foot); a Google-only card, which has
+  // no page to share or save, keeps 60/40 and no buttons.
   //
   // ONE square (Pato, MESITA-2369, MESITA-2373): the photo is the top 60%,
   // fully shown and centred — nothing lies over it. The bottom 40% is its
@@ -191,8 +196,7 @@ export function CatalogTile({
   return (
     <li
       className={cn(
-        "relative isolate min-w-0 overflow-hidden rounded-2xl",
-        google ? "aspect-square" : "aspect-[5/6]",
+        "relative isolate aspect-square min-w-0 overflow-hidden rounded-2xl",
         className,
       )}
     >
@@ -207,7 +211,7 @@ export function CatalogTile({
         <div
           className={cn(
             "bg-muted absolute inset-x-0 top-0 overflow-hidden rounded-t-2xl",
-            google ? "h-[60%]" : "h-1/2",
+            google ? "h-[60%]" : "h-[45%]",
           )}
         >
           {media()}
@@ -217,14 +221,14 @@ export function CatalogTile({
         <div
           className={cn(
             "absolute inset-x-0 bottom-0 overflow-hidden rounded-b-2xl",
-            google ? "h-[40%]" : "h-1/2",
+            google ? "h-[40%]" : "h-[55%]",
           )}
           data-tile-info
         >
           <div
             className={cn(
               "absolute inset-x-0 top-0 -scale-y-100",
-              google ? "h-[150%]" : "h-full",
+              google ? "h-[150%]" : "h-[81.82%]",
             )}
             aria-hidden
             data-tile-reflection
@@ -245,7 +249,7 @@ export function CatalogTile({
           <div
             className={cn(
               "text-foreground relative flex h-full flex-col justify-center gap-1 pl-3",
-              google ? "pr-3" : "pr-3 pb-[60px]",
+              google ? "pr-3" : "pr-3 pb-11",
             )}
           >
             <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-6 font-semibold tracking-tight">
@@ -283,7 +287,7 @@ export function CatalogTile({
       </TileLink>
       {google ? null : (
         // The place screen's action tiles, smaller row (MESITA-2647's grey):
-        // two equal 44px buttons, icon + label on one line, 12px from the
+        // two equal 32px buttons, icon + label on one line, 12px from the
         // band's edges. Siblings of the tile link, so a tap never navigates.
         <div
           className="absolute inset-x-3 bottom-3 grid grid-cols-2 gap-2"

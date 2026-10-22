@@ -533,7 +533,7 @@ export function CatalogRails() {
   if (waitingForFix) {
     return shell(
       <div className={PLACES_LIST} data-places-locating>
-        <Skeleton className="aspect-[5/6] rounded-2xl" />
+        <Skeleton className="aspect-square rounded-2xl" />
       </div>,
     );
   }
@@ -553,7 +553,7 @@ export function CatalogRails() {
     return shell(
       <div className={PLACES_LIST}>
         {Array.from({ length: 3 }, (_, i) => (
-          <Skeleton key={i} className="aspect-[5/6] rounded-2xl" />
+          <Skeleton key={i} className="aspect-square rounded-2xl" />
         ))}
       </div>,
     );
