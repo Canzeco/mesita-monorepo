@@ -134,6 +134,15 @@ export const VERB: Record<ActivityKind, string> = {
   viewed: "viewed",
 };
 
+/** The same words opening a line: the person card's history rows read
+ *  "Viewed …" / "Liked …" (Pato, MESITA-2694: "capitalize the word viewed
+ *  as Viewed same for Liked"). The feed's sentence keeps them lower-case
+ *  after the name. */
+export const VERB_LEAD: Record<ActivityKind, string> = {
+  saved: "Liked",
+  viewed: "Viewed",
+};
+
 /** "2h", "5m", "3d": the feed's clock. */
 export function shortAgo(iso: string, now = Date.now()): string {
   const diff = Math.max(0, now - Date.parse(iso));
@@ -610,7 +619,7 @@ function HistoryList({ items }: { items: MemberHistoryItem[] | null }) {
           >
             <span className="min-w-0 flex-1">
               <span className="text-foreground line-clamp-2 text-sm leading-snug">
-                {VERB[it.kind]}{" "}
+                {VERB_LEAD[it.kind]}{" "}
                 <span className={LINK_WORD_CLASS}>{it.place.name}</span>
               </span>
               <span className="text-muted-foreground mt-0.5 block text-xs">
