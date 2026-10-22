@@ -62,6 +62,7 @@ import {
   type AreaDiagnostics,
   type AreaLocation,
   type AreaSource,
+  type AreaWeights,
   insideBounds,
   knownFamilies,
   type LatLng,
@@ -73,7 +74,6 @@ import {
   PROXIMITY_REACH_KM_DEFAULT,
 } from "./pipeline-signals.ts";
 import {
-  DEFAULT_AREA_MODES,
   type DiscoveryConfig,
   type GeneralConfig,
   type SignalParams,
@@ -101,24 +101,24 @@ export function areaGoogleTypes(families: readonly string[]): readonly string[] 
   return families.length > 0 ? nearbyTypesForSupers(families) : FEED_GOOGLE_TYPES;
 }
 
+/** The one score every Area caller ranks by (MESITA-2504, MESITA-2516,
+ *  MESITA-2687): Proximity^a × Popularity^1 × Selected^1, a =
+ *  `map.proximityWeight`. The weights table it replaced is gone. */
+export function areaWeights(map: Pick<DiscoveryConfig["map"], "proximityWeight">): AreaWeights {
+  return { proximity: map.proximityWeight, popularity: 1, selected: 1 };
+}
+
 /** Popularity's reviews-for-half-credit, Proximity's reach (MESITA-2431),
- *  Selected's non-Selected value and the mode's row of the weights table
- *  (MESITA-2428, MESITA-2439), from the blob. */
+ *  Selected's non-Selected value (MESITA-2439) and the weights, from the blob. */
 export function areaSignalParams(
   params: SignalParams,
-  mode: AreaMode = "nearby",
+  map: Pick<DiscoveryConfig["map"], "proximityWeight">,
 ): Pick<AreaContext, "halfReviews" | "reachKm" | "weights" | "selectedOther"> {
   const num = (v: unknown, d: number) => (typeof v === "number" && Number.isFinite(v) ? v : d);
-  const row = params.modes?.[mode];
-  const d = DEFAULT_AREA_MODES[mode];
   return {
     halfReviews: num(params.popularity?.halfReviews, POPULARITY_HALF_REVIEWS_DEFAULT),
     reachKm: num(params.proximity?.reachKm, PROXIMITY_REACH_KM_DEFAULT),
-    weights: {
-      proximity: num(row?.proximity, d.proximity),
-      popularity: num(row?.popularity, d.popularity),
-      selected: num(row?.selected, d.selected),
-    },
+    weights: areaWeights(map),
     selectedOther: num(params.selected?.otherFactor, SELECTED_FACTOR.other),
   };
 }
@@ -391,8 +391,8 @@ export type AreaPoolDeps<T extends OwnedRow> = {
   /** The guest's mode (MESITA-2428); absent = Nearby, or Family when
    *  families are requested. */
   mode?: AreaMode;
-  /** The caller's own reach and exponents, over the mode's row (the Map,
-   *  MESITA-2504: reach = the screen radius, Proximity^a × Popularity^1). */
+  /** The caller's own reach and exponents, over the blob's (the Map,
+   *  MESITA-2504: reach = the screen radius). */
   signals?: Pick<AreaContext, "reachKm" | "weights">;
   /** The mode that picks the Google circles, over `areaMode` (the Map asks
    *  the prominent 20 in its whole radius whatever the chip, MESITA-2504). */
@@ -541,7 +541,7 @@ export async function selectAreaPool<T extends OwnedRow>(
   const ctx: AreaContext = {
     location: deps.location,
     families: deps.families,
-    ...areaSignalParams(deps.cfg.params, areaMode(deps)),
+    ...areaSignalParams(deps.cfg.params, deps.cfg.map),
     ...deps.signals,
   };
   const fromGoogle = await googleItems(deps, summary);
@@ -674,6 +674,8 @@ export type SelectedOpts = {
   /** The Family gate's requested families; empty or absent = every family. */
   families?: readonly string[];
   params: SignalParams;
+  /** The Map's and Home's Proximity exponent (`map.proximityWeight`). */
+  proximityWeight: number;
   limit?: number;
 };
 
@@ -691,7 +693,7 @@ export function selectMesitaSelected<T extends Record<string, unknown>>(
     {
       location,
       families: opts.families ?? [],
-      ...areaSignalParams(opts.params),
+      ...areaSignalParams(opts.params, opts),
     },
   );
   const out = ranked.map(({ item }) => ({
@@ -735,6 +737,7 @@ export async function areaSelectedPlaces(
     radiusKm: cfg.map.radiusKm,
     families: opts.families,
     params: cfg.params,
+    proximityWeight: cfg.map.proximityWeight,
     limit: opts.limit,
   });
 }

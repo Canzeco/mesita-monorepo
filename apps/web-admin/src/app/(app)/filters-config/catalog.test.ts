@@ -11,7 +11,6 @@ import {
   DEFAULT_NAME,
   GOOGLE_PULL_STOPS,
   SUPER_FIELDS,
-  snapMapReloadPair,
 } from "./catalog";
 
 // `app_config.discovery_config` as stored on 2026-10-18 (trimmed): the
@@ -42,7 +41,7 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
     expect(Object.keys(cfg).sort()).toEqual(Object.keys(DEFAULT_CONFIG).sort());
   });
 
-  it("params keeps only the reach, half credit, Selected's other value and the weights table; the linear balance is dropped (MESITA-2428, MESITA-2431, MESITA-2439)", () => {
+  it("params keeps only the reach, half credit and Selected's other value; the linear balance and the weights table are dropped (MESITA-2431, MESITA-2439, MESITA-2687)", () => {
     expect(coerceConfig(LIVE_BLOB).params).toEqual(DEFAULT_CONFIG.params);
     expect(
       coerceConfig({
@@ -58,7 +57,6 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
       proximity: { reachKm: 15 },
       popularity: { halfReviews: 250 },
       selected: { otherFactor: 0.3 },
-      modes: { ...DEFAULT_CONFIG.params.modes, popular: { proximity: 0.5, popularity: 3, selected: 1 } },
     });
   });
 
@@ -69,18 +67,12 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
           proximity: { reachKm: 12.34 },
           popularity: { halfReviews: 0 },
           selected: { otherFactor: 0 },
-          modes: { nearby: { proximity: 99, popularity: 1.234 }, family: { proximity: -2, selected: 2.5 } },
         },
       }).params,
     ).toEqual({
       proximity: { reachKm: 12.3 },
       popularity: { halfReviews: 1 },
       selected: { otherFactor: 0.01 },
-      modes: {
-        ...DEFAULT_CONFIG.params.modes,
-        nearby: { proximity: 5, popularity: 1.23, selected: 1 },
-        family: { proximity: 0, popularity: 1, selected: 2.5 },
-      },
     });
     const other = (v: unknown) => coerceConfig({ params: { selected: { otherFactor: v } } }).params.selected.otherFactor;
     expect(other(0.456)).toBe(0.46);
@@ -120,27 +112,22 @@ describe("coerceConfig", () => {
           minRating: 9,
           minPopularity: 4,
           supers: { restaurants: false },
+          reloadMinKm: 1,
+          reloadMinSec: 4,
+          mapGooglePlaces: 45,
         },
       }).map,
     ).toEqual({
       ...DEFAULT_MAP,
       minRating: 5,
       minPopularity: 1,
-      supers: { ...DEFAULT_MAP.supers },
+      mapGooglePlaces: 40,
     });
-    expect(
-      coerceConfig({ map: { reloadMinKm: 99, reloadMinSec: 40 } }).map,
-    ).toMatchObject({ reloadMinKm: 4, reloadMinSec: 15 });
-    expect(
-      coerceConfig({ map: { reloadMinKm: 0.4, reloadMinSec: 2 } }).map,
-    ).toMatchObject({ reloadMinKm: 0.5, reloadMinSec: 2 });
     // The live throttle (MESITA-2444): 1.5 s by default, the client's 0.5–10.
     expect(coerceConfig({}).map.reloadIdleSec).toBe(1.5);
     expect(coerceConfig({ map: { reloadIdleSec: 0.1 } }).map.reloadIdleSec).toBe(0.5);
     expect(coerceConfig({ map: { reloadIdleSec: 99 } }).map.reloadIdleSec).toBe(10);
     expect(coerceConfig({ map: { reloadIdleSec: 2.25 } }).map.reloadIdleSec).toBe(2.25);
-    expect(snapMapReloadPair(0.4, 2)).toEqual({ km: 0.5, sec: 2 });
-    expect(snapMapReloadPair(99, 40)).toEqual({ km: 4, sec: 15 });
   });
 
   it("coerceConfig drops the retired social box (MESITA-2144)", () => {
@@ -158,7 +145,7 @@ describe("coerceConfig", () => {
     expect(SUPER_FIELDS.length).toBe(12);
     expect(new Set(SUPER_FIELDS.map((f) => f.key)).size).toBe(12);
     for (const f of SUPER_FIELDS) expect(f.battery.length, f.key).toBeGreaterThan(0);
-    const on = SUPER_FIELDS.filter((f) => DEFAULT_MAP.supers[f.key]).map((f) => f.key);
+    const on = SUPER_FIELDS.filter((f) => DEFAULT_NAME.deep.supers[f.key]).map((f) => f.key);
     expect(new Set(on)).toEqual(
       new Set(["coffee", "dinner", "sweet", "drinks", "night_out"]),
     );
@@ -173,14 +160,15 @@ describe("coerceConfig", () => {
     expect(GOOGLE_PULL_STOPS).toEqual([20, 40, 60]);
     expect("googlePull" in DEFAULT_MAP).toBe(false);
     expect("googlePull" in coerceConfig({ map: { googlePull: 60 } }).map).toBe(false);
-    // The radius: default 50, clamped 1..50 (Google's circle cap), one decimal.
-    expect(DEFAULT_MAP.radiusKm).toBe(50);
+    // The radius: default 15 = the reach (MESITA-2687), clamped 1..50
+    // (Google's circle cap), one decimal.
+    expect(DEFAULT_MAP.radiusKm).toBe(15);
     const radius = (raw: unknown) => coerceConfig({ map: { radiusKm: raw } }).map.radiusKm;
     expect(radius(0.2)).toBe(1);
     expect(radius(999)).toBe(50);
     expect(radius(12.34)).toBe(12.3);
     expect(radius(7)).toBe(7);
-    expect(radius("far")).toBe(50);
+    expect(radius("far")).toBe(15);
   });
 
   it("coerceConfig defaults name Fast 5 and Deep 3+3+3", () => {

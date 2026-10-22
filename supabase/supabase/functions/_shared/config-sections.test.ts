@@ -122,20 +122,21 @@ const CASES: Record<string, SectionCase> = {
       assertEquals(((c.params as Row).proximity as Row).reachKm, 12.5);
       assert(c.map && typeof c.map === "object", "map missing");
     },
-    // Coerced, not stored as sent: an exponent of 99 lands clamped at 5, and
-    // a retired TOP-LEVEL key (the Swipe deck's `weights`, MESITA-2328) is
-    // dropped — the live weights sit under `params.modes` (MESITA-2428).
+    // Coerced, not stored as sent: a reach of 99 lands clamped at 50, and a
+    // retired key (the weights table `params.modes`, MESITA-2687; the
+    // linear `balance`) is dropped.
     invalid: {
       config: {
-        params: { modes: { nearby: { proximity: 99 } } },
+        params: { proximity: { reachKm: 99 }, modes: { nearby: { proximity: 2 } } },
         balance: { proximity: 2 },
       },
     },
     refuse: {
       clamped: (saved) => {
         const c = saved.config as Row;
-        assertEquals((((c.params as Row).modes as Row).nearby as Row).proximity, 5);
-        assertEquals("weights" in c, false);
+        assertEquals(((c.params as Row).proximity as Row).reachKm, 50);
+        assertEquals("modes" in (c.params as Row), false);
+        assertEquals("balance" in c, false);
       },
     },
   },

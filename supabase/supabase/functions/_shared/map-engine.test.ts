@@ -1,13 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import { DISCOVERY_DEFAULTS, SUPER_PARAM_KEYS } from "./discovery-config.ts";
-import type { SuperParamKey } from "./discovery-config.ts";
-
-// Built from the param list so the fixture cannot rot when a Super is added.
-const supersAllOff = (): Record<SuperParamKey, boolean> =>
-  Object.fromEntries(SUPER_PARAM_KEYS.map((k) => [k, false])) as Record<
-    SuperParamKey,
-    boolean
-  >;
 import { nearbyTypesForSupers } from "./google-type-super.ts";
 import {
   clearsMinReviews,
@@ -35,23 +27,8 @@ Deno.test("defaults admit everything and ask Google for every guest family", () 
   );
 });
 
-Deno.test("googleFill off skips Nearby; a stored family switch does not", () => {
-  const all = new Set(nearbyTypesForSupers([...SUPER_PARAM_KEYS]));
+Deno.test("googleFill off skips Nearby", () => {
   assertEquals(mapShouldFillGoogle(true, { ...MAP, googleFill: false }), false);
-  assertEquals(
-    mapShouldFillGoogle(true, {
-      ...MAP,
-      supers: supersAllOff(),
-    }),
-    true,
-  );
-  assertEquals(
-    new Set(enabledNearbyTypes({
-      ...MAP,
-      supers: { ...MAP.supers, coffee: false },
-    })),
-    all,
-  );
 });
 
 Deno.test("minPopularity reads the Area pipeline's Popularity — unrated scores 0 (MESITA-2328)", () => {
@@ -122,13 +99,9 @@ Deno.test("evaluatePlaceForMap admits wellness; rejects hotels", () => {
   assertEquals(hotel.eligible, false);
 });
 
-Deno.test("evaluatePlaceForMap ignores stored family switches and still applies floors", () => {
-  const barsOnly = {
-    ...MAP,
-    supers: { ...supersAllOff(), night_out: true },
-  };
+Deno.test("evaluatePlaceForMap admits every family and still applies floors", () => {
   assertEquals(
-    evaluatePlaceForMap(barsOnly, {
+    evaluatePlaceForMap(MAP, {
       primaryType: "night_club",
       rating: 4.5,
       reviewCount: 10,
@@ -136,7 +109,7 @@ Deno.test("evaluatePlaceForMap ignores stored family switches and still applies 
     true,
   );
   assertEquals(
-    evaluatePlaceForMap(barsOnly, {
+    evaluatePlaceForMap(MAP, {
       primaryType: "mexican_restaurant",
       rating: 4.5,
       reviewCount: 10,
@@ -159,15 +132,6 @@ Deno.test("Map types admit F&B, bars and spas, and drop hotels", () => {
     ["thai_restaurant", "bar", "hotel", "spa", "undefined"].filter(admits),
     ["thai_restaurant", "bar", "spa", "undefined"],
   );
-});
-
-Deno.test("Map types ignore stored family switches", () => {
-  const barsOnly = {
-    ...MAP,
-    supers: { ...supersAllOff(), night_out: true },
-  };
-  assertEquals(primaryTypeClearsMapTypes("restaurant", barsOnly), true);
-  assertEquals(primaryTypeClearsMapTypes("night_club", barsOnly), true);
 });
 
 Deno.test("Atlas leftover slugs admit via Super membership, not Google type", () => {

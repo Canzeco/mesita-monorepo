@@ -62,13 +62,8 @@ function editedEverywhere(live: DiscoveryConfig): DiscoveryConfig {
       proximity: { reachKm: 12.5 },
       popularity: { halfReviews: 250 },
       selected: { otherFactor: 0.5 },
-      modes: {
-        nearby: { proximity: 3, popularity: 1, selected: 2 },
-        popular: { proximity: 0.5, popularity: 2.5, selected: 0.5 },
-        family: { proximity: 1, popularity: 1.25, selected: 1 },
-      },
     },
-    map: { ...live.map, radiusKm: 3, googlePlaces: 20, mesitaPlaces: 60 },
+    map: { ...live.map, radiusKm: 3, googlePlaces: 20, mapGooglePlaces: 40, mesitaPlaces: 60 },
     catalog: { ...live.catalog, railCap: 7, seedCount: 99 },
     name: {
       ...live.name,
@@ -105,7 +100,7 @@ describe("no Save sends a retired key (MESITA-2328, MESITA-2337)", () => {
 });
 
 describe("the Area box", () => {
-  it("moves the reach, the half-credit count and the weights table (MESITA-2428, MESITA-2431)", async () => {
+  it("moves the reach, the half-credit count and Selected's other value (MESITA-2431, MESITA-2439)", async () => {
     const live = liveConfig();
     const sent = armed(live);
     await updateDiscoveryConfig(editedEverywhere(live), ["areaSignals"]);
@@ -113,11 +108,6 @@ describe("the Area box", () => {
       proximity: { reachKm: 12.5 },
       popularity: { halfReviews: 250 },
       selected: { otherFactor: 0.5 },
-      modes: {
-        nearby: { proximity: 3, popularity: 1, selected: 2 },
-        popular: { proximity: 0.5, popularity: 2.5, selected: 0.5 },
-        family: { proximity: 1, popularity: 1.25, selected: 1 },
-      },
     });
   });
 
@@ -127,6 +117,7 @@ describe("the Area box", () => {
     await updateDiscoveryConfig(editedEverywhere(live), [...BOX_SLICES.area]);
     expect(sent.config?.map.radiusKm).toBe(3);
     expect(sent.config?.map.googlePlaces).toBe(20);
+    expect(sent.config?.map.mapGooglePlaces).toBe(40);
     expect(sent.config?.map.mesitaPlaces).toBe(60);
     // Places per row left the page with the Feed rows; the legacy rails
     // keep the stored value until the legacy path is removed.

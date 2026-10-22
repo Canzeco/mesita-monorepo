@@ -126,6 +126,7 @@ describe("the boxes' controls", () => {
     const html = render(<AreaBox {...seed} />);
     for (const label of [
       'aria-label="Buy Google places"',
+      "Google places on the Map",
       "Google places on Home",
       "Mesita places",
       "Home radius (km)",
@@ -167,12 +168,12 @@ describe("the boxes' controls", () => {
       expect(html, dead).not.toContain(dead);
     }
     expect(html).toContain('value="100"');
-    // Proximity's reach defaults to 15 km, apart from the 50 km radius (MESITA-2431).
+    // Proximity's reach and the Home radius both default to 15 km (MESITA-2431, MESITA-2687).
     expect(html).toContain('value="15"');
     expect(html).toContain('value="0.3"');
     // 40 and 60 are bought: every Google stop is a live pill.
-    const google = html.slice(html.indexOf("billed Nearby calls per Home load"), html.indexOf("Ready Mesita places read"));
-    expect(google).toContain("The Map always buys 1 call per load.");
+    const google = html.slice(html.indexOf("billed Nearby calls per Map load"), html.indexOf("Ready Mesita places read"));
+    expect(google).toContain("billed Nearby calls per Home load");
     expect(google.match(/<button[^>]*disabled=""[^>]*>(20|40|60)<\/button>/g)).toBeNull();
   });
 
@@ -190,8 +191,10 @@ describe("the boxes' controls", () => {
   });
 
   it("Area: a Home place past the reach but inside the radius is called out with the live numbers", () => {
-    // Defaults: reach 15 km, radius 50 km.
-    expect(render(<AreaBox {...seed} />)).toContain("(now 15–50 km)");
+    // Defaults: reach 15 km = radius 15 km (MESITA-2687), so nothing to call out.
+    expect(render(<AreaBox {...seed} />)).not.toContain("(now ");
+    const narrow = { ...DEFAULT_CONFIG, map: { ...DEFAULT_CONFIG.map, radiusKm: 50 } };
+    expect(render(<AreaBox {...seed} initialConfig={narrow} />)).toContain("(now 15–50 km)");
     const wide = { ...DEFAULT_CONFIG, params: { ...DEFAULT_CONFIG.params, proximity: { reachKm: 50 } } };
     expect(render(<AreaBox {...seed} initialConfig={wide} />)).not.toContain("(now ");
   });
@@ -214,7 +217,7 @@ describe("the boxes' controls", () => {
   it("Area: the Always-on rules state the Google calls, the quota and the fixed numbers (MESITA-2603)", () => {
     const html = render(<AreaBox {...seed} />);
     for (const text of [
-      "the Map buys 1 per load, the prominent 20 inside the screen radius",
+      "the Map buys 1 to 3 per load (Google places on the Map), the prominent 20 inside the screen radius",
       "the prominent 20 within 3 km",
       "45 Nearby calls a minute",
       "clamped to 0.05–50 km",

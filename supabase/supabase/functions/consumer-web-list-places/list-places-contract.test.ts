@@ -1,7 +1,7 @@
 // consumer-web-list-places on the shared engine (MESITA-2302, one pool since
 // MESITA-2379). Source pins for the wiring the engine's own behavioural suite
 // (area-pipeline.test) cannot see: the one pool inside the screen radius
-// (MESITA-2504), one Google call, the fallback circle, and that web Search's
+// (MESITA-2504), the operator's Map Google calls, the fallback circle, and that web Search's
 // call is the only one it answers (MESITA-2337).
 import { assert, assertEquals } from "jsr:@std/assert@1";
 
@@ -9,7 +9,7 @@ const src = await Deno.readTextFile(new URL("./index.ts", import.meta.url));
 const anchor = src.indexOf("const center = { lat: nearbyDecision.lat");
 const webBranch = anchor >= 0 ? src.slice(anchor) : "";
 
-Deno.test("list-places: the Map is the one Area pool inside the screen radius, one Google call", () => {
+Deno.test("list-places: the Map is the one Area pool inside the screen radius, the operator's Google calls", () => {
   assert(webBranch.length > 0);
   assert(webBranch.includes("selectAreaPool<OwnedRow>("));
   // A point at the cross inside the screen radius (MESITA-2504): one circle
@@ -20,7 +20,7 @@ Deno.test("list-places: the Map is the one Area pool inside the screen radius, o
   assert(webBranch.includes("    location,\n"));
   assert(webBranch.includes('fanoutMode: "popular",'));
   assertEquals(src.includes("resolveAreaLocation"), false);
-  assert(webBranch.includes("googleCalls: googleFill ? 1 : 0"));
+  assert(webBranch.includes("googleCalls: googleFill ? googleCallsForStop(cfg.map.mapGooglePlaces) : 0"));
   assert(webBranch.includes("selectedOnly: false"));
   // The guest never picks a source.
   assertEquals(src.includes("parsePlacesScope"), false);
@@ -43,12 +43,10 @@ Deno.test("list-places: the circle is the screen's, else map.radiusKm; no client
 });
 
 Deno.test("list-places: Proximity^a × Popularity^1 × Selected^1, reach = the radius (MESITA-2504)", () => {
-  assert(webBranch.includes("proximity: cfg.map.proximityWeight,"));
+  assert(webBranch.includes("const weights = areaWeights(cfg.map);"));
   // The Map's reload throttle is the operator's (MESITA-2444); the dead pair is not sent.
   assert(webBranch.includes("reloadIdleSec: cfg.map.reloadIdleSec,"));
   assertEquals(webBranch.includes("reloadMinKm"), false);
-  assert(webBranch.includes("popularity: 1,"));
-  assert(webBranch.includes("selected: 1,"));
   assert(webBranch.includes("signals: { reachKm: radiusKm, weights },"));
   // The guest picks no mode (MESITA-2499).
   assertEquals(src.includes("readAreaMode("), false);

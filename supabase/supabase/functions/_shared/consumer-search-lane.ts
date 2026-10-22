@@ -477,13 +477,6 @@ export function resolveMode(raw?: string | null): SuggestPlacesMode {
   return "fast";
 }
 
-function mapWithSupers(
-  map: MapConfig,
-  supers: Record<SuperParamKey, boolean>,
-): MapConfig {
-  return { ...map, supers };
-}
-
 export async function runConsumerSearchLane(
   env: EFEnv,
   callerName: string,
@@ -582,7 +575,7 @@ async function runFastSearch(
   if (cap <= 0 || !anySuperOn(name.fast.supers)) {
     return [];
   }
-  const gate = mapWithSupers(map, name.fast.supers);
+  const gate = map;
   const googleAuto = await fetchAutocomplete(
     input,
     sessionToken,
@@ -680,7 +673,7 @@ async function runDeepSearch(
   locations: boolean,
 ): Promise<LaneItem[]> {
   const deep = name.deep;
-  const gate = mapWithSupers(map, deep.supers);
+  const gate = map;
   const typesOn = anySuperOn(deep.supers);
   const openaiKey = (Deno.env.get("OPENAI_KEY") ?? "").trim();
   const { wantAuto, wantText, wantMesita } = deepModuleFlags({

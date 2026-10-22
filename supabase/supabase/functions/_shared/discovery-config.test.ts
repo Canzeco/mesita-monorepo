@@ -87,11 +87,13 @@ Deno.test("the live blob loads: the retired keys drop, every live value stands",
     assertEquals(dead in cfg, false, dead);
   }
   assertEquals(cfg.general, LIVE_BLOB_2026_10_18.general);
-  // The one `pinCount` seeds both scope caps on the cut-over (MESITA-2347).
-  assertEquals(cfg.map.googlePlaces, 60);
-  assertEquals(cfg.map.mesitaPlaces, 60);
-  assertEquals("pinCount" in cfg.map, false);
-  assertEquals(cfg.map.reloadMinKm, 0.25);
+  // `pinCount`, `supers` and the reload km/sec pair are dropped and seed
+  // nothing (MESITA-2687): the caps read their defaults.
+  assertEquals(cfg.map.googlePlaces, 20);
+  assertEquals(cfg.map.mesitaPlaces, 20);
+  for (const dead of ["pinCount", "supers", "reloadMinKm", "reloadMinSec"]) {
+    assertEquals(dead in cfg.map, false, dead);
+  }
   assertEquals(cfg.chat.prompt, "Be Memo.");
   // The deck's numbers on `params` go; the Area pipeline's three arrive at
   // their provisional defaults because the live blob never stored them.
@@ -184,8 +186,6 @@ Deno.test("the admin twin mirrors the Area params' bounds", () => {
   };
   assertEquals(constant("HALF_REVIEWS_MIN"), SIGNAL_PARAM_BOUNDS.halfReviews.min);
   assertEquals(constant("HALF_REVIEWS_MAX"), SIGNAL_PARAM_BOUNDS.halfReviews.max);
-  assertEquals(constant("AREA_WEIGHT_MIN"), SIGNAL_PARAM_BOUNDS.weight.min);
-  assertEquals(constant("AREA_WEIGHT_MAX"), SIGNAL_PARAM_BOUNDS.weight.max);
   assertEquals(constant("SELECTED_OTHER_MIN"), SIGNAL_PARAM_BOUNDS.selectedOther.min);
   assertEquals(constant("SELECTED_OTHER_MAX"), SIGNAL_PARAM_BOUNDS.selectedOther.max);
 });
@@ -252,12 +252,12 @@ Deno.test("the deck's param bags and numbers do not survive a normalize", () => 
   // The retired calibration (halfDistanceKm, referenceRating/Reviews,
   // MESITA-2347) goes with the deck's bags; only the live numbers stay, and
   // Proximity's reach reads its default (MESITA-2431).
-  // The linear `balance` goes too (MESITA-2428): the table replaced it.
+  // The linear `balance` goes too (MESITA-2428), and the weights table
+  // after it (MESITA-2687).
   assertEquals(cfg.params, {
     proximity: { reachKm: 15 },
     popularity: { halfReviews: 250 },
     selected: { otherFactor: 0.3 },
-    modes: DISCOVERY_DEFAULTS.params.modes,
   });
 });
 
@@ -286,26 +286,17 @@ Deno.test("map knobs default on an old blob and clamp", () => {
       minRating: 9,
       minReviews: -2,
       minPopularity: 4,
-      reloadMinKm: 99,
-      reloadMinSec: 40,
       googleFill: "yes",
-      supers: { restaurants: false },
+      mapGooglePlaces: 45,
     },
   });
   assertEquals(clamped.map.minRating, 5);
   assertEquals(clamped.map.minReviews, 0);
   assertEquals(clamped.map.minPopularity, 1);
-  assertEquals(clamped.map.reloadMinKm, 4);
-  assertEquals(clamped.map.reloadMinSec, 15);
-  const legacyReload = normalizeDiscoveryConfig({
-    map: { reloadMinKm: 0.4, reloadMinSec: 2 },
-  });
-  assertEquals(legacyReload.map.reloadMinKm, 0.5);
-  assertEquals(legacyReload.map.reloadMinSec, 2);
   assertEquals(clamped.map.googleFill, true);
-  assertEquals(clamped.map.supers.coffee, true);
-  assertEquals(clamped.map.supers.dinner, true);
-  assertEquals("restaurants" in clamped.map.supers, false);
+  // The Map's own Google cap snaps to a stop like Home's (MESITA-2687).
+  assertEquals(clamped.map.mapGooglePlaces, 40);
+  assertEquals(missing.map.mapGooglePlaces, 20);
 });
 
 Deno.test("map.googlePlaces and map.mesitaPlaces are the operator's two caps, each snapped to a stop", () => {
@@ -341,19 +332,19 @@ Deno.test("map.googlePull is retired: an old blob's key is dropped on normalize 
   assertEquals("googlePull" in DISCOVERY_DEFAULTS.map, false);
 });
 
-Deno.test("map.radiusKm is the one Nearby radius: default 50, clamped 1..50, one decimal", () => {
+Deno.test("map.radiusKm is the one Nearby radius: default 15 (the reach, MESITA-2687), clamped 1..50, one decimal", () => {
   // Shared by the Map and the Feed's Google Places and Mesita Selected rails
   // (MESITA-2298). The operator's number; a guest never sends it. 50 km is
   // Google's Nearby circle cap, so the knob cannot ask for more.
   const radius = (raw: unknown) =>
     normalizeDiscoveryConfig({ map: { radiusKm: raw } }).map.radiusKm;
-  assertEquals(normalizeDiscoveryConfig({}).map.radiusKm, 50);
-  assertEquals(DISCOVERY_DEFAULTS.map.radiusKm, 50);
+  assertEquals(normalizeDiscoveryConfig({}).map.radiusKm, 15);
+  assertEquals(DISCOVERY_DEFAULTS.map.radiusKm, 15);
   assertEquals(radius(0.2), 1);
   assertEquals(radius(999), 50);
   assertEquals(radius(12.34), 12.3);
   assertEquals(radius(7), 7);
-  assertEquals(radius("far"), 50);
+  assertEquals(radius("far"), 15);
 });
 
 Deno.test("name knobs default Fast 5 and Deep 3+3+3 on an old blob and clamp", () => {
@@ -365,7 +356,7 @@ Deno.test("name knobs default Fast 5 and Deep 3+3+3 on an old blob and clamp", (
     mesitaCount: 3,
     autoCount: 3,
     googleCount: 3,
-    supers: DISCOVERY_DEFAULTS.map.supers,
+    supers: DISCOVERY_DEFAULTS.name.deep.supers,
   });
   const clamped = normalizeDiscoveryConfig({
     name: {

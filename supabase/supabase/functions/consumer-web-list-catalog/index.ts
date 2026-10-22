@@ -65,6 +65,7 @@ import { readGooglePlacesKey } from "../_shared/google-places.ts";
 import {
   areaPoolLogFields,
   areaGoogleTypes,
+  areaWeights,
   googleCallsForStop,
   type OwnedRow,
   type PoolBuilder,
@@ -72,7 +73,6 @@ import {
   selectAreaPool,
   selectedPoolQuery,
 } from "../_shared/area-pipeline.ts";
-import type { AreaWeights } from "../_shared/area-score.ts";
 import { readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
 import { areaQuota, ownedLookup } from "../_shared/area-deps.ts";
 
@@ -153,11 +153,7 @@ Deno.serve(async (req) => {
   }
   const mesitaRows = wirePlaces(data ?? []);
 
-  const weights: AreaWeights = {
-    proximity: cfg.map.proximityWeight,
-    popularity: 1,
-    selected: 1,
-  };
+  const weights = areaWeights(cfg.map);
   const googleOn = location.kind !== "none" &&
     mapShouldFillGoogle(wantsGoogleFill(body as Record<string, unknown>), cfg.map);
   const gmp = googleOn ? readGooglePlacesKey() : null;

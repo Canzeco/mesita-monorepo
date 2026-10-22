@@ -384,6 +384,7 @@ const selOpts = {
   center: CENTER,
   radiusKm: 10,
   params: DISCOVERY_DEFAULTS.params,
+  proximityWeight: DISCOVERY_DEFAULTS.map.proximityWeight,
 };
 
 Deno.test("selected: only enriched, ready rows inside the radius", () => {
@@ -422,21 +423,13 @@ Deno.test("selected: the Area score ranks; the nearer twin first", () => {
   assertEquals(ids(loved), ["loved", "quiet"]);
 });
 
-Deno.test("selected: the weights are the operator's (params.modes.nearby, MESITA-2428)", () => {
+Deno.test("selected: Chat ranks like the Map, a = map.proximityWeight (MESITA-2687)", () => {
   const rows = [
     mrow("near-quiet", { lat: CENTER.lat + 0.001, google_stars_overall: 4.0, google_review_count: 100 }),
     mrow("far-loved", { lat: CENTER.lat + 0.05, google_stars_overall: 4.9, google_review_count: 4000 }),
   ];
-  const distance = {
-    ...selOpts,
-    params: { ...selOpts.params, modes: { ...DISCOVERY_DEFAULTS.params.modes, nearby: { proximity: 1, popularity: 0, selected: 1 } } },
-  };
-  const proven = {
-    ...selOpts,
-    params: { ...selOpts.params, modes: { ...DISCOVERY_DEFAULTS.params.modes, nearby: { proximity: 0, popularity: 1, selected: 1 } } },
-  };
-  assertEquals(ids(selectMesitaSelected(rows, distance))[0], "near-quiet");
-  assertEquals(ids(selectMesitaSelected(rows, proven))[0], "far-loved");
+  assertEquals(ids(selectMesitaSelected(rows, { ...selOpts, proximityWeight: 5 }))[0], "near-quiet");
+  assertEquals(ids(selectMesitaSelected(rows, { ...selOpts, proximityWeight: 0 }))[0], "far-loved");
 });
 
 Deno.test("selected: Proximity reads the radius, so the same place scores differently on a wider circle", () => {
@@ -663,7 +656,7 @@ Deno.test("selected: the radius cut reads the exact distance, not the rounded on
     family_keys: ["dinner"],
   };
   assertEquals(
-    selectMesitaSelected([row], { center: CENTER, radiusKm: 5, params: DISCOVERY_DEFAULTS.params }).length,
+    selectMesitaSelected([row], { ...selOpts, radiusKm: 5 }).length,
     0,
   );
 });

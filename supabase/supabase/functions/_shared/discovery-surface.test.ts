@@ -152,7 +152,8 @@ Deno.test("Area: Family and Radius gate, Selected is a signal with its own expon
   assertEquals(area.gates, ["family", "radius"]);
   assertEquals(area.signals, ["proximity", "popularity", "selected"]);
   assertEquals(area.factors, []);
-  assert(area.scoring.includes("Proximity^a × Popularity^b × Selected^c"));
+  // Chat ranks like the views; the weights table is gone (MESITA-2687).
+  assertEquals(area.scoring.includes("Popularity^b"), false);
   assertEquals(area.scoring.includes("(Popularity × Selected)"), false);
   // The views' one ranking (MESITA-2504, MESITA-2516); no rectangle (MESITA-2558).
   assert(area.scoring.startsWith("The Map and Home: Proximity^a × Popularity^1 × Selected^1"));

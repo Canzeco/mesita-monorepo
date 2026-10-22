@@ -350,11 +350,29 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           On: Google Nearby Search fills the pool, within the per-guest quota
           in the Always-on rules.
         </p>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ChoiceField
+            icon={<Hash className="mt-0.5 h-4 w-4 shrink-0" />}
+            label="Google places on the Map"
+            hint="20 · 40 · 60 = 1 / 2 / 3 billed Nearby calls per Map load (a place two calls return counts once). The Map reloads each time the guest stops moving it."
+          >
+            <div className="flex flex-wrap gap-2">
+              {GOOGLE_PULL_STOPS.map((stop) => (
+                <ChoicePill
+                  key={stop}
+                  active={cfg.map.mapGooglePlaces === stop}
+                  disabled={off}
+                  onClick={() => map({ mapGooglePlaces: stop })}
+                >
+                  {stop}
+                </ChoicePill>
+              ))}
+            </div>
+          </ChoiceField>
           <ChoiceField
             icon={<Hash className="mt-0.5 h-4 w-4 shrink-0" />}
             label="Google places on Home"
-            hint="20 · 40 · 60 = 1 / 2 / 3 billed Nearby calls per Home load (a place two calls return counts once). The Map always buys 1 call per load."
+            hint="20 · 40 · 60 = 1 / 2 / 3 billed Nearby calls per Home load (a place two calls return counts once)."
           >
             <div className="flex flex-wrap gap-2">
               {GOOGLE_PULL_STOPS.map((stop) => (
