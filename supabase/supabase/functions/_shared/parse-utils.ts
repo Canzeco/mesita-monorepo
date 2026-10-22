@@ -22,17 +22,17 @@ export function numOf(v: unknown): number | null {
   return null;
 }
 
-/** Turn a category slug (`fine_dining`) into a display label (`Fine Dining`). */
+/** Turn a category slug (`fine_dining`) into a display label in sentence
+ *  case (`Fine dining`; MESITA-2659, Pato: "take care of the camel case").
+ *  Google's own stub labels already read this way ("Sports bar"). */
 export function humanizeCategorySlug(
   category: string | null | undefined,
 ): string | null {
   if (!category) return null;
-  const trimmed = category.trim();
-  if (!trimmed) return null;
-  return trimmed
-    .replace(/_/g, " ")
-    .replace(/\s+/g, " ")
-    .replace(/\b\w/g, (ch) => ch.toUpperCase());
+  const words = category.trim().replace(/_/g, " ").replace(/\s+/g, " ")
+    .toLowerCase();
+  if (!words) return null;
+  return words[0].toUpperCase() + words.slice(1);
 }
 
 /**
