@@ -1,4 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
+// MVP test rule (MESITA-2600): only the EF contract guard stays; UI pins were removed (MESITA-2601).
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -8,34 +9,9 @@ describe("Places has no chrome but its chip row (MESITA-2298, MESITA-2362, MESIT
     "utf8",
   );
 
-  it("draws no Filters pill and no location control of its own (MESITA-2401: the header's)", () => {
-    expect(src).toContain("const coords = useUserLocation();");
-    // No location: no bar above the tiles; the header box says Monterrey
-    // (MESITA-2587, was MESITA-2472's slim bar).
-    expect(src).not.toContain("data-places-city-fallback");
-    expect(src).not.toContain("useLocateUser");
-    expect(src).not.toContain("data-places-location-bar");
-    expect(src).not.toContain("locationStrip");
-    expect(src).not.toContain("SlidersHorizontal");
-    expect(src).not.toContain("Filter places");
-    expect(src).not.toContain("DiscoveryFilters");
-  });
-
   it("sends no predicates, so a saved scope cannot keep cutting the list", () => {
     expect(src).toContain("apiListAreaPool(supabase, from, families)");
     expect(src).not.toContain("toDiscoveryPredicatesWire");
     expect(src).not.toContain("useDiscoveryFilters");
-  });
-
-  it("the Feed's filter cluster is deleted, not parked", () => {
-    const lib = join(__dirname, "..");
-    for (const gone of [
-      "use-discovery-filters.ts",
-      "discovery-filters-engine.ts",
-      "discovery-filters-wire.ts",
-      "../components/consumer/DiscoveryFilters.tsx",
-    ]) {
-      expect(existsSync(join(lib, gone)), gone).toBe(false);
-    }
   });
 });

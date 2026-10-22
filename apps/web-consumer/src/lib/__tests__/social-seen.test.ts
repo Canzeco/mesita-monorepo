@@ -1,3 +1,4 @@
+// MVP test rule (MESITA-2600): only the data guard stays; UI pins were removed (MESITA-2601).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -49,19 +50,7 @@ describe("markSocialSeen", () => {
 });
 
 describe("the Social tab's dot", () => {
-  const rails = readFileSync(
-    join(__dirname, "../../components/consumer/home/CatalogRails.tsx"),
-    "utf8",
-  );
   const hook = readFileSync(join(__dirname, "../use-social-has-new.ts"), "utf8");
-
-  it("shows on Social, off while Social is open, with words for a screen reader", () => {
-    expect(rails).toContain('useSocialHasNew(tab !== "social")');
-    expect(rails).toContain('t.key === "social" && socialHasNew');
-    expect(rails).toContain("data-home-social-dot");
-    expect(rails).toContain("new activity");
-    expect(rails).toContain("data-home-scroller");
-  });
 
   it("checks at half the pane's rate, only while the tab is in view", () => {
     expect(hook).toContain("export const SOCIAL_DOT_MS = 60_000;");

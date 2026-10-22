@@ -1,17 +1,8 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+// MVP test rule (MESITA-2600): only the data guard stays; UI pins were removed (MESITA-2601).
 import { describe, expect, it } from "vitest";
-import { boxStateLabel, boxesAfterFailedSync, reviewBoxState, syncSubtitle } from "./ReviewsSummary";
+import { boxesAfterFailedSync, reviewBoxState, syncSubtitle } from "./ReviewsSummary";
 
 describe("review boxes", () => {
-  it("states the five operator phrases", () => {
-    expect(boxStateLabel("no-link")).toBe("No link configured");
-    expect(boxStateLabel("never-synced")).toBe("Never synced");
-    expect(boxStateLabel("syncing")).toBe("Syncing");
-    expect(boxStateLabel("synced")).toBe("Synced");
-    expect(boxStateLabel("error")).toBe("Error");
-  });
-
   it("names the five states from the saved link and the last sync", () => {
     expect(reviewBoxState(false, undefined)).toBe("no-link");
     expect(reviewBoxState(true, undefined)).toBe("never-synced");
@@ -54,17 +45,4 @@ describe("review boxes", () => {
     });
   });
 
-  it("keeps Sync in the Reviews header and four separate boxes", () => {
-    const src = readFileSync(join(__dirname, "ReviewsSummary.tsx"), "utf8");
-    expect(src).toMatch(/\n\s+Sync\n/);
-    expect(src).toContain('title="Google Summary"');
-    expect(src).toContain('title="Instagram Summary"');
-    expect(src).toContain('title="Facebook Summary"');
-    expect(src).toContain('title="Google Reviews"');
-    expect(src).not.toContain('title="Reviews"');
-    expect(src).not.toContain("Individual Google Reviews");
-    expect(src).toContain("No link configured");
-    expect(src).not.toContain("instagram_found");
-    expect(src.toLowerCase()).not.toContain("apify");
-  });
 });

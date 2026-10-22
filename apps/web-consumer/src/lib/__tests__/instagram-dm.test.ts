@@ -1,3 +1,4 @@
+// MVP test rule (MESITA-2600): only the auth guard stays; UI pins were removed (MESITA-2601).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -35,15 +36,5 @@ describe("connecting Instagram by message", () => {
     expect(PAGE).toContain('setChannel({ channel: "bio" })');
     expect(PAGE).toContain('channel?.channel === "dm" && <ConnectByMessage />');
     expect(PAGE).toContain('channel?.channel === "bio" && (');
-  });
-
-  // MESITA-2599: the message path asks for the @handle (for a clearer flow;
-  // the bot still verifies the sender), never for a bio edit.
-  it("asks for the @handle, never for a bio edit, on the message path", () => {
-    const dm = PAGE.slice(PAGE.indexOf("function ConnectByMessage"), PAGE.indexOf("function ConnectModule"));
-    expect(dm).toContain("Send it on Instagram");
-    expect(dm).toContain("claim.link");
-    expect(dm).toContain("Type your Instagram @handle");
-    expect(dm).not.toMatch(/\bbio\b|onHandleChange/);
   });
 });

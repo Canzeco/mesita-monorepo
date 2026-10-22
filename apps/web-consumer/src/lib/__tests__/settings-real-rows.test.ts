@@ -1,4 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
+// MVP test rule (MESITA-2600): only the legal guard stays; UI pins were removed (MESITA-2601).
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -23,16 +24,6 @@ describe("Settings", () => {
       expect(SETTINGS).not.toContain(`label="${label}"`);
     }
     expect(SETTINGS).not.toMatch(/StoredToggleRow|StoredSelectRow|mesita:pref|mesita:perm|mesita:notif/);
-  });
-
-  it("has no Export my data or Delete account", () => {
-    expect(SETTINGS).not.toContain('label="Export my data"');
-    expect(SETTINGS).not.toContain('label="Delete account"');
-    expect(SETTINGS).not.toContain("DeleteAccountSheet");
-    expect(SETTINGS).not.toContain("MESITA_PRIVACY_EMAIL");
-    expect(
-      existsSync(join(SRC, "components", "consumer", "DeleteAccountSheet.tsx")),
-    ).toBe(false);
   });
 
   it("keeps Phone, Contact, Sign out, Terms and Privacy", () => {
