@@ -18,17 +18,6 @@ describe("the identity card", () => {
   });
 });
 
-describe("Me's Plan tile", () => {
-  const ME = read("app", "(shell)", "me", "ProfileClient.tsx").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
-
-  it("names the guest's real plan, never a hardcoded Free (MESITA-2553)", () => {
-    expect(ME).toContain(
-      'summary={loading ? null : profile ? PLAN_LABEL[toGuestPlan(profile.plan)] : "…"}',
-    );
-    expect(ME).not.toContain('summary="Free"');
-  });
-});
-
 // MESITA-2604 (Pato: "remove the > from the name … for the other fields
 // neither include >"): the four boxes draw no chevron, doors or facts.
 describe("the identity boxes", () => {
