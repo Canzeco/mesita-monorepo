@@ -190,7 +190,11 @@ export function anchorViewportBounds(
  * every viewport load is centred here, and a camera centre puts its target
  * here.
  */
-export const SIGHT_Y = 0.5;
+// 0.38 since MESITA-2672 (Pato: "the cross must be vertically aligned as if
+// the carousel were still in its own box"): the carousel floats over the
+// map's foot since MESITA-2670, ~150px of a ~600px map on a phone, so the
+// middle of the map above it sits ~38% down.
+export const SIGHT_Y = 0.38;
 
 const mercatorY = (lat: number) =>
   Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
