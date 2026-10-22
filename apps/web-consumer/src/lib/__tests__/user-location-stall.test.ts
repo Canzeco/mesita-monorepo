@@ -7,18 +7,49 @@ type Success = (pos: { coords: { latitude: number; longitude: number } }) => voi
 
 describe("location ask with no answer (MESITA-2616)", () => {
   let answer: Success | null = null;
+  let fail: ((err: { code: number }) => void) | null = null;
+  let asks = 0;
 
   beforeEach(() => {
     vi.useFakeTimers();
     vi.resetModules();
     answer = null;
+    fail = null;
+    asks = 0;
     vi.stubGlobal("navigator", {
       geolocation: {
-        getCurrentPosition: (ok: Success) => {
+        getCurrentPosition: (ok: Success, err: (e: { code: number }) => void) => {
+          asks += 1;
           answer = ok;
+          fail = err;
         },
       },
     });
+  });
+
+  it("a tap after a stall asks the browser again (MESITA-2617)", async () => {
+    const loc = await import("@/lib/use-user-location");
+    void loc.requestUserLocation();
+    vi.advanceTimersByTime(5000);
+    expect(loc.locationSnapshot().error).toBe("pending");
+
+    void loc.requestUserLocation();
+    expect(asks).toBe(2);
+    expect(loc.locationSnapshot().locating).toBe(true);
+    vi.advanceTimersByTime(5000);
+    expect(loc.locationSnapshot()).toMatchObject({ locating: false, error: "pending" });
+  });
+
+  it("the 5 s cap covers the retry too (MESITA-2617)", async () => {
+    const loc = await import("@/lib/use-user-location");
+    void loc.requestUserLocation();
+    vi.advanceTimersByTime(1000);
+    fail?.({ code: 2 });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(asks).toBe(2);
+    expect(loc.locationSnapshot().locating).toBe(true);
+    vi.advanceTimersByTime(4000);
+    expect(loc.locationSnapshot()).toMatchObject({ locating: false, error: "pending" });
   });
 
   afterEach(() => {
