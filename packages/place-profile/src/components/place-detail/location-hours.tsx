@@ -28,6 +28,14 @@ export function LocationBox({
   // place as dropoff (name + address + lat/lng when present). Legacy
   // m.uber.com/ul/?action=setPickup often fails to prefill destination.
   const uberUrl = buildUberDropoffUrl(place);
+  const hasGeo =
+    typeof place.lat === "number" &&
+    Number.isFinite(place.lat) &&
+    typeof place.lng === "number" &&
+    Number.isFinite(place.lng);
+  const embedUrl = hasGeo
+    ? `https://maps.google.com/maps?q=${place.lat},${place.lng}&z=16&output=embed`
+    : null;
   return (
     <Box
       title="Location"
@@ -39,10 +47,32 @@ export function LocationBox({
           : undefined
       }
     >
-      {/* NO DRAWN MAP (Pato, MESITA-2636: "if you are not going to render
-          the map in that box, make it shorter"): it was a purple grid with a
-          pin, not a map, and the screen's only purple. The address, then the
-          two ways to get there. */}
+      {/* A REAL MAP, SHORT (Pato, MESITA-2643: "in location keep the map,
+          just make it shorter"). Google's keyless embed centred on the
+          place's coordinates, 144px, inert inside the card (no scroll trap);
+          the whole map is a tap through to Google Maps. MESITA-2636 had
+          removed the drawn purple grid, which was never a map. No
+          coordinates, no map. */}
+      {embedUrl ? (
+        <div className="border-border relative h-36 overflow-hidden rounded-lg border">
+          <iframe
+            src={embedUrl}
+            title={`Map of ${place.name}`}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            className="pointer-events-none h-full w-full border-0"
+            tabIndex={-1}
+            aria-hidden
+          />
+          <OutboundLink
+            url={mapsUrl}
+            onOpenLink={onOpenLink}
+            className="absolute inset-0"
+          >
+            <span className="sr-only">Open {place.name} in Google Maps</span>
+          </OutboundLink>
+        </div>
+      ) : null}
       {place.address ? <p className={PLACE_BODY_CLASS}>{place.address}</p> : null}
       <div className="grid grid-cols-2 gap-2">
         <OutboundLink
