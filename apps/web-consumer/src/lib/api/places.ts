@@ -242,24 +242,6 @@ export async function apiFetchPlaceDetail(
   }
 }
 
-type PlaceRequestResult = {
-  request_count: number;
-  request_threshold: number;
-  requested: boolean;
-  is_profile_ready: boolean;
-  is_enriched: boolean;
-  request_lifecycle: "listed" | "requested" | "enriched";
-  enrichment_triggered: boolean;
-};
-
-export async function apiRequestPlace(
-  client: SupabaseClient,
-  placeId: string,
-): Promise<PlaceRequestResult> {
-  return invokeEF<PlaceRequestResult>(client, "consumer-web-request-place", {
-    placeId,
-  });
-}
 /** The server's Area breakdown for one place (MESITA-2379). `null` is
  *  "n/a", never 0; the client never recomputes any of it. */
 export type AreaDiagnostics = {

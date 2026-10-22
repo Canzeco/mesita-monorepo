@@ -249,7 +249,7 @@ export function CrenupClient({
               <Fields>
                 <NumberField
                   icon={<Users className="text-muted-foreground h-4 w-4" />}
-                  label="Vote threshold"
+                  label="Enrich after N visits"
                   value={settings.requestThreshold}
                   min={1}
                   max={100}
@@ -259,8 +259,9 @@ export function CrenupClient({
               </Fields>
               <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
                 Create mints the ugly profile without queuing the Enricher.
-                Auto-enrich after this many Enrich-tab votes. Admin Enrich skips
-                the wait.
+                Enrich runs by itself once this many different guests have
+                opened the place&apos;s profile (each guest counts once). Admin
+                Enrich skips the wait.
               </p>
               <div className="mt-4 flex flex-col gap-3">
                 <p className="text-muted-foreground text-sm leading-relaxed">

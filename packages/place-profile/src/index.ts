@@ -6,11 +6,6 @@ export { EnrichedBadge } from "./components/EnrichedBadge";
 export { DefaultAvatar } from "./components/DefaultAvatar";
 export { ImageCarousel } from "./components/ImageCarousel";
 export { PlaceCreatingPanel } from "./components/place-detail/PlaceCreatingPanel";
-export {
-  PlaceRequestPanelView,
-  requestProgressLabel,
-  requestProgressMeta,
-} from "./components/place-detail/PlaceRequestPanel";
 export { SocialLine } from "./components/place-detail/social-line";
 export type { SocialFace } from "./components/place-detail/social-line";
 export {
@@ -23,6 +18,5 @@ export type {
   PlaceActions,
   PlaceCreatingView,
   PlaceMenuItem,
-  PlaceRequestView,
 } from "./actions";
 export type { PlaceDetail } from "./place-detail";

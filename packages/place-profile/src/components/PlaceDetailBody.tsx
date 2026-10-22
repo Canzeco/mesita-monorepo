@@ -13,7 +13,6 @@ import { MediaBox } from "./place-detail/media";
 import { ProfileSummary } from "./place-detail/profile-summary";
 import { GoogleReviewsBox } from "./place-detail/reviews";
 import { PlaceCreatingPanel } from "./place-detail/PlaceCreatingPanel";
-import { PlaceRequestPanelView } from "./place-detail/PlaceRequestPanel";
 import { PlaceTabBar, type PlaceTab } from "./place-detail/tabs";
 import { SoonScreen } from "./place-detail/soon-screen";
 import { DatesBox, LinksBox, TagsBox } from "./place-detail/tags-links-meta";
@@ -31,8 +30,8 @@ import { DatesBox, LinksBox, TagsBox } from "./place-detail/tags-links-meta";
 //      (MESITA-2618/2619/2623; no pinned bar).
 //   2. The sticky strip, Overview · Reviews · Products (Soon) · Rewards (Soon),
 //      for every place (MESITA-2332). Not Enriched: Overview opens with the
-//      vote panel — or the Creating panel while a Google-only profile is
-//      being created (MESITA-2307) — and Reviews holds Google's up-to-5 from
+//      Creating panel while a Google-only profile is being created
+//      (MESITA-2307); there is no vote panel (MESITA-2642: visits enrich) — and Reviews holds Google's up-to-5 from
 //      the create-time Details call (MESITA-2317). Enriched: Reviews holds
 //      Apify's 100.
 //   3. The active tab's boxes.
@@ -70,19 +69,6 @@ export function PlaceDetailBody({
               {!place.is_enriched && creating && (
                 <div className="-mx-4 -mt-3">
                   <PlaceCreatingPanel error={creating.error} onRetry={creating.onRetry} />
-                </div>
-              )}
-              {!place.is_enriched && !creating && (
-                <div className="-mx-4 -mt-3">
-                  <PlaceRequestPanelView
-                    count={actions?.request?.count ?? place.request_count}
-                    threshold={actions?.request?.threshold ?? place.request_threshold}
-                    requested={actions?.request?.requested ?? place.requested}
-                    enriching={actions?.request?.enriching ?? place.is_enriching}
-                    pending={actions?.request?.pending ?? false}
-                    error={actions?.request?.error ?? null}
-                    onRequest={actions?.onRequest}
-                  />
                 </div>
               )}
               {/* OVERVIEW'S ORDER (Pato, MESITA-2630): photos ·

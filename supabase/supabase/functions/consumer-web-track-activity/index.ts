@@ -19,11 +19,21 @@
 // save stays in the browser (lib/saved-places.ts). Recording never checks
 // visibility: a member without Instagram still saves; nobody sees it
 // (place_activity_visible decides that at read time).
+//
+// A VISIT COUNTS TOWARD ENRICH (Pato, MESITA-2642: "a profile views counter
+// in the background, and when it surpasses a certain amount we automatically
+// enrich the place"). A `viewed` also goes through applyPlaceRequest: each
+// signed-in guest counts once per place (apply_place_request), and reaching
+// the enrichment config's threshold ("Enrich after N visits",
+// atlasRequestThreshold) starts the same Render run admin Enrich starts. It
+// replaced the guest vote (consumer-web-request-place, retired). An Enriched
+// place is untouched; a failure here never fails the view.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { isActivityKind, isMesitaPlaceId } from "../_shared/place-activity.ts";
+import { applyPlaceRequest } from "../_shared/place-requests.ts";
 
 type Body = { kind?: string; place_id?: string; on?: boolean; quiet?: boolean };
 
@@ -76,6 +86,19 @@ Deno.serve(async (req) => {
       .eq("kind", kind);
     if (error) {
       return json({ ok: false, error: `activity_delete: ${error.message}` }, 500);
+    }
+  }
+
+  if (kind === "viewed") {
+    const counted = await applyPlaceRequest(admin, {
+      consumerId,
+      placeId,
+      callerName: "consumer-web-track-activity",
+    });
+    if (!counted.ok) {
+      console.error(
+        `[consumer-web-track-activity] the visit did not count toward Enrich: ${counted.error}`,
+      );
     }
   }
 
