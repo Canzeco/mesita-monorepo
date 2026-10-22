@@ -21,7 +21,6 @@ export {
 export { PopularTimesBox } from "./components/place-detail/popular-times";
 export type {
   PlaceActions,
-  PlaceReserveSlot,
   PlaceCreatingView,
   PlaceMenuItem,
   PlaceRequestView,

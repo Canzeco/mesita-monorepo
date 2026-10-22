@@ -22,11 +22,6 @@ export type PlaceCreatingView = {
   onRetry?: () => void;
 };
 
-/** One requestable time on the Reserve row (MESITA-2633): a place date
- *  `YYYY-MM-DD` and a wall-clock `HH:mm`. A REQUEST, never a confirmed
- *  table: Mesita books by calling the place. */
-export type PlaceReserveSlot = { date: string; time: string };
-
 /** Optional member actions. A missing callback renders the control and does
  *  not run it. The consumer passes the live ones; admin passes none. */
 export type PlaceActions = {
@@ -34,14 +29,7 @@ export type PlaceActions = {
   saved?: boolean;
   onContact?: () => void;
   onShare?: () => void;
-  /** Opens the reservation sheet; with a slot, seeded to that date and
-   *  time (a tapped time on the Reserve row). */
-  onReserve?: (slot?: PlaceReserveSlot) => void;
-  /** The next requestable times, all on one day, ascending (MESITA-2633).
-   *  Absent or empty: the Reserve row draws Reserve alone. */
-  reserveSlots?: PlaceReserveSlot[];
-  /** That day, as the guest reads it: "Today", "Tomorrow", "Friday". */
-  reserveDayLabel?: string;
+  onReserve?: () => void;
   onRequest?: () => void;
   onOpenMenu?: (menu: PlaceMenuItem) => void;
   onOpenLink?: (url: string) => void;

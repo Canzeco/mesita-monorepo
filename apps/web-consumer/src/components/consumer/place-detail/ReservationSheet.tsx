@@ -85,18 +85,10 @@ export function ReservationSheet({
   place,
   open,
   onClose,
-  initialDate,
-  initialTime,
 }: {
   place: ReservationSheetPlace;
   open: boolean;
   onClose: () => void;
-  /** A time tapped on the place's Reserve row (MESITA-2633). The caller
-   *  remounts the sheet (a `key`) when the seed changes, so these are read
-   *  once, as initial state; a seed that has since passed falls through to
-   *  the next slot like any stale pick. */
-  initialDate?: string;
-  initialTime?: string;
 }) {
   const supabase = useBrowserSupabase();
 
@@ -113,12 +105,10 @@ export function ReservationSheet({
   // beyond the one-month horizon.
   const dateOptions = buildDateOptions(hours);
 
-  const [dateChoice, setDateChoice] = useState(initialDate ?? "");
+  const [dateChoice, setDateChoice] = useState("");
   // Null = "no explicit pick yet", so the default lands on a slot the place is
   // actually open for instead of a hardcoded 20:00 the place may be closed at.
-  const [timeChoice, setTimeChoice] = useState<string | null>(
-    initialTime ?? null,
-  );
+  const [timeChoice, setTimeChoice] = useState<string | null>(null);
   const [party, setParty] = useState(DEFAULT_PARTY);
   const [notes, setNotes] = useState("");
   const [guestNotify, setGuestNotify] = useState<"call" | "app">("call");

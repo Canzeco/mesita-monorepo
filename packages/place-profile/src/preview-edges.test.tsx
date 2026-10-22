@@ -84,7 +84,9 @@ describe("member preview edges", () => {
     // Share is on the first row again (MESITA-2633); the dots still share.
     expect(html).toContain('aria-label="Share"');
     expect(html).toContain('aria-label="Share this place"');
-    // The admin phone passes no times: Reserve stands alone, no time buttons.
+    // One Reserve button, no times on the profile (MESITA-2633): fixed
+    // times read as confirmed availability.
+    expect(html).toContain("Reserve with Mesita");
     expect(html).not.toContain("data-reserve-slot");
     // Directions routes to the place (lib/maps-link.ts).
     expect(html).toContain("google.com/maps/dir/?api=1&amp;destination=");

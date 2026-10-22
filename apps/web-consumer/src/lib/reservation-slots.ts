@@ -347,37 +347,3 @@ export function weekdayName(dateIso: string): string {
   const key = WEEK_KEYS[placeDateParts(dateIso).weekday];
   return key.charAt(0).toUpperCase() + key.slice(1);
 }
-
-/**
- * THE RESERVE ROW'S TIMES (MESITA-2633, Pato: "reservations in one row with
- * next hours, just like OpenTable"). The next `count` requestable times on the
- * FIRST place day that still has any, from today through the booking horizon:
- * the same slots the sheet offers (baseline window + the place's own hours,
- * 30-min steps, never behind the place's clock), minus the ones the place's
- * hours say it is closed for. Every time on the row is one tap from a request,
- * so a "closed" one would only invite a call the place won't take. Null when
- * nothing is left inside the horizon.
- */
-export function nextReserveSlots(
-  hours: WeeklyHours | null | undefined,
-  count = 8,
-  at: number = Date.now(),
-): { date: string; times: string[] } | null {
-  const days = bookingWindowDays(at);
-  for (let offset = 0; offset < days; offset++) {
-    const date = placeDateIso(offset, at);
-    const times = buildSlots(date, hours)
-      .filter((s) => s.state !== "closed" && !isSlotPast(date, s.time, at))
-      .map((s) => s.time)
-      .slice(0, count);
-    if (times.length > 0) return { date, times };
-  }
-  return null;
-}
-
-/** "Today", "Tomorrow", else the weekday ("Friday") — the Reserve row's day. */
-export function reserveDayLabel(dateIso: string, at: number = Date.now()): string {
-  if (dateIso === placeDateIso(0, at)) return "Today";
-  if (dateIso === placeDateIso(1, at)) return "Tomorrow";
-  return weekdayName(dateIso);
-}
