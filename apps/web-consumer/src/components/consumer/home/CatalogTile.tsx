@@ -72,7 +72,7 @@ function TileLink({
 // 32px tall to the eye (MESITA-2652: "the buttons must be shorter"); an
 // invisible 6px extension above and below keeps the 44px touch floor.
 const TILE_BUTTON =
-  "bg-border/60 text-foreground hover:bg-border/80 relative flex h-8 after:absolute after:inset-x-0 after:-inset-y-1.5 min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 font-sans text-xs font-semibold transition active:scale-[0.99]";
+  "bg-border/60 text-foreground hover:bg-border/80 relative flex h-8 after:absolute after:inset-x-0 after:-inset-y-[3px] min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 font-sans text-xs font-semibold transition active:scale-[0.99]";
 
 function readableKind(place: Place): string | null {
   const raw = place.category_label ?? place.category;
@@ -179,6 +179,12 @@ export function CatalogTile({
   // like and the button share; share must be almost everywhere to maximize
   // sharing and the virality of the app").
   //
+  // PHOTO 66%, CONTENT 34% (Pato, MESITA-2654: "image must be 66% of
+  // square, the rest 33% is for content"), every tile. The band is too short
+  // for a button row under three text rows, so Like and Share stack at its
+  // right, centred, 84px wide; the rows truncate before them. The
+  // reflection is the photo's height: 66/34 = 194.12% of the band.
+  //
   // EVERY TILE IS SQUARE (MESITA-2652: "the dimensions must be square, and
   // the buttons shorter"): a Mesita tile gives the photo the top 45% and the
   // band 55% (the reflection is the photo's height, 45/55 = 81.82% of the
@@ -211,7 +217,7 @@ export function CatalogTile({
         <div
           className={cn(
             "bg-muted absolute inset-x-0 top-0 overflow-hidden rounded-t-2xl",
-            google ? "h-[60%]" : "h-[45%]",
+            "h-[66%]",
           )}
         >
           {media()}
@@ -221,14 +227,14 @@ export function CatalogTile({
         <div
           className={cn(
             "absolute inset-x-0 bottom-0 overflow-hidden rounded-b-2xl",
-            google ? "h-[40%]" : "h-[55%]",
+            "h-[34%]",
           )}
           data-tile-info
         >
           <div
             className={cn(
               "absolute inset-x-0 top-0 -scale-y-100",
-              google ? "h-[150%]" : "h-[81.82%]",
+              "h-[194.12%]",
             )}
             aria-hidden
             data-tile-reflection
@@ -248,8 +254,8 @@ export function CatalogTile({
               same rhythm on every tile. The mark follows the name. */}
           <div
             className={cn(
-              "text-foreground relative flex h-full flex-col justify-center gap-1 pl-3",
-              google ? "pr-3" : "pr-3 pb-11",
+              "text-foreground relative flex h-full flex-col justify-center gap-0.5 pl-3",
+              google ? "pr-3" : "pr-[104px]",
             )}
           >
             <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-6 font-semibold tracking-tight">
@@ -290,7 +296,7 @@ export function CatalogTile({
         // two equal 32px buttons, icon + label on one line, 12px from the
         // band's edges. Siblings of the tile link, so a tap never navigates.
         <div
-          className="absolute inset-x-3 bottom-3 grid grid-cols-2 gap-2"
+          className="absolute right-3 bottom-[17%] flex w-[84px] translate-y-1/2 flex-col gap-1.5"
           data-tile-actions
         >
           <button
