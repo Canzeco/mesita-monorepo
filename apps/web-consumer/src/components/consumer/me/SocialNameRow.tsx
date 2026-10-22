@@ -69,9 +69,11 @@ export function SocialNameRow() {
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold">Public profile</span>
         <span className="text-muted-foreground type-label block">
+          {/* Say where you show (Pato, MESITA-2697: "say that you are
+              visible in social feed basically"). */}
           {shown
-            ? "Your name, photo and @handle show with what you like"
-            : "Your photo and @handle stay hidden, and so does others' Instagram"}
+            ? "You're visible in the Social feed"
+            : "Only your first name shows in the Social feed, and others' Instagram stays hidden"}
         </span>
       </span>
       <Switch on={shown} />
