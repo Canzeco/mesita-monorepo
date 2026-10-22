@@ -12,7 +12,7 @@ import { PopularTimesBox } from "./place-detail/popular-times";
 import { MediaBox } from "./place-detail/media";
 import { ProfileSummary } from "./place-detail/profile-summary";
 import { GoogleReviewsBox } from "./place-detail/reviews";
-import { PlaceCreatingPanel } from "./place-detail/PlaceCreatingPanel";
+import { PlaceCreateFailedPanel } from "./place-detail/PlaceCreateFailedPanel";
 import { PlaceTabBar, type PlaceTab } from "./place-detail/tabs";
 import { SoonScreen } from "./place-detail/soon-screen";
 import { DatesBox, LinksBox, TagsBox } from "./place-detail/tags-links-meta";
@@ -25,13 +25,15 @@ import { DatesBox, LinksBox, TagsBox } from "./place-detail/tags-links-meta";
 // Everything here SCROLLS:
 //
 //   1. Profile summary — name in page chrome; photo + Google/Instagram/
-//      Facebook (on every tab, MESITA-2334); swipe-style tags; then
-//      one row of actions: the heart, Reserve · Directions, then Contact
-//      (MESITA-2618/2619/2623; no pinned bar).
+//      Facebook (on every tab, MESITA-2334); swipe-style tags, led by a
+//      Creating fact while a Google-only profile is being created
+//      (MESITA-2307, MESITA-2679); then one row of actions: the heart,
+//      Reserve · Directions, then Contact (MESITA-2618/2619/2623; no
+//      pinned bar).
 //   2. The sticky strip, Overview · Reviews · Products (Soon) · Rewards (Soon),
 //      for every place (MESITA-2332). Not Enriched: Overview opens with the
-//      Creating panel while a Google-only profile is being created
-//      (MESITA-2307); there is no vote panel (MESITA-2642: visits enrich) — and Reviews holds Google's up-to-5 from
+//      refusal band only when that create was refused; there is no vote
+//      panel (MESITA-2642: visits enrich) — and Reviews holds Google's up-to-5 from
 //      the create-time Details call (MESITA-2317). Enriched: Reviews holds
 //      Apify's 100.
 //   3. The active tab's boxes.
@@ -45,8 +47,8 @@ export function PlaceDetailBody({
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
-  /** Set while a Google-only profile is being created: the Enrich slot
-   *  spins instead of asking for votes (MESITA-2307). */
+  /** Set while a Google-only profile is being created (MESITA-2307): a
+   *  Creating fact leads the facts row, or a refusal says why. */
   creating?: PlaceCreatingView | null;
   /** Social v1's line (MESITA-2442), in the profile summary. */
   social?: React.ReactNode;
@@ -55,22 +57,28 @@ export function PlaceDetailBody({
   showDates?: boolean;
 }) {
   const [tab, setTab] = useState<PlaceTab>("place");
+  const create = place.is_enriched ? null : (creating ?? null);
   return (
     // decision: Pato (2026-10-16) — the name header and the section strip
     // are both white (bg-card). The page wash shows in the content below.
     // pb-4 gives the last section breathing room above whatever footer
     // (nav) the parent layout renders below the scroll area.
     <div className="flex flex-col pb-4">
-      <ProfileSummary place={place} actions={actions} social={social} />
+      <ProfileSummary
+        place={place}
+        actions={actions}
+        social={social}
+        creating={create != null && create.error == null}
+      />
       <div className="flex flex-col gap-3 px-4">
         <PlaceTabBar tab={tab} onChange={setTab} />
           {tab === "place" && (
             <>
-              {!place.is_enriched && creating && (
+              {create?.error ? (
                 <div className="-mx-4 -mt-3">
-                  <PlaceCreatingPanel error={creating.error} onRetry={creating.onRetry} />
+                  <PlaceCreateFailedPanel error={create.error} onRetry={create.onRetry} />
                 </div>
-              )}
+              ) : null}
               {/* OVERVIEW'S ORDER (Pato, MESITA-2630): photos ·
                   presentation · location · hours · links · tags, then the
                   Created/Updated dates on admin only. Popular times rides

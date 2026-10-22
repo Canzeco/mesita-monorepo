@@ -5,6 +5,7 @@ import type { LucideIcon } from "lucide-react";
 
 import type { PlaceDetail } from "../../place-detail";
 import { firstInitial } from "../../lib/format";
+import { Spinner } from "../Spinner";
 
 export function ProfilePhoto({ place }: { place: PlaceDetail }) {
   return (
@@ -135,5 +136,21 @@ export function ProfileFact({
       ) : null}
       {children}
     </li>
+  );
+}
+
+/** Work in flight, the first fact of the row: a small spinner with an
+ *  emerald top where the icon goes, then the word. Enriching (MESITA-451)
+ *  and Creating (MESITA-2679) are both this fact, so they look alike. */
+export function RunningFact({ label }: { label: string }) {
+  return (
+    <ProfileFact aria-live="polite">
+      <Spinner
+        size="sm"
+        label={label}
+        className="border-border h-3.5 w-3.5 border-t-emerald-600"
+      />
+      {label}
+    </ProfileFact>
   );
 }

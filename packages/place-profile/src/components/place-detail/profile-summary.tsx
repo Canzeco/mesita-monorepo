@@ -4,7 +4,6 @@ import type React from "react";
 import { Banknote, Clock, MapPin, Navigation, Tag } from "lucide-react";
 
 import type { PlaceActions } from "../../actions";
-import { Spinner } from "../Spinner";
 import type { PlaceDetail } from "../../place-detail";
 import { formatPlacePriceChip } from "../../lib/place-price";
 import { getOpeningStateLabel } from "../../lib/place-state";
@@ -17,6 +16,7 @@ import {
   ProfileFact,
   ProfilePhoto,
   ProfileStat,
+  RunningFact,
 } from "./profile-summary-parts";
 
 // ── 1. Profile summary (IG photo+stats + swipe-style tags) ───────────────
@@ -25,12 +25,15 @@ export function ProfileSummary({
   place,
   actions,
   social,
+  creating = false,
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
   /** Social v1's line (MESITA-2442): who saved or saw, where
    *  Instagram shows "Followed by". */
   social?: React.ReactNode;
+  /** Mesita is creating this Google-only profile right now (MESITA-2307). */
+  creating?: boolean;
 }) {
   // decision: Pato — name in header; photo · Google · IG · Facebook; then
   // the facts row: category · price · hours · zone · distance (MESITA-2629).
@@ -92,23 +95,23 @@ export function ProfileSummary({
           order: Google's category (the place's Google primary type) · price ·
           hours · zone · distance; a missing fact draws nothing, never a
           "- km" (MESITA-2315). While the Enricher builds the profile an
-          Enriching fact leads the row (MESITA-451). */}
+          Enriching fact leads the row (MESITA-451). CREATING LEADS IT THE
+          SAME WAY (Pato, MESITA-2679: "use same aesthetic as enriching for
+          the tag, it must kinda look as a first tag before the primary
+          category") while Mesita creates a Google-only profile; it replaced
+          the Creating band at the top of Overview ("the creating there
+          looks like shit"). */}
       <div className="flex flex-col gap-3" data-profile-section="facts">
       <ul
         className="flex flex-wrap items-center gap-2"
         aria-label="About this place"
         data-profile-facts
       >
-        {place.is_enriching && (
-          <ProfileFact aria-live="polite">
-            <Spinner
-              size="sm"
-              label="Enriching"
-              className="border-border h-3.5 w-3.5 border-t-emerald-600"
-            />
-            Enriching
-          </ProfileFact>
-        )}
+        {creating ? (
+          <RunningFact label="Creating" />
+        ) : place.is_enriching ? (
+          <RunningFact label="Enriching" />
+        ) : null}
         {place.category && (
           <ProfileFact icon={Tag}>{place.category}</ProfileFact>
         )}

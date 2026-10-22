@@ -5,8 +5,8 @@ import type { PlaceDetail } from "./place-detail";
 export type PlaceMenuItem = PlaceDetail["products"]["menu"][number];
 
 /** The profile is on screen before Mesita holds it — a Google-only card the
- *  guest opened (MESITA-2307). The Enrich slot says the profile is being
- *  created, or why it could not be. */
+ *  guest opened (MESITA-2307). While the create runs a Creating fact leads
+ *  the facts row (MESITA-2679); a refusal says why at the top of Overview. */
 export type PlaceCreatingView = {
   error: string | null;
   /** Runs the create again after a refusal; absent, the panel only says why. */

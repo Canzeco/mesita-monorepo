@@ -5,7 +5,7 @@ export { PlaceTopBar } from "./components/PlaceTopBar";
 export { EnrichedBadge } from "./components/EnrichedBadge";
 export { DefaultAvatar } from "./components/DefaultAvatar";
 export { ImageCarousel } from "./components/ImageCarousel";
-export { PlaceCreatingPanel } from "./components/place-detail/PlaceCreatingPanel";
+export { PlaceCreateFailedPanel } from "./components/place-detail/PlaceCreateFailedPanel";
 export { SocialLine } from "./components/place-detail/social-line";
 export type { SocialFace } from "./components/place-detail/social-line";
 export {

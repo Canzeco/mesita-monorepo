@@ -618,7 +618,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // for votes on the Enrich tab. Nothing creates on render or on a pin tap.
   // Reached only from `openGoogleOnly`. The tap goes to the opening screen at
   // once (MESITA-2311), which draws the card the guest tapped as the profile
-  // with Google's photo and "Creating profile" in the body while
+  // with Google's photo and a Creating fact before its category while
   // get-or-create runs there, then becomes the profile (MESITA-2307). The
   // catalog row rides along when the open came from a pin or a rail card;
   // a bare prediction carries its name and address.
