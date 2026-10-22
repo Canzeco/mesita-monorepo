@@ -208,7 +208,9 @@ export function CatalogTile({
   return (
     <li
       className={cn(
-        "relative isolate aspect-square min-w-0 overflow-hidden rounded-2xl",
+        // A 1px grey hairline around each tile (Pato, MESITA-2661: "add a
+        // really small border, gray, to each box").
+        "border-border relative isolate aspect-square min-w-0 overflow-hidden rounded-2xl border",
         className,
       )}
     >
