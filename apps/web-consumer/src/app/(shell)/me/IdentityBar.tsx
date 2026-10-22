@@ -92,8 +92,9 @@ export function IdentityBar({
         {loading ? (
           <>
             {/* The skeleton mirrors the DESTINATION (Docs › Design §D): the
-                centred 67px ringed photo, then two full-width 36px boxes and
-                a pair, one column under 360px (MESITA-2614). */}
+                centred 67px ringed photo, then a full-width 36px box, the
+                pair, and a full-width box, one column under 360px
+                (MESITA-2614, reordered MESITA-2621). */}
             <div className="flex w-full flex-col items-center gap-2">
               <div className="bg-muted h-[67px] w-[67px] animate-pulse rounded-full" />
               <div className="grid w-full grid-cols-1 gap-2 min-[360px]:grid-cols-2">
@@ -102,7 +103,7 @@ export function IdentityBar({
                     key={i}
                     className={cn(
                       "bg-muted h-9 w-full animate-pulse rounded-full",
-                      i < 2 && "col-span-full",
+                      (i === 0 || i === 3) && "col-span-full",
                     )}
                   />
                 ))}

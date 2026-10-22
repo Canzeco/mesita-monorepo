@@ -28,8 +28,14 @@ import { cn } from "@/lib/utils";
 //
 //                  (64px photo)
 //   ( 👤 Diego                                 )
-//   ( ◎ @diego · 1.2K followers                )
 //   ( ♛ Class: VIP      ) ( ▭ Plan: Premium    )
+//   ( ◎ @diego · 1.2K followers                )
+//
+// THE PAIR SITS BETWEEN THE TWO WIDE BOXES (Pato, MESITA-2621: "for more
+// clarity put profile pic, name, class plan, instagram. because if there is
+// a larger thing in between maybe that stuff doesn't get confused"): name
+// and Instagram never stack as two look-alike full-width pills. MESITA-2614
+// had Instagram second and the pair last.
 //
 // Name and Instagram keep the full width: they are the two strings that get
 // long. Class and Plan share a row, Class left, the same order as the Class ·
@@ -249,13 +255,20 @@ export function IdentityCard({
         </span>
       </span>
 
-      {/* Three rows: name, Instagram, then Class · Plan as a pair; one column
-          under 360px (MESITA-2614). */}
+      {/* Three rows: name, then Class · Plan as a pair, then Instagram; one
+          column under 360px (MESITA-2614, reordered MESITA-2621). */}
       <div
         className="grid w-full min-w-0 grid-cols-1 gap-2 min-[360px]:grid-cols-2"
         data-identity-chips
       >
         <NameBox name={name} href={nameHref} />
+
+
+        {guestClass && (
+          <ClassChip guestClass={guestClass} onPress={onClassPress} />
+        )}
+
+        {plan && <PlanChip plan={plan} href={planHref} />}
 
         {instagram?.href ? (
           <Link
@@ -282,12 +295,6 @@ export function IdentityCard({
             <span className="truncate">{instagram.label}</span>
           </span>
         ) : null}
-
-        {guestClass && (
-          <ClassChip guestClass={guestClass} onPress={onClassPress} />
-        )}
-
-        {plan && <PlanChip plan={plan} href={planHref} />}
       </div>
     </div>
   );
