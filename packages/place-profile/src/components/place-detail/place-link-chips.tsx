@@ -6,6 +6,7 @@ import { SquareArrowOutUpRight } from "lucide-react";
 import type { PlaceActions } from "../../actions";
 import type { PlaceDetail } from "../../place-detail";
 import { cn } from "../../lib/format";
+import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS } from "../../lib/ui";
 
 import {
   CHANNEL_CLAY,
@@ -78,10 +79,9 @@ export function ChannelChips({
             : label
           : undefined;
         const className = cn(
-          "inline-flex items-center gap-1.5 border text-xs font-semibold transition",
           grid
-            ? "h-11 min-w-0 justify-center rounded-lg px-3"
-            : "rounded-full px-3 py-2",
+            ? cn(PLACE_BUTTON_CLASS, "border")
+            : "inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition",
           key in CHANNEL_CLAY
             ? CHANNEL_CLAY[key as keyof typeof CHANNEL_CLAY]
             : "border-border bg-paper text-foreground hover:bg-muted",
@@ -97,10 +97,16 @@ export function ChannelChips({
                 src={logo}
                 alt=""
                 aria-hidden
-                className={cn(logoWide ? "h-4 w-auto" : "h-3.5 w-3.5")}
+                className={cn(
+                  logoWide
+                    ? "h-4 w-auto"
+                    : grid
+                      ? PLACE_BUTTON_ICON_CLASS
+                      : "h-3.5 w-3.5",
+                )}
               />
             ) : (
-              <Icon className="h-3.5 w-3.5" />
+              <Icon className={grid ? PLACE_BUTTON_ICON_CLASS : "h-3.5 w-3.5"} />
             )}
             {!logoOnly && <span className="truncate">{label}</span>}
             {leavesApp && (

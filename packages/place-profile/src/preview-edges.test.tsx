@@ -146,10 +146,12 @@ describe("member preview edges", () => {
     const directionsAt = html.indexOf("Directions in Google Maps");
     const saveAt = html.indexOf('aria-label="Add to favorites"');
     const contactAt = html.indexOf('aria-label="Contact"');
-    expect(reserveAt).toBeGreaterThan(-1);
+    // The heart leads the row (MESITA-2623), then Reserve · Directions,
+    // then Contact.
+    expect(saveAt).toBeGreaterThan(-1);
+    expect(reserveAt).toBeGreaterThan(saveAt);
     expect(directionsAt).toBeGreaterThan(reserveAt);
-    expect(saveAt).toBeGreaterThan(directionsAt);
-    expect(contactAt).toBeGreaterThan(saveAt);
+    expect(contactAt).toBeGreaterThan(directionsAt);
     expect(html).not.toContain("Save, Soon");
     expect(html).toContain("Products");
     expect(html).not.toContain(">Menu<");

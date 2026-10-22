@@ -8,7 +8,12 @@ import type { PlaceDetail } from "../../place-detail";
 import { cn } from "../../lib/format";
 import { buildDirectionsUrl } from "../../lib/maps-link";
 import { isReserveActionEnabled } from "../../lib/place-profile-actions";
+import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS } from "../../lib/ui";
 
+// THE HEART LEADS THE ROW (Pato, MESITA-2623: "i think saved must be at
+// the left, like saved in instagram"): Favorite, then Reserve · Directions,
+// then Contact.
+//
 // ONE ROW (Pato, MESITA-2618: "i don't like the six buttons there. it looks
 // like shit"): Reserve, the one dark button, and Directions share the
 // width; Favorite and Contact are 44px grey icon squares beside them.
@@ -28,10 +33,9 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 // the row never changes shape.
 const btn =
   "inline-flex h-11 shrink-0 items-center justify-center rounded-lg transition active:scale-[0.99]";
-const wideBtn = cn(
-  btn,
-  "type-label min-w-0 flex-1 gap-1.5 px-2 font-semibold whitespace-nowrap",
-);
+// Reserve and Directions are the screen's one labelled button
+// (PLACE_BUTTON_CLASS, MESITA-2623), the same size as Location's and Links'.
+const wideBtn = cn(PLACE_BUTTON_CLASS, "flex-1 px-2");
 const iconBtn = cn(btn, "w-11 bg-muted text-foreground hover:bg-muted/70");
 
 export function ProfileActions({
@@ -56,29 +60,6 @@ export function ProfileActions({
     <div className={cn("flex gap-2", className)}>
       <button
         type="button"
-        {...(reserveLive
-          ? { onClick: onReserve, "aria-haspopup": "dialog" as const }
-          : inertButtonProps(false))}
-        aria-label="Reserve a table"
-        className={cn(wideBtn, "bg-foreground text-paper hover:opacity-90")}
-      >
-        <CalendarCheck className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-        Reserve
-      </button>
-      <button
-        type="button"
-        {...(onOpenLink
-          ? { onClick: () => onOpenLink(directionsUrl) }
-          : inertButtonProps(false))}
-        aria-label="Directions in Google Maps"
-        data-directions-url={directionsUrl}
-        className={cn(wideBtn, "bg-muted text-foreground hover:bg-muted/70")}
-      >
-        <Navigation className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-        Directions
-      </button>
-      <button
-        type="button"
         {...(onSave
           ? { onClick: onSave, "aria-pressed": saved }
           : inertButtonProps(false))}
@@ -93,6 +74,29 @@ export function ProfileActions({
           className={cn("h-[18px] w-[18px]", saved && "fill-current")}
           strokeWidth={2.25}
         />
+      </button>
+      <button
+        type="button"
+        {...(reserveLive
+          ? { onClick: onReserve, "aria-haspopup": "dialog" as const }
+          : inertButtonProps(false))}
+        aria-label="Reserve a table"
+        className={cn(wideBtn, "bg-foreground text-paper hover:opacity-90")}
+      >
+        <CalendarCheck className={PLACE_BUTTON_ICON_CLASS} strokeWidth={2.25} />
+        Reserve
+      </button>
+      <button
+        type="button"
+        {...(onOpenLink
+          ? { onClick: () => onOpenLink(directionsUrl) }
+          : inertButtonProps(false))}
+        aria-label="Directions in Google Maps"
+        data-directions-url={directionsUrl}
+        className={cn(wideBtn, "bg-muted text-foreground hover:bg-muted/70")}
+      >
+        <Navigation className={PLACE_BUTTON_ICON_CLASS} strokeWidth={2.25} />
+        Directions
       </button>
       <button
         type="button"
