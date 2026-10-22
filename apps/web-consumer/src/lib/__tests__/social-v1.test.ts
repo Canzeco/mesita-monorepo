@@ -104,7 +104,8 @@ describe("the first-sync backfill stays private", () => {
   });
 });
 
-// MESITA-2580: members without Instagram are in the feed as "A member".
+// MESITA-2580: members without Instagram are in the feed; MESITA-2612: by
+// first name, never "A member".
 describe("anonymous members in the feed", () => {
   const FEED_SRC = readFileSync(
     join(__dirname, "../../components/consumer/home/SocialFeed.tsx"),
@@ -119,9 +120,9 @@ describe("anonymous members in the feed", () => {
     expect(FEED_SRC).toContain("person.anonymous ? (");
   });
 
-  it("names them 'A member' and shows no Instagram proof", () => {
+  it("names them by first name and shows no Instagram proof", () => {
     const anon: ActivityPerson = {
-      name: "A member",
+      name: "Sofia",
       avatarUrl: null,
       handle: null,
       handleLocked: false,
@@ -132,9 +133,7 @@ describe("anonymous members in the feed", () => {
       instagram: false,
       anonymous: true,
     };
-    expect(feedSentence({ person: anon, kind: "saved" })).toBe(
-      "A member liked",
-    );
+    expect(feedSentence({ person: anon, kind: "saved" })).toBe("Sofia liked");
     expect(feedInstagram(anon)).toBeNull();
   });
 });
@@ -155,7 +154,7 @@ describe("Social has no sample", () => {
 });
 
 // MESITA-2590: the person card opens Instagram in a new tab and counts it;
-// Settings › Social lets a guest appear as "A member".
+// Settings › Social: Public profile off hides the photo and handle.
 describe("full handle, Open Instagram, and the Social name switch", () => {
   const FEED = readFileSync(
     join(__dirname, "../../components/consumer/home/SocialFeed.tsx"),
@@ -198,7 +197,7 @@ describe("full handle, Open Instagram, and the Social name switch", () => {
     expect(card).toContain("Make your profile public to see their Instagram");
   });
 
-  it("Settings › Social: 'Public profile', off means 'A member'", () => {
+  it("Settings › Social: 'Public profile' writes appear_anonymous", () => {
     expect(SETTINGS).toContain('<SettingsGroup title="Social">');
     expect(SETTINGS).toContain("<SocialNameRow />");
     expect(SWITCH).toContain("Public profile");

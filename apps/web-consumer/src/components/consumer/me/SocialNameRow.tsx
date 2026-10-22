@@ -15,8 +15,8 @@ import { IconCircle, Switch } from "@/components/consumer/me/settings-rows";
 // means you appear as 'A member'"; MESITA-2594 named it Public profile and
 // asks it on Me › Instagram too). A server fact, consumers.appear_anonymous
 // (default false, so the switch is on). Off, the guest's activity still shows
-// in Social, as "A member" with no name, photo or handle (MESITA-2580); it
-// never disappears. Private also costs something: you see others' Instagram
+// in Social, by first name, with no photo or handle (MESITA-2612 retired "A
+// member"); it never disappears. Private also costs something: you see others' Instagram
 // only if you show yours (MESITA-2594), so a private member sees "per***".
 // Same shape as Me › Instagram's "Use my Instagram photo" switch
 // (MESITA-2585).
@@ -71,7 +71,7 @@ export function SocialNameRow() {
         <span className="text-muted-foreground type-label block">
           {shown
             ? "Your name, photo and @handle show with what you like"
-            : "You show as “A member” and others' Instagram stays hidden"}
+            : "Your photo and @handle stay hidden, and so does others' Instagram"}
         </span>
       </span>
       <Switch on={shown} />
