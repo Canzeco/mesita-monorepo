@@ -101,7 +101,7 @@ describe("a read that FAILED is never stated as a fact", () => {
     // boolean apart; only the second may hedge.
     const empty = identityFrom(null, null, false);
     expect(empty.unknown).toBe(false);
-    expect(instagramSummary(empty)).toBe("Insta: not connected");
+    expect(instagramSummary(empty)).toBe("Connect Instagram");
   });
 });
 
@@ -115,7 +115,7 @@ describe("the Instagram copy, pinned", () => {
   };
 
   it("the Me tile and the header chip", () => {
-    expect(instagramSummary(off)).toBe("Insta: not connected");
+    expect(instagramSummary(off)).toBe("Connect Instagram");
     expect(instagramSummary({ ...off, igConnected: true })).toBe("Insta: connected");
     expect(
       instagramSummary({ ...off, igConnected: true, igHandle: "mock" }),

@@ -115,6 +115,8 @@ export function ProfileClient() {
         profile={profile}
         loading={loading}
         instagramLabel={igLabel}
+        // Couldn't load keeps the colour: it is not a "no".
+        instagramConnected={igFacts.igConnected || igFacts.unknown}
       />
       {/* pt-3: the header card sits one row-gap (12px) above the tiles. */}
       <div className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-3 pb-8">

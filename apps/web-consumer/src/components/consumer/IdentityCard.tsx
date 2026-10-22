@@ -80,14 +80,22 @@ const TAP_TARGET_CLASS =
   "after:absolute after:inset-x-0 after:inset-y-[-4px] after:content-['']";
 
 export type IdentityInstagram = {
-  /** Me: "Insta: @handle · 25K followers" or "Insta: not connected"
-   *  (MESITA-2606); Social: "@per*** · 1.2K followers" (MESITA-2594). */
+  /** Me: "Insta: @handle · 25K followers" or "Connect Instagram"
+   *  (MESITA-2606, MESITA-2696); Social: "Insta: @per*** · 1.2K followers"
+   *  or "No Instagram" (MESITA-2594, MESITA-2696). */
   label: string;
+  /** False draws the plain ink glyph, no gradient: colour means connected,
+   *  as gold means VIP (MESITA-2696, MESITA-2695). Default true. */
+  connected?: boolean;
   /** A door (Me) when set; a plain fact (Social) when not. */
   href?: string;
 };
 
-function InstagramBadge() {
+function InstagramBadge({ connected = true }: { connected?: boolean }) {
+  if (!connected)
+    return (
+      <Instagram className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+    );
   return (
     <span
       className={cn(
@@ -299,7 +307,7 @@ export function IdentityCard({
             )}
             data-identity-instagram
           >
-            <InstagramBadge />
+            <InstagramBadge connected={instagram.connected} />
             <span className="truncate">{instagram.label}</span>
           </Link>
         ) : instagram ? (
@@ -307,7 +315,7 @@ export function IdentityCard({
             className={cn(CHIP_CLASS, FULL_ROW_CLASS)}
             data-identity-instagram
           >
-            <InstagramBadge />
+            <InstagramBadge connected={instagram.connected} />
             <span className="sr-only">Instagram:</span>
             <span className="truncate">{instagram.label}</span>
           </span>

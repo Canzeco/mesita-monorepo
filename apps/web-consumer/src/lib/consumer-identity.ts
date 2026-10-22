@@ -26,12 +26,16 @@ export type ConsumerFacts = {
   unknown: boolean;
 };
 
-/** The Instagram chip / tile line, "Insta: …" in every state (Pato,
- *  MESITA-2606: "say insta: is easy"). Connected guests get their handle,
- *  because it is the one Instagram fact they can check at a glance. */
+/** The Instagram chip line. Connected: "Insta: @handle" (Pato, MESITA-2606:
+ *  "say insta: is easy"), because the handle is the one Instagram fact a
+ *  guest can check at a glance. Not connected: "Connect Instagram", what the
+ *  box does on Me (Pato, MESITA-2696: "i dont like the insta: not
+ *  connected"). */
+export const INSTAGRAM_CONNECT_LABEL = "Connect Instagram";
+
 export function instagramSummary(f: ConsumerFacts): string {
   if (f.unknown) return "Insta: couldn't load";
-  if (!f.igConnected) return "Insta: not connected";
+  if (!f.igConnected) return INSTAGRAM_CONNECT_LABEL;
   return f.igHandle ? `Insta: @${f.igHandle}` : "Insta: connected";
 }
 

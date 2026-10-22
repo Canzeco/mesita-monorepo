@@ -60,12 +60,15 @@ export function IdentityBar({
   profile,
   loading,
   instagramLabel,
+  instagramConnected,
 }: {
   profile: ConsumerProfile | null;
   loading: boolean;
-  /** "Insta: @handle · 25K followers", "Insta: not connected", … — the same
-   *  string the Instagram tile shows (MESITA-2606). */
+  /** "Insta: @handle · 25K followers", "Connect Instagram", … (MESITA-2606,
+   *  MESITA-2696). */
   instagramLabel: string;
+  /** False draws the plain glyph (MESITA-2696). */
+  instagramConnected: boolean;
 }) {
   const name =
     [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
@@ -116,6 +119,7 @@ export function IdentityBar({
             avatarUrl={avatarUrl}
             instagram={{
               label: instagramLabel,
+              connected: instagramConnected,
               href: CONSUMER_ROUTES.mePages.instagram,
             }}
             // No profile (the read failed) hides Class and Plan: never a
