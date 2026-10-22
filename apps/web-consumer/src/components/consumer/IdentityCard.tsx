@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { CreditCard, Crown, UserRound } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
-import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
+import { DefaultAvatar } from "@mesita/place-profile";
 import {
   CLASS_LABEL,
   PLAN_LABEL,

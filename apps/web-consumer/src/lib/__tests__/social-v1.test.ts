@@ -115,9 +115,12 @@ describe("anonymous members in the feed", () => {
   it("draws them with a plain face; every row opens the person card (MESITA-2609)", () => {
     expect(FEED_SRC).toContain("data-social-anonymous");
     expect(FEED_SRC).not.toContain("data-social-anonymous-row");
-    // The plain icon on an anonymous row without a photo (MESITA-2608:
-    // the photo shows when the server sends one).
-    expect(FEED_SRC).toContain("person.anonymous ? (");
+    // The one no-photo face, the same DefaultAvatar Me draws (MESITA-2620);
+    // the photo shows when the server sends one (MESITA-2608). Never a
+    // lucide glyph, never an initial.
+    expect(FEED_SRC).toContain("<DefaultAvatar");
+    expect(FEED_SRC).not.toContain("UserRound");
+    expect(FEED_SRC).not.toContain("firstInitial");
   });
 
   it("names them by first name and shows no Instagram proof", () => {
