@@ -1,6 +1,6 @@
 # supabase — DB · RLS · Edge Functions (the source of truth)
 
-> Read root [`CLAUDE.md`](../CLAUDE.md) first. Package law only: the tests named here pin the rest. Notion Docs: Atlas, Create · Enrich · Edit, Reservations, Functions.
+> Read root [`CLAUDE.md`](../CLAUDE.md) first. Package law only. Notion Docs: Atlas, Create · Enrich · Edit, Reservations, Functions.
 
 - **Run every `supabase` command from this package:** the CLI config is `supabase/config.toml`, and a Supabase config anywhere else links a divergent migration ledger.
 - **The EF name is the ACL:** its prefix names its one caller, from the closed set `consumer` · `admin` · `enricher` · `eleven` · `supabase` · `meta` (Rules §2). A function calls another only through `_shared/internal.ts`. `_shared/ef-caller-acl.test.ts` pins which app calls what.

@@ -1,7 +1,7 @@
 <!-- GENERATED — scripts/sync-rules.ts mirrors this file from its sibling CLAUDE.md. Edit CLAUDE.md (root: below its END marker) or scripts/rules-quickstart.md — NEVER this file. -->
 # apps/web-landing — marketing landing (mesita.ai)
 
-> Read root [`CLAUDE.md`](../../CLAUDE.md) first. Package law only; the tests named here pin the rest.
+> Read root [`CLAUDE.md`](../../CLAUDE.md) first. Package law only.
 
 - A static site: light theme, no Supabase, no env vars.
 - `/terms` and `/privacy` are an unreviewed draft (MESITA-1888): describe only what the code does, name no regulator, promise no retention period. `src/lib/__tests__/legal-routes.test.ts` pins the draft banner on both and that `src/app/sitemap.ts` lists every static route.

@@ -46,6 +46,10 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ github.event_name != 'pull_request' && 'true' || steps.filter.outputs.supabase }}
+      # pgTAP only: it reads nothing but the database the migrations,
+      # config.toml and seed.sql build, so an app or EF change cannot move it
+      # (MESITA-2600). Push to main and the nightly run still run it.
+      schema: ${{ github.event_name != 'pull_request' && 'true' || steps.filter.outputs.schema }}
     steps:
       - uses: actions/checkout@v7
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
@@ -64,8 +68,14 @@ jobs:
               # supabase test reads belongs in this filter.
               - 'apps/web-admin/src/**'
               - 'apps/web-consumer/src/**'
+            schema:
+              - 'supabase/supabase/migrations/**'
+              - 'supabase/supabase/tests/**'
+              - 'supabase/supabase/config.toml'
+              - 'supabase/supabase/seed.sql'
+              - '.github/workflows/supabase.yml'
 
-  # The three jobs below are SKIPPED when the PR touches nothing in the filter,
+  # The jobs below are SKIPPED when the PR touches nothing in their filter,
   # which merges. If `changes` fails, its output is empty, not 'false', and
   # they run.
   check:
@@ -157,12 +167,12 @@ jobs:
   # add continue-on-error (MESITA-1139).
   #
   # Cost: `-x` drops every container except Postgres (and auth, which the CLI
-  # always starts), and a PR outside the filter never pays for it. Not
+  # always starts), and a PR outside the `schema` filter never pays for it. Not
   # `supabase db lint` on a shadow DB, for the same cost reason.
   schema:
     name: pgTAP · schema invariants
     needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.changed != 'false' }}
+    if: ${{ !cancelled() && needs.changes.outputs.schema != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

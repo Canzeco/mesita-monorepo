@@ -36,6 +36,10 @@ import {
   MD_ALLOW_DIRS,
   MD_SCAN_GLOBS,
   missingStampMessage,
+  missingTestMessage,
+  namedTestProblems,
+  namedTests,
+  resolvesTo,
   overBudgetMessage,
   parseLsFiles,
   QUICKSTART_WORD_BUDGET,
@@ -789,3 +793,47 @@ jobs:
   assertEquals(requiredCheckProblems([good], ["x check"]), []);
   assertEquals(unrequiredJobProblems([good], ["x check"]), []);
 });
+
+// ── Cards: every named test exists (MESITA-2600) ─────────────────────────────
+
+const TRACKED = [
+  "apps/web-admin/src/app/actions.test.ts",
+  "apps/web-admin/src/components/Sidebar.test.ts",
+  "supabase/supabase/functions/_shared/ef-caller-acl.test.ts",
+  "apps/web-admin/src/app/(app)/places/[id]/page.test.tsx",
+];
+
+Deno.test("namedTests takes the whole backticked span, brackets and parens included", () => {
+  const card = "Pinned by `actions.test.ts`, `components/Sidebar.test.ts` and `apps/web-admin/src/app/(app)/places/[id]/page.test.tsx`; `src/lib/__tests__/` is a dir.";
+  assertEquals(namedTests(card), [
+    "actions.test.ts",
+    "components/Sidebar.test.ts",
+    "apps/web-admin/src/app/(app)/places/[id]/page.test.tsx",
+  ]);
+});
+
+Deno.test("a bare basename resolves against any directory", () => {
+  assert(resolvesTo("actions.test.ts", TRACKED));
+});
+
+Deno.test("a partial path resolves only on a segment boundary", () => {
+  assert(resolvesTo("components/Sidebar.test.ts", TRACKED));
+  assert(!resolvesTo("bar.test.ts", ["src/sidebar.test.ts"]));
+});
+
+Deno.test("a cross-package path resolves", () => {
+  assert(resolvesTo("supabase/supabase/functions/_shared/ef-caller-acl.test.ts", TRACKED));
+  assert(resolvesTo("_shared/ef-caller-acl.test.ts", TRACKED));
+});
+
+Deno.test("a path with (app) and [id] resolves", () => {
+  assert(resolvesTo("app/(app)/places/[id]/page.test.tsx", TRACKED));
+});
+
+Deno.test("a card naming a missing test fails with the drop-the-name message", () => {
+  const cards = new Map([["apps/web-consumer/CLAUDE.md", "Kept by `actions.test.ts`; once pinned by `social-v1.test.ts`."]]);
+  const problems = namedTestProblems(cards, TRACKED);
+  assertEquals(problems, [missingTestMessage("apps/web-consumer/CLAUDE.md", "social-v1.test.ts")]);
+  assertStringIncludes(problems[0]!, "drop the name, keep the rule");
+});
+
