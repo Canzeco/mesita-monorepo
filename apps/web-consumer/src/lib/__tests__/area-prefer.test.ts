@@ -91,7 +91,7 @@ describe("One ranking, no prefer (MESITA-2516)", () => {
     expect(rails).not.toContain("turnOnLocation");
     expect(rails).not.toContain("Couldn't find you");
     expect(headerLocation(null, false, false, true)).toEqual({
-      label: "Monterrey",
+      label: "No location",
       off: true,
     });
     expect(headerLocation(null, false, false, false).off).toBe(false);
