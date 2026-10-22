@@ -52,13 +52,12 @@ export type ActivityPerson = {
   /** A verified Instagram (MESITA-2608): the Instagram mark on the face.
    *  Carried on anonymous rows too; the handle itself is not. */
   instagram: boolean;
-  /** A member without a verified Instagram (MESITA-2580), or any view
-   *  (MESITA-2594): "A member", no handle or followers. Since MESITA-2608 the
-   *  FACE still shows: photo, Class, Plan and the Instagram flag come back
-   *  from SQL on every row of a member who did not choose "A member"
-   *  (appear_anonymous blanks the whole row). Every row is a door to the
-   *  person card since MESITA-2609; the card asks place_activity_history_by,
-   *  which names the member by a like's rule. */
+  /** No handle on this row: a member without a verified Instagram
+   *  (MESITA-2580), any view in the feed (MESITA-2594), or Public profile off.
+   *  The FIRST NAME still shows (MESITA-2612: "A member" is gone), and so do
+   *  Class, Plan, the Instagram flag and, unless Public profile is off, the
+   *  photo (MESITA-2608). Every row is a door to the person card
+   *  (MESITA-2609). */
   anonymous: boolean;
 };
 
@@ -116,6 +115,10 @@ export function cleanHandle(handle: string | null | undefined): string | null {
   return h || null;
 }
 
+/** The name of a member who never gave a first name: the Me header's own
+ *  fallback (MESITA-2612; "A member" is retired). */
+export const MEMBER_FALLBACK_NAME = "Mesita member";
+
 /** A row from place_activity_feed / place_activity_people. */
 export type ActivityRow = {
   consumer_id: string;
@@ -140,11 +143,14 @@ export function toPerson(
   canSeeHandles = true,
 ): ActivityPerson {
   const isYou = row.consumer_id === viewerId;
+  // Always a name (MESITA-2612): the first name, or the Me header's own
+  // fallback when the member never gave one.
+  const first = row.first_name?.trim() || MEMBER_FALLBACK_NAME;
   if (row.anonymous === true) {
-    // The face shows, the name does not (MESITA-2608): SQL already blanked
-    // the photo and marks for a member who chose "A member".
+    // No handle, no followers; the face and the name show (MESITA-2608,
+    // MESITA-2612). SQL already blanked the photo for Public profile off.
     return {
-      name: "A member",
+      name: first,
       avatarUrl: row.avatar_url ?? null,
       handle: null,
       handleLocked: false,
@@ -156,13 +162,12 @@ export function toPerson(
       anonymous: true,
     };
   }
-  const first = row.first_name?.trim();
   const handle = cleanHandle(row.instagram_handle);
   // Your own handle is never masked to you.
   const locked = handle != null && !isYou && !canSeeHandles;
   return {
     // The name is the first name, never "@handle"; the handle rides beside it.
-    name: first || "A member",
+    name: first,
     avatarUrl: row.avatar_url ?? null,
     handle: handle && locked ? maskHandle(handle) : handle,
     handleLocked: locked,

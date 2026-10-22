@@ -42,7 +42,9 @@ Deno.test("only the two kinds, only Mesita place ids (MESITA-2567: no went)", ()
 
 Deno.test("a named person carries the full handle; the name is never it; the viewer is You", () => {
   // MESITA-2590: the full username (MESITA-2522 had cut it to three letters).
-  assertEquals(toPerson(row({ first_name: null }), "z").name, "A member");
+  // MESITA-2612: never "A member"; a member without a first name reads as
+  // the Me header's fallback.
+  assertEquals(toPerson(row({ first_name: null }), "z").name, "Mesita member");
   assertEquals(toPerson(row({}), "z").handle, "perdon");
   assertEquals(toPerson(row({ instagram_handle: null }), "z").handle, null);
   assertEquals(toPerson(row({}), "a").isYou, true);
@@ -187,17 +189,17 @@ Deno.test("a person carries Class and Plan, plain unless set", () => {
   assertEquals(toPerson(row({ guest_class: "diamond" }), "z").guestClass, "regular");
 });
 
-// MESITA-2580: a member without Instagram is in the feed, anonymously.
-// MESITA-2608: the face (photo, Class, Plan, the Instagram flag) still shows
-// on an anonymous row; the name, handle and followers never do, even if SQL
-// leaked them.
-Deno.test("an anonymous member is 'A member' with a face but no name, even if a field leaked", () => {
+// MESITA-2580: a member without Instagram is in the feed.
+// MESITA-2608: the face (photo, Class, Plan, the Instagram flag) shows.
+// MESITA-2612: so does the first name ("A member" is gone). The handle and
+// followers never do on a row without a handle, even if SQL leaked them.
+Deno.test("a row without a handle is named by first name, with a face but no handle, even if a field leaked", () => {
   const anon = toPerson(
-    row({ anonymous: true, first_name: "Leak", avatar_url: "https://x/y.jpg", instagram_handle: "leak", instagram_followers_count: 9000, guest_class: "vip", plan: "premium", instagram: true }),
+    row({ anonymous: true, first_name: "Sofia", avatar_url: "https://x/y.jpg", instagram_handle: "leak", instagram_followers_count: 9000, guest_class: "vip", plan: "premium", instagram: true }),
     "z",
   );
   assertEquals(anon, {
-    name: "A member",
+    name: "Sofia",
     avatarUrl: "https://x/y.jpg",
     handle: null,
     handleLocked: false,
@@ -208,8 +210,9 @@ Deno.test("an anonymous member is 'A member' with a face but no name, even if a 
     instagram: true,
     anonymous: true,
   });
-  // A member who chose "A member": SQL blanked the face too, and nothing
-  // here invents one.
+  // Public profile off: SQL blanked the photo, and nothing here invents one.
+  // A missing first name falls back, never to "A member".
+  assertEquals(toPerson(row({ anonymous: true, first_name: null }), "z").name, "Mesita member");
   const chosen = toPerson(row({ anonymous: true, avatar_url: null, guest_class: null, plan: null, instagram: null }), "z");
   assertEquals(chosen.avatarUrl, null);
   assertEquals(chosen.guestClass, "regular");

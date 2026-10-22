@@ -19,7 +19,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // Delete account went with them (Pato, MESITA-2589: "remove stupid fake
 // buttons from settings"). The one server write left here is Sign out.
 // Social has one switch, "Public profile" (MESITA-2590, MESITA-2594): off, you
-// still show, as "A member". Nothing makes a member disappear from Social
+// still show, by first name, without photo or handle (MESITA-2612). Nothing makes a member disappear from Social
 // (MESITA-2552: "if you connect your … instagram, is because you want to be
 // seen").
 

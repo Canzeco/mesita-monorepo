@@ -7,9 +7,9 @@ import type { Place } from "./places";
 
 export type ActivityKind = "saved" | "viewed";
 
-/** A member as Social shows them: named, with the full @handle, when they
- *  verified Instagram and did not choose to appear as "A member"; else
- *  anonymous (MESITA-2580, MESITA-2590). */
+/** A member as Social shows them: always by first name (MESITA-2612), with
+ *  the full @handle when they verified Instagram and keep Public profile on
+ *  (MESITA-2590); else no handle (`anonymous`, MESITA-2580). */
 export type ActivityPerson = {
   name: string;
   avatarUrl: string | null;
@@ -28,10 +28,10 @@ export type ActivityPerson = {
   /** A verified Instagram (MESITA-2608): the Instagram mark on the face,
    *  on anonymous rows too. */
   instagram: boolean;
-  /** A member without Instagram (MESITA-2580) or any view (MESITA-2594):
-   *  "A member", no handle or followers, and no person card. The FACE still
-   *  shows (MESITA-2608): photo, Class and the Instagram flag come back
-   *  unless the member chose "A member" (appear_anonymous). */
+  /** No handle on this row: a member without Instagram (MESITA-2580), a
+   *  view in the feed (MESITA-2594) or Public profile off. The first name
+   *  still shows (MESITA-2612), and the face (MESITA-2608): photo, Class and
+   *  the Instagram flag, the photo blank when Public profile is off. */
   anonymous: boolean;
 };
 
@@ -128,7 +128,7 @@ export type MemberHistoryItem = {
  *  viewed, newest first: Social's person card (MESITA-2609, replacing
  *  MESITA-2583's liked-only list). The event names the member, never an id
  *  (MESITA-2460). The person is named by a like's rule, so the card may name
- *  a member the row did not; a member who chose "A member" returns null. */
+ *  a handle the row did not; a deleted member returns null. */
 export async function apiMemberHistory(
   client: SupabaseClient,
   event: Pick<ActivityFeedItem, "placeId" | "kind" | "at">,

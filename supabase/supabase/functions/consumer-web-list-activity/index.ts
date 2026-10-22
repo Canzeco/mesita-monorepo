@@ -27,7 +27,8 @@
 //   by a like's rule (place_activity_visible), and every one of their events,
 //   saved and viewed, newest first, with the place cards. The event names the
 //   member because no member id reaches the client (MESITA-2460); a member who
-//   chose "A member" returns person null and no items
+//   is deleted returns person null and no items; everyone else is named by
+//   first name (MESITA-2612)
 //   (place_activity_history_by).
 //
 // Who appears is the SQL's call (place_activity_visible: a verified Instagram,
