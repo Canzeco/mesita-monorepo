@@ -42,7 +42,7 @@ const LINK_LABEL = APP_SHARE_URL.replace(/^https:\/\//, "").replace(/\/$/, "");
 function ShareCard() {
   return (
     <div
-      className="bg-foreground text-background flex aspect-[4/3] w-full flex-col rounded-3xl p-5 shadow-lg"
+      className="bg-foreground text-paper shadow-elev flex aspect-[4/3] w-full flex-col rounded-3xl p-5"
       data-share-card
     >
       <span className="flex items-center gap-1.5 text-sm font-semibold">

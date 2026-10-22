@@ -318,7 +318,7 @@ function ConnectByMessage({ live }: { live: boolean }) {
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => void navigator.clipboard?.writeText(claim.code).catch(() => {})}
-            className="bg-foreground text-background mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold"
+            className="bg-foreground text-paper mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold"
           >
             <Send className="h-4 w-4" />
             Send it on Instagram
