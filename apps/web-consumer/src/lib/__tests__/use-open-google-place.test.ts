@@ -58,6 +58,8 @@ describe("getOrCreateGooglePlace", () => {
         fn: "consumer-web-create-place",
         body: { googlePlaceId: "ChIJ-held" },
       },
+      // The lists' Mesita card (MESITA-2683): a read, never a second create.
+      { fn: "consumer-web-get-place", body: { id: "u1" } },
     ]);
   });
 

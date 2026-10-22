@@ -73,6 +73,11 @@ import {
 import { MAP_USER_ZOOM, MONTERREY_CENTER } from "@/lib/map-defaults";
 import { placeHref } from "@/lib/place-route";
 import { useOpenGooglePlace } from "@/lib/use-open-google-place";
+import {
+  createdPlaceId,
+  useCreatedPlaces,
+  withCreatedPlaces,
+} from "@/lib/created-places";
 import { toast } from "@/lib/toast";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
@@ -243,9 +248,19 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // Distances follow the camera the catalog was fetched for, so a pan
   // ranks and labels the same nearby set. GPS still recenters the map.
   const distanceCenter = cameraCenter ?? location;
+  // A GOOGLE CARD THE GUEST OPENED, SAVED OR SHARED IS A MESITA CARD once
+  // the create lands (Pato, MESITA-2683: "the profile has been created but
+  // i still have the old not created profile data in the carousel"): the
+  // card swaps in place, photo and profile link, and the next real load
+  // brings the server's own card. The bar pick's card swaps too.
+  const createdPlaces = useCreatedPlaces();
   const nearby = useMemo(
-    () => withDistances(places.map(enrichPlaceOverview), distanceCenter),
-    [places, distanceCenter],
+    () =>
+      withDistances(
+        withCreatedPlaces(places, createdPlaces).map(enrichPlaceOverview),
+        distanceCenter,
+      ),
+    [places, createdPlaces, distanceCenter],
   );
   // The EF already applied the operator's cap, so the catalog IS what came
   // back. The anchored pick still prepends after it, because the bar never
@@ -253,11 +268,14 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // land on the Google-only place they typed. Dedupe decides the total — N
   // unique when the pick is inside the N, N + 1 when outside.
   const catalog = useMemo(() => {
-    const anchorRow = anchor?.place
-      ? withDistances([enrichPlaceOverview(anchor.place)], distanceCenter)[0]
+    const pick = anchor?.place
+      ? withCreatedPlaces([anchor.place], createdPlaces)[0]
+      : null;
+    const anchorRow = pick
+      ? withDistances([enrichPlaceOverview(pick)], distanceCenter)[0]
       : null;
     return prependAnchorPlace(nearby, anchorRow);
-  }, [nearby, anchor, distanceCenter]);
+  }, [nearby, anchor, createdPlaces, distanceCenter]);
   // TYPED SEARCH LIVES HERE, on the map. A found place needs somewhere to
   // land, and on a bare list it lands nowhere.
   //
@@ -800,10 +818,11 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   };
 
   // Center page is selected even before a tap or flick writes state —
-  // first load and a catalog that dropped the old id both light card 0.
+  // first load and a catalog that dropped the old id both light card 0. A
+  // Google card that became a Mesita card keeps its selection (MESITA-2683).
   const railSelectedId = defaultRailSelection(
     catalog.map((p) => p.id),
-    selectedId,
+    createdPlaceId(selectedId, createdPlaces),
   );
 
   // A pin's last step before it opens: select it (if the card-0 fallback

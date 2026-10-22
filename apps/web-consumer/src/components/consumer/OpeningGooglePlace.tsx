@@ -5,8 +5,9 @@
 // is the profile's first draft (the stash `useOpenGooglePlace` left); Google's
 // photo lands when the client has it; a Creating fact leads the facts row,
 // before the category (MESITA-2679), while get-or-create runs; when it
-// lands, the Feed underneath reloads and this route is replaced by the real
-// profile. A refusal keeps
+// lands, this route is replaced by the real profile, and the card the guest
+// tapped turns into the Mesita card in Home's catalog and Search's carousel
+// behind it (lib/created-places.ts, MESITA-2683). A refusal keeps
 // Google's profile on screen and says why, with Try again. It creates from
 // a client effect only, after a deliberate tap navigated here: never on the
 // server, never on a prefetch. No vote, no Save, no Reserve until the place
@@ -36,7 +37,6 @@ import {
   pendingPlaceDetail,
   readPendingPlaceRaw,
 } from "@/lib/pending-place";
-import { emitPlaceCreated } from "@/lib/place-created-event";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import { getOrCreateGooglePlace } from "@/lib/use-open-google-place";
@@ -136,16 +136,15 @@ function OpeningBody({
     };
   }, [gid, places]);
 
-  // The create, awaited: one shared request per Google Place ID. Landed, the
-  // Feed underneath reloads its rails and this route becomes the real
-  // profile (mirrored photo, Google stars).
+  // The create, awaited: one shared request per Google Place ID. Landed,
+  // this route becomes the real profile (mirrored photo, Google stars); the
+  // lists behind it swap the card themselves (getOrCreateGooglePlace).
   useEffect(() => {
     let live = true;
     void (async () => {
       try {
         const opened = await getOrCreateGooglePlace(supabase, gid);
         clearPendingPlace(gid);
-        emitPlaceCreated({ googlePlaceId: gid, href: opened.href, created: opened.created });
         if (!live) return;
         if (opened.created) {
           toast.success(`${card?.name ?? name ?? "This place"} is on Mesita. Vote to enrich its profile.`);

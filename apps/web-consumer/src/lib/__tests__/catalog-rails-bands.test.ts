@@ -108,7 +108,7 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
     expect(src).toContain("new IntersectionObserver(");
     // A kept pool paints without a request.
     expect(src).toContain("const kept = readAreaPool(requestKey);");
-    expect(src).toContain('if (!kept) void fetchPool("fresh");');
+    expect(src).toContain("if (!kept) void fetchPool();");
   });
 
   it("each tile's events carry source, rank and final (the breakdown box is hidden, MESITA-2660)", () => {

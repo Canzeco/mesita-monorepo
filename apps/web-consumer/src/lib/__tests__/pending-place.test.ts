@@ -8,8 +8,8 @@ import { parsePendingPlace, pendingPlaceDetail } from "../pending-place";
 // A Google-only card opens its profile at once (MESITA-2307): the tap
 // stashes the card and goes to the opening screen, which draws the card as
 // the profile with Google's photo and a Creating fact before its category, awaits
-// the create, then replaces the route with the real profile; the Feed
-// underneath reloads.
+// the create, then replaces the route with the real profile; the lists behind
+// it draw the Mesita card where the Google card stood (created-places.test.ts).
 
 const read = (rel: string) => readFileSync(join(__dirname, rel), "utf8");
 
@@ -101,14 +101,12 @@ describe("the open, the create and the Feed", () => {
     expect(tap).toContain("router.push(googleOpenHref(gid, place.name))");
   });
 
-  it("the opening screen draws the profile, awaits the create, tells the Feed, then shows the real profile", () => {
+  it("the opening screen draws the profile, awaits the create, then shows the real profile", () => {
     const screen = read("../../components/consumer/OpeningGooglePlace.tsx");
     const create = screen.indexOf("await getOrCreateGooglePlace(supabase, gid)");
-    const emit = screen.indexOf("emitPlaceCreated({");
     const replace = screen.indexOf("router.replace(opened.href)");
     expect(create).toBeGreaterThan(0);
-    expect(emit).toBeGreaterThan(create);
-    expect(replace).toBeGreaterThan(emit);
+    expect(replace).toBeGreaterThan(create);
     expect(screen).toContain("creating={creating}");
     // A hard-loaded page loads the real profile as a page, never as a
     // modal over itself with no Back to pop.
@@ -121,14 +119,5 @@ describe("the open, the create and the Feed", () => {
     ]) {
       expect(read(page), page).toContain("apiKey={process.env.NEXT_PUBLIC_GMP_KEY");
     }
-  });
-
-  it("the Feed reloads behind the modal and keeps its rails meanwhile", () => {
-    const rails = read("../../components/consumer/home/CatalogRails.tsx");
-    // The kept pools are stale once a place is created (MESITA-2384).
-    expect(rails).toContain("clearAreaPools();\n        reload.current();");
-    expect(rails).toContain('fetchPool("keep")');
-    expect(rails).toContain('mode === "keep") return;');
-    expect(rails).toContain("apiListAreaPool(supabase, from, families)");
   });
 });
