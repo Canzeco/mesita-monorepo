@@ -86,11 +86,13 @@
 // that or liked that place … just all the historic feed scrollable"; it
 // replaces MESITA-2583's liked-only list). The card shows the handle by a
 // like's rule, so it may show one a view row did not (decision,
-// MESITA-2609).
+// MESITA-2609). AN X CLOSES IT (Pato, MESITA-2681: "add the X to close"),
+// and the history scrolls with no bar drawn over its photos ("fix the
+// scrolling bar").
 
 import { useEffect, useRef, useState, type SVGProps } from "react";
 import Link from "next/link";
-import { ArrowUp, Crown, RotateCw, Users } from "lucide-react";
+import { ArrowUp, Crown, RotateCw, Users, X } from "lucide-react";
 import { DefaultAvatar } from "@mesita/place-profile";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
@@ -469,7 +471,9 @@ function cardInstagramLabel(person: ActivityPerson): string {
  *  a view row may open on a handle. Mesita first (MESITA-2594):
  *  Open Instagram is a small link under the list, not the card's main
  *  button. A masked handle ("per***") has no link; the card says how to see
- *  it. */
+ *  it. The route sheets' close disc sits in its top-right corner, inset by
+ *  the card's own padding (MESITA-2681); the backdrop and Escape still
+ *  close it too. */
 function PersonCard({
   item,
   open,
@@ -497,6 +501,15 @@ function PersonCard({
       instant
     >
       <div className="p-5" data-social-person-card>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="border-border bg-card text-foreground hover:bg-muted absolute top-5 right-5 z-10 flex h-11 w-11 items-center justify-center rounded-full border transition"
+          data-social-person-close
+        >
+          <X className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+        </button>
         <IdentityCard
           name={who}
           avatarUrl={person.avatarUrl}
@@ -552,7 +565,9 @@ function PersonCard({
 /** The card's one list (MESITA-2609): the member's history, one row per
  *  event, the feed row's own shape without the face — "liked Contramar",
  *  the time under it, the place's photo on the right — each a door to the
- *  place. Scrolls inside the card. */
+ *  place. Scrolls inside the card with no bar, the app's every scroller
+ *  (the browser's bar sat over the photos, MESITA-2681), and a fling at
+ *  either end stays in the card instead of scrolling Home behind it. */
 function HistoryList({ items }: { items: MemberHistoryItem[] | null }) {
   if (items == null) {
     return (
@@ -583,7 +598,7 @@ function HistoryList({ items }: { items: MemberHistoryItem[] | null }) {
     <ul
       role="list"
       aria-label="Activity"
-      className="divide-border max-h-[45vh] divide-y overflow-y-auto"
+      className="divide-border scrollbar-hide max-h-[45vh] divide-y overflow-y-auto overscroll-y-contain"
       data-social-history
     >
       {items.map((it) => (
