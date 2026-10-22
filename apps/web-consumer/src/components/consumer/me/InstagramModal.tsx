@@ -238,8 +238,17 @@ function WhyConnectModule() {
   );
 }
 
+// BY DM, HANDLE FIRST (Pato, MESITA-2599: "just input your instagram name,
+// send that message to the instagram bot, then that's it … technically you
+// don't need to input instagram name because when the bot receives the
+// message it can see who sent it, but still ask … it's a clearer UX"). The
+// typed handle only shapes the flow ("Send it from @handle"); the server
+// still verifies whoever actually sent the code.
 function ConnectByMessage() {
   const supabase = useBrowserSupabase();
+  const [handle, setHandle] = useState("");
+  const typed = handle.trim().replace(/^@/, "").toLowerCase();
+  const handleOk = HANDLE_RE.test(handle.trim());
   const [claim, setClaim] = useState<InstagramDmClaim | null>(null);
   const [busy, setBusy] = useState(false);
   // Polling stops after DM_POLL_FOR_MS; "Check again" restarts it.
@@ -276,7 +285,7 @@ function ConnectByMessage() {
   }, [claim, waitingSince, supabase]);
 
   async function start() {
-    if (busy) return;
+    if (busy || !handleOk) return;
     setBusy(true);
     try {
       setClaim(await apiStartInstagramDm(supabase));
@@ -309,11 +318,11 @@ function ConnectByMessage() {
       </h3>
       <ol className="flex flex-col gap-3">
         {[
-          <>Get your code</>,
+          <>Type your Instagram @handle</>,
           <>
-            Send it to <b>@{claim?.account ?? "mesita"}</b> on Instagram
+            Send your code to <b>@{claim?.account ?? "mesita"}</b> on Instagram
           </>,
-          <>We verify you in a few seconds</>,
+          <>That&apos;s it: you&apos;re verified in a few seconds</>,
         ].map((line, i) => (
           <li key={i} className="type-body flex items-start gap-3 leading-snug">
             <span className="bg-secondary/15 text-secondary type-label flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-bold">
@@ -323,12 +332,35 @@ function ConnectByMessage() {
           </li>
         ))}
       </ol>
+      <input
+        value={handle}
+        onChange={(e) => {
+          setHandle(e.target.value);
+          // A different handle starts over with a new code.
+          if (claim) {
+            setClaim(null);
+            setWaitingSince(null);
+            setGaveUp(false);
+          }
+        }}
+        placeholder="yourhandle"
+        aria-label="Your Instagram @handle"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        maxLength={31}
+        className="border-border bg-muted/30 placeholder:text-muted-foreground/70 mt-3 h-12 w-full rounded-xl border px-5 text-center text-sm outline-none"
+        data-instagram-dm-handle
+      />
       {claim ? (
         <>
+          <p className="text-muted-foreground type-body mt-3 text-center">
+            Send this code from <b className="text-foreground">@{typed}</b>
+          </p>
           <button
             type="button"
             onClick={copyCode}
-            className="border-border bg-muted/30 mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl border px-5 font-mono text-sm font-semibold tracking-wide"
+            className="border-border bg-muted/30 mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-xl border px-5 font-mono text-sm font-semibold tracking-wide"
           >
             {claim.code}
             <Copy className="text-muted-foreground h-4 w-4" />
@@ -371,8 +403,8 @@ function ConnectByMessage() {
           type="button"
           size="sm"
           onClick={start}
-          disabled={busy}
-          className="mt-3 w-full rounded-xl text-sm font-semibold"
+          disabled={busy || !handleOk}
+          className="mt-2 w-full rounded-xl text-sm font-semibold"
         >
           {busy && <Spinner size="sm" className="border-white/40 border-t-white" />}
           Get my code

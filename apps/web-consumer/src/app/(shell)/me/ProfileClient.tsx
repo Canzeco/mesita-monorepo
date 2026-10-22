@@ -188,7 +188,7 @@ export function ProfileClient() {
             <DestTile
               Icon={Plug}
               title="Connector"
-              summary="ChatGPT, Claude · Soon"
+              summary="ChatGPT or Claude"
               href={CONSUMER_ROUTES.mePages.connector}
             />
           </DestGrid>

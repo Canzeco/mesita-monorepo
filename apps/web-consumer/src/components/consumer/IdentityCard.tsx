@@ -32,7 +32,11 @@ import { cn } from "@/lib/utils";
 //   ( ♛ VIP                        )
 //   ( ▭ Premium                    )
 //
-// One width for all four (the card's width up to 18rem), 40px tall, 14px.
+// One width for all four (the card's width up to 18rem), 36px tall (MESITA-2599:
+// "make the boxes a bit shorter"; 40px before), and ONE
+// text style, 14px semibold, in every box (Pato, MESITA-2599: "standardize
+// the size of those letters inside the four boxes"); the defaults (Regular,
+// Free) differ only in their muted colour.
 // Nothing truncates but the name and the Instagram label.
 //
 // CLASS AND PLAN ARE TWO THINGS (MESITA-2553). Class is partnership status:
@@ -43,15 +47,15 @@ import { cn } from "@/lib/utils";
 // are doors — Class opens its explainer, Plan opens /me/plan; on Social both
 // are facts.
 
-/** One box of the card (MESITA-2596): 40px tall, 14px text, the full width
+/** One box of the card (MESITA-2596, MESITA-2599): 36px tall, 14px text, the full width
  *  of the box column, so all four boxes share one width. */
 const CHIP_CLASS =
-  "border-border text-foreground relative flex h-10 w-full min-w-0 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold";
+  "border-border text-foreground relative flex h-9 w-full min-w-0 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold";
 
 /** Grows a box's tap area to the 44px floor without growing it visually
  *  (MESITA-1688). */
 const TAP_TARGET_CLASS =
-  "after:absolute after:inset-x-0 after:inset-y-[-2px] after:content-['']";
+  "after:absolute after:inset-x-0 after:inset-y-[-4px] after:content-['']";
 
 export type IdentityInstagram = {
   /** "@handle", "Connect it", or "@per*** · 1.2K followers" (MESITA-2594). */
@@ -88,7 +92,7 @@ function ClassChip({
     CHIP_CLASS,
     vip
       ? "bg-foreground text-background border-transparent"
-      : "text-muted-foreground font-medium",
+      : "text-muted-foreground",
     onPress && cn(TAP_TARGET_CLASS, "transition", !vip && "hover:bg-muted"),
   );
   const body = (
@@ -128,7 +132,7 @@ function PlanChip({ plan, href }: { plan: GuestPlan; href?: string }) {
   const label = PLAN_LABEL[plan];
   const className = cn(
     CHIP_CLASS,
-    premium ? "border-foreground" : "text-muted-foreground font-medium",
+    premium ? "border-foreground" : "text-muted-foreground",
     href && cn(TAP_TARGET_CLASS, "hover:bg-muted transition"),
   );
   const body = (
@@ -161,7 +165,6 @@ function PlanChip({ plan, href }: { plan: GuestPlan; href?: string }) {
 function NameBox({ name, href }: { name: string; href?: string }) {
   const className = cn(
     CHIP_CLASS,
-    "text-base",
     href && cn(TAP_TARGET_CLASS, "hover:bg-muted transition"),
   );
   const body = (

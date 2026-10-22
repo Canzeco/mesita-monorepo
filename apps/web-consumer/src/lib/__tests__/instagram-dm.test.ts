@@ -37,10 +37,13 @@ describe("connecting Instagram by message", () => {
     expect(PAGE).toContain('channel?.channel === "bio" && (');
   });
 
-  it("never asks for a handle or a bio edit on the message path", () => {
+  // MESITA-2599: the message path asks for the @handle (for a clearer flow;
+  // the bot still verifies the sender), never for a bio edit.
+  it("asks for the @handle, never for a bio edit, on the message path", () => {
     const dm = PAGE.slice(PAGE.indexOf("function ConnectByMessage"), PAGE.indexOf("function ConnectModule"));
     expect(dm).toContain("Send it on Instagram");
     expect(dm).toContain("claim.link");
-    expect(dm).not.toMatch(/bio|@handle|onHandleChange/);
+    expect(dm).toContain("Type your Instagram @handle");
+    expect(dm).not.toMatch(/\bbio\b|onHandleChange/);
   });
 });
