@@ -1,6 +1,7 @@
 export { PlaceProfile } from "./components/PlaceProfile";
 export { PlaceDetailBody } from "./components/PlaceDetailBody";
 export { PlaceDetailTitle } from "./components/PlaceDetailTitle";
+export { PlaceTopBar } from "./components/PlaceTopBar";
 export { EnrichedBadge } from "./components/EnrichedBadge";
 export { DefaultAvatar } from "./components/DefaultAvatar";
 export { ImageCarousel } from "./components/ImageCarousel";

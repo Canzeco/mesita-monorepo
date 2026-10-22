@@ -1,13 +1,11 @@
 "use client";
 
 import type React from "react";
-import { ChevronLeft, MoreHorizontal } from "lucide-react";
 
 import type { PlaceActions, PlaceCreatingView } from "../actions";
-import { inertButtonProps } from "../actions";
 import type { PlaceDetail } from "../place-detail";
 import { PlaceDetailBody } from "./PlaceDetailBody";
-import { PlaceDetailTitle } from "./PlaceDetailTitle";
+import { PlaceTopBar } from "./PlaceTopBar";
 
 // Header, then the scrolling body. There is no pinned bar: the one action
 // row (the heart, Reserve · Directions, then Contact) sits in the
@@ -15,7 +13,8 @@ import { PlaceDetailTitle } from "./PlaceDetailTitle";
 // page and the admin phone both render this. Omitted callbacks stay visible
 // and do nothing.
 //
-// THE TOP BAR IS INSTAGRAM'S PROFILE BAR (Pato, MESITA-2619: "make the
+// THE TOP BAR IS INSTAGRAM'S PROFILE BAR (PlaceTopBar, shared with the
+// consumer's in-app slide-over since MESITA-2627) (Pato, MESITA-2619: "make the
 // header look more instagramish, with the three dots and all that shit, i
 // mean, the name"): a bare chevron, the name in bold sans at its left, and
 // the three dots at the right edge. It replaced a bordered back square and
@@ -43,28 +42,14 @@ export function PlaceProfile({
    *  "Followed by". */
   social?: React.ReactNode;
 }) {
-  const onShare = actions?.onShare;
   return (
     <div className="bg-background relative flex min-h-0 flex-1 flex-col overflow-hidden">
-      <header className="bg-card z-20 flex h-14 shrink-0 items-center gap-1 px-1">
-        <button
-          type="button"
-          aria-label="Back"
-          className="text-foreground hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition"
-          {...(onBack ? { onClick: onBack } : inertButtonProps(false))}
-        >
-          <ChevronLeft className="h-6 w-6" strokeWidth={2.25} />
-        </button>
-        <PlaceDetailTitle placeName={place.name} enriched={place.is_enriched} />
-        <button
-          type="button"
-          aria-label="Share this place"
-          className="text-foreground hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition"
-          {...(onShare ? { onClick: onShare } : inertButtonProps(false))}
-        >
-          <MoreHorizontal className="h-6 w-6" strokeWidth={2.25} />
-        </button>
-      </header>
+      <PlaceTopBar
+        name={place.name}
+        enriched={place.is_enriched}
+        onBack={onBack}
+        onShare={actions?.onShare}
+      />
       <div
         className="min-h-0 flex-1 overflow-y-auto"
         tabIndex={scrollLabel ? 0 : undefined}
