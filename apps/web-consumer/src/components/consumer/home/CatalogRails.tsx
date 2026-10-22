@@ -56,12 +56,7 @@ import {
   type CatalogRail,
   type Place,
 } from "@/lib/api/places";
-import {
-  areaPoolKey,
-  clearAreaPools,
-  readAreaPool,
-  writeAreaPool,
-} from "@/lib/area-pool-cache";
+import { areaPoolKey, readAreaPool, writeAreaPool } from "@/lib/area-pool-cache";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import { FamilyIcon } from "@/lib/family-icons";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -71,7 +66,7 @@ import {
   useUserLocationSettled,
 } from "@/lib/use-user-location";
 import { withUserDistance } from "@/lib/place-distance";
-import { onPlaceCreated } from "@/lib/place-created-event";
+import { useCreatedPlaces, withCreatedPlaces } from "@/lib/created-places";
 import { useOpenGooglePlace } from "@/lib/use-open-google-place";
 import { useCardSaveShare } from "@/lib/use-card-save-share";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
@@ -231,16 +226,11 @@ export function CatalogRails() {
   const requestKey = `${areaPoolKey(from)}|${
     families.length > 0 ? families.join(",") : ALL_CHIP
   }`;
-  // The running load's background reload: the rails on screen stay until
-  // the new ones land, and an error never replaces a good feed.
-  const reload = useRef<() => void>(() => {});
 
   useEffect(() => {
     // Until the browser answers there is no point to rank from yet.
     if (waitingForFix) return;
     let cancelled = false;
-    // The newest request wins; an older response is dropped.
-    let seq = 0;
     // A pool kept from the last ten minutes paints at once: no request.
     const kept = readAreaPool(requestKey);
     const raf = requestAnimationFrame(() => {
@@ -248,11 +238,10 @@ export function CatalogRails() {
       setPool(kept);
       setFetchError(null);
     });
-    const fetchPool = async (mode: "fresh" | "keep") => {
-      const mine = ++seq;
+    const fetchPool = async () => {
       try {
         const next = await apiListAreaPool(supabase, from, families);
-        if (cancelled || mine !== seq) return;
+        if (cancelled) return;
         if (next.shape === "legacy" && !legacyShapeLogged) {
           legacyShapeLogged = true;
           console.warn(
@@ -263,34 +252,27 @@ export function CatalogRails() {
         setPool(next);
         setFetchError(null);
       } catch (err) {
-        if (cancelled || mine !== seq || mode === "keep") return;
+        if (cancelled) return;
         setFetchError(errMsg(err, "Couldn't load the catalog"));
         setPool({ shape: "unified", kind: "none", places: [] });
       }
     };
-    reload.current = () => void fetchPool("keep");
-    if (!kept) void fetchPool("fresh");
+    if (!kept) void fetchPool();
     return () => {
       cancelled = true;
       cancelAnimationFrame(raf);
-      reload.current = () => {};
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase, requestKey]);
 
-  // A Google-only card the guest opened is a Mesita place once the create
-  // lands (PendingPlaceScreen says so). This Feed sits under the place
-  // modal and nothing else refetches it: reload behind the modal and the
-  // card comes back with its photo and its link, never the icon stub
-  // (MESITA-2307).
-  useEffect(
-    () =>
-      onPlaceCreated(() => {
-        clearAreaPools();
-        reload.current();
-      }),
-    [],
-  );
+  // A GOOGLE CARD THE GUEST OPENED, SAVED OR SHARED IS A MESITA CARD once
+  // the create lands (Pato, MESITA-2683: "the profile has been created but i
+  // still have the old not created profile data in the carousel"): its tile
+  // swaps in place, photo and profile link, in this pool and in any kept
+  // one, wherever the create happened. It replaced a reload of the whole
+  // pool on the create (MESITA-2307), which missed a Home that was not on
+  // screen and paid a Google call for one card.
+  const createdPlaces = useCreatedPlaces();
 
   // Paging after ranking: the pool is whole; the screen draws it a page at
   // a time and the sentinel under the last tile asks for the next.
@@ -299,8 +281,8 @@ export function CatalogRails() {
   const pageCount = pages.key === pageKey ? pages.n : 1;
   const sentinel = useRef<HTMLLIElement | null>(null);
   const shown: Place[] = useMemo(
-    () => (pool ? poolPlaces(pool, chip) : []),
-    [pool, chip],
+    () => (pool ? withCreatedPlaces(poolPlaces(pool, chip), createdPlaces) : []),
+    [pool, chip, createdPlaces],
   );
   const hasMore = shown.length > pageCount * PLACES_PAGE;
   useEffect(() => {

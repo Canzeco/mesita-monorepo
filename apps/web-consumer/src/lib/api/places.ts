@@ -242,6 +242,29 @@ export async function apiFetchPlaceDetail(
   }
 }
 
+/** One place as a list card (MESITA-2683): the row consumer-web-get-place
+ *  returns, for a list swapping a just-created place's Google card for it.
+ *  Null when the place cannot be read; a list then keeps the card it has. */
+export async function apiFetchPlaceCard(
+  client: SupabaseClient,
+  id: string,
+): Promise<Place | null> {
+  try {
+    const { place } = await invokeEF<{ place?: Place }>(
+      client,
+      "consumer-web-get-place",
+      { id },
+      "Place not found",
+    );
+    return place ? cleanPlace(place) : null;
+  } catch (err) {
+    if (!(err instanceof EFError && err.status === 404)) {
+      console.error(`[apiFetchPlaceCard] consumer-get-place failed for "${id}":`, err);
+    }
+    return null;
+  }
+}
+
 /** The server's Area breakdown for one place (MESITA-2379). `null` is
  *  "n/a", never 0; the client never recomputes any of it. */
 export type AreaDiagnostics = {

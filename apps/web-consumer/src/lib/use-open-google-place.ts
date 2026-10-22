@@ -16,11 +16,17 @@
 // The card the guest tapped rides along (MESITA-2307): it is stashed here and
 // the opening screen draws it as the profile's first draft — name, category,
 // stars, address, distance — with Google's photo, while the create runs.
+//
+// Every create passes through `getOrCreateGooglePlace` (the opening screen,
+// a card's Save and Share), so this is where the lists learn of it: the
+// created place's card goes to lib/created-places.ts, and Home's catalog and
+// Search's carousel draw it where the Google card stood (MESITA-2683).
 
 import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { apiCreateProject } from "@/lib/api/place-search";
+import { rememberCreatedPlace } from "@/lib/created-places";
 import { placeHref } from "@/lib/place-route";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { type PendingPlaceCard, stashPendingPlace } from "@/lib/pending-place";
@@ -76,6 +82,7 @@ export function getOrCreateGooglePlace(
     .then((opened) => {
       const dest = opened.place.slug || opened.place.id;
       if (!dest) throw new Error("Couldn't open that place right now.");
+      if (opened.place.id) rememberCreatedPlace(supabase, gid, opened.place.id);
       return {
         href: placeHref(dest),
         created: opened.created !== false,

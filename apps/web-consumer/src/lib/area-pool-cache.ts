@@ -34,8 +34,3 @@ export function readAreaPool(key: string, now = Date.now()): AreaPool | null {
 export function writeAreaPool(key: string, pool: AreaPool, now = Date.now()): void {
   pools.set(key, { at: now, pool });
 }
-
-/** A place was created behind the Feed: every cached pool may be stale. */
-export function clearAreaPools(): void {
-  pools.clear();
-}
