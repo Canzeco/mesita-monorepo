@@ -116,6 +116,8 @@ describe("One ranking, no prefer (MESITA-2516)", () => {
     expect(locationErrorFromCode(1)).toBe("denied");
     expect(locationErrorFromCode(2)).toBe("unavailable");
     expect(locationErrorFromCode(3)).toBe("timeout");
-    expect(hook).toContain("errorState = locationErrorFromCode(err.code);");
+    // The failure is kept, never dropped (MESITA-2437; the retry since MESITA-2615).
+    expect(hook).toContain("resolve({ error: locationErrorFromCode(err.code) })");
+    expect(hook).toContain("errorState = answer.error;");
   });
 });

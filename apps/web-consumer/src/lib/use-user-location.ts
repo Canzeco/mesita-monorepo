@@ -22,10 +22,20 @@ const GEO_OPTS: PositionOptions = {
   maximumAge: 60_000,
 };
 
+/** The one retry after "unavailable" or "timeout" (MESITA-2615): any cached
+ *  fix will do, and the device gets longer to find itself. */
+const RETRY_OPTS: PositionOptions = {
+  enableHighAccuracy: false,
+  timeout: 15_000,
+  maximumAge: Infinity,
+};
+
 let coordsState: Coords | null = null;
 let locatingState = false;
 let errorState: LocationError | null = null;
 let asked = false;
+let inflight: Promise<Coords | null> | null = null;
+let watchingPermission = false;
 const listeners = new Set<() => void>();
 // Every fix the browser hands back, the same coordinates included: a page
 // that asked for a fix (the Search location disc) needs the answer even
@@ -41,6 +51,40 @@ export function sameCoords(a: Coords | null, b: Coords | null): boolean {
   return a.lat === b.lat && a.lng === b.lng;
 }
 
+/** One browser ask: the position, or the reason it failed. */
+function askOnce(
+  opts: PositionOptions,
+): Promise<{ pos: GeolocationPosition } | { error: LocationError }> {
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ pos }),
+      (err) => resolve({ error: locationErrorFromCode(err.code) }),
+      opts,
+    );
+  });
+}
+
+/** ALLOWED LATER, LOCATED AT ONCE (MESITA-2615). A guest who unblocks the
+ *  site from the browser's address bar should not have to reload or tap
+ *  again: when the permission turns to "granted", ask. Browsers without the
+ *  Permissions API for geolocation just skip this. */
+function watchPermission() {
+  if (watchingPermission) return;
+  watchingPermission = true;
+  try {
+    void navigator.permissions
+      ?.query({ name: "geolocation" })
+      .then((status) => {
+        status.addEventListener("change", () => {
+          if (status.state === "granted" && !coordsState) void requestUserLocation();
+        });
+      })
+      .catch(() => {});
+  } catch {
+    // No Permissions API: the guest taps "Use my location" again instead.
+  }
+}
+
 function requestUserLocation(): Promise<Coords | null> {
   asked = true;
   if (typeof navigator === "undefined" || !navigator.geolocation) {
@@ -48,37 +92,41 @@ function requestUserLocation(): Promise<Coords | null> {
     emit();
     return Promise.resolve(null);
   }
+  watchPermission();
+  // One ask at a time: a second caller waits on the same answer.
+  if (inflight) return inflight;
   locatingState = true;
   errorState = null;
   emit();
-  return new Promise((resolve) => {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const next = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        };
-        // SAME PLACE, SAME OBJECT (MESITA-2440). A fresh object for the same
-        // coordinates read as a move to every effect keyed on it: the Search
-        // map re-centred on the guest after they had panned away.
-        const fix =
-          coordsState && sameCoords(coordsState, next) ? coordsState : next;
-        coordsState = fix;
-        locatingState = false;
-        errorState = null;
-        emit();
-        for (const listener of fixListeners) listener(fix);
-        resolve(fix);
-      },
-      (err) => {
-        locatingState = false;
-        errorState = locationErrorFromCode(err.code);
-        emit();
-        resolve(null);
-      },
-      GEO_OPTS,
-    );
-  });
+  inflight = (async () => {
+    let answer = await askOnce(GEO_OPTS);
+    // The device could not find itself or took too long: once more, longer,
+    // taking any cached fix (MESITA-2615). A refusal is final; no retry.
+    if ("error" in answer && (answer.error === "unavailable" || answer.error === "timeout")) {
+      answer = await askOnce(RETRY_OPTS);
+    }
+    inflight = null;
+    locatingState = false;
+    if ("error" in answer) {
+      errorState = answer.error;
+      emit();
+      return null;
+    }
+    const next = {
+      lat: answer.pos.coords.latitude,
+      lng: answer.pos.coords.longitude,
+    };
+    // SAME PLACE, SAME OBJECT (MESITA-2440). A fresh object for the same
+    // coordinates read as a move to every effect keyed on it: the Search
+    // map re-centred on the guest after they had panned away.
+    const fix = coordsState && sameCoords(coordsState, next) ? coordsState : next;
+    coordsState = fix;
+    errorState = null;
+    emit();
+    for (const listener of fixListeners) listener(fix);
+    return fix;
+  })();
+  return inflight;
 }
 
 function subscribe(listener: () => void): () => void {

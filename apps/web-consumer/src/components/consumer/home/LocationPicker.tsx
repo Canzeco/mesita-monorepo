@@ -48,9 +48,12 @@ import { aroundYouCamera, pickCamera, type PickerCamera } from "@/lib/location-p
 import { MONTERREY_CENTER } from "@/lib/map-defaults";
 import {
   useLocateUser,
+  useOnUserFix,
   useUserLocation,
+  useUserLocationError,
   useUserLocationLocating,
   useUserLocationSettled,
+  type LocationError,
 } from "@/lib/use-user-location";
 import {
   displayName,
@@ -112,6 +115,18 @@ export function headerLocation(
   return { label: locationLabel(active, hasFix, locating), off: false };
 }
 
+/** Why the device gave no location, and what fixes it (MESITA-2615): shown in
+ *  red under "Use my location" while the sheet is open, so a tap is never
+ *  dead. Each reason names the one thing the guest can do. */
+export const LOCATION_HELP: Record<LocationError, string> = {
+  denied:
+    "Location is blocked for this site. Allow it from the icon beside the address bar; Mesita picks it up by itself.",
+  unavailable:
+    "Your device couldn't find you. Turn on Location Services for your browser, then tap Use my location.",
+  timeout: "Finding you took too long. Tap Use my location to try again.",
+  unsupported: "This browser can't share your location. Search a place above instead.",
+};
+
 const ICON = "h-4 w-4 shrink-0";
 
 /** The grey word at the end of an "Around you" row (MESITA-2471). */
@@ -145,6 +160,10 @@ export function LocationPicker() {
   const locating = useUserLocationLocating();
   const locate = useLocateUser();
   const settled = useUserLocationSettled();
+  const locError = useUserLocationError();
+  // The guest tapped "Use my location" with no fix: the sheet stays open
+  // until the answer lands (MESITA-2615), then closes on a fix.
+  const [wantFix, setWantFix] = useState(false);
   const active = useActiveLocation();
   const activeKey = useActiveLocationKey();
   const savedLocations = useSavedLocations();
@@ -205,8 +224,17 @@ export function LocationPicker() {
     setResults([]);
     setError(null);
     setResolving(null);
+    setWantFix(false);
     setToken(newSessionToken());
   };
+
+  // The fix the guest asked for landed: Current location is chosen already.
+  useOnUserFix(() => {
+    if (wantFix) close();
+  });
+
+  const locatingHere = coords === null && locating;
+  const help = coords === null && !locating && locError ? LOCATION_HELP[locError] : null;
 
   /** Back from the picker: to the results (query kept) or the list. */
   const back = () => setPicker(null);
@@ -240,6 +268,7 @@ export function LocationPicker() {
     onClick: () => void;
     muted?: boolean;
     trailing?: ReactNode;
+    alert?: string | null;
   }) => (
     <li key={r.key} className="relative">
       <button
@@ -257,6 +286,15 @@ export function LocationPicker() {
           <span className="block truncate">{r.label}</span>
           {r.detail ? (
             <span className="text-muted-foreground block truncate text-xs font-normal">{r.detail}</span>
+          ) : null}
+          {r.alert ? (
+            <span
+              className="text-destructive mt-0.5 block text-xs font-normal"
+              role="status"
+              data-places-location-help
+            >
+              {r.alert}
+            </span>
           ) : null}
         </span>
       </button>
@@ -377,15 +415,24 @@ export function LocationPicker() {
             {row({
               key: "here",
               label: locationLabel(null, coords !== null, locating, hereName),
-              icon: (
+              icon: locatingHere ? (
+                <Loader2 className={cn(ICON, "animate-spin")} aria-hidden />
+              ) : (
                 <Navigation className={ICON} strokeWidth={2.25} aria-hidden />
               ),
               selected: active === null && coords !== null,
-              muted: coords === null,
+              muted: coords === null && !help,
+              alert: help,
+              // With a fix: choose it and close. Without one: ask and keep
+              // the sheet open; a fix closes it, a failure says why above.
               onClick: () => {
                 setActiveLocation(null);
-                if (coords === null) locate();
-                close();
+                if (coords !== null) {
+                  close();
+                  return;
+                }
+                setWantFix(true);
+                locate();
               },
             })}
             {aroundYou.length > 0 ? (
