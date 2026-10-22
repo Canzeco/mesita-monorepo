@@ -58,10 +58,14 @@ export function PlaceTabBar({
             onClick={() => onChange(t.key)}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "type-body -mb-px flex items-center justify-center border-b-2 px-0.5 py-3 text-center font-semibold tracking-wide transition",
+              "type-body -mb-px flex items-center justify-center border-b-2 px-0.5 py-3 text-center tracking-wide transition",
+              // THE SELECTED TAB IS UNMISTAKABLE (Pato, MESITA-2671: "it must
+              // be a lot clearer that one screen is selected, it's too
+              // light"): a 2px black underline and a bold ink label, like
+              // Home's Places | Social strip; the rest muted, medium.
               active
-                ? "text-foreground border-border"
-                : "text-muted-foreground hover:text-foreground border-transparent",
+                ? "text-foreground border-foreground font-bold"
+                : "text-muted-foreground hover:text-foreground border-transparent font-medium",
             )}
           >
             {t.label}
