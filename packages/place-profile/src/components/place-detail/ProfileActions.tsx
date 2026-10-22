@@ -3,7 +3,7 @@
 import {
   CalendarCheck,
   Heart,
-  Navigation,
+  Route,
   Phone,
   Share2,
   type LucideIcon,
@@ -25,8 +25,8 @@ import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS } from "../../lib/ui";
 //   [ ▣ Reserve with Mesita                             ]
 //
 // ROW 1 is four equal grey tiles, icon over a 12px label. Like is the heart
-// (MESITA-2521's favorite, named the way Social names it: "liked"); it fills
-// red once hearted. Directions opens Google Maps already routing to the
+// (MESITA-2521's favorite, named the way Social names it: "liked"); once
+// hearted only the heart turns red, never the tile (MESITA-2635). Directions opens Google Maps already routing to the
 // place (MESITA-2619). Share is back here; the top bar's dots still share.
 //
 // ROW 2 is ONE ink button, "Reserve with Mesita", full width. NO TIMES ON
@@ -125,14 +125,15 @@ export function ProfileActions({
           onClick={onSave}
           pressed={saved}
           ariaLabel={saved ? "Remove from favorites" : "Add to favorites"}
-          className={cn(
-            saved &&
-              "shadow-danger bg-destructive hover:bg-destructive text-white",
-          )}
-          iconClassName={cn(saved && "fill-current")}
+          // LIKED IS A RED HEART, NOT A RED TILE (Pato, MESITA-2635: "that
+          // red is just too red"): the tile stays grey like its neighbours
+          // and only the glyph fills, the way Instagram marks a like.
+          iconClassName={cn(saved && "fill-destructive text-destructive")}
         />
         <ActionTile
-          Icon={Navigation}
+          // A route between two points (Pato, MESITA-2635: "other icon for
+          // directions"); the paper-plane arrow read as send / my location.
+          Icon={Route}
           label="Directions"
           live={Boolean(onOpenLink)}
           onClick={onOpenLink ? () => onOpenLink(directionsUrl) : undefined}
