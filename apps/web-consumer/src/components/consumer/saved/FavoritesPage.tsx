@@ -1,28 +1,32 @@
 "use client";
 
 import { Heart } from "lucide-react";
+import { useRouter } from "next/navigation";
 
-import { CatalogTile } from "@/components/consumer/home/CatalogTile";
+import {
+  RAIL_CARD_HEIGHT_CLASS,
+  RailCard,
+} from "@/components/consumer/search/SearchRailCard";
 import { savedPlaceList } from "@/components/consumer/home/CatalogRails";
 import { EmptyState } from "@/components/shared";
 import { Skeleton } from "@/components/shared/Skeleton";
 import type { Place } from "@/lib/api/places";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { withUserDistance } from "@/lib/place-distance";
-import {
-  readSavedPlacePreviews,
-  removeSavedPlacePreview,
-  upsertSavedPlacePreview,
-  useSavedPlaces,
-} from "@/lib/saved-places";
-import { toast } from "@/lib/toast";
+import { isGoogleOnlyPlace } from "@/lib/place-placeholder";
+import { placeHref } from "@/lib/place-route";
+import { readSavedPlacePreviews, useSavedPlaces } from "@/lib/saved-places";
+import { useCardSaveShare } from "@/lib/use-card-save-share";
 import { useOpenGooglePlace } from "@/lib/use-open-google-place";
 import { useUserLocation } from "@/lib/use-user-location";
+import { cn } from "@/lib/utils";
 
 // FAVORITES — Me › Favorites, /me/favorites (Pato, MESITA-2565: "saved show
 // reservations directly. same for favorites. the page and route containing
 // both reservations and saved its gone"). The hearted places, newest first,
-// in Home's tiles; the heart unlikes, with Undo. It was the first tab of
+// in Search's horizontal card (Pato, MESITA-2698: "in favorites use this
+// style … the horizontal style"; Home's square tiles before), one per row,
+// a tap opens the place; Saved unsaves, with Undo. It was the first tab of
 // Saved (MESITA-2521), at /me/saved (MESITA-2561) and before that the bar's
 // /saved.
 //
@@ -33,16 +37,18 @@ import { useUserLocation } from "@/lib/use-user-location";
 // THE PANE IS A FLEX COLUMN, NOT A BLOCK: grow, min-h-0, scroll inside — a
 // block parent collapses EmptyState.
 
-const LIST = "grid grid-cols-1 content-start gap-1.5 px-1.5 pt-1.5 pb-6";
+const LIST = "flex flex-col gap-2 px-3 pt-3 pb-6";
 
 function FavoritesList() {
-  const { savedIds, hydrated, setSaved } = useSavedPlaces();
+  const { savedIds, hydrated } = useSavedPlaces();
+  const cards = useCardSaveShare();
+  const router = useRouter();
   const coords = useUserLocation();
   const openGooglePlace = useOpenGooglePlace();
   if (!hydrated) {
     return (
       <div className={LIST}>
-        <Skeleton className="aspect-square rounded-2xl" />
+        <Skeleton className={cn(RAIL_CARD_HEIGHT_CLASS, "rounded-2xl")} />
       </div>
     );
   }
@@ -57,27 +63,24 @@ function FavoritesList() {
       />
     );
   }
-  const unlike = (place: Place) => {
-    setSaved(place.id, false);
-    removeSavedPlacePreview(place.id);
-    toast.action("Removed from favorites", {
-      label: "Undo",
-      onClick: () => {
-        upsertSavedPlacePreview(place);
-        setSaved(place.id, true);
-      },
-    });
+  const open = (place: Place) => {
+    if (isGoogleOnlyPlace(place)) openGooglePlace(place);
+    else router.push(placeHref(place.slug || place.id));
   };
   return (
     <ul role="list" aria-label="Favorites" className={LIST}>
       {list.map((place) => (
-        <CatalogTile
-          key={place.id}
-          place={withUserDistance(place, coords)}
-          saved
-          onToggle={() => unlike(place)}
-          onOpenGoogle={() => openGooglePlace(place)}
-        />
+        <li key={place.id}>
+          <RailCard
+            place={withUserDistance(place, coords)}
+            selected={false}
+            onOpen={() => open(place)}
+            saved={cards.isSaved(place)}
+            onSave={() => cards.toggle(place)}
+            onShare={() => cards.share(place)}
+            withDistance
+          />
+        </li>
       ))}
     </ul>
   );

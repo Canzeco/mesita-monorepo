@@ -38,6 +38,11 @@ export const RAIL_BAND_HEIGHT_CLASS = "h-[17.375rem]";
 // Two-step tap: the first tap on an unselected card just selects it (highlight +
 // snap the rail/map onto it); tapping the already-selected card opens its detail.
 // Save and Share are siblings of that tap target, so they never select or open.
+//
+// ALSO ME › FAVORITES' ROW (Pato, MESITA-2698: "in favorites use this style
+// … the horizontal style to save things"). There it has no map: no
+// onSelect, so a tap opens at once, and `withDistance` puts the distance
+// back on the hours row.
 
 export function RailCard({
   place,
@@ -47,14 +52,17 @@ export function RailCard({
   saved,
   onSave,
   onShare,
+  withDistance = false,
 }: {
   place: Place;
   selected: boolean;
-  onSelect: () => void;
+  /** Absent (a list, not the map): a tap opens at once. */
+  onSelect?: () => void;
   onOpen: () => void;
   saved: boolean;
   onSave: () => void;
   onShare: () => void;
+  withDistance?: boolean;
 }) {
   const photo = cardPhoto(place);
   const placeholder = placePlaceholder(place);
@@ -74,7 +82,7 @@ export function RailCard({
     >
       <button
         type="button"
-        onClick={selected ? onOpen : onSelect}
+        onClick={selected || !onSelect ? onOpen : onSelect}
         className="focus-visible:ring-primary absolute inset-0 flex items-stretch text-left outline-none focus-visible:ring-2 focus-visible:ring-inset"
       >
         {/* Square thumb, card stays a wide rectangle. Bleeds to the card edge
@@ -116,7 +124,7 @@ export function RailCard({
           </p>
           <PriceKindRow facts={facts} />
           <StarsRow facts={facts} />
-          <HoursRow facts={facts} withDistance={false} />
+          <HoursRow facts={facts} withDistance={withDistance} />
         </div>
       </button>
       {/* Under the text column: its left edge is the photo (the inner
