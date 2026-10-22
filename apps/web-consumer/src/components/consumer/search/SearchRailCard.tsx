@@ -7,10 +7,16 @@ import { cn } from "@/lib/utils";
 import {
   CardActions,
   HoursRow,
-  KindRow,
+  PriceKindRow,
+  StarsRow,
   cardFacts,
 } from "@/components/consumer/place-card";
 
+// FIVE ROWS, TALLER STILL (Pato, MESITA-2674: "name / price, category /
+// stars / time / buttons, 5 rows"): name; $$ · category; ★ rating
+// (reviews); hours; Save and Share. 156px with the border; the photo is the
+// inner height, square, so the buttons start at its width + 12px.
+//
 // TALLER, FOUR ROWS (Pato, MESITA-2668: "make the profile bigger here.
 // taller", then "include the buttons to see: Name / Category, Price Range /
 // Hours / Like Share"): 12px inside on every side, the three text rows
@@ -21,7 +27,7 @@ import {
 /** Every catalog rail card is this tall. Missing rows must not shrink a
  *  neighbor — the peek strip has to line up, and the square thumb stays the
  *  same size on every page. */
-export const RAIL_CARD_HEIGHT_CLASS = "h-[8.375rem]";
+export const RAIL_CARD_HEIGHT_CLASS = "h-[9.75rem]";
 /** The carousel row around the card: the card, its 8px pads and the 4px
  *  scrollbar gutter, plus 4px of air (MESITA-2510's fixed band). */
 export const RAIL_ROW_HEIGHT_CLASS = "h-[9.875rem]";
@@ -108,7 +114,8 @@ export function RailCard({
             <span className="truncate">{place.name}</span>
             {isEnrichedPlace(place) ? <EnrichedBadge /> : null}
           </p>
-          <KindRow facts={facts} />
+          <PriceKindRow facts={facts} />
+          <StarsRow facts={facts} />
           <HoursRow facts={facts} withDistance={false} />
         </div>
       </button>
@@ -119,7 +126,7 @@ export function RailCard({
         saved={saved}
         onSave={onSave}
         onShare={onShare}
-        className="absolute right-3 bottom-3 left-36"
+        className="absolute right-3 bottom-3 left-[calc(9.75rem+10px)]"
       />
     </div>
   );
