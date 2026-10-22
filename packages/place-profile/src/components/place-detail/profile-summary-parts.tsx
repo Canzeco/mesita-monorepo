@@ -62,13 +62,14 @@ export function ProfileStat({
     >
       {/* NOT CONNECTED IS GREY (Pato, MESITA-2676: "if no Instagram or no
           Facebook, the icon must be grey-scale, not colour"): the mark loses
-          its colour and half its weight; a linked channel with no count
-          keeps it. */}
+          its colour and half its weight. Since MESITA-2678 ("you must have
+          both the link and its numbers to have colour") any "-" column is
+          grey, a linked channel with no count included. */}
       {icon ? (
         <span
           className={
             "mb-1.5 flex shrink-0" +
-            (spokenValue === "not connected" ? " opacity-50 grayscale" : "")
+            (mention ? " opacity-50 grayscale" : "")
           }
         >
           {icon}
