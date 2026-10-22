@@ -120,7 +120,7 @@ export function ProfileClient() {
               title="Profile"
               summary={
                 loading
-                  ? "…"
+                  ? null
                   : !profile
                     ? "Name, photo, birthday"
                     : profile.code
@@ -132,7 +132,7 @@ export function ProfileClient() {
             <DestTile
               Icon={Instagram}
               title="Instagram"
-              summary={loading ? "…" : igSummary}
+              summary={loading ? null : igSummary}
               href={CONSUMER_ROUTES.mePages.instagram}
             />
           </DestGrid>
@@ -140,18 +140,21 @@ export function ProfileClient() {
           {/* CLASS BESIDE PLAN (Pato, MESITA-2562): two separate facts
               (MESITA-2553), each a page. Never the gem on Plan: that shape
               was the old class chip (MESITA-2551). Each summary is the
-              guest's real value, "…" until it is known. */}
+              guest's real value: a skeleton bar while loading (MESITA-2596), "…"
+              if the read failed. */}
           <DestGrid>
             <DestTile
               Icon={Crown}
               title="Class"
-              summary={profile ? CLASS_LABEL[toGuestClass(profile.guest_class)] : "…"}
+              summary={
+                loading ? null : profile ? CLASS_LABEL[toGuestClass(profile.guest_class)] : "…"
+              }
               href={CONSUMER_ROUTES.mePages.class}
             />
             <DestTile
               Icon={CreditCard}
               title="Plan"
-              summary={profile ? PLAN_LABEL[toGuestPlan(profile.plan)] : "…"}
+              summary={loading ? null : profile ? PLAN_LABEL[toGuestPlan(profile.plan)] : "…"}
               href={CONSUMER_ROUTES.mePages.plan}
             />
           </DestGrid>

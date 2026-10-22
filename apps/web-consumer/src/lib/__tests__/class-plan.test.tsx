@@ -39,14 +39,19 @@ describe("Class and Plan on the identity card", () => {
       />,
     );
 
-  it("stacks Instagram, then Class, then Plan, one per line (MESITA-2595)", () => {
+  it("stacks four equal boxes: name, Instagram, Class, Plan (MESITA-2596)", () => {
     const html = card("vip", false, "premium");
+    const name = html.indexOf("data-identity-name");
     const ig = html.indexOf("data-identity-instagram");
     const cls = html.indexOf("data-identity-class");
     const plan = html.indexOf("data-identity-plan");
+    expect(name).toBeLessThan(ig);
     expect(ig).toBeLessThan(cls);
     expect(cls).toBeLessThan(plan);
-    expect(html).toContain("flex max-w-full flex-col items-center gap-1.5");
+    // One column of one width; every box fills it, 40px tall.
+    expect(html).toContain("flex w-full max-w-72 min-w-0 flex-col items-stretch gap-2");
+    const boxes = html.match(/relative flex h-10 w-full min-w-0/g) ?? [];
+    expect(boxes).toHaveLength(4);
     expect(html).toContain('aria-label="Class: VIP"');
     expect(html).toContain('aria-label="Plan: Premium"');
     expect(html).toContain("lucide-crown");

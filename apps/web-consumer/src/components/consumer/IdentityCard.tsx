@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, CreditCard, Crown } from "lucide-react";
+import { ChevronRight, CreditCard, Crown, UserRound } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
 import {
@@ -20,17 +20,18 @@ import { cn } from "@/lib/utils";
 // handle hidden as "die•••", MESITA-2522). Never the phone: it is private and
 // lives in Settings.
 //
-// CENTRED, ONE FACT PER LINE (Pato, MESITA-2592: "make again the profile
-// centralized"; MESITA-2595: "Name at the top / then instagram and
-// instagram followers in one line / then class in one line / then plan in
-// other line"):
+// CENTRED, FOUR EQUAL BOXES (Pato, MESITA-2595/2596: "make the three lines
+// larger, also add the name in those lines, and make them the same
+// horizontal line each horizontal box, four in total: name, instagram,
+// class, plan"):
 //
 //              (64px photo)
-//                 Diego
-//      [◎ die••• · 1.2K followers]
-//              [♛ VIP]
-//            [▭ Premium]
+//   ( 👤 Diego                     )
+//   ( ◎ die••• · 1.2K followers    )
+//   ( ♛ VIP                        )
+//   ( ▭ Premium                    )
 //
+// One width for all four (the card's width up to 18rem), 40px tall, 14px.
 // Nothing truncates but the name and the Instagram label.
 //
 // CLASS AND PLAN ARE TWO THINGS (MESITA-2553). Class is partnership status:
@@ -41,14 +42,15 @@ import { cn } from "@/lib/utils";
 // are doors — Class opens its explainer, Plan opens /me/plan; on Social both
 // are facts.
 
-/** One chip, Me's header vocabulary (MESITA-1652). */
+/** One box of the card (MESITA-2596): 40px tall, 14px text, the full width
+ *  of the box column, so all four boxes share one width. */
 const CHIP_CLASS =
-  "border-border text-foreground relative inline-flex h-7 max-w-full min-w-0 items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold";
+  "border-border text-foreground relative flex h-10 w-full min-w-0 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold";
 
-/** Grows a chip's tap area to the 44px floor without growing it visually
+/** Grows a box's tap area to the 44px floor without growing it visually
  *  (MESITA-1688). */
 const TAP_TARGET_CLASS =
-  "after:absolute after:inset-x-[-4px] after:inset-y-[-8px] after:content-['']";
+  "after:absolute after:inset-x-0 after:inset-y-[-2px] after:content-['']";
 
 export type IdentityInstagram = {
   /** "@handle", "Connect it", or the hidden "per••• · 1.2K followers". */
@@ -61,12 +63,12 @@ function InstagramBadge() {
   return (
     <span
       className={cn(
-        "flex h-4 w-4 shrink-0 items-center justify-center rounded-full",
+        "flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
         INSTAGRAM_ICON_GRADIENT_CLASS,
       )}
       aria-hidden
     >
-      <Instagram className="h-2.5 w-2.5 text-white" aria-hidden />
+      <Instagram className="h-3 w-3 text-white" aria-hidden />
     </span>
   );
 }
@@ -90,10 +92,10 @@ function ClassChip({
   );
   const body = (
     <>
-      <Crown className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
+      <Crown className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
       <span className="truncate">{label}</span>
       {onPress && (
-        <ChevronRight className="h-3 w-3 shrink-0 opacity-60" aria-hidden />
+        <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-60" aria-hidden />
       )}
     </>
   );
@@ -130,14 +132,10 @@ function PlanChip({ plan, href }: { plan: GuestPlan; href?: string }) {
   );
   const body = (
     <>
-      <CreditCard
-        className="h-3.5 w-3.5 shrink-0"
-        strokeWidth={2.25}
-        aria-hidden
-      />
+      <CreditCard className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
       <span className="truncate">{label}</span>
       {href && (
-        <ChevronRight className="h-3 w-3 shrink-0 opacity-60" aria-hidden />
+        <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-60" aria-hidden />
       )}
     </>
   );
@@ -158,6 +156,38 @@ function PlanChip({ plan, href }: { plan: GuestPlan; href?: string }) {
   );
 }
 
+/** The name box: a link on Me (opens Me › Profile), a fact on Social. */
+function NameBox({ name, href }: { name: string; href?: string }) {
+  const className = cn(
+    CHIP_CLASS,
+    "text-base",
+    href && cn(TAP_TARGET_CLASS, "hover:bg-muted transition"),
+  );
+  const body = (
+    <>
+      <UserRound className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+      <span className="truncate">{name}</span>
+      {href && (
+        <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-60" aria-hidden />
+      )}
+    </>
+  );
+  return href ? (
+    <Link
+      href={href}
+      aria-label={`Profile: ${name}`}
+      className={className}
+      data-identity-name
+    >
+      {body}
+    </Link>
+  ) : (
+    <span className={className} data-identity-name>
+      {body}
+    </span>
+  );
+}
+
 export function IdentityCard({
   name,
   avatarUrl,
@@ -166,6 +196,7 @@ export function IdentityCard({
   onClassPress,
   plan,
   planHref,
+  nameHref,
 }: {
   name: string;
   avatarUrl: string | null;
@@ -178,6 +209,8 @@ export function IdentityCard({
   plan: GuestPlan | null;
   /** Me only: the Plan chip opens the Plan page. */
   planHref?: string;
+  /** Me only: the name box opens Me › Profile. */
+  nameHref?: string;
 }) {
   return (
     <div
@@ -199,51 +232,44 @@ export function IdentityCard({
         </span>
       </span>
 
-      <div className="flex w-full min-w-0 flex-col items-center gap-1.5">
-        <p
-          className="text-foreground w-full truncate text-base leading-tight font-semibold"
-          data-identity-name
-        >
-          {name}
-        </p>
+      {/* Four boxes, one width (MESITA-2596). */}
+      <div
+        className="flex w-full max-w-72 min-w-0 flex-col items-stretch gap-2"
+        data-identity-chips
+      >
+        <NameBox name={name} href={nameHref} />
 
-        {/* One fact per line, centred (MESITA-2595). */}
-        <div
-          className="flex max-w-full flex-col items-center gap-1.5"
-          data-identity-chips
-        >
-          {instagram?.href ? (
-            <Link
-              href={instagram.href}
-              aria-label={`Instagram: ${instagram.label}`}
-              className={cn(
-                CHIP_CLASS,
-                TAP_TARGET_CLASS,
-                "hover:bg-muted transition",
-              )}
-              data-identity-instagram
-            >
-              <InstagramBadge />
-              <span className="truncate">{instagram.label}</span>
-              <ChevronRight
-                className="h-3 w-3 shrink-0 opacity-60"
-                aria-hidden
-              />
-            </Link>
-          ) : instagram ? (
-            <span className={CHIP_CLASS} data-identity-instagram>
-              <InstagramBadge />
-              <span className="sr-only">Instagram:</span>
-              <span className="truncate">{instagram.label}</span>
-            </span>
-          ) : null}
+        {instagram?.href ? (
+          <Link
+            href={instagram.href}
+            aria-label={`Instagram: ${instagram.label}`}
+            className={cn(
+              CHIP_CLASS,
+              TAP_TARGET_CLASS,
+              "hover:bg-muted transition",
+            )}
+            data-identity-instagram
+          >
+            <InstagramBadge />
+            <span className="truncate">{instagram.label}</span>
+            <ChevronRight
+              className="h-3.5 w-3.5 shrink-0 opacity-60"
+              aria-hidden
+            />
+          </Link>
+        ) : instagram ? (
+          <span className={CHIP_CLASS} data-identity-instagram>
+            <InstagramBadge />
+            <span className="sr-only">Instagram:</span>
+            <span className="truncate">{instagram.label}</span>
+          </span>
+        ) : null}
 
-          {guestClass && (
-            <ClassChip guestClass={guestClass} onPress={onClassPress} />
-          )}
+        {guestClass && (
+          <ClassChip guestClass={guestClass} onPress={onClassPress} />
+        )}
 
-          {plan && <PlanChip plan={plan} href={planHref} />}
-        </div>
+        {plan && <PlanChip plan={plan} href={planHref} />}
       </div>
     </div>
   );
