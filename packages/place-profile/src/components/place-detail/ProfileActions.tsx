@@ -2,8 +2,8 @@
 
 import {
   CalendarCheck,
+  Car,
   Heart,
-  Map as MapIcon,
   Phone,
   Share2,
   type LucideIcon,
@@ -123,7 +123,10 @@ export function ProfileActions({
       <div className="grid grid-cols-4 gap-2" data-profile-actions="tiles">
         <ActionTile
           Icon={Heart}
-          label={saved ? "Liked" : "Like"}
+          // SAVE, NOT LIKE (Pato, MESITA-2668: "use word save instead of
+          // liked but keep the heart"), as on the Home tile and the Search
+          // card.
+          label={saved ? "Saved" : "Save"}
           live={Boolean(onSave)}
           onClick={onSave}
           pressed={saved}
@@ -134,11 +137,11 @@ export function ProfileActions({
           iconClassName={cn(saved && "fill-destructive text-destructive")}
         />
         <ActionTile
-          // A folded map (Pato, MESITA-2649: "here better use a map icon, not
-          // a car"). The car (MESITA-2640), Signpost (MESITA-2638), Route
-          // (MESITA-2635) and the paper plane before them each lived one
-          // night. Imported as MapIcon so it never shadows the global Map.
-          Icon={MapIcon}
+          // A car again (Pato, MESITA-2668: "for directions use a car as
+          // icon"). The folded map (MESITA-2649), the car (MESITA-2640),
+          // Signpost (MESITA-2638), Route (MESITA-2635) and the paper plane
+          // came before it.
+          Icon={Car}
           label="Directions"
           live={Boolean(onOpenLink)}
           onClick={onOpenLink ? () => onOpenLink(directionsUrl) : undefined}

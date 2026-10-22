@@ -4,9 +4,15 @@ import { MapPin } from "lucide-react";
 import type { MapWeights, Place } from "@/lib/api/places";
 import { Skeleton, Spinner } from "@/components/shared";
 import type { Coords } from "@/lib/use-user-location";
+import { useCardSaveShare } from "@/lib/use-card-save-share";
 import { cn } from "@/lib/utils";
 
-import { RAIL_CARD_HEIGHT_CLASS, RailCard } from "./SearchRailCard";
+import {
+  RAIL_BAND_HEIGHT_CLASS,
+  RAIL_CARD_HEIGHT_CLASS,
+  RAIL_ROW_HEIGHT_CLASS,
+  RailCard,
+} from "./SearchRailCard";
 
 /** The share of the carousel's width one card page takes: 88% with 6% pads,
  *  so the active card centres and its neighbours peek. Since MESITA-2613 the
@@ -36,11 +42,14 @@ function CatalogRailSkeleton() {
           )}
         >
           <Skeleton className="aspect-square h-full w-auto shrink-0 rounded-none" />
-          <div className="grid min-w-0 flex-1 grid-rows-[1.25rem_repeat(3,1rem)] content-center gap-1 py-2 pr-2 pl-2.5">
+          <div className="flex min-w-0 flex-1 flex-col gap-2 p-3">
             <Skeleton className="h-3.5 w-3/4" />
             <Skeleton className="h-3 w-1/2" />
             <Skeleton className="h-3 w-2/5" />
-            <Skeleton className="h-3 w-1/3" />
+            <div className="mt-auto grid grid-cols-2 gap-2">
+              <Skeleton className="h-8 rounded-lg" />
+              <Skeleton className="h-8 rounded-lg" />
+            </div>
           </div>
         </div>
       </div>
@@ -136,6 +145,9 @@ export function SearchRailOverlay({
   meta?: ReactNode;
 }) {
   const firstLoad = catalogLoading && places.length === 0;
+  // Save and Share on a card, Home's own (MESITA-2668): a Google-only card
+  // creates the place on the tap, then saves or shares it.
+  const cards = useCardSaveShare();
 
   // ONE FULL-WIDTH WHITE BAND UNDER THE MAP, a hairline on top (MESITA-2506,
   // MESITA-2509), STACKED (Pato, MESITA-2613: "do the actual carrousel at the
@@ -149,7 +161,10 @@ export function SearchRailOverlay({
   // its section and the carousel row is the card's height plus its padding.
   return (
     <div
-      className="border-border bg-card relative z-20 flex h-[15rem] shrink-0 flex-col border-t"
+      className={cn(
+        "border-border bg-card relative z-20 flex shrink-0 flex-col border-t",
+        RAIL_BAND_HEIGHT_CLASS,
+      )}
       aria-busy={catalogLoading}
       aria-live={firstLoad ? "polite" : undefined}
       data-search-rail-band
@@ -198,7 +213,10 @@ export function SearchRailOverlay({
         </div>
       </div>
       <div
-        className="border-border flex h-[7.5rem] shrink-0 flex-col justify-center border-t py-2"
+        className={cn(
+          "border-border flex shrink-0 flex-col justify-center border-t py-2",
+          RAIL_ROW_HEIGHT_CLASS,
+        )}
         data-search-rail-cards
       >
         {firstLoad ? (
@@ -227,6 +245,9 @@ export function SearchRailOverlay({
                   selected={place.id === selectedId}
                   onSelect={() => onSelectPlace(place)}
                   onOpen={() => onOpenPlace(place)}
+                  saved={cards.isSaved(place)}
+                  onSave={() => cards.toggle(place)}
+                  onShare={() => cards.share(place)}
                 />
               </div>
             ))}

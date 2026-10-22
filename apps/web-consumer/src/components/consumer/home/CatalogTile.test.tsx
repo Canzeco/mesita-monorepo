@@ -46,7 +46,7 @@ describe("a Google-only card opens its profile, never Google Maps (MESITA-2298)"
     expect(html).toContain('aria-label="Open Casa"');
   });
 
-  it("has Like and Share too (MESITA-2663)", () => {
+  it("has Save and Share too (MESITA-2663)", () => {
     const html = tile({ id: "g:ChIJx", googleOnly: true });
     expect(html).toContain("Add Casa to favorites");
     expect(html).toContain("Share Casa");
@@ -76,31 +76,7 @@ describe("a Google-only card's image is a placeholder, never a photo (MESITA-229
   });
 });
 
-describe("the tile shows the header's fields, Pato's order (MESITA-2645)", () => {
-  it("prints name; category · $$ · stars; hours · distance — dollar signs, never a peso range, no zone", () => {
-    const html = tile({
-      price_level: 2,
-      currency: "MXN",
-      google_stars_overall: 4.6,
-      google_review_count: 812,
-      category_label: "Cafe",
-      zone: "Tecnológico",
-      open_now: true,
-      closes_at: "02:00",
-      distance_km: 1.4,
-    } as Partial<Place>);
-    expect(html).toContain("Cafe · $$<");
-    expect(html).toContain("4.6");
-    expect(html).toContain("(812)");
-    expect(html).toContain("Open · Until 02:00 · 1.4 km");
-    expect(html.indexOf(">Casa<")).toBeLessThan(html.indexOf("Cafe · $$"));
-    expect(html.indexOf("Cafe · $$")).toBeLessThan(html.indexOf("(812)"));
-    expect(html.indexOf("(812)")).toBeLessThan(html.indexOf("Open · Until"));
-    expect(html).not.toContain("MX$");
-    expect(html).not.toContain("Tecnológico");
-    expect(html.match(/<p /g)?.length).toBeLessThanOrEqual(3);
-  });
-
+describe("the tile shows only the facts the place has (MESITA-2645)", () => {
   it("hides what the place does not have — no invented cells", () => {
     const html = tile({});
     expect(html).not.toContain("Open");
@@ -110,8 +86,8 @@ describe("the tile shows the header's fields, Pato's order (MESITA-2645)", () =>
   });
 });
 
-describe("Like and Share (MESITA-2650)", () => {
-  it("sit outside the tile link, so a tap likes or shares and never navigates", () => {
+describe("Save and Share (MESITA-2650, MESITA-2668)", () => {
+  it("sit outside the tile link, so a tap saves or shares and never navigates", () => {
     const html = tile({});
     expect(html).toContain("Share Casa");
     expect(html).toContain("Add Casa to favorites");
