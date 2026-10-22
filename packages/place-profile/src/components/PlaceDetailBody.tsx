@@ -27,8 +27,8 @@ import { DatesBox, LinksBox, TagsBox } from "./place-detail/tags-links-meta";
 //
 //   1. Profile summary — name in page chrome; photo + Google/Instagram/
 //      Facebook (on every tab, MESITA-2334); swipe-style tags; then
-//      one row of actions: Reserve, then Favorite · Contact · Share as
-//      icons (MESITA-2618; no pinned bar).
+//      one row of actions: Reserve · Directions, then Favorite · Contact
+//      as icons (MESITA-2618/2619; no pinned bar).
 //   2. The sticky strip, Overview · Reviews · Products (Soon) · Rewards (Soon),
 //      for every place (MESITA-2332). Not Enriched: Overview opens with the
 //      vote panel — or the Creating panel while a Google-only profile is

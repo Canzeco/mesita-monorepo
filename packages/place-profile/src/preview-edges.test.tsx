@@ -75,12 +75,17 @@ describe("member preview edges", () => {
     const html = renderToStaticMarkup(<PlaceProfile place={detail()} />);
     for (const label of [
       "Reserve a table",
+      "Directions in Google Maps",
       'aria-label="Add to favorites"',
       'aria-label="Contact"',
-      'aria-label="Share"',
     ]) {
       expect(html).toContain(label);
     }
+    // Share lives in the top bar's three dots (MESITA-2619), not the row.
+    expect(html).toContain('aria-label="Share this place"');
+    expect(html).not.toContain('aria-label="Share"');
+    // Directions routes to the place (lib/maps-link.ts).
+    expect(html).toContain("google.com/maps/dir/?api=1&amp;destination=");
     // Pay (Soon) left the place screen; the bar already says Pay · Soon.
     expect(html).not.toContain("Pay, Soon");
     // The old pinned band (border-t + backdrop-blur under the scroller) is gone.
@@ -138,13 +143,13 @@ describe("member preview edges", () => {
     expect(nav).toContain("bg-card");
     expect(nav).not.toContain("bg-background");
     const reserveAt = html.indexOf("Reserve a table");
+    const directionsAt = html.indexOf("Directions in Google Maps");
     const saveAt = html.indexOf('aria-label="Add to favorites"');
     const contactAt = html.indexOf('aria-label="Contact"');
-    const shareAt = html.indexOf('aria-label="Share"');
     expect(reserveAt).toBeGreaterThan(-1);
-    expect(saveAt).toBeGreaterThan(reserveAt);
+    expect(directionsAt).toBeGreaterThan(reserveAt);
+    expect(saveAt).toBeGreaterThan(directionsAt);
     expect(contactAt).toBeGreaterThan(saveAt);
-    expect(shareAt).toBeGreaterThan(contactAt);
     expect(html).not.toContain("Save, Soon");
     expect(html).toContain("Products");
     expect(html).not.toContain(">Menu<");

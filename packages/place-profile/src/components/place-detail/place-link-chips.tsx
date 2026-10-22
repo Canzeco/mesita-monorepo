@@ -58,12 +58,16 @@ export type ChannelChip = {
 export function ChannelChips({
   chips,
   onOpenLink,
+  grid = false,
 }: {
   chips: ChannelChip[];
   onOpenLink?: PlaceActions["onOpenLink"];
+  /** Two equal columns of 44px buttons instead of a wrapping pill cluster
+   *  (the Links box, MESITA-2619). */
+  grid?: boolean;
 }) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className={grid ? "grid grid-cols-2 gap-2" : "flex flex-wrap gap-2"}>
       {chips.map(({ key, label, Icon, logo, logoWide, logoOnly, url }) => {
         // decision: trailing SquareArrowOutUpRight on web destinations so
         // chips read as "leaves the app" — skip tel: (Phone opens dialer).
@@ -74,7 +78,10 @@ export function ChannelChips({
             : label
           : undefined;
         const className = cn(
-          "inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition",
+          "inline-flex items-center gap-1.5 border text-xs font-semibold transition",
+          grid
+            ? "h-11 min-w-0 justify-center rounded-lg px-3"
+            : "rounded-full px-3 py-2",
           key in CHANNEL_CLAY
             ? CHANNEL_CLAY[key as keyof typeof CHANNEL_CLAY]
             : "border-border bg-paper text-foreground hover:bg-muted",
@@ -95,7 +102,7 @@ export function ChannelChips({
             ) : (
               <Icon className="h-3.5 w-3.5" />
             )}
-            {!logoOnly && label}
+            {!logoOnly && <span className="truncate">{label}</span>}
             {leavesApp && (
               <SquareArrowOutUpRight
                 className="h-3 w-3 opacity-55"
