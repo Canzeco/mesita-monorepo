@@ -8,20 +8,20 @@ import { cn } from "@/lib/utils";
 
 import { RAIL_CARD_HEIGHT_CLASS, RailCard } from "./SearchRailCard";
 
-/** The share of the carousel column one card page takes (MESITA-2509: the
- *  carousel is the band's right column now, so a page is 88% with 6% pads
- *  instead of 80/10/10 — the card keeps room for its text). The scroll math
- *  in SearchClient reads the same number. */
+/** The share of the carousel's width one card page takes: 88% with 6% pads,
+ *  so the active card centres and its neighbours peek. Since MESITA-2613 the
+ *  carousel spans the band's full width again (it was the right half,
+ *  MESITA-2509). The scroll math in SearchClient reads the same number. */
 export const RAIL_PAGE_SHARE = 0.88;
 
-/** Active card is 88% of the column; first/last pages pad 6% so the card
+/** Active card is 88% of the carousel; first/last pages pad 6% so the card
  *  centers and neighbors peek. px-1.5 is a bit of air between cards —
  *  inside the page, so the snap math stays 88% and the selected ring does
  *  not kiss the neighbor. */
 const RAIL_PAGE =
   "w-[88%] shrink-0 snap-center px-1.5 first:ml-[6%] last:mr-[6%]";
 
-/** The first load's card, in the carousel column. */
+/** The first load's card, in the carousel row. */
 function CatalogRailSkeleton() {
   return (
     <div
@@ -68,8 +68,10 @@ function fmtScore(v: number | null | undefined): string {
 // to list-places, as of the last catalog load; MESITA-2504 adds the circle
 // the load gated on, the weights it scored with, and the selected card's
 // proximity · popularity · score, live as the selection moves. Since
-// MESITA-2509 it is the band's LEFT column — plain small rows, no card, off
-// the map. Remove when Pato says the map is verified.
+// MESITA-2613 it is the band's TOP section, stacked over the carousel (Pato:
+// "on top of the carrousel, not in x but in y"): plain small rows at full
+// width, one line each, no card, off the map. Remove when Pato says the map
+// is verified.
 export function SearchDebugCoords({
   cross,
   you,
@@ -82,25 +84,25 @@ export function SearchDebugCoords({
     c ? `${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}` : "no fix";
   const score = selected?.score;
   return (
-    <dl className="text-muted-foreground type-meta grid grid-cols-[auto_minmax(0,1fr)] gap-x-1.5 font-mono leading-snug tabular-nums">
+    <dl className="text-muted-foreground type-meta grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 font-mono leading-snug whitespace-nowrap tabular-nums">
       <dt>Cross</dt>
-      <dd className="text-foreground break-words">{fmt(cross)}</dd>
+      <dd className="text-foreground truncate">{fmt(cross)}</dd>
       <dt>You</dt>
-      <dd className="text-foreground break-words">{fmt(you)}</dd>
+      <dd className="text-foreground truncate">{fmt(you)}</dd>
       <dt>Loaded at</dt>
-      <dd className="text-foreground break-words">{fmt(sent)}</dd>
+      <dd className="text-foreground truncate">{fmt(sent)}</dd>
       <dt>Radius</dt>
-      <dd className="text-foreground" data-debug-radius>
+      <dd className="text-foreground truncate" data-debug-radius>
         {radiusKm == null ? "n/a" : `${radiusKm.toFixed(2)} km`}
       </dd>
       <dt>Weights</dt>
-      <dd className="text-foreground break-words" data-debug-weights>
+      <dd className="text-foreground truncate" data-debug-weights>
         {weights
           ? `prox^${weights.proximity} · pop^${weights.popularity} · sel^${weights.selected}`
           : "n/a"}
       </dd>
       <dt>Selected</dt>
-      <dd className="text-foreground break-words" data-debug-selected>
+      <dd className="text-foreground truncate" data-debug-selected>
         {score
           ? `prox ${fmtScore(score.proximity)} · pop ${fmtScore(score.popularity)} · sel ${fmtScore(score.selected)} = ${fmtScore(score.final)}`
           : "n/a"}
@@ -130,35 +132,36 @@ export function SearchRailOverlay({
   onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
   setRailCardRef: (placeId: string, el: HTMLElement | null) => void;
-  /** The left column's readout, under the places count. */
+  /** The development readout, under the places count, over the carousel. */
   meta?: ReactNode;
 }) {
   const firstLoad = catalogLoading && places.length === 0;
 
-  // ONE FULL-WIDTH WHITE BAND UNDER THE MAP, a hairline on top, in two
-  // columns (Pato, MESITA-2509: "bottom box white using 100% width … left
-  // side for the meatadata … right sie for the carosuel and then leave the
-  // fucking map visible"). Nothing floats over the map: the places count
-  // heads the metadata, the empty state and the first-load skeleton sit in
-  // the carousel's column. The rail is always shown (MESITA-2508). ONE FIXED
-  // HEIGHT, the metadata scrolling inside it (MESITA-2510): a band that sized
-  // to its rows resized the map on every load, and each resize read as a
-  // move and reloaded again.
+  // ONE FULL-WIDTH WHITE BAND UNDER THE MAP, a hairline on top (MESITA-2506,
+  // MESITA-2509), STACKED (Pato, MESITA-2613: "do the actual carrousel at the
+  // bottom … and on top of the carrousel, not in x but in y, put the numeric
+  // ugly data"): the places count and the development readout on top, a
+  // hairline, then the carousel at the band's full width. Nothing floats over
+  // the map; the empty state and the first-load skeleton sit in the carousel
+  // row. The rail is always shown (MESITA-2508). ONE FIXED HEIGHT (MESITA-2510):
+  // a band that sized to its rows resized the map on every load, and each
+  // resize read as a move and reloaded again — so the readout scrolls inside
+  // its section and the carousel row is the card's height plus its padding.
   return (
     <div
-      className="border-border bg-card relative z-20 flex h-[10.5rem] shrink-0 items-stretch border-t"
+      className="border-border bg-card relative z-20 flex h-[15rem] shrink-0 flex-col border-t"
       aria-busy={catalogLoading}
       aria-live={firstLoad ? "polite" : undefined}
       data-search-rail-band
     >
       <div
-        className="border-border scrollbar-hide flex w-1/2 min-w-0 shrink-0 flex-col overflow-y-auto border-r px-2.5 py-2"
+        className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2"
         data-search-rail-meta
       >
-        {/* Centred in the band like the card beside it (Pato, MESITA-2513:
-            "must be veritcally centered. aestehtics matter"). `my-auto` on
-            an inner block, not justify-center on the scroller: a readout
-            taller than the band still scrolls from its first row. */}
+        {/* Centred in its section (MESITA-2513, Pato: "aestehtics matter").
+            `my-auto` on an inner block, not justify-center on the scroller:
+            a readout taller than the section still scrolls from its first
+            row. */}
         <div className="my-auto flex flex-col gap-1" data-search-rail-meta-body>
           <p className="text-muted-foreground type-label flex items-center gap-1 font-semibold tabular-nums">
             {catalogLoading ? (
@@ -195,7 +198,7 @@ export function SearchRailOverlay({
         </div>
       </div>
       <div
-        className="flex min-w-0 flex-1 flex-col justify-center py-2.5"
+        className="border-border flex h-[7.5rem] shrink-0 flex-col justify-center border-t py-2"
         data-search-rail-cards
       >
         {firstLoad ? (
