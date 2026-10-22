@@ -116,7 +116,7 @@ function ClassChip({
   const className = cn(
     CHIP_CLASS,
     vip
-      ? "bg-foreground text-background border-transparent"
+      ? "bg-foreground text-paper border-transparent"
       : "",
     onPress && cn(TAP_TARGET_CLASS, "transition", !vip && "hover:bg-muted"),
   );

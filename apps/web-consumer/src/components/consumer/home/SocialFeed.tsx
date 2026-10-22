@@ -249,7 +249,7 @@ function Face({ person }: { person: ActivityPerson }) {
       {vip && (
         <span
           aria-hidden
-          className={cn(MARK_CLASS, "bg-foreground text-background -right-1")}
+          className={cn(MARK_CLASS, "bg-foreground text-paper -right-1")}
           data-social-mark="vip"
         >
           <Crown className="h-[11px] w-[11px]" strokeWidth={2.75} />
@@ -274,7 +274,7 @@ function Thumb({ place }: { place: Place }) {
   const photo = cardPhoto(place);
   if (photo) {
     return (
-      <span className="bg-muted block h-11 w-11 shrink-0 overflow-hidden rounded-md">
+      <span className="bg-muted block h-11 w-11 shrink-0 overflow-hidden rounded-lg">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={photo} alt="" className="h-full w-full object-cover" />
       </span>
@@ -283,7 +283,7 @@ function Thumb({ place }: { place: Place }) {
   const placeholder = placePlaceholder(place);
   return (
     <span
-      className="bg-muted text-muted-foreground flex h-11 w-11 shrink-0 items-center justify-center rounded-md"
+      className="bg-muted text-muted-foreground flex h-11 w-11 shrink-0 items-center justify-center rounded-lg"
       data-placeholder={placeholder.kind}
     >
       {placeholder.kind === "family" ? (
@@ -393,7 +393,7 @@ function FeedRow({
       <Link
         href={href}
         aria-label={item.place.name}
-        className="focus-visible:ring-ring block shrink-0 rounded-md outline-none focus-visible:ring-2"
+        className="focus-visible:ring-ring block shrink-0 rounded-lg outline-none focus-visible:ring-2"
         data-social-place
       >
         <Thumb place={item.place} />
@@ -562,7 +562,7 @@ function HistoryList({ items }: { items: MemberHistoryItem[] | null }) {
               <Skeleton className="h-3.5 w-3/5" />
               <Skeleton className="h-3 w-1/5" />
             </div>
-            <Skeleton className="h-11 w-11 shrink-0 rounded-md" />
+            <Skeleton className="h-11 w-11 shrink-0 rounded-lg" />
           </div>
         ))}
       </div>
@@ -612,7 +612,7 @@ function HistoryList({ items }: { items: MemberHistoryItem[] | null }) {
 /** Loading looks like the rows it waits for. */
 function FeedSkeleton() {
   return (
-    <div className="bg-muted flex-1 pt-14" data-social-loading aria-busy>
+    <div className="bg-background flex-1 pt-14" data-social-loading aria-busy>
       {/* The same white band as the list (MESITA-2542), so nothing jumps. */}
       <div className="divide-border border-border bg-card divide-y border-y">
         {Array.from({ length: 6 }, (_, i) => (
@@ -622,7 +622,7 @@ function FeedSkeleton() {
               <Skeleton className="h-3.5 w-3/5" />
               <Skeleton className="h-3 w-2/5" />
             </div>
-            <Skeleton className="h-11 w-11 shrink-0 rounded-md" />
+            <Skeleton className="h-11 w-11 shrink-0 rounded-lg" />
           </div>
         ))}
       </div>
@@ -782,7 +782,7 @@ export function SocialFeed() {
   return (
     <div
       ref={rootRef}
-      className="bg-muted flex-1 pb-6"
+      className="bg-background flex-1 pb-6"
       onTouchStart={(e) => {
         const el = scroller();
         pullStart.current =
@@ -807,7 +807,7 @@ export function SocialFeed() {
               scroller()?.scrollTo({ top: 0, behavior: "smooth" });
               setPendingNew(0);
             }}
-            className="bg-foreground text-background flex h-9 items-center gap-1.5 rounded-full px-4 text-sm font-semibold shadow-md"
+            className="bg-foreground text-paper shadow-elev flex h-9 items-center gap-1.5 rounded-full px-4 text-sm font-semibold"
             data-social-new-pill
           >
             <ArrowUp className="h-4 w-4" strokeWidth={2.25} aria-hidden />

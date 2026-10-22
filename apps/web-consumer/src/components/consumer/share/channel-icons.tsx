@@ -43,7 +43,7 @@ export const CHANNEL_ICONS: Record<
     icon: <WhatsAppGlyph className="h-7 w-7" />,
   },
   other: {
-    tint: "bg-foreground text-background",
+    tint: "bg-foreground text-paper",
     icon: <Share2 className="h-6 w-6" strokeWidth={2.25} aria-hidden />,
   },
 };
