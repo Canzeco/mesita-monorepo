@@ -43,6 +43,8 @@ let locatingState = false;
 let errorState: LocationError | null = null;
 let asked = false;
 let inflight: Promise<Coords | null> | null = null;
+// Which ask is the newest (MESITA-2617): only it may report a failure.
+let generation = 0;
 let watchingPermission = false;
 const listeners = new Set<() => void>();
 // Every fix the browser hands back, the same coordinates included: a page
@@ -116,32 +118,41 @@ export function requestUserLocation(): Promise<Coords | null> {
     return Promise.resolve(null);
   }
   watchPermission();
-  // One ask at a time: a second caller waits on the same answer.
-  if (inflight) return inflight;
+  // One live ask at a time: a second caller waits on the same answer. A
+  // STALLED ask is not live (MESITA-2617): a tap after the cap asks the
+  // browser again instead of joining an ask that may never answer.
+  if (inflight && locatingState) return inflight;
+  const gen = ++generation;
   locatingState = true;
   errorState = null;
   emit();
+  // The cap covers the whole ask, the retry included (MESITA-2617).
   const stall = setTimeout(() => {
-    if (!locatingState) return;
+    if (gen !== generation || !locatingState) return;
     locatingState = false;
     errorState = "pending";
     emit();
   }, STALL_MS);
-  inflight = (async () => {
+  const run: Promise<Coords | null> = (async () => {
     let answer = await askOnce(GEO_OPTS);
-    clearTimeout(stall);
     // The device could not find itself or took too long: once more, longer,
     // taking any cached fix (MESITA-2615). A refusal is final; no retry.
     if ("error" in answer && (answer.error === "unavailable" || answer.error === "timeout")) {
       answer = await askOnce(RETRY_OPTS);
     }
-    inflight = null;
-    locatingState = false;
+    clearTimeout(stall);
+    if (gen === generation) inflight = null;
     if ("error" in answer) {
-      errorState = answer.error;
-      emit();
+      // Only the newest ask speaks for failure; an older one is stale.
+      if (gen === generation) {
+        locatingState = false;
+        errorState = answer.error;
+        emit();
+      }
       return null;
     }
+    // A fix from any ask, old or new, wins.
+    locatingState = false;
     const next = {
       lat: answer.pos.coords.latitude,
       lng: answer.pos.coords.longitude,
@@ -156,7 +167,8 @@ export function requestUserLocation(): Promise<Coords | null> {
     for (const listener of fixListeners) listener(fix);
     return fix;
   })();
-  return inflight;
+  inflight = run;
+  return run;
 }
 
 function subscribe(listener: () => void): () => void {
