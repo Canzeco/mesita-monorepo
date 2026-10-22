@@ -55,7 +55,13 @@ export function useOpenGooglePlace(): (place: GoogleOnlyPlace) => void {
   );
 }
 
-export type OpenedGooglePlace = { href: string; created: boolean };
+export type OpenedGooglePlace = {
+  href: string;
+  created: boolean;
+  /** The Mesita place row (Home's Like saves it, MESITA-2663). */
+  id: string;
+  slug: string;
+};
 
 const inFlight = new Map<string, Promise<OpenedGooglePlace>>();
 
@@ -70,7 +76,12 @@ export function getOrCreateGooglePlace(
     .then((opened) => {
       const dest = opened.place.slug || opened.place.id;
       if (!dest) throw new Error("Couldn't open that place right now.");
-      return { href: placeHref(dest), created: opened.created !== false };
+      return {
+        href: placeHref(dest),
+        created: opened.created !== false,
+        id: opened.place.id,
+        slug: opened.place.slug,
+      };
     })
     .finally(() => inFlight.delete(gid));
   inFlight.set(gid, run);

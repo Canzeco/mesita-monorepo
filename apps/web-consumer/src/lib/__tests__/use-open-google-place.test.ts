@@ -52,7 +52,7 @@ describe("getOrCreateGooglePlace", () => {
       place,
     }));
     const opened = await getOrCreateGooglePlace(client, "ChIJ-held");
-    expect(opened).toEqual({ href: "/place/casa", created: false });
+    expect(opened).toMatchObject({ href: "/place/casa", created: false });
     expect(calls).toEqual([
       {
         fn: "consumer-web-create-place",

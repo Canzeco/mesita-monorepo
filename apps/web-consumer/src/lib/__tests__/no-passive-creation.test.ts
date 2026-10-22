@@ -123,11 +123,24 @@ describe("no passive creation: a Mesita Place is minted only on an explicit open
     expect(tap).not.toContain("getOrCreateGooglePlace");
   });
 
-  it("the opening screen's client effect is the only caller of getOrCreateGooglePlace", () => {
+  it("getOrCreateGooglePlace runs from the opening screen's effect and Home's Like/Share taps only", () => {
     const callers = appCode
       .filter((f) => /(?<!function )\bgetOrCreateGooglePlace\(/.test(f.src))
-      .map((f) => f.path);
-    expect(callers).toEqual(["components/consumer/OpeningGooglePlace.tsx"]);
+      .map((f) => f.path)
+      .sort();
+    // Home's Google-only Like and Share create on the tap (Pato, MESITA-2663:
+    // "just create the profile and then trigger it") — never on render.
+    expect(callers).toEqual([
+      "components/consumer/OpeningGooglePlace.tsx",
+      "components/consumer/home/CatalogRails.tsx",
+    ]);
+    const rails = code(read("components/consumer/home/CatalogRails.tsx"));
+    for (const e of callBlocks(rails, "useEffect")) {
+      expect(e).not.toContain("getOrCreateGooglePlace(");
+    }
+    for (const e of callBlocks(rails, "useMemo")) {
+      expect(e).not.toContain("getOrCreateGooglePlace(");
+    }
     const screen = read("components/consumer/OpeningGooglePlace.tsx");
     expect(screen.startsWith('"use client"')).toBe(true);
     const effects = callBlocks(code(screen), "useEffect");
@@ -151,10 +164,12 @@ describe("no passive creation: a Mesita Place is minted only on an explicit open
       "app/(shell)/(discovery)/home/social/page.tsx",
     ]) {
       const src = code(read(path));
+      const rails = path.endsWith("home/CatalogRails.tsx");
       for (const marker of [
         "apiCreateProject",
         "consumer-web-create-place",
-        "getOrCreateGooglePlace",
+        // Home's Like/Share taps may get-or-create (MESITA-2663, test above).
+        ...(rails ? [] : ["getOrCreateGooglePlace"]),
         "prefetch",
       ]) {
         expect(src, `${path} carries ${marker}`).not.toContain(marker);

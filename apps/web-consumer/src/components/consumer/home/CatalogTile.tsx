@@ -96,6 +96,7 @@ export function CatalogTile({
   onToggle,
   onOpenGoogle,
   onOpen,
+  onShare,
   className,
 }: {
   place: Place;
@@ -105,6 +106,8 @@ export function CatalogTile({
   onOpen?: () => void;
   /** The explicit open for a Google-only card (get-or-create, then route). */
   onOpenGoogle?: () => void;
+  /** Share override; a Mesita place shares its own page by default. */
+  onShare?: () => void;
   className?: string;
 }) {
   const photo = cardPhoto(place);
@@ -210,7 +213,7 @@ export function CatalogTile({
       className={cn(
         // A 1px grey hairline around each tile (Pato, MESITA-2661: "add a
         // really small border, gray, to each box").
-        "border-border relative isolate aspect-square min-w-0 overflow-hidden rounded-2xl border",
+        "border-foreground/20 relative isolate aspect-square min-w-0 overflow-hidden rounded-2xl border",
         className,
       )}
     >
@@ -252,7 +255,7 @@ export function CatalogTile({
           <div
             className={cn(
               "text-foreground relative flex h-full flex-col justify-center gap-0.5 pt-1.5 pl-3",
-              google ? "pr-3" : "pr-3 pb-[42px]",
+              "pr-3 pb-[42px]",
             )}
           >
             <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-5 font-semibold tracking-tight">
@@ -288,7 +291,11 @@ export function CatalogTile({
           </div>
         </div>
       </TileLink>
-      {google ? null : (
+      {/* Google-only cards get Like and Share too (Pato, MESITA-2663:
+          "keep the save and share button even if no profile yet, just
+          create the profile and then trigger it"); the parent's handlers
+          get-or-create first. */}
+      {
         // The place screen's action tiles, smaller row (MESITA-2647's grey):
         // two equal 32px buttons, icon + label on one line, 12px from the
         // band's edges. Siblings of the tile link, so a tap never navigates.
@@ -319,7 +326,7 @@ export function CatalogTile({
           </button>
           <button
             type="button"
-            onClick={() => void sharePlace(place)}
+            onClick={onShare ?? (() => void sharePlace(place))}
             aria-label={`Share ${place.name}`}
             className={TILE_BUTTON}
             data-tile-share
@@ -332,7 +339,7 @@ export function CatalogTile({
             Share
           </button>
         </div>
-      )}
+      }
     </li>
   );
 }
