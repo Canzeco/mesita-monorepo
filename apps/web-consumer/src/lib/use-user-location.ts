@@ -39,6 +39,9 @@ const RETRY_OPTS: PositionOptions = {
 };
 
 let coordsState: Coords | null = null;
+// The fix came from the network, not the device (MESITA-2625).
+let approxState = false;
+let networkAsk: Promise<Coords | null> | null = null;
 let locatingState = false;
 let errorState: LocationError | null = null;
 let asked = false;
@@ -86,7 +89,9 @@ function watchPermission() {
       ?.query({ name: "geolocation" })
       .then((status) => {
         status.addEventListener("change", () => {
-          if (status.state === "granted" && !coordsState) void requestUserLocation();
+          if (status.state === "granted" && (!coordsState || approxState)) {
+            void requestUserLocation();
+          }
         });
       })
       .catch(() => {});
@@ -95,15 +100,59 @@ function watchPermission() {
   }
 }
 
+/** LOCATION IS AUTOMATIC (MESITA-2625). The network's approximate point,
+ *  from Vercel's IP geolocation via `/api/ip-location`: asked once per page,
+ *  in parallel with the first device ask, so it is ready the moment the
+ *  device gives nothing (a browser that denies geolocation outright, like
+ *  the Claude desktop app's built-in one, a Mac with Location Services off,
+ *  an unanswered prompt). Null when the server has no geo headers. */
+function askNetwork(): Promise<Coords | null> {
+  if (networkAsk) return networkAsk;
+  if (typeof fetch === "undefined" || typeof window === "undefined") {
+    return Promise.resolve(null);
+  }
+  networkAsk = fetch("/api/ip-location", { cache: "no-store" })
+    .then((res) => (res.ok ? (res.json() as Promise<{ coords?: unknown }>) : null))
+    .then((body) => {
+      const c = body?.coords as { lat?: unknown; lng?: unknown } | null | undefined;
+      return c && typeof c.lat === "number" && typeof c.lng === "number"
+        ? { lat: c.lat, lng: c.lng }
+        : null;
+    })
+    .catch(() => null);
+  return networkAsk;
+}
+
+/** The device gave no fix (`reason`): keep locating until the network
+ *  answers, then take its point as an approximate fix if there is no fix
+ *  yet. Only the newest ask may end "locating" or report the reason. */
+function deviceGaveNothing(reason: LocationError, gen: number) {
+  if (gen === generation) errorState = reason;
+  void askNetwork().then((point) => {
+    if (point && !coordsState) {
+      coordsState = point;
+      approxState = true;
+      if (gen === generation) locatingState = false;
+      emit();
+      for (const listener of fixListeners) listener(point);
+      return;
+    }
+    if (gen === generation) locatingState = false;
+    emit();
+  });
+}
+
 /** The store as the hooks read it. */
 export function locationSnapshot(): {
   coords: Coords | null;
+  approx: boolean;
   locating: boolean;
   settled: boolean;
   error: LocationError | null;
 } {
   return {
     coords: coordsState,
+    approx: approxState,
     locating: locatingState,
     settled: asked && !locatingState,
     error: errorState,
@@ -112,9 +161,12 @@ export function locationSnapshot(): {
 
 export function requestUserLocation(): Promise<Coords | null> {
   asked = true;
+  void askNetwork();
   if (typeof navigator === "undefined" || !navigator.geolocation) {
-    errorState = "unsupported";
+    const gen = ++generation;
+    locatingState = true;
     emit();
+    deviceGaveNothing("unsupported", gen);
     return Promise.resolve(null);
   }
   watchPermission();
@@ -129,9 +181,7 @@ export function requestUserLocation(): Promise<Coords | null> {
   // The cap covers the whole ask, the retry included (MESITA-2617).
   const stall = setTimeout(() => {
     if (gen !== generation || !locatingState) return;
-    locatingState = false;
-    errorState = "pending";
-    emit();
+    deviceGaveNothing("pending", gen);
   }, STALL_MS);
   const run: Promise<Coords | null> = (async () => {
     let answer = await askOnce(GEO_OPTS);
@@ -144,15 +194,12 @@ export function requestUserLocation(): Promise<Coords | null> {
     if (gen === generation) inflight = null;
     if ("error" in answer) {
       // Only the newest ask speaks for failure; an older one is stale.
-      if (gen === generation) {
-        locatingState = false;
-        errorState = answer.error;
-        emit();
-      }
+      if (gen === generation) deviceGaveNothing(answer.error, gen);
       return null;
     }
-    // A fix from any ask, old or new, wins.
+    // A device fix from any ask, old or new, wins, over the network's too.
     locatingState = false;
+    approxState = false;
     const next = {
       lat: answer.pos.coords.latitude,
       lng: answer.pos.coords.longitude,
@@ -211,6 +258,11 @@ export function useUserLocationSettled(): boolean {
 /** The last ask's failure, or null (none yet, or a fix). */
 export function useUserLocationError(): LocationError | null {
   return useSyncExternalStore(subscribe, () => locationSnapshot().error, serverNull);
+}
+
+/** True while the fix is the network's approximate point (MESITA-2625). */
+export function useUserLocationApprox(): boolean {
+  return useSyncExternalStore(subscribe, () => locationSnapshot().approx, serverFalse);
 }
 
 export function useLocateUser(): () => void {

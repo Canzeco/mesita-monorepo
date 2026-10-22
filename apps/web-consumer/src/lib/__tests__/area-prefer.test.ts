@@ -118,6 +118,8 @@ describe("One ranking, no prefer (MESITA-2516)", () => {
     expect(locationErrorFromCode(3)).toBe("timeout");
     // The failure is kept, never dropped (MESITA-2437; the retry since MESITA-2615).
     expect(hook).toContain("resolve({ error: locationErrorFromCode(err.code) })");
-    expect(hook).toContain("errorState = answer.error;");
+    // Kept through the network fallback (MESITA-2625; behaviour pinned in
+    // user-location-stall.test.ts).
+    expect(hook).toContain("deviceGaveNothing(answer.error, gen)");
   });
 });
