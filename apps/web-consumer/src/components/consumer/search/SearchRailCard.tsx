@@ -18,6 +18,14 @@ export const RAIL_CARD_HEIGHT_CLASS = "h-24";
 // One floating catalog card on the bottom rail.
 // Two-step tap: the first tap on an unselected card just selects it (highlight +
 // snap the rail/map onto it); tapping the already-selected card opens its detail.
+
+/** Capitalise every word ("opens tomorrow 07:00" → "Opens Tomorrow 07:00"). */
+function titleWords(line: string | null): string | null {
+  return line
+    ? line.replace(/(^|\s)(\p{Ll})/gu, (_, sp, ch) => sp + ch.toUpperCase())
+    : null;
+}
+
 export function RailCard({
   place,
   selected,
@@ -47,7 +55,9 @@ export function RailCard({
     typeof o.google_count === "number" && o.google_count > 0
       ? formatCompactCount(o.google_count)
       : null;
-  const openLine =
+  // TITLE CASE ON THE HOURS LINE (Pato, MESITA-2665: "leave it camel case,
+  // Opens Tomorrow"): "Closed · Opens Tomorrow 07:00", "Open · Until 02:00".
+  const openLine = titleWords(
     o.open_now === true
       ? o.closes_at
         ? `Open · until ${o.closes_at}`
@@ -56,7 +66,8 @@ export function RailCard({
         ? o.opens_at
           ? `Closed · opens ${o.opens_at}`
           : "Closed"
-        : null;
+        : null,
+  );
   const distance =
     typeof place.distance_km === "number" && place.distance_km > 0
       ? formatKm(place.distance_km)

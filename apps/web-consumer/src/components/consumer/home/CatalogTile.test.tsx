@@ -102,10 +102,10 @@ describe("the tile shows the header's fields, Pato's order (MESITA-2645)", () =>
     expect(html).toContain("Cafe · $$<");
     expect(html).toContain("4.6");
     expect(html).toContain("(812)");
-    expect(html).toContain("Open · until 02:00 · 1.4 km");
+    expect(html).toContain("Open · Until 02:00 · 1.4 km");
     expect(html.indexOf(">Casa<")).toBeLessThan(html.indexOf("Cafe · $$"));
     expect(html.indexOf("Cafe · $$")).toBeLessThan(html.indexOf("(812)"));
-    expect(html.indexOf("(812)")).toBeLessThan(html.indexOf("Open · until"));
+    expect(html.indexOf("(812)")).toBeLessThan(html.indexOf("Open · Until"));
     expect(html).not.toContain("MX$");
     expect(html).not.toContain("Tecnológico");
     expect(html.match(/<p /g)?.length).toBeLessThanOrEqual(3);
