@@ -59,8 +59,28 @@ const inkButton = cn(
   PLACE_BUTTON_CLASS,
   "bg-foreground text-paper w-full text-sm hover:opacity-90",
 );
-const tileBtn =
-  "bg-border/60 text-foreground hover:bg-border/80 flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1 text-xs font-semibold transition active:scale-[0.99]";
+
+// THE ROWS' LAYOUT AND A TILE'S BOX ARE WRITTEN ONCE (Pato, MESITA-2701:
+// "the placeholders must be similar to the page you are loading, like the
+// sizes"): read here and by ProfileSummarySkeleton, which lays its bones
+// out in them. The ink rows are PLACE_BUTTON_CLASS's 44px.
+
+/** The three rows: tiles, 12px, then the two Mesita rows. */
+export const PROFILE_ACTIONS_CLASS = "flex flex-col gap-3";
+/** Row 1: four equal tiles, 8px apart. */
+export const PROFILE_TILES_ROW_CLASS = "grid grid-cols-4 gap-2";
+/** A tile's box: 56px, rounded-lg, icon over label. */
+export const PROFILE_TILE_BOX_CLASS =
+  "flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1";
+/** Rows 2 and 3, 8px apart. */
+export const PROFILE_MESITA_ROWS_CLASS = "flex flex-col gap-2";
+/** Row 3: Prepay and Pay, halved. */
+export const PROFILE_HALVES_ROW_CLASS = "grid grid-cols-2 gap-2";
+
+const tileBtn = cn(
+  PROFILE_TILE_BOX_CLASS,
+  "bg-border/60 text-foreground hover:bg-border/80 text-xs font-semibold transition active:scale-[0.99]",
+);
 
 function ActionTile({
   Icon,
@@ -134,8 +154,8 @@ export function ProfileActions({
   const directionsUrl = buildDirectionsUrl(place);
 
   return (
-    <div className={cn("flex flex-col gap-3", className)}>
-      <div className="grid grid-cols-4 gap-2" data-profile-actions="tiles">
+    <div className={cn(PROFILE_ACTIONS_CLASS, className)}>
+      <div className={PROFILE_TILES_ROW_CLASS} data-profile-actions="tiles">
         <ActionTile
           Icon={Heart}
           // SAVE, NOT LIKE (Pato, MESITA-2668: "use word save instead of
@@ -192,7 +212,7 @@ export function ProfileActions({
         />
       </div>
 
-      <div className="flex flex-col gap-2" data-profile-actions="mesita">
+      <div className={PROFILE_MESITA_ROWS_CLASS} data-profile-actions="mesita">
         <button
           type="button"
           {...(reserveLive
@@ -210,7 +230,7 @@ export function ProfileActions({
             phone's row is ~326px, so it reads "Prepay · Pay" there. Measured
             on the row, not the viewport, so admin's phone frame reads the
             same. */}
-        <div className="@container grid grid-cols-2 gap-2">
+        <div className={cn("@container", PROFILE_HALVES_ROW_CLASS)}>
           <SoonInkButton Icon={Wallet} label="Prepay" />
           <SoonInkButton Icon={QrCode} label="Pay" />
         </div>

@@ -1,23 +1,19 @@
-import { MeScreen } from "@/components/consumer/me/MeScreen";
+import { NotificationsFrame } from "@/components/consumer/me/ActivityModals";
 import { NotificationsSkeleton } from "@/components/consumer/NotificationsClient";
 
 // /me/notifications' fallback: ActivityModals' AlertsModal as it first
-// paints — MeScreen's bar, the blurb (fixed words, so drawn as themselves),
-// then the feed's four row silhouettes (Pato, MESITA-2701: "the placeholders
-// must be similar to the page you are loading, like the sizes"). The blurb
-// and the column are ActivityPage's classes.
+// paints — its own frame (MeScreen's bar, the blurb, the column), then the
+// feed's four row silhouettes (Pato, MESITA-2701: "the placeholders must be
+// similar to the page you are loading, like the sizes"). The frame is
+// NotificationsFrame and the feed is NotificationsSkeleton, the ones the
+// page draws, so the two hand over without a jump.
 export default function NotificationsLoading() {
   return (
-    <MeScreen title="Notifications" flush>
-      <p className="text-muted-foreground shrink-0 px-5 pt-4 pb-3 text-xs">
-        Notifications and updates
-      </p>
-      <div className="flex min-h-0 flex-1 flex-col">
-        <NotificationsSkeleton />
-      </div>
+    <NotificationsFrame>
+      <NotificationsSkeleton />
       <p role="status" className="sr-only">
         Loading notifications
       </p>
-    </MeScreen>
+    </NotificationsFrame>
   );
 }

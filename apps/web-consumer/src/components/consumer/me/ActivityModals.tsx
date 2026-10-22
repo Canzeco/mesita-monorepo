@@ -38,11 +38,24 @@ function ActivityPage({
   );
 }
 
+/** Me › Notifications around its feed: MeScreen's bar and title, the blurb
+ *  and the flex column. The page passes the feed; /me/notifications'
+ *  loading.tsx passes the feed's skeleton, so the frame and its fixed words
+ *  exist once (Pato, MESITA-2701: "the placeholders must be similar to the
+ *  page you are loading, like the sizes"). */
+export function NotificationsFrame({ children }: { children: ReactNode }) {
+  return (
+    <ActivityPage title="Notifications" blurb="Notifications and updates">
+      {children}
+    </ActivityPage>
+  );
+}
+
 /** Alerts — your own activity feed. */
 export function AlertsModal() {
   return (
-    <ActivityPage title="Notifications" blurb="Notifications and updates">
+    <NotificationsFrame>
       <NotificationsClient />
-    </ActivityPage>
+    </NotificationsFrame>
   );
 }

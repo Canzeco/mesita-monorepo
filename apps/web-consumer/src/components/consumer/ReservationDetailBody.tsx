@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { Calendar, Hash, Users } from "lucide-react";
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 
 import type { ReservationItem } from "@/lib/reservation-types";
 import { cn, errMsg, guestNoun } from "@/lib/utils";
@@ -16,6 +16,22 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 // (ReservationDetailModalShell) and the hard-nav page. Stays narrow on
 // purpose — the booking's lifecycle, its metadata, and the actions that can
 // move it. No full place detail (that lives on /place/[id]).
+
+/** The metadata card's rows, in order. Every reservation carries a
+ *  reference code (8 digits, set on insert since 2026-07-27), so the loaded
+ *  card holds all four. ReservationBodySkeleton draws one row per label
+ *  here, so its card can never be a row short of this one (Pato,
+ *  MESITA-2701: "the placeholders must be similar to the page you are
+ *  loading, like the sizes"); it drew three, and everything under the card
+ *  dropped a row when the reservation landed. */
+export const RESERVATION_META_LABELS = [
+  "When",
+  "Party",
+  "State",
+  "Reference",
+] as const;
+
+export type ReservationMetaLabel = (typeof RESERVATION_META_LABELS)[number];
 
 // The happy path as a stepper: created → booking → confirmed → passed. A
 // reservation that exited the path (cancelled / failed) shows the banner
@@ -74,6 +90,17 @@ export function ReservationDetailBody({
   const showOffers = r.state === "booking" && offers.length > 0;
   const showAck =
     r.state === "confirmed" && !r.guestConfirmedAt && r.guestNotify === "app";
+  // One entry per RESERVATION_META_LABELS; a row with nothing to say is
+  // null and draws nothing.
+  const metaRows: Record<
+    ReservationMetaLabel,
+    Omit<ComponentProps<typeof MetaRow>, "label"> | null
+  > = {
+    When: { Icon: Calendar, value: r.when },
+    Party: { Icon: Users, value: `${r.partySize} ${guestNoun(r.partySize)}` },
+    State: { Icon: meta.Icon, iconClass: meta.iconClass, value: meta.label },
+    Reference: r.referenceCode ? { Icon: Hash, value: r.referenceCode } : null,
+  };
 
   async function confirm(args?: { newDate?: string; newTime?: string }) {
     setConfirmBusy(true);
@@ -153,21 +180,10 @@ export function ReservationDetailBody({
 
       {/* Reservation metadata list. iOS Settings-style rows. */}
       <section className="border-border bg-card divide-border/70 divide-y overflow-hidden rounded-2xl border">
-        <MetaRow Icon={Calendar} label="When" value={r.when} />
-        <MetaRow
-          Icon={Users}
-          label="Party"
-          value={`${r.partySize} ${guestNoun(r.partySize)}`}
-        />
-        <MetaRow
-          Icon={meta.Icon}
-          iconClass={meta.iconClass}
-          label="State"
-          value={meta.label}
-        />
-        {r.referenceCode && (
-          <MetaRow Icon={Hash} label="Reference" value={r.referenceCode} />
-        )}
+        {RESERVATION_META_LABELS.map((label) => {
+          const row = metaRows[label];
+          return row ? <MetaRow key={label} label={label} {...row} /> : null;
+        })}
       </section>
 
       {showOffers && (

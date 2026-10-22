@@ -1,6 +1,16 @@
 import type { ReactNode } from "react";
 
-import { Skeleton, SkeletonLine } from "@/components/shared/Skeleton";
+import { Skeleton, SkeletonLine } from "@/components/shared";
+import {
+  IDENTITY_BOXES,
+  IDENTITY_BOX_SPAN,
+  IDENTITY_CARD_CLASS,
+  IDENTITY_CHIP_CLASS,
+  IDENTITY_GRID_CLASS,
+  IDENTITY_PHOTO_CLASS,
+  IDENTITY_RING_CLASS,
+} from "@/components/consumer/identity-card-layout";
+import { cn } from "@/lib/utils";
 
 // ─── Me's loading silhouettes (MESITA-2701) ─────────────────────────────────
 //
@@ -31,18 +41,28 @@ export const IDENTITY_BAR_BODY_CLASS =
 
 /** IdentityCard while the profile loads: the 64px photo in its 1.5px ring
  *  (67px), then the four 36px boxes in three rows — name, Class · Plan,
- *  Instagram — one column under 360px (MESITA-2614, MESITA-2621). */
+ *  Instagram — one column under 360px (MESITA-2614, MESITA-2621). Every
+ *  class and the row order are the card's own (identity-card-layout.ts),
+ *  so this is IdentityCard's boxes, empty (Pato, MESITA-2701: "the
+ *  placeholders must be similar to the page you are loading, like the
+ *  sizes"). */
 export function IdentityCardSkeleton() {
   return (
-    <div aria-hidden className="flex w-full flex-col items-center gap-2">
-      <div className="bg-border shrink-0 rounded-full p-[1.5px]">
-        <Skeleton className="h-16 w-16 rounded-full" />
+    <div aria-hidden className={IDENTITY_CARD_CLASS}>
+      <div className={IDENTITY_RING_CLASS}>
+        <Skeleton className={IDENTITY_PHOTO_CLASS} />
       </div>
-      <div className="grid w-full min-w-0 grid-cols-1 gap-2 min-[360px]:grid-cols-2">
-        <Skeleton className="col-span-full h-9 rounded-full" />
-        <Skeleton className="h-9 rounded-full" />
-        <Skeleton className="h-9 rounded-full" />
-        <Skeleton className="col-span-full h-9 rounded-full" />
+      <div className={IDENTITY_GRID_CLASS}>
+        {IDENTITY_BOXES.map((box) => (
+          <Skeleton
+            key={box}
+            className={cn(
+              IDENTITY_CHIP_CLASS,
+              "border-transparent",
+              IDENTITY_BOX_SPAN[box],
+            )}
+          />
+        ))}
       </div>
     </div>
   );

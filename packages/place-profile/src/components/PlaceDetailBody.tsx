@@ -2,7 +2,6 @@
 
 import type React from "react";
 import { useState } from "react";
-import { Store } from "lucide-react";
 
 import type { PlaceActions, PlaceCreatingView } from "../actions";
 import { AboutBox } from "./AboutBox";
@@ -14,7 +13,7 @@ import { MediaBox } from "./place-detail/media";
 import { ProfileSummary } from "./place-detail/profile-summary";
 import { GoogleReviewsBox } from "./place-detail/reviews";
 import { PlaceCreateFailedPanel } from "./place-detail/PlaceCreateFailedPanel";
-import { PlaceEmptyScreen } from "./place-detail/empty-screen";
+import { NO_OVERVIEW, PlaceEmptyScreen } from "./place-detail/empty-screen";
 import { PlaceTabBar, type PlaceTab } from "./place-detail/tabs";
 import { SoonScreen } from "./place-detail/soon-screen";
 import { DatesBox, LinksBox, TagsBox } from "./place-detail/tags-links-meta";
@@ -87,11 +86,7 @@ export function PlaceDetailBody({
                 <PlaceCreateFailedPanel error={create.error} onRetry={create.onRetry} />
               </div>
             ) : (
-              <PlaceEmptyScreen
-                icon={Store}
-                title="No overview yet"
-                line="The overview of this place will show up here."
-              />
+              <PlaceEmptyScreen {...NO_OVERVIEW} />
             )
           )}
           {tab === "place" && !create && (

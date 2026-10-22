@@ -1,11 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Camera, Copy } from "lucide-react";
-import { BirthdayPicker, Spinner } from "@/components/shared";
-import { Skeleton, SkeletonLine } from "@/components/shared/Skeleton";
+import {
+  BirthdayPicker,
+  BirthdayPickerSkeleton,
+  Skeleton,
+  SkeletonLine,
+  Spinner,
+} from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { DefaultAvatar } from "@mesita/place-profile";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
@@ -52,8 +57,30 @@ import { ageFromBirthday, cn, errMsg, MIN_SIGNUP_AGE } from "@/lib/utils";
 // null is a real state (`generate_consumer_code()` assigns on first profile
 // read), so it reads "Pending" and offers nothing to copy.
 
+// THE FORM'S FIXED WORDS, ONCE (MESITA-2701). The form and its loading
+// skeleton both print them, so they wrap where each other's do (Pato,
+// MESITA-2701: "the placeholders must be similar to the page you are
+// loading, like the sizes").
+
+/** The line under the title. */
+const PROFILE_CAPTION = "How you appear across Mesita";
+
+/** The line under the photo. */
+const PHOTO_HINT = "JPG, PNG, or WEBP · max 2 MB";
+
+/** The member-number card's label, over the number. */
+const MEMBER_NUMBER_LABEL = "Member number";
+
 const MEMBER_NUMBER_LINE =
   "Give this number to staff or support when they ask who you are.";
+
+/** The four fields' labels. */
+const FIELD_LABEL = {
+  firstName: "First name",
+  lastName: "Last name",
+  sex: "Sex",
+  birthday: "Birthday",
+} as const;
 
 /** First name, Last name and Sex: the shared input, a notch smaller. One
  *  string for the fields and their loading boxes (MESITA-2701). */
@@ -68,6 +95,29 @@ const FIELD_SKELETON_CLASS = cn(
   FIELD_CLASS,
   "bg-muted pointer-events-none animate-pulse border-transparent opacity-100",
 );
+
+// THE FORM'S BOXES, ONCE (MESITA-2701): each string below is the box the
+// form draws and the box its skeleton pulses.
+
+/** The 80px photo. */
+const PHOTO_BOX_CLASS = "h-20 w-20 rounded-full";
+
+/** The camera badge on the photo's corner: 28px, a 2px paper rim. */
+const CAMERA_BADGE_BOX_CLASS =
+  "border-paper absolute -right-0.5 -bottom-0.5 h-7 w-7 rounded-full border-2";
+
+/** The number's own line: the display face, 18px tight. */
+const MEMBER_NUMBER_CLASS =
+  "font-display block truncate text-lg leading-tight tracking-wide tabular-nums";
+
+/** The 44px copy button beside the number. */
+const COPY_BUTTON_BOX_CLASS = "h-11 w-11 shrink-0 rounded-xl";
+
+/** The fields' column, 20px under the card, 12px apart. */
+const FIELDS_CLASS = "mt-5 flex flex-col gap-3";
+
+/** Cancel and Save, 32px under the fields. */
+const ACTIONS_CLASS = "mt-8 flex gap-2";
 
 export function EditProfileSheet() {
   const supabase = useBrowserSupabase();
@@ -93,12 +143,53 @@ export function EditProfileSheet() {
   return <EditProfileForm profile={profile} onProfileChange={setProfile} />;
 }
 
-/** One field's label, the form's own (SheetField, Sex, Birthday). */
+/** One field's label: SheetField's, Sex's and Birthday's, and the
+ *  skeleton's. */
 function FieldLabel({ children }: { children: string }) {
   return (
     <span className="text-muted-foreground type-label mb-1 block font-medium">
       {children}
     </span>
+  );
+}
+
+/** The caption under the title, the form's and the skeleton's. */
+function ProfileCaption() {
+  return <p className="text-muted-foreground text-xs">{PROFILE_CAPTION}</p>;
+}
+
+/** The hint under the photo, the form's and the skeleton's. */
+function PhotoHint() {
+  return (
+    <p className="text-muted-foreground type-body mt-2 text-center">
+      {PHOTO_HINT}
+    </p>
+  );
+}
+
+/** The member-number card: the label, the number, the line, and the copy
+ *  button beside them. The form passes the number and the button; the
+ *  skeleton passes a bar on the number's line and the button's box. */
+function MemberNumberCard({
+  number,
+  action,
+}: {
+  number: ReactNode;
+  action: ReactNode;
+}) {
+  return (
+    <div className="border-border bg-card mt-5 flex items-center gap-3 rounded-2xl border p-4">
+      <div className="min-w-0 flex-1">
+        <span className="text-muted-foreground type-label block font-medium">
+          {MEMBER_NUMBER_LABEL}
+        </span>
+        {number}
+        <span className="text-muted-foreground mt-1 block text-xs leading-snug">
+          {MEMBER_NUMBER_LINE}
+        </span>
+      </div>
+      {action}
+    </div>
   );
 }
 
@@ -110,49 +201,35 @@ function FieldLabel({ children }: { children: string }) {
  * form has a member-number card, four fields and two buttons.
  *
  * The fixed words are drawn as themselves — the caption, the photo hint, the
- * member-number label and line, the field labels — so they wrap exactly as
- * the form's do; what the read brings (photo, number, values) and every
- * control is a block at its box: the 80px photo with the camera badge on its
- * corner, the 44px copy button, the three fields as their own empty controls
- * (FIELD_SKELETON_CLASS), the three 52px Birthday parts in their
- * 1 : 1.6 : 1.2 grid, Cancel (46px) and Save beside it.
+ * member-number label and line, the field labels — from the form's own
+ * components and constants, so they wrap exactly as the form's do; what the
+ * read brings (photo, number, values) and every control is a block at its
+ * box: the 80px photo with the camera badge on its corner, the 44px copy
+ * button, the three fields as their own empty controls
+ * (FIELD_SKELETON_CLASS), BirthdayPicker's own skeleton (its grid, its 52px
+ * parts), Cancel (46px) and Save beside it.
  * /me/profile/loading.tsx draws this same one.
  */
 export function EditProfileSkeleton() {
   return (
     <MeScreen title="Personal details">
-      <p className="text-muted-foreground text-xs">
-        How you appear across Mesita
-      </p>
+      <ProfileCaption />
 
       <div className="mt-5 flex justify-center">
         <div className="relative">
-          <Skeleton className="h-20 w-20 rounded-full" />
-          <Skeleton className="border-paper absolute -right-0.5 -bottom-0.5 h-7 w-7 rounded-full border-2" />
+          <Skeleton className={PHOTO_BOX_CLASS} />
+          <Skeleton className={CAMERA_BADGE_BOX_CLASS} />
         </div>
       </div>
-      <p className="text-muted-foreground type-body mt-2 text-center">
-        JPG, PNG, or WEBP · max 2 MB
-      </p>
+      <PhotoHint />
 
-      <div className="border-border bg-card mt-5 flex items-center gap-3 rounded-2xl border p-4">
-        <div className="min-w-0 flex-1">
-          <span className="text-muted-foreground type-label block font-medium">
-            Member number
-          </span>
-          <SkeletonLine
-            className="font-display text-lg leading-tight"
-            bar="w-32"
-          />
-          <span className="text-muted-foreground mt-1 block text-xs leading-snug">
-            {MEMBER_NUMBER_LINE}
-          </span>
-        </div>
-        <Skeleton className="h-11 w-11 shrink-0 rounded-xl" />
-      </div>
+      <MemberNumberCard
+        number={<SkeletonLine className={MEMBER_NUMBER_CLASS} bar="w-32" />}
+        action={<Skeleton className={COPY_BUTTON_BOX_CLASS} />}
+      />
 
-      <div className="mt-5 flex flex-col gap-3" aria-hidden>
-        {["First name", "Last name"].map((label) => (
+      <div className={FIELDS_CLASS} aria-hidden>
+        {[FIELD_LABEL.firstName, FIELD_LABEL.lastName].map((label) => (
           <div key={label}>
             <FieldLabel>{label}</FieldLabel>
             <input
@@ -164,7 +241,7 @@ export function EditProfileSkeleton() {
           </div>
         ))}
         <div>
-          <FieldLabel>Sex</FieldLabel>
+          <FieldLabel>{FIELD_LABEL.sex}</FieldLabel>
           <select
             disabled
             tabIndex={-1}
@@ -173,16 +250,12 @@ export function EditProfileSkeleton() {
           />
         </div>
         <div>
-          <FieldLabel>Birthday</FieldLabel>
-          <div className="grid grid-cols-[1fr_1.6fr_1.2fr] gap-2">
-            <Skeleton className="h-13 rounded-xl" />
-            <Skeleton className="h-13 rounded-xl" />
-            <Skeleton className="h-13 rounded-xl" />
-          </div>
+          <FieldLabel>{FIELD_LABEL.birthday}</FieldLabel>
+          <BirthdayPickerSkeleton />
         </div>
       </div>
 
-      <div className="mt-8 flex gap-2">
+      <div className={ACTIONS_CLASS}>
         <Skeleton className="h-11.5 flex-1" />
         <Skeleton className="h-11.5 flex-1" />
       </div>
@@ -303,9 +376,7 @@ function EditProfileForm({
 
   return (
     <MeScreen title="Personal details">
-      <p className="text-muted-foreground text-xs">
-        How you appear across Mesita
-      </p>
+      <ProfileCaption />
 
       <div className="mt-5 flex justify-center">
         <input
@@ -327,7 +398,12 @@ function EditProfileForm({
           className="group relative disabled:opacity-70"
           aria-label="Change profile photo"
         >
-          <span className="bg-pink-gradient shadow-rest flex h-20 w-20 rounded-full p-[2.5px]">
+          <span
+            className={cn(
+              "bg-pink-gradient shadow-rest flex p-[2.5px]",
+              PHOTO_BOX_CLASS,
+            )}
+          >
             <span className="bg-card relative flex-1 overflow-hidden rounded-full">
               {displayAvatarUrl ? (
                 <Image
@@ -351,63 +427,63 @@ function EditProfileForm({
               )}
             </span>
           </span>
-          <span className="border-paper bg-foreground text-paper shadow-rest absolute -right-0.5 -bottom-0.5 flex h-7 w-7 items-center justify-center rounded-full border-2 transition group-active:scale-95">
+          <span
+            className={cn(
+              CAMERA_BADGE_BOX_CLASS,
+              "bg-foreground text-paper shadow-rest flex items-center justify-center transition group-active:scale-95",
+            )}
+          >
             <Camera className="h-3.5 w-3.5" />
           </span>
         </button>
       </div>
-      <p className="text-muted-foreground type-body mt-2 text-center">
-        JPG, PNG, or WEBP · max 2 MB
-      </p>
+      <PhotoHint />
 
-      <div className="border-border bg-card mt-5 flex items-center gap-3 rounded-2xl border p-4">
-        <div className="min-w-0 flex-1">
-          <span className="text-muted-foreground type-label block font-medium">
-            Member number
-          </span>
+      <MemberNumberCard
+        number={
           <span
             className={cn(
-              "font-display block truncate text-lg leading-tight tracking-wide tabular-nums",
+              MEMBER_NUMBER_CLASS,
               code ? "text-foreground" : "text-muted-foreground",
             )}
           >
             {code ?? "Pending"}
           </span>
-          <span className="text-muted-foreground mt-1 block text-xs leading-snug">
-            {MEMBER_NUMBER_LINE}
-          </span>
-        </div>
-        {code ? (
-          <button
-            type="button"
-            onClick={() => void copyCode()}
-            aria-label="Copy member number"
-            className="text-muted-foreground hover:text-foreground hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition"
-          >
-            <Copy className="h-4 w-4" />
-          </button>
-        ) : null}
-      </div>
+        }
+        action={
+          code ? (
+            <button
+              type="button"
+              onClick={() => void copyCode()}
+              aria-label="Copy member number"
+              className={cn(
+                COPY_BUTTON_BOX_CLASS,
+                "text-muted-foreground hover:text-foreground hover:bg-muted flex items-center justify-center transition",
+              )}
+            >
+              <Copy className="h-4 w-4" />
+            </button>
+          ) : null
+        }
+      />
 
-      <div className="mt-5 flex flex-col gap-3">
+      <div className={FIELDS_CLASS}>
         <SheetField
-          label="First name"
+          label={FIELD_LABEL.firstName}
           value={firstName}
           onChange={setFirstName}
-          placeholder="First name"
+          placeholder={FIELD_LABEL.firstName}
           autoComplete="given-name"
         />
         <SheetField
-          label="Last name"
+          label={FIELD_LABEL.lastName}
           value={lastName}
           onChange={setLastName}
-          placeholder="Last name"
+          placeholder={FIELD_LABEL.lastName}
           autoComplete="family-name"
         />
         <label className="block">
-          <span className="text-muted-foreground type-label mb-1 block font-medium">
-            Sex
-          </span>
+          <FieldLabel>{FIELD_LABEL.sex}</FieldLabel>
           <select
             value={sex}
             onChange={(e) => setSex(e.target.value)}
@@ -419,14 +495,12 @@ function EditProfileForm({
           </select>
         </label>
         <label className="block">
-          <span className="text-muted-foreground type-label mb-1 block font-medium">
-            Birthday
-          </span>
+          <FieldLabel>{FIELD_LABEL.birthday}</FieldLabel>
           <BirthdayPicker value={birthday} onChange={setBirthday} />
         </label>
       </div>
 
-      <div className="mt-8 flex gap-2">
+      <div className={ACTIONS_CLASS}>
         <button
           type="button"
           onClick={goBack}
@@ -466,9 +540,7 @@ function SheetField({
 }) {
   return (
     <label className="block">
-      <span className="text-muted-foreground type-label mb-1 block font-medium">
-        {label}
-      </span>
+      <FieldLabel>{label}</FieldLabel>
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}

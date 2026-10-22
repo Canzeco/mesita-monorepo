@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
 import { CreditCard, Crown, UserRound } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
@@ -12,6 +13,16 @@ import {
 } from "@/lib/guest-standing";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
+import {
+  IDENTITY_BOXES,
+  IDENTITY_BOX_SPAN,
+  IDENTITY_CARD_CLASS,
+  IDENTITY_CHIP_CLASS,
+  IDENTITY_GRID_CLASS,
+  IDENTITY_PHOTO_CLASS,
+  IDENTITY_RING_CLASS,
+  type IdentityBox,
+} from "./identity-card-layout";
 
 // ONE IDENTITY CARD (Pato, MESITA-2547: "that card at the top is the card.
 // the card must display all public info from instagram to profile picture
@@ -64,15 +75,13 @@ import { cn } from "@/lib/utils";
 // are doors — Class opens its explainer, Plan opens /me/plan; on Social both
 // are facts.
 
-/** One box of the card (MESITA-2596, MESITA-2599): 36px tall, 14px text, the
- *  full width of its grid cell (MESITA-2614: a whole row for name and
- *  Instagram, half a row each for Class and Plan). */
-const CHIP_CLASS =
-  "border-border text-foreground relative flex h-9 w-full min-w-0 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold";
-
-/** Name and Instagram take the whole row; Class and Plan share one
- *  (MESITA-2614). */
-const FULL_ROW_CLASS = "col-span-full";
+// THE BOXES' GEOMETRY IS identity-card-layout.ts's: the ring, the photo, the
+// grid, the 36px box and the row order (MESITA-2614: a whole row for name
+// and Instagram, half a row each for Class and Plan). Me's loading skeleton
+// reads the same module, so it is this card's boxes, empty (Pato,
+// MESITA-2701: "the placeholders must be similar to the page you are
+// loading, like the sizes").
+const CHIP_CLASS = IDENTITY_CHIP_CLASS;
 
 /** Grows a box's tap area to the 44px floor without growing it visually
  *  (MESITA-1688). */
@@ -143,6 +152,7 @@ function ClassChip({
   const text = `${label} Class`;
   const className = cn(
     CHIP_CLASS,
+    IDENTITY_BOX_SPAN.class,
     vip ? "bg-foreground text-paper border-transparent" : "",
     onPress && cn(TAP_TARGET_CLASS, "transition", !vip && "hover:bg-muted"),
   );
@@ -182,6 +192,7 @@ function PlanChip({ plan, href }: { plan: GuestPlan; href?: string }) {
   const text = `${label} Plan`;
   const className = cn(
     CHIP_CLASS,
+    IDENTITY_BOX_SPAN.plan,
     premium && "border-foreground",
     href && cn(TAP_TARGET_CLASS, "hover:bg-muted transition"),
   );
@@ -212,7 +223,7 @@ function PlanChip({ plan, href }: { plan: GuestPlan; href?: string }) {
 function NameBox({ name, href }: { name: string; href?: string }) {
   const className = cn(
     CHIP_CLASS,
-    FULL_ROW_CLASS,
+    IDENTITY_BOX_SPAN.name,
     href && cn(TAP_TARGET_CLASS, "hover:bg-muted transition"),
   );
   const body = (
@@ -233,6 +244,36 @@ function NameBox({ name, href }: { name: string; href?: string }) {
   ) : (
     <span className={className} data-identity-name>
       {body}
+    </span>
+  );
+}
+
+/** The Instagram box: a link on Me (opens /me/instagram), a fact on
+ *  Social. */
+function InstagramBox({ instagram }: { instagram: IdentityInstagram }) {
+  return instagram.href ? (
+    <Link
+      href={instagram.href}
+      aria-label={instagram.label}
+      className={cn(
+        CHIP_CLASS,
+        IDENTITY_BOX_SPAN.instagram,
+        TAP_TARGET_CLASS,
+        "hover:bg-muted transition",
+      )}
+      data-identity-instagram
+    >
+      <InstagramBadge connected={instagram.connected} />
+      <span className="truncate">{instagram.label}</span>
+    </Link>
+  ) : (
+    <span
+      className={cn(CHIP_CLASS, IDENTITY_BOX_SPAN.instagram)}
+      data-identity-instagram
+    >
+      <InstagramBadge connected={instagram.connected} />
+      <span className="sr-only">Instagram:</span>
+      <span className="truncate">{instagram.label}</span>
     </span>
   );
 }
@@ -261,13 +302,20 @@ export function IdentityCard({
   /** Me only: the name box opens Me › Profile. */
   nameHref?: string;
 }) {
+  // Every box, keyed as identity-card-layout.ts orders them; a null one
+  // (no Class, no Plan, no Instagram) is simply not drawn.
+  const boxes: Record<IdentityBox, ReactNode> = {
+    name: <NameBox name={name} href={nameHref} />,
+    class: guestClass && (
+      <ClassChip guestClass={guestClass} onPress={onClassPress} />
+    ),
+    plan: plan && <PlanChip plan={plan} href={planHref} />,
+    instagram: instagram && <InstagramBox instagram={instagram} />,
+  };
   return (
-    <div
-      className="flex w-full flex-col items-center gap-2 text-center"
-      data-identity-card
-    >
-      <span className="bg-border shrink-0 rounded-full p-[1.5px]" aria-hidden>
-        <span className="bg-muted relative block h-16 w-16 overflow-hidden rounded-full">
+    <div className={IDENTITY_CARD_CLASS} data-identity-card>
+      <span className={IDENTITY_RING_CLASS} aria-hidden>
+        <span className={cn("bg-muted", IDENTITY_PHOTO_CLASS)}>
           {avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -283,43 +331,12 @@ export function IdentityCard({
 
       {/* Three rows: name, then Class · Plan as a pair, then Instagram; one
           column under 360px (MESITA-2614, reordered MESITA-2621). */}
-      <div
-        className="grid w-full min-w-0 grid-cols-1 gap-2 min-[360px]:grid-cols-2"
-        data-identity-chips
-      >
-        <NameBox name={name} href={nameHref} />
-
-        {guestClass && (
-          <ClassChip guestClass={guestClass} onPress={onClassPress} />
-        )}
-
-        {plan && <PlanChip plan={plan} href={planHref} />}
-
-        {instagram?.href ? (
-          <Link
-            href={instagram.href}
-            aria-label={instagram.label}
-            className={cn(
-              CHIP_CLASS,
-              FULL_ROW_CLASS,
-              TAP_TARGET_CLASS,
-              "hover:bg-muted transition",
-            )}
-            data-identity-instagram
-          >
-            <InstagramBadge connected={instagram.connected} />
-            <span className="truncate">{instagram.label}</span>
-          </Link>
-        ) : instagram ? (
-          <span
-            className={cn(CHIP_CLASS, FULL_ROW_CLASS)}
-            data-identity-instagram
-          >
-            <InstagramBadge connected={instagram.connected} />
-            <span className="sr-only">Instagram:</span>
-            <span className="truncate">{instagram.label}</span>
-          </span>
-        ) : null}
+      {/* Three rows: name, then Class · Plan as a pair, then Instagram; one
+          column under 360px (MESITA-2614, reordered MESITA-2621). */}
+      <div className={IDENTITY_GRID_CLASS} data-identity-chips>
+        {IDENTITY_BOXES.map((box) => (
+          <Fragment key={box}>{boxes[box]}</Fragment>
+        ))}
       </div>
     </div>
   );

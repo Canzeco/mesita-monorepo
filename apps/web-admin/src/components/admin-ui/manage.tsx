@@ -45,6 +45,20 @@ const TINT_CHIP: Record<Tint, string> = {
   slate: "bg-muted text-muted-foreground",
 };
 
+/** SectionCard's surface: the white card, its hairline and shadow, with no
+ *  padding (the Admin tab's disclosures pad their summary and body, and
+ *  their skeletons stand on this). */
+export const CARD_SURFACE_CLASS =
+  "border-border bg-card shadow-card rounded-2xl border";
+/** SectionCard's box: the surface, 20px in (24px from sm). Read by the
+ *  place tabs' loading.tsx, whose cards stand where these will (Pato,
+ *  MESITA-2701: "the placeholders must be similar to the page you are
+ *  loading, like the sizes"). */
+export const SECTION_CARD_CLASS = `${CARD_SURFACE_CLASS} p-5 sm:p-6`;
+/** A block that has not loaded yet: the admin's one skeleton bone (grey,
+ *  pulsing, rounded-lg), for every loading state the console draws. */
+export const BONE_CLASS = "bg-muted animate-pulse rounded-lg";
+
 export function SectionCard({
   id,
   icon,
@@ -65,10 +79,7 @@ export function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section
-      id={id}
-      className="border-border bg-card shadow-card rounded-2xl border p-5 sm:p-6"
-    >
+    <section id={id} className={SECTION_CARD_CLASS}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           {icon != null && (

@@ -187,12 +187,19 @@ export function HoursRow({
   );
 }
 
+/** Save · Share side by side, 8px apart. CardActions and the cards'
+ *  loading silhouettes read this one string (MESITA-2701). */
+export const CARD_ACTIONS_ROW = "grid grid-cols-2 gap-2";
+
+/** A card button's box: 32px tall to the eye (MESITA-2652, MESITA-2661),
+ *  rounded-lg. The buttons and their loading blocks read this one string
+ *  (MESITA-2701). */
+export const CARD_BUTTON_BOX = "h-8 rounded-lg";
+
 // The place screen's action tile, on one line (MESITA-2650): the border grey
-// at 60% (MESITA-2647), rounded-lg, 12px semibold ink. 32px tall to the eye
-// (MESITA-2652, MESITA-2661); an invisible 6px extension above and below
-// keeps the 44px touch floor.
-const CARD_BUTTON =
-  "bg-border/60 text-foreground hover:bg-border/80 relative flex h-8 after:absolute after:inset-x-0 after:-inset-y-1.5 min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 font-sans text-xs font-semibold transition active:scale-[0.99]";
+// at 60% (MESITA-2647), CARD_BUTTON_BOX, 12px semibold ink; an invisible 6px
+// extension above and below keeps the 44px touch floor.
+const CARD_BUTTON = `${CARD_BUTTON_BOX} bg-border/60 text-foreground hover:bg-border/80 relative flex after:absolute after:inset-x-0 after:-inset-y-1.5 min-w-0 items-center justify-center gap-1.5 px-2 font-sans text-xs font-semibold transition active:scale-[0.99]`;
 
 /**
  * SAVE AND SHARE, side by side (MESITA-2650). The word is Save, the mark the
@@ -216,7 +223,7 @@ export function CardActions({
   className?: string;
 }) {
   return (
-    <div className={cn("grid grid-cols-2 gap-2", className)} data-tile-actions>
+    <div className={cn(CARD_ACTIONS_ROW, className)} data-tile-actions>
       <button
         type="button"
         onClick={onSave}

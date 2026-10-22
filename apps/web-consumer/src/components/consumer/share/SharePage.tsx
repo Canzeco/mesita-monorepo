@@ -1,13 +1,19 @@
 "use client";
 
 import type { MouseEvent } from "react";
-import { SectionEyebrow } from "@/components/consumer/me/settings-rows";
 import {
   CHANNEL_ICONS,
   type ShareChannel,
 } from "@/components/consumer/share/channel-icons";
 import {
-  APP_SHARE_TEXT,
+  SEND_CHANNELS,
+  SEND_DISC,
+  SEND_DOOR,
+  SEND_LABELS,
+  SHARE_CARD_BOX,
+  ShareFrame,
+} from "@/components/consumer/share/share-frame";
+import {
   APP_SHARE_URL,
   INSTAGRAM_DM_URL,
   SHARE_BODY,
@@ -50,38 +56,34 @@ function ShareCard() {
       width={SHARE_CARD.width}
       height={SHARE_CARD.height}
       alt={SHARE_CARD.alt}
-      className="border-border aspect-[1200/630] h-auto w-full rounded-2xl border"
+      className={cn("border-border h-auto border", SHARE_CARD_BOX)}
       data-share-card
     />
   );
 }
 
-function SendButton({
-  label,
-  href,
-  onClick,
-  data,
-}: {
-  label: string;
+/** What a door does on a tap: a prefilled link, a handler, or both. */
+type Door = {
   href?: string;
   onClick?: (event: MouseEvent<HTMLElement>) => void;
-  data: ShareChannel;
-}) {
+};
+
+function SendButton({ href, onClick, data }: Door & { data: ShareChannel }) {
   const { tint, icon } = CHANNEL_ICONS[data];
-  const className =
-    "group flex flex-col items-center gap-1.5 text-xs font-semibold";
+  const className = cn("group", SEND_DOOR);
   const body = (
     <>
       <span
         className={cn(
-          "flex h-14 w-14 items-center justify-center rounded-full shadow-sm transition group-hover:opacity-90 group-active:scale-95",
+          SEND_DISC,
+          "shadow-sm transition group-hover:opacity-90 group-active:scale-95",
           tint,
         )}
         data-share-icon={data}
       >
         {icon}
       </span>
-      {label}
+      {SEND_LABELS[data]}
     </>
   );
   if (href) {
@@ -144,53 +146,30 @@ function sendElsewhere() {
   );
 }
 
+/** Each way to send, in SEND_CHANNELS' order (share-frame.tsx). */
+const DOORS: Record<ShareChannel, Door> = {
+  sms: { href: SHARE_LINKS.sms },
+  instagram: {
+    href: INSTAGRAM_DM_URL,
+    onClick: (event) => {
+      event.preventDefault();
+      void sendToInstagram();
+    },
+  },
+  whatsapp: { href: SHARE_LINKS.whatsapp },
+  other: { onClick: () => void sendElsewhere() },
+};
+
 export function SharePage() {
+  // The scroller, the words and the Send it row are ShareFrame, the same
+  // one share/loading.tsx draws (MESITA-2701).
   return (
-    <div
-      className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pt-6 pb-8"
+    <ShareFrame
       data-share-page
-    >
-      <h1 className="font-display text-2xl font-semibold tracking-tight">
-        Share Mesita
-      </h1>
-      <p className="text-muted-foreground type-body mt-1">{APP_SHARE_TEXT}</p>
-
-      <div className="mt-5">
-        <ShareCard />
-      </div>
-
-      <div className="mt-6 flex flex-col gap-3">
-        <SectionEyebrow>Send it</SectionEyebrow>
-        <div className="grid grid-cols-4 gap-2">
-          <SendButton label="SMS" href={SHARE_LINKS.sms} data="sms" />
-          <SendButton
-            label="Instagram"
-            href={INSTAGRAM_DM_URL}
-            onClick={(event) => {
-              event.preventDefault();
-              void sendToInstagram();
-            }}
-            data="instagram"
-          />
-          <SendButton
-            label="WhatsApp"
-            href={SHARE_LINKS.whatsapp}
-            data="whatsapp"
-          />
-          <SendButton
-            label="Other"
-            onClick={() => void sendElsewhere()}
-            data="other"
-          />
-        </div>
-      </div>
-      {/* What the buttons above send, said plainly. */}
-      <p
-        className="text-muted-foreground type-body mt-5 text-center"
-        data-share-preview
-      >
-        Sends: “{SHARE_BODY}”
-      </p>
-    </div>
+      card={<ShareCard />}
+      doors={SEND_CHANNELS.map((channel) => (
+        <SendButton key={channel} data={channel} {...DOORS[channel]} />
+      ))}
+    />
   );
 }

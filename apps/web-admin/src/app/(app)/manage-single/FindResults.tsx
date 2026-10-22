@@ -59,6 +59,12 @@ const PIN_PLACE_HEAD = `sticky left-0 sm:left-36 ${PIN_HEAD_BG}`;
 const PIN_HELD_CELL = `hidden sticky left-0 w-36 min-w-36 max-w-36 sm:table-cell ${PIN_CELL_BG}`;
 const PIN_PLACE_CELL = `sticky left-0 sm:left-36 ${PIN_CELL_BG}`;
 
+/** The table's card: bled to the pane's edges on a phone, a rounded card
+ *  from 640px. SinglePlaceClient's CatalogueSkeleton stands in the same one
+ *  while the catalogue loads. */
+export const FIND_TABLE_FRAME =
+  "border-border bg-card -mx-5 mt-5 overflow-hidden border-y sm:mx-0 sm:rounded-2xl sm:border";
+
 export const rowNameId = (i: number) => `find-row-name-${i}`;
 
 const NO_IDS: ReadonlySet<string> = new Set();
@@ -149,7 +155,7 @@ export function FindResults({
 
   return (
     <>
-      <div className="border-border bg-card -mx-5 mt-5 overflow-hidden border-y sm:mx-0 sm:rounded-2xl sm:border">
+      <div className={FIND_TABLE_FRAME}>
         <div className="overflow-x-auto">
           <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
             <caption className="sr-only">

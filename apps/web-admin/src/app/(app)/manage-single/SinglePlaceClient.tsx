@@ -26,7 +26,7 @@ import {
 } from "@/app/(app)/manage-multiple/actions";
 import { StatePill } from "@/app/(app)/manage-multiple/PlaceFacts";
 import { StateIcon, type BatchRowState } from "@/app/(app)/manage-multiple/StateIcon";
-import { CopyIdButton, ReadField, SectionCard } from "@/components/admin-ui/manage";
+import { BONE_CLASS, CopyIdButton, ReadField, SectionCard } from "@/components/admin-ui/manage";
 import { enrichLabel, type EnrichDepth } from "@/lib/enrich-depth";
 import { placeTabHref } from "@/lib/place-tabs";
 import type { PlaceLite, SearchErrorResponse, SearchResponse } from "@/lib/places-types";
@@ -46,7 +46,7 @@ import {
   searchTextSource,
 } from "./find-sources";
 import { DEFAULT_NAME_ADMIN, type NameAdminConfig } from "../filters-config/catalog";
-import { FindResults, type RowNote } from "./FindResults";
+import { FIND_TABLE_FRAME, FindResults, type RowNote } from "./FindResults";
 import { classifyLookup, googleMapsPlaceHref } from "./single-place-lookup";
 
 export type View =
@@ -438,11 +438,10 @@ export function SinglePlaceClient({
   );
 }
 
-const CATALOGUE_BONE = "bg-muted animate-pulse rounded-lg";
-
 /** The catalogue while it loads, laid out as FindResults lays it out (Pato,
  *  MESITA-2701: "the placeholders must be similar to the page you are
- *  loading, like the sizes"): the same card, bled to the edges on a phone,
+ *  loading, like the sizes"): the same card (FIND_TABLE_FRAME), bled to the
+ *  edges on a phone,
  *  its 11px head band, then rows of the Place cell (the 14px name over the
  *  11px address) and the seven state pills. From 640px the 9rem On column
  *  leads each row; under that its pill sits above the name. The table runs
@@ -456,23 +455,23 @@ function CatalogueSkeleton() {
     <div
       aria-busy="true"
       aria-label="Loading Mesita places"
-      className="border-border bg-card -mx-5 mt-5 overflow-hidden border-y sm:mx-0 sm:rounded-2xl sm:border"
+      className={FIND_TABLE_FRAME}
     >
       <div aria-hidden className="bg-muted/30 type-label flex">
         <div className={held}>
           <div className="flex h-[1lh] items-center">
-            <div className={`${CATALOGUE_BONE} h-2.5 w-5`} />
+            <div className={`${BONE_CLASS} h-2.5 w-5`} />
           </div>
         </div>
         <div className={place}>
           <div className="flex h-[1lh] items-center">
-            <div className={`${CATALOGUE_BONE} h-2.5 w-10`} />
+            <div className={`${BONE_CLASS} h-2.5 w-10`} />
           </div>
         </div>
         {GENERAL_STATE_FACTS.map((f) => (
           <div key={f.key} className={state}>
             <div className="flex h-[1lh] items-center">
-              <div className={`${CATALOGUE_BONE} h-2.5 w-14`} />
+              <div className={`${BONE_CLASS} h-2.5 w-14`} />
             </div>
           </div>
         ))}
@@ -480,20 +479,20 @@ function CatalogueSkeleton() {
       {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
         <div key={i} aria-hidden className="border-border/60 flex border-t">
           <div className={held}>
-            <div className={`${CATALOGUE_BONE} h-5 w-14 rounded-full`} />
+            <div className={`${BONE_CLASS} h-5 w-14 rounded-full`} />
           </div>
           <div className={place}>
-            <div className={`${CATALOGUE_BONE} mb-1 h-5 w-14 rounded-full sm:hidden`} />
+            <div className={`${BONE_CLASS} mb-1 h-5 w-14 rounded-full sm:hidden`} />
             <div className="flex h-5 items-center">
-              <div className={`${CATALOGUE_BONE} h-3.5 w-40 max-w-full`} />
+              <div className={`${BONE_CLASS} h-3.5 w-40 max-w-full`} />
             </div>
             <div className="type-label flex h-[1lh] items-center">
-              <div className={`${CATALOGUE_BONE} h-2.5 w-52 max-w-full`} />
+              <div className={`${BONE_CLASS} h-2.5 w-52 max-w-full`} />
             </div>
           </div>
           {GENERAL_STATE_FACTS.map((f) => (
             <div key={f.key} className={state}>
-              <div className={`${CATALOGUE_BONE} h-5 w-8 rounded-full`} />
+              <div className={`${BONE_CLASS} h-5 w-8 rounded-full`} />
             </div>
           ))}
         </div>

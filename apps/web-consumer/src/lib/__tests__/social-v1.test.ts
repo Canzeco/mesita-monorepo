@@ -175,6 +175,12 @@ describe("full handle, Open Instagram, and the Social name switch", () => {
     join(__dirname, "../../components/consumer/me/InstagramModal.tsx"),
     "utf8",
   );
+  // The switch's words moved to a plain module the route fallbacks read too
+  // (MESITA-2701).
+  const SWITCH_WORDS = readFileSync(
+    join(__dirname, "../../components/consumer/me/switch-words.ts"),
+    "utf8",
+  );
 
   it("the card's Open Instagram is a new-tab link to the profile, counted", () => {
     const card = FEED.slice(FEED.indexOf("function PersonCard("));
@@ -203,7 +209,8 @@ describe("full handle, Open Instagram, and the Social name switch", () => {
   it("Settings › Social: 'Public profile' writes appear_anonymous", () => {
     expect(SETTINGS).toContain('<SettingsGroup title="Social">');
     expect(SETTINGS).toContain("<SocialNameRow />");
-    expect(SWITCH).toContain("Public profile");
+    expect(SWITCH_WORDS).toContain('label: "Public profile"');
+    expect(SWITCH).toContain("{PUBLIC_PROFILE_SWITCH.label}");
     // MESITA-2594: asked again where the member connects Instagram.
     expect(INSTAGRAM).toContain("<SocialNameRow />");
     expect(SWITCH).toContain("appear_anonymous: !next");

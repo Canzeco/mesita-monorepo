@@ -42,19 +42,7 @@ export function SkeletonLine({
   );
 }
 
-// A list row placeholder mirroring NotificationRow (notification-row.tsx),
-// its one caller's row (MESITA-2701; a 40px avatar disc before): p-3, the
-// 64px rounded-xl photo, then the place name (14px snug), the outcome (12px,
-// 2px under it) and the date (13px body, 4px under that).
-export function SkeletonRow({ className }: { className?: string }) {
-  return (
-    <div aria-hidden className={cn("flex gap-3 p-3", className)}>
-      <Skeleton className="h-16 w-16 shrink-0 rounded-xl" />
-      <div className="min-w-0 flex-1">
-        <SkeletonLine className="text-sm leading-snug" bar="w-2/5" />
-        <SkeletonLine className="mt-0.5 text-xs" bar="w-3/5" />
-        <SkeletonLine className="type-body mt-1" bar="w-1/3" />
-      </div>
-    </div>
-  );
-}
+// No generic row here (MESITA-2701). SkeletonRow copied one row's classes
+// for its one caller; that silhouette is NotificationRowSkeleton now, beside
+// NotificationRow in notification-row.tsx, reading the row's own strings. A
+// skeleton for a known row lives with the row.

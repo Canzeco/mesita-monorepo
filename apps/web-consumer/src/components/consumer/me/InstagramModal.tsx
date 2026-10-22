@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { BadgeCheck, Copy, ImageIcon, Send } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { cn, errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
-import { Spinner } from "@/components/shared";
+import { Skeleton, Spinner } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import {
   IconCircle,
@@ -28,6 +28,7 @@ import {
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useConsumerIdentity } from "@/lib/identity-context";
 import { SocialNameRow } from "@/components/consumer/me/SocialNameRow";
+import { INSTAGRAM_PHOTO_SWITCH } from "@/components/consumer/me/switch-words";
 import { INSTAGRAM_REACH_FOLLOWERS } from "@/lib/consumer-identity";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 
@@ -102,38 +103,19 @@ export function InstagramModal() {
 
   return (
     <MeScreen title="Instagram">
-      <div className="mb-4 flex items-center gap-3">
-        <span
-          className={cn(
-            "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white",
-            INSTAGRAM_ICON_GRADIENT_CLASS,
-          )}
-        >
-          <Instagram className="h-5 w-5" />
-        </span>
-        <p className="text-muted-foreground text-xs">
-          {INSTAGRAM_REACH_FOLLOWERS.toLocaleString("en-US")}+ followers
-          verifies you.
-        </p>
-      </div>
+      <InstagramIntro />
 
         <div className="flex flex-col gap-3">
-          {connected && (
-            <section className="flex flex-col gap-2">
-              <SectionEyebrow>Connected</SectionEyebrow>
-              <CurrentConnectionCard />
-            </section>
-          )}
+          {connected && <ConnectedAccount />}
 
           {/* The pitch is for people who haven't connected. Once they have,
               it is the app arguing with a decision the guest already made. */}
           {!connected && <WhyConnectModule />}
 
-          {showForm && channel === null && (
-            <div className="flex justify-center py-6" aria-busy>
-              <Spinner size="sm" />
-            </div>
-          )}
+          {/* While it is read, the card's own silhouette, not a spinner:
+              the card that lands is ~330px tall to the spinner's 64px, so
+              Photo's row below jumped (Pato, MESITA-2701). */}
+          {showForm && channel === null && <ConnectCardSkeleton />}
 
           {showForm && channel !== null && (
             <ConnectByMessage live={channel.channel === "dm"} />
@@ -165,7 +147,41 @@ export function InstagramModal() {
   );
 }
 
-function WhyConnectModule() {
+/** The page's opening line: the Instagram tile and the follower bar. Shared
+ *  with the route's fallback (InstagramSkeleton), so both are one box. */
+export function InstagramIntro() {
+  return (
+    <div className="mb-4 flex items-center gap-3">
+      <span
+        className={cn(
+          "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white",
+          INSTAGRAM_ICON_GRADIENT_CLASS,
+        )}
+      >
+        <Instagram className="h-5 w-5" />
+      </span>
+      <p className="text-muted-foreground text-xs">
+        {INSTAGRAM_REACH_FOLLOWERS.toLocaleString("en-US")}+ followers
+        verifies you.
+      </p>
+    </div>
+  );
+}
+
+/** A connected guest's account card under its eyebrow. It reads only the
+ *  identity context, seeded server-side, so the fallback draws it too. */
+export function ConnectedAccount() {
+  return (
+    <section className="flex flex-col gap-2">
+      <SectionEyebrow>Connected</SectionEyebrow>
+      <CurrentConnectionCard />
+    </section>
+  );
+}
+
+/** The pitch, for a guest who has not connected. Shared with the route's
+ *  fallback, so its words are written once (MESITA-2701). */
+export function WhyConnectModule() {
   return (
     <article className="border-border bg-card rounded-2xl border p-4">
       <h3 className="text-sm leading-tight font-bold tracking-tight">
@@ -257,29 +273,7 @@ function ConnectByMessage({ live }: { live: boolean }) {
   }
 
   return (
-    <section
-      className="border-border bg-card rounded-2xl border p-4"
-      data-instagram-connect="dm"
-    >
-      <h3 className="mb-3 text-sm leading-tight font-bold tracking-tight">
-        Connect Instagram
-      </h3>
-      <ol className="flex flex-col gap-3">
-        {[
-          <>Type your Instagram @handle</>,
-          <>
-            Send your code to <b>@{claim?.account ?? "mesita"}</b> on Instagram
-          </>,
-          <>That&apos;s it: you&apos;re verified in a few seconds</>,
-        ].map((line, i) => (
-          <li key={i} className="type-body flex items-start gap-3 leading-snug">
-            <span className="bg-secondary/15 text-secondary type-label flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-bold">
-              {i + 1}
-            </span>
-            <span>{line}</span>
-          </li>
-        ))}
-      </ol>
+    <ConnectCard account={claim?.account}>
       <input
         value={handle}
         onChange={(e) => {
@@ -365,17 +359,97 @@ function ConnectByMessage({ live }: { live: boolean }) {
               </span>
             )}
           </Button>
-          {!live && (
-            <p className="text-muted-foreground type-body mt-2 text-center" data-instagram-dm-soon>
-              Connecting by Instagram message opens soon.
-            </p>
-          )}
+          {!live && <ConnectSoonLine />}
         </>
       )}
+    </ConnectCard>
+  );
+}
+
+/** The Connect card's frame and fixed words — the title, the three steps,
+ *  the password line — around `children`, the handle field and what follows
+ *  it. ConnectByMessage and its silhouette both draw it, so the silhouette is
+ *  the card's own box (MESITA-2701). `account` is the Instagram the code goes
+ *  to, Mesita's until the server names one. */
+function ConnectCard({
+  account = "mesita",
+  pending = false,
+  children,
+}: {
+  account?: string;
+  pending?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <section
+      className="border-border bg-card rounded-2xl border p-4"
+      data-instagram-connect={pending ? undefined : "dm"}
+      aria-busy={pending || undefined}
+    >
+      <h3 className="mb-3 text-sm leading-tight font-bold tracking-tight">
+        Connect Instagram
+      </h3>
+      <ol className="flex flex-col gap-3">
+        {[
+          <>Type your Instagram @handle</>,
+          <>
+            Send your code to <b>@{account}</b> on Instagram
+          </>,
+          <>That&apos;s it: you&apos;re verified in a few seconds</>,
+        ].map((line, i) => (
+          <li key={i} className="type-body flex items-start gap-3 leading-snug">
+            <span className="bg-secondary/15 text-secondary type-label flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-bold">
+              {i + 1}
+            </span>
+            <span>{line}</span>
+          </li>
+        ))}
+      </ol>
+      {children}
       <p className="text-muted-foreground type-body mt-2 text-center">
         We never ask for your password.
       </p>
     </section>
+  );
+}
+
+/** Under the button while the Meta channel is off (MESITA-2579): the flow is
+ *  a preview. `held` is the silhouette's: the words in no ink on a muted bar
+ *  per line, so the slot wraps where the line does without claiming it. */
+function ConnectSoonLine({ held = false }: { held?: boolean }) {
+  return (
+    <p
+      className="text-muted-foreground type-body mt-2 text-center"
+      data-instagram-dm-soon={held ? undefined : true}
+      aria-hidden={held || undefined}
+    >
+      <span
+        className={cn(
+          held &&
+            "bg-muted animate-pulse rounded-lg text-transparent box-decoration-clone",
+        )}
+      >
+        Connecting by Instagram message opens soon.
+      </span>
+    </p>
+  );
+}
+
+/** The Connect card while the page asks which way connecting works today
+ *  (Pato, MESITA-2701: "the placeholders must be similar to the page you are
+ *  loading, like the sizes"). The frame and fixed words are the card's own;
+ *  the handle field (48px) and Get my code (44px) are inert blocks at their
+ *  size. The one line the read decides — "opens soon" — is HELD: the channel
+ *  is off until the Meta secrets land, so today's card lands with nothing
+ *  moving; a live channel lands it without that line. Shared with the
+ *  route's fallback (InstagramSkeleton). */
+export function ConnectCardSkeleton() {
+  return (
+    <ConnectCard pending>
+      <Skeleton className="mt-3 h-12 w-full rounded-xl" />
+      <Skeleton className="mt-2 h-11 w-full rounded-xl" />
+      <ConnectSoonLine held />
+    </ConnectCard>
   );
 }
 
@@ -459,11 +533,11 @@ function InstagramPhotoSwitch() {
           <ImageIcon className="h-[18px] w-[18px]" />
         </IconCircle>
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold">Use my Instagram photo</span>
+          <span className="block text-sm font-semibold">
+            {INSTAGRAM_PHOTO_SWITCH.label}
+          </span>
           <span className="text-muted-foreground type-label block">
-            {shown
-              ? "Your Mesita profile picture is your Instagram one"
-              : "Only your username and followers"}
+            {shown ? INSTAGRAM_PHOTO_SWITCH.on : INSTAGRAM_PHOTO_SWITCH.off}
           </span>
         </span>
         <Switch on={shown} />

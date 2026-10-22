@@ -20,6 +20,13 @@ import {
   KindRow,
   cardFacts,
 } from "@/components/consumer/place-card";
+import {
+  TILE_ACTIONS,
+  TILE_BAND,
+  TILE_FRAME,
+  TILE_PHOTO,
+  TILE_TEXT,
+} from "./catalog-tile-classes";
 
 /**
  * A Google-only card has no Mesita page yet. Its tap is the explicit open
@@ -146,45 +153,22 @@ export function CatalogTile({
   // keep the heart"); the clock, the arrow and the star carry colour. The
   // rows and buttons are place-card.tsx, shared with the Search card.
   //
-  // TWO BIG BUTTONS, LIKE AND SHARE (Pato, MESITA-2650: "add the button to
+  // TWO BIG BUTTONS, SAVE AND SHARE (Pato, MESITA-2650: "add the button to
   // like and the button share; share must be almost everywhere to maximize
   // sharing and the virality of the app").
   //
-  // PHOTO 60%, CONTENT 40%, FOUR ROWS (Pato, MESITA-2655: "better 40% and
-  // 60%, and use the space for 4 rows"): name; category · $$ · stars;
-  // hours · distance; then Like and Share side by side (28px, 44px hit
-  // area). 20px lines and a 2px gap so the four fit. Supersedes the next
-  // paragraph's 66/34 and stacked buttons.
-  //
-  // PHOTO 66%, CONTENT 34% (Pato, MESITA-2654: "image must be 66% of
-  // square, the rest 33% is for content"), every tile. The band is too short
-  // for a button row under three text rows, so Like and Share stack at its
-  // right, centred, 84px wide; the rows truncate before them. The
-  // reflection is the photo's height: 66/34 = 194.12% of the band.
-  //
-  // EVERY TILE IS SQUARE (MESITA-2652: "the dimensions must be square, and
-  // the buttons shorter"): a Mesita tile gives the photo the top 45% and the
-  // band 55% (the reflection is the photo's height, 45/55 = 81.82% of the
-  // band, so it still mirrors from the foot); a Google-only card, which has
-  // no page to share or save, keeps 60/40 and no buttons.
-  //
-  // ONE square (Pato, MESITA-2369, MESITA-2373): the photo is the top 60%,
-  // fully shown and centred — nothing lies over it. The bottom 40% is its
-  // REFLECTION: a 60%-tall copy flipped so its foot meets the photo's foot,
-  // under an 80% paper layer, three rows on it in dark text. No border; the
-  // corners are rounded-2xl — and the photo, the band and its blur layer
-  // carry the same radius themselves, because a backdrop-blur layer escapes
-  // its parent's rounded clip and painted the bottom corners square
-  // (MESITA-2429). Like and Share sit on the band's foot.
+  // ONE SQUARE, PHOTO 60%, CONTENT 40%, FOUR ROWS (Pato, MESITA-2655:
+  // "better 40% and 60%, and use the space for 4 rows"), every tile, a
+  // Google-only card too (MESITA-2663): name; category · $$ · stars;
+  // hours · distance; then Save and Share side by side (32px, 44px hit
+  // area). 20px lines and a 2px gap so the four fit. The photo is fully
+  // shown and centred, nothing over it (MESITA-2369); the band under it is
+  // plain white (MESITA-2658: the reflection went). The split went 45/55
+  // (MESITA-2652) and 66/34 (MESITA-2654) on the way back to 60/40. The
+  // boxes are catalog-tile-classes.ts, shared with the tile's loading
+  // silhouette (MESITA-2701).
   return (
-    <li
-      className={cn(
-        // A 1px grey hairline around each tile (Pato, MESITA-2661: "add a
-        // really small border, gray, to each box").
-        "border-foreground/35 relative isolate aspect-square min-w-0 overflow-hidden rounded-2xl border",
-        className,
-      )}
-    >
+    <li className={cn(TILE_FRAME, className)}>
       <TileLink
         href={href}
         google={google}
@@ -193,35 +177,20 @@ export function CatalogTile({
         label={place.name}
         className="focus-visible:ring-primary absolute inset-0 block outline-none focus-visible:ring-2 focus-visible:ring-inset"
       >
-        <div
-          className={cn(
-            "bg-muted absolute inset-x-0 top-0 overflow-hidden rounded-t-2xl",
-            "h-[60%]",
-          )}
-        >
-          {media()}
-        </div>
-        {/* The reflection: bottom 40%, the photo mirrored from its foot under
-            80% paper (MESITA-2375), the three rows centred on it (MESITA-2645). */}
-        <div
-          className={cn(
-            // NO REFLECTION (Pato, MESITA-2658: "what actually looks better is
-            // removing the reflection of the place in the box"): a plain
-            // white band. MESITA-2657's ring and darker list ground stay out.
-            "bg-paper absolute inset-x-0 bottom-0 overflow-hidden rounded-b-2xl",
-            "h-[40%]",
-          )}
-          data-tile-info
-        >
+        <div className={cn("bg-muted", TILE_PHOTO)}>{media()}</div>
+        {/* NO REFLECTION (Pato, MESITA-2658: "what actually looks better is
+            removing the reflection of the place in the box"): a plain white
+            band, the three rows centred on it (MESITA-2645). MESITA-2657's
+            ring and darker list ground stay out. */}
+        <div className={TILE_BAND} data-tile-info>
           {/* ONE TYPE SCALE (Pato, MESITA-2645: "standardize fonts and sizes
               and spaces"): the place screen's own (packages/place-profile
               ui.ts). Inter everywhere, two sizes only: the name 16px
               semibold ink (PLACE_TITLE_CLASS); every other row 14px regular
-              on a 20px line, full ink (place-card.tsx). 12px side padding;
-              the rows centre in what Save and Share leave (44px: the 32px
-              row and its 12px foot), so the gap over the name and the gap
-              over the buttons match. The mark follows the name. */}
-          <div className="text-foreground relative flex h-full flex-col justify-center gap-0.5 px-3 pb-11">
+              on a 20px line, full ink (place-card.tsx). TILE_TEXT centres
+              the rows in what Save and Share leave. The mark follows the
+              name. */}
+          <div className={cn("text-foreground", TILE_TEXT)}>
             <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-5 font-semibold tracking-tight">
               <span className="truncate">{place.name}</span>
               {isEnrichedPlace(place) ? <EnrichedBadge /> : null}
@@ -234,15 +203,14 @@ export function CatalogTile({
       {/* Google-only cards get Save and Share too (Pato, MESITA-2663:
           "keep the save and share button even if no profile yet, just
           create the profile and then trigger it"); the parent's handlers
-          get-or-create first. 12px from the tile's sides AND its foot
-          (MESITA-2668: "its not the same vertical margin as horizontal
-          margin"); it was 8px at the foot. */}
+          get-or-create first. TILE_ACTIONS: 12px from the tile's sides AND
+          its foot (MESITA-2668); it was 8px at the foot. */}
       <CardActions
         name={place.name}
         saved={saved}
         onSave={onToggle}
         onShare={onShare ?? (() => void sharePlace(place))}
-        className="absolute inset-x-3 bottom-3"
+        className={TILE_ACTIONS}
       />
     </li>
   );

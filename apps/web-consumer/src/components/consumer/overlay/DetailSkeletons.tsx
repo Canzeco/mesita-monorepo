@@ -1,9 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Share2 } from "lucide-react";
 import {
   PlaceDetailBodySkeleton,
   PlaceProfileSkeleton,
@@ -11,9 +9,12 @@ import {
 } from "@mesita/place-profile";
 import { Skeleton } from "@/components/shared";
 import {
-  SlideOverHeader,
-  useSlideOverClose,
-} from "@/components/consumer/overlay/SlideOverShell";
+  RESERVATION_META_LABELS,
+  type ReservationMetaLabel,
+} from "@/components/consumer/ReservationDetailBody";
+import { ReservationDetailModalShell } from "@/components/consumer/ReservationDetailModalShell";
+import { ReservationPageFrame } from "@/components/consumer/ReservationPageFrame";
+import { useSlideOverClose } from "@/components/consumer/overlay/SlideOverShell";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { RESERVATION_FLOW } from "@/lib/reservation-state";
 import { cn } from "@/lib/utils";
@@ -24,7 +25,10 @@ import { cn } from "@/lib/utils";
 // bands, cards and rows at the same sizes and in the same order, so content
 // lands without a jump. The slide-over ones render INSIDE the SlideOverShell
 // that the segment's layout.tsx mounts, so the panel slides in once and the
-// silhouette resolves to content in place.
+// silhouette resolves to content in place. The reservation ones stand in
+// the loaded screen's own frames (ReservationDetailModalShell,
+// ReservationPageFrame) and draw one metadata row per label the body lists,
+// so neither header nor card is a copy.
 // Client only for the live Backs (useSlideOverClose, the router); nothing
 // here holds state.
 
@@ -76,11 +80,21 @@ export function PlaceSlideOverSkeleton({
 
 // ── Reservation ──────────────────────────────────────────────────────────
 
+/** A metadata row's value bar, as wide as what each row usually says
+ *  ("Fri Oct 24 · 8:30 PM", "2 guests", "Confirmed", an 8-digit code). */
+const META_VALUE_WIDTH: Record<ReservationMetaLabel, string> = {
+  When: "w-36",
+  Party: "w-16",
+  State: "w-20",
+  Reference: "w-16",
+};
+
 /** ReservationDetailBody: the photo card (16:9 photo, the name and its
- *  state pill), the four-step stepper, the banner, the When · Party · State
- *  card of 44px rows, then View place, Reschedule and Cancel. The route's
- *  loading.tsx draws it, and so does reservation-detail-fetch while the
- *  row is fetched, so the two placeholders are one. */
+ *  state pill), the four-step stepper, the banner, the When · Party ·
+ *  State · Reference card of 44px rows (one per RESERVATION_META_LABELS,
+ *  the body's own list), then View place, Reschedule and Cancel. The
+ *  route's loading.tsx draws it, and so does reservation-detail-fetch while
+ *  the row is fetched, so the two placeholders are one. */
 export function ReservationBodySkeleton() {
   return (
     <div className="flex flex-col gap-4 px-4 pt-4 pb-8">
@@ -118,14 +132,14 @@ export function ReservationBodySkeleton() {
         aria-hidden
         className="border-border bg-card divide-border/70 divide-y overflow-hidden rounded-2xl border"
       >
-        {["w-28", "w-16", "w-20"].map((w) => (
-          <div key={w} className="flex items-center gap-3 px-4 py-3">
+        {RESERVATION_META_LABELS.map((label) => (
+          <div key={label} className="flex items-center gap-3 px-4 py-3">
             <Skeleton className="h-4 w-4 rounded" />
             <div className="flex-1">
               <Skeleton className="h-3 w-14" />
             </div>
             <div className="flex h-5 items-center">
-              <Skeleton className={cn("h-3.5", w)} />
+              <Skeleton className={cn("h-3.5", META_VALUE_WIDTH[label])} />
             </div>
           </div>
         ))}
@@ -154,52 +168,24 @@ export function ReservationBodySkeleton() {
   );
 }
 
-/** The intercepted reservation (ReservationDetailModalShell): its header as
- *  drawn there (live Back, "Reservation", the share square, inert here),
- *  then the body silhouette. */
+/** The intercepted reservation: the real ReservationDetailModalShell (live
+ *  Back, "Reservation", the share square waiting for the name) around the
+ *  body silhouette, the same frame the fetch draws while it waits. */
 export function ReservationSlideOverSkeleton() {
   return (
-    <>
-      <SlideOverHeader
-        title="Reservation"
-        actions={
-          <span
-            aria-hidden
-            className="border-border bg-card text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border"
-          >
-            <Share2 className="h-4 w-4" />
-          </span>
-        }
-      />
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <ReservationBodySkeleton />
-      </div>
-    </>
+    <ReservationDetailModalShell placeName={null}>
+      <ReservationBodySkeleton />
+    </ReservationDetailModalShell>
   );
 }
 
-/** The hard-nav reservation (/reservation/[id]): the page's own header,
- *  its back circle the same live link to Me the page draws, then the body
- *  silhouette. */
+/** The hard-nav reservation (/reservation/[id]): the page's own frame
+ *  (ReservationPageFrame: its header, the back circle a live link to Me,
+ *  and its scroller), then the body silhouette. */
 export function ReservationPageSkeleton() {
   return (
-    <div className="relative flex h-full flex-col">
-      <header className="bg-background/85 z-20 flex shrink-0 items-center gap-2 px-3 py-3 backdrop-blur">
-        <Link
-          href={CONSUMER_ROUTES.me}
-          aria-label="Back to reservations"
-          className="border-border bg-card text-foreground hover:bg-muted flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition"
-        >
-          <ChevronLeft className="h-5 w-5" strokeWidth={2.25} />
-        </Link>
-        <p className="font-display flex-1 truncate text-center text-sm font-semibold">
-          Reservation
-        </p>
-        <span className="h-9 w-9 shrink-0" aria-hidden />
-      </header>
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <ReservationBodySkeleton />
-      </div>
-    </div>
+    <ReservationPageFrame>
+      <ReservationBodySkeleton />
+    </ReservationPageFrame>
   );
 }

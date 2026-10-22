@@ -1,17 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  Bell,
-  CalendarCheck,
-  CreditCard,
-  Crown,
-  Heart,
-  Plug,
-  Settings as SettingsIcon,
-  UserRound,
-} from "lucide-react";
-import { Instagram } from "@/components/shared/instagram-icon";
 import { errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -25,8 +14,8 @@ import {
   instagramWithFollowers,
   type ConsumerFacts,
 } from "@/lib/consumer-identity";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { DestGrid, DestTile } from "./profile-sections";
+import { DestTile } from "./profile-sections";
+import { MeHubFrame } from "./hub-tiles";
 import { IdentityBar } from "./IdentityBar";
 
 // The Me surface — the identity header, then nine cells in Pato's order
@@ -39,7 +28,11 @@ import { IdentityBar } from "./IdentityBar";
 //   2              Favorites · Connector
 //   1              Settings, alone on the last row
 //
-// NINE CELLS, AND THAT IS THE WHOLE PAGE. route-structure T8 pins them.
+// THE CELLS LIVE IN hub-tiles.tsx, rows and words, with the scroller they sit
+// in: (hub)/loading.tsx draws the same rows while this page loads (Pato,
+// MESITA-2701: "the placeholders must be similar to the page you are
+// loading, like the sizes"). NINE CELLS, AND THAT IS THE WHOLE PAGE.
+// route-structure T8 pins them.
 //
 // EVERY CELL IS A ROUTE (Pato, MESITA-1789). Sheets over this hub stacked
 // history as overlays. DestTiles Link to /me/<box>.
@@ -110,101 +103,24 @@ export function ProfileClient() {
   }, []);
 
   return (
-    <div className="flex h-full flex-col">
-      <IdentityBar
-        profile={profile}
-        loading={loading}
-        instagramLabel={igLabel}
-        // Couldn't load keeps the colour: it is not a "no".
-        instagramConnected={igFacts.igConnected || igFacts.unknown}
-      />
-      {/* pt-3: the header card sits one row-gap (12px) above the tiles. */}
-      <div className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-3 pb-8">
-        <div className="flex flex-col gap-3">
-          {/* PROFILE LEADS (Pato, 2026-09-08), INSTAGRAM BESIDE IT
-              (MESITA-2080). The member number is on /me/profile, with its
-              copy button; the tile only names the page (MESITA-2607). */}
-          <DestGrid>
-            <DestTile
-              Icon={UserRound}
-              title="Profile"
-              summary="Name and photo"
-              href={CONSUMER_ROUTES.mePages.profile}
-            />
-            <DestTile
-              Icon={Instagram}
-              title="Instagram"
-              summary="Connect your account"
-              href={CONSUMER_ROUTES.mePages.instagram}
-            />
-          </DestGrid>
-
-          {/* CLASS BESIDE PLAN (Pato, MESITA-2562): two separate facts
-              (MESITA-2553), each a page. Never the gem on Plan: that shape
-              was the old class chip (MESITA-2551). The subtitle names the
-              two values each page explains, never the guest's own
-              (MESITA-2607). */}
-          <DestGrid>
-            <DestTile
-              Icon={Crown}
-              title="Class"
-              summary="Regular or VIP"
-              href={CONSUMER_ROUTES.mePages.class}
-            />
-            <DestTile
-              Icon={CreditCard}
-              title="Plan"
-              summary="Free or Premium"
-              href={CONSUMER_ROUTES.mePages.plan}
-            />
-          </DestGrid>
-
-          <DestGrid>
-            <DestTile
-              Icon={Bell}
-              title="Notifications"
-              summary="Bookings and updates"
-              href={CONSUMER_ROUTES.mePages.notifications}
-            />
-            <DestTile
-              Icon={CalendarCheck}
-              title="Reservations"
-              summary="Upcoming and past"
-              href={CONSUMER_ROUTES.mePages.reservations}
-            />
-          </DestGrid>
-
-          {/* Favorites and Reservations are each their own page
-              (MESITA-2565); they were the two tabs of Saved (MESITA-2561).
-              Connector is Mesita in an AI assistant; it is not built, so its
-              page says Soon (MESITA-2562). */}
-          <DestGrid>
-            <DestTile
-              Icon={Heart}
-              title="Favorites"
-              summary="Places you saved"
-              href={CONSUMER_ROUTES.mePages.favorites}
-            />
-            <DestTile
-              Icon={Plug}
-              title="Connector"
-              summary="ChatGPT or Claude"
-              href={CONSUMER_ROUTES.mePages.connector}
-            />
-          </DestGrid>
-
-          {/* Settings closes the page, alone; the cell beside it is empty
-              (Pato, MESITA-2562). */}
-          <DestGrid>
-            <DestTile
-              Icon={SettingsIcon}
-              title="Settings"
-              summary="Language, account"
-              href={CONSUMER_ROUTES.mePages.settings}
-            />
-          </DestGrid>
-        </div>
-      </div>
-    </div>
+    <MeHubFrame
+      bar={
+        <IdentityBar
+          profile={profile}
+          loading={loading}
+          instagramLabel={igLabel}
+          // Couldn't load keeps the colour: it is not a "no".
+          instagramConnected={igFacts.igConnected || igFacts.unknown}
+        />
+      }
+      tile={(cell) => (
+        <DestTile
+          Icon={cell.Icon}
+          title={cell.title}
+          summary={cell.summary}
+          href={cell.href}
+        />
+      )}
+    />
   );
 }

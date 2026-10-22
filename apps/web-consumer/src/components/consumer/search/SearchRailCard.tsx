@@ -6,6 +6,8 @@ import { cardPhoto, placePlaceholder } from "@/lib/place-placeholder";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/shared";
 import {
+  CARD_ACTIONS_ROW,
+  CARD_BUTTON_BOX,
   CardActions,
   HoursRow,
   PriceKindRow,
@@ -28,7 +30,7 @@ import {
 /** Every catalog rail card is this tall. Missing rows must not shrink a
  *  neighbor — the peek strip has to line up, and the square thumb stays the
  *  same size on every page. */
-export const RAIL_CARD_HEIGHT_CLASS = "h-[9.75rem]";
+const RAIL_CARD_HEIGHT_CLASS = "h-[9.75rem]";
 
 /** The card's frame, its text column and where Save · Share sit: one set
  *  for RailCard and RailCardSkeleton, so the loading card cannot drift
@@ -68,9 +70,9 @@ export function RailCardSkeleton() {
           <RailRowSkeleton bar="h-3.5 w-3/5" />
         </div>
       </div>
-      <div className={cn("grid grid-cols-2 gap-2", RAIL_CARD_ACTIONS)}>
-        <Skeleton className="h-8" />
-        <Skeleton className="h-8" />
+      <div className={cn(CARD_ACTIONS_ROW, RAIL_CARD_ACTIONS)}>
+        <Skeleton className={CARD_BUTTON_BOX} />
+        <Skeleton className={CARD_BUTTON_BOX} />
       </div>
     </div>
   );

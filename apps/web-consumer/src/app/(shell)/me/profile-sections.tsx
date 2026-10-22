@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { Skeleton, SkeletonLine } from "@/components/shared/Skeleton";
+import { Skeleton } from "@/components/shared";
 import { cn } from "@/lib/utils";
 
 // ─── The destination grid (MESITA-1628) ────────────────────────────────────
@@ -46,10 +46,34 @@ export function DestGrid({ children }: { children: ReactNode }) {
 
 // ONE ROW, NOT A STACK (Pato, MESITA-2596: "make these settings boxes a bit
 // shorter, currently too tall. still keep two columns"): the chip sits
-// beside the title and summary, so a tile is ~64px, not ~100. The frame is
-// shared with the loading tile so the two are one box (MESITA-2701).
+// beside the title and summary, so a tile is ~64px, not ~100. The frame, the
+// chip and the words are shared with the loading tile so the two are one box
+// (MESITA-2701).
 const TILE_FRAME =
   "border-border bg-card shadow-rest relative flex w-full items-center gap-2.5 overflow-hidden rounded-2xl border p-3";
+
+/** The 36px icon chip: the page grey, the glyph at full ink. The loading
+ *  tile pulses the same box (MESITA-2701). */
+const DEST_CHIP =
+  "bg-muted text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px]";
+
+/** The title over the summary, the tile's and its skeleton's: the words are
+ *  fixed (hub-tiles.tsx), so the loading tile prints them too and a summary
+ *  wraps where the page's does (Pato, MESITA-2701: "the placeholders must be
+ *  similar to the page you are loading, like the sizes"). */
+function TileText({ title, summary }: { title: string; summary: string }) {
+  return (
+    <span className="min-w-0 flex-1">
+      {/* The title is `truncate`, so a long one never pushes the row. */}
+      <span className="block truncate text-sm font-bold tracking-tight">
+        {title}
+      </span>
+      <span className="text-muted-foreground mt-0.5 block text-xs leading-snug">
+        {summary}
+      </span>
+    </span>
+  );
+}
 
 /** One grid cell: a DESTINATION, always a route Link to `/me/<box>`. */
 export function DestTile({
@@ -60,9 +84,8 @@ export function DestTile({
 }: {
   Icon: LucideIcon;
   title: string;
-  /** THREE WORDS OR FEWER — see the note above. Null while the value is
-   *  loading: a skeleton bar holds its place (MESITA-2596). */
-  summary: string | null;
+  /** THREE WORDS OR FEWER — see the note above. */
+  summary: string;
   href: string;
 }) {
   return (
@@ -75,45 +98,31 @@ export function DestTile({
     >
       {/* Decorative. The title and summary already say everything, so the
           chip is hidden rather than described. */}
-      <span
-        className="bg-muted text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px]"
-        aria-hidden
-        data-dest-chip
-      >
+      <span className={DEST_CHIP} aria-hidden data-dest-chip>
         <Icon className="h-[19px] w-[19px]" strokeWidth={2.1} />
       </span>
-      <span className="min-w-0 flex-1">
-        {/* The title is `truncate`, so a long one never pushes the row. */}
-        <span className="block truncate text-sm font-bold tracking-tight">
-          {title}
-        </span>
-        {summary === null ? (
-          // On the summary's own 12px snug line, so the tile keeps its
-          // height when the words land (MESITA-2701).
-          <SkeletonLine className="mt-0.5 text-xs leading-snug" bar="w-20" />
-        ) : (
-          <span className="text-muted-foreground mt-0.5 block text-xs leading-snug">
-            {summary}
-          </span>
-        )}
-      </span>
+      <TileText title={title} summary={summary} />
     </Link>
   );
 }
 
 /** A tile in /me's loading.tsx (Pato, MESITA-2701: "the placeholders must
  *  be similar to the page you are loading, like the sizes"): the same frame,
- *  the 36px chip, and two bars on the title's 14px line and the summary's
- *  12px snug line. Not a cell: it links nowhere and leaves with the
- *  fallback. */
-export function DestTileSkeleton() {
+ *  the chip's box pulsing where its glyph will be, and the cell's own title
+ *  and summary, so a summary that wraps to two lines on a phone is two lines
+ *  here too (a one-line bar drew the grid short). Not a cell: it links
+ *  nowhere and leaves with the fallback. */
+export function DestTileSkeleton({
+  title,
+  summary,
+}: {
+  title: string;
+  summary: string;
+}) {
   return (
     <div aria-hidden className={TILE_FRAME}>
-      <Skeleton className="h-9 w-9 shrink-0 rounded-[11px]" />
-      <span className="min-w-0 flex-1">
-        <SkeletonLine className="text-sm" bar="w-16" />
-        <SkeletonLine className="mt-0.5 text-xs leading-snug" bar="w-24" />
-      </span>
+      <Skeleton className={DEST_CHIP} />
+      <TileText title={title} summary={summary} />
     </div>
   );
 }

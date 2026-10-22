@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
-import { ReservationCard } from "@/components/consumer/ReservationCard";
-import { LoadingFill } from "@/components/shared";
+import {
+  ReservationCard,
+  ReservationCardSkeleton,
+} from "@/components/consumer/ReservationCard";
 import { apiListReservations } from "@/lib/api/reservations";
 import type { ReservationItem } from "@/lib/reservation-types";
 import { toReservationItem } from "@/lib/reservations-adapter";
@@ -21,6 +23,34 @@ import { errMsg } from "@/lib/utils";
 // the top — wrong for a feed. So it gets a client-side reorder: UPCOMING
 // soonest-first, then PAST most-recent-first, which is how a reservations list
 // actually reads.
+
+/** The list's scroller (16px in, 16px above and below) and its 12px step:
+ *  one set for the cards and their skeleton. */
+const LIST_SCROLLER = "scrollbar-hide h-full overflow-y-auto px-4 py-4";
+const LIST_STACK = "flex flex-col gap-3";
+
+/** The list while consumer-web-list-reservations is out, and the whole of
+ *  /me/reservations/loading.tsx's pane (Pato, MESITA-2701: "the
+ *  placeholders must be similar to the page you are loading, like the
+ *  sizes"; a centred spinner before): four ReservationCardSkeletons on the
+ *  list's own padding and step, enough to fill a phone, so the cards land
+ *  where their silhouettes stood. One component for both, so the route
+ *  fallback and the list's null state cannot drift. */
+export function ReservationsListSkeleton() {
+  return (
+    <div className={LIST_SCROLLER}>
+      <div className={LIST_STACK}>
+        {[0, 1, 2, 3].map((i) => (
+          <ReservationCardSkeleton key={i} />
+        ))}
+      </div>
+      <p role="status" className="sr-only">
+        Loading reservations
+      </p>
+    </div>
+  );
+}
+
 export function ReservationsList({ empty }: { empty: ReactNode }) {
   const supabase = useBrowserSupabase();
   const [items, setItems] = useState<ReservationItem[] | null>(null);
@@ -51,12 +81,12 @@ export function ReservationsList({ empty }: { empty: ReactNode }) {
       </div>
     );
   }
-  if (items === null) return <LoadingFill label="Loading reservations" />;
+  if (items === null) return <ReservationsListSkeleton />;
   if (items.length === 0) return <>{empty}</>;
 
   return (
-    <div className="scrollbar-hide h-full overflow-y-auto px-4 py-4">
-      <div className="flex flex-col gap-3">
+    <div className={LIST_SCROLLER}>
+      <div className={LIST_STACK}>
         {items.map((r) => (
           <ReservationCard key={r.id} r={r} />
         ))}

@@ -111,11 +111,10 @@ import { useUserLocation } from "@/lib/use-user-location";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { placeHref } from "@/lib/place-route";
 import { cardPhoto, placePlaceholder } from "@/lib/place-placeholder";
-import { EmptyState } from "@/components/shared";
+import { EmptyState, Skeleton } from "@/components/shared";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { IdentityCard } from "@/components/consumer/IdentityCard";
 import { toGuestClass, toGuestPlan } from "@/lib/guest-standing";
-import { Skeleton } from "@/components/shared/Skeleton";
 import { cn, errMsg } from "@/lib/utils";
 import {
   approxFollowers,
@@ -583,10 +582,10 @@ function PersonCard({
  *  either end stays in the card instead of scrolling Home behind it. */
 function HistoryList({ items }: { items: MemberHistoryItem[] | null }) {
   if (items == null) {
-    // The list's own rows (MESITA-2701: "the placeholders must be similar to
-    // the page you are loading, like the sizes"): no top margin, a hairline
-    // between rows, each py-2.5 around the 44px photo, the 14px line and the
-    // 12px time 2px under it.
+    // The list's own rows (Pato, MESITA-2701: "the placeholders must be
+    // similar to the page you are loading, like the sizes"): no top margin,
+    // a hairline between rows, each py-2.5 around the 44px photo, the 14px
+    // line and the 12px time 2px under it.
     return (
       <div
         className="divide-border divide-y"

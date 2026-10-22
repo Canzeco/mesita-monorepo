@@ -2,7 +2,13 @@
 
 import { usePathname } from "next/navigation";
 import { PlaceProfileSkeleton } from "@mesita/place-profile";
+import {
+  BONE_CLASS,
+  CARD_SURFACE_CLASS,
+  SECTION_CARD_CLASS,
+} from "@/components/admin-ui/manage";
 import { usePlaceContext } from "@/components/place-manage/PlaceContext";
+import { ADMIN_COLUMNS_CLASS } from "@/components/place-manage/sections/AdminSection";
 import { placeTabFromPathname } from "@/lib/place-tabs";
 
 // ONE TAB'S BODY WHILE IT LOADS, AT ITS SIZES (Pato, MESITA-2701: "the
@@ -22,13 +28,12 @@ import { placeTabFromPathname } from "@/lib/place-tabs";
 //             disclosures OPEN as they mount.
 // Until MESITA-2701 it drew a second heading and strip, a slab and two
 // cards, under the real ones. A client file because the tab is the URL's.
-
-const BONE = "bg-muted animate-pulse rounded-lg";
-const CARD =
-  "border-border bg-card shadow-card rounded-2xl border p-5 sm:p-6";
+// The cards, the Admin masonry and the bone are the classes the real parts
+// read (SECTION_CARD_CLASS, CARD_SURFACE_CLASS, ADMIN_COLUMNS_CLASS,
+// BONE_CLASS), never a copy of them.
 
 function Bone({ className }: { className: string }) {
-  return <div aria-hidden className={`${BONE} ${className}`} />;
+  return <div aria-hidden className={`${BONE_CLASS} ${className}`} />;
 }
 
 export default function AdminPlaceTabLoading() {
@@ -86,7 +91,7 @@ function ReviewsTabSkeleton() {
       {/* Google Summary · Instagram Summary · Facebook Summary · Google
           Reviews: each a SectionCard with its 24px number line. */}
       {["w-36", "w-40", "w-40", "w-32"].map((title, i) => (
-        <section key={i} aria-hidden className={CARD}>
+        <section key={i} aria-hidden className={SECTION_CARD_CLASS}>
           <CardHead title={title} subtitle state />
           <div className="mt-5 flex h-6 items-center">
             <Bone className="h-6 w-16" />
@@ -193,7 +198,7 @@ function DisclosureSkeleton({
   return (
     <section
       aria-hidden
-      className="border-border bg-card shadow-card rounded-2xl border"
+      className={CARD_SURFACE_CLASS}
     >
       <div className="flex items-center gap-3 p-5 sm:p-6">
         <Bone className="h-9 w-9 shrink-0 rounded-xl" />
@@ -218,11 +223,11 @@ function DisclosureSkeleton({
 
 function AdminTabSkeleton() {
   return (
-    <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 xl:columns-3">
+    <div className={ADMIN_COLUMNS_CLASS}>
       <span className="sr-only">Loading place</span>
       {/* Profile States: Created · Pulsing · Requested · Enriching ·
           Enriched · Selected · Disabled. The long details wrap. */}
-      <section aria-hidden className={CARD}>
+      <section aria-hidden className={SECTION_CARD_CLASS}>
         <CardHead title="w-28" />
         <div className="mt-5 flex flex-col">
           <StateRowSkeleton lines={2} />
@@ -235,14 +240,14 @@ function AdminTabSkeleton() {
         </div>
       </section>
       {/* Reviews States: Google Found. */}
-      <section aria-hidden className={CARD}>
+      <section aria-hidden className={SECTION_CARD_CLASS}>
         <CardHead title="w-32" />
         <div className="mt-5 flex flex-col">
           <StateRowSkeleton />
         </div>
       </section>
       {/* Enrichment opens on its own spinner (py-10, one 14px line). */}
-      <section aria-hidden className={CARD}>
+      <section aria-hidden className={SECTION_CARD_CLASS}>
         <CardHead title="w-24" />
         <div className="mt-5 flex items-center gap-2 py-10 text-sm">
           <div className="flex h-[1lh] items-center gap-2">

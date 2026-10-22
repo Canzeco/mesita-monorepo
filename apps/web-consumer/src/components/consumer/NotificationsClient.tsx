@@ -12,9 +12,10 @@ import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 import {
   NotificationRow,
+  NotificationRowSkeleton,
   RESERVATION_KINDS,
 } from "@/components/consumer/notification-row";
-import { EmptyState, SkeletonRow } from "@/components/shared";
+import { EmptyState } from "@/components/shared";
 
 // Notifications is YOUR activity and nothing else (Pato, 2026-08-17): an
 // inbox of things that happened to YOU, with no switcher.
@@ -26,17 +27,17 @@ import { EmptyState, SkeletonRow } from "@/components/shared";
 const FEED_CLASS =
   "scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-6";
 
-// Four NotificationRow silhouettes on the list's own step (mt-4, 8px apart),
-// each in the row's white bordered card (Pato, MESITA-2701: "the
+/** The rows' column: 16px under the blurb, 8px apart. */
+const LIST_CLASS = "mt-4 flex flex-col gap-2";
+
+// Four NotificationRow silhouettes (notification-row.tsx, beside the row
+// they stand in for) on the list's own step (Pato, MESITA-2701: "the
 // placeholders must be similar to the page you are loading, like the sizes").
 function SkeletonRows() {
   return (
-    <div className="mt-4 flex flex-col gap-2" aria-hidden>
+    <div className={LIST_CLASS} aria-hidden>
       {[0, 1, 2, 3].map((i) => (
-        <SkeletonRow
-          key={i}
-          className="border-border bg-card rounded-2xl border"
-        />
+        <NotificationRowSkeleton key={i} />
       ))}
     </div>
   );
@@ -98,7 +99,7 @@ export function NotificationsClient() {
       {loading ? (
         <SkeletonRows />
       ) : visible.length > 0 ? (
-        <div className="mt-4 flex flex-col gap-2">
+        <div className={LIST_CLASS}>
           {visible.map((n) => (
             <NotificationRow key={n.id} n={n} />
           ))}

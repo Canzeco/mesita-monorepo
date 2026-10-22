@@ -1,4 +1,5 @@
-import { DestGrid, DestTileSkeleton } from "../profile-sections";
+import { DestTileSkeleton } from "../profile-sections";
+import { MeHubFrame } from "../hub-tiles";
 import { IdentityBarSkeleton } from "../me-skeletons";
 
 // /me's fallback: the hub itself, as ProfileClient draws it (Pato,
@@ -8,31 +9,27 @@ import { IdentityBarSkeleton } from "../me-skeletons";
 //
 //   the app bar          IdentityBar's band and its skeleton card, the same
 //                        one the page draws while its profile read is out
-//   2 · 2 · 2 · 2 · 1    the nine tiles in five DestGrids, Settings alone
+//   2 · 2 · 2 · 2 · 1    the nine tiles, from the page's own rows
 //
-// The scroller and its gaps are ProfileClient's own: px-4 on the tiles'
-// 16px edge, pt-3 under the bar, 12px between rows.
+// The rows, the scroller and the words are hub-tiles.tsx's, the page's own
+// source. Each tile prints its title and summary as itself: most summaries
+// wrap to two lines on a phone, and a one-line bar drew the grid short, so
+// it jumped when the page landed. Only the strings cross into the tile; the
+// Icon is a function and cannot (MESITA-2129).
 //
 // It sits in (hub) with the page so it wraps the hub only, never a /me/<box>
 // (see page.tsx). The /me/[tab] catch-all re-exports it: it redirects here.
 export default function MeLoading() {
   return (
-    <div className="flex h-full flex-col">
-      <IdentityBarSkeleton />
-      <div className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-3 pb-8">
-        <div className="flex flex-col gap-3">
-          {[2, 2, 2, 2, 1].map((cells, row) => (
-            <DestGrid key={row}>
-              {Array.from({ length: cells }, (_, i) => (
-                <DestTileSkeleton key={i} />
-              ))}
-            </DestGrid>
-          ))}
-        </div>
-      </div>
+    <MeHubFrame
+      bar={<IdentityBarSkeleton />}
+      tile={(cell) => (
+        <DestTileSkeleton title={cell.title} summary={cell.summary} />
+      )}
+    >
       <p role="status" className="sr-only">
         Loading Me
       </p>
-    </div>
+    </MeHubFrame>
   );
 }

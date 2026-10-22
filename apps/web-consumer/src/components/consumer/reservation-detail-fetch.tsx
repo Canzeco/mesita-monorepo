@@ -90,11 +90,17 @@ export function ReservationDetailFetcher({ id }: { id: string }) {
 }
 
 // Intercepted soft-nav modal: owns the slide-over shell so the place name is
-// available for the share action once the row resolves.
+// available for the share action once the row resolves. While it loads the
+// name is null and the share square waits, as it does in the segment's
+// loading.tsx (ReservationSlideOverSkeleton), so the two are one frame.
 export function ReservationDetailModalClient({ id }: { id: string }) {
   const { state, reload } = useReservationById(id);
   const placeName =
-    state.state === "found" ? state.r.placeName : "your reservation";
+    state.state === "found"
+      ? state.r.placeName
+      : state.state === "missing"
+        ? "your reservation"
+        : null;
   return (
     <ReservationDetailModalShell placeName={placeName}>
       {state.state === "loading" ? (

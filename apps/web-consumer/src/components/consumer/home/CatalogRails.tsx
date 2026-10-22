@@ -500,7 +500,7 @@ export function CatalogRails() {
   // sizes"): the same three tile silhouettes, 60/40 with the Save · Share
   // row, in the list's own pb-6 and gaps (DiscoverFallback.tsx). Locating
   // drew one bare square before, so it grew to three, then to tiles.
-  if (waitingForFix) return shell(<DiscoverFallback locating />);
+  if (waitingForFix) return shell(<DiscoverFallback />);
 
   if (fetchError) {
     return shell(
