@@ -218,10 +218,14 @@ export function CatalogTile({
                 !google && "pr-9",
               )}
             >
-              <span className="truncate">{place.name}</span>
+              {/* THE MARK LEADS THE NAME (Pato, MESITA-2624: "put the
+                  selected/verified thing at the left"): a long name
+                  truncates, and a mark after it would ride the cut end;
+                  before it, the mark is always whole and in one spot. */}
               {isEnrichedPlace(place) ? (
                 <EnrichedBadge className="h-4 w-4 shrink-0" />
               ) : null}
+              <span className="truncate">{place.name}</span>
             </p>
             {priceKind ? (
               <p className="truncate text-sm leading-tight font-medium">

@@ -10,7 +10,7 @@ import { EnrichedBadge } from "./EnrichedBadge";
 // decision: Pato (MESITA-451, revised) — the live "Enriching" state moved
 // off the title into a dedicated chip in the profile summary (before the
 // category chip, see PlaceDetailBody), so the name stays clean in the
-// top chrome. An enriched place wears the Enriched mark after its name
+// top chrome. An enriched place wears the Enriched mark before its name (MESITA-2624; after it until then)
 // (MESITA-2296).
 
 export function PlaceDetailTitle({
@@ -29,8 +29,10 @@ export function PlaceDetailTitle({
         className,
       )}
     >
-      <span className="truncate">{placeName}</span>
+      {/* The Enriched mark leads the name (MESITA-2624), so a truncated
+          name never pushes it to the cut end. */}
       {enriched ? <EnrichedBadge /> : null}
+      <span className="truncate">{placeName}</span>
     </div>
   );
 }
