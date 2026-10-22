@@ -7,6 +7,7 @@ import {
   Phone,
   QrCode,
   Share2,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import type React from "react";
@@ -19,27 +20,31 @@ import { buildDirectionsUrl } from "../../lib/maps-link";
 import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS } from "../../lib/ui";
 
-// TWO ROWS (Pato, MESITA-2688: "Mesita Reserve" and "Mesita Pay" beside
-// the four tiles; MESITA-2689 made them the ink button, halved):
+// THREE ROWS (Pato, MESITA-2690: "include extra button / save directions
+// contact share / reserve / prepay pay"; MESITA-2688/2689 had Reserve and
+// Pay side by side):
 //
 //   [ ♡ Save ] [ ▱ Directions ] [ ✆ Contact ] [ ⇪ Share ]
-//   [ ▣ Mesita Reserve       ] [ ▦ Mesita Pay  Soon    ]
+//   [ ▣ Mesita Reserve                                  ]
+//   [ ▤ Mesita Prepay  Soon  ] [ ▦ Mesita Pay  Soon     ]
 //
 // ROW 1 is four equal grey tiles, icon over a 12px label. Save is the heart
 // (MESITA-2521's favorite); once saved only the heart turns red, never the
 // tile (MESITA-2635). Directions opens Google Maps already routing to the
 // place (MESITA-2619). Share is back here; the top bar's dots report.
 //
-// ROW 2 is the old Reserve with Mesita button cut in half (Pato, MESITA-2689:
-// "kinda like this button but half and half, but same height and colour"):
-// two 44px ink buttons, icon beside the label, "Mesita Reserve" then
-// "Mesita Pay", dropping "Mesita " when the row is narrow ("only if enough
-// space"). MESITA-2688 had made them grey tiles. NO TIMES ON THE PROFILE
-// (Pato, MESITA-2633: fixed hours "can be confused with
-// confirmed availability"): the guest picks day, party and a preferred time
-// in the sheet, then the agent calls and confirms. Pay is Soon ("pay is as
-// soon but leave it there for the moment"): inert, wearing the consumer
-// bar's grey Soon tag and its QR glyph. MESITA-2618 had taken Pay off.
+// ROWS 2 AND 3 are the ink button (Pato, MESITA-2689: "kinda like this
+// button but half and half, but same height and colour"): 44px, icon beside
+// the label, 8px apart every way. Row 2 is Mesita Reserve alone, full width.
+// Row 3 is Mesita Prepay then Mesita Pay, halved; each drops "Mesita " when
+// the row is too narrow for "Mesita Prepay" and its Soon chip ("only if
+// enough space"). NO TIMES ON THE PROFILE (Pato, MESITA-2633: fixed hours
+// "can be confused with confirmed availability"): the guest picks day,
+// party and a preferred time in the sheet, then the agent calls and
+// confirms. Pay is Soon ("pay is as soon but leave it there for the
+// moment"), and so is Prepay (decision: nothing behind it is built):
+// inert, each wearing the consumer bar's grey Soon tag. MESITA-2618 had
+// taken Pay off.
 //
 // No "I went" (MESITA-2567), no pinned bar. Every button is 44px or more
 // (MESITA-2324). A missing callback leaves its button visible and inert, so
@@ -49,7 +54,7 @@ import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS } from "../../lib/ui";
 // THE TILES ARE ONE STEP DARKER THAN --fill (Pato, MESITA-2647: "make the
 // four gray buttons a bit darker, just a bit, minimum"): the border grey at
 // 60% over the white band ≈ #e9e9e9 (bg-muted is #efefef); hover 80%.
-// Row 2 is the old Reserve with Mesita button, cut in two (MESITA-2689).
+// Rows 2 and 3 are the old Reserve with Mesita button (MESITA-2689).
 const inkButton = cn(
   PLACE_BUTTON_CLASS,
   "bg-foreground text-paper w-full text-sm hover:opacity-90",
@@ -187,13 +192,7 @@ export function ProfileActions({
         />
       </div>
 
-      {/* @container: the "Mesita " prefix shows only when the row is 20rem
-          or wider (Pato: "only if enough space"), measured on the row, not
-          the viewport, so admin's phone frame reads the same. */}
-      <div
-        className="@container grid grid-cols-2 gap-2"
-        data-profile-actions="mesita"
-      >
+      <div className="flex flex-col gap-2" data-profile-actions="mesita">
         <button
           type="button"
           {...(reserveLive
@@ -203,27 +202,42 @@ export function ProfileActions({
           className={inkButton}
         >
           <CalendarCheck className={PLACE_BUTTON_ICON_CLASS} strokeWidth={2.25} />
-          <span className="truncate">
-            <span className="hidden @xs:inline">Mesita </span>Reserve
-          </span>
+          <span className="truncate">Mesita Reserve</span>
         </button>
-        <button
-          type="button"
-          {...inertButtonProps(false)}
-          aria-label="Pay, Soon"
-          className={inkButton}
-        >
-          <QrCode className={PLACE_BUTTON_ICON_CLASS} strokeWidth={2.25} />
-          <span className="truncate">
-            <span className="hidden @xs:inline">Mesita </span>Pay
-          </span>
-          {/* The bar's Soon tag (BottomNav, MESITA-2079): a quiet chip,
-              white on the ink. */}
-          <span className="bg-card text-muted-foreground flex h-4 shrink-0 items-center rounded-full px-1.5 text-[10px] leading-none font-semibold">
-            Soon
-          </span>
-        </button>
+        {/* @container: "Mesita " shows on both halves only when the row is
+            wide enough for "Mesita Prepay" and its Soon chip (Pato: "only if
+            enough space"): measured in Inter at 380px, so @sm (24rem). A
+            phone's row is ~326px, so it reads "Prepay · Pay" there. Measured
+            on the row, not the viewport, so admin's phone frame reads the
+            same. */}
+        <div className="@container grid grid-cols-2 gap-2">
+          <SoonInkButton Icon={Wallet} label="Prepay" />
+          <SoonInkButton Icon={QrCode} label="Pay" />
+        </div>
       </div>
     </div>
+  );
+}
+
+/** A Mesita money button that is not built yet: inert, the ink button with
+ *  the bar's Soon tag (BottomNav, MESITA-2079), a quiet chip white on the
+ *  ink. */
+function SoonInkButton({ Icon, label }: { Icon: LucideIcon; label: string }) {
+  return (
+    <button
+      type="button"
+      {...inertButtonProps(false)}
+      aria-label={`${label}, Soon`}
+      className={inkButton}
+    >
+      <Icon className={PLACE_BUTTON_ICON_CLASS} strokeWidth={2.25} />
+      <span className="truncate">
+        <span className="hidden @sm:inline">Mesita </span>
+        {label}
+      </span>
+      <span className="bg-card text-muted-foreground flex h-4 shrink-0 items-center rounded-full px-1.5 text-[10px] leading-none font-semibold">
+        Soon
+      </span>
+    </button>
   );
 }
