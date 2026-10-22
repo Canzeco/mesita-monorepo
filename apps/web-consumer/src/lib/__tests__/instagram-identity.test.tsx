@@ -93,7 +93,7 @@ describe("a read that FAILED is never stated as a fact", () => {
   it("says neither yes nor no", () => {
     // The default fallback makes a thrown read look like a plain account.
     // This line is what stops the app asserting the guess.
-    expect(instagramSummary(unknown)).toBe("Come back to try");
+    expect(instagramSummary(unknown)).toBe("Insta: couldn't load");
   });
 
   it("a missing handle that did NOT throw is an ordinary empty account", () => {
@@ -101,7 +101,7 @@ describe("a read that FAILED is never stated as a fact", () => {
     // boolean apart; only the second may hedge.
     const empty = identityFrom(null, null, false);
     expect(empty.unknown).toBe(false);
-    expect(instagramSummary(empty)).toBe("Connect it");
+    expect(instagramSummary(empty)).toBe("Insta: not connected");
   });
 });
 
@@ -115,11 +115,11 @@ describe("the Instagram copy, pinned", () => {
   };
 
   it("the Me tile and the header chip", () => {
-    expect(instagramSummary(off)).toBe("Connect it");
-    expect(instagramSummary({ ...off, igConnected: true })).toBe("Connected");
+    expect(instagramSummary(off)).toBe("Insta: not connected");
+    expect(instagramSummary({ ...off, igConnected: true })).toBe("Insta: connected");
     expect(
       instagramSummary({ ...off, igConnected: true, igHandle: "mock" }),
-    ).toBe("@mock");
+    ).toBe("Insta: @mock");
   });
 
   it("names no rung, class or reward — there are none", () => {

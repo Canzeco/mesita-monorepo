@@ -62,7 +62,8 @@ const TAP_TARGET_CLASS =
   "after:absolute after:inset-x-0 after:inset-y-[-4px] after:content-['']";
 
 export type IdentityInstagram = {
-  /** "@handle", "Connect it", or "@per*** · 1.2K followers" (MESITA-2594). */
+  /** Me: "Insta: @handle · 25K followers" or "Insta: not connected"
+   *  (MESITA-2606); Social: "@per*** · 1.2K followers" (MESITA-2594). */
   label: string;
   /** A door (Me) when set; a plain fact (Social) when not. */
   href?: string;
@@ -245,7 +246,7 @@ export function IdentityCard({
         {instagram?.href ? (
           <Link
             href={instagram.href}
-            aria-label={`Instagram: ${instagram.label}`}
+            aria-label={instagram.label}
             className={cn(
               CHIP_CLASS,
               TAP_TARGET_CLASS,
