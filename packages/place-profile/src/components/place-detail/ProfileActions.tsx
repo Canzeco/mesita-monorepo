@@ -29,7 +29,8 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 // tile (MESITA-2635). Directions opens Google Maps already routing to the
 // place (MESITA-2619). Share is back here; the top bar's dots report.
 //
-// ROW 2 is the same tiles, two of them: Reserve, then Pay. Reserve replaced
+// ROW 2 is the same tiles, two of them, in INK (Pato, MESITA-2689: "the same
+// black aesthetic and height as the other"): Reserve, then Pay. Reserve replaced
 // the full-width ink "Reserve with Mesita" button (MESITA-2688). NO
 // TIMES ON THE PROFILE (Pato, MESITA-2633: fixed hours "can be confused with
 // confirmed availability"): the guest picks day, party and a preferred time
@@ -45,6 +46,8 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 // THE TILES ARE ONE STEP DARKER THAN --fill (Pato, MESITA-2647: "make the
 // four gray buttons a bit darker, just a bit, minimum"): the border grey at
 // 60% over the white band ≈ #e9e9e9 (bg-muted is #efefef); hover 80%.
+// Row 2's Mesita tiles wear the old Reserve with Mesita button's ink.
+const inkTile = "bg-foreground text-paper hover:bg-foreground hover:opacity-90";
 const tileBtn =
   "bg-border/60 text-foreground hover:bg-border/80 flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1 text-xs font-semibold transition active:scale-[0.99]";
 
@@ -186,10 +189,16 @@ export function ProfileActions({
           onClick={onReserve}
           ariaLabel="Reserve a table"
           dialog
+          className={inkTile}
         />
-        <ActionTile label="Pay" live={false} ariaLabel="Pay, Soon">
-          {/* The bar's Soon tag (BottomNav, MESITA-2079): a quiet grey chip
-              inverted to white on the grey tile. */}
+        <ActionTile
+          label="Pay"
+          live={false}
+          ariaLabel="Pay, Soon"
+          className={inkTile}
+        >
+          {/* The bar's Soon tag (BottomNav, MESITA-2079): a quiet chip,
+              white on the ink tile. */}
           <span className="relative flex">
             <QrCode
               className="h-[18px] w-[18px] shrink-0 opacity-60"
