@@ -43,7 +43,6 @@ import { adminClient, type EFEnv } from "./auth.ts";
 import {
   classifyGoogleError,
   fetchLocationAnchor,
-  fetchPlaceSignals,
   friendlyGoogleError,
   GOOGLE_PLACES_AUTOCOMPLETE_URL,
   GOOGLE_PLACES_TEXT_SEARCH_URL,
@@ -69,12 +68,19 @@ import {
 import { evaluatePlaceForMap } from "./map-engine.ts";
 import { embedSingle } from "./embeddings-http.ts";
 import { resolveEmbeddingModel } from "./embeddings.ts";
-import { isEnrichedPlace } from "./place-family-keys.ts";
+import {
+  isEnrichedPlace,
+  type PlaceCategoryRow,
+  withFamilyKeysList,
+} from "./place-family-keys.ts";
+import { PLACE_CARD_COLUMNS } from "./place-columns.ts";
 import { radiusBoundingBox } from "./geo.ts";
 import { nameSimilarity } from "./pipeline-signals.ts";
 import {
+  fetchPlaceListing,
   type GooglePlaceListing,
   NEARBY_FIELD_MASK,
+  type NearbyHit,
   nearbyHitFromPlace,
 } from "./nearby-places.ts";
 import { googleStub } from "./google-stub.ts";
@@ -139,9 +145,13 @@ export type LaneItem = {
   /** Discovery > General inputs. Never sent to the client. */
   businessStatus?: string | null;
   reviewCount?: number | null;
-  /** Text Search rows: the Google-only card (`googleStub`). Sent only while
-   *  the row is not on Mesita (MESITA-2325). */
+  /** Google-only rows: the Google-only card (`googleStub`), from Text Search
+   *  (MESITA-2325) or an Autocomplete row's Details call (MESITA-2678). Sent
+   *  only while the row is not on Mesita. */
   card?: Record<string, unknown>;
+  /** Mesita rows: the place's own catalog card (MESITA-2678), the one the
+   *  wire sends for a Mesita row instead of any Google card. */
+  mesitaCard?: Record<string, unknown>;
 };
 
 // Autocomplete (New) marks regions, cities and areas with these types.
@@ -725,11 +735,14 @@ async function runDeepSearch(
     ? takeListedLane(ordered, deep.mesitaCount)
     : [];
 
-  return mergeNameDeepQueries({
-    autocomplete: takeLane(stampedAuto, deep.autoCount),
-    text: takeLane(stampedText, deep.googleCount),
-    mesita: lineupMesita,
-  });
+  return await attachMesitaCards(
+    admin,
+    mergeNameDeepQueries({
+      autocomplete: takeLane(stampedAuto, deep.autoCount),
+      text: takeLane(stampedText, deep.googleCount),
+      mesita: lineupMesita,
+    }),
+  );
 }
 
 /**
@@ -779,7 +792,11 @@ export function toWire(item: LaneItem) {
     ...(item.mesitaSlug ? { mesitaSlug: item.mesitaSlug } : {}),
     ...(item.lat != null ? { lat: item.lat } : {}),
     ...(item.lng != null ? { lng: item.lng } : {}),
-    ...(item.card && !item.mesitaId ? { card: item.card } : {}),
+    // A Mesita row sends its own catalog card, never the Google card a
+    // resolved hit still holds; a Google-only row sends Google's.
+    ...(item.mesitaId
+      ? (item.mesitaCard ? { card: item.mesitaCard } : {})
+      : (item.card ? { card: item.card } : {})),
   };
 }
 // businessStatus / reviewCount are deliberately NOT on the wire. They are
@@ -1037,34 +1054,68 @@ async function stampGoogleAgainstCatalog(
 
   const googleOnly = stamped.filter((p) => p.state === "not_in_mesita");
   // On-Mesita rows never needed a Details call — their own columns answer
-  // the gate. Google-only rows still do.
+  // the gate. Google-only rows still do, and that same answer is their card
+  // (MESITA-2678): Autocomplete alone gives a name and an address, so a
+  // typed pick used to land as a bare first card.
   if (googleOnly.length === 0) {
     return stamped.filter((p) => clearsGeneralGate(general, p));
   }
-  const signalsById = new Map<
-    string,
-    NonNullable<Awaited<ReturnType<typeof fetchPlaceSignals>>>
-  >();
+  const listingById = new Map<string, NearbyHit>();
   await Promise.all(googleOnly.map(async (p) => {
-    const sig = await fetchPlaceSignals(p.placeId, apiKey);
-    if (sig) signalsById.set(p.placeId, sig);
+    const hit = await fetchPlaceListing(p.placeId, apiKey);
+    if (hit) listingById.set(p.placeId, hit);
   }));
   return stamped.filter((p) => {
     if (p.state !== "not_in_mesita") return clearsGeneralGate(general, p);
-    const sig = signalsById.get(p.placeId);
-    if (!sig) return false;
+    const hit = listingById.get(p.placeId);
+    if (!hit) return false;
     const ok = evaluatePlaceForMap(gate, {
-      primaryType: sig.primaryType,
-      rating: sig.rating,
-      reviewCount: sig.reviewCount,
+      primaryType: hit.primaryType,
+      rating: hit.rating,
+      reviewCount: hit.reviewCount,
     }).eligible &&
       clearsGeneralGate(general, {
-        businessStatus: sig.businessStatus,
-        reviewCount: sig.reviewCount,
+        businessStatus: hit.businessStatus,
+        reviewCount: hit.reviewCount,
       });
-    if (ok && p.lat == null && sig.lat != null) p.lat = sig.lat;
-    if (ok && p.lng == null && sig.lng != null) p.lng = sig.lng;
+    if (ok && p.lat == null && hit.lat != null) p.lat = hit.lat;
+    if (ok && p.lng == null && hit.lng != null) p.lng = hit.lng;
+    if (ok) p.card = googleStub(hit, null);
     return ok;
+  });
+}
+
+/**
+ * A Mesita row's card is its own catalog row (MESITA-2678), the card
+ * projection the Map and the Feed send, so a picked Mesita place lands as
+ * the card it would be in the carousel before any reload returns it. ONE
+ * read for the few Mesita rows an answer holds, listed rows only. A failed
+ * read keeps the answer; those rows simply carry no card.
+ */
+async function attachMesitaCards(
+  admin: SupabaseClient,
+  items: LaneItem[],
+): Promise<LaneItem[]> {
+  const ids = [
+    ...new Set(items.flatMap((item) => (item.mesitaId ? [item.mesitaId] : []))),
+  ];
+  if (ids.length === 0) return items;
+  const { data, error } = await admin
+    .from("profiles")
+    .select(PLACE_CARD_COLUMNS)
+    .in("id", ids)
+    .eq("state", "active");
+  if (error) {
+    console.error("[consumer-search-lane] mesita cards:", error.message);
+    return items;
+  }
+  const rows = (data ?? []) as unknown as Array<
+    PlaceCategoryRow & { id: string } & Record<string, unknown>
+  >;
+  const cards = new Map(withFamilyKeysList(rows).map((row) => [row.id, row]));
+  return items.map((item) => {
+    const card = item.mesitaId ? cards.get(item.mesitaId) : undefined;
+    return card ? { ...item, mesitaCard: card } : item;
   });
 }
 

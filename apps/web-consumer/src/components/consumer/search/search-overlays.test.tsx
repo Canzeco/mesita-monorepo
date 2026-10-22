@@ -394,13 +394,16 @@ describe("anchor helpers", () => {
     expect(stub.google_maps_url).toBe("https://maps.google.com/?cid=9");
   });
 
-  it("a Mesita row ignores any card", () => {
+  it("a Mesita pick never draws an http photo (next/image would crash the page)", () => {
     const row = anchorPlaceFromPrediction({
       ...GOOGLE_PICK,
+      state: "web_listed",
       mesitaId: "m-1",
-      card: { category_label: "Should not show" },
+      card: {
+        photos: ["http://legacy.example/a.jpg", "https://cdn.example/b.jpg"],
+      },
     })!;
-    expect(row.category_label).toBeNull();
+    expect(row.photos).toEqual(["https://cdn.example/b.jpg"]);
   });
 
   it("anchorPlaceFromPrediction keeps Mesita identity for stamped rows", () => {

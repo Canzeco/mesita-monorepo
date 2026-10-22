@@ -3,6 +3,7 @@
 // searchbar pick, and distance derivation/formatting for the rail cards.
 
 import type { MapBounds, Place } from "@/lib/api/places";
+import { stripInsecurePhotos } from "@/lib/api/places";
 import type { LocationAnchor, PlacePrediction } from "@/lib/api/place-search";
 import { haversineKm } from "@/lib/utils";
 
@@ -72,9 +73,10 @@ export function anchorPlaceFromPrediction(
     return null;
   }
   const onMesita = Boolean(prediction.mesitaId);
-  // A Google-only Text Search pick carries the Nearby stub (MESITA-2325):
-  // its facts fill the draft; identity and coordinates stay the pick's.
-  const card: Partial<Place> = onMesita ? {} : (prediction.card ?? {});
+  // Every place pick carries its card (MESITA-2678): a Google-only row the
+  // stub Nearby sends (MESITA-2325), a Mesita row its own catalog card. Its
+  // facts fill the draft; identity and coordinates stay the pick's.
+  const card: Partial<Place> = prediction.card ?? {};
   return {
     ...card,
     id: onMesita ? prediction.mesitaId! : `g:${prediction.placeId}`,
@@ -86,7 +88,7 @@ export function anchorPlaceFromPrediction(
     category: card.category ?? null,
     category_label: card.category_label ?? null,
     price_level: card.price_level ?? null,
-    currency: "MXN",
+    currency: card.currency ?? "MXN",
     enriched: prediction.enriched ?? false,
     lat: prediction.lat,
     lng: prediction.lng,
@@ -95,7 +97,13 @@ export function anchorPlaceFromPrediction(
     phone: card.phone ?? null,
     pitch: null,
     story: null,
-    photos: [],
+    // A Mesita card's photos draw, https only (an http one crashes
+    // next/image); a Google-only card never shows a photo (MESITA-2298).
+    photos: onMesita
+      ? stripInsecurePhotos({
+          photos: Array.isArray(card.photos) ? card.photos : [],
+        }).photos
+      : [],
     website_url: card.website_url ?? null,
     instagram_url: null,
     facebook_url: null,
