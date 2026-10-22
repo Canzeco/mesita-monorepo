@@ -1,6 +1,7 @@
 "use client";
 
 import type React from "react";
+import type { LucideIcon } from "lucide-react";
 
 import type { PlaceDetail } from "../../place-detail";
 import { firstInitial } from "../../lib/format";
@@ -81,16 +82,36 @@ export function ProfileStat({
   );
 }
 
-/** Tag chip: a borderless muted pill on the white summary (MESITA-2315).
- *  One fixed height, 32px, and 12px side padding (MESITA-2623), so a chip
- *  with an icon and one without are the same pill. */
-export const PROFILE_CHIP_CLASS =
-  "bg-muted text-foreground inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs whitespace-nowrap tabular-nums";
-
-export function ProfileMetaChip({ children }: { children: React.ReactNode }) {
+/** One fact in the header's facts row (MESITA-2629): a small muted icon,
+ *  then the fact in 14px medium ink. No fill, no pill, no border: it is
+ *  information, and on this screen only buttons wear a fill. `strong`
+ *  inks the icon too (an open place's clock). */
+export function ProfileFact({
+  icon: Icon,
+  strong = false,
+  children,
+  ...rest
+}: {
+  icon?: LucideIcon;
+  strong?: boolean;
+  children: React.ReactNode;
+} & React.LiHTMLAttributes<HTMLLIElement>) {
   return (
-    <span className={PROFILE_CHIP_CLASS}>
+    <li
+      className="text-foreground inline-flex min-w-0 items-center gap-1.5 text-sm font-medium whitespace-nowrap tabular-nums"
+      {...rest}
+    >
+      {Icon ? (
+        <Icon
+          className={
+            "h-4 w-4 shrink-0 " +
+            (strong ? "text-foreground" : "text-muted-foreground")
+          }
+          strokeWidth={2}
+          aria-hidden
+        />
+      ) : null}
       {children}
-    </span>
+    </li>
   );
 }

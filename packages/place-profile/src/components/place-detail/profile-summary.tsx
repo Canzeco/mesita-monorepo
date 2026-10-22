@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { Clock, MapPin, Navigation } from "lucide-react";
+import { Banknote, Clock, MapPin, Navigation, Tag } from "lucide-react";
 
 import type { PlaceActions } from "../../actions";
 import { Spinner } from "../Spinner";
@@ -14,8 +14,7 @@ import { profileChannelStats } from "./channel-stats";
 import { channelStatIcon } from "./channel-stat-icons";
 import { ProfileActions } from "./ProfileActions";
 import {
-  PROFILE_CHIP_CLASS,
-  ProfileMetaChip,
+  ProfileFact,
   ProfilePhoto,
   ProfileStat,
 } from "./profile-summary-parts";
@@ -34,7 +33,7 @@ export function ProfileSummary({
   social?: React.ReactNode;
 }) {
   // decision: Pato — name in header; photo · Google · IG · Facebook; then
-  // swipe-style tags: category · price · zone · distance · hours (MESITA-561).
+  // the facts row: category · price · hours · zone · distance (MESITA-2629).
   // decision: Pato (2026-10-16) — normal buttons in this header, in order:
   // one action row: the heart, Reserve · Directions, then Contact
   // (MESITA-2321, reshaped MESITA-2618/2619/2623; no pinned bar).
@@ -61,11 +60,13 @@ export function ProfileSummary({
     // Full-bleed white band under the top chrome so the summary reads as
     // the page header. The section strip below is the same white surface.
     // ONE SPACING SCALE (Pato, MESITA-2623: "standardize grid spacing and
-    // sizes in this top box"): 16px around the band, 12px between its rows
-    // (photo row · bio · chips · social · actions), 8px between the items in
+    // sizes in this top box"): 16px around the band, 16px between its rows
+    // (photo row · facts · social · actions; 12px until MESITA-2629, Pato:
+    // "add a bit more spacing between those tags ... and the profile picture
+    // ... and the bottom buttons"), 8px between the items in
     // a row (stats, chips, buttons). Chips are 32px, buttons 44px, and every
     // secondary line is 12px.
-    <section className="border-border bg-card flex flex-col gap-3 border-b p-4">
+    <section className="border-border bg-card flex flex-col gap-4 border-b p-4">
       <div className="flex items-center gap-3">
         <ProfilePhoto place={place} />
         <div className="grid min-w-0 flex-1 grid-cols-3 gap-2">
@@ -83,73 +84,50 @@ export function ProfileSummary({
         </div>
       </div>
 
-      {/* decision: Pato — when the Enricher is still building the profile an
-          "Enriching" chip leads the row; then price · zone · distance ·
-          hours (swipe-style tags on light surface). MESITA-451:
-          moved here off the header title. */}
-      <div className="flex flex-wrap items-center gap-2">
+      {/* THE FACTS ROW (Pato, MESITA-2629: "change the background of the
+          tags/general data of the place because it looks like a button. the
+          stuff at the top must include google category, price, hour, zone,
+          distance"). Plain text, each fact behind a small muted icon, no
+          fill and no pill: on this screen only buttons wear a fill. In this
+          order: Google's category (the place's Google primary type) · price ·
+          hours · zone · distance; a missing fact draws nothing, never a
+          "- km" (MESITA-2315). While the Enricher builds the profile an
+          Enriching fact leads the row (MESITA-451). */}
+      <ul
+        className="flex flex-wrap items-center gap-x-4 gap-y-1.5"
+        aria-label="About this place"
+        data-profile-facts
+      >
         {place.is_enriching && (
-          <span
-            className={cn(PROFILE_CHIP_CLASS, "font-semibold")}
-            aria-live="polite"
-          >
+          <ProfileFact aria-live="polite">
             <Spinner
               size="sm"
               label="Enriching"
-              className="border-border h-3 w-3 border-t-emerald-600"
+              className="border-border h-3.5 w-3.5 border-t-emerald-600"
             />
             Enriching
-          </span>
+          </ProfileFact>
         )}
-        {/* GOOGLE'S CATEGORY LEADS THE CHIPS, IN THE SAME PILL (Pato,
-            MESITA-2627: "category must be in same style"). MESITA-2623 had
-            moved it to a grey bio line under the photo; it is back. */}
         {place.category && (
-          <ProfileMetaChip>
-            <span className="font-semibold">{place.category}</span>
-          </ProfileMetaChip>
+          <ProfileFact icon={Tag}>{place.category}</ProfileFact>
         )}
-        {priceLabel && (
-          <ProfileMetaChip>
-            <span className="font-semibold">{priceLabel}</span>
-          </ProfileMetaChip>
+        {priceLabel && <ProfileFact icon={Banknote}>{priceLabel}</ProfileFact>}
+        {stateValue && (
+          <ProfileFact icon={Clock} strong={isOpen}>
+            {stateValue}
+          </ProfileFact>
         )}
-        {/* No zone, no chip; no distance, no "- km" chip (MESITA-2315). */}
         {place.zone && (
-          <ProfileMetaChip>
-            <MapPin className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
-            <span className="max-w-[160px] truncate font-semibold">
-              {place.zone}
-            </span>
-          </ProfileMetaChip>
+          <ProfileFact icon={MapPin}>
+            <span className="max-w-[180px] truncate">{place.zone}</span>
+          </ProfileFact>
         )}
         {place.distance_km != null && place.distance_km > 0 && (
-          <ProfileMetaChip>
-            <Navigation className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
-            <span className="font-semibold">
-              {formatDistanceKm(place.distance_km)}
-            </span>
-          </ProfileMetaChip>
+          <ProfileFact icon={Navigation}>
+            {formatDistanceKm(place.distance_km)}
+          </ProfileFact>
         )}
-        {stateValue && (
-          <ProfileMetaChip>
-            <Clock
-              className={cn(
-                "h-3.5 w-3.5 shrink-0",
-                isOpen ? "text-foreground" : "text-muted-foreground",
-              )}
-            />
-            <span
-              className={cn(
-                "font-semibold",
-                isOpen ? "text-foreground" : undefined,
-              )}
-            >
-              {stateValue}
-            </span>
-          </ProfileMetaChip>
-        )}
-      </div>
+      </ul>
 
       {social ? <div data-slot="social">{social}</div> : null}
 
