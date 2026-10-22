@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { CatalogRail, Place } from "@/lib/api/places";
 import {
   HOME_TABS,
+  homeTabOf,
   poolPlaces,
   PLACES_PAGE,
   savedPlaceList,
@@ -60,8 +61,17 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
   // social feed".
   it("is two tabs, Places then Social, Places first", () => {
     expect(HOME_TABS.map((t) => t.label)).toEqual(["Places", "Social"]);
-    expect(src).toContain('const [tab, setTab] = useState<HomeTab>("places");');
-    expect(src).toContain('role="tablist"');
+    // Each tab is an address (MESITA-2597): a link, the tab read off the path.
+    expect(HOME_TABS.map((t) => t.href)).toEqual([
+      "/home/places",
+      "/home/social",
+    ]);
+    expect(homeTabOf("/home/places")).toBe("places");
+    expect(homeTabOf("/web/home/social")).toBe("social");
+    expect(homeTabOf("/home")).toBe("places");
+    expect(src).toContain("const tab = homeTabOf(usePathname()");
+    expect(src).not.toContain("setTab");
+    expect(src).toContain('aria-current={on ? "page" : undefined}');
     expect(src).toContain("data-home-tabs");
     // The chosen tab: bold over a black bar the tab's full width on the
     // strip's bottom edge (MESITA-2539, as MESITA-2527 drew it; the word
@@ -69,7 +79,9 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
     expect(src).toContain(
       'on ? "text-foreground font-semibold" : "text-muted-foreground"',
     );
-    expect(src).toContain('"relative flex-1 py-3 text-sm transition"');
+    expect(src).toContain(
+      '"relative flex-1 py-3 text-center text-sm transition"',
+    );
     expect(src).toContain("bg-foreground absolute inset-x-0 bottom-0 h-0.5");
     expect(src).not.toContain("-inset-x-4");
     expect(src).not.toContain('<span className="relative inline-block pb-1">');

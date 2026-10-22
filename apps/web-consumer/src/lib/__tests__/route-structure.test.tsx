@@ -264,7 +264,8 @@ describe("T5 — exactly one tab lights per surface", () => {
   }
 
   const MATRIX: [string, string][] = [
-    ["/home", "Home"],
+    ["/home/places", "Home"],
+    ["/home/social", "Home"],
     ["/search/chat", "Search"],
     ["/place/abc", "Home"],
     ["/search", "Search"],
@@ -476,20 +477,36 @@ describe("T5b — Home's header and Search's header", () => {
     expect(sheetPage).toContain("HomeSoon");
   });
 
-  // Home is ONE page: the catalog. Its Social row draws the feed in the
-  // right pane, never a page (MESITA-2474), so no pane of Home is Soon.
-  it("Home is /home, one page: the catalog (MESITA-2475)", () => {
-    expect(CONSUMER_ROUTES.home).toBe("/home");
+  // Home is two tabs, each an address (Pato, MESITA-2597: "we should have
+  // home/places and home/social"). CatalogRails is mounted by Home's LAYOUT,
+  // so a tab switch keeps its state; the pages only claim the addresses.
+  // No pane of Home is Soon.
+  it("Home is /home/places and /home/social; bare /home 308s to Places (MESITA-2597)", async () => {
+    expect(CONSUMER_ROUTES.home).toBe("/home/places");
+    expect(CONSUMER_ROUTES.homeSocial).toBe("/home/social");
     const pages = new Set(allPages().map(pageUrl));
-    expect(pages).toContain("/home");
+    expect(pages).toContain("/home/places");
+    expect(pages).toContain("/home/social");
+    expect(pages).not.toContain("/home");
     expect(pages).not.toContain("/discover");
     expect(pages).not.toContain("/discover/places");
-    const places = readFileSync(
-      join(SHELL, "(discovery)", "home", "page.tsx"),
+    const bare = (await nextConfig.redirects!()).find(
+      (r) => r.source === "/home",
+    );
+    expect(bare?.destination).toBe(CONSUMER_ROUTES.home);
+    const layout = readFileSync(
+      join(SHELL, "(discovery)", "home", "layout.tsx"),
       "utf8",
     );
-    expect(places).toContain("<CatalogRails");
-    expect(places).not.toContain("HomeSoon");
+    expect(layout).toContain("<CatalogRails />");
+    for (const tab of ["places", "social"]) {
+      const page = readFileSync(
+        join(SHELL, "(discovery)", "home", tab, "page.tsx"),
+        "utf8",
+      );
+      expect(page).toContain("return null;");
+      expect(page).not.toContain("HomeSoon");
+    }
     const rails = readFileSync(
       join(COMPONENTS, "home", "CatalogRails.tsx"),
       "utf8",
@@ -515,14 +532,17 @@ describe("T5b — Home's header and Search's header", () => {
 
   // Swipe (MESITA-2166), Scroll (MESITA-2163), Catalog's old Feed address,
   // Favorites (MESITA-2383) and Social (MESITA-2474) left; Places itself
-  // became /home (MESITA-2475).
+  // became /home (MESITA-2475), then /home/places, and Social /home/social
+  // (MESITA-2597).
   it.each(["places", "swipe", "scroll", "feed", "favs", "social"])(
     "/discover/%s has no page and 308s to Home",
     async (seg) => {
       const hop = (await nextConfig.redirects!()).find(
         (r) => r.source === `/discover/${seg}`,
       );
-      expect(hop?.destination).toBe(CONSUMER_ROUTES.home);
+      expect(hop?.destination).toBe(
+        seg === "social" ? CONSUMER_ROUTES.homeSocial : CONSUMER_ROUTES.home,
+      );
       expect(
         existsSync(join(SHELL, "(discovery)", "discover", seg, "page.tsx")),
       ).toBe(false);

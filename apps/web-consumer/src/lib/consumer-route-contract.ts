@@ -20,15 +20,17 @@ export const CONSUMER_ROUTES = {
   // painted under it (Pato, MESITA-2475: "like a modal"); a cold load renders
   // the full page. /discover/chat 308s here.
   searchChat: "/search/chat",
-  // HOME — one page, the catalog (Pato, MESITA-2475: "/home (thats it)").
-  // Social is a row of its column that draws in the right pane (MESITA-2474);
-  // Saved is a row too (MESITA-2383). /discover, /discover/places and every
-  // older Home address 308 here in one hop.
+  // HOME — two tabs, each its own address (Pato, MESITA-2597: "we should
+  // have home/places and home/social"): Places, the catalog, is where every
+  // "go Home" lands; Social is the activity feed. Bare /home and every older
+  // Home address 308 to Places in one hop. They were one page at /home with
+  // the tab in client state (MESITA-2475, MESITA-2517).
   //
   // THE SWIPE ENGINE IS GONE (MESITA-2328): its EF, its ranking library and
   // its `discovery_config.swipe` slice retired together. The stored key was
   // dropped by the normalizers, never renamed.
-  home: "/home",
+  home: "/home/places",
+  homeSocial: "/home/social",
   place: {
     prefix: "/place/",
   },
@@ -83,6 +85,8 @@ export const CONSUMER_ROUTES = {
     // The referral deck's older /invite address (MESITA-2087). /share itself
     // is live again (MESITA-2566).
     invite: "/invite",
+    // Home's one page, until each tab got its own address (MESITA-2597).
+    homeRoot: "/home",
     // The AI mode's route before it was named for what it does.
     homeAi: "/home/ai",
     // Home's namespace and its default pill, until Home became /home
@@ -170,8 +174,10 @@ export const CONSUMER_ROUTES = {
 } as const;
 
 export const CONSUMER_ROUTE_PREFIX = {
-  // NO `home` or `search` KEY: each is one exact top-level segment with no
-  // siblings to disambiguate from, so BottomNav matches CONSUMER_ROUTES.
+  // Home's two tabs (MESITA-2597), so the Home tab lights on both.
+  home: "/home/",
+  // NO `search` KEY: one exact top-level segment with no siblings to
+  // disambiguate from, so BottomNav matches CONSUMER_ROUTES.
   place: "/place",
   pay: "/pay",
   me: "/me",
