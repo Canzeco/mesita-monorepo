@@ -1,0 +1,70 @@
+<!doctype html>
+<!--
+  THE MESITA SHARE CARD (MESITA-2639) — the source of public/share/mesita-og.png,
+  the image every shared consumer.mesita.ai link unfurls with (og:image and
+  twitter:image in src/app/layout.tsx) and the card the Share tab shows.
+
+  1200×630, the standard link-preview size (1.91:1). Achromatic, like the
+  consumer app. The word "Mesita" in Outfit 700, never a drawn mark: the logo
+  is undecided (Docs › Design §B), and Home's header sets the same word.
+
+  Re-render after any edit (headless Chrome, from the repo root):
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless \
+      --disable-gpu --hide-scrollbars --force-device-scale-factor=1 \
+      --window-size=1200,630 --virtual-time-budget=4000 \
+      --screenshot=apps/web-consumer/public/share/mesita-og.png \
+      "file://$PWD/apps/web-consumer/scripts/share-card/mesita-og.html"
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700&family=Inter:wght@500;600&display=block" rel="stylesheet">
+<style>
+  html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; }
+  body {
+    background: #ffffff;
+    color: #171717;
+    font-family: Inter, system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-sizing: border-box;
+    padding: 88px 96px 80px;
+  }
+  .word {
+    font-family: Outfit, system-ui, sans-serif;
+    font-weight: 700;
+    font-size: 168px;
+    line-height: 1;
+    letter-spacing: -0.035em;
+  }
+  .line {
+    margin-top: 28px;
+    font-size: 52px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: #171717;
+  }
+  .foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 30px;
+    font-weight: 500;
+    color: #5d5d5d;
+    border-top: 2px solid #dbdbdb;
+    padding-top: 32px;
+  }
+</style>
+</head>
+<body>
+  <div>
+    <div class="word">Mesita</div>
+    <div class="line">Discover and reserve.</div>
+  </div>
+  <div class="foot">
+    <span>consumer.mesita.ai</span>
+    <span>Monterrey</span>
+  </div>
+</body>
+</html>
