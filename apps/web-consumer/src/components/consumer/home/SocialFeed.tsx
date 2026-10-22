@@ -459,10 +459,11 @@ function useMemberHistory(
 }
 
 /** The card's Instagram box, Me's own wording (MESITA-2606): "Insta: @handle
- *  · 1.2K followers", a masked "Insta: @per***", or "Insta: not connected".
+ *  · 1.2K followers", a masked "Insta: @per***", or "No Instagram" (a fact
+ *  about the member, MESITA-2696; "Insta: not connected" before).
  *  On your own card the handle shows too. */
 function cardInstagramLabel(person: ActivityPerson): string {
-  if (!person.handle) return "Insta: not connected";
+  if (!person.handle) return "No Instagram";
   return instagramWithFollowers(
     `Insta: @${person.handle}`,
     person.followers,
@@ -522,7 +523,10 @@ function PersonCard({
         <IdentityCard
           name={who}
           avatarUrl={person.avatarUrl}
-          instagram={{ label: cardInstagramLabel(person) }}
+          instagram={{
+            label: cardInstagramLabel(person),
+            connected: Boolean(person.handle),
+          }}
           guestClass={toGuestClass(person.guestClass)}
           plan={toGuestPlan(person.plan)}
         />
