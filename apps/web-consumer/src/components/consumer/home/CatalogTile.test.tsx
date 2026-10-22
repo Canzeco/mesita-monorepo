@@ -86,6 +86,30 @@ describe("a Google-only card's image is a placeholder, never a photo (MESITA-229
   });
 });
 
+describe("the tile: photo on top, its light reflection below (MESITA-2369, MESITA-2373)", () => {
+  it("shows the photo on the top 60%, uncovered, and mirrors it from its foot under 80% paper", () => {
+    const html = tile({
+      photos: ["https://example.com/a.jpg"],
+      price_level: 2,
+    });
+    expect(html.match(/<img/g)?.length).toBe(2);
+    expect(html).toContain("bg-paper/80");
+    expect(html).not.toContain("bg-foreground/50");
+    expect(html).toContain("rounded-2xl");
+    expect(html.indexOf("<img")).toBeLessThan(html.indexOf(">Casa<"));
+  });
+
+  it("a Google card reflects its icon tile, still with no photo", () => {
+    const html = tile({
+      id: "g:ChIJx",
+      googleOnly: true,
+      family_keys: ["tacos"],
+    });
+    expect(html).not.toContain("<img");
+    expect(html.match(/data-placeholder="family"/g)?.length).toBe(2);
+  });
+});
+
 describe("the tile shows the header's fields, Pato's order (MESITA-2645)", () => {
   it("prints name; category · $$ · stars; hours · distance — dollar signs, never a peso range, no zone", () => {
     const html = tile({
