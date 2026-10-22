@@ -60,11 +60,13 @@ export function ProfileSummary({
     // Full-bleed white band under the top chrome so the summary reads as
     // the page header. The section strip below is the same white surface.
     // ONE SPACING SCALE (Pato, MESITA-2623: "standardize grid spacing and
-    // sizes in this top box"): 16px around the band, 12px between its rows
-    // (photo row · bio · chips · social · actions), 8px between the items in
+    // sizes in this top box"): 16px around the band, 16px between its rows
+    // (photo row · facts · social · actions; 12px until MESITA-2629, Pato:
+    // "add a bit more spacing between those tags ... and the profile picture
+    // ... and the bottom buttons"), 8px between the items in
     // a row (stats, chips, buttons). Chips are 32px, buttons 44px, and every
     // secondary line is 12px.
-    <section className="border-border bg-card flex flex-col gap-3 border-b p-4">
+    <section className="border-border bg-card flex flex-col gap-4 border-b p-4">
       <div className="flex items-center gap-3">
         <ProfilePhoto place={place} />
         <div className="grid min-w-0 flex-1 grid-cols-3 gap-2">
