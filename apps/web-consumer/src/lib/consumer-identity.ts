@@ -26,12 +26,13 @@ export type ConsumerFacts = {
   unknown: boolean;
 };
 
-/** The Instagram chip / tile line. Connected guests get their handle, because
- *  it is the one Instagram fact they can check at a glance. */
+/** The Instagram chip / tile line, "Insta: …" in every state (Pato,
+ *  MESITA-2606: "say insta: is easy"). Connected guests get their handle,
+ *  because it is the one Instagram fact they can check at a glance. */
 export function instagramSummary(f: ConsumerFacts): string {
-  if (f.unknown) return "Come back to try";
-  if (!f.igConnected) return "Connect it";
-  return f.igHandle ? `@${f.igHandle}` : "Connected";
+  if (f.unknown) return "Insta: couldn't load";
+  if (!f.igConnected) return "Insta: not connected";
+  return f.igHandle ? `Insta: @${f.igHandle}` : "Insta: connected";
 }
 
 /** An approximate follower count: 47 → "40+", 760 → "700+", 4,820 → "4.8K",
@@ -47,8 +48,8 @@ export function approxFollowers(n: number): string | null {
   return `${String(shown).replace(/\.0$/, "")}${unit}`;
 }
 
-/** Me's Instagram chip: the summary, plus the rounded follower count once a
- *  handle is connected ("@pato · 1.2K followers"), the same rounding Social
+/** Me's Instagram chip and tile: the summary, plus the rounded follower count
+ *  once a handle is connected ("Insta: @pato · 1.2K followers"), the same rounding Social
  *  shows (MESITA-2574: "Instagram Instagram Followers"). */
 export function instagramWithFollowers(
   summary: string,

@@ -6,7 +6,6 @@ import type { ConsumerProfile } from "@/lib/api/profile";
 import { IdentityCard } from "@/components/consumer/IdentityCard";
 import { ClassSheet } from "@/components/consumer/me/ClassSheet";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { instagramWithFollowers } from "@/lib/consumer-identity";
 import { toGuestClass, toGuestPlan } from "@/lib/guest-standing";
 
 // ─── The identity header (MESITA-1079 v2 · -1619 · -1633 ·
@@ -61,12 +60,13 @@ import { toGuestClass, toGuestPlan } from "@/lib/guest-standing";
 export function IdentityBar({
   profile,
   loading,
-  instagramSummary,
+  instagramLabel,
 }: {
   profile: ConsumerProfile | null;
   loading: boolean;
-  /** "@handle", "Connected", or "Connect it". */
-  instagramSummary: string;
+  /** "Insta: @handle · 25K followers", "Insta: not connected", … — the same
+   *  string the Instagram tile shows (MESITA-2606). */
+  instagramLabel: string;
 }) {
   const name =
     [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
@@ -107,12 +107,7 @@ export function IdentityBar({
             name={name}
             avatarUrl={avatarUrl}
             instagram={{
-              // "@pato · 1.2K followers" once connected (MESITA-2574).
-              label: instagramWithFollowers(
-                instagramSummary,
-                profile?.instagram_followers_count,
-                Boolean(profile?.instagram_handle),
-              ),
+              label: instagramLabel,
               href: CONSUMER_ROUTES.mePages.instagram,
             }}
             // No profile (the read failed) hides Class and Plan: never a
