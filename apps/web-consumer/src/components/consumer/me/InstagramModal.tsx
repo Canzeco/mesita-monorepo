@@ -68,6 +68,9 @@ function landConnected() {
 
 const WHY_LINES = [
   `${INSTAGRAM_REACH_FOLLOWERS.toLocaleString("en-US")}+ followers and you're verified on Mesita — free, automatic, and nothing to apply for.`,
+  // Pato, MESITA-2598: "mention that your mesita profile picture is your
+  // instagram profile picture" (the switch below can turn it off).
+  "Your Mesita profile picture becomes your Instagram profile picture.",
 ] as const;
 
 export function InstagramModal() {
@@ -578,7 +581,7 @@ function InstagramPhotoSwitch() {
           <span className="block text-sm font-semibold">Use my Instagram photo</span>
           <span className="text-muted-foreground type-label block">
             {shown
-              ? "Your picture comes from Instagram"
+              ? "Your Mesita profile picture is your Instagram one"
               : "Only your username and followers"}
           </span>
         </span>
