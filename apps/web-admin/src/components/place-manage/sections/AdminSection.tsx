@@ -23,10 +23,16 @@ import { formatAbsoluteUtc } from "@/lib/format";
 //   SERP / Vectors / Metadata (UID & audit)
 // The Verification box (ownership proof + queue decide) went with
 // MESITA-2106: the MVP has no business app, so nobody proves ownership.
+
+/** The tab's masonry: one column, two from lg, three from xl, its cards
+ *  never split. The tab's loading.tsx lays its cards out in it too. */
+export const ADMIN_COLUMNS_CLASS =
+  "columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5 xl:columns-3";
+
 export function AdminSection({ place }: { place: AdminPlace }) {
   return (
     // Same masonry as the Place tab — columns pack top-down (MESITA-399).
-    <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5 xl:columns-3">
+    <div className={ADMIN_COLUMNS_CLASS}>
       <StateCard place={place} />
       <ReviewsStateCard place={place} />
       {/* key remounts the loader when the operator switches places. */}

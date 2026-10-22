@@ -24,6 +24,7 @@
 
 import { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "./Skeleton";
 
 const MONTHS = [
   "January",
@@ -76,10 +77,20 @@ function compose(parts: Parts): string {
   return `${parts.year}-${mm}-${dd}`;
 }
 
+/** Day, Month and Year side by side, Month the widest (it holds a name). */
+const GRID_CLASS = "grid grid-cols-[1fr_1.6fr_1.2fr] gap-2";
+
+/** A part's box: 52px, 12px corners, a 1px border. The part and its loading
+ *  silhouette are this one box (MESITA-2701). */
+const PART_BOX_CLASS =
+  "flex h-[52px] flex-col items-center justify-center rounded-xl border";
+
 /** One part of the date. The caption is a real <label>, never a placeholder —
  *  it has to stay readable once the box holds a value (Docs › Design §D). */
-const PART_CLASS =
-  "border-border bg-card focus-within:border-foreground/40 flex h-[52px] flex-col items-center justify-center rounded-xl border transition";
+const PART_CLASS = cn(
+  PART_BOX_CLASS,
+  "border-border bg-card focus-within:border-foreground/40 transition",
+);
 const PART_CAPTION_CLASS =
   "text-muted-foreground type-meta font-semibold tracking-[0.1em] uppercase";
 const PART_VALUE_CLASS =
@@ -142,7 +153,7 @@ export function BirthdayPicker({
   }
 
   return (
-    <div className={cn("grid grid-cols-[1fr_1.6fr_1.2fr] gap-2", className)}>
+    <div className={cn(GRID_CLASS, className)}>
       <label className={PART_CLASS}>
         <input
           inputMode="numeric"
@@ -194,6 +205,23 @@ export function BirthdayPicker({
         />
         <span className={PART_CAPTION_CLASS}>Year</span>
       </label>
+    </div>
+  );
+}
+
+/** The picker before its value lands (Pato, MESITA-2701: "the placeholders
+ *  must be similar to the page you are loading, like the sizes"): the same
+ *  grid and the three parts' own 52px box, each a muted block. The parts
+ *  are controls, so none of their words is drawn. */
+export function BirthdayPickerSkeleton({ className }: { className?: string }) {
+  return (
+    <div aria-hidden className={cn(GRID_CLASS, className)}>
+      {["day", "month", "year"].map((part) => (
+        <Skeleton
+          key={part}
+          className={cn(PART_BOX_CLASS, "border-transparent")}
+        />
+      ))}
     </div>
   );
 }

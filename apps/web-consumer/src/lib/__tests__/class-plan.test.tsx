@@ -81,6 +81,9 @@ describe("Class and Plan labels", () => {
   const FILES = {
     PLAN,
     CLASS,
+    // The rows' words moved out of the two files above (MESITA-2701).
+    PLAN_WORDS: read("components", "consumer", "me", "plan-words.ts"),
+    CLASS_WORDS: read("components", "consumer", "me", "class-words.ts"),
     CARD: read("components", "consumer", "IdentityCard.tsx"),
     LABELS: read("lib", "guest-standing.ts"),
     PERKS: read("components", "consumer", "me", "perk-list.tsx"),

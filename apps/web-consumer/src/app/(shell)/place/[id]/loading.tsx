@@ -1,16 +1,8 @@
-import { PlaceBodySkeleton } from "@/components/consumer/overlay/DetailSkeletons";
-import { Skeleton } from "@/components/shared";
+import { PlacePageSkeleton } from "@/components/consumer/overlay/DetailSkeletons";
 
-// Hard-nav place page: in-band skeleton in the shell body (chrome stays put).
+// Hard-nav place page: the place screen's own silhouette in the shell body,
+// block for block where PlaceDetailPageBody draws it (Pato, MESITA-2701: "the
+// placeholders must be similar to the page you are loading, like the sizes").
 export default function PlacePageLoading() {
-  return (
-    <div className="h-full min-h-0 overflow-hidden">
-      <div className="flex items-center gap-2 px-3 py-3">
-        <Skeleton className="h-11 w-11 rounded-lg" />
-        <Skeleton className="mx-auto h-4 w-32" />
-        <Skeleton className="h-11 w-11 rounded-lg" />
-      </div>
-      <PlaceBodySkeleton />
-    </div>
-  );
+  return <PlacePageSkeleton />;
 }

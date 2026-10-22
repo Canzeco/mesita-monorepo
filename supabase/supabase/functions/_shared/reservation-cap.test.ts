@@ -43,16 +43,20 @@ Deno.test("Me › Plan's Free limit equals the cap the server enforces", async (
   );
 });
 
+// The line's words live in plan-words.ts, which PlanModal and /me/plan's
+// loading.tsx both read (MESITA-2701), so that is where the constant must be.
 Deno.test("Me › Plan builds that line from the constant, never a typed number", async () => {
-  const page = await read("components/consumer/me/PlanModal.tsx");
+  const words = await read("components/consumer/me/plan-words.ts");
   assert(
-    page.includes('from "@/lib/plan-perks"') &&
-      page.includes("${FREE_RESERVATIONS_PER_MONTH} reservations a month"),
-    "PlanModal.tsx must import FREE_RESERVATIONS_PER_MONTH and render it in the reservations line",
+    words.includes('from "@/lib/plan-perks"') &&
+      words.includes("${FREE_RESERVATIONS_PER_MONTH} reservations a month"),
+    "plan-words.ts must import FREE_RESERVATIONS_PER_MONTH and render it in the reservations line",
   );
-  assertEquals(
-    page.match(/\d+\s+reservations/g),
-    null,
-    "PlanModal.tsx must not type a reservation count; it comes from plan-perks.ts",
-  );
+  for (const rel of ["me/plan-words.ts", "me/PlanModal.tsx"]) {
+    assertEquals(
+      (await read(`components/consumer/${rel}`)).match(/\d+\s+reservations/g),
+      null,
+      `${rel} must not type a reservation count; it comes from plan-perks.ts`,
+    );
+  }
 });

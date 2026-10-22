@@ -21,6 +21,21 @@ import {
 
 // ── 1. Profile summary (IG photo+stats + swipe-style tags) ───────────────
 
+// THE BAND'S LAYOUT IS WRITTEN ONCE (Pato, MESITA-2701: "the placeholders
+// must be similar to the page you are loading, like the sizes"): the band,
+// the photo-and-counts row, the counts' grid and the facts row are read here
+// and by ProfileSummarySkeleton.
+
+/** The white band: p-4, 16px between its groups. */
+export const PROFILE_SUMMARY_BAND_CLASS =
+  "border-border bg-card flex flex-col gap-4 border-b p-4";
+/** The photo, then the three counts, 12px apart. */
+export const PROFILE_IDENTITY_ROW_CLASS = "flex items-center gap-3";
+/** The three counts: equal columns, 8px apart. */
+export const PROFILE_STATS_GRID_CLASS = "grid min-w-0 flex-1 grid-cols-3 gap-2";
+/** The facts: outlined boxes, 8px apart, wrapping. */
+export const PROFILE_FACTS_ROW_CLASS = "flex flex-wrap items-center gap-2";
+
 export function ProfileSummary({
   place,
   actions,
@@ -68,10 +83,10 @@ export function ProfileSummary({
     // counts, the facts (outlined boxes) and the social line, then the two
     // action rows; 16px around the band and between groups, 8px between
     // items. Only buttons wear a fill (MESITA-2623).
-    <section className="border-border bg-card flex flex-col gap-4 border-b p-4">
-      <div className="flex items-center gap-3" data-profile-section="identity">
+    <section className={PROFILE_SUMMARY_BAND_CLASS}>
+      <div className={PROFILE_IDENTITY_ROW_CLASS} data-profile-section="identity">
         <ProfilePhoto place={place} />
-        <div className="grid min-w-0 flex-1 grid-cols-3 gap-2">
+        <div className={PROFILE_STATS_GRID_CLASS}>
           {stats.map((stat) => (
             <ProfileStat
               key={stat.key}
@@ -104,7 +119,7 @@ export function ProfileSummary({
           (MESITA-2682: "it must be noticable"). */}
       <div className="flex flex-col gap-3" data-profile-section="facts">
       <ul
-        className="flex flex-wrap items-center gap-2"
+        className={PROFILE_FACTS_ROW_CLASS}
         aria-label="About this place"
         data-profile-facts
       >

@@ -15,14 +15,15 @@
 // (FREE_RESERVATIONS_PER_MONTH). Premium states no number and no price: those are
 // working hypotheses, not decisions. Premium opens with "Everything in Free"
 // (true for a Premium guest today), then its unbuilt perks, each tagged Soon, so a
-// Premium guest is never told their plan does not exist.
+// Premium guest is never told their plan does not exist. The words live in
+// plan-words.ts, which /me/plan's fallback reads too (MESITA-2701).
 
 import { CreditCard, Sparkles } from "lucide-react";
 
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { PerkList } from "@/components/consumer/me/perk-list";
+import { PLAN_ROWS, type PlanRowWords } from "@/components/consumer/me/plan-words";
 import type { GuestPlan } from "@/lib/guest-standing";
-import { FREE_RESERVATIONS_PER_MONTH } from "@/lib/plan-perks";
 import { IconCircle, RowDivider, SettingsGroup } from "./settings-rows";
 
 function PlanRow({
@@ -33,13 +34,9 @@ function PlanRow({
   label,
   items,
   mine,
-}: {
-  title: string;
-  subtitle: string;
+}: PlanRowWords & {
   icon: React.ReactNode;
   tint: "primary" | "muted";
-  label: string;
-  items: { text: string; soon?: boolean }[];
   mine: boolean;
 }) {
   return (
@@ -64,36 +61,17 @@ export function PlanModal({ plan }: { plan: GuestPlan | null }) {
     <MeScreen title="Plan">
       <SettingsGroup>
         <PlanRow
-          title="Free"
-          subtitle="The free plan."
+          {...PLAN_ROWS.free}
           icon={<CreditCard className="h-[18px] w-[18px]" />}
           tint={plan === "free" ? "primary" : "muted"}
-          label="Included in Free"
           mine={plan === "free"}
-          items={[
-            { text: "Browse and save places" },
-            { text: "Mesita calls the place to book your table" },
-            { text: `${FREE_RESERVATIONS_PER_MONTH} reservations a month` },
-          ]}
         />
         <RowDivider />
         <PlanRow
-          title="Premium"
-          subtitle="The paid plan."
+          {...PLAN_ROWS.premium}
           icon={<Sparkles className="h-[18px] w-[18px]" />}
           tint={plan === "premium" ? "primary" : "muted"}
-          label="Included in Premium"
           mine={plan === "premium"}
-          items={[
-            {
-              text: `Everything in Free, including ${FREE_RESERVATIONS_PER_MONTH} reservations a month`,
-            },
-            { text: "More reservations every month", soon: true },
-            {
-              text: "Ask your AI assistant, like ChatGPT, to find and book places for you",
-              soon: true,
-            },
-          ]}
         />
       </SettingsGroup>
     </MeScreen>

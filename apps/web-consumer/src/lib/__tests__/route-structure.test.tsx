@@ -8,6 +8,7 @@ import {
   isModalContractPath,
 } from "@/lib/consumer-route-contract";
 import { LEGACY_REDIRECTS } from "@/lib/legacy-redirects";
+import { ME_HUB_ROWS } from "@/app/(shell)/me/hub-tiles";
 import nextConfig from "../../../next.config";
 
 // STRUCTURAL route guards (MESITA-1062 S0).
@@ -577,7 +578,11 @@ describe("T5b — Home's header and Search's header", () => {
 // The same class of bug still exists one layer over — a box wired to the wrong
 // page, or a page dropped in a refactor — so the pin moves rather than dies.
 describe("T6 — Activity's sections are pages on Me", () => {
-  const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
+  // The page and its cells: the cells are hub-tiles.tsx's rows since
+  // MESITA-2701, which ProfileClient and /me's loading.tsx both map.
+  const ME = ["ProfileClient.tsx", "hub-tiles.tsx"]
+    .map((f) => readFileSync(join(SHELL, "me", f), "utf8"))
+    .join("\n");
 
   it("routes each box to its page: notifications, reservations and favorites on Me", () => {
     expect(ME).toContain("CONSUMER_ROUTES.mePages.notifications");
@@ -609,23 +614,24 @@ describe("T6 — Activity's sections are pages on Me", () => {
 // would ship as a live Link pointing at nothing.
 describe("T8 — Me's grid is nine live cells", () => {
   const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
-  /** `<DestTile … title="X">` values, in render order. */
-  const gridTitles = (source: string) => {
-    const cells = [...source.matchAll(/<DestTile\b[\s\S]*?\/>/g)].map(
-      (m) => m[0],
-    );
-    return cells
-      .map((c) => c.match(/title="([^"]+)"/)?.[1])
-      .filter((t): t is string => Boolean(t));
-  };
+  // THE CELLS ARE DATA (MESITA-2701): hub-tiles.tsx's ME_HUB_ROWS, the one
+  // source ProfileClient and /me's loading.tsx both map, so the fallback
+  // draws the page's own rows. These read the rows themselves.
+  const HUB = readFileSync(join(SHELL, "me", "hub-tiles.tsx"), "utf8");
+  /** The cells' titles, in render order. */
+  const gridTitles = () => ME_HUB_ROWS.flat().map((cell) => cell.title);
 
   it("renders nine cells in Pato's order", () => {
+    // The page draws the rows, as DestTiles, and nothing else below the bar.
+    expect(ME).toContain("<MeHubFrame");
+    expect(ME).toContain("<DestTile");
+    expect([...ME.matchAll(/<DestTile\b/g)]).toHaveLength(1);
     // Pato, MESITA-2562: Profile Instagram / Class Plan / Notifications
     // Reservations / Favorites Connector / Settings. PROFILE LEADS (Pato,
     // 2026-09-08): the header states the identity, so the first cell is the
     // one that edits it. Support is a group on Settings (MESITA-2169).
     // Favorites is the Saved tile that came in from the bar (MESITA-2561).
-    expect(gridTitles(ME)).toEqual([
+    expect(gridTitles()).toEqual([
       "Profile",
       "Instagram",
       "Class",
@@ -651,39 +657,41 @@ describe("T8 — Me's grid is nine live cells", () => {
       "Cards",
       "Metrics",
     ]) {
-      expect(gridTitles(ME), gone).not.toContain(gone);
+      expect(gridTitles(), gone).not.toContain(gone);
     }
   });
 
   it("Settings closes the page", () => {
     // The tail cell (MESITA-1642). Support moved into it (MESITA-2169).
-    expect(gridTitles(ME).at(-1)).toBe("Settings");
-    expect(gridTitles(ME)).not.toContain("Support");
+    expect(gridTitles().at(-1)).toBe("Settings");
+    expect(gridTitles()).not.toContain("Support");
   });
 
   it("rows are pairs, Settings alone last; nothing spans", () => {
-    // Five `DestGrid`s: four pairs, then Settings in the left half of the
-    // last row (MESITA-2562). Counting grids and spans SEPARATELY on
-    // purpose: a cells-per-grid ratio stays true of any row width.
-    expect([...ME.matchAll(/<DestGrid>/g)]).toHaveLength(5);
-    expect([...ME.matchAll(/<DestTile\b[\s\S]*?\/>/g)]).toHaveLength(9);
-    expect([...ME.matchAll(/^\s*full$/gm)]).toHaveLength(0);
-    expect(ME).not.toMatch(/<DestGrid cols=/);
+    // Five rows: four pairs, then Settings in the left half of the last row
+    // (MESITA-2562). Each row is one DestGrid (MeHubFrame), and DestGrid has
+    // no `cols`.
+    expect(ME_HUB_ROWS.map((row) => row.length)).toEqual([2, 2, 2, 2, 1]);
+    expect(HUB).toContain("<DestGrid key=");
+    expect([...HUB.matchAll(/^\s*full$/gm)]).toHaveLength(0);
+    expect(HUB).not.toMatch(/<DestGrid cols=/);
   });
 
   it("no cell is compact or parked — every cell says what it holds", () => {
     // The four-up bought its width by dropping the summary line, which left
     // Activity as the only cells on Me that named a destination without
-    // saying what was in it. `DestTile` has no `compact` and no `soon` prop;
-    // this pins the page so a "make it fit" or "coming soon" change cannot
-    // reintroduce either idea by hand.
-    const cells = [...ME.matchAll(/<DestTile\b[\s\S]*?\/>/g)].map((m) => m[0]);
-    expect(cells.filter((c) => /\bcompact\b/.test(c))).toEqual([]);
-    expect(cells.filter((c) => /\bsoon\b/.test(c))).toEqual([]);
-    const silent = cells
-      .filter((c) => /summary=""/.test(c))
-      .map((c) => c.match(/title="([^"]+)"/)?.[1]);
-    expect(silent).toEqual([]);
+    // saying what was in it. A cell is an Icon, a title, a summary and an
+    // href and nothing else — no `compact`, no `soon` — so a "make it fit"
+    // or "coming soon" change cannot reintroduce either idea by hand.
+    for (const cell of ME_HUB_ROWS.flat()) {
+      expect(Object.keys(cell).sort(), cell.title).toEqual([
+        "Icon",
+        "href",
+        "summary",
+        "title",
+      ]);
+      expect(cell.summary.trim(), cell.title).not.toBe("");
+    }
   });
 
   it("DestTile is ONE shape, with no second branch to drift", () => {
@@ -707,9 +715,11 @@ describe("T8 — Me's grid is nine live cells", () => {
   it("each cell leads with its icon in one neutral ink chip", () => {
     const src = readFileSync(join(SHELL, "me", "profile-sections.tsx"), "utf8");
     expect(src).toContain("data-dest-chip");
+    // DEST_CHIP: one string for the chip and its loading box (MESITA-2701).
     expect(src).toContain(
-      'className="bg-muted text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px]"',
+      '"bg-muted text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px]"',
     );
+    expect(src).toContain("className={DEST_CHIP} aria-hidden data-dest-chip");
     expect(src).not.toContain("opacity-[0.22]");
     expect(src).not.toMatch(/absolute right-2\.5 bottom-2/);
     expect(src).not.toMatch(/\btint\??:/);

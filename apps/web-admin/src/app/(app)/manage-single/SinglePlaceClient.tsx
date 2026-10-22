@@ -26,10 +26,11 @@ import {
 } from "@/app/(app)/manage-multiple/actions";
 import { StatePill } from "@/app/(app)/manage-multiple/PlaceFacts";
 import { StateIcon, type BatchRowState } from "@/app/(app)/manage-multiple/StateIcon";
-import { CopyIdButton, ReadField, SectionCard } from "@/components/admin-ui/manage";
+import { BONE_CLASS, CopyIdButton, ReadField, SectionCard } from "@/components/admin-ui/manage";
 import { enrichLabel, type EnrichDepth } from "@/lib/enrich-depth";
 import { placeTabHref } from "@/lib/place-tabs";
 import type { PlaceLite, SearchErrorResponse, SearchResponse } from "@/lib/places-types";
+import { GENERAL_STATE_FACTS } from "@/lib/state-vocabulary";
 import {
   catalogueList,
   mergeFindResults,
@@ -45,7 +46,7 @@ import {
   searchTextSource,
 } from "./find-sources";
 import { DEFAULT_NAME_ADMIN, type NameAdminConfig } from "../filters-config/catalog";
-import { FindResults, type RowNote } from "./FindResults";
+import { FIND_TABLE_FRAME, FindResults, type RowNote } from "./FindResults";
 import { classifyLookup, googleMapsPlaceHref } from "./single-place-lookup";
 
 export type View =
@@ -402,13 +403,7 @@ export function SinglePlaceClient({
           </div>
         ) : null}
 
-        {view == null ? (
-          <div className="mt-5 space-y-2" aria-busy="true" aria-label="Loading Mesita places">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="bg-muted/50 h-12 animate-pulse rounded-xl" />
-            ))}
-          </div>
-        ) : null}
+        {view == null ? <CatalogueSkeleton /> : null}
 
         {view?.kind === "matches" ? (
           <FindResults
@@ -439,6 +434,69 @@ export function SinglePlaceClient({
           onCreate={() => void create()}
         />
       ) : null}
+    </div>
+  );
+}
+
+/** The catalogue while it loads, laid out as FindResults lays it out (Pato,
+ *  MESITA-2701: "the placeholders must be similar to the page you are
+ *  loading, like the sizes"): the same card (FIND_TABLE_FRAME), bled to the
+ *  edges on a phone,
+ *  its 11px head band, then rows of the Place cell (the 14px name over the
+ *  11px address) and the seven state pills. From 640px the 9rem On column
+ *  leads each row; under that its pill sits above the name. The table runs
+ *  wider than the pane, so the row end (the action) is off screen here as
+ *  it is there. It was three grey bars. */
+function CatalogueSkeleton() {
+  const held = "hidden w-36 shrink-0 justify-center px-3 py-3 sm:flex";
+  const place = "w-[60vw] shrink-0 px-4 py-3 sm:w-[280px]";
+  const state = "flex w-24 shrink-0 justify-center px-3 py-3";
+  return (
+    <div
+      aria-busy="true"
+      aria-label="Loading Mesita places"
+      className={FIND_TABLE_FRAME}
+    >
+      <div aria-hidden className="bg-muted/30 type-label flex">
+        <div className={held}>
+          <div className="flex h-[1lh] items-center">
+            <div className={`${BONE_CLASS} h-2.5 w-5`} />
+          </div>
+        </div>
+        <div className={place}>
+          <div className="flex h-[1lh] items-center">
+            <div className={`${BONE_CLASS} h-2.5 w-10`} />
+          </div>
+        </div>
+        {GENERAL_STATE_FACTS.map((f) => (
+          <div key={f.key} className={state}>
+            <div className="flex h-[1lh] items-center">
+              <div className={`${BONE_CLASS} h-2.5 w-14`} />
+            </div>
+          </div>
+        ))}
+      </div>
+      {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+        <div key={i} aria-hidden className="border-border/60 flex border-t">
+          <div className={held}>
+            <div className={`${BONE_CLASS} h-5 w-14 rounded-full`} />
+          </div>
+          <div className={place}>
+            <div className={`${BONE_CLASS} mb-1 h-5 w-14 rounded-full sm:hidden`} />
+            <div className="flex h-5 items-center">
+              <div className={`${BONE_CLASS} h-3.5 w-40 max-w-full`} />
+            </div>
+            <div className="type-label flex h-[1lh] items-center">
+              <div className={`${BONE_CLASS} h-2.5 w-52 max-w-full`} />
+            </div>
+          </div>
+          {GENERAL_STATE_FACTS.map((f) => (
+            <div key={f.key} className={state}>
+              <div className={`${BONE_CLASS} h-5 w-8 rounded-full`} />
+            </div>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }

@@ -12,9 +12,10 @@ import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 import {
   NotificationRow,
+  NotificationRowSkeleton,
   RESERVATION_KINDS,
 } from "@/components/consumer/notification-row";
-import { EmptyState, SkeletonRow } from "@/components/shared";
+import { EmptyState } from "@/components/shared";
 
 // Notifications is YOUR activity and nothing else (Pato, 2026-08-17): an
 // inbox of things that happened to YOU, with no switcher.
@@ -22,6 +23,36 @@ import { EmptyState, SkeletonRow } from "@/components/shared";
 // ONLY RESERVATION ROWS RENDER. The list EF already returns only the kinds a
 // booking writes; filtering on `RESERVATION_KINDS` here keeps a row this
 // screen cannot render off the list.
+
+const FEED_CLASS =
+  "scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-6";
+
+/** The rows' column: 16px under the blurb, 8px apart. */
+const LIST_CLASS = "mt-4 flex flex-col gap-2";
+
+// Four NotificationRow silhouettes (notification-row.tsx, beside the row
+// they stand in for) on the list's own step (Pato, MESITA-2701: "the
+// placeholders must be similar to the page you are loading, like the sizes").
+function SkeletonRows() {
+  return (
+    <div className={LIST_CLASS} aria-hidden>
+      {[0, 1, 2, 3].map((i) => (
+        <NotificationRowSkeleton key={i} />
+      ))}
+    </div>
+  );
+}
+
+/** The feed while it loads: what /me/notifications/loading.tsx draws under
+ *  the page's blurb, and what this component draws until the fetch lands. */
+export function NotificationsSkeleton() {
+  return (
+    <div className={FEED_CLASS}>
+      <SkeletonRows />
+    </div>
+  );
+}
+
 export function NotificationsClient() {
   const supabase = useBrowserSupabase();
   const [rows, setRows] = useState<ConsumerNotification[]>([]);
@@ -53,7 +84,7 @@ export function NotificationsClient() {
   const visible = rows.filter((n) => RESERVATION_KINDS.has(n.kind));
 
   return (
-    <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-6">
+    <div className={FEED_CLASS}>
       {/* NO IN-BODY TITLE (Pato, 2026-09-05: "don't say here your recent
           moves. it looks NOT clean. be direct"). The page header already
           names this list; a heading that repeats the tile you just tapped is
@@ -66,16 +97,9 @@ export function NotificationsClient() {
       ) : null}
 
       {loading ? (
-        <div className="mt-4 flex flex-col gap-2" aria-hidden>
-          {[0, 1, 2, 3].map((i) => (
-            <SkeletonRow
-              key={i}
-              className="border-border bg-card rounded-2xl border"
-            />
-          ))}
-        </div>
+        <SkeletonRows />
       ) : visible.length > 0 ? (
-        <div className="mt-4 flex flex-col gap-2">
+        <div className={LIST_CLASS}>
           {visible.map((n) => (
             <NotificationRow key={n.id} n={n} />
           ))}

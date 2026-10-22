@@ -4,12 +4,11 @@ import { Heart } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import {
-  RAIL_CARD_HEIGHT_CLASS,
   RailCard,
+  RailCardSkeleton,
 } from "@/components/consumer/search/SearchRailCard";
 import { savedPlaceList } from "@/components/consumer/home/CatalogRails";
 import { EmptyState } from "@/components/shared";
-import { Skeleton } from "@/components/shared/Skeleton";
 import type { Place } from "@/lib/api/places";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { withUserDistance } from "@/lib/place-distance";
@@ -19,7 +18,6 @@ import { readSavedPlacePreviews, useSavedPlaces } from "@/lib/saved-places";
 import { useCardSaveShare } from "@/lib/use-card-save-share";
 import { useOpenGooglePlace } from "@/lib/use-open-google-place";
 import { useUserLocation } from "@/lib/use-user-location";
-import { cn } from "@/lib/utils";
 
 // FAVORITES — Me › Favorites, /me/favorites (Pato, MESITA-2565: "saved show
 // reservations directly. same for favorites. the page and route containing
@@ -37,7 +35,33 @@ import { cn } from "@/lib/utils";
 // THE PANE IS A FLEX COLUMN, NOT A BLOCK: grow, min-h-0, scroll inside — a
 // block parent collapses EmptyState.
 
+const PANE =
+  "bg-card scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain";
 const LIST = "flex flex-col gap-2 px-3 pt-3 pb-6";
+
+/** Three of Search's own loading cards (RailCardSkeleton, the RailCard
+ *  frame, photo, rows and Save · Share) on the list's step: what this list
+ *  draws until the hearts hydrate, and /me/favorites/loading.tsx draws whole
+ *  (Pato, MESITA-2701: "the placeholders must be similar to the page you are
+ *  loading, like the sizes"; one flat grey bar of the card's height before). */
+function FavoritesListSkeleton() {
+  return (
+    <div className={LIST} aria-hidden>
+      {[0, 1, 2].map((i) => (
+        <RailCardSkeleton key={i} />
+      ))}
+    </div>
+  );
+}
+
+/** The Favorites pane while the route loads: the white pane and the list. */
+export function FavoritesSkeleton() {
+  return (
+    <div className={PANE}>
+      <FavoritesListSkeleton />
+    </div>
+  );
+}
 
 function FavoritesList() {
   const { savedIds, hydrated } = useSavedPlaces();
@@ -45,13 +69,7 @@ function FavoritesList() {
   const router = useRouter();
   const coords = useUserLocation();
   const openGooglePlace = useOpenGooglePlace();
-  if (!hydrated) {
-    return (
-      <div className={LIST}>
-        <Skeleton className={cn(RAIL_CARD_HEIGHT_CLASS, "rounded-2xl")} />
-      </div>
-    );
-  }
+  if (!hydrated) return <FavoritesListSkeleton />;
   const list = savedPlaceList(savedIds, readSavedPlacePreviews<Place>());
   if (list.length === 0) {
     return (
@@ -88,7 +106,7 @@ function FavoritesList() {
 
 export function FavoritesPage() {
   return (
-    <div className="bg-card scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain">
+    <div className={PANE}>
       <FavoritesList />
     </div>
   );

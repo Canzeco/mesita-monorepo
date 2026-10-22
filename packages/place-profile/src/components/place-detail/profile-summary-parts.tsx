@@ -5,11 +5,33 @@ import type { LucideIcon } from "lucide-react";
 
 import type { PlaceDetail } from "../../place-detail";
 import { cn, firstInitial } from "../../lib/format";
+import { PLACE_OUTLINE_CHIP_CLASS } from "../../lib/ui";
 import { Spinner } from "../Spinner";
+
+// THE SUMMARY'S PARTS ARE MEASURED ONCE (Pato, MESITA-2701: "the
+// placeholders must be similar to the page you are loading, like the
+// sizes"): the photo's frame and a stat column's three classes are read here
+// and by ProfileSummarySkeleton, which draws its bones inside them.
+
+/** ProfilePhoto's frame: 88px, rounded-2xl. */
+export const PROFILE_PHOTO_FRAME_CLASS = "h-[88px] w-[88px] shrink-0 rounded-2xl";
+/** A ProfileStat column. */
+export const PROFILE_STAT_CLASS =
+  "flex min-w-0 flex-col items-center justify-center px-0.5 text-center";
+/** The slot over the number that holds the network's 24px mark. */
+export const PROFILE_STAT_MARK_CLASS = "mb-1.5 flex shrink-0";
+/** The number line: 24px for every column (MESITA-2623). */
+export const PROFILE_STAT_LINE_CLASS =
+  "flex h-6 items-center justify-center leading-none";
 
 export function ProfilePhoto({ place }: { place: PlaceDetail }) {
   return (
-    <div className="border-border h-[88px] w-[88px] shrink-0 overflow-hidden rounded-2xl border">
+    <div
+      className={cn(
+        PROFILE_PHOTO_FRAME_CLASS,
+        "border-border overflow-hidden border",
+      )}
+    >
       {place.photos.length > 0 ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -57,10 +79,7 @@ export function ProfileStat({
     ? `${name ?? label}, ${spokenValue ?? value}`
     : `${shown} ${label}`;
   return (
-    <div
-      className="flex min-w-0 flex-col items-center justify-center px-0.5 text-center"
-      aria-label={spoken}
-    >
+    <div className={PROFILE_STAT_CLASS} aria-label={spoken}>
       {/* NOT CONNECTED IS GREY (Pato, MESITA-2676: "if no Instagram or no
           Facebook, the icon must be grey-scale, not colour"): the mark loses
           its colour and half its weight. Since MESITA-2678 ("you must have
@@ -69,8 +88,7 @@ export function ProfileStat({
       {icon ? (
         <span
           className={
-            "mb-1.5 flex shrink-0" +
-            (mention ? " opacity-50 grayscale" : "")
+            PROFILE_STAT_MARK_CLASS + (mention ? " opacity-50 grayscale" : "")
           }
         >
           {icon}
@@ -82,8 +100,10 @@ export function ProfileStat({
         className={
           // ONE LINE HEIGHT FOR EVERY COLUMN (MESITA-2623): 24px, so the
           // three labels below sit on one baseline whether the line holds
-          // "4.9 ★ (395)" or "-".
-          "flex h-6 items-center justify-center leading-none " +
+          // "4.9 ★ (395)" or "-". Joined by hand, not cn(): tailwind-merge
+          // would let text-base drop leading-none.
+          PROFILE_STAT_LINE_CLASS +
+          " " +
           (mention
             ? "text-muted-foreground text-base font-bold whitespace-nowrap"
             : "text-foreground text-base font-bold whitespace-nowrap tabular-nums")
@@ -123,10 +143,7 @@ export function ProfileFact({
 } & React.LiHTMLAttributes<HTMLLIElement>) {
   return (
     <li
-      className={cn(
-        "border-border text-foreground inline-flex h-8 min-w-0 items-center gap-1.5 rounded-lg border px-2.5 text-sm font-medium whitespace-nowrap tabular-nums",
-        className,
-      )}
+      className={cn(PLACE_OUTLINE_CHIP_CLASS, className)}
       {...rest}
     >
       {Icon ? (

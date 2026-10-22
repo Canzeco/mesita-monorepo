@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "../lib/format";
+import { PLACE_BONE_CLASS } from "../lib/ui";
 import { EnrichedBadge } from "./EnrichedBadge";
 
 // The place-name title for the detail header (page + modal). Since
@@ -13,13 +14,16 @@ import { EnrichedBadge } from "./EnrichedBadge";
 // top chrome. An enriched place wears the Enriched mark right after its
 // name (MESITA-2296; MESITA-2624 put it first for one night, MESITA-2628
 // moved it back and made it 20px).
+// A NULL NAME IS ONE STILL ON ITS WAY (Pato, MESITA-2701: "the placeholders
+// must be similar to the page you are loading, like the sizes"): a 16px
+// bone in this same row, where the name will stand (PlaceTopBarSkeleton).
 
 export function PlaceDetailTitle({
   placeName,
   enriched = false,
   className,
 }: {
-  placeName: string;
+  placeName: string | null;
   enriched?: boolean;
   className?: string;
 }) {
@@ -30,10 +34,16 @@ export function PlaceDetailTitle({
         className,
       )}
     >
-      {/* The name truncates and the mark is shrink-0, so a long name ends
-          in an ellipsis and the mark stays whole right after it. */}
-      <span className="truncate">{placeName}</span>
-      {enriched ? <EnrichedBadge /> : null}
+      {placeName == null ? (
+        <span aria-hidden className={cn(PLACE_BONE_CLASS, "h-4 w-40 max-w-full")} />
+      ) : (
+        <>
+          {/* The name truncates and the mark is shrink-0, so a long name
+              ends in an ellipsis and the mark stays whole right after it. */}
+          <span className="truncate">{placeName}</span>
+          {enriched ? <EnrichedBadge /> : null}
+        </>
+      )}
     </div>
   );
 }

@@ -34,5 +34,14 @@ export const PLACE_OUTLINE_CHIP_CLASS =
 export const PLACE_SCREEN_TITLE_CLASS =
   "text-foreground font-sans text-lg font-semibold tracking-tight";
 
+/**
+ * A block of the place screen that has not loaded yet (Pato, MESITA-2701:
+ * "the placeholders must be similar to the page you are loading, like the
+ * sizes"): the consumer's Skeleton look (bg-muted, pulsing, rounded-lg),
+ * which the package cannot import. The skeleton's bones and the top bar's
+ * pending name both wear it.
+ */
+export const PLACE_BONE_CLASS = "bg-muted animate-pulse rounded-lg";
+
 export const ERROR_BOX_CLASS =
   "rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive";

@@ -20,15 +20,18 @@ import { PlaceDetailTitle } from "./PlaceDetailTitle";
 // header, a bordered back square and a centred serif name, so the guest saw
 // the old bar every time they opened a place from inside the app.
 //
-// A missing callback leaves its button visible and inert.
+// A missing callback leaves its button visible and inert. A null name is
+// the bar while the place loads (Pato, MESITA-2701: "the placeholders must
+// be similar to the page you are loading, like the sizes"): this same bar,
+// a bone where the name goes (PlaceTopBarSkeleton draws it so).
 export function PlaceTopBar({
   name,
-  enriched,
+  enriched = false,
   onBack,
   onMore,
 }: {
-  name: string;
-  enriched: boolean;
+  name: string | null;
+  enriched?: boolean;
   onBack?: () => void;
   onMore?: () => void;
 }) {

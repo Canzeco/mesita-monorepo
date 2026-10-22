@@ -10,6 +10,7 @@ import {
   apiUpdateConsumerProfile,
 } from "@/lib/api/profile";
 import { IconCircle, Switch } from "@/components/consumer/me/settings-rows";
+import { PUBLIC_PROFILE_SWITCH } from "@/components/consumer/me/switch-words";
 
 // "PUBLIC PROFILE" (Pato, MESITA-2590: "a Settings switch where private
 // means you appear as 'A member'"; MESITA-2594 named it Public profile and
@@ -19,7 +20,8 @@ import { IconCircle, Switch } from "@/components/consumer/me/settings-rows";
 // member"); it never disappears. Private also costs something: you see others' Instagram
 // only if you show yours (MESITA-2594), so a private member sees "per***".
 // Same shape as Me › Instagram's "Use my Instagram photo" switch
-// (MESITA-2585).
+// (MESITA-2585). Its words live in switch-words.ts, which the Settings and
+// Instagram fallbacks read too (MESITA-2701).
 export function SocialNameRow() {
   const supabase = useBrowserSupabase();
   const [named, setNamed] = useState<boolean | null>(null);
@@ -67,13 +69,11 @@ export function SocialNameRow() {
         <UserRound className="h-[18px] w-[18px]" />
       </IconCircle>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold">Public profile</span>
+        <span className="block text-sm font-semibold">
+          {PUBLIC_PROFILE_SWITCH.label}
+        </span>
         <span className="text-muted-foreground type-label block">
-          {/* Say where you show (Pato, MESITA-2697: "say that you are
-              visible in social feed basically"). */}
-          {shown
-            ? "You're visible in the Social feed"
-            : "Only your first name shows in the Social feed, and others' Instagram stays hidden"}
+          {shown ? PUBLIC_PROFILE_SWITCH.on : PUBLIC_PROFILE_SWITCH.off}
         </span>
       </span>
       <Switch on={shown} />

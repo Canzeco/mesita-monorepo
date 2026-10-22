@@ -10,11 +10,13 @@
 // never names a plan, and the Plan page never names Class or VIP. Who
 // qualifies and what the partner rates are is not decided, so nothing here
 // promises either: the one VIP perk is tagged Soon, and a Regular guest gets
-// one plain line, no button.
+// one plain line, no button. The rows' words live in class-words.ts, which
+// /me/class' fallback reads too (MESITA-2701).
 
 import { Crown, UsersRound } from "lucide-react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { CLASS_ROWS, type ClassRowWords } from "@/components/consumer/me/class-words";
 import { PerkList } from "@/components/consumer/me/perk-list";
 import type { GuestClass } from "@/lib/guest-standing";
 import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
@@ -25,13 +27,10 @@ function ClassRow({
   icon,
   mine,
   subtitle,
-  children,
-}: {
-  title: string;
+  perks,
+}: ClassRowWords & {
   icon: React.ReactNode;
   mine: boolean;
-  subtitle: string;
-  children?: React.ReactNode;
 }) {
   return (
     <div className="flex items-start gap-3 px-4 py-3" data-class-row={title}>
@@ -44,7 +43,7 @@ function ClassRow({
           </span>
         )}
         <span className="text-muted-foreground type-label block">{subtitle}</span>
-        {children}
+        {perks && <PerkList label={perks.label} items={perks.items} />}
       </div>
     </div>
   );
@@ -57,23 +56,16 @@ export function ClassList({ guestClass }: { guestClass: GuestClass | null }) {
     <>
       <SettingsGroup>
         <ClassRow
-          title="Regular"
+          {...CLASS_ROWS.regular}
           icon={<UsersRound className="h-[18px] w-[18px]" />}
           mine={guestClass === "regular"}
-          subtitle="Every member."
         />
         <RowDivider />
         <ClassRow
-          title="VIP"
+          {...CLASS_ROWS.vip}
           icon={<Crown className="h-[18px] w-[18px]" />}
           mine={guestClass === "vip"}
-          subtitle="Through Mesita's partners, like agencies and creator partnerships. Never bought."
-        >
-          <PerkList
-            label="Comes with VIP"
-            items={[{ text: "Special rates at partner venues", soon: true }]}
-          />
-        </ClassRow>
+        />
       </SettingsGroup>
       {guestClass === "regular" && (
         <p

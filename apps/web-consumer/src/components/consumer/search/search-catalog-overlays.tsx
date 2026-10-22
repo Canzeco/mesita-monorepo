@@ -1,17 +1,20 @@
 import type { RefObject } from "react";
 
 import type { MapWeights, Place } from "@/lib/api/places";
-import { Skeleton } from "@/components/shared";
+import { Skeleton, Spinner } from "@/components/shared";
 import type { Coords } from "@/lib/use-user-location";
 import { useCardSaveShare } from "@/lib/use-card-save-share";
 import { cn } from "@/lib/utils";
 
-import { RAIL_CARD_HEIGHT_CLASS, RailCard } from "./SearchRailCard";
+import { RailCard, RailCardSkeleton } from "./SearchRailCard";
+import { SIGHT_Y } from "./search-utils";
 
 /** The share of the carousel's width one card page takes: 88% with 6% pads,
- *  so the active card centres and its neighbours peek. Since MESITA-2613 the
- *  carousel spans the band's full width again (it was the right half,
- *  MESITA-2509). The scroll math in SearchClient reads the same number. */
+ *  so the active card centres and its neighbours peek. The carousel spans
+ *  the map's full width, floating over its foot (MESITA-2670); before, it
+ *  sat in a white band under the map, the band's right half (MESITA-2509),
+ *  then its full width (MESITA-2613). The scroll math in SearchClient reads
+ *  the same number. */
 export const RAIL_PAGE_SHARE = 0.88;
 
 /** Active card is 88% of the carousel; first/last pages pad 6% so the card
@@ -21,31 +24,48 @@ export const RAIL_PAGE_SHARE = 0.88;
 const RAIL_PAGE =
   "w-[88%] shrink-0 snap-center px-1.5 first:ml-[6%] last:mr-[6%]";
 
-/** The first load's card, in the carousel row. */
-function CatalogRailSkeleton() {
+/** Where the carousel floats: over the map's foot, 8px up (MESITA-2670). */
+export const RAIL_FLOAT_CLASS =
+  "pointer-events-none absolute inset-x-0 bottom-2 z-20";
+
+/** The first load's carousel (Pato, MESITA-2701: "the placeholders must be
+ *  similar to the page you are loading, like the sizes"): the loaded row's
+ *  own pages, the first card centred and the next one peeking at the right
+ *  edge, each card RailCard's face. search/loading.tsx draws this same row,
+ *  so the route's skeleton hands over to the first load without a move. */
+export function CatalogRailSkeleton() {
   return (
     <div
       className="scrollbar-hide flex snap-x snap-mandatory overflow-hidden pb-1"
       aria-hidden
     >
       <div className={RAIL_PAGE}>
-        <div
-          className={cn(
-            "border-border bg-card/95 flex w-full items-stretch overflow-hidden rounded-2xl border",
-            RAIL_CARD_HEIGHT_CLASS,
-          )}
-        >
-          <Skeleton className="aspect-square h-full w-auto shrink-0 rounded-none" />
-          <div className="flex min-w-0 flex-1 flex-col gap-2 p-3">
-            <Skeleton className="h-3.5 w-3/4" />
-            <Skeleton className="h-3 w-1/2" />
-            <Skeleton className="h-3 w-2/5" />
-            <div className="mt-auto grid grid-cols-2 gap-2">
-              <Skeleton className="h-8 rounded-lg" />
-              <Skeleton className="h-8 rounded-lg" />
-            </div>
-          </div>
-        </div>
+        <RailCardSkeleton />
+      </div>
+      <div className={RAIL_PAGE}>
+        <RailCardSkeleton />
+      </div>
+    </div>
+  );
+}
+
+/** The map before its tiles paint: a grey veil, the spinner ON THE CROSS
+ *  (Pato, MESITA-2677: "the loading spin must be aligned with the cross"),
+ *  SIGHT_Y down, not the map's middle. SearchMap holds it until the tiles
+ *  land; search/loading.tsx draws the same one (MESITA-2701). z-10: over
+ *  the canvas, under the floating rail (z-20) and the header (z-30). */
+export function MapVeil() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 z-10">
+      <Skeleton className="absolute inset-0 rounded-none" />
+      <div
+        className="absolute inset-x-0 flex -translate-y-1/2 justify-center"
+        style={{ top: `${SIGHT_Y * 100}%` }}
+      >
+        <Spinner
+          label="Loading map"
+          className="border-border border-t-primary"
+        />
       </div>
     </div>
   );
@@ -70,11 +90,12 @@ function fmtScore(v: number | null | undefined): string {
 // coordinates at the bottom"). The cross, the blue dot and the centre sent
 // to list-places, as of the last catalog load; MESITA-2504 adds the circle
 // the load gated on, the weights it scored with, and the selected card's
-// proximity · popularity · score, live as the selection moves. Since
-// MESITA-2613 it is the band's TOP section, stacked over the carousel (Pato:
-// "on top of the carrousel, not in x but in y"): plain small rows at full
-// width, one line each, no card, off the map. Remove when Pato says the map
-// is verified.
+// proximity · popularity · score, live as the selection moves. It was the
+// white band's top section over the carousel (Pato, MESITA-2613: "on top of
+// the carrousel, not in x but in y"); the band and the readout went when the
+// carousel moved over the map (MESITA-2670), so nothing draws it now.
+// SearchClient still records each load's coordinates (setLoadCoords) for
+// when it comes back. Remove when Pato says the map is verified.
 export function SearchDebugCoords({
   cross,
   you,
@@ -138,19 +159,15 @@ export function SearchRailOverlay({
   // creates the place on the tap, then saves or shares it.
   const cards = useCardSaveShare();
 
-  // ONE FULL-WIDTH WHITE BAND UNDER THE MAP, a hairline on top (MESITA-2506,
-  // MESITA-2509), STACKED (Pato, MESITA-2613: "do the actual carrousel at the
-  // bottom … and on top of the carrousel, not in x but in y, put the numeric
-  // ugly data"): the places count and the development readout on top, a
-  // hairline, then the carousel at the band's full width. Nothing floats over
-  // the map; the empty state and the first-load skeleton sit in the carousel
-  // row. The rail is always shown (MESITA-2508). ONE FIXED HEIGHT (MESITA-2510):
-  // a band that sized to its rows resized the map on every load, and each
-  // resize read as a move and reloaded again — so the readout scrolls inside
-  // its section and the carousel row is the card's height plus its padding.
+  // THE CAROUSEL FLOATS OVER THE MAP'S FOOT (Pato, MESITA-2670: "the
+  // carousel must be floating over the map"); the white band under the map
+  // and its readout (MESITA-2506, MESITA-2613) are gone. The empty state and
+  // the first-load skeleton sit where the cards do. The rail is always shown
+  // (MESITA-2508). It floats, so a load never resizes the map: a band that
+  // sized to its rows read as a move and reloaded again (MESITA-2510).
   return (
     <div
-      className="pointer-events-none absolute inset-x-0 bottom-2 z-20"
+      className={RAIL_FLOAT_CLASS}
       aria-busy={catalogLoading}
       aria-live={firstLoad ? "polite" : undefined}
       data-search-rail-band

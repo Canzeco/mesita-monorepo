@@ -14,6 +14,11 @@ export {
   type PlaceTab,
 } from "./components/place-detail/tabs";
 export { PopularTimesBox } from "./components/place-detail/popular-times";
+export {
+  PlaceDetailBodySkeleton,
+  PlaceProfileSkeleton,
+  PlaceTopBarSkeleton,
+} from "./components/place-detail/skeleton";
 export type {
   PlaceActions,
   PlaceCreatingView,
