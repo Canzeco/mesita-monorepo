@@ -6,6 +6,11 @@ import { cn } from "../lib/format";
 // badge but holds a sparkle, not a check, and wears the Mesita pink: Mesita
 // did the work on this place, nobody verified anything (verification is
 // Second Stage). Display only; it is never a button.
+//
+// AFTER THE NAME, 20px (Pato, MESITA-2628: "put selected at the right
+// better, but make it bigger"). MESITA-2624 had moved it before the name
+// for one night; it was 16px until MESITA-2628. The size is this default,
+// so every caller grows with it.
 
 export function EnrichedBadge({ className }: { className?: string }) {
   return (
@@ -13,7 +18,7 @@ export function EnrichedBadge({ className }: { className?: string }) {
       viewBox="0 0 24 24"
       role="img"
       aria-label="Enriched"
-      className={cn("inline-block h-4 w-4 shrink-0", className)}
+      className={cn("inline-block h-5 w-5 shrink-0", className)}
     >
       <title>Enriched</title>
       <path
