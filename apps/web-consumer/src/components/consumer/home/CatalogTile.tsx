@@ -72,7 +72,7 @@ function TileLink({
 // 32px tall to the eye (MESITA-2652: "the buttons must be shorter"); an
 // invisible 6px extension above and below keeps the 44px touch floor.
 const TILE_BUTTON =
-  "bg-border/60 text-foreground hover:bg-border/80 relative flex h-7 after:absolute after:inset-x-0 after:-inset-y-2 min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 font-sans text-xs font-semibold transition active:scale-[0.99]";
+  "bg-border/60 text-foreground hover:bg-border/80 relative flex h-8 after:absolute after:inset-x-0 after:-inset-y-1.5 min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 font-sans text-xs font-semibold transition active:scale-[0.99]";
 
 function readableKind(place: Place): string | null {
   const raw = place.category_label ?? place.category;
@@ -208,7 +208,9 @@ export function CatalogTile({
   return (
     <li
       className={cn(
-        "relative isolate aspect-square min-w-0 overflow-hidden rounded-2xl",
+        // A 1px grey hairline around each tile (Pato, MESITA-2661: "add a
+        // really small border, gray, to each box").
+        "border-border relative isolate aspect-square min-w-0 overflow-hidden rounded-2xl border",
         className,
       )}
     >
@@ -250,7 +252,7 @@ export function CatalogTile({
           <div
             className={cn(
               "text-foreground relative flex h-full flex-col justify-center gap-0.5 pt-1.5 pl-3",
-              google ? "pr-3" : "pr-3 pb-[38px]",
+              google ? "pr-3" : "pr-3 pb-[42px]",
             )}
           >
             <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-5 font-semibold tracking-tight">
