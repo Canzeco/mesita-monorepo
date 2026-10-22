@@ -3,9 +3,10 @@
 // The opening screen (MESITA-2311, MESITA-2307): a Google-only place the
 // guest tapped, on screen at once as its profile. The card the guest tapped
 // is the profile's first draft (the stash `useOpenGooglePlace` left); Google's
-// photo lands when the client has it; the Enrich slot says "Creating
-// profile" while get-or-create runs; when it lands, the Feed underneath
-// reloads and this route is replaced by the real profile. A refusal keeps
+// photo lands when the client has it; a Creating fact leads the facts row,
+// before the category (MESITA-2679), while get-or-create runs; when it
+// lands, the Feed underneath reloads and this route is replaced by the real
+// profile. A refusal keeps
 // Google's profile on screen and says why, with Try again. It creates from
 // a client effect only, after a deliberate tap navigated here: never on the
 // server, never on a prefetch. No vote, no Save, no Reserve until the place

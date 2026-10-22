@@ -7,7 +7,7 @@ import { parsePendingPlace, pendingPlaceDetail } from "../pending-place";
 
 // A Google-only card opens its profile at once (MESITA-2307): the tap
 // stashes the card and goes to the opening screen, which draws the card as
-// the profile with Google's photo and "Creating profile" in the body, awaits
+// the profile with Google's photo and a Creating fact before its category, awaits
 // the create, then replaces the route with the real profile; the Feed
 // underneath reloads.
 
