@@ -72,7 +72,14 @@ import {
 } from "@/lib/use-user-location";
 import { withUserDistance } from "@/lib/place-distance";
 import { onPlaceCreated } from "@/lib/place-created-event";
-import { useOpenGooglePlace } from "@/lib/use-open-google-place";
+import {
+  getOrCreateGooglePlace,
+  googleOpenHref,
+  googlePlaceIdOf,
+  useOpenGooglePlace,
+} from "@/lib/use-open-google-place";
+import { isGoogleOnlyPlace } from "@/lib/place-placeholder";
+import { shareOrCopy } from "@/lib/share-place";
 import {
   removeSavedPlacePreview,
   upsertSavedPlacePreview,
@@ -331,6 +338,38 @@ export function CatalogRails() {
     final: place.area?.final ?? null,
   });
 
+  // GOOGLE-ONLY LIKE AND SHARE (Pato, MESITA-2663: "just create the profile
+  // and then trigger it"). Like get-or-creates on the Google Place ID (the
+  // same door a profile open uses) and saves the created place; the card
+  // remembers the new id so it reads Liked. Share must fire inside the tap
+  // (the OS sheet needs the activation), so it shares the opening link at
+  // once — that screen get-or-creates — and starts the create behind it.
+  const [createdIds, setCreatedIds] = useState<Record<string, string>>({});
+  const likeGoogle = async (place: Place, saved: boolean, rank: number) => {
+    const gid = googlePlaceIdOf(place);
+    if (!gid) return;
+    try {
+      const made = await getOrCreateGooglePlace(supabase, gid);
+      setCreatedIds((m) => ({ ...m, [gid]: made.id }));
+      toggleSave({ ...place, id: made.id, slug: made.slug }, saved, rank);
+    } catch (e) {
+      toast.error(errMsg(e, "Couldn't save that place right now."));
+    }
+  };
+  const shareGoogle = (place: Place) => {
+    const gid = googlePlaceIdOf(place);
+    if (!gid) return;
+    const url = new URL(
+      googleOpenHref(gid, place.name),
+      window.location.origin,
+    ).toString();
+    void shareOrCopy(
+      { title: place.name, url },
+      { text: url, copied: "Link copied", failed: "Couldn't share this place" },
+    );
+    void getOrCreateGooglePlace(supabase, gid).catch(() => {});
+  };
+
   const toggleSave = (place: Place, saved: boolean, rank = 0) => {
     if (saved) {
       setSaved(place.id, false);
@@ -498,13 +537,22 @@ export function CatalogRails() {
         <ul role="list" aria-label={label} className={PLACES_LIST}>
           {page.map((place, i) => {
             const located = withUserDistance(place, coords);
-            const saved = savedIds.has(place.id);
+            const google = isGoogleOnlyPlace(place);
+            const gid = google ? googlePlaceIdOf(place) : null;
+            const madeId = gid ? createdIds[gid] : undefined;
+            const saved =
+              savedIds.has(place.id) || (madeId ? savedIds.has(madeId) : false);
             return (
               <Fragment key={place.id}>
                 <CatalogTile
                   place={located}
                   saved={saved}
-                  onToggle={() => toggleSave(place, saved, i + 1)}
+                  onToggle={() =>
+                    google
+                      ? void likeGoogle(place, saved, i + 1)
+                      : toggleSave(place, saved, i + 1)
+                  }
+                  onShare={google ? () => shareGoogle(place) : undefined}
                   onOpen={() =>
                     trackEvent(supabase, "home_card_open", {
                       mode: "places",
