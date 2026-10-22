@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(148);
+select plan(149);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -631,6 +631,16 @@ select ok(
     and not has_function_privilege('anon', 'public.place_activity_people(uuid, integer)', 'EXECUTE')
     and not has_function_privilege('authenticated', 'public.place_activity_history_by(uuid, text, timestamptz, integer)', 'EXECUTE'),
   'client roles cannot run the Social readers (they name other members)'
+);
+
+-- MESITA-2684: a guest's report names the guest; EF-only like place_activity.
+select ok(
+  (select relrowsecurity from pg_class
+    where oid = 'public.place_reports'::regclass)
+    and not has_table_privilege('anon', 'public.place_reports', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.place_reports', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.place_reports', 'INSERT'),
+  'place_reports is EF-only (RLS on, no client SELECT or INSERT)'
 );
 
 -- MESITA-2553: Plan (free/pro) and Class (regular/vip), independent; plain by default.
