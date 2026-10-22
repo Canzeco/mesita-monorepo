@@ -232,22 +232,14 @@ export function CatalogTile({
             80% paper (MESITA-2375), the three rows centred on it (MESITA-2645). */}
         <div
           className={cn(
-            "absolute inset-x-0 bottom-0 overflow-hidden rounded-b-2xl",
+            // NO REFLECTION (Pato, MESITA-2658: "what actually looks better is
+            // removing the reflection of the place in the box"): a plain
+            // white band. MESITA-2657's ring and darker list ground stay out.
+            "bg-paper absolute inset-x-0 bottom-0 overflow-hidden rounded-b-2xl",
             "h-[40%]",
           )}
           data-tile-info
         >
-          <div
-            className={cn("absolute inset-x-0 top-0 -scale-y-100", "h-[150%]")}
-            aria-hidden
-            data-tile-reflection
-          >
-            {media()}
-          </div>
-          <div
-            className="bg-paper/80 absolute inset-0 rounded-b-2xl backdrop-blur-sm"
-            aria-hidden
-          />
           {/* ONE TYPE SCALE (Pato, MESITA-2645: "standardize fonts and sizes
               and spaces"): the place screen's own (packages/place-profile
               ui.ts). Inter everywhere, two sizes only: the name 16px
