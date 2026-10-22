@@ -504,7 +504,18 @@ function PersonCard({
           guestClass={toGuestClass(person.guestClass)}
           plan={toGuestPlan(person.plan)}
         />
-        <HistoryList items={history ? history.items : null} />
+        {/* ONE HAIRLINE, EDGE TO EDGE, between the identity boxes and the
+            history (Pato, MESITA-2611: "this activity feed must be divided
+            by a line, like in instagram"): the way Instagram's profile
+            rules off the header from the grid. The line spans the card
+            (-mx-5 undoes the card's padding) and is there in every state,
+            rows, skeleton or "No activity yet". */}
+        <div
+          className="border-border -mx-5 mt-4 border-t px-5"
+          data-social-history-divider
+        >
+          <HistoryList items={history ? history.items : null} />
+        </div>
         {/* Open Instagram (MESITA-2590): a new tab, so Mesita stays open
             underneath; every tap is counted to measure who leaves. Under
             the list, small (MESITA-2594): the card is Mesita's first. */}
@@ -545,7 +556,7 @@ function PersonCard({
 function HistoryList({ items }: { items: MemberHistoryItem[] | null }) {
   if (items == null) {
     return (
-      <div className="mt-4 space-y-2" aria-busy data-social-history-loading>
+      <div className="mt-3 space-y-2" aria-busy data-social-history-loading>
         {Array.from({ length: 3 }, (_, i) => (
           <div key={i} className="flex items-center gap-3">
             <div className="min-w-0 flex-1 space-y-2">
@@ -561,7 +572,7 @@ function HistoryList({ items }: { items: MemberHistoryItem[] | null }) {
   if (items.length === 0) {
     return (
       <p
-        className="text-muted-foreground mt-4 text-center text-sm"
+        className="text-muted-foreground mt-3 text-center text-sm"
         data-social-history-empty
       >
         No activity yet
@@ -572,7 +583,7 @@ function HistoryList({ items }: { items: MemberHistoryItem[] | null }) {
     <ul
       role="list"
       aria-label="Activity"
-      className="divide-border border-border mt-4 max-h-[45vh] divide-y overflow-y-auto border-t"
+      className="divide-border max-h-[45vh] divide-y overflow-y-auto"
       data-social-history
     >
       {items.map((it) => (
