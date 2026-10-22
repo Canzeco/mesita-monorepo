@@ -35,7 +35,8 @@ export type UpdateProfileBody = {
   avatar_url?: string | null;
   // MESITA-2585: "Use my Instagram photo" on Me › Instagram.
   use_instagram_photo?: boolean;
-  // MESITA-2590: "Show my name in Social" off = true (appear as "A member").
+  // MESITA-2590: "Public profile" off = true (no photo or handle in Social;
+  // the first name still shows, MESITA-2612).
   appear_anonymous?: boolean;
 };
 

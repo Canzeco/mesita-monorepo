@@ -58,8 +58,9 @@ export type ConsumerDoc = {
   instagram_verified_at: string | null;
   // MESITA-2585: may verifying Instagram set the picture? Default true.
   use_instagram_photo: boolean;
-  // MESITA-2590: Settings › Social › "Show my name in Social", off = true:
-  // the member appears in Social as "A member". place_activity_visible reads it.
+  // MESITA-2590: Settings › Social › "Public profile", off = true: no photo
+  // or handle in Social, the first name still shows (MESITA-2612).
+  // place_activity_visible reads it.
   appear_anonymous: boolean;
   // Not here on purpose: plan, guest_class and the VIP audit columns
   // (MESITA-2553). Their only writer is the admin_set_guest_standing RPC, so

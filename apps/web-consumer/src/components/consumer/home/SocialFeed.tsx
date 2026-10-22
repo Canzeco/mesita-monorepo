@@ -18,14 +18,13 @@
 // call"). The face wears no verb badge (Pato, MESITA-2604: "remove the icon
 // expressing the event type … it looks as a profile characteristic"); the
 // sentence says the verb. THE FACE IS THE MEMBER'S PICTURE ON EVERY ROW, a
-// view or "A member" included, with two marks in the shape that badge had
+// view included, with two marks in the shape that badge had
 // (Pato, MESITA-2608: "show the profile picture but you must also show if
 // instagram or something … if it is vip, add small bubble at right of
 // profile picture … Remember the bubble you had for the event type. well do
 // the same for the subtype of user"): Instagram bottom-left when verified,
 // a VIP crown bottom-right. The server sends the photo and the marks for
-// every member who did not choose "A member"; the NAME still follows
-// MESITA-2580 and MESITA-2594 below.
+// every member who keeps Public profile on.
 // One line: the name (bold), the verb, the place (bold), no period; under
 // it, muted, the Instagram glyph and the member's Instagram as social proof —
 // the full @handle (MESITA-2590) and an approximate follower count — then
@@ -41,10 +40,11 @@
 // events. its readl time uner you radious or near you, just enough to odn't
 // kill"): the server returns every event inside the operator's Area circle
 // around the guest, newest first, at most 50, and the pane refetches every
-// LIVE_MS while the tab is visible. Members with a verified Instagram and a
-// public profile appear by name on what they like; everyone else, and every
-// view (MESITA-2594: a view is never named), appears as "A member", with no
-// photo, handle or person card (MESITA-2580: only ~10% connect Instagram). NO MOCK DATA
+// LIVE_MS while the tab is visible. EVERY MEMBER IS NAMED BY FIRST NAME
+// (Pato, MESITA-2612: "who the fuck is a member, remove that shit"; it
+// retires MESITA-2580's and MESITA-2594's "A member"). The Instagram proof
+// rides only on a like by a member with a verified Instagram and a public
+// profile (MESITA-2594: a view carries no handle). NO MOCK DATA
 // (Pato, MESITA-2591: "remove mock data"; it reverses MESITA-2520's sample
 // rows): only the server's rows, and with none, the empty state.
 //
@@ -84,10 +84,9 @@
 // it THEIR WHOLE HISTORY, liked and viewed, newest first, scrollable (Pato,
 // MESITA-2609: "a list of notifications of exactly that user … he clicked
 // that or liked that place … just all the historic feed scrollable"; it
-// replaces MESITA-2583's liked-only list). The server names the member by a
-// like's rule, so the card may name a member whose view row did not
-// (decision, MESITA-2609); a member who chose "A member" shows the row's
-// face and no history.
+// replaces MESITA-2583's liked-only list). The card shows the handle by a
+// like's rule, so it may show one a view row did not (decision,
+// MESITA-2609).
 
 import { useEffect, useRef, useState, type SVGProps } from "react";
 import Link from "next/link";
@@ -465,8 +464,8 @@ function cardInstagramLabel(person: ActivityPerson): string {
  *  once, then THEIR WHOLE HISTORY, liked and viewed, newest first, in one
  *  scrollable list (Pato: "just all the historic feed scrollable"; it was
  *  the liked places alone, MESITA-2583). Never the phone, no follow. The
- *  server's person wins over the row's: it is named by a like's rule, so a
- *  view row's "A member" may open on a name. Mesita first (MESITA-2594):
+ *  server's person wins over the row's: its handle follows a like's rule, so
+ *  a view row may open on a handle. Mesita first (MESITA-2594):
  *  Open Instagram is a small link under the list, not the card's main
  *  button. A masked handle ("per***") has no link; the card says how to see
  *  it. */
@@ -776,7 +775,7 @@ export function SocialFeed() {
       <EmptyState
         icon={Users}
         title="No activity yet"
-        description="When members with Instagram like or view a place, it shows up here."
+        description="When members like or view a place, it shows up here."
       />
     );
   }
