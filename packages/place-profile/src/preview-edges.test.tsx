@@ -156,7 +156,8 @@ describe("member preview edges", () => {
     expect(html).toContain("Products");
     expect(html).not.toContain(">Menu<");
     expect(html).toContain("Rewards");
-    expect(html).toContain("Soon");
+    // No Soon pill in the strip (MESITA-2631); the screen says it.
+    expect(html.slice(html.indexOf('aria-label="Place sections"'), html.indexOf("</nav>"))).not.toContain("Soon");
     const menuSoon = renderToStaticMarkup(<SoonScreen title="Products" />);
     expect(menuSoon).toContain("Products is coming soon");
     expect(menuSoon).toContain("Products at this place lands here shortly.");

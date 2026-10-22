@@ -6,8 +6,11 @@ import { cn } from "../../lib/format";
 // the words a guest reads. "Products" (Pato, MESITA-2618: "don't call it
 // menu for the moment. call it products. its cleaner"). It was "Menu" from
 // 2026-08-22 to 2026-10-21; he flips this word, so read the live label here.
-// decision: Pato (2026-10-16) — Products and Rewards wear Soon. Rewards is the
-// fourth screen. Both are the same strip on admin Preview and consumer.
+// NO SOON IN THE STRIP (Pato, MESITA-2631: "remove the products and rewards
+// soon directly it looks like shit. just when opening the view, you mention
+// this is for soon"). `soon` still marks the two tabs whose screen is the
+// Soon screen; the strip draws only the four labels. Rewards is the fourth
+// screen. Both are the same strip on admin Preview and consumer.
 // Every place has the four, Enriched or not; the Enrich vote is the top of
 // Overview, never a tab of its own (MESITA-2332).
 export type PlaceTab = "place" | "reviews" | "products" | "rewards";
@@ -55,21 +58,12 @@ export function PlaceTabBar({
             onClick={() => onChange(t.key)}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "type-body -mb-px flex flex-col items-center justify-end gap-0.5 border-b-2 px-0.5 pt-1.5 pb-2.5 text-center font-semibold tracking-wide transition",
+              "type-body -mb-px flex items-center justify-center border-b-2 px-0.5 py-3 text-center font-semibold tracking-wide transition",
               active
                 ? "text-foreground border-border"
                 : "text-muted-foreground hover:text-foreground border-transparent",
             )}
           >
-            <span
-              aria-hidden={t.soon ? undefined : true}
-              className={cn(
-                "type-meta bg-muted text-muted-foreground rounded-full px-1.5 leading-none font-semibold",
-                t.soon ? "visible" : "invisible",
-              )}
-            >
-              Soon
-            </span>
             {t.label}
           </button>
         );
