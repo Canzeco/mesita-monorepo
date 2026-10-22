@@ -2,8 +2,8 @@
 
 import {
   CalendarCheck,
-  Car,
   Heart,
+  Map as MapIcon,
   Phone,
   Share2,
   type LucideIcon,
@@ -137,11 +137,12 @@ export function ProfileActions({
           iconClassName={cn(saved && "fill-destructive text-destructive")}
         />
         <ActionTile
-          // A car again (Pato, MESITA-2668: "for directions use a car as
-          // icon"). The folded map (MESITA-2649), the car (MESITA-2640),
-          // Signpost (MESITA-2638), Route (MESITA-2635) and the paper plane
-          // came before it.
-          Icon={Car}
+          // The folded map again (Pato, MESITA-2669: "MAYBE for directions do
+          // use a map"), first worn in MESITA-2649. The car (MESITA-2640,
+          // MESITA-2668), Signpost (MESITA-2638), Route (MESITA-2635) and the
+          // paper plane each lived a night. Imported as MapIcon so it never
+          // shadows the global Map.
+          Icon={MapIcon}
           label="Directions"
           live={Boolean(onOpenLink)}
           onClick={onOpenLink ? () => onOpenLink(directionsUrl) : undefined}
