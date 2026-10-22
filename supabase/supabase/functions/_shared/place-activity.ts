@@ -49,10 +49,14 @@ export type ActivityPerson = {
   guestClass: ConsumerClass;
   /** Plan: free or premium, the subscription (MESITA-2553). */
   plan: ConsumerPlan;
-  /** A member without a verified Instagram (MESITA-2580): "A member", no
-   *  photo, handle, followers or Class. place_activity_feed already nulled
-   *  every identifying field in SQL; this only tells the app not to make
-   *  the row a door to a person card. */
+  /** A verified Instagram (MESITA-2608): the Instagram mark on the face.
+   *  Carried on anonymous rows too; the handle itself is not. */
+  instagram: boolean;
+  /** A member without a verified Instagram (MESITA-2580), or any view
+   *  (MESITA-2594): "A member", no handle or followers, and no door to a
+   *  person card. Since MESITA-2608 the FACE still shows: photo, Class, Plan
+   *  and the Instagram flag come back from SQL on every row of a member who
+   *  did not choose "A member" (appear_anonymous blanks the whole row). */
   anonymous: boolean;
 };
 
@@ -123,6 +127,8 @@ export type ActivityRow = {
   guest_class?: string | null;
   plan?: string | null;
   anonymous?: boolean | null;
+  /** place_activity_feed only (MESITA-2608): a verified Instagram. */
+  instagram?: boolean | null;
   total?: number | string | null;
 };
 
@@ -133,15 +139,18 @@ export function toPerson(
 ): ActivityPerson {
   const isYou = row.consumer_id === viewerId;
   if (row.anonymous === true) {
+    // The face shows, the name does not (MESITA-2608): SQL already blanked
+    // the photo and marks for a member who chose "A member".
     return {
       name: "A member",
-      avatarUrl: null,
+      avatarUrl: row.avatar_url ?? null,
       handle: null,
       handleLocked: false,
       followers: 0,
       isYou,
-      guestClass: "regular",
-      plan: "free",
+      guestClass: toClass(row.guest_class),
+      plan: toPlan(row.plan),
+      instagram: row.instagram === true,
       anonymous: true,
     };
   }
@@ -162,6 +171,9 @@ export function toPerson(
     isYou,
     guestClass: toClass(row.guest_class),
     plan: toPlan(row.plan),
+    // place_activity_people (the line under a place) has no flag; a named
+    // row there always has a verified handle.
+    instagram: row.instagram ?? handle != null,
     anonymous: false,
   };
 }

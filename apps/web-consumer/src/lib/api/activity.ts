@@ -25,8 +25,13 @@ export type ActivityPerson = {
   /** Class and Plan, independent (MESITA-2553). */
   guestClass: "regular" | "vip";
   plan: "free" | "premium";
-  /** A member without Instagram (MESITA-2580): "A member", no photo,
-   *  handle, followers or Class, and no person card. */
+  /** A verified Instagram (MESITA-2608): the Instagram mark on the face,
+   *  on anonymous rows too. */
+  instagram: boolean;
+  /** A member without Instagram (MESITA-2580) or any view (MESITA-2594):
+   *  "A member", no handle or followers, and no person card. The FACE still
+   *  shows (MESITA-2608): photo, Class and the Instagram flag come back
+   *  unless the member chose "A member" (appear_anonymous). */
   anonymous: boolean;
 };
 

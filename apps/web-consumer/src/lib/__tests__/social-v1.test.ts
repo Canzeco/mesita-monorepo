@@ -115,8 +115,9 @@ describe("anonymous members in the feed", () => {
     expect(FEED_SRC).toContain("const door = !item.person.anonymous;");
     expect(FEED_SRC).toContain("data-social-anonymous");
     expect(FEED_SRC).toMatch(/door \? \(\s*<button[\s\S]*data-social-person/);
-    // The plain icon on every anonymous row, the guest's own included.
-    expect(FEED_SRC).toContain("{person.anonymous ? (");
+    // The plain icon on an anonymous row without a photo (MESITA-2608:
+    // the photo shows when the server sends one).
+    expect(FEED_SRC).toContain("person.anonymous ? (");
   });
 
   it("names them 'A member' and shows no Instagram proof", () => {
@@ -129,6 +130,7 @@ describe("anonymous members in the feed", () => {
       isYou: false,
       guestClass: "regular",
       plan: "free",
+      instagram: false,
       anonymous: true,
     };
     expect(feedSentence({ person: anon, kind: "saved" })).toBe(
