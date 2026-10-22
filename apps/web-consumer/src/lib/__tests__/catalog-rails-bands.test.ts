@@ -111,8 +111,8 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
     expect(src).toContain('if (!kept) void fetchPool("fresh");');
   });
 
-  it("each tile carries the temporary breakdown, and its events carry source, rank and final", () => {
-    expect(src).toContain("<AreaDiagnostics area={place.area} />");
+  it("each tile's events carry source, rank and final (the breakdown box is hidden, MESITA-2660)", () => {
+    expect(src).not.toContain("<AreaDiagnostics");
     expect(src).toContain('trackEvent(supabase, "home_card_open"');
     expect(src).toContain("...tileFacts(place, rank)");
   });

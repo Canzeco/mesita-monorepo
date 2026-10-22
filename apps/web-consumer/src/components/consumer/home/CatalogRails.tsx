@@ -89,7 +89,6 @@ import { useActiveLocation } from "@/lib/active-location";
 import { useSocialHasNew } from "@/lib/use-social-has-new";
 import { cn, errMsg } from "@/lib/utils";
 import { placesFeed } from "@/lib/catalog-feed";
-import { AreaDiagnostics } from "./AreaDiagnostics";
 import { SocialFeed } from "./SocialFeed";
 
 /** The server's rail keys for the two sources the All row mixes. */
@@ -515,7 +514,9 @@ export function CatalogRails() {
                   }
                   onOpenGoogle={() => openGooglePlace(place)}
                 />
-                {place.area ? <AreaDiagnostics area={place.area} /> : null}
+                {/* The score-breakdown box is hidden (Pato, MESITA-2660:
+                    "remove the boxes for the moment"); AreaDiagnostics.tsx
+                    stays for when it comes back. */}
               </Fragment>
             );
           })}
