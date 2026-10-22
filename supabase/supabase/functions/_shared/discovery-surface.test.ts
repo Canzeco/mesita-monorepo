@@ -13,6 +13,15 @@ import {
   sourceProvides,
   sourcesFeedingSignal,
 } from "./discovery-surface.ts";
+import {
+  AREA_BOUNDS_MAX_KM,
+  NEARBY_INNER_KM,
+  SCREEN_RADIUS_KM_MAX,
+  SCREEN_RADIUS_KM_MIN,
+} from "./area-pipeline.ts";
+import { GOOGLE_NEARBY_MAX, NEARBY_CACHE_MS } from "./nearby-places.ts";
+import { GOOGLE_NEARBY_GLOBAL_MAX, GOOGLE_NEARBY_IP_MAX } from "./nearby-google-quota.ts";
+import { NEARBY_SCAN_LIMIT } from "./geo.ts";
 
 const root = new URL("../../", import.meta.url);
 const text = (rel: string) => Deno.readTextFile(new URL(rel, root));
@@ -33,7 +42,7 @@ Deno.test("the model is Pato's: five sources, Name · Area · Deep, five signals
   assertEquals(pipelinesUsingSignal("selected"), ["area"]);
   assertEquals(pipelinesUsingSignal("name_similarity"), ["name"]);
   assertEquals(pipelinesUsingSignal("description_similarity"), ["deep"]);
-  assertEquals(pipelinesUsingGate("territory"), ["area"]);
+  assertEquals(pipelinesUsingGate("radius"), ["area"]);
   assertEquals(pipelinesUsingGate("family"), ["area"]);
 });
 
@@ -140,7 +149,7 @@ Deno.test("Deep is not live while no guest reaches Chat; Name and Area are (MESI
 
 Deno.test("Area: Family and Radius gate, Selected is a signal with its own exponent, Chat reads Selected only", () => {
   const area = DISCOVERY_PIPELINES.find((p) => p.key === "area")!;
-  assertEquals(area.gates, ["family", "territory"]);
+  assertEquals(area.gates, ["family", "radius"]);
   assertEquals(area.signals, ["proximity", "popularity", "selected"]);
   assertEquals(area.factors, []);
   assert(area.scoring.includes("Proximity^a × Popularity^b × Selected^c"));
@@ -150,11 +159,32 @@ Deno.test("Area: Family and Radius gate, Selected is a signal with its own expon
   assertEquals(JSON.stringify(area).includes("rectangle"), false);
   // Only Mesita Places knows Selected; a Google row reads the other value.
   assertEquals(sourcesFeedingSignal("area", "selected"), ["mesita_places"]);
-  assert(area.rules.includes("Chat reads Mesita Selected places only."));
+  assert(area.rules.includes("Chat reads Mesita Selected places only, inside the Home radius."));
   assert(area.callers.includes("Chat (Don Memo)"));
   for (const stale of ["scope", "subset", "rail"]) {
     assertEquals(JSON.stringify(area).toLowerCase().includes(stale), false, stale);
   }
+});
+
+// MESITA-2603: Territory is gone from the model, and every fixed number the
+// Area rules state is the engine's own constant, so the page cannot drift.
+Deno.test("Area: no Territory anywhere in the model; the rules' numbers are the engine's", async () => {
+  const model = JSON.stringify({ DISCOVERY_GATES, DISCOVERY_PIPELINES, DISCOVERY_SIGNALS, DISCOVERY_SOURCES });
+  assertEquals(model.toLowerCase().includes("territory\""), false);
+  assertEquals(DISCOVERY_GATES.map((g) => g.key), ["family", "radius"]);
+  const rules = DISCOVERY_PIPELINES.find((p) => p.key === "area")!.rules.join(" ");
+  const facts = [
+    `the prominent ${GOOGLE_NEARBY_MAX} within ${NEARBY_INNER_KM} km`,
+    `live ${NEARBY_CACHE_MS / 1000} s`,
+    `${GOOGLE_NEARBY_IP_MAX} Nearby calls a minute, all guests together ${GOOGLE_NEARBY_GLOBAL_MAX}`,
+    `clamped to ${SCREEN_RADIUS_KM_MIN}–${SCREEN_RADIUS_KM_MAX} km`,
+    `wider than ${AREA_BOUNDS_MAX_KM} km`,
+    `at most ${NEARBY_SCAN_LIMIT} ready rows`,
+  ];
+  for (const f of facts) assert(rules.includes(f), f);
+  // Home's Mesita read keeps the same cap as the Map's.
+  const home = await text("functions/consumer-web-list-catalog/index.ts");
+  assert(home.includes(`const POOL_CAP = ${NEARBY_SCAN_LIMIT};`));
 });
 
 Deno.test("the Selected values the model states are the ones the score uses", async () => {

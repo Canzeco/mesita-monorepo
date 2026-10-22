@@ -17,7 +17,7 @@ import {
 // MESITA-2384: the temporary score breakdown and the per-location pool.
 const base: Area = {
   familyKeys: ["coffee"],
-  gates: { family: 1, territory: null, radius: 1, active: 1, ready: 1, reviews: null },
+  gates: { family: 1, radius: 1, active: 1, ready: 1, reviews: null },
   signals: { proximity: 0.82, popularity: null },
   selected: 1,
   source: "selected",
@@ -47,16 +47,16 @@ describe("AreaDiagnostics (temporary)", () => {
     expect(html).toContain("data-area-diagnostics");
   });
 
-  it("anything but a point has no Proximity and no zone gate (MESITA-2501)", () => {
+  it("no point has no Proximity and no zone gate (MESITA-2501, MESITA-2603)", () => {
     const area: Area = {
       ...base,
-      gates: { ...base.gates, territory: 1, radius: null },
+      gates: { ...base.gates, radius: null },
       signals: { proximity: null, popularity: 0.4 },
       selected: 0.3,
       source: "google",
       base: 0.4,
       final: 0.12,
-      formula: "area",
+      formula: "none",
       weights: { proximity: 1, popularity: 1, selected: 1 },
     };
     expect(diagExpression(area)).toBe("popularity 0.40^1 × selected 0.30^1 = 0.12");
@@ -64,9 +64,6 @@ describe("AreaDiagnostics (temporary)", () => {
     expect(html).not.toContain("in area");
     expect(html).not.toContain("proximity");
     expect(html).not.toMatch(/territory/i);
-    // An EF from after MESITA-2500 sends no territory gate at all.
-    const { territory: _gone, ...gates } = base.gates;
-    expect(renderToStaticMarkup(<AreaDiagnostics area={{ ...base, gates }} />)).toContain("radius 1");
   });
 });
 

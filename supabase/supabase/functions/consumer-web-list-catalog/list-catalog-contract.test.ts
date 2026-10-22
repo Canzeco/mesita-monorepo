@@ -54,8 +54,9 @@ Deno.test("list-catalog: one circle; no guest review stop (MESITA-2417)", () => 
 });
 
 Deno.test("list-catalog: Home never reads bounds into the location (MESITA-2500)", () => {
-  assert(src.includes("resolveAreaLocation(null, center, radiusKm)"));
-  assertEquals(src.includes("resolveAreaLocation(unified ? body.bounds"), false);
+  // resolveAreaLocation takes no bounds at all since MESITA-2603.
+  assert(src.includes("resolveAreaLocation(center, radiusKm)"));
+  assertEquals(src.includes("body.bounds,"), false);
   assertEquals(src.includes("location.kind === \"area\" ? location.bounds"), false);
   // A bounds from an old build is only logged.
   assert(src.includes('event: "bounds_ignored"'));

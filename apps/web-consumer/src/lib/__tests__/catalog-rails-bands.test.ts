@@ -150,7 +150,6 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
       familyKeys,
       gates: {
         family: 1 as const,
-        territory: null,
         radius: 1 as const,
         active: 1 as const,
         ready: null,
