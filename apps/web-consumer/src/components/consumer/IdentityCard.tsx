@@ -101,11 +101,15 @@ function InstagramBadge() {
   );
 }
 
-/** The crown in a gold circle, the Instagram badge's shape (Pato,
- *  MESITA-2693: "inside a circle the regular class crown, just as
- *  instagram"; a bare gold crown since MESITA-2691), on Regular and VIP
- *  alike. */
-function ClassBadge() {
+/** VIP's crown is white in a gold circle, the Instagram badge's shape
+ *  (MESITA-2693); Regular's is the plain ink crown, no colour (Pato,
+ *  MESITA-2695: "if regular … show crown without color. Else show crown
+ *  with color if vip"). */
+function ClassBadge({ vip }: { vip: boolean }) {
+  if (!vip)
+    return (
+      <Crown className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+    );
   return (
     <span
       className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500"
@@ -131,14 +135,12 @@ function ClassChip({
   const text = `${label} Class`;
   const className = cn(
     CHIP_CLASS,
-    vip
-      ? "bg-foreground text-paper border-transparent"
-      : "",
+    vip ? "bg-foreground text-paper border-transparent" : "",
     onPress && cn(TAP_TARGET_CLASS, "transition", !vip && "hover:bg-muted"),
   );
   const body = (
     <>
-      <ClassBadge />
+      <ClassBadge vip={vip} />
       <span className="truncate">{text}</span>
     </>
   );
@@ -278,7 +280,6 @@ export function IdentityCard({
         data-identity-chips
       >
         <NameBox name={name} href={nameHref} />
-
 
         {guestClass && (
           <ClassChip guestClass={guestClass} onPress={onClassPress} />
