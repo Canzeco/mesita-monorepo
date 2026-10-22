@@ -12,8 +12,9 @@
 //   reads the FEED_ROWS newest events and returns at most FEED_ITEMS.
 // Body: { scope: "place", place_id }
 //   → { line, people, total, me: { saved } }
-//   The place profile's line under the title ("Perdón and 3 others saw this"),
-//   up to five faces, and the guest's own saved for the action row.
+//   The place profile's line under the title ("Perdón and 3 others liked
+//   this", likes only since MESITA-2594), up to five faces, and the guest's
+//   own saved for the action row.
 // Body: { scope: "saved" }
 //   → { ids, places }
 //   The guest's saves, newest first: every id (the browser cache adopts them)
@@ -26,9 +27,12 @@
 //   names the member because no member id reaches the client (MESITA-2460);
 //   an anonymous member's event returns no places (place_activity_liked_by).
 //
-// Who appears is the SQL's call (place_activity_visible: Instagram connected,
-// Show my activity on, not deleted), never this file's. The guest's own row
-// counts like anyone's and reads as "You".
+// Who appears is the SQL's call (place_activity_visible: a verified Instagram,
+// Public profile, not deleted; a view is never named, MESITA-2594), never this
+// file's. The guest's own row counts like anyone's and reads as "You".
+// What this file decides is whether the VIEWER sees full handles (MESITA-2594,
+// seesHandles): only with their own Instagram verified and their profile
+// public; otherwise every other member's handle leaves masked ("per***").
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
@@ -42,10 +46,12 @@ import {
   isActivityKind,
   isMesitaPlaceId,
   nearYou,
+  seesHandles,
   socialLine,
   toPerson,
 } from "../_shared/place-activity.ts";
 import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
+import { readSocialStanding } from "../_shared/consumer-doc.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 const FEED_ROWS = 500;
@@ -79,6 +85,20 @@ async function readCards(
   return { ok: true, cards: new Map(rows.map((r) => [r.id, r])) };
 }
 
+/** Whether this viewer sees other members' full handles (MESITA-2594). An
+ *  unreadable row masks: the safe side is showing less. */
+async function viewerSeesHandles(
+  admin: SupabaseClient,
+  viewerId: string,
+): Promise<boolean> {
+  const res = await readSocialStanding(admin, viewerId);
+  if (!res.ok) {
+    console.error("viewer_standing_failed", res.error);
+    return false;
+  }
+  return seesHandles(res.row);
+}
+
 function finite(v: unknown): number | null {
   const n = typeof v === "number" ? v : Number.NaN;
   return Number.isFinite(n) ? n : null;
@@ -102,12 +122,13 @@ Deno.serve(async (req) => {
   const anon = anonClient(envRes.env);
 
   if (body.scope === "feed") {
-    const [feedRes, cfg] = await Promise.all([
+    const [feedRes, cfg, canSee] = await Promise.all([
       admin.rpc("place_activity_feed", { p_limit: FEED_ROWS }),
       loadDiscoveryConfig(admin),
+      viewerSeesHandles(admin, viewerId),
     ]);
     if (feedRes.error) return json({ ok: false, error: `feed: ${feedRes.error.message}` }, 500);
-    const events = feedEvents((feedRes.data ?? []) as ActivityRow[], viewerId);
+    const events = feedEvents((feedRes.data ?? []) as ActivityRow[], viewerId, canSee);
     const cardsRes = await readCards(anon, [...new Set(events.map((e) => e.placeId))]);
     if (!cardsRes.ok) return json({ ok: false, error: cardsRes.error }, 500);
     const lat = finite(body.lat);
@@ -131,18 +152,19 @@ Deno.serve(async (req) => {
     if (!isMesitaPlaceId(placeId)) {
       return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
     }
-    const [peopleRes, mineRes] = await Promise.all([
+    const [peopleRes, mineRes, canSee] = await Promise.all([
       admin.rpc("place_activity_people", { p_place_id: placeId, p_limit: LINE_FACES }),
       admin
         .from("place_activity")
         .select("kind")
         .eq("consumer_id", viewerId)
         .eq("place_id", placeId),
+      viewerSeesHandles(admin, viewerId),
     ]);
     if (peopleRes.error) return json({ ok: false, error: `people: ${peopleRes.error.message}` }, 500);
     if (mineRes.error) return json({ ok: false, error: `mine: ${mineRes.error.message}` }, 500);
     const rows = (peopleRes.data ?? []) as ActivityRow[];
-    const people = rows.map((r) => toPerson(r, viewerId));
+    const people = rows.map((r) => toPerson(r, viewerId, canSee));
     const total = rows.length > 0 ? Number(rows[0].total ?? rows.length) : 0;
     const mine = new Set(((mineRes.data ?? []) as { kind: string }[]).map((r) => r.kind));
     return json({

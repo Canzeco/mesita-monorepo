@@ -18,7 +18,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // saved to localStorage and nothing read them; Export my data was a mailto;
 // Delete account went with them (Pato, MESITA-2589: "remove stupid fake
 // buttons from settings"). The one server write left here is Sign out.
-// Social has one switch, "Show my name in Social" (MESITA-2590): off, you
+// Social has one switch, "Public profile" (MESITA-2590, MESITA-2594): off, you
 // still show, as "A member". Nothing makes a member disappear from Social
 // (MESITA-2552: "if you connect your … instagram, is because you want to be
 // seen").

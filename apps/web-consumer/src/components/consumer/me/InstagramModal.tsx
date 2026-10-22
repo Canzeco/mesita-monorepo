@@ -29,6 +29,7 @@ import {
 } from "@/lib/api/profile";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useConsumerIdentity } from "@/lib/identity-context";
+import { SocialNameRow } from "@/components/consumer/me/SocialNameRow";
 import { INSTAGRAM_REACH_FOLLOWERS } from "@/lib/consumer-identity";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 
@@ -188,6 +189,14 @@ export function InstagramModal() {
               onStart={start}
               onCheck={check}
             />
+          )}
+
+          {/* Public or private, asked where the member connects (MESITA-2594):
+              public is what lets them see other members' Instagram. */}
+          {connected && (
+            <SettingsGroup title="Social">
+              <SocialNameRow />
+            </SettingsGroup>
           )}
 
           {/* Asked on the same screen as the connect (Pato, MESITA-2585:

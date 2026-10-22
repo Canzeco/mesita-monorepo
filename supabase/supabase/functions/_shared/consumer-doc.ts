@@ -331,3 +331,39 @@ export async function readInstagramStatus(
     verifiedAt: (data?.instagram_verified_at as string | null) ?? null,
   };
 }
+
+// ── readSocialStanding — what Social masks by (MESITA-2594) ───────────────
+
+/** Whether the viewer shows themself in Social: a verified Instagram and the
+ *  Public profile switch. You see others' handles only if you show yours. */
+export async function readSocialStanding(
+  admin: SupabaseClient,
+  consumerId: string,
+): Promise<
+  | {
+    ok: true;
+    row: {
+      instagram_verified_at: string | null;
+      appear_anonymous: boolean | null;
+    } | null;
+  }
+  | { ok: false; error: string }
+> {
+  const { data, error } = await admin
+    .from("consumers")
+    .select("instagram_verified_at, appear_anonymous")
+    .eq("id", consumerId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) return { ok: false, error: error.message };
+  return {
+    ok: true,
+    row: data
+      ? {
+        instagram_verified_at: (data.instagram_verified_at as string | null) ??
+          null,
+        appear_anonymous: (data.appear_anonymous as boolean | null) ?? null,
+      }
+      : null,
+  };
+}

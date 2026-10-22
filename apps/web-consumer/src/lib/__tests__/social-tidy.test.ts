@@ -115,9 +115,10 @@ describe("the row", () => {
     // places they liked in one list: no time, no views (MESITA-2583).
     expect(src).not.toContain("Recent activity");
     expect(src).toContain("<IdentityCard");
-    // MESITA-2590: Open Instagram sits between the card and the list.
+    // MESITA-2594: Mesita first — the card, the liked list, then Open
+    // Instagram as a small link under it (MESITA-2590 had it above the list).
     expect(src).toMatch(
-      /<IdentityCard[\s\S]{0,1200}data-social-open-instagram[\s\S]{0,300}<LikedList places=\{liked\} \/>/,
+      /<IdentityCard[\s\S]{0,600}<LikedList places=\{liked\} \/>[\s\S]{0,800}data-social-open-instagram/,
     );
     const list = src.slice(src.indexOf("function LikedList"));
     expect(list).toContain("data-social-liked-place");
