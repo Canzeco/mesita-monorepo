@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 //                     (photo)
 //   ( 👤 name                                    )
 //   ( ◎ Insta: @handle · 1.2K followers          )
-//   ( ♛ Class: Regular   ) ( ▭ Plan: Free        )   the pair (MESITA-2614)
+//   ( ♛ Regular Class   ) ( ▭ Free Plan         )   the pair (MESITA-2614)
 //   ─────── hairline ─────── full-width white bar; content on the 16px edge
 //
 // The card itself is IdentityCard, the same one Social shows for a member
