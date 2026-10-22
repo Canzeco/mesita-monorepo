@@ -11,7 +11,7 @@ import {
   RESERVATION_DEFS,
   REVIEW_DEFS,
 } from "../place-detail-links";
-import { Box, BoxEmpty } from "./box";
+import { Box } from "./box";
 import { PLACE_OUTLINE_CHIP_CLASS } from "../../lib/ui";
 import { ChannelChips, TagChips, type ChannelChip } from "./place-link-chips";
 
@@ -25,18 +25,14 @@ export function TagsBox({ place }: { place: PlaceDetail }) {
   // payment, parking, good for) were noise here; those facts are being
   // absorbed into the tag vocabulary itself (Atlas taxonomy v2).
   //
-  // THE BOX ALWAYS DRAWS (Pato, MESITA-2619: "tags is missing, put tags even
-  // if not tags yet"): a place with no tags shows "…" in the same box (it
-  // said "No tags yet." until MESITA-2685, Pato: "same for mesita tags,
-  // write ..."), so every Overview has the same sections in the same order.
-  // Until MESITA-2619 the whole box disappeared with the tags.
+  // NO TAGS, NO BOX (Pato, MESITA-2700: "Hide a box entirely when it has
+  // nothing, instead of drawing …"), like Photos, Links and Popular times.
+  // History: MESITA-2619 made it always draw ("put tags even if not tags
+  // yet", "No tags yet."), MESITA-2685 turned that line into "…".
+  if (place.tags.length === 0) return null;
   return (
     <Box title="Mesita Tags" icon={Tags} iconColor="text-muted-foreground">
-      {place.tags.length === 0 ? (
-        <BoxEmpty />
-      ) : (
-        <TagChips tags={place.tags} />
-      )}
+      <TagChips tags={place.tags} />
     </Box>
   );
 }

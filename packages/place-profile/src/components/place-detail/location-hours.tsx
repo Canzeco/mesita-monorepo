@@ -11,7 +11,7 @@ import { PLACE_BODY_CLASS, PLACE_META_CLASS } from "../../lib/ui";
 import { PLACE_BUTTON_CLASS } from "../../lib/ui";
 
 import { GoogleMapsMark } from "../BrandLogos";
-import { Box, BoxEmpty } from "./box";
+import { Box } from "./box";
 
 // ── 6. Location ─────────────────────────────────────────────────────────
 
@@ -172,9 +172,10 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
   //
   // THE BOX IS "HOURS" (Pato, MESITA-2685: "call that box hours or something
   // like that … time feels too weird"). With no weekly hours and no open
-  // state it says "…" ("if nothing yet write ..."). A known open state still
-  // prints with no week: the facts row shows no bare "Open" to fall back on.
-  const empty = place.open_now === null && place.hours_table.length === 0;
+  // state it draws nothing (Pato, MESITA-2700: "Hide a box entirely when it
+  // has nothing"; MESITA-2685 drew "…"). A known open state still prints
+  // with no week: the facts row shows no bare "Open" to fall back on.
+  if (place.open_now === null && place.hours_table.length === 0) return null;
   const today = place.timezone ? todayWeekdayLabel(place.timezone) : "";
   const stateDetail = place.open_now === true
     ? place.closes_at
@@ -191,7 +192,6 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
       icon={Clock}
       iconColor="text-muted-foreground"
     >
-      {empty ? <BoxEmpty /> : null}
       {/* Unknown open state says nothing: no hours is not "Closed"
           (MESITA-2331). */}
       {place.open_now !== null && (
