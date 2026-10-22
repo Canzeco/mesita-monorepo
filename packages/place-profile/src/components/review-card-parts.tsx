@@ -19,7 +19,7 @@ export function Header({
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">{name}</p>
         {sub ? (
-          <p className="text-muted-foreground type-label truncate">{sub}</p>
+          <p className="text-muted-foreground truncate text-xs">{sub}</p>
         ) : null}
       </div>
       {sourceLogo}
@@ -67,7 +67,7 @@ export function Quote({
         <button
           type="button"
           onClick={onExpand}
-          className="text-foreground type-label self-start font-semibold hover:underline"
+          className="text-foreground self-start text-xs font-semibold hover:underline"
         >
           Read more
         </button>
@@ -100,7 +100,7 @@ export function Thumbnail({
   return (
     <div className="mt-auto flex justify-center">
       <div
-        className={cn("relative w-40 overflow-hidden rounded-xl", aspectClass)}
+        className={cn("relative w-40 overflow-hidden rounded-lg", aspectClass)}
       >
         <Image
           src={src}

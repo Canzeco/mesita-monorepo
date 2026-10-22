@@ -2,7 +2,11 @@
 
 import { AlertCircle } from "lucide-react";
 
-import { ERROR_BOX_CLASS } from "../../lib/ui";
+import {
+  ERROR_BOX_CLASS,
+  PLACE_BUTTON_CLASS,
+  PLACE_SCREEN_TITLE_CLASS,
+} from "../../lib/ui";
 import { Spinner } from "../Spinner";
 
 // The vote band's slot while a Google-only profile is being created
@@ -22,14 +26,14 @@ export function PlaceCreatingPanel({
       className="bg-card border-border border-b px-6 pt-8 pb-6 text-center"
       data-creating={error ? "failed" : "creating"}
     >
-      <span className="bg-primary/10 text-primary mx-auto flex h-12 w-12 items-center justify-center rounded-full">
+      <span className="bg-muted text-foreground mx-auto flex h-12 w-12 items-center justify-center rounded-full">
         {error ? (
           <AlertCircle className="h-6 w-6" strokeWidth={2} />
         ) : (
           <Spinner size="md" label="Creating profile" />
         )}
       </span>
-      <h3 className="font-display mt-4 text-xl font-semibold tracking-tight">
+      <h3 className={PLACE_SCREEN_TITLE_CLASS + " mt-4"}>
         {error ? "Couldn't create this profile" : "Creating profile"}
       </h3>
       {error ? (
@@ -39,7 +43,7 @@ export function PlaceCreatingPanel({
             <button
               type="button"
               onClick={onRetry}
-              className="bg-foreground text-paper mt-4 min-h-11 rounded-full px-5 py-2.5 text-sm font-semibold"
+              className={PLACE_BUTTON_CLASS + " bg-foreground text-paper mt-4 px-5 text-sm"}
             >
               Try again
             </button>

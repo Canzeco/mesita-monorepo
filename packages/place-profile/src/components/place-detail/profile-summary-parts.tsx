@@ -17,8 +17,10 @@ export function ProfilePhoto({ place }: { place: PlaceDetail }) {
           className="h-full w-full object-cover"
         />
       ) : (
-        <div className="bg-pink-gradient flex h-full w-full items-center justify-center">
-          <span className="font-display text-3xl font-bold text-white/80">
+        // No photo: a grey tile with the initial in Inter ink, the place
+        // scale (MESITA-2636); it was a pink gradient with a serif letter.
+        <div className="bg-muted flex h-full w-full items-center justify-center">
+          <span className="text-muted-foreground font-sans text-3xl font-semibold">
             {firstInitial(place.name)}
           </span>
         </div>

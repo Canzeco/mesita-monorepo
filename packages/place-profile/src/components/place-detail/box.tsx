@@ -4,19 +4,19 @@ import type React from "react";
 import type { LucideIcon } from "lucide-react";
 
 import { cn } from "../../lib/format";
+import { PLACE_META_CLASS, PLACE_TITLE_CLASS } from "../../lib/ui";
 
 // ── Box primitive ───────────────────────────────────────────────────────
 
 export function Box({
   title,
-  icon: Icon,
-  iconColor,
   right,
   children,
   className,
   bare = false,
 }: {
   title?: string;
+  /** Unused since MESITA-2636 (titles carry no icon); kept so callers compile. */
   icon?: LucideIcon;
   iconColor?: string;
   right?: React.ReactNode;
@@ -32,19 +32,15 @@ export function Box({
         className,
       )}
     >
-      {(title || Icon) && (
-        <header className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            {Icon && (
-              <Icon
-                className={cn("h-4 w-4", iconColor ?? "text-muted-foreground")}
-                strokeWidth={1.75}
-              />
-            )}
-            {title && <BoxLabel>{title}</BoxLabel>}
-          </div>
+      {/* THE TITLE (MESITA-2636): sentence case, 16px semibold Inter ink, no
+          icon and no uppercase tracking. It was a serif small-caps eyebrow
+          behind a muted glyph; the `icon` props stay so callers need not
+          change, and draw nothing. */}
+      {(title || right) && (
+        <header className="flex items-baseline justify-between gap-3">
+          {title && <BoxLabel>{title}</BoxLabel>}
           {right && (
-            <span className="text-muted-foreground min-w-0 shrink text-right text-xs font-medium">
+            <span className={cn(PLACE_META_CLASS, "min-w-0 shrink text-right")}>
               {right}
             </span>
           )}
@@ -57,9 +53,7 @@ export function Box({
 
 function BoxLabel({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-muted-foreground type-meta font-bold tracking-[0.14em] uppercase">
-      {children}
-    </h3>
+    <h3 className={PLACE_TITLE_CLASS}>{children}</h3>
   );
 }
 

@@ -12,6 +12,7 @@ import {
   REVIEW_DEFS,
 } from "../place-detail-links";
 import { Box } from "./box";
+import { PLACE_META_CLASS, PLACE_OUTLINE_CHIP_CLASS } from "../../lib/ui";
 import { ChannelChips, TagChips, type ChannelChip } from "./place-link-chips";
 
 // ── 9. About lives in @/components/consumer/AboutBox (client). ──────────
@@ -31,9 +32,7 @@ export function TagsBox({ place }: { place: PlaceDetail }) {
   return (
     <Box title="Mesita Tags" icon={Tags} iconColor="text-muted-foreground">
       {place.tags.length === 0 ? (
-        <p className="text-muted-foreground text-xs leading-snug">
-          No tags yet.
-        </p>
+        <p className={PLACE_META_CLASS}>No tags yet.</p>
       ) : (
         <TagChips tags={place.tags} />
       )}
@@ -44,10 +43,8 @@ export function TagsBox({ place }: { place: PlaceDetail }) {
 function MetaPill({ label }: { label: string }) {
   // TagChips language — rounded-full, leading 6px dot, soft tint.
   return (
-    <span className="border-border bg-muted text-foreground inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold">
-      <span className="bg-foreground h-1.5 w-1.5 shrink-0 rounded-full" />
-      {label}
-    </span>
+    // The place scale's outlined box (MESITA-2636), like the tags.
+    <span className={PLACE_OUTLINE_CHIP_CLASS}>{label}</span>
   );
 }
 
@@ -154,7 +151,8 @@ export function LinksBox({
   }
   if (chips.length === 0) return null;
   // decision: light like Location / About — drop the inverted Channels surface.
-  // Soft clay brand tints (CHANNEL_CLAY) so each chip reads as its app.
+  // Grey buttons, the brand's own logo the only colour (MESITA-2636; the
+  // soft clay tints were removed).
   // TWO COLUMNS OF BUTTONS (Pato, MESITA-2619: "for links make buttons in a
   // grid with 2 columns"): every link is a full-width cell of one height,
   // never a wrapping pill cluster that leaves a ragged last row.

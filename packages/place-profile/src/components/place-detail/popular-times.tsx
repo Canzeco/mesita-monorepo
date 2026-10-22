@@ -53,7 +53,7 @@ export function PopularTimesBox({ place }: { place: PlaceDetail }) {
               aria-selected={active}
               onClick={() => setSelected(d.day)}
               className={cn(
-                "type-meta flex min-h-11 flex-1 items-center justify-center rounded-md font-bold tracking-wider uppercase transition",
+                "flex min-h-11 flex-1 items-center justify-center rounded-lg text-xs font-semibold transition",
                 active
                   ? "bg-foreground text-background"
                   : "bg-muted/60 text-muted-foreground",
