@@ -1,18 +1,12 @@
-import type { ReactNode, RefObject } from "react";
-import { MapPin } from "lucide-react";
+import type { RefObject } from "react";
 
 import type { MapWeights, Place } from "@/lib/api/places";
-import { Skeleton, Spinner } from "@/components/shared";
+import { Skeleton } from "@/components/shared";
 import type { Coords } from "@/lib/use-user-location";
 import { useCardSaveShare } from "@/lib/use-card-save-share";
 import { cn } from "@/lib/utils";
 
-import {
-  RAIL_BAND_HEIGHT_CLASS,
-  RAIL_CARD_HEIGHT_CLASS,
-  RAIL_ROW_HEIGHT_CLASS,
-  RailCard,
-} from "./SearchRailCard";
+import { RAIL_CARD_HEIGHT_CLASS, RailCard } from "./SearchRailCard";
 
 /** The share of the carousel's width one card page takes: 88% with 6% pads,
  *  so the active card centres and its neighbours peek. Since MESITA-2613 the
@@ -123,26 +117,21 @@ export function SearchDebugCoords({
 export function SearchRailOverlay({
   places,
   catalogLoading = false,
-  railIndex,
   selectedId,
   railScrollRef,
   onRailScroll,
   onSelectPlace,
   onOpenPlace,
   setRailCardRef,
-  meta,
 }: {
   places: Place[];
   catalogLoading?: boolean;
-  railIndex: number;
   selectedId: string | null;
   railScrollRef: RefObject<HTMLDivElement | null>;
   onRailScroll: () => void;
   onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
   setRailCardRef: (placeId: string, el: HTMLElement | null) => void;
-  /** The development readout, under the places count, over the carousel. */
-  meta?: ReactNode;
 }) {
   const firstLoad = catalogLoading && places.length === 0;
   // Save and Share on a card, Home's own (MESITA-2668): a Google-only card
@@ -161,68 +150,19 @@ export function SearchRailOverlay({
   // its section and the carousel row is the card's height plus its padding.
   return (
     <div
-      className={cn(
-        "border-border bg-card relative z-20 flex shrink-0 flex-col border-t",
-        RAIL_BAND_HEIGHT_CLASS,
-      )}
+      className="pointer-events-none absolute inset-x-0 bottom-2 z-20"
       aria-busy={catalogLoading}
       aria-live={firstLoad ? "polite" : undefined}
       data-search-rail-band
     >
       <div
-        className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2"
-        data-search-rail-meta
-      >
-        {/* Centred in its section (MESITA-2513, Pato: "aestehtics matter").
-            `my-auto` on an inner block, not justify-center on the scroller:
-            a readout taller than the section still scrolls from its first
-            row. */}
-        <div className="my-auto flex flex-col gap-1" data-search-rail-meta-body>
-          <p className="text-muted-foreground type-label flex items-center gap-1 font-semibold tabular-nums">
-            {catalogLoading ? (
-              <Spinner
-                size="sm"
-                label={
-                  firstLoad ? "Finding nearby places" : "Updating nearby places"
-                }
-              />
-            ) : (
-              <MapPin className="text-primary h-3 w-3 shrink-0" />
-            )}
-            {firstLoad ? (
-              <span>Finding nearby</span>
-            ) : catalogLoading ? (
-              <span>Updating nearby</span>
-            ) : places.length > 1 ? (
-              <span>
-                {Math.min(railIndex + 1, places.length)} / {places.length}{" "}
-                <span className="text-muted-foreground/70 font-normal">
-                  places
-                </span>
-              </span>
-            ) : (
-              <span>
-                {places.length}{" "}
-                <span className="text-muted-foreground/70 font-normal">
-                  {places.length === 1 ? "place" : "places"}
-                </span>
-              </span>
-            )}
-          </p>
-          {meta}
-        </div>
-      </div>
-      <div
-        className={cn(
-          "border-border flex shrink-0 flex-col justify-center border-t py-2",
-          RAIL_ROW_HEIGHT_CLASS,
-        )}
+        className="pointer-events-auto flex flex-col justify-center"
         data-search-rail-cards
       >
         {firstLoad ? (
           <CatalogRailSkeleton />
         ) : places.length === 0 ? (
-          <p className="text-muted-foreground px-3 text-center text-xs">
+          <p className="bg-card/95 text-muted-foreground mx-auto rounded-full px-3 py-1.5 text-center text-xs shadow-sm">
             No places to show here yet.
           </p>
         ) : (
