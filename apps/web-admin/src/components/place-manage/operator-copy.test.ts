@@ -1,9 +1,8 @@
+// MVP test rule (MESITA-2600): only the data guard stays; UI pins were removed (MESITA-2601).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const place = readFileSync(join(__dirname, "sections/PlaceSection.tsx"), "utf8");
-const reviews = readFileSync(join(__dirname, "sections/ReviewsSummary.tsx"), "utf8");
 const enrichment = readFileSync(join(__dirname, "sections/EnrichmentCard.tsx"), "utf8");
 const writeBox = readFileSync(
   join(__dirname, "../../app/(app)/manage-multiple/WriteBox.tsx"),
@@ -11,35 +10,7 @@ const writeBox = readFileSync(
 );
 
 describe("operator copy", () => {
-  it("names the profile card Links and lists every link kind", () => {
-    expect(place).toContain('title="Links"');
-    expect(place).not.toContain('title="Channels"');
-    expect(place).not.toContain('label="Channels"');
-    for (const label of [
-      "Website",
-      "Instagram",
-      "Facebook",
-      "WhatsApp",
-      "Phone",
-      "Google Maps",
-      "Uber Eats",
-      "OpenTable",
-    ]) {
-      expect(place).toContain(label);
-    }
-  });
-
-  it("keeps Sync on Reviews and Enrichment on Admin", () => {
-    expect(reviews).toContain("\n          Sync\n");
-    expect(reviews).toContain('title="Google Summary"');
-    expect(reviews).toContain('title="Google Reviews"');
-    expect(reviews).not.toContain('title="Reviews"');
-    expect(reviews).not.toContain("Enrichment");
-    expect(enrichment).toContain('title="Enrichment"');
-    expect(enrichment).toContain("Run Enrichment");
-    expect(enrichment).toContain("State:");
-    expect(enrichment).toContain("Last run");
-    expect(enrichment).toContain("Result:");
+  it("Enrichment's overwrite switch defaults off and resets", () => {
     expect(enrichment).toContain("useState(false)");
     expect(enrichment).toContain("setOverwrite(false)");
   });

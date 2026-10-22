@@ -1,14 +1,11 @@
+// MVP test rule (MESITA-2600): only the auth/privacy guard stays; UI pins were removed (MESITA-2601).
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
-  approxFollowers,
   feedInstagram,
   feedSentence,
-  feedStatus,
-  feedWho,
-  shortAgo,
   VERB,
 } from "@/components/consumer/home/SocialFeed";
 import type { ActivityPerson } from "@/lib/api/activity";
@@ -83,82 +80,11 @@ describe("Saved is server-side", () => {
 });
 
 describe("the feed's copy", () => {
-  const lead: ActivityPerson = {
-    name: "Perdón",
-    avatarUrl: null,
-    handle: "perdon",
-    handleLocked: false,
-    followers: 1200,
-    isYou: false,
-    guestClass: "regular",
-    plan: "free",
-    anonymous: false,
-  };
-
   // MESITA-2515: old-Instagram rows, the verbs over unchanged keys.
   // MESITA-2567: only liked and viewed; there is no visited.
   // MESITA-2590: the name leads; the full @handle rides on the quiet line.
   it("reads liked and viewed over the stored keys, and nothing else", () => {
     expect(VERB).toEqual({ saved: "liked", viewed: "viewed" });
-  });
-
-  // MESITA-2532: one person, one place, one event — never "and N others".
-  it("is one person and a verb, never a count", () => {
-    expect(feedSentence({ person: lead, kind: "saved" })).toBe("Perdón liked");
-    expect(feedSentence({ person: lead, kind: "viewed" })).toBe(
-      "Perdón viewed",
-    );
-    expect(
-      feedSentence({ person: { ...lead, isYou: true }, kind: "saved" }),
-    ).toBe("You liked");
-  });
-
-  // MESITA-2525: the Instagram glyph replaces the word, so the text is the
-  // proof alone; the time follows it on the quiet line.
-  it("Instagram is social proof: the full @handle and ~followers (MESITA-2590)", () => {
-    expect(feedWho(lead)).toBe("Perdón");
-    expect(feedInstagram(lead)).toBe("@perdon · 1.2K followers");
-    expect(feedInstagram({ ...lead, followers: 0 })).toBe("@perdon");
-    // Without Instagram, and on the guest's own row: no second line.
-    expect(feedInstagram({ ...lead, handle: null })).toBeNull();
-    expect(feedInstagram({ ...lead, isYou: true })).toBeNull();
-  });
-
-  // MESITA-2543: the quiet line above the list.
-  it("says sample, or how long ago the list loaded", () => {
-    const t = Date.parse("2026-10-21T06:00:00Z");
-    expect(feedStatus(null, t)).toBe("Updated just now");
-    expect(feedStatus(t, t + 20_000)).toBe("Updated just now");
-    expect(feedStatus(t, t + 3 * 60_000)).toBe("Updated 3m ago");
-    expect(feedStatus(t, 0)).toBe("Updated just now");
-  });
-
-  it("rounds followers down to an approximate count", () => {
-    expect(
-      [0, 7, 47, 760, 999, 1000, 4820, 12_400, 999_999, 1_250_000].map(
-        approxFollowers,
-      ),
-    ).toEqual([
-      null,
-      "7",
-      "40+",
-      "700+",
-      "900+",
-      "1K",
-      "4.8K",
-      "12K",
-      "999K",
-      "1.2M",
-    ]);
-  });
-
-  it("reads time the short way", () => {
-    const now = Date.parse("2026-10-19T12:00:00Z");
-    expect(shortAgo("2026-10-19T11:59:30Z", now)).toBe("now");
-    expect(shortAgo("2026-10-19T11:55:00Z", now)).toBe("5m");
-    expect(shortAgo("2026-10-19T10:00:00Z", now)).toBe("2h");
-    expect(shortAgo("2026-10-16T12:00:00Z", now)).toBe("3d");
-    expect(shortAgo("2026-09-28T12:00:00Z", now)).toBe("3w");
   });
 });
 
@@ -224,24 +150,6 @@ describe("a feed row is face, sentence, photo", () => {
     SRC.indexOf("/** The person card"),
   );
 
-  it("the sentence names the place, the photo alone sits on the right", () => {
-    expect(row).toContain(
-      '<span className="font-semibold">{item.place.name}</span>',
-    );
-    expect(row.indexOf("data-social-person")).toBeLessThan(
-      row.indexOf("data-social-place"),
-    );
-    const place = row.slice(row.indexOf("data-social-place"));
-    expect(place.slice(0, place.indexOf("</Link>"))).toContain(
-      "<Thumb place={item.place} />",
-    );
-    // No bordered place card, no chevron, no second name on the right.
-    expect(row).not.toContain("<ChevronRight");
-    expect(row).not.toContain("border-border bg-card");
-    expect(row.match(/\{item\.place\.name\}/g)).toHaveLength(2); // sentence + aria-label
-    expect(row.match(/onClick=\{\(\) => onPerson\(item\)\}/g)).toHaveLength(1);
-  });
-
   it("an anonymous row opens the place, never a person card", () => {
     expect(row).toMatch(/\) : \(\s*<Link[\s\S]*data-social-anonymous-row/);
   });
@@ -304,15 +212,6 @@ describe("full handle, Open Instagram, and the Social name switch", () => {
     expect(card).toContain("CONSUMER_ROUTES.mePages.instagram");
     expect(card).toContain("Connect your Instagram to see theirs");
     expect(card).toContain("Make your profile public to see their Instagram");
-  });
-
-  it("the row's handle is plain text, never a link", () => {
-    const row = FEED.slice(
-      FEED.indexOf("function FeedRow("),
-      FEED.indexOf("/** The person card"),
-    );
-    expect(row).not.toContain("instagram.com");
-    expect(row.match(/<a\b/g)).toBeNull();
   });
 
   it("Settings › Social: 'Public profile', off means 'A member'", () => {

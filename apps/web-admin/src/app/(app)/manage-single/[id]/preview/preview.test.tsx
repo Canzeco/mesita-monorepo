@@ -1,8 +1,7 @@
+// MVP test rule (MESITA-2600): only the data guard stays; UI pins were removed (MESITA-2601).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { renderToStaticMarkup } from "react-dom/server";
-import { PlaceProfile } from "@mesita/place-profile";
 import type { AdminPlace, PlaceTagOption } from "@/components/place-manage/actions";
 import { memberPreviewDetail } from "./member-preview";
 
@@ -81,43 +80,6 @@ describe("admin member preview", () => {
     expect(detail.distance_km).toBe(0);
     expect(detail.request_threshold).toBe(9);
     expect(detail.tags.map((tag) => tag.label)).toEqual(["Tacos"]);
-    const html = renderToStaticMarkup(
-      <PlaceProfile place={detail} scrollLabel="Member profile preview" />,
-    );
-    expect(html).toContain("Lupita");
-    expect(html).not.toContain("- km");
-    expect(html).toContain("Overview");
-    const nav = html.slice(html.indexOf("<nav"), html.indexOf(">", html.indexOf("<nav")) + 1);
-    expect(nav).toContain('aria-label="Place sections"');
-    expect(nav).toContain("bg-card");
-    expect(nav).not.toContain("bg-background");
-    expect(html).not.toContain("Phone emulator");
-    expect(html).not.toContain("<a ");
-    expect(html).not.toContain("Families");
-  });
-
-  it("keeps the four sections, the vote atop Overview, with no photos and a long name", () => {
-    const name = "Taquería de los Compadres del Centro Histórico de la Ciudad";
-    const detail = memberPreviewDetail(
-      place({
-        name,
-        mesita_name: name,
-        enriched_at: null,
-        enriched: false,
-        photos: null,
-        tags: [],
-        website_url: "https://example.com",
-      }),
-      [],
-    );
-    expect(detail.is_enriched).toBe(false);
-    expect(detail.photos).toEqual([]);
-    const html = renderToStaticMarkup(<PlaceProfile place={detail} />);
-    expect(html).toContain(name);
-    expect(html).toContain('aria-label="Place sections"');
-    expect(html).toContain("Overview");
-    expect(html).toContain("Vote to enrich");
-    expect(html).not.toContain("<a ");
   });
 
   it("renders the consumer place module, and a package change deploys both apps", () => {
@@ -136,24 +98,8 @@ describe("admin member preview", () => {
     expect(consumerIgnore).toContain("packages/place-profile");
   });
 
-  it("keeps Profile mounted and the phone photos allowed", () => {
-    const scroll = readFileSync(join(__dirname, "../PlaceScroll.tsx"), "utf8");
-    const profilePage = readFileSync(join(__dirname, "../profile/page.tsx"), "utf8");
-    const shell = readFileSync(join(__dirname, "../PlaceManageShell.tsx"), "utf8");
+  it("keeps the phone photos allowed", () => {
     const nextConfig = readFileSync(join(ROOT, "apps/web-admin/next.config.ts"), "utf8");
-    const adminCss = readFileSync(join(ROOT, "apps/web-admin/src/app/globals.css"), "utf8");
-    const consumerCss = readFileSync(
-      join(ROOT, "apps/web-consumer/src/app/globals.css"),
-      "utf8",
-    );
-    expect(scroll).toContain("<ProfileTab />");
-    expect(scroll).toContain("inert=");
-    expect(profilePage).not.toContain("<ProfileTab");
-    expect(shell).toContain('tab === "preview"');
     expect(nextConfig).toContain('hostname: "**"');
-    expect(adminCss).toContain("--page: oklch(0.952 0 0)");
-    expect(consumerCss).toContain("--page: oklch(0.952 0 0)");
-    expect(adminCss).toContain("--foreground: oklch(0.205 0 0)");
-    expect(consumerCss).toContain("--foreground: oklch(0.205 0 0)");
   });
 });

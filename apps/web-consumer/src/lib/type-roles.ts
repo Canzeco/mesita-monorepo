@@ -5,8 +5,7 @@
  * meta"); the code wrote it in PIXELS. That mismatch is why 21 distinct
  * arbitrary sizes accumulated with nothing to bind them to. This module is the
  * binding surface: `globals.css` writes the `type-*` utilities from it, and
- * type-roles-drift.test.ts pins it against globals.css and the ESLint
- * guard's messages.
+ * the ESLint guard's messages name its roles. Edit both apps' copies together.
  *
  * THREE RULES, each learned the hard way:
  *
@@ -24,7 +23,7 @@
  *    reproduce there — which makes it worse, not better.
  *
  * 3. THIS FILE STAYS PLATFORM-FREE. No CSS, no React, no imports — plain data
- *    is what lets the two copies be byte-identical (type-roles-drift.test.ts).
+ *    is what lets the two copies stay byte-identical.
  *
  * Widening the set is a NOTION edit first, then this file, in that order and
  * in the same session. A role that exists only in code is drift with a nicer

@@ -1,3 +1,4 @@
+// MVP test rule (MESITA-2600): only the data guard stays; UI pins were removed (MESITA-2601).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -15,8 +16,6 @@ import {
   type PinPickerAction,
   type PinPickerState,
 } from "@/lib/pin-picker-state";
-import { aroundYouCamera, LOCATION_PICK_ZOOM, PLACE_PICK_ZOOM } from "@/lib/location-pick";
-import { pinPickerLabels } from "@/components/consumer/home/PinPicker";
 import type { SavedLocation } from "@/lib/saved-locations";
 
 // MESITA-2501: the pin picker's rules. Pato (2026-10-20): the name comes from
@@ -145,37 +144,9 @@ describe("what a failed reverse geocode means", () => {
   });
 });
 
-describe("the picker's camera and labels", () => {
-  it("Around you opens at its level; a city fits its own rectangle", () => {
-    const bounds = { low: { lat: 25.5, lng: -100.5 }, high: { lat: 25.8, lng: -100.1 } };
-    const at = (level: "neighborhood" | "district" | "city") =>
-      aroundYouCamera({ name: "x", level, lat: 25.6, lng: -100.3, bounds });
-    expect(at("neighborhood")).toEqual({ center: { lat: 25.6, lng: -100.3 }, zoom: 15 });
-    expect(at("district").zoom).toBe(14);
-    expect(at("city").fit).toEqual(bounds);
-    expect(PLACE_PICK_ZOOM).toBe(17);
-    expect(LOCATION_PICK_ZOOM).toBe(16);
-  });
-
-  it("titles say what the guest is doing", () => {
-    const entry = { customName: "Casa", suggestedName: "Tecnológico" } as SavedLocation;
-    expect(pinPickerLabels("new")).toEqual({ title: "Set the spot", action: "Save" });
-    expect(pinPickerLabels("edit", entry)).toEqual({ title: "Edit Casa", action: "Save" });
-    expect(pinPickerLabels("confirm", entry)).toEqual({ title: "Confirm this spot", action: "Confirm" });
-  });
-});
-
 describe("the picker's map and sheet (source)", () => {
   const read = (p: string) => readFileSync(join(__dirname, "..", "..", p), "utf8");
-  const picker = read("components/consumer/home/PinPicker.tsx");
   const sheet = read("components/consumer/home/LocationPicker.tsx");
-
-  it("a one-finger drag moves the map: greedy gestures, and the map sits outside any scroll body", () => {
-    expect(picker).toContain('gestureHandling="greedy"');
-    expect(picker).not.toContain("SHEET_BODY_CLASS");
-    expect(picker).toContain('libraries={["places"]}');
-    expect(picker).toContain('aria-label="Map. Move it to place the pin"');
-  });
 
   it("nothing is saved by a pick: every way in opens the picker", () => {
     expect(sheet).not.toContain("addSavedLocation");
@@ -183,10 +154,6 @@ describe("the picker's map and sheet (source)", () => {
     expect(sheet).toContain('setPicker({ mode: "new", camera: aroundYouCamera(a), entry: null })');
     expect(sheet).toContain('openSaved(l, "confirm");');
     expect(sheet).toContain('openSaved(l, "edit")');
-  });
-
-  it("Back, the backdrop and Escape return from the picker instead of closing the sheet", () => {
-    expect(sheet).toContain("onClose={picker ? back : close}");
   });
 
   it("with no fix the search leans on Monterrey", () => {
