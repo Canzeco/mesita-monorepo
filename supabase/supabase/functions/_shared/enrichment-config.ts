@@ -95,7 +95,7 @@ export const DEFAULT_ENRICHMENT_CONFIG: EnrichmentConfig = {
   atlasDiscoverFacebookN: 5,
   atlasDiscoverOpentableN: 3,
   atlasDiscoverUbereatsN: 2,
-  atlasRequestThreshold: 5,
+  atlasRequestThreshold: 10, // MESITA-2653: Pato, "set it to 10"
   atlasCreateOnOpenConsumer: true,
   atlasCreateOnOpenAdmin: true,
   atlasConsumerCreatesPerDay: 1000,

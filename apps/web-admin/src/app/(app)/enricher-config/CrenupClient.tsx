@@ -246,22 +246,10 @@ export function CrenupClient({
               }
             />
             <div className="mt-4">
-              <Fields>
-                <NumberField
-                  icon={<Users className="text-muted-foreground h-4 w-4" />}
-                  label="Enrich after N visits"
-                  value={settings.requestThreshold}
-                  min={1}
-                  max={100}
-                  onChange={(v) => patch({ requestThreshold: v })}
-                  disabled={pending}
-                />
-              </Fields>
-              <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+              <p className="text-muted-foreground text-sm leading-relaxed">
                 Create mints the ugly profile without queuing the Enricher.
-                Enrich runs by itself once this many different guests have
-                opened the place&apos;s profile (each guest counts once). Admin
-                Enrich skips the wait.
+                Enrichment&apos;s &ldquo;Enrich after N visits&rdquo; decides
+                when it runs by itself.
               </p>
               <div className="mt-4 flex flex-col gap-3">
                 <p className="text-muted-foreground text-sm leading-relaxed">
@@ -338,7 +326,7 @@ export function CrenupClient({
                 {
                   term: "Starts",
                   detail:
-                    "Votes reach the threshold, or admin Enrich. A wrong-number call refetches Google.",
+                    "N different guests open the profile (the knob below), or admin Enrich. A wrong-number call refetches Google.",
                 },
                 {
                   term: "Stops",
@@ -354,6 +342,28 @@ export function CrenupClient({
                 />
               }
             />
+            {/* AUTO-ENRICH LIVES HERE (Pato, MESITA-2653: "move the views
+                counter for autoenrichment here, not there … it must be in
+                admin Enrichment, and set it to 10"). It sat on Create's card
+                since MESITA-2642. */}
+            <div className="mt-4">
+              <Fields>
+                <NumberField
+                  icon={<Users className="text-muted-foreground h-4 w-4" />}
+                  label="Enrich after N visits"
+                  value={settings.requestThreshold}
+                  min={1}
+                  max={100}
+                  onChange={(v) => patch({ requestThreshold: v })}
+                  disabled={pending}
+                />
+              </Fields>
+              <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+                A Created place enriches by itself once this many different
+                guests have opened its profile (each guest counts once). Admin
+                Enrich skips the wait.
+              </p>
+            </div>
           </SectionCard>
         </div>
 

@@ -20,7 +20,7 @@ import {
   isPlaceRequested,
 } from "./place-state.ts";
 
-export const DEFAULT_REQUEST_THRESHOLD = 5;
+export const DEFAULT_REQUEST_THRESHOLD = 10; // MESITA-2653
 export const REQUEST_THRESHOLD_MIN = 1;
 export const REQUEST_THRESHOLD_MAX = 100;
 
