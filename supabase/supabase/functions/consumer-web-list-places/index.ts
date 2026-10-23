@@ -85,8 +85,22 @@ import {
 } from "../_shared/area-pipeline.ts";
 import { areaQuota, ownedLookup } from "../_shared/area-deps.ts";
 import { readGooglePlacesKey } from "../_shared/google-places.ts";
+import {
+  stripInternal,
+  type PlaceProfileRow,
+} from "../_shared/place-pool-shape.ts";
 
 const MAX_LIMIT = 200;
+
+/** Same wire shaping as consumer-web-list-catalog (MESITA-2736, MESITA-2740). */
+function wireMapPlace(row: PlaceProfileRow): OwnedRow {
+  const out = stripInternal(row);
+  return {
+    ...out,
+    id: row.id,
+    photos: Array.isArray(out.photos) ? out.photos : [],
+  } as OwnedRow;
+}
 
 type ListBody = {
   limit?: number;
@@ -239,16 +253,19 @@ Deno.serve(async (req) => {
   return json({
     ok: true,
     places: withFamilyKeysList(
-      places.map(({ area: a, ...p }) => ({
-        ...p,
-        score: {
-          proximity: a.signals.proximity,
-          popularity: a.signals.popularity,
-          final: a.final,
-          selectedFactor: a.selectedFactor,
-          foundBy: a.foundBy,
-        } satisfies WireScore,
-      })) as CardRow[],
+      places.map(({ area: a, ...p }) => {
+        const wired = wireMapPlace(p as PlaceProfileRow);
+        return {
+          ...wired,
+          score: {
+            proximity: a.signals.proximity,
+            popularity: a.signals.popularity,
+            final: a.final,
+            selectedFactor: a.selectedFactor,
+            foundBy: a.foundBy,
+          } satisfies WireScore,
+        };
+      }) as CardRow[],
     ),
     mode: "nearby",
     radiusKm,

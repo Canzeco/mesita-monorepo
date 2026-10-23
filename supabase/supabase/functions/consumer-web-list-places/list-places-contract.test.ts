@@ -73,6 +73,13 @@ Deno.test("list-places: the old merge-and-paint branch is gone", () => {
   }
 });
 
+Deno.test("list-places: wire photos via stripInternal before JSON (MESITA-2740)", () => {
+  assert(src.includes("wireMapPlace"));
+  assert(src.includes("stripInternal"));
+  const answer = webBranch.slice(webBranch.indexOf("return json({\n    ok: true,"));
+  assert(answer.includes("wireMapPlace("));
+});
+
 Deno.test("list-places: web Search's POST is the only call it answers (MESITA-2337)", () => {
   assert(src.includes('rejectUnlessMethods(req, "POST")'));
   assertEquals(src.includes('"GET"'), false);

@@ -162,7 +162,7 @@ export function poolPlaces(pool: AreaPool, chip: string): Place[] {
   if (pool.shape === "unified") {
     return isEveryFamily(chip)
       ? pool.places
-      : pool.places.filter((p) => p.area?.familyKeys.includes(chip));
+      : pool.places.filter((p) => (p.area?.familyKeys ?? []).includes(chip));
   }
   const rails = placesFeed(pool.rails);
   return isEveryFamily(chip)

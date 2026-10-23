@@ -10,4 +10,9 @@ describe("stripInsecurePhotos", () => {
         .photos,
     ).toEqual([google]);
   });
+
+  it("treats missing photos as empty (Map EF belt, MESITA-2740)", () => {
+    expect(stripInsecurePhotos({ photos: undefined }).photos).toEqual([]);
+    expect(stripInsecurePhotos({ photos: null }).photos).toEqual([]);
+  });
 });
