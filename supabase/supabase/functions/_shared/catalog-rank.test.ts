@@ -1,7 +1,7 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import { CATALOG_FAMILY_SLUGS } from "./catalog-families.ts";
 import {
-  catalogAdmitted,
+  isSelectedRow,
   type CatalogListPlace,
   CATALOG_RAIL_CAP,
   buildCatalogRails,
@@ -17,6 +17,8 @@ function row(
     family_keys: families,
     enriched_at: "2026-01-01T00:00:00Z",
     content_state: "ready",
+    // The operator's mark (MESITA-2707), not a fact of enrichment.
+    selected: true,
     ...over,
   };
 }
@@ -29,6 +31,7 @@ const stub = (id: string) => ({
   googleOnly: true,
   enriched_at: null,
   content_state: "ready",
+  selected: false,
   family_keys: ["dinner"],
 });
 
@@ -54,11 +57,13 @@ Deno.test("Google appears in rail 1 only", () => {
   assertEquals(ids(out[0]), ["g:a", "g:b"]);
 });
 
-Deno.test("a Google stub or a Created row handed in as Selected is refused", () => {
-  const created = row("created", ["dinner"], { enriched_at: null });
+Deno.test("a Google stub or an unmarked Mesita row handed in as Selected is refused", () => {
+  // Enriched and ready, yet not Selected: the mark is the operator's, never
+  // derived from enrichment (MESITA-2707).
+  const unmarked = row("unmarked", ["dinner"], { selected: false });
   const out = buildCatalogRails(
     [],
-    [stub("x") as unknown as CatalogListPlace, created, row("ok", ["dinner"])],
+    [stub("x") as unknown as CatalogListPlace, unmarked, row("ok", ["dinner"])],
   );
   assertEquals(ids(out.find((r) => r.key === "mesita_selected")), ["ok"]);
   assertEquals(ids(out.find((r) => r.key === "dinner")), ["ok"]);
@@ -100,16 +105,24 @@ Deno.test("empty rails are omitted; nothing in leaves no rails", () => {
   );
 });
 
-Deno.test("the enriched ring requires enriched and ready", () => {
+Deno.test("Selected is the operator's mark alone: never enrichment, never a ready profile (MESITA-2707)", () => {
+  assertEquals(isSelectedRow({ selected: true }), true);
+  assertEquals(isSelectedRow({ selected: false }), false);
+  assertEquals(isSelectedRow({ selected: null }), false);
+  assertEquals(isSelectedRow({}), false);
+  // A Created place can be Selected before any Enrich run…
   assertEquals(
-    catalogAdmitted({ enriched_at: null, content_state: "ready" }),
-    false,
+    isSelectedRow({ id: "created", selected: true, enriched_at: null, content_state: "ready" } as CatalogListPlace),
+    true,
   );
+  // …and an Enriched one is not Selected until the operator says so.
   assertEquals(
-    catalogAdmitted({
+    isSelectedRow({
+      id: "enriched",
+      selected: false,
       enriched_at: "2026-01-01T00:00:00Z",
-      content_state: "generating",
-    }),
+      content_state: "ready",
+    } as CatalogListPlace),
     false,
   );
 });

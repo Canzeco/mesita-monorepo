@@ -254,6 +254,10 @@ export type PlaceRow = {
   state: "active" | "paused" | "archived";
   content_state: "generating" | "ready" | "failed";
   currency: string;
+  /** Mesita Selected: the operator's own mark (MESITA-2707). Independent of
+   *  `enriched_at` and of every score; admin-web-set-place-selected is the
+   *  only writer. */
+  selected: boolean;
 };
 
 export const PLACE_PATCH_KEYS = [
@@ -261,6 +265,7 @@ export const PLACE_PATCH_KEYS = [
   "state",
   "content_state",
   "currency",
+  "selected",
 ] as const satisfies readonly (keyof Omit<PlaceRow, "id" | "created_at" | "updated_at">)[];
 
 type _MissingFromPlacePatchKeys = Exclude<

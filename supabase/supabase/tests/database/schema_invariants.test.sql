@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(149);
+select plan(154);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1313,6 +1313,39 @@ select is_empty(
          'description_es', 'order_channel', 'order_target', 'orders_enabled',
          'mesita_pay_enabled')$$,
   'public.profiles projects no Second Stage column'
+);
+
+-- ━━━ MESITA-2707 — Selected is the operator's own mark, stored ━━━━━━━━━━━━━
+-- Until MESITA-2707 Mesita Selected was derived (enriched_at set, a ready
+-- profile, state active) and nothing stored it. Now `places.selected` is the
+-- fact every reader asks — the Area pool's `source`, Chat's Selected-only
+-- read, the Search pins, the admin State box — and the column must stay a
+-- boolean that defaults to "not Selected" (a new place is never Selected by
+-- itself), on `places` (the lifecycle table) and projected by the view that
+-- every consumer EF reads.
+select has_column(
+  'public', 'places', 'selected',
+  'places.selected exists: Mesita Selected is stored, never derived (MESITA-2707)'
+);
+
+select col_type_is(
+  'public', 'places', 'selected', 'boolean',
+  'places.selected is a boolean: a tag, not a timestamp'
+);
+
+select col_not_null(
+  'public', 'places', 'selected',
+  'places.selected is NOT NULL (a three-valued mark would read "unknown" on every screen)'
+);
+
+select col_default_is(
+  'public', 'places', 'selected', 'false',
+  'a new place is not Selected by itself: the mark is the operator''s'
+);
+
+select has_column(
+  'public', 'profiles', 'selected',
+  'public.profiles projects places.selected (every consumer and admin read goes through the view)'
 );
 
 -- Function bodies are strings, so every one of these would have survived its

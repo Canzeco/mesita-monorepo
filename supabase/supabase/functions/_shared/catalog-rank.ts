@@ -11,13 +11,14 @@
 // rails. Removed with the legacy wire.
 
 import { FAMILIES } from "./place-taxonomy.ts";
-import { isEnrichedPlace } from "./place-family-keys.ts";
 import { CATALOG_RAIL_CAP_DEFAULT } from "./discovery-config.ts";
 
 export type CatalogListPlace = Record<string, unknown> & {
   id: string;
   family_keys?: string[] | null;
   content_state?: string | null;
+  /** Mesita Selected: the operator's mark, `places.selected` (MESITA-2707). */
+  selected?: boolean | null;
 };
 
 export type CatalogRail<T> = {
@@ -33,12 +34,16 @@ export const CATALOG_RAIL_CAP = CATALOG_RAIL_CAP_DEFAULT;
 
 const GUEST_FAMILIES = FAMILIES.filter((f) => f.slug !== "undefined");
 
-/** The enriched ring: a completed Enrich run, and a profile that can be shown. */
-export function catalogAdmitted(row: {
-  enriched_at?: string | null;
-  content_state?: string | null;
-}): boolean {
-  return isEnrichedPlace(row) && row.content_state === "ready";
+/**
+ * Mesita Selected (MESITA-2707): the operator's own mark on the row,
+ * `places.selected`, set from Single Place and nowhere else. Independent of
+ * `enriched_at` (a place can be Selected before any Enrich run, or Enriched
+ * and not Selected) and of every score; a Google stub never carries it.
+ * Until MESITA-2707 this was `catalogAdmitted`, derived from `enriched_at`
+ * and a ready profile.
+ */
+export function isSelectedRow(row: { selected?: boolean | null }): boolean {
+  return row.selected === true;
 }
 
 export function placeBelongsToFamily(
@@ -63,10 +68,10 @@ export const MESITA_SELECTED_RAIL = {
 
 /**
  * The Feed's rails from the engine's two answers. `google` can only land in
- * rail 1; `selected` is re-checked against `catalogAdmitted`, so a Google
- * stub or a Created row cannot reach rail 2 or a family rail. Both lists
- * arrive ranked; this keeps their order. A place in two families is in both
- * rails. Undefined is never a rail.
+ * rail 1; `selected` is re-checked against `isSelectedRow`, so a Google
+ * stub or an unmarked Mesita row cannot reach rail 2 or a family rail. Both
+ * lists arrive ranked; this keeps their order. A place in two families is in
+ * both rails. Undefined is never a rail.
  */
 export function buildCatalogRails<
   G extends Record<string, unknown>,
@@ -84,7 +89,7 @@ export function buildCatalogRails<
       places: google.slice(0, cap),
     });
   }
-  const admitted = selected.filter((row) => catalogAdmitted(row));
+  const admitted = selected.filter((row) => isSelectedRow(row));
   if (admitted.length > 0) {
     rails.push({
       ...MESITA_SELECTED_RAIL,

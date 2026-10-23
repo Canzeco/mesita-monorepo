@@ -19,6 +19,11 @@ export type Place = {
    *  on an older payload — the client falls back to `enriched_at` alone
    *  (lib/place-enriched.ts), never `content_state`. */
   enriched?: boolean | null;
+  /** Mesita Selected (MESITA-2707): the operator's own mark,
+   *  `places.selected`, on every consumer place payload. Independent of
+   *  `enriched` and of every score: the Search pins read it (red), the
+   *  carousel tags it. Absent on an older payload reads as not Selected. */
+  selected?: boolean | null;
   id: string;
   slug: string;
   name: string;
@@ -88,7 +93,8 @@ export type Place = {
    *  (MESITA-2379); only the one-pool Feed wire carries it. */
   area?: AreaDiagnostics;
   /** The Search map's score for this place (MESITA-2504 debug): the two
-   *  signals, the Selected factor and the product. Only list-places sends it. */
+   *  signals, the sources that found it and the product. Only list-places
+   *  sends it. Selected is not in it: it is the row's own mark. */
   score?: MapScore;
   /** Alias shipped on Google Nearby stubs (`from_google`). */
   from_google?: boolean;
@@ -398,6 +404,10 @@ export type PlacePrediction = {
    *  column fallback on this lane, so an older payload reads as
    *  not-enriched (gray understates). */
   enriched?: boolean;
+  /** Server's answer: is this a Mesita Selected place — the operator's own
+   *  mark, `places.selected` (MESITA-2707)? The pin's red. An older payload
+   *  without it reads as not Selected (gray understates). */
+  selected?: boolean;
   /**
    * Word's second entity (MESITA-1403). Absent = "place" — a place row
    * reads exactly as before. A Location is a region/city from

@@ -1,12 +1,13 @@
 // Google Nearby + the guest's scope words (MESITA-2298, MESITA-2302).
 // TWO GUEST SCOPES over the three internal sets
-// (Google Places ⊃ Mesita Places ⊃ Mesita Enriched Places):
+// (Google Places ⊃ Mesita Places ⊃ Mesita Selected Places):
 //   google    Google Places — what ONE Nearby Search (New) call returned
 //             inside the operator's radius. A hit Mesita owns goes out as
-//             that Mesita row (ready, enriched or not); the rest are stubs.
+//             that Mesita row (ready, Selected or not); the rest are stubs.
 //             No Mesita backfill: a place Google did not return is absent.
-//   selected  Mesita Selected — the enriched, ready Mesita rows. No Google
-//             Nearby, no review floor.
+//   selected  Mesita Selected — the ready Mesita rows the operator marked
+//             (`places.selected`, MESITA-2707). No Google Nearby, no
+//             review floor.
 // `PlacesScope` has exactly those two words; the retired `enriched`,
 // `mesita` and `partners` parse to `selected`, never to a paid call.
 // ONE POST per cache-miss cell (center · types · radius · rank): maxResultCount
@@ -438,11 +439,12 @@ export async function searchNearbyPlacesOutcome(
 
 /**
  * THE GUEST'S TWO WORDS (MESITA-2298) over the three internal sets
- * (Google Places ⊃ Mesita Places ⊃ Mesita Enriched Places):
+ * (Google Places ⊃ Mesita Places ⊃ Mesita Selected Places):
  *
  *   google    Google Places — Nearby's hits; a Mesita row that owns one
- *             (ready, enriched or not) goes out as itself.
- *   selected  Mesita Selected — the enriched, ready rows. Free: no Google.
+ *             (ready, Selected or not) goes out as itself.
+ *   selected  Mesita Selected — the rows the operator marked
+ *             (`places.selected`, MESITA-2707). Free: no Google.
  *
  * The wire carries the scope by NAME. A third word fails to compile here,
  * so no caller can ask for a set a guest cannot see. Absent, unknown and

@@ -327,6 +327,8 @@ describe("a Location wears the location icon, never a place tone (MESITA-1404)",
             mesitaId: "m-created",
           },
           {
+            // Enriched, yet not marked: the row speaks the basic profile.
+            // Selected is the operator's mark, never enrichment (MESITA-2707).
             placeId: "ChIJ-enriched",
             mainText: "Casa",
             secondaryText: "Monterrey",
@@ -334,13 +336,23 @@ describe("a Location wears the location icon, never a place tone (MESITA-1404)",
             enriched: true,
             mesitaId: "m-enriched",
           },
+          {
+            placeId: "ChIJ-selected",
+            mainText: "Nectarworks",
+            secondaryText: "Monterrey",
+            state: "web_listed",
+            enriched: false,
+            selected: true,
+            mesitaId: "m-selected",
+          },
         ]}
         addStates={{}}
         onPick={() => {}}
       />,
     );
     expect(html).toContain("Strana, Monterrey, Basic Mesita profile");
-    expect(html).toContain("Casa, Monterrey, Mesita Selected");
+    expect(html).toContain("Casa, Monterrey, Basic Mesita profile");
+    expect(html).toContain("Nectarworks, Monterrey, Mesita Selected");
     expect(html).not.toContain("No profile yet");
     expect(html).not.toMatch(/enriched/i);
   });

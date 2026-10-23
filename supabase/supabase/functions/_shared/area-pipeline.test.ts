@@ -381,6 +381,9 @@ function mrow(id: string, over: Record<string, unknown> = {}) {
     lng: CENTER.lng,
     enriched_at: ENRICHED,
     content_state: "ready",
+    // The operator's mark (MESITA-2707): Selected is read here, never off
+    // `enriched_at`.
+    selected: true,
     family_keys: ["dinner"],
     category: "restaurant",
     google_stars_overall: 4.4,
@@ -396,14 +399,22 @@ const selOpts = {
   popularityWeight: DISCOVERY_DEFAULTS.map.popularityWeight,
 };
 
-Deno.test("selected: only enriched, ready rows inside the radius", () => {
+Deno.test("selected: only the operator's marked rows inside the radius (MESITA-2707)", () => {
   const out = selectMesitaSelected([
     mrow("ok"),
-    mrow("created", { enriched_at: null }),
-    mrow("generating", { content_state: "generating" }),
+    // Enriched and ready, but unmarked: Selected is not derived from
+    // enrichment any more.
+    mrow("unmarked", { selected: false }),
     mrow("far", { lat: CENTER.lat + 1 }),
   ], selOpts);
   assertEquals(ids(out), ["ok"]);
+});
+
+Deno.test("selected: a Created place the operator marked is Selected before any Enrich run", () => {
+  const out = selectMesitaSelected([
+    mrow("created-marked", { enriched_at: null }),
+  ], selOpts);
+  assertEquals(ids(out), ["created-marked"]);
 });
 
 Deno.test("selected: has no review floor — a two-review place is kept", () => {
@@ -465,7 +476,7 @@ Deno.test("selected: guest families cut, and no centre means no radius", () => {
   );
 });
 
-Deno.test("selectedPoolQuery: Enriched gate, General, ready, families and the radius box", () => {
+Deno.test("selectedPoolQuery: the Selected mark, General, ready, families and the radius box", () => {
   const seen: string[] = [];
   const q = {
     eq: (c: string, v: unknown) => (seen.push(`eq ${c} ${v}`), q),
@@ -481,7 +492,9 @@ Deno.test("selectedPoolQuery: Enriched gate, General, ready, families and the ra
     radiusKm: 5,
     families: ["coffee"],
   });
-  assert(seen.includes("not enriched_at is null"));
+  // Chat's gate is the operator's mark, never `enriched_at` (MESITA-2707).
+  assert(seen.includes("eq selected true"));
+  assertEquals(seen.some((s) => s.includes("enriched_at")), false);
   assert(seen.includes("eq content_state ready"));
   assert(seen.includes("overlaps family_keys coffee"));
   assert(seen.some((s) => s.startsWith("gte lat")));
@@ -534,6 +547,7 @@ const OWNED_BASE: OwnedRow = {
   lng: CENTER.lng,
   enriched_at: "2026-01-01T00:00:00Z",
   content_state: "ready",
+  selected: true,
 };
 
 Deno.test("google: an owned hit is scored on Google's numbers when its stored ones are missing", async () => {
@@ -651,6 +665,7 @@ Deno.test("selected: the radius cut reads the exact distance, not the rounded on
     lng: CENTER.lng,
     enriched_at: "2026-01-01T00:00:00Z",
     content_state: "ready",
+    selected: true,
     google_stars_overall: 4.5,
     google_review_count: 100,
     family_keys: ["dinner"],
@@ -891,7 +906,8 @@ Deno.test("merge: Google and Mesita candidates rank in ONE order, Proximity^a ×
   ]);
   try {
     const selected = mrow("sel", { lat: 25.6702, google_stars_overall: 4.0, google_review_count: 200 });
-    const created = mrow("created", { enriched_at: null, lat: 25.6702, google_stars_overall: 4.9, google_review_count: 9000 });
+    // Enriched, yet unmarked: `source` reads the operator's mark (MESITA-2707).
+    const created = mrow("created", { selected: false, lat: 25.6702, google_stars_overall: 4.9, google_review_count: 9000 });
     const out = await selectAreaPool(deps({ mesitaRows: [selected, created] }).d);
     const byId = Object.fromEntries(out.places.map((p) => [p.id, p.area]));
     assertEquals(byId["sel"].source, "selected");

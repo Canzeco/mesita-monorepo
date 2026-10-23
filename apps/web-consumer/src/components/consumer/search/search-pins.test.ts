@@ -4,7 +4,7 @@ import type { Place } from "@/lib/api/places";
 import { placeSearchScope } from "@/lib/map-filters-engine";
 import {
   MAP_GOOGLE_PIN_COLOR,
-  MAP_ENRICHED_PIN_COLOR,
+  MAP_MESITA_SELECTED_PIN_COLOR,
   MAP_PIN_HIT_SIZE,
   MAP_PIN_STROKE_COLOR,
   MAP_PLACE_PIN_RADIUS,
@@ -26,23 +26,31 @@ import {
   predictionPinTone,
 } from "./search-pins";
 
-describe("pin tones — enriched > mesita > google", () => {
-  // THE LAW (Pato, 2026-10-12, MESITA-2158): the three nested sets the
-  // Filters sheet lists — Google ⊃ Mesita ⊃ Mesita Enriched. Red is EARNED by
-  // enrichment, ink is ours-not-enriched, gray is Google's alone: a set the
-  // guest can pick has to be the same set the colour promises.
-  it("paints map rows red only once an Enrich run completed", () => {
-    const stamped = { enriched_at: "2026-08-01T00:00:00Z" };
-    expect(placePinTone(stamped)).toBe("enriched");
-    expect(placePinTone({ enriched: true })).toBe("enriched");
-    // MESITA-2154: a Created place (ready, no stamp) is NOT red — `ready`
-    // means the profile can be shown, not that it was enriched. It is ours,
-    // so it wears ink, never Google's gray (MESITA-2158).
-    const created = { content_state: "ready", enriched_at: null };
+describe("pin tones — selected > mesita > google", () => {
+  // THE LAW (Pato, 2026-10-12, MESITA-2158; MESITA-2707): the three nested
+  // sets — Google ⊃ Mesita ⊃ Mesita Selected. Red is the operator's own
+  // mark, gray is everything else: a set the guest can pick has to be the
+  // same set the colour promises.
+  it("paints map rows red only when the operator marked them Selected (MESITA-2707)", () => {
+    const marked = { selected: true };
+    expect(placePinTone(marked)).toBe("selected");
+    // Enrichment paints nothing: an Enriched place without the mark is
+    // gray, and a Created place with it is red (Pato: "independent of
+    // enrichment").
+    const enrichedUnmarked = {
+      enriched: true,
+      enriched_at: "2026-08-01T00:00:00Z",
+      selected: false,
+    };
+    expect(placePinTone(enrichedUnmarked)).toBe("mesita");
+    const createdMarked: Partial<Place> = { content_state: "ready", enriched_at: null, selected: true };
+    expect(placePinTone(createdMarked)).toBe("selected");
+    const created: Partial<Place> = { content_state: "ready", enriched_at: null };
     expect(placePinTone(created)).toBe("mesita");
-    expect(placePinTone({ ...created, enriched: false })).toBe("mesita");
+    expect(placePinTone({ ...created, selected: false })).toBe("mesita");
+    // An older payload without the mark understates, never overclaims.
     expect(placePinTone({})).toBe("mesita");
-    const requested = {
+    const requested: Partial<Place> = {
       content_state: "generating",
       request_count: 3,
       enriched_at: null,
@@ -50,8 +58,8 @@ describe("pin tones — enriched > mesita > google", () => {
     expect(placePinTone(requested)).toBe("mesita");
     expect(placePinTone({ googleOnly: true })).toBe("google");
     expect(placePinTone({ from_google: true })).toBe("google");
-    // A Google stub stays gray even if it somehow carries enrichment.
-    expect(placePinTone({ googleOnly: true, ...stamped })).toBe("google");
+    // A Google stub stays gray even if it somehow carries the mark.
+    expect(placePinTone({ googleOnly: true, ...marked })).toBe("google");
   });
 
   it("agrees with the scope the Filters sheet counts the place in (MESITA-2298)", () => {
@@ -59,7 +67,7 @@ describe("pin tones — enriched > mesita > google", () => {
     // Selected on the sheet — the tone keeps the colour's promise, the scope
     // the guest's two words.
     const rows = [
-      { id: "e", slug: "e", name: "E", category: null, enriched: true },
+      { id: "e", slug: "e", name: "E", category: null, selected: true },
       { id: "c", slug: "c", name: "C", category: null, content_state: "ready" },
       { id: "g:x", slug: "x", name: "X", category: null, googleOnly: true },
     ] as Place[];
@@ -70,58 +78,57 @@ describe("pin tones — enriched > mesita > google", () => {
     }
   });
 
-  it("paints name-lane rows the same way, ink when the server is silent", () => {
-    expect(predictionPinTone({ state: "web_listed", enriched: true })).toBe(
-      "enriched",
+  it("paints name-lane rows the same way, gray when the server is silent", () => {
+    expect(predictionPinTone({ state: "web_listed", selected: true })).toBe(
+      "selected",
     );
-    // A Google hit resolving onto a Created stub used to be red.
-    expect(predictionPinTone({ state: "web_listed", enriched: false })).toBe(
+    expect(predictionPinTone({ state: "web_listed", selected: false })).toBe(
       "mesita",
     );
-    // Older payload with no `enriched` at all: understate, never overclaim.
+    // Older payload with no `selected` at all: understate, never overclaim.
     expect(predictionPinTone({ state: "web_listed" })).toBe("mesita");
-    expect(predictionPinTone({ state: "not_in_mesita", enriched: true })).toBe(
+    expect(predictionPinTone({ state: "not_in_mesita", selected: true })).toBe(
       "google",
     );
   });
 
   it("treats mesitaId as on-Mesita even when state is not_in_mesita", () => {
     // mesitaId still wins over a stale state — but being on Mesita is not
-    // enough for red. Enrichment is what earns it.
+    // enough for red. The operator's mark is what earns it.
     expect(
       predictionPinTone({
         state: "not_in_mesita",
         mesitaId: "uuid-1",
-        enriched: true,
+        selected: true,
       }),
-    ).toBe("enriched");
+    ).toBe("selected");
     expect(
       predictionPinTone({
         state: "not_in_mesita",
         mesitaId: "uuid-1",
-        enriched: false,
+        selected: false,
       }),
     ).toBe("mesita");
   });
 
   it("uses red for Mesita Selected and gray for everything else (MESITA-2316)", () => {
-    expect(pinToneColor("enriched")).toBe(MAP_ENRICHED_PIN_COLOR);
-    // A Created profile is gray like a Google row until it is enriched.
+    expect(pinToneColor("selected")).toBe(MAP_MESITA_SELECTED_PIN_COLOR);
+    // A Mesita place without the mark is gray like a Google row.
     expect(pinToneColor("mesita")).toBe(MAP_GOOGLE_PIN_COLOR);
     expect(pinToneColor("google")).toBe(MAP_GOOGLE_PIN_COLOR);
-    expect(MAP_ENRICHED_PIN_COLOR).toBe("#ff2357");
+    expect(MAP_MESITA_SELECTED_PIN_COLOR).toBe("#ff2357");
     expect(MAP_GOOGLE_PIN_COLOR).toBe("#a3a3a3");
-    expect(MAP_ENRICHED_PIN_COLOR).not.toBe(MAP_GOOGLE_PIN_COLOR);
+    expect(MAP_MESITA_SELECTED_PIN_COLOR).not.toBe(MAP_GOOGLE_PIN_COLOR);
   });
 
-  it("rings every place pin dark; a selected pin CHANGES colour (MESITA-2488)", () => {
-    expect(pinFillColor("enriched")).toBe(MAP_ENRICHED_PIN_COLOR);
+  it("rings every place pin dark; a held pin CHANGES colour (MESITA-2488)", () => {
+    expect(pinFillColor("selected")).toBe(MAP_MESITA_SELECTED_PIN_COLOR);
     expect(pinFillColor("mesita")).toBe(MAP_GOOGLE_PIN_COLOR);
     expect(pinFillColor("google")).toBe(MAP_GOOGLE_PIN_COLOR);
-    // Selected: ink fill, white ring, whatever the tone was.
-    expect(pinFillColor("enriched", true)).toBe(MAP_SELECTED_PIN_COLOR);
+    // Held (tapped): ink fill, white ring, whatever the tone was.
+    expect(pinFillColor("selected", true)).toBe(MAP_SELECTED_PIN_COLOR);
     expect(pinFillColor("google", true)).toBe(MAP_SELECTED_PIN_COLOR);
-    expect(MAP_SELECTED_PIN_COLOR).not.toBe(MAP_ENRICHED_PIN_COLOR);
+    expect(MAP_SELECTED_PIN_COLOR).not.toBe(MAP_MESITA_SELECTED_PIN_COLOR);
     expect(MAP_SELECTED_PIN_COLOR).not.toBe(MAP_GOOGLE_PIN_COLOR);
     expect(pinStrokeColor(false)).toBe("#111111");
     expect(pinStrokeColor(true)).toBe("#ffffff");
@@ -319,14 +326,14 @@ describe("overlayPinDecision", () => {
 });
 
 describe("buildSearchMapPins", () => {
-  it("paints the pin from the prediction's own enriched flag", () => {
+  it("paints the pin from the prediction's own Selected mark", () => {
     const pins = buildSearchMapPins(
       [
         {
           placeId: "ChIJ1",
           mainText: "Strana",
           state: "web_listed",
-          enriched: true,
+          selected: true,
           mesitaId: "m1",
           lat: 25.6,
           lng: -100.4,
@@ -340,7 +347,7 @@ describe("buildSearchMapPins", () => {
         lat: 25.6,
         lng: -100.4,
         title: "Strana",
-        tone: "enriched",
+        tone: "selected",
       },
     ]);
   });
@@ -384,11 +391,11 @@ describe("mapPinIcon", () => {
   it("paints a bigger disk inside a 44px tap pad", () => {
     expect(MAP_PLACE_PIN_RADIUS).toBe(10);
     expect(MAP_PIN_HIT_SIZE).toBe(44);
-    const svg = mapPinSvg(MAP_ENRICHED_PIN_COLOR, MAP_PIN_STROKE_COLOR);
+    const svg = mapPinSvg(MAP_MESITA_SELECTED_PIN_COLOR, MAP_PIN_STROKE_COLOR);
     expect(svg).toContain(`r="${MAP_PLACE_PIN_RADIUS}"`);
     expect(svg).toContain(`width="${MAP_PIN_HIT_SIZE}"`);
     expect(svg).toContain('fill-opacity="0.01"');
-    const icon = mapPinIcon(MAP_ENRICHED_PIN_COLOR, MAP_PIN_STROKE_COLOR);
+    const icon = mapPinIcon(MAP_MESITA_SELECTED_PIN_COLOR, MAP_PIN_STROKE_COLOR);
     expect(icon.scaledSize).toEqual({
       width: MAP_PIN_HIT_SIZE,
       height: MAP_PIN_HIT_SIZE,

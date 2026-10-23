@@ -65,9 +65,11 @@ export function googleStub(hit: NearbyHit, distanceKm: number | null): Record<st
     zone: null,
     city: null,
     // Not a Mesita place, so never enriched: no `enriched_at`, and
-    // `googleOnly` excludes it from the Enriched signal by name.
+    // `googleOnly` excludes it from the Enriched signal by name. Never
+    // Selected either: the mark is the operator's, on a Mesita row.
     content_state: "ready",
     enriched_at: null,
+    selected: false,
     googleOnly: true,
     from_google: true,
     distance_km: distanceKm,

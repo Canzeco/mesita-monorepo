@@ -135,6 +135,9 @@ export type LaneItem = {
   state: PredictionState;
   /** Server's answer: did we write a profile for this place? */
   enriched?: boolean;
+  /** Mesita Selected: the operator's own mark, `places.selected`
+   *  (MESITA-2707). The pin's red and the tag; independent of `enriched`. */
+  selected?: boolean;
   /**
    * Absent = "place". Only Autocomplete rows are classified; the Text and
    * Mesita lanes are places by construction. A Location never carries
@@ -323,6 +326,8 @@ export type ListedRow = {
   lng: number | null;
   content_state: string | null;
   enriched_at: string | null;
+  /** Mesita Selected, the operator's mark (MESITA-2707). */
+  selected?: boolean | null;
   business_state: string | null;
   google_review_count: number | null;
   google_stars_overall?: number | null;
@@ -348,6 +353,9 @@ function listedToLane(row: ListedRow): LaneItem | null {
     // list dot and the map pin cannot disagree (Pato, 2026-08-29).
     // `enriched_at` set (MESITA-2154): a Created row reads gray here.
     enriched: isEnrichedPlace(row),
+    // The red pin and the tag: the operator's mark, never `enriched_at`
+    // (MESITA-2707).
+    selected: row.selected === true,
     mesitaId: row.id,
     mesitaSlug: row.slug,
     lat: row.lat,
@@ -368,8 +376,10 @@ export function applyResolvedMesitaName(
   return {
     ...item,
     state: mesita.state,
-    // The entity is Mesita's now, so its enrichment fact travels with it.
+    // The entity is Mesita's now, so its enrichment fact and its Selected
+    // mark travel with it.
     enriched: mesita.enriched,
+    selected: mesita.selected,
     mesitaId: mesita.mesitaId,
     mesitaSlug: mesita.mesitaSlug,
     lat: item.lat ?? mesita.lat,
@@ -778,6 +788,7 @@ export function toWire(item: LaneItem) {
     secondaryText: item.secondaryText,
     state: item.state,
     enriched: item.enriched === true,
+    selected: item.selected === true,
     // `kind` rides Location rows only — absent reads "place", and the
     // Places path stays byte-identical for a place query.
     ...(item.kind === "location"
@@ -842,7 +853,7 @@ async function embedQueryVector(
 }
 
 const EMBED_COLUMNS =
-  "id, slug, google_place_id, name, address, lat, lng, content_state, enriched_at, business_state, google_review_count, google_stars_overall, family_keys, name_embedding";
+  "id, slug, google_place_id, name, address, lat, lng, content_state, enriched_at, selected, business_state, google_review_count, google_stars_overall, family_keys, name_embedding";
 /** In-process cosine budget — a bounded pool, not every vector. */
 const EMBED_POOL = 300;
 const EMBED_RADIUS_KM = 40;

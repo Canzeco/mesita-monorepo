@@ -88,6 +88,11 @@ export type PlaceHit = {
   enriched: boolean;
   /** When the last Enrich run completed; null for a Created place. */
   enriched_at: string | null;
+  /** Mesita Selected (MESITA-2707): the operator's own mark,
+   *  `places.selected`, shipped by the EF. Never derived from Enriched,
+   *  ready and Listed; a Created place can carry it. Absent on a payload
+   *  that predates it — the table then says "unknown", never a false no. */
+  selected?: boolean;
   /** Operating (MESITA-1239): Google's businessStatus, verbatim. NULL = Google
    *  is silent, which is a third state and not OPERATIONAL. A FLAG, never a
    *  visibility gate — Listed above is the gate. */
@@ -137,6 +142,9 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     content_state: contentState,
     ...enrichmentView({ ...raw, content_state: contentState }),
     enriched_at: typeof raw.enriched_at === "string" ? raw.enriched_at : null,
+    // The operator's mark rides through only as the boolean the EF sent
+    // (MESITA-2707): a missing one stays missing, so factOn says "unknown".
+    ...(typeof raw.selected === "boolean" ? { selected: raw.selected } : {}),
     google_place_id: raw.google_place_id ?? null,
     seeded: raw.seeded ?? false,
     listed: raw.listed ?? false,

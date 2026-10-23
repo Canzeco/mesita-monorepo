@@ -134,23 +134,24 @@ export function mapPinIcon(
 }
 
 // Search pins — same hexes as the results-row dots. THE LAW (Pato,
-// 2026-10-12, MESITA-2158):
+// 2026-10-12, MESITA-2158; 2026-10-18, MESITA-2316):
 //
-//   red     Mesita Enriched Places  — enriched, we wrote a profile
-//   ink     Mesita Places           — ours, profile ready, not enriched yet
-//   gray    Google Places           — Google rows only
+//   red     Mesita Selected Places  — the operator's own mark
+//   gray    everything else         — a Mesita place without the mark and
+//                                     a Google row alike
 //
 // The paint IS the set law, not a second opinion about it:
 //
-//   Google Places ⊃ Mesita Places ⊃ Mesita Enriched Places
+//   Google Places ⊃ Mesita Places ⊃ Mesita Selected Places
 //
-// Red is EARNED by enrichment: Mesita Selected. Everything else on the map
-// is gray — a Google row and a Created place alike; the brand-ink middle
-// tone is gone (Pato, 2026-10-18, MESITA-2316). A Created place turns red
-// when an Enrich run completes.
+// Red is the operator's: Mesita Selected is `places.selected`, set from
+// Single Place and nowhere else (MESITA-2707; Pato: "selected is the manual
+// thing … independent of enrichment"). Until MESITA-2707 red was earned by
+// an Enrich run; enrichment now paints nothing on the map. The brand-ink
+// middle tone is gone (MESITA-2316).
 //
 // Blue is the guest's current location and is never a place pin.
-export const MAP_ENRICHED_PIN_COLOR = "#ff2357";
+export const MAP_MESITA_SELECTED_PIN_COLOR = "#ff2357";
 // Google grey is a TRUE neutral (chroma 0); the old #9ca3af was a cool
 // blue-grey that read as "disabled" on the map (MESITA-2469).
 export const MAP_GOOGLE_PIN_COLOR = "#a3a3a3";

@@ -55,11 +55,13 @@ describe("isEnrichedPlace — an Enrich run completed (MESITA-2154)", () => {
     expect(wire).toContain("isPlaceEnriched(");
     expect(wire).not.toContain("content_state");
 
-    // The Mesita Selected pool (Map and the Feed) cuts on the stamp in SQL.
+    // Mesita Selected is NOT enrichment (MESITA-2707): the Selected pool
+    // (Chat) cuts on the operator's mark in SQL and never on the stamp.
     const pool = fnBody(
       readFileSync(join(SHARED, "area-pipeline.ts"), "utf8"),
       "export function selectedPoolQuery",
     );
-    expect(pool).toContain('.not("enriched_at", "is", null)');
+    expect(pool).toContain('.eq("selected", true)');
+    expect(pool).not.toContain("enriched_at");
   });
 });

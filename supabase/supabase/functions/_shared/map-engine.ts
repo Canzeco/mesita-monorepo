@@ -3,9 +3,10 @@
 // Search allowlist for guest map, admin Google Search, Create, and Name
 // Google (Fast Autocomplete + Deep Text Search) via Map floors. The guest
 // has TWO SCOPES (MESITA-2298) over the three internal sets (Google
-// Places ⊃ Mesita Places ⊃ Mesita Enriched Places): Google Places is what
+// Places ⊃ Mesita Places ⊃ Mesita Selected Places): Google Places is what
 // Nearby returned inside `map.radiusKm`, a Mesita owner painting its hit;
-// Mesita Selected is the enriched, ready rows. Type batteries ride the
+// Mesita Selected is the rows the operator marked (`places.selected`,
+// MESITA-2707), never `enriched_at`. Type batteries ride the
 // Google call only. Floors exclude. The Google reviews minimum is the
 // operator's alone, `map.googleMinReviews` (MESITA-2417: the guest sheet is
 // gone), on Google hits after Google answers (`area-pipeline.ts`). Name Google

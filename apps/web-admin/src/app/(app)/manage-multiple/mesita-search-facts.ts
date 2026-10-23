@@ -33,11 +33,12 @@ export function factOn(
   // place must never read Enriched off either it or content_state.
   if (key === "enriched") return hit.enriched;
   if (key === "enriching") return hit.enriching;
-  // Mesita Selected (MESITA-2318): the Map/Feed gate — Enriched AND ready
-  // (area-pipeline's selectedPoolQuery) — and switched on, since a Disabled
-  // place reaches no guest.
+  // Mesita Selected (MESITA-2707): the operator's own mark, `places.selected`,
+  // shipped by the EF. Never derived — until MESITA-2707 it was Enriched AND
+  // ready AND Listed (MESITA-2318); now a Created place can carry it and an
+  // Enriched one need not. An older payload without it says "unknown".
   if (key === "selected") {
-    return hit.enriched && hit.content_state === "ready" && hit.listed;
+    return typeof hit.selected === "boolean" ? hit.selected : "unknown";
   }
   return "unknown";
 }
