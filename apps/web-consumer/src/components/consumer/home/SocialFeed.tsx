@@ -87,8 +87,9 @@
 // replaces MESITA-2583's liked-only list). The card shows the handle by a
 // like's rule, so it may show one a view row did not (decision,
 // MESITA-2609). AN X CLOSES IT (Pato, MESITA-2681: "add the X to close"),
-// and the history scrolls with no bar drawn over its photos ("fix the
-// scrolling bar").
+// A PLAIN GLYPH, NO DISC (Pato, MESITA-2709: "make a better X … its to bix
+// and looks like shit"), and the history scrolls with no bar drawn over its
+// photos ("fix the scrolling bar").
 
 import { useEffect, useRef, useState, type SVGProps } from "react";
 import Link from "next/link";
@@ -480,9 +481,10 @@ function cardInstagramLabel(person: ActivityPerson): string {
  *  a view row may open on a handle. Mesita first (MESITA-2594):
  *  Open Instagram is a small link under the list, not the card's main
  *  button. A masked handle ("per***") has no link; the card says how to see
- *  it. The route sheets' close disc sits in its top-right corner, inset by
- *  the card's own padding (MESITA-2681); the backdrop and Escape still
- *  close it too. */
+ *  it. A plain X sits in its top-right corner, the glyph alone at the
+ *  card's padding corner (MESITA-2681 drew the route sheets' 44px bordered
+ *  disc there; MESITA-2709 made it the bare glyph); the backdrop and
+ *  Escape still close it too. */
 function PersonCard({
   item,
   open,
@@ -510,11 +512,19 @@ function PersonCard({
       instant
     >
       <div className="p-5" data-social-person-card>
+        {/* A PLAIN X, NO DISC (Pato, MESITA-2709: "make a better X … its to
+            bix and looks like shit"; MESITA-2681 had drawn the route sheets'
+            44px bordered disc here, as wide as the photo beside it). Only
+            the 20px ink glyph shows, its box flush with the card's padding
+            corner (top-2 + 12px of the 44px button = the p-5 inset); the
+            44px tap target around it is invisible until a hover draws the
+            muted disc — the onboarding step bar's and the pin picker's own
+            close. */}
         <button
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="border-border bg-card text-foreground hover:bg-muted absolute top-5 right-5 z-10 flex h-11 w-11 items-center justify-center rounded-full border transition"
+          className="text-foreground hover:bg-muted focus-visible:ring-ring absolute top-2 right-2 z-10 flex h-11 w-11 items-center justify-center rounded-full transition outline-none focus-visible:ring-2"
           data-social-person-close
         >
           <X className="h-5 w-5" strokeWidth={2.25} aria-hidden />
