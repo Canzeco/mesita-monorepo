@@ -27,7 +27,6 @@ export function factOn(
   }
   // Disabled is the operator's off switch: places.state is not active.
   if (key === "disabled") return !hit.listed;
-  if (key === "requested") return hit.request_count > 0;
   // An Enrich run completed — `enriched_at` set (MESITA-2154). NOT the
   // high-water reaching 8: that is the completeness meter, and a Created
   // place must never read Enriched off either it or content_state.

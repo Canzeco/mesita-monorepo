@@ -44,6 +44,11 @@ Deno.test("overview returns the vote threshold", () => {
   assertEquals(CODE.includes("request_threshold: requestThreshold"), true);
 });
 
+Deno.test("overview carries Profile Stats from place_activity", () => {
+  assertEquals(CODE.includes("fetchPlaceProfileStats("), true);
+  assertEquals(CODE.includes("profile_stats: profileStats"), true);
+});
+
 Deno.test("the place row and its enrichment map are read together", () => {
   // One round trip for both (MESITA-1249): the State box's `enriched`
   // high-water must come from the same request as the row it sits on.

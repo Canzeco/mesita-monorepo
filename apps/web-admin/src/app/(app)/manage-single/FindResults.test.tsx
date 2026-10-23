@@ -240,9 +240,9 @@ describe("Find › one table", () => {
     for (const label of [
       "Created",
       "Pulsing",
-      "Requested",
       "Enriching",
       "Enriched",
+      "Selected",
       "Disabled",
     ]) {
       expect(html).toContain(`>${label}<`);
@@ -255,7 +255,6 @@ describe("Find › one table", () => {
     expect(html).not.toContain(">Details<");
     expect(html).not.toContain(">Serp<");
     expect(html).not.toContain(">Vectors<");
-    expect(html).toContain(">2<");
     expect(html).toContain(">yes<");
     expect(html).toContain(">no<");
     expect(html).not.toContain(">fail<");

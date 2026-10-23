@@ -6,6 +6,7 @@ import { getPlaceEnrichment, type AdminPlace } from "../actions";
 import { CopyIdButton, ReadField } from "@/components/admin-ui/manage";
 import { EnrichmentCard } from "./EnrichmentCard";
 import { StateCard } from "./StateCard";
+import { ProfileStatsCard } from "./ProfileStatsCard";
 import { ReviewsStateCard } from "./ReviewsStateCard";
 import { formatAbsoluteUtc } from "@/lib/format";
 
@@ -13,8 +14,9 @@ import { formatAbsoluteUtc } from "@/lib/format";
 //
 // Admin — two boxes (Pato, 2026-10-13, MESITA-2176; Partnership States went
 // with the MVP First Stage cut, MESITA-2115):
-//   Profile States      Created · Pulsing · Requested · Enriching ·
-//                         Enriched · Disabled. A place is enriching or
+//   Profile States      Created · Pulsing · Enriching · Enriched · Selected ·
+//                         Disabled. Profile Stats (Viewed · Saved) is its own
+//                         box (MESITA-2735). A place is enriching or
 //                         enriched. There is no step ladder.
 //   Reviews States      Google Found · Instagram Found · Facebook Found.
 //                         Yes or no. Stars and follower counts are display.
@@ -34,6 +36,7 @@ export function AdminSection({ place }: { place: AdminPlace }) {
     // Same masonry as the Place tab — columns pack top-down (MESITA-399).
     <div className={ADMIN_COLUMNS_CLASS}>
       <StateCard place={place} />
+      <ProfileStatsCard place={place} />
       <ReviewsStateCard place={place} />
       {/* key remounts the loader when the operator switches places. */}
       <EnrichmentCard key={`enrich-${place.id}`} place={place} />

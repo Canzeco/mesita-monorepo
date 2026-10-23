@@ -225,8 +225,7 @@ function AdminTabSkeleton() {
   return (
     <div className={ADMIN_COLUMNS_CLASS}>
       <span className="sr-only">Loading place</span>
-      {/* Profile States: Created · Pulsing · Requested · Enriching ·
-          Enriched · Selected · Disabled. The long details wrap. */}
+      {/* Profile States: six rows; Profile Stats: Viewed · Saved. */}
       <section aria-hidden className={SECTION_CARD_CLASS}>
         <CardHead title="w-28" />
         <div className="mt-5 flex flex-col">
@@ -234,9 +233,15 @@ function AdminTabSkeleton() {
           <StateRowSkeleton lines={2} />
           <StateRowSkeleton />
           <StateRowSkeleton />
-          <StateRowSkeleton />
           <StateRowSkeleton lines={2} />
           <StateRowSkeleton lines={2} action />
+        </div>
+      </section>
+      <section aria-hidden className={SECTION_CARD_CLASS}>
+        <CardHead title="w-28" />
+        <div className="mt-5 flex flex-col">
+          <StateRowSkeleton />
+          <StateRowSkeleton />
         </div>
       </section>
       {/* Reviews States: Google Found. */}

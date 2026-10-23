@@ -3,7 +3,7 @@
 // Profile States — the seven facts of a place (Pato, 2026-10-13, MESITA-2176;
 // Selected joined in MESITA-2318):
 //
-//   Created · Pulsing · Requested · Enriching · Enriched · Selected · Disabled
+//   Created · Pulsing · Enriching · Enriched · Selected · Disabled
 //
 // Enriching and Enriched are the only enrichment states. A live run is
 // enriching; the one finished write is enriched. Selected is the operator's
@@ -21,7 +21,6 @@
 //   Created    google_place_id present (identity spine)
 //   Pulsing    Google pulse — Google OPERATIONAL (not Crenup 1. Pulse)
 //   Disabled   places.state is not active — the operator's off switch
-//   Requested  guest request count, 0…n — not a Yes/No
 //   Enriching  a run is in flight (`content_state = generating`).
 //   Enriched   the one write landed — `enriched_at` set (MESITA-2154).
 //              A live run shows enriching, not enriched.
@@ -60,11 +59,7 @@ import { isEnrichedPlace } from "@/lib/place-enriched";
 import { ConfirmDialog, SectionCard } from "@/components/admin-ui/manage";
 import { usePlaceContext } from "../PlaceContext";
 import { ErrorNote } from "@/components/ErrorNote";
-import {
-  requestCountChip,
-  requestCountFromRow,
-  stateBoolChip,
-} from "@/lib/state-vocabulary";
+import { stateBoolChip } from "@/lib/state-vocabulary";
 // States box (Pato, 2026-08-25): bools. Enriching and Enriched are the two
 // enrichment states. Chips never repeat the row name.
 //
@@ -178,13 +173,6 @@ export function StateCard({ place }: { place: AdminPlace }) {
     : enriching
       ? "A run is in progress. The profile is written once, when it finishes."
       : "No Enrich run has completed — a Created profile is not enriched.";
-  const requestCount = requestCountFromRow(place.request_count);
-  const requestedDetail =
-    requestCount === "unknown"
-      ? "Couldn't read the request count."
-      : requestCount === 0
-        ? "No guest has requested this profile."
-        : `${requestCount} guest request${requestCount === 1 ? "" : "s"}.`;
   // Mesita Selected (MESITA-2707): the operator's own mark, `places.selected`,
   // read off the overview — never derived from Enriched, ready and Disabled
   // (that was MESITA-2318). Pato: "selected is the manual thing … independent
@@ -220,12 +208,6 @@ export function StateCard({ place }: { place: AdminPlace }) {
           on={operating === true}
           chip={stateBoolChip(operating)}
           detail={operatingDetail}
-        />
-        <StateRow
-          name="Requested"
-          on={requestCount !== "unknown" && requestCount > 0}
-          chip={requestCountChip(place.request_count)}
-          detail={requestedDetail}
         />
         <StateRow
           name="Enriching"
