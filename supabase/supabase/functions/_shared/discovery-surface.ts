@@ -179,13 +179,13 @@ export const DISCOVERY_SIGNALS: readonly DiscoverySignalFact[] = [
   {
     key: "proximity",
     label: "Proximity",
-    formula: "1 ÷ (1 + distance ÷ distance for half credit)",
+    formula: "1 ÷ (1 + distance ÷ (radius ÷ radius divisor))",
     requires: ["coordinates"],
     query: "A point location: the Map's cross, the device or a saved pin.",
     computation: "runtime",
     cost: "Local arithmetic, free.",
     missing: "No location: not used (n/a). No coordinates: 0.",
-    normalization: "0..1 by construction: 1 at the point, ½ at the operator's distance for half credit (default 10 km), ⅓ at twice it, never 0 (MESITA-2706). That distance never follows the request's radius: a tight Map screen is nearly flat and Popularity decides, Home's 15 km circle bites (0.40 at the edge). The radius only decides who is a candidate.",
+    normalization: "0..1 by construction: 1 at the point, ½ at the radius ÷ the operator's radius divisor (default 2, so halfway to the edge), 1 ÷ (1 + divisor) at the edge (⅓ by default) whatever the radius, never 0 (MESITA-2720). The radius is Home's circle or the Map's screen radius, so a tight screen sorts by distance as much as a wide one.",
   },
   {
     key: "popularity",
@@ -295,7 +295,7 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     factors: [
       "Selected (MESITA-2717): a Mesita Selected place's score × the operator's Selected factor (default 3; 1 is off), every other place's × 1.",
     ],
-    scoring: "The Map and Home: Proximity^a × Popularity^b × s, a and b the operator's Proximity and Popularity weights (MESITA-2703) and s the Selected factor for a Mesita Selected place, 1 for every other place (MESITA-2717), a plain product never clamped or normalized (MESITA-2710); Proximity is ½ at the operator's distance for half credit, the same inside the Map's screen radius and Home's circle (MESITA-2706), and the radius only gates. No location: Popularity^b × s. Chat ranks the same way inside the current-location radius. Ties break on distance, then id.",
+    scoring: "The Map and Home: Proximity^a × Popularity^b × s, a and b the operator's Proximity and Popularity weights (MESITA-2703) and s the Selected factor for a Mesita Selected place, 1 for every other place (MESITA-2717), a plain product never clamped or normalized (MESITA-2710); Proximity is ½ at the radius ÷ the operator's radius divisor, the Map's screen radius or Home's circle (MESITA-2720), and the radius also gates. No location: Popularity^b × s. Chat ranks the same way inside the current-location radius. Ties break on distance, then id.",
     keepsOrder: [],
     rules: [
       "Four sources, each switched on (20) or off (0) by the operator, Home and the Map alike: Google Popular (the prominent 20 in the circle), Google Closest (the nearest 20), Mesita Popular (the 20 with the highest Popularity^b × the Selected factor, the score without Proximity), Mesita Closest (the 20 nearest). They merge into one pool, deduped by Google Place ID (a Mesita place wins its own Google id), gated, scored and ranked before any page is cut. The guest never picks a source. Home and the Map show the top Places shown of that sorted pool (1–80, default 20, MESITA-2713). Before that cut, a place whose Popularity, ln(1 + reviews × stars), is under the Minimum Popularity (default 3; 0 is off, MESITA-2714) is dropped, Google or Mesita, Selected or not.",

@@ -10,10 +10,10 @@
 // (Pato, MESITA-2703: "sort them based on the two weights of proximity and
 // popularity"). Geometric weights, so only the ratio a : b changes the
 // order; 0 turns a signal off (x^0 = 1, an edge place with a = 0 scores
-// Popularity^b alone). Proximity is 1 ÷ (1 + distance ÷ halfKm): 1 at the
-// point, ½ at the operator's distance for half credit, never 0, the same
-// whatever the radius (MESITA-2706); the Radius gate alone decides who is
-// in. Popularity is ln(1 + reviews × stars), unbounded, and the product is
+// Popularity^b alone). Proximity is 1 ÷ (1 + distance ÷ H), H = radius ÷ k,
+// k the operator's radius divisor (MESITA-2720; a fixed H, MESITA-2706,
+// before): 1 at the point, ½ at H, 1 ÷ (1 + k) at the edge whatever the
+// radius, never 0; the Radius gate alone decides who is in. Popularity is ln(1 + reviews × stars), unbounded, and the product is
 // never clamped or normalized (MESITA-2710). s is the operator's Selected
 // factor (`map.selectedFactor`, default 3) for a Mesita Selected place and
 // 1 for every other place (Pato, MESITA-2717: "not select is 1, select is
@@ -26,7 +26,7 @@
 // ranked at 0. Gates: Family (every location) and Radius (a point: inside
 // the circle). Ties break on distance (a point only), then id.
 
-import { logPopularity, proximity } from "./pipeline-signals.ts";
+import { halfDistanceKm, logPopularity, proximity } from "./pipeline-signals.ts";
 import { haversineKm } from "./geo.ts";
 
 /** Where a candidate's card comes from. `selected` = Mesita Selected, the
@@ -52,9 +52,9 @@ export type AreaContext = {
   location: AreaLocation;
   /** Requested families; empty = no Family gate (every family passes). */
   families: readonly string[];
-  /** Proximity is ½ at this distance (km): the operator's
-   *  `params.proximity.halfKm`, fixed apart from the radius (MESITA-2706). */
-  halfKm: number;
+  /** Proximity is ½ at the location's radius ÷ this (MESITA-2720): the
+   *  operator's `params.proximity.radiusDivisor`. */
+  radiusDivisor: number;
   /** The two exponents. */
   weights: AreaWeights;
   /** The Popularity floor (MESITA-2714): a place whose Popularity is under
@@ -203,7 +203,9 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
   const radius = loc.kind === "point"
     ? (km !== null && km <= loc.radiusKm ? 1 : 0)
     : null;
-  const prox = loc.kind === "point" ? proximity(c, loc.anchor, ctx.halfKm) : null;
+  const prox = loc.kind === "point"
+    ? proximity(c, loc.anchor, halfDistanceKm(loc.radiusKm, ctx.radiusDivisor))
+    : null;
   const w = ctx.weights;
   const sel = selectedFactor(c, ctx);
   const popPart = popularPart(c, ctx);

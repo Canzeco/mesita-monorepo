@@ -230,7 +230,7 @@ Deno.test("google: a hit Mesita owns goes out as that row, once (dedup by gid)",
 
 Deno.test("google: the Area score is proximity × popularity; distance breaks ties", async () => {
   reset();
-  // D = 10 km (the default half-distance). near-quiet: proximity ≈ 1 ×
+  // H = radius ÷ 2 (the default divisor). near-quiet: proximity ≈ 1 ×
   // popularity 0.6 × 110/210 ≈ 0.31; far-loved (1.1 km): ≈ 0.90 × 0.98 ×
   // 5000/5100 ≈ 0.86.
   const g = stubGoogle([
@@ -453,9 +453,9 @@ Deno.test("selected: Chat ranks like the Map, a = map.proximityWeight (MESITA-26
   assertEquals(ids(selectMesitaSelected(rows, { ...selOpts, proximityWeight: 0 }))[0], "far-loved");
 });
 
-Deno.test("selected: the radius gates and the half-distance scores, so a wider circle keeps the same place in", () => {
-  // 5.6 km north: inside a 6 km circle and a 60 km one alike; its Proximity
-  // is the same on both (MESITA-2706), the circle only decides who is in.
+Deno.test("selected: a wider circle keeps the same place in", () => {
+  // 5.6 km north: inside a 6 km circle and a 60 km one alike; the circle
+  // decides who is in (its Proximity follows the radius, MESITA-2720).
   const row = mrow("mid", { lat: CENTER.lat + 0.05 });
   const narrow = selectMesitaSelected([row], { ...selOpts, radiusKm: 6 });
   const wide = selectMesitaSelected([row], { ...selOpts, radiusKm: 60 });
@@ -1197,7 +1197,7 @@ Deno.test("screen radius: no readable screen is null; a tiny screen is clamped",
   assertEquals(SCREEN_RADIUS_KM_MAX, 50);
 });
 
-Deno.test("screen radius: the circle gates Google, Proximity keeps its 10 km half-distance, Proximity^a × Popularity^b", async () => {
+Deno.test("screen radius: the circle gates Google and sets Proximity's half distance, Proximity^a × Popularity^b", async () => {
   reset();
   // 1 km circle: inside at ~0.56 km, outside at ~1.67 km.
   const g = stubGoogle([
@@ -1211,11 +1211,11 @@ Deno.test("screen radius: the circle gates Google, Proximity keeps its 10 km hal
     }).d);
     assertEquals(ids(out.places), ["g:inside"]);
     const a = out.places[0].area;
-    // 1 ÷ (1 + 0.556 ÷ 10): a tight screen is nearly flat (MESITA-2706).
-    assert(Math.abs((a.signals.proximity ?? 0) - 1 / (1 + 0.556 / 10)) < 0.01, String(a.signals.proximity));
+    // H = 1 km ÷ 2: 1 ÷ (1 + 0.556 ÷ 0.5), a tight screen still sorts by
+    // distance (MESITA-2720).
+    assert(Math.abs((a.signals.proximity ?? 0) - 1 / (1 + 0.556 / 0.5)) < 0.01, String(a.signals.proximity));
     assertEquals(a.weights, { proximity: 2, popularity: 1 });
-    // final = proximity^2 × popularity^1; the half-distance is the default
-    // 10 km, not the 1 km radius.
+    // final = proximity^2 × popularity^1.
     const want = (a.signals.proximity ?? 0) ** 2 * (a.signals.popularity ?? 0);
     assert(Math.abs(a.final - want) < 1e-9);
   } finally {

@@ -19,29 +19,40 @@ const clamp01 = (n: number) => (n <= 0 ? 0 : n >= 1 ? 1 : n);
 
 // ── Proximity ─────────────────────────────────────────────────────────────
 
-/** Distance for half credit (km): Proximity is ½ this far from the point.
- *  The operator's number (`params.proximity.halfKm`, MESITA-2706). 10 km is
- *  Centro ↔ San Pedro or Cumbres in Monterrey, a 20–30 minute drive. */
-export const PROXIMITY_HALF_KM_DEFAULT = 10;
-export const PROXIMITY_HALF_KM_MIN = 0.5;
-export const PROXIMITY_HALF_KM_MAX = 50;
+/** The radius divisor k (MESITA-2720): Proximity is ½ at radius ÷ k, so
+ *  an edge place scores 1 ÷ (1 + k) whatever the radius. The operator's
+ *  number (`params.proximity.radiusDivisor`); 2 puts half credit halfway to
+ *  the edge and the edge at ⅓, about the ×3 spread Popularity has between a
+ *  weak and a strong place, so neither signal drowns the other. */
+export const PROXIMITY_RADIUS_DIVISOR_DEFAULT = 2;
+export const PROXIMITY_RADIUS_DIVISOR_MIN = 0.5;
+export const PROXIMITY_RADIUS_DIVISOR_MAX = 10;
+
+/** Distance for half credit (km): the request's radius ÷ the divisor
+ *  (Pato, MESITA-2720: "the half distance parameter must be somehow
+ *  proportional to the search radius … so it's a division"). A divisor
+ *  that is not positive reads the default. */
+export function halfDistanceKm(radiusKm: number, divisor: number): number {
+  const k = Number.isFinite(divisor) && divisor > 0 ? divisor : PROXIMITY_RADIUS_DIVISOR_DEFAULT;
+  return radiusKm / k;
+}
 
 /**
  * proximity(d) = 1 ÷ (1 + d ÷ D), D = the distance for half credit
  * (MESITA-2706, Pato: the reciprocal; "la lineal no me gusta nada"): 1 at
  * the point, ½ at D, ⅓ at 2D, never 0. It replaced 1 − d ÷ radius
  * (MESITA-2347, MESITA-2703), which zeroed the edge of every circle, a 2 km
- * Map screen included. D is FIXED: it never follows the request's radius,
- * so a tight screen is nearly flat (Popularity decides) and Home's 15 km
- * circle bites (0.40 at the edge); the Radius gate alone decides who is a
- * candidate. A distance that is not a number cannot be placed, so it scores
- * 0; a D that is not positive reads the default, like Popularity's K.
+ * Map screen included. D follows the radius (MESITA-2720: D = radius ÷ k,
+ * `halfDistanceKm`); it was a fixed 10 km (MESITA-2706), which left a tight
+ * Map screen flat. The Radius gate alone decides who is a candidate. A
+ * distance that is not a number cannot be placed, so it scores 0; so does
+ * any distance past the point when D is not positive.
  */
 export function proximityFromDistance(distanceKm: number, halfKm: number): number {
   if (Number.isNaN(distanceKm) || distanceKm === Infinity) return 0;
   if (distanceKm <= 0) return 1;
-  const d = Number.isFinite(halfKm) && halfKm > 0 ? halfKm : PROXIMITY_HALF_KM_DEFAULT;
-  return clamp01(1 / (1 + distanceKm / d));
+  if (!(Number.isFinite(halfKm) && halfKm > 0)) return 0;
+  return clamp01(1 / (1 + distanceKm / halfKm));
 }
 
 /**

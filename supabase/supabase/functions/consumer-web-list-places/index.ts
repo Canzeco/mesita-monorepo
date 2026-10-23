@@ -25,8 +25,8 @@
 // read is boxed to it and the Radius gate drops what lies past it, Google's
 // calls ask the prominent 20 inside it first and eligibility drops the rest
 // (Pato: "I son't want to see stuff beyond my screen"). The score is
-// Proximity^a × Popularity^b × the Selected factor, Proximity ½ at the
-// operator's distance for half credit whatever R is (MESITA-2706); `a` and
+// Proximity^a × Popularity^b × the Selected factor, Proximity ½ at R ÷ the
+// operator's radius divisor (MESITA-2720); `a` and
 // `b` are the operator's `map.proximityWeight` and `map.popularityWeight`,
 // the factor `map.selectedFactor` on a Selected place (MESITA-2717). The family chip gates;
 // the guest picks no mode, so `prefer` is ignored. No bounds, or a box wider

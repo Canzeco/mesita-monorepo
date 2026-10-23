@@ -18,8 +18,8 @@
 // Each source is `map.<key>` 0 or 20 (`AREA_SOURCE_KEYS`). Gates: Family ·
 // Radius, plus the operational ones the sources apply (active, ready, the
 // Google reviews floor `map.googleMinReviews` on Google hits). Score:
-// area-score.ts; Proximity is ½ at the operator's `params.proximity.halfKm`,
-// whatever the radius (MESITA-2706).
+// area-score.ts; Proximity is ½ at the radius ÷ the operator's
+// `params.proximity.radiusDivisor` (MESITA-2720).
 //
 // Fail closed on money: no key, no point, no types, a quota refusal or a
 // Google error buy nothing; an owned-lookup error drops the Google side (no
@@ -62,7 +62,7 @@ import {
   popularPart,
   rankArea,
 } from "./area-score.ts";
-import { logPopularity, PROXIMITY_HALF_KM_DEFAULT } from "./pipeline-signals.ts";
+import { logPopularity, PROXIMITY_RADIUS_DIVISOR_DEFAULT } from "./pipeline-signals.ts";
 import {
   AREA_SOURCE_KEYS,
   type AreaSourceKey,
@@ -103,20 +103,20 @@ export function areaWeights(
   return { proximity: map.proximityWeight, popularity: map.popularityWeight };
 }
 
-/** Proximity's half distance, the two exponents, the Popularity floor and
- *  the Selected factor, from the blob. The radius is not here: it gates, it
- *  never scores (MESITA-2706). Popularity takes no parameter (MESITA-2710:
- *  ln(1 + reviews × stars)). */
+/** Proximity's radius divisor, the two exponents, the Popularity floor and
+ *  the Selected factor, from the blob. The radius is the request's: it
+ *  gates, and ÷ the divisor it is the half distance (MESITA-2720).
+ *  Popularity takes no parameter (MESITA-2710: ln(1 + reviews × stars)). */
 export function areaSignalParams(
   params: SignalParams,
   map: Pick<DiscoveryConfig["map"], "proximityWeight" | "popularityWeight"> & {
     popularityFloor?: number;
     selectedFactor?: number;
   },
-): Pick<AreaContext, "halfKm" | "weights" | "popularityFloor" | "selectedFactor"> {
-  const halfKm = params.proximity?.halfKm;
+): Pick<AreaContext, "radiusDivisor" | "weights" | "popularityFloor" | "selectedFactor"> {
+  const k = params.proximity?.radiusDivisor;
   return {
-    halfKm: typeof halfKm === "number" && Number.isFinite(halfKm) ? halfKm : PROXIMITY_HALF_KM_DEFAULT,
+    radiusDivisor: typeof k === "number" && Number.isFinite(k) && k > 0 ? k : PROXIMITY_RADIUS_DIVISOR_DEFAULT,
     weights: areaWeights(map),
     // The Popularity floor (MESITA-2714), a gate on every Area caller.
     popularityFloor: map.popularityFloor,
@@ -752,8 +752,8 @@ export function selectMesitaSelected<T extends Record<string, unknown>>(
     {
       location,
       families: opts.families ?? [],
-      // The same half points and exponents as Home and the Map
-      // (MESITA-2703, MESITA-2706); the radius only gates.
+      // The same divisor and exponents as Home and the Map (MESITA-2703,
+      // MESITA-2720): half credit at the current-location radius ÷ k.
       ...areaSignalParams(opts.params, opts),
     },
   );
