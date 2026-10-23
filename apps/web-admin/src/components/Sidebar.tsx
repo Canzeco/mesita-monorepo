@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { MesitaMark } from "@/components/brand/MesitaMark";
+import { ANALYTICS_PARENT } from "@/app/(app)/analytics/nav";
 import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
 import { LOGS_PARENT } from "@/app/(app)/logs/nav";
 import { DB_PARENT } from "@/app/(app)/manage-database/nav";
@@ -114,9 +115,11 @@ export const CONFIGURATIONS_NAV: NavItem[] = [
   RESERVATIONS_PARENT,
 ];
 
-// Testing — operator tools that probe live systems rather than configure them.
-// Logs reads the enrichment workflow. It is not an alert feed.
-const TESTING_NAV: NavItem[] = [BILLING_TEST_PARENT, LOGS_PARENT];
+// Activity — platform observability (MESITA-2745): counters, feed, breakdowns.
+export const ACTIVITY_NAV: NavItem[] = [LOGS_PARENT, ANALYTICS_PARENT];
+
+// Testing — operator tools that probe live external systems (Billing only).
+const TESTING_NAV: NavItem[] = [BILLING_TEST_PARENT];
 
 // The first group is deliberately unlabelled: a heading reading "Account" above
 // a lone "Account" link is the redundancy this menu is trying to shed.
@@ -128,6 +131,7 @@ const SIDEBAR_SECTIONS: {
   { id: "primary", label: null, items: PRIMARY_NAV },
   { id: "manage", label: "Manage", items: MANAGE_NAV },
   { id: "configurations", label: "Configurations", items: CONFIGURATIONS_NAV },
+  { id: "activity", label: "Activity", items: ACTIVITY_NAV },
   { id: "testing", label: "Testing", items: TESTING_NAV },
 ];
 

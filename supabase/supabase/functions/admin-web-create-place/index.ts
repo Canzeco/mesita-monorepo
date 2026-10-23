@@ -34,6 +34,7 @@ import { adminClient, getAuthedUser, readEFEnv, requireSuperAdmin } from "../_sh
 import { createMinimalPlace } from "../_shared/create-place.ts";
 import { normalizeEnrichmentConfig } from "../_shared/enrichment-config.ts";
 import { readAppConfig } from "../_shared/write-config.ts";
+import { recordAdminOperatorEvent } from "../_shared/admin-operator-events.ts";
 
 type Body = { placeId?: string; onOpen?: boolean };
 
@@ -70,6 +71,13 @@ Deno.serve(async (req) => {
       creation.row?.enrichment_config,
     ).atlasCreateOnOpenAdmin;
     if (!createOnOpen) {
+      await recordAdminOperatorEvent(admin, {
+        verb: "create",
+        outcome: "failed",
+        actorUserId: authRes.user.id,
+        source: "admin-web-create-place",
+        detail: { code: "create_on_open_off", googlePlaceId: placeId },
+      });
       return json(
         {
           ok: false,
@@ -86,7 +94,28 @@ Deno.serve(async (req) => {
     callerName: "admin-web-create-place",
     googlePlaceId: placeId,
   });
-  if (!created.ok) return json(created.body, created.status);
+  if (!created.ok) {
+    await recordAdminOperatorEvent(admin, {
+      verb: "create",
+      outcome: "failed",
+      actorUserId: authRes.user.id,
+      source: "admin-web-create-place",
+      detail: {
+        code: (created.body as { code?: string }).code ?? "create_failed",
+        googlePlaceId: placeId,
+      },
+    });
+    return json(created.body, created.status);
+  }
+
+  await recordAdminOperatorEvent(admin, {
+    verb: "create",
+    outcome: "succeeded",
+    placeId: created.place.id,
+    actorUserId: authRes.user.id,
+    source: "admin-web-create-place",
+    detail: { googlePlaceId: placeId },
+  });
 
   // `place` is the legacy alias for pre-rename admin-web builds.
   return json(

@@ -388,6 +388,10 @@ verify_jwt = true
 [functions.admin-web-list-place-opens]
 verify_jwt = true
 
+# Activity counters, breakdowns, and feed (MESITA-2745). Super-admin only.
+[functions.admin-web-get-activity-summary]
+verify_jwt = true
+
 [functions.admin-web-grant-admin]
 verify_jwt = true
 

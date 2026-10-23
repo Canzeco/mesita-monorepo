@@ -1,7 +1,8 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { CONFIGURATIONS_NAV, MANAGE_NAV } from "./Sidebar";
+import { ACTIVITY_NAV, CONFIGURATIONS_NAV, MANAGE_NAV } from "./Sidebar";
+import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
 
 const APP = join(__dirname, "..", "app", "(app)");
 
@@ -33,6 +34,25 @@ describe("Configurations rail", () => {
 
 // Pato, MESITA-2084, on the rail with Places highlighted: "Multiple Places /
 // Single Place". Many then one, after the two wider records.
+describe("Activity rail", () => {
+  it("is exactly Logs · Analytics", () => {
+    expect(ACTIVITY_NAV.map((i) => i.label)).toEqual(["Logs", "Analytics"]);
+  });
+
+  it("gives each row its own page", () => {
+    const hrefs = ACTIVITY_NAV.map((i) => i.href);
+    expect(new Set(hrefs).size).toBe(hrefs.length);
+    for (const href of ["/logs", "/analytics"])
+      expect(existsSync(join(APP, ...href.split("/").filter(Boolean), "page.tsx")), href).toBe(true);
+  });
+});
+
+describe("Testing rail", () => {
+  it("is Billing Test only", () => {
+    expect(BILLING_TEST_PARENT.label).toBe("Billing");
+  });
+});
+
 describe("Manage rail", () => {
   it("is exactly Admins · Guests · Database · Multiple Places · Single Place", () => {
     expect(MANAGE_NAV.map((i) => i.label)).toEqual([

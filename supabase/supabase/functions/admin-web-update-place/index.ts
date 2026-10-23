@@ -57,6 +57,7 @@ import {
   subprocessesFor,
 } from "../_shared/enrich-triggers.ts";
 import { persistBusinessFieldPins } from "../_shared/field-correction-writer.ts";
+import { recordAdminOperatorEvent } from "../_shared/admin-operator-events.ts";
 
 const MAX_PHOTOS = ENRICH_FIELD_LIMITS.photos.max;
 const MAX_TAGS = ENRICH_FIELD_LIMITS.tagsPerPlace.max;
@@ -245,6 +246,14 @@ Deno.serve(async (req) => {
   });
 
   if (!updRes.ok) {
+    await recordAdminOperatorEvent(admin, {
+      verb: "edit",
+      outcome: "failed",
+      placeId,
+      actorUserId: authRes.user.id,
+      source: "admin-web-update-place",
+      detail: { error: updRes.error, code: updRes.code ?? null },
+    });
     return json(
       {
         ok: false,
@@ -302,6 +311,15 @@ Deno.serve(async (req) => {
   const familyStored = families.length > 0
     ? resolveStoredFamily(row.family_keys, families)
     : undefined;
+
+  await recordAdminOperatorEvent(admin, {
+    verb: "edit",
+    outcome: "succeeded",
+    placeId,
+    actorUserId: authRes.user.id,
+    source: "admin-web-update-place",
+    detail: { fields: Object.keys(update) },
+  });
 
   return json({ ok: true, place, family, familyStored });
 });

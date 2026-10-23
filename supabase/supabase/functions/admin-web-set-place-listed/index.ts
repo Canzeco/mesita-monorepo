@@ -48,6 +48,7 @@ import {
 import { PLACE_PROFILE_COLUMNS } from "../_shared/place-columns.ts";
 import { writePlace } from "../_shared/place-doc.ts";
 import { isPlaceListed } from "../_shared/place-state.ts";
+import { recordAdminOperatorEvent } from "../_shared/admin-operator-events.ts";
 
 /** Where an unlist lands — outside the visible set, and reversible. */
 const UNLISTED_STATE = "paused";
@@ -131,6 +132,15 @@ Deno.serve(async (req) => {
       actor: authRes.user.email ?? authRes.user.id,
     }),
   );
+
+  await recordAdminOperatorEvent(admin, {
+    verb: "edit",
+    outcome: "succeeded",
+    placeId,
+    actorUserId: authRes.user.id,
+    source: "admin-web-set-place-listed",
+    detail: { action: listed ? "list" : "unlist", from: currentState, to: nextState },
+  });
 
   const { data: place, error: readError } = await admin
     .from("profiles")
