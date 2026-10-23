@@ -146,6 +146,10 @@ const MAP_RADIUS_KM_DEFAULT = 15;
 export const MAP_PLACES_SHOWN_MIN = 1;
 export const MAP_PLACES_SHOWN_MAX = 80;
 const MAP_PLACES_SHOWN_DEFAULT = 20;
+/** Mirrors MAP_POPULARITY_FLOOR_* in _shared/discovery-config.ts (MESITA-2714). */
+export const MAP_POPULARITY_FLOOR_MIN = 0;
+export const MAP_POPULARITY_FLOOR_MAX = 20;
+const MAP_POPULARITY_FLOOR_DEFAULT = 3;
 /** Mirrors MAP_PROXIMITY_WEIGHT_* in _shared/discovery-config.ts. */
 export const MAP_PROXIMITY_WEIGHT_MIN = 0;
 export const MAP_PROXIMITY_WEIGHT_MAX = 5;
@@ -181,6 +185,8 @@ export type MapConfig = {
   popularityWeight: number;
   /** How many sorted places Home and the Map show, 1..80 (MESITA-2713). */
   placesShown: number;
+  /** The Popularity floor, ln units, 0..20, default 3; 0 = off (MESITA-2714). */
+  popularityFloor: number;
 };
 
 /**
@@ -474,6 +480,7 @@ export const DEFAULT_MAP: MapConfig = {
   proximityWeight: MAP_PROXIMITY_WEIGHT_DEFAULT,
   popularityWeight: MAP_PROXIMITY_WEIGHT_DEFAULT,
   placesShown: MAP_PLACES_SHOWN_DEFAULT,
+  popularityFloor: MAP_POPULARITY_FLOOR_DEFAULT,
 };
 
 const DEFAULT_NAME_FAST: NameFastConfig = {
@@ -752,5 +759,9 @@ function coerceMap(raw: unknown): MapConfig {
     placesShown: Math.round(
       num(m.placesShown, DEFAULT_MAP.placesShown, MAP_PLACES_SHOWN_MIN, MAP_PLACES_SHOWN_MAX),
     ),
+    popularityFloor:
+      Math.round(
+        num(m.popularityFloor, DEFAULT_MAP.popularityFloor, MAP_POPULARITY_FLOOR_MIN, MAP_POPULARITY_FLOOR_MAX) * 10,
+      ) / 10,
   };
 }

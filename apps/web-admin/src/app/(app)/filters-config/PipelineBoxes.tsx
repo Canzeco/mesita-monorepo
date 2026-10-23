@@ -23,6 +23,8 @@ import {
   HALF_KM_MAX,
   HALF_KM_MIN,
   MAP_PLACES_SHOWN_MAX,
+  MAP_POPULARITY_FLOOR_MAX,
+  MAP_POPULARITY_FLOOR_MIN,
   MAP_PLACES_SHOWN_MIN,
   MAP_PROXIMITY_WEIGHT_MAX,
   MAP_PROXIMITY_WEIGHT_MIN,
@@ -422,6 +424,15 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             onChange={(popularityWeight) => map({ popularityWeight })}
           />
           <NumberField
+            label="Minimum Popularity"
+            value={cfg.map.popularityFloor}
+            min={MAP_POPULARITY_FLOOR_MIN}
+            max={MAP_POPULARITY_FLOOR_MAX}
+            decimals
+            disabled={off}
+            onChange={(popularityFloor) => map({ popularityFloor })}
+          />
+          <NumberField
             label="Distance for half credit (km)"
             value={params.proximity.halfKm}
             min={HALF_KM_MIN}
@@ -436,7 +447,10 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           above 1 sharpens it, 0 ignores it. Proximity is 1 ÷ (1 + distance ÷
           half credit): 1 at the point, ½ at that many km, ⅓ at twice it,
           never 0, and the same whatever the radius (the radius only decides
-          who is in). Popularity is ln(1 + reviews × stars), never normalized:
+          who is in). A place whose Popularity is under the Minimum
+          Popularity (now {cfg.map.popularityFloor}; 0 is off) never shows on
+          Home, the Map or Chat, Google or Mesita, whatever its score: 3 is
+          about 4★ × 5 reviews. Popularity is ln(1 + reviews × stars), never normalized:
           4.6★ × 1,000 reviews ≈ 8.4, 4.0★ × 30 ≈ 4.8; a place with no Google
           numbers scores 0 and sinks, never disappears. The score is the plain
           product Proximity<sup>a</sup> × Popularity<sup>b</sup>.
