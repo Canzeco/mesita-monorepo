@@ -44,12 +44,8 @@ Deno.serve(async (req) => {
   const placeId = readPlaceIdAlias(bodyRes.body);
   if (!placeId) return json({ ok: false, error: "placeId is required" }, 400);
 
-  const supabaseUrl = envRes.env.get("SUPABASE_URL")?.trim() ?? "";
-  if (!supabaseUrl) return json({ ok: false, error: "SUPABASE_URL is not configured" }, 500);
-
   const result = await runGooglePlaceUpdate(admin, placeId, {
-    supabaseUrl,
-    env: envRes.env,
+    supabaseUrl: envRes.env.url,
   });
   if (!result.ok) {
     return json(
