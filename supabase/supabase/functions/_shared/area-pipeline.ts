@@ -60,7 +60,7 @@ import {
   type LatLng,
   rankArea,
 } from "./area-score.ts";
-import { POPULARITY_HALF_REVIEWS_DEFAULT, popularity, PROXIMITY_HALF_KM_DEFAULT } from "./pipeline-signals.ts";
+import { logPopularity, PROXIMITY_HALF_KM_DEFAULT } from "./pipeline-signals.ts";
 import {
   AREA_SOURCE_KEYS,
   type AreaSourceKey,
@@ -100,17 +100,15 @@ export function areaWeights(
   return { proximity: map.proximityWeight, popularity: map.popularityWeight };
 }
 
-/** The two half points (Proximity's distance, Popularity's reviews) and the
- *  two exponents, from the blob. The radius is not here: it gates, it never
- *  scores (MESITA-2706). */
+/** Proximity's half distance and the two exponents, from the blob. The
+ *  radius is not here: it gates, it never scores (MESITA-2706). Popularity
+ *  takes no parameter (MESITA-2710: ln(1 + reviews × stars)). */
 export function areaSignalParams(
   params: SignalParams,
   map: Pick<DiscoveryConfig["map"], "proximityWeight" | "popularityWeight">,
-): Pick<AreaContext, "halfReviews" | "halfKm" | "weights"> {
-  const half = params.popularity?.halfReviews;
+): Pick<AreaContext, "halfKm" | "weights"> {
   const halfKm = params.proximity?.halfKm;
   return {
-    halfReviews: typeof half === "number" && Number.isFinite(half) ? half : POPULARITY_HALF_REVIEWS_DEFAULT,
     halfKm: typeof halfKm === "number" && Number.isFinite(halfKm) ? halfKm : PROXIMITY_HALF_KM_DEFAULT,
     weights: areaWeights(map),
   };
@@ -496,6 +494,9 @@ async function googleItems<T extends OwnedRow>(
   });
 }
 
+/** `map.placesShown` when a caller's cfg predates it. */
+const AREA_PLACES_SHOWN_FALLBACK = 20;
+
 /** One Mesita source's pick: at most 20 rows that clear the gates. */
 const MESITA_SOURCE_MAX = 20;
 
@@ -530,7 +531,7 @@ function mesitaItems<T extends OwnedRow>(
   if (wantPopular) {
     const top = [...open]
       .sort((a, b) =>
-        popularity(b.item.candidate, ctx.halfReviews) - popularity(a.item.candidate, ctx.halfReviews) ||
+        logPopularity(b.item.candidate) - logPopularity(a.item.candidate) ||
         byId(a, b)
       )
       .slice(0, MESITA_SOURCE_MAX);
@@ -594,10 +595,13 @@ export async function selectAreaPool<T extends OwnedRow>(
     else for (const k of item.foundBy) seen.foundBy.add(k);
   }
 
+  // The operator's cut (MESITA-2713): the top `map.placesShown` of the
+  // merged, sorted pool (up to 80 = 4 sources × 20).
+  const shown = deps.cfg.map.placesShown ?? AREA_PLACES_SHOWN_FALLBACK;
   const ranked = primaryFirst(
     rankArea([...byId.values()], (item) => item.candidate, ctx),
     deps.families,
-  );
+  ).slice(0, Math.max(0, shown));
   const places = ranked.map(({ item, area }) => {
     const { distanceKm: _km, ...diagnostics } = area;
     const foundBy = AREA_SOURCE_KEYS.filter((k) => item.foundBy.has(k));

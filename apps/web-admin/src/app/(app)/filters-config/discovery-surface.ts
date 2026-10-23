@@ -190,13 +190,13 @@ export const DISCOVERY_SIGNALS: readonly DiscoverySignalFact[] = [
   {
     key: "popularity",
     label: "Popularity",
-    formula: "(rating ÷ 5) × reviews ÷ (reviews + reviews for half credit)",
+    formula: "ln(1 + reviews × stars)",
     requires: ["rating", "review_count"],
     query: "Nothing.",
     computation: "runtime",
     cost: "Local arithmetic over stored numbers, free.",
     missing: "No rating or no review count: 0 (shown as n/a). There is no new-place prior; that lowers the place, it never removes it.",
-    normalization: "0..1 by construction: rating counts linearly (a 3★ place is 60% of a 5★ one) and volume saturates, ½ at the half-credit count, never 1.",
+    normalization: "None, on purpose (Pato, MESITA-2710: \"popularity can be above 1, it must not be normalized\"): 4.6★ × 1,000 reviews ≈ 8.4, 4.0★ × 30 ≈ 4.8. The 1 + keeps a place with no reviews at 0. The score is a plain product, Proximity^a × Popularity^b, never clamped.",
   },
 ];
 
@@ -292,10 +292,10 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     signals: ["proximity", "popularity"],
     gates: ["family", "radius"],
     factors: [],
-    scoring: "The Map and Home: Proximity^a × Popularity^b, a and b the operator's Proximity and Popularity weights (MESITA-2703); Proximity is ½ at the operator's distance for half credit, the same inside the Map's screen radius and Home's circle (MESITA-2706), and the radius only gates. No location: Popularity^b. Chat ranks the same way inside the current-location radius. Ties break on distance, then id.",
+    scoring: "The Map and Home: Proximity^a × Popularity^b, a and b the operator's Proximity and Popularity weights (MESITA-2703), a plain product never clamped or normalized (MESITA-2710); Proximity is ½ at the operator's distance for half credit, the same inside the Map's screen radius and Home's circle (MESITA-2706), and the radius only gates. No location: Popularity^b. Chat ranks the same way inside the current-location radius. Ties break on distance, then id.",
     keepsOrder: [],
     rules: [
-      "Four sources, each switched on (20) or off (0) by the operator, Home and the Map alike: Google Popular (the prominent 20 in the circle), Google Closest (the nearest 20), Mesita Popular (the 20 with the highest Popularity), Mesita Closest (the 20 nearest). They merge into one pool, deduped by Google Place ID (a Mesita place wins its own Google id), gated, scored and ranked before any page is cut. The guest never picks a source.",
+      "Four sources, each switched on (20) or off (0) by the operator, Home and the Map alike: Google Popular (the prominent 20 in the circle), Google Closest (the nearest 20), Mesita Popular (the 20 with the highest Popularity), Mesita Closest (the 20 nearest). They merge into one pool, deduped by Google Place ID (a Mesita place wins its own Google id), gated, scored and ranked before any page is cut. The guest never picks a source. Home and the Map show the top Places shown of that sorted pool (1–80, default 20, MESITA-2713).",
       "Closed places never show (Discovery › General's active check). Mesita rows must be ready.",
       "Google hits only: the operator's Minimum Google reviews (below); the guest has no reviews filter (MESITA-2417). Mesita rows have no review floor.",
       "Google calls: one billed Nearby call per Google source switched on, so 0 to 2 per load on the Map and on Home. The reviews floor cuts each call's hits after Google bills them. A place two calls return counts once.",
