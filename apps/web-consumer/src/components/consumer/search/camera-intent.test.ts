@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  cameraMovedShare,
   cameraStep,
   clampReloadIdleSec,
+  clampReloadMinViewportPct,
   gpsFixMovesCamera,
   isTargetVisible,
   isUnderSight,
   RELOAD_IDLE_SEC_DEFAULT,
+  RELOAD_MIN_VIEWPORT_PCT_DEFAULT,
+  reloadMoveMeetsMin,
   reloadWaitMs,
   sameCamera,
   selectionMovesCamera,
@@ -180,6 +184,67 @@ describe("idle reload", () => {
     expect(reloadWaitMs(10_000, 12_000, 1500)).toBe(0);
     // Inside the gap: only the rest of it.
     expect(reloadWaitMs(10_000, 10_400, 1500)).toBe(1100);
+  });
+
+  it("defaults the min screen move to 15% and clamps 0..50 (MESITA-2732)", () => {
+    expect(RELOAD_MIN_VIEWPORT_PCT_DEFAULT).toBe(15);
+    expect(clampReloadMinViewportPct(undefined)).toBe(15);
+    expect(clampReloadMinViewportPct(Number.NaN)).toBe(15);
+    expect(clampReloadMinViewportPct(-4)).toBe(0);
+    expect(clampReloadMinViewportPct(99)).toBe(50);
+    expect(clampReloadMinViewportPct(12.26)).toBe(12.3);
+  });
+
+  it("a millimetre pan is under the min; 15% of the last-reload screen is enough", () => {
+    const height = VIEW.north - VIEW.south;
+    const twitch = {
+      ...VIEW,
+      south: VIEW.south + height * 0.01,
+      north: VIEW.north + height * 0.01,
+    };
+    const enough = {
+      ...VIEW,
+      south: VIEW.south + height * 0.15,
+      north: VIEW.north + height * 0.15,
+    };
+    expect(cameraMovedShare(VIEW, twitch)).toBeCloseTo(0.01, 5);
+    expect(reloadMoveMeetsMin(VIEW, twitch, 15)).toBe(false);
+    expect(reloadMoveMeetsMin(VIEW, enough, 15)).toBe(true);
+    // 0% is MESITA-2451: any guest move.
+    expect(reloadMoveMeetsMin(VIEW, twitch, 0)).toBe(true);
+    // No last-reload view yet: the first load already happened.
+    expect(reloadMoveMeetsMin(null, twitch, 15)).toBe(true);
+  });
+
+  it("successive small pans accumulate against the last reload, not the last idle", () => {
+    const height = VIEW.north - VIEW.south;
+    const first = {
+      ...VIEW,
+      south: VIEW.south + height * 0.08,
+      north: VIEW.north + height * 0.08,
+    };
+    const second = {
+      ...VIEW,
+      south: VIEW.south + height * 0.16,
+      north: VIEW.north + height * 0.16,
+    };
+    expect(reloadMoveMeetsMin(VIEW, first, 15)).toBe(false);
+    expect(reloadMoveMeetsMin(VIEW, second, 15)).toBe(true);
+    // Measuring from the last idle would never fire; we do not.
+    expect(reloadMoveMeetsMin(first, second, 15)).toBe(false);
+  });
+
+  it("a zoom that scales the view by the min share also reloads", () => {
+    const height = VIEW.north - VIEW.south;
+    const width = VIEW.east - VIEW.west;
+    const pinch = {
+      south: VIEW.south + height * 0.075,
+      north: VIEW.north - height * 0.075,
+      west: VIEW.west + width * 0.075,
+      east: VIEW.east - width * 0.075,
+    };
+    expect(cameraMovedShare(VIEW, pinch)).toBeCloseTo(0.15, 5);
+    expect(reloadMoveMeetsMin(VIEW, pinch, 15)).toBe(true);
   });
 });
 

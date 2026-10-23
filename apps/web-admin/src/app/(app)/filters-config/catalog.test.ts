@@ -147,6 +147,10 @@ describe("coerceConfig", () => {
     expect(coerceConfig({ map: { reloadIdleSec: 0.1 } }).map.reloadIdleSec).toBe(0.5);
     expect(coerceConfig({ map: { reloadIdleSec: 99 } }).map.reloadIdleSec).toBe(10);
     expect(coerceConfig({ map: { reloadIdleSec: 2.25 } }).map.reloadIdleSec).toBe(2.25);
+    expect(coerceConfig({}).map.reloadMinViewportPct).toBe(15);
+    expect(coerceConfig({ map: { reloadMinViewportPct: -4 } }).map.reloadMinViewportPct).toBe(0);
+    expect(coerceConfig({ map: { reloadMinViewportPct: 99 } }).map.reloadMinViewportPct).toBe(50);
+    expect(coerceConfig({ map: { reloadMinViewportPct: 12.26 } }).map.reloadMinViewportPct).toBe(12.3);
   });
 
   it("coerceConfig drops the retired social box (MESITA-2144)", () => {

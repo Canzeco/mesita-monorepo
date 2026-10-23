@@ -159,6 +159,10 @@ const MAP_SELECTED_FACTOR_DEFAULT = 3;
 export const MAP_RELOAD_IDLE_SEC_MIN = 0.5;
 export const MAP_RELOAD_IDLE_SEC_MAX = 10;
 const MAP_RELOAD_IDLE_SEC_DEFAULT = 1.5;
+/** Mirrors MAP_RELOAD_MIN_VIEWPORT_PCT_* in _shared/discovery-config.ts (MESITA-2732). */
+export const MAP_RELOAD_MIN_VIEWPORT_PCT_MIN = 0;
+export const MAP_RELOAD_MIN_VIEWPORT_PCT_MAX = 50;
+const MAP_RELOAD_MIN_VIEWPORT_PCT_DEFAULT = 15;
 
 export type MapConfig = {
   minRating: number;
@@ -167,6 +171,9 @@ export type MapConfig = {
   /** The Map reloads when it rests, at most once every this many seconds
    *  (MESITA-2444). */
   reloadIdleSec: number;
+  /** Min share of the last-reload screen a guest move must cover before
+   *  rest-reload (MESITA-2732). 0 = any move. */
+  reloadMinViewportPct: number;
   /** The four Area sources (MESITA-2703), 0 or 20 each, Home and the Map. */
   googlePopular: number;
   googleClosest: number;
@@ -469,6 +476,7 @@ export const DEFAULT_MAP: MapConfig = {
   minReviews: 0,
   minPopularity: 0,
   reloadIdleSec: MAP_RELOAD_IDLE_SEC_DEFAULT,
+  reloadMinViewportPct: MAP_RELOAD_MIN_VIEWPORT_PCT_DEFAULT,
   googlePopular: AREA_SOURCE_ON,
   googleClosest: AREA_SOURCE_ON,
   mesitaPopular: AREA_SOURCE_ON,
@@ -728,6 +736,15 @@ function coerceMap(raw: unknown): MapConfig {
       Math.round(
         num(m.reloadIdleSec, DEFAULT_MAP.reloadIdleSec, MAP_RELOAD_IDLE_SEC_MIN, MAP_RELOAD_IDLE_SEC_MAX) * 100,
       ) / 100,
+    reloadMinViewportPct:
+      Math.round(
+        num(
+          m.reloadMinViewportPct,
+          DEFAULT_MAP.reloadMinViewportPct,
+          MAP_RELOAD_MIN_VIEWPORT_PCT_MIN,
+          MAP_RELOAD_MIN_VIEWPORT_PCT_MAX,
+        ) * 10,
+      ) / 10,
     // Rebuilt key by key: a retired key (`googlePull`, `pinCount`, `supers`,
     // the reload km/sec pair, the 20/40/60 stops, `googleFill`) is dropped
     // on the next save.

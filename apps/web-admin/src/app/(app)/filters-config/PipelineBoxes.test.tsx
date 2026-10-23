@@ -91,13 +91,15 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
     // 3 Name by Admin + 4 Name + 2 Area (current-location radius, the
     // radius divisor; the reviews minimum left in MESITA-2721, a and b in
     // MESITA-2722; Popularity has no
-    // parameter since MESITA-2710) + the Map's reload seconds. The weights
-    // table left the page (MESITA-2603). Deep is Soon.
+    // parameter since MESITA-2710) + the Map's reload seconds and min
+    // screen move (MESITA-2732). The weights table left the page
+    // (MESITA-2603). Deep is Soon.
     const html = page();
     // + Places shown (MESITA-2713) + Minimum Popularity (MESITA-2714)
     // + Selected boost (MESITA-2717) + the Catalog's own Places shown and
     // Distance penalty (MESITA-2727).
-    expect(html.match(/type="number"/g)?.length).toBe(15);
+    expect(html.match(/type="number"/g)?.length).toBe(16);
+    expect(html).toContain("Min map move to reload");
     expect(html).toContain("Catalog distance penalty");
     expect(html).toContain("Catalog places shown");
     expect(html).not.toContain("Proximity weight (a)");

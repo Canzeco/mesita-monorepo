@@ -252,7 +252,9 @@ Deno.serve(async (req) => {
     ),
     mode: "nearby",
     radiusKm,
-    // The Map's reload throttle (MESITA-2444); the dead km/sec pair is not sent.
+    // The Map's reload throttle (MESITA-2444) plus min screen move (MESITA-2732);
+    // the dead km/sec pair is not sent.
     reloadIdleSec: cfg.map.reloadIdleSec,
+    reloadMinViewportPct: cfg.map.reloadMinViewportPct,
   });
 });

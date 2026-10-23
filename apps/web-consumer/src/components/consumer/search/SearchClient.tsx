@@ -44,10 +44,11 @@
 //   • Bottom overlay: the catalog rail for the visible map, hidden while
 //     querying. Best first, in the server's order: the zoom decides how
 //     wide the set is (MESITA-2499). A guest move reloads when the map comes to
-//     rest, at most once every reloadIdleSec counted from the last reload,
-//     with no distance gate (MESITA-2451). Only the guest's own moves
-//     reload — a tap's reveal pan, the disc and a bar pick do not. The
-//     rail's centre card is always the selected pin.
+//     rest, at most once every reloadIdleSec counted from the last reload
+//     (MESITA-2451), and only if the camera has moved at least
+//     reloadMinViewportPct of that last-reload screen (MESITA-2732).
+//     Only the guest's own moves reload — a tap's reveal pan, the disc
+//     and a bar pick do not. The rail's centre card is always the selected pin.
 //
 // THE CAMERA NEVER TELEPORTS (MESITA-2440): it moves only on an explicit
 // ask, as a CameraIntent — the rules live in camera-intent.ts. A rail
@@ -99,10 +100,13 @@ import {
 } from "./SearchMap";
 import {
   clampReloadIdleSec,
+  clampReloadMinViewportPct,
   gpsFixMovesCamera,
   isUnderSight,
+  reloadMoveMeetsMin,
   reloadWaitMs,
   RELOAD_IDLE_SEC_DEFAULT,
+  RELOAD_MIN_VIEWPORT_PCT_DEFAULT,
   selectionMovesCamera,
   type CameraIntent,
   type SelectionSource,
@@ -385,6 +389,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // a fix landing mid-flight compares against the load already coming.
   const lastFetchedCenter = useRef<{ lat: number; lng: number } | null>(null);
   const reloadIdleMsRef = useRef(RELOAD_IDLE_SEC_DEFAULT * 1000);
+  const reloadMinViewportPctRef = useRef(RELOAD_MIN_VIEWPORT_PCT_DEFAULT);
+  // The view the last catalog load asked for: millimetre pans are measured
+  // against this screen, not the last idle (MESITA-2732).
+  const lastReloadBoxRef = useRef<ViewportBox | null>(null);
   // When the last catalog load left (Date.now()): the reload throttle
   // counts from here, not from the last move (MESITA-2451).
   const lastLoadAtRef = useRef<number | null>(null);
@@ -431,6 +439,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     async (nextCenter: Coords, box: ViewportBox | null) => {
       lastFetchedCenter.current = nextCenter;
       lastLoadAtRef.current = Date.now();
+      lastReloadBoxRef.current = box;
       moveUnservedRef.current = false;
       const gen = ++viewportGen.current;
       setCatalogLoading(true);
@@ -445,6 +454,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         if (gen !== viewportGen.current) return;
         reloadIdleMsRef.current =
           clampReloadIdleSec(result.reloadIdleSec) * 1000;
+        reloadMinViewportPctRef.current = clampReloadMinViewportPct(
+          result.reloadMinViewportPct,
+        );
         setCameraCenter(nextCenter);
         setPlaces(result.places);
         setLoadCoords({
@@ -474,11 +486,14 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   // RELOAD WHEN THE MAP COMES TO REST, AT MOST ONCE EVERY reloadIdleSec
   // FROM THE LAST RELOAD (Pato, MESITA-2451: "if more than n seconds have
-  // happened since last reload"). No distance gate. A guest move's idle
-  // arms one timer for the rest of the gap (none left: at once); any
-  // camera move cancels it (SearchMap's onCameraMoveStart) and the idle
-  // that ends that move arms it again. A finger resting on the map defers
-  // it until the finger lifts.
+  // happened since last reload"), and only if the camera has left at least
+  // reloadMinViewportPct of that last-reload screen (Pato, MESITA-2732).
+  // A guest move's idle arms one timer for the rest of the gap (none
+  // left: at once); any camera move cancels it (SearchMap's
+  // onCameraMoveStart) and the idle that ends that move arms it again. A
+  // finger resting on the map defers it until the finger lifts. A rest
+  // under the min move does not load and does not rebase the origin, so
+  // successive tiny pans still accumulate.
   const armIdleReload = useCallback(() => {
     clearPendingReload();
     const fire = () => {
@@ -489,6 +504,15 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       pendingReload.current = null;
       const box = lastBoxRef.current;
       if (!box) return;
+      if (
+        !reloadMoveMeetsMin(
+          lastReloadBoxRef.current,
+          box,
+          reloadMinViewportPctRef.current,
+        )
+      ) {
+        return;
+      }
       void loadAt(viewportSight(box), box);
     };
     pendingReload.current = setTimeout(

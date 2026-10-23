@@ -48,6 +48,7 @@ Deno.test("list-places: Proximity × Popularity, no exponents; the radius gates,
   assertEquals(src.includes("areaWeights"), false);
   // The Map's reload throttle is the operator's (MESITA-2444); the dead pair is not sent.
   assert(webBranch.includes("reloadIdleSec: cfg.map.reloadIdleSec,"));
+  assert(webBranch.includes("reloadMinViewportPct: cfg.map.reloadMinViewportPct,"));
   assertEquals(webBranch.includes("reloadMinKm"), false);
   assertEquals(webBranch.includes("signals:"), false);
   // The guest picks no mode (MESITA-2499).
