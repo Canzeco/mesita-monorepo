@@ -20,6 +20,10 @@ describe("the page chrome names the five surfaces", () => {
     expect(box).not.toContain("setPlaceActive");
     expect(box).not.toContain("setPlaceVerified");
     expect(box).not.toContain("setPlacePlan");
+    // Selected is a direct write. Enriched is not: this box never stamps
+    // enriched_at (MESITA-2730). Becoming Enriched is the Enrich box.
+    expect(box).toContain("setPlaceSelected");
+    expect(box).not.toContain("enriched_at");
   });
 });
 

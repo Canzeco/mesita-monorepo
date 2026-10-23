@@ -238,6 +238,23 @@ export async function setPlaceListed(
   return { ok: true, data: true };
 }
 
+/** Mesita Selected — the ONLY write path to `places.selected` from this
+ *  page, the same door Single Place uses (admin-web-set-place-selected,
+ *  MESITA-2707). Independent of Enriched: this call never starts an Enrich
+ *  run and never writes `enriched_at`. Reversible, and no guest RLS policy
+ *  reads the column, so the batch needs no confirm. */
+export async function setPlaceSelected(
+  placeId: string,
+  selected: boolean,
+): Promise<Result<true>> {
+  const r = await efInvoke<unknown>("admin-web-set-place-selected", {
+    placeId,
+    selected,
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: true };
+}
+
 // Verified and Partnered are read-only here (MESITA-1664); their write doors
 // were retired with the business console (MESITA-2090). Google's business
 // status is display-only. Disable is the operator write
