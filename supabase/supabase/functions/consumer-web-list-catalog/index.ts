@@ -107,7 +107,7 @@ function wirePlaces(rows: unknown[]): OwnedRow[] {
       ...out,
       id: r.id,
       photos: Array.isArray(out.photos) ? out.photos : [],
-    } as OwnedRow;
+    } as OwnedRow; // photos already effective via stripInternal
   });
 }
 
