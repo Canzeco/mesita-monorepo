@@ -2,7 +2,6 @@ import type { RefObject } from "react";
 
 import type { MapWeights, Place } from "@/lib/api/places";
 import { Skeleton, Spinner } from "@/components/shared";
-import { MAP_MESITA_SELECTED_PIN_COLOR } from "@/lib/map-defaults";
 import type { Coords } from "@/lib/use-user-location";
 import { useCardSaveShare } from "@/lib/use-card-save-share";
 import { cn } from "@/lib/utils";
@@ -151,48 +150,33 @@ const SOURCE_LABELS: ReadonlyArray<[string, string]> = [
  * four sources found the place and its score, read from the server's
  * `score` (MESITA-2703). Remove when Pato says the ranking is verified.
  *
- * SELECTED IS ITS OWN TAG (Pato, MESITA-2707: "Selected must be an
- * independent tag from Popularity. selected is the manual thing. and its
- * also independent of enrichment"): a Mesita Selected place — the operator's
- * mark, `place.selected`, never a score or an Enrich run — wears a separate
- * pill in the pin's red beside the score tag, never a word inside the
- * Popularity line. Nothing on the card changes when the score tag goes.
+ * SELECTED IS A NUMBER, NOT A PILL (Pato, MESITA-2719: "the selected tag
+ * must not exist, just expressed as text in the numeric data above"): the
+ * red Selected pill (MESITA-2707) is gone; Selected reads only as the
+ * `selected` factor on the numbers line. Nothing on the card changes when
+ * the score tag goes.
  */
-export function RailScoreTag({ place }: { place: Pick<Place, "score" | "selected"> }) {
+export function RailScoreTag({ place }: { place: Pick<Place, "score"> }) {
   const score = place.score;
-  const selected = place.selected === true;
-  if (!score && !selected) return null;
-  const found = new Set(score?.foundBy ?? []);
+  if (!score) return null;
+  const found = new Set(score.foundBy ?? []);
   const sources = SOURCE_LABELS.filter(([key]) => found.has(key)).map(([, label]) => label);
   return (
-    <div className="mb-1.5 flex items-start gap-1.5" data-rail-tags>
-      {selected ? (
-        <span
-          className="type-meta shrink-0 rounded-xl px-2.5 py-1.5 font-semibold text-white shadow-sm"
-          style={{ backgroundColor: MAP_MESITA_SELECTED_PIN_COLOR }}
-          data-rail-selected-tag
-        >
-          Selected
-        </span>
-      ) : null}
-      {score ? (
-        <div
-          className="bg-card/95 text-muted-foreground type-meta min-w-0 flex-1 rounded-xl px-3 py-1.5 font-mono leading-snug tabular-nums shadow-sm"
-          data-rail-score-tag
-        >
-          <p className="text-foreground truncate font-semibold">
-            {sources.length > 0 ? sources.join(" · ") : "no source"}
-          </p>
-          {/* Wraps rather than cuts: four numbers no longer fit one phone line. */}
-          <p>
-            {/* Selected reads as the third signal (Pato, MESITA-2718): the factor
-                the final took (MESITA-2717), 1 for a place that is not Selected. */}
-            proximity {fmtScore(score.proximity)} · popularity {fmtScore(score.popularity)} · selected{" "}
-            {fmtScore(typeof score.selectedFactor === "number" ? score.selectedFactor : 1)} · final{" "}
-            {fmtScore(score.final)}
-          </p>
-        </div>
-      ) : null}
+    <div
+      className="bg-card/95 text-muted-foreground type-meta mb-1.5 rounded-xl px-3 py-1.5 font-mono leading-snug tabular-nums shadow-sm"
+      data-rail-score-tag
+    >
+      <p className="text-foreground truncate font-semibold">
+        {sources.length > 0 ? sources.join(" · ") : "no source"}
+      </p>
+      {/* Wraps rather than cuts: four numbers no longer fit one phone line. */}
+      <p>
+        {/* Selected reads as the third signal (Pato, MESITA-2718): the factor
+            the final took (MESITA-2717), 1 for a place that is not Selected. */}
+        proximity {fmtScore(score.proximity)} · popularity {fmtScore(score.popularity)} · selected{" "}
+        {fmtScore(typeof score.selectedFactor === "number" ? score.selectedFactor : 1)} · final{" "}
+        {fmtScore(score.final)}
+      </p>
     </div>
   );
 }
