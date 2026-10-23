@@ -1,20 +1,22 @@
 import { ConfigPageLayout } from "@/components/ConfigPageLayout";
+import { getActivitySummary } from "@/lib/activity-summary";
 import { listLogs } from "./actions";
 import { LogsClient } from "./LogsClient";
 
-// Logs — Testing section. The enrichment workflow's recent app lines.
-// The server seeds the first read; the client polls after that.
 export const dynamic = "force-dynamic";
 
 export default async function LogsPage() {
-  const initial = await listLogs();
+  const [initialLogs, initialSummary] = await Promise.all([
+    listLogs(),
+    getActivitySummary(),
+  ]);
   return (
     <ConfigPageLayout
-      eyebrow="Testing · Enrichment"
+      eyebrow="Activity · Logs"
       title="Logs"
-      description="Recent lines from the enrichment workflow, newest first. The list refreshes on its own."
+      description="Headline counters and a recent activity feed. Enrichment workflow lines stay available for deep debugging."
     >
-      <LogsClient initial={initial} />
+      <LogsClient initialLogs={initialLogs} initialSummary={initialSummary} />
     </ConfigPageLayout>
   );
 }

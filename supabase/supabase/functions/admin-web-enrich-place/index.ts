@@ -15,6 +15,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, readPlaceIdAlias } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv, requireSuperAdmin } from "../_shared/auth.ts";
 import { enrichDepthOf, startEnrichment } from "../_shared/enrich-start.ts";
+import { recordAdminOperatorEvent } from "../_shared/admin-operator-events.ts";
 
 type Body = {
   projectId?: string;
@@ -49,6 +50,23 @@ Deno.serve(async (req) => {
   const placeIds = listed.length > 0 ? listed : placeId ? [placeId] : [];
 
   const started = await startEnrichment(admin, { placeIds, depth, overwrite });
-  if (!started.ok) return json({ ok: false, error: started.error }, started.status);
+  if (!started.ok) {
+    await recordAdminOperatorEvent(admin, {
+      verb: "enrich",
+      outcome: "failed",
+      actorUserId: authRes.user.id,
+      source: "admin-web-enrich-place",
+      detail: { count: placeIds.length, error: started.error },
+    });
+    return json({ ok: false, error: started.error }, started.status);
+  }
+  await recordAdminOperatorEvent(admin, {
+    verb: "enrich",
+    outcome: "succeeded",
+    placeId: placeIds.length === 1 ? placeIds[0] : null,
+    actorUserId: authRes.user.id,
+    source: "admin-web-enrich-place",
+    detail: { count: placeIds.length, depth, overwrite },
+  });
   return json({ ok: true, enrichmentTriggered: true, task: started.task, overwrite });
 });

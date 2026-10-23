@@ -22,6 +22,7 @@ import {
   requireSuperAdmin,
 } from "../_shared/auth.ts";
 import { runGooglePlaceUpdate } from "../_shared/admin-google-place-update.ts";
+import { recordAdminOperatorEvent } from "../_shared/admin-operator-events.ts";
 
 type Body = { placeId?: string; projectId?: string };
 
@@ -48,11 +49,28 @@ Deno.serve(async (req) => {
     supabaseUrl: envRes.env.url,
   });
   if (!result.ok) {
+    await recordAdminOperatorEvent(admin, {
+      verb: "update",
+      outcome: "failed",
+      placeId,
+      actorUserId: authRes.user.id,
+      source: "admin-web-update-place-google",
+      detail: { error: result.error, code: result.code ?? null },
+    });
     return json(
       { ok: false, error: result.error, ...(result.code ? { code: result.code } : {}) },
       result.status,
     );
   }
+
+  await recordAdminOperatorEvent(admin, {
+    verb: "update",
+    outcome: "succeeded",
+    placeId,
+    actorUserId: authRes.user.id,
+    source: "admin-web-update-place-google",
+    detail: { googlePhotoCount: result.googlePhotoCount },
+  });
 
   return json({
     ok: true,

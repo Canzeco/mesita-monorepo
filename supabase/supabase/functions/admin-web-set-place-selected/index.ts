@@ -39,6 +39,7 @@ import {
 } from "../_shared/auth.ts";
 import { PLACE_PROFILE_COLUMNS } from "../_shared/place-columns.ts";
 import { writePlace } from "../_shared/place-doc.ts";
+import { recordAdminOperatorEvent } from "../_shared/admin-operator-events.ts";
 
 type Body = { placeId?: unknown; projectId?: unknown; selected?: unknown };
 
@@ -103,6 +104,15 @@ Deno.serve(async (req) => {
         actor: authRes.user.email ?? authRes.user.id,
       }),
     );
+
+    await recordAdminOperatorEvent(admin, {
+      verb: "edit",
+      outcome: "succeeded",
+      placeId,
+      actorUserId: authRes.user.id,
+      source: "admin-web-set-place-selected",
+      detail: { action: selected ? "select" : "unselect" },
+    });
   }
 
   const { data: place, error: readError } = await admin

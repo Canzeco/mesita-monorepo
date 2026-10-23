@@ -208,6 +208,7 @@ const PROFILES_READ_ALLOWLIST = [
   "admin-web-get-overview/index.ts",
   // Names only (google_place_id, name) for the repeated-open list (MESITA-2323).
   "admin-web-list-place-opens/index.ts",
+  "admin-web-get-activity-summary/index.ts",
   "consumer-web-get-place/index.ts",
   "consumer-web-list-catalog/index.ts",
   "consumer-web-list-places/index.ts",
