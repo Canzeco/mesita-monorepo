@@ -305,6 +305,28 @@ export async function enrichPlace(
   return enrichPlaces([placeId], overwrite || _overwrite.length > 0, depth);
 }
 
+// ── Update (Google factuals + google_photos only, MESITA-2737) ───────────
+
+export async function updatePlaceGoogle(placeId: string): Promise<Result<true>> {
+  const id = placeId.trim();
+  if (!id) return { ok: false, error: "Missing placeId" };
+  const r = await efInvoke<{ updatedAt: string }>("admin-web-update-place-google", {
+    placeId: id,
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: true };
+}
+
+export async function updatePlacesGoogle(placeIds: string[]): Promise<Result<true>> {
+  const ids = placeIds.map((id) => id.trim()).filter(Boolean);
+  if (ids.length === 0) return { ok: false, error: "Missing placeId" };
+  for (const id of ids) {
+    const one = await updatePlaceGoogle(id);
+    if (!one.ok) return one;
+  }
+  return { ok: true, data: true };
+}
+
 // ── Name searches (Single Place › Find, MESITA-2116 · MESITA-2124) ───────
 
 /** One row as admin-web-suggest-places ships it, in any mode. `placeId` is
