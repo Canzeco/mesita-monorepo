@@ -91,7 +91,8 @@ type UpdateBody = {
   // whitelist below never reads them.
   hours?: PlaceHours | null;
   phone?: string | null;
-  photos?: string[];
+  /** Mesita-owned gallery; first URL is the hero when non-empty. */
+  mesita_photos?: string[];
   // External + social channels
   website_url?: string | null;
   instagram_url?: string | null;

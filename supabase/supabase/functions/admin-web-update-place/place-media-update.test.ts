@@ -84,6 +84,39 @@ Deno.test("products.menu: rejects non-https urls", async () => {
   );
 });
 
+Deno.test("mesita_photos: accepts https URLs and caps count", () => {
+  const update: Record<string, unknown> = {};
+  const res = applyMediaUpdates(
+    {
+      mesita_photos: [
+        "https://example.com/a.jpg",
+        "http://bad.example/b.jpg",
+        "https://example.com/c.jpg",
+      ],
+    },
+    update,
+    2,
+  );
+  assertEquals(res, null);
+  assertEquals(update.mesita_photos, [
+    "https://example.com/a.jpg",
+    "https://example.com/c.jpg",
+  ]);
+});
+
+Deno.test("photos: rejected in favor of mesita_photos", async () => {
+  const update: Record<string, unknown> = {};
+  const res = applyMediaUpdates(
+    { photos: ["https://example.com/legacy.jpg"] },
+    update,
+    10,
+  );
+  assertEquals(res?.status, 400);
+  const body = await res!.json();
+  assertEquals(body.code, "photos_retired");
+  assertEquals("photos" in update, false);
+});
+
 Deno.test("products.menu: rejects non-object entries", async () => {
   const update: Record<string, unknown> = {};
   const res = applyMediaUpdates(

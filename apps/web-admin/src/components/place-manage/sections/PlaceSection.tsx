@@ -2,17 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  ArrowLeft,
-  ArrowRight,
   Clock,
   Globe,
-  ImagePlus,
-  Images,
-  Info,
-  Loader2,
   MapPin,
   Store,
-  X,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -31,21 +24,12 @@ import {
   TextField,
 } from "@/components/admin-ui/manage";
 import { usePlaceContext } from "../PlaceContext";
-import { photoCaption } from "../photo-caption";
 import { useSectionSaver } from "../useSectionDirty";
-import { ErrorNote } from "@/components/ErrorNote";
-import { createBrowserSupabase } from "@/lib/supabase/browser";
 import {
   formatPlacePriceRange,
   MAX_PRICE_LEVEL,
   priceLevelName,
 } from "../place-price";
-import {
-  ALLOWED_IMAGE_ACCEPT,
-  PLACE_IMAGES_BUCKET,
-  placeImageObjectPath,
-  validateUploadFile,
-} from "@/lib/place-upload-utils";
 
 const DAYS = [
   "monday",
@@ -187,7 +171,6 @@ type Form = {
   description: string;
   phone: string;
   tags: string[];
-  photos: string[];
   channels: Record<string, string>;
   hours: Record<Day, DayHours>;
 };
@@ -221,8 +204,6 @@ function placeToForm(
     description: (v.description ?? "").slice(0, limits.descriptionMax),
     phone: v.phone ?? "",
     tags: (v.tags ?? []).slice(0, limits.tagsPerPlaceMax),
-    // NOT sliced to photosMax — see the over-cap note on the Photos box.
-    photos: v.photos ?? [],
     channels,
     hours,
   };
@@ -230,7 +211,7 @@ function placeToForm(
 
 // Build a partial business-update-place patch for one Place box.
 // Empty strings become null so a cleared field actually clears.
-type PlaceBox = "basics" | "time" | "channels" | "photos";
+type PlaceBox = "basics" | "time" | "channels";
 
 function boxToPatch(
   box: PlaceBox,
@@ -267,7 +248,7 @@ function boxToPatch(
       patch[c.key as string] = nz(f.channels[c.key as string]);
     return patch;
   }
-  return { id, photos: f.photos };
+  throw new Error(`unknown Place box: ${String(box)}`);
 }
 
 function sliceEqual(a: unknown, b: unknown): boolean {
@@ -286,7 +267,6 @@ export function PlaceSection({
   const limits = profile.fieldLimits;
   const [form, setForm] = useState<Form>(() => placeToForm(place, limits));
   const [saved, setSaved] = useState<Form>(form);
-  const [errors, setErrors] = useState<{ photos?: string }>({});
 
   const dirtyBasics = useMemo(
     () =>
@@ -323,12 +303,7 @@ export function PlaceSection({
       ),
     [form.channels, form.phone, saved.channels, saved.phone],
   );
-  const dirtyPhotos = useMemo(
-    () => !sliceEqual(form.photos, saved.photos),
-    [form.photos, saved.photos],
-  );
-
-  const placeDirty = dirtyBasics || dirtyTime || dirtyChannels || dirtyPhotos;
+  const placeDirty = dirtyBasics || dirtyTime || dirtyChannels;
 
   // Four boxes, ONE patch. Only the dirty ones contribute, so a save never
   // rewrites columns nobody touched — which matters for Basics in particular,
@@ -343,14 +318,6 @@ export function PlaceSection({
       if (dirtyTime) parts.push(boxToPatch("time", form, place.id, limits));
       if (dirtyChannels)
         parts.push(boxToPatch("channels", form, place.id, limits));
-      if (dirtyPhotos) parts.push(boxToPatch("photos", form, place.id, limits));
-      if (form.photos.length > limits.photosMax) {
-        const over = form.photos.length - limits.photosMax;
-        return {
-          kind: "invalid" as const,
-          error: `This place has ${form.photos.length} photos and the ceiling is ${limits.photosMax}. Remove ${over} to save.`,
-        };
-      }
       if (parts.length === 0) return { kind: "clean" as const };
       return {
         kind: "patch" as const,
@@ -361,13 +328,11 @@ export function PlaceSection({
       const next = placeToForm(fresh, limits);
       setForm(next);
       setSaved(next);
-      setErrors({});
     },
     () => {
       const next = placeToForm(place, limits);
       setForm(next);
       setSaved(next);
-      setErrors({});
     },
   );
 
@@ -394,73 +359,6 @@ export function PlaceSection({
       hours: { ...f.hours, [d]: { ...f.hours[d], ...patch } },
     }));
 
-  const [uploading, setUploading] = useState(false);
-
-  // Never truncates: removing is the operator's call, and an over-cap place
-  // must be able to reorder and delete its way down rather than lose the tail
-  // silently. The cap is enforced on ADD (uploadPhoto) and at save.
-  const setPhotos = (photos: string[]) => set("photos", photos);
-
-  const uploadPhoto = async (file: File) => {
-    if (uploading || anyPending) return;
-    if (form.photos.length >= limits.photosMax) {
-      setErrors((e) => ({
-        ...e,
-        photos: `At most ${limits.photosMax} photos.`,
-      }));
-      return;
-    }
-    const fileError = validateUploadFile(file);
-    if (fileError) {
-      setErrors((e) => ({ ...e, photos: fileError }));
-      return;
-    }
-    setUploading(true);
-    setErrors((e) => ({ ...e, photos: undefined }));
-    try {
-      const supabase = createBrowserSupabase();
-      const path = placeImageObjectPath(place.id, file);
-      const { error: uploadError } = await supabase.storage
-        .from(PLACE_IMAGES_BUCKET)
-        .upload(path, file, {
-          upsert: false,
-          contentType: file.type,
-          cacheControl: "31536000",
-        });
-      if (uploadError) {
-        throw new Error(uploadError.message);
-      }
-      const { data } = supabase.storage
-        .from(PLACE_IMAGES_BUCKET)
-        .getPublicUrl(path);
-      if (!data?.publicUrl) {
-        throw new Error("Upload succeeded but no public URL was returned.");
-      }
-      setPhotos([...form.photos, data.publicUrl]);
-    } catch (err) {
-      setErrors((e) => ({
-        ...e,
-        photos:
-          err instanceof Error ? err.message : "Couldn't upload that photo.",
-      }));
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const movePhoto = (from: number, dir: -1 | 1) => {
-    const to = from + dir;
-    if (to < 0 || to >= form.photos.length) return;
-    const next = form.photos.slice();
-    [next[from], next[to]] = [next[to], next[from]];
-    setPhotos(next);
-  };
-
-  const removePhoto = (idx: number) =>
-    setPhotos(form.photos.filter((_, i) => i !== idx));
-
-  const [metaFor, setMetaFor] = useState<string | null>(null);
-
   return (
     // Masonry, not a grid: CSS columns pack the cards top-down, so a short
     // card never strands empty space beside a tall neighbour — columns don't
@@ -476,7 +374,7 @@ export function PlaceSection({
     <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5 xl:columns-3">
       {/* Box order (MESITA-547 / MESITA-720 / MESITA-834 / MESITA-900;
           Basics, Location and Hours are separate cards — Pato, 2026-08-29):
-          Basics → Location → Hours → Links → Photos.
+          Basics → Location → Hours → Links. Mesita photos live on Admin.
           Reviews is its own tab (MESITA-2183).
           Menus is unwired (MESITA-2175). Mesita-internal cards live on Admin;
           Team on Controls; the reputation rail on Activity. */}
@@ -737,284 +635,7 @@ export function PlaceSection({
         </div>
       </SectionCard>
 
-      <SectionCard
-        icon={<Images className="h-4 w-4" />}
-        tint="orange"
-        title="Photos"
-        action={
-          <span
-            className={
-              "type-label tabular-nums " +
-              (form.photos.length > limits.photosMax
-                ? "text-destructive font-semibold"
-                : "text-muted-foreground")
-            }
-          >
-            {form.photos.length} / {limits.photosMax}
-          </span>
-        }
-      >
-        {form.photos.length > limits.photosMax ? (
-          // The ceiling dropped to ten (MESITA-1237) and places enriched under
-          // the old one still hold more. Say so, rather than quietly dropping
-          // the tail on load and persisting that deletion at the next save.
-          <p className="border-destructive/30 bg-destructive/5 text-destructive mt-4 rounded-xl border px-3.5 py-2.5 text-xs leading-relaxed">
-            Over the ceiling by {form.photos.length - limits.photosMax}. Every
-            photo below is still on the place — nothing has been dropped — but
-            the page will not save until you remove{" "}
-            {form.photos.length - limits.photosMax}.
-          </p>
-        ) : null}
-        <PhotosEditor
-          placeId={place.id}
-          photos={form.photos}
-          photosMax={limits.photosMax}
-          pending={anyPending}
-          uploading={uploading}
-          onUpload={uploadPhoto}
-          onMove={movePhoto}
-          onRemove={removePhoto}
-          onInfo={setMetaFor}
-        />
-        {errors.photos ? <ErrorNote message={errors.photos} /> : null}
-      </SectionCard>
-
       {children}
-
-      {/* Reviews closes the masonry (Pato live 2026-09-01): every card above
-          is something an operator sets, this one is the only thing the world
-          says back. Read-only, so it sits after the editable set. */}
-
-      {metaFor !== null && (
-        <MediaMetaDialog
-          url={metaFor}
-          analysis={photoCaption(place.photo_analysis, metaFor)}
-          position={form.photos.indexOf(metaFor) + 1}
-          total={form.photos.length}
-          onClose={() => setMetaFor(null)}
-        />
-      )}
-    </div>
-  );
-}
-
-function PhotosEditor({
-  placeId,
-  photos,
-  photosMax,
-  pending,
-  uploading,
-  onUpload,
-  onMove,
-  onRemove,
-  onInfo,
-}: {
-  placeId: string;
-  photos: string[];
-  photosMax: number;
-  pending: boolean;
-  uploading: boolean;
-  onUpload: (file: File) => void | Promise<void>;
-  onMove: (from: number, dir: -1 | 1) => void;
-  onRemove: (idx: number) => void;
-  onInfo: (url: string) => void;
-}) {
-  const inputId = `place-photo-upload-${placeId}`;
-  const atCap = photos.length >= photosMax;
-  const busy = pending || uploading;
-
-  return (
-    <div className="mt-5">
-      <input
-        id={inputId}
-        type="file"
-        accept={ALLOWED_IMAGE_ACCEPT}
-        disabled={busy || atCap}
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          e.target.value = "";
-          if (file) void onUpload(file);
-        }}
-      />
-
-      <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-        {photos.map((src, idx) => (
-          <div
-            key={`${src}-${idx}`}
-            className="group relative overflow-hidden rounded-xl ring-1 ring-black/5"
-          >
-            {/* The whole tile opens the metadata modal; the move/remove
-                controls below sit above this button and stop propagation. */}
-            <button
-              type="button"
-              onClick={() => onInfo(src)}
-              className="block w-full cursor-pointer"
-              aria-label={`Photo ${idx + 1} details`}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={src}
-                alt={`Photo ${idx + 1}`}
-                className="aspect-square w-full object-cover transition duration-300 group-hover:scale-[1.03]"
-              />
-            </button>
-            {idx === 0 && (
-              <span className="bg-pink-gradient absolute top-2 left-2 rounded-full px-2 py-0.5 type-meta font-semibold tracking-wide text-white uppercase shadow-card">
-                Hero
-              </span>
-            )}
-            <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-gradient-to-t from-black/70 via-black/25 to-transparent p-2 opacity-0 transition group-hover:opacity-100">
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  disabled={busy || idx === 0}
-                  onClick={() => onMove(idx, -1)}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 text-white backdrop-blur-sm transition hover:bg-white/30 disabled:opacity-40"
-                  aria-label="Move earlier"
-                >
-                  <ArrowLeft className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  type="button"
-                  disabled={busy || idx === photos.length - 1}
-                  onClick={() => onMove(idx, 1)}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 text-white backdrop-blur-sm transition hover:bg-white/30 disabled:opacity-40"
-                  aria-label="Move later"
-                >
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </button>
-              </div>
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => onRemove(idx)}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 text-white backdrop-blur-sm transition hover:bg-destructive/70"
-                  aria-label="Remove photo"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-
-        {!atCap && (
-          <label
-            htmlFor={inputId}
-            className={
-              "border-border text-muted-foreground hover:border-primary/50 hover:text-primary hover:bg-primary/[0.03] flex aspect-square w-full cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed text-center transition " +
-              (busy ? "pointer-events-none opacity-50" : "")
-            }
-          >
-            {uploading ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span className="type-label font-medium">Uploading…</span>
-              </>
-            ) : (
-              <>
-                <ImagePlus className="h-5 w-5" />
-                <span className="type-label font-medium">Add photo</span>
-              </>
-            )}
-          </label>
-        )}
-      </div>
-
-      {photos.length === 0 ? (
-        <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
-          No photos yet.
-        </p>
-      ) : (
-        <p className="text-muted-foreground mt-3 type-label tabular-nums">
-          {photos.length}/{photosMax} photos · JPG, PNG, WEBP, AVIF · max 8 MB
-        </p>
-      )}
-    </div>
-  );
-}
-
-function MediaMetaDialog({
-  url,
-  analysis,
-  position,
-  total,
-  onClose,
-}: {
-  url: string;
-  analysis: string | null;
-  position: number;
-  total: number;
-  onClose: () => void;
-}) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="border-border/70 bg-card shadow-elev flex max-h-[80dvh] w-full max-w-md flex-col overflow-hidden rounded-2xl border"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="border-border flex items-center justify-between gap-3 border-b px-4 py-3">
-          <div className="flex items-center gap-2">
-            <Info className="text-muted-foreground h-4 w-4" />
-            <h3 className="text-sm font-semibold">Image metadata</h3>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-muted-foreground hover:text-foreground hover:bg-muted/60 inline-flex h-7 w-7 items-center justify-center rounded-md transition"
-            aria-label="Close"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="flex flex-col gap-4 overflow-y-auto p-4">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={url}
-            alt="Photo"
-            className="border-border aspect-square w-full rounded-lg border object-cover"
-          />
-
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-muted-foreground text-xs font-medium">
-              Order
-            </span>
-            {position > 0 ? (
-              <span className="bg-muted text-foreground inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums">
-                #{position} of {total}
-                {position === 1 ? " · Hero" : ""}
-              </span>
-            ) : (
-              <span className="text-muted-foreground text-xs italic">
-                not in gallery
-              </span>
-            )}
-          </div>
-
-          {analysis ? (
-            <p className="text-foreground text-sm leading-relaxed">{analysis}</p>
-          ) : (
-            <p className="text-muted-foreground text-sm italic">
-              No information for this image yet — it hasn’t been analyzed by the
-              Enricher.
-            </p>
-          )}
-        </div>
-      </div>
     </div>
   );
 }

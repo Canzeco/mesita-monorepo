@@ -3,7 +3,9 @@ import { isUrl } from "./place-urls.ts";
 import { optString } from "./place-update-utils.ts";
 
 type MediaUpdateBody = {
+  /** Legacy unified gallery — admin must use mesita_photos (MESITA-2744). */
   photos?: unknown;
+  mesita_photos?: unknown;
   menu_pdf_url?: unknown;
   menu_pdf_name?: unknown;
   products?: (Record<string, unknown> & { menu?: unknown }) | null;
@@ -103,13 +105,21 @@ export function applyMediaUpdates(
   maxPhotos: number,
 ): Response | null {
   if ("photos" in body) {
-    if (!Array.isArray(body.photos)) {
+    return json({
+      ok: false,
+      code: "photos_retired",
+      error:
+        "photos is not writable here — send mesita_photos for the Mesita gallery; google_photos is refreshed by Update.",
+    }, 400);
+  }
+  if ("mesita_photos" in body) {
+    if (!Array.isArray(body.mesita_photos)) {
       return json({
         ok: false,
-        error: "photos must be an array of URL strings",
+        error: "mesita_photos must be an array of URL strings",
       }, 400);
     }
-    update.photos = body.photos.filter(isUrl).slice(0, maxPhotos);
+    update.mesita_photos = body.mesita_photos.filter(isUrl).slice(0, maxPhotos);
   }
 
   if ("menu_pdf_url" in body) {
