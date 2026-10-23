@@ -405,67 +405,81 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
         ) : null}
       </Group>
       <Group title="Signals">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <NumberField
-            label="Minimum Popularity"
-            value={cfg.map.popularityFloor}
-            min={MAP_POPULARITY_FLOOR_MIN}
-            max={MAP_POPULARITY_FLOOR_MAX}
-            decimals
-            disabled={off}
-            onChange={(popularityFloor) => map({ popularityFloor })}
-          />
-          <NumberField
-            label="Map distance penalty"
-            value={params.proximity.radiusDivisor}
-            min={RADIUS_DIVISOR_MIN}
-            max={RADIUS_DIVISOR_MAX}
-            decimals
-            disabled={off}
-            onChange={(radiusDivisor) => proximity({ radiusDivisor })}
-            hint="Bigger favours nearer places; smaller favours popular places."
-          />
-          <NumberField
-            label="Catalog distance penalty"
-            value={params.proximity.catalogRadiusDivisor}
-            min={RADIUS_DIVISOR_MIN}
-            max={RADIUS_DIVISOR_MAX}
-            decimals
-            disabled={off}
-            onChange={(catalogRadiusDivisor) => proximity({ catalogRadiusDivisor })}
-            hint="Bigger favours nearer places; smaller favours popular places."
-          />
-          <NumberField
-            label="Selected boost"
-            value={cfg.map.selectedFactor}
-            min={MAP_SELECTED_FACTOR_MIN}
-            max={MAP_SELECTED_FACTOR_MAX}
-            decimals
-            disabled={off}
-            onChange={(selectedFactor) => map({ selectedFactor })}
-          />
+        <div className="flex flex-col gap-2">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <NumberField
+              label="Map distance penalty"
+              value={params.proximity.radiusDivisor}
+              min={RADIUS_DIVISOR_MIN}
+              max={RADIUS_DIVISOR_MAX}
+              decimals
+              disabled={off}
+              onChange={(radiusDivisor) => proximity({ radiusDivisor })}
+            />
+            <NumberField
+              label="Catalog distance penalty"
+              value={params.proximity.catalogRadiusDivisor}
+              min={RADIUS_DIVISOR_MIN}
+              max={RADIUS_DIVISOR_MAX}
+              decimals
+              disabled={off}
+              onChange={(catalogRadiusDivisor) => proximity({ catalogRadiusDivisor })}
+            />
+          </div>
+          <p className="text-muted-foreground type-meta">
+            Bigger favours nearer places; smaller favours popular places. Map
+            ranks the Search tab; Catalog ranks Home and Chat.
+          </p>
+        </div>
+        <div className="flex flex-col gap-2">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <NumberField
+              label="Minimum Popularity"
+              value={cfg.map.popularityFloor}
+              min={MAP_POPULARITY_FLOOR_MIN}
+              max={MAP_POPULARITY_FLOOR_MAX}
+              decimals
+              disabled={off}
+              onChange={(popularityFloor) => map({ popularityFloor })}
+            />
+            <NumberField
+              label="Selected boost"
+              value={cfg.map.selectedFactor}
+              min={MAP_SELECTED_FACTOR_MIN}
+              max={MAP_SELECTED_FACTOR_MAX}
+              decimals
+              disabled={off}
+              onChange={(selectedFactor) => map({ selectedFactor })}
+            />
+          </div>
+          <p className="text-muted-foreground type-meta">
+            Minimum Popularity and Selected boost apply to the Map, Home and Chat.
+          </p>
         </div>
         <p className="text-muted-foreground type-meta">
           The score is Proximity × Popularity × the Selected boost, Home and
           the Map alike; only the distance penalty and the places shown differ.
-          The Map distance penalty (now {params.proximity.radiusDivisor}) ranks
-          the Search tab&apos;s Map, the Catalog distance penalty (now{" "}
-          {params.proximity.catalogRadiusDivisor}) Home and Chat. A penalty says how much distance costs:
+          Map is now {params.proximity.radiusDivisor}; Catalog is now{" "}
+          {params.proximity.catalogRadiusDivisor}.
+        </p>
+        <p className="text-muted-foreground type-meta">
           Proximity is 1 ÷ (1 + penalty × distance ÷ radius), so half credit
           sits at the radius ÷ the penalty and the edge scores 1 ÷ (1 +
           penalty), whatever the circle — the Home pin&apos;s or the Map
           screen&apos;s. At 2, a place halfway to the edge scores ½ and one on
-          the edge ⅓; a bigger penalty favours near places, a smaller one
-          popular places. Never 0. A place whose Popularity is under the Minimum
-          Popularity (now {cfg.map.popularityFloor}; 0 is off) never shows on
-          Home, the Map or Chat, Google or Mesita, whatever its score: 3 is
-          about 4★ × 5 reviews. On the guest Search bar it only reorders:
-          Google places under it sort last, none are removed. Popularity is ln(1 + reviews × stars), never normalized:
-          4.6★ × 1,000 reviews ≈ 8.4, 4.0★ × 30 ≈ 4.8; a place with no Google
-          numbers scores 0 and sinks, never disappears. The Selected boost (now{" "}
-          {cfg.map.selectedFactor}; 1 is off) multiplies the score of a place
-          marked Selected in Single Place, × 1 for every other place; it never
-          saves a place from the Minimum Popularity.
+          the edge ⅓. Never 0.
+        </p>
+        <p className="text-muted-foreground type-meta">
+          A place whose Popularity is under the Minimum Popularity (now{" "}
+          {cfg.map.popularityFloor}; 0 is off) never shows on Home, the Map or
+          Chat, Google or Mesita, whatever its score: 3 is about 4★ × 5 reviews.
+          On the guest Search bar it only reorders: Google places under it sort
+          last, none are removed. Popularity is ln(1 + reviews × stars), never
+          normalized: 4.6★ × 1,000 reviews ≈ 8.4, 4.0★ × 30 ≈ 4.8; a place with
+          no Google numbers scores 0 and sinks, never disappears. The Selected
+          boost (now {cfg.map.selectedFactor}; 1 is off) multiplies the score of
+          a place marked Selected in Single Place, × 1 for every other place; it
+          never saves a place from the Minimum Popularity.
         </p>
       </Group>
       <Group title="Map view (the Search tab)">
