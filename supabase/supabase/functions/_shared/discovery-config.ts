@@ -186,6 +186,14 @@ export type MapConfig = {
    * `MAP_PLACES_SHOWN_MIN`..`MAX`, whole, default 20.
    */
   placesShown: number;
+  /**
+   * THE POPULARITY FLOOR (Pato, MESITA-2714: "if popularity score is below
+   * 3 you cannot be shown … it doesn't matter what"): a place whose
+   * Popularity, ln(1 + reviews × stars), is under it never shows on Home,
+   * the Map or Chat, Google or Mesita. `MAP_POPULARITY_FLOOR_MIN`..`MAX`,
+   * one decimal, default 3; 0 is off.
+   */
+  popularityFloor: number;
 };
 
 /** The four Area sources, in the order the admin page lists them. */
@@ -306,6 +314,10 @@ export const MAP_POPULARITY_WEIGHT_DEFAULT = 1;
 export const MAP_PLACES_SHOWN_MIN = 1;
 export const MAP_PLACES_SHOWN_MAX = 80;
 export const MAP_PLACES_SHOWN_DEFAULT = 20;
+/** `map.popularityFloor` bounds (ln units: 3 ≈ reviews × stars of 19). */
+export const MAP_POPULARITY_FLOOR_MIN = 0;
+export const MAP_POPULARITY_FLOOR_MAX = 20;
+export const MAP_POPULARITY_FLOOR_DEFAULT = 3;
 /** The Map's reload throttle (s): the consumer clamps to the same 0.5–10. */
 export const MAP_RELOAD_IDLE_SEC_MIN = 0.5;
 export const MAP_RELOAD_IDLE_SEC_MAX = 10;
@@ -351,6 +363,7 @@ export const DEFAULT_MAP: MapConfig = {
   proximityWeight: MAP_PROXIMITY_WEIGHT_DEFAULT,
   popularityWeight: MAP_POPULARITY_WEIGHT_DEFAULT,
   placesShown: MAP_PLACES_SHOWN_DEFAULT,
+  popularityFloor: MAP_POPULARITY_FLOOR_DEFAULT,
 };
 
 /** `catalog.railCap` bounds and default: the Feed shows 5 per row. */
@@ -654,6 +667,14 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
     placesShown: Math.round(
       num(r.placesShown, DEFAULT_MAP.placesShown, MAP_PLACES_SHOWN_MIN, MAP_PLACES_SHOWN_MAX),
     ),
+    popularityFloor: Math.round(
+      num(
+        r.popularityFloor,
+        DEFAULT_MAP.popularityFloor,
+        MAP_POPULARITY_FLOOR_MIN,
+        MAP_POPULARITY_FLOOR_MAX,
+      ) * 10,
+    ) / 10,
   };
 }
 

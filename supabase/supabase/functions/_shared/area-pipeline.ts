@@ -105,12 +105,16 @@ export function areaWeights(
  *  takes no parameter (MESITA-2710: ln(1 + reviews × stars)). */
 export function areaSignalParams(
   params: SignalParams,
-  map: Pick<DiscoveryConfig["map"], "proximityWeight" | "popularityWeight">,
-): Pick<AreaContext, "halfKm" | "weights"> {
+  map: Pick<DiscoveryConfig["map"], "proximityWeight" | "popularityWeight"> & {
+    popularityFloor?: number;
+  },
+): Pick<AreaContext, "halfKm" | "weights" | "popularityFloor"> {
   const halfKm = params.proximity?.halfKm;
   return {
     halfKm: typeof halfKm === "number" && Number.isFinite(halfKm) ? halfKm : PROXIMITY_HALF_KM_DEFAULT,
     weights: areaWeights(map),
+    // The Popularity floor (MESITA-2714), a gate on every Area caller.
+    popularityFloor: map.popularityFloor,
   };
 }
 
@@ -714,6 +718,8 @@ export type SelectedOpts = {
    *  `map.popularityWeight`). */
   proximityWeight: number;
   popularityWeight: number;
+  /** The Popularity floor (MESITA-2714); absent = off. */
+  popularityFloor?: number;
   limit?: number;
 };
 
@@ -779,6 +785,7 @@ export async function areaSelectedPlaces(
     params: cfg.params,
     proximityWeight: cfg.map.proximityWeight,
     popularityWeight: cfg.map.popularityWeight,
+    popularityFloor: cfg.map.popularityFloor,
     limit: opts.limit,
   });
 }

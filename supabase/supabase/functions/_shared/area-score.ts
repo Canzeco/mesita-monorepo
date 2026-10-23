@@ -52,6 +52,9 @@ export type AreaContext = {
   halfKm: number;
   /** The two exponents. */
   weights: AreaWeights;
+  /** The Popularity floor (MESITA-2714): a place whose Popularity is under
+   *  it is dropped, whatever its source; 0 or absent = off. */
+  popularityFloor?: number;
 };
 
 /** One candidate, normalized from whichever source produced it. */
@@ -141,6 +144,9 @@ export type AreaDiagnostics = {
     active: 1;
     ready: 1 | null;
     reviews: 1 | null;
+    /** Popularity at or over the operator's floor (MESITA-2714); null when
+     *  the floor is off. */
+    popularity: 0 | 1 | null;
   };
   signals: { proximity: number | null; popularity: number | null };
   source: AreaSource;
@@ -168,7 +174,14 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
   const w = ctx.weights;
   const popPart = weighted(pop ?? 0, w.popularity);
   const final = loc.kind === "point" ? weighted(prox ?? 0, w.proximity) * popPart : popPart;
-  const open = family === 1 && radius !== 0;
+  // THE POPULARITY SCREEN (Pato, MESITA-2714: "if popularity score is
+  // below 3 you cannot be shown … it doesn't matter what"): Google or
+  // Mesita, Selected or not; no Google numbers reads 0, so it is out too.
+  const floor = typeof ctx.popularityFloor === "number" && ctx.popularityFloor > 0
+    ? ctx.popularityFloor
+    : null;
+  const popularityGate = floor === null ? null : (pop ?? 0) >= floor ? 1 : 0;
+  const open = family === 1 && radius !== 0 && popularityGate !== 0;
   return {
     familyKeys: knownFamilies(c.familyKeys),
     gates: {
@@ -177,6 +190,7 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
       active: 1,
       ready: c.ready ?? null,
       reviews: c.reviews ?? null,
+      popularity: popularityGate,
     },
     signals: { proximity: prox, popularity: pop },
     source: c.source,
@@ -187,9 +201,10 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
   };
 }
 
-/** Every gate open: Family, and Radius when there is a point. */
+/** Every gate open: Family, Radius when there is a point, and the
+ *  Popularity floor when it is on. */
 export function areaGatesOpen(a: AreaDiagnostics): boolean {
-  return a.gates.family === 1 && a.gates.radius !== 0;
+  return a.gates.family === 1 && a.gates.radius !== 0 && a.gates.popularity !== 0;
 }
 
 /**

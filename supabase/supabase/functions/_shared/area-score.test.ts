@@ -45,7 +45,7 @@ Deno.test("point: final = Proximity^a × Popularity^b", () => {
   assertEquals(s.gates.family, 1);
   assertEquals(s.gates.radius, 1);
   // Territory is gone from the breakdown (MESITA-2603).
-  assertEquals(Object.keys(s.gates).sort(), ["active", "family", "radius", "ready", "reviews"]);
+  assertEquals(Object.keys(s.gates).sort(), ["active", "family", "popularity", "radius", "ready", "reviews"]);
 });
 
 Deno.test("Selected no longer scores (MESITA-2703): equal signals score equal whatever the source", () => {
@@ -224,4 +224,19 @@ Deno.test("Popularity is ln(1 + reviews × stars), never normalized, and the pro
     NONE,
   );
   assertEquals(order.map((r) => r.item.id), ["many", "few"]);
+});
+
+Deno.test("the Popularity floor drops any place under it, Google or Mesita, Selected or not (MESITA-2714)", () => {
+  const ctx: AreaContext = { ...CTX, popularityFloor: 3 };
+  // ln(1 + 4 × 4) ≈ 2.83 < 3: out. ln(1 + 5 × 4) ≈ 3.04: in.
+  const thin = cand({ id: "thin", rating: 4, reviewCount: 4, source: "selected" });
+  const ok = cand({ id: "ok", rating: 4, reviewCount: 5, source: "google" });
+  const unrated = cand({ id: "unrated", rating: null, reviewCount: null, source: "mesita" });
+  assertEquals(areaScore(thin, ctx).gates.popularity, 0);
+  assertEquals(areaScore(thin, ctx).final, 0);
+  assertEquals(areaScore(ok, ctx).gates.popularity, 1);
+  assertEquals(rankArea([thin, ok, unrated], (c) => c, ctx).map((r) => r.item.id), ["ok"]);
+  // Off (0 or absent): nothing is screened, the gate reads null.
+  assertEquals(areaScore(thin, CTX).gates.popularity, null);
+  assertEquals(rankArea([thin, ok], (c) => c, { ...CTX, popularityFloor: 0 }).length, 2);
 });
