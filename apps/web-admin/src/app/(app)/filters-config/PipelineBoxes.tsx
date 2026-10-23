@@ -291,9 +291,10 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
     setCfg((c) => ({ ...c, map: { ...c.map, ...p } }));
   };
   const params = cfg.params;
-  const setRadiusDivisor = (radiusDivisor: number) => {
+  // Spread the sibling: the Map's and Home's penalties are independent (MESITA-2727).
+  const proximity = (p: Partial<DiscoveryConfig["params"]["proximity"]>) => {
     setOk(false);
-    setCfg((c) => ({ ...c, params: { ...c.params, proximity: { radiusDivisor } } }));
+    setCfg((c) => ({ ...c, params: { ...c.params, proximity: { ...c.params.proximity, ...p } } }));
   };
   const toggle = (key: AreaSourceKey) => map({ [key]: cfg.map[key] > 0 ? 0 : AREA_SOURCE_ON });
   const calls = googleCallsPerLoad(cfg.map);
@@ -359,18 +360,27 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
         ))}
         <div className="grid gap-3 sm:grid-cols-2">
           <NumberField
-            label="Places shown"
+            label="Map places shown"
             value={cfg.map.placesShown}
             min={MAP_PLACES_SHOWN_MIN}
             max={MAP_PLACES_SHOWN_MAX}
             disabled={off}
             onChange={(placesShown) => map({ placesShown })}
           />
+          <NumberField
+            label="Catalog places shown"
+            value={cfg.map.catalogPlacesShown}
+            min={MAP_PLACES_SHOWN_MIN}
+            max={MAP_PLACES_SHOWN_MAX}
+            disabled={off}
+            onChange={(catalogPlacesShown) => map({ catalogPlacesShown })}
+          />
         </div>
         <p className="text-muted-foreground type-meta">
           The sources bring up to {MAP_PLACES_SHOWN_MAX} places (4 × 20); after the
-          merge and the sort, Home and the Map show the top this many.{" "}
-          {MAP_PLACES_SHOWN_MIN}–{MAP_PLACES_SHOWN_MAX}.
+          merge and the sort, the Map (Search tab) shows the top Map places
+          shown and Home the top Catalog places shown, in total across its
+          rails. {MAP_PLACES_SHOWN_MIN}–{MAP_PLACES_SHOWN_MAX}.
         </p>
         <p className="type-meta font-medium">
           Billed Google calls per load: {calls}
@@ -404,13 +414,23 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             onChange={(popularityFloor) => map({ popularityFloor })}
           />
           <NumberField
-            label="Distance penalty"
+            label="Map distance penalty"
             value={params.proximity.radiusDivisor}
             min={RADIUS_DIVISOR_MIN}
             max={RADIUS_DIVISOR_MAX}
             decimals
             disabled={off}
-            onChange={setRadiusDivisor}
+            onChange={(radiusDivisor) => proximity({ radiusDivisor })}
+            hint="Bigger favours nearer places; smaller favours popular places."
+          />
+          <NumberField
+            label="Catalog distance penalty"
+            value={params.proximity.catalogRadiusDivisor}
+            min={RADIUS_DIVISOR_MIN}
+            max={RADIUS_DIVISOR_MAX}
+            decimals
+            disabled={off}
+            onChange={(catalogRadiusDivisor) => proximity({ catalogRadiusDivisor })}
             hint="Bigger favours nearer places; smaller favours popular places."
           />
           <NumberField
@@ -425,8 +445,10 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
         </div>
         <p className="text-muted-foreground type-meta">
           The score is Proximity × Popularity × the Selected boost, Home and
-          the Map alike. The distance penalty (now{" "}
-          {params.proximity.radiusDivisor}) says how much distance costs:
+          the Map alike; only the distance penalty and the places shown differ.
+          The Map distance penalty (now {params.proximity.radiusDivisor}) ranks
+          the Search tab&apos;s Map, the Catalog distance penalty (now{" "}
+          {params.proximity.catalogRadiusDivisor}) Home and Chat. A penalty says how much distance costs:
           Proximity is 1 ÷ (1 + penalty × distance ÷ radius), so half credit
           sits at the radius ÷ the penalty and the edge scores 1 ÷ (1 +
           penalty), whatever the circle — the Home pin&apos;s or the Map

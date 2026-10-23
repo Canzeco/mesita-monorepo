@@ -164,6 +164,7 @@ Deno.serve(async (req) => {
     mapShouldFillGoogle(wantsGoogleFill(body as Record<string, unknown>), cfg.map);
   const gmp = googleOn ? readGooglePlacesKey() : null;
   const pool = await selectAreaPool<OwnedRow>({
+    surface: "catalog",
     apiKey: gmp?.ok ? gmp.key : null,
     location,
     families,

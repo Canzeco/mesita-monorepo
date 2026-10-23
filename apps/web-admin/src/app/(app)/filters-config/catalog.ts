@@ -26,7 +26,8 @@ import { num } from "@/lib/config-coerce";
  * _shared/discovery-config.ts.
  */
 export type SignalParams = {
-  proximity: { radiusDivisor: number };
+  /** The Map's Distance penalty and Home's (MESITA-2727). */
+  proximity: { radiusDivisor: number; catalogRadiusDivisor: number };
   popularity: { halfReviews: number };
 };
 
@@ -175,8 +176,10 @@ export type MapConfig = {
    *  pin with no radius, the Map's with no screen, Chat's (MESITA-2703). */
   radiusKm: number;
   // `proximityWeight` / `popularityWeight` retired (MESITA-2722).
-  /** How many sorted places Home and the Map show, 1..80 (MESITA-2713). */
+  /** How many sorted places the Map shows, 1..80 (MESITA-2713). */
   placesShown: number;
+  /** The same for Home, total across its rails; missing = the Map's (MESITA-2727). */
+  catalogPlacesShown: number;
   /** The Popularity floor, ln units, 0..20, default 3; 0 = off (MESITA-2714). */
   popularityFloor: number;
   /** A Mesita Selected place's score × this, every other place's × 1;
@@ -472,6 +475,7 @@ export const DEFAULT_MAP: MapConfig = {
   mesitaClosest: AREA_SOURCE_ON,
   radiusKm: MAP_RADIUS_KM_DEFAULT,
   placesShown: MAP_PLACES_SHOWN_DEFAULT,
+  catalogPlacesShown: MAP_PLACES_SHOWN_DEFAULT,
   popularityFloor: MAP_POPULARITY_FLOOR_DEFAULT,
   selectedFactor: MAP_SELECTED_FACTOR_DEFAULT,
 };
@@ -516,7 +520,7 @@ export const DEFAULT_GENERAL: GeneralConfig = {
 
 /** Mirrors DEFAULT_SIGNAL_PARAMS. */
 const DEFAULT_SIGNAL_PARAMS: SignalParams = {
-  proximity: { radiusDivisor: 2 },
+  proximity: { radiusDivisor: 2, catalogRadiusDivisor: 2 },
   popularity: { halfReviews: 100 },
 };
 
@@ -543,17 +547,20 @@ function bounded(raw: unknown, fallback: number, min: number, max: number, decim
  * referenceRating/Reviews, MESITA-2347), the linear `balance`
  * (MESITA-2428), the weights table `modes` (MESITA-2687), `proximity.reachKm`
  * and `selected` (MESITA-2703) are dropped on the next Save;
- * `proximity.radiusDivisor` is the one proximity field (MESITA-2720); the
- * fixed `halfKm` it replaced (MESITA-2706) drops too.
+ * `proximity.radiusDivisor` (the Map's Distance penalty, MESITA-2720) and
+ * `catalogRadiusDivisor` (Home's, MESITA-2727; missing = the Map's) are the
+ * proximity fields; the fixed `halfKm` (MESITA-2706) drops.
  */
 function coerceParams(raw: unknown): SignalParams {
   const r = (raw ?? {}) as Record<string, unknown>;
   const prox = (r.proximity ?? {}) as Record<string, unknown>;
   const pop = (r.popularity ?? {}) as Record<string, unknown>;
   const d = DEFAULT_SIGNAL_PARAMS;
+  const radiusDivisor = bounded(prox.radiusDivisor, d.proximity.radiusDivisor, RADIUS_DIVISOR_MIN, RADIUS_DIVISOR_MAX, 1);
   return {
     proximity: {
-      radiusDivisor: bounded(prox.radiusDivisor, d.proximity.radiusDivisor, RADIUS_DIVISOR_MIN, RADIUS_DIVISOR_MAX, 1),
+      radiusDivisor,
+      catalogRadiusDivisor: bounded(prox.catalogRadiusDivisor, radiusDivisor, RADIUS_DIVISOR_MIN, RADIUS_DIVISOR_MAX, 1),
     },
     popularity: {
       halfReviews: bounded(pop.halfReviews, d.popularity.halfReviews, HALF_REVIEWS_MIN, HALF_REVIEWS_MAX, 0),
@@ -706,6 +713,9 @@ function coerceNameAdmin(raw: unknown): NameAdminConfig {
 
 function coerceMap(raw: unknown): MapConfig {
   const m = (raw ?? {}) as Record<string, unknown>;
+  const placesShown = Math.round(
+    num(m.placesShown, DEFAULT_MAP.placesShown, MAP_PLACES_SHOWN_MIN, MAP_PLACES_SHOWN_MAX),
+  );
   return {
     minRating: Math.round(
       num(m.minRating, DEFAULT_MAP.minRating, 0, MIN_RATING_MAX) * 10,
@@ -729,8 +739,9 @@ function coerceMap(raw: unknown): MapConfig {
       Math.round(
         num(m.radiusKm, DEFAULT_MAP.radiusKm, MAP_RADIUS_KM_MIN, MAP_RADIUS_KM_MAX) * 10,
       ) / 10,
-    placesShown: Math.round(
-      num(m.placesShown, DEFAULT_MAP.placesShown, MAP_PLACES_SHOWN_MIN, MAP_PLACES_SHOWN_MAX),
+    placesShown,
+    catalogPlacesShown: Math.round(
+      num(m.catalogPlacesShown, placesShown, MAP_PLACES_SHOWN_MIN, MAP_PLACES_SHOWN_MAX),
     ),
     popularityFloor:
       Math.round(

@@ -121,6 +121,7 @@ function deps(over: DepsOver = {}) {
     map: { ...b.map, googleClosest: 0, ...sources, ...weights },
   };
   const d: AreaPoolDeps<OwnedRow> = {
+    surface: "map",
     apiKey: "k",
     location: center ? { kind: "point", anchor: center, radiusKm } : { kind: "none" },
     families: [],
@@ -395,6 +396,7 @@ const selOpts = {
   center: CENTER,
   radiusKm: 10,
   params: DISCOVERY_DEFAULTS.params,
+  surface: "map" as const,
 };
 
 Deno.test("selected: only the operator's marked rows inside the radius (MESITA-2707)", () => {
@@ -446,7 +448,7 @@ Deno.test("selected: Chat ranks like the Map, by the radius divisor (MESITA-2687
     mrow("near-quiet", { lat: CENTER.lat + 0.001, google_stars_overall: 4.0, google_review_count: 100 }),
     mrow("far-loved", { lat: CENTER.lat + 0.05, google_stars_overall: 4.9, google_review_count: 4000 }),
   ];
-  const k = (radiusDivisor: number) => ({ ...selOpts, params: { ...selOpts.params, proximity: { radiusDivisor } } });
+  const k = (radiusDivisor: number) => ({ ...selOpts, params: { ...selOpts.params, proximity: { radiusDivisor, catalogRadiusDivisor: radiusDivisor } } });
   assertEquals(ids(selectMesitaSelected(rows, k(10)))[0], "near-quiet");
   assertEquals(ids(selectMesitaSelected(rows, k(0.5)))[0], "far-loved");
 });
@@ -1174,4 +1176,24 @@ Deno.test("the pool keeps the top map.placesShown of the sorted merge (MESITA-27
   assertEquals(ids(top5), ["m29", "m28", "m27", "m26", "m25"]);
   assertEquals((await run()).length, 20);
   assertEquals((await run(80)).length, 30);
+});
+
+Deno.test("Map and Catalog cut and penalize with their own numbers (MESITA-2727)", async () => {
+  reset();
+  const rows = Array.from({ length: 30 }, (_, i) => mrow(`m${String(i).padStart(2, "0")}`, { google_review_count: 10 + i }));
+  const run = async (surface: "map" | "catalog") => {
+    const { d } = deps({ sources: { googlePopular: 0 }, mesitaRows: rows, surface });
+    d.cfg = {
+      ...d.cfg,
+      map: { ...d.cfg.map, placesShown: 5, catalogPlacesShown: 12 },
+      params: { ...d.cfg.params, proximity: { radiusDivisor: 4, catalogRadiusDivisor: 0.5 } },
+    };
+    return await selectAreaPool(d);
+  };
+  const map = await run("map");
+  const home = await run("catalog");
+  assertEquals(map.places.length, 5);
+  assertEquals(home.places.length, 12);
+  assertEquals([map.summary.surface, map.summary.distancePenalty, map.summary.placesShown], ["map", 4, 5]);
+  assertEquals([home.summary.surface, home.summary.distancePenalty, home.summary.placesShown], ["catalog", 0.5, 12]);
 });

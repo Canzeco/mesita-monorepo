@@ -203,6 +203,7 @@ Deno.serve(async (req) => {
   }
   const gmp = googleOn ? readGooglePlacesKey() : null;
   const area = await selectAreaPool<OwnedRow>({
+    surface: "map",
     apiKey: gmp?.ok && efEnv.ok ? gmp.key : null,
     location,
     families: guestSupers,

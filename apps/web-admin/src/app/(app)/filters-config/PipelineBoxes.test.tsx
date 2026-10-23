@@ -95,8 +95,11 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
     // table left the page (MESITA-2603). Deep is Soon.
     const html = page();
     // + Places shown (MESITA-2713) + Minimum Popularity (MESITA-2714)
-    // + Selected boost (MESITA-2717).
-    expect(html.match(/type="number"/g)?.length).toBe(13);
+    // + Selected boost (MESITA-2717) + the Catalog's own Places shown and
+    // Distance penalty (MESITA-2727).
+    expect(html.match(/type="number"/g)?.length).toBe(15);
+    expect(html).toContain("Catalog distance penalty");
+    expect(html).toContain("Catalog places shown");
     expect(html).not.toContain("Proximity weight (a)");
     expect(html).toContain("Selected boost");
     expect(html).toContain("Distance penalty");
