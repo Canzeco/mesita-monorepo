@@ -41,13 +41,13 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
     expect(Object.keys(cfg).sort()).toEqual(Object.keys(DEFAULT_CONFIG).sort());
   });
 
-  it("params keeps the two half points; the reach, Selected, the linear balance and the weights table are dropped (MESITA-2687, MESITA-2703, MESITA-2706)", () => {
+  it("params keeps the divisor and the reviews half point; the reach, the fixed half distance, Selected, the linear balance and the weights table are dropped (MESITA-2687, MESITA-2703, MESITA-2720)", () => {
     expect(coerceConfig(LIVE_BLOB).params).toEqual(DEFAULT_CONFIG.params);
     expect(
       coerceConfig({
         params: {
-          // `halfDistanceKm` is the first cut's retired key, not `halfKm`.
-          proximity: { maxKm: 30, halfDistanceKm: 6 },
+          // `halfDistanceKm` and `halfKm` are retired keys, not the divisor.
+          proximity: { maxKm: 30, halfDistanceKm: 6, halfKm: 10 },
           popularity: { priorRating: 4.2, referenceRating: 4, referenceReviews: 500, halfReviews: 250 },
           balance: { proximity: 8 },
           modes: { popular: { proximity: 0.5 } },
@@ -55,23 +55,23 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
         },
       }).params,
     ).toEqual({
-      proximity: { halfKm: 10 },
+      proximity: { radiusDivisor: 2 },
       popularity: { halfReviews: 250 },
     });
   });
 
-  it("the Area params: the half-distance clamps to 0.5–50 at one decimal; reach and Selected are dropped (MESITA-2703, MESITA-2706)", () => {
+  it("the Area params: the radius divisor clamps to 0.5–10 at one decimal; reach and Selected are dropped (MESITA-2703, MESITA-2720)", () => {
     expect(
       coerceConfig({
         params: {
-          proximity: { reachKm: 12.34, halfKm: 12.34 },
+          proximity: { reachKm: 12.34, radiusDivisor: 2.34 },
           popularity: { halfReviews: 0 },
           selected: { otherFactor: 0 },
         },
       }).params,
-    ).toEqual({ proximity: { halfKm: 12.3 }, popularity: { halfReviews: 1 } });
-    expect(coerceConfig({ params: { proximity: { halfKm: 0 } } }).params.proximity).toEqual({ halfKm: 0.5 });
-    expect(coerceConfig({ params: { proximity: { halfKm: 999 } } }).params.proximity).toEqual({ halfKm: 50 });
+    ).toEqual({ proximity: { radiusDivisor: 2.3 }, popularity: { halfReviews: 1 } });
+    expect(coerceConfig({ params: { proximity: { radiusDivisor: 0 } } }).params.proximity).toEqual({ radiusDivisor: 0.5 });
+    expect(coerceConfig({ params: { proximity: { radiusDivisor: 999 } } }).params.proximity).toEqual({ radiusDivisor: 10 });
   });
 
   it("the four Area sources are 0 or 20, and only the Google two bill (MESITA-2703)", () => {

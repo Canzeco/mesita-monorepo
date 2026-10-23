@@ -20,8 +20,6 @@ import {
   type AreaSourceKey,
   GENERAL_MIN_REVIEWS_MAX,
   googleCallsPerLoad,
-  HALF_KM_MAX,
-  HALF_KM_MIN,
   MAP_PLACES_SHOWN_MAX,
   MAP_POPULARITY_FLOOR_MAX,
   MAP_POPULARITY_FLOOR_MIN,
@@ -39,6 +37,8 @@ import {
   NAME_IDLE_SEC_MAX,
   NAME_IDLE_SEC_MIN,
   NAME_LANE_COUNT_MAX,
+  RADIUS_DIVISOR_MAX,
+  RADIUS_DIVISOR_MIN,
   type DiscoveryConfig,
 } from "./catalog";
 import { PipelineBox } from "./PipelineBox";
@@ -292,9 +292,9 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
     setCfg((c) => ({ ...c, map: { ...c.map, ...p } }));
   };
   const params = cfg.params;
-  const setHalfKm = (halfKm: number) => {
+  const setRadiusDivisor = (radiusDivisor: number) => {
     setOk(false);
-    setCfg((c) => ({ ...c, params: { ...c.params, proximity: { halfKm } } }));
+    setCfg((c) => ({ ...c, params: { ...c.params, proximity: { radiusDivisor } } }));
   };
   const toggle = (key: AreaSourceKey) => map({ [key]: cfg.map[key] > 0 ? 0 : AREA_SOURCE_ON });
   const calls = googleCallsPerLoad(cfg.map);
@@ -437,13 +437,13 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             onChange={(popularityFloor) => map({ popularityFloor })}
           />
           <NumberField
-            label="Distance for half credit (km)"
-            value={params.proximity.halfKm}
-            min={HALF_KM_MIN}
-            max={HALF_KM_MAX}
+            label="Radius divisor for half credit"
+            value={params.proximity.radiusDivisor}
+            min={RADIUS_DIVISOR_MIN}
+            max={RADIUS_DIVISOR_MAX}
             decimals
             disabled={off}
-            onChange={setHalfKm}
+            onChange={setRadiusDivisor}
           />
           <NumberField
             label="Selected factor"
@@ -458,9 +458,10 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
         <p className="text-muted-foreground type-meta">
           a and b rank the Map and Home alike: below 1 softens a signal,
           above 1 sharpens it, 0 ignores it. Proximity is 1 ÷ (1 + distance ÷
-          half credit): 1 at the point, ½ at that many km, ⅓ at twice it,
-          never 0, and the same whatever the radius (the radius only decides
-          who is in). A place whose Popularity is under the Minimum
+          (radius ÷ divisor)): 1 at the point, ½ at the radius ÷ the divisor
+          (now {params.proximity.radiusDivisor}), 1 ÷ (1 + divisor) at the
+          edge, never 0, whatever the radius: the Home circle or the Map
+          screen. 2 puts half credit halfway out and the edge at ⅓. A place whose Popularity is under the Minimum
           Popularity (now {cfg.map.popularityFloor}; 0 is off) never shows on
           Home, the Map or Chat, Google or Mesita, whatever its score: 3 is
           about 4★ × 5 reviews. Popularity is ln(1 + reviews × stars), never normalized:
