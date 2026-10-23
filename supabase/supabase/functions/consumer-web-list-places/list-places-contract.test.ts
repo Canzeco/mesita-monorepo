@@ -18,9 +18,11 @@ Deno.test("list-places: the Map is the one Area pool inside the screen radius, t
   assert(webBranch.includes('const location = { kind: "point" as const, anchor: center, radiusKm };'));
   assert(webBranch.includes("{ center, radiusKm, families: guestSupers, selectedOnly: false },"));
   assert(webBranch.includes("    location,\n"));
-  assert(webBranch.includes('fanoutMode: "popular",'));
   assertEquals(src.includes("resolveAreaLocation"), false);
-  assert(webBranch.includes("googleCalls: googleFill ? googleCallsForStop(cfg.map.mapGooglePlaces) : 0"));
+  // The four switches decide the sources, the same as Home's (MESITA-2703).
+  for (const gone of ["fanoutMode", "googleCalls", "mesitaLimit", "mapGooglePlaces"]) {
+    assertEquals(src.includes(gone), false, gone);
+  }
   assert(webBranch.includes("selectedOnly: false"));
   // The guest never picks a source.
   assertEquals(src.includes("parsePlacesScope"), false);
@@ -42,12 +44,12 @@ Deno.test("list-places: the circle is the screen's, else map.radiusKm; no client
   assert(webBranch.includes("const radiusKm = screenKm ?? cfg.map.radiusKm;"));
 });
 
-Deno.test("list-places: Proximity^a × Popularity^1 × Selected^1, reach = the radius (MESITA-2504)", () => {
+Deno.test("list-places: Proximity^a × Popularity^b, reach = the radius (MESITA-2504, MESITA-2703)", () => {
   assert(webBranch.includes("const weights = areaWeights(cfg.map);"));
   // The Map's reload throttle is the operator's (MESITA-2444); the dead pair is not sent.
   assert(webBranch.includes("reloadIdleSec: cfg.map.reloadIdleSec,"));
   assertEquals(webBranch.includes("reloadMinKm"), false);
-  assert(webBranch.includes("signals: { reachKm: radiusKm, weights },"));
+  assertEquals(webBranch.includes("signals:"), false);
   // The guest picks no mode (MESITA-2499).
   assertEquals(src.includes("readAreaMode("), false);
   assertEquals(src.includes("body.prefer"), false);
@@ -60,6 +62,8 @@ Deno.test("list-places: the answer carries the radius, the weights and each plac
   assert(answer.includes("proximity: a.signals.proximity,"));
   assert(answer.includes("popularity: a.signals.popularity,"));
   assert(answer.includes("final: a.final,"));
+  assert(answer.includes("foundBy: a.foundBy,"));
+  assertEquals(answer.includes("selected: a.selected"), false);
 });
 
 Deno.test("list-places: the old merge-and-paint branch is gone", () => {

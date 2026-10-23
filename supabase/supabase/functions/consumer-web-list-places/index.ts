@@ -25,21 +25,19 @@
 // read is boxed to it and the Radius gate drops what lies past it, Google's
 // calls ask the prominent 20 inside it first and eligibility drops the rest
 // (Pato: "I son't want to see stuff beyond my screen"). The score is
-// Proximity^a × Popularity^1 × Selected^1 with Proximity's reach = R (1 at
-// the cross, 0 at the edge, the same at every zoom); `a` is the operator's
-// `map.proximityWeight`, the one exponent that moves. The family chip gates;
+// Proximity^a × Popularity^b with Proximity's reach = R (1 at the cross, 0
+// at the edge, the same at every zoom); `a` and `b` are the operator's
+// `map.proximityWeight` and `map.popularityWeight`. The family chip gates;
 // the guest picks no mode, so `prefer` is ignored. No bounds, or a box wider
 // than AREA_BOUNDS_MAX_KM, falls back to the centre inside `map.radiusKm`,
 // scored the same way. The answer carries R, the weights and each place's
-// breakdown for the debug readout (MESITA-2504). It
-// shows the same merged pool as the Feed — Google and Mesita candidates
-// deduped, gated, scored, × Selected, ranked — with its own budget: the
-// operator's `map.mapGooglePlaces` (20 · 40 · 60 = 1 / 2 / 3 Nearby calls
-// per load, MESITA-2687; the reload throttle bounds the spend), the guest's
-// family pills pushed down to Nearby types, the operator's
-// `map.googleMinReviews` on Google hits, and `map.mesitaPlaces` Mesita
-// candidates. The guest never picks a source: a stale `placesScope` is
-// ignored.
+// breakdown for the debug readout (MESITA-2504). It runs the same four
+// sources as the Feed (MESITA-2703) — Google Popular, Google Closest (one
+// billed Nearby call each, so a reload with both on bills 2; the reload
+// throttle bounds the spend), Mesita Popular, Mesita Closest — merged with
+// duplicates removed and ranked, with the guest's family pills pushed down
+// to Nearby types and the operator's `map.googleMinReviews` on Google hits.
+// The guest never picks a source: a stale `placesScope` is ignored.
 //
 // Anything else is refused: a GET is 405, a POST without `google: true` or
 // without a lat/lng pair is 400. The listed `{ lat, lng }` lane and the
@@ -80,7 +78,6 @@ import {
 import {
   areaGoogleTypes,
   areaWeights,
-  googleCallsForStop,
   type OwnedRow,
   type PoolBuilder,
   screenRadiusKm,
@@ -118,8 +115,9 @@ type ListBody = {
 type WireScore = {
   proximity: number | null;
   popularity: number | null;
-  selected: number;
   final: number;
+  /** The sources that found the place (MESITA-2703); diagnostics only. */
+  foundBy: string[];
 };
 
 type CardRow = {
@@ -181,18 +179,18 @@ Deno.serve(async (req) => {
   // A GUEST PILL OUTRANKS THE FULL BATTERY, deliberately (MESITA-1685). The
   // pill IS the guest's question. With no pill, Nearby asks for every guest
   // family. Stored family switches are not read. The operator still holds
-  // googleFill, the floors, and the rate controls.
+  // two Google Area switches, the floors and the rate controls.
   const nearbyTypes = guestSupers.length > 0
     ? areaGoogleTypes(guestSupers)
     : enabledNearbyTypes(cfg.map);
-  const googleFill = mapShouldFillGoogle(true, cfg.map) &&
+  const googleOn = mapShouldFillGoogle(true, cfg.map) &&
     nearbyTypes.length > 0;
   const center = { lat: nearbyDecision.lat, lng: nearbyDecision.lng };
   // The screen radius, or the operator's when there is no screen to read.
   const screenKm = screenRadiusKm(body.bounds, center);
   const radiusKm = screenKm ?? cfg.map.radiusKm;
   const location = { kind: "point" as const, anchor: center, radiusKm };
-  // Proximity^a × Popularity^1 × Selected^1, reach = the radius.
+  // Proximity^a × Popularity^b, reach = the radius.
   const weights = areaWeights(cfg.map);
   const pool = await selectedPoolQuery(
     supabase.from("profiles").select(PLACE_CARD_COLUMNS) as unknown as PoolBuilder,
@@ -202,15 +200,12 @@ Deno.serve(async (req) => {
   if (pool.error) {
     return json({ ok: false, error: pool.error.message }, 500);
   }
-  const gmp = googleFill ? readGooglePlacesKey() : null;
+  const gmp = googleOn ? readGooglePlacesKey() : null;
   const area = await selectAreaPool<OwnedRow>({
     apiKey: gmp?.ok && efEnv.ok ? gmp.key : null,
     location,
     families: guestSupers,
-    types: googleFill ? nearbyTypes : [],
-    // The operator's Map stop: 20 · 40 · 60 = 1 / 2 / 3 calls (MESITA-2687).
-    googleCalls: googleFill ? googleCallsForStop(cfg.map.mapGooglePlaces) : 0,
-    mesitaLimit: cfg.map.mesitaPlaces,
+    types: googleOn ? nearbyTypes : [],
     mesitaRows: (pool.data ?? []) as OwnedRow[],
     cfg,
     consumeQuota: efEnv.ok
@@ -221,9 +216,6 @@ Deno.serve(async (req) => {
     // never a stub (MESITA-2154). An owned row that is not ready stays a
     // stub, and its tap's get-or-create opens the Mesita place.
     lookupOwned: ownedLookup(supabase, PLACE_CARD_COLUMNS, "consumer-web-list-places"),
-    signals: { reachKm: radiusKm, weights },
-    // The prominent 20 inside the whole radius first, whatever the chip.
-    fanoutMode: "popular",
   });
   // A caller that names its own cap keeps it.
   const places = typeof body.limit === "number"
@@ -237,8 +229,11 @@ Deno.serve(async (req) => {
     radius: screenKm === null ? "operator" : "screen",
     radiusKm,
     proximityWeight: weights.proximity,
-    googleFillOn: googleFill,
+    popularityWeight: weights.popularity,
+    googleOn,
     ...area.summary,
+    mesitaRead: pool.data?.length ?? 0,
+    mesitaCapped: (pool.data?.length ?? 0) >= NEARBY_SCAN_LIMIT,
     returned: places.length,
   }));
   return json({
@@ -249,8 +244,8 @@ Deno.serve(async (req) => {
         score: {
           proximity: a.signals.proximity,
           popularity: a.signals.popularity,
-          selected: a.selected,
           final: a.final,
+          foundBy: a.foundBy,
         } satisfies WireScore,
       })) as CardRow[],
     ),

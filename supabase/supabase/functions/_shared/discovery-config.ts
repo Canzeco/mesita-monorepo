@@ -5,9 +5,8 @@
 // Admin: one page, four pipeline boxes (Name by Admin · Name · Area · Deep);
 // each box saves only its own slices.
 //
-//   params     the Area pipeline's numbers: Proximity's reach, Popularity's
-//              reviews for half credit and Selected's other value
-//              (pipeline-signals.ts, area-score.ts). The Area box edits them.
+//   params     the Area pipeline's one number: Popularity's reviews for half
+//              credit (pipeline-signals.ts). The Area box edits it.
 //   general    Discovery-wide. requireActive — the post-Google wipe
 //              (discovery-general-gate.ts). Its reviews half is
 //              `map.googleMinReviews`, the one floor (MESITA-2702). The category param is NOT
@@ -30,36 +29,31 @@
 // read it after MESITA-2516, and its stored Nearby row ranked Chat by distance
 // alone), `map.supers` (every guest family is on, `enabledMapSupers`) and
 // `map.reloadMinKm` / `reloadMinSec` (the Map's distance gate, MESITA-2451).
+//
+// RETIRED WITH THE FOUR SOURCES (MESITA-2703): `map.googlePlaces`,
+// `map.mapGooglePlaces`, `map.mesitaPlaces` (the 20/40/60 stops),
+// `map.googleFill` (the two Google switches are Google's on/off),
+// `params.proximity` (the reach is the request's radius) and `params.selected`
+// (the Area score is Proximity^a × Popularity^b). Migration
+// 20261023020000 strips them from the stored row.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { bool, num } from "./config-coerce.ts";
-import { SELECTED_FACTOR } from "./area-score.ts";
 import {
   POPULARITY_HALF_REVIEWS_DEFAULT,
   POPULARITY_HALF_REVIEWS_MAX,
   POPULARITY_HALF_REVIEWS_MIN,
-  PROXIMITY_REACH_KM_DEFAULT,
-  PROXIMITY_REACH_KM_MAX,
-  PROXIMITY_REACH_KM_MIN,
 } from "./pipeline-signals.ts";
 
 /**
- * The Area pipeline's numbers, the only ones `params` carries: Proximity's
- * reach (MESITA-2431), Popularity's reviews-for-half-credit and Selected's
- * value for a non-Selected place (MESITA-2439). The exponents are not here:
- * every caller scores Proximity^a × Popularity × Selected, a =
- * `map.proximityWeight` (MESITA-2687). The reach is NOT `map.radiusKm`: the
- * radius decides who is a candidate, the reach scores distance.
+ * The Area pipeline's one stored signal number: Popularity's reviews for
+ * half credit. The exponents live on `map` (`proximityWeight`,
+ * `popularityWeight`); Proximity's reach is the request's own radius
+ * (MESITA-2703), so it is not a param.
  */
 export type SignalParams = {
-  proximity: { reachKm: number };
   popularity: { halfReviews: number };
-  selected: { otherFactor: number };
 };
-/** Selected's value for a non-Selected place (MESITA-2439): above 0, so
- *  Selected stays a signal and never becomes a gate; at most 1. */
-export const SELECTED_OTHER_MIN = 0.01;
-export const SELECTED_OTHER_MAX = 1;
 
 export type CatalogConfig = {
   /** Atlas category rails that currently have inventory. */
@@ -123,14 +117,12 @@ export const SUPER_PARAM_KEYS = [
 export type SuperParamKey = (typeof SUPER_PARAM_KEYS)[number];
 
 /**
- * The Area pool's policy (MESITA-2379): Google candidates and Mesita
- * candidates contribute independently to ONE merged, deduped, gated, ranked
- * pool inside the radius around a point (MESITA-2603: no saved areas).
- * `googlePlaces` is what Mesita buys from Nearby Search (New);
- * `mesitaPlaces` is a free read of our own rows. There is no total: the two
- * counts are independent. Operator numbers since MESITA-1699 — the guest's
- * Filters sheet is gone and its controls live here. Floors still exclude;
- * 0 = off.
+ * The Area pipeline's policy (MESITA-2703): a point and a radius, FOUR
+ * sources — Google Popular, Google Closest, Mesita Popular, Mesita Closest —
+ * each 0 or 20 (`AREA_SOURCE_STOPS`), merged into one pool with duplicates
+ * removed, then sorted by Proximity^a × Popularity^b. Home and the Map read
+ * the same switches. Operator numbers since MESITA-1699. Floors still
+ * exclude; 0 = off.
  */
 export type MapConfig = {
   minRating: number;
@@ -143,28 +135,23 @@ export type MapConfig = {
    * (the client's own clamp), two decimals, default 1.5.
    */
   reloadIdleSec: number;
-  googleFill: boolean;
+  /** Google Popular: one billed Nearby call ranked POPULARITY over the whole
+   *  circle. 0 or 20. */
+  googlePopular: number;
+  /** Google Closest: one billed Nearby call ranked DISTANCE. 0 or 20. The
+   *  reviews floor cuts its hits after Google bills them. */
+  googleClosest: number;
+  /** Mesita Popular: the 20 Mesita rows in the circle with the highest raw
+   *  Popularity. 0 or 20. Free. */
+  mesitaPopular: number;
+  /** Mesita Closest: the 20 nearest Mesita rows in the circle. 0 or 20. */
+  mesitaClosest: number;
   /**
-   * Google candidates on Home: 20, 40 or 60 (`GOOGLE_PULL_STOPS`) — places
-   * Mesita BUYS. Nearby Search (New) hands back at most 20 per call and has
-   * no pages, so 20/40/60 are 1/2/3 different billed calls
-   * (`googleCallsForStop`, MESITA-2379); duplicates count once.
-   */
-  googlePlaces: number;
-  /**
-   * Google candidates on the Map, per load: the same stops and calls as
-   * `googlePlaces`, its own key so the Map's spend is set apart from Home's
-   * (MESITA-2687; the Map bought 1 call per load before it existed).
-   */
-  mapGooglePlaces: number;
-  /** Mesita candidates: 20, 40 or 60, the best by score of a free read of
-   *  our ready rows. */
-  mesitaPlaces: number;
-  /**
-   * THE ONE NEARBY RADIUS (km), shared by the Map and the Feed's Google
-   * Places and Mesita Selected candidates (MESITA-2298). The operator's number; a
-   * guest never sets it. `MAP_RADIUS_KM_MIN`..`MAP_RADIUS_KM_MAX` — the max
-   * is Google's Nearby circle cap (50 km). One decimal.
+   * THE CURRENT-LOCATION RADIUS (km): Home's radius when the guest searches
+   * from the device or from a saved pin with no radius of its own, the Map's
+   * when it has no screen to measure, and Chat's (MESITA-2703). A saved pin
+   * carries its own radius. `MAP_RADIUS_KM_MIN`..`MAP_RADIUS_KM_MAX` — the
+   * max is Google's Nearby circle cap (50 km). One decimal.
    */
   radiusKm: number;
   /**
@@ -177,14 +164,24 @@ export type MapConfig = {
    */
   googleMinReviews: number;
   /**
-   * The Map's Proximity exponent `a` (MESITA-2504): the Map scores
-   * Proximity^a × Popularity^1 × Selected^1 inside the screen radius, and
-   * this is the one number that moves (Pato: "Populairty wright is only 1.
-   * the only thing that changes is proximity, it can go below 1 or above
-   * 1"). `MAP_PROXIMITY_WEIGHT_MIN`..`MAX`, two decimals, default 1.
+   * Proximity's exponent `a` in Proximity^a × Popularity^b (MESITA-2504),
+   * Home and the Map alike. `MAP_PROXIMITY_WEIGHT_MIN`..`MAX`, two decimals,
+   * default 1; 0 ignores distance.
    */
   proximityWeight: number;
+  /** Popularity's exponent `b` (MESITA-2703). Same bounds; 0 ignores
+   *  popularity. */
+  popularityWeight: number;
 };
+
+/** The four Area sources, in the order the admin page lists them. */
+export const AREA_SOURCE_KEYS = [
+  "googlePopular",
+  "googleClosest",
+  "mesitaPopular",
+  "mesitaClosest",
+] as const;
+export type AreaSourceKey = (typeof AREA_SOURCE_KEYS)[number];
 
 /**
  * Name = two Search-bar boxes. Map Filters never cut this list.
@@ -275,22 +272,22 @@ export const NAME_FAST_COUNT_DEFAULT = 5;
 export const NAME_MESITA_COUNT_DEFAULT = 3;
 export const NAME_GOOGLE_COUNT_DEFAULT = 3;
 /**
- * The three stops `map.googlePlaces` and `map.mesitaPlaces` offer. Google
- * hands back at most 20 per Nearby Search (New) call, so 40 and 60 Google
- * candidates are two and three calls (MESITA-2379).
+ * An Area source is off (0) or on (20): Nearby Search (New) hands back at
+ * most 20 per call and has no pages, so 20 is one billed call per Google
+ * source (MESITA-2703).
  */
-export const GOOGLE_PULL_STOPS = [20, 40, 60] as const;
-export const GOOGLE_PULL_DEFAULT = 20;
-/** `map.radiusKm` bounds. The max is Google's Nearby circle cap. The
- *  default is Proximity's reach (MESITA-2687): a wider Home circle only
- *  admits places that score 0 and sort by distance. */
+export const AREA_SOURCE_STOPS = [0, 20] as const;
+export const AREA_SOURCE_DEFAULT = 20;
+/** `map.radiusKm` bounds. The max is Google's Nearby circle cap. */
 export const MAP_RADIUS_KM_MIN = 1;
 export const MAP_RADIUS_KM_MAX = 50;
 export const MAP_RADIUS_KM_DEFAULT = 15;
-/** `map.proximityWeight` bounds: 0 turns Proximity off. */
+/** `map.proximityWeight` and `map.popularityWeight` bounds: 0 turns the
+ *  signal off. */
 export const MAP_PROXIMITY_WEIGHT_MIN = 0;
 export const MAP_PROXIMITY_WEIGHT_MAX = 5;
 export const MAP_PROXIMITY_WEIGHT_DEFAULT = 1;
+export const MAP_POPULARITY_WEIGHT_DEFAULT = 1;
 /** The Map's reload throttle (s): the consumer clamps to the same 0.5–10. */
 export const MAP_RELOAD_IDLE_SEC_MIN = 0.5;
 export const MAP_RELOAD_IDLE_SEC_MAX = 10;
@@ -327,13 +324,14 @@ export const DEFAULT_MAP: MapConfig = {
   minReviews: 0,
   minPopularity: 0,
   reloadIdleSec: MAP_RELOAD_IDLE_SEC_DEFAULT,
-  googleFill: true,
-  googlePlaces: GOOGLE_PULL_DEFAULT,
-  mapGooglePlaces: GOOGLE_PULL_DEFAULT,
-  mesitaPlaces: GOOGLE_PULL_DEFAULT,
+  googlePopular: AREA_SOURCE_DEFAULT,
+  googleClosest: AREA_SOURCE_DEFAULT,
+  mesitaPopular: AREA_SOURCE_DEFAULT,
+  mesitaClosest: AREA_SOURCE_DEFAULT,
   radiusKm: MAP_RADIUS_KM_DEFAULT,
   googleMinReviews: 0,
   proximityWeight: MAP_PROXIMITY_WEIGHT_DEFAULT,
+  popularityWeight: MAP_POPULARITY_WEIGHT_DEFAULT,
 };
 
 /** `catalog.railCap` bounds and default: the Feed shows 5 per row. */
@@ -394,24 +392,16 @@ export const DEFAULT_GENERAL: GeneralConfig = {
 
 /** The Area pipeline's numbers. A blob with no `params` reads these. */
 export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
-  proximity: { reachKm: PROXIMITY_REACH_KM_DEFAULT },
   popularity: { halfReviews: POPULARITY_HALF_REVIEWS_DEFAULT },
-  selected: { otherFactor: SELECTED_FACTOR.other },
 };
 
 /** Legal ranges for the numbers the Area box edits. */
 export const SIGNAL_PARAM_BOUNDS = {
-  reachKm: {
-    min: PROXIMITY_REACH_KM_MIN,
-    max: PROXIMITY_REACH_KM_MAX,
-    decimals: 1,
-  },
   halfReviews: {
     min: POPULARITY_HALF_REVIEWS_MIN,
     max: POPULARITY_HALF_REVIEWS_MAX,
     decimals: 0,
   },
-  selectedOther: { min: SELECTED_OTHER_MIN, max: SELECTED_OTHER_MAX, decimals: 2 },
 } as const;
 
 export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
@@ -493,19 +483,10 @@ export function normalizeSuperParams(
   return out;
 }
 
-/** A source count: 20, 40 or 60 — snapped to the nearest stop, never a free number. */
-export function normalizeGooglePull(raw: unknown): number {
-  const n = num(
-    raw,
-    GOOGLE_PULL_DEFAULT,
-    GOOGLE_PULL_STOPS[0],
-    GOOGLE_PULL_STOPS[2],
-  );
-  let best: number = GOOGLE_PULL_DEFAULT;
-  for (const stop of GOOGLE_PULL_STOPS) {
-    if (Math.abs(stop - n) < Math.abs(best - n)) best = stop;
-  }
-  return best;
+/** An Area source switch: 0 or 20, snapped to the nearer stop. */
+export function normalizeAreaSource(raw: unknown): number {
+  const n = num(raw, AREA_SOURCE_DEFAULT, 0, AREA_SOURCE_DEFAULT);
+  return n >= AREA_SOURCE_DEFAULT / 2 ? AREA_SOURCE_DEFAULT : 0;
 }
 
 export function normalizeGeneralConfig(raw: unknown): GeneralConfig {
@@ -611,12 +592,13 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
         MAP_RELOAD_IDLE_SEC_MAX,
       ) * 100,
     ) / 100,
-    googleFill: bool(r.googleFill, DEFAULT_MAP.googleFill),
     // Rebuilt key by key: a retired key (`googlePull`, `pinCount`, `supers`,
-    // the reload km/sec pair) is dropped on the next save.
-    googlePlaces: normalizeGooglePull(r.googlePlaces),
-    mapGooglePlaces: normalizeGooglePull(r.mapGooglePlaces),
-    mesitaPlaces: normalizeGooglePull(r.mesitaPlaces),
+    // the reload km/sec pair, the 20/40/60 stops, `googleFill`) is dropped
+    // on the next save.
+    googlePopular: normalizeAreaSource(r.googlePopular),
+    googleClosest: normalizeAreaSource(r.googleClosest),
+    mesitaPopular: normalizeAreaSource(r.mesitaPopular),
+    mesitaClosest: normalizeAreaSource(r.mesitaClosest),
     radiusKm: Math.round(
       num(
         r.radiusKm,
@@ -632,6 +614,14 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
       num(
         r.proximityWeight,
         DEFAULT_MAP.proximityWeight,
+        MAP_PROXIMITY_WEIGHT_MIN,
+        MAP_PROXIMITY_WEIGHT_MAX,
+      ) * 100,
+    ) / 100,
+    popularityWeight: Math.round(
+      num(
+        r.popularityWeight,
+        DEFAULT_MAP.popularityWeight,
         MAP_PROXIMITY_WEIGHT_MIN,
         MAP_PROXIMITY_WEIGHT_MAX,
       ) * 100,
@@ -654,31 +644,19 @@ function boundedParam(
  * from the retired deck (maxKm, kneeKm, timing, category, priorRating, …)
  * or the retired calibration (proximity.halfDistanceKm,
  * popularity.referenceRating/referenceReviews, MESITA-2347), the linear
- * `balance` (MESITA-2428) or the weights table `modes` (MESITA-2687) is
- * dropped on the next save.
+ * `balance` (MESITA-2428), the weights table `modes` (MESITA-2687) or
+ * `proximity` / `selected` (MESITA-2703) is dropped on the next save.
  */
 export function normalizeSignalParams(raw: unknown): SignalParams {
   const r = (raw ?? {}) as Record<string, unknown>;
-  const prox = (r.proximity ?? {}) as Record<string, unknown>;
   const pop = (r.popularity ?? {}) as Record<string, unknown>;
-  const sel = (r.selected ?? {}) as Record<string, unknown>;
   const d = DEFAULT_SIGNAL_PARAMS;
   return {
-    proximity: {
-      reachKm: boundedParam(prox.reachKm, d.proximity.reachKm, SIGNAL_PARAM_BOUNDS.reachKm),
-    },
     popularity: {
       halfReviews: boundedParam(
         pop.halfReviews,
         d.popularity.halfReviews,
         SIGNAL_PARAM_BOUNDS.halfReviews,
-      ),
-    },
-    selected: {
-      otherFactor: boundedParam(
-        sel.otherFactor,
-        d.selected.otherFactor,
-        SIGNAL_PARAM_BOUNDS.selectedOther,
       ),
     },
   };

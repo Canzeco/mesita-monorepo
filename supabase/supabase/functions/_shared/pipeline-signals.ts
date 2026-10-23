@@ -19,12 +19,8 @@ const clamp01 = (n: number) => (n <= 0 ? 0 : n >= 1 ? 1 : n);
 
 // ── Proximity ─────────────────────────────────────────────────────────────
 
-/** Proximity's reach: the operator's number (`params.proximity.reachKm`,
- *  MESITA-2431). Apart from `map.radiusKm`, which only decides who is a
- *  candidate: a 50 km radius scored a whole city between 0.7 and 1. */
-export const PROXIMITY_REACH_KM_DEFAULT = 15;
-export const PROXIMITY_REACH_KM_MIN = 1;
-export const PROXIMITY_REACH_KM_MAX = 50;
+/** Proximity's reach is the request's own radius (MESITA-2703): 1 at the
+ *  point, 0 at the circle's edge, the same on Home and the Map. */
 
 /**
  * proximity(d) = 1 − d ÷ reach (MESITA-2347, reach MESITA-2431): 1 at the

@@ -1529,15 +1529,15 @@ select ok(
       -- the first calibration's keys (MESITA-2347) are gone from the row.
       -- MESITA-2439 added `selected` (Selected's value for other places).
       -- MESITA-2687: the weights table and the dead map keys are gone.
-      and (coalesce(discovery_config -> 'params', '{}'::jsonb)
-             - 'proximity' - 'popularity' - 'selected') = '{}'::jsonb
+      -- MESITA-2703: Area's four sources replaced the stops, googleFill,
+      -- Proximity's stored reach and Selected; `params` holds Popularity only.
+      and (coalesce(discovery_config -> 'params', '{}'::jsonb) - 'popularity') = '{}'::jsonb
       and not (coalesce(discovery_config -> 'map', '{}'::jsonb)
-             ?| array['supers', 'reloadMinKm', 'reloadMinSec', 'pinCount'])
+             ?| array['supers', 'reloadMinKm', 'reloadMinSec', 'pinCount',
+                      'googleFill', 'googlePlaces', 'mapGooglePlaces', 'mesitaPlaces'])
       -- MESITA-2702: one reviews floor, `map.googleMinReviews`.
       and discovery_config #> '{general,minReviews}' is null
-      and (coalesce(discovery_config #> '{params,proximity}', '{}'::jsonb) - 'reachKm') = '{}'::jsonb
       and (coalesce(discovery_config #> '{params,popularity}', '{}'::jsonb) - 'halfReviews') = '{}'::jsonb
-      and (coalesce(discovery_config #> '{params,selected}', '{}'::jsonb) - 'otherFactor') = '{}'::jsonb
       and not (enrichment_config ? 'atlasPerRunCostCapUsd')
      from public.app_config where id = 1),
   'no dead app_config key survives'

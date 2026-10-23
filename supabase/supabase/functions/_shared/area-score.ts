@@ -1,51 +1,31 @@
-// The Area pipeline's gates and its three signals (MESITA-2327; one pool
-// since MESITA-2379; the weights table since MESITA-2428; Selected its own
-// signal since MESITA-2439; points only since Territory was retired,
-// MESITA-2500, MESITA-2603).
+// The Area pipeline's gates and its two signals (MESITA-2327; one pool
+// since MESITA-2379; points only since Territory was retired, MESITA-2500,
+// MESITA-2603; two signals since MESITA-2703).
 //
-//   point location   final = Proximity^a × Popularity^b × Selected^c
-//   no location      final = Popularity^b × Selected^c
+//   point location   final = Proximity^a × Popularity^b
+//   no location      final = Popularity^b
 //
-// (a, b, c) is (a, 1, 1) for every caller — the Map, Home and Chat — a =
-// `map.proximityWeight` (MESITA-2504, MESITA-2516; the weights table that
-// ranked Chat went in MESITA-2687). Geometric weights,
-// so only the ratios a : b : c change the order; 0 turns a signal off
-// (x^0 = 1). Selected used to ride INSIDE Popularity's exponent
-// (MESITA-2428); Pato split it out (MESITA-2439): "Proximity. Popularity.
-// Selected."
+// a = `map.proximityWeight`, b = `map.popularityWeight`, both the operator's
+// (Pato, MESITA-2703: "sort them based on the two weights of proximity and
+// popularity"). Geometric weights, so only the ratio a : b changes the
+// order; 0 turns a signal off (x^0 = 1, an edge place with a = 0 scores
+// Popularity^b alone). Proximity's reach is the request's radius: 1 at the
+// point, 0 at the edge. Selected was a third signal (MESITA-2439) and left
+// the score with MESITA-2703; `source` still says where a card comes from.
 //
 // Gates are binary eligibility (0 or 1) and stay separate from the
 // continuous signals, so diagnostics can say WHY a place is out (a gate)
 // apart from why it is low (a signal). A place a gate closes is dropped, not
 // ranked at 0. Gates: Family (every location) and Radius (a point: inside
-// the circle — the screen radius on the Map, `map.radiusKm` on Home).
-//
-// Selected is a signal, not a gate (Pato, 2026-10-18): 1 for a Mesita
-// Selected place (an Enrich run completed and the profile is ready —
-// curation, never payment), the operator's `params.selected.otherFactor`
-// (default 0.3) for every other candidate. Never 0, so a strong Google-only
-// place can still outrank a weak Selected one. Ties break on distance (a
-// point only), then id.
+// the circle). Ties break on distance (a point only), then id.
 
 import { popularity, proximity } from "./pipeline-signals.ts";
 import { haversineKm } from "./geo.ts";
 
-/** The Selected signal's two values (MESITA-2379). `other` is the default
- *  of the operator's `params.selected.otherFactor` (MESITA-2439). */
-export const SELECTED_FACTOR = { selected: 1, other: 0.3 } as const;
-
 /** Where a candidate's card comes from. `selected` = Mesita Selected;
  *  `mesita` = a ready Mesita row an Enrich run has not completed; `google`
- *  = a Google-only stub. */
+ *  = a Google-only stub. Provenance only: it never scores (MESITA-2703). */
 export type AreaSource = "selected" | "mesita" | "google";
-
-/** Selected: 1 for a Mesita Selected place, `other` for every other. */
-export function selectedFactor(
-  source: AreaSource,
-  other: number = SELECTED_FACTOR.other,
-): number {
-  return source === "selected" ? SELECTED_FACTOR.selected : other;
-}
 
 export type LatLng = { lat: number; lng: number };
 /** A rectangle: the Map's visible box, read only to measure the screen
@@ -65,12 +45,10 @@ export type AreaContext = {
   families: readonly string[];
   /** Popularity's volume term is ½ at this many reviews. */
   halfReviews: number;
-  /** Proximity is 0 at this distance (km), apart from the radius. */
+  /** Proximity is 0 at this distance (km): the request's radius. */
   reachKm: number;
-  /** The three exponents: (map.proximityWeight, 1, 1) for every caller. */
+  /** The two exponents. */
   weights: AreaWeights;
-  /** Selected's value for a non-Selected candidate; default 0.3. */
-  selectedOther?: number;
 };
 
 /** One candidate, normalized from whichever source produced it. */
@@ -129,23 +107,11 @@ export function insideBounds(
     inLng(c.lng, bounds.low.lng, bounds.high.lng);
 }
 
-/** The guest's mode (MESITA-2428): Nearby and Popular are every family,
- *  Family is one family. It picks the Google circles (`areaFanoutCircles`);
- *  the weights table it once picked a row of is gone (MESITA-2687). */
-export const AREA_MODES = ["nearby", "popular", "family"] as const;
-export type AreaMode = (typeof AREA_MODES)[number];
+/** The two exponents (MESITA-2703). */
+export type AreaWeights = { proximity: number; popularity: number };
 
-/** The three exponents (MESITA-2439). */
-export type AreaWeights = { proximity: number; popularity: number; selected: number };
-
-/** The wire's `prefer` (MESITA-2425): "popular" and "family" name their
- *  mode; anything else, "near" included, is Nearby. */
-export function readAreaMode(v: unknown): AreaMode {
-  return v === "popular" ? "popular" : v === "family" ? "family" : "nearby";
-}
-
-/** x^w with the table's guards: a missing or negative exponent is 0 (the
- *  signal is off), and 0^0 is 1. */
+/** x^w with the guards: a missing or negative exponent is 0 (the signal is
+ *  off), and 0^0 is 1. */
 function weighted(x: number, w: number): number {
   const e = Number.isFinite(w) ? Math.max(0, w) : 0;
   if (e === 0) return 1;
@@ -172,14 +138,9 @@ export type AreaDiagnostics = {
     reviews: 1 | null;
   };
   signals: { proximity: number | null; popularity: number | null };
-  /** The Selected signal: 1, or `params.selected.otherFactor`. */
-  selected: number;
   source: AreaSource;
-  /** The mode's exponents (MESITA-2428; `selected` since MESITA-2439). */
   weights: AreaWeights;
-  /** Proximity^a × Popularity^b, before Selected. */
-  base: number;
-  /** base × Selected^c. */
+  /** Proximity^a × Popularity^b. */
   final: number;
   formula: "point" | "none";
 };
@@ -189,7 +150,6 @@ export type AreaScore = AreaDiagnostics & { distanceKm: number | null };
 export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
   const loc = ctx.location;
   const pop = popularityOrNull(c, ctx.halfReviews);
-  const popN = pop ?? 0;
   let km: number | null = null;
   if (loc.kind === "point" && typeof c.lat === "number" && typeof c.lng === "number") {
     const d = haversineKm(loc.anchor.lat, loc.anchor.lng, c.lat, c.lng);
@@ -201,9 +161,8 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
     : null;
   const prox = loc.kind === "point" ? proximity(c, loc.anchor, ctx.reachKm) : null;
   const w = ctx.weights;
-  const popPart = weighted(popN, w.popularity);
-  const base = loc.kind === "point" ? weighted(prox ?? 0, w.proximity) * popPart : popPart;
-  const factor = selectedFactor(c.source, ctx.selectedOther);
+  const popPart = weighted(pop ?? 0, w.popularity);
+  const final = loc.kind === "point" ? weighted(prox ?? 0, w.proximity) * popPart : popPart;
   const open = family === 1 && radius !== 0;
   return {
     familyKeys: knownFamilies(c.familyKeys),
@@ -215,11 +174,9 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
       reviews: c.reviews ?? null,
     },
     signals: { proximity: prox, popularity: pop },
-    selected: factor,
     source: c.source,
-    weights: { proximity: w.proximity, popularity: w.popularity, selected: w.selected },
-    base: open ? base : 0,
-    final: open ? base * weighted(factor, w.selected) : 0,
+    weights: { proximity: w.proximity, popularity: w.popularity },
+    final: open ? final : 0,
     formula: loc.kind,
     distanceKm: km,
   };

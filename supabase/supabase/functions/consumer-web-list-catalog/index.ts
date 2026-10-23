@@ -1,43 +1,46 @@
 // Supabase Edge Function — consumer-web-list-catalog (product caller)
 //
-// The Feed: the Catalog VIEW of the Area pipeline (MESITA-2302, MESITA-2327,
-// one pool since MESITA-2379, `_shared/area-pipeline.ts`). One round trip:
-// `selectAreaPool` merges Google candidates (up to 20/40/60 — 1/2/3 billed
-// Nearby calls, `map.googlePlaces`) and Mesita candidates
-// (`map.mesitaPlaces`), dedupes them by Google Place ID, gates, scores,
-// multiplies by the Selected factor and ranks them globally. The client
-// pages the ranked pool, so a later page never re-pays Google.
+// The Feed: the Catalog VIEW of the Area pipeline (MESITA-2302, one pool
+// since MESITA-2379, four sources since MESITA-2703,
+// `_shared/area-pipeline.ts`). One round trip: `selectAreaPool` pulls the
+// four sources the operator switched on (Google Popular, Google Closest —
+// one billed Nearby call each — Mesita Popular, Mesita Closest) around the
+// point inside the radius, merges duplicates and ranks the pool. The client
+// pages it, so a later page never re-pays Google.
 //
-// ONE RANKING, THE MAP'S (Pato, MESITA-2516: "only keeping All is cleaner.
-// just like in map"): Proximity^a × Popularity^1 × Selected^1, a = the
-// operator's `map.proximityWeight` — the same knob as the Map — and
-// Proximity's reach = `params.proximity.reachKm` (Home has no screen to
-// measure). Home's Nearby and Popular rows are gone, so `prefer` is ignored;
-// a family row only gates, ranked the same way.
+// THE RADIUS: the saved pin's own `radiusKm` when the client sends one, else
+// the operator's `map.radiusKm` (the device's current location). Mesita's
+// read, Google's circle and Proximity's reach all use it. ONE RANKING, THE
+// MAP'S: Proximity^a × Popularity^b (`map.proximityWeight`,
+// `map.popularityWeight`). `prefer` is ignored; a family row only gates,
+// ranked the same way.
 //
 // A FAMILY ROW ASKS ITS OWN QUESTION (MESITA-2438): `familyKeys` sends
 // Google that family's full type battery (`areaGoogleTypes`), pushes the
 // Family gate into the Mesita read, and lists the family's PRIMARY places
 // before its secondary ones. Without it the pool is every family's.
 //
-// Request: POST { unified: true, google: true, lat, lng, familyKeys? }
-//   lat/lng   a POINT inside `map.radiusKm`; none = no location (Mesita
-//             only, Popularity alone). Home never asks for an area: saved
+// Request: POST { unified: true, google: true, lat, lng, radiusKm?, familyKeys? }
+//   radiusKm  the saved pin's radius, clamped to 1..50; missing or not a
+//             number = `map.radiusKm` (log `radius: "operator"`).
+//   lat/lng   a POINT; none = no location (Mesita Popular only,
+//             Popularity alone). Home never asks for an area: saved
 //             areas (Territory) were retired 2026-10-20 (MESITA-2500), so a
 //             `bounds` an old build still sends is ignored and logged as
 //             `bounds_ignored`; drop that log once it stays quiet.
-//   google    the client can render a Google-only stub; the operator's
-//             `map.googleFill`, a key and the per-IP ledger also decide.
+//   google    the client can render a Google-only stub; the operator's two
+//             Google switches, a key and the per-IP ledger also decide.
 //   The Google reviews minimum is the operator's `map.googleMinReviews`
 //   alone (MESITA-2417), on Google hits; never a Mesita floor.
-// Response (unified): { ok, location: { kind }, places: [... { area }],
-//   summary }. QUOTA: one load spends up to 3 of the per-IP 45 Nearby calls
-//   a minute (about 15 cold loads per IP per minute); a partly refused
-//   fan-out logs `quota: "partial"`.
+// Response (unified): { ok, location: { kind, radiusKm, operatorRadiusKm },
+//   places: [... { area }],
+//   summary }. QUOTA: one load spends up to 2 of the per-IP 45 Nearby calls
+//   a minute (one per Google switch on); a partly refused pair logs
+//   `quota: "partial"`.
 //
 // LEGACY (no `unified`): the old rails — Google Places, Mesita Selected,
-// then one rail per family — cut from the same ranked pool with ONE Nearby
-// call, at most `catalog.railCap` per rail, so a consumer build from before
+// then one rail per family — cut from the same ranked four-source pool, at
+// most `catalog.railCap` per rail, so a consumer build from before
 // MESITA-2384 keeps working while Vercel and the EFs deploy apart. Removed
 // by a follow-up once the new build is live.
 //
@@ -66,9 +69,9 @@ import {
   areaPoolLogFields,
   areaGoogleTypes,
   areaWeights,
-  googleCallsForStop,
   type OwnedRow,
   type PoolBuilder,
+  requestRadiusKm,
   resolveAreaLocation,
   selectAreaPool,
   selectedPoolQuery,
@@ -81,6 +84,8 @@ const POOL_CAP = 1000;
 type Body = {
   lat?: number;
   lng?: number;
+  /** The saved pin's radius (MESITA-2703); absent = `map.radiusKm`. */
+  radiusKm?: unknown;
   /** Sent by builds from before MESITA-2500; ignored, only logged. */
   bounds?: unknown;
   /** The client can render a Google-only stub. */
@@ -121,7 +126,9 @@ Deno.serve(async (req) => {
   const cfg = await loadDiscoveryConfig(admin);
   const nearby = decideNearby(body as Record<string, unknown>);
   const center = nearby.mode === "ok" ? { lat: nearby.lat, lng: nearby.lng } : null;
-  const radiusKm = cfg.map.radiusKm;
+  // Validated before it reaches the Mesita box or Google's circle.
+  const radius = requestRadiusKm(body.radiusKm, cfg.map.radiusKm);
+  const radiusKm = radius.km;
   // Home ranks from a point or nothing (MESITA-2500): saved areas are gone.
   if (body.bounds !== undefined && body.bounds !== null) {
     console.log(JSON.stringify({ fn: "consumer-web-list-catalog", event: "bounds_ignored" }));
@@ -162,14 +169,10 @@ Deno.serve(async (req) => {
     location,
     families,
     types: googleOn ? areaGoogleTypes(families) : [],
-    googleCalls: googleOn ? (unified ? googleCallsForStop(cfg.map.googlePlaces) : 1) : 0,
-    mesitaLimit: cfg.map.mesitaPlaces,
     mesitaRows,
     cfg,
     consumeQuota: areaQuota(req, admin, env.serviceKey),
     lookupOwned: ownedLookup(admin, PLACE_CARD_COLUMNS, "list-catalog", wirePlaces),
-    // The Map's ranking (MESITA-2516): Proximity^a × Popularity^1 × Selected^1.
-    signals: { reachKm: cfg.params.proximity.reachKm, weights },
   });
 
   // One line, because every failure mode here is a WRONG SET rather than an
@@ -179,7 +182,10 @@ Deno.serve(async (req) => {
     fn: "consumer-web-list-catalog",
     wire: unified ? "unified" : "legacy",
     location: location.kind,
+    radius: radius.from,
+    radiusKm,
     proximityWeight: weights.proximity,
+    popularityWeight: weights.popularity,
     familyKeys: families,
     ...pool.summary,
     mesitaRead: mesitaRows.length,
@@ -190,7 +196,9 @@ Deno.serve(async (req) => {
   if (unified) {
     return json({
       ok: true,
-      location: { kind: location.kind },
+      // The radius searched and the operator's current-location radius
+      // (MESITA-2703): the client names both in the location sheet.
+      location: { kind: location.kind, radiusKm, operatorRadiusKm: cfg.map.radiusKm },
       places: pool.places,
       summary: pool.summary,
     });
