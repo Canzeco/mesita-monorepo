@@ -1175,3 +1175,21 @@ Deno.test("screen radius: the circle gates Google, Proximity keeps its 10 km hal
     g.restore();
   }
 });
+
+Deno.test("the pool keeps the top map.placesShown of the sorted merge (MESITA-2713)", async () => {
+  reset();
+  // 30 Mesita rows, one per review count, all at the centre: Mesita Popular
+  // and Mesita Closest bring 20 each, merged to 30 distinct places at most.
+  const rows = Array.from({ length: 30 }, (_, i) => mrow(`m${String(i).padStart(2, "0")}`, { google_review_count: 10 + i }));
+  const run = async (placesShown?: number) => {
+    const { d } = deps({ sources: { googlePopular: 0 }, mesitaRows: rows });
+    if (placesShown !== undefined) d.cfg = { ...d.cfg, map: { ...d.cfg.map, placesShown } };
+    return (await selectAreaPool(d)).places;
+  };
+  const top5 = await run(5);
+  assertEquals(top5.length, 5);
+  // The cut keeps the best: the five highest review counts.
+  assertEquals(ids(top5), ["m29", "m28", "m27", "m26", "m25"]);
+  assertEquals((await run()).length, 20);
+  assertEquals((await run(80)).length, 30);
+});

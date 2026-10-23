@@ -180,6 +180,12 @@ export type MapConfig = {
   /** Popularity's exponent `b` (MESITA-2703). Same bounds; 0 ignores
    *  popularity. */
   popularityWeight: number;
+  /**
+   * How many of the merged, sorted places Home and the Map show (Pato,
+   * MESITA-2713): the top N of up to 80 (4 sources × 20).
+   * `MAP_PLACES_SHOWN_MIN`..`MAX`, whole, default 20.
+   */
+  placesShown: number;
 };
 
 /** The four Area sources, in the order the admin page lists them. */
@@ -296,6 +302,10 @@ export const MAP_PROXIMITY_WEIGHT_MIN = 0;
 export const MAP_PROXIMITY_WEIGHT_MAX = 5;
 export const MAP_PROXIMITY_WEIGHT_DEFAULT = 1;
 export const MAP_POPULARITY_WEIGHT_DEFAULT = 1;
+/** `map.placesShown` bounds: at most the four sources' 80. */
+export const MAP_PLACES_SHOWN_MIN = 1;
+export const MAP_PLACES_SHOWN_MAX = 80;
+export const MAP_PLACES_SHOWN_DEFAULT = 20;
 /** The Map's reload throttle (s): the consumer clamps to the same 0.5–10. */
 export const MAP_RELOAD_IDLE_SEC_MIN = 0.5;
 export const MAP_RELOAD_IDLE_SEC_MAX = 10;
@@ -340,6 +350,7 @@ export const DEFAULT_MAP: MapConfig = {
   googleMinReviews: 0,
   proximityWeight: MAP_PROXIMITY_WEIGHT_DEFAULT,
   popularityWeight: MAP_POPULARITY_WEIGHT_DEFAULT,
+  placesShown: MAP_PLACES_SHOWN_DEFAULT,
 };
 
 /** `catalog.railCap` bounds and default: the Feed shows 5 per row. */
@@ -640,6 +651,9 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
         MAP_PROXIMITY_WEIGHT_MAX,
       ) * 100,
     ) / 100,
+    placesShown: Math.round(
+      num(r.placesShown, DEFAULT_MAP.placesShown, MAP_PLACES_SHOWN_MIN, MAP_PLACES_SHOWN_MAX),
+    ),
   };
 }
 
