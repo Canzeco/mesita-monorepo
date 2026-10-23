@@ -32,9 +32,10 @@
 // QUESTION (MESITA-2438): it sends the family's key, so Google gets that
 // family's full type list and the server lists its primary places before
 // its secondary ones. Each location × row's pool is kept ten minutes
-// (lib/area-pool-cache.ts), so going back to a row spends nothing. Under
-// each tile, TEMPORARILY, the server's score
-// breakdown (AreaDiagnostics.tsx). `useUserLocation` asks for location on mount. No search bar.
+// (lib/area-pool-cache.ts), so going back to a row spends nothing. Above
+// each tile, TEMPORARILY, the Search map's score tag: the sources that found
+// it, proximity · popularity · final (MESITA-2708). `useUserLocation` asks
+// for location on mount. No search bar.
 // The request sends no predicates, so a saved scope can never keep cutting
 // this list.
 
@@ -73,6 +74,7 @@ import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { barePath } from "@/lib/surface";
 import { EmptyState } from "@/components/shared";
+import { RailScoreTag } from "@/components/consumer/search/search-catalog-overlays";
 import { CatalogTile } from "./CatalogTile";
 import { DiscoverFallback, PLACES_LIST } from "./DiscoverFallback";
 import { useActiveLocation } from "@/lib/active-location";
@@ -479,6 +481,22 @@ export function CatalogRails() {
             const located = withUserDistance(place, coords);
             return (
               <Fragment key={place.id}>
+                {/* FOR THE MOMENT (Pato, MESITA-2708: "also display the
+                    score and sub scores in the home feed"): the Search
+                    map's tag above each tile, from the server's breakdown.
+                    Remove with the Search tag once the ranking is verified. */}
+                {place.area ? (
+                  <li className="-mb-1.5" data-home-score-tag>
+                    <RailScoreTag
+                      score={{
+                        proximity: place.area.signals.proximity,
+                        popularity: place.area.signals.popularity,
+                        final: place.area.final,
+                        foundBy: place.area.foundBy,
+                      }}
+                    />
+                  </li>
+                ) : null}
                 <CatalogTile
                   place={located}
                   saved={cards.isSaved(place)}
