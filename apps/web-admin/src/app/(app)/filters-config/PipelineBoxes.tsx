@@ -320,37 +320,7 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
       }
       save={<Save editor={editor} dirty={dirty} slices={BOX_SLICES.area} />}
     >
-      <Group title="Sources">
-        {AREA_SOURCE_SOURCES.map(({ key, label }) => (
-          <SwitchRow
-            key={key}
-            label={label}
-            on={cfg.map[key] > 0}
-            disabled={off}
-            onClick={() => toggle(key)}
-          />
-        ))}
-        <p className="type-meta font-medium">
-          Billed Google calls per load: {calls}
-        </p>
-        <p className="text-muted-foreground type-meta">
-          Each Google source is one Nearby Search call on every Home load and
-          every Map reload (the Map reloads each time the guest stops moving
-          it), within the per-guest quota in the Always-on rules. Google
-          Popular asks for the most prominent 20 in the circle, Google Closest
-          for the nearest 20. The Google reviews minimum (now{" "}
-          {cfg.map.googleMinReviews}) cuts Google places after Google bills
-          them: most of Google Closest&apos;s nearest places are corner spots
-          under it. Mesita Popular is the 20 Mesita places in the circle with
-          the highest Popularity, Mesita Closest the 20 nearest; both are free.
-        </p>
-        {allOff ? (
-          <p className="text-destructive type-meta">
-            Every source is off: the Map and Home show nothing.
-          </p>
-        ) : null}
-      </Group>
-      <Group title="Gates">
+      <Group title="Input">
         <div className="grid gap-3 sm:grid-cols-2">
           <NumberField
             label="Current-location radius (km)"
@@ -361,6 +331,27 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             disabled={off}
             onChange={(radiusKm) => map({ radiusKm })}
           />
+        </div>
+        <p className="text-muted-foreground type-meta">
+          The pipeline takes a point and a radius. On Home the radius is the
+          one the guest saved with the pin, else this one (the device, or a pin
+          saved without a radius); the Map uses the screen radius, and this one
+          only when it has no screen to measure (no view yet, or one wider than
+          100 km). It is also Chat&apos;s search radius and reach.{" "}
+          {MAP_RADIUS_KM_MIN}–{MAP_RADIUS_KM_MAX} km (Google&apos;s circle cap).
+        </p>
+      </Group>
+      <Group title="Sources">
+        {AREA_SOURCE_SOURCES.map(({ key, label }) => (
+          <SwitchRow
+            key={key}
+            label={label}
+            on={cfg.map[key] > 0}
+            disabled={off}
+            onClick={() => toggle(key)}
+          />
+        ))}
+        <div className="grid gap-3 sm:grid-cols-2">
           <NumberField
             label="Minimum Google reviews"
             value={cfg.map.googleMinReviews}
@@ -370,18 +361,28 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             onChange={(googleMinReviews) => map({ googleMinReviews })}
           />
         </div>
-        <p className="text-muted-foreground type-meta">
-          The current-location radius is Home&apos;s when the guest searches
-          from the device or from a pin saved without a radius; the Map uses it
-          only when it has no screen to measure (no view yet, or one wider than
-          100 km), and it is also Chat&apos;s search radius and reach. A saved pin
-          carries the radius the guest picked. {MAP_RADIUS_KM_MIN}–{MAP_RADIUS_KM_MAX} km
-          (Google&apos;s circle cap). The reviews minimum is the only one (MESITA-2702): it
-          counts people and cuts Google places only (never a Mesita row), on
-          the Map, Home, the Search bar and admin Find&apos;s Autocomplete
-          column; 0 is off. Family is the guest&apos;s
-          own chip or row; closed places never show, on every pipeline.
+        <p className="type-meta font-medium">
+          Billed Google calls per load: {calls}
         </p>
+        <p className="text-muted-foreground type-meta">
+          Each Google source is one Nearby Search call on every Home load and
+          every Map reload (the Map reloads each time the guest stops moving
+          it), within the per-guest quota in the Always-on rules. Google
+          Popular asks for the most prominent 20 in the circle, Google Closest
+          for the nearest 20. The reviews minimum filters the two Google
+          sources only: it counts people and cuts a Google place after Google
+          bills it, never a Mesita row (MESITA-2702: the same minimum on the
+          Search bar and admin Find&apos;s Autocomplete column); 0 is off. At{" "}
+          {cfg.map.googleMinReviews}, most of Google Closest&apos;s nearest
+          places are corner spots under it. Mesita Popular is the 20 Mesita
+          places in the circle with the highest Popularity, Mesita Closest the
+          20 nearest; both are free.
+        </p>
+        {allOff ? (
+          <p className="text-destructive type-meta">
+            Every source is off: the Map and Home show nothing.
+          </p>
+        ) : null}
       </Group>
       <Group title="Signals">
         <div className="grid gap-3 sm:grid-cols-2">
