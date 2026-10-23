@@ -22,8 +22,6 @@ import {
   googleCallsPerLoad,
   HALF_KM_MAX,
   HALF_KM_MIN,
-  HALF_REVIEWS_MAX,
-  HALF_REVIEWS_MIN,
   MAP_PROXIMITY_WEIGHT_MAX,
   MAP_PROXIMITY_WEIGHT_MIN,
   MAP_RADIUS_KM_MAX,
@@ -288,10 +286,6 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
     setCfg((c) => ({ ...c, map: { ...c.map, ...p } }));
   };
   const params = cfg.params;
-  const setHalfReviews = (halfReviews: number) => {
-    setOk(false);
-    setCfg((c) => ({ ...c, params: { ...c.params, popularity: { halfReviews } } }));
-  };
   const setHalfKm = (halfKm: number) => {
     setOk(false);
     setCfg((c) => ({ ...c, params: { ...c.params, proximity: { halfKm } } }));
@@ -419,24 +413,16 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             disabled={off}
             onChange={setHalfKm}
           />
-          <NumberField
-            label="Reviews for half credit"
-            value={params.popularity.halfReviews}
-            min={HALF_REVIEWS_MIN}
-            max={HALF_REVIEWS_MAX}
-            disabled={off}
-            onChange={setHalfReviews}
-          />
         </div>
         <p className="text-muted-foreground type-meta">
           a and b rank the Map and Home alike: below 1 softens a signal,
           above 1 sharpens it, 0 ignores it. Proximity is 1 ÷ (1 + distance ÷
           half credit): 1 at the point, ½ at that many km, ⅓ at twice it,
           never 0, and the same whatever the radius (the radius only decides
-          who is in). Popularity is rating ÷ 5 × reviews ÷ (reviews + half
-          credit): a 3★ place is 60% of a 5★ one, and volume earns half credit
-          at that many reviews; a place with no Google numbers scores 0 and
-          sinks, never disappears.
+          who is in). Popularity is ln(1 + reviews × stars), never normalized:
+          4.6★ × 1,000 reviews ≈ 8.4, 4.0★ × 30 ≈ 4.8; a place with no Google
+          numbers scores 0 and sinks, never disappears. The score is the plain
+          product Proximity<sup>a</sup> × Popularity<sup>b</sup>.
         </p>
       </Group>
       <Group title="Map view (the Search tab)">
