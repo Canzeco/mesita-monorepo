@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
   const place = {
     ...row,
     ...request,
-    photos: effectivePlacePhotos(row),
+    photos: effectivePlacePhotos(row as Record<string, unknown>),
   };
 
   return json({ ok: true, place, tags });

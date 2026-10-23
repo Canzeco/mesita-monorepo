@@ -5,6 +5,7 @@ export type PlacePhotoSourcesRow = {
   photos?: string[] | null;
   google_photos?: unknown;
   mesita_photos?: unknown;
+  [key: string]: unknown;
 };
 
 function normalizeUrlList(raw: unknown): string[] {
