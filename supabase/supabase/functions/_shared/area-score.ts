@@ -12,7 +12,8 @@
 // Popularity^b alone). Proximity is 1 ÷ (1 + distance ÷ halfKm): 1 at the
 // point, ½ at the operator's distance for half credit, never 0, the same
 // whatever the radius (MESITA-2706); the Radius gate alone decides who is
-// in. Selected was a third signal (MESITA-2439) and left the score with
+// in. Popularity is ln(1 + reviews × stars), unbounded, and the product is
+// never clamped or normalized (MESITA-2710). Selected was a third signal (MESITA-2439) and left the score with
 // MESITA-2703; `source` still says where a card comes from.
 //
 // Gates are binary eligibility (0 or 1) and stay separate from the
@@ -21,7 +22,7 @@
 // ranked at 0. Gates: Family (every location) and Radius (a point: inside
 // the circle). Ties break on distance (a point only), then id.
 
-import { popularity, proximity } from "./pipeline-signals.ts";
+import { logPopularity, proximity } from "./pipeline-signals.ts";
 import { haversineKm } from "./geo.ts";
 
 /** Where a candidate's card comes from. `selected` = Mesita Selected, the
@@ -46,8 +47,6 @@ export type AreaContext = {
   location: AreaLocation;
   /** Requested families; empty = no Family gate (every family passes). */
   families: readonly string[];
-  /** Popularity's volume term is ½ at this many reviews. */
-  halfReviews: number;
   /** Proximity is ½ at this distance (km): the operator's
    *  `params.proximity.halfKm`, fixed apart from the radius (MESITA-2706). */
   halfKm: number;
@@ -114,19 +113,21 @@ export function insideBounds(
 /** The two exponents (MESITA-2703). */
 export type AreaWeights = { proximity: number; popularity: number };
 
-/** x^w with the guards: a missing or negative exponent is 0 (the signal is
- *  off), and 0^0 is 1. */
+/** x^w, a plain power (MESITA-2710: "don't try to normalize … it's just a
+ *  clean multiplication"): never clamped above, so Popularity past 1 keeps
+ *  its size. Guards only: a missing or negative exponent is 0 (the signal
+ *  is off, 0^0 = 1), a negative or non-finite signal reads 0. */
 function weighted(x: number, w: number): number {
   const e = Number.isFinite(w) ? Math.max(0, w) : 0;
   if (e === 0) return 1;
-  return Math.pow(Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0)), e);
+  return Math.pow(Math.max(0, Number.isFinite(x) ? x : 0), e);
 }
 
 /** Popularity, or null when the place has no rating or no review count. */
-function popularityOrNull(c: AreaCandidate, halfReviews: number): number | null {
+function popularityOrNull(c: AreaCandidate): number | null {
   const ok = (v: unknown) => typeof v === "number" && Number.isFinite(v);
   if (!ok(c.rating) || !ok(c.reviewCount)) return null;
-  return popularity(c, halfReviews);
+  return logPopularity(c);
 }
 
 /** One candidate's Area breakdown — the wire's `area` object (MESITA-2379).
@@ -153,7 +154,7 @@ export type AreaScore = AreaDiagnostics & { distanceKm: number | null };
 
 export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
   const loc = ctx.location;
-  const pop = popularityOrNull(c, ctx.halfReviews);
+  const pop = popularityOrNull(c);
   let km: number | null = null;
   if (loc.kind === "point" && typeof c.lat === "number" && typeof c.lng === "number") {
     const d = haversineKm(loc.anchor.lat, loc.anchor.lng, c.lat, c.lng);

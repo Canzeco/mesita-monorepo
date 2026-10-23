@@ -62,6 +62,27 @@ export function proximity(
 
 // ── Popularity ────────────────────────────────────────────────────────────
 
+/**
+ * THE AREA SCORE'S POPULARITY (Pato, MESITA-2710: "ln(num of google
+ * [reviews] × average of stars) … popularity can be above 1, it must not be
+ * normalized"): ln(1 + reviews × stars). Unbounded: 4.6★ × 1,000 reviews ≈
+ * 8.43, 4.0★ × 30 ≈ 4.80. The 1 + keeps a place with no reviews at 0, not
+ * −∞ (within 1% of ln(reviews × stars) from 10 reviews up). No rating or no
+ * review count → 0.
+ */
+export function logPopularity(
+  candidate: { rating?: number | null; reviewCount?: number | null },
+): number {
+  const r = candidate.rating;
+  const n = candidate.reviewCount;
+  if (typeof r !== "number" || typeof n !== "number") return 0;
+  if (!Number.isFinite(r) || !Number.isFinite(n)) return 0;
+  return Math.log1p(Math.max(0, n) * Math.max(0, r));
+}
+
+/** The 0..1 Popularity below now feeds only the stored `map.minPopularity`
+ *  floor (live 0, no box edits it); the Area score reads `logPopularity`. */
+
 /** Reviews for half credit: Popularity's volume term is ½ at this many
  *  Google reviews. The operator's number (`params.popularity.halfReviews`). */
 export const POPULARITY_HALF_REVIEWS_DEFAULT = 100;
