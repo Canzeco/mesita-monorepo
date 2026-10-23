@@ -19,8 +19,8 @@
 // is only the what. ONE pick at a time: All is every family (lit when none is
 // picked); tapping the lit family again also goes back to All. Sent as the
 // server-side `familyKeys`. There is no Filters disc and
-// no sheet (Pato, MESITA-2417: "Its just all and thats it"); the Google
-// reviews minimum is the operator's, Admin › Discovery › Area.
+// no sheet (Pato, MESITA-2417: "Its just all and thats it"); the Minimum
+// Popularity is the operator's, Admin › Discovery › Area.
 //
 // ONE SOLID WHITE BAND for the bar's row and the chip row, like Home's
 // header and the bottom bar (Pato, MESITA-2413; MESITA-2469 merged the grey

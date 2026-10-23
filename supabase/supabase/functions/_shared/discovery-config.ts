@@ -9,8 +9,8 @@
 //              half credit and Popularity's reviews for half credit
 //              (pipeline-signals.ts). The Area box edits them.
 //   general    Discovery-wide. requireActive — the post-Google wipe
-//              (discovery-general-gate.ts). Its reviews half is
-//              `map.googleMinReviews`, the one floor (MESITA-2702). The category param is NOT
+//              (discovery-general-gate.ts). No reviews floor: the
+//              Popularity floor is the quality cut (MESITA-2721). The category param is NOT
 //              here: it is `supers` on each Google-calling engine (MESITA-1695).
 //   chat       The Chat Agent's system prompt. Blank → memo_config, then the
 //              in-code persona (memo-prompt.ts).
@@ -165,15 +165,6 @@ export type MapConfig = {
    */
   radiusKm: number;
   /**
-   * THE Google reviews floor (MESITA-2319; one floor since MESITA-2702):
-   * people, never stars, on GOOGLE ROWS ONLY — the Map's and Home's Google
-   * candidates and the Name pipeline's Google rows (the guest bar, admin
-   * Find's Autocomplete). 0 is off. Never a Mesita floor: a Mesita row
-   * answers Active alone. Stored under `map` because a stored key is never
-   * renamed.
-   */
-  googleMinReviews: number;
-  /**
    * Proximity's exponent `a` in Proximity^a × Popularity^b (MESITA-2504),
    * Home and the Map alike. `MAP_PROXIMITY_WEIGHT_MIN`..`MAX`, two decimals,
    * default 1; 0 ignores distance.
@@ -271,8 +262,8 @@ export type GeneralConfig = {
    * open has not.
    */
   requireActive: boolean;
-  // `minReviews` retired (MESITA-2702): one floor, `map.googleMinReviews`,
-  // dropped on the next Save, never renamed.
+  // `minReviews` retired (MESITA-2702), and `map.googleMinReviews` with it
+  // (MESITA-2721): both dropped on the next Save, never renamed.
 };
 
 export type DiscoveryConfig = {
@@ -373,7 +364,6 @@ export const DEFAULT_MAP: MapConfig = {
   mesitaPopular: AREA_SOURCE_DEFAULT,
   mesitaClosest: AREA_SOURCE_DEFAULT,
   radiusKm: MAP_RADIUS_KM_DEFAULT,
-  googleMinReviews: 0,
   proximityWeight: MAP_PROXIMITY_WEIGHT_DEFAULT,
   popularityWeight: MAP_POPULARITY_WEIGHT_DEFAULT,
   placesShown: MAP_PLACES_SHOWN_DEFAULT,
@@ -660,9 +650,6 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
         MAP_RADIUS_KM_MAX,
       ) * 10,
     ) / 10,
-    googleMinReviews: Math.round(
-      num(r.googleMinReviews, DEFAULT_MAP.googleMinReviews, 0, 100_000),
-    ),
     proximityWeight: Math.round(
       num(
         r.proximityWeight,

@@ -214,7 +214,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // reads as browsable.
   const [railIndex, setRailIndex] = useState(0);
   // The family chips (none, or one family) ride this store and the
-  // catalog call. How many and the Google reviews minimum are the
+  // catalog call. How many and the Minimum Popularity are the
   // operator's (Admin › Discovery); how wide is the visible map
   // (MESITA-2499). The server is the one selector and ranks best first —
   // this component never recuts the catalog.

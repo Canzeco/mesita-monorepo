@@ -7,9 +7,8 @@
 // Nearby returned inside `map.radiusKm`, a Mesita owner painting its hit;
 // Mesita Selected is the rows the operator marked (`places.selected`,
 // MESITA-2707), never `enriched_at`. Type batteries ride the
-// Google call only. Floors exclude. The Google reviews minimum is the
-// operator's alone, `map.googleMinReviews` (MESITA-2417: the guest sheet is
-// gone), on Google hits after Google answers (`area-pipeline.ts`). Name Google
+// Google call only. Floors exclude. There is no Google reviews minimum
+// (MESITA-2721): the Area pipeline's Popularity floor is the cut. Name Google
 // categories live on discovery_config.name. The two Google Area switches
 // (`googlePopular`, `googleClosest`) gate Nearby (MESITA-2703).
 //
@@ -30,14 +29,6 @@ export type ListedMapRow = {
   google_review_count?: number | null;
 };
 
-/** Unknown does not clear a floor that is on — same reading as General. */
-export function clearsMinReviews(
-  count: number | null | undefined,
-  min: number,
-): boolean {
-  if (!(min > 0)) return true;
-  return typeof count === "number" && Number.isFinite(count) && count >= min;
-}
 
 /** Every guest family. Stored switches do not turn a family off. */
 export function enabledMapSupers(_map: MapConfig): SuperParamKey[] {

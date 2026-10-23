@@ -37,7 +37,7 @@
 // billed Nearby call each, so a reload with both on bills 2; the reload
 // throttle bounds the spend), Mesita Popular, Mesita Closest — merged with
 // duplicates removed and ranked, with the guest's family pills pushed down
-// to Nearby types and the operator's `map.googleMinReviews` on Google hits.
+// to Nearby types and the operator's Popularity floor on every place.
 // The guest never picks a source: a stale `placesScope` is ignored.
 //
 // Anything else is refused: a GET is 405, a POST without `google: true` or
@@ -99,8 +99,7 @@ type ListBody = {
   /** Ignored (the pre-2026-09-05 ordinal of the same). */
   searchPower?: number;
   familyKeys?: unknown;
-  /** Ignored since MESITA-2417: the Google reviews minimum is the
-   *  operator's, `map.googleMinReviews`. */
+  /** Ignored since MESITA-2417; no reviews minimum since MESITA-2721. */
   minReviews?: unknown;
   lat?: number;
   lng?: number;
