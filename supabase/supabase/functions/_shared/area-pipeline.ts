@@ -9,11 +9,11 @@
 //   (point, radius)
 //     ├─ Google Popular   Nearby, rank POPULARITY, the whole circle  ─┐
 //     ├─ Google Closest   Nearby, rank DISTANCE, the whole circle    ─┤ → owned lookup by Place ID
-//     ├─ Mesita Popular   top 20 by Popularity^b × s in the circle   ─┤
+//     ├─ Mesita Popular   top 20 by Popularity × s in the circle     ─┤
 //     └─ Mesita Closest   20 nearest in the circle                   ─┘
 //   merge (one card per place; an owned hit is the Mesita row; `foundBy`
-//   keeps every source that found it) → gates → Proximity^a × Popularity^b
-//   × s (s = the Selected factor for a Mesita Selected place, else 1)
+//   keeps every source that found it) → gates → Proximity × Popularity
+//   × s (s = the Selected boost for a Mesita Selected place, else 1)
 //
 // Each source is `map.<key>` 0 or 20 (`AREA_SOURCE_KEYS`). Gates: Family ·
 // Radius, plus the operational ones the sources apply (active, ready) and
@@ -53,7 +53,6 @@ import {
   type AreaDiagnostics,
   type AreaLocation,
   type AreaSource,
-  type AreaWeights,
   insideBounds,
   knownFamilies,
   type LatLng,
@@ -92,33 +91,24 @@ export function areaGoogleTypes(families: readonly string[]): readonly string[] 
   return families.length > 0 ? nearbyTypesForSupers(families) : FEED_GOOGLE_TYPES;
 }
 
-/** The two exponents of the one score every Area caller ranks by
- *  (MESITA-2703): Proximity^a × Popularity^b × the Selected factor
- *  (MESITA-2717), a = `map.proximityWeight`, b = `map.popularityWeight`. */
-export function areaWeights(
-  map: Pick<DiscoveryConfig["map"], "proximityWeight" | "popularityWeight">,
-): AreaWeights {
-  return { proximity: map.proximityWeight, popularity: map.popularityWeight };
-}
-
-/** Proximity's radius divisor, the two exponents, the Popularity floor and
- *  the Selected factor, from the blob. The radius is the request's: it
+/** Proximity's radius divisor, the Popularity floor and the Selected
+ *  boost, from the blob: the one score every Area caller ranks by,
+ *  Proximity × Popularity × the boost (no exponents since MESITA-2722). The radius is the request's: it
  *  gates, and ÷ the divisor it is the half distance (MESITA-2720).
  *  Popularity takes no parameter (MESITA-2710: ln(1 + reviews × stars)). */
 export function areaSignalParams(
   params: SignalParams,
-  map: Pick<DiscoveryConfig["map"], "proximityWeight" | "popularityWeight"> & {
+  map: {
     popularityFloor?: number;
     selectedFactor?: number;
   },
-): Pick<AreaContext, "radiusDivisor" | "weights" | "popularityFloor" | "selectedFactor"> {
+): Pick<AreaContext, "radiusDivisor" | "popularityFloor" | "selectedFactor"> {
   const k = params.proximity?.radiusDivisor;
   return {
     radiusDivisor: typeof k === "number" && Number.isFinite(k) && k > 0 ? k : PROXIMITY_RADIUS_DIVISOR_DEFAULT,
-    weights: areaWeights(map),
     // The Popularity floor (MESITA-2714), a gate on every Area caller.
     popularityFloor: map.popularityFloor,
-    // The Selected factor (MESITA-2717), a multiplier on every Area caller.
+    // The Selected boost (MESITA-2717), a multiplier on every Area caller.
     selectedFactor: map.selectedFactor,
   };
 }
@@ -501,10 +491,9 @@ const MESITA_SOURCE_MAX = 20;
  * Mesita Popular and Mesita Closest (MESITA-2703), picked in memory from the
  * caller's radius-boxed read (capped at `NEARBY_SCAN_LIMIT`, ordered by id;
  * the EF logs `mesitaCapped`). Popular ranks by the score's own Popularity
- * part, Popularity^b × the Selected factor, so a Selected row competes for a
- * slot with the factor it scores with and the pick agrees with the ranking
- * whatever b (MESITA-2717); equal parts (b = 0, or rows with one factor) fall
- * back to raw Popularity. Closest ranks by distance; both then by id.
+ * part, Popularity × the Selected boost, so a Selected row competes for a
+ * slot with the boost it scores with and the pick agrees with the ranking
+ * (MESITA-2717); equal parts fall back to raw Popularity. Closest ranks by distance; both then by id.
  * Closest needs a point.
  */
 function mesitaItems<T extends OwnedRow>(
@@ -711,13 +700,9 @@ export type SelectedOpts = {
   /** The Family gate's requested families; empty or absent = every family. */
   families?: readonly string[];
   params: SignalParams;
-  /** The Map's and Home's exponents (`map.proximityWeight`,
-   *  `map.popularityWeight`). */
-  proximityWeight: number;
-  popularityWeight: number;
   /** The Popularity floor (MESITA-2714); absent = off. */
   popularityFloor?: number;
-  /** The Selected factor (MESITA-2717). Every row here is Selected, so it
+  /** The Selected boost (MESITA-2717). Every row here is Selected, so it
    *  scales the scores and never reorders them. */
   selectedFactor?: number;
   limit?: number;
@@ -737,8 +722,7 @@ export function selectMesitaSelected<T extends Record<string, unknown>>(
     {
       location,
       families: opts.families ?? [],
-      // The same divisor and exponents as Home and the Map (MESITA-2703,
-      // MESITA-2720): half credit at the current-location radius ÷ k.
+      // The same divisor as Home and the Map (MESITA-2720): half credit at the current-location radius ÷ k.
       ...areaSignalParams(opts.params, opts),
     },
   );
@@ -783,8 +767,6 @@ export async function areaSelectedPlaces(
     radiusKm: cfg.map.radiusKm,
     families: opts.families,
     params: cfg.params,
-    proximityWeight: cfg.map.proximityWeight,
-    popularityWeight: cfg.map.popularityWeight,
     popularityFloor: cfg.map.popularityFloor,
     selectedFactor: cfg.map.selectedFactor,
     limit: opts.limit,

@@ -196,7 +196,7 @@ export const DISCOVERY_SIGNALS: readonly DiscoverySignalFact[] = [
     computation: "runtime",
     cost: "Local arithmetic over stored numbers, free.",
     missing: "No rating or no review count: 0 (shown as n/a). There is no new-place prior; that lowers the place, it never removes it.",
-    normalization: "None, on purpose (Pato, MESITA-2710: \"popularity can be above 1, it must not be normalized\"): 4.6★ × 1,000 reviews ≈ 8.4, 4.0★ × 30 ≈ 4.8. The 1 + keeps a place with no reviews at 0. The score is a plain product, Proximity^a × Popularity^b × the Selected factor, never clamped.",
+    normalization: "None, on purpose (Pato, MESITA-2710: \"popularity can be above 1, it must not be normalized\"): 4.6★ × 1,000 reviews ≈ 8.4, 4.0★ × 30 ≈ 4.8. The 1 + keeps a place with no reviews at 0. The score is a plain product, Proximity × Popularity × the Selected boost, never clamped.",
   },
 ];
 
@@ -292,12 +292,12 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     signals: ["proximity", "popularity"],
     gates: ["family", "radius"],
     factors: [
-      "Selected (MESITA-2717): a Mesita Selected place's score × the operator's Selected factor (default 3; 1 is off), every other place's × 1.",
+      "Selected (MESITA-2717): a Mesita Selected place's score × the operator's Selected boost (default 3; 1 is off), every other place's × 1.",
     ],
-    scoring: "The Map and Home: Proximity^a × Popularity^b × s, a and b the operator's Proximity and Popularity weights (MESITA-2703) and s the Selected factor for a Mesita Selected place, 1 for every other place (MESITA-2717), a plain product never clamped or normalized (MESITA-2710); Proximity is ½ at the radius ÷ the operator's radius divisor, the Map's screen radius or Home's circle (MESITA-2720), and the radius also gates. No location: Popularity^b × s. Chat ranks the same way inside the current-location radius. Ties break on distance, then id.",
+    scoring: "The Map and Home: Proximity × Popularity × s, no exponents (MESITA-2722), s the Selected boost for a Mesita Selected place, 1 for every other place (MESITA-2717), a plain product never clamped or normalized (MESITA-2710); Proximity is ½ at the radius ÷ the operator's radius divisor, the Map's screen radius or Home's circle (MESITA-2720), and the radius also gates. No location: Popularity × s. Chat ranks the same way inside the current-location radius. Ties break on distance, then id.",
     keepsOrder: [],
     rules: [
-      "Four sources, each switched on (20) or off (0) by the operator, Home and the Map alike: Google Popular (the prominent 20 in the circle), Google Closest (the nearest 20), Mesita Popular (the 20 with the highest Popularity^b × the Selected factor, the score without Proximity), Mesita Closest (the 20 nearest). They merge into one pool, deduped by Google Place ID (a Mesita place wins its own Google id), gated, scored and ranked before any page is cut. The guest never picks a source. Home and the Map show the top Places shown of that sorted pool (1–80, default 20, MESITA-2713). Before that cut, a place whose Popularity, ln(1 + reviews × stars), is under the Minimum Popularity (default 3; 0 is off, MESITA-2714) is dropped, Google or Mesita, Selected or not.",
+      "Four sources, each switched on (20) or off (0) by the operator, Home and the Map alike: Google Popular (the prominent 20 in the circle), Google Closest (the nearest 20), Mesita Popular (the 20 with the highest Popularity × the Selected boost, the score without Proximity), Mesita Closest (the 20 nearest). They merge into one pool, deduped by Google Place ID (a Mesita place wins its own Google id), gated, scored and ranked before any page is cut. The guest never picks a source. Home and the Map show the top Places shown of that sorted pool (1–80, default 20, MESITA-2713). Before that cut, a place whose Popularity, ln(1 + reviews × stars), is under the Minimum Popularity (default 3; 0 is off, MESITA-2714) is dropped, Google or Mesita, Selected or not.",
       "Closed places never show (Discovery › General's active check). Mesita rows must be ready.",
       "No reviews minimum (MESITA-2721): the Minimum Popularity is the quality floor; the guest has no reviews filter (MESITA-2417).",
       "Google calls: one billed Nearby call per Google source switched on, so 0 to 2 per load on the Map and on Home. A place two calls return counts once.",

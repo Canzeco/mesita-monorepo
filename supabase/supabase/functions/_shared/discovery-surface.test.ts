@@ -146,14 +146,14 @@ Deno.test("Deep is not live while no guest reaches Chat; Name and Area are (MESI
 // ── MESITA-2379: one pool; MESITA-2703: four sources, two weights;
 //    MESITA-2717: Selected is back as a factor, never a signal ────────────
 
-Deno.test("Area: Family and Radius gate, Proximity^a × Popularity^b × the Selected factor, Chat reads Selected only", () => {
+Deno.test("Area: Family and Radius gate, Proximity × Popularity × the Selected boost, Chat reads Selected only", () => {
   const area = DISCOVERY_PIPELINES.find((p) => p.key === "area")!;
   assertEquals(area.gates, ["family", "radius"]);
   assertEquals(area.signals, ["proximity", "popularity"]);
   assertEquals(area.factors.length, 1);
   assert(area.factors[0].startsWith("Selected (MESITA-2717)"));
-  assert(area.scoring.startsWith("The Map and Home: Proximity^a × Popularity^b × s"));
-  assert(area.scoring.includes("Selected factor"));
+  assert(area.scoring.startsWith("The Map and Home: Proximity × Popularity × s"));
+  assert(area.scoring.includes("Selected boost"));
   assertEquals(JSON.stringify(area).includes("rectangle"), false);
   for (const src of ["Google Popular", "Google Closest", "Mesita Popular", "Mesita Closest"]) {
     assert(area.rules.some((r) => r.includes(src)), src);

@@ -25,13 +25,12 @@
 // read is boxed to it and the Radius gate drops what lies past it, Google's
 // calls ask the prominent 20 inside it first and eligibility drops the rest
 // (Pato: "I son't want to see stuff beyond my screen"). The score is
-// Proximity^a × Popularity^b × the Selected factor, Proximity ½ at R ÷ the
-// operator's radius divisor (MESITA-2720); `a` and
-// `b` are the operator's `map.proximityWeight` and `map.popularityWeight`,
-// the factor `map.selectedFactor` on a Selected place (MESITA-2717). The family chip gates;
+// Proximity × Popularity × the Selected boost, Proximity ½ at R ÷ the
+// operator's radius divisor (MESITA-2720), the boost `map.selectedFactor`
+// on a Selected place (MESITA-2717); no exponents since MESITA-2722. The family chip gates;
 // the guest picks no mode, so `prefer` is ignored. No bounds, or a box wider
 // than AREA_BOUNDS_MAX_KM, falls back to the centre inside `map.radiusKm`,
-// scored the same way. The answer carries R, the weights and each place's
+// scored the same way. The answer carries R and each place's
 // breakdown for the debug readout (MESITA-2504). It runs the same four
 // sources as the Feed (MESITA-2703) — Google Popular, Google Closest (one
 // billed Nearby call each, so a reload with both on bills 2; the reload
@@ -78,7 +77,6 @@ import {
 } from "../_shared/geo.ts";
 import {
   areaGoogleTypes,
-  areaWeights,
   type OwnedRow,
   type PoolBuilder,
   screenRadiusKm,
@@ -116,7 +114,7 @@ type WireScore = {
   proximity: number | null;
   popularity: number | null;
   final: number;
-  /** The factor `final` carries: the Selected factor for a Mesita Selected
+  /** The factor `final` carries: the Selected boost for a Mesita Selected
    *  place, else 1 (MESITA-2717). */
   selectedFactor: number;
   /** The sources that found the place (MESITA-2703); diagnostics only. */
@@ -193,9 +191,8 @@ Deno.serve(async (req) => {
   const screenKm = screenRadiusKm(body.bounds, center);
   const radiusKm = screenKm ?? cfg.map.radiusKm;
   const location = { kind: "point" as const, anchor: center, radiusKm };
-  // Proximity^a × Popularity^b × the Selected factor; the radius gates, the
+  // Proximity × Popularity × the Selected boost; the radius gates, the
   // half-distance scores.
-  const weights = areaWeights(cfg.map);
   const pool = await selectedPoolQuery(
     supabase.from("profiles").select(PLACE_CARD_COLUMNS) as unknown as PoolBuilder,
     cfg,
@@ -232,8 +229,6 @@ Deno.serve(async (req) => {
     mode: "nearby",
     radius: screenKm === null ? "operator" : "screen",
     radiusKm,
-    proximityWeight: weights.proximity,
-    popularityWeight: weights.popularity,
     googleOn,
     ...area.summary,
     mesitaRead: pool.data?.length ?? 0,
@@ -256,7 +251,6 @@ Deno.serve(async (req) => {
     ),
     mode: "nearby",
     radiusKm,
-    weights,
     // The Map's reload throttle (MESITA-2444); the dead km/sec pair is not sent.
     reloadIdleSec: cfg.map.reloadIdleSec,
   });

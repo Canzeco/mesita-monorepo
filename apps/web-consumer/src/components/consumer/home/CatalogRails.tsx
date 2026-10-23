@@ -24,8 +24,8 @@
 // color and that takes attention"); the chosen row's stroke is heavier.
 //
 // All (the default: every place) is ranked the Map's way (Pato, MESITA-2516:
-// "only keeping All is cleaner. just like in map"), Proximity^a ×
-// Popularity^1 × Selected^1, and so is every family chip. All is the
+// "only keeping All is cleaner. just like in map"), Proximity ×
+// Popularity × the Selected boost, and so is every family chip. All is the
 // server's ONE ranked Area pool (MESITA-2379/2384):
 // Google and Mesita places merged, scored and ranked there; this screen
 // pages it (20 tiles at a time, more on scroll). A family chip ASKS ITS OWN

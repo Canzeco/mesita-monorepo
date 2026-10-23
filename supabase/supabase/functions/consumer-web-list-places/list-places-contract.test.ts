@@ -44,8 +44,8 @@ Deno.test("list-places: the circle is the screen's, else map.radiusKm; no client
   assert(webBranch.includes("const radiusKm = screenKm ?? cfg.map.radiusKm;"));
 });
 
-Deno.test("list-places: Proximity^a × Popularity^b; the radius gates, the half-distance scores (MESITA-2504, MESITA-2703, MESITA-2706)", () => {
-  assert(webBranch.includes("const weights = areaWeights(cfg.map);"));
+Deno.test("list-places: Proximity × Popularity, no exponents; the radius gates, the half-distance scores (MESITA-2722)", () => {
+  assertEquals(src.includes("areaWeights"), false);
   // The Map's reload throttle is the operator's (MESITA-2444); the dead pair is not sent.
   assert(webBranch.includes("reloadIdleSec: cfg.map.reloadIdleSec,"));
   assertEquals(webBranch.includes("reloadMinKm"), false);
@@ -55,10 +55,10 @@ Deno.test("list-places: Proximity^a × Popularity^b; the radius gates, the half-
   assertEquals(src.includes("body.prefer"), false);
 });
 
-Deno.test("list-places: the answer carries the radius, the weights and each place's score (MESITA-2504)", () => {
+Deno.test("list-places: the answer carries the radius and each place's score, no weights (MESITA-2504, MESITA-2722)", () => {
   const answer = webBranch.slice(webBranch.indexOf("return json({\n    ok: true,"));
   assert(answer.includes("    radiusKm,\n"));
-  assert(answer.includes("    weights,\n"));
+  assertEquals(answer.includes("    weights,\n"), false);
   assert(answer.includes("proximity: a.signals.proximity,"));
   assert(answer.includes("popularity: a.signals.popularity,"));
   assert(answer.includes("final: a.final,"));

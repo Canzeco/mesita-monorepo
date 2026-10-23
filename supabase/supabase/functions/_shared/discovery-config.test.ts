@@ -293,9 +293,9 @@ Deno.test("map knobs default on an old blob and clamp", () => {
   assertEquals(clamped.map.minRating, 5);
   assertEquals(clamped.map.minReviews, 0);
   assertEquals(clamped.map.minPopularity, 1);
-  assertEquals(clamped.map.popularityWeight, 5);
-  assertEquals(clamped.map.proximityWeight, 0.46);
-  assertEquals(missing.map.popularityWeight, 1);
+  // The exponents are retired (MESITA-2722): a stored one is dropped.
+  assertEquals("popularityWeight" in clamped.map, false);
+  assertEquals("proximityWeight" in clamped.map, false);
 });
 
 Deno.test("the four Area sources are switches: 0 or 20, snapped, default on (MESITA-2703)", () => {
@@ -391,10 +391,3 @@ Deno.test("map.selectedFactor: default 3, clamped 1–10, one decimal (MESITA-27
   assertEquals(normalizeDiscoveryConfig({ map: { selectedFactor: "x" } }).map.selectedFactor, 3);
 });
 
-Deno.test("map.proximityWeight: default 1, clamped 0–5, two decimals (MESITA-2504)", () => {
-  assertEquals(normalizeDiscoveryConfig({}).map.proximityWeight, 1);
-  assertEquals(normalizeDiscoveryConfig({ map: { proximityWeight: 0.456 } }).map.proximityWeight, 0.46);
-  assertEquals(normalizeDiscoveryConfig({ map: { proximityWeight: 9 } }).map.proximityWeight, 5);
-  assertEquals(normalizeDiscoveryConfig({ map: { proximityWeight: -1 } }).map.proximityWeight, 0);
-  assertEquals(normalizeDiscoveryConfig({ map: { proximityWeight: "x" } }).map.proximityWeight, 1);
-});

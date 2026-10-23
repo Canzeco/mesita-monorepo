@@ -23,8 +23,6 @@ import {
   MAP_POPULARITY_FLOOR_MAX,
   MAP_POPULARITY_FLOOR_MIN,
   MAP_PLACES_SHOWN_MIN,
-  MAP_PROXIMITY_WEIGHT_MAX,
-  MAP_PROXIMITY_WEIGHT_MIN,
   MAP_RADIUS_KM_MAX,
   MAP_RADIUS_KM_MIN,
   MAP_RELOAD_IDLE_SEC_MAX,
@@ -317,9 +315,9 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             Four sources, each on or off: Google Popular, Google Closest, Mesita
             Popular and Mesita Closest, 20 places each. They merge into one pool
             (a place found twice is one card), then Home and the Map rank it the
-            same way: score = Proximity<sup>a</sup> × Popularity<sup>b</sup>,
-            × the Selected factor for a Selected place. No point: Mesita
-            Popular alone, by Popularity<sup>b</sup> × the Selected factor.
+            same way: score = Proximity × Popularity, × the Selected boost
+            for a Selected place. No point: Mesita Popular alone, by
+            Popularity × the Selected boost.
           </p>
         </>
       }
@@ -381,8 +379,8 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           Popular asks for the most prominent 20 in the circle, Google Closest
           for the nearest 20. There is no reviews minimum: the Minimum
           Popularity below cuts weak places from every source. Mesita Popular is the 20 Mesita
-          places in the circle with the highest Popularity<sup>b</sup> × the
-          Selected factor (the score without Proximity), Mesita Closest the 20
+          places in the circle with the highest Popularity × the Selected
+          boost (the score without Proximity), Mesita Closest the 20
           nearest; both are free.
         </p>
         {allOff ? (
@@ -393,24 +391,6 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
       </Group>
       <Group title="Signals">
         <div className="grid gap-3 sm:grid-cols-2">
-          <NumberField
-            label="Proximity weight (a)"
-            value={cfg.map.proximityWeight}
-            min={MAP_PROXIMITY_WEIGHT_MIN}
-            max={MAP_PROXIMITY_WEIGHT_MAX}
-            decimals
-            disabled={off}
-            onChange={(proximityWeight) => map({ proximityWeight })}
-          />
-          <NumberField
-            label="Popularity weight (b)"
-            value={cfg.map.popularityWeight}
-            min={MAP_PROXIMITY_WEIGHT_MIN}
-            max={MAP_PROXIMITY_WEIGHT_MAX}
-            decimals
-            disabled={off}
-            onChange={(popularityWeight) => map({ popularityWeight })}
-          />
           <NumberField
             label="Minimum Popularity"
             value={cfg.map.popularityFloor}
@@ -430,7 +410,7 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             onChange={setRadiusDivisor}
           />
           <NumberField
-            label="Selected factor"
+            label="Selected boost"
             value={cfg.map.selectedFactor}
             min={MAP_SELECTED_FACTOR_MIN}
             max={MAP_SELECTED_FACTOR_MAX}
@@ -440,21 +420,22 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           />
         </div>
         <p className="text-muted-foreground type-meta">
-          a and b rank the Map and Home alike: below 1 softens a signal,
-          above 1 sharpens it, 0 ignores it. Proximity is 1 ÷ (1 + distance ÷
-          (radius ÷ divisor)): 1 at the point, ½ at the radius ÷ the divisor
-          (now {params.proximity.radiusDivisor}), 1 ÷ (1 + divisor) at the
-          edge, never 0, whatever the radius: the Home circle or the Map
-          screen. 2 puts half credit halfway out and the edge at ⅓. A place whose Popularity is under the Minimum
+          The score is Proximity × Popularity × the Selected boost, Home and
+          the Map alike. The radius divisor says how much distance costs:
+          half credit sits at the circle&apos;s radius ÷ the divisor (now{" "}
+          {params.proximity.radiusDivisor}), whatever the circle — the Home
+          pin&apos;s or the Map screen&apos;s. At 2, a place halfway to the
+          edge scores ½ and one on the edge ⅓; a bigger divisor favours near
+          places, a smaller one popular places. Proximity is 1 ÷ (1 +
+          distance ÷ (radius ÷ divisor)), never 0. A place whose Popularity is under the Minimum
           Popularity (now {cfg.map.popularityFloor}; 0 is off) never shows on
           Home, the Map or Chat, Google or Mesita, whatever its score: 3 is
           about 4★ × 5 reviews. Popularity is ln(1 + reviews × stars), never normalized:
           4.6★ × 1,000 reviews ≈ 8.4, 4.0★ × 30 ≈ 4.8; a place with no Google
-          numbers scores 0 and sinks, never disappears. The score is the plain
-          product Proximity<sup>a</sup> × Popularity<sup>b</sup> × the
-          Selected factor (now {cfg.map.selectedFactor}; 1 is off) for a place
-          marked Selected in Single Place, × 1 for every other place. Selected
-          never saves a place from the Minimum Popularity.
+          numbers scores 0 and sinks, never disappears. The Selected boost (now{" "}
+          {cfg.map.selectedFactor}; 1 is off) multiplies the score of a place
+          marked Selected in Single Place, × 1 for every other place; it never
+          saves a place from the Minimum Popularity.
         </p>
       </Group>
       <Group title="Map view (the Search tab)">

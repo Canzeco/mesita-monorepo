@@ -11,9 +11,9 @@
 // THE RADIUS: the saved pin's own `radiusKm` when the client sends one, else
 // the operator's `map.radiusKm` (the device's current location). Mesita's
 // read and Google's circle use it; it gates and sets Proximity's half distance. ONE RANKING,
-// THE MAP'S: Proximity^a × Popularity^b × the Selected factor
-// (`map.proximityWeight`, `map.popularityWeight`, `map.selectedFactor` on a
-// Selected place, MESITA-2717; Proximity ½ at the radius ÷ the operator's
+// THE MAP'S: Proximity × Popularity × the Selected boost
+// (`map.selectedFactor` on a Selected place, MESITA-2717; no exponents
+// since MESITA-2722; Proximity ½ at the radius ÷ the operator's
 // radius divisor, read by the engine, MESITA-2720). `prefer` is ignored; a family
 // row only gates, ranked the same way.
 //
@@ -69,7 +69,6 @@ import { readGooglePlacesKey } from "../_shared/google-places.ts";
 import {
   areaPoolLogFields,
   areaGoogleTypes,
-  areaWeights,
   type OwnedRow,
   type PoolBuilder,
   requestRadiusKm,
@@ -161,7 +160,6 @@ Deno.serve(async (req) => {
   }
   const mesitaRows = wirePlaces(data ?? []);
 
-  const weights = areaWeights(cfg.map);
   const googleOn = location.kind !== "none" &&
     mapShouldFillGoogle(wantsGoogleFill(body as Record<string, unknown>), cfg.map);
   const gmp = googleOn ? readGooglePlacesKey() : null;
@@ -185,8 +183,6 @@ Deno.serve(async (req) => {
     location: location.kind,
     radius: radius.from,
     radiusKm,
-    proximityWeight: weights.proximity,
-    popularityWeight: weights.popularity,
     familyKeys: families,
     ...pool.summary,
     mesitaRead: mesitaRows.length,

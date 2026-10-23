@@ -106,8 +106,8 @@ type DepsOver = Partial<AreaPoolDeps<OwnedRow>> & {
   /** The four switches over the fixture's (Google Popular and both Mesita
    *  sources on, Google Closest off, so most tests make ONE Nearby call). */
   sources?: Partial<Record<AreaSourceKey, number>>;
-  /** The exponents and the Selected factor over the defaults (1 · 1 · 3). */
-  weights?: { proximityWeight?: number; popularityWeight?: number; selectedFactor?: number };
+  /** The Selected boost over the default (3). */
+  weights?: { selectedFactor?: number };
 };
 
 function deps(over: DepsOver = {}) {
@@ -395,8 +395,6 @@ const selOpts = {
   center: CENTER,
   radiusKm: 10,
   params: DISCOVERY_DEFAULTS.params,
-  proximityWeight: DISCOVERY_DEFAULTS.map.proximityWeight,
-  popularityWeight: DISCOVERY_DEFAULTS.map.popularityWeight,
 };
 
 Deno.test("selected: only the operator's marked rows inside the radius (MESITA-2707)", () => {
@@ -443,13 +441,14 @@ Deno.test("selected: the Area score ranks; the nearer twin first", () => {
   assertEquals(ids(loved), ["loved", "quiet"]);
 });
 
-Deno.test("selected: Chat ranks like the Map, a = map.proximityWeight (MESITA-2687)", () => {
+Deno.test("selected: Chat ranks like the Map, by the radius divisor (MESITA-2687, MESITA-2722)", () => {
   const rows = [
     mrow("near-quiet", { lat: CENTER.lat + 0.001, google_stars_overall: 4.0, google_review_count: 100 }),
     mrow("far-loved", { lat: CENTER.lat + 0.05, google_stars_overall: 4.9, google_review_count: 4000 }),
   ];
-  assertEquals(ids(selectMesitaSelected(rows, { ...selOpts, proximityWeight: 5 }))[0], "near-quiet");
-  assertEquals(ids(selectMesitaSelected(rows, { ...selOpts, proximityWeight: 0 }))[0], "far-loved");
+  const k = (radiusDivisor: number) => ({ ...selOpts, params: { ...selOpts.params, proximity: { radiusDivisor } } });
+  assertEquals(ids(selectMesitaSelected(rows, k(10)))[0], "near-quiet");
+  assertEquals(ids(selectMesitaSelected(rows, k(0.5)))[0], "far-loved");
 });
 
 Deno.test("selected: a wider circle keeps the same place in", () => {
@@ -865,7 +864,7 @@ Deno.test("merge: a Google hit owned by a row OUTSIDE the Mesita candidates stil
   }
 });
 
-Deno.test("merge: Google and Mesita candidates rank in ONE order, Proximity^a × Popularity^b × the Selected factor", async () => {
+Deno.test("merge: Google and Mesita candidates rank in ONE order, Proximity × Popularity × the Selected boost", async () => {
   reset();
   const g = stubGoogle([
     { id: "loved", lat: 25.6701, rating: 4.9, reviews: 9000 },
@@ -920,29 +919,26 @@ Deno.test("merge: a Google Popular and a Google Closest hit a Mesita row owns ar
   }
 });
 
-Deno.test("Mesita Popular keeps the 20 most popular by raw Popularity, whatever b; ties by id", async () => {
+Deno.test("Mesita Popular keeps the 20 most popular by raw Popularity; ties by id", async () => {
   const rows = Array.from({ length: 25 }, (_, i) =>
     mrow(`r${String(i).padStart(2, "0")}`, { google_stars_overall: 4.0, google_review_count: 10 + i })
   );
   rows.push(mrow("twin-b", { google_stars_overall: 5, google_review_count: 5000 }));
   rows.push(mrow("twin-a", { google_stars_overall: 5, google_review_count: 5000 }));
-  for (const popularityWeight of [1, 0]) {
-    const out = await selectAreaPool(deps({
-      apiKey: null,
-      sources: { mesitaClosest: 0 },
-      weights: { popularityWeight },
-      mesitaRows: rows,
-    }).d);
-    assertEquals(out.summary.sourceCounts.mesitaPopular, 20);
-    const got = new Set(ids(out.places));
-    assertEquals(got.size, 20);
-    // The two loved twins and the 18 busiest of the rest; the 7 quietest are out.
-    for (const id of ["twin-a", "twin-b", "r24", "r07"]) assert(got.has(id), id);
-    for (const id of ["r00", "r06"]) assertEquals(got.has(id), false, id);
-  }
+  const out = await selectAreaPool(deps({
+    apiKey: null,
+    sources: { mesitaClosest: 0 },
+    mesitaRows: rows,
+  }).d);
+  assertEquals(out.summary.sourceCounts.mesitaPopular, 20);
+  const got = new Set(ids(out.places));
+  assertEquals(got.size, 20);
+  // The two loved twins and the 18 busiest of the rest; the 7 quietest are out.
+  for (const id of ["twin-a", "twin-b", "r24", "r07"]) assert(got.has(id), id);
+  for (const id of ["r00", "r06"]) assertEquals(got.has(id), false, id);
 });
 
-Deno.test("Mesita Popular counts a Selected row's Popularity × the Selected factor (MESITA-2717)", async () => {
+Deno.test("Mesita Popular counts a Selected row's Popularity × the Selected boost (MESITA-2717)", async () => {
   // 21 unmarked rows busier than the one Selected row: by raw Popularity it
   // is 22nd and never reaches the pool; × 3 it takes a slot, and leads.
   const rows = Array.from({ length: 21 }, (_, i) =>
@@ -960,28 +956,6 @@ Deno.test("Mesita Popular counts a Selected row's Popularity × the Selected fac
   assertEquals((await run(1)).includes("picked"), false);
 });
 
-Deno.test("Mesita Popular picks by Popularity^b × the Selected factor, so the pick agrees with the score whatever b (MESITA-2717)", async () => {
-  // 21 unmarked rows at Popularity ln(1 + 2100 × 4.6) ≈ 9.18, one Selected
-  // row; every row at the centre, so the score is Popularity^b × s.
-  const busy = Array.from({ length: 21 }, (_, i) =>
-    mrow(`u${String(i).padStart(2, "0")}`, { selected: false, google_stars_overall: 4.6, google_review_count: 2100 })
-  );
-  const run = async (picked: ReturnType<typeof mrow>, popularityWeight: number) =>
-    ids((await selectAreaPool(deps({
-      apiKey: null,
-      sources: { mesitaClosest: 0 },
-      weights: { popularityWeight, selectedFactor: 3 },
-      mesitaRows: [...busy, picked],
-    }).d)).places);
-  // b = 0.5: ln 21 ≈ 3.04 → √3.04 × 3 ≈ 5.23 beats √9.18 ≈ 3.03, so it is
-  // picked and leads (Popularity × 3 = 9.13 would have left it out).
-  assertEquals((await run(mrow("thin", { google_stars_overall: 4.0, google_review_count: 5 }), 0.5))[0], "thin");
-  // b = 2: ln 61 ≈ 4.11 → 4.11² × 3 ≈ 50.7 loses to 9.18² ≈ 84.2, so the 20
-  // slots go to rows that outscore it (Popularity × 3 = 12.3 would have
-  // taken one).
-  assertEquals((await run(mrow("mid", { google_stars_overall: 4.0, google_review_count: 15 }), 2)).includes("mid"), false);
-});
-
 Deno.test("Mesita Closest keeps the 20 nearest; ties by id", async () => {
   const rows = Array.from({ length: 22 }, (_, i) =>
     mrow(`n${String(i).padStart(2, "0")}`, { lat: CENTER.lat + (i + 1) / 1000, google_stars_overall: 5 - i / 10 })
@@ -994,7 +968,7 @@ Deno.test("Mesita Closest keeps the 20 nearest; ties by id", async () => {
   for (const id of ["n18", "n21"]) assertEquals(got.has(id), false, id);
 });
 
-Deno.test("no location: Mesita Popular only, Popularity^b, no Google call", async () => {
+Deno.test("no location: Mesita Popular only, Popularity, no Google call", async () => {
   reset();
   const g = stubGoogle([{ id: "a", lat: 25.6701 }]);
   try {
@@ -1162,7 +1136,7 @@ Deno.test("screen radius: no readable screen is null; a tiny screen is clamped",
   assertEquals(SCREEN_RADIUS_KM_MAX, 50);
 });
 
-Deno.test("screen radius: the circle gates Google and sets Proximity's half distance, Proximity^a × Popularity^b", async () => {
+Deno.test("screen radius: the circle gates Google and sets Proximity's half distance, Proximity × Popularity", async () => {
   reset();
   // 1 km circle: inside at ~0.56 km, outside at ~1.67 km.
   const g = stubGoogle([
@@ -1170,18 +1144,14 @@ Deno.test("screen radius: the circle gates Google and sets Proximity's half dist
     { id: "outside", lat: 25.685 },
   ]);
   try {
-    const out = await selectAreaPool(deps({
-      radiusKm: 1,
-      weights: { proximityWeight: 2, popularityWeight: 1 },
-    }).d);
+    const out = await selectAreaPool(deps({ radiusKm: 1 }).d);
     assertEquals(ids(out.places), ["g:inside"]);
     const a = out.places[0].area;
     // H = 1 km ÷ 2: 1 ÷ (1 + 0.556 ÷ 0.5), a tight screen still sorts by
     // distance (MESITA-2720).
     assert(Math.abs((a.signals.proximity ?? 0) - 1 / (1 + 0.556 / 0.5)) < 0.01, String(a.signals.proximity));
-    assertEquals(a.weights, { proximity: 2, popularity: 1 });
-    // final = proximity^2 × popularity^1.
-    const want = (a.signals.proximity ?? 0) ** 2 * (a.signals.popularity ?? 0);
+    // final = proximity × popularity (no exponents, MESITA-2722).
+    const want = (a.signals.proximity ?? 0) * (a.signals.popularity ?? 0);
     assert(Math.abs(a.final - want) < 1e-9);
   } finally {
     g.restore();
