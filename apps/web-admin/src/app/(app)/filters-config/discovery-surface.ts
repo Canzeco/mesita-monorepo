@@ -275,11 +275,12 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     signals: ["name_similarity"],
     gates: [],
     factors: [],
-    scoring: "Google rows keep Google's order; Mesita rows are ordered by Name. Duplicates merge.",
+    scoring: "Google rows keep Google's order, except that on the guest bar Google places under the Area box's Minimum Popularity sort after the rest (MESITA-2724); Mesita rows are ordered by Name. Duplicates merge.",
     keepsOrder: ["google_autocomplete", "google_text"],
     rules: [
       "Closed places never show (Discovery › General's active check).",
       "A Google row must have a Google type of one of the twelve families, the only places Mesita can hold (hotels, shops and schools never show), and clear the old stored Google floors on rating, reviews and popularity (0 is off; no box edits them).",
+      "Guest bar: Google places under the Area box's Minimum Popularity sort after the rest; none are removed; 0 is off. Mesita places and Locations never move; admin is unaffected (MESITA-2724).",
     ],
     callers: ["The guest's Search bar", "Admin Single Place › Find", "Chat (Don Memo)"],
     live: true,

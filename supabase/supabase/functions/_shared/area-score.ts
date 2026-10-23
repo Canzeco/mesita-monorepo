@@ -26,7 +26,7 @@
 // ranked at 0. Gates: Family (every location) and Radius (a point: inside
 // the circle). Ties break on distance (a point only), then id.
 
-import { halfDistanceKm, logPopularity, proximity } from "./pipeline-signals.ts";
+import { clearsPopularityFloor, halfDistanceKm, logPopularity, proximity } from "./pipeline-signals.ts";
 import { haversineKm } from "./geo.ts";
 
 /** Where a candidate's card comes from. `selected` = Mesita Selected, the
@@ -206,7 +206,7 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
   const floor = typeof ctx.popularityFloor === "number" && ctx.popularityFloor > 0
     ? ctx.popularityFloor
     : null;
-  const popularityGate = floor === null ? null : (pop ?? 0) >= floor ? 1 : 0;
+  const popularityGate = floor === null ? null : clearsPopularityFloor(c, floor) ? 1 : 0;
   const open = family === 1 && radius !== 0 && popularityGate !== 0;
   return {
     familyKeys: knownFamilies(c.familyKeys),

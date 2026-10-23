@@ -133,7 +133,8 @@ export function NameAdminBox(seed: ConfigSeed<DiscoveryConfig>) {
         <p>
           The Name pipeline as an admin runs it. An admin types a name;
           Autocomplete and the Mesita rows run through the guest bar&apos;s
-          lane, with its rules. The Text Search column is Find&apos;s own
+          lane, with its rules, except the Minimum Popularity order: admin
+          sees Google&apos;s own order. The Text Search column is Find&apos;s own
           call: it applies Mesita&apos;s place types but not Discovery ›
           General&apos;s active check. Locations are never
           shown here. With the last option on, the page opens listing every
@@ -142,7 +143,7 @@ export function NameAdminBox(seed: ConfigSeed<DiscoveryConfig>) {
       }
       scoring="Rows found by more sources come first, then Text Search rank, then Autocomplete rank, then Name. Duplicates merge."
       rules={[
-        "Autocomplete and Mesita rows follow the guest bar's rules: closed places never show, and a Google row must be one of Mesita's place types.",
+        "Autocomplete and Mesita rows follow the guest bar's rules: closed places never show, and a Google row must be one of Mesita's place types. The guest bar's Minimum Popularity order does not apply: admin sees Google's own order.",
         "Text Search rows are Find's own call: Mesita's place types and the old stored Google floors on rating, reviews and popularity (0 is off; no box edits them), not Discovery › General.",
       ]}
       save={<Save editor={editor} dirty={dirty} slices={BOX_SLICES.nameAdmin} />}
@@ -220,9 +221,11 @@ export function NameBox(seed: ConfigSeed<DiscoveryConfig>) {
           Picking a place moves the map there and makes it the first card.
           Neither gate applies: a place Mesita has created is findable by
           name before its profile is written. The always-on rules below
-          still hold: closed places never show, a Google row must be one of
-          Mesita&apos;s place types, and the Area box&apos;s Minimum Google
-          reviews cuts Google rows (never a Mesita row).
+          still hold: closed places never show and a Google row must be one
+          of Mesita&apos;s place types. Google places under the Minimum
+          Popularity (now {cfg.map.popularityFloor}, set in the Area box; 0 is
+          off) sort after the rest; none are removed, so an exact name is
+          always found. Mesita places and Locations never move.
         </p>
       }
       save={
@@ -431,7 +434,8 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           distance ÷ (radius ÷ divisor)), never 0. A place whose Popularity is under the Minimum
           Popularity (now {cfg.map.popularityFloor}; 0 is off) never shows on
           Home, the Map or Chat, Google or Mesita, whatever its score: 3 is
-          about 4★ × 5 reviews. Popularity is ln(1 + reviews × stars), never normalized:
+          about 4★ × 5 reviews. On the guest Search bar it only reorders:
+          Google places under it sort last, none are removed. Popularity is ln(1 + reviews × stars), never normalized:
           4.6★ × 1,000 reviews ≈ 8.4, 4.0★ × 30 ≈ 4.8; a place with no Google
           numbers scores 0 and sinks, never disappears. The Selected boost (now{" "}
           {cfg.map.selectedFactor}; 1 is off) multiplies the score of a place
