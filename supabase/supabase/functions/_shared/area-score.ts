@@ -24,9 +24,10 @@
 import { popularity, proximity } from "./pipeline-signals.ts";
 import { haversineKm } from "./geo.ts";
 
-/** Where a candidate's card comes from. `selected` = Mesita Selected;
- *  `mesita` = a ready Mesita row an Enrich run has not completed; `google`
- *  = a Google-only stub. Provenance only: it never scores (MESITA-2703). */
+/** Where a candidate's card comes from. `selected` = Mesita Selected, the
+ *  operator's mark on the row (`places.selected`, MESITA-2707; independent
+ *  of Enriched); `mesita` = a ready Mesita row without the mark; `google` =
+ *  a Google-only stub. Provenance only: it never scores (MESITA-2703). */
 export type AreaSource = "selected" | "mesita" | "google";
 
 export type LatLng = { lat: number; lng: number };

@@ -202,6 +202,8 @@ const PROFILES_READ_ALLOWLIST = [
   "admin-web-search-places/index.ts",
   "admin-web-set-place-active/index.ts",
   "admin-web-set-place-listed/index.ts",
+  // The Selected mark's one door re-reads the place after the write (MESITA-2707).
+  "admin-web-set-place-selected/index.ts",
   "admin-web-get-overview/index.ts",
   // Names only (google_place_id, name) for the repeated-open list (MESITA-2323).
   "admin-web-list-place-opens/index.ts",
@@ -227,6 +229,7 @@ const PLACES_READ_ALLOWLIST = [
   "admin-web-delete-place/index.ts",
   "admin-web-get-place-enrichment/index.ts",
   "admin-web-set-place-listed/index.ts",
+  "admin-web-set-place-selected/index.ts", // `selected` only: a no-op when already there (MESITA-2707)
   "consumer-web-create-reservation/index.ts",
 ];
 

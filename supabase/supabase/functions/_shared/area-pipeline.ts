@@ -31,7 +31,7 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { EVERY_FAMILY_TYPES, nearbyTypesForSupers } from "./google-type-super.ts";
-import { catalogAdmitted } from "./catalog-rank.ts";
+import { isSelectedRow } from "./catalog-rank.ts";
 import { googleStub } from "./google-stub.ts";
 import { applyBboxPredicate, type BboxQuery, haversineKm, nearbyBbox } from "./geo.ts";
 import {
@@ -130,11 +130,11 @@ export type OwnedRow = Record<string, unknown> & {
 
 const numOrNull = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
 
-/** Mesita Selected or merely a ready Mesita row. */
+/** Mesita Selected (the operator's mark, `places.selected`, MESITA-2707) or
+ *  merely a ready Mesita row. Never read off `enriched_at`: Selected and
+ *  Enriched are independent facts. */
 function mesitaSource(row: Record<string, unknown>): AreaSource {
-  return catalogAdmitted(row as { enriched_at?: string | null; content_state?: string | null })
-    ? "selected"
-    : "mesita";
+  return isSelectedRow(row as { selected?: boolean | null }) ? "selected" : "mesita";
 }
 
 /**
@@ -665,9 +665,10 @@ export interface PoolBuilder extends SelectedPoolQuery<PoolBuilder> {
  * The Mesita pool in SQL, with the gates PUSHED DOWN so a dense area does
  * not fill the row cap with rows the ranking would drop: ready, active, the
  * requested families, and the radius box around the point (no point, no
- * box). `selectedOnly` (Chat, the default) also keeps only
- * Mesita Selected rows (an Enrich run completed); the Feed and the Map pass
- * false, because Selected is their factor, not their gate.
+ * box). `selectedOnly` (Chat, the default) also keeps only Mesita Selected
+ * rows — the operator's mark, `places.selected` (MESITA-2707), never
+ * `enriched_at`; the Feed and the Map pass false, because Selected is a tag
+ * on their cards, not their gate.
  */
 export function selectedPoolQuery<Q extends SelectedPoolQuery<Q>>(
   query: Q,
@@ -680,7 +681,7 @@ export function selectedPoolQuery<Q extends SelectedPoolQuery<Q>>(
   },
 ): Q {
   let q: Q = query.eq("content_state", "ready");
-  if (opts.selectedOnly !== false) q = q.not("enriched_at", "is", null);
+  if (opts.selectedOnly !== false) q = q.eq("selected", true);
   q = applyGeneralGateQuery(q, activeOnly(cfg.general));
   if (opts.families && opts.families.length > 0) {
     q = q.overlaps("family_keys", [...opts.families]);
@@ -740,7 +741,7 @@ export function selectMesitaSelected<T extends Record<string, unknown>>(
 
 /** What a non-view caller needs of a Selected place, About included. */
 const AREA_SELECTED_COLUMNS =
-  "id, slug, name, address, lat, lng, family_keys, google_stars_overall, google_review_count, description, enriched_at, content_state";
+  "id, slug, name, address, lat, lng, family_keys, google_stars_overall, google_review_count, description, enriched_at, content_state, selected";
 /** The Selected pool cap for a non-view caller: a few answers, not a map. */
 const AREA_SELECTED_POOL = 300;
 

@@ -29,6 +29,7 @@ Deno.test("admin Feed rows list the rows buildCatalogRails builds", () => {
     family_keys: server.CATALOG_FAMILY_FACTS.map((f) => f.key),
     enriched_at: "2026-01-01T00:00:00Z",
     content_state: "ready",
+    selected: true,
   }];
   const rails = buildCatalogRails([{ id: "g:x", googleOnly: true }], selected, CATALOG_RAIL_CAP_DEFAULT);
   assertEquals(

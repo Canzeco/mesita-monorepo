@@ -131,8 +131,8 @@ function SuggestionLine({
   onPick: (prediction: PlacePrediction) => void;
 }) {
   // Branch on `kind` BEFORE tone is ever computed: predictionPinTone answers
-  // "did we write a profile", and a Location has no profile to answer for —
-  // asking would silently paint a city as a gray Google place. The
+  // "is this a Mesita Selected place", and a Location has no profile to
+  // answer for — asking would silently paint a city as a gray Google place. The
   // accessible label is the mark's spoken half: it names the ENTITY
   // ("City"), never the absence of a profile.
   if (prediction.kind === "location") {
@@ -154,10 +154,10 @@ function SuggestionLine({
 
   const tone = predictionPinTone(prediction);
   const added = addState === "added";
-  // Three spoken answers over the three tones: a Created place (on Mesita,
-  // basic — MESITA-2154) has a profile, so it is not "No profile". The word
-  // Enriched never reaches a guest (MESITA-2298).
-  const toneLabel = tone === "enriched"
+  // Three spoken answers over the three tones: a Mesita place without the
+  // operator's mark (MESITA-2707) has a profile, so it is not "No profile".
+  // The word Enriched never reaches a guest (MESITA-2298).
+  const toneLabel = tone === "selected"
     ? "Mesita Selected"
     : predictionOnMesita(prediction)
       ? "Basic Mesita profile"

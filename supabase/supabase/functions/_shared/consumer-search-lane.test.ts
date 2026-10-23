@@ -77,6 +77,7 @@ Deno.test("applyResolvedMesitaName keeps Mesita places.name, not the Google labe
       secondaryText: "Mesita address",
       state: "web_listed",
       enriched: true,
+      selected: true,
       mesitaId: "m-1",
       mesitaSlug: "mesita-override",
     }),
@@ -85,6 +86,8 @@ Deno.test("applyResolvedMesitaName keeps Mesita places.name, not the Google labe
   assertEquals(out.secondaryText, "Mesita address");
   assertEquals(out.mesitaId, "m-1");
   assertEquals(out.enriched, true);
+  // The operator's mark travels with the entity too (MESITA-2707).
+  assertEquals(out.selected, true);
 });
 
 Deno.test("mergeNameDeepQueries: Autocomplete then Text then Mesita", () => {

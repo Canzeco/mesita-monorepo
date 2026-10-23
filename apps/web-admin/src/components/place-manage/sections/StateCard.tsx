@@ -1,11 +1,14 @@
 "use client";
 
-// Profile States — the six facts of a place (Pato, 2026-10-13, MESITA-2176):
+// Profile States — the seven facts of a place (Pato, 2026-10-13, MESITA-2176;
+// Selected joined in MESITA-2318):
 //
-//   Created · Pulsing · Requested · Enriching · Enriched · Disabled
+//   Created · Pulsing · Requested · Enriching · Enriched · Selected · Disabled
 //
 // Enriching and Enriched are the only enrichment states. A live run is
-// enriching; the one finished write is enriched.
+// enriching; the one finished write is enriched. Selected is the operator's
+// own mark (`places.selected`, MESITA-2707), independent of both — the
+// second operator write in this box, beside Disabled.
 //
 // Partnership States (Partnered · Rewards · Mesita Pay · Mesita Credits) went
 // with the MVP First Stage cut (MESITA-2115): nothing commercial is live.
@@ -48,6 +51,7 @@ import { CircleCheck, Loader2 } from "lucide-react";
 import {
   getPlaceEnrichment,
   setPlaceListed,
+  setPlaceSelected,
   type AdminPlace,
   type PlaceEnrichmentState,
 } from "../actions";
@@ -181,19 +185,19 @@ export function StateCard({ place }: { place: AdminPlace }) {
       : requestCount === 0
         ? "No guest has requested this profile."
         : `${requestCount} guest request${requestCount === 1 ? "" : "s"}.`;
-  // Mesita Selected (MESITA-2318): the set the Map and the Feed's Mesita
-  // Selected rail read — Enriched, ready, and switched on. Derived from
-  // the three facts above, so it can never disagree with them.
+  // Mesita Selected (MESITA-2707): the operator's own mark, `places.selected`,
+  // read off the overview — never derived from Enriched, ready and Disabled
+  // (that was MESITA-2318). Pato: "selected is the manual thing … independent
+  // of enrichment": a Created place can be Selected, an Enriched one need
+  // not be. An absent key is an older payload, not a "no".
   const selected: boolean | "unknown" =
-    disabled === "unknown"
-      ? "unknown"
-      : enriched === true && contentState === "ready" && disabled === false;
+    typeof place.selected === "boolean" ? place.selected : "unknown";
   const selectedDetail =
     selected === "unknown"
-      ? "Couldn't read the place's state."
+      ? "Couldn't read the Selected mark."
       : selected
-        ? "In Mesita Selected — the Map and the Feed show it to guests."
-        : "Not in Mesita Selected: it needs a completed Enrich run, a ready profile, and Disabled off.";
+        ? "In Mesita Selected — your mark. The Map pins it red, the Search carousel tags it, Chat recommends it."
+        : "Not in Mesita Selected. Your call alone: Select marks it whatever its enrichment.";
   const enrichingDetail = enriching
     ? "A run is in progress. Nothing is saved until the profile is finished."
     : "No run is in progress.";
@@ -240,6 +244,7 @@ export function StateCard({ place }: { place: AdminPlace }) {
           on={selected === true}
           chip={stateBoolChip(selected)}
           detail={selectedDetail}
+          action={<SelectedToggle place={place} selected={selected} />}
         />
         <StateRow
           name="Disabled"
@@ -289,6 +294,61 @@ export function StateRow({
   );
 }
 
+
+/**
+ * Selected writes places.selected through admin-web-set-place-selected
+ * (MESITA-2707): the operator's own mark, independent of Enriched and of
+ * Disabled. Nothing scores on it and no RLS policy reads it, so the toggle
+ * is immediate — reversible with one more click.
+ */
+function SelectedToggle({
+  place,
+  selected,
+}: {
+  place: AdminPlace;
+  selected: boolean | "unknown";
+}) {
+  const { setPlace } = usePlaceContext();
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // An unknown value means an older overview payload, not a "no": no toggle
+  // may write a mark off a fact we admit we could not read.
+  if (selected === "unknown") return null;
+
+  const apply = (next: boolean) => {
+    setError(null);
+    setPending(true);
+    void setPlaceSelected(place.id, next).then((r) => {
+      setPending(false);
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
+      setPlace(r.data);
+    });
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => apply(!selected)}
+        className={
+          "inline-flex h-9 items-center gap-2 rounded-full border px-4 text-xs font-semibold transition active:scale-[0.98] disabled:opacity-50 " +
+          (selected
+            ? "border-border/70 text-foreground/70 hover:bg-muted hover:text-foreground"
+            : "border-transparent bg-pink-gradient text-white shadow-save hover:brightness-105")
+        }
+      >
+        {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+        {selected ? "Unselect" : "Select"}
+      </button>
+      {error ? <ErrorNote message={error} /> : null}
+    </>
+  );
+}
 
 /**
  * Disabled writes places.state through admin-web-set-place-listed.

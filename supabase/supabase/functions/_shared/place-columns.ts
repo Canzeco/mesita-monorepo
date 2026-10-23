@@ -89,6 +89,10 @@ const COLUMNS: readonly string[] = [
   // THE Enriched fact (MESITA-2154): set by the contents stage when an
   // Enrich run completes, never by Create. `isPlaceEnriched` reads it.
   "enriched_at",
+  // Mesita Selected (MESITA-2707): the operator's own mark on `places`,
+  // independent of `enriched_at` and of every score. The Map pins it red,
+  // Chat reads Selected places only, the Search carousel tags it.
+  "selected",
   // Profile lifecycle (places.content_state: generating | ready | failed).
   // Create saves 'ready' (the profile can be shown — NOT enriched); an
   // Enrich run holds 'generating' for the FULL pipeline

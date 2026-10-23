@@ -165,6 +165,10 @@ Deno.serve(async (req) => {
     // THE Enriched fact (MESITA-2154) — `enriched_at` set; same helper as
     // admin-web-search-places, so Status and the catalog table agree.
     enriched: isPlaceEnriched(placeFields.enriched_at),
+    // Mesita Selected (MESITA-2707): the operator's own mark, read off the
+    // row (`places.selected`) — never derived from Enriched, ready and
+    // Disabled. The same read admin-web-search-places makes.
+    selected: placeFields.selected === true,
     enrich_crenup: enrichmentMap.highWater,
     enrich_crenup_total: CRENUP_TOTAL,
     enrich_crenup_labels: CRENUP_LABELS_IN_ORDER,

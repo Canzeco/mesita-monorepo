@@ -58,6 +58,7 @@ function placeHit(over: Partial<PlaceHit> = {}): PlaceHit {
     enriching: false,
     enriched: false,
     enriched_at: null,
+    selected: false,
     business_state: "OPERATIONAL",
     business_state_at: null,
     enrich_crenup: 1,

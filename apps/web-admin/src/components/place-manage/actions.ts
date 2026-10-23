@@ -141,6 +141,11 @@ export type AdminPlace = {
   /** THE Enriched fact (MESITA-2154): an Enrich run completed —
    *  `enriched_at` set. Never the Crenup high-water, never content_state. */
   enriched?: boolean;
+  /** Mesita Selected (MESITA-2707): the operator's own mark,
+   *  `places.selected`, read off the row by admin-web-get-overview. Never
+   *  derived from Enriched, ready and Disabled; Select / Unselect writes it
+   *  through admin-web-set-place-selected. */
+  selected?: boolean;
   /** Guest request count — the Requested State fact, 0…n. */
   request_count?: number;
   /** Votes required before Enrich starts. Settings `atlasRequestThreshold`. */
@@ -318,6 +323,31 @@ export async function setPlaceListed(
   return {
     ok: true,
     data: { ...r.data.place, listed: r.data.listed ?? listed },
+  };
+}
+
+/** Mark or unmark the place as Mesita Selected — the ONLY write path to
+ *  places.selected, the operator's own mark (MESITA-2707). Independent of
+ *  Enriched and of Disabled; the Map pins it red, Chat reads Selected places
+ *  only, the Search carousel tags it. Its own admin door
+ *  (admin-web-set-place-selected). */
+export async function setPlaceSelected(
+  placeId: string,
+  selected: boolean,
+): Promise<Result<AdminPlace>> {
+  const r = await efInvoke<{ place: AdminPlace; selected?: boolean }>(
+    "admin-web-set-place-selected",
+    {
+      placeId,
+      selected,
+    },
+  );
+  if (!r.ok) return { ok: false, error: r.error };
+  // The EF returns `selected` beside `place`; stamp it onto the row so the
+  // shell's merge cannot keep a stale overview value.
+  return {
+    ok: true,
+    data: { ...r.data.place, selected: r.data.selected ?? selected },
   };
 }
 

@@ -66,11 +66,12 @@ function mapsPinIcon(
   };
 }
 
-function placeIcon(tone: PinTone, isSelected: boolean) {
-  const weight = pinStrokeWeight(isSelected);
+/** `held` is the tapped pin (ink, MESITA-2488), not the Selected tone. */
+function placeIcon(tone: PinTone, held: boolean) {
+  const weight = pinStrokeWeight(held);
   return mapsPinIcon(
-    pinFillColor(tone, isSelected),
-    pinStrokeColor(isSelected),
+    pinFillColor(tone, held),
+    pinStrokeColor(held),
     weight,
   );
 }

@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
   // OPERATIONAL fact (Active).
   // Keep as a single string literal so supabase-js can type the select.
   const cols =
-    "id, slug, name, google_name, google_place_id, category, category_label, state, address, photos, zone, google_stars_overall, google_review_count, content_state, enriched_at, request_count, business_state, business_state_at, updated_at";
+    "id, slug, name, google_name, google_place_id, category, category_label, state, address, photos, zone, google_stars_overall, google_review_count, content_state, enriched_at, selected, request_count, business_state, business_state_at, updated_at";
   let rows: Record<string, unknown>[] = [];
   // Only ALL mode reports it: a paste's count is the number of rows already
   // returned, and a second query would say nothing.
@@ -232,6 +232,10 @@ Deno.serve(async (req) => {
       // `enriched: false` here whatever its content_state or high-water.
       enriched: isPlaceEnriched(v.enriched_at),
       enriched_at: (v.enriched_at as string | null) ?? null,
+      // Mesita Selected (MESITA-2707): the operator's own mark, read off the
+      // row (`places.selected`); never derived from Enriched, ready and
+      // Listed. The State box reads the same column.
+      selected: v.selected === true,
       // CRENUP: how far the EIGHT-step ENRICH queue got, 0-8
       // (MESITA-1253). Not a count of functions that worked — the index of
       // the last function such that it and everything before it completed.
