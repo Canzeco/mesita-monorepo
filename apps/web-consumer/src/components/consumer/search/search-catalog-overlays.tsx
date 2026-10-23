@@ -1,6 +1,6 @@
 import type { RefObject } from "react";
 
-import type { MapWeights, Place } from "@/lib/api/places";
+import type { MapScore, MapWeights, Place } from "@/lib/api/places";
 import { Skeleton, Spinner } from "@/components/shared";
 import type { Coords } from "@/lib/use-user-location";
 import { useCardSaveShare } from "@/lib/use-card-save-share";
@@ -135,6 +135,41 @@ export function SearchDebugCoords({
   );
 }
 
+/** The four Area sources as the tag names them (MESITA-2703 keys). */
+const SOURCE_LABELS: ReadonlyArray<[string, string]> = [
+  ["googlePopular", "Google Popular"],
+  ["googleClosest", "Google Closest"],
+  ["mesitaPopular", "Mesita Popular"],
+  ["mesitaClosest", "Mesita Closest"],
+];
+
+/**
+ * FOR THE MOMENT (Pato, MESITA-2705: "on top of the carousel … display the
+ * sources where that [place] appears … then the two signals proximity and
+ * popularity and the final score"): a small tag over each card, which of the
+ * four sources found the place and its score, read from the server's
+ * `score` (MESITA-2703). Remove when Pato says the ranking is verified.
+ */
+export function RailScoreTag({ score }: { score?: MapScore }) {
+  if (!score) return null;
+  const found = new Set(score.foundBy ?? []);
+  const sources = SOURCE_LABELS.filter(([key]) => found.has(key)).map(([, label]) => label);
+  return (
+    <div
+      className="bg-card/95 text-muted-foreground type-meta mb-1.5 rounded-xl px-3 py-1.5 font-mono leading-snug tabular-nums shadow-sm"
+      data-rail-score-tag
+    >
+      <p className="text-foreground truncate font-semibold">
+        {sources.length > 0 ? sources.join(" · ") : "no source"}
+      </p>
+      <p className="truncate">
+        proximity {fmtScore(score.proximity)} · popularity {fmtScore(score.popularity)} · final{" "}
+        {fmtScore(score.final)}
+      </p>
+    </div>
+  );
+}
+
 export function SearchRailOverlay({
   places,
   catalogLoading = false,
@@ -197,6 +232,7 @@ export function SearchRailOverlay({
                 ref={(el) => setRailCardRef(place.id, el)}
                 className={RAIL_PAGE}
               >
+                <RailScoreTag score={place.score} />
                 <RailCard
                   place={place}
                   selected={place.id === selectedId}
