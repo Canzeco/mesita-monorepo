@@ -287,6 +287,8 @@ export type AreaDiagnostics = {
     active: 1;
     ready: 1 | null;
     reviews: 1 | null;
+    /** The Popularity floor (MESITA-2714); null = off, absent = older EF. */
+    popularity?: 0 | 1 | null;
   };
   signals: { proximity: number | null; popularity: number | null };
   source: "selected" | "mesita" | "google";
