@@ -183,13 +183,13 @@ export function RailScoreTag({ place }: { place: Pick<Place, "score" | "selected
           <p className="text-foreground truncate font-semibold">
             {sources.length > 0 ? sources.join(" · ") : "no source"}
           </p>
-          <p className="truncate">
-            proximity {fmtScore(score.proximity)} · popularity {fmtScore(score.popularity)}
-            {/* The Selected factor the final took (MESITA-2717); × 1 is not shown. */}
-            {typeof score.selectedFactor === "number" && score.selectedFactor !== 1
-              ? ` · ×${score.selectedFactor}`
-              : ""}{" "}
-            · final {fmtScore(score.final)}
+          {/* Wraps rather than cuts: four numbers no longer fit one phone line. */}
+          <p>
+            {/* Selected reads as the third signal (Pato, MESITA-2718): the factor
+                the final took (MESITA-2717), 1 for a place that is not Selected. */}
+            proximity {fmtScore(score.proximity)} · popularity {fmtScore(score.popularity)} · selected{" "}
+            {fmtScore(typeof score.selectedFactor === "number" ? score.selectedFactor : 1)} · final{" "}
+            {fmtScore(score.final)}
           </p>
         </div>
       ) : null}
