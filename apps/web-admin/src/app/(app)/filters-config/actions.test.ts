@@ -72,7 +72,7 @@ function editedEverywhere(live: DiscoveryConfig): DiscoveryConfig {
       deep: { ...live.name.deep, autoCount: 9 },
       admin: { ...live.name.admin, textCount: 3 },
     },
-    general: { ...live.general, minReviews: 40 },
+    general: { ...live.general, requireActive: !live.general.requireActive },
     deep: { limit: 9, minSimilarity: 0.3 },
     chat: { prompt: "Be brief." },
   };
@@ -163,13 +163,13 @@ describe("the Name boxes", () => {
     expect(sent.config?.name.idleSec).toBe(live.name.idleSec);
   });
 
-  it("the Name box writes its four slices and not admin Find's caps", async () => {
+  it("the Name box writes its three slices and not admin Find's caps or general", async () => {
     const live = liveConfig();
     const sent = armed(live);
     await updateDiscoveryConfig(editedEverywhere(live), [...BOX_SLICES.name]);
     expect(sent.config?.name.idleSec).toBe(2.5);
     expect(sent.config?.name.deep.autoCount).toBe(9);
-    expect(sent.config?.general.minReviews).toBe(40);
+    expect(sent.config?.general).toEqual(live.general);
     expect(sent.config?.name.admin).toEqual(live.name.admin);
     expect(sent.config?.map).toEqual(live.map);
   });

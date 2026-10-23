@@ -46,6 +46,7 @@ import {
   applyGeneralGateQuery,
   clearsGeneralGate,
   type FilterableQuery,
+  mesitaGate,
 } from "./discovery-general-gate.ts";
 import { clearsMinReviews } from "./map-engine.ts";
 import { familiesForPlace } from "./place-taxonomy.ts";
@@ -123,11 +124,9 @@ export function areaSignalParams(
   };
 }
 
-/** Area keeps only Discovery › General's active check: its reviews floor is
- *  the Name pipeline's; Area's own is `map.googleMinReviews`. */
-function activeOnly(general: GeneralConfig): GeneralConfig {
-  return { ...general, minReviews: 0 };
-}
+/** Area runs Discovery › General's active check; the one reviews floor,
+ *  `map.googleMinReviews`, it applies itself on Google hits only. */
+const activeOnly = mesitaGate;
 
 /** A Mesita row that may own a hit: active, ready, with its google id. */
 export type OwnedRow = Record<string, unknown> & {

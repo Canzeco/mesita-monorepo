@@ -290,7 +290,7 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     rules: [
       "Closed places never show (Discovery › General's active check).",
       "A Google row must have a Google type of one of the twelve families, the only places Mesita can hold (hotels, shops and schools never show), and clear the old stored Google floors on rating, reviews and popularity (0 is off; no box edits them).",
-      "Discovery › General's reviews floor (people, never stars; 0 is off) cuts Google and Mesita rows.",
+      "Google rows only: the Area box's Minimum Google reviews, the one reviews floor (people, never stars; 0 is off, MESITA-2702). Mesita rows have no review floor.",
     ],
     callers: ["The guest's Search bar", "Admin Single Place › Find", "Chat (Don Memo)"],
     live: true,

@@ -1,6 +1,6 @@
 "use server";
 
-// Server actions for Discovery. Thin wrappers over the admin-web-* Edge
+// Server actions for Discovery (Params). Thin wrappers over the admin-web-* Edge
 // Functions via the Result-style efInvoke (never throws) — same contract as
 // the other config pages' actions.
 //

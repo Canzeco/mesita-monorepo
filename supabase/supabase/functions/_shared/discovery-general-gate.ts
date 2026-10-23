@@ -6,9 +6,10 @@
 // Mesita rows those results resolve to. EVERY LANE THAT QUERIES GOOGLE reads
 // it: Fast, Deep, Map, and admin's suggest.
 //
-// It is not every half everywhere. The Area pipeline (Map and the Feed)
-// reads only the active half (`activeOnly` in area-pipeline.ts):
-// `general.minReviews` cuts the Name pipeline, never Area (MESITA-2327).
+// ONE REVIEWS FLOOR (MESITA-2702): `map.googleMinReviews`, on Google rows
+// only, on every pipeline. A Mesita row answers the Active half alone
+// (`mesitaGate`); a Google row answers both (`googleGate`). Area applies its
+// Google half itself, in `eligibleGoogleHits`.
 //
 // IT IS A FILTER, NOT A SIGNAL — it excludes, it never demotes. The Map box
 // (`discovery_config.map`) keeps its own floors and stays Map-only; these two
@@ -28,7 +29,20 @@
 // show has not. It is also the only reading that makes "only active
 // places" true rather than "active places, plus the ones we couldn't check".
 
-import type { GeneralConfig } from "./discovery-config.ts";
+import type { DiscoveryConfig, GeneralConfig } from "./discovery-config.ts";
+
+/** What the gate asks: the stored Active switch plus a reviews floor. */
+export type GeneralGate = GeneralConfig & { minReviews: number };
+
+/** A Google row: Active + the one reviews floor. */
+export function googleGate(cfg: Pick<DiscoveryConfig, "general" | "map">): GeneralGate {
+  return { ...cfg.general, minReviews: cfg.map.googleMinReviews };
+}
+
+/** A Mesita row: Active alone. A review count never cuts a Mesita place. */
+export function mesitaGate(general: GeneralConfig): GeneralGate {
+  return { requireActive: general.requireActive, minReviews: 0 };
+}
 
 /** The subset of a PostgREST builder a WHERE-clause gate uses. Kept
  *  structural so it is testable without a client. */
@@ -54,7 +68,7 @@ export function isOperational(state: unknown): boolean {
 
 /** The whole gate, for one place. */
 export function clearsGeneralGate(
-  general: GeneralConfig,
+  general: GeneralGate,
   signals: GeneralGateSignals,
 ): boolean {
   if (general.requireActive && !isOperational(signals.businessStatus)) {
@@ -86,7 +100,7 @@ export interface GeneralGateQuery extends FilterableQuery<GeneralGateQuery> {}
  */
 export function applyGeneralGateQuery<T extends FilterableQuery<T>>(
   query: T,
-  general: GeneralConfig,
+  general: GeneralGate,
 ): T {
   let q = query;
   if (general.requireActive) q = q.eq("business_state", OPERATIONAL);

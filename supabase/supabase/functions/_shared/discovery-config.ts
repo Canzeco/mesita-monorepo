@@ -8,8 +8,9 @@
 //   params     the Area pipeline's numbers: Proximity's reach, Popularity's
 //              reviews for half credit and Selected's other value
 //              (pipeline-signals.ts, area-score.ts). The Area box edits them.
-//   general    Discovery-wide. requireActive + minReviews — the post-Google
-//              wipe (discovery-general-gate.ts). The category param is NOT
+//   general    Discovery-wide. requireActive — the post-Google wipe
+//              (discovery-general-gate.ts). Its reviews half is
+//              `map.googleMinReviews`, the one floor (MESITA-2702). The category param is NOT
 //              here: it is `supers` on each Google-calling engine (MESITA-1695).
 //   chat       The Chat Agent's system prompt. Blank → memo_config, then the
 //              in-code persona (memo-prompt.ts).
@@ -167,10 +168,12 @@ export type MapConfig = {
    */
   radiusKm: number;
   /**
-   * The operator's Google reviews floor on GOOGLE HITS ONLY (MESITA-2319):
-   * people, never stars, cut after Google answers, on the Map's and the
-   * Feed's Google candidates alike. The guest's own stop still
-   * applies; the higher of the two wins. 0 is off. Never a Mesita floor.
+   * THE Google reviews floor (MESITA-2319; one floor since MESITA-2702):
+   * people, never stars, on GOOGLE ROWS ONLY — the Map's and Home's Google
+   * candidates and the Name pipeline's Google rows (the guest bar, admin
+   * Find's Autocomplete). 0 is off. Never a Mesita floor: a Mesita row
+   * answers Active alone. Stored under `map` because a stored key is never
+   * renamed.
    */
   googleMinReviews: number;
   /**
@@ -239,8 +242,8 @@ export type GeneralConfig = {
    * open has not.
    */
   requireActive: boolean;
-  /** Wipe out anything under this many Google reviews. 0 = off. */
-  minReviews: number;
+  // `minReviews` retired (MESITA-2702): one floor, `map.googleMinReviews`,
+  // dropped on the next Save, never renamed.
 };
 
 export type DiscoveryConfig = {
@@ -292,8 +295,6 @@ export const MAP_PROXIMITY_WEIGHT_DEFAULT = 1;
 export const MAP_RELOAD_IDLE_SEC_MIN = 0.5;
 export const MAP_RELOAD_IDLE_SEC_MAX = 10;
 export const MAP_RELOAD_IDLE_SEC_DEFAULT = 1.5;
-/** Same ceiling as map.minReviews — one review floor reads like another. */
-export const GENERAL_MIN_REVIEWS_MAX = 100_000;
 
 /**
  * The three supers the strip has always asked for stay on; the four it could
@@ -389,7 +390,6 @@ export const DEFAULT_GENERAL: GeneralConfig = {
   // result, and the live blob predates the key — so the default is what
   // every surface reads until the operator says otherwise.
   requireActive: true,
-  minReviews: 0,
 };
 
 /** The Area pipeline's numbers. A blob with no `params` reads these. */
@@ -512,9 +512,6 @@ export function normalizeGeneralConfig(raw: unknown): GeneralConfig {
   const r = (raw ?? {}) as Record<string, unknown>;
   return {
     requireActive: bool(r.requireActive, DEFAULT_GENERAL.requireActive),
-    minReviews: Math.round(
-      num(r.minReviews, DEFAULT_GENERAL.minReviews, 0, GENERAL_MIN_REVIEWS_MAX),
-    ),
   };
 }
 

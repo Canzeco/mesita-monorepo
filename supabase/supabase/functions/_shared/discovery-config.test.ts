@@ -86,7 +86,8 @@ Deno.test("the live blob loads: the retired keys drop, every live value stands",
   for (const dead of RETIRED_KEYS) {
     assertEquals(dead in cfg, false, dead);
   }
-  assertEquals(cfg.general, LIVE_BLOB_2026_10_18.general);
+  // `general.minReviews` is retired (MESITA-2702): the one floor is map's.
+  assertEquals(cfg.general, { requireActive: true });
   // `pinCount`, `supers` and the reload km/sec pair are dropped and seed
   // nothing (MESITA-2687): the caps read their defaults.
   assertEquals(cfg.map.googlePlaces, 20);
