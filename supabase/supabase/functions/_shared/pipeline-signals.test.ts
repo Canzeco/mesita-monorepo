@@ -8,25 +8,38 @@ import {
   popularity,
   POPULARITY_HALF_REVIEWS_DEFAULT,
   proximity,
+  PROXIMITY_HALF_KM_DEFAULT,
   proximityFromDistance,
 } from "./pipeline-signals.ts";
 
 const K = POPULARITY_HALF_REVIEWS_DEFAULT;
+const D = PROXIMITY_HALF_KM_DEFAULT;
 
-Deno.test("proximity: linear — 1 at the anchor, ½ at half the reach, 0 at the reach, never below 0 (MESITA-2347, MESITA-2431)", () => {
-  const r = 10;
-  assertEquals(proximityFromDistance(0, r), 1);
-  assertAlmostEquals(proximityFromDistance(r / 2, r), 0.5, 1e-12);
-  assertAlmostEquals(proximityFromDistance(r / 4, r), 0.75, 1e-12);
-  assertEquals(proximityFromDistance(r, r), 0);
-  assertEquals(proximityFromDistance(10_000, r), 0);
-  assert(proximityFromDistance(1, r) < 1);
+Deno.test("proximity: 1 ÷ (1 + d ÷ D) — 1 at the point, ½ at D, ⅓ at 2D, never 0 (MESITA-2706)", () => {
+  assertEquals(proximityFromDistance(0, D), 1);
+  assertAlmostEquals(proximityFromDistance(D, D), 0.5, 1e-12);
+  assertAlmostEquals(proximityFromDistance(2 * D, D), 1 / 3, 1e-12);
+  assertAlmostEquals(proximityFromDistance(D / 2, D), 2 / 3, 1e-12);
+  // The edge of a circle is never 0: the Radius gate drops what lies past it.
+  assert(proximityFromDistance(10_000, D) > 0);
+  assert(proximityFromDistance(10_000, D) < 0.01);
+  assert(proximityFromDistance(1, D) < 1);
 });
 
-Deno.test("proximity: the reach is the parameter, ½ at half of it whatever its size", () => {
-  // Half the reach scores ½ on a 1 km reach and on a 50 km one alike.
-  assertAlmostEquals(proximityFromDistance(0.5, 1), 0.5, 1e-12);
-  assertAlmostEquals(proximityFromDistance(25, 50), 0.5, 1e-12);
+Deno.test("proximity: Pato's 10 km on Home's 15 km circle — 0.40 at the edge, 0.67 at 5 km", () => {
+  assertEquals(D, 10);
+  assertAlmostEquals(proximityFromDistance(15, D), 0.4, 1e-12);
+  assertAlmostEquals(proximityFromDistance(5, D), 2 / 3, 1e-12);
+  assertAlmostEquals(proximityFromDistance(2, D), 1 / 1.2, 1e-12);
+});
+
+Deno.test("proximity: D is the operator's; a non-positive D reads the default", () => {
+  // ½ at 1 km on a 1 km half-distance, at 50 km on a 50 km one.
+  assertAlmostEquals(proximityFromDistance(1, 1), 0.5, 1e-12);
+  assertAlmostEquals(proximityFromDistance(50, 50), 0.5, 1e-12);
+  assertAlmostEquals(proximityFromDistance(D, 0), 0.5, 1e-12);
+  assertAlmostEquals(proximityFromDistance(D, Number.NaN), 0.5, 1e-12);
+  assertAlmostEquals(proximityFromDistance(D, -3), 0.5, 1e-12);
 });
 
 Deno.test("proximity missing data: no anchor abstains at 1; no coordinates is 0", () => {
@@ -98,10 +111,9 @@ Deno.test("description: cosine of the request against the summary; no summary ve
 Deno.test("proximity: an unplaceable distance scores 0, never 1", () => {
   assertEquals(proximityFromDistance(Number.NaN, 10), 0);
   assertEquals(proximityFromDistance(Number.POSITIVE_INFINITY, 10), 0);
-  // The anchor itself is 1 whatever the radius; off the anchor a broken radius is 0.
+  // The point itself is 1 whatever D is.
   assertEquals(proximityFromDistance(0, Number.NaN), 1);
-  assertEquals(proximityFromDistance(1, Number.NaN), 0);
-  assertEquals(proximityFromDistance(1, 0), 0);
+  assertEquals(proximityFromDistance(0, 0), 1);
 });
 
 Deno.test("popularity: NaN or infinite numbers score 0, never NaN", () => {

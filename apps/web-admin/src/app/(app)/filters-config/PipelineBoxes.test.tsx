@@ -88,12 +88,14 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
   });
 
   it("carries no weights table and no subpage tabs", () => {
-    // 3 Name by Admin + 4 Name + 5 Area (current-location radius, Google
-    // reviews minimum, a, b, half credit) + the Map's reload seconds. The
-    // weights table left the page (MESITA-2603). Deep is Soon.
+    // 3 Name by Admin + 4 Name + 6 Area (current-location radius, Google
+    // reviews minimum, a, b, the distance for half credit, the reviews for
+    // half credit) + the Map's reload seconds. The weights table left the
+    // page (MESITA-2603). Deep is Soon.
     const html = page();
-    expect(html.match(/type="number"/g)?.length).toBe(13);
+    expect(html.match(/type="number"/g)?.length).toBe(14);
     expect(html).toContain("Proximity weight (a)");
+    expect(html).toContain("Distance for half credit (km)");
     expect(html).not.toContain("data-area-weights");
     expect(html).not.toContain("Modes");
     expect(html).not.toContain('role="tablist"');

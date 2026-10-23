@@ -17,7 +17,8 @@
 // Each source is `map.<key>` 0 or 20 (`AREA_SOURCE_KEYS`). Gates: Family ·
 // Radius, plus the operational ones the sources apply (active, ready, the
 // Google reviews floor `map.googleMinReviews` on Google hits). Score:
-// area-score.ts, reach = the radius.
+// area-score.ts; Proximity is ½ at the operator's `params.proximity.halfKm`,
+// whatever the radius (MESITA-2706).
 //
 // Fail closed on money: no key, no point, no types, a quota refusal or a
 // Google error buy nothing; an owned-lookup error drops the Google side (no
@@ -59,7 +60,7 @@ import {
   type LatLng,
   rankArea,
 } from "./area-score.ts";
-import { POPULARITY_HALF_REVIEWS_DEFAULT, popularity } from "./pipeline-signals.ts";
+import { POPULARITY_HALF_REVIEWS_DEFAULT, popularity, PROXIMITY_HALF_KM_DEFAULT } from "./pipeline-signals.ts";
 import {
   AREA_SOURCE_KEYS,
   type AreaSourceKey,
@@ -99,17 +100,18 @@ export function areaWeights(
   return { proximity: map.proximityWeight, popularity: map.popularityWeight };
 }
 
-/** Popularity's reviews-for-half-credit and the two exponents, from the
- *  blob; the reach is the caller's radius. */
+/** The two half points (Proximity's distance, Popularity's reviews) and the
+ *  two exponents, from the blob. The radius is not here: it gates, it never
+ *  scores (MESITA-2706). */
 export function areaSignalParams(
   params: SignalParams,
   map: Pick<DiscoveryConfig["map"], "proximityWeight" | "popularityWeight">,
-  reachKm: number,
-): Pick<AreaContext, "halfReviews" | "reachKm" | "weights"> {
+): Pick<AreaContext, "halfReviews" | "halfKm" | "weights"> {
   const half = params.popularity?.halfReviews;
+  const halfKm = params.proximity?.halfKm;
   return {
     halfReviews: typeof half === "number" && Number.isFinite(half) ? half : POPULARITY_HALF_REVIEWS_DEFAULT,
-    reachKm,
+    halfKm: typeof halfKm === "number" && Number.isFinite(halfKm) ? halfKm : PROXIMITY_HALF_KM_DEFAULT,
     weights: areaWeights(map),
   };
 }
@@ -574,11 +576,10 @@ export async function selectAreaPool<T extends OwnedRow>(
     mesita: 0,
     returned: 0,
   };
-  const reachKm = deps.location.kind === "point" ? deps.location.radiusKm : 0;
   const ctx: AreaContext = {
     location: deps.location,
     families: deps.families,
-    ...areaSignalParams(deps.cfg.params, deps.cfg.map, reachKm),
+    ...areaSignalParams(deps.cfg.params, deps.cfg.map),
   };
   const fromGoogle = await googleItems(deps, sources, summary);
   const fromMesita = mesitaItems(deps, sources, ctx, summary);
@@ -725,8 +726,9 @@ export function selectMesitaSelected<T extends Record<string, unknown>>(
     {
       location,
       families: opts.families ?? [],
-      // Reach = the radius, as on Home and the Map (MESITA-2703).
-      ...areaSignalParams(opts.params, opts, opts.radiusKm),
+      // The same half points and exponents as Home and the Map
+      // (MESITA-2703, MESITA-2706); the radius only gates.
+      ...areaSignalParams(opts.params, opts),
     },
   );
   const out = ranked.map(({ item }) => ({

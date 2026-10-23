@@ -10,10 +10,11 @@
 //
 // THE RADIUS: the saved pin's own `radiusKm` when the client sends one, else
 // the operator's `map.radiusKm` (the device's current location). Mesita's
-// read, Google's circle and Proximity's reach all use it. ONE RANKING, THE
-// MAP'S: Proximity^a × Popularity^b (`map.proximityWeight`,
-// `map.popularityWeight`). `prefer` is ignored; a family row only gates,
-// ranked the same way.
+// read and Google's circle use it; it gates and never scores. ONE RANKING,
+// THE MAP'S: Proximity^a × Popularity^b (`map.proximityWeight`,
+// `map.popularityWeight`; Proximity ½ at the operator's distance for half
+// credit, read by the engine, MESITA-2706). `prefer` is ignored; a family
+// row only gates, ranked the same way.
 //
 // A FAMILY ROW ASKS ITS OWN QUESTION (MESITA-2438): `familyKeys` sends
 // Google that family's full type battery (`areaGoogleTypes`), pushes the

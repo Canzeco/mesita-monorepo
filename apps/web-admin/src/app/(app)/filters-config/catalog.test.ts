@@ -41,11 +41,12 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
     expect(Object.keys(cfg).sort()).toEqual(Object.keys(DEFAULT_CONFIG).sort());
   });
 
-  it("params keeps only half credit; the reach, Selected, the linear balance and the weights table are dropped (MESITA-2687, MESITA-2703)", () => {
+  it("params keeps the two half points; the reach, Selected, the linear balance and the weights table are dropped (MESITA-2687, MESITA-2703, MESITA-2706)", () => {
     expect(coerceConfig(LIVE_BLOB).params).toEqual(DEFAULT_CONFIG.params);
     expect(
       coerceConfig({
         params: {
+          // `halfDistanceKm` is the first cut's retired key, not `halfKm`.
           proximity: { maxKm: 30, halfDistanceKm: 6 },
           popularity: { priorRating: 4.2, referenceRating: 4, referenceReviews: 500, halfReviews: 250 },
           balance: { proximity: 8 },
@@ -54,20 +55,23 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
         },
       }).params,
     ).toEqual({
+      proximity: { halfKm: 10 },
       popularity: { halfReviews: 250 },
     });
   });
 
-  it("the Area params keep Popularity only; reach and Selected are dropped (MESITA-2703)", () => {
+  it("the Area params: the half-distance clamps to 0.5–50 at one decimal; reach and Selected are dropped (MESITA-2703, MESITA-2706)", () => {
     expect(
       coerceConfig({
         params: {
-          proximity: { reachKm: 12.34 },
+          proximity: { reachKm: 12.34, halfKm: 12.34 },
           popularity: { halfReviews: 0 },
           selected: { otherFactor: 0 },
         },
       }).params,
-    ).toEqual({ popularity: { halfReviews: 1 } });
+    ).toEqual({ proximity: { halfKm: 12.3 }, popularity: { halfReviews: 1 } });
+    expect(coerceConfig({ params: { proximity: { halfKm: 0 } } }).params.proximity).toEqual({ halfKm: 0.5 });
+    expect(coerceConfig({ params: { proximity: { halfKm: 999 } } }).params.proximity).toEqual({ halfKm: 50 });
   });
 
   it("the four Area sources are 0 or 20, and only the Google two bill (MESITA-2703)", () => {

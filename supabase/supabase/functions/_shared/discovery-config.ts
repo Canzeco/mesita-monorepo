@@ -5,8 +5,9 @@
 // Admin: one page, four pipeline boxes (Name by Admin · Name · Area · Deep);
 // each box saves only its own slices.
 //
-//   params     the Area pipeline's one number: Popularity's reviews for half
-//              credit (pipeline-signals.ts). The Area box edits it.
+//   params     the Area pipeline's two half points: Proximity's distance for
+//              half credit and Popularity's reviews for half credit
+//              (pipeline-signals.ts). The Area box edits them.
 //   general    Discovery-wide. requireActive — the post-Google wipe
 //              (discovery-general-gate.ts). Its reviews half is
 //              `map.googleMinReviews`, the one floor (MESITA-2702). The category param is NOT
@@ -33,9 +34,11 @@
 // RETIRED WITH THE FOUR SOURCES (MESITA-2703): `map.googlePlaces`,
 // `map.mapGooglePlaces`, `map.mesitaPlaces` (the 20/40/60 stops),
 // `map.googleFill` (the two Google switches are Google's on/off),
-// `params.proximity` (the reach is the request's radius) and `params.selected`
-// (the Area score is Proximity^a × Popularity^b). Migration
-// 20261023020000 strips them from the stored row.
+// `params.proximity.reachKm` (the radius gates; the Proximity curve stopped
+// reading it) and `params.selected` (the Area score is Proximity^a ×
+// Popularity^b). Migration 20261023020000 strips them from the stored row.
+// `params.proximity` came back with ONE field, `halfKm`, the reciprocal
+// curve's distance for half credit (MESITA-2706); `reachKm` stays dropped.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { bool, num } from "./config-coerce.ts";
@@ -43,15 +46,20 @@ import {
   POPULARITY_HALF_REVIEWS_DEFAULT,
   POPULARITY_HALF_REVIEWS_MAX,
   POPULARITY_HALF_REVIEWS_MIN,
+  PROXIMITY_HALF_KM_DEFAULT,
+  PROXIMITY_HALF_KM_MAX,
+  PROXIMITY_HALF_KM_MIN,
 } from "./pipeline-signals.ts";
 
 /**
- * The Area pipeline's one stored signal number: Popularity's reviews for
- * half credit. The exponents live on `map` (`proximityWeight`,
- * `popularityWeight`); Proximity's reach is the request's own radius
- * (MESITA-2703), so it is not a param.
+ * The Area pipeline's two stored signal numbers, one half point each:
+ * Proximity's distance for half credit (km, MESITA-2706) and Popularity's
+ * reviews for half credit. The exponents live on `map` (`proximityWeight`,
+ * `popularityWeight`). The radius is the request's own and only gates
+ * (MESITA-2703); the half-distance never follows it.
  */
 export type SignalParams = {
+  proximity: { halfKm: number };
   popularity: { halfReviews: number };
 };
 
@@ -392,11 +400,17 @@ export const DEFAULT_GENERAL: GeneralConfig = {
 
 /** The Area pipeline's numbers. A blob with no `params` reads these. */
 export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
+  proximity: { halfKm: PROXIMITY_HALF_KM_DEFAULT },
   popularity: { halfReviews: POPULARITY_HALF_REVIEWS_DEFAULT },
 };
 
 /** Legal ranges for the numbers the Area box edits. */
 export const SIGNAL_PARAM_BOUNDS = {
+  halfKm: {
+    min: PROXIMITY_HALF_KM_MIN,
+    max: PROXIMITY_HALF_KM_MAX,
+    decimals: 1,
+  },
   halfReviews: {
     min: POPULARITY_HALF_REVIEWS_MIN,
     max: POPULARITY_HALF_REVIEWS_MAX,
@@ -645,13 +659,22 @@ function boundedParam(
  * or the retired calibration (proximity.halfDistanceKm,
  * popularity.referenceRating/referenceReviews, MESITA-2347), the linear
  * `balance` (MESITA-2428), the weights table `modes` (MESITA-2687) or
- * `proximity` / `selected` (MESITA-2703) is dropped on the next save.
+ * `proximity.reachKm` / `selected` (MESITA-2703) is dropped on the next
+ * save. `proximity.halfKm` is the one proximity field read (MESITA-2706).
  */
 export function normalizeSignalParams(raw: unknown): SignalParams {
   const r = (raw ?? {}) as Record<string, unknown>;
+  const prox = (r.proximity ?? {}) as Record<string, unknown>;
   const pop = (r.popularity ?? {}) as Record<string, unknown>;
   const d = DEFAULT_SIGNAL_PARAMS;
   return {
+    proximity: {
+      halfKm: boundedParam(
+        prox.halfKm,
+        d.proximity.halfKm,
+        SIGNAL_PARAM_BOUNDS.halfKm,
+      ),
+    },
     popularity: {
       halfReviews: boundedParam(
         pop.halfReviews,

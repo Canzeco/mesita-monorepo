@@ -20,12 +20,13 @@
 import { num } from "@/lib/config-coerce";
 
 /**
- * The Area pipeline's one stored signal number: Popularity's reviews for
- * half credit. The exponents live on `map`; Proximity's reach is the
- * request's radius (MESITA-2703). Mirrors SignalParams in
- * _shared/discovery-config.ts.
+ * The Area pipeline's two stored signal numbers, one half point each:
+ * Proximity's distance for half credit (km, MESITA-2706) and Popularity's
+ * reviews for half credit. The exponents live on `map`; the radius only
+ * gates (MESITA-2703). Mirrors SignalParams in _shared/discovery-config.ts.
  */
 export type SignalParams = {
+  proximity: { halfKm: number };
   popularity: { halfReviews: number };
 };
 
@@ -89,6 +90,9 @@ export const DEEP_LIMIT_MIN = 1;
 export const DEEP_LIMIT_MAX = 20;
 export const DEFAULT_DEEP: DeepConfig = { limit: 5, minSimilarity: 0 };
 
+/** Mirrors the Proximity bounds in _shared/pipeline-signals.ts (MESITA-2706). */
+export const HALF_KM_MIN = 0.5;
+export const HALF_KM_MAX = 50;
 /** Mirrors the Popularity bounds in _shared/pipeline-signals.ts. */
 export const HALF_REVIEWS_MIN = 1;
 export const HALF_REVIEWS_MAX = 100_000;
@@ -505,6 +509,7 @@ export const DEFAULT_GENERAL: GeneralConfig = {
 
 /** Mirrors DEFAULT_SIGNAL_PARAMS. */
 const DEFAULT_SIGNAL_PARAMS: SignalParams = {
+  proximity: { halfKm: 10 },
   popularity: { halfReviews: 100 },
 };
 
@@ -529,14 +534,19 @@ function bounded(raw: unknown, fallback: number, min: number, max: number, decim
  * field by field, so the retired deck's bags (maxKm, timing, category,
  * priorRating, …), the retired calibration (halfDistanceKm,
  * referenceRating/Reviews, MESITA-2347), the linear `balance`
- * (MESITA-2428), the weights table `modes` (MESITA-2687), `proximity` and
- * `selected` (MESITA-2703) are dropped on the next Save.
+ * (MESITA-2428), the weights table `modes` (MESITA-2687), `proximity.reachKm`
+ * and `selected` (MESITA-2703) are dropped on the next Save;
+ * `proximity.halfKm` is the one proximity field (MESITA-2706).
  */
 function coerceParams(raw: unknown): SignalParams {
   const r = (raw ?? {}) as Record<string, unknown>;
+  const prox = (r.proximity ?? {}) as Record<string, unknown>;
   const pop = (r.popularity ?? {}) as Record<string, unknown>;
   const d = DEFAULT_SIGNAL_PARAMS;
   return {
+    proximity: {
+      halfKm: bounded(prox.halfKm, d.proximity.halfKm, HALF_KM_MIN, HALF_KM_MAX, 1),
+    },
     popularity: {
       halfReviews: bounded(pop.halfReviews, d.popularity.halfReviews, HALF_REVIEWS_MIN, HALF_REVIEWS_MAX, 0),
     },

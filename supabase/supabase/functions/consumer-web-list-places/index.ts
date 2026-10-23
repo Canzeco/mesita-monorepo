@@ -25,8 +25,8 @@
 // read is boxed to it and the Radius gate drops what lies past it, Google's
 // calls ask the prominent 20 inside it first and eligibility drops the rest
 // (Pato: "I son't want to see stuff beyond my screen"). The score is
-// Proximity^a × Popularity^b with Proximity's reach = R (1 at the cross, 0
-// at the edge, the same at every zoom); `a` and `b` are the operator's
+// Proximity^a × Popularity^b, Proximity ½ at the operator's distance for
+// half credit whatever R is (MESITA-2706); `a` and `b` are the operator's
 // `map.proximityWeight` and `map.popularityWeight`. The family chip gates;
 // the guest picks no mode, so `prefer` is ignored. No bounds, or a box wider
 // than AREA_BOUNDS_MAX_KM, falls back to the centre inside `map.radiusKm`,
@@ -190,7 +190,7 @@ Deno.serve(async (req) => {
   const screenKm = screenRadiusKm(body.bounds, center);
   const radiusKm = screenKm ?? cfg.map.radiusKm;
   const location = { kind: "point" as const, anchor: center, radiusKm };
-  // Proximity^a × Popularity^b, reach = the radius.
+  // Proximity^a × Popularity^b; the radius gates, the half-distance scores.
   const weights = areaWeights(cfg.map);
   const pool = await selectedPoolQuery(
     supabase.from("profiles").select(PLACE_CARD_COLUMNS) as unknown as PoolBuilder,
