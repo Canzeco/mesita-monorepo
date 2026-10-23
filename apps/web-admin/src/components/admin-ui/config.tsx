@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { CheckCircle2, ChevronRight, Loader2 } from "lucide-react";
 
 // Shared admin config kit — `@/components/admin-ui/config`.
@@ -171,6 +172,40 @@ export function TextAreaField({
   );
 }
 
+/** A keystroke the operator may keep. Empty, "0." and "0" are drafts, not rejections. */
+export function numberDraftAllowed(raw: string, decimals: boolean, min: number): boolean {
+  if (raw === "") return true;
+  const negative = min < 0;
+  const re = decimals
+    ? negative
+      ? /^-?\d*\.?\d*$/
+      : /^\d*\.?\d*$/
+    : negative
+      ? /^-?\d*$/
+      : /^\d*$/;
+  return re.test(raw);
+}
+
+/**
+ * A finished draft becomes a number. `null` means leave the stored value:
+ * the draft is unfinished, or it is outside the range and `clamp` is off
+ * (live typing). Blur passes `clamp` so a finished number lands inside
+ * min–max. Decimal knobs keep two places.
+ */
+export function commitNumberDraft(
+  raw: string,
+  opts: { decimals: boolean; min: number; max: number; clamp: boolean },
+): number | null {
+  const body = opts.decimals ? raw.trim().replace(",", ".") : raw.trim();
+  if (!numberDraftAllowed(body, opts.decimals, opts.min)) return null;
+  if (body === "" || body === "-" || body === "." || body === "-." || body.endsWith(".")) return null;
+  const n = Number(body);
+  if (!Number.isFinite(n)) return null;
+  const rounded = opts.decimals ? Math.round(n * 100) / 100 : Math.round(n);
+  if (!opts.clamp && (rounded < opts.min || rounded > opts.max)) return null;
+  return Math.max(opts.min, Math.min(opts.max, rounded));
+}
+
 export function NumberField({
   icon,
   label,
@@ -194,29 +229,59 @@ export function NumberField({
    *  the number does, seen while it is edited. */
   hint?: React.ReactNode;
 }) {
+  // Text, not type=number: the spinner steps by 0.25, and a controlled
+  // number snaps "0." and a cleared field back to the minimum, so a value
+  // like 0.5 cannot be typed (MESITA-2733).
+  const [draft, setDraft] = useState<string | null>(null);
+  const fractional = !!decimals;
+  const shown = draft ?? String(value);
+
+  function apply(raw: string, clamp: boolean) {
+    const next = commitNumberDraft(raw, {
+      decimals: fractional,
+      min,
+      max,
+      clamp,
+    });
+    if (next != null && next !== value) onChange(next);
+  }
+
   return (
     <label className={FIELD_WELL}>
-      {icon ? (
-        <span className="flex items-start gap-2 text-sm font-medium leading-snug">
-          {icon}
-          {label}
+      <span className="flex items-start justify-between gap-3">
+        {icon ? (
+          <span className="flex min-w-0 items-start gap-2 text-sm font-medium leading-snug">
+            {icon}
+            {label}
+          </span>
+        ) : (
+          <span className="text-sm font-medium leading-snug">{label}</span>
+        )}
+        <span className="text-muted-foreground type-meta shrink-0 tabular-nums">
+          {min}–{max}
         </span>
-      ) : (
-        <span className="text-sm font-medium leading-snug">{label}</span>
-      )}
+      </span>
       <input
-        type="number"
-        inputMode={decimals ? "decimal" : "numeric"}
-        min={min}
-        max={max}
-        step={decimals ? 0.25 : 1}
-        value={value}
+        type="text"
+        inputMode={fractional ? "decimal" : "numeric"}
+        autoComplete="off"
+        spellCheck={false}
+        enterKeyHint="done"
+        value={shown}
         disabled={disabled}
+        onFocus={(e) => e.currentTarget.select()}
         onChange={(e) => {
-          const raw = Number(e.target.value);
-          if (Number.isNaN(raw)) return;
-          const n = decimals ? Math.round(raw * 100) / 100 : Math.round(raw);
-          onChange(Math.max(min, Math.min(max, n)));
+          const next = fractional ? e.target.value.replace(",", ".") : e.target.value;
+          if (!numberDraftAllowed(next, fractional, min)) return;
+          setDraft(next);
+          apply(next, false);
+        }}
+        onBlur={() => {
+          if (draft != null) apply(draft, true);
+          setDraft(null);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
         }}
         className="border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-3 text-right text-sm tabular-nums outline-none disabled:opacity-50"
       />
