@@ -23,7 +23,7 @@ describe("Current location names the neighbourhood", () => {
     const picker = read("components/consumer/home/LocationPicker.tsx");
     expect(picker).toContain("const here = useHere(coords, picking);");
     expect(picker).toContain("const hereName = here.name;");
-    expect(picker).toContain("label: locationLabel(null, coords !== null, locating, hereName),");
+    expect(picker).toContain("`${locationLabel(null, true, locating, hereName)} · ${formatKm(operatorKm)} km`");
     expect(picker).toContain(
       "const { label, off } = headerLocation(active, coords !== null, locating, settled);",
     );

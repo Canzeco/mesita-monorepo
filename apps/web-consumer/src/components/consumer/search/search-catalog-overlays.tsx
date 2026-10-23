@@ -122,13 +122,13 @@ export function SearchDebugCoords({
       <dt>Weights</dt>
       <dd className="text-foreground truncate" data-debug-weights>
         {weights
-          ? `prox^${weights.proximity} · pop^${weights.popularity} · sel^${weights.selected}`
+          ? `prox^${weights.proximity} · pop^${weights.popularity}`
           : "n/a"}
       </dd>
       <dt>Selected</dt>
       <dd className="text-foreground truncate" data-debug-selected>
         {score
-          ? `prox ${fmtScore(score.proximity)} · pop ${fmtScore(score.popularity)} · sel ${fmtScore(score.selected)} = ${fmtScore(score.final)}`
+          ? `prox ${fmtScore(score.proximity)} · pop ${fmtScore(score.popularity)} = ${fmtScore(score.final)}`
           : "n/a"}
       </dd>
     </dl>

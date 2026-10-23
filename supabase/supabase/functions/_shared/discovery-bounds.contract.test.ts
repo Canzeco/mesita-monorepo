@@ -4,8 +4,7 @@
 // admin field can never disagree on what a value may be.
 import { assertEquals } from "jsr:@std/assert@1";
 import { DEEP_LIMIT_MAX, DEEP_LIMIT_MIN, DEFAULT_DEEP, SIGNAL_PARAM_BOUNDS } from "./discovery-config.ts";
-import { POPULARITY_HALF_REVIEWS_DEFAULT, PROXIMITY_REACH_KM_DEFAULT } from "./pipeline-signals.ts";
-import { DEFAULT_SIGNAL_PARAMS } from "./discovery-config.ts";
+import { POPULARITY_HALF_REVIEWS_DEFAULT } from "./pipeline-signals.ts";
 
 const admin = await Deno.readTextFile(
   new URL("../../../../apps/web-admin/src/app/(app)/filters-config/catalog.ts", import.meta.url),
@@ -24,15 +23,11 @@ Deno.test("Deep box bounds and defaults match the server", () => {
   assertEquals(m ? { limit: Number(m[1]), minSimilarity: Number(m[2]) } : null, DEFAULT_DEEP);
 });
 
-Deno.test("Area box bounds and defaults match the server (MESITA-2347, Selected MESITA-2439)", () => {
+Deno.test("Area box bounds and defaults match the server (MESITA-2347; one param since MESITA-2703)", () => {
   assertEquals(constant("HALF_REVIEWS_MIN"), SIGNAL_PARAM_BOUNDS.halfReviews.min);
   assertEquals(constant("HALF_REVIEWS_MAX"), SIGNAL_PARAM_BOUNDS.halfReviews.max);
-  assertEquals(constant("REACH_KM_MIN"), SIGNAL_PARAM_BOUNDS.reachKm.min);
-  assertEquals(constant("REACH_KM_MAX"), SIGNAL_PARAM_BOUNDS.reachKm.max);
-  assertEquals(constant("REACH_KM_DEFAULT"), PROXIMITY_REACH_KM_DEFAULT);
-  assertEquals(constant("SELECTED_OTHER_MIN"), SIGNAL_PARAM_BOUNDS.selectedOther.min);
-  assertEquals(constant("SELECTED_OTHER_MAX"), SIGNAL_PARAM_BOUNDS.selectedOther.max);
-  assertEquals(constant("SELECTED_OTHER_DEFAULT"), DEFAULT_SIGNAL_PARAMS.selected.otherFactor);
-  const half = admin.match(/popularity: \{ halfReviews: ([0-9_]+) \},\s*selected: \{ otherFactor: SELECTED_OTHER_DEFAULT \},\s*\};/);
+  const half = admin.match(
+    /const DEFAULT_SIGNAL_PARAMS: SignalParams = \{\s*popularity: \{ halfReviews: ([0-9_]+) \},\s*\};/,
+  );
   assertEquals(half ? Number(half[1].replaceAll("_", "")) : null, POPULARITY_HALF_REVIEWS_DEFAULT);
 });

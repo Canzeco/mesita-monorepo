@@ -3,7 +3,7 @@
 // discovery-surface.contract.test.ts pins every shared export equal; the Feed
 // rail facts at the bottom are the console's own.
 //
-// What Discovery IS (MESITA-2327): five Sources, three Pipelines, five
+// What Discovery IS (MESITA-2327): five Sources, three Pipelines, four
 // Signals, two Gates, no factor, and who uses whom.
 //
 //   Source    a callable retrieval unit with declared output fields
@@ -11,7 +11,7 @@
 //   Signal    a continuous score in 0..1
 //   Gate      a binary eligibility check (0 or 1)
 //   Factor    a multiplier on the score: it orders, never excludes (none
-//             since Selected became a signal, MESITA-2439)
+//             since MESITA-2439)
 //
 // Catalog and Map are VIEWS of Area, not pipelines; Saved is a saved
 // collection; the Chat Agent sits above the pipelines and calls Deep, never a
@@ -135,7 +135,6 @@ export const DISCOVERY_SIGNAL_KEYS = [
   "description_similarity",
   "proximity",
   "popularity",
-  "selected",
 ] as const;
 export type DiscoverySignalKey = (typeof DISCOVERY_SIGNAL_KEYS)[number];
 
@@ -186,7 +185,7 @@ export const DISCOVERY_SIGNALS: readonly DiscoverySignalFact[] = [
     computation: "runtime",
     cost: "Local arithmetic, free.",
     missing: "No location: not used (n/a). No coordinates: 0.",
-    normalization: "0..1 by construction: 1 at the anchor, ½ at half the reach, 0 at the reach and beyond. The reach is the screen radius on the Map (the same meaning at every zoom) and the operator's Home proximity reach on Home.",
+    normalization: "0..1 by construction: 1 at the anchor, ½ at half the reach, 0 at the reach and beyond. The reach is the request's radius (MESITA-2703): the screen radius on the Map (the same meaning at every zoom), the radius saved with the pin or the current-location radius on Home.",
   },
   {
     key: "popularity",
@@ -198,17 +197,6 @@ export const DISCOVERY_SIGNALS: readonly DiscoverySignalFact[] = [
     cost: "Local arithmetic over stored numbers, free.",
     missing: "No rating or no review count: 0 (shown as n/a). There is no new-place prior; that lowers the place, it never removes it.",
     normalization: "0..1 by construction: rating counts linearly (a 3★ place is 60% of a 5★ one) and volume saturates, ½ at the half-credit count, never 1.",
-  },
-  {
-    key: "selected",
-    label: "Selected",
-    formula: "1.0 for a Mesita Selected place (an Enrich run completed and the profile is ready — curation, never payment); 0.3 for every other place",
-    requires: ["selected"],
-    query: "Nothing.",
-    computation: "runtime",
-    cost: "A stored fact, free.",
-    missing: "Not Mesita Selected (a Google-only place, or a Mesita row no Enrich run has completed): the operator's value for every other place (default 0.3), never 0.",
-    normalization: "Already 0..1. Its own signal since MESITA-2439 (it used to ride Popularity's), exponent 1 on the Map and Home, so a strong Google-only place can still outrank a weak Selected one.",
   },
 ];
 
@@ -242,7 +230,7 @@ export const DISCOVERY_GATES: readonly DiscoveryGateFact[] = [
   {
     key: "radius",
     label: "Radius",
-    rule: "1 when the place lies inside the radius around the point, else 0: on the Map the screen radius (the distance from the cross to the nearest edge of the visible map), on Home the Home radius below. It decides who is a candidate and never scores.",
+    rule: "1 when the place lies inside the radius around the point, else 0: on the Map the screen radius (the distance from the cross to the nearest edge of the visible map), on Home the radius saved with the pin or the current-location radius below. It decides who is a candidate and never scores.",
     kind: "query",
     requires: ["coordinates"],
     when: "Every request with a point. Territory is gone (MESITA-2500, MESITA-2603): no view searches a rectangle or a saved area, so Home sends a point or nothing.",
@@ -262,7 +250,7 @@ export type DiscoveryPipelineFact = {
   signals: readonly DiscoverySignalKey[];
   gates: readonly DiscoveryGateKey[];
   scoring: string;
-  /** Multipliers on the score that never exclude (the Selected factor). */
+  /** Multipliers on the score that never exclude (none since MESITA-2439). */
   factors: readonly string[];
   /** Sources whose rows keep the source's own order: no signal scores them,
    *  so none is derived as feeding a signal. */
@@ -301,20 +289,20 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     label: "Area",
     purpose: "Places around a point: the Map's cross, the device or a saved pin.",
     sources: ["google_nearby", "mesita_places"],
-    signals: ["proximity", "popularity", "selected"],
+    signals: ["proximity", "popularity"],
     gates: ["family", "radius"],
     factors: [],
-    scoring: "The Map and Home: Proximity^a × Popularity^1 × Selected^1, a = the operator's Proximity weight (MESITA-2504, MESITA-2516); Proximity's reach is the screen radius on the Map and the Home proximity reach on Home. No location: Popularity^1 × Selected^1. Chat ranks the same way, reach = the Home proximity reach (MESITA-2687). Ties break on distance, then id.",
+    scoring: "The Map and Home: Proximity^a × Popularity^b, a and b the operator's Proximity and Popularity weights (MESITA-2703); Proximity's reach is the radius: the screen radius on the Map, the radius saved with the pin or the current-location radius on Home. No location: Popularity^b. Chat ranks the same way inside the current-location radius. Ties break on distance, then id.",
     keepsOrder: [],
     rules: [
-      "Google and Mesita candidates contribute independently to one pool, deduped by Google Place ID (a Mesita place wins its own Google id), gated, scored and ranked before any page is cut. The guest never picks a source.",
+      "Four sources, each switched on (20) or off (0) by the operator, Home and the Map alike: Google Popular (the prominent 20 in the circle), Google Closest (the nearest 20), Mesita Popular (the 20 with the highest Popularity), Mesita Closest (the 20 nearest). They merge into one pool, deduped by Google Place ID (a Mesita place wins its own Google id), gated, scored and ranked before any page is cut. The guest never picks a source.",
       "Closed places never show (Discovery › General's active check). Mesita rows must be ready.",
       "Google hits only: the operator's Minimum Google reviews (below); the guest has no reviews filter (MESITA-2417). Mesita rows have no review floor.",
-      "Google calls: the Map buys 1 to 3 per load (Google places on the Map), the prominent 20 inside the screen radius, then the nearest 20, then the prominent 20 in half of it; Home buys 1 to 3 (Google places on Home), the prominent 20 within 3 km, then the nearest 20 in the radius, then the prominent 20 in the radius. A place two calls return counts once.",
+      "Google calls: one billed Nearby call per Google source switched on, so 0 to 2 per load on the Map and on Home. The reviews floor cuts each call's hits after Google bills them. A place two calls return counts once.",
       "Google answers live 15 s in the function's memory and are never stored (Google Maps Platform terms). Each guest IP may spend 45 Nearby calls a minute, all guests together 600.",
-      "The screen radius is clamped to 0.05–50 km; a visible map wider than 100 km, or none yet, uses the Home radius instead.",
+      "The screen radius is clamped to 0.05–50 km; a visible map wider than 100 km, or none yet, uses the current-location radius instead. A saved pin's radius is clamped to 1–50 km.",
       "Mesita's read keeps at most 1000 ready rows in the radius box before scoring.",
-      "Chat reads Mesita Selected places only, inside the Home radius.",
+      "Chat reads Mesita Selected places only, inside the current-location radius.",
     ],
     callers: ["Map (the Search tab)", "Catalog (Home's Places)", "Chat (Don Memo)"],
     live: true,

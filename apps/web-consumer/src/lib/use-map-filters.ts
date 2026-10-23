@@ -9,7 +9,7 @@ import { MAP_FILTER_DEFAULTS, type MapFilters } from "@/lib/map-filters-engine";
 import { FILTERABLE_PLACE_FAMILIES, type FamilyKey } from "@/lib/place-families";
 
 // v6: v5 held `resultLimit` (How many). That stop is operator
-// the scope's cap (`map.googlePlaces` / `map.mesitaPlaces`) again; this key holds Family, Places scope and
+// the operator's source switches (MESITA-2703) again; this key holds Family, Places scope and
 // Popularity. Bumping rather than widening the parser drops a forgotten
 // How many from a v5 session instead of pretending it is still a guest
 // knob. sessionStorage, so the cost of the bump is one forgotten sheet state.

@@ -19,9 +19,7 @@ const base: Area = {
   familyKeys: ["coffee"],
   gates: { family: 1, radius: 1, active: 1, ready: 1, reviews: null },
   signals: { proximity: 0.82, popularity: null },
-  selected: 1,
   source: "selected",
-  base: 0.41,
   final: 0.41,
   formula: "point",
 };
@@ -33,9 +31,9 @@ describe("AreaDiagnostics (temporary)", () => {
     expect(diagNumber(0.456)).toBe("0.46");
   });
 
-  it("a point reads proximity^a × popularity^b × selected^c = final (MESITA-2439)", () => {
-    expect(diagExpression({ ...base, weights: { proximity: 4, popularity: 1, selected: 1 } })).toBe(
-      "proximity 0.82^4 × popularity n/a^1 × selected 1.00^1 = 0.41",
+  it("a point reads proximity^a × popularity^b = final (MESITA-2703)", () => {
+    expect(diagExpression({ ...base, weights: { proximity: 4, popularity: 1 } })).toBe(
+      "proximity 0.82^4 × popularity n/a^1 = 0.41",
     );
     // An EF from before the weights table sends no exponents.
     expect(diagExpression(base)).toContain("^?");
@@ -52,14 +50,12 @@ describe("AreaDiagnostics (temporary)", () => {
       ...base,
       gates: { ...base.gates, radius: null },
       signals: { proximity: null, popularity: 0.4 },
-      selected: 0.3,
       source: "google",
-      base: 0.4,
-      final: 0.12,
+      final: 0.4,
       formula: "none",
-      weights: { proximity: 1, popularity: 1, selected: 1 },
+      weights: { proximity: 1, popularity: 1 },
     };
-    expect(diagExpression(area)).toBe("popularity 0.40^1 × selected 0.30^1 = 0.12");
+    expect(diagExpression(area)).toBe("popularity 0.40^1 = 0.40");
     const html = renderToStaticMarkup(<AreaDiagnostics area={area} />);
     expect(html).not.toContain("in area");
     expect(html).not.toContain("proximity");
@@ -70,13 +66,20 @@ describe("AreaDiagnostics (temporary)", () => {
 describe("the per-location pool cache", () => {
   it("keys a saved pin by id and spot, current location by ~1 km cell, none without a location", () => {
     expect(areaPoolKey(null)).toBe("none");
-    expect(areaPoolKey({ key: "saved:x", lat: 1, lng: 2 })).toBe("saved:x@1.0000,2.0000");
+    expect(areaPoolKey({ key: "saved:x", lat: 1, lng: 2 })).toBe("saved:x@1.0000,2.0000|r:op");
     // A moved pin is a new question (MESITA-2501); a renamed one is not.
     expect(areaPoolKey({ key: "saved:x", lat: 1.0005, lng: 2 })).not.toBe(
       areaPoolKey({ key: "saved:x", lat: 1, lng: 2 }),
     );
-    expect(areaPoolKey({ lat: 25.6512, lng: -100.2891 })).toBe("current:25.65,-100.29");
-    expect(areaPoolKey({ lat: 25.6538, lng: -100.2899 })).toBe("current:25.65,-100.29");
+    expect(areaPoolKey({ lat: 25.6512, lng: -100.2891 })).toBe("current:25.65,-100.29|r:op");
+    expect(areaPoolKey({ lat: 25.6538, lng: -100.2899 })).toBe("current:25.65,-100.29|r:op");
+  });
+
+  it("the radius is part of the question: same pin, two radii, two pools (MESITA-2703)", () => {
+    const pin = { key: "saved:x", lat: 1, lng: 2 };
+    expect(areaPoolKey({ ...pin, radiusKm: 3 })).toBe("saved:x@1.0000,2.0000|r:3.0");
+    expect(areaPoolKey({ ...pin, radiusKm: 3 })).not.toBe(areaPoolKey({ ...pin, radiusKm: 5 }));
+    expect(areaPoolKey({ ...pin, radiusKm: null })).toBe(areaPoolKey(pin));
   });
 
   it("keeps a pool ten minutes, then forgets it", () => {

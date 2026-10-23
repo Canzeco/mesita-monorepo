@@ -59,11 +59,17 @@ function editedEverywhere(live: DiscoveryConfig): DiscoveryConfig {
   return {
     ...live,
     params: {
-      proximity: { reachKm: 12.5 },
       popularity: { halfReviews: 250 },
-      selected: { otherFactor: 0.5 },
     },
-    map: { ...live.map, radiusKm: 3, googlePlaces: 20, mapGooglePlaces: 40, mesitaPlaces: 60 },
+    map: {
+      ...live.map,
+      radiusKm: 3,
+      googlePopular: 20,
+      googleClosest: 0,
+      mesitaPopular: 0,
+      mesitaClosest: 20,
+      popularityWeight: 2,
+    },
     catalog: { ...live.catalog, railCap: 7, seedCount: 99 },
     name: {
       ...live.name,
@@ -100,15 +106,11 @@ describe("no Save sends a retired key (MESITA-2328, MESITA-2337)", () => {
 });
 
 describe("the Area box", () => {
-  it("moves the reach, the half-credit count and Selected's other value (MESITA-2431, MESITA-2439)", async () => {
+  it("moves the half-credit count (MESITA-2703: reach and Selected are gone)", async () => {
     const live = liveConfig();
     const sent = armed(live);
     await updateDiscoveryConfig(editedEverywhere(live), ["areaSignals"]);
-    expect(sent.config?.params).toEqual({
-      proximity: { reachKm: 12.5 },
-      popularity: { halfReviews: 250 },
-      selected: { otherFactor: 0.5 },
-    });
+    expect(sent.config?.params).toEqual({ popularity: { halfReviews: 250 } });
   });
 
   it("writes map and the two params; leaves railCap, Name, Deep and the prompt (MESITA-2379)", async () => {
@@ -116,9 +118,12 @@ describe("the Area box", () => {
     const sent = armed(live);
     await updateDiscoveryConfig(editedEverywhere(live), [...BOX_SLICES.area]);
     expect(sent.config?.map.radiusKm).toBe(3);
-    expect(sent.config?.map.googlePlaces).toBe(20);
-    expect(sent.config?.map.mapGooglePlaces).toBe(40);
-    expect(sent.config?.map.mesitaPlaces).toBe(60);
+    // The four switches and b persist (MESITA-2703).
+    expect(sent.config?.map.googlePopular).toBe(20);
+    expect(sent.config?.map.googleClosest).toBe(0);
+    expect(sent.config?.map.mesitaPopular).toBe(0);
+    expect(sent.config?.map.mesitaClosest).toBe(20);
+    expect(sent.config?.map.popularityWeight).toBe(2);
     // Places per row left the page with the Feed rows; the legacy rails
     // keep the stored value until the legacy path is removed.
     expect(sent.config?.catalog.railCap).toBe(live.catalog.railCap);

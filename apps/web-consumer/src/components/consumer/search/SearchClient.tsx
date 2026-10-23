@@ -40,7 +40,7 @@
 //     user). Catalog pins by default; `searchPins` overlays
 //     the predictions while a query is live.
 //   • Top overlay: SearchHeader — the bar, then the family chips. How many
-//     is the operator's (`map.mesitaPlaces`, one Google call per load).
+//     is the operator's (the four Area sources, MESITA-2703).
 //   • Bottom overlay: the catalog rail for the visible map, hidden while
 //     querying. Best first, in the server's order: the zoom decides how
 //     wide the set is (MESITA-2499). A guest move reloads when the map comes to

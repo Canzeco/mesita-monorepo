@@ -88,11 +88,14 @@ Deno.test("the live blob loads: the retired keys drop, every live value stands",
   }
   // `general.minReviews` is retired (MESITA-2702): the one floor is map's.
   assertEquals(cfg.general, { requireActive: true });
-  // `pinCount`, `supers` and the reload km/sec pair are dropped and seed
-  // nothing (MESITA-2687): the caps read their defaults.
-  assertEquals(cfg.map.googlePlaces, 20);
-  assertEquals(cfg.map.mesitaPlaces, 20);
-  for (const dead of ["pinCount", "supers", "reloadMinKm", "reloadMinSec"]) {
+  // `pinCount`, `supers`, the reload km/sec pair and `googleFill` are
+  // dropped and seed nothing (MESITA-2687, MESITA-2703): the four Area
+  // sources read their defaults, all on.
+  assertEquals(
+    [cfg.map.googlePopular, cfg.map.googleClosest, cfg.map.mesitaPopular, cfg.map.mesitaClosest],
+    [20, 20, 20, 20],
+  );
+  for (const dead of ["pinCount", "supers", "reloadMinKm", "reloadMinSec", "googleFill", "googlePull"]) {
     assertEquals(dead in cfg.map, false, dead);
   }
   assertEquals(cfg.chat.prompt, "Be Memo.");
@@ -187,8 +190,6 @@ Deno.test("the admin twin mirrors the Area params' bounds", () => {
   };
   assertEquals(constant("HALF_REVIEWS_MIN"), SIGNAL_PARAM_BOUNDS.halfReviews.min);
   assertEquals(constant("HALF_REVIEWS_MAX"), SIGNAL_PARAM_BOUNDS.halfReviews.max);
-  assertEquals(constant("SELECTED_OTHER_MIN"), SIGNAL_PARAM_BOUNDS.selectedOther.min);
-  assertEquals(constant("SELECTED_OTHER_MAX"), SIGNAL_PARAM_BOUNDS.selectedOther.max);
 });
 
 // ── The normalizer, key by key ───────────────────────────────────────────────
@@ -251,15 +252,10 @@ Deno.test("the deck's param bags and numbers do not survive a normalize", () => 
     },
   });
   // The retired calibration (halfDistanceKm, referenceRating/Reviews,
-  // MESITA-2347) goes with the deck's bags; only the live numbers stay, and
-  // Proximity's reach reads its default (MESITA-2431).
-  // The linear `balance` goes too (MESITA-2428), and the weights table
-  // after it (MESITA-2687).
-  assertEquals(cfg.params, {
-    proximity: { reachKm: 15 },
-    popularity: { halfReviews: 250 },
-    selected: { otherFactor: 0.3 },
-  });
+  // MESITA-2347) goes with the deck's bags; the linear `balance`
+  // (MESITA-2428), the weights table (MESITA-2687), the reach and Selected
+  // (MESITA-2703) too. Only Popularity's half credit stays.
+  assertEquals(cfg.params, { popularity: { halfReviews: 250 } });
 });
 
 // The tentative Social engine's box had no reader (MESITA-2144). A blob that
@@ -287,40 +283,43 @@ Deno.test("map knobs default on an old blob and clamp", () => {
       minRating: 9,
       minReviews: -2,
       minPopularity: 4,
-      googleFill: "yes",
-      mapGooglePlaces: 45,
+      popularityWeight: 9,
+      proximityWeight: 0.456,
     },
   });
   assertEquals(clamped.map.minRating, 5);
   assertEquals(clamped.map.minReviews, 0);
   assertEquals(clamped.map.minPopularity, 1);
-  assertEquals(clamped.map.googleFill, true);
-  // The Map's own Google cap snaps to a stop like Home's (MESITA-2687).
-  assertEquals(clamped.map.mapGooglePlaces, 40);
-  assertEquals(missing.map.mapGooglePlaces, 20);
+  assertEquals(clamped.map.popularityWeight, 5);
+  assertEquals(clamped.map.proximityWeight, 0.46);
+  assertEquals(missing.map.popularityWeight, 1);
 });
 
-Deno.test("map.googlePlaces and map.mesitaPlaces are the operator's two caps, each snapped to a stop", () => {
-  // MESITA-1699 took the Search Filters sheet off the consumer app, so the
-  // number that was the guest's since 2026-08-29 lives here; MESITA-2347
-  // split it per scope, because Google places are bought and Mesita places
-  // are read, and the Mesita set is not a subset of the Google places bought.
-  const pins = (raw: unknown) =>
-    normalizeDiscoveryConfig({ map: { googlePlaces: raw } }).map.googlePlaces;
-  assertEquals(normalizeDiscoveryConfig({}).map.googlePlaces, 20);
-  assertEquals(normalizeDiscoveryConfig({}).map.mesitaPlaces, 20);
-  const both = normalizeDiscoveryConfig({ map: { googlePlaces: 20, mesitaPlaces: 60 } }).map;
-  assertEquals([both.googlePlaces, both.mesitaPlaces], [20, 60]);
-  assertEquals(normalizeDiscoveryConfig({ map: { mesitaPlaces: 31 } }).map.mesitaPlaces, 40);
-  assertEquals(pins(40), 40);
-  assertEquals(pins(60), 60);
-  assertEquals(pins(29), 20);
-  assertEquals(pins(31), 40);
-  // A tie snaps DOWN, so a hand-edited blob costs less than it asked for
-  // rather than more — this number is what the map bills Google against.
-  assertEquals(pins(30), 20);
-  assertEquals(pins(9_000), 60);
-  assertEquals(pins("plenty"), 20);
+Deno.test("the four Area sources are switches: 0 or 20, snapped, default on (MESITA-2703)", () => {
+  const src = (raw: unknown) =>
+    normalizeDiscoveryConfig({ map: { googleClosest: raw } }).map.googleClosest;
+  assertEquals(src(0), 0);
+  assertEquals(src(20), 20);
+  assertEquals(src(7), 0);
+  assertEquals(src(13), 20);
+  assertEquals(src(60), 20);
+  assertEquals(src("plenty"), 20);
+  const off = normalizeDiscoveryConfig({
+    map: { googlePopular: 0, googleClosest: 0, mesitaPopular: 0, mesitaClosest: 20 },
+  }).map;
+  assertEquals(
+    [off.googlePopular, off.googleClosest, off.mesitaPopular, off.mesitaClosest],
+    [0, 0, 0, 20],
+  );
+});
+
+Deno.test("the retired stops and googleFill are dropped on normalize (MESITA-2703)", () => {
+  const map = normalizeDiscoveryConfig({
+    map: { googlePlaces: 60, mapGooglePlaces: 40, mesitaPlaces: 60, googleFill: false },
+  }).map as unknown as Record<string, unknown>;
+  for (const dead of ["googlePlaces", "mapGooglePlaces", "mesitaPlaces", "googleFill"]) {
+    assertEquals(dead in map, false, dead);
+  }
 });
 
 Deno.test("map.googlePull is retired: an old blob's key is dropped on normalize (MESITA-2298)", () => {
@@ -329,7 +328,6 @@ Deno.test("map.googlePull is retired: an old blob's key is dropped on normalize 
   // and the next save drops it from the blob.
   const map = normalizeDiscoveryConfig({ map: { googlePull: 60 } }).map;
   assertEquals("googlePull" in map, false);
-  assertEquals(map.googlePlaces, 20);
   assertEquals("googlePull" in DISCOVERY_DEFAULTS.map, false);
 });
 

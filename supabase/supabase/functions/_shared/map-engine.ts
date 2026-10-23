@@ -9,7 +9,8 @@
 // Google call only. Floors exclude. The Google reviews minimum is the
 // operator's alone, `map.googleMinReviews` (MESITA-2417: the guest sheet is
 // gone), on Google hits after Google answers (`area-pipeline.ts`). Name Google
-// categories live on discovery_config.name. `googleFill` gates Nearby.
+// categories live on discovery_config.name. The two Google Area switches
+// (`googlePopular`, `googleClosest`) gate Nearby (MESITA-2703).
 //
 // `minPopularity` reads the Area pipeline's Popularity (pipeline-signals.ts,
 // rating × saturating volume since MESITA-2347).
@@ -48,15 +49,17 @@ export function enabledNearbyTypes(map: MapConfig): string[] {
 }
 
 /**
- * Client opt-in AND operator fill AND a type battery on. HOW MANY is not
- * asked here — the guest's How many is the only cap (Pato, 2026-08-29);
- * the operator only decides IF Google Nearby may be billed at all.
+ * Client opt-in AND a Google Area source switched on AND a type battery on
+ * (MESITA-2703: the two Google switches replaced `googleFill`). With both
+ * Google switches at 0 nothing is billed. The caller still needs a key and
+ * a point.
  */
 export function mapShouldFillGoogle(
   clientOptIn: boolean,
   map: MapConfig,
 ): boolean {
-  return clientOptIn && map.googleFill && enabledNearbyTypes(map).length > 0;
+  return clientOptIn && (map.googlePopular > 0 || map.googleClosest > 0) &&
+    enabledNearbyTypes(map).length > 0;
 }
 
 /**

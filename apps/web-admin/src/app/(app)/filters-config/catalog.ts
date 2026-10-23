@@ -20,18 +20,13 @@
 import { num } from "@/lib/config-coerce";
 
 /**
- * The Area pipeline's numbers: Proximity's reach (MESITA-2431), Popularity's
- * reviews for half credit and Selected's value for every other place
- * (MESITA-2439). The exponents are not here: every caller scores
- * Proximity^a × Popularity × Selected, a = `map.proximityWeight`
- * (MESITA-2687). The reach is not `map.radiusKm`: the radius decides who is
- * a candidate, the reach scores distance. Mirrors SignalParams in
+ * The Area pipeline's one stored signal number: Popularity's reviews for
+ * half credit. The exponents live on `map`; Proximity's reach is the
+ * request's radius (MESITA-2703). Mirrors SignalParams in
  * _shared/discovery-config.ts.
  */
 export type SignalParams = {
-  proximity: { reachKm: number };
   popularity: { halfReviews: number };
-  selected: { otherFactor: number };
 };
 
 export type NameFastConfig = {
@@ -94,19 +89,9 @@ export const DEEP_LIMIT_MIN = 1;
 export const DEEP_LIMIT_MAX = 20;
 export const DEFAULT_DEEP: DeepConfig = { limit: 5, minSimilarity: 0 };
 
-/** Mirrors the Area params' bounds and defaults in
- *  _shared/pipeline-signals.ts and discovery-config.ts (MESITA-2347). */
-/** Proximity's reach (km), one decimal. Mirrors PROXIMITY_REACH_KM_*. */
-export const REACH_KM_MIN = 1;
-export const REACH_KM_MAX = 50;
-export const REACH_KM_DEFAULT = 15;
+/** Mirrors the Popularity bounds in _shared/pipeline-signals.ts. */
 export const HALF_REVIEWS_MIN = 1;
 export const HALF_REVIEWS_MAX = 100_000;
-/** Selected's value for a non-Selected place, two decimals; never 0 (it
- *  would turn the signal into a gate). Mirrors SELECTED_OTHER_*. */
-export const SELECTED_OTHER_MIN = 0.01;
-export const SELECTED_OTHER_MAX = 1;
-export const SELECTED_OTHER_DEFAULT = 0.3;
 
 export type CatalogConfig = {
   seedCount: number;
@@ -138,10 +123,17 @@ export const SUPER_PARAM_KEYS = [
 ] as const;
 export type SuperParamKey = (typeof SUPER_PARAM_KEYS)[number];
 
-/** Mirrors GOOGLE_PULL_STOPS in _shared/discovery-config.ts — the stops of
- *  `map.googlePlaces`, `map.mapGooglePlaces` and `map.mesitaPlaces`. */
-export const GOOGLE_PULL_STOPS = [20, 40, 60] as const;
-const GOOGLE_PULL_DEFAULT = 20;
+/** Mirrors AREA_SOURCE_KEYS / AREA_SOURCE_DEFAULT in
+ *  _shared/discovery-config.ts (MESITA-2703): each source is off (0) or on
+ *  (20). The Google two bill one Nearby call each per load. */
+export const AREA_SOURCE_KEYS = [
+  "googlePopular",
+  "googleClosest",
+  "mesitaPopular",
+  "mesitaClosest",
+] as const;
+export type AreaSourceKey = (typeof AREA_SOURCE_KEYS)[number];
+export const AREA_SOURCE_ON = 20;
 /** Mirrors MAP_RADIUS_KM_* in _shared/discovery-config.ts. Max = Google's Nearby circle cap. */
 export const MAP_RADIUS_KM_MIN = 1;
 export const MAP_RADIUS_KM_MAX = 50;
@@ -164,28 +156,21 @@ export type MapConfig = {
   /** The Map reloads when it rests, at most once every this many seconds
    *  (MESITA-2444). */
   reloadIdleSec: number;
-  googleFill: boolean;
-  /**
-   * 20 / 40 / 60 — Google candidates on Home, places Mesita BUYS: 1/2/3
-   * billed Nearby calls (MESITA-2379).
-   */
-  googlePlaces: number;
-  /** 20 / 40 / 60 — Google candidates on the Map, per load: 1/2/3 billed
-   *  Nearby calls (MESITA-2687). */
-  mapGooglePlaces: number;
-  /** 20 / 40 / 60 — Mesita candidates, a free read of our ready rows. */
-  mesitaPlaces: number;
-  /**
-   * The one Nearby radius (km), shared by the Map and the Feed's Google
-   * Places and Mesita Selected rails (MESITA-2298). Never the guest's.
-   */
+  /** The four Area sources (MESITA-2703), 0 or 20 each, Home and the Map. */
+  googlePopular: number;
+  googleClosest: number;
+  mesitaPopular: number;
+  mesitaClosest: number;
+  /** The current-location radius (km): Home's from the device or a saved
+   *  pin with no radius, the Map's with no screen, Chat's (MESITA-2703). */
   radiusKm: number;
   /** THE Google reviews floor (MESITA-2319), Google rows only, on the Map,
    *  Home and the Name pipeline (one floor since MESITA-2702). 0 = off. */
   googleMinReviews: number;
-  /** The Map's Proximity exponent a (MESITA-2504): Proximity^a ×
-   *  Popularity^1 × Selected^1 inside the screen radius. */
+  /** Proximity's exponent a in Proximity^a × Popularity^b. */
   proximityWeight: number;
+  /** Popularity's exponent b (MESITA-2703). */
+  popularityWeight: number;
 };
 
 /**
@@ -470,13 +455,14 @@ export const DEFAULT_MAP: MapConfig = {
   minReviews: 0,
   minPopularity: 0,
   reloadIdleSec: MAP_RELOAD_IDLE_SEC_DEFAULT,
-  googleFill: true,
-  googlePlaces: GOOGLE_PULL_DEFAULT,
-  mapGooglePlaces: GOOGLE_PULL_DEFAULT,
-  mesitaPlaces: GOOGLE_PULL_DEFAULT,
+  googlePopular: AREA_SOURCE_ON,
+  googleClosest: AREA_SOURCE_ON,
+  mesitaPopular: AREA_SOURCE_ON,
+  mesitaClosest: AREA_SOURCE_ON,
   radiusKm: MAP_RADIUS_KM_DEFAULT,
   googleMinReviews: 0,
   proximityWeight: MAP_PROXIMITY_WEIGHT_DEFAULT,
+  popularityWeight: MAP_PROXIMITY_WEIGHT_DEFAULT,
 };
 
 const DEFAULT_NAME_FAST: NameFastConfig = {
@@ -519,9 +505,7 @@ export const DEFAULT_GENERAL: GeneralConfig = {
 
 /** Mirrors DEFAULT_SIGNAL_PARAMS. */
 const DEFAULT_SIGNAL_PARAMS: SignalParams = {
-  proximity: { reachKm: REACH_KM_DEFAULT },
   popularity: { halfReviews: 100 },
-  selected: { otherFactor: SELECTED_OTHER_DEFAULT },
 };
 
 export const DEFAULT_CONFIG: DiscoveryConfig = {
@@ -545,24 +529,16 @@ function bounded(raw: unknown, fallback: number, min: number, max: number, decim
  * field by field, so the retired deck's bags (maxKm, timing, category,
  * priorRating, …), the retired calibration (halfDistanceKm,
  * referenceRating/Reviews, MESITA-2347), the linear `balance`
- * (MESITA-2428) and the weights table `modes` (MESITA-2687) are dropped on
- * the next Save.
+ * (MESITA-2428), the weights table `modes` (MESITA-2687), `proximity` and
+ * `selected` (MESITA-2703) are dropped on the next Save.
  */
 function coerceParams(raw: unknown): SignalParams {
   const r = (raw ?? {}) as Record<string, unknown>;
-  const prox = (r.proximity ?? {}) as Record<string, unknown>;
   const pop = (r.popularity ?? {}) as Record<string, unknown>;
-  const sel = (r.selected ?? {}) as Record<string, unknown>;
   const d = DEFAULT_SIGNAL_PARAMS;
   return {
-    proximity: {
-      reachKm: bounded(prox.reachKm, d.proximity.reachKm, REACH_KM_MIN, REACH_KM_MAX, 1),
-    },
     popularity: {
       halfReviews: bounded(pop.halfReviews, d.popularity.halfReviews, HALF_REVIEWS_MIN, HALF_REVIEWS_MAX, 0),
-    },
-    selected: {
-      otherFactor: bounded(sel.otherFactor, d.selected.otherFactor, SELECTED_OTHER_MIN, SELECTED_OTHER_MAX, 2),
     },
   };
 }
@@ -634,14 +610,15 @@ function coerceSuperParams(raw: unknown): Record<SuperParamKey, boolean> {
   return out;
 }
 
-/** A scope cap: 20 / 40 / 60, snapped. Never a free number. */
-function coerceGooglePull(raw: unknown): number {
-  const n = num(raw, GOOGLE_PULL_DEFAULT, GOOGLE_PULL_STOPS[0], GOOGLE_PULL_STOPS[2]);
-  let best: number = GOOGLE_PULL_DEFAULT;
-  for (const stop of GOOGLE_PULL_STOPS) {
-    if (Math.abs(stop - n) < Math.abs(best - n)) best = stop;
-  }
-  return best;
+/** An Area source switch: 0 or 20, snapped. Mirrors normalizeAreaSource. */
+function coerceAreaSource(raw: unknown): number {
+  const n = num(raw, AREA_SOURCE_ON, 0, AREA_SOURCE_ON);
+  return n >= AREA_SOURCE_ON / 2 ? AREA_SOURCE_ON : 0;
+}
+
+/** Billed Nearby calls per load: one per Google source switched on. */
+export function googleCallsPerLoad(map: Pick<MapConfig, AreaSourceKey>): number {
+  return (map.googlePopular > 0 ? 1 : 0) + (map.googleClosest > 0 ? 1 : 0);
 }
 
 function coerceGeneral(raw: unknown): GeneralConfig {
@@ -723,12 +700,13 @@ function coerceMap(raw: unknown): MapConfig {
       Math.round(
         num(m.reloadIdleSec, DEFAULT_MAP.reloadIdleSec, MAP_RELOAD_IDLE_SEC_MIN, MAP_RELOAD_IDLE_SEC_MAX) * 100,
       ) / 100,
-    googleFill: typeof m.googleFill === "boolean" ? m.googleFill : DEFAULT_MAP.googleFill,
     // Rebuilt key by key: a retired key (`googlePull`, `pinCount`, `supers`,
-    // the reload km/sec pair) is dropped on the next save.
-    googlePlaces: coerceGooglePull(m.googlePlaces),
-    mapGooglePlaces: coerceGooglePull(m.mapGooglePlaces),
-    mesitaPlaces: coerceGooglePull(m.mesitaPlaces),
+    // the reload km/sec pair, the 20/40/60 stops, `googleFill`) is dropped
+    // on the next save.
+    googlePopular: coerceAreaSource(m.googlePopular),
+    googleClosest: coerceAreaSource(m.googleClosest),
+    mesitaPopular: coerceAreaSource(m.mesitaPopular),
+    mesitaClosest: coerceAreaSource(m.mesitaClosest),
     radiusKm:
       Math.round(
         num(m.radiusKm, DEFAULT_MAP.radiusKm, MAP_RADIUS_KM_MIN, MAP_RADIUS_KM_MAX) * 10,
@@ -741,6 +719,15 @@ function coerceMap(raw: unknown): MapConfig {
         num(
           m.proximityWeight,
           DEFAULT_MAP.proximityWeight,
+          MAP_PROXIMITY_WEIGHT_MIN,
+          MAP_PROXIMITY_WEIGHT_MAX,
+        ) * 100,
+      ) / 100,
+    popularityWeight:
+      Math.round(
+        num(
+          m.popularityWeight,
+          DEFAULT_MAP.popularityWeight,
           MAP_PROXIMITY_WEIGHT_MIN,
           MAP_PROXIMITY_WEIGHT_MAX,
         ) * 100,

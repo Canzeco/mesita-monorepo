@@ -1,6 +1,6 @@
-// The Area score, its gates and the Selected factor (MESITA-2327; weighted
-// sum since MESITA-2347; one pool and the factor since MESITA-2379; points
-// only since Territory was retired, MESITA-2603).
+// The Area score and its gates (MESITA-2327; one pool since MESITA-2379;
+// points only since Territory was retired, MESITA-2603; Proximity^a ×
+// Popularity^b with reach = the radius since MESITA-2703).
 import { assertAlmostEquals, assertEquals } from "jsr:@std/assert@1";
 import {
   type AreaCandidate,
@@ -9,9 +9,6 @@ import {
   familyGate,
   insideBounds,
   rankArea,
-  readAreaMode,
-  SELECTED_FACTOR,
-  selectedFactor,
 } from "./area-score.ts";
 
 const ANCHOR = { lat: 19.43, lng: -99.13 };
@@ -20,7 +17,7 @@ const CTX: AreaContext = {
   families: [],
   halfReviews: 100,
   reachKm: 8,
-  weights: { proximity: 1, popularity: 1, selected: 1 },
+  weights: { proximity: 1, popularity: 1 },
 };
 const BOUNDS = { low: { lat: 19.4, lng: -99.2 }, high: { lat: 19.5, lng: -99.1 } };
 const NONE: AreaContext = { ...CTX, location: { kind: "none" } };
@@ -35,67 +32,30 @@ const cand = (over: Partial<AreaCandidate> = {}): AreaCandidate => ({
   ...over,
 });
 
-Deno.test("point: final = Proximity^a × Popularity^b × Selected^c", () => {
+Deno.test("point: final = Proximity^a × Popularity^b", () => {
   const s = areaScore(cand({ rating: 4.0, reviewCount: 100 }), CTX);
   assertEquals(s.formula, "point");
   assertEquals(s.signals.proximity, 1);
   assertAlmostEquals(s.signals.popularity!, 0.4, 1e-12);
-  assertAlmostEquals(s.base, 1 * 0.4, 1e-12);
-  assertEquals(s.weights, { proximity: 1, popularity: 1, selected: 1 });
-  assertEquals(s.selected, 1);
-  assertAlmostEquals(s.final, s.base, 1e-12);
+  assertAlmostEquals(s.final, 1 * 0.4, 1e-12);
+  assertEquals(s.weights, { proximity: 1, popularity: 1 });
   assertEquals(s.gates.family, 1);
   assertEquals(s.gates.radius, 1);
   // Territory is gone from the breakdown (MESITA-2603).
   assertEquals(Object.keys(s.gates).sort(), ["active", "family", "radius", "ready", "reviews"]);
 });
 
-Deno.test("Selected is its own signal (MESITA-2439): 1.0 for Mesita Selected, 0.3 for everything else, with its own exponent", () => {
-  assertEquals(SELECTED_FACTOR, { selected: 1, other: 0.3 });
-  assertEquals(selectedFactor("selected"), 1);
-  assertEquals(selectedFactor("mesita"), 0.3);
-  assertEquals(selectedFactor("google"), 0.3);
-  assertEquals(selectedFactor("google", 0.5), 0.5);
-  assertEquals(selectedFactor("selected", 0.5), 1);
-  const g = areaScore(cand({ source: "google" }), CTX);
-  assertAlmostEquals(g.final, g.base * 0.3, 1e-12);
-  // Popularity squared no longer squares Selected: c alone raises it.
-  const sq = areaScore(cand({ source: "google" }), {
-    ...CTX,
-    weights: { proximity: 1, popularity: 2, selected: 1 },
-  });
-  assertAlmostEquals(sq.final, sq.base * 0.3, 1e-12);
-  const c2 = areaScore(cand({ source: "google" }), {
-    ...CTX,
-    weights: { proximity: 1, popularity: 1, selected: 2 },
-  });
-  assertAlmostEquals(c2.final, c2.base * 0.09, 1e-12);
-  // Popularity off keeps Selected; Selected off ignores it.
-  const popOff = areaScore(cand({ source: "google" }), {
-    ...CTX,
-    weights: { proximity: 1, popularity: 0, selected: 1 },
-  });
-  assertAlmostEquals(popOff.final, popOff.base * 0.3, 1e-12);
-  const selOff = areaScore(cand({ source: "google" }), {
-    ...CTX,
-    weights: { proximity: 1, popularity: 1, selected: 0 },
-  });
-  assertAlmostEquals(selOff.final, selOff.base, 1e-12);
-  // The operator's value for a non-Selected place.
-  const other = areaScore(cand({ source: "mesita" }), { ...CTX, selectedOther: 0.5 });
-  assertEquals(other.selected, 0.5);
-  assertAlmostEquals(other.final, other.base * 0.5, 1e-12);
-  assertEquals(g.source, "google");
-});
-
-Deno.test("a strong Google-only place can outrank a weak Selected one", () => {
-  const strong = cand({ id: "strong", source: "google", rating: 4.9, reviewCount: 5000 });
-  const weak = cand({ id: "weak", source: "selected", rating: 2.0, reviewCount: 3, lat: ANCHOR.lat + 7.5 / 111.195 });
-  const ranked = rankArea([weak, strong], (c) => c, CTX);
-  assertEquals(ranked.map((r) => r.item.id), ["strong", "weak"]);
-  // …and the same two at equal strength go Selected first.
+Deno.test("Selected no longer scores (MESITA-2703): equal signals score equal whatever the source", () => {
+  const sel = areaScore(cand({ source: "selected" }), CTX);
+  const mes = areaScore(cand({ source: "mesita" }), CTX);
+  const goo = areaScore(cand({ source: "google" }), CTX);
+  assertEquals(sel.final, mes.final);
+  assertEquals(sel.final, goo.final);
+  assertEquals("selected" in sel, false);
+  // The source stays as provenance.
+  assertEquals(goo.source, "google");
   const twin = rankArea([cand({ id: "g", source: "google" }), cand({ id: "s" })], (c) => c, CTX);
-  assertEquals(twin.map((r) => r.item.id), ["s", "g"]);
+  assertEquals(twin.map((r) => r.item.id), ["g", "s"]);
 });
 
 Deno.test("insideBounds (the screen radius's cross check): edges included; unknown coordinates are out", () => {
@@ -109,7 +69,7 @@ Deno.test("insideBounds (the screen radius's cross check): edges included; unkno
   assertEquals(insideBounds({ lat: 0, lng: 0 }, wrap), false);
 });
 
-Deno.test("no location: final = (Popularity × selected)^b", () => {
+Deno.test("no location: final = Popularity^b", () => {
   const s = areaScore(cand({ rating: 4.0, reviewCount: 100 }), NONE);
   assertEquals(s.formula, "none");
   assertEquals(s.signals.proximity, null);
@@ -120,24 +80,24 @@ Deno.test("no location: final = (Popularity × selected)^b", () => {
 Deno.test("Popularity is null (n/a) when rating or count is missing, and scores as 0", () => {
   const s = areaScore(cand({ rating: null }), CTX);
   assertEquals(s.signals.popularity, null);
-  assertEquals(s.base, 0);
+  assertEquals(s.final, 0);
   assertEquals(areaScore(cand({ reviewCount: null }), NONE).final, 0);
-  // Popularity off: the missing number no longer matters.
-  assertEquals(areaScore(cand({ rating: null }), { ...CTX, weights: { proximity: 1, popularity: 0, selected: 1 } }).final, 1);
+  // Popularity off (b = 0): the missing number no longer matters.
+  assertEquals(areaScore(cand({ rating: null }), { ...CTX, weights: { proximity: 1, popularity: 0 } }).final, 1);
 });
 
 Deno.test("the weights are exponents: 0 hands the order to the other, and only the ratio orders", () => {
   const a = cand({ id: "a", lat: ANCHOR.lat + 1 / 111.195, rating: 3.5, reviewCount: 50 });
   const b = cand({ id: "b", lat: ANCHOR.lat + 5 / 111.195, rating: 4.9, reviewCount: 3000 });
   const order = (proximity: number, popularity: number) =>
-    rankArea([a, b], (c) => c, { ...CTX, weights: { proximity, popularity, selected: 1 } }).map((r) => r.item.id);
+    rankArea([a, b], (c) => c, { ...CTX, weights: { proximity, popularity } }).map((r) => r.item.id);
   assertEquals(order(1, 0), ["a", "b"]);
   assertEquals(order(0, 1), ["b", "a"]);
   assertEquals(order(2, 1), order(4, 2));
   assertEquals(order(1, 2), order(2, 4));
   // Both off: every place scores 1 and distance orders.
   assertEquals(order(0, 0), ["a", "b"]);
-  const s = areaScore(cand(), { ...CTX, weights: { proximity: Number.NaN, popularity: -3, selected: 1 } });
+  const s = areaScore(cand(), { ...CTX, weights: { proximity: Number.NaN, popularity: -3 } });
   assertEquals(s.final, 1);
 });
 
@@ -182,7 +142,7 @@ Deno.test("ties break on distance, then id: deterministic", () => {
       cand({ id: "far", rating: null, lat: ANCHOR.lat + 0.05 }),
     ],
     (c) => c,
-    { ...CTX, weights: { proximity: 0, popularity: 1, selected: 1 } },
+    { ...CTX, weights: { proximity: 0, popularity: 1 } },
   );
   assertEquals(ranked.map((r) => r.item.id), ["a", "b", "far"]);
 });
@@ -219,43 +179,22 @@ Deno.test("non-finite numbers never reach the sort", () => {
   assertEquals(ranked[0].item.id, "ok");
 });
 
-Deno.test("the mode (MESITA-2428): near · popular · family on the wire; Nearby favours the close place, Popular the loved one", () => {
-  assertEquals(readAreaMode("popular"), "popular");
-  assertEquals(readAreaMode("family"), "family");
-  assertEquals(readAreaMode("near"), "nearby");
-  assertEquals(readAreaMode(undefined), "nearby");
-  assertEquals(readAreaMode("POPULAR"), "nearby");
-  const near: AreaCandidate = { id: "near", lat: ANCHOR.lat + 1 / 111.195, lng: ANCHOR.lng, rating: 4.0, reviewCount: 150, familyKeys: ["dinner"], source: "google" };
-  const far: AreaCandidate = { id: "far", lat: ANCHOR.lat + 4 / 111.195, lng: ANCHOR.lng, rating: 4.8, reviewCount: 3000, familyKeys: ["dinner"], source: "google" };
-  const first = (proximity: number, popularity: number) =>
-    rankArea([near, far], (c) => c, { ...CTX, weights: { proximity, popularity, selected: 1 } })[0].item.id;
-  assertEquals(first(2, 1), "near");
-  assertEquals(first(1, 2), "far");
-});
-
-// MESITA-2431: Proximity scores over its own reach, not the candidate radius.
-// Live was a 50 km radius scoring a city between 0.7 and 1, so Nearby put a
-// 4.6★ place 6 km away ahead of a 4.0★ one 0.5 km away.
-Deno.test("Proximity reads the reach, not the radius (MESITA-2431)", () => {
-  const MTY = { lat: 25.65, lng: -100.29 };
-  const kmLat = (km: number) => MTY.lat + km / 111.2;
-  const close = cand({ id: "close", lat: kmLat(0.5), lng: MTY.lng, rating: 4.0, reviewCount: 300 });
-  const big = cand({ id: "big", lat: kmLat(6), lng: MTY.lng, rating: 4.6, reviewCount: 3000 });
-  const ctx = (reachKm: number, proximity: number, popularity: number): AreaContext => ({
+Deno.test("Proximity's reach is the radius (MESITA-2703): 1.5 km of a 3 km radius scores ½", () => {
+  const ctx: AreaContext = {
     ...CTX,
-    location: { kind: "point", anchor: MTY, radiusKm: 50 },
-    reachKm,
-    weights: { proximity, popularity, selected: 1 },
-  });
-  const first = (c: AreaContext) => rankArea([big, close], (x) => x, c)[0].item.id;
-  // The radius still decides who is a candidate; the reach only scores.
-  const at = areaScore(big, ctx(15, 1, 1));
-  assertEquals(at.gates.radius, 1);
-  assertAlmostEquals(at.signals.proximity ?? -1, 1 - 6 / 15, 1e-2);
-  assertEquals(areaScore(cand({ lat: kmLat(20), lng: MTY.lng }), ctx(15, 1, 1)).signals.proximity, 0);
-  // Reach 15: Nearby leads with the close place, Popular still pulls the big name.
-  assertEquals(first(ctx(15, 2, 1)), "close");
-  assertEquals(first(ctx(15, 1, 2)), "big");
-  // Reach = the 50 km radius (the old behaviour): Nearby lost the close place.
-  assertEquals(first(ctx(50, 2, 1)), "big");
+    location: { kind: "point", anchor: ANCHOR, radiusKm: 3 },
+    reachKm: 3,
+  };
+  const s = areaScore(cand({ lat: ANCHOR.lat + 1.5 / 111.195 }), ctx);
+  assertAlmostEquals(s.signals.proximity!, 0.5, 1e-3);
+  // At the edge Proximity is 0; with a = 0 distance is ignored and the edge
+  // place scores its Popularity alone (x^0 = 1).
+  const edge = cand({ lat: ANCHOR.lat + 2.999 / 111.195, rating: 4.0, reviewCount: 100 });
+  assertAlmostEquals(areaScore(edge, ctx).final, 0, 1e-3);
+  assertAlmostEquals(areaScore(edge, { ...ctx, weights: { proximity: 0, popularity: 1 } }).final, 0.4, 1e-12);
+  // b = 0 ignores popularity: an unrated place at the point scores 1.
+  assertEquals(
+    areaScore(cand({ rating: null, reviewCount: null }), { ...ctx, weights: { proximity: 1, popularity: 0 } }).final,
+    1,
+  );
 });

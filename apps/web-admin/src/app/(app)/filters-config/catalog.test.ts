@@ -9,7 +9,7 @@ import {
   DEFAULT_GENERAL,
   DEFAULT_MAP,
   DEFAULT_NAME,
-  GOOGLE_PULL_STOPS,
+  googleCallsPerLoad,
   SUPER_FIELDS,
 } from "./catalog";
 
@@ -41,7 +41,7 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
     expect(Object.keys(cfg).sort()).toEqual(Object.keys(DEFAULT_CONFIG).sort());
   });
 
-  it("params keeps only the reach, half credit and Selected's other value; the linear balance and the weights table are dropped (MESITA-2431, MESITA-2439, MESITA-2687)", () => {
+  it("params keeps only half credit; the reach, Selected, the linear balance and the weights table are dropped (MESITA-2687, MESITA-2703)", () => {
     expect(coerceConfig(LIVE_BLOB).params).toEqual(DEFAULT_CONFIG.params);
     expect(
       coerceConfig({
@@ -54,13 +54,11 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
         },
       }).params,
     ).toEqual({
-      proximity: { reachKm: 15 },
       popularity: { halfReviews: 250 },
-      selected: { otherFactor: 0.3 },
     });
   });
 
-  it("the Area params clamp to their bounds, at their own decimals", () => {
+  it("the Area params keep Popularity only; reach and Selected are dropped (MESITA-2703)", () => {
     expect(
       coerceConfig({
         params: {
@@ -69,19 +67,17 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
           selected: { otherFactor: 0 },
         },
       }).params,
-    ).toEqual({
-      proximity: { reachKm: 12.3 },
-      popularity: { halfReviews: 1 },
-      selected: { otherFactor: 0.01 },
-    });
-    const other = (v: unknown) => coerceConfig({ params: { selected: { otherFactor: v } } }).params.selected.otherFactor;
-    expect(other(0.456)).toBe(0.46);
-    expect(other(7)).toBe(1);
-    expect(other("lots")).toBe(0.3);
-    const reach = (v: unknown) => coerceConfig({ params: { proximity: { reachKm: v } } }).params.proximity.reachKm;
-    expect(reach(0.2)).toBe(1);
-    expect(reach(999)).toBe(50);
-    expect(reach("far")).toBe(15);
+    ).toEqual({ popularity: { halfReviews: 1 } });
+  });
+
+  it("the four Area sources are 0 or 20, and only the Google two bill (MESITA-2703)", () => {
+    const m = coerceConfig({
+      map: { googlePopular: 20, googleClosest: 0, mesitaPopular: 3, mesitaClosest: "x" },
+    }).map;
+    expect([m.googlePopular, m.googleClosest, m.mesitaPopular, m.mesitaClosest]).toEqual([20, 0, 0, 20]);
+    expect(googleCallsPerLoad(m)).toBe(1);
+    expect(googleCallsPerLoad(DEFAULT_MAP)).toBe(2);
+    expect(coerceConfig({ map: { popularityWeight: 9 } }).map.popularityWeight).toBe(5);
   });
 
   it("filters go too: list-places' listed lanes were their last reader (MESITA-2337)", () => {
@@ -115,13 +111,15 @@ describe("coerceConfig", () => {
           reloadMinKm: 1,
           reloadMinSec: 4,
           mapGooglePlaces: 45,
+          googleFill: false,
+          googleClosest: 7,
         },
       }).map,
     ).toEqual({
       ...DEFAULT_MAP,
       minRating: 5,
       minPopularity: 1,
-      mapGooglePlaces: 40,
+      googleClosest: 0,
     });
     // The live throttle (MESITA-2444): 1.5 s by default, the client's 0.5–10.
     expect(coerceConfig({}).map.reloadIdleSec).toBe(1.5);
@@ -157,7 +155,6 @@ describe("coerceConfig", () => {
   it("map.googlePull is retired and map.radiusKm is the one Nearby radius (MESITA-2298)", () => {
     // One Nearby Search (New) call per request, 20 places, never widened: the
     // Legacy 40/60 pull is gone and an old blob's key is dropped on coerce.
-    expect(GOOGLE_PULL_STOPS).toEqual([20, 40, 60]);
     expect("googlePull" in DEFAULT_MAP).toBe(false);
     expect("googlePull" in coerceConfig({ map: { googlePull: 60 } }).map).toBe(false);
     // The radius: default 15 = the reach (MESITA-2687), clamped 1..50

@@ -27,8 +27,11 @@ Deno.test("defaults admit everything and ask Google for every guest family", () 
   );
 });
 
-Deno.test("googleFill off skips Nearby", () => {
-  assertEquals(mapShouldFillGoogle(true, { ...MAP, googleFill: false }), false);
+Deno.test("both Google switches off skips Nearby; either one on calls it (MESITA-2703)", () => {
+  assertEquals(mapShouldFillGoogle(true, { ...MAP, googlePopular: 0, googleClosest: 0 }), false);
+  assertEquals(mapShouldFillGoogle(true, { ...MAP, googlePopular: 20, googleClosest: 0 }), true);
+  assertEquals(mapShouldFillGoogle(true, { ...MAP, googlePopular: 0, googleClosest: 20 }), true);
+  assertEquals(mapShouldFillGoogle(false, MAP), false);
 });
 
 Deno.test("minPopularity reads the Area pipeline's Popularity — unrated scores 0 (MESITA-2328)", () => {

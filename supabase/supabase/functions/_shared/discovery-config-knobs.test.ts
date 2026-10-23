@@ -77,45 +77,21 @@ Deno.test("an old blob with no Area params reads the defaults (MESITA-2327, MESI
     params: { proximity: { maxKm: 25, kneeKm: 1, missingGeo: 0.35 }, popularity: { confidence: 60 } },
     catalog: { ranking: { proximity: 1, popularity: 1 } },
   });
-  assertEquals(cfg.params.popularity.halfReviews, 100);
-  assertEquals(cfg.params.selected, { otherFactor: 0.3 });
-  // The retired deck's numbers and the Catalog ranking are dropped (MESITA-2328);
-  // Proximity's bag holds only its reach (MESITA-2431), at the default.
-  assertEquals(cfg.params.proximity, { reachKm: 15 });
-  assertEquals("confidence" in cfg.params.popularity, false);
+  assertEquals(cfg.params, { popularity: { halfReviews: 100 } });
   assertEquals("ranking" in cfg.catalog, false);
 });
 
-Deno.test("Area params clamp to their bounds; the weights table drops (MESITA-2687)", () => {
+Deno.test("Area params clamp; the reach, Selected and the weights table drop (MESITA-2687, MESITA-2703)", () => {
   const cfg = normalizeDiscoveryConfig({
     params: {
-      proximity: { reachKm: 0.2 },
+      proximity: { reachKm: 7 },
+      selected: { otherFactor: 0.3 },
       popularity: { halfReviews: 0 },
       modes: { nearby: { proximity: 99, popularity: -4 }, popular: { popularity: 1.234 } },
       balance: { proximity: 7 },
     },
   });
-  assertEquals(cfg.params.proximity.reachKm, 1);
-  assertEquals(normalizeDiscoveryConfig({ params: { proximity: { reachKm: 99 } } }).params.proximity.reachKm, 50);
-  assertEquals(normalizeDiscoveryConfig({ params: { proximity: { reachKm: 12.34 } } }).params.proximity.reachKm, 12.3);
-  assertEquals(cfg.params.popularity.halfReviews, 1);
-  assertEquals("modes" in cfg.params, false);
-  assertEquals("balance" in cfg.params, false);
-});
-
-Deno.test("Selected's number for every other place (MESITA-2439): default 0.3, never 0", () => {
-  assertEquals(normalizeDiscoveryConfig({}).params.selected.otherFactor, 0.3);
-  const cfg = normalizeDiscoveryConfig({ params: { selected: { otherFactor: 0 } } });
-  // Never 0: Selected stays a signal, never a gate.
-  assertEquals(cfg.params.selected.otherFactor, 0.01);
-  assertEquals(
-    normalizeDiscoveryConfig({ params: { selected: { otherFactor: 0.456 } } }).params.selected.otherFactor,
-    0.46,
-  );
-  assertEquals(
-    normalizeDiscoveryConfig({ params: { selected: { otherFactor: 3 } } }).params.selected.otherFactor,
-    1,
-  );
+  assertEquals(cfg.params, { popularity: { halfReviews: 1 } });
 });
 
 Deno.test("Deep: limit 5 and no floor by default; both clamp", () => {
