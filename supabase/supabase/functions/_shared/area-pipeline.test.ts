@@ -501,7 +501,7 @@ Deno.test("selected: the operator's Google floor never touches Mesita Selected",
   assertEquals(ids(out), ["thin"]);
 });
 
-Deno.test("Area keeps only General's active check: the Name pipeline's reviews floor never cuts it", async () => {
+Deno.test("the Mesita pool read never carries the reviews floor (MESITA-2702)", () => {
   const seen: string[] = [];
   const q = {
     eq: (c: string, v: unknown) => (seen.push(`eq ${c} ${v}`), q),
@@ -512,17 +512,8 @@ Deno.test("Area keeps only General's active check: the Name pipeline's reviews f
     overlaps: (c: string, v: string[]) => (seen.push(`overlaps ${c} ${v}`), q),
     order: (c: string, o?: { ascending?: boolean }) => (seen.push(`order ${c} ${o?.ascending}`), q),
   };
-  const general = { ...DISCOVERY_DEFAULTS.general, minReviews: 500 };
-  selectedPoolQuery(q, { general }, { center: null, radiusKm: 5 });
+  selectedPoolQuery(q, { general: DISCOVERY_DEFAULTS.general }, { center: null, radiusKm: 5 });
   assertEquals(seen.some((s) => s.includes("google_review_count")), false);
-  reset();
-  const g = stubGoogle([{ id: "thin", lat: 25.6701, reviews: 12 }]);
-  try {
-    const out = await selectAreaPool(deps({ cfg: { ...DISCOVERY_DEFAULTS, general } }).d);
-    assertEquals(ids(out.places), ["g:thin"]);
-  } finally {
-    g.restore();
-  }
 });
 
 // ── MESITA-2338: the audit's Area fixes ─────────────────────────────────────

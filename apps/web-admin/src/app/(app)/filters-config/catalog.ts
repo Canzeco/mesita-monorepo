@@ -75,8 +75,7 @@ export type GeneralConfig = {
    * clear it. Mirrors `_shared/discovery-general-gate.ts`.
    */
   requireActive: boolean;
-  /** Google reviews a place must prove to survive the wipe. 0 = off. */
-  minReviews: number;
+  // `minReviews` retired (MESITA-2702): the one floor is `map.googleMinReviews`.
 };
 
 export type DiscoveryConfig = {
@@ -155,7 +154,7 @@ const MAP_PROXIMITY_WEIGHT_DEFAULT = 1;
 export const MAP_RELOAD_IDLE_SEC_MIN = 0.5;
 export const MAP_RELOAD_IDLE_SEC_MAX = 10;
 const MAP_RELOAD_IDLE_SEC_DEFAULT = 1.5;
-/** Same ceiling as map.minReviews — one reviewer floor reads like another. */
+/** The reviews floor's ceiling, `map.googleMinReviews`. */
 export const GENERAL_MIN_REVIEWS_MAX = 100_000;
 
 export type MapConfig = {
@@ -181,7 +180,8 @@ export type MapConfig = {
    * Places and Mesita Selected rails (MESITA-2298). Never the guest's.
    */
   radiusKm: number;
-  /** Operator Google reviews floor, Google hits only (MESITA-2319). 0 = off. */
+  /** THE Google reviews floor (MESITA-2319), Google rows only, on the Map,
+   *  Home and the Name pipeline (one floor since MESITA-2702). 0 = off. */
   googleMinReviews: number;
   /** The Map's Proximity exponent a (MESITA-2504): Proximity^a ×
    *  Popularity^1 × Selected^1 inside the screen radius. */
@@ -515,7 +515,6 @@ export const DEFAULT_NAME: NameConfig = {
 
 export const DEFAULT_GENERAL: GeneralConfig = {
   requireActive: true,
-  minReviews: 0,
 };
 
 /** Mirrors DEFAULT_SIGNAL_PARAMS. */
@@ -652,9 +651,6 @@ function coerceGeneral(raw: unknown): GeneralConfig {
       typeof g.requireActive === "boolean"
         ? g.requireActive
         : DEFAULT_GENERAL.requireActive,
-    minReviews: Math.round(
-      num(g.minReviews, DEFAULT_GENERAL.minReviews, 0, GENERAL_MIN_REVIEWS_MAX),
-    ),
   };
 }
 

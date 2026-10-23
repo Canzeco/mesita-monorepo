@@ -88,12 +88,13 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
   });
 
   it("carries no weights table and no subpage tabs", () => {
-    // 3 Name by Admin + 5 Name + 6 Area (Home radius, Google reviews minimum,
+    // 3 Name by Admin + 4 Name (its reviews floor merged into Area's,
+    // MESITA-2702) + 6 Area (Home radius, Google reviews minimum,
     // Proximity weight, Home proximity reach, half credit, Selected's other
     // value) + the Map's reload seconds (MESITA-2444). The weights table left
     // the page (MESITA-2603): no guest reaches its only reader, Chat. Deep is Soon.
     const html = page();
-    expect(html.match(/type="number"/g)?.length).toBe(15);
+    expect(html.match(/type="number"/g)?.length).toBe(14);
     expect(html).toContain("Proximity weight (a)");
     expect(html).not.toContain("data-area-weights");
     expect(html).not.toContain("Modes");
@@ -114,10 +115,10 @@ describe("the boxes' controls", () => {
     }
   });
 
-  it("Name: idle seconds, three caps, the reviews floor, Locations; no Active switch", () => {
+  it("Name: idle seconds, three caps, Locations; no Active switch, no second reviews floor (MESITA-2702)", () => {
     const html = render(<NameBox {...seed} />);
     expect(html).toContain("Seconds without typing before the search runs");
-    expect(html).toContain("Minimum number of Google reviews");
+    expect(html).not.toContain("Minimum number of Google reviews");
     expect(html).toContain('aria-label="Show Locations"');
     expect(html).not.toContain("Only active places");
   });

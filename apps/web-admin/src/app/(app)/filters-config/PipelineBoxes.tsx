@@ -48,7 +48,7 @@ const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
  *  actions.test.ts proves exactly these sets cannot reach each other. */
 export const BOX_SLICES = {
   nameAdmin: ["nameAdmin"],
-  name: ["nameDeep", "nameLocations", "nameIdle", "general"],
+  name: ["nameDeep", "nameLocations", "nameIdle"],
   area: ["map", "areaSignals"],
 } as const satisfies Record<string, readonly DiscoverySlice[]>;
 
@@ -128,14 +128,14 @@ export function NameAdminBox(seed: ConfigSeed<DiscoveryConfig>) {
           Autocomplete and the Mesita rows run through the guest bar&apos;s
           lane, with its rules. The Text Search column is Find&apos;s own
           call: it applies Mesita&apos;s place types but not Discovery ›
-          General&apos;s active check or reviews floor. Locations are never
+          General&apos;s active check or the reviews minimum. Locations are never
           shown here. With the last option on, the page opens listing every
           Mesita place, as an empty search.
         </p>
       }
       scoring="Rows found by more sources come first, then Text Search rank, then Autocomplete rank, then Name. Duplicates merge."
       rules={[
-        "Autocomplete and Mesita rows follow the guest bar's rules: closed places never show, Discovery › General's reviews floor cuts them, and a Google row must be one of Mesita's place types.",
+        "Autocomplete and Mesita rows follow the guest bar's rules: closed places never show, the Area box's Minimum Google reviews cuts Google rows (never a Mesita row), and a Google row must be one of Mesita's place types.",
         "Text Search rows are Find's own call: Mesita's place types and the old stored Google floors on rating, reviews and popularity (0 is off; no box edits them), not Discovery › General.",
       ]}
       save={<Save editor={editor} dirty={dirty} slices={BOX_SLICES.nameAdmin} />}
@@ -196,8 +196,7 @@ export function NameBox(seed: ConfigSeed<DiscoveryConfig>) {
   const dirty =
     !same(cfg.name.deep, saved.name.deep) ||
     cfg.name.locations !== saved.name.locations ||
-    cfg.name.idleSec !== saved.name.idleSec ||
-    !same(cfg.general, saved.general);
+    cfg.name.idleSec !== saved.name.idleSec;
   return (
     <PipelineBox
       id="s-name"
@@ -215,8 +214,8 @@ export function NameBox(seed: ConfigSeed<DiscoveryConfig>) {
           Neither gate applies: a place Mesita has created is findable by
           name before its profile is written. The always-on rules below
           still hold: closed places never show, a Google row must be one of
-          Mesita&apos;s place types, and the reviews floor below cuts every
-          row.
+          Mesita&apos;s place types, and the Area box&apos;s Minimum Google
+          reviews cuts Google rows (never a Mesita row).
         </p>
       }
       save={
@@ -257,17 +256,6 @@ export function NameBox(seed: ConfigSeed<DiscoveryConfig>) {
           disabled={off}
           onChange={(mesitaCount) => deep({ mesitaCount })}
         />
-        <NumberField
-          label="Minimum number of Google reviews"
-          value={cfg.general.minReviews}
-          min={0}
-          max={GENERAL_MIN_REVIEWS_MAX}
-          disabled={off}
-          onChange={(minReviews) => {
-            setOk(false);
-            setCfg((c) => ({ ...c, general: { ...c.general, minReviews } }));
-          }}
-        />
         <SwitchRow
           label="Show Locations"
           on={cfg.name.locations}
@@ -276,10 +264,9 @@ export function NameBox(seed: ConfigSeed<DiscoveryConfig>) {
         />
       </div>
       <p className="text-muted-foreground type-meta">
-        0 rows turns a source off. The reviews floor counts people, never
-        stars, cuts Google and Mesita rows of the guest bar and of admin
-        Find&apos;s Autocomplete and Mesita columns, never the Area pipeline,
-        and 0 is off. A Mesita row needs a Name score of 0.4 or more.
+        0 rows turns a source off. The one reviews minimum lives in the Area
+        box&apos;s Gates (MESITA-2702). A Mesita row needs a Name score of
+        0.4 or more.
       </p>
     </PipelineBox>
   );
@@ -432,8 +419,10 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           and never scores; the Map uses it only when it has no screen to
           measure (no view yet, or one wider than 100 km), and Chat reads
           inside it. {MAP_RADIUS_KM_MIN}–{MAP_RADIUS_KM_MAX} km (Google&apos;s
-          circle cap). The reviews minimum counts people, cuts Google places
-          only (never a Mesita row), and 0 is off. Family is the guest&apos;s
+          circle cap). The reviews minimum is the only one (MESITA-2702): it
+          counts people and cuts Google places only (never a Mesita row), on
+          the Map, Home, the Search bar and admin Find&apos;s Autocomplete
+          column; 0 is off. Family is the guest&apos;s
           own chip or row; closed places never show, on every pipeline.
         </p>
       </Group>
