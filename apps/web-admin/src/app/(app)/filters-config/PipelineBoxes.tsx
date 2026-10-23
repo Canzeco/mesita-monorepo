@@ -27,6 +27,8 @@ import {
   MAP_RADIUS_KM_MIN,
   MAP_RELOAD_IDLE_SEC_MAX,
   MAP_RELOAD_IDLE_SEC_MIN,
+  MAP_RELOAD_MIN_VIEWPORT_PCT_MAX,
+  MAP_RELOAD_MIN_VIEWPORT_PCT_MIN,
   MAP_SELECTED_FACTOR_MAX,
   MAP_SELECTED_FACTOR_MIN,
   NAME_ADMIN_MESITA_MAX,
@@ -477,11 +479,25 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             disabled={off}
             onChange={(reloadIdleSec) => map({ reloadIdleSec })}
           />
+          <NumberField
+            label="Min map move to reload (% of screen)"
+            value={cfg.map.reloadMinViewportPct}
+            min={MAP_RELOAD_MIN_VIEWPORT_PCT_MIN}
+            max={MAP_RELOAD_MIN_VIEWPORT_PCT_MAX}
+            decimals
+            disabled={off}
+            onChange={(reloadMinViewportPct) => map({ reloadMinViewportPct })}
+          />
         </div>
         <p className="text-muted-foreground type-meta">
           The Search map reloads when the guest stops moving it, at most once
-          every this many seconds counted from the last reload, with no
-          distance gate (MESITA-2451). {MAP_RELOAD_IDLE_SEC_MIN}–{MAP_RELOAD_IDLE_SEC_MAX} s.
+          every this many seconds counted from the last reload, and only if
+          the camera has moved at least this share of the screen since that
+          reload (a pan or a zoom). {MAP_RELOAD_IDLE_SEC_MIN}–{MAP_RELOAD_IDLE_SEC_MAX} s.
+          {" "}
+          {MAP_RELOAD_MIN_VIEWPORT_PCT_MIN}–{MAP_RELOAD_MIN_VIEWPORT_PCT_MAX}%
+          of the last-reload view; 0 is any move. Finger-width pans do not
+          refetch.
         </p>
       </Group>
     </PipelineBox>

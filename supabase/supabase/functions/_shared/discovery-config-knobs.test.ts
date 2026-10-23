@@ -27,6 +27,13 @@ Deno.test("the Map's reload throttle defaults to 1.5 s, bounded like the client'
   assertEquals("reloadMinKm" in normalizeMapConfig({ reloadMinKm: 1, reloadMinSec: 4 }), false);
 });
 
+Deno.test("the Map's min screen move defaults to 15%, bounded 0..50 (MESITA-2732)", () => {
+  assertEquals(normalizeMapConfig({}).reloadMinViewportPct, 15);
+  assertEquals(normalizeMapConfig({ reloadMinViewportPct: -4 }).reloadMinViewportPct, 0);
+  assertEquals(normalizeMapConfig({ reloadMinViewportPct: 99 }).reloadMinViewportPct, 50);
+  assertEquals(normalizeMapConfig({ reloadMinViewportPct: 12.26 }).reloadMinViewportPct, 12.3);
+});
+
 Deno.test("Word's Locations default on; an operator false sticks", () => {
   assertEquals(normalizeNameConfig({}).locations, true);
   assertEquals(normalizeNameConfig({ locations: false }).locations, false);

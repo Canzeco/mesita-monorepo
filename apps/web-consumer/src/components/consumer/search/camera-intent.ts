@@ -17,7 +17,8 @@
 //
 // A move the guest made reloads the area when the map comes to rest, at
 // most once every `reloadIdleSec`, counted from the LAST RELOAD, not the
-// last move, and with no distance gate (Pato, MESITA-2451).
+// last move (Pato, MESITA-2451), and only if the camera has moved at least
+// `reloadMinViewportPct` of that last-reload screen (Pato, MESITA-2732).
 
 import { haversineKm } from "@/lib/utils";
 import type { ViewportBox } from "./SearchMap";
@@ -216,4 +217,61 @@ export function reloadWaitMs(
 ): number {
   if (lastLoadAt == null) return 0;
   return Math.max(0, lastLoadAt + minGapMs - now);
+}
+
+/** Min share of the last-reload screen a guest move must cover. */
+export const RELOAD_MIN_VIEWPORT_PCT_DEFAULT = 15;
+const RELOAD_MIN_VIEWPORT_PCT_MIN = 0;
+const RELOAD_MIN_VIEWPORT_PCT_MAX = 50;
+
+export function clampReloadMinViewportPct(raw: number | undefined): number {
+  if (typeof raw !== "number" || !Number.isFinite(raw)) {
+    return RELOAD_MIN_VIEWPORT_PCT_DEFAULT;
+  }
+  return Math.min(
+    RELOAD_MIN_VIEWPORT_PCT_MAX,
+    Math.max(RELOAD_MIN_VIEWPORT_PCT_MIN, Math.round(raw * 10) / 10),
+  );
+}
+
+function viewWidthDeg(box: ViewportBox): number {
+  const east = box.west <= box.east ? box.east : box.east + 360;
+  return east - box.west;
+}
+
+/**
+ * How much of `from` (the last reload's screen) the camera has left: the
+ * larger of a pan as a share of that view and a zoom that scales it.
+ */
+export function cameraMovedShare(from: ViewportBox, to: ViewportBox): number {
+  const fromH = from.north - from.south;
+  const fromW = viewWidthDeg(from);
+  if (!(fromH > 0) || !(fromW > 0)) return 1;
+  const a = viewportSight(from);
+  const b = viewportSight(to);
+  let dLng = Math.abs(b.lng - a.lng);
+  if (dLng > 180) dLng = 360 - dLng;
+  const pan = Math.max(Math.abs(b.lat - a.lat) / fromH, dLng / fromW);
+  const toH = to.north - to.south;
+  const toW = viewWidthDeg(to);
+  const scale = Math.max(
+    Math.abs(toH / fromH - 1),
+    toW > 0 ? Math.abs(toW / fromW - 1) : 0,
+  );
+  return Math.max(pan, scale);
+}
+
+/**
+ * Has the camera left enough of the last-reload screen to refetch?
+ * `minPct` 0 is MESITA-2451 (any guest move). No last-reload view yet
+ * also fires — the first load already happened on first idle.
+ */
+export function reloadMoveMeetsMin(
+  from: ViewportBox | null,
+  to: ViewportBox,
+  minPct: number,
+): boolean {
+  if (minPct <= 0) return true;
+  if (!from) return true;
+  return cameraMovedShare(from, to) * 100 >= minPct;
 }

@@ -155,6 +155,8 @@ type ViewportPlaces = {
   /** Seconds the map must be still before a guest move reloads it
    *  (MESITA-2440). The client defaults to 1.5 s until the EF sends it. */
   reloadIdleSec?: number;
+  /** Min share of the last-reload screen a guest move must cover (MESITA-2732). */
+  reloadMinViewportPct?: number;
 };
 
 /** The visible map, as the EF's `bounds` reads it (MESITA-2499). */
@@ -187,6 +189,7 @@ export async function apiFetchNearbyCatalog(
     reloadMinKm?: number;
     reloadMinSec?: number;
     reloadIdleSec?: number;
+    reloadMinViewportPct?: number;
   }>(client, "consumer-web-list-places", {
     google: true,
     familyKeys: [...familyKeys],
@@ -213,6 +216,11 @@ export async function apiFetchNearbyCatalog(
       typeof data.reloadIdleSec === "number" &&
       Number.isFinite(data.reloadIdleSec)
         ? data.reloadIdleSec
+        : undefined,
+    reloadMinViewportPct:
+      typeof data.reloadMinViewportPct === "number" &&
+      Number.isFinite(data.reloadMinViewportPct)
+        ? data.reloadMinViewportPct
         : undefined,
   };
 }

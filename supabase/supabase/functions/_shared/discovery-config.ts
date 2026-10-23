@@ -147,6 +147,13 @@ export type MapConfig = {
    * (the client's own clamp), two decimals, default 1.5.
    */
   reloadIdleSec: number;
+  /**
+   * Share of the screen at last reload the camera must move before an idle
+   * reload fires (MESITA-2732). Pan as a fraction of that view, or a zoom
+   * that scales it by that much. 0 = any guest move (MESITA-2451).
+   * `MAP_RELOAD_MIN_VIEWPORT_PCT_MIN`..`MAX`, one decimal, default 15.
+   */
+  reloadMinViewportPct: number;
   /** Google Popular: one billed Nearby call ranked POPULARITY over the whole
    *  circle. 0 or 20. */
   googlePopular: number;
@@ -322,6 +329,10 @@ export const MAP_SELECTED_FACTOR_DEFAULT = 3;
 export const MAP_RELOAD_IDLE_SEC_MIN = 0.5;
 export const MAP_RELOAD_IDLE_SEC_MAX = 10;
 export const MAP_RELOAD_IDLE_SEC_DEFAULT = 1.5;
+/** Min share of the last-reload screen a guest move must cover (MESITA-2732). */
+export const MAP_RELOAD_MIN_VIEWPORT_PCT_MIN = 0;
+export const MAP_RELOAD_MIN_VIEWPORT_PCT_MAX = 50;
+export const MAP_RELOAD_MIN_VIEWPORT_PCT_DEFAULT = 15;
 
 /**
  * The three supers the strip has always asked for stay on; the four it could
@@ -354,6 +365,7 @@ export const DEFAULT_MAP: MapConfig = {
   minReviews: 0,
   minPopularity: 0,
   reloadIdleSec: MAP_RELOAD_IDLE_SEC_DEFAULT,
+  reloadMinViewportPct: MAP_RELOAD_MIN_VIEWPORT_PCT_DEFAULT,
   googlePopular: AREA_SOURCE_DEFAULT,
   googleClosest: AREA_SOURCE_DEFAULT,
   mesitaPopular: AREA_SOURCE_DEFAULT,
@@ -635,6 +647,14 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
         MAP_RELOAD_IDLE_SEC_MAX,
       ) * 100,
     ) / 100,
+    reloadMinViewportPct: Math.round(
+      num(
+        r.reloadMinViewportPct,
+        DEFAULT_MAP.reloadMinViewportPct,
+        MAP_RELOAD_MIN_VIEWPORT_PCT_MIN,
+        MAP_RELOAD_MIN_VIEWPORT_PCT_MAX,
+      ) * 10,
+    ) / 10,
     // Rebuilt key by key: a retired key (`googlePull`, `pinCount`, `supers`,
     // the reload km/sec pair, the 20/40/60 stops, `googleFill`) is dropped
     // on the next save.
