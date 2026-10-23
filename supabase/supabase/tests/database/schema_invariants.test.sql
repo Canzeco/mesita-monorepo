@@ -1533,6 +1533,8 @@ select ok(
              - 'proximity' - 'popularity' - 'selected') = '{}'::jsonb
       and not (coalesce(discovery_config -> 'map', '{}'::jsonb)
              ?| array['supers', 'reloadMinKm', 'reloadMinSec', 'pinCount'])
+      -- MESITA-2702: one reviews floor, `map.googleMinReviews`.
+      and discovery_config #> '{general,minReviews}' is null
       and (coalesce(discovery_config #> '{params,proximity}', '{}'::jsonb) - 'reachKm') = '{}'::jsonb
       and (coalesce(discovery_config #> '{params,popularity}', '{}'::jsonb) - 'halfReviews') = '{}'::jsonb
       and (coalesce(discovery_config #> '{params,selected}', '{}'::jsonb) - 'otherFactor') = '{}'::jsonb
