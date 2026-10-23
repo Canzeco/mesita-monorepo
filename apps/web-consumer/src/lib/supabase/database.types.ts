@@ -213,6 +213,7 @@ export type Database = {
       }
       consumers: {
         Row: {
+          appear_anonymous: boolean
           avatar_url: string | null
           birthday: string | null
           code: string | null
@@ -235,6 +236,7 @@ export type Database = {
           use_instagram_photo: boolean
         }
         Insert: {
+          appear_anonymous?: boolean
           avatar_url?: string | null
           birthday?: string | null
           code?: string | null
@@ -257,6 +259,7 @@ export type Database = {
           use_instagram_photo?: boolean
         }
         Update: {
+          appear_anonymous?: boolean
           avatar_url?: string | null
           birthday?: string | null
           code?: string | null
@@ -849,6 +852,45 @@ export type Database = {
         }
         Relationships: []
       }
+      place_reports: {
+        Row: {
+          consumer_id: string
+          created_at: string
+          note: string | null
+          place_id: string
+          reason: string
+        }
+        Insert: {
+          consumer_id: string
+          created_at?: string
+          note?: string | null
+          place_id: string
+          reason: string
+        }
+        Update: {
+          consumer_id?: string
+          created_at?: string
+          note?: string | null
+          place_id?: string
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_reports_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_reports_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       place_requests: {
         Row: {
           consumer_id: string
@@ -985,6 +1027,7 @@ export type Database = {
           created_at: string
           currency: string
           id: string
+          selected: boolean
           slug: string
           state: Database["public"]["Enums"]["place_state"]
           updated_at: string
@@ -994,6 +1037,7 @@ export type Database = {
           created_at?: string
           currency?: string
           id: string
+          selected?: boolean
           slug: string
           state?: Database["public"]["Enums"]["place_state"]
           updated_at?: string
@@ -1003,6 +1047,7 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          selected?: boolean
           slug?: string
           state?: Database["public"]["Enums"]["place_state"]
           updated_at?: string
@@ -1297,6 +1342,7 @@ export type Database = {
           reservation_target: string | null
           reservations_enabled: boolean | null
           resy_url: string | null
+          selected: boolean | null
           slug: string | null
           source_sync: Json | null
           state: Database["public"]["Enums"]["place_state"] | null
@@ -1338,6 +1384,7 @@ export type Database = {
           p_plan: string
         }
         Returns: {
+          appear_anonymous: boolean
           avatar_url: string | null
           birthday: string | null
           code: string | null
@@ -1421,6 +1468,29 @@ export type Database = {
           created_at: string
           first_name: string
           guest_class: string
+          instagram: boolean
+          instagram_followers_count: number
+          instagram_handle: string
+          kind: string
+          place_id: string
+          plan: string
+        }[]
+      }
+      place_activity_history_by: {
+        Args: {
+          p_at: string
+          p_kind: string
+          p_limit?: number
+          p_place_id: string
+        }
+        Returns: {
+          anonymous: boolean
+          avatar_url: string
+          consumer_id: string
+          created_at: string
+          first_name: string
+          guest_class: string
+          instagram: boolean
           instagram_followers_count: number
           instagram_handle: string
           kind: string
