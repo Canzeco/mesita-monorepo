@@ -487,26 +487,11 @@ function ProfileCells({ row, enrichingNow }: { row: FindRow; enrichingNow: boole
               badWhenTrue={BAD_WHEN_TRUE.has(f.key)}
             />
           ) : hit ? (
-            f.key === "requested" ? (
-              <span
-                className={
-                  "type-label font-semibold tabular-nums " +
-                  (hit.request_count > 0 ? "text-foreground" : "text-muted-foreground")
-                }
-              >
-                {hit.request_count}
-                <span className="sr-only">
-                  {" "}
-                  request{hit.request_count === 1 ? "" : "s"}
-                </span>
-              </span>
-            ) : (
-              <StatePill
-                on={factOn(hit, f.key)}
-                falseTone={STATE_FACT_FALSE_TONE[f.key]}
-                badWhenTrue={BAD_WHEN_TRUE.has(f.key)}
-              />
-            )
+            <StatePill
+              on={factOn(hit, f.key)}
+              falseTone={STATE_FACT_FALSE_TONE[f.key]}
+              badWhenTrue={BAD_WHEN_TRUE.has(f.key)}
+            />
           ) : row.held ? (
             <StatePill on="unknown" />
           ) : (

@@ -146,8 +146,10 @@ export type AdminPlace = {
    *  derived from Enriched, ready and Disabled; Select / Unselect writes it
    *  through admin-web-set-place-selected. */
   selected?: boolean;
-  /** Guest request count — the Requested State fact, 0…n. */
+  /** Guest request count — still on the row for enrich threshold; not in admin UI. */
   request_count?: number;
+  /** Unique members who viewed / saved (admin-web-get-overview). */
+  profile_stats?: { viewed?: number; saved?: number };
   /** Votes required before Enrich starts. Settings `atlasRequestThreshold`. */
   request_threshold?: number;
   /** Operating: Google's businessStatus, verbatim (MESITA-1239). */

@@ -1,14 +1,16 @@
 // State — two boxes (Pato, 2026-08-25 · Profile States + Enrichment Steps, 2026-10-13).
 //
-//   PROFILE STATES (7)  One box (Pato, 2026-10-13, MESITA-2176):
-//                 Created · Pulsing (Google active) · Requested ·
-//                 Enriching · Enriched · Selected · Disabled.
+//   PROFILE STATES (6)  One box (Pato, 2026-10-13, MESITA-2176; Requested
+//                 dropped MESITA-2735 / discovery overhaul uc1b):
+//                 Created · Pulsing (Google active) · Enriching · Enriched ·
+//                 Selected · Disabled.
+//   PROFILE STATS (2)  their own box (MESITA-2735): Viewed · Saved — unique
+//                 members from place_activity. No request count.
 //                 Selected (MESITA-2707, MESITA-2730) is Mesita Selected —
 //                 the operator's own mark, `places.selected`. Independent of
 //                 Enriched: a Created place can be Selected, and an Enriched
 //                 place need not be. Stored, never derived from the rail.
-//                 All are bools (`true` / `false`) except Requested, the
-//                 guest request count, 0…n — not a Yes/No. Disabled is the
+//                 All are bools (`true` / `false`). Disabled is the
 //                 operator's off switch (places.state is not active), the
 //                 old Listed turned over: `true` is the warning.
 //
@@ -71,19 +73,42 @@ export function requestCountChip(requestCount: unknown): string {
   return n === "unknown" ? "?" : String(n);
 }
 
-/** The seven profile states, in the order the Profile States box prints them.
+/** Profile stat count from overview `profile_stats`. */
+export function profileStatFromRow(value: unknown): number | "unknown" {
+  if (value == null || value === "") return "unknown";
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) return "unknown";
+  return Math.trunc(n);
+}
+
+/** Chip for Viewed / Saved: `0` · `1` · `12` · … or `?`. */
+export function profileStatCountChip(value: unknown): string {
+  const n = profileStatFromRow(value);
+  return n === "unknown" ? "?" : String(n);
+}
+
+/** The six profile states, in the order the Profile States box prints them.
  *  Verified · Owned · Partnered · Rewards · Mesita Pay · Mesita Credits left
  *  with the MVP First Stage cut (MESITA-2106, MESITA-2115): nobody holds,
  *  proves, pays or redeems yet. Wire key `seeded` stays; the label is Created. */
 export const GENERAL_STATE_FACTS = [
   { key: "seeded", label: "Created" },
   { key: "pulsing", label: "Pulsing" },
-  { key: "requested", label: "Requested" },
   { key: "enriching", label: "Enriching" },
   { key: "enriched", label: "Enriched" },
   { key: "selected", label: "Selected" },
   { key: "disabled", label: "Disabled" },
 ] as const;
+
+/** Profile Stats — unique member counts, read-only (MESITA-2735). */
+export const PROFILE_STATS_FACTS = [
+  { key: "viewed", label: "Viewed" },
+  { key: "saved", label: "Saved" },
+] as const;
+
+export type ProfileStatKey = (typeof PROFILE_STATS_FACTS)[number]["key"];
+
+/** Guest request count helpers stay for legacy payloads; not shown in admin UI. */
 
 export type GeneralStateKey = (typeof GENERAL_STATE_FACTS)[number]["key"];
 

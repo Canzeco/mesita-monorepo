@@ -72,24 +72,11 @@ export function MesitaSearchResults({ rows }: { rows: Row[] }) {
                   {hit
                     ? GENERAL_STATE_FACTS.map((f) => (
                         <td key={f.key} className="px-3 py-3 text-center">
-                          {f.key === "requested" ? (
-                            <span
-                              className={
-                                "type-label font-semibold tabular-nums " +
-                                (hit.request_count > 0
-                                  ? "text-foreground"
-                                  : "text-muted-foreground")
-                              }
-                            >
-                              {hit.request_count}
-                            </span>
-                          ) : (
-                            <StatePill
-                              on={factOn(hit, f.key)}
-                              falseTone={STATE_FACT_FALSE_TONE[f.key]}
-                              badWhenTrue={BAD_WHEN_TRUE.has(f.key)}
-                            />
-                          )}
+                          <StatePill
+                            on={factOn(hit, f.key)}
+                            falseTone={STATE_FACT_FALSE_TONE[f.key]}
+                            badWhenTrue={BAD_WHEN_TRUE.has(f.key)}
+                          />
                         </td>
                       ))
                     : GENERAL_STATE_FACTS.map((f) => (

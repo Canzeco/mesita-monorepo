@@ -10,20 +10,21 @@ import {
   enrichmentStepLabel,
   stepEnriches,
   STATE_FACT_FALSE_TONE,
+  profileStatCountChip,
+  profileStatFromRow,
   requestCountChip,
   requestCountFromRow,
   stateBoolChip,
 } from "./state-vocabulary";
 
 describe("state vocabulary", () => {
-  it("is seven general facts plus nine Crenup steps 0–8", () => {
+  it("is six general facts plus nine Crenup steps 0–8", () => {
     // The MVP First Stage cut the commercial facts: Verified (MESITA-2106),
     // then Owned · Partnered · Rewards · Mesita Pay · Mesita Credits
     // (MESITA-2115).
     expect(GENERAL_STATE_FACTS.map((f) => f.label)).toEqual([
       "Created",
       "Pulsing",
-      "Requested",
       "Enriching",
       "Enriched",
       "Selected",
@@ -86,7 +87,15 @@ describe("state vocabulary", () => {
     expect(stateBoolChip(null)).toBe("?");
   });
 
-  it("Requested is 0…n, never a Yes/No", () => {
+  it("profile stat counts are 0…n, never a Yes/No", () => {
+    expect(profileStatFromRow(0)).toBe(0);
+    expect(profileStatFromRow(9)).toBe(9);
+    expect(profileStatFromRow(null)).toBe("unknown");
+    expect(profileStatCountChip(4)).toBe("4");
+    expect(profileStatCountChip(undefined)).toBe("?");
+  });
+
+  it("legacy request count chips stay 0…n", () => {
     expect(requestCountFromRow(0)).toBe(0);
     expect(requestCountFromRow(1)).toBe(1);
     expect(requestCountFromRow(12.9)).toBe(12);

@@ -65,8 +65,8 @@ export type PlaceHit = {
   google_stars_overall: number | null;
   google_review_count: number | null;
   content_state: string | null;
-  // ── The state facts (labels: Created · Pulsing · Disabled · Requested ·
-  //    Enriching · Enriched). Bools except Requested (0…n). All derived (or
+  // ── The state facts (labels: Created · Pulsing · Enriching · Enriched ·
+  //    Selected · Disabled). All derived (or
   //    projected) in admin-web-search-places, except Enriching which is
   //    content_state generating (MESITA-453 whole-pipeline). Disabled is
   //    `!listed`: the operator's off switch.
@@ -78,7 +78,7 @@ export type PlaceHit = {
   listed: boolean;
   /** Derived has-demand for filters. Catalog State shows request_count. */
   requested: boolean;
-  /** Guest request count — the Requested State fact, 0…n. */
+  /** Guest request count — enrich threshold only; not shown in state tables. */
   request_count: number;
   /** Enricher pipeline mid-flight (content_state generating). */
   enriching: boolean;

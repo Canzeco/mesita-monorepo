@@ -60,6 +60,7 @@ import {
 import { fetchPlaceTags, TAG_FACETS } from "../_shared/tags.ts";
 import { reviewFoundFromRow } from "../_shared/review-found.ts";
 import { photoAnalysisMap } from "../_shared/photo-analysis.ts";
+import { fetchPlaceProfileStats } from "../_shared/place-activity-stats.ts";
 
 // The Embeddings card (MESITA-720) reads these. Never part of the public
 // column set: a heavy field only this screen and admin-web-search-places need.
@@ -99,7 +100,7 @@ Deno.serve(async (req) => {
   // response alone (MESITA-2180). `enrichment` is read off `place_profiles`
   // directly, not `profiles` — it is deliberately NOT in the profiles view's
   // column list (adding it means rebuilding the view's two INSTEAD OF triggers).
-  const [placeRow, enrichmentRow, categories, families, tags, requestThreshold, assetsRow] =
+  const [placeRow, enrichmentRow, categories, families, tags, requestThreshold, assetsRow, profileStats] =
     await Promise.all([
     admin
       .from("profiles")
@@ -121,6 +122,7 @@ Deno.serve(async (req) => {
       .from("place_media_assets")
       .select("public_url, source_url, analysis_text")
       .eq("place_id", placeId),
+    fetchPlaceProfileStats(admin, placeId),
   ]);
   if (placeRow.error) {
     return json({ ok: false, error: placeRow.error.message }, 500);
@@ -182,6 +184,7 @@ Deno.serve(async (req) => {
       (enrichmentRow.data ?? {}) as Record<string, unknown>,
     ),
     photo_analysis: photoAnalysisMap(assetsRow.data),
+    profile_stats: profileStats,
   };
 
   const profile = {
