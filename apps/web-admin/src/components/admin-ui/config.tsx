@@ -180,6 +180,7 @@ export function NumberField({
   decimals,
   onChange,
   disabled,
+  hint,
 }: {
   icon?: React.ReactNode;
   label: string;
@@ -189,6 +190,9 @@ export function NumberField({
   decimals?: boolean;
   onChange: (v: number) => void;
   disabled: boolean;
+  /** One line under the input, inside the field's own card: what moving
+   *  the number does, seen while it is edited. */
+  hint?: React.ReactNode;
 }) {
   return (
     <label className={FIELD_WELL}>
@@ -216,6 +220,7 @@ export function NumberField({
         }}
         className="border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-3 text-right text-sm tabular-nums outline-none disabled:opacity-50"
       />
+      {hint ? <span className="text-muted-foreground type-meta">{hint}</span> : null}
     </label>
   );
 }

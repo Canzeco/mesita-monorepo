@@ -408,6 +408,7 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             decimals
             disabled={off}
             onChange={setRadiusDivisor}
+            hint="Bigger favours nearer places; smaller favours popular places."
           />
           <NumberField
             label="Selected boost"
