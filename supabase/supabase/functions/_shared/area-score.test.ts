@@ -1,6 +1,7 @@
 // The Area score and its gates (MESITA-2327; one pool since MESITA-2379;
 // points only since Territory was retired, MESITA-2603; Proximity^a ×
-// Popularity^b with reach = the radius since MESITA-2703).
+// Popularity^b since MESITA-2703; Proximity ½ at the operator's
+// half-distance, whatever the radius, since MESITA-2706).
 import { assertAlmostEquals, assertEquals } from "jsr:@std/assert@1";
 import {
   type AreaCandidate,
@@ -16,7 +17,7 @@ const CTX: AreaContext = {
   location: { kind: "point", anchor: ANCHOR, radiusKm: 8 },
   families: [],
   halfReviews: 100,
-  reachKm: 8,
+  halfKm: 4,
   weights: { proximity: 1, popularity: 1 },
 };
 const BOUNDS = { low: { lat: 19.4, lng: -99.2 }, high: { lat: 19.5, lng: -99.1 } };
@@ -147,7 +148,7 @@ Deno.test("ties break on distance, then id: deterministic", () => {
   assertEquals(ranked.map((r) => r.item.id), ["a", "b", "far"]);
 });
 
-Deno.test("halfway to the edge Proximity is exactly ½, and the score is the product at weights 1 · 1", () => {
+Deno.test("at the half-distance Proximity is exactly ½, and the score is the product at weights 1 · 1", () => {
   const c = cand({ lat: ANCHOR.lat + 4 / 111.195, rating: 4.0, reviewCount: 100 });
   const s = areaScore(c, CTX);
   assertAlmostEquals(s.signals.proximity!, 0.5, 1e-3);
@@ -179,18 +180,24 @@ Deno.test("non-finite numbers never reach the sort", () => {
   assertEquals(ranked[0].item.id, "ok");
 });
 
-Deno.test("Proximity's reach is the radius (MESITA-2703): 1.5 km of a 3 km radius scores ½", () => {
+Deno.test("Proximity's half-distance is the operator's and never follows the radius (MESITA-2706)", () => {
+  // D = 1.5 km: 1.5 km out scores ½ on a 3 km circle and on a 30 km one alike.
   const ctx: AreaContext = {
     ...CTX,
     location: { kind: "point", anchor: ANCHOR, radiusKm: 3 },
-    reachKm: 3,
+    halfKm: 1.5,
   };
-  const s = areaScore(cand({ lat: ANCHOR.lat + 1.5 / 111.195 }), ctx);
-  assertAlmostEquals(s.signals.proximity!, 0.5, 1e-3);
-  // At the edge Proximity is 0; with a = 0 distance is ignored and the edge
-  // place scores its Popularity alone (x^0 = 1).
+  const mid = cand({ lat: ANCHOR.lat + 1.5 / 111.195 });
+  assertAlmostEquals(areaScore(mid, ctx).signals.proximity!, 0.5, 1e-3);
+  const wide: AreaContext = { ...ctx, location: { kind: "point", anchor: ANCHOR, radiusKm: 30 } };
+  assertAlmostEquals(areaScore(mid, wide).signals.proximity!, 0.5, 1e-3);
+  // The edge is not 0 any more: 2.999 km of a 3 km circle keeps ⅓, and the
+  // Radius gate, not the curve, drops what lies past the circle.
   const edge = cand({ lat: ANCHOR.lat + 2.999 / 111.195, rating: 4.0, reviewCount: 100 });
-  assertAlmostEquals(areaScore(edge, ctx).final, 0, 1e-3);
+  assertAlmostEquals(areaScore(edge, ctx).signals.proximity!, 1 / 3, 1e-3);
+  assertAlmostEquals(areaScore(edge, ctx).final, 0.4 / 3, 1e-3);
+  assertEquals(areaScore(cand({ lat: ANCHOR.lat + 3.1 / 111.195 }), ctx).gates.radius, 0);
+  // a = 0 ignores distance: the edge place scores its Popularity alone (x^0 = 1).
   assertAlmostEquals(areaScore(edge, { ...ctx, weights: { proximity: 0, popularity: 1 } }).final, 0.4, 1e-12);
   // b = 0 ignores popularity: an unrated place at the point scores 1.
   assertEquals(

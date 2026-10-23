@@ -20,6 +20,8 @@ import {
   type AreaSourceKey,
   GENERAL_MIN_REVIEWS_MAX,
   googleCallsPerLoad,
+  HALF_KM_MAX,
+  HALF_KM_MIN,
   HALF_REVIEWS_MAX,
   HALF_REVIEWS_MIN,
   MAP_PROXIMITY_WEIGHT_MAX,
@@ -290,6 +292,10 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
     setOk(false);
     setCfg((c) => ({ ...c, params: { ...c.params, popularity: { halfReviews } } }));
   };
+  const setHalfKm = (halfKm: number) => {
+    setOk(false);
+    setCfg((c) => ({ ...c, params: { ...c.params, proximity: { halfKm } } }));
+  };
   const toggle = (key: AreaSourceKey) => map({ [key]: cfg.map[key] > 0 ? 0 : AREA_SOURCE_ON });
   const calls = googleCallsPerLoad(cfg.map);
   const allOff = AREA_SOURCE_SOURCES.every(({ key }) => !(cfg.map[key] > 0));
@@ -337,7 +343,7 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           one the guest saved with the pin, else this one (the device, or a pin
           saved without a radius); the Map uses the screen radius, and this one
           only when it has no screen to measure (no view yet, or one wider than
-          100 km). It is also Chat&apos;s search radius and reach.{" "}
+          100 km). It is also Chat&apos;s search radius.{" "}
           {MAP_RADIUS_KM_MIN}–{MAP_RADIUS_KM_MAX} km (Google&apos;s circle cap).
         </p>
       </Group>
@@ -405,6 +411,15 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             onChange={(popularityWeight) => map({ popularityWeight })}
           />
           <NumberField
+            label="Distance for half credit (km)"
+            value={params.proximity.halfKm}
+            min={HALF_KM_MIN}
+            max={HALF_KM_MAX}
+            decimals
+            disabled={off}
+            onChange={setHalfKm}
+          />
+          <NumberField
             label="Reviews for half credit"
             value={params.popularity.halfReviews}
             min={HALF_REVIEWS_MIN}
@@ -415,11 +430,13 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
         </div>
         <p className="text-muted-foreground type-meta">
           a and b rank the Map and Home alike: below 1 softens a signal,
-          above 1 sharpens it, 0 ignores it. Proximity is 1 at the point, ½ at
-          half the radius and 0 at its edge. Popularity is rating ÷ 5 ×
-          reviews ÷ (reviews + half credit): a 3★ place is 60% of a 5★ one,
-          and volume earns half credit at that many reviews; a place with no
-          Google numbers scores 0 and sinks, never disappears.
+          above 1 sharpens it, 0 ignores it. Proximity is 1 ÷ (1 + distance ÷
+          half credit): 1 at the point, ½ at that many km, ⅓ at twice it,
+          never 0, and the same whatever the radius (the radius only decides
+          who is in). Popularity is rating ÷ 5 × reviews ÷ (reviews + half
+          credit): a 3★ place is 60% of a 5★ one, and volume earns half credit
+          at that many reviews; a place with no Google numbers scores 0 and
+          sinks, never disappears.
         </p>
       </Group>
       <Group title="Map view (the Search tab)">

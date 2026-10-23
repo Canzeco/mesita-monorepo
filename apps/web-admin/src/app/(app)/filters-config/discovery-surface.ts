@@ -179,13 +179,13 @@ export const DISCOVERY_SIGNALS: readonly DiscoverySignalFact[] = [
   {
     key: "proximity",
     label: "Proximity",
-    formula: "1 − distance ÷ reach",
+    formula: "1 ÷ (1 + distance ÷ distance for half credit)",
     requires: ["coordinates"],
     query: "A point location: the Map's cross, the device or a saved pin.",
     computation: "runtime",
     cost: "Local arithmetic, free.",
     missing: "No location: not used (n/a). No coordinates: 0.",
-    normalization: "0..1 by construction: 1 at the anchor, ½ at half the reach, 0 at the reach and beyond. The reach is the request's radius (MESITA-2703): the screen radius on the Map (the same meaning at every zoom), the radius saved with the pin or the current-location radius on Home.",
+    normalization: "0..1 by construction: 1 at the point, ½ at the operator's distance for half credit (default 10 km), ⅓ at twice it, never 0 (MESITA-2706). That distance never follows the request's radius: a tight Map screen is nearly flat and Popularity decides, Home's 15 km circle bites (0.40 at the edge). The radius only decides who is a candidate.",
   },
   {
     key: "popularity",
@@ -292,7 +292,7 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     signals: ["proximity", "popularity"],
     gates: ["family", "radius"],
     factors: [],
-    scoring: "The Map and Home: Proximity^a × Popularity^b, a and b the operator's Proximity and Popularity weights (MESITA-2703); Proximity's reach is the radius: the screen radius on the Map, the radius saved with the pin or the current-location radius on Home. No location: Popularity^b. Chat ranks the same way inside the current-location radius. Ties break on distance, then id.",
+    scoring: "The Map and Home: Proximity^a × Popularity^b, a and b the operator's Proximity and Popularity weights (MESITA-2703); Proximity is ½ at the operator's distance for half credit, the same inside the Map's screen radius and Home's circle (MESITA-2706), and the radius only gates. No location: Popularity^b. Chat ranks the same way inside the current-location radius. Ties break on distance, then id.",
     keepsOrder: [],
     rules: [
       "Four sources, each switched on (20) or off (0) by the operator, Home and the Map alike: Google Popular (the prominent 20 in the circle), Google Closest (the nearest 20), Mesita Popular (the 20 with the highest Popularity), Mesita Closest (the 20 nearest). They merge into one pool, deduped by Google Place ID (a Mesita place wins its own Google id), gated, scored and ranked before any page is cut. The guest never picks a source.",

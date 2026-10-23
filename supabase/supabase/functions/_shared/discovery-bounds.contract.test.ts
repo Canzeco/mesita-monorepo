@@ -4,7 +4,7 @@
 // admin field can never disagree on what a value may be.
 import { assertEquals } from "jsr:@std/assert@1";
 import { DEEP_LIMIT_MAX, DEEP_LIMIT_MIN, DEFAULT_DEEP, SIGNAL_PARAM_BOUNDS } from "./discovery-config.ts";
-import { POPULARITY_HALF_REVIEWS_DEFAULT } from "./pipeline-signals.ts";
+import { POPULARITY_HALF_REVIEWS_DEFAULT, PROXIMITY_HALF_KM_DEFAULT } from "./pipeline-signals.ts";
 
 const admin = await Deno.readTextFile(
   new URL("../../../../apps/web-admin/src/app/(app)/filters-config/catalog.ts", import.meta.url),
@@ -23,11 +23,14 @@ Deno.test("Deep box bounds and defaults match the server", () => {
   assertEquals(m ? { limit: Number(m[1]), minSimilarity: Number(m[2]) } : null, DEFAULT_DEEP);
 });
 
-Deno.test("Area box bounds and defaults match the server (MESITA-2347; one param since MESITA-2703)", () => {
+Deno.test("Area box bounds and defaults match the server (MESITA-2347; two half points since MESITA-2706)", () => {
+  assertEquals(constant("HALF_KM_MIN"), SIGNAL_PARAM_BOUNDS.halfKm.min);
+  assertEquals(constant("HALF_KM_MAX"), SIGNAL_PARAM_BOUNDS.halfKm.max);
   assertEquals(constant("HALF_REVIEWS_MIN"), SIGNAL_PARAM_BOUNDS.halfReviews.min);
   assertEquals(constant("HALF_REVIEWS_MAX"), SIGNAL_PARAM_BOUNDS.halfReviews.max);
   const half = admin.match(
-    /const DEFAULT_SIGNAL_PARAMS: SignalParams = \{\s*popularity: \{ halfReviews: ([0-9_]+) \},\s*\};/,
+    /const DEFAULT_SIGNAL_PARAMS: SignalParams = \{\s*proximity: \{ halfKm: ([0-9_.]+) \},\s*popularity: \{ halfReviews: ([0-9_]+) \},\s*\};/,
   );
-  assertEquals(half ? Number(half[1].replaceAll("_", "")) : null, POPULARITY_HALF_REVIEWS_DEFAULT);
+  assertEquals(half ? Number(half[1].replaceAll("_", "")) : null, PROXIMITY_HALF_KM_DEFAULT);
+  assertEquals(half ? Number(half[2].replaceAll("_", "")) : null, POPULARITY_HALF_REVIEWS_DEFAULT);
 });

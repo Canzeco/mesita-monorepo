@@ -44,7 +44,7 @@ Deno.test("list-places: the circle is the screen's, else map.radiusKm; no client
   assert(webBranch.includes("const radiusKm = screenKm ?? cfg.map.radiusKm;"));
 });
 
-Deno.test("list-places: Proximity^a × Popularity^b, reach = the radius (MESITA-2504, MESITA-2703)", () => {
+Deno.test("list-places: Proximity^a × Popularity^b; the radius gates, the half-distance scores (MESITA-2504, MESITA-2703, MESITA-2706)", () => {
   assert(webBranch.includes("const weights = areaWeights(cfg.map);"));
   // The Map's reload throttle is the operator's (MESITA-2444); the dead pair is not sent.
   assert(webBranch.includes("reloadIdleSec: cfg.map.reloadIdleSec,"));

@@ -9,9 +9,11 @@
 // (Pato, MESITA-2703: "sort them based on the two weights of proximity and
 // popularity"). Geometric weights, so only the ratio a : b changes the
 // order; 0 turns a signal off (x^0 = 1, an edge place with a = 0 scores
-// Popularity^b alone). Proximity's reach is the request's radius: 1 at the
-// point, 0 at the edge. Selected was a third signal (MESITA-2439) and left
-// the score with MESITA-2703; `source` still says where a card comes from.
+// Popularity^b alone). Proximity is 1 ÷ (1 + distance ÷ halfKm): 1 at the
+// point, ½ at the operator's distance for half credit, never 0, the same
+// whatever the radius (MESITA-2706); the Radius gate alone decides who is
+// in. Selected was a third signal (MESITA-2439) and left the score with
+// MESITA-2703; `source` still says where a card comes from.
 //
 // Gates are binary eligibility (0 or 1) and stay separate from the
 // continuous signals, so diagnostics can say WHY a place is out (a gate)
@@ -45,8 +47,9 @@ export type AreaContext = {
   families: readonly string[];
   /** Popularity's volume term is ½ at this many reviews. */
   halfReviews: number;
-  /** Proximity is 0 at this distance (km): the request's radius. */
-  reachKm: number;
+  /** Proximity is ½ at this distance (km): the operator's
+   *  `params.proximity.halfKm`, fixed apart from the radius (MESITA-2706). */
+  halfKm: number;
   /** The two exponents. */
   weights: AreaWeights;
 };
@@ -159,7 +162,7 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
   const radius = loc.kind === "point"
     ? (km !== null && km <= loc.radiusKm ? 1 : 0)
     : null;
-  const prox = loc.kind === "point" ? proximity(c, loc.anchor, ctx.reachKm) : null;
+  const prox = loc.kind === "point" ? proximity(c, loc.anchor, ctx.halfKm) : null;
   const w = ctx.weights;
   const popPart = weighted(pop ?? 0, w.popularity);
   const final = loc.kind === "point" ? weighted(prox ?? 0, w.proximity) * popPart : popPart;

@@ -59,6 +59,7 @@ function editedEverywhere(live: DiscoveryConfig): DiscoveryConfig {
   return {
     ...live,
     params: {
+      proximity: { halfKm: 4 },
       popularity: { halfReviews: 250 },
     },
     map: {
@@ -106,11 +107,11 @@ describe("no Save sends a retired key (MESITA-2328, MESITA-2337)", () => {
 });
 
 describe("the Area box", () => {
-  it("moves the half-credit count (MESITA-2703: reach and Selected are gone)", async () => {
+  it("moves the two half points (MESITA-2703: reach and Selected are gone; MESITA-2706: the half-distance)", async () => {
     const live = liveConfig();
     const sent = armed(live);
     await updateDiscoveryConfig(editedEverywhere(live), ["areaSignals"]);
-    expect(sent.config?.params).toEqual({ popularity: { halfReviews: 250 } });
+    expect(sent.config?.params).toEqual({ proximity: { halfKm: 4 }, popularity: { halfReviews: 250 } });
   });
 
   it("writes map and the two params; leaves railCap, Name, Deep and the prompt (MESITA-2379)", async () => {

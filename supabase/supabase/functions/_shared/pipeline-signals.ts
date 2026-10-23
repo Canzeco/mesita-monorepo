@@ -19,20 +19,29 @@ const clamp01 = (n: number) => (n <= 0 ? 0 : n >= 1 ? 1 : n);
 
 // ── Proximity ─────────────────────────────────────────────────────────────
 
-/** Proximity's reach is the request's own radius (MESITA-2703): 1 at the
- *  point, 0 at the circle's edge, the same on Home and the Map. */
+/** Distance for half credit (km): Proximity is ½ this far from the point.
+ *  The operator's number (`params.proximity.halfKm`, MESITA-2706). 10 km is
+ *  Centro ↔ San Pedro or Cumbres in Monterrey, a 20–30 minute drive. */
+export const PROXIMITY_HALF_KM_DEFAULT = 10;
+export const PROXIMITY_HALF_KM_MIN = 0.5;
+export const PROXIMITY_HALF_KM_MAX = 50;
 
 /**
- * proximity(d) = 1 − d ÷ reach (MESITA-2347, reach MESITA-2431): 1 at the
- * anchor, ½ at half the reach, 0 at the reach and beyond, linear between.
- * A distance that is not a number cannot be placed, so it scores 0; a reach
- * that is not positive makes every place score 0 except the anchor itself.
+ * proximity(d) = 1 ÷ (1 + d ÷ D), D = the distance for half credit
+ * (MESITA-2706, Pato: the reciprocal; "la lineal no me gusta nada"): 1 at
+ * the point, ½ at D, ⅓ at 2D, never 0. It replaced 1 − d ÷ radius
+ * (MESITA-2347, MESITA-2703), which zeroed the edge of every circle, a 2 km
+ * Map screen included. D is FIXED: it never follows the request's radius,
+ * so a tight screen is nearly flat (Popularity decides) and Home's 15 km
+ * circle bites (0.40 at the edge); the Radius gate alone decides who is a
+ * candidate. A distance that is not a number cannot be placed, so it scores
+ * 0; a D that is not positive reads the default, like Popularity's K.
  */
-export function proximityFromDistance(distanceKm: number, reachKm: number): number {
+export function proximityFromDistance(distanceKm: number, halfKm: number): number {
   if (Number.isNaN(distanceKm) || distanceKm === Infinity) return 0;
   if (distanceKm <= 0) return 1;
-  if (!(Number.isFinite(reachKm) && reachKm > 0)) return 0;
-  return clamp01(1 - distanceKm / reachKm);
+  const d = Number.isFinite(halfKm) && halfKm > 0 ? halfKm : PROXIMITY_HALF_KM_DEFAULT;
+  return clamp01(1 / (1 + distanceKm / d));
 }
 
 /**
@@ -43,12 +52,12 @@ export function proximityFromDistance(distanceKm: number, reachKm: number): numb
 export function proximity(
   candidate: { lat?: number | null; lng?: number | null },
   anchor: { lat: number; lng: number } | null,
-  reachKm: number,
+  halfKm: number,
 ): number {
   if (!anchor) return 1;
   if (typeof candidate.lat !== "number" || typeof candidate.lng !== "number") return 0;
   const km = haversineKm(anchor.lat, anchor.lng, candidate.lat, candidate.lng);
-  return Number.isFinite(km) ? proximityFromDistance(km, reachKm) : 0;
+  return Number.isFinite(km) ? proximityFromDistance(km, halfKm) : 0;
 }
 
 // ── Popularity ────────────────────────────────────────────────────────────
