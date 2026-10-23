@@ -142,6 +142,10 @@ export const AREA_SOURCE_ON = 20;
 export const MAP_RADIUS_KM_MIN = 1;
 export const MAP_RADIUS_KM_MAX = 50;
 const MAP_RADIUS_KM_DEFAULT = 15;
+/** Mirrors MAP_PLACES_SHOWN_* in _shared/discovery-config.ts (MESITA-2713). */
+export const MAP_PLACES_SHOWN_MIN = 1;
+export const MAP_PLACES_SHOWN_MAX = 80;
+const MAP_PLACES_SHOWN_DEFAULT = 20;
 /** Mirrors MAP_PROXIMITY_WEIGHT_* in _shared/discovery-config.ts. */
 export const MAP_PROXIMITY_WEIGHT_MIN = 0;
 export const MAP_PROXIMITY_WEIGHT_MAX = 5;
@@ -175,6 +179,8 @@ export type MapConfig = {
   proximityWeight: number;
   /** Popularity's exponent b (MESITA-2703). */
   popularityWeight: number;
+  /** How many sorted places Home and the Map show, 1..80 (MESITA-2713). */
+  placesShown: number;
 };
 
 /**
@@ -467,6 +473,7 @@ export const DEFAULT_MAP: MapConfig = {
   googleMinReviews: 0,
   proximityWeight: MAP_PROXIMITY_WEIGHT_DEFAULT,
   popularityWeight: MAP_PROXIMITY_WEIGHT_DEFAULT,
+  placesShown: MAP_PLACES_SHOWN_DEFAULT,
 };
 
 const DEFAULT_NAME_FAST: NameFastConfig = {
@@ -742,5 +749,8 @@ function coerceMap(raw: unknown): MapConfig {
           MAP_PROXIMITY_WEIGHT_MAX,
         ) * 100,
       ) / 100,
+    placesShown: Math.round(
+      num(m.placesShown, DEFAULT_MAP.placesShown, MAP_PLACES_SHOWN_MIN, MAP_PLACES_SHOWN_MAX),
+    ),
   };
 }

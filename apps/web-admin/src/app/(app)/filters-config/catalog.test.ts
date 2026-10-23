@@ -82,6 +82,11 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
     expect(googleCallsPerLoad(m)).toBe(1);
     expect(googleCallsPerLoad(DEFAULT_MAP)).toBe(2);
     expect(coerceConfig({ map: { popularityWeight: 9 } }).map.popularityWeight).toBe(5);
+    // Places shown (MESITA-2713): whole, 1..80, default 20.
+    expect(DEFAULT_MAP.placesShown).toBe(20);
+    expect(coerceConfig({ map: { placesShown: 0 } }).map.placesShown).toBe(1);
+    expect(coerceConfig({ map: { placesShown: 200 } }).map.placesShown).toBe(80);
+    expect(coerceConfig({ map: { placesShown: 33.4 } }).map.placesShown).toBe(33);
   });
 
   it("filters go too: list-places' listed lanes were their last reader (MESITA-2337)", () => {

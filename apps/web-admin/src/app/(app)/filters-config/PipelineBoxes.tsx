@@ -22,6 +22,8 @@ import {
   googleCallsPerLoad,
   HALF_KM_MAX,
   HALF_KM_MIN,
+  MAP_PLACES_SHOWN_MAX,
+  MAP_PLACES_SHOWN_MIN,
   MAP_PROXIMITY_WEIGHT_MAX,
   MAP_PROXIMITY_WEIGHT_MIN,
   MAP_RADIUS_KM_MAX,
@@ -361,6 +363,21 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             onChange={(googleMinReviews) => map({ googleMinReviews })}
           />
         </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <NumberField
+            label="Places shown"
+            value={cfg.map.placesShown}
+            min={MAP_PLACES_SHOWN_MIN}
+            max={MAP_PLACES_SHOWN_MAX}
+            disabled={off}
+            onChange={(placesShown) => map({ placesShown })}
+          />
+        </div>
+        <p className="text-muted-foreground type-meta">
+          The sources bring up to {MAP_PLACES_SHOWN_MAX} places (4 × 20); after the
+          merge and the sort, Home and the Map show the top this many.{" "}
+          {MAP_PLACES_SHOWN_MIN}–{MAP_PLACES_SHOWN_MAX}.
+        </p>
         <p className="type-meta font-medium">
           Billed Google calls per load: {calls}
         </p>
