@@ -59,6 +59,25 @@ Deno.test("validatePlaceProfilePatch: accepts reservations_enabled as a boolean 
   assertEquals(bad.error, "reservations_enabled must be a boolean");
 });
 
+// MESITA-2739 / #2729 added gate_rev 2 keys to PLACE_PROFILE_PATCH_KEYS without
+// checkPlaceProfileField branches — create-place's profile_insert rejected them
+// ("unknown place field: google_primary_type"). Same class as #1395 above.
+Deno.test("validatePlaceProfilePatch: accepts gate_rev 2 taxonomy and payment flags (MESITA-2741)", () => {
+  assert(validatePlaceProfilePatch({
+    google_primary_type: "restaurant",
+    google_types: ["restaurant", "food"],
+    mesita_categories: [{ key: "dinner", label: "Dinner" }],
+    prepay_enabled: false,
+    payments_enabled: true,
+  }).ok);
+  assert(validatePlaceProfilePatch({ google_primary_type: null }).ok);
+  assert(validatePlaceProfilePatch({ google_types: null, mesita_categories: null }).ok);
+  const badPrepay = validatePlaceProfilePatch({ prepay_enabled: "no" });
+  assert(!badPrepay.ok);
+  assertEquals(badPrepay.error, "prepay_enabled must be a boolean");
+  assert(!validatePlaceProfilePatch({ google_types: "restaurant" }).ok);
+});
+
 // MESITA-2144: these columns stop being written ahead of their DROP. The door
 // refuses them by name, so a writer that still sends one fails loudly here
 // instead of 42703-ing once the column is gone.
@@ -460,6 +479,27 @@ Deno.test("writePlace: place_profiles insert with select returns the re-read row
   });
   assert(res.ok);
   assertEquals(res.row, { id: "place-1" });
+});
+
+Deno.test("writePlace: place_profiles insert accepts gate_rev 2 fields on the create path (MESITA-2741)", async () => {
+  const { admin, calls } = fakePlaceAdmin({ row: { id: "place-1" } });
+  const patch = {
+    google_place_id: "ChIJ123",
+    google_primary_type: "restaurant",
+    google_types: ["restaurant"],
+    mesita_categories: [],
+    prepay_enabled: false,
+    payments_enabled: false,
+    category: "restaurant",
+  };
+  const res = await writePlace(admin, {
+    table: "place_profiles",
+    mode: "insert",
+    patch,
+    select: "id",
+  });
+  assert(res.ok, res.ok ? undefined : res.error);
+  assertEquals(calls[0].value, patch);
 });
 
 Deno.test("writePlace: places insert carries the shared id alongside the patch", async () => {

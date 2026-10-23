@@ -337,7 +337,7 @@ const PLACE_PLAIN_STRING_KEYS = new Set<string>([
   "didi_food_url", "embedding_source_hash", "description",
   "menu_pdf_url", "menu_pdf_name",
   "zone", "city", "category_label",
-  "embedding_source_text", "google_name", "mesita_name",
+  "embedding_source_text", "google_name", "mesita_name", "google_primary_type",
   "reservation_target", "embedding", "name_embedding",
   "name_embedding_hash", "google_place_id",
   "enriched_at", "business_state_at",
@@ -364,6 +364,7 @@ const PLACE_NONNEG_INT_KEYS = new Set<string>([
 // any future writer), not just the two hand-patched call sites.
 const PLACE_JSON_KEYS = new Set<string>([
   "hours", "enrichment_sources", "menus", "products", "google_address", "source_sync",
+  "google_types", "mesita_categories",
 ]);
 // Content-validated JSONB keys — nullable() wraps each schema because the
 // column itself is nullable and a patch clearing it to null must stay legal
@@ -389,6 +390,8 @@ const PLACE_STRING_ARRAY_KEYS = new Set<string>([
 // same day).
 const PLACE_PROFILE_BOOLEAN_KEYS = new Set<string>([
   "reservations_enabled",
+  "prepay_enabled",
+  "payments_enabled",
   "google_found",
   "instagram_found",
   "facebook_found",
