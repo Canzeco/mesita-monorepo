@@ -483,17 +483,13 @@ export function CatalogRails() {
               <Fragment key={place.id}>
                 {/* FOR THE MOMENT (Pato, MESITA-2708: "also display the
                     score and sub scores in the home feed"): the Search
-                    map's tag above each tile, from the server's breakdown.
-                    It takes the tile's place, the way Search hands it
-                    (MESITA-2707 made the tag read `place` for the Selected
-                    tag; MESITA-2712 caught Home up), so a Selected place
-                    wears that tag here too. Remove with the Search tag once
-                    the ranking is verified. */}
+                    map's tag above each tile, from the server's breakdown;
+                    Selected is its `selected` number, no pill (MESITA-2719).
+                    Remove with the Search tag once the ranking is verified. */}
                 {place.area ? (
                   <li className="-mb-1.5" data-home-score-tag>
                     <RailScoreTag
                       place={{
-                        selected: place.selected,
                         score: {
                           proximity: place.area.signals.proximity,
                           popularity: place.area.signals.popularity,
