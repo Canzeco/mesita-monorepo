@@ -52,7 +52,10 @@ export function SearchMapPinLabels({
 }) {
   const map = useMap();
   const dataRef = useRef({ items, focusedId });
-  dataRef.current = { items, focusedId };
+
+  useEffect(() => {
+    dataRef.current = { items, focusedId };
+  }, [items, focusedId]);
 
   useEffect(() => {
     const maps = mapsNamespace();
@@ -103,7 +106,7 @@ export function SearchMapPinLabels({
         const el = document.createElement("div");
         el.textContent = c.title;
         el.className =
-          "absolute max-w-[10.5rem] truncate rounded-md bg-card/95 px-2 py-0.5 text-[11px] font-medium text-foreground shadow-sm backdrop-blur-sm";
+          "type-label absolute max-w-[10.5rem] truncate rounded-md bg-card/95 px-2 py-0.5 font-medium text-foreground shadow-sm backdrop-blur-sm";
         el.style.left = `${rect.left}px`;
         el.style.top = `${rect.top}px`;
         el.style.width = `${rect.right - rect.left}px`;
