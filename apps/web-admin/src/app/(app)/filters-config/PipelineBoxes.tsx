@@ -321,7 +321,7 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             (a place found twice is one card), then Home and the Map rank it the
             same way: score = Proximity<sup>a</sup> × Popularity<sup>b</sup>,
             × the Selected factor for a Selected place. No point: Mesita
-            Popular alone, by Popularity.
+            Popular alone, by Popularity<sup>b</sup> × the Selected factor.
           </p>
         </>
       }
@@ -397,9 +397,9 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           Search bar and admin Find&apos;s Autocomplete column); 0 is off. At{" "}
           {cfg.map.googleMinReviews}, most of Google Closest&apos;s nearest
           places are corner spots under it. Mesita Popular is the 20 Mesita
-          places in the circle with the highest Popularity (a Selected
-          place&apos;s × the Selected factor), Mesita Closest the 20 nearest;
-          both are free.
+          places in the circle with the highest Popularity<sup>b</sup> × the
+          Selected factor (the score without Proximity), Mesita Closest the 20
+          nearest; both are free.
         </p>
         {allOff ? (
           <p className="text-destructive type-meta">

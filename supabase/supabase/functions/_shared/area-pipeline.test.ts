@@ -995,6 +995,28 @@ Deno.test("Mesita Popular counts a Selected row's Popularity × the Selected fac
   assertEquals((await run(1)).includes("picked"), false);
 });
 
+Deno.test("Mesita Popular picks by Popularity^b × the Selected factor, so the pick agrees with the score whatever b (MESITA-2717)", async () => {
+  // 21 unmarked rows at Popularity ln(1 + 2100 × 4.6) ≈ 9.18, one Selected
+  // row; every row at the centre, so the score is Popularity^b × s.
+  const busy = Array.from({ length: 21 }, (_, i) =>
+    mrow(`u${String(i).padStart(2, "0")}`, { selected: false, google_stars_overall: 4.6, google_review_count: 2100 })
+  );
+  const run = async (picked: ReturnType<typeof mrow>, popularityWeight: number) =>
+    ids((await selectAreaPool(deps({
+      apiKey: null,
+      sources: { mesitaClosest: 0 },
+      weights: { popularityWeight, selectedFactor: 3 },
+      mesitaRows: [...busy, picked],
+    }).d)).places);
+  // b = 0.5: ln 21 ≈ 3.04 → √3.04 × 3 ≈ 5.23 beats √9.18 ≈ 3.03, so it is
+  // picked and leads (Popularity × 3 = 9.13 would have left it out).
+  assertEquals((await run(mrow("thin", { google_stars_overall: 4.0, google_review_count: 5 }), 0.5))[0], "thin");
+  // b = 2: ln 61 ≈ 4.11 → 4.11² × 3 ≈ 50.7 loses to 9.18² ≈ 84.2, so the 20
+  // slots go to rows that outscore it (Popularity × 3 = 12.3 would have
+  // taken one).
+  assertEquals((await run(mrow("mid", { google_stars_overall: 4.0, google_review_count: 15 }), 2)).includes("mid"), false);
+});
+
 Deno.test("Mesita Closest keeps the 20 nearest; ties by id", async () => {
   const rows = Array.from({ length: 22 }, (_, i) =>
     mrow(`n${String(i).padStart(2, "0")}`, { lat: CENTER.lat + (i + 1) / 1000, google_stars_overall: 5 - i / 10 })

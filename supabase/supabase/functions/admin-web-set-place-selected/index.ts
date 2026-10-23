@@ -13,8 +13,9 @@
 // admin State box and the Single Place table. Enriched is untouched: a place
 // can be Selected before any Enrich run, or Enriched and not Selected.
 //
-// Nothing scores on it (MESITA-2703 retired the factor) and no RLS policy
-// reads it, so the toggle is reversible and needs no confirm.
+// The Area score multiplies a Selected place by the operator's Selected
+// factor (MESITA-2717, after MESITA-2703 had retired the old one) and no RLS
+// policy reads it, so the toggle is reversible and needs no confirm.
 //
 // Body:     { placeId | projectId, selected: boolean }
 // Response: { ok: true, selected, place }

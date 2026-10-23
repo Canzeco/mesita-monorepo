@@ -153,6 +153,16 @@ function popularityOrNull(c: AreaCandidate): number | null {
   return logPopularity(c);
 }
 
+/** The score without Proximity: Popularity^b × the Selected factor. The
+ *  whole score with no location, and what Mesita Popular picks by, so the
+ *  pick and the ranking agree whatever b (MESITA-2717). */
+export function popularPart(
+  c: AreaCandidate,
+  ctx: Pick<AreaContext, "weights" | "selectedFactor">,
+): number {
+  return weighted(popularityOrNull(c) ?? 0, ctx.weights.popularity) * selectedFactor(c, ctx);
+}
+
 /** One candidate's Area breakdown — the wire's `area` object (MESITA-2379).
  *  `null` is "n/a", never 0. */
 export type AreaDiagnostics = {
@@ -195,9 +205,9 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
     : null;
   const prox = loc.kind === "point" ? proximity(c, loc.anchor, ctx.halfKm) : null;
   const w = ctx.weights;
-  const popPart = weighted(pop ?? 0, w.popularity);
   const sel = selectedFactor(c, ctx);
-  const final = (loc.kind === "point" ? weighted(prox ?? 0, w.proximity) * popPart : popPart) * sel;
+  const popPart = popularPart(c, ctx);
+  const final = loc.kind === "point" ? weighted(prox ?? 0, w.proximity) * popPart : popPart;
   // THE POPULARITY SCREEN (Pato, MESITA-2714: "if popularity score is
   // below 3 you cannot be shown … it doesn't matter what"): Google or
   // Mesita, Selected or not; no Google numbers reads 0, so it is out too.

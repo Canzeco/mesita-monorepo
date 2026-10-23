@@ -198,7 +198,7 @@ export type MapConfig = {
    * THE SELECTED FACTOR (Pato, MESITA-2717: "if Select, then a factor to
    * multiply value of place. not select is 1, select is 3"): a Mesita
    * Selected place's Area score is multiplied by it, every other place's
-   * by 1, and Mesita Popular counts its Popularity × it.
+   * by 1, and Mesita Popular picks by Popularity^b × it.
    * `MAP_SELECTED_FACTOR_MIN`..`MAX`, one decimal, default 3; 1 is off.
    */
   selectedFactor: number;

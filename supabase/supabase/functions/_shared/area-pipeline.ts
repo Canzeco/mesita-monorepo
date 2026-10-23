@@ -9,7 +9,7 @@
 //   (point, radius)
 //     ├─ Google Popular   Nearby, rank POPULARITY, the whole circle  ─┐ reviews floor per call
 //     ├─ Google Closest   Nearby, rank DISTANCE, the whole circle    ─┤ → owned lookup by Place ID
-//     ├─ Mesita Popular   top 20 by Popularity × s in the circle     ─┤
+//     ├─ Mesita Popular   top 20 by Popularity^b × s in the circle   ─┤
 //     └─ Mesita Closest   20 nearest in the circle                   ─┘
 //   merge (one card per place; an owned hit is the Mesita row; `foundBy`
 //   keeps every source that found it) → gates → Proximity^a × Popularity^b
@@ -59,8 +59,8 @@ import {
   insideBounds,
   knownFamilies,
   type LatLng,
+  popularPart,
   rankArea,
-  selectedFactor,
 } from "./area-score.ts";
 import { logPopularity, PROXIMITY_HALF_KM_DEFAULT } from "./pipeline-signals.ts";
 import {
@@ -94,8 +94,9 @@ export function areaGoogleTypes(families: readonly string[]): readonly string[] 
   return families.length > 0 ? nearbyTypesForSupers(families) : FEED_GOOGLE_TYPES;
 }
 
-/** The one score every Area caller ranks by (MESITA-2703): Proximity^a ×
- *  Popularity^b, a = `map.proximityWeight`, b = `map.popularityWeight`. */
+/** The two exponents of the one score every Area caller ranks by
+ *  (MESITA-2703): Proximity^a × Popularity^b × the Selected factor
+ *  (MESITA-2717), a = `map.proximityWeight`, b = `map.popularityWeight`. */
 export function areaWeights(
   map: Pick<DiscoveryConfig["map"], "proximityWeight" | "popularityWeight">,
 ): AreaWeights {
@@ -513,10 +514,12 @@ const MESITA_SOURCE_MAX = 20;
 /**
  * Mesita Popular and Mesita Closest (MESITA-2703), picked in memory from the
  * caller's radius-boxed read (capped at `NEARBY_SCAN_LIMIT`, ordered by id;
- * the EF logs `mesitaCapped`). Popular ranks by raw Popularity × the Selected
- * factor, whatever the exponents, so a Selected row competes for a slot with
- * the factor it scores with (MESITA-2717); Closest by distance; both then by
- * id. Closest needs a point.
+ * the EF logs `mesitaCapped`). Popular ranks by the score's own Popularity
+ * part, Popularity^b × the Selected factor, so a Selected row competes for a
+ * slot with the factor it scores with and the pick agrees with the ranking
+ * whatever b (MESITA-2717); equal parts (b = 0, or rows with one factor) fall
+ * back to raw Popularity. Closest ranks by distance; both then by id.
+ * Closest needs a point.
  */
 function mesitaItems<T extends OwnedRow>(
   deps: AreaPoolDeps<T>,
@@ -540,11 +543,11 @@ function mesitaItems<T extends OwnedRow>(
   const byId = (a: { item: PoolItem }, b: { item: PoolItem }) =>
     a.item.candidate.id.localeCompare(b.item.candidate.id);
   const picks: PoolItem[] = [];
-  const popularValue = (c: AreaCandidate) => logPopularity(c) * selectedFactor(c, ctx);
   if (wantPopular) {
     const top = [...open]
       .sort((a, b) =>
-        popularValue(b.item.candidate) - popularValue(a.item.candidate) ||
+        popularPart(b.item.candidate, ctx) - popularPart(a.item.candidate, ctx) ||
+        logPopularity(b.item.candidate) - logPopularity(a.item.candidate) ||
         byId(a, b)
       )
       .slice(0, MESITA_SOURCE_MAX);
