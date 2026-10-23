@@ -378,9 +378,9 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
         </div>
         <p className="text-muted-foreground type-meta">
           The sources bring up to {MAP_PLACES_SHOWN_MAX} places (4 × 20); after the
-          merge and the sort, the Map (Search tab) shows the top Map places
-          shown and Home the top Catalog places shown, in total across its
-          rails. {MAP_PLACES_SHOWN_MIN}–{MAP_PLACES_SHOWN_MAX}.
+          merge and the sort, the Map (Search tab) shows at most Map places
+          shown and Home at most Catalog places shown.{" "}
+          {MAP_PLACES_SHOWN_MIN}–{MAP_PLACES_SHOWN_MAX}.
         </p>
         <p className="type-meta font-medium">
           Billed Google calls per load: {calls}
