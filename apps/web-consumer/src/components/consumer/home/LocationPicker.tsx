@@ -57,6 +57,7 @@ import {
 } from "@/lib/use-user-location";
 import {
   displayName,
+  formatKm,
   evictionFor,
   useSavedLocations,
   type SavedLocation,
@@ -68,6 +69,7 @@ import {
   useActiveLocationKey,
 } from "@/lib/active-location";
 import { PinPicker, type PinPickerMode } from "@/components/consumer/home/PinPicker";
+import { useOperatorRadiusKm } from "@/lib/operator-radius";
 import { cn, errMsg } from "@/lib/utils";
 
 /** Home's location control (MESITA-2480): a 36px rounded box on the white
@@ -167,6 +169,8 @@ export function LocationPicker() {
   // until the answer lands (MESITA-2615), then closes on a fix.
   const [wantFix, setWantFix] = useState(false);
   const active = useActiveLocation();
+  // Every row says how far Home searches from it (MESITA-2703).
+  const operatorKm = useOperatorRadiusKm();
   const activeKey = useActiveLocationKey();
   const savedLocations = useSavedLocations();
   const supabase = useBrowserSupabase();
@@ -416,7 +420,10 @@ export function LocationPicker() {
           >
             {row({
               key: "here",
-              label: locationLabel(null, coords !== null, locating, hereName),
+              label:
+                coords !== null
+                  ? `${locationLabel(null, true, locating, hereName)} · ${formatKm(operatorKm)} km`
+                  : locationLabel(null, false, locating, hereName),
               icon: locatingHere ? (
                 <Loader2 className={cn(ICON, "animate-spin")} aria-hidden />
               ) : (
@@ -464,7 +471,9 @@ export function LocationPicker() {
             {savedLocations.map((l) =>
               row({
                 key: savedLocationKey(l.id),
-                label: displayName(l),
+                label: l.unconfirmed
+                  ? displayName(l)
+                  : `${displayName(l)} · ${formatKm(l.radiusKm ?? operatorKm)} km`,
                 detail: l.formattedAddress,
                 icon: (
                   <Bookmark className={ICON} strokeWidth={2.25} aria-hidden />

@@ -76,6 +76,9 @@ import { EmptyState } from "@/components/shared";
 import { CatalogTile } from "./CatalogTile";
 import { DiscoverFallback, PLACES_LIST } from "./DiscoverFallback";
 import { useActiveLocation } from "@/lib/active-location";
+import { useOperatorRadiusKm } from "@/lib/operator-radius";
+import { nextRadiusChip } from "@/lib/pin-picker-state";
+import { formatKm } from "@/lib/saved-locations";
 import { useSocialHasNew } from "@/lib/use-social-has-new";
 import { cn, errMsg } from "@/lib/utils";
 import { placesFeed } from "@/lib/catalog-feed";
@@ -210,7 +213,19 @@ export function CatalogRails() {
   // No fix and no saved location, once the browser has answered: the city's
   // centre (MESITA-2472). Before it answers: nothing yet (a skeleton).
   const onCityFallback = origin === null && coords === null && locationSettled;
-  const from = origin ?? coords ?? (onCityFallback ? MONTERREY_CENTER : null);
+  const base = origin ?? coords ?? (onCityFallback ? MONTERREY_CENTER : null);
+  // THE RADIUS (MESITA-2703): a saved pin's own (`origin.radiusKm`), else
+  // the operator's current-location radius, which the server applies when
+  // none is sent. "Search N km" on an empty pool widens THIS visit only: it
+  // is keyed to the location, never written to the pin.
+  const operatorKm = useOperatorRadiusKm();
+  const baseKey = areaPoolKey(base);
+  const [widen, setWiden] = useState<{ key: string; km: number } | null>(null);
+  const widenKm = widen && widen.key === baseKey ? widen.km : null;
+  const baseRadiusKm = origin?.radiusKm ?? null;
+  const from = base && widenKm !== null ? { ...base, radiusKm: widenKm } : base;
+  const searchedKm = widenKm ?? baseRadiusKm ?? operatorKm;
+  const widerKm = nextRadiusChip(searchedKm, operatorKm);
   const waitingForFix = origin === null && coords === null && !locationSettled;
   // One ranking for every chip, the Map's (MESITA-2516): the question is
   // the place and the family. Saved and the Social tab read no pool, so they
@@ -516,12 +531,29 @@ export function CatalogRails() {
   if (pool === null) return shell(<DiscoverFallback />);
 
   const label = chips.find((c) => c.key === chip)?.label ?? "Places";
+  // An empty pool around a point says how far it looked and offers the next
+  // chip (MESITA-2703); any other empty (no point, every source off, Google
+  // down) keeps the plain copy, and the server log tells those apart.
+  const pointEmpty = pool.shape === "unified" && pool.kind === "point";
   const empty = isEveryFamily(chip) ? (
-    <EmptyState
-      icon={Compass}
-      title="No places here yet"
-      description="Try another location, or check back soon."
-    />
+    pointEmpty ? (
+      <EmptyState
+        icon={Compass}
+        title={`Nothing within ${formatKm(searchedKm)} km`}
+        description="Try a wider search, or another location."
+        action={
+          widerKm !== null && base
+            ? { label: `Search ${formatKm(widerKm)} km`, onClick: () => setWiden({ key: baseKey, km: widerKm }) }
+            : undefined
+        }
+      />
+    ) : (
+      <EmptyState
+        icon={Compass}
+        title="No places here yet"
+        description="Try another location, or check back soon."
+      />
+    )
   ) : (
     <EmptyState
       icon={Compass}

@@ -75,7 +75,7 @@ describe("One ranking, no prefer (MESITA-2516)", () => {
       "const onCityFallback = origin === null && coords === null && locationSettled;",
     );
     expect(rails).toContain(
-      "const from = origin ?? coords ?? (onCityFallback ? MONTERREY_CENTER : null);",
+      "const base = origin ?? coords ?? (onCityFallback ? MONTERREY_CENTER : null);",
     );
     expect(rails).toContain("const requestKey = `${areaPoolKey(from)}|${");
     const effect = rails.slice(

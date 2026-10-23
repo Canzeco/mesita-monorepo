@@ -11,6 +11,7 @@ import { EFError, invokeEF } from "./_invoke";
 import { placeRowToDetail } from "@/lib/adapters/place-to-detail";
 import type { ResolvedTag } from "@/lib/adapters/place-to-detail";
 import type { PlaceDetail } from "@/lib/place-detail";
+import { rememberOperatorRadiusKm } from "@/lib/operator-radius";
 
 export type Place = {
   /** Server's answer: did an Enrich run complete (`enriched_at` set,
@@ -127,16 +128,16 @@ export type Place = {
 export type MapScore = {
   proximity: number | null;
   popularity: number | null;
-  selected: number;
   final: number;
+  /** The sources that found the place (MESITA-2703); diagnostics only. */
+  foundBy?: string[];
 };
 
-/** The exponents the Search map scored with: Proximity^a × Popularity^1 ×
- *  Selected^1 (MESITA-2504). */
+/** The exponents the Search map scored with: Proximity^a × Popularity^b
+ *  (MESITA-2703). */
 export type MapWeights = {
   proximity: number;
   popularity: number;
-  selected: number;
 };
 
 type ViewportPlaces = {
@@ -166,7 +167,7 @@ export type MapBounds = {
  * Web Search posts the camera centre, the visible `bounds` and Families;
  * the zoom decides how wide the set is. No bounds (or a box the EF finds
  * too wide) falls back to the centre inside the operator's `map.radiusKm`.
- * It never posts a count (operator `map.mesitaPlaces`, one Google call per
+ * It never posts a count (the operator's four Area sources decide; at most two Google calls per
  * load). `google: true` is web Search saying it CAN render a Google-only
  * stub, and the EF refuses a call without it (MESITA-2337).
  */
@@ -282,24 +283,31 @@ export type AreaDiagnostics = {
     reviews: 1 | null;
   };
   signals: { proximity: number | null; popularity: number | null };
-  selected: number;
   source: "selected" | "mesita" | "google";
-  /** The mode's exponents (MESITA-2428; `selected` since MESITA-2439);
-   *  absent from an older EF. */
-  weights?: { proximity: number; popularity: number; selected?: number };
-  base: number;
+  /** The two exponents (MESITA-2703); absent from an older EF. */
+  weights?: { proximity: number; popularity: number };
+  /** The sources that found the place (MESITA-2703); diagnostics only,
+   *  no card draws it. */
+  foundBy?: string[];
   final: number;
   formula: "point" | "none";
 };
 
 /** Where Places searches from: always a point (MESITA-2501) — the device, a
- *  confirmed saved pin, or the city's centre. Saved areas are gone. */
-export type AreaOrigin = { lat: number; lng: number };
+ *  confirmed saved pin, or the city's centre — and, for a pin, its radius
+ *  (MESITA-2703). No radius = the operator's current-location radius. */
+export type AreaOrigin = { lat: number; lng: number; radiusKm?: number | null };
 
 /** The Feed's answer: the one ranked pool, or — from an Edge Function that
  *  predates MESITA-2379 — the old rails. */
 export type AreaPool =
-  | { shape: "unified"; kind: "point" | "none"; places: Place[] }
+  | {
+      shape: "unified";
+      kind: "point" | "none";
+      places: Place[];
+      /** The radius the server searched (km), when it says (MESITA-2703). */
+      radiusKm?: number;
+    }
   | { shape: "legacy"; rails: CatalogRail[] };
 
 function cleanPlace(place: Place): Place {
@@ -325,18 +333,26 @@ export async function apiListAreaPool(
 ): Promise<AreaPool> {
   const data = await invokeEF<{
     places?: Place[];
-    location?: { kind?: "point" | "none" };
+    location?: { kind?: "point" | "none"; radiusKm?: number; operatorRadiusKm?: number };
     rails?: CatalogRail[];
   }>(client, "consumer-web-list-catalog", {
     unified: true,
     ...(familyKeys.length > 0 ? { familyKeys: [...familyKeys] } : {}),
     ...(origin ? { lat: origin.lat, lng: origin.lng, google: true } : {}),
+    // The pin's own radius; none = the operator's (MESITA-2703).
+    ...(origin && typeof origin.radiusKm === "number" && Number.isFinite(origin.radiusKm)
+      ? { radiusKm: origin.radiusKm }
+      : {}),
   });
+  const op = data.location?.operatorRadiusKm;
+  if (typeof op === "number" && Number.isFinite(op)) rememberOperatorRadiusKm(op);
   if (Array.isArray(data.places)) {
+    const km = data.location?.radiusKm;
     return {
       shape: "unified",
       kind: data.location?.kind ?? (origin ? "point" : "none"),
       places: data.places.map(cleanPlace),
+      ...(typeof km === "number" && Number.isFinite(km) ? { radiusKm: km } : {}),
     };
   }
   return {

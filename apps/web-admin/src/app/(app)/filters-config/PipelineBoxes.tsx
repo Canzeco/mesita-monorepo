@@ -6,10 +6,8 @@
 // Catalog and Map are views of the Area pipeline, ranked one way, so their
 // knobs sit in the Area box; the Chat Agent is Deep's caller, so its prompt sits in the Deep box.
 
-import { Hash, MapPin, ScanSearch, Search, Sparkles } from "lucide-react";
+import { MapPin, ScanSearch, Search, Sparkles } from "lucide-react";
 import {
-  ChoiceField,
-  ChoicePill,
   NumberField,
   SaveRow,
   Switch,
@@ -18,14 +16,12 @@ import { useConfigEditor, type ConfigSeed } from "@/components/admin-ui/use-conf
 import { formatShortDate } from "@/lib/format";
 import { getDiscoveryConfig, updateDiscoveryConfig, type DiscoverySlice } from "./actions";
 import {
+  AREA_SOURCE_ON,
+  type AreaSourceKey,
   GENERAL_MIN_REVIEWS_MAX,
-  GOOGLE_PULL_STOPS,
+  googleCallsPerLoad,
   HALF_REVIEWS_MAX,
   HALF_REVIEWS_MIN,
-  REACH_KM_MAX,
-  REACH_KM_MIN,
-  SELECTED_OTHER_MAX,
-  SELECTED_OTHER_MIN,
   MAP_PROXIMITY_WEIGHT_MAX,
   MAP_PROXIMITY_WEIGHT_MIN,
   MAP_RADIUS_KM_MAX,
@@ -51,6 +47,14 @@ export const BOX_SLICES = {
   name: ["nameDeep", "nameLocations", "nameIdle"],
   area: ["map", "areaSignals"],
 } as const satisfies Record<string, readonly DiscoverySlice[]>;
+
+/** The Area box's four switches, in the order the pipeline runs them. */
+const AREA_SOURCE_SOURCES: ReadonlyArray<{ key: AreaSourceKey; label: string }> = [
+  { key: "googlePopular", label: "Google Popular" },
+  { key: "googleClosest", label: "Google Closest" },
+  { key: "mesitaPopular", label: "Mesita Popular" },
+  { key: "mesitaClosest", label: "Mesita Closest" },
+];
 
 function useDiscoveryEditor(seed: ConfigSeed<DiscoveryConfig>) {
   return useConfigEditor({ ...seed, load: getDiscoveryConfig });
@@ -286,14 +290,9 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
     setOk(false);
     setCfg((c) => ({ ...c, params: { ...c.params, popularity: { halfReviews } } }));
   };
-  const setSelectedOther = (otherFactor: number) => {
-    setOk(false);
-    setCfg((c) => ({ ...c, params: { ...c.params, selected: { otherFactor } } }));
-  };
-  const setReachKm = (reachKm: number) => {
-    setOk(false);
-    setCfg((c) => ({ ...c, params: { ...c.params, proximity: { reachKm } } }));
-  };
+  const toggle = (key: AreaSourceKey) => map({ [key]: cfg.map[key] > 0 ? 0 : AREA_SOURCE_ON });
+  const calls = googleCallsPerLoad(cfg.map);
+  const allOff = AREA_SOURCE_SOURCES.every(({ key }) => !(cfg.map[key] > 0));
   const dirty = !same(cfg.map, saved.map) || !same(params, saved.params);
   return (
     <PipelineBox
@@ -304,100 +303,57 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
       explanation={
         <>
           <p>
-            Places around a <strong>point</strong>: the Map&apos;s cross, or on
-            Home the device or a saved pin. No point, no Google: Home lists
-            Mesita&apos;s own places by Popularity alone. There is no Territory:
-            no view searches a rectangle or a saved area (MESITA-2500,
-            MESITA-2603). Google and Mesita candidates join one pool: merged,
-            deduped by Google Place ID, gated, scored and ranked before any page
-            is cut. The source is never a guest filter.
+            Places around a <strong>point</strong> inside a <strong>radius</strong>:
+            the Map&apos;s cross and its screen radius (the cross&apos;s distance to
+            the nearest edge of the visible map), or on Home a saved pin and the
+            radius the guest picked for it, else the device and the
+            current-location radius below. One radius for Google and Mesita.
           </p>
           <p className="mt-2">
-            The Map (the Search tab) and Home&apos;s Places rank one way
-            (MESITA-2504, MESITA-2516): score = Proximity<sup>a</sup> ×
-            Popularity<sup>1</sup> × Selected<sup>1</sup>. On the Map the radius and Proximity&apos;s
-            reach are the screen&apos;s (the cross&apos;s distance to the nearest
-            edge of the visible map), so 1 at the cross and 0 at the edge mean
-            the same at every zoom. Home has no screen, so it reads the Home
-            radius and the Home proximity reach below.
+            Four sources, each on or off: Google Popular, Google Closest, Mesita
+            Popular and Mesita Closest, 20 places each. They merge into one pool
+            (a place found twice is one card), then Home and the Map rank it the
+            same way: score = Proximity<sup>a</sup> × Popularity<sup>b</sup>.
+            No point: Mesita Popular alone, by Popularity.
           </p>
         </>
       }
       save={<Save editor={editor} dirty={dirty} slices={BOX_SLICES.area} />}
     >
       <Group title="Sources">
-        <SwitchRow
-          label="Buy Google places"
-          on={cfg.map.googleFill}
-          disabled={off}
-          onClick={() => map({ googleFill: !cfg.map.googleFill })}
-        />
-        <p className="text-muted-foreground type-meta">
-          Off: the Map and Home show Mesita places only and nothing is billed.
-          On: Google Nearby Search fills the pool, within the per-guest quota
-          in the Always-on rules.
+        {AREA_SOURCE_SOURCES.map(({ key, label }) => (
+          <SwitchRow
+            key={key}
+            label={label}
+            on={cfg.map[key] > 0}
+            disabled={off}
+            onClick={() => toggle(key)}
+          />
+        ))}
+        <p className="type-meta font-medium">
+          Billed Google calls per load: {calls}
         </p>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <ChoiceField
-            icon={<Hash className="mt-0.5 h-4 w-4 shrink-0" />}
-            label="Google places on the Map"
-            hint="20 · 40 · 60 = 1 / 2 / 3 billed Nearby calls per Map load (a place two calls return counts once). The Map reloads each time the guest stops moving it."
-          >
-            <div className="flex flex-wrap gap-2">
-              {GOOGLE_PULL_STOPS.map((stop) => (
-                <ChoicePill
-                  key={stop}
-                  active={cfg.map.mapGooglePlaces === stop}
-                  disabled={off}
-                  onClick={() => map({ mapGooglePlaces: stop })}
-                >
-                  {stop}
-                </ChoicePill>
-              ))}
-            </div>
-          </ChoiceField>
-          <ChoiceField
-            icon={<Hash className="mt-0.5 h-4 w-4 shrink-0" />}
-            label="Google places on Home"
-            hint="20 · 40 · 60 = 1 / 2 / 3 billed Nearby calls per Home load (a place two calls return counts once)."
-          >
-            <div className="flex flex-wrap gap-2">
-              {GOOGLE_PULL_STOPS.map((stop) => (
-                <ChoicePill
-                  key={stop}
-                  active={cfg.map.googlePlaces === stop}
-                  disabled={off}
-                  onClick={() => map({ googlePlaces: stop })}
-                >
-                  {stop}
-                </ChoicePill>
-              ))}
-            </div>
-          </ChoiceField>
-          <ChoiceField
-            icon={<Hash className="mt-0.5 h-4 w-4 shrink-0" />}
-            label="Mesita places"
-            hint="Ready Mesita places read free from our own rows, on the Map and Home: the best this many by score join the pool."
-          >
-            <div className="flex flex-wrap gap-2">
-              {GOOGLE_PULL_STOPS.map((stop) => (
-                <ChoicePill
-                  key={stop}
-                  active={cfg.map.mesitaPlaces === stop}
-                  disabled={off}
-                  onClick={() => map({ mesitaPlaces: stop })}
-                >
-                  {stop}
-                </ChoicePill>
-              ))}
-            </div>
-          </ChoiceField>
-        </div>
+        <p className="text-muted-foreground type-meta">
+          Each Google source is one Nearby Search call on every Home load and
+          every Map reload (the Map reloads each time the guest stops moving
+          it), within the per-guest quota in the Always-on rules. Google
+          Popular asks for the most prominent 20 in the circle, Google Closest
+          for the nearest 20. The Google reviews minimum (now{" "}
+          {cfg.map.googleMinReviews}) cuts Google places after Google bills
+          them: most of Google Closest&apos;s nearest places are corner spots
+          under it. Mesita Popular is the 20 Mesita places in the circle with
+          the highest Popularity, Mesita Closest the 20 nearest; both are free.
+        </p>
+        {allOff ? (
+          <p className="text-destructive type-meta">
+            Every source is off: the Map and Home show nothing.
+          </p>
+        ) : null}
       </Group>
       <Group title="Gates">
         <div className="grid gap-3 sm:grid-cols-2">
           <NumberField
-            label="Home radius (km)"
+            label="Current-location radius (km)"
             value={cfg.map.radiusKm}
             min={MAP_RADIUS_KM_MIN}
             max={MAP_RADIUS_KM_MAX}
@@ -415,11 +371,12 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           />
         </div>
         <p className="text-muted-foreground type-meta">
-          The Home radius decides who is a candidate around Home&apos;s point
-          and never scores; the Map uses it only when it has no screen to
-          measure (no view yet, or one wider than 100 km), and Chat reads
-          inside it. {MAP_RADIUS_KM_MIN}–{MAP_RADIUS_KM_MAX} km (Google&apos;s
-          circle cap). The reviews minimum is the only one (MESITA-2702): it
+          The current-location radius is Home&apos;s when the guest searches
+          from the device or from a pin saved without a radius; the Map uses it
+          only when it has no screen to measure (no view yet, or one wider than
+          100 km), and it is also Chat&apos;s search radius and reach. A saved pin
+          carries the radius the guest picked. {MAP_RADIUS_KM_MIN}–{MAP_RADIUS_KM_MAX} km
+          (Google&apos;s circle cap). The reviews minimum is the only one (MESITA-2702): it
           counts people and cuts Google places only (never a Mesita row), on
           the Map, Home, the Search bar and admin Find&apos;s Autocomplete
           column; 0 is off. Family is the guest&apos;s
@@ -438,13 +395,13 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             onChange={(proximityWeight) => map({ proximityWeight })}
           />
           <NumberField
-            label="Home proximity reach (km)"
-            value={params.proximity.reachKm}
-            min={REACH_KM_MIN}
-            max={REACH_KM_MAX}
+            label="Popularity weight (b)"
+            value={cfg.map.popularityWeight}
+            min={MAP_PROXIMITY_WEIGHT_MIN}
+            max={MAP_PROXIMITY_WEIGHT_MAX}
             decimals
             disabled={off}
-            onChange={setReachKm}
+            onChange={(popularityWeight) => map({ popularityWeight })}
           />
           <NumberField
             label="Reviews for half credit"
@@ -454,32 +411,14 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             disabled={off}
             onChange={setHalfReviews}
           />
-          <NumberField
-            label="Selected for every other place"
-            value={params.selected.otherFactor}
-            min={SELECTED_OTHER_MIN}
-            max={SELECTED_OTHER_MAX}
-            decimals
-            disabled={off}
-            onChange={setSelectedOther}
-          />
         </div>
         <p className="text-muted-foreground type-meta">
-          a ranks the Map and Home alike: below 1 softens distance, above 1
-          sharpens it, 0 ignores it; Popularity and Selected keep exponent 1.
-          Proximity is 1 at the point, ½ at half the reach and 0 at the reach
-          and beyond: on the Map the reach is the screen radius, on Home the
-          Home proximity reach. A Home place between the reach and the Home
-          radius scores 0 and is ordered by distance alone
-          {params.proximity.reachKm < cfg.map.radiusKm
-            ? ` (now ${params.proximity.reachKm}–${cfg.map.radiusKm} km)`
-            : ""}
-          . Popularity is rating ÷ 5 × reviews ÷ (reviews + half credit): a 3★
-          place is 60% of a 5★ one, and volume earns half credit at that many
-          reviews; a place with no Google numbers scores 0 and sinks, never
-          disappears. Selected is 1 for a Mesita Selected place and the number
-          above ({SELECTED_OTHER_MIN}–{SELECTED_OTHER_MAX}) for every other, a
-          Google-only place included; never 0, so it orders and never hides.
+          a and b rank the Map and Home alike: below 1 softens a signal,
+          above 1 sharpens it, 0 ignores it. Proximity is 1 at the point, ½ at
+          half the radius and 0 at its edge. Popularity is rating ÷ 5 ×
+          reviews ÷ (reviews + half credit): a 3★ place is 60% of a 5★ one,
+          and volume earns half credit at that many reviews; a place with no
+          Google numbers scores 0 and sinks, never disappears.
         </p>
       </Group>
       <Group title="Map view (the Search tab)">

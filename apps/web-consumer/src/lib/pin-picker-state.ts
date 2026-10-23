@@ -80,7 +80,26 @@ export type PinPickerState = {
   nameValue: string;
   nameEdited: boolean;
   nameFocused: boolean;
+  /** The radius chip the guest picked (km), MESITA-2703. */
+  radiusKm: number;
 };
+
+/** The radius chips the pin picker offers (km), MESITA-2703. The operator's
+ *  current-location radius joins them when it is not one of these. */
+export const PIN_RADIUS_CHIPS_KM = [1, 3, 5, 10, 15] as const;
+
+/** The chips for this operator radius, ascending, the operator's included. */
+export function pinRadiusChips(operatorKm: number): number[] {
+  const chips: number[] = [...PIN_RADIUS_CHIPS_KM];
+  if (Number.isFinite(operatorKm) && operatorKm > 0 && !chips.includes(operatorKm)) chips.push(operatorKm);
+  return chips.sort((a, b) => a - b);
+}
+
+/** The next larger chip after `km`, or null at the largest (the empty
+ *  state's "Search N km" button, MESITA-2703). */
+export function nextRadiusChip(km: number, operatorKm: number): number | null {
+  return pinRadiusChips(operatorKm).find((c) => c > km) ?? null;
+}
 
 export function initialPinPickerState(seed: {
   center: LatLng | null;
@@ -88,6 +107,8 @@ export function initialPinPickerState(seed: {
   formattedAddress?: string | null;
   customName?: string | null;
   nameEdited?: boolean;
+  /** The entry's own radius, else the operator's current-location radius. */
+  radiusKm: number;
 }): PinPickerState {
   const named = seed.suggestedName != null || seed.formattedAddress != null;
   const edited = Boolean(seed.nameEdited && seed.customName);
@@ -106,6 +127,7 @@ export function initialPinPickerState(seed: {
     nameValue: edited ? (seed.customName ?? "") : (seed.suggestedName ?? ""),
     nameEdited: edited,
     nameFocused: false,
+    radiusKm: seed.radiusKm,
   };
 }
 
@@ -117,12 +139,15 @@ export type PinPickerAction =
   | { type: "lookup_failed"; seq: number; at: LatLng; failure: LookupFailure }
   | { type: "name_focus" }
   | { type: "name_blur" }
-  | { type: "name_input"; value: string };
+  | { type: "name_input"; value: string }
+  | { type: "radius"; km: number };
 
 export function pinPickerReducer(s: PinPickerState, a: PinPickerAction): PinPickerState {
   switch (a.type) {
     case "camera_move":
       return { ...s, moving: true, moved: true };
+    case "radius":
+      return { ...s, radiusKm: a.km };
     case "camera_idle":
       return { ...s, moving: false, center: a.center };
     case "lookup_start":
@@ -198,6 +223,8 @@ export type PinDraft = {
   nameEdited: boolean;
   /** The names do not describe this exact pin yet: the backfill names it. */
   needsName: boolean;
+  /** The chip the guest picked (km). */
+  radiusKm: number;
 };
 
 export function pinDraft(s: PinPickerState): PinDraft | null {
@@ -213,5 +240,6 @@ export function pinDraft(s: PinPickerState): PinDraft | null {
     formattedAddress: named ? s.formattedAddress : null,
     nameEdited: customName !== null,
     needsName: s.inFlight || !named,
+    radiusKm: s.radiusKm,
   };
 }

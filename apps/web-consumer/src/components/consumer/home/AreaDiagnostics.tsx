@@ -23,11 +23,11 @@ function exp(n: number | undefined): string {
   return typeof n === "number" && Number.isFinite(n) ? String(n) : "?";
 }
 
-/** The compact expression for the place's formula (MESITA-2439:
- *  Proximity^a × Popularity^b × Selected^c, three separate signals). */
+/** The compact expression for the place's formula (MESITA-2703:
+ *  Proximity^a × Popularity^b). */
 export function diagExpression(a: Area): string {
   const fin = diagNumber(a.final);
-  const rest = `popularity ${diagNumber(a.signals.popularity)}^${exp(a.weights?.popularity)} × selected ${diagNumber(a.selected)}^${exp(a.weights?.selected)}`;
+  const rest = `popularity ${diagNumber(a.signals.popularity)}^${exp(a.weights?.popularity)}`;
   // Home asks from a point or nothing (MESITA-2501); anything but a point
   // has no Proximity term.
   if (a.formula !== "point") return `${rest} = ${fin}`;
@@ -55,8 +55,8 @@ export function AreaDiagnostics({ area }: { area: Area }) {
         {area.formula === "point"
           ? `proximity ${diagNumber(area.signals.proximity)} · `
           : ""}
-        popularity {diagNumber(area.signals.popularity)} · selected{" "}
-        {diagNumber(area.selected)}
+        popularity {diagNumber(area.signals.popularity)}
+        {area.foundBy && area.foundBy.length > 0 ? ` · found by ${area.foundBy.join(", ")}` : ""}
       </p>
     </li>
   );

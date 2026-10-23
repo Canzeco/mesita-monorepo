@@ -135,7 +135,7 @@ describe("the location lives in Home's header (MESITA-2401)", () => {
     expect(src).toContain("const origin = useActiveLocation();");
     // A saved location, else the fix, else the city's centre (MESITA-2472).
     expect(src).toContain(
-      "const from = origin ?? coords ?? (onCityFallback ? MONTERREY_CENTER : null);",
+      "const base = origin ?? coords ?? (onCityFallback ? MONTERREY_CENTER : null);",
     );
     expect(src).toContain("apiListAreaPool(supabase, from, families)");
   });
