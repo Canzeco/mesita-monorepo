@@ -105,6 +105,8 @@ export type PlaceProfileRow = {
   pitch: string | null;
   story: string | null;
   photos: string[];
+  google_photos: string[];
+  mesita_photos: string[];
   website_url: string | null;
   instagram_url: string | null;
   facebook_url: string | null;
@@ -178,6 +180,8 @@ export const PLACE_PROFILE_PATCH_KEYS = [
   "pitch",
   "story",
   "photos",
+  "google_photos",
+  "mesita_photos",
   "website_url",
   "instagram_url",
   "facebook_url",
@@ -361,7 +365,12 @@ const PLACE_SCHEMA_JSON_KEYS: Record<string, { parse(v: unknown): { ok: boolean;
   // NOT nullable — place_profiles.enrichment is NOT NULL with a default (MESITA-1249).
   enrichment: EnrichmentMapSchema,
 };
-const PLACE_STRING_ARRAY_KEYS = new Set<string>(["photos", "tags"]);
+const PLACE_STRING_ARRAY_KEYS = new Set<string>([
+  "photos",
+  "google_photos",
+  "mesita_photos",
+  "tags",
+]);
 // NOT NULL boolean column, default true (MESITA-1799). It joined
 // PLACE_PROFILE_PATCH_KEYS in #1395 but never got a checkPlaceProfileField
 // branch — every patch carrying it fell through to "unknown place field" and

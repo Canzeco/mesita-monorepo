@@ -16,6 +16,7 @@ import { relativeLabel } from "./lib/format";
 import { DEFAULT_CURRENCY } from "./lib/money";
 import { isReserveActionEnabled } from "./lib/place-profile-actions";
 import type { Row } from "./place-to-detail-helpers";
+import { effectivePlacePhotos } from "./effective-place-photos";
 import {
   arr,
   computeOpenState,
@@ -102,7 +103,7 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
             ? "requested"
             : "listed",
 
-    photos: arr<string>(row.photos),
+    photos: effectivePlacePhotos(row),
 
     // Curated taxonomy chips — English default (MESITA-963), ordered by the
     // EF's sort_order. Null-safe: missing/non-array tags collapse to [].

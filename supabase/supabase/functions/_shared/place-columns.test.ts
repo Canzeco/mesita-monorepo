@@ -14,7 +14,7 @@ function heavyFixtureRow(): Record<string, unknown> {
   const big = "x".repeat(500);
   const row: Record<string, unknown> = {};
   for (const key of PLACE_CARD_COLUMNS_ARRAY) {
-    if (key === "photos") {
+    if (key === "photos" || key === "google_photos" || key === "mesita_photos") {
       row[key] = Array.from({ length: 20 }, (_, i) => `https://example.com/photo-${i}.jpg`);
     } else if (key === "tags") {
       row[key] = Array.from({ length: 30 }, (_, i) => `tag-${i}`);
