@@ -11,6 +11,7 @@ vi.mock("./actions", () => ({
   listAllPlaces: vi.fn(),
   searchPlacesByGoogleIds: vi.fn(),
   setPlaceListed: vi.fn(),
+  setPlaceSelected: vi.fn(),
 }));
 vi.mock("@/components/PlacesMap", () => ({ PlacesMap: () => null }));
 
@@ -42,10 +43,16 @@ describe("Multiple Places renders five boxes (MESITA-2096)", () => {
     expect([...at].sort((a, b) => a - b)).toEqual(at);
   });
 
-  it("puts Create, Enrich and Enable · Disable · Delete in their own boxes", () => {
+  it("puts Create, Enrich and Select · Unselect · Enable · Disable · Delete in their own boxes", () => {
     expect(buttons(box("create"))).toEqual(["Create"]);
     expect(buttons(box("enrich"))).toEqual(["Weak Enrich", "Strong Enrich"]);
-    expect(buttons(box("update"))).toEqual(["Enable", "Disable", "Delete"]);
+    expect(buttons(box("update"))).toEqual([
+      "Select",
+      "Unselect",
+      "Enable",
+      "Disable",
+      "Delete",
+    ]);
   });
 
   it("gives every write box its own Google Place ID field", () => {

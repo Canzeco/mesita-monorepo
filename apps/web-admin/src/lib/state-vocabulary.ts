@@ -3,9 +3,10 @@
 //   PROFILE STATES (7)  One box (Pato, 2026-10-13, MESITA-2176):
 //                 Created · Pulsing (Google active) · Requested ·
 //                 Enriching · Enriched · Selected · Disabled.
-//                 Selected (MESITA-2318) is Mesita Selected — the set the
-//                 Map and Feed rail read: Enriched, ready and not Disabled.
-//                 Derived, never stored, so it cannot disagree with the rail.
+//                 Selected (MESITA-2707, MESITA-2730) is Mesita Selected —
+//                 the operator's own mark, `places.selected`. Independent of
+//                 Enriched: a Created place can be Selected, and an Enriched
+//                 place need not be. Stored, never derived from the rail.
 //                 All are bools (`true` / `false`) except Requested, the
 //                 guest request count, 0…n — not a Yes/No. Disabled is the
 //                 operator's off switch (places.state is not active), the

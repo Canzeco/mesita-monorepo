@@ -9,6 +9,7 @@ import {
   enrichPlaces,
   searchPlacesByGoogleIds,
   setPlaceListed,
+  setPlaceSelected,
 } from "./actions";
 import { parseGooglePlaceIds } from "./google-place-ids";
 import type { CrenupAction } from "./pipeline";
@@ -47,6 +48,8 @@ const BUTTONS: Record<
 > = {
   create: { label: "Create", variant: "primary" },
   enrich: { label: "Enrich", variant: "primary" },
+  select: { label: "Select", variant: "secondary" },
+  unselect: { label: "Unselect", variant: "secondary" },
   list: { label: "Enable", variant: "secondary" },
   unlist: { label: "Disable", variant: "secondary" },
   delete: { label: "Delete", variant: "destructive" },
@@ -133,11 +136,15 @@ export function WriteBox({
       ? `${created} created · ${existed} already on Mesita · ${failed} failed`
       : lastRun === "enrich"
         ? `${enriching} enriching · ${failed} failed`
-        : lastRun === "list"
-          ? `${written} enabled · ${failed} failed`
-          : lastRun === "unlist"
-            ? `${written} disabled · ${failed} failed`
-            : `${written} deleted · ${failed} failed`;
+        : lastRun === "select"
+          ? `${written} selected · ${failed} failed`
+          : lastRun === "unselect"
+            ? `${written} unselected · ${failed} failed`
+            : lastRun === "list"
+              ? `${written} enabled · ${failed} failed`
+              : lastRun === "unlist"
+                ? `${written} disabled · ${failed} failed`
+                : `${written} deleted · ${failed} failed`;
 
   return (
     <div className="space-y-6">
@@ -361,6 +368,18 @@ async function enrichOne(googleId: string): Promise<Row> {
   };
 }
 
+async function selectOne(googleId: string, selected: boolean): Promise<Row> {
+  const found = await resolveMesitaId(googleId);
+  if (!found.ok) return { state: "error", error: found.error };
+  const r = await setPlaceSelected(found.placeId, selected);
+  if (!r.ok) return { state: "error", name: found.name, error: r.error };
+  return {
+    state: "ok",
+    name: found.name,
+    detail: selected ? "Selected" : "Unselected",
+  };
+}
+
 async function listOne(googleId: string, listed: boolean): Promise<Row> {
   const found = await resolveMesitaId(googleId);
   if (!found.ok) return { state: "error", error: found.error };
@@ -383,6 +402,8 @@ async function deleteOne(googleId: string): Promise<Row> {
 
 async function runOne(googleId: string, action: CrenupAction): Promise<Row> {
   if (action === "enrich") return enrichOne(googleId);
+  if (action === "select") return selectOne(googleId, true);
+  if (action === "unselect") return selectOne(googleId, false);
   if (action === "list") return listOne(googleId, true);
   if (action === "unlist") return listOne(googleId, false);
   if (action === "delete") return deleteOne(googleId);

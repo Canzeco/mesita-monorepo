@@ -6,8 +6,11 @@
 // Create, Enrich and Edit write, each in its own box over the same Google
 // Place IDs (MESITA-2096, Pato: "just use a create box, enrich box, and
 // update box. i don't care if kinda redundant"). Create mints the place,
-// Enrich fills it, and Edit is Enable, Disable and Delete — writes to a place
-// that already exists. Edit is a box, never a button, and there is no
+// Enrich fills it, and that run is the only way a place becomes Enriched.
+// Edit writes a place that already exists: Select and Unselect set the
+// operator's Selected mark directly, Enable and Disable toggle guest
+// visibility, and Delete archives. Selected and Enriched never imply each
+// other (MESITA-2730). Edit is a box, never a button, and there is no
 // Create + Enrich combo. Edit does not sync.
 
 export const PIPELINE_STEPS = [
@@ -20,15 +23,23 @@ export const PIPELINE_STEPS = [
 
 export type PipelineStepId = (typeof PIPELINE_STEPS)[number]["id"];
 
-/** The five write actions. Create fans out one call per Google Place ID;
- *  Enrich only seeds place_research, and pg_cron claims one row at a time. */
-export type CrenupAction = "create" | "delete" | "list" | "unlist" | "enrich";
+/** The write actions. Create fans out one call per Google Place ID.
+ *  Enrich starts the Render run that is the only writer of Enriched.
+ *  Select and Unselect write `places.selected` and nothing else. */
+export type CrenupAction =
+  | "create"
+  | "delete"
+  | "list"
+  | "unlist"
+  | "enrich"
+  | "select"
+  | "unselect";
 
 /** The buttons each write box carries, in order. */
 export const WRITE_BOX_ACTIONS = {
   create: ["create"],
   enrich: ["enrich"],
-  update: ["list", "unlist", "delete"],
+  update: ["select", "unselect", "list", "unlist", "delete"],
 } as const satisfies Partial<Record<PipelineStepId, readonly CrenupAction[]>>;
 
 /** Retired hashes: the one-box era (#crenup), the old Search / Create /
