@@ -26,6 +26,7 @@ import {
   MAP_PIN_HIT_SIZE,
   MAP_USER_LOCATION_STROKE_COLOR,
   MAP_USER_LOCATION_PIN_COLOR,
+  MAP_SELECTED_PLACE_PIN_RADIUS,
   mapPinIcon,
 } from "@/lib/map-defaults";
 import type { Coords } from "@/lib/use-user-location";
@@ -38,6 +39,7 @@ import {
 } from "./camera-intent";
 import { SIGHT_Y } from "./search-utils";
 import { MapVeil } from "./search-catalog-overlays";
+import { SearchMapPinLabels } from "./SearchMapPinLabels";
 import {
   pinFillColor,
   pinStrokeColor,
@@ -55,8 +57,9 @@ function mapsPinIcon(
   fillColor: string,
   strokeColor: string,
   strokeWeight?: number,
+  radius?: number,
 ) {
-  const raw = mapPinIcon(fillColor, strokeColor, strokeWeight);
+  const raw = mapPinIcon(fillColor, strokeColor, strokeWeight, radius);
   const maps = (globalThis as { google?: { maps?: MapsCtor } }).google?.maps;
   if (!maps) return raw;
   return {
@@ -69,10 +72,12 @@ function mapsPinIcon(
 /** `held` is the tapped pin (ink, MESITA-2488), not the Selected tone. */
 function placeIcon(tone: PinTone, held: boolean) {
   const weight = pinStrokeWeight(held);
+  const radius = tone === "selected" && !held ? MAP_SELECTED_PLACE_PIN_RADIUS : undefined;
   return mapsPinIcon(
     pinFillColor(tone, held),
     pinStrokeColor(held),
     weight,
+    radius,
   );
 }
 
@@ -388,6 +393,24 @@ function SearchMapCanvas({
             />
           ))}
       {cameraIntent && <CameraDirector intent={cameraIntent} />}
+      <SearchMapPinLabels
+        focusedId={selectedId}
+        items={
+          pins != null
+            ? pins.map((pin) => ({
+                id: pin.id,
+                lat: pin.lat,
+                lng: pin.lng,
+                title: pin.title,
+              }))
+            : located.map((place) => ({
+                id: place.id,
+                lat: place.lat,
+                lng: place.lng,
+                title: place.name,
+              }))
+        }
+      />
       <ViewportReporter
         onFirst={onFirstViewport}
         onUser={onUserViewport}

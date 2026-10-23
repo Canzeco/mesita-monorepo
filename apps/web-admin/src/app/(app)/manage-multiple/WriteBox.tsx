@@ -7,6 +7,7 @@ import {
   deletePlace,
   enrichPlace,
   enrichPlaces,
+  updatePlacesGoogle,
   searchPlacesByGoogleIds,
   setPlaceListed,
   setPlaceSelected,
@@ -53,6 +54,7 @@ const BUTTONS: Record<
   list: { label: "Enable", variant: "secondary" },
   unlist: { label: "Disable", variant: "secondary" },
   delete: { label: "Delete", variant: "destructive" },
+  "google-update": { label: "Update Google", variant: "primary" },
 };
 
 export function WriteBox({
@@ -171,7 +173,7 @@ export function WriteBox({
                   key={choice.depth}
                   label={choice.label}
                   title={choice.title}
-                  variant={choice.depth === "quick" ? "secondary" : "primary"}
+                  variant="primary"
                   busy={running === "enrich" && enrichingDepth === choice.depth}
                   disabled={busy || placeIds.length === 0}
                   onClick={() => void run("enrich", choice.depth)}
@@ -400,7 +402,16 @@ async function deleteOne(googleId: string): Promise<Row> {
   return { state: "ok", name: found.name, detail: "Archived" };
 }
 
+async function updateGoogleOne(googleId: string): Promise<Row> {
+  const found = await resolveMesitaId(googleId);
+  if (!found.ok) return { state: "error", error: found.error };
+  const r = await updatePlacesGoogle([found.placeId]);
+  if (!r.ok) return { state: "error", name: found.name, error: r.error };
+  return { state: "ok", name: found.name, detail: "Google data refreshed" };
+}
+
 async function runOne(googleId: string, action: CrenupAction): Promise<Row> {
+  if (action === "google-update") return updateGoogleOne(googleId);
   if (action === "enrich") return enrichOne(googleId);
   if (action === "select") return selectOne(googleId, true);
   if (action === "unselect") return selectOne(googleId, false);

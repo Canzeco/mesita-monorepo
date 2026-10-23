@@ -550,8 +550,7 @@ function ActionCell({
   return (
     <div className="flex flex-col items-end gap-1.5">
       {row.held ? (
-        /* decision: Pato (2026-10-17, MESITA-2320) — Open · Weak Enrich ·
-           Strong Enrich sit on one line, one pill style. */
+        /* decision: Pato (2026-10-17, MESITA-2320) — Open · Enrich on one line, one pill style. */
         <span className="inline-flex flex-nowrap items-center justify-end gap-1.5">
           <button
             type="button"

@@ -24,6 +24,7 @@ import { loadModelsConfig } from "../_shared/models-config.ts";
 // and its test.
 export { capPresentation } from "../_shared/presentation-cap.ts";
 import { capPresentation } from "../_shared/presentation-cap.ts";
+import { mesitaCategoriesLocked } from "../_shared/mesita-categories-at-create.ts";
 
 export function reviewQuotes(value: unknown): string {
   if (!Array.isArray(value)) return "";
@@ -67,7 +68,11 @@ export function mergeSynthesizedProfile(opts: {
   if (presentation && (opts.overwrite || !filled(opts.patch.description))) {
     next.description = presentation;
   }
-  if (opts.category && opts.category !== "undefined" && (opts.overwrite || !filled(opts.patch.category))) {
+  const categoriesLocked = mesitaCategoriesLocked(opts.patch);
+  if (
+    opts.category && opts.category !== "undefined" && !categoriesLocked &&
+    (opts.overwrite || !filled(opts.patch.category))
+  ) {
     next.category = opts.category;
     next.category_label = humanizeCategorySlug(opts.category);
   }
@@ -176,12 +181,16 @@ async function fillAtlasProfileInner(
   }
   if (!presentation && googleSummary) presentation = capPresentation(googleSummary);
 
-  const category = await inferPlaceCategory(openaiKey, categories, {
-    name: name || "Place",
-    address,
-    editorialSummary: googleSummary || null,
-    description: presentation,
-  }, models.enricherModel);
+  const category = mesitaCategoriesLocked(patch)
+    ? null
+    : await inferPlaceCategory(openaiKey, categories, {
+      name: name || "Place",
+      address,
+      googlePrimaryType: textField(patch.google_primary_type) || textField(patch.category) || null,
+      googleTypes: slugs(patch.google_types),
+      editorialSummary: googleSummary || null,
+      description: presentation,
+    }, models.enricherModel);
   const inferredTags = await inferPlaceTags(openaiKey, tagVocabulary, {
     name: name || "Place",
     category,

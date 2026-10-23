@@ -126,13 +126,28 @@ export function MultiplePlacesClient() {
       <Step
         n={PIPELINE_STEPS[4].n}
         id={PIPELINE_STEPS[4].id}
-        tint="rose"
+        tint="sky"
         title={PIPELINE_STEPS[4].label}
-        blurb="Writes to places already on Mesita. Select and Unselect set Mesita Selected directly. Enable and Disable toggle guest visibility. Only the Enrich box sets Enriched. Delete archives, no Undo here."
+        blurb="Google facts and google_photos only — never Mesita presentation or mesita_photos. One place ID per run."
       >
         <WriteBox
           id={PIPELINE_STEPS[4].id}
-          actions={WRITE_BOX_ACTIONS.update}
+          actions={WRITE_BOX_ACTIONS["google-update"]}
+          text={sharedIds}
+          onTextChange={setSharedIds}
+        />
+      </Step>
+
+      <Step
+        n={PIPELINE_STEPS[5].n}
+        id={PIPELINE_STEPS[5].id}
+        tint="rose"
+        title={PIPELINE_STEPS[5].label}
+        blurb="Writes to places already on Mesita. Select and Unselect set Mesita Selected directly. Enable and Disable toggle guest visibility. Only the Enrich box sets Enriched. Delete archives, no Undo here."
+      >
+        <WriteBox
+          id={PIPELINE_STEPS[5].id}
+          actions={WRITE_BOX_ACTIONS.edit}
           text={sharedIds}
           onTextChange={setSharedIds}
         />

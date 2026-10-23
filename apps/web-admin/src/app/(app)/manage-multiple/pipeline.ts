@@ -1,4 +1,4 @@
-// Multiple Places — five boxes, one per job. Two read, three write.
+// Multiple Places — six boxes, one per job. Two read, four write.
 // The sticky rail and the cards both read from here so a surface cannot
 // appear on one and vanish from the other.
 //
@@ -18,7 +18,8 @@ export const PIPELINE_STEPS = [
   { n: 2, id: "mesita-search", label: "Mesita Search" },
   { n: 3, id: "create", label: "Create" },
   { n: 4, id: "enrich", label: "Enrich" },
-  { n: 5, id: "update", label: "Edit" },
+  { n: 5, id: "google-update", label: "Update" },
+  { n: 6, id: "edit", label: "Edit" },
 ] as const;
 
 export type PipelineStepId = (typeof PIPELINE_STEPS)[number]["id"];
@@ -33,13 +34,15 @@ export type CrenupAction =
   | "unlist"
   | "enrich"
   | "select"
-  | "unselect";
+  | "unselect"
+  | "google-update";
 
 /** The buttons each write box carries, in order. */
 export const WRITE_BOX_ACTIONS = {
   create: ["create"],
   enrich: ["enrich"],
-  update: ["select", "unselect", "list", "unlist", "delete"],
+  "google-update": ["google-update"],
+  edit: ["select", "unselect", "list", "unlist", "delete"],
 } as const satisfies Partial<Record<PipelineStepId, readonly CrenupAction[]>>;
 
 /** Retired hashes: the one-box era (#crenup), the old Search / Create /
@@ -50,5 +53,7 @@ export const LEGACY_HASHES: Record<string, PipelineStepId> = {
   "bulk-create": "create",
   "bulk-enrich": "enrich",
   "bulk-create-enrich": "create",
-  "edit-states": "update",
+  "edit-states": "edit",
+  update: "google-update",
+  "bulk-update": "google-update",
 };

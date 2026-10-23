@@ -1,11 +1,11 @@
 // THE PRESENTATION CAP (MESITA-2641, Pato: "don't cut the presentation like
-// that"). The ceiling is ENRICH_FIELD_LIMITS.description (500 characters,
-// MESITA-2248); every writer of places.description goes through here:
+// that"). The ceiling is ENRICH_FIELD_LIMITS.description (2000 characters,
+// MESITA-2739); every writer of places.description goes through here:
 // the Enricher's synthesis, the write-place fallback and the create door.
 // Render's Google fallback (render/src/google-spine.ts) carries the same
 // function; it is its own package and cannot import this file.
 //
-// Until MESITA-2641 each writer did `.slice(0, 500)`, and 44 of 53 stored
+// Until MESITA-2641 each writer did `.slice(0, N)`, and 44 of 53 stored
 // presentations ended mid-word ("…with family o").
 //
 // Under the ceiling: unchanged (trimmed). Over it: cut at the last sentence

@@ -98,6 +98,8 @@ export const MAP_MINIMAL_STYLES = [
 // The visible circle sits in a 44px pad so the hit box is a finger, not
 // the painted disk. Cursor stays default — never the pointing hand.
 export const MAP_PLACE_PIN_RADIUS = 10;
+/** Mesita Selected mark (gate d4a): slightly larger disk on the map. */
+export const MAP_SELECTED_PLACE_PIN_RADIUS = 12;
 export const MAP_PIN_HIT_SIZE = 44;
 export const MAP_PIN_CURSOR = "default";
 export const MAP_PIN_STROKE_WEIGHT = 1.25;
@@ -108,13 +110,14 @@ export function mapPinSvg(
   fillColor: string,
   strokeColor: string,
   strokeWeight: number = MAP_PIN_STROKE_WEIGHT,
+  radius: number = MAP_PLACE_PIN_RADIUS,
 ): string {
   const size = MAP_PIN_HIT_SIZE;
   const mid = size / 2;
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">` +
     `<circle cx="${mid}" cy="${mid}" r="${mid - 0.5}" fill="#000000" fill-opacity="0.01"/>` +
-    `<circle cx="${mid}" cy="${mid}" r="${MAP_PLACE_PIN_RADIUS}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="${strokeWeight}"/>` +
+    `<circle cx="${mid}" cy="${mid}" r="${radius}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="${strokeWeight}"/>` +
     `</svg>`
   );
 }
@@ -123,11 +126,12 @@ export function mapPinIcon(
   fillColor: string,
   strokeColor: string,
   strokeWeight: number = MAP_PIN_STROKE_WEIGHT,
+  radius: number = MAP_PLACE_PIN_RADIUS,
 ) {
   const size = MAP_PIN_HIT_SIZE;
   const mid = size / 2;
   return {
-    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(mapPinSvg(fillColor, strokeColor, strokeWeight))}`,
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(mapPinSvg(fillColor, strokeColor, strokeWeight, radius))}`,
     scaledSize: { width: size, height: size },
     anchor: { x: mid, y: mid },
   };
