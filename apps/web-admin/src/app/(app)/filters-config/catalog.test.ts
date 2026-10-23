@@ -81,7 +81,8 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
     expect([m.googlePopular, m.googleClosest, m.mesitaPopular, m.mesitaClosest]).toEqual([20, 0, 0, 20]);
     expect(googleCallsPerLoad(m)).toBe(1);
     expect(googleCallsPerLoad(DEFAULT_MAP)).toBe(2);
-    expect(coerceConfig({ map: { popularityWeight: 9 } }).map.popularityWeight).toBe(5);
+    // The exponents are retired (MESITA-2722): a stored one is dropped.
+    expect("popularityWeight" in coerceConfig({ map: { popularityWeight: 9 } }).map).toBe(false);
     // Places shown (MESITA-2713): whole, 1..80, default 20.
     expect(DEFAULT_MAP.placesShown).toBe(20);
     expect(coerceConfig({ map: { placesShown: 0 } }).map.placesShown).toBe(1);
@@ -92,7 +93,7 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
     expect(coerceConfig({ map: { popularityFloor: -1 } }).map.popularityFloor).toBe(0);
     expect(coerceConfig({ map: { popularityFloor: 99 } }).map.popularityFloor).toBe(20);
     expect(coerceConfig({ map: { popularityFloor: 3.44 } }).map.popularityFloor).toBe(3.4);
-    // Selected factor (MESITA-2717): 1..10, one decimal, default 3.
+    // Selected boost (MESITA-2717): 1..10, one decimal, default 3.
     expect(DEFAULT_MAP.selectedFactor).toBe(3);
     expect(coerceConfig({ map: { selectedFactor: 0 } }).map.selectedFactor).toBe(1);
     expect(coerceConfig({ map: { selectedFactor: 99 } }).map.selectedFactor).toBe(10);

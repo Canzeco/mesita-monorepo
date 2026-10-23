@@ -18,23 +18,19 @@ function gate(v: 0 | 1 | null): string {
   return v === null ? "n/a" : String(v);
 }
 
-/** An exponent, as short as it reads: 2, 1.5, 0.25. */
-function exp(n: number | undefined): string {
-  return typeof n === "number" && Number.isFinite(n) ? String(n) : "?";
-}
-
-/** The compact expression for the place's formula (MESITA-2703:
- *  Proximity^a × Popularity^b, × the Selected factor, MESITA-2717). */
+/** The compact expression for the place's formula: Proximity ×
+ *  Popularity, × the Selected boost (MESITA-2717; no exponents since
+ *  MESITA-2722). */
 export function diagExpression(a: Area): string {
   const fin = diagNumber(a.final);
   const sel = typeof a.selectedFactor === "number" && a.selectedFactor !== 1
     ? ` × selected ${a.selectedFactor}`
     : "";
-  const rest = `popularity ${diagNumber(a.signals.popularity)}^${exp(a.weights?.popularity)}${sel}`;
+  const rest = `popularity ${diagNumber(a.signals.popularity)}${sel}`;
   // Home asks from a point or nothing (MESITA-2501); anything but a point
   // has no Proximity term.
   if (a.formula !== "point") return `${rest} = ${fin}`;
-  return `proximity ${diagNumber(a.signals.proximity)}^${exp(a.weights?.proximity)} × ${rest} = ${fin}`;
+  return `proximity ${diagNumber(a.signals.proximity)} × ${rest} = ${fin}`;
 }
 
 export function AreaDiagnostics({ area }: { area: Area }) {

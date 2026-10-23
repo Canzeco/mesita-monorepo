@@ -69,7 +69,7 @@ function editedEverywhere(live: DiscoveryConfig): DiscoveryConfig {
       googleClosest: 0,
       mesitaPopular: 0,
       mesitaClosest: 20,
-      popularityWeight: 2,
+      selectedFactor: 5,
     },
     catalog: { ...live.catalog, railCap: 7, seedCount: 99 },
     name: {
@@ -119,12 +119,12 @@ describe("the Area box", () => {
     const sent = armed(live);
     await updateDiscoveryConfig(editedEverywhere(live), [...BOX_SLICES.area]);
     expect(sent.config?.map.radiusKm).toBe(3);
-    // The four switches and b persist (MESITA-2703).
+    // The four switches and the Selected boost persist (MESITA-2703).
     expect(sent.config?.map.googlePopular).toBe(20);
     expect(sent.config?.map.googleClosest).toBe(0);
     expect(sent.config?.map.mesitaPopular).toBe(0);
     expect(sent.config?.map.mesitaClosest).toBe(20);
-    expect(sent.config?.map.popularityWeight).toBe(2);
+    expect(sent.config?.map.selectedFactor).toBe(5);
     // Places per row left the page with the Feed rows; the legacy rails
     // keep the stored value until the legacy path is removed.
     expect(sent.config?.catalog.railCap).toBe(live.catalog.railCap);

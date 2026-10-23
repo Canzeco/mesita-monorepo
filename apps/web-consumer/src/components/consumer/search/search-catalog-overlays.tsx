@@ -1,6 +1,6 @@
 import type { RefObject } from "react";
 
-import type { MapWeights, Place } from "@/lib/api/places";
+import type { Place } from "@/lib/api/places";
 import { Skeleton, Spinner } from "@/components/shared";
 import type { Coords } from "@/lib/use-user-location";
 import { useCardSaveShare } from "@/lib/use-card-save-share";
@@ -77,8 +77,6 @@ export type LoadCoords = {
   sent: Coords;
   /** The circle the server gated on, km (MESITA-2504). */
   radiusKm: number | null;
-  /** The exponents it scored with (MESITA-2504). */
-  weights: MapWeights | null;
 };
 
 /** A signal or score for the readout: two decimals, "n/a" when absent. */
@@ -89,7 +87,7 @@ function fmtScore(v: number | null | undefined): string {
 // MESITA-2497/2498: development-stage check of the map (Pato: "display the
 // coordinates at the bottom"). The cross, the blue dot and the centre sent
 // to list-places, as of the last catalog load; MESITA-2504 adds the circle
-// the load gated on, the weights it scored with, and the selected card's
+// the load gated on (the weights it scored with until MESITA-2722), and the selected card's
 // proximity · popularity · score, live as the selection moves. It was the
 // white band's top section over the carousel (Pato, MESITA-2613: "on top of
 // the carrousel, not in x but in y"); the band and the readout went when the
@@ -101,7 +99,6 @@ export function SearchDebugCoords({
   you,
   sent,
   radiusKm,
-  weights,
   selected,
 }: LoadCoords & { selected?: Place | null }) {
   const fmt = (c: Coords | null) =>
@@ -118,12 +115,6 @@ export function SearchDebugCoords({
       <dt>Radius</dt>
       <dd className="text-foreground truncate" data-debug-radius>
         {radiusKm == null ? "n/a" : `${radiusKm.toFixed(2)} km`}
-      </dd>
-      <dt>Weights</dt>
-      <dd className="text-foreground truncate" data-debug-weights>
-        {weights
-          ? `prox^${weights.proximity} · pop^${weights.popularity}`
-          : "n/a"}
       </dd>
       <dt>Selected</dt>
       <dd className="text-foreground truncate" data-debug-selected>

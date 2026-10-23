@@ -298,7 +298,7 @@ export function StateRow({
 /**
  * Selected writes places.selected through admin-web-set-place-selected
  * (MESITA-2707): the operator's own mark, independent of Enriched and of
- * Disabled. It multiplies the place's Area score by the Selected factor
+ * Disabled. It multiplies the place's Area score by the Selected boost
  * (MESITA-2717) and no RLS policy reads it, so the toggle is immediate —
  * reversible with one more click.
  */

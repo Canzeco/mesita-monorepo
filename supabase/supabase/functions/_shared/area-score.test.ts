@@ -20,7 +20,6 @@ const CTX: AreaContext = {
   location: { kind: "point", anchor: ANCHOR, radiusKm: 8 },
   families: [],
   radiusDivisor: 2,
-  weights: { proximity: 1, popularity: 1 },
 };
 const BOUNDS = { low: { lat: 19.4, lng: -99.2 }, high: { lat: 19.5, lng: -99.1 } };
 const NONE: AreaContext = { ...CTX, location: { kind: "none" } };
@@ -35,13 +34,13 @@ const cand = (over: Partial<AreaCandidate> = {}): AreaCandidate => ({
   ...over,
 });
 
-Deno.test("point: final = Proximity^a × Popularity^b", () => {
+Deno.test("point: final = Proximity × Popularity (no exponents, MESITA-2722)", () => {
   const s = areaScore(cand({ rating: 4.0, reviewCount: 100 }), CTX);
   assertEquals(s.formula, "point");
   assertEquals(s.signals.proximity, 1);
   assertAlmostEquals(s.signals.popularity!, POP, 1e-12);
   assertAlmostEquals(s.final, 1 * POP, 1e-12);
-  assertEquals(s.weights, { proximity: 1, popularity: 1 });
+  assertEquals("weights" in s, false);
   assertEquals(s.gates.family, 1);
   assertEquals(s.gates.radius, 1);
   // Territory is gone from the breakdown (MESITA-2603).
@@ -72,7 +71,7 @@ Deno.test("insideBounds (the screen radius's cross check): edges included; unkno
   assertEquals(insideBounds({ lat: 0, lng: 0 }, wrap), false);
 });
 
-Deno.test("no location: final = Popularity^b", () => {
+Deno.test("no location: final = Popularity", () => {
   const s = areaScore(cand({ rating: 4.0, reviewCount: 100 }), NONE);
   assertEquals(s.formula, "none");
   assertEquals(s.signals.proximity, null);
@@ -85,23 +84,6 @@ Deno.test("Popularity is null (n/a) when rating or count is missing, and scores 
   assertEquals(s.signals.popularity, null);
   assertEquals(s.final, 0);
   assertEquals(areaScore(cand({ reviewCount: null }), NONE).final, 0);
-  // Popularity off (b = 0): the missing number no longer matters.
-  assertEquals(areaScore(cand({ rating: null }), { ...CTX, weights: { proximity: 1, popularity: 0 } }).final, 1);
-});
-
-Deno.test("the weights are exponents: 0 hands the order to the other, and only the ratio orders", () => {
-  const a = cand({ id: "a", lat: ANCHOR.lat + 1 / 111.195, rating: 3.5, reviewCount: 50 });
-  const b = cand({ id: "b", lat: ANCHOR.lat + 5 / 111.195, rating: 4.9, reviewCount: 3000 });
-  const order = (proximity: number, popularity: number) =>
-    rankArea([a, b], (c) => c, { ...CTX, weights: { proximity, popularity } }).map((r) => r.item.id);
-  assertEquals(order(1, 0), ["a", "b"]);
-  assertEquals(order(0, 1), ["b", "a"]);
-  assertEquals(order(2, 1), order(4, 2));
-  assertEquals(order(1, 2), order(2, 4));
-  // Both off: every place scores 1 and distance orders.
-  assertEquals(order(0, 0), ["a", "b"]);
-  const s = areaScore(cand(), { ...CTX, weights: { proximity: Number.NaN, popularity: -3 } });
-  assertEquals(s.final, 1);
 });
 
 Deno.test("a missing number sinks a place to the bottom, never off the list (MESITA-2428)", () => {
@@ -145,12 +127,12 @@ Deno.test("ties break on distance, then id: deterministic", () => {
       cand({ id: "far", rating: null, lat: ANCHOR.lat + 0.05 }),
     ],
     (c) => c,
-    { ...CTX, weights: { proximity: 0, popularity: 1 } },
+    CTX,
   );
   assertEquals(ranked.map((r) => r.item.id), ["a", "b", "far"]);
 });
 
-Deno.test("at the half-distance Proximity is exactly ½, and the score is the product at weights 1 · 1", () => {
+Deno.test("at the half-distance Proximity is exactly ½, and the score is the plain product", () => {
   const c = cand({ lat: ANCHOR.lat + 4 / 111.195, rating: 4.0, reviewCount: 100 });
   const s = areaScore(c, CTX);
   assertAlmostEquals(s.signals.proximity!, 0.5, 1e-3);
@@ -202,22 +184,14 @@ Deno.test("Proximity's half distance is the radius ÷ the operator's divisor (ME
   assertAlmostEquals(areaScore(edge, ctx).signals.proximity!, 1 / 3, 1e-3);
   assertAlmostEquals(areaScore(edge, ctx).final, POP / 3, 1e-3);
   assertEquals(areaScore(cand({ lat: ANCHOR.lat + 3.1 / 111.195 }), ctx).gates.radius, 0);
-  // a = 0 ignores distance: the edge place scores its Popularity alone (x^0 = 1).
-  assertAlmostEquals(areaScore(edge, { ...ctx, weights: { proximity: 0, popularity: 1 } }).final, POP, 1e-12);
-  // b = 0 ignores popularity: an unrated place at the point scores 1.
-  assertEquals(
-    areaScore(cand({ rating: null, reviewCount: null }), { ...ctx, weights: { proximity: 1, popularity: 0 } }).final,
-    1,
-  );
 });
 
 Deno.test("Popularity is ln(1 + reviews × stars), never normalized, and the product is never clamped (MESITA-2710)", () => {
   const big = areaScore(cand({ rating: 4.6, reviewCount: 1000 }), NONE);
   assertAlmostEquals(big.signals.popularity!, Math.log1p(4600), 1e-12);
   assertEquals(big.signals.popularity! > 1, true);
-  // b = 2 squares it: a plain power, no cap at 1.
-  const sq = areaScore(cand({ rating: 4.6, reviewCount: 1000 }), { ...NONE, weights: { proximity: 1, popularity: 2 } });
-  assertAlmostEquals(sq.final, Math.log1p(4600) ** 2, 1e-9);
+  // The score is Popularity itself, no cap at 1.
+  assertAlmostEquals(big.final, Math.log1p(4600) * 1, 1e-9);
   // No reviews: 0, not -Infinity.
   assertEquals(areaScore(cand({ reviewCount: 0 }), NONE).signals.popularity, 0);
   // More reviews at the same stars always rank higher; stars count too.
@@ -244,7 +218,7 @@ Deno.test("the Popularity floor drops any place under it, Google or Mesita, Sele
   assertEquals(rankArea([thin, ok], (c) => c, { ...CTX, popularityFloor: 0 }).length, 2);
 });
 
-Deno.test("the Selected factor multiplies a Selected place's score, every other place's by 1 (MESITA-2717)", () => {
+Deno.test("the Selected boost multiplies a Selected place's score, every other place's by 1 (MESITA-2717)", () => {
   const ctx: AreaContext = { ...CTX, selectedFactor: 3 };
   // One spot, so Popularity alone orders: ln(1 + 50 × 4) ≈ 5.30, × 3 ≈ 15.9,
   // beats ln(1 + 3000 × 4.5) ≈ 9.51.
@@ -259,7 +233,7 @@ Deno.test("the Selected factor multiplies a Selected place's score, every other 
   // 1 or absent is off: the busier place leads again.
   assertEquals(rankArea([loved, picked], (c) => c, { ...ctx, selectedFactor: 1 }).map((r) => r.item.id), ["loved", "picked"]);
   assertEquals(rankArea([loved, picked], (c) => c, CTX).map((r) => r.item.id), ["loved", "picked"]);
-  // No location: Popularity^b × s.
+  // No location: Popularity × s.
   assertAlmostEquals(areaScore(picked, { ...NONE, selectedFactor: 3 }).final, 3 * Math.log1p(200), 1e-9);
   // It never saves a place from the Popularity floor.
   const thin = cand({ id: "thin", rating: 4, reviewCount: 4, source: "selected" });

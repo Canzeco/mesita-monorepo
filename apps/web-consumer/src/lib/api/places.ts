@@ -23,7 +23,7 @@ export type Place = {
    *  `places.selected`, on every consumer place payload. Independent of
    *  `enriched` and never derived from a score: the Search pins read it
    *  (red), the carousel tags it, and the server's Area score multiplies a
-   *  Selected place by the Selected factor (MESITA-2717). Absent on an older
+   *  Selected place by the Selected boost (MESITA-2717). Absent on an older
    *  payload reads as not Selected. */
   selected?: boolean | null;
   id: string;
@@ -95,7 +95,7 @@ export type Place = {
    *  (MESITA-2379); only the one-pool Feed wire carries it. */
   area?: AreaDiagnostics;
   /** The Search map's score for this place (MESITA-2504 debug): the two
-   *  signals, the Selected factor, the sources that found it and the
+   *  signals, the Selected boost, the sources that found it and the
    *  product. Only list-places sends it. The mark itself is the row's own
    *  `selected`. */
   score?: MapScore;
@@ -138,18 +138,11 @@ export type MapScore = {
   proximity: number | null;
   popularity: number | null;
   final: number;
-  /** The factor `final` carries: the Selected factor for a Mesita Selected
+  /** The factor `final` carries: the Selected boost for a Mesita Selected
    *  place, else 1 (MESITA-2717); absent from an older EF. */
   selectedFactor?: number;
   /** The sources that found the place (MESITA-2703); diagnostics only. */
   foundBy?: string[];
-};
-
-/** The exponents the Search map scored with: Proximity^a × Popularity^b
- *  (MESITA-2703). */
-export type MapWeights = {
-  proximity: number;
-  popularity: number;
 };
 
 type ViewportPlaces = {
@@ -157,7 +150,6 @@ type ViewportPlaces = {
   /** The circle the server gated on (km): the screen's, else the
    *  operator's (MESITA-2504). */
   radiusKm?: number;
-  weights?: MapWeights;
   reloadMinKm?: number;
   reloadMinSec?: number;
   /** Seconds the map must be still before a guest move reloads it
@@ -192,7 +184,6 @@ export async function apiFetchNearbyCatalog(
   const data = await invokeEF<{
     places: Place[];
     radiusKm?: number;
-    weights?: MapWeights;
     reloadMinKm?: number;
     reloadMinSec?: number;
     reloadIdleSec?: number;
@@ -209,7 +200,6 @@ export async function apiFetchNearbyCatalog(
       typeof data.radiusKm === "number" && Number.isFinite(data.radiusKm)
         ? data.radiusKm
         : undefined,
-    weights: data.weights,
     reloadMinKm:
       typeof data.reloadMinKm === "number" && Number.isFinite(data.reloadMinKm)
         ? data.reloadMinKm
@@ -298,9 +288,7 @@ export type AreaDiagnostics = {
   };
   signals: { proximity: number | null; popularity: number | null };
   source: "selected" | "mesita" | "google";
-  /** The two exponents (MESITA-2703); absent from an older EF. */
-  weights?: { proximity: number; popularity: number };
-  /** The factor `final` carries: the operator's Selected factor for a
+  /** The factor `final` carries: the operator's Selected boost for a
    *  Mesita Selected place, else 1 (MESITA-2717); absent from an older EF. */
   selectedFactor?: number;
   /** The sources that found the place (MESITA-2703); diagnostics only,

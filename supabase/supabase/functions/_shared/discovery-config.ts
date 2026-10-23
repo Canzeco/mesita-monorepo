@@ -56,8 +56,8 @@ import {
 /**
  * The Area pipeline's two stored signal numbers: Proximity's radius divisor
  * (half credit at radius ÷ k, MESITA-2720) and Popularity's reviews for half
- * credit. The exponents live on `map` (`proximityWeight`,
- * `popularityWeight`). The radius is the request's own: it gates, and it
+ * credit. There are no exponents (MESITA-2722 retired `map.proximityWeight`
+ * and `map.popularityWeight`). The radius is the request's own: it gates, and it
  * sets the half distance through the divisor.
  */
 export type SignalParams = {
@@ -130,7 +130,7 @@ export type SuperParamKey = (typeof SUPER_PARAM_KEYS)[number];
  * The Area pipeline's policy (MESITA-2703): a point and a radius, FOUR
  * sources — Google Popular, Google Closest, Mesita Popular, Mesita Closest —
  * each 0 or 20 (`AREA_SOURCE_STOPS`), merged into one pool with duplicates
- * removed, then sorted by Proximity^a × Popularity^b. Home and the Map read
+ * removed, then sorted by Proximity × Popularity × the Selected boost. Home and the Map read
  * the same switches. Operator numbers since MESITA-1699. Floors still
  * exclude; 0 = off.
  */
@@ -164,15 +164,8 @@ export type MapConfig = {
    * max is Google's Nearby circle cap (50 km). One decimal.
    */
   radiusKm: number;
-  /**
-   * Proximity's exponent `a` in Proximity^a × Popularity^b (MESITA-2504),
-   * Home and the Map alike. `MAP_PROXIMITY_WEIGHT_MIN`..`MAX`, two decimals,
-   * default 1; 0 ignores distance.
-   */
-  proximityWeight: number;
-  /** Popularity's exponent `b` (MESITA-2703). Same bounds; 0 ignores
-   *  popularity. */
-  popularityWeight: number;
+  // `proximityWeight` and `popularityWeight` (the exponents a and b,
+  // MESITA-2504/2703) retired in MESITA-2722: dropped on the next Save.
   /**
    * How many of the merged, sorted places Home and the Map show (Pato,
    * MESITA-2713): the top N of up to 80 (4 sources × 20).
@@ -188,10 +181,11 @@ export type MapConfig = {
    */
   popularityFloor: number;
   /**
-   * THE SELECTED FACTOR (Pato, MESITA-2717: "if Select, then a factor to
-   * multiply value of place. not select is 1, select is 3"): a Mesita
+   * THE SELECTED BOOST (Pato, MESITA-2717: "if Select, then a factor to
+   * multiply value of place. not select is 1, select is 3"; Admin's
+   * "Selected factor" until MESITA-2722, the key never renamed): a Mesita
    * Selected place's Area score is multiplied by it, every other place's
-   * by 1, and Mesita Popular picks by Popularity^b × it.
+   * by 1, and Mesita Popular picks by Popularity × it.
    * `MAP_SELECTED_FACTOR_MIN`..`MAX`, one decimal, default 3; 1 is off.
    */
   selectedFactor: number;
@@ -305,12 +299,6 @@ export const AREA_SOURCE_DEFAULT = 20;
 export const MAP_RADIUS_KM_MIN = 1;
 export const MAP_RADIUS_KM_MAX = 50;
 export const MAP_RADIUS_KM_DEFAULT = 15;
-/** `map.proximityWeight` and `map.popularityWeight` bounds: 0 turns the
- *  signal off. */
-export const MAP_PROXIMITY_WEIGHT_MIN = 0;
-export const MAP_PROXIMITY_WEIGHT_MAX = 5;
-export const MAP_PROXIMITY_WEIGHT_DEFAULT = 1;
-export const MAP_POPULARITY_WEIGHT_DEFAULT = 1;
 /** `map.placesShown` bounds: at most the four sources' 80. */
 export const MAP_PLACES_SHOWN_MIN = 1;
 export const MAP_PLACES_SHOWN_MAX = 80;
@@ -364,8 +352,6 @@ export const DEFAULT_MAP: MapConfig = {
   mesitaPopular: AREA_SOURCE_DEFAULT,
   mesitaClosest: AREA_SOURCE_DEFAULT,
   radiusKm: MAP_RADIUS_KM_DEFAULT,
-  proximityWeight: MAP_PROXIMITY_WEIGHT_DEFAULT,
-  popularityWeight: MAP_POPULARITY_WEIGHT_DEFAULT,
   placesShown: MAP_PLACES_SHOWN_DEFAULT,
   popularityFloor: MAP_POPULARITY_FLOOR_DEFAULT,
   selectedFactor: MAP_SELECTED_FACTOR_DEFAULT,
@@ -650,22 +636,6 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
         MAP_RADIUS_KM_MAX,
       ) * 10,
     ) / 10,
-    proximityWeight: Math.round(
-      num(
-        r.proximityWeight,
-        DEFAULT_MAP.proximityWeight,
-        MAP_PROXIMITY_WEIGHT_MIN,
-        MAP_PROXIMITY_WEIGHT_MAX,
-      ) * 100,
-    ) / 100,
-    popularityWeight: Math.round(
-      num(
-        r.popularityWeight,
-        DEFAULT_MAP.popularityWeight,
-        MAP_PROXIMITY_WEIGHT_MIN,
-        MAP_PROXIMITY_WEIGHT_MAX,
-      ) * 100,
-    ) / 100,
     placesShown: Math.round(
       num(r.placesShown, DEFAULT_MAP.placesShown, MAP_PLACES_SHOWN_MIN, MAP_PLACES_SHOWN_MAX),
     ),

@@ -256,7 +256,7 @@ export type PlaceRow = {
   currency: string;
   /** Mesita Selected: the operator's own mark (MESITA-2707). Independent of
    *  `enriched_at` and never derived from a score (the Area score multiplies
-   *  it by the Selected factor, MESITA-2717); admin-web-set-place-selected
+   *  it by the Selected boost, MESITA-2717); admin-web-set-place-selected
    *  is the only writer. */
   selected: boolean;
 };

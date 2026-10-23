@@ -452,7 +452,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           you: locationRef.current,
           sent: nextCenter,
           radiusKm: result.radiusKm ?? null,
-          weights: result.weights ?? null,
         });
         // A reload centered away from the anchored place ends the anchor —
         // the guest moved on. The pick's own forced load (and a filter

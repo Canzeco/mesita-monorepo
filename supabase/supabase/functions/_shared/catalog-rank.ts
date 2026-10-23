@@ -39,7 +39,7 @@ const GUEST_FAMILIES = FAMILIES.filter((f) => f.slug !== "undefined");
  * `places.selected`, set from Single Place and nowhere else. Independent of
  * `enriched_at` (a place can be Selected before any Enrich run, or Enriched
  * and not Selected) and never derived from a score, though the Area score
- * multiplies it by the Selected factor (MESITA-2717); a Google stub never
+ * multiplies it by the Selected boost (MESITA-2717); a Google stub never
  * carries it.
  * Until MESITA-2707 this was `catalogAdmitted`, derived from `enriched_at`
  * and a ready profile.

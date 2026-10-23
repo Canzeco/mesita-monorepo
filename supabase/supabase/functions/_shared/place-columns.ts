@@ -92,7 +92,7 @@ const COLUMNS: readonly string[] = [
   // Mesita Selected (MESITA-2707): the operator's own mark on `places`,
   // independent of `enriched_at` and never derived from a score. The Map
   // pins it red, Chat reads Selected places only, the Search carousel tags
-  // it, and the Area score multiplies it by the Selected factor (MESITA-2717).
+  // it, and the Area score multiplies it by the Selected boost (MESITA-2717).
   "selected",
   // Profile lifecycle (places.content_state: generating | ready | failed).
   // Create saves 'ready' (the profile can be shown — NOT enriched); an

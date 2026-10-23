@@ -1,21 +1,21 @@
 // The Area pipeline's gates and its two signals (MESITA-2327; one pool
 // since MESITA-2379; points only since Territory was retired, MESITA-2500,
-// MESITA-2603; two signals since MESITA-2703; the Selected factor since
+// MESITA-2603; two signals since MESITA-2703; the Selected boost since
 // MESITA-2717).
 //
-//   point location   final = Proximity^a × Popularity^b × s
-//   no location      final = Popularity^b × s
+//   point location   final = Proximity × Popularity × s
+//   no location      final = Popularity × s
 //
-// a = `map.proximityWeight`, b = `map.popularityWeight`, both the operator's
-// (Pato, MESITA-2703: "sort them based on the two weights of proximity and
-// popularity"). Geometric weights, so only the ratio a : b changes the
-// order; 0 turns a signal off (x^0 = 1, an edge place with a = 0 scores
-// Popularity^b alone). Proximity is 1 ÷ (1 + distance ÷ H), H = radius ÷ k,
+// No exponents since MESITA-2722 (Pato: "kinda redundant factors"): the
+// product's order only ever read a : b, and the radius divisor already
+// says how much distance costs; `map.proximityWeight` and
+// `map.popularityWeight` (MESITA-2703, both 1) are retired.
+// Proximity is 1 ÷ (1 + distance ÷ H), H = radius ÷ k,
 // k the operator's radius divisor (MESITA-2720; a fixed H, MESITA-2706,
 // before): 1 at the point, ½ at H, 1 ÷ (1 + k) at the edge whatever the
 // radius, never 0; the Radius gate alone decides who is in. Popularity is ln(1 + reviews × stars), unbounded, and the product is
 // never clamped or normalized (MESITA-2710). s is the operator's Selected
-// factor (`map.selectedFactor`, default 3) for a Mesita Selected place and
+// boost (`map.selectedFactor`, default 3; "Selected factor" until MESITA-2722) for a Mesita Selected place and
 // 1 for every other place (Pato, MESITA-2717: "not select is 1, select is
 // 3"). Selected was a third signal (MESITA-2439) until MESITA-2703; it is
 // back as a plain multiplier, never an exponent.
@@ -32,7 +32,7 @@ import { haversineKm } from "./geo.ts";
 /** Where a candidate's card comes from. `selected` = Mesita Selected, the
  *  operator's mark on the row (`places.selected`, MESITA-2707; independent
  *  of Enriched); `mesita` = a ready Mesita row without the mark; `google` =
- *  a Google-only stub. `selected` alone takes the Selected factor
+ *  a Google-only stub. `selected` alone takes the Selected boost
  *  (MESITA-2717); the other two score × 1. */
 export type AreaSource = "selected" | "mesita" | "google";
 
@@ -55,12 +55,10 @@ export type AreaContext = {
   /** Proximity is ½ at the location's radius ÷ this (MESITA-2720): the
    *  operator's `params.proximity.radiusDivisor`. */
   radiusDivisor: number;
-  /** The two exponents. */
-  weights: AreaWeights;
   /** The Popularity floor (MESITA-2714): a place whose Popularity is under
    *  it is dropped, whatever its source; 0 or absent = off. */
   popularityFloor?: number;
-  /** The Selected factor (MESITA-2717): a `selected` candidate's score is
+  /** The Selected boost (MESITA-2717): a `selected` candidate's score is
    *  multiplied by it; absent = 1. */
   selectedFactor?: number;
 };
@@ -121,21 +119,15 @@ export function insideBounds(
     inLng(c.lng, bounds.low.lng, bounds.high.lng);
 }
 
-/** The two exponents (MESITA-2703). */
-export type AreaWeights = { proximity: number; popularity: number };
-
-/** x^w, a plain power (MESITA-2710: "don't try to normalize … it's just a
- *  clean multiplication"): never clamped above, so Popularity past 1 keeps
- *  its size. Guards only: a missing or negative exponent is 0 (the signal
- *  is off, 0^0 = 1), a negative or non-finite signal reads 0. */
-function weighted(x: number, w: number): number {
-  const e = Number.isFinite(w) ? Math.max(0, w) : 0;
-  if (e === 0) return 1;
-  return Math.pow(Math.max(0, Number.isFinite(x) ? x : 0), e);
+/** A signal as a factor (MESITA-2710: "don't try to normalize … it's just
+ *  a clean multiplication"): never clamped above, so Popularity past 1
+ *  keeps its size; a negative or non-finite signal reads 0. */
+function factor(x: number): number {
+  return Number.isFinite(x) ? Math.max(0, x) : 0;
 }
 
 /** The factor a candidate's score is multiplied by (MESITA-2717): the
- *  operator's Selected factor for a Mesita Selected place, 1 for every other
+ *  operator's Selected boost for a Mesita Selected place, 1 for every other
  *  place. A missing, non-finite or non-positive factor reads 1. */
 export function selectedFactor(
   c: Pick<AreaCandidate, "source">,
@@ -153,14 +145,14 @@ function popularityOrNull(c: AreaCandidate): number | null {
   return logPopularity(c);
 }
 
-/** The score without Proximity: Popularity^b × the Selected factor. The
+/** The score without Proximity: Popularity × the Selected boost. The
  *  whole score with no location, and what Mesita Popular picks by, so the
- *  pick and the ranking agree whatever b (MESITA-2717). */
+ *  pick and the ranking agree (MESITA-2717). */
 export function popularPart(
   c: AreaCandidate,
-  ctx: Pick<AreaContext, "weights" | "selectedFactor">,
+  ctx: Pick<AreaContext, "selectedFactor">,
 ): number {
-  return weighted(popularityOrNull(c) ?? 0, ctx.weights.popularity) * selectedFactor(c, ctx);
+  return factor(popularityOrNull(c) ?? 0) * selectedFactor(c, ctx);
 }
 
 /** One candidate's Area breakdown — the wire's `area` object (MESITA-2379).
@@ -180,11 +172,10 @@ export type AreaDiagnostics = {
   };
   signals: { proximity: number | null; popularity: number | null };
   source: AreaSource;
-  weights: AreaWeights;
-  /** The factor `final` carries (MESITA-2717): the Selected factor for a
+  /** The factor `final` carries (MESITA-2717): the Selected boost for a
    *  Mesita Selected place, else 1. */
   selectedFactor: number;
-  /** Proximity^a × Popularity^b × selectedFactor. */
+  /** Proximity × Popularity × selectedFactor. */
   final: number;
   formula: "point" | "none";
 };
@@ -206,10 +197,9 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
   const prox = loc.kind === "point"
     ? proximity(c, loc.anchor, halfDistanceKm(loc.radiusKm, ctx.radiusDivisor))
     : null;
-  const w = ctx.weights;
   const sel = selectedFactor(c, ctx);
   const popPart = popularPart(c, ctx);
-  const final = loc.kind === "point" ? weighted(prox ?? 0, w.proximity) * popPart : popPart;
+  const final = loc.kind === "point" ? factor(prox ?? 0) * popPart : popPart;
   // THE POPULARITY SCREEN (Pato, MESITA-2714: "if popularity score is
   // below 3 you cannot be shown … it doesn't matter what"): Google or
   // Mesita, Selected or not; no Google numbers reads 0, so it is out too.
@@ -230,7 +220,6 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
     },
     signals: { proximity: prox, popularity: pop },
     source: c.source,
-    weights: { proximity: w.proximity, popularity: w.popularity },
     selectedFactor: sel,
     final: open ? final : 0,
     formula: loc.kind,

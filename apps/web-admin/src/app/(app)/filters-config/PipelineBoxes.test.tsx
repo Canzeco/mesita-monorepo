@@ -88,15 +88,17 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
   });
 
   it("carries no weights table and no subpage tabs", () => {
-    // 3 Name by Admin + 4 Name + 4 Area (current-location radius, a, b,
-    // the radius divisor; the Google reviews minimum left, MESITA-2721; Popularity has no
+    // 3 Name by Admin + 4 Name + 2 Area (current-location radius, the
+    // radius divisor; the reviews minimum left in MESITA-2721, a and b in
+    // MESITA-2722; Popularity has no
     // parameter since MESITA-2710) + the Map's reload seconds. The weights
     // table left the page (MESITA-2603). Deep is Soon.
     const html = page();
     // + Places shown (MESITA-2713) + Minimum Popularity (MESITA-2714)
-    // + Selected factor (MESITA-2717).
-    expect(html.match(/type="number"/g)?.length).toBe(15);
-    expect(html).toContain("Proximity weight (a)");
+    // + Selected boost (MESITA-2717).
+    expect(html.match(/type="number"/g)?.length).toBe(13);
+    expect(html).not.toContain("Proximity weight (a)");
+    expect(html).toContain("Selected boost");
     expect(html).toContain("Radius divisor for half credit");
     expect(html).not.toContain("data-area-weights");
     expect(html).not.toContain("Modes");

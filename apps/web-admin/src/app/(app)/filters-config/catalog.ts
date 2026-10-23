@@ -154,10 +154,6 @@ const MAP_POPULARITY_FLOOR_DEFAULT = 3;
 export const MAP_SELECTED_FACTOR_MIN = 1;
 export const MAP_SELECTED_FACTOR_MAX = 10;
 const MAP_SELECTED_FACTOR_DEFAULT = 3;
-/** Mirrors MAP_PROXIMITY_WEIGHT_* in _shared/discovery-config.ts. */
-export const MAP_PROXIMITY_WEIGHT_MIN = 0;
-export const MAP_PROXIMITY_WEIGHT_MAX = 5;
-const MAP_PROXIMITY_WEIGHT_DEFAULT = 1;
 /** Mirrors MAP_RELOAD_IDLE_SEC_* in _shared/discovery-config.ts. */
 export const MAP_RELOAD_IDLE_SEC_MIN = 0.5;
 export const MAP_RELOAD_IDLE_SEC_MAX = 10;
@@ -178,10 +174,7 @@ export type MapConfig = {
   /** The current-location radius (km): Home's from the device or a saved
    *  pin with no radius, the Map's with no screen, Chat's (MESITA-2703). */
   radiusKm: number;
-  /** Proximity's exponent a in Proximity^a × Popularity^b. */
-  proximityWeight: number;
-  /** Popularity's exponent b (MESITA-2703). */
-  popularityWeight: number;
+  // `proximityWeight` / `popularityWeight` retired (MESITA-2722).
   /** How many sorted places Home and the Map show, 1..80 (MESITA-2713). */
   placesShown: number;
   /** The Popularity floor, ln units, 0..20, default 3; 0 = off (MESITA-2714). */
@@ -478,8 +471,6 @@ export const DEFAULT_MAP: MapConfig = {
   mesitaPopular: AREA_SOURCE_ON,
   mesitaClosest: AREA_SOURCE_ON,
   radiusKm: MAP_RADIUS_KM_DEFAULT,
-  proximityWeight: MAP_PROXIMITY_WEIGHT_DEFAULT,
-  popularityWeight: MAP_PROXIMITY_WEIGHT_DEFAULT,
   placesShown: MAP_PLACES_SHOWN_DEFAULT,
   popularityFloor: MAP_POPULARITY_FLOOR_DEFAULT,
   selectedFactor: MAP_SELECTED_FACTOR_DEFAULT,
@@ -738,24 +729,6 @@ function coerceMap(raw: unknown): MapConfig {
       Math.round(
         num(m.radiusKm, DEFAULT_MAP.radiusKm, MAP_RADIUS_KM_MIN, MAP_RADIUS_KM_MAX) * 10,
       ) / 10,
-    proximityWeight:
-      Math.round(
-        num(
-          m.proximityWeight,
-          DEFAULT_MAP.proximityWeight,
-          MAP_PROXIMITY_WEIGHT_MIN,
-          MAP_PROXIMITY_WEIGHT_MAX,
-        ) * 100,
-      ) / 100,
-    popularityWeight:
-      Math.round(
-        num(
-          m.popularityWeight,
-          DEFAULT_MAP.popularityWeight,
-          MAP_PROXIMITY_WEIGHT_MIN,
-          MAP_PROXIMITY_WEIGHT_MAX,
-        ) * 100,
-      ) / 100,
     placesShown: Math.round(
       num(m.placesShown, DEFAULT_MAP.placesShown, MAP_PLACES_SHOWN_MIN, MAP_PLACES_SHOWN_MAX),
     ),
