@@ -91,6 +91,17 @@ export function logPopularity(
   return Math.log1p(Math.max(0, n) * Math.max(0, r));
 }
 
+/** True when the place's Popularity is at or over the operator's floor
+ *  (`map.popularityFloor`, MESITA-2714); a floor of 0 or less is off. One
+ *  reading for the Area gate and the guest bar's order (MESITA-2724). */
+export function clearsPopularityFloor(
+  candidate: { rating?: number | null; reviewCount?: number | null },
+  floor: number,
+): boolean {
+  if (!(floor > 0)) return true;
+  return logPopularity(candidate) >= floor;
+}
+
 /** The 0..1 Popularity below now feeds only the stored `map.minPopularity`
  *  floor (live 0, no box edits it); the Area score reads `logPopularity`. */
 

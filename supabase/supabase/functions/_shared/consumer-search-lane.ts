@@ -76,7 +76,7 @@ import {
 } from "./place-family-keys.ts";
 import { PLACE_CARD_COLUMNS } from "./place-columns.ts";
 import { radiusBoundingBox } from "./geo.ts";
-import { nameSimilarity } from "./pipeline-signals.ts";
+import { clearsPopularityFloor, nameSimilarity } from "./pipeline-signals.ts";
 import {
   fetchPlaceListing,
   type GooglePlaceListing,
@@ -149,6 +149,9 @@ export type LaneItem = {
   /** Discovery > General inputs. Never sent to the client. */
   businessStatus?: string | null;
   reviewCount?: number | null;
+  /** Google stars, beside `reviewCount`: the guest bar's Popularity order
+   *  reads both (MESITA-2724). Never sent to the client. */
+  rating?: number | null;
   /** Google-only rows: the Google-only card (`googleStub`), from Text Search
    *  (MESITA-2325) or an Autocomplete row's Details call (MESITA-2678). Sent
    *  only while the row is not on Mesita. */
@@ -488,6 +491,34 @@ export function resolveMode(raw?: string | null): SuggestPlacesMode {
   return "fast";
 }
 
+/**
+ * The guest bar's Popularity order (MESITA-2724): a stable partition. A
+ * Google-only place row whose Popularity, ln(1 + reviews × stars), is under
+ * the floor moves after every other row; Mesita rows, Locations and Google
+ * rows that clear the floor keep their order in front. Nothing is removed. A
+ * floor of 0 or less returns the list unchanged. `unknown` counts demoted rows
+ * with no rating or no review count (they read Popularity 0).
+ */
+export function demoteGoogleUnderFloor(
+  items: readonly LaneItem[],
+  floor: number,
+): { items: LaneItem[]; demoted: number; unknown: number } {
+  if (!(floor > 0)) return { items: [...items], demoted: 0, unknown: 0 };
+  const front: LaneItem[] = [];
+  const back: LaneItem[] = [];
+  let unknown = 0;
+  for (const item of items) {
+    const isGooglePlace = item.kind !== "location" && item.state === "not_in_mesita";
+    if (isGooglePlace && !clearsPopularityFloor(item, floor)) {
+      back.push(item);
+      if (typeof item.rating !== "number" || typeof item.reviewCount !== "number") unknown++;
+    } else {
+      front.push(item);
+    }
+  }
+  return { items: [...front, ...back], demoted: back.length, unknown };
+}
+
 export async function runConsumerSearchLane(
   env: EFEnv,
   callerName: string,
@@ -560,9 +591,30 @@ export async function runConsumerSearchLane(
     return json(predictions.errorEnvelope);
   }
 
+  // THE GUEST BAR'S POPULARITY ORDER (MESITA-2724): after the caps and the
+  // Deep merge, Google-only places under the Area box's Minimum Popularity
+  // sort after the rest. Nothing is removed (a guest typing an exact name
+  // must still find it), unlike Home, the Map and Chat, where the same floor
+  // hides a place. Admin Find and Word keep Google's own order.
+  const isAdmin = args.admin === true;
+  const ordered = mode === "mesita" || isAdmin
+    ? { items: predictions, demoted: 0, unknown: 0 }
+    : demoteGoogleUnderFloor(predictions, cfg.map.popularityFloor);
+  if (mode !== "mesita") {
+    console.info(JSON.stringify({
+      fn: "search-lane",
+      caller: callerName,
+      mode,
+      admin: isAdmin,
+      popularityFloor: cfg.map.popularityFloor,
+      popularityDemoted: ordered.demoted,
+      popularityUnknown: ordered.unknown,
+    }));
+  }
+
   return json({
     ok: true,
-    predictions: predictions.map(toWire),
+    predictions: ordered.items.map(toWire),
     caller: callerName,
     mode,
     // Word's idle seconds: the consumer bar waits this long before it
@@ -1015,6 +1067,7 @@ async function fetchTextSearch(
       lng: hit.lng,
       businessStatus: hit.businessStatus,
       reviewCount: hit.reviewCount,
+      rating: hit.rating,
       // The same Google-only card Nearby sends, so a typed pick opens a
       // draft as rich as a Feed card's (MESITA-2325).
       card: googleStub(hit, null),
@@ -1083,6 +1136,11 @@ async function stampGoogleAgainstCatalog(
     if (ok && p.lat == null && hit.lat != null) p.lat = hit.lat;
     if (ok && p.lng == null && hit.lng != null) p.lng = hit.lng;
     if (ok) p.card = googleStub(hit, null);
+    // The Details numbers the guest bar's Popularity order reads (MESITA-2724).
+    if (ok) {
+      p.rating = hit.rating;
+      p.reviewCount = hit.reviewCount;
+    }
     return ok;
   });
 }
