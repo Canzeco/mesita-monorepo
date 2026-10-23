@@ -74,7 +74,12 @@ export function RouteSheetShell({
   );
 }
 
-/** The sheet's title row: the title on the left, a close disc on the right. */
+/** The sheet's title row: the title on the left, a plain X on the right —
+ *  the person card's close (MESITA-2709; Pato, MESITA-2715: "give the route
+ *  sheet header (Ask AI) the same plain X as the person card"; a 44px
+ *  bordered disc before). Only the 20px ink glyph shows, flush with the
+ *  row's px-4 inset (-mr-3 pulls the 44px button's 12px of air past it);
+ *  the tap target is invisible until a hover draws the muted disc. */
 export function RouteSheetHeader({ title }: { title: string }) {
   const close = useContext(RouteSheetCloseContext);
   const router = useRouter();
@@ -87,7 +92,7 @@ export function RouteSheetHeader({ title }: { title: string }) {
         type="button"
         onClick={close ?? (() => router.back())}
         aria-label="Close"
-        className="border-border bg-card text-foreground hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition"
+        className="text-foreground hover:bg-muted focus-visible:ring-ring -mr-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition outline-none focus-visible:ring-2"
       >
         <X className="h-5 w-5" strokeWidth={2.25} aria-hidden />
       </button>
