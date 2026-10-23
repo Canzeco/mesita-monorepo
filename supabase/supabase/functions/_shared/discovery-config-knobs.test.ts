@@ -85,7 +85,7 @@ Deno.test("Area params clamp; the reach, the fixed half distance, Selected and t
       balance: { proximity: 7 },
     },
   });
-  assertEquals(cfg.params, { proximity: { radiusDivisor: 0.5 }, popularity: { halfReviews: 1 } });
+  assertEquals(cfg.params, { proximity: { radiusDivisor: 0.1 }, popularity: { halfReviews: 1 } });
   // One decimal, clamped to 10; a stored row with only the old fixed
   // half distance reads the default 2 (never its 10 as a divisor).
   assertEquals(normalizeDiscoveryConfig({ params: { proximity: { radiusDivisor: 2.34 } } }).params.proximity, { radiusDivisor: 2.3 });

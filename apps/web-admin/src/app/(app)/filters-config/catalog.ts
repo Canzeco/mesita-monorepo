@@ -91,7 +91,7 @@ export const DEEP_LIMIT_MAX = 20;
 export const DEFAULT_DEEP: DeepConfig = { limit: 5, minSimilarity: 0 };
 
 /** Mirrors the Proximity bounds in _shared/pipeline-signals.ts (MESITA-2720). */
-export const RADIUS_DIVISOR_MIN = 0.5;
+export const RADIUS_DIVISOR_MIN = 0.1;
 export const RADIUS_DIVISOR_MAX = 10;
 /** Mirrors the Popularity bounds in _shared/pipeline-signals.ts. */
 export const HALF_REVIEWS_MIN = 1;
