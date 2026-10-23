@@ -497,6 +497,7 @@ export function CatalogRails() {
                         score: {
                           proximity: place.area.signals.proximity,
                           popularity: place.area.signals.popularity,
+                          selectedFactor: place.area.selectedFactor,
                           final: place.area.final,
                           foundBy: place.area.foundBy,
                         },

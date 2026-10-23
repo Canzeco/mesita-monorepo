@@ -38,7 +38,9 @@ const GUEST_FAMILIES = FAMILIES.filter((f) => f.slug !== "undefined");
  * Mesita Selected (MESITA-2707): the operator's own mark on the row,
  * `places.selected`, set from Single Place and nowhere else. Independent of
  * `enriched_at` (a place can be Selected before any Enrich run, or Enriched
- * and not Selected) and of every score; a Google stub never carries it.
+ * and not Selected) and never derived from a score, though the Area score
+ * multiplies it by the Selected factor (MESITA-2717); a Google stub never
+ * carries it.
  * Until MESITA-2707 this was `catalogAdmitted`, derived from `enriched_at`
  * and a ready profile.
  */

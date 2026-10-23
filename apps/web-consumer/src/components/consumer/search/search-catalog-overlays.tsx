@@ -184,8 +184,12 @@ export function RailScoreTag({ place }: { place: Pick<Place, "score" | "selected
             {sources.length > 0 ? sources.join(" · ") : "no source"}
           </p>
           <p className="truncate">
-            proximity {fmtScore(score.proximity)} · popularity {fmtScore(score.popularity)} · final{" "}
-            {fmtScore(score.final)}
+            proximity {fmtScore(score.proximity)} · popularity {fmtScore(score.popularity)}
+            {/* The Selected factor the final took (MESITA-2717); × 1 is not shown. */}
+            {typeof score.selectedFactor === "number" && score.selectedFactor !== 1
+              ? ` · ×${score.selectedFactor}`
+              : ""}{" "}
+            · final {fmtScore(score.final)}
           </p>
         </div>
       ) : null}

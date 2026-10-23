@@ -298,8 +298,9 @@ export function StateRow({
 /**
  * Selected writes places.selected through admin-web-set-place-selected
  * (MESITA-2707): the operator's own mark, independent of Enriched and of
- * Disabled. Nothing scores on it and no RLS policy reads it, so the toggle
- * is immediate — reversible with one more click.
+ * Disabled. It multiplies the place's Area score by the Selected factor
+ * (MESITA-2717) and no RLS policy reads it, so the toggle is immediate —
+ * reversible with one more click.
  */
 function SelectedToggle({
   place,

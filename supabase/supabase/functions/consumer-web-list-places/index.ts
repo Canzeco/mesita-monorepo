@@ -25,9 +25,10 @@
 // read is boxed to it and the Radius gate drops what lies past it, Google's
 // calls ask the prominent 20 inside it first and eligibility drops the rest
 // (Pato: "I son't want to see stuff beyond my screen"). The score is
-// Proximity^a × Popularity^b, Proximity ½ at the operator's distance for
-// half credit whatever R is (MESITA-2706); `a` and `b` are the operator's
-// `map.proximityWeight` and `map.popularityWeight`. The family chip gates;
+// Proximity^a × Popularity^b × the Selected factor, Proximity ½ at the
+// operator's distance for half credit whatever R is (MESITA-2706); `a` and
+// `b` are the operator's `map.proximityWeight` and `map.popularityWeight`,
+// the factor `map.selectedFactor` on a Selected place (MESITA-2717). The family chip gates;
 // the guest picks no mode, so `prefer` is ignored. No bounds, or a box wider
 // than AREA_BOUNDS_MAX_KM, falls back to the centre inside `map.radiusKm`,
 // scored the same way. The answer carries R, the weights and each place's
@@ -116,6 +117,9 @@ type WireScore = {
   proximity: number | null;
   popularity: number | null;
   final: number;
+  /** The factor `final` carries: the Selected factor for a Mesita Selected
+   *  place, else 1 (MESITA-2717). */
+  selectedFactor: number;
   /** The sources that found the place (MESITA-2703); diagnostics only. */
   foundBy: string[];
 };
@@ -190,7 +194,8 @@ Deno.serve(async (req) => {
   const screenKm = screenRadiusKm(body.bounds, center);
   const radiusKm = screenKm ?? cfg.map.radiusKm;
   const location = { kind: "point" as const, anchor: center, radiusKm };
-  // Proximity^a × Popularity^b; the radius gates, the half-distance scores.
+  // Proximity^a × Popularity^b × the Selected factor; the radius gates, the
+  // half-distance scores.
   const weights = areaWeights(cfg.map);
   const pool = await selectedPoolQuery(
     supabase.from("profiles").select(PLACE_CARD_COLUMNS) as unknown as PoolBuilder,
@@ -245,6 +250,7 @@ Deno.serve(async (req) => {
           proximity: a.signals.proximity,
           popularity: a.signals.popularity,
           final: a.final,
+          selectedFactor: a.selectedFactor,
           foundBy: a.foundBy,
         } satisfies WireScore,
       })) as CardRow[],

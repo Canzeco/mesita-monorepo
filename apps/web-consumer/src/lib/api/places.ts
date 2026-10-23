@@ -21,8 +21,10 @@ export type Place = {
   enriched?: boolean | null;
   /** Mesita Selected (MESITA-2707): the operator's own mark,
    *  `places.selected`, on every consumer place payload. Independent of
-   *  `enriched` and of every score: the Search pins read it (red), the
-   *  carousel tags it. Absent on an older payload reads as not Selected. */
+   *  `enriched` and never derived from a score: the Search pins read it
+   *  (red), the carousel tags it, and the server's Area score multiplies a
+   *  Selected place by the Selected factor (MESITA-2717). Absent on an older
+   *  payload reads as not Selected. */
   selected?: boolean | null;
   id: string;
   slug: string;
@@ -93,8 +95,9 @@ export type Place = {
    *  (MESITA-2379); only the one-pool Feed wire carries it. */
   area?: AreaDiagnostics;
   /** The Search map's score for this place (MESITA-2504 debug): the two
-   *  signals, the sources that found it and the product. Only list-places
-   *  sends it. Selected is not in it: it is the row's own mark. */
+   *  signals, the Selected factor, the sources that found it and the
+   *  product. Only list-places sends it. The mark itself is the row's own
+   *  `selected`. */
   score?: MapScore;
   /** Alias shipped on Google Nearby stubs (`from_google`). */
   from_google?: boolean;
@@ -135,6 +138,9 @@ export type MapScore = {
   proximity: number | null;
   popularity: number | null;
   final: number;
+  /** The factor `final` carries: the Selected factor for a Mesita Selected
+   *  place, else 1 (MESITA-2717); absent from an older EF. */
+  selectedFactor?: number;
   /** The sources that found the place (MESITA-2703); diagnostics only. */
   foundBy?: string[];
 };
@@ -294,6 +300,9 @@ export type AreaDiagnostics = {
   source: "selected" | "mesita" | "google";
   /** The two exponents (MESITA-2703); absent from an older EF. */
   weights?: { proximity: number; popularity: number };
+  /** The factor `final` carries: the operator's Selected factor for a
+   *  Mesita Selected place, else 1 (MESITA-2717); absent from an older EF. */
+  selectedFactor?: number;
   /** The sources that found the place (MESITA-2703); diagnostics only,
    *  no card draws it. */
   foundBy?: string[];

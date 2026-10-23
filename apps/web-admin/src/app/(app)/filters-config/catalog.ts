@@ -150,6 +150,10 @@ const MAP_PLACES_SHOWN_DEFAULT = 20;
 export const MAP_POPULARITY_FLOOR_MIN = 0;
 export const MAP_POPULARITY_FLOOR_MAX = 20;
 const MAP_POPULARITY_FLOOR_DEFAULT = 3;
+/** Mirrors MAP_SELECTED_FACTOR_* in _shared/discovery-config.ts (MESITA-2717). */
+export const MAP_SELECTED_FACTOR_MIN = 1;
+export const MAP_SELECTED_FACTOR_MAX = 10;
+const MAP_SELECTED_FACTOR_DEFAULT = 3;
 /** Mirrors MAP_PROXIMITY_WEIGHT_* in _shared/discovery-config.ts. */
 export const MAP_PROXIMITY_WEIGHT_MIN = 0;
 export const MAP_PROXIMITY_WEIGHT_MAX = 5;
@@ -187,6 +191,9 @@ export type MapConfig = {
   placesShown: number;
   /** The Popularity floor, ln units, 0..20, default 3; 0 = off (MESITA-2714). */
   popularityFloor: number;
+  /** A Mesita Selected place's score × this, every other place's × 1;
+   *  1..10, default 3; 1 = off (MESITA-2717). */
+  selectedFactor: number;
 };
 
 /**
@@ -481,6 +488,7 @@ export const DEFAULT_MAP: MapConfig = {
   popularityWeight: MAP_PROXIMITY_WEIGHT_DEFAULT,
   placesShown: MAP_PLACES_SHOWN_DEFAULT,
   popularityFloor: MAP_POPULARITY_FLOOR_DEFAULT,
+  selectedFactor: MAP_SELECTED_FACTOR_DEFAULT,
 };
 
 const DEFAULT_NAME_FAST: NameFastConfig = {
@@ -762,6 +770,10 @@ function coerceMap(raw: unknown): MapConfig {
     popularityFloor:
       Math.round(
         num(m.popularityFloor, DEFAULT_MAP.popularityFloor, MAP_POPULARITY_FLOOR_MIN, MAP_POPULARITY_FLOOR_MAX) * 10,
+      ) / 10,
+    selectedFactor:
+      Math.round(
+        num(m.selectedFactor, DEFAULT_MAP.selectedFactor, MAP_SELECTED_FACTOR_MIN, MAP_SELECTED_FACTOR_MAX) * 10,
       ) / 10,
   };
 }

@@ -240,3 +240,25 @@ Deno.test("the Popularity floor drops any place under it, Google or Mesita, Sele
   assertEquals(areaScore(thin, CTX).gates.popularity, null);
   assertEquals(rankArea([thin, ok], (c) => c, { ...CTX, popularityFloor: 0 }).length, 2);
 });
+
+Deno.test("the Selected factor multiplies a Selected place's score, every other place's by 1 (MESITA-2717)", () => {
+  const ctx: AreaContext = { ...CTX, selectedFactor: 3 };
+  // One spot, so Popularity alone orders: ln(1 + 50 × 4) ≈ 5.30, × 3 ≈ 15.9,
+  // beats ln(1 + 3000 × 4.5) ≈ 9.51.
+  const picked = cand({ id: "picked", rating: 4, reviewCount: 50, source: "selected" });
+  const loved = cand({ id: "loved", rating: 4.5, reviewCount: 3000, source: "google" });
+  const plain = cand({ id: "plain", rating: 4, reviewCount: 50, source: "mesita" });
+  assertEquals(areaScore(picked, ctx).selectedFactor, 3);
+  assertEquals(areaScore(loved, ctx).selectedFactor, 1);
+  assertEquals(areaScore(plain, ctx).selectedFactor, 1);
+  assertAlmostEquals(areaScore(picked, ctx).final, 3 * areaScore(plain, ctx).final, 1e-9);
+  assertEquals(rankArea([loved, plain, picked], (c) => c, ctx).map((r) => r.item.id), ["picked", "loved", "plain"]);
+  // 1 or absent is off: the busier place leads again.
+  assertEquals(rankArea([loved, picked], (c) => c, { ...ctx, selectedFactor: 1 }).map((r) => r.item.id), ["loved", "picked"]);
+  assertEquals(rankArea([loved, picked], (c) => c, CTX).map((r) => r.item.id), ["loved", "picked"]);
+  // No location: Popularity^b × s.
+  assertAlmostEquals(areaScore(picked, { ...NONE, selectedFactor: 3 }).final, 3 * Math.log1p(200), 1e-9);
+  // It never saves a place from the Popularity floor.
+  const thin = cand({ id: "thin", rating: 4, reviewCount: 4, source: "selected" });
+  assertEquals(areaScore(thin, { ...ctx, popularityFloor: 3 }).final, 0);
+});
