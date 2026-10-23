@@ -404,7 +404,7 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             onChange={(popularityFloor) => map({ popularityFloor })}
           />
           <NumberField
-            label="Radius divisor for half credit"
+            label="Distance penalty"
             value={params.proximity.radiusDivisor}
             min={RADIUS_DIVISOR_MIN}
             max={RADIUS_DIVISOR_MAX}
@@ -425,13 +425,14 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
         </div>
         <p className="text-muted-foreground type-meta">
           The score is Proximity × Popularity × the Selected boost, Home and
-          the Map alike. The radius divisor says how much distance costs:
-          half credit sits at the circle&apos;s radius ÷ the divisor (now{" "}
-          {params.proximity.radiusDivisor}), whatever the circle — the Home
-          pin&apos;s or the Map screen&apos;s. At 2, a place halfway to the
-          edge scores ½ and one on the edge ⅓; a bigger divisor favours near
-          places, a smaller one popular places. Proximity is 1 ÷ (1 +
-          distance ÷ (radius ÷ divisor)), never 0. A place whose Popularity is under the Minimum
+          the Map alike. The distance penalty (now{" "}
+          {params.proximity.radiusDivisor}) says how much distance costs:
+          Proximity is 1 ÷ (1 + penalty × distance ÷ radius), so half credit
+          sits at the radius ÷ the penalty and the edge scores 1 ÷ (1 +
+          penalty), whatever the circle — the Home pin&apos;s or the Map
+          screen&apos;s. At 2, a place halfway to the edge scores ½ and one on
+          the edge ⅓; a bigger penalty favours near places, a smaller one
+          popular places. Never 0. A place whose Popularity is under the Minimum
           Popularity (now {cfg.map.popularityFloor}; 0 is off) never shows on
           Home, the Map or Chat, Google or Mesita, whatever its score: 3 is
           about 4★ × 5 reviews. On the guest Search bar it only reorders:

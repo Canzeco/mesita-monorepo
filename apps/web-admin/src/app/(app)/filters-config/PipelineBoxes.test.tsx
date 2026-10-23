@@ -99,7 +99,7 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
     expect(html.match(/type="number"/g)?.length).toBe(13);
     expect(html).not.toContain("Proximity weight (a)");
     expect(html).toContain("Selected boost");
-    expect(html).toContain("Radius divisor for half credit");
+    expect(html).toContain("Distance penalty");
     expect(html).not.toContain("data-area-weights");
     expect(html).not.toContain("Modes");
     expect(html).not.toContain('role="tablist"');
