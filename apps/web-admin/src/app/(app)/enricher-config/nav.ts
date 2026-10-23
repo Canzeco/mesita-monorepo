@@ -1,4 +1,4 @@
-import { RefreshCw, Wand2 } from "lucide-react";
+import { Layers, MapPinPlus } from "lucide-react";
 
 // Two sidebar entries since MESITA-2083 — "Creation" and "Enrichment" — over
 // the one Crenup client (CrenupClient's `view`). Pato: "Models, Creation,
@@ -8,14 +8,17 @@ import { RefreshCw, Wand2 } from "lucide-react";
 // Enrich · Functions. What may appear in Search lives on Discovery › Map.
 // THE ROUTE PREFIX IS FROZEN: /enricher-config, atlas_* columns,
 // admin-web-*-enricher-config. Bare /enricher-config 308s to Creation.
+//
+// Icons (MESITA-2716): Creation adds a pin to the map, Enrichment stacks
+// data onto it. They were a wand and refresh arrows.
 export const CREATION_PARENT = {
   href: "/enricher-config/creation",
   label: "Creation",
-  Icon: Wand2,
+  Icon: MapPinPlus,
 } as const;
 
 export const ENRICHMENT_PARENT = {
   href: "/enricher-config/enrichment",
   label: "Enrichment",
-  Icon: RefreshCw,
+  Icon: Layers,
 } as const;
