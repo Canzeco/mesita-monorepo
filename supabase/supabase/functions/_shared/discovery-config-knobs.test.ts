@@ -77,25 +77,26 @@ Deno.test("an old blob with no Area params reads the defaults (MESITA-2327, MESI
     params: { proximity: { maxKm: 25, kneeKm: 1, missingGeo: 0.35 }, popularity: { confidence: 60 } },
     catalog: { ranking: { proximity: 1, popularity: 1 } },
   });
-  assertEquals(cfg.params, { proximity: { halfKm: 10 }, popularity: { halfReviews: 100 } });
+  assertEquals(cfg.params, { proximity: { radiusDivisor: 2 }, popularity: { halfReviews: 100 } });
   assertEquals("ranking" in cfg.catalog, false);
 });
 
-Deno.test("Area params clamp; the reach, Selected and the weights table drop, the half-distance arrives (MESITA-2687, MESITA-2703, MESITA-2706)", () => {
+Deno.test("Area params clamp; the reach, the fixed half distance, Selected and the weights table drop, the divisor arrives (MESITA-2687, MESITA-2703, MESITA-2720)", () => {
   const cfg = normalizeDiscoveryConfig({
     params: {
-      proximity: { reachKm: 7, halfKm: 0.01 },
+      proximity: { reachKm: 7, halfKm: 4, radiusDivisor: 0.01 },
       selected: { otherFactor: 0.3 },
       popularity: { halfReviews: 0 },
       modes: { nearby: { proximity: 99, popularity: -4 }, popular: { popularity: 1.234 } },
       balance: { proximity: 7 },
     },
   });
-  assertEquals(cfg.params, { proximity: { halfKm: 0.5 }, popularity: { halfReviews: 1 } });
-  // One decimal, clamped to 50; a stored row with no half-distance reads 10.
-  assertEquals(normalizeDiscoveryConfig({ params: { proximity: { halfKm: 12.34 } } }).params.proximity, { halfKm: 12.3 });
-  assertEquals(normalizeDiscoveryConfig({ params: { proximity: { halfKm: 999 } } }).params.proximity, { halfKm: 50 });
-  assertEquals(normalizeDiscoveryConfig({ params: { proximity: { reachKm: 7 } } }).params.proximity, { halfKm: 10 });
+  assertEquals(cfg.params, { proximity: { radiusDivisor: 0.5 }, popularity: { halfReviews: 1 } });
+  // One decimal, clamped to 10; a stored row with only the old fixed
+  // half distance reads the default 2 (never its 10 as a divisor).
+  assertEquals(normalizeDiscoveryConfig({ params: { proximity: { radiusDivisor: 2.34 } } }).params.proximity, { radiusDivisor: 2.3 });
+  assertEquals(normalizeDiscoveryConfig({ params: { proximity: { radiusDivisor: 999 } } }).params.proximity, { radiusDivisor: 10 });
+  assertEquals(normalizeDiscoveryConfig({ params: { proximity: { halfKm: 10 } } }).params.proximity, { radiusDivisor: 2 });
 });
 
 Deno.test("Deep: limit 5 and no floor by default; both clamp", () => {

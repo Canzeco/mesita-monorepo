@@ -38,7 +38,9 @@
 // reading it) and `params.selected` (the Area score is Proximity^a ×
 // Popularity^b). Migration 20261023020000 strips them from the stored row.
 // `params.proximity` came back with ONE field, `halfKm`, the reciprocal
-// curve's distance for half credit (MESITA-2706); `reachKm` stays dropped.
+// curve's distance for half credit (MESITA-2706); it became `radiusDivisor`,
+// half credit at radius ÷ k (MESITA-2720), and a stored `halfKm` or
+// `reachKm` is dropped on the next save.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { bool, num } from "./config-coerce.ts";
@@ -46,20 +48,20 @@ import {
   POPULARITY_HALF_REVIEWS_DEFAULT,
   POPULARITY_HALF_REVIEWS_MAX,
   POPULARITY_HALF_REVIEWS_MIN,
-  PROXIMITY_HALF_KM_DEFAULT,
-  PROXIMITY_HALF_KM_MAX,
-  PROXIMITY_HALF_KM_MIN,
+  PROXIMITY_RADIUS_DIVISOR_DEFAULT,
+  PROXIMITY_RADIUS_DIVISOR_MAX,
+  PROXIMITY_RADIUS_DIVISOR_MIN,
 } from "./pipeline-signals.ts";
 
 /**
- * The Area pipeline's two stored signal numbers, one half point each:
- * Proximity's distance for half credit (km, MESITA-2706) and Popularity's
- * reviews for half credit. The exponents live on `map` (`proximityWeight`,
- * `popularityWeight`). The radius is the request's own and only gates
- * (MESITA-2703); the half-distance never follows it.
+ * The Area pipeline's two stored signal numbers: Proximity's radius divisor
+ * (half credit at radius ÷ k, MESITA-2720) and Popularity's reviews for half
+ * credit. The exponents live on `map` (`proximityWeight`,
+ * `popularityWeight`). The radius is the request's own: it gates, and it
+ * sets the half distance through the divisor.
  */
 export type SignalParams = {
-  proximity: { halfKm: number };
+  proximity: { radiusDivisor: number };
   popularity: { halfReviews: number };
 };
 
@@ -437,15 +439,15 @@ export const DEFAULT_GENERAL: GeneralConfig = {
 
 /** The Area pipeline's numbers. A blob with no `params` reads these. */
 export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
-  proximity: { halfKm: PROXIMITY_HALF_KM_DEFAULT },
+  proximity: { radiusDivisor: PROXIMITY_RADIUS_DIVISOR_DEFAULT },
   popularity: { halfReviews: POPULARITY_HALF_REVIEWS_DEFAULT },
 };
 
 /** Legal ranges for the numbers the Area box edits. */
 export const SIGNAL_PARAM_BOUNDS = {
-  halfKm: {
-    min: PROXIMITY_HALF_KM_MIN,
-    max: PROXIMITY_HALF_KM_MAX,
+  radiusDivisor: {
+    min: PROXIMITY_RADIUS_DIVISOR_MIN,
+    max: PROXIMITY_RADIUS_DIVISOR_MAX,
     decimals: 1,
   },
   halfReviews: {
@@ -716,7 +718,8 @@ function boundedParam(
  * popularity.referenceRating/referenceReviews, MESITA-2347), the linear
  * `balance` (MESITA-2428), the weights table `modes` (MESITA-2687) or
  * `proximity.reachKm` / `selected` (MESITA-2703) is dropped on the next
- * save. `proximity.halfKm` is the one proximity field read (MESITA-2706).
+ * save. `proximity.radiusDivisor` is the one proximity field read
+ * (MESITA-2720); the fixed `halfKm` it replaced (MESITA-2706) drops too.
  */
 export function normalizeSignalParams(raw: unknown): SignalParams {
   const r = (raw ?? {}) as Record<string, unknown>;
@@ -725,10 +728,10 @@ export function normalizeSignalParams(raw: unknown): SignalParams {
   const d = DEFAULT_SIGNAL_PARAMS;
   return {
     proximity: {
-      halfKm: boundedParam(
-        prox.halfKm,
-        d.proximity.halfKm,
-        SIGNAL_PARAM_BOUNDS.halfKm,
+      radiusDivisor: boundedParam(
+        prox.radiusDivisor,
+        d.proximity.radiusDivisor,
+        SIGNAL_PARAM_BOUNDS.radiusDivisor,
       ),
     },
     popularity: {

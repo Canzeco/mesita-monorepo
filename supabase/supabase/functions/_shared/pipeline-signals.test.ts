@@ -8,12 +8,13 @@ import {
   popularity,
   POPULARITY_HALF_REVIEWS_DEFAULT,
   proximity,
-  PROXIMITY_HALF_KM_DEFAULT,
+  halfDistanceKm,
+  PROXIMITY_RADIUS_DIVISOR_DEFAULT,
   proximityFromDistance,
 } from "./pipeline-signals.ts";
 
 const K = POPULARITY_HALF_REVIEWS_DEFAULT;
-const D = PROXIMITY_HALF_KM_DEFAULT;
+const D = 10;
 
 Deno.test("proximity: 1 ÷ (1 + d ÷ D) — 1 at the point, ½ at D, ⅓ at 2D, never 0 (MESITA-2706)", () => {
   assertEquals(proximityFromDistance(0, D), 1);
@@ -26,20 +27,27 @@ Deno.test("proximity: 1 ÷ (1 + d ÷ D) — 1 at the point, ½ at D, ⅓ at 2D, 
   assert(proximityFromDistance(1, D) < 1);
 });
 
-Deno.test("proximity: Pato's 10 km on Home's 15 km circle — 0.40 at the edge, 0.67 at 5 km", () => {
-  assertEquals(D, 10);
-  assertAlmostEquals(proximityFromDistance(15, D), 0.4, 1e-12);
-  assertAlmostEquals(proximityFromDistance(5, D), 2 / 3, 1e-12);
-  assertAlmostEquals(proximityFromDistance(2, D), 1 / 1.2, 1e-12);
+Deno.test("proximity: D = radius ÷ k; k = 2 puts the edge of any circle at ⅓ (MESITA-2720)", () => {
+  assertEquals(PROXIMITY_RADIUS_DIVISOR_DEFAULT, 2);
+  for (const r of [1, 15, 50]) {
+    const h = halfDistanceKm(r, PROXIMITY_RADIUS_DIVISOR_DEFAULT);
+    assertAlmostEquals(h, r / 2, 1e-12);
+    assertAlmostEquals(proximityFromDistance(r, h), 1 / 3, 1e-12);
+    assertAlmostEquals(proximityFromDistance(r / 2, h), 0.5, 1e-12);
+  }
+  // The edge scores 1 ÷ (1 + k): k = 1 → ½, k = 4 → ⅕.
+  assertAlmostEquals(proximityFromDistance(15, halfDistanceKm(15, 1)), 0.5, 1e-12);
+  assertAlmostEquals(proximityFromDistance(15, halfDistanceKm(15, 4)), 0.2, 1e-12);
+  // A non-positive divisor reads the default.
+  assertEquals(halfDistanceKm(15, 0), 7.5);
+  assertEquals(halfDistanceKm(15, Number.NaN), 7.5);
 });
 
-Deno.test("proximity: D is the operator's; a non-positive D reads the default", () => {
-  // ½ at 1 km on a 1 km half-distance, at 50 km on a 50 km one.
-  assertAlmostEquals(proximityFromDistance(1, 1), 0.5, 1e-12);
-  assertAlmostEquals(proximityFromDistance(50, 50), 0.5, 1e-12);
-  assertAlmostEquals(proximityFromDistance(D, 0), 0.5, 1e-12);
-  assertAlmostEquals(proximityFromDistance(D, Number.NaN), 0.5, 1e-12);
-  assertAlmostEquals(proximityFromDistance(D, -3), 0.5, 1e-12);
+Deno.test("proximity: a non-positive D cannot place a distance", () => {
+  assertEquals(proximityFromDistance(0, 0), 1);
+  assertEquals(proximityFromDistance(D, 0), 0);
+  assertEquals(proximityFromDistance(D, Number.NaN), 0);
+  assertEquals(proximityFromDistance(D, -3), 0);
 });
 
 Deno.test("proximity missing data: no anchor abstains at 1; no coordinates is 0", () => {

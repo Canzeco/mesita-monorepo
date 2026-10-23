@@ -8,8 +8,8 @@ const src = await Deno.readTextFile(new URL("./index.ts", import.meta.url));
 
 Deno.test("list-catalog: one ranking, the Map's — Proximity^a × Popularity^b; the half-distance is the operator's (MESITA-2703, MESITA-2706)", () => {
   assert(src.includes("const weights = areaWeights(cfg.map);"));
-  // The engine reads the half-distance from the blob and the radius from the
-  // location; no caller override.
+  // The engine reads the radius divisor from the blob and the radius from
+  // the location; no caller override.
   assertEquals(src.includes("signals:"), false);
   assertEquals(src.includes("reachKm"), false);
   assertEquals(src.includes("halfKm"), false);

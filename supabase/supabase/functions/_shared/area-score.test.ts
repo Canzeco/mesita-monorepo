@@ -19,7 +19,7 @@ const POP = Math.log1p(400);
 const CTX: AreaContext = {
   location: { kind: "point", anchor: ANCHOR, radiusKm: 8 },
   families: [],
-  halfKm: 4,
+  radiusDivisor: 2,
   weights: { proximity: 1, popularity: 1 },
 };
 const BOUNDS = { low: { lat: 19.4, lng: -99.2 }, high: { lat: 19.5, lng: -99.1 } };
@@ -182,17 +182,20 @@ Deno.test("non-finite numbers never reach the sort", () => {
   assertEquals(ranked[0].item.id, "ok");
 });
 
-Deno.test("Proximity's half-distance is the operator's and never follows the radius (MESITA-2706)", () => {
-  // D = 1.5 km: 1.5 km out scores ½ on a 3 km circle and on a 30 km one alike.
+Deno.test("Proximity's half distance is the radius ÷ the operator's divisor (MESITA-2720)", () => {
+  // k = 2 on a 3 km circle: H = 1.5 km, so 1.5 km out scores ½.
   const ctx: AreaContext = {
     ...CTX,
     location: { kind: "point", anchor: ANCHOR, radiusKm: 3 },
-    halfKm: 1.5,
+    radiusDivisor: 2,
   };
   const mid = cand({ lat: ANCHOR.lat + 1.5 / 111.195 });
   assertAlmostEquals(areaScore(mid, ctx).signals.proximity!, 0.5, 1e-3);
+  // H follows the radius: on a 30 km circle H = 15 km, so 1.5 km out is
+  // 1 ÷ (1 + 0.1); and the divisor moves it (k = 1: H = 3 km, ⅔).
   const wide: AreaContext = { ...ctx, location: { kind: "point", anchor: ANCHOR, radiusKm: 30 } };
-  assertAlmostEquals(areaScore(mid, wide).signals.proximity!, 0.5, 1e-3);
+  assertAlmostEquals(areaScore(mid, wide).signals.proximity!, 1 / 1.1, 1e-3);
+  assertAlmostEquals(areaScore(mid, { ...ctx, radiusDivisor: 1 }).signals.proximity!, 2 / 3, 1e-3);
   // The edge is not 0 any more: 2.999 km of a 3 km circle keeps ⅓, and the
   // Radius gate, not the curve, drops what lies past the circle.
   const edge = cand({ lat: ANCHOR.lat + 2.999 / 111.195, rating: 4.0, reviewCount: 100 });
