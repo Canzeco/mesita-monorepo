@@ -13,10 +13,12 @@ import {
 } from "./area-score.ts";
 
 const ANCHOR = { lat: 19.43, lng: -99.13 };
+/** Popularity of a 4.0★ place with 100 reviews: ln(1 + 100 × 4) ≈ 5.99
+ *  (MESITA-2710). */
+const POP = Math.log1p(400);
 const CTX: AreaContext = {
   location: { kind: "point", anchor: ANCHOR, radiusKm: 8 },
   families: [],
-  halfReviews: 100,
   halfKm: 4,
   weights: { proximity: 1, popularity: 1 },
 };
@@ -37,8 +39,8 @@ Deno.test("point: final = Proximity^a × Popularity^b", () => {
   const s = areaScore(cand({ rating: 4.0, reviewCount: 100 }), CTX);
   assertEquals(s.formula, "point");
   assertEquals(s.signals.proximity, 1);
-  assertAlmostEquals(s.signals.popularity!, 0.4, 1e-12);
-  assertAlmostEquals(s.final, 1 * 0.4, 1e-12);
+  assertAlmostEquals(s.signals.popularity!, POP, 1e-12);
+  assertAlmostEquals(s.final, 1 * POP, 1e-12);
   assertEquals(s.weights, { proximity: 1, popularity: 1 });
   assertEquals(s.gates.family, 1);
   assertEquals(s.gates.radius, 1);
@@ -75,7 +77,7 @@ Deno.test("no location: final = Popularity^b", () => {
   assertEquals(s.formula, "none");
   assertEquals(s.signals.proximity, null);
   assertEquals(s.gates.radius, null);
-  assertAlmostEquals(s.final, 0.4, 1e-12);
+  assertAlmostEquals(s.final, POP, 1e-12);
 });
 
 Deno.test("Popularity is null (n/a) when rating or count is missing, and scores as 0", () => {
@@ -152,7 +154,7 @@ Deno.test("at the half-distance Proximity is exactly ½, and the score is the pr
   const c = cand({ lat: ANCHOR.lat + 4 / 111.195, rating: 4.0, reviewCount: 100 });
   const s = areaScore(c, CTX);
   assertAlmostEquals(s.signals.proximity!, 0.5, 1e-3);
-  assertAlmostEquals(s.final, 0.5 * 0.4, 1e-3);
+  assertAlmostEquals(s.final, 0.5 * POP, 1e-3);
 });
 
 Deno.test("the breakdown carries the operational gates the sources applied", () => {
@@ -195,13 +197,31 @@ Deno.test("Proximity's half-distance is the operator's and never follows the rad
   // Radius gate, not the curve, drops what lies past the circle.
   const edge = cand({ lat: ANCHOR.lat + 2.999 / 111.195, rating: 4.0, reviewCount: 100 });
   assertAlmostEquals(areaScore(edge, ctx).signals.proximity!, 1 / 3, 1e-3);
-  assertAlmostEquals(areaScore(edge, ctx).final, 0.4 / 3, 1e-3);
+  assertAlmostEquals(areaScore(edge, ctx).final, POP / 3, 1e-3);
   assertEquals(areaScore(cand({ lat: ANCHOR.lat + 3.1 / 111.195 }), ctx).gates.radius, 0);
   // a = 0 ignores distance: the edge place scores its Popularity alone (x^0 = 1).
-  assertAlmostEquals(areaScore(edge, { ...ctx, weights: { proximity: 0, popularity: 1 } }).final, 0.4, 1e-12);
+  assertAlmostEquals(areaScore(edge, { ...ctx, weights: { proximity: 0, popularity: 1 } }).final, POP, 1e-12);
   // b = 0 ignores popularity: an unrated place at the point scores 1.
   assertEquals(
     areaScore(cand({ rating: null, reviewCount: null }), { ...ctx, weights: { proximity: 1, popularity: 0 } }).final,
     1,
   );
+});
+
+Deno.test("Popularity is ln(1 + reviews × stars), never normalized, and the product is never clamped (MESITA-2710)", () => {
+  const big = areaScore(cand({ rating: 4.6, reviewCount: 1000 }), NONE);
+  assertAlmostEquals(big.signals.popularity!, Math.log1p(4600), 1e-12);
+  assertEquals(big.signals.popularity! > 1, true);
+  // b = 2 squares it: a plain power, no cap at 1.
+  const sq = areaScore(cand({ rating: 4.6, reviewCount: 1000 }), { ...NONE, weights: { proximity: 1, popularity: 2 } });
+  assertAlmostEquals(sq.final, Math.log1p(4600) ** 2, 1e-9);
+  // No reviews: 0, not -Infinity.
+  assertEquals(areaScore(cand({ reviewCount: 0 }), NONE).signals.popularity, 0);
+  // More reviews at the same stars always rank higher; stars count too.
+  const order = rankArea(
+    [cand({ id: "few", reviewCount: 30, rating: 4.9 }), cand({ id: "many", reviewCount: 3000, rating: 4.2 })],
+    (c) => c,
+    NONE,
+  );
+  assertEquals(order.map((r) => r.item.id), ["many", "few"]);
 });
