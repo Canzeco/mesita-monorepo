@@ -97,9 +97,16 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
     const html = page();
     // + Places shown (MESITA-2713) + Minimum Popularity (MESITA-2714)
     // + Selected boost (MESITA-2717) + the Catalog's own Places shown and
-    // Distance penalty (MESITA-2727).
-    expect(html.match(/type="number"/g)?.length).toBe(16);
+    // Distance penalty (MESITA-2727) + min screen move (MESITA-2732).
+    // Typed numbers, no spinner (MESITA-2733): 8 decimal knobs, 8 integer knobs.
+    expect(html.match(/type="text"/g)?.length).toBe(16);
+    expect(html.match(/inputMode="decimal"/g)?.length).toBe(8);
+    expect(html.match(/inputMode="numeric"/g)?.length).toBe(8);
+    expect(html).not.toContain('type="number"');
+    expect(html).not.toContain("step=");
+    expect(html).toContain("0.1–10");
     expect(html).toContain("Min map move to reload");
+    expect(html).toContain("0–50");
     expect(html).toContain("Catalog distance penalty");
     expect(html).toContain("Catalog places shown");
     expect(html).not.toContain("Proximity weight (a)");
@@ -153,7 +160,7 @@ describe("the boxes' controls", () => {
     expect(html).toContain(">Deep Pipeline");
     expect(html).toContain("Soon");
     expect(html).toContain('id="s-deep"');
-    for (const gone of ["Places handed to Chat", "Minimum Description score", "Chat Agent prompt", "<textarea", 'type="number"', ">Save<", ">Sources<", ">Signals<"]) {
+    for (const gone of ["Places handed to Chat", "Minimum Description score", "Chat Agent prompt", "<textarea", 'type="number"', 'type="text"', ">Save<", ">Sources<", ">Signals<"]) {
       expect(html).not.toContain(gone);
     }
   });
