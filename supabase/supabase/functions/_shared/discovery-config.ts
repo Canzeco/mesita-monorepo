@@ -61,7 +61,9 @@ import {
  * sets the half distance through the divisor.
  */
 export type SignalParams = {
-  proximity: { radiusDivisor: number };
+  /** `radiusDivisor` is the Map's Distance penalty; `catalogRadiusDivisor`
+   *  is Home's (MESITA-2727). A blob without the Catalog key reads the Map's. */
+  proximity: { radiusDivisor: number; catalogRadiusDivisor: number };
   popularity: { halfReviews: number };
 };
 
@@ -167,11 +169,16 @@ export type MapConfig = {
   // `proximityWeight` and `popularityWeight` (the exponents a and b,
   // MESITA-2504/2703) retired in MESITA-2722: dropped on the next Save.
   /**
-   * How many of the merged, sorted places Home and the Map show (Pato,
+   * How many of the merged, sorted places the Map shows (Pato,
    * MESITA-2713): the top N of up to 80 (4 sources × 20).
    * `MAP_PLACES_SHOWN_MIN`..`MAX`, whole, default 20.
    */
   placesShown: number;
+  /**
+   * The same cut for Home's catalog (MESITA-2727), the total across its
+   * rails. Same bounds; a blob without it reads `placesShown`.
+   */
+  catalogPlacesShown: number;
   /**
    * THE POPULARITY FLOOR (Pato, MESITA-2714: "if popularity score is below
    * 3 you cannot be shown … it doesn't matter what"): a place whose
@@ -353,6 +360,7 @@ export const DEFAULT_MAP: MapConfig = {
   mesitaClosest: AREA_SOURCE_DEFAULT,
   radiusKm: MAP_RADIUS_KM_DEFAULT,
   placesShown: MAP_PLACES_SHOWN_DEFAULT,
+  catalogPlacesShown: MAP_PLACES_SHOWN_DEFAULT,
   popularityFloor: MAP_POPULARITY_FLOOR_DEFAULT,
   selectedFactor: MAP_SELECTED_FACTOR_DEFAULT,
 };
@@ -415,7 +423,10 @@ export const DEFAULT_GENERAL: GeneralConfig = {
 
 /** The Area pipeline's numbers. A blob with no `params` reads these. */
 export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
-  proximity: { radiusDivisor: PROXIMITY_RADIUS_DIVISOR_DEFAULT },
+  proximity: {
+    radiusDivisor: PROXIMITY_RADIUS_DIVISOR_DEFAULT,
+    catalogRadiusDivisor: PROXIMITY_RADIUS_DIVISOR_DEFAULT,
+  },
   popularity: { halfReviews: POPULARITY_HALF_REVIEWS_DEFAULT },
 };
 
@@ -598,6 +609,9 @@ function normalizeNameAdmin(raw: unknown): NameAdminConfig {
 
 export function normalizeMapConfig(raw: unknown): MapConfig {
   const r = (raw ?? {}) as Record<string, unknown>;
+  const placesShown = Math.round(
+    num(r.placesShown, DEFAULT_MAP.placesShown, MAP_PLACES_SHOWN_MIN, MAP_PLACES_SHOWN_MAX),
+  );
   return {
     minRating: Math.round(
       num(r.minRating, DEFAULT_MAP.minRating, 0, MIN_RATING_MAX) * 10,
@@ -636,8 +650,10 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
         MAP_RADIUS_KM_MAX,
       ) * 10,
     ) / 10,
-    placesShown: Math.round(
-      num(r.placesShown, DEFAULT_MAP.placesShown, MAP_PLACES_SHOWN_MIN, MAP_PLACES_SHOWN_MAX),
+    placesShown,
+    // Missing = the Map's count (MESITA-2727).
+    catalogPlacesShown: Math.round(
+      num(r.catalogPlacesShown, placesShown, MAP_PLACES_SHOWN_MIN, MAP_PLACES_SHOWN_MAX),
     ),
     popularityFloor: Math.round(
       num(
@@ -675,19 +691,27 @@ function boundedParam(
  * popularity.referenceRating/referenceReviews, MESITA-2347), the linear
  * `balance` (MESITA-2428), the weights table `modes` (MESITA-2687) or
  * `proximity.reachKm` / `selected` (MESITA-2703) is dropped on the next
- * save. `proximity.radiusDivisor` is the one proximity field read
- * (MESITA-2720); the fixed `halfKm` it replaced (MESITA-2706) drops too.
+ * save. `proximity.radiusDivisor` (the Map's Distance penalty, MESITA-2720)
+ * and `proximity.catalogRadiusDivisor` (Home's, MESITA-2727; missing = the
+ * Map's) are the proximity fields read; the fixed `halfKm` (MESITA-2706)
+ * drops.
  */
 export function normalizeSignalParams(raw: unknown): SignalParams {
   const r = (raw ?? {}) as Record<string, unknown>;
   const prox = (r.proximity ?? {}) as Record<string, unknown>;
   const pop = (r.popularity ?? {}) as Record<string, unknown>;
   const d = DEFAULT_SIGNAL_PARAMS;
+  const radiusDivisor = boundedParam(
+    prox.radiusDivisor,
+    d.proximity.radiusDivisor,
+    SIGNAL_PARAM_BOUNDS.radiusDivisor,
+  );
   return {
     proximity: {
-      radiusDivisor: boundedParam(
-        prox.radiusDivisor,
-        d.proximity.radiusDivisor,
+      radiusDivisor,
+      catalogRadiusDivisor: boundedParam(
+        prox.catalogRadiusDivisor,
+        radiusDivisor,
         SIGNAL_PARAM_BOUNDS.radiusDivisor,
       ),
     },
