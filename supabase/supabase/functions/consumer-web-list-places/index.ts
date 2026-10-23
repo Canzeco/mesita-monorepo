@@ -93,12 +93,13 @@ import {
 const MAX_LIMIT = 200;
 
 /** Same wire shaping as consumer-web-list-catalog (MESITA-2736, MESITA-2740). */
-function wireMapPlace(row: PlaceProfileRow): PlaceProfileRow {
+function wireMapPlace(row: PlaceProfileRow): OwnedRow {
   const out = stripInternal(row);
   return {
     ...out,
+    id: row.id,
     photos: Array.isArray(out.photos) ? out.photos : [],
-  };
+  } as OwnedRow;
 }
 
 type ListBody = {

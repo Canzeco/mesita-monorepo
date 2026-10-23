@@ -492,7 +492,7 @@ export async function apiSuggestPlacesWithIdle(
 // photoUri (https://lh3.googleusercontent.com/…) passes.
 export function stripInsecurePhotos<T extends { photos?: string[] | null }>(
   v: T,
-): T & { photos: string[] } {
+): Omit<T, "photos"> & { photos: string[] } {
   const photos = Array.isArray(v.photos) ? v.photos : [];
   return { ...v, photos: photos.filter((p) => p.startsWith("https://")) };
 }
