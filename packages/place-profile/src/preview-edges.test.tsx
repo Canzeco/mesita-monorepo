@@ -195,19 +195,22 @@ describe("member preview edges", () => {
     expect(html).not.toContain("3 of 12");
   });
 
-  it("renders the full Presentation with no show-more control", () => {
+  it("renders Presentation up to 500 chars inline; longer copy gets Read more (MESITA-2739)", () => {
     const capped = "A".repeat(500);
-    const overOldClamp = "B".repeat(700);
-    for (const text of [capped, overOldClamp]) {
-      const html = renderToStaticMarkup(
-        <PlaceProfile place={detail({ description: text })} />,
-      );
-      expect(html).toContain("Presentation");
-      expect(html).toContain(text);
-      expect(html).not.toContain("Show more");
-      expect(html).not.toContain("Show less");
-      expect(html).not.toContain("line-clamp");
-    }
+    const long = "B".repeat(700);
+    const shortHtml = renderToStaticMarkup(
+      <PlaceProfile place={detail({ description: capped })} />,
+    );
+    expect(shortHtml).toContain("Presentation");
+    expect(shortHtml).toContain(capped);
+    expect(shortHtml).not.toContain("Read more");
+
+    const longHtml = renderToStaticMarkup(
+      <PlaceProfile place={detail({ description: long })} />,
+    );
+    expect(longHtml).toContain("Read more");
+    expect(longHtml).not.toContain(long);
+    expect(longHtml).toContain(`${"B".repeat(500)}…`);
   });
 
   it("does not treat a listed-false row as hidden", () => {

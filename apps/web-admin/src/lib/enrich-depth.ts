@@ -1,28 +1,20 @@
-// The two Enrich buttons. Weak Enrich is Google's own record; Strong Enrich is
-// the paid run. decision: Pato (2026-10-18, MESITA-2335) — "Weak Enrich" and
-// "Strong Enrich", replacing MESITA-2320's Fast/Deep (which collided with
-// Discovery's Deep). The stored depth keys stay `quick` / `full`.
+// Single operator Enrich mode (MESITA-2739): full pipeline only. Stored depth
+// key stays `full` for admin-web-enrich-place compatibility.
 
-export type EnrichDepth = "quick" | "full";
+export type EnrichDepth = "full";
 
-export function enrichDepth(value: unknown): EnrichDepth {
-  return value === "quick" ? "quick" : "full";
+export function enrichDepth(_value: unknown): EnrichDepth {
+  return "full";
 }
 
 export const ENRICH_ACTIONS = [
   {
-    depth: "quick",
-    label: "Weak Enrich",
-    title: "Google's details, hours, photos, and summary.",
-  },
-  {
-    depth: "full",
-    label: "Strong Enrich",
-    title: "Links, Instagram, reviews, vision, and a description.",
+    depth: "full" as const,
+    label: "Enrich",
+    title: "Full enrichment pipeline (links, reviews, photos, presentation).",
   },
 ] as const satisfies readonly { depth: EnrichDepth; label: string; title: string }[];
 
-/** The button label for a depth, for confirms and notes. */
-export function enrichLabel(depth: EnrichDepth): string {
-  return ENRICH_ACTIONS.find((a) => a.depth === depth)?.label ?? "Strong Enrich";
+export function enrichLabel(_depth: EnrichDepth = "full"): string {
+  return "Enrich";
 }

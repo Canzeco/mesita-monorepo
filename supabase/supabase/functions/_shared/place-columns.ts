@@ -27,6 +27,11 @@ const COLUMNS: readonly string[] = [
   // Human-friendly category copy (emoji + natural-language label),
   // derived from category via place_categories.
   "category_label",
+  "google_primary_type",
+  "google_types",
+  "mesita_categories",
+  "prepay_enabled",
+  "payments_enabled",
   // Derived in the profiles view from the category mapping. Not stored.
   "family_keys",
   "price_level",

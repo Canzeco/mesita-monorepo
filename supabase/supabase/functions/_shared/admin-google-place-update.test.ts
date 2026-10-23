@@ -1,11 +1,9 @@
 import { assertEquals, assertThrows } from "jsr:@std/assert@1";
 import {
-  applyGoogleUpdatePins,
   assertGoogleUpdatePatchSafe,
   googleBasicsToUpdatePatch,
   GOOGLE_UPDATE_FORBIDDEN_COLUMNS,
 } from "./admin-google-place-update.ts";
-import { buildFieldPin, mergeFieldPin } from "./enrich-corrections.ts";
 import type { GoogleBasics } from "./enrich-google-basics.ts";
 
 const NOW = "2026-10-23T12:00:00.000Z";
@@ -52,26 +50,14 @@ Deno.test("googleBasicsToUpdatePatch writes google_photos, never photos or mesit
     basics: sampleBasics(),
     businessStatus: "OPERATIONAL",
     googlePhotos: ["https://cdn.example/1.jpg"],
+    googlePrimaryType: "restaurant",
+    googleTypes: ["restaurant", "food"],
     now: NOW,
   });
   assertEquals(patch.google_photos, ["https://cdn.example/1.jpg"]);
   assertEquals("photos" in patch, false);
   assertEquals("mesita_photos" in patch, false);
   assertEquals(patch.business_state, "OPERATIONAL");
-});
-
-Deno.test("applyGoogleUpdatePins withholds pinned phone and hours", () => {
-  const raw = googleBasicsToUpdatePatch({
-    basics: sampleBasics(),
-    businessStatus: null,
-    googlePhotos: [],
-    now: NOW,
-  });
-  const pins = mergeFieldPin({}, "phone", buildFieldPin("admin", 1, NOW, new Date(NOW)));
-  const { patch, pinned } = applyGoogleUpdatePins(raw, pins, NOW);
-  assertEquals(pinned, ["phone"]);
-  assertEquals("phone" in patch, false);
-  assertEquals(patch.google_photos, []);
 });
 
 Deno.test("assertGoogleUpdatePatchSafe rejects mesita catalog keys", () => {

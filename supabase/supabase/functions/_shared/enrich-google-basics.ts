@@ -158,6 +158,7 @@ export type GoogleBasicsResult =
     ok: true;
     basics: GoogleBasics;
     primaryType: string | null;
+    googleTypes: string[];
     businessStatus: string | null;
     editorialSummary: string | null;
   }
@@ -256,9 +257,13 @@ export async function fetchGoogleBasics(
   const closesAt = closesAtFromHours(details.regularOpeningHours?.weekdayDescriptions ?? []);
 
   const placeName = name.slice(0, ENRICH_FIELD_LIMITS.placeName.max);
+  const googleTypes = (details.types ?? [])
+    .map((t) => (typeof t === "string" ? t.trim() : ""))
+    .filter(Boolean);
   return {
     ok: true,
     primaryType: details.primaryType ?? null,
+    googleTypes,
     businessStatus: details.businessStatus?.trim().toUpperCase() || null,
     editorialSummary: details.editorialSummary?.text ?? null,
     basics: {

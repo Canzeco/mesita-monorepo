@@ -93,6 +93,9 @@ export type PlaceProfileRow = {
   /** Immutable once set — see the header. Settable only via mode: "insert". */
   google_place_id: string | null;
   category: string | null;
+  google_primary_type: string | null;
+  google_types: unknown;
+  mesita_categories: unknown;
   /** Families (0–1). Create path stamps ['undefined'] until contents infers a classified Category. */
   family_keys: string[] | null;
   price_level: number | null;
@@ -164,11 +167,16 @@ export type PlaceProfileRow = {
   business_state_at: string | null;
   /** Description/Actions — LLM: this kind of place likely takes reservations. */
   reservations_enabled: boolean;
+  prepay_enabled: boolean;
+  payments_enabled: boolean;
 };
 
 export const PLACE_PROFILE_PATCH_KEYS = [
   "google_place_id",
   "category",
+  "google_primary_type",
+  "google_types",
+  "mesita_categories",
   "family_keys",
   "price_level",
   "lat",
@@ -230,6 +238,8 @@ export const PLACE_PROFILE_PATCH_KEYS = [
   "business_state",
   "business_state_at",
   "reservations_enabled",
+  "prepay_enabled",
+  "payments_enabled",
 ] as const satisfies readonly (keyof Omit<
   PlaceProfileRow,
   "id" | "created_at" | "updated_at" | "name"

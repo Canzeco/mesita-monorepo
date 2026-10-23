@@ -1,4 +1,4 @@
-import { Layers, MapPinPlus } from "lucide-react";
+import { Layers, MapPinPlus, RefreshCw } from "lucide-react";
 
 // Two sidebar entries since MESITA-2083 — "Creation" and "Enrichment" — over
 // the one Crenup client (CrenupClient's `view`). Pato: "Models, Creation,
@@ -21,4 +21,10 @@ export const ENRICHMENT_PARENT = {
   href: "/enricher-config/enrichment",
   label: "Enrichment",
   Icon: Layers,
+} as const;
+
+export const UPDATING_PARENT = {
+  href: "/enricher-config/updating",
+  label: "Updating",
+  Icon: RefreshCw,
 } as const;

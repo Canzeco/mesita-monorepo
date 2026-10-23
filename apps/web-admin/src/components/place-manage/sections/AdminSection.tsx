@@ -7,6 +7,8 @@ import { CopyIdButton, ReadField } from "@/components/admin-ui/manage";
 import { EnrichmentCard } from "./EnrichmentCard";
 import { StateCard } from "./StateCard";
 import { ProfileStatsCard } from "./ProfileStatsCard";
+import { ActionStatesCard } from "./ActionStatesCard";
+import { PhotoSourcesCard } from "./PhotoSourcesCard";
 import { ReviewsStateCard } from "./ReviewsStateCard";
 import { formatAbsoluteUtc } from "@/lib/format";
 
@@ -37,6 +39,8 @@ export function AdminSection({ place }: { place: AdminPlace }) {
     <div className={ADMIN_COLUMNS_CLASS}>
       <StateCard place={place} />
       <ProfileStatsCard place={place} />
+      <ActionStatesCard place={place} />
+      <PhotoSourcesCard place={place} />
       <ReviewsStateCard place={place} />
       {/* key remounts the loader when the operator switches places. */}
       <EnrichmentCard key={`enrich-${place.id}`} place={place} />

@@ -56,6 +56,7 @@ import { reportCrenupSteps, stepDone, stepFailed } from "./crenup-report.ts";
 import { loadDiscoveryConfig } from "./discovery-config.ts";
 import { evaluatePlaceForMap } from "./map-engine.ts";
 import { omitReviewsTileColumns } from "./reviews-state.ts";
+import { inferMesitaCategoriesAtCreate } from "./mesita-categories-at-create.ts";
 import { googleMetricsFromDetails, reviewSourcePatch } from "./review-sources.ts";
 /** The Google numbers a create stores: the same patch a Reviews reload
  *  writes (`google_found` + stars + count), built from the Details response
@@ -264,6 +265,9 @@ export async function createMinimalPlace(opts: {
   // and Facebook counts stay empty until a Reviews reload.
   const place: Record<string, unknown> = {
     ...omitReviewsTileColumns({ ...basicsRes.basics }),
+    google_primary_type: basicsRes.primaryType,
+    google_types: basicsRes.googleTypes,
+    mesita_categories: [],
     ...googleReviewsAtCreate(basicsRes.basics),
     // Operating (MESITA-1239). businessStatus rides the envelope, not `basics`,
     // so the spread above does not carry it. Stored verbatim: reaching here
@@ -285,6 +289,18 @@ export async function createMinimalPlace(opts: {
     return { ok: false, status: saveRes.status, body: saveRes.body };
   }
   const saved = saveRes.saved;
+
+  try {
+    await inferMesitaCategoriesAtCreate(admin, saved.place_id, {
+      name: saved.name,
+      address: (place.address ?? null) as string | null,
+      googlePrimaryType: basicsRes.primaryType,
+      googleTypes: basicsRes.googleTypes,
+      editorialSummary: basicsRes.editorialSummary,
+    });
+  } catch (err) {
+    console.error(`[${callerName}/on-create] mesita-categories:`, err);
+  }
 
   // ── CREATE Details — first Google photo into storage ────────────────────
   // Enrich Images (function 6) later ranks and replaces the gallery. Created

@@ -36,17 +36,18 @@ function buttons(markup: string): string[] {
     .filter((label) => label !== "Upload CSV / TXT");
 }
 
-describe("Multiple Places renders five boxes (MESITA-2096)", () => {
+describe("Multiple Places renders six boxes (MESITA-2096, MESITA-2739)", () => {
   it("renders one anchored box per step, in rail order", () => {
     const at = PIPELINE_STEPS.map((s) => html.indexOf(`id="${s.id}"`));
     expect(at.every((i) => i >= 0)).toBe(true);
     expect([...at].sort((a, b) => a - b)).toEqual(at);
   });
 
-  it("puts Create, Enrich and Select · Unselect · Enable · Disable · Delete in their own boxes", () => {
+  it("puts Create, Enrich, Update Google and Edit actions in their own boxes", () => {
     expect(buttons(box("create"))).toEqual(["Create"]);
-    expect(buttons(box("enrich"))).toEqual(["Weak Enrich", "Strong Enrich"]);
-    expect(buttons(box("update"))).toEqual([
+    expect(buttons(box("enrich"))).toEqual(["Enrich"]);
+    expect(buttons(box("google-update"))).toEqual(["Update Google"]);
+    expect(buttons(box("edit"))).toEqual([
       "Select",
       "Unselect",
       "Enable",
@@ -56,7 +57,7 @@ describe("Multiple Places renders five boxes (MESITA-2096)", () => {
   });
 
   it("gives every write box its own Google Place ID field", () => {
-    for (const id of ["create", "enrich", "update"]) {
+    for (const id of ["create", "enrich", "google-update", "edit"]) {
       expect(box(id)).toContain(`id="${id}-place-ids"`);
     }
   });

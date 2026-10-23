@@ -15,9 +15,7 @@ import { usePlaceContext } from "../PlaceContext";
 import { formatAbsoluteUtc } from "@/lib/format";
 import { isEnriching } from "../place-header-state";
 
-// Enrichment — Weak or Strong. This is not a scheduler (Pato, 2026-08-25).
-// Cadence and mode chips lived here and made a press look like config.
-// Weak is Google's record. Strong is the whole enrichment.
+// Enrichment — one full pipeline run. This is not a scheduler (Pato, 2026-08-25).
 //
 // The live run STATE stays in the chrome. This box only queues.
 
@@ -118,9 +116,8 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
               {enrichState?.last_enriched_at
                 ? formatAbsoluteUtc(enrichState.last_enriched_at)
                 : "never"}
-              . Result: {enrichState?.error ? "Error" : status}. Weak Enrich
-              reads Google and stops. Strong Enrich also finds links, Instagram, reviews, and
-              writes the description.
+              . Result: {enrichState?.error ? "Error" : status}. Enrich runs links,
+              reviews, photos, and presentation synthesis.
             </p>
           )}
 
@@ -146,7 +143,6 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
             ) : (
               ENRICH_ACTIONS.map((action) => {
                 const pending = runPending && pendingDepth === action.depth;
-                const quick = action.depth === "quick";
                 return (
                   <button
                     key={action.depth}
@@ -157,11 +153,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
                       if (guardIntent({ kind: "reenrich", run: () => runDepth(action.depth) })) return;
                       runDepth(action.depth);
                     }}
-                    className={
-                      quick
-                        ? "border-border text-foreground hover:border-foreground/40 inline-flex h-10 items-center rounded-full border bg-card px-5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50"
-                        : "bg-foreground text-paper inline-flex h-10 items-center rounded-full px-5 text-sm font-semibold transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                    }
+                    className="bg-foreground text-paper inline-flex h-10 items-center rounded-full px-5 text-sm font-semibold transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {pending ? "Starting…" : action.label}
                   </button>

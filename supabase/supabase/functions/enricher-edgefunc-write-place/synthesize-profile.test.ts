@@ -1,16 +1,16 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import { branchAnchor, capPresentation, mergeSynthesizedProfile, reviewQuotes } from "./synthesize-profile.ts";
 
-Deno.test("a presentation longer than 500 characters is cut at a sentence, never mid-word (MESITA-2641)", () => {
+Deno.test("a presentation longer than the ceiling is cut at a sentence, never mid-word (MESITA-2641)", () => {
   // No break at all: cut inside the ceiling and close with an ellipsis.
-  const text = "a".repeat(800);
-  assertEquals(capPresentation(text).length, 500);
+  const text = "a".repeat(2500);
+  assertEquals(capPresentation(text).length, 2000);
   assertEquals(capPresentation(text).endsWith("…"), true);
   assertEquals(capPresentation("  nightclub  "), "nightclub");
-  // The live case: a 500-character slice landed on "with family o".
-  const long = `${"A fine taco place. ".repeat(26)}Ideal for meals with family or friends.`;
+  // The live case: a char slice landed on "with family o"; sentence-safe cap fixes it.
+  const long = `${"A fine taco place. ".repeat(130)}Ideal for meals with family or friends.`;
   const cut = capPresentation(long);
-  assertEquals(cut.length <= 500, true);
+  assertEquals(cut.length <= 2000, true);
   assertEquals(cut.endsWith("A fine taco place."), true);
 });
 
@@ -50,19 +50,20 @@ Deno.test("an empty profile takes the presentation, one category, and the tags",
     category: "nightclub",
     tags: ["dj", "bottle_service"],
   });
-  assertEquals(typeof next.description === "string" && next.description.length, 500);
+  assertEquals(typeof next.description === "string" && next.description.length, 900);
   assertEquals(next.category, "nightclub");
   assertEquals(next.category_label, "Nightclub");
   assertEquals(next.tags, ["dj", "bottle_service"]);
 });
 
-Deno.test("overwrite on replaces the presentation, the category, and the tags", () => {
+Deno.test("overwrite on replaces presentation and tags but not locked Mesita categories (d5a)", () => {
   const next = mergeSynthesizedProfile({
     overwrite: true,
     patch: {
       content_state: "ready",
       description: "Old",
       category: "bar",
+      mesita_categories: ["bar"],
       tags: ["quiet"],
       source_sync: { overwrite: true },
     },
@@ -71,7 +72,7 @@ Deno.test("overwrite on replaces the presentation, the category, and the tags", 
     tags: ["dj"],
   });
   assertEquals(next.description, "Vibrant nightclub.");
-  assertEquals(next.category, "nightclub");
+  assertEquals(next.category, "bar");
   assertEquals(next.tags, ["dj"]);
 });
 

@@ -81,6 +81,11 @@ export type AdminPlace = {
   phone: string | null;
   hours: Record<string, { open: string; close: string }[]> | null;
   photos: string[] | null;
+  google_photos?: unknown;
+  mesita_photos?: unknown;
+  reservations_enabled?: boolean;
+  prepay_enabled?: boolean;
+  payments_enabled?: boolean;
   /** Vision text keyed by the gallery URL. Absent until a Full run describes it. */
   photo_analysis?: Record<string, string> | null;
   tags: string[] | null;

@@ -586,8 +586,8 @@ export function AbsentCard({
         </ReadField>
       </div>
       <p className="text-muted-foreground mt-4 text-xs">
-        Create mints the place from its Google Place ID and opens it. Weak and
-        Strong Enrich, and the rest, live on the place.
+        Create mints the place from its Google Place ID and opens it. Enrich and
+        the rest live on the place.
         {view.note ? ` ${view.note}` : ""}
       </p>
       {note ? (
