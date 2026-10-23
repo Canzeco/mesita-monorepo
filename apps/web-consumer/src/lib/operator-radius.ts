@@ -3,9 +3,9 @@
 // is the server's number (`map.radiusKm`, Admin › Discovery › Area); every
 // catalog answer carries it, and this keeps the last one for the tab, so the
 // location sheet can say "Current location · 15 km" and the pin picker can
-// offer it as a chip. 15 km until the first answer lands.
-
-import { useSyncExternalStore } from "react";
+// offer it as a chip. 15 km until the first answer lands. No React here:
+// `lib/api/places.ts` (server-safe) writes it; the hook is
+// `use-operator-radius.ts`.
 
 export const OPERATOR_RADIUS_KM_DEFAULT = 15;
 
@@ -22,13 +22,9 @@ export function getOperatorRadiusKm(): number {
   return current;
 }
 
-function subscribe(listener: () => void): () => void {
+export function subscribeOperatorRadiusKm(listener: () => void): () => void {
   listeners.add(listener);
   return () => {
     listeners.delete(listener);
   };
-}
-
-export function useOperatorRadiusKm(): number {
-  return useSyncExternalStore(subscribe, getOperatorRadiusKm, () => OPERATOR_RADIUS_KM_DEFAULT);
 }

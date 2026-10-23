@@ -76,7 +76,7 @@ import { EmptyState } from "@/components/shared";
 import { CatalogTile } from "./CatalogTile";
 import { DiscoverFallback, PLACES_LIST } from "./DiscoverFallback";
 import { useActiveLocation } from "@/lib/active-location";
-import { useOperatorRadiusKm } from "@/lib/operator-radius";
+import { useOperatorRadiusKm } from "@/lib/use-operator-radius";
 import { nextRadiusChip } from "@/lib/pin-picker-state";
 import { formatKm } from "@/lib/saved-locations";
 import { useSocialHasNew } from "@/lib/use-social-has-new";

@@ -33,7 +33,7 @@ import {
 } from "@vis.gl/react-google-maps";
 import { apiReverseGeocodePin } from "@/lib/api/place-search";
 import { setActiveLocation, savedLocationKey } from "@/lib/active-location";
-import { useOperatorRadiusKm } from "@/lib/operator-radius";
+import { useOperatorRadiusKm } from "@/lib/use-operator-radius";
 import {
   MAP_MINIMAL_STYLES,
   MAP_USER_LOCATION_PIN_COLOR,

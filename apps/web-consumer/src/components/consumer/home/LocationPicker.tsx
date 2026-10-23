@@ -69,7 +69,7 @@ import {
   useActiveLocationKey,
 } from "@/lib/active-location";
 import { PinPicker, type PinPickerMode } from "@/components/consumer/home/PinPicker";
-import { useOperatorRadiusKm } from "@/lib/operator-radius";
+import { useOperatorRadiusKm } from "@/lib/use-operator-radius";
 import { cn, errMsg } from "@/lib/utils";
 
 /** Home's location control (MESITA-2480): a 36px rounded box on the white
