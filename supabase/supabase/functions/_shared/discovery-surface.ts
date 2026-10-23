@@ -280,7 +280,6 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     rules: [
       "Closed places never show (Discovery › General's active check).",
       "A Google row must have a Google type of one of the twelve families, the only places Mesita can hold (hotels, shops and schools never show), and clear the old stored Google floors on rating, reviews and popularity (0 is off; no box edits them).",
-      "Google rows only: the Area box's Minimum Google reviews, the one reviews floor (people, never stars; 0 is off, MESITA-2702). Mesita rows have no review floor.",
     ],
     callers: ["The guest's Search bar", "Admin Single Place › Find", "Chat (Don Memo)"],
     live: true,
@@ -300,8 +299,8 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     rules: [
       "Four sources, each switched on (20) or off (0) by the operator, Home and the Map alike: Google Popular (the prominent 20 in the circle), Google Closest (the nearest 20), Mesita Popular (the 20 with the highest Popularity^b × the Selected factor, the score without Proximity), Mesita Closest (the 20 nearest). They merge into one pool, deduped by Google Place ID (a Mesita place wins its own Google id), gated, scored and ranked before any page is cut. The guest never picks a source. Home and the Map show the top Places shown of that sorted pool (1–80, default 20, MESITA-2713). Before that cut, a place whose Popularity, ln(1 + reviews × stars), is under the Minimum Popularity (default 3; 0 is off, MESITA-2714) is dropped, Google or Mesita, Selected or not.",
       "Closed places never show (Discovery › General's active check). Mesita rows must be ready.",
-      "Google hits only: the operator's Minimum Google reviews (below); the guest has no reviews filter (MESITA-2417). Mesita rows have no review floor.",
-      "Google calls: one billed Nearby call per Google source switched on, so 0 to 2 per load on the Map and on Home. The reviews floor cuts each call's hits after Google bills them. A place two calls return counts once.",
+      "No reviews minimum (MESITA-2721): the Minimum Popularity is the quality floor; the guest has no reviews filter (MESITA-2417).",
+      "Google calls: one billed Nearby call per Google source switched on, so 0 to 2 per load on the Map and on Home. A place two calls return counts once.",
       "Google answers live 15 s in the function's memory and are never stored (Google Maps Platform terms). Each guest IP may spend 45 Nearby calls a minute, all guests together 600.",
       "The screen radius is clamped to 0.05–50 km; a visible map wider than 100 km, or none yet, uses the current-location radius instead. A saved pin's radius is clamped to 1–50 km.",
       "Mesita's read keeps at most 1000 ready rows in the radius box before scoring.",

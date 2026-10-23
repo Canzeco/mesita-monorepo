@@ -166,18 +166,17 @@ Deno.test("google: Google Popular is ONE Nearby call over the whole circle, mask
   }
 });
 
-Deno.test("google: the operator's review minimum cuts after Google answers, never a refill", async () => {
+Deno.test("google: no reviews minimum; a stale stored googleMinReviews cuts nothing (MESITA-2721)", async () => {
   reset();
   const g = stubGoogle([
     { id: "thin", lat: 25.6701, reviews: 12 },
     { id: "loved", lat: 25.672, reviews: 900 },
   ]);
   try {
-    const cfg = { ...DISCOVERY_DEFAULTS, map: { ...DISCOVERY_DEFAULTS.map, googleMinReviews: 100 } };
+    const cfg = { ...DISCOVERY_DEFAULTS, map: { ...DISCOVERY_DEFAULTS.map, popularityFloor: 0, googleMinReviews: 100 } };
     const { d } = deps({ cfg });
     const out = await selectAreaPool(d);
-    assertEquals(ids(out.places), ["g:loved"]);
-    assertEquals(nearbyCalls(g.calls).length, 1);
+    assertEquals(ids(out.places).sort(), ["g:loved", "g:thin"]);
   } finally {
     g.restore();
   }
@@ -505,21 +504,6 @@ Deno.test("selectedPoolQuery: the Selected mark, General, ready, families and th
   assertEquals(seen[seen.length - 1], "order id true");
 });
 
-Deno.test("google: the operator's floor alone cuts Google hits; no guest stop (MESITA-2319, MESITA-2417)", async () => {
-  reset();
-  const g = stubGoogle([
-    { id: "thin", lat: 25.6701, reviews: 150 },
-    { id: "loved", lat: 25.672, reviews: 900 },
-  ]);
-  try {
-    const cfg = { ...DISCOVERY_DEFAULTS, map: { ...DISCOVERY_DEFAULTS.map, googleMinReviews: 500 } };
-    const out = await selectAreaPool(deps({ cfg }).d);
-    assertEquals(ids(out.places), ["g:loved"]);
-  } finally {
-    g.restore();
-  }
-});
-
 Deno.test("selected: the operator's Google floor never touches Mesita Selected", () => {
   const out = selectMesitaSelected([mrow("thin", { google_review_count: 2 })], selOpts);
   assertEquals(ids(out), ["thin"]);
@@ -764,25 +748,6 @@ Deno.test("every switch off: an empty pool, sources none, no Nearby call", async
     assertEquals(out.summary.sources, "none");
     assertEquals(nearbyCalls(g.calls).length, 0);
     assertEquals(quota(), 0);
-  } finally {
-    g.restore();
-  }
-});
-
-Deno.test("the reviews floor runs per Google call: floorDropped is each call's own loss", async () => {
-  reset();
-  // Both calls answer the same stub, so each loses the same thin place.
-  const g = stubGoogle([
-    { id: "thin", lat: 25.6701, reviews: 12 },
-    { id: "loved", lat: 25.672, reviews: 900 },
-  ]);
-  try {
-    const cfg = { ...DISCOVERY_DEFAULTS, map: { ...DISCOVERY_DEFAULTS.map, googleMinReviews: 100 } };
-    const out = await selectAreaPool(deps({ cfg, sources: { googleClosest: 20 } }).d);
-    assertEquals(out.summary.floorDropped, { googlePopular: 1, googleClosest: 1 });
-    assertEquals(out.summary.sourceCounts.googlePopular, 1);
-    assertEquals(out.summary.sourceCounts.googleClosest, 1);
-    assertEquals(ids(out.places), ["g:loved"]);
   } finally {
     g.restore();
   }

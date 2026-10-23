@@ -18,7 +18,7 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { descriptionSimilarity } from "./pipeline-signals.ts";
-import { applyGeneralGateQuery, type GeneralGateQuery, mesitaGate } from "./discovery-general-gate.ts";
+import { applyGeneralGateQuery, type GeneralGateQuery } from "./discovery-general-gate.ts";
 import type { DeepConfig, GeneralConfig } from "./discovery-config.ts";
 import { embedSingle } from "./embeddings-http.ts";
 import { resolveEmbeddingModel } from "./embeddings.ts";
@@ -128,7 +128,7 @@ export function deepDepsFor(
         .order("id", { ascending: true });
       const query = applyGeneralGateQuery(
         base as unknown as GeneralGateQuery,
-        mesitaGate(general),
+        general,
       ) as unknown as typeof base;
       const { data, error } = await query.limit(DEEP_POOL);
       if (error) {

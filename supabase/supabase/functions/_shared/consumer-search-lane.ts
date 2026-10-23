@@ -24,9 +24,8 @@
 // Discovery > General runs LAST on both modes: whatever a Google query
 // returned, and whatever Mesita row it resolved to, has to clear Active
 // (discovery-general-gate.ts) -- on-Mesita rows too: an operator who switched
-// Active off meant it. The one reviews floor, `map.googleMinReviews`, cuts
-// Google-only rows alone (MESITA-2702): a Mesita place is never cut by its
-// review count.
+// Active off meant it. No reviews floor (MESITA-2721: `map.googleMinReviews`
+// is retired).
 // A Google hit that resolves to Mesita stays in its Google query; later
 // Mesita queries skip it. The Mesita lane ranks by the Name signal alone
 // (`rankMesitaByName`): name-embedding cosine, or the lexical fallback for a
@@ -65,10 +64,7 @@ import {
 import {
   applyGeneralGateQuery,
   clearsGeneralGate,
-  type GeneralGate,
   type GeneralGateQuery,
-  googleGate,
-  mesitaGate,
 } from "./discovery-general-gate.ts";
 import { evaluatePlaceForMap } from "./map-engine.ts";
 import { embedSingle } from "./embeddings-http.ts";
@@ -542,7 +538,7 @@ export async function runConsumerSearchLane(
       apiKey,
       cfg.map,
       name,
-      googleGate(cfg),
+      cfg.general,
       input,
       sessionToken,
       origin,
@@ -553,7 +549,7 @@ export async function runConsumerSearchLane(
       apiKey,
       cfg.map,
       name,
-      googleGate(cfg),
+      cfg.general,
       input,
       sessionToken,
       origin,
@@ -580,7 +576,7 @@ async function runFastSearch(
   apiKey: string,
   map: MapConfig,
   name: NameConfig,
-  general: GeneralGate,
+  general: GeneralConfig,
   input: string,
   sessionToken: string,
   origin: { lat: number; lng: number } | null,
@@ -642,7 +638,7 @@ async function stampAutocompleteLane(
   admin: SupabaseClient,
   apiKey: string,
   gate: MapConfig,
-  general: GeneralGate,
+  general: GeneralConfig,
 ): Promise<LaneItem[]> {
   const places = items.filter((row) => row.kind !== "location");
   const stamped = await stampGoogleAgainstCatalog(
@@ -681,7 +677,7 @@ async function runDeepSearch(
   apiKey: string,
   map: MapConfig,
   name: NameConfig,
-  general: GeneralGate,
+  general: GeneralConfig,
   input: string,
   sessionToken: string,
   origin: { lat: number; lng: number } | null,
@@ -874,7 +870,7 @@ async function fetchEmbedPool(
     .eq("state", "active");
   let query = applyGeneralGateQuery(
     base as unknown as GeneralGateQuery,
-    mesitaGate(general),
+    general,
   ) as unknown as typeof base;
   if (origin) {
     const { latDelta, lngDelta } = radiusBoundingBox(origin.lat, EMBED_RADIUS_KM);
@@ -1033,13 +1029,9 @@ async function stampGoogleAgainstCatalog(
   admin: SupabaseClient,
   apiKey: string,
   gate: MapConfig,
-  general: GeneralGate,
+  general: GeneralConfig,
   opts: { alreadyHasSignals?: boolean } = {},
 ): Promise<LaneItem[]> {
-  // A Mesita row answers Active alone; a Google-only row, the reviews floor
-  // too (MESITA-2702).
-  const rowGate = (p: LaneItem): GeneralGate =>
-    p.state === "not_in_mesita" ? general : mesitaGate(general);
   const byGoogleId = new Map<string, ListedRow>();
   const missingIds = items
     .filter((p) => p.state === "not_in_mesita" && p.placeId)
@@ -1062,7 +1054,7 @@ async function stampGoogleAgainstCatalog(
   if (opts.alreadyHasSignals) {
     return stamped
       .filter((p) => p.state !== "not_in_mesita" || Boolean(p.placeId))
-      .filter((p) => clearsGeneralGate(rowGate(p), p));
+      .filter((p) => clearsGeneralGate(general, p));
   }
 
   const googleOnly = stamped.filter((p) => p.state === "not_in_mesita");
@@ -1071,7 +1063,7 @@ async function stampGoogleAgainstCatalog(
   // (MESITA-2678): Autocomplete alone gives a name and an address, so a
   // typed pick used to land as a bare first card.
   if (googleOnly.length === 0) {
-    return stamped.filter((p) => clearsGeneralGate(rowGate(p), p));
+    return stamped.filter((p) => clearsGeneralGate(general, p));
   }
   const listingById = new Map<string, NearbyHit>();
   await Promise.all(googleOnly.map(async (p) => {
@@ -1079,7 +1071,7 @@ async function stampGoogleAgainstCatalog(
     if (hit) listingById.set(p.placeId, hit);
   }));
   return stamped.filter((p) => {
-    if (p.state !== "not_in_mesita") return clearsGeneralGate(rowGate(p), p);
+    if (p.state !== "not_in_mesita") return clearsGeneralGate(general, p);
     const hit = listingById.get(p.placeId);
     if (!hit) return false;
     const ok = evaluatePlaceForMap(gate, {
@@ -1087,10 +1079,7 @@ async function stampGoogleAgainstCatalog(
       rating: hit.rating,
       reviewCount: hit.reviewCount,
     }).eligible &&
-      clearsGeneralGate(general, {
-        businessStatus: hit.businessStatus,
-        reviewCount: hit.reviewCount,
-      });
+      clearsGeneralGate(general, { businessStatus: hit.businessStatus });
     if (ok && p.lat == null && hit.lat != null) p.lat = hit.lat;
     if (ok && p.lng == null && hit.lng != null) p.lng = hit.lng;
     if (ok) p.card = googleStub(hit, null);

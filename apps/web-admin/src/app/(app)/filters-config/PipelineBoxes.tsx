@@ -18,7 +18,6 @@ import { getDiscoveryConfig, updateDiscoveryConfig, type DiscoverySlice } from "
 import {
   AREA_SOURCE_ON,
   type AreaSourceKey,
-  GENERAL_MIN_REVIEWS_MAX,
   googleCallsPerLoad,
   MAP_PLACES_SHOWN_MAX,
   MAP_POPULARITY_FLOOR_MAX,
@@ -138,14 +137,14 @@ export function NameAdminBox(seed: ConfigSeed<DiscoveryConfig>) {
           Autocomplete and the Mesita rows run through the guest bar&apos;s
           lane, with its rules. The Text Search column is Find&apos;s own
           call: it applies Mesita&apos;s place types but not Discovery ›
-          General&apos;s active check or the reviews minimum. Locations are never
+          General&apos;s active check. Locations are never
           shown here. With the last option on, the page opens listing every
           Mesita place, as an empty search.
         </p>
       }
       scoring="Rows found by more sources come first, then Text Search rank, then Autocomplete rank, then Name. Duplicates merge."
       rules={[
-        "Autocomplete and Mesita rows follow the guest bar's rules: closed places never show, the Area box's Minimum Google reviews cuts Google rows (never a Mesita row), and a Google row must be one of Mesita's place types.",
+        "Autocomplete and Mesita rows follow the guest bar's rules: closed places never show, and a Google row must be one of Mesita's place types.",
         "Text Search rows are Find's own call: Mesita's place types and the old stored Google floors on rating, reviews and popularity (0 is off; no box edits them), not Discovery › General.",
       ]}
       save={<Save editor={editor} dirty={dirty} slices={BOX_SLICES.nameAdmin} />}
@@ -274,9 +273,8 @@ export function NameBox(seed: ConfigSeed<DiscoveryConfig>) {
         />
       </div>
       <p className="text-muted-foreground type-meta">
-        0 rows turns a source off. The one reviews minimum lives in the Area
-        box&apos;s Gates (MESITA-2702). A Mesita row needs a Name score of
-        0.4 or more.
+        0 rows turns a source off. A Mesita row needs a Name score of 0.4 or
+        more.
       </p>
     </PipelineBox>
   );
@@ -360,16 +358,6 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
         ))}
         <div className="grid gap-3 sm:grid-cols-2">
           <NumberField
-            label="Minimum Google reviews"
-            value={cfg.map.googleMinReviews}
-            min={0}
-            max={GENERAL_MIN_REVIEWS_MAX}
-            disabled={off}
-            onChange={(googleMinReviews) => map({ googleMinReviews })}
-          />
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <NumberField
             label="Places shown"
             value={cfg.map.placesShown}
             min={MAP_PLACES_SHOWN_MIN}
@@ -391,12 +379,8 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           every Map reload (the Map reloads each time the guest stops moving
           it), within the per-guest quota in the Always-on rules. Google
           Popular asks for the most prominent 20 in the circle, Google Closest
-          for the nearest 20. The reviews minimum filters the two Google
-          sources only: it counts people and cuts a Google place after Google
-          bills it, never a Mesita row (MESITA-2702: the same minimum on the
-          Search bar and admin Find&apos;s Autocomplete column); 0 is off. At{" "}
-          {cfg.map.googleMinReviews}, most of Google Closest&apos;s nearest
-          places are corner spots under it. Mesita Popular is the 20 Mesita
+          for the nearest 20. There is no reviews minimum: the Minimum
+          Popularity below cuts weak places from every source. Mesita Popular is the 20 Mesita
           places in the circle with the highest Popularity<sup>b</sup> × the
           Selected factor (the score without Proximity), Mesita Closest the 20
           nearest; both are free.

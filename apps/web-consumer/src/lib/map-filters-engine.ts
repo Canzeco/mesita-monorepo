@@ -1,9 +1,9 @@
 // Map filters — Search only: the family chips, All or ONE family
 // (MESITA-2412). The guest never picks a source: the Map is a view of the
 // Area pool, Google and Mesita places in one ranked set (MESITA-2379). How
-// many, the circle (`map.radiusKm`) and the Google reviews minimum
-// (`map.googleMinReviews`) are the operator's, Admin › Discovery; there is
-// no guest Filters sheet (MESITA-2417).
+// many, the circle (`map.radiusKm`) and the Minimum Popularity are the
+// operator's, Admin › Discovery; there is no guest Filters sheet
+// (MESITA-2417).
 //
 // The pin tones still tell a Google-only place from a Mesita one
 // (`search-pins.ts`, `placeSearchScope`); that is the colour's promise, not

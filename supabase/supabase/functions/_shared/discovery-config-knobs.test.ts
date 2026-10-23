@@ -18,12 +18,6 @@ Deno.test("railCap defaults to 5 and ignores the stored placesPerRail 8", () => 
   assertEquals(normalizeCatalogConfig({ railCap: 0 }).railCap, 1);
 });
 
-Deno.test("googleMinReviews defaults to off and is a whole number of people", () => {
-  assertEquals(normalizeMapConfig({}).googleMinReviews, 0);
-  assertEquals(normalizeMapConfig({ googleMinReviews: 250.6 }).googleMinReviews, 251);
-  assertEquals(normalizeMapConfig({ googleMinReviews: -3 }).googleMinReviews, 0);
-});
-
 Deno.test("the Map's reload throttle defaults to 1.5 s, bounded like the client's 0.5..10 (MESITA-2444)", () => {
   assertEquals(normalizeMapConfig({}).reloadIdleSec, 1.5);
   assertEquals(normalizeMapConfig({ reloadIdleSec: 0.1 }).reloadIdleSec, 0.5);

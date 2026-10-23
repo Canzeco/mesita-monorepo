@@ -31,7 +31,7 @@ Deno.test("list-places: the Map is the one Area pool inside the screen radius, t
   }
 });
 
-Deno.test("list-places: no guest review stop; the operator's map.googleMinReviews is the minimum (MESITA-2417)", () => {
+Deno.test("list-places: no guest review stop (MESITA-2417), no reviews minimum at all (MESITA-2721)", () => {
   assertEquals(src.includes("guestReviewFloor"), false);
   assertEquals(src.includes("parseMapMinReviews"), false);
   assertEquals(src.includes("body.minReviews"), false);

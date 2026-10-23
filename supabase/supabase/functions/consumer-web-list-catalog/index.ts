@@ -32,8 +32,7 @@
 //             `bounds_ignored`; drop that log once it stays quiet.
 //   google    the client can render a Google-only stub; the operator's two
 //             Google switches, a key and the per-IP ledger also decide.
-//   The Google reviews minimum is the operator's `map.googleMinReviews`
-//   alone (MESITA-2417), on Google hits; never a Mesita floor.
+//   No Google reviews minimum (MESITA-2721): the Popularity floor cuts.
 // Response (unified): { ok, location: { kind, radiusKm, operatorRadiusKm },
 //   places: [... { area }],
 //   summary }. QUOTA: one load spends up to 2 of the per-IP 45 Nearby calls
@@ -92,7 +91,7 @@ type Body = {
   bounds?: unknown;
   /** The client can render a Google-only stub. */
   google?: boolean;
-  /** Ignored since MESITA-2417: `map.googleMinReviews` is the minimum. */
+  /** Ignored since MESITA-2417; no reviews minimum since MESITA-2721. */
   minReviews?: unknown;
   /** The one-pool wire (MESITA-2379); absent = the legacy rails. */
   unified?: boolean;

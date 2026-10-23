@@ -71,7 +71,7 @@ export type GeneralConfig = {
    * clear it. Mirrors `_shared/discovery-general-gate.ts`.
    */
   requireActive: boolean;
-  // `minReviews` retired (MESITA-2702): the one floor is `map.googleMinReviews`.
+  // `minReviews` retired (MESITA-2702), `map.googleMinReviews` too (MESITA-2721).
 };
 
 export type DiscoveryConfig = {
@@ -162,8 +162,6 @@ const MAP_PROXIMITY_WEIGHT_DEFAULT = 1;
 export const MAP_RELOAD_IDLE_SEC_MIN = 0.5;
 export const MAP_RELOAD_IDLE_SEC_MAX = 10;
 const MAP_RELOAD_IDLE_SEC_DEFAULT = 1.5;
-/** The reviews floor's ceiling, `map.googleMinReviews`. */
-export const GENERAL_MIN_REVIEWS_MAX = 100_000;
 
 export type MapConfig = {
   minRating: number;
@@ -180,9 +178,6 @@ export type MapConfig = {
   /** The current-location radius (km): Home's from the device or a saved
    *  pin with no radius, the Map's with no screen, Chat's (MESITA-2703). */
   radiusKm: number;
-  /** THE Google reviews floor (MESITA-2319), Google rows only, on the Map,
-   *  Home and the Name pipeline (one floor since MESITA-2702). 0 = off. */
-  googleMinReviews: number;
   /** Proximity's exponent a in Proximity^a × Popularity^b. */
   proximityWeight: number;
   /** Popularity's exponent b (MESITA-2703). */
@@ -483,7 +478,6 @@ export const DEFAULT_MAP: MapConfig = {
   mesitaPopular: AREA_SOURCE_ON,
   mesitaClosest: AREA_SOURCE_ON,
   radiusKm: MAP_RADIUS_KM_DEFAULT,
-  googleMinReviews: 0,
   proximityWeight: MAP_PROXIMITY_WEIGHT_DEFAULT,
   popularityWeight: MAP_PROXIMITY_WEIGHT_DEFAULT,
   placesShown: MAP_PLACES_SHOWN_DEFAULT,
@@ -744,9 +738,6 @@ function coerceMap(raw: unknown): MapConfig {
       Math.round(
         num(m.radiusKm, DEFAULT_MAP.radiusKm, MAP_RADIUS_KM_MIN, MAP_RADIUS_KM_MAX) * 10,
       ) / 10,
-    googleMinReviews: Math.round(
-      num(m.googleMinReviews, DEFAULT_MAP.googleMinReviews, 0, 100_000),
-    ),
     proximityWeight:
       Math.round(
         num(

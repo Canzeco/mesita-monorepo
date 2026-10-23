@@ -6,43 +6,28 @@
 // Mesita rows those results resolve to. EVERY LANE THAT QUERIES GOOGLE reads
 // it: Fast, Deep, Map, and admin's suggest.
 //
-// ONE REVIEWS FLOOR (MESITA-2702): `map.googleMinReviews`, on Google rows
-// only, on every pipeline. A Mesita row answers the Active half alone
-// (`mesitaGate`); a Google row answers both (`googleGate`). Area applies its
-// Google half itself, in `eligibleGoogleHits`.
+// NO REVIEWS FLOOR (MESITA-2721): `map.googleMinReviews` (MESITA-2702) is
+// retired; the Area box's Minimum Popularity is the quality floor. A Google
+// row and a Mesita row answer the same Active check.
 //
-// IT IS A FILTER, NOT A SIGNAL — it excludes, it never demotes. The Map box
-// (`discovery_config.map`) keeps its own floors and stays Map-only; these two
-// numbers are Discovery-wide, which is the whole reason they live on
-// `general` rather than being copied into four boxes that could disagree.
+// IT IS A FILTER, NOT A SIGNAL — it excludes, it never demotes. It is
+// Discovery-wide, which is the whole reason it lives on `general` rather
+// than being copied into four boxes that could disagree.
 //
 // TWO SIDES OF THE SAME QUESTION, ONE ANSWER:
-//   Google-only row — Google's `businessStatus` + `userRatingCount`.
-//   Mesita row      — `business_state` + `google_review_count`.
+//   Google-only row — Google's `businessStatus`.
+//   Mesita row      — `business_state`.
 // Before this module, on-Mesita rows were waved through ("they're already
 // onboarded") and a place the operator had switched Active OFF still came
 // back from search. That was the bug.
 //
-// UNKNOWN DOES NOT CLEAR THE GATE. A null business_state or a null review
-// count fails whichever knob is on. Same reading as every Mesita floor: a
+// UNKNOWN DOES NOT CLEAR THE GATE. A null business_state fails it when it
+// is on. Same reading as every Mesita floor: a
 // floor asks a place to PROVE it clears the bar, and a place with nothing to
 // show has not. It is also the only reading that makes "only active
 // places" true rather than "active places, plus the ones we couldn't check".
 
-import type { DiscoveryConfig, GeneralConfig } from "./discovery-config.ts";
-
-/** What the gate asks: the stored Active switch plus a reviews floor. */
-export type GeneralGate = GeneralConfig & { minReviews: number };
-
-/** A Google row: Active + the one reviews floor. */
-export function googleGate(cfg: Pick<DiscoveryConfig, "general" | "map">): GeneralGate {
-  return { ...cfg.general, minReviews: cfg.map.googleMinReviews };
-}
-
-/** A Mesita row: Active alone. A review count never cuts a Mesita place. */
-export function mesitaGate(general: GeneralConfig): GeneralGate {
-  return { requireActive: general.requireActive, minReviews: 0 };
-}
+import type { GeneralConfig } from "./discovery-config.ts";
 
 /** The subset of a PostgREST builder a WHERE-clause gate uses. Kept
  *  structural so it is testable without a client. */
@@ -58,8 +43,6 @@ export const OPERATIONAL = "OPERATIONAL";
 export type GeneralGateSignals = {
   /** OPERATIONAL | CLOSED_TEMPORARILY | CLOSED_PERMANENTLY | null. */
   businessStatus?: string | null;
-  /** Google review count. `userRatingCount` on the wire, `google_review_count` on a row. */
-  reviewCount?: number | null;
 };
 
 export function isOperational(state: unknown): boolean {
@@ -68,19 +51,10 @@ export function isOperational(state: unknown): boolean {
 
 /** The whole gate, for one place. */
 export function clearsGeneralGate(
-  general: GeneralGate,
+  general: GeneralConfig,
   signals: GeneralGateSignals,
 ): boolean {
-  if (general.requireActive && !isOperational(signals.businessStatus)) {
-    return false;
-  }
-  if (general.minReviews > 0) {
-    const n = signals.reviewCount;
-    if (typeof n !== "number" || !Number.isFinite(n) || n < general.minReviews) {
-      return false;
-    }
-  }
-  return true;
+  return !general.requireActive || isOperational(signals.businessStatus);
 }
 
 /**
@@ -100,11 +74,7 @@ export interface GeneralGateQuery extends FilterableQuery<GeneralGateQuery> {}
  */
 export function applyGeneralGateQuery<T extends FilterableQuery<T>>(
   query: T,
-  general: GeneralGate,
+  general: GeneralConfig,
 ): T {
-  let q = query;
-  if (general.requireActive) q = q.eq("business_state", OPERATIONAL);
-  // `gte` excludes nulls — the intended reading, stated at the top.
-  if (general.minReviews > 0) q = q.gte("google_review_count", general.minReviews);
-  return q;
+  return general.requireActive ? query.eq("business_state", OPERATIONAL) : query;
 }

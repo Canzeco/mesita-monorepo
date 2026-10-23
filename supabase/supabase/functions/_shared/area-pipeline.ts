@@ -7,7 +7,7 @@
 // radius), pull from four sources, merge duplicates, sort").
 //
 //   (point, radius)
-//     ├─ Google Popular   Nearby, rank POPULARITY, the whole circle  ─┐ reviews floor per call
+//     ├─ Google Popular   Nearby, rank POPULARITY, the whole circle  ─┐
 //     ├─ Google Closest   Nearby, rank DISTANCE, the whole circle    ─┤ → owned lookup by Place ID
 //     ├─ Mesita Popular   top 20 by Popularity^b × s in the circle   ─┤
 //     └─ Mesita Closest   20 nearest in the circle                   ─┘
@@ -16,8 +16,8 @@
 //   × s (s = the Selected factor for a Mesita Selected place, else 1)
 //
 // Each source is `map.<key>` 0 or 20 (`AREA_SOURCE_KEYS`). Gates: Family ·
-// Radius, plus the operational ones the sources apply (active, ready, the
-// Google reviews floor `map.googleMinReviews` on Google hits). Score:
+// Radius, plus the operational ones the sources apply (active, ready) and
+// the Popularity floor; no reviews floor (MESITA-2721). Score:
 // area-score.ts; Proximity is ½ at the radius ÷ the operator's
 // `params.proximity.radiusDivisor` (MESITA-2720).
 //
@@ -39,9 +39,7 @@ import {
   applyGeneralGateQuery,
   clearsGeneralGate,
   type FilterableQuery,
-  mesitaGate,
 } from "./discovery-general-gate.ts";
-import { clearsMinReviews } from "./map-engine.ts";
 import { familiesForPlace } from "./place-taxonomy.ts";
 import {
   nearbyExcludedTypesForFamilies,
@@ -124,10 +122,6 @@ export function areaSignalParams(
     selectedFactor: map.selectedFactor,
   };
 }
-
-/** Area runs Discovery › General's active check; the one reviews floor,
- *  `map.googleMinReviews`, it applies itself on Google hits only. */
-const activeOnly = mesitaGate;
 
 /** A Mesita row that may own a hit: active, ready, with its google id. */
 export type OwnedRow = Record<string, unknown> & {
@@ -331,21 +325,19 @@ function insideLocation(location: AreaLocation, lat: number | null, lng: number 
 }
 
 /** Eligibility after Google answers (never an API param, never a refill):
- *  inside the location, active, and over the reviews floor. */
+ *  inside the location and active. No reviews floor (MESITA-2721): the
+ *  Popularity floor is the quality cut, in area-score.ts. */
 export function eligibleGoogleHits(
   hits: readonly NearbyHit[],
   location: AreaLocation,
-  minReviews: number,
   cfg: { general: GeneralConfig },
 ): NearbyHit[] {
   const seen = new Set<string>();
-  const general = activeOnly(cfg.general);
   return hits.filter((hit) => {
     if (seen.has(hit.placeId)) return false;
     seen.add(hit.placeId);
     if (!insideLocation(location, hit.lat, hit.lng)) return false;
-    if (!clearsGeneralGate(general, hit)) return false;
-    return !(minReviews > 0) || clearsMinReviews(hit.reviewCount, minReviews);
+    return clearsGeneralGate(cfg.general, hit);
   });
 }
 
@@ -393,8 +385,6 @@ export type AreaPoolSummary = {
   sources: AreaSourceKey[] | "none";
   /** Places each source returned after its own gates, before the merge. */
   sourceCounts: Record<AreaSourceKey, number>;
-  /** Hits each Google call returned that the reviews floor cut. */
-  floorDropped: { googlePopular: number; googleClosest: number };
   google: number;
   mesita: number;
   returned: number;
@@ -462,14 +452,10 @@ async function googleItems<T extends OwnedRow>(
     : "partial";
   summary.googleHits = answers.reduce((n, a) => n + a.hits.length, 0);
 
-  // The reviews floor runs per answer, so each source's loss is its own;
-  // then one entry per Place ID, keeping every source that found it.
-  const minReviews = deps.cfg.map.googleMinReviews ?? 0;
+  // One entry per Place ID, keeping every source that found it.
   const byPlace = new Map<string, { hit: NearbyHit; foundBy: Set<AreaSourceKey> }>();
   for (const a of answers) {
-    const kept = eligibleGoogleHits(a.hits, location, minReviews, deps.cfg);
-    const inside = eligibleGoogleHits(a.hits, location, 0, deps.cfg).length;
-    summary.floorDropped[a.source] = inside - kept.length;
+    const kept = eligibleGoogleHits(a.hits, location, deps.cfg);
     summary.sourceCounts[a.source] = kept.length;
     for (const hit of kept) {
       const seen = byPlace.get(hit.placeId);
@@ -588,7 +574,6 @@ export async function selectAreaPool<T extends OwnedRow>(
     googleHits: 0,
     sources: sources.length > 0 ? sources : "none",
     sourceCounts: { googlePopular: 0, googleClosest: 0, mesitaPopular: 0, mesitaClosest: 0 },
-    floorDropped: { googlePopular: 0, googleClosest: 0 },
     google: 0,
     mesita: 0,
     returned: 0,
@@ -702,7 +687,7 @@ export function selectedPoolQuery<Q extends SelectedPoolQuery<Q>>(
 ): Q {
   let q: Q = query.eq("content_state", "ready");
   if (opts.selectedOnly !== false) q = q.eq("selected", true);
-  q = applyGeneralGateQuery(q, activeOnly(cfg.general));
+  q = applyGeneralGateQuery(q, cfg.general);
   if (opts.families && opts.families.length > 0) {
     q = q.overlaps("family_keys", [...opts.families]);
   }

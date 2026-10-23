@@ -2,7 +2,6 @@ import { assertEquals } from "jsr:@std/assert@1";
 import { DISCOVERY_DEFAULTS, SUPER_PARAM_KEYS } from "./discovery-config.ts";
 import { nearbyTypesForSupers } from "./google-type-super.ts";
 import {
-  clearsMinReviews,
   enabledNearbyTypes,
   evaluatePlaceForMap,
   listedClearsMapPopularity,
@@ -144,9 +143,3 @@ Deno.test("Atlas leftover slugs admit via Super membership, not Google type", ()
   assertEquals(primaryTypeClearsMapTypes("gas_station", MAP), false);
 });
 
-Deno.test("clearsMinReviews: unknown fails a floor that is on; 0 is off", () => {
-  assertEquals(clearsMinReviews(null, 0), true);
-  assertEquals(clearsMinReviews(null, 10), false);
-  assertEquals(clearsMinReviews(9, 10), false);
-  assertEquals(clearsMinReviews(10, 10), true);
-});
