@@ -46,7 +46,7 @@ export function PhotoSourcesCard({ place }: { place: AdminPlace }) {
     setMesita(next);
     setSaved(next);
     setErrors({});
-  }, [place.id, place.mesita_photos]);
+  }, [place]);
 
   const dirty = useMemo(
     () => JSON.stringify(mesita) !== JSON.stringify(saved),
