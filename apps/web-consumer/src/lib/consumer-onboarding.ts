@@ -78,79 +78,35 @@ export function consumerCanBrowse(
   );
 }
 
-// ONE QUESTION PER SCREEN (MESITA-1830). The three things `consumerCanBrowse`
-// demands used to be stacked on a single screen, which is exactly where people
-// bail: three demands, no sense of how many are left, and sex — now required —
-// reading as a fourth interrogation line rather than the last of three.
-//
-// So the gate's field list and the SCREEN's step list are the same list, in
-// the same order, declared once here. A step is a question with a headline and
-// a reason; the reason is what a guest is owed before typing a birthday into a
-// stranger's app. The age in step 2 is INTERPOLATED, never typed: MIN_SIGNUP_AGE
-// has moved once already (MESITA-727) and a literal here would rot silently.
-//
-// Step 3 carries no dek on purpose. "Last one." is the whole message, and a
-// justification under a two-option choice reads as an apology for asking.
-type OnboardStepKey = "first_name" | "birthday" | "sex";
+// ONE SCREEN, THREE FIELDS (MESITA-2746). The gate's field list and the form's
+// field list are the same list, in the same order, declared once here. A
+// partial profile prefills whatever is already stored; the guest fills the
+// gaps and submits once. `consumer-web-update-profile` accepts any subset of
+// keys, so a half-finished row can still be completed in one write.
+export const ONBOARD_PAGE_HEADLINE = "Almost there.";
+export const ONBOARD_PAGE_DEK = "Three quick details and you're in.";
 
-type OnboardStep = {
-  readonly key: OnboardStepKey;
-  readonly headline: string;
-  readonly dek: string | null;
+type OnboardFieldKey = "first_name" | "birthday" | "sex";
+
+type OnboardField = {
+  readonly key: OnboardFieldKey;
+  readonly label: string;
+  /** Optional hint under the label (birthday age floor, etc.). */
+  readonly hint: string | null;
 };
 
-export const ONBOARD_STEPS: readonly OnboardStep[] = [
-  {
-    key: "first_name",
-    headline: "What should we call you?",
-    dek: "The app greets you by it.",
-  },
+export const ONBOARD_FIELDS: readonly OnboardField[] = [
+  { key: "first_name", label: "First name", hint: null },
   {
     key: "birthday",
-    headline: "When's your birthday?",
-    dek: `We check you're ${MIN_SIGNUP_AGE} or over, and we'll remember it.`,
+    label: "Birthday",
+    hint: `We check you're ${MIN_SIGNUP_AGE} or over, and we'll remember it.`,
   },
-  { key: "sex", headline: "Last one.", dek: null },
+  { key: "sex", label: "Sex", hint: null },
 ];
 
-/**
- * Where a returning half-finished profile reopens: the index of the first
- * question it has not answered, or `ONBOARD_STEPS.length` when it answers all
- * three (i.e. exactly when `consumerCanBrowse` passes — the two must agree, or
- * the form opens on a step the gate does not care about).
- *
- * This is only meaningful because each step PERSISTS as it is answered. A flow
- * abandoned after the birthday genuinely resumes at sex rather than appearing
- * to; `consumer-web-update-profile` patches only the keys a request carries,
- * so a lone `first_name` is a legal write.
- */
-export function firstIncompleteOnboardStep(
-  profile: OnboardableProfile | null | undefined,
-): number {
-  if (!profile?.first_name) return 0;
-  if (!profile?.birthday) return 1;
-  if (!isConsumerSex(profile?.sex)) return 2;
-  return ONBOARD_STEPS.length;
-}
-
-/**
- * Where the step lands when a per-step write resolves: one forward, but ONLY
- * if the guest is still on the step that write belongs to.
- *
- * Back is deliberately live during a save — it is not disabled — so
- * "Continue, then Back" is a real sequence, not a stress test. Advancing unconditionally on resolve made that
- * sequence silently undo itself: the guest pressed Back, saw the previous
- * question, and half a second later the EF answered and yanked them forward
- * again, with no event they could connect it to.
- *
- * `from` is read when the write STARTS, `current` is the live step. They
- * differ exactly when the guest has moved in the meantime, and then the
- * advance is dropped. The write is never dropped — the field is saved either
- * way, which is the whole point of persisting per step.
- */
-export function stepAfterSave(from: number, current: number): number {
-  return current === from ? from + 1 : current;
-}
+/** @deprecated Use `ONBOARD_FIELDS`. Kept so drift alarms can grep stable names. */
+export const ONBOARD_STEPS = ONBOARD_FIELDS;
 
 /**
  * The one field the reservation flow may still have to ask for. Only the last

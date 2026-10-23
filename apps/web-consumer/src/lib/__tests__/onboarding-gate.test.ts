@@ -5,8 +5,8 @@ import { describe, expect, it } from "vitest";
 import {
   CONSUMER_SEXES,
   consumerCanBrowse,
-  firstIncompleteOnboardStep,
   isConsumerSex,
+  ONBOARD_FIELDS,
   ONBOARD_STEPS,
 } from "../consumer-onboarding";
 import { MIN_SIGNUP_AGE } from "../utils";
@@ -77,50 +77,25 @@ describe("consumerCanBrowse — the signup gate", () => {
   });
 });
 
-describe("the three onboarding steps (MESITA-1830)", () => {
+describe("the three onboarding fields (MESITA-2746)", () => {
   it("asks first name, then birthday, then sex — the gate's own order", () => {
-    expect(ONBOARD_STEPS.map((s) => s.key)).toEqual([
+    expect(ONBOARD_FIELDS.map((s) => s.key)).toEqual([
       "first_name",
       "birthday",
       "sex",
     ]);
-    expect(ONBOARD_STEPS).toHaveLength(3);
+    expect(ONBOARD_FIELDS).toHaveLength(3);
+    expect(ONBOARD_STEPS).toBe(ONBOARD_FIELDS);
   });
 
-  it("gives every step a headline, and only the last one no reason", () => {
-    for (const s of ONBOARD_STEPS) expect(s.headline.length).toBeGreaterThan(0);
-    expect(ONBOARD_STEPS.filter((s) => s.dek === null)).toHaveLength(1);
-    expect(ONBOARD_STEPS[ONBOARD_STEPS.length - 1].dek).toBeNull();
+  it("gives every field a label", () => {
+    for (const s of ONBOARD_FIELDS) expect(s.label.length).toBeGreaterThan(0);
   });
 
   it("interpolates the age floor instead of printing a literal", () => {
-    // The mockup this shipped from drew "13 or over" while the live floor is
-    // 14. A literal on either screen is a lie the moment MIN_SIGNUP_AGE moves.
-    const dek = ONBOARD_STEPS[1].dek ?? "";
-    expect(dek).toContain(String(MIN_SIGNUP_AGE));
-    expect(dek).not.toContain("13");
-  });
-
-  it("reopens on the first unanswered question", () => {
-    expect(firstIncompleteOnboardStep({})).toBe(0);
-    expect(firstIncompleteOnboardStep(null)).toBe(0);
-    expect(firstIncompleteOnboardStep({ ...complete, first_name: null })).toBe(
-      0,
-    );
-    expect(firstIncompleteOnboardStep({ ...complete, birthday: null })).toBe(1);
-    expect(firstIncompleteOnboardStep({ ...complete, sex: null })).toBe(2);
-  });
-
-  it("agrees with the gate about what 'finished' means", () => {
-    // If these two ever disagree the form opens on a step the gate does not
-    // care about — or worse, reports done while the shell bounces the guest
-    // back, which is the ping-pong /onboard exists to avoid.
-    expect(firstIncompleteOnboardStep(complete)).toBe(ONBOARD_STEPS.length);
-    expect(consumerCanBrowse(complete)).toBe(true);
-    // A legacy sex value the DB would refuse is a GAP, not an answer.
-    const legacy = { ...complete, sex: "other" };
-    expect(consumerCanBrowse(legacy)).toBe(false);
-    expect(firstIncompleteOnboardStep(legacy)).toBe(2);
+    const hint = ONBOARD_FIELDS[1].hint ?? "";
+    expect(hint).toContain(String(MIN_SIGNUP_AGE));
+    expect(hint).not.toContain("13");
   });
 });
 
