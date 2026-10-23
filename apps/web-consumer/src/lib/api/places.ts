@@ -490,6 +490,9 @@ export async function apiSuggestPlacesWithIdle(
 // Legacy rows may carry http:// photos. Next.js Image rejects them and
 // would crash the whole page; filter to https before render. A Google
 // photoUri (https://lh3.googleusercontent.com/…) passes.
-export function stripInsecurePhotos<T extends { photos: string[] }>(v: T): T {
-  return { ...v, photos: v.photos.filter((p) => p.startsWith("https://")) };
+export function stripInsecurePhotos<T extends { photos?: string[] | null }>(
+  v: T,
+): T & { photos: string[] } {
+  const photos = Array.isArray(v.photos) ? v.photos : [];
+  return { ...v, photos: photos.filter((p) => p.startsWith("https://")) };
 }

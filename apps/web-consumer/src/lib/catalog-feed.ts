@@ -6,5 +6,5 @@ import type { CatalogRail } from "@/lib/api/places";
  * rail is dropped.
  */
 export function placesFeed(rails: readonly CatalogRail[]): CatalogRail[] {
-  return rails.filter((rail) => rail.places.length > 0);
+  return rails.filter((rail) => (rail.places ?? []).length > 0);
 }
