@@ -25,7 +25,7 @@ const clamp01 = (n: number) => (n <= 0 ? 0 : n >= 1 ? 1 : n);
  *  the edge and the edge at ⅓, about the ×3 spread Popularity has between a
  *  weak and a strong place, so neither signal drowns the other. */
 export const PROXIMITY_RADIUS_DIVISOR_DEFAULT = 2;
-export const PROXIMITY_RADIUS_DIVISOR_MIN = 0.5;
+export const PROXIMITY_RADIUS_DIVISOR_MIN = 0.1;
 export const PROXIMITY_RADIUS_DIVISOR_MAX = 10;
 
 /** Distance for half credit (km): the request's radius ÷ the divisor

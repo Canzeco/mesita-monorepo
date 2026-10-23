@@ -60,7 +60,7 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
     });
   });
 
-  it("the Area params: the radius divisor clamps to 0.5–10 at one decimal; reach and Selected are dropped (MESITA-2703, MESITA-2720)", () => {
+  it("the Area params: the radius divisor clamps to 0.1–10 at one decimal; reach and Selected are dropped (MESITA-2703, MESITA-2720, MESITA-2725)", () => {
     expect(
       coerceConfig({
         params: {
@@ -70,7 +70,8 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
         },
       }).params,
     ).toEqual({ proximity: { radiusDivisor: 2.3 }, popularity: { halfReviews: 1 } });
-    expect(coerceConfig({ params: { proximity: { radiusDivisor: 0 } } }).params.proximity).toEqual({ radiusDivisor: 0.5 });
+    expect(coerceConfig({ params: { proximity: { radiusDivisor: 0 } } }).params.proximity).toEqual({ radiusDivisor: 0.1 });
+    expect(coerceConfig({ params: { proximity: { radiusDivisor: 0.3 } } }).params.proximity).toEqual({ radiusDivisor: 0.3 });
     expect(coerceConfig({ params: { proximity: { radiusDivisor: 999 } } }).params.proximity).toEqual({ radiusDivisor: 10 });
   });
 
