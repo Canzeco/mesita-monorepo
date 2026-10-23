@@ -194,6 +194,14 @@ export type MapConfig = {
    * one decimal, default 3; 0 is off.
    */
   popularityFloor: number;
+  /**
+   * THE SELECTED FACTOR (Pato, MESITA-2717: "if Select, then a factor to
+   * multiply value of place. not select is 1, select is 3"): a Mesita
+   * Selected place's Area score is multiplied by it, every other place's
+   * by 1, and Mesita Popular counts its Popularity × it.
+   * `MAP_SELECTED_FACTOR_MIN`..`MAX`, one decimal, default 3; 1 is off.
+   */
+  selectedFactor: number;
 };
 
 /** The four Area sources, in the order the admin page lists them. */
@@ -318,6 +326,10 @@ export const MAP_PLACES_SHOWN_DEFAULT = 20;
 export const MAP_POPULARITY_FLOOR_MIN = 0;
 export const MAP_POPULARITY_FLOOR_MAX = 20;
 export const MAP_POPULARITY_FLOOR_DEFAULT = 3;
+/** `map.selectedFactor` bounds: 1 leaves a Selected place's score alone. */
+export const MAP_SELECTED_FACTOR_MIN = 1;
+export const MAP_SELECTED_FACTOR_MAX = 10;
+export const MAP_SELECTED_FACTOR_DEFAULT = 3;
 /** The Map's reload throttle (s): the consumer clamps to the same 0.5–10. */
 export const MAP_RELOAD_IDLE_SEC_MIN = 0.5;
 export const MAP_RELOAD_IDLE_SEC_MAX = 10;
@@ -364,6 +376,7 @@ export const DEFAULT_MAP: MapConfig = {
   popularityWeight: MAP_POPULARITY_WEIGHT_DEFAULT,
   placesShown: MAP_PLACES_SHOWN_DEFAULT,
   popularityFloor: MAP_POPULARITY_FLOOR_DEFAULT,
+  selectedFactor: MAP_SELECTED_FACTOR_DEFAULT,
 };
 
 /** `catalog.railCap` bounds and default: the Feed shows 5 per row. */
@@ -673,6 +686,14 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
         DEFAULT_MAP.popularityFloor,
         MAP_POPULARITY_FLOOR_MIN,
         MAP_POPULARITY_FLOOR_MAX,
+      ) * 10,
+    ) / 10,
+    selectedFactor: Math.round(
+      num(
+        r.selectedFactor,
+        DEFAULT_MAP.selectedFactor,
+        MAP_SELECTED_FACTOR_MIN,
+        MAP_SELECTED_FACTOR_MAX,
       ) * 10,
     ) / 10,
   };

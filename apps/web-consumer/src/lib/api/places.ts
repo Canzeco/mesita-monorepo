@@ -294,6 +294,9 @@ export type AreaDiagnostics = {
   source: "selected" | "mesita" | "google";
   /** The two exponents (MESITA-2703); absent from an older EF. */
   weights?: { proximity: number; popularity: number };
+  /** The factor `final` carries: the operator's Selected factor for a
+   *  Mesita Selected place, else 1 (MESITA-2717); absent from an older EF. */
+  selectedFactor?: number;
   /** The sources that found the place (MESITA-2703); diagnostics only,
    *  no card draws it. */
   foundBy?: string[];

@@ -24,10 +24,13 @@ function exp(n: number | undefined): string {
 }
 
 /** The compact expression for the place's formula (MESITA-2703:
- *  Proximity^a × Popularity^b). */
+ *  Proximity^a × Popularity^b, × the Selected factor, MESITA-2717). */
 export function diagExpression(a: Area): string {
   const fin = diagNumber(a.final);
-  const rest = `popularity ${diagNumber(a.signals.popularity)}^${exp(a.weights?.popularity)}`;
+  const sel = typeof a.selectedFactor === "number" && a.selectedFactor !== 1
+    ? ` × selected ${a.selectedFactor}`
+    : "";
+  const rest = `popularity ${diagNumber(a.signals.popularity)}^${exp(a.weights?.popularity)}${sel}`;
   // Home asks from a point or nothing (MESITA-2501); anything but a point
   // has no Proximity term.
   if (a.formula !== "point") return `${rest} = ${fin}`;

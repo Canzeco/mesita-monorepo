@@ -32,6 +32,8 @@ import {
   MAP_RADIUS_KM_MIN,
   MAP_RELOAD_IDLE_SEC_MAX,
   MAP_RELOAD_IDLE_SEC_MIN,
+  MAP_SELECTED_FACTOR_MAX,
+  MAP_SELECTED_FACTOR_MIN,
   NAME_ADMIN_MESITA_MAX,
   NAME_ADMIN_TEXT_MAX,
   NAME_IDLE_SEC_MAX,
@@ -317,8 +319,9 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             Four sources, each on or off: Google Popular, Google Closest, Mesita
             Popular and Mesita Closest, 20 places each. They merge into one pool
             (a place found twice is one card), then Home and the Map rank it the
-            same way: score = Proximity<sup>a</sup> × Popularity<sup>b</sup>.
-            No point: Mesita Popular alone, by Popularity.
+            same way: score = Proximity<sup>a</sup> × Popularity<sup>b</sup>,
+            × the Selected factor for a Selected place. No point: Mesita
+            Popular alone, by Popularity.
           </p>
         </>
       }
@@ -394,8 +397,9 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           Search bar and admin Find&apos;s Autocomplete column); 0 is off. At{" "}
           {cfg.map.googleMinReviews}, most of Google Closest&apos;s nearest
           places are corner spots under it. Mesita Popular is the 20 Mesita
-          places in the circle with the highest Popularity, Mesita Closest the
-          20 nearest; both are free.
+          places in the circle with the highest Popularity (a Selected
+          place&apos;s × the Selected factor), Mesita Closest the 20 nearest;
+          both are free.
         </p>
         {allOff ? (
           <p className="text-destructive type-meta">
@@ -441,6 +445,15 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             disabled={off}
             onChange={setHalfKm}
           />
+          <NumberField
+            label="Selected factor"
+            value={cfg.map.selectedFactor}
+            min={MAP_SELECTED_FACTOR_MIN}
+            max={MAP_SELECTED_FACTOR_MAX}
+            decimals
+            disabled={off}
+            onChange={(selectedFactor) => map({ selectedFactor })}
+          />
         </div>
         <p className="text-muted-foreground type-meta">
           a and b rank the Map and Home alike: below 1 softens a signal,
@@ -453,7 +466,10 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           about 4★ × 5 reviews. Popularity is ln(1 + reviews × stars), never normalized:
           4.6★ × 1,000 reviews ≈ 8.4, 4.0★ × 30 ≈ 4.8; a place with no Google
           numbers scores 0 and sinks, never disappears. The score is the plain
-          product Proximity<sup>a</sup> × Popularity<sup>b</sup>.
+          product Proximity<sup>a</sup> × Popularity<sup>b</sup> × the
+          Selected factor (now {cfg.map.selectedFactor}; 1 is off) for a place
+          marked Selected in Single Place, × 1 for every other place. Selected
+          never saves a place from the Minimum Popularity.
         </p>
       </Group>
       <Group title="Map view (the Search tab)">

@@ -9,10 +9,11 @@
 //   (point, radius)
 //     ├─ Google Popular   Nearby, rank POPULARITY, the whole circle  ─┐ reviews floor per call
 //     ├─ Google Closest   Nearby, rank DISTANCE, the whole circle    ─┤ → owned lookup by Place ID
-//     ├─ Mesita Popular   top 20 by raw Popularity in the circle     ─┤
+//     ├─ Mesita Popular   top 20 by Popularity × s in the circle     ─┤
 //     └─ Mesita Closest   20 nearest in the circle                   ─┘
 //   merge (one card per place; an owned hit is the Mesita row; `foundBy`
 //   keeps every source that found it) → gates → Proximity^a × Popularity^b
+//   × s (s = the Selected factor for a Mesita Selected place, else 1)
 //
 // Each source is `map.<key>` 0 or 20 (`AREA_SOURCE_KEYS`). Gates: Family ·
 // Radius, plus the operational ones the sources apply (active, ready, the
@@ -59,6 +60,7 @@ import {
   knownFamilies,
   type LatLng,
   rankArea,
+  selectedFactor,
 } from "./area-score.ts";
 import { logPopularity, PROXIMITY_HALF_KM_DEFAULT } from "./pipeline-signals.ts";
 import {
@@ -100,21 +102,25 @@ export function areaWeights(
   return { proximity: map.proximityWeight, popularity: map.popularityWeight };
 }
 
-/** Proximity's half distance and the two exponents, from the blob. The
- *  radius is not here: it gates, it never scores (MESITA-2706). Popularity
- *  takes no parameter (MESITA-2710: ln(1 + reviews × stars)). */
+/** Proximity's half distance, the two exponents, the Popularity floor and
+ *  the Selected factor, from the blob. The radius is not here: it gates, it
+ *  never scores (MESITA-2706). Popularity takes no parameter (MESITA-2710:
+ *  ln(1 + reviews × stars)). */
 export function areaSignalParams(
   params: SignalParams,
   map: Pick<DiscoveryConfig["map"], "proximityWeight" | "popularityWeight"> & {
     popularityFloor?: number;
+    selectedFactor?: number;
   },
-): Pick<AreaContext, "halfKm" | "weights" | "popularityFloor"> {
+): Pick<AreaContext, "halfKm" | "weights" | "popularityFloor" | "selectedFactor"> {
   const halfKm = params.proximity?.halfKm;
   return {
     halfKm: typeof halfKm === "number" && Number.isFinite(halfKm) ? halfKm : PROXIMITY_HALF_KM_DEFAULT,
     weights: areaWeights(map),
     // The Popularity floor (MESITA-2714), a gate on every Area caller.
     popularityFloor: map.popularityFloor,
+    // The Selected factor (MESITA-2717), a multiplier on every Area caller.
+    selectedFactor: map.selectedFactor,
   };
 }
 
@@ -507,8 +513,10 @@ const MESITA_SOURCE_MAX = 20;
 /**
  * Mesita Popular and Mesita Closest (MESITA-2703), picked in memory from the
  * caller's radius-boxed read (capped at `NEARBY_SCAN_LIMIT`, ordered by id;
- * the EF logs `mesitaCapped`). Popular ranks by raw Popularity, whatever the
- * exponents; Closest by distance; both then by id. Closest needs a point.
+ * the EF logs `mesitaCapped`). Popular ranks by raw Popularity × the Selected
+ * factor, whatever the exponents, so a Selected row competes for a slot with
+ * the factor it scores with (MESITA-2717); Closest by distance; both then by
+ * id. Closest needs a point.
  */
 function mesitaItems<T extends OwnedRow>(
   deps: AreaPoolDeps<T>,
@@ -532,10 +540,11 @@ function mesitaItems<T extends OwnedRow>(
   const byId = (a: { item: PoolItem }, b: { item: PoolItem }) =>
     a.item.candidate.id.localeCompare(b.item.candidate.id);
   const picks: PoolItem[] = [];
+  const popularValue = (c: AreaCandidate) => logPopularity(c) * selectedFactor(c, ctx);
   if (wantPopular) {
     const top = [...open]
       .sort((a, b) =>
-        logPopularity(b.item.candidate) - logPopularity(a.item.candidate) ||
+        popularValue(b.item.candidate) - popularValue(a.item.candidate) ||
         byId(a, b)
       )
       .slice(0, MESITA_SOURCE_MAX);
@@ -720,6 +729,9 @@ export type SelectedOpts = {
   popularityWeight: number;
   /** The Popularity floor (MESITA-2714); absent = off. */
   popularityFloor?: number;
+  /** The Selected factor (MESITA-2717). Every row here is Selected, so it
+   *  scales the scores and never reorders them. */
+  selectedFactor?: number;
   limit?: number;
 };
 
@@ -786,6 +798,7 @@ export async function areaSelectedPlaces(
     proximityWeight: cfg.map.proximityWeight,
     popularityWeight: cfg.map.popularityWeight,
     popularityFloor: cfg.map.popularityFloor,
+    selectedFactor: cfg.map.selectedFactor,
     limit: opts.limit,
   });
 }
