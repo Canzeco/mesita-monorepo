@@ -93,7 +93,8 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
     // parameter since MESITA-2710) + the Map's reload seconds. The weights
     // table left the page (MESITA-2603). Deep is Soon.
     const html = page();
-    expect(html.match(/type="number"/g)?.length).toBe(13);
+    // + Places shown (MESITA-2713).
+    expect(html.match(/type="number"/g)?.length).toBe(14);
     expect(html).toContain("Proximity weight (a)");
     expect(html).toContain("Distance for half credit (km)");
     expect(html).not.toContain("data-area-weights");
