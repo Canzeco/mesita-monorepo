@@ -199,7 +199,7 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment |
     knobs: images,
     openaiKey,
   });
-  if (photos.urls.length > 0) spine.patch.photos = photos.urls;
+  if (photos.urls.length > 0) spine.patch.mesita_photos = photos.urls;
 
   let description = spine.description;
   if (!description) {
@@ -268,7 +268,7 @@ export function stampOverwrite(
 export function quickPatch(opts: {
   spine: Record<string, unknown>;
   description: string | null;
-  photos: string[];
+  googlePhotos: string[];
   now: string;
 }): Record<string, unknown> {
   const patch: Record<string, unknown> = {
@@ -277,7 +277,7 @@ export function quickPatch(opts: {
     enriched_at: opts.now,
   };
   if (opts.description) patch.description = opts.description;
-  if (opts.photos.length > 0) patch.photos = opts.photos;
+  if (opts.googlePhotos.length > 0) patch.google_photos = opts.googlePhotos;
   return patch;
 }
 
@@ -292,11 +292,11 @@ async function buildQuickEnrichment(opts: {
   googlePlaceId: string;
 }): Promise<BuiltEnrichment> {
   const images = imageKnobs(opts.knobs);
-  let photos: string[] = [];
+  let googlePhotos: string[] = [];
   try {
-    photos = await fetchGooglePhotoUrls(opts.details.photos, opts.googleKey, images.gatherGoogleImages);
+    googlePhotos = await fetchGooglePhotoUrls(opts.details.photos, opts.googleKey, images.gatherGoogleImages);
   } catch {
-    photos = [];
+    googlePhotos = [];
   }
   const description = opts.spine.description;
   const patch = applyOverwrite({
@@ -305,7 +305,7 @@ async function buildQuickEnrichment(opts: {
     patch: quickPatch({
       spine: opts.spine.patch,
       description,
-      photos,
+      googlePhotos,
       now: new Date().toISOString(),
     }),
   });
