@@ -120,7 +120,7 @@ export function BottomNav() {
       // hard-nav place PAGE from the intercepted place MODAL, which share it.
       data-shell-nav=""
       className={cn(
-        "border-border bg-card/95 shrink-0 border-t px-0.5 pt-2 backdrop-blur",
+        "border-border bg-card/95 relative shrink-0 border-t px-0.5 pt-2 backdrop-blur pointer-events-auto",
         Z_BOTTOM_NAV,
       )}
     >

@@ -139,18 +139,23 @@ export default async function ConsumerShellLayout({
         profileUnavailable={profileUnavailable}
       >
         <div className="relative flex flex-1 flex-col overflow-hidden">
+          {/* Body + modal host only: the @modal slot must not sit above
+              BottomNav. An `inset-0` host as a sibling after the tab bar
+              covered its hit targets even with pointer-events-none on the
+              wrapper (MESITA-2747). Intercepted routes that need the bar
+              hidden already do it on the page (place detail). */}
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
             {children}
+            <div
+              className={cn(
+                "pointer-events-none absolute inset-0",
+                Z_ROUTE_MODAL,
+              )}
+            >
+              {modal}
+            </div>
           </div>
           <BottomNav />
-          {/* Single modal host layer above shell chrome. Keeping this as the
-              only stacking context avoids "menu peeking through" races while
-              intercepted routes resolve/loading UI mounts. */}
-          <div
-            className={cn("pointer-events-none absolute inset-0", Z_ROUTE_MODAL)}
-          >
-            {modal}
-          </div>
         </div>
       </ConsumerIdentityProvider>
       <Toaster />
