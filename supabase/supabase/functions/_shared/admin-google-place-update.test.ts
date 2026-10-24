@@ -42,6 +42,7 @@ function sampleBasics(): GoogleBasics {
     google_stars_overall: 4.5,
     google_review_count: 10,
     google_reviews: [],
+    google_tags: ["dine_in", "live_music"],
   };
 }
 
@@ -55,6 +56,7 @@ Deno.test("googleBasicsToUpdatePatch writes google_photos, never photos or mesit
     now: NOW,
   });
   assertEquals(patch.google_photos, ["https://cdn.example/1.jpg"]);
+  assertEquals(patch.google_tags, ["dine_in", "live_music"]);
   assertEquals("photos" in patch, false);
   assertEquals("mesita_photos" in patch, false);
   assertEquals(patch.business_state, "OPERATIONAL");

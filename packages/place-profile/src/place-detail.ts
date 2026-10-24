@@ -62,12 +62,7 @@ export type PlaceDetail = {
   // 2. Media
   photos: string[];
 
-  // Place tags — the curated taxonomy chips the business selected (cocktails,
-  // rooftop, date night, …). Sourced from consumer-get-place's resolved
-  // `tags` array, already ordered by sort_order. Chip `label` is English
-  // (label_en) until a TMS lands (MESITA-963). `facet` is one of 17 taxonomy
-  // groups (payment, vibe, drinks, …) and drives the per-facet chip tint.
-  // Empty when the place has none — the Details box renders nothing for tags.
+  // Google atmosphere chips (Takeout, Dine-in, Live music). Empty hides the box.
   tags: Array<{
     slug: string;
     label: string;

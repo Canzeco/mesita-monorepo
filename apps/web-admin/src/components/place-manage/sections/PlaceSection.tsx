@@ -12,8 +12,8 @@ import {
   type AdminPlace,
   type PlaceFieldLimits,
 } from "../actions";
-import { PlaceTagsPicker } from "../PlaceTagsPicker";
 import { PlaceCategorySelect } from "../PlaceCategorySelect";
+import { googleTagLabel } from "@mesita/place-profile/map";
 import { googleFormattedAddress } from "../google-location";
 import {
   OpenLink,
@@ -151,6 +151,23 @@ function PriceDisplay({
   );
 }
 
+function GoogleTagChips({ slugs }: { slugs?: string[] | null }) {
+  const items = (slugs ?? []).map((slug) => slug.trim()).filter(Boolean);
+  if (items.length === 0) return <>—</>;
+  return (
+    <span className="flex flex-wrap gap-1.5">
+      {items.map((slug) => (
+        <span
+          key={slug}
+          className="border-border rounded-full border px-2 py-0.5 text-xs"
+        >
+          {googleTagLabel(slug)}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 function locationAddress(place: AdminPlace): string {
   return (
     googleFormattedAddress(place.google_address) ||
@@ -170,7 +187,6 @@ type Form = {
    * `description`; the FIELD is Presentation (Pato, 2026-08-23). */
   description: string;
   phone: string;
-  tags: string[];
   channels: Record<string, string>;
   hours: Record<Day, DayHours>;
 };
@@ -203,7 +219,6 @@ function placeToForm(
     category: v.category ?? "",
     description: (v.description ?? "").slice(0, limits.descriptionMax),
     phone: v.phone ?? "",
-    tags: (v.tags ?? []).slice(0, limits.tagsPerPlaceMax),
     channels,
     hours,
   };
@@ -227,7 +242,6 @@ function boxToPatch(
       id,
       mesita_name: mesitaName.length > 0 ? mesitaName : null,
       description: nz(f.description.slice(0, limits.descriptionMax)),
-      tags: f.tags.slice(0, limits.tagsPerPlaceMax),
     };
   }
   if (box === "time") {
@@ -274,22 +288,13 @@ export function PlaceSection({
         {
           mesitaName: form.mesitaName,
           description: form.description,
-          tags: form.tags,
         },
         {
           mesitaName: saved.mesitaName,
           description: saved.description,
-          tags: saved.tags,
         },
       ),
-    [
-      form.mesitaName,
-      form.description,
-      form.tags,
-      saved.mesitaName,
-      saved.description,
-      saved.tags,
-    ],
+    [form.mesitaName, form.description, saved.mesitaName, saved.description],
   );
   const dirtyTime = useMemo(
     () => !sliceEqual(form.hours, saved.hours),
@@ -425,13 +430,9 @@ export function PlaceSection({
           />
         </div>
         <div className="mt-4">
-          <PlaceTagsPicker
-            value={form.tags}
-            onChange={(tags) =>
-              set("tags", tags.slice(0, limits.tagsPerPlaceMax))
-            }
-            disabled={anyPending}
-          />
+          <ReadField label="Tags" auto boxed>
+            <GoogleTagChips slugs={place.google_tags} />
+          </ReadField>
         </div>
       </SectionCard>
 

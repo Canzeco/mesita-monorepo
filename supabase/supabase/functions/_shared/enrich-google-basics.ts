@@ -27,6 +27,7 @@ import {
   internationalPhone,
   priceLevelFromGoogle,
 } from "./enrich-google-basics-normalizers.ts";
+import { GOOGLE_ATMOSPHERE_FIELDS, googleTagsFromAtmosphere } from "./google-atmosphere.ts";
 
 const GOOGLE_FIELD_MASK = [
   "id",
@@ -52,6 +53,7 @@ const GOOGLE_FIELD_MASK = [
   "reviewSummary",
   "reviews",
   "photos",
+  ...GOOGLE_ATMOSPHERE_FIELDS.map((field) => field.field),
 ].join(",");
 
 // Candidate photo URLs collected from Google before any quality pass (Places
@@ -133,6 +135,8 @@ export type GoogleBasics = {
   google_stars_overall: number | null;
   google_review_count: number | null;
   google_reviews: { author: string; rating: number; quote: string; date: string }[] | null;
+  /** True Google atmosphere booleans, as slugs. Not the Mesita tag catalog. */
+  google_tags: string[];
 };
 
 export type GoogleBasicsResult =
@@ -308,6 +312,7 @@ export async function fetchGoogleBasics(
       // depth rather than a real malformation risk — validated the same
       // drop-on-failure way as the LLM-sourced jsonb columns for consistency.
       google_reviews: validatedGoogleReviews(mapGoogleReviews(details.reviews)),
+      google_tags: googleTagsFromAtmosphere(details),
     },
   };
 }

@@ -81,15 +81,9 @@ const CHECKS: readonly CompletenessCheck[] = [
     weight: 10,
     done: (p) => !!(p.website_url || p.instagram_url),
   },
-  // Menu left the meter with the card (MESITA-2175). Upload is off, so a
-  // chip that says "Add a menu" would point at a section this page does not
-  // render. Stored menus still count nowhere here.
-  {
-    label: "Mesita Tags",
-    hint: "Pick at least 3 tags",
-    weight: 10,
-    done: (p) => (p.tags?.length ?? 0) >= 3,
-  },
+  // Menu left the meter with the card (MESITA-2175). Tags left with the
+  // picker (MESITA-2255): they are Google's atmosphere chips, read-only, so
+  // a "pick 3 tags" chip would point at a field the operator cannot fill.
 ];
 
 const TOTAL_WEIGHT = CHECKS.reduce((sum, c) => sum + c.weight, 0);

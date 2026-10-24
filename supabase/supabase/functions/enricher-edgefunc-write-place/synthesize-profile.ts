@@ -1,4 +1,4 @@
-// The one enrichment commit fills the Presentation, one Category, and Tags,
+// The one enrichment commit fills the Presentation and one Category.
 // and hands back the Mesita Name the same synthesis inferred, which lands
 // only through _shared/mesita-name-door.ts. The classifiers already live in
 // _shared. This module only decides which of those results may land, then
@@ -17,7 +17,6 @@ import {
 import { humanizeCategorySlug } from "../_shared/parse-utils.ts";
 import { findAddressComponent } from "../_shared/enrich-google-basics-normalizers.ts";
 import { keepAtlasValues } from "../_shared/place-taxonomy.ts";
-import { fetchPlaceTags, inferPlaceTags } from "../_shared/tags.ts";
 import { loadModelsConfig } from "../_shared/models-config.ts";
 
 // The one sentence-safe cap (MESITA-2641); re-exported for this EF's callers
@@ -61,7 +60,6 @@ export function mergeSynthesizedProfile(opts: {
   patch: Record<string, unknown>;
   presentation: string | null;
   category: string | null;
-  tags: string[];
 }): Record<string, unknown> {
   const next = { ...opts.patch };
   const presentation = opts.presentation ? capPresentation(opts.presentation) : "";
@@ -76,12 +74,7 @@ export function mergeSynthesizedProfile(opts: {
     next.category = opts.category;
     next.category_label = humanizeCategorySlug(opts.category);
   }
-  if (opts.tags.length === 0) return next;
-  if (opts.overwrite || !filled(opts.patch.tags)) {
-    next.tags = opts.tags;
-    return next;
-  }
-  next.tags = [...new Set([...slugs(opts.patch.tags), ...opts.tags])];
+  // Catalog tags are not written. places.tags stays whatever it already is.
   return next;
 }
 
@@ -143,9 +136,8 @@ async function fillAtlasProfileInner(
   const openaiKey = Deno.env.get("OPENAI_KEY")?.trim() ?? "";
   if (!openaiKey) return { patch, mesitaName: null };
 
-  const [categories, tagVocabulary, models, cfg] = await Promise.all([
+  const [categories, models, cfg] = await Promise.all([
     fetchPlaceCategories(admin),
-    fetchPlaceTags(admin),
     loadModelsConfig(admin),
     loadEnrichConfig(admin),
   ]);
@@ -191,18 +183,11 @@ async function fillAtlasProfileInner(
       editorialSummary: googleSummary || null,
       description: presentation,
     }, models.enricherModel);
-  const inferredTags = await inferPlaceTags(openaiKey, tagVocabulary, {
-    name: name || "Place",
-    category,
-    description: presentation,
-    googleReviewsText: reviews,
-    serpSummary: webRead || null,
-  }, models.enricherModel);
   const kept = keepAtlasValues({
     category,
-    tags: inferredTags,
+    tags: [],
     categories: categories.map((item) => item.slug),
-    tagVocabulary: tagVocabulary.map((item) => item.slug),
+    tagVocabulary: [],
   });
 
   return {
@@ -211,7 +196,6 @@ async function fillAtlasProfileInner(
       patch,
       presentation,
       category: kept.category,
-      tags: kept.tags,
     }),
     mesitaName,
   };

@@ -154,7 +154,7 @@ function BoxTitleBar({ width, meta = false }: { width: string; meta?: boolean })
 }
 
 /** Overview in PlaceDetailBody's order: photos · Presentation · Location ·
- *  Hours · Links · Mesita Tags, each in the real Box (white, rounded-2xl,
+ *  Hours · Links · Tags, each in the real Box (white, rounded-2xl,
  *  p-4, 12px inside). */
 function OverviewSkeleton() {
   return (

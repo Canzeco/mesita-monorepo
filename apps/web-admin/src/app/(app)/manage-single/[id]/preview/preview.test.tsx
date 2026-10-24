@@ -30,6 +30,7 @@ function place(over: Partial<AdminPlace> = {}): AdminPlace {
     hours: null,
     photos: [],
     tags: ["tacos"],
+    google_tags: ["dine_in", "live_music"],
     website_url: null,
     instagram_url: null,
     facebook_url: null,
@@ -79,7 +80,7 @@ describe("admin member preview", () => {
     expect(detail.requested).toBe(false);
     expect(detail.distance_km).toBe(0);
     expect(detail.request_threshold).toBe(9);
-    expect(detail.tags.map((tag) => tag.label)).toEqual(["Tacos"]);
+    expect(detail.tags.map((tag) => tag.label)).toEqual(["Dine-in", "Live music"]);
   });
 
   it("renders the consumer place module, and a package change deploys both apps", () => {
