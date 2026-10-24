@@ -602,9 +602,11 @@ Deno.test("google: an owned hit whose Mesita family is unknown keeps the family 
 
 Deno.test("nearbyExcludedTypesForFamilies: Dinner excludes the precise restaurants of other families", () => {
   const ex = nearbyExcludedTypesForFamilies(["restaurant"], ["dinner"]);
-  for (const t of ["mexican_restaurant", "pizza_restaurant", "sushi_restaurant", "hamburger_restaurant"]) {
+  for (const t of ["mexican_restaurant", "pizza_restaurant", "sushi_restaurant"]) {
     assert(ex.includes(t), t);
   }
+  // A burger wears Dinner, so a Dinner search keeps it (MESITA-2749).
+  assertEquals(ex.includes("hamburger_restaurant"), false);
   assertEquals(ex.includes("restaurant"), false);
   assert(ex.length <= 50);
   // No family asked: only the restaurant-group types that sit in no family are cut.
@@ -1073,7 +1075,8 @@ Deno.test("a family row lists primary places first, secondary as fill (MESITA-24
     );
     assertEquals(ids(places), ["g:brunch", "g:cafe", "g:tacos"]);
     assertEquals(places.map((p) => p.area.primaryFamily), ["breakfast", "coffee", "tacos"]);
-    assertEquals(places[2].family_keys, ["tacos", "breakfast"]);
+    // Own second family is Mexican; Breakfast comes from the other Google type.
+    assertEquals(places[2].family_keys, ["tacos", "mexican", "breakfast"]);
   } finally {
     g.restore();
   }

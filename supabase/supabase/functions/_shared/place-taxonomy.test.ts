@@ -10,17 +10,25 @@ import {
   sanitizeFamilyKeys,
 } from "./place-taxonomy.ts";
 
-Deno.test("place family catalog is twelve guest families, Undefined last", () => {
-  assertEquals(FAMILIES.length, 13);
+Deno.test("place family catalog is twenty guest families, Undefined last", () => {
+  assertEquals(FAMILIES.length, 21);
   assertEquals(FAMILIES.map((s) => s.slug), [
     "coffee",
     "breakfast",
     "quick_bite",
-    "pizza",
     "tacos",
-    "sushi",
+    "mexican",
+    "pizza",
     "burgers",
+    "sushi",
     "noodles",
+    "japanese",
+    "chinese",
+    "italian",
+    "seafood",
+    "steak",
+    "indian",
+    "thai",
     "dinner",
     "sweet",
     "drinks",
@@ -33,7 +41,7 @@ Deno.test("place family catalog is twelve guest families, Undefined last", () =>
   assertEquals(last.sort_order, 999);
 });
 
-Deno.test("every Atlas category maps onto the twelve; four sit on two", () => {
+Deno.test("every Atlas category maps onto the twenty; seventeen sit on two", () => {
   const slugs = Object.keys(ATLAS_CATEGORY_FAMILIES);
   assertEquals(slugs.length, 101);
   assertEquals(slugs.includes("undefined"), true);
@@ -49,22 +57,39 @@ Deno.test("every Atlas category maps onto the twelve; four sit on two", () => {
   }
   assertEquals(doubles.sort(), [
     "bakery",
+    "bbq",
     "board_game_cafe",
+    "burger",
     "cafe",
+    "chinese",
     "coffee_shop",
+    "indian",
+    "italian",
+    "japanese",
+    "mexican",
+    "pizza",
+    "ramen",
+    "seafood",
+    "steak_house",
+    "sushi",
+    "thai",
   ]);
   assertEquals(covered.has("undefined"), true);
   assertEquals(covered.has("pizza"), true);
   assertEquals(covered.has("dinner"), true);
 });
 
-Deno.test("a cafe is coffee and breakfast; a pizzeria is only pizza", () => {
+Deno.test("a cafe is coffee and breakfast; a pizzeria is pizza and italian", () => {
   assertEquals(familiesForAtlasCategory("breakfast"), ["breakfast"]);
   assertEquals(familiesForAtlasCategory("brunch"), ["breakfast"]);
   assertEquals(familiesForAtlasCategory("cafe"), ["coffee", "breakfast"]);
   assertEquals(familiesForAtlasCategory("karaoke"), ["night_out"]);
   assertEquals(familiesForAtlasCategory("winery"), ["drinks"]);
-  assertEquals(familiesForAtlasCategory("pizza"), ["pizza"]);
+  // Catalog order, not primary-first: tacos sorts before mexican.
+  assertEquals(familiesForAtlasCategory("pizza"), ["pizza", "italian"]);
+  assertEquals(familiesForAtlasCategory("mexican"), ["tacos", "mexican"]);
+  assertEquals(familiesForAtlasCategory("taco"), ["quick_bite", "tacos", "mexican"]);
+  assertEquals(familiesForAtlasCategory("thai"), ["thai", "dinner"]);
   // An attraction is in no family (MESITA-2438).
   assertEquals(familiesForAtlasCategory("movie_theater"), ["undefined"]);
 });
@@ -83,7 +108,7 @@ Deno.test("undefined category maps to family undefined; empty has none", () => {
 });
 
 Deno.test("familiesForPlace follows the mapping, not the code twin", () => {
-  assertEquals(familiesForAtlasCategory("mexican"), ["tacos"]);
+  assertEquals(familiesForAtlasCategory("mexican"), ["tacos", "mexican"]);
   assertEquals(familiesForPlace({ category: "mexican" }), ["undefined"]);
   assertEquals(
     familiesForPlace({

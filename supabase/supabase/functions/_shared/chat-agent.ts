@@ -31,7 +31,7 @@ import type { ChatTurn } from "./memo-openai-turn.ts";
 export type ChatIntent = {
   /** A specific place the guest names, as they wrote it. */
   placeName: string | null;
-  /** Guest families they ask for (the twelve catalog slugs). */
+  /** Guest families they ask for (the twenty catalog slugs). */
   families: string[];
   /** They mean around themselves ("near me", "close by", "por aquí"). */
   nearby: boolean;
@@ -257,7 +257,7 @@ const INTENT_SCHEMA = {
 } as const;
 
 const INTENT_INSTRUCTIONS =
-  "You read a guest's latest message, in the context of the conversation, and return what they are looking for. Fill only what the guest actually said or clearly meant; never guess a place name. Families: coffee, breakfast, quick_bite, pizza, tacos, sushi, burgers, noodles, dinner, sweet, drinks, night_out.";
+  `You read a guest's latest message, in the context of the conversation, and return what they are looking for. Fill only what the guest actually said or clearly meant; never guess a place name. Families: ${CATALOG_FAMILY_SLUGS.join(", ")}.`;
 
 /** One structured-output call: the guest's intent for this turn, or null
  *  when it cannot be read (no key, no model, an error). */
