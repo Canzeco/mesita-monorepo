@@ -57,11 +57,6 @@ export const KNOWN_PROBES: ReadonlyArray<{
     impact: "Enricher text, vision and embeddings, and Memo",
   },
   {
-    id: "stripe",
-    label: "Stripe",
-    impact: "Key still stored. No First Stage screen charges it.",
-  },
-  {
     id: "perplexity",
     label: "Perplexity",
     impact: "Enricher Scout (2 · Serp) and Resolver (3 · Links). Memo has no web leg.",
