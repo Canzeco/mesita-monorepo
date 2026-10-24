@@ -356,6 +356,19 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
     expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Share", "Me"]);
   });
 
+  it("the @modal host stacks over the body only, not BottomNav (MESITA-2747)", () => {
+    const src = readFileSync(join(SHELL, "layout.tsx"), "utf8");
+    const bottomNavAt = src.indexOf("<BottomNav />");
+    const modalAt = src.indexOf("{modal}");
+    expect(bottomNavAt).toBeGreaterThan(modalAt);
+    expect(src).toMatch(
+      /flex min-h-0 flex-1[\s\S]*\{modal\}[\s\S]*<BottomNav \/>/,
+    );
+    expect(readFileSync(join(COMPONENTS, "BottomNav.tsx"), "utf8")).toContain(
+      "pointer-events-auto",
+    );
+  });
+
   it("Share wears the three joined dots — not a plane, not a box (MESITA-2568)", async () => {
     const html = await renderNav("/search");
     expect(html).toContain("lucide-share-2");
