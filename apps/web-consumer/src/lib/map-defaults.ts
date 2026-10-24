@@ -7,41 +7,41 @@ export const MAP_DEFAULT_ZOOM = 13;
 export const MAP_USER_ZOOM = 14;
 
 // A QUIET MAP (Pato, MESITA-2469: "think the apple or instagram
-// aesthetic"). Apple Maps' trick: the tiles step back so the pins carry the
-// colour. Land is near-white neutral, water a faint grey-blue, parks a
-// whisper of green, roads white with soft grey labels. Google's business
-// pins/labels stay hidden so Mesita's pins own the canvas. Inline styles
-// work without a mapId.
+// aesthetic"; MESITA-2748: parks must actually read green, like OpenTable /
+// Apple Maps, not grey paper). Apple Maps' trick: the tiles step back so
+// the pins carry the colour. Land is warm paper, water a clear grey-blue,
+// parks mint you can see, roads white. Google's business pins/labels stay
+// hidden so Mesita's pins own the canvas. Inline styles work without a mapId.
 export const MAP_MINIMAL_STYLES = [
   {
     featureType: "landscape",
     elementType: "geometry",
-    stylers: [{ color: "#f4f4f4" }],
+    stylers: [{ color: "#f6f3ee" }],
   },
   {
     featureType: "water",
     elementType: "geometry",
-    stylers: [{ color: "#d5dee6" }],
+    stylers: [{ color: "#c9d9e8" }],
   },
   {
     featureType: "water",
     elementType: "labels.text.fill",
-    stylers: [{ color: "#8a99a6" }],
+    stylers: [{ color: "#6e8496" }],
   },
   {
     featureType: "poi",
     elementType: "geometry",
-    stylers: [{ color: "#eeeeee" }],
+    stylers: [{ color: "#eeeae4" }],
   },
   {
     featureType: "poi.park",
     elementType: "geometry",
-    stylers: [{ color: "#e2eadf" }],
+    stylers: [{ color: "#cde8c8" }],
   },
   {
     featureType: "landscape.natural.landcover",
     elementType: "geometry",
-    stylers: [{ color: "#e9ece6" }],
+    stylers: [{ color: "#dcead4" }],
   },
   {
     featureType: "road",
@@ -51,17 +51,17 @@ export const MAP_MINIMAL_STYLES = [
   {
     featureType: "road.highway",
     elementType: "geometry",
-    stylers: [{ color: "#e4e4e4" }],
+    stylers: [{ color: "#ece6dc" }],
   },
   {
     featureType: "road",
     elementType: "labels.text.fill",
-    stylers: [{ color: "#8e8e8e" }],
+    stylers: [{ color: "#7a7a7a" }],
   },
   {
     featureType: "administrative",
     elementType: "labels.text.fill",
-    stylers: [{ color: "#737373" }],
+    stylers: [{ color: "#5c5c5c" }],
   },
   // Hide Google's business pins + all POI text — colour, not label clutter.
   {
