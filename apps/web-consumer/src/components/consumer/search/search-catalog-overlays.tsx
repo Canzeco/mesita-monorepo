@@ -28,11 +28,31 @@ const RAIL_PAGE =
 export const RAIL_FLOAT_CLASS =
   "pointer-events-none absolute inset-x-0 bottom-2 z-20";
 
+/** The ranking line that sits on a loaded card (RailScoreTag): two 10px
+ *  lines in the same box, so the card does not jump up when the line
+ *  arrives (MESITA-2750). The words are data; only the bars show. */
+function RailScoreTagSkeleton() {
+  return (
+    <div
+      aria-hidden
+      className="bg-card/95 type-meta mb-1.5 rounded-xl px-3 py-1.5 font-mono leading-snug shadow-sm"
+    >
+      <div className="flex h-[1lh] items-center">
+        <Skeleton className="h-2.5 w-28" />
+      </div>
+      <div className="flex h-[1lh] items-center">
+        <Skeleton className="h-2.5 w-full" />
+      </div>
+    </div>
+  );
+}
+
 /** The first load's carousel (Pato, MESITA-2701: "the placeholders must be
  *  similar to the page you are loading, like the sizes"): the loaded row's
  *  own pages, the first card centred and the next one peeking at the right
- *  edge, each card RailCard's face. search/loading.tsx draws this same row,
- *  so the route's skeleton hands over to the first load without a move. */
+ *  edge, each card RailCard's face with the score line above it.
+ *  search/loading.tsx draws this same row, so the route's skeleton hands
+ *  over to the first load without a move. */
 export function CatalogRailSkeleton() {
   return (
     <div
@@ -40,9 +60,11 @@ export function CatalogRailSkeleton() {
       aria-hidden
     >
       <div className={RAIL_PAGE}>
+        <RailScoreTagSkeleton />
         <RailCardSkeleton />
       </div>
       <div className={RAIL_PAGE}>
+        <RailScoreTagSkeleton />
         <RailCardSkeleton />
       </div>
     </div>
@@ -151,7 +173,9 @@ export function RailScoreTag({ place }: { place: Pick<Place, "score"> }) {
   const score = place.score;
   if (!score) return null;
   const found = new Set(score.foundBy ?? []);
-  const sources = SOURCE_LABELS.filter(([key]) => found.has(key)).map(([, label]) => label);
+  const sources = SOURCE_LABELS.filter(([key]) => found.has(key)).map(
+    ([, label]) => label,
+  );
   return (
     <div
       className="bg-card/95 text-muted-foreground type-meta mb-1.5 rounded-xl px-3 py-1.5 font-mono leading-snug tabular-nums shadow-sm"
@@ -164,9 +188,12 @@ export function RailScoreTag({ place }: { place: Pick<Place, "score"> }) {
       <p>
         {/* Selected reads as the third signal (Pato, MESITA-2718): the factor
             the final took (MESITA-2717), 1 for a place that is not Selected. */}
-        proximity {fmtScore(score.proximity)} · popularity {fmtScore(score.popularity)} · selected{" "}
-        {fmtScore(typeof score.selectedFactor === "number" ? score.selectedFactor : 1)} · final{" "}
-        {fmtScore(score.final)}
+        proximity {fmtScore(score.proximity)} · popularity{" "}
+        {fmtScore(score.popularity)} · selected{" "}
+        {fmtScore(
+          typeof score.selectedFactor === "number" ? score.selectedFactor : 1,
+        )}{" "}
+        · final {fmtScore(score.final)}
       </p>
     </div>
   );
