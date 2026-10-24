@@ -65,6 +65,9 @@ const COLUMNS: readonly string[] = [
   // "Wine list". Null = consumer falls back to "Full menu" copy.
   "menu_pdf_name",
   "tags",
+  // Google atmosphere booleans that were true (MESITA-2255). The Profile
+  // tags box. `tags` stays the dormant Mesita catalog and is not that box.
+  "google_tags",
   // Channel URLs.
   "website_url",
   "instagram_url",

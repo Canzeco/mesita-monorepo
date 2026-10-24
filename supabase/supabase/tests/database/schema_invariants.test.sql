@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(157);
+select plan(159);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1027,6 +1027,16 @@ select throws_ok(
      where id = '00000000-0000-4000-8000-0000000fa111'$$,
   'P0001'::char(5), null::text,
   'an unknown tag is refused'
+);
+
+select col_not_null(
+  'public', 'place_profiles', 'google_tags',
+  'place_profiles.google_tags stores Google atmosphere slugs'
+);
+
+select has_column(
+  'public', 'profiles', 'google_tags',
+  'profiles exposes google_tags'
 );
 
 select lives_ok(

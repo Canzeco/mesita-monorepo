@@ -54,7 +54,7 @@ import {
   synthesisModelFor,
   synthesizeProfile,
 } from "../_shared/enrich-synthesis.ts";
-import { COST, loadEnrichConfig } from "../_shared/enrich-config.ts";
+import { loadEnrichConfig } from "../_shared/enrich-config.ts";
 import {
   costFromGathered,
   createEnrichCostLedger,
@@ -67,8 +67,6 @@ import {
   synthesizePlaceSummaryText,
 } from "../_shared/place-embeddings.ts";
 import { applyInferredMesitaName } from "../_shared/mesita-name-door.ts";
-import { keepAtlasValues } from "../_shared/place-taxonomy.ts";
-import { fetchPlaceTags, inferPlaceTags } from "../_shared/tags.ts";
 import { inferPlaceReservationsLikely } from "../_shared/infer-place-reservations.ts";
 import { loadModelsConfig } from "../_shared/models-config.ts";
 import {
@@ -158,7 +156,6 @@ serveEnrichStage("third", async (admin, env, row) => {
   // S7 is the step that REWRITES the profile prose. A trigger that only bought
   // a liveness refresh must never re-synthesize: About, category and tags stay
   // exactly as they are, and only what research resolved is persisted below.
-  let inferredTags: string[] = [];
   const runDescription = descriptionRuns(plan);
   let descriptionRan = false;
   if (!runDescription) {
@@ -168,7 +165,6 @@ serveEnrichStage("third", async (admin, env, row) => {
   } else {
     descriptionRan = true;
     const synthCost = synthesisRunCost(cfg.synthesisQuality);
-    const classifyCost = COST.sort * 3;
 
     const { parsed, diag: synthDiag } = await synthesizeProfile({
       openaiKey: OPENAI_KEY,
@@ -194,11 +190,9 @@ serveEnrichStage("third", async (admin, env, row) => {
       ((place.pitch ?? null) as string | null);
 
     // Category stays the saved Atlas slug. Families are derived from the
-    // category mapping and are not written here.
-    const [tagVocabulary, models] = await Promise.all([
-      fetchPlaceTags(admin),
-      loadModelsConfig(admin),
-    ]);
+    // category mapping and are not written here. Catalog tags are not
+    // inferred (MESITA-2255): the Profile box reads google_tags.
+    const models = await loadModelsConfig(admin);
     const aboutText =
       ((place.description ?? null) as string | null)?.slice(0, 1500) || null;
     const enricherModel = models.enricherModel;
@@ -207,21 +201,6 @@ serveEnrichStage("third", async (admin, env, row) => {
       place.category_label = humanizeCategorySlug(categorySlug) ?? categorySlug;
     }
     const categoryForTags = categorySlug;
-    inferredTags = await inferPlaceTags(OPENAI_KEY, tagVocabulary, {
-      name,
-      category: categoryForTags,
-      description: aboutText,
-      googleReviewsText,
-      serpSummary,
-    }, enricherModel);
-    const kept = keepAtlasValues({
-      category: categorySlug,
-      tags: inferredTags,
-      categories: [],
-      tagVocabulary: tagVocabulary.map((tag) => tag.slug),
-    });
-    if (kept.tags.length > 0) place.tags = kept.tags;
-    ledger.charge("category_tags", classifyCost);
     sources.category = {
       ok: !!categorySlug,
       slug: categorySlug,
@@ -233,9 +212,9 @@ serveEnrichStage("third", async (admin, env, row) => {
       mode: "derived",
     };
     sources.tags = {
-      ok: inferredTags.length > 0,
-      count: inferredTags.length,
-      vocabulary: tagVocabulary.length,
+      ok: true,
+      count: Array.isArray(place.google_tags) ? place.google_tags.length : 0,
+      mode: "google_atmosphere",
     };
 
     // ACTIONS (Description, function 7) — Reserve: LLM inference on place type.
@@ -601,7 +580,7 @@ serveEnrichStage("third", async (admin, env, row) => {
     // function owning its own write costs nothing to state.
     contentPieces.description = aboutWritten
       ? stepDone(
-        `Presentation written; category “${place.category ?? "n/a"}”, ${inferredTags.length} tag(s); ` +
+        `Presentation written; category “${place.category ?? "n/a"}”; ` +
           `reserve ${place.reservations_enabled ? "on" : "off"}; Mesita Name + Semantic Summary inferred.`,
       )
       : stepFailed("Synthesis ran but no Presentation was persisted.");
@@ -631,13 +610,13 @@ serveEnrichStage("third", async (admin, env, row) => {
       aboutWritten ? "written" : "MISSING"
     }, category “${
       place.category ?? "n/a"
-    }”, ${inferredTags.length} tag(s), reservation ${
+    }”, reservation ${
       reservationChannel ?? "—"
     }; ${imagesSummary}.`,
     {
       about: aboutWritten,
       category: place.category ?? null,
-      tags: inferredTags.length,
+      tags: Array.isArray(place.google_tags) ? place.google_tags.length : 0,
       reservation: reservationChannel,
       // A pin that silently eats a write is as confusing as one that does not
       // hold, so the beacon says which fields the Enricher stood down on.

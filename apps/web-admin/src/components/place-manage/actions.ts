@@ -89,6 +89,8 @@ export type AdminPlace = {
   /** Vision text keyed by the gallery URL. Absent until a Full run describes it. */
   photo_analysis?: Record<string, string> | null;
   tags: string[] | null;
+  /** Google atmosphere slugs. The Profile tags box. */
+  google_tags?: string[] | null;
   website_url: string | null;
   instagram_url: string | null;
   facebook_url: string | null;

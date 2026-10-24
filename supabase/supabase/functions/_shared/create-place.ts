@@ -365,7 +365,8 @@ export async function createMinimalPlace(opts: {
       if (door) {
         const patch: Record<string, unknown> = {};
         // Category already came from Google. The door does not replace it.
-        if (door.tags.length > 0) patch.tags = door.tags;
+        // Catalog tags are not the Profile field (MESITA-2255). google_tags
+        // landed with the spine. The door's inferred slugs stay unstored.
         if (door.description) patch.description = door.description;
         // The seed for a place nobody has answered for yet; an operator's
         // channel pick supersedes it from then on (MESITA-1737).
@@ -390,7 +391,7 @@ export async function createMinimalPlace(opts: {
           description: doorWrite.ok
             ? stepDone(
               `Door Description — category “${door.category ?? "n/a"}”, ` +
-                `${door.tags.length} tag(s), Mesita Name + Semantic Summary inferred.`,
+                `Mesita Name + Semantic Summary inferred.`,
               { via: "create" },
             )
             : stepFailed(

@@ -20,18 +20,10 @@ import { ChannelChips, TagChips, type ChannelChip } from "./place-link-chips";
 // ── 10. Tags ────────────────────────────────────────────────────────────
 
 export function TagsBox({ place }: { place: PlaceDetail }) {
-  // Tags only — the curated taxonomy chip cluster (one tint per facet).
-  // The old key/value rows (dining style, dress code, reservations,
-  // payment, parking, good for) were noise here; those facts are being
-  // absorbed into the tag vocabulary itself (Atlas taxonomy v2).
-  //
-  // NO TAGS, NO BOX (Pato, MESITA-2700: "Hide a box entirely when it has
-  // nothing, instead of drawing …"), like Photos, Links and Popular times.
-  // History: MESITA-2619 made it always draw ("put tags even if not tags
-  // yet", "No tags yet."), MESITA-2685 turned that line into "…".
+  // Google atmosphere chips. NO TAGS, NO BOX (Pato, MESITA-2700).
   if (place.tags.length === 0) return null;
   return (
-    <Box title="Mesita Tags" icon={Tags} iconColor="text-muted-foreground">
+    <Box title="Tags" icon={Tags} iconColor="text-muted-foreground">
       <TagChips tags={place.tags} />
     </Box>
   );

@@ -168,6 +168,7 @@ serveEnrichStage("first", async (admin, _env, row) => {
         | "CLOSED_PERMANENTLY"
         | null,
       business_state_at: new Date().toISOString(),
+      google_tags: basics.google_tags,
     },
   });
   if (!opRes.ok) {

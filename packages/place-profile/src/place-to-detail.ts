@@ -11,7 +11,7 @@ import type { PlaceDetail } from "./place-detail";
 import { detectMenuKind } from "./lib/menu-url";
 import { parseMenuNutrition } from "./lib/nutrition";
 import { resolvePlaceCategoryName } from "./lib/place-category";
-import { displayPlaceTagLabel } from "./lib/place-tag-label";
+import { googleTagChips } from "./lib/google-atmosphere";
 import { relativeLabel } from "./lib/format";
 import { DEFAULT_CURRENCY } from "./lib/money";
 import { isReserveActionEnabled } from "./lib/place-profile-actions";
@@ -39,7 +39,11 @@ export type ResolvedTag = {
   sort_order: number;
 };
 
-export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
+export { googleTagLabel } from "./lib/google-atmosphere";
+
+export function placeRowToDetail(row: Row, catalogTags?: ResolvedTag[]): PlaceDetail {
+  // Catalog tags stay stored and are not the Profile field (MESITA-2255).
+  void catalogTags;
   const categoryName =
     resolvePlaceCategoryName({
       categoryLabel: str(row.category_label),
@@ -105,13 +109,8 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
 
     photos: effectivePlacePhotos(row),
 
-    // Curated taxonomy chips — English default (MESITA-963), ordered by the
-    // EF's sort_order. Null-safe: missing/non-array tags collapse to [].
-    tags: arr<ResolvedTag>(tags).map((t) => ({
-      slug: t.slug,
-      label: displayPlaceTagLabel(t),
-      facet: t.facet,
-    })),
+    // Google atmosphere chips (MESITA-2255). places.tags is not this box.
+    tags: googleTagChips(row.google_tags),
 
     google: {
       rating: num(row.google_stars_overall) ?? null,

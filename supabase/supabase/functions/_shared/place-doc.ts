@@ -132,6 +132,8 @@ export type PlaceProfileRow = {
   description: string | null;
   menu_pdf_url: string | null;
   tags: string[];
+  /** Google atmosphere slugs. The Profile tags box. Not the Mesita catalog. */
+  google_tags: string[];
   google_stars_overall: number | null;
   google_review_count: number | null;
   instagram_followers_count: number | null;
@@ -210,6 +212,7 @@ export const PLACE_PROFILE_PATCH_KEYS = [
   "description",
   "menu_pdf_url",
   "tags",
+  "google_tags",
   "google_stars_overall",
   "google_review_count",
   "instagram_followers_count",
@@ -381,6 +384,7 @@ const PLACE_STRING_ARRAY_KEYS = new Set<string>([
   "google_photos",
   "mesita_photos",
   "tags",
+  "google_tags",
 ]);
 // NOT NULL boolean column, default true (MESITA-1799). It joined
 // PLACE_PROFILE_PATCH_KEYS in #1395 but never got a checkPlaceProfileField

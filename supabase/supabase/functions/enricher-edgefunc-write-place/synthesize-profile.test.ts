@@ -23,7 +23,7 @@ Deno.test("review quotes are the text the presentation can read", () => {
   ]), "Loud room\nBottle service");
 });
 
-Deno.test("overwrite off keeps a saved presentation and adds tags", () => {
+Deno.test("overwrite off keeps a saved presentation and leaves catalog tags alone", () => {
   const next = mergeSynthesizedProfile({
     overwrite: false,
     patch: {
@@ -34,29 +34,27 @@ Deno.test("overwrite off keeps a saved presentation and adds tags", () => {
     },
     presentation: "A new essay that should not replace the saved one.",
     category: "bar",
-    tags: ["bottle_service", "dj"],
   });
   assertEquals(next.description, "Already written.");
   assertEquals(next.category, "nightclub");
-  assertEquals(next.tags, ["dj", "bottle_service"]);
+  assertEquals(next.tags, ["dj"]);
 });
 
-Deno.test("an empty profile takes the presentation, one category, and the tags", () => {
+Deno.test("an empty profile takes the presentation and one category", () => {
   const long = "b".repeat(900);
   const next = mergeSynthesizedProfile({
     overwrite: false,
-    patch: { content_state: "ready" },
+    patch: { content_state: "ready", tags: ["dj"] },
     presentation: long,
     category: "nightclub",
-    tags: ["dj", "bottle_service"],
   });
   assertEquals(typeof next.description === "string" && next.description.length, 900);
   assertEquals(next.category, "nightclub");
   assertEquals(next.category_label, "Nightclub");
-  assertEquals(next.tags, ["dj", "bottle_service"]);
+  assertEquals(next.tags, ["dj"]);
 });
 
-Deno.test("overwrite on replaces presentation and tags but not locked Mesita categories (d5a)", () => {
+Deno.test("overwrite on replaces presentation but not catalog tags or locked Mesita categories", () => {
   const next = mergeSynthesizedProfile({
     overwrite: true,
     patch: {
@@ -69,11 +67,10 @@ Deno.test("overwrite on replaces presentation and tags but not locked Mesita cat
     },
     presentation: "Vibrant nightclub.",
     category: "nightclub",
-    tags: ["dj"],
   });
   assertEquals(next.description, "Vibrant nightclub.");
   assertEquals(next.category, "bar");
-  assertEquals(next.tags, ["dj"]);
+  assertEquals(next.tags, ["quiet"]);
 });
 
 Deno.test("the franchise anchor is the saved zone and city, else Google's structured address", () => {

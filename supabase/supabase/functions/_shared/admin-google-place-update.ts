@@ -71,6 +71,7 @@ export function googleBasicsToUpdatePatch(input: {
     google_stars_overall: input.basics.google_stars_overall,
     google_review_count: input.basics.google_review_count,
     google_reviews: input.basics.google_reviews,
+    google_tags: input.basics.google_tags,
     google_photos: input.googlePhotos,
     google_primary_type: input.googlePrimaryType,
     google_types: input.googleTypes,
