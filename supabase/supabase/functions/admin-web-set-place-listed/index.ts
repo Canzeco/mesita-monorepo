@@ -17,7 +17,7 @@
 // The content_state leg allows every label of its enum, so `state` alone
 // decides: listed means `active` (place-state.ts isPlaceListed). Unlisting
 // therefore removes the place from every guest surface at once — browse,
-// search, the swipe deck, a shared link — because they all read through that
+// search, and a shared link — because they all read through that
 // one policy with the anon key.
 //
 // Body:     { placeId | projectId, listed: boolean }

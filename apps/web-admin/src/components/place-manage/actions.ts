@@ -312,7 +312,7 @@ function explicitFound(data: {
 /** List or unlist the place on Mesita — the ONLY write path to
  *  places.state, which is what the consumer RLS policy
  *  places_select_public_visible gates every guest read on. Unlisting removes
- *  the place from browse, search, the swipe deck and any shared link at once.
+ *  the place from browse, search, and any shared link at once.
  *  Its own admin door (admin-web-set-place-listed). */
 export async function setPlaceListed(
   placeId: string,

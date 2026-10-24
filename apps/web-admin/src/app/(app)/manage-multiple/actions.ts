@@ -224,8 +224,8 @@ export async function listAllPlaces(): Promise<
 
 /** Listed is the guest-visibility gate: places.state, which is what the
  *  consumer RLS policy places_select_public_visible gates every guest read
- *  on. Unlisting removes the place from browse, search, the swipe deck and
- *  any shared link at once. Its own admin door (admin-web-set-place-listed). */
+ *  on. Unlisting removes the place from browse, search, and any shared link
+ *  at once. Its own admin door (admin-web-set-place-listed). */
 export async function setPlaceListed(
   placeId: string,
   listed: boolean,
