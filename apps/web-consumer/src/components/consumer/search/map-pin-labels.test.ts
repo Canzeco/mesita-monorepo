@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { pickVisiblePinLabels } from "./map-pin-labels";
+import { estimateLabelRect, pickVisiblePinLabels } from "./map-pin-labels";
+
+describe("estimateLabelRect (MESITA-2748)", () => {
+  it("parks the name to the right of the pin, vertically centered", () => {
+    const rect = estimateLabelRect(100, 80, "McDonald's");
+    expect(rect.left).toBeGreaterThan(100);
+    expect(rect.top).toBeLessThan(80);
+    expect(rect.bottom).toBeGreaterThan(80);
+  });
+});
 
 describe("pickVisiblePinLabels (d4a)", () => {
   it("always shows the focused pin even when it overlaps another label", () => {
@@ -19,5 +28,14 @@ describe("pickVisiblePinLabels (d4a)", () => {
     const visible = pickVisiblePinLabels(candidates);
     expect(visible.size).toBe(1);
     expect(visible.has("a")).toBe(true);
+  });
+
+  it("keeps two names that sit far apart", () => {
+    const candidates = [
+      { id: "a", title: "Carl's Jr.", x: 40, y: 40, focused: false },
+      { id: "b", title: "Subway", x: 280, y: 240, focused: false },
+    ];
+    const visible = pickVisiblePinLabels(candidates);
+    expect(visible.size).toBe(2);
   });
 });

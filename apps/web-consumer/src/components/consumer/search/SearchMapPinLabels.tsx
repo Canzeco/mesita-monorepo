@@ -42,7 +42,7 @@ function mapsNamespace(): MapsNamespace["maps"] | null {
   return g?.maps ?? null;
 }
 
-/** Floating pin names from zoom 14; the focused pin always wins collisions (d4a). */
+/** Floating pin names from zoom 14; haloed map type, never a chip (MESITA-2748). The focused pin always wins collisions (d4a). */
 export function SearchMapPinLabels({
   items,
   focusedId,
@@ -68,6 +68,7 @@ export function SearchMapPinLabels({
       div = document.createElement("div");
       div.className =
         "pointer-events-none absolute inset-0 overflow-visible [&_*]:pointer-events-none";
+      div.setAttribute("aria-hidden", "true");
       overlay.getPanes()?.floatPane.appendChild(div);
     };
 
@@ -105,11 +106,17 @@ export function SearchMapPinLabels({
         const rect = estimateLabelRect(c.x, c.y, c.title);
         const el = document.createElement("div");
         el.textContent = c.title;
-        el.className =
-          "type-label absolute max-w-[10.5rem] truncate rounded-md bg-card/95 px-2 py-0.5 font-medium text-foreground shadow-sm backdrop-blur-sm";
+        // Cartographic caption (MESITA-2748): ink + white halo, never a chip.
+        el.className = "type-label absolute max-w-[10.5rem] truncate";
         el.style.left = `${rect.left}px`;
         el.style.top = `${rect.top}px`;
         el.style.width = `${rect.right - rect.left}px`;
+        el.style.color = c.focused ? "#1a1a1a" : "#3f3f3f";
+        el.style.fontWeight = c.focused ? "600" : "500";
+        el.style.paintOrder = "stroke fill";
+        el.style.webkitTextStroke = "2px #ffffff";
+        el.style.textShadow =
+          "-1px 0 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, 0 1px 0 #fff, 0 0 2px #fff";
         if (c.focused) el.style.zIndex = "2";
         frag.appendChild(el);
       }
