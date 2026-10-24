@@ -68,6 +68,7 @@ import {
   useLocateUser,
   useOnUserFix,
   useUserLocation,
+  useUserLocationError,
   useUserLocationLocating,
   type Coords,
 } from "@/lib/use-user-location";
@@ -184,6 +185,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const supabase = useBrowserSupabase();
   const userLocation = useUserLocation();
   const locating = useUserLocationLocating();
+  const locationError = useUserLocationError();
   const locate = useLocateUser();
   const [places, setPlaces] = useState<Place[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -999,6 +1001,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           <SearchLocateButton
             located={location !== null}
             locating={locating}
+            error={locationError}
             onClick={recentreOnGuest}
           />
         }
