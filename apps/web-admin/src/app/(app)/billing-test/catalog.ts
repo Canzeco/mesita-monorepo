@@ -20,9 +20,10 @@ export type ProbeResult = {
 
 /**
  * The providers the page can offer before it has ever heard from the EF.
- * Kept in sync with the PROBES registry in the Edge Function by hand — the
- * page must be able to render its cards (and its Run buttons) while the probe
- * backend is unreachable.
+ * Impact sentences are the same words as PROBES in admin-web-check-api-health:
+ * the card draws this copy until a probe returns, then the payload's impact.
+ * The page must be able to render its cards (and its Run buttons) while the
+ * probe backend is unreachable.
  *
  * There is no free/paid split here on purpose: two of these vendors expose no
  * unbilled endpoint that proves a key still works, so probing them costs a
@@ -37,7 +38,7 @@ export const KNOWN_PROBES: ReadonlyArray<{
   {
     id: "firecrawl",
     label: "Firecrawl",
-    impact: "Enricher link discovery (S4 gather) — fails SOFT, returns no links",
+    impact: "Enricher link candidates (3 · Links) — fails soft, returns no links",
   },
   { id: "apify", label: "Apify", impact: "Enricher Instagram/actor scraping" },
   {
@@ -53,7 +54,7 @@ export const KNOWN_PROBES: ReadonlyArray<{
   {
     id: "openai",
     label: "OpenAI",
-    impact: "Enricher text/vision + Memo",
+    impact: "Enricher text, vision and embeddings, and Memo",
   },
   {
     id: "stripe",
@@ -63,12 +64,13 @@ export const KNOWN_PROBES: ReadonlyArray<{
   {
     id: "perplexity",
     label: "Perplexity",
-    impact: "Memo answers + Enricher S5 (Resolver link select)",
+    impact: "Enricher Scout (2 · Serp) and Resolver (3 · Links). Memo has no web leg.",
   },
   {
     id: "google-places",
     label: "Google Places",
-    impact: "Identity spine for Atlas and the Enricher",
+    impact:
+      "Identity spine for Atlas and the Enricher, and Discovery (Name and Area: Autocomplete, Text Search, Nearby Search)",
   },
   {
     id: "render",

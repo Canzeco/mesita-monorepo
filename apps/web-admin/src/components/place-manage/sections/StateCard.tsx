@@ -396,7 +396,7 @@ function ListedToggle({
         body={
           <p>
             Guests stop finding {place.name} everywhere at once — browse,
-            search, the swipe deck, and any link already shared. Tickets and
+            search, and any link already shared. Tickets and
             history are untouched, and you can enable it again whenever you want.
           </p>
         }

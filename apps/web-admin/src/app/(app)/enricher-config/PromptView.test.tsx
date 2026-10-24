@@ -11,7 +11,7 @@ import type { CrenupPrompt } from "./actions";
 
 const SCOUT: CrenupPrompt = {
   key: "scout",
-  fn: "3 · Serp",
+  fn: "2 · Serp",
   agent: "Scout",
   label: "SERP Summary",
   vendor: "Perplexity Agent",
