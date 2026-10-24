@@ -16,8 +16,42 @@
 // never leave an orphan profile. Media is NOT handled here.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { type PlaceProfilePatch, type PlaceRow, writePlace } from "./place-doc.ts";
+import {
+  PLACE_PROFILE_PATCH_KEYS,
+  type PlaceProfilePatch,
+  type PlaceRow,
+  writePlace,
+} from "./place-doc.ts";
 import { ensureUniqueSlug, slugify } from "./place-slug.ts";
+
+const PLACE_PROFILE_INSERT_KEYS = new Set<string>(PLACE_PROFILE_PATCH_KEYS);
+const PLACE_PROFILE_INSERT_DROP = new Set([
+  "name",
+  "id",
+  "created_at",
+  "updated_at",
+]);
+
+// Create callers (admin, business, consumer) hand over a Google-basics
+// envelope plus door stamps. `writePlace` rejects the WHOLE insert on any
+// unknown or `undefined` key (MESITA-2741). Keep the door strict; filter
+// here so envelope extras cannot empty the catalog after a reset.
+function placeProfileInsertPatch(
+  rest: Record<string, unknown>,
+  names: { google_name: string; mesita_name: string },
+): PlaceProfilePatch {
+  const patch: Record<string, unknown> = {
+    google_name: names.google_name,
+    mesita_name: names.mesita_name,
+  };
+  for (const [key, value] of Object.entries(rest)) {
+    if (value === undefined) continue;
+    if (PLACE_PROFILE_INSERT_DROP.has(key)) continue;
+    if (!PLACE_PROFILE_INSERT_KEYS.has(key)) continue;
+    patch[key] = value;
+  }
+  return patch as PlaceProfilePatch;
+}
 
 // The place_profiles-shaped profile from fetchGoogleBasics. Required spine:
 // google_place_id + google_name (the same fields fetchGoogleBasics guarantees).
@@ -90,19 +124,12 @@ export async function savePlaceData(
   // insert it. Create seeds BOTH: google_name is the cached Google observation
   // (Enricher refresh target) and mesita_name is the guest-facing Mesita label
   // (operator-editable; profile chrome never reads google_name directly).
-  const {
-    id: _dropId,
-    created_at: _dropCreated,
-    updated_at: _dropUpdated,
-    name: _dropName,
-    mesita_name: _dropMesitaName,
-    ...placeRest
-  } = place;
-  const placeInsert = {
-    ...placeRest,
+  // decision: whitelist PLACE_PROFILE_PATCH_KEYS (MESITA-2751) — extras and
+  // `undefined` drop here so writePlace stays the closed door, not a create 400.
+  const placeInsert = placeProfileInsertPatch(place, {
     google_name: googleName,
     mesita_name: googleName,
-  } as PlaceProfilePatch;
+  });
   const profileRes = await writePlace(admin, {
     table: "place_profiles",
     mode: "insert",

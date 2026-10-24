@@ -112,3 +112,43 @@ Deno.test("savePlaceData rejects a payload with no Google label at all", async (
   assertEquals(res.status, 400);
   assertEquals(res.body.error, "place.google_name is required");
 });
+
+Deno.test("savePlaceData strips envelope extras instead of 400ing the insert", async () => {
+  const { admin, writes } = stubClient();
+  const payload = {
+    ...googleBasicsPayload(),
+    google_primary_type: "mexican_restaurant",
+    google_types: ["mexican_restaurant", "restaurant"],
+    mesita_categories: [],
+    editorial_summary: "Google blurb that is not a place_profiles column",
+    reviews_state: { google: { status: "ready" } },
+    generative_summary: undefined,
+  };
+
+  const res = await savePlaceData(admin, payload, "generating");
+
+  assert(
+    res.ok,
+    `create rejected a payload with envelope extras: ${JSON.stringify(
+      res.ok ? null : res.body,
+    )}`,
+  );
+  assertEquals(writes.place_profiles.google_primary_type, "mexican_restaurant");
+  assertEquals(writes.place_profiles.google_types, [
+    "mexican_restaurant",
+    "restaurant",
+  ]);
+  assertEquals(writes.place_profiles.mesita_categories, []);
+  assert(
+    !("editorial_summary" in writes.place_profiles),
+    "unknown Google envelope fields must not reach writePlace",
+  );
+  assert(
+    !("reviews_state" in writes.place_profiles),
+    "retired reviews_state must not reach writePlace",
+  );
+  assert(
+    !("generative_summary" in writes.place_profiles),
+    "undefined extras must not reach writePlace",
+  );
+});
