@@ -12,6 +12,20 @@ export type Coords = { lat: number; lng: number };
 export type LocationError =
   "denied" | "unavailable" | "timeout" | "unsupported" | "pending";
 
+/** Why the device gave no location, and what fixes it. Home's sheet and
+ *  Search's locate disc say these same words. */
+export const LOCATION_HELP: Record<LocationError, string> = {
+  denied:
+    "Location is blocked for this site. Allow it from the icon beside the address bar; Mesita picks it up by itself.",
+  unavailable:
+    "Your device couldn't find you. Turn on Location Services for your browser, then tap Use my location.",
+  timeout: "Finding you took too long. Tap Use my location to try again.",
+  unsupported:
+    "This browser can't share your location. Search a place above instead.",
+  pending:
+    "Your browser is waiting for you to allow location. Click Allow beside the address bar; Mesita picks it up by itself.",
+};
+
 /** NEVER HANG ON THE PROMPT (MESITA-2616). While the browser's permission
  *  prompt waits for the guest, `getCurrentPosition` does not answer at all
  *  (its timeout starts only after permission), and Home waited for that
@@ -86,7 +100,8 @@ function watchPermission() {
       ?.query({ name: "geolocation" })
       .then((status) => {
         status.addEventListener("change", () => {
-          if (status.state === "granted" && !coordsState) void requestUserLocation();
+          if (status.state === "granted" && !coordsState)
+            void requestUserLocation();
         });
       })
       .catch(() => {});
@@ -146,7 +161,10 @@ export function requestUserLocation(): Promise<Coords | null> {
     let answer = await askOnce(GEO_OPTS);
     // The device could not find itself or took too long: once more, longer,
     // taking any cached fix (MESITA-2615). A refusal is final; no retry.
-    if ("error" in answer && (answer.error === "unavailable" || answer.error === "timeout")) {
+    if (
+      "error" in answer &&
+      (answer.error === "unavailable" || answer.error === "timeout")
+    ) {
       answer = await askOnce(RETRY_OPTS);
     }
     clearTimeout(stall);
@@ -165,7 +183,8 @@ export function requestUserLocation(): Promise<Coords | null> {
     // SAME PLACE, SAME OBJECT (MESITA-2440). A fresh object for the same
     // coordinates read as a move to every effect keyed on it: the Search
     // map re-centred on the guest after they had panned away.
-    const fix = coordsState && sameCoords(coordsState, next) ? coordsState : next;
+    const fix =
+      coordsState && sameCoords(coordsState, next) ? coordsState : next;
     coordsState = fix;
     errorState = null;
     emit();
@@ -192,7 +211,11 @@ const serverNull = () => null;
 const serverFalse = () => false;
 
 export function useUserLocation(): Coords | null {
-  const coords = useSyncExternalStore(subscribe, () => locationSnapshot().coords, serverNull);
+  const coords = useSyncExternalStore(
+    subscribe,
+    () => locationSnapshot().coords,
+    serverNull,
+  );
 
   useEffect(() => {
     if (asked) return;
@@ -203,19 +226,31 @@ export function useUserLocation(): Coords | null {
 }
 
 export function useUserLocationLocating(): boolean {
-  return useSyncExternalStore(subscribe, () => locationSnapshot().locating, serverFalse);
+  return useSyncExternalStore(
+    subscribe,
+    () => locationSnapshot().locating,
+    serverFalse,
+  );
 }
 
 /** True once the first ask has answered (a fix, a refusal, no geolocation
  *  at all, or no answer within STALL_MS): before that, no fix means "not
  *  yet", not "none". */
 export function useUserLocationSettled(): boolean {
-  return useSyncExternalStore(subscribe, () => locationSnapshot().settled, serverFalse);
+  return useSyncExternalStore(
+    subscribe,
+    () => locationSnapshot().settled,
+    serverFalse,
+  );
 }
 
 /** The last ask's failure, or null (none yet, or a fix). */
 export function useUserLocationError(): LocationError | null {
-  return useSyncExternalStore(subscribe, () => locationSnapshot().error, serverNull);
+  return useSyncExternalStore(
+    subscribe,
+    () => locationSnapshot().error,
+    serverNull,
+  );
 }
 export function useLocateUser(): () => void {
   return useCallback(() => {
