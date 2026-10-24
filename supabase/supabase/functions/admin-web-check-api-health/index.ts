@@ -189,14 +189,16 @@ async function timedFetch(url: string, init?: RequestInit): Promise<Response> {
 //
 // Each entry is fully self-contained: it knows its own keys, its own endpoint,
 // and how to turn that vendor's bespoke response into one line of English.
-// Adding a vendor means adding one entry here and nothing else.
+// Adding a vendor means adding one entry here and the same impact sentence in
+// web-admin billing-test/catalog.ts. The card draws the catalog until a probe
+// returns, then this payload's impact. The two sentences are one list.
 
 const PROBES: ProbeSpec[] = [
   {
     id: "firecrawl",
     label: "Firecrawl",
     impact:
-      "Enricher link discovery (S4 gather) — fails SOFT, returns no links",
+      "Enricher link candidates (3 · Links) — fails soft, returns no links",
     envKeys: ["FIRECRAWL_KEY"],
     run: async (keys) => {
       const key = firstKey(keys, ["FIRECRAWL_KEY"])!;
@@ -521,7 +523,7 @@ const PROBES: ProbeSpec[] = [
   {
     id: "openai",
     label: "OpenAI",
-    impact: "Memo airlock (parked) — not yet load-bearing",
+    impact: "Enricher text, vision and embeddings, and Memo",
     envKeys: ["OPENAI_KEY"],
     run: async (keys) => {
       const key = firstKey(keys, ["OPENAI_KEY"])!;
@@ -632,7 +634,8 @@ const PROBES: ProbeSpec[] = [
   {
     id: "perplexity",
     label: "Perplexity",
-    impact: "Memo answers + Enricher S5 (Resolver link select)",
+    impact:
+      "Enricher Scout (2 · Serp) and Resolver (3 · Links). Memo has no web leg.",
     envKeys: ["PERPLEXITY_KEY"],
     run: async (keys) => {
       const key = firstKey(keys, ["PERPLEXITY_KEY"])!;
@@ -668,7 +671,8 @@ const PROBES: ProbeSpec[] = [
   {
     id: "google-places",
     label: "Google Places",
-    impact: "Identity spine for Atlas, the Enricher and place recall",
+    impact:
+      "Identity spine for Atlas and the Enricher, and Discovery (Name and Area: Autocomplete, Text Search, Nearby Search)",
     envKeys: ["GMP_KEY", "SUPA_GMP_KEY"],
     run: async (keys) => {
       const key = firstKey(keys, ["GMP_KEY", "SUPA_GMP_KEY"])!;

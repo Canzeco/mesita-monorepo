@@ -125,9 +125,9 @@ type CostParams = {
   reviews?: number;
   // Social (5) has no knobs; Create never runs it. Default on for a full enrich.
   social?: boolean;
-  // 3 · Serp. Create never runs it.
+  // 2 · Serp. Create never runs it.
   serp?: boolean;
-  // 9 · Description. Create does not write the Presentation.
+  // 7 · Description. Create does not write the Presentation.
   synth?: boolean;
 };
 
@@ -146,9 +146,9 @@ export type CostEstimate = {
 //
 // LABELS CARRY THE FUNCTION NUMBER (Docs › Crenup §A), not a stage
 // S-number. They held S1–S9 — the retired three-stage numbering — which put a
-// second ladder on the very page that states the queue is 0–10, and disagreed
+// second ladder on the very page that states the queue is 0–8, and disagreed
 // with it: "S3 · link discovery" sat beside a Links box labelled 4. Several
-// functions legitimately own more than one line (6 describes AND ranks; 9
+// functions legitimately own more than one line (6 describes AND ranks; 7
 // writes, categorises and persists), and one line legitimately serves two
 // functions — the Place Details call, which 1 and 2 share. That is a mapping,
 // not a numbering: never renumber these to make them one-to-one.

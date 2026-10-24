@@ -182,7 +182,7 @@ export function BillingTestClient() {
             <ProbeCard
               key={p.id}
               label={p.label}
-              impact={p.impact}
+              impact={results[p.id]?.impact || p.impact}
               result={results[p.id]}
               busy={running.has(p.id)}
               onRun={() => run([p.id])}
