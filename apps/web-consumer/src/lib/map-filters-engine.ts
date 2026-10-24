@@ -19,7 +19,7 @@ import { type FamilyKey } from "@/lib/place-families";
 export type MapPlacesScope = "google" | "selected";
 
 export type MapFilters = {
-  /** Families: the twelve guest families; empty = All Families. */
+  /** Families: the twenty guest families; empty = All Families. */
   familyKeys: FamilyKey[];
 };
 

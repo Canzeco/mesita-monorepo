@@ -109,18 +109,25 @@ export type CatalogConfig = {
 
 // Mirrors SUPER_PARAM_KEYS in _shared/discovery-config.ts, itself pinned to
 // the taxonomy by google-type-super.test.ts. The operator's category param is
-// the SUPER, not Google's slug (MESITA-1695): fifteen switches (twelve since MESITA-2486) in Google's
-// vocabulary, capped by an ordered "first N", is what let four whole families
-// sit invisibly off. Order is the guest's — FAMILIES sort_order.
+// the family, not Google's slug (MESITA-1695). Order is the guest's —
+// FAMILIES sort_order. Twenty switches since MESITA-2749.
 export const SUPER_PARAM_KEYS = [
   "coffee",
   "breakfast",
   "quick_bite",
-  "pizza",
   "tacos",
-  "sushi",
+  "mexican",
+  "pizza",
   "burgers",
+  "sushi",
   "noodles",
+  "japanese",
+  "chinese",
+  "italian",
+  "seafood",
+  "steak",
+  "indian",
+  "thai",
   "dinner",
   "sweet",
   "drinks",
@@ -195,7 +202,7 @@ export type MapConfig = {
 };
 
 /**
- * The seven params the operator actually sees. `label` and `emoji` are
+ * The twenty params the operator actually sees. `label` and `emoji` are
  * verbatim from FAMILIES in _shared/place-taxonomy.ts; `battery` is
  * the Google slugs that family sends — its full list since MESITA-2438,
  * copied from `GOOGLE_SEARCH_TYPES` and pinned equal by
@@ -263,6 +270,28 @@ export const SUPER_FIELDS: {
     ],
   },
   {
+    key: "tacos",
+    label: "Tacos",
+    emoji: "🌮",
+    battery: [
+      "taco_restaurant",
+      "burrito_restaurant",
+      "mexican_restaurant",
+      "tex_mex_restaurant",
+    ],
+  },
+  {
+    key: "mexican",
+    label: "Mexican",
+    emoji: "🌶️",
+    battery: [
+      "mexican_restaurant",
+      "tex_mex_restaurant",
+      "burrito_restaurant",
+      "taco_restaurant",
+    ],
+  },
+  {
     key: "pizza",
     label: "Pizza",
     emoji: "🍕",
@@ -272,14 +301,11 @@ export const SUPER_FIELDS: {
     ],
   },
   {
-    key: "tacos",
-    label: "Tacos",
-    emoji: "🌮",
+    key: "burgers",
+    label: "Burgers",
+    emoji: "🍔",
     battery: [
-      "mexican_restaurant",
-      "burrito_restaurant",
-      "taco_restaurant",
-      "tex_mex_restaurant",
+      "hamburger_restaurant",
     ],
   },
   {
@@ -289,14 +315,6 @@ export const SUPER_FIELDS: {
     battery: [
       "sushi_restaurant",
       "japanese_restaurant",
-    ],
-  },
-  {
-    key: "burgers",
-    label: "Burgers",
-    emoji: "🍔",
-    battery: [
-      "hamburger_restaurant",
     ],
   },
   {
@@ -311,9 +329,83 @@ export const SUPER_FIELDS: {
     ],
   },
   {
+    key: "japanese",
+    label: "Japanese",
+    emoji: "🍱",
+    battery: [
+      "japanese_restaurant",
+      "japanese_curry_restaurant",
+      "japanese_izakaya_restaurant",
+      "tonkatsu_restaurant",
+      "yakiniku_restaurant",
+      "yakitori_restaurant",
+      "ramen_restaurant",
+      "sushi_restaurant",
+    ],
+  },
+  {
+    key: "chinese",
+    label: "Chinese",
+    emoji: "🥡",
+    battery: [
+      "chinese_restaurant",
+      "cantonese_restaurant",
+      "dim_sum_restaurant",
+      "hot_pot_restaurant",
+      "chinese_noodle_restaurant",
+      "dumpling_restaurant",
+    ],
+  },
+  {
+    key: "italian",
+    label: "Italian",
+    emoji: "🍝",
+    battery: [
+      "italian_restaurant",
+      "pizza_delivery",
+      "pizza_restaurant",
+    ],
+  },
+  {
+    key: "seafood",
+    label: "Seafood",
+    emoji: "🦐",
+    battery: [
+      "seafood_restaurant",
+      "oyster_bar_restaurant",
+    ],
+  },
+  {
+    key: "steak",
+    label: "Steak",
+    emoji: "🥩",
+    battery: [
+      "steak_house",
+      "barbecue_restaurant",
+    ],
+  },
+  {
+    key: "indian",
+    label: "Indian",
+    emoji: "🍛",
+    battery: [
+      "indian_restaurant",
+      "north_indian_restaurant",
+      "south_indian_restaurant",
+    ],
+  },
+  {
+    key: "thai",
+    label: "Thai",
+    emoji: "🍲",
+    battery: [
+      "thai_restaurant",
+    ],
+  },
+  {
     key: "dinner",
     label: "Dinner",
-    emoji: "🍝",
+    emoji: "🍽️",
     battery: [
       "restaurant",
       "afghani_restaurant",
@@ -325,7 +417,6 @@ export const SUPER_FIELDS: {
       "australian_restaurant",
       "austrian_restaurant",
       "bangladeshi_restaurant",
-      "barbecue_restaurant",
       "basque_restaurant",
       "bavarian_restaurant",
       "belgian_restaurant",
@@ -337,18 +428,15 @@ export const SUPER_FIELDS: {
       "cajun_restaurant",
       "californian_restaurant",
       "cambodian_restaurant",
-      "cantonese_restaurant",
       "caribbean_restaurant",
       "chicken_restaurant",
       "chicken_wings_restaurant",
       "chilean_restaurant",
-      "chinese_restaurant",
       "colombian_restaurant",
       "croatian_restaurant",
       "cuban_restaurant",
       "czech_restaurant",
       "danish_restaurant",
-      "dim_sum_restaurant",
       "dutch_restaurant",
       "eastern_european_restaurant",
       "ethiopian_restaurant",
@@ -364,7 +452,11 @@ export const SUPER_FIELDS: {
       "greek_restaurant",
       "halal_restaurant",
       "hawaiian_restaurant",
-      "hot_pot_restaurant",
+      "hungarian_restaurant",
+      "indonesian_restaurant",
+      "irish_restaurant",
+      "israeli_restaurant",
+      "korean_barbecue_restaurant",
     ],
   },
   {
@@ -400,13 +492,13 @@ export const SUPER_FIELDS: {
       "gastropub",
       "hookah_bar",
       "irish_pub",
-      "japanese_izakaya_restaurant",
       "lounge_bar",
       "pub",
       "sports_bar",
       "vineyard",
       "wine_bar",
       "winery",
+      "japanese_izakaya_restaurant",
     ],
   },
   {
@@ -452,19 +544,27 @@ export const DEFAULT_CATALOG: CatalogConfig = {
   minSeedPlaces: 2,
 };
 
-// The three supers the strip always asked for stay on; the four it could not
-// see default OFF. Not a cost choice: one Nearby request carries every enabled
-// type, so types are free (MESITA-1685). Off because it keeps the returned pool
-// unchanged until an operator widens it deliberately.
+// Coffee, Dinner, Sweet, Drinks and Night out stay on. Every other family
+// defaults off, so the twenty-family catalog does not widen the all-families
+// Nearby pool until an operator turns the switch on (MESITA-2749). One
+// request carries every enabled type (MESITA-1685).
 const DEFAULT_MAP_SUPERS: Record<SuperParamKey, boolean> = {
   coffee: true,
   breakfast: false,
   quick_bite: false,
-  pizza: false,
   tacos: false,
-  sushi: false,
+  mexican: false,
+  pizza: false,
   burgers: false,
+  sushi: false,
   noodles: false,
+  japanese: false,
+  chinese: false,
+  italian: false,
+  seafood: false,
+  steak: false,
+  indian: false,
+  thai: false,
   dinner: true,
   sweet: true,
   drinks: true,

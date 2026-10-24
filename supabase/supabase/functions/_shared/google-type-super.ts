@@ -30,7 +30,7 @@ import {
   isCatalogFamily,
 } from "./catalog-families.ts";
 
-/** Coarse exclusive bucket. The guest catalog is the twelve families. */
+/** Coarse exclusive bucket. The guest catalog is the twenty families. */
 export type GuestSuper =
   | "restaurants"
   | "bars_nightlife"

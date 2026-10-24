@@ -41,17 +41,25 @@ describe("the family chips are the only guest filter (MESITA-2384, MESITA-2417)"
 });
 
 describe("PLACE_FAMILIES catalog (final law)", () => {
-  it("is twelve guest families plus Undefined last", () => {
-    expect(PLACE_FAMILIES).toHaveLength(13);
+  it("is twenty guest families plus Undefined last", () => {
+    expect(PLACE_FAMILIES).toHaveLength(21);
     expect(PLACE_FAMILIES.map((f) => f.key)).toEqual([
       "coffee",
       "breakfast",
       "quick_bite",
-      "pizza",
       "tacos",
-      "sushi",
+      "mexican",
+      "pizza",
       "burgers",
+      "sushi",
       "noodles",
+      "japanese",
+      "chinese",
+      "italian",
+      "seafood",
+      "steak",
+      "indian",
+      "thai",
       "dinner",
       "sweet",
       "drinks",

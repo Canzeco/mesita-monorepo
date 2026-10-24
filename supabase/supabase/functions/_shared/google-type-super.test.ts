@@ -106,9 +106,9 @@ Deno.test("every family's battery leads the every-family list, inside Google's 5
   assertEquals(EVERY_FAMILY_TYPES.length, 50);
   assertEquals(new Set(EVERY_FAMILY_TYPES).size, 50);
   const leads = Object.entries(GOOGLE_SEARCH_TYPES).filter(([k]) => k !== "undefined").map(([, v]) => v[0]);
-  assertEquals(EVERY_FAMILY_TYPES.slice(0, 12), leads);
+  assertEquals(EVERY_FAMILY_TYPES.slice(0, 20), leads);
   const covered = Object.values(GOOGLE_SEARCH_TYPES).filter((types) => types.length > 0);
-  assertEquals(covered.length, 12);
+  assertEquals(covered.length, 20);
 });
 
 Deno.test("SUPER_PARAM_KEYS is the guest families, minus the empty battery", () => {
@@ -116,7 +116,7 @@ Deno.test("SUPER_PARAM_KEYS is the guest families, minus the empty battery", () 
     .filter(([, types]) => types.length > 0)
     .map(([slug]) => slug);
   assertEquals(new Set(SUPER_PARAM_KEYS), new Set(withBattery));
-  assertEquals(SUPER_PARAM_KEYS.length, 12);
+  assertEquals(SUPER_PARAM_KEYS.length, 20);
   assertEquals((SUPER_PARAM_KEYS as readonly string[]).includes("undefined"), false);
 });
 

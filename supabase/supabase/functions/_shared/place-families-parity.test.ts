@@ -86,7 +86,7 @@ function parseFamilyKeyUnion(src: string, where: string): string[] {
   return [...union[1]!.matchAll(/"([a-z_]+)"/g)].map((m) => m[1]!);
 }
 
-Deno.test("web ships the SAME eight families as the DB twin", async () => {
+Deno.test("web ships the SAME families as the DB twin", async () => {
   const web = parsePlaceFamilies(await Deno.readTextFile(WEB_FAMILIES), "web-consumer");
 
   // place-taxonomy.ts is the DB twin. It is joined to the real catalog by the
@@ -111,7 +111,7 @@ Deno.test("the FamilyKey union matches the array it types", async () => {
   assertEquals(parseFamilyKeyUnion(webSrc, "web-consumer"), keys);
 });
 
-Deno.test("the consumer app filters on the seven, never on Undefined", async () => {
+Deno.test("the consumer app filters on the twenty, never on Undefined", async () => {
   const src = await Deno.readTextFile(WEB_FAMILIES);
   const derived =
     /export const FILTERABLE_PLACE_FAMILIES[^=]*=\s*PLACE_FAMILIES\.filter\(\s*\(family\)\s*=>\s*family\.key\s*!==\s*"undefined",?\s*\)/
@@ -124,7 +124,7 @@ Deno.test("the consumer app filters on the seven, never on Undefined", async () 
   );
 });
 
-Deno.test("the map store hydrates from the thirteen", async () => {
+Deno.test("the map store hydrates from the twenty", async () => {
   // A store that accepts a key its sheet does not render leaves the guest
   // with a filter they can see the effect of and no pill to clear.
   const map = await Deno.readTextFile(

@@ -98,8 +98,8 @@ export const DEEP_LIMIT_MAX = 20;
 export const DEFAULT_DEEP: DeepConfig = { limit: 5, minSimilarity: 0 };
 
 /**
- * THE OPERATOR'S CATEGORY PARAM (Pato, 2026-09-08, MESITA-1695): the twelve
- * guest families, in `FAMILIES` sort order — the same twelve, in the same
+ * THE OPERATOR'S CATEGORY PARAM (Pato, 2026-09-08, MESITA-1695): the twenty
+ * guest families, in `FAMILIES` sort order — the same twenty, in the same
  * order, the guest sees as pills on the Filters sheet.
  *
  * Google's own type slugs are not a param. Twenty-two switches asked the
@@ -116,11 +116,19 @@ export const SUPER_PARAM_KEYS = [
   "coffee",
   "breakfast",
   "quick_bite",
-  "pizza",
   "tacos",
-  "sushi",
+  "mexican",
+  "pizza",
   "burgers",
+  "sushi",
   "noodles",
+  "japanese",
+  "chinese",
+  "italian",
+  "seafood",
+  "steak",
+  "indian",
+  "thai",
   "dinner",
   "sweet",
   "drinks",
@@ -335,23 +343,31 @@ export const MAP_RELOAD_MIN_VIEWPORT_PCT_MAX = 50;
 export const MAP_RELOAD_MIN_VIEWPORT_PCT_DEFAULT = 15;
 
 /**
- * The three supers the strip has always asked for stay on; the four it could
- * not see until MESITA-1683 default OFF.
+ * Coffee, Dinner, Sweet, Drinks and Night out stay on: that is the
+ * all-families Nearby pool. Every other family defaults off, so the
+ * twenty-family catalog does not widen that one call until an operator
+ * turns the switch on (MESITA-2749).
  *
- * NOT for cost: there are no "four new calls" — one request carries the whole
- * battery array (MESITA-1685 corrects that claim). Off by default because it
- * keeps the returned pool exactly as it was; widening what a Nearby call
- * admits is an operator's decision, not a side effect of the list growing.
+ * NOT for cost: one request carries the whole battery array (MESITA-1685).
+ * Off by default because it keeps the returned pool as it was.
  */
 export const DEFAULT_MAP_SUPERS: Record<SuperParamKey, boolean> = {
   coffee: true,
   breakfast: false,
   quick_bite: false,
-  pizza: false,
   tacos: false,
-  sushi: false,
+  mexican: false,
+  pizza: false,
   burgers: false,
+  sushi: false,
   noodles: false,
+  japanese: false,
+  chinese: false,
+  italian: false,
+  seafood: false,
+  steak: false,
+  indian: false,
+  thai: false,
   dinner: true,
   sweet: true,
   drinks: true,
