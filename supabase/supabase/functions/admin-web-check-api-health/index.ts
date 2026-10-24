@@ -32,15 +32,6 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
-import {
-  STRIPE_PUBLISHABLE_KEY_NAMES,
-  STRIPE_SECRET_KEY_NAMES,
-  stripePublishableKeyMatchesMode,
-  stripePublishableKeyNames,
-  stripeMode,
-  stripeSecretKeyNames,
-  stripeSecretKeyProblem,
-} from "../_shared/stripe-env.ts";
 import { renderWorkspaceName } from "./render-owners.ts";
 import { inactiveAccountLine, twilioFailureDetail } from "./twilio-failure.ts";
 
@@ -540,93 +531,6 @@ const PROBES: ProbeSpec[] = [
             ? `Key accepted — ${data.length} models visible`
             : "Key accepted";
           return `${head} · balance not exposed by OpenAI (key-only check).`;
-        },
-      };
-    },
-  },
-  {
-    id: "stripe",
-    label: "Stripe",
-    // Same words as KNOWN_PROBES in web-admin billing-test/catalog.ts: the
-    // console shows this EF's impact over its own whenever a probe returns.
-    impact: "Key still stored. No First Stage screen charges it.",
-    envKeys: [...STRIPE_SECRET_KEY_NAMES, ...STRIPE_PUBLISHABLE_KEY_NAMES],
-    run: async (keys) => {
-      // STRIPE_MODE picks WHICH key, and the other universe's key is never a
-      // fallback — so "a Stripe secret is set" is not yet "the active mode
-      // has one". Say which name won; it is the operator's only window onto
-      // a switch that is otherwise a single invisible secret (MESITA-1530).
-      const mode = stripeMode();
-      const names = stripeSecretKeyNames(mode);
-      const name = names.find((n) => firstKey(keys, [n]));
-      const key = name ? firstKey(keys, [name])! : null;
-      if (!key) {
-        return {
-          res: new Response(
-            JSON.stringify({
-              error: {
-                message:
-                  `STRIPE_MODE=${mode}, but neither ${names.join(" nor ")} is set. Another universe's key is present and is deliberately never used as a fallback — set the ${mode} key or flip STRIPE_MODE.`,
-              },
-            }),
-            { status: 401 },
-          ),
-          detail: (b) => errorLine(b, ""),
-        };
-      }
-      // Restricted keys (rk_…) can't hit /v1/balance; secret keys are sk_*.
-      // Catch the wrong kind before Stripe's opaque "Invalid API Key" — the
-      // shape law is shared with the Connect path (_shared/stripe-env.ts), so
-      // the probe and the merchant-facing EF agree on what a bad key is.
-      const problem = stripeSecretKeyProblem(name!, key);
-      if (problem) {
-        return {
-          res: new Response(
-            JSON.stringify({ error: { message: problem } }),
-            { status: 401 },
-          ),
-          detail: (b) => errorLine(b, ""),
-        };
-      }
-      const res = await timedFetch("https://api.stripe.com/v1/balance", {
-        headers: { Authorization: `Bearer ${key}` },
-      });
-      // Stripe's own answer, not the key prefix, is the authority on which
-      // universe answered — a key that disagrees with STRIPE_MODE means the
-      // env addresses one account while believing it addresses the other.
-      const agrees = (b: unknown) => {
-        const live = (b as { livemode?: unknown } | null)?.livemode;
-        return typeof live === "boolean" ? live === (mode === "live") : null;
-      };
-      return {
-        res,
-        verdict: (b) => agrees(b) === false ? "degraded" : null,
-        detail: (b) => {
-          const live = (b as { livemode?: unknown } | null)?.livemode;
-          const universe = live === true
-            ? "LIVE mode"
-            : live === false
-            ? "test mode"
-            : "mode not reported";
-          const head = `Key accepted — ${universe} · ${name} (STRIPE_MODE=${mode})`;
-          // THE PUBLISHABLE KEY IS PART OF THIS CARD (MESITA-1670). It is the
-          // half a 3DS challenge needs, it follows the same STRIPE_MODE
-          // switch, and it is set by hand — so its absence has to be visible
-          // somewhere an operator looks, not discovered by a guest whose bank
-          // asked for verification. It is never probed against Stripe: it is
-          // browser-safe by definition and there is nothing to authenticate.
-          const pkName = stripePublishableKeyNames(mode).find((n) =>
-            firstKey(keys, [n])
-          );
-          const pk = pkName ? firstKey(keys, [pkName])! : null;
-          const pkNote = !pk
-            ? ` No ${stripePublishableKeyNames(mode)[0]} — card payments needing 3DS will fall back to the register.`
-            : !stripePublishableKeyMatchesMode(pk, mode)
-            ? ` ${pkName} addresses the OTHER universe — 3DS challenges will not resolve.`
-            : ` Publishable key set (${pkName}).`;
-          return agrees(b) === false
-            ? `${head}. MISMATCH: the key addresses the other universe — every EF is talking to the wrong Stripe account.${pkNote}`
-            : `${head}.${pkNote}`;
         },
       };
     },
