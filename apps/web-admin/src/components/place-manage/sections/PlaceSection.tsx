@@ -14,6 +14,10 @@ import {
 } from "../actions";
 import { PlaceCategorySelect } from "../PlaceCategorySelect";
 import { PlaceFamilyField } from "../PlaceFamilyField";
+import {
+  PlaceGoogleCategoriesField,
+  PlaceMesitaCategoriesField,
+} from "../PlaceCategoryListFields";
 import { googleTagLabel } from "@mesita/place-profile/map";
 import { googleFormattedAddress } from "../google-location";
 import {
@@ -409,10 +413,12 @@ export function PlaceSection({
             <PriceDisplay level={place.price_level} currency={place.currency} />
           </ReadField>
           <PlaceFamilyField />
+          <PlaceMesitaCategoriesField />
           <PlaceCategorySelect
             slug={place.category}
             label={place.category_label}
           />
+          <PlaceGoogleCategoriesField />
         </div>
         <div className="mt-4 grid gap-4">
           <TextArea
