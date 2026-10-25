@@ -102,8 +102,6 @@ export type CatalogConfig = {
   seedCount: number;
   generatedCount: number;
   placesPerRail: number;
-  /** Places per Feed row (MESITA-2319). Mirrors `catalog.railCap`. */
-  railCap: number;
   minSeedPlaces: number;
 };
 
@@ -531,16 +529,10 @@ const NAME_GOOGLE_COUNT_DEFAULT = 3;
 /** Mirrors CHAT_PROMPT_MAX in _shared/discovery-config.ts. */
 const CHAT_PROMPT_MAX = 12_000;
 
-/** Mirrors CATALOG_RAIL_CAP_* in _shared/discovery-config.ts. */
-export const CATALOG_RAIL_CAP_MIN = 1;
-export const CATALOG_RAIL_CAP_MAX = 10;
-const CATALOG_RAIL_CAP_DEFAULT = 5;
-
 export const DEFAULT_CATALOG: CatalogConfig = {
   seedCount: 8,
   generatedCount: 8,
   placesPerRail: 8,
-  railCap: CATALOG_RAIL_CAP_DEFAULT,
   minSeedPlaces: 2,
 };
 
@@ -714,9 +706,6 @@ function coerceCatalog(raw: unknown): CatalogConfig {
         CATALOG_PLACES_PER_RAIL_MIN,
         CATALOG_PLACES_PER_RAIL_MAX,
       ),
-    ),
-    railCap: Math.round(
-      num(c.railCap, DEFAULT_CATALOG.railCap, CATALOG_RAIL_CAP_MIN, CATALOG_RAIL_CAP_MAX),
     ),
     minSeedPlaces: Math.round(
       num(c.minSeedPlaces, DEFAULT_CATALOG.minSeedPlaces, 1, CATALOG_MIN_SEED_PLACES_MAX),

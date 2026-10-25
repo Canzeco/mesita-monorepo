@@ -12,7 +12,6 @@ const FILES = [
   "./pipeline-signals.ts",
   "./deep-pipeline.ts",
   "../consumer-web-ask-memo/index.ts",
-  "./catalog-rank.ts",
 ];
 
 for (const file of FILES) {

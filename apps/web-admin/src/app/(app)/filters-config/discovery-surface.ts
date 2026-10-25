@@ -405,19 +405,3 @@ export const CATALOG_FAMILY_FACTS: readonly { key: string; label: string; emoji:
   { key: "drinks", label: "Drinks", emoji: "🍸" },
   { key: "night_out", label: "Night out", emoji: "🌙" },
 ];
-
-// The legacy Feed rows (MESITA-2379): an old consumer build that does not
-// send `unified` still gets rails cut from the one ranked pool — Google
-// Places (the non-Selected places), Mesita Selected, then one row per guest
-// family, Selected members only. The Admin page no longer draws them; the
-// supabase contract test pins these against buildCatalogRails until the
-// legacy path is removed.
-
-export const CATALOG_SIGNAL_RAILS: readonly {
-  key: string;
-  label: string;
-  emoji: string;
-}[] = [
-  { key: "google_places", label: "Google Places", emoji: "📍" },
-  { key: "mesita_selected", label: "Mesita Selected", emoji: "✨" },
-];

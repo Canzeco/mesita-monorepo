@@ -3,14 +3,12 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import type { CatalogRail, Place } from "@/lib/api/places";
+import type { Place } from "@/lib/api/places";
 import {
   poolPlaces,
   PLACES_PAGE,
   savedPlaceList,
   ALL_CHIP,
-  GOOGLE_RAIL_KEY,
-  MESITA_RAIL_KEY,
 } from "@/components/consumer/home/CatalogRails";
 
 // Pato (MESITA-2517): under Home's header, two tabs — Places (a chip row
@@ -22,36 +20,6 @@ const src = readFileSync(
 );
 
 const place = (id: string): Place => ({ id, name: id }) as Place;
-const RAILS: CatalogRail[] = [
-  {
-    key: GOOGLE_RAIL_KEY,
-    label: "Google Places",
-    emoji: "📍",
-    source: "signal",
-    places: [place("g1")],
-  },
-  {
-    key: MESITA_RAIL_KEY,
-    label: "Mesita Selected",
-    emoji: "✨",
-    source: "signal",
-    places: [place("m1")],
-  },
-  {
-    key: "coffee",
-    label: "Coffee",
-    emoji: "☕",
-    source: "family",
-    places: [place("m1")],
-  },
-  {
-    key: "breakfast",
-    label: "Breakfast",
-    emoji: "🥐",
-    source: "family",
-    places: [place("m2")],
-  },
-];
 
 describe("Home's tabs and the Places chips (MESITA-2517)", () => {
   it("Near and Popular are the server's pool in its order; a family filters it on area.familyKeys", () => {
@@ -72,7 +40,6 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
       formula: "point" as const,
     });
     const pool = {
-      shape: "unified" as const,
       kind: "point" as const,
       places: [
         { ...place("a"), area: area(["coffee"], 0.9) },
@@ -92,13 +59,6 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
     ]);
     expect(poolPlaces(pool, "coffee").map((p) => p.id)).toEqual(["a", "c"]);
     expect(poolPlaces(pool, "breakfast")).toEqual([]);
-  });
-
-  it("an Edge Function still on the legacy rails is drawn as before", () => {
-    const legacy = { shape: "legacy" as const, rails: RAILS };
-    expect(poolPlaces(legacy, ALL_CHIP).map((p) => p.id)).toEqual(["m1", "g1"]);
-    expect(poolPlaces(legacy, "coffee").map((p) => p.id)).toEqual(["m1"]);
-    expect(src).toContain("catalog_shape_legacy");
   });
 
   it("pages after ranking: 20 at a time, a sentinel asks for more, no request", () => {

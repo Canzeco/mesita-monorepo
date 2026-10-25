@@ -33,7 +33,7 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { EVERY_FAMILY_TYPES, nearbyTypesForSupers } from "./google-type-super.ts";
-import { isSelectedRow } from "./catalog-rank.ts";
+import { isSelectedRow } from "./selected-row.ts";
 import { googleStub } from "./google-stub.ts";
 import { applyBboxPredicate, type BboxQuery, haversineKm, nearbyBbox } from "./geo.ts";
 import {

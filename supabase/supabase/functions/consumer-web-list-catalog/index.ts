@@ -33,17 +33,11 @@
 //   google    the client can render a Google-only stub; the operator's two
 //             Google switches, a key and the per-IP ledger also decide.
 //   No Google reviews minimum (MESITA-2721): the Popularity floor cuts.
-// Response (unified): { ok, location: { kind, radiusKm, operatorRadiusKm },
+// Response: { ok, location: { kind, radiusKm, operatorRadiusKm },
 //   places: [... { area }],
 //   summary }. QUOTA: one load spends up to 2 of the per-IP 45 Nearby calls
 //   a minute (one per Google switch on); a partly refused pair logs
 //   `quota: "partial"`.
-//
-// LEGACY (no `unified`): the old rails — Google Places, Mesita Selected,
-// then one rail per family — cut from the same ranked four-source pool, at
-// most `catalog.railCap` per rail, so a consumer build from before
-// MESITA-2384 keeps working while Vercel and the EFs deploy apart. Removed
-// by a follow-up once the new build is live.
 //
 // Local:  supabase functions serve consumer-web-list-catalog
 // Deploy: supabase functions deploy consumer-web-list-catalog
@@ -60,7 +54,6 @@ import { stripInternal } from "../_shared/place-pool-shape.ts";
 import type { PlaceProfileRow } from "../_shared/place-pool-shape.ts";
 import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
 import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
-import { buildCatalogRails } from "../_shared/catalog-rank.ts";
 import { decideNearby, wantsGoogleFill } from "../_shared/geo.ts";
 import {
   mapShouldFillGoogle,
@@ -92,8 +85,8 @@ type Body = {
   google?: boolean;
   /** Ignored since MESITA-2417; no reviews minimum since MESITA-2721. */
   minReviews?: unknown;
-  /** The one-pool wire (MESITA-2379); absent = the legacy rails. */
-  unified?: boolean;
+  /** Ignored since MESITA-2398; every build sends unified. */
+  unified?: unknown;
   /** Ignored since MESITA-2516: one ranking, the Map's. */
   prefer?: unknown;
   /** The family row's families (MESITA-2438); absent or empty = every family. */
@@ -121,7 +114,6 @@ Deno.serve(async (req) => {
   const env = envRes.env;
 
   const body = await readJsonOr<Body>(req, {});
-  const unified = body.unified === true;
   const admin = adminClient(env);
   const cfg = await loadDiscoveryConfig(admin);
   const nearby = decideNearby(body as Record<string, unknown>);
@@ -134,9 +126,7 @@ Deno.serve(async (req) => {
     console.log(JSON.stringify({ fn: "consumer-web-list-catalog", event: "bounds_ignored" }));
   }
   const location = resolveAreaLocation(center, radiusKm);
-  // The legacy rails cut every family from one pool; only the one-pool wire
-  // may ask for a family.
-  const families = unified ? readGuestFamilyKeys(body.familyKeys).filter((f) => f !== "undefined") : [];
+  const families = readGuestFamilyKeys(body.familyKeys).filter((f) => f !== "undefined");
 
   // Card columns only: no Area signal reads the summary vector, so the pool
   // does not select it (MESITA-2328).
@@ -175,12 +165,9 @@ Deno.serve(async (req) => {
     lookupOwned: ownedLookup(admin, PLACE_CARD_COLUMNS, "list-catalog", wirePlaces),
   });
 
-  // One line, because every failure mode here is a WRONG SET rather than an
-  // error: Google switched off, a spent quota and a skewed client all look
-  // like a thin catalog from the outside.
   console.log(JSON.stringify({
     fn: "consumer-web-list-catalog",
-    wire: unified ? "unified" : "legacy",
+    wire: "unified",
     location: location.kind,
     radius: radius.from,
     radiusKm,
@@ -191,29 +178,12 @@ Deno.serve(async (req) => {
     ...areaPoolLogFields(pool.places),
   }));
 
-  if (unified) {
-    return json({
-      ok: true,
-      // The radius searched and the operator's current-location radius
-      // (MESITA-2703): the client names both in the location sheet.
-      location: { kind: location.kind, radiusKm, operatorRadiusKm: cfg.map.radiusKm },
-      places: pool.places,
-      summary: pool.summary,
-    });
-  }
-
-  const rails = buildCatalogRails(
-    pool.places.filter((p) => p.area.source !== "selected"),
-    pool.places.filter((p) => p.area.source === "selected"),
-    cfg.catalog.railCap,
-  );
   return json({
     ok: true,
-    rails,
-    summary: {
-      pool: data?.length ?? 0,
-      lists: rails.length,
-      google: pool.summary.google,
-    },
+    // The radius searched and the operator's current-location radius
+    // (MESITA-2703): the client names both in the location sheet.
+    location: { kind: location.kind, radiusKm, operatorRadiusKm: cfg.map.radiusKm },
+    places: pool.places,
+    summary: pool.summary,
   });
 });

@@ -54,7 +54,6 @@ import { MONTERREY_CENTER } from "@/lib/map-defaults";
 import {
   apiListAreaPool,
   type AreaPool,
-  type CatalogRail,
   type Place,
 } from "@/lib/api/places";
 import { areaPoolKey, readAreaPool, writeAreaPool } from "@/lib/area-pool-cache";
@@ -83,12 +82,7 @@ import { nextRadiusChip } from "@/lib/pin-picker-state";
 import { formatKm } from "@/lib/saved-locations";
 import { useSocialHasNew } from "@/lib/use-social-has-new";
 import { cn, errMsg } from "@/lib/utils";
-import { placesFeed } from "@/lib/catalog-feed";
 import { SocialFeed } from "./SocialFeed";
-
-/** The server's rail keys for the two sources the All row mixes. */
-export const MESITA_RAIL_KEY = "mesita_selected";
-export const GOOGLE_RAIL_KEY = "google_places";
 
 // The tile list's classes (PLACES_LIST) live in DiscoverFallback.tsx, beside
 // the skeleton that draws the same column (MESITA-2701).
@@ -156,34 +150,11 @@ export function chipFamilies(chip: string): string[] {
 
 /** The places a row shows from the pool, in the server's order. A family
  *  row's pool is already that family's (MESITA-2438); the filter stays as a
- *  guard for an Edge Function that predates it. A legacy rails answer (an
- *  Edge Function from before MESITA-2379) is read the way it always was. */
+ *  guard when area.familyKeys and family_keys disagree. */
 export function poolPlaces(pool: AreaPool, chip: string): Place[] {
-  if (pool.shape === "unified") {
-    return isEveryFamily(chip)
-      ? pool.places
-      : pool.places.filter((p) => (p.area?.familyKeys ?? []).includes(chip));
-  }
-  const rails = placesFeed(pool.rails);
   return isEveryFamily(chip)
-    ? allPlaces(rails)
-    : (rails.find((r) => r.key === chip)?.places ?? []);
-}
-
-let legacyShapeLogged = false;
-
-/** Legacy rails only: Mesita Selected first, then Google places, each once. */
-export function allPlaces(rails: readonly CatalogRail[]): Place[] {
-  const seen = new Set<string>();
-  const out: Place[] = [];
-  for (const key of [MESITA_RAIL_KEY, GOOGLE_RAIL_KEY]) {
-    for (const p of rails.find((r) => r.key === key)?.places ?? []) {
-      if (seen.has(p.id)) continue;
-      seen.add(p.id);
-      out.push(p);
-    }
-  }
-  return out;
+    ? pool.places
+    : pool.places.filter((p) => (p.area?.familyKeys ?? []).includes(chip));
 }
 
 /** Saved places, newest save first, from their stored previews. */
@@ -258,19 +229,13 @@ export function CatalogRails() {
       try {
         const next = await apiListAreaPool(supabase, from, families);
         if (cancelled) return;
-        if (next.shape === "legacy" && !legacyShapeLogged) {
-          legacyShapeLogged = true;
-          console.warn(
-            "[places] catalog_shape_legacy: the Feed EF answered rails",
-          );
-        }
         writeAreaPool(requestKey, next);
         setPool(next);
         setFetchError(null);
       } catch (err) {
         if (cancelled) return;
         setFetchError(errMsg(err, "Couldn't load the catalog"));
-        setPool({ shape: "unified", kind: "none", places: [] });
+        setPool({ kind: "none", places: [] });
       }
     };
     if (!kept) void fetchPool();
@@ -556,7 +521,7 @@ export function CatalogRails() {
   // An empty pool around a point says how far it looked and offers the next
   // chip (MESITA-2703); any other empty (no point, every source off, Google
   // down) keeps the plain copy, and the server log tells those apart.
-  const pointEmpty = pool.shape === "unified" && pool.kind === "point";
+  const pointEmpty = pool.kind === "point";
   const empty = isEveryFamily(chip) ? (
     pointEmpty ? (
       <EmptyState
