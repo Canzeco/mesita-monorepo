@@ -18,9 +18,11 @@
 // is the where, so the set is the visible map ranked best first, and a chip
 // is only the what. ONE pick at a time: All is every family (lit when none is
 // picked); tapping the lit family again also goes back to All. Sent as the
-// server-side `familyKeys`. There is no Filters disc and
-// no sheet (Pato, MESITA-2417: "Its just all and thats it"); the Minimum
-// Popularity is the operator's, Admin › Discovery › Area.
+// server-side `familyKeys`. The row LEADS with a Filters chip (Pato,
+// MESITA-2758: "Filters Top X Y Z … just a button … to select the family
+// quicker"; it reverses MESITA-2417's no-sheet): it opens SearchFiltersSheet,
+// whose only setting is the family. The Minimum Popularity stays the
+// operator's, Admin › Discovery › Area.
 //
 // ONE SOLID WHITE BAND for the bar's row and the chip row, like Home's
 // header and the bottom bar (Pato, MESITA-2413; MESITA-2469 merged the grey
@@ -33,9 +35,9 @@
 // map (`absolute top-0` on the chip band's box; Pato, MESITA-2417: "the searchbar
 // results must cover the categories").
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { BotMessageSquare } from "lucide-react";
+import { BotMessageSquare, SlidersHorizontal } from "lucide-react";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import { FamilyIcon } from "@/lib/family-icons";
 import {
@@ -46,6 +48,7 @@ import {
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { cn } from "@/lib/utils";
 import { CHIP, CHIP_OFF, CHIP_ON, HEADER_PILL } from "./header-classes";
+import { SearchFiltersSheet } from "./SearchFiltersSheet";
 
 /** A chip's line icon, never an emoji (MESITA-2478): 1.75 stroke, 2.25 when
  *  on — BottomNav's pair. */
@@ -70,6 +73,7 @@ export function SearchHeader({
 }) {
   const filters = useMapFilters();
   const everyFamily = filters.familyKeys.length === 0;
+  const [filtersOpen, setFiltersOpen] = useState(false);
   return (
     <div
       className="border-border bg-card relative z-30 shrink-0 border-b"
@@ -108,8 +112,23 @@ export function SearchHeader({
             className="scrollbar-hide flex items-center gap-2 overflow-x-auto overscroll-x-contain px-3 py-2.5"
             data-search-chips
           >
-            {/* The row starts on All, no clay bar before it (Pato,
-                MESITA-2503: "remove … the vertical bluye line"). */}
+            {/* Filters, then Top (MESITA-2758); no clay bar between (Pato,
+                MESITA-2503: "remove … the vertical bluye line"). Never lit:
+                the picked family's own chip already says what is on. */}
+            <button
+              type="button"
+              onClick={() => setFiltersOpen(true)}
+              aria-haspopup="dialog"
+              className={cn(CHIP, CHIP_OFF)}
+              data-search-chip-filters
+            >
+              <SlidersHorizontal
+                className={CHIP_ICON}
+                strokeWidth={1.75}
+                aria-hidden
+              />
+              <span>Filters</span>
+            </button>
             <button
               type="button"
               onClick={clearMapFamilies}
@@ -161,6 +180,10 @@ export function SearchHeader({
           </div>
         ) : null}
       </div>
+      <SearchFiltersSheet
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+      />
     </div>
   );
 }
