@@ -1,8 +1,8 @@
 /** Pin names appear from this zoom (gate d4a). */
 export const MAP_PIN_NAME_MIN_ZOOM = 14;
 
-/** Haloed type sits just outside the 10px disk, to the right (MESITA-2748). */
-const PIN_CLEARANCE_X = 12;
+/** Haloed type sits just outside the 7px disk, to the right (MESITA-2748, MESITA-2757). */
+const PIN_CLEARANCE_X = 9;
 /** Keep two halos from kissing. */
 const LABEL_GAP = 4;
 
