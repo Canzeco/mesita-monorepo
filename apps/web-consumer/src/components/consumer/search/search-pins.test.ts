@@ -389,7 +389,7 @@ describe("buildSearchMapPins", () => {
 
 describe("mapPinIcon", () => {
   it("paints a bigger disk inside a 44px tap pad", () => {
-    expect(MAP_PLACE_PIN_RADIUS).toBe(10);
+    expect(MAP_PLACE_PIN_RADIUS).toBe(7);
     expect(MAP_PIN_HIT_SIZE).toBe(44);
     const svg = mapPinSvg(MAP_MESITA_SELECTED_PIN_COLOR, MAP_PIN_STROKE_COLOR);
     expect(svg).toContain(`r="${MAP_PLACE_PIN_RADIUS}"`);

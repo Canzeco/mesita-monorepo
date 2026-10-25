@@ -91,15 +91,15 @@ export const MAP_MINIMAL_STYLES = [
 ] as const;
 
 // One circle for every map pin: place (red/ink/gray) and you-are-here
-// (blue). r=10 — big enough to tap, small enough that a cluster still
-// shows the map. Every place pin wears a thin dark ring (Pato, 2026-10-19,
+// (blue). r=7 (Pato, MESITA-2757: "make the dots a bit smaller"; was 10)
+// — the 44px pad keeps it tappable, and a cluster still shows the map. Every place pin wears a thin dark ring (Pato, 2026-10-19,
 // MESITA-2482: "dark border, not a white border"); selected is the same
 // ring drawn thicker — never a bigger scale.
 // The visible circle sits in a 44px pad so the hit box is a finger, not
 // the painted disk. Cursor stays default — never the pointing hand.
-export const MAP_PLACE_PIN_RADIUS = 10;
+export const MAP_PLACE_PIN_RADIUS = 7;
 /** Mesita Selected mark (gate d4a): slightly larger disk on the map. */
-export const MAP_SELECTED_PLACE_PIN_RADIUS = 12;
+export const MAP_SELECTED_PLACE_PIN_RADIUS = 9;
 export const MAP_PIN_HIT_SIZE = 44;
 export const MAP_PIN_CURSOR = "default";
 export const MAP_PIN_STROKE_WEIGHT = 1.25;
