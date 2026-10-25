@@ -114,12 +114,16 @@ export function SearchHeader({
           >
             {/* Filters, then Top (MESITA-2758); no clay bar between (Pato,
                 MESITA-2503: "remove … the vertical bluye line"). Never lit:
-                the picked family's own chip already says what is on. */}
+                the picked family's own chip already says what is on. The
+                icon alone, a 36px disc (Pato, MESITA-2761: "FILTERS DON'T
+                SAY WORD FILTERS, JUST THE ICON"); the name stays for screen
+                readers. */}
             <button
               type="button"
               onClick={() => setFiltersOpen(true)}
               aria-haspopup="dialog"
-              className={cn(CHIP, CHIP_OFF)}
+              aria-label="Filters"
+              className={cn(CHIP, CHIP_OFF, "w-9 justify-center px-0")}
               data-search-chip-filters
             >
               <SlidersHorizontal
@@ -127,7 +131,6 @@ export function SearchHeader({
                 strokeWidth={1.75}
                 aria-hidden
               />
-              <span>Filters</span>
             </button>
             <button
               type="button"
