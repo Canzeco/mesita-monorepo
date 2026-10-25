@@ -311,17 +311,13 @@ export type AreaDiagnostics = {
  *  (MESITA-2703). No radius = the operator's current-location radius. */
 export type AreaOrigin = { lat: number; lng: number; radiusKm?: number | null };
 
-/** The Feed's answer: the one ranked pool, or — from an Edge Function that
- *  predates MESITA-2379 — the old rails. */
-export type AreaPool =
-  | {
-      shape: "unified";
-      kind: "point" | "none";
-      places: Place[];
-      /** The radius the server searched (km), when it says (MESITA-2703). */
-      radiusKm?: number;
-    }
-  | { shape: "legacy"; rails: CatalogRail[] };
+/** The Feed's one ranked Area pool (MESITA-2379). */
+export type AreaPool = {
+  kind: "point" | "none";
+  places: Place[];
+  /** The radius the server searched (km), when it says (MESITA-2703). */
+  radiusKm?: number;
+};
 
 function cleanPlace(place: Place): Place {
   return stripInsecurePhotos({
@@ -336,8 +332,7 @@ function cleanPlace(place: Place): Place {
  * order. `familyKeys` is a family row's question (MESITA-2438): the server
  * asks Google for that family's full type list and lists its primary
  * places first. None = every family. One ranking for every row, the
- * Map's (MESITA-2516): no `prefer`. A legacy rails answer is passed
- * through so the screen can still draw it.
+ * Map's (MESITA-2516): no `prefer`.
  */
 export async function apiListAreaPool(
   client: SupabaseClient,
@@ -347,7 +342,6 @@ export async function apiListAreaPool(
   const data = await invokeEF<{
     places?: Place[];
     location?: { kind?: "point" | "none"; radiusKm?: number; operatorRadiusKm?: number };
-    rails?: CatalogRail[];
   }>(client, "consumer-web-list-catalog", {
     unified: true,
     ...(familyKeys.length > 0 ? { familyKeys: [...familyKeys] } : {}),
@@ -359,21 +353,11 @@ export async function apiListAreaPool(
   });
   const op = data.location?.operatorRadiusKm;
   if (typeof op === "number" && Number.isFinite(op)) rememberOperatorRadiusKm(op);
-  if (Array.isArray(data.places)) {
-    const km = data.location?.radiusKm;
-    return {
-      shape: "unified",
-      kind: data.location?.kind ?? (origin ? "point" : "none"),
-      places: data.places.map(cleanPlace),
-      ...(typeof km === "number" && Number.isFinite(km) ? { radiusKm: km } : {}),
-    };
-  }
+  const km = data.location?.radiusKm;
   return {
-    shape: "legacy",
-    rails: (data.rails ?? []).map((rail) => ({
-      ...rail,
-      places: (rail.places ?? []).map(cleanPlace),
-    })),
+    kind: data.location?.kind ?? (origin ? "point" : "none"),
+    places: (data.places ?? []).map(cleanPlace),
+    ...(typeof km === "number" && Number.isFinite(km) ? { radiusKm: km } : {}),
   };
 }
 

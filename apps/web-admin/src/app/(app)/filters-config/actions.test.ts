@@ -71,7 +71,7 @@ function editedEverywhere(live: DiscoveryConfig): DiscoveryConfig {
       mesitaClosest: 20,
       selectedFactor: 5,
     },
-    catalog: { ...live.catalog, railCap: 7, seedCount: 99 },
+    catalog: { ...live.catalog, seedCount: 99 },
     name: {
       ...live.name,
       locations: !live.name.locations,
@@ -114,7 +114,7 @@ describe("the Area box", () => {
     expect(sent.config?.params).toEqual({ proximity: { radiusDivisor: 3, catalogRadiusDivisor: 3 }, popularity: { halfReviews: 250 } });
   });
 
-  it("writes map and the two params; leaves railCap, Name, Deep and the prompt (MESITA-2379)", async () => {
+  it("writes map and the two params; leaves catalog seed, Name, Deep and the prompt", async () => {
     const live = liveConfig();
     const sent = armed(live);
     await updateDiscoveryConfig(editedEverywhere(live), [...BOX_SLICES.area]);
@@ -125,9 +125,6 @@ describe("the Area box", () => {
     expect(sent.config?.map.mesitaPopular).toBe(0);
     expect(sent.config?.map.mesitaClosest).toBe(20);
     expect(sent.config?.map.selectedFactor).toBe(5);
-    // Places per row left the page with the Feed rows; the legacy rails
-    // keep the stored value until the legacy path is removed.
-    expect(sent.config?.catalog.railCap).toBe(live.catalog.railCap);
     expect(sent.config?.catalog.seedCount).toBe(live.catalog.seedCount);
     expect(sent.config?.name).toEqual(live.name);
     expect(sent.config?.general).toEqual(live.general);

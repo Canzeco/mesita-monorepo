@@ -78,7 +78,7 @@ describe("the per-location pool cache", () => {
   });
 
   it("keeps a pool ten minutes, then forgets it", () => {
-    const pool = { shape: "unified" as const, kind: "point" as const, places: [] };
+    const pool = { kind: "point" as const, places: [] };
     writeAreaPool("k", pool, 1000);
     expect(readAreaPool("k", 1000 + AREA_POOL_TTL_MS - 1)).toBe(pool);
     expect(readAreaPool("k", 1000 + AREA_POOL_TTL_MS)).toBeNull();

@@ -46,9 +46,8 @@ export type DiscoverySlice =
   // `params` since the deck's numbers retired (MESITA-2328).
   | "areaSignals"
   | "deep"
-  // Name's Locations switch and the Feed's places per row (MESITA-2319).
+  // Name's Locations switch (MESITA-2319).
   | "nameLocations"
-  | "catalogRows"
   // Name's idle seconds and Name by Admin's caps (MESITA-2322).
   | "nameIdle"
   | "nameAdmin";
@@ -81,10 +80,7 @@ export async function updateDiscoveryConfig(
     params: keys.has("areaSignals") ? config.params : live.config.params,
     deep: keys.has("deep") ? config.deep : live.config.deep,
     chat: keys.has("chat") ? config.chat : live.config.chat,
-    catalog: {
-      ...live.config.catalog,
-      ...(keys.has("catalogRows") ? { railCap: config.catalog.railCap } : null),
-    },
+    catalog: live.config.catalog,
   };
   const r = await efInvoke<{ config: unknown; updatedAt: string | null }>(
     "admin-web-update-config",

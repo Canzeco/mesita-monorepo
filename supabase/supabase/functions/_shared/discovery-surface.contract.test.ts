@@ -1,8 +1,6 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import * as server from "./discovery-surface.ts";
 import * as admin from "../../../../apps/web-admin/src/app/(app)/filters-config/discovery-surface.ts";
-import { buildCatalogRails } from "./catalog-rank.ts";
-import { CATALOG_RAIL_CAP_DEFAULT } from "./discovery-config.ts";
 
 Deno.test("admin Discovery renders the runtime model, not a second one", () => {
   assertEquals(admin.DISCOVERY_FIELDS, server.DISCOVERY_FIELDS);
@@ -21,22 +19,4 @@ Deno.test("admin Discovery renders the runtime model, not a second one", () => {
       assertEquals(admin.sourcesFeedingSignal(p, sig), server.sourcesFeedingSignal(p, sig));
     }
   }
-});
-
-Deno.test("admin Feed rows list the rows buildCatalogRails builds", () => {
-  const selected = [{
-    id: "a",
-    family_keys: server.CATALOG_FAMILY_FACTS.map((f) => f.key),
-    enriched_at: "2026-01-01T00:00:00Z",
-    content_state: "ready",
-    selected: true,
-  }];
-  const rails = buildCatalogRails([{ id: "g:x", googleOnly: true }], selected, CATALOG_RAIL_CAP_DEFAULT);
-  assertEquals(
-    rails.map((r) => ({ key: r.key, label: r.label, emoji: r.emoji })),
-    [
-      ...admin.CATALOG_SIGNAL_RAILS.map((r) => ({ key: r.key, label: r.label, emoji: r.emoji })),
-      ...admin.CATALOG_FAMILY_FACTS.map((f) => ({ key: f.key, label: f.label, emoji: f.emoji })),
-    ],
-  );
 });

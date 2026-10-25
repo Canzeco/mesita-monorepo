@@ -73,12 +73,6 @@ export type CatalogConfig = {
   /** Vibe-query rails, sampled from the code-defined bank (not Atlas slugs). */
   generatedCount: number;
   placesPerRail: number;
-  /**
-   * Places per Feed row (MESITA-2319): every rail, Google Places included.
-   * A new key on purpose: the stored `placesPerRail` is a retired era's 8,
-   * and reading it would have widened every rail past the 5 the Feed shows.
-   */
-  railCap: number;
   /** Seed category must have at least this many listed places. */
   minSeedPlaces: number;
 };
@@ -393,16 +387,10 @@ export const DEFAULT_MAP: MapConfig = {
   selectedFactor: MAP_SELECTED_FACTOR_DEFAULT,
 };
 
-/** `catalog.railCap` bounds and default: the Feed shows 5 per row. */
-export const CATALOG_RAIL_CAP_DEFAULT = 5;
-export const CATALOG_RAIL_CAP_MIN = 1;
-export const CATALOG_RAIL_CAP_MAX = 10;
-
 export const DEFAULT_CATALOG: CatalogConfig = {
   seedCount: 8,
   generatedCount: 8,
   placesPerRail: 8,
-  railCap: CATALOG_RAIL_CAP_DEFAULT,
   minSeedPlaces: 2,
 };
 
@@ -499,14 +487,6 @@ export function normalizeCatalogConfig(raw: unknown): CatalogConfig {
         DEFAULT_CATALOG.placesPerRail,
         CATALOG_PLACES_PER_RAIL_MIN,
         CATALOG_PLACES_PER_RAIL_MAX,
-      ),
-    ),
-    railCap: Math.round(
-      num(
-        r.railCap,
-        DEFAULT_CATALOG.railCap,
-        CATALOG_RAIL_CAP_MIN,
-        CATALOG_RAIL_CAP_MAX,
       ),
     ),
     minSeedPlaces: Math.round(
