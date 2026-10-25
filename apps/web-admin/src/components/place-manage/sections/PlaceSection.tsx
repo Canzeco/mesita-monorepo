@@ -13,6 +13,7 @@ import {
   type PlaceFieldLimits,
 } from "../actions";
 import { PlaceCategorySelect } from "../PlaceCategorySelect";
+import { PlaceFamilyField } from "../PlaceFamilyField";
 import { googleTagLabel } from "@mesita/place-profile/map";
 import { googleFormattedAddress } from "../google-location";
 import {
@@ -407,6 +408,7 @@ export function PlaceSection({
           <ReadField label="Google price" auto boxed>
             <PriceDisplay level={place.price_level} currency={place.currency} />
           </ReadField>
+          <PlaceFamilyField />
           <PlaceCategorySelect
             slug={place.category}
             label={place.category_label}
