@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { oneLine, runLog, thrownMessage } from "./run-log.ts";
+import { buildCommit, oneLine, runLog, stepsLine, thrownMessage } from "./run-log.ts";
 
 test("a vendor body is one line", () => {
   const body = '{\n  "error": {\n    "type": "platform-feature-disabled",\n    "message": "Too many outstanding invoices"\n  }\n}';
@@ -20,4 +20,19 @@ test("a run logs start, finish, and the error on one line", () => {
 test("a thrown error keeps its message", () => {
   assert.equal(thrownMessage(new Error("write place failed (500)")), "write place failed (500)");
   assert.equal(thrownMessage("nope"), "nope");
+});
+
+test("the start line names the build, and an unknown one says so", () => {
+  assert.equal(buildCommit({ RENDER_GIT_COMMIT: "86e0eb9702a0b97b" }), "86e0eb9");
+  assert.equal(buildCommit({}), "unknown");
+});
+
+test("one steps line carries each step's output and time", () => {
+  assert.equal(
+    runLog("steps", stepsLine("place-1", [
+      { step: "details", ms: 412.4, produced: "ok" },
+      { step: "description", ms: 0, produced: "google,kept-saved" },
+    ])),
+    "[enrich] steps place-1 details=ok(412ms) description=google,kept-saved(0ms)",
+  );
 });
