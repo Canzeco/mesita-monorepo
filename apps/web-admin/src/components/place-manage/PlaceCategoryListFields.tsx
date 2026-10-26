@@ -4,7 +4,7 @@ import { ReadField } from "@/components/admin-ui/manage";
 import { usePlaceContext } from "./PlaceContext";
 
 // Read-only (MESITA-2790). google_types is Google's categories list, primary
-// first: the first chip is the primary category. mesita_categories is the
+// first. mesita_categories is the
 // LLM's 1–3 place_categories slugs, main first, redone on every Enrich. tags
 // is the Mesita tags the same runs pick from place_tags. Labels come from the
 // vocabularies the overview already joined. A stored category label leads
@@ -74,36 +74,37 @@ function slugsOf(value: unknown): string[] {
     .filter(Boolean);
 }
 
-function Chips({
-  slugs,
-  labels,
-  primaryFirst = false,
-}: {
-  slugs: string[];
-  labels: Map<string, string>;
-  /** Marks the first chip as the primary one (Google categories). */
-  primaryFirst?: boolean;
-}) {
-  if (slugs.length === 0) return <>—</>;
+// One chip look for every list row in Basics, Families included (Pato,
+// MESITA-2810). Google's primary category is simply the first chip.
+export function ChipList({ items }: { items: string[] }) {
+  if (items.length === 0) return <>—</>;
   return (
     <span className="flex flex-wrap gap-1.5">
-      {slugs.map((slug, i) => (
+      {items.map((item) => (
         <span
-          key={slug}
-          className={
-            "rounded-full border px-2 py-0.5 text-xs " +
-            (primaryFirst && i === 0
-              ? "border-foreground/40 font-medium"
-              : "border-border")
-          }
+          key={item}
+          className="rounded-full border border-border px-2 py-0.5 text-xs"
         >
-          {withoutEmoji(labels.get(slug) || slug.replaceAll("_", " "))}
-          {primaryFirst && i === 0 ? (
-            <span className="text-muted-foreground"> · primary</span>
-          ) : null}
+          {item}
         </span>
       ))}
     </span>
+  );
+}
+
+function Chips({
+  slugs,
+  labels,
+}: {
+  slugs: string[];
+  labels: Map<string, string>;
+}) {
+  return (
+    <ChipList
+      items={slugs.map((slug) =>
+        withoutEmoji(labels.get(slug) || slug.replaceAll("_", " ")),
+      )}
+    />
   );
 }
 
@@ -120,7 +121,6 @@ export function PlaceGoogleCategoriesField() {
       <Chips
         slugs={slugsOf(place.google_types).filter((s) => !GOOGLE_TABLE_B.has(s))}
         labels={labels}
-        primaryFirst
       />
     </ReadField>
   );
