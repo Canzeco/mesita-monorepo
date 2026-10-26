@@ -200,7 +200,7 @@ export function StateCard({ place }: { place: AdminPlace }) {
       ? "Couldn't read the Boost tier."
       : boosted
         ? `${boostLabel}: guests pay for its visibility. Sponsored on cards and pins; never Selected. Payers are on Boost.`
-        : "Nobody pays to boost it. Guests buy Boost from the place's Boost tab.";
+        : "Nobody pays to boost it. Guests buy Boost from the place's ⋯ menu.";
   const enrichingDetail = enriching
     ? "A run is in progress. Nothing is saved until the profile is finished."
     : "No run is in progress.";
