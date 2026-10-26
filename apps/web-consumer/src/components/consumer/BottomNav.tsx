@@ -13,7 +13,7 @@ import {
   CONSUMER_ROUTES,
   CONSUMER_ROUTE_PREFIX,
 } from "@/lib/consumer-route-contract";
-import { barePath } from "@/lib/surface";
+import { barePath, prefixPath, type Surface } from "@/lib/surface";
 import { trackEvent } from "@/lib/analytics/track";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 
@@ -107,8 +107,17 @@ const ITEMS: Item[] = [
   },
 ];
 
-export function BottomNav() {
+export function BottomNav({ surface }: { surface?: Surface }) {
   const pathname = barePath(usePathname() ?? "/");
+  // Each tab's href is ALREADY on the surface in the URL (/mob/search, not
+  // /search). A bare href is caught by SurfacePrefixer's capture-phase click
+  // listener, which stops the event before React sees it and pushes the
+  // prefixed URL itself: Link's prefetch is wasted, its onClick never runs,
+  // and every tap is a cold round trip with the old screen still painted —
+  // the "taps don't work" report (MESITA-2762; MESITA-2747 moved the modal
+  // host and missed this). The surface comes from the shell's x-surface
+  // header, not usePathname, which the server sees rewritten (bare). Without
+  // one (the root loading frame) the bare href is SurfacePrefixer's job.
   const getSupabase = useLazyBrowserSupabase();
 
   return (
@@ -168,7 +177,7 @@ export function BottomNav() {
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={surface ? prefixPath(surface, item.href) : item.href}
               onClick={track}
               className={className}
             >
