@@ -72,7 +72,8 @@ function mapsPinIcon(
 /** `held` is the tapped pin (ink, MESITA-2488), not the Selected tone. */
 function placeIcon(tone: PinTone, held: boolean) {
   const weight = pinStrokeWeight(held);
-  const radius = tone === "selected" && !held ? MAP_SELECTED_PLACE_PIN_RADIUS : undefined;
+  const radius =
+    tone === "selected" && !held ? MAP_SELECTED_PLACE_PIN_RADIUS : undefined;
   return mapsPinIcon(
     pinFillColor(tone, held),
     pinStrokeColor(held),
@@ -186,7 +187,7 @@ export function SearchMap({
   return (
     // A size container, so the search ring can read the map's height
     // (cqh) as well as its width (MESITA-2511).
-    <div className="[container-type:size] absolute inset-0">
+    <div className="[container-type:size] absolute inset-0 overflow-hidden">
       <APIProvider apiKey={apiKey} libraries={["places"]}>
         <SearchMapCanvas
           places={places}
@@ -257,9 +258,13 @@ export const SEARCH_RING_SIZE = `min(100cqw, ${
  *  pulses while a load is in flight. A second, solid ring at half the
  *  diameter says the centre is denser (Pato, MESITA-2773: "double circle for
  *  density") — the proximity half-strength distance at the default
- *  radiusDivisor of 2 (MESITA-2720). The shade only deepens inward: clear
- *  outside, a faint tint in the band, more inside the small ring (MESITA-2774:
- *  "dark light dark looks weird"), so the map outside is no longer shaded. */
+ *  radiusDivisor of 2 (MESITA-2720). The shade brightens toward the cross, a
+ *  spotlight: the map outside the big ring darkest, the band gray, the small
+ *  ring's disc light (Pato, MESITA-2775: "dark, gray, light (background, big
+ *  circle, small circle)"). One shade disc under the rings draws all three
+ *  steps — a spread shadow outside, a radial gradient clear inside half its
+ *  radius — so no tint stacks, the map box clips the shadow, and only the
+ *  ring lines pulse, never the shade. */
 function SearchMapReticle({ searching }: { searching: boolean }) {
   return (
     <div
@@ -269,8 +274,13 @@ function SearchMapReticle({ searching }: { searching: boolean }) {
       data-search-sight
     >
       <div
+        className="absolute top-1/2 left-1/2 aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle_closest-side,rgb(255_255_255/0.12)_50%,rgb(0_0_0/0.05)_50%)] shadow-[0_0_0_200vmax_rgb(0_0_0/0.1)]"
+        style={{ width: SEARCH_RING_SIZE }}
+        data-search-shade
+      />
+      <div
         className={cn(
-          "border-foreground/45 bg-foreground/[0.03] absolute top-1/2 left-1/2 aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] border-dashed",
+          "border-foreground/45 absolute top-1/2 left-1/2 aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] border-dashed",
           searching && "animate-pulse",
         )}
         style={{ width: SEARCH_RING_SIZE }}
@@ -278,7 +288,7 @@ function SearchMapReticle({ searching }: { searching: boolean }) {
       />
       <div
         className={cn(
-          "border-foreground/30 bg-foreground/[0.05] absolute top-1/2 left-1/2 aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border",
+          "border-foreground/30 absolute top-1/2 left-1/2 aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border",
           searching && "animate-pulse",
         )}
         style={{ width: `calc(${SEARCH_RING_SIZE} / 2)` }}
