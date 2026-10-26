@@ -5,14 +5,14 @@
 // queue a full Enrich (business creates queue; the Enricher's step 7
 // redoes this properly minutes later with rich grounding).
 //
-// Tags are validated against the live catalog. Category and family are not
-// inferred here: the category is Google's primary type, and the family
-// comes from that type.
+// Mesita tags are validated against the live catalog and stored (MESITA-2790).
+// Mesita categories come from their own call (mesita-categories.ts); families
+// are derived from them in the profiles view, never inferred.
 // Mesita Name is returned as a CANDIDATE — only the mesita-name-door may
 // land it (gate D2).
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { fetchPlaceTags } from "./tags.ts";
+import { fetchPlaceTags, MAX_PLACE_TAGS, pickVocabularyTags } from "./tags.ts";
 import {
   formatDescriptionParagraphs,
 } from "./enrich-synthesis-profile.ts";
@@ -23,9 +23,8 @@ import { loadModelsConfig } from "./models-config.ts";
 import { reservationsLikelyFromInference } from "./infer-place-reservations.ts";
 
 export type DoorProfile = {
-  category: string | null;
-  familyKeys: string[];
-  tags: string[];
+  /** Null when the reply carried no tags array: Create then writes none. */
+  tags: string[] | null;
   description: string | null;
   reservationsLikely: boolean;
   mesitaNameCandidate: string | null;
@@ -46,7 +45,6 @@ export type DoorSignals = {
 };
 
 const SUMMARY_MAX = 700;
-const MAX_INFERRED_TAGS = 20;
 
 function str(v: unknown): string | null {
   return typeof v === "string" && v.trim() ? v.trim() : null;
@@ -80,7 +78,7 @@ export async function synthesizeDoorProfile(
   const systemContent =
     "You are Mesita's create-door profiler. From the thin Google signals " +
     "provided, return ONE JSON object with EXACTLY these keys: " +
-    '{"tags":["<0-' + String(MAX_INFERRED_TAGS) + ' slugs from the tag list>"],' +
+    '{"tags":["<0-' + String(MAX_PLACE_TAGS) + ' slugs from the tag list>"],' +
     '"presentation":"<2-3 short English paragraphs separated by \\n\\n>",' +
     '"reservations_likely":<boolean>,' +
     '"mesita_name":"<clean display name, proper case; null when the given ' +
@@ -136,10 +134,7 @@ export async function synthesizeDoorProfile(
       return null;
     }
 
-    const tags = (Array.isArray(parsed.tags) ? parsed.tags : [])
-      .map((t) => (typeof t === "string" ? t.trim().toLowerCase() : ""))
-      .filter((t) => tagSlugs.has(t))
-      .slice(0, MAX_INFERRED_TAGS);
+    const tags = pickVocabularyTags(parsed.tags, tagSlugs);
     const description = (() => {
       const d = str(parsed.presentation);
       return d
@@ -148,8 +143,6 @@ export async function synthesizeDoorProfile(
     })();
     const nameMax = ENRICH_FIELD_LIMITS.placeName?.max ?? 80;
     return {
-      category: null,
-      familyKeys: [],
       tags,
       description,
       reservationsLikely: reservationsLikelyFromInference(parsed),

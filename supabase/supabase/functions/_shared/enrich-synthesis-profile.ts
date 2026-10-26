@@ -17,6 +17,8 @@ export type ProfileResult = {
    * applyProfileToUpdate — only the mesita-name-door may land it (gate D2).
    */
   mesita_name?: string | null;
+  /** Mesita tags (MESITA-2790): vocabulary slugs; filtered by the caller. */
+  tags?: unknown;
   /** Retired (MESITA-2420). A stale reply may still carry it; it is never applied. */
   popular_times?: unknown[] | null;
 };

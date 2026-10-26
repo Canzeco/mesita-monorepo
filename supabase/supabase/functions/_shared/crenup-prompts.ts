@@ -28,10 +28,6 @@ import {
   PRESENTATION_INSTRUCTIONS,
 } from "./enrich-synthesis.ts";
 import { buildCategoryInput, CATEGORY_INSTRUCTIONS } from "./categories-infer.ts";
-import {
-  buildFamilyInput,
-  FAMILY_INSTRUCTIONS,
-} from "./infer-families.ts";
 import { CRENUP_STEP_META, type CrenupStep } from "./crenup-ladder.ts";
 
 /** One prompt-bearing step, as the console renders it. */
@@ -146,14 +142,17 @@ function presentationPrompt(): CrenupPrompt {
       "Synthesis quality setting on Models. It does NOT browse — it may use only " +
       "the source material the earlier functions gathered.",
     writes:
-      "The Presentation (place_profiles.description), the machine summary that the " +
-      "Embedding step vectorises, mesita_name, zone, city and the rest of the " +
-      "profile shape.",
+      "The Presentation (place_profiles.description), the Mesita tags (picked " +
+      "from the live tag vocabulary), the machine summary that the Embedding " +
+      "step vectorises and the Mesita name candidate.",
     instructions: PRESENTATION_INSTRUCTIONS,
     input: buildPresentationInput({
       ...PLACE,
       branchAnchor: "Neighborhood / zone: {zone} · City: {city}",
+      tagVocabulary: ["{tag slug}", "… one per live tag"],
       grounding:
+        "Google categories: {google types, primary first}\n\n" +
+        "Google attributes: {google tags}\n\n" +
         "Instagram bio: {instagram bio}\n\n" +
         "Google reviews (sample):\n{newest Google reviews}\n\n" +
         "Web editorial color (SOFT context — background only, NOT authoritative; " +
@@ -168,37 +167,19 @@ function categoryPrompt(): CrenupPrompt {
     key: "category",
     fn: null,
     agent: null,
-    label: "Category inference",
+    label: "Mesita categories inference",
     vendor: "OpenAI",
     vendorNote:
       "One chat-completions call in JSON mode, temperature 0. The live category " +
       "vocabulary is read from the database and pasted into the message, so the " +
-      "model can only answer with a slug that exists.",
-    writes: "The place's single Atlas category.",
+      "model can only answer with slugs that exist. Runs at Create and on every " +
+      "Enrich; families are derived from the answer, never asked of a model.",
+    writes: "The place's Mesita categories: 1 to 3 slugs, main first.",
     instructions: CATEGORY_INSTRUCTIONS,
     input: buildCategoryInput(
       "{slug} — {label} [{section}]\n… one line per live category",
-      "Name: {place name}\nAddress: {address}\nGoogle primary type: {type}\n" +
-        "Google types: {types}\nSummary: {editorial summary}\nDetails: {details}",
-    ),
-  };
-}
-
-function familyPrompt(): CrenupPrompt {
-  return {
-    key: "family",
-    fn: null,
-    agent: null,
-    label: "Family inference",
-    vendor: "OpenAI",
-    vendorNote:
-      "One chat-completions call in JSON mode, temperature 0. Same shape as " +
-      "Category, but a place may hold one or two families.",
-    writes: "The place's families — the family keys Discovery filters on.",
-    instructions: FAMILY_INSTRUCTIONS,
-    input: buildFamilyInput(
-      "{slug} — {label}\n… one line per live family",
-      "Name: {place name}\nAddress: {address}\nAtlas category: {category}\n" +
+      "Name: {place name}\nAddress: {address}\nGoogle primary category: {type}\n" +
+        "Other Google categories: {types}\nGoogle attributes: {google tags}\n" +
         "Summary: {editorial summary}\nDetails: {details}",
     ),
   };
@@ -218,7 +199,6 @@ export function crenupPromptsMeta(): CrenupPrompt[] {
     scoutPrompt(),
     resolverPrompt(),
     categoryPrompt(),
-    familyPrompt(),
     presentationPrompt(),
   ];
 }

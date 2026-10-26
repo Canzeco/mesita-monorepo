@@ -248,12 +248,8 @@ export function PlaceProvider({
       };
       for (const s of Object.values(savers.current)) s.onSaved(next);
       setPlace(next);
-      if (r.data.family || r.data.familyStored) {
-        setProfile({
-          ...profile,
-          ...(r.data.family ? { family: r.data.family } : {}),
-          ...(r.data.familyStored ? { familyStored: r.data.familyStored } : {}),
-        });
+      if (r.data.familyStored) {
+        setProfile({ ...profile, familyStored: r.data.familyStored });
       }
       setDirtyMap({});
       setSocialLock(null);

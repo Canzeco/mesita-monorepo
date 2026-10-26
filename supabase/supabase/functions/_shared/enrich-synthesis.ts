@@ -11,6 +11,7 @@ import {
   QUALITY_MODEL,
 } from "./enrich-config.ts";
 import { safeParseJson } from "./parse-utils.ts";
+import { MAX_PLACE_TAGS } from "./tags.ts";
 import {
   type ProfileResult,
 } from "./enrich-synthesis-profile.ts";
@@ -30,6 +31,8 @@ const PROFILE_SCHEMA = {
     editorial_summary: { type: ["string", "null"] },
     description: { type: ["string", "null"] },
     mesita_name: { type: ["string", "null"] },
+    // Mesita tags (MESITA-2790): slugs copied from the TAG VOCABULARY block.
+    tags: { type: "array", items: { type: "string" } },
     // No popular_times (MESITA-2420): a guess from review text is not
     // Google's busy hours, and the guest card says "From Google".
   },
@@ -48,6 +51,11 @@ export async function synthesizeProfile(input: {
   name: string;
   locationLine: string;
   category: string | null;
+  /** Google's own categories, primary first, and atmosphere attributes. */
+  googleTypes?: string[];
+  googleTags?: string[];
+  /** place_tags slugs the model may pick Mesita tags from. */
+  tagVocabulary?: string[];
   // The branch anchor for the FRANCHISE RULE below: zone is the colonia /
   // neighborhood, city the fallback. Both come from the Google spine the
   // research stage persisted — synthesis never has to guess where it is.
@@ -62,7 +70,7 @@ export async function synthesizeProfile(input: {
 }): Promise<{ parsed: ProfileResult | null; diag: Record<string, unknown> }> {
   const {
     openaiKey, model, name, locationLine, category, zone, city, igBio,
-    googleReviewsText, serpSummary,
+    googleReviewsText, serpSummary, googleTypes, googleTags, tagVocabulary,
   } = input;
 
   // Where this branch actually is — the qualifier the franchise rule spends.
@@ -72,6 +80,8 @@ export async function synthesizeProfile(input: {
   ].filter(Boolean).join(" · ");
 
   const grounding = [
+    googleTypes && googleTypes.length ? `Google categories: ${googleTypes.join(", ")}` : "",
+    googleTags && googleTags.length ? `Google attributes: ${googleTags.join(", ")}` : "",
     igBio ? `Instagram bio: ${igBio}` : "",
     googleReviewsText ? `Google reviews (sample):\n${googleReviewsText}` : "",
     serpSummary
@@ -87,6 +97,7 @@ export async function synthesizeProfile(input: {
     category,
     branchAnchor,
     grounding,
+    tagVocabulary: tagVocabulary ?? [],
   });
 
   const systemContent = PRESENTATION_INSTRUCTIONS;
@@ -145,8 +156,10 @@ export function buildPresentationInput(place: {
   category: string | null;
   branchAnchor: string;
   grounding: string;
+  tagVocabulary?: string[];
 }): string {
   const { name, locationLine, category, branchAnchor, grounding } = place;
+  const vocabulary = place.tagVocabulary ?? [];
   return (
     `Compile the public profile of the place "${name}"` +
     (locationLine ? ` located at ${locationLine}` : "") +
@@ -181,10 +194,15 @@ export function buildPresentationInput(place: {
     `is given, and never invent a branch or a location the anchor does not ` +
     `show. An INDEPENDENT place — one location, not a chain — is NOT a ` +
     `franchise: never bolt a zone onto it. Return null when the given name ` +
-    `already follows this rule. "description" and ` +
+    `already follows this rule. ` +
+    `"tags" are Mesita tags: up to ${MAX_PLACE_TAGS} slugs copied VERBATIM ` +
+    `from the TAG VOCABULARY below that the sources clearly support (service, ` +
+    `vibe, drinks, occasion, amenities…); [] when none is supported. ` +
+    `"description" and ` +
     `every other text field MUST be a single JSON string — never an array or ` +
     `nested object. Use null or [] for anything the sources don't support. ` +
     `Never invent ratings, reviewer quotes, prices, or a chef's name.` +
+    (vocabulary.length ? `\n\nTAG VOCABULARY: ${vocabulary.join(", ")}` : "") +
     (branchAnchor
       ? `\n\nLOCATION ANCHOR (the franchise rule spends this): ${branchAnchor}`
       : "") +

@@ -62,7 +62,7 @@
 // STORED SHAPE Postgres itself would reject, same posture consumer-doc.ts
 // took for birthday / avatar_url.
 
-import { withoutTableB } from "./google-table-b.ts";
+import { cleanGoogleTypes } from "./google-table-b.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { nullable } from "./doc-schema.ts";
 import { GoogleReviewsSchema, PopularTimesSchema } from "./place-jsonb-schemas.ts";
@@ -485,7 +485,7 @@ export function validatePlaceProfilePatch(input: unknown): PlaceProfilePatchVali
     }
     const err = checkPlaceProfileField(key, raw[key]);
     if (err) return { ok: false, error: err };
-    patch[key] = key === "google_types" ? withoutTableB(raw[key]) : raw[key];
+    patch[key] = key === "google_types" ? cleanGoogleTypes(raw[key]) : raw[key];
   }
   const nameErr = checkPlaceNameSourceInvariant(patch);
   if (nameErr) return { ok: false, error: nameErr };
@@ -567,7 +567,7 @@ export function validateProfilePatch(input: unknown): ProfilePatchValidation {
     }
     const err = isPlaceProfileKey ? checkPlaceProfileField(key, raw[key]) : checkPlaceField(key, raw[key]);
     if (err) return { ok: false, error: err };
-    patch[key] = key === "google_types" ? withoutTableB(raw[key]) : raw[key];
+    patch[key] = key === "google_types" ? cleanGoogleTypes(raw[key]) : raw[key];
   }
   const nameErr = checkPlaceNameSourceInvariant(patch);
   if (nameErr) return { ok: false, error: nameErr };
