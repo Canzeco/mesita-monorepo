@@ -11,11 +11,11 @@ import { cn } from "../../lib/format";
 // this is for soon"). `soon` still marks the two tabs whose screen is the
 // Soon screen; the strip draws only the four labels. Rewards is the fourth
 // screen. Both are the same strip on admin Preview and consumer.
-// Every place has the five, Enriched or not; the Enrich vote is the top of
-// Overview, never a tab of its own (MESITA-2332). BOOST IS THE FIFTH
-// (MESITA-2789): anyone pays for a place's paid visibility there; the host
-// app draws its body (the package holds no payment code).
-export type PlaceTab = "place" | "reviews" | "products" | "rewards" | "boost";
+// Every place has the four, Enriched or not; the Enrich vote is the top of
+// Overview, never a tab of its own (MESITA-2332). Boost is not a tab: it
+// opens from the ⋯ menu as a sheet on top (MESITA-2815, Pato: "add it as 3
+// dots and actually open a modal on top").
+export type PlaceTab = "place" | "reviews" | "products" | "rewards";
 
 export type PlaceTabDef = {
   key: PlaceTab;
@@ -28,7 +28,6 @@ const CORE_TABS = [
   { key: "reviews", label: "Reviews" },
   { key: "products", label: "Products", soon: true },
   { key: "rewards", label: "Rewards", soon: true },
-  { key: "boost", label: "Boost" },
 ] as const satisfies ReadonlyArray<PlaceTabDef>;
 
 export function placeTabs(): readonly PlaceTabDef[] {

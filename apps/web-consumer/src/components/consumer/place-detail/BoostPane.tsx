@@ -26,7 +26,8 @@ import {
 } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 
-// THE BOOST TAB (MESITA-2789, Spotlight's sheet before it, MESITA-1998:
+// THE BOOST SHEET (MESITA-2815: opened from the place's ⋯ menu; a tab in
+// MESITA-2789, Spotlight's sheet before it, MESITA-1998:
 // "cualquiera se suscriba ... desde la Consumer App"). Anyone pays for a
 // place's paid visibility with their own subscription: Boost 2x · 5x · 10x,
 // monthly or yearly (ten months for twelve), whether to be named, then
@@ -360,7 +361,7 @@ export function BoostPane({
   );
 }
 
-/** The Boost tab on a Google-only card (MESITA-2797): no Mesita row, so
+/** The Boost sheet on a Google-only card (MESITA-2797): no Mesita row, so
  *  nothing to back yet. */
 export function BoostUnavailable() {
   return (

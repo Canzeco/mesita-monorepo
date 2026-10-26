@@ -6,13 +6,12 @@ import { PlaceTabBar, placeTabs } from "./tabs";
 // The vote panel and its copy are gone (MESITA-2642: visits enrich a place,
 // no guest votes); only the section strip's pins remain here.
 describe("section strip", () => {
-  it("is the five sections for every place, Enrich never a tab (MESITA-2332, Boost MESITA-2789)", () => {
+  it("is the four sections for every place, Enrich and Boost never a tab (MESITA-2332, MESITA-2815)", () => {
     expect(placeTabs().map((t) => t.label)).toEqual([
       "Overview",
       "Reviews",
       "Products",
       "Rewards",
-      "Boost",
     ]);
     expect(placeTabs().filter((t) => t.soon).map((t) => t.label)).toEqual([
       "Products",
@@ -20,7 +19,7 @@ describe("section strip", () => {
     ]);
   });
 
-  it("renders the five sections, no Soon pill in the strip (MESITA-2631)", () => {
+  it("renders the four sections, no Soon pill in the strip (MESITA-2631)", () => {
     const html = renderToStaticMarkup(
       <PlaceTabBar tab="place" onChange={() => {}} />,
     );
