@@ -191,10 +191,6 @@ export function BottomNav({ surface }: { surface?: Surface }) {
             <Link
               key={item.href}
               href={surface ? prefixPath(surface, item.href) : item.href}
-              // The tab pages read nothing on the server, so the full route
-              // is cheap to fetch ahead: a tap then paints from cache instead
-              // of waiting on the round trip (MESITA-2762).
-              prefetch
               onClick={track}
               className={className}
             >
