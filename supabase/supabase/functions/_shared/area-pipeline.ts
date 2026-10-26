@@ -25,8 +25,8 @@
 // Fail closed on money: no key, no point, no types, a quota refusal or a
 // Google error buy nothing; an owned-lookup error drops the Google side (no
 // stub may shadow a Mesita place). No photo field is ever asked for a
-// Google-only card, nothing here writes a row, and no Google content outlives
-// the 15 s isolate cell (Google Maps Platform terms).
+// Google-only card, nothing here writes a row, and no Google answer outlives
+// its request: nothing caches one (Google Maps Platform terms; MESITA-2765).
 //
 // Chat (MESITA-2339) does not use the pool: `areaSelectedPlaces` reads Mesita
 // Selected places only, with the same score inside `map.radiusKm`.
@@ -285,8 +285,9 @@ export function screenRadiusKm(raw: unknown, cross?: LatLng | null): number | nu
   return Math.min(SCREEN_RADIUS_KM_MAX, Math.max(SCREEN_RADIUS_KM_MIN, r));
 }
 
-/** The server's snap of a point centre (~110 m) for retrieval and cell
- *  keys, so GPS drift reuses a warm cell; Proximity reads the raw centre. */
+/** The server's snap of a point centre (~110 m) for retrieval: Google is
+ *  asked about the snapped point, never the guest's exact one; Proximity
+ *  reads the raw centre. */
 export function snapCenter(c: LatLng): LatLng {
   return { lat: Math.round(c.lat * 1000) / 1000, lng: Math.round(c.lng * 1000) / 1000 };
 }
@@ -376,7 +377,6 @@ export type AreaPoolPlace = Record<string, unknown> & { id: string; area: AreaPo
 export type AreaPoolSummary = {
   googleCalls: number;
   googleBilled: number;
-  googleCached: number;
   googleRefused: number;
   googleFailed: number;
   /** "partial" when some calls were refused and others answered. */
@@ -440,15 +440,13 @@ async function googleItems<T extends OwnedRow>(
       radiusKm: location.radiusKm,
       excludedTypes,
       rankPreference: GOOGLE_SOURCE_RANK[source],
-      preciseCell: true,
       beforeFanout: deps.consumeQuota,
     }).then((answer) => ({ source, ...answer }))
   ));
-  const tally: Record<NearbyOutcome, number> = { billed: 0, cached: 0, refused: 0, failed: 0, none: 0 };
+  const tally: Record<NearbyOutcome, number> = { billed: 0, refused: 0, failed: 0, none: 0 };
   for (const a of answers) tally[a.outcome]++;
   summary.googleCalls = answers.length;
   summary.googleBilled = tally.billed;
-  summary.googleCached = tally.cached;
   summary.googleRefused = tally.refused;
   summary.googleFailed = tally.failed;
   summary.quota = tally.refused === 0
@@ -572,7 +570,6 @@ export async function selectAreaPool<T extends OwnedRow>(
   const summary: AreaPoolSummary = {
     googleCalls: 0,
     googleBilled: 0,
-    googleCached: 0,
     googleRefused: 0,
     googleFailed: 0,
     quota: "none",

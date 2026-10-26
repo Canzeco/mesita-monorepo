@@ -2,15 +2,14 @@
 //
 // consumer-web-list-places is verify_jwt = false. Web Search opt-in
 // `{ google: true, lat, lng }` spends the server GMP_KEY on ONE Nearby
-// Search (New) call per cache-miss cell — 20 places, never widened
-// (MESITA-2298). The 15s in-isolate cell cache and the 20/60s
-// isolate fan-out cap in nearby-places.ts do not bind across isolates, so a
-// unique-~1 km-cell spray is otherwise an independent billed budget per
-// isolate.
+// Search (New) call per Google source — 20 places, never widened
+// (MESITA-2298). Nothing in an isolate limits or caches it: every isolate
+// shuts down when its request ends (MESITA-2765), so this ledger is the only
+// budget.
 //
 // Model: rolling 60 s window over public.nearby_google_attempts, counted
 // per BILLED REQUEST (recorded only when this isolate is about to fire one
-// Nearby call — not on a cache hit, in-flight join, or isolate-budget skip).
+// Nearby call).
 // PER REQUEST, NOT PER PULL (MESITA-1700): a pull-scoped charge let one row
 // authorise three billed calls, which tripled both ceilings below without
 // changing a number anybody could see.
@@ -27,15 +26,13 @@
 // leftmost XFF hop. A global window cap is the backstop if a caller still
 // mints unique hashes (spoofed CF-Connecting-IP on a direct origin hit).
 //
-// Caller: searchNearbyPlaces `beforeFanout`, cache-miss fan-out only, once
-// per slice.
+// Caller: searchNearbyPlaces `beforeFanout`, once per billed call.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 // Google-fill POSTs per hashed IP per rolling 60 s, counted per billed Nearby
-// request. Search pan-idle is ~1 s so a real explorer stays well under this
-// at one call per cache-miss cell. Unique cells across isolates share the
-// same ledger.
+// request. A Map load bills one call per Google source and reloads at most
+// once every `map.reloadIdleSec`, so a real explorer stays under this.
 export const GOOGLE_NEARBY_IP_MAX = 45;
 export const GOOGLE_NEARBY_GLOBAL_MAX = 600;
 export const GOOGLE_NEARBY_IP_WINDOW_MS = 60_000;
