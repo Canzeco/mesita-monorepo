@@ -37,6 +37,11 @@
 // Mesita resolution whole, and only the consumer caller opts into them
 // (the matrix: Locations ride Word alone). Coordinates come later, on
 // selection, through the anchor read (one Details call per PICK).
+// ANY GOOGLE ENTITY IS A DESTINATION (MESITA-2778): on the consumer bar a
+// Google establishment that is not one of Mesita's place types (a school,
+// an office, a park) is a Location too, never a drop: the guest searches
+// "my school" to find places near it. Only the type gate turns a row into
+// a Location; a food place under the rating or review floors still drops.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { json } from "./http.ts";
@@ -196,6 +201,20 @@ export function classifyPredictionKind(
     }
   }
   return location ? "location" : "place";
+}
+
+/**
+ * What a Google-only row becomes after the Map gate: a Place when it
+ * clears, a Location when it fails on its type alone and the caller takes
+ * Locations (MESITA-2778), else nothing.
+ */
+export function gatedGoogleKind(
+  gate: { eligible: boolean; code?: string },
+  locations: boolean,
+): LaneKind | null {
+  if (gate.eligible) return "place";
+  if (locations && gate.code === "family_not_eligible") return "location";
+  return null;
 }
 
 /**
@@ -652,6 +671,7 @@ async function runFastSearch(
     apiKey,
     gate,
     general,
+    locations,
   );
   return takeFastLane(stamped, cap);
 }
@@ -691,6 +711,7 @@ async function stampAutocompleteLane(
   apiKey: string,
   gate: MapConfig,
   general: GeneralConfig,
+  locations: boolean,
 ): Promise<LaneItem[]> {
   const places = items.filter((row) => row.kind !== "location");
   const stamped = await stampGoogleAgainstCatalog(
@@ -699,6 +720,7 @@ async function stampAutocompleteLane(
     apiKey,
     gate,
     general,
+    { locations },
   );
   return weaveStampedAutocomplete(items, stamped);
 }
@@ -751,7 +773,7 @@ async function runDeepSearch(
       ? fetchAutocomplete(input, sessionToken, apiKey, origin)
       : Promise.resolve({ predictions: [] as LaneItem[] }),
     wantText
-      ? fetchTextSearch(input, apiKey, gate, origin, deep.googleCount)
+      ? fetchTextSearch(input, apiKey, gate, origin, deep.googleCount, locations)
       : Promise.resolve([] as LaneItem[]),
     wantMesita
       ? fetchEmbedPool(admin, origin, general)
@@ -773,6 +795,7 @@ async function runDeepSearch(
       apiKey,
       gate,
       general,
+      locations,
     ),
     stampGoogleAgainstCatalog(
       googleText,
@@ -1012,6 +1035,7 @@ async function fetchTextSearch(
   gate: MapConfig,
   origin: { lat: number; lng: number } | null,
   limit: number,
+  locations = false,
 ): Promise<LaneItem[]> {
   const body: Record<string, unknown> = {
     textQuery: input,
@@ -1052,12 +1076,30 @@ async function fetchTextSearch(
   for (const p of data.places ?? []) {
     const hit = nearbyHitFromPlace(p);
     if (!hit.placeId || !hit.name) continue;
-    const eligible = evaluatePlaceForMap(gate, {
-      primaryType: hit.primaryType,
-      rating: hit.rating,
-      reviewCount: hit.reviewCount,
-    }).eligible;
-    if (!eligible) continue;
+    const kind = gatedGoogleKind(
+      evaluatePlaceForMap(gate, {
+        primaryType: hit.primaryType,
+        rating: hit.rating,
+        reviewCount: hit.reviewCount,
+      }),
+      locations,
+    );
+    if (!kind) continue;
+    if (kind === "location") {
+      out.push({
+        placeId: hit.placeId,
+        mainText: hit.name,
+        secondaryText: hit.address,
+        state: "not_in_mesita",
+        kind,
+        locationType: hit.primaryType ?? undefined,
+        lat: hit.lat,
+        lng: hit.lng,
+        businessStatus: hit.businessStatus,
+      });
+      if (out.length >= limit) break;
+      continue;
+    }
     out.push({
       placeId: hit.placeId,
       mainText: hit.name,
@@ -1083,7 +1125,7 @@ async function stampGoogleAgainstCatalog(
   apiKey: string,
   gate: MapConfig,
   general: GeneralConfig,
-  opts: { alreadyHasSignals?: boolean } = {},
+  opts: { alreadyHasSignals?: boolean; locations?: boolean } = {},
 ): Promise<LaneItem[]> {
   const byGoogleId = new Map<string, ListedRow>();
   const missingIds = items
@@ -1127,21 +1169,33 @@ async function stampGoogleAgainstCatalog(
     if (p.state !== "not_in_mesita") return clearsGeneralGate(general, p);
     const hit = listingById.get(p.placeId);
     if (!hit) return false;
-    const ok = evaluatePlaceForMap(gate, {
-      primaryType: hit.primaryType,
-      rating: hit.rating,
-      reviewCount: hit.reviewCount,
-    }).eligible &&
-      clearsGeneralGate(general, { businessStatus: hit.businessStatus });
-    if (ok && p.lat == null && hit.lat != null) p.lat = hit.lat;
-    if (ok && p.lng == null && hit.lng != null) p.lng = hit.lng;
-    if (ok) p.card = googleStub(hit, null);
-    // The Details numbers the guest bar's Popularity order reads (MESITA-2724).
-    if (ok) {
-      p.rating = hit.rating;
-      p.reviewCount = hit.reviewCount;
+    const kind = gatedGoogleKind(
+      evaluatePlaceForMap(gate, {
+        primaryType: hit.primaryType,
+        rating: hit.rating,
+        reviewCount: hit.reviewCount,
+      }),
+      opts.locations === true,
+    );
+    if (!kind || !clearsGeneralGate(general, { businessStatus: hit.businessStatus })) {
+      return false;
     }
-    return ok;
+    if (kind === "location") {
+      // A destination, not a business card (MESITA-2778): the pick anchors
+      // the map on it, so it carries its point and its type, nothing else.
+      p.kind = "location";
+      p.locationType = hit.primaryType ?? undefined;
+      if (hit.lat != null) p.lat = hit.lat;
+      if (hit.lng != null) p.lng = hit.lng;
+      return true;
+    }
+    if (p.lat == null && hit.lat != null) p.lat = hit.lat;
+    if (p.lng == null && hit.lng != null) p.lng = hit.lng;
+    p.card = googleStub(hit, null);
+    // The Details numbers the guest bar's Popularity order reads (MESITA-2724).
+    p.rating = hit.rating;
+    p.reviewCount = hit.reviewCount;
+    return true;
   });
 }
 
