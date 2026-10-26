@@ -47,9 +47,13 @@ export function PlaceDetailBody({
   creating,
   social,
   boost,
+  openTab,
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
+  /** The host asks for a tab (MESITA-2797: Stripe Checkout's return opens
+   *  Boost). Each new `key` switches once; the guest's own taps win after. */
+  openTab?: { tab: PlaceTab; key: number } | null;
   /** The Boost tab's body (MESITA-2789), drawn by the host: the consumer
    *  passes its subscribe/cancel pane; without it the tab explains where
    *  Boost is bought. */
@@ -60,7 +64,14 @@ export function PlaceDetailBody({
   /** Social v1's line (MESITA-2442), in the profile summary. */
   social?: React.ReactNode;
 }) {
-  const [tab, setTab] = useState<PlaceTab>("place");
+  const [tab, setTab] = useState<PlaceTab>(openTab?.tab ?? "place");
+  // A new request switches the tab during render (React's "adjust state when
+  // a prop changes"), never in an effect.
+  const [openKey, setOpenKey] = useState(openTab?.key ?? null);
+  if (openTab && openTab.key !== openKey) {
+    setOpenKey(openTab.key);
+    setTab(openTab.tab);
+  }
   const create = place.is_enriched ? null : (creating ?? null);
   return (
     // decision: Pato (2026-10-16) — the name header and the section strip
