@@ -133,6 +133,14 @@ function firstLine(text: string): string {
   return text.trim().split("\n")[0]?.trim() || "(no message)";
 }
 
+/** The Supabase CLI's own error, not the noise around it: config WARN lines, Go stack frames,
+ *  progress and update notices. A failed `db query` once surfaced only a WARN (MESITA-2781). */
+export function cliError(stderr: string): string {
+  const noise = /^(WARN:|Initialising |A new version|We recommend|Try rerunning)|:\d+ \(0x[0-9a-f]+\)$/;
+  const meaningful = stderr.split("\n").map((l) => l.trim()).filter((l) => l && !noise.test(l));
+  return meaningful.join(" ") || firstLine(stderr);
+}
+
 const lines = (text: string) => text.split("\n").map((l) => l.trim()).filter(Boolean);
 const days = (ms: number) => Math.floor(ms / DAY_MS);
 
@@ -624,7 +632,10 @@ function liveIo(): Io {
     github: async (path) => json(await exec("gh", ["api", path], repoRoot)),
     functions: async () => json(await exec("supabase", ["functions", "list", "--project-ref", SUPABASE_PROJECT, "-o", "json"], join(repoRoot, "supabase"))),
     // --agent no keeps the plain JSON list on stdout; the CLI's notices go to stderr.
-    sql: async (query) => json(await exec("supabase", ["db", "query", "--linked", "--agent", "no", "--output-format", "json", query], join(repoRoot, "supabase"))),
+    sql: async (query) => {
+      const r = await exec("supabase", ["db", "query", "--linked", "--agent", "no", "--output-format", "json", query], join(repoRoot, "supabase"));
+      return json(r.code === 0 ? r : { ...r, stderr: cliError(r.stderr) });
+    },
     git: (args) => exec("git", args, repoRoot),
     now: new Date(),
   };
