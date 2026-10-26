@@ -41,6 +41,22 @@ export async function fetchPlaceCategories(
   return data as PlaceCategory[];
 }
 
+// A Google type's families from public.catalog_membership, the table
+// families_for_category() reads after place_categories (MESITA-2759). Null
+// when the slug has no row or the read fails.
+export async function fetchMembershipKeys(
+  admin: SupabaseClient,
+  slug: string,
+): Promise<string[] | null> {
+  const { data, error } = await admin
+    .from("catalog_membership")
+    .select("family_keys")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (error || !data || !Array.isArray(data.family_keys)) return null;
+  return data.family_keys as string[];
+}
+
 export async function fetchPlaceFamilies(
   admin: SupabaseClient,
 ): Promise<PlaceFamily[]> {

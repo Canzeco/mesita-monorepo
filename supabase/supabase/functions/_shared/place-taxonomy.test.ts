@@ -16,13 +16,13 @@ Deno.test("place family catalog is twenty guest families, Undefined last", () =>
     "coffee",
     "breakfast",
     "quick_bite",
-    "tacos",
     "mexican",
     "pizza",
     "burgers",
+    "chicken",
     "sushi",
     "noodles",
-    "japanese",
+    "korean",
     "chinese",
     "italian",
     "seafood",
@@ -66,12 +66,12 @@ Deno.test("every Atlas category maps onto the twenty; seventeen sit on two", () 
     "indian",
     "italian",
     "japanese",
+    "korean",
     "mexican",
     "pizza",
-    "ramen",
     "seafood",
     "steak_house",
-    "sushi",
+    "taco",
     "thai",
   ]);
   assertEquals(covered.has("undefined"), true);
@@ -85,10 +85,10 @@ Deno.test("a cafe is coffee and breakfast; a pizzeria is pizza and italian", () 
   assertEquals(familiesForAtlasCategory("cafe"), ["coffee", "breakfast"]);
   assertEquals(familiesForAtlasCategory("karaoke"), ["night_out"]);
   assertEquals(familiesForAtlasCategory("winery"), ["drinks"]);
-  // Catalog order, not primary-first: tacos sorts before mexican.
+  // Catalog order, not primary-first: quick_bite sorts before mexican.
   assertEquals(familiesForAtlasCategory("pizza"), ["pizza", "italian"]);
-  assertEquals(familiesForAtlasCategory("mexican"), ["tacos", "mexican"]);
-  assertEquals(familiesForAtlasCategory("taco"), ["quick_bite", "tacos", "mexican"]);
+  assertEquals(familiesForAtlasCategory("mexican"), ["mexican", "dinner"]);
+  assertEquals(familiesForAtlasCategory("taco"), ["quick_bite", "mexican"]);
   assertEquals(familiesForAtlasCategory("thai"), ["thai", "dinner"]);
   // An attraction is in no family (MESITA-2438).
   assertEquals(familiesForAtlasCategory("movie_theater"), ["undefined"]);
@@ -108,7 +108,7 @@ Deno.test("undefined category maps to family undefined; empty has none", () => {
 });
 
 Deno.test("familiesForPlace follows the mapping, not the code twin", () => {
-  assertEquals(familiesForAtlasCategory("mexican"), ["tacos", "mexican"]);
+  assertEquals(familiesForAtlasCategory("mexican"), ["mexican", "dinner"]);
   assertEquals(familiesForPlace({ category: "mexican" }), ["undefined"]);
   assertEquals(
     familiesForPlace({
@@ -119,7 +119,7 @@ Deno.test("familiesForPlace follows the mapping, not the code twin", () => {
   );
   assertEquals(
     familiesForPlace(
-      { category: "mexican", family_keys: ["tacos"] },
+      { category: "mexican", family_keys: ["mexican"] },
       { mexican: ["dinner"] },
     ),
     ["dinner"],
@@ -144,10 +144,10 @@ Deno.test("familiesForPlace is TOTAL — no place is ever pill-less", () => {
 
 Deno.test("resolveEnrichedFamilyKeys ignores a family the model invented", () => {
   const mapping = {
-    mexican: ["tacos"],
+    mexican: ["mexican"],
     board_game_cafe: ["coffee", "night_out"],
   };
-  assertEquals(resolveEnrichedFamilyKeys("mexican", ["dinner"], mapping), ["tacos"]);
+  assertEquals(resolveEnrichedFamilyKeys("mexican", ["dinner"], mapping), ["mexican"]);
   assertEquals(
     resolveEnrichedFamilyKeys("board_game_cafe", ["invented_family"], mapping),
     ["coffee", "night_out"],

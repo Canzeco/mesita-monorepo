@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(166);
+select plan(168);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -799,8 +799,8 @@ select is(
 
 select is(
   (select array_agg(slug order by sort_order) from public.place_families),
-  array['coffee','breakfast','quick_bite','tacos','mexican','pizza','burgers',
-        'sushi','noodles','japanese','chinese','italian','seafood','steak',
+  array['coffee','breakfast','quick_bite','mexican','pizza','burgers','chicken',
+        'sushi','noodles','korean','chinese','italian','seafood','steak',
         'indian','thai','dinner','sweet','drinks','night_out',
         'undefined']::text[],
   'family catalog order is the twenty guest rails, Undefined last'
@@ -833,14 +833,14 @@ select is(
 
 select is(
   (select family_keys from public.place_categories where slug = 'mexican'),
-  array['mexican','tacos']::text[],
-  'mexican is Mexican first, Tacos second (MESITA-2749)'
+  array['mexican','dinner']::text[],
+  'mexican is Mexican first, Dinner second (MESITA-2760)'
 );
 
 select is(
   (select family_keys from public.place_categories where slug = 'taco'),
-  array['tacos','mexican','quick_bite']::text[],
-  'a taqueria is Tacos, Mexican and Quick bite (MESITA-2749)'
+  array['mexican','quick_bite']::text[],
+  'a taqueria is Mexican first, Quick second (MESITA-2760)'
 );
 
 select is(
@@ -853,8 +853,8 @@ select is(
 select is(
   (select count(*)::bigint from public.place_categories
     where cardinality(family_keys) = 3),
-  1::bigint,
-  'one category sits on three families: taco (MESITA-2749)'
+  0::bigint,
+  'no category sits on three families since Tacos folded into Mexican (MESITA-2760)'
 );
 
 select is(
@@ -1150,6 +1150,21 @@ select is_empty(
           and c.relkind in ('r', 'p')
      )$$,
   'every admin_reset_preserve row names a live public table (a stale row means the real table gets wiped)'
+);
+
+-- MESITA-2759: catalog_membership is the Google-type family map the place
+-- taxonomy trigger reads. Reset truncated it once because nobody registered
+-- it, and the cloud then refused Create for most restaurants.
+select ok(
+  exists (select 1 from public.admin_reset_preserve where table_name = 'catalog_membership'),
+  'catalog_membership survives admin Reset (MESITA-2759)'
+);
+
+select cmp_ok(
+  (select count(*)::int from public.catalog_membership),
+  '>=',
+  478,
+  'catalog_membership holds every Google Table A type (MESITA-2759)'
 );
 
 -- MESITA-709: n8n ×3, Serper, and TripAdvisor vault rows are gone. A re-seed

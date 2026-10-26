@@ -4,7 +4,7 @@ import { Z_BOTTOM_NAV } from "@/lib/z-index";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ComponentType } from "react";
+import { useState, type ComponentType } from "react";
 import { QrCode, Search, Share2, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { cn } from "@/lib/utils";
@@ -13,7 +13,7 @@ import {
   CONSUMER_ROUTES,
   CONSUMER_ROUTE_PREFIX,
 } from "@/lib/consumer-route-contract";
-import { barePath } from "@/lib/surface";
+import { barePath, prefixPath, type Surface } from "@/lib/surface";
 import { trackEvent } from "@/lib/analytics/track";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 
@@ -107,9 +107,28 @@ const ITEMS: Item[] = [
   },
 ];
 
-export function BottomNav() {
+export function BottomNav({ surface }: { surface?: Surface }) {
   const pathname = barePath(usePathname() ?? "/");
+  // Each tab's href is ALREADY on the surface in the URL (/mob/search, not
+  // /search). A bare href is caught by SurfacePrefixer's capture-phase click
+  // listener, which stops the event before React sees it and pushes the
+  // prefixed URL itself: Link's prefetch is wasted, its onClick never runs,
+  // and every tap is a cold round trip with the old screen still painted —
+  // the "taps don't work" report (MESITA-2762; MESITA-2747 moved the modal
+  // host and missed this). The surface comes from the shell's x-surface
+  // header, not usePathname, which the server sees rewritten (bare). Without
+  // one (the root loading frame) the bare href is SurfacePrefixer's job.
   const getSupabase = useLazyBrowserSupabase();
+  // The tapped tab lights AT ONCE. usePathname only moves when the new
+  // screen commits, which waits on a server round trip (the proxy checks the
+  // session in Oregon on every request), so a slow tap used to leave the bar
+  // unchanged and read as a dead one (MESITA-2762). The mark holds only while
+  // the path it was tapped on is still the path: once the screen lands, the
+  // pathname is the truth again.
+  const [tapped, setTapped] = useState<{ href: string; on: string } | null>(
+    null,
+  );
+  const pending = tapped && tapped.on === pathname ? tapped.href : null;
 
   return (
     <nav
@@ -127,7 +146,9 @@ export function BottomNav() {
       <div className="flex items-end justify-around">
         {ITEMS.map((item) => {
           const { Icon, label } = item;
-          const active = item.matchPrefixes.some((p) => pathname.startsWith(p));
+          const active = pending
+            ? pending === item.href
+            : item.matchPrefixes.some((p) => pathname.startsWith(p));
           const soon = item.soon;
           const className = cn(
             "type-meta relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 font-medium transition",
@@ -163,12 +184,13 @@ export function BottomNav() {
             </>
           );
           const track = () => {
+            setTapped({ href: item.href, on: pathname });
             trackEvent(getSupabase(), "nav_tab_tap", { tab: label });
           };
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={surface ? prefixPath(surface, item.href) : item.href}
               onClick={track}
               className={className}
             >
