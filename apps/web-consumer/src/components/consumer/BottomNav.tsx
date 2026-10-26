@@ -3,8 +3,8 @@
 import { Z_BOTTOM_NAV } from "@/lib/z-index";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState, type ComponentType } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState, type ComponentType } from "react";
 import { QrCode, Search, Share2, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { cn } from "@/lib/utils";
@@ -13,7 +13,7 @@ import {
   CONSUMER_ROUTES,
   CONSUMER_ROUTE_PREFIX,
 } from "@/lib/consumer-route-contract";
-import { barePath } from "@/lib/surface";
+import { barePath, prefixPath, surfaceOf } from "@/lib/surface";
 import { trackEvent } from "@/lib/analytics/track";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 
@@ -115,6 +115,17 @@ export function BottomNav() {
   // tap itself, and Link's navigation to that proxy-rewritten URL never
   // committed: the tab lit, the old screen stayed (MESITA-2772).
   const getSupabase = useLazyBrowserSupabase();
+  // EACH TAB IS PREFETCHED AT THE URL THE TAP GOES TO (MESITA-2780). Link
+  // would prefetch its bare href, which the proxy only redirects onto the
+  // surface, so the pushed /web/... URL had nothing cached: no loading frame
+  // to paint, and the old screen stayed up for the whole round trip to
+  // Oregon while only the tab moved. Link's own prefetch is off. The surface
+  // is read from the address bar, which keeps /web or /mob.
+  const router = useRouter();
+  useEffect(() => {
+    const surface = surfaceOf(window.location.pathname) ?? "web";
+    for (const item of ITEMS) router.prefetch(prefixPath(surface, item.href));
+  }, [router]);
   // The tapped tab lights AT ONCE. usePathname only moves when the new
   // screen commits, which waits on a server round trip (the proxy checks the
   // session in Oregon on every request), so a slow tap used to leave the bar
@@ -188,6 +199,7 @@ export function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
+              prefetch={false}
               onPointerDown={track}
               className={className}
             >
