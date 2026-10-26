@@ -4,8 +4,8 @@
 // here, guest families and Undefined alike. Emoji repeat on purpose.
 //
 // Cosmetic only (Pato: "categories emojis are only for aesthetic in consumer
-// app UI"): the consumer draws it on a card with no photo, and Atlas prints
-// it before each Google category. A family's emoji is a different mark and
+// app UI"): the consumer draws it on a card with no photo. No Google
+// category name wears it (MESITA-2771). A family's emoji is a different mark and
 // lives with the families. Not stored, not edited in the console, never part
 // of a category label.
 

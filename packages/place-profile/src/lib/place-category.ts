@@ -5,8 +5,8 @@ const ACRONYM_WORDS = new Set(["bbq"]);
  * Catalog labels are stored as `"🍽️ Fine Dining"` on `place_categories.label`
  * / `places.category_label`. Slugs like `fine_dining` have no emoji prefix.
  *
- * decision: Pato — category MUST display with its emoji everywhere
- * (swipe, profile summary, Atlas, business). Never strip it for UI.
+ * The emoji is dropped for display: only Mesita families wear one
+ * (Pato, MESITA-2771, reversing the old "emoji everywhere" rule).
  */
 function splitCategoryLabel(input: string): { emoji: string; text: string } {
   const trimmed = input.trim();
@@ -32,7 +32,7 @@ function titleizeCategoryWords(input: string): string {
     .join(" ");
 }
 
-/** Format a category label or slug for display — keeps leading emoji. */
+/** Format a category label or slug for display, without its emoji. */
 function formatPlaceCategoryName(
   category: string | null | undefined,
 ): string | null {
@@ -40,17 +40,14 @@ function formatPlaceCategoryName(
   const trimmed = category.trim();
   if (!trimmed) return null;
 
-  const { emoji, text } = splitCategoryLabel(trimmed);
-  const source = text || trimmed;
-  const normalized = source.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
-  if (!normalized) return emoji || null;
-  const titled = titleizeCategoryWords(normalized);
-  return emoji ? `${emoji} ${titled}` : titled;
+  const { text } = splitCategoryLabel(trimmed);
+  const normalized = text.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+  if (!normalized) return null;
+  return titleizeCategoryWords(normalized);
 }
 
 /**
- * Prefer `category_label` (emoji + name from the catalog) over the slug.
- * Always returns emoji + label when the label carries one.
+ * Prefer `category_label` (the catalog's name) over the slug.
  */
 export function resolvePlaceCategoryName(input: {
   categoryLabel?: string | null;
