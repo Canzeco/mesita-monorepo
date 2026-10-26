@@ -61,8 +61,6 @@ function MemberPhone({
       <PlaceProfile
         place={detail}
         scrollLabel="Member profile preview"
-        // The Created · Updated dates are admin-only (MESITA-2630).
-        showDates
       />
     </div>
   );
