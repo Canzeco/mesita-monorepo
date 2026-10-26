@@ -205,6 +205,10 @@ export function LocalDialog({
         className={cn(
           "absolute inset-0 flex items-center justify-center overflow-hidden p-5",
           Z_LOCAL_OVERLAY,
+          // A closing dialog stays mounted for its exit fade; without this
+          // its invisible backdrop ate taps on the whole card, the bottom bar
+          // included (MESITA-2762). LocalSheet already does the same.
+          !open && "pointer-events-none",
         )}
       >
         <button
