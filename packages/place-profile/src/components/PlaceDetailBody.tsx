@@ -16,7 +16,7 @@ import { PlaceCreateFailedPanel } from "./place-detail/PlaceCreateFailedPanel";
 import { NO_OVERVIEW, PlaceEmptyScreen } from "./place-detail/empty-screen";
 import { PlaceTabBar, type PlaceTab } from "./place-detail/tabs";
 import { SoonScreen } from "./place-detail/soon-screen";
-import { DatesBox, LinksBox, TagsBox } from "./place-detail/tags-links-meta";
+import { LinksBox, TagsBox } from "./place-detail/tags-links-meta";
 
 // Pure presentation for the place detail surface, laid out like an
 // Instagram profile. Callers render their own top bar above this; there is
@@ -46,7 +46,6 @@ export function PlaceDetailBody({
   actions,
   creating,
   social,
-  showDates = false,
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
@@ -55,9 +54,6 @@ export function PlaceDetailBody({
   creating?: PlaceCreatingView | null;
   /** Social v1's line (MESITA-2442), in the profile summary. */
   social?: React.ReactNode;
-  /** The Created · Updated dates at the foot of Overview: admin only
-   *  (MESITA-2630); the consumer never passes it. */
-  showDates?: boolean;
 }) {
   const [tab, setTab] = useState<PlaceTab>("place");
   const create = place.is_enriched ? null : (creating ?? null);
@@ -92,8 +88,9 @@ export function PlaceDetailBody({
           {tab === "place" && !create && (
             <>
               {/* OVERVIEW'S ORDER (Pato, MESITA-2630): photos ·
-                  presentation · location · hours · links · tags, then the
-                  Created/Updated dates on admin only. Popular times rides
+                  presentation · location · hours · links · tags. The
+                  Created/Updated dates are admin's Metadata card, never
+                  here (MESITA-2788). Popular times rides
                   with hours (it draws nothing while nothing writes it,
                   MESITA-2420). Location then Hours stacked, never side by
                   side (decision: Pato). */}
@@ -104,7 +101,6 @@ export function PlaceDetailBody({
               <PopularTimesBox place={place} />
               <LinksBox place={place} onOpenLink={actions?.onOpenLink} />
               <TagsBox place={place} />
-              {showDates ? <DatesBox place={place} /> : null}
             </>
           )}
           {tab === "reviews" && <GoogleReviewsBox place={place} />}

@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, Link2, Phone, Tags } from "lucide-react";
+import { Link2, Phone, Tags } from "lucide-react";
 
 import type { ComponentType } from "react";
 import type { PlaceActions } from "../../actions";
@@ -12,7 +12,6 @@ import {
   REVIEW_DEFS,
 } from "../place-detail-links";
 import { Box } from "./box";
-import { PLACE_OUTLINE_CHIP_CLASS } from "../../lib/ui";
 import { ChannelChips, TagChips, type ChannelChip } from "./place-link-chips";
 
 // ── 9. About lives in @/components/consumer/AboutBox (client). ──────────
@@ -25,31 +24,6 @@ export function TagsBox({ place }: { place: PlaceDetail }) {
   return (
     <Box title="Tags" icon={Tags} iconColor="text-muted-foreground">
       <TagChips tags={place.tags} />
-    </Box>
-  );
-}
-
-function MetaPill({ label }: { label: string }) {
-  // TagChips language — rounded-full, leading 6px dot, soft tint.
-  return (
-    // The place scale's outlined box (MESITA-2636), like the tags.
-    <span className={PLACE_OUTLINE_CHIP_CLASS}>{label}</span>
-  );
-}
-
-export function DatesBox({ place }: { place: PlaceDetail }) {
-  // decision: Pato — Created + Updated as Tag-style pills (MESITA-927).
-  // Hide while enriching so we don't double-signal with the Enriching chip.
-  if (place.is_enriching) return null;
-  const created = place.created_label?.trim();
-  const updated = place.updated_label?.trim();
-  if (!created && !updated) return null;
-  return (
-    <Box title="Dates" icon={Clock} iconColor="text-muted-foreground">
-      <div className="flex flex-wrap gap-2">
-        {created && <MetaPill label={`Created · ${created}`} />}
-        {updated && <MetaPill label={`Updated · ${updated}`} />}
-      </div>
     </Box>
   );
 }
