@@ -166,30 +166,30 @@ export function ProfileFact({
  *  fact, its spinner topped emerald. CREATING IS `loud` (Pato, MESITA-2682:
  *  "add some fucking color. it must be noticable"): a solid blue box, the
  *  map's guest blue (blue-600, #2563eb), the word and the spinner white.
- *  Red would read as closed and green as open, so blue. Enriching stays
- *  outlined: on this screen colour goes only where Pato names it. */
+ *  Red would read as closed and green as open, so blue. ENRICHING IS THE
+ *  SAME SOLID BOX IN GREEN (Pato, MESITA-2812: "enriching tag must be color
+ *  background green just as creating"), the emerald its spinner carried. */
 export function RunningFact({
   label,
-  loud = false,
+  tone,
 }: {
   label: string;
-  loud?: boolean;
+  tone: "blue" | "green";
 }) {
   return (
     <ProfileFact
       aria-live="polite"
-      className={
-        loud ? "text-paper border-blue-600 bg-blue-600 font-semibold" : undefined
-      }
+      className={cn(
+        "text-paper font-semibold",
+        tone === "blue"
+          ? "border-blue-600 bg-blue-600"
+          : "border-emerald-600 bg-emerald-600",
+      )}
     >
       <Spinner
         size="sm"
         label={label}
-        className={
-          loud
-            ? "border-paper/35 border-t-paper h-3.5 w-3.5"
-            : "border-border h-3.5 w-3.5 border-t-emerald-600"
-        }
+        className="border-paper/35 border-t-paper h-3.5 w-3.5"
       />
       {label}
     </ProfileFact>
