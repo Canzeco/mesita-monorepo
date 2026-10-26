@@ -50,10 +50,15 @@ import { loadRequestThreshold } from "../_shared/place-requests.ts";
 import { CRENUP_LABELS_IN_ORDER, CRENUP_TOTAL } from "../_shared/crenup-ladder.ts";
 import type { EnrichmentMap, FunctionState } from "../_shared/schema-catalog.ts";
 import { operatorFunctionStates } from "../_shared/schema-catalog.ts";
-import { fetchPlaceCategories, fetchPlaceFamilies } from "../_shared/categories.ts";
+import {
+  fetchMembershipKeys,
+  fetchPlaceCategories,
+  fetchPlaceFamilies,
+} from "../_shared/categories.ts";
 import { ENRICH_FIELD_LIMITS } from "../_shared/enrich-field-limits.ts";
 import {
   categoriesWithFamilyDisplay,
+  membershipSlugFor,
   resolveProfileFamily,
   resolveStoredFamily,
 } from "../_shared/profile-family.ts";
@@ -137,6 +142,12 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "Profile vocabulary unavailable" }, 500);
   }
   const placeFields = placeRow.data as unknown as Record<string, unknown>;
+  // A Google type the dictionary lacks answers from catalog_membership, as
+  // families_for_category() does (MESITA-2759). One extra read, only then.
+  const membershipSlug = membershipSlugFor(placeFields.category, categories);
+  const membershipKeys = membershipSlug
+    ? await fetchMembershipKeys(admin, membershipSlug)
+    : null;
 
   // Best effort: a missing/null map falls back to the CREATED-floor default,
   // which reads as 0 — the State box and the catalog table MUST show the same
@@ -191,6 +202,7 @@ Deno.serve(async (req) => {
     family: resolveProfileFamily({
       category: placeFields.category,
       familyKeys: placeFields.family_keys,
+      membershipKeys,
       categories,
       families,
     }),
