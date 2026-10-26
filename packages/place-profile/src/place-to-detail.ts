@@ -7,6 +7,7 @@
 // sensible neutral defaults — distance is geolocation-dependent and computed
 // client-side later.
 
+import { googleTypeEmoji } from "./lib/google-type-emoji";
 import type { PlaceDetail } from "./place-detail";
 import { detectMenuKind } from "./lib/menu-url";
 import { parseMenuNutrition } from "./lib/nutrition";
@@ -63,6 +64,7 @@ export function placeRowToDetail(row: Row, catalogTags?: ResolvedTag[]): PlaceDe
     id: str(row.id) ?? str(row.slug) ?? "",
     name: resolvePlaceDisplayName(row),
     category: categoryName,
+    category_emoji: googleTypeEmoji(str(row.category)),
     price_level: priceLevel,
     price_range: derivePriceRange(row),
     currency,

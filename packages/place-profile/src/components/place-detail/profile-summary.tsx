@@ -133,7 +133,10 @@ export function ProfileSummary({
             pick) and never "Verified": paying buys visibility only. */}
         {(place.boost_tier ?? 0) > 0 && <ProfileFact icon={Zap}>Sponsored</ProfileFact>}
         {place.category && (
-          <ProfileFact icon={Tag}>{place.category}</ProfileFact>
+          // The category's own emoji, Tag only when it has none (MESITA-2813).
+          <ProfileFact icon={Tag} emoji={place.category_emoji}>
+            {place.category}
+          </ProfileFact>
         )}
         {priceLabel && <ProfileFact icon={Banknote}>{priceLabel}</ProfileFact>}
         {stateValue && (

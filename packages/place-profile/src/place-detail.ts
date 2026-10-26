@@ -13,6 +13,9 @@ export type PlaceDetail = {
   // 1. Summary
   name: string;
   category: string;
+  /** The category's own emoji (MESITA-2813), drawn on the place screen's
+   *  category fact; null when Google's table has none. */
+  category_emoji?: string | null;
   price_level: 1 | 2 | 3 | 4;
   // The place's own per-person numeric range (e.g. "MX$200–300"), or ""
   // when it has none. Quick-view surfaces (swipe / catalog / map) render
