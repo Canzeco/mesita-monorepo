@@ -29,7 +29,7 @@ Deno.test("Area box bounds and defaults match the server (MESITA-2347; the radiu
   assertEquals(constant("HALF_REVIEWS_MIN"), SIGNAL_PARAM_BOUNDS.halfReviews.min);
   assertEquals(constant("HALF_REVIEWS_MAX"), SIGNAL_PARAM_BOUNDS.halfReviews.max);
   const half = admin.match(
-    /const DEFAULT_SIGNAL_PARAMS: SignalParams = \{\s*proximity: \{ radiusDivisor: ([0-9_.]+), catalogRadiusDivisor: \1 \},\s*popularity: \{ halfReviews: ([0-9_]+) \},\s*\};/,
+    /const DEFAULT_SIGNAL_PARAMS: SignalParams = \{\s*proximity: \{ radiusDivisor: ([0-9_.]+) \},\s*popularity: \{ halfReviews: ([0-9_]+) \},\s*\};/,
   );
   assertEquals(half ? Number(half[1].replaceAll("_", "")) : null, PROXIMITY_RADIUS_DIVISOR_DEFAULT);
   assertEquals(half ? Number(half[2].replaceAll("_", "")) : null, POPULARITY_HALF_REVIEWS_DEFAULT);

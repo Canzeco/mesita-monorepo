@@ -55,10 +55,10 @@ export const BOX_SLICES = {
 
 /** The Area box's four switches, in the order the pipeline runs them. */
 const AREA_SOURCE_SOURCES: ReadonlyArray<{ key: AreaSourceKey; label: string }> = [
-  { key: "googlePopular", label: "Google Popular" },
-  { key: "googleClosest", label: "Google Closest" },
-  { key: "mesitaPopular", label: "Mesita Popular" },
-  { key: "mesitaClosest", label: "Mesita Closest" },
+  { key: "googlePopular", label: "Google Popularity" },
+  { key: "googleClosest", label: "Google Proximity" },
+  { key: "mesitaPopular", label: "Mesita Popularity" },
+  { key: "mesitaClosest", label: "Mesita Proximity" },
 ];
 
 function useDiscoveryEditor(seed: ConfigSeed<DiscoveryConfig>) {
@@ -293,7 +293,6 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
     setCfg((c) => ({ ...c, map: { ...c.map, ...p } }));
   };
   const params = cfg.params;
-  // Spread the sibling: the Map's and Home's penalties are independent (MESITA-2727).
   const proximity = (p: Partial<DiscoveryConfig["params"]["proximity"]>) => {
     setOk(false);
     setCfg((c) => ({ ...c, params: { ...c.params, proximity: { ...c.params.proximity, ...p } } }));
@@ -318,11 +317,11 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             current-location radius below. One radius for Google and Mesita.
           </p>
           <p className="mt-2">
-            Four sources, each on or off: Google Popular, Google Closest, Mesita
-            Popular and Mesita Closest, 20 places each. They merge into one pool
+            Four sources, each on or off: Google Popularity, Google
+            Proximity, Mesita Popularity and Mesita Proximity, 20 places each. They merge into one pool
             (a place found twice is one card), then Home and the Map rank it the
             same way: score = Proximity × Popularity, × the Selected boost
-            for a Selected place. No point: Mesita Popular alone, by
+            for a Selected place. No point: Mesita Popularity alone, by
             Popularity × the Selected boost.
           </p>
         </>
@@ -391,11 +390,11 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           Each Google source is one Nearby Search call on every Home load and
           every Map reload (the Map reloads each time the guest stops moving
           it), within the per-guest quota in the Always-on rules. Google
-          Popular asks for the most prominent 20 in the circle, Google Closest
-          for the nearest 20. There is no reviews minimum: the Minimum
-          Popularity below cuts weak places from every source. Mesita Popular is the 20 Mesita
+          Popularity asks for the most prominent 20 in the circle, Google
+          Proximity for the nearest 20. There is no reviews minimum: the Minimum
+          Popularity below cuts weak places from every source. Mesita Popularity is the 20 Mesita
           places in the circle with the highest Popularity × the Selected
-          boost (the score without Proximity), Mesita Closest the 20
+          boost (the score without Proximity), Mesita Proximity the 20
           nearest; both are free.
         </p>
         {allOff ? (
@@ -408,7 +407,7 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
         <div className="flex flex-col gap-2">
           <div className="grid gap-3 sm:grid-cols-2">
             <NumberField
-              label="Map distance penalty"
+              label="Distance penalty"
               value={params.proximity.radiusDivisor}
               min={RADIUS_DIVISOR_MIN}
               max={RADIUS_DIVISOR_MAX}
@@ -416,19 +415,10 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
               disabled={off}
               onChange={(radiusDivisor) => proximity({ radiusDivisor })}
             />
-            <NumberField
-              label="Catalog distance penalty"
-              value={params.proximity.catalogRadiusDivisor}
-              min={RADIUS_DIVISOR_MIN}
-              max={RADIUS_DIVISOR_MAX}
-              decimals
-              disabled={off}
-              onChange={(catalogRadiusDivisor) => proximity({ catalogRadiusDivisor })}
-            />
           </div>
           <p className="text-muted-foreground type-meta">
-            Bigger favours nearer places; smaller favours popular places. Map
-            ranks the Search tab; Catalog ranks Home and Chat.
+            Bigger favours nearer places; smaller favours popular places. One
+            number for the Map, Home and Chat.
           </p>
         </div>
         <div className="flex flex-col gap-2">
@@ -457,10 +447,9 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           </p>
         </div>
         <p className="text-muted-foreground type-meta">
-          The score is Proximity × Popularity × the Selected boost, Home and
-          the Map alike; only the distance penalty and the places shown differ.
-          Map is now {params.proximity.radiusDivisor}; Catalog is now{" "}
-          {params.proximity.catalogRadiusDivisor}.
+          The score is Proximity × Popularity × the Selected boost, Home, the
+          Map and Chat alike, with one distance penalty (now{" "}
+          {params.proximity.radiusDivisor}); only the places shown differ.
         </p>
         <p className="text-muted-foreground type-meta">
           Proximity is 1 ÷ (1 + penalty × distance ÷ radius), so half credit

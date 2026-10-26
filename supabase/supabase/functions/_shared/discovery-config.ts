@@ -61,9 +61,9 @@ import {
  * sets the half distance through the divisor.
  */
 export type SignalParams = {
-  /** `radiusDivisor` is the Map's Distance penalty; `catalogRadiusDivisor`
-   *  is Home's (MESITA-2727). A blob without the Catalog key reads the Map's. */
-  proximity: { radiusDivisor: number; catalogRadiusDivisor: number };
+  /** `radiusDivisor` is the Distance penalty: the Map, Home and Chat alike
+   *  (MESITA-2776). */
+  proximity: { radiusDivisor: number };
   popularity: { halfReviews: number };
 };
 
@@ -132,7 +132,7 @@ export type SuperParamKey = (typeof SUPER_PARAM_KEYS)[number];
 
 /**
  * The Area pipeline's policy (MESITA-2703): a point and a radius, FOUR
- * sources — Google Popular, Google Closest, Mesita Popular, Mesita Closest —
+ * sources — Google Popularity, Google Proximity, Mesita Popularity, Mesita Proximity —
  * each 0 or 20 (`AREA_SOURCE_STOPS`), merged into one pool with duplicates
  * removed, then sorted by Proximity × Popularity × the Selected boost. Home and the Map read
  * the same switches. Operator numbers since MESITA-1699. Floors still
@@ -156,16 +156,16 @@ export type MapConfig = {
    * `MAP_RELOAD_MIN_VIEWPORT_PCT_MIN`..`MAX`, one decimal, default 15.
    */
   reloadMinViewportPct: number;
-  /** Google Popular: one billed Nearby call ranked POPULARITY over the whole
+  /** Google Popularity: one billed Nearby call ranked POPULARITY over the whole
    *  circle. 0 or 20. */
   googlePopular: number;
-  /** Google Closest: one billed Nearby call ranked DISTANCE. 0 or 20. The
+  /** Google Proximity: one billed Nearby call ranked DISTANCE. 0 or 20. The
    *  reviews floor cuts its hits after Google bills them. */
   googleClosest: number;
-  /** Mesita Popular: the 20 Mesita rows in the circle with the highest raw
+  /** Mesita Popularity: the 20 Mesita rows in the circle with the highest raw
    *  Popularity. 0 or 20. Free. */
   mesitaPopular: number;
-  /** Mesita Closest: the 20 nearest Mesita rows in the circle. 0 or 20. */
+  /** Mesita Proximity: the 20 nearest Mesita rows in the circle. 0 or 20. */
   mesitaClosest: number;
   /**
    * THE CURRENT-LOCATION RADIUS (km): Home's radius when the guest searches
@@ -201,7 +201,7 @@ export type MapConfig = {
    * multiply value of place. not select is 1, select is 3"; Admin's
    * "Selected factor" until MESITA-2722, the key never renamed): a Mesita
    * Selected place's Area score is multiplied by it, every other place's
-   * by 1, and Mesita Popular picks by Popularity × it.
+   * by 1, and Mesita Popularity picks by Popularity × it.
    * `MAP_SELECTED_FACTOR_MIN`..`MAX`, one decimal, default 3; 1 is off.
    */
   selectedFactor: number;
@@ -440,10 +440,7 @@ export const DEFAULT_GENERAL: GeneralConfig = {
 
 /** The Area pipeline's numbers. A blob with no `params` reads these. */
 export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
-  proximity: {
-    radiusDivisor: PROXIMITY_RADIUS_DIVISOR_DEFAULT,
-    catalogRadiusDivisor: PROXIMITY_RADIUS_DIVISOR_DEFAULT,
-  },
+  proximity: { radiusDivisor: PROXIMITY_RADIUS_DIVISOR_DEFAULT },
   popularity: { halfReviews: POPULARITY_HALF_REVIEWS_DEFAULT },
 };
 
@@ -708,27 +705,20 @@ function boundedParam(
  * popularity.referenceRating/referenceReviews, MESITA-2347), the linear
  * `balance` (MESITA-2428), the weights table `modes` (MESITA-2687) or
  * `proximity.reachKm` / `selected` (MESITA-2703) is dropped on the next
- * save. `proximity.radiusDivisor` (the Map's Distance penalty, MESITA-2720)
- * and `proximity.catalogRadiusDivisor` (Home's, MESITA-2727; missing = the
- * Map's) are the proximity fields read; the fixed `halfKm` (MESITA-2706)
- * drops.
+ * save. `proximity.radiusDivisor` (the Distance penalty, MESITA-2720) is the
+ * one proximity field read; the fixed `halfKm` (MESITA-2706) and Home's own
+ * `catalogRadiusDivisor` (MESITA-2727, retired by MESITA-2776) drop.
  */
 export function normalizeSignalParams(raw: unknown): SignalParams {
   const r = (raw ?? {}) as Record<string, unknown>;
   const prox = (r.proximity ?? {}) as Record<string, unknown>;
   const pop = (r.popularity ?? {}) as Record<string, unknown>;
   const d = DEFAULT_SIGNAL_PARAMS;
-  const radiusDivisor = boundedParam(
-    prox.radiusDivisor,
-    d.proximity.radiusDivisor,
-    SIGNAL_PARAM_BOUNDS.radiusDivisor,
-  );
   return {
     proximity: {
-      radiusDivisor,
-      catalogRadiusDivisor: boundedParam(
-        prox.catalogRadiusDivisor,
-        radiusDivisor,
+      radiusDivisor: boundedParam(
+        prox.radiusDivisor,
+        d.proximity.radiusDivisor,
         SIGNAL_PARAM_BOUNDS.radiusDivisor,
       ),
     },

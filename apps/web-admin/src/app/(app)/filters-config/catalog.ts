@@ -26,8 +26,8 @@ import { num } from "@/lib/config-coerce";
  * _shared/discovery-config.ts.
  */
 export type SignalParams = {
-  /** The Map's Distance penalty and Home's (MESITA-2727). */
-  proximity: { radiusDivisor: number; catalogRadiusDivisor: number };
+  /** The Distance penalty: the Map, Home and Chat alike (MESITA-2776). */
+  proximity: { radiusDivisor: number };
   popularity: { halfReviews: number };
 };
 
@@ -617,7 +617,7 @@ export const DEFAULT_GENERAL: GeneralConfig = {
 
 /** Mirrors DEFAULT_SIGNAL_PARAMS. */
 const DEFAULT_SIGNAL_PARAMS: SignalParams = {
-  proximity: { radiusDivisor: 2, catalogRadiusDivisor: 2 },
+  proximity: { radiusDivisor: 2 },
   popularity: { halfReviews: 100 },
 };
 
@@ -644,20 +644,18 @@ function bounded(raw: unknown, fallback: number, min: number, max: number, decim
  * referenceRating/Reviews, MESITA-2347), the linear `balance`
  * (MESITA-2428), the weights table `modes` (MESITA-2687), `proximity.reachKm`
  * and `selected` (MESITA-2703) are dropped on the next Save;
- * `proximity.radiusDivisor` (the Map's Distance penalty, MESITA-2720) and
- * `catalogRadiusDivisor` (Home's, MESITA-2727; missing = the Map's) are the
- * proximity fields; the fixed `halfKm` (MESITA-2706) drops.
+ * `proximity.radiusDivisor` (the Distance penalty, MESITA-2720; the Map,
+ * Home and Chat alike since MESITA-2776) is the one proximity field; the
+ * fixed `halfKm` (MESITA-2706) and `catalogRadiusDivisor` drop.
  */
 function coerceParams(raw: unknown): SignalParams {
   const r = (raw ?? {}) as Record<string, unknown>;
   const prox = (r.proximity ?? {}) as Record<string, unknown>;
   const pop = (r.popularity ?? {}) as Record<string, unknown>;
   const d = DEFAULT_SIGNAL_PARAMS;
-  const radiusDivisor = bounded(prox.radiusDivisor, d.proximity.radiusDivisor, RADIUS_DIVISOR_MIN, RADIUS_DIVISOR_MAX, 1);
   return {
     proximity: {
-      radiusDivisor,
-      catalogRadiusDivisor: bounded(prox.catalogRadiusDivisor, radiusDivisor, RADIUS_DIVISOR_MIN, RADIUS_DIVISOR_MAX, 1),
+      radiusDivisor: bounded(prox.radiusDivisor, d.proximity.radiusDivisor, RADIUS_DIVISOR_MIN, RADIUS_DIVISOR_MAX, 1),
     },
     popularity: {
       halfReviews: bounded(pop.halfReviews, d.popularity.halfReviews, HALF_REVIEWS_MIN, HALF_REVIEWS_MAX, 0),
