@@ -13,6 +13,7 @@
 //   workflows         red on main, or red on half of the last 20 human PR runs
 //   edge functions    cloud slugs vs folders on main; the last functions merge redeployed
 //   bot PRs           Dependabot PRs open over 7 days (re-land the month's set under one issue)
+//   membership        cloud catalog_membership rows vs the checked-out code map (MESITA-2766)
 //
 // Exit 0: no finding outside scripts/pipeline-audit.accepted.json. Exit 1: an unaccepted
 // finding, or a check that could not run. Exit 2: bad usage. A check whose call fails reports
@@ -25,6 +26,7 @@
 // longer fires (delete it). A PA-UNKNOWN code cannot be accepted.
 
 import { dirname, fromFileUrl, join } from "@std/path";
+import { membershipSeedRows } from "../supabase/scripts/catalog-membership-sql.ts";
 
 const repoRoot = dirname(dirname(fromFileUrl(import.meta.url)));
 
@@ -58,6 +60,7 @@ const NEEDS = {
   checks: "checks: read",
   contents: "contents: read",
   functions: "SUPABASE_ACCESS_TOKEN, or `supabase login` locally",
+  membership: "SUPABASE_ACCESS_TOKEN and a linked project (supabase/supabase/.temp/project-ref), or `supabase link` locally",
   git: "a full clone of origin/main (actions/checkout fetch-depth: 0)",
 };
 
@@ -70,13 +73,15 @@ export type Got = { ok: true; data: unknown } | { ok: false; status: number | nu
 export type Io = {
   github: (path: string) => Promise<Got>;
   functions: () => Promise<Got>;
+  /** One read-only SQL query against the linked cloud project (Management API). */
+  sql: (query: string) => Promise<Got>;
   git: (args: string[]) => Promise<Exec>;
   now: Date;
 };
 
 export type Finding = { code: string; detail: string };
 export type Unknown = { endpoint: string; status: number | null; permission: string; message: string };
-export type CheckId = "required-checks" | "merged-prs" | "workflows" | "edge-functions" | "bot-prs";
+export type CheckId = "required-checks" | "merged-prs" | "workflows" | "edge-functions" | "bot-prs" | "catalog-membership";
 export type CheckResult = { check: CheckId; findings: Finding[]; notes: string[]; unknown?: Unknown };
 
 export type Accepted = Record<string, { reason: string; until: string }>;
@@ -98,6 +103,7 @@ export const CHECK_OF: Record<string, CheckId> = {
   "PA-RED-PR": "workflows",
   "PA-EF-DRIFT": "edge-functions",
   "PA-BOT-PR": "bot-prs",
+  "PA-MEMBERSHIP-DRIFT": "catalog-membership",
 };
 
 // ── Reading ─────────────────────────────────────────────────────────────────
@@ -424,12 +430,69 @@ export function describeUnknown(u: Unknown): string {
   return `${u.endpoint} → ${u.status === null ? "no HTTP status" : `HTTP ${u.status}`}; needs ${u.permission}; ${u.message}`;
 }
 
+// ── catalog_membership (MESITA-2766) ────────────────────────────────────────
+
+/** The read the membership check runs against the cloud. */
+export const MEMBERSHIP_SQL = "select slug, family_keys from public.catalog_membership order by slug";
+/** Past this many drifted rows the check reports one summary finding, not one per slug. */
+export const MEMBERSHIP_DRIFT_ROWS = 10;
+
+export function parseMembership(data: unknown): Map<string, string[]> {
+  if (!Array.isArray(data)) throw new Error("the catalog_membership query did not return a JSON list");
+  const rows = new Map<string, string[]>();
+  for (const r of data) {
+    if (typeof r?.slug !== "string" || !Array.isArray(r?.family_keys)) {
+      throw new Error(`unreadable catalog_membership row: ${JSON.stringify(r).slice(0, 120)}`);
+    }
+    rows.set(r.slug, r.family_keys.map(String));
+  }
+  return rows;
+}
+
+// families_for_category() reads place_categories, then this table, and the place_profiles
+// taxonomy trigger refuses a category found in neither. An admin Reset once emptied it: the
+// cloud refused most restaurant Creates while CI, rebuilt from migrations, stayed green
+// (MESITA-2759). The code map is the checked-out one, main in the workflow.
+async function checkMembership(io: Io): Promise<Omit<CheckResult, "check">> {
+  const got = await io.sql(MEMBERSHIP_SQL);
+  if (!got.ok) {
+    throw new Blind({ endpoint: `supabase db query --linked "${MEMBERSHIP_SQL}"`, status: got.status, permission: NEEDS.membership, message: got.message });
+  }
+  const cloud = parseMembership(got.data);
+  const code = membershipSeedRows();
+  const notes: string[] = [];
+  if (cloud.size === 0) {
+    return {
+      findings: [{ code: "PA-MEMBERSHIP-DRIFT:empty", detail: `the cloud table is empty (the code map has ${code.length} rows), so Create refuses every Google type outside place_categories: ship a migration carrying the full seed (supabase/scripts/catalog-membership-sql.ts)` }],
+      notes,
+    };
+  }
+  const drifted: { slug: string; detail: string }[] = [];
+  for (const { slug, keys } of code) {
+    const have = cloud.get(slug);
+    if (!have) drifted.push({ slug, detail: `missing in the cloud; the code map says ${keys.join(", ")}` });
+    else if (have.join(",") !== keys.join(",")) drifted.push({ slug, detail: `the cloud says ${have.join(", ")}; the code map says ${keys.join(", ")}` });
+  }
+  const types = new Set(code.map((r) => r.slug));
+  const extra = [...cloud.keys()].filter((s) => !types.has(s));
+  if (extra.length > 0) notes.push(`${extra.length} cloud row(s) are not Google types (place_categories answers for them first): ${extra.slice(0, 5).join(", ")}`);
+  if (drifted.length > MEMBERSHIP_DRIFT_ROWS) {
+    const first = drifted.slice(0, 3).map((d) => `${d.slug} (${d.detail})`).join("; ");
+    return {
+      findings: [{ code: "PA-MEMBERSHIP-DRIFT:many", detail: `${drifted.length} of ${code.length} rows differ from the code map, first ${first}: a family change merged without its full seed, or the seed never reached the cloud` }],
+      notes,
+    };
+  }
+  return { findings: drifted.map((d) => ({ code: `PA-MEMBERSHIP-DRIFT:${d.slug}`, detail: d.detail })), notes };
+}
+
 const CHECKS: [CheckId, (io: Io) => Promise<Omit<CheckResult, "check">>][] = [
   ["required-checks", checkRequired],
   ["merged-prs", checkMerged],
   ["workflows", checkWorkflows],
   ["edge-functions", checkFunctions],
   ["bot-prs", checkBots],
+  ["catalog-membership", checkMembership],
 ];
 
 /** Read the accepted file. A malformed entry is a finding, never a silent acceptance. */
@@ -560,6 +623,8 @@ function liveIo(): Io {
   return {
     github: async (path) => json(await exec("gh", ["api", path], repoRoot)),
     functions: async () => json(await exec("supabase", ["functions", "list", "--project-ref", SUPABASE_PROJECT, "-o", "json"], join(repoRoot, "supabase"))),
+    // --agent no keeps the plain JSON list on stdout; the CLI's notices go to stderr.
+    sql: async (query) => json(await exec("supabase", ["db", "query", "--linked", "--agent", "no", "--output-format", "json", query], join(repoRoot, "supabase"))),
     git: (args) => exec("git", args, repoRoot),
     now: new Date(),
   };

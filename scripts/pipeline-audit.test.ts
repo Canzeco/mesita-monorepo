@@ -24,6 +24,7 @@ import {
   type Report,
   runtimeImports,
 } from "./pipeline-audit.ts";
+import { membershipSeedRows } from "../supabase/scripts/catalog-membership-sql.ts";
 
 const repoRoot = dirname(dirname(fromFileUrl(import.meta.url)));
 const NOW = new Date("2026-10-19T15:00:00Z");
@@ -96,6 +97,9 @@ function world() {
     failGithub: {} as Record<string, Got>,
     failFunctions: null as Got | null,
     rulesetBody: null as unknown,
+    // The cloud catalog_membership as `supabase db query --linked -o json` lists it: equal to the code map.
+    membership: membershipSeedRows().map((r) => ({ slug: r.slug, family_keys: [...r.keys] })) as { slug: string; family_keys: string[] }[],
+    failSql: null as Got | null,
   };
 }
 type World = ReturnType<typeof world>;
@@ -164,7 +168,8 @@ function ioFor(w: World): Io & { calls: string[] } {
     return Promise.resolve({ code: 1, stdout: "", stderr: `unexpected git call: ${a}` });
   };
   const functions = () => Promise.resolve(w.failFunctions ?? ok(w.cloud));
-  return { github, git, functions, now: NOW, calls };
+  const sql = () => Promise.resolve(w.failSql ?? ok(w.membership));
+  return { github, git, functions, sql, now: NOW, calls };
 }
 
 const codes = (r: Report, status?: string) => r.rows.filter((x) => !status || x.status === status).map((x) => x.code);
@@ -181,6 +186,7 @@ Deno.test("a clean pipeline passes, and every check ran", async () => {
     ["workflows", true],
     ["edge-functions", true],
     ["bot-prs", true],
+    ["catalog-membership", true],
   ]);
   assertStringIncludes(render(r, NOW), "**PASS**");
 });
@@ -217,6 +223,9 @@ const CASES: [string, (w: World) => void, string][] = [
   ["a folder on main that is not deployed", (w) => w.folders.push("consumer-web-new"), "PA-EF-DRIFT:consumer-web-new"],
   ["a function whose bundle changed and did not redeploy", (w) => (w.cloud[0].updated_at = T - 60_000), "PA-EF-DRIFT:admin-web-get-config"],
   ["a bot PR open over 7 days", (w) => (w.openPrs[0].created_at = "2026-10-11T00:00:00Z"), "PA-BOT-PR:2400"],
+  // MESITA-2759: an admin Reset emptied the table and Create refused most restaurants.
+  ["an empty catalog_membership in the cloud", (w) => (w.membership = []), "PA-MEMBERSHIP-DRIFT:empty"],
+  ["a cloud membership row that differs from the code map", (w) => (w.membership.find((r) => r.slug === "restaurant")!.family_keys = ["undefined"]), "PA-MEMBERSHIP-DRIFT:restaurant"],
 ];
 
 for (const [name, mutate, code] of CASES) {
@@ -242,6 +251,14 @@ Deno.test("a merge owes only the checks its own branch declared", async () => {
   w.merges[1].required = null;
   w.merges[1].runs = [];
   assertEquals(codes(await audit(ioFor(w), {})), []);
+});
+
+Deno.test("a membership query that fails is unknown and names what it needs", async () => {
+  const w = world();
+  w.failSql = { ok: false, status: null, message: "Cannot find project ref. Have you run supabase link?" };
+  const r = await audit(ioFor(w), {});
+  assertEquals(codes(r), ["PA-UNKNOWN:catalog-membership"]);
+  assertStringIncludes(r.rows[0].detail, "supabase/supabase/.temp/project-ref");
 });
 
 Deno.test("a branch file the API cannot read is unknown, not owed-nothing", async () => {
