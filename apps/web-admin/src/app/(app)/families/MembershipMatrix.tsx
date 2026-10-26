@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { googleTypeEmoji } from "@mesita/place-profile";
 import { CATALOG_FAMILY_FACTS } from "../filters-config/discovery-surface";
 import {
   cellOn,
@@ -119,12 +118,7 @@ export function MembershipMatrix({
                       className={`border-border sticky left-0 z-10 border-r border-b px-3 py-1.5 text-left font-normal ${paint}`}
                       title={row.slug}
                     >
-                      <span className="flex min-w-0 items-center gap-2">
-                        <span className="w-5 shrink-0 text-center" aria-hidden>
-                          {googleTypeEmoji(row.slug)}
-                        </span>
-                        <span className="truncate">{googleCategoryLabel(row.slug)}</span>
-                      </span>
+                      <span className="block truncate">{googleCategoryLabel(row.slug)}</span>
                     </th>
                     {columns.map((family) => {
                       const on = cellOn(row, family.slug);

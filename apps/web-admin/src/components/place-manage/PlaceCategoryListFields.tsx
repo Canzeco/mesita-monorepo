@@ -5,7 +5,14 @@ import { usePlaceContext } from "./PlaceContext";
 
 // Read-only. Both lists speak Google's type vocabulary: google_types is what
 // Google returned, mesita_categories is the LLM's pick from that same list.
-// Labels come from the category options the overview already joined.
+// Labels come from the category options the overview already joined. A
+// stored label leads with an emoji; it is dropped here, since only Mesita
+// families wear one (MESITA-2771).
+
+function withoutEmoji(label: string): string {
+  const start = label.search(/[\p{L}\p{N}]/u);
+  return start > 0 ? label.slice(start).trim() : label.trim();
+}
 
 function slugsOf(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
@@ -32,7 +39,7 @@ function CategoryChips({ slugs }: { slugs: string[] }) {
           key={slug}
           className="border-border rounded-full border px-2 py-0.5 text-xs"
         >
-          {labels.get(slug) || slug.replaceAll("_", " ")}
+          {withoutEmoji(labels.get(slug) || slug.replaceAll("_", " "))}
         </span>
       ))}
     </span>
