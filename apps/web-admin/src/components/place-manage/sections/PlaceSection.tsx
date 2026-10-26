@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionStatesCard } from "./ActionStatesCard";
 import { useEffect, useMemo, useState } from "react";
 import {
   Clock,
@@ -643,6 +644,8 @@ export function PlaceSection({
           />
         </div>
       </SectionCard>
+
+      <ActionStatesCard place={place} />
 
       {children}
     </div>

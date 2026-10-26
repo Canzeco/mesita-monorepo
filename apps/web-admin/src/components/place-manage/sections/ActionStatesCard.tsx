@@ -5,34 +5,41 @@ import type { AdminPlace } from "../actions";
 import { SectionCard } from "@/components/admin-ui/manage";
 import { StateRow } from "./StateCard";
 
-const ROWS = [
-  {
-    key: "reservations_enabled" as const,
-    label: "Accepts reservations",
-    detail: "Guest Reserve CTA and reservation flow. Channel choice overrides the create guess.",
-  },
-  {
-    key: "prepay_enabled" as const,
-    label: "Accepts prepay",
-    detail: "Pay-at-table prepay (default off until product ships).",
-  },
-  {
-    key: "payments_enabled" as const,
-    label: "Accepts payments",
-    detail: "Mesita Pay capability (default off).",
-  },
-];
+// Profile's Actions box (MESITA-2786): what a guest can do at this place.
+// Read-only. Reservations is the LLM's call at Create and Enrich (never a
+// rule on links); an operator's reservation-channel pick overrides it
+// (MESITA-1737). Payments and prepayments are not built, so they read No.
 
 export function ActionStatesCard({ place }: { place: AdminPlace }) {
+  const rows = [
+    {
+      key: "reservations",
+      label: "Mesita Reservations Enabled",
+      on: place.reservations_enabled === true,
+      detail: "Inferred by the LLM at Create and Enrich. A reservation channel picked by an operator overrides it.",
+    },
+    {
+      key: "payments",
+      label: "Mesita Payments Enabled",
+      on: false,
+      detail: "Off until Mesita Payments ships.",
+    },
+    {
+      key: "prepayments",
+      label: "Mesita Prepayments Enabled",
+      on: false,
+      detail: "Off until Mesita Prepayments ships.",
+    },
+  ];
   return (
-    <SectionCard icon={<Zap className="h-4 w-4" />} tint="amber" title="Action States">
+    <SectionCard icon={<Zap className="h-4 w-4" />} tint="amber" title="Actions" subtitle="What a guest can do here.">
       <div className="mt-5 flex flex-col">
-        {ROWS.map((row) => (
+        {rows.map((row) => (
           <StateRow
             key={row.key}
             name={row.label}
-            on={place[row.key] === true}
-            chip={place[row.key] === true ? "Yes" : "No"}
+            on={row.on}
+            chip={row.on ? "Yes" : "No"}
             detail={row.detail}
           />
         ))}
