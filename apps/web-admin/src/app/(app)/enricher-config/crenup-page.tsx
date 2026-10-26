@@ -38,8 +38,8 @@ const SETTINGS_FALLBACK: CrenupSettings = {
 };
 
 const TITLE: Record<CrenupView, string> = {
-  creation: "Creation",
-  enrichment: "Enrichment",
+  creation: "Creating",
+  enrichment: "Enriching",
 };
 
 export async function CrenupPage({ view }: { view: CrenupView }) {
