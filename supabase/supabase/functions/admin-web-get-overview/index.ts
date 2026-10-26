@@ -70,7 +70,7 @@ import { fetchPlaceProfileStats } from "../_shared/place-activity-stats.ts";
 // The Embeddings card (MESITA-720) reads these. Never part of the public
 // column set: a heavy field only this screen and admin-web-search-places need.
 const PLACE_ADMIN_EMBEDDING_COLUMNS =
-  ", embedding, embedding_source_hash, embedding_source_text, name_embedding, name_embedding_hash";
+  ", embedding, embedding_source_text, name_embedding";
 
 // State (MESITA-1186). The State box answers `seeded` off the identity spine,
 // so the read needs Google's id. It must never widen PLACE_PUBLIC_COLUMNS.

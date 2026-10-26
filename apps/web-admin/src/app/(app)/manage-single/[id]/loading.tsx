@@ -269,7 +269,7 @@ function AdminTabSkeleton() {
         fields={[{ label: "w-24" }]}
       />
       {/* Vectors: Mesita Name (name over its note), the Semantic Summary's
-          paragraph, the two vector previews, Model, Source hashes. */}
+          paragraph, the two vector previews, Model. */}
       <DisclosureSkeleton
         title="w-20"
         subtitle="text-xs"
@@ -280,7 +280,6 @@ function AdminTabSkeleton() {
           { label: "w-20", box: "h-14" },
           { label: "w-24", box: "h-14" },
           { label: "w-10" },
-          { label: "w-24", box: "h-24" },
         ]}
       />
       {/* Metadata: UID, Created at, Updated at. */}

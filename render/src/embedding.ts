@@ -24,30 +24,18 @@ export function vectorLiteral(values: number[]): string {
   return `[${values.map((value) => value.toFixed(6)).join(",")}]`;
 }
 
-export async function digest(text: string): Promise<string> {
-  const hash = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(text));
-  return Array.from(new Uint8Array(hash))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("")
-    .slice(0, 32);
-}
-
 export function embeddingFields(
   summary: number[] | null,
   name: number[] | null,
-  summaryHash: string,
-  nameHash: string,
   summaryText: string,
 ): Record<string, string> | null {
   if (!summary || summary.length !== EMBEDDING_DIMS) return null;
   const patch: Record<string, string> = {
     embedding: vectorLiteral(summary),
-    embedding_source_hash: summaryHash,
     embedding_source_text: summaryText,
   };
   if (name && name.length === EMBEDDING_DIMS) {
     patch.name_embedding = vectorLiteral(name);
-    patch.name_embedding_hash = nameHash;
   }
   return patch;
 }

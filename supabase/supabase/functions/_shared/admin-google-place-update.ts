@@ -17,10 +17,8 @@ export const GOOGLE_UPDATE_FORBIDDEN_COLUMNS = [
   "description",
   "enriched_at",
   "embedding",
-  "embedding_source_hash",
   "embedding_source_text",
   "name_embedding",
-  "name_embedding_hash",
 ] as const;
 
 export function assertGoogleUpdatePatchSafe(patch: Record<string, unknown>): void {

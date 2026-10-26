@@ -268,13 +268,10 @@ serveEnrichStage("third", async (admin, env, row) => {
           effective,
           OPENAI_KEY,
         );
-        if (!summary.fresh && summary.text) {
-          place.embedding_source_text = summary.text;
-        }
+        if (summary) place.embedding_source_text = summary;
         sources.semantic_summary = {
-          ok: !!summary.text,
-          fresh: summary.fresh,
-          chars: summary.text.length,
+          ok: !!summary,
+          chars: summary.length,
         };
       }
     }

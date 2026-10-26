@@ -20,9 +20,9 @@ test("a vector is the pgvector literal", () => {
 });
 
 test("a short vector is left off the place", () => {
-  assert.equal(embeddingFields([0.1], [0.2], "a", "b", "text"), null);
+  assert.equal(embeddingFields([0.1], [0.2], "text"), null);
   const full = Array.from({ length: EMBEDDING_DIMS }, () => 0.1);
-  const fields = embeddingFields(full, null, "hash", "name", "text");
+  const fields = embeddingFields(full, null, "text");
   assert.equal(fields?.embedding_source_text, "text");
   assert.equal("name_embedding" in (fields ?? {}), false);
 });

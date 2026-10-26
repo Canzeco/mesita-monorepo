@@ -142,7 +142,7 @@ function parseEmbeddingVector(raw: AdminPlace["embedding"]): number[] | null {
 // the place. `_shared/embeddings-vector.ts::placeEmbeddingFacts` builds the
 // source from name · category · zone/city · address · price level · Description —
 // all `places` columns — and the vector lands on `places.embedding` beside
-// `embedding_source_text` / `embedding_source_hash`. The write goes through
+// `embedding_source_text`. The write goes through
 // the `profiles` view because that is the write door, NOT because a profile
 // or the place row is what gets embedded: no state, content_state or
 // business_state is in the vector. That is deliberate — operating state
@@ -255,35 +255,6 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
           <span className="text-muted-foreground type-label tabular-nums">
             text-embedding-3-small{dims || nameDims ? ` \u00b7 ${dims || nameDims}d` : " \u00b7 1536d"} \u00b7 locked, not a knob
           </span>
-        </ReadField>
-        <ReadField label="Source hashes" boxed>
-          {place.embedding_source_hash || place.name_embedding_hash ? (
-            <span className="flex min-w-0 flex-col gap-1 py-0.5">
-              {place.name_embedding_hash ? (
-                <span className="flex min-w-0 flex-col gap-0.5">
-                  <span className="text-muted-foreground type-label">Name</span>
-                  <code className="min-w-0 truncate font-mono type-label">
-                    {place.name_embedding_hash}
-                  </code>
-                </span>
-              ) : null}
-              {place.embedding_source_hash ? (
-                <span className="flex min-w-0 flex-col gap-0.5">
-                  <span className="text-muted-foreground type-label">Summary</span>
-                  <code className="min-w-0 truncate font-mono type-label">
-                    {place.embedding_source_hash}
-                  </code>
-                </span>
-              ) : null}
-              <span className="text-muted-foreground type-label">
-                The model is only called again when the matching hash goes stale.
-              </span>
-            </span>
-          ) : (
-            <span className="text-muted-foreground text-xs italic">
-              None — the place has never been embedded.
-            </span>
-          )}
         </ReadField>
       </div>
     </details>

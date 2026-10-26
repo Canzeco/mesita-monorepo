@@ -7,7 +7,7 @@ import {
   type GooglePlace,
   type GoogleSpine,
 } from "./google-spine.ts";
-import { digest, embedPair, embeddingFacts, embeddingFields } from "./embedding.ts";
+import { embedPair, embeddingFacts, embeddingFields } from "./embedding.ts";
 import {
   defaultImageKnobs,
   fetchInstagramPosts,
@@ -232,13 +232,7 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment |
       description,
     });
     const vectors = await embedPair(facts, name, openaiKey);
-    const fields = embeddingFields(
-      vectors.summary,
-      vectors.name,
-      await digest(facts),
-      await digest(name),
-      facts,
-    );
+    const fields = embeddingFields(vectors.summary, vectors.name, facts);
     if (fields) Object.assign(patch, fields);
   }
   const steps: RanSteps = { links: discovered.report };
@@ -321,13 +315,7 @@ async function buildQuickEnrichment(opts: {
         description: written,
       });
       const vectors = await embedPair(facts, opts.name, openaiKey);
-      const fields = embeddingFields(
-        vectors.summary,
-        vectors.name,
-        await digest(facts),
-        await digest(opts.name),
-        facts,
-      );
+      const fields = embeddingFields(vectors.summary, vectors.name, facts);
       if (fields) Object.assign(patch, fields);
     } catch {
       // Quick still writes Google's record when the vectors fail.

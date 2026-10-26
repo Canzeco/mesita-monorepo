@@ -23,7 +23,6 @@ function sample(over: Partial<EmbeddablePlace> = {}): EmbeddablePlace {
     address: "Calle Durango 200",
     price_level: 3,
     embedding: null,
-    embedding_source_hash: null,
     embedding_source_text: null,
     ...over,
   };
