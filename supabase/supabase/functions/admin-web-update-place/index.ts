@@ -111,6 +111,8 @@ type UpdateBody = {
   // Generic products payload. Menu is one subtype under products.menu.
   products?: { menu?: unknown[] | null } | null;
   tags?: string[];
+  /** Profile's Actions toggle; stored as the operator's reservation channel. */
+  reservations_enabled?: boolean;
 };
 
 Deno.serve(async (req) => {
@@ -234,6 +236,28 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: `Unknown tag: ${unknown[0]}` }, 400);
     }
     update.tags = tags;
+  }
+  // Profile's Actions toggle (MESITA-2787). The answer is stored as the
+  // operator's reservation channel, the one column a later Enrich cannot
+  // overwrite (place_reservations_follow_channel, MESITA-1737): off is
+  // 'none'; on keeps a channel already picked, else 'phone', how the
+  // Reservationist books.
+  if ("reservations_enabled" in body) {
+    if (typeof body.reservations_enabled !== "boolean") {
+      return json({ ok: false, error: "reservations_enabled must be true or false" }, 400);
+    }
+    if (body.reservations_enabled) {
+      const { data: current } = await admin
+        .from("place_profiles")
+        .select("reservation_channel")
+        .eq("id", placeId)
+        .maybeSingle();
+      const channel = (current as { reservation_channel?: string | null } | null)?.reservation_channel;
+      update.reservation_channel = channel && channel !== "none" ? channel : "phone";
+    } else {
+      update.reservation_channel = "none";
+    }
+    update.reservations_enabled = body.reservations_enabled;
   }
   if (Object.keys(update).length === 0) {
     return json({ ok: false, error: "No editable fields provided" }, 400);
