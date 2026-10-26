@@ -56,12 +56,14 @@ jobs:
       # without pooler-url it dials the database's IPv6-only direct host,
       # which runners cannot reach (MESITA-2781). pooler-url is the IPv4
       # pooler `supabase link` saves: host and user, no password; the CLI
-      # logs in through SUPABASE_ACCESS_TOKEN.
+      # logs in through SUPABASE_ACCESS_TOKEN. printf, never echo: with a
+      # trailing newline the CLI ignores pooler-url and dials IPv6 again
+      # (MESITA-2782); `supabase link` writes both files without one.
       - name: Link the Supabase project
         run: |
           mkdir -p supabase/supabase/.temp
-          echo yjalywfzdelacdzccpgb > supabase/supabase/.temp/project-ref
-          echo postgresql://postgres.yjalywfzdelacdzccpgb@aws-1-us-west-2.pooler.supabase.com:5432/postgres > supabase/supabase/.temp/pooler-url
+          printf '%s' yjalywfzdelacdzccpgb > supabase/supabase/.temp/project-ref
+          printf '%s' postgresql://postgres.yjalywfzdelacdzccpgb@aws-1-us-west-2.pooler.supabase.com:5432/postgres > supabase/supabase/.temp/pooler-url
 
       # The report goes to the job summary as well as the log.
       - name: Audit
