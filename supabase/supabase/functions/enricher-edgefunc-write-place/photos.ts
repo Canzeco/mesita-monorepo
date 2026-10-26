@@ -1,18 +1,19 @@
-// The Mesita gallery Render may send. Only http(s) links, ten at most. The
-// write copies the bytes into place-images and stores durable URLs on
-// mesita_photos; legacy `photos` on the patch is accepted only in flight.
+// The gallery Render may send. Only http(s) links, ten at most. The write
+// copies the bytes into place-images and stores durable URLs on `photos`, the
+// one gallery (MESITA-2794): Enrich overwrites it. `mesita_photos` on the
+// patch is accepted only in flight, from a Render build older than the merge.
 
 const CAP = 10;
 
-export function mesitaGalleryFromPatch(patch: Record<string, unknown>): string[] {
-  return galleryUrls(patch.mesita_photos ?? patch.photos);
+export function galleryFromPatch(patch: Record<string, unknown>): string[] {
+  return galleryUrls(patch.photos ?? patch.mesita_photos);
 }
 
-/** Drop unified and split photo catalogs so the commit does not rewrite them. */
-export function patchWithoutPhotoCatalogs(
+/** Drop every gallery key so the commit writes `photos` only on purpose. */
+export function patchWithoutGallery(
   patch: Record<string, unknown>,
 ): Record<string, unknown> {
-  const { photos: _legacy, mesita_photos: _mesita, ...rest } = patch;
+  const { photos: _photos, mesita_photos: _mesita, google_photos: _google, ...rest } = patch;
   return rest;
 }
 

@@ -128,7 +128,7 @@ export function MultiplePlacesClient() {
         id={PIPELINE_STEPS[4].id}
         tint="sky"
         title={PIPELINE_STEPS[4].label}
-        blurb="Google facts and google_photos only — never Mesita presentation or mesita_photos. One place ID per run."
+        blurb="Google facts, and the gallery's hero while the gallery is one photo. Never Mesita presentation. One place ID per run."
       >
         <WriteBox
           id={PIPELINE_STEPS[4].id}

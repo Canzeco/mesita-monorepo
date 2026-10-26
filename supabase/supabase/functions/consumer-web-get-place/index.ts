@@ -22,7 +22,6 @@ import {
   loadRequestThreshold,
   placeRequestState,
 } from "../_shared/place-requests.ts";
-import { effectivePlacePhotos } from "../_shared/effective-place-photos.ts";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -96,11 +95,7 @@ Deno.serve(async (req) => {
     contentState: row.content_state,
     enrichedAt: row.enriched_at,
   });
-  const place = {
-    ...row,
-    ...request,
-    photos: effectivePlacePhotos(row as Record<string, unknown>),
-  };
+  const place = { ...row, ...request };
 
   return json({ ok: true, place, tags });
 });

@@ -162,7 +162,7 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment |
     knobs: images,
     openaiKey,
   });
-  if (photos.urls.length > 0) spine.patch.mesita_photos = photos.urls;
+  if (photos.urls.length > 0) spine.patch.photos = photos.urls;
 
   let description = spine.description;
   if (!description) {

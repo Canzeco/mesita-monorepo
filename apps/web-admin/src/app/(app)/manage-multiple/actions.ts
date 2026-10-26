@@ -290,7 +290,7 @@ export async function enrichPlace(placeId: string): Promise<Result<true>> {
   return enrichPlaces([placeId]);
 }
 
-// ── Update (Google factuals + google_photos only, MESITA-2737) ───────────
+// ── Update (Google factuals; the hero while the gallery is one photo, MESITA-2794) ──
 
 export async function updatePlaceGoogle(placeId: string): Promise<Result<true>> {
   const id = placeId.trim();

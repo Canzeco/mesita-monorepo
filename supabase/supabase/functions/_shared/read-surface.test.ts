@@ -163,7 +163,7 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "_shared/enrich-fill.ts", // enrichment jsonb only, to see which ladder steps already completed (MESITA-2178)
   "_shared/enrich-start.ts", // the saved profile an Enrich run reads back, and its updated_at (MESITA-2420)
   "_shared/google-refetch.ts", // the phone, endpoint and pins the wrong-number refetch compares (MESITA-2420)
-  "_shared/admin-google-place-update.ts", // enrichment_sources pins + mesita_photos guard read (MESITA-2737)
+  "_shared/admin-google-place-update.ts", // enrichment_sources pins + the gallery length read (MESITA-2794)
   "admin-web-search-places/index.ts",
   "admin-web-get-overview/index.ts",
   "admin-web-reload-place-reviews/index.ts",
