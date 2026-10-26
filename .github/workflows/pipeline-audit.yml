@@ -52,9 +52,16 @@ jobs:
           version: 2.100.0
 
       # The catalog-membership check reads the cloud with `supabase db query
-      # --linked`, which takes the project from this file (MESITA-2766).
+      # --linked` (MESITA-2766). It takes the project from project-ref, and
+      # without pooler-url it dials the database's IPv6-only direct host,
+      # which runners cannot reach (MESITA-2781). pooler-url is the IPv4
+      # pooler `supabase link` saves: host and user, no password; the CLI
+      # logs in through SUPABASE_ACCESS_TOKEN.
       - name: Link the Supabase project
-        run: mkdir -p supabase/supabase/.temp && echo yjalywfzdelacdzccpgb > supabase/supabase/.temp/project-ref
+        run: |
+          mkdir -p supabase/supabase/.temp
+          echo yjalywfzdelacdzccpgb > supabase/supabase/.temp/project-ref
+          echo postgresql://postgres.yjalywfzdelacdzccpgb@aws-1-us-west-2.pooler.supabase.com:5432/postgres > supabase/supabase/.temp/pooler-url
 
       # The report goes to the job summary as well as the log.
       - name: Audit

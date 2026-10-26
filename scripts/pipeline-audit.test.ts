@@ -14,6 +14,7 @@ import {
   ACCEPTED_FILE,
   audit,
   bundleOf,
+  cliError,
   efDeploy,
   type Exec,
   FUNCTIONS_PATH,
@@ -251,6 +252,21 @@ Deno.test("a merge owes only the checks its own branch declared", async () => {
   w.merges[1].required = null;
   w.merges[1].runs = [];
   assertEquals(codes(await audit(ioFor(w), {})), []);
+});
+
+// MESITA-2781: the first CI run's real stderr, trimmed. The report showed only the WARN.
+Deno.test("a failed CLI call reports the CLI's error, not the WARN and stack noise around it", () => {
+  const stderr = [
+    "WARN: environment variable is unset: TWILIO_AUTH_TOKEN",
+    "github.com/supabase/cli/internal/utils/flags/db_url.go:154 (0x100e4db6c)",
+    "runtime/asm_arm64.s:1268 (0x10021ad14)",
+    "",
+    "IPv6 is not supported on your current network: dial tcp [2600:1f14:b9e:7b00:2073:c663:6dbb:7c18]:5432: connect: no route to host",
+    "Run supabase link --project-ref yjalywfzdelacdzccpgb to setup IPv4 connection.",
+  ].join("\n");
+  const message = cliError(stderr);
+  assertStringIncludes(message, "IPv6 is not supported on your current network");
+  assert(!message.includes("WARN") && !message.includes("0x"), message);
 });
 
 Deno.test("a membership query that fails is unknown and names what it needs", async () => {
