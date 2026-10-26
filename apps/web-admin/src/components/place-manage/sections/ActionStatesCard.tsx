@@ -31,7 +31,9 @@ export function ActionStatesCard({ place }: { place: AdminPlace }) {
   async function toggle() {
     setPending(true);
     setError(null);
-    const r = await updatePlace({ id: place.id, reservations_enabled: !on });
+    const current = place.reservation_channel;
+    const channel = on ? "none" : current && current !== "none" ? current : "phone";
+    const r = await updatePlace({ id: place.id, reservations_enabled: !on, reservation_channel: channel });
     setPending(false);
     if (!r.ok) {
       setError(r.error);
