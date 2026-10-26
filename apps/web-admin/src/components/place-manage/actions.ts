@@ -157,6 +157,10 @@ export type AdminPlace = {
    *  derived from Enriched, ready and Disabled; Select / Unselect writes it
    *  through admin-web-set-place-selected. */
   selected?: boolean;
+  /** Boost (MESITA-2789): the paid tier, `places.boost_tier`, 0 none ·
+   *  1 2x · 2 5x · 3 10x. Derived from guests' subscriptions; never set
+   *  here. Profile States shows it as Boosted (MESITA-2795). */
+  boost_tier?: number;
   /** Guest request count — still on the row for enrich threshold; not in admin UI. */
   request_count?: number;
   /** Unique members who viewed / saved (admin-web-get-overview). */
