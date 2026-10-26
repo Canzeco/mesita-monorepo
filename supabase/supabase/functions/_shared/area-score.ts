@@ -28,6 +28,7 @@
 
 import { clearsPopularityFloor, halfDistanceKm, logPopularity, proximity } from "./pipeline-signals.ts";
 import { haversineKm } from "./geo.ts";
+import { BOOST_FACTOR } from "./boost.ts";
 
 /** Where a candidate's card comes from. `selected` = Mesita Selected, the
  *  operator's mark on the row (`places.selected`, MESITA-2707; independent
@@ -77,9 +78,9 @@ export type AreaCandidate = {
    *  no Google hit). Carried into the diagnostics, never re-judged here. */
   ready?: 1 | null;
   reviews?: 1 | null;
-  /** Spotlight (MESITA-1998): the paid tier, `places.spotlight_tier`
-   *  (0 · 1 · 2); absent = 0. */
-  spotlightTier?: number;
+  /** Boost (MESITA-2789): the paid tier, `places.boost_tier`
+   *  (0 · 1 · 2 · 3 = none · 2x · 5x · 10x); absent = 0. */
+  boostTier?: number;
 };
 
 /**
@@ -133,22 +134,22 @@ function factor(x: number): number {
  *  operator's Selected boost for a Mesita Selected place, 1 for every other
  *  place. A missing, non-finite or non-positive factor reads 1.
  *
- *  Spotlight (MESITA-1998, Pato: the paid tier "cambia qué tanto aparece"):
- *  a Spotlight place takes the same boost, a Spotlight Plus place the boost
- *  squared. A place that is both Selected and Spotlighted takes the larger,
- *  never the product: paying never stacks on the operator's mark.
- *  decision: Spotlight reuses `map.selectedFactor` rather than a new knob,
- *  so the operator keeps one dial for "how much a boost is worth". */
+ *  Boost (MESITA-2789, was Spotlight MESITA-1998): a paid place takes its
+ *  tier's literal factor, ×2 · ×5 · ×10 (BOOST_FACTOR). A place that is
+ *  both Selected and Boosted takes the larger, never the product: paying
+ *  never stacks on the operator's mark. Boost 5x and 10x outrank the
+ *  default Selected ×3 (Pato, MESITA-2789 D1: accepted); the Sponsored
+ *  mark tells the guest which is which. */
 export function selectedFactor(
-  c: Pick<AreaCandidate, "source" | "spotlightTier">,
+  c: Pick<AreaCandidate, "source" | "boostTier">,
   ctx: Pick<AreaContext, "selectedFactor">,
 ): number {
   const raw = ctx.selectedFactor;
   const s = typeof raw === "number" && Number.isFinite(raw) && raw > 0 ? raw : 1;
   const selected = c.source === "selected" ? s : 1;
-  const tier = c.source === "google" ? 0 : c.spotlightTier ?? 0;
-  const spotlight = tier >= 2 ? s * s : tier >= 1 ? s : 1;
-  return Math.max(selected, spotlight);
+  const tier = c.source === "google" ? 0 : c.boostTier ?? 0;
+  const boost = tier >= 3 ? BOOST_FACTOR[3] : tier >= 2 ? BOOST_FACTOR[2] : tier >= 1 ? BOOST_FACTOR[1] : 1;
+  return Math.max(selected, boost);
 }
 
 /** Popularity, or null when the place has no rating or no review count. */

@@ -13,7 +13,7 @@ import { MediaBox } from "./place-detail/media";
 import { ProfileSummary } from "./place-detail/profile-summary";
 import { GoogleReviewsBox } from "./place-detail/reviews";
 import { PlaceCreateFailedPanel } from "./place-detail/PlaceCreateFailedPanel";
-import { NO_OVERVIEW, PlaceEmptyScreen } from "./place-detail/empty-screen";
+import { NO_BOOST, NO_OVERVIEW, PlaceEmptyScreen } from "./place-detail/empty-screen";
 import { PlaceTabBar, type PlaceTab } from "./place-detail/tabs";
 import { SoonScreen } from "./place-detail/soon-screen";
 import { LinksBox, TagsBox } from "./place-detail/tags-links-meta";
@@ -31,8 +31,8 @@ import { LinksBox, TagsBox } from "./place-detail/tags-links-meta";
 //      (MESITA-2307, MESITA-2679); then one row of actions: the heart,
 //      Reserve · Directions, then Contact (MESITA-2618/2619/2623; no
 //      pinned bar).
-//   2. The sticky strip, Overview · Reviews · Products (Soon) · Rewards (Soon),
-//      for every place (MESITA-2332). While a Google-only profile is being
+//   2. The sticky strip, Overview · Reviews · Products (Soon) · Rewards (Soon)
+//      · Boost (MESITA-2789), for every place (MESITA-2332). While a Google-only profile is being
 //      created, Overview is one "No overview yet" screen like the other
 //      empty tabs (MESITA-2685), and a refused create shows only the refusal
 //      band; there is no vote
@@ -46,9 +46,14 @@ export function PlaceDetailBody({
   actions,
   creating,
   social,
+  boost,
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
+  /** The Boost tab's body (MESITA-2789), drawn by the host: the consumer
+   *  passes its subscribe/cancel pane; without it the tab explains where
+   *  Boost is bought. */
+  boost?: React.ReactNode;
   /** Set while a Google-only profile is being created (MESITA-2307): a
    *  Creating fact leads the facts row, or a refusal says why. */
   creating?: PlaceCreatingView | null;
@@ -106,6 +111,7 @@ export function PlaceDetailBody({
           {tab === "reviews" && <GoogleReviewsBox place={place} />}
           {tab === "products" && <SoonScreen title="Products" />}
           {tab === "rewards" && <SoonScreen title="Rewards" />}
+          {tab === "boost" && (boost ?? <PlaceEmptyScreen {...NO_BOOST} />)}
       </div>
     </div>
   );

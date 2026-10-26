@@ -51,6 +51,10 @@ export type PlaceDetail = {
   is_profile_ready: boolean;
   /** Enricher finished (`places.enriched_at`). False → Enrich vote tab. */
   is_enriched: boolean;
+  /** Boost (MESITA-2789): the paid tier, 0 none · 1 2x · 2 5x · 3 10x
+   *  (`places.boost_tier`). Above 0 the summary shows Sponsored. Absent on
+   *  callers that never read it. */
+  boost_tier?: number;
   /** Consumer vote count. Progress toward the Crenup threshold. */
   request_count: number;
   request_threshold: number;

@@ -15,8 +15,9 @@ import { PLACE_BASE } from "@/lib/place-base";
 //
 // Profile has its own segment (MESITA-1732): the bare place URL is a temporary
 // redirect onto it, so the view an operator is most likely to link to has a
-// link.
-export const PLACE_TABS = ["profile", "reviews", "preview", "admin"] as const;
+// link. Boost (MESITA-2789) is the fifth: who pays for this place's paid
+// visibility, read-only.
+export const PLACE_TABS = ["profile", "reviews", "preview", "admin", "boost"] as const;
 export type PlaceTab = (typeof PLACE_TABS)[number];
 
 export const PLACE_TAB_LABEL: Record<PlaceTab, string> = {
@@ -24,6 +25,7 @@ export const PLACE_TAB_LABEL: Record<PlaceTab, string> = {
   reviews: "Reviews",
   preview: "Preview",
   admin: "Admin",
+  boost: "Boost",
 };
 
 /** A view's address. No organization rides along any more (MESITA-1807), and

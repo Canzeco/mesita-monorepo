@@ -219,8 +219,8 @@ const PROFILES_READ_ALLOWLIST = [
   "enricher-edgefunc-write-place/index.ts",
   // A refused Enrich start reads content_state and enriched_at to turn enriching off (MESITA-2420).
   "_shared/enrich-start.ts",
-  // Spotlight (MESITA-1998): name, state and tier of the place a guest backs.
-  "_shared/spotlight.ts",
+  // Boost (MESITA-1998): name, state and tier of the place a guest backs.
+  "_shared/boost.ts",
 ];
 
 Deno.test("PROFILES READ: no new raw reader of profiles outside the allowlist", async () => {
@@ -244,8 +244,8 @@ Deno.test("PLACE ROW READ: no new raw reader of places outside the allowlist", a
 
 const CONSUMER_READ_ALLOWLIST = [
   "_shared/consumer-doc.ts", // THE consumer door
-  // Spotlight (MESITA-1998): first names of backers who chose to be shown.
-  "_shared/spotlight.ts",
+  // Boost (MESITA-1998): first names of backers who chose to be shown.
+  "_shared/boost.ts",
   // Instagram verify (MESITA-2578) reads avatar_url alone, error checked, to
   // keep an uploaded photo; the write goes through writeConsumer.
   "_shared/instagram-avatar.ts",
