@@ -61,7 +61,6 @@ import {
 import { persistBusinessFieldPins } from "../_shared/field-correction-writer.ts";
 import { recordAdminOperatorEvent } from "../_shared/admin-operator-events.ts";
 
-const MAX_PHOTOS = ENRICH_FIELD_LIMITS.photos.max;
 const MAX_TAGS = ENRICH_FIELD_LIMITS.tagsPerPlace.max;
 const MAX_TAG_LEN = ENRICH_FIELD_LIMITS.tagSlugLength.max;
 const MAX_DESCRIPTION_LEN = ENRICH_FIELD_LIMITS.description.max;
@@ -96,8 +95,9 @@ type UpdateBody = {
   // whitelist below never reads them.
   hours?: PlaceHours | null;
   phone?: string | null;
-  /** Mesita-owned gallery; first URL is the hero when non-empty. */
-  mesita_photos?: string[];
+  /** Refused: the gallery is not edited here (MESITA-2794). */
+  photos?: unknown;
+  mesita_photos?: unknown;
   // External + social channels
   website_url?: string | null;
   instagram_url?: string | null;
@@ -197,7 +197,7 @@ Deno.serve(async (req) => {
     }
     update.phone = raw;
   }
-  const mediaError = applyMediaUpdates(body, update, MAX_PHOTOS);
+  const mediaError = applyMediaUpdates(body, update);
   if (mediaError) return mediaError;
 
   // External + social URLs — each optional, each validated to https://.

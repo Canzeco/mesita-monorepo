@@ -55,11 +55,8 @@ const COLUMNS: readonly string[] = [
   "pitch",
   "story",
   "description",
+  // The one gallery (MESITA-2794).
   "photos",
-  // Split catalogs (MESITA-2736): writers land in one or the other; readers use
-  // effectivePlacePhotos. Legacy `photos` stays until every writer migrates.
-  "google_photos",
-  "mesita_photos",
   "menu_pdf_url",
   // Optional display name for menu_pdf_url, e.g. "Dinner menu" /
   // "Wine list". Null = consumer falls back to "Full menu" copy.
@@ -137,9 +134,6 @@ const PLACE_CARD_EXCLUDED_COLUMNS = new Set([
   "google_reviews",
   "menus",
   "popular_times",
-  // Unified column — card reads google_photos + mesita_photos and resolves
-  // effective `photos` in stripInternal (MESITA-2736).
-  "photos",
 ]);
 
 // The real card projection: every public column EXCEPT the four heavy

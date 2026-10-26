@@ -305,7 +305,7 @@ export async function enrichPlace(
   return enrichPlaces([placeId], overwrite || _overwrite.length > 0, depth);
 }
 
-// ── Update (Google factuals + google_photos only, MESITA-2737) ───────────
+// ── Update (Google factuals; the hero while the gallery is one photo, MESITA-2794) ──
 
 export async function updatePlaceGoogle(placeId: string): Promise<Result<true>> {
   const id = placeId.trim();

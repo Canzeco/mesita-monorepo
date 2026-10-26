@@ -50,3 +50,19 @@ test("on replaces links and the tag set", () => {
   assert.equal(next.instagram_url, "https://instagram.com/new");
   assert.deepEqual(next.tags, ["desayuno"]);
 });
+
+test("off replaces Create's one Google photo and keeps an enriched gallery", () => {
+  const ranked = ["https://a.example/1.jpg", "https://a.example/2.jpg"];
+  const fromCreate = applyOverwrite({
+    overwrite: false,
+    saved: { photos: ["https://google.example/hero.jpg"] },
+    patch: { photos: ranked },
+  });
+  assert.deepEqual(fromCreate.photos, ranked);
+  const enriched = applyOverwrite({
+    overwrite: false,
+    saved: { photos: ["https://a.example/old1.jpg", "https://a.example/old2.jpg"] },
+    patch: { photos: ranked },
+  });
+  assert.deepEqual(enriched.photos, ["https://a.example/old1.jpg", "https://a.example/old2.jpg"]);
+});

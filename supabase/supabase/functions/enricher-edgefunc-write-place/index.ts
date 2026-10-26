@@ -28,7 +28,7 @@ import { reportCrenupSteps, stepFailed } from "../_shared/crenup-report.ts";
 import { enrichmentCommit, enrichmentConflicts } from "./commit.ts";
 import { fillAtlasProfile } from "./synthesize-profile.ts";
 import { withoutFoundFlags } from "../_shared/profile-patch-found.ts";
-import { mesitaGalleryFromPatch, patchWithoutPhotoCatalogs } from "./photos.ts";
+import { galleryFromPatch, patchWithoutGallery } from "./photos.ts";
 import { closedListingPatch, contentStateAfterStop, enrichmentStop } from "./stop.ts";
 import { enrichStepOutcomes } from "./steps.ts";
 
@@ -145,23 +145,23 @@ Deno.serve(async (req) => {
     console.log(`[enrich] ${commit.placeId}: kept pinned ${unpinned.skipped.join(", ")}`);
   }
   let patch = unpinned.update;
-  const gallery = mesitaGalleryFromPatch(patch);
+  const gallery = galleryFromPatch(patch);
   let stored: { sourceUrl: string; publicUrl: string }[] = [];
   if (gallery.length === 0) {
-    patch = patchWithoutPhotoCatalogs(patch);
+    patch = patchWithoutGallery(patch);
   } else if (!commit.mirrorPhotos) {
-    patch = { ...patchWithoutPhotoCatalogs(patch), mesita_photos: gallery };
+    patch = { ...patchWithoutGallery(patch), photos: gallery };
     stored = gallery.map((url) => ({ sourceUrl: url, publicUrl: url }));
   } else {
     const durable = await mirrorPlacePhotos(admin, envRes.env.url, gallery);
     if (durable.length > 0) {
       patch = {
-        ...patchWithoutPhotoCatalogs(patch),
-        mesita_photos: durable.map((row) => row.publicUrl),
+        ...patchWithoutGallery(patch),
+        photos: durable.map((row) => row.publicUrl),
       };
       stored = durable;
     } else {
-      patch = patchWithoutPhotoCatalogs(patch);
+      patch = patchWithoutGallery(patch);
     }
   }
   const split = withoutFoundFlags(patch);

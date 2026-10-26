@@ -2,7 +2,7 @@ import { assertEquals, assertThrows } from "jsr:@std/assert@1";
 import {
   assertGoogleUpdatePatchSafe,
   googleBasicsToUpdatePatch,
-  GOOGLE_UPDATE_FORBIDDEN_COLUMNS,
+  galleryTakesGoogleHero,
 } from "./admin-google-place-update.ts";
 import type { GoogleBasics } from "./enrich-google-basics.ts";
 
@@ -46,31 +46,29 @@ function sampleBasics(): GoogleBasics {
   };
 }
 
-Deno.test("googleBasicsToUpdatePatch writes google_photos, never photos or mesita_photos", () => {
+Deno.test("googleBasicsToUpdatePatch never carries the gallery", () => {
   const patch = googleBasicsToUpdatePatch({
     basics: sampleBasics(),
     businessStatus: "OPERATIONAL",
-    googlePhotos: ["https://cdn.example/1.jpg"],
     googlePrimaryType: "restaurant",
     googleTypes: ["restaurant", "food"],
     now: NOW,
   });
-  assertEquals(patch.google_photos, ["https://cdn.example/1.jpg"]);
   assertEquals(patch.google_tags, ["dine_in", "live_music"]);
   assertEquals("photos" in patch, false);
-  assertEquals("mesita_photos" in patch, false);
+  assertEquals("google_photos" in patch, false);
   assertEquals(patch.business_state, "OPERATIONAL");
 });
 
-Deno.test("assertGoogleUpdatePatchSafe rejects mesita catalog keys", () => {
-  assertThrows(
-    () => assertGoogleUpdatePatchSafe({ mesita_photos: ["x"] }),
-    Error,
-    "mesita_photos",
-  );
+Deno.test("assertGoogleUpdatePatchSafe rejects the gallery", () => {
+  assertThrows(() => assertGoogleUpdatePatchSafe({ photos: ["x"] }), Error, "photos");
 });
 
-Deno.test("forbidden column list includes mesita catalog keys", () => {
-  assertEquals(GOOGLE_UPDATE_FORBIDDEN_COLUMNS.includes("mesita_photos"), true);
-  assertEquals(GOOGLE_UPDATE_FORBIDDEN_COLUMNS.includes("photos"), true);
+Deno.test("Update takes Google's hero only while the gallery is at most one photo", () => {
+  assertEquals(galleryTakesGoogleHero([]), true);
+  assertEquals(galleryTakesGoogleHero(null), true);
+  assertEquals(galleryTakesGoogleHero(["https://a.example/1.jpg"]), true);
+  assertEquals(galleryTakesGoogleHero(["https://a.example/1.jpg", " "]), true);
+  // An enriched gallery is never overwritten.
+  assertEquals(galleryTakesGoogleHero(["https://a.example/1.jpg", "https://a.example/2.jpg"]), false);
 });

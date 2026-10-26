@@ -16,7 +16,6 @@ import { relativeLabel } from "./lib/format";
 import { DEFAULT_CURRENCY } from "./lib/money";
 import { isReserveActionEnabled } from "./lib/place-profile-actions";
 import type { Row } from "./place-to-detail-helpers";
-import { effectivePlacePhotos } from "./effective-place-photos";
 import {
   arr,
   computeOpenState,
@@ -107,7 +106,7 @@ export function placeRowToDetail(row: Row, catalogTags?: ResolvedTag[]): PlaceDe
             ? "requested"
             : "listed",
 
-    photos: effectivePlacePhotos(row),
+    photos: arr<string>(row.photos),
 
     // Google atmosphere chips (MESITA-2255). places.tags is not this box.
     tags: googleTagChips(row.google_tags),

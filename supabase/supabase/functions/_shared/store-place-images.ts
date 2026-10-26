@@ -232,7 +232,7 @@ async function processAssetsInBackground(
     table: "profiles",
     mode: "update",
     id: projectId,
-    patch: { mesita_photos: finalPhotos },
+    patch: { photos: finalPhotos },
   });
   if (!placeRes.ok) {
     console.error("[store-place-images] place_update:", placeRes.error);
