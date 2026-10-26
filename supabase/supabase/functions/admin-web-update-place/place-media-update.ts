@@ -3,7 +3,7 @@ import { isUrl } from "./place-urls.ts";
 import { optString } from "./place-update-utils.ts";
 
 type MediaUpdateBody = {
-  /** Legacy unified gallery — admin must use mesita_photos (MESITA-2744). */
+  /** The one gallery is written by Create, Enrich and Update only (MESITA-2794). */
   photos?: unknown;
   mesita_photos?: unknown;
   menu_pdf_url?: unknown;
@@ -102,24 +102,14 @@ function normalizeMenuEntries(
 export function applyMediaUpdates(
   body: MediaUpdateBody,
   update: Record<string, unknown>,
-  maxPhotos: number,
 ): Response | null {
-  if ("photos" in body) {
+  if ("photos" in body || "mesita_photos" in body) {
     return json({
       ok: false,
-      code: "photos_retired",
+      code: "gallery_not_editable",
       error:
-        "photos is not writable here — send mesita_photos for the Mesita gallery; google_photos is refreshed by Update.",
+        "The gallery is not edited here: Create sets Google's hero, Enrich rebuilds it, and Update refreshes the hero while it is one photo.",
     }, 400);
-  }
-  if ("mesita_photos" in body) {
-    if (!Array.isArray(body.mesita_photos)) {
-      return json({
-        ok: false,
-        error: "mesita_photos must be an array of URL strings",
-      }, 400);
-    }
-    update.mesita_photos = body.mesita_photos.filter(isUrl).slice(0, maxPhotos);
   }
 
   if ("menu_pdf_url" in body) {

@@ -1,9 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import {
-  galleryUrls,
-  mesitaGalleryFromPatch,
-  patchWithoutPhotoCatalogs,
-} from "./photos.ts";
+import { galleryFromPatch, galleryUrls, patchWithoutGallery } from "./photos.ts";
 
 Deno.test("the gallery keeps ten http links and drops the rest", () => {
   const urls = Array.from({ length: 12 }, (_, i) => `https://example.com/${i}.jpg`);
@@ -11,26 +7,27 @@ Deno.test("the gallery keeps ten http links and drops the rest", () => {
   assertEquals(galleryUrls("https://example.com/a.jpg"), []);
 });
 
-Deno.test("mesitaGalleryFromPatch prefers mesita_photos over legacy photos", () => {
+Deno.test("the gallery is photos; an older Render's mesita_photos still lands", () => {
   assertEquals(
-    mesitaGalleryFromPatch({
+    galleryFromPatch({
+      photos: ["https://example.com/p.jpg"],
       mesita_photos: ["https://example.com/m.jpg"],
-      photos: ["https://example.com/legacy.jpg"],
     }),
-    ["https://example.com/m.jpg"],
+    ["https://example.com/p.jpg"],
   );
   assertEquals(
-    mesitaGalleryFromPatch({ photos: ["https://example.com/legacy.jpg"] }),
-    ["https://example.com/legacy.jpg"],
+    galleryFromPatch({ mesita_photos: ["https://example.com/m.jpg"] }),
+    ["https://example.com/m.jpg"],
   );
 });
 
-Deno.test("patchWithoutPhotoCatalogs drops photos and mesita_photos", () => {
+Deno.test("patchWithoutGallery drops every gallery key", () => {
   assertEquals(
-    patchWithoutPhotoCatalogs({
+    patchWithoutGallery({
       google_name: "Pujol",
       photos: ["x"],
       mesita_photos: ["y"],
+      google_photos: ["z"],
       description: "d",
     }),
     { google_name: "Pujol", description: "d" },

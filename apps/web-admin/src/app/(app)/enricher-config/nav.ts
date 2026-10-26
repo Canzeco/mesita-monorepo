@@ -1,6 +1,7 @@
 import { Layers, MapPinPlus, Pencil, RefreshCw } from "lucide-react";
 
-// Two sidebar entries since MESITA-2083 — "Creation" and "Enrichment" — over
+// Two sidebar entries since MESITA-2083 — "Creating" and "Enriching" (were
+// Creation and Enrichment until MESITA-2800, one -ing verb per row) — over
 // the one Crenup client (CrenupClient's `view`). Pato: "Models, Creation,
 // Enrichment, Discovery, Reservations".
 //
@@ -13,13 +14,13 @@ import { Layers, MapPinPlus, Pencil, RefreshCw } from "lucide-react";
 // data onto it. They were a wand and refresh arrows.
 export const CREATION_PARENT = {
   href: "/enricher-config/creation",
-  label: "Creation",
+  label: "Creating",
   Icon: MapPinPlus,
 } as const;
 
 export const ENRICHMENT_PARENT = {
   href: "/enricher-config/enrichment",
-  label: "Enrichment",
+  label: "Enriching",
   Icon: Layers,
 } as const;
 

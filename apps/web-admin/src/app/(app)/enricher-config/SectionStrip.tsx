@@ -26,8 +26,8 @@ const STRIP_LINKS: Record<CrenupView, { id: string; label: string }[]> = {
 };
 
 const STRIP_TITLE: Record<CrenupView, string> = {
-  creation: "Creation",
-  enrichment: "Enrichment",
+  creation: "Creating",
+  enrichment: "Enriching",
 };
 
 export function SectionStrip({ view }: { view: CrenupView }) {
