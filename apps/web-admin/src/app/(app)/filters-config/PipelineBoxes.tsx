@@ -1,7 +1,7 @@
 "use client";
 
-// Discovery: ONE page, four boxes (MESITA-2327): Name Pipeline by Admin ·
-// Name Pipeline · Area Pipeline · Deep Pipeline. Each box is a PipelineBox
+// Discovery: ONE page, four boxes (MESITA-2327), four pipelines (Pato,
+// MESITA-2779): Admin Name · Consumer Name · Consumer Area · Consumer Deep. Each box is a PipelineBox
 // and saves only its own slices, so two boxes can never overwrite each other.
 // Catalog and Map are views of the Area pipeline, ranked one way, so their
 // knobs sit in the Area box; the Chat Agent is Deep's caller, so its prompt sits in the Deep box.
@@ -113,7 +113,7 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-// 1 ─ Name Pipeline by Admin ──────────────────────────────────────────────
+// 1 ─ Admin Name Pipeline ─────────────────────────────────────────────────
 export function NameAdminBox(seed: ConfigSeed<DiscoveryConfig>) {
   const editor = useDiscoveryEditor(seed);
   const { cfg, setCfg, saved, setOk, pending, loadBlocked } = editor;
@@ -128,7 +128,7 @@ export function NameAdminBox(seed: ConfigSeed<DiscoveryConfig>) {
     <PipelineBox
       id="s-name-admin"
       pipeline="name"
-      title="Name Pipeline by Admin"
+      title="Admin Name Pipeline"
       icon={<ScanSearch className={ICON} />}
       callers={["Admin Single Place › Find"]}
       explanation={
@@ -190,7 +190,7 @@ export function NameAdminBox(seed: ConfigSeed<DiscoveryConfig>) {
   );
 }
 
-// 2 ─ Name Pipeline ────────────────────────────────────────────────────────
+// 2 ─ Consumer Name Pipeline ───────────────────────────────────────────────
 export function NameBox(seed: ConfigSeed<DiscoveryConfig>) {
   const editor = useDiscoveryEditor(seed);
   const { cfg, setCfg, saved, setOk, pending, loadBlocked } = editor;
@@ -211,7 +211,7 @@ export function NameBox(seed: ConfigSeed<DiscoveryConfig>) {
     <PipelineBox
       id="s-name"
       pipeline="name"
-      title="Name Pipeline"
+      title="Consumer Name Pipeline"
       icon={<Search className={ICON} />}
       callers={["The guest's Search bar"]}
       explanation={
@@ -283,7 +283,7 @@ export function NameBox(seed: ConfigSeed<DiscoveryConfig>) {
   );
 }
 
-// 3 ─ Area Pipeline ────────────────────────────────────────────────────────
+// 3 ─ Consumer Area Pipeline ───────────────────────────────────────────────
 export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
   const editor = useDiscoveryEditor(seed);
   const { cfg, setCfg, saved, setOk, pending, loadBlocked } = editor;
@@ -305,7 +305,7 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
     <PipelineBox
       id="s-area"
       pipeline="area"
-      title="Area Pipeline"
+      title="Consumer Area Pipeline"
       icon={<MapPin className={ICON} />}
       explanation={
         <>
@@ -323,6 +323,11 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             same way: score = Proximity × Popularity, × the Selected boost
             for a Selected place. No point: Mesita Popularity alone, by
             Popularity × the Selected boost.
+          </p>
+          <p className="mt-2">
+            One pipeline for the Map and Home: the same sources, gates, score
+            and numbers. Only Places shown differs, the cut each view takes
+            from the same ranked list.
           </p>
         </>
       }
@@ -507,7 +512,7 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
   );
 }
 
-// 4 ─ Deep Pipeline ────────────────────────────────────────────────────────
+// 4 ─ Consumer Deep Pipeline ───────────────────────────────────────────────
 // Soon (MESITA-2345): Deep's only caller is Chat, and no guest reaches Chat
 // yet. Its stored settings stay on the blob; the box has no controls.
 export function DeepBox() {
@@ -515,7 +520,7 @@ export function DeepBox() {
     <PipelineBox
       id="s-deep"
       pipeline="deep"
-      title="Deep Pipeline"
+      title="Consumer Deep Pipeline"
       icon={<Sparkles className={ICON} />}
       explanation="Open-ended discovery for Chat (Don Memo). No guest reaches Chat yet."
     />

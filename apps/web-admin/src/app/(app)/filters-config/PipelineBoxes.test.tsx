@@ -31,11 +31,11 @@ const page = () =>
 const boxes = () => page().split("<section ").slice(1);
 
 describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
-  it("is Name by Admin, Name, Area, Deep, in that order", () => {
+  it("is Admin Name, Consumer Name, Consumer Area, Consumer Deep, in that order (MESITA-2779)", () => {
     const html = page();
     let last = -1;
     // Deep's title carries its Soon chip inside the heading.
-    for (const title of [">Name Pipeline by Admin</h2>", ">Name Pipeline</h2>", ">Area Pipeline</h2>", ">Deep Pipeline "]) {
+    for (const title of [">Admin Name Pipeline</h2>", ">Consumer Name Pipeline</h2>", ">Consumer Area Pipeline</h2>", ">Consumer Deep Pipeline "]) {
       const at = html.indexOf(title);
       expect(at, title).toBeGreaterThan(last);
       last = at;
@@ -159,7 +159,7 @@ describe("the boxes' controls", () => {
 
   it("Deep is Soon: title, one line and the chip, its controls deleted from the markup (MESITA-2345)", () => {
     const html = render(<DeepBox />);
-    expect(html).toContain(">Deep Pipeline");
+    expect(html).toContain(">Consumer Deep Pipeline");
     expect(html).toContain("Soon");
     expect(html).toContain('id="s-deep"');
     for (const gone of ["Places handed to Chat", "Minimum Description score", "Chat Agent prompt", "<textarea", 'type="number"', 'type="text"', ">Save<", ">Sources<", ">Signals<"]) {
