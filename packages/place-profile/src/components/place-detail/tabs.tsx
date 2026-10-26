@@ -11,9 +11,11 @@ import { cn } from "../../lib/format";
 // this is for soon"). `soon` still marks the two tabs whose screen is the
 // Soon screen; the strip draws only the four labels. Rewards is the fourth
 // screen. Both are the same strip on admin Preview and consumer.
-// Every place has the four, Enriched or not; the Enrich vote is the top of
-// Overview, never a tab of its own (MESITA-2332).
-export type PlaceTab = "place" | "reviews" | "products" | "rewards";
+// Every place has the five, Enriched or not; the Enrich vote is the top of
+// Overview, never a tab of its own (MESITA-2332). BOOST IS THE FIFTH
+// (MESITA-2789): anyone pays for a place's paid visibility there; the host
+// app draws its body (the package holds no payment code).
+export type PlaceTab = "place" | "reviews" | "products" | "rewards" | "boost";
 
 export type PlaceTabDef = {
   key: PlaceTab;
@@ -26,6 +28,7 @@ const CORE_TABS = [
   { key: "reviews", label: "Reviews" },
   { key: "products", label: "Products", soon: true },
   { key: "rewards", label: "Rewards", soon: true },
+  { key: "boost", label: "Boost" },
 ] as const satisfies ReadonlyArray<PlaceTabDef>;
 
 export function placeTabs(): readonly PlaceTabDef[] {
@@ -46,7 +49,7 @@ export function PlaceTabBar({
     // translucency) so the strip matches the name header and scrolled
     // content can't bleed through. The page wash stays below the strip.
     <nav
-      className="bg-card border-border sticky top-0 z-20 -mx-4 grid grid-cols-4 border-b px-1"
+      className="bg-card border-border sticky top-0 z-20 -mx-4 grid grid-cols-5 border-b px-1"
       aria-label="Place sections"
     >
       {tabs.map((t) => {

@@ -218,6 +218,7 @@ type SearchPinPlace = {
   id: string;
   lat?: number | null;
   lng?: number | null;
+  boost_tier?: number | null;
 };
 
 type BuiltSearchPin = {
@@ -226,6 +227,7 @@ type BuiltSearchPin = {
   lng: number;
   title: string;
   tone: PinTone;
+  boosted?: boolean;
 };
 
 export function buildSearchMapPins(
@@ -249,6 +251,9 @@ export function buildSearchMapPins(
       lng,
       title: prediction.mainText,
       tone: predictionPinTone(prediction),
+      // Boost's ⚡ (MESITA-2789) follows the catalog row the pick resolves
+      // to; absent when not boosted, so an unboosted pin is unchanged.
+      ...(typeof hit?.boost_tier === "number" && hit.boost_tier > 0 ? { boosted: true } : {}),
     });
   }
   return pins.length > 0 ? pins : null;

@@ -37,6 +37,7 @@ import {
   type CameraIntent,
   type CameraState,
 } from "./camera-intent";
+import { isSponsoredPlace } from "@/components/consumer/place-card";
 import { SIGHT_Y } from "./search-utils";
 import { MapVeil } from "./search-catalog-overlays";
 import { SearchMapPinLabels } from "./SearchMapPinLabels";
@@ -58,8 +59,9 @@ function mapsPinIcon(
   strokeColor: string,
   strokeWeight?: number,
   radius?: number,
+  boosted = false,
 ) {
-  const raw = mapPinIcon(fillColor, strokeColor, strokeWeight, radius);
+  const raw = mapPinIcon(fillColor, strokeColor, strokeWeight, radius, boosted);
   const maps = (globalThis as { google?: { maps?: MapsCtor } }).google?.maps;
   if (!maps) return raw;
   return {
@@ -69,8 +71,9 @@ function mapsPinIcon(
   };
 }
 
-/** `held` is the tapped pin (ink, MESITA-2488), not the Selected tone. */
-function placeIcon(tone: PinTone, held: boolean) {
+/** `held` is the tapped pin (ink, MESITA-2488), not the Selected tone.
+ *  `boosted` adds Boost's ⚡ badge (MESITA-2789). */
+function placeIcon(tone: PinTone, held: boolean, boosted = false) {
   const weight = pinStrokeWeight(held);
   const radius =
     tone === "selected" && !held ? MAP_SELECTED_PLACE_PIN_RADIUS : undefined;
@@ -79,6 +82,7 @@ function placeIcon(tone: PinTone, held: boolean) {
     pinStrokeColor(held),
     weight,
     radius,
+    boosted,
   );
 }
 
@@ -95,6 +99,8 @@ export type SearchMapPin = {
   lng: number;
   title: string;
   tone: PinTone;
+  /** Boost (MESITA-2789): the place pays for visibility; the pin wears ⚡. */
+  boosted?: boolean;
 };
 
 export type ViewportBox = {
@@ -395,7 +401,7 @@ function SearchMapCanvas({
               key={pin.id}
               position={{ lat: pin.lat, lng: pin.lng }}
               title={pin.title}
-              icon={placeIcon(pin.tone, pin.id === selectedId)}
+              icon={placeIcon(pin.tone, pin.id === selectedId, pin.boosted === true)}
               zIndex={pin.id === selectedId ? 10 : 0}
               optimized={false}
               cursor={MAP_PIN_CURSOR}
@@ -407,7 +413,7 @@ function SearchMapCanvas({
               key={place.id}
               position={{ lat: place.lat, lng: place.lng }}
               title={place.name}
-              icon={placeIcon(placePinTone(place), place.id === selectedId)}
+              icon={placeIcon(placePinTone(place), place.id === selectedId, isSponsoredPlace(place))}
               zIndex={place.id === selectedId ? 10 : 0}
               optimized={false}
               cursor={MAP_PIN_CURSOR}

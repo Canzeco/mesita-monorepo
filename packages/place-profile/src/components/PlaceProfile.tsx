@@ -31,6 +31,7 @@ export function PlaceProfile({
   creating,
   social,
   showDates = false,
+  boost,
 }: {
   place: PlaceDetail;
   onBack?: () => void;
@@ -44,6 +45,8 @@ export function PlaceProfile({
   social?: React.ReactNode;
   /** Admin's preview shows the Created · Updated dates (MESITA-2630). */
   showDates?: boolean;
+  /** The Boost tab's body (MESITA-2789); see PlaceDetailBody. */
+  boost?: React.ReactNode;
 }) {
   return (
     <div className="bg-background relative flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -64,6 +67,7 @@ export function PlaceProfile({
           creating={creating}
           social={social}
           showDates={showDates}
+          boost={boost}
         />
       </div>
     </div>

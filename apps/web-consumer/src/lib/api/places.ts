@@ -26,6 +26,10 @@ export type Place = {
    *  Selected place by the Selected boost (MESITA-2717). Absent on an older
    *  payload reads as not Selected. */
   selected?: boolean | null;
+  /** Boost (MESITA-2789): the paid tier, `places.boost_tier`, 0 none ·
+   *  1 2x · 2 5x · 3 10x. Above 0 the card says Sponsored and the pin wears
+   *  the ⚡ badge. Absent on an older payload reads as not boosted. */
+  boost_tier?: number | null;
   id: string;
   slug: string;
   name: string;
