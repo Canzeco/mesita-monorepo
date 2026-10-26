@@ -1,12 +1,9 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import { EVERY_FAMILY_TYPES } from "./google-type-super.ts";
 import {
-  __resetNearbyGoogleCacheForTests,
-  GOOGLE_FANOUT_MAX,
   GOOGLE_NEARBY_MAX,
   nearbyRadiusMetres,
   parsePlacesScope,
-  peekCachedNearbyPlaces,
   PLACES_SCOPE_DEFAULT,
   type PlacesScope,
   searchNearbyPlaces,
@@ -26,7 +23,6 @@ const OK_BODY = JSON.stringify({
 });
 
 Deno.test("searchNearbyPlaces: one Nearby Search carries every enabled primary type", async () => {
-  __resetNearbyGoogleCacheForTests();
   let n = 0;
   let mask = "";
   let body: {
@@ -65,12 +61,10 @@ Deno.test("searchNearbyPlaces: one Nearby Search carries every enabled primary t
     assertEquals(mask.includes("places.photos"), false);
   } finally {
     globalThis.fetch = orig;
-    __resetNearbyGoogleCacheForTests();
   }
 });
 
-Deno.test("searchNearbyPlaces: the operator's radius is the circle and part of the cell (MESITA-2305)", async () => {
-  __resetNearbyGoogleCacheForTests();
+Deno.test("searchNearbyPlaces: the operator's radius is the circle (MESITA-2305)", async () => {
   const radii: number[] = [];
   const orig = globalThis.fetch;
   globalThis.fetch = (_url, init) => {
@@ -92,26 +86,20 @@ Deno.test("searchNearbyPlaces: the operator's radius is the circle and part of t
     await searchNearbyPlaces("k", CENTER, { types });
     await searchNearbyPlaces("k", CENTER, { types, radiusKm: 999 });
     await searchNearbyPlaces("k", CENTER, { types, radiusKm: 0.01 });
-    // 12 km is one cell (one call); 50 km (omitted) is another; 999 clamps
-    // to Google's 50 km cap and shares that cell; 0.01 km clamps to 50 m.
-    assertEquals(radii, [12_000, 50_000, 50]);
-    assertEquals(peekCachedNearbyPlaces(CENTER, types, 12)?.length, 1);
-    assertEquals(peekCachedNearbyPlaces(CENTER, types, 7), null);
-    // The 50 km cell is warm too; a radius is the operator's, never read
-    // off a client, and garbage reads as the 50 km cap.
-    assertEquals(peekCachedNearbyPlaces(CENTER, types)?.length, 1);
+    // Every ask is its own call (MESITA-2765); 50 km when omitted, 999
+    // clamps to Google's 50 km cap, 0.01 km clamps to 50 m, and garbage
+    // reads as the 50 km cap.
+    assertEquals(radii, [12_000, 12_000, 50_000, 50_000, 50]);
     assertEquals(nearbyRadiusMetres(undefined), 50_000);
     assertEquals(nearbyRadiusMetres(Number.NaN), 50_000);
     assertEquals(nearbyRadiusMetres(80), 50_000);
     assertEquals(nearbyRadiusMetres(2.5), 2_500);
   } finally {
     globalThis.fetch = orig;
-    __resetNearbyGoogleCacheForTests();
   }
 });
 
 Deno.test("searchNearbyPlaces: openNow rides every hit; Google's silence is null (MESITA-2302)", async () => {
-  __resetNearbyGoogleCacheForTests();
   const orig = globalThis.fetch;
   globalThis.fetch = () =>
     Promise.resolve(
@@ -134,12 +122,10 @@ Deno.test("searchNearbyPlaces: openNow rides every hit; Google's silence is null
     );
   } finally {
     globalThis.fetch = orig;
-    __resetNearbyGoogleCacheForTests();
   }
 });
 
-Deno.test("searchNearbyPlaces: success is cached for the cell", async () => {
-  __resetNearbyGoogleCacheForTests();
+Deno.test("searchNearbyPlaces: nothing is cached, the same ask twice is two calls (MESITA-2765)", async () => {
   let n = 0;
   const orig = globalThis.fetch;
   globalThis.fetch = () => {
@@ -157,15 +143,13 @@ Deno.test("searchNearbyPlaces: success is cached for the cell", async () => {
     assertEquals(a.length, 1);
     assertEquals(a[0].placeId, "ChIJ-ok");
     assertEquals(b.length, 1);
-    assertEquals(n, 1);
+    assertEquals(n, 2);
   } finally {
     globalThis.fetch = orig;
-    __resetNearbyGoogleCacheForTests();
   }
 });
 
-Deno.test("searchNearbyPlaces: a failed call is not cached so a retry can succeed", async () => {
-  __resetNearbyGoogleCacheForTests();
+Deno.test("searchNearbyPlaces: a failed call returns nothing; the next ask calls again", async () => {
   let n = 0;
   const orig = globalThis.fetch;
   globalThis.fetch = () => {
@@ -188,59 +172,10 @@ Deno.test("searchNearbyPlaces: a failed call is not cached so a retry can succee
     assertEquals(n, 2);
   } finally {
     globalThis.fetch = orig;
-    __resetNearbyGoogleCacheForTests();
   }
 });
 
-Deno.test("peekCachedNearbyPlaces: warm cell is visible, cold is not", async () => {
-  __resetNearbyGoogleCacheForTests();
-  const orig = globalThis.fetch;
-  globalThis.fetch = () =>
-    Promise.resolve(
-      new Response(OK_BODY, {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
-  try {
-    assertEquals(peekCachedNearbyPlaces(CENTER), null);
-    await searchNearbyPlaces("k", CENTER);
-    const cached = peekCachedNearbyPlaces(CENTER);
-    assertEquals(cached?.length, 1);
-    assertEquals(cached?.[0].placeId, "ChIJ-ok");
-    assertEquals(peekCachedNearbyPlaces({ lat: 10, lng: -100 }), null);
-  } finally {
-    globalThis.fetch = orig;
-    __resetNearbyGoogleCacheForTests();
-  }
-});
-
-Deno.test("searchNearbyPlaces: isolate fan-out budget skips extra cells", async () => {
-  __resetNearbyGoogleCacheForTests();
-  let n = 0;
-  const orig = globalThis.fetch;
-  globalThis.fetch = () => {
-    n++;
-    return Promise.resolve(
-      new Response(OK_BODY, {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
-  };
-  try {
-    for (let i = 0; i <= GOOGLE_FANOUT_MAX; i++) {
-      await searchNearbyPlaces("k", { lat: 10 + i, lng: -100.3 });
-    }
-    assertEquals(n, GOOGLE_FANOUT_MAX);
-  } finally {
-    globalThis.fetch = orig;
-    __resetNearbyGoogleCacheForTests();
-  }
-});
-
-Deno.test("searchNearbyPlaces: beforeFanout runs only on the starting fan-out", async () => {
-  __resetNearbyGoogleCacheForTests();
+Deno.test("searchNearbyPlaces: concurrent asks are two charged calls (MESITA-2765)", async () => {
   let fetches = 0;
   let gates = 0;
   const orig = globalThis.fetch;
@@ -264,16 +199,14 @@ Deno.test("searchNearbyPlaces: beforeFanout runs only on the starting fan-out", 
     ]);
     assertEquals(a.length, 1);
     assertEquals(b.length, 1);
-    assertEquals(gates, 1);
-    assertEquals(fetches, 1);
+    assertEquals(gates, 2);
+    assertEquals(fetches, 2);
   } finally {
     globalThis.fetch = orig;
-    __resetNearbyGoogleCacheForTests();
   }
 });
 
-Deno.test("searchNearbyPlaces: a type subset is one request and caches separately", async () => {
-  __resetNearbyGoogleCacheForTests();
+Deno.test("searchNearbyPlaces: a type subset is one request", async () => {
   let n = 0;
   const orig = globalThis.fetch;
   globalThis.fetch = () => {
@@ -290,19 +223,15 @@ Deno.test("searchNearbyPlaces: a type subset is one request and caches separatel
     const b = await searchNearbyPlaces("k", CENTER, { types: ["cafe"] });
     assertEquals(a.length, 1);
     assertEquals(b.length, 1);
-    assertEquals(n, 1);
-    assertEquals(peekCachedNearbyPlaces(CENTER, ["cafe"])?.length, 1);
-    assertEquals(peekCachedNearbyPlaces(CENTER), null);
-    await searchNearbyPlaces("k", CENTER);
     assertEquals(n, 2);
+    await searchNearbyPlaces("k", CENTER);
+    assertEquals(n, 3);
   } finally {
     globalThis.fetch = orig;
-    __resetNearbyGoogleCacheForTests();
   }
 });
 
 Deno.test("searchNearbyPlaces: empty types skip Google", async () => {
-  __resetNearbyGoogleCacheForTests();
   let n = 0;
   const orig = globalThis.fetch;
   globalThis.fetch = () => {
@@ -320,12 +249,10 @@ Deno.test("searchNearbyPlaces: empty types skip Google", async () => {
     assertEquals(n, 0);
   } finally {
     globalThis.fetch = orig;
-    __resetNearbyGoogleCacheForTests();
   }
 });
 
 Deno.test("searchNearbyPlaces: beforeFanout false skips Google", async () => {
-  __resetNearbyGoogleCacheForTests();
   let fetches = 0;
   const orig = globalThis.fetch;
   globalThis.fetch = () => {
@@ -345,41 +272,6 @@ Deno.test("searchNearbyPlaces: beforeFanout false skips Google", async () => {
     assertEquals(fetches, 0);
   } finally {
     globalThis.fetch = orig;
-    __resetNearbyGoogleCacheForTests();
-  }
-});
-
-Deno.test("searchNearbyPlaces: isolate budget skip does not call beforeFanout", async () => {
-  __resetNearbyGoogleCacheForTests();
-  let fetches = 0;
-  let gates = 0;
-  const orig = globalThis.fetch;
-  globalThis.fetch = () => {
-    fetches++;
-    return Promise.resolve(
-      new Response(OK_BODY, {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
-  };
-  try {
-    for (let i = 0; i < GOOGLE_FANOUT_MAX; i++) {
-      await searchNearbyPlaces("k", { lat: 10 + i, lng: -100.3 });
-    }
-    // A cell none of the warm-up calls filled (they span lat 10..10+cap).
-    const got = await searchNearbyPlaces("k", { lat: -40, lng: -100.3 }, {
-      beforeFanout: () => {
-        gates++;
-        return Promise.resolve(true);
-      },
-    });
-    assertEquals(got, []);
-    assertEquals(gates, 0);
-    assertEquals(fetches, GOOGLE_FANOUT_MAX);
-  } finally {
-    globalThis.fetch = orig;
-    __resetNearbyGoogleCacheForTests();
   }
 });
 
@@ -412,8 +304,7 @@ Deno.test("places scope: two guest words on the wire, Mesita Selected by default
   assertEquals(scopes.map((scope) => parsePlacesScope(scope)), scopes);
 });
 
-Deno.test("searchNearbyPlaces: one call, charged once, and a quota denial caches nothing (MESITA-2298)", async () => {
-  __resetNearbyGoogleCacheForTests();
+Deno.test("searchNearbyPlaces: one call, charged once; a quota denial calls nothing (MESITA-2298)", async () => {
   const orig = globalThis.fetch;
   let calls = 0;
   let charges = 0;
@@ -430,15 +321,14 @@ Deno.test("searchNearbyPlaces: one call, charged once, and a quota denial caches
   };
   try {
     const types = ["restaurant", "cafe", "bakery"];
-    // Denied: no Google call, nothing cached, the next request asks again.
+    // Denied: no Google call; the next request asks again.
     const denied = await searchNearbyPlaces("k", CENTER, {
       types,
       beforeFanout: () => Promise.resolve(++charges > 1),
     });
     assertEquals(denied, []);
     assertEquals(calls, 0);
-    assertEquals(peekCachedNearbyPlaces(CENTER, types), null);
-    // Allowed: exactly one billed call for the cell, then the cell is warm.
+    // Allowed: exactly one billed call, charged once.
     const hits = await searchNearbyPlaces("k", CENTER, {
       types,
       beforeFanout: () => Promise.resolve(++charges > 1),
@@ -446,19 +336,17 @@ Deno.test("searchNearbyPlaces: one call, charged once, and a quota denial caches
     assertEquals(hits.length, 1);
     assertEquals(calls, 1);
     assertEquals(charges, 2);
-    assertEquals(peekCachedNearbyPlaces(CENTER, types)?.length, 1);
+    // Nothing is cached (MESITA-2765): the same ask again is charged and called.
     await searchNearbyPlaces("k", CENTER, { types, beforeFanout: () => Promise.resolve(++charges > 1) });
-    assertEquals(calls, 1);
-    assertEquals(charges, 2);
+    assertEquals(calls, 2);
+    assertEquals(charges, 3);
   } finally {
     globalThis.fetch = orig;
-    __resetNearbyGoogleCacheForTests();
   }
 });
 
 
 Deno.test("searchNearbyPlaces: a Google 5xx is retried once, then the hits land (MESITA-2361)", async () => {
-  __resetNearbyGoogleCacheForTests();
   let n = 0;
   const orig = globalThis.fetch;
   globalThis.fetch = () => {
@@ -475,12 +363,10 @@ Deno.test("searchNearbyPlaces: a Google 5xx is retried once, then the hits land 
     assertEquals(hits.map((h) => h.placeId), ["ChIJ-ok"]);
   } finally {
     globalThis.fetch = orig;
-    __resetNearbyGoogleCacheForTests();
   }
 });
 
 Deno.test("searchNearbyPlaces: a 4xx is never retried (MESITA-2361)", async () => {
-  __resetNearbyGoogleCacheForTests();
   let n = 0;
   const orig = globalThis.fetch;
   globalThis.fetch = () => {
@@ -493,6 +379,5 @@ Deno.test("searchNearbyPlaces: a 4xx is never retried (MESITA-2361)", async () =
     assertEquals(hits, []);
   } finally {
     globalThis.fetch = orig;
-    __resetNearbyGoogleCacheForTests();
   }
 });
