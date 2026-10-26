@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(176);
+select plan(178);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1768,6 +1768,13 @@ select throws_ok(
   'unknown mesita category',
   'undefined is never a Mesita category'
 );
+
+-- ━━━ MESITA-2791: google_types[0] is the primary; no separate column ━━━━━━━
+
+select hasnt_column('public', 'place_profiles', 'google_primary_type',
+  'place_profiles has no google_primary_type: google_types[0] is the primary');
+select hasnt_column('public', 'profiles', 'google_primary_type',
+  'profiles has no google_primary_type');
 
 select * from finish();
 

@@ -187,9 +187,16 @@ const CLASS_PLAN_DROPPED_COLUMNS = {
   consumers: ["diamond"],
 } as const satisfies Record<string, readonly string[]>;
 
+/** MESITA-2791 — google_types[0] is Google's primary category (MESITA-2790);
+ *  the separate column goes off the table and the view. */
+const PRIMARY_TYPE_DROPPED_COLUMNS = {
+  place_profiles: ["google_primary_type"],
+  profiles: ["google_primary_type"],
+} as const satisfies Record<string, readonly string[]>;
+
 /** Every dropping table's columns, all cuts merged. */
 const DROPPED_BY_TABLE = new Map<string, Set<string>>();
-for (const list of [DROPPED_COLUMNS, RESIDUE_DROPPED_COLUMNS, CLASS_PLAN_DROPPED_COLUMNS]) {
+for (const list of [DROPPED_COLUMNS, RESIDUE_DROPPED_COLUMNS, CLASS_PLAN_DROPPED_COLUMNS, PRIMARY_TYPE_DROPPED_COLUMNS]) {
   for (const [table, cols] of Object.entries(list)) {
     const set = DROPPED_BY_TABLE.get(table) ?? new Set<string>();
     for (const col of cols) if (!RESTORED[table]?.includes(col)) set.add(col);

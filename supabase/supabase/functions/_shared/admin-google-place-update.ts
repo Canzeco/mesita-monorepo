@@ -88,8 +88,6 @@ export function googleBasicsToUpdatePatch(input: {
     google_review_count: input.basics.google_review_count,
     google_reviews: input.basics.google_reviews,
     google_tags: input.basics.google_tags,
-    // Mirror of google_types[0] until MESITA-2791 drops the column.
-    google_primary_type: primary,
     google_types: googleTypes,
   };
   if (!input.hasMesitaCategories && primary) {
