@@ -7,7 +7,7 @@
 // tombstone (phone/email freed for a new uid); history-free → delete auth
 // (consumers cascades). Self-contained: verifies the JWT, then writes via
 // the service role. Does NOT call any other Edge Function. First it ends
-// the guest's Spotlight subscriptions in Stripe (MESITA-1998).
+// the guest's Boost subscriptions in Stripe (MESITA-1998).
 //
 // Local:  supabase functions serve consumer-web-delete-account
 // Deploy: supabase functions deploy consumer-web-delete-account
@@ -20,7 +20,7 @@ import {
   readEFEnv,
 } from "../_shared/auth.ts";
 import { deleteConsumerAccount } from "../_shared/delete-history-free.ts";
-import { cancelConsumerBackings, spotlightStripeKey, stripeClient } from "../_shared/spotlight.ts";
+import { cancelConsumerBackings, boostStripeKey, stripeClient } from "../_shared/boost.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -37,9 +37,9 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(envRes.env);
 
-  // Spotlight (MESITA-1998): stop every subscription the guest still pays
+  // Boost (MESITA-1998): stop every subscription the guest still pays
   // before the account goes, or Stripe keeps billing a deleted member.
-  const key = spotlightStripeKey();
+  const key = boostStripeKey();
   const stopped = await cancelConsumerBackings(admin, userId, key ? stripeClient(key) : null);
   if (!stopped.ok) {
     return json({ ok: false, error: stopped.error }, 502);
