@@ -7,7 +7,8 @@ name: pipeline audit
 # could not run. `deno task boot` prints this workflow's last run;
 # `gh workflow run pipeline-audit.yml` starts one now.
 #
-# REQUIRES repo secret SUPABASE_ACCESS_TOKEN (the edge-function check).
+# REQUIRES repo secret SUPABASE_ACCESS_TOKEN (the edge-function and
+# catalog-membership checks).
 on:
   # Monday, after supabase-deploy's weekly cleanup (07:23 UTC).
   schedule:
@@ -49,6 +50,11 @@ jobs:
         uses: supabase/setup-cli@45a513f8c64c0bc8e0e3dfe572b5c95be85f6359 # v3.0.1
         with:
           version: 2.100.0
+
+      # The catalog-membership check reads the cloud with `supabase db query
+      # --linked`, which takes the project from this file (MESITA-2766).
+      - name: Link the Supabase project
+        run: mkdir -p supabase/supabase/.temp && echo yjalywfzdelacdzccpgb > supabase/supabase/.temp/project-ref
 
       # The report goes to the job summary as well as the log.
       - name: Audit
