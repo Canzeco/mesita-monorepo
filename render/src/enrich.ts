@@ -5,7 +5,7 @@ import {
   fetchTimezone,
   profileFromGoogle,
 } from "./google-spine.ts";
-import { digest, embedPair, embeddingFields, writtenSubject } from "./embedding.ts";
+import { embedPair, embeddingFields, writtenSubject } from "./embedding.ts";
 import {
   defaultImageKnobs,
   fetchInstagramPosts,
@@ -201,13 +201,7 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment |
   if (openaiKey && subject) {
     const fields = await timed("embedding", async () => {
       const vectors = await embedPair(subject.facts, subject.name, openaiKey);
-      return embeddingFields(
-        vectors.summary,
-        vectors.name,
-        await digest(subject.facts),
-        await digest(subject.name),
-        subject.facts,
-      );
+      return embeddingFields(vectors.summary, vectors.name, subject.facts);
     }, (written) => written ? "written" : "none");
     if (fields) Object.assign(patch, fields);
   }

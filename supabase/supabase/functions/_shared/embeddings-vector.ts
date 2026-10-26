@@ -19,15 +19,13 @@ export type EmbeddablePlace = {
   address: string | null;
   price_level: number | null;
   embedding: unknown | null;
-  embedding_source_hash: string | null;
   embedding_source_text?: string | null;
   /** MESITA-1238: vector over the resolved display name only. */
   name_embedding?: unknown | null;
-  name_embedding_hash?: string | null;
 };
 
 // Deterministic fallback / facts block used when the LLM synthesizer is
-// unavailable. NEVER includes tags. Order is stable so the digest is stable.
+// unavailable. NEVER includes tags. Order is stable.
 export function placeEmbeddingFacts(v: EmbeddablePlace): string {
   const lines: string[] = [];
   lines.push(`Name: ${v.name}`);
@@ -40,17 +38,6 @@ export function placeEmbeddingFacts(v: EmbeddablePlace): string {
     lines.push(`About: ${v.description.trim().slice(0, 900)}`);
   }
   return lines.join("\n");
-}
-
-// Cheap stable hash of the source text so we can detect "this place's text
-// changed, re-embed" without storing the whole text alongside the embedding.
-export async function digest(text: string): Promise<string> {
-  const buf = new TextEncoder().encode(text);
-  const hash = await crypto.subtle.digest("SHA-1", buf);
-  return Array.from(new Uint8Array(hash))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("")
-    .slice(0, 32);
 }
 
 /** The name vector's source is the resolved display name, nothing else. */

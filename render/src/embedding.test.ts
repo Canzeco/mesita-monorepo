@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { EMBEDDING_DIMS, digest, embeddingFacts, embeddingFields, vectorLiteral, writtenSubject } from "./embedding.ts";
+import { EMBEDDING_DIMS, embeddingFacts, embeddingFields, vectorLiteral, writtenSubject } from "./embedding.ts";
 
 test("facts keep name, place, and about, and skip an empty about", () => {
   assert.equal(
@@ -20,9 +20,9 @@ test("a vector is the pgvector literal", () => {
 });
 
 test("a short vector is left off the place", () => {
-  assert.equal(embeddingFields([0.1], [0.2], "a", "b", "text"), null);
+  assert.equal(embeddingFields([0.1], [0.2], "text"), null);
   const full = Array.from({ length: EMBEDDING_DIMS }, () => 0.1);
-  const fields = embeddingFields(full, null, "hash", "name", "text");
+  const fields = embeddingFields(full, null, "text");
   assert.equal(fields?.embedding_source_text, "text");
   assert.equal("name_embedding" in (fields ?? {}), false);
 });
@@ -42,9 +42,9 @@ test("the vectors read the profile as written: a saved name, address and descrip
   assert.match(subject.facts, /^Name: Strana Zona Hotelera$/m);
   assert.match(subject.facts, /^Address: Saved address 1$/m);
   assert.match(subject.facts, /^About: The saved presentation\.$/m);
-  // The hash and the stored text are one text.
-  const fields = embeddingFields(new Array(EMBEDDING_DIMS).fill(0), null, await digest(subject.facts), "", subject.facts);
-  assert.equal(fields?.embedding_source_hash, await digest(fields?.embedding_source_text ?? ""));
+  // The stored text is the text the vector embeds.
+  const fields = embeddingFields(new Array(EMBEDDING_DIMS).fill(0), null, subject.facts);
+  assert.equal(fields?.embedding_source_text, subject.facts);
 });
 
 test("the vector name is the one the profile shows: name, then mesita_name, then Google's", () => {

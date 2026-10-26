@@ -123,10 +123,8 @@ export type PlaceProfileRow = {
   hours: unknown | null;
   /** pgvector literal, e.g. "[0.1,0.2,...]" — always a string on the JS side. */
   embedding: string | null;
-  embedding_source_hash: string | null;
   /** MESITA-1238: name-only vector. Same literal shape as `embedding`. */
   name_embedding: string | null;
-  name_embedding_hash: string | null;
   description: string | null;
   menu_pdf_url: string | null;
   tags: string[];
@@ -201,9 +199,7 @@ export const PLACE_PROFILE_PATCH_KEYS = [
   "didi_food_url",
   "hours",
   "embedding",
-  "embedding_source_hash",
   "name_embedding",
-  "name_embedding_hash",
   "description",
   "menu_pdf_url",
   "tags",
@@ -332,12 +328,12 @@ const PLACE_PLAIN_STRING_KEYS = new Set<string>([
   "story", "website_url", "instagram_url", "facebook_url",
   "whatsapp_url", "opentable_url", "resy_url", "uber_eats_url", "x_url",
   "threads_url", "reddit_url", "google_maps_url",
-  "didi_food_url", "embedding_source_hash", "description",
+  "didi_food_url", "description",
   "menu_pdf_url", "menu_pdf_name",
   "zone", "city", "category_label",
   "embedding_source_text", "google_name", "mesita_name",
   "reservation_target", "embedding", "name_embedding",
-  "name_embedding_hash", "google_place_id",
+  "google_place_id",
   "enriched_at", "business_state_at",
 ]);
 const PLACE_UNRANGED_NUMBER_KEYS = new Set<string>(["lat", "lng"]);
