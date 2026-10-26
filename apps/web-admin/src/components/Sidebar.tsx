@@ -22,6 +22,7 @@ import {
   CREATION_PARENT,
   ENRICHMENT_PARENT,
   UPDATING_PARENT,
+  EDITING_PARENT,
 } from "@/app/(app)/enricher-config/nav";
 import { FILTERS_PARENT } from "@/app/(app)/filters-config/nav";
 import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
@@ -110,6 +111,7 @@ export const CONFIGURATIONS_NAV: NavItem[] = [
   CREATION_PARENT,
   ENRICHMENT_PARENT,
   UPDATING_PARENT,
+  EDITING_PARENT,
   // Discovery.
   FILTERS_PARENT,
   RESERVATIONS_PARENT,
