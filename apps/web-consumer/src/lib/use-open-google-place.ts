@@ -23,13 +23,13 @@
 // Search's carousel draw it where the Google card stood (MESITA-2683).
 
 import { useCallback } from "react";
-import { useRouter } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { apiCreateProject } from "@/lib/api/place-search";
 import { rememberCreatedPlace } from "@/lib/created-places";
 import { placeHref } from "@/lib/place-route";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { type PendingPlaceCard, stashPendingPlace } from "@/lib/pending-place";
+import { useOpenPlaceHref } from "@/lib/use-open-place-href";
 
 export type GoogleOnlyPlace = PendingPlaceCard & {
   slug?: string | null;
@@ -49,15 +49,16 @@ export function googleOpenHref(gid: string, name: string): string {
 }
 
 export function useOpenGooglePlace(): (place: GoogleOnlyPlace) => void {
-  const router = useRouter();
+  // A stuck push never swallows the tap (MESITA-2816).
+  const openHref = useOpenPlaceHref();
   return useCallback(
     (place: GoogleOnlyPlace) => {
       const gid = googlePlaceIdOf(place);
       if (!gid) return;
       stashPendingPlace(gid, place);
-      router.push(googleOpenHref(gid, place.name));
+      openHref(googleOpenHref(gid, place.name));
     },
-    [router],
+    [openHref],
   );
 }
 

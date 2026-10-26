@@ -22,7 +22,7 @@ describe("opening a Google place", () => {
       hook.indexOf("export function useOpenGooglePlace"),
       hook.indexOf("export type OpenedGooglePlace"),
     );
-    expect(tap).toContain("router.push(googleOpenHref(");
+    expect(tap).toContain("openHref(googleOpenHref(");
     expect(tap).not.toContain("apiCreateProject");
   });
 
