@@ -117,7 +117,8 @@ export type FilledProfile = {
 };
 
 /**
- * Asks the existing classifiers for a Presentation, one Category, and Tags.
+ * Asks the classifiers for a Presentation, the Mesita tags and 1–3 Mesita
+ * categories.
  * A model failure leaves the patch unchanged. The caller still commits once.
  */
 export async function fillAtlasProfile(

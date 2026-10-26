@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(169);
+select plan(176);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1704,6 +1704,63 @@ select is(
   (select boost_tier from public.places where id = '00000000-0000-4000-8000-000000001998'),
   0::smallint,
   'an ended period pays nothing, whatever the status says'
+);
+
+-- ━━━ MESITA-2790: families come from the Mesita categories ━━━━━━━━━━━━━━━━
+
+select is(
+  public.families_for_categories('[]'::jsonb, 'cafe'),
+  public.families_for_category('cafe'),
+  'a place with no Mesita categories keeps its category''s families'
+);
+
+select ok(
+  public.families_for_categories('["bakery","cafe"]'::jsonb, 'x')
+    @> (public.families_for_category('bakery') || public.families_for_category('cafe')),
+  'two Mesita categories put the place in every family of both'
+);
+
+select is(
+  (public.families_for_categories('["bakery","cafe"]'::jsonb, 'x'))[1],
+  (public.families_for_category('bakery'))[1],
+  'the main category''s first family leads'
+);
+
+select is(
+  public.families_for_categories('["undefined"]'::jsonb, 'x'),
+  array['undefined']::text[],
+  'undefined stays only when it is all there is'
+);
+
+insert into public.place_profiles (id, google_name)
+values ('00000000-0000-4000-8000-000000002790', 'Families Probe');
+insert into public.places (id, slug, state, content_state, currency)
+values ('00000000-0000-4000-8000-000000002790', 'mesita-2790-probe', 'active', 'ready', 'MXN');
+
+update public.place_profiles
+   set mesita_categories = '["bakery","cafe"]'::jsonb, category = 'bakery'
+ where id = '00000000-0000-4000-8000-000000002790';
+
+select is(
+  (select family_keys from public.profiles where id = '00000000-0000-4000-8000-000000002790'),
+  public.families_for_categories('["bakery","cafe"]'::jsonb, 'bakery'),
+  'profiles.family_keys is the union of the stored Mesita categories'
+);
+
+select throws_ok(
+  $$update public.place_profiles set mesita_categories = '["not_a_category"]'::jsonb
+     where id = '00000000-0000-4000-8000-000000002790'$$,
+  'P0001',
+  'unknown mesita category',
+  'a Mesita category outside place_categories is refused'
+);
+
+select throws_ok(
+  $$update public.place_profiles set mesita_categories = '["undefined"]'::jsonb
+     where id = '00000000-0000-4000-8000-000000002790'$$,
+  'P0001',
+  'unknown mesita category',
+  'undefined is never a Mesita category'
 );
 
 select * from finish();
