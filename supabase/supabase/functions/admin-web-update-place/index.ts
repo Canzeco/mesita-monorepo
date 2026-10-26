@@ -34,20 +34,11 @@ import {
 import { PLACE_PROFILE_COLUMNS } from "../_shared/place-columns.ts";
 import { type ProfilePatch, writePlace } from "../_shared/place-doc.ts";
 import { ENRICH_FIELD_LIMITS } from "../_shared/enrich-field-limits.ts";
-import { fetchPlaceTags, sanitizePlaceTags } from "../_shared/tags.ts";
 import { type PlaceHours, sanitiseHours } from "./place-hours.ts";
 import { isUrl, URL_FIELDS, type UrlField } from "./place-urls.ts";
 import { optString } from "./place-update-utils.ts";
-import {
-  fetchMembershipKeys,
-  fetchPlaceCategories,
-  fetchPlaceFamilies,
-} from "../_shared/categories.ts";
-import {
-  membershipSlugFor,
-  resolveProfileFamily,
-  resolveStoredFamily,
-} from "../_shared/profile-family.ts";
+import { fetchPlaceFamilies } from "../_shared/categories.ts";
+import { resolveStoredFamily } from "../_shared/profile-family.ts";
 import { applyMediaUpdates } from "./place-media-update.ts";
 import { reviewsOwnedBodyKey as reviewsTileKeyInBody } from "../_shared/review-sources.ts";
 import {
@@ -61,35 +52,15 @@ import {
 import { persistBusinessFieldPins } from "../_shared/field-correction-writer.ts";
 import { recordAdminOperatorEvent } from "../_shared/admin-operator-events.ts";
 
-const MAX_TAGS = ENRICH_FIELD_LIMITS.tagsPerPlace.max;
-const MAX_TAG_LEN = ENRICH_FIELD_LIMITS.tagSlugLength.max;
 const MAX_DESCRIPTION_LEN = ENRICH_FIELD_LIMITS.description.max;
 
-function normalisePlaceTags(value: unknown): string[] | null {
-  if (!Array.isArray(value)) return null;
-
-  // Lowercase + trim + dedupe in one pass. Empty entries drop out so the
-  // form can submit a partially typed list without rejecting the request.
-  const seen = new Set<string>();
-  const clean: string[] = [];
-  for (const t of value) {
-    if (typeof t !== "string") continue;
-    const norm = t.trim().toLowerCase().slice(0, MAX_TAG_LEN);
-    if (!norm || seen.has(norm)) continue;
-    seen.add(norm);
-    clean.push(norm);
-    if (clean.length >= MAX_TAGS) break;
-  }
-  // Strip mutually exclusive catalog pairs (same rules as Enricher).
-  return sanitizePlaceTags(clean).slice(0, MAX_TAGS);
-}
+const READ_ONLY_FIELDS = ["category", "category_label", "mesita_categories", "tags"] as const;
 
 const RESERVATION_CHANNELS = new Set(["phone", "whatsapp", "instagram", "web", "none"]);
 
 type UpdateBody = {
   id?: string;
   mesita_name?: string | null;
-  category?: string | null;
   // Native fields (google_name, price_level, address, google_maps_url,
   // google_place_id) are Google/Enricher-owned and not editable here: the
   // whitelist below never reads them.
@@ -112,7 +83,6 @@ type UpdateBody = {
   menu_pdf_name?: string | null;
   // Generic products payload. Menu is one subtype under products.menu.
   products?: { menu?: unknown[] | null } | null;
-  tags?: string[];
   /** Profile's Actions toggle, sent with the operator's reservation channel. */
   reservations_enabled?: boolean;
   reservation_channel?: string;
@@ -151,6 +121,15 @@ Deno.serve(async (req) => {
   }
   const placeId = (body.id ?? "").toString().trim();
   if (!placeId) return json({ ok: false, error: "id is required" }, 400);
+  // Mesita categories and tags are inferred on Create and every Enrich and
+  // are read-only here (MESITA-2790); `category` is their first item.
+  const readOnly = READ_ONLY_FIELDS.find((field) => field in body);
+  if (readOnly) {
+    return json(
+      { ok: false, code: "read_only_field", error: `${readOnly} is inferred, not edited` },
+      400,
+    );
+  }
 
   // Build the update payload from the whitelist. Missing keys are not
   // touched. Explicit null clears the field.
@@ -165,8 +144,6 @@ Deno.serve(async (req) => {
     }
     update.mesita_name = n.length > 0 ? n : null;
   }
-  // Category is Google's primary type, written by Create and Enrich.
-  // Admin does not remap it, the same way admin does not rewrite the address.
   if ("hours" in body) {
     const cleaned = sanitiseHours(body.hours);
     if (cleaned === "invalid") {
@@ -220,25 +197,6 @@ Deno.serve(async (req) => {
   // Place-redesign editable fields.
   if ("description" in body) {
     update.description = optString(body.description, MAX_DESCRIPTION_LEN);
-  }
-  if ("tags" in body) {
-    const tags = normalisePlaceTags(body.tags);
-    if (!tags) {
-      return json(
-        { ok: false, error: "tags must be an array of strings" },
-        400,
-      );
-    }
-    const catalog = await fetchPlaceTags(admin);
-    if (tags.length > 0 && catalog.length === 0) {
-      return json({ ok: false, error: "Tag catalog did not load" }, 500);
-    }
-    const allowed = new Set(catalog.map((tag) => tag.slug));
-    const unknown = tags.filter((tag) => !allowed.has(tag));
-    if (unknown.length > 0) {
-      return json({ ok: false, error: `Unknown tag: ${unknown[0]}` }, 400);
-    }
-    update.tags = tags;
   }
   // Profile's Actions toggle (MESITA-2787). The answer is stored as the
   // operator's reservation channel, the one column a later Enrich cannot
@@ -316,31 +274,11 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Restamp Family for the row just written, so the profile does not re-read
-  // to learn what the new category's families are. A vocabulary miss leaves
-  // the strings off; the save itself already landed.
-  const [categories, families] = await Promise.all([
-    fetchPlaceCategories(admin),
-    fetchPlaceFamilies(admin),
-  ]);
-  const row = place as { category?: unknown; family_keys?: unknown };
-  // A Google type the dictionary lacks answers from catalog_membership, as
-  // families_for_category() does (MESITA-2759).
-  const membershipSlug = membershipSlugFor(row.category, categories);
-  const membershipKeys = membershipSlug
-    ? await fetchMembershipKeys(admin, membershipSlug)
-    : null;
-  const family = categories.length > 0 && families.length > 0
-    ? resolveProfileFamily({
-      category: row.category,
-      familyKeys: row.family_keys,
-      membershipKeys,
-      categories,
-      families,
-    })
-    : undefined;
+  // Families are derived from the categories in the profiles view; the row
+  // just written carries them. A vocabulary miss leaves the string off.
+  const families = await fetchPlaceFamilies(admin);
   const familyStored = families.length > 0
-    ? resolveStoredFamily(row.family_keys, families)
+    ? resolveStoredFamily((place as { family_keys?: unknown }).family_keys, families)
     : undefined;
 
   await recordAdminOperatorEvent(admin, {
@@ -352,5 +290,5 @@ Deno.serve(async (req) => {
     detail: { fields: Object.keys(update) },
   });
 
-  return json({ ok: true, place, family, familyStored });
+  return json({ ok: true, place, familyStored });
 });

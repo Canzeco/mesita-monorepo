@@ -106,7 +106,9 @@ Deno.serve(async (req) => {
   if (!commit.ok) return json({ ok: false, error: commit.error }, 400);
   const { data: versionRow, error: versionErr } = await admin
     .from("profiles")
-    .select("updated_at, content_state, enriched_at, enrichment_sources")
+    .select(
+      "updated_at, content_state, enriched_at, enrichment_sources, google_types, google_tags, category",
+    )
     .eq("id", commit.placeId)
     .maybeSingle();
   if (versionErr) return json({ ok: false, error: versionErr.message }, 500);
@@ -136,6 +138,10 @@ Deno.serve(async (req) => {
 
   const filled = await fillAtlasProfile(admin, commit.placeId, validated.patch, {
     serpSummary: commit.serpSummary,
+  }, {
+    google_types: versionRow?.google_types,
+    google_tags: versionRow?.google_tags,
+    category: versionRow?.category,
   });
   // A pin is a person's correction (Docs › Create · Enrich · Edit §D): the
   // run writes around it, never over it.

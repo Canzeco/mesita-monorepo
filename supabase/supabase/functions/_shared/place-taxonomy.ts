@@ -1,8 +1,9 @@
 // Place family law. The guest catalog is twenty families (catalog-families.ts).
 // Undefined is last and is not a rail.
 // A category may belong to more than one family. A family may contain more
-// than one category. The profiles view derives family_keys from
-// place_categories. The base column stays null.
+// than one category. The profiles view derives family_keys from the
+// place's Mesita categories through place_categories (MESITA-2790), never
+// from a model. The base column stays null.
 // Live membership is that mapping: the keys already derived onto the row,
 // or a dictionary passed in. The code twin below is not live membership.
 

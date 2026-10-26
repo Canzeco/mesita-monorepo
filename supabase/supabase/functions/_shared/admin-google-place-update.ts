@@ -8,6 +8,8 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { fetchGoogleBasics, type GoogleBasics } from "./enrich-google-basics.ts";
 import { mirrorPlacePhotos } from "./store-place-images.ts";
 import { writePlace } from "./place-doc.ts";
+import { googleTypesPrimaryFirst } from "./google-table-b.ts";
+import { humanizeCategorySlug } from "./parse-utils.ts";
 
 const BUSINESS_STATES = new Set(["OPERATIONAL", "CLOSED_TEMPORARILY", "CLOSED_PERMANENTLY"]);
 
@@ -39,19 +41,25 @@ export function galleryTakesGoogleHero(photos: unknown): boolean {
   return photos.filter((url) => typeof url === "string" && url.trim() !== "").length <= 1;
 }
 
-/** Build the place_profiles patch from a Google basics fetch (before pins).
- *  The gallery is never in it: `galleryHeroRefresh` decides that separately. */
+/**
+ * Build the place_profiles patch from a Google basics fetch (before pins).
+ * The gallery is never in it: `galleryTakesGoogleHero` decides that separately.
+ * google_types is stored primary-first (MESITA-2790). `category` follows
+ * Google's primary only while the place has no Mesita categories; once it
+ * has them, `category` is Mesita's and a refetch leaves it alone.
+ */
 export function googleBasicsToUpdatePatch(input: {
   basics: GoogleBasics;
   businessStatus: string | null;
   googlePrimaryType: string | null;
   googleTypes: string[];
+  hasMesitaCategories: boolean;
   now: string;
 }): Record<string, unknown> {
+  const googleTypes = googleTypesPrimaryFirst(input.googlePrimaryType, input.googleTypes);
+  const primary = googleTypes[0] ?? null;
   const patch: Record<string, unknown> = {
     google_name: input.basics.google_name,
-    category: input.basics.category,
-    category_label: input.basics.category_label,
     price_level: input.basics.price_level,
     lat: input.basics.lat,
     lng: input.basics.lng,
@@ -80,9 +88,16 @@ export function googleBasicsToUpdatePatch(input: {
     google_review_count: input.basics.google_review_count,
     google_reviews: input.basics.google_reviews,
     google_tags: input.basics.google_tags,
-    google_primary_type: input.googlePrimaryType,
-    google_types: input.googleTypes,
+    // Mirror of google_types[0] until MESITA-2791 drops the column.
+    google_primary_type: primary,
+    google_types: googleTypes,
   };
+  if (!input.hasMesitaCategories && primary) {
+    patch.category = primary;
+    patch.category_label = primary === input.basics.category
+      ? input.basics.category_label
+      : humanizeCategorySlug(primary);
+  }
   const status = (input.businessStatus ?? "").trim().toUpperCase();
   if (BUSINESS_STATES.has(status)) {
     patch.business_state = status;
@@ -119,7 +134,7 @@ export async function runGooglePlaceUpdate(
 
   const { data: profile, error: profileErr } = await admin
     .from("place_profiles")
-    .select("google_place_id, enrichment_sources, photos, source_sync")
+    .select("google_place_id, enrichment_sources, photos, source_sync, mesita_categories")
     .eq("id", placeId)
     .maybeSingle();
   if (profileErr) return { ok: false, status: 500, error: profileErr.message };
@@ -169,6 +184,8 @@ export async function runGooglePlaceUpdate(
     businessStatus: google.businessStatus,
     googlePrimaryType: google.primaryType,
     googleTypes: google.googleTypes,
+    hasMesitaCategories: Array.isArray(profile.mesita_categories) &&
+      profile.mesita_categories.length > 0,
     now,
   });
   const pinned: string[] = [];

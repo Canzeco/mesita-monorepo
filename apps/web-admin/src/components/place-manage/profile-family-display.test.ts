@@ -7,7 +7,6 @@ const DIR = join(process.cwd(), "src/components/place-manage");
 
 describe("the profile page does not fetch a second door", () => {
   const files = [
-    "PlaceCategorySelect.tsx",
     "PlaceTagsPicker.tsx",
     "sections/PlaceSection.tsx",
     "actions.ts",

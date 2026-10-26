@@ -213,7 +213,7 @@ create view public.profiles with (security_invoker = true) as
     p.name_embedding,
     p.name_embedding_hash,
     p.request_count,
-    public.families_for_category(p.category) as family_keys,
+    public.families_for_categories(p.mesita_categories, p.category) as family_keys,
     p.reservations_enabled,
     p.google_address,
     p.source_sync,
@@ -253,8 +253,8 @@ begin
   if pg_get_viewdef('public.profiles'::regclass) not like '%u.selected%' then
     raise exception 'profiles does not project places.selected';
   end if;
-  if pg_get_viewdef('public.profiles'::regclass) not like '%families_for_category%' then
-    raise exception 'profiles.family_keys is no longer derived from the category mapping';
+  if pg_get_viewdef('public.profiles'::regclass) not like '%families_for_categories%' then
+    raise exception 'profiles.family_keys is no longer derived from the Mesita categories (MESITA-2790)';
   end if;
   if not exists (
     select 1

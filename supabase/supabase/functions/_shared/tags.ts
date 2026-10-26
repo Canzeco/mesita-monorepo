@@ -16,15 +16,11 @@
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
-import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";
-import { selectTopPlaceTags } from "./tags-sanitize.ts";
-import { OPENAI_URL } from "./enrich-config.ts";
 
 export { sanitizePlaceTags } from "./tags-sanitize.ts";
 
-/** Fallback when caller omits models_config.enricher.model. */
-const DEFAULT_TAGGER_MODEL = DEFAULT_MODELS_CONFIG.enricher.model!;
-const MAX_INFERRED_TAGS = ENRICH_FIELD_LIMITS.tagsPerPlace.max;
+/** Mesita tags per place: the one cap every writer uses. */
+export const MAX_PLACE_TAGS = ENRICH_FIELD_LIMITS.tagsPerPlace.max;
 
 export type PlaceTag = {
   slug: string;
@@ -98,115 +94,22 @@ export async function resolvePlaceTags(
   return data as PlaceTag[];
 }
 
-// Signals fed to the tag classifier (Enricher contents stage). All optional
-// except name — the richer the material, the sharper the picks.
-export type TagSignals = {
-  name: string;
-  category?: string | null;
-  description?: string | null;
-  googleReviewsText?: string | null;
-  serpSummary?: string | null;
-};
-
-// Scores the full vocabulary and returns exactly the top MAX_INFERRED_TAGS
-// conflict-free slugs that best match the place (or fewer only if the catalog
-// itself is smaller). Returns [] when there's no OpenAI key, no vocabulary, or
-// the model errors — tags are additive polish, never worth failing a run over.
-// The vocabulary is passed in (the caller reads it once via fetchPlaceTags).
-export async function inferPlaceTags(
-  openaiKey: string | undefined,
-  vocabulary: PlaceTag[],
-  signals: TagSignals,
-  model = DEFAULT_TAGGER_MODEL,
-): Promise<string[]> {
-  if (!openaiKey || vocabulary.length === 0) return [];
-  const valid = new Set(vocabulary.map((t) => t.slug));
-  const vocabText = vocabulary.map((t) => t.slug).join(", ");
-  const placeLines = [
-    `Name: ${signals.name}`,
-    signals.category ? `Category: ${signals.category}` : "",
-    signals.description ? `About: ${signals.description.slice(0, 1500)}` : "",
-    signals.googleReviewsText ? `Reviews: ${signals.googleReviewsText.slice(0, 800)}` : "",
-    signals.serpSummary ? `Editorial: ${signals.serpSummary}` : "",
-  ].filter(Boolean).join("\n");
-
-  const targetCount = Math.min(MAX_INFERRED_TAGS, vocabulary.length);
-  const systemContent =
-    "You tag a place using ONLY slugs from a fixed vocabulary. Score EVERY slug " +
-    "in the vocabulary for how well it fits this place — do not skip weak matches " +
-    "and do not stop early. Respond with a single JSON object " +
-    "{\"tags\": [{\"slug\": \"<slug>\", \"score\": 0.0}, ...]}. Include every " +
-    "vocabulary slug exactly once, copied verbatim, each with a confidence score " +
-    "from 0 to 1 (1 = perfect fit, 0 = no fit). Return tags best-first by score. " +
-    "Never invent a slug. Prefer the poles that fit when tags conflict: " +
-    "reservations_required vs walk_ins_welcome vs accepts_reservations; " +
-    "cash_only vs cards/contactless/meal_vouchers; quiet vs lively; casual vs upscale; " +
-    "casual_dress vs formal_dress; adults_only vs family_friendly/families/kids_menu/" +
-    "kids_activity/all_ages — give the fitting pole a high score and the opposite a low one.";
-  const userPrompt =
-    `Tag vocabulary (${vocabulary.length} slugs — score ALL of them):\n${vocabText}\n\n` +
-    `Place:\n${placeLines}\n\n` +
-    `Return {"tags": [{"slug": "<slug>", "score": 0.0-1.0}, ...]} with every vocabulary ` +
-    `slug scored, ranked best-first. We will keep exactly the top ${targetCount} ` +
-    `after conflict resolution — rank by true fit to this place.`;
-
-  try {
-    const r = await fetch(OPENAI_URL, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model,
-        temperature: 0,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: systemContent },
-          { role: "user", content: userPrompt },
-        ],
-      }),
-    });
-    if (!r.ok) return [];
-    const data = (await r.json()) as { choices?: { message?: { content?: string } }[] };
-    let parsed: { tags?: unknown };
-    try {
-      parsed = JSON.parse(data.choices?.[0]?.message?.content ?? "") as { tags?: unknown };
-    } catch {
-      return [];
-    }
-    if (!Array.isArray(parsed.tags)) return [];
-    const candidates: { slug: string; score: number; index: number }[] = [];
-    for (const [index, tag] of parsed.tags.entries()) {
-      // Accept the legacy string shape during rollout; scores rank new responses above it.
-      const slug = typeof tag === "string"
-        ? tag.trim()
-        : typeof tag === "object" && tag !== null && "slug" in tag &&
-            typeof tag.slug === "string" && "score" in tag &&
-            typeof tag.score === "number" && Number.isFinite(tag.score) &&
-            tag.score >= 0 && tag.score <= 1
-          ? tag.slug.trim()
-          : "";
-      const score = typeof tag === "object" && tag !== null && "score" in tag &&
-          typeof tag.score === "number"
-        ? tag.score
-        : 0;
-      if (slug && valid.has(slug)) candidates.push({ slug, score, index });
-    }
-    candidates.sort((a, b) => b.score - a.score || a.index - b.index);
-    const seen = new Set<string>();
-    const ranked: string[] = [];
-    for (const { slug } of candidates) {
-      if (seen.has(slug)) continue;
-      seen.add(slug);
-      ranked.push(slug);
-    }
-    // Any vocabulary slug the model omitted is treated as score 0 (catalog order)
-    // so we can always fill to exactly targetCount after conflict sanitization.
-    for (const tag of vocabulary) {
-      if (seen.has(tag.slug)) continue;
-      seen.add(tag.slug);
-      ranked.push(tag.slug);
-    }
-    return selectTopPlaceTags(ranked, targetCount);
-  } catch {
-    return [];
+/**
+ * Mesita tags from a model reply (MESITA-2790): slugs copied from the
+ * place_tags vocabulary, lowercased, deduped, capped at tagsPerPlace.max.
+ * Null when the reply carries no `tags` array — a failure that leaves the
+ * stored tags alone. An empty array is a real answer and is written.
+ */
+export function pickVocabularyTags(
+  raw: unknown,
+  vocabulary: ReadonlySet<string>,
+): string[] | null {
+  if (!Array.isArray(raw)) return null;
+  const out: string[] = [];
+  for (const t of raw) {
+    const slug = typeof t === "string" ? t.trim().toLowerCase() : "";
+    if (slug && vocabulary.has(slug) && !out.includes(slug)) out.push(slug);
+    if (out.length === MAX_PLACE_TAGS) break;
   }
+  return out;
 }

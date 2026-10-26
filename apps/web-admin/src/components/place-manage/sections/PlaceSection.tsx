@@ -13,13 +13,12 @@ import {
   type AdminPlace,
   type PlaceFieldLimits,
 } from "../actions";
-import { PlaceCategorySelect } from "../PlaceCategorySelect";
 import { PlaceFamilyField } from "../PlaceFamilyField";
 import {
   PlaceGoogleCategoriesField,
   PlaceMesitaCategoriesField,
+  PlaceMesitaTagsField,
 } from "../PlaceCategoryListFields";
-import { googleTagLabel } from "@mesita/place-profile/map";
 import { googleFormattedAddress } from "../google-location";
 import {
   OpenLink,
@@ -157,23 +156,6 @@ function PriceDisplay({
   );
 }
 
-function GoogleTagChips({ slugs }: { slugs?: string[] | null }) {
-  const items = (slugs ?? []).map((slug) => slug.trim()).filter(Boolean);
-  if (items.length === 0) return <>—</>;
-  return (
-    <span className="flex flex-wrap gap-1.5">
-      {items.map((slug) => (
-        <span
-          key={slug}
-          className="border-border rounded-full border px-2 py-0.5 text-xs"
-        >
-          {googleTagLabel(slug)}
-        </span>
-      ))}
-    </span>
-  );
-}
-
 function locationAddress(place: AdminPlace): string {
   return (
     googleFormattedAddress(place.google_address) ||
@@ -188,7 +170,6 @@ type DayHours = { closed: boolean; open: string; close: string };
 type Form = {
   /** Operator override → places.mesita_name. Blank ⇒ the place follows Google. */
   mesitaName: string;
-  category: string;
   /** Canonical Presentation — English (Mesita core). The column stays
    * `description`; the FIELD is Presentation (Pato, 2026-08-23). */
   description: string;
@@ -222,7 +203,6 @@ function placeToForm(
   for (const c of CHANNELS) channels[c.key as string] = str(v[c.key]);
   return {
     mesitaName: (v.mesita_name ?? "").slice(0, limits.placeNameMax),
-    category: v.category ?? "",
     description: (v.description ?? "").slice(0, limits.descriptionMax),
     phone: v.phone ?? "",
     channels,
@@ -395,53 +375,46 @@ export function PlaceSection({
         title="Basics"
         subtitle="What this place is."
       >
+        {/* Pato's eight fields, in his order (MESITA-2790): one list, so a
+            reorder or a restored row is one edit. One field per row. */}
         <div className="mt-5 grid gap-4">
-          <TextField
-            label="Mesita name"
-            value={form.mesitaName}
-            onChange={(x) => set("mesitaName", x.slice(0, limits.placeNameMax))}
-            maxLength={limits.placeNameMax}
-            disabled={anyPending}
-            placeholder={(place.google_name ?? "").trim() || undefined}
-          />
-          <ReadField label="Google name" auto boxed>
-            {(place.google_name ?? "").trim() || "—"}
-          </ReadField>
-        </div>
-        {/* One field per row — the whole card is a single column. */}
-        <div className="mt-4 grid gap-4">
-          <ReadField label="Google price" auto boxed>
-            <PriceDisplay level={place.price_level} currency={place.currency} />
-          </ReadField>
-          <PlaceFamilyField />
-          <PlaceMesitaCategoriesField />
-          <PlaceCategorySelect
-            slug={place.category}
-            label={place.category_label}
-          />
-          <PlaceGoogleCategoriesField />
-        </div>
-        <div className="mt-4 grid gap-4">
-          <TextArea
-            label="Presentation"
-            labelRight={
-              <span className="text-muted-foreground type-label tabular-nums">
-                {form.description.length} / {limits.descriptionMax}
-              </span>
-            }
-            value={form.description}
-            onChange={(x) =>
-              set("description", x.slice(0, limits.descriptionMax))
-            }
-            rows={7}
-            maxLength={limits.descriptionMax}
-            disabled={anyPending}
-          />
-        </div>
-        <div className="mt-4">
-          <ReadField label="Tags" auto boxed>
-            <GoogleTagChips slugs={place.google_tags} />
-          </ReadField>
+          {[
+            <ReadField key="google-name" label="Google name" auto boxed>
+              {(place.google_name ?? "").trim() || "—"}
+            </ReadField>,
+            <ReadField key="google-price" label="Google price" auto boxed>
+              <PriceDisplay level={place.price_level} currency={place.currency} />
+            </ReadField>,
+            <PlaceGoogleCategoriesField key="google-categories" />,
+            <TextField
+              key="mesita-name"
+              label="Mesita name"
+              value={form.mesitaName}
+              onChange={(x) => set("mesitaName", x.slice(0, limits.placeNameMax))}
+              maxLength={limits.placeNameMax}
+              disabled={anyPending}
+              placeholder={(place.google_name ?? "").trim() || undefined}
+            />,
+            <PlaceMesitaCategoriesField key="mesita-categories" />,
+            <TextArea
+              key="mesita-presentation"
+              label="Mesita presentation"
+              labelRight={
+                <span className="text-muted-foreground type-label tabular-nums">
+                  {form.description.length} / {limits.descriptionMax}
+                </span>
+              }
+              value={form.description}
+              onChange={(x) =>
+                set("description", x.slice(0, limits.descriptionMax))
+              }
+              rows={7}
+              maxLength={limits.descriptionMax}
+              disabled={anyPending}
+            />,
+            <PlaceMesitaTagsField key="mesita-tags" />,
+            <PlaceFamilyField key="families" />,
+          ]}
         </div>
       </SectionCard>
 

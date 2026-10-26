@@ -4,13 +4,14 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type {
   PlaceActions,
   PlaceMenuItem,
+  PlaceTab,
 } from "@mesita/place-profile";
 import { SocialLine } from "@mesita/place-profile";
 import { MenuViewer } from "@/components/consumer/MenuViewer";
 import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
 import { PlaceMoreSheet } from "@/components/consumer/place-detail/PlaceMoreSheet";
 import { ReportSheet } from "@/components/consumer/place-detail/ReportSheet";
-import { BoostPane } from "@/components/consumer/place-detail/BoostPane";
+import { BoostPane, BoostUnavailable } from "@/components/consumer/place-detail/BoostPane";
 import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
 import {
   apiPlaceActivity,
@@ -35,8 +36,11 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   actions: PlaceActions;
   sheets: ReactNode;
   social: ReactNode;
-  /** The Boost tab's body (MESITA-2789); null for a Google-only card. */
+  /** The Boost tab's body (MESITA-2789). */
   boost: ReactNode;
+  /** Set when Stripe Checkout sends the guest back: open the Boost tab
+   *  (MESITA-2797). */
+  openTab: { tab: PlaceTab; key: number } | null;
 } {
   const { isSaved, toggle } = useSavedPlaces();
   const saved = isSaved(place.id);
@@ -111,8 +115,9 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     </>
   );
 
-  // A Google-only card is not a place row yet: nothing to back, and the
-  // tab falls back to the package's explainer.
+  // A Google-only card is not a place row yet: nothing to back. It says so
+  // in the consumer's own words (MESITA-2797), never the package's
+  // "from the Mesita app" line, which reads wrong inside the app.
   const boostPane = isMesitaPlaceId(place.id) ? (
     <BoostPane
       place={place}
@@ -122,9 +127,17 @@ export function useMemberPlaceActions(place: PlaceDetail): {
       onRetry={boost.reload}
       onChanged={boost.reload}
     />
-  ) : null;
+  ) : (
+    <BoostUnavailable />
+  );
 
-  return { actions, sheets, social: activity.social, boost: boostPane };
+  return {
+    actions,
+    sheets,
+    social: activity.social,
+    boost: boostPane,
+    openTab: boost.returnedAt != null ? { tab: "boost", key: boost.returnedAt } : null,
+  };
 }
 
 // Boost (MESITA-2789): the place's tier and backers, and the guest's own
@@ -135,6 +148,8 @@ function usePlaceBoost(placeId: string): {
   data: PlaceBoost | null;
   loading: boolean;
   failed: boolean;
+  /** When Checkout last sent the guest back here (ms), else null. */
+  returnedAt: number | null;
   reload: () => void;
 } {
   const getSupabase = useLazyBrowserSupabase();
@@ -146,6 +161,7 @@ function usePlaceBoost(placeId: string): {
     failed: boolean;
   }>({ placeId, nonce: -1, data: null, failed: false });
   const [nonce, setNonce] = useState(0);
+  const [returned, setReturned] = useState<{ placeId: string; at: number } | null>(null);
 
   useEffect(() => {
     if (!mesita) return;
@@ -165,6 +181,7 @@ function usePlaceBoost(placeId: string): {
       .then((data) => {
         if (cancelled) return;
         setState({ placeId, nonce, data, failed: false });
+        if (session) setReturned({ placeId, at: Date.now() });
         if (session && data.confirmed) toast.success("Your Boost is on. Thanks for backing this place");
         else if (session) toast("We're confirming your payment with Stripe. Your Boost shows once it clears.");
       })
@@ -183,6 +200,7 @@ function usePlaceBoost(placeId: string): {
     data,
     loading: mesita && (!fresh || state.nonce !== nonce),
     failed: mesita && fresh && state.failed,
+    returnedAt: mesita && returned?.placeId === placeId ? returned.at : null,
     reload: () => setNonce((n) => n + 1),
   };
 }

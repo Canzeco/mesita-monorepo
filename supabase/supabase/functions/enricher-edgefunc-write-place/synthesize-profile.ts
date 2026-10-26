@@ -1,29 +1,29 @@
-// The one enrichment commit fills the Presentation and one Category.
-// and hands back the Mesita Name the same synthesis inferred, which lands
-// only through _shared/mesita-name-door.ts. The classifiers already live in
-// _shared. This module only decides which of those results may land, then
-// the write commits them with the rest. The Scout's read, when Strong bought
-// one, is the SERP slot; Google's own summary is the fallback.
+// The one enrichment commit fills the Presentation, the Mesita categories and
+// the Mesita tags, and hands back the Mesita Name the same synthesis inferred,
+// which lands only through _shared/mesita-name-door.ts (MESITA-2790: every
+// Mesita field is inferred on every Enrich). The classifiers live in _shared.
+// This module only decides which of those results may land, then the write
+// commits them with the rest. The Scout's read, when Strong bought one, is the
+// SERP slot; Google's own summary is the fallback.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { fetchPlaceCategories } from "../_shared/categories.ts";
-import { inferPlaceCategory } from "../_shared/categories-infer.ts";
+import { inferPlaceCategories } from "../_shared/categories-infer.ts";
 import { loadEnrichConfig } from "../_shared/enrich-config.ts";
 import {
   applyProfileToUpdate,
   synthesizeProfile,
   synthesisModelFor,
 } from "../_shared/enrich-synthesis.ts";
-import { humanizeCategorySlug } from "../_shared/parse-utils.ts";
 import { findAddressComponent } from "../_shared/enrich-google-basics-normalizers.ts";
-import { keepAtlasValues } from "../_shared/place-taxonomy.ts";
 import { loadModelsConfig } from "../_shared/models-config.ts";
 
 // The one sentence-safe cap (MESITA-2641); re-exported for this EF's callers
 // and its test.
 export { capPresentation } from "../_shared/presentation-cap.ts";
 import { capPresentation } from "../_shared/presentation-cap.ts";
-import { mesitaCategoriesLocked } from "../_shared/mesita-categories-at-create.ts";
+import { mesitaCategoriesPatch } from "../_shared/mesita-categories.ts";
+import { fetchPlaceTags, pickVocabularyTags } from "../_shared/tags.ts";
 
 export function reviewQuotes(value: unknown): string {
   if (!Array.isArray(value)) return "";
@@ -54,29 +54,37 @@ function slugs(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
 }
 
-/** Fields already on the patch stay when Overwrite is off. Empty ones take the new values. */
+/**
+ * What this run's inferences add to the patch. Presentation keeps the
+ * Overwrite rule (an operator's text stays unless Overwrite is on). Mesita
+ * categories and tags are read-only and re-inferred every run: written when
+ * the call succeeded, left as stored when it failed (null).
+ */
 export function mergeSynthesizedProfile(opts: {
   overwrite: boolean;
   patch: Record<string, unknown>;
   presentation: string | null;
-  category: string | null;
+  categories: string[] | null;
+  tags: string[] | null;
 }): Record<string, unknown> {
   const next = { ...opts.patch };
   const presentation = opts.presentation ? capPresentation(opts.presentation) : "";
   if (presentation && (opts.overwrite || !filled(opts.patch.description))) {
     next.description = presentation;
   }
-  const categoriesLocked = mesitaCategoriesLocked(opts.patch);
-  if (
-    opts.category && opts.category !== "undefined" && !categoriesLocked &&
-    (opts.overwrite || !filled(opts.patch.category))
-  ) {
-    next.category = opts.category;
-    next.category_label = humanizeCategorySlug(opts.category);
+  if (opts.categories && opts.categories.length > 0) {
+    Object.assign(next, mesitaCategoriesPatch(opts.categories));
   }
-  // Catalog tags are not written. places.tags stays whatever it already is.
+  if (opts.tags) next.tags = opts.tags;
   return next;
 }
+
+/** The saved row's Google and Mesita signals; Render's patch carries none. */
+export type SavedSignals = {
+  google_types?: unknown;
+  google_tags?: unknown;
+  category?: unknown;
+};
 
 function textField(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
@@ -109,7 +117,8 @@ export type FilledProfile = {
 };
 
 /**
- * Asks the existing classifiers for a Presentation, one Category, and Tags.
+ * Asks the classifiers for a Presentation, the Mesita tags and 1–3 Mesita
+ * categories.
  * A model failure leaves the patch unchanged. The caller still commits once.
  */
 export async function fillAtlasProfile(
@@ -117,9 +126,10 @@ export async function fillAtlasProfile(
   placeId: string,
   patch: Record<string, unknown>,
   grounding: { serpSummary: string | null } = { serpSummary: null },
+  saved: SavedSignals = {},
 ): Promise<FilledProfile> {
   try {
-    return await fillAtlasProfileInner(admin, placeId, patch, grounding);
+    return await fillAtlasProfileInner(admin, placeId, patch, grounding, saved);
   } catch (err) {
     const why = err instanceof Error ? err.message : String(err);
     console.error(`[enrich] profile synthesis skipped: ${why}`);
@@ -129,15 +139,17 @@ export async function fillAtlasProfile(
 
 async function fillAtlasProfileInner(
   admin: SupabaseClient,
-  _placeId: string,
+  placeId: string,
   patch: Record<string, unknown>,
   grounding: { serpSummary: string | null },
+  saved: SavedSignals,
 ): Promise<FilledProfile> {
   const openaiKey = Deno.env.get("OPENAI_KEY")?.trim() ?? "";
   if (!openaiKey) return { patch, mesitaName: null };
 
-  const [categories, models, cfg] = await Promise.all([
+  const [categories, tagVocabulary, models, cfg] = await Promise.all([
     fetchPlaceCategories(admin),
+    fetchPlaceTags(admin),
     loadModelsConfig(admin),
     loadEnrichConfig(admin),
   ]);
@@ -146,9 +158,15 @@ async function fillAtlasProfileInner(
   const googleSummary = textField(patch.pitch) || textField(patch.story) || textField(patch.description);
   const webRead = textField(grounding.serpSummary) || googleSummary;
   const reviews = reviewQuotes(patch.google_reviews);
+  // Render's patch carries no Google categories, attributes or category:
+  // read them off the saved row (MESITA-2790).
+  const googleTypes = slugs(saved.google_types);
+  const googleTags = slugs(saved.google_tags);
+  const tagSlugs = new Set(tagVocabulary.map((t) => t.slug));
 
   let presentation: string | null = null;
   let mesitaName: string | null = null;
+  let tags: string[] | null = null;
   const anchor = branchAnchor(patch);
   if (name) {
     const { parsed } = await synthesizeProfile({
@@ -156,7 +174,10 @@ async function fillAtlasProfileInner(
       model: synthesisModelFor(cfg.synthesisQuality),
       name,
       locationLine: address,
-      category: textField(patch.category) || null,
+      category: textField(saved.category) || null,
+      googleTypes,
+      googleTags,
+      tagVocabulary: [...tagSlugs],
       // The franchise rule's anchor: a chain branch is named brand + zone.
       zone: anchor.zone,
       city: anchor.city,
@@ -169,33 +190,31 @@ async function fillAtlasProfileInner(
       applyProfileToUpdate(drafted, parsed);
       presentation = textField(drafted.description) || null;
       mesitaName = textField(parsed.mesita_name) || null;
+      tags = pickVocabularyTags(parsed.tags, tagSlugs);
     }
   }
   if (!presentation && googleSummary) presentation = capPresentation(googleSummary);
+  if (!tags) console.warn(`[enrich] ${placeId}: Mesita tags not inferred; stored tags kept`);
 
-  const category = mesitaCategoriesLocked(patch)
-    ? null
-    : await inferPlaceCategory(openaiKey, categories, {
-      name: name || "Place",
-      address,
-      googlePrimaryType: textField(patch.google_primary_type) || textField(patch.category) || null,
-      googleTypes: slugs(patch.google_types),
-      editorialSummary: googleSummary || null,
-      description: presentation,
-    }, models.enricherModel);
-  const kept = keepAtlasValues({
-    category,
-    tags: [],
-    categories: categories.map((item) => item.slug),
-    tagVocabulary: [],
-  });
+  const mesitaCategories = await inferPlaceCategories(openaiKey, categories, {
+    name: name || "Place",
+    address,
+    googleTypes,
+    googleTags,
+    editorialSummary: googleSummary || null,
+    description: presentation,
+  }, models.enricherModel);
+  if (!mesitaCategories) {
+    console.warn(`[enrich] ${placeId}: Mesita categories not inferred; stored categories kept`);
+  }
 
   return {
     patch: mergeSynthesizedProfile({
       overwrite: overwriteOn(patch),
       patch,
       presentation,
-      category: kept.category,
+      categories: mesitaCategories,
+      tags,
     }),
     mesitaName,
   };

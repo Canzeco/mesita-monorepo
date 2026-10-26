@@ -285,6 +285,22 @@ export function BoostPane({
   );
 }
 
+/** The Boost tab on a Google-only card (MESITA-2797): no Mesita row, so
+ *  nothing to back yet. */
+export function BoostUnavailable() {
+  return (
+    <div className="flex flex-col items-center px-6 py-16 text-center">
+      <span className="bg-muted text-foreground flex h-14 w-14 items-center justify-center rounded-2xl">
+        <Zap className="h-7 w-7" aria-hidden />
+      </span>
+      <h3 className={cn(SHEET_TITLE_CLASS, "mt-4")}>Boost isn&apos;t open here yet</h3>
+      <p className="text-muted-foreground mt-1.5 max-w-[30ch] text-sm leading-relaxed">
+        You can boost this place once it has its Mesita profile.
+      </p>
+    </div>
+  );
+}
+
 /** "Ana, Luis and 2 others" — names first, then the unnamed backers. */
 export function backedBy(s: Pick<PlaceBoost, "backers" | "names">): string {
   const named = s.names.slice(0, 2);

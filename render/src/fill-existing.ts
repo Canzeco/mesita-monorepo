@@ -1,12 +1,13 @@
 // Overwrite is one switch for the whole run. Off keeps values that already
 // exist and still lets sync metrics replace themselves. On keeps the patch.
+// The Mesita categories and tags are not Render's (MESITA-2790): the write EF
+// infers them from the saved row every run and writes them only on success,
+// so Render never sends them, whatever the switch says.
 
 const PROTECTED = [
   "google_name",
   "mesita_name",
   "name",
-  "category",
-  "category_label",
   "description",
   "address",
   "zone",
@@ -24,6 +25,8 @@ const PROTECTED = [
   "google_maps_url",
   "google_address",
 ] as const;
+/** Columns the write EF infers; Render's patch never carries them. */
+const MESITA_OWNED = ["category", "category_label", "mesita_categories", "tags"] as const;
 
 export function hasSavedValue(value: unknown): boolean {
   if (value == null) return false;
@@ -38,29 +41,19 @@ export function applyOverwrite(opts: {
   patch: Record<string, unknown>;
   saved: Record<string, unknown>;
 }): Record<string, unknown> {
-  if (opts.overwrite) {
-    const tags = stringList(opts.patch.tags);
-    return tags ? { ...opts.patch, tags } : opts.patch;
-  }
   const next = { ...opts.patch };
+  for (const key of MESITA_OWNED) delete next[key];
+  if (opts.overwrite) return next;
   for (const key of PROTECTED) {
     const saved = key === "photos" ? enrichedGallery(opts.saved.photos) : hasSavedValue(opts.saved[key]);
     if (saved) next[key] = opts.saved[key];
-  }
-  const kept = stringList(opts.saved.tags);
-  const added = stringList(opts.patch.tags);
-  if (kept.length > 0 || added.length > 0) {
-    next.tags = [...new Set([...kept, ...added])];
   }
   return next;
 }
 
 /** One photo is Create's Google hero, not a gallery to keep (MESITA-2794). */
 function enrichedGallery(value: unknown): boolean {
-  return stringList(value).length > 1;
+  if (!Array.isArray(value)) return false;
+  return value.filter((item) => typeof item === "string" && item.trim().length > 0).length > 1;
 }
 
-function stringList(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
-}
