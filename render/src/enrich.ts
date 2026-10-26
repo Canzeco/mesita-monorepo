@@ -7,7 +7,7 @@ import {
   type GooglePlace,
   type GoogleSpine,
 } from "./google-spine.ts";
-import { digest, embedPair, embeddingFacts, embeddingFields } from "./embedding.ts";
+import { digest, embedPair, embeddingFields, writtenSubject } from "./embedding.ts";
 import {
   defaultImageKnobs,
   fetchInstagramPosts,
@@ -82,7 +82,11 @@ export type BuiltEnrichment = {
   steps: RanSteps;
   /** The Scout's read: the write's Presentation grounds on it. Never a column. */
   serpSummary: string | null;
+  /** Each step's time and what this run produced, for the one steps log line. */
+  ran?: StepRun[];
 };
+
+export type StepRun = { step: string; ms: number; produced: string };
 
 /** A listing Google calls permanently closed. The run stops at Details. */
 export type ClosedListing = { closed: true };
@@ -110,7 +114,15 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment |
   const googleKey = process.env.GMP_KEY?.trim() ?? "";
   if (!googleKey) throw new Error("Render is missing GMP_KEY");
 
-  const details = await fetchGooglePlace(googlePlaceId, googleKey);
+  const ran: StepRun[] = [];
+  const timed = async <T>(step: string, work: () => Promise<T>, produced: (value: T) => string): Promise<T> => {
+    const started = Date.now();
+    const value = await work();
+    ran.push({ step, ms: Date.now() - started, produced: produced(value) });
+    return value;
+  };
+  const details = await timed("details", () => fetchGooglePlace(googlePlaceId, googleKey), (d) =>
+    isPermanentlyClosed(d) ? "closed" : "ok");
   if (isPermanentlyClosed(details)) return { closed: true };
   const spine = profileFromGoogle(details, googlePlaceId);
   if (!spine.ok) throw new Error(spine.error);
@@ -133,7 +145,6 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment |
       knobs,
       overwrite,
       saved,
-      name,
       googlePlaceId,
     });
   }
@@ -151,14 +162,14 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment |
     }
   }
   const scout = job.scoutInput?.trim()
-    ? await scoutPlace({
-      input: job.scoutInput,
+    ? await timed("serp", () => scoutPlace({
+      input: job.scoutInput!,
       instructions: knobs.scoutInstructions,
       preset: knobs.perplexityPreset,
       perplexityKey: process.env.PERPLEXITY_KEY,
-    })
+    }), (read) => read?.summary ? "read" : "none")
     : null;
-  const discovered = await discoverLinks({
+  const discovered = await timed("links", () => discoverLinks({
     name,
     city,
     have: {
@@ -174,39 +185,49 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment |
     context: scout?.summary ?? null,
     firecrawlKey: process.env.FIRECRAWL_KEY,
     perplexityKey: process.env.PERPLEXITY_KEY,
-  });
+  }), (found) => Object.keys(found.links).join("+") || "none");
   const links = discovered.links;
   for (const [key, url] of Object.entries(links) as [LinkField, string][]) {
     spine.patch[key] = url;
   }
-  Object.assign(spine.patch, await fetchDraftSync({
+  Object.assign(spine.patch, await timed("social+reviews", () => fetchDraftSync({
     googlePlaceId,
     instagramUrl: stringField(spine.patch.instagram_url),
     facebookUrl: stringField(spine.patch.facebook_url),
+  }), (sync) => {
+    const reviews = (sync as Record<string, unknown>).google_reviews;
+    return `${Array.isArray(reviews) ? reviews.length : 0}reviews`;
   }));
 
   const openaiKey = process.env.OPENAI_KEY?.trim() ?? "";
   const images = imageKnobs(knobs);
   const instagramUrl = stringField(spine.patch.instagram_url);
-  const posts = await fetchInstagramPosts({
-    instagramUrl,
-    depth: knobs.gatherInstagramDepth ?? 10,
-    apifyKey: process.env.APIFY_KEY,
-  });
-  const photos = await rankGallery({
-    google: await fetchGooglePhotoUrls(details.photos, googleKey, images.gatherGoogleImages),
-    instagram: rankPostsByLikes(posts),
-    knobs: images,
-    openaiKey,
-  });
+  const photos = await timed("images", async () => {
+    const posts = await fetchInstagramPosts({
+      instagramUrl,
+      depth: knobs.gatherInstagramDepth ?? 10,
+      apifyKey: process.env.APIFY_KEY,
+    });
+    return rankGallery({
+      google: await fetchGooglePhotoUrls(details.photos, googleKey, images.gatherGoogleImages),
+      instagram: rankPostsByLikes(posts),
+      knobs: images,
+      openaiKey,
+    });
+  }, (gallery) => `${gallery.urls.length}photos`);
   if (photos.urls.length > 0) spine.patch.mesita_photos = photos.urls;
 
   let description = spine.description;
   if (!description) {
     if (!openaiKey) throw new Error("Google has no summary and Render is missing OPENAI_KEY");
-    description = await describeFromFacts(factsWithLinks(spine.facts, links), openaiKey);
+    description = await timed("description", () => describeFromFacts(factsWithLinks(spine.facts, links), openaiKey),
+      (text) => text ? "generated" : "none");
+  } else {
+    ran.push({ step: "description", ms: 0, produced: "google" });
   }
   if (!description) throw new Error("The place has no description, so it was not written.");
+  const keptSaved = !overwrite && typeof saved.description === "string" && saved.description.trim();
+  if (keptSaved) ran[ran.length - 1].produced += ",kept-saved";
 
   // The write fills the Presentation when this run may replace it. A saved
   // one stays on the patch through applyOverwrite and is left alone.
@@ -223,22 +244,18 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment |
     saved,
     patch: draft,
   });
-  if (openaiKey && name) {
-    const facts = embeddingFacts({
-      name,
-      zone: typeof spine.patch.zone === "string" ? spine.patch.zone : null,
-      city: typeof spine.patch.city === "string" ? spine.patch.city : null,
-      address: typeof spine.patch.address === "string" ? spine.patch.address : null,
-      description,
-    });
-    const vectors = await embedPair(facts, name, openaiKey);
-    const fields = embeddingFields(
-      vectors.summary,
-      vectors.name,
-      await digest(facts),
-      await digest(name),
-      facts,
-    );
+  const subject = writtenSubject(patch);
+  if (openaiKey && subject) {
+    const fields = await timed("embedding", async () => {
+      const vectors = await embedPair(subject.facts, subject.name, openaiKey);
+      return embeddingFields(
+        vectors.summary,
+        vectors.name,
+        await digest(subject.facts),
+        await digest(subject.name),
+        subject.facts,
+      );
+    }, (written) => written ? "written" : "none");
     if (fields) Object.assign(patch, fields);
   }
   const steps: RanSteps = { links: discovered.report };
@@ -249,6 +266,7 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment |
     photoAnalyses: photos.analyses,
     steps,
     serpSummary: scout?.summary ?? null,
+    ran,
   };
 }
 
@@ -288,7 +306,6 @@ async function buildQuickEnrichment(opts: {
   knobs: EnrichmentKnobs;
   overwrite: boolean;
   saved: Record<string, unknown>;
-  name: string;
   googlePlaceId: string;
 }): Promise<BuiltEnrichment> {
   const images = imageKnobs(opts.knobs);
@@ -311,22 +328,16 @@ async function buildQuickEnrichment(opts: {
   });
   const openaiKey = process.env.OPENAI_KEY?.trim() ?? "";
   const written = typeof patch.description === "string" ? patch.description : "";
-  if (openaiKey && opts.name && written) {
+  const subject = writtenSubject(patch);
+  if (openaiKey && subject && written) {
     try {
-      const facts = embeddingFacts({
-        name: opts.name,
-        zone: typeof opts.spine.patch.zone === "string" ? opts.spine.patch.zone : null,
-        city: typeof opts.spine.patch.city === "string" ? opts.spine.patch.city : null,
-        address: typeof opts.spine.patch.address === "string" ? opts.spine.patch.address : null,
-        description: written,
-      });
-      const vectors = await embedPair(facts, opts.name, openaiKey);
+      const vectors = await embedPair(subject.facts, subject.name, openaiKey);
       const fields = embeddingFields(
         vectors.summary,
         vectors.name,
-        await digest(facts),
-        await digest(opts.name),
-        facts,
+        await digest(subject.facts),
+        await digest(subject.name),
+        subject.facts,
       );
       if (fields) Object.assign(patch, fields);
     } catch {
