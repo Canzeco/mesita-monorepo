@@ -2,6 +2,16 @@
 // and is not a rail. A type may wear two families: the first is the sharp
 // query, the second is the overlap (MESITA-2749).
 //
+// ONE WORD (MESITA-2760, Pato 2026-10-25: "Rethink all the 20 families, but
+// families must be one-word long"): Quick bite reads Quick, Night out reads
+// Nightlife, Sweet reads Dessert; their slugs stay (stored keys never follow
+// a label). Tacos folded into Mexican (the two held the same four Google
+// types, so the rows showed the same places; Pato 2026-10-19: "tacos is
+// toooooo mexican"). Japanese folded into Sushi and Dinner: a generic
+// Japanese restaurant is Dinner first, Sushi second, so the Sushi row lists
+// sushi bars first. The two freed slots went to Chicken and Korean, trips
+// Dinner swallowed.
+//
 // SCOPE (MESITA-2438, Pato 2026-10-19: "This is not Tudu, is Mesita. More
 // OpenTable scope."): a family holds places a guest books a table at or
 // orders at — food, coffee, bars, nightlife. Tourist attractions, museums,
@@ -14,8 +24,9 @@
 // barbers and tattoo studios sit in NO family (`NOT_SOCIAL_TYPES`).
 //
 // ONE NIGHT RAIL (MESITA-2486, Pato 2026-10-19: "merge"): Go out folded
-// into Night out. Karaoke, escape rooms, billiards and board-game cafés are
-// Night out; a board-game café is Coffee first, Night out second.
+// into Night out (now labelled Nightlife). Karaoke, escape rooms, billiards
+// and board-game cafés are Nightlife; a board-game café is Coffee first,
+// Nightlife second.
 //
 // PRIMARY AND SECONDARY. A Google type's row below lists its families
 // PRIMARY FIRST: a cafe is Coffee first, Breakfast second; a brewpub is
@@ -27,7 +38,7 @@
 //
 // A Google type sits on a family only when that rail is a different trip.
 // Overlap is the second label, not a second category: a pizzeria is Pizza
-// and Italian; a taqueria is Tacos and Mexican. Dinner is the wide table,
+// and Italian; a taqueria is Mexican and Quick. Dinner is the wide table,
 // worn by a cuisine that has no sharper chip and by the cuisines below.
 // A cafe is Coffee and Breakfast, because those are two trips.
 //
@@ -40,13 +51,13 @@ export const CATALOG_FAMILY_SLUGS = [
   "coffee",
   "breakfast",
   "quick_bite",
-  "tacos",
   "mexican",
   "pizza",
   "burgers",
+  "chicken",
   "sushi",
   "noodles",
-  "japanese",
+  "korean",
   "chinese",
   "italian",
   "seafood",
@@ -70,14 +81,14 @@ export const CATALOG_FAMILIES: readonly {
 }[] = [
   { slug: "coffee", label: "Coffee", emoji: "☕", sort_order: 1 },
   { slug: "breakfast", label: "Breakfast", emoji: "🥐", sort_order: 2 },
-  { slug: "quick_bite", label: "Quick bite", emoji: "🥙", sort_order: 3 },
-  { slug: "tacos", label: "Tacos", emoji: "🌮", sort_order: 4 },
-  { slug: "mexican", label: "Mexican", emoji: "🌶️", sort_order: 5 },
-  { slug: "pizza", label: "Pizza", emoji: "🍕", sort_order: 6 },
-  { slug: "burgers", label: "Burgers", emoji: "🍔", sort_order: 7 },
+  { slug: "quick_bite", label: "Quick", emoji: "🥙", sort_order: 3 },
+  { slug: "mexican", label: "Mexican", emoji: "🌮", sort_order: 4 },
+  { slug: "pizza", label: "Pizza", emoji: "🍕", sort_order: 5 },
+  { slug: "burgers", label: "Burgers", emoji: "🍔", sort_order: 6 },
+  { slug: "chicken", label: "Chicken", emoji: "🍗", sort_order: 7 },
   { slug: "sushi", label: "Sushi", emoji: "🍣", sort_order: 8 },
   { slug: "noodles", label: "Noodles", emoji: "🍜", sort_order: 9 },
-  { slug: "japanese", label: "Japanese", emoji: "🍱", sort_order: 10 },
+  { slug: "korean", label: "Korean", emoji: "🍚", sort_order: 10 },
   { slug: "chinese", label: "Chinese", emoji: "🥡", sort_order: 11 },
   { slug: "italian", label: "Italian", emoji: "🍝", sort_order: 12 },
   { slug: "seafood", label: "Seafood", emoji: "🦐", sort_order: 13 },
@@ -85,9 +96,9 @@ export const CATALOG_FAMILIES: readonly {
   { slug: "indian", label: "Indian", emoji: "🍛", sort_order: 15 },
   { slug: "thai", label: "Thai", emoji: "🍲", sort_order: 16 },
   { slug: "dinner", label: "Dinner", emoji: "🍽️", sort_order: 17 },
-  { slug: "sweet", label: "Sweet", emoji: "🍰", sort_order: 18 },
+  { slug: "sweet", label: "Dessert", emoji: "🍰", sort_order: 18 },
   { slug: "drinks", label: "Drinks", emoji: "🍸", sort_order: 19 },
-  { slug: "night_out", label: "Night out", emoji: "🌙", sort_order: 20 },
+  { slug: "night_out", label: "Nightlife", emoji: "🌙", sort_order: 20 },
   { slug: "undefined", label: "Undefined", emoji: "·", sort_order: 999 },
 ];
 
@@ -105,13 +116,13 @@ export const CATALOG_LEAD_TYPES: Record<CatalogFamilySlug, string> = {
   coffee: "cafe",
   breakfast: "breakfast_restaurant",
   quick_bite: "fast_food_restaurant",
-  tacos: "taco_restaurant",
   mexican: "mexican_restaurant",
   pizza: "pizza_restaurant",
   burgers: "hamburger_restaurant",
+  chicken: "chicken_restaurant",
   sushi: "sushi_restaurant",
   noodles: "ramen_restaurant",
-  japanese: "japanese_restaurant",
+  korean: "korean_restaurant",
   chinese: "chinese_restaurant",
   italian: "italian_restaurant",
   seafood: "seafood_restaurant",
@@ -272,27 +283,32 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   pizza_restaurant: ["pizza", "italian"],
   pizza_delivery: ["pizza", "italian"],
   pizza: ["pizza", "italian"],
-  taco_restaurant: ["tacos", "mexican"],
-  burrito_restaurant: ["tacos", "mexican"],
-  mexican_restaurant: ["mexican", "tacos"],
-  tex_mex_restaurant: ["mexican", "tacos"],
-  mexican: ["mexican", "tacos"],
-  taco: ["tacos", "mexican", "quick_bite"],
-  sushi_restaurant: ["sushi", "japanese"],
-  japanese_restaurant: ["japanese", "sushi"],
-  japanese: ["japanese", "sushi"],
-  sushi: ["sushi", "japanese"],
-  japanese_curry_restaurant: ["japanese", "dinner"],
-  tonkatsu_restaurant: ["japanese", "dinner"],
-  yakiniku_restaurant: ["japanese", "dinner"],
-  yakitori_restaurant: ["japanese", "dinner"],
+  taco_restaurant: ["mexican", "quick_bite"],
+  burrito_restaurant: ["mexican", "quick_bite"],
+  mexican_restaurant: ["mexican", "dinner"],
+  tex_mex_restaurant: ["mexican", "dinner"],
+  mexican: ["mexican", "dinner"],
+  taco: ["mexican", "quick_bite"],
+  sushi_restaurant: ["sushi"],
+  japanese_restaurant: ["dinner", "sushi"],
+  japanese: ["dinner", "sushi"],
+  sushi: ["sushi"],
+  japanese_curry_restaurant: ["dinner"],
+  tonkatsu_restaurant: ["dinner"],
+  yakiniku_restaurant: ["dinner"],
+  yakitori_restaurant: ["dinner"],
   hamburger_restaurant: ["burgers", "dinner"],
   burger: ["burgers", "dinner"],
-  ramen_restaurant: ["noodles", "japanese"],
+  chicken_restaurant: ["chicken", "quick_bite"],
+  chicken_wings_restaurant: ["chicken"],
+  korean_restaurant: ["korean", "dinner"],
+  korean_barbecue_restaurant: ["korean", "dinner"],
+  korean: ["korean", "dinner"],
+  ramen_restaurant: ["noodles"],
   noodle_shop: ["noodles"],
   dumpling_restaurant: ["noodles", "chinese"],
   chinese_noodle_restaurant: ["noodles", "chinese"],
-  ramen: ["noodles", "japanese"],
+  ramen: ["noodles"],
   chinese_restaurant: ["chinese", "dinner"],
   cantonese_restaurant: ["chinese", "dinner"],
   dim_sum_restaurant: ["chinese", "dinner"],
@@ -336,7 +352,7 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   brewpub: ["drinks", "dinner"],
   gastropub: ["drinks", "dinner"],
   bar_and_grill: ["drinks", "dinner"],
-  japanese_izakaya_restaurant: ["japanese", "drinks"],
+  japanese_izakaya_restaurant: ["drinks", "dinner"],
   bar: ["drinks"],
   pub: ["drinks"],
   cocktail_bar: ["drinks"],
