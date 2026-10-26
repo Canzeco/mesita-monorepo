@@ -3,6 +3,7 @@
 import type React from "react";
 
 import type { PlaceActions, PlaceCreatingView } from "../actions";
+import type { PlaceTab } from "./place-detail/tabs";
 import type { PlaceDetail } from "../place-detail";
 import { PlaceDetailBody } from "./PlaceDetailBody";
 import { PlaceTopBar } from "./PlaceTopBar";
@@ -31,6 +32,7 @@ export function PlaceProfile({
   creating,
   social,
   boost,
+  openTab,
 }: {
   place: PlaceDetail;
   onBack?: () => void;
@@ -44,6 +46,8 @@ export function PlaceProfile({
   social?: React.ReactNode;
   /** The Boost tab's body (MESITA-2789); see PlaceDetailBody. */
   boost?: React.ReactNode;
+  /** A tab the host asks to show (MESITA-2797); see PlaceDetailBody. */
+  openTab?: { tab: PlaceTab; key: number } | null;
 }) {
   return (
     <div className="bg-background relative flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -64,6 +68,7 @@ export function PlaceProfile({
           creating={creating}
           social={social}
           boost={boost}
+          openTab={openTab}
         />
       </div>
     </div>
