@@ -132,12 +132,15 @@ export function ProfileStat({
  *  open place's clock). `className` overrides the box (Creating's blue). */
 export function ProfileFact({
   icon: Icon,
+  emoji,
   strong = false,
   className,
   children,
   ...rest
 }: {
   icon?: LucideIcon;
+  /** Drawn where the icon goes (a category's own emoji, MESITA-2813). */
+  emoji?: string | null;
   strong?: boolean;
   children: React.ReactNode;
 } & React.LiHTMLAttributes<HTMLLIElement>) {
@@ -146,7 +149,11 @@ export function ProfileFact({
       className={cn(PLACE_OUTLINE_CHIP_CLASS, className)}
       {...rest}
     >
-      {Icon ? (
+      {emoji ? (
+        <span className="shrink-0 text-base leading-none" aria-hidden>
+          {emoji}
+        </span>
+      ) : Icon ? (
         <Icon
           className={
             "h-4 w-4 shrink-0 " +
