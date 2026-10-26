@@ -64,13 +64,11 @@ Deno.test("validatePlaceProfilePatch: accepts reservations_enabled as a boolean 
 // ("unknown place field: google_primary_type"). Same class as #1395 above.
 Deno.test("validatePlaceProfilePatch: accepts gate_rev 2 taxonomy and payment flags (MESITA-2741)", () => {
   assert(validatePlaceProfilePatch({
-    google_primary_type: "restaurant",
     google_types: ["restaurant", "food"],
     mesita_categories: [{ key: "dinner", label: "Dinner" }],
     prepay_enabled: false,
     payments_enabled: true,
   }).ok);
-  assert(validatePlaceProfilePatch({ google_primary_type: null }).ok);
   assert(validatePlaceProfilePatch({ google_types: null, mesita_categories: null }).ok);
   const badPrepay = validatePlaceProfilePatch({ prepay_enabled: "no" });
   assert(!badPrepay.ok);
@@ -485,7 +483,6 @@ Deno.test("writePlace: place_profiles insert accepts gate_rev 2 fields on the cr
   const { admin, calls } = fakePlaceAdmin({ row: { id: "place-1" } });
   const patch = {
     google_place_id: "ChIJ123",
-    google_primary_type: "restaurant",
     google_types: ["restaurant"],
     mesita_categories: [],
     prepay_enabled: false,

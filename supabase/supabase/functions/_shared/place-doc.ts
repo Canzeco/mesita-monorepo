@@ -94,7 +94,6 @@ export type PlaceProfileRow = {
   /** Immutable once set — see the header. Settable only via mode: "insert". */
   google_place_id: string | null;
   category: string | null;
-  google_primary_type: string | null;
   google_types: unknown;
   mesita_categories: unknown;
   /** Families (0–1). Create path stamps ['undefined'] until contents infers a classified Category. */
@@ -175,7 +174,6 @@ export type PlaceProfileRow = {
 export const PLACE_PROFILE_PATCH_KEYS = [
   "google_place_id",
   "category",
-  "google_primary_type",
   "google_types",
   "mesita_categories",
   "family_keys",
@@ -337,7 +335,7 @@ const PLACE_PLAIN_STRING_KEYS = new Set<string>([
   "didi_food_url", "embedding_source_hash", "description",
   "menu_pdf_url", "menu_pdf_name",
   "zone", "city", "category_label",
-  "embedding_source_text", "google_name", "mesita_name", "google_primary_type",
+  "embedding_source_text", "google_name", "mesita_name",
   "reservation_target", "embedding", "name_embedding",
   "name_embedding_hash", "google_place_id",
   "enriched_at", "business_state_at",

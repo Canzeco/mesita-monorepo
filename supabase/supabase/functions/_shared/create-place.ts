@@ -266,8 +266,7 @@ export async function createMinimalPlace(opts: {
   // and Facebook counts stay empty until a Reviews reload.
   // google_types is the Google categories list, primary first; `category`
   // holds that primary until the Mesita categories call below fills
-  // mesita_categories (MESITA-2790). google_primary_type is only a mirror of
-  // google_types[0] until MESITA-2791 drops it; nothing reads it.
+  // mesita_categories (MESITA-2790).
   const googleTypes = googleTypesPrimaryFirst(basicsRes.primaryType, basicsRes.googleTypes);
   const place: Record<string, unknown> = {
     ...omitReviewsTileColumns({ ...basicsRes.basics }),
@@ -279,7 +278,6 @@ export async function createMinimalPlace(opts: {
           : humanizeCategorySlug(googleTypes[0]),
       }
       : {}),
-    google_primary_type: googleTypes[0] ?? null,
     google_types: googleTypes,
     mesita_categories: [],
     ...googleReviewsAtCreate(basicsRes.basics),

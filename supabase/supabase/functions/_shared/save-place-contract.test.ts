@@ -117,7 +117,6 @@ Deno.test("savePlaceData strips envelope extras instead of 400ing the insert", a
   const { admin, writes } = stubClient();
   const payload = {
     ...googleBasicsPayload(),
-    google_primary_type: "mexican_restaurant",
     google_types: ["mexican_restaurant", "restaurant"],
     mesita_categories: [],
     editorial_summary: "Google blurb that is not a place_profiles column",
@@ -133,7 +132,6 @@ Deno.test("savePlaceData strips envelope extras instead of 400ing the insert", a
       res.ok ? null : res.body,
     )}`,
   );
-  assertEquals(writes.place_profiles.google_primary_type, "mexican_restaurant");
   assertEquals(writes.place_profiles.google_types, [
     "mexican_restaurant",
     "restaurant",
