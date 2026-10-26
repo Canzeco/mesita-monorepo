@@ -254,7 +254,10 @@ export const SEARCH_RING_SIZE = `min(100cqw, ${
  *  is the circle the next load searches — the server's screen radius, the
  *  cross's distance to the nearest edge, so it always fits on the map
  *  (MESITA-2511) — dashed, riding the cross while the guest pans; the map
- *  outside it is shaded a touch, and it pulses while a load is in flight. */
+ *  outside it is shaded a touch, and it pulses while a load is in flight.
+ *  A second ring at half the diameter, tinted inside, says the centre is
+ *  denser (Pato, MESITA-2773: "double circle for density") — the proximity
+ *  half-strength distance at the default radiusDivisor of 2 (MESITA-2720). */
 function SearchMapReticle({ searching }: { searching: boolean }) {
   return (
     <div
@@ -270,6 +273,14 @@ function SearchMapReticle({ searching }: { searching: boolean }) {
         )}
         style={{ width: SEARCH_RING_SIZE }}
         data-search-ring
+      />
+      <div
+        className={cn(
+          "border-foreground/45 bg-foreground/[0.04] absolute top-1/2 left-1/2 aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] border-dashed",
+          searching && "animate-pulse",
+        )}
+        style={{ width: `calc(${SEARCH_RING_SIZE} / 2)` }}
+        data-search-ring-inner
       />
       <div className="relative h-3.5 w-3.5">
         <div className="bg-foreground absolute top-1/2 left-1/2 h-3.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full" />
