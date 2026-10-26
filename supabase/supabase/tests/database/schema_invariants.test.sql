@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(159);
+select plan(161);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1150,6 +1150,21 @@ select is_empty(
           and c.relkind in ('r', 'p')
      )$$,
   'every admin_reset_preserve row names a live public table (a stale row means the real table gets wiped)'
+);
+
+-- MESITA-2759: catalog_membership is the Google-type family map the place
+-- taxonomy trigger reads. Reset truncated it once because nobody registered
+-- it, and the cloud then refused Create for most restaurants.
+select ok(
+  exists (select 1 from public.admin_reset_preserve where table_name = 'catalog_membership'),
+  'catalog_membership survives admin Reset (MESITA-2759)'
+);
+
+select cmp_ok(
+  (select count(*)::int from public.catalog_membership),
+  '>=',
+  478,
+  'catalog_membership holds every Google Table A type (MESITA-2759)'
 );
 
 -- MESITA-709: n8n ×3, Serper, and TripAdvisor vault rows are gone. A re-seed

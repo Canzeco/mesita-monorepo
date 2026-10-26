@@ -39,10 +39,12 @@ import { type PlaceHours, sanitiseHours } from "./place-hours.ts";
 import { isUrl, URL_FIELDS, type UrlField } from "./place-urls.ts";
 import { optString } from "./place-update-utils.ts";
 import {
+  fetchMembershipKeys,
   fetchPlaceCategories,
   fetchPlaceFamilies,
 } from "../_shared/categories.ts";
 import {
+  membershipSlugFor,
   resolveProfileFamily,
   resolveStoredFamily,
 } from "../_shared/profile-family.ts";
@@ -300,10 +302,17 @@ Deno.serve(async (req) => {
     fetchPlaceFamilies(admin),
   ]);
   const row = place as { category?: unknown; family_keys?: unknown };
+  // A Google type the dictionary lacks answers from catalog_membership, as
+  // families_for_category() does (MESITA-2759).
+  const membershipSlug = membershipSlugFor(row.category, categories);
+  const membershipKeys = membershipSlug
+    ? await fetchMembershipKeys(admin, membershipSlug)
+    : null;
   const family = categories.length > 0 && families.length > 0
     ? resolveProfileFamily({
       category: row.category,
       familyKeys: row.family_keys,
+      membershipKeys,
       categories,
       families,
     })

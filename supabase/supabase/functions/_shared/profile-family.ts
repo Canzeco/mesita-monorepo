@@ -4,8 +4,10 @@
 // admin-web-update-place after a save). The admin client paints the strings;
 // it does not join slugs to emoji and labels.
 //
-// Precedence:
+// Precedence, the same as families_for_category():
 //   · a category in the live dictionary → that category's families;
+//   · a Google type with a catalog_membership row → that row's families
+//     (MESITA-2759; the caller reads the row, `membershipKeys`);
 //   · anything else → the Undefined family.
 // Keys copied onto a place are not membership.
 
@@ -65,20 +67,41 @@ export function resolveStoredFamily(
 export function resolveProfileFamily(input: {
   category: unknown;
   familyKeys?: unknown;
+  /** catalog_membership's row for a category the dictionary lacks. */
+  membershipKeys?: unknown;
   categories: readonly PlaceCategory[];
   families: readonly PlaceFamily[];
 }): ResolvedFamily {
-  const slug = typeof input.category === "string"
-    ? input.category.trim().toLowerCase()
-    : "";
+  const slug = profileCategorySlug(input.category);
   if (slug) {
     const hit = input.categories.find((c) => c.slug === slug);
     if (hit) {
       const text = joinFamilies(hit.family_keys ?? [], input.families);
       return { text: text ?? undefinedFamily(input.families), inferred: false };
     }
+    const membership = asFamilyKeys(input.membershipKeys);
+    if (membership) {
+      const text = joinFamilies(membership, input.families);
+      return { text: text ?? undefinedFamily(input.families), inferred: false };
+    }
   }
   return { text: undefinedFamily(input.families), inferred: false };
+}
+
+/** The category slug as the dictionary spells it, or "" for none. */
+export function profileCategorySlug(category: unknown): string {
+  return typeof category === "string" ? category.trim().toLowerCase() : "";
+}
+
+/** The slug whose catalog_membership row resolveProfileFamily needs: a
+ *  category the dictionary lacks, or null when the dictionary answers. */
+export function membershipSlugFor(
+  category: unknown,
+  categories: readonly PlaceCategory[],
+): string | null {
+  const slug = profileCategorySlug(category);
+  if (!slug || categories.some((c) => c.slug === slug)) return null;
+  return slug;
 }
 
 /** One display string per category, so a draft change is a lookup. */
