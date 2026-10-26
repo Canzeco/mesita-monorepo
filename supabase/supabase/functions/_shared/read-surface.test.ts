@@ -219,6 +219,8 @@ const PROFILES_READ_ALLOWLIST = [
   "enricher-edgefunc-write-place/index.ts",
   // A refused Enrich start reads content_state and enriched_at to turn enriching off (MESITA-2420).
   "_shared/enrich-start.ts",
+  // The Enrichment card's state: content_state and enriched_at, since Render never writes place_research (MESITA-2811).
+  "admin-web-get-place-enrichment/index.ts",
   // Boost (MESITA-1998): name, state and tier of the place a guest backs.
   "_shared/boost.ts",
 ];
@@ -232,7 +234,6 @@ const PLACES_READ_ALLOWLIST = [
   "_shared/admin-google-place-update.ts", // content_state gate before Google refresh (MESITA-2737)
   "_shared/reservation-places.ts",
   "admin-web-delete-place/index.ts",
-  "admin-web-get-place-enrichment/index.ts",
   "admin-web-set-place-listed/index.ts",
   "admin-web-set-place-selected/index.ts", // `selected` only: a no-op when already there (MESITA-2707)
   "consumer-web-create-reservation/index.ts",
