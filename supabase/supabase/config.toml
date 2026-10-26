@@ -259,6 +259,22 @@ verify_jwt = true
 [functions.consumer-web-report-place]
 verify_jwt = true
 
+# Spotlight (MESITA-1998): a guest backs a place's paid tier with their own
+# Stripe subscription; place_backings mirrors it, places.spotlight_tier is
+# derived. No webhook: supabase-cron-sync-spotlights polls Stripe hourly.
+[functions.consumer-web-start-spotlight]
+verify_jwt = true
+
+[functions.consumer-web-get-spotlight]
+verify_jwt = true
+
+[functions.consumer-web-cancel-spotlight]
+verify_jwt = true
+
+# Kill switch: select cron.unschedule('sync-spotlights');
+[functions.supabase-cron-sync-spotlights]
+verify_jwt = true
+
 [functions.consumer-web-list-activity]
 verify_jwt = true
 

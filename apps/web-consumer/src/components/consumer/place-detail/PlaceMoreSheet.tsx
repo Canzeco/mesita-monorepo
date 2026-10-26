@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment } from "react";
-import { Flag, Heart, Link2, Share2, type LucideIcon } from "lucide-react";
+import { Flag, Heart, Link2, Share2, Sparkles, type LucideIcon } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
   RowDivider,
@@ -14,8 +14,9 @@ import { cn } from "@/lib/utils";
 
 // THE THREE DOTS' MENU (Pato, MESITA-2692: "three dots in place profile is
 // not only to report"), Instagram's way: one card of rows, Report last and
-// red. Share · Add to favorites · Copy link · Report. Every row closes the
-// menu first; Report then opens the Report sheet (MESITA-2684).
+// red. Share · Add to favorites · Copy link · Spotlight · Report. Every row
+// closes the menu first; Report then opens the Report sheet (MESITA-2684),
+// Spotlight the Spotlight sheet (MESITA-1998).
 // decision: the rows are the place's own one-tap actions plus Copy link;
 // nothing new is built behind them.
 
@@ -34,6 +35,7 @@ export function PlaceMoreSheet({
   onClose,
   saved,
   onSave,
+  onSpotlight,
   onReport,
 }: {
   place: PlaceDetail;
@@ -41,6 +43,8 @@ export function PlaceMoreSheet({
   onClose: () => void;
   saved: boolean;
   onSave: () => void;
+  /** Absent for a Google-only card: no Spotlight row. */
+  onSpotlight?: () => void;
   /** Absent for a Google-only card: no Report row. */
   onReport?: () => void;
 }) {
@@ -65,6 +69,13 @@ export function PlaceMoreSheet({
       run: () => void copyPlaceLink(place),
     },
   ];
+  if (onSpotlight)
+    rows.push({
+      key: "spotlight",
+      label: "Spotlight this place",
+      icon: Sparkles,
+      run: onSpotlight,
+    });
   if (onReport)
     rows.push({
       key: "report",

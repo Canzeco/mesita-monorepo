@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(161);
+select plan(168);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1622,6 +1622,79 @@ select ok(
       and not (enrichment_config ? 'atlasPerRunCostCapUsd')
      from public.app_config where id = 1),
   'no dead app_config key survives'
+);
+
+-- ━━━ MESITA-1998 — Spotlight: pooled paid tier, EF-only backings ━━━━━━━━━━
+-- Money: the tier a place holds is what its LIVE backings pay together
+-- (a yearly one as a twelfth a month), one lapse never strips the others,
+-- and no client reads or writes a backing.
+select ok(
+  (select relrowsecurity from pg_class
+    where oid = 'public.place_backings'::regclass)
+    and not has_table_privilege('anon', 'public.place_backings', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.place_backings', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.place_backings', 'INSERT'),
+  'place_backings is EF-only (RLS on, no client SELECT or INSERT)'
+);
+
+select has_column(
+  'public', 'profiles', 'spotlight_tier',
+  'public.profiles projects places.spotlight_tier'
+);
+
+insert into public.place_profiles (id, google_name)
+values ('00000000-0000-4000-8000-000000001998', 'Spotlight Probe');
+
+insert into public.places (id, slug, state, content_state, currency)
+values ('00000000-0000-4000-8000-000000001998', 'mesita-1998-probe', 'active', 'generating', 'USD');
+
+-- Two $5-a-month-equivalents are not Spotlight: a $60 yearly (=$5/mo) plus
+-- an unfinished Checkout.
+insert into public.place_backings (place_id, tier, billing_interval, amount_cents, status, current_period_end)
+values
+  ('00000000-0000-4000-8000-000000001998', 'spotlight', 'year', 6000, 'active', now() + interval '300 days'),
+  ('00000000-0000-4000-8000-000000001998', 'spotlight', 'month', 1000, 'open', null);
+
+select is(
+  (select spotlight_tier from public.places where id = '00000000-0000-4000-8000-000000001998'),
+  0::smallint,
+  'an open Checkout pays nothing: $5/mo equivalent holds no tier'
+);
+
+insert into public.place_backings (place_id, tier, billing_interval, amount_cents, status, current_period_end)
+values ('00000000-0000-4000-8000-000000001998', 'spotlight', 'month', 500, 'active', now() + interval '20 days');
+
+select is(
+  (select spotlight_tier from public.places where id = '00000000-0000-4000-8000-000000001998'),
+  1::smallint,
+  'two backers pool: $5/mo yearly + $5 monthly = Spotlight'
+);
+
+insert into public.place_backings (id, place_id, tier, billing_interval, amount_cents, status, current_period_end)
+values ('00000000-0000-4000-8000-0000000019a1', '00000000-0000-4000-8000-000000001998', 'spotlight_plus', 'month', 10000, 'active', now() + interval '20 days');
+
+select is(
+  (select spotlight_tier from public.places where id = '00000000-0000-4000-8000-000000001998'),
+  2::smallint,
+  'a $100/mo backing lifts the place to Spotlight Plus'
+);
+
+update public.place_backings set status = 'canceled'
+ where id = '00000000-0000-4000-8000-0000000019a1';
+
+select is(
+  (select spotlight_tier from public.places where id = '00000000-0000-4000-8000-000000001998'),
+  1::smallint,
+  'one backer lapsing keeps what the others still pay for'
+);
+
+update public.place_backings set current_period_end = now() - interval '1 minute'
+ where place_id = '00000000-0000-4000-8000-000000001998';
+
+select is(
+  (select spotlight_tier from public.places where id = '00000000-0000-4000-8000-000000001998'),
+  0::smallint,
+  'an ended period pays nothing, whatever the status says'
 );
 
 select * from finish();
