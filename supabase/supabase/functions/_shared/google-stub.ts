@@ -26,7 +26,7 @@ export function googleStub(hit: NearbyHit, distanceKm: number | null): Record<st
     name: hit.name,
     category: hit.primaryType,
     // Primary first, then 0–2 secondary from Google's types[] (MESITA-2438).
-    family_keys: placeFamilies(hit.primaryType, hit.types).keys,
+    family_keys: placeFamilies(hit.primaryType, hit.types),
     category_label: hit.typeLabel ?? humanizeGoogleType(hit.primaryType),
     price_level: priceLevelFromGoogle(hit.priceLevel ?? undefined),
     currency: "MXN",

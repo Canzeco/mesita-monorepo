@@ -1,12 +1,12 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { ATTRACTION_TYPES, familiesPrimaryFirst, NOT_SOCIAL_TYPES } from "./catalog-families.ts";
-import { placeFamilies, primaryFamilyForGoogleType, familiesForGoogleType } from "./sourcing.ts";
+import { ATTRACTION_TYPES, NOT_SOCIAL_TYPES } from "./catalog-families.ts";
+import { placeFamilies, familiesForGoogleType } from "./sourcing.ts";
 import { GOOGLE_TYPE_SUPER } from "./google-type-super.ts";
 
 Deno.test("OpenTable scope: every attraction sits in no family (MESITA-2438)", () => {
   for (const t of ATTRACTION_TYPES) {
     assertEquals(familiesForGoogleType(t), [], t);
-    assertEquals(primaryFamilyForGoogleType(t), null, t);
+    assertEquals(familiesForGoogleType(t), [], t);
   }
 });
 
@@ -34,7 +34,7 @@ Deno.test("the migration moves the stored mapping with the code (MESITA-2438)", 
 Deno.test("social: no gym, studio, court, spa, salon or barber sits in a family (MESITA-2468)", () => {
   for (const t of NOT_SOCIAL_TYPES) {
     assertEquals(familiesForGoogleType(t), [], t);
-    assertEquals(primaryFamilyForGoogleType(t), null, t);
+    assertEquals(familiesForGoogleType(t), [], t);
   }
   // No unlisted sport or wellness type falls back onto a rail.
   for (const [slug, coarse] of Object.entries(GOOGLE_TYPE_SUPER)) {
@@ -53,33 +53,20 @@ Deno.test("the migration moves the not-social mapping with the code (MESITA-2468
   assertEquals(slugs, [...NOT_SOCIAL_TYPES]);
 });
 
-Deno.test("primary first: a row's own order, not the catalog's", () => {
-  assertEquals(familiesPrimaryFirst("cafe", "cafes_bakeries"), ["coffee", "breakfast"]);
-  assertEquals(familiesPrimaryFirst("bakery", "cafes_bakeries"), ["sweet", "breakfast"]);
-  assertEquals(familiesPrimaryFirst("brewpub", "bars_nightlife"), ["drinks", "dinner"]);
-  assertEquals(primaryFamilyForGoogleType("gastropub"), "drinks");
-  assertEquals(primaryFamilyForGoogleType("italian_restaurant"), "italian");
-  assertEquals(primaryFamilyForGoogleType("mexican_restaurant"), "mexican");
-  assertEquals(primaryFamilyForGoogleType("taco_restaurant"), "mexican");
-  assertEquals(primaryFamilyForGoogleType("japanese_izakaya_restaurant"), "drinks");
-});
-
-Deno.test("placeFamilies: one primary from primaryType, at most two secondary from types[]", () => {
-  assertEquals(placeFamilies("pizza_restaurant", ["pizza_restaurant", "italian_restaurant", "restaurant", "food"]), {
-    primary: "pizza",
-    secondary: ["italian"],
-    keys: ["pizza", "italian"],
-  });
-  // The bare `restaurant` umbrella never makes a secondary Dinner.
-  // A taqueria's own second family is Quick; restaurant adds nothing.
-  assertEquals(placeFamilies("breakfast_restaurant", ["breakfast_restaurant", "restaurant"]).secondary, []);
-  assertEquals(placeFamilies("taco_restaurant", ["taco_restaurant", "restaurant"]).keys, ["mexican", "quick_bite"]);
-  // A cafe's own second family counts first; the cap is two.
+Deno.test("a place's families are every family of its categories, none primary (MESITA-2808)", () => {
+  // Order means nothing: the result is always in the catalog's family order.
+  assertEquals(placeFamilies("pizza_restaurant", ["pizza_restaurant", "italian_restaurant", "restaurant", "food"]), [
+    "pizza",
+    "italian",
+    "dinner",
+  ]);
   assertEquals(
-    placeFamilies("cafe", ["cafe", "bakery", "bar", "ice_cream_shop"]).keys,
-    ["coffee", "breakfast", "sweet"],
+    placeFamilies("cafe", ["cafe", "bakery", "bar", "ice_cream_shop"]),
+    ["coffee", "breakfast", "sweet", "drinks"],
   );
+  // The bare `restaurant` umbrella adds nothing.
+  assertEquals(placeFamilies("breakfast_restaurant", ["breakfast_restaurant", "restaurant"]), ["breakfast"]);
   // A primary type in no family: no families at all.
-  assertEquals(placeFamilies("museum", ["museum", "cafe"]).keys, []);
-  assertEquals(placeFamilies(null, ["cafe"]).keys, []);
+  assertEquals(placeFamilies("museum", ["museum", "cafe"]), []);
+  assertEquals(placeFamilies(null, ["cafe"]), []);
 });
