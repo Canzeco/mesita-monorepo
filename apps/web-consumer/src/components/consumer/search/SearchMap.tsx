@@ -253,11 +253,13 @@ export const SEARCH_RING_SIZE = `min(100cqw, ${
  *  and move it realative to the cruz … it must feel more dynamic"). The ring
  *  is the circle the next load searches — the server's screen radius, the
  *  cross's distance to the nearest edge, so it always fits on the map
- *  (MESITA-2511) — dashed, riding the cross while the guest pans; the map
- *  outside it is shaded a touch, and it pulses while a load is in flight.
- *  A second ring at half the diameter, tinted inside, says the centre is
- *  denser (Pato, MESITA-2773: "double circle for density") — the proximity
- *  half-strength distance at the default radiusDivisor of 2 (MESITA-2720). */
+ *  (MESITA-2511) — dashed, riding the cross while the guest pans, and it
+ *  pulses while a load is in flight. A second, solid ring at half the
+ *  diameter says the centre is denser (Pato, MESITA-2773: "double circle for
+ *  density") — the proximity half-strength distance at the default
+ *  radiusDivisor of 2 (MESITA-2720). The shade only deepens inward: clear
+ *  outside, a faint tint in the band, more inside the small ring (MESITA-2774:
+ *  "dark light dark looks weird"), so the map outside is no longer shaded. */
 function SearchMapReticle({ searching }: { searching: boolean }) {
   return (
     <div
@@ -268,7 +270,7 @@ function SearchMapReticle({ searching }: { searching: boolean }) {
     >
       <div
         className={cn(
-          "border-foreground/45 absolute top-1/2 left-1/2 aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] border-dashed shadow-[0_0_0_200vmax_rgb(0_0_0/0.04)]",
+          "border-foreground/45 bg-foreground/[0.03] absolute top-1/2 left-1/2 aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] border-dashed",
           searching && "animate-pulse",
         )}
         style={{ width: SEARCH_RING_SIZE }}
@@ -276,7 +278,7 @@ function SearchMapReticle({ searching }: { searching: boolean }) {
       />
       <div
         className={cn(
-          "border-foreground/45 bg-foreground/[0.04] absolute top-1/2 left-1/2 aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] border-dashed",
+          "border-foreground/30 bg-foreground/[0.05] absolute top-1/2 left-1/2 aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border",
           searching && "animate-pulse",
         )}
         style={{ width: `calc(${SEARCH_RING_SIZE} / 2)` }}
