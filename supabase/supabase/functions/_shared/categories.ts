@@ -8,7 +8,8 @@
 // the answer only if it is one of those live slugs. Both the create path
 // (_shared/create-place.ts) and the enrich path (the Enricher) call this
 // so a place's category is always a canonical slug, never free text.
-// The classifiers themselves live in categories-infer.ts and infer-families.ts.
+// The Mesita categories classifier lives in categories-infer.ts. Families are
+// never classified: the profiles view derives them from the categories.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
@@ -39,22 +40,6 @@ export async function fetchPlaceCategories(
     .order("sort_order", { ascending: true });
   if (error || !data) return [];
   return data as PlaceCategory[];
-}
-
-// A Google type's families from public.catalog_membership, the table
-// families_for_category() reads after place_categories (MESITA-2759). Null
-// when the slug has no row or the read fails.
-export async function fetchMembershipKeys(
-  admin: SupabaseClient,
-  slug: string,
-): Promise<string[] | null> {
-  const { data, error } = await admin
-    .from("catalog_membership")
-    .select("family_keys")
-    .eq("slug", slug)
-    .maybeSingle();
-  if (error || !data || !Array.isArray(data.family_keys)) return null;
-  return data.family_keys as string[];
 }
 
 export async function fetchPlaceFamilies(

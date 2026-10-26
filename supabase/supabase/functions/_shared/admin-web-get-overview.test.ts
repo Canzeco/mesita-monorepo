@@ -32,8 +32,7 @@ Deno.test("admin-web-get-overview is super-admin only", () => {
   }
 });
 
-Deno.test("family and category resolve inside the one read", () => {
-  assertEquals(CODE.includes("resolveProfileFamily("), true);
+Deno.test("families resolve inside the one read, from the stored keys", () => {
   assertEquals(CODE.includes("resolveStoredFamily("), true);
   assertEquals(CODE.includes("categoriesWithFamilyDisplay("), true);
   assertEquals(CODE.includes("admin-web-get-atlas-fields"), false);

@@ -18,7 +18,7 @@ test("off keeps a saved link and still takes the new review count", () => {
   assert.equal(next.description, "kept");
   assert.equal(next.google_review_count, 12);
   assert.equal(next.address, "Av. Nueva 1");
-  assert.deepEqual(next.tags, ["terraza", "desayuno"]);
+  assert.equal("tags" in next, false);
 });
 
 test("off keeps a saved Google address and still takes the new rating", () => {
@@ -41,12 +41,26 @@ test("off fills a field that was empty", () => {
   assert.equal(next.phone, "+52 81 0000 0000");
 });
 
-test("on replaces links and the tag set", () => {
+test("on replaces links", () => {
   const next = applyOverwrite({
     overwrite: true,
-    saved: { instagram_url: "https://instagram.com/old", tags: ["terraza"] },
-    patch: { instagram_url: "https://instagram.com/new", tags: ["desayuno"] },
+    saved: { instagram_url: "https://instagram.com/old" },
+    patch: { instagram_url: "https://instagram.com/new" },
   });
   assert.equal(next.instagram_url, "https://instagram.com/new");
-  assert.deepEqual(next.tags, ["desayuno"]);
 });
+
+// MESITA-2790: the write EF owns these; a Render value would overwrite a
+// Mesita pick when the EF's inference fails.
+for (const overwrite of [false, true]) {
+  test(`overwrite ${overwrite}: Render never sends Mesita categories or tags`, () => {
+    const next = applyOverwrite({
+      overwrite,
+      saved: { category: "bakery", tags: ["terraza"] },
+      patch: { category: "cafe", category_label: "Cafe", mesita_categories: ["cafe"], tags: ["desayuno"] },
+    });
+    for (const key of ["category", "category_label", "mesita_categories", "tags"]) {
+      assert.equal(key in next, false, key);
+    }
+  });
+}

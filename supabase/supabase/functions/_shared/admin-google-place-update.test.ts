@@ -53,6 +53,7 @@ Deno.test("googleBasicsToUpdatePatch writes google_photos, never photos or mesit
     googlePhotos: ["https://cdn.example/1.jpg"],
     googlePrimaryType: "restaurant",
     googleTypes: ["restaurant", "food"],
+    hasMesitaCategories: false,
     now: NOW,
   });
   assertEquals(patch.google_photos, ["https://cdn.example/1.jpg"]);
@@ -60,6 +61,23 @@ Deno.test("googleBasicsToUpdatePatch writes google_photos, never photos or mesit
   assertEquals("photos" in patch, false);
   assertEquals("mesita_photos" in patch, false);
   assertEquals(patch.business_state, "OPERATIONAL");
+});
+
+Deno.test("a refetch never overwrites a filled Mesita category (MESITA-2790)", () => {
+  const input = {
+    basics: sampleBasics(),
+    businessStatus: null,
+    googlePhotos: [],
+    googlePrimaryType: "restaurant",
+    googleTypes: ["food", "restaurant"],
+    now: NOW,
+  };
+  const mesita = googleBasicsToUpdatePatch({ ...input, hasMesitaCategories: true });
+  assertEquals("category" in mesita, false);
+  assertEquals("category_label" in mesita, false);
+  assertEquals(mesita.google_types, ["restaurant"]);
+  const google = googleBasicsToUpdatePatch({ ...input, hasMesitaCategories: false });
+  assertEquals(google.category, "restaurant");
 });
 
 Deno.test("assertGoogleUpdatePatchSafe rejects mesita catalog keys", () => {

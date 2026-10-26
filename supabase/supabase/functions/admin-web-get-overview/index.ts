@@ -17,7 +17,7 @@
 // Body:     { placeId }   (legacy aliases via readPlaceIdAlias)
 // Response: { ok: true, isSuperAdmin: true, active: { place }, profile }
 //           `active.place` is the AdminPlace. `profile` is the rest of the
-//           same read: Family and Category already resolved, the category
+//           same read: the stored Families resolved, the category
 //           options (each with its family display), the tag catalog, and
 //           the field limits. The profile page does not call another door.
 // Auth:     caller must be in public.super_admins.
@@ -50,16 +50,10 @@ import { loadRequestThreshold } from "../_shared/place-requests.ts";
 import { CRENUP_LABELS_IN_ORDER, CRENUP_TOTAL } from "../_shared/crenup-ladder.ts";
 import type { EnrichmentMap, FunctionState } from "../_shared/schema-catalog.ts";
 import { operatorFunctionStates } from "../_shared/schema-catalog.ts";
-import {
-  fetchMembershipKeys,
-  fetchPlaceCategories,
-  fetchPlaceFamilies,
-} from "../_shared/categories.ts";
+import { fetchPlaceCategories, fetchPlaceFamilies } from "../_shared/categories.ts";
 import { ENRICH_FIELD_LIMITS } from "../_shared/enrich-field-limits.ts";
 import {
   categoriesWithFamilyDisplay,
-  membershipSlugFor,
-  resolveProfileFamily,
   resolveStoredFamily,
 } from "../_shared/profile-family.ts";
 import { fetchPlaceTags, TAG_FACETS } from "../_shared/tags.ts";
@@ -142,12 +136,6 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "Profile vocabulary unavailable" }, 500);
   }
   const placeFields = placeRow.data as unknown as Record<string, unknown>;
-  // A Google type the dictionary lacks answers from catalog_membership, as
-  // families_for_category() does (MESITA-2759). One extra read, only then.
-  const membershipSlug = membershipSlugFor(placeFields.category, categories);
-  const membershipKeys = membershipSlug
-    ? await fetchMembershipKeys(admin, membershipSlug)
-    : null;
 
   // Best effort: a missing/null map falls back to the CREATED-floor default,
   // which reads as 0 — the State box and the catalog table MUST show the same
@@ -199,13 +187,8 @@ Deno.serve(async (req) => {
   };
 
   const profile = {
-    family: resolveProfileFamily({
-      category: placeFields.category,
-      familyKeys: placeFields.family_keys,
-      membershipKeys,
-      categories,
-      families,
-    }),
+    // Families are derived from the Mesita categories in the profiles view
+    // (MESITA-2790); this only names the stored keys.
     familyStored: resolveStoredFamily(placeFields.family_keys, families),
     categories: categoriesWithFamilyDisplay(categories, families),
     tags,
