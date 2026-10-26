@@ -65,8 +65,10 @@ const inkButton = cn(
 // sizes"): read here and by ProfileSummarySkeleton, which lays its bones
 // out in them. The ink rows are PLACE_BUTTON_CLASS's 44px.
 
-/** The three rows: tiles, 12px, then the two Mesita rows. */
-export const PROFILE_ACTIONS_CLASS = "flex flex-col gap-3";
+/** The three rows: tiles, 8px, then the two Mesita rows. ONE GAP EVERY WAY
+ *  (Pato, MESITA-2823: "fix spacing here"): the 12px under the tiles was the
+ *  only step that was not the tiles' and the halves' 8px. */
+export const PROFILE_ACTIONS_CLASS = "flex flex-col gap-2";
 /** Row 1: four equal tiles, 8px apart. */
 export const PROFILE_TILES_ROW_CLASS = "grid grid-cols-4 gap-2";
 /** A tile's box: 56px, rounded-lg, icon over label. */
