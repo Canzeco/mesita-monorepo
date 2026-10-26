@@ -1642,6 +1642,9 @@ select has_column(
   'public.profiles projects places.spotlight_tier'
 );
 
+insert into public.place_profiles (id, google_name)
+values ('00000000-0000-4000-8000-000000001998', 'Spotlight Probe');
+
 insert into public.places (id, slug, state, content_state, currency)
 values ('00000000-0000-4000-8000-000000001998', 'mesita-1998-probe', 'active', 'generating', 'USD');
 
