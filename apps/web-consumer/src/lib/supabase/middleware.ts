@@ -150,18 +150,24 @@ export async function updateSupabaseSession(request: NextRequest) {
     },
   });
 
-  // Touch the user record so the SSR client refreshes the access token cookie
+  // Read the session so the SSR client refreshes the access token cookie
   // when it's near expiry. Per Supabase SSR docs: do NOT add code between
-  // createServerClient() and getUser() — random logouts otherwise.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // createServerClient() and getClaims() — random logouts otherwise.
+  //
+  // getClaims, NOT getUser (MESITA-2784): the project signs with ES256, so
+  // the JWT is verified locally against the cached JWKS. getUser was a call
+  // to Supabase Auth on EVERY request, tab taps included: ~310 ms from
+  // Vercel before the next screen could commit ("from home to search … too
+  // fucking slow"). This is the fast path; (shell)/layout.tsx's getUser()
+  // stays the wall.
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims ?? null;
 
   // NO ANONYMOUS SESSIONS (Pato, MESITA-2137: "there are no anonymous
   // sign-ins. should not now"). /web and /mob sign in the same way, by phone,
   // so both get the same wall. An anonymous session left over from the
   // MESITA-2066 era is a session, not an account, and counts as signed out.
-  const registered = user !== null && !user.is_anonymous;
+  const registered = claims !== null && claims.is_anonymous !== true;
 
   // Every early return below is a NEW response. Carry whatever setAll wrote
   // (a refreshed token) onto it, or the redirect silently logs the guest out.

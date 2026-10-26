@@ -14,7 +14,18 @@ const state = vi.hoisted(() => ({
 vi.mock("@supabase/ssr", () => ({
   createServerClient: () => ({
     auth: {
-      getUser: async () => ({ data: { user: state.user } }),
+      // The proxy verifies the JWT locally (MESITA-2784); a signed-out
+      // request has no claims.
+      getClaims: async () => ({
+        data: state.user
+          ? {
+              claims: {
+                sub: state.user.id,
+                is_anonymous: state.user.is_anonymous,
+              },
+            }
+          : null,
+      }),
       signInAnonymously: async () => {
         throw new Error("anonymous sign-in must never be called (MESITA-2137)");
       },
