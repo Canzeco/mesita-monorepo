@@ -2,7 +2,7 @@
 
 import { Fragment, useState } from "react";
 import { Loader2, XCircle, Zap } from "lucide-react";
-import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
+import { LocalDialog, LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { RowDivider, SettingsGroup, Switch } from "@/components/consumer/me/settings-rows";
 import {
   apiCancelBoost,
@@ -18,7 +18,12 @@ import {
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
-import { ERROR_BOX_CLASS, PRIMARY_BUTTON_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
+import {
+  ERROR_BOX_CLASS,
+  PRIMARY_BUTTON_CLASS,
+  SHEET_BODY_CLASS,
+  SHEET_TITLE_CLASS,
+} from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 
 // THE BOOST TAB (MESITA-2789, Spotlight's sheet before it, MESITA-1998:
@@ -30,6 +35,13 @@ import { cn, errMsg } from "@/lib/utils";
 // copy says so, and the place shows Sponsored while it holds a tier.
 // Nothing here claims a charge: success is said only after
 // consumer-web-get-boost confirms the Checkout session (member-place-actions).
+
+/** The tile's big mark: the multiplier alone. */
+const TIER_MULTIPLIER: Record<BoostTier, string> = {
+  boost_2x: "2x",
+  boost_5x: "5x",
+  boost_10x: "10x",
+};
 
 export function BoostPane({
   place,
@@ -50,6 +62,7 @@ export function BoostPane({
   const [tier, setTier] = useState<BoostTier>("boost_2x");
   const [interval, setBillingInterval] = useState<BoostInterval>("month");
   const [showName, setShowName] = useState(true);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [starting, setStarting] = useState(false);
   const [cancelling, setCancelling] = useState<MyBacking | null>(null);
   const [cancelBusy, setCancelBusy] = useState(false);
@@ -92,32 +105,77 @@ export function BoostPane({
     }
   }
 
+  function openSheet(pick: BoostTier) {
+    setTier(pick);
+    setSheetOpen(true);
+  }
+
+  const picked = BOOST_TIERS.find((t) => t.key === tier)!;
+
   return (
     <section className="flex flex-col gap-4 py-2" aria-labelledby="boost-title">
-      <div className="flex items-center gap-3">
-        <span className="bg-muted text-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-full">
-          <Zap className="h-5 w-5" aria-hidden />
-        </span>
-        <div className="min-w-0">
-          <h2 id="boost-title" className={SHEET_TITLE_CLASS}>
-            Boost {place.name}
-          </h2>
-          <p className="text-muted-foreground text-xs" aria-live="polite">
-            {loading
-              ? "Loading…"
-              : current && boost
-                ? `${current} now · backed by ${backedBy(boost)}`
-                : "Not boosted yet"}
-          </p>
+      {/* THE TAB IS A SHORT CARD, THE CHOICES ARE A SHEET (Pato, MESITA-2814:
+          "that looks like shit. maybe create a modal … if i click the modal,
+          then open something"). The tab says where the place stands, what
+          Boost is in one line, and the three levels as tiles; a tile or the
+          button opens the sheet with billing, name and Checkout. */}
+      <div className="border-border bg-card flex flex-col gap-4 rounded-2xl border p-4">
+        <div className="flex items-center gap-3">
+          <span
+            className={cn(
+              "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
+              current ? "bg-foreground text-paper" : "bg-muted text-foreground",
+            )}
+          >
+            <Zap className="h-5 w-5" aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <h2 id="boost-title" className="text-base leading-tight font-semibold">
+              {current ?? "Not boosted yet"}
+            </h2>
+            <p className="text-muted-foreground truncate text-xs" aria-live="polite">
+              {loading
+                ? "Loading…"
+                : current && boost
+                  ? `Backed by ${backedBy(boost)}`
+                  : "Be the first to back it"}
+            </p>
+          </div>
         </div>
-      </div>
 
-      <p className="text-muted-foreground text-sm leading-relaxed">
-        Boost puts this place in front of more guests on the Map and Home. It is
-        paid visibility, shown to guests as <span className="text-foreground font-semibold">Sponsored</span>.
-        It is not a Mesita Selected recommendation and does not verify the place.
-        Anyone can boost any place, and backers add up.
-      </p>
+        <p className="text-muted-foreground text-sm leading-relaxed">
+          Show {place.name} to more guests on the Map and Home. Guests see it
+          as <span className="text-foreground font-semibold">Sponsored</span>,
+          never as a Mesita Selected pick.
+        </p>
+
+        <div className="grid grid-cols-3 gap-2">
+          {BOOST_TIERS.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => openSheet(t.key)}
+              className="border-border hover:bg-muted flex flex-col items-center gap-0.5 rounded-xl border px-2 py-3 transition active:scale-[0.98]"
+            >
+              <span className="font-display text-2xl leading-none font-semibold">
+                {TIER_MULTIPLIER[t.key]}
+              </span>
+              <span className="text-muted-foreground text-xs">
+                {boostPrice(t.monthly, "month")}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => openSheet(tier)}
+          className={cn(PRIMARY_BUTTON_CLASS, "inline-flex items-center justify-center gap-2")}
+        >
+          <Zap className="h-4 w-4" aria-hidden />
+          {current ? "Add your Boost" : "Boost this place"}
+        </button>
+      </div>
 
       {failed && (
         <div className={ERROR_BOX_CLASS} role="alert">
@@ -166,85 +224,102 @@ export function BoostPane({
         </div>
       )}
 
-      <div>
-        <div className="bg-muted grid grid-cols-2 gap-1 rounded-lg p-1" role="radiogroup" aria-label="Billing">
-          {(["month", "year"] as const).map((v) => (
-            <button
-              key={v}
-              type="button"
-              role="radio"
-              aria-checked={interval === v}
-              onClick={() => setBillingInterval(v)}
-              className={cn(
-                "rounded-md py-2 text-sm font-semibold transition",
-                interval === v ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
-              )}
-            >
-              {v === "month" ? "Monthly" : "Yearly · 2 months free"}
-            </button>
-          ))}
-        </div>
+      <LocalSheet
+        open={sheetOpen}
+        onClose={() => (starting ? undefined : setSheetOpen(false))}
+        ariaLabel={`Boost ${place.name}`}
+      >
+        <div className={cn(SHEET_BODY_CLASS, "flex flex-col gap-4")}>
+          <div className="flex items-center gap-3">
+            <span className="bg-muted text-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-full">
+              <Zap className="h-5 w-5" aria-hidden />
+            </span>
+            <div className="min-w-0">
+              <h2 className={SHEET_TITLE_CLASS}>Boost</h2>
+              <p className="text-muted-foreground truncate text-xs">{place.name}</p>
+            </div>
+          </div>
 
-        <div className="mt-3" role="radiogroup" aria-label="Boost level">
-          <SettingsGroup>
-            {BOOST_TIERS.map((t, i) => {
-              const picked = tier === t.key;
-              return (
-                <Fragment key={t.key}>
-                  {i > 0 && <RowDivider />}
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={picked}
-                    onClick={() => setTier(t.key)}
-                    className="hover:bg-muted flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left text-sm transition"
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="font-semibold">{t.label}</span>
-                      <span className="text-muted-foreground block text-xs">{t.blurb}</span>
-                    </span>
-                    <span className="font-semibold whitespace-nowrap">{boostPrice(t.monthly, interval)}</span>
-                    <span
-                      aria-hidden
-                      className={cn(
-                        "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
-                        picked ? "border-foreground" : "border-border",
-                      )}
+          <div className="bg-muted grid grid-cols-2 gap-1 rounded-lg p-1" role="radiogroup" aria-label="Billing">
+            {(["month", "year"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                role="radio"
+                aria-checked={interval === v}
+                onClick={() => setBillingInterval(v)}
+                className={cn(
+                  "rounded-md py-2 text-sm font-semibold transition",
+                  interval === v ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
+                )}
+              >
+                {v === "month" ? "Monthly" : "Yearly · 2 months free"}
+              </button>
+            ))}
+          </div>
+
+          <div role="radiogroup" aria-label="Boost level">
+            <SettingsGroup>
+              {BOOST_TIERS.map((t, i) => {
+                const on = tier === t.key;
+                return (
+                  <Fragment key={t.key}>
+                    {i > 0 && <RowDivider />}
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      onClick={() => setTier(t.key)}
+                      className="hover:bg-muted flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left text-sm transition"
                     >
-                      {picked ? <span className="bg-foreground h-2.5 w-2.5 rounded-full" /> : null}
-                    </span>
-                  </button>
-                </Fragment>
-              );
-            })}
-          </SettingsGroup>
+                      <span className="min-w-0 flex-1">
+                        <span className="font-semibold">{t.label}</span>
+                        <span className="text-muted-foreground block text-xs">{t.blurb}</span>
+                      </span>
+                      <span className="font-semibold whitespace-nowrap">{boostPrice(t.monthly, interval)}</span>
+                      <span
+                        aria-hidden
+                        className={cn(
+                          "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
+                          on ? "border-foreground" : "border-border",
+                        )}
+                      >
+                        {on ? <span className="bg-foreground h-2.5 w-2.5 rounded-full" /> : null}
+                      </span>
+                    </button>
+                  </Fragment>
+                );
+              })}
+            </SettingsGroup>
+          </div>
+
+          <button
+            type="button"
+            role="switch"
+            aria-checked={showName}
+            onClick={() => setShowName((v) => !v)}
+            className="flex w-full items-center gap-3 px-1 py-1 text-left text-sm"
+          >
+            <span className="min-w-0 flex-1">Show my first name as a backer</span>
+            <Switch on={showName} />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => void start()}
+            disabled={starting}
+            className={cn(PRIMARY_BUTTON_CLASS, "inline-flex items-center justify-center gap-2")}
+          >
+            {starting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+            {starting ? "Opening checkout…" : `Continue · ${boostPrice(picked.monthly, interval)}`}
+          </button>
+          <p className="text-muted-foreground text-center text-xs">
+            Prices in US dollars. Billed by Stripe. Paid visibility: it does not
+            verify the place. Cancel any time; your Boost runs to the end of the
+            period you paid for.
+          </p>
         </div>
-      </div>
-
-      <button
-        type="button"
-        role="switch"
-        aria-checked={showName}
-        onClick={() => setShowName((v) => !v)}
-        className="flex w-full items-center gap-3 px-1 py-1 text-left text-sm"
-      >
-        <span className="min-w-0 flex-1">Show my first name as a backer</span>
-        <Switch on={showName} />
-      </button>
-
-      <button
-        type="button"
-        onClick={() => void start()}
-        disabled={starting}
-        className={cn(PRIMARY_BUTTON_CLASS, "inline-flex items-center justify-center gap-2")}
-      >
-        {starting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
-        {starting ? "Opening checkout…" : `Continue · ${boostPrice(BOOST_TIERS.find((t) => t.key === tier)!.monthly, interval)}`}
-      </button>
-      <p className="text-muted-foreground text-center text-xs">
-        Prices in US dollars. Billed by Stripe. Cancel any time here; your Boost
-        runs to the end of the period you paid for.
-      </p>
+      </LocalSheet>
 
       <LocalDialog
         open={cancelling != null}
