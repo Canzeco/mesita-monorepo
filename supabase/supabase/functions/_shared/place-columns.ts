@@ -103,10 +103,11 @@ const COLUMNS: readonly string[] = [
   // pins it red, Chat reads Selected places only, the Search carousel tags
   // it, and the Area score multiplies it by the Selected boost (MESITA-2717).
   "selected",
-  // Spotlight (MESITA-1998): the paid tier its backers' live subscriptions
-  // buy together, 0 · 1 · 2, derived by trigger. Paid, never verified,
-  // never Selected; the Area score boosts it like Selected (Plus squared).
-  "spotlight_tier",
+  // Boost (MESITA-2789, was Spotlight): the paid tier its backers' live
+  // subscriptions buy together, 0 · 1 · 2 · 3 (none · 2x · 5x · 10x),
+  // derived by trigger. Paid, never verified, never Selected; the Area score
+  // multiplies it by 2 · 5 · 10, and cards and pins say Sponsored.
+  "boost_tier",
   // Profile lifecycle (places.content_state: generating | ready | failed).
   // Create saves 'ready' (the profile can be shown — NOT enriched); an
   // Enrich run holds 'generating' for the FULL pipeline

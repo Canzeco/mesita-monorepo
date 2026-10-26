@@ -1,9 +1,9 @@
-// Supabase Edge Function — consumer-web-get-spotlight
+// Supabase Edge Function — consumer-web-get-boost
 //
-// MESITA-1998: a place's Spotlight as the place screen shows it — its tier,
+// MESITA-1998: a place's Boost as the place screen shows it — its tier,
 // how many guests back it, the first names of those who chose to be shown,
 // and the signed-in guest's own backings (to cancel). With `session_id`
-// (Checkout's return, `?spotlight=`) it first confirms that guest's backing
+// (Checkout's return, `?boost=`) it first confirms that guest's backing
 // from Stripe, so the tier is right the moment they land.
 //
 // Body: { place_id: uuid, session_id?: string }
@@ -19,11 +19,11 @@ import { MEMBER_FALLBACK_NAME } from "../_shared/place-activity.ts";
 import {
   isLiveBacking,
   readBackerNames,
-  readSpotlightPlace,
-  spotlightStripeKey,
+  readBoostPlace,
+  boostStripeKey,
   stripeClient,
   subscriptionPatch,
-} from "../_shared/spotlight.ts";
+} from "../_shared/boost.ts";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
   // Checkout's return: confirm the guest's own backing from Stripe.
   if (sessionId && user) {
     confirmed = false;
-    const key = spotlightStripeKey();
+    const key = boostStripeKey();
     const { data: open } = await admin
       .from("place_backings")
       .select("id")
@@ -70,13 +70,13 @@ Deno.serve(async (req) => {
           confirmed = true;
         }
       } catch (err) {
-        console.error("[consumer-web-get-spotlight] confirm:", err);
+        console.error("[consumer-web-get-boost] confirm:", err);
       }
     }
   }
 
   const [placeRes, { data: rows, error }] = await Promise.all([
-    readSpotlightPlace(admin, placeId),
+    readBoostPlace(admin, placeId),
     admin
       .from("place_backings")
       .select("id, consumer_id, tier, billing_interval, amount_cents, status, current_period_end, cancel_at_period_end, show_name, created_at")
@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
 
   return json({
     ok: true,
-    tier: placeRes.place?.spotlight_tier ?? 0,
+    tier: placeRes.place?.boost_tier ?? 0,
     backers: new Set(live.map((r) => r.consumer_id ?? r.id)).size,
     names,
     mine,

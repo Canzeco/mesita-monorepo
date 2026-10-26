@@ -1,13 +1,13 @@
-// Supabase Edge Function — consumer-web-start-spotlight
+// Supabase Edge Function — consumer-web-start-boost
 //
-// MESITA-1998 (Pato, 2026-10-25): anyone backs a place's Spotlight from its
+// MESITA-1998 (Pato, 2026-10-25): anyone backs a place's Boost from its
 // three dots. Opens one Stripe Checkout (subscription) for the signed-in
-// guest and records the backing as `open`; consumer-web-get-spotlight
+// guest and records the backing as `open`; consumer-web-get-boost
 // confirms it when Checkout sends the guest back.
 //
-// Body: { place_id: uuid, tier: "spotlight" | "spotlight_plus",
+// Body: { place_id: uuid, tier: "boost_2x" | "boost_5x" | "boost_10x",
 //         interval?: "month" | "year", show_name?: boolean,
-//         return_url: string }   return_url: the place screen (_shared/spotlight.ts)
+//         return_url: string }   return_url: the place screen (_shared/boost.ts)
 // Response: { ok: true, url }   the Checkout page
 //
 // Many guests may back one place; one guest may hold several backings.
@@ -18,13 +18,13 @@ import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/h
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import {
   checkoutParams,
-  parseSpotlightStart,
-  readSpotlightPlace,
-  SPOTLIGHT_CURRENCY,
-  spotlightAmountCents,
-  spotlightStripeKey,
+  parseBoostStart,
+  readBoostPlace,
+  BOOST_CURRENCY,
+  boostAmountCents,
+  boostStripeKey,
   stripeClient,
-} from "../_shared/spotlight.ts";
+} from "../_shared/boost.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -38,15 +38,15 @@ Deno.serve(async (req) => {
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const parsed = parseSpotlightStart(bodyRes.body);
+  const parsed = parseBoostStart(bodyRes.body);
   if (!parsed.ok) return json({ ok: false, error: parsed.error }, 400);
   const start = parsed.start;
 
-  const key = spotlightStripeKey();
+  const key = boostStripeKey();
   if (!key) return json({ ok: false, error: "Payments are not available right now" }, 503);
 
   const admin = adminClient(envRes.env);
-  const placeRes = await readSpotlightPlace(admin, start.placeId);
+  const placeRes = await readBoostPlace(admin, start.placeId);
   if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
   const place = placeRes.place;
   if (!place || place.state !== "active") {
@@ -60,8 +60,8 @@ Deno.serve(async (req) => {
       consumer_id: authRes.user.id,
       tier: start.tier,
       billing_interval: start.interval,
-      amount_cents: spotlightAmountCents(start.tier, start.interval),
-      currency: SPOTLIGHT_CURRENCY,
+      amount_cents: boostAmountCents(start.tier, start.interval),
+      currency: BOOST_CURRENCY,
       show_name: start.showName,
       status: "open",
     })
@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
     return json({ ok: true, url: session.url });
   } catch (err) {
     await admin.from("place_backings").delete().eq("id", row.id);
-    console.error("[consumer-web-start-spotlight]", err);
+    console.error("[consumer-web-start-boost]", err);
     return json({ ok: false, error: "Couldn't open checkout. Try again." }, 502);
   }
 });

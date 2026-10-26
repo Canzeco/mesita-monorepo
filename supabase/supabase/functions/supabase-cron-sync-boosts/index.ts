@@ -1,7 +1,7 @@
-// Supabase Edge Function — supabase-cron-sync-spotlights (internal)
+// Supabase Edge Function — supabase-cron-sync-boosts (internal)
 //
-// MESITA-1998: keeps Spotlight backings true to Stripe. pg_cron calls it
-// hourly (job `sync-spotlights`); it re-reads every subscription whose
+// MESITA-1998: keeps Boost backings true to Stripe. pg_cron calls it
+// hourly (job `sync-boosts`); it re-reads every subscription whose
 // period ends within the hour (a renewal moves the end forward, a failed
 // card or a cancellation changes the status) and writes it back, which
 // fires the trigger that recomputes the place's tier. Checkouts left open
@@ -17,7 +17,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { requireInternalCaller } from "../_shared/internal.ts";
-import { spotlightStripeKey, stripeClient, subscriptionPatch } from "../_shared/spotlight.ts";
+import { boostStripeKey, stripeClient, subscriptionPatch } from "../_shared/boost.ts";
 
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 500;
@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
     .eq("status", "open")
     .lt("created_at", stale);
 
-  const key = spotlightStripeKey();
+  const key = boostStripeKey();
   if (!key) return json({ ok: true, synced: 0, dropped: dropped ?? 0, skipped: "no_stripe_key" });
 
   const soon = new Date(Date.now() + 3600_000).toISOString();
@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
       synced++;
     } catch (err) {
       failed++;
-      console.error("[supabase-cron-sync-spotlights]", row.id, err);
+      console.error("[supabase-cron-sync-boosts]", row.id, err);
     }
   }
   return json({ ok: true, synced, failed, dropped: dropped ?? 0 });

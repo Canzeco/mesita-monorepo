@@ -259,20 +259,24 @@ verify_jwt = true
 [functions.consumer-web-report-place]
 verify_jwt = true
 
-# Spotlight (MESITA-1998): a guest backs a place's paid tier with their own
-# Stripe subscription; place_backings mirrors it, places.spotlight_tier is
-# derived. No webhook: supabase-cron-sync-spotlights polls Stripe hourly.
-[functions.consumer-web-start-spotlight]
+# Boost (MESITA-2789, was Spotlight MESITA-1998): a guest backs a place's
+# paid tier with their own Stripe subscription; place_backings mirrors it,
+# places.boost_tier is derived. No webhook: supabase-cron-sync-boosts polls
+# Stripe hourly. admin-web-get-place-boost is Single Place › Boost (read).
+[functions.consumer-web-start-boost]
 verify_jwt = true
 
-[functions.consumer-web-get-spotlight]
+[functions.consumer-web-get-boost]
 verify_jwt = true
 
-[functions.consumer-web-cancel-spotlight]
+[functions.consumer-web-cancel-boost]
 verify_jwt = true
 
-# Kill switch: select cron.unschedule('sync-spotlights');
-[functions.supabase-cron-sync-spotlights]
+# Kill switch: select cron.unschedule('sync-boosts');
+[functions.supabase-cron-sync-boosts]
+verify_jwt = true
+
+[functions.admin-web-get-place-boost]
 verify_jwt = true
 
 [functions.consumer-web-list-activity]

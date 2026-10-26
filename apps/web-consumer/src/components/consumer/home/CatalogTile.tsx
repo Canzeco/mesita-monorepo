@@ -18,7 +18,9 @@ import {
   CardActions,
   HoursRow,
   KindRow,
+  SponsoredMark,
   cardFacts,
+  isSponsoredPlace,
 } from "@/components/consumer/place-card";
 import {
   TILE_ACTIONS,
@@ -194,6 +196,7 @@ export function CatalogTile({
             <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-5 font-semibold tracking-tight">
               <span className="truncate">{place.name}</span>
               {isEnrichedPlace(place) ? <EnrichedBadge /> : null}
+              {isSponsoredPlace(place) ? <SponsoredMark /> : null}
             </p>
             <KindRow facts={facts} />
             <HoursRow facts={facts} />
