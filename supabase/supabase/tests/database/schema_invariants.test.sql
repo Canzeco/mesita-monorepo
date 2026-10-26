@@ -1721,9 +1721,9 @@ select ok(
 );
 
 select is(
-  (public.families_for_categories('["bakery","cafe"]'::jsonb, 'x'))[1],
-  (public.families_for_category('bakery'))[1],
-  'the main category''s first family leads'
+  public.families_for_categories('["bakery","cafe"]'::jsonb, 'x'),
+  public.families_for_categories('["cafe","bakery"]'::jsonb, 'x'),
+  'families are a list: the order of the categories changes nothing (MESITA-2808)'
 );
 
 select is(

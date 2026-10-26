@@ -1,5 +1,5 @@
 // Bidirectional highlight for the Families page. The stored relations
-// are Google type → one family, and category → one or two families.
+// map a category to its list of families (MESITA-2808: no primary family).
 // The other direction is derived here and never stored.
 
 export type FamilyRow = {
