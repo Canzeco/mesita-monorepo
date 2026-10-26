@@ -361,6 +361,42 @@ export async function setPlaceSelected(
   };
 }
 
+// ── Boost (MESITA-2789) ──────────────────────────────────────────────────
+
+/** One guest's subscription behind a place's Boost, as Single Place › Boost
+ *  lists it. Amounts are US cents per billing interval. */
+export type AdminBacking = {
+  id: string;
+  payer: string | null;
+  payer_id: string | null;
+  tier: "boost_2x" | "boost_5x" | "boost_10x";
+  interval: "month" | "year";
+  amount_cents: number;
+  currency: string;
+  status: string;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  livemode: boolean;
+  live: boolean;
+  created_at: string;
+};
+
+export type AdminPlaceBoost = {
+  tier: 0 | 1 | 2 | 3;
+  factor: number;
+  monthly_cents: number;
+  backers: number;
+  backings: AdminBacking[];
+};
+
+/** The place's paid tier and every backing behind it. Read-only
+ *  (admin-web-get-place-boost). */
+export async function getPlaceBoost(placeId: string): Promise<Result<AdminPlaceBoost>> {
+  const r = await efInvoke<AdminPlaceBoost>("admin-web-get-place-boost", { placeId });
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: r.data };
+}
+
 // ── Profile vocabulary ───────────────────────────────────────────────────
 // Arrives on admin-web-get-overview, the one profile read. Family and
 // Category are already resolved there. The editor does not fetch them.

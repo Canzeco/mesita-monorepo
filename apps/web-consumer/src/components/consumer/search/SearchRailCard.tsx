@@ -11,8 +11,10 @@ import {
   CardActions,
   HoursRow,
   PriceKindRow,
+  SponsoredMark,
   StarsRow,
   cardFacts,
+  isSponsoredPlace,
 } from "@/components/consumer/place-card";
 
 // FIVE ROWS, TALLER STILL (Pato, MESITA-2674: "name / price, category /
@@ -165,6 +167,7 @@ export function RailCard({
           <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-5 font-semibold tracking-tight">
             <span className="truncate">{place.name}</span>
             {isEnrichedPlace(place) ? <EnrichedBadge /> : null}
+            {isSponsoredPlace(place) ? <SponsoredMark /> : null}
           </p>
           <PriceKindRow facts={facts} />
           <StarsRow facts={facts} />

@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { Banknote, Clock, MapPin, Navigation, Tag } from "lucide-react";
+import { Banknote, Clock, MapPin, Navigation, Tag, Zap } from "lucide-react";
 
 import type { PlaceActions } from "../../actions";
 import type { PlaceDetail } from "../../place-detail";
@@ -128,6 +128,10 @@ export function ProfileSummary({
         ) : place.is_enriching ? (
           <RunningFact label="Enriching" />
         ) : null}
+        {/* SPONSORED (MESITA-2789): a paid Boost is disclosed, plain and
+            grey like every fact. Never red (red is Selected, Mesita's own
+            pick) and never "Verified": paying buys visibility only. */}
+        {(place.boost_tier ?? 0) > 0 && <ProfileFact icon={Zap}>Sponsored</ProfileFact>}
         {place.category && (
           <ProfileFact icon={Tag}>{place.category}</ProfileFact>
         )}

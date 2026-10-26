@@ -1,8 +1,9 @@
-// Spotlight (MESITA-1998): anyone can pay a monthly or yearly tier for a
-// place from the consumer app, and many guests may back one place, each
-// with their own Stripe subscription. `place_backings` mirrors those
-// subscriptions; its trigger derives `places.spotlight_tier` from the live
-// ones (migration 20261026001000). Paid, never verified, never Selected.
+// Boost (MESITA-2789, was Spotlight MESITA-1998): anyone can pay a monthly
+// or yearly tier for a place from the consumer app, and many guests may
+// back one place, each with their own Stripe subscription. `place_backings`
+// mirrors those subscriptions; its trigger derives `places.boost_tier` from
+// the live ones (migration 20261027000000). Paid, never verified, never
+// Selected, and marked Sponsored wherever a guest sees it.
 //
 // Stripe is reached over its REST API with fetch (no SDK): four calls, all
 // form-encoded. The key follows STRIPE_MODE, which defaults to TEST; live
@@ -10,48 +11,66 @@
 //
 // decision: prices are fixed here, not a console knob — a price is a money
 // promise to the guests already paying it, so it changes by PR.
-// decision: a yearly plan costs twelve months (no discount yet) and counts
-// as a twelfth a month toward the place's tier.
+// decision (Pato, MESITA-2789): a yearly plan costs ten months for twelve,
+// so toward the place's tier it counts a TENTH a month — a $100/yr backing
+// buys Boost 2x exactly like $10/mo.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
-export type SpotlightTier = "spotlight" | "spotlight_plus";
-export type SpotlightInterval = "month" | "year";
+export type BoostTier = "boost_2x" | "boost_5x" | "boost_10x";
+export type BoostInterval = "month" | "year";
 
-/** Monthly price in US cents. The SQL trigger's thresholds are these two
- *  numbers (recompute_place_spotlight); change both together. */
-export const SPOTLIGHT_MONTHLY_CENTS: Record<SpotlightTier, number> = {
-  spotlight: 1000,
-  spotlight_plus: 10000,
+export const BOOST_TIERS = ["boost_2x", "boost_5x", "boost_10x"] as const satisfies readonly BoostTier[];
+
+/** Monthly price in US cents. The SQL trigger's thresholds are these three
+ *  numbers (recompute_place_boost); change both together. */
+export const BOOST_MONTHLY_CENTS: Record<BoostTier, number> = {
+  boost_2x: 1000,
+  boost_5x: 5000,
+  boost_10x: 20000,
 };
 
-export const SPOTLIGHT_CURRENCY = "usd";
+/** A year is billed as this many months. */
+export const BOOST_YEAR_MONTHS = 10;
 
-export const SPOTLIGHT_LABEL: Record<SpotlightTier, string> = {
-  spotlight: "Spotlight",
-  spotlight_plus: "Spotlight Plus",
+export const BOOST_CURRENCY = "usd";
+
+export const BOOST_LABEL: Record<BoostTier, string> = {
+  boost_2x: "Boost 2x",
+  boost_5x: "Boost 5x",
+  boost_10x: "Boost 10x",
 };
+
+/** The Area score multiplier a place's `boost_tier` (0..3) earns. Literal:
+ *  the tier names promise the number. */
+export const BOOST_FACTOR: Record<0 | 1 | 2 | 3, number> = { 0: 1, 1: 2, 2: 5, 3: 10 };
 
 /** What the guest pays per interval. */
-export function spotlightAmountCents(tier: SpotlightTier, interval: SpotlightInterval): number {
-  const monthly = SPOTLIGHT_MONTHLY_CENTS[tier];
-  return interval === "year" ? monthly * 12 : monthly;
+export function boostAmountCents(tier: BoostTier, interval: BoostInterval): number {
+  const monthly = BOOST_MONTHLY_CENTS[tier];
+  return interval === "year" ? monthly * BOOST_YEAR_MONTHS : monthly;
+}
+
+/** What one backing counts toward its place's tier, per month. */
+export function monthlyEquivalentCents(amountCents: number, interval: BoostInterval): number {
+  return interval === "year" ? amountCents / BOOST_YEAR_MONTHS : amountCents;
 }
 
 /** The place's tier from its live backings' monthly-equivalent total — the
  *  same rule the SQL trigger runs, kept here for the wire and its test. */
-export function tierFromMonthlyCents(cents: number): 0 | 1 | 2 {
-  if (cents >= SPOTLIGHT_MONTHLY_CENTS.spotlight_plus) return 2;
-  if (cents >= SPOTLIGHT_MONTHLY_CENTS.spotlight) return 1;
+export function tierFromMonthlyCents(cents: number): 0 | 1 | 2 | 3 {
+  if (cents >= BOOST_MONTHLY_CENTS.boost_10x) return 3;
+  if (cents >= BOOST_MONTHLY_CENTS.boost_5x) return 2;
+  if (cents >= BOOST_MONTHLY_CENTS.boost_2x) return 1;
   return 0;
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export type SpotlightStart = {
+export type BoostStart = {
   placeId: string;
-  tier: SpotlightTier;
-  interval: SpotlightInterval;
+  tier: BoostTier;
+  interval: BoostInterval;
   showName: boolean;
   returnUrl: string;
 };
@@ -71,16 +90,16 @@ export function isAllowedReturnUrl(raw: string): boolean {
   return host === "mesita.ai" || host.endsWith(".mesita.ai") || host.endsWith(".vercel.app");
 }
 
-export function parseSpotlightStart(
+export function parseBoostStart(
   body: Record<string, unknown>,
-): { ok: true; start: SpotlightStart } | { ok: false; error: string } {
+): { ok: true; start: BoostStart } | { ok: false; error: string } {
   const placeId = body.place_id;
   if (typeof placeId !== "string" || !UUID_RE.test(placeId)) {
     return { ok: false, error: "place_id must be a Mesita place id" };
   }
   const tier = body.tier;
-  if (tier !== "spotlight" && tier !== "spotlight_plus") {
-    return { ok: false, error: "tier must be spotlight or spotlight_plus" };
+  if (typeof tier !== "string" || !(BOOST_TIERS as readonly string[]).includes(tier)) {
+    return { ok: false, error: "tier must be boost_2x, boost_5x or boost_10x" };
   }
   const interval = body.interval ?? "month";
   if (interval !== "month" && interval !== "year") {
@@ -92,7 +111,7 @@ export function parseSpotlightStart(
   }
   return {
     ok: true,
-    start: { placeId, tier, interval, showName: body.show_name === true, returnUrl },
+    start: { placeId, tier: tier as BoostTier, interval, showName: body.show_name === true, returnUrl },
   };
 }
 
@@ -104,7 +123,7 @@ const envRead: ReadEnv = (name) => Deno.env.get(name);
 /** The secret key for the active universe, or null. STRIPE_MODE other than
  *  exactly `live` is test; live without STRIPE_ALLOW_LIVE=true is refused,
  *  and a mode never falls through to the other mode's key. */
-export function spotlightStripeKey(read: ReadEnv = envRead): string | null {
+export function boostStripeKey(read: ReadEnv = envRead): string | null {
   const mode = (read("STRIPE_MODE") ?? "").trim() === "live" ? "live" : "test";
   if (mode === "live" && (read("STRIPE_ALLOW_LIVE") ?? "").trim() !== "true") return null;
   const key = (read(mode === "live" ? "STRIPE_SECRET_KEY_LIVE" : "STRIPE_SECRET_KEY_TEST") ?? "").trim();
@@ -160,12 +179,12 @@ export function stripeClient(key: string, fetchFn: typeof fetch = fetch): Stripe
 /** The Checkout Session that opens one guest's backing. Prices are inline
  *  (price_data), so no product has to exist in the dashboard first. */
 export function checkoutParams(
-  start: SpotlightStart,
+  start: BoostStart,
   ctx: { backingId: string; consumerId: string; placeName: string },
 ): Record<string, unknown> {
   const sep = start.returnUrl.includes("?") ? "&" : "?";
   const metadata = {
-    mesita_kind: "spotlight",
+    mesita_kind: "boost",
     backing_id: ctx.backingId,
     place_id: start.placeId,
     consumer_id: ctx.consumerId,
@@ -174,15 +193,15 @@ export function checkoutParams(
   return {
     mode: "subscription",
     client_reference_id: ctx.backingId,
-    success_url: `${start.returnUrl}${sep}spotlight={CHECKOUT_SESSION_ID}`,
+    success_url: `${start.returnUrl}${sep}boost={CHECKOUT_SESSION_ID}`,
     cancel_url: start.returnUrl,
     line_items: [{
       quantity: 1,
       price_data: {
-        currency: SPOTLIGHT_CURRENCY,
-        unit_amount: spotlightAmountCents(start.tier, start.interval),
+        currency: BOOST_CURRENCY,
+        unit_amount: boostAmountCents(start.tier, start.interval),
         recurring: { interval: start.interval },
-        product_data: { name: `${SPOTLIGHT_LABEL[start.tier]} · ${ctx.placeName}`.slice(0, 250) },
+        product_data: { name: `${BOOST_LABEL[start.tier]} · ${ctx.placeName}`.slice(0, 250) },
       },
     }],
     metadata,
@@ -240,13 +259,13 @@ export async function cancelConsumerBackings(
   if (error) return { ok: false, error: `backings_read: ${error.message}` };
   const rows = (data ?? []) as Array<{ id: string; stripe_subscription_id: string }>;
   if (rows.length === 0) return { ok: true, cancelled: 0 };
-  if (!stripe) return { ok: false, error: "spotlight_cancel: payments unavailable" };
+  if (!stripe) return { ok: false, error: "boost_cancel: payments unavailable" };
   for (const row of rows) {
     try {
       const sub = await stripe("DELETE", `subscriptions/${encodeURIComponent(row.stripe_subscription_id)}`);
       await admin.from("place_backings").update(subscriptionPatch(sub)).eq("id", row.id);
     } catch (err) {
-      return { ok: false, error: `spotlight_cancel: ${err instanceof Error ? err.message : String(err)}` };
+      return { ok: false, error: `boost_cancel: ${err instanceof Error ? err.message : String(err)}` };
     }
   }
   return { ok: true, cancelled: rows.length };
@@ -257,16 +276,16 @@ export async function cancelConsumerBackings(
 
 /** The place a backing is for, through the browse view: name, state and
  *  its current tier. */
-export async function readSpotlightPlace(
+export async function readBoostPlace(
   admin: SupabaseClient,
   placeId: string,
 ): Promise<
-  | { ok: true; place: { id: string; name: string | null; state: string | null; spotlight_tier: number } | null }
+  | { ok: true; place: { id: string; name: string | null; state: string | null; boost_tier: number } | null }
   | { ok: false; error: string }
 > {
   const { data, error } = await admin
     .from("profiles")
-    .select("id, name, state, spotlight_tier")
+    .select("id, name, state, boost_tier")
     .eq("id", placeId)
     .maybeSingle();
   if (error) return { ok: false, error: `place_read: ${error.message}` };
@@ -285,7 +304,7 @@ export async function readBackerNames(
     .select("id, first_name")
     .in("id", consumerIds);
   if (error) {
-    console.error("[spotlight] backer names:", error.message);
+    console.error("[boost] backer names:", error.message);
     return [];
   }
   const byId = new Map(

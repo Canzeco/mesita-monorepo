@@ -105,19 +105,35 @@ export const MAP_PIN_CURSOR = "default";
 export const MAP_PIN_STROKE_WEIGHT = 1.25;
 export const MAP_SELECTED_PIN_STROKE_WEIGHT = 3;
 
-/** SVG for the Search pin: near-invisible full pad + the coloured disk. */
+/** Boost's ⚡ badge (MESITA-2789): a white disk with an ink bolt at the
+ *  pin's upper right, on any tone. It marks paid visibility; the disk's
+ *  colour stays the set law (red is Selected alone). */
+export const MAP_BOOST_BADGE_COLOR = "#111111";
+
+/** SVG for the Search pin: near-invisible full pad + the coloured disk,
+ *  and the ⚡ badge when the place is boosted. */
 export function mapPinSvg(
   fillColor: string,
   strokeColor: string,
   strokeWeight: number = MAP_PIN_STROKE_WEIGHT,
   radius: number = MAP_PLACE_PIN_RADIUS,
+  boosted = false,
 ): string {
   const size = MAP_PIN_HIT_SIZE;
   const mid = size / 2;
+  // The badge sits on the disk's upper-right edge: 6px radius, a bolt
+  // drawn in its own 12px box.
+  const bx = mid + radius * 0.75;
+  const by = mid - radius * 0.75;
+  const badge = boosted
+    ? `<circle cx="${bx}" cy="${by}" r="6" fill="#ffffff" stroke="${MAP_BOOST_BADGE_COLOR}" stroke-width="1"/>` +
+      `<path transform="translate(${bx - 6} ${by - 6})" d="M6.8 2 3.2 6.8h2.6L5.2 10l3.6-4.8H6.2L6.8 2z" fill="${MAP_BOOST_BADGE_COLOR}"/>`
+    : "";
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">` +
     `<circle cx="${mid}" cy="${mid}" r="${mid - 0.5}" fill="#000000" fill-opacity="0.01"/>` +
     `<circle cx="${mid}" cy="${mid}" r="${radius}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="${strokeWeight}"/>` +
+    badge +
     `</svg>`
   );
 }
@@ -127,11 +143,12 @@ export function mapPinIcon(
   strokeColor: string,
   strokeWeight: number = MAP_PIN_STROKE_WEIGHT,
   radius: number = MAP_PLACE_PIN_RADIUS,
+  boosted = false,
 ) {
   const size = MAP_PIN_HIT_SIZE;
   const mid = size / 2;
   return {
-    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(mapPinSvg(fillColor, strokeColor, strokeWeight, radius))}`,
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(mapPinSvg(fillColor, strokeColor, strokeWeight, radius, boosted))}`,
     scaledSize: { width: size, height: size },
     anchor: { x: mid, y: mid },
   };
