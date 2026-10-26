@@ -7,6 +7,7 @@ import {
   applyResolvedMesitaName,
   classifyPredictionKind,
   deepModuleFlags,
+  gatedGoogleKind,
   laneDedupeKeys,
   locationTypeOf,
   mergeNameDeepQueries,
@@ -382,6 +383,18 @@ Deno.test("classifyPredictionKind: missing/empty/unknown types stay Places", () 
   assertEquals(classifyPredictionKind(null), "place");
   assertEquals(classifyPredictionKind([]), "place");
   assertEquals(classifyPredictionKind(["cafe", "food"]), "place");
+});
+
+Deno.test("gatedGoogleKind: a non-food Google place is a destination, never a drop", () => {
+  // MESITA-2778: "EGADE Business School" used to answer "No matches found".
+  const wrongType = { eligible: false, code: "family_not_eligible" };
+  assertEquals(gatedGoogleKind({ eligible: true }, true), "place");
+  assertEquals(gatedGoogleKind(wrongType, true), "location");
+  // The admin caller stays Places-only.
+  assertEquals(gatedGoogleKind(wrongType, false), null);
+  // A food place under the floors still drops: only the type gate converts.
+  assertEquals(gatedGoogleKind({ eligible: false, code: "below_min_rating" }, true), null);
+  assertEquals(gatedGoogleKind({ eligible: false, code: "below_min_reviews" }, true), null);
 });
 
 Deno.test("locationTypeOf: most specific type, blanket markers last", () => {
