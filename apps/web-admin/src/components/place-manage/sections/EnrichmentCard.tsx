@@ -45,7 +45,9 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
   }, [place.id]);
 
   const running = isEnriching(enrichState);
-  const alreadyEnriched = Boolean(enrichState?.last_enriched_at) || enrichState?.content_state === "ready";
+  // Enriched is a finished Enrich run (enriched_at), never `ready` alone: Create
+  // leaves every new place ready (MESITA-2811).
+  const alreadyEnriched = Boolean(enrichState?.last_enriched_at);
   const status = running
     ? "Enriching"
     : enrichState?.content_state === "failed"

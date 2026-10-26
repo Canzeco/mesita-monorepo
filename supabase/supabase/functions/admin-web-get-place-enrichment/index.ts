@@ -3,7 +3,8 @@
 // Read-only per-place Enricher inspector for the admin console. Given a
 // place id, returns `state` — enrichment progress for the place:
 // places.content_state + the place_research stage/state/error +
-// last_enriched_at (the moment the pipeline last reached stage='done') +
+// last_enriched_at (place_profiles.enriched_at, the one Render write; the old
+// stage path's 'done' time only when that is absent, MESITA-2811) +
 // serp_summary, the SERP Summary (the Scout's soft editorial read) for the last
 // run. That one is selected as a JSON PATH, never as the whole `gathered` blob:
 // the column is tens of KB and shipping it wholesale is the regression
@@ -48,10 +49,15 @@ Deno.serve(async (req) => {
   const placeId = readPlaceIdAlias(bodyRes.body);
   if (!placeId) return jsonError("Missing placeId", 400);
 
-  const [placeRes, researchRes] = await Promise.all([
+  const [placeRes, profileRes, researchRes] = await Promise.all([
     admin
       .from("places")
       .select("content_state")
+      .eq("id", placeId)
+      .maybeSingle(),
+    admin
+      .from("place_profiles")
+      .select("enriched_at")
       .eq("id", placeId)
       .maybeSingle(),
     admin
@@ -65,6 +71,9 @@ Deno.serve(async (req) => {
 
   if (placeRes.error) {
     return jsonError(`places: ${placeRes.error.message}`, 500);
+  }
+  if (profileRes.error) {
+    return jsonError(`place_profiles: ${profileRes.error.message}`, 500);
   }
   if (researchRes.error) {
     return jsonError(`place_research: ${researchRes.error.message}`, 500);
@@ -80,14 +89,16 @@ Deno.serve(async (req) => {
       }
     | null;
 
+  const enrichedAt = (profileRes.data?.enriched_at ?? null) as string | null;
   const state = {
     content_state: (placeRes.data?.content_state ?? null) as string | null,
     stage: research?.stage ?? null,
     stage_state: research?.state ?? null,
     error: research?.error ?? null,
-    // The pipeline stamps updated_at on every stage advance; when the row is
-    // 'done' that timestamp is the completion time.
-    last_enriched_at: research?.stage === "done" ? (research?.updated_at ?? null) : null,
+    // Enriched is enriched_at: Render's write stamps it and never touches
+    // place_research. The stage row's 'done' time covers places from the old path.
+    last_enriched_at: enrichedAt ??
+      (research?.stage === "done" ? (research?.updated_at ?? null) : null),
     updated_at: research?.updated_at ?? null,
     // One of the three enrichment texts (SERP Summary · Presentation ·
     // Semantic Summary). It grounds link selection and the description, and it
