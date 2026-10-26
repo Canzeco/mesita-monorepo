@@ -3,7 +3,7 @@
 // Read-only per-place Enricher inspector for the admin console. Given a
 // place id, returns `state` — enrichment progress for the place:
 // places.content_state + the place_research stage/state/error +
-// last_enriched_at (place_profiles.enriched_at, the one Render write; the old
+// last_enriched_at (enriched_at via the profiles view, the one Render write; the old
 // stage path's 'done' time only when that is absent, MESITA-2811) +
 // serp_summary, the SERP Summary (the Scout's soft editorial read) for the last
 // run. That one is selected as a JSON PATH, never as the whole `gathered` blob:
@@ -49,15 +49,11 @@ Deno.serve(async (req) => {
   const placeId = readPlaceIdAlias(bodyRes.body);
   if (!placeId) return jsonError("Missing placeId", 400);
 
-  const [placeRes, profileRes, researchRes] = await Promise.all([
+  // The profiles view carries both content_state (places) and enriched_at.
+  const [placeRes, researchRes] = await Promise.all([
     admin
-      .from("places")
-      .select("content_state")
-      .eq("id", placeId)
-      .maybeSingle(),
-    admin
-      .from("place_profiles")
-      .select("enriched_at")
+      .from("profiles")
+      .select("content_state, enriched_at")
       .eq("id", placeId)
       .maybeSingle(),
     admin
@@ -71,9 +67,6 @@ Deno.serve(async (req) => {
 
   if (placeRes.error) {
     return jsonError(`places: ${placeRes.error.message}`, 500);
-  }
-  if (profileRes.error) {
-    return jsonError(`place_profiles: ${profileRes.error.message}`, 500);
   }
   if (researchRes.error) {
     return jsonError(`place_research: ${researchRes.error.message}`, 500);
@@ -89,7 +82,7 @@ Deno.serve(async (req) => {
       }
     | null;
 
-  const enrichedAt = (profileRes.data?.enriched_at ?? null) as string | null;
+  const enrichedAt = (placeRes.data?.enriched_at ?? null) as string | null;
   const state = {
     content_state: (placeRes.data?.content_state ?? null) as string | null,
     stage: research?.stage ?? null,
