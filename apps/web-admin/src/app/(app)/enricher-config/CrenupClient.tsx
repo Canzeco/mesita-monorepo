@@ -318,7 +318,7 @@ export function CrenupClient({
           <SectionCard
             icon={<RefreshCw className="text-secondary h-4 w-4" />}
             title="Enrich"
-            subtitle="One Render task per place. Strong runs 1–8; Weak skips 2 and 3."
+            subtitle="One Render task per place. Enrich runs steps 1–8 and replaces what it finds."
             state={<Tag>$$ · Apify · Firecrawl · Perplexity</Tag>}
           >
             <FlowPanel

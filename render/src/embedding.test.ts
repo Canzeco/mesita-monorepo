@@ -28,7 +28,6 @@ test("a short vector is left off the place", () => {
 });
 
 test("the vectors read the profile as written: a saved name, address and description win (MESITA-2801)", async () => {
-  // Overwrite off: applyOverwrite put the saved values back on the patch.
   const subject = writtenSubject({
     google_name: "Strana",
     mesita_name: "Strana Zona Hotelera",

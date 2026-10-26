@@ -23,21 +23,26 @@ Deno.test("review quotes are the text the presentation can read", () => {
   ]), "Loud room\nBottle service");
 });
 
-Deno.test("overwrite off keeps a saved presentation", () => {
+Deno.test("every Enrich replaces the saved presentation; an empty one keeps it (MESITA-2799)", () => {
   const next = mergeSynthesizedProfile({
-    overwrite: false,
     patch: { content_state: "ready", description: "Already written." },
-    presentation: "A new essay that should not replace the saved one.",
+    presentation: "A new essay.",
     categories: null,
     tags: null,
   });
-  assertEquals(next.description, "Already written.");
+  assertEquals(next.description, "A new essay.");
+  const kept = mergeSynthesizedProfile({
+    patch: { content_state: "ready", description: "Already written." },
+    presentation: null,
+    categories: null,
+    tags: null,
+  });
+  assertEquals(kept.description, "Already written.");
 });
 
-Deno.test("every Enrich writes the inferred Mesita categories and tags, whatever Overwrite says (MESITA-2790)", () => {
-  for (const overwrite of [false, true]) {
+Deno.test("every Enrich writes the inferred Mesita categories and tags, (MESITA-2790)", () => {
+  {
     const next = mergeSynthesizedProfile({
-      overwrite,
       patch: { content_state: "ready" },
       presentation: null,
       categories: ["bakery", "cafe"],
@@ -54,7 +59,6 @@ Deno.test("a failed inference leaves Mesita categories and tags out of the patch
   // Failed = null. The patch carries none of the four columns, so the stored
   // values stay; an empty tags answer is a real answer and is written.
   const failed = mergeSynthesizedProfile({
-    overwrite: true,
     patch: { content_state: "ready" },
     presentation: null,
     categories: null,
@@ -64,7 +68,6 @@ Deno.test("a failed inference leaves Mesita categories and tags out of the patch
     assertEquals(key in failed, false, key);
   }
   const noTags = mergeSynthesizedProfile({
-    overwrite: false,
     patch: { content_state: "ready" },
     presentation: null,
     categories: [],

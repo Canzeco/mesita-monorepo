@@ -4,8 +4,6 @@ import {
   fetchGooglePlace,
   fetchTimezone,
   profileFromGoogle,
-  type GooglePlace,
-  type GoogleSpine,
 } from "./google-spine.ts";
 import { digest, embedPair, embeddingFields, writtenSubject } from "./embedding.ts";
 import {
@@ -18,7 +16,6 @@ import {
 } from "./images.ts";
 import { discoverLinks, linkCounts, type LinkField } from "./links.ts";
 import { fetchDraftSync } from "./draft-sync.ts";
-import { applyOverwrite } from "./fill-existing.ts";
 import { scoutPlace } from "./scout.ts";
 import type { RanSteps } from "./steps.ts";
 
@@ -50,35 +47,26 @@ export type EnrichmentKnobs = {
   sortModel?: string;
 };
 
-/** Quick is Google's record. Full is links, Instagram, reviews, vision, and a description. */
-export type EnrichDepth = "quick" | "full";
-
 export type EnrichJob = {
   placeId: string;
   googlePlaceId: string;
   knobs?: EnrichmentKnobs;
-  /** Absent is Full, so an older caller does not become Quick. */
-  depth?: EnrichDepth;
-  /** False fills only empty fields and keeps saved links. True may replace. */
-  overwrite?: boolean;
   /** Profile at the moment enriching was marked. The write refuses a newer row. */
   baseUpdatedAt?: string | null;
-  saved?: Record<string, unknown>;
-  /** The Scout's message for this place, built by the Edge Function. Strong
-   *  runs the Scout with it; a job without one skips step 2. */
+  /** The Scout's message for this place, built by the Edge Function. A job
+   *  without one skips step 2. */
   scoutInput?: string;
 };
-
-export function isQuickEnrich(job: EnrichJob): boolean {
-  return job.depth === "quick";
-}
+// There is one Enrich (MESITA-2799): every job runs the whole ladder and
+// replaces what it finds. A job from an older caller may still carry `depth`
+// or `overwrite`; neither is read.
 
 export type BuiltEnrichment = {
   closed?: false;
   patch: Record<string, unknown>;
   mirrorPhotos: boolean;
   photoAnalyses: PhotoAnalysis[];
-  /** Steps whose outcome only the task saw (the Scout and Links, Strong only). */
+  /** Steps whose outcome only the task saw (the Scout and Links). */
   steps: RanSteps;
   /** The Scout's read: the write's Presentation grounds on it. Never a column. */
   serpSummary: string | null;
@@ -102,7 +90,7 @@ export function isPermanentlyClosed(details: { businessStatus?: string }): boole
 // description of at most 500 characters. The description is Google's own
 // summary when it has one, otherwise one written from those facts. The write
 // then infers the Mesita categories (1–3) and Mesita tags from the saved row
-// on every run, and replaces an empty presentation with the synthesized one. A listing Google calls permanently
+// on every run, and writes the synthesized presentation. A listing Google calls permanently
 // closed stops right after Details, before any paid step. Anything else short
 // of a finished profile throws before the write. Places itself never supplies
 // the review list: it returns five.
@@ -135,19 +123,6 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment |
   const name = typeof spine.patch.google_name === "string" ? spine.patch.google_name : "";
   const city = typeof spine.patch.city === "string" ? spine.patch.city : null;
   const knobs = job.knobs ?? {};
-  const overwrite = job.overwrite === true;
-  const saved = job.saved ?? {};
-  if (isQuickEnrich(job)) {
-    return buildQuickEnrichment({
-      details,
-      spine,
-      googleKey,
-      knobs,
-      overwrite,
-      saved,
-      googlePlaceId,
-    });
-  }
   const counts = linkCounts({
     website_url: knobs.discoverWebsiteN,
     instagram_url: knobs.discoverInstagramN,
@@ -155,12 +130,6 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment |
     opentable_url: knobs.discoverOpentableN,
     uber_eats_url: knobs.discoverUbereatsN,
   });
-  if (!overwrite) {
-    for (const key of ["website_url", "instagram_url", "facebook_url", "opentable_url", "uber_eats_url"] as const) {
-      const savedUrl = stringField(saved[key]);
-      if (savedUrl) spine.patch[key] = savedUrl;
-    }
-  }
   const scout = job.scoutInput?.trim()
     ? await timed("serp", () => scoutPlace({
       input: job.scoutInput!,
@@ -172,13 +141,8 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment |
   const discovered = await timed("links", () => discoverLinks({
     name,
     city,
-    have: {
-      website_url: heldLink(overwrite, saved.website_url, spine.patch.website_url),
-      instagram_url: heldLink(overwrite, saved.instagram_url, spine.patch.instagram_url),
-      facebook_url: heldLink(overwrite, saved.facebook_url, spine.patch.facebook_url),
-      opentable_url: heldLink(overwrite, saved.opentable_url, spine.patch.opentable_url),
-      uber_eats_url: heldLink(overwrite, saved.uber_eats_url, spine.patch.uber_eats_url),
-    },
+    // Every link is looked for again; one the Resolver keeps replaces the saved one.
+    have: {},
     counts,
     preset: knobs.perplexityPreset,
     instructions: knobs.resolverInstructions,
@@ -226,25 +190,14 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment |
     ran.push({ step: "description", ms: 0, produced: "google" });
   }
   if (!description) throw new Error("The place has no description, so it was not written.");
-  const keptSaved = !overwrite && typeof saved.description === "string" && saved.description.trim();
-  if (keptSaved) ran[ran.length - 1].produced += ",kept-saved";
 
-  // The write fills the Presentation when this run may replace it. A saved
-  // one stays on the patch through applyOverwrite and is left alone.
-  const draft: Record<string, unknown> = {
+  const patch: Record<string, unknown> = commitPatch({
     ...spine.patch,
     content_state: "ready",
     enriched_at: new Date().toISOString(),
-  };
-  if (!overwrite && typeof saved.description === "string" && saved.description.trim()) {
-    draft.description = saved.description;
-  }
-  const patch: Record<string, unknown> = applyOverwrite({
-    overwrite,
-    saved,
-    patch: draft,
   });
-  const subject = writtenSubject(patch);
+  // The vectors read the profile this run writes, with its description.
+  const subject = writtenSubject({ ...patch, description });
   if (openaiKey && subject) {
     const fields = await timed("embedding", async () => {
       const vectors = await embedPair(subject.facts, subject.name, openaiKey);
@@ -261,105 +214,12 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment |
   const steps: RanSteps = { links: discovered.report };
   if (scout) steps.serp = scout.report;
   return {
-    patch: stampOverwrite(patch, overwrite),
+    patch,
     mirrorPhotos: knobs.saveImagesToStorage !== false,
     photoAnalyses: photos.analyses,
     steps,
     serpSummary: scout?.summary ?? null,
     ran,
-  };
-}
-
-/** The mode that produced this commit. Not a preference for the next run. */
-export function stampOverwrite(
-  patch: Record<string, unknown>,
-  overwrite: boolean,
-): Record<string, unknown> {
-  const current = patch.source_sync;
-  const sync = current && typeof current === "object" && !Array.isArray(current)
-    ? { ...(current as Record<string, unknown>) }
-    : {};
-  return { ...patch, source_sync: { ...sync, overwrite } };
-}
-
-/** Google's record, then the same Sync the Reviews button uses, in the draft. */
-export function quickPatch(opts: {
-  spine: Record<string, unknown>;
-  description: string | null;
-  googlePhotos: string[];
-  now: string;
-}): Record<string, unknown> {
-  const patch: Record<string, unknown> = {
-    ...opts.spine,
-    content_state: "ready",
-    enriched_at: opts.now,
-  };
-  if (opts.description) patch.description = opts.description;
-  if (opts.googlePhotos.length > 0) patch.photos = opts.googlePhotos;
-  return patch;
-}
-
-async function buildQuickEnrichment(opts: {
-  details: GooglePlace;
-  spine: Extract<GoogleSpine, { ok: true }>;
-  googleKey: string;
-  knobs: EnrichmentKnobs;
-  overwrite: boolean;
-  saved: Record<string, unknown>;
-  googlePlaceId: string;
-}): Promise<BuiltEnrichment> {
-  const images = imageKnobs(opts.knobs);
-  let googlePhotos: string[] = [];
-  try {
-    googlePhotos = await fetchGooglePhotoUrls(opts.details.photos, opts.googleKey, images.gatherGoogleImages);
-  } catch {
-    googlePhotos = [];
-  }
-  const description = opts.spine.description;
-  const patch = applyOverwrite({
-    overwrite: opts.overwrite,
-    saved: opts.saved,
-    patch: quickPatch({
-      spine: opts.spine.patch,
-      description,
-      googlePhotos,
-      now: new Date().toISOString(),
-    }),
-  });
-  const openaiKey = process.env.OPENAI_KEY?.trim() ?? "";
-  const written = typeof patch.description === "string" ? patch.description : "";
-  const subject = writtenSubject(patch);
-  if (openaiKey && subject && written) {
-    try {
-      const vectors = await embedPair(subject.facts, subject.name, openaiKey);
-      const fields = embeddingFields(
-        vectors.summary,
-        vectors.name,
-        await digest(subject.facts),
-        await digest(subject.name),
-        subject.facts,
-      );
-      if (fields) Object.assign(patch, fields);
-    } catch {
-      // Quick still writes Google's record when the vectors fail.
-    }
-  }
-  const synced = await fetchDraftSync({
-    googlePlaceId: opts.googlePlaceId,
-    instagramUrl: stringField(patch.instagram_url),
-    facebookUrl: stringField(patch.facebook_url),
-  });
-  const merged = applyOverwrite({
-    overwrite: opts.overwrite,
-    saved: opts.saved,
-    patch: { ...patch, ...synced },
-  });
-  return {
-    patch: stampOverwrite(merged, opts.overwrite),
-    mirrorPhotos: opts.knobs.saveImagesToStorage !== false,
-    photoAnalyses: [],
-    steps: {},
-    serpSummary: null,
   };
 }
 
@@ -388,13 +248,25 @@ function stringField(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value : null;
 }
 
-/** Off keeps a saved link so discovery does not hunt a different one. */
-function heldLink(overwrite: boolean, saved: unknown, fresh: unknown): string | null {
-  if (overwrite) return null;
-  return stringField(saved) ?? stringField(fresh);
-}
-
 function factsWithLinks(facts: string, links: Partial<Record<LinkField, string>>): string {
   const lines = Object.entries(links).map(([key, url]) => `${key}: ${url}`);
   return lines.length ? `${facts}\n${lines.join("\n")}` : facts;
+}
+
+/** Columns the write EF infers (MESITA-2790); Render's patch never carries them. */
+const MESITA_OWNED = ["category", "category_label", "mesita_categories", "tags"] as const;
+
+/** What the run commits. A fresh value replaces the saved one; an empty one
+ *  (null, blank, an empty list) is dropped, so a step that found nothing or
+ *  failed never blanks a filled column (MESITA-2799). */
+export function commitPatch(patch: Record<string, unknown>): Record<string, unknown> {
+  const next: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(patch)) {
+    if ((MESITA_OWNED as readonly string[]).includes(key)) continue;
+    if (value == null) continue;
+    if (typeof value === "string" && value.trim() === "") continue;
+    if (Array.isArray(value) && value.length === 0) continue;
+    next[key] = value;
+  }
+  return next;
 }

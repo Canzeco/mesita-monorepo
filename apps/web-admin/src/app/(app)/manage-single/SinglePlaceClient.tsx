@@ -10,8 +10,8 @@
 // OPENS the place at
 // /manage-single/<id>/profile — the place screens admin owns (MESITA-2115).
 // Create (from a Google Place ID, or a table row) and Enrich (a held row)
-// are the writes this page makes itself. Quick and Full fill empty fields.
-// They do not overwrite; that switch lives on the place's Enrichment card.
+// are the writes this page makes itself. Enrich is the one Enrich the Admin
+// card runs: the whole pipeline, replacing what it finds (MESITA-2799).
 // Reviews stay a separate reload.
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -27,7 +27,6 @@ import {
 import { StatePill } from "@/app/(app)/manage-multiple/PlaceFacts";
 import { StateIcon, type BatchRowState } from "@/app/(app)/manage-multiple/StateIcon";
 import { BONE_CLASS, CopyIdButton, ReadField, SectionCard } from "@/components/admin-ui/manage";
-import { enrichLabel, type EnrichDepth } from "@/lib/enrich-depth";
 import { placeTabHref } from "@/lib/place-tabs";
 import type { PlaceLite, SearchErrorResponse, SearchResponse } from "@/lib/places-types";
 import { GENERAL_STATE_FACTS } from "@/lib/state-vocabulary";
@@ -287,15 +286,12 @@ export function SinglePlaceClient({
 
   /** Same Enrich as the Admin card. Starting… while the call is in flight,
    *  then Enriching. A second click does nothing. Failure puts the verbs back. */
-  async function enrichRow(row: FindRow, depth: EnrichDepth) {
+  async function enrichRow(row: FindRow) {
     const id = row.mesitaId ?? (row.googleId ? added.get(row.googleId) : undefined);
     if (!id || enrichFlight.current.has(id)) return;
     if (row.placeHit?.enriching === true || enrichingIds.has(id)) return;
-    const label = enrichLabel(depth);
     if (row.placeHit?.enriched) {
-      const ok = window.confirm(
-        `This place is already enriched. Run ${label} again?`,
-      );
+      const ok = window.confirm("This place is already enriched. Run Enrich again?");
       if (!ok) return;
     }
     enrichFlight.current.add(id);
@@ -308,7 +304,7 @@ export function SinglePlaceClient({
     });
     let failed: string | null = null;
     try {
-      const r = await enrichPlace(id, "fill", [], false, depth);
+      const r = await enrichPlace(id);
       if (!r.ok) failed = r.error;
     } catch (err) {
       failed = err instanceof Error ? err.message : "Unexpected error";
@@ -417,7 +413,7 @@ export function SinglePlaceClient({
             onOpen={(row) => void openRow(row)}
             onOpenGoogle={createOnOpen ? (row) => void openGoogleRow(row) : undefined}
             onAdd={(row) => void addRow(row)}
-            onEnrich={(row, depth) => void enrichRow(row, depth)}
+            onEnrich={(row) => void enrichRow(row)}
             startingIds={startingIds}
             enrichingIds={enrichingIds}
             enrichErrors={enrichErrors}

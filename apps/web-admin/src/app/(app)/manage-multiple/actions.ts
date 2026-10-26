@@ -2,7 +2,6 @@
 
 import { efInvoke } from "@/lib/supabase-ef";
 import { enrichmentView, isEnrichedPlace } from "@/lib/place-enriched";
-import type { EnrichDepth } from "@/lib/enrich-depth";
 import { type ReviewFoundFlags, reviewFoundFlags } from "@/lib/review-found";
 
 // ════════════════════════════════════════════════════════════════════════
@@ -272,37 +271,23 @@ export async function deletePlace(placeId: string): Promise<Result<true>> {
 
 // ── Enrich ───────────────────────────────────────────────────────────────
 
-// Kept so existing callers still type-check. The live choice is EnrichDepth.
-export type ReenrichMode = "fill" | "full" | "second" | "third";
-
 // Start enrichment. One place starts enrich single place. A list starts
 // enrich multiple places once, and Render decides how many run at once.
-// The row reports the start, not the finish. depth defaults to full.
-export async function enrichPlaces(
-  placeIds: string[],
-  overwrite = false,
-  depth: EnrichDepth = "full",
-): Promise<Result<true>> {
+// The row reports the start, not the finish. There is one Enrich
+// (MESITA-2799): the whole pipeline, replacing what it finds.
+export async function enrichPlaces(placeIds: string[]): Promise<Result<true>> {
   const ids = placeIds.map((id) => id.trim()).filter(Boolean);
   if (ids.length === 0) return { ok: false, error: "Missing placeId" };
   const r = await efInvoke<{ enrichmentTriggered: boolean }>(
     "admin-web-enrich-place",
-    ids.length === 1
-      ? { projectId: ids[0], overwrite, depth }
-      : { placeIds: ids, overwrite, depth },
+    ids.length === 1 ? { projectId: ids[0] } : { placeIds: ids },
   );
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: true };
 }
 
-export async function enrichPlace(
-  placeId: string,
-  _mode: ReenrichMode = "fill",
-  _overwrite: string[] = [],
-  overwrite = false,
-  depth: EnrichDepth = "full",
-): Promise<Result<true>> {
-  return enrichPlaces([placeId], overwrite || _overwrite.length > 0, depth);
+export async function enrichPlace(placeId: string): Promise<Result<true>> {
+  return enrichPlaces([placeId]);
 }
 
 // ── Update (Google factuals; the hero while the gallery is one photo, MESITA-2794) ──

@@ -4,7 +4,6 @@ import { buildScoutInput, SCOUT_INSTRUCTIONS } from "./enrich-serp.ts";
 import {
   contentStateAfterRefusal,
   ENRICHING_PATCH,
-  enrichDepthOf,
   enrichmentKnobs,
   enrichmentRun,
   renderApiKey,
@@ -93,13 +92,6 @@ Deno.test("the Scout's message falls back to the Google name and drops an undefi
     buildScoutInput({ name: "Bar X", locationLine: "", category: null }),
   );
   assertEquals(scoutInputFor({ name: "", google_name: "" }), null);
-});
-
-Deno.test("quick is the only short run; anything else is full", () => {
-  assertEquals(enrichDepthOf("quick"), "quick");
-  assertEquals(enrichDepthOf("full"), "full");
-  assertEquals(enrichDepthOf("fast"), "full");
-  assertEquals(enrichDepthOf(undefined), "full");
 });
 
 Deno.test("a list starts enrich multiple places", () => {

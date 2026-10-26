@@ -20,10 +20,8 @@ export function embeddingFacts(place: {
   return lines.join("\n");
 }
 
-/** The vectors describe the profile as it is written: after applyOverwrite,
- *  so a saved name, address or description under Overwrite off is what search
- *  reads, not the run's own copy (MESITA-2801). The name is what the profile
- *  shows: name, then mesita_name, then Google's. */
+/** The vectors describe the profile as it is written (MESITA-2801). The name
+ *  is what the profile shows: name, then mesita_name, then Google's. */
 export function writtenSubject(patch: Record<string, unknown>): { name: string; facts: string } | null {
   const text = (key: string) => {
     const value = patch[key];

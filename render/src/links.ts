@@ -2,7 +2,7 @@
 // Firecrawl Search is the only source. The Resolver (the Perplexity Agent the
 // Enrichment page shows) picks one URL per field, and a URL outside that
 // Firecrawl pool is dropped. A count of 0 does not search that source.
-// Google's own link is left alone. The Scout's read, when Strong ran it, is
+// Google's own link is left alone. The Scout's read, when the job carried a Scout message, is
 // the Resolver's background on the place: never the source of a URL.
 
 import { channelFromUrl, type GoogleChannel } from "./channels.ts";
@@ -109,7 +109,7 @@ type DiscoverOptions = {
   counts?: LinkCounts;
   preset?: string;
   instructions?: string;
-  /** The Scout's read of the place, when Strong ran it. */
+  /** The Scout's read of the place, when the Scout ran. */
   context?: string | null;
   firecrawlKey?: string;
   perplexityKey?: string;

@@ -9,8 +9,11 @@
 // and to failed when it never was. Render writes the profile once, at the end,
 // through enricher-edgefunc-write-place.
 //
-// The Google place id, the saved profile and the Enrichment page knobs ride on
-// the job: Render has no database key. So do the Scout's and the Resolver's
+// There is one Enrich (MESITA-2799): the whole ladder, replacing what it finds;
+// a person's edit survives only through its field pin, at the write.
+//
+// The Google place id and the Enrichment page knobs ride on the job: Render
+// has no database key. So do the Scout's and the Resolver's
 // instructions and the Scout's per-place message, built here from the same
 // constants and builder admin Enrichment renders, so what an operator reads is
 // what the vendor receives.
@@ -49,26 +52,15 @@ export type EnrichmentKnobs = {
   sortModel: string;
 };
 
-export type EnrichDepth = "quick" | "full";
-
 export type EnrichJob = {
   placeId: string;
   googlePlaceId: string;
   knobs?: EnrichmentKnobs;
-  /** Absent is Full. */
-  depth?: EnrichDepth;
-  overwrite?: boolean;
   /** The profile at the moment enriching was marked. The write refuses a newer row. */
   baseUpdatedAt?: string | null;
-  saved?: Record<string, unknown>;
-  /** The Scout's message for this place. Strong runs the Scout with it. */
+  /** The Scout's message for this place. Render runs the Scout with it. */
   scoutInput?: string;
 };
-
-/** Anything other than quick is the whole enrichment. */
-export function enrichDepthOf(value: unknown): EnrichDepth {
-  return value === "quick" ? "quick" : "full";
-}
 
 type KnobSource = Pick<
   EnrichConfig,
@@ -113,30 +105,14 @@ export function enrichmentKnobs(cfg: KnobSource): EnrichmentKnobs {
   };
 }
 
-/** The profile fields a run reads back so Overwrite off can keep them. */
+/** The profile fields the Scout's message is built from. */
 export const SAVED_KEYS = [
   "google_name",
   "mesita_name",
   "name",
   "category",
   "category_label",
-  "description",
   "address",
-  "zone",
-  "city",
-  "lat",
-  "lng",
-  "photos",
-  "phone",
-  "tags",
-  "website_url",
-  "instagram_url",
-  "facebook_url",
-  "opentable_url",
-  "uber_eats_url",
-  "whatsapp_url",
-  "google_maps_url",
-  "google_address",
 ] as const;
 
 function text(value: unknown): string {
@@ -193,8 +169,6 @@ export async function startEnrichment(
   admin: SupabaseClient,
   opts: {
     placeIds: readonly string[];
-    depth: EnrichDepth;
-    overwrite: boolean;
     claim?: boolean;
     env?: { get(name: string): string | undefined };
     fetchImpl?: typeof fetch;
@@ -267,10 +241,7 @@ export async function startEnrichment(
       placeId: id,
       googlePlaceId: text(row.google_place_id),
       knobs,
-      depth: opts.depth,
-      overwrite: opts.overwrite,
       baseUpdatedAt: updatedAt.get(id) ?? null,
-      saved,
       ...(scoutInput ? { scoutInput } : {}),
     };
   });

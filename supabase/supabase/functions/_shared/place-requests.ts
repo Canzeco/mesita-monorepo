@@ -6,7 +6,7 @@
 // `viewed`, MESITA-2642 — it replaced the guest vote). When request_count
 // reaches the enrichment config's "Enrich after N visits"
 // (atlasRequestThreshold) this door starts the same Render run admin Enrich
-// starts: Strong, Overwrite off (_shared/enrich-start.ts). Admin Enrich never
+// starts (_shared/enrich-start.ts): there is one Enrich. Admin Enrich never
 // calls this door — that is the bypass.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
@@ -189,8 +189,6 @@ export async function applyPlaceRequest(
     if (googlePlaceId) {
       const started = await startEnrichment(admin, {
         placeIds: [opts.placeId],
-        depth: "full",
-        overwrite: false,
         claim: true,
       });
       if (started.ok) {

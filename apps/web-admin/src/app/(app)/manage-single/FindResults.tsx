@@ -25,7 +25,6 @@ import {
   GENERAL_STATE_FACTS,
   STATE_FACT_FALSE_TONE,
 } from "@/lib/state-vocabulary";
-import { ENRICH_ACTIONS, type EnrichDepth } from "@/lib/enrich-depth";
 import {
   FOCUS_RING_CLASS,
   PILL_BUTTON_CLASS,
@@ -110,7 +109,7 @@ export function FindResults({
    *  name links to Google Maps and only the Create button mints. */
   onOpenGoogle?: (row: FindRow) => void;
   onAdd: (row: FindRow) => void;
-  onEnrich?: (row: FindRow, depth: EnrichDepth) => void;
+  onEnrich?: (row: FindRow) => void;
   /** Mesita ids whose Enrich click has not been accepted yet. */
   startingIds?: ReadonlySet<string>;
   /** Mesita ids this page has started, on top of `placeHit.enriching`. */
@@ -544,7 +543,7 @@ function ActionCell({
   disabled: boolean;
   onOpen: (row: FindRow) => void;
   onAdd: (row: FindRow) => void;
-  onEnrich?: (row: FindRow, depth: EnrichDepth) => void;
+  onEnrich?: (row: FindRow) => void;
 }) {
   const adding = note?.state === "running";
   return (
@@ -563,19 +562,15 @@ function ActionCell({
           </button>
           {row.mesitaId ? (
             phase === "idle" ? (
-              ENRICH_ACTIONS.map((action) => (
-                <button
-                  key={action.depth}
-                  type="button"
-                  onClick={() => onEnrich?.(row, action.depth)}
-                  disabled={disabled}
-                  title={action.title}
-                  aria-label={`${action.label} ${row.name}`}
-                  className={`${PILL_BUTTON_CLASS} whitespace-nowrap`}
-                >
-                  {action.label}
-                </button>
-              ))
+              <button
+                type="button"
+                onClick={() => onEnrich?.(row)}
+                disabled={disabled}
+                aria-label={`Enrich ${row.name}`}
+                className={`${PILL_BUTTON_CLASS} whitespace-nowrap`}
+              >
+                Enrich
+              </button>
             ) : (
               <button
                 type="button"
