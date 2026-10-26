@@ -98,7 +98,7 @@ describe("the open, the create and the Feed", () => {
       hook.indexOf("export type OpenedGooglePlace"),
     );
     expect(tap).toContain("stashPendingPlace(gid, place)");
-    expect(tap).toContain("router.push(googleOpenHref(gid, place.name))");
+    expect(tap).toContain("openHref(googleOpenHref(gid, place.name))");
   });
 
   it("the opening screen draws the profile, awaits the create, then shows the real profile", () => {
