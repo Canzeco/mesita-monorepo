@@ -15,7 +15,6 @@ Deno.test("products.menu: sanitizes name/url and keeps sibling keys", () => {
       },
     },
     update,
-    10,
   );
   assertEquals(res, null);
   assertEquals(update.products, {
@@ -51,7 +50,6 @@ Deno.test("products.menu: keeps headline nutrition and drops a broken estimate",
       },
     },
     update,
-    10,
   );
   assertEquals(res, null);
   assertEquals((update.products as { menu: unknown }).menu, [
@@ -73,7 +71,6 @@ Deno.test("products.menu: rejects non-https urls", async () => {
       },
     },
     update,
-    10,
   );
   assertEquals(res?.status, 400);
   const body = await res!.json();
@@ -84,37 +81,17 @@ Deno.test("products.menu: rejects non-https urls", async () => {
   );
 });
 
-Deno.test("mesita_photos: accepts https URLs and caps count", () => {
-  const update: Record<string, unknown> = {};
-  const res = applyMediaUpdates(
-    {
-      mesita_photos: [
-        "https://example.com/a.jpg",
-        "http://bad.example/b.jpg",
-        "https://example.com/c.jpg",
-      ],
-    },
-    update,
-    2,
-  );
-  assertEquals(res, null);
-  assertEquals(update.mesita_photos, [
-    "https://example.com/a.jpg",
-    "https://example.com/c.jpg",
-  ]);
-});
-
-Deno.test("photos: rejected in favor of mesita_photos", async () => {
-  const update: Record<string, unknown> = {};
-  const res = applyMediaUpdates(
-    { photos: ["https://example.com/legacy.jpg"] },
-    update,
-    10,
-  );
-  assertEquals(res?.status, 400);
-  const body = await res!.json();
-  assertEquals(body.code, "photos_retired");
-  assertEquals("photos" in update, false);
+Deno.test("the gallery is not editable here, under either name", async () => {
+  for (const body of [
+    { photos: ["https://example.com/a.jpg"] },
+    { mesita_photos: ["https://example.com/a.jpg"] },
+  ]) {
+    const update: Record<string, unknown> = {};
+    const res = applyMediaUpdates(body, update);
+    assertEquals(res?.status, 400);
+    assertEquals((await res!.json()).code, "gallery_not_editable");
+    assertEquals(Object.keys(update), []);
+  }
 });
 
 Deno.test("products.menu: rejects non-object entries", async () => {
@@ -122,7 +99,6 @@ Deno.test("products.menu: rejects non-object entries", async () => {
   const res = applyMediaUpdates(
     { products: { menu: ["https://example.com/menu.pdf"] } },
     update,
-    10,
   );
   assertEquals(res?.status, 400);
   const body = await res!.json();

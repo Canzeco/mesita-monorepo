@@ -1,8 +1,8 @@
 "use client";
 
 // Profile — admin's Single Place profile editor: PlaceSection (basics ·
-// location · hours · channels). Mesita photos on Admin › Photo sources.
-// through admin-web-update-place.
+// location · hours · channels), saved through admin-web-update-place. The
+// gallery is not edited in admin (MESITA-2794).
 //
 // UNWIRED (Pato 2026-10-13): do not mount MenusSection (MESITA-2175) or
 // ProfileCompleteness (MESITA-2179). Both components stay in the repo.

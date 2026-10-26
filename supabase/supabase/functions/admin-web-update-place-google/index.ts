@@ -1,7 +1,7 @@
 // Supabase Edge Function — admin-web-update-place-google (MESITA-2737)
 //
-// Super-admin only. Refreshes Google factuals and google_photos for one place.
-// Respects field pins; never writes mesita_photos, legacy photos, or Mesita hero.
+// Super-admin only. Refreshes Google factuals for one place, and the gallery's
+// hero only while the gallery is one photo (MESITA-2794). Respects field pins.
 // Does not enqueue Enrich. Audited via source_sync.lastGoogleUpdateAt.
 //
 // Local:  supabase functions serve admin-web-update-place-google
@@ -69,14 +69,14 @@ Deno.serve(async (req) => {
     placeId,
     actorUserId: authRes.user.id,
     source: "admin-web-update-place-google",
-    detail: { googlePhotoCount: result.googlePhotoCount },
+    detail: { heroRefreshed: result.heroRefreshed },
   });
 
   return json({
     ok: true,
     placeId,
     updatedAt: result.updatedAt,
-    googlePhotoCount: result.googlePhotoCount,
+    heroRefreshed: result.heroRefreshed,
     pinned: result.pinned,
     businessStatus: result.businessStatus,
   });

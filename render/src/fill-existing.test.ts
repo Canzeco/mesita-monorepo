@@ -50,6 +50,22 @@ test("on replaces links", () => {
   assert.equal(next.instagram_url, "https://instagram.com/new");
 });
 
+test("off replaces Create's one Google photo and keeps an enriched gallery", () => {
+  const ranked = ["https://a.example/1.jpg", "https://a.example/2.jpg"];
+  const fromCreate = applyOverwrite({
+    overwrite: false,
+    saved: { photos: ["https://google.example/hero.jpg"] },
+    patch: { photos: ranked },
+  });
+  assert.deepEqual(fromCreate.photos, ranked);
+  const enriched = applyOverwrite({
+    overwrite: false,
+    saved: { photos: ["https://a.example/old1.jpg", "https://a.example/old2.jpg"] },
+    patch: { photos: ranked },
+  });
+  assert.deepEqual(enriched.photos, ["https://a.example/old1.jpg", "https://a.example/old2.jpg"]);
+});
+
 // MESITA-2790: the write EF owns these; a Render value would overwrite a
 // Mesita pick when the EF's inference fails.
 for (const overwrite of [false, true]) {

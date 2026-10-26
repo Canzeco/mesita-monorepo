@@ -215,7 +215,7 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment |
       openaiKey,
     });
   }, (gallery) => `${gallery.urls.length}photos`);
-  if (photos.urls.length > 0) spine.patch.mesita_photos = photos.urls;
+  if (photos.urls.length > 0) spine.patch.photos = photos.urls;
 
   let description = spine.description;
   if (!description) {
@@ -295,7 +295,7 @@ export function quickPatch(opts: {
     enriched_at: opts.now,
   };
   if (opts.description) patch.description = opts.description;
-  if (opts.googlePhotos.length > 0) patch.google_photos = opts.googlePhotos;
+  if (opts.googlePhotos.length > 0) patch.photos = opts.googlePhotos;
   return patch;
 }
 
