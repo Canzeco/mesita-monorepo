@@ -108,18 +108,19 @@ export type CatalogConfig = {
 // Mirrors SUPER_PARAM_KEYS in _shared/discovery-config.ts, itself pinned to
 // the taxonomy by google-type-super.test.ts. The operator's category param is
 // the family, not Google's slug (MESITA-1695). Order is the guest's —
-// FAMILIES sort_order. Twenty switches since MESITA-2749.
+// FAMILIES sort_order. Twenty switches since MESITA-2749; Chicken and Korean
+// replaced Tacos and Japanese (MESITA-2760).
 export const SUPER_PARAM_KEYS = [
   "coffee",
   "breakfast",
   "quick_bite",
-  "tacos",
   "mexican",
   "pizza",
   "burgers",
+  "chicken",
   "sushi",
   "noodles",
-  "japanese",
+  "korean",
   "chinese",
   "italian",
   "seafood",
@@ -249,7 +250,7 @@ export const SUPER_FIELDS: {
   },
   {
     key: "quick_bite",
-    label: "Quick bite",
+    label: "Quick",
     emoji: "🥙",
     battery: [
       "fast_food_restaurant",
@@ -265,28 +266,20 @@ export const SUPER_FIELDS: {
       "sandwich_shop",
       "shawarma_restaurant",
       "snack_bar",
-    ],
-  },
-  {
-    key: "tacos",
-    label: "Tacos",
-    emoji: "🌮",
-    battery: [
-      "taco_restaurant",
       "burrito_restaurant",
-      "mexican_restaurant",
-      "tex_mex_restaurant",
+      "chicken_restaurant",
+      "taco_restaurant",
     ],
   },
   {
     key: "mexican",
     label: "Mexican",
-    emoji: "🌶️",
+    emoji: "🌮",
     battery: [
       "mexican_restaurant",
-      "tex_mex_restaurant",
       "burrito_restaurant",
       "taco_restaurant",
+      "tex_mex_restaurant",
     ],
   },
   {
@@ -304,6 +297,15 @@ export const SUPER_FIELDS: {
     emoji: "🍔",
     battery: [
       "hamburger_restaurant",
+    ],
+  },
+  {
+    key: "chicken",
+    label: "Chicken",
+    emoji: "🍗",
+    battery: [
+      "chicken_restaurant",
+      "chicken_wings_restaurant",
     ],
   },
   {
@@ -327,18 +329,12 @@ export const SUPER_FIELDS: {
     ],
   },
   {
-    key: "japanese",
-    label: "Japanese",
-    emoji: "🍱",
+    key: "korean",
+    label: "Korean",
+    emoji: "🍚",
     battery: [
-      "japanese_restaurant",
-      "japanese_curry_restaurant",
-      "japanese_izakaya_restaurant",
-      "tonkatsu_restaurant",
-      "yakiniku_restaurant",
-      "yakitori_restaurant",
-      "ramen_restaurant",
-      "sushi_restaurant",
+      "korean_restaurant",
+      "korean_barbecue_restaurant",
     ],
   },
   {
@@ -427,8 +423,6 @@ export const SUPER_FIELDS: {
       "californian_restaurant",
       "cambodian_restaurant",
       "caribbean_restaurant",
-      "chicken_restaurant",
-      "chicken_wings_restaurant",
       "chilean_restaurant",
       "colombian_restaurant",
       "croatian_restaurant",
@@ -454,12 +448,14 @@ export const SUPER_FIELDS: {
       "indonesian_restaurant",
       "irish_restaurant",
       "israeli_restaurant",
-      "korean_barbecue_restaurant",
+      "japanese_curry_restaurant",
+      "japanese_restaurant",
+      "latin_american_restaurant",
     ],
   },
   {
     key: "sweet",
-    label: "Sweet",
+    label: "Dessert",
     emoji: "🍰",
     battery: [
       "bakery",
@@ -490,18 +486,18 @@ export const SUPER_FIELDS: {
       "gastropub",
       "hookah_bar",
       "irish_pub",
+      "japanese_izakaya_restaurant",
       "lounge_bar",
       "pub",
       "sports_bar",
       "vineyard",
       "wine_bar",
       "winery",
-      "japanese_izakaya_restaurant",
     ],
   },
   {
     key: "night_out",
-    label: "Night out",
+    label: "Nightlife",
     emoji: "🌙",
     battery: [
       "night_club",
@@ -536,21 +532,22 @@ export const DEFAULT_CATALOG: CatalogConfig = {
   minSeedPlaces: 2,
 };
 
-// Coffee, Dinner, Sweet, Drinks and Night out stay on. Every other family
-// defaults off, so the twenty-family catalog does not widen the all-families
-// Nearby pool until an operator turns the switch on (MESITA-2749). One
-// request carries every enabled type (MESITA-1685).
+// Coffee, Dinner, Dessert, Drinks and Nightlife default on, every other
+// family off (MESITA-2749; Chicken and Korean joined off, MESITA-2760). The
+// switches gate no call today: every family's battery rides the
+// all-families Nearby call. Mirrors DEFAULT_MAP_SUPERS in
+// _shared/discovery-config.ts.
 const DEFAULT_MAP_SUPERS: Record<SuperParamKey, boolean> = {
   coffee: true,
   breakfast: false,
   quick_bite: false,
-  tacos: false,
   mexican: false,
   pizza: false,
   burgers: false,
+  chicken: false,
   sushi: false,
   noodles: false,
-  japanese: false,
+  korean: false,
   chinese: false,
   italian: false,
   seafood: false,

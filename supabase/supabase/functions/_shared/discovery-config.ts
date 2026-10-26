@@ -110,13 +110,13 @@ export const SUPER_PARAM_KEYS = [
   "coffee",
   "breakfast",
   "quick_bite",
-  "tacos",
   "mexican",
   "pizza",
   "burgers",
+  "chicken",
   "sushi",
   "noodles",
-  "japanese",
+  "korean",
   "chinese",
   "italian",
   "seafood",
@@ -337,10 +337,11 @@ export const MAP_RELOAD_MIN_VIEWPORT_PCT_MAX = 50;
 export const MAP_RELOAD_MIN_VIEWPORT_PCT_DEFAULT = 15;
 
 /**
- * Coffee, Dinner, Sweet, Drinks and Night out stay on: that is the
- * all-families Nearby pool. Every other family defaults off, so the
- * twenty-family catalog does not widen that one call until an operator
- * turns the switch on (MESITA-2749).
+ * Coffee, Dinner, Dessert, Drinks and Nightlife default on, every other
+ * family off (MESITA-2749; Chicken and Korean joined off, MESITA-2760). The
+ * switches gate no call today: `anySuperOn` returns true and
+ * `enabledMapSupers` returns every key, so every family's battery rides the
+ * all-families Nearby call.
  *
  * NOT for cost: one request carries the whole battery array (MESITA-1685).
  * Off by default because it keeps the returned pool as it was.
@@ -349,13 +350,13 @@ export const DEFAULT_MAP_SUPERS: Record<SuperParamKey, boolean> = {
   coffee: true,
   breakfast: false,
   quick_bite: false,
-  tacos: false,
   mexican: false,
   pizza: false,
   burgers: false,
+  chicken: false,
   sushi: false,
   noodles: false,
-  japanese: false,
+  korean: false,
   chinese: false,
   italian: false,
   seafood: false,

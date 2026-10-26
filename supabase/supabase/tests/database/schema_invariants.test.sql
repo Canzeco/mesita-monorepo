@@ -799,8 +799,8 @@ select is(
 
 select is(
   (select array_agg(slug order by sort_order) from public.place_families),
-  array['coffee','breakfast','quick_bite','tacos','mexican','pizza','burgers',
-        'sushi','noodles','japanese','chinese','italian','seafood','steak',
+  array['coffee','breakfast','quick_bite','mexican','pizza','burgers','chicken',
+        'sushi','noodles','korean','chinese','italian','seafood','steak',
         'indian','thai','dinner','sweet','drinks','night_out',
         'undefined']::text[],
   'family catalog order is the twenty guest rails, Undefined last'
@@ -833,14 +833,14 @@ select is(
 
 select is(
   (select family_keys from public.place_categories where slug = 'mexican'),
-  array['mexican','tacos']::text[],
-  'mexican is Mexican first, Tacos second (MESITA-2749)'
+  array['mexican','dinner']::text[],
+  'mexican is Mexican first, Dinner second (MESITA-2760)'
 );
 
 select is(
   (select family_keys from public.place_categories where slug = 'taco'),
-  array['tacos','mexican','quick_bite']::text[],
-  'a taqueria is Tacos, Mexican and Quick bite (MESITA-2749)'
+  array['mexican','quick_bite']::text[],
+  'a taqueria is Mexican first, Quick second (MESITA-2760)'
 );
 
 select is(
@@ -853,8 +853,8 @@ select is(
 select is(
   (select count(*)::bigint from public.place_categories
     where cardinality(family_keys) = 3),
-  1::bigint,
-  'one category sits on three families: taco (MESITA-2749)'
+  0::bigint,
+  'no category sits on three families since Tacos folded into Mexican (MESITA-2760)'
 );
 
 select is(
