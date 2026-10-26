@@ -40,15 +40,19 @@ export async function updateSupabaseSession(request: NextRequest) {
     },
   });
 
-  // Touch the user to refresh the cookie when it's near expiry. Per
-  // Supabase SSR docs: do NOT add code between createServerClient() and
-  // getUser() — random logouts otherwise.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Read the session so the SSR client refreshes the cookie when it's near
+  // expiry. Per Supabase SSR docs: do NOT add code between
+  // createServerClient() and getClaims() — random logouts otherwise.
+  //
+  // getClaims, NOT getUser (MESITA-2819, as consumer did in MESITA-2784):
+  // the project signs with ES256, so the JWT is verified locally against the
+  // cached JWKS. getUser was a call to Supabase Auth on every request. The
+  // (app) layout's getUser() + super_admins check stays the wall.
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims ?? null;
 
   const pathname = request.nextUrl.pathname;
-  if (!PUBLIC_PATHS(pathname) && !user) {
+  if (!PUBLIC_PATHS(pathname) && !claims) {
     const signInUrl = request.nextUrl.clone();
     signInUrl.pathname = "/";
     // No `?next=` — Supabase's OAuth allow-list match includes query
