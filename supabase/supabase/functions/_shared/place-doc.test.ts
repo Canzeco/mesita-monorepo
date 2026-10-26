@@ -587,3 +587,11 @@ Deno.test("writePlace: maybeSingle select mode reaches the DB the same as single
   assert(res.ok);
   assertEquals(res.row, null);
 });
+
+// MESITA-2785: Google's Table B markers never reach google_types.
+Deno.test("the door drops Google's Table B types from google_types", () => {
+  const r = validatePlaceProfilePatch({
+    google_types: ["night_club", "bar", "point_of_interest", "establishment"],
+  });
+  assertEquals(r.ok && r.patch.google_types, ["night_club", "bar"]);
+});
