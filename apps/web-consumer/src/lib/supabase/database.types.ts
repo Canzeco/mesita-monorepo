@@ -39,6 +39,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_operator_events: {
+        Row: {
+          actor_user_id: string | null
+          created_at: string
+          detail: Json
+          id: number
+          outcome: string
+          place_id: string | null
+          source: string
+          verb: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          created_at?: string
+          detail?: Json
+          id?: never
+          outcome: string
+          place_id?: string | null
+          source: string
+          verb: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          created_at?: string
+          detail?: Json
+          id?: never
+          outcome?: string
+          place_id?: string | null
+          source?: string
+          verb?: string
+        }
+        Relationships: []
+      }
       admin_reset_preserve: {
         Row: {
           reason: string
@@ -333,6 +366,81 @@ export type Database = {
           },
           {
             foreignKeyName: "place_activity_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      place_backings: {
+        Row: {
+          amount_cents: number
+          billing_interval: string
+          cancel_at_period_end: boolean
+          consumer_id: string | null
+          created_at: string
+          currency: string
+          current_period_end: string | null
+          id: string
+          livemode: boolean
+          place_id: string
+          show_name: boolean
+          status: string
+          stripe_checkout_session_id: string | null
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          tier: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          billing_interval: string
+          cancel_at_period_end?: boolean
+          consumer_id?: string | null
+          created_at?: string
+          currency?: string
+          current_period_end?: string | null
+          id?: string
+          livemode?: boolean
+          place_id: string
+          show_name?: boolean
+          status?: string
+          stripe_checkout_session_id?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          tier: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          billing_interval?: string
+          cancel_at_period_end?: boolean
+          consumer_id?: string | null
+          created_at?: string
+          currency?: string
+          current_period_end?: string | null
+          id?: string
+          livemode?: boolean
+          place_id?: string
+          show_name?: boolean
+          status?: string
+          stripe_checkout_session_id?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          tier?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_backings_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_backings_place_id_fkey"
             columns: ["place_id"]
             isOneToOne: false
             referencedRelation: "places"
@@ -658,7 +766,6 @@ export type Database = {
           description: string | null
           didi_food_url: string | null
           embedding: string | null
-          embedding_source_hash: string | null
           embedding_source_text: string | null
           enriched_at: string | null
           enrichment: Json
@@ -675,6 +782,8 @@ export type Database = {
           google_review_count: number | null
           google_reviews: Json | null
           google_stars_overall: number | null
+          google_tags: string[]
+          google_types: Json
           hours: Json | null
           id: string
           instagram_followers_count: number | null
@@ -685,15 +794,17 @@ export type Database = {
           menu_pdf_name: string | null
           menu_pdf_url: string | null
           menus: Json | null
+          mesita_categories: Json
           mesita_name: string | null
           name: string
           name_embedding: string | null
-          name_embedding_hash: string | null
           opentable_url: string | null
+          payments_enabled: boolean
           phone: string | null
           photos: string[]
           pitch: string | null
           popular_times: Json | null
+          prepay_enabled: boolean
           price_level: number | null
           products: Json | null
           reddit_url: string | null
@@ -726,7 +837,6 @@ export type Database = {
           description?: string | null
           didi_food_url?: string | null
           embedding?: string | null
-          embedding_source_hash?: string | null
           embedding_source_text?: string | null
           enriched_at?: string | null
           enrichment?: Json
@@ -743,6 +853,8 @@ export type Database = {
           google_review_count?: number | null
           google_reviews?: Json | null
           google_stars_overall?: number | null
+          google_tags?: string[]
+          google_types?: Json
           hours?: Json | null
           id?: string
           instagram_followers_count?: number | null
@@ -753,15 +865,17 @@ export type Database = {
           menu_pdf_name?: string | null
           menu_pdf_url?: string | null
           menus?: Json | null
+          mesita_categories?: Json
           mesita_name?: string | null
           name?: string
           name_embedding?: string | null
-          name_embedding_hash?: string | null
           opentable_url?: string | null
+          payments_enabled?: boolean
           phone?: string | null
           photos?: string[]
           pitch?: string | null
           popular_times?: Json | null
+          prepay_enabled?: boolean
           price_level?: number | null
           products?: Json | null
           reddit_url?: string | null
@@ -794,7 +908,6 @@ export type Database = {
           description?: string | null
           didi_food_url?: string | null
           embedding?: string | null
-          embedding_source_hash?: string | null
           embedding_source_text?: string | null
           enriched_at?: string | null
           enrichment?: Json
@@ -811,6 +924,8 @@ export type Database = {
           google_review_count?: number | null
           google_reviews?: Json | null
           google_stars_overall?: number | null
+          google_tags?: string[]
+          google_types?: Json
           hours?: Json | null
           id?: string
           instagram_followers_count?: number | null
@@ -821,15 +936,17 @@ export type Database = {
           menu_pdf_name?: string | null
           menu_pdf_url?: string | null
           menus?: Json | null
+          mesita_categories?: Json
           mesita_name?: string | null
           name?: string
           name_embedding?: string | null
-          name_embedding_hash?: string | null
           opentable_url?: string | null
+          payments_enabled?: boolean
           phone?: string | null
           photos?: string[]
           pitch?: string | null
           popular_times?: Json | null
+          prepay_enabled?: boolean
           price_level?: number | null
           products?: Json | null
           reddit_url?: string | null
@@ -1023,6 +1140,7 @@ export type Database = {
       }
       places: {
         Row: {
+          boost_tier: number
           content_state: Database["public"]["Enums"]["content_state"]
           created_at: string
           currency: string
@@ -1033,6 +1151,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          boost_tier?: number
           content_state?: Database["public"]["Enums"]["content_state"]
           created_at?: string
           currency?: string
@@ -1043,6 +1162,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          boost_tier?: number
           content_state?: Database["public"]["Enums"]["content_state"]
           created_at?: string
           currency?: string
@@ -1290,6 +1410,7 @@ export type Database = {
       profiles: {
         Row: {
           address: string | null
+          boost_tier: number | null
           business_state: string | null
           business_state_at: string | null
           category: string | null
@@ -1302,7 +1423,6 @@ export type Database = {
           description: string | null
           didi_food_url: string | null
           embedding: string | null
-          embedding_source_hash: string | null
           embedding_source_text: string | null
           enriched_at: string | null
           enrichment_sources: Json | null
@@ -1316,6 +1436,8 @@ export type Database = {
           google_review_count: number | null
           google_reviews: Json | null
           google_stars_overall: number | null
+          google_tags: string[] | null
+          google_types: Json | null
           hours: Json | null
           id: string | null
           instagram_followers_count: number | null
@@ -1325,15 +1447,17 @@ export type Database = {
           menu_pdf_name: string | null
           menu_pdf_url: string | null
           menus: Json | null
+          mesita_categories: Json | null
           mesita_name: string | null
           name: string | null
           name_embedding: string | null
-          name_embedding_hash: string | null
           opentable_url: string | null
+          payments_enabled: boolean | null
           phone: string | null
           photos: string[] | null
           pitch: string | null
           popular_times: Json | null
+          prepay_enabled: boolean | null
           price_level: number | null
           products: Json | null
           reddit_url: string | null
@@ -1439,6 +1563,10 @@ export type Database = {
         Args: { p_consumer_id: string; p_followers: number; p_handle: string }
         Returns: undefined
       }
+      families_for_categories: {
+        Args: { cats: Json; fallback: string }
+        Returns: string[]
+      }
       families_for_category: { Args: { cat: string }; Returns: string[] }
       generate_consumer_code: { Args: never; Returns: string }
       is_super_admin: { Args: never; Returns: boolean }
@@ -1517,6 +1645,7 @@ export type Database = {
         Args: { c: Database["public"]["Tables"]["consumers"]["Row"] }
         Returns: boolean
       }
+      recompute_place_boost: { Args: { p_place_id: string }; Returns: number }
       run_place_enrichment_stages: { Args: never; Returns: number }
       seed_place_categories: { Args: never; Returns: undefined }
       seed_place_families: { Args: never; Returns: undefined }
