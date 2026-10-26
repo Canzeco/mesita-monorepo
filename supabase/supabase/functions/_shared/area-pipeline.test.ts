@@ -550,15 +550,15 @@ Deno.test("google: an owned hit whose Mesita family is unknown keeps the family 
     { id: "other", lat: 25.672, type: "restaurant" },
   ]);
   try {
-    const tacosRow = { ...OWNED_BASE, google_place_id: "other", id: "mesita-tacos", family_keys: ["tacos"] };
+    const pizzaRow = { ...OWNED_BASE, google_place_id: "other", id: "mesita-pizza", family_keys: ["pizza"] };
     const { d } = deps({
       families: ["dinner"],
       types: ["restaurant"],
-      lookupOwned: () => Promise.resolve([{ ...OWNED_BASE, family_keys: ["undefined"] }, tacosRow]),
+      lookupOwned: () => Promise.resolve([{ ...OWNED_BASE, family_keys: ["undefined"] }, pizzaRow]),
     });
     const out = await selectAreaPool(d);
     // Unknown on Mesita, `restaurant` on Google → Dinner: kept. A row Mesita
-    // knows is Tacos stays Tacos and is cut under Dinner, as in Selected.
+    // knows is Pizza stays Pizza and is cut under Dinner, as in Selected.
     assertEquals(ids(out.places), ["mesita-1"]);
   } finally {
     g.restore();
@@ -567,21 +567,24 @@ Deno.test("google: an owned hit whose Mesita family is unknown keeps the family 
 
 Deno.test("nearbyExcludedTypesForFamilies: Dinner excludes the precise restaurants of other families", () => {
   const ex = nearbyExcludedTypesForFamilies(["restaurant"], ["dinner"]);
-  for (const t of ["mexican_restaurant", "pizza_restaurant", "sushi_restaurant"]) {
+  for (const t of ["taco_restaurant", "pizza_restaurant", "sushi_restaurant"]) {
     assert(ex.includes(t), t);
   }
-  // A burger wears Dinner, so a Dinner search keeps it (MESITA-2749).
+  // A burger wears Dinner, so a Dinner search keeps it (MESITA-2749); so
+  // does a sit-down Mexican restaurant since Tacos folded into Mexican
+  // (MESITA-2760).
   assertEquals(ex.includes("hamburger_restaurant"), false);
+  assertEquals(ex.includes("mexican_restaurant"), false);
   assertEquals(ex.includes("restaurant"), false);
   assert(ex.length <= 50);
   // No family asked: only the restaurant-group types that sit in no family are cut.
   const all = nearbyExcludedTypesForFamilies(["restaurant"], []);
   assert(all.includes("meal_delivery"));
   for (const t of ["mexican_restaurant", "pizza_restaurant", "restaurant"]) assertEquals(all.includes(t), false, t);
-  // Asking Dinner and Tacos keeps Mexican.
+  // Asking Dinner and Mexican keeps the taquerias.
   assertEquals(
-    nearbyExcludedTypesForFamilies(["restaurant", "mexican_restaurant"], ["dinner", "tacos"])
-      .includes("mexican_restaurant"),
+    nearbyExcludedTypesForFamilies(["restaurant", "taco_restaurant"], ["dinner", "mexican"])
+      .includes("taco_restaurant"),
     false,
   );
 });
@@ -600,7 +603,7 @@ Deno.test("google: a family pill sends excludedPrimaryTypes; a precise type with
     const body = JSON.parse(nearbyCalls(g.calls)[0].body ?? "{}");
     assertEquals(body.includedPrimaryTypes, ["restaurant"]);
     assert(Array.isArray(body.excludedPrimaryTypes));
-    assert(body.excludedPrimaryTypes.includes("mexican_restaurant"));
+    assert(body.excludedPrimaryTypes.includes("pizza_restaurant"));
     await selectAreaPool(deps({ types: ["pizza_restaurant"] }).d);
     const plain = JSON.parse(nearbyCalls(g.calls)[1].body ?? "{}");
     assertEquals("excludedPrimaryTypes" in plain, false);
@@ -1022,9 +1025,9 @@ Deno.test("a family row lists primary places first, secondary as fill (MESITA-24
       deps({ families: ["breakfast"], types: areaGoogleTypes(["breakfast"]) }).d,
     );
     assertEquals(ids(places), ["g:brunch", "g:cafe", "g:tacos"]);
-    assertEquals(places.map((p) => p.area.primaryFamily), ["breakfast", "coffee", "tacos"]);
-    // Own second family is Mexican; Breakfast comes from the other Google type.
-    assertEquals(places[2].family_keys, ["tacos", "mexican", "breakfast"]);
+    assertEquals(places.map((p) => p.area.primaryFamily), ["breakfast", "coffee", "mexican"]);
+    // Own second family is Quick; Breakfast comes from the other Google type.
+    assertEquals(places[2].family_keys, ["mexican", "quick_bite", "breakfast"]);
   } finally {
     g.restore();
   }

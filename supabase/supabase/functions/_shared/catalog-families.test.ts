@@ -60,8 +60,8 @@ Deno.test("primary first: a row's own order, not the catalog's", () => {
   assertEquals(primaryFamilyForGoogleType("gastropub"), "drinks");
   assertEquals(primaryFamilyForGoogleType("italian_restaurant"), "italian");
   assertEquals(primaryFamilyForGoogleType("mexican_restaurant"), "mexican");
-  assertEquals(primaryFamilyForGoogleType("taco_restaurant"), "tacos");
-  assertEquals(primaryFamilyForGoogleType("japanese_izakaya_restaurant"), "japanese");
+  assertEquals(primaryFamilyForGoogleType("taco_restaurant"), "mexican");
+  assertEquals(primaryFamilyForGoogleType("japanese_izakaya_restaurant"), "drinks");
 });
 
 Deno.test("placeFamilies: one primary from primaryType, at most two secondary from types[]", () => {
@@ -71,9 +71,9 @@ Deno.test("placeFamilies: one primary from primaryType, at most two secondary fr
     keys: ["pizza", "italian"],
   });
   // The bare `restaurant` umbrella never makes a secondary Dinner.
-  // A taqueria's own second family is Mexican; restaurant adds nothing.
+  // A taqueria's own second family is Quick; restaurant adds nothing.
   assertEquals(placeFamilies("breakfast_restaurant", ["breakfast_restaurant", "restaurant"]).secondary, []);
-  assertEquals(placeFamilies("taco_restaurant", ["taco_restaurant", "restaurant"]).keys, ["tacos", "mexican"]);
+  assertEquals(placeFamilies("taco_restaurant", ["taco_restaurant", "restaurant"]).keys, ["mexican", "quick_bite"]);
   // A cafe's own second family counts first; the cap is two.
   assertEquals(
     placeFamilies("cafe", ["cafe", "bakery", "bar", "ice_cream_shop"]).keys,

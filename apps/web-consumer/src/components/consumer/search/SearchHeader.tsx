@@ -4,7 +4,7 @@
 //
 //   ( ⌖ ) [ ⚲ Search places…  ] ( ✦ )   one white band …
 //   ─────────────────── hairline ──────────────────────
-//   (▦ All) (○ Coffee) (○ Breakfast) (○ Quick bite) …   … one hairline under
+//   (▦ All) (○ Coffee) (○ Breakfast) (○ Quick) …   … one hairline under
 //   ─────────────────── map ───────────────────────────
 //
 // The bar's row: the locate disc, the query bar, the Ask AI pill (→ Search ›
