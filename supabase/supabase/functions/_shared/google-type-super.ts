@@ -13,8 +13,8 @@
 // (478 types) on 2026-08-29; leftovers moved onto Undefined 2026-10-13.
 // Search batteries (`GOOGLE_SEARCH_TYPES`) are the includedPrimaryTypes slugs
 // sent to Nearby: since MESITA-2438 each family's FULL list of Table A
-// types — its lead type, the types whose primary family it is, then the
-// types it is a secondary family of — capped at Google's 50. Autocomplete
+// types — its lead type, then every type in that family, alphabetical —
+// capped at Google's 50. Autocomplete
 // and Text Search send no types.
 //
 // The `*_venue` keys below (event_venue, go_karting_venue, live_music_venue,
@@ -26,7 +26,7 @@ import {
   CATALOG_FAMILY_SLUGS,
   CATALOG_LEAD_TYPES,
   type FamilyKey,
-  familiesPrimaryFirst,
+  familiesForCatalogSlug,
   isCatalogFamily,
 } from "./catalog-families.ts";
 
@@ -561,25 +561,24 @@ const NEARBY_TYPE_CAP = 50;
 
 /**
  * Each family's Nearby battery (MESITA-2438): the lead type, then every
- * Table A type whose PRIMARY family it is, then every type it is a
- * SECONDARY family of, alphabetical within each part, capped at 50. A
- * family row asks Google for exactly this list, so Coffee asks for every
- * kind of coffee place, not one `cafe`.
+ * Table A type in that family, alphabetical, capped at 50. A type's
+ * families are a list with no primary (MESITA-2808). A family row asks
+ * Google for exactly this list, so Coffee asks for every kind of coffee
+ * place, not one `cafe`.
  */
 export const GOOGLE_SEARCH_TYPES: Readonly<Record<FamilyKey, readonly string[]>> = (() => {
   const out: Partial<Record<FamilyKey, string[]>> = { undefined: [] };
   const slugs = Object.keys(GOOGLE_TYPE_SUPER).sort();
   for (const family of CATALOG_FAMILY_SLUGS) {
     const lead = CATALOG_LEAD_TYPES[family];
-    const primary: string[] = [];
-    const secondary: string[] = [];
+    const members: string[] = [];
     for (const slug of slugs) {
       if (slug === lead) continue;
-      const fams = familiesPrimaryFirst(slug, GOOGLE_TYPE_SUPER[slug] ?? null);
-      if (fams[0] === family) primary.push(slug);
-      else if (fams.includes(family)) secondary.push(slug);
+      if (familiesForCatalogSlug(slug, GOOGLE_TYPE_SUPER[slug] ?? null).includes(family)) {
+        members.push(slug);
+      }
     }
-    out[family] = [lead, ...primary, ...secondary].slice(0, NEARBY_TYPE_CAP);
+    out[family] = [lead, ...members].slice(0, NEARBY_TYPE_CAP);
   }
   return out as Record<FamilyKey, string[]>;
 })();

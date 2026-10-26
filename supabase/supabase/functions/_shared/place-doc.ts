@@ -62,7 +62,7 @@
 // STORED SHAPE Postgres itself would reject, same posture consumer-doc.ts
 // took for birthday / avatar_url.
 
-import { withoutTableB } from "./google-table-b.ts";
+import { cleanGoogleTypes } from "./google-table-b.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { nullable } from "./doc-schema.ts";
 import { GoogleReviewsSchema, PopularTimesSchema } from "./place-jsonb-schemas.ts";
@@ -94,7 +94,6 @@ export type PlaceProfileRow = {
   /** Immutable once set — see the header. Settable only via mode: "insert". */
   google_place_id: string | null;
   category: string | null;
-  google_primary_type: string | null;
   google_types: unknown;
   mesita_categories: unknown;
   /** Families (0–1). Create path stamps ['undefined'] until contents infers a classified Category. */
@@ -109,8 +108,6 @@ export type PlaceProfileRow = {
   pitch: string | null;
   story: string | null;
   photos: string[];
-  google_photos: string[];
-  mesita_photos: string[];
   website_url: string | null;
   instagram_url: string | null;
   facebook_url: string | null;
@@ -175,7 +172,6 @@ export type PlaceProfileRow = {
 export const PLACE_PROFILE_PATCH_KEYS = [
   "google_place_id",
   "category",
-  "google_primary_type",
   "google_types",
   "mesita_categories",
   "family_keys",
@@ -189,8 +185,6 @@ export const PLACE_PROFILE_PATCH_KEYS = [
   "pitch",
   "story",
   "photos",
-  "google_photos",
-  "mesita_photos",
   "website_url",
   "instagram_url",
   "facebook_url",
@@ -337,7 +331,7 @@ const PLACE_PLAIN_STRING_KEYS = new Set<string>([
   "didi_food_url", "description",
   "menu_pdf_url", "menu_pdf_name",
   "zone", "city", "category_label",
-  "embedding_source_text", "google_name", "mesita_name", "google_primary_type",
+  "embedding_source_text", "google_name", "mesita_name",
   "reservation_target", "embedding", "name_embedding",
   "google_place_id",
   "enriched_at", "business_state_at",
@@ -378,8 +372,6 @@ const PLACE_SCHEMA_JSON_KEYS: Record<string, { parse(v: unknown): { ok: boolean;
 };
 const PLACE_STRING_ARRAY_KEYS = new Set<string>([
   "photos",
-  "google_photos",
-  "mesita_photos",
   "tags",
   "google_tags",
 ]);
@@ -481,7 +473,7 @@ export function validatePlaceProfilePatch(input: unknown): PlaceProfilePatchVali
     }
     const err = checkPlaceProfileField(key, raw[key]);
     if (err) return { ok: false, error: err };
-    patch[key] = key === "google_types" ? withoutTableB(raw[key]) : raw[key];
+    patch[key] = key === "google_types" ? cleanGoogleTypes(raw[key]) : raw[key];
   }
   const nameErr = checkPlaceNameSourceInvariant(patch);
   if (nameErr) return { ok: false, error: nameErr };
@@ -563,7 +555,7 @@ export function validateProfilePatch(input: unknown): ProfilePatchValidation {
     }
     const err = isPlaceProfileKey ? checkPlaceProfileField(key, raw[key]) : checkPlaceField(key, raw[key]);
     if (err) return { ok: false, error: err };
-    patch[key] = key === "google_types" ? withoutTableB(raw[key]) : raw[key];
+    patch[key] = key === "google_types" ? cleanGoogleTypes(raw[key]) : raw[key];
   }
   const nameErr = checkPlaceNameSourceInvariant(patch);
   if (nameErr) return { ok: false, error: nameErr };

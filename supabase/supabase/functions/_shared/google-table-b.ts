@@ -49,3 +49,29 @@ export function withoutTableB(value: unknown): unknown {
   if (!Array.isArray(value)) return value;
   return value.filter((t) => !(typeof t === "string" && GOOGLE_TABLE_B_TYPES.has(t)));
 }
+
+/** google_types cleaned for storage: strings only, deduped, no Table B. */
+export function cleanGoogleTypes(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const out: string[] = [];
+  for (const raw of value) {
+    const t = typeof raw === "string" ? raw.trim() : "";
+    if (t && !GOOGLE_TABLE_B_TYPES.has(t) && !out.includes(t)) out.push(t);
+  }
+  return out;
+}
+
+/**
+ * google_types as stored: Google's primary type first, then the rest in
+ * Google's order, deduped, no Table B. The list is the Google categories
+ * field; its first item is the primary category shown wherever one is
+ * (Pato, MESITA-2790). A Table B primary is dropped like any other, so the
+ * first Table A type leads.
+ */
+export function googleTypesPrimaryFirst(
+  primaryType: string | null | undefined,
+  types: unknown,
+): string[] {
+  const primary = typeof primaryType === "string" ? primaryType.trim() : "";
+  return cleanGoogleTypes(primary ? [primary, ...(Array.isArray(types) ? types : [])] : types);
+}

@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(169);
+select plan(178);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -825,22 +825,28 @@ select is(
   'Night out took Go out whole and holds no attraction (MESITA-2438, MESITA-2486)'
 );
 
-select is(
-  (select family_keys from public.place_categories where slug = 'bakery'),
-  array['sweet','breakfast']::text[],
-  'a bakery is Sweet first, Breakfast second: family_keys is primary first (MESITA-2438)'
+select ok(
+  (select family_keys from public.place_categories where slug = 'bakery')
+    @> array['sweet','breakfast']::text[]
+  and (select family_keys from public.place_categories where slug = 'bakery')
+    <@ array['sweet','breakfast']::text[],
+  'a bakery is Sweet and Breakfast: a list, no family first (MESITA-2808)'
 );
 
-select is(
-  (select family_keys from public.place_categories where slug = 'mexican'),
-  array['mexican','dinner']::text[],
-  'mexican is Mexican first, Dinner second (MESITA-2760)'
+select ok(
+  (select family_keys from public.place_categories where slug = 'mexican')
+    @> array['mexican','dinner']::text[]
+  and (select family_keys from public.place_categories where slug = 'mexican')
+    <@ array['mexican','dinner']::text[],
+  'mexican is Mexican and Dinner: a list, no family first (MESITA-2808)'
 );
 
-select is(
-  (select family_keys from public.place_categories where slug = 'taco'),
-  array['mexican','quick_bite']::text[],
-  'a taqueria is Mexican first, Quick second (MESITA-2760)'
+select ok(
+  (select family_keys from public.place_categories where slug = 'taco')
+    @> array['mexican','quick_bite']::text[]
+  and (select family_keys from public.place_categories where slug = 'taco')
+    <@ array['mexican','quick_bite']::text[],
+  'a taqueria is Mexican and Quick: a list, no family first (MESITA-2808)'
 );
 
 select is(
@@ -1705,6 +1711,70 @@ select is(
   0::smallint,
   'an ended period pays nothing, whatever the status says'
 );
+
+-- ━━━ MESITA-2790: families come from the Mesita categories ━━━━━━━━━━━━━━━━
+
+select is(
+  public.families_for_categories('[]'::jsonb, 'cafe'),
+  public.families_for_category('cafe'),
+  'a place with no Mesita categories keeps its category''s families'
+);
+
+select ok(
+  public.families_for_categories('["bakery","cafe"]'::jsonb, 'x')
+    @> (public.families_for_category('bakery') || public.families_for_category('cafe')),
+  'two Mesita categories put the place in every family of both'
+);
+
+select is(
+  public.families_for_categories('["bakery","cafe"]'::jsonb, 'x'),
+  public.families_for_categories('["cafe","bakery"]'::jsonb, 'x'),
+  'families are a list: the order of the categories changes nothing (MESITA-2808)'
+);
+
+select is(
+  public.families_for_categories('["undefined"]'::jsonb, 'x'),
+  array['undefined']::text[],
+  'undefined stays only when it is all there is'
+);
+
+insert into public.place_profiles (id, google_name)
+values ('00000000-0000-4000-8000-000000002790', 'Families Probe');
+insert into public.places (id, slug, state, content_state, currency)
+values ('00000000-0000-4000-8000-000000002790', 'mesita-2790-probe', 'active', 'ready', 'MXN');
+
+update public.place_profiles
+   set mesita_categories = '["bakery","cafe"]'::jsonb, category = 'bakery'
+ where id = '00000000-0000-4000-8000-000000002790';
+
+select is(
+  (select family_keys from public.profiles where id = '00000000-0000-4000-8000-000000002790'),
+  public.families_for_categories('["bakery","cafe"]'::jsonb, 'bakery'),
+  'profiles.family_keys is the union of the stored Mesita categories'
+);
+
+select throws_ok(
+  $$update public.place_profiles set mesita_categories = '["not_a_category"]'::jsonb
+     where id = '00000000-0000-4000-8000-000000002790'$$,
+  'P0001',
+  'unknown mesita category',
+  'a Mesita category outside place_categories is refused'
+);
+
+select throws_ok(
+  $$update public.place_profiles set mesita_categories = '["undefined"]'::jsonb
+     where id = '00000000-0000-4000-8000-000000002790'$$,
+  'P0001',
+  'unknown mesita category',
+  'undefined is never a Mesita category'
+);
+
+-- ━━━ MESITA-2791: google_types[0] is the primary; no separate column ━━━━━━━
+
+select hasnt_column('public', 'place_profiles', 'google_primary_type',
+  'place_profiles has no google_primary_type: google_types[0] is the primary');
+select hasnt_column('public', 'profiles', 'google_primary_type',
+  'profiles has no google_primary_type');
 
 select * from finish();
 

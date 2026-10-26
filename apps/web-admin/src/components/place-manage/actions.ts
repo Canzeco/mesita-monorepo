@@ -85,8 +85,6 @@ export type AdminPlace = {
   phone: string | null;
   hours: Record<string, { open: string; close: string }[]> | null;
   photos: string[] | null;
-  google_photos?: unknown;
-  mesita_photos?: unknown;
   reservations_enabled?: boolean;
   prepay_enabled?: boolean;
   payments_enabled?: boolean;
@@ -155,6 +153,10 @@ export type AdminPlace = {
    *  derived from Enriched, ready and Disabled; Select / Unselect writes it
    *  through admin-web-set-place-selected. */
   selected?: boolean;
+  /** Boost (MESITA-2789): the paid tier, `places.boost_tier`, 0 none ·
+   *  1 2x · 2 5x · 3 10x. Derived from guests' subscriptions; never set
+   *  here. Profile States shows it as Boosted (MESITA-2795). */
+  boost_tier?: number;
   /** Guest request count — still on the row for enrich threshold; not in admin UI. */
   request_count?: number;
   /** Unique members who viewed / saved (admin-web-get-overview). */
@@ -233,13 +235,11 @@ export async function updatePlace(
 ): Promise<
   Result<{
     place: AdminPlace;
-    family: ResolvedFamily | null;
     familyStored: ResolvedFamily | null;
   }>
 > {
   const r = await efInvoke<{
     place: AdminPlace;
-    family?: unknown;
     familyStored?: unknown;
   }>("admin-web-update-place", patch);
   if (!r.ok) {
@@ -255,7 +255,6 @@ export async function updatePlace(
     ok: true,
     data: {
       place: r.data.place,
-      family: readResolvedFamily(r.data.family),
       familyStored: readResolvedFamily(r.data.familyStored),
     },
   };
@@ -426,7 +425,6 @@ export type PlaceFieldLimits = {
 
 export type ResolvedFamily = {
   text: string;
-  inferred: boolean;
 };
 
 export type PlaceCategoryOption = {
@@ -442,9 +440,7 @@ export type PlaceCategoryOption = {
 
 /** Everything the profile editor needs besides the place row. One read. */
 export type ProfileRead = {
-  /** Family for the row as stored. */
-  family: ResolvedFamily;
-  /** Family while the draft category is undefined: stored family_keys. */
+  /** Families: the stored family_keys, derived from the Mesita categories. */
   familyStored: ResolvedFamily;
   categories: PlaceCategoryOption[];
   tags: PlaceTagOption[];
@@ -474,24 +470,22 @@ function readPlaceFieldLimits(
 
 function readResolvedFamily(value: unknown): ResolvedFamily | null {
   if (!value || typeof value !== "object") return null;
-  const row = value as { text?: unknown; inferred?: unknown };
+  const row = value as { text?: unknown };
   if (typeof row.text !== "string" || row.text.length === 0) return null;
-  return { text: row.text, inferred: row.inferred === true };
+  return { text: row.text };
 }
 
 function readProfile(value: unknown): ProfileRead | null {
   if (!value || typeof value !== "object") return null;
   const row = value as {
-    family?: unknown;
     familyStored?: unknown;
     categories?: unknown;
     tags?: unknown;
     facets?: unknown;
     fieldLimits?: Record<string, { max: number }>;
   };
-  const family = readResolvedFamily(row.family);
   const familyStored = readResolvedFamily(row.familyStored);
-  if (!family || !familyStored) return null;
+  if (!familyStored) return null;
   if (!Array.isArray(row.categories) || row.categories.length === 0) return null;
   if (!Array.isArray(row.tags) || !Array.isArray(row.facets)) return null;
   const categories: PlaceCategoryOption[] = [];
@@ -509,7 +503,6 @@ function readProfile(value: unknown): ProfileRead | null {
     categories.push(c);
   }
   return {
-    family,
     familyStored,
     categories,
     tags: row.tags as PlaceTagOption[],

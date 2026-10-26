@@ -2,7 +2,6 @@
 
 import { efInvoke } from "@/lib/supabase-ef";
 import { enrichmentView, isEnrichedPlace } from "@/lib/place-enriched";
-import type { EnrichDepth } from "@/lib/enrich-depth";
 import { type ReviewFoundFlags, reviewFoundFlags } from "@/lib/review-found";
 
 // ════════════════════════════════════════════════════════════════════════
@@ -93,6 +92,12 @@ export type PlaceHit = {
    *  ready and Listed; a Created place can carry it. Absent on a payload
    *  that predates it — the table then says "unknown", never a false no. */
   selected?: boolean;
+  /** Boost (MESITA-2809): the paid tier, 0 · 1 · 2 · 3 = Off · 2x · 5x · 10x.
+   *  Null when the payload does not carry it. */
+  boost_tier?: number | null;
+  /** Unique members who viewed / liked (saved) it. Null = not read. */
+  viewed?: number | null;
+  saved?: number | null;
   /** Operating (MESITA-1239): Google's businessStatus, verbatim. NULL = Google
    *  is silent, which is a third state and not OPERATIONAL. A FLAG, never a
    *  visibility gate — Listed above is the gate. */
@@ -145,6 +150,9 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     // The operator's mark rides through only as the boolean the EF sent
     // (MESITA-2707): a missing one stays missing, so factOn says "unknown".
     ...(typeof raw.selected === "boolean" ? { selected: raw.selected } : {}),
+    boost_tier: typeof raw.boost_tier === "number" ? raw.boost_tier : null,
+    viewed: typeof raw.viewed === "number" ? raw.viewed : null,
+    saved: typeof raw.saved === "number" ? raw.saved : null,
     google_place_id: raw.google_place_id ?? null,
     seeded: raw.seeded ?? false,
     listed: raw.listed ?? false,
@@ -272,40 +280,26 @@ export async function deletePlace(placeId: string): Promise<Result<true>> {
 
 // ── Enrich ───────────────────────────────────────────────────────────────
 
-// Kept so existing callers still type-check. The live choice is EnrichDepth.
-export type ReenrichMode = "fill" | "full" | "second" | "third";
-
 // Start enrichment. One place starts enrich single place. A list starts
 // enrich multiple places once, and Render decides how many run at once.
-// The row reports the start, not the finish. depth defaults to full.
-export async function enrichPlaces(
-  placeIds: string[],
-  overwrite = false,
-  depth: EnrichDepth = "full",
-): Promise<Result<true>> {
+// The row reports the start, not the finish. There is one Enrich
+// (MESITA-2799): the whole pipeline, replacing what it finds.
+export async function enrichPlaces(placeIds: string[]): Promise<Result<true>> {
   const ids = placeIds.map((id) => id.trim()).filter(Boolean);
   if (ids.length === 0) return { ok: false, error: "Missing placeId" };
   const r = await efInvoke<{ enrichmentTriggered: boolean }>(
     "admin-web-enrich-place",
-    ids.length === 1
-      ? { projectId: ids[0], overwrite, depth }
-      : { placeIds: ids, overwrite, depth },
+    ids.length === 1 ? { projectId: ids[0] } : { placeIds: ids },
   );
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: true };
 }
 
-export async function enrichPlace(
-  placeId: string,
-  _mode: ReenrichMode = "fill",
-  _overwrite: string[] = [],
-  overwrite = false,
-  depth: EnrichDepth = "full",
-): Promise<Result<true>> {
-  return enrichPlaces([placeId], overwrite || _overwrite.length > 0, depth);
+export async function enrichPlace(placeId: string): Promise<Result<true>> {
+  return enrichPlaces([placeId]);
 }
 
-// ── Update (Google factuals + google_photos only, MESITA-2737) ───────────
+// ── Update (Google factuals; the hero while the gallery is one photo, MESITA-2794) ──
 
 export async function updatePlaceGoogle(placeId: string): Promise<Result<true>> {
   const id = placeId.trim();

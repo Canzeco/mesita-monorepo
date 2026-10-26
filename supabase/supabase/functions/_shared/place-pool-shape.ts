@@ -3,7 +3,6 @@
 // MESITA-1048.
 
 import type { WeeklyHours } from "./local-time.ts";
-import { effectivePlacePhotos } from "./effective-place-photos.ts";
 import { withFamilyKeys } from "./place-family-keys.ts";
 
 // Shape of a candidate place row: the public place projection. `embedding`
@@ -51,14 +50,7 @@ export function stripInternal(
 ): Omit<PlaceProfileRow, "embedding"> & { family_keys: string[] } {
   const {
     embedding: _e,
-    google_photos,
-    mesita_photos,
-    photos,
     ...rest
   } = v;
-  const shaped = withFamilyKeys(rest);
-  return {
-    ...shaped,
-    photos: effectivePlacePhotos({ photos, google_photos, mesita_photos }),
-  };
+  return withFamilyKeys(rest);
 }

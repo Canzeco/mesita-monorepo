@@ -118,7 +118,7 @@ describe("no passive creation: a Mesita Place is minted only on an explicit open
       hook.indexOf("export type OpenedGooglePlace"),
     );
     expect(tap).toContain("useCallback(");
-    expect(tap).toContain("router.push(googleOpenHref(");
+    expect(tap).toContain("openHref(googleOpenHref(");
     expect(tap).not.toContain("apiCreateProject");
     expect(tap).not.toContain("getOrCreateGooglePlace");
   });

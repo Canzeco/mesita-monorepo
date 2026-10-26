@@ -1,6 +1,6 @@
 // The guest catalog is these twenty families. Undefined is the leftover
-// and is not a rail. A type may wear two families: the first is the sharp
-// query, the second is the overlap (MESITA-2749).
+// and is not a rail. A type may sit in several families: a list, never a
+// primary and a secondary (MESITA-2808).
 //
 // ONE WORD (MESITA-2760, Pato 2026-10-25: "Rethink all the 20 families, but
 // families must be one-word long"): Quick bite reads Quick, Night out reads
@@ -8,9 +8,8 @@
 // a label). Tacos folded into Mexican (the two held the same four Google
 // types, so the rows showed the same places; Pato 2026-10-19: "tacos is
 // toooooo mexican"). Japanese folded into Sushi and Dinner: a generic
-// Japanese restaurant is Dinner first, Sushi second, so the Sushi row lists
-// sushi bars first. The two freed slots went to Chicken and Korean, trips
-// Dinner swallowed.
+// Japanese restaurant is in both. The two freed slots went to Chicken and
+// Korean, trips Dinner swallowed.
 //
 // SCOPE (MESITA-2438, Pato 2026-10-19: "This is not Tudu, is Mesita. More
 // OpenTable scope."): a family holds places a guest books a table at or
@@ -25,20 +24,19 @@
 //
 // ONE NIGHT RAIL (MESITA-2486, Pato 2026-10-19: "merge"): Go out folded
 // into Night out (now labelled Nightlife). Karaoke, escape rooms, billiards
-// and board-game cafés are Nightlife; a board-game café is Coffee first,
-// Nightlife second.
+// and board-game cafés are Nightlife; a board-game café is Coffee and
+// Nightlife.
 //
-// PRIMARY AND SECONDARY. A Google type's row below lists its families
-// PRIMARY FIRST: a cafe is Coffee first, Breakfast second; a brewpub is
-// Drinks first, Dinner second. A place's primary family is its Google
-// `primaryType`'s first family; its secondary families (0–2) are the
-// rest of that row plus the primary families of its other Google `types`
-// (`placeFamilies` in sourcing.ts). A family row lists primary places
-// first and secondary ones as fill.
+// A LIST, NOT A RANK (MESITA-2808, Pato 2026-10-26: "one category maps to
+// families, but not like primary families nor secondary families, just a
+// list of families"). Each Google category has its own emoji, so no family
+// has to stand for it. A row below names a type's families; their order
+// means nothing and every reader gets them in the catalog's family order.
+// A place's families are every family of its categories (`placeFamilies`
+// in sourcing.ts; the profiles view for a Mesita place).
 //
 // A Google type sits on a family only when that rail is a different trip.
-// Overlap is the second label, not a second category: a pizzeria is Pizza
-// and Italian; a taqueria is Mexican and Quick. Dinner is the wide table,
+// A pizzeria is Pizza and Italian; a taqueria is Mexican and Quick. Dinner is the wide table,
 // worn by a cuisine that has no sharper chip and by the cuisines below.
 // A cafe is Coffee and Breakfast, because those are two trips.
 //
@@ -444,17 +442,3 @@ export function familiesForCatalogSlug(
   return fallback ? [fallback] : [];
 }
 
-/**
- * The families for one slug, PRIMARY FIRST (the row's own order, not the
- * catalog's). Same lookup as `familiesForCatalogSlug`.
- */
-export function familiesPrimaryFirst(
-  slug: string,
-  coarse: string | null,
-): FamilyKey[] {
-  const explicit = EXPLICIT[slug];
-  if (explicit) return [...explicit];
-  if (!coarse) return [];
-  const fallback = COARSE_FALLBACK[coarse];
-  return fallback ? [fallback] : [];
-}

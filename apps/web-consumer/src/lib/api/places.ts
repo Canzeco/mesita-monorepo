@@ -283,10 +283,8 @@ export async function apiFetchPlaceCard(
 /** The server's Area breakdown for one place (MESITA-2379). `null` is
  *  "n/a", never 0; the client never recomputes any of it. */
 export type AreaDiagnostics = {
-  /** The families the Family gate read, primary first. */
+  /** The families the Family gate read: a list, none primary (MESITA-2808). */
   familyKeys: string[];
-  /** The place's primary family (MESITA-2438); absent from an older EF. */
-  primaryFamily?: string | null;
   gates: {
     family: 0 | 1;
     /** Territory is gone (MESITA-2500, MESITA-2603): Radius is the only

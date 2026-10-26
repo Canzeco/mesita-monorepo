@@ -46,7 +46,6 @@ import { familiesForPlace } from "./place-taxonomy.ts";
 import {
   nearbyExcludedTypesForFamilies,
   placeFamilies,
-  primaryFamilyForGoogleType,
 } from "./sourcing.ts";
 import {
   type AreaBounds,
@@ -137,20 +136,6 @@ function mesitaSource(row: Record<string, unknown>): AreaSource {
   return isSelectedRow(row as { selected?: boolean | null }) ? "selected" : "mesita";
 }
 
-/**
- * A Mesita row's primary family (MESITA-2438): its category's (the Google
- * `primaryType` Mesita stores) when that family is one of the row's own,
- * else the row's first known family; null when it has none.
- */
-export function mesitaPrimaryFamily(row: Record<string, unknown>): string | null {
-  const keys = knownFamilies(familiesForPlace(row));
-  const fromCategory = primaryFamilyForGoogleType(
-    typeof row.category === "string" ? row.category : null,
-  );
-  if (fromCategory && keys.includes(fromCategory)) return fromCategory;
-  return keys[0] ?? null;
-}
-
 /** A Mesita row as an Area candidate (no Google hit behind it). */
 export function mesitaCandidate(row: Record<string, unknown>): AreaCandidate {
   return {
@@ -181,7 +166,7 @@ export function ownedCandidate(row: Record<string, unknown>, hit: NearbyHit): Ar
     ...base,
     rating: numOrNull(hit.rating) ?? base.rating,
     reviewCount: numOrNull(hit.reviewCount) ?? base.reviewCount,
-    familyKeys: known.length > 0 ? base.familyKeys : placeFamilies(hit.primaryType, hit.types).keys,
+    familyKeys: known.length > 0 ? base.familyKeys : placeFamilies(hit.primaryType, hit.types),
     reviews: 1,
   };
 }
@@ -363,11 +348,9 @@ export type AreaPoolDeps<T extends OwnedRow> = {
   lookupOwned: (gids: string[]) => Promise<T[] | null>;
 };
 
-/** The breakdown a pool place carries: the score's, its primary family
- *  (MESITA-2438, null when it has none) and every source that found it
- *  (MESITA-2703; diagnostics only, no card draws it). */
+/** The breakdown a pool place carries: the score's and every source that
+ *  found it (MESITA-2703; diagnostics only, no card draws it). */
 export type AreaPoolDiagnostics = AreaDiagnostics & {
-  primaryFamily: string | null;
   foundBy: AreaSourceKey[];
 };
 
@@ -398,7 +381,6 @@ export type AreaPoolSummary = {
 type PoolItem = {
   candidate: AreaCandidate;
   place: Record<string, unknown>;
-  primary: string | null;
   foundBy: Set<AreaSourceKey>;
 };
 
@@ -479,16 +461,12 @@ async function googleItems<T extends OwnedRow>(
     const row = byGid.get(hit.placeId);
     if (row) {
       const candidate = ownedCandidate(row, hit);
-      const primary = knownFamilies(mesitaCandidate(row).familyKeys).length > 0
-        ? mesitaPrimaryFamily(row)
-        : placeFamilies(hit.primaryType, hit.types).primary;
-      return { candidate, place: ownedPlace(row, hit, location), primary, foundBy };
+      return { candidate, place: ownedPlace(row, hit, location), foundBy };
     }
     const stub = googleStub(hit, roundedKm(location, hit.lat, hit.lng));
     return {
       candidate: stubCandidate(stub, hit),
       place: stub,
-      primary: placeFamilies(hit.primaryType, hit.types).primary,
       foundBy,
     };
   });
@@ -522,7 +500,6 @@ function mesitaItems<T extends OwnedRow>(
     deps.mesitaRows.map((row) => ({
       candidate: mesitaCandidate(row),
       place: { ...row, distance_km: roundedKm(deps.location, row.lat, row.lng) },
-      primary: mesitaPrimaryFamily(row),
       foundBy: new Set<AreaSourceKey>(),
     })),
     (item) => item.candidate,
@@ -604,39 +581,22 @@ export async function selectAreaPool<T extends OwnedRow>(
   }
 
   // The top `shown` of the merged, sorted pool (up to 80 = 4 sources × 20).
-  const ranked = primaryFirst(
-    rankArea([...byId.values()], (item) => item.candidate, ctx),
-    deps.families,
-  ).slice(0, Math.max(0, shown));
+  // A family row ranks by score alone: a place's families are a list, none
+  // of them primary (MESITA-2808).
+  const ranked = rankArea([...byId.values()], (item) => item.candidate, ctx)
+    .slice(0, Math.max(0, shown));
   const places = ranked.map(({ item, area }) => {
     const { distanceKm: _km, ...diagnostics } = area;
     const foundBy = AREA_SOURCE_KEYS.filter((k) => item.foundBy.has(k));
     return {
       ...item.place,
-      area: { ...diagnostics, primaryFamily: item.primary, foundBy },
+      area: { ...diagnostics, foundBy },
     } as AreaPoolPlace;
   });
   summary.google = places.filter((p) => p.area.source === "google").length;
   summary.mesita = places.length - summary.google;
   summary.returned = places.length;
   return { places, summary };
-}
-
-/**
- * A family row lists its PRIMARY places first and its SECONDARY places as
- * fill (MESITA-2438): a stable partition of the ranked list, so each part
- * keeps the score's order. No family requested = the ranked list as is.
- * Relevance, never money: nothing here reads who pays.
- */
-export function primaryFirst<T extends { item: { primary: string | null } }>(
-  ranked: readonly T[],
-  families: readonly string[],
-): T[] {
-  if (families.length === 0) return [...ranked];
-  const wanted = new Set(families);
-  const primary = ranked.filter((r) => r.item.primary !== null && wanted.has(r.item.primary));
-  const fill = ranked.filter((r) => !(r.item.primary !== null && wanted.has(r.item.primary)));
-  return [...primary, ...fill];
 }
 
 /** The log line's view of a pool: per-family counts. */

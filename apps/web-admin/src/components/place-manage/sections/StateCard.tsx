@@ -3,7 +3,7 @@
 // Profile States — the seven facts of a place (Pato, 2026-10-13, MESITA-2176;
 // Selected joined in MESITA-2318):
 //
-//   Created · Pulsing · Enriching · Enriched · Selected · Disabled
+//   Created · Pulsing · Enriching · Enriched · Selected · Boosted · Disabled
 //
 // Enriching and Enriched are the only enrichment states. A live run is
 // enriching; the one finished write is enriched. Selected is the operator's
@@ -59,7 +59,7 @@ import { isEnrichedPlace } from "@/lib/place-enriched";
 import { ConfirmDialog, SectionCard } from "@/components/admin-ui/manage";
 import { usePlaceContext } from "../PlaceContext";
 import { ErrorNote } from "@/components/ErrorNote";
-import { stateBoolChip } from "@/lib/state-vocabulary";
+import { boostTierChip, stateBoolChip } from "@/lib/state-vocabulary";
 // States box (Pato, 2026-08-25): bools. Enriching and Enriched are the two
 // enrichment states. Chips never repeat the row name.
 //
@@ -186,6 +186,21 @@ export function StateCard({ place }: { place: AdminPlace }) {
       : selected
         ? "In Mesita Selected — your mark. The Map pins it red, the Search carousel tags it, Chat recommends it."
         : "Not in Mesita Selected. Your call alone: Select marks it whatever its enrichment.";
+  // Boost (MESITA-2789, shown here since MESITA-2795 — Pato: "mention boost
+  // as general state even if redundant"): paid visibility guests bought,
+  // read off `places.boost_tier`. Independent of Selected and read-only:
+  // payers manage it in the consumer app; the Boost view lists them.
+  const boostTier =
+    typeof place.boost_tier === "number" ? place.boost_tier : null;
+  const boosted: boolean | "unknown" =
+    boostTier == null ? "unknown" : boostTier > 0;
+  const boostLabel = ["", "Boost 2x", "Boost 5x", "Boost 10x"][boostTier ?? 0] ?? "Boost";
+  const boostedDetail =
+    boosted === "unknown"
+      ? "Couldn't read the Boost tier."
+      : boosted
+        ? `${boostLabel}: guests pay for its visibility. Sponsored on cards and pins; never Selected. Payers are on Boost.`
+        : "Nobody pays to boost it. Guests buy Boost from the place's ⋯ menu.";
   const enrichingDetail = enriching
     ? "A run is in progress. Nothing is saved until the profile is finished."
     : "No run is in progress.";
@@ -227,6 +242,12 @@ export function StateCard({ place }: { place: AdminPlace }) {
           chip={stateBoolChip(selected)}
           detail={selectedDetail}
           action={<SelectedToggle place={place} selected={selected} />}
+        />
+        <StateRow
+          name="Boosted"
+          on={boosted === true}
+          chip={boostTierChip(boostTier)}
+          detail={boostedDetail}
         />
         <StateRow
           name="Disabled"

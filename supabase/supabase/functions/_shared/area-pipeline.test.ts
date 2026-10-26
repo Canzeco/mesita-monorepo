@@ -1013,8 +1013,8 @@ Deno.test("list-catalog sends the row's families to Google, not the every-family
   assertEquals(src.includes("families: [],"), false);
 });
 
-Deno.test("a family row lists primary places first, secondary as fill (MESITA-2438)", async () => {
-  // A cafe is Coffee first, Breakfast second; a breakfast spot is Breakfast first.
+Deno.test("a family row ranks by score alone: no family is primary (MESITA-2808)", async () => {
+  // A cafe and a taqueria typed breakfast are as Breakfast as a brunch spot.
   const g = stubGoogle([
     { id: "cafe", lat: 25.6701, type: "cafe", rating: 5, reviews: 5000 },
     { id: "brunch", lat: 25.6702, type: "breakfast_restaurant", rating: 3.5, reviews: 120 },
@@ -1024,10 +1024,10 @@ Deno.test("a family row lists primary places first, secondary as fill (MESITA-24
     const { places } = await selectAreaPool(
       deps({ families: ["breakfast"], types: areaGoogleTypes(["breakfast"]) }).d,
     );
-    assertEquals(ids(places), ["g:brunch", "g:cafe", "g:tacos"]);
-    assertEquals(places.map((p) => p.area.primaryFamily), ["breakfast", "coffee", "mexican"]);
-    // Own second family is Quick; Breakfast comes from the other Google type.
-    assertEquals(places[2].family_keys, ["mexican", "quick_bite", "breakfast"]);
+    assertEquals(ids(places), ["g:cafe", "g:tacos", "g:brunch"]);
+    assertEquals("primaryFamily" in places[0].area, false);
+    // Every family of every Google category, in the catalog's order.
+    assertEquals(places[1].family_keys, ["breakfast", "quick_bite", "mexican"]);
   } finally {
     g.restore();
   }

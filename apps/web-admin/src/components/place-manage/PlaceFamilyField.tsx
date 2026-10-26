@@ -1,24 +1,24 @@
 "use client";
 
 import { ReadField } from "@/components/admin-ui/manage";
+import { ChipList } from "./PlaceCategoryListFields";
 import { usePlaceContext } from "./PlaceContext";
-import { shownFamily } from "./profile-family-display";
 
-// Read-only. The overview resolved the string from the Google category's
-// live family mapping; this only paints it.
+// Read-only. Families are derived from the Mesita categories in the profiles
+// view and never inferred (MESITA-2790); the overview already named them, as
+// one " · "-joined string, split here into the same chips as the category
+// rows (MESITA-2810). Families keep their emoji.
 
 export function PlaceFamilyField() {
-  const { place, profile } = usePlaceContext();
-  const display = shownFamily(place.category ?? "", place.category, profile);
-
+  const { profile } = usePlaceContext();
   return (
-    <ReadField label="Mesita families" auto boxed>
-      <span aria-label={`Mesita families: ${display.text}`}>
-        <span aria-hidden>{display.text}</span>
-        {display.inferred ? (
-          <span className="text-muted-foreground/70"> (inferred)</span>
-        ) : null}
-      </span>
+    <ReadField label="Families" auto boxed>
+      <ChipList
+        items={profile.familyStored.text
+          .split(" · ")
+          .map((s) => s.trim())
+          .filter(Boolean)}
+      />
     </ReadField>
   );
 }

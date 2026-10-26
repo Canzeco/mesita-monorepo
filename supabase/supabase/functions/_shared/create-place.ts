@@ -10,14 +10,16 @@
 //                   (content_state ready, enriched_at null).
 //                   NEVER STAMPED: the row existing IS the seed.
 //   1 details     → the Google spine persisted (fetchGoogleBasics fields,
-//                   category = Google's primary type, family from that type)
+//                   google_types primary-first; Mesita categories 1–3
+//                   inferred right after the mint, families derived from
+//                   them in the profiles view)
 //                   PLUS the first Google photo mirrored into
 //                   place-images so a Created place can show a thumb. The
 //                   LIVENESS GATE is a subprocess of this step, not a rung of
 //                   its own: a place reported CLOSED_PERMANENTLY is REFUSED at
 //                   the door, before any row exists.
 //   7 description → the DOOR Description (gate D1): ONE batched prompt over
-//                   the thin Google signals infers Tags, Presentation,
+//                   the thin Google signals infers Mesita Tags, Presentation,
 //                   Reservations, Mesita Name (through
 //                   the mesita-name-door, gate D2) and the Semantic Summary.
 //                   A later Enrich run's step 7 redoes it with rich grounding.
@@ -56,7 +58,9 @@ import { reportCrenupSteps, stepDone, stepFailed } from "./crenup-report.ts";
 import { loadDiscoveryConfig } from "./discovery-config.ts";
 import { evaluatePlaceForMap } from "./map-engine.ts";
 import { omitReviewsTileColumns } from "./reviews-state.ts";
-import { inferMesitaCategoriesAtCreate } from "./mesita-categories-at-create.ts";
+import { inferMesitaCategories } from "./mesita-categories.ts";
+import { googleTypesPrimaryFirst } from "./google-table-b.ts";
+import { humanizeCategorySlug } from "./parse-utils.ts";
 import { googleMetricsFromDetails, reviewSourcePatch } from "./review-sources.ts";
 /** The Google numbers a create stores: the same patch a Reviews reload
  *  writes (`google_found` + stars + count), built from the Details response
@@ -196,10 +200,8 @@ export async function createMinimalPlace(opts: {
   }
 
   // ── 1) Minimal seed — Google basics only. fetchGoogleBasics builds the
-  // identity spine directly (no EF hop); category stays 'undefined' and
-  // family_keys ['undefined'] until the Enricher pipeline's contents stage infers
-  // Family + Category. No
-  // Apify/Firecrawl/Perplexity/OpenAI here — deep enrichment is async. ──
+  // identity spine directly (no EF hop). No Apify/Firecrawl/Perplexity here —
+  // deep enrichment is async. ──
   const GOOGLE_KEY = Deno.env.get("GMP_KEY") ?? Deno.env.get("SUPA_GMP_KEY");
   if (!GOOGLE_KEY) {
     return {
@@ -256,17 +258,27 @@ export async function createMinimalPlace(opts: {
     };
   }
 
-  // Category is Google's primary type, already on basics. The profiles view
-  // derives the family rails from that category. The tile columns are the
+  // The tile columns are the
   // verifier's (MESITA-2189): strip whatever rode in on basics, then store
   // Google's own two through the verifier's patch — the Details call that
   // minted this row IS the first Reviews verification, so a new profile
   // reads its stars and review count at once (MESITA-2306). The Instagram
   // and Facebook counts stay empty until a Reviews reload.
+  // google_types is the Google categories list, primary first; `category`
+  // holds that primary until the Mesita categories call below fills
+  // mesita_categories (MESITA-2790).
+  const googleTypes = googleTypesPrimaryFirst(basicsRes.primaryType, basicsRes.googleTypes);
   const place: Record<string, unknown> = {
     ...omitReviewsTileColumns({ ...basicsRes.basics }),
-    google_primary_type: basicsRes.primaryType,
-    google_types: basicsRes.googleTypes,
+    ...(googleTypes[0]
+      ? {
+        category: googleTypes[0],
+        category_label: googleTypes[0] === basicsRes.basics.category
+          ? basicsRes.basics.category_label
+          : humanizeCategorySlug(googleTypes[0]),
+      }
+      : {}),
+    google_types: googleTypes,
     mesita_categories: [],
     ...googleReviewsAtCreate(basicsRes.basics),
     // Operating (MESITA-1239). businessStatus rides the envelope, not `basics`,
@@ -291,11 +303,11 @@ export async function createMinimalPlace(opts: {
   const saved = saveRes.saved;
 
   try {
-    await inferMesitaCategoriesAtCreate(admin, saved.place_id, {
+    await inferMesitaCategories(admin, saved.place_id, {
       name: saved.name,
       address: (place.address ?? null) as string | null,
-      googlePrimaryType: basicsRes.primaryType,
-      googleTypes: basicsRes.googleTypes,
+      googleTypes,
+      googleTags: Array.isArray(place.google_tags) ? place.google_tags as string[] : [],
       editorialSummary: basicsRes.editorialSummary,
     });
   } catch (err) {
@@ -364,10 +376,11 @@ export async function createMinimalPlace(opts: {
       });
       if (door) {
         const patch: Record<string, unknown> = {};
-        // Category already came from Google. The door does not replace it.
-        // Catalog tags are not the Profile field (MESITA-2255). google_tags
-        // landed with the spine. The door's inferred slugs stay unstored.
+        // Mesita tags (MESITA-2790): the door's slugs, already validated
+        // against place_tags, land in `tags`; every Enrich replaces them.
+        // Categories came from inferMesitaCategories above.
         if (door.description) patch.description = door.description;
+        if (door.tags) patch.tags = door.tags;
         // The seed for a place nobody has answered for yet; an operator's
         // channel pick supersedes it from then on (MESITA-1737).
         patch.reservations_enabled = door.reservationsLikely;
@@ -390,7 +403,7 @@ export async function createMinimalPlace(opts: {
         await reportCrenupSteps(admin, saved.place_id, {
           description: doorWrite.ok
             ? stepDone(
-              `Door Description — category “${door.category ?? "n/a"}”, ` +
+              `Door Description — ${door.tags?.length ?? 0} Mesita tag(s), ` +
                 `Mesita Name + Semantic Summary inferred.`,
               { via: "create" },
             )

@@ -27,8 +27,8 @@
 //
 // Repeating the row name on the chip is redundant. Enriching is the live run;
 // Enriched is last-completed — they are independent. Since MESITA-2027 there
-// is ONE ladder: Create runs 0, 1, 7, 8; Strong Enrich runs 1–8 and Weak
-// Enrich 1 and 4–8, one Render task per place, and its write stamps each
+// is ONE ladder: Create runs 0, 1, 7, 8; Enrich runs 1–8 (one Enrich,
+// MESITA-2799), one Render task per place, and its write stamps each
 // step (MESITA-2420). Enrichment Steps prints the Enrich pass only (1–8),
 // each named "X Enriched". Seed stays step 0 in the ladder and off that box.
 // Wire key `seeded` stays; the row existing IS the seed.
@@ -107,6 +107,15 @@ export const PROFILE_STATS_FACTS = [
 ] as const;
 
 export type ProfileStatKey = (typeof PROFILE_STATS_FACTS)[number]["key"];
+
+/** Boost tier chip (MESITA-2809): Boosted is not a yes/no but a tier —
+ *  `places.boost_tier` 0 · 1 · 2 · 3 reads Off · 2x · 5x · 10x. */
+export const BOOST_TIER_LABELS = ["Off", "2x", "5x", "10x"] as const;
+
+export function boostTierChip(tier: number | null | undefined): string {
+  if (tier == null) return "?";
+  return BOOST_TIER_LABELS[tier] ?? "?";
+}
 
 /** Guest request count helpers stay for legacy payloads; not shown in admin UI. */
 

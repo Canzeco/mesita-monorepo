@@ -13,7 +13,7 @@ import { MediaBox } from "./place-detail/media";
 import { ProfileSummary } from "./place-detail/profile-summary";
 import { GoogleReviewsBox } from "./place-detail/reviews";
 import { PlaceCreateFailedPanel } from "./place-detail/PlaceCreateFailedPanel";
-import { NO_BOOST, NO_OVERVIEW, PlaceEmptyScreen } from "./place-detail/empty-screen";
+import { NO_OVERVIEW, PlaceEmptyScreen } from "./place-detail/empty-screen";
 import { PlaceTabBar, type PlaceTab } from "./place-detail/tabs";
 import { SoonScreen } from "./place-detail/soon-screen";
 import { LinksBox, TagsBox } from "./place-detail/tags-links-meta";
@@ -31,8 +31,8 @@ import { LinksBox, TagsBox } from "./place-detail/tags-links-meta";
 //      (MESITA-2307, MESITA-2679); then one row of actions: the heart,
 //      Reserve · Directions, then Contact (MESITA-2618/2619/2623; no
 //      pinned bar).
-//   2. The sticky strip, Overview · Reviews · Products (Soon) · Rewards (Soon)
-//      · Boost (MESITA-2789), for every place (MESITA-2332). While a Google-only profile is being
+//   2. The sticky strip, Overview · Reviews · Products (Soon) · Rewards (Soon),
+//      for every place (MESITA-2332; Boost opens from ⋯, MESITA-2815). While a Google-only profile is being
 //      created, Overview is one "No overview yet" screen like the other
 //      empty tabs (MESITA-2685), and a refused create shows only the refusal
 //      band; there is no vote
@@ -46,21 +46,27 @@ export function PlaceDetailBody({
   actions,
   creating,
   social,
-  boost,
+  openTab,
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
-  /** The Boost tab's body (MESITA-2789), drawn by the host: the consumer
-   *  passes its subscribe/cancel pane; without it the tab explains where
-   *  Boost is bought. */
-  boost?: React.ReactNode;
+  /** The host asks for a tab. Each new `key` switches once; the guest's own
+   *  taps win after. */
+  openTab?: { tab: PlaceTab; key: number } | null;
   /** Set while a Google-only profile is being created (MESITA-2307): a
    *  Creating fact leads the facts row, or a refusal says why. */
   creating?: PlaceCreatingView | null;
   /** Social v1's line (MESITA-2442), in the profile summary. */
   social?: React.ReactNode;
 }) {
-  const [tab, setTab] = useState<PlaceTab>("place");
+  const [tab, setTab] = useState<PlaceTab>(openTab?.tab ?? "place");
+  // A new request switches the tab during render (React's "adjust state when
+  // a prop changes"), never in an effect.
+  const [openKey, setOpenKey] = useState(openTab?.key ?? null);
+  if (openTab && openTab.key !== openKey) {
+    setOpenKey(openTab.key);
+    setTab(openTab.tab);
+  }
   const create = place.is_enriched ? null : (creating ?? null);
   return (
     // decision: Pato (2026-10-16) — the name header and the section strip
@@ -111,7 +117,6 @@ export function PlaceDetailBody({
           {tab === "reviews" && <GoogleReviewsBox place={place} />}
           {tab === "products" && <SoonScreen title="Products" />}
           {tab === "rewards" && <SoonScreen title="Rewards" />}
-          {tab === "boost" && (boost ?? <PlaceEmptyScreen {...NO_BOOST} />)}
       </div>
     </div>
   );

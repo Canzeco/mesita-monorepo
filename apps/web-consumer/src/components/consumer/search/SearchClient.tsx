@@ -55,7 +55,6 @@
 // scroll rings the pin and leaves the map where the guest put it.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import type { Place } from "@/lib/api/places";
 import { apiFetchNearbyCatalog } from "@/lib/api/places";
@@ -75,6 +74,7 @@ import {
 import { MAP_USER_ZOOM, MONTERREY_CENTER } from "@/lib/map-defaults";
 import { placeHref } from "@/lib/place-route";
 import { useOpenGooglePlace } from "@/lib/use-open-google-place";
+import { useOpenPlaceHref } from "@/lib/use-open-place-href";
 import {
   createdPlaceId,
   useCreatedPlaces,
@@ -181,7 +181,6 @@ function googlePredictionFromPlace(place: Place): PlacePrediction | null {
 }
 
 export function SearchClient({ apiKey }: { apiKey: string }) {
-  const router = useRouter();
   const supabase = useBrowserSupabase();
   const userLocation = useUserLocation();
   const locating = useUserLocationLocating();
@@ -200,6 +199,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // regenerated after every selection (Info / Add tap) and whenever the
   // results panel is dismissed, scoping each autocomplete run properly.
   const openGooglePlace = useOpenGooglePlace();
+  // Every place open on this screen: the surface URL, and a full load when
+  // a push never moves the screen (MESITA-2816).
+  const openPlaceHref = useOpenPlaceHref();
   const sessionTokenRef = useRef(newSessionToken());
   // Word's idle wait, refreshed from every answer (MESITA-2322).
   const idleMsRef = useRef(DEFAULT_IDLE_MS);
@@ -635,24 +637,24 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       resetSearchSession();
       const fromAdd = addedProfiles[prediction.placeId];
       if (fromAdd) {
-        router.push(placeHref(fromAdd));
+        openPlaceHref(placeHref(fromAdd));
         return;
       }
       const direct = prediction.mesitaSlug ?? prediction.mesitaId;
       if (direct) {
-        router.push(placeHref(direct));
+        openPlaceHref(placeHref(direct));
         return;
       }
       const match = matchPredictionToPlace(prediction, catalog);
       if (match) {
-        router.push(placeHref(match.slug || match.id));
+        openPlaceHref(placeHref(match.slug || match.id));
         return;
       }
       toast(
         "This place is on Mesita but isn't in the map snapshot yet — opening it from search is coming soon.",
       );
     },
-    [addedProfiles, catalog, resetSearchSession, router],
+    [addedProfiles, catalog, openPlaceHref, resetSearchSession],
   );
 
   // Get-or-create (MESITA-2298): the explicit open is the ONLY call that
@@ -688,7 +690,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     const fromAdd = addedProfiles[prediction.placeId];
     if (fromAdd) {
       resetSearchSession();
-      router.push(placeHref(fromAdd));
+      openPlaceHref(placeHref(fromAdd));
       return;
     }
     if (predictionOnMesita(prediction)) {
@@ -802,7 +804,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       resetSearchSession();
       const direct = prediction.mesitaSlug ?? prediction.mesitaId;
       if (direct) {
-        router.push(placeHref(direct));
+        openPlaceHref(placeHref(direct));
         return;
       }
       toast(
@@ -828,7 +830,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       openGoogleOnly(google, place);
       return;
     }
-    router.push(placeHref(place.slug || place.id));
+    openPlaceHref(placeHref(place.slug || place.id));
   };
 
   // A tap asks the camera to REVEAL the place: a pan only if it is

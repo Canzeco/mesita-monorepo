@@ -7,6 +7,7 @@
 // sensible neutral defaults — distance is geolocation-dependent and computed
 // client-side later.
 
+import { googleTypeEmoji } from "./lib/google-type-emoji";
 import type { PlaceDetail } from "./place-detail";
 import { detectMenuKind } from "./lib/menu-url";
 import { parseMenuNutrition } from "./lib/nutrition";
@@ -16,7 +17,6 @@ import { relativeLabel } from "./lib/format";
 import { DEFAULT_CURRENCY } from "./lib/money";
 import { isReserveActionEnabled } from "./lib/place-profile-actions";
 import type { Row } from "./place-to-detail-helpers";
-import { effectivePlacePhotos } from "./effective-place-photos";
 import {
   arr,
   computeOpenState,
@@ -64,6 +64,7 @@ export function placeRowToDetail(row: Row, catalogTags?: ResolvedTag[]): PlaceDe
     id: str(row.id) ?? str(row.slug) ?? "",
     name: resolvePlaceDisplayName(row),
     category: categoryName,
+    category_emoji: googleTypeEmoji(str(row.category)),
     price_level: priceLevel,
     price_range: derivePriceRange(row),
     currency,
@@ -108,7 +109,7 @@ export function placeRowToDetail(row: Row, catalogTags?: ResolvedTag[]): PlaceDe
             ? "requested"
             : "listed",
 
-    photos: effectivePlacePhotos(row),
+    photos: arr<string>(row.photos),
 
     // Google atmosphere chips (MESITA-2255). places.tags is not this box.
     tags: googleTagChips(row.google_tags),

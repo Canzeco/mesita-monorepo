@@ -3,10 +3,12 @@
 import { ReadField } from "@/components/admin-ui/manage";
 import { usePlaceContext } from "./PlaceContext";
 
-// Read-only. google_types is what Google returned; mesita_categories is the
-// LLM's pick from the place_categories slugs. Labels come from the category
-// options the overview already joined. A stored label leads with an emoji;
-// it is dropped here, since only Mesita families wear one (MESITA-2771).
+// Read-only (MESITA-2790). google_types is Google's categories list, primary
+// first. mesita_categories is the
+// LLM's 1–3 place_categories slugs, main first, redone on every Enrich. tags
+// is the Mesita tags the same runs pick from place_tags. Labels come from the
+// vocabularies the overview already joined. A stored category label leads
+// with an emoji; it is dropped here, since only families wear one.
 
 // Google's Table B: generic markers it returns beside the real types
 // (point_of_interest, establishment, food, the address parts). They name no
@@ -72,40 +74,74 @@ function slugsOf(value: unknown): string[] {
     .filter(Boolean);
 }
 
-function CategoryChips({ slugs }: { slugs: string[] }) {
-  const { profile } = usePlaceContext();
-  if (slugs.length === 0) return <>—</>;
-  const labels = new Map(profile.categories.map((c) => [c.slug, c.label]));
+// One chip look for every list row in Basics, Families included (Pato,
+// MESITA-2810). Google's primary category is simply the first chip.
+export function ChipList({ items }: { items: string[] }) {
+  if (items.length === 0) return <>—</>;
   return (
     <span className="flex flex-wrap gap-1.5">
-      {slugs.map((slug) => (
+      {items.map((item) => (
         <span
-          key={slug}
-          className="border-border rounded-full border px-2 py-0.5 text-xs"
+          key={item}
+          className="rounded-full border border-border px-2 py-0.5 text-xs"
         >
-          {withoutEmoji(labels.get(slug) || slug.replaceAll("_", " "))}
+          {item}
         </span>
       ))}
     </span>
   );
 }
 
-export function PlaceMesitaCategoriesField() {
-  const { place } = usePlaceContext();
+function Chips({
+  slugs,
+  labels,
+}: {
+  slugs: string[];
+  labels: Map<string, string>;
+}) {
   return (
-    <ReadField label="Mesita categories" auto boxed>
-      <CategoryChips slugs={slugsOf(place.mesita_categories)} />
-    </ReadField>
+    <ChipList
+      items={slugs.map((slug) =>
+        withoutEmoji(labels.get(slug) || slug.replaceAll("_", " ")),
+      )}
+    />
   );
+}
+
+function useCategoryLabels(): Map<string, string> {
+  const { profile } = usePlaceContext();
+  return new Map(profile.categories.map((c) => [c.slug, c.label]));
 }
 
 export function PlaceGoogleCategoriesField() {
   const { place } = usePlaceContext();
+  const labels = useCategoryLabels();
   return (
     <ReadField label="Google categories" auto boxed>
-      <CategoryChips
+      <Chips
         slugs={slugsOf(place.google_types).filter((s) => !GOOGLE_TABLE_B.has(s))}
+        labels={labels}
       />
+    </ReadField>
+  );
+}
+
+export function PlaceMesitaCategoriesField() {
+  const { place } = usePlaceContext();
+  const labels = useCategoryLabels();
+  return (
+    <ReadField label="Mesita categories" auto boxed>
+      <Chips slugs={slugsOf(place.mesita_categories)} labels={labels} />
+    </ReadField>
+  );
+}
+
+export function PlaceMesitaTagsField() {
+  const { place, profile } = usePlaceContext();
+  const labels = new Map(profile.tags.map((t) => [t.slug, t.label_en]));
+  return (
+    <ReadField label="Mesita tags" auto boxed>
+      <Chips slugs={slugsOf(place.tags)} labels={labels} />
     </ReadField>
   );
 }

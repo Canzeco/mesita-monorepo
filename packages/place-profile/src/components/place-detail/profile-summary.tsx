@@ -115,8 +115,8 @@ export function ProfileSummary({
           the tag, it must kinda look as a first tag before the primary
           category") while Mesita creates a Google-only profile; it replaced
           the Creating band at the top of Overview ("the creating there
-          looks like shit"). Creating is the one fact in solid blue
-          (MESITA-2682: "it must be noticable"). */}
+          looks like shit"). Creating is solid blue (MESITA-2682: "it must
+          be noticable"), Enriching solid green (MESITA-2812). */}
       <div className="flex flex-col gap-3" data-profile-section="facts">
       <ul
         className={PROFILE_FACTS_ROW_CLASS}
@@ -124,16 +124,19 @@ export function ProfileSummary({
         data-profile-facts
       >
         {creating ? (
-          <RunningFact label="Creating" loud />
+          <RunningFact label="Creating" tone="blue" />
         ) : place.is_enriching ? (
-          <RunningFact label="Enriching" />
+          <RunningFact label="Enriching" tone="green" />
         ) : null}
         {/* SPONSORED (MESITA-2789): a paid Boost is disclosed, plain and
             grey like every fact. Never red (red is Selected, Mesita's own
             pick) and never "Verified": paying buys visibility only. */}
         {(place.boost_tier ?? 0) > 0 && <ProfileFact icon={Zap}>Sponsored</ProfileFact>}
         {place.category && (
-          <ProfileFact icon={Tag}>{place.category}</ProfileFact>
+          // The category's own emoji, Tag only when it has none (MESITA-2813).
+          <ProfileFact icon={Tag} emoji={place.category_emoji}>
+            {place.category}
+          </ProfileFact>
         )}
         {priceLabel && <ProfileFact icon={Banknote}>{priceLabel}</ProfileFact>}
         {stateValue && (

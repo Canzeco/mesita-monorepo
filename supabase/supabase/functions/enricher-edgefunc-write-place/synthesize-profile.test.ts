@@ -23,54 +23,58 @@ Deno.test("review quotes are the text the presentation can read", () => {
   ]), "Loud room\nBottle service");
 });
 
-Deno.test("overwrite off keeps a saved presentation and leaves catalog tags alone", () => {
+Deno.test("every Enrich replaces the saved presentation; an empty one keeps it (MESITA-2799)", () => {
   const next = mergeSynthesizedProfile({
-    overwrite: false,
-    patch: {
-      content_state: "ready",
-      description: "Already written.",
-      category: "nightclub",
-      tags: ["dj"],
-    },
-    presentation: "A new essay that should not replace the saved one.",
-    category: "bar",
+    patch: { content_state: "ready", description: "Already written." },
+    presentation: "A new essay.",
+    categories: null,
+    tags: null,
   });
-  assertEquals(next.description, "Already written.");
-  assertEquals(next.category, "nightclub");
-  assertEquals(next.tags, ["dj"]);
+  assertEquals(next.description, "A new essay.");
+  const kept = mergeSynthesizedProfile({
+    patch: { content_state: "ready", description: "Already written." },
+    presentation: null,
+    categories: null,
+    tags: null,
+  });
+  assertEquals(kept.description, "Already written.");
 });
 
-Deno.test("an empty profile takes the presentation and one category", () => {
-  const long = "b".repeat(900);
-  const next = mergeSynthesizedProfile({
-    overwrite: false,
-    patch: { content_state: "ready", tags: ["dj"] },
-    presentation: long,
-    category: "nightclub",
-  });
-  assertEquals(typeof next.description === "string" && next.description.length, 900);
-  assertEquals(next.category, "nightclub");
-  assertEquals(next.category_label, "Nightclub");
-  assertEquals(next.tags, ["dj"]);
+Deno.test("every Enrich writes the inferred Mesita categories and tags, (MESITA-2790)", () => {
+  {
+    const next = mergeSynthesizedProfile({
+      patch: { content_state: "ready" },
+      presentation: null,
+      categories: ["bakery", "cafe"],
+      tags: ["terraza"],
+    });
+    assertEquals(next.mesita_categories, ["bakery", "cafe"]);
+    assertEquals(next.category, "bakery");
+    assertEquals(next.category_label, "Bakery");
+    assertEquals(next.tags, ["terraza"]);
+  }
 });
 
-Deno.test("overwrite on replaces presentation but not catalog tags or locked Mesita categories", () => {
-  const next = mergeSynthesizedProfile({
-    overwrite: true,
-    patch: {
-      content_state: "ready",
-      description: "Old",
-      category: "bar",
-      mesita_categories: ["bar"],
-      tags: ["quiet"],
-      source_sync: { overwrite: true },
-    },
-    presentation: "Vibrant nightclub.",
-    category: "nightclub",
+Deno.test("a failed inference leaves Mesita categories and tags out of the patch (MESITA-2790)", () => {
+  // Failed = null. The patch carries none of the four columns, so the stored
+  // values stay; an empty tags answer is a real answer and is written.
+  const failed = mergeSynthesizedProfile({
+    patch: { content_state: "ready" },
+    presentation: null,
+    categories: null,
+    tags: null,
   });
-  assertEquals(next.description, "Vibrant nightclub.");
-  assertEquals(next.category, "bar");
-  assertEquals(next.tags, ["quiet"]);
+  for (const key of ["mesita_categories", "category", "category_label", "tags"]) {
+    assertEquals(key in failed, false, key);
+  }
+  const noTags = mergeSynthesizedProfile({
+    patch: { content_state: "ready" },
+    presentation: null,
+    categories: [],
+    tags: [],
+  });
+  assertEquals("category" in noTags, false);
+  assertEquals(noTags.tags, []);
 });
 
 Deno.test("the franchise anchor is the saved zone and city, else Google's structured address", () => {

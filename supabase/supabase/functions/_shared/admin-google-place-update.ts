@@ -1,17 +1,21 @@
-// Admin Update (MESITA-2737): refresh Google factuals + google_photos only.
-// Never writes mesita_photos, legacy photos, or Mesita editorial fields.
+// Admin Update (MESITA-2737): refresh Google factuals. The one gallery
+// (`photos`, MESITA-2794) takes Google's current hero only while it holds at
+// most one photo: one photo means Create wrote it and Enrich never ran, so it
+// is still Google's. A longer gallery is Enrich's and Update never touches it.
+// Never writes Mesita editorial fields.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { fetchGoogleBasics, type GoogleBasics } from "./enrich-google-basics.ts";
 import { mirrorPlacePhotos } from "./store-place-images.ts";
 import { writePlace } from "./place-doc.ts";
+import { googleTypesPrimaryFirst } from "./google-table-b.ts";
+import { humanizeCategorySlug } from "./parse-utils.ts";
 
 const BUSINESS_STATES = new Set(["OPERATIONAL", "CLOSED_TEMPORARILY", "CLOSED_PERMANENTLY"]);
 
 /** Keys the Update path must never send to writePlace. */
 export const GOOGLE_UPDATE_FORBIDDEN_COLUMNS = [
   "photos",
-  "mesita_photos",
   "mesita_name",
   "name",
   "description",
@@ -29,19 +33,31 @@ export function assertGoogleUpdatePatchSafe(patch: Record<string, unknown>): voi
   }
 }
 
-/** Build the place_profiles patch from a Google basics fetch (before pins). */
+/** Update may rewrite the gallery only while it holds at most one photo. */
+export function galleryTakesGoogleHero(photos: unknown): boolean {
+  if (!Array.isArray(photos)) return true;
+  return photos.filter((url) => typeof url === "string" && url.trim() !== "").length <= 1;
+}
+
+/**
+ * Build the place_profiles patch from a Google basics fetch (before pins).
+ * The gallery is never in it: `galleryTakesGoogleHero` decides that separately.
+ * google_types is stored primary-first (MESITA-2790). `category` follows
+ * Google's primary only while the place has no Mesita categories; once it
+ * has them, `category` is Mesita's and a refetch leaves it alone.
+ */
 export function googleBasicsToUpdatePatch(input: {
   basics: GoogleBasics;
   businessStatus: string | null;
-  googlePhotos: string[];
   googlePrimaryType: string | null;
   googleTypes: string[];
+  hasMesitaCategories: boolean;
   now: string;
 }): Record<string, unknown> {
+  const googleTypes = googleTypesPrimaryFirst(input.googlePrimaryType, input.googleTypes);
+  const primary = googleTypes[0] ?? null;
   const patch: Record<string, unknown> = {
     google_name: input.basics.google_name,
-    category: input.basics.category,
-    category_label: input.basics.category_label,
     price_level: input.basics.price_level,
     lat: input.basics.lat,
     lng: input.basics.lng,
@@ -70,10 +86,14 @@ export function googleBasicsToUpdatePatch(input: {
     google_review_count: input.basics.google_review_count,
     google_reviews: input.basics.google_reviews,
     google_tags: input.basics.google_tags,
-    google_photos: input.googlePhotos,
-    google_primary_type: input.googlePrimaryType,
-    google_types: input.googleTypes,
+    google_types: googleTypes,
   };
+  if (!input.hasMesitaCategories && primary) {
+    patch.category = primary;
+    patch.category_label = primary === input.basics.category
+      ? input.basics.category_label
+      : humanizeCategorySlug(primary);
+  }
   const status = (input.businessStatus ?? "").trim().toUpperCase();
   if (BUSINESS_STATES.has(status)) {
     patch.business_state = status;
@@ -92,7 +112,7 @@ export type GooglePlaceUpdateResult =
   | {
     ok: true;
     updatedAt: string;
-    googlePhotoCount: number;
+    heroRefreshed: boolean;
     pinned: string[];
     businessStatus: string | null;
   };
@@ -110,7 +130,7 @@ export async function runGooglePlaceUpdate(
 
   const { data: profile, error: profileErr } = await admin
     .from("place_profiles")
-    .select("google_place_id, enrichment_sources, mesita_photos, source_sync")
+    .select("google_place_id, enrichment_sources, photos, source_sync, mesita_categories")
     .eq("id", placeId)
     .maybeSingle();
   if (profileErr) return { ok: false, status: 500, error: profileErr.message };
@@ -148,19 +168,24 @@ export async function runGooglePlaceUpdate(
     return { ok: false, status: google.status, code: google.code, error: google.error };
   }
 
-  const mirrored = await mirrorPlacePhotos(admin, opts.supabaseUrl, google.basics.photos);
-  const googlePhotos = mirrored.map((row) => row.publicUrl);
+  // Mirror Google's hero only when the gallery will take it.
+  const hero = galleryTakesGoogleHero(profile.photos) ? google.basics.photos.slice(0, 1) : [];
+  const mirrored = hero.length > 0
+    ? await mirrorPlacePhotos(admin, opts.supabaseUrl, hero)
+    : [];
 
   // d3a: Google Update is not blocked by enrichment correction pins.
   const patch = googleBasicsToUpdatePatch({
     basics: google.basics,
     businessStatus: google.businessStatus,
-    googlePhotos,
     googlePrimaryType: google.primaryType,
     googleTypes: google.googleTypes,
+    hasMesitaCategories: Array.isArray(profile.mesita_categories) &&
+      profile.mesita_categories.length > 0,
     now,
   });
   const pinned: string[] = [];
+  if (mirrored.length > 0) patch.photos = [mirrored[0].publicUrl];
 
   const priorSync = profile.source_sync && typeof profile.source_sync === "object"
     ? profile.source_sync as Record<string, unknown>
@@ -182,7 +207,7 @@ export async function runGooglePlaceUpdate(
   return {
     ok: true,
     updatedAt: now,
-    googlePhotoCount: googlePhotos.length,
+    heroRefreshed: mirrored.length > 0,
     pinned,
     businessStatus: google.businessStatus,
   };

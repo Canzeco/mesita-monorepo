@@ -252,7 +252,9 @@ export function SearchRailOverlay({
             onScroll={onRailScroll}
             className={cn(
               "scrollbar-hide flex snap-x snap-mandatory overflow-x-auto pb-1 transition-opacity duration-200",
-              catalogLoading && "pointer-events-none opacity-55",
+              // Dimmed, never locked (MESITA-2816): a tap during a reload
+              // still selects or opens.
+              catalogLoading && "opacity-55",
             )}
           >
             {places.map((place) => (
