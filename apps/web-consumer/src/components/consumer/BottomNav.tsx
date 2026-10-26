@@ -4,7 +4,7 @@ import { Z_BOTTOM_NAV } from "@/lib/z-index";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ComponentType } from "react";
+import { useState, type ComponentType } from "react";
 import { QrCode, Search, Share2, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { cn } from "@/lib/utils";
@@ -119,6 +119,16 @@ export function BottomNav({ surface }: { surface?: Surface }) {
   // header, not usePathname, which the server sees rewritten (bare). Without
   // one (the root loading frame) the bare href is SurfacePrefixer's job.
   const getSupabase = useLazyBrowserSupabase();
+  // The tapped tab lights AT ONCE. usePathname only moves when the new
+  // screen commits, which waits on a server round trip (the proxy checks the
+  // session in Oregon on every request), so a slow tap used to leave the bar
+  // unchanged and read as a dead one (MESITA-2762). The mark holds only while
+  // the path it was tapped on is still the path: once the screen lands, the
+  // pathname is the truth again.
+  const [tapped, setTapped] = useState<{ href: string; on: string } | null>(
+    null,
+  );
+  const pending = tapped && tapped.on === pathname ? tapped.href : null;
 
   return (
     <nav
@@ -136,7 +146,9 @@ export function BottomNav({ surface }: { surface?: Surface }) {
       <div className="flex items-end justify-around">
         {ITEMS.map((item) => {
           const { Icon, label } = item;
-          const active = item.matchPrefixes.some((p) => pathname.startsWith(p));
+          const active = pending
+            ? pending === item.href
+            : item.matchPrefixes.some((p) => pathname.startsWith(p));
           const soon = item.soon;
           const className = cn(
             "type-meta relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 font-medium transition",
@@ -172,12 +184,17 @@ export function BottomNav({ surface }: { surface?: Surface }) {
             </>
           );
           const track = () => {
+            setTapped({ href: item.href, on: pathname });
             trackEvent(getSupabase(), "nav_tab_tap", { tab: label });
           };
           return (
             <Link
               key={item.href}
               href={surface ? prefixPath(surface, item.href) : item.href}
+              // The tab pages read nothing on the server, so the full route
+              // is cheap to fetch ahead: a tap then paints from cache instead
+              // of waiting on the round trip (MESITA-2762).
+              prefetch
               onClick={track}
               className={className}
             >
