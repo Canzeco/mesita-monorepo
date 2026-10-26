@@ -825,22 +825,28 @@ select is(
   'Night out took Go out whole and holds no attraction (MESITA-2438, MESITA-2486)'
 );
 
-select is(
-  (select family_keys from public.place_categories where slug = 'bakery'),
-  array['sweet','breakfast']::text[],
-  'a bakery is Sweet first, Breakfast second: family_keys is primary first (MESITA-2438)'
+select ok(
+  (select family_keys from public.place_categories where slug = 'bakery')
+    @> array['sweet','breakfast']::text[]
+  and (select family_keys from public.place_categories where slug = 'bakery')
+    <@ array['sweet','breakfast']::text[],
+  'a bakery is Sweet and Breakfast: a list, no family first (MESITA-2808)'
 );
 
-select is(
-  (select family_keys from public.place_categories where slug = 'mexican'),
-  array['mexican','dinner']::text[],
-  'mexican is Mexican first, Dinner second (MESITA-2760)'
+select ok(
+  (select family_keys from public.place_categories where slug = 'mexican')
+    @> array['mexican','dinner']::text[]
+  and (select family_keys from public.place_categories where slug = 'mexican')
+    <@ array['mexican','dinner']::text[],
+  'mexican is Mexican and Dinner: a list, no family first (MESITA-2808)'
 );
 
-select is(
-  (select family_keys from public.place_categories where slug = 'taco'),
-  array['mexican','quick_bite']::text[],
-  'a taqueria is Mexican first, Quick second (MESITA-2760)'
+select ok(
+  (select family_keys from public.place_categories where slug = 'taco')
+    @> array['mexican','quick_bite']::text[]
+  and (select family_keys from public.place_categories where slug = 'taco')
+    <@ array['mexican','quick_bite']::text[],
+  'a taqueria is Mexican and Quick: a list, no family first (MESITA-2808)'
 );
 
 select is(
