@@ -159,7 +159,7 @@ function popularityOrNull(c: AreaCandidate): number | null {
 }
 
 /** The score without Proximity: Popularity × the Selected boost. The
- *  whole score with no location, and what Mesita Popular picks by, so the
+ *  whole score with no location, and what Mesita Popularity picks by, so the
  *  pick and the ranking agree (MESITA-2717). */
 export function popularPart(
   c: AreaCandidate,

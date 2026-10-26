@@ -98,8 +98,8 @@ type DepsOver = Partial<AreaPoolDeps<OwnedRow>> & {
   /** Shorthands for a point location around CENTER. */
   center?: { lat: number; lng: number } | null;
   radiusKm?: number;
-  /** The four switches over the fixture's (Google Popular and both Mesita
-   *  sources on, Google Closest off, so most tests make ONE Nearby call). */
+  /** The four switches over the fixture's (Google Popularity and both Mesita
+   *  sources on, Google Proximity off, so most tests make ONE Nearby call). */
   sources?: Partial<Record<AreaSourceKey, number>>;
   /** The Selected boost over the default (3). */
   weights?: { selectedFactor?: number };
@@ -141,7 +141,7 @@ const nearbyCalls = (calls: Call[]) =>
 const ids = (places: Array<Record<string, unknown>>) =>
   places.map((p) => p.id);
 
-Deno.test("google: Google Popular is ONE Nearby call over the whole circle, mask with openNow, no photo", async () => {
+Deno.test("google: Google Popularity is ONE Nearby call over the whole circle, mask with openNow, no photo", async () => {
   const g = stubGoogle([{ id: "a", lat: 25.671 }]);
   try {
     const { d } = deps({ radiusKm: 12.5 });
@@ -152,7 +152,7 @@ Deno.test("google: Google Popular is ONE Nearby call over the whole circle, mask
     assertEquals(calls[0].mask!.includes("photos"), false);
     const sent = JSON.parse(calls[0].body!);
     assertEquals(sent.maxResultCount, 20);
-    // Google Popular: the prominent 20 inside the whole radius (MESITA-2703).
+    // Google Popularity: the prominent 20 inside the whole radius (MESITA-2703).
     assertEquals(sent.rankPreference, "POPULARITY");
     assertEquals(sent.locationRestriction.circle.radius, 12500);
     assertEquals(g.calls.filter((c) => c.url.includes("/media?")).length, 0);
@@ -415,7 +415,7 @@ Deno.test("selected: Chat ranks like the Map, by the radius divisor (MESITA-2687
     mrow("near-quiet", { lat: CENTER.lat + 0.001, google_stars_overall: 4.0, google_review_count: 100 }),
     mrow("far-loved", { lat: CENTER.lat + 0.05, google_stars_overall: 4.9, google_review_count: 4000 }),
   ];
-  const k = (radiusDivisor: number) => ({ ...selOpts, params: { ...selOpts.params, proximity: { radiusDivisor, catalogRadiusDivisor: radiusDivisor } } });
+  const k = (radiusDivisor: number) => ({ ...selOpts, params: { ...selOpts.params, proximity: { radiusDivisor } } });
   assertEquals(ids(selectMesitaSelected(rows, k(10)))[0], "near-quiet");
   assertEquals(ids(selectMesitaSelected(rows, k(0.5)))[0], "far-loved");
 });
@@ -665,7 +665,7 @@ Deno.test("the four switches: on lists them in order; Google calls per load is t
   assertEquals(googleCallsPerLoad({ ...map, googlePopular: 0, googleClosest: 0 }), 0);
 });
 
-Deno.test("Google Popular and Google Closest are two DIFFERENT calls over the whole circle", async () => {
+Deno.test("Google Popularity and Google Proximity are two DIFFERENT calls over the whole circle", async () => {
   const g = stubGoogle([{ id: "a", lat: 25.6701 }]);
   try {
     const { d, quota } = deps({ sources: { googleClosest: 20 }, radiusKm: 8 });
@@ -860,7 +860,7 @@ Deno.test("merge: Google and Mesita candidates rank in ONE order, Proximity × P
   }
 });
 
-Deno.test("merge: a Google Popular and a Google Closest hit a Mesita row owns are ONE card with every source", async () => {
+Deno.test("merge: a Google Popularity and a Google Proximity hit a Mesita row owns are ONE card with every source", async () => {
   const g = stubGoogle([{ id: "mine", lat: 25.6701, rating: 4.8, reviews: 3000 }]);
   try {
     const row = { ...OWNED_BASE, family_keys: ["dinner"], google_stars_overall: 4.8, google_review_count: 3000 };
@@ -877,7 +877,7 @@ Deno.test("merge: a Google Popular and a Google Closest hit a Mesita row owns ar
   }
 });
 
-Deno.test("Mesita Popular keeps the 20 most popular by raw Popularity; ties by id", async () => {
+Deno.test("Mesita Popularity keeps the 20 most popular by raw Popularity; ties by id", async () => {
   const rows = Array.from({ length: 25 }, (_, i) =>
     mrow(`r${String(i).padStart(2, "0")}`, { google_stars_overall: 4.0, google_review_count: 10 + i })
   );
@@ -896,7 +896,7 @@ Deno.test("Mesita Popular keeps the 20 most popular by raw Popularity; ties by i
   for (const id of ["r00", "r06"]) assertEquals(got.has(id), false, id);
 });
 
-Deno.test("Mesita Popular counts a Selected row's Popularity × the Selected boost (MESITA-2717)", async () => {
+Deno.test("Mesita Popularity counts a Selected row's Popularity × the Selected boost (MESITA-2717)", async () => {
   // 21 unmarked rows busier than the one Selected row: by raw Popularity it
   // is 22nd and never reaches the pool; × 3 it takes a slot, and leads.
   const rows = Array.from({ length: 21 }, (_, i) =>
@@ -914,7 +914,7 @@ Deno.test("Mesita Popular counts a Selected row's Popularity × the Selected boo
   assertEquals((await run(1)).includes("picked"), false);
 });
 
-Deno.test("Mesita Closest keeps the 20 nearest; ties by id", async () => {
+Deno.test("Mesita Proximity keeps the 20 nearest; ties by id", async () => {
   const rows = Array.from({ length: 22 }, (_, i) =>
     mrow(`n${String(i).padStart(2, "0")}`, { lat: CENTER.lat + (i + 1) / 1000, google_stars_overall: 5 - i / 10 })
   );
@@ -926,7 +926,7 @@ Deno.test("Mesita Closest keeps the 20 nearest; ties by id", async () => {
   for (const id of ["n18", "n21"]) assertEquals(got.has(id), false, id);
 });
 
-Deno.test("no location: Mesita Popular only, Popularity, no Google call", async () => {
+Deno.test("no location: Mesita Popularity only, Popularity, no Google call", async () => {
   const g = stubGoogle([{ id: "a", lat: 25.6701 }]);
   try {
     const out = await selectAreaPool(deps({ center: null, mesitaRows: [mrow("far", { lat: 40 })] }).d);
@@ -936,7 +936,7 @@ Deno.test("no location: Mesita Popular only, Popularity, no Google call", async 
     assertEquals(out.places[0].area.signals.proximity, null);
     assertEquals(out.places[0].area.foundBy, ["mesitaPopular"]);
     assertEquals(out.summary.sources, ["mesitaPopular"]);
-    // Mesita Popular off: nothing can run without a point.
+    // Mesita Popularity off: nothing can run without a point.
     const off = await selectAreaPool(deps({ center: null, sources: { mesitaPopular: 0 }, mesitaRows: [mrow("far")] }).d);
     assertEquals(off.places, []);
     assertEquals(off.summary.sources, "none");
@@ -1113,8 +1113,8 @@ Deno.test("screen radius: the circle gates Google and sets Proximity's half dist
 });
 
 Deno.test("the pool keeps the top map.placesShown of the sorted merge (MESITA-2713)", async () => {
-  // 30 Mesita rows, one per review count, all at the centre: Mesita Popular
-  // and Mesita Closest bring 20 each, merged to 30 distinct places at most.
+  // 30 Mesita rows, one per review count, all at the centre: Mesita Popularity
+  // and Mesita Proximity bring 20 each, merged to 30 distinct places at most.
   const rows = Array.from({ length: 30 }, (_, i) => mrow(`m${String(i).padStart(2, "0")}`, { google_review_count: 10 + i }));
   const run = async (placesShown?: number) => {
     const { d } = deps({ sources: { googlePopular: 0 }, mesitaRows: rows });
@@ -1129,14 +1129,15 @@ Deno.test("the pool keeps the top map.placesShown of the sorted merge (MESITA-27
   assertEquals((await run(80)).length, 30);
 });
 
-Deno.test("Map and Catalog cut and penalize with their own numbers (MESITA-2727)", async () => {
+Deno.test("Map and Catalog cut with their own Places shown, rank with ONE penalty (MESITA-2727, MESITA-2776)", async () => {
   const rows = Array.from({ length: 30 }, (_, i) => mrow(`m${String(i).padStart(2, "0")}`, { google_review_count: 10 + i }));
   const run = async (surface: "map" | "catalog") => {
     const { d } = deps({ sources: { googlePopular: 0 }, mesitaRows: rows, surface });
     d.cfg = {
       ...d.cfg,
       map: { ...d.cfg.map, placesShown: 5, catalogPlacesShown: 12 },
-      params: { ...d.cfg.params, proximity: { radiusDivisor: 4, catalogRadiusDivisor: 0.5 } },
+      // A stale stored Catalog penalty is ignored: one number ranks both.
+      params: { ...d.cfg.params, proximity: { radiusDivisor: 4, catalogRadiusDivisor: 0.5 } as { radiusDivisor: number } },
     };
     return await selectAreaPool(d);
   };
@@ -1145,5 +1146,5 @@ Deno.test("Map and Catalog cut and penalize with their own numbers (MESITA-2727)
   assertEquals(map.places.length, 5);
   assertEquals(home.places.length, 12);
   assertEquals([map.summary.surface, map.summary.distancePenalty, map.summary.placesShown], ["map", 4, 5]);
-  assertEquals([home.summary.surface, home.summary.distancePenalty, home.summary.placesShown], ["catalog", 0.5, 12]);
+  assertEquals([home.summary.surface, home.summary.distancePenalty, home.summary.placesShown], ["catalog", 4, 12]);
 });

@@ -55,7 +55,7 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
         },
       }).params,
     ).toEqual({
-      proximity: { radiusDivisor: 2, catalogRadiusDivisor: 2 },
+      proximity: { radiusDivisor: 2 },
       popularity: { halfReviews: 250 },
     });
   });
@@ -69,10 +69,10 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
           selected: { otherFactor: 0 },
         },
       }).params,
-    ).toEqual({ proximity: { radiusDivisor: 2.3, catalogRadiusDivisor: 2.3 }, popularity: { halfReviews: 1 } });
-    expect(coerceConfig({ params: { proximity: { radiusDivisor: 0 } } }).params.proximity).toEqual({ radiusDivisor: 0.1, catalogRadiusDivisor: 0.1 });
-    expect(coerceConfig({ params: { proximity: { radiusDivisor: 0.3 } } }).params.proximity).toEqual({ radiusDivisor: 0.3, catalogRadiusDivisor: 0.3 });
-    expect(coerceConfig({ params: { proximity: { radiusDivisor: 999 } } }).params.proximity).toEqual({ radiusDivisor: 10, catalogRadiusDivisor: 10 });
+    ).toEqual({ proximity: { radiusDivisor: 2.3 }, popularity: { halfReviews: 1 } });
+    expect(coerceConfig({ params: { proximity: { radiusDivisor: 0 } } }).params.proximity).toEqual({ radiusDivisor: 0.1 });
+    expect(coerceConfig({ params: { proximity: { radiusDivisor: 0.3 } } }).params.proximity).toEqual({ radiusDivisor: 0.3 });
+    expect(coerceConfig({ params: { proximity: { radiusDivisor: 999 } } }).params.proximity).toEqual({ radiusDivisor: 10 });
   });
 
   it("the four Area sources are 0 or 20, and only the Google two bill (MESITA-2703)", () => {

@@ -96,18 +96,20 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
     // (MESITA-2603). Deep is Soon.
     const html = page();
     // + Places shown (MESITA-2713) + Minimum Popularity (MESITA-2714)
-    // + Selected boost (MESITA-2717) + the Catalog's own Places shown and
-    // Distance penalty (MESITA-2727) + min screen move (MESITA-2732).
-    // Typed numbers, no spinner (MESITA-2733): 8 decimal knobs, 8 integer knobs.
-    expect(html.match(/type="text"/g)?.length).toBe(16);
-    expect(html.match(/inputMode="decimal"/g)?.length).toBe(8);
+    // + Selected boost (MESITA-2717) + the Catalog's own Places shown
+    // (MESITA-2727) + min screen move (MESITA-2732); one Distance penalty
+    // (MESITA-2776). Typed numbers, no spinner (MESITA-2733): 7 decimal
+    // knobs, 8 integer knobs.
+    expect(html.match(/type="text"/g)?.length).toBe(15);
+    expect(html.match(/inputMode="decimal"/g)?.length).toBe(7);
     expect(html.match(/inputMode="numeric"/g)?.length).toBe(8);
     expect(html).not.toContain('type="number"');
     expect(html).not.toContain("step=");
     expect(html).toContain("0.1–10");
     expect(html).toContain("Min map move to reload");
     expect(html).toContain("0–50");
-    expect(html).toContain("Catalog distance penalty");
+    expect(html).toContain(">Distance penalty<");
+    expect(html).not.toContain("Catalog distance penalty");
     expect(html).toContain("Catalog places shown");
     expect(html).not.toContain("Proximity weight (a)");
     expect(html).toContain("Selected boost");

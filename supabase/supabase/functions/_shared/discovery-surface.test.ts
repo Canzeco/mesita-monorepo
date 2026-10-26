@@ -155,7 +155,7 @@ Deno.test("Area: Family and Radius gate, Proximity × Popularity × the Selected
   assert(area.scoring.startsWith("The Map and Home: Proximity × Popularity × s"));
   assert(area.scoring.includes("Selected boost"));
   assertEquals(JSON.stringify(area).includes("rectangle"), false);
-  for (const src of ["Google Popular", "Google Closest", "Mesita Popular", "Mesita Closest"]) {
+  for (const src of ["Google Popularity", "Google Proximity", "Mesita Popularity", "Mesita Proximity"]) {
     assert(area.rules.some((r) => r.includes(src)), src);
   }
   assert(area.rules.includes("Chat reads Mesita Selected places only, inside the current-location radius."));
@@ -173,7 +173,7 @@ Deno.test("Area: no Territory anywhere in the model; the rules' numbers are the 
   assertEquals(DISCOVERY_GATES.map((g) => g.key), ["family", "radius"]);
   const rules = DISCOVERY_PIPELINES.find((p) => p.key === "area")!.rules.join(" ");
   const facts = [
-    `Google Popular (the prominent ${GOOGLE_NEARBY_MAX} in the circle)`,
+    `Google Popularity (the prominent ${GOOGLE_NEARBY_MAX} in the circle)`,
     "never cached or stored",
     `${GOOGLE_NEARBY_IP_MAX} Nearby calls a minute, all guests together ${GOOGLE_NEARBY_GLOBAL_MAX}`,
     `clamped to ${SCREEN_RADIUS_KM_MIN}–${SCREEN_RADIUS_KM_MAX} km`,

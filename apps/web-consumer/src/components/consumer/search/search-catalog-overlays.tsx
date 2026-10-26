@@ -150,10 +150,10 @@ export function SearchDebugCoords({
 
 /** The four Area sources as the tag names them (MESITA-2703 keys). */
 const SOURCE_LABELS: ReadonlyArray<[string, string]> = [
-  ["googlePopular", "Google Popular"],
-  ["googleClosest", "Google Closest"],
-  ["mesitaPopular", "Mesita Popular"],
-  ["mesitaClosest", "Mesita Closest"],
+  ["googlePopular", "Google Popularity"],
+  ["googleClosest", "Google Proximity"],
+  ["mesitaPopular", "Mesita Popularity"],
+  ["mesitaClosest", "Mesita Proximity"],
 ];
 
 /**

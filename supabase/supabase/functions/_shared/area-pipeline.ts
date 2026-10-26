@@ -7,10 +7,10 @@
 // radius), pull from four sources, merge duplicates, sort").
 //
 //   (point, radius)
-//     ├─ Google Popular   Nearby, rank POPULARITY, the whole circle  ─┐
-//     ├─ Google Closest   Nearby, rank DISTANCE, the whole circle    ─┤ → owned lookup by Place ID
-//     ├─ Mesita Popular   top 20 by Popularity × s in the circle     ─┤
-//     └─ Mesita Closest   20 nearest in the circle                   ─┘
+//     ├─ Google Popularity   Nearby, rank POPULARITY, the whole circle  ─┐
+//     ├─ Google Proximity   Nearby, rank DISTANCE, the whole circle    ─┤ → owned lookup by Place ID
+//     ├─ Mesita Popularity   top 20 by Popularity × s in the circle     ─┤
+//     └─ Mesita Proximity   20 nearest in the circle                   ─┘
 //   merge (one card per place; an owned hit is the Mesita row; `foundBy`
 //   keeps every source that found it) → gates → Proximity × Popularity
 //   × s (s = the Selected boost for a Mesita Selected place, else 1)
@@ -19,8 +19,9 @@
 // Radius, plus the operational ones the sources apply (active, ready) and
 // the Popularity floor; no reviews floor (MESITA-2721). Score:
 // area-score.ts; Proximity is ½ at the radius ÷ the operator's
-// Distance penalty (MESITA-2720): `params.proximity.radiusDivisor` on the
-// Map, `catalogRadiusDivisor` on Home and Chat (MESITA-2727).
+// Distance penalty (MESITA-2720): `params.proximity.radiusDivisor`, one
+// number for the Map, Home and Chat (MESITA-2776 retired MESITA-2727's
+// separate Catalog penalty).
 //
 // Fail closed on money: no key, no point, no types, a quota refusal or a
 // Google error buy nothing; an owned-lookup error drops the Google side (no
@@ -92,27 +93,24 @@ export function areaGoogleTypes(families: readonly string[]): readonly string[] 
   return families.length > 0 ? nearbyTypesForSupers(families) : FEED_GOOGLE_TYPES;
 }
 
-/** Which surface asks: the Map (Search tab) or Home's catalog. The only two
- *  numbers that differ are the Distance penalty and Places shown (Pato,
- *  MESITA-2727); Chat ranks with the catalog's penalty. */
+/** Which surface asks: the Map (Search tab) or Home's catalog. The one
+ *  number that differs is Places shown (MESITA-2727); the Distance penalty
+ *  is shared since MESITA-2776. */
 export type AreaSurface = "map" | "catalog";
 
-/** Proximity's radius divisor (the surface's Distance penalty), the
+/** Proximity's radius divisor (the Distance penalty), the
  *  Popularity floor and the Selected boost, from the blob: the one score every Area caller ranks by,
  *  Proximity × Popularity × the boost (no exponents since MESITA-2722). The radius is the request's: it
  *  gates, and ÷ the divisor it is the half distance (MESITA-2720).
  *  Popularity takes no parameter (MESITA-2710: ln(1 + reviews × stars)). */
 export function areaSignalParams(
   params: SignalParams,
-  surface: AreaSurface,
   map: {
     popularityFloor?: number;
     selectedFactor?: number;
   },
 ): Pick<AreaContext, "radiusDivisor" | "popularityFloor" | "selectedFactor"> {
-  const k = surface === "catalog"
-    ? params.proximity?.catalogRadiusDivisor ?? params.proximity?.radiusDivisor
-    : params.proximity?.radiusDivisor;
+  const k = params.proximity?.radiusDivisor;
   return {
     radiusDivisor: typeof k === "number" && Number.isFinite(k) && k > 0 ? k : PROXIMITY_RADIUS_DIVISOR_DEFAULT,
     // The Popularity floor (MESITA-2714), a gate on every Area caller.
@@ -356,8 +354,8 @@ export type AreaPoolDeps<T extends OwnedRow> = {
   /** The caller's Mesita read (gates pushed down, `selectedPoolQuery`). */
   mesitaRows: readonly T[];
   cfg: Pick<DiscoveryConfig, "general" | "map" | "params">;
-  /** Which surface asks: picks the Distance penalty and Places shown
-   *  (MESITA-2727). Required, so a new caller has to choose. */
+  /** Which surface asks: picks Places shown (MESITA-2727). Required, so a
+   *  new caller has to choose. */
   surface: AreaSurface;
   /** The per-IP ledger, once per billed call. False = that call skipped. */
   consumeQuota: () => Promise<boolean>;
@@ -384,7 +382,7 @@ export type AreaPoolSummary = {
   quota: "ok" | "partial" | "refused" | "none";
   googleHits: number;
   /** The switches that ran ("none" when no source could run: every switch
-   *  off, or no point and Mesita Popular off). */
+   *  off, or no point and Mesita Popularity off). */
   sources: AreaSourceKey[] | "none";
   /** Places each source returned after its own gates, before the merge. */
   sourceCounts: Record<AreaSourceKey, number>;
@@ -503,13 +501,13 @@ const AREA_PLACES_SHOWN_FALLBACK = 20;
 const MESITA_SOURCE_MAX = 20;
 
 /**
- * Mesita Popular and Mesita Closest (MESITA-2703), picked in memory from the
+ * Mesita Popularity and Mesita Proximity (MESITA-2703), picked in memory from the
  * caller's radius-boxed read (capped at `NEARBY_SCAN_LIMIT`, ordered by id;
  * the EF logs `mesitaCapped`). Popular ranks by the score's own Popularity
  * part, Popularity × the Selected boost, so a Selected row competes for a
  * slot with the boost it scores with and the pick agrees with the ranking
- * (MESITA-2717); equal parts fall back to raw Popularity. Closest ranks by distance; both then by id.
- * Closest needs a point.
+ * (MESITA-2717); equal parts fall back to raw Popularity. Proximity ranks by
+ * distance; both then by id. Proximity needs a point.
  */
 function mesitaItems<T extends OwnedRow>(
   deps: AreaPoolDeps<T>,
@@ -584,7 +582,7 @@ export async function selectAreaPool<T extends OwnedRow>(
   const ctx: AreaContext = {
     location: deps.location,
     families: deps.families,
-    ...areaSignalParams(deps.cfg.params, deps.surface, deps.cfg.map),
+    ...areaSignalParams(deps.cfg.params, deps.cfg.map),
   };
   // The operator's cut (MESITA-2713), per surface (MESITA-2727).
   const shown = (deps.surface === "catalog" ? deps.cfg.map.catalogPlacesShown : undefined) ??
@@ -718,8 +716,6 @@ export type SelectedOpts = {
   /** The Family gate's requested families; empty or absent = every family. */
   families?: readonly string[];
   params: SignalParams;
-  /** Whose Distance penalty ranks (MESITA-2727); Chat passes "catalog". */
-  surface: AreaSurface;
   /** The Popularity floor (MESITA-2714); absent = off. */
   popularityFloor?: number;
   /** The Selected boost (MESITA-2717). Every row here is Selected, so it
@@ -742,8 +738,8 @@ export function selectMesitaSelected<T extends Record<string, unknown>>(
     {
       location,
       families: opts.families ?? [],
-      // The surface's Distance penalty (MESITA-2720/2727): half credit at the current-location radius ÷ k.
-      ...areaSignalParams(opts.params, opts.surface, opts),
+      // The Distance penalty (MESITA-2720/2776): half credit at the current-location radius ÷ k.
+      ...areaSignalParams(opts.params, opts),
     },
   );
   const out = ranked.map(({ item }) => ({
@@ -787,8 +783,6 @@ export async function areaSelectedPlaces(
     radiusKm: cfg.map.radiusKm,
     families: opts.families,
     params: cfg.params,
-    // Chat asks from the guest's location like Home: Home's penalty (MESITA-2727).
-    surface: "catalog",
     popularityFloor: cfg.map.popularityFloor,
     selectedFactor: cfg.map.selectedFactor,
     limit: opts.limit,

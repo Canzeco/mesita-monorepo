@@ -37,8 +37,8 @@ export function radiusBoundingBox(
 /** Search map default: big enough that a city camera never yields 4 pins. */
 export const NEARBY_DEFAULT_RADIUS_KM = 500;
 export const NEARBY_MAX_RADIUS_KM = 2000;
-/** The Mesita pool's scan cap before the Area pipeline picks Mesita Popular
- *  and Mesita Closest from it (MESITA-2703); a capped read is logged. */
+/** The Mesita pool's scan cap before the Area pipeline picks Mesita Popularity
+ *  and Mesita Proximity from it (MESITA-2703); a capped read is logged. */
 export const NEARBY_SCAN_LIMIT = 1000;
 /** Google Nearby Search (New) caps the circle at 50 km. */
 export const NEARBY_RADIUS_KM = 50;

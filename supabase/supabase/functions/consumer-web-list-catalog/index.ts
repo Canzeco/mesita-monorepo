@@ -3,8 +3,8 @@
 // The Feed: the Catalog VIEW of the Area pipeline (MESITA-2302, one pool
 // since MESITA-2379, four sources since MESITA-2703,
 // `_shared/area-pipeline.ts`). One round trip: `selectAreaPool` pulls the
-// four sources the operator switched on (Google Popular, Google Closest —
-// one billed Nearby call each — Mesita Popular, Mesita Closest) around the
+// four sources the operator switched on (Google Popularity, Google Proximity —
+// one billed Nearby call each — Mesita Popularity, Mesita Proximity) around the
 // point inside the radius, merges duplicates and ranks the pool. The client
 // pages it, so a later page never re-pays Google.
 //
@@ -25,7 +25,7 @@
 // Request: POST { unified: true, google: true, lat, lng, radiusKm?, familyKeys? }
 //   radiusKm  the saved pin's radius, clamped to 1..50; missing or not a
 //             number = `map.radiusKm` (log `radius: "operator"`).
-//   lat/lng   a POINT; none = no location (Mesita Popular only,
+//   lat/lng   a POINT; none = no location (Mesita Popularity only,
 //             Popularity alone). Home never asks for an area: saved
 //             areas (Territory) were retired 2026-10-20 (MESITA-2500), so a
 //             `bounds` an old build still sends is ignored and logged as

@@ -59,7 +59,7 @@ function editedEverywhere(live: DiscoveryConfig): DiscoveryConfig {
   return {
     ...live,
     params: {
-      proximity: { radiusDivisor: 3, catalogRadiusDivisor: 3 },
+      proximity: { radiusDivisor: 3 },
       popularity: { halfReviews: 250 },
     },
     map: {
@@ -111,7 +111,7 @@ describe("the Area box", () => {
     const live = liveConfig();
     const sent = armed(live);
     await updateDiscoveryConfig(editedEverywhere(live), ["areaSignals"]);
-    expect(sent.config?.params).toEqual({ proximity: { radiusDivisor: 3, catalogRadiusDivisor: 3 }, popularity: { halfReviews: 250 } });
+    expect(sent.config?.params).toEqual({ proximity: { radiusDivisor: 3 }, popularity: { halfReviews: 250 } });
   });
 
   it("writes map and the two params; leaves catalog seed, Name, Deep and the prompt", async () => {

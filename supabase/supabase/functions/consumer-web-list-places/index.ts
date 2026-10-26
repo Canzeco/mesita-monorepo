@@ -32,9 +32,9 @@
 // than AREA_BOUNDS_MAX_KM, falls back to the centre inside `map.radiusKm`,
 // scored the same way. The answer carries R and each place's
 // breakdown for the debug readout (MESITA-2504). It runs the same four
-// sources as the Feed (MESITA-2703) — Google Popular, Google Closest (one
+// sources as the Feed (MESITA-2703) — Google Popularity, Google Proximity (one
 // billed Nearby call each, so a reload with both on bills 2; the reload
-// throttle bounds the spend), Mesita Popular, Mesita Closest — merged with
+// throttle bounds the spend), Mesita Popularity, Mesita Proximity — merged with
 // duplicates removed and ranked, with the guest's family pills pushed down
 // to Nearby types and the operator's Popularity floor on every place.
 // The guest never picks a source: a stale `placesScope` is ignored.
