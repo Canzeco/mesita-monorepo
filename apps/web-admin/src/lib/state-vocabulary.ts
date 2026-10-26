@@ -108,6 +108,15 @@ export const PROFILE_STATS_FACTS = [
 
 export type ProfileStatKey = (typeof PROFILE_STATS_FACTS)[number]["key"];
 
+/** Boost tier chip (MESITA-2809): Boosted is not a yes/no but a tier —
+ *  `places.boost_tier` 0 · 1 · 2 · 3 reads Off · 2x · 5x · 10x. */
+export const BOOST_TIER_LABELS = ["Off", "2x", "5x", "10x"] as const;
+
+export function boostTierChip(tier: number | null | undefined): string {
+  if (tier == null) return "?";
+  return BOOST_TIER_LABELS[tier] ?? "?";
+}
+
 /** Guest request count helpers stay for legacy payloads; not shown in admin UI. */
 
 export type GeneralStateKey = (typeof GENERAL_STATE_FACTS)[number]["key"];

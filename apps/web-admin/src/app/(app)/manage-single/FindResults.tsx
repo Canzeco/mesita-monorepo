@@ -3,7 +3,8 @@
 // Single Place › Find › the one results table (MESITA-2124, MESITA-2181,
 // MESITA-2187, MESITA-2188). A row per place. The first column says whether
 // Mesita holds it or it is Google only — the first fact to read. Then the
-// states, then, on a word, Name Search and Google. 50 rows a page
+// states (Boosted is a tier: Off · 2x · 5x · 10x), then Views · Likes,
+// then, on a word, Name Search and Google. 50 rows a page
 // (MESITA-2335); no group header over the states.
 // Reviews stay off this table (MESITA-2222). The action sits at the row end.
 // Drawn once both have settled, so no row ever moves under the cursor.
@@ -13,7 +14,7 @@
 // 9rem pin plus Place at 60vw would fill the phone. The two ranks fold
 // into one line beneath the address.
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, ExternalLink, Loader2, Plus } from "lucide-react";
 import { StatePill } from "@/app/(app)/manage-multiple/PlaceFacts";
@@ -22,6 +23,7 @@ import { StateIcon, type BatchRowState } from "@/app/(app)/manage-multiple/State
 import { placeTabHref } from "@/lib/place-tabs";
 import {
   BAD_WHEN_TRUE,
+  boostTierChip,
   GENERAL_STATE_FACTS,
   STATE_FACT_FALSE_TONE,
 } from "@/lib/state-vocabulary";
@@ -129,7 +131,7 @@ export function FindResults({
   const failed = new Set(result.failed);
   const ranks = variant === "search";
   const colSpan =
-    3 + GENERAL_STATE_FACTS.length + (ranks ? WORD_RANK_COLUMNS.length : 0);
+    3 + GENERAL_STATE_FACTS.length + 1 + QUICK_STATS.length + (ranks ? WORD_RANK_COLUMNS.length : 0);
 
   if (rows.length === 0) {
     const allFailed = ranks && WORD_RANK_COLUMNS.every((s) => failed.has(s.key));
@@ -177,12 +179,27 @@ export function FindResults({
                   Place
                 </th>
                 {GENERAL_STATE_FACTS.map((f) => (
+                  <Fragment key={f.key}>
+                    <th scope="col" className="px-3 py-3 text-center align-bottom font-semibold whitespace-nowrap">
+                      {f.label}
+                    </th>
+                    {f.key === "selected" ? (
+                      <th scope="col" className="px-3 py-3 text-center align-bottom font-semibold whitespace-nowrap">
+                        Boosted
+                      </th>
+                    ) : null}
+                  </Fragment>
+                ))}
+                {QUICK_STATS.map((q, i) => (
                   <th
-                    key={f.key}
+                    key={q.key}
                     scope="col"
-                    className="px-3 py-3 text-center align-bottom font-semibold whitespace-nowrap"
+                    className={
+                      "px-3 py-3 text-center align-bottom font-semibold whitespace-nowrap " +
+                      (i === 0 ? GROUP_EDGE : "")
+                    }
                   >
-                    {f.label}
+                    {q.label}
                   </th>
                 ))}
                 {ranks
@@ -478,27 +495,84 @@ function ProfileCells({ row, enrichingNow }: { row: FindRow; enrichingNow: boole
   return (
     <>
       {GENERAL_STATE_FACTS.map((f) => (
-        <td key={f.key} className={CELL}>
-          {f.key === "enriching" && enrichingNow ? (
-            <StatePill
-              on={true}
-              falseTone={STATE_FACT_FALSE_TONE[f.key]}
-              badWhenTrue={BAD_WHEN_TRUE.has(f.key)}
-            />
-          ) : hit ? (
-            <StatePill
-              on={factOn(hit, f.key)}
-              falseTone={STATE_FACT_FALSE_TONE[f.key]}
-              badWhenTrue={BAD_WHEN_TRUE.has(f.key)}
-            />
+        <Fragment key={f.key}>
+          <td className={CELL}>
+            {f.key === "enriching" && enrichingNow ? (
+              <StatePill
+                on={true}
+                falseTone={STATE_FACT_FALSE_TONE[f.key]}
+                badWhenTrue={BAD_WHEN_TRUE.has(f.key)}
+              />
+            ) : hit ? (
+              <StatePill
+                on={factOn(hit, f.key)}
+                falseTone={STATE_FACT_FALSE_TONE[f.key]}
+                badWhenTrue={BAD_WHEN_TRUE.has(f.key)}
+              />
+            ) : row.held ? (
+              <StatePill on="unknown" />
+            ) : (
+              <Miss label={f.label} />
+            )}
+          </td>
+          {f.key === "selected" ? (
+            <td className={CELL}>
+              {hit ? (
+                <BoostPill tier={hit.boost_tier} />
+              ) : row.held ? (
+                <StatePill on="unknown" />
+              ) : (
+                <Miss label="Boosted" />
+              )}
+            </td>
+          ) : null}
+        </Fragment>
+      ))}
+      {QUICK_STATS.map((q, i) => (
+        <td key={q.key} className={`${CELL} tabular-nums ${i === 0 ? GROUP_EDGE : ""}`}>
+          {hit ? (
+            <StatCount value={hit[q.key]} label={q.label} />
           ) : row.held ? (
             <StatePill on="unknown" />
           ) : (
-            <Miss label={f.label} />
+            <Miss label={q.label} />
           )}
         </td>
       ))}
     </>
+  );
+}
+
+/** Views · Likes (MESITA-2809): unique members who viewed / liked (saved)
+ *  the place — the quick stats beside the states. Wire key `saved` is Likes. */
+const QUICK_STATS = [
+  { key: "viewed", label: "Views" },
+  { key: "saved", label: "Likes" },
+] as const;
+
+/** Boosted is a tier, not a yes/no (MESITA-2809): Off · 2x · 5x · 10x. Off
+ *  is the normal case, so it is muted rather than rose; a paid tier is green. */
+function BoostPill({ tier }: { tier: number | null | undefined }) {
+  const chip = boostTierChip(tier);
+  if (chip === "?") return <StatePill on="unknown" />;
+  return (
+    <span
+      className={
+        "inline-flex items-center justify-center rounded-full px-2 py-0.5 type-label font-semibold " +
+        (tier ? "bg-green-500/10 text-green-700" : "text-muted-foreground bg-muted")
+      }
+    >
+      {chip}
+    </span>
+  );
+}
+
+function StatCount({ value, label }: { value: number | null | undefined; label: string }) {
+  if (value == null) return <StatePill on="unknown" />;
+  return (
+    <span className="type-label font-semibold" aria-label={`${label}: ${value}`}>
+      {value}
+    </span>
   );
 }
 
