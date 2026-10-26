@@ -12,7 +12,7 @@ export const enrichSinglePlace = task(
   { name: "enrich-single-place", retry: NO_RETRY, timeoutSeconds: DAY },
   async function enrichSinglePlace(_ctx: TaskContext, job: EnrichJob): Promise<{ placeId: string }> {
     const placeId = job?.placeId ?? "";
-    console.log(runLog("start", `${placeId} overwrite=${job.overwrite === true ? "on" : "off"}`));
+    console.log(runLog("start", placeId));
     try {
       const built = await buildEnrichment(job);
       if (built.closed) {

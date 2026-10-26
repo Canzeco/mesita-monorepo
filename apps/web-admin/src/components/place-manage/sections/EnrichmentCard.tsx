@@ -9,15 +9,14 @@ import {
   type PlaceEnrichmentState,
 } from "../actions";
 import { SectionCard, Spinner } from "@/components/admin-ui/manage";
-import { OverwriteSwitch } from "../OverwriteSwitch";
-import { ENRICH_ACTIONS, enrichLabel, type EnrichDepth } from "@/lib/enrich-depth";
 import { usePlaceContext } from "../PlaceContext";
 import { formatAbsoluteUtc } from "@/lib/format";
 import { isEnriching } from "../place-header-state";
 
-// Enrichment — one full pipeline run. This is not a scheduler (Pato, 2026-08-25).
-//
-// The live run STATE stays in the chrome. This box only queues.
+// Enrichment — one Enrich, the whole pipeline, replacing what it finds
+// (MESITA-2799: no Overwrite switch, no Weak/Strong). This is not a scheduler
+// (Pato, 2026-08-25). The live run STATE stays in the chrome. This box only
+// queues.
 
 export function EnrichmentCard({ place }: { place: AdminPlace }) {
   const [enrichState, setEnrichState] = useState<PlaceEnrichmentState | null>(null);
@@ -27,8 +26,6 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
   const [runPending, startRun] = useTransition();
   const [runError, setRunError] = useState<string | null>(null);
   const [queued, setQueued] = useState(false);
-  const [overwrite, setOverwrite] = useState(false);
-  const [pendingDepth, setPendingDepth] = useState<EnrichDepth | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -57,42 +54,28 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
     ? "Enriched"
     : "Never enriched";
 
-  const runDepth = useCallback((depth: EnrichDepth) => {
-    const label = enrichLabel(depth);
-    if (alreadyEnriched) {
-      const again = window.confirm(
-        overwrite
-          ? `Run ${label} again and overwrite existing data?`
-          : `This place is already enriched. Run ${label} again?`,
-      );
-      if (!again) return;
-    }
+  const run = useCallback(() => {
+    if (alreadyEnriched && !window.confirm("This place is already enriched. Run Enrich again?")) return;
     setRunError(null);
     setQueued(false);
-    setPendingDepth(depth);
     startRun(async () => {
-      try {
-        const r = await enrichPlace(place.id, "fill", [], overwrite, depth);
-        if (!r.ok) {
-          setRunError(r.error);
-          return;
-        }
-        setQueued(true);
-        setOverwrite(false);
-        setEnrichState((prev) => ({
-          content_state: "generating",
-          stage: "first",
-          stage_state: "queued",
-          error: null,
-          last_enriched_at: prev?.last_enriched_at ?? null,
-          updated_at: new Date().toISOString(),
-          serp_summary: prev?.serp_summary ?? null,
-        }));
-      } finally {
-        setPendingDepth(null);
+      const r = await enrichPlace(place.id);
+      if (!r.ok) {
+        setRunError(r.error);
+        return;
       }
+      setQueued(true);
+      setEnrichState((prev) => ({
+        content_state: "generating",
+        stage: "first",
+        stage_state: "queued",
+        error: null,
+        last_enriched_at: prev?.last_enriched_at ?? null,
+        updated_at: new Date().toISOString(),
+        serp_summary: prev?.serp_summary ?? null,
+      }));
     });
-  }, [alreadyEnriched, overwrite, place.id]);
+  }, [alreadyEnriched, place.id]);
 
   return (
     <SectionCard
@@ -117,17 +100,9 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
                 ? formatAbsoluteUtc(enrichState.last_enriched_at)
                 : "never"}
               . Result: {enrichState?.error ? "Error" : status}. Enrich runs links,
-              reviews, photos, and presentation synthesis.
+              reviews, photos, and presentation synthesis, and replaces what it finds.
             </p>
           )}
-
-          <div className="mb-4">
-            <OverwriteSwitch
-              checked={overwrite}
-              disabled={runPending || running}
-              onChange={setOverwrite}
-            />
-          </div>
 
           <p className="mb-2 text-sm font-semibold">Run Enrichment</p>
           <div className="flex flex-wrap gap-2">
@@ -141,24 +116,17 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
                 Enriching…
               </button>
             ) : (
-              ENRICH_ACTIONS.map((action) => {
-                const pending = runPending && pendingDepth === action.depth;
-                return (
-                  <button
-                    key={action.depth}
-                    type="button"
-                    title={action.title}
-                    disabled={runPending || running}
-                    onClick={() => {
-                      if (guardIntent({ kind: "reenrich", run: () => runDepth(action.depth) })) return;
-                      runDepth(action.depth);
-                    }}
-                    className="bg-foreground text-paper inline-flex h-10 items-center rounded-full px-5 text-sm font-semibold transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {pending ? "Starting…" : action.label}
-                  </button>
-                );
-              })
+              <button
+                type="button"
+                disabled={runPending || running}
+                onClick={() => {
+                  if (guardIntent({ kind: "reenrich", run })) return;
+                  run();
+                }}
+                className="bg-foreground text-paper inline-flex h-10 items-center rounded-full px-5 text-sm font-semibold transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {runPending ? "Starting…" : "Enrich"}
+              </button>
             )}
           </div>
 

@@ -3,7 +3,7 @@
 // which lands only through _shared/mesita-name-door.ts (MESITA-2790: every
 // Mesita field is inferred on every Enrich). The classifiers live in _shared.
 // This module only decides which of those results may land, then the write
-// commits them with the rest. The Scout's read, when Strong bought one, is the
+// commits them with the rest. The Scout's read, when the run bought one, is the
 // SERP slot; Google's own summary is the fallback.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
@@ -40,28 +40,19 @@ export function reviewQuotes(value: unknown): string {
   return lines.join("\n");
 }
 
-function filled(value: unknown): boolean {
-  if (typeof value === "string") {
-    const text = value.trim();
-    return text.length > 0 && text !== "undefined";
-  }
-  if (Array.isArray(value)) return value.length > 0;
-  return false;
-}
-
 function slugs(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
 }
 
 /**
- * What this run's inferences add to the patch. Presentation keeps the
- * Overwrite rule (an operator's text stays unless Overwrite is on). Mesita
+ * What this run's inferences add to the patch. Every Enrich replaces the
+ * Presentation with the one it wrote (MESITA-2799: one Enrich, no Overwrite
+ * switch); an empty synthesis leaves the saved text alone. Mesita
  * categories and tags are read-only and re-inferred every run: written when
  * the call succeeded, left as stored when it failed (null).
  */
 export function mergeSynthesizedProfile(opts: {
-  overwrite: boolean;
   patch: Record<string, unknown>;
   presentation: string | null;
   categories: string[] | null;
@@ -69,7 +60,7 @@ export function mergeSynthesizedProfile(opts: {
 }): Record<string, unknown> {
   const next = { ...opts.patch };
   const presentation = opts.presentation ? capPresentation(opts.presentation) : "";
-  if (presentation && (opts.overwrite || !filled(opts.patch.description))) {
+  if (presentation) {
     next.description = presentation;
   }
   if (opts.categories && opts.categories.length > 0) {
@@ -102,12 +93,6 @@ export function branchAnchor(patch: Record<string, unknown>): { zone: string | n
     zone: textField(patch.zone) || findAddressComponent(list, ["neighborhood", "sublocality_level_1", "sublocality"]),
     city: textField(patch.city) || findAddressComponent(list, ["locality", "administrative_area_level_2"]),
   };
-}
-
-function overwriteOn(patch: Record<string, unknown>): boolean {
-  const sync = patch.source_sync;
-  if (!sync || typeof sync !== "object" || Array.isArray(sync)) return false;
-  return (sync as { overwrite?: unknown }).overwrite === true;
 }
 
 export type FilledProfile = {
@@ -210,7 +195,6 @@ async function fillAtlasProfileInner(
 
   return {
     patch: mergeSynthesizedProfile({
-      overwrite: overwriteOn(patch),
       patch,
       presentation,
       categories: mesitaCategories,
