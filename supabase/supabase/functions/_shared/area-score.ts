@@ -77,6 +77,9 @@ export type AreaCandidate = {
    *  no Google hit). Carried into the diagnostics, never re-judged here. */
   ready?: 1 | null;
   reviews?: 1 | null;
+  /** Spotlight (MESITA-1998): the paid tier, `places.spotlight_tier`
+   *  (0 · 1 · 2); absent = 0. */
+  spotlightTier?: number;
 };
 
 /**
@@ -128,14 +131,24 @@ function factor(x: number): number {
 
 /** The factor a candidate's score is multiplied by (MESITA-2717): the
  *  operator's Selected boost for a Mesita Selected place, 1 for every other
- *  place. A missing, non-finite or non-positive factor reads 1. */
+ *  place. A missing, non-finite or non-positive factor reads 1.
+ *
+ *  Spotlight (MESITA-1998, Pato: the paid tier "cambia qué tanto aparece"):
+ *  a Spotlight place takes the same boost, a Spotlight Plus place the boost
+ *  squared. A place that is both Selected and Spotlighted takes the larger,
+ *  never the product: paying never stacks on the operator's mark.
+ *  decision: Spotlight reuses `map.selectedFactor` rather than a new knob,
+ *  so the operator keeps one dial for "how much a boost is worth". */
 export function selectedFactor(
-  c: Pick<AreaCandidate, "source">,
+  c: Pick<AreaCandidate, "source" | "spotlightTier">,
   ctx: Pick<AreaContext, "selectedFactor">,
 ): number {
-  const s = ctx.selectedFactor;
-  if (c.source !== "selected") return 1;
-  return typeof s === "number" && Number.isFinite(s) && s > 0 ? s : 1;
+  const raw = ctx.selectedFactor;
+  const s = typeof raw === "number" && Number.isFinite(raw) && raw > 0 ? raw : 1;
+  const selected = c.source === "selected" ? s : 1;
+  const tier = c.source === "google" ? 0 : c.spotlightTier ?? 0;
+  const spotlight = tier >= 2 ? s * s : tier >= 1 ? s : 1;
+  return Math.max(selected, spotlight);
 }
 
 /** Popularity, or null when the place has no rating or no review count. */

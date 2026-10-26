@@ -165,6 +165,7 @@ export function mesitaCandidate(row: Record<string, unknown>): AreaCandidate {
     source: mesitaSource(row),
     ready: 1,
     reviews: null,
+    spotlightTier: numOrNull(row.spotlight_tier) ?? 0,
   };
 }
 
@@ -757,7 +758,7 @@ export function selectMesitaSelected<T extends Record<string, unknown>>(
 
 /** What a non-view caller needs of a Selected place, About included. */
 const AREA_SELECTED_COLUMNS =
-  "id, slug, name, address, lat, lng, family_keys, google_stars_overall, google_review_count, description, enriched_at, content_state, selected";
+  "id, slug, name, address, lat, lng, family_keys, google_stars_overall, google_review_count, description, enriched_at, content_state, selected, spotlight_tier";
 /** The Selected pool cap for a non-view caller: a few answers, not a map. */
 const AREA_SELECTED_POOL = 300;
 

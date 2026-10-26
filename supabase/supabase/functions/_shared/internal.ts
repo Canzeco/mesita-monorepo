@@ -23,6 +23,7 @@
 //   enricher-cron-enrich-place-third
 //   enricher-edgefunc-store-place-images
 //   supabase-cron-reservation-retries
+//   supabase-cron-sync-spotlights
 //   supabase-edgefunc-discover-places
 //   supabase-edgefunc-get-memo-config
 //   supabase-edgefunc-reservation-call
