@@ -2,7 +2,7 @@
 // Discovery, MESITA-2327).
 //
 // Keys: params · general · catalog · map · name · deep · chat.
-// Admin: one page, four pipeline boxes (Name by Admin · Name · Area · Deep);
+// Admin: one page, four pipeline boxes (Admin Name · Consumer Name · Consumer Area · Consumer Deep);
 // each box saves only its own slices.
 //
 //   params     the Area pipeline's two half points: Proximity's distance for

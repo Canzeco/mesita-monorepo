@@ -5,7 +5,8 @@ import { DEFAULT_CONFIG, type DiscoveryConfig } from "./catalog";
 import { AreaBox, DeepBox, NameAdminBox, NameBox } from "./PipelineBoxes";
 
 // Discovery: ONE page, no subpages (MESITA-2327). Four boxes, one per
-// pipeline as it is run: Name by Admin · Name · Area · Deep.
+// pipeline as it is run: Admin Name · Consumer Name · Consumer Area ·
+// Consumer Deep (MESITA-2779).
 export default async function DiscoveryPage() {
   const loaded = await getDiscoveryConfig();
   const seed: ConfigSeed<DiscoveryConfig> = {
@@ -17,7 +18,7 @@ export default async function DiscoveryPage() {
     <ConfigPageLayout
       eyebrow="Product · Discovery"
       title="Discovery"
-      description="Five sources, three pipelines, five signals, two gates. Every Discovery control is on this page; family membership lives on Atlas."
+      description="Five sources, four pipelines, five signals, two gates. Every Discovery control is on this page; family membership lives on Atlas."
     >
       <div className="flex flex-col gap-6">
         <NameAdminBox {...seed} />
