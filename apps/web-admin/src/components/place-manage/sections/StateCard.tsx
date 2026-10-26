@@ -59,7 +59,7 @@ import { isEnrichedPlace } from "@/lib/place-enriched";
 import { ConfirmDialog, SectionCard } from "@/components/admin-ui/manage";
 import { usePlaceContext } from "../PlaceContext";
 import { ErrorNote } from "@/components/ErrorNote";
-import { stateBoolChip } from "@/lib/state-vocabulary";
+import { boostTierChip, stateBoolChip } from "@/lib/state-vocabulary";
 // States box (Pato, 2026-08-25): bools. Enriching and Enriched are the two
 // enrichment states. Chips never repeat the row name.
 //
@@ -246,7 +246,7 @@ export function StateCard({ place }: { place: AdminPlace }) {
         <StateRow
           name="Boosted"
           on={boosted === true}
-          chip={stateBoolChip(boosted)}
+          chip={boostTierChip(boostTier)}
           detail={boostedDetail}
         />
         <StateRow

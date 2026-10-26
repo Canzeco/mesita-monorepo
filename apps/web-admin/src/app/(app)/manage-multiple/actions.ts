@@ -92,6 +92,12 @@ export type PlaceHit = {
    *  ready and Listed; a Created place can carry it. Absent on a payload
    *  that predates it — the table then says "unknown", never a false no. */
   selected?: boolean;
+  /** Boost (MESITA-2809): the paid tier, 0 · 1 · 2 · 3 = Off · 2x · 5x · 10x.
+   *  Null when the payload does not carry it. */
+  boost_tier?: number | null;
+  /** Unique members who viewed / liked (saved) it. Null = not read. */
+  viewed?: number | null;
+  saved?: number | null;
   /** Operating (MESITA-1239): Google's businessStatus, verbatim. NULL = Google
    *  is silent, which is a third state and not OPERATIONAL. A FLAG, never a
    *  visibility gate — Listed above is the gate. */
@@ -144,6 +150,9 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     // The operator's mark rides through only as the boolean the EF sent
     // (MESITA-2707): a missing one stays missing, so factOn says "unknown".
     ...(typeof raw.selected === "boolean" ? { selected: raw.selected } : {}),
+    boost_tier: typeof raw.boost_tier === "number" ? raw.boost_tier : null,
+    viewed: typeof raw.viewed === "number" ? raw.viewed : null,
+    saved: typeof raw.saved === "number" ? raw.saved : null,
     google_place_id: raw.google_place_id ?? null,
     seeded: raw.seeded ?? false,
     listed: raw.listed ?? false,

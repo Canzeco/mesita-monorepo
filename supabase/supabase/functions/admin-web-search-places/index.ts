@@ -35,6 +35,7 @@ import {
   reviewFoundFromRow,
 } from "../_shared/review-found.ts";
 import { CRENUP_LABELS_IN_ORDER, CRENUP_TOTAL } from "../_shared/crenup-ladder.ts";
+import { fetchPlaceProfileStatsMany } from "../_shared/place-activity-stats.ts";
 import {
   operatorFunctionStates,
   type EnrichmentMap,
@@ -99,7 +100,7 @@ Deno.serve(async (req) => {
   // OPERATIONAL fact (Active).
   // Keep as a single string literal so supabase-js can type the select.
   const cols =
-    "id, slug, name, google_name, google_place_id, category, category_label, state, address, photos, zone, google_stars_overall, google_review_count, content_state, enriched_at, selected, request_count, business_state, business_state_at, updated_at";
+    "id, slug, name, google_name, google_place_id, category, category_label, state, address, photos, zone, google_stars_overall, google_review_count, content_state, enriched_at, selected, boost_tier, request_count, business_state, business_state_at, updated_at";
   let rows: Record<string, unknown>[] = [];
   // Only ALL mode reports it: a paste's count is the number of rows already
   // returned, and a second query would say nothing.
@@ -188,6 +189,9 @@ Deno.serve(async (req) => {
       reviewFound.set(id, reviewFoundFromRow(r));
     }
   }
+  // Views · Likes (MESITA-2809): unique members per place_activity kind,
+  // the same counts the place's Profile Stats box reads.
+  const stats = await fetchPlaceProfileStatsMany(admin, ids);
   const EMPTY_ENRICHMENT: EnrichmentMap = { functions: {}, highWater: 0, blockedAt: null };
 
   // Trim photos to the first thumbnail to keep the payload small.
@@ -236,6 +240,11 @@ Deno.serve(async (req) => {
       // row (`places.selected`); never derived from Enriched, ready and
       // Listed. The State box reads the same column.
       selected: v.selected === true,
+      // Boost (MESITA-2809): the paid tier, 0 · 1 · 2 · 3 = Off · 2x · 5x · 10x.
+      boost_tier: typeof v.boost_tier === "number" ? v.boost_tier : null,
+      // Missing when the read failed — the table says "?", never a false 0.
+      viewed: stats.get(id)?.viewed ?? null,
+      saved: stats.get(id)?.saved ?? null,
       // CRENUP: how far the EIGHT-step ENRICH queue got, 0-8
       // (MESITA-1253). Not a count of functions that worked — the index of
       // the last function such that it and everything before it completed.
