@@ -261,16 +261,15 @@ export const SEARCH_RING_SIZE = `min(100cqw, ${
  *  is the circle the next load searches — the server's screen radius, the
  *  cross's distance to the nearest edge, so it always fits on the map
  *  (MESITA-2511) — dashed, riding the cross while the guest pans, and it
- *  pulses while a load is in flight. A second, solid ring at half the
- *  diameter says the centre is denser (Pato, MESITA-2773: "double circle for
- *  density") — the proximity half-strength distance at the default
- *  radiusDivisor of 2 (MESITA-2720). The shade brightens toward the cross, a
- *  spotlight: the map outside the big ring darkest, the band gray, the small
- *  ring's disc light (Pato, MESITA-2775: "dark, gray, light (background, big
- *  circle, small circle)"). One shade disc under the rings draws all three
- *  steps — a spread shadow outside, a radial gradient clear inside half its
- *  radius — so no tint stacks, the map box clips the shadow, and only the
- *  ring lines pulse, never the shade. */
+ *  pulses while a load is in flight. A second ring at half the diameter says
+ *  the centre is denser (Pato, MESITA-2773: "double circle for density") —
+ *  the proximity half-strength distance at the default radiusDivisor of 2
+ *  (MESITA-2720). Both rings are the same dashed line and nothing is shaded
+ *  (Pato, MESITA-2820: "remove those dark backgrounds … just keep the borders
+ *  … both borders must be the same dotted"), so the map reads as one surface. */
+const RING_CLASS =
+  "border-foreground/45 absolute top-1/2 left-1/2 aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] border-dashed";
+
 function SearchMapReticle({ searching }: { searching: boolean }) {
   return (
     <div
@@ -280,23 +279,12 @@ function SearchMapReticle({ searching }: { searching: boolean }) {
       data-search-sight
     >
       <div
-        className="absolute top-1/2 left-1/2 aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle_closest-side,rgb(255_255_255/0.12)_50%,rgb(0_0_0/0.05)_50%)] shadow-[0_0_0_200vmax_rgb(0_0_0/0.1)]"
-        style={{ width: SEARCH_RING_SIZE }}
-        data-search-shade
-      />
-      <div
-        className={cn(
-          "border-foreground/45 absolute top-1/2 left-1/2 aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] border-dashed",
-          searching && "animate-pulse",
-        )}
+        className={cn(RING_CLASS, searching && "animate-pulse")}
         style={{ width: SEARCH_RING_SIZE }}
         data-search-ring
       />
       <div
-        className={cn(
-          "border-foreground/30 absolute top-1/2 left-1/2 aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border",
-          searching && "animate-pulse",
-        )}
+        className={cn(RING_CLASS, searching && "animate-pulse")}
         style={{ width: `calc(${SEARCH_RING_SIZE} / 2)` }}
         data-search-ring-inner
       />
