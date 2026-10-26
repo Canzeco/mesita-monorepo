@@ -155,7 +155,7 @@ export default async function ConsumerShellLayout({
               {modal}
             </div>
           </div>
-          <BottomNav surface={surface} />
+          <BottomNav />
         </div>
       </ConsumerIdentityProvider>
       <Toaster />

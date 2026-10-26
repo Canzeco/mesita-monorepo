@@ -13,7 +13,7 @@ import {
   CONSUMER_ROUTES,
   CONSUMER_ROUTE_PREFIX,
 } from "@/lib/consumer-route-contract";
-import { barePath, prefixPath, type Surface } from "@/lib/surface";
+import { barePath } from "@/lib/surface";
 import { trackEvent } from "@/lib/analytics/track";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 
@@ -107,24 +107,21 @@ const ITEMS: Item[] = [
   },
 ];
 
-export function BottomNav({ surface }: { surface?: Surface }) {
+export function BottomNav() {
   const pathname = barePath(usePathname() ?? "/");
-  // Each tab's href is ALREADY on the surface in the URL (/mob/search, not
-  // /search). A bare href is caught by SurfacePrefixer's capture-phase click
-  // listener, which stops the event before React sees it and pushes the
-  // prefixed URL itself: Link's prefetch is wasted, its onClick never runs,
-  // and every tap is a cold round trip with the old screen still painted —
-  // the "taps don't work" report (MESITA-2762; MESITA-2747 moved the modal
-  // host and missed this). The surface comes from the shell's x-surface
-  // header, not usePathname, which the server sees rewritten (bare). Without
-  // one (the root loading frame) the bare href is SurfacePrefixer's job.
+  // Hrefs stay BARE (/search, not /web/search); SurfacePrefixer's
+  // capture-phase click listener pushes the prefixed URL, as for every other
+  // in-app link. MESITA-2762 rendered the prefixed URL so Link handled the
+  // tap itself, and Link's navigation to that proxy-rewritten URL never
+  // committed: the tab lit, the old screen stayed (MESITA-2772).
   const getSupabase = useLazyBrowserSupabase();
   // The tapped tab lights AT ONCE. usePathname only moves when the new
   // screen commits, which waits on a server round trip (the proxy checks the
   // session in Oregon on every request), so a slow tap used to leave the bar
   // unchanged and read as a dead one (MESITA-2762). The mark holds only while
   // the path it was tapped on is still the path: once the screen lands, the
-  // pathname is the truth again.
+  // pathname is the truth again. It is set on pointerdown: SurfacePrefixer
+  // stops the click before React sees it, so an onClick here never runs.
   const [tapped, setTapped] = useState<{ href: string; on: string } | null>(
     null,
   );
@@ -190,8 +187,8 @@ export function BottomNav({ surface }: { surface?: Surface }) {
           return (
             <Link
               key={item.href}
-              href={surface ? prefixPath(surface, item.href) : item.href}
-              onClick={track}
+              href={item.href}
+              onPointerDown={track}
               className={className}
             >
               {body}
