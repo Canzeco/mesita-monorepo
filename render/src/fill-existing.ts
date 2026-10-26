@@ -14,8 +14,7 @@ const PROTECTED = [
   "city",
   "lat",
   "lng",
-  "google_photos",
-  "mesita_photos",
+  "photos",
   "phone",
   "website_url",
   "instagram_url",
@@ -46,8 +45,15 @@ export function applyOverwrite(opts: {
   for (const key of MESITA_OWNED) delete next[key];
   if (opts.overwrite) return next;
   for (const key of PROTECTED) {
-    if (hasSavedValue(opts.saved[key])) next[key] = opts.saved[key];
+    const saved = key === "photos" ? enrichedGallery(opts.saved.photos) : hasSavedValue(opts.saved[key]);
+    if (saved) next[key] = opts.saved[key];
   }
   return next;
+}
+
+/** One photo is Create's Google hero, not a gallery to keep (MESITA-2794). */
+function enrichedGallery(value: unknown): boolean {
+  if (!Array.isArray(value)) return false;
+  return value.filter((item) => typeof item === "string" && item.trim().length > 0).length > 1;
 }
 

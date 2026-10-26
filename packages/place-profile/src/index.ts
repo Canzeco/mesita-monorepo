@@ -27,4 +27,3 @@ export type {
 export type { PlaceDetail } from "./place-detail";
 export { GOOGLE_TYPE_EMOJI, googleTypeEmoji } from "./lib/google-type-emoji";
 export { AboutBox, ABOUT_CONSUMER_PREVIEW_MAX } from "./components/AboutBox";
-export { effectivePlacePhotos } from "./effective-place-photos";

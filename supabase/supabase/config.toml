@@ -373,7 +373,7 @@ verify_jwt = true
 [functions.admin-web-enrich-place]
 verify_jwt = true
 
-# Refresh Google factuals + google_photos only (not Enrich, not mesita_photos).
+# Refresh Google factuals; the gallery hero only while the gallery is one photo (MESITA-2794).
 [functions.admin-web-update-place-google]
 verify_jwt = true
 

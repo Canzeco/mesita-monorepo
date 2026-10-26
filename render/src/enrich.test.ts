@@ -20,8 +20,7 @@ test("quick writes Google's record and does not invent a description", () => {
   assert.equal(patch.content_state, "ready");
   assert.equal(patch.enriched_at, "2026-10-15T00:00:00.000Z");
   assert.equal("description" in patch, false);
-  assert.deepEqual(patch.google_photos, ["https://photos.example/a.jpg"]);
-  assert.equal("photos" in patch, false);
+  assert.deepEqual(patch.photos, ["https://photos.example/a.jpg"]);
 });
 
 test("Quick and Full stage Sync and do not call the review actor", () => {
@@ -56,7 +55,6 @@ test("quick keeps Google's own summary when it has one", () => {
     now: "2026-10-15T00:00:00.000Z",
   });
   assert.equal(patch.description, "A dining room.");
-  assert.equal("google_photos" in patch, false);
   assert.equal("photos" in patch, false);
 });
 
