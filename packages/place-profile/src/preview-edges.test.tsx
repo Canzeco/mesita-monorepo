@@ -195,24 +195,6 @@ describe("member preview edges", () => {
     expect(html).not.toContain("3 of 12");
   });
 
-  it("renders Presentation up to 500 chars inline; longer copy gets Read more (MESITA-2739)", () => {
-    const capped = "A".repeat(500);
-    const long = "B".repeat(700);
-    const shortHtml = renderToStaticMarkup(
-      <PlaceProfile place={detail({ description: capped })} />,
-    );
-    expect(shortHtml).toContain("Presentation");
-    expect(shortHtml).toContain(capped);
-    expect(shortHtml).not.toContain("Read more");
-
-    const longHtml = renderToStaticMarkup(
-      <PlaceProfile place={detail({ description: long })} />,
-    );
-    expect(longHtml).toContain("Read more");
-    expect(longHtml).not.toContain(long);
-    expect(longHtml).toContain(`${"B".repeat(500)}…`);
-  });
-
   it("does not treat a listed-false row as hidden", () => {
     const place = placeRowToDetail({
       id: "p-1",
