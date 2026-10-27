@@ -1,4 +1,4 @@
-import { Clock, Heart, Navigation, Share2, Star } from "lucide-react";
+import { Clock, Heart, Navigation, Share2, Sparkles, Star } from "lucide-react";
 import type { Place } from "@/lib/api/places";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
@@ -208,20 +208,47 @@ const CARD_BUTTON = `${CARD_BUTTON_BOX} bg-border/60 text-foreground hover:bg-bo
  * own link or button, so a tap never navigates. The parent places the row
  * 12px from the card's sides and bottom, the same as its text column
  * (MESITA-2668: "its not the same vertical margin as horizontal margin").
+ *
+ * GENERATE PROFILE ON A GOOGLE-ONLY CARD (Pato, MESITA-2843: "instead of save
+ * and share, just generate profile"): with `onGenerate`, one full-width
+ * button replaces the pair; the tap is the card's own explicit open, so the
+ * opening screen does the one create (MESITA-2298).
  */
 export function CardActions({
   name,
   saved,
   onSave,
   onShare,
+  onGenerate,
   className,
 }: {
   name: string;
   saved: boolean;
   onSave: () => void;
   onShare: () => void;
+  onGenerate?: () => void;
   className?: string;
 }) {
+  if (onGenerate) {
+    return (
+      <div className={cn(CARD_ACTIONS_ROW, className)} data-tile-actions>
+        <button
+          type="button"
+          onClick={onGenerate}
+          aria-label={`Generate ${name}'s profile`}
+          className={cn(CARD_BUTTON, "col-span-2")}
+          data-tile-generate
+        >
+          <Sparkles
+            className="h-4 w-4 shrink-0"
+            strokeWidth={2.25}
+            aria-hidden
+          />
+          Generate Profile
+        </button>
+      </div>
+    );
+  }
   return (
     <div className={cn(CARD_ACTIONS_ROW, className)} data-tile-actions>
       <button
@@ -259,7 +286,9 @@ export function CardActions({
 
 /** Paid visibility, disclosed (MESITA-2789): a place whose guests pay for
  *  its Boost. */
-export function isSponsoredPlace(place: { boost_tier?: number | null }): boolean {
+export function isSponsoredPlace(place: {
+  boost_tier?: number | null;
+}): boolean {
   return typeof place.boost_tier === "number" && place.boost_tier > 0;
 }
 
@@ -268,7 +297,10 @@ export function isSponsoredPlace(place: { boost_tier?: number | null }): boolean
  *  and it never truncates — the name gives way first. */
 export function SponsoredMark() {
   return (
-    <span className="text-muted-foreground shrink-0 text-xs font-medium tracking-normal" data-sponsored>
+    <span
+      className="text-muted-foreground shrink-0 text-xs font-medium tracking-normal"
+      data-sponsored
+    >
       Sponsored
     </span>
   );

@@ -2,7 +2,11 @@ import Image from "next/image";
 import { EnrichedBadge } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
 import { isEnrichedPlace } from "@/lib/place-enriched";
-import { cardPhoto, placePlaceholder } from "@/lib/place-placeholder";
+import {
+  cardPhoto,
+  isGoogleOnlyPlace,
+  placePlaceholder,
+} from "@/lib/place-placeholder";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/shared";
 import {
@@ -42,8 +46,7 @@ const RAIL_CARD_FRAME =
 const RAIL_CARD_TEXT = "flex min-w-0 flex-1 flex-col gap-0.5 px-3 pt-3";
 /** Save · Share under the text column: the left edge is the square photo
  *  (the 154px inner height) plus the column's 12px. */
-const RAIL_CARD_ACTIONS =
-  "absolute right-3 bottom-3 left-[calc(9.75rem+10px)]";
+const RAIL_CARD_ACTIONS = "absolute right-3 bottom-3 left-[calc(9.75rem+10px)]";
 
 /** One 20px text row of the card in loading: a bar at the line's type size
  *  (16px name, 14px facts), centred on the row's line box. */
@@ -180,6 +183,8 @@ export function RailCard({
         saved={saved}
         onSave={onSave}
         onShare={onShare}
+        // A Google-only card generates its profile instead (MESITA-2843).
+        onGenerate={isGoogleOnlyPlace(place) ? onOpen : undefined}
         className={RAIL_CARD_ACTIONS}
       />
     </div>
