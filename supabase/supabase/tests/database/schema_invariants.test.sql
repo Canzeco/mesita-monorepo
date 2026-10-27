@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(183);
+select plan(182);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -124,12 +124,16 @@ select ok(
   'profiles_update_trg is still bound (writes through the view are no-ops without it)'
 );
 
--- ━━━ place_profiles.name — GENERATED, not a convention ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ━━━ place_profiles.name — the one stored Mesita name (MESITA-2828) ━━━━━━━━━━━━━━━━
 
 select ok(
-  (select attgenerated from pg_attribute
-    where attrelid = 'public.place_profiles'::regclass and attname = 'name') = 's',
-  'place_profiles.name is a STORED GENERATED column (a plain column lets writers diverge again)'
+  exists (
+    select 1 from pg_trigger
+     where tgrelid = 'public.place_profiles'::regclass
+       and not tgisinternal
+       and tgname = 'place_profiles_name_fallback_trg'
+  ),
+  'place_profiles_name_fallback_trg is bound (a blank name follows google_name)'
 );
 
 select col_not_null(
