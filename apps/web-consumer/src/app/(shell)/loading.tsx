@@ -1,13 +1,11 @@
-import { LoadingFill } from "@/components/shared";
+import { headers } from "next/headers";
 
-// Children-slot Suspense fallback for the (shell) segment. Fires when
-// the underlying surface for a soft-nav (e.g. tapping a place card →
-// /places/[id]) is still in flight, plus on the rare first-paint of a
-// hard nav into one of the bottom-nav surfaces.
-//
-// Full-height flex centering inside the shell body band. This keeps the
-// spinner vertically centered in the visible content region (between top
-// and bottom chrome) during route transitions.
-export default function ConsumerShellLoading() {
-  return <LoadingFill className="bg-background" />;
+import { ShellLoadingFor } from "./shell-loading";
+
+// Children-slot Suspense fallback for the (shell) segment: what a tap on the
+// bar from Me, Pay or Share paints while the target is in flight. It draws
+// the target's placeholder, never a spinner (MESITA-2840).
+export default async function ConsumerShellLoading() {
+  const bare = (await headers()).get("x-bare-pathname") ?? "/";
+  return <ShellLoadingFor bare={bare} />;
 }
