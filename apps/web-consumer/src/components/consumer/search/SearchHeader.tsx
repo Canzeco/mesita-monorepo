@@ -1,13 +1,16 @@
 "use client";
 
 // Search's header (Pato, MESITA-2409 — OpenTable's shape), ONE row since
-// MESITA-2875:
+// MESITA-2875, five controls since MESITA-2876 ("Search, Add, filters,
+// location, ask ai, the 5 things in one line"):
 //
-//   ( ⌖ ) [ ⚲ Search places…  ] ( ☷ ) ( ✦ Ask AI )   one white band
+//   ( ⌖ ) [ ⚲ Search places… ] ( + ) ( ☷ ) ( ✦ Ask AI )   one white band
 //   ─────────────────── map ───────────────────────────
 //
-// The locate disc, the query bar, the Filters disc, the Ask AI pill (→ Search
-// › Chat). One token set for every control lives in header-classes.ts.
+// The locate disc, the query bar, the Add disc (a new place: it opens the bar,
+// since a guest adds a place by searching Google and tapping the result), the
+// Filters disc, the Ask AI pill (→ Search › Chat). 6px gaps so all five fit a
+// phone, the bar taking what the others leave. One token set for every control lives in header-classes.ts.
 // NO CHIP ROW (Pato, MESITA-2875: "remove the categories bar its going to be
 // hidden now"): the family pick lives behind the Filters disc, in
 // SearchFiltersSheet (Top and every family; MESITA-2758). The disc is the icon
@@ -24,7 +27,7 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { BotMessageSquare, SlidersHorizontal } from "lucide-react";
+import { BotMessageSquare, Plus, SlidersHorizontal } from "lucide-react";
 import { useMapFilters } from "@/lib/use-map-filters";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { cn } from "@/lib/utils";
@@ -34,12 +37,15 @@ import { SearchFiltersSheet } from "./SearchFiltersSheet";
 export function SearchHeader({
   locate,
   bar,
+  onAdd,
   children,
 }: {
   /** The locate disc, at the left of the row. */
   locate: ReactNode;
   /** The query bar; it takes what the discs leave. */
   bar: ReactNode;
+  /** The Add disc: start adding a new place (SearchClient focuses the bar). */
+  onAdd: () => void;
   /** Under the band: the bar's results, the load error. */
   children?: ReactNode;
 }) {
@@ -52,9 +58,18 @@ export function SearchHeader({
       data-search-header
       data-search-band
     >
-      <div className="flex min-w-0 items-center gap-2 px-3 py-2.5">
+      <div className="flex min-w-0 items-center gap-1.5 px-3 py-2.5">
         {locate}
         <div className="min-w-0 flex-1">{bar}</div>
+        <button
+          type="button"
+          onClick={onAdd}
+          aria-label="Add a place"
+          className={HEADER_DISC}
+          data-search-add
+        >
+          <Plus className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
+        </button>
         <button
           type="button"
           onClick={() => setFiltersOpen(true)}

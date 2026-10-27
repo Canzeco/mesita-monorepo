@@ -420,7 +420,7 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
 // HOME'S HEADER IS THE LOGO AND THE LOCATION (MESITA-2405: the location is its
 // only control; MESITA-2470: the Mesita logo beside it, for brand identity).
 // Social and Favorites are rows of the catalog's column; Home has no pills. Search's header is locate · bar ·
-// Filters · Ask AI, one row (MESITA-2409, MESITA-2875).
+// Add · Filters · Ask AI, one row (MESITA-2409, MESITA-2875, MESITA-2876).
 describe("T5b — Home's header and Search's header", () => {
   it('Home\'s header is the name "Mesita", then the location picker, and nothing else', () => {
     const tabs = readFileSync(join(COMPONENTS, "ModeTabs.tsx"), "utf8");
@@ -440,8 +440,8 @@ describe("T5b — Home's header and Search's header", () => {
     expect(layout).toContain("<ModeTabs />");
   });
 
-  // Search's header (MESITA-2409): locate · bar · Filters · Ask AI, no chip
-  // row (MESITA-2875).
+  // Search's header (MESITA-2409): locate · bar · Add · Filters · Ask AI,
+  // no chip row (MESITA-2875/2876).
   // Ask AI lands on /search/chat: from Search, a sheet over the map
   // (MESITA-2475); cold-loaded, the Soon page with a way back.
   it("Search's header is locate · bar · Ask AI, and Ask AI is a real Soon page", () => {
@@ -451,7 +451,7 @@ describe("T5b — Home's header and Search's header", () => {
     );
     expect(header).toContain("href={CONSUMER_ROUTES.searchChat}");
     expect(header).toMatch(
-      /\{locate\}\s*<div className="min-w-0 flex-1">\{bar\}<\/div>\s*<button[\s\S]*?data-search-filters[\s\S]*?<\/button>\s*<Link/,
+      /\{locate\}\s*<div className="min-w-0 flex-1">\{bar\}<\/div>\s*<button[\s\S]*?data-search-add[\s\S]*?<\/button>\s*<button[\s\S]*?data-search-filters[\s\S]*?<\/button>\s*<Link/,
     );
     expect(header).toContain("Ask AI");
     expect(new Set(allPages().map(pageUrl))).toContain(
