@@ -99,7 +99,7 @@ export function BoostPane({
     try {
       await apiCancelBoost(getSupabase(), cancelling.id);
       setCancelling(null);
-      toast("Your Boost ends at the close of this period");
+      toast("Your partnership ends at the close of this period");
       onChanged();
     } catch (err) {
       setCancelError(errMsg(err, "Couldn't cancel. Try again."));
@@ -131,7 +131,7 @@ export function BoostPane({
               <Zap className="h-5 w-5" aria-hidden />
             </span>
             <div className="min-w-0">
-              <h2 id="boost-title" className={SHEET_TITLE_CLASS}>Boost</h2>
+              <h2 id="boost-title" className={SHEET_TITLE_CLASS}>Partner</h2>
               <p className="text-muted-foreground truncate text-xs">{place.name}</p>
             </div>
           </div>
@@ -154,7 +154,7 @@ export function BoostPane({
             ))}
           </div>
 
-          <div role="radiogroup" aria-label="Boost level">
+          <div role="radiogroup" aria-label="Partner level">
             <SettingsGroup>
               {BOOST_TIERS.map((t, i) => {
                 const on = tier === t.key;
@@ -234,7 +234,7 @@ export function BoostPane({
           </span>
           <div className="min-w-0">
             <h2 id="boost-title" className="text-base leading-tight font-semibold">
-              {current ?? "Not boosted yet"}
+              {current ?? "Not a Partner yet"}
             </h2>
             <p className="text-muted-foreground truncate text-xs" aria-live="polite">
               {loading
@@ -248,7 +248,7 @@ export function BoostPane({
 
         <p className="text-muted-foreground text-sm leading-relaxed">
           Show {place.name} to more guests on the Map and Home. Guests see it
-          as <span className="text-foreground font-semibold">Sponsored</span>,
+          as <span className="text-foreground font-semibold">Partner</span>,
           never as a Mesita Selected pick.
         </p>
 
@@ -276,7 +276,7 @@ export function BoostPane({
           className={cn(PRIMARY_BUTTON_CLASS, "inline-flex items-center justify-center gap-2")}
         >
           <Zap className="h-4 w-4" aria-hidden />
-          {current ? "Add your Boost" : "Boost this place"}
+          {current ? "Back it too" : "Make it a Partner"}
         </button>
       </div>
 
@@ -291,7 +291,7 @@ export function BoostPane({
 
       {mine.length > 0 && (
         <div>
-          <p className="text-sm font-semibold">Your Boost</p>
+          <p className="text-sm font-semibold">Your partnership</p>
           <div className="mt-2">
             <SettingsGroup>
               {mine.map((b, i) => (
@@ -300,7 +300,7 @@ export function BoostPane({
                   <div className="flex min-h-12 items-center gap-3 px-4 py-3 text-sm">
                     <span className="min-w-0 flex-1">
                       <span className="font-semibold">
-                        {BOOST_TIERS.find((t) => t.key === b.tier)?.label ?? "Boost"}
+                        {BOOST_TIERS.find((t) => t.key === b.tier)?.label ?? "Partner"}
                       </span>
                       <span className="text-muted-foreground"> · {b.interval === "year" ? "Yearly" : "Monthly"}</span>
                       <span className="text-muted-foreground block text-xs">
@@ -334,13 +334,13 @@ export function BoostPane({
       <LocalDialog
         open={cancelling != null}
         onClose={() => (cancelBusy ? undefined : setCancelling(null))}
-        ariaLabel="Cancel this Boost"
+        ariaLabel="Cancel this partnership"
       >
         <div className="flex flex-col gap-3 p-5 text-center">
           <span className="bg-muted text-foreground mx-auto flex h-12 w-12 items-center justify-center rounded-full">
             <XCircle className="h-5 w-5" aria-hidden />
           </span>
-          <h2 className={SHEET_TITLE_CLASS}>Cancel this Boost?</h2>
+          <h2 className={SHEET_TITLE_CLASS}>Cancel this partnership?</h2>
           <p className="text-muted-foreground type-body leading-relaxed">
             It stops renewing and stays on until {formatDate(cancelling?.current_period_end ?? null)}.
           </p>
@@ -378,7 +378,7 @@ export function BoostUnavailable() {
       <span className="bg-muted text-foreground flex h-14 w-14 items-center justify-center rounded-2xl">
         <Zap className="h-7 w-7" aria-hidden />
       </span>
-      <h3 className={cn(SHEET_TITLE_CLASS, "mt-4")}>Boost isn&apos;t open here yet</h3>
+      <h3 className={cn(SHEET_TITLE_CLASS, "mt-4")}>Partner isn&apos;t open here yet</h3>
       <p className="text-muted-foreground mt-1.5 max-w-[30ch] text-sm leading-relaxed">
         You can boost this place once it has its Mesita profile.
       </p>
