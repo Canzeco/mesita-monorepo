@@ -109,6 +109,7 @@ export function placeRowToDetail(row: Row, catalogTags?: ResolvedTag[]): PlaceDe
     is_enriched: row.is_enriched === true ||
       (typeof row.enriched_at === "string" && row.enriched_at.trim() !== ""),
     boost_tier: num(row.boost_tier) ?? 0,
+    selected: row.selected === true,
     request_count: num(row.request_count) ?? 0,
     request_threshold: num(row.request_threshold) ?? 5,
     requested: row.requested === true,

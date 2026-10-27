@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useState } from "react";
-import { Loader2, XCircle, Zap } from "lucide-react";
+import { Loader2, Sparkles, XCircle, Zap } from "lucide-react";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { RowDivider, SettingsGroup, Switch } from "@/components/consumer/me/settings-rows";
 import {
@@ -15,6 +15,7 @@ import {
   type BoostInterval,
   type BoostTier,
 } from "@/lib/api/boost";
+import { MAP_MESITA_SELECTED_PIN_COLOR } from "@/lib/map-defaults";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
@@ -211,7 +212,7 @@ export function BoostPane({
           </button>
           <p className="text-muted-foreground text-center text-xs">
             Prices in US dollars. Billed by Stripe. Paid visibility: it does not
-            verify the place. Cancel any time; your Boost runs to the end of the
+            verify the place. Cancel any time; your partnership runs to the end of the
             period you paid for.
           </p>
         </div>
@@ -280,9 +281,36 @@ export function BoostPane({
         </button>
       </div>
 
+      {/* MESITA SELECTED, THE SAME LADDER (Pato, MESITA-2869: "boost and
+          select in the same page … it must be same direction"). Mesita's own
+          pick, `places.selected`: shown here, never sold, never set here. */}
+      <div className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-4">
+        <div className="flex items-center gap-3">
+          <span
+            className={cn(
+              "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
+              place.selected ? "text-white" : "bg-muted text-foreground",
+            )}
+            style={place.selected ? { backgroundColor: MAP_MESITA_SELECTED_PIN_COLOR } : undefined}
+          >
+            <Sparkles className="h-5 w-5" aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <h3 className="text-base leading-tight font-semibold">Mesita Selected</h3>
+            <p className="text-muted-foreground truncate text-xs">
+              {place.selected ? "Picked by Mesita" : "Not selected yet"}
+            </p>
+          </div>
+        </div>
+        <p className="text-muted-foreground text-sm leading-relaxed">
+          Mesita&apos;s own pick, shown in red on the Map and Search. Mesita
+          chooses it; it can&apos;t be bought.
+        </p>
+      </div>
+
       {failed && (
         <div className={ERROR_BOX_CLASS} role="alert">
-          Couldn&apos;t load this place&apos;s Boost.{" "}
+          Couldn&apos;t load this place&apos;s Partner level.{" "}
           <button type="button" onClick={onRetry} className="font-semibold underline">
             Try again
           </button>
