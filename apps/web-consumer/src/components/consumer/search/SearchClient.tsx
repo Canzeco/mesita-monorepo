@@ -323,6 +323,14 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // a flicker — so this stays true until the query is really gone.
   const [barFocused, setBarFocused] = useState(false);
   const searchMode = barFocused || querying;
+  // ADD MODE (Pato, MESITA-2885: "a button to add a profile if the place is
+  // not yet on mesita, just create place"). The rail's Add button turns the
+  // bar into a Google lookup — the ONLY Google call the bar makes; plain
+  // typing stays Mesita names (MESITA-2883). A pick is the explicit open:
+  // the opening screen calls consumer-web-create-place (get-or-create).
+  // Clearing the bar, or leaving it empty, ends Add mode.
+  const [adding, setAdding] = useState(false);
+  const barInputRef = useRef<HTMLInputElement | null>(null);
 
   // Search biases to the CAMERA, not the device: on a map you have panned to
   // another neighbourhood, results near your house are the wrong answer.
@@ -366,7 +374,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           trimmedQuery,
           token,
           searchOrigin,
-          "mesita",
+          adding ? "fast" : "mesita",
         );
         if (idleSec !== null) idleMsRef.current = Math.round(idleSec * 1000);
         if (cancelled) return;
@@ -385,7 +393,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       cancelled = true;
       window.clearTimeout(search);
     };
-  }, [supabase, trimmedQuery, searchOrigin, searchNonce]);
+  }, [supabase, trimmedQuery, searchOrigin, searchNonce, adding]);
 
   // The second pin source. null hands the map back its catalog pins, so the
   // basemap is never blank while you type — results ADD to what is there.
@@ -708,6 +716,19 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // its modal from the bar: the camera lands on the place, the catalog
   // reloads there, and the modal is one more tap away on the card or its
   // pin. The operator's cap never vetoes it.
+  // ADD MODE'S PICK IS THE EXPLICIT OPEN (MESITA-2885): a Mesita row opens
+  // its profile, a Google row the opening screen, which creates it. The
+  // plain bar pick below never creates; it anchors. An area is not a place.
+  const handleAddPick = (prediction: PlacePrediction) => {
+    if (prediction.kind === "location") {
+      toast("Pick a place, not an area.");
+      return;
+    }
+    setAdding(false);
+    updateQuery("");
+    openGoogleOnly(prediction);
+  };
+
   const handleBarPick = (prediction: PlacePrediction) => {
     // The catalog's own row wins the card — it carries photos and the
     // real distance. The synthesized stub covers picks outside the
@@ -967,12 +988,20 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         chipsHidden={querying}
         bar={
           <SearchBar
+            inputRef={barInputRef}
             query={query}
-            showClear={query.length > 0}
+            showClear={query.length > 0 || adding}
+            placeholder={adding ? "Add a place not on Mesita…" : undefined}
             onQueryChange={updateQuery}
             onFocus={() => setBarFocused(true)}
-            onBlur={() => setBarFocused(false)}
-            onClear={() => updateQuery("")}
+            onBlur={() => {
+              setBarFocused(false);
+              if (!query.trim()) setAdding(false);
+            }}
+            onClear={() => {
+              setAdding(false);
+              updateQuery("");
+            }}
           />
         }
       >
@@ -993,7 +1022,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
               searchError={searchError}
               predictions={predictions}
               addStates={addStates}
-              onPick={handleBarPick}
+              onPick={adding ? handleAddPick : handleBarPick}
               onClearSearch={() => updateQuery("")}
               onRetry={() => {
                 setSearchError(null);
@@ -1046,6 +1075,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
             railScrollRef={railScrollRef}
             onRailScroll={handleRailScroll}
             onOpenPlace={handleOpenPlace}
+            onAdd={() => {
+              setAdding(true);
+              barInputRef.current?.focus();
+            }}
             setRailCardRef={(placeId, el) => {
               railRefs.current.set(placeId, el);
             }}
