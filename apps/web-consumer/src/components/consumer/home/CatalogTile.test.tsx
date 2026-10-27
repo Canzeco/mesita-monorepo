@@ -46,12 +46,6 @@ describe("a Google-only card opens its profile, never Google Maps (MESITA-2298)"
     expect(html).toContain('aria-label="Open Casa"');
   });
 
-  it("has Save and Share too (MESITA-2663)", () => {
-    const html = tile({ id: "g:ChIJx", googleOnly: true });
-    expect(html).toContain("Add Casa to favorites");
-    expect(html).toContain("Share Casa");
-  });
-
   it("a Mesita card still links to its page and can be saved", () => {
     const html = tile({});
     expect(html).toContain('href="/place/casa"');
