@@ -139,7 +139,9 @@ function samePlaceRow(a: Place, b: Place): boolean {
  * bar does not apply the map's filters, so they never veto a pick. Dedupe
  * decides the total: the anchor already inside the N keeps N unique
  * (the catalog's own richer row wins the slot); outside it the guest sees
- * N + 1 — 21 is correct, not a bug (Pato).
+ * N + 1 — 21 is correct, not a bug (Pato). The one pick that never reaches
+ * here as a card is a Google place under the Area floor (`underFloor`,
+ * MESITA-2849): SearchClient anchors it with no place, like a Location.
  */
 export function prependAnchorPlace(
   places: Place[],

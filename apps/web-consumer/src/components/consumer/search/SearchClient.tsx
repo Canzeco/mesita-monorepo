@@ -27,6 +27,15 @@
 // is a camera destination: coordinates + viewport resolve on pick, never
 // per keystroke, and the viewport picks the zoom.
 //
+// CARD ONE ONLY WHEN IT CAN BE A MESITA PLACE (MESITA-2849, Pato: "only if
+// it can be a mesita place … inside the allowed google categories and above
+// the allowed popularity"). The bar already turns a Google place outside
+// Mesita's types into a Location (MESITA-2778); a Google place under the
+// Area box's Minimum Popularity arrives `underFloor` (MESITA-2724 lists it
+// last) and its pick is a destination too — the camera lands there and the
+// Area reloads there, but no card is drawn for it, because that reload hides
+// every place under the same floor. A Mesita row is a Mesita place already.
+//
 // A Google-only result has no preview sheet and no Add button (MESITA-2298):
 // its SECOND tap (pin or rail card) is the explicit open — get-or-create on
 // the Google Place ID, then the profile. The catalog itself carries
@@ -749,7 +758,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // the catalog reloads there, and the modal is one more tap away on the
   // card or its pin. A Google-only pick anchors too — the sheet moves to
   // the second tap, the gesture the grey pin already speaks, so the rule
-  // has no exception to learn. The operator's cap never vetoes any of it.
+  // has no exception to learn. The operator's cap never vetoes any of it;
+  // the Area floor does veto the CARD (MESITA-2849), never the anchor.
   const handleBarPick = (prediction: PlacePrediction) => {
     if (prediction.kind === "location") {
       // A Location is a camera destination, never a card. Coordinates are
@@ -774,6 +784,21 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           toast.error(errMsg(err, "Couldn't open that location right now."));
         }
       })();
+      return;
+    }
+    // A GOOGLE PLACE UNDER THE AREA FLOOR IS A DESTINATION (MESITA-2849):
+    // the camera lands on it and the Area reloads there, with no card ONE —
+    // that reload hides every place under the floor, so a card for it would
+    // be a place Mesita does not list. Only a row with its own point can be
+    // a destination; without one it falls through to the no-coordinates
+    // path below, which says so.
+    if (
+      prediction.underFloor &&
+      !predictionOnMesita(prediction) &&
+      typeof prediction.lat === "number" &&
+      typeof prediction.lng === "number"
+    ) {
+      anchorMapTo({ lat: prediction.lat, lng: prediction.lng }, null);
       return;
     }
     // The catalog's own row wins the card — it carries photos and the

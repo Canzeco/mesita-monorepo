@@ -425,6 +425,12 @@ export type PlacePrediction = {
   mesitaSlug?: string;
   lat?: number | null;
   lng?: number | null;
+  /** A Google-only place under the Area box's Minimum Popularity
+   *  (MESITA-2849). The bar lists it last (MESITA-2724); a pick of it is a
+   *  destination — camera and Area reload land there — and never card ONE,
+   *  since the Area pipeline hides every place under that floor. Absent on
+   *  Mesita rows, Locations and an older EF. */
+  underFloor?: boolean;
 };
 
 /** `fast` Search while typing · `deep` Search after idle. */
