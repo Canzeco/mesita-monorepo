@@ -117,6 +117,15 @@ export function ChannelChips({
             </span>
           );
         }
+        // A tel: chip is a plain native link (MESITA-2833): no blank target,
+        // no scripted hop, so the tap opens the phone's dialer.
+        if (!leavesApp) {
+          return (
+            <a key={key} href={url} aria-label={ariaLabel} className={className}>
+              {body}
+            </a>
+          );
+        }
         return (
           <a
             key={key}
