@@ -147,6 +147,10 @@ export type MapScore = {
   selectedFactor?: number;
   /** The sources that found the place (MESITA-2703); diagnostics only. */
   foundBy?: string[];
+  /** Km from the anchor and the Distance penalty k Proximity read
+   *  (MESITA-2830); absent from an older EF. */
+  distanceKm?: number | null;
+  distancePenalty?: number;
 };
 
 type ViewportPlaces = {
@@ -304,6 +308,10 @@ export type AreaDiagnostics = {
   /** The sources that found the place (MESITA-2703); diagnostics only,
    *  no card draws it. */
   foundBy?: string[];
+  /** Km from the anchor and the Distance penalty k (MESITA-2830); absent
+   *  from an older EF. */
+  distanceKm?: number | null;
+  distancePenalty?: number;
   final: number;
   formula: "point" | "none";
 };

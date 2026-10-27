@@ -133,6 +133,9 @@ type WireScore = {
   selectedFactor: number;
   /** The sources that found the place (MESITA-2703); diagnostics only. */
   foundBy: string[];
+  /** Km from the anchor and the Distance penalty k (MESITA-2830). */
+  distanceKm: number | null;
+  distancePenalty: number;
 };
 
 type CardRow = {
@@ -263,6 +266,8 @@ Deno.serve(async (req) => {
             final: a.final,
             selectedFactor: a.selectedFactor,
             foundBy: a.foundBy,
+            distanceKm: a.distanceKm,
+            distancePenalty: a.distancePenalty,
           } satisfies WireScore,
         };
       }) as CardRow[],

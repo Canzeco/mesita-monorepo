@@ -358,6 +358,10 @@ export type AreaPoolDeps<T extends OwnedRow> = {
  *  found it (MESITA-2703; diagnostics only, no card draws it). */
 export type AreaPoolDiagnostics = AreaDiagnostics & {
   foundBy: AreaSourceKey[];
+  /** Km from the anchor, 2 decimals; null with no point (MESITA-2830). */
+  distanceKm: number | null;
+  /** The Distance penalty k Proximity read (MESITA-2830). */
+  distancePenalty: number;
 };
 
 export type AreaPoolPlace = Record<string, unknown> & { id: string; area: AreaPoolDiagnostics };
@@ -592,11 +596,13 @@ export async function selectAreaPool<T extends OwnedRow>(
   const ranked = rankArea([...byId.values()], (item) => item.candidate, ctx)
     .slice(0, Math.max(0, shown));
   const places = ranked.map(({ item, area }) => {
-    const { distanceKm: _km, ...diagnostics } = area;
+    const { distanceKm: km, ...diagnostics } = area;
     const foundBy = AREA_SOURCE_KEYS.filter((k) => item.foundBy.has(k));
+    // The score tag prints both beside Proximity (MESITA-2830).
+    const distanceKm = km === null ? null : Math.round(km * 100) / 100;
     return {
       ...item.place,
-      area: { ...diagnostics, foundBy },
+      area: { ...diagnostics, foundBy, distanceKm, distancePenalty: ctx.radiusDivisor },
     } as AreaPoolPlace;
   });
   summary.google = places.filter((p) => p.area.source === "google").length;
