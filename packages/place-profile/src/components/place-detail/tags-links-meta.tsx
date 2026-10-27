@@ -33,6 +33,7 @@ export function TagsBox({ place }: { place: PlaceDetail }) {
 // Pato, MESITA-2866: "how many people in mesita have viewed that profile and
 // how many people have liked/saved that profile — below tags". Unique members
 // from place_activity; counts only, never who. No counts on the payload, no box.
+// Titled "Mesita Stats" (MESITA-2867): these are Mesita members, not Google.
 export function StatsBox({ place }: { place: PlaceDetail }) {
   const stats = place.profile_stats;
   if (!stats) return null;
@@ -41,7 +42,7 @@ export function StatsBox({ place }: { place: PlaceDetail }) {
     { key: "saved", label: stats.saved === 1 ? "Like" : "Likes", n: stats.saved, Icon: Heart },
   ];
   return (
-    <Box title="Stats">
+    <Box title="Mesita Stats">
       <div className="grid grid-cols-2 gap-2">
         {cells.map(({ key, label, n, Icon }) => (
           <div key={key} className="bg-muted flex flex-col gap-1 rounded-xl p-3">
