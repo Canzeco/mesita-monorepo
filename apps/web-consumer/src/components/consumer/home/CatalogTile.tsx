@@ -84,7 +84,8 @@ function TileLink({
  * hours · distance (MESITA-2645) — and two buttons, Save and Share
  * (MESITA-2650, MESITA-2668). An enriched place wears the Enriched mark
  * after its name (MESITA-2296). A Google-only card opens its profile
- * through `onOpenGoogle`; its Save and Share create the place first.
+ * through `onOpenGoogle`, and its one button, Generate Profile, does the
+ * same (MESITA-2843).
  */
 
 export function CatalogTile({
@@ -203,16 +204,23 @@ export function CatalogTile({
           </div>
         </div>
       </TileLink>
-      {/* Google-only cards get Save and Share too (Pato, MESITA-2663:
-          "keep the save and share button even if no profile yet, just
-          create the profile and then trigger it"); the parent's handlers
-          get-or-create first. TILE_ACTIONS: 12px from the tile's sides AND
-          its foot (MESITA-2668); it was 8px at the foot. */}
+      {/* A Google-only card shows Generate Profile instead of Save and
+          Share (Pato, MESITA-2843, reversing MESITA-2663): the tap is the
+          card's own open. TILE_ACTIONS: 12px from the tile's sides AND its
+          foot (MESITA-2668); it was 8px at the foot. */}
       <CardActions
         name={place.name}
         saved={saved}
         onSave={onToggle}
         onShare={onShare ?? (() => void sharePlace(place))}
+        onGenerate={
+          google
+            ? () => {
+                onOpen?.();
+                onOpenGoogle?.();
+              }
+            : undefined
+        }
         className={TILE_ACTIONS}
       />
     </li>
