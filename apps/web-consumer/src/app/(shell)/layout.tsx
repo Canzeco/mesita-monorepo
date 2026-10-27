@@ -65,6 +65,15 @@ export default async function ConsumerShellLayout({
     ? `${pathname}${requestHeaders.get("x-search") ?? ""}`
     : "";
   const supabase = await createServerSupabase();
+  // THE TWO OREGON READS RUN TOGETHER (MESITA-2850). A hard load waits on
+  // this layout, and it used to ask for the user, then for the profile: two
+  // round trips back to back. The profile read leaves now, beside getUser;
+  // its result is only used once the wall below has passed, and a visitor it
+  // was not meant for gets a failed read that nothing ever looks at.
+  const profileRead = apiFetchConsumerProfile(supabase).then(
+    (value) => ({ ok: true as const, value }),
+    (error: unknown) => ({ ok: false as const, error }),
+  );
   const user = (await supabase.auth.getUser()).data.user;
   // ONE WALL FOR BOTH SURFACES (MESITA-2137): no anonymous sessions, so a
   // visitor without an account goes to its surface's phone sign-in. A
@@ -86,8 +95,8 @@ export default async function ConsumerShellLayout({
   // the shell degraded and let each page surface its own error; the session
   // is intact and nothing here is security-relevant.
   //
-  // redirect() throws NEXT_REDIRECT, so it MUST stay outside the try —
-  // otherwise the catch swallows it and reports a redirect as a failure.
+  // redirect() throws NEXT_REDIRECT, so it MUST stay outside the read's
+  // failure branch — otherwise a redirect would be reported as a failure.
   let instagramHandle: string | null = null;
   let instagramFollowers: number | null = null;
   let needsOnboarding = false;
@@ -97,18 +106,19 @@ export default async function ConsumerShellLayout({
   // the same state — and a surface that states the fact would assert the
   // guess. Only this catch knows the difference, so it says so.
   let profileUnavailable = false;
-  try {
-    const { consumer: profile } = await apiFetchConsumerProfile(supabase);
+  const read = await profileRead;
+  if (read.ok) {
+    const { consumer: profile } = read.value;
     // The SIGNUP gate only — first name + birthday (MESITA-1806). A missing
     // last name no longer ejects anyone to /onboard; the reservation sheet
     // asks for it at the one moment it is load-bearing.
     needsOnboarding = !consumerCanBrowse(profile);
     instagramHandle = profile.instagram_handle?.trim() || null;
     instagramFollowers = profile.instagram_followers_count ?? null;
-  } catch (err) {
+  } else {
     console.error(
       "[consumer/shell] consumer-get-profile:",
-      errMsg(err, "profile fetch failed"),
+      errMsg(read.error, "profile fetch failed"),
     );
     profileUnavailable = true;
   }
