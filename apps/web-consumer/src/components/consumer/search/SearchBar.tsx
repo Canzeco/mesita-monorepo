@@ -4,8 +4,8 @@ import type { RefObject } from "react";
 import { Search, X } from "lucide-react";
 
 // The Search map's query field — the one search bar in the app, between the
-// locate and Ask AI discs. Query field only: the chip row under it picks
-// Nearby, Popular or a family (MESITA-2426). Same outline as every header
+// locate disc and the Filters disc. Query field only: the Filters sheet picks
+// the family (MESITA-2875). Same outline as every header
 // control (header-classes.ts): flat, no shadow, a dark border while focused.
 type SearchBarProps = {
   query: string;
