@@ -833,32 +833,32 @@ select ok(
 
 select ok(
   (select family_keys from public.place_categories where slug = 'mexican')
-    @> array['mexican','dinner']::text[]
+    @> array['tacos','dinner','mexican']::text[]
   and (select family_keys from public.place_categories where slug = 'mexican')
-    <@ array['mexican','dinner']::text[],
-  'mexican is Mexican and Dinner: a list, no family first (MESITA-2808)'
+    <@ array['tacos','dinner','mexican']::text[],
+  'mexican is Tacos, Dinner and Mexican: a list, no family first (MESITA-2808, MESITA-2834)'
 );
 
 select ok(
   (select family_keys from public.place_categories where slug = 'taco')
-    @> array['mexican','quick_bite']::text[]
+    @> array['quick_bite','tacos','mexican']::text[]
   and (select family_keys from public.place_categories where slug = 'taco')
-    <@ array['mexican','quick_bite']::text[],
-  'a taqueria is Mexican and Quick: a list, no family first (MESITA-2808)'
+    <@ array['quick_bite','tacos','mexican']::text[],
+  'a taqueria is Quick, Tacos and Mexican: a list, no family first (MESITA-2808, MESITA-2834)'
 );
 
 select is(
   (select count(*)::bigint from public.place_categories
     where cardinality(family_keys) = 2),
-  17::bigint,
-  'seventeen categories sit on two families (MESITA-2749)'
+  24::bigint,
+  'twenty-four categories sit on two families (MESITA-2834)'
 );
 
 select is(
   (select count(*)::bigint from public.place_categories
-    where cardinality(family_keys) = 3),
+    where cardinality(family_keys) > 4),
   0::bigint,
-  'no category sits on three families since Tacos folded into Mexican (MESITA-2760)'
+  'no category sits on more than four families (MESITA-2834)'
 );
 
 select is(
@@ -1023,8 +1023,8 @@ select throws_ok(
 select is(
   (select family_keys from public.profiles
     where id = '00000000-0000-4000-8000-0000000fa111'),
-  (select array_agg(slug order by sort_order) from public.place_families where slug in ('dinner', 'coffee')),
-  'the view reads the stored families in catalog order'
+  array['undefined']::text[],
+  'the view ignores the stored list and maps the Google categories; none here, so Undefined (MESITA-2834)'
 );
 
 update public.place_profiles set family_keys = null
