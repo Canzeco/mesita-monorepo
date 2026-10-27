@@ -395,7 +395,11 @@ function SearchMapCanvas({
               key={pin.id}
               position={{ lat: pin.lat, lng: pin.lng }}
               title={pin.title}
-              icon={placeIcon(pin.tone, pin.id === selectedId, pin.boosted === true)}
+              icon={placeIcon(
+                pin.tone,
+                pin.id === selectedId,
+                pin.boosted === true,
+              )}
               zIndex={pin.id === selectedId ? 10 : 0}
               optimized={false}
               cursor={MAP_PIN_CURSOR}
@@ -407,7 +411,11 @@ function SearchMapCanvas({
               key={place.id}
               position={{ lat: place.lat, lng: place.lng }}
               title={place.name}
-              icon={placeIcon(placePinTone(place), place.id === selectedId, isSponsoredPlace(place))}
+              icon={placeIcon(
+                placePinTone(place),
+                place.id === selectedId,
+                isSponsoredPlace(place),
+              )}
               zIndex={place.id === selectedId ? 10 : 0}
               optimized={false}
               cursor={MAP_PIN_CURSOR}

@@ -157,11 +157,12 @@ function SuggestionLine({
   // Three spoken answers over the three tones: a Mesita place without the
   // operator's mark (MESITA-2707) has a profile, so it is not "No profile".
   // The word Enriched never reaches a guest (MESITA-2298).
-  const toneLabel = tone === "selected"
-    ? "Mesita Selected"
-    : predictionOnMesita(prediction)
-      ? "Basic Mesita profile"
-      : "No profile yet";
+  const toneLabel =
+    tone === "selected"
+      ? "Mesita Selected"
+      : predictionOnMesita(prediction)
+        ? "Basic Mesita profile"
+        : "No profile yet";
 
   return (
     <SuggestionRow
@@ -217,7 +218,7 @@ function SuggestionRow({
         )}
       </span>
       {added && (
-        <span className="type-meta flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-semibold text-foreground">
+        <span className="type-meta bg-muted text-foreground flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-semibold">
           Added
         </span>
       )}

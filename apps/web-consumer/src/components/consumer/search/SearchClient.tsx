@@ -48,8 +48,8 @@
 //   • Base: SearchMap fills the body (red Mesita Places, gray Google, blue
 //     user). Catalog pins by default; `searchPins` overlays
 //     the predictions while a query is live.
-//   • Top overlay: SearchHeader — one row; the family hides behind Filters
-//     (MESITA-2875). How many
+//   • Top overlay: SearchHeader — the bar, then the family chips
+//     (MESITA-2879). How many
 //     is the operator's (the four Area sources, MESITA-2703).
 //   • Bottom overlay: the catalog rail for the visible map, hidden while
 //     querying. Best first, in the server's order: the zoom decides how
@@ -64,7 +64,14 @@
 // ask, as a CameraIntent — the rules live in camera-intent.ts. A rail
 // scroll rings the pin and leaves the map where the guest put it.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import type { Place } from "@/lib/api/places";
 import { apiFetchNearbyCatalog } from "@/lib/api/places";
@@ -123,6 +130,7 @@ import { SearchHeader } from "./SearchHeader";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import type { AddState } from "./add-state";
 import {
+  RAIL_ADD_ROWS,
   RAIL_ROW_REM,
   RAIL_VISIBLE_CARDS,
   SearchHereButton,
@@ -186,6 +194,16 @@ function googlePredictionFromPlace(place: Place): PlacePrediction | null {
   };
 }
 
+/** `selectedId` while the rail's Add card is centred (MESITA-2879): not a
+ *  place id, so nothing is ringed and no card is lit. */
+const RAIL_ADD_ID = "rail:add";
+
+/** One rail row in px: RAIL_ROW_REM at the root font size. */
+function railRowPx(): number {
+  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+  return RAIL_ROW_REM * (rem || 16);
+}
+
 export function SearchClient({ apiKey }: { apiKey: string }) {
   const supabase = useBrowserSupabase();
   const userLocation = useUserLocation();
@@ -213,8 +231,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const idleMsRef = useRef(DEFAULT_IDLE_MS);
   const railRefs = useRef(new Map<string, HTMLElement | null>());
   const railScrollRef = useRef<HTMLDivElement | null>(null);
-  // The header's Add disc focuses the bar: a new place is added by searching
-  // Google and tapping the result (MESITA-2876).
+  // The rail's Add card focuses the bar: a new place is added by searching
+  // Google and tapping the result (MESITA-2876 disc → MESITA-2879 card).
   const barInputRef = useRef<HTMLInputElement | null>(null);
 
   // The opening screen owns get-or-create now (MESITA-2311), so these stay
@@ -230,7 +248,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // 1-based) — powers the "3 / 12 places" pager so the horizontal rail
   // reads as browsable.
   const [railIndex, setRailIndex] = useState(0);
-  // The family pick (none, or one family; the Filters sheet) rides this store and the
+  // The family chips (none, or one family) ride this store and the
   // catalog call. How many and the Minimum Popularity are the
   // operator's (Admin › Discovery); how wide is the visible map
   // (MESITA-2499). The server is the one selector and ranks best first —
@@ -822,10 +840,14 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // Center page is selected even before a tap or flick writes state —
   // first load and a catalog that dropped the old id both light card 0. A
   // Google card that became a Mesita card keeps its selection (MESITA-2683).
-  const railSelectedId = defaultRailSelection(
-    catalog.map((p) => p.id),
-    createdPlaceId(selectedId, createdPlaces),
-  );
+  // The Add card centred (MESITA-2879) selects nothing: no card, no ring.
+  const railSelectedId =
+    selectedId === RAIL_ADD_ID
+      ? null
+      : defaultRailSelection(
+          catalog.map((p) => p.id),
+          createdPlaceId(selectedId, createdPlaces),
+        );
 
   // A pin's last step before it opens: select it (if the card-0 fallback
   // only looked selected) and fly the camera there — an animated pan that
@@ -922,12 +944,22 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     const el = railScrollRef.current;
     if (!el || catalog.length === 0) return;
     // The rail scrolls vertically, one card per snap (MESITA-2880):
-    // railIndex is the top card in view.
-    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
-    const row = RAIL_ROW_REM * (rem || 16);
-    const next = railCenterIndex(el.scrollTop, row, catalog.length);
-    setRailIndex(next);
-    const inView = catalog.slice(next, next + RAIL_VISIBLE_CARDS);
+    // railIndex is a slot, 0 the Add card, i + 1 place i, the top in view.
+    const row = railRowPx();
+    const rows = el.scrollTop / row;
+    // The Add card in view: no pin rings, the map stays (MESITA-2879).
+    if (rows < RAIL_ADD_ROWS / 2) {
+      setRailIndex(0);
+      setSelectedId(RAIL_ADD_ID);
+      return;
+    }
+    const top = railCenterIndex(
+      el.scrollTop - RAIL_ADD_ROWS * row,
+      row,
+      catalog.length,
+    );
+    setRailIndex(top + 1);
+    const inView = catalog.slice(top, top + RAIL_VISIBLE_CARDS);
     // A selected card still in view keeps the ring — a tap on the lower
     // card must not hand it to the top one.
     if (inView.some((p) => p.id === railSelectedId)) return;
@@ -963,24 +995,39 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   useEffect(() => {
     if (!railSelectedId) return;
     const idx = catalog.findIndex((p) => p.id === railSelectedId);
-    if (!shouldCenterRailCard(idx, railIndex, centerOnSelect.current)) return;
+    const slot = idx < 0 ? idx : idx + 1;
+    if (!shouldCenterRailCard(slot, railIndex, centerOnSelect.current)) return;
     centerOnSelect.current = false;
     // Scroll the rail itself, never its ancestors: the card lands on top.
-    const card = railRefs.current.get(railSelectedId);
-    const rail = railScrollRef.current;
-    if (card && rail) {
-      rail.scrollTo({
-        top: card.offsetTop - rail.offsetTop,
-        behavior: "smooth",
-      });
-    }
+    railScrollRef.current?.scrollTo({
+      top: (RAIL_ADD_ROWS + idx) * railRowPx(),
+      behavior: "smooth",
+    });
   }, [railSelectedId, catalog, railIndex]);
+
+  // THE RAIL RESTS ON PLACE #1, NOT ON THE ADD CARD (Pato, MESITA-2879):
+  // a new set of places, or the rail coming back after the bar, puts the
+  // selected card (place #1 on a fresh set) on top at once, the Add card
+  // waiting above it (MESITA-2880). Before paint, so nothing slides. The
+  // scroll this sets fires onScroll, which writes railIndex and the ring.
+  const catalogKey = catalog.map((p) => p.id).join("|");
+  const railShown = !searchMode && catalog.length > 0;
+  useLayoutEffect(() => {
+    const el = railScrollRef.current;
+    if (!el || !railShown) return;
+    const idx = catalog.findIndex((p) => p.id === railSelectedId);
+    el.scrollTop = (RAIL_ADD_ROWS + Math.max(idx, 0)) * railRowPx();
+    // Only a new set or the rail's return re-rests it; a selection change
+    // scrolls through the centring effect above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalogKey, railShown]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Search's header, a white band over the map (Pato, MESITA-2409/2413):
-        location disc · query bar · Add · Filters · Ask AI (MESITA-2875: no
-        chip row; MESITA-2876: Add); the bar's results and the load error hang over the map's top edge. The pair that keeps the disc
+        location disc · query bar · Ask AI, then the family chips (MESITA-2879
+        undid MESITA-2875/2876's one row); the bar's results and the load
+        error cover the chips and hang over the map's top edge. The pair that keeps the disc
         visible: `min-w-0 flex-1` on the bar, `shrink-0` on the disc. */}
       <SearchHeader
         locate={
@@ -991,7 +1038,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
             onClick={recentreOnGuest}
           />
         }
-        onAdd={() => barInputRef.current?.focus()}
+        chipsHidden={querying}
         bar={
           <SearchBar
             inputRef={barInputRef}
@@ -1004,9 +1051,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           />
         }
       >
-        {/* RESULTS DROP UNDER THE BAR, the way every autocomplete does: they
-          hang just under the band (MESITA-2875 removed the chip row they
-          used to cover, MESITA-2417/2487).
+        {/* RESULTS DROP UNDER THE BAR, the way every autocomplete does; the
+          chip row is not drawn while querying (Pato, MESITA-2487, was
+          MESITA-2417's "cover the chips"), so they hang just under the bar.
 
           THE OLD REGRESSION WAS A FIXED HEIGHT, not the top anchor. A panel that
           claimed 70% of the viewport whether it held two rows or ten is what
@@ -1074,6 +1121,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
             railScrollRef={railScrollRef}
             onRailScroll={handleRailScroll}
             onOpenPlace={handleOpenPlace}
+            onAdd={() => barInputRef.current?.focus()}
             setRailCardRef={(placeId, el) => {
               railRefs.current.set(placeId, el);
             }}
