@@ -274,8 +274,9 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Families are derived from the categories in the profiles view; the row
-  // just written carries them. A vocabulary miss leaves the string off.
+  // Families are the categories' dictionary, derived in the profiles view
+  // (MESITA-2834); the row just read back carries them. A vocabulary miss
+  // leaves the string off.
   const families = await fetchPlaceFamilies(admin);
   const familyStored = families.length > 0
     ? resolveStoredFamily((place as { family_keys?: unknown }).family_keys, families)

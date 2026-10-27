@@ -1027,7 +1027,7 @@ Deno.test("a family row ranks by score alone: no family is primary (MESITA-2808)
     assertEquals(ids(places), ["g:cafe", "g:tacos", "g:brunch"]);
     assertEquals("primaryFamily" in places[0].area, false);
     // Every family of every Google category, in the catalog's order.
-    assertEquals(places[1].family_keys, ["breakfast", "quick_bite", "mexican"]);
+    assertEquals(places[1].family_keys, ["breakfast", "brunch", "quick_bite", "tacos", "mexican"]);
   } finally {
     g.restore();
   }

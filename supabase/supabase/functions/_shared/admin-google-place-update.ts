@@ -22,8 +22,10 @@ export const GOOGLE_UPDATE_FORBIDDEN_COLUMNS = [
   "embedding",
   "embedding_source_text",
   "name_embedding",
-  // Model-inferred lists (MESITA-2827): Update refreshes only Google's own
-  // types (google_source_types), the categories call's input.
+  // The model-inferred categories (MESITA-2827): Update refreshes only
+  // Google's own types (google_source_types), the categories call's input.
+  // family_keys is never written by anyone: the families are the
+  // categories' dictionary in the profiles view (MESITA-2834).
   "google_types",
   "category",
   "category_label",
@@ -48,8 +50,9 @@ export function galleryTakesGoogleHero(photos: unknown): boolean {
  * Build the place_profiles patch from a Google basics fetch (before pins).
  * The gallery is never in it: `galleryTakesGoogleHero` decides that separately.
  * Google's own types land in google_source_types, primary first. The Google
- * categories (google_types, category) and the families are model-inferred on
- * Create and Enrich (MESITA-2827), so a refetch never touches them.
+ * categories (google_types, category) are model-inferred on Create and Enrich
+ * (MESITA-2827), so a refetch never touches them; the families follow the
+ * categories through the dictionary (MESITA-2834).
  */
 export function googleBasicsToUpdatePatch(input: {
   basics: GoogleBasics;

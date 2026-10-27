@@ -187,8 +187,8 @@ Deno.serve(async (req) => {
   };
 
   const profile = {
-    // Families are derived from the Mesita categories in the profiles view
-    // (MESITA-2790); this only names the stored keys.
+    // Families are the Google categories' dictionary, derived in the profiles
+    // view (MESITA-2834); this only names the keys the view handed back.
     familyStored: resolveStoredFamily(placeFields.family_keys, families),
     categories: categoriesWithFamilyDisplay(categories, families),
     tags,
