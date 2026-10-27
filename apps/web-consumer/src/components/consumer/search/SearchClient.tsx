@@ -52,12 +52,12 @@
 //     is the operator's (the four Area sources, MESITA-2703).
 //   • Bottom overlay: the catalog rail for the visible map, hidden while
 //     querying. Best first, in the server's order: the zoom decides how
-//     wide the set is (MESITA-2499). A guest move reloads when the map comes to
-//     rest, at most once every reloadIdleSec counted from the last reload
-//     (MESITA-2451), and only if the camera has moved at least
-//     reloadMinViewportPct of that last-reload screen (MESITA-2732).
-//     Only the guest's own moves reload — a tap's reveal pan, the disc
-//     and a bar pick do not. The rail's centre card is always the selected pin.
+//     wide the set is (MESITA-2499). A guest move never reloads on its own
+//     (Pato, MESITA-2874: "a button to load instead of automatic loading"):
+//     once the camera has left reloadMinViewportPct of the last-load screen
+//     (MESITA-2732), a "Search this area" pill appears and the tap loads.
+//     The disc, a bar pick and a family chip still load where they land.
+//     The rail's centre card is always the selected pin.
 //
 // THE CAMERA NEVER TELEPORTS (MESITA-2440): it moves only on an explicit
 // ask, as a CameraIntent — the rules live in camera-intent.ts. A rail
@@ -102,20 +102,16 @@ import {
   predictionOnMesita,
 } from "./search-pins";
 import {
-  mapFingerIsDown,
   SearchMap,
   type SearchMapPin,
   type ViewportBox,
   type ViewportMeta,
 } from "./SearchMap";
 import {
-  clampReloadIdleSec,
   clampReloadMinViewportPct,
   gpsFixMovesCamera,
   isUnderSight,
   reloadMoveMeetsMin,
-  reloadWaitMs,
-  RELOAD_IDLE_SEC_DEFAULT,
   RELOAD_MIN_VIEWPORT_PCT_DEFAULT,
   selectionMovesCamera,
   type CameraIntent,
@@ -127,6 +123,7 @@ import { SearchResultsPanel } from "./SearchResultsPanel";
 import type { AddState } from "./add-state";
 import {
   RAIL_PAGE_SHARE,
+  SearchHereButton,
   SearchRailOverlay,
   type LoadCoords,
 } from "./search-catalog-overlays";
@@ -154,8 +151,6 @@ import {
 // first answer the bar waits DEFAULT_IDLE_MS.
 const DEFAULT_IDLE_MS = 1000;
 const MIN_QUERY = 2;
-/** A due reload under a resting finger checks again this often. */
-const FINGER_RECHECK_MS = 250;
 
 /**
  * A live searchbar pick (MESITA-1405). `place` is the chosen place for card
@@ -401,30 +396,19 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // Where the catalog was last ASKED for — set when the request leaves, so
   // a fix landing mid-flight compares against the load already coming.
   const lastFetchedCenter = useRef<{ lat: number; lng: number } | null>(null);
-  const reloadIdleMsRef = useRef(RELOAD_IDLE_SEC_DEFAULT * 1000);
   const reloadMinViewportPctRef = useRef(RELOAD_MIN_VIEWPORT_PCT_DEFAULT);
   // The view the last catalog load asked for: millimetre pans are measured
   // against this screen, not the last idle (MESITA-2732).
   const lastReloadBoxRef = useRef<ViewportBox | null>(null);
-  // When the last catalog load left (Date.now()): the reload throttle
-  // counts from here, not from the last move (MESITA-2451).
-  const lastLoadAtRef = useRef<number | null>(null);
-  const pendingReload = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // A guest move whose reload has not left yet (MESITA-2510): a resize's
-  // bounds_changed cancels the timer, and the resize idle re-arms it.
-  const moveUnservedRef = useRef(false);
+  // The guest has moved far enough off the last load to offer a reload
+  // (MESITA-2874): the "Search this area" pill shows; its tap loads.
+  const [areaMoved, setAreaMoved] = useState(false);
   // A tap picked the card, so centre it even when the pager still names
   // it. A flick never sets this — scrollIntoView would fight the finger.
   const centerOnSelect = useRef(false);
   // The pin the camera last FLEW to on a second tap (MESITA-2488): its next
   // tap opens. Cleared the moment the selection moves to anything else.
   const arrivedRef = useRef<string | null>(null);
-
-  const clearPendingReload = useCallback(() => {
-    if (pendingReload.current == null) return;
-    clearTimeout(pendingReload.current);
-    pendingReload.current = null;
-  }, []);
 
   // The view as it is now, for the live readout (MESITA-2512): every camera
   // change, once a frame. It never loads.
@@ -451,9 +435,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const loadAt = useCallback(
     async (nextCenter: Coords, box: ViewportBox | null) => {
       lastFetchedCenter.current = nextCenter;
-      lastLoadAtRef.current = Date.now();
       lastReloadBoxRef.current = box;
-      moveUnservedRef.current = false;
+      setAreaMoved(false);
       const gen = ++viewportGen.current;
       setCatalogLoading(true);
       setFetchError(null);
@@ -465,8 +448,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           filters.familyKeys,
         );
         if (gen !== viewportGen.current) return;
-        reloadIdleMsRef.current =
-          clampReloadIdleSec(result.reloadIdleSec) * 1000;
         reloadMinViewportPctRef.current = clampReloadMinViewportPct(
           result.reloadMinViewportPct,
         );
@@ -497,43 +478,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     [filters.familyKeys, supabase],
   );
 
-  // RELOAD WHEN THE MAP COMES TO REST, AT MOST ONCE EVERY reloadIdleSec
-  // FROM THE LAST RELOAD (Pato, MESITA-2451: "if more than n seconds have
-  // happened since last reload"), and only if the camera has left at least
-  // reloadMinViewportPct of that last-reload screen (Pato, MESITA-2732).
-  // A guest move's idle arms one timer for the rest of the gap (none
-  // left: at once); any camera move cancels it (SearchMap's
-  // onCameraMoveStart) and the idle that ends that move arms it again. A
-  // finger resting on the map defers it until the finger lifts. A rest
-  // under the min move does not load and does not rebase the origin, so
-  // successive tiny pans still accumulate.
-  const armIdleReload = useCallback(() => {
-    clearPendingReload();
-    const fire = () => {
-      if (mapFingerIsDown()) {
-        pendingReload.current = setTimeout(fire, FINGER_RECHECK_MS);
-        return;
-      }
-      pendingReload.current = null;
-      const box = lastBoxRef.current;
-      if (!box) return;
-      if (
-        !reloadMoveMeetsMin(
-          lastReloadBoxRef.current,
-          box,
-          reloadMinViewportPctRef.current,
-        )
-      ) {
-        return;
-      }
-      void loadAt(viewportSight(box), box);
-    };
-    pendingReload.current = setTimeout(
-      fire,
-      reloadWaitMs(lastLoadAtRef.current, Date.now(), reloadIdleMsRef.current),
-    );
-  }, [clearPendingReload, loadAt]);
-
   const onFirstViewport = useCallback(
     (box: ViewportBox) => {
       lastBoxRef.current = box;
@@ -542,41 +486,49 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     [loadAt],
   );
 
+  // A GUEST MOVE NEVER RELOADS ON ITS OWN (Pato, MESITA-2874: "a button to
+  // load instead of automatic loading"; was MESITA-2440/2451's reload at
+  // rest). Once the camera has left reloadMinViewportPct of the last-load
+  // screen (MESITA-2732), the "Search this area" pill shows; a rest under
+  // that leaves it hidden, so successive tiny pans still accumulate.
   const onUserViewport = useCallback(
     (box: ViewportBox, meta: ViewportMeta) => {
       markViewport(box);
-      if (meta.resized) {
-        // Nothing moved the camera — the map was resized (MESITA-2510). Not
-        // the guest's move, so it never reloads; but a resize's own
-        // bounds_changed cancelled any pending reload, so a guest move that
-        // has not loaded yet is re-armed.
-        if (moveUnservedRef.current) armIdleReload();
-        return;
-      }
+      // A resize keeps the camera (MESITA-2510): nothing to offer.
+      if (meta.resized) return;
       if (meta.programmatic) {
-        // A move the page made (a tap's reveal, the disc, a bar pick) does
-        // not reload; an ask that needed a new catalog already loaded it at
-        // its target. Rebase the origin the GPS staleness check reads.
+        // A move the page made (a tap's reveal, the disc, a bar pick) loaded
+        // at its target if it needed to. Rebase the origin the GPS
+        // staleness check reads.
         lastFetchedCenter.current = viewportSight(box);
-        clearPendingReload();
         return;
       }
       userMovedRef.current = true;
-      moveUnservedRef.current = true;
-      armIdleReload();
+      if (
+        reloadMoveMeetsMin(
+          lastReloadBoxRef.current,
+          box,
+          reloadMinViewportPctRef.current,
+        )
+      ) {
+        setAreaMoved(true);
+      }
     },
-    [armIdleReload, clearPendingReload, markViewport],
+    [markViewport],
   );
 
-  useEffect(() => () => clearPendingReload(), [clearPendingReload]);
+  const searchThisArea = useCallback(() => {
+    const box = lastBoxRef.current;
+    if (!box) return;
+    void loadAt(viewportSight(box), box);
+  }, [loadAt]);
 
   // A family chip changes the Area pool (`loadAt` changes with it). How
   // many stays the operator's. The query bar never reads these filters.
   useEffect(() => {
     if (!lastFetchedCenter.current || !lastBoxRef.current) return;
-    clearPendingReload();
     void loadAt(viewportSight(lastBoxRef.current), lastBoxRef.current);
-  }, [clearPendingReload, loadAt]);
+  }, [loadAt]);
 
   // A GPS FIX MOVES THE BLUE DOT, NOT THE MAP (MESITA-2440). Only the fix
   // the location disc asked for, or the first one when nothing else has
@@ -612,11 +564,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
               },
         );
         if (catalogIsStale(lastFetchedCenter.current, fix)) {
-          clearPendingReload();
           void loadAt(fix, boxAtSight(lastBoxRef.current, fix));
         }
       },
-      [askCamera, clearPendingReload, loadAt],
+      [askCamera, loadAt],
     ),
   );
 
@@ -631,10 +582,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     }
     askCamera({ kind: "center", lat: location.lat, lng: location.lng });
     if (catalogIsStale(lastFetchedCenter.current, location)) {
-      clearPendingReload();
       void loadAt(location, boxAtSight(lastBoxRef.current, location));
     }
-  }, [askCamera, clearPendingReload, loadAt, location, locate]);
+  }, [askCamera, loadAt, location, locate]);
 
   // End the current Places autocomplete session and mint the next one.
   const resetSearchSession = useCallback(() => {
@@ -733,7 +683,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         ? { kind: "fit", bounds: camera.bounds }
         : { kind: "center", lat: camera.lat, lng: camera.lng },
     );
-    clearPendingReload();
     const target = { lat: camera.lat, lng: camera.lng };
     // A Location loads the area it fits; a Place, the view it pans to.
     void loadAt(
@@ -1089,7 +1038,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           onSelectPin={handleSelectPin}
           onFirstViewport={onFirstViewport}
           onUserViewport={onUserViewport}
-          onCameraMoveStart={clearPendingReload}
           onLiveViewport={setLiveBox}
         />
         {/* THE CAROUSEL FLOATS OVER THE MAP (Pato, MESITA-2670: "remove the
@@ -1097,6 +1045,11 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
             over the map, and the metadata must not be shown"). The band under
             the map (MESITA-2506/2613) and its readout are gone. Search mode
             still hides it: its cards are the nearby catalog, not the results. */}
+        {/* The pill hangs at the map's top, Google Maps' place for it; the tap
+            loads and hides it (loadAt clears `areaMoved`). */}
+        {areaMoved && !searchMode && (
+          <SearchHereButton onClick={searchThisArea} />
+        )}
         {!searchMode && (
           <SearchRailOverlay
             places={catalog}

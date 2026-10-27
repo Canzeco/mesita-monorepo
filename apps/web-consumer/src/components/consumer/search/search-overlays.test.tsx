@@ -22,7 +22,7 @@ function read(name: string): string {
   return readFileSync(join(SEARCH_DIR, name), "utf8");
 }
 
-describe("Search map catalog reloads once the map is still (MESITA-2440)", () => {
+describe("Search map catalog loads on the guest's tap, not at rest (MESITA-2874)", () => {
   it("loads the operator's How many, not an SSR 200 dump", () => {
     expect(read("SearchClient.tsx")).toContain("apiFetchNearbyCatalog");
     // How many, the source and the Google reviews minimum are the
@@ -32,11 +32,7 @@ describe("Search map catalog reloads once the map is still (MESITA-2440)", () =>
     expect(read("SearchClient.tsx")).toContain("familyKeys");
     expect(read("SearchClient.tsx")).not.toContain("minReviews");
     expect(read("SearchClient.tsx")).toContain("onFirstViewport");
-    expect(read("SearchClient.tsx")).toContain("reloadWaitMs");
     expect(read("SearchClient.tsx")).not.toContain("idleReloadDue");
-    expect(read("SearchClient.tsx")).toContain("armIdleReload");
-    expect(read("SearchClient.tsx")).not.toContain("handleSearchHere");
-    expect(read("SearchClient.tsx")).not.toContain("SearchHereButton");
     expect(read("SearchClient.tsx")).not.toContain("VIEWPORT_IDLE_MS");
     expect(read("SearchMap.tsx")).toContain("ViewportReporter");
     expect(read("SearchMap.tsx")).toContain("SearchMapReticle");
@@ -47,7 +43,6 @@ describe("Search map catalog reloads once the map is still (MESITA-2440)", () =>
     // The "Finding / Updating nearby" line left with the readout (MESITA-2670);
     // a reload dims the floating cards instead.
     expect(read("search-catalog-overlays.tsx")).toContain("opacity-55");
-    expect(read("search-catalog-overlays.tsx")).not.toContain("Search here");
     expect(read("SearchClient.tsx")).toContain("++viewportGen.current");
     expect(read("SearchClient.tsx")).not.toContain("toFixed(3)");
     // `google: true` survives and is NOT the ring: it says this client can
@@ -56,47 +51,6 @@ describe("Search map catalog reloads once the map is still (MESITA-2440)", () =>
     expect(read("../../../lib/api/places.ts")).toContain("google: true");
     expect(read("../../../lib/api/places.ts")).toContain("reloadIdleSec");
     expect(read("../../../lib/api/places.ts")).toContain("reloadMinViewportPct");
-  });
-
-  it("arms one timer per guest move, timed from the last reload; any camera move cancels it", () => {
-    const src = read("SearchClient.tsx");
-    // MESITA-2451: the gap counts from the last reload, not the last move.
-    expect(src).toMatch(
-      /reloadWaitMs\(\s*lastLoadAtRef\.current,\s*Date\.now\(\),\s*reloadIdleMsRef\.current,?\s*\)/,
-    );
-    expect(src).toContain("lastLoadAtRef.current = Date.now();");
-    expect(src).toContain("clampReloadIdleSec(result.reloadIdleSec)");
-    expect(src).toContain("clampReloadMinViewportPct(");
-    expect(src).toContain("reloadMoveMeetsMin(");
-    expect(src).toContain("lastReloadBoxRef.current");
-    expect(src).toContain("markViewport(box)");
-    expect(src).toMatch(
-      /if \(meta\.programmatic\) \{[\s\S]*return;[\s\S]*armIdleReload\(\)/,
-    );
-    expect(src).toContain("onCameraMoveStart={clearPendingReload}");
-    const map = read("SearchMap.tsx");
-    expect(map).toContain('addListener("bounds_changed"');
-    // The old distance-AND-time gate is gone, not left half-wired.
-    expect(src).not.toContain("reloadMinSec");
-    expect(src).not.toContain("forceNextLoad");
-  });
-
-  it("never reloads under a finger: the timer re-arms while one is down", () => {
-    const src = read("SearchClient.tsx");
-    expect(src).toMatch(
-      /if \(mapFingerIsDown\(\)\) \{\s*pendingReload\.current = setTimeout\(fire/,
-    );
-    const map = read("SearchMap.tsx");
-    expect(map).toContain('div.addEventListener("pointerdown", down, true)');
-    expect(map).toContain('window.addEventListener("pointerup", up, true)');
-  });
-
-  it("a pan the page made never reloads; only the guest's own moves do", () => {
-    const src = read("SearchClient.tsx");
-    expect(src).toMatch(
-      /if \(meta\.programmatic\) \{[\s\S]*clearPendingReload\(\);\s*return;/,
-    );
-    expect(src).toContain("Only the guest's own moves");
   });
 
   it("spends the programmatic flag on the idle that ends the move", () => {
@@ -112,32 +66,6 @@ describe("Search map catalog reloads once the map is still (MESITA-2440)", () =>
     );
     expect(src).not.toContain("PROGRAMMATIC_IDLE_MS");
     expect(src).not.toContain("programmaticIdleUntil");
-  });
-
-  // MESITA-2510 (Pato: "you are uplaoading every second eve if i don't
-  // move"): a resize keeps the camera, so its idle is not a move — it never
-  // reloads, and it re-arms a guest move the resize's bounds_changed cancelled.
-  it("a resize idle (camera unchanged) never reloads, and re-arms an unserved move", () => {
-    const map = read("SearchMap.tsx");
-    const client = read("SearchClient.tsx");
-    expect(map).toContain(
-      "const unmoved = sameCamera(lastCamera.current, camera);",
-    );
-    const handler = client.slice(
-      client.indexOf("const onUserViewport = useCallback("),
-      client.indexOf("useEffect(() => () => clearPendingReload()"),
-    );
-    const resized = handler.slice(
-      handler.indexOf("if (meta.resized) {"),
-      handler.indexOf("if (meta.programmatic) {"),
-    );
-    expect(resized).toContain("if (moveUnservedRef.current) armIdleReload();");
-    expect(resized).toContain("return;");
-    expect(resized).not.toContain("loadAt(");
-    expect(handler).toContain("moveUnservedRef.current = true;");
-    expect(client).toMatch(
-      /lastLoadAtRef\.current = Date\.now\(\);\s*lastReloadBoxRef\.current = box;\s*moveUnservedRef\.current = false;/,
-    );
   });
 
   it("a GPS fix moves the dot; only the first or an asked-for fix moves the map", () => {
