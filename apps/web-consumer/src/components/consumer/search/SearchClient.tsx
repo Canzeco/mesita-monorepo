@@ -29,8 +29,8 @@
 // Places api frm Area Search"). It asks for Mesita names only (`mesita`
 // mode: Pay's engine), so no Autocomplete, no Text Search, no Location rows
 // and no Details call per pick; with no Google rows there is no Add-a-place
-// card either (MESITA-2879's, which searched Google). Area itself stopped
-// calling Google in MESITA-2872.
+// button either (MESITA-2879/2882's, which searched Google). Area itself
+// stopped calling Google in MESITA-2872.
 //
 // A Google-only result has no preview sheet and no Add button (MESITA-2298):
 // its SECOND tap (pin or rail card) is the explicit open — get-or-create on
@@ -878,7 +878,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     const page = el.clientWidth * RAIL_PAGE_SHARE;
     if (page <= 0) return;
     // railIndex counts pages; each page stacks RAIL_PAGE_SIZE cards
-    // (MESITA-2878).
+    // (MESITA-2878). The Add button is pinned beside the rail, never a
+    // page (MESITA-2882).
     const pageCount = Math.ceil(catalog.length / RAIL_PAGE_SIZE);
     const next = railCenterIndex(el.scrollLeft, page, pageCount);
     setRailIndex(next);
@@ -930,10 +931,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     });
   }, [railSelectedId, catalog, railIndex]);
 
-  // A new set of places, or the rail coming back after the bar, puts the
-  // selected card's page (place #1 on a fresh set) in the centre at once.
-  // Before paint, so nothing slides. The
-  // scroll this sets fires onScroll, which writes railIndex and the ring.
+  // THE RAIL RESTS ON THE SELECTED CARD'S PAGE: a new set of places, or the
+  // rail coming back after the bar, puts it (place #1 on a fresh set) in
+  // the centre at once. Before paint, so nothing slides. The scroll this
+  // sets fires onScroll, which writes railIndex and the ring.
   const catalogKey = catalog.map((p) => p.id).join("|");
   const railShown = !searchMode && catalog.length > 0;
   useLayoutEffect(() => {
