@@ -9,8 +9,8 @@
 // MESITA-2707), never `enriched_at`. Type batteries ride the
 // Google call only. Floors exclude. There is no Google reviews minimum
 // (MESITA-2721): the Area pipeline's Popularity floor is the cut. Name Google
-// categories live on discovery_config.name. The two Google Area switches
-// (`googlePopular`, `googleClosest`) gate Nearby (MESITA-2703).
+// categories live on discovery_config.name. The Area pipeline calls no
+// Google (Nearby retired, MESITA-2872).
 //
 // `minPopularity` reads the Area pipeline's Popularity (pipeline-signals.ts,
 // rating × saturating volume since MESITA-2347).
@@ -38,20 +38,6 @@ export function enabledMapSupers(_map: MapConfig): SuperParamKey[] {
 /** Their Google batteries, flattened — what one Nearby call asks for. */
 export function enabledNearbyTypes(map: MapConfig): string[] {
   return nearbyTypesForSupers(enabledMapSupers(map));
-}
-
-/**
- * Client opt-in AND a Google Area source switched on AND a type battery on
- * (MESITA-2703: the two Google switches replaced `googleFill`). With both
- * Google switches at 0 nothing is billed. The caller still needs a key and
- * a point.
- */
-export function mapShouldFillGoogle(
-  clientOptIn: boolean,
-  map: MapConfig,
-): boolean {
-  return clientOptIn && (map.googlePopular > 0 || map.googleClosest > 0) &&
-    enabledNearbyTypes(map).length > 0;
 }
 
 /**

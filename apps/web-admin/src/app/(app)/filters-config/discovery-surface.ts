@@ -54,7 +54,6 @@ export const DISCOVERY_FIELD_LABELS: Record<DiscoveryField, string> = {
 export const DISCOVERY_SOURCE_KEYS = [
   "google_autocomplete",
   "google_text",
-  "google_nearby",
   "mesita_places",
   "mesita_social",
 ] as const;
@@ -92,13 +91,6 @@ export const DISCOVERY_SOURCES: readonly DiscoverySourceFact[] = [
     key: "google_text",
     label: "Google Text Search",
     retrieves: "Google places matching a typed query, with the listing facts.",
-    provides: GOOGLE_LISTING,
-    live: true,
-  },
-  {
-    key: "google_nearby",
-    label: "Google Nearby Search",
-    retrieves: "Up to 20 Google places of the requested families per call, ranked by prominence or by distance inside a circle.",
     provides: GOOGLE_LISTING,
     live: true,
   },
@@ -223,9 +215,9 @@ export const DISCOVERY_GATES: readonly DiscoveryGateFact[] = [
     rule: "1 when the place belongs to a requested family; 1 for every place when none is requested.",
     kind: "query",
     requires: ["family"],
-    when: "When the guest picks one family: a chip on the Search map or a family row on Home. The family also asks Google for its own place types (never another family's subtypes) and lists its primary places before its secondary ones; the score is the same as All.",
+    when: "When the guest picks one family: a chip on the Search map or a family row on Home; the score is the same as All.",
     missing: "No known family while a family is requested: 0.",
-    pushdown: ["google_nearby", "mesita_places"],
+    pushdown: ["mesita_places"],
   },
   {
     key: "radius",
@@ -235,7 +227,7 @@ export const DISCOVERY_GATES: readonly DiscoveryGateFact[] = [
     requires: ["coordinates"],
     when: "Every request with a point. Territory is gone (MESITA-2500, MESITA-2603): no view searches a rectangle or a saved area, so Home sends a point or nothing.",
     missing: "No coordinates: 0.",
-    pushdown: ["google_nearby", "mesita_places"],
+    pushdown: ["mesita_places"],
   },
 ];
 
@@ -289,7 +281,7 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     key: "area",
     label: "Area",
     purpose: "Places around a point: the Map's cross, the device or a saved pin.",
-    sources: ["google_nearby", "mesita_places"],
+    sources: ["mesita_places"],
     signals: ["proximity", "popularity"],
     gates: ["family", "radius"],
     factors: [
@@ -298,11 +290,9 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     scoring: "The Map and Home: Proximity × Popularity × s, no exponents (MESITA-2722), s the Selected boost for a Mesita Selected place, 1 for every other place (MESITA-2717), a plain product never clamped or normalized (MESITA-2710); Proximity is ½ at the radius ÷ the operator's Distance penalty (\"Radius divisor\" until MESITA-2726), the Map's screen radius or Home's circle (MESITA-2720), and the radius also gates. The Map and Home share one Distance penalty (MESITA-2776) and each have their own Places shown; nothing else differs (MESITA-2727). No location: Popularity × s. Chat ranks the same way inside the current-location radius. Ties break on distance, then id.",
     keepsOrder: [],
     rules: [
-      "Four sources, each switched on (20) or off (0) by the operator, Home and the Map alike: Google Popularity (the prominent 20 in the circle), Google Proximity (the nearest 20), Mesita Popularity (the 20 with the highest Popularity × the Selected boost, the score without Proximity), Mesita Proximity (the 20 nearest). They merge into one pool, deduped by Google Place ID (a Mesita place wins its own Google id), gated, scored and ranked before any page is cut. The guest never picks a source. The Map shows at most Map places shown of that sorted pool and Home at most Catalog places shown (1–80 each, default 20, MESITA-2713/2727). Before that cut, a place whose Popularity, ln(1 + reviews × stars), is under the Minimum Popularity (default 3; 0 is off, MESITA-2714) is dropped, Google or Mesita, Selected or not.",
+      "Mesita places only: Google Nearby Search is gone (MESITA-2872), so Area calls no Google. Two sources, each switched on (20) or off (0) by the operator, Home and the Map alike: Mesita Popularity (the 20 with the highest Popularity × the Selected boost, the score without Proximity) and Mesita Proximity (the 20 nearest). They merge into one pool, deduped, gated, scored and ranked before any page is cut. The guest never picks a source. The Map shows at most Map places shown of that sorted pool and Home at most Catalog places shown (1–40 each, default 20, MESITA-2713/2727). Before that cut, a place whose Popularity, ln(1 + reviews × stars), is under the Minimum Popularity (default 3; 0 is off, MESITA-2714) is dropped, Selected or not.",
       "Closed places never show (Discovery › General's active check). Mesita rows must be ready.",
       "No reviews minimum (MESITA-2721): the Minimum Popularity is the quality floor; the guest has no reviews filter (MESITA-2417).",
-      "Google calls: one billed Nearby call per Google source switched on, so 0 to 2 per load on the Map and on Home. A place two calls return counts once.",
-      "Google answers are never cached or stored: each load asks Google again (Google Maps Platform terms). Each guest IP may spend 20 Nearby calls a minute, all guests together 120; in any 24 hours 200 per IP and 1000 for everyone, then Google is skipped and Mesita still answers.",
       "The screen radius is clamped to 0.05–50 km; a visible map wider than 100 km, or none yet, uses the current-location radius instead. A saved pin's radius is clamped to 1–50 km.",
       "Mesita's read keeps at most 1000 ready rows in the radius box before scoring.",
       "Chat reads Mesita Selected places only, inside the current-location radius.",

@@ -5,18 +5,15 @@ import {
   enabledNearbyTypes,
   evaluatePlaceForMap,
   listedClearsMapPopularity,
-  mapShouldFillGoogle,
   primaryTypeClearsMapTypes,
 } from "./map-engine.ts";
 
 const MAP = DISCOVERY_DEFAULTS.map;
 
 
-Deno.test("defaults admit everything and ask Google for every guest family", () => {
+Deno.test("defaults admit everything and every guest family", () => {
   const all = new Set(nearbyTypesForSupers([...SUPER_PARAM_KEYS]));
   assertEquals(new Set(enabledNearbyTypes(MAP)), all);
-  assertEquals(mapShouldFillGoogle(true, MAP), true);
-  assertEquals(mapShouldFillGoogle(false, MAP), false);
   assertEquals(
     listedClearsMapPopularity({
       google_stars_overall: null,
@@ -24,13 +21,6 @@ Deno.test("defaults admit everything and ask Google for every guest family", () 
     }, MAP),
     true,
   );
-});
-
-Deno.test("both Google switches off skips Nearby; either one on calls it (MESITA-2703)", () => {
-  assertEquals(mapShouldFillGoogle(true, { ...MAP, googlePopular: 0, googleClosest: 0 }), false);
-  assertEquals(mapShouldFillGoogle(true, { ...MAP, googlePopular: 20, googleClosest: 0 }), true);
-  assertEquals(mapShouldFillGoogle(true, { ...MAP, googlePopular: 0, googleClosest: 20 }), true);
-  assertEquals(mapShouldFillGoogle(false, MAP), false);
 });
 
 Deno.test("minPopularity reads the Area pipeline's Popularity — unrated scores 0 (MESITA-2328)", () => {

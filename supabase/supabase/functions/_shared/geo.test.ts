@@ -6,7 +6,6 @@ import {
   haversineKm,
   nearbyBbox,
   NEARBY_DEFAULT_RADIUS_KM,
-  NEARBY_RADIUS_KM,
   type BboxQuery,
 } from "./geo.ts";
 
@@ -93,10 +92,9 @@ Deno.test("haversineKm: near is near, far is far, missing is infinitely far", ()
 });
 
 Deno.test("nearbyBbox: 50 km around Monterrey stays inside the clamp", () => {
-  const box = nearbyBbox(25.67, -100.3, NEARBY_RADIUS_KM);
+  const box = nearbyBbox(25.67, -100.3, 50);
   assertEquals(box.south < 25.67, true);
   assertEquals(box.north > 25.67, true);
-  assertEquals(NEARBY_RADIUS_KM, 50);
 });
 
 Deno.test("applyBboxPredicate: dateline is two lng ranges, not 400", () => {

@@ -1,26 +1,24 @@
 // Supabase Edge Function — consumer-web-list-catalog (product caller)
 //
 // The Feed: the Catalog VIEW of the Area pipeline (MESITA-2302, one pool
-// since MESITA-2379, four sources since MESITA-2703,
+// since MESITA-2379, Mesita's two sources only since MESITA-2872,
 // `_shared/area-pipeline.ts`). One round trip: `selectAreaPool` pulls the
-// four sources the operator switched on (Google Popularity, Google Proximity —
-// one billed Nearby call each — Mesita Popularity, Mesita Proximity) around the
-// point inside the radius, merges duplicates and ranks the pool. The client
-// pages it, so a later page never re-pays Google.
+// sources the operator switched on (Mesita Popularity, Mesita Proximity)
+// around the point inside the radius, merges duplicates and ranks the pool.
+// The client pages it. Nothing here calls Google (Nearby retired,
+// MESITA-2872).
 //
 // THE RADIUS: the saved pin's own `radiusKm` when the client sends one, else
 // the operator's `map.radiusKm` (the device's current location). Mesita's
-// read and Google's circle use it; it gates and sets Proximity's half distance. ONE RANKING,
+// read uses it; it gates and sets Proximity's half distance. ONE RANKING,
 // THE MAP'S: Proximity × Popularity × the Selected boost
 // (`map.selectedFactor` on a Selected place, MESITA-2717; no exponents
 // since MESITA-2722; Proximity ½ at the radius ÷ the operator's
 // radius divisor, read by the engine, MESITA-2720). `prefer` is ignored; a family
 // row only gates, ranked the same way.
 //
-// A FAMILY ROW ASKS ITS OWN QUESTION (MESITA-2438): `familyKeys` sends
-// Google that family's full type battery (`areaGoogleTypes`), pushes the
-// Family gate into the Mesita read, and lists the family's PRIMARY places
-// before its secondary ones. Without it the pool is every family's.
+// A FAMILY ROW ASKS ITS OWN QUESTION (MESITA-2438): `familyKeys` pushes the
+// Family gate into the Mesita read. Without it the pool is every family's.
 //
 // Request: POST { unified: true, google: true, lat, lng, radiusKm?, familyKeys? }
 //   radiusKm  the saved pin's radius, clamped to 1..50; missing or not a
@@ -30,14 +28,11 @@
 //             areas (Territory) were retired 2026-10-20 (MESITA-2500), so a
 //             `bounds` an old build still sends is ignored and logged as
 //             `bounds_ignored`; drop that log once it stays quiet.
-//   google    the client can render a Google-only stub; the operator's two
-//             Google switches, a key and the per-IP ledger also decide.
-//   No Google reviews minimum (MESITA-2721): the Popularity floor cuts.
+//   google    ignored since MESITA-2872 (no Google stub comes back).
+//   No reviews minimum (MESITA-2721): the Popularity floor cuts.
 // Response: { ok, location: { kind, radiusKm, operatorRadiusKm },
 //   places: [... { area }],
-//   summary }. QUOTA: one load spends up to 2 of the per-IP 45 Nearby calls
-//   a minute (one per Google switch on); a partly refused pair logs
-//   `quota: "partial"`.
+//   summary }.
 //
 // Local:  supabase functions serve consumer-web-list-catalog
 // Deploy: supabase functions deploy consumer-web-list-catalog
@@ -54,15 +49,10 @@ import { stripInternal } from "../_shared/place-pool-shape.ts";
 import type { PlaceProfileRow } from "../_shared/place-pool-shape.ts";
 import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
 import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
-import { decideNearby, wantsGoogleFill } from "../_shared/geo.ts";
-import {
-  mapShouldFillGoogle,
-} from "../_shared/map-engine.ts";
-import { readGooglePlacesKey } from "../_shared/google-places.ts";
+import { decideNearby } from "../_shared/geo.ts";
 import {
   areaPoolLogFields,
-  areaGoogleTypes,
-  type OwnedRow,
+  type PoolRow,
   type PoolBuilder,
   requestRadiusKm,
   resolveAreaLocation,
@@ -70,7 +60,6 @@ import {
   selectedPoolQuery,
 } from "../_shared/area-pipeline.ts";
 import { readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
-import { areaQuota, ownedLookup } from "../_shared/area-deps.ts";
 
 const POOL_CAP = 1000;
 
@@ -81,7 +70,7 @@ type Body = {
   radiusKm?: unknown;
   /** Sent by builds from before MESITA-2500; ignored, only logged. */
   bounds?: unknown;
-  /** The client can render a Google-only stub. */
+  /** Ignored since MESITA-2872: no Google stub comes back. */
   google?: boolean;
   /** Ignored since MESITA-2417; no reviews minimum since MESITA-2721. */
   minReviews?: unknown;
@@ -93,14 +82,14 @@ type Body = {
   familyKeys?: unknown;
 };
 
-function wirePlaces(rows: unknown[]): OwnedRow[] {
+function wirePlaces(rows: unknown[]): PoolRow[] {
   return (rows as PlaceProfileRow[]).map((r) => {
     const out = stripInternal(r);
     return {
       ...out,
       id: r.id,
       photos: Array.isArray(out.photos) ? out.photos : [],
-    } as OwnedRow; // photos already effective via stripInternal
+    } as PoolRow; // photos already effective via stripInternal
   });
 }
 
@@ -118,7 +107,7 @@ Deno.serve(async (req) => {
   const cfg = await loadDiscoveryConfig(admin);
   const nearby = decideNearby(body as Record<string, unknown>);
   const center = nearby.mode === "ok" ? { lat: nearby.lat, lng: nearby.lng } : null;
-  // Validated before it reaches the Mesita box or Google's circle.
+  // Validated before it reaches the Mesita box.
   const radius = requestRadiusKm(body.radiusKm, cfg.map.radiusKm);
   const radiusKm = radius.km;
   // Home ranks from a point or nothing (MESITA-2500): saved areas are gone.
@@ -150,19 +139,12 @@ Deno.serve(async (req) => {
   }
   const mesitaRows = wirePlaces(data ?? []);
 
-  const googleOn = location.kind !== "none" &&
-    mapShouldFillGoogle(wantsGoogleFill(body as Record<string, unknown>), cfg.map);
-  const gmp = googleOn ? readGooglePlacesKey() : null;
-  const pool = await selectAreaPool<OwnedRow>({
+  const pool = await selectAreaPool<PoolRow>({
     surface: "catalog",
-    apiKey: gmp?.ok ? gmp.key : null,
     location,
     families,
-    types: googleOn ? areaGoogleTypes(families) : [],
     mesitaRows,
     cfg,
-    consumeQuota: areaQuota(req, admin, env.serviceKey),
-    lookupOwned: ownedLookup(admin, PLACE_CARD_COLUMNS, "list-catalog", wirePlaces),
   });
 
   console.log(JSON.stringify({

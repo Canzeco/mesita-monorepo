@@ -166,22 +166,20 @@ export type SuperParamKey = (typeof SUPER_PARAM_KEYS)[number];
 
 /** Mirrors AREA_SOURCE_KEYS / AREA_SOURCE_DEFAULT in
  *  _shared/discovery-config.ts (MESITA-2703): each source is off (0) or on
- *  (20). The Google two bill one Nearby call each per load. */
+ *  (20). Google Nearby's two retired in MESITA-2872. */
 export const AREA_SOURCE_KEYS = [
-  "googlePopular",
-  "googleClosest",
   "mesitaPopular",
   "mesitaClosest",
 ] as const;
 export type AreaSourceKey = (typeof AREA_SOURCE_KEYS)[number];
 export const AREA_SOURCE_ON = 20;
-/** Mirrors MAP_RADIUS_KM_* in _shared/discovery-config.ts. Max = Google's Nearby circle cap. */
+/** Mirrors MAP_RADIUS_KM_* in _shared/discovery-config.ts. */
 export const MAP_RADIUS_KM_MIN = 1;
 export const MAP_RADIUS_KM_MAX = 50;
 const MAP_RADIUS_KM_DEFAULT = 15;
 /** Mirrors MAP_PLACES_SHOWN_* in _shared/discovery-config.ts (MESITA-2713). */
 export const MAP_PLACES_SHOWN_MIN = 1;
-export const MAP_PLACES_SHOWN_MAX = 80;
+export const MAP_PLACES_SHOWN_MAX = 40;
 const MAP_PLACES_SHOWN_DEFAULT = 20;
 /** Mirrors MAP_POPULARITY_FLOOR_* in _shared/discovery-config.ts (MESITA-2714). */
 export const MAP_POPULARITY_FLOOR_MIN = 0;
@@ -210,16 +208,15 @@ export type MapConfig = {
   /** Min share of the last-reload screen a guest move must cover before
    *  rest-reload (MESITA-2732). 0 = any move. */
   reloadMinViewportPct: number;
-  /** The four Area sources (MESITA-2703), 0 or 20 each, Home and the Map. */
-  googlePopular: number;
-  googleClosest: number;
+  /** The two Area sources (MESITA-2703, Mesita only since MESITA-2872), 0
+   *  or 20 each, Home and the Map. */
   mesitaPopular: number;
   mesitaClosest: number;
   /** The current-location radius (km): Home's from the device or a saved
    *  pin with no radius, the Map's with no screen, Chat's (MESITA-2703). */
   radiusKm: number;
   // `proximityWeight` / `popularityWeight` retired (MESITA-2722).
-  /** How many sorted places the Map shows, 1..80 (MESITA-2713). */
+  /** How many sorted places the Map shows, 1..40 (MESITA-2713). */
   placesShown: number;
   /** The same for Home, total across its rails; missing = the Map's (MESITA-2727). */
   catalogPlacesShown: number;
@@ -905,7 +902,7 @@ const CATALOG_PLACES_PER_RAIL_MIN = 4;
 const CATALOG_PLACES_PER_RAIL_MAX = 20;
 const CATALOG_MIN_SEED_PLACES_MAX = 20;
 const MAP_MIN_POPULARITY_MAX = 1;
-/** Map Places-set caps. Mesita max 60; Google Nearby max 20. */
+/** Name lane caps. */
 export const NAME_LANE_COUNT_MAX = 20;
 const NAME_FAST_COUNT_DEFAULT = 5;
 const NAME_MESITA_COUNT_DEFAULT = 3;
@@ -985,8 +982,6 @@ export const DEFAULT_MAP: MapConfig = {
   minPopularity: 0,
   reloadIdleSec: MAP_RELOAD_IDLE_SEC_DEFAULT,
   reloadMinViewportPct: MAP_RELOAD_MIN_VIEWPORT_PCT_DEFAULT,
-  googlePopular: AREA_SOURCE_ON,
-  googleClosest: AREA_SOURCE_ON,
   mesitaPopular: AREA_SOURCE_ON,
   mesitaClosest: AREA_SOURCE_ON,
   radiusKm: MAP_RADIUS_KM_DEFAULT,
@@ -1152,11 +1147,6 @@ function coerceAreaSource(raw: unknown): number {
   return n >= AREA_SOURCE_ON / 2 ? AREA_SOURCE_ON : 0;
 }
 
-/** Billed Nearby calls per load: one per Google source switched on. */
-export function googleCallsPerLoad(map: Pick<MapConfig, AreaSourceKey>): number {
-  return (map.googlePopular > 0 ? 1 : 0) + (map.googleClosest > 0 ? 1 : 0);
-}
-
 function coerceGeneral(raw: unknown): GeneralConfig {
   const g = (raw ?? {}) as Record<string, unknown>;
   return {
@@ -1249,10 +1239,8 @@ function coerceMap(raw: unknown): MapConfig {
         ) * 10,
       ) / 10,
     // Rebuilt key by key: a retired key (`googlePull`, `pinCount`, `supers`,
-    // the reload km/sec pair, the 20/40/60 stops, `googleFill`) is dropped
-    // on the next save.
-    googlePopular: coerceAreaSource(m.googlePopular),
-    googleClosest: coerceAreaSource(m.googleClosest),
+    // the reload km/sec pair, the 20/40/60 stops, `googleFill`, the Google
+    // sources `googlePopular` / `googleClosest`) is dropped on the next save.
     mesitaPopular: coerceAreaSource(m.mesitaPopular),
     mesitaClosest: coerceAreaSource(m.mesitaClosest),
     radiusKm:

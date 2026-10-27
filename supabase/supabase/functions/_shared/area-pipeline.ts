@@ -1,19 +1,18 @@
-// THE AREA PIPELINE (MESITA-2302, one pool since MESITA-2379, four sources
-// since MESITA-2703). Places around a POINT and a RADIUS — the Map's cross
+// THE AREA PIPELINE (MESITA-2302, one pool since MESITA-2379, Mesita's two
+// sources only since MESITA-2872). Places around a POINT and a RADIUS — the Map's cross
 // and its screen radius, or Home's device / saved pin and its radius — or,
 // with no point, Mesita's own places by Popularity alone. Home (the Feed)
 // and the Map are VIEWS of Area; they share this one retrieval, the same
 // switches and the same ranking (Pato, MESITA-2703: "get (geolocation,
-// radius), pull from four sources, merge duplicates, sort").
+// radius), pull from four sources, merge duplicates, sort"; Pato,
+// MESITA-2872: "We are only going to have Mesita Nearby Search").
 //
 //   (point, radius)
-//     ├─ Google Popularity   Nearby, rank POPULARITY, the whole circle  ─┐
-//     ├─ Google Proximity   Nearby, rank DISTANCE, the whole circle    ─┤ → owned lookup by Place ID
-//     ├─ Mesita Popularity   top 20 by Popularity × s in the circle     ─┤
+//     ├─ Mesita Popularity   top 20 by Popularity × s in the circle     ─┐
 //     └─ Mesita Proximity   20 nearest in the circle                   ─┘
-//   merge (one card per place; an owned hit is the Mesita row; `foundBy`
-//   keeps every source that found it) → gates → Proximity × Popularity
-//   × s (s = the Selected boost for a Mesita Selected place, else 1)
+//   merge (one card per place; `foundBy` keeps every source that found it)
+//   → gates → Proximity × Popularity × s (s = the Selected boost for a
+//   Mesita Selected place, else 1)
 //
 // Each source is `map.<key>` 0 or 20 (`AREA_SOURCE_KEYS`). Gates: Family ·
 // Radius, plus the operational ones the sources apply (active, ready) and
@@ -23,30 +22,18 @@
 // number for the Map, Home and Chat (MESITA-2776 retired MESITA-2727's
 // separate Catalog penalty).
 //
-// Fail closed on money: no key, no point, no types, a quota refusal or a
-// Google error buy nothing; an owned-lookup error drops the Google side (no
-// stub may shadow a Mesita place). No photo field is ever asked for a
-// Google-only card, nothing here writes a row, and no Google answer outlives
-// its request: nothing caches one (Google Maps Platform terms; MESITA-2765).
+// No Google call: Google Nearby Search (two billed Enterprise calls per Map
+// pan or Home load) was removed in MESITA-2872, after MESITA-2870's bill.
+// Nothing here writes a row.
 //
 // Chat (MESITA-2339) does not use the pool: `areaSelectedPlaces` reads Mesita
 // Selected places only, with the same score inside `map.radiusKm`.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { EVERY_FAMILY_TYPES, nearbyTypesForSupers } from "./google-type-super.ts";
 import { isSelectedRow } from "./selected-row.ts";
-import { googleStub } from "./google-stub.ts";
 import { applyBboxPredicate, type BboxQuery, haversineKm, nearbyBbox } from "./geo.ts";
-import {
-  applyGeneralGateQuery,
-  clearsGeneralGate,
-  type FilterableQuery,
-} from "./discovery-general-gate.ts";
+import { applyGeneralGateQuery, type FilterableQuery } from "./discovery-general-gate.ts";
 import { familiesForPlace } from "./place-taxonomy.ts";
-import {
-  nearbyExcludedTypesForFamilies,
-  placeFamilies,
-} from "./sourcing.ts";
 import {
   type AreaBounds,
   type AreaCandidate,
@@ -55,7 +42,6 @@ import {
   type AreaLocation,
   type AreaSource,
   insideBounds,
-  knownFamilies,
   type LatLng,
   popularPart,
   rankArea,
@@ -67,30 +53,8 @@ import {
   type DiscoveryConfig,
   MAP_RADIUS_KM_MAX,
   MAP_RADIUS_KM_MIN,
-  type GeneralConfig,
   type SignalParams,
 } from "./discovery-config.ts";
-import {
-  type NearbyHit,
-  type NearbyOutcome,
-  type NearbyRank,
-  searchNearbyPlacesOutcome,
-} from "./nearby-places.ts";
-
-/** Every guest family's Nearby types (round-robin, capped at 50): what a
- *  view with no family requested asks Google for. */
-export const FEED_GOOGLE_TYPES: readonly string[] = EVERY_FAMILY_TYPES;
-
-/**
- * The Nearby types a request sends (MESITA-2438): the requested families'
- * own batteries, so a family row asks Google for THAT family's full type
- * list; none requested = every family's. Before this, the Feed always sent
- * the mixed every-family list and cut a family out of that one answer in
- * the browser, so a family row showed whatever survived a 20-place mix.
- */
-export function areaGoogleTypes(families: readonly string[]): readonly string[] {
-  return families.length > 0 ? nearbyTypesForSupers(families) : FEED_GOOGLE_TYPES;
-}
 
 /** Which surface asks: the Map (Search tab) or Home's catalog. The one
  *  number that differs is Places shown (MESITA-2727); the Distance penalty
@@ -119,10 +83,9 @@ export function areaSignalParams(
   };
 }
 
-/** A Mesita row that may own a hit: active, ready, with its google id. */
-export type OwnedRow = Record<string, unknown> & {
+/** A Mesita row in the pool: active and ready. */
+export type PoolRow = Record<string, unknown> & {
   id: string;
-  google_place_id?: string | null;
   lat?: number | null;
   lng?: number | null;
 };
@@ -136,7 +99,7 @@ function mesitaSource(row: Record<string, unknown>): AreaSource {
   return isSelectedRow(row as { selected?: boolean | null }) ? "selected" : "mesita";
 }
 
-/** A Mesita row as an Area candidate (no Google hit behind it). */
+/** A Mesita row as an Area candidate. */
 export function mesitaCandidate(row: Record<string, unknown>): AreaCandidate {
   return {
     id: String(row.id ?? ""),
@@ -149,39 +112,6 @@ export function mesitaCandidate(row: Record<string, unknown>): AreaCandidate {
     ready: 1,
     reviews: null,
     boostTier: numOrNull(row.boost_tier) ?? 0,
-  };
-}
-
-/**
- * A Google hit Mesita owns, as an Area candidate (MESITA-2338). It is the
- * same Google listing, so its rating and review count come from the hit —
- * the numbers eligibility already judged — and fall back to the stored ones
- * only when the hit lacks them. Its families are Mesita's own; only when
- * Mesita does not know them does the type Google returned it for decide.
- */
-export function ownedCandidate(row: Record<string, unknown>, hit: NearbyHit): AreaCandidate {
-  const base = mesitaCandidate(row);
-  const known = knownFamilies(base.familyKeys);
-  return {
-    ...base,
-    rating: numOrNull(hit.rating) ?? base.rating,
-    reviewCount: numOrNull(hit.reviewCount) ?? base.reviewCount,
-    familyKeys: known.length > 0 ? base.familyKeys : placeFamilies(hit.primaryType, hit.types),
-    reviews: 1,
-  };
-}
-
-function stubCandidate(stub: Record<string, unknown>, hit: NearbyHit): AreaCandidate {
-  return {
-    id: String(stub.id),
-    lat: hit.lat,
-    lng: hit.lng,
-    rating: hit.rating,
-    reviewCount: hit.reviewCount,
-    familyKeys: (stub.family_keys as string[] | undefined) ?? [],
-    source: "google",
-    ready: null,
-    reviews: 1,
   };
 }
 
@@ -238,7 +168,7 @@ export function resolveAreaLocation(
   return { kind: "none" };
 }
 
-/** The screen radius's bounds (km): Google's Nearby circle cap on top. */
+/** The screen radius's bounds (km). */
 export const SCREEN_RADIUS_KM_MIN = 0.05;
 export const SCREEN_RADIUS_KM_MAX = 50;
 
@@ -275,23 +205,9 @@ export function screenRadiusKm(raw: unknown, cross?: LatLng | null): number | nu
   return Math.min(SCREEN_RADIUS_KM_MAX, Math.max(SCREEN_RADIUS_KM_MIN, r * SCREEN_RING_INSET));
 }
 
-/** The server's snap of a point centre (~110 m) for retrieval: Google is
- *  asked about the snapped point, never the guest's exact one; Proximity
- *  reads the raw centre. */
-export function snapCenter(c: LatLng): LatLng {
-  return { lat: Math.round(c.lat * 1000) / 1000, lng: Math.round(c.lng * 1000) / 1000 };
-}
-
 function mid(a: LatLng, b: LatLng): LatLng {
   return { lat: (a.lat + b.lat) / 2, lng: (a.lng + b.lng) / 2 };
 }
-
-/** The Google sources and the Nearby rank each asks for (MESITA-2703). Both
- *  search the whole circle; the rank is the only difference. */
-export const GOOGLE_SOURCE_RANK: Readonly<Record<"googlePopular" | "googleClosest", NearbyRank>> = {
-  googlePopular: "POPULARITY",
-  googleClosest: "DISTANCE",
-};
 
 /** The switches that are on, in `AREA_SOURCE_KEYS` order. */
 export function areaSourcesOn(
@@ -300,58 +216,18 @@ export function areaSourcesOn(
   return AREA_SOURCE_KEYS.filter((k) => (map[k] ?? 0) > 0);
 }
 
-/** Billed Nearby calls per load: one per Google source switched on. */
-export function googleCallsPerLoad(map: Pick<DiscoveryConfig["map"], AreaSourceKey>): number {
-  return (map.googlePopular > 0 ? 1 : 0) + (map.googleClosest > 0 ? 1 : 0);
-}
-
-/** True when the point sits inside the location's Radius (no point: true). */
-function insideLocation(location: AreaLocation, lat: number | null, lng: number | null): boolean {
-  if (location.kind === "point") {
-    const km = haversineKm(location.anchor.lat, location.anchor.lng, lat, lng);
-    return Number.isFinite(km) && km <= location.radiusKm;
-  }
-  return true;
-}
-
-/** Eligibility after Google answers (never an API param, never a refill):
- *  inside the location and active. No reviews floor (MESITA-2721): the
- *  Popularity floor is the quality cut, in area-score.ts. */
-export function eligibleGoogleHits(
-  hits: readonly NearbyHit[],
-  location: AreaLocation,
-  cfg: { general: GeneralConfig },
-): NearbyHit[] {
-  const seen = new Set<string>();
-  return hits.filter((hit) => {
-    if (seen.has(hit.placeId)) return false;
-    seen.add(hit.placeId);
-    if (!insideLocation(location, hit.lat, hit.lng)) return false;
-    return clearsGeneralGate(cfg.general, hit);
-  });
-}
-
 // ── The pool ────────────────────────────────────────────────────────────
 
-export type AreaPoolDeps<T extends OwnedRow> = {
-  /** GMP key, or null when the server has none (no Google call). */
-  apiKey: string | null;
+export type AreaPoolDeps<T extends PoolRow> = {
   location: AreaLocation;
   /** The Family gate's requested families; empty = every family. */
   families: readonly string[];
-  /** Nearby `includedPrimaryTypes`: the families pushed down. Empty = no
-   *  Google call. */
-  types: readonly string[];
   /** The caller's Mesita read (gates pushed down, `selectedPoolQuery`). */
   mesitaRows: readonly T[];
   cfg: Pick<DiscoveryConfig, "general" | "map" | "params">;
   /** Which surface asks: picks Places shown (MESITA-2727). Required, so a
    *  new caller has to choose. */
   surface: AreaSurface;
-  /** The per-IP ledger, once per billed call. False = that call skipped. */
-  consumeQuota: () => Promise<boolean>;
-  /** Ready Mesita rows holding these google ids; null on error. */
-  lookupOwned: (gids: string[]) => Promise<T[] | null>;
 };
 
 /** The breakdown a pool place carries: the score's and every source that
@@ -367,20 +243,11 @@ export type AreaPoolDiagnostics = AreaDiagnostics & {
 export type AreaPoolPlace = Record<string, unknown> & { id: string; area: AreaPoolDiagnostics };
 
 export type AreaPoolSummary = {
-  googleCalls: number;
-  googleBilled: number;
-  googleRefused: number;
-  googleFailed: number;
-  /** "partial" when some calls were refused and others answered. */
-  quota: "ok" | "partial" | "refused" | "none";
-  googleHits: number;
   /** The switches that ran ("none" when no source could run: every switch
    *  off, or no point and Mesita Popularity off). */
   sources: AreaSourceKey[] | "none";
   /** Places each source returned after its own gates, before the merge. */
   sourceCounts: Record<AreaSourceKey, number>;
-  google: number;
-  mesita: number;
   returned: number;
   /** Which surface ran, and the two numbers it read (MESITA-2727). */
   surface?: AreaSurface;
@@ -400,88 +267,6 @@ function roundedKm(location: AreaLocation, lat: unknown, lng: unknown): number |
   return Number.isFinite(km) ? Math.round(km * 10) / 10 : null;
 }
 
-/** An owned row's card: its own facts, the hit's only where it has none. */
-function ownedPlace(row: OwnedRow, hit: NearbyHit, location: AreaLocation): Record<string, unknown> {
-  const { google_place_id: _gid, ...rest } = row;
-  return {
-    ...rest,
-    google_stars_overall: numOrNull(row.google_stars_overall) ?? hit.rating,
-    google_review_count: numOrNull(row.google_review_count) ?? hit.reviewCount,
-    distance_km: roundedKm(location, row.lat ?? hit.lat, row.lng ?? hit.lng),
-  };
-}
-
-async function googleItems<T extends OwnedRow>(
-  deps: AreaPoolDeps<T>,
-  sources: readonly AreaSourceKey[],
-  summary: AreaPoolSummary,
-): Promise<PoolItem[]> {
-  const { apiKey, location, types } = deps;
-  const google = sources.filter((k): k is "googlePopular" | "googleClosest" =>
-    k === "googlePopular" || k === "googleClosest"
-  );
-  if (!apiKey || types.length === 0 || location.kind !== "point" || google.length === 0) return [];
-  const center = snapCenter(location.anchor);
-  // The Family gate pushed down exactly: a general type's precise subtypes
-  // that belong to no requested family never come back to be thrown away.
-  const excludedTypes = nearbyExcludedTypesForFamilies(types, deps.families);
-  const answers = await Promise.all(google.map((source) =>
-    searchNearbyPlacesOutcome(apiKey, center, {
-      types,
-      radiusKm: location.radiusKm,
-      excludedTypes,
-      rankPreference: GOOGLE_SOURCE_RANK[source],
-      beforeFanout: deps.consumeQuota,
-    }).then((answer) => ({ source, ...answer }))
-  ));
-  const tally: Record<NearbyOutcome, number> = { billed: 0, refused: 0, failed: 0, none: 0 };
-  for (const a of answers) tally[a.outcome]++;
-  summary.googleCalls = answers.length;
-  summary.googleBilled = tally.billed;
-  summary.googleRefused = tally.refused;
-  summary.googleFailed = tally.failed;
-  summary.quota = tally.refused === 0
-    ? "ok"
-    : tally.refused === answers.length
-    ? "refused"
-    : "partial";
-  summary.googleHits = answers.reduce((n, a) => n + a.hits.length, 0);
-
-  // One entry per Place ID, keeping every source that found it.
-  const byPlace = new Map<string, { hit: NearbyHit; foundBy: Set<AreaSourceKey> }>();
-  for (const a of answers) {
-    const kept = eligibleGoogleHits(a.hits, location, deps.cfg);
-    summary.sourceCounts[a.source] = kept.length;
-    for (const hit of kept) {
-      const seen = byPlace.get(hit.placeId);
-      if (seen) seen.foundBy.add(a.source);
-      else byPlace.set(hit.placeId, { hit, foundBy: new Set([a.source]) });
-    }
-  }
-  if (byPlace.size === 0) return [];
-  const owned = await deps.lookupOwned([...byPlace.keys()]);
-  // Without the owned set a stub could shadow a Mesita place: fail closed.
-  if (owned === null) return [];
-  const byGid = new Map<string, T>();
-  for (const row of owned) {
-    const gid = typeof row.google_place_id === "string" ? row.google_place_id.trim() : "";
-    if (gid && !byGid.has(gid)) byGid.set(gid, row);
-  }
-  return [...byPlace.values()].map(({ hit, foundBy }) => {
-    const row = byGid.get(hit.placeId);
-    if (row) {
-      const candidate = ownedCandidate(row, hit);
-      return { candidate, place: ownedPlace(row, hit, location), foundBy };
-    }
-    const stub = googleStub(hit, roundedKm(location, hit.lat, hit.lng));
-    return {
-      candidate: stubCandidate(stub, hit),
-      place: stub,
-      foundBy,
-    };
-  });
-}
-
 /** `map.placesShown` when a caller's cfg predates it. */
 const AREA_PLACES_SHOWN_FALLBACK = 20;
 
@@ -497,7 +282,7 @@ const MESITA_SOURCE_MAX = 20;
  * (MESITA-2717); equal parts fall back to raw Popularity. Proximity ranks by
  * distance; both then by id. Proximity needs a point.
  */
-function mesitaItems<T extends OwnedRow>(
+function mesitaItems<T extends PoolRow>(
   deps: AreaPoolDeps<T>,
   sources: readonly AreaSourceKey[],
   ctx: AreaContext,
@@ -544,26 +329,18 @@ function mesitaItems<T extends OwnedRow>(
 }
 
 /**
- * The Area pool: the four sources pulled, merged (one card per place), gated,
+ * The Area pool: the two sources pulled, merged (one card per place), gated,
  * scored and ranked globally, every place carrying its `area` breakdown.
  */
-export async function selectAreaPool<T extends OwnedRow>(
+export function selectAreaPool<T extends PoolRow>(
   deps: AreaPoolDeps<T>,
 ): Promise<{ places: AreaPoolPlace[]; summary: AreaPoolSummary }> {
   const sources = areaSourcesOn(deps.cfg.map).filter((k) =>
     deps.location.kind === "point" || k === "mesitaPopular"
   );
   const summary: AreaPoolSummary = {
-    googleCalls: 0,
-    googleBilled: 0,
-    googleRefused: 0,
-    googleFailed: 0,
-    quota: "none",
-    googleHits: 0,
     sources: sources.length > 0 ? sources : "none",
-    sourceCounts: { googlePopular: 0, googleClosest: 0, mesitaPopular: 0, mesitaClosest: 0 },
-    google: 0,
-    mesita: 0,
+    sourceCounts: { mesitaPopular: 0, mesitaClosest: 0 },
     returned: 0,
   };
   const ctx: AreaContext = {
@@ -577,20 +354,17 @@ export async function selectAreaPool<T extends OwnedRow>(
   summary.surface = deps.surface;
   summary.distancePenalty = ctx.radiusDivisor;
   summary.placesShown = shown;
-  const fromGoogle = await googleItems(deps, sources, summary);
   const fromMesita = mesitaItems(deps, sources, ctx, summary);
 
-  // One card per place. An owned hit is the same Mesita row, and its
-  // version (scored on the hit's numbers) wins; `foundBy` keeps every
-  // source that found it.
+  // One card per place; `foundBy` keeps every source that found it.
   const byId = new Map<string, PoolItem>();
-  for (const item of [...fromGoogle, ...fromMesita]) {
+  for (const item of fromMesita) {
     const seen = byId.get(item.candidate.id);
     if (!seen) byId.set(item.candidate.id, item);
     else for (const k of item.foundBy) seen.foundBy.add(k);
   }
 
-  // The top `shown` of the merged, sorted pool (up to 80 = 4 sources × 20).
+  // The top `shown` of the merged, sorted pool (up to 40 = 2 sources × 20).
   // A family row ranks by score alone: a place's families are a list, none
   // of them primary (MESITA-2808).
   const ranked = rankArea([...byId.values()], (item) => item.candidate, ctx)
@@ -605,10 +379,8 @@ export async function selectAreaPool<T extends OwnedRow>(
       area: { ...diagnostics, foundBy, distanceKm, distancePenalty: ctx.radiusDivisor },
     } as AreaPoolPlace;
   });
-  summary.google = places.filter((p) => p.area.source === "google").length;
-  summary.mesita = places.length - summary.google;
   summary.returned = places.length;
-  return { places, summary };
+  return Promise.resolve({ places, summary });
 }
 
 /** The log line's view of a pool: per-family counts. */

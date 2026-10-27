@@ -34,7 +34,7 @@ type UpdateDiscoveryConfigResult = ActionResult<{
 export type DiscoverySlice =
   | "general"
   | "map"
-  // A narrow map slice (MESITA-1681): Google Nearby's floor writes only
+  // A narrow map slice (MESITA-1681): the Map floors write only
   // its own fields of `map`. `map` stays for the Area box, which owns the
   // rest (the Families switches, `mapSupers`, went in MESITA-2687).
   | "mapFloors"

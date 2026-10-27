@@ -65,8 +65,6 @@ function editedEverywhere(live: DiscoveryConfig): DiscoveryConfig {
     map: {
       ...live.map,
       radiusKm: 3,
-      googlePopular: 20,
-      googleClosest: 0,
       mesitaPopular: 0,
       mesitaClosest: 20,
       selectedFactor: 5,
@@ -119,9 +117,7 @@ describe("the Area box", () => {
     const sent = armed(live);
     await updateDiscoveryConfig(editedEverywhere(live), [...BOX_SLICES.area]);
     expect(sent.config?.map.radiusKm).toBe(3);
-    // The four switches and the Selected boost persist (MESITA-2703).
-    expect(sent.config?.map.googlePopular).toBe(20);
-    expect(sent.config?.map.googleClosest).toBe(0);
+    // The two switches and the Selected boost persist (MESITA-2703/2872).
     expect(sent.config?.map.mesitaPopular).toBe(0);
     expect(sent.config?.map.mesitaClosest).toBe(20);
     expect(sent.config?.map.selectedFactor).toBe(5);

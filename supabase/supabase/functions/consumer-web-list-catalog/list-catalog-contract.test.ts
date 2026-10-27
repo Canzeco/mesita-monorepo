@@ -1,6 +1,6 @@
 // consumer-web-list-catalog on the Area pipeline's one pool (MESITA-2379,
-// four sources since MESITA-2703): the four sources merged and ranked by
-// `selectAreaPool`; the client pages the pool.
+// Mesita's two sources only since MESITA-2872): the sources merged and ranked
+// by `selectAreaPool`; the client pages the pool.
 import { assert, assertEquals } from "jsr:@std/assert@1";
 
 const src = await Deno.readTextFile(new URL("./index.ts", import.meta.url));
@@ -18,7 +18,7 @@ Deno.test("list-catalog: one ranking, the Map's — Proximity × Popularity, no 
 });
 
 Deno.test("list-catalog: one pool from the shared engine", () => {
-  assert(src.includes("selectAreaPool<OwnedRow>("));
+  assert(src.includes("selectAreaPool<PoolRow>("));
   assert(src.includes("selectedPoolQuery("));
   assert(src.includes("selectedOnly: false"));
   assertEquals(src.includes("buildCatalogRails"), false);
@@ -28,6 +28,10 @@ Deno.test("list-catalog: one pool from the shared engine", () => {
   assertEquals(src.includes("googleCalls"), false);
   assertEquals(src.includes("mesitaLimit"), false);
   for (const gone of ["selectGooglePlaces", "selectMesitaSelected"]) {
+    assertEquals(src.includes(gone), false, gone);
+  }
+  // No Google Nearby Search, no quota, no key (MESITA-2872).
+  for (const gone of ["searchNearby", "areaQuota", "consumeQuota", "lookupOwned", "apiKey"]) {
     assertEquals(src.includes(gone), false, gone);
   }
 });

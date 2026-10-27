@@ -89,13 +89,12 @@ Deno.test("the live blob loads: the retired keys drop, every live value stands",
   // `general.minReviews` is retired (MESITA-2702): the one floor is map's.
   assertEquals(cfg.general, { requireActive: true });
   // `pinCount`, `supers`, the reload km/sec pair and `googleFill` are
-  // dropped and seed nothing (MESITA-2687, MESITA-2703): the four Area
-  // sources read their defaults, all on.
-  assertEquals(
-    [cfg.map.googlePopular, cfg.map.googleClosest, cfg.map.mesitaPopular, cfg.map.mesitaClosest],
-    [20, 20, 20, 20],
-  );
-  for (const dead of ["pinCount", "supers", "reloadMinKm", "reloadMinSec", "googleFill", "googlePull"]) {
+  // dropped and seed nothing (MESITA-2687, MESITA-2703): the two Area
+  // sources read their defaults, both on; the Google two are gone (MESITA-2872).
+  assertEquals([cfg.map.mesitaPopular, cfg.map.mesitaClosest], [20, 20]);
+  for (
+    const dead of ["pinCount", "supers", "reloadMinKm", "reloadMinSec", "googleFill", "googlePull", "googlePopular", "googleClosest"]
+  ) {
     assertEquals(dead in cfg.map, false, dead);
   }
   assertEquals(cfg.chat.prompt, "Be Memo.");
@@ -298,9 +297,9 @@ Deno.test("map knobs default on an old blob and clamp", () => {
   assertEquals("proximityWeight" in clamped.map, false);
 });
 
-Deno.test("the four Area sources are switches: 0 or 20, snapped, default on (MESITA-2703)", () => {
+Deno.test("the two Area sources are switches: 0 or 20, snapped, default on (MESITA-2703)", () => {
   const src = (raw: unknown) =>
-    normalizeDiscoveryConfig({ map: { googleClosest: raw } }).map.googleClosest;
+    normalizeDiscoveryConfig({ map: { mesitaClosest: raw } }).map.mesitaClosest;
   assertEquals(src(0), 0);
   assertEquals(src(20), 20);
   assertEquals(src(7), 0);
@@ -308,12 +307,18 @@ Deno.test("the four Area sources are switches: 0 or 20, snapped, default on (MES
   assertEquals(src(60), 20);
   assertEquals(src("plenty"), 20);
   const off = normalizeDiscoveryConfig({
-    map: { googlePopular: 0, googleClosest: 0, mesitaPopular: 0, mesitaClosest: 20 },
+    map: { mesitaPopular: 0, mesitaClosest: 20 },
   }).map;
-  assertEquals(
-    [off.googlePopular, off.googleClosest, off.mesitaPopular, off.mesitaClosest],
-    [0, 0, 0, 20],
-  );
+  assertEquals([off.mesitaPopular, off.mesitaClosest], [0, 20]);
+});
+
+Deno.test("the retired Google sources are dropped on normalize (MESITA-2872)", () => {
+  const map = normalizeDiscoveryConfig({
+    map: { googlePopular: 20, googleClosest: 20 },
+  }).map as unknown as Record<string, unknown>;
+  for (const dead of ["googlePopular", "googleClosest"]) {
+    assertEquals(dead in map, false, dead);
+  }
 });
 
 Deno.test("the retired stops and googleFill are dropped on normalize (MESITA-2703)", () => {

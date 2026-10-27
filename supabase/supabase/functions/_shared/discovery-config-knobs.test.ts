@@ -102,7 +102,7 @@ Deno.test("Area params clamp; the reach, the fixed half distance, Selected and t
   const m = normalizeDiscoveryConfig({ map: { placesShown: 33 } }).map;
   assertEquals([m.placesShown, m.catalogPlacesShown], [33, 33]);
   const n = normalizeDiscoveryConfig({ map: { placesShown: 33, catalogPlacesShown: 500 } }).map;
-  assertEquals([n.placesShown, n.catalogPlacesShown], [33, 80]);
+  assertEquals([n.placesShown, n.catalogPlacesShown], [33, 40]);
 });
 
 Deno.test("Deep: limit 5 and no floor by default; both clamp", () => {

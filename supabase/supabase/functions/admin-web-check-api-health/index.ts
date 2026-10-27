@@ -576,7 +576,7 @@ const PROBES: ProbeSpec[] = [
     id: "google-places",
     label: "Google Places",
     impact:
-      "Identity spine for Atlas and the Enricher, and Discovery (Name and Area: Autocomplete, Text Search, Nearby Search)",
+      "Identity spine for Atlas and the Enricher, and Discovery (Name: Autocomplete, Text Search, Place Details)",
     envKeys: ["GMP_KEY", "SUPA_GMP_KEY"],
     run: async (keys) => {
       const key = firstKey(keys, ["GMP_KEY", "SUPA_GMP_KEY"])!;

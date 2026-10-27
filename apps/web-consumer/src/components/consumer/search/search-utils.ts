@@ -58,7 +58,7 @@ export function matchPredictionToPlace(
 
 /**
  * Synthesize the rail-card Place for an anchored pick that is not in the
- * nearby snapshot. Mirrors `consumer-web-list-places`' Google stub shape
+ * nearby snapshot. Mirrors the server's Google stub shape (`google-stub.ts`)
  * (`g:<placeId>` id, slug = the Google place id) so the pin/card second
  * tap flows through the exact same open paths as a catalog row. Returns
  * null without coordinates — a camera cannot anchor nowhere.
@@ -74,7 +74,7 @@ export function anchorPlaceFromPrediction(
   }
   const onMesita = Boolean(prediction.mesitaId);
   // Every place pick carries its card (MESITA-2678): a Google-only row the
-  // stub Nearby sends (MESITA-2325), a Mesita row its own catalog card. Its
+  // stub Text Search sends (MESITA-2325), a Mesita row its own catalog card. Its
   // facts fill the draft; identity and coordinates stay the pick's.
   const card: Partial<Place> = prediction.card ?? {};
   return {

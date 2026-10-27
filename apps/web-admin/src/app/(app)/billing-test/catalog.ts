@@ -65,7 +65,7 @@ export const KNOWN_PROBES: ReadonlyArray<{
     id: "google-places",
     label: "Google Places",
     impact:
-      "Identity spine for Atlas and the Enricher, and Discovery (Name and Area: Autocomplete, Text Search, Nearby Search)",
+      "Identity spine for Atlas and the Enricher, and Discovery (Name: Autocomplete, Text Search, Place Details)",
   },
   {
     id: "render",

@@ -2,12 +2,12 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { googleStub, humanizeGoogleType } from "./google-stub.ts";
 import {
-  NEARBY_FIELD_MASK,
-  type NearbyHit,
-  nearbyHitFromPlace,
-} from "./nearby-places.ts";
+  LISTING_FIELD_MASK,
+  type GoogleHit,
+  googleHitFromPlace,
+} from "./google-listing.ts";
 
-const HIT: NearbyHit = {
+const HIT: GoogleHit = {
   placeId: "ChIJ-bar",
   name: "La Cantina",
   address:
@@ -71,17 +71,17 @@ Deno.test("mask: asks for every card field, never a photo or an Atmosphere field
       "places.userRatingCount",
     ]
   ) {
-    assert(NEARBY_FIELD_MASK.split(",").includes(field), field);
+    assert(LISTING_FIELD_MASK.split(",").includes(field), field);
   }
   for (
     const dear of ["photos", "reviews", "editorialSummary", "generativeSummary"]
   ) {
-    assertEquals(NEARBY_FIELD_MASK.includes(dear), false, dear);
+    assertEquals(LISTING_FIELD_MASK.includes(dear), false, dear);
   }
 });
 
 Deno.test("one parser: a listing place becomes the same hit for Nearby and Text Search", () => {
-  const hit = nearbyHitFromPlace({
+  const hit = googleHitFromPlace({
     id: "places/ChIJ-bar",
     displayName: { text: "La Cantina" },
     formattedAddress: HIT.address,
