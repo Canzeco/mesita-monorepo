@@ -1,7 +1,10 @@
-// Overlay z-scale (package AGENTS.md): BottomNav 40 · @modal 120 · local 130 · Toaster 140 · RouteBadge 150.
+// Overlay z-scale (package AGENTS.md): BottomNav 40 · pending tab 110 · @modal 120 · local 130 · Toaster 140 · RouteBadge 150.
 // Exported as Tailwind class tokens so class names stay statically discoverable.
 
 export const Z_BOTTOM_NAV = "z-40";
+// The tapped tab's placeholder over the old screen (MESITA-2846): above the
+// page's own layers, under a route modal.
+export const Z_PENDING_SCREEN = "z-[110]";
 export const Z_ROUTE_MODAL = "z-[120]";
 export const Z_LOCAL_OVERLAY = "z-[130]";
 

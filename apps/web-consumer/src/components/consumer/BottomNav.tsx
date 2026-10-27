@@ -4,13 +4,7 @@ import { Z_BOTTOM_NAV } from "@/lib/z-index";
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  useEffect,
-  useRef,
-  useState,
-  type ComponentType,
-  type PointerEvent,
-} from "react";
+import { useEffect, type ComponentType, type PointerEvent } from "react";
 import { QrCode, Search, Share2, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { cn } from "@/lib/utils";
@@ -23,6 +17,7 @@ import { NAV_FALLBACK_MS } from "@/lib/navigate";
 import { barePath, prefixPath, surfaceOf } from "@/lib/surface";
 import { trackEvent } from "@/lib/analytics/track";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
+import { setPendingTab, usePendingTab } from "@/lib/pending-tab";
 
 // FIVE tabs, in this order (Pato, MESITA-2076 — "BOTTOM BAR MUST ONLY BE.
 // Home. Search. Pay(Soon). Me."; MESITA-2518 added Bookings, MESITA-2521
@@ -133,25 +128,21 @@ export function BottomNav() {
     const surface = surfaceOf(window.location.pathname) ?? "web";
     for (const item of ITEMS) router.prefetch(prefixPath(surface, item.href));
   }, [router]);
-  // The tapped tab lights AT ONCE. usePathname only moves when the new
-  // screen commits, which waits on a server round trip (the proxy checks the
-  // session in Oregon on every request), so a slow tap used to leave the bar
-  // unchanged and read as a dead one (MESITA-2762). The mark holds only while
-  // the path it was tapped on is still the path: once the screen lands, the
-  // pathname is the truth again. It is set on pointerdown.
-  const [tapped, setTapped] = useState<{ href: string; on: string } | null>(
-    null,
-  );
-  const pending = tapped && tapped.on === pathname ? tapped.href : null;
-  // THE BAR NAVIGATES ON FINGER-UP, NOT ON CLICK (MESITA-2837). Live, a tap
-  // reached pointerdown (nav_tab_tap was logged, Home five times in a row)
-  // and the tab lit, but the click that SurfacePrefixer turns into a push
-  // never ran, so MESITA-2824's fallback never ran either: Search stayed up
-  // under a lit Home. Why the click died was never seen. The bar no longer
-  // needs it: the push goes out when the finger lifts on the tab it went
-  // down on, and SurfacePrefixer swallows the pointer click that may follow
-  // (`data-press-nav`). A keyboard click still navigates through it.
-  const pressed = useRef<string | null>(null);
+  // The tapped tab lights AT ONCE, and its placeholder paints over the old
+  // screen (PendingScreen), both on finger-down. usePathname only moves when
+  // the new screen commits, which waits on a server round trip (the proxy
+  // checks the session in Oregon on every request), so a slow tap used to
+  // leave the old screen up under a lit tab (MESITA-2762, MESITA-2846). The
+  // mark holds only while the path it was tapped on is still the path.
+  const pending = usePendingTab(pathname);
+  // THE BAR NAVIGATES ON FINGER-DOWN, NOT ON CLICK (MESITA-2837, 2846).
+  // Live, a tap reached pointerdown (nav_tab_tap was logged) but the click
+  // that SurfacePrefixer turns into a push sometimes never ran, so Search
+  // stayed up under a lit Home. Why the click died was never seen. The bar
+  // no longer needs it: the push goes out with the touch itself, the
+  // earliest moment there is, and SurfacePrefixer swallows the pointer
+  // click that follows (`data-press-nav`). A keyboard click still
+  // navigates through it.
   // A LIT TAB ALWAYS MOVES THE SCREEN. Whatever stops the push — a lost
   // pointerup, a router stuck behind another navigation — once a tab has
   // been lit for NAV_FALLBACK_MS on the screen it was tapped on, the page
@@ -230,14 +221,9 @@ export function BottomNav() {
           const here = pathname === item.href;
           const down = (event: PointerEvent) => {
             if (event.button !== 0) return;
-            pressed.current = item.href;
-            if (!here) setTapped({ href: item.href, on: pathname });
             trackEvent(getSupabase(), "nav_tab_tap", { tab: label });
-          };
-          const up = (event: PointerEvent) => {
-            const went = pressed.current === item.href;
-            pressed.current = null;
-            if (!went || here || event.button !== 0) return;
+            if (here || pending === item.href) return;
+            setPendingTab(item.href, pathname);
             router.push(
               prefixPath(
                 surfaceOf(window.location.pathname) ?? "web",
@@ -252,10 +238,6 @@ export function BottomNav() {
               prefetch={false}
               data-press-nav=""
               onPointerDown={down}
-              onPointerUp={up}
-              onPointerCancel={() => {
-                pressed.current = null;
-              }}
               className={className}
             >
               {body}
