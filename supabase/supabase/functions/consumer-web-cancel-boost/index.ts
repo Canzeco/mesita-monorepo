@@ -11,7 +11,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { boostStripeKey, stripeClient, subscriptionPatch } from "../_shared/boost.ts";
+import { boostStripeKey, cancelBackingAtPeriodEnd, stripeClient } from "../_shared/boost.ts";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -45,17 +45,9 @@ Deno.serve(async (req) => {
   const key = boostStripeKey();
   if (!key) return json({ ok: false, error: "Payments are not available right now" }, 503);
 
-  try {
-    const sub = await stripeClient(key)(
-      "POST",
-      `subscriptions/${encodeURIComponent(row.stripe_subscription_id)}`,
-      { cancel_at_period_end: true },
-    );
-    const patch = subscriptionPatch(sub);
-    await admin.from("place_backings").update(patch).eq("id", row.id);
-    return json({ ok: true, current_period_end: patch.current_period_end });
-  } catch (err) {
-    console.error("[consumer-web-cancel-boost]", err);
-    return json({ ok: false, error: "Couldn't cancel. Try again." }, 502);
-  }
+  const reply = await cancelBackingAtPeriodEnd(admin, stripeClient(key), {
+    id: row.id,
+    stripe_subscription_id: row.stripe_subscription_id,
+  });
+  return json(reply.body, reply.status);
 });
