@@ -8,9 +8,12 @@
 // twenty of MESITA-2760 all stay, keys untouched; thirty join. Tacos and
 // Japanese return as intersections (2760 had folded them). Drinks reads Bar.
 //
-// ONE WORD (MESITA-2760, Pato 2026-10-25: "families must be one-word long"):
-// every label is one word; stored keys never follow a label (`quick_bite`
-// reads Quick, `sweet` Dessert, `drinks` Bar, `night_out` Nightlife).
+// ONE WORD (MESITA-2760, Pato 2026-10-25: "families must be one-word long"),
+// AND A SHORT ONE (MESITA-2841, Pato 2026-10-26: "make word shorter"): every
+// label is one word of at most nine letters, the widest Home's column draws
+// on one line; stored keys never follow a label (`quick_bite` reads Quick,
+// `sweet` Dessert, `drinks` Bar, `night_out` Night, `nightclub` Club,
+// `mediterranean` Greek).
 //
 // A DICTIONARY, NOT A MODEL (MESITA-2834, Pato 2026-10-26: "Mesita Families
 // (not editable, directly infered with dictionary based on canonic google
@@ -130,7 +133,7 @@ export const CATALOG_FAMILIES: readonly {
   { slug: "tacos", label: "Tacos", emoji: "🌮", sort_order: 10 },
   { slug: "burgers", label: "Burgers", emoji: "🍔", sort_order: 11 },
   { slug: "pizza", label: "Pizza", emoji: "🍕", sort_order: 12 },
-  { slug: "sandwiches", label: "Sandwiches", emoji: "🥪", sort_order: 13 },
+  { slug: "sandwiches", label: "Sandwich", emoji: "🥪", sort_order: 13 },
   { slug: "chicken", label: "Chicken", emoji: "🍗", sort_order: 14 },
   { slug: "wings", label: "Wings", emoji: "🔥", sort_order: 15 },
   { slug: "kebab", label: "Kebab", emoji: "🥙", sort_order: 16 },
@@ -145,13 +148,13 @@ export const CATALOG_FAMILIES: readonly {
   { slug: "ramen", label: "Ramen", emoji: "🍜", sort_order: 25 },
   { slug: "noodles", label: "Noodles", emoji: "🥢", sort_order: 26 },
   { slug: "chinese", label: "Chinese", emoji: "🥡", sort_order: 27 },
-  { slug: "dumplings", label: "Dumplings", emoji: "🥟", sort_order: 28 },
+  { slug: "dumplings", label: "Dumpling", emoji: "🥟", sort_order: 28 },
   { slug: "korean", label: "Korean", emoji: "🍚", sort_order: 29 },
   { slug: "thai", label: "Thai", emoji: "🍲", sort_order: 30 },
   { slug: "indian", label: "Indian", emoji: "🍛", sort_order: 31 },
   { slug: "asian", label: "Asian", emoji: "🍥", sort_order: 32 },
   { slug: "arabic", label: "Arabic", emoji: "🧆", sort_order: 33 },
-  { slug: "mediterranean", label: "Mediterranean", emoji: "🫒", sort_order: 34 },
+  { slug: "mediterranean", label: "Greek", emoji: "🫒", sort_order: 34 },
   { slug: "spanish", label: "Spanish", emoji: "🥘", sort_order: 35 },
   { slug: "french", label: "French", emoji: "🥖", sort_order: 36 },
   { slug: "european", label: "European", emoji: "🥨", sort_order: 37 },
@@ -160,12 +163,12 @@ export const CATALOG_FAMILIES: readonly {
   { slug: "fancy", label: "Fancy", emoji: "🥂", sort_order: 40 },
   { slug: "drinks", label: "Bar", emoji: "🍻", sort_order: 41 },
   { slug: "beer", label: "Beer", emoji: "🍺", sort_order: 42 },
-  { slug: "cocktails", label: "Cocktails", emoji: "🍸", sort_order: 43 },
+  { slug: "cocktails", label: "Cocktail", emoji: "🍸", sort_order: 43 },
   { slug: "wine", label: "Wine", emoji: "🍷", sort_order: 44 },
   { slug: "sports", label: "Sports", emoji: "📺", sort_order: 45 },
   { slug: "hookah", label: "Hookah", emoji: "💨", sort_order: 46 },
-  { slug: "night_out", label: "Nightlife", emoji: "🌙", sort_order: 47 },
-  { slug: "nightclub", label: "Nightclub", emoji: "🪩", sort_order: 48 },
+  { slug: "night_out", label: "Night", emoji: "🌙", sort_order: 47 },
+  { slug: "nightclub", label: "Club", emoji: "🪩", sort_order: 48 },
   { slug: "music", label: "Music", emoji: "🎶", sort_order: 49 },
   { slug: "karaoke", label: "Karaoke", emoji: "🎤", sort_order: 50 },
   { slug: "undefined", label: "Undefined", emoji: "·", sort_order: 999 },

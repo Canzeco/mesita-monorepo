@@ -403,7 +403,7 @@ export const SUPER_FIELDS: {
   },
   {
     key: "sandwiches",
-    label: "Sandwiches",
+    label: "Sandwich",
     emoji: "🥪",
     battery: [
       "sandwich_shop",
@@ -609,7 +609,7 @@ export const SUPER_FIELDS: {
   },
   {
     key: "dumplings",
-    label: "Dumplings",
+    label: "Dumpling",
     emoji: "🥟",
     battery: [
       "dumpling_restaurant",
@@ -683,7 +683,7 @@ export const SUPER_FIELDS: {
   },
   {
     key: "mediterranean",
-    label: "Mediterranean",
+    label: "Greek",
     emoji: "🫒",
     battery: [
       "mediterranean_restaurant",
@@ -822,7 +822,7 @@ export const SUPER_FIELDS: {
   },
   {
     key: "cocktails",
-    label: "Cocktails",
+    label: "Cocktail",
     emoji: "🍸",
     battery: [
       "cocktail_bar",
@@ -857,7 +857,7 @@ export const SUPER_FIELDS: {
   },
   {
     key: "night_out",
-    label: "Nightlife",
+    label: "Night",
     emoji: "🌙",
     battery: [
       "dance_hall",
@@ -872,7 +872,7 @@ export const SUPER_FIELDS: {
   },
   {
     key: "nightclub",
-    label: "Nightclub",
+    label: "Club",
     emoji: "🪩",
     battery: [
       "night_club",
@@ -921,7 +921,7 @@ export const DEFAULT_CATALOG: CatalogConfig = {
   minSeedPlaces: 2,
 };
 
-// Coffee, Dinner, Dessert, Drinks and Nightlife default on, every other
+// Coffee, Dinner, Dessert, Bar and Night default on, every other
 // family off (MESITA-2749; the thirty of MESITA-2834 joined off). The
 // switches gate no call today: every family's battery rides the
 // all-families Nearby call. Mirrors DEFAULT_MAP_SUPERS in

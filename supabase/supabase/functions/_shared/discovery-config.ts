@@ -367,7 +367,7 @@ export const MAP_RELOAD_MIN_VIEWPORT_PCT_MAX = 50;
 export const MAP_RELOAD_MIN_VIEWPORT_PCT_DEFAULT = 15;
 
 /**
- * Coffee, Dinner, Dessert, Drinks and Nightlife default on, every other
+ * Coffee, Dinner, Dessert, Bar and Night default on, every other
  * family off (MESITA-2749; the thirty of MESITA-2834 joined off). The
  * switches gate no call today: `anySuperOn` returns true and
  * `enabledMapSupers` returns every key, so every family's battery rides the
