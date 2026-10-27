@@ -6,8 +6,8 @@
 // redoes this properly minutes later with rich grounding).
 //
 // Mesita tags are validated against the live catalog and stored (MESITA-2790).
-// Mesita categories come from their own call (mesita-categories.ts); families
-// are derived from them in the profiles view, never inferred.
+// Google categories and families come from their own calls
+// (place-classification.ts, MESITA-2827).
 // Mesita Name is returned as a CANDIDATE — only the mesita-name-door may
 // land it (gate D2).
 

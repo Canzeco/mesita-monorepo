@@ -52,7 +52,6 @@ Deno.test("googleBasicsToUpdatePatch never carries the gallery", () => {
     businessStatus: "OPERATIONAL",
     googlePrimaryType: "restaurant",
     googleTypes: ["restaurant", "food"],
-    hasMesitaCategories: false,
     now: NOW,
   });
   assertEquals("photos" in patch, false);
@@ -60,20 +59,19 @@ Deno.test("googleBasicsToUpdatePatch never carries the gallery", () => {
   assertEquals(patch.business_state, "OPERATIONAL");
 });
 
-Deno.test("a refetch never overwrites a filled Mesita category (MESITA-2790)", () => {
-  const input = {
+Deno.test("a refetch never overwrites the inferred categories or families (MESITA-2827)", () => {
+  const patch = googleBasicsToUpdatePatch({
     basics: sampleBasics(),
     businessStatus: null,
     googlePrimaryType: "restaurant",
     googleTypes: ["food", "restaurant"],
     now: NOW,
-  };
-  const mesita = googleBasicsToUpdatePatch({ ...input, hasMesitaCategories: true });
-  assertEquals("category" in mesita, false);
-  assertEquals("category_label" in mesita, false);
-  assertEquals(mesita.google_types, ["restaurant"]);
-  const google = googleBasicsToUpdatePatch({ ...input, hasMesitaCategories: false });
-  assertEquals(google.category, "restaurant");
+  });
+  for (const key of ["google_types", "category", "category_label", "family_keys"]) {
+    assertEquals(key in patch, false, key);
+  }
+  assertEquals(patch.google_source_types, ["restaurant"]);
+  assertThrows(() => assertGoogleUpdatePatchSafe({ google_types: ["bar"] }), Error, "google_types");
 });
 
 Deno.test("assertGoogleUpdatePatchSafe rejects the gallery", () => {

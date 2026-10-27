@@ -9,6 +9,7 @@ import { SCOUT_INSTRUCTIONS } from "./enrich-serp.ts";
 import { RESOLVER_INSTRUCTIONS } from "./enrich-channel-discovery.ts";
 import { PRESENTATION_INSTRUCTIONS } from "./enrich-synthesis.ts";
 import { CATEGORY_INSTRUCTIONS } from "./categories-infer.ts";
+import { FAMILY_INSTRUCTIONS } from "./families-infer.ts";
 
 Deno.test("every prompt-bearing Crenup step is on the payload, in pipeline order", () => {
   const keys = crenupPromptsMeta().map((p) => p.key);
@@ -16,6 +17,7 @@ Deno.test("every prompt-bearing Crenup step is on the payload, in pipeline order
     "scout",
     "resolver",
     "category",
+    "families",
     "presentation",
   ]);
 });
@@ -29,6 +31,7 @@ Deno.test("the payload ships the SAME instructions the pipeline sends", () => {
   assertEquals(byKey.get("resolver")!.instructions, RESOLVER_INSTRUCTIONS);
   assertEquals(byKey.get("presentation")!.instructions, PRESENTATION_INSTRUCTIONS);
   assertEquals(byKey.get("category")!.instructions, CATEGORY_INSTRUCTIONS);
+  assertEquals(byKey.get("families")!.instructions, FAMILY_INSTRUCTIONS);
 });
 
 Deno.test("the two named agents are Scout and Resolver, and nothing else is named", () => {
@@ -46,6 +49,7 @@ Deno.test("each prompt points at the step Docs › Create · Enrich · Edit §A 
     scout: "2 · Serp",
     resolver: "3 · Links",
     category: null,
+    families: null,
     presentation: "7 · Description",
   });
 });

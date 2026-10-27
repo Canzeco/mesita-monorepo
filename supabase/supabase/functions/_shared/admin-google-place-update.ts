@@ -9,7 +9,6 @@ import { fetchGoogleBasics, type GoogleBasics } from "./enrich-google-basics.ts"
 import { mirrorPlacePhotos } from "./store-place-images.ts";
 import { writePlace } from "./place-doc.ts";
 import { googleTypesPrimaryFirst } from "./google-table-b.ts";
-import { humanizeCategorySlug } from "./parse-utils.ts";
 
 const BUSINESS_STATES = new Set(["OPERATIONAL", "CLOSED_TEMPORARILY", "CLOSED_PERMANENTLY"]);
 
@@ -23,6 +22,12 @@ export const GOOGLE_UPDATE_FORBIDDEN_COLUMNS = [
   "embedding",
   "embedding_source_text",
   "name_embedding",
+  // Model-inferred lists (MESITA-2827): Update refreshes only Google's own
+  // types (google_source_types), the categories call's input.
+  "google_types",
+  "category",
+  "category_label",
+  "family_keys",
 ] as const;
 
 export function assertGoogleUpdatePatchSafe(patch: Record<string, unknown>): void {
@@ -42,20 +47,18 @@ export function galleryTakesGoogleHero(photos: unknown): boolean {
 /**
  * Build the place_profiles patch from a Google basics fetch (before pins).
  * The gallery is never in it: `galleryTakesGoogleHero` decides that separately.
- * google_types is stored primary-first (MESITA-2790). `category` follows
- * Google's primary only while the place has no Mesita categories; once it
- * has them, `category` is Mesita's and a refetch leaves it alone.
+ * Google's own types land in google_source_types, primary first. The Google
+ * categories (google_types, category) and the families are model-inferred on
+ * Create and Enrich (MESITA-2827), so a refetch never touches them.
  */
 export function googleBasicsToUpdatePatch(input: {
   basics: GoogleBasics;
   businessStatus: string | null;
   googlePrimaryType: string | null;
   googleTypes: string[];
-  hasMesitaCategories: boolean;
   now: string;
 }): Record<string, unknown> {
   const googleTypes = googleTypesPrimaryFirst(input.googlePrimaryType, input.googleTypes);
-  const primary = googleTypes[0] ?? null;
   const patch: Record<string, unknown> = {
     google_name: input.basics.google_name,
     price_level: input.basics.price_level,
@@ -86,14 +89,8 @@ export function googleBasicsToUpdatePatch(input: {
     google_review_count: input.basics.google_review_count,
     google_reviews: input.basics.google_reviews,
     google_tags: input.basics.google_tags,
-    google_types: googleTypes,
+    google_source_types: googleTypes,
   };
-  if (!input.hasMesitaCategories && primary) {
-    patch.category = primary;
-    patch.category_label = primary === input.basics.category
-      ? input.basics.category_label
-      : humanizeCategorySlug(primary);
-  }
   const status = (input.businessStatus ?? "").trim().toUpperCase();
   if (BUSINESS_STATES.has(status)) {
     patch.business_state = status;
@@ -130,7 +127,7 @@ export async function runGooglePlaceUpdate(
 
   const { data: profile, error: profileErr } = await admin
     .from("place_profiles")
-    .select("google_place_id, enrichment_sources, photos, source_sync, mesita_categories")
+    .select("google_place_id, enrichment_sources, photos, source_sync")
     .eq("id", placeId)
     .maybeSingle();
   if (profileErr) return { ok: false, status: 500, error: profileErr.message };
@@ -180,8 +177,6 @@ export async function runGooglePlaceUpdate(
     businessStatus: google.businessStatus,
     googlePrimaryType: google.primaryType,
     googleTypes: google.googleTypes,
-    hasMesitaCategories: Array.isArray(profile.mesita_categories) &&
-      profile.mesita_categories.length > 0,
     now,
   });
   const pinned: string[] = [];

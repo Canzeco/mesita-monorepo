@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(178);
+select plan(180);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -994,25 +994,43 @@ select lives_ok(
   'a place write survives when a family list is offered'
 );
 
+-- MESITA-2827: a place keeps its own Families (1–5, inferred, editable).
 select is(
   (select family_keys from public.place_profiles
     where id = '00000000-0000-4000-8000-0000000fa111'),
-  null::text[],
-  'a place does not keep the family list — membership comes from the category'
+  array['dinner', 'coffee']::text[],
+  'a place keeps its own family list'
 );
 
-select lives_ok(
+select throws_ok(
   $$update public.place_profiles set family_keys = array['not_a_family']
      where id = '00000000-0000-4000-8000-0000000fa111'$$,
-  'an unknown family slug is not stored on the place'
+  'P0001'::char(5), null::text,
+  'an unknown family slug is refused'
 );
 
 select is(
   (select family_keys from public.place_profiles
     where id = '00000000-0000-4000-8000-0000000fa111'),
-  null::text[],
-  'the unknown family slug was dropped instead of saved'
+  array['dinner', 'coffee']::text[],
+  'the refused write left the stored families'
 );
+
+select throws_ok(
+  'update public.place_profiles set family_keys = (select array_agg(slug) from (select slug from public.place_families where slug <> ''undefined'' order by sort_order limit 6) s) where id = ''00000000-0000-4000-8000-0000000fa111''',
+  'P0001'::char(5), null::text,
+  'a sixth family is refused'
+);
+
+select is(
+  (select family_keys from public.profiles
+    where id = '00000000-0000-4000-8000-0000000fa111'),
+  (select array_agg(slug order by sort_order) from public.place_families where slug in ('dinner', 'coffee')),
+  'the view reads the stored families in catalog order'
+);
+
+update public.place_profiles set family_keys = null
+ where id = '00000000-0000-4000-8000-0000000fa111';
 
 select throws_ok(
   $$update public.place_profiles set category = 'not_a_category'
@@ -1743,30 +1761,38 @@ values ('00000000-0000-4000-8000-000000002790', 'Families Probe');
 insert into public.places (id, slug, state, content_state, currency)
 values ('00000000-0000-4000-8000-000000002790', 'mesita-2790-probe', 'active', 'ready', 'MXN');
 
+-- MESITA-2827: Google categories are 1–3 catalog_membership slugs; the
+-- first is the shown category, and with no stored families the view maps them.
 update public.place_profiles
-   set mesita_categories = '["bakery","cafe"]'::jsonb, category = 'bakery'
+   set google_types = (select jsonb_agg(slug) from (
+         select slug from public.catalog_membership order by slug limit 2) s)
  where id = '00000000-0000-4000-8000-000000002790';
 
 select is(
-  (select family_keys from public.profiles where id = '00000000-0000-4000-8000-000000002790'),
-  public.families_for_categories('["bakery","cafe"]'::jsonb, 'bakery'),
-  'profiles.family_keys is the union of the stored Mesita categories'
+  (select array[p.category, f.family_keys::text]
+     from public.place_profiles p join public.profiles f on f.id = p.id
+    where p.id = '00000000-0000-4000-8000-000000002790'),
+  (select array[p.google_types ->> 0,
+                public.families_for_categories(p.google_types, p.google_types ->> 0)::text]
+     from public.place_profiles p where p.id = '00000000-0000-4000-8000-000000002790'),
+  'the first Google category is the shown category, and the view maps the categories to families'
 );
 
 select throws_ok(
-  $$update public.place_profiles set mesita_categories = '["not_a_category"]'::jsonb
+  $$update public.place_profiles set google_types = '["not_a_google_type"]'::jsonb
      where id = '00000000-0000-4000-8000-000000002790'$$,
   'P0001',
-  'unknown mesita category',
-  'a Mesita category outside place_categories is refused'
+  'unknown google category',
+  'a Google category outside catalog_membership is refused'
 );
 
 select throws_ok(
-  $$update public.place_profiles set mesita_categories = '["undefined"]'::jsonb
+  $$update public.place_profiles set google_types = (select jsonb_agg(slug) from (
+      select slug from public.catalog_membership order by slug limit 4) s)
      where id = '00000000-0000-4000-8000-000000002790'$$,
   'P0001',
-  'unknown mesita category',
-  'undefined is never a Mesita category'
+  'at most three google categories',
+  'a fourth Google category is refused'
 );
 
 -- ━━━ MESITA-2791: google_types[0] is the primary; no separate column ━━━━━━━

@@ -16,7 +16,6 @@ import {
 import { PlaceFamilyField } from "../PlaceFamilyField";
 import {
   PlaceGoogleCategoriesField,
-  PlaceMesitaCategoriesField,
   PlaceMesitaTagsField,
 } from "../PlaceCategoryListFields";
 import { googleFormattedAddress } from "../google-location";
@@ -375,8 +374,9 @@ export function PlaceSection({
         title="Basics"
         subtitle="What this place is."
       >
-        {/* Pato's eight fields, in his order (MESITA-2790): one list, so a
-            reorder or a restored row is one edit. One field per row. */}
+        {/* Pato's fields, in his order (MESITA-2790; Mesita categories left
+            with MESITA-2827): one list, so a reorder or a restored row is one
+            edit. One field per row. */}
         <div className="mt-5 grid gap-4">
           {[
             <ReadField key="google-name" label="Google name" auto boxed>
@@ -395,7 +395,6 @@ export function PlaceSection({
               disabled={anyPending}
               placeholder={(place.google_name ?? "").trim() || undefined}
             />,
-            <PlaceMesitaCategoriesField key="mesita-categories" />,
             <TextArea
               key="mesita-presentation"
               label="Mesita presentation"

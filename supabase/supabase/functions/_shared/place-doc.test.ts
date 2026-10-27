@@ -65,11 +65,12 @@ Deno.test("validatePlaceProfilePatch: accepts reservations_enabled as a boolean 
 Deno.test("validatePlaceProfilePatch: accepts gate_rev 2 taxonomy and payment flags (MESITA-2741)", () => {
   assert(validatePlaceProfilePatch({
     google_types: ["restaurant", "food"],
-    mesita_categories: [{ key: "dinner", label: "Dinner" }],
+    google_source_types: ["restaurant", "food"],
+    family_keys: ["dinner"],
     prepay_enabled: false,
     payments_enabled: true,
   }).ok);
-  assert(validatePlaceProfilePatch({ google_types: null, mesita_categories: null }).ok);
+  assert(validatePlaceProfilePatch({ google_types: null, google_source_types: null }).ok);
   const badPrepay = validatePlaceProfilePatch({ prepay_enabled: "no" });
   assert(!badPrepay.ok);
   assertEquals(badPrepay.error, "prepay_enabled must be a boolean");
@@ -484,7 +485,7 @@ Deno.test("writePlace: place_profiles insert accepts gate_rev 2 fields on the cr
   const patch = {
     google_place_id: "ChIJ123",
     google_types: ["restaurant"],
-    mesita_categories: [],
+    google_source_types: ["restaurant"],
     prepay_enabled: false,
     payments_enabled: false,
     category: "restaurant",

@@ -118,7 +118,7 @@ Deno.test("savePlaceData strips envelope extras instead of 400ing the insert", a
   const payload = {
     ...googleBasicsPayload(),
     google_types: ["mexican_restaurant", "restaurant"],
-    mesita_categories: [],
+    google_source_types: ["mexican_restaurant", "restaurant"],
     editorial_summary: "Google blurb that is not a place_profiles column",
     reviews_state: { google: { status: "ready" } },
     generative_summary: undefined,
@@ -136,7 +136,10 @@ Deno.test("savePlaceData strips envelope extras instead of 400ing the insert", a
     "mexican_restaurant",
     "restaurant",
   ]);
-  assertEquals(writes.place_profiles.mesita_categories, []);
+  assertEquals(writes.place_profiles.google_source_types, [
+    "mexican_restaurant",
+    "restaurant",
+  ]);
   assert(
     !("editorial_summary" in writes.place_profiles),
     "unknown Google envelope fields must not reach writePlace",

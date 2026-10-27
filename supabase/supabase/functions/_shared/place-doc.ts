@@ -94,8 +94,10 @@ export type PlaceProfileRow = {
   /** Immutable once set — see the header. Settable only via mode: "insert". */
   google_place_id: string | null;
   category: string | null;
+  /** Google categories: 1–3 catalog_membership slugs, model-inferred (MESITA-2827). */
   google_types: unknown;
-  mesita_categories: unknown;
+  /** Google's own types as last fetched: the categories model's input. */
+  google_source_types: unknown;
   /** Families (0–1). Create path stamps ['undefined'] until contents infers a classified Category. */
   family_keys: string[] | null;
   price_level: number | null;
@@ -173,7 +175,7 @@ export const PLACE_PROFILE_PATCH_KEYS = [
   "google_place_id",
   "category",
   "google_types",
-  "mesita_categories",
+  "google_source_types",
   "family_keys",
   "price_level",
   "lat",
@@ -358,7 +360,7 @@ const PLACE_NONNEG_INT_KEYS = new Set<string>([
 // any future writer), not just the two hand-patched call sites.
 const PLACE_JSON_KEYS = new Set<string>([
   "hours", "enrichment_sources", "menus", "products", "google_address", "source_sync",
-  "google_types", "mesita_categories",
+  "google_types", "google_source_types",
 ]);
 // Content-validated JSONB keys — nullable() wraps each schema because the
 // column itself is nullable and a patch clearing it to null must stay legal
@@ -473,7 +475,7 @@ export function validatePlaceProfilePatch(input: unknown): PlaceProfilePatchVali
     }
     const err = checkPlaceProfileField(key, raw[key]);
     if (err) return { ok: false, error: err };
-    patch[key] = key === "google_types" ? cleanGoogleTypes(raw[key]) : raw[key];
+    patch[key] = key === "google_types" || key === "google_source_types" ? cleanGoogleTypes(raw[key]) : raw[key];
   }
   const nameErr = checkPlaceNameSourceInvariant(patch);
   if (nameErr) return { ok: false, error: nameErr };
@@ -555,7 +557,7 @@ export function validateProfilePatch(input: unknown): ProfilePatchValidation {
     }
     const err = isPlaceProfileKey ? checkPlaceProfileField(key, raw[key]) : checkPlaceField(key, raw[key]);
     if (err) return { ok: false, error: err };
-    patch[key] = key === "google_types" ? cleanGoogleTypes(raw[key]) : raw[key];
+    patch[key] = key === "google_types" || key === "google_source_types" ? cleanGoogleTypes(raw[key]) : raw[key];
   }
   const nameErr = checkPlaceNameSourceInvariant(patch);
   if (nameErr) return { ok: false, error: nameErr };

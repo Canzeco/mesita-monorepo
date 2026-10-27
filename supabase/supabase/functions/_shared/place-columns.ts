@@ -27,11 +27,12 @@ const COLUMNS: readonly string[] = [
   // Human-friendly category copy (emoji + natural-language label),
   // derived from category via place_categories.
   "category_label",
+  // Google categories: 1–3, model-inferred, the first is `category`.
   "google_types",
-  "mesita_categories",
   "prepay_enabled",
   "payments_enabled",
-  // Derived in the profiles view from the category mapping. Not stored.
+  // Stored families (1–5, model-inferred); the profiles view maps the Google
+  // categories while none are stored (MESITA-2827).
   "family_keys",
   "price_level",
   // ISO 4217 code (default MXN). Every monetary amount on a place —
