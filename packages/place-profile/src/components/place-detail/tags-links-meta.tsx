@@ -1,6 +1,6 @@
 "use client";
 
-import { Link2, Phone, Tags } from "lucide-react";
+import { Eye, Heart, Link2, Phone, Tags } from "lucide-react";
 
 import type { ComponentType } from "react";
 import type { PlaceActions } from "../../actions";
@@ -24,6 +24,37 @@ export function TagsBox({ place }: { place: PlaceDetail }) {
   return (
     <Box title="Tags" icon={Tags} iconColor="text-muted-foreground">
       <TagChips tags={place.tags} />
+    </Box>
+  );
+}
+
+// ── 11. Stats ───────────────────────────────────────────────────────────
+
+// Pato, MESITA-2866: "how many people in mesita have viewed that profile and
+// how many people have liked/saved that profile — below tags". Unique members
+// from place_activity; counts only, never who. No counts on the payload, no box.
+export function StatsBox({ place }: { place: PlaceDetail }) {
+  const stats = place.profile_stats;
+  if (!stats) return null;
+  const cells = [
+    { key: "viewed", label: stats.viewed === 1 ? "View" : "Views", n: stats.viewed, Icon: Eye },
+    { key: "saved", label: stats.saved === 1 ? "Like" : "Likes", n: stats.saved, Icon: Heart },
+  ];
+  return (
+    <Box title="Stats">
+      <div className="grid grid-cols-2 gap-2">
+        {cells.map(({ key, label, n, Icon }) => (
+          <div key={key} className="bg-muted flex flex-col gap-1 rounded-xl p-3">
+            <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
+              <Icon className="h-3.5 w-3.5" strokeWidth={2} />
+              {label}
+            </span>
+            <span className="text-foreground text-2xl font-semibold tabular-nums">
+              {n.toLocaleString("en-US")}
+            </span>
+          </div>
+        ))}
+      </div>
     </Box>
   );
 }

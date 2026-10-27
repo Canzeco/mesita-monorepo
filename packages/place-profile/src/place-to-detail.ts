@@ -41,6 +41,15 @@ export type ResolvedTag = {
 
 export { googleTagLabel } from "./lib/google-atmosphere";
 
+// consumer-web-get-place's `profile_stats` (MESITA-2866). Both counts or none.
+function profileStats(raw: unknown): PlaceDetail["profile_stats"] {
+  if (!raw || typeof raw !== "object") return undefined;
+  const { viewed, saved } = raw as Record<string, unknown>;
+  if (typeof viewed !== "number" || typeof saved !== "number") return undefined;
+  if (!Number.isFinite(viewed) || !Number.isFinite(saved)) return undefined;
+  return { viewed: Math.max(0, viewed), saved: Math.max(0, saved) };
+}
+
 export function placeRowToDetail(row: Row, catalogTags?: ResolvedTag[]): PlaceDetail {
   // Catalog tags stay stored and are not the Profile field (MESITA-2255).
   void catalogTags;
@@ -119,6 +128,7 @@ export function placeRowToDetail(row: Row, catalogTags?: ResolvedTag[]): PlaceDe
 
     // Google atmosphere chips (MESITA-2255). places.tags is not this box.
     tags: googleTagChips(row.google_tags),
+    profile_stats: profileStats(row.profile_stats),
 
     google: {
       rating: num(row.google_stars_overall) ?? null,

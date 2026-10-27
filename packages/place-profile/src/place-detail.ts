@@ -76,6 +76,11 @@ export type PlaceDetail = {
     facet: string;
   }>;
 
+  /** Overview's Stats box (MESITA-2866): unique members who opened this
+   *  profile and who liked (saved) it, from place_activity. Absent when the
+   *  payload carries no counts (admin Preview, an older EF): no box. */
+  profile_stats?: { viewed: number; saved: number };
+
   // 3. External reputation — the three outside channels the summary reads.
   // Google carries a rating and a count; Facebook and Instagram carry reach.
   google: { rating: number | null; count: number | null };
