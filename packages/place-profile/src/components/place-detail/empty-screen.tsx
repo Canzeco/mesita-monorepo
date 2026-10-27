@@ -24,8 +24,8 @@ export const NO_OVERVIEW: PlaceEmptyScreenProps = {
 /** The Boost tab where the host draws no pane (admin Preview). */
 export const NO_BOOST: PlaceEmptyScreenProps = {
   icon: Zap,
-  title: "Boost",
-  line: "Guests boost this place from the Mesita app. Paid visibility, marked Sponsored.",
+  title: "Partner",
+  line: "Guests make this place a Partner from the Mesita app. Paid visibility, never Verified.",
 };
 
 // A tab with nothing to show draws this one screen: the Soon tab (Products

@@ -71,7 +71,7 @@ export function PlaceMoreSheet({
     },
     {
       key: "boost",
-      label: "Boost",
+      label: "Partner",
       icon: Zap,
       run: onBoost,
     },

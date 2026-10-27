@@ -342,7 +342,7 @@ export function SponsoredMark() {
       className="text-muted-foreground shrink-0 text-xs font-medium tracking-normal"
       data-sponsored
     >
-      Sponsored
+      Partner
     </span>
   );
 }

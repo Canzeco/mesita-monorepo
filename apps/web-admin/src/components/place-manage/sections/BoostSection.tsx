@@ -13,15 +13,15 @@ import { SectionCard } from "@/components/admin-ui/manage";
 
 const TIER_LABEL: Record<0 | 1 | 2 | 3, string> = {
   0: "Not boosted",
-  1: "Boost 2x",
-  2: "Boost 5x",
-  3: "Boost 10x",
+  1: "Partner 2x",
+  2: "Partner 5x",
+  3: "Partner 10x",
 };
 
 const BACKING_TIER_LABEL: Record<AdminBacking["tier"], string> = {
-  boost_2x: "Boost 2x",
-  boost_5x: "Boost 5x",
-  boost_10x: "Boost 10x",
+  boost_2x: "Partner 2x",
+  boost_5x: "Partner 5x",
+  boost_10x: "Partner 10x",
 };
 
 function usd(cents: number): string {
@@ -94,14 +94,14 @@ export function BoostSection({ placeId }: { placeId: string }) {
       <SectionCard
         icon={<Zap className="h-4 w-4" />}
         tint="amber"
-        title="Boost"
-        subtitle="Paid visibility a guest bought for this place. Marked Sponsored; never Selected."
+        title="Partner"
+        subtitle="Paid visibility a guest bought for this place. Marked Partner; never Selected."
         action={
           <button
             type="button"
             onClick={() => void load()}
             disabled={loading}
-            aria-label="Reload Boost"
+            aria-label="Reload Partner"
             className="text-muted-foreground hover:text-foreground inline-flex h-8 w-8 items-center justify-center rounded-full transition disabled:opacity-50"
           >
             <RefreshCw className={"h-4 w-4" + (loading ? " animate-spin" : "")} />
