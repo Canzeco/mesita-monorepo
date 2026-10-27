@@ -31,6 +31,7 @@ export function PlaceProfile({
   actions,
   creating,
   social,
+  boost,
   openTab,
 }: {
   place: PlaceDetail;
@@ -43,6 +44,8 @@ export function PlaceProfile({
   /** Social v1's line (MESITA-2442), under the chips like Instagram's
    *  "Followed by". */
   social?: React.ReactNode;
+  /** The Boost tab's body (MESITA-2861); see PlaceDetailBody. */
+  boost?: React.ReactNode;
   /** A tab the host asks to show (MESITA-2797); see PlaceDetailBody. */
   openTab?: { tab: PlaceTab; key: number } | null;
 }) {
@@ -64,6 +67,7 @@ export function PlaceProfile({
           actions={actions}
           creating={creating}
           social={social}
+          boost={boost}
           openTab={openTab}
         />
       </div>

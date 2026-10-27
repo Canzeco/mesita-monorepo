@@ -9,13 +9,15 @@ import { cn } from "../../lib/format";
 // NO SOON IN THE STRIP (Pato, MESITA-2631: "remove the products and rewards
 // soon directly it looks like shit. just when opening the view, you mention
 // this is for soon"). `soon` still marks the two tabs whose screen is the
-// Soon screen; the strip draws only the four labels. Rewards is the fourth
-// screen. Both are the same strip on admin Preview and consumer.
+// Soon screen; the strip draws only the four labels. The same strip on
+// admin Preview and consumer.
 // Every place has the four, Enriched or not; the Enrich vote is the top of
-// Overview, never a tab of its own (MESITA-2332). Boost is not a tab: it
-// opens from the ⋯ menu as a sheet on top (MESITA-2815, Pato: "add it as 3
-// dots and actually open a modal on top").
-export type PlaceTab = "place" | "reviews" | "products" | "rewards";
+// Overview, never a tab of its own (MESITA-2332).
+// OVERVIEW · REVIEWS · PRODUCTS · BOOST (Pato, MESITA-2861: "call Products
+// & Rewards coming soon … but make a Boost page"): Rewards folds into the
+// Products Soon screen, and Boost is the fourth tab again. It was a tab
+// (MESITA-2789), then a sheet off ⋯ (MESITA-2815); ⋯ › Boost now opens it.
+export type PlaceTab = "place" | "reviews" | "products" | "boost";
 
 export type PlaceTabDef = {
   key: PlaceTab;
@@ -27,7 +29,7 @@ const CORE_TABS = [
   { key: "place", label: "Overview" },
   { key: "reviews", label: "Reviews" },
   { key: "products", label: "Products", soon: true },
-  { key: "rewards", label: "Rewards", soon: true },
+  { key: "boost", label: "Boost" },
 ] as const satisfies ReadonlyArray<PlaceTabDef>;
 
 export function placeTabs(): readonly PlaceTabDef[] {
