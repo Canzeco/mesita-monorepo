@@ -15,6 +15,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 // finishes painting before onExited unmounts the tree.
 const OVERLAY_MS = 320;
 
+// ONE SLIDE PER OPEN (MESITA-2848). The @modal slot's loading frame draws
+// the route's shell around its skeleton, and the segment's own layout
+// replaces it a beat later with a new shell: a fresh mount, which would
+// slide in a second time. A shell that mounts while another is open starts
+// open, so the panel the guest already sees stays put and only its contents
+// change. The count is of shells whose panel is in.
+let openShells = 0;
+
 // iOS-style decelerating push curve, shared by panel + sheet transitions.
 export const OVERLAY_EASE = "ease-[cubic-bezier(0.32,0.72,0,1)]";
 
@@ -48,7 +56,14 @@ export function useOverlayPresence(
   onExited: () => void,
   { active = true }: { active?: boolean } = {},
 ) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(() => active && openShells > 0);
+  useEffect(() => {
+    if (!open) return;
+    openShells += 1;
+    return () => {
+      openShells -= 1;
+    };
+  }, [open]);
   const closing = useRef(false);
   const exitTimer = useRef<number | null>(null);
   const onExitedRef = useRef(onExited);

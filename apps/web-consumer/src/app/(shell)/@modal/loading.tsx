@@ -1,14 +1,49 @@
-import { Spinner } from "@/components/shared";
+import { headers } from "next/headers";
 
-// Slot-level fallback. Every modal segment ships its own layout + skeleton
-// loading, so this only covers the beat before a segment resolves. Subtle
-// translucent scrim inside the card — never `fixed` (that escapes the
-// MobileFrame on desktop), never an opaque white flash. Dim matches the
-// overlay shells (Design: bg-black/40 + backdrop-blur-sm).
-export default function ModalLoading() {
-  return (
-    <div className="pointer-events-auto absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <Spinner label="Loading" className="border-white/40 border-t-white" />
-    </div>
-  );
+import {
+  PlaceSlideOverSkeleton,
+  ReservationSlideOverSkeleton,
+} from "@/components/consumer/overlay/DetailSkeletons";
+import { RouteSheetShell } from "@/components/consumer/overlay/RouteSheetShell";
+import { SlideOverShell } from "@/components/consumer/overlay/SlideOverShell";
+import AskAiSheetPage from "./(.)search/chat/page";
+
+// Slot-level fallback: the first frame a place, reservation or Ask AI open
+// paints, before the modal segment's own layout and loading arrive. It was a
+// dim scrim with a spinner, so every open went spinner → skeleton (Pato,
+// MESITA-2840: "why spinning and then placeholder, don't do that"). It now
+// draws what the segment will draw, its shell around its skeleton, picked by
+// the bare path (the proxy's x-bare-pathname names the target on a
+// navigation's request), so the open lands in one step (MESITA-2848).
+export default async function ModalLoading() {
+  const bare = (await headers()).get("x-bare-pathname") ?? "";
+  if (bare.startsWith("/place/open/")) {
+    return (
+      <SlideOverShell>
+        <PlaceSlideOverSkeleton creating />
+      </SlideOverShell>
+    );
+  }
+  if (bare.startsWith("/place/")) {
+    return (
+      <SlideOverShell>
+        <PlaceSlideOverSkeleton />
+      </SlideOverShell>
+    );
+  }
+  if (bare.startsWith("/reservation/")) {
+    return (
+      <SlideOverShell>
+        <ReservationSlideOverSkeleton />
+      </SlideOverShell>
+    );
+  }
+  if (bare === "/search/chat") {
+    return (
+      <RouteSheetShell ariaLabel="Ask AI">
+        <AskAiSheetPage />
+      </RouteSheetShell>
+    );
+  }
+  return null;
 }
