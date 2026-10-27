@@ -7,7 +7,7 @@ import type { Coords } from "@/lib/use-user-location";
 import { useCardSaveShare } from "@/lib/use-card-save-share";
 import { cn } from "@/lib/utils";
 
-import { ADD_BUTTON_HEIGHT_CLASS, AddPlaceButton } from "./AddPlaceButton";
+import { AddPlaceButton } from "./AddPlaceButton";
 import { RailCard, RailCardSkeleton } from "./SearchRailCard";
 import { SIGHT_Y } from "./search-utils";
 
@@ -45,10 +45,15 @@ export function railPages<T>(items: T[]): T[][] {
 export const RAIL_FLOAT_CLASS =
   "pointer-events-none absolute inset-x-0 bottom-2 z-20";
 
-/** The rail's row: the Add button pinned at the left (MESITA-2885, back
- *  after MESITA-2883 took it out), then the carousel. The row is sideways:
- *  the carousel pages (`RAIL_PAGE`) scroll left and right, one card each. */
-const RAIL_ROW = "flex items-start gap-1.5 pb-1 pl-3";
+/** Pages ahead of the places: the Add card is page 0 (MESITA-2886), so
+ *  place page n sits at scroll page n + RAIL_LEAD_PAGES. SearchClient's
+ *  scroll math reads the same number. */
+export const RAIL_LEAD_PAGES = 1;
+
+/** The rail's row: the carousel at the map's full width. Sideways: the
+ *  pages (`RAIL_PAGE`) scroll left and right, one card each, the Add card
+ *  first (MESITA-2886; MESITA-2885 pinned a narrow button beside it). */
+const RAIL_ROW = "flex items-start pb-1";
 
 /** The carousel: snap pages, sideways. */
 const RAIL_SCROLLER =
@@ -64,9 +69,6 @@ const RAIL_SCROLLER =
 export function CatalogRailSkeleton() {
   return (
     <div className={RAIL_ROW} aria-hidden>
-      <Skeleton
-        className={cn(ADD_BUTTON_HEIGHT_CLASS, "w-14 shrink-0 rounded-2xl")}
-      />
       <div className={cn(RAIL_SCROLLER, "overflow-hidden")}>
         {[0, 1].map((page) => (
           <div key={page} className={RAIL_PAGE}>
@@ -325,22 +327,26 @@ export function SearchRailOverlay({
         {firstLoad ? (
           <CatalogRailSkeleton />
         ) : places.length === 0 ? (
-          // An empty area says so where the cards sit, the Add button
-          // beside it: nothing here is exactly when a guest adds one.
+          // An empty area is the Add card alone, centred, and it says so:
+          // nothing here is exactly when a guest adds one.
           <div className={RAIL_ROW} data-search-rail-empty>
-            <AddPlaceButton onAdd={onAdd} />
-            <p className="bg-card/95 text-foreground shadow-elev mx-auto self-center rounded-2xl px-4 py-3 text-sm font-semibold backdrop-blur">
-              Nothing on Mesita here yet
-            </p>
+            <div className={RAIL_SCROLLER}>
+              <div className={RAIL_PAGE}>
+                <AddPlaceButton onAdd={onAdd} empty />
+              </div>
+            </div>
           </div>
         ) : (
           <div className={RAIL_ROW}>
-            <AddPlaceButton onAdd={onAdd} />
             <div
               ref={railScrollRef}
               onScroll={onRailScroll}
               className={RAIL_SCROLLER}
             >
+              {/* Page 0: off-screen left while the rail rests on place #1. */}
+              <div className={RAIL_PAGE}>
+                <AddPlaceButton onAdd={onAdd} />
+              </div>
               {railPages(places).map((page) => (
                 <div
                   key={page[0].id}
@@ -352,7 +358,7 @@ export function SearchRailOverlay({
                     RAIL_PAGE,
                     "transition-opacity duration-200",
                     // Dimmed, never locked (MESITA-2816): a tap during a
-                    // reload still selects or opens. The Add button stays lit.
+                    // reload still selects or opens. The Add card stays lit.
                     catalogLoading && "opacity-55",
                   )}
                 >
