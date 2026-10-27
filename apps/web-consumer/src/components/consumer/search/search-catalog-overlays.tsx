@@ -7,6 +7,7 @@ import type { Coords } from "@/lib/use-user-location";
 import { useCardSaveShare } from "@/lib/use-card-save-share";
 import { cn } from "@/lib/utils";
 
+import { AddPlaceRailCard } from "./AddPlaceRailCard";
 import { RailCard, RailCardSkeleton } from "./SearchRailCard";
 import { SIGHT_Y } from "./search-utils";
 
@@ -30,6 +31,10 @@ const RAIL_PAGE =
  *  the same number. */
 export const RAIL_PAGE_SIZE = 2;
 
+/** The Add card's page (MESITA-2879): page 0, before the places, so a
+ *  place page's index is its slice index + RAIL_ADD_PAGES. */
+export const RAIL_ADD_PAGES = 1;
+
 /** The catalog cut into pages of RAIL_PAGE_SIZE, in order. */
 export function railPages<T>(items: T[]): T[][] {
   const pages: T[][] = [];
@@ -42,6 +47,12 @@ export function railPages<T>(items: T[]): T[][] {
 /** Where the carousel floats: over the map's foot, 8px up (MESITA-2670). */
 export const RAIL_FLOAT_CLASS =
   "pointer-events-none absolute inset-x-0 bottom-2 z-20";
+
+/** Where the rail rests: the Add card's page pulled off to the left so the
+ *  next page centres and the Add card peeks 6% (MESITA-2879). The loaded
+ *  rail gets there by scrolling one page; the skeleton, which cannot
+ *  scroll, by this margin. */
+const RAIL_ADD_PAGE_PEEK = "first:-ml-[82%]";
 
 /** The first load's carousel (Pato, MESITA-2701: "the placeholders must be
  *  similar to the page you are loading, like the sizes"): the loaded row's
@@ -56,6 +67,10 @@ export function CatalogRailSkeleton() {
       className="scrollbar-hide flex snap-x snap-mandatory overflow-hidden pb-1"
       aria-hidden
     >
+      {/* Inert: a skeleton's button must not take focus or taps. */}
+      <div className={cn(RAIL_PAGE, RAIL_ADD_PAGE_PEEK)} inert>
+        <AddPlaceRailCard onAdd={() => {}} />
+      </div>
       {[0, 1].map((page) => (
         <div key={page} className={RAIL_PAGE}>
           {Array.from({ length: RAIL_PAGE_SIZE }, (_, i) => (
@@ -274,6 +289,7 @@ export function SearchRailOverlay({
   railScrollRef,
   onRailScroll,
   onOpenPlace,
+  onAdd,
   setRailCardRef,
 }: {
   places: Place[];
@@ -282,6 +298,8 @@ export function SearchRailOverlay({
   railScrollRef: RefObject<HTMLDivElement | null>;
   onRailScroll: () => void;
   onOpenPlace: (place: Place) => void;
+  /** The Add card's tap: focus the search bar (MESITA-2879). */
+  onAdd: () => void;
   setRailCardRef: (placeId: string, el: HTMLElement | null) => void;
 }) {
   const firstLoad = catalogLoading && places.length === 0;
@@ -309,20 +327,22 @@ export function SearchRailOverlay({
         {firstLoad ? (
           <CatalogRailSkeleton />
         ) : places.length === 0 ? (
-          <p className="bg-card/95 text-muted-foreground mx-auto rounded-full px-3 py-1.5 text-center text-xs shadow-sm">
-            No places to show here yet.
-          </p>
+          // An empty area is the Add card alone, centred, saying so (Pato,
+          // MESITA-2879); the "No places to show here yet." pill is gone.
+          <div className="mx-auto w-[88%] px-1.5 pb-1">
+            <AddPlaceRailCard empty onAdd={onAdd} />
+          </div>
         ) : (
           <div
             ref={railScrollRef}
             onScroll={onRailScroll}
             className={cn(
-              "scrollbar-hide flex snap-x snap-mandatory overflow-x-auto pb-1 transition-opacity duration-200",
-              // Dimmed, never locked (MESITA-2816): a tap during a reload
-              // still selects or opens.
-              catalogLoading && "opacity-55",
+              "scrollbar-hide flex snap-x snap-mandatory overflow-x-auto pb-1",
             )}
           >
+            <div className={RAIL_PAGE} data-search-add-page>
+              <AddPlaceRailCard onAdd={onAdd} />
+            </div>
             {railPages(places).map((page) => (
               <div
                 key={page[0].id}
@@ -330,7 +350,13 @@ export function SearchRailOverlay({
                   // Every card on the page scrolls to the page.
                   for (const place of page) setRailCardRef(place.id, el);
                 }}
-                className={RAIL_PAGE}
+                className={cn(
+                  RAIL_PAGE,
+                  "transition-opacity duration-200",
+                  // Dimmed, never locked (MESITA-2816): a tap during a
+                  // reload still selects or opens. The Add card stays lit.
+                  catalogLoading && "opacity-55",
+                )}
               >
                 {page.map((place) => (
                   <RailCard
