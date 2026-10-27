@@ -1,6 +1,6 @@
 import type { RefObject } from "react";
 
-import type { Place } from "@/lib/api/places";
+import type { MapScore, Place } from "@/lib/api/places";
 import { Skeleton, Spinner } from "@/components/shared";
 import type { Coords } from "@/lib/use-user-location";
 import { useCardSaveShare } from "@/lib/use-card-save-share";
@@ -106,6 +106,14 @@ function fmtScore(v: number | null | undefined): string {
   return typeof v === "number" && Number.isFinite(v) ? v.toFixed(2) : "n/a";
 }
 
+/** " (0.42 km, k 2)": what Proximity read; empty from an older EF. */
+function proximityInputs(score: Pick<MapScore, "distanceKm" | "distancePenalty">): string {
+  const parts: string[] = [];
+  if (typeof score.distanceKm === "number") parts.push(`${score.distanceKm.toFixed(2)} km`);
+  if (typeof score.distancePenalty === "number") parts.push(`k ${score.distancePenalty}`);
+  return parts.length > 0 ? ` (${parts.join(", ")})` : "";
+}
+
 // MESITA-2497/2498: development-stage check of the map (Pato: "display the
 // coordinates at the bottom"). The cross, the blue dot and the centre sent
 // to list-places, as of the last catalog load; MESITA-2504 adds the circle
@@ -188,7 +196,10 @@ export function RailScoreTag({ place }: { place: Pick<Place, "score"> }) {
       <p>
         {/* Selected reads as the third signal (Pato, MESITA-2718): the factor
             the final took (MESITA-2717), 1 for a place that is not Selected. */}
-        proximity {fmtScore(score.proximity)} · popularity{" "}
+        {/* What Proximity read (Pato, MESITA-2830): the distance and the
+            Distance penalty k, 1 ÷ (1 + k × km ÷ radius). */}
+        proximity {fmtScore(score.proximity)}
+        {proximityInputs(score)} · popularity{" "}
         {fmtScore(score.popularity)} · selected{" "}
         {fmtScore(
           typeof score.selectedFactor === "number" ? score.selectedFactor : 1,

@@ -461,6 +461,8 @@ export function CatalogRails() {
                           selectedFactor: place.area.selectedFactor,
                           final: place.area.final,
                           foundBy: place.area.foundBy,
+                          distanceKm: place.area.distanceKm,
+                          distancePenalty: place.area.distancePenalty,
                         },
                       }}
                     />
