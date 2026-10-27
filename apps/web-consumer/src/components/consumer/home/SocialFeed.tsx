@@ -93,7 +93,7 @@
 
 import { useEffect, useRef, useState, type SVGProps } from "react";
 import Link from "next/link";
-import { ArrowUp, Crown, RotateCw, Users, X } from "lucide-react";
+import { ArrowUp, Crown, Heart, RotateCw, Users, X } from "lucide-react";
 import { DefaultAvatar } from "@mesita/place-profile";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
@@ -132,15 +132,6 @@ export { approxFollowers };
 export const VERB: Record<ActivityKind, string> = {
   saved: "liked",
   viewed: "viewed",
-};
-
-/** The same words opening a line: the person card's history rows read
- *  "Viewed …" / "Liked …" (Pato, MESITA-2694: "capitalize the word viewed
- *  as Viewed same for Liked"). The feed's sentence keeps them lower-case
- *  after the name. */
-export const VERB_LEAD: Record<ActivityKind, string> = {
-  saved: "Liked",
-  viewed: "Viewed",
 };
 
 /** "2h", "5m", "3d": the feed's clock. */
@@ -556,7 +547,7 @@ function PersonCard({
             (-mx-5 undoes the card's padding) and is there in every state,
             rows, skeleton or "No activity yet". */}
         <div
-          className="border-border -mx-5 mt-4 border-t px-5"
+          className="border-border -mx-5 mt-4 border-t pt-0.5"
           data-social-history-divider
         >
           <HistoryList items={history ? history.items : null} />
@@ -594,37 +585,49 @@ function PersonCard({
   );
 }
 
-/** The card's one list (MESITA-2609): the member's history, one row per
- *  event, the feed row's own shape without the face — "liked Contramar",
- *  the time under it, the place's photo on the right — each a door to the
- *  place. Not a scroller of its own: it scrolls with the whole card
- *  (MESITA-2845), which draws no bar (the browser's bar sat over the
- *  photos, MESITA-2681) and keeps a fling at either end from scrolling Home
- *  behind it. */
+/** One tile per place in the card's grid (MESITA-2854): a view and a like
+ *  of the same place are one tile, liked wins, at the newest time; newest
+ *  first. The server's list is newest first already, so the first event of
+ *  a place sets its slot. */
+export type HistoryTile = { place: Place; liked: boolean; at: string };
+
+export function historyTiles(items: MemberHistoryItem[]): HistoryTile[] {
+  const byPlace = new Map<string, HistoryTile>();
+  for (const it of items) {
+    const tile = byPlace.get(it.placeId);
+    if (!tile) {
+      byPlace.set(it.placeId, {
+        place: it.place,
+        liked: it.kind === "saved",
+        at: it.at,
+      });
+    } else if (it.kind === "saved") {
+      tile.liked = true;
+    }
+  }
+  return [...byPlace.values()];
+}
+
+/** The tile grid's own geometry: three square columns, 2px apart, edge to
+ *  edge across the card, Instagram's profile grid. */
+const HISTORY_GRID_CLASS = "grid grid-cols-3 gap-0.5";
+
+/** The card's history (MESITA-2854, Pato: "this ui to scroll profile events
+ *  is shit"): Instagram's profile grid, not a list. Each tile is the place's
+ *  photo (or its placeholder), the name on a dark fade at the foot, a heart
+ *  in the corner when liked, and a door to the place; one tile per place.
+ *  It was MESITA-2609's rows, "Viewed <underlined name>" over a time, a
+ *  sentence per event that read as a wall of the same word. Not a scroller
+ *  of its own: it scrolls with the whole card (MESITA-2845), which draws no
+ *  bar and keeps a fling at either end from scrolling Home behind it. */
 function HistoryList({ items }: { items: MemberHistoryItem[] | null }) {
   if (items == null) {
-    // The list's own rows (Pato, MESITA-2701: "the placeholders must be
-    // similar to the page you are loading, like the sizes"): no top margin,
-    // a hairline between rows, each py-2.5 around the 44px photo, the 14px
-    // line and the 12px time 2px under it.
+    // The grid's own tiles, empty (Pato, MESITA-2701: "the placeholders must
+    // be similar to the page you are loading, like the sizes").
     return (
-      <div
-        className="divide-border divide-y"
-        aria-busy
-        data-social-history-loading
-      >
-        {Array.from({ length: 3 }, (_, i) => (
-          <div key={i} className="flex items-center gap-3 py-2.5">
-            <div className="min-w-0 flex-1">
-              <div className="flex h-5 items-center">
-                <Skeleton className="h-3.5 w-3/5" />
-              </div>
-              <div className="mt-0.5 flex h-4 items-center">
-                <Skeleton className="h-3 w-1/5" />
-              </div>
-            </div>
-            <Skeleton className="h-11 w-11 shrink-0 rounded-lg" />
-          </div>
+      <div className={HISTORY_GRID_CLASS} aria-busy data-social-history-loading>
+        {Array.from({ length: 6 }, (_, i) => (
+          <Skeleton key={i} className="aspect-square w-full rounded-none" />
         ))}
       </div>
     );
@@ -632,7 +635,7 @@ function HistoryList({ items }: { items: MemberHistoryItem[] | null }) {
   if (items.length === 0) {
     return (
       <p
-        className="text-muted-foreground mt-3 text-center text-sm"
+        className="text-muted-foreground mt-3 px-5 text-center text-sm"
         data-social-history-empty
       >
         No activity yet
@@ -643,30 +646,64 @@ function HistoryList({ items }: { items: MemberHistoryItem[] | null }) {
     <ul
       role="list"
       aria-label="Activity"
-      className="divide-border divide-y"
+      className={HISTORY_GRID_CLASS}
       data-social-history
     >
-      {items.map((it) => (
-        <li key={`${it.placeId}|${it.kind}|${it.at}`}>
-          <Link
-            href={placeHref(it.place.slug || it.place.id)}
-            className="focus-visible:ring-ring flex items-center gap-3 py-2.5 outline-none focus-visible:ring-2"
-            data-social-history-event={it.kind}
-          >
-            <span className="min-w-0 flex-1">
-              <span className="text-foreground line-clamp-2 text-sm leading-snug">
-                {VERB_LEAD[it.kind]}{" "}
-                <span className={LINK_WORD_CLASS}>{it.place.name}</span>
-              </span>
-              <span className="text-muted-foreground mt-0.5 block text-xs">
-                {shortAgo(it.at)}
-              </span>
-            </span>
-            <Thumb place={it.place} />
-          </Link>
+      {historyTiles(items).map((tile) => (
+        <li key={tile.place.id}>
+          <HistoryTileLink tile={tile} />
         </li>
       ))}
     </ul>
+  );
+}
+
+function HistoryTileLink({ tile }: { tile: HistoryTile }) {
+  const { place, liked, at } = tile;
+  const photo = cardPhoto(place);
+  const placeholder = photo ? null : placePlaceholder(place);
+  return (
+    <Link
+      href={placeHref(place.slug || place.id)}
+      aria-label={`${liked ? "Liked" : "Viewed"} ${place.name}, ${shortAgo(at)}`}
+      className="focus-visible:ring-ring bg-muted relative block aspect-square overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-inset"
+      data-social-history-event={liked ? "saved" : "viewed"}
+    >
+      {photo ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={photo}
+          alt=""
+          loading="lazy"
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <span
+          aria-hidden
+          className="text-muted-foreground flex h-full w-full items-center justify-center pb-6"
+          data-placeholder={placeholder?.kind}
+        >
+          {placeholder?.kind === "emoji" ? (
+            <span className="text-4xl leading-none">{placeholder.emoji}</span>
+          ) : (
+            <span className="text-lg font-semibold">{placeholder?.text}</span>
+          )}
+        </span>
+      )}
+      {liked && (
+        <Heart
+          aria-hidden
+          className="absolute top-1.5 right-1.5 h-4 w-4 fill-white text-white drop-shadow"
+          data-social-history-liked
+        />
+      )}
+      <span
+        aria-hidden
+        className="type-label absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-1.5 pt-5 pb-1.5 leading-tight font-semibold text-white"
+      >
+        <span className="line-clamp-2">{place.name}</span>
+      </span>
+    </Link>
   );
 }
 
