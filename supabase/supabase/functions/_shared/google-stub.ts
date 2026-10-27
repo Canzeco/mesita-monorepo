@@ -1,15 +1,15 @@
-// The Google-only card (`googleOnly: true`): a Nearby hit Mesita does not
-// own, in the catalog card shape. Search's gray pin, the Map's Google
-// scope and the Feed's Google Places rail send the same stub, so the
-// client routes all of them the same way (MESITA-2298, MESITA-2302). It
-// carries everything the Nearby mask returns (MESITA-2313): the readable
+// The Google-only card (`googleOnly: true`): a Google listing Mesita does
+// not own, in the catalog card shape — the search bar's Google pick (Text
+// Search or the Details gate call; the Area's Nearby stubs retired with
+// MESITA-2872). It carries everything the listing mask returns
+// (MESITA-2313): the readable
 // type, price, stars and review count, open now, the short address, phone,
 // website and the Maps link, so the card and its opening profile show what
 // a Mesita card shows.
 
 import { placeFamilies } from "./sourcing.ts";
 import { priceLevelFromGoogle } from "./enrich-google-basics-normalizers.ts";
-import type { NearbyHit } from "./nearby-places.ts";
+import type { GoogleHit } from "./google-listing.ts";
 
 /** `sports_bar` → "Sports bar": the fallback when Google sends no label. */
 export function humanizeGoogleType(
@@ -21,7 +21,7 @@ export function humanizeGoogleType(
 }
 
 export function googleStub(
-  hit: NearbyHit,
+  hit: GoogleHit,
   distanceKm: number | null,
 ): Record<string, unknown> {
   return {

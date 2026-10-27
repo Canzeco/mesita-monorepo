@@ -93,7 +93,7 @@ export type Place = {
    * Enriching chip on swipe / catalog cards — same signal as place detail.
    */
   is_enriching?: boolean;
-  /** Catalog-only: Google Nearby hit that is not a Mesita row yet. */
+  /** A Google listing that is not a Mesita row yet (the bar's Google pick). */
   googleOnly?: boolean;
   /** The Area pipeline's breakdown for this place, computed by the server
    *  (MESITA-2379); only the one-pool Feed wire carries it. */
@@ -103,7 +103,7 @@ export type Place = {
    *  product. Only list-places sends it. The mark itself is the row's own
    *  `selected`. */
   score?: MapScore;
-  /** Alias shipped on Google Nearby stubs (`from_google`). */
+  /** Alias shipped on Google-only stubs (`from_google`). */
   from_google?: boolean;
   // Generic product payload. Menus are carried in products.menu.
   products?: Record<string, unknown> | null;
@@ -397,7 +397,7 @@ export type PlacePrediction = {
   mainText: string;
   secondaryText: string;
   state: PlacePredictionState;
-  /** The row's card (MESITA-2678): on a Google-only row the stub Nearby
+  /** The row's card (MESITA-2678): on a Google-only row the stub Text Search
    *  sends (MESITA-2325: readable type, price, stars, open now, links), on a
    *  Mesita row the place's own catalog card. */
   card?: Partial<Place>;

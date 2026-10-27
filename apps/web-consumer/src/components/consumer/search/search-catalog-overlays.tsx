@@ -156,10 +156,9 @@ export function SearchDebugCoords({
   );
 }
 
-/** The four Area sources as the tag names them (MESITA-2703 keys). */
+/** The two Area sources as the tag names them (MESITA-2703 keys; Google
+ *  Nearby's two retired in MESITA-2872). */
 const SOURCE_LABELS: ReadonlyArray<[string, string]> = [
-  ["googlePopular", "Google Popularity"],
-  ["googleClosest", "Google Proximity"],
   ["mesitaPopular", "Mesita Popularity"],
   ["mesitaClosest", "Mesita Proximity"],
 ];
@@ -168,7 +167,7 @@ const SOURCE_LABELS: ReadonlyArray<[string, string]> = [
  * FOR THE MOMENT (Pato, MESITA-2705: "on top of the carousel … display the
  * sources where that [place] appears … then the two signals proximity and
  * popularity and the final score"): a small tag over each card, which of the
- * four sources found the place and its score, read from the server's
+ * sources found the place and its score, read from the server's
  * `score` (MESITA-2703). Remove when Pato says the ranking is verified.
  *
  * SELECTED IS A NUMBER, NOT A PILL (Pato, MESITA-2719: "the selected tag

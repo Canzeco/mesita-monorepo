@@ -85,10 +85,10 @@ import { clearsPopularityFloor, nameSimilarity } from "./pipeline-signals.ts";
 import {
   fetchPlaceListing,
   type GooglePlaceListing,
-  NEARBY_FIELD_MASK,
-  type NearbyHit,
-  nearbyHitFromPlace,
-} from "./nearby-places.ts";
+  LISTING_FIELD_MASK,
+  type GoogleHit,
+  googleHitFromPlace,
+} from "./google-listing.ts";
 import { googleStub } from "./google-stub.ts";
 
 export const NAME_MIN_COSINE = 0.4;
@@ -1091,10 +1091,10 @@ export async function fetchTextSearch(
       headers: {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": apiKey,
-        // Nearby's listing mask (MESITA-2325): Text Search bills the same
+        // The listing mask (MESITA-2325): Text Search bills the same
         // Pro/Enterprise tiers, and `rating` already puts the call on
         // Enterprise, so the card's other fields add no spend.
-        "X-Goog-FieldMask": NEARBY_FIELD_MASK,
+        "X-Goog-FieldMask": LISTING_FIELD_MASK,
       },
       body: JSON.stringify(body),
     });
@@ -1125,7 +1125,7 @@ export async function fetchTextSearch(
   }
   const out: LaneItem[] = [];
   for (const p of data.places ?? []) {
-    const hit = nearbyHitFromPlace(p);
+    const hit = googleHitFromPlace(p);
     if (!hit.placeId || !hit.name) continue;
     const kind = gatedGoogleKind(
       evaluatePlaceForMap(gate, {
@@ -1161,7 +1161,7 @@ export async function fetchTextSearch(
       businessStatus: hit.businessStatus,
       reviewCount: hit.reviewCount,
       rating: hit.rating,
-      // The same Google-only card Nearby sends, so a typed pick opens a
+      // The same Google-only card Text Search sends, so a typed pick opens a
       // draft as rich as a Feed card's (MESITA-2325).
       card: googleStub(hit, null),
     });
@@ -1211,7 +1211,7 @@ async function stampGoogleAgainstCatalog(
   if (googleOnly.length === 0) {
     return stamped.filter((p) => clearsGeneralGate(general, p));
   }
-  const listingById = new Map<string, NearbyHit>();
+  const listingById = new Map<string, GoogleHit>();
   await Promise.all(googleOnly.map(async (p) => {
     const hit = await fetchPlaceListing(p.placeId, apiKey);
     if (hit) listingById.set(p.placeId, hit);

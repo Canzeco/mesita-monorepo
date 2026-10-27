@@ -9,7 +9,6 @@ import {
   DEFAULT_GENERAL,
   DEFAULT_MAP,
   DEFAULT_NAME,
-  googleCallsPerLoad,
   SUPER_FIELDS,
 } from "./catalog";
 
@@ -75,19 +74,18 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
     expect(coerceConfig({ params: { proximity: { radiusDivisor: 999 } } }).params.proximity).toEqual({ radiusDivisor: 10 });
   });
 
-  it("the four Area sources are 0 or 20, and only the Google two bill (MESITA-2703)", () => {
+  it("the two Area sources are 0 or 20; the retired Google two are dropped (MESITA-2703/2872)", () => {
     const m = coerceConfig({
       map: { googlePopular: 20, googleClosest: 0, mesitaPopular: 3, mesitaClosest: "x" },
     }).map;
-    expect([m.googlePopular, m.googleClosest, m.mesitaPopular, m.mesitaClosest]).toEqual([20, 0, 0, 20]);
-    expect(googleCallsPerLoad(m)).toBe(1);
-    expect(googleCallsPerLoad(DEFAULT_MAP)).toBe(2);
+    expect([m.mesitaPopular, m.mesitaClosest]).toEqual([0, 20]);
+    expect("googlePopular" in m || "googleClosest" in m).toBe(false);
     // The exponents are retired (MESITA-2722): a stored one is dropped.
     expect("popularityWeight" in coerceConfig({ map: { popularityWeight: 9 } }).map).toBe(false);
-    // Places shown (MESITA-2713): whole, 1..80, default 20.
+    // Places shown (MESITA-2713): whole, 1..40, default 20.
     expect(DEFAULT_MAP.placesShown).toBe(20);
     expect(coerceConfig({ map: { placesShown: 0 } }).map.placesShown).toBe(1);
-    expect(coerceConfig({ map: { placesShown: 200 } }).map.placesShown).toBe(80);
+    expect(coerceConfig({ map: { placesShown: 200 } }).map.placesShown).toBe(40);
     expect(coerceConfig({ map: { placesShown: 33.4 } }).map.placesShown).toBe(33);
     // Minimum Popularity (MESITA-2714): 0..20, one decimal, default 3.
     expect(DEFAULT_MAP.popularityFloor).toBe(3);
@@ -140,7 +138,6 @@ describe("coerceConfig", () => {
       ...DEFAULT_MAP,
       minRating: 5,
       minPopularity: 1,
-      googleClosest: 0,
     });
     // The live throttle (MESITA-2444): 1.5 s by default, the client's 0.5–10.
     expect(coerceConfig({}).map.reloadIdleSec).toBe(1.5);

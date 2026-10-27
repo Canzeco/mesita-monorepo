@@ -77,10 +77,10 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
 
   it("'Fed by' is derived from the sources' fields, never typed", () => {
     // Autocomplete gives no coordinates, so it can never feed Proximity.
-    expect(sourcesFeedingSignal("area", "proximity")).toEqual(["google_nearby", "mesita_places"]);
+    expect(sourcesFeedingSignal("area", "proximity")).toEqual(["mesita_places"]);
     expect(sourcesFeedingSignal("deep", "description_similarity")).toEqual(["mesita_places"]);
     const area = boxes()[2];
-    expect(area).toContain(`Fed by ${sourceByKey("google_nearby").label} · ${sourceByKey("mesita_places").label}.`);
+    expect(area).toContain(`Fed by ${sourceByKey("mesita_places").label}.`);
   });
 
   it("nothing on the page shows Not wired: the only unwired source sits in the Soon Deep box", () => {
@@ -141,18 +141,17 @@ describe("the boxes' controls", () => {
     expect(html).not.toContain("Only active places");
   });
 
-  it("Area: the Always-on rules state the Google calls, the quota and the fixed numbers (MESITA-2603)", () => {
+  it("Area: the Always-on rules state no Google call and the fixed numbers (MESITA-2603, MESITA-2872)", () => {
     const html = render(<AreaBox {...seed} />);
     for (const text of [
-      "one billed Nearby call per Google source switched on, so 0 to 2 per load",
-      "20 Nearby calls a minute",
-      "1000 for everyone",
+      "Area calls no Google",
       "clamped to 0.05–50 km",
       "at most 1000 ready rows",
-      "lists its primary places before its secondary ones",
     ]) {
       expect(html, text).toContain(text);
     }
+    expect(html).not.toContain("Nearby call");
+    expect(html).not.toContain("Google Popularity");
     expect(html).not.toContain("It only gates");
     expect(html).not.toContain("one call of 20");
     expect(html).not.toContain("the prominent 20 within 3 km");

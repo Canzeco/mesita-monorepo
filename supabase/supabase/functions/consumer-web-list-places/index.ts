@@ -21,22 +21,20 @@
 // RADIUS (MESITA-2504): the location is a POINT at the cross (`lat`, `lng`,
 // the sight) inside R = the cross's distance to the nearest edge of the
 // visible map (`screenRadiusKm`, MESITA-2511: the circle always fits on
-// screen). R is a GATE on both sources — Mesita's
-// read is boxed to it and the Radius gate drops what lies past it, Google's
-// calls ask the prominent 20 inside it first and eligibility drops the rest
-// (Pato: "I son't want to see stuff beyond my screen"). The score is
+// screen). R is a GATE — Mesita's read is boxed to it and the Radius gate
+// drops what lies past it (Pato: "I son't want to see stuff beyond my
+// screen"). The score is
 // Proximity × Popularity × the Selected boost, Proximity ½ at R ÷ the
 // operator's radius divisor (MESITA-2720), the boost `map.selectedFactor`
 // on a Selected place (MESITA-2717); no exponents since MESITA-2722. The family chip gates;
 // the guest picks no mode, so `prefer` is ignored. No bounds, or a box wider
 // than AREA_BOUNDS_MAX_KM, falls back to the centre inside `map.radiusKm`,
 // scored the same way. The answer carries R and each place's
-// breakdown for the debug readout (MESITA-2504). It runs the same four
-// sources as the Feed (MESITA-2703) — Google Popularity, Google Proximity (one
-// billed Nearby call each, so a reload with both on bills 2; the reload
-// throttle bounds the spend), Mesita Popularity, Mesita Proximity — merged with
+// breakdown for the debug readout (MESITA-2504). It runs the same sources as
+// the Feed — Mesita Popularity and Mesita Proximity (Google Nearby's two
+// retired in MESITA-2872: nothing here calls Google) — merged with
 // duplicates removed and ranked, with the guest's family pills pushed down
-// to Nearby types and the operator's Popularity floor on every place.
+// to the Mesita read and the operator's Popularity floor on every place.
 // The guest never picks a source: a stale `placesScope` is ignored.
 //
 // Anything else is refused: a GET is 405, a POST without `google: true` or
@@ -67,24 +65,17 @@ import { readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
 import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
 import { DISCOVERY_DEFAULTS } from "../_shared/discovery-config.ts";
 import {
-  enabledNearbyTypes,
-  mapShouldFillGoogle,
-} from "../_shared/map-engine.ts";
-import {
   decideNearby,
   NEARBY_SCAN_LIMIT,
   wantsGoogleFill,
 } from "../_shared/geo.ts";
 import {
-  areaGoogleTypes,
-  type OwnedRow,
+  type PoolRow,
   type PoolBuilder,
   screenRadiusKm,
   selectAreaPool,
   selectedPoolQuery,
 } from "../_shared/area-pipeline.ts";
-import { areaQuota, ownedLookup } from "../_shared/area-deps.ts";
-import { readGooglePlacesKey } from "../_shared/google-places.ts";
 import {
   stripInternal,
   type PlaceProfileRow,
@@ -93,13 +84,13 @@ import {
 const MAX_LIMIT = 200;
 
 /** Same wire shaping as consumer-web-list-catalog (MESITA-2736, MESITA-2740). */
-function wireMapPlace(row: PlaceProfileRow): OwnedRow {
+function wireMapPlace(row: PlaceProfileRow): PoolRow {
   const out = stripInternal(row);
   return {
     ...out,
     id: row.id,
     photos: Array.isArray(out.photos) ? out.photos : [],
-  } as OwnedRow;
+  } as PoolRow;
 }
 
 type ListBody = {
@@ -175,8 +166,9 @@ Deno.serve(async (req) => {
       code: "invalid_nearby",
     }, 400);
   }
-  // `google: true` is web Search saying it can render a Google-only stub.
-  // It is the only caller left, so a call without it, or without a centre,
+  // `google: true` is web Search's marker (it once meant "can render a
+  // Google-only stub"; no stub comes back since MESITA-2872). It is the only
+  // caller left, so a call without it, or without a centre,
   // has nothing to answer (MESITA-2337).
   if (
     nearbyDecision.mode !== "ok" ||
@@ -194,15 +186,6 @@ Deno.serve(async (req) => {
   const cfg = efEnv.ok
     ? await loadDiscoveryConfig(adminClient(efEnv.env))
     : DISCOVERY_DEFAULTS;
-  // A GUEST PILL OUTRANKS THE FULL BATTERY, deliberately (MESITA-1685). The
-  // pill IS the guest's question. With no pill, Nearby asks for every guest
-  // family. Stored family switches are not read. The operator still holds
-  // two Google Area switches, the floors and the rate controls.
-  const nearbyTypes = guestSupers.length > 0
-    ? areaGoogleTypes(guestSupers)
-    : enabledNearbyTypes(cfg.map);
-  const googleOn = mapShouldFillGoogle(true, cfg.map) &&
-    nearbyTypes.length > 0;
   const center = { lat: nearbyDecision.lat, lng: nearbyDecision.lng };
   // The screen radius, or the operator's when there is no screen to read.
   const screenKm = screenRadiusKm(body.bounds, center);
@@ -218,36 +201,24 @@ Deno.serve(async (req) => {
   if (pool.error) {
     return json({ ok: false, error: pool.error.message }, 500);
   }
-  const gmp = googleOn ? readGooglePlacesKey() : null;
-  const area = await selectAreaPool<OwnedRow>({
+  const area = await selectAreaPool<PoolRow>({
     surface: "map",
-    apiKey: gmp?.ok && efEnv.ok ? gmp.key : null,
     location,
     families: guestSupers,
-    types: googleOn ? nearbyTypes : [],
-    mesitaRows: (pool.data ?? []) as OwnedRow[],
+    mesitaRows: (pool.data ?? []) as PoolRow[],
     cfg,
-    consumeQuota: efEnv.ok
-      ? areaQuota(req, adminClient(efEnv.env), efEnv.env.serviceKey)
-      : () => Promise.resolve(false),
-    // ONE lookup by google_place_id, ready rows only (RLS limits it to
-    // listed rows): a hit a ready Mesita row owns goes out as that row,
-    // never a stub (MESITA-2154). An owned row that is not ready stays a
-    // stub, and its tap's get-or-create opens the Mesita place.
-    lookupOwned: ownedLookup(supabase, PLACE_CARD_COLUMNS, "consumer-web-list-places"),
   });
   // A caller that names its own cap keeps it.
   const places = typeof body.limit === "number"
     ? area.places.slice(0, clampIntRange(body.limit, 1, MAX_LIMIT))
     : area.places;
   // One line, because every failure mode is a WRONG SET rather than an
-  // error: Google switched off and a spent quota look like a thin map.
+  // error: a capped read or a switched-off source looks like a thin map.
   console.log(JSON.stringify({
     fn: "consumer-web-list-places",
     mode: "nearby",
     radius: screenKm === null ? "operator" : "screen",
     radiusKm,
-    googleOn,
     ...area.summary,
     mesitaRead: pool.data?.length ?? 0,
     mesitaCapped: (pool.data?.length ?? 0) >= NEARBY_SCAN_LIMIT,

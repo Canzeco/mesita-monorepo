@@ -1,5 +1,5 @@
 // The Discovery model (MESITA-2327) against itself and against the call
-// sites: five sources, three pipelines, four signals, two gates, and no
+// sites: four sources, three pipelines, four signals, two gates, and no
 // relationship the engines do not have.
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
@@ -18,23 +18,15 @@ import {
   SCREEN_RADIUS_KM_MAX,
   SCREEN_RADIUS_KM_MIN,
 } from "./area-pipeline.ts";
-import { GOOGLE_NEARBY_MAX } from "./nearby-places.ts";
-import {
-  GOOGLE_NEARBY_GLOBAL_DAY_MAX,
-  GOOGLE_NEARBY_GLOBAL_MAX,
-  GOOGLE_NEARBY_IP_DAY_MAX,
-  GOOGLE_NEARBY_IP_MAX,
-} from "./nearby-google-quota.ts";
 import { NEARBY_SCAN_LIMIT } from "./geo.ts";
 
 const root = new URL("../../", import.meta.url);
 const text = (rel: string) => Deno.readTextFile(new URL(rel, root));
 
-Deno.test("the model is Pato's: five sources, Name · Area · Deep, four signals, two gates", () => {
+Deno.test("the model is Pato's: four sources (Google Nearby gone, MESITA-2872), Name · Area · Deep, four signals, two gates", () => {
   assertEquals(DISCOVERY_SOURCES.map((s) => s.label), [
     "Google Autocomplete",
     "Google Text Search",
-    "Google Nearby Search",
     "Mesita Places Search",
     "Mesita Social Search",
   ]);
@@ -66,7 +58,7 @@ Deno.test("every pipeline signal is fed by one of its own sources (derived from 
       assert(sourcesFeedingSignal(p.key, sig).length > 0, `${p.key}/${sig}`);
     }
   }
-  assertEquals(sourcesFeedingSignal("area", "proximity"), ["google_nearby", "mesita_places"]);
+  assertEquals(sourcesFeedingSignal("area", "proximity"), ["mesita_places"]);
   assertEquals(sourcesFeedingSignal("deep", "description_similarity"), ["mesita_places"]);
   // Google rows keep Google's order in the Name pipeline: no signal scores
   // them, so neither Google source is derived as feeding Name (MESITA-2338).
@@ -94,14 +86,19 @@ Deno.test("the call sites match the model", async () => {
   // Name: Autocomplete · Text Search · Mesita Places, ranked by the Name signal.
   assert(name.includes("fetchAutocomplete") && name.includes("fetchTextSearch") && name.includes("fetchEmbedPool"));
   assert(name.includes("nameSimilarity"));
-  assertEquals(name.includes("searchNearbyPlaces"), false);
-  // Area: Nearby · Mesita Places, the Area score; Map and the Catalog are its views.
-  assert(area.includes("searchNearbyPlaces") && area.includes("selectedPoolQuery") && area.includes("rankArea"));
+  // Area: Mesita Places only, the Area score; Map and the Catalog are its
+  // views. No Google Nearby anywhere (MESITA-2872).
+  assert(area.includes("selectedPoolQuery") && area.includes("rankArea"));
   assert(map.includes("selectAreaPool") && feed.includes("selectAreaPool"));
+  for (const src of [name, area, deep, map, feed]) {
+    assertEquals(/searchNearby|areaQuota/.test(src), false);
+  }
+  // The Area's views hold no Google key at all.
+  assertEquals(/readGooglePlacesKey/.test(area + map + feed), false);
   assertEquals(/selectGooglePlaces|selectMesitaSelected/.test(map + feed), false);
   // Deep: Mesita Places by Description, and nothing Google.
   assert(deep.includes("descriptionSimilarity"));
-  assertEquals(/searchNearbyPlaces|fetchTextSearch|fetchAutocomplete/.test(deep), false);
+  assertEquals(/fetchTextSearch|fetchAutocomplete/.test(deep), false);
   // Chat calls the Deep pipeline and no source.
   assert(chat.includes("runDeepPipeline("));
   // No weights on Area: the blend and the lineup are gone from it.
@@ -148,7 +145,7 @@ Deno.test("Deep is not live while no guest reaches Chat; Name and Area are (MESI
   assertEquals(live, { name: true, area: true, deep: false });
 });
 
-// ── MESITA-2379: one pool; MESITA-2703: four sources, two weights;
+// ── MESITA-2379: one pool; MESITA-2872: two Mesita sources;
 //    MESITA-2717: Selected is back as a factor, never a signal ────────────
 
 Deno.test("Area: Family and Radius gate, Proximity × Popularity × the Selected boost, Chat reads Selected only", () => {
@@ -160,7 +157,7 @@ Deno.test("Area: Family and Radius gate, Proximity × Popularity × the Selected
   assert(area.scoring.startsWith("The Map and Home: Proximity × Popularity × s"));
   assert(area.scoring.includes("Selected boost"));
   assertEquals(JSON.stringify(area).includes("rectangle"), false);
-  for (const src of ["Google Popularity", "Google Proximity", "Mesita Popularity", "Mesita Proximity"]) {
+  for (const src of ["Mesita Popularity", "Mesita Proximity"]) {
     assert(area.rules.some((r) => r.includes(src)), src);
   }
   assert(area.rules.includes("Chat reads Mesita Selected places only, inside the current-location radius."));
@@ -178,10 +175,7 @@ Deno.test("Area: no Territory anywhere in the model; the rules' numbers are the 
   assertEquals(DISCOVERY_GATES.map((g) => g.key), ["family", "radius"]);
   const rules = DISCOVERY_PIPELINES.find((p) => p.key === "area")!.rules.join(" ");
   const facts = [
-    `Google Popularity (the prominent ${GOOGLE_NEARBY_MAX} in the circle)`,
-    "never cached or stored",
-    `${GOOGLE_NEARBY_IP_MAX} Nearby calls a minute, all guests together ${GOOGLE_NEARBY_GLOBAL_MAX}`,
-    `in any 24 hours ${GOOGLE_NEARBY_IP_DAY_MAX} per IP and ${GOOGLE_NEARBY_GLOBAL_DAY_MAX} for everyone`,
+    "Area calls no Google",
     `clamped to ${SCREEN_RADIUS_KM_MIN}–${SCREEN_RADIUS_KM_MAX} km`,
     `wider than ${AREA_BOUNDS_MAX_KM} km`,
     `at most ${NEARBY_SCAN_LIMIT} ready rows`,

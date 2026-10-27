@@ -1637,7 +1637,9 @@ select ok(
                       'googleFill', 'googlePlaces', 'mapGooglePlaces', 'mesitaPlaces',
                       -- MESITA-2721/2722/2724: the reviews minimum and the
                       -- two Area exponents are retired.
-                      'googleMinReviews', 'proximityWeight', 'popularityWeight'])
+                      'googleMinReviews', 'proximityWeight', 'popularityWeight',
+                      -- MESITA-2872: Google Nearby is gone from Area.
+                      'googlePopular', 'googleClosest'])
       -- MESITA-2702: no Name reviews floor (`general.minReviews`).
       and discovery_config #> '{general,minReviews}' is null
       and (coalesce(discovery_config #> '{params,popularity}', '{}'::jsonb) - 'halfReviews') = '{}'::jsonb

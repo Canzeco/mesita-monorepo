@@ -40,8 +40,6 @@ export const NEARBY_MAX_RADIUS_KM = 2000;
 /** The Mesita pool's scan cap before the Area pipeline picks Mesita Popularity
  *  and Mesita Proximity from it (MESITA-2703); a capped read is logged. */
 export const NEARBY_SCAN_LIMIT = 1000;
-/** Google Nearby Search (New) caps the circle at 50 km. */
-export const NEARBY_RADIUS_KM = 50;
 
 export type GeoBbox = {
   south: number;
@@ -90,8 +88,9 @@ export function decideNearby(body: Record<string, unknown>): NearbyDecision {
   return { mode: "ok", lat, lng, radiusKm };
 }
 
-/** Web Search's tell: it can render a Google-only stub. list-places answers
- *  nothing without it (MESITA-2337). */
+/** Web Search's tell (it once meant "can render a Google-only stub"; no
+ *  Area stub comes back since MESITA-2872). list-places answers nothing
+ *  without it (MESITA-2337). */
 export function wantsGoogleFill(body: Record<string, unknown>): boolean {
   return body.google === true || body.google === "true" ||
     body.nearby === true || body.nearby === "true";

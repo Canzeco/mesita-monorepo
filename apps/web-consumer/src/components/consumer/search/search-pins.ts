@@ -52,7 +52,7 @@ export function predictionOnMesita(item: {
   return item.state !== "not_in_mesita";
 }
 
-/** Google Nearby stub that was added — real Mesita id, not a g: prefix. */
+/** Google-only stub that was added — real Mesita id, not a g: prefix. */
 export function catalogPlaceOnMesita(place: {
   id: string;
   googleOnly?: boolean;

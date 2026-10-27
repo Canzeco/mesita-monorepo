@@ -156,7 +156,7 @@ Deno.test("CONFIG: no new writer of app_config outside the allowlist", async () 
 // Scope: hard DELETE on one of the five aggregates' OWN row — place_profiles,
 // profiles, consumers, reservation_tickets, places (MESITA-1284 — this table
 // was missing from both ratchets below). Deliberately NOT in scope:
-// satellite/audit tables (place_creation_attempts, nearby_google_attempts)
+// satellite/audit tables (place_creation_attempts)
 // whose own insert/delete is normal operation, not a deletion-law question.
 //
 // The window's 2000-char forward reach from an aggregate's .from() match can

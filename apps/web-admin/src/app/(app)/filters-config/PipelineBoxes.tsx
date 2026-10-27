@@ -18,7 +18,6 @@ import { getDiscoveryConfig, updateDiscoveryConfig, type DiscoverySlice } from "
 import {
   AREA_SOURCE_ON,
   type AreaSourceKey,
-  googleCallsPerLoad,
   MAP_PLACES_SHOWN_MAX,
   MAP_POPULARITY_FLOOR_MAX,
   MAP_POPULARITY_FLOOR_MIN,
@@ -53,10 +52,9 @@ export const BOX_SLICES = {
   area: ["map", "areaSignals"],
 } as const satisfies Record<string, readonly DiscoverySlice[]>;
 
-/** The Area box's four switches, in the order the pipeline runs them. */
+/** The Area box's two switches, in the order the pipeline runs them
+ *  (Google Nearby's two retired in MESITA-2872). */
 const AREA_SOURCE_SOURCES: ReadonlyArray<{ key: AreaSourceKey; label: string }> = [
-  { key: "googlePopular", label: "Google Popularity" },
-  { key: "googleClosest", label: "Google Proximity" },
   { key: "mesitaPopular", label: "Mesita Popularity" },
   { key: "mesitaClosest", label: "Mesita Proximity" },
 ];
@@ -298,7 +296,6 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
     setCfg((c) => ({ ...c, params: { ...c.params, proximity: { ...c.params.proximity, ...p } } }));
   };
   const toggle = (key: AreaSourceKey) => map({ [key]: cfg.map[key] > 0 ? 0 : AREA_SOURCE_ON });
-  const calls = googleCallsPerLoad(cfg.map);
   const allOff = AREA_SOURCE_SOURCES.every(({ key }) => !(cfg.map[key] > 0));
   const dirty = !same(cfg.map, saved.map) || !same(params, saved.params);
   return (
@@ -314,11 +311,11 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             the Map&apos;s cross and its screen radius (the cross&apos;s distance to
             the nearest edge of the visible map), or on Home a saved pin and the
             radius the guest picked for it, else the device and the
-            current-location radius below. One radius for Google and Mesita.
+            current-location radius below.
           </p>
           <p className="mt-2">
-            Four sources, each on or off: Google Popularity, Google
-            Proximity, Mesita Popularity and Mesita Proximity, 20 places each. They merge into one pool
+            Mesita places only (no Google call). Two sources, each on or off:
+            Mesita Popularity and Mesita Proximity, 20 places each. They merge into one pool
             (a place found twice is one card), then Home and the Map rank it the
             same way: score = Proximity × Popularity, × the Selected boost
             for a Selected place. No point: Mesita Popularity alone, by
@@ -351,7 +348,7 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           saved without a radius); the Map uses the screen radius, and this one
           only when it has no screen to measure (no view yet, or one wider than
           100 km). It is also Chat&apos;s search radius.{" "}
-          {MAP_RADIUS_KM_MIN}–{MAP_RADIUS_KM_MAX} km (Google&apos;s circle cap).
+          {MAP_RADIUS_KM_MIN}–{MAP_RADIUS_KM_MAX} km.
         </p>
       </Group>
       <Group title="Sources">
@@ -383,24 +380,17 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           />
         </div>
         <p className="text-muted-foreground type-meta">
-          The sources bring up to {MAP_PLACES_SHOWN_MAX} places (4 × 20); after the
+          The sources bring up to {MAP_PLACES_SHOWN_MAX} places (2 × 20); after the
           merge and the sort, the Map (Search tab) shows at most Map places
           shown and Home at most Catalog places shown.{" "}
           {MAP_PLACES_SHOWN_MIN}–{MAP_PLACES_SHOWN_MAX}.
         </p>
-        <p className="type-meta font-medium">
-          Billed Google calls per load: {calls}
-        </p>
         <p className="text-muted-foreground type-meta">
-          Each Google source is one Nearby Search call on every Home load and
-          every Map reload (the Map reloads each time the guest stops moving
-          it), within the per-guest quota in the Always-on rules. Google
-          Popularity asks for the most prominent 20 in the circle, Google
-          Proximity for the nearest 20. There is no reviews minimum: the Minimum
-          Popularity below cuts weak places from every source. Mesita Popularity is the 20 Mesita
-          places in the circle with the highest Popularity × the Selected
-          boost (the score without Proximity), Mesita Proximity the 20
-          nearest; both are free.
+          Mesita Popularity is the 20 Mesita places in the circle with the
+          highest Popularity × the Selected boost (the score without
+          Proximity), Mesita Proximity the 20 nearest; both are free. There is
+          no reviews minimum: the Minimum Popularity below cuts weak places
+          from both.
         </p>
         {allOff ? (
           <p className="text-destructive type-meta">
@@ -466,7 +456,7 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
         <p className="text-muted-foreground type-meta">
           A place whose Popularity is under the Minimum Popularity (now{" "}
           {cfg.map.popularityFloor}; 0 is off) never shows on Home, the Map or
-          Chat, Google or Mesita, whatever its score: 3 is about 4★ × 5 reviews.
+          Chat, whatever its score: 3 is about 4★ × 5 reviews.
           On the guest Search bar it only reorders: Google places under it sort
           last, none are removed. Popularity is ln(1 + reviews × stars), never
           normalized: 4.6★ × 1,000 reviews ≈ 8.4, 4.0★ × 30 ≈ 4.8; a place with

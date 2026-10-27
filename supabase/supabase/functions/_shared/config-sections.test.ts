@@ -118,14 +118,14 @@ const CASES: Record<string, SectionCase> = {
     valid: {
       config: {
         params: { proximity: { radiusDivisor: 3 }, popularity: { halfReviews: 250 } },
-        map: { googleClosest: 0 },
+        map: { mesitaClosest: 0 },
       },
     },
     assertSaved: (saved) => {
       const c = saved.config as Row;
       assertEquals(((c.params as Row).proximity as Row).radiusDivisor, 3);
       assertEquals(((c.params as Row).popularity as Row).halfReviews, 250);
-      assertEquals((c.map as Row).googleClosest, 0);
+      assertEquals((c.map as Row).mesitaClosest, 0);
       assert(c.map && typeof c.map === "object", "map missing");
     },
     // Coerced, not stored as sent: a half credit of 0 lands clamped at 1, a
