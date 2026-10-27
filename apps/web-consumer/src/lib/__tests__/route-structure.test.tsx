@@ -270,16 +270,18 @@ describe("T5 — exactly one tab lights per surface", () => {
     ["/search/chat", "Search"],
     ["/place/abc", "Home"],
     ["/search", "Search"],
-    // Pay is one page and lights its own tab there; so does Share
-    // (MESITA-2566).
+    // Pay is one page and lights its own tab there; so does Wallet
+    // (MESITA-2858).
     ["/pay", "Pay"],
-    ["/share", "Share"],
+    ["/wallet", "Wallet"],
     // Me and the detail route it owns: a reservation is reached from a place
     // AND from Me › Reservations (MESITA-2565; the Saved tab owned it from
     // MESITA-2518 until Share took its slot, MESITA-2561).
     ["/me/favorites", "Me"],
     ["/me/reservations", "Me"],
     ["/reservation/r1", "Me"],
+    // Share is Me's tile since Wallet took its tab (MESITA-2858).
+    ["/share", "Me"],
     ["/me", "Me"],
   ];
 
@@ -305,7 +307,6 @@ describe("T5 — exactly one tab lights per surface", () => {
   it.each([
     "/new-visit",
     "/visit/t1",
-    "/wallet",
     "/wallet/buy",
     "/wallet/balance/bal_1",
     "/credits",
@@ -352,8 +353,8 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
     return [...html.matchAll(/text-center">([^<]+)</g)].map((m) => m[1]);
   }
 
-  it("is exactly Home · Search · Pay · Share · Me (MESITA-2561)", async () => {
-    expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Share", "Me"]);
+  it("is exactly Home · Search · Pay · Wallet · Me (MESITA-2858)", async () => {
+    expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Wallet", "Me"]);
   });
 
   it("the @modal host stacks over the body only, not BottomNav (MESITA-2747)", () => {
@@ -369,36 +370,27 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
     );
   });
 
-  it("Share wears the three joined dots — not a plane, not a box (MESITA-2568)", async () => {
-    const html = await renderNav("/search");
-    expect(html).toContain("lucide-share-2");
-    expect(html).not.toContain("lucide-send");
-    expect(html).not.toMatch(/lucide-share(?!-2)/);
-  });
-
-  it("keeps Wallet, Visit and Order off the bar", async () => {
+  it("keeps Share, Visit and Order off the bar", async () => {
     const labels = await tabLabels();
-    expect(labels).not.toContain("Wallet");
+    expect(labels).not.toContain("Share");
     expect(labels).not.toContain("Visit");
     expect(labels).not.toContain("Order");
   });
 
-  // Four <a> tabs and one <button>: Pay navigates to its page like every
-  // other link, and it is the only one tagged Soon — exactly once. Share is
-  // a link to its own page too (MESITA-2566; it was a button that fired the
-  // share sheet, MESITA-2561).
-  it("draws five links and no button, Pay with the one Soon tag", async () => {
+  // Five <a> tabs and no <button>: Pay and Wallet navigate to their pages
+  // like every other link, and they are the two tagged Soon (MESITA-2858).
+  it("draws five links and no button, Pay and Wallet tagged Soon", async () => {
     const html = await renderNav("/search");
     const anchors = html.split("<a ").slice(1);
     expect(anchors).toHaveLength(5);
     expect(html.split("<button").slice(1)).toHaveLength(0);
-    const share = anchors.find((a) => /text-center">Share</.test(a));
-    expect(share).toMatch(/href="\/share"/);
-    expect(share).not.toMatch(/>Soon</);
+    const wallet = anchors.find((a) => /text-center">Wallet</.test(a));
+    expect(wallet).toMatch(/href="\/wallet"/);
+    expect(wallet).toMatch(/>Soon</);
     const pay = anchors.find((a) => /text-center">Pay</.test(a));
     expect(pay).toBeDefined();
     expect(pay).toMatch(/>Soon</);
-    expect(html.match(/>Soon</g)).toHaveLength(1);
+    expect(html.match(/>Soon</g)).toHaveLength(2);
   });
 
   it("does not stamp class into Me and does not add an Agents tab", async () => {
@@ -419,7 +411,7 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
       CONSUMER_ROUTES.home,
       CONSUMER_ROUTES.search,
       CONSUMER_ROUTES.pay,
-      CONSUMER_ROUTES.share,
+      CONSUMER_ROUTES.wallet,
       CONSUMER_ROUTES.me,
     ]);
     const redirects = await nextConfig.redirects!();
@@ -634,7 +626,7 @@ describe("T8 — Me's grid is nine live cells", () => {
   /** The cells' titles, in render order. */
   const gridTitles = () => ME_HUB_ROWS.flat().map((cell) => cell.title);
 
-  it("renders nine cells in Pato's order", () => {
+  it("renders ten cells in Pato's order", () => {
     // The page draws the rows, as DestTiles, and nothing else below the bar.
     expect(ME).toContain("<MeHubFrame");
     expect(ME).toContain("<DestTile");
@@ -643,7 +635,8 @@ describe("T8 — Me's grid is nine live cells", () => {
     // Reservations / Favorites Connector / Settings. PROFILE LEADS (Pato,
     // 2026-09-08): the header states the identity, so the first cell is the
     // one that edits it. Support is a group on Settings (MESITA-2169).
-    // Favorites is the Saved tile that came in from the bar (MESITA-2561).
+    // Favorites is the Saved tile that came in from the bar (MESITA-2561);
+    // Share came in from the bar beside Settings (MESITA-2858).
     expect(gridTitles()).toEqual([
       "Profile",
       "Instagram",
@@ -653,6 +646,7 @@ describe("T8 — Me's grid is nine live cells", () => {
       "Reservations",
       "Favorites",
       "Connector",
+      "Share",
       "Settings",
     ]);
   });
@@ -662,7 +656,6 @@ describe("T8 — Me's grid is nine live cells", () => {
       "Wallet",
       "Visits",
       "Orders",
-      "Share",
       "Gift",
       "Integrations",
       "Friends",
@@ -680,11 +673,11 @@ describe("T8 — Me's grid is nine live cells", () => {
     expect(gridTitles()).not.toContain("Support");
   });
 
-  it("rows are pairs, Settings alone last; nothing spans", () => {
-    // Five rows: four pairs, then Settings in the left half of the last row
-    // (MESITA-2562). Each row is one DestGrid (MeHubFrame), and DestGrid has
-    // no `cols`.
-    expect(ME_HUB_ROWS.map((row) => row.length)).toEqual([2, 2, 2, 2, 1]);
+  it("rows are pairs, Settings last; nothing spans", () => {
+    // Five pairs, Share · Settings last (MESITA-2858; Settings stood alone
+    // from MESITA-2562). Each row is one DestGrid (MeHubFrame), and DestGrid
+    // has no `cols`.
+    expect(ME_HUB_ROWS.map((row) => row.length)).toEqual([2, 2, 2, 2, 2]);
     expect(HUB).toContain("<DestGrid key=");
     expect([...HUB.matchAll(/^\s*full$/gm)]).toHaveLength(0);
     expect(HUB).not.toMatch(/<DestGrid cols=/);
@@ -830,7 +823,8 @@ describe("T7 — every former url still resolves after the move", () => {
 
   // Wallet shipped under every spelling below — standalone /credits, an
   // Activity section (/inbox/credits), a Pay section (/new-visit/wallet) and
-  // its own tab (/wallet). Every spelling lands on Pay in ONE hop — first
+  // its own tab (/wallet/...; bare /wallet is the Wallet tab again,
+  // MESITA-2858). Every spelling lands on Pay in ONE hop — first
   // match, as Next fires it — and that is why this asserts the destination
   // rather than just the entry.
   it.each([
@@ -841,6 +835,8 @@ describe("T7 — every former url still resolves after the move", () => {
     ["/new-visit/wallet/gift", "/pay"],
     ["/new-visit/wallet/redeem", "/pay"],
     ["/new-visit/wallet/balance/bal_1", "/pay"],
+    ["/wallet/buy", "/pay"],
+    ["/wallet/balance/bal_1", "/pay"],
   ])("keeps %s redirecting straight to %s", async (address, destination) => {
     const redirects = await nextConfig.redirects!();
     const hit = redirects.find((r) => matches(r.source, address));
@@ -868,7 +864,6 @@ describe("T9 — Pay is one page, and the Second Stage trees are gone", () => {
     for (const rel of [
       ["(shell)", "(visit)"],
       ["(shell)", "new-visit"],
-      ["(shell)", "wallet"],
       ["(shell)", "visit"],
       ["(shell)", "order"],
       // NOT ["(shell)", "share"]: the referral deck stays gone, but /share is

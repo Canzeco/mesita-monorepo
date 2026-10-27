@@ -34,7 +34,7 @@ const BAR_HREFS = [
   CONSUMER_ROUTES.home,
   CONSUMER_ROUTES.search,
   CONSUMER_ROUTES.pay,
-  CONSUMER_ROUTES.share,
+  CONSUMER_ROUTES.wallet,
   CONSUMER_ROUTES.me,
 ] as const;
 
