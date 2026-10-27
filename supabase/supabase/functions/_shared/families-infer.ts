@@ -28,7 +28,7 @@ type FamilySignals = {
 
 // Exported so admin Crenup can render them, like CATEGORY_INSTRUCTIONS.
 export const FAMILY_INSTRUCTIONS =
-  "You place a venue in ONE TO FIVE families from a fixed list. A family is " +
+  "You sort a place into ONE TO FIVE families from a fixed list. A family is " +
   "what a guest is in the mood for (dinner, coffee, drinks…). Respond with a " +
   'single JSON object {"families":["<slug>", ...]} where each <slug> is copied ' +
   "verbatim from the list. Pick every family a guest would expect to find the " +
