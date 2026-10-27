@@ -7,7 +7,6 @@ import type { Coords } from "@/lib/use-user-location";
 import { useCardSaveShare } from "@/lib/use-card-save-share";
 import { cn } from "@/lib/utils";
 
-import { AddPlaceButton } from "./AddPlaceButton";
 import { RailCard, RailCardSkeleton } from "./SearchRailCard";
 import { SIGHT_Y } from "./search-utils";
 
@@ -44,20 +43,20 @@ export function railPages<T>(items: T[]): T[][] {
 export const RAIL_FLOAT_CLASS =
   "pointer-events-none absolute inset-x-0 bottom-2 z-20";
 
-/** The rail's row: the Add button pinned at the left (Pato, MESITA-2882:
- *  "the add place is a button at the left"), 12px in from the map's edge,
- *  then the carousel taking the rest. The row is sideways again
- *  (MESITA-2882 reverses MESITA-2880's vertical rail): the carousel pages
- *  (`RAIL_PAGE`) scroll left and right, a pair of cards per page. */
-const RAIL_ROW = "flex items-start gap-2 pl-3 pb-1";
+/** The rail's row: the carousel at the map's full width. MESITA-2882 pinned
+ *  an Add button at its left; MESITA-2883 removed it with the bar's Google
+ *  lookup. The row is sideways (MESITA-2882 reverses MESITA-2880's vertical
+ *  rail): the carousel pages (`RAIL_PAGE`) scroll left and right, a pair of
+ *  cards per page. */
+const RAIL_ROW = "flex items-start pb-1";
 
-/** The carousel beside the button: snap pages, sideways. */
+/** The carousel: snap pages, sideways. */
 const RAIL_SCROLLER =
   "scrollbar-hide flex min-w-0 flex-1 snap-x snap-mandatory overflow-x-auto";
 
 /** The first load's carousel (Pato, MESITA-2701: "the placeholders must be
  *  similar to the page you are loading, like the sizes"): the loaded row's
- *  own shape, the Add button at the left, then the first page centred and
+ *  own shape, the first page centred and
  *  the next one peeking at the right edge, each card RailCard's face (the
  *  score sits on the photo since MESITA-2877, so nothing waits above it).
  *  search/loading.tsx draws this same row, so the route's skeleton hands
@@ -65,10 +64,6 @@ const RAIL_SCROLLER =
 export function CatalogRailSkeleton() {
   return (
     <div className={RAIL_ROW} aria-hidden>
-      {/* Inert: a skeleton's button must not take focus or taps. */}
-      <div inert>
-        <AddPlaceButton onAdd={() => {}} />
-      </div>
       <div className={cn(RAIL_SCROLLER, "overflow-hidden")}>
         {[0, 1].map((page) => (
           <div key={page} className={RAIL_PAGE}>
@@ -289,7 +284,6 @@ export function SearchRailOverlay({
   railScrollRef,
   onRailScroll,
   onOpenPlace,
-  onAdd,
   setRailCardRef,
 }: {
   places: Place[];
@@ -298,8 +292,6 @@ export function SearchRailOverlay({
   railScrollRef: RefObject<HTMLDivElement | null>;
   onRailScroll: () => void;
   onOpenPlace: (place: Place) => void;
-  /** The Add button's tap: focus the search bar (MESITA-2879/2882). */
-  onAdd: () => void;
   setRailCardRef: (placeId: string, el: HTMLElement | null) => void;
 }) {
   const firstLoad = catalogLoading && places.length === 0;
@@ -327,21 +319,16 @@ export function SearchRailOverlay({
         {firstLoad ? (
           <CatalogRailSkeleton />
         ) : places.length === 0 ? (
-          // An empty area: the Add button where it always is and a note
-          // beside it saying so (Pato, MESITA-2879); the "No places to show
-          // here yet." pill is gone.
+          // An empty area says so where the cards sit. The Add button
+          // beside it searched Google (MESITA-2879/2882); the bar no longer
+          // does (MESITA-2883), so it is gone.
           <div className={RAIL_ROW} data-search-rail-empty>
-            <AddPlaceButton onAdd={onAdd} />
-            <p className="bg-card/95 text-muted-foreground shadow-elev self-center rounded-2xl px-4 py-3 text-sm backdrop-blur">
-              <span className="text-foreground block font-semibold">
-                Nothing on Mesita here yet
-              </span>
-              Add any place from Google.
+            <p className="bg-card/95 text-foreground shadow-elev mx-auto self-center rounded-2xl px-4 py-3 text-sm font-semibold backdrop-blur">
+              Nothing on Mesita here yet
             </p>
           </div>
         ) : (
           <div className={RAIL_ROW}>
-            <AddPlaceButton onAdd={onAdd} />
             <div
               ref={railScrollRef}
               onScroll={onRailScroll}

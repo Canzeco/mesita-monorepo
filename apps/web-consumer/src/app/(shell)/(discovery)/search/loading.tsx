@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 // families; MESITA-2882) at 10px above and below, a hairline under it. Then
 // the map under MapVeil, the spinner on the cross, and the carousel floating
 // over the map's foot (MESITA-2670): the same veil and the same first-load
-// row (the Add button, then skeleton pages) the mounted page draws until its
+// row (skeleton pages) the mounted page draws until its
 // tiles and catalog land, so nothing moves on arrival.
 
 /** A header control's grey block at the control's own size: its token

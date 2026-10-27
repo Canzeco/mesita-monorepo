@@ -19,22 +19,18 @@
 // keeps loading, the camera keeps its own rules, and typing only adds a pin
 // layer and swaps the bottom rail out. A viewport load is always just a load.
 //
-// EVERY BAR PICK ANCHORS THE MAP (MESITA-1405). Picking a Location or a
-// Place moves the camera to its coordinates and reloads the catalog there;
-// a Place becomes card ONE of the carousel — prepended after the operator's
-// cap, which governs the map query only — and its modal is
-// one more tap away, on the card or its pin. A Location (kind: "location")
-// is a camera destination: coordinates + viewport resolve on pick, never
-// per keystroke, and the viewport picks the zoom.
+// EVERY BAR PICK ANCHORS THE MAP (MESITA-1405). Picking a place moves the
+// camera to its coordinates and reloads the catalog there; it becomes card
+// ONE of the carousel — prepended after the operator's cap, which governs
+// the map query only — and its modal is one more tap away, on the card or
+// its pin.
 //
-// CARD ONE ONLY WHEN IT CAN BE A MESITA PLACE (MESITA-2849, Pato: "only if
-// it can be a mesita place … inside the allowed google categories and above
-// the allowed popularity"). The bar already turns a Google place outside
-// Mesita's types into a Location (MESITA-2778); a Google place under the
-// Area box's Minimum Popularity arrives `underFloor` (MESITA-2724 lists it
-// last) and its pick is a destination too — the camera lands there and the
-// Area reloads there, but no card is drawn for it, because that reload hides
-// every place under the same floor. A Mesita row is a Mesita place already.
+// THE BAR MAKES NO GOOGLE CALL (Pato, MESITA-2883: "completly remove Google
+// Places api frm Area Search"). It asks for Mesita names only (`mesita`
+// mode: Pay's engine), so no Autocomplete, no Text Search, no Location rows
+// and no Details call per pick; with no Google rows there is no Add-a-place
+// button either (MESITA-2879/2882's, which searched Google). Area itself
+// stopped calling Google in MESITA-2872.
 //
 // A Google-only result has no preview sheet and no Add button (MESITA-2298):
 // its SECOND tap (pin or rail card) is the explicit open — get-or-create on
@@ -76,7 +72,6 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import type { Place } from "@/lib/api/places";
 import { apiFetchNearbyCatalog } from "@/lib/api/places";
 import {
-  apiResolveLocationAnchor,
   apiSuggestPlacesWithIdle,
   type PlacePrediction,
 } from "@/lib/api/place-search";
@@ -140,7 +135,6 @@ import { SearchLocateButton } from "./SearchLocateButton";
 import {
   anchorPlaceFromPrediction,
   anchorSurvivesReload,
-  anchorViewportBounds,
   boxAtSight,
   boxBounds,
   catalogIsStale,
@@ -154,9 +148,8 @@ import {
   withDistances,
 } from "./search-utils";
 
-// Word is ONE search (MESITA-2322): Deep (Autocomplete · Text Search ·
-// Mesita names) once the guest has stopped typing for Discovery › Word's
-// idle seconds. The EF returns that number with every answer; until the
+// Word is ONE search (MESITA-2322): Mesita names alone (MESITA-2883) once
+// the guest has stopped typing for Discovery › Word's idle seconds. The EF returns that number with every answer; until the
 // first answer the bar waits DEFAULT_IDLE_MS.
 const DEFAULT_IDLE_MS = 1000;
 const MIN_QUERY = 2;
@@ -220,9 +213,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const idleMsRef = useRef(DEFAULT_IDLE_MS);
   const railRefs = useRef(new Map<string, HTMLElement | null>());
   const railScrollRef = useRef<HTMLDivElement | null>(null);
-  // The rail's Add card focuses the bar: a new place is added by searching
-  // Google and tapping the result (MESITA-2876 disc → MESITA-2879 card).
-  const barInputRef = useRef<HTMLInputElement | null>(null);
 
   // The opening screen owns get-or-create now (MESITA-2311), so these stay
   // empty: no Search row is mid-add, and a re-tap goes back through it.
@@ -376,7 +366,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           trimmedQuery,
           token,
           searchOrigin,
-          "deep",
+          "mesita",
         );
         if (idleSec !== null) idleMsRef.current = Math.round(idleSec * 1000);
         if (cancelled) return;
@@ -714,54 +704,11 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     updateQuery("");
   };
 
-  // EVERY BAR PICK ANCHORS THE MAP — both entities (MESITA-1405). A Place
-  // stops opening its modal from the bar: the camera lands on the place,
-  // the catalog reloads there, and the modal is one more tap away on the
-  // card or its pin. A Google-only pick anchors too — the sheet moves to
-  // the second tap, the gesture the grey pin already speaks, so the rule
-  // has no exception to learn. The operator's cap never vetoes any of it;
-  // the Area floor does veto the CARD (MESITA-2849), never the anchor.
+  // EVERY BAR PICK ANCHORS THE MAP (MESITA-1405). A Place stops opening
+  // its modal from the bar: the camera lands on the place, the catalog
+  // reloads there, and the modal is one more tap away on the card or its
+  // pin. The operator's cap never vetoes it.
   const handleBarPick = (prediction: PlacePrediction) => {
-    if (prediction.kind === "location") {
-      // A Location is a camera destination, never a card. Coordinates are
-      // resolved ON PICK — one Details call per selection, never per
-      // keystroke — and the viewport decides the zoom: a city opens wide,
-      // a neighbourhood close.
-      void (async () => {
-        try {
-          const resolved = await apiResolveLocationAnchor(
-            supabase,
-            prediction.placeId,
-          );
-          anchorMapTo(
-            {
-              lat: resolved.lat,
-              lng: resolved.lng,
-              bounds: anchorViewportBounds(resolved.viewport),
-            },
-            null,
-          );
-        } catch (err) {
-          toast.error(errMsg(err, "Couldn't open that location right now."));
-        }
-      })();
-      return;
-    }
-    // A GOOGLE PLACE UNDER THE AREA FLOOR IS A DESTINATION (MESITA-2849):
-    // the camera lands on it and the Area reloads there, with no card ONE —
-    // that reload hides every place under the floor, so a card for it would
-    // be a place Mesita does not list. Only a row with its own point can be
-    // a destination; without one it falls through to the no-coordinates
-    // path below, which says so.
-    if (
-      prediction.underFloor &&
-      !predictionOnMesita(prediction) &&
-      typeof prediction.lat === "number" &&
-      typeof prediction.lng === "number"
-    ) {
-      anchorMapTo({ lat: prediction.lat, lng: prediction.lng }, null);
-      return;
-    }
     // The catalog's own row wins the card — it carries photos and the
     // real distance. The synthesized stub covers picks outside the
     // snapshot; either way the EF already shipped coordinates on the row.
@@ -1020,7 +967,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         chipsHidden={querying}
         bar={
           <SearchBar
-            inputRef={barInputRef}
             query={query}
             showClear={query.length > 0}
             onQueryChange={updateQuery}
@@ -1100,7 +1046,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
             railScrollRef={railScrollRef}
             onRailScroll={handleRailScroll}
             onOpenPlace={handleOpenPlace}
-            onAdd={() => barInputRef.current?.focus()}
             setRailCardRef={(placeId, el) => {
               railRefs.current.set(placeId, el);
             }}

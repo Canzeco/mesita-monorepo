@@ -9,7 +9,6 @@ import {
   ANCHOR_DROP_KM,
   anchorPlaceFromPrediction,
   anchorSurvivesReload,
-  anchorViewportBounds,
   catalogIsStale,
   prependAnchorPlace,
 } from "@/components/consumer/search/search-utils";
@@ -110,11 +109,13 @@ const RAIL_PLACE = {
 } as Place;
 
 describe("Name search is ONE search after Word's idle seconds (MESITA-2322)", () => {
-  it("calls suggest-places once, Deep, after the EF's idle wait", () => {
+  it("calls suggest-places once, Mesita names only, after the EF's idle wait", () => {
     const src = read("SearchClient.tsx");
     expect(src).toContain("DEFAULT_IDLE_MS");
     expect(src).toContain("idleMsRef.current");
-    expect(src).toContain('"deep"');
+    // MESITA-2883: the Search bar bills no Google call — `mesita` mode only.
+    expect(src).toContain('"mesita"');
+    expect(src).not.toContain('"deep"');
     expect(src).not.toContain('"fast"');
     expect(src).not.toContain("FAST_DEBOUNCE_MS");
     expect(src).not.toContain("DEEP_IDLE_MS");
@@ -203,21 +204,9 @@ describe("every searchbar pick anchors the map (MESITA-1405)", () => {
     expect(barPick).not.toContain("openGoogleProfile");
   });
 
-  it("resolves a Location on PICK — one Details call, viewport decides zoom", () => {
+  it("never resolves a Location through Google (MESITA-2883)", () => {
     const client = read("SearchClient.tsx");
-    const barPick = client.slice(
-      client.indexOf("const handleBarPick"),
-      client.indexOf("const handleOpenPlace"),
-    );
-    expect(barPick).toContain('prediction.kind === "location"');
-    expect(barPick).toContain("apiResolveLocationAnchor");
-    expect(barPick).toContain("anchorViewportBounds(resolved.viewport)");
-    // Never resolved while typing: the suggest debounce effect stays clean.
-    const debounce = client.slice(
-      client.indexOf("const fast = window.setTimeout"),
-      client.indexOf("const searchPins"),
-    );
-    expect(debounce).not.toContain("apiResolveLocationAnchor");
+    expect(client).not.toContain("apiResolveLocationAnchor");
     // The camera side: a bounds anchor FITS (city wide, neighbourhood
     // close); a place anchor pans.
     const map = read("SearchMap.tsx");
@@ -427,13 +416,4 @@ describe("anchor helpers", () => {
     expect(anchorSurvivesReload({ lat: null, lng: null }, at)).toBe(false);
   });
 
-  it("anchorViewportBounds converts the wire viewport and passes null through", () => {
-    expect(
-      anchorViewportBounds({
-        low: { lat: 19.18, lng: -99.32 },
-        high: { lat: 19.59, lng: -98.96 },
-      }),
-    ).toEqual({ south: 19.18, west: -99.32, north: 19.59, east: -98.96 });
-    expect(anchorViewportBounds(null)).toBe(null);
-  });
 });

@@ -433,8 +433,9 @@ export type PlacePrediction = {
   underFloor?: boolean;
 };
 
-/** `fast` Search while typing · `deep` Search after idle. */
-type SuggestPlacesMode = "fast" | "deep";
+/** `fast` Autocomplete · `deep` Mesita · Google · `mesita` Mesita names
+ *  alone, no Google call (the Search tab's bar since MESITA-2883). */
+type SuggestPlacesMode = "fast" | "deep" | "mesita";
 
 /**
  * Name search for the consumer /search bar and pickers.
