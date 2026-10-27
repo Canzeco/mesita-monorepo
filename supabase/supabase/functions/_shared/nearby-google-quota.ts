@@ -33,9 +33,27 @@ import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 // Google-fill POSTs per hashed IP per rolling 60 s, counted per billed Nearby
 // request. A Map load bills one call per Google source and reloads at most
 // once every `map.reloadIdleSec`, so a real explorer stays under this.
-export const GOOGLE_NEARBY_IP_MAX = 45;
-export const GOOGLE_NEARBY_GLOBAL_MAX = 600;
+export const GOOGLE_NEARBY_IP_MAX = 20;
+export const GOOGLE_NEARBY_GLOBAL_MAX = 120;
 export const GOOGLE_NEARBY_IP_WINDOW_MS = 60_000;
+
+// THE DAILY BUDGET (MESITA-2870). The minute caps alone let one IP spend
+// ~29k Enterprise Nearby calls a day and the world ~170k; Google's own
+// `SearchNearbyRequest per day` quota was the only ceiling, and it ran out
+// on 2026-10-27. Rolling 24 h, same ledger, same fail-closed rule. The IP
+// hash rotates at UTC midnight (salted with the date), so the per-IP day is
+// at most a calendar day; the global day is the real money ceiling:
+// 1,000 × $35/1k ≈ $35 a day at worst.
+export const GOOGLE_NEARBY_IP_DAY_MAX = 200;
+export const GOOGLE_NEARBY_GLOBAL_DAY_MAX = 1_000;
+export const GOOGLE_NEARBY_DAY_WINDOW_MS = 24 * 60 * 60_000;
+
+type Window = {
+  since: string;
+  max: number;
+  ipHash: string | null;
+  label: string;
+};
 
 export async function consumeNearbyGoogleQuota(
   admin: SupabaseClient,
@@ -53,35 +71,48 @@ export async function consumeNearbyGoogleQuota(
     return { allow: false };
   }
 
-  const since = new Date(Date.now() - GOOGLE_NEARBY_IP_WINDOW_MS).toISOString();
-  const { count, error: cntErr } = await admin
-    .from("nearby_google_attempts")
-    .select("id", { count: "exact", head: true })
-    .eq("ip_hash", ipHash)
-    .gte("created_at", since);
-  if (cntErr || count === null) {
-    await admin.from("nearby_google_attempts").delete().eq("id", attempt.id);
-    console.error("[nearby] google quota count failed", cntErr?.message);
-    return { allow: false };
-  }
+  const now = Date.now();
+  const minute = new Date(now - GOOGLE_NEARBY_IP_WINDOW_MS).toISOString();
+  const day = new Date(now - GOOGLE_NEARBY_DAY_WINDOW_MS).toISOString();
+  // Cheapest first: a burst is refused before the day counts run.
+  const windows: Window[] = [
+    { since: minute, max: GOOGLE_NEARBY_IP_MAX, ipHash, label: "ip minute" },
+    {
+      since: minute,
+      max: GOOGLE_NEARBY_GLOBAL_MAX,
+      ipHash: null,
+      label: "global minute",
+    },
+    { since: day, max: GOOGLE_NEARBY_IP_DAY_MAX, ipHash, label: "ip day" },
+    {
+      since: day,
+      max: GOOGLE_NEARBY_GLOBAL_DAY_MAX,
+      ipHash: null,
+      label: "global day",
+    },
+  ];
 
-  if (count > GOOGLE_NEARBY_IP_MAX) {
-    await admin.from("nearby_google_attempts").delete().eq("id", attempt.id);
-    return { allow: false };
-  }
-
-  const { count: globalCount, error: globalErr } = await admin
-    .from("nearby_google_attempts")
-    .select("id", { count: "exact", head: true })
-    .gte("created_at", since);
-  if (globalErr || globalCount === null) {
-    await admin.from("nearby_google_attempts").delete().eq("id", attempt.id);
-    console.error("[nearby] google quota global count failed", globalErr?.message);
-    return { allow: false };
-  }
-  if (globalCount > GOOGLE_NEARBY_GLOBAL_MAX) {
-    await admin.from("nearby_google_attempts").delete().eq("id", attempt.id);
-    return { allow: false };
+  for (const w of windows) {
+    let q = admin
+      .from("nearby_google_attempts")
+      .select("id", { count: "exact", head: true });
+    if (w.ipHash) q = q.eq("ip_hash", w.ipHash);
+    const { count, error } = await q.gte("created_at", w.since);
+    if (error || count === null) {
+      await admin.from("nearby_google_attempts").delete().eq("id", attempt.id);
+      console.error(
+        `[nearby] google quota ${w.label} count failed`,
+        error?.message,
+      );
+      return { allow: false };
+    }
+    if (count > w.max) {
+      await admin.from("nearby_google_attempts").delete().eq("id", attempt.id);
+      if (w.label.endsWith("day")) {
+        console.warn(`[nearby] google ${w.label} budget spent (${w.max})`);
+      }
+      return { allow: false };
+    }
   }
 
   return { allow: true };

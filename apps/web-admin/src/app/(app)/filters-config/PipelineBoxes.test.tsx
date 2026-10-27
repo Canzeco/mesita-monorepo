@@ -145,7 +145,8 @@ describe("the boxes' controls", () => {
     const html = render(<AreaBox {...seed} />);
     for (const text of [
       "one billed Nearby call per Google source switched on, so 0 to 2 per load",
-      "45 Nearby calls a minute",
+      "20 Nearby calls a minute",
+      "1000 for everyone",
       "clamped to 0.05–50 km",
       "at most 1000 ready rows",
       "lists its primary places before its secondary ones",
