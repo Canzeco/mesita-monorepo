@@ -25,7 +25,7 @@ import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { json } from "./http.ts";
 
 // Attempts per consumer per rolling 24 h come from Configurations › Creation
-// (`enrichment_config.atlasConsumerCreatesPerDay`, MESITA-2376). Dedupe-409
+// (`enrichment_config.enrichConsumerCreatesPerDay`, MESITA-2376). Dedupe-409
 // clicks count too.
 
 export async function consumeConsumerCreateQuota(

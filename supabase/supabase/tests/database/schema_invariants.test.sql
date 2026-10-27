@@ -1644,6 +1644,8 @@ select ok(
       and discovery_config #> '{general,minReviews}' is null
       and (coalesce(discovery_config #> '{params,popularity}', '{}'::jsonb) - 'halfReviews') = '{}'::jsonb
       and not (enrichment_config ? 'atlasPerRunCostCapUsd')
+      -- MESITA-2831: the Atlas prefix is gone from every Enrichment key.
+      and not exists (select 1 from jsonb_object_keys(enrichment_config) k where k like 'atlas%')
      from public.app_config where id = 1),
   'no dead app_config key survives'
 );

@@ -114,7 +114,7 @@ const COLUMNS: readonly string[] = [
   // (research → analysis → contents) and contents lands 'ready' again.
   // Public-safe — lets consumer surfaces show "(Enriching)" until done.
   "content_state",
-  // Consumer Requests count. Progress toward Crenup atlasRequestThreshold.
+  // Consumer Requests count. Progress toward Crenup enrichRequestThreshold.
   // Requested is derived (count > 0 and enriched_at null).
   "request_count",
   // Description/Actions (Enricher step 7) — the guest Reserve CTA.

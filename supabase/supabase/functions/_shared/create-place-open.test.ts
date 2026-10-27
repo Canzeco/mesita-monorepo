@@ -49,7 +49,7 @@ Deno.test("consumer-web-create-place looks the id up before the quota and never 
     new URL("../consumer-web-create-place/index.ts", import.meta.url),
   );
   const lookup = src.indexOf("findPlaceByGooglePlaceId(admin, googlePlaceId)");
-  const gate = src.indexOf("atlasCreateOnOpenConsumer");
+  const gate = src.indexOf("enrichCreateOnOpenConsumer");
   const quota = src.indexOf("consumeConsumerCreateQuota(");
   // Lookup, then the operator's Create-on-open switch, then the quota: an
   // existing row opens whatever the switch says, and a switched-off open

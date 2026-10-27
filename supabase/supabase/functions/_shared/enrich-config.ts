@@ -36,7 +36,7 @@ export function visionModelFor(quality: string): string {
 
 // Hard ceiling on photos persisted to the place, regardless of per-source caps.
 // Safety bound on the candidate pool before save (the real, source-independent
-// save cap is enrichment_config.atlasSaveTotalImages, applied at the end).
+// save cap is enrichment_config.enrichSaveTotalImages, applied at the end).
 export const PHOTO_CEILING = 50;
 
 // Presentation ceiling (ENRICH_FIELD_LIMITS.description). The word target sits
@@ -65,7 +65,7 @@ export const COST = {
   googleTimezone: 0.005, // Time Zone API, $5/1k
   // Apify compass/crawler-google-places — PAY PER EVENT, so this is four
   // prices, not one. The flat `compass: 0.3` that stood here was ~5x the real
-  // spend and could not move when atlasGatherReviews did; its comment priced
+  // spend and could not move when enrichGatherReviews did; its comment priced
   // reviews at $0.50/100 when Apify bills $0.50 per THOUSAND (MESITA-2032).
   // Rates are the Free/Bronze tier from Apify's own actor API, matching the
   // list prices the other Apify lines below use. See googleMapsRunCost.
@@ -160,26 +160,26 @@ export async function loadEnrichConfig(admin: SupabaseClient): Promise<EnrichCon
   );
 
   return {
-    synthesisQuality: blob.atlasSynthesisQuality,
-    visionQuality: blob.atlasVisionQuality,
-    perplexityPreset: blob.atlasPerplexityPreset,
-    gatherGoogleImages: blob.atlasGatherGoogleImages,
-    gatherInstagramDepth: blob.atlasGatherInstagramDepth,
-    gatherInstagramPosts: blob.atlasGatherInstagramPosts,
-    gatherReviews: blob.atlasGatherReviews,
+    synthesisQuality: blob.enrichSynthesisQuality,
+    visionQuality: blob.enrichVisionQuality,
+    perplexityPreset: blob.enrichPerplexityPreset,
+    gatherGoogleImages: blob.enrichGatherGoogleImages,
+    gatherInstagramDepth: blob.enrichGatherInstagramDepth,
+    gatherInstagramPosts: blob.enrichGatherInstagramPosts,
+    gatherReviews: blob.enrichGatherReviews,
     discoverCandidates: {
-      website_url: blob.atlasDiscoverWebsiteN,
-      instagram_url: blob.atlasDiscoverInstagramN,
-      facebook_url: blob.atlasDiscoverFacebookN,
-      opentable_url: blob.atlasDiscoverOpentableN,
-      uber_eats_url: blob.atlasDiscoverUbereatsN,
+      website_url: blob.enrichDiscoverWebsiteN,
+      instagram_url: blob.enrichDiscoverInstagramN,
+      facebook_url: blob.enrichDiscoverFacebookN,
+      opentable_url: blob.enrichDiscoverOpentableN,
+      uber_eats_url: blob.enrichDiscoverUbereatsN,
     },
-    saveTotalImages: blob.atlasSaveTotalImages,
-    saveImagesToStorage: blob.atlasSaveImagesToStorage,
-    visionEnabled: blob.atlasImageVisionEnabled,
-    analyzeGoogleImages: blob.atlasAnalyzeGoogleImages,
-    analyzeInstagramImages: blob.atlasAnalyzeInstagramImages,
-    imageAnalysisPrompt: blob.atlasImageAnalysisPrompt,
-    imageSortingPrompt: blob.atlasImageSortingPrompt,
+    saveTotalImages: blob.enrichSaveTotalImages,
+    saveImagesToStorage: blob.enrichSaveImagesToStorage,
+    visionEnabled: blob.enrichImageVisionEnabled,
+    analyzeGoogleImages: blob.enrichAnalyzeGoogleImages,
+    analyzeInstagramImages: blob.enrichAnalyzeInstagramImages,
+    imageAnalysisPrompt: blob.enrichImageAnalysisPrompt,
+    imageSortingPrompt: blob.enrichImageSortingPrompt,
   };
 }

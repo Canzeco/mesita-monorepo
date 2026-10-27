@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
   const creationConfig = normalizeEnrichmentConfig(
     creation.row?.enrichment_config,
   );
-  const createOnOpen = creationConfig.atlasCreateOnOpenConsumer;
+  const createOnOpen = creationConfig.enrichCreateOnOpenConsumer;
   if (!createOnOpen) {
     await log({ outcome: "refused", code: "create_on_open_off" });
     return json(
@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
     authRes.user.id,
     googlePlaceId,
     "consumer-web-create-place",
-    creationConfig.atlasConsumerCreatesPerDay,
+    creationConfig.enrichConsumerCreatesPerDay,
   );
   if (!quota.ok) {
     await log({ outcome: "refused", code: "quota" });

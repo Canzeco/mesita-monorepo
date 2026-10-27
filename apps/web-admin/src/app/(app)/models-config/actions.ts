@@ -49,16 +49,16 @@ export async function updateModelsConfig(
 }
 
 type AtlasModelFields = {
-  atlasSynthesisQuality?: unknown;
-  atlasVisionQuality?: unknown;
-  atlasPerplexityPreset?: PerplexityPreset | null;
+  enrichSynthesisQuality?: unknown;
+  enrichVisionQuality?: unknown;
+  enrichPerplexityPreset?: PerplexityPreset | null;
 };
 
 function toSettings(d: AtlasModelFields): EnricherModelSettings {
   return {
-    synthesisQuality: normalizeTier(d.atlasSynthesisQuality),
-    visionQuality: normalizeTier(d.atlasVisionQuality),
-    perplexityPreset: d.atlasPerplexityPreset ?? "pro-search",
+    synthesisQuality: normalizeTier(d.enrichSynthesisQuality),
+    visionQuality: normalizeTier(d.enrichVisionQuality),
+    perplexityPreset: d.enrichPerplexityPreset ?? "pro-search",
   };
 }
 

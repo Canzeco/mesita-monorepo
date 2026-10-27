@@ -7,8 +7,8 @@
 // The page edits two stores (MESITA-2126 remake):
 //   app_config.models_config      memo.model (Discovery chat).
 //                                 Read by supabase-edgefunc-get-memo-config.
-//   app_config.enrichment_config  atlasSynthesisQuality · atlasVisionQuality ·
-//                                 atlasPerplexityPreset (the Enricher). Saved as a
+//   app_config.enrichment_config  enrichSynthesisQuality · enrichVisionQuality ·
+//                                 enrichPerplexityPreset (the Enricher). Saved as a
 //                                 PATCH through the enricher section.
 // Shown read-only: embeddings.model (place search index) and enricher.model
 // (the Enricher's sorting/tagging model, and what the photos row's cheaper

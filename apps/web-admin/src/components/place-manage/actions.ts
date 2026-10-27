@@ -159,7 +159,7 @@ export type AdminPlace = {
   request_count?: number;
   /** Unique members who viewed / saved (admin-web-get-overview). */
   profile_stats?: { viewed?: number; saved?: number };
-  /** Votes required before Enrich starts. Settings `atlasRequestThreshold`. */
+  /** Votes required before Enrich starts. Settings `enrichRequestThreshold`. */
   request_threshold?: number;
   /** Operating: Google's businessStatus, verbatim (MESITA-1239). */
   business_state?: string | null;

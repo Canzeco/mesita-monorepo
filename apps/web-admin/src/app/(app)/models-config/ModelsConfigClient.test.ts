@@ -23,7 +23,7 @@ describe("Models page wiring (MESITA-2126)", () => {
 
   it("sends the Enricher a PATCH and normalizes tiers in both directions", () => {
     expect(actions).toContain("updateAtlasConfig(patch)");
-    expect(actions).toContain("normalizeTier(d.atlasSynthesisQuality)");
-    expect(actions).toContain("normalizeTier(d.atlasVisionQuality)");
+    expect(actions).toContain("normalizeTier(d.enrichSynthesisQuality)");
+    expect(actions).toContain("normalizeTier(d.enrichVisionQuality)");
   });
 });

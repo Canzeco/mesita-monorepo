@@ -14,100 +14,100 @@ Deno.test("normalizeEnrichmentConfig: null/garbage falls back to the old scalar-
 
 Deno.test("normalizeEnrichmentConfig: live-shaped blob round-trips", () => {
   const live = {
-    atlasGatherGoogleImages: 10,
-    atlasGatherInstagramDepth: 10,
-    atlasGatherInstagramPosts: 10,
-    atlasGatherReviews: 100,
-    atlasImageVisionEnabled: true,
-    atlasAnalyzeGoogleImages: 10,
-    atlasAnalyzeInstagramImages: 10,
-    atlasSaveTotalImages: 10,
-    atlasSaveImagesToStorage: true,
-    atlasImageAnalysisPrompt: "Describe this.",
-    atlasImageSortingPrompt: "Rank these.",
-    atlasSynthesisQuality: "economy",
-    atlasVisionQuality: "economy",
-    atlasPerplexityPreset: "pro-search",
-    atlasDiscoverWebsiteN: 5,
-    atlasDiscoverInstagramN: 7,
-    atlasDiscoverFacebookN: 3,
-    atlasDiscoverOpentableN: 3,
-    atlasDiscoverUbereatsN: 3,
-    atlasRequestThreshold: 5,
-    atlasCreateOnOpenConsumer: true,
-    atlasCreateOnOpenAdmin: false,
-    atlasConsumerCreatesPerDay: 250,
+    enrichGatherGoogleImages: 10,
+    enrichGatherInstagramDepth: 10,
+    enrichGatherInstagramPosts: 10,
+    enrichGatherReviews: 100,
+    enrichImageVisionEnabled: true,
+    enrichAnalyzeGoogleImages: 10,
+    enrichAnalyzeInstagramImages: 10,
+    enrichSaveTotalImages: 10,
+    enrichSaveImagesToStorage: true,
+    enrichImageAnalysisPrompt: "Describe this.",
+    enrichImageSortingPrompt: "Rank these.",
+    enrichSynthesisQuality: "economy",
+    enrichVisionQuality: "economy",
+    enrichPerplexityPreset: "pro-search",
+    enrichDiscoverWebsiteN: 5,
+    enrichDiscoverInstagramN: 7,
+    enrichDiscoverFacebookN: 3,
+    enrichDiscoverOpentableN: 3,
+    enrichDiscoverUbereatsN: 3,
+    enrichRequestThreshold: 5,
+    enrichCreateOnOpenConsumer: true,
+    enrichCreateOnOpenAdmin: false,
+    enrichConsumerCreatesPerDay: 250,
   };
   assertEquals(normalizeEnrichmentConfig(live), live);
 });
 
 Deno.test("normalizeEnrichmentConfig: guest creates per day is 1000 unless stored, clamped 1–10000 (MESITA-2376)", () => {
-  assertEquals(DEFAULT_ENRICHMENT_CONFIG.atlasConsumerCreatesPerDay, 1000);
-  assertEquals(normalizeEnrichmentConfig({}).atlasConsumerCreatesPerDay, 1000);
-  assertEquals(normalizeEnrichmentConfig({ atlasConsumerCreatesPerDay: 0 }).atlasConsumerCreatesPerDay, 1);
-  assertEquals(normalizeEnrichmentConfig({ atlasConsumerCreatesPerDay: 99999 }).atlasConsumerCreatesPerDay, 10000);
-  assertEquals(normalizeEnrichmentConfig({ atlasConsumerCreatesPerDay: "x" }).atlasConsumerCreatesPerDay, 1000);
+  assertEquals(DEFAULT_ENRICHMENT_CONFIG.enrichConsumerCreatesPerDay, 1000);
+  assertEquals(normalizeEnrichmentConfig({}).enrichConsumerCreatesPerDay, 1000);
+  assertEquals(normalizeEnrichmentConfig({ enrichConsumerCreatesPerDay: 0 }).enrichConsumerCreatesPerDay, 1);
+  assertEquals(normalizeEnrichmentConfig({ enrichConsumerCreatesPerDay: 99999 }).enrichConsumerCreatesPerDay, 10000);
+  assertEquals(normalizeEnrichmentConfig({ enrichConsumerCreatesPerDay: "x" }).enrichConsumerCreatesPerDay, 1000);
 });
 
 Deno.test("normalizeEnrichmentConfig: Create-on-open is one switch per app, on unless stored false (MESITA-2298)", () => {
-  assertEquals(DEFAULT_ENRICHMENT_CONFIG.atlasCreateOnOpenConsumer, true);
-  assertEquals(DEFAULT_ENRICHMENT_CONFIG.atlasCreateOnOpenAdmin, true);
+  assertEquals(DEFAULT_ENRICHMENT_CONFIG.enrichCreateOnOpenConsumer, true);
+  assertEquals(DEFAULT_ENRICHMENT_CONFIG.enrichCreateOnOpenAdmin, true);
   // An old blob without the keys keeps today's behavior: opens create.
-  const old = normalizeEnrichmentConfig({ atlasRequestThreshold: 5 });
-  assertEquals(old.atlasCreateOnOpenConsumer, true);
-  assertEquals(old.atlasCreateOnOpenAdmin, true);
+  const old = normalizeEnrichmentConfig({ enrichRequestThreshold: 5 });
+  assertEquals(old.enrichCreateOnOpenConsumer, true);
+  assertEquals(old.enrichCreateOnOpenAdmin, true);
   // Only a stored `false` turns one off; garbage is not "off".
   const off = normalizeEnrichmentConfig({
-    atlasCreateOnOpenConsumer: false,
-    atlasCreateOnOpenAdmin: "no",
+    enrichCreateOnOpenConsumer: false,
+    enrichCreateOnOpenAdmin: "no",
   });
-  assertEquals(off.atlasCreateOnOpenConsumer, false);
-  assertEquals(off.atlasCreateOnOpenAdmin, true);
+  assertEquals(off.enrichCreateOnOpenConsumer, false);
+  assertEquals(off.enrichCreateOnOpenAdmin, true);
 });
 
 Deno.test("normalizeEnrichmentConfig: out-of-range ints clamp to the old CHECKs", () => {
   const out = normalizeEnrichmentConfig({
-    atlasGatherGoogleImages: 99,
-    atlasGatherInstagramDepth: 0,
-    atlasGatherInstagramPosts: -1,
-    atlasGatherReviews: 101,
-    atlasAnalyzeGoogleImages: 11,
-    atlasAnalyzeInstagramImages: 31,
-    atlasSaveTotalImages: 20,
-    atlasDiscoverWebsiteN: 11,
-    atlasRequestThreshold: 0,
+    enrichGatherGoogleImages: 99,
+    enrichGatherInstagramDepth: 0,
+    enrichGatherInstagramPosts: -1,
+    enrichGatherReviews: 101,
+    enrichAnalyzeGoogleImages: 11,
+    enrichAnalyzeInstagramImages: 31,
+    enrichSaveTotalImages: 20,
+    enrichDiscoverWebsiteN: 11,
+    enrichRequestThreshold: 0,
   });
-  assertEquals(out.atlasGatherGoogleImages, 10);
-  assertEquals(out.atlasGatherInstagramDepth, 1);
-  assertEquals(out.atlasGatherInstagramPosts, 0);
-  assertEquals(out.atlasGatherReviews, 100);
-  assertEquals(out.atlasAnalyzeGoogleImages, 10);
-  assertEquals(out.atlasAnalyzeInstagramImages, 30);
-  assertEquals(out.atlasSaveTotalImages, 10);
-  assertEquals(out.atlasDiscoverWebsiteN, 10);
-  assertEquals(out.atlasRequestThreshold, 1);
-  assertEquals(normalizeEnrichmentConfig({ atlasRequestThreshold: 999 }).atlasRequestThreshold, 100);
+  assertEquals(out.enrichGatherGoogleImages, 10);
+  assertEquals(out.enrichGatherInstagramDepth, 1);
+  assertEquals(out.enrichGatherInstagramPosts, 0);
+  assertEquals(out.enrichGatherReviews, 100);
+  assertEquals(out.enrichAnalyzeGoogleImages, 10);
+  assertEquals(out.enrichAnalyzeInstagramImages, 30);
+  assertEquals(out.enrichSaveTotalImages, 10);
+  assertEquals(out.enrichDiscoverWebsiteN, 10);
+  assertEquals(out.enrichRequestThreshold, 1);
+  assertEquals(normalizeEnrichmentConfig({ enrichRequestThreshold: 999 }).enrichRequestThreshold, 100);
 });
 
 Deno.test("normalizeEnrichmentConfig: quality/preset enums reject unknown strings", () => {
   const out = normalizeEnrichmentConfig({
-    atlasSynthesisQuality: "ultra",
-    atlasVisionQuality: "low",
-    atlasPerplexityPreset: "sonar",
+    enrichSynthesisQuality: "ultra",
+    enrichVisionQuality: "low",
+    enrichPerplexityPreset: "sonar",
   });
-  assertEquals(out.atlasSynthesisQuality, "economy");
-  assertEquals(out.atlasVisionQuality, "economy");
-  assertEquals(out.atlasPerplexityPreset, "pro-search");
+  assertEquals(out.enrichSynthesisQuality, "economy");
+  assertEquals(out.enrichVisionQuality, "economy");
+  assertEquals(out.enrichPerplexityPreset, "pro-search");
 });
 
 Deno.test("normalizeEnrichmentConfig: extra keys are dropped", () => {
   const out = normalizeEnrichmentConfig({
-    atlasGatherGoogleImages: 4,
+    enrichGatherGoogleImages: 4,
     leftoverScalar: 1,
     // Retired by MESITA-2144; the live row still carries it until step 2.
     atlasPerRunCostCapUsd: 1,
   });
-  assertEquals(out.atlasGatherGoogleImages, 4);
+  assertEquals(out.enrichGatherGoogleImages, 4);
   assertEquals("leftoverScalar" in out, false);
   assertEquals("atlasPerRunCostCapUsd" in out, false);
   assertEquals(Object.keys(out).sort(), Object.keys(DEFAULT_ENRICHMENT_CONFIG).sort());

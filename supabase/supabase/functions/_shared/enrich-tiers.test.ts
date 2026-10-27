@@ -22,18 +22,18 @@ const ADMIN_TYPES = new URL(
 
 Deno.test("a stored high reads as standard and still runs gpt-4o", () => {
   const cfg = normalizeEnrichmentConfig({
-    atlasSynthesisQuality: "high",
-    atlasVisionQuality: "high",
+    enrichSynthesisQuality: "high",
+    enrichVisionQuality: "high",
   });
-  assertEquals(cfg.atlasSynthesisQuality, "standard");
-  assertEquals(cfg.atlasVisionQuality, "standard");
-  assertEquals(synthesisModelFor(cfg.atlasSynthesisQuality), "gpt-4o");
-  assertEquals(visionModelFor(cfg.atlasVisionQuality), "gpt-4o");
+  assertEquals(cfg.enrichSynthesisQuality, "standard");
+  assertEquals(cfg.enrichVisionQuality, "standard");
+  assertEquals(synthesisModelFor(cfg.enrichSynthesisQuality), "gpt-4o");
+  assertEquals(visionModelFor(cfg.enrichVisionQuality), "gpt-4o");
 });
 
 Deno.test("an unknown tier still falls back to economy", () => {
-  const cfg = normalizeEnrichmentConfig({ atlasSynthesisQuality: "ultra" });
-  assertEquals(cfg.atlasSynthesisQuality, "economy");
+  const cfg = normalizeEnrichmentConfig({ enrichSynthesisQuality: "ultra" });
+  assertEquals(cfg.enrichSynthesisQuality, "economy");
 });
 
 Deno.test("two tiers, and economy is the default enricher model", () => {

@@ -18,7 +18,7 @@ export const ENRICH_FIELD_LIMITS = {
   // The Enricher always writes exactly 20 tags; the editor allows up to 20.
   tagsPerPlace: { max: 20 },
   tagSlugLength: { max: 40 },
-  // Mirrors app_config.enrichment_config.atlasSaveTotalImages (1–10; DB CHECK 0–10). Set
+  // Mirrors app_config.enrichment_config.enrichSaveTotalImages (1–10; DB CHECK 0–10). Set
   // through the `enricher` config section, which is the only writer left now
   // that the admin Enrichment page renders no knobs. Lowering this number is
   // what lowers the server validator too — _shared/config-section-enricher.ts
@@ -28,7 +28,7 @@ export const ENRICH_FIELD_LIMITS = {
   // are not the same knob.
   photos: { max: 10 },
   // Hard Apify scrape ceiling (EF wall-clock + cost). Live gather count is
-  // app_config.enrichment_config.atlasGatherReviews (0–100); this is the profile-spec max the
+  // app_config.enrichment_config.enrichGatherReviews (0–100); this is the profile-spec max the
   // pipeline may never exceed.
   googleReviews: { max: 100 },
 } as const;
