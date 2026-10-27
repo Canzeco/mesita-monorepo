@@ -19,7 +19,12 @@ import {
   SCREEN_RADIUS_KM_MIN,
 } from "./area-pipeline.ts";
 import { GOOGLE_NEARBY_MAX } from "./nearby-places.ts";
-import { GOOGLE_NEARBY_GLOBAL_MAX, GOOGLE_NEARBY_IP_MAX } from "./nearby-google-quota.ts";
+import {
+  GOOGLE_NEARBY_GLOBAL_DAY_MAX,
+  GOOGLE_NEARBY_GLOBAL_MAX,
+  GOOGLE_NEARBY_IP_DAY_MAX,
+  GOOGLE_NEARBY_IP_MAX,
+} from "./nearby-google-quota.ts";
 import { NEARBY_SCAN_LIMIT } from "./geo.ts";
 
 const root = new URL("../../", import.meta.url);
@@ -176,6 +181,7 @@ Deno.test("Area: no Territory anywhere in the model; the rules' numbers are the 
     `Google Popularity (the prominent ${GOOGLE_NEARBY_MAX} in the circle)`,
     "never cached or stored",
     `${GOOGLE_NEARBY_IP_MAX} Nearby calls a minute, all guests together ${GOOGLE_NEARBY_GLOBAL_MAX}`,
+    `in any 24 hours ${GOOGLE_NEARBY_IP_DAY_MAX} per IP and ${GOOGLE_NEARBY_GLOBAL_DAY_MAX} for everyone`,
     `clamped to ${SCREEN_RADIUS_KM_MIN}–${SCREEN_RADIUS_KM_MAX} km`,
     `wider than ${AREA_BOUNDS_MAX_KM} km`,
     `at most ${NEARBY_SCAN_LIMIT} ready rows`,

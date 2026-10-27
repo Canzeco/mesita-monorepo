@@ -6,7 +6,9 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
   consumeNearbyGoogleQuota,
+  GOOGLE_NEARBY_GLOBAL_DAY_MAX,
   GOOGLE_NEARBY_GLOBAL_MAX,
+  GOOGLE_NEARBY_IP_DAY_MAX,
   GOOGLE_NEARBY_IP_MAX,
 } from "./nearby-google-quota.ts";
 
@@ -31,7 +33,10 @@ function makeFakeAdmin(store: Row[]): any {
             select: () => ({
               single: () => {
                 store.push(created);
-                return Promise.resolve({ data: { id: created.id }, error: null });
+                return Promise.resolve({
+                  data: { id: created.id },
+                  error: null,
+                });
               },
             }),
           };
@@ -47,10 +52,11 @@ function makeFakeAdmin(store: Row[]): any {
               }
               return builder;
             },
-            gte() {
-              const count = scoped
-                ? store.filter((r) => r.ip_hash === ipHash).length
-                : store.length;
+            gte(_col: string, since: string) {
+              const count =
+                store.filter((r) =>
+                  r.created_at >= since && (!scoped || r.ip_hash === ipHash)
+                ).length;
               return Promise.resolve({ count, error: null });
             },
           };
@@ -124,4 +130,45 @@ Deno.test("global window cap binds unique-hash spray", async () => {
   }
   assertEquals(allowed, GOOGLE_NEARBY_GLOBAL_MAX);
   assertEquals(store.length, GOOGLE_NEARBY_GLOBAL_MAX);
+});
+
+/** Rows billed `minutesAgo` back: outside the minute windows, inside the day. */
+function seed(
+  store: Row[],
+  n: number,
+  ipHash: (i: number) => string,
+  minutesAgo = 30,
+) {
+  const at = new Date(Date.now() - minutesAgo * 60_000).toISOString();
+  for (let i = 0; i < n; i++) {
+    store.push({
+      id: `seed-${store.length}`,
+      ip_hash: ipHash(i),
+      created_at: at,
+    });
+  }
+}
+
+Deno.test("one IP's day is capped even when every minute is under its cap", async () => {
+  const store: Row[] = [];
+  seed(store, GOOGLE_NEARBY_IP_DAY_MAX, () => "ip-a");
+  const admin = makeFakeAdmin(store);
+  assert(!(await consumeNearbyGoogleQuota(admin, "ip-a")).allow);
+  assertEquals(store.length, GOOGLE_NEARBY_IP_DAY_MAX);
+  assert((await consumeNearbyGoogleQuota(admin, "ip-b")).allow);
+});
+
+Deno.test("the global day is the money ceiling across IPs", async () => {
+  const store: Row[] = [];
+  seed(store, GOOGLE_NEARBY_GLOBAL_DAY_MAX, (i) => `ip-${i}`);
+  const admin = makeFakeAdmin(store);
+  assert(!(await consumeNearbyGoogleQuota(admin, "ip-fresh")).allow);
+  assertEquals(store.length, GOOGLE_NEARBY_GLOBAL_DAY_MAX);
+});
+
+Deno.test("calls older than a day no longer count", async () => {
+  const store: Row[] = [];
+  seed(store, GOOGLE_NEARBY_GLOBAL_DAY_MAX, () => "ip-a", 25 * 60);
+  const admin = makeFakeAdmin(store);
+  assert((await consumeNearbyGoogleQuota(admin, "ip-a")).allow);
 });
