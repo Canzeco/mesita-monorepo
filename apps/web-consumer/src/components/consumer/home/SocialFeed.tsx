@@ -510,8 +510,18 @@ function PersonCard({
       onClose={onClose}
       ariaLabel={`${who}'s profile`}
       instant
+      scroll
     >
-      <div className="p-5" data-social-person-card>
+      {/* ONE SCROLLER, THE WHOLE CARD (Pato, MESITA-2845: "make this UI
+          easier to scroll"): the identity boxes scroll away with the
+          history, Instagram's profile, instead of a 45vh box under a header
+          that never moved. The card stops at the screen's height; the X is
+          positioned on the panel, not this scroller, so it stays put. No bar,
+          and a fling at either end stays in the card. */}
+      <div
+        className="scrollbar-hide min-h-0 overflow-y-auto overscroll-y-contain p-5"
+        data-social-person-card
+      >
         {/* A PLAIN X, NO DISC (Pato, MESITA-2709: "make a better X … its to
             bix and looks like shit"; MESITA-2681 had drawn the route sheets'
             44px bordered disc here, as wide as the photo beside it). Only
@@ -587,9 +597,10 @@ function PersonCard({
 /** The card's one list (MESITA-2609): the member's history, one row per
  *  event, the feed row's own shape without the face — "liked Contramar",
  *  the time under it, the place's photo on the right — each a door to the
- *  place. Scrolls inside the card with no bar, the app's every scroller
- *  (the browser's bar sat over the photos, MESITA-2681), and a fling at
- *  either end stays in the card instead of scrolling Home behind it. */
+ *  place. Not a scroller of its own: it scrolls with the whole card
+ *  (MESITA-2845), which draws no bar (the browser's bar sat over the
+ *  photos, MESITA-2681) and keeps a fling at either end from scrolling Home
+ *  behind it. */
 function HistoryList({ items }: { items: MemberHistoryItem[] | null }) {
   if (items == null) {
     // The list's own rows (Pato, MESITA-2701: "the placeholders must be
@@ -632,7 +643,7 @@ function HistoryList({ items }: { items: MemberHistoryItem[] | null }) {
     <ul
       role="list"
       aria-label="Activity"
-      className="divide-border scrollbar-hide max-h-[45vh] divide-y overflow-y-auto overscroll-y-contain"
+      className="divide-border divide-y"
       data-social-history
     >
       {items.map((it) => (
