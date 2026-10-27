@@ -689,6 +689,7 @@ async function runFastSearch(
     gate,
     general,
     locations,
+    { cap },
   );
   return takeFastLane(stamped, cap);
 }
@@ -729,6 +730,7 @@ async function stampAutocompleteLane(
   gate: MapConfig,
   general: GeneralConfig,
   locations: boolean,
+  budget: { cap: number; known?: Map<string, GoogleHit> },
 ): Promise<LaneItem[]> {
   const places = items.filter((row) => row.kind !== "location");
   const stamped = await stampGoogleAgainstCatalog(
@@ -737,7 +739,7 @@ async function stampAutocompleteLane(
     apiKey,
     gate,
     general,
-    { locations },
+    { locations, detailsCap: budget.cap, known: budget.known },
   );
   return weaveStampedAutocomplete(items, stamped);
 }
@@ -785,12 +787,23 @@ async function runDeepSearch(
     typesOn,
   });
 
+  // Every listing Text Search returned, kept or gated out: already paid
+  // for, so an Autocomplete row with the same Place ID needs no Details.
+  const textListings = new Map<string, GoogleHit>();
   const [googleAuto, googleText, embedPool, queryVec] = await Promise.all([
     wantAuto
       ? fetchAutocomplete(input, sessionToken, apiKey, origin)
       : Promise.resolve({ predictions: [] as LaneItem[] }),
     wantText
-      ? fetchTextSearch(input, apiKey, gate, origin, deep.googleCount, locations)
+      ? fetchTextSearch(
+        input,
+        apiKey,
+        gate,
+        origin,
+        deep.googleCount,
+        locations,
+        textListings,
+      )
       : Promise.resolve([] as LaneItem[]),
     wantMesita
       ? fetchEmbedPool(admin, origin, general)
@@ -813,6 +826,7 @@ async function runDeepSearch(
       gate,
       general,
       locations,
+      { cap: deep.autoCount, known: textListings },
     ),
     stampGoogleAgainstCatalog(
       googleText,
@@ -1078,6 +1092,7 @@ export async function fetchTextSearch(
   origin: { lat: number; lng: number } | null,
   limit: number,
   locations = false,
+  seen?: Map<string, GoogleHit>,
 ): Promise<LaneItem[]> {
   const body: Record<string, unknown> = {
     textQuery: input,
@@ -1127,6 +1142,7 @@ export async function fetchTextSearch(
   for (const p of data.places ?? []) {
     const hit = googleHitFromPlace(p);
     if (!hit.placeId || !hit.name) continue;
+    seen?.set(hit.placeId, hit);
     const kind = gatedGoogleKind(
       evaluatePlaceForMap(gate, {
         primaryType: hit.primaryType,
@@ -1170,13 +1186,44 @@ export async function fetchTextSearch(
   return out;
 }
 
+/**
+ * Which Google-only rows pay a Place Details call (MESITA-2881). Details
+ * bills ~$20/1k on this mask, and a search used to fire one per row, in
+ * parallel, for every row Autocomplete returned. Now a row whose listing the
+ * same request already bought (Deep's Text Search) reuses it, and Details
+ * runs only for the first `cap` rows left: the lane shows at most `cap`, so a
+ * row past it was paid for and cut. A row past the cap carries no listing and
+ * drops, as a failed Details call always did.
+ */
+export function detailsTargets(
+  ids: string[],
+  known: Map<string, GoogleHit> | undefined,
+  cap: number,
+): { reused: Map<string, GoogleHit>; fetch: string[] } {
+  const reused = new Map<string, GoogleHit>();
+  const fetch: string[] = [];
+  for (const id of ids) {
+    if (reused.size + fetch.length >= cap) break;
+    if (reused.has(id) || fetch.includes(id)) continue;
+    const hit = known?.get(id);
+    if (hit) reused.set(id, hit);
+    else fetch.push(id);
+  }
+  return { reused, fetch };
+}
+
 async function stampGoogleAgainstCatalog(
   items: LaneItem[],
   admin: SupabaseClient,
   apiKey: string,
   gate: MapConfig,
   general: GeneralConfig,
-  opts: { alreadyHasSignals?: boolean; locations?: boolean } = {},
+  opts: {
+    alreadyHasSignals?: boolean;
+    locations?: boolean;
+    known?: Map<string, GoogleHit>;
+    detailsCap?: number;
+  } = {},
 ): Promise<LaneItem[]> {
   const byGoogleId = new Map<string, ListedRow>();
   const missingIds = items
@@ -1211,10 +1258,15 @@ async function stampGoogleAgainstCatalog(
   if (googleOnly.length === 0) {
     return stamped.filter((p) => clearsGeneralGate(general, p));
   }
-  const listingById = new Map<string, GoogleHit>();
-  await Promise.all(googleOnly.map(async (p) => {
-    const hit = await fetchPlaceListing(p.placeId, apiKey);
-    if (hit) listingById.set(p.placeId, hit);
+  const { reused, fetch: toFetch } = detailsTargets(
+    googleOnly.map((p) => p.placeId),
+    opts.known,
+    opts.detailsCap ?? googleOnly.length,
+  );
+  const listingById = new Map<string, GoogleHit>(reused);
+  await Promise.all(toFetch.map(async (placeId) => {
+    const hit = await fetchPlaceListing(placeId, apiKey);
+    if (hit) listingById.set(placeId, hit);
   }));
   return stamped.filter((p) => {
     if (p.state !== "not_in_mesita") return clearsGeneralGate(general, p);
