@@ -50,7 +50,13 @@ export function placeRowToDetail(row: Row, catalogTags?: ResolvedTag[]): PlaceDe
       category: str(row.category),
     }) ?? "Place";
   const currency = str(row.currency) ?? DEFAULT_CURRENCY;
-  const priceLevel = (num(row.price_level) ?? 2) as 1 | 2 | 3 | 4;
+  // No stored level, no price (MESITA-2860): a default of 2 printed
+  // "MX$200–300 per person" for places Google never priced.
+  const level = num(row.price_level);
+  const priceLevel =
+    level != null && level >= 1 && level <= 4
+      ? (Math.round(level) as 1 | 2 | 3 | 4)
+      : null;
 
   const openState = computeOpenState(row.hours, str(row.timezone));
   // Dates box: Created from created_at; Updated from enrichment (falls back
