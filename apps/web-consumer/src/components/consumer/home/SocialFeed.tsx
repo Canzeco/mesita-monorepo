@@ -116,7 +116,7 @@ import { EmptyState, Skeleton } from "@/components/shared";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { IdentityCard } from "@/components/consumer/IdentityCard";
 import { toGuestClass, toGuestPlan } from "@/lib/guest-standing";
-import { cn, errMsg } from "@/lib/utils";
+import { cn, errMsg, formatKm } from "@/lib/utils";
 import {
   approxFollowers,
   instagramWithFollowers,
@@ -380,6 +380,17 @@ function FeedRow({
             </>
           ) : null}
           <span className="shrink-0">{ago}</span>
+          {item.eventKm != null ? (
+            <>
+              <span aria-hidden>·</span>
+              {/* WHERE IT HAPPENED (MESITA-2853, Pato: "not only this event
+                  happened 1mins ago, but its also where that event happened,
+                  1km away"): the member's spot, never the place's. */}
+              <span className="shrink-0" data-social-event-km>
+                {formatKm(item.eventKm)} away
+              </span>
+            </>
+          ) : null}
         </span>
       </span>
     </>

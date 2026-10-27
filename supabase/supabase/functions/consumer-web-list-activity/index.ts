@@ -3,13 +3,17 @@
 // Social v1 (MESITA-2442): reads place_activity back, three ways.
 //
 // Body: { scope: "feed", lat?, lng? }
-//   → { items: [{ placeId, kind, at, person, distanceKm, place }] }
+//   → { items: [{ placeId, kind, at, person, distanceKm, eventKm, place }] }
 //   Home › Social (MESITA-2532, Pato: "is juse one person one place events.
 //   list all the fucking events … uner you radious or near you, just enough
 //   to odn't kill"): every visible event is its own item, never collapsed,
 //   newest first, only places inside the operator's Area circle
 //   (`map.radiusKm`) around the guest's point (no point, no circle). It
 //   reads the FEED_ROWS newest events and returns at most FEED_ITEMS.
+//   distanceKm is the guest to the PLACE (it draws the circle); eventKm is
+//   the guest to where the EVENT happened, the member's device fix when they
+//   liked or viewed (MESITA-2853, "1.2 km away" on the row). The event's
+//   point never leaves this function; null without either point.
 // Body: { scope: "place", place_id }
 //   → { line, people, total, me: { saved } }
 //   The place profile's line under the title ("Perdón and 3 others liked
@@ -46,6 +50,7 @@ import { type PlaceCategoryRow, withFamilyKeysList } from "../_shared/place-fami
 import { haversineKm } from "../_shared/geo.ts";
 import {
   type ActivityRow,
+  eventKm,
   feedEvents,
   isActivityKind,
   isMesitaPlaceId,
@@ -146,7 +151,12 @@ Deno.serve(async (req) => {
         : Number.POSITIVE_INFINITY;
       const distanceKm = Number.isFinite(km) ? km : null;
       if (!nearYou(distanceKm, cfg.map.radiusKm, hasPoint)) return [];
-      return [{ ...e, distanceKm, place }];
+      // The point stays here; only its km leaves (MESITA-2853).
+      const { point, ...item } = e;
+      const eventDistance = hasPoint && point
+        ? eventKm(haversineKm(lat, lng, point.lat, point.lng))
+        : null;
+      return [{ ...item, distanceKm, eventKm: eventDistance, place }];
     });
     return json({ ok: true, items: items.slice(0, FEED_ITEMS) });
   }

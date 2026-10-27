@@ -6,6 +6,7 @@ import { apiSavedActivity, apiTrackActivity } from "@/lib/api/activity";
 import type { Place } from "@/lib/api/places";
 import { setSavedPlacesRemote, syncSavedPlaces } from "@/lib/saved-places";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
+import { locationSnapshot } from "@/lib/use-user-location";
 
 // Mounted once at the top of the (shell) layout with the authenticated
 // consumer id. Clears the browser's client-only consumer data (favorites,
@@ -33,7 +34,14 @@ export function ConsumerLocalDataGuard({ consumerId }: { consumerId: string }) {
   const getSupabase = useLazyBrowserSupabase();
   useEffect(() => {
     const track = (placeId: string, on: boolean) =>
-      apiTrackActivity(getSupabase(), { kind: "saved", placeId, on });
+      // The device fix of the tap, if any: where the like happened
+      // (MESITA-2853). The quiet backfill below carries none.
+      apiTrackActivity(getSupabase(), {
+        kind: "saved",
+        placeId,
+        on,
+        at: locationSnapshot().coords,
+      });
     setSavedPlacesRemote((placeId, on) => {
       void track(placeId, on).catch(() => {
         /* the cache keeps the tap; the next sync settles it */

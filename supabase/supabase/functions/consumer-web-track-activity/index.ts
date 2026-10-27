@@ -5,7 +5,7 @@
 // viewed only.
 //
 // Body: { kind: "saved" | "viewed", place_id: uuid, on?: boolean,
-//         quiet?: boolean }
+//         quiet?: boolean, lat?: number, lng?: number }
 //   saved         on: true (default) upserts the row, on: false deletes it
 //                 (unsave).
 //   viewed        always an upsert; a re-open moves created_at forward so the
@@ -13,6 +13,9 @@
 //   quiet         saved only: a backfilled pre-Social save (the first sync in a
 //                 browser, MESITA-2460) — the owner's Saved list reads it, the
 //                 feed and place lines never do. A real tap writes quiet=false.
+//   lat, lng      where the guest's device was (MESITA-2853): the feed
+//                 measures the viewer to this point ("1.2 km away"). Without
+//                 a fix, or out of range, the event stores no point.
 // Response: { ok: true, kind, on }
 //
 // A Google-only card (`g:<id>`) is refused: it is not a place row yet, and its
@@ -32,10 +35,17 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { isActivityKind, isMesitaPlaceId } from "../_shared/place-activity.ts";
+import { eventPoint, isActivityKind, isMesitaPlaceId } from "../_shared/place-activity.ts";
 import { applyPlaceRequest } from "../_shared/place-requests.ts";
 
-type Body = { kind?: string; place_id?: string; on?: boolean; quiet?: boolean };
+type Body = {
+  kind?: string;
+  place_id?: string;
+  on?: boolean;
+  quiet?: boolean;
+  lat?: number;
+  lng?: number;
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -59,6 +69,7 @@ Deno.serve(async (req) => {
   }
   const on = kind === "viewed" ? true : bodyRes.body.on !== false;
   const quiet = kind === "saved" && bodyRes.body.quiet === true;
+  const point = eventPoint(bodyRes.body.lat, bodyRes.body.lng);
 
   const admin = adminClient(envRes.env);
   if (on) {
@@ -69,6 +80,8 @@ Deno.serve(async (req) => {
         kind,
         created_at: new Date().toISOString(),
         quiet,
+        lat: point?.lat ?? null,
+        lng: point?.lng ?? null,
       },
       { onConflict: "consumer_id,place_id,kind" },
     );
