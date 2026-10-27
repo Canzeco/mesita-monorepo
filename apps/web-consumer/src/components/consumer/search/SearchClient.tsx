@@ -95,6 +95,7 @@ import {
 import {
   mapFingerIsDown,
   SearchMap,
+  type SearchCircleSpec,
   type SearchMapPin,
   type ViewportBox,
   type ViewportMeta,
@@ -193,6 +194,11 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     lat: number;
     lng: number;
   } | null>(null);
+  // The circle the last load searched — its centre and the radius the EF
+  // sent Google — drawn on the map as the search ring (MESITA-2842).
+  const [searchCircle, setSearchCircle] = useState<SearchCircleSpec | null>(
+    null,
+  );
   const viewportGen = useRef(0);
   // Google Places session token. Per Google's session-billing semantics a
   // session spans the keystrokes up to ONE selection — so the token is
@@ -463,6 +469,11 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         );
         setCameraCenter(nextCenter);
         setPlaces(result.places);
+        setSearchCircle(
+          result.radiusKm != null
+            ? { center: nextCenter, radiusKm: result.radiusKm }
+            : null,
+        );
         setLoadCoords({
           cross: lastBoxRef.current ? viewportSight(lastBoxRef.current) : null,
           you: locationRef.current,
@@ -1057,6 +1068,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           selectedId={railSelectedId}
           pins={searchPins}
           searching={catalogLoading}
+          searchCircle={searchCircle}
           // The camera moves on intents only; railSelectedId (and its card-0
           // fallback) rings a pin and never pans.
           cameraIntent={cameraIntent}

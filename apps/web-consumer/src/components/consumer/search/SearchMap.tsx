@@ -15,6 +15,7 @@ import {
   Marker,
   useApiLoadingStatus,
   useMap,
+  useMapsLibrary,
 } from "@vis.gl/react-google-maps";
 import type { Place } from "@/lib/api/places";
 import {
@@ -30,7 +31,6 @@ import {
   mapPinIcon,
 } from "@/lib/map-defaults";
 import type { Coords } from "@/lib/use-user-location";
-import { cn } from "@/lib/utils";
 import {
   cameraStep,
   sameCamera,
@@ -38,7 +38,7 @@ import {
   type CameraState,
 } from "./camera-intent";
 import { isSponsoredPlace } from "@/components/consumer/place-card";
-import { RING_INSET, SIGHT_Y } from "./search-utils";
+import { SIGHT_Y } from "./search-utils";
 import { MapVeil } from "./search-catalog-overlays";
 import { SearchMapPinLabels } from "./SearchMapPinLabels";
 import {
@@ -137,6 +137,7 @@ export function SearchMap({
   selectedId,
   pins,
   searching = false,
+  searchCircle = null,
   cameraIntent,
   onTapPlacePin,
   onSelectPin,
@@ -150,8 +151,10 @@ export function SearchMap({
   userLocation: Coords | null;
   selectedId: string | null;
   pins?: SearchMapPin[] | null;
-  /** A catalog load is in flight: the search ring pulses (MESITA-2508). */
+  /** A catalog load is in flight: the search circle dims (MESITA-2508). */
   searching?: boolean;
+  /** The circle the last load searched (MESITA-2842); null before one. */
+  searchCircle?: SearchCircleSpec | null;
   /**
    * The ONLY way the page moves the camera (MESITA-2440): an explicit ask
    * — first load, the location disc, a tap, a bar pick. `selectedId` only
@@ -191,15 +194,15 @@ export function SearchMap({
   }
 
   return (
-    // A size container, so the search ring can read the map's height
-    // (cqh) as well as its width (MESITA-2511).
-    <div className="[container-type:size] absolute inset-0 overflow-hidden">
+    <div className="absolute inset-0 overflow-hidden">
       <APIProvider apiKey={apiKey} libraries={["places"]}>
         <SearchMapCanvas
           places={places}
           userLocation={userLocation}
           selectedId={selectedId}
           pins={pins}
+          searchCircle={searchCircle}
+          searching={searching}
           cameraIntent={cameraIntent}
           onTapPlacePin={onTapPlacePin}
           onSelectPin={onSelectPin}
@@ -211,7 +214,7 @@ export function SearchMap({
         />
         {!mapReady && <MapLoadingVeil />}
       </APIProvider>
-      {mapReady && <SearchMapReticle searching={searching} />}
+      {mapReady && <SearchMapReticle />}
     </div>
   );
 }
@@ -246,33 +249,11 @@ export function mapFingerIsDown(): boolean {
   return fingerOnMap;
 }
 
-/** The search ring's diameter: RING_INSET of twice the cross's distance to
- *  the nearest edge of the map — the full width, or twice the gap to the
- *  nearer of top and bottom, whichever is smaller (MESITA-2511), the
- *  server's screen radius on screen. The inset keeps a margin between the
- *  ring and the map's border (MESITA-2825). Container units of the map's box. */
-export const SEARCH_RING_SIZE = `min(${Math.round(RING_INSET * 1000) / 10}cqw, ${
-  Math.round(2 * RING_INSET * Math.min(SIGHT_Y, 1 - SIGHT_Y) * 1000) / 10
-}cqh)`;
-
 /** Screen-fixed sight SIGHT_Y down the canvas (the middle; MESITA-2448,
- *  MESITA-2514) — the catalog fetch point: the plus, its dot, and THE
- *  SEARCH RING (Pato, MESITA-2508: "keep the circle, but make it doted …
- *  and move it realative to the cruz … it must feel more dynamic"). The ring
- *  is the circle the next load searches — the server's screen radius, the
- *  cross's distance to the nearest edge, so it always fits on the map
- *  (MESITA-2511), inset to 0.9 so it never touches the border
- *  (MESITA-2825) — dashed, riding the cross while the guest pans, and it
- *  pulses while a load is in flight. A second ring at half the diameter says
- *  the centre is denser (Pato, MESITA-2773: "double circle for density") —
- *  the proximity half-strength distance at the default radiusDivisor of 2
- *  (MESITA-2720). Both rings are the same dashed line and nothing is shaded
- *  (Pato, MESITA-2820: "remove those dark backgrounds … just keep the borders
- *  … both borders must be the same dotted"), so the map reads as one surface. */
-const RING_CLASS =
-  "border-foreground/45 absolute top-1/2 left-1/2 aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] border-dashed";
-
-function SearchMapReticle({ searching }: { searching: boolean }) {
+ *  MESITA-2514) — the catalog fetch point: the plus and its dot. The search
+ *  rings are NOT drawn here: they are map geometry (SearchCircle), the
+ *  circle the last load actually sent Google (MESITA-2842). */
+function SearchMapReticle() {
   return (
     <div
       aria-hidden
@@ -280,16 +261,6 @@ function SearchMapReticle({ searching }: { searching: boolean }) {
       style={{ top: `${SIGHT_Y * 100}%` }}
       data-search-sight
     >
-      <div
-        className={cn(RING_CLASS, searching && "animate-pulse")}
-        style={{ width: SEARCH_RING_SIZE }}
-        data-search-ring
-      />
-      <div
-        className={cn(RING_CLASS, searching && "animate-pulse")}
-        style={{ width: `calc(${SEARCH_RING_SIZE} / 2)` }}
-        data-search-ring-inner
-      />
       <div className="relative h-3.5 w-3.5">
         <div className="bg-foreground absolute top-1/2 left-1/2 h-3.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full" />
         <div className="bg-foreground absolute top-1/2 left-1/2 h-0.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full" />
@@ -297,6 +268,87 @@ function SearchMapReticle({ searching }: { searching: boolean }) {
       </div>
     </div>
   );
+}
+
+/** The circle the last catalog load searched: the centre it sent and the
+ *  `radiusKm` the EF answered — the exact `locationRestriction` circle
+ *  Google was asked about, so every pin of that load sits inside it (Pato,
+ *  MESITA-2842: "the google radious must be into the actual circle"). */
+export type SearchCircleSpec = {
+  center: { lat: number; lng: number };
+  radiusKm: number;
+};
+
+const EARTH_KM = 6371.0088;
+const CIRCLE_STEPS = 96;
+
+/** `steps` points on the circle `km` around `c`, closed. */
+export function circlePath(
+  c: { lat: number; lng: number },
+  km: number,
+  steps = CIRCLE_STEPS,
+): { lat: number; lng: number }[] {
+  const d = km / EARTH_KM;
+  const lat1 = (c.lat * Math.PI) / 180;
+  const lng1 = (c.lng * Math.PI) / 180;
+  const out: { lat: number; lng: number }[] = [];
+  for (let i = 0; i <= steps; i++) {
+    const brg = (2 * Math.PI * i) / steps;
+    const lat2 = Math.asin(
+      Math.sin(lat1) * Math.cos(d) +
+        Math.cos(lat1) * Math.sin(d) * Math.cos(brg),
+    );
+    const lng2 =
+      lng1 +
+      Math.atan2(
+        Math.sin(brg) * Math.sin(d) * Math.cos(lat1),
+        Math.cos(d) - Math.sin(lat1) * Math.sin(lat2),
+      );
+    out.push({ lat: (lat2 * 180) / Math.PI, lng: (lng2 * 180) / Math.PI });
+  }
+  return out;
+}
+
+/** The search circle and its half ring (Pato, MESITA-2773: "double circle
+ *  for density"; MESITA-2820: both the same dotted line, nothing shaded),
+ *  pinned to the map: they stay on the searched ground while the guest pans
+ *  and move only when a load answers. Dimmed while a load is in flight. */
+function SearchCircle({
+  circle,
+  searching,
+}: {
+  circle: SearchCircleSpec | null;
+  searching: boolean;
+}) {
+  const map = useMap();
+  const maps = useMapsLibrary("maps");
+
+  useEffect(() => {
+    if (!map || !maps || !circle) return;
+    const dash = {
+      path: "M 0,-1 0,1",
+      strokeColor: "#1a1a1a",
+      strokeOpacity: searching ? 0.2 : 0.45,
+      strokeWeight: 1.5,
+      scale: 3,
+    };
+    const made = [circle.radiusKm, circle.radiusKm / 2].map(
+      (km) =>
+        new maps.Polyline({
+          map,
+          path: circlePath(circle.center, km),
+          clickable: false,
+          strokeOpacity: 0,
+          icons: [{ icon: dash, offset: "0", repeat: "10px" }],
+          zIndex: 1,
+        }),
+    );
+    return () => {
+      for (const l of made) l.setMap(null);
+    };
+  }, [map, maps, circle, searching]);
+
+  return null;
 }
 
 // Muted skeleton veil that hides the blank canvas until tiles paint — the
@@ -325,6 +377,8 @@ function SearchMapCanvas({
   userLocation,
   selectedId,
   pins,
+  searchCircle,
+  searching,
   cameraIntent,
   onTapPlacePin,
   onSelectPin,
@@ -338,6 +392,8 @@ function SearchMapCanvas({
   userLocation: Coords | null;
   selectedId: string | null;
   pins?: SearchMapPin[] | null;
+  searchCircle: SearchCircleSpec | null;
+  searching: boolean;
   cameraIntent?: CameraIntent | null;
   /** A catalog pin was tapped; the page counts the taps (select · fly ·
    *  open, MESITA-2488). */
@@ -411,6 +467,7 @@ function SearchMapCanvas({
               onClick={() => onTapPlacePin(place)}
             />
           ))}
+      <SearchCircle circle={searchCircle} searching={searching} />
       {cameraIntent && <CameraDirector intent={cameraIntent} />}
       <SearchMapPinLabels
         focusedId={selectedId}
