@@ -784,7 +784,6 @@ export type Database = {
           menu_pdf_url: string | null
           menus: Json | null
           mesita_categories: Json
-          mesita_name: string | null
           name: string
           name_embedding: string | null
           opentable_url: string | null
@@ -856,8 +855,7 @@ export type Database = {
           menu_pdf_url?: string | null
           menus?: Json | null
           mesita_categories?: Json
-          mesita_name?: string | null
-          name?: string
+          name: string
           name_embedding?: string | null
           opentable_url?: string | null
           payments_enabled?: boolean
@@ -928,7 +926,6 @@ export type Database = {
           menu_pdf_url?: string | null
           menus?: Json | null
           mesita_categories?: Json
-          mesita_name?: string | null
           name?: string
           name_embedding?: string | null
           opentable_url?: string | null
@@ -1440,7 +1437,6 @@ export type Database = {
           menu_pdf_url: string | null
           menus: Json | null
           mesita_categories: Json | null
-          mesita_name: string | null
           name: string | null
           name_embedding: string | null
           opentable_url: string | null
