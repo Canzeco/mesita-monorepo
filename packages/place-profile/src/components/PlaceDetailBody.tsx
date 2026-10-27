@@ -16,7 +16,7 @@ import { PlaceCreateFailedPanel } from "./place-detail/PlaceCreateFailedPanel";
 import { NO_BOOST, NO_OVERVIEW, PlaceEmptyScreen } from "./place-detail/empty-screen";
 import { PlaceTabBar, type PlaceTab } from "./place-detail/tabs";
 import { SoonScreen } from "./place-detail/soon-screen";
-import { LinksBox, TagsBox } from "./place-detail/tags-links-meta";
+import { LinksBox, StatsBox, TagsBox } from "./place-detail/tags-links-meta";
 
 // Pure presentation for the place detail surface, laid out like an
 // Instagram profile. Callers render their own top bar above this; there is
@@ -117,6 +117,7 @@ export function PlaceDetailBody({
               <PopularTimesBox place={place} />
               <LinksBox place={place} onOpenLink={actions?.onOpenLink} />
               <TagsBox place={place} />
+              <StatsBox place={place} />
             </>
           )}
           {tab === "reviews" && <GoogleReviewsBox place={place} />}

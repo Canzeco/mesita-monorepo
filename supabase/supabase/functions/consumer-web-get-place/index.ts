@@ -18,6 +18,7 @@ import {
 import { PLACE_PUBLIC_COLUMNS as PLACE_PROFILE_COLUMNS } from "../_shared/place-columns.ts";
 import { withFamilyKeys } from "../_shared/place-family-keys.ts";
 import { resolvePlaceTags } from "../_shared/tags.ts";
+import { fetchPlaceProfileStats } from "../_shared/place-activity-stats.ts";
 import {
   loadRequestThreshold,
   placeRequestState,
@@ -77,6 +78,9 @@ Deno.serve(async (req) => {
   // google_name and mesita_name stay on the payload for clients that need them.
   // family_keys (MESITA-679): stored Families, else Atlas / Google.
   const row = withFamilyKeys(data as unknown as Record<string, unknown>);
+  // Overview's Stats box (MESITA-2866): unique members who viewed / liked.
+  // Counts only; best-effort, a failed read is 0.
+  const profileStatsP = fetchPlaceProfileStats(admin, placeId);
   const { user } = await getOptionalAuthedUser(req, envRes.env);
   let requested = false;
   if (user) {
@@ -95,7 +99,7 @@ Deno.serve(async (req) => {
     contentState: row.content_state,
     enrichedAt: row.enriched_at,
   });
-  const place = { ...row, ...request };
+  const place = { ...row, ...request, profile_stats: await profileStatsP };
 
   return json({ ok: true, place, tags });
 });
