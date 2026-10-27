@@ -124,6 +124,7 @@ import { SearchResultsPanel } from "./SearchResultsPanel";
 import type { AddState } from "./add-state";
 import {
   RAIL_PAGE_SHARE,
+  RAIL_PAGE_SIZE,
   SearchHereButton,
   SearchRailOverlay,
   type LoadCoords,
@@ -922,9 +923,19 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     if (!el || catalog.length === 0) return;
     const page = el.clientWidth * RAIL_PAGE_SHARE;
     if (page <= 0) return;
-    const next = railCenterIndex(el.scrollLeft, page, catalog.length);
+    // railIndex counts pages; each page stacks RAIL_PAGE_SIZE cards
+    // (MESITA-2878).
+    const pageCount = Math.ceil(catalog.length / RAIL_PAGE_SIZE);
+    const next = railCenterIndex(el.scrollLeft, page, pageCount);
     setRailIndex(next);
-    const id = catalog[next]?.id;
+    const onPage = catalog.slice(
+      next * RAIL_PAGE_SIZE,
+      (next + 1) * RAIL_PAGE_SIZE,
+    );
+    // A card already selected on the centred page keeps the ring — a tap
+    // on the lower card scrolls here too, and must not hand it to the top.
+    if (onPage.some((p) => p.id === railSelectedId)) return;
+    const id = onPage[0]?.id;
     // A SCROLL RINGS THE PIN, IT NEVER PANS (MESITA-2440): browsing the
     // rail must not drag the map out from under the guest.
     if (id) setSelectedId(id);
@@ -956,7 +967,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   useEffect(() => {
     if (!railSelectedId) return;
     const idx = catalog.findIndex((p) => p.id === railSelectedId);
-    if (!shouldCenterRailCard(idx, railIndex, centerOnSelect.current)) return;
+    const pageIdx = idx < 0 ? idx : Math.floor(idx / RAIL_PAGE_SIZE);
+    if (!shouldCenterRailCard(pageIdx, railIndex, centerOnSelect.current))
+      return;
     centerOnSelect.current = false;
     railRefs.current.get(railSelectedId)?.scrollIntoView({
       behavior: "smooth",

@@ -23,7 +23,21 @@ export const RAIL_PAGE_SHARE = 0.88;
  *  inside the page, so the snap math stays 88% and the selected ring does
  *  not kiss the neighbor. */
 const RAIL_PAGE =
-  "w-[88%] shrink-0 snap-center px-1.5 first:ml-[6%] last:mr-[6%]";
+  "flex w-[88%] shrink-0 snap-center flex-col gap-1.5 px-1.5 first:ml-[6%] last:mr-[6%]";
+
+/** Cards per carousel page, stacked: the rail is two cards tall (Pato,
+ *  MESITA-2878: "make it two items height"). SearchClient's page math reads
+ *  the same number. */
+export const RAIL_PAGE_SIZE = 2;
+
+/** The catalog cut into pages of RAIL_PAGE_SIZE, in order. */
+export function railPages<T>(items: T[]): T[][] {
+  const pages: T[][] = [];
+  for (let i = 0; i < items.length; i += RAIL_PAGE_SIZE) {
+    pages.push(items.slice(i, i + RAIL_PAGE_SIZE));
+  }
+  return pages;
+}
 
 /** Where the carousel floats: over the map's foot, 8px up (MESITA-2670). */
 export const RAIL_FLOAT_CLASS =
@@ -42,12 +56,13 @@ export function CatalogRailSkeleton() {
       className="scrollbar-hide flex snap-x snap-mandatory overflow-hidden pb-1"
       aria-hidden
     >
-      <div className={RAIL_PAGE}>
-        <RailCardSkeleton />
-      </div>
-      <div className={RAIL_PAGE}>
-        <RailCardSkeleton />
-      </div>
+      {[0, 1].map((page) => (
+        <div key={page} className={RAIL_PAGE}>
+          {Array.from({ length: RAIL_PAGE_SIZE }, (_, i) => (
+            <RailCardSkeleton key={i} />
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
@@ -107,10 +122,14 @@ function fmtScore(v: number | null | undefined): string {
 }
 
 /** " (0.42 km, k 2)": what Proximity read; empty from an older EF. */
-function proximityInputs(score: Pick<MapScore, "distanceKm" | "distancePenalty">): string {
+function proximityInputs(
+  score: Pick<MapScore, "distanceKm" | "distancePenalty">,
+): string {
   const parts: string[] = [];
-  if (typeof score.distanceKm === "number") parts.push(`${score.distanceKm.toFixed(2)} km`);
-  if (typeof score.distancePenalty === "number") parts.push(`k ${score.distancePenalty}`);
+  if (typeof score.distanceKm === "number")
+    parts.push(`${score.distanceKm.toFixed(2)} km`);
+  if (typeof score.distancePenalty === "number")
+    parts.push(`k ${score.distancePenalty}`);
   return parts.length > 0 ? ` (${parts.join(", ")})` : "";
 }
 
@@ -185,7 +204,7 @@ export function RailScoreTag({ place }: { place: Pick<Place, "score"> }) {
   );
   return (
     <div
-      className="bg-card/95 text-muted-foreground type-meta mb-1.5 rounded-xl px-3 py-1.5 font-mono leading-snug tabular-nums shadow-rest"
+      className="bg-card/95 text-muted-foreground type-meta shadow-rest mb-1.5 rounded-xl px-3 py-1.5 font-mono leading-snug tabular-nums"
       data-rail-score-tag
     >
       <p className="text-foreground truncate font-semibold">
@@ -198,8 +217,8 @@ export function RailScoreTag({ place }: { place: Pick<Place, "score"> }) {
         {/* What Proximity read (Pato, MESITA-2830): the distance and the
             Distance penalty k, 1 ÷ (1 + k × km ÷ radius). */}
         proximity {fmtScore(score.proximity)}
-        {proximityInputs(score)} · popularity{" "}
-        {fmtScore(score.popularity)} · selected{" "}
+        {proximityInputs(score)} · popularity {fmtScore(score.popularity)} ·
+        selected{" "}
         {fmtScore(
           typeof score.selectedFactor === "number" ? score.selectedFactor : 1,
         )}{" "}
@@ -224,7 +243,7 @@ export function RailScoreOverlay({ place }: { place: Pick<Place, "score"> }) {
   if (!score) return null;
   return (
     <div
-      className="pointer-events-none absolute inset-x-0 bottom-0 bg-black/45 type-meta px-2 py-1.5 font-mono leading-tight text-white/90 tabular-nums"
+      className="type-meta pointer-events-none absolute inset-x-0 bottom-0 bg-black/45 px-2 py-1.5 font-mono leading-tight text-white/90 tabular-nums"
       data-rail-score-overlay
     >
       <p>prox {fmtScore(score.proximity)}</p>
@@ -243,9 +262,7 @@ export function RailScoreOverlay({ place }: { place: Pick<Place, "score"> }) {
           typeof score.selectedFactor === "number" ? score.selectedFactor : 1,
         )}
       </p>
-      <p className="font-semibold text-white">
-        final {fmtScore(score.final)}
-      </p>
+      <p className="font-semibold text-white">final {fmtScore(score.final)}</p>
     </div>
   );
 }
@@ -306,21 +323,27 @@ export function SearchRailOverlay({
               catalogLoading && "opacity-55",
             )}
           >
-            {places.map((place) => (
+            {railPages(places).map((page) => (
               <div
-                key={place.id}
-                ref={(el) => setRailCardRef(place.id, el)}
+                key={page[0].id}
+                ref={(el) => {
+                  // Every card on the page scrolls to the page.
+                  for (const place of page) setRailCardRef(place.id, el);
+                }}
                 className={RAIL_PAGE}
               >
-                <RailCard
-                  place={place}
-                  photoOverlay={<RailScoreOverlay place={place} />}
-                  selected={place.id === selectedId}
-                  onOpen={() => onOpenPlace(place)}
-                  saved={cards.isSaved(place)}
-                  onSave={() => cards.toggle(place)}
-                  onShare={() => cards.share(place)}
-                />
+                {page.map((place) => (
+                  <RailCard
+                    key={place.id}
+                    place={place}
+                    photoOverlay={<RailScoreOverlay place={place} />}
+                    selected={place.id === selectedId}
+                    onOpen={() => onOpenPlace(place)}
+                    saved={cards.isSaved(place)}
+                    onSave={() => cards.toggle(place)}
+                    onShare={() => cards.share(place)}
+                  />
+                ))}
               </div>
             ))}
           </div>
