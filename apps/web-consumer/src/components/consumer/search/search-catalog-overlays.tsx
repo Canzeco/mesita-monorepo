@@ -7,6 +7,7 @@ import type { Coords } from "@/lib/use-user-location";
 import { useCardSaveShare } from "@/lib/use-card-save-share";
 import { cn } from "@/lib/utils";
 
+import { ADD_BUTTON_HEIGHT_CLASS, AddPlaceButton } from "./AddPlaceButton";
 import { RailCard, RailCardSkeleton } from "./SearchRailCard";
 import { SIGHT_Y } from "./search-utils";
 
@@ -25,10 +26,11 @@ export const RAIL_PAGE_SHARE = 0.88;
 const RAIL_PAGE =
   "flex w-[88%] shrink-0 snap-center flex-col gap-1.5 px-1.5 first:ml-[6%] last:mr-[6%]";
 
-/** Cards per carousel page, stacked: the rail is two cards tall (Pato,
- *  MESITA-2878: "make it two items height"). SearchClient's page math reads
+/** Cards per carousel page: the rail is ONE card tall (Pato, MESITA-2885:
+ *  "the carousel must be one item tall, not two, its a horizontal
+ *  carousel"; reverses MESITA-2878's pair). SearchClient's page math reads
  *  the same number. */
-export const RAIL_PAGE_SIZE = 2;
+export const RAIL_PAGE_SIZE = 1;
 
 /** The catalog cut into pages of RAIL_PAGE_SIZE, in order. */
 export function railPages<T>(items: T[]): T[][] {
@@ -43,12 +45,10 @@ export function railPages<T>(items: T[]): T[][] {
 export const RAIL_FLOAT_CLASS =
   "pointer-events-none absolute inset-x-0 bottom-2 z-20";
 
-/** The rail's row: the carousel at the map's full width. MESITA-2882 pinned
- *  an Add button at its left; MESITA-2883 removed it with the bar's Google
- *  lookup. The row is sideways (MESITA-2882 reverses MESITA-2880's vertical
- *  rail): the carousel pages (`RAIL_PAGE`) scroll left and right, a pair of
- *  cards per page. */
-const RAIL_ROW = "flex items-start pb-1";
+/** The rail's row: the Add button pinned at the left (MESITA-2885, back
+ *  after MESITA-2883 took it out), then the carousel. The row is sideways:
+ *  the carousel pages (`RAIL_PAGE`) scroll left and right, one card each. */
+const RAIL_ROW = "flex items-start gap-1.5 pb-1 pl-3";
 
 /** The carousel: snap pages, sideways. */
 const RAIL_SCROLLER =
@@ -64,6 +64,9 @@ const RAIL_SCROLLER =
 export function CatalogRailSkeleton() {
   return (
     <div className={RAIL_ROW} aria-hidden>
+      <Skeleton
+        className={cn(ADD_BUTTON_HEIGHT_CLASS, "w-14 shrink-0 rounded-2xl")}
+      />
       <div className={cn(RAIL_SCROLLER, "overflow-hidden")}>
         {[0, 1].map((page) => (
           <div key={page} className={RAIL_PAGE}>
@@ -284,6 +287,7 @@ export function SearchRailOverlay({
   railScrollRef,
   onRailScroll,
   onOpenPlace,
+  onAdd,
   setRailCardRef,
 }: {
   places: Place[];
@@ -292,6 +296,8 @@ export function SearchRailOverlay({
   railScrollRef: RefObject<HTMLDivElement | null>;
   onRailScroll: () => void;
   onOpenPlace: (place: Place) => void;
+  /** The Add button's tap: the bar's Add mode (MESITA-2885). */
+  onAdd: () => void;
   setRailCardRef: (placeId: string, el: HTMLElement | null) => void;
 }) {
   const firstLoad = catalogLoading && places.length === 0;
@@ -319,16 +325,17 @@ export function SearchRailOverlay({
         {firstLoad ? (
           <CatalogRailSkeleton />
         ) : places.length === 0 ? (
-          // An empty area says so where the cards sit. The Add button
-          // beside it searched Google (MESITA-2879/2882); the bar no longer
-          // does (MESITA-2883), so it is gone.
+          // An empty area says so where the cards sit, the Add button
+          // beside it: nothing here is exactly when a guest adds one.
           <div className={RAIL_ROW} data-search-rail-empty>
+            <AddPlaceButton onAdd={onAdd} />
             <p className="bg-card/95 text-foreground shadow-elev mx-auto self-center rounded-2xl px-4 py-3 text-sm font-semibold backdrop-blur">
               Nothing on Mesita here yet
             </p>
           </div>
         ) : (
           <div className={RAIL_ROW}>
+            <AddPlaceButton onAdd={onAdd} />
             <div
               ref={railScrollRef}
               onScroll={onRailScroll}

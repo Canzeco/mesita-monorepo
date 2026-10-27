@@ -113,10 +113,10 @@ describe("Name search is ONE search after Word's idle seconds (MESITA-2322)", ()
     const src = read("SearchClient.tsx");
     expect(src).toContain("DEFAULT_IDLE_MS");
     expect(src).toContain("idleMsRef.current");
-    // MESITA-2883: the Search bar bills no Google call — `mesita` mode only.
-    expect(src).toContain('"mesita"');
+    // MESITA-2883: typing bills no Google call — `mesita` mode; only the
+    // Add button's Add mode asks Google (`fast`, MESITA-2885).
+    expect(src).toContain('adding ? "fast" : "mesita"');
     expect(src).not.toContain('"deep"');
-    expect(src).not.toContain('"fast"');
     expect(src).not.toContain("FAST_DEBOUNCE_MS");
     expect(src).not.toContain("DEEP_IDLE_MS");
   });
