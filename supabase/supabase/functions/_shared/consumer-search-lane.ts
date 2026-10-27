@@ -563,7 +563,7 @@ export async function runConsumerSearchLane(
   const input = (args.input ?? "").toString().trim();
   const sessionToken = (args.sessionToken ?? "").toString();
   if (input.length < 2) return json({ ok: true, predictions: [] });
-  if (!sessionToken) return json({ ok: false, error: "Missing sessionToken" });
+  if (!sessionToken) return json({ ok: false, error: "Missing sessionToken" }, 400);
 
   const admin = adminClient(env);
   const origin = originOf(args.lat, args.lng);
@@ -619,8 +619,12 @@ export async function runConsumerSearchLane(
       locations,
     );
 
+  // Every Google failure is a 502, rate limits included: one rule, the same
+  // as reverse-geocode, and a 429 would invite automatic retries from proxies
+  // and SDKs. Fast mode answers the error rather than a partial list; Deep
+  // drops a failed Autocomplete lane instead (MESITA-2855).
   if ("errorEnvelope" in predictions) {
-    return json(predictions.errorEnvelope);
+    return json(predictions.errorEnvelope, 502);
   }
 
   // THE GUEST BAR'S POPULARITY ORDER (MESITA-2724): after the caps and the
@@ -901,23 +905,25 @@ export function toWire(item: LaneItem) {
 /**
  * Selection-time anchor read for a picked Location (consumed by the map
  * anchor, MESITA-1405): ONE Location-shaped Details call per pick, never
- * per keystroke. Wire status stays 200 — supabase-js's invoke helper
- * swallows non-2xx bodies.
+ * per keystroke. Errors carry real statuses (MESITA-2855): the client's
+ * invokeEF reads the body of a non-2xx reply, so nothing is swallowed.
  */
 export async function runLocationAnchor(rawPlaceId: string): Promise<Response> {
   const keyRes = readGooglePlacesKey();
   if (!keyRes.ok) return keyRes.response;
   const placeId = stripPlacesPrefix(rawPlaceId.trim());
-  if (!placeId) return json({ ok: false, error: "Missing anchorPlaceId" });
-  const anchor = await fetchLocationAnchor(placeId, keyRes.key);
-  if (!anchor) {
-    return json({
-      ok: false,
-      code: "anchor_not_found",
-      error: "Couldn't resolve that location right now.",
-    });
+  if (!placeId) return json({ ok: false, error: "Missing anchorPlaceId" }, 400);
+  const res = await fetchLocationAnchor(placeId, keyRes.key);
+  if (!res.ok) {
+    return res.reason === "not_found"
+      ? json({ ok: false, code: "anchor_not_found", error: "Couldn't find that location." }, 404)
+      : json({
+        ok: false,
+        code: "google_unreachable",
+        error: "Couldn't resolve that location right now.",
+      }, 502);
   }
-  return json({ ok: true, anchor });
+  return json({ ok: true, anchor: res.anchor });
 }
 
 async function embedQueryVector(

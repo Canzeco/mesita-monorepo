@@ -24,8 +24,12 @@
 //
 // One Google Geocoding (reverse) call per snapped point; repeats in this
 // isolate come from the caches below, one per precision, and the client
-// keeps each answer for the visit. Wire status stays 200: supabase-js's
-// invoke helper swallows non-2xx bodies.
+// keeps each answer for the visit. Errors carry real statuses (400 bad input,
+// 401 sign_in_required, 502 for every Google failure, rate limits included);
+// the client's invokeEF reads `code` from a non-2xx body and the pin picker
+// branches on `code`, never the status (MESITA-2855). `no_area_name` stays
+// 200: Google answered, it just had no name here, and the picker treats it
+// as final.
 //
 // JWT-protected: clients send the Supabase anon JWT in Authorization.
 //
@@ -77,14 +81,14 @@ Deno.serve(async (req) => {
   const bodyRes = await readJson<{ lat?: unknown; lng?: unknown; precision?: unknown }>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const point = readPoint(bodyRes.body);
-  if (!point) return json({ ok: false, code: "bad_point", error: "Send a finite lat and lng." });
+  if (!point) return json({ ok: false, code: "bad_point", error: "Send a finite lat and lng." }, 400);
   const precision = readPrecision(bodyRes.body);
   if (!precision) {
-    return json({ ok: false, code: "bad_precision", error: 'precision must be "pin" or omitted' });
+    return json({ ok: false, code: "bad_precision", error: 'precision must be "pin" or omitted' }, 400);
   }
   if (precision === "pin") {
     const { user } = await getOptionalAuthedUser(req, envRes.env);
-    if (!user) return json({ ok: false, code: "sign_in_required", error: "Sign in to name a pin." });
+    if (!user) return json({ ok: false, code: "sign_in_required", error: "Sign in to name a pin." }, 401);
   }
 
   const snapped = snapPoint(point.lat, point.lng, precisionDecimals(precision));
@@ -107,7 +111,7 @@ Deno.serve(async (req) => {
       `[consumer-web-reverse-geocode] google (precision ${precision}):`,
       err instanceof Error ? err.message : err,
     );
-    return json({ ok: false, code: "google_unreachable" });
+    return json({ ok: false, code: "google_unreachable" }, 502);
   }
 
   const status = geocodeStatus(payload);
@@ -118,7 +122,7 @@ Deno.serve(async (req) => {
       `[consumer-web-reverse-geocode] google status ${status} (precision ${precision})`,
       typeof message === "string" ? message : "",
     );
-    return json({ ok: false, code: `google_${status.toLowerCase()}` });
+    return json({ ok: false, code: `google_${status.toLowerCase()}` }, 502);
   }
 
   const answer: Answer = {
