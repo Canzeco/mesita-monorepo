@@ -48,7 +48,8 @@
 //   • Base: SearchMap fills the body (red Mesita Places, gray Google, blue
 //     user). Catalog pins by default; `searchPins` overlays
 //     the predictions while a query is live.
-//   • Top overlay: SearchHeader — the bar, then the family chips. How many
+//   • Top overlay: SearchHeader — one row; the family hides behind Filters
+//     (MESITA-2875). How many
 //     is the operator's (the four Area sources, MESITA-2703).
 //   • Bottom overlay: the catalog rail for the visible map, hidden while
 //     querying. Best first, in the server's order: the zoom decides how
@@ -225,7 +226,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // 1-based) — powers the "3 / 12 places" pager so the horizontal rail
   // reads as browsable.
   const [railIndex, setRailIndex] = useState(0);
-  // The family chips (none, or one family) ride this store and the
+  // The family pick (none, or one family; the Filters sheet) rides this store and the
   // catalog call. How many and the Minimum Popularity are the
   // operator's (Admin › Discovery); how wide is the visible map
   // (MESITA-2499). The server is the one selector and ranks best first —
@@ -964,11 +965,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Search's header, a white band over the map (Pato, MESITA-2409/2413):
-        location disc · query bar · Ask AI, then the family chips; the bar's
-        results and the load error hang over the map's top edge. The pair that keeps the disc
+        location disc · query bar · Filters · Ask AI (MESITA-2875: no chip
+        row); the bar's results and the load error hang over the map's top edge. The pair that keeps the disc
         visible: `min-w-0 flex-1` on the bar, `shrink-0` on the disc. */}
       <SearchHeader
-        chipsHidden={querying}
         locate={
           <SearchLocateButton
             located={location !== null}
@@ -988,9 +988,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           />
         }
       >
-        {/* RESULTS DROP UNDER THE BAR, the way every autocomplete does; the
-          chip row is not drawn while querying (Pato, MESITA-2487, was
-          MESITA-2417's "cover the chips"), so they hang just under the bar.
+        {/* RESULTS DROP UNDER THE BAR, the way every autocomplete does: they
+          hang just under the band (MESITA-2875 removed the chip row they
+          used to cover, MESITA-2417/2487).
 
           THE OLD REGRESSION WAS A FIXED HEIGHT, not the top anchor. A panel that
           claimed 70% of the viewport whether it held two rows or ten is what

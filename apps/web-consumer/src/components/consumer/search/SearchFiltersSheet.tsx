@@ -2,10 +2,10 @@
 
 // Search's Filters sheet (Pato, MESITA-2758: "Filters is just a button to open
 // a button to select the family quicker. Only configuration now"). Opened by
-// the Filters chip at the head of the chip row. Its ONE setting is the
-// family: Top and every family laid out at once, wrapped, so a guest picks
-// without scrolling the chip row. Same store as the chips — one pick at a
-// time, the lit one again is Top — and a pick closes the sheet.
+// the Filters disc in Search's header. Its ONE setting is the family: Top
+// and every family laid out at once, wrapped. Since MESITA-2875 this sheet is
+// the ONLY way to pick a family (the header's chip row is gone). One pick at a
+// time, the lit one again is Top, and a pick closes the sheet.
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
