@@ -3,14 +3,14 @@ import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // THE CAROUSEL'S FIRST CARD IS ADD A PLACE (Pato, MESITA-2879: "the item at
-// the left must be to add new place if not in Mesita"). Always page 0, left
-// of the places; the rail rests on place #1, so this card peeks at the left
-// edge. It fills a whole page: two RailCards and the page's gap (MESITA-2878's
-// two-card-tall pages). Dashed and photo-less so it never reads as a place.
+// the left must be to add new place if not in Mesita"). Always the first
+// row, above the places; the rail scrolls vertically and rests on place #1,
+// so this card waits above (MESITA-2880). It is two rows tall: two
+// RailCards and the gap between them. Dashed and photo-less so it never reads as a place.
 // A tap focuses the search bar, the old `+` disc's path (MESITA-2876): a
 // guest adds a place by searching Google and tapping the result.
 
-/** Two 8.375rem RailCards and the page's 0.375rem gap (RAIL_PAGE's gap-1.5). */
+/** Two 8.375rem RailCards and the page's 0.375rem gap (a rail row's pb-1.5). */
 const ADD_CARD_HEIGHT_CLASS = "h-[17.125rem]";
 
 export function AddPlaceRailCard({
