@@ -13,15 +13,21 @@ import {
   CARD_ACTIONS_ROW,
   CARD_BUTTON_BOX,
   CardActions,
-  HoursRow,
   PriceKindRow,
   SponsoredMark,
-  StarsRow,
+  StarsOpenRow,
   cardFacts,
   isSponsoredPlace,
 } from "@/components/consumer/place-card";
 
-// FIVE ROWS, TALLER STILL (Pato, MESITA-2674: "name / price, category /
+// FOUR ROWS, SHORTER (Pato, MESITA-2859: "name, select / price, category /
+// stars, open/close thats it don't mention the hour / buttons — so now its
+// four lines, not five — so the boxes are a bit shorter"): name (+ marks);
+// $$ · category; ★ rating (reviews) · Open or Closed; Save and Share. 12px
+// inside, the three text rows (64px), 12px, the buttons (32px), 12px: 134px
+// with the border. The photo is the inner height, square.
+//
+// Was: FIVE ROWS, TALLER STILL (Pato, MESITA-2674: "name / price, category /
 // stars / time / buttons, 5 rows"): name; $$ · category; ★ rating
 // (reviews); hours; Save and Share. 156px with the border; the photo is the
 // inner height, square, so the buttons start at its width + 12px.
@@ -36,7 +42,7 @@ import {
 /** Every catalog rail card is this tall. Missing rows must not shrink a
  *  neighbor — the peek strip has to line up, and the square thumb stays the
  *  same size on every page. */
-const RAIL_CARD_HEIGHT_CLASS = "h-[9.75rem]";
+const RAIL_CARD_HEIGHT_CLASS = "h-[8.375rem]";
 
 /** The card's frame, its text column and where Save · Share sit: one set
  *  for RailCard and RailCardSkeleton, so the loading card cannot drift
@@ -45,8 +51,9 @@ const RAIL_CARD_FRAME =
   "border-border bg-card/95 shadow-elev relative isolate w-full overflow-hidden rounded-2xl border backdrop-blur";
 const RAIL_CARD_TEXT = "flex min-w-0 flex-1 flex-col gap-0.5 px-3 pt-3";
 /** Save · Share under the text column: the left edge is the square photo
- *  (the 154px inner height) plus the column's 12px. */
-const RAIL_CARD_ACTIONS = "absolute right-3 bottom-3 left-[calc(9.75rem+10px)]";
+ *  (the 132px inner height) plus the column's 12px. */
+const RAIL_CARD_ACTIONS =
+  "absolute right-3 bottom-3 left-[calc(8.375rem+10px)]";
 
 /** One 20px text row of the card in loading: a bar at the line's type size
  *  (16px name, 14px facts), centred on the row's line box. */
@@ -60,8 +67,8 @@ function RailRowSkeleton({ bar }: { bar: string }) {
 
 /** RailCard while the catalog loads (Pato, MESITA-2701: "the placeholders
  *  must be similar to the page you are loading, like the sizes"): the same
- *  frame, the square thumb at the inner height, the four 20px rows (name ·
- *  $$ category · ★ rating · hours) and Save · Share where CardActions
+ *  frame, the square thumb at the inner height, the three 20px rows (name ·
+ *  $$ category · ★ rating Open) and Save · Share where CardActions
  *  sits, so nothing moves when the cards land. */
 export function RailCardSkeleton() {
   return (
@@ -71,7 +78,6 @@ export function RailCardSkeleton() {
         <div className={RAIL_CARD_TEXT}>
           <RailRowSkeleton bar="h-4 w-3/4" />
           <RailRowSkeleton bar="h-3.5 w-1/2" />
-          <RailRowSkeleton bar="h-3.5 w-2/5" />
           <RailRowSkeleton bar="h-3.5 w-3/5" />
         </div>
       </div>
@@ -90,7 +96,7 @@ export function RailCardSkeleton() {
 //
 // ALSO ME › FAVORITES' ROW (Pato, MESITA-2698: "in favorites use this style
 // … the horizontal style to save things"). There it has no map, and
-// `withDistance` puts the distance back on the hours row.
+// `withDistance` puts the distance back on row three.
 
 export function RailCard({
   place,
@@ -113,8 +119,8 @@ export function RailCard({
   const placeholder = placePlaceholder(place);
   // THE HOME TILE'S FACTS, THE HOME TILE'S SCALE (Pato, MESITA-2651: "the
   // preview must show the same preview information"), from the same module
-  // (place-card.tsx): name (+ the Enriched mark); category · $$ · ★ rating
-  // (reviews); hours.
+  // (place-card.tsx): name (+ the Enriched mark); $$ · category; ★ rating
+  // (reviews) · Open or Closed.
   const facts = cardFacts(place);
 
   return (
@@ -173,8 +179,7 @@ export function RailCard({
             {isSponsoredPlace(place) ? <SponsoredMark /> : null}
           </p>
           <PriceKindRow facts={facts} />
-          <StarsRow facts={facts} />
-          <HoursRow facts={facts} withDistance={withDistance} />
+          <StarsOpenRow facts={facts} withDistance={withDistance} />
         </div>
       </button>
       {/* Under the text column (RAIL_CARD_ACTIONS). */}
