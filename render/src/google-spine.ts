@@ -2,8 +2,16 @@
 // Google type slug is not a Mesita category. Photo links are fetched separately
 // and copied into storage by the write.
 
-import { channelFromUrl, priceLevelFromGoogle } from "./channels.ts";
-import { closesAtFromHours, weeklyHoursFromPeriods, type GooglePeriod } from "./hours.ts";
+import {
+  channelFromUrl,
+  priceLevelFromGoogle,
+  type GooglePriceRange,
+} from "./channels.ts";
+import {
+  closesAtFromHours,
+  weeklyHoursFromPeriods,
+  type GooglePeriod,
+} from "./hours.ts";
 
 const FIELD_MASK = [
   "id",
@@ -16,6 +24,7 @@ const FIELD_MASK = [
   "websiteUri",
   "googleMapsUri",
   "priceLevel",
+  "priceRange",
   "rating",
   "userRatingCount",
   "businessStatus",
@@ -26,7 +35,11 @@ const FIELD_MASK = [
   "photos",
 ].join(",");
 
-const BUSINESS = new Set(["OPERATIONAL", "CLOSED_TEMPORARILY", "CLOSED_PERMANENTLY"]);
+const BUSINESS = new Set([
+  "OPERATIONAL",
+  "CLOSED_TEMPORARILY",
+  "CLOSED_PERMANENTLY",
+]);
 
 export type GooglePlace = {
   id?: string;
@@ -39,12 +52,16 @@ export type GooglePlace = {
   websiteUri?: string;
   googleMapsUri?: string;
   priceLevel?: string;
+  priceRange?: GooglePriceRange;
   rating?: number;
   userRatingCount?: number;
   businessStatus?: string;
   editorialSummary?: { text?: string };
   generativeSummary?: { overview?: { text?: string } };
-  regularOpeningHours?: { weekdayDescriptions?: string[]; periods?: GooglePeriod[] };
+  regularOpeningHours?: {
+    weekdayDescriptions?: string[];
+    periods?: GooglePeriod[];
+  };
   reviews?: {
     authorAttribution?: { displayName?: string };
     rating?: number;
@@ -56,7 +73,12 @@ export type GooglePlace = {
 };
 
 export type GoogleSpine =
-  | { ok: true; description: string | null; facts: string; patch: Record<string, unknown> }
+  | {
+      ok: true;
+      description: string | null;
+      facts: string;
+      patch: Record<string, unknown>;
+    }
   | { ok: false; error: string };
 
 function httpUrl(value: string | undefined): string | null {
@@ -64,9 +86,13 @@ function httpUrl(value: string | undefined): string | null {
   return url.startsWith("https://") || url.startsWith("http://") ? url : null;
 }
 
-export function profileFromGoogle(details: GooglePlace, requestedId: string): GoogleSpine {
+export function profileFromGoogle(
+  details: GooglePlace,
+  requestedId: string,
+): GoogleSpine {
   const name = details.displayName?.text?.trim() ?? "";
-  if (!name) return { ok: false, error: "Place has no display name on Google." };
+  if (!name)
+    return { ok: false, error: "Place has no display name on Google." };
   const lat = details.location?.latitude;
   const lng = details.location?.longitude;
   if (typeof lat !== "number" || typeof lng !== "number") {
@@ -78,11 +104,16 @@ export function profileFromGoogle(details: GooglePlace, requestedId: string): Go
   const editorial = details.editorialSummary?.text?.trim() ?? "";
   const generative = details.generativeSummary?.overview?.text?.trim() ?? "";
   const description = capPresentation(editorial || generative);
-  const phone = (details.internationalPhoneNumber || details.nationalPhoneNumber || "").trim();
+  const phone = (
+    details.internationalPhoneNumber ||
+    details.nationalPhoneNumber ||
+    ""
+  ).trim();
   const channel = channelFromUrl(details.websiteUri);
   const website = channel?.key === "website_url" ? channel.url : null;
   const placeId = (details.id ?? requestedId).trim();
-  const maps = httpUrl(details.googleMapsUri) ??
+  const maps =
+    httpUrl(details.googleMapsUri) ??
     `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(placeId)}`;
   const business = details.businessStatus?.trim().toUpperCase() ?? "";
 
@@ -105,12 +136,19 @@ export function profileFromGoogle(details: GooglePlace, requestedId: string): Go
     if (channel.key === "instagram_url") patch.instagram_found = true;
     if (channel.key === "facebook_url") patch.facebook_found = true;
   }
-  const price = priceLevelFromGoogle(details.priceLevel);
+  const price = priceLevelFromGoogle(details.priceLevel, details.priceRange);
   if (price) patch.price_level = price;
-  if (typeof details.rating === "number" && details.rating >= 0 && details.rating <= 5) {
+  if (
+    typeof details.rating === "number" &&
+    details.rating >= 0 &&
+    details.rating <= 5
+  ) {
     patch.google_stars_overall = details.rating;
   }
-  if (Number.isInteger(details.userRatingCount) && (details.userRatingCount ?? 0) >= 0) {
+  if (
+    Number.isInteger(details.userRatingCount) &&
+    (details.userRatingCount ?? 0) >= 0
+  ) {
     patch.google_review_count = details.userRatingCount;
   }
   if (BUSINESS.has(business)) {
@@ -119,7 +157,9 @@ export function profileFromGoogle(details: GooglePlace, requestedId: string): Go
   }
   const hours = weeklyHoursFromPeriods(details.regularOpeningHours?.periods);
   if (hours) patch.hours = hours;
-  const closesAt = closesAtFromHours(details.regularOpeningHours?.weekdayDescriptions);
+  const closesAt = closesAtFromHours(
+    details.regularOpeningHours?.weekdayDescriptions,
+  );
   if (closesAt) patch.closes_at = closesAt;
   // Places returns at most five reviews. The review list is Apify's, written
   // by buildEnrichment. Copying these five would be the list the guest sees.
@@ -138,26 +178,40 @@ export function profileFromGoogle(details: GooglePlace, requestedId: string): Go
     phone ? `Phone: ${phone}` : "",
     website ? `Website: ${website}` : "",
     channel && channel.key !== "website_url" ? `Link: ${channel.url}` : "",
-    typeof details.rating === "number" ? `Google rating: ${details.rating}` : "",
+    typeof details.rating === "number"
+      ? `Google rating: ${details.rating}`
+      : "",
     description ? `Google summary: ${description}` : "",
-  ].filter(Boolean).join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   return { ok: true, description, facts, patch };
 }
 
-export async function fetchTimezone(lat: number, lng: number, apiKey: string): Promise<string | null> {
+export async function fetchTimezone(
+  lat: number,
+  lng: number,
+  apiKey: string,
+): Promise<string | null> {
   const stamp = Math.floor(Date.now() / 1000);
   const res = await fetch(
     `https://maps.googleapis.com/maps/api/timezone/json?location=${lat},${lng}&timestamp=${stamp}&key=${encodeURIComponent(apiKey)}`,
   );
   if (!res.ok) return null;
-  const body = await res.json().catch(() => null) as { status?: string; timeZoneId?: string } | null;
+  const body = (await res.json().catch(() => null)) as {
+    status?: string;
+    timeZoneId?: string;
+  } | null;
   return body?.status === "OK" && body.timeZoneId ? body.timeZoneId : null;
 }
 
 const PHOTO_CAP = 10;
 
-export function photoUris(bodies: { photoUri?: string }[], cap = PHOTO_CAP): string[] {
+export function photoUris(
+  bodies: { photoUri?: string }[],
+  cap = PHOTO_CAP,
+): string[] {
   const limit = Math.min(PHOTO_CAP, Math.max(0, Math.floor(cap)));
   const out: string[] = [];
   for (const body of bodies) {
@@ -179,30 +233,40 @@ export async function fetchGooglePhotoUrls(
     .map((photo) => photo.name?.trim() ?? "")
     .filter(Boolean)
     .slice(0, limit);
-  const bodies = await Promise.all(names.map(async (name) => {
-    const res = await fetch(
-      `https://places.googleapis.com/v1/${name}/media?maxHeightPx=1600&skipHttpRedirect=true`,
-      { headers: { "X-Goog-Api-Key": apiKey } },
-    );
-    if (!res.ok) return {};
-    return await res.json().catch(() => ({})) as { photoUri?: string };
-  }));
+  const bodies = await Promise.all(
+    names.map(async (name) => {
+      const res = await fetch(
+        `https://places.googleapis.com/v1/${name}/media?maxHeightPx=1600&skipHttpRedirect=true`,
+        { headers: { "X-Goog-Api-Key": apiKey } },
+      );
+      if (!res.ok) return {};
+      return (await res.json().catch(() => ({}))) as { photoUri?: string };
+    }),
+  );
   return photoUris(bodies, limit);
 }
 
-export async function fetchGooglePlace(googlePlaceId: string, apiKey: string): Promise<GooglePlace> {
+export async function fetchGooglePlace(
+  googlePlaceId: string,
+  apiKey: string,
+): Promise<GooglePlace> {
   const url = `https://places.googleapis.com/v1/places/${encodeURIComponent(googlePlaceId)}?languageCode=es-MX&regionCode=MX`;
   const res = await fetch(url, {
     headers: { "X-Goog-Api-Key": apiKey, "X-Goog-FieldMask": FIELD_MASK },
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Google rejected the place (${res.status}). ${text.slice(0, 160)}`);
+    throw new Error(
+      `Google rejected the place (${res.status}). ${text.slice(0, 160)}`,
+    );
   }
-  return await res.json() as GooglePlace;
+  return (await res.json()) as GooglePlace;
 }
 
-export async function describeFromFacts(facts: string, apiKey: string): Promise<string> {
+export async function describeFromFacts(
+  facts: string,
+  apiKey: string,
+): Promise<string> {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -222,11 +286,15 @@ export async function describeFromFacts(facts: string, apiKey: string): Promise<
       ],
     }),
   });
-  const body = await res.json().catch(() => null) as {
+  const body = (await res.json().catch(() => null)) as {
     choices?: { message?: { content?: string } }[];
     error?: { message?: string };
   } | null;
-  if (!res.ok) throw new Error(body?.error?.message || `OpenAI did not write a description (${res.status})`);
+  if (!res.ok)
+    throw new Error(
+      body?.error?.message ||
+        `OpenAI did not write a description (${res.status})`,
+    );
   return capPresentation(body?.choices?.[0]?.message?.content ?? "") ?? "";
 }
 
@@ -249,6 +317,7 @@ export function capPresentation(text: string): string | null {
   if (end >= PRESENTATION_MAX * MIN_KEEP) return head.slice(0, end).trimEnd();
   const room = t.slice(0, PRESENTATION_MAX - 1);
   const space = room.lastIndexOf(" ");
-  const cut = space >= PRESENTATION_MAX * MIN_KEEP ? room.slice(0, space) : room;
+  const cut =
+    space >= PRESENTATION_MAX * MIN_KEEP ? room.slice(0, space) : room;
   return `${cut.replace(/[\s,;:–—-]+$/, "")}…`;
 }

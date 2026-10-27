@@ -12,13 +12,18 @@ import { priceLevelFromGoogle } from "./enrich-google-basics-normalizers.ts";
 import type { NearbyHit } from "./nearby-places.ts";
 
 /** `sports_bar` → "Sports bar": the fallback when Google sends no label. */
-export function humanizeGoogleType(slug: string | null | undefined): string | null {
+export function humanizeGoogleType(
+  slug: string | null | undefined,
+): string | null {
   const words = (slug ?? "").trim().replace(/_/g, " ");
   if (!words) return null;
   return words[0].toUpperCase() + words.slice(1);
 }
 
-export function googleStub(hit: NearbyHit, distanceKm: number | null): Record<string, unknown> {
+export function googleStub(
+  hit: NearbyHit,
+  distanceKm: number | null,
+): Record<string, unknown> {
   return {
     id: `g:${hit.placeId}`,
     slug: hit.placeId,
@@ -28,7 +33,10 @@ export function googleStub(hit: NearbyHit, distanceKm: number | null): Record<st
     // Primary first, then 0–2 secondary from Google's types[] (MESITA-2438).
     family_keys: placeFamilies(hit.primaryType, hit.types),
     category_label: hit.typeLabel ?? humanizeGoogleType(hit.primaryType),
-    price_level: priceLevelFromGoogle(hit.priceLevel ?? undefined),
+    price_level: priceLevelFromGoogle(
+      hit.priceLevel ?? undefined,
+      hit.priceRange ?? undefined,
+    ),
     currency: "MXN",
     state: "active",
     lat: hit.lat,

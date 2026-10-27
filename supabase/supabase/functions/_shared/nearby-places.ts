@@ -24,8 +24,12 @@ import {
   GOOGLE_PLACES_NEARBY_URL,
   stripPlacesPrefix,
 } from "./google-places.ts";
+import type { GooglePriceRange } from "./enrich-google-basics-normalizers.ts";
 import { NEARBY_RADIUS_KM } from "./geo.ts";
-import { EVERY_FAMILY_TYPES, GOOGLE_SEARCH_TYPES } from "./google-type-super.ts";
+import {
+  EVERY_FAMILY_TYPES,
+  GOOGLE_SEARCH_TYPES,
+} from "./google-type-super.ts";
 
 /** Nearby Search (New) caps one POST at maxResultCount 20 with no page
  *  token (MESITA-2298); more candidates take more, different calls. */
@@ -59,6 +63,7 @@ const LISTING_FIELDS = [
   "primaryTypeDisplayName",
   "types",
   "priceLevel",
+  "priceRange",
   "googleMapsUri",
   "internationalPhoneNumber",
   "websiteUri",
@@ -66,7 +71,10 @@ const LISTING_FIELDS = [
 
 /** THE ONE field mask for a list of places, Search and Feed alike: the
  *  listing fields, with open now as Google's one boolean. */
-export const NEARBY_FIELD_MASK = [...LISTING_FIELDS, "currentOpeningHours.openNow"]
+export const NEARBY_FIELD_MASK = [
+  ...LISTING_FIELDS,
+  "currentOpeningHours.openNow",
+]
   .map((field) => `places.${field}`)
   .join(",");
 
@@ -74,7 +82,10 @@ export const NEARBY_FIELD_MASK = [...LISTING_FIELDS, "currentOpeningHours.openNo
  *  Opening hours go whole, the Details field the Enricher already asks
  *  (enrich-google-basics.ts); the parser reads `openNow` off it. Same
  *  Enterprise SKU. */
-export const DETAILS_LISTING_FIELD_MASK = [...LISTING_FIELDS, "currentOpeningHours"].join(",");
+export const DETAILS_LISTING_FIELD_MASK = [
+  ...LISTING_FIELDS,
+  "currentOpeningHours",
+].join(",");
 
 export type NearbyHit = {
   placeId: string;
@@ -96,6 +107,9 @@ export type NearbyHit = {
   typeLabel?: string | null;
   /** Google's `priceLevel` enum (`PRICE_LEVEL_MODERATE`), raw. */
   priceLevel?: string | null;
+  /** Google's numeric `priceRange`: the $$ when `priceLevel` is missing
+   *  (MESITA-2860). Same Enterprise SKU. */
+  priceRange?: GooglePriceRange | null;
   /** `shortFormattedAddress`: street and area, without city and country. */
   shortAddress?: string | null;
   mapsUri?: string | null;
@@ -116,6 +130,7 @@ export type GooglePlaceListing = {
   primaryTypeDisplayName?: { text?: string };
   types?: string[];
   priceLevel?: string;
+  priceRange?: GooglePriceRange;
   shortFormattedAddress?: string;
   currentOpeningHours?: { openNow?: boolean };
   googleMapsUri?: string;
@@ -137,14 +152,21 @@ export function nearbyHitFromPlace(p: GooglePlaceListing): NearbyHit {
     lng: typeof lng === "number" ? lng : null,
     rating: typeof p.rating === "number" ? p.rating : null,
     primaryType: p.primaryType ?? null,
-    types: Array.isArray(p.types) ? p.types.filter((t) => typeof t === "string") : [],
-    businessStatus: typeof p.businessStatus === "string" ? p.businessStatus : null,
-    reviewCount: typeof p.userRatingCount === "number" ? p.userRatingCount : null,
+    types: Array.isArray(p.types)
+      ? p.types.filter((t) => typeof t === "string")
+      : [],
+    businessStatus: typeof p.businessStatus === "string"
+      ? p.businessStatus
+      : null,
+    reviewCount: typeof p.userRatingCount === "number"
+      ? p.userRatingCount
+      : null,
     openNow: typeof p.currentOpeningHours?.openNow === "boolean"
       ? p.currentOpeningHours.openNow
       : null,
     typeLabel: p.primaryTypeDisplayName?.text?.trim() || null,
     priceLevel: p.priceLevel ?? null,
+    priceRange: p.priceRange ?? null,
     shortAddress: p.shortFormattedAddress?.trim() || null,
     mapsUri: p.googleMapsUri ?? null,
     phone: p.internationalPhoneNumber?.trim() || null,
@@ -163,18 +185,28 @@ export async function fetchPlaceListing(
   apiKey: string,
 ): Promise<NearbyHit | null> {
   try {
-    const r = await fetch(`${GOOGLE_PLACES_DETAILS_BASE}/${encodeURIComponent(placeId)}`, {
-      headers: {
-        "X-Goog-Api-Key": apiKey,
-        "X-Goog-FieldMask": DETAILS_LISTING_FIELD_MASK,
+    const r = await fetch(
+      `${GOOGLE_PLACES_DETAILS_BASE}/${encodeURIComponent(placeId)}`,
+      {
+        headers: {
+          "X-Goog-Api-Key": apiKey,
+          "X-Goog-FieldMask": DETAILS_LISTING_FIELD_MASK,
+        },
       },
-    });
+    );
     if (!r.ok) {
       const text = await r.text();
-      console.error("[nearby] Google place details", r.status, text.slice(0, 300));
+      console.error(
+        "[nearby] Google place details",
+        r.status,
+        text.slice(0, 300),
+      );
       return null;
     }
-    return { ...nearbyHitFromPlace((await r.json()) as GooglePlaceListing), placeId };
+    return {
+      ...nearbyHitFromPlace((await r.json()) as GooglePlaceListing),
+      placeId,
+    };
   } catch (err) {
     console.error("[nearby] Google place details threw", String(err));
     return null;
@@ -231,7 +263,10 @@ async function searchNearbyOnce(
     try {
       r = await post();
     } catch (err) {
-      console.error("[nearby] Google searchNearby threw; retrying once", String(err));
+      console.error(
+        "[nearby] Google searchNearby threw; retrying once",
+        String(err),
+      );
       await new Promise((res) => setTimeout(res, NEARBY_RETRY_DELAY_MS));
       r = await post();
     }
@@ -248,7 +283,12 @@ async function searchNearbyOnce(
     if (!r.ok) {
       const text = await r.text();
       const code = classifyGoogleError(r.status, text);
-      console.error("[nearby] Google searchNearby failed", code, r.status, text.slice(0, 300));
+      console.error(
+        "[nearby] Google searchNearby failed",
+        code,
+        r.status,
+        text.slice(0, 300),
+      );
       return { ok: false };
     }
     const data = (await r.json()) as { places?: GooglePlaceListing[] };
@@ -328,9 +368,18 @@ export async function searchNearbyPlacesOutcome(
   if (types.length === 0) return { hits: [], outcome: "none" };
   const excluded = (opts.excludedTypes ?? []).filter((t) => !types.includes(t));
   const rank = opts.rankPreference ?? "DISTANCE";
-  if (beforeFanout && !(await beforeFanout())) return { hits: [], outcome: "refused" };
+  if (beforeFanout && !(await beforeFanout())) {
+    return { hits: [], outcome: "refused" };
+  }
 
-  const batch = await searchNearbyOnce(apiKey, center, radius, [...types], excluded, rank);
+  const batch = await searchNearbyOnce(
+    apiKey,
+    center,
+    radius,
+    [...types],
+    excluded,
+    rank,
+  );
   if (!batch.ok) return { hits: [], outcome: "failed" };
   const seen = new Set<string>();
   const hits: NearbyHit[] = [];
