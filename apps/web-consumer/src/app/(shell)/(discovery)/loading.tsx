@@ -1,9 +1,7 @@
 "use client";
 
 import { useSelectedLayoutSegment } from "next/navigation";
-import { BrandHeader } from "@/components/consumer/ModeTabs";
-import { DiscoverFallback } from "@/components/consumer/home/DiscoverFallback";
-import { Skeleton } from "@/components/shared";
+import { HomeLoadingFrame } from "@/components/consumer/home/HomeLoadingFrame";
 import SearchLoading from "./search/loading";
 
 // THE FRAME A SEARCH ↔ HOME SWITCH PAINTS AT ONCE (MESITA-2824). This
@@ -20,28 +18,5 @@ import SearchLoading from "./search/loading";
 export default function DiscoveryLoading() {
   const segment = useSelectedLayoutSegment();
   if (segment === "search") return <SearchLoading />;
-  return (
-    <div className="flex min-h-0 flex-1 flex-col" aria-busy>
-      <p role="status" className="sr-only">
-        Loading Home
-      </p>
-      <BrandHeader>
-        <Skeleton className="ml-auto h-8 w-36 rounded-full" />
-      </BrandHeader>
-      <div className="border-border bg-card flex shrink-0 border-b">
-        <div className="flex flex-1 justify-center py-3">
-          <Skeleton className="h-5 w-14" />
-        </div>
-        <div className="flex flex-1 justify-center py-3">
-          <Skeleton className="h-5 w-14" />
-        </div>
-      </div>
-      <div className="flex min-h-0 flex-1">
-        <div className="bg-border w-1/4 shrink-0" />
-        <div className="bg-card flex min-h-0 flex-1 flex-col overflow-hidden">
-          <DiscoverFallback />
-        </div>
-      </div>
-    </div>
-  );
+  return <HomeLoadingFrame />;
 }

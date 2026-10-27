@@ -3,8 +3,7 @@ import { headers } from "next/headers";
 import { BottomNav } from "@/components/consumer/BottomNav";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
 import { LoadingFill } from "@/components/shared";
-import SearchChatLoading from "./(shell)/(discovery)/search/chat/loading";
-import SearchLoading from "./(shell)/(discovery)/search/loading";
+import { ShellLoadingFor } from "./(shell)/shell-loading";
 
 // The wait before a route's own loading.tsx can mount: the shell layout is
 // async (the session and the profile), so this file is what a hard load
@@ -15,8 +14,8 @@ import SearchLoading from "./(shell)/(discovery)/search/loading";
 //
 // The phone is the loading screen (Pato, MESITA-2750). Sign-in is already
 // inside one. Onboard draws its own and has no tab bar. Every shell route
-// gets the card and the real bottom bar, and Search gets Search's skeleton
-// so the map does not arrive as a second, different screen.
+// gets the card and the real bottom bar, and the target's own placeholder,
+// never a spinner (MESITA-2840: "just use the placeholder directly").
 
 function shellChrome(body: React.ReactNode) {
   return (
@@ -39,11 +38,5 @@ export default async function RootLoading() {
   if (bare === "/onboard" || bare.startsWith("/onboard/")) {
     return <MobileFrame>{fill()}</MobileFrame>;
   }
-  if (bare === "/search/chat" || bare.startsWith("/search/chat/")) {
-    return shellChrome(<SearchChatLoading />);
-  }
-  if (bare === "/search" || bare.startsWith("/search/")) {
-    return shellChrome(<SearchLoading />);
-  }
-  return shellChrome(fill());
+  return shellChrome(<ShellLoadingFor bare={bare} />);
 }
