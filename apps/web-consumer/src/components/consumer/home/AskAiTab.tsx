@@ -7,8 +7,8 @@
 
 import { useCallback, useState } from "react";
 import { Phone } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
+import { useOpenPlaceHref } from "@/lib/use-open-place-href";
 import { useUserLocation } from "@/lib/use-user-location";
 import type { Place } from "@/lib/api/places";
 import { apiCreateProject, type PlacePrediction } from "@/lib/api/place-search";
@@ -23,7 +23,7 @@ import { matchPredictionToPlace } from "@/components/consumer/search/search-util
 import type { AddState } from "@/components/consumer/search/add-state";
 
 export function AskAiTab({ places }: { places: Place[] }) {
-  const router = useRouter();
+  const openPlace = useOpenPlaceHref();
   const [callSoon, setCallSoon] = useState(false);
   const supabase = useBrowserSupabase();
   const userLocation = useUserLocation();
@@ -50,19 +50,19 @@ export function AskAiTab({ places }: { places: Place[] }) {
       // Prefer the EF-provided Mesita identity; fall back to a catalog match.
       const direct = prediction.mesitaSlug ?? prediction.mesitaId;
       if (direct) {
-        router.push(placeHref(direct));
+        openPlace(placeHref(direct));
         return;
       }
       const match = matchPredictionToPlace(prediction, places);
       if (match) {
-        router.push(placeHref(match.slug || match.id));
+        openPlace(placeHref(match.slug || match.id));
         return;
       }
       toast(
         "This place is on Mesita but isn't in the catalog snapshot yet — opening it from here is coming soon.",
       );
     },
-    [places, router],
+    [places, openPlace],
   );
 
   // Create only — the ugly profile is live immediately. Enricher waits
@@ -81,7 +81,7 @@ export function AskAiTab({ places }: { places: Place[] }) {
             `${prediction.mainText} is on Mesita. Vote to enrich its profile.`,
           );
           const dest = created.place.slug || created.place.id;
-          if (dest) router.push(placeHref(dest));
+          if (dest) openPlace(placeHref(dest));
         } catch (err) {
           setAddStates((s) => {
             const next = { ...s };
@@ -92,7 +92,7 @@ export function AskAiTab({ places }: { places: Place[] }) {
         }
       })();
     },
-    [addStates, router, supabase],
+    [addStates, openPlace, supabase],
   );
 
   // Header (shrink-0) + panel (min-h-0 flex-1): the thread scrolls under a

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
+import { navigateTo } from "@/lib/navigate";
 import { prefixPath, type Surface } from "@/lib/surface";
 
 function currentSurface(): Surface {
@@ -34,7 +35,10 @@ export function SurfacePrefixer() {
       if (next === href) return;
       event.preventDefault();
       event.stopPropagation();
-      router.push(next);
+      // The bottom bar, Home's tiles, the tab strip, Me's rows: every <a>
+      // lands here, so this is where a push that never commits becomes a
+      // page load (MESITA-2824).
+      navigateTo(router, next);
     }
 
     const push = history.pushState.bind(history);
