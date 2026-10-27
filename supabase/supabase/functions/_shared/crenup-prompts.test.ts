@@ -8,14 +8,12 @@ import { crenupPromptsMeta } from "./crenup-prompts.ts";
 import { SCOUT_INSTRUCTIONS } from "./enrich-serp.ts";
 import { RESOLVER_INSTRUCTIONS } from "./enrich-channel-discovery.ts";
 import { PRESENTATION_INSTRUCTIONS } from "./enrich-synthesis.ts";
-import { CATEGORY_INSTRUCTIONS } from "./categories-infer.ts";
 
 Deno.test("every prompt-bearing Crenup step is on the payload, in pipeline order", () => {
   const keys = crenupPromptsMeta().map((p) => p.key);
   assertEquals(keys, [
     "scout",
     "resolver",
-    "category",
     "presentation",
   ]);
 });
@@ -28,7 +26,6 @@ Deno.test("the payload ships the SAME instructions the pipeline sends", () => {
   assertEquals(byKey.get("scout")!.instructions, SCOUT_INSTRUCTIONS);
   assertEquals(byKey.get("resolver")!.instructions, RESOLVER_INSTRUCTIONS);
   assertEquals(byKey.get("presentation")!.instructions, PRESENTATION_INSTRUCTIONS);
-  assertEquals(byKey.get("category")!.instructions, CATEGORY_INSTRUCTIONS);
 });
 
 Deno.test("the two named agents are Scout and Resolver, and nothing else is named", () => {
@@ -45,7 +42,6 @@ Deno.test("each prompt points at the step Docs › Create · Enrich · Edit §A 
   assertEquals(fnByKey, {
     scout: "2 · Serp",
     resolver: "3 · Links",
-    category: null,
     presentation: "7 · Description",
   });
 });
@@ -68,7 +64,6 @@ Deno.test("Perplexity is named on both Perplexity steps, and on neither OpenAI o
   assert(vendorOf("resolver").includes("Firecrawl"));
   assert(vendorOf("presentation").includes("OpenAI"));
   assert(!vendorOf("presentation").includes("Perplexity"));
-  assert(vendorOf("category").includes("OpenAI"));
 });
 
 Deno.test("the rendered input is a TEMPLATE — sentinels, never a real place", () => {
