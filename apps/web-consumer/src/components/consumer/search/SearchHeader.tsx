@@ -11,8 +11,8 @@
 //
 // The bar's row: the locate disc, the query bar, the Ask AI pill (→ Search ›
 // Chat). One token set for every control lives in header-classes.ts. NO ADD
-// DISC (MESITA-2876's `+`): adding a place is the carousel's first card now
-// (AddPlaceRailCard). NO FILTERS (MESITA-2758's disc and sheet): the chip row
+// DISC (MESITA-2876's `+`), and no Add card since MESITA-2883: the bar
+// searches Mesita names only, so it cannot add a Google place. NO FILTERS (MESITA-2758's disc and sheet): the chip row
 // is the family pick. Under the bar's row one horizontal chip row: All, then
 // every family, each with its line icon (MESITA-2478: line icons, not emoji).
 // All, not Top (Pato's word, MESITA-2879; MESITA-2534 had Top). NO NEARBY,
