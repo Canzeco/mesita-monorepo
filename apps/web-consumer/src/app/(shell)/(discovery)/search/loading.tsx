@@ -11,11 +11,12 @@ import { cn } from "@/lib/utils";
 // MESITA-2701: "the placeholders must be similar to the page you are
 // loading, like the sizes"). SearchHeader's one white band (MESITA-2879): the
 // bar's row (the 36px locate disc · the query bar · the Ask AI pill) at 10px
-// above and below, a hairline, the family chip row (All, then families) at
-// 10px above and below, a hairline under it. Then the map under MapVeil, the
-// spinner on the cross, and the carousel floating over the map's foot
-// (MESITA-2670): the same veil and the same first-load row the mounted
-// page draws until its tiles and catalog land, so nothing moves on arrival.
+// above and below, a hairline, the chip row (the Filters disc, Top, then
+// families; MESITA-2882) at 10px above and below, a hairline under it. Then
+// the map under MapVeil, the spinner on the cross, and the carousel floating
+// over the map's foot (MESITA-2670): the same veil and the same first-load
+// row (the Add button, then skeleton pages) the mounted page draws until its
+// tiles and catalog land, so nothing moves on arrival.
 
 /** A header control's grey block at the control's own size: its token
  *  classes around its real label and a 16px icon box, kept invisible, so
@@ -43,7 +44,8 @@ export default function SearchLoading() {
           <ControlSkeleton token={HEADER_PILL} label="Ask AI" />
         </div>
         <div className="border-border flex items-center gap-2 overflow-hidden border-t px-3 py-2.5">
-          <ControlSkeleton token={CHIP} label="All" />
+          <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+          <ControlSkeleton token={CHIP} label="Top" />
           {["Coffee", "Breakfast", "Brunch", "Bakery"].map((label) => (
             <ControlSkeleton key={label} token={CHIP} label={label} />
           ))}
