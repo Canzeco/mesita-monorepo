@@ -96,10 +96,12 @@ const ITEMS: Item[] = [
     label: "Me",
     // Me plus a reservation's detail: /reservation/{id} is reached from a
     // place AND from Me › Reservations, and that list is where you
-    // land back (MESITA-2561; Saved owned it while Saved was a tab).
+    // land back (MESITA-2561; Saved owned it while Saved was a tab). /share
+    // is Me's Share tile since it left the bar (MESITA-2858).
     matchPrefixes: [
       CONSUMER_ROUTE_PREFIX.me,
       CONSUMER_RESERVATION_SURFACE_PREFIX,
+      CONSUMER_ROUTES.share,
     ],
   },
 ];

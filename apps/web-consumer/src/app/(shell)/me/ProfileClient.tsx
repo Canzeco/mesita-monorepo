@@ -18,7 +18,7 @@ import { DestTile } from "./profile-sections";
 import { MeHubFrame } from "./hub-tiles";
 import { IdentityBar } from "./IdentityBar";
 
-// The Me surface — the identity header, then nine cells in Pato's order
+// The Me surface — the identity header, then ten cells in Pato's order
 // (MESITA-2562; Support left for Settings, MESITA-2169):
 //
 //   header         identity + Instagram; the bar IS a door (MESITA-1652)
@@ -26,12 +26,12 @@ import { IdentityBar } from "./IdentityBar";
 //   2              Class · Plan
 //   2              Notifications · Reservations
 //   2              Favorites · Connector
-//   1              Settings, alone on the last row
+//   2              Share · Settings (Share left the bar, MESITA-2858)
 //
 // THE CELLS LIVE IN hub-tiles.tsx, rows and words, with the scroller they sit
 // in: (hub)/loading.tsx draws the same rows while this page loads (Pato,
 // MESITA-2701: "the placeholders must be similar to the page you are
-// loading, like the sizes"). NINE CELLS, AND THAT IS THE WHOLE PAGE.
+// loading, like the sizes"). TEN CELLS, AND THAT IS THE WHOLE PAGE.
 // route-structure T8 pins them.
 //
 // EVERY CELL IS A ROUTE (Pato, MESITA-1789). Sheets over this hub stacked
