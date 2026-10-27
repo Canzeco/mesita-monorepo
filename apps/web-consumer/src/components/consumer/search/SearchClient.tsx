@@ -815,18 +815,14 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     anchorMapTo({ lat: anchorRow.lat, lng: anchorRow.lng }, anchorRow);
   };
 
+  // A rail card's tap is THE explicit open (Pato, MESITA-2824: a tap that
+  // only selected read as "nothing opens"). A Google-only card goes to its
+  // opening screen, which is where get-or-create runs — the tap itself
+  // creates nothing (MESITA-2305 holds: no create on a select, a pin's
+  // first tap, a prefetch or a render).
   const handleOpenPlace = (place: Place) => {
     const google = googlePredictionFromPlace(place);
     if (google) {
-      // The explicit open is the SECOND tap on a pin or card the guest
-      // chose (MESITA-2298 §5). `railSelectedId` also carries the card-0
-      // fallback nobody tapped, so a first tap there reads as an open to
-      // the map and the rail; for a Google-only row that tap must only
-      // select — a create on one tap is what the spec forbids (MESITA-2305).
-      if (selectedId !== place.id) {
-        handleSelectPlace(place);
-        return;
-      }
       openGoogleOnly(google, place);
       return;
     }
@@ -1083,7 +1079,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
             selectedId={railSelectedId}
             railScrollRef={railScrollRef}
             onRailScroll={handleRailScroll}
-            onSelectPlace={handleSelectPlace}
             onOpenPlace={handleOpenPlace}
             setRailCardRef={(placeId, el) => {
               railRefs.current.set(placeId, el);

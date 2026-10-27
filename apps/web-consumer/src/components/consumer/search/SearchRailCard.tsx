@@ -81,19 +81,17 @@ export function RailCardSkeleton() {
 }
 
 // One floating catalog card on the bottom rail.
-// Two-step tap: the first tap on an unselected card just selects it (highlight +
-// snap the rail/map onto it); tapping the already-selected card opens its detail.
-// Save and Share are siblings of that tap target, so they never select or open.
+// ONE TAP OPENS the card's detail (Pato, MESITA-2824: the old select-first
+// tap read as "nothing opens"); the ring marks the pin the rail is on. Save
+// and Share are siblings of that tap target, so they never open.
 //
 // ALSO ME › FAVORITES' ROW (Pato, MESITA-2698: "in favorites use this style
-// … the horizontal style to save things"). There it has no map: no
-// onSelect, so a tap opens at once, and `withDistance` puts the distance
-// back on the hours row.
+// … the horizontal style to save things"). There it has no map, and
+// `withDistance` puts the distance back on the hours row.
 
 export function RailCard({
   place,
   selected,
-  onSelect,
   onOpen,
   saved,
   onSave,
@@ -102,8 +100,6 @@ export function RailCard({
 }: {
   place: Place;
   selected: boolean;
-  /** Absent (a list, not the map): a tap opens at once. */
-  onSelect?: () => void;
   onOpen: () => void;
   saved: boolean;
   onSave: () => void;
@@ -128,7 +124,11 @@ export function RailCard({
     >
       <button
         type="button"
-        onClick={selected || !onSelect ? onOpen : onSelect}
+        // ONE TAP OPENS (Pato, MESITA-2824: a card that only selected read
+        // as "nothing opens"). The select-then-open dance stays on the pins;
+        // a card the guest taps is the deliberate open, Google-only included
+        // (the opening screen creates, never this tap).
+        onClick={onOpen}
         className="focus-visible:ring-primary absolute inset-0 flex items-stretch text-left outline-none focus-visible:ring-2 focus-visible:ring-inset"
       >
         {/* Square thumb, card stays a wide rectangle. Bleeds to the card edge

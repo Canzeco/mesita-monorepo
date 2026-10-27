@@ -25,6 +25,7 @@ import { APIProvider, useMapsLibrary } from "@vis.gl/react-google-maps";
 import { PlaceDetailBody, PlaceProfile } from "@mesita/place-profile";
 import { PlaceDetailModalShell } from "@/components/consumer/PlaceDetailModalShell";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { navigateTo } from "@/lib/navigate";
 import {
   fetchGooglePlaceFacts,
   type GooglePlaceFacts,
@@ -154,7 +155,7 @@ function OpeningBody({
         // (.)place intercept paint the profile as a modal over this screen,
         // with no history entry for its Back to pop.
         if (variant === "page") window.location.replace(opened.href);
-        else router.replace(opened.href);
+        else navigateTo(router, opened.href, { replace: true });
       } catch (err) {
         if (live) setError(errMsg(err, "Couldn't open that place right now."));
       }

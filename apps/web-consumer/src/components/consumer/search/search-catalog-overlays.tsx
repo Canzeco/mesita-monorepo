@@ -205,7 +205,6 @@ export function SearchRailOverlay({
   selectedId,
   railScrollRef,
   onRailScroll,
-  onSelectPlace,
   onOpenPlace,
   setRailCardRef,
 }: {
@@ -214,7 +213,6 @@ export function SearchRailOverlay({
   selectedId: string | null;
   railScrollRef: RefObject<HTMLDivElement | null>;
   onRailScroll: () => void;
-  onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
   setRailCardRef: (placeId: string, el: HTMLElement | null) => void;
 }) {
@@ -267,7 +265,6 @@ export function SearchRailOverlay({
                 <RailCard
                   place={place}
                   selected={place.id === selectedId}
-                  onSelect={() => onSelectPlace(place)}
                   onOpen={() => onOpenPlace(place)}
                   saved={cards.isSaved(place)}
                   onSave={() => cards.toggle(place)}

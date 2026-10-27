@@ -104,7 +104,11 @@ describe("the open, the create and the Feed", () => {
   it("the opening screen draws the profile, awaits the create, then shows the real profile", () => {
     const screen = read("../../components/consumer/OpeningGooglePlace.tsx");
     const create = screen.indexOf("await getOrCreateGooglePlace(supabase, gid)");
-    const replace = screen.indexOf("router.replace(opened.href)");
+    // The slide-over replaces itself through the one navigation guard, so a
+    // replace that never commits still loads the profile (MESITA-2824).
+    const replace = screen.indexOf(
+      "navigateTo(router, opened.href, { replace: true })",
+    );
     expect(create).toBeGreaterThan(0);
     expect(replace).toBeGreaterThan(create);
     expect(screen).toContain("creating={creating}");

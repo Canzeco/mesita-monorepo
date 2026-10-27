@@ -238,17 +238,20 @@ describe("a Google-only result opens through get-or-create, never a preview or a
       "utf8",
     );
     expect(opener.match(/apiCreateProject\(/g)?.length).toBe(1);
-    // One tap never creates: a Google-only open needs the RAW selection to
-    // match, else the tap selects (MESITA-2305).
+    // ONE TAP OPENS a rail card (MESITA-2824), and still never creates: the
+    // tap goes to the opening screen, which is where get-or-create runs
+    // (MESITA-2305 holds). No select-first branch stands between the tap
+    // and the open any more.
     const openPlace = client.slice(
       client.indexOf("const handleOpenPlace"),
       client.indexOf("const railSelectedId"),
     );
-    expect(openPlace).toContain("if (selectedId !== place.id)");
-    expect(openPlace).toContain("handleSelectPlace(place)");
-    expect(openPlace.indexOf("if (selectedId !== place.id)")).toBeLessThan(
-      openPlace.indexOf("openGoogleOnly(google, place)"),
-    );
+    expect(openPlace).toContain("openGoogleOnly(google, place)");
+    expect(openPlace).not.toContain("handleSelectPlace(place)");
+    expect(openPlace).not.toContain("getOrCreateGooglePlace");
+    const railCard = read("SearchRailCard.tsx");
+    expect(railCard).toContain("onClick={onOpen}");
+    expect(railCard).not.toContain("onSelect");
     for (const gone of ["GooglePlaceSheet.tsx"]) {
       expect(existsSync(join(SEARCH_DIR, gone)), gone).toBe(false);
     }
