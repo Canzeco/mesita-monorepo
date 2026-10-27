@@ -28,6 +28,14 @@ export function SurfacePrefixer() {
       }
       const anchor = (event.target as Element | null)?.closest?.("a");
       if (!anchor) return;
+      // The bottom bar pushes on finger-up itself (MESITA-2837); the pointer
+      // click after it must not push again. `detail` is 0 for a keyboard
+      // click, which still navigates here.
+      if (anchor.hasAttribute("data-press-nav") && event.detail > 0) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
       const href = anchor.getAttribute("href");
       if (!href || !href.startsWith("/") || href.startsWith("//")) return;
       if (href.startsWith("/_next") || href.startsWith("/api")) return;
@@ -54,7 +62,8 @@ export function SurfacePrefixer() {
       const next = prefixPath(currentSurface(), path);
       return next === path ? url : `${next}${query}${hash}`;
     }
-    history.pushState = (data, unused, url) => push(data, unused, prefixed(url) as string);
+    history.pushState = (data, unused, url) =>
+      push(data, unused, prefixed(url) as string);
     history.replaceState = (data, unused, url) =>
       replace(data, unused, prefixed(url) as string);
 
