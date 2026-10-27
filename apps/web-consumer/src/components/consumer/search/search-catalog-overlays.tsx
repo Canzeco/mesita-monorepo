@@ -186,7 +186,7 @@ export function RailScoreTag({ place }: { place: Pick<Place, "score"> }) {
   );
   return (
     <div
-      className="bg-card/95 text-muted-foreground type-meta mb-1.5 rounded-xl px-3 py-1.5 font-mono leading-snug tabular-nums shadow-sm"
+      className="bg-card/95 text-muted-foreground type-meta mb-1.5 rounded-xl px-3 py-1.5 font-mono leading-snug tabular-nums shadow-rest"
       data-rail-score-tag
     >
       <p className="text-foreground truncate font-semibold">
