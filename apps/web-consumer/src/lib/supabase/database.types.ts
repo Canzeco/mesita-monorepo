@@ -316,29 +316,13 @@ export type Database = {
         }
         Relationships: []
       }
-      nearby_google_attempts: {
-        Row: {
-          created_at: string
-          id: number
-          ip_hash: string
-        }
-        Insert: {
-          created_at?: string
-          id?: never
-          ip_hash: string
-        }
-        Update: {
-          created_at?: string
-          id?: never
-          ip_hash?: string
-        }
-        Relationships: []
-      }
       place_activity: {
         Row: {
           consumer_id: string
           created_at: string
           kind: string
+          lat: number | null
+          lng: number | null
           place_id: string
           quiet: boolean
         }
@@ -346,6 +330,8 @@ export type Database = {
           consumer_id: string
           created_at?: string
           kind: string
+          lat?: number | null
+          lng?: number | null
           place_id: string
           quiet?: boolean
         }
@@ -353,6 +339,8 @@ export type Database = {
           consumer_id?: string
           created_at?: string
           kind?: string
+          lat?: number | null
+          lng?: number | null
           place_id?: string
           quiet?: boolean
         }
@@ -781,6 +769,7 @@ export type Database = {
           google_place_id: string | null
           google_review_count: number | null
           google_reviews: Json | null
+          google_source_types: Json
           google_stars_overall: number | null
           google_tags: string[]
           google_types: Json
@@ -852,6 +841,7 @@ export type Database = {
           google_place_id?: string | null
           google_review_count?: number | null
           google_reviews?: Json | null
+          google_source_types?: Json
           google_stars_overall?: number | null
           google_tags?: string[]
           google_types?: Json
@@ -923,6 +913,7 @@ export type Database = {
           google_place_id?: string | null
           google_review_count?: number | null
           google_reviews?: Json | null
+          google_source_types?: Json
           google_stars_overall?: number | null
           google_tags?: string[]
           google_types?: Json
@@ -1435,6 +1426,7 @@ export type Database = {
           google_place_id: string | null
           google_review_count: number | null
           google_reviews: Json | null
+          google_source_types: Json | null
           google_stars_overall: number | null
           google_tags: string[] | null
           google_types: Json | null
@@ -1600,6 +1592,8 @@ export type Database = {
           instagram_followers_count: number
           instagram_handle: string
           kind: string
+          lat: number
+          lng: number
           place_id: string
           plan: string
         }[]
@@ -1644,6 +1638,10 @@ export type Database = {
       place_activity_visible: {
         Args: { c: Database["public"]["Tables"]["consumers"]["Row"] }
         Returns: boolean
+      }
+      place_family_keys: {
+        Args: { fallback: string; google_types: Json; stored: string[] }
+        Returns: string[]
       }
       recompute_place_boost: { Args: { p_place_id: string }; Returns: number }
       run_place_enrichment_stages: { Args: never; Returns: number }
