@@ -38,7 +38,7 @@ import {
   type CameraState,
 } from "./camera-intent";
 import { isSponsoredPlace } from "@/components/consumer/place-card";
-import { SIGHT_Y } from "./search-utils";
+import { RING_INSET, SIGHT_Y } from "./search-utils";
 import { MapVeil } from "./search-catalog-overlays";
 import { SearchMapPinLabels } from "./SearchMapPinLabels";
 import {
@@ -246,12 +246,13 @@ export function mapFingerIsDown(): boolean {
   return fingerOnMap;
 }
 
-/** The search ring's diameter: twice the cross's distance to the nearest
- *  edge of the map — the full width, or twice the gap to the nearer of top
- *  and bottom, whichever is smaller (MESITA-2511), the server's screen
- *  radius on screen. Container units of the map's box. */
-export const SEARCH_RING_SIZE = `min(100cqw, ${
-  Math.round(2 * Math.min(SIGHT_Y, 1 - SIGHT_Y) * 1000) / 10
+/** The search ring's diameter: RING_INSET of twice the cross's distance to
+ *  the nearest edge of the map — the full width, or twice the gap to the
+ *  nearer of top and bottom, whichever is smaller (MESITA-2511), the
+ *  server's screen radius on screen. The inset keeps a margin between the
+ *  ring and the map's border (MESITA-2825). Container units of the map's box. */
+export const SEARCH_RING_SIZE = `min(${Math.round(RING_INSET * 1000) / 10}cqw, ${
+  Math.round(2 * RING_INSET * Math.min(SIGHT_Y, 1 - SIGHT_Y) * 1000) / 10
 }cqh)`;
 
 /** Screen-fixed sight SIGHT_Y down the canvas (the middle; MESITA-2448,
@@ -260,7 +261,8 @@ export const SEARCH_RING_SIZE = `min(100cqw, ${
  *  and move it realative to the cruz … it must feel more dynamic"). The ring
  *  is the circle the next load searches — the server's screen radius, the
  *  cross's distance to the nearest edge, so it always fits on the map
- *  (MESITA-2511) — dashed, riding the cross while the guest pans, and it
+ *  (MESITA-2511), inset to 0.9 so it never touches the border
+ *  (MESITA-2825) — dashed, riding the cross while the guest pans, and it
  *  pulses while a load is in flight. A second ring at half the diameter says
  *  the centre is denser (Pato, MESITA-2773: "double circle for density") —
  *  the proximity half-strength distance at the default radiusDivisor of 2
