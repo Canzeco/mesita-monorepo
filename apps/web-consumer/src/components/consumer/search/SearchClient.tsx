@@ -130,9 +130,8 @@ import { SearchHeader } from "./SearchHeader";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import type { AddState } from "./add-state";
 import {
-  RAIL_ADD_ROWS,
-  RAIL_ROW_REM,
-  RAIL_VISIBLE_CARDS,
+  RAIL_PAGE_SHARE,
+  RAIL_PAGE_SIZE,
   SearchHereButton,
   SearchRailOverlay,
   type LoadCoords,
@@ -192,16 +191,6 @@ function googlePredictionFromPlace(place: Place): PlacePrediction | null {
     lat: place.lat,
     lng: place.lng,
   };
-}
-
-/** `selectedId` while the rail's Add card is centred (MESITA-2879): not a
- *  place id, so nothing is ringed and no card is lit. */
-const RAIL_ADD_ID = "rail:add";
-
-/** One rail row in px: RAIL_ROW_REM at the root font size. */
-function railRowPx(): number {
-  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
-  return RAIL_ROW_REM * (rem || 16);
 }
 
 export function SearchClient({ apiKey }: { apiKey: string }) {
@@ -840,14 +829,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // Center page is selected even before a tap or flick writes state —
   // first load and a catalog that dropped the old id both light card 0. A
   // Google card that became a Mesita card keeps its selection (MESITA-2683).
-  // The Add card centred (MESITA-2879) selects nothing: no card, no ring.
-  const railSelectedId =
-    selectedId === RAIL_ADD_ID
-      ? null
-      : defaultRailSelection(
-          catalog.map((p) => p.id),
-          createdPlaceId(selectedId, createdPlaces),
-        );
+  const railSelectedId = defaultRailSelection(
+    catalog.map((p) => p.id),
+    createdPlaceId(selectedId, createdPlaces),
+  );
 
   // A pin's last step before it opens: select it (if the card-0 fallback
   // only looked selected) and fly the camera there — an animated pan that
@@ -943,27 +928,20 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const handleRailScroll = () => {
     const el = railScrollRef.current;
     if (!el || catalog.length === 0) return;
-    // The rail scrolls vertically, one card per snap (MESITA-2880):
-    // railIndex is a slot, 0 the Add card, i + 1 place i, the top in view.
-    const row = railRowPx();
-    const rows = el.scrollTop / row;
-    // The Add card in view: no pin rings, the map stays (MESITA-2879).
-    if (rows < RAIL_ADD_ROWS / 2) {
-      setRailIndex(0);
-      setSelectedId(RAIL_ADD_ID);
-      return;
-    }
-    const top = railCenterIndex(
-      el.scrollTop - RAIL_ADD_ROWS * row,
-      row,
-      catalog.length,
-    );
-    setRailIndex(top + 1);
-    const inView = catalog.slice(top, top + RAIL_VISIBLE_CARDS);
-    // A selected card still in view keeps the ring — a tap on the lower
-    // card must not hand it to the top one.
-    if (inView.some((p) => p.id === railSelectedId)) return;
-    const id = inView[0]?.id;
+    const page = el.clientWidth * RAIL_PAGE_SHARE;
+    if (page <= 0) return;
+    // railIndex counts pages; each page stacks RAIL_PAGE_SIZE cards
+    // (MESITA-2878). The Add button is pinned beside the rail, never a
+    // page (MESITA-2882).
+    const pageCount = Math.ceil(catalog.length / RAIL_PAGE_SIZE);
+    const next = railCenterIndex(el.scrollLeft, page, pageCount);
+    setRailIndex(next);
+    const first = next * RAIL_PAGE_SIZE;
+    const onPage = catalog.slice(first, first + RAIL_PAGE_SIZE);
+    // A card already selected on the centred page keeps the ring — a tap
+    // on the lower card scrolls here too, and must not hand it to the top.
+    if (onPage.some((p) => p.id === railSelectedId)) return;
+    const id = onPage[0]?.id;
     // A SCROLL RINGS THE PIN, IT NEVER PANS (MESITA-2440): browsing the
     // rail must not drag the map out from under the guest.
     if (id) setSelectedId(id);
@@ -995,28 +973,29 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   useEffect(() => {
     if (!railSelectedId) return;
     const idx = catalog.findIndex((p) => p.id === railSelectedId);
-    const slot = idx < 0 ? idx : idx + 1;
-    if (!shouldCenterRailCard(slot, railIndex, centerOnSelect.current)) return;
+    const pageIdx = idx < 0 ? idx : Math.floor(idx / RAIL_PAGE_SIZE);
+    if (!shouldCenterRailCard(pageIdx, railIndex, centerOnSelect.current))
+      return;
     centerOnSelect.current = false;
-    // Scroll the rail itself, never its ancestors: the card lands on top.
-    railScrollRef.current?.scrollTo({
-      top: (RAIL_ADD_ROWS + idx) * railRowPx(),
+    railRefs.current.get(railSelectedId)?.scrollIntoView({
       behavior: "smooth",
+      inline: "center",
+      block: "nearest",
     });
   }, [railSelectedId, catalog, railIndex]);
 
-  // THE RAIL RESTS ON PLACE #1, NOT ON THE ADD CARD (Pato, MESITA-2879):
-  // a new set of places, or the rail coming back after the bar, puts the
-  // selected card (place #1 on a fresh set) on top at once, the Add card
-  // waiting above it (MESITA-2880). Before paint, so nothing slides. The
-  // scroll this sets fires onScroll, which writes railIndex and the ring.
+  // THE RAIL RESTS ON THE SELECTED CARD'S PAGE: a new set of places, or the
+  // rail coming back after the bar, puts it (place #1 on a fresh set) in
+  // the centre at once. Before paint, so nothing slides. The scroll this
+  // sets fires onScroll, which writes railIndex and the ring.
   const catalogKey = catalog.map((p) => p.id).join("|");
   const railShown = !searchMode && catalog.length > 0;
   useLayoutEffect(() => {
     const el = railScrollRef.current;
     if (!el || !railShown) return;
     const idx = catalog.findIndex((p) => p.id === railSelectedId);
-    el.scrollTop = (RAIL_ADD_ROWS + Math.max(idx, 0)) * railRowPx();
+    const page = idx < 0 ? 0 : Math.floor(idx / RAIL_PAGE_SIZE);
+    el.scrollLeft = page * el.clientWidth * RAIL_PAGE_SHARE;
     // Only a new set or the rail's return re-rests it; a selection change
     // scrolls through the centring effect above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
