@@ -29,7 +29,6 @@ describe("section strip", () => {
     expect(html).not.toContain(">Menu<");
     expect(html).toContain("Rewards");
     expect(html).not.toContain("Soon");
-    expect(html).toContain("grid-cols-5");
     expect(html).not.toContain("Enrich");
   });
 });

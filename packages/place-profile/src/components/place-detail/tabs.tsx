@@ -48,7 +48,7 @@ export function PlaceTabBar({
     // translucency) so the strip matches the name header and scrolled
     // content can't bleed through. The page wash stays below the strip.
     <nav
-      className="bg-card border-border sticky top-0 z-20 -mx-4 grid grid-cols-5 border-b px-1"
+      className="bg-card border-border sticky top-0 z-20 -mx-4 grid grid-cols-4 border-b px-1"
       aria-label="Place sections"
     >
       {tabs.map((t) => {
