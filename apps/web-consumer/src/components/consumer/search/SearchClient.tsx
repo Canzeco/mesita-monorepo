@@ -212,6 +212,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const idleMsRef = useRef(DEFAULT_IDLE_MS);
   const railRefs = useRef(new Map<string, HTMLElement | null>());
   const railScrollRef = useRef<HTMLDivElement | null>(null);
+  // The header's Add disc focuses the bar: a new place is added by searching
+  // Google and tapping the result (MESITA-2876).
+  const barInputRef = useRef<HTMLInputElement | null>(null);
 
   // The opening screen owns get-or-create now (MESITA-2311), so these stay
   // empty: no Search row is mid-add, and a re-tap goes back through it.
@@ -965,8 +968,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Search's header, a white band over the map (Pato, MESITA-2409/2413):
-        location disc · query bar · Filters · Ask AI (MESITA-2875: no chip
-        row); the bar's results and the load error hang over the map's top edge. The pair that keeps the disc
+        location disc · query bar · Add · Filters · Ask AI (MESITA-2875: no
+        chip row; MESITA-2876: Add); the bar's results and the load error hang over the map's top edge. The pair that keeps the disc
         visible: `min-w-0 flex-1` on the bar, `shrink-0` on the disc. */}
       <SearchHeader
         locate={
@@ -977,8 +980,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
             onClick={recentreOnGuest}
           />
         }
+        onAdd={() => barInputRef.current?.focus()}
         bar={
           <SearchBar
+            inputRef={barInputRef}
             query={query}
             showClear={query.length > 0}
             onQueryChange={updateQuery}
