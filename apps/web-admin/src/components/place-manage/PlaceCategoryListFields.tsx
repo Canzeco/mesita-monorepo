@@ -2,6 +2,7 @@
 
 import { ReadField } from "@/components/admin-ui/manage";
 import { usePlaceContext } from "./PlaceContext";
+import { PlaceTagsPicker } from "./PlaceTagsPicker";
 
 // Read-only until MESITA-2829. google_types is the place's 1–3 Google
 // categories (Google's canonical list), picked by a model on Create and every
@@ -126,12 +127,21 @@ export function PlaceGoogleCategoriesField() {
   );
 }
 
-export function PlaceMesitaTagsField() {
-  const { place, profile } = usePlaceContext();
-  const labels = new Map(profile.tags.map((t) => [t.slug, t.label_en]));
+// Editable since MESITA-2836 (Pato: "Mesita Tags (editable, inferred with
+// llm based on all profile)"): the Atlas picker, saved with Basics through
+// admin-web-update-place; the next Enrich re-infers them.
+export function PlaceMesitaTagsField({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string[];
+  onChange: (tags: string[]) => void;
+  disabled?: boolean;
+}) {
   return (
     <ReadField label="Mesita tags" auto boxed>
-      <Chips slugs={slugsOf(place.tags)} labels={labels} />
+      <PlaceTagsPicker value={value} onChange={onChange} disabled={disabled} />
     </ReadField>
   );
 }

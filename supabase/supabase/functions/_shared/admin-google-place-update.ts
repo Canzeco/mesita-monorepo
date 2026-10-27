@@ -22,10 +22,9 @@ export const GOOGLE_UPDATE_FORBIDDEN_COLUMNS = [
   "embedding",
   "embedding_source_text",
   "name_embedding",
-  // The model-inferred categories (MESITA-2827): Update refreshes only
-  // Google's own types (google_source_types), the categories call's input.
-  // family_keys is never written by anyone: the families are the
-  // categories' dictionary in the profiles view (MESITA-2834).
+  // Update writes google_source_types; the taxonomy trigger derives the
+  // Google categories and the shown category from it (MESITA-2836), and the
+  // profiles view the families (MESITA-2834). None of the four is patched.
   "google_types",
   "category",
   "category_label",
@@ -49,10 +48,9 @@ export function galleryTakesGoogleHero(photos: unknown): boolean {
 /**
  * Build the place_profiles patch from a Google basics fetch (before pins).
  * The gallery is never in it: `galleryTakesGoogleHero` decides that separately.
- * Google's own types land in google_source_types, primary first. The Google
- * categories (google_types, category) are model-inferred on Create and Enrich
- * (MESITA-2827), so a refetch never touches them; the families follow the
- * categories through the dictionary (MESITA-2834).
+ * Google's own types land in google_source_types, primary first; the trigger
+ * turns them into the Google categories (MESITA-2836) and the view into the
+ * families (MESITA-2834), so a refetch refreshes all three through one column.
  */
 export function googleBasicsToUpdatePatch(input: {
   basics: GoogleBasics;

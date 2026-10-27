@@ -1786,13 +1786,13 @@ select throws_ok(
   'a Google category outside catalog_membership is refused'
 );
 
-select throws_ok(
-  $$update public.place_profiles set google_types = (select jsonb_agg(slug) from (
-      select slug from public.catalog_membership order by slug limit 4) s)
-     where id = '00000000-0000-4000-8000-000000002790'$$,
-  'P0001',
-  'at most three google categories',
-  'a fourth Google category is refused'
+update public.place_profiles
+   set google_source_types = '["mexican_restaurant","point_of_interest","restaurant","bar","cafe"]'::jsonb
+ where id = '00000000-0000-4000-8000-000000002790';
+select is(
+  (select google_types from public.place_profiles where id = '00000000-0000-4000-8000-000000002790'),
+  '["mexican_restaurant","restaurant","bar","cafe"]'::jsonb,
+  'the Google categories are Google''s own types kept to the catalog, all of them, primary first (MESITA-2836)'
 );
 
 -- ━━━ MESITA-2791: google_types[0] is the primary; no separate column ━━━━━━━

@@ -1,5 +1,5 @@
-// The one enrichment commit fills the Presentation, the Google categories, the
-// Families (MESITA-2827) and the Mesita tags, and hands back the Mesita Name the same synthesis inferred,
+// The one enrichment commit fills the Presentation and the Mesita tags
+// (MESITA-2836: the Description step writes only Mesita fields), and hands back the Mesita Name the same synthesis inferred,
 // which lands only through _shared/mesita-name-door.ts (MESITA-2790: every
 // Mesita field is inferred on every Enrich). The classifiers live in _shared.
 // This module only decides which of those results may land, then the write
@@ -7,8 +7,6 @@
 // SERP slot; Google's own summary is the fallback.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { fetchGoogleCategories } from "../_shared/categories.ts";
-import { classifyPlace, googleCategoriesPatch } from "../_shared/place-classification.ts";
 import { loadEnrichConfig } from "../_shared/enrich-config.ts";
 import {
   applyProfileToUpdate,
@@ -16,7 +14,6 @@ import {
   synthesisModelFor,
 } from "../_shared/enrich-synthesis.ts";
 import { findAddressComponent } from "../_shared/enrich-google-basics-normalizers.ts";
-import { loadModelsConfig } from "../_shared/models-config.ts";
 
 // The one sentence-safe cap (MESITA-2641); re-exported for this EF's callers
 // and its test.
@@ -47,15 +44,15 @@ function slugs(value: unknown): string[] {
 /**
  * What this run's inferences add to the patch. Every Enrich replaces the
  * Presentation with the one it wrote (MESITA-2799: one Enrich, no Overwrite
- * switch); an empty synthesis leaves the saved text alone. Google
- * categories and tags are re-inferred every run: written when the call
- * succeeded, left as stored when it failed (null). Families are never
- * written: the profiles view maps the categories (MESITA-2834).
+ * switch); an empty synthesis leaves the saved text alone. Tags are
+ * re-inferred every run: written when the call succeeded, left as stored when
+ * it failed (null). Google categories and families are never written here:
+ * the trigger derives the categories from Google's own types (MESITA-2836)
+ * and the profiles view the families (MESITA-2834).
  */
 export function mergeSynthesizedProfile(opts: {
   patch: Record<string, unknown>;
   presentation: string | null;
-  categories: string[] | null;
   tags: string[] | null;
 }): Record<string, unknown> {
   const next = { ...opts.patch };
@@ -63,16 +60,13 @@ export function mergeSynthesizedProfile(opts: {
   if (presentation) {
     next.description = presentation;
   }
-  if (opts.categories && opts.categories.length > 0) {
-    Object.assign(next, googleCategoriesPatch(opts.categories));
-  }
   if (opts.tags) next.tags = opts.tags;
   return next;
 }
 
 /** The saved row's Google and Mesita signals; Render's patch carries none. */
 export type SavedSignals = {
-  /** Google's own types (MESITA-2827), the categories model's input. */
+  /** Google's own types (MESITA-2827), the synthesis's grounding. */
   google_source_types?: unknown;
   google_types?: unknown;
   google_tags?: unknown;
@@ -104,8 +98,9 @@ export type FilledProfile = {
 };
 
 /**
- * Asks the classifiers for a Presentation, the Mesita tags and 1–3 Google
- * categories; the families follow the categories (MESITA-2834).
+ * Asks the synthesis for a Presentation, the Mesita name and the Mesita tags
+ * (MESITA-2836: the Description step writes the three Mesita fields and
+ * nothing of Google's).
  * A model failure leaves the patch unchanged. The caller still commits once.
  */
 export async function fillAtlasProfile(
@@ -134,10 +129,8 @@ async function fillAtlasProfileInner(
   const openaiKey = Deno.env.get("OPENAI_KEY")?.trim() ?? "";
   if (!openaiKey) return { patch, mesitaName: null };
 
-  const [categories, tagVocabulary, models, cfg] = await Promise.all([
-    fetchGoogleCategories(admin),
+  const [tagVocabulary, cfg] = await Promise.all([
     fetchPlaceTags(admin),
-    loadModelsConfig(admin),
     loadEnrichConfig(admin),
   ]);
   const name = textField(patch.google_name) || textField(patch.mesita_name);
@@ -146,7 +139,7 @@ async function fillAtlasProfileInner(
   const webRead = textField(grounding.serpSummary) || googleSummary;
   const reviews = reviewQuotes(patch.google_reviews);
   // Render's patch carries no Google categories, attributes or category:
-  // read them off the saved row. Google's own types feed the categories call;
+  // read them off the saved row. Google's own types feed the synthesis;
   // a row from before google_source_types falls back to its categories.
   const sourceTypes = slugs(saved.google_source_types);
   const googleTypes = sourceTypes.length > 0 ? sourceTypes : slugs(saved.google_types);
@@ -185,23 +178,11 @@ async function fillAtlasProfileInner(
   if (!presentation && googleSummary) presentation = capPresentation(googleSummary);
   if (!tags) console.warn(`[enrich] ${placeId}: Mesita tags not inferred; stored tags kept`);
 
-  const classified = await classifyPlace(openaiKey, { categories }, {
-    name: name || "Place",
-    address,
-    googleTypes,
-    googleTags,
-    editorialSummary: googleSummary || null,
-    description: presentation,
-  }, models.enricherModel);
-  if (!classified.categories) {
-    console.warn(`[enrich] ${placeId}: Google categories not inferred; stored categories kept`);
-  }
 
   return {
     patch: mergeSynthesizedProfile({
       patch,
       presentation,
-      categories: classified.categories,
       tags,
     }),
     mesitaName,

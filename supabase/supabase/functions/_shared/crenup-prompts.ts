@@ -27,7 +27,6 @@ import {
   buildPresentationInput,
   PRESENTATION_INSTRUCTIONS,
 } from "./enrich-synthesis.ts";
-import { buildCategoryInput, CATEGORY_INSTRUCTIONS } from "./categories-infer.ts";
 import { CRENUP_STEP_META, type CrenupStep } from "./crenup-ladder.ts";
 
 /** One prompt-bearing step, as the console renders it. */
@@ -162,28 +161,6 @@ function presentationPrompt(): CrenupPrompt {
   };
 }
 
-function categoryPrompt(): CrenupPrompt {
-  return {
-    key: "category",
-    fn: null,
-    agent: null,
-    label: "Google categories inference",
-    vendor: "OpenAI",
-    vendorNote:
-      "One chat-completions call in JSON mode, temperature 0. Google's canonical " +
-      "category list (catalog_membership) is read from the database and pasted " +
-      "into the message, so the model can only answer with slugs that exist. " +
-      "Runs at Create and on every Enrich. The families follow the categories through the Atlas dictionary (MESITA-2834); no call picks them.",
-    writes: "The place's Google categories: 1 to 3 slugs, the shown one first.",
-    instructions: CATEGORY_INSTRUCTIONS,
-    input: buildCategoryInput(
-      "{slug} — {label} [Google]\n… one line per Google category",
-      "Name: {place name}\nAddress: {address}\nGoogle's own primary type: {type}\n" +
-        "Google's other types: {types}\nGoogle attributes: {google tags}\n" +
-        "Summary: {editorial summary}\nDetails: {details}",
-    ),
-  };
-}
 
 
 /**
@@ -199,7 +176,6 @@ export function crenupPromptsMeta(): CrenupPrompt[] {
   return [
     scoutPrompt(),
     resolverPrompt(),
-    categoryPrompt(),
     presentationPrompt(),
   ];
 }

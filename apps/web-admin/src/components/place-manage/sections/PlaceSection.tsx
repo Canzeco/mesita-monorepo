@@ -172,6 +172,8 @@ type Form = {
   /** Canonical Presentation — English (Mesita core). The column stays
    * `description`; the FIELD is Presentation (Pato, 2026-08-23). */
   description: string;
+  /** Mesita tags, place_tags slugs (editable, MESITA-2836). */
+  tags: string[];
   phone: string;
   channels: Record<string, string>;
   hours: Record<Day, DayHours>;
@@ -203,6 +205,9 @@ function placeToForm(
   return {
     mesitaName: (v.mesita_name ?? "").slice(0, limits.placeNameMax),
     description: (v.description ?? "").slice(0, limits.descriptionMax),
+    tags: (Array.isArray(v.tags) ? v.tags : [])
+      .filter((t): t is string => typeof t === "string")
+      .slice(0, limits.tagsPerPlaceMax),
     phone: v.phone ?? "",
     channels,
     hours,
@@ -227,6 +232,7 @@ function boxToPatch(
       id,
       mesita_name: mesitaName.length > 0 ? mesitaName : null,
       description: nz(f.description.slice(0, limits.descriptionMax)),
+      tags: f.tags.slice(0, limits.tagsPerPlaceMax),
     };
   }
   if (box === "time") {
@@ -273,13 +279,15 @@ export function PlaceSection({
         {
           mesitaName: form.mesitaName,
           description: form.description,
+          tags: form.tags.join(","),
         },
         {
           mesitaName: saved.mesitaName,
           description: saved.description,
+          tags: saved.tags.join(","),
         },
       ),
-    [form.mesitaName, form.description, saved.mesitaName, saved.description],
+    [form.mesitaName, form.description, form.tags, saved.mesitaName, saved.description, saved.tags],
   );
   const dirtyTime = useMemo(
     () => !sliceEqual(form.hours, saved.hours),
@@ -411,7 +419,12 @@ export function PlaceSection({
               maxLength={limits.descriptionMax}
               disabled={anyPending}
             />,
-            <PlaceMesitaTagsField key="mesita-tags" />,
+            <PlaceMesitaTagsField
+              key="mesita-tags"
+              value={form.tags}
+              onChange={(tags) => set("tags", tags.slice(0, limits.tagsPerPlaceMax))}
+              disabled={anyPending}
+            />,
             <PlaceFamilyField key="families" />,
           ]}
         </div>

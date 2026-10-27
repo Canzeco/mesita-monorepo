@@ -10,7 +10,9 @@
 // so a place's category is always a canonical slug, never free text.
 // Google categories (MESITA-2827) are Google's canonical type list,
 // catalog_membership; fetchGoogleCategories reads it in the same shape.
-// The classifiers live in categories-infer.ts and families-infer.ts.
+// Nothing classifies into them any more: a place's Google categories are
+// Google's own types (MESITA-2836) and its families their dictionary
+// (MESITA-2834); the Create door picks only tags.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { humanizeCategorySlug } from "./parse-utils.ts";

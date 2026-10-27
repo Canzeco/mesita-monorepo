@@ -27,42 +27,35 @@ Deno.test("every Enrich replaces the saved presentation; an empty one keeps it (
   const next = mergeSynthesizedProfile({
     patch: { content_state: "ready", description: "Already written." },
     presentation: "A new essay.",
-    categories: null,
     tags: null,
   });
   assertEquals(next.description, "A new essay.");
   const kept = mergeSynthesizedProfile({
     patch: { content_state: "ready", description: "Already written." },
     presentation: null,
-    categories: null,
     tags: null,
   });
   assertEquals(kept.description, "Already written.");
 });
 
-Deno.test("every Enrich writes the inferred Google categories and tags, never families (MESITA-2827, 2834)", () => {
-  {
-    const next = mergeSynthesizedProfile({
-      patch: { content_state: "ready" },
-      presentation: null,
-      categories: ["bakery", "cafe"],
-      tags: ["terraza"],
-    });
-    assertEquals(next.google_types, ["bakery", "cafe"]);
-    assertEquals("family_keys" in next, false);
-    assertEquals(next.category, "bakery");
-    assertEquals(next.category_label, "Bakery");
-    assertEquals(next.tags, ["terraza"]);
+Deno.test("every Enrich writes the inferred tags and nothing of Google's (MESITA-2836)", () => {
+  const next = mergeSynthesizedProfile({
+    patch: { content_state: "ready" },
+    presentation: null,
+    tags: ["terraza"],
+  });
+  assertEquals(next.tags, ["terraza"]);
+  for (const key of ["google_types", "category", "category_label", "family_keys"]) {
+    assertEquals(key in next, false, key);
   }
 });
 
-Deno.test("a failed inference leaves categories and tags out of the patch (MESITA-2827)", () => {
+Deno.test("a failed inference leaves tags out of the patch (MESITA-2827)", () => {
   // Failed = null. The patch carries none of the columns, so the stored
   // values stay; an empty tags answer is a real answer and is written.
   const failed = mergeSynthesizedProfile({
     patch: { content_state: "ready" },
     presentation: null,
-    categories: null,
     tags: null,
   });
   for (const key of ["google_types", "family_keys", "category", "category_label", "tags"]) {
@@ -71,7 +64,6 @@ Deno.test("a failed inference leaves categories and tags out of the patch (MESIT
   const noTags = mergeSynthesizedProfile({
     patch: { content_state: "ready" },
     presentation: null,
-    categories: [],
     tags: [],
   });
   assertEquals("category" in noTags, false);

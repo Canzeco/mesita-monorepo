@@ -54,7 +54,8 @@ import { recordAdminOperatorEvent } from "../_shared/admin-operator-events.ts";
 
 const MAX_DESCRIPTION_LEN = ENRICH_FIELD_LIMITS.description.max;
 
-const READ_ONLY_FIELDS = ["category", "category_label", "mesita_categories", "tags"] as const;
+const READ_ONLY_FIELDS = ["category", "category_label", "mesita_categories", "google_types", "google_source_types", "family_keys"] as const;
+const MAX_TAGS = ENRICH_FIELD_LIMITS.tagsPerPlace.max;
 
 const RESERVATION_CHANNELS = new Set(["phone", "whatsapp", "instagram", "web", "none"]);
 
@@ -78,6 +79,8 @@ type UpdateBody = {
   uber_eats_url?: string | null;
   // Place-redesign editable surface (Business-E=YES on the Components spec).
   description?: string | null;
+  /** Mesita tags: place_tags slugs, editable since MESITA-2836. Null clears. */
+  tags?: string[] | null;
   menu_pdf_url?: string | null;
   // Optional human label paired with menu_pdf_url. Null clears.
   menu_pdf_name?: string | null;
@@ -121,8 +124,9 @@ Deno.serve(async (req) => {
   }
   const placeId = (body.id ?? "").toString().trim();
   if (!placeId) return json({ ok: false, error: "id is required" }, 400);
-  // Mesita categories and tags are inferred on Create and every Enrich and
-  // are read-only here (MESITA-2790); `category` is their first item.
+  // The Google fields are Google's own (MESITA-2836): the categories derive
+  // from google_source_types in the trigger, the families from the categories
+  // in the view. Name, Presentation and Tags are the operator's to edit.
   const readOnly = READ_ONLY_FIELDS.find((field) => field in body);
   if (readOnly) {
     return json(
@@ -197,6 +201,20 @@ Deno.serve(async (req) => {
   // Place-redesign editable fields.
   if ("description" in body) {
     update.description = optString(body.description, MAX_DESCRIPTION_LEN);
+  }
+  if ("tags" in body) {
+    const raw = body.tags;
+    if (raw !== null && raw !== undefined && !Array.isArray(raw)) {
+      return json({ ok: false, error: "tags must be a list of slugs" }, 400);
+    }
+    const tags = [...new Set(
+      (raw ?? []).filter((t): t is string => typeof t === "string").map((t) => t.trim()).filter(Boolean),
+    )];
+    if (tags.length > MAX_TAGS) {
+      return json({ ok: false, error: `at most ${MAX_TAGS} tags` }, 400);
+    }
+    // An unknown slug is refused by the taxonomy trigger.
+    update.tags = tags;
   }
   // Profile's Actions toggle (MESITA-2787). The answer is stored as the
   // operator's reservation channel, the one column a later Enrich cannot
