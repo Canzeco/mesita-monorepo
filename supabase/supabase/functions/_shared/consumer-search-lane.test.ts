@@ -7,6 +7,8 @@ import {
   applyResolvedMesitaName,
   classifyPredictionKind,
   deepModuleFlags,
+  fetchAutocomplete,
+  fetchTextSearch,
   gatedGoogleKind,
   laneDedupeKeys,
   locationTypeOf,
@@ -530,4 +532,41 @@ Deno.test("Name embeds the query once per request; fast mode never embeds; no ro
   // embedSingle has exactly one call site: the query, inside embedQueryVector.
   assertEquals(count(src, "embedSingle("), 1);
   assertEquals(body("embedQueryVector").includes("embedSingle(input"), true);
+});
+
+// ── Google failures never throw out of the lane (MESITA-2855) ───────────────
+
+Deno.test("fetchAutocomplete: a network failure is a google_unreachable envelope, not a throw", async () => {
+  const orig = globalThis.fetch;
+  globalThis.fetch = () => Promise.reject(new TypeError("network down"));
+  try {
+    const res = await fetchAutocomplete("taco", "00000000-0000-4000-8000-000000000000", "k", null);
+    assertEquals(res.predictions, []);
+    assertEquals(res.errorEnvelope?.code, "google_unreachable");
+    assertEquals(res.errorEnvelope?.ok, false);
+  } finally {
+    globalThis.fetch = orig;
+  }
+});
+
+Deno.test("fetchAutocomplete: a 200 with an unreadable body is an envelope, not a throw", async () => {
+  const orig = globalThis.fetch;
+  globalThis.fetch = () => Promise.resolve(new Response("<html>", { status: 200 }));
+  try {
+    const res = await fetchAutocomplete("taco", "00000000-0000-4000-8000-000000000000", "k", null);
+    assertEquals(res.errorEnvelope?.code, "google_unreachable");
+  } finally {
+    globalThis.fetch = orig;
+  }
+});
+
+Deno.test("fetchTextSearch: a 200 with an unreadable body is an empty lane, not a throw", async () => {
+  const orig = globalThis.fetch;
+  globalThis.fetch = () => Promise.resolve(new Response("not json", { status: 200 }));
+  try {
+    const gate = { ...DISCOVERY_DEFAULTS.map };
+    assertEquals(await fetchTextSearch("taco", "k", gate, null, 5), []);
+  } finally {
+    globalThis.fetch = orig;
+  }
 });

@@ -983,7 +983,11 @@ async function fetchEmbedPool(
   return (data ?? []) as unknown as ListedRow[];
 }
 
-async function fetchAutocomplete(
+// A network failure or an unreadable body is an error envelope like any
+// Google error, never a throw: in fast mode a throw escaped the handler as a
+// CORS-less 500, and in deep mode it rejected the whole Promise.all even
+// though Deep treats a failed Autocomplete lane as empty (MESITA-2855).
+export async function fetchAutocomplete(
   input: string,
   sessionToken: string,
   apiKey: string,
@@ -991,28 +995,8 @@ async function fetchAutocomplete(
 ): Promise<{ predictions: LaneItem[]; errorEnvelope?: Record<string, unknown> }> {
   const body: Record<string, unknown> = { input, sessionToken };
   applyPlacesAutocompleteRegion(body, origin);
-  const r = await fetch(GOOGLE_PLACES_AUTOCOMPLETE_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Goog-Api-Key": apiKey,
-    },
-    body: JSON.stringify(body),
-  });
-  if (!r.ok) {
-    const text = await r.text();
-    const code = classifyGoogleError(r.status, text);
-    return {
-      predictions: [],
-      errorEnvelope: {
-        ok: false,
-        code,
-        error: friendlyGoogleError(code, r.status, text),
-        httpStatus: r.status,
-      },
-    };
-  }
-  const data = (await r.json()) as {
+  let r: Response;
+  let data: {
     suggestions?: Array<{
       placePrediction?: {
         placeId: string;
@@ -1025,6 +1009,43 @@ async function fetchAutocomplete(
       };
     }>;
   };
+  try {
+    r = await fetch(GOOGLE_PLACES_AUTOCOMPLETE_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+      },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) {
+      const text = await r.text();
+      const code = classifyGoogleError(r.status, text);
+      return {
+        predictions: [],
+        errorEnvelope: {
+          ok: false,
+          code,
+          error: friendlyGoogleError(code, r.status, text),
+          httpStatus: r.status,
+        },
+      };
+    }
+    data = await r.json();
+  } catch (err) {
+    console.error(
+      "[consumer-search-lane] autocomplete unreachable:",
+      err instanceof Error ? err.message : String(err),
+    );
+    return {
+      predictions: [],
+      errorEnvelope: {
+        ok: false,
+        code: "google_unreachable",
+        error: "Search is unavailable right now. Try again.",
+      },
+    };
+  }
   const predictions = (data.suggestions ?? [])
     .map((s) => s.placePrediction)
     .filter((p): p is NonNullable<typeof p> => !!p)
@@ -1044,7 +1065,7 @@ async function fetchAutocomplete(
   return { predictions };
 }
 
-async function fetchTextSearch(
+export async function fetchTextSearch(
   input: string,
   apiKey: string,
   gate: MapConfig,
@@ -1086,7 +1107,16 @@ async function fetchTextSearch(
     );
     return [];
   }
-  const data = (await r.json()) as { places?: GooglePlaceListing[] };
+  let data: { places?: GooglePlaceListing[] };
+  try {
+    data = await r.json();
+  } catch (err) {
+    console.error(
+      "[consumer-search-lane] text search body:",
+      err instanceof Error ? err.message : String(err),
+    );
+    return [];
+  }
   const out: LaneItem[] = [];
   for (const p of data.places ?? []) {
     const hit = nearbyHitFromPlace(p);

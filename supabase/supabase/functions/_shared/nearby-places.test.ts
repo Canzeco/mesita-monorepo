@@ -381,3 +381,28 @@ Deno.test("searchNearbyPlaces: a 4xx is never retried (MESITA-2361)", async () =
     globalThis.fetch = orig;
   }
 });
+
+Deno.test("searchNearbyPlaces: a retry that also rejects is an empty batch, not a throw (MESITA-2855)", async () => {
+  let n = 0;
+  const orig = globalThis.fetch;
+  globalThis.fetch = () => {
+    n++;
+    return Promise.reject(new TypeError("network down"));
+  };
+  try {
+    assertEquals(await searchNearbyPlaces("k", CENTER), []);
+    assertEquals(n, 2);
+  } finally {
+    globalThis.fetch = orig;
+  }
+});
+
+Deno.test("searchNearbyPlaces: a 200 with an unreadable body is an empty batch, not a throw (MESITA-2855)", async () => {
+  const orig = globalThis.fetch;
+  globalThis.fetch = () => Promise.resolve(new Response("<html>", { status: 200 }));
+  try {
+    assertEquals(await searchNearbyPlaces("k", CENTER), []);
+  } finally {
+    globalThis.fetch = orig;
+  }
+});
