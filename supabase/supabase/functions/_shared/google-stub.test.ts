@@ -1,12 +1,17 @@
 // A Google-only card carries everything the Nearby mask returns (MESITA-2313).
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { googleStub, humanizeGoogleType } from "./google-stub.ts";
-import { NEARBY_FIELD_MASK, type NearbyHit, nearbyHitFromPlace } from "./nearby-places.ts";
+import {
+  NEARBY_FIELD_MASK,
+  type NearbyHit,
+  nearbyHitFromPlace,
+} from "./nearby-places.ts";
 
 const HIT: NearbyHit = {
   placeId: "ChIJ-bar",
   name: "La Cantina",
-  address: "Av. Siempre Viva 742, Roma Nte., 06700 Ciudad de México, CDMX, Mexico",
+  address:
+    "Av. Siempre Viva 742, Roma Nte., 06700 Ciudad de México, CDMX, Mexico",
   lat: 19.41,
   lng: -99.16,
   rating: 4.6,
@@ -52,21 +57,25 @@ Deno.test("stub: no label falls back to the humanized slug; no price is null", (
 });
 
 Deno.test("mask: asks for every card field, never a photo or an Atmosphere field", () => {
-  for (const field of [
-    "places.primaryTypeDisplayName",
-    "places.types",
-    "places.priceLevel",
-    "places.shortFormattedAddress",
-    "places.currentOpeningHours.openNow",
-    "places.googleMapsUri",
-    "places.internationalPhoneNumber",
-    "places.websiteUri",
-    "places.rating",
-    "places.userRatingCount",
-  ]) {
+  for (
+    const field of [
+      "places.primaryTypeDisplayName",
+      "places.types",
+      "places.priceLevel",
+      "places.shortFormattedAddress",
+      "places.currentOpeningHours.openNow",
+      "places.googleMapsUri",
+      "places.internationalPhoneNumber",
+      "places.websiteUri",
+      "places.rating",
+      "places.userRatingCount",
+    ]
+  ) {
     assert(NEARBY_FIELD_MASK.split(",").includes(field), field);
   }
-  for (const dear of ["photos", "reviews", "editorialSummary", "generativeSummary"]) {
+  for (
+    const dear of ["photos", "reviews", "editorialSummary", "generativeSummary"]
+  ) {
     assertEquals(NEARBY_FIELD_MASK.includes(dear), false, dear);
   }
 });
@@ -90,5 +99,9 @@ Deno.test("one parser: a listing place becomes the same hit for Nearby and Text 
     internationalPhoneNumber: "+52 55 1234 5678",
     websiteUri: "https://cantina.example",
   });
-  assertEquals(hit, { ...HIT, types: ["sports_bar", "bar", "point_of_interest"] });
+  assertEquals(hit, {
+    ...HIT,
+    types: ["sports_bar", "bar", "point_of_interest"],
+    priceRange: null,
+  });
 });

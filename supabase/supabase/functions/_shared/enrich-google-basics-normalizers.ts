@@ -33,7 +33,36 @@ export function internationalPhone(
   return code ? `${code} ${national}` : null;
 }
 
-export function priceLevelFromGoogle(p?: string): number | null {
+/** Google's `priceRange`: per person, `units` a decimal string. */
+export type GooglePriceRange = {
+  startPrice?: { currencyCode?: string; units?: string };
+  endPrice?: { currencyCode?: string; units?: string };
+};
+
+// THE RANGE FEEDS THE $$ (Pato, MESITA-2860: "include price range in $$$$
+// stuff"): many places carry no `priceLevel` but do carry Google's numeric
+// range ("MX$100–200"). The start price per person picks the level; a
+// currency with no ladder here gives none. Tune the ladders, nothing else.
+const PRICE_LADDERS: Record<string, [number, number, number]> = {
+  MXN: [200, 400, 1000],
+  USD: [10, 20, 50],
+};
+
+function priceLevelFromRange(
+  range: GooglePriceRange | undefined,
+): number | null {
+  const start = range?.startPrice ?? range?.endPrice;
+  const ladder = PRICE_LADDERS[start?.currencyCode?.toUpperCase() ?? ""];
+  const units = Number(start?.units);
+  if (!ladder || !Number.isFinite(units) || units < 0) return null;
+  const step = ladder.findIndex((ceiling) => units < ceiling);
+  return step === -1 ? 4 : step + 1;
+}
+
+export function priceLevelFromGoogle(
+  p: string | undefined,
+  range?: GooglePriceRange,
+): number | null {
   switch (p) {
     case "PRICE_LEVEL_FREE":
     case "PRICE_LEVEL_INEXPENSIVE":
@@ -45,6 +74,6 @@ export function priceLevelFromGoogle(p?: string): number | null {
     case "PRICE_LEVEL_VERY_EXPENSIVE":
       return 4;
     default:
-      return null;
+      return priceLevelFromRange(range);
   }
 }

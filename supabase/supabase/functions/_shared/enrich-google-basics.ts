@@ -19,15 +19,19 @@ import { GoogleReviewsSchema } from "./place-jsonb-schemas.ts";
 import {
   closesAtFromHours,
   type GooglePeriod,
-  weeklyHoursFromPeriods,
   type WeeklyHours,
+  weeklyHoursFromPeriods,
 } from "./enrich-google-hours.ts";
 import {
   findAddressComponent,
+  type GooglePriceRange,
   internationalPhone,
   priceLevelFromGoogle,
 } from "./enrich-google-basics-normalizers.ts";
-import { GOOGLE_ATMOSPHERE_FIELDS, googleTagsFromAtmosphere } from "./google-atmosphere.ts";
+import {
+  GOOGLE_ATMOSPHERE_FIELDS,
+  googleTagsFromAtmosphere,
+} from "./google-atmosphere.ts";
 
 const GOOGLE_FIELD_MASK = [
   "id",
@@ -47,6 +51,7 @@ const GOOGLE_FIELD_MASK = [
   "regularOpeningHours",
   "currentOpeningHours",
   "priceLevel",
+  "priceRange",
   "businessStatus",
   "editorialSummary",
   "generativeSummary",
@@ -76,12 +81,22 @@ type GoogleDetails = {
   userRatingCount?: number;
   websiteUri?: string;
   googleMapsUri?: string;
-  regularOpeningHours?: { weekdayDescriptions?: string[]; periods?: GooglePeriod[] };
-  currentOpeningHours?: { weekdayDescriptions?: string[]; periods?: GooglePeriod[] };
+  regularOpeningHours?: {
+    weekdayDescriptions?: string[];
+    periods?: GooglePeriod[];
+  };
+  currentOpeningHours?: {
+    weekdayDescriptions?: string[];
+    periods?: GooglePeriod[];
+  };
   priceLevel?: string;
+  priceRange?: GooglePriceRange;
   businessStatus?: string;
   editorialSummary?: { text?: string };
-  generativeSummary?: { overview?: { text?: string }; description?: { text?: string } };
+  generativeSummary?: {
+    overview?: { text?: string };
+    description?: { text?: string };
+  };
   reviewSummary?: { text?: { text?: string } };
   reviews?: {
     rating?: number;
@@ -134,7 +149,12 @@ export type GoogleBasics = {
   google_maps_url: string | null;
   google_stars_overall: number | null;
   google_review_count: number | null;
-  google_reviews: { author: string; rating: number; quote: string; date: string }[] | null;
+  google_reviews: {
+    author: string;
+    rating: number;
+    quote: string;
+    date: string;
+  }[] | null;
   /** True Google atmosphere booleans, as slugs. Not the Mesita tag catalog. */
   google_tags: string[];
 };
@@ -207,17 +227,37 @@ export async function fetchGoogleBasics(
   // listing. Reject rather than emit a half-null profile.
   const name = details.displayName?.text ?? "";
   if (!name) {
-    return { ok: false, code: "google_spine_incomplete", status: 422, error: "Place has no display name on Google — can't list it." };
+    return {
+      ok: false,
+      code: "google_spine_incomplete",
+      status: 422,
+      error: "Place has no display name on Google — can't list it.",
+    };
   }
-  if (details.location?.latitude == null || details.location?.longitude == null) {
-    return { ok: false, code: "google_spine_incomplete", status: 422, error: "Place has no coordinates on Google — can't list it." };
+  if (
+    details.location?.latitude == null || details.location?.longitude == null
+  ) {
+    return {
+      ok: false,
+      code: "google_spine_incomplete",
+      status: 422,
+      error: "Place has no coordinates on Google — can't list it.",
+    };
   }
   const address = details.formattedAddress ?? null;
   if (!address) {
-    return { ok: false, code: "google_spine_incomplete", status: 422, error: "Place has no address on Google — can't list it." };
+    return {
+      ok: false,
+      code: "google_spine_incomplete",
+      status: 422,
+      error: "Place has no address on Google — can't list it.",
+    };
   }
 
-  const city = findAddressComponent(details.addressComponents, ["locality", "administrative_area_level_2"]);
+  const city = findAddressComponent(details.addressComponents, [
+    "locality",
+    "administrative_area_level_2",
+  ]);
   const country = findAddressComponent(details.addressComponents, ["country"]);
   // Zone = the neighborhood / colonia. Google carries it as a sublocality or
   // neighborhood component when it has one (not every place does) — prefer the
@@ -229,27 +269,42 @@ export async function fetchGoogleBasics(
     "sublocality",
   ]);
 
-  const photoFetchCap = Math.max(0, Math.min(opts.maxPhotos ?? MAX_PHOTOS, MAX_PHOTOS));
+  const photoFetchCap = Math.max(
+    0,
+    Math.min(opts.maxPhotos ?? MAX_PHOTOS, MAX_PHOTOS),
+  );
   const photoKeepCap = Math.max(
     0,
     Math.min(opts.maxPhotos ?? MAX_PHOTOS_TO_KEEP, MAX_PHOTOS_TO_KEEP),
   );
   const [photosResult, timezoneResult] = await Promise.allSettled([
     fetchGooglePhotos(details.photos ?? [], photoFetchCap, googleKey),
-    fetchTimezone(details.location?.latitude, details.location?.longitude, googleKey),
+    fetchTimezone(
+      details.location?.latitude,
+      details.location?.longitude,
+      googleKey,
+    ),
   ]);
-  const placesPhotos = photosResult.status === "fulfilled" ? photosResult.value : [];
-  const timezone = timezoneResult.status === "fulfilled" ? timezoneResult.value : null;
-  const photos = placesPhotos.map((p) => p.photoUri).filter(Boolean).slice(0, photoKeepCap);
+  const placesPhotos = photosResult.status === "fulfilled"
+    ? photosResult.value
+    : [];
+  const timezone = timezoneResult.status === "fulfilled"
+    ? timezoneResult.value
+    : null;
+  const photos = placesPhotos.map((p) => p.photoUri).filter(Boolean).slice(
+    0,
+    photoKeepCap,
+  );
 
   // Google-derived identity links: website via classifyLinks; Maps URL is
   // native-locked (MESITA-468) — prefer Google's googleMapsUri, else a
   // place-id deep link so create ALWAYS populates google_maps_url.
   const channels = classifyLinks([details.websiteUri]);
   const placeIdSpine = (details.id ?? placeId).trim();
-  const mapsUrl =
-    (details.googleMapsUri && details.googleMapsUri.trim()) ||
-    `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(placeIdSpine)}`;
+  const mapsUrl = (details.googleMapsUri && details.googleMapsUri.trim()) ||
+    `https://www.google.com/maps/place/?q=place_id:${
+      encodeURIComponent(placeIdSpine)
+    }`;
 
   // The category is Google's primary type, saved as Google spells it.
   // `mexican_restaurant` stays `mexican_restaurant`. The label is that slug
@@ -258,7 +313,9 @@ export async function fetchGoogleBasics(
   const categoryLabel = humanizeCategorySlug(categorySlug);
 
   const hours = weeklyHoursFromPeriods(details.regularOpeningHours?.periods);
-  const closesAt = closesAtFromHours(details.regularOpeningHours?.weekdayDescriptions ?? []);
+  const closesAt = closesAtFromHours(
+    details.regularOpeningHours?.weekdayDescriptions ?? [],
+  );
 
   const placeName = name.slice(0, ENRICH_FIELD_LIMITS.placeName.max);
   const googleTypes = (details.types ?? [])
@@ -280,7 +337,7 @@ export async function fetchGoogleBasics(
       google_name: placeName,
       category: categorySlug,
       category_label: categoryLabel ?? humanizeCategorySlug(categorySlug ?? ""),
-      price_level: priceLevelFromGoogle(details.priceLevel),
+      price_level: priceLevelFromGoogle(details.priceLevel, details.priceRange),
       lat: details.location.latitude,
       lng: details.location.longitude,
       address,
@@ -325,9 +382,16 @@ export async function fetchGoogleDetails(
   placeId: string,
   apiKey: string,
 ): Promise<GoogleDetails | { error: string; transient: boolean }> {
-  const url = `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}?languageCode=es-MX&regionCode=MX`;
+  const url = `https://places.googleapis.com/v1/places/${
+    encodeURIComponent(placeId)
+  }?languageCode=es-MX&regionCode=MX`;
   const doFetch = () =>
-    fetch(url, { headers: { "X-Goog-Api-Key": apiKey, "X-Goog-FieldMask": GOOGLE_FIELD_MASK } });
+    fetch(url, {
+      headers: {
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": GOOGLE_FIELD_MASK,
+      },
+    });
 
   try {
     let r = await doFetch();
@@ -341,10 +405,10 @@ export async function fetchGoogleDetails(
       const friendly = transient
         ? "Google Places is temporarily unavailable. Try again in a few seconds."
         : r.status === 429
-          ? "Google Places rate-limited the request. Try again in a moment."
-          : r.status === 404
-            ? "Google couldn't find that place. Try searching again."
-            : `Google rejected the request (${r.status}). ${text.slice(0, 160)}`;
+        ? "Google Places rate-limited the request. Try again in a moment."
+        : r.status === 404
+        ? "Google couldn't find that place. Try searching again."
+        : `Google rejected the request (${r.status}). ${text.slice(0, 160)}`;
       return { error: friendly, transient };
     }
     return (await r.json()) as GoogleDetails;
@@ -354,7 +418,8 @@ export async function fetchGoogleDetails(
       err instanceof Error ? err.message : String(err),
     );
     return {
-      error: "Google Places is temporarily unavailable. Try again in a few seconds.",
+      error:
+        "Google Places is temporarily unavailable. Try again in a few seconds.",
       transient: true,
     };
   }
@@ -380,7 +445,9 @@ async function fetchGooglePhotos(
     }),
   );
   return settled
-    .filter((s): s is PromiseFulfilledResult<{ photoUri: string }> => s.status === "fulfilled")
+    .filter((s): s is PromiseFulfilledResult<{ photoUri: string }> =>
+      s.status === "fulfilled"
+    )
     .map((s) => s.value);
 }
 
