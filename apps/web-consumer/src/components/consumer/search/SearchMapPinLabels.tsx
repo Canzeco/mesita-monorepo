@@ -23,20 +23,16 @@ type PinLabelOverlay = {
   getPanes: () => { floatPane: HTMLElement } | null;
   getMap: () => { getZoom: () => number | undefined } | null;
   getProjection: () => {
-    fromLatLngToDivPixel: (latLng: {
-      lat: () => number;
-      lng: () => number;
-    }) => { x: number; y: number } | null;
+    fromLatLngToDivPixel: (
+      latLng: { lat: () => number; lng: () => number },
+    ) => { x: number; y: number } | null;
   } | null;
 };
 
 type MapsNamespace = {
   maps: {
     OverlayView: new () => PinLabelOverlay;
-    LatLng: new (
-      lat: number,
-      lng: number,
-    ) => { lat: () => number; lng: () => number };
+    LatLng: new (lat: number, lng: number) => { lat: () => number; lng: () => number };
     event: { trigger: (instance: object, eventName: string) => void };
   };
 };

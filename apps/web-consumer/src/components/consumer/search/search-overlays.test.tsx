@@ -50,9 +50,7 @@ describe("Search map catalog loads on the guest's tap, not at rest (MESITA-2874)
     // (MESITA-2337).
     expect(read("../../../lib/api/places.ts")).toContain("google: true");
     expect(read("../../../lib/api/places.ts")).toContain("reloadIdleSec");
-    expect(read("../../../lib/api/places.ts")).toContain(
-      "reloadMinViewportPct",
-    );
+    expect(read("../../../lib/api/places.ts")).toContain("reloadMinViewportPct");
   });
 
   it("spends the programmatic flag on the idle that ends the move", () => {
