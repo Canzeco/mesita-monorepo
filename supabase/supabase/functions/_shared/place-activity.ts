@@ -134,6 +134,9 @@ export type ActivityRow = {
   anonymous?: boolean | null;
   /** place_activity_feed only (MESITA-2608): a verified Instagram. */
   instagram?: boolean | null;
+  /** place_activity_feed only (MESITA-2853): where the event happened. */
+  lat?: number | null;
+  lng?: number | null;
   total?: number | string | null;
 };
 
@@ -193,6 +196,9 @@ export type FeedEvent = {
   kind: ActivityKind;
   at: string;
   person: ActivityPerson;
+  /** Where it happened (MESITA-2853). Server-side only: the feed strips it
+   *  and sends eventKm instead. */
+  point: { lat: number; lng: number } | null;
 };
 
 /** Every row is its own event, newest first ("list all the fucking events"),
@@ -211,9 +217,33 @@ export function feedEvents(
           kind: row.kind,
           at: row.created_at,
           person: toPerson(row, viewerId, canSeeHandles),
+          point: eventPoint(row.lat, row.lng),
         }]
         : []
     );
+}
+
+/** Where an event happened (MESITA-2853): a device fix, or null when either
+ *  half is missing or out of range. */
+export function eventPoint(
+  lat: unknown,
+  lng: unknown,
+): { lat: number; lng: number } | null {
+  if (typeof lat !== "number" || typeof lng !== "number") return null;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return { lat, lng };
+}
+
+/** The event's distance as the row says it (MESITA-2853, Pato: "where that
+ *  event happened, 1km away"): rounded like every distance chip, one decimal
+ *  under 10 km, whole km above, never below 0.1. Null when the raw km is not
+ *  finite (no viewer point or no event point). Only this number leaves the
+ *  server; the event's point never does. */
+export function eventKm(km: number): number | null {
+  if (!Number.isFinite(km)) return null;
+  const rounded = km < 10 ? Math.round(km * 10) / 10 : Math.round(km);
+  return Math.max(rounded, 0.1);
 }
 
 /** Near you (MESITA-2532: "uner you radious or near you"): inside the

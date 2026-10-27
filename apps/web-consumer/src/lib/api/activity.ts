@@ -43,6 +43,10 @@ export type ActivityFeedItem = {
   at: string;
   person: ActivityPerson;
   distanceKm: number | null;
+  /** Km from the guest's point to where this event happened: the member's
+   *  device fix when they liked or viewed (MESITA-2853), measured on the
+   *  server, which never sends the point. Null without either point. */
+  eventKm: number | null;
   place: Place;
 };
 
@@ -65,7 +69,15 @@ export function isMesitaPlaceId(id: string): boolean {
 
 export async function apiTrackActivity(
   client: SupabaseClient,
-  input: { kind: ActivityKind; placeId: string; on?: boolean; quiet?: boolean },
+  input: {
+    kind: ActivityKind;
+    placeId: string;
+    on?: boolean;
+    quiet?: boolean;
+    /** Where the device is now (MESITA-2853): the feed says how far away
+     *  the event happened. Omitted without a fix. */
+    at?: { lat: number; lng: number } | null;
+  },
 ): Promise<void> {
   if (!isMesitaPlaceId(input.placeId)) return;
   await invokeEF<{ kind: ActivityKind; on: boolean }>(
@@ -77,6 +89,7 @@ export async function apiTrackActivity(
       on: input.on ?? true,
       // A backfilled pre-Social save stays out of the feed (MESITA-2460).
       ...(input.quiet ? { quiet: true } : {}),
+      ...(input.at ? { lat: input.at.lat, lng: input.at.lng } : {}),
     },
   );
 }

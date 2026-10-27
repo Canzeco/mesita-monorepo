@@ -25,6 +25,7 @@ import type { PlaceDetail } from "@/lib/place-detail";
 import { useSavedPlaces } from "@/lib/saved-places";
 import { sharePlace } from "@/lib/share-place";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
+import { locationSnapshot } from "@/lib/use-user-location";
 import { toast } from "@/lib/toast";
 
 // One hook per member surface so the body and the Reserve bar share the
@@ -230,7 +231,12 @@ function usePlaceActivity(placeId: string): { social: ReactNode } {
     let cancelled = false;
     const supabase = getSupabase();
     // Viewed first, so the guest's own open counts in the line it reads.
-    void apiTrackActivity(supabase, { kind: "viewed", placeId })
+    // Where the view happened (MESITA-2853): the device fix, if any.
+    void apiTrackActivity(supabase, {
+      kind: "viewed",
+      placeId,
+      at: locationSnapshot().coords,
+    })
       .catch(() => {})
       .then(() => apiPlaceActivity(supabase, placeId))
       .then((activity) => {
