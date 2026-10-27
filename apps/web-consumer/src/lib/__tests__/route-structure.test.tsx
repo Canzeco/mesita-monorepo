@@ -278,6 +278,8 @@ describe("T5 — exactly one tab lights per surface", () => {
     ["/me/favorites", "Me"],
     ["/me/reservations", "Me"],
     ["/reservation/r1", "Me"],
+    // Share is Me's tile since it left the bar (MESITA-2887).
+    ["/share", "Me"],
     ["/me", "Me"],
   ];
 
@@ -611,7 +613,7 @@ describe("T6 — Activity's sections are pages on Me", () => {
 // The regression this catches is a tile for a surface that does not exist
 // — `DestTile` has no `soon` prop and its `href` is required, so such a tile
 // would ship as a live Link pointing at nothing.
-describe("T8 — Me's grid is nine live cells", () => {
+describe("T8 — Me's grid is ten live cells", () => {
   const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
   // THE CELLS ARE DATA (MESITA-2701): hub-tiles.tsx's ME_HUB_ROWS, the one
   // source ProfileClient and /me's loading.tsx both map, so the fallback
@@ -620,7 +622,7 @@ describe("T8 — Me's grid is nine live cells", () => {
   /** The cells' titles, in render order. */
   const gridTitles = () => ME_HUB_ROWS.flat().map((cell) => cell.title);
 
-  it("renders nine cells in Pato's order", () => {
+  it("renders ten cells in Pato's order", () => {
     // The page draws the rows, as DestTiles, and nothing else below the bar.
     expect(ME).toContain("<MeHubFrame");
     expect(ME).toContain("<DestTile");
@@ -629,7 +631,8 @@ describe("T8 — Me's grid is nine live cells", () => {
     // Reservations / Favorites Connector / Settings. PROFILE LEADS (Pato,
     // 2026-09-08): the header states the identity, so the first cell is the
     // one that edits it. Support is a group on Settings (MESITA-2169).
-    // Favorites is the Saved tile that came in from the bar (MESITA-2561).
+    // Favorites is the Saved tile that came in from the bar (MESITA-2561);
+    // Share came in from the bar beside Settings (MESITA-2887).
     expect(gridTitles()).toEqual([
       "Profile",
       "Instagram",
@@ -639,6 +642,7 @@ describe("T8 — Me's grid is nine live cells", () => {
       "Reservations",
       "Favorites",
       "Connector",
+      "Share",
       "Settings",
     ]);
   });
@@ -648,7 +652,6 @@ describe("T8 — Me's grid is nine live cells", () => {
       "Wallet",
       "Visits",
       "Orders",
-      "Share",
       "Gift",
       "Integrations",
       "Friends",
@@ -666,11 +669,11 @@ describe("T8 — Me's grid is nine live cells", () => {
     expect(gridTitles()).not.toContain("Support");
   });
 
-  it("rows are pairs, Settings alone last; nothing spans", () => {
-    // Five rows: four pairs, then Settings in the left half of the last row
-    // (MESITA-2562). Each row is one DestGrid (MeHubFrame), and DestGrid has
-    // no `cols`.
-    expect(ME_HUB_ROWS.map((row) => row.length)).toEqual([2, 2, 2, 2, 1]);
+  it("rows are pairs, Settings last; nothing spans", () => {
+    // Five pairs, Share · Settings last (MESITA-2887; Settings stood alone
+    // from MESITA-2562). Each row is one DestGrid (MeHubFrame), and DestGrid
+    // has no `cols`.
+    expect(ME_HUB_ROWS.map((row) => row.length)).toEqual([2, 2, 2, 2, 2]);
     expect(HUB).toContain("<DestGrid key=");
     expect([...HUB.matchAll(/^\s*full$/gm)]).toHaveLength(0);
     expect(HUB).not.toMatch(/<DestGrid cols=/);
