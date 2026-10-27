@@ -43,12 +43,9 @@ export const CONSUMER_ROUTES = {
   // links here and lights here; nothing hangs underneath. Every former Pay,
   // Visit, Wallet, Credits and Order address 308s to this page.
   pay: "/pay",
-  // WALLET IS ONE PAGE, THE SOON STATE, the bar's fourth tab (MESITA-2858).
-  // It was a Second Stage legacy redirect to /pay until this; deeper
-  // /wallet/... addresses still are.
-  wallet: "/wallet",
-  // SHARE IS A PAGE: the app's link and the ways to send it (MESITA-2566).
-  // It was the bar's fourth tab until Wallet took the slot (MESITA-2858).
+  // SHARE IS A PAGE: the bar's fourth tab, the app's link and the ways to
+  // send it (MESITA-2566). It was the Second Stage referral deck, a legacy
+  // redirect to /me until this.
   share: "/share",
   // Me is the hub: identity header + three pairs of DestTiles, each a real
   // page under (shell)/me/<box> (MESITA-1789). The `/me/[tab]` catch-all
@@ -120,9 +117,7 @@ export const CONSUMER_ROUTES = {
     newVisit: "/new-visit",
     newVisitWallet: "/new-visit/wallet",
     visitPrefix: "/visit/",
-    // Wallet's Buy · Gift · Redeem · balance; /wallet itself is live again
-    // (MESITA-2858).
-    walletPrefix: "/wallet/",
+    wallet: "/wallet",
     credits: "/credits",
     inboxCredits: "/inbox/credits",
     order: "/order",

@@ -30,9 +30,9 @@ describe("legacy redirects keep the guest's surface", () => {
     });
   });
 
-  it("the production case: /web/wallet/buy and /mob/wallet/buy land on Pay", () => {
+  it("the production case: /web/wallet and /mob/wallet land on Pay", () => {
     const wallet = withSurfaceTwins(LEGACY_REDIRECTS).find(
-      (r) => r.source === "/:surface(web|mob)/wallet/:id/:path*",
+      (r) => r.source === "/:surface(web|mob)/wallet/:path*",
     );
     expect(wallet?.destination).toBe("/:surface/pay");
   });
