@@ -1049,28 +1049,28 @@ Deno.test("an attraction Google returns is in no family and never shows (MESITA-
 
 // ── The Map's screen radius (MESITA-2504) ───────────────────────────────
 
-Deno.test("screen radius: the cross's distance to the nearest edge, so it fits (MESITA-2511)", () => {
+Deno.test("screen radius: 0.9 of the cross's distance to the nearest edge, so it fits (MESITA-2511, MESITA-2825)", () => {
   // A tall phone screen (0.06° tall ≈ 6.67 km, 0.02° wide ≈ 2.004 km): the
   // half-width is the nearest edge.
   const tall = screenRadiusKm({
     low: { lat: 25.64, lng: -100.31 },
     high: { lat: 25.7, lng: -100.29 },
   })!;
-  assert(Math.abs(tall - 2.004 / 2) < 0.01, String(tall));
+  assert(Math.abs(tall - 0.9 * 2.004 / 2) < 0.01, String(tall));
   // A wide screen (0.02° tall ≈ 2.224 km, 0.06° wide ≈ 6.01 km): the
   // height wins, measured from the middle when no cross is sent.
   const wide = screenRadiusKm({
     low: { lat: 25.66, lng: -100.33 },
     high: { lat: 25.68, lng: -100.27 },
   })!;
-  assert(Math.abs(wide - 2.224 / 2) < 0.01, String(wide));
+  assert(Math.abs(wide - 0.9 * 2.224 / 2) < 0.01, String(wide));
   // The cross 45% down: its nearer edge is the top, 0.45 × 2.224 km.
   const cross = { lat: 25.68 - 0.02 * 0.45, lng: -100.3 };
   const sight = screenRadiusKm({
     low: { lat: 25.66, lng: -100.33 },
     high: { lat: 25.68, lng: -100.27 },
   }, cross)!;
-  assert(Math.abs(sight - 0.45 * 2.224) < 0.01, String(sight));
+  assert(Math.abs(sight - 0.9 * 0.45 * 2.224) < 0.01, String(sight));
   // A cross off the box is ignored: the middle is used.
   const off = screenRadiusKm({
     low: { lat: 25.66, lng: -100.33 },

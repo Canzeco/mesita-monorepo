@@ -242,6 +242,11 @@ export function resolveAreaLocation(
 export const SCREEN_RADIUS_KM_MIN = 0.05;
 export const SCREEN_RADIUS_KM_MAX = 50;
 
+/** The circle's share of the cross's distance to the nearest edge (Pato,
+ *  MESITA-2825: "the edge of the circle must nto be touching the broders,
+ *  add border margin"). Mirrored by web-consumer's RING_INSET. */
+export const SCREEN_RING_INSET = 0.9;
+
 /**
  * THE SCREEN RADIUS (MESITA-2504): the distance from the cross to the
  * NEAREST edge of the visible map, in km, so the circle always fits on the
@@ -252,7 +257,8 @@ export const SCREEN_RADIUS_KM_MAX = 50;
  * box. It was half the width (MESITA-2507), and before that the average of
  * the half-width and half-height. Clamped to SCREEN_RADIUS_KM_MIN..MAX. Null
  * when the bounds are missing, inverted or wider than AREA_BOUNDS_MAX_KM
- * (the caller falls back to its operator radius).
+ * (the caller falls back to its operator radius). Scaled by
+ * SCREEN_RING_INSET first, so the circle stops short of the edge.
  */
 export function screenRadiusKm(raw: unknown, cross?: LatLng | null): number | null {
   const b = parseAreaBounds(raw);
@@ -266,7 +272,7 @@ export function screenRadiusKm(raw: unknown, cross?: LatLng | null): number | nu
     haversineKm(c.lat, c.lng, b.high.lat, c.lng),
   );
   if (!Number.isFinite(r)) return null;
-  return Math.min(SCREEN_RADIUS_KM_MAX, Math.max(SCREEN_RADIUS_KM_MIN, r));
+  return Math.min(SCREEN_RADIUS_KM_MAX, Math.max(SCREEN_RADIUS_KM_MIN, r * SCREEN_RING_INSET));
 }
 
 /** The server's snap of a point centre (~110 m) for retrieval: Google is
