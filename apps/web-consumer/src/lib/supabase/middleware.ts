@@ -46,7 +46,9 @@ const PROTECTED_PREFIXES = [
   // The Pay tab — one page, the Soon state (MESITA-2087). A guest's tab, so
   // it gets the same fast path as Me.
   "/pay",
-  // The Share tab's page (MESITA-2566), a guest's tab like Pay.
+  // The Wallet tab (MESITA-2858), one page, the Soon state, like Pay.
+  "/wallet",
+  // The Share page (MESITA-2566), a guest's page like Pay.
   "/share",
   // Saved's old tab address and the Bookings tab before it; both forward
   // under Me (MESITA-2521, MESITA-2561).

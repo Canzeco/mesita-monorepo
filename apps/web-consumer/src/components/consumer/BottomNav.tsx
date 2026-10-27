@@ -5,7 +5,7 @@ import { Z_BOTTOM_NAV } from "@/lib/z-index";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ComponentType, type PointerEvent } from "react";
-import { QrCode, Search, Share2, User } from "lucide-react";
+import { QrCode, Search, User, Wallet } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { cn } from "@/lib/utils";
 import {
@@ -22,15 +22,13 @@ import { setPendingTab, usePendingTab } from "@/lib/pending-tab";
 // FIVE tabs, in this order (Pato, MESITA-2076 — "BOTTOM BAR MUST ONLY BE.
 // Home. Search. Pay(Soon). Me."; MESITA-2518 added Bookings, MESITA-2521
 // renamed it Saved; MESITA-2561 moved Saved under Me and made the fourth a
-// Share button: "fourth menu item must be a share button. just a share
-// button. no credits. no nothing"):
+// Share button; MESITA-2858 made it Wallet: "change the share to Wallet and
+// call it Soon as pay"):
 //
-//   Home · Search · Pay (Soon) · Share · Me
+//   Home · Search · Pay (Soon) · Wallet (Soon) · Me
 //
-//   SHARE IS A PAGE (Pato, MESITA-2566: "create a dedicate page for share").
-//   The tab links to /share and lights there; the page holds the link and
-//   the ways to send it. It was a tap that fired the share sheet
-//   (MESITA-2561).
+//   WALLET IS ONE PAGE, THE SOON STATE, exactly like Pay. /share is still a
+//   live page (links already sent keep working); it is just off the bar.
 //
 //   PAY IS ONE PAGE, THE SOON STATE (Pato, MESITA-2087: "Keep pay but delete
 //   everything else. just the empty page with soon."). The tab is a plain
@@ -59,7 +57,7 @@ type Item = {
   matchPrefixes: readonly string[];
   // The destination is not built yet. The tab still navigates — its page is
   // the Soon state — and wears a "Soon" tag (Pato's own spelling, "Pay(Soon)",
-  // overrides the MESITA-383 no-pill rule for this one tab).
+  // overrides the MESITA-383 no-pill rule for Pay and Wallet).
   soon?: boolean;
 };
 
@@ -86,14 +84,11 @@ const ITEMS: Item[] = [
     soon: true,
   },
   {
-    // Three joined dots, THE share glyph (Pato, MESITA-2568: "that share
-    // button looks like messages or dm instagram … it must look as a … share
-    // button"; the paper plane was MESITA-2564). Its page is the invite card
-    // and the ways to send it (MESITA-2566).
-    href: CONSUMER_ROUTES.share,
-    Icon: Share2,
-    label: "Share",
-    matchPrefixes: [CONSUMER_ROUTES.share],
+    href: CONSUMER_ROUTES.wallet,
+    Icon: Wallet,
+    label: "Wallet",
+    matchPrefixes: [CONSUMER_ROUTES.wallet],
+    soon: true,
   },
   {
     href: CONSUMER_ROUTES.me,
