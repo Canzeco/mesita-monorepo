@@ -404,6 +404,11 @@ verify_jwt = true
 [functions.admin-web-list-logs]
 verify_jwt = true
 
+# Apify spend and run health per scraper, read from Apify (MESITA-2852).
+# Super-admin only, read-only.
+[functions.admin-web-get-apify-usage]
+verify_jwt = true
+
 # Google-only opens and how they ended (MESITA-2323). Super-admin only.
 [functions.admin-web-list-place-opens]
 verify_jwt = true

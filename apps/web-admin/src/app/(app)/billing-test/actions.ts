@@ -9,8 +9,19 @@
 // the three public NEXT_PUBLIC_SUPABASE_* vars. Running the probes from a
 // Next.js server action instead would mean copying seven secrets into Vercel.
 
+import type { ActionResult } from "@/lib/action-result";
 import { efInvoke } from "@/lib/supabase-ef";
+import { type ApifyUsage, type ApifyWindow, coerceApifyUsage } from "./apify-usage";
 import { coerceResults, type ProbeResult } from "./catalog";
+
+/** Apify spend and run health per scraper. Read-only: runs no actor. */
+export async function getApifyUsage(
+  days: ApifyWindow,
+): Promise<ActionResult<{ usage: ApifyUsage }>> {
+  const r = await efInvoke<unknown>("admin-web-get-apify-usage", { days });
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, usage: coerceApifyUsage(r.data) };
+}
 
 type RunProbesResult =
   | { ok: true; checkedAt: string; results: ProbeResult[] }
