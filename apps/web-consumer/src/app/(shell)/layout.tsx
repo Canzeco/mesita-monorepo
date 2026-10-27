@@ -27,14 +27,13 @@ import { prefixPath } from "@/lib/surface";
 // exits with a "Missing NEXT_PUBLIC_SUPABASE_URL" error.
 export const dynamic = "force-dynamic";
 
-// The bar's five destinations, whose placeholders PendingScreen paints the
+// The bar's four destinations, whose placeholders PendingScreen paints the
 // moment a tab is touched (MESITA-2846). A client module's exports are only
 // references here, so the list is BottomNav's hrefs, restated.
 const BAR_HREFS = [
   CONSUMER_ROUTES.home,
   CONSUMER_ROUTES.search,
   CONSUMER_ROUTES.pay,
-  CONSUMER_ROUTES.share,
   CONSUMER_ROUTES.me,
 ] as const;
 
