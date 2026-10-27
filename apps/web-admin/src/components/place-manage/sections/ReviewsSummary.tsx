@@ -10,6 +10,7 @@ import { usePlaceContext } from "../PlaceContext";
 // Reviews. One Sync in the header updates the four boxes from saved links.
 // Save on Profile does not call this. Found flags are not profile fields.
 // The four boxes are separate cards (Pato, MESITA-2261). Sync stays above them.
+// Google Reviews lists every stored review, sortable, 10 a page (MESITA-2832).
 
 type BoxState = "no-link" | "never-synced" | "syncing" | "synced" | "error";
 
@@ -148,7 +149,6 @@ export function ReviewsSummary() {
   const reviewsState = box.google_reviews ?? reviewBoxState(!!place.google_place_id?.trim(), stored.google_reviews);
   const shownAt = syncedAt ?? stored.lastSyncedAt;
   const reviews = storedReviews(place.google_reviews);
-  const shown = reviews.slice(0, 3);
 
   return (
     <div className="flex flex-col gap-4 pb-8">
@@ -210,14 +210,7 @@ export function ReviewsSummary() {
         hint={hintFor(reviewsState, reviews.length > 0 ? "on file" : "No reviews on file.", errors.google_reviews, shownAt)}
         value={reviews.length > 0 ? String(reviews.length) : "—"}
         muted={reviews.length === 0}
-        extra={shown.length > 0 ? (
-          <ul className="text-muted-foreground mt-1 space-y-1 type-label">
-            {shown.map((review, i) => (
-              <li key={i} className="truncate">{review.author}: {review.quote}</li>
-            ))}
-            {reviews.length > shown.length ? <li>+{reviews.length - shown.length} more</li> : null}
-          </ul>
-        ) : null}
+        extra={reviews.length > 0 ? <GoogleReviewList reviews={reviews} /> : null}
       />
     </div>
   );
@@ -291,9 +284,11 @@ function storedSync(raw: unknown): {
   return out;
 }
 
-function storedReviews(raw: unknown): { author: string; quote: string }[] {
+type StoredReview = { author: string; quote: string; rating: number | null; date: string | null };
+
+function storedReviews(raw: unknown): StoredReview[] {
   if (!Array.isArray(raw)) return [];
-  const out: { author: string; quote: string }[] = [];
+  const out: StoredReview[] = [];
   for (const item of raw) {
     if (!item || typeof item !== "object") continue;
     const row = item as Record<string, unknown>;
@@ -306,9 +301,152 @@ function storedReviews(raw: unknown): { author: string; quote: string }[] {
     const author = typeof row.author === "string" && row.author.trim()
       ? row.author.trim()
       : "Google reviewer";
-    out.push({ author, quote });
+    const rating = num(row.rating);
+    const date = typeof row.date === "string" && row.date.trim() ? row.date.trim() : null;
+    out.push({ author, quote, rating, date });
   }
   return out;
+}
+
+type ReviewSort = "newest" | "highest" | "lowest";
+
+const PAGE = 10;
+
+const SORTS: { key: ReviewSort; label: string }[] = [
+  { key: "newest", label: "Newest" },
+  { key: "highest", label: "Highest" },
+  { key: "lowest", label: "Lowest" },
+];
+
+/** Stored order is Google's; a date that won't parse keeps its stored place. */
+export function sortReviews<T extends { rating: number | null; date: string | null }>(
+  reviews: T[],
+  sort: ReviewSort,
+): T[] {
+  const indexed = reviews.map((review, i) => ({ review, i }));
+  const time = (d: string | null) => (d ? Date.parse(d) : Number.NaN);
+  indexed.sort((a, b) => {
+    if (sort === "newest") {
+      const ta = time(a.review.date);
+      const tb = time(b.review.date);
+      if (Number.isFinite(ta) && Number.isFinite(tb) && ta !== tb) return tb - ta;
+      return a.i - b.i;
+    }
+    const ra = a.review.rating ?? (sort === "highest" ? -1 : 6);
+    const rb = b.review.rating ?? (sort === "highest" ? -1 : 6);
+    if (ra !== rb) return sort === "highest" ? rb - ra : ra - rb;
+    return a.i - b.i;
+  });
+  return indexed.map((x) => x.review);
+}
+
+function reviewDate(raw: string | null): string | null {
+  if (!raw) return null;
+  const t = Date.parse(raw);
+  if (!Number.isFinite(t)) return raw;
+  return new Date(t).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+function GoogleReviewList({ reviews }: { reviews: StoredReview[] }) {
+  const [sort, setSort] = useState<ReviewSort>("newest");
+  const [limit, setLimit] = useState(PAGE);
+  const [open, setOpen] = useState<Set<number>>(() => new Set());
+  const sorted = sortReviews(reviews, sort);
+  const shown = sorted.slice(0, limit);
+  const rest = sorted.length - shown.length;
+
+  function toggle(i: number) {
+    setOpen((current) => {
+      const next = new Set(current);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  }
+
+  return (
+    <div className="mt-3 flex min-w-0 flex-col gap-3">
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Sort reviews">
+        {SORTS.map((option) => (
+          <button
+            key={option.key}
+            type="button"
+            aria-pressed={sort === option.key}
+            onClick={() => {
+              setSort(option.key);
+              setOpen(new Set());
+            }}
+            className={
+              "inline-flex h-8 items-center rounded-full border px-3 text-xs font-medium " +
+              (sort === option.key
+                ? "bg-foreground text-background border-foreground"
+                : "text-muted-foreground hover:text-foreground")
+            }
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      <ul className="divide-border flex min-w-0 flex-col divide-y">
+        {shown.map((review, i) => {
+          const expanded = open.has(i);
+          const long = review.quote.length > 240 || review.quote.includes("\n");
+          const when = reviewDate(review.date);
+          return (
+            <li key={`${sort}-${i}`} className="flex min-w-0 flex-col gap-1 py-3">
+              <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                <span className="text-foreground truncate font-semibold">{review.author}</span>
+                {review.rating != null ? <Stars value={review.rating} /> : null}
+                {when ? <span className="text-muted-foreground type-label">{when}</span> : null}
+              </p>
+              <p
+                className={
+                  "text-muted-foreground text-sm leading-relaxed whitespace-pre-line " +
+                  (expanded ? "" : "line-clamp-3")
+                }
+              >
+                {review.quote}
+              </p>
+              {long ? (
+                <button
+                  type="button"
+                  onClick={() => toggle(i)}
+                  className="text-foreground self-start text-xs font-semibold"
+                >
+                  {expanded ? "Less" : "More"}
+                </button>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+      {rest > 0 || limit > PAGE ? (
+        <div className="flex flex-wrap gap-2">
+          {rest > 0 ? (
+            <button
+              type="button"
+              onClick={() => setLimit((n) => n + PAGE)}
+              className="inline-flex h-9 items-center rounded-full border px-4 text-sm font-semibold"
+            >
+              Show {Math.min(PAGE, rest)} more · {rest} left
+            </button>
+          ) : null}
+          {limit > PAGE ? (
+            <button
+              type="button"
+              onClick={() => {
+                setLimit(PAGE);
+                setOpen(new Set());
+              }}
+              className="text-muted-foreground inline-flex h-9 items-center rounded-full px-4 text-sm font-semibold"
+            >
+              Show less
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function ReviewBox({
