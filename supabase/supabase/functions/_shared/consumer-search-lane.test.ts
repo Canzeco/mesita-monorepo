@@ -283,6 +283,20 @@ Deno.test("Name signal floors: raw cosine below 0.4 is out", () => {
   assertEquals(rankMesitaByName([BEST, below], { text: "best", vector: QUERY }).map((r) => r.id), ["best"]);
 });
 
+Deno.test("Name signal: Google's own label is an alias — a lexical hit on google_name ranks the Mesita row (MESITA-2828)", () => {
+  const renamed = { ...listed("renamed", "La Cocina de Lupe", []), name_embedding: null, google_name: "Fonda Doña Lupita" };
+  const other = { ...listed("other", "Taquería El Paso", []), name_embedding: null };
+  assertEquals(
+    rankMesitaByName([other, renamed], { text: "doña lupita", vector: null }).map((r) => r.id),
+    ["renamed"],
+  );
+  // The row keeps its Mesita name: the alias only scores.
+  assertEquals(
+    rankMesitaByName([renamed], { text: "doña lupita", vector: null })[0].name,
+    "La Cocina de Lupe",
+  );
+});
+
 Deno.test("Name signal missing data: no embedding or no query vector falls back to lexical", () => {
   const unembedded = { ...listed("tacos", "Tacos el Güero", [1, 0]), name_embedding: null };
   const other = { ...listed("sushi", "Sushi Roll", [1, 0]), name_embedding: null };

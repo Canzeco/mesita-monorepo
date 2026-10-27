@@ -13,16 +13,13 @@
 const COLUMNS: readonly string[] = [
   "id",
   "slug",
-  // Generated display column: coalesce(mesita_name, google_name). Read-only —
-  // Postgres rejects any write. Every audience reads this one.
+  // The one Mesita name (MESITA-2828): stored, seeded from Google at Create,
+  // refined by the name door, operator-editable. Every audience reads this one.
   "name",
-  // Cached Google Places displayName. NOT an identity spine (google_place_id
-  // is) — it changes whenever the Google listing does. Enricher-only write.
-  // Guest profile chrome reads mesita_name, not this column.
+  // Google's own label. NOT an identity spine (google_place_id is) — it
+  // changes whenever the Google listing does. Google-only write; never
+  // shown, Search matches it as an alias of the Mesita name.
   "google_name",
-  // Mesita display label. Seeded at create from the first Google label;
-  // operator-editable. NULL/empty ⇒ generated name follows google_name.
-  "mesita_name",
   "category",
   // Human-friendly category copy (emoji + natural-language label),
   // derived from category via place_categories.

@@ -16,7 +16,7 @@ const OPEN_ALWAYS = Object.fromEntries(
 function row(over: Record<string, unknown> = {}) {
   return placeRowToDetail({
     id: "p-1",
-    mesita_name: "Lupita",
+    name: "Lupita",
     category_label: "Restaurant",
     ...over,
   });

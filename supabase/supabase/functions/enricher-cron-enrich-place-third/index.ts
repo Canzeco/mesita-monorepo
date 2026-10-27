@@ -66,7 +66,7 @@ import {
   runPlaceEmbeddingsOnUpdate,
   synthesizePlaceSummaryText,
 } from "../_shared/place-embeddings.ts";
-import { applyInferredMesitaName } from "../_shared/mesita-name-door.ts";
+import { applyInferredPlaceName } from "../_shared/place-name-door.ts";
 import { inferPlaceReservationsLikely } from "../_shared/infer-place-reservations.ts";
 import { loadModelsConfig } from "../_shared/models-config.ts";
 import {
@@ -125,12 +125,11 @@ serveEnrichStage("third", async (admin, env, row) => {
 
   const place: Record<string, unknown> = { ...gathered.place };
   // `gathered.place` deliberately carries NO name keys: the research stage
-  // deletes name/google_name/mesita_name so a re-run can never ride a stale
-  // label back over an operator override (MESITA-1011). Reading `place.name`
-  // here therefore always yielded "" — synthesis, category and tag inference
-  // were all prompted with an unnamed place. Read the live generated label
-  // (coalesce(mesita_name, google_name)) instead, so an operator's Mesita name
-  // is what the Enricher reasons about.
+  // deletes name/google_name so a re-run can never ride a stale label back
+  // over an operator's name (MESITA-1011). Reading `place.name` here
+  // therefore always yielded "" — synthesis, category and tag inference were
+  // all prompted with an unnamed place. Read the live Mesita name instead, so
+  // an operator's name is what the Enricher reasons about.
   const { data: nameRow } = await admin
     .from("place_profiles")
     .select("name")
@@ -244,7 +243,7 @@ serveEnrichStage("third", async (admin, env, row) => {
     // through the one door (gate D2: NULL / google-copy / the door's own last
     // value; an operator's name is never overwritten)…
     if (parsed?.mesita_name) {
-      const door = await applyInferredMesitaName(
+      const door = await applyInferredPlaceName(
         admin,
         placeId,
         parsed.mesita_name,
@@ -399,9 +398,10 @@ serveEnrichStage("third", async (admin, env, row) => {
   // from `gathered.place`, and this strip covers every place_research row
   // already stored with it — without both, a lighter re-enrich keeps replaying
   // the old payload and nulling a business-entered WhatsApp.
-  // Same for names (MESITA-917): google_name + sticky Mesita name are written in
-  // research only. Contents must NEVER write `name` / `google_name` — otherwise
-  // Re-enrich silently reverts an admin Mesita rename (the landmine this closes).
+  // Same for names (MESITA-917): google_name is written in research only and
+  // the Mesita name only through the door above. Contents must NEVER write
+  // `name` / `google_name` — otherwise Re-enrich silently reverts an admin
+  // rename (the landmine this closes).
   // Same for google_place_id: gathered.place still carries the spine (research
   // writes it on create). writePlace refuses it on UPDATE — leaving the key
   // in this patch is what printed "Profile persist failed" on Global Monitor

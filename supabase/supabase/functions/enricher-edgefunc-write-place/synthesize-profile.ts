@@ -1,6 +1,6 @@
 // The one enrichment commit fills the Presentation and the Mesita tags
 // (MESITA-2836: the Description step writes only Mesita fields), and hands back the Mesita Name the same synthesis inferred,
-// which lands only through _shared/mesita-name-door.ts (MESITA-2790: every
+// which lands only through _shared/place-name-door.ts (MESITA-2790: every
 // Mesita field is inferred on every Enrich). The classifiers live in _shared.
 // This module only decides which of those results may land, then the write
 // commits them with the rest. The Scout's read, when the run bought one, is the
@@ -133,7 +133,7 @@ async function fillAtlasProfileInner(
     fetchPlaceTags(admin),
     loadEnrichConfig(admin),
   ]);
-  const name = textField(patch.google_name) || textField(patch.mesita_name);
+  const name = textField(patch.google_name) || textField(patch.name);
   const address = textField(patch.address);
   const googleSummary = textField(patch.pitch) || textField(patch.story) || textField(patch.description);
   const webRead = textField(grounding.serpSummary) || googleSummary;

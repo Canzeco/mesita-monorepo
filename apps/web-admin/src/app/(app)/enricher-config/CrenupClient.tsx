@@ -396,8 +396,9 @@ export function CrenupClient({
                 knobs="no knobs"
               >
                 <NoKnobs>
-                  No knobs. Facts Google states. <b>mesita_name</b> is the Place
-                  editor override.
+                  No knobs. Facts Google states. The Mesita <b>name</b> is the
+                  Description step&apos;s and the Place editor&apos;s, never this
+                  step&apos;s.
                 </NoKnobs>
               </FunctionModule>
               <FunctionModule

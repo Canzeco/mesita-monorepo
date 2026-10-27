@@ -61,7 +61,8 @@ const RESERVATION_CHANNELS = new Set(["phone", "whatsapp", "instagram", "web", "
 
 type UpdateBody = {
   id?: string;
-  mesita_name?: string | null;
+  /** The Mesita name (MESITA-2828). Blank ⇒ the place follows Google's label. */
+  name?: string | null;
   // Native fields (google_name, price_level, address, google_maps_url,
   // google_place_id) are Google/Enricher-owned and not editable here: the
   // whitelist below never reads them.
@@ -138,15 +139,15 @@ Deno.serve(async (req) => {
   // Build the update payload from the whitelist. Missing keys are not
   // touched. Explicit null clears the field.
   const update: Record<string, unknown> = {};
-  // Operator name override → places.mesita_name (`name` is a GENERATED
-  // display column, coalesce(mesita_name, google_name), and is not writable).
-  // Empty/whitespace CLEARS the override so the place falls back to Google.
-  if ("mesita_name" in body) {
-    const n = (body.mesita_name ?? "").toString().trim();
+  // The Mesita name → place_profiles.name (MESITA-2828: stored, the one
+  // name). Empty/whitespace CLEARS it and the name-fallback trigger copies
+  // Google's label back in, so the place is never nameless.
+  if ("name" in body) {
+    const n = (body.name ?? "").toString().trim();
     if (n.length > ENRICH_FIELD_LIMITS.placeName.max) {
       return json({ ok: false, error: "name too long" }, 400);
     }
-    update.mesita_name = n.length > 0 ? n : null;
+    update.name = n.length > 0 ? n : null;
   }
   if ("hours" in body) {
     const cleaned = sanitiseHours(body.hours);

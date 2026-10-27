@@ -167,8 +167,8 @@ type DayHours = { closed: boolean; open: string; close: string };
 // Address is deliberately absent: it is native (Google/Enricher-sourced) and
 // admin-web-update-place does not accept it — Location renders read-only.
 type Form = {
-  /** Operator override → places.mesita_name. Blank ⇒ the place follows Google. */
-  mesitaName: string;
+  /** The Mesita name → place_profiles.name (MESITA-2828). Blank ⇒ the place follows Google. */
+  name: string;
   /** Canonical Presentation — English (Mesita core). The column stays
    * `description`; the FIELD is Presentation (Pato, 2026-08-23). */
   description: string;
@@ -203,7 +203,7 @@ function placeToForm(
   const channels: Record<string, string> = {};
   for (const c of CHANNELS) channels[c.key as string] = str(v[c.key]);
   return {
-    mesitaName: (v.mesita_name ?? "").slice(0, limits.placeNameMax),
+    name: (v.name ?? "").slice(0, limits.placeNameMax),
     description: (v.description ?? "").slice(0, limits.descriptionMax),
     tags: (Array.isArray(v.tags) ? v.tags : [])
       .filter((t): t is string => typeof t === "string")
@@ -226,11 +226,11 @@ function boxToPatch(
 ): Record<string, unknown> & { id: string } {
   const nz = (s: string) => (s.trim() ? s.trim() : null);
   if (box === "basics") {
-    // Empty Mesita name clears the override → UI falls back to google_name.
-    const mesitaName = f.mesitaName.trim().slice(0, limits.placeNameMax);
+    // An empty name clears it → the place follows google_name again.
+    const name = f.name.trim().slice(0, limits.placeNameMax);
     return {
       id,
-      mesita_name: mesitaName.length > 0 ? mesitaName : null,
+      name: name.length > 0 ? name : null,
       description: nz(f.description.slice(0, limits.descriptionMax)),
       tags: f.tags.slice(0, limits.tagsPerPlaceMax),
     };
@@ -277,17 +277,17 @@ export function PlaceSection({
     () =>
       !sliceEqual(
         {
-          mesitaName: form.mesitaName,
+          name: form.name,
           description: form.description,
           tags: form.tags.join(","),
         },
         {
-          mesitaName: saved.mesitaName,
+          name: saved.name,
           description: saved.description,
           tags: saved.tags.join(","),
         },
       ),
-    [form.mesitaName, form.description, form.tags, saved.mesitaName, saved.description, saved.tags],
+    [form.name, form.description, form.tags, saved.name, saved.description, saved.tags],
   );
   const dirtyTime = useMemo(
     () => !sliceEqual(form.hours, saved.hours),
@@ -395,10 +395,10 @@ export function PlaceSection({
             </ReadField>,
             <PlaceGoogleCategoriesField key="google-categories" />,
             <TextField
-              key="mesita-name"
-              label="Mesita name"
-              value={form.mesitaName}
-              onChange={(x) => set("mesitaName", x.slice(0, limits.placeNameMax))}
+              key="name"
+              label="Name"
+              value={form.name}
+              onChange={(x) => set("name", x.slice(0, limits.placeNameMax))}
               maxLength={limits.placeNameMax}
               disabled={anyPending}
               placeholder={(place.google_name ?? "").trim() || undefined}

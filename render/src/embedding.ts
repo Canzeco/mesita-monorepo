@@ -21,13 +21,13 @@ export function embeddingFacts(place: {
 }
 
 /** The vectors describe the profile as it is written (MESITA-2801). The name
- *  is what the profile shows: name, then mesita_name, then Google's. */
+ *  is what the profile shows: the Mesita name, else Google's label (MESITA-2828). */
 export function writtenSubject(patch: Record<string, unknown>): { name: string; facts: string } | null {
   const text = (key: string) => {
     const value = patch[key];
     return typeof value === "string" && value.trim() ? value.trim() : null;
   };
-  const name = text("name") ?? text("mesita_name") ?? text("google_name");
+  const name = text("name") ?? text("google_name");
   if (!name) return null;
   return {
     name,

@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(180);
+select plan(183);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -141,57 +141,67 @@ select ok(
   exists (
     select 1 from pg_constraint
      where conrelid = 'public.place_profiles'::regclass
-       and conname = 'place_profiles_name_source_present'
+       and conname = 'place_profiles_name_present'
   ),
-  'place_profiles_name_source_present survives (names the failure as a data problem)'
+  'place_profiles_name_present survives (a place always has a name, MESITA-2828)'
 );
 
 -- Behaviour, not just catalog shape: the resolution order is the product law.
 savepoint before_name_probe;
 
+-- MESITA-2828: `name` is the one Mesita name, stored. Blank ⇒ the fallback
+-- trigger copies google_name; mesita_name is gone.
 insert into public.place_profiles (id, google_name)
 values ('00000000-0000-4000-8000-0000000f0f0f', '  Tacos Martin  ');
 
 select is(
   (select name from public.place_profiles where id = '00000000-0000-4000-8000-0000000f0f0f'),
   'Tacos Martin'::text,
-  'no override ⇒ place_profiles.name follows google_name, trimmed'
+  'no Mesita name ⇒ place_profiles.name follows google_name, trimmed'
 );
 
-update public.place_profiles set mesita_name = 'Los Tacos Martin'
+update public.place_profiles set name = 'Los Tacos Martin'
  where id = '00000000-0000-4000-8000-0000000f0f0f';
 
 select is(
   (select name from public.place_profiles where id = '00000000-0000-4000-8000-0000000f0f0f'),
   'Los Tacos Martin'::text,
-  'mesita_name overrides google_name'
+  'the Mesita name is stored as written'
 );
 
-update public.place_profiles set mesita_name = '   '
+update public.place_profiles set google_name = 'Tacos Martín Centro'
  where id = '00000000-0000-4000-8000-0000000f0f0f';
 
 select is(
   (select name from public.place_profiles where id = '00000000-0000-4000-8000-0000000f0f0f'),
-  'Tacos Martin'::text,
-  'a whitespace-only override is not an override'
+  'Los Tacos Martin'::text,
+  'a Google rename never moves the Mesita name'
 );
 
--- 428C9 = ERRCODE_GENERATED_ALWAYS. Pinned, because "it threw something" would
--- also pass if the column had merely gone away.
-select throws_ok(
-  $$update public.place_profiles set name = 'direct write'
-     where id = '00000000-0000-4000-8000-0000000f0f0f'$$,
-  '428C9'::char(5), null::text,
-  'place_profiles.name rejects a direct write'
+update public.place_profiles set name = '   '
+ where id = '00000000-0000-4000-8000-0000000f0f0f';
+
+select is(
+  (select name from public.place_profiles where id = '00000000-0000-4000-8000-0000000f0f0f'),
+  'Tacos Martín Centro'::text,
+  'a blank Mesita name falls back to google_name'
 );
 
--- Deliberately unpinned: the row violates the NOT NULL and the named CHECK at
--- once and Postgres does not promise which it reports.
+select hasnt_column('public', 'place_profiles', 'mesita_name', 'mesita_name retired (MESITA-2828)');
+select is(
+  (select is_generated from information_schema.columns
+    where table_schema = 'public' and table_name = 'place_profiles' and column_name = 'name'),
+  'NEVER'::information_schema.character_data,
+  'place_profiles.name is stored, not generated'
+);
+
+-- Both blank: the fallback has nothing to copy and the row is refused. The
+-- NOT NULL and the check both fire; Postgres does not promise which it reports.
 select throws_ok(
-  $$update public.place_profiles set google_name = null, mesita_name = null
+  $$update public.place_profiles set google_name = null, name = null
      where id = '00000000-0000-4000-8000-0000000f0f0f'$$,
   null::char(5), null::text,
-  'a place with neither mesita_name nor google_name is rejected'
+  'a place with neither a Mesita name nor a Google label is rejected'
 );
 
 rollback to savepoint before_name_probe;

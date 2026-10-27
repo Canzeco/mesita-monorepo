@@ -30,7 +30,6 @@ test("a short vector is left off the place", () => {
 test("the vectors read the profile as written: a saved name, address and description win (MESITA-2801)", async () => {
   const subject = writtenSubject({
     google_name: "Strana",
-    mesita_name: "Strana Zona Hotelera",
     name: "Strana Zona Hotelera",
     zone: "Zona Hotelera",
     city: "Puerto Vallarta",
@@ -47,9 +46,9 @@ test("the vectors read the profile as written: a saved name, address and descrip
   assert.equal(fields?.embedding_source_text, subject.facts);
 });
 
-test("the vector name is the one the profile shows: name, then mesita_name, then Google's", () => {
-  assert.equal(writtenSubject({ name: "A", mesita_name: "B", google_name: "C" })?.name, "A");
-  assert.equal(writtenSubject({ name: " ", mesita_name: "B", google_name: "C" })?.name, "B");
+test("the vector name is the one the profile shows: the Mesita name, else Google's (MESITA-2828)", () => {
+  assert.equal(writtenSubject({ name: "A", google_name: "C" })?.name, "A");
+  assert.equal(writtenSubject({ name: " ", google_name: "C" })?.name, "C");
   assert.equal(writtenSubject({ google_name: "C" })?.name, "C");
   assert.equal(writtenSubject({ description: "no name" }), null);
 });

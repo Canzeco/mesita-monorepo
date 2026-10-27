@@ -26,7 +26,6 @@ import { ensureUniqueSlug, slugify } from "./place-slug.ts";
 
 const PLACE_PROFILE_INSERT_KEYS = new Set<string>(PLACE_PROFILE_PATCH_KEYS);
 const PLACE_PROFILE_INSERT_DROP = new Set([
-  "name",
   "id",
   "created_at",
   "updated_at",
@@ -38,11 +37,11 @@ const PLACE_PROFILE_INSERT_DROP = new Set([
 // here so envelope extras cannot empty the catalog after a reset.
 function placeProfileInsertPatch(
   rest: Record<string, unknown>,
-  names: { google_name: string; mesita_name: string },
+  names: { google_name: string; name: string },
 ): PlaceProfilePatch {
   const patch: Record<string, unknown> = {
     google_name: names.google_name,
-    mesita_name: names.mesita_name,
+    name: names.name,
   };
   for (const [key, value] of Object.entries(rest)) {
     if (value === undefined) continue;
@@ -55,7 +54,8 @@ function placeProfileInsertPatch(
 
 // The place_profiles-shaped profile from fetchGoogleBasics. Required spine:
 // google_place_id + google_name (the same fields fetchGoogleBasics guarantees).
-// `name` is a GENERATED column on place_profiles, so no caller can supply it.
+// `name` (the Mesita name, MESITA-2828) is seeded here from google_name; a
+// caller-supplied `name` is ignored.
 export type PlacePayload = Record<string, unknown> & {
   google_place_id?: string;
   google_name?: string;
@@ -86,10 +86,10 @@ export async function savePlaceData(
   });
 
   const googlePlaceId = (place.google_place_id ?? "").toString().trim();
-  // `place_profiles.name` is GENERATED (coalesce(mesita_name, google_name)), so callers
-  // send the Google observation, not the display label — fetchGoogleBasics
-  // deliberately omits `name` (MESITA-1011). Guarding on `name` here rejected
-  // every create for 11 days; guard the key that is actually supplied.
+  // Callers send the Google observation, not the display label —
+  // fetchGoogleBasics deliberately omits `name` (MESITA-1011). Guarding on
+  // `name` here rejected every create for 11 days; guard the key that is
+  // actually supplied.
   const googleName = (place.google_name ?? "").toString().trim();
   if (!googlePlaceId) return fail(400, { error: "place.google_place_id is required" });
   if (!googleName) return fail(400, { error: "place.google_name is required" });
@@ -120,15 +120,15 @@ export async function savePlaceData(
 
   // ── 1) place_profiles (profile). Strip caller-supplied id/timestamps so the DB owns
   // them; the category-label trigger fills category_label from category. ──
-  // Names: `name` is GENERATED (coalesce(mesita_name, google_name)) — never
-  // insert it. Create seeds BOTH: google_name is the cached Google observation
-  // (Enricher refresh target) and mesita_name is the guest-facing Mesita label
-  // (operator-editable; profile chrome never reads google_name directly).
+  // Names (MESITA-2828): Create seeds BOTH — google_name is Google's own
+  // label (refreshed by Google, Search's alias) and `name` is the Mesita name
+  // the guest sees (the Description step refines it through the name door,
+  // the operator edits it).
   // decision: whitelist PLACE_PROFILE_PATCH_KEYS (MESITA-2751) — extras and
   // `undefined` drop here so writePlace stays the closed door, not a create 400.
   const placeInsert = placeProfileInsertPatch(place, {
     google_name: googleName,
-    mesita_name: googleName,
+    name: googleName,
   });
   const profileRes = await writePlace(admin, {
     table: "place_profiles",

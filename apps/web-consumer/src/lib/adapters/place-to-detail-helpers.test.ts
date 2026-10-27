@@ -3,27 +3,16 @@ import { describe, expect, it } from "vitest";
 import { resolvePlaceDisplayName } from "./place-to-detail-helpers";
 
 describe("resolvePlaceDisplayName", () => {
-  it("prefers mesita_name over google_name and generated name", () => {
+  it("shows the one Mesita name (MESITA-2828)", () => {
     expect(
       resolvePlaceDisplayName({
-        mesita_name: "Starbucks",
         name: "Starbucks Himalaya",
-        google_name: "Starbucks Himalaya",
+        google_name: "Starbucks Coffee Himalaya #4521",
       }),
-    ).toBe("Starbucks");
+    ).toBe("Starbucks Himalaya");
   });
 
-  it("falls back to generated name when mesita_name is empty", () => {
-    expect(
-      resolvePlaceDisplayName({
-        mesita_name: null,
-        name: "Contramar",
-        google_name: "Contramar Seafood",
-      }),
-    ).toBe("Contramar");
-  });
-
-  it("never reads google_name when mesita_name and name are absent", () => {
+  it("never reads google_name when name is absent", () => {
     expect(
       resolvePlaceDisplayName({
         google_name: "Google Only Label",
